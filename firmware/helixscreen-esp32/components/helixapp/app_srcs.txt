@@ -113,6 +113,7 @@ src/led/led_device_page.cpp
 src/print/active_print_media_manager.cpp
 src/print/crc32.cpp
 src/print/filament_sensor_manager.cpp
+src/print/firmware_3mf_extract.cpp
 src/print/preprint_predictor.cpp
 src/print/print_eta_estimator.cpp
 src/print/thumbnail_write_journal.cpp

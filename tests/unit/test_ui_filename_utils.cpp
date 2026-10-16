@@ -3,13 +3,15 @@
 
 #include "ui_filename_utils.h"
 
+#include "firmware_3mf_extract.h"
+
 #include <string>
 
 #include "../catch_amalgamated.hpp"
 
+using helix::firmware_3mf::extract_name;
+using helix::firmware_3mf::is_plate_extract;
 using helix::gcode::has_printable_extension;
-using helix::gcode::is_native_3mf_shadow;
-using helix::gcode::qidi_3mf_extract_name;
 using helix::gcode::resolve_gcode_filename;
 using helix::gcode::thumbnail_source_describes;
 
@@ -61,56 +63,56 @@ TEST_CASE("has_printable_extension() rejects non-printable and malformed names",
 }
 
 // =============================================================================
-// is_native_3mf_shadow() - QIDI native-3MF shadow G-code detection
+// firmware_3mf::is_plate_extract() - a firmware plate-numbered .3mf extract
 // =============================================================================
 
-TEST_CASE("is_native_3mf_shadow() accepts valid shadow names", "[filename_utils][qidi]") {
-    REQUIRE(is_native_3mf_shadow("shadow_native_plate_1.gcode"));
-    REQUIRE(is_native_3mf_shadow("shadow_native_plate_12.gcode"));
-    REQUIRE(is_native_3mf_shadow("shadow_native_plate_007.gcode"));
+TEST_CASE("is_plate_extract() accepts valid shadow names", "[filename_utils][qidi]") {
+    REQUIRE(is_plate_extract("shadow_native_plate_1.gcode"));
+    REQUIRE(is_plate_extract("shadow_native_plate_12.gcode"));
+    REQUIRE(is_plate_extract("shadow_native_plate_007.gcode"));
     // Plate id need not be numeric - any non-empty middle is accepted.
-    REQUIRE(is_native_3mf_shadow("shadow_native_plate_A.gcode"));
+    REQUIRE(is_plate_extract("shadow_native_plate_A.gcode"));
 }
 
-TEST_CASE("qidi_3mf_extract_name() names the plate G-code QIDI extracts into .temp",
+TEST_CASE("extract_name() names the plate G-code QIDI extracts into .temp",
           "[filename_utils][qidi]") {
-    CHECK(qidi_3mf_extract_name("Benchy.gcode.3mf") == "Benchy.gcode");
-    CHECK(qidi_3mf_extract_name("sub/dir/Benchy.gcode.3mf") == "Benchy.gcode");
-    CHECK(qidi_3mf_extract_name("Benchy.3mf") == "Benchy.gcode");
+    CHECK(extract_name("Benchy.gcode.3mf") == "Benchy.gcode");
+    CHECK(extract_name("sub/dir/Benchy.gcode.3mf") == "Benchy.gcode");
+    CHECK(extract_name("Benchy.3mf") == "Benchy.gcode");
     // QIDI tests the inner ".gcode" case-sensitively and so appends one to
     // an upper-case name.
-    CHECK(qidi_3mf_extract_name("X.GCODE.3MF") == "X.GCODE.gcode");
+    CHECK(extract_name("X.GCODE.3MF") == "X.GCODE.gcode");
 }
 
-TEST_CASE("is_native_3mf_shadow() requires a non-empty plate id", "[filename_utils][qidi]") {
+TEST_CASE("is_plate_extract() requires a non-empty plate id", "[filename_utils][qidi]") {
     // Prefix directly followed by suffix leaves no plate id in between.
-    REQUIRE_FALSE(is_native_3mf_shadow("shadow_native_plate_.gcode"));
+    REQUIRE_FALSE(is_plate_extract("shadow_native_plate_.gcode"));
 }
 
-TEST_CASE("is_native_3mf_shadow() rejects wrong prefix", "[filename_utils][qidi]") {
-    REQUIRE_FALSE(is_native_3mf_shadow("native_plate_1.gcode"));
+TEST_CASE("is_plate_extract() rejects wrong prefix", "[filename_utils][qidi]") {
+    REQUIRE_FALSE(is_plate_extract("native_plate_1.gcode"));
     // Prefix must be at position 0, not embedded.
-    REQUIRE_FALSE(is_native_3mf_shadow("foo_shadow_native_plate_1.gcode"));
-    REQUIRE_FALSE(is_native_3mf_shadow("shadow_plate_1.gcode"));
+    REQUIRE_FALSE(is_plate_extract("foo_shadow_native_plate_1.gcode"));
+    REQUIRE_FALSE(is_plate_extract("shadow_plate_1.gcode"));
 }
 
-TEST_CASE("is_native_3mf_shadow() rejects wrong suffix", "[filename_utils][qidi]") {
-    REQUIRE_FALSE(is_native_3mf_shadow("shadow_native_plate_1.gco"));
-    REQUIRE_FALSE(is_native_3mf_shadow("shadow_native_plate_1.txt"));
-    REQUIRE_FALSE(is_native_3mf_shadow("shadow_native_plate_1"));
+TEST_CASE("is_plate_extract() rejects wrong suffix", "[filename_utils][qidi]") {
+    REQUIRE_FALSE(is_plate_extract("shadow_native_plate_1.gco"));
+    REQUIRE_FALSE(is_plate_extract("shadow_native_plate_1.txt"));
+    REQUIRE_FALSE(is_plate_extract("shadow_native_plate_1"));
     // The active .3mf name itself must not match.
-    REQUIRE_FALSE(is_native_3mf_shadow("MyModel.3mf"));
+    REQUIRE_FALSE(is_plate_extract("MyModel.3mf"));
 }
 
-TEST_CASE("is_native_3mf_shadow() is case-sensitive", "[filename_utils][qidi]") {
-    REQUIRE_FALSE(is_native_3mf_shadow("SHADOW_NATIVE_PLATE_1.GCODE"));
-    REQUIRE_FALSE(is_native_3mf_shadow("shadow_native_plate_1.GCODE"));
+TEST_CASE("is_plate_extract() is case-sensitive", "[filename_utils][qidi]") {
+    REQUIRE_FALSE(is_plate_extract("SHADOW_NATIVE_PLATE_1.GCODE"));
+    REQUIRE_FALSE(is_plate_extract("shadow_native_plate_1.GCODE"));
 }
 
-TEST_CASE("is_native_3mf_shadow() handles empty and short input", "[filename_utils][qidi]") {
-    REQUIRE_FALSE(is_native_3mf_shadow(""));
-    REQUIRE_FALSE(is_native_3mf_shadow(".gcode"));
-    REQUIRE_FALSE(is_native_3mf_shadow("shadow_native_plate_"));
+TEST_CASE("is_plate_extract() handles empty and short input", "[filename_utils][qidi]") {
+    REQUIRE_FALSE(is_plate_extract(""));
+    REQUIRE_FALSE(is_plate_extract(".gcode"));
+    REQUIRE_FALSE(is_plate_extract("shadow_native_plate_"));
 }
 
 // =============================================================================

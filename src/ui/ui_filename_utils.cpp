@@ -3,8 +3,6 @@
 
 #include "ui_filename_utils.h"
 
-#include "three_mf.h"
-
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -348,32 +346,6 @@ bool thumbnail_source_describes(const std::string& raw, const std::string& sourc
         return true;
     }
     return get_filename_basename(resolved) == get_filename_basename(source);
-}
-
-bool is_native_3mf_shadow(const std::string& name) {
-    static const std::string prefix = "shadow_native_plate_";
-    static const std::string suffix = ".gcode";
-
-    // Require at least one character between the prefix and suffix (the plate id).
-    if (name.size() <= prefix.size() + suffix.size()) {
-        return false;
-    }
-    if (name.compare(0, prefix.size(), prefix) != 0) {
-        return false;
-    }
-    return name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0;
-}
-
-std::string qidi_3mf_extract_name(const std::string& print_filename) {
-    return get_filename_basename(three_mf::extracted_gcode_name(print_filename, 0, false));
-}
-
-bool is_qidi_3mf_extract(const std::string& entry, const std::string& print_filename) {
-    const std::string name = qidi_3mf_extract_name(print_filename);
-    return entry.size() == name.size() && std::equal(entry.begin(), entry.end(), name.begin(),
-                                                     [](unsigned char a, unsigned char b) {
-                                                         return std::tolower(a) == std::tolower(b);
-                                                     });
 }
 
 // The staged name for @p original_path, ending in @p suffix (empty, or a plate suffix).

@@ -240,31 +240,6 @@ bool is_uploaded_rewrite_path(const std::string& path);
 bool thumbnail_source_describes(const std::string& raw, const std::string& source);
 
 /**
- * @brief Test whether a filename is a QIDI native-3MF shadow G-code.
- *
- * QIDI firmware translates a native `.3mf` plate into a G-code file exposed via
- * Moonraker's hidden `.temp` root, named `shadow_native_plate_<N>.gcode`. This
- * matches that pattern: the `shadow_native_plate_` prefix, a `.gcode` suffix,
- * and at least one character in between. Case-sensitive to match the firmware.
- *
- * @param name Bare filename (relative to the `.temp` root)
- * @return true if the name is a native-3MF shadow G-code file
- */
-bool is_native_3mf_shadow(const std::string& name);
-
-/**
- * @brief Name of the plate G-code QIDI's Moonraker extracts into `.temp` when a
- *        `.3mf` print starts: the basename without `.3mf`, with `.gcode` added
- *        when that leaves no `.gcode` suffix ("Benchy.gcode.3mf" and
- *        "Benchy.3mf" both give "Benchy.gcode").
- */
-std::string qidi_3mf_extract_name(const std::string& print_filename);
-
-/// Is the `.temp` entry @p entry the extract of @p print_filename? Compared
-/// case-insensitively.
-bool is_qidi_3mf_extract(const std::string& entry, const std::string& print_filename);
-
-/**
  * @brief The G-code a print's preview reads.
  *
  * A print the user started from a .3mf (@p effective, its identity) runs as
