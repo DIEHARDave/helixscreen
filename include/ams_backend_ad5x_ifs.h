@@ -34,6 +34,7 @@ inline constexpr std::array<const char*, 2> kAd5xIfsSensorObjectPrefixes = {
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -934,6 +935,9 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // so a burst issues one read.
     void schedule_lane_record_reread();
     void reread_lane_records();
+    // Save @p slot_index's override to lane_data, or hold it until the owed
+    // lane_data re-read has run. Caller holds mutex_.
+    void publish_override_locked(int slot_index, const char* reason);
     // File each record that changed since it was last read as another tool's
     // edit when it is one and newer (file_reread_outside_edit()), and move the
     // slot's override onto it. Main thread.
@@ -1473,6 +1477,11 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
 
     std::atomic<bool> reread_pending_{false};
     std::atomic<bool> lane_reread_pending_{false};
+    // A re-read is scheduled and has not yet run, so lane_data may hold a
+    // newer record than anything we would publish over it.
+    std::atomic<bool> lane_reread_owed_{false};
+    // Slots whose save waits on that re-read. Under mutex_.
+    std::unordered_set<int> lane_saves_held_;
     // Each slot's lane_data document as last read, so a re-read files only a
     // record that changed since: an unchanged document says nothing new, and
     // an outside record carries no stamp to order it by. Under mutex_.

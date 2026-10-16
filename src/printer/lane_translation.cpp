@@ -520,6 +520,21 @@ Observation declared_from_record(const FilamentSlotOverride& record) {
     return obs;
 }
 
+void amend_record(FilamentSlotOverride& record, const Observation& obs) {
+    for_each_field([&](const auto& f) {
+        using Row = std::decay_t<decltype(f)>;
+        if constexpr (!skipped<decltype(f.record)>) {
+            const auto& value = obs.*(f.obs);
+            if (!value.has_value())
+                return;
+            record.*(f.record) = *value;
+            if constexpr (Row::kind == FieldKind::Color) {
+                record.color_set = true;
+            }
+        }
+    });
+}
+
 bool wire_authored_by_firmware(const nlohmann::json& wire) {
     // AFC's plugin writes each lane's record itself (AFC_lane.py
     // send_lane_data): colour, material, temps, weight, spool_id and its own

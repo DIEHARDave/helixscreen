@@ -39,6 +39,10 @@ void file_kept_identity(LaneId lane, int slot_index, const FilamentSlotOverride&
     file_lane_sources(lane, reloads);
 }
 
+bool outside_record_rebinds(LaneId lane, const Observation& obs) {
+    return obs.spoolman_id.has_value() && resolved_lane(lane).spoolman_id != obs.spoolman_id;
+}
+
 bool file_outside_edit_if_newer(LaneId lane, const LaneDataRecord& entry, Observation obs,
                                 bool write_in_flight) {
     if (write_in_flight || wire_authored_by_helix(entry.wire) ||
@@ -46,10 +50,9 @@ bool file_outside_edit_if_newer(LaneId lane, const LaneDataRecord& entry, Observ
         !outside_edit_wins(entry.record, lane_sources(lane).local_user)) {
         return false;
     }
-    // A record naming a spool the lane does not hold is a rebinding, and what
-    // described the old spool no longer describes the lane: the same drop a
-    // rebind made here takes, before the filing, which amends.
-    if (obs.spoolman_id.has_value() && resolved_lane(lane).spoolman_id != obs.spoolman_id) {
+    // What described the old spool does not describe the new one. The drop
+    // runs before the filing because the filing amends what stands.
+    if (outside_record_rebinds(lane, obs)) {
         drop_previous_spool_declarations(lane);
     }
     obs.source = ObservationSource::LocalUser;

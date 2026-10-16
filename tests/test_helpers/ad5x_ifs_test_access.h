@@ -352,8 +352,10 @@ class Ad5xIfsTestAccess {
                                             helix::ams::LoadedOverrideStore loaded) {
         b.adopt_loaded_override_store(std::move(loaded));
     }
-    // The lane_data re-read the debounce fires, run now.
-    static void reread_lane_records(AmsBackendAd5xIfs& b) {
+    // The lane_data re-read the debounce fires, run now, as the debounce
+    // runs it: its gate open again first.
+    static void fire_lane_record_reread(AmsBackendAd5xIfs& b) {
+        b.lane_reread_pending_.store(false);
         b.reread_lane_records();
     }
     static bool lane_reread_pending(const AmsBackendAd5xIfs& b) {

@@ -93,6 +93,10 @@ void withdraw_cleared_fields(Observation& standing, const Observation& edit);
 /// Only the fields the record actually carries are observed.
 [[nodiscard]] Observation declared_from_record(const FilamentSlotOverride& record);
 
+/// Write every field @p obs carries onto @p record, leaving the rest standing:
+/// declared_from_record() run backwards. Declarations are untouched.
+void amend_record(FilamentSlotOverride& record, const Observation& obs);
+
 /// Split a stored record into the several sources it may declare independently.
 ///
 /// declared_from_record gives a record ONE verdict, which is right the moment

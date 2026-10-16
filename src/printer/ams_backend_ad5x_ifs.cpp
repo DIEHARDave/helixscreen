@@ -470,7 +470,20 @@ void AmsBackendAd5xIfs::adopt_loaded_override_store(helix::ams::LoadedOverrideSt
     overrides_ = std::move(loaded.overrides);
 }
 
+void AmsBackendAd5xIfs::publish_override_locked(int slot_index, const char* reason) {
+    if (lane_reread_owed_.load()) {
+        lane_saves_held_.insert(slot_index);
+        return;
+    }
+    auto it = overrides_.find(slot_index);
+    if (it != overrides_.end() && override_store_) {
+        helix::ams::save_override_async(override_store_.get(), slot_index, it->second,
+                                        backend_log_tag(), reason);
+    }
+}
+
 void AmsBackendAd5xIfs::schedule_lane_record_reread() {
+    lane_reread_owed_.store(true);
     if (lane_reread_pending_.exchange(true))
         return;
     auto token = lifetime_.token();
@@ -501,6 +514,7 @@ void AmsBackendAd5xIfs::reread_lane_records() {
 
 void AmsBackendAd5xIfs::apply_reread_lane_records(
     const std::unordered_map<int, helix::ams::LaneDataRecord>& records) {
+    std::unordered_set<int> taken;
     for (const auto& [slot, entry] : records) {
         if (slot < 0 || slot >= NUM_PORTS)
             continue;
@@ -512,23 +526,46 @@ void AmsBackendAd5xIfs::apply_reread_lane_records(
             if (unchanged)
                 continue;
         }
+        // Every field the record states, not only what request_resync() would
+        // re-file as remembered: the spool link is what this read is for.
         helix::ams::Observation obs = helix::ams::declared_from_record(entry.record);
-        if (!file_reread_outside_edit(lane_id(slot), slot, entry, obs))
+        const auto lane = lane_id(slot);
+        const bool rebinds = helix::ams::outside_record_rebinds(lane, obs);
+        if (!file_reread_outside_edit(lane, slot, entry, obs))
             continue;
         spdlog::info("{} Slot {} lane_data rewritten by another tool; taking its record",
                      backend_log_tag(), slot);
+        taken.insert(slot);
         {
-            // The lane stands on the tool's record now, so the override does
-            // too: a later save must not republish what the tool replaced.
+            // The override follows the lane: a rebinding starts both afresh,
+            // and anything else amends both, so a later save neither
+            // republishes what the tool replaced nor drops what it left alone.
             std::lock_guard<std::mutex> lock(mutex_);
             auto& ovr = overrides_[slot];
-            helix::ams::FilamentSlotOverride adopted = entry.record;
-            adopted.fingerprint = ovr.fingerprint;
-            adopted.unlinked_spool_id = ovr.unlinked_spool_id;
-            ovr = std::move(adopted);
+            if (rebinds) {
+                helix::ams::FilamentSlotOverride fresh;
+                fresh.fingerprint = ovr.fingerprint;
+                fresh.unlinked_spool_id = ovr.unlinked_spool_id;
+                ovr = std::move(fresh);
+            }
+            helix::ams::amend_record(ovr, obs);
         }
         repaint_slot_from_lane(slot);
         emit_event(EVENT_SLOT_CHANGED, std::to_string(slot));
+    }
+
+    // What a firmware change held back publishes now, unless the tool's record
+    // took the slot: that record is already what lane_data says.
+    if (lane_reread_pending_.load())
+        return; // a newer read is coming, and it publishes
+    std::lock_guard<std::mutex> lock(mutex_);
+    lane_reread_owed_.store(false);
+    std::unordered_set<int> held;
+    held.swap(lane_saves_held_);
+    for (int slot : held) {
+        if (taken.count(slot) == 0) {
+            publish_override_locked(slot, "auto-mirror");
+        }
     }
 }
 
@@ -1584,15 +1621,16 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
     // material survives a type the printer's own menu sets. To re-enable
     // auto-track on a previously-edited slot the user calls clear_slot_override.
     //
-    // A value the lane's user record holds that the override does not declare
-    // is another tool's statement, and this restatement is the change it
-    // yields to (prestonbrown/helixscreen#1632): it guards nothing, and the
-    // spool name that described it goes with it. Linking a spool drops the
-    // statement, so a linked lane never holds one.
-    // The tool that restated the firmware may have rewritten the lane's
-    // record beside it.
+    // The tool that restated the firmware may have rewritten the lane's record
+    // beside it, so what the mirror changes is published only once lane_data
+    // has been read again (publish_override_locked()).
     schedule_lane_record_reread();
 
+    // A value the lane's user record holds that the override does not declare
+    // is another tool's statement, and this restatement is the change it
+    // yields to (prestonbrown/helixscreen#1632): it guards nothing, and on an
+    // unlinked lane the spool name that described it goes with it, along with
+    // a colour name nobody declared. A linked lane's name is its spool's.
     auto it = overrides_.find(slot_index);
     helix::ams::FilamentSlotOverride* record = it == overrides_.end() ? nullptr : &it->second;
     const auto lane = lane_id(slot_index);
@@ -1600,16 +1638,21 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
     const helix::ams::DeclaredOnLane declared = helix::ams::declared_on_lane(lane, record);
     const bool outside_statement =
         (held.color && !declared.color) || (held.material && !declared.material);
-    const bool name_released =
-        outside_statement && record && !helix::ams::declares_spool_name(*record);
+    const bool name_released = outside_statement && record && record->spoolman_id == 0 &&
+                               !helix::ams::declares_spool_name(*record);
     if (name_released) {
         record->spool_name.clear();
-        record->color_name.clear();
+        if (!helix::ams::declares_color(*record)) {
+            record->color_name.clear();
+        }
     }
     bool changed = helix::ams::mirror_firmware_to_lane_data(
-        override_store_.get(), overrides_, slot_index, firmware_color, firmware_material,
+        /*store=*/nullptr, overrides_, slot_index, firmware_color, firmware_material,
         /*slot_has_filament=*/true, helix::ams::MirrorPolicy::OverwriteAlways, backend_log_tag(),
         declared);
+    if (changed || name_released) {
+        publish_override_locked(slot_index, "auto-mirror");
+    }
 
     // The lane's stored declaration of what the mirror just rewrote goes with
     // it, or the two stores disagree and the stronger record paints a value the
@@ -1718,10 +1761,7 @@ void AmsBackendAd5xIfs::release_color_material_locks_locked(int slot_index,
 
     // Persist so a restart reloads the released record rather than the locked
     // one. Capture by value: the callback can fire long after this returns.
-    if (override_store_) {
-        helix::ams::save_override_async(override_store_.get(), slot_index, ovr, backend_log_tag(),
-                                        "lock release");
-    }
+    publish_override_locked(slot_index, "lock release");
 }
 
 void AmsBackendAd5xIfs::release_locked_override_keep_identity_locked(int slot_index,
@@ -4348,6 +4388,13 @@ bool AmsBackendAd5xIfs::on_gcode_response_line(const std::string& line) {
                 // stale locked override (existing #981 path) and/or applying
                 // freshly-parsed TYPE=/HEX= parameters to colors_/materials_.
                 bool mutated = false;
+                if (slot_valid && has_params) {
+                    // Before the release below publishes anything: the edit's
+                    // author may have rewritten the lane's record beside it. A
+                    // slot with no override reaches no sync, and the baselines
+                    // advanced below keep the next parse from firing one.
+                    schedule_lane_record_reread();
+                }
                 if (slot_valid) {
                     std::lock_guard<std::mutex> lock(mutex_);
                     auto it = overrides_.find(slot0);
@@ -4462,9 +4509,6 @@ bool AmsBackendAd5xIfs::on_gcode_response_line(const std::string& line) {
                 }
                 if (mutated) {
                     emit_event(EVENT_SLOT_CHANGED, std::to_string(slot0));
-                    // A slot with no override reaches no sync, and the baselines
-                    // advanced above keep the next parse from firing one.
-                    schedule_lane_record_reread();
                 }
             }
         }

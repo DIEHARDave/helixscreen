@@ -5701,8 +5701,11 @@ TEST_CASE("AD5X IFS external color change syncs colour and preserves a linked sp
     CHECK(staged->color_rgb == 0x0055FFu);
     CHECK(staged->material == "PLA");
 
-    // Moonraker DB lane1 entry refreshed by save_async, so Orca sees the new
-    // colour beside the preserved vendor, spool_id and the spool's material.
+    // Moonraker DB lane1 entry refreshed by save_async once the lane_data
+    // re-read the change owes has run, so Orca sees the new colour beside the
+    // preserved vendor, spool_id and the spool's material.
+    Ad5xIfsTestAccess::fire_lane_record_reread(backend);
+    helix::ui::UpdateQueue::instance().drain();
     auto db = mock_printer.client.mock_db_get("lane_data", "lane1");
     REQUIRE(!db.is_null());
     CHECK(db.value("color", "") == "#0055FF");
@@ -5757,6 +5760,9 @@ TEST_CASE("AD5X IFS external color change with no override creates minimal lane_
     CHECK(staged->brand.empty());
     CHECK(staged->spoolman_id == 0);
 
+    // Published once the lane_data re-read the change owes has run.
+    Ad5xIfsTestAccess::fire_lane_record_reread(backend);
+    helix::ui::UpdateQueue::instance().drain();
     auto db = mock_printer.client.mock_db_get("lane_data", "lane1");
     REQUIRE(!db.is_null());
     CHECK(db.value("color", "") == "#0055FF");
@@ -12411,7 +12417,7 @@ void boot_from_lane_data(AmsBackendAd5xIfs& backend, MockPrinter& printer,
 // The lane_data re-read the outside change scheduled, run now rather than
 // after the debounce.
 void lane_record_reread_lands(AmsBackendAd5xIfs& backend) {
-    Ad5xIfsTestAccess::reread_lane_records(backend);
+    Ad5xIfsTestAccess::fire_lane_record_reread(backend);
     helix::ui::UpdateQueue::instance().drain();
 }
 
@@ -12438,8 +12444,9 @@ TEST_CASE("AD5X IFS a lane an outside tool wrote follows that tool's next firmwa
           "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
     // The boot record is the tool's statement, filed on the user's rung. The
     // firmware change is the next change on the lane, so colour, material and
-    // the name that described them all yield to it; the brand is identity
-    // firmware cannot carry, and stays.
+    // the name that described them all yield to it. The tool's new record,
+    // written beside the change, is what the lane then stands on, and nothing
+    // we publish overwrites it.
     Ad5xIfsTmpCacheDir tmp("outside_lane_follows_firmware");
     MockPrinter mock_printer;
     mock_printer.client.mock_db_set("lane_data", "lane1",
@@ -12478,14 +12485,20 @@ TEST_CASE("AD5X IFS a lane an outside tool wrote follows that tool's next firmwa
             backend, R"({"FFMInfo": {"ffmColor1": "#0055FF", "ffmType1": "PETG"}})");
     }
 
+    {
+        const SlotInfo before_reread = backend.get_slot_info(0);
+        CHECK(before_reread.color_rgb == 0x0055FFu);
+        CHECK(before_reread.material == "PETG");
+    }
+    lane_record_reread_lands(backend);
+
     const SlotInfo after = backend.get_slot_info(0);
     CHECK(after.color_rgb == 0x0055FFu);
     CHECK(after.material == "PETG");
-    CHECK(after.spool_name.empty());
+    CHECK(after.spool_name == "Blue PETG");
     CHECK(after.brand == "Eryone");
-    // Whatever we publish back must not undo the tool's own record.
     const auto db = mock_printer.client.mock_db_get("lane_data", "lane1");
-    CHECK(db.value("material", "") == "PETG");
+    CHECK(db == outside_lane_record(0, "#0055FF", "PETG", "Blue PETG", 0));
     helix::ui::UpdateQueue::instance().drain();
 }
 
@@ -12734,12 +12747,163 @@ TEST_CASE("AD5X IFS a lane_data re-read before the tool writes changes nothing",
         backend, "CHANGE_ZCOLOR SLOT=1 HEX=0055FF TYPE=PETG"));
     REQUIRE(backend.get_slot_info(0).material == "PETG");
 
+    // Nothing reached lane_data while the re-read was owed.
+    CHECK(mock_printer.client.mock_db_get("lane_data", "lane1") ==
+          outside_lane_record(0, "#FF0000", "PLA", "Red PLA", 0));
+
     lane_record_reread_lands(backend);
 
     const SlotInfo after = backend.get_slot_info(0);
     CHECK(after.color_rgb == 0x0055FFu);
     CHECK(after.material == "PETG");
     CHECK(after.spool_name.empty());
+    // With no newer record of the tool's, the firmware's word is published.
+    const auto db = mock_printer.client.mock_db_get("lane_data", "lane1");
+    CHECK(db.value("material", "") == "PETG");
+    CHECK(db.value("color", "") == "#0055FF");
+    CHECK(db.contains("helix_declared"));
+    helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE("AD5X IFS a colour name the user declared survives an outside statement's release",
+          "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
+    // The outside record owns the material; the user's edit declared the
+    // colour and its name. The firmware echo of that edit releases the tool's
+    // material and name, never the user's colour name.
+    Ad5xIfsTmpCacheDir tmp("outside_material_user_colour_name");
+    Ad5xIfsTmpJsonFile json("outside_material_user_colour_name",
+                            R"({"FFMInfo":{"ffmColor1":"#FF0000","ffmType1":"PLA"}})");
+    MockPrinter mock_printer;
+    mock_printer.client.mock_db_set("lane_data", "lane1",
+                                    outside_lane_record(0, "#FF0000", "PLA", "Red PLA", 0));
+
+    helix::test::RegisteredBackend<AmsBackendAd5xIfs> backend_reg(&mock_printer.api, nullptr);
+    AmsBackendAd5xIfs& backend = *backend_reg;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    Ad5xIfsTestAccess::set_local_adventurer_json_path(backend, json.path.string());
+    boot_from_lane_data(backend, mock_printer, tmp.path);
+    firmware_states_slot0(backend, "FF0000", "PLA");
+
+    SlotInfo edit = backend.get_slot_info(0);
+    edit.color_rgb = 0x1A73E8;
+    edit.color_name = "Sky Blue";
+    helix::test::edit_slot_as_user(backend, 0, edit);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(helix::ams::declares_color(*Ad5xIfsTestAccess::get_override(backend, 0)));
+    REQUIRE_FALSE(helix::ams::declares_material(*Ad5xIfsTestAccess::get_override(backend, 0)));
+
+    // The edit's own write coming back through Adventurer5M.json.
+    Ad5xIfsTestAccess::parse_adventurer_json(
+        backend, R"({"FFMInfo": {"ffmColor1": "#1A73E8", "ffmType1": "PLA"}})");
+
+    CHECK(backend.get_slot_info(0).color_name == "Sky Blue");
+    CHECK(Ad5xIfsTestAccess::get_override(backend, 0)->color_name == "Sky Blue");
+    CHECK(backend.get_slot_info(0).spool_name.empty());
+    helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE("AD5X IFS a lane rebound by a re-read keeps its spool's name through a firmware change",
+          "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
+    // The re-read files the tool's record, spool link included, as its
+    // statement. The next firmware change releases what that statement says
+    // about colour and material, but the name belongs to the linked spool.
+    Ad5xIfsTmpCacheDir tmp("rebound_then_firmware_change");
+    MockPrinter mock_printer;
+    mock_printer.client.mock_db_set("lane_data", "lane1",
+                                    outside_lane_record(0, "#FF0000", "PLA", "Red PLA", 0));
+
+    helix::test::RegisteredBackend<AmsBackendAd5xIfs> backend_reg(&mock_printer.api, nullptr);
+    AmsBackendAd5xIfs& backend = *backend_reg;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    boot_from_lane_data(backend, mock_printer, tmp.path);
+    firmware_states_slot0(backend, "FF0000", "PLA");
+
+    mock_printer.client.mock_db_set("lane_data", "lane1",
+                                    outside_lane_record(0, "#0055FF", "PETG", "Blue PETG", 77));
+    outside_tool_change_zcolor(backend);
+    lane_record_reread_lands(backend);
+    REQUIRE(backend.get_slot_info(0).spoolman_id == 77);
+    REQUIRE(backend.get_slot_info(0).spool_name == "Blue PETG");
+
+    // A firmware change before Spoolman has described spool 77.
+    REQUIRE_FALSE(Ad5xIfsTestAccess::on_gcode_response_line(
+        backend, "CHANGE_ZCOLOR SLOT=1 HEX=00AA00 TYPE=PLA"));
+
+    const SlotInfo after = backend.get_slot_info(0);
+    CHECK(after.spoolman_id == 77);
+    CHECK(after.spool_name == "Blue PETG");
+    CHECK(after.color_rgb == 0x00AA00u);
+    helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE("AD5X IFS a re-read amends the override where it amends the lane",
+          "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
+    // The tool's record states colour, material and name and leaves the brand
+    // the user typed alone. The lane amends, so the brand stands there; the
+    // override has to keep it too, or the next save erases it.
+    Ad5xIfsTmpCacheDir tmp("reread_amends_override");
+    Ad5xIfsTmpJsonFile json("reread_amends_override",
+                            R"({"FFMInfo":{"ffmColor1":"#FF0000","ffmType1":"PLA"}})");
+    MockPrinter mock_printer;
+
+    helix::test::RegisteredBackend<AmsBackendAd5xIfs> backend_reg(&mock_printer.api, nullptr);
+    AmsBackendAd5xIfs& backend = *backend_reg;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    Ad5xIfsTestAccess::set_local_adventurer_json_path(backend, json.path.string());
+    boot_from_lane_data(backend, mock_printer, tmp.path);
+    firmware_states_slot0(backend, "FF0000", "PLA");
+
+    SlotInfo edit = backend.get_slot_info(0);
+    edit.brand = "Sunlu";
+    helix::test::edit_slot_as_user(backend, 0, edit);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(backend.get_slot_info(0).brand == "Sunlu");
+
+    mock_printer.client.mock_db_set(
+        "lane_data", "lane1",
+        nlohmann::json{
+            {"lane", "0"}, {"color", "#0055FF"}, {"material", "PETG"}, {"name", "Blue PETG"}});
+    REQUIRE_FALSE(Ad5xIfsTestAccess::on_gcode_response_line(
+        backend, "CHANGE_ZCOLOR SLOT=1 HEX=0055FF TYPE=PETG"));
+    lane_record_reread_lands(backend);
+
+    const SlotInfo after = backend.get_slot_info(0);
+    CHECK(after.spool_name == "Blue PETG");
+    CHECK(after.brand == "Sunlu");
+    const auto staged = Ad5xIfsTestAccess::get_override(backend, 0);
+    REQUIRE(staged.has_value());
+    CHECK(staged->brand == "Sunlu");
+    CHECK(staged->spool_name == "Blue PETG");
+    CHECK(staged->material == "PETG");
+    helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE("AD5X IFS a firmware change on a slot with no override still re-reads lane_data",
+          "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
+    Ad5xIfsTmpCacheDir tmp("no_override_reread");
+    MockPrinter mock_printer;
+
+    helix::test::RegisteredBackend<AmsBackendAd5xIfs> backend_reg(&mock_printer.api, nullptr);
+    AmsBackendAd5xIfs& backend = *backend_reg;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    boot_from_lane_data(backend, mock_printer, tmp.path);
+    firmware_states_slot0(backend, "FF0000", "PLA");
+    REQUIRE_FALSE(Ad5xIfsTestAccess::get_override(backend, 0).has_value());
+    REQUIRE_FALSE(Ad5xIfsTestAccess::lane_reread_pending(backend));
+
+    SECTION("CHANGE_ZCOLOR echoed on the gcode stream") {
+        REQUIRE_FALSE(Ad5xIfsTestAccess::on_gcode_response_line(
+            backend, "CHANGE_ZCOLOR SLOT=1 HEX=0055FF TYPE=PETG"));
+    }
+    SECTION("only the Adventurer5M.json re-read sees it") {
+        Ad5xIfsTestAccess::parse_adventurer_json(
+            backend, R"({"FFMInfo": {"ffmColor1": "#0055FF", "ffmType1": "PETG"}})");
+    }
+    CHECK(Ad5xIfsTestAccess::lane_reread_pending(backend));
     helix::ui::UpdateQueue::instance().drain();
 }
 
