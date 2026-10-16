@@ -401,6 +401,16 @@ ParallelRows parallel_rows(const FilamentPathData& data, const BaseGeometry& g) 
     r.toolhead_y = toolhead_standing_on(g.y_off + (int32_t)(g.height * PARALLEL_GLYPH_BOTTOM_RATIO),
                                         r.tool_scale);
     r.sensor_y = row_between(r.entry_y, r.toolhead_y, PARALLEL_SENSOR_FRACTION);
+    // The tubes hang from the spools' bottom edge, the round cap's top on it,
+    // when that leaves two tube gauges and a band of tube above the sensor.
+    if (g.lane_entry_y != INT32_MIN) {
+        const int32_t gauge = data.theme.tube_gauge;
+        const int32_t entry_y = g.lane_entry_y + (gauge + 1) / 2;
+        if (entry_y <= r.sensor_y - 2 * gauge - BAND_THICKNESS) {
+            r.entry_y = entry_y;
+            r.sensor_y = row_between(r.entry_y, r.toolhead_y, PARALLEL_SENSOR_FRACTION);
+        }
+    }
     return r;
 }
 

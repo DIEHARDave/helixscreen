@@ -331,7 +331,10 @@ PARALLEL and MIXED take the same shape with `plan_parallel` and `plan_mixed`
 (rows from `parallel_rows()`, MIXED from `compute_mixed_frame`), then draw the
 MIXED hub box and every toolhead glyph over the painted tubes. Their toolheads
 stand on a glyph-bottom line near the canvas bottom; the sensors and the hub
-sit fixed fractions of the run down to them.
+sit fixed fractions of the run down to them. A PARALLEL unit has no housing, so
+`ams_detail_sync_lane_entry()` hands the canvas the spools' flange bottom
+instead of a box front, and `parallel_rows()` hangs each tube's round cap from
+it whenever that leaves room above the sensor.
 
 Each toolhead carries its tool label as a corner badge (`ui_toolhead_badge.h`):
 the spool tool badge's look from the shared `ams_slot_tool_badge_*` tokens and

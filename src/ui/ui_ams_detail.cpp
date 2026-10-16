@@ -340,6 +340,12 @@ void clear_translate(lv_obj_t* obj) {
     lv_obj_set_style_translate_y(obj, 0, LV_PART_MAIN);
 }
 
+// Tool changers have no housing around their spools.
+bool unit_has_physical_tray() {
+    auto* backend = helix::AmsState::instance().get_backend(0);
+    return !backend || backend->has_physical_tray();
+}
+
 } // namespace
 
 AmsDetailWidgets ams_detail_find_widgets(lv_obj_t* root) {
@@ -539,6 +545,15 @@ void helix::ui::ams_detail_sync_lane_entry(lv_obj_t* canvas, lv_obj_t* slot_grid
         lv_obj_get_coords(s_tray.container, &c);
         lv_obj_get_coords(slot_grid, &g);
         offset = c.y1 + (int32_t)std::lround(s_tray.box.fb) - g.y1;
+    } else if (slot_grid && !unit_has_physical_tray()) {
+        // With no housing the lanes leave from under the spools' flanges.
+        lv_obj_update_layout(slot_grid);
+        lv_area_t g;
+        lv_obj_get_coords(slot_grid, &g);
+        float x = 0, y = 0;
+        int32_t size = 0;
+        if (spool_centre(slot_grid, {g.x1, g.y1}, x, y, size))
+            offset = (int32_t)std::lround(y + tray::SPOOL_FLANGE_RADIUS * size);
     }
     ui_filament_path_canvas_set_lane_entry(canvas, offset);
 }
@@ -565,8 +580,7 @@ bool helix::ui::ams_detail_error_in_view(const helix::AmsSystemInfo& info, int u
 }
 
 AmsSlotLayout helix::ui::ams_detail_slot_layout(int32_t available_width, int slot_count) {
-    auto* backend = helix::AmsState::instance().get_backend(0);
-    if (backend && !backend->has_physical_tray())
+    if (!unit_has_physical_tray())
         return calculate_ams_slot_layout(available_width, slot_count);
     const float spool = (float)theme_manager_get_spacing("ams_slot_spool_size");
     if (spool <= 0)
@@ -603,12 +617,11 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
     s_tray.valid = false;
     lv_obj_t* container = lv_obj_get_parent(w.slot_grid);
 
-    // Tool changers don't have a physical tray/housing
-    auto* backend = helix::AmsState::instance().get_backend(0);
-    if (backend && !backend->has_physical_tray()) {
+    if (!unit_has_physical_tray()) {
         lv_obj_add_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
         return;
     }
+    auto* backend = helix::AmsState::instance().get_backend(0);
     lv_obj_remove_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
 
     // Attach draw callbacks once per object instance. This function runs on every

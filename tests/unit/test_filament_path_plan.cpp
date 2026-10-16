@@ -1054,6 +1054,34 @@ TEST_CASE("FilamentPath plan: idle PARALLEL tools are one stroke each through th
     }
 }
 
+TEST_CASE("FilamentPath plan: PARALLEL tubes hang from below their spools",
+          "[filament-path][plan][parallel][lane_entry]") {
+    auto d = make_data(helix::PathTopology::PARALLEL);
+    BaseGeometry g = geometry();
+    g.lane_entry_y = -20; // the spools' flange bottom, above the canvas top
+    static PathPlan plan;
+    plan_parallel(*d, g, plan);
+
+    // The round cap's top touches the flange bottom, never above it; the
+    // sensor stays three quarters of the way down to the toolhead.
+    const int32_t entry_y = -20 + (d->theme.tube_gauge + 1) / 2;
+    const ParallelRows rows = parallel_rows(*d, g);
+    CHECK(rows.entry_y == entry_y);
+    CHECK(rows.sensor_y == entry_y + (int32_t)((280 - entry_y) * PARALLEL_SENSOR_FRACTION));
+    REQUIRE(plan.route_count == 4);
+    for (int i = 0; i < 4; i++) {
+        CAPTURE(i);
+        const Route& r = plan.routes[i];
+        CHECK(near(seg_start(r.path.segs[0]), 50.0f + 100 * i, (float)entry_y));
+        CHECK(near(seg_end(r.path.segs[r.path.count - 1]), 50.0f + 100 * i, 268));
+        CHECK(band_at(plan, 50.0f + 100 * i, (float)rows.sensor_y) != nullptr);
+    }
+
+    // An edge too low to leave room above the sensor is ignored.
+    g.lane_entry_y = 190;
+    CHECK(parallel_rows(*d, g).entry_y == -48);
+}
+
 TEST_CASE("FilamentPath plan: the mounted PARALLEL tool is one active stroke",
           "[filament-path][plan][parallel]") {
     auto d = make_data(helix::PathTopology::PARALLEL);
