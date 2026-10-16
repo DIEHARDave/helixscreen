@@ -162,6 +162,18 @@ TEST_CASE("an opaque firmware code is shown but classifies like an uncoded !!",
     CHECK(p->recovery_actions[0].gcode == "RESUME");
 }
 
+TEST_CASE("a code key holding a non-table code classifies like an uncoded !!",
+          "[error-center][classify][firmware_error_envelope]") {
+    ClassifyContext printing;
+    printing.is_printing = true;
+    auto e = classify(R"(!! {"code":"E0011","msg":"x"})", printing);
+    REQUIRE(e.has_value());
+    CHECK(e->code == "E0011");
+    CHECK(e->source == helix::ErrorSource::GENERIC);
+    CHECK(e->severity == helix::ErrorSeverity::CRITICAL);
+    CHECK(e->detail == "x");
+}
+
 TEST_CASE("key843 is a WARNING toast, not a blocking modal", "[error-center][classify][1387]") {
     // key843 is the RFID-read failure: most often the box answering busy
     // while mid-operation rather than a broken tag (#1387). It self-resolves

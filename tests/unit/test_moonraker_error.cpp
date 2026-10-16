@@ -139,6 +139,23 @@ TEST_CASE("friendly_error_line strips the error prefix and decodes",
             R"(!! {"error": "WebRequestError", "message": "Probe triggered prior to movement"})") ==
         "Probe triggered prior to movement");
     REQUIRE(MoonrakerError::friendly_error_line("plain text") == "plain text");
+    REQUIRE(MoonrakerError::friendly_error_line("!! Error: foo") == "foo");
+}
+
+TEST_CASE("extract_friendly_message skips escaped quotes in the message value",
+          "[moonraker][error][firmware_error_envelope]") {
+    // Python repr: a value holding both quote kinds escapes the single quotes.
+    REQUIRE(
+        MoonrakerError::extract_friendly_message(
+            R"({'error': 'x', 'message': '{"coded": "1", "msg":"Lost communication with MCU \'e0\'"}'})") ==
+        "Lost communication with MCU 'e0'");
+    // JSON: the inner envelope's quotes are escaped.
+    REQUIRE(
+        MoonrakerError::extract_friendly_message(
+            R"({"error": "x", "message": "{\"coded\": \"1\", \"msg\":\"Lost communication\"}"})") ==
+        "Lost communication");
+    REQUIRE(MoonrakerError::extract_friendly_message(
+                R"({"error":"x","message":"say \"hi\" twice"})") == R"(say "hi" twice)");
 }
 
 // ============================================================================

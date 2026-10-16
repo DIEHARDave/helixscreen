@@ -125,6 +125,31 @@ TEST_CASE("a non-envelope object before the envelope is skipped", "[firmware_err
     CHECK(env->prefix == R"({"a":1} then)");
 }
 
+TEST_CASE("a code key whose value is not an error-table code is opaque",
+          "[firmware_error_envelope]") {
+    auto env = find_firmware_error_envelope(R"({"code":"E0011","msg":"Nozzle clogged"})");
+    REQUIRE(env.has_value());
+    CHECK(env->code == "E0011");
+    CHECK(env->scheme == FirmwareCodeScheme::Opaque);
+    CHECK(env->text() == "Nozzle clogged");
+
+    // An opaque code means nothing without its message.
+    CHECK_FALSE(find_firmware_error_envelope(R"({"code":"E0011","values":[1]})").has_value());
+}
+
+TEST_CASE("an envelope nested in another object is left raw", "[firmware_error_envelope]") {
+    const std::string nested = R"(pre {"wrapper": {"coded":"0001-0001","msg":"m"}} post)";
+    CHECK_FALSE(find_firmware_error_envelope(nested).has_value());
+    CHECK(decode_firmware_error_text(nested) == nested);
+
+    // An envelope after the wrapper is still found, with the wrapper intact.
+    auto env = find_firmware_error_envelope(
+        R"({"wrapper": {"coded":"0001-0001","msg":"m"}} {"coded":"0002-0002","msg":"n"})");
+    REQUIRE(env.has_value());
+    CHECK(env->code == "0002-0002");
+    CHECK(env->prefix == R"({"wrapper": {"coded":"0001-0001","msg":"m"}})");
+}
+
 TEST_CASE("plain prose and empty text pass through", "[firmware_error_envelope]") {
     CHECK(decode_firmware_error_text("Must home axis first") == "Must home axis first");
     CHECK(decode_firmware_error_text("") == "");

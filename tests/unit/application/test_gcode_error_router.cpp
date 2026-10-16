@@ -89,11 +89,36 @@ TEST_CASE_METHOD(GcodeErrorRouterTest,
     // Brace-balance must terminate at the JSON's close brace and ignore
     // the trailing comment lines.
     REQUIRE(code == "key298");
-    // The footer and the prose prefix survive around the decoded text.
-    REQUIRE(text.rfind("Internal error during connect: ", 0) == 0);
-    REQUIRE(text.find("MCU bridge") != std::string::npos);
-    REQUIRE(text.find("Once the underlying issue is corrected") != std::string::npos);
-    REQUIRE(text.find('{') == std::string::npos);
+    // A table hit replaces the whole text with the curated wording: spliced
+    // into the firmware's prose it would mix languages, and the toast's
+    // truncation could cut the hint.
+    REQUIRE(text == "MCU bridge daemon is shut down. Tap Firmware Restart to recover — on K2 "
+                    "this also bounces the rpi MCU bridge");
+}
+
+TEST_CASE_METHOD(GcodeErrorRouterTest,
+                 "clean_error_text keeps the prose around an envelope the table does not know",
+                 "[gcode_error_router][firmware_error_envelope]") {
+    std::string text =
+        R"(Internal error during connect: !{"code":"key77777","msg":"Bridge gone"}
+Once the underlying issue is corrected, use the "RESTART" command.)";
+    std::string code;
+    GcodeErrorRouter::clean_error_text(text, code);
+
+    REQUIRE(code == "key77777");
+    REQUIRE(text == "Internal error during connect: Bridge gone\nOnce the underlying issue is "
+                    "corrected, use the \"RESTART\" command.");
+}
+
+TEST_CASE_METHOD(GcodeErrorRouterTest, "clean_error_text leaves a table miss with no msg untouched",
+                 "[gcode_error_router][firmware_error_envelope]") {
+    const std::string raw = R"(Internal error: {"code":"key77777","values":[1]} tail)";
+    std::string text = raw;
+    std::string code;
+    GcodeErrorRouter::clean_error_text(text, code);
+
+    REQUIRE(code == "key77777");
+    REQUIRE(text == raw);
 }
 
 TEST_CASE_METHOD(GcodeErrorRouterTest, "clean_error_text decodes a U1 shutdown envelope",

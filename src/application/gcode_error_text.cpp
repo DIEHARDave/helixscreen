@@ -30,7 +30,6 @@ void GcodeErrorRouter::clean_error_text(std::string& text, std::string& out_code
         if (out_scheme) {
             *out_scheme = env->scheme;
         }
-        std::string body = env->msg;
         // Not behind HELIX_HAS_CFS: key111/key298/key585 are Klipper-layer
         // faults a machine reports with no filament hardware, and a build
         // without CFS still has to translate them rather than show the raw
@@ -56,7 +55,11 @@ void GcodeErrorRouter::clean_error_text(std::string& text, std::string& out_code
                     }
                     message += entry->format_values(values);
                 }
-                body = message + ". " + lv_tr(entry->hint);
+                // The curated wording replaces the whole text: spliced into
+                // the firmware's prose it would mix languages, and a toast's
+                // truncation could cut the hint.
+                text = message + ". " + lv_tr(entry->hint);
+                return;
 #if defined(__cpp_exceptions)
             } catch (...) {
                 // A throw from the error-table formatters (fmt::runtime over a
@@ -66,12 +69,10 @@ void GcodeErrorRouter::clean_error_text(std::string& text, std::string& out_code
             }
 #endif
         }
-        if (entry) {
-            text = env->splice(body);
-            return;
-        }
-        if (!body.empty()) {
-            text = env->splice(body);
+        // The firmware's own msg in the object's place, keeping the prose
+        // around it. With no msg there is nothing to put there.
+        if (!env->msg.empty()) {
+            text = env->text();
         }
     }
 

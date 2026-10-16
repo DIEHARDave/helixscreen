@@ -14,18 +14,26 @@ namespace {
 struct EnvelopeShape {
     const char* code_key;
     const char* msg_key;
+    /// The scheme of a code under this key that starts with
+    /// `kErrorTablePrefix`; any other value is opaque whatever its key.
     FirmwareCodeScheme scheme;
-    /// An error-table code has curated wording of its own, so the firmware
-    /// may omit the message; any other code means nothing without one.
-    bool msg_required;
 };
 
 constexpr std::array<EnvelopeShape, 2> kShapes{{
     // Creality K2 / CFS: {"code":"key849","msg":"...","values":[1,"A"]}
-    {"code", "msg", FirmwareCodeScheme::ErrorTable, false},
+    {"code", "msg", FirmwareCodeScheme::ErrorTable},
     // Snapmaker U1: {"coded": "0003-0522-0002-0008", "oneshot": 0, "msg":"..."}
-    {"coded", "msg", FirmwareCodeScheme::Opaque, true},
+    {"coded", "msg", FirmwareCodeScheme::Opaque},
 }};
+
+/// What every KlipperErrorTable key starts with.
+constexpr std::string_view kErrorTablePrefix = "key";
+
+FirmwareCodeScheme scheme_of(const EnvelopeShape& shape, const std::string& code) {
+    return shape.scheme == FirmwareCodeScheme::ErrorTable && code.rfind(kErrorTablePrefix, 0) == 0
+               ? FirmwareCodeScheme::ErrorTable
+               : FirmwareCodeScheme::Opaque;
+}
 
 bool is_space(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
@@ -126,21 +134,31 @@ std::optional<FirmwareErrorEnvelope> find_firmware_error_envelope(std::string_vi
         }
         for (const auto& shape : kShapes) {
             auto code = string_member(obj, shape.code_key);
+            if (!code) {
+                continue;
+            }
+            const FirmwareCodeScheme scheme = scheme_of(shape, *code);
             auto msg = string_member(obj, shape.msg_key);
-            if (!code || (!msg && shape.msg_required)) {
+            // An error-table code has curated wording of its own, so the
+            // firmware may omit the message; any other code means nothing
+            // without one.
+            if (!msg && scheme != FirmwareCodeScheme::ErrorTable) {
                 continue;
             }
             FirmwareErrorEnvelope env;
             env.prefix = trimmed_prefix(text.substr(0, open));
             env.msg = msg ? std::move(*msg) : std::string();
             env.code = std::move(*code);
-            env.scheme = shape.scheme;
+            env.scheme = scheme;
             if (const auto it = obj.find("values"); it != obj.end()) {
                 env.values_json = it->dump();
             }
             env.suffix = meaningful_suffix(text.substr(end));
             return env;
         }
+        // Not an envelope: resume after it, so an envelope nested inside
+        // stays part of this object's raw text.
+        open = end - 1;
     }
     return std::nullopt;
 }
