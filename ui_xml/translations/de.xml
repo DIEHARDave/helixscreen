@@ -3093,7 +3093,9 @@
   <translation tag="Temperatures plotted over time" de="Temperaturverlauf über die Zeit"/>
   <translation tag="Temperatures saved" de="Temperaturen gespeichert"/>
   <translation tag="Template" de="Vorlage"/>
+  <translation tag="Temporary adjustment for this print" de="Temporäre Anpassung für diesen Druck"/>
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" de="Temporäre Anpassung für diesen Druck, sofern nicht im Steuerungspanel gespeichert"/>
+  <translation tag="Temporary for this print; a tool change resets it" de="Temporär für diesen Druck; ein Werkzeugwechsel setzt sie zurück"/>
   <translation tag="Tertiary" de="Tertiär"/>
   <translation tag="Test All Lanes" de="Alle Spuren testen"/>
   <translation tag="Test Both" de="Beide testen"/>

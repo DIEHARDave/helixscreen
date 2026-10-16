@@ -85,3 +85,73 @@ TEST_CASE("PrinterProfileState knows which printers cannot print from a dot-dire
     REQUIRE(profile.set_printer_type("Unknown Printer", true, false, false));
     CHECK_FALSE(profile.klipper_hides_dot_dirs());
 }
+
+TEST_CASE("Z-offset tune hint claims auto-save only where something persists it",
+          "[printer_state][profile][zoffset]") {
+    using S = ZOffsetCalibrationStrategy;
+    using H = ZOffsetTuneHint;
+
+    // A strategy with its own Save step: the hint points at it, whatever else is known.
+    CHECK(resolve_z_offset_tune_hint(S::PROBE_CALIBRATE, false, true, false) ==
+          H::SAVE_ON_CONTROLS);
+    CHECK(resolve_z_offset_tune_hint(S::ENDSTOP, false, false, true) == H::SAVE_ON_CONTROLS);
+
+    // Firmware-managed and the firmware persists the offset.
+    CHECK(resolve_z_offset_tune_hint(S::FIRMWARE_MANAGED, false, true, false) == H::AUTO_SAVED);
+    // An installed persistence provider is proof on its own.
+    CHECK(resolve_z_offset_tune_hint(S::FIRMWARE_MANAGED, true, false, false) == H::AUTO_SAVED);
+    CHECK(resolve_z_offset_tune_hint(S::FIRMWARE_MANAGED, true, false, true) == H::AUTO_SAVED);
+
+    // No Save step and nothing persists: the adjustment is temporary.
+    CHECK(resolve_z_offset_tune_hint(S::FIRMWARE_MANAGED, false, false, false) == H::TEMPORARY);
+    CHECK(resolve_z_offset_tune_hint(S::FIRMWARE_MANAGED, false, false, true) ==
+          H::TEMPORARY_TOOL_CHANGE);
+}
+
+TEST_CASE("PrinterProfileState publishes the z-offset tune hint from the database",
+          "[printer_state][profile][zoffset]") {
+    LVGLTestFixture fixture;
+    PrinterProfileState profile;
+    profile.init_subjects(false);
+    auto hint = [&] {
+        return static_cast<ZOffsetTuneHint>(
+            lv_subject_get_int(profile.get_z_offset_tune_hint_subject()));
+    };
+
+    SECTION("Snapmaker U1: no save path, and a tool change re-applies the head's offset") {
+        REQUIRE(profile.set_printer_type("Snapmaker U1", true, false, false));
+        CHECK(profile.z_offset_calibration_strategy() ==
+              ZOffsetCalibrationStrategy::FIRMWARE_MANAGED);
+        CHECK(lv_subject_get_int(profile.get_z_offset_can_save_subject()) == 0);
+        CHECK(hint() == ZOffsetTuneHint::TEMPORARY_TOOL_CHANGE);
+
+        // A provider latching later is a change even though the strategy is not.
+        REQUIRE(profile.set_external_persistence(true));
+        REQUIRE(profile.set_printer_type("Snapmaker U1", true, false, false));
+        CHECK(hint() == ZOffsetTuneHint::AUTO_SAVED);
+        REQUIRE(profile.set_external_persistence(false));
+        REQUIRE(profile.set_printer_type("Snapmaker U1", true, false, false));
+        CHECK(hint() == ZOffsetTuneHint::TEMPORARY_TOOL_CHANGE);
+    }
+
+    SECTION("the other firmware-managed printers keep the auto-saved claim") {
+        for (const char* type :
+             {"FlashForge Adventurer 5M (ForgeX)", "FlashForge Adventurer 5M Pro (ForgeX)",
+              "FlashForge Adventurer 5X", "FlashForge Creator 5", "FlashForge Creator 5 Pro",
+              "Artillery M1 Pro"}) {
+            INFO(type);
+            REQUIRE(profile.set_printer_type(type, true, false, false));
+            CHECK(profile.z_offset_calibration_strategy() ==
+                  ZOffsetCalibrationStrategy::FIRMWARE_MANAGED);
+            CHECK(hint() == ZOffsetTuneHint::AUTO_SAVED);
+        }
+    }
+
+    SECTION("a printer with a Save step points at it") {
+        REQUIRE(profile.set_printer_type("Unknown Printer", true, false, false));
+        CHECK(lv_subject_get_int(profile.get_z_offset_can_save_subject()) == 1);
+        CHECK(hint() == ZOffsetTuneHint::SAVE_ON_CONTROLS);
+    }
+
+    profile.deinit_subjects();
+}
