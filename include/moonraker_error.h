@@ -431,8 +431,9 @@ struct MoonrakerError {
         MoonrakerError err;
         err.type = MoonrakerErrorType::JSON_RPC_ERROR;
         err.method = method;
-        // Callers hand over raw `!!` lines, which can carry a firmware envelope.
-        err.message = helix::decode_firmware_error_text(message);
+        // Callers hand over raw `!!` lines, which can carry a firmware envelope;
+        // decoded the way from_json_rpc() decodes Moonraker's message.
+        err.message = extract_friendly_message(message);
         err.details = details;
         return err;
     }

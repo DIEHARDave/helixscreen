@@ -126,6 +126,14 @@ TEST_CASE("json_rpc_error decodes a firmware envelope in a raw error line",
     REQUIRE(err.message == "Heater extruder not heating");
 }
 
+TEST_CASE("json_rpc_error extracts a wrapped envelope before decoding it",
+          "[moonraker][error][firmware_error_envelope]") {
+    auto err = MoonrakerError::json_rpc_error(
+        "BED_MESH_CALIBRATE",
+        R"({'error': 'WebRequestError', 'message': '{"coded": "0003-0522-0002-0008", "msg":"Lost communication with MCU e0"}'})");
+    REQUIRE(err.message == "Lost communication with MCU e0");
+}
+
 TEST_CASE("friendly_error_line strips the error prefix and decodes",
           "[moonraker][error][firmware_error_envelope]") {
     REQUIRE(
