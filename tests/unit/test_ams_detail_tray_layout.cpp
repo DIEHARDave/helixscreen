@@ -422,6 +422,33 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS tool changer: each tube hangs from ju
     }
 }
 
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS tool changer: every lane's number badge stays inside its row",
+                 "[ams][tray][ui_integration]") {
+    // Without a tray the badges keep the spool container's corner, which is
+    // wider than a narrow slot.
+    const auto size = GENERATE(std::make_pair(480, 320), std::make_pair(800, 480));
+    CAPTURE(size.first, size.second);
+    helix::test::ScopedGeometry screen(size.first, size.second);
+    build("passive", 4, /*tool_changer=*/true);
+
+    lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
+    REQUIRE(badges != nullptr);
+    REQUIRE(lv_obj_get_child_count(badges) == 4);
+    lv_obj_update_layout(test_screen());
+    lv_area_t layer;
+    lv_obj_get_coords(badges, &layer);
+    for (int i = 0; i < 4; ++i) {
+        CAPTURE(i);
+        lv_area_t b;
+        lv_obj_get_coords(lv_obj_get_child(badges, i), &b);
+        CAPTURE(b.x1, b.x2, layer.x1, layer.x2);
+        // The layer clips its children: a badge past its edge is cut off.
+        CHECK(b.x1 >= layer.x1);
+        CHECK(b.x2 <= layer.x2);
+    }
+}
+
 TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a spool name stacks directly over its material",
                  "[ams][tray][ui_integration][slot_name]") {
     build("passive");
