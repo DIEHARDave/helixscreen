@@ -164,7 +164,10 @@ class DragonbreathBackend : public ChamberHeaterBackend {
                                                 "protocol_error",
                                                 "protocol_error_code",
                                                 "protocol_error_seq",
-                                                "protocol_error_target"};
+                                                "protocol_error_target",
+                                                "protocol_error_message",
+                                                "wait_active",
+                                                "wait_target"};
         bool known_field = false;
         for (const char* f : DB_FIELDS) {
             if (status.contains(f)) {
@@ -244,6 +247,16 @@ class DragonbreathBackend : public ChamberHeaterBackend {
         if (status.contains("protocol_error_target")) {
             const auto& t = status["protocol_error_target"];
             d.rejection_target_c = t.is_number() ? t.get<double>() : NAN;
+        }
+        // The glue's M191 wait: set when it starts, following a newer target,
+        // cleared on every exit.
+        if (status.contains("wait_active")) {
+            d.wait_active =
+                status["wait_active"].is_boolean() ? status["wait_active"].get<bool>() : false;
+        }
+        if (status.contains("wait_target")) {
+            d.wait_target_c =
+                status["wait_target"].is_number() ? status["wait_target"].get<double>() : NAN;
         }
         // Externally driven: heater active, but neither klipper source nor our
         // lease. Computed from three inputs, so it is an answer only when the

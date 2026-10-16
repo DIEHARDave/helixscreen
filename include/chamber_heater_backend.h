@@ -81,6 +81,10 @@ struct ChamberHeaterDiagnostics {
     /// Target the rejected command asked for, °C; NAN = not reported.
     std::optional<double> rejection_target_c;
     std::optional<std::string> rejection_code; ///< raw vendor code, logs only
+    /// The device's own wait on the chamber (an M191 its glue runs) is
+    /// holding the queue. A backend that reports none never engages these.
+    std::optional<bool> wait_active;
+    std::optional<double> wait_target_c; ///< the wait's temperature; NAN = not reported
 };
 
 /// One chamber-heater style/brand behind an interface (AMS-backend pattern).

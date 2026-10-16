@@ -12,7 +12,8 @@
        faulted, inhibited, offline or refused our last target; offline swaps
        the reason text for "Heater offline" and hides Reset (nothing to reset
        into a dead appliance). A refused target with no fault behind it shows
-       the heater's reason and Retry instead. Fires the TemperatureService XML
+       the heater's reason, with Retry when the backend has a route around
+       the gcode queue, which a wait on the chamber may be holding. Fires the TemperatureService XML
        callbacks that delegate to the globally registered TemperatureController.
        Also on the print-status panel, where a refused target matters most. -->
   <view name="chamber_fault_banner"
@@ -49,7 +50,7 @@
                height="#button_height_sm_tiny" text="Retry" variant="ghost" style_text_font="#font_small"
                style_pad_left="#space_xs" style_pad_right="#space_xs" style_border_width="#border_width"
                style_border_color="#border" style_border_opa="255">
-      <bind_flag_if cond="chamber_heater_command_rejected and chamber_heater_offline eq 0 and chamber_heater_fault eq 0 and chamber_heater_inhibited eq 0"
+      <bind_flag_if cond="chamber_heater_command_rejected and chamber_heater_offline eq 0 and chamber_heater_fault eq 0 and chamber_heater_inhibited eq 0 and printer_has_chamber_target_route"
                     flag="hidden" invert="true"/>
       <event_cb trigger="clicked" callback="on_chamber_retry_target_clicked"/>
     </ui_button>

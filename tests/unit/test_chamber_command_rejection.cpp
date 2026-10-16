@@ -7,6 +7,7 @@
 #include "ui_modal.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/abort_manager_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_shared_resource.h"
@@ -22,6 +23,7 @@
 #include "printer_temperature_state.h"
 #include "settings_manager.h"
 #include "temperature_controller.h"
+#include "temperature_service.h"
 
 #include <lvgl/src/others/translation/lv_translation.h>
 
@@ -320,7 +322,8 @@ TEST_CASE_METHOD(RouteFixture, "chamber targets take the backend's route around 
         opts.on_success = [&succeeded]() { succeeded = true; };
         controller->set_target(helix::HeaterType::Chamber, 60.0, opts);
         drain();
-        CHECK(reason == "power_off");
+        // The vendor code never reaches the user.
+        CHECK(reason == lv_tr("The heater didn't accept the command."));
         CHECK_FALSE(succeeded);
         CHECK(client.heater_gcode().empty());
     }
@@ -399,7 +402,7 @@ TEST_CASE_METHOD(RouteFixture, "what the route answers reaches a plain chamber s
         controller->set_target(helix::HeaterType::Chamber, 50.0, opts);
         drain();
         CHECK_FALSE(succeeded);
-        CHECK(error == "printer is shut down");
+        CHECK(error == lv_tr("The printer is shut down."));
     }
 
     SECTION("still pending after the route's wait counts as sent") {
@@ -454,6 +457,28 @@ TEST_CASE_METHOD(RouteFixture, "Try again resends the target the heater turned d
         drain();
         CHECK(client.route_targets.size() == 1);
         CHECK(client.heater_gcode().empty());
+    }
+}
+
+TEST_CASE_METHOD(RouteFixture, "the banner's Retry never queues gcode behind a job",
+                 "[chamber][rejection][route][banner]") {
+    state.temperature_state().update_from_status(conflict_frame(1));
+    controller->set_chamber_actions("", "", 0.0, ""); // a glue without the route
+
+    SECTION("during a job it sends nothing") {
+        state.update_from_status({{"print_stats", {{"state", "printing"}}}});
+        drain();
+        REQUIRE(lv_subject_get_int(state.print_state().get_job_holds_machine_subject()) == 1);
+        TemperatureService::on_chamber_retry_target_clicked(nullptr);
+        drain();
+        CHECK(client.heater_gcode().empty());
+    }
+
+    SECTION("with no job, gcode is fine") {
+        TemperatureService::on_chamber_retry_target_clicked(nullptr);
+        drain();
+        REQUIRE(client.heater_gcode().size() == 1);
+        CHECK(client.heater_gcode()[0].find("TARGET=60") != std::string::npos);
     }
 }
 
@@ -584,7 +609,7 @@ TEST_CASE("each chamber wait gets the cancel that ends it", "[chamber][rejection
     CHECK(helix::chamber_cancel_path(ChamberWaitKind::TemperatureWait) ==
           ChamberCancelPath::EmergencyStop);
     CHECK(helix::chamber_cancel_path(ChamberWaitKind::Unknown) ==
-          ChamberCancelPath::ClearTargetThenAbort);
+          ChamberCancelPath::ClearTargetThenCancel);
 }
 
 TEST_CASE_METHOD(RouteFixture, "Cancel print ends the chamber wait the way it can end",
@@ -615,14 +640,128 @@ TEST_CASE_METHOD(RouteFixture, "Cancel print ends the chamber wait the way it ca
         CHECK(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
     }
 
-    SECTION("an unknown wait clears the target, then aborts the usual way") {
+    SECTION("an unknown wait clears the target and cancels without probing the queue") {
         helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::Unknown);
         drain();
         CHECK(client.route_targets == std::vector<double>{0.0});
+        CHECK(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
+    }
+
+    SECTION("an M191 cancel completes on the print ending, with no emergency stop") {
+        helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::M191);
+        drain();
+        REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
+        // pause_resume:cancel ends the wait and the queued CANCEL_PRINT runs.
+        state.update_from_status({{"print_stats", {{"state", "cancelled"}}}});
+        drain();
         const auto st = AbortManager::instance().get_state();
-        CHECK((st == AbortManager::State::PROBE_QUEUE ||
-               st == AbortManager::State::TRY_HEATER_INTERRUPT));
+        CHECK(st != AbortManager::State::SENT_ESTOP);
+        CHECK(st != AbortManager::State::SENT_RESTART);
+        CHECK((st == AbortManager::State::COMPLETE || st == AbortManager::State::IDLE));
+    }
+
+    SECTION("a wait the device reports as its own M191 takes the M191 cancel") {
+        state.temperature_state().update_from_status(
+            {{"dragonbreath", {{"wait_active", true}, {"wait_target", 60.0}}}});
+        REQUIRE(state.temperature_state().chamber_wait_active());
+        CHECK(state.temperature_state().chamber_wait_target_c() == Catch::Approx(60.0));
     }
 
     AbortManagerTestAccess::reset(AbortManager::instance());
+}
+
+// ============================================================================
+// The prompt itself: its observers, show and hide, and Cancel from it
+// ============================================================================
+
+namespace {
+
+struct PromptFixture : public LVGLUITestFixture {
+    helix::ui::ChamberStallPrompt prompt;
+
+    PromptFixture() {
+        auto& temps = state().temperature_state();
+        temps.set_chamber_heater_name("heater_generic dragonbreath");
+        temps.set_chamber_diagnostics_source("dragonbreath", "dragonbreath", "");
+        state().update_from_status({{"print_stats", {{"state", "printing"}}}});
+        settle();
+    }
+    ~PromptFixture() override {
+        helix::AbortManager::instance().deinit_subjects();
+        AbortManagerTestAccess::reset(helix::AbortManager::instance());
+    }
+
+    void settle() {
+        for (int i = 0; i < 3; ++i) {
+            drain();
+            process_lvgl(20);
+        }
+    }
+    lv_obj_t* dialog() {
+        return ModalStack::instance().dialog_for_component("chamber_stall_modal");
+    }
+    void refuse(int seq) {
+        state().temperature_state().update_from_status(
+            {{"heater_generic dragonbreath", {{"temperature", 28.0}, {"target", 0.0}}},
+             {"dragonbreath",
+              {{"protocol_error_code", "countermanded"},
+               {"protocol_error_seq", seq},
+               {"protocol_error_target", 60.0}}}});
+        settle();
+    }
+    void chamber_wait(bool on) {
+        state().print_state().set_print_start_chamber_wait(on);
+        settle();
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(PromptFixture, "the chamber prompt opens on a refused wait and closes itself",
+                 "[chamber][rejection][prompt][prompt_ui]") {
+    REQUIRE(lv_subject_get_int(state().print_state().get_job_holds_machine_subject()) == 1);
+    refuse(1);
+    CHECK(dialog() == nullptr); // a refusal outside a chamber wait stays on the banner
+    chamber_wait(true);
+    REQUIRE(dialog() != nullptr);
+
+    SECTION("the wait ends: the chamber got hot from any source") {
+        chamber_wait(false);
+        CHECK(dialog() == nullptr);
+    }
+
+    SECTION("the heater takes the target") {
+        state().temperature_state().update_from_status(
+            {{"heater_generic dragonbreath", {{"target", 60.0}}}});
+        settle();
+        CHECK(dialog() == nullptr);
+    }
+
+    SECTION("the job ends") {
+        state().update_from_status({{"print_stats", {{"state", "complete"}}}});
+        settle();
+        CHECK(dialog() == nullptr);
+    }
+
+    SECTION("a later refusal under another modal does not stack a second prompt") {
+        helix::ui::modal_alert("Other", "Something else", ModalSeverity::Info);
+        settle();
+        REQUIRE(ModalStack::instance().top_component_name() != "chamber_stall_modal");
+        const std::string top = ModalStack::instance().top_component_name();
+        refuse(2);
+        CHECK(ModalStack::instance().top_component_name() == top);
+        CHECK(dialog() != nullptr);
+    }
+
+    SECTION("Cancel print cancels without probing the blocked queue") {
+        AbortManagerTestAccess::reset(helix::AbortManager::instance());
+        helix::AbortManager::instance().init(nullptr, &state());
+        lv_obj_t* cancel = lv_obj_find_by_name(dialog(), "btn_quaternary");
+        REQUIRE(cancel != nullptr);
+        lv_obj_send_event(cancel, LV_EVENT_CLICKED, nullptr);
+        settle();
+        CHECK(helix::AbortManager::instance().get_state() ==
+              helix::AbortManager::State::SENT_CANCEL);
+        CHECK(dialog() == nullptr);
+    }
 }

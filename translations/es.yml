@@ -3513,7 +3513,6 @@ translations:
 
   : La impresora hace home y luego aleja la cama de la boquilla todo lo posible. Algunas bobinas no resisten suficiente calor y pueden deformarse. Nada se mueve desde esta pantalla hasta que confirmes que las bobinas no están en la cama; Mainsail, las macros y las impresiones enviadas desde un slicer no se bloquean.
 
-  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'La impresora está ocupada esperando, así que cancelar puede requerir una parada de emergencia y un reinicio del firmware.'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: La impresora no está referenciada. Si continúa, se referenciarán todos los ejes y el cabezal se moverá. Asegúrese de que la cama esté despejada.
   The printer is shut down.: 'La impresora está apagada.'
   ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.

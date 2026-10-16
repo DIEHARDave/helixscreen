@@ -333,6 +333,16 @@ class PrinterTemperatureState {
         chamber::RefusalCause cause = chamber::RefusalCause::Unspecified;
         double requested_target_c = 0; ///< 0 = not reported
     };
+    /// The chamber device reports its own wait on the chamber (an M191 its
+    /// glue runs) holding the queue, and the temperature it waits for (°C, 0
+    /// when not reported). False for a backend that reports no such wait.
+    bool chamber_wait_active() const {
+        return chamber_wait_active_;
+    }
+    double chamber_wait_target_c() const {
+        return chamber_wait_active_ && !std::isnan(chamber_wait_target_c_) ? chamber_wait_target_c_
+                                                                           : 0.0;
+    }
     ChamberCommandRejection chamber_command_rejection() const {
         if (!chamber_rejection_latched_) {
             return {};
@@ -451,6 +461,8 @@ class PrinterTemperatureState {
         chamber_refusal_cause_ = chamber::RefusalCause::Unspecified;
         chamber_rejection_vendor_seq_ = -1;
         chamber_rejection_target_c_ = NAN;
+        chamber_wait_active_ = false;
+        chamber_wait_target_c_ = NAN;
         if (subjects_initialized_) {
             lv_subject_set_int(&chamber_dryer_reported_, 0);
             publish_chamber_dryer();
@@ -616,6 +628,8 @@ class PrinterTemperatureState {
     int chamber_rejection_vendor_seq_ = -1; ///< -1 = not reported
     double chamber_rejection_target_c_ = NAN;
     bool chamber_rejection_latched_ = false;
+    bool chamber_wait_active_ = false;
+    double chamber_wait_target_c_ = NAN;
     int chamber_target_at_rejection_ = 0; ///< heater target (deci) when the latch set
     void apply_chamber_rejection(const chamber::ChamberHeaterDiagnostics& d,
                                  std::string_view backend_id);

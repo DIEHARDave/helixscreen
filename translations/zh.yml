@@ -3291,7 +3291,6 @@ translations:
 
   : 打印机会先归位,然后让热床尽量远离喷嘴。有些料盘耐热性不足,可能会变形。在你确认料盘已从热床上取下之前,此屏幕不会移动任何部件;Mainsail、宏以及切片软件发送的打印不会被阻止。
 
-  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: '打印机正忙于等待，因此取消可能需要紧急停止并重启固件。'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: 打印机尚未归位。继续将对所有轴执行归位操作，移动工具头。请确保热床上没有障碍物。
   The printer is shut down.: '打印机已关机。'
   ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.

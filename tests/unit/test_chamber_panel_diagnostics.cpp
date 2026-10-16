@@ -429,6 +429,7 @@ TEST_CASE_METHOD(ChamberOverlayFixture,
         set_xml_int("chamber_heater_inhibited", 0);
         set_xml_int("chamber_heater_offline", 0);
         set_xml_string("chamber_heater_rejection_text", "The heater didn't accept the command.");
+        set_xml_int("printer_has_chamber_target_route", 1);
         set_xml_int("chamber_heater_command_rejected", 1);
         helix::ui::UpdateQueue::instance().drain();
 
@@ -440,6 +441,13 @@ TEST_CASE_METHOD(ChamberOverlayFixture,
         CHECK_FALSE(hidden(lv_obj_find_by_name(overlay_, "retry_target_button")));
         CHECK(hidden(lv_obj_find_by_name(overlay_, "reset_fault_button")));
         CHECK(hidden(lv_obj_find_by_name(overlay_, "fault_reason_label")));
+
+        // Retry needs the route around the queue a chamber wait may hold.
+        set_xml_int("printer_has_chamber_target_route", 0);
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(hidden(lv_obj_find_by_name(overlay_, "retry_target_button")));
+        set_xml_int("printer_has_chamber_target_route", 1);
+        helix::ui::UpdateQueue::instance().drain();
 
         // A fault behind the refusal is what Reset clears; Retry would only
         // be refused again.

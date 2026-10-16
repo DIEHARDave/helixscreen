@@ -3412,7 +3412,6 @@ translations:
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.
   ? The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked.
   : The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked.
-  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.
   The printer is shut down.: The printer is shut down.
   ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.

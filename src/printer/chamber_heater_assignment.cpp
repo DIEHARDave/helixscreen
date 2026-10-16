@@ -119,6 +119,8 @@ void apply_resolution(const PrinterDiscovery& discovery, const std::string& sens
         chamber_diagnostics_apply ? backend_by_id(discovery.chamber_heater_backend_id()) : nullptr;
     caps.set_has_chamber_element_temp(chamber_backend && chamber_backend->reports_element_temp());
     caps.set_has_chamber_dryer(chamber_backend && chamber_backend->dryer_capabilities().supported);
+    caps.set_has_chamber_target_route(chamber_backend &&
+                                      !chamber_backend->set_target_method().empty());
 
     // Promote the resolved chamber sensor and heater to CHAMBER role in the
     // sensor manager. Required for vendors whose chamber object names don't

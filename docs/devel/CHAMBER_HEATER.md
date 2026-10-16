@@ -192,6 +192,7 @@ generic kinds above; they are deliberately not subjects, so nothing can bind a v
 | `chamber_dryer_text` | string | The running cycle's readout, "41/55°C  3:12 left" ("" when idle): live chamber temp against the cycle's target, then the appliance's own countdown |
 | `printer_has_chamber_dryer` | int 0/1 | Capability: the dryer row, from the backend's `dryer_capabilities().supported` |
 | `chamber_heater_command_rejected` | int 0/1 | The heater turned down the last target we sent and has not taken one since (see "Refused Targets") |
+| `printer_has_chamber_target_route` | int 0/1 | Capability: the backend names a set-target route around the gcode queue (`set_target_method()`) |
 | `chamber_heater_rejection_text` | string | Translated sentence for the classified rejection ("" when none): what the banner and the chamber prompt show |
 
 Capability setters round-trip through `PrinterCapabilitiesState`; `set_hardware` raises them exactly when the backend provides the corresponding surface. Backends differ in what they publish, so each readout column on the card follows its own capability — a permanently blank row tells the user nothing. The External badge sits in its own Mode column rather than beside the element temperature, so it survives a backend that reports no element.
@@ -248,11 +249,18 @@ follows with `TEMPERATURE_WAIT` on the chamber waits forever.
   reason `superseded` (a newer target governs, not a failure) and `klipper_shutdown` (the
   printer is shut down). A retry (`retry_chamber_target()`) never falls back to gcode, since
   that would queue behind the wait it is meant to release.
+- **Device wait.** A backend may report the device's own wait on the chamber
+  (`wait_active`, `wait_target_c`; DragonBreath's `wait_active` / `wait_target`, set
+  while its M191 waits and cleared on every exit). `PrinterTemperatureState` exposes them
+  as `chamber_wait_active()` / `chamber_wait_target_c()`.
 - **Pre-print label.** While a heater wait keeps reporting with the nozzle and bed at
-  target, `PrintStartCollector` labels it "Waiting for chamber <cur> / <target>°C" (the
-  chamber with a target), or "Waiting for chamber <cur>°C" once an unheated chamber wait
-  has outlasted `CHAMBER_WAIT_SETTLE` (M109 settling). It raises
-  `print_start_chamber_wait` on `PrinterPrintState` while that label shows.
+  target, `PrintStartCollector` labels it "Waiting for chamber <cur> / <target>°C" when the
+  wait is the chamber's: the device reports its own wait (its target), the chamber heater
+  is heating toward a target, or a chamber heater refused its target and the wait has
+  outlasted `CHAMBER_WAIT_SETTLE` (M109 settling; "Waiting for chamber <cur>°C"). Any
+  other wait (a sensor-only heat soak, a probe coil) keeps the announced phase. It raises
+  `print_start_chamber_wait` on `PrinterPrintState` while this tick reads the wait as the
+  chamber's.
 - **Prompt.** `ChamberStallPrompt` (`include/chamber_stall_prompt.h`) asks the pure
   `ChamberStallArbiter`: a chamber wait while rejected prompts once per rejection; a chamber
   wait at target 0 with no rejection prompts once per job; a rejection with no job toasts.
@@ -270,9 +278,14 @@ follows with `TEMPERATURE_WAIT` on the chamber waits forever.
   |-----------------|--------------|
   | `M191` | target 0 by the route (the module's wait loop ends on it), then `printer.print.cancel` (`AbortManager::Entry::Cancel`, no queue probe, no emergency stop) |
   | `TEMPERATURE_WAIT ... MINIMUM=` | only M112 + FIRMWARE_RESTART end it: a confirmation saying so, then `AbortManager::Entry::EmergencyStop` |
-  | anything else (a macro holding the wait, an unreadable file) | target 0 by the route in case it is M191, then the usual abort, which escalates only per the user's cancel-escalation setting |
-- **Banner.** `chamber_fault_banner` shows the rejection with Retry when nothing faulted is
-  behind it, and is on the print-status panel at MEDIUM and up.
+  | anything else (a macro holding the wait, an unreadable file) | as M191; if the cancel then times out, `AbortManager` escalates only per the user's cancel-escalation setting |
+
+  The device's own wait report, when present, counts as `M191` with its target and needs
+  no file read.
+- **Banner.** `chamber_fault_banner` shows the rejection when nothing faulted is behind it,
+  with Retry when the backend has a route (`printer_has_chamber_target_route`). Retry sends
+  by the route; gcode only when no job holds the machine. The banner is on the
+  print-status panel at MEDIUM and up.
 
 ---
 

@@ -3522,7 +3522,6 @@ translations:
 
   : Der Drucker referenziert und fährt das Heizbett dann so weit wie möglich von der Düse weg. Manche Spulen sind nicht hitzebeständig genug und können sich verformen. Von diesem Bildschirm aus bewegt sich nichts, bis du bestätigst, dass die Spulen vom Heizbett sind; Mainsail, Makros und von einem Slicer gesendete Drucke werden nicht blockiert.
 
-  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'Der Drucker wartet gerade, daher kann das Abbrechen einen Not-Halt und einen Firmware-Neustart erfordern.'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: Der Drucker ist nicht referenziert. Wenn Sie fortfahren, werden alle Achsen referenziert und der Werkzeugkopf bewegt sich. Stellen Sie sicher, dass das Heizbett frei ist.
   The printer is shut down.: 'Der Drucker ist heruntergefahren.'
   ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.

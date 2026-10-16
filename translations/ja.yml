@@ -3300,7 +3300,6 @@ translations:
 
   : プリンターはホームに戻ってから、ベッドをノズルからできるだけ離します。耐熱性が足りずに変形するスプールもあります。スプールをベッドから取り出したことを確認するまで、この画面からは何も動きません。Mainsail、マクロ、スライサーから送られた印刷はブロックされません。
 
-  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'プリンターは待機中のため、キャンセルには緊急停止とファームウェアの再起動が必要になる場合があります。'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: プリンターがホーミングされていません。続行すると全軸がホーミングされ、ツールヘッドが移動します。ベッドに物がないことを確認してください。
   The printer is shut down.: 'プリンターはシャットダウンしています。'
   ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.

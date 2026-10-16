@@ -728,6 +728,12 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
                                   "backend={} detail={}",
                                   backend->id(), *d->link_error);
                 }
+                if (d->wait_active.has_value()) {
+                    chamber_wait_active_ = *d->wait_active;
+                }
+                if (d->wait_target_c.has_value()) {
+                    chamber_wait_target_c_ = *d->wait_target_c;
+                }
                 apply_chamber_rejection(*d, backend->id());
             }
         }

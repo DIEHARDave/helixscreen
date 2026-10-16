@@ -423,14 +423,19 @@ void TemperatureService::on_chamber_fault_reset_clicked(lv_event_t* /*e*/) {
 }
 
 // The route around the gcode queue when there is one, since a refused
-// target often matters most while a wait holds that queue; gcode otherwise.
+// target often matters most while a wait holds that queue. Gcode only with no
+// job holding the machine: during one it would queue behind the wait.
 void TemperatureService::on_chamber_retry_target_clicked(lv_event_t* /*e*/) {
     if (helix::ui::ChamberStallPrompt::retry()) {
         return;
     }
     auto* tc = get_temperature_controller();
     const double target = helix::ui::ChamberStallPrompt::retry_target_c();
-    if (tc && target > 0) {
+    lv_subject_t* job = get_printer_state().print_state().get_job_holds_machine_subject();
+    if (job && lv_subject_get_int(job) != 0) {
+        spdlog::warn("[TempPanel] chamber retry during a job with no route around the queue");
+        NOTIFY_WARNING("{}", lv_tr("The heater can't be changed while the printer is waiting."));
+    } else if (tc && target > 0) {
         tc->set_target(helix::HeaterType::Chamber, target);
     } else {
         spdlog::warn("[TempPanel] chamber retry clicked with no target to resend");

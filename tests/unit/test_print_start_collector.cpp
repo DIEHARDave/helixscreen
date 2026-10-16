@@ -3850,6 +3850,26 @@ class SnapmakerHeaterWaitFixture : public SnapmakerCollectorFixture {
                            target_decideg);
     }
 
+    /// A chamber heater whose backend reports refusals and its own waits.
+    void use_appliance_chamber() {
+        auto& temps = state().temperature_state();
+        temps.set_chamber_heater_name("heater_generic dragonbreath");
+        temps.set_chamber_diagnostics_source("dragonbreath", "dragonbreath", "");
+    }
+    void refuse_chamber_target() {
+        state().temperature_state().update_from_status({{"dragonbreath",
+                                                         {{"protocol_error_code", "countermanded"},
+                                                          {"protocol_error_seq", 1},
+                                                          {"protocol_error_target", 60.0}}}});
+    }
+    void report_for(int seconds) {
+        for (int t = 0; t < seconds; ++t) {
+            clock_.advance(std::chrono::seconds(1));
+            feed_gcode("B:100.0 /100.0 T0:210.0 /210.0");
+            tick();
+        }
+    }
+
     int chamber_wait_flag() {
         return lv_subject_get_int(state().print_state().get_print_start_chamber_wait_subject());
     }
@@ -4035,7 +4055,8 @@ TEST_CASE_METHOD(
     SnapmakerHeaterWaitFixture,
     "Snapmaker U1: a chamber wait with the heater off shows the chamber and not the nozzle",
     "[print][collector][snapmaker][heater_wait][chamber_wait]") {
-    state().temperature_state().set_chamber_heater_name("heater_generic dragonbreath");
+    use_appliance_chamber();
+    refuse_chamber_target();
     set_chamber(280, 0);
     set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 1500, 2100);
     for (int t = 0; t < 3; ++t) {
@@ -4094,6 +4115,53 @@ TEST_CASE_METHOD(
         tick();
     }
     CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+    CHECK(chamber_wait_flag() == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "a sensor-only chamber soak is a wait and never the chamber heater's",
+                 "[print][collector][heater_wait][chamber_wait]") {
+    // A Voron heat soak: TEMPERATURE_WAIT SENSOR="temperature_sensor chamber"
+    // MINIMUM=40 with no chamber heater at all.
+    state().temperature_state().set_chamber_sensor_name("temperature_sensor chamber");
+    set_chamber(300, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    report_for(15);
+    CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+    CHECK(chamber_wait_flag() == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "another wait on a printer with a healthy chamber heater is not the chamber's",
+                 "[print][collector][heater_wait][chamber_wait]") {
+    // A probe coil warming (TEMPERATURE_WAIT on the probe's sensor) while the
+    // chamber heater sits idle with nothing refused.
+    use_appliance_chamber();
+    set_chamber(300, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    report_for(15);
+    CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+    CHECK(chamber_wait_flag() == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "the chamber device's own wait labels the chamber and ends with it",
+                 "[print][collector][heater_wait][chamber_wait]") {
+    use_appliance_chamber();
+    set_chamber(280, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    state().temperature_state().update_from_status(
+        {{"dragonbreath", {{"wait_active", true}, {"wait_target", 60.0}}}});
+    report_for(2);
+    REQUIRE(get_current_phase() == PrintStartPhase::SOAKING);
+    CHECK(get_current_message() == "Waiting for chamber 28 / 60°C");
+    CHECK(chamber_wait_flag() == 1);
+
+    // The wait ends (the chamber got hot, or the target was cleared) while
+    // the next wait goes on reporting: the chamber is no longer why.
+    state().temperature_state().update_from_status(
+        {{"dragonbreath", {{"wait_active", false}, {"wait_target", nullptr}}}});
+    report_for(1);
     CHECK(chamber_wait_flag() == 0);
 }
 

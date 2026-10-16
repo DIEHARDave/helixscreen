@@ -67,9 +67,9 @@ ChamberWaitLine classify_chamber_wait_line(std::string_view chunk_ending_at_posi
 ///   queue ends the wait, then printer.print.cancel; no emergency stop.
 /// - EmergencyStop (TEMPERATURE_WAIT): nothing short of M112 + FIRMWARE_RESTART
 ///   ends it, so the user confirms that first.
-/// - ClearTargetThenAbort (unknown): clear the target in case it is M191,
-///   then the usual abort, which escalates only per the user's own setting.
-enum class ChamberCancelPath { ClearTargetThenCancel, EmergencyStop, ClearTargetThenAbort };
+/// An unknown command (a macro holding the wait, an unreadable file) takes
+/// the M191 path: the target cleared in case it is one, then the cancel.
+enum class ChamberCancelPath { ClearTargetThenCancel, EmergencyStop };
 ChamberCancelPath chamber_cancel_path(ChamberWaitKind kind);
 
 namespace ui {
@@ -104,6 +104,9 @@ class ChamberStallPrompt {
     void show_prompt();
     void refresh_content();
     void probe_wait_line();
+    /// The device's own report of its wait (M191) when it gives one, else
+    /// what the line at the print position said.
+    ChamberWaitLine current_wait() const;
     void on_try_again();
     void on_cancel();
     friend class ChamberStallModalAccess;

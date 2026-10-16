@@ -245,6 +245,14 @@ std::string ModalStack::top_component_name() const {
     return "";
 }
 
+lv_obj_t* ModalStack::dialog_for_component(const std::string& component_name) const {
+    for (auto it = stack_.rbegin(); it != stack_.rend(); ++it) {
+        if (!it->exiting && it->component_name == component_name)
+            return it->dialog;
+    }
+    return nullptr;
+}
+
 lv_obj_t* ModalStack::backdrop_for(lv_obj_t* dialog) const {
     for (const auto& entry : stack_) {
         if (entry.dialog == dialog) {

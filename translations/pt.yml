@@ -3518,7 +3518,6 @@ translations:
 
   : A impressora faz o home e depois afasta a mesa do bico o máximo possível. Alguns carretéis não resistem ao calor o suficiente e podem deformar. Nada se move a partir desta tela até você confirmar que os carretéis saíram da mesa; Mainsail, macros e impressões enviadas por um fatiador não são bloqueados.
 
-  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'A impressora está ocupada aguardando, então cancelar pode exigir uma parada de emergência e uma reinicialização do firmware.'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: A impressora não fez home. Continuar fará home em todos os eixos, movendo o cabeçote. Certifique-se de que a mesa esteja livre.
   The printer is shut down.: 'A impressora está desligada.'
   ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.

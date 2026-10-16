@@ -884,6 +884,9 @@ void PrintStartCollector::check_fallback_completion() {
     // degree or so. The chamber counts only once both heaters are at target.
     // Before the first real signal the proactive detection above owns the
     // heaters.
+    // What this tick read the wait as holding on; the chamber-wait flag
+    // follows it, so the flag drops the tick the chamber stops being why.
+    PrintStartPhase tick_waited_on = PrintStartPhase::IDLE;
     if (real_signal_seen_.load(std::memory_order_relaxed)) {
         bool waiting;
         bool nozzle_short;
@@ -902,14 +905,22 @@ void PrintStartCollector::check_fallback_completion() {
                 lv_subject_get_int(state_.temperature_state().get_chamber_temp_subject());
             const int chamber_target =
                 lv_subject_get_int(state_.temperature_state().get_chamber_target_subject());
+            const auto& temps = state_.temperature_state();
             const bool heaters_ready = !nozzle_short && !bed_short;
             const bool chamber_heating = heaters_ready && chamber_target > 0 &&
                                          chamber_temp < chamber_target - TEMP_TOLERANCE_DECIDEGREES;
-            // A wait that goes on with the nozzle and bed ready and the
-            // chamber heater off is waiting on the chamber all the same: a
-            // TEMPERATURE_WAIT with a MINIMUM, which no heater target names.
-            // M109 can hold a few seconds past arrival while it settles, so
-            // this reading needs the wait to outlast that first.
+            // The chamber device reporting its own wait (M191) settles it.
+            const bool device_wait = heaters_ready && temps.chamber_wait_active();
+            // A wait that goes on with the nozzle and bed ready while the
+            // chamber heater refused its target is a wait on that chamber: a
+            // TEMPERATURE_WAIT MINIMUM names no heater target. A printer with
+            // no chamber heater soaks on its sensor, and a refusal is what
+            // tells this wait from any other (a probe coil's, say). M109 can
+            // hold a few seconds past arrival while it settles, so this
+            // reading needs the wait to outlast that first.
+            const bool heater_refused =
+                !temps.chamber_heater_name().empty() &&
+                temps.chamber_command_rejection().kind != chamber::CommandRejection::None;
             bool chamber_unheated = false;
             {
                 std::lock_guard<std::mutex> lock(state_mutex_);
@@ -923,14 +934,14 @@ void PrintStartCollector::check_fallback_completion() {
                 chamber_unheated =
                     heaters_ready && chamber_target <= 0 &&
                     heaters_ready_wait_since_ != helix::sim::SimulatedClock::time_point::min() &&
-                    now - heaters_ready_wait_since_ >= CHAMBER_WAIT_SETTLE &&
-                    !state_.temperature_state().chamber_temperature_source().empty();
+                    now - heaters_ready_wait_since_ >= CHAMBER_WAIT_SETTLE && heater_refused;
             }
             const PrintStartPhase waited_on = nozzle_short ? PrintStartPhase::HEATING_NOZZLE
                                               : bed_short  ? PrintStartPhase::HEATING_BED
-                                              : chamber_heating || chamber_unheated
+                                              : device_wait || chamber_heating || chamber_unheated
                                                   ? PrintStartPhase::SOAKING
                                                   : PrintStartPhase::IDLE;
+            tick_waited_on = waited_on;
             // The report that shows the waited-on heater arriving is the
             // wait's last, so moving the label to another heater takes a
             // report after the tick that saw it arrive: the next wait.
@@ -948,10 +959,15 @@ void PrintStartCollector::check_fallback_completion() {
                 }
             }
             if (waited_on != PrintStartPhase::IDLE && may_relabel) {
-                relabel_heating_phase(waited_on, /*heater_wait=*/true,
-                                      waited_on == PrintStartPhase::SOAKING
-                                          ? chamber_wait_message(chamber_temp, chamber_target)
-                                          : std::string());
+                relabel_heating_phase(
+                    waited_on, /*heater_wait=*/true,
+                    waited_on == PrintStartPhase::SOAKING
+                        ? chamber_wait_message(chamber_temp,
+                                               device_wait && temps.chamber_wait_target_c() > 0
+                                                   ? static_cast<int>(std::lround(
+                                                         temps.chamber_wait_target_c() * 10))
+                                                   : chamber_target)
+                        : std::string());
             }
         }
     }
@@ -959,7 +975,8 @@ void PrintStartCollector::check_fallback_completion() {
         bool chamber_wait;
         {
             std::lock_guard<std::mutex> lock(state_mutex_);
-            chamber_wait = heater_wait_shown_ && current_phase_ == PrintStartPhase::SOAKING;
+            chamber_wait = heater_wait_shown_ && current_phase_ == PrintStartPhase::SOAKING &&
+                           tick_waited_on == PrintStartPhase::SOAKING;
         }
         state_.print_state().set_print_start_chamber_wait(chamber_wait);
     }
@@ -2137,9 +2154,14 @@ void PrintStartCollector::relabel_heating_phase(PrintStartPhase resolved, bool h
             (current_phase_ == resolved && (label.empty() || current_message_ == label))) {
             return;
         }
-        spdlog::info("[PrintStartCollector] Heating correction: phase {} -> {}{}",
-                     static_cast<int>(current_phase_), static_cast<int>(resolved),
-                     heater_wait ? " (heater wait)" : "");
+        if (current_phase_ == resolved) {
+            // A label with live readings follows them once a degree.
+            spdlog::debug("[PrintStartCollector] Heater wait label: '{}'", message);
+        } else {
+            spdlog::info("[PrintStartCollector] Heating correction: phase {} -> {}{}",
+                         static_cast<int>(current_phase_), static_cast<int>(resolved),
+                         heater_wait ? " (heater wait)" : "");
+        }
         if (takeover) {
             heater_wait_shown_ = true;
             pre_wait_phase_ = current_phase_;

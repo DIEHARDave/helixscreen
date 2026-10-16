@@ -418,6 +418,10 @@ class ModalStack {
     /// Return the component name of the top (most recent non-exiting) modal, or "" if empty.
     std::string top_component_name() const;
 
+    /// The dialog of the topmost non-exiting modal built from @p component_name,
+    /// wherever it sits in the stack; nullptr when none is.
+    lv_obj_t* dialog_for_component(const std::string& component_name) const;
+
     // Get backdrop for a dialog
     lv_obj_t* backdrop_for(lv_obj_t* dialog) const;
 

@@ -109,7 +109,7 @@ ChamberCancelPath chamber_cancel_path(ChamberWaitKind kind) {
     case ChamberWaitKind::Unknown:
         break;
     }
-    return ChamberCancelPath::ClearTargetThenAbort;
+    return ChamberCancelPath::ClearTargetThenCancel;
 }
 
 namespace ui {
@@ -166,8 +166,12 @@ class ChamberStallModal : public Modal {
         lv_subject_set_int(&busy_subject_, busy ? 1 : 0);
     }
 
+    /// The open prompt's dialog, wherever it sits in the stack.
+    static lv_obj_t* open_dialog() {
+        return ModalStack::instance().dialog_for_component("chamber_stall_modal");
+    }
     static bool showing() {
-        return ModalStack::instance().top_component_name() == "chamber_stall_modal";
+        return open_dialog() != nullptr;
     }
 
   protected:
@@ -272,7 +276,7 @@ double ChamberStallPrompt::retry_target_c(double wait_target_c) {
 
 bool ChamberStallPrompt::retry() {
     auto* controller = get_temperature_controller();
-    const double target = retry_target_c(g_prompt ? g_prompt->wait_line_.target_c : 0);
+    const double target = retry_target_c(g_prompt ? g_prompt->current_wait().target_c : 0);
     if (!controller || target <= 0 || !controller->chamber_has_direct_route()) {
         spdlog::info("[ChamberStall] Retry unavailable (target={}°C, route={})", target,
                      controller && controller->chamber_has_direct_route());
@@ -299,22 +303,32 @@ void ChamberStallPrompt::cancel_print(ChamberWaitKind kind) {
             });
         return;
     }
-    // A target of 0 ends an M191 wait; the cancel then reaches a free queue.
+    // A target of 0 ends an M191 wait, and so does the cancel itself on
+    // firmware that fires pause_resume:cancel. The cancel goes straight out:
+    // a queue probe would stall behind the wait and escalate for nothing.
+    // AbortManager escalates only if the cancel then times out, per the
+    // user's cancel-escalation setting.
     if (controller && controller->chamber_has_direct_route()) {
         controller->retry_chamber_target(0.0);
     }
-    AbortManager::instance().start_abort(path == ChamberCancelPath::ClearTargetThenCancel
-                                             ? AbortManager::Entry::Cancel
-                                             : AbortManager::Entry::Probe);
+    AbortManager::instance().start_abort(AbortManager::Entry::Cancel);
+}
+
+ChamberWaitLine ChamberStallPrompt::current_wait() const {
+    const auto& temps = get_printer_state().temperature_state();
+    if (temps.chamber_wait_active()) {
+        return {ChamberWaitKind::M191, temps.chamber_wait_target_c()};
+    }
+    return wait_line_;
 }
 
 void ChamberStallPrompt::on_cancel() {
-    cancel_print(wait_line_.kind);
+    cancel_print(current_wait().kind);
 }
 
 void ChamberStallPrompt::on_try_again() {
     auto* controller = get_temperature_controller();
-    const double target = retry_target_c(wait_line_.target_c);
+    const double target = retry_target_c(current_wait().target_c);
     if (!controller || target <= 0 || !controller->chamber_has_direct_route()) {
         note_ = lv_tr("The heater can't be changed while the printer is waiting.");
         refresh_content();
@@ -369,7 +383,7 @@ void ChamberStallPrompt::evaluate() {
     if (ChamberStallModal::showing() && ChamberStallArbiter::should_close(in)) {
         spdlog::info("[ChamberStall] Closing the prompt: job={} wait={} rejected={} target={}",
                      in.job_active, in.chamber_wait, in.rejected, in.chamber_target_deci);
-        Modal::hide(ModalStack::instance().top_dialog());
+        Modal::hide(ChamberStallModal::open_dialog());
     }
     switch (arbiter_.decide(in)) {
     case ChamberStallAction::Prompt:
@@ -393,10 +407,10 @@ void ChamberStallPrompt::evaluate() {
 void ChamberStallPrompt::refresh_content() {
     auto& temps = get_printer_state().temperature_state();
     const auto* controller = get_temperature_controller();
-    const double wait_c =
-        wait_line_.target_c > 0 ? wait_line_.target_c : retry_target_c(wait_line_.target_c);
-    const bool can_retry = retry_target_c(wait_line_.target_c) > 0 && controller &&
-                           controller->chamber_has_direct_route();
+    const ChamberWaitLine wait = current_wait();
+    const double wait_c = wait.target_c > 0 ? wait.target_c : retry_target_c(wait.target_c);
+    const bool can_retry =
+        retry_target_c(wait.target_c) > 0 && controller && controller->chamber_has_direct_route();
 
     std::string message =
         wait_c > 0 ? fmt::format(fmt::runtime(lv_tr("The print is waiting for the chamber to "
@@ -418,7 +432,7 @@ void ChamberStallPrompt::refresh_content() {
     }
 
     std::string hint;
-    switch (chamber_cancel_path(wait_line_.kind)) {
+    switch (chamber_cancel_path(wait.kind)) {
     case ChamberCancelPath::ClearTargetThenCancel:
         hint = lv_tr("Cancelling turns the chamber target off so the wait ends, then stops the "
                      "print.");
@@ -426,10 +440,6 @@ void ChamberStallPrompt::refresh_content() {
     case ChamberCancelPath::EmergencyStop:
         hint = lv_tr("This wait ends only at its temperature: cancelling takes an emergency stop "
                      "and a firmware restart.");
-        break;
-    case ChamberCancelPath::ClearTargetThenAbort:
-        hint = lv_tr("The printer is busy waiting, so cancelling may take an emergency stop and a "
-                     "firmware restart.");
         break;
     }
     ChamberStallModal::set_content(message, hint, can_retry, retry_busy_);
@@ -501,7 +511,7 @@ void ChamberStallPrompt::show_prompt() {
     probe_wait_line();
     refresh_content();
     spdlog::warn("[ChamberStall] Prompting: wait kind {}, retry target {}°C",
-                 static_cast<int>(wait_line_.kind), retry_target_c(wait_line_.target_c));
+                 static_cast<int>(current_wait().kind), retry_target_c(current_wait().target_c));
     // A prompt already up shows the new rejection through its bound text.
     if (ChamberStallModal::showing()) {
         return;
