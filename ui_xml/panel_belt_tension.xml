@@ -49,7 +49,8 @@
     <style name="bt_w0_grow" width="0" flex_grow="1"/>
     <style name="bt_content_w" width="content"/>
     <!-- Portrait above micro: the full tuning hero, two columns over a line of round, zone and rate -->
-    <style name="bt_hero_fixed" height="#belt_tune_hero_h" layout="flex" flex_flow="row"/>
+    <!-- At least the token's height, so the chart below holds still; taller when a language wraps -->
+    <style name="bt_hero_fixed" height="content" min_height="#belt_tune_hero_h" layout="flex" flex_flow="row"/>
     <style name="bt_hero_stack" height="content" layout="flex" flex_flow="row_wrap"/>
     <style name="bt_w36" width="36%"/>
     <style name="bt_w30" width="30%"/>
@@ -575,21 +576,21 @@
                 <event_cb trigger="clicked" callback="belt_tension_tune_amount_inc_cb"/>
               </ui_button>
             </lv_obj>
-            <!-- Below medium Good Enough takes only its label's width, leaving the rest to Re-measure -->
-            <ui_button name="btn_tune_done" height="#button_height" text="Good Enough" variant="secondary">
-              <bind_style_if name="bt_w0_grow" cond="ui_breakpoint gt 2"/>
-              <bind_style_if name="bt_content_w" cond="ui_breakpoint le 2"/>
+            <!-- Re-measure, the primary action, takes its label's width; the buttons beside it share the rest -->
+            <ui_button name="btn_tune_done"
+                       width="0" height="#button_height" flex_grow="1" text="Good Enough" variant="secondary"
+                       long_mode="dots">
               <event_cb trigger="clicked" callback="belt_tension_tune_done_cb"/>
             </ui_button>
             <ui_button name="btn_tune_swap"
                        width="0" height="#button_height" flex_grow="1" bind_text="bt_tune_swap_label"
-                       variant="secondary">
+                       variant="secondary" long_mode="dots">
               <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0 and (ui_is_portrait eq 0 or ui_breakpoint eq 0)"
                             flag="hidden"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_swap_cb"/>
             </ui_button>
             <ui_button name="btn_tune_measure"
-                       width="0" height="#button_height" flex_grow="1" icon="waveform" bind_text="bt_tune_measure_label"
+                       width="content" height="#button_height" icon="waveform" bind_text="bt_tune_measure_label"
                        variant="primary">
               <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0" flag="hidden"/>
               <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
@@ -597,8 +598,9 @@
             </ui_button>
             <ui_button name="btn_tune_measure_short"
                        height="#button_height" icon="waveform" text="Re-measure" variant="primary"
-                       icon_hidden_subject="bt_narrow" icon_hidden_if_eq="1" long_mode="dots">
-              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0 or ui_breakpoint eq 0"/>
+                       icon_hidden_subject="bt_narrow" icon_hidden_if_eq="1">
+              <bind_style_if name="bt_content_w" cond="ui_is_portrait eq 0"/>
+              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 1 and ui_breakpoint eq 0"/>
               <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1 and ui_breakpoint gt 0"/>
               <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
               <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
