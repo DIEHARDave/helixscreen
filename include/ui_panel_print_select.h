@@ -414,6 +414,10 @@ class PrintSelectPanel : public PanelBase {
     /// Publishes the selected file's plate stepper: its plate count and label.
     void update_plate_stepper();
 
+    /// Tells the preparation manager what prints for the selected .3mf (its
+    /// shown plate, or the printer's conversion of it), for the pre-print scan.
+    void sync_archive_scan_source();
+
     /// The detail view's time, weight and material for the plate shown, where
     /// the list card carries a several-plate archive's totals.
     void apply_plate_stats_to_detail();

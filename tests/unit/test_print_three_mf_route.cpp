@@ -6,6 +6,7 @@
 #include "ui_print_start_controller.h"
 
 #include "../helix_test_fixture.h"
+#include "../test_helpers/archive_transfers.h"
 #include "../test_helpers/mock_printer.h"
 #include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/print_preparation_manager_test_access.h"
@@ -15,7 +16,9 @@
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "moonraker_api_mock.h"
+#include "print_start_checks.h"
 #include "printer_state.h"
+#include "three_mf_reader.h"
 
 #include <filesystem>
 #include <fstream>
@@ -357,4 +360,76 @@ TEST_CASE_METHOD(ArchiveStart,
         REQUIRE(printer.api.job_mock().started_prints().size() == 2);
         CHECK(printer.api.job_mock().started_prints()[1] == kArchive);
     }
+}
+
+namespace {
+
+/// Plate @p plate's G-code entry in the fixture archive @p name.
+helix::zip::ZipEntry plate_entry(const char* name, int plate) {
+    const std::string zip = disk_bytes(fixture_dir() + name);
+    std::vector<helix::zip::ZipEntry> entries;
+    helix::zip::ZipError err = helix::zip::ZipError::None;
+    REQUIRE(helix::zip::parse_central_directory(reinterpret_cast<const uint8_t*>(zip.data()),
+                                                zip.size(), zip.size(), entries, err));
+    const auto* e = helix::three_mf::find_archive_entry(
+        entries, "Metadata/plate_" + std::to_string(plate) + ".gcode");
+    REQUIRE(e);
+    return *e;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(ArchiveStart, "an archive's pre-print scan reads the G-code that will print",
+                 "[print_preparation][three_mf][scan]") {
+    plant("single_plate.gcode.3mf");
+    const FileVersion version{static_cast<uint64_t>(std::filesystem::file_size(planted->path())),
+                              1};
+    const std::string key = PrintPreparationManager::scan_key(kArchive, "");
+
+    SECTION("nothing named: no G-code to scan, as before") {
+        manager.scan_file_for_operations(kArchive, "", "", version);
+        drain_until_quiet();
+        REQUIRE(manager.get_scan_result().has_value());
+        CHECK_FALSE(manager.get_scan_result()->print_start.found);
+        CHECK(manager.printer_stop_check_for(key).state == PrinterStopCheck::State::NotRun);
+    }
+    SECTION("the shown plate, read out of the archive") {
+        manager.scan_file_for_operations(kArchive, "", "", version);
+        drain_until_quiet();
+        PrintPreparationManager::ArchiveScanSource source;
+        source.plate_gcode = plate_entry("single_plate.gcode.3mf", 9);
+        manager.set_archive_scan_source(kArchive, "", version, source);
+        drain_until_quiet();
+        REQUIRE(manager.get_scan_result().has_value());
+        // START_PRINT sits at line 312 of the plate's G-code.
+        CHECK(manager.get_scan_result()->print_start.found);
+        CHECK(manager.printer_stop_check_for(key).state != PrinterStopCheck::State::NotRun);
+    }
+    SECTION("the printer's conversion, read like any G-code") {
+        PlantedGcode output("Door_plate9.gcode", "", disk_bytes(fixture_dir() + "src/plate.gcode"));
+        manager.scan_file_for_operations(kArchive, "", "", version);
+        PrintPreparationManager::ArchiveScanSource source;
+        source.plate_gcode = plate_entry("single_plate.gcode.3mf", 9);
+        source.converted_output = "Door_plate9.gcode";
+        manager.set_archive_scan_source(kArchive, "", version, source);
+        drain_until_quiet();
+        REQUIRE(manager.get_scan_result().has_value());
+        CHECK(manager.get_scan_result()->print_start.found);
+    }
+}
+
+TEST_CASE("read_entry_head inflates just the start of a plate", "[three_mf][reader]") {
+    MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
+    ArchiveTransfers transfers{client, ""};
+    transfers.put("a.gcode.3mf", disk_bytes(fixture_dir() + "single_plate.gcode.3mf"));
+    const std::string plate = disk_bytes(fixture_dir() + "src/plate.gcode");
+    const auto entry = plate_entry("single_plate.gcode.3mf", 9);
+    for (size_t n : {size_t{1000}, size_t{1} << 20}) {
+        std::string got;
+        helix::three_mf::ThreeMfReader::read_entry_head(
+            transfers, "a.gcode.3mf", entry, n, [&got](const std::string& b) { got = b; },
+            [](const std::string&) {});
+        CHECK(got == plate.substr(0, n));
+    }
+    CHECK(transfers.ranges == 2);
 }

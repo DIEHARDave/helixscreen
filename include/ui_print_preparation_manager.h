@@ -20,6 +20,7 @@
 #include "printer_state.h"
 #include "thermal_rate_model.h"
 #include "versioned_lru.h"
+#include "zip_reader.h"
 
 #include <functional>
 #include <lvgl.h>
@@ -473,6 +474,29 @@ class PrintPreparationManager {
     void set_archive_plate(const std::string& file_path, int plate,
                            const std::string& converted_output = {});
 
+    /// What prints for an archive, so its scan reads that G-code: the
+    /// printer's conversion of the shown plate, or the plate's own entry.
+    struct ArchiveScanSource {
+        zip::ZipEntry plate_gcode;    ///< the plate's G-code entry in the archive
+        std::string converted_output; ///< the printer's conversion, which prints instead
+        bool operator==(const ArchiveScanSource& o) const {
+            return plate_gcode.name == o.plate_gcode.name &&
+                   plate_gcode.lh_offset == o.plate_gcode.lh_offset &&
+                   converted_output == o.converted_output;
+        }
+    };
+
+    /**
+     * @brief Name what the archive @p filename prints, for its operations scan.
+     *
+     * The scan of a .3mf reads that G-code's head, so the pre-print toggles
+     * act on the plate that prints. A changed source drops the kept scan and,
+     * for the file the detail view shows, scans again. nullopt: nothing to
+     * scan (a .3mf the printer reads itself), as before.
+     */
+    void set_archive_scan_source(const std::string& filename, const std::string& current_path,
+                                 FileVersion version, std::optional<ArchiveScanSource> source);
+
     /// Reprint plate @p plate of the archive @p file_path as Print would:
     /// extracted, staged and started, the plate named for every later start
     /// of the archive too. @p on_completion reports how it ended.
@@ -746,7 +770,9 @@ class PrintPreparationManager {
     /// set_archive_plate(): the .3mf that prints as an extracted plate, and the plate.
     std::string archive_path_;
     int archive_plate_ = 0;
-    std::string archive_output_;   ///< the printer's own conversion, which prints instead
+    std::string archive_output_; ///< the printer's own conversion, which prints instead
+    /// set_archive_scan_source(), by scan_key().
+    std::map<std::string, ArchiveScanSource> archive_scan_sources_;
     bool skip_reset_sent_ = false; ///< One reset per pending skip, until it reads clear
     void reset_pending_skips();
 

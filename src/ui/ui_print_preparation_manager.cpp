@@ -652,8 +652,10 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         return;
     }
 
-    if (helix::gcode::is_3mf(filename)) {
-        // An empty result, not none: a .3mf holds no operations to strip.
+    const auto archive = archive_scan_sources_.find(key);
+    if (helix::gcode::is_3mf(filename) && archive == archive_scan_sources_.end()) {
+        // An empty result, not none: a .3mf with nothing named to print holds
+        // no operations to strip.
         keep_scan(key, filename, version, gcode::ScanResult{},
                   printer_stop_not_run("a .3mf project holds no G-code to scan"));
         return;
@@ -735,9 +737,49 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         return;
     }
 
+    if (archive != archive_scan_sources_.end()) {
+        // What prints for the archive: the printer's conversion, read like any
+        // G-code, or the plate's own entry, inflated out of the archive.
+        const ArchiveScanSource& source = archive->second;
+        if (!source.converted_output.empty()) {
+            api_->transfers().download_file_partial(
+                "gcodes", source.converted_output, helix::PRINTER_STOP_SCAN_BYTES, on_content,
+                [on_failure](const MoonrakerError& error) { on_failure(error.message); });
+        } else {
+            three_mf::ThreeMfReader::read_entry_head(
+                api_->transfers(), file_path, source.plate_gcode, helix::PRINTER_STOP_SCAN_BYTES,
+                on_content, on_failure);
+        }
+        return;
+    }
+
     api_->transfers().download_file_partial(
         "gcodes", file_path, helix::PRINTER_STOP_SCAN_BYTES, on_content,
         [on_failure](const MoonrakerError& error) { on_failure(error.message); });
+}
+
+void PrintPreparationManager::set_archive_scan_source(const std::string& filename,
+                                                      const std::string& current_path,
+                                                      FileVersion version,
+                                                      std::optional<ArchiveScanSource> source) {
+    const std::string key = scan_key(filename, current_path);
+    const auto it = archive_scan_sources_.find(key);
+    const bool had = it != archive_scan_sources_.end();
+    if ((!had && !source) || (had && source && it->second == *source)) {
+        return;
+    }
+    if (source) {
+        archive_scan_sources_[key] = std::move(*source);
+    } else {
+        archive_scan_sources_.erase(key);
+    }
+    // The kept answer was for other G-code: its line numbers describe nothing
+    // that prints now.
+    kept_scans_.erase(key);
+    scans_in_flight_.erase(key);
+    if (key == current_scan_key_) {
+        request_scan(filename, current_path, "", version);
+    }
 }
 
 void PrintPreparationManager::keep_scan(const std::string& key, const std::string& filename,

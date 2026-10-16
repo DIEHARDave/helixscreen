@@ -89,6 +89,7 @@ void read_plates(const std::shared_ptr<SummaryJob>& job) {
     for (const auto& p : sliced_plates(job->entries)) {
         PlateSummary plate;
         plate.index = p.index;
+        plate.gcode = *p.gcode;
         if (p.thumb) {
             plate.thumb = *p.thumb;
         }
@@ -470,6 +471,42 @@ void ThreeMfReader::read_entry(ITransfersAPI& transfers, const std::string& path
         },
         [path, on_error](const MoonrakerError& error) { on_error(path + ": " + error.message); },
         std::move(cancelled));
+}
+
+void ThreeMfReader::read_entry_head(ITransfersAPI& transfers, const std::string& path,
+                                    const zip::ZipEntry& entry, size_t max_bytes,
+                                    BytesCallback on_done, ErrorCallback on_error) {
+    // Deflate rarely shrinks G-code below its own length per byte read, so
+    // max_bytes of the compressed stream inflate to at least max_bytes.
+    const uint64_t take = std::min<uint64_t>(entry.csize, max_bytes);
+    const uint64_t span =
+        zip::ZIP_LOCAL_HEADER_BYTES + entry.name.size() + zip::ZIP_LOCAL_EXTRA_SLACK + take;
+    transfers.download_file_range(
+        ROOT, path, entry.lh_offset, static_cast<size_t>(span),
+        [path, entry, max_bytes, take, on_done, on_error](const std::string& bytes) {
+            const auto data = zip::entry_data_offset(bytes_of(bytes), bytes.size(), entry);
+            if (!data) {
+                on_error(error_text(path + "/" + entry.name, zip::ZipError::BadLocalHeader));
+                return;
+            }
+            const size_t start = static_cast<size_t>(*data - entry.lh_offset);
+            const size_t have =
+                start < bytes.size() ? std::min<size_t>(bytes.size() - start, take) : 0;
+            std::string out;
+            auto sink = [&out, max_bytes](const uint8_t* p, size_t n) {
+                out.append(reinterpret_cast<const char*>(p), std::min(n, max_bytes - out.size()));
+                return out.size() < max_bytes;
+            };
+            zip::ZipEntryInflater<RawInflate> inflater(entry);
+            inflater.feed(bytes_of(bytes) + start, have, sink);
+            // Stopping at max_bytes is the point; anything else is a failure.
+            if (out.empty() && inflater.error() != zip::ZipError::None) {
+                on_error(error_text(path + "/" + entry.name, inflater.error()));
+                return;
+            }
+            on_done(out);
+        },
+        [path, on_error](const MoonrakerError& error) { on_error(path + ": " + error.message); });
 }
 
 zip::ZipError ThreeMfReader::extract_plate(const std::string& local_zip, int plate,

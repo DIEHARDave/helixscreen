@@ -28,6 +28,7 @@ struct PlateSummary {
     int index = 0;
     bool has_info = false; ///< slice_info.config carried a block for this plate
     SliceInfo info;
+    std::optional<zip::ZipEntry> gcode;       ///< Metadata/plate_<N>.gcode
     std::optional<zip::ZipEntry> thumb;       ///< Metadata/plate_<N>.png
     std::optional<zip::ZipEntry> thumb_small; ///< Metadata/plate_<N>_small.png
 };
@@ -100,6 +101,16 @@ class ThreeMfReader {
     static void read_entry(ITransfersAPI& transfers, const std::string& path,
                            const zip::ZipEntry& entry, BytesCallback on_done,
                            ErrorCallback on_error, ITransfersAPI::CancelFlag cancelled = nullptr);
+
+    /**
+     * @brief The first @p max_bytes of @p entry, inflated, read with one range.
+     *
+     * What a preamble scan of a plate's G-code reads without fetching the
+     * whole archive. Fewer bytes when the entry is shorter; never more.
+     */
+    static void read_entry_head(ITransfersAPI& transfers, const std::string& path,
+                                const zip::ZipEntry& entry, size_t max_bytes, BytesCallback on_done,
+                                ErrorCallback on_error);
 
     /**
      * @brief Writes plate @p plate's G-code from the local archive @p local_zip to @p local_gcode.

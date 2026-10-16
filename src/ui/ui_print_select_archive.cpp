@@ -218,4 +218,32 @@ void PrintSelectPanel::update_plate_stepper() {
     }
     lv_subject_copy_string(&selected_plate_text_subject_, text.c_str());
     lv_subject_set_int(&selected_plate_count_subject_, count);
+    sync_archive_scan_source();
+}
+
+void PrintSelectPanel::sync_archive_scan_source() {
+    auto* prep = print_preparation_manager();
+    const auto it = std::find_if(file_list_.begin(), file_list_.end(), [this](const auto& f) {
+        return !f.is_dir && f.filename == selected_filename_buffer_;
+    });
+    if (!prep || it == file_list_.end() || !helix::gcode::is_3mf(it->filename)) {
+        return;
+    }
+    // A .3mf the printer extracts nothing for prints the shown plate as
+    // G-code: that is what the pre-print scan reads.
+    std::optional<ui::PrintPreparationManager::ArchiveScanSource> source;
+    const auto* plate = it->archive && it->archive_extract
+                            ? three_mf::find_plate(*it->archive, it->archive_plate)
+                            : nullptr;
+    if (plate && plate->gcode) {
+        source.emplace();
+        source->plate_gcode = *plate->gcode;
+        if (const auto out = it->archive_outputs.find(plate->index);
+            out != it->archive_outputs.end()) {
+            source->converted_output = out->second;
+        }
+    }
+    prep->set_archive_scan_source(it->filename, current_path_,
+                                  FileVersion{it->file_size_bytes, it->modified_timestamp},
+                                  std::move(source));
 }
