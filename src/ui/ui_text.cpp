@@ -583,10 +583,17 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
 
 namespace {
 
-void apply_line_cap(lv_obj_t* label, int32_t lines) {
-    // A held label that has since left DOTS keeps whatever height its owner
-    // gives it.
-    if (lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
+// The hook's user data: the line count, and whether the hold applies in any
+// long mode.
+void* pack_line_hold(int32_t lines, LineHold when) {
+    return reinterpret_cast<void*>(static_cast<intptr_t>(lines) * 2 +
+                                   (when == LineHold::AnyMode ? 1 : 0));
+}
+
+void apply_line_cap(lv_obj_t* label, int32_t lines, LineHold when) {
+    // A dotted-only hold on a label that has since left DOTS keeps whatever
+    // height its owner gives it.
+    if (when == LineHold::Dotted && lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
         return;
     }
     const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
@@ -612,25 +619,33 @@ void apply_line_cap(lv_obj_t* label, int32_t lines) {
 }
 
 void line_cap_style_changed_cb(lv_event_t* e) {
+    const auto packed = reinterpret_cast<intptr_t>(lv_event_get_user_data(e));
     apply_line_cap(static_cast<lv_obj_t*>(lv_event_get_current_target(e)),
-                   static_cast<int32_t>(reinterpret_cast<intptr_t>(lv_event_get_user_data(e))));
+                   static_cast<int32_t>(packed / 2),
+                   (packed % 2) != 0 ? LineHold::AnyMode : LineHold::Dotted);
 }
 
 } // namespace
 
-void label_hold_lines(lv_obj_t* label, int32_t lines) {
+void label_hold_lines(lv_obj_t* label, int32_t lines, LineHold when) {
     if (!label || lines < 1) {
         return;
     }
     // One hook per label however often it is held.
     lv_obj_remove_event_cb(label, line_cap_style_changed_cb);
     lv_obj_add_event_cb(label, line_cap_style_changed_cb, LV_EVENT_STYLE_CHANGED,
-                        reinterpret_cast<void*>(static_cast<intptr_t>(lines)));
-    apply_line_cap(label, lines);
+                        pack_line_hold(lines, when));
+    apply_line_cap(label, lines, when);
 }
 
-void label_hold_one_line(lv_obj_t* label) {
-    label_hold_lines(label, 1);
+void label_hold_one_line(lv_obj_t* label, LineHold when) {
+    label_hold_lines(label, 1, when);
+}
+
+void label_release_lines(lv_obj_t* label) {
+    if (label) {
+        lv_obj_remove_event_cb(label, line_cap_style_changed_cb);
+    }
 }
 
 void label_hold_lines_if_dotted(lv_obj_t* label, int32_t lines) {

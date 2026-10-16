@@ -503,9 +503,9 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                 std::string error_reason = "Failed to query printer objects from Moonraker";
                 if (response.contains("error") && response["error"].contains("message") &&
                     response["error"]["message"].is_string()) {
-                    error_reason = response["error"]["message"].get<std::string>();
-                    spdlog::error("[Moonraker Client] printer.objects.list failed: {}",
-                                  error_reason);
+                    const auto raw_reason = response["error"]["message"].get<std::string>();
+                    spdlog::error("[Moonraker Client] printer.objects.list failed: {}", raw_reason);
+                    error_reason = MoonrakerError::extract_friendly_message(raw_reason);
                 } else {
                     spdlog::error(
                         "[Moonraker Client] printer.objects.list failed: invalid response");

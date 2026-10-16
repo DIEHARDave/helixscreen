@@ -1543,6 +1543,23 @@ Once updated, the community format is fully supported — display, loading, unlo
 
 > **If your firmware installed HelixScreen for you**, its installer may pin an older version than the one that added this support. Updating HelixScreen through Fluidd or Mainsail (rather than reinstalling the firmware) picks up the newer release.
 
+### OrcaSlicer doesn't pick up your slot colors or materials
+
+**Symptoms:**
+- Slots show the right color and material in HelixScreen, but OrcaSlicer's filament panel stays on its defaults
+- OrcaSlicer can upload and start prints on the printer, so the connection itself looks fine
+
+**Causes and fixes:**
+
+1. **OrcaSlicer 2.4 with a blank API key.** OrcaSlicer 2.4 (reported on 2.4.2) sends a placeholder API key when the field is empty. A Moonraker that relies on `trusted_clients` rejects it with `401 Invalid API Key`, and the filament sync fails without saying so. Either upgrade to OrcaSlicer 2.5, which sends no key when the field is empty, or put your real Moonraker API key in OrcaSlicer's printer connection settings. Run this from a machine Moonraker already trusts to print the key:
+   ```bash
+   curl -s http://<printer-ip>:7125/access/api_key
+   ```
+2. **OrcaSlicer older than 2.3.2.** Older releases don't read slot info from the printer at all. Upgrade.
+3. **The slot has no spool info yet.** OrcaSlicer only gets what HelixScreen has. Set the material and color under the slot's **Spool Info** first.
+
+A material OrcaSlicer has no preset for comes across with its color and temperatures but no preset selected. That's expected; see [Syncing with OrcaSlicer](guide/filament.md#syncing-with-orcaslicer-232-and-later).
+
 ### Load/Unload fails
 
 **Symptoms:**

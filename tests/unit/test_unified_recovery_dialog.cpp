@@ -741,6 +741,35 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Recovery dialog - embedded JSON state_messa
     REQUIRE(code == "key9001");
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture, "Recovery dialog - U1 coded shutdown shows msg and footer",
+                 "[recovery][state_message][json][firmware_error_envelope]") {
+    auto& estop = EmergencyStopOverlay::instance();
+    auto& ps = get_printer_state();
+    estop.init(ps, nullptr);
+
+    ps.network_state().set_klippy_state_message(
+        R"({"coded": "0003-0522-0002-0008", "oneshot": 0, "msg":"Lost communication with MCU 'e0'"})"
+        "\nOnce the underlying issue is corrected, use the\n"
+        "\"FIRMWARE_RESTART\" command to reset the firmware, reload the\n"
+        "config, and restart the host software.\n"
+        "Printer is shutdown\n");
+
+    estop.show_recovery_for(RecoveryReason::SHUTDOWN);
+    process_lvgl(100);
+
+    lv_obj_t* dialog = lv_obj_find_by_name(lv_screen_active(), "klipper_recovery_card");
+    REQUIRE(dialog != nullptr);
+
+    std::string code;
+    std::string displayed = recovery_texts(dialog, code);
+
+    REQUIRE(displayed.rfind("Lost communication with MCU 'e0'", 0) == 0);
+    REQUIRE(displayed.find("FIRMWARE_RESTART") != std::string::npos);
+    REQUIRE(displayed.find("{") == std::string::npos);
+    REQUIRE(displayed.find("coded") == std::string::npos);
+    REQUIRE(code == "0003-0522-0002-0008");
+}
+
 TEST_CASE_METHOD(LVGLUITestFixture, "Recovery dialog - known CFS code gets curated text",
                  "[recovery][state_message][json]") {
     auto& estop = EmergencyStopOverlay::instance();

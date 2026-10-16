@@ -114,6 +114,7 @@
                  stacked_if_eq="1" long_mode="dots" icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
+        <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_sidebar_supports_batch" flag="hidden" ref_value="0"/>
         <bind_state_if_eq subject="ams_sidebar_load_disabled" state="disabled" ref_value="1"/>
@@ -137,6 +138,7 @@
                  stacked_if_eq="1" long_mode="dots" icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
+        <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if cond="ams_is_filament_system eq 0 or ams_sidebar_supports_batch eq 1" flag="hidden"/>
         <bind_state_if_eq subject="ams_sidebar_unload_disabled" state="disabled" ref_value="1"/>
@@ -147,6 +149,7 @@
                  stacked_if_eq="1" long_mode="dots" icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
+        <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_sidebar_supports_batch" flag="hidden" ref_value="0"/>
         <bind_state_if_eq subject="ams_sidebar_unload_disabled" state="disabled" ref_value="1"/>
@@ -163,6 +166,7 @@
                  long_mode="dots" icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
+        <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_is_tool_changer" flag="hidden" ref_value="1"/>
         <bind_state_if_eq subject="ams_sidebar_reset_disabled" state="disabled" ref_value="1"/>
@@ -178,6 +182,7 @@
                  icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
+        <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_state_if_eq subject="ams_sidebar_check_gates_disabled" state="disabled" ref_value="1"/>
         <event_cb trigger="clicked" callback="ams_sidebar_check_gates_clicked"/>
@@ -188,6 +193,7 @@
                  long_mode="dots" icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
+        <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <event_cb trigger="clicked" callback="ams_sidebar_settings_clicked"/>
       </ui_button>

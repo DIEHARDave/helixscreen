@@ -14,6 +14,7 @@
 #include "ui_update_queue.h"
 
 #include "data_root_resolver.h"
+#include "firmware_error_envelope.h"
 #include "format_utils.h"
 #include "json_utils.h"
 #include "plr_backend.h"
@@ -589,12 +590,14 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
         // (e.g. "Filament Sensor filament_sensor: Runout Detected"). Subscribed-field
         // updates may send null when the field is absent on the Klipper side.
         if (auto msg_it = stats.find("message"); msg_it != stats.end()) {
-            const char* new_msg = "";
-            if (msg_it->is_string()) {
-                new_msg = msg_it->get_ref<const std::string&>().c_str();
-            }
-            if (strcmp(lv_subject_get_string(&print_message_), new_msg) != 0) {
-                lv_subject_copy_string(&print_message_, new_msg);
+            // A print error can carry a firmware JSON envelope; every consumer
+            // shows or substring-matches the message, so decode it once here.
+            const std::string new_msg =
+                msg_it->is_string()
+                    ? decode_firmware_error_text(msg_it->get_ref<const std::string&>())
+                    : std::string();
+            if (new_msg != lv_subject_get_string(&print_message_)) {
+                lv_subject_copy_string(&print_message_, new_msg.c_str());
             }
         }
 
@@ -620,7 +623,8 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                 }
                 if (auto emsg_it = exc.find("message");
                     emsg_it != exc.end() && emsg_it->is_string()) {
-                    print_exception_message_ = emsg_it->get<std::string>();
+                    print_exception_message_ =
+                        decode_firmware_error_text(emsg_it->get<std::string>());
                 } else {
                     print_exception_message_.clear();
                 }

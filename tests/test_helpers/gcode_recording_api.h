@@ -13,7 +13,10 @@
 namespace helix::test {
 
 /// Records every gcode a backend sends through IMoonrakerAPI and answers it
-/// synchronously: success, or Klipper's error for a command named in `fail`.
+/// synchronously: success, Klipper's error for a command named in `fail`, or a
+/// request timeout for one named in `time_out`. With `hold_acks` set, a success
+/// waits in `held_acks` until ack_held() sends it, the way a blocking macro's
+/// answer arrives only when the macro finishes.
 class GcodeRecordingApi : public MoonrakerAPIMock {
   public:
     using MoonrakerAPIMock::MoonrakerAPIMock;
@@ -33,8 +36,32 @@ class GcodeRecordingApi : public MoonrakerAPIMock {
             }
             return;
         }
+        if (time_out.count(gcode) != 0) {
+            if (on_error) {
+                MoonrakerError err;
+                err.type = MoonrakerErrorType::TIMEOUT;
+                err.message = "Request timed out: " + gcode;
+                on_error(err);
+            }
+            return;
+        }
+        if (hold_acks) {
+            held_acks.push_back(std::move(on_success));
+            return;
+        }
         if (on_success) {
             on_success();
+        }
+    }
+
+    /// Answer every held success, oldest first.
+    void ack_held() {
+        auto acks = std::move(held_acks);
+        held_acks.clear();
+        for (auto& ack : acks) {
+            if (ack) {
+                ack();
+            }
         }
     }
 
@@ -48,6 +75,9 @@ class GcodeRecordingApi : public MoonrakerAPIMock {
     }
 
     std::set<std::string> fail;
+    std::set<std::string> time_out;
+    bool hold_acks = false;
+    std::vector<SuccessCallback> held_acks;
     std::vector<std::string> sent;
 };
 

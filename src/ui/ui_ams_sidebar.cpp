@@ -1243,8 +1243,11 @@ void AmsOperationSidebar::update_step_progress(AmsAction action) {
         filament_loaded = (info->current_slot >= 0);
     }
 
-    auto detection = detect_step_operation(action, prev_ams_action_, current_operation_type_,
-                                           is_external, filament_loaded, is_active_action);
+    const bool unloads_stand_alone = backend && backend->unloads_stand_alone();
+
+    auto detection =
+        detect_step_operation(action, prev_ams_action_, current_operation_type_, is_external,
+                              filament_loaded, is_active_action, unloads_stand_alone);
     if (detection.should_recreate) {
         StepOperationType new_op = detection.op_type;
         if (new_op == StepOperationType::LOAD_SWAP &&

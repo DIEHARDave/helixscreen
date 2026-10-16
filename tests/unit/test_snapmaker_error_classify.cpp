@@ -112,6 +112,25 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the router surfaces our wording for a coded
     get_printer_state().set_hardware(PrinterDiscovery{});
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture, "the router decodes an unknown coded fault's envelope",
+                 "[snapmaker][classify][firmware_error_envelope]") {
+    // An unknown code keeps the firmware's text, which on this firmware is a
+    // JSON envelope; the user must get its msg, not the raw object.
+    PrinterDiscovery hw = coded_firmware();
+    get_printer_state().set_hardware(std::move(hw));
+
+    helix::ui::RecoveryModalPresenter presenter(nullptr);
+    helix::GcodeErrorRouter router(nullptr, nullptr, presenter);
+    REQUIRE_NOTHROW(GcodeErrorRouterTestAccess::process_line(
+        router,
+        R"(!! {"coded": "0002-0999-0000-0007", "oneshot": 0, "msg":"no wording for this"})"));
+    helix::ui::UpdateQueue::instance().drain();
+
+    REQUIRE(fault_surface_correlation::was_recently_surfaced("no wording for this"));
+
+    get_printer_state().set_hardware(PrinterDiscovery{});
+}
+
 // ============================================================================
 // Translation: the fault table holds the English source; the wording becomes
 // user-facing at the detail/message assignment, which is where lv_tr() lives.

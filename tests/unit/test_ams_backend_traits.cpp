@@ -110,6 +110,7 @@ TEST_CASE("A backend that sets no traits answers the base defaults", "[ams][trai
     CHECK_FALSE(t.supports_auto_heat_on_load);
     CHECK_FALSE(t.supports_auto_heat_on_unload);
     CHECK_FALSE(t.holds_optimistic_action);
+    CHECK_FALSE(t.unloads_stand_alone);
     CHECK_FALSE(t.has_per_slot_loaded_authority);
 }
 
@@ -127,7 +128,12 @@ TEST_CASE("Real kTraits keep the answers the UI branches on", "[ams][traits]") {
     // Only a backend silent until its firmware starts holds the UI's action.
     CHECK(AmsBackendHappyHare::kTraits.holds_optimistic_action);
     CHECK_FALSE(AmsBackendAfc::kTraits.holds_optimistic_action);
-    CHECK_FALSE(AmsBackendSnapmaker::kTraits.holds_optimistic_action);
+    CHECK(AmsBackendSnapmaker::kTraits.holds_optimistic_action);
+    // A tool changer's dock is the first half of a swap; a U1 unload is whole.
+    CHECK(AmsBackendSnapmaker::kTraits.unloads_stand_alone);
+    CHECK_FALSE(AmsBackendToolChanger::kTraits.unloads_stand_alone);
+    CHECK_FALSE(AmsBackendHappyHare::kTraits.unloads_stand_alone);
+    CHECK_FALSE(AmsBackendAfc::kTraits.unloads_stand_alone);
 }
 
 TEST_CASE("The mock leaves spool persistence to ToolState in every persona",

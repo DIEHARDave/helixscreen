@@ -347,7 +347,7 @@ M109 T[initial_tool] S{first_layer_temperature[initial_tool]}
 
 Keep the `M109` for the first tool last. It sets that tool from its idle temperature up to printing temperature and waits, so it has to come after the idle lines. `INITIAL_TOOL=` and `TOOL=` are fine to keep if your macro uses them: the rewrite moves them along with everything else. OrcaSlicer adds a `T[initial_tool]` line right after the start G-code, and that line is remapped too.
 
-### Syncing with OrcaSlicer (2.3.2 and later, including 2.4.0)
+### Syncing with OrcaSlicer (2.3.2 and later)
 
 When you edit spool info in HelixScreen — on any supported filament system (AD5X IFS, Snapmaker U1, ACE, CFS) — that information is saved to your printer in the standard location OrcaSlicer 2.3.2 and later reads automatically. Open OrcaSlicer after editing and your slot's vendor, material, color, and temperatures show up in the filament panel with no extra setup.
 
@@ -360,6 +360,10 @@ Either way, your printer's filament info and OrcaSlicer stay in sync. The sync i
 > **Tip:** For an unusual material OrcaSlicer doesn't recognize at all, the slot may sync with its color and temperatures but no material selected, rather than a wrong guess. Just pick the filament yourself in OrcaSlicer that one time — your printer keeps showing the precise name.
 
 > **Requirements:** OrcaSlicer 2.3.2 or newer, connected to the same printer's Moonraker. Nothing to enable on the HelixScreen side — it's automatic.
+
+> **OrcaSlicer 2.5:** sync works the same way, with nothing to change. 2.5 also re-reads the slots when you switch OrcaSlicer to a different printer, so each printer's filaments show up without a manual sync.
+
+> **Nothing comes across on OrcaSlicer 2.4?** If your Moonraker connection in OrcaSlicer has no API key, 2.4 sends a placeholder key that Moonraker rejects, so the sync silently fails. See [Troubleshooting](../TROUBLESHOOTING.md#orcaslicer-doesnt-pick-up-your-slot-colors-or-materials).
 
 ### AMS Management (Settings Overlay)
 

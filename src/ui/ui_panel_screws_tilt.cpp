@@ -14,6 +14,7 @@
 #include "i18n_plural.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
+#include "moonraker_error.h"
 #include "printer_state.h"
 #include "screws_tilt_dialect.h"
 #include "static_panel_registry.h"
@@ -258,45 +259,6 @@ void ScrewsTiltPanel::set_state(State new_state) {
 }
 
 // ============================================================================
-// ERROR MESSAGE SANITIZATION
-// ============================================================================
-
-static std::string sanitize_error_message(const std::string& raw) {
-    std::string msg = raw;
-
-    // Strip Klipper emergency/error prefixes
-    if (msg.rfind("!! ", 0) == 0)
-        msg = msg.substr(3);
-    if (msg.rfind("Error:", 0) == 0)
-        msg = msg.substr(6);
-    if (msg.rfind("error:", 0) == 0)
-        msg = msg.substr(6);
-
-    // Trim leading whitespace
-    auto start = msg.find_first_not_of(" \t");
-    if (start != std::string::npos && start > 0)
-        msg = msg.substr(start);
-
-    // Strip JSON-looking content (e.g. {"message": "Must home axis..."} → extract message)
-    if (!msg.empty() && msg.front() == '{') {
-        auto mpos = msg.find("\"message\"");
-        if (mpos != std::string::npos) {
-            auto colon = msg.find(':', mpos + 9);
-            if (colon != std::string::npos) {
-                auto qstart = msg.find('"', colon + 1);
-                auto qend =
-                    (qstart != std::string::npos) ? msg.find('"', qstart + 1) : std::string::npos;
-                if (qstart != std::string::npos && qend != std::string::npos) {
-                    msg = msg.substr(qstart + 1, qend - qstart - 1);
-                }
-            }
-        }
-    }
-
-    return msg;
-}
-
-// ============================================================================
 // COMMAND HELPERS
 // ============================================================================
 
@@ -413,7 +375,7 @@ void ScrewsTiltPanel::on_screws_tilt_results(const std::vector<ScrewTiltResult>&
 void ScrewsTiltPanel::on_screws_tilt_error(const std::string& message) {
     spdlog::error("[ScrewsTilt] Error: {}", message);
 
-    std::string clean = sanitize_error_message(message);
+    std::string clean = MoonrakerError::friendly_error_line(message);
     // The XML label binds to this subject and carries no static text, so an
     // empty string would render a blank body under "Probing Failed". Klipper can
     // hand us a message that sanitizes away to nothing, and a stale message from

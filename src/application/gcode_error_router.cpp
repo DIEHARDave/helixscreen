@@ -524,6 +524,17 @@ void GcodeErrorRouter::process_line(const std::string& line, bool firmware_repor
     if (!ev)
         return;
 
+    // Every classifier's detail reaches the user, and a backend or an unknown
+    // fault code passes the firmware's text through verbatim, so an envelope in
+    // it is decoded once here. raw_detail keeps the firmware's wording for the
+    // cross-channel dedup.
+    if (std::string decoded = decode_firmware_error_text(ev->detail); decoded != ev->detail) {
+        if (ev->raw_detail.empty()) {
+            ev->raw_detail = ev->detail;
+        }
+        ev->detail = std::move(decoded);
+    }
+
     // A fault the firmware itself reported -- standing in its list, or pushed
     // as a raise -- is current by definition: the INFO suppression exists for
     // chatty console lines, so such a fault surfaces at least as a toast.

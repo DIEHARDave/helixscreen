@@ -332,6 +332,34 @@ TEST_CASE("PrinterState: Update print state and filename", "[state][progress]") 
     REQUIRE(std::string(filename) == "benchy.gcode");
 }
 
+TEST_CASE("PrinterState: print_stats messages decode a firmware error envelope",
+          "[state][pause][firmware_error_envelope]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(false);
+
+    json status = {
+        {"print_stats",
+         {{"state", "error"},
+          {"message",
+           R"({"coded": "0003-0522-0002-0008", "msg":"Lost communication with MCU 'e0'"})"},
+          {"exception",
+           {{"id", 522},
+            {"code", 8},
+            {"message", R"(Halted: {"code":"key9001","msg":"MCU shutdown"})"}}}}}};
+    state.update_from_status(status);
+
+    REQUIRE(std::string(lv_subject_get_string(state.print_state().get_print_message_subject())) ==
+            "Lost communication with MCU 'e0'");
+    REQUIRE(state.print_state().get_print_exception_message() == "Halted: MCU shutdown");
+
+    // Plain prose is untouched.
+    state.update_from_status(json{{"print_stats", {{"message", "Runout Detected"}}}});
+    REQUIRE(std::string(lv_subject_get_string(state.print_state().get_print_message_subject())) ==
+            "Runout Detected");
+}
+
 TEST_CASE("PrinterState: parses print_stats.exception structured object",
           "[state][progress][pause]") {
     lv_init_safe();
