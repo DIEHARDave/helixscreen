@@ -32,7 +32,7 @@ export async function importPrivateKey(pem: string): Promise<CryptoKey> {
   const binaryDer = Uint8Array.from(atob(pemBody), (c) => c.charCodeAt(0));
   const isPkcs8 = pem.includes("BEGIN PRIVATE KEY");
 
-  // GitHub App keys are PKCS#1 — need to wrap in PKCS#8 for Web Crypto
+  // GitHub App keys are PKCS#1, which Web Crypto imports only wrapped in PKCS#8
   const keyData = isPkcs8 ? binaryDer : wrapPkcs1InPkcs8(binaryDer);
 
   return crypto.subtle.importKey(
