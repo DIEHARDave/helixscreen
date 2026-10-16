@@ -166,6 +166,24 @@ bool parse_central_directory(const uint8_t* tail, size_t n, uint64_t file_size,
     return true;
 }
 
+std::optional<uint64_t> archive_size_from_tail(const uint8_t* tail, size_t n) {
+    const std::optional<size_t> eocd = find_eocd(tail, n);
+    if (!eocd) {
+        return std::nullopt;
+    }
+    const uint32_t cd_size = le32(tail + *eocd + 12);
+    const uint32_t cd_offset = le32(tail + *eocd + 16);
+    if (cd_size == 0xFFFFFFFFu || cd_offset == 0xFFFFFFFFu) {
+        return std::nullopt;
+    }
+    // The end record follows the central directory directly.
+    const uint64_t size = uint64_t{cd_offset} + cd_size + (n - *eocd);
+    if (size < n) {
+        return std::nullopt;
+    }
+    return size;
+}
+
 uint64_t entry_read_span(const ZipEntry& entry) {
     return ZIP_LOCAL_HEADER_BYTES + entry.name.size() + ZIP_LOCAL_EXTRA_SLACK + entry.csize;
 }

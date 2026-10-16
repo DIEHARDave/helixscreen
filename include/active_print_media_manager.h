@@ -211,6 +211,9 @@ class ActivePrintMediaManager {
     ObserverGuard print_filename_observer_;
     ObserverGuard preparing_epoch_observer_;
     std::string last_effective_filename_;
+    /// The filename print_stats last reported, before identity resolution: a
+    /// plate extracted from a .3mf names its plate only there.
+    std::string last_raw_filename_;
     std::string last_loaded_thumbnail_filename_;
     bool last_was_empty_ = false; ///< Prevents repeated "empty filename" log spam
 

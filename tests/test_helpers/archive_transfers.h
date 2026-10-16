@@ -48,6 +48,19 @@ class ArchiveTransfers : public MoonrakerFileTransferAPIMock {
         on_success(out);
     }
 
+    void download_file_tail(const std::string& root, const std::string& path, size_t max_bytes,
+                            StringCallback on_success, ErrorCallback on_error) override {
+        auto it = files_.find(path);
+        if (it == files_.end()) {
+            MoonrakerFileTransferAPIMock::download_file_tail(
+                root, path, max_bytes, std::move(on_success), std::move(on_error));
+            return;
+        }
+        ++tails;
+        const std::string& f = it->second;
+        on_success(f.substr(f.size() - std::min(max_bytes, f.size())));
+    }
+
     void download_file_to_path(const std::string& root, const std::string& path,
                                const std::string& dest_path, StringCallback on_success,
                                ErrorCallback on_error, ProgressCallback on_progress) override {
@@ -67,6 +80,7 @@ class ArchiveTransfers : public MoonrakerFileTransferAPIMock {
     }
 
     int ranges = 0;
+    int tails = 0;
     size_t range_bytes = 0;
     int whole_downloads = 0;
     bool fail_ranges = false;

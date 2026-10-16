@@ -5,7 +5,6 @@
 
 #include "../test_helpers/print_select_panel_fixture.h"
 #include "../test_helpers/print_select_panel_test_access.h"
-#include "../test_helpers/scoped_cache_dir.h"
 #include "../test_helpers/scoped_env.h"
 #include "three_mf_reader.h"
 
@@ -55,8 +54,6 @@ struct ArchivePanel : PrintSelectGlobalStateReset, PrintSelectPanelFixture {
         REQUIRE(row != nullptr);
         return *row;
     }
-
-    test::ScopedCacheDir cache;
 };
 
 } // namespace

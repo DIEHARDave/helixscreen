@@ -123,6 +123,27 @@ void read_plates(const std::shared_ptr<SummaryJob>& job) {
         job->cancelled);
 }
 
+void parse_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_grow);
+
+// A tail read for an archive whose size is not known: a suffix range, sized
+// afterwards from the end record.
+void read_tail_unsized(const std::shared_ptr<SummaryJob>& job) {
+    job->transfers->download_file_tail(
+        ROOT, job->path, zip::ZIP_TAIL_READ_BYTES,
+        [job](const std::string& bytes) {
+            const auto size = zip::archive_size_from_tail(bytes_of(bytes), bytes.size());
+            if (!size) {
+                job->on_error(error_text(job->path, zip::ZipError::NotZip));
+                return;
+            }
+            job->size = *size;
+            job->tail = bytes;
+            job->tail_offset = *size - bytes.size();
+            parse_tail(job, bytes.size(), true);
+        },
+        [job](const MoonrakerError& error) { job->on_error(job->path + ": " + error.message); });
+}
+
 void read_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_grow) {
     job->tail_offset = job->size - len;
     job->transfers->download_file_range(
@@ -133,22 +154,26 @@ void read_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_gr
                 return;
             }
             job->tail = bytes;
-            zip::ZipError err = zip::ZipError::None;
-            uint64_t needed = 0;
-            if (!zip::parse_central_directory(bytes_of(job->tail), job->tail.size(), job->size,
-                                              job->entries, err, &needed)) {
-                if (err == zip::ZipError::Truncated && may_grow && needed > len &&
-                    needed <= MAX_CENTRAL_DIRECTORY_BYTES) {
-                    read_tail(job, needed, false);
-                    return;
-                }
-                job->on_error(error_text(job->path, err));
-                return;
-            }
-            read_plates(job);
+            parse_tail(job, len, may_grow);
         },
         [job](const MoonrakerError& error) { job->on_error(job->path + ": " + error.message); },
         job->cancelled);
+}
+
+void parse_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_grow) {
+    zip::ZipError err = zip::ZipError::None;
+    uint64_t needed = 0;
+    if (!zip::parse_central_directory(bytes_of(job->tail), job->tail.size(), job->size,
+                                      job->entries, err, &needed)) {
+        if (err == zip::ZipError::Truncated && may_grow && needed > len &&
+            needed <= MAX_CENTRAL_DIRECTORY_BYTES) {
+            read_tail(job, needed, false);
+            return;
+        }
+        job->on_error(error_text(job->path, err));
+        return;
+    }
+    read_plates(job);
 }
 
 #if !defined(HELIX_PLATFORM_ESP32)
@@ -355,10 +380,6 @@ void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double 
             return;
         }
     }
-    if (size == 0) {
-        on_error(error_text(path, zip::ZipError::NotZip));
-        return;
-    }
 
     auto job = std::make_shared<SummaryJob>();
     job->transfers = &transfers_;
@@ -368,12 +389,19 @@ void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double 
     job->on_error = std::move(on_error);
     job->cancelled = std::move(cancelled);
     job->remember = [cache = cache_, key](const ArchiveSummary& summary) {
+        if (std::get<1>(key) == 0) {
+            return; // an unsized read names no version of the file to keep it for
+        }
         std::lock_guard<std::mutex> lock(cache->mutex);
         if (cache->summaries.size() >= CACHE_ENTRIES) {
             cache->summaries.erase(cache->summaries.begin());
         }
         cache->summaries[key] = summary;
     };
+    if (size == 0) {
+        read_tail_unsized(job);
+        return;
+    }
     read_tail(job, std::min<uint64_t>(size, zip::ZIP_TAIL_READ_BYTES), true);
 }
 

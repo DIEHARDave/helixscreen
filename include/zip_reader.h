@@ -73,6 +73,11 @@ bool parse_central_directory(const uint8_t* tail, size_t n, uint64_t file_size,
                              std::vector<ZipEntry>& entries, ZipError& error,
                              uint64_t* needed = nullptr);
 
+/// The size of the archive whose last @p n bytes are @p tail, from where its
+/// end record says the central directory sits; for a tail read made without
+/// knowing the size. nullopt when the end record is missing or is ZIP64's.
+std::optional<uint64_t> archive_size_from_tail(const uint8_t* tail, size_t n);
+
 /// Bytes one ranged read takes to cover @p entry's local header and its data.
 uint64_t entry_read_span(const ZipEntry& entry);
 

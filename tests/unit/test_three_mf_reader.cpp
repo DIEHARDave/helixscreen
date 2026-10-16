@@ -194,6 +194,43 @@ TEST_CASE_METHOD(ReaderFixture, "a file that is not a zip, or that fails to read
     CHECK_FALSE(r.ok);
 }
 
+TEST_CASE_METHOD(ReaderFixture, "a summary without the size reads a suffix and keeps nothing",
+                 "[three_mf][reader]") {
+    for (const char* name : {"single_plate.gcode.3mf", "far_info.gcode.3mf", "wide_cd.gcode.3mf"}) {
+        CAPTURE(name);
+        transfers.put(name, fixture(name)); // listed with no size
+        Result r;
+        reader.read_summary(
+            name, 0, 0.0,
+            [&r](const ArchiveSummary& s) {
+                r.ok = true;
+                r.summary = s;
+            },
+            [&r](const std::string& e) { r.error = e; });
+        INFO(r.error);
+        REQUIRE(r.ok);
+        REQUIRE(r.summary.plates.size() == 1);
+        CHECK(r.summary.plates[0].index == 9);
+        CHECK(r.summary.plates[0].info.prediction_s == Catch::Approx(5238));
+    }
+    const int tails = transfers.tails;
+    reader.read_summary(
+        "single_plate.gcode.3mf", 0, 0.0, [](const ArchiveSummary&) {}, [](const std::string&) {});
+    CHECK(transfers.tails == tails + 1);
+}
+
+TEST_CASE("archive_size_from_tail recovers the size from the end record", "[three_mf][zip]") {
+    for (const char* name : {"single_plate.gcode.3mf", "commented.gcode.3mf"}) {
+        const std::string bytes = fixture(name);
+        const auto* p = reinterpret_cast<const uint8_t*>(bytes.data());
+        const size_t n = std::min<size_t>(bytes.size(), 4096);
+        CHECK(helix::zip::archive_size_from_tail(p + bytes.size() - n, n) == bytes.size());
+    }
+    const std::string text(1000, 'x');
+    CHECK_FALSE(helix::zip::archive_size_from_tail(reinterpret_cast<const uint8_t*>(text.data()),
+                                                   text.size()));
+}
+
 TEST_CASE_METHOD(ReaderFixture, "read_entry returns a stored thumbnail's bytes in one read",
                  "[three_mf][reader]") {
     const std::string zip = fixture("single_plate.gcode.3mf");
