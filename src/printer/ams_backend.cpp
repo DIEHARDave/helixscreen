@@ -458,11 +458,12 @@ AmsError AmsBackend::commit_user_edit(int slot_index, const SlotInfo& original,
 
     // An unlink that kept the slot's identity stops tracking the spool, not
     // what is loaded, so what the slot kept goes back on the lane at the rungs
-    // its stored record reloads it on. That record names no spool and, the
-    // binding having changed, declares nothing, so the record translation
-    // itself files the identity as Remembered and the catalog pick as the
-    // user's. An unlink that cleared the slot has nothing to file. Weights are
-    // not identity, and the drop leaves the meter's own record standing.
+    // its stored record reloads it on. That record names no spool and
+    // declares only the brand and spool name the unlink kept, so the record
+    // translation files those and the catalog pick as the user's and the rest
+    // of the identity as Remembered. An unlink that cleared the slot has
+    // nothing to file. Weights are not identity, and the drop leaves the
+    // meter's own record standing.
     if (binding_changed && info.spoolman_id <= 0) {
         const helix::ams::FilamentSlotOverride kept = helix::ams::user_override_from_slot_info(
             declaration, applied, applied.material, nullptr);

@@ -333,6 +333,17 @@ Observation user_edit_observation(const SlotInfo& original, const SlotInfo& edit
     // file them as the person's own declaration.
     if (edited.spoolman_id != original.spoolman_id) {
         obs.spoolman_id = edited.spoolman_id;
+        // Except what an unlink kept. Stopping tracking a spool while keeping
+        // its brand and name on the slot is a choice about what is loaded, so
+        // those are the person's word and no firmware frame stating nothing
+        // may retract them. Colour and material stay unclaimed: they are
+        // readings the machine can still correct.
+        if (original.spoolman_id > 0 && edited.spoolman_id <= 0) {
+            if (!edited.brand.empty())
+                obs.brand = edited.brand;
+            if (!edited.spool_name.empty())
+                obs.spool_name = edited.spool_name;
+        }
         return obs;
     }
 

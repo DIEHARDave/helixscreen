@@ -1010,10 +1010,11 @@ TEST_CASE("an unlink drops the colour the user picked for the unlinked spool",
     // The colour described the spool that was bound, and an unlink stops
     // saying which spool is loaded.
     CHECK_FALSE(sources.local_user->color_rgb.has_value());
-    // After an unlink that keeps the slot's identity, that identity is remembered, not declared.
+    // After an unlink that keeps the slot's identity, the brand it kept is the
+    // user's; the colour is remembered.
+    CHECK(sources.local_user->brand == kept_brand);
     REQUIRE(sources.remembered.has_value());
     CHECK(sources.remembered->color_rgb == 0xBCBCBCu);
-    CHECK(sources.remembered->brand == kept_brand);
     f.check_lane_matches_reload();
 }
 
@@ -1144,7 +1145,7 @@ TEST_CASE("a relink does not carry the previous spool's catalog pick onto the ne
           shown_identity(std::optional<helix::ams::Observation>{}));
 }
 
-TEST_CASE("an unlink that keeps the slot identity leaves it remembered and not declared",
+TEST_CASE("an unlink that keeps the slot identity declares the brand it kept",
           "[ams][commit][lane][spoolman][afc][1653]") {
     RememberedAfcLaneFixture f;
     f.firmware_links(make_spool(42, "eSUN", "Silk Blue", "PETG"));
@@ -1159,19 +1160,21 @@ TEST_CASE("an unlink that keeps the slot identity leaves it remembered and not d
     const auto sources = helix::ams::lane_sources(f.lane());
     REQUIRE(sources.local_user.has_value());
     CHECK(sources.local_user->spoolman_id == 0);
-    // The person stopped tracking the spool, which says nothing about what is
-    // loaded. What the slot kept is still shown, but as what we remember, so
-    // the next firmware frame may correct it.
+    // The person stopped tracking the spool and chose to keep calling it by
+    // its brand, so the brand is theirs: a firmware frame stating nothing
+    // cannot retract it. The colour and material the slot kept are machine
+    // readings as much as the spool's, so they stay what we remember and the
+    // next firmware frame may correct them.
     CHECK_FALSE(sources.local_user->color_rgb.has_value());
-    CHECK_FALSE(sources.local_user->brand.has_value());
+    CHECK(sources.local_user->brand == slot.brand);
     REQUIRE(sources.remembered.has_value());
     CHECK(sources.remembered->color_rgb == 0xBCBCBCu);
-    CHECK(sources.remembered->brand == slot.brand);
+    CHECK_FALSE(sources.remembered->brand.has_value());
 
     const helix::ams::FilamentSlotOverride stored = f.stored();
     CHECK_FALSE(helix::ams::declares_color(stored));
     CHECK_FALSE(helix::ams::declares_material(stored));
-    CHECK_FALSE(stored.declared.any());
+    CHECK(helix::ams::declared_field_names(stored.declared) == nlohmann::json::array({"brand"}));
     f.check_lane_matches_reload();
 }
 

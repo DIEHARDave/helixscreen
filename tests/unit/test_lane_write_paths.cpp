@@ -410,3 +410,40 @@ TEST_CASE("An edit that keeps the spool's identity keeps its name", "[lane][spoo
         CHECK(edited.spool_name == "Bench reel");
     }
 }
+
+// Keeping a slot's identity across an unlink is a choice the person made, so
+// the brand and name they kept are their statement. Linking states only the
+// binding: what rides in with a spool is the server's word.
+TEST_CASE("An unlink that keeps the identity declares the brand and name it kept",
+          "[lane][spool_name][spoolman]") {
+    SlotInfo linked;
+    linked.spoolman_id = 42;
+    linked.brand = "Polymaker";
+    linked.material = "PLA";
+    linked.spool_name = "PolyLite";
+
+    SECTION("an unlink that keeps both") {
+        SlotInfo kept = linked;
+        kept.spoolman_id = 0;
+        const Observation obs = helix::ams::user_edit_observation(linked, kept);
+        CHECK(obs.spoolman_id == 0);
+        CHECK(obs.brand == "Polymaker");
+        CHECK(obs.spool_name == "PolyLite");
+        CHECK_FALSE(obs.material.has_value());
+    }
+    SECTION("an unlink that dropped the name declares only the brand") {
+        SlotInfo kept = linked;
+        kept.clear_spoolman_link();
+        const Observation obs = helix::ams::user_edit_observation(linked, kept);
+        CHECK(obs.brand == "Polymaker");
+        CHECK_FALSE(obs.spool_name.has_value());
+    }
+    SECTION("a link declares nothing but the binding") {
+        SlotInfo unlinked = linked;
+        unlinked.spoolman_id = 0;
+        const Observation obs = helix::ams::user_edit_observation(unlinked, linked);
+        CHECK(obs.spoolman_id == 42);
+        CHECK_FALSE(obs.brand.has_value());
+        CHECK_FALSE(obs.spool_name.has_value());
+    }
+}

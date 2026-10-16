@@ -839,13 +839,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "spool-edit surfaces a Spoolman-only vendor 
     close_editor_overlay();
 }
 
-// Regression guard — with no Spoolman, a catalog-absent vendor stays Generic.
-//
-// This is the ACCEPTED behavior for a Spoolman-less printer: the dropdown is
-// catalog-only, so an unknown brand has nowhere to resolve and falls to Generic.
-// The fix must NOT start a doomed vendor fetch when Spoolman is not connected.
-TEST_CASE_METHOD(LVGLUITestFixture,
-                 "spool-edit without Spoolman leaves a catalog-absent vendor at Generic",
+// With no Spoolman, a catalog-absent vendor still resolves: the selector lists
+// the slot's own brand, so no vendor fetch is needed (and none may start when
+// Spoolman is not connected).
+TEST_CASE_METHOD(LVGLUITestFixture, "spool-edit without Spoolman keeps a catalog-absent vendor",
                  "[ams_edit_overlay][spool_edit][brand]") {
     auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
     REQUIRE(spoolman_subj != nullptr);
@@ -869,8 +866,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    // No fetch fired -> the dropdown stayed catalog-only -> Generic.
-    CHECK(access.details_selector().current_vendor() == "Generic");
+    CHECK(access.details_selector().current_vendor() == "PolyTerra");
 
     close_editor_overlay();
 }
@@ -3366,6 +3362,41 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         CHECK(access.working_info().brand == "Generic");
         CHECK(access.working_info().spool_name.empty());
     }
+
+    close_editor_overlay();
+}
+
+// A vendor the catalog does not list (Snapmaker, on a U1) is still the slot's
+// brand. The selector keeps it rather than snapping to Generic, so an untouched
+// Save neither rebrands the spool nor drops the product line it carries.
+TEST_CASE_METHOD(LVGLUITestFixture, "spool-edit Save keeps a vendor the catalog does not list",
+                 "[ams_edit_overlay][spool_edit][brand][spool_name]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    SlotInfo slot;
+    slot.slot_index = 0;
+    slot.spoolman_id = 0;
+    slot.brand = "Snapmaker";
+    slot.material = "PLA";
+    slot.color_rgb = 0x080A0D;
+    slot.spool_name = "SnapSpeed";
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, slot, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    access.call_enter_spool_edit();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.details_selector().current_vendor() == "Snapmaker");
+
+    access.call_handle_spool_edit_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    CHECK(access.working_info().brand == "Snapmaker");
+    CHECK(access.working_info().material == "PLA");
+    CHECK(access.working_info().spool_name == "SnapSpeed");
 
     close_editor_overlay();
 }

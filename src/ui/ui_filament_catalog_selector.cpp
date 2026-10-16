@@ -347,6 +347,15 @@ void FilamentCatalogSelector::populate_vendor_dropdown() {
         if (!present)
             vendor_order_.push_back(extra);
     }
+    // The slot's own brand is a vendor even when neither the catalog nor the
+    // host lists it (Snapmaker, on a U1): snapping it to Generic would have an
+    // untouched Save rebrand the spool. It lists with no products, so a Save
+    // that keeps it keeps the slot's identity too.
+    if (seed_vendor_ && !seed_vendor_->empty() && !is_favorites_vendor(*seed_vendor_) &&
+        std::none_of(vendor_order_.begin(), vendor_order_.end(),
+                     [&](const std::string& v) { return ieq(v, *seed_vendor_); })) {
+        vendor_order_.push_back(*seed_vendor_);
+    }
     std::string options;
     for (size_t i = 0; i < vendor_order_.size(); ++i) {
         if (i)
@@ -355,13 +364,12 @@ void FilamentCatalogSelector::populate_vendor_dropdown() {
     }
     lv_dropdown_set_options(dd, options.c_str());
 
-    // Seed the vendor to the host-provided brand (case-insensitive) when it
-    // exists in the merged list; otherwise pin "Generic" (index 1, directly
-    // after the Favorites pseudo-vendor). This lets a host opening on an
+    // Seed the vendor to the host-provided brand (case-insensitive), which the
+    // list always holds; with no seed, pin "Generic" (index 1, directly after
+    // the Favorites pseudo-vendor). This lets a host opening on an
     // already-branded slot round-trip the vendor instead of the selector
     // silently snapping it to Generic (which a subsequent Save would then bake
-    // in, dropping the user's saved vendor). A Spoolman-only vendor resolves
-    // here once its name arrives via set_additional_vendors().
+    // in, dropping the user's saved vendor).
     uint32_t seed_idx = 1; // Generic
     if (seed_vendor_ && !seed_vendor_->empty()) {
         for (size_t i = 0; i < vendor_order_.size(); ++i) {

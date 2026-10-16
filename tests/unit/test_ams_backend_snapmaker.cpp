@@ -4512,3 +4512,55 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker keeps remembered identity while fi
     CHECK(ovr->spool_name == "SnapSpeed");
     CHECK(backend->get_slot_info(0).spool_name == "SnapSpeed");
 }
+
+// Keeping a slot's identity across a Spoolman unlink is the user's choice, so
+// what they kept is theirs. A channel whose firmware states nothing (stock
+// firmware, where our write-back 404s, leaves every untagged channel so) must
+// not retract it the way it retracts a brand a record merely remembered.
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker keeps the identity an unlink kept on a silent channel",
+                 "[ams][snapmaker][spoolman][spool_name]") {
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend(&api, nullptr);
+    SnapmakerTestAccess::call_on_started(*backend);
+
+    SlotInfo linked = backend->get_slot_info(0);
+    linked.spoolman_id = 42;
+    linked.brand = "Polymaker";
+    linked.material = "PLA";
+    linked.spool_name = "PolyLite";
+    helix::test::edit_slot_as_user(*backend, 0, linked);
+    SpoolInfo spool;
+    spool.id = 42;
+    spool.vendor = "Polymaker";
+    spool.material = "PLA";
+    spool.filament_name = "PolyLite";
+    helix::test::spool_states(*backend, 0, spool);
+
+    SlotInfo unlinked = backend->get_slot_info(0);
+    REQUIRE(unlinked.brand == "Polymaker");
+    unlinked.spoolman_id = 0;
+    unlinked.spoolman_filament_id = 0;
+    unlinked.spoolman_vendor_id = 0;
+    helix::test::edit_slot_as_user(*backend, 0, unlinked);
+    REQUIRE(backend->get_slot_info(0).spoolman_id == 0);
+
+    SnapmakerTestAccess::handle_status(
+        *backend, json{{"filament_detect", json{{"info", json::array({json{
+                                                             {"MAIN_TYPE", "NONE"},
+                                                             {"SUB_TYPE", "NONE"},
+                                                         }})}}}});
+    SnapmakerTestAccess::handle_status(
+        *backend, json{{"print_task_config",
+                        json{{"filament_vendor", json::array({"NONE", "NONE", "NONE", "NONE"})},
+                             {"filament_official", json::array({false, false, false, false})}}}});
+
+    const SlotInfo info = backend->get_slot_info(0);
+    CHECK(info.brand == "Polymaker");
+    CHECK(info.spool_name == "PolyLite");
+    auto ovr = SnapmakerTestAccess::get_override(*backend, 0);
+    REQUIRE(ovr.has_value());
+    CHECK(ovr->brand == "Polymaker");
+    CHECK(ovr->spool_name == "PolyLite");
+}
