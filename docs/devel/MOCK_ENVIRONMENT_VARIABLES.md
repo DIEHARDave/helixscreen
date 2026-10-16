@@ -145,7 +145,17 @@ Add a local directory to the mock printer's gcodes root for the whole run, besid
 | **Default** | unset (`assets/test_gcodes` alone) |
 | **File** | `include/mock_planted_gcodes.h` |
 
-How a `--test` run gets a sliced `.gcode.3mf` onto the print-select screen without adding it to the shared test directory.
+How a `--test` run gets a sliced `.gcode.3mf` onto the print-select screen without adding it to the shared test directory. What the run uploads (a staged copy of a print) is written there too, so it lists, sizes and downloads back as on a printer.
+
+### `HELIX_MOCK_HELIX_PLUGIN_LINK_DIR`
+
+The `symlink_dir` the mock's `server.helix.status` reports with `HELIX_MOCK_HELIX_PLUGIN=1`: where the plugin links a modified print. A visible name (`helix_print`) is how a plugin installed on a printer whose Klipper skips dot-directories answers, and the app then stages its copies visibly too.
+
+| Property | Value |
+|----------|-------|
+| **Values** | a directory name |
+| **Default** | `.helix_print` |
+| **File** | `src/api/moonraker_client_mock_server.cpp` |
 
 ### `HELIX_MOCK_3MF_METADATA`
 

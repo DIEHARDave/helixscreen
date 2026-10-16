@@ -632,6 +632,12 @@ void MoonrakerFileTransferAPIMock::download_file_to_path(
         }
     }
 
+    // A file under a subdirectory of the gcodes root, as Moonraker addresses it.
+    if (local_path.empty() && root == "gcodes" &&
+        std::filesystem::exists(helix::mock::gcode_disk_path(path))) {
+        local_path = helix::mock::gcode_disk_path(path);
+    }
+
     if (local_path.empty()) {
         local_path = find_test_file(filename);
     }
@@ -701,6 +707,18 @@ void MoonrakerFileTransferAPIMock::upload_file_from_path(
             record.content.assign(std::istreambuf_iterator<char>(src),
                                   std::istreambuf_iterator<char>());
         }
+    }
+    // A --test run with a gcodes directory of its own (HELIX_MOCK_GCODE_DIR)
+    // keeps what it uploads there, so the printer side can list, size and
+    // serve it back as Moonraker would.
+    if (root == "gcodes" && std::getenv("HELIX_MOCK_GCODE_DIR") &&
+        !helix::mock::planted_gcode_dir().empty()) {
+        const std::filesystem::path dest =
+            std::filesystem::path(helix::mock::planted_gcode_dir()) / dest_path;
+        std::error_code ec;
+        std::filesystem::create_directories(dest.parent_path(), ec);
+        std::ofstream out(dest, std::ios::binary);
+        out << record.content;
     }
     path_uploads_.push_back(record);
 
