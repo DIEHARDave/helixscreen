@@ -66,19 +66,14 @@ std::optional<int> extruder_index(std::string_view sensor) {
     return text_io::parse_leading<int>(digits);
 }
 
-/// M109/M190/M191: letter-prefixed parameters (T1, S250, R45).
+/// M109/M190/M191: letter-prefixed parameters (T1, S250).
 void read_heater_params(const std::vector<std::string_view>& words, WaitLine& out) {
-    std::optional<double> s;
-    std::optional<double> r;
     for (size_t i = 1; i < words.size(); ++i) {
         const std::string_view word = words[i];
         const std::string_view value = word.substr(1);
         switch (std::toupper(static_cast<unsigned char>(word[0]))) {
         case 'S':
-            s = text_io::parse_leading<double>(value);
-            break;
-        case 'R':
-            r = text_io::parse_leading<double>(value);
+            out.target = text_io::parse_leading<double>(value);
             break;
         case 'T':
             out.tool = text_io::parse_leading<int>(value);
@@ -87,7 +82,6 @@ void read_heater_params(const std::vector<std::string_view>& words, WaitLine& ou
             break;
         }
     }
-    out.target = s ? s : r;
 }
 
 /// TEMPERATURE_WAIT: KEY=VALUE parameters.

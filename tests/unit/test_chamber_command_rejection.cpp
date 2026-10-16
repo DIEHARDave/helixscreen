@@ -912,7 +912,7 @@ TEST_CASE("the chamber wait's temperature is M191's target or TEMPERATURE_WAIT's
     using helix::chamber_wait_target_c;
     using helix::classify_wait_line;
     CHECK(chamber_wait_target_c(classify_wait_line("M191 S60")) == Catch::Approx(60));
-    CHECK(chamber_wait_target_c(classify_wait_line("M191 R45")) == Catch::Approx(45));
+    CHECK(chamber_wait_target_c(classify_wait_line("M191 R45")) == 0);
     CHECK(chamber_wait_target_c(classify_wait_line("TEMPERATURE_WAIT SENSOR=c MINIMUM=35")) ==
           Catch::Approx(35));
     CHECK(chamber_wait_target_c(classify_wait_line("TEMPERATURE_WAIT SENSOR=c MAXIMUM=80")) == 0);

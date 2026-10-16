@@ -87,11 +87,11 @@ TEST_CASE("heater waits name their heater and temperature", "[wait_line]") {
         CHECK_FALSE(l.tool);
         CHECK(l.target.value_or(0) == Catch::Approx(200));
     }
-    SECTION("M109 R") {
+    SECTION("M109 R is no target: Klipper waits on S alone") {
         const WaitLine l = classify_wait_line("M109 R215 T0");
         CHECK(l.kind == WaitKind::M109);
         CHECK(l.tool == std::optional<int>(0));
-        CHECK(l.target.value_or(0) == Catch::Approx(215));
+        CHECK_FALSE(l.target);
     }
     SECTION("M190") {
         const WaitLine l = classify_wait_line("M190 S100");
@@ -105,8 +105,8 @@ TEST_CASE("heater waits name their heater and temperature", "[wait_line]") {
         CHECK(l.target.value_or(0) == Catch::Approx(60));
         CHECK(l.sensor.empty());
     }
-    SECTION("lower case, leading whitespace, R, a trailing comment") {
-        const WaitLine l = classify_wait_line("  \tm191 r45 ; chamber T3\r");
+    SECTION("lower case, leading whitespace, a trailing comment") {
+        const WaitLine l = classify_wait_line("  \tm191 s45 ; chamber T3\r");
         CHECK(l.kind == WaitKind::M191);
         CHECK(l.target.value_or(0) == Catch::Approx(45));
         CHECK_FALSE(l.tool); // a T in the comment is not a parameter
@@ -199,7 +199,9 @@ TEST_CASE("the reader fetches the window at the position and classifies its firs
     CHECK(got->sensor == "heater_generic dragonbreath");
     CHECK(transfers.range_bytes <= kWaitLineWindow);
 
-    read("u1.gcode", kU1File.size()); // at the end of the file
+    // The mock answers a range past the end with no bytes, which reads as no
+    // wait. Moonraker answers it with 416, which reaches on_error instead.
+    read("u1.gcode", kU1File.size());
     REQUIRE(got);
     CHECK(got->kind == WaitKind::Other);
 

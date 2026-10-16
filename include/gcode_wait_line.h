@@ -18,7 +18,9 @@ struct WaitLine {
     /// M109's T, or the extruder a TEMPERATURE_WAIT names (extruder = 0,
     /// extruderN = N). nullopt for M109 with no T: the active tool.
     std::optional<int> tool;
-    std::optional<double> target;  ///< M109/M190/M191: S, else R
+    /// M109/M190/M191's S, the only parameter Klipper waits on; nullopt = no
+    /// S, which Klipper reads as 0 and returns at once.
+    std::optional<double> target;
     std::string sensor;            ///< TEMPERATURE_WAIT's SENSOR, lower-cased, unquoted; "" = none
     std::optional<double> minimum; ///< TEMPERATURE_WAIT's MINIMUM
     std::optional<double> maximum; ///< TEMPERATURE_WAIT's MAXIMUM
