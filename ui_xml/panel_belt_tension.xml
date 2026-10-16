@@ -5,8 +5,9 @@
 <!-- States: 0=START, 1=RUNNING, 2=RESULTS, 3=ERROR, 4=TUNING -->
 <component>
   <subjects>
-    <!-- Below medium the button rows drop their decorative icons for label room -->
-    <subject_expr name="bt_narrow" expr="ui_breakpoint le 2"/>
+    <!-- Below medium in landscape (not the ultrawide sidebar) the button rows are tight:
+         decorative icons go and the short labels take only their own width -->
+    <subject_expr name="bt_narrow" expr="ui_breakpoint le 2 and ui_is_portrait eq 0 and ui_is_ultrawide eq 0"/>
   </subjects>
   <styles>
     <!-- Path A and Path B keep one color each everywhere they appear. -->
@@ -309,20 +310,20 @@
               <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
               <event_cb trigger="clicked" callback="belt_tension_retest_menu_cb"/>
             </ui_button>
-            <!-- Below medium Test Both takes only its label's width, leaving the rest to the Re-test menu -->
+            <!-- On a tight row Test Both takes only its label's width, leaving the rest to the Re-test menu -->
             <ui_button name="btn_test_both"
                        height="#button_height" icon="restart" text="Test Both" variant="secondary"
                        icon_hidden_subject="bt_narrow" icon_hidden_if_eq="1">
-              <bind_style_if name="bt_w0_grow" cond="ui_breakpoint gt 2"/>
-              <bind_style_if name="bt_content_w" cond="ui_breakpoint le 2"/>
+              <bind_style_if name="bt_w0_grow" cond="bt_narrow eq 0"/>
+              <bind_style_if name="bt_content_w" cond="bt_narrow eq 1"/>
               <event_cb trigger="clicked" callback="belt_tension_start_cb"/>
             </ui_button>
             <ui_button name="btn_tune"
                        height="#button_height" icon="rotate_right" bind_text="bt_tune_cta" variant="primary"
                        icon_hidden_subject="bt_narrow" icon_hidden_if_eq="1">
-              <!-- Below medium Tune takes its label's width too: the Re-test menu gets the rest -->
-              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0 and ui_breakpoint gt 2"/>
-              <bind_style_if name="bt_content_w" cond="ui_is_portrait eq 0 and ui_breakpoint le 2"/>
+              <!-- On a tight row Tune takes its label's width too: the Re-test menu gets the rest -->
+              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0 and bt_narrow eq 0"/>
+              <bind_style_if name="bt_content_w" cond="bt_narrow eq 1"/>
               <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_cb"/>
             </ui_button>
