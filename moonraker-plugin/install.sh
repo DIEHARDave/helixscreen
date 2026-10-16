@@ -225,6 +225,43 @@ helix_conf_file() {
     printf '%s' "$conf"
 }
 
+# Whether the running Klipper's virtual_sdcard skips dot-directories when it
+# resolves SDCARD_PRINT_FILE (Forge-X's Klipper does). There, a print started
+# through the plugin's symlink under a hidden directory fails with "Unable to
+# open file", so the symlink directory has to be a visible one.
+klipper_hides_dot_dirs() {
+    for f in "$PROC_ROOT"/[0-9]*/cmdline; do
+        [ -r "$f" ] || continue
+        klippy=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/klippy\/klippy\.py$/ { print; exit }')
+        [ -n "$klippy" ] || continue
+        root=$(readlink "$(dirname "$f")/root" 2>/dev/null) || root=""
+        [ "$root" = "/" ] && root=""
+        for sdcard in "${root%/}$(dirname "$klippy")/extras/virtual_sdcard.py" \
+                      "$(dirname "$klippy")/extras/virtual_sdcard.py"; do
+            [ -f "$sdcard" ] || continue
+            grep -Eq "dirs\[:\] *= *\[d for d in dirs if not d(\[0\] *== *['\"]\.['\"]|\.startswith\(['\"]\.['\"]\))" "$sdcard"
+            return
+        done
+        return 1
+    done
+    return 1
+}
+
+# Give [helix_print] in @1 a visible `symlink_dir: helix_print`, unless the
+# section already sets symlink_dir (the user's value stands).
+ensure_visible_symlink_dir() {
+    file="$1"
+    if awk '/^\[helix_print\]/ { s = 1; next } /^\[/ { s = 0 }
+            s && /^[[:space:]]*symlink_dir[[:space:]]*[:=]/ { found = 1 }
+            END { exit !found }' "$file"; then
+        info "Keeping the symlink_dir already set in $(basename "$file")"
+        return 0
+    fi
+    info "Klipper skips hidden directories here: setting symlink_dir: helix_print"
+    awk '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }' \
+        "$file" > "$file.tmp" && cat "$file.tmp" > "$file" && rm -f "$file.tmp"
+}
+
 # Remove the [helix_print] section from one config file, with a backup.
 # Returns 1 when the file had the section and could not be edited.
 remove_helix_section() {
@@ -588,6 +625,13 @@ auto_install() {
             printf '\n' >> "$section_file"
             printf '%s\n' "[helix_print]" >> "$section_file"
             printf '%s\n' "# HelixScreen plugin - auto-configured" >> "$section_file"
+        fi
+
+        if klipper_hides_dot_dirs; then
+            section_holder="$section_file"
+            grep -q '^\[helix_print\]' "$section_file" 2>/dev/null \
+                || section_holder="$config_dir/moonraker.conf"
+            ensure_visible_symlink_dir "$section_holder"
         fi
     else
         warn "Could not find moonraker.conf - manual config required"

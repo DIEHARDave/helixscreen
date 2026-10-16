@@ -83,7 +83,8 @@ enabled: True
 # Directory for storing modified G-code (relative to gcodes root)
 temp_dir: .helix_temp
 
-# Directory for symlinks (relative to gcodes root)
+# Directory for symlinks (relative to gcodes root). Must be a directory
+# Klipper will open files under: see "Visible symlink directory" below.
 symlink_dir: .helix_print
 
 # Time in seconds to keep temp files after print completes (default: 86400 = 24 hours)
@@ -212,6 +213,23 @@ converted: an entry whose values differ from the file's current ones is stale.
 With no `source`, every known conversion is listed. A `source` with no entry
 returns an empty list. When the plugin is absent the endpoint is too (HTTP 404,
 JSON-RPC -32601): treat that as "no device-side converter".
+
+## Visible symlink directory
+
+A print started through `print_modified` runs `SDCARD_PRINT_FILE` on the link
+`<symlink_dir>/full/<original path>`. Upstream Klipper opens that under the
+default hidden `.helix_print`, but Forge-X's Klipper drops hidden files and
+directories from the list `SDCARD_PRINT_FILE` resolves against, so there the
+print fails with "Unable to open file". `install.sh --auto` reads the running
+Klipper's `<klipper>/klippy/extras/virtual_sdcard.py`; when it carries that filter, it writes
+`symlink_dir: helix_print` under `[helix_print]`, unless the section already sets
+`symlink_dir`. Nothing else about the plugin depends on the name.
+
+A visible directory shows in every client's file list while a print runs.
+HelixScreen hides it; at startup the plugin also removes any link whose temp file
+is gone, with the directories that leaves empty, so a crash leaves nothing behind.
+The temp files themselves stay under the hidden `temp_dir`: Klipper opens them
+through the link, never by their own path.
 
 ## .3mf Conversion
 

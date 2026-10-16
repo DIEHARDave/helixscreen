@@ -147,7 +147,9 @@ plugin under `/opt/config/mod_data/helixscreen/moonraker-plugin` is linked by th
   only files that arrive through its API.
 - Klipper's `virtual_sdcard` here skips dot-directories and any name not ending in
   `.gcode`/`.g`/`.gco` when it resolves `SDCARD_PRINT_FILE`, so a print must be started from a
-  visible `.gcode` path.
+  visible `.gcode` path. The plugin installer detects that filter in the running Klipper's
+  source and sets `symlink_dir: helix_print`, so `print_modified` links where Klipper can open
+  them (`moonraker-plugin/README.md`, "Visible symlink directory").
 - OrcaSlicer's `use_3mf` printer option uploads `<name>.gcode.3mf`, which this Moonraker stores
   but cannot print. The plugin converts each upload to `.gcode` (`moonraker-plugin/README.md`,
   ".3mf Conversion").

@@ -584,3 +584,86 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     grep -q "http://localhost:7125/server/info" "$log" || fail "never waited for Moonraker"
     contains "Moonraker is ready" "$output"
 }
+
+# Klipper running outside the chroot, as on Forge-X. With $2 = hides, its
+# virtual_sdcard carries Forge-X's filter that drops dot-directories from the
+# files SDCARD_PRINT_FILE can open; otherwise it lists every directory.
+add_running_klipper() {
+    local root="$1" mode="$2"
+    local extras="$root/opt/klipper/klippy/extras"
+    mkdir -p "$extras" "$root/proc/1820"
+    : > "$root/opt/klipper/klippy/klippy.py"
+    {
+        printf '            for root, dirs, files in os.walk(\n'
+        printf '                    self.sdcard_dirname, followlinks=True, topdown=True):\n'
+        if [ "$mode" = hides ]; then
+            printf '                # Ignore hidden files and directories\n'
+            printf "                files = [f for f in files if not f[0] == '.']\n"
+            printf "                dirs[:] = [d for d in dirs if not d[0] == '.']\n"
+        fi
+        printf '                for name in files:\n'
+    } > "$extras/virtual_sdcard.py"
+    printf '%s\0' /opt/Python-3.7.11/bin/python3.7 "$root/opt/klipper/klippy/klippy.py" \
+        /opt/config/printer.cfg > "$root/proc/1820/cmdline"
+}
+
+forgex_install() {
+    local root="$1"
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$root/data/.mod/.forge-x$FORGEX_PLUGIN/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+}
+
+user_conf_of() {
+    printf '%s' "$1/data/.mod/.forge-x/root/printer_data/config/mod_data/user.moonraker.conf"
+}
+
+@test "a Klipper that skips dot-directories gets a visible symlink_dir" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides
+
+    forgex_install "$root"
+
+    local conf
+    conf=$(user_conf_of "$root")
+    awk '/^\[helix_print\]/ { getline; print; exit }' "$conf" | grep -qx 'symlink_dir: helix_print' \
+        || fail "symlink_dir not set under [helix_print]: $(cat "$conf")"
+}
+
+@test "re-installing does not add a second symlink_dir" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides
+
+    forgex_install "$root"
+    forgex_install "$root"
+
+    [ "$(grep -c '^symlink_dir:' "$(user_conf_of "$root")")" -eq 1 ]
+}
+
+@test "a symlink_dir the user set is kept" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides
+    local conf
+    conf=$(user_conf_of "$root")
+    printf '\n[helix_print]\nsymlink_dir: my_links\ncleanup_delay: 600\n' >> "$conf"
+
+    forgex_install "$root"
+
+    [ "$(grep -c '^symlink_dir:' "$conf")" -eq 1 ]
+    grep -qx 'symlink_dir: my_links' "$conf"
+    contains "Keeping the symlink_dir" "$output"
+}
+
+@test "a Klipper that lists dot-directories keeps the default hidden symlink_dir" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" lists
+
+    forgex_install "$root"
+
+    grep -q '^\[helix_print\]' "$(user_conf_of "$root")"
+    ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
+}

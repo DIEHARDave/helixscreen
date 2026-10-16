@@ -46,6 +46,7 @@ import glob as glob_module
 import importlib.util
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -932,10 +933,38 @@ class HelixPrint:
         except Exception as e:
             logging.warning(f"HelixPrint: Failed to update cleanup status: {e}")
 
+    def _sweep_dangling_links(self) -> int:
+        """Remove print links whose temp file is gone, and the directories
+        that leaves empty.
+
+        Needs no database record, so a link a crash or a lost record left
+        behind is still found. That matters most where symlink_dir is a
+        visible directory (a Klipper that will not open files under a hidden
+        one), because every leftover link shows in the file list. A link
+        whose target still exists may belong to a print in progress and is
+        kept.
+        """
+        if self.gc_path is None:
+            return 0
+        root = self.gc_path / self.symlink_dir
+        if root.is_symlink() or not root.is_dir():
+            return 0
+        removed = 0
+        for dirpath, _dirs, files in os.walk(root, followlinks=False):
+            for name in files:
+                link = Path(dirpath) / name
+                if link.is_symlink() and not link.exists():
+                    self._remove_symlink(link)
+                    removed += 1
+        return removed
+
     async def _startup_cleanup(self) -> None:
         """Clean up stale temp files on startup."""
         if self.gc_path is None:
             return
+        removed = self._sweep_dangling_links()
+        if removed:
+            logging.info(f"HelixPrint: Removed {removed} print links with no file behind them")
         if not self._use_sqlite and not self._use_namespace:
             return
 

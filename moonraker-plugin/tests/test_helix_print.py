@@ -1197,3 +1197,111 @@ class TestHistoryIdCapture:
         job, job_id = history.save_job_calls[0]
         assert job_id == 0x1A
         assert job.filename == "prints/benchy.gcode"
+
+
+# ============================================================================
+# Visible symlink directory
+# ============================================================================
+
+class TestVisibleSymlinkDir:
+    """symlink_dir without a leading dot, as the installer sets it where
+    Klipper's virtual_sdcard will not open a file under a hidden directory."""
+
+    @pytest.fixture
+    def component(self, mock_server, temp_gcodes_dir):
+        mock_server.components["file_manager"] = MockFileManager(temp_gcodes_dir)
+        mock_server.components["database"] = MockDatabase()
+        mock_server.components["klippy_connection"] = MockKlippy()
+        mock_server.components["klippy_apis"] = MockKlippyApis()
+        mock_server.components["history"] = MockHistory()
+        return load_component(MockConfigHelper(mock_server, {
+            "temp_dir": ".helix_temp",
+            "symlink_dir": "helix_print",
+            "cleanup_delay": 3600,
+            "enabled": True,
+        }))
+
+    @staticmethod
+    def _stage(gcodes: Path) -> MockWebRequest:
+        (gcodes / "parts").mkdir()
+        (gcodes / "parts" / "benchy.gcode").write_text("G28\n")
+        (gcodes / ".helix_temp").mkdir(exist_ok=True)
+        (gcodes / ".helix_temp" / "mod_benchy.gcode").write_text("G28\nG1 X1\n")
+        return MockWebRequest({
+            "original_filename": "parts/benchy.gcode",
+            "temp_file_path": ".helix_temp/mod_benchy.gcode",
+            "modifications": [],
+        })
+
+    @pytest.mark.asyncio
+    async def test_print_links_under_the_visible_directory(
+        self, component, mock_server, temp_gcodes_dir
+    ):
+        gcodes = Path(temp_gcodes_dir)
+        request = self._stage(gcodes)
+        await component.component_init()
+        assert (gcodes / "helix_print").is_dir()
+
+        result = await mock_server.endpoints["/server/helix/print_modified"](request)
+
+        link = "helix_print/full/parts/benchy.gcode"
+        assert result["print_filename"] == link
+        assert (gcodes / link).is_symlink()
+        assert (gcodes / link).read_text() == "G28\nG1 X1\n"
+        mock_server.components["klippy_apis"].run_gcode.assert_awaited_with(
+            f'SDCARD_PRINT_FILE FILENAME="{link}"')
+
+    @pytest.mark.asyncio
+    async def test_finished_print_is_cleaned_up_and_attributed(
+        self, component, mock_server, temp_gcodes_dir
+    ):
+        gcodes = Path(temp_gcodes_dir)
+        request = self._stage(gcodes)
+        await component.component_init()
+        result = await mock_server.endpoints["/server/helix/print_modified"](request)
+        link = result["print_filename"]
+
+        await component._on_job_state_changed(
+            None, {"state": "printing", "filename": link},
+            {"state": "complete", "filename": link})
+
+        assert link not in component.active_prints
+        assert not (gcodes / link).is_symlink()
+        assert not (gcodes / "helix_print" / "full").exists()
+        assert (gcodes / "helix_print").is_dir()
+
+    @pytest.mark.asyncio
+    async def test_startup_removes_links_whose_file_is_gone(
+        self, component, temp_gcodes_dir
+    ):
+        gcodes = Path(temp_gcodes_dir)
+        await component.component_init()
+        full = gcodes / "helix_print" / "full"
+        (full / "a").mkdir(parents=True)
+        (full / "keep").mkdir()
+        live_target = gcodes / ".helix_temp" / "live.gcode"
+        live_target.write_text("G28\n")
+        (full / "a" / "stale.gcode").symlink_to(gcodes / ".helix_temp" / "gone.gcode")
+        (full / "keep" / "live.gcode").symlink_to(live_target)
+
+        await component._startup_cleanup()
+
+        assert not (full / "a").exists()
+        assert (full / "keep" / "live.gcode").is_symlink()
+        assert (gcodes / "helix_print").is_dir()
+
+    @pytest.mark.asyncio
+    async def test_the_sweep_never_follows_a_linked_directory_out(
+        self, component, temp_gcodes_dir
+    ):
+        gcodes = Path(temp_gcodes_dir)
+        await component.component_init()
+        outside = gcodes / "user"
+        outside.mkdir()
+        (outside / "dangling.gcode").symlink_to(gcodes / "nowhere.gcode")
+        (gcodes / "helix_print" / "full").mkdir(parents=True)
+        (gcodes / "helix_print" / "full" / "user").symlink_to(outside)
+
+        await component._startup_cleanup()
+
+        assert (outside / "dangling.gcode").is_symlink()
