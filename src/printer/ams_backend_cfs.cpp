@@ -1414,6 +1414,27 @@ std::string AmsBackendCfs::normalize_legacy_flat_fingerprint(const std::string& 
     return head + "|" + stored.substr(start);
 }
 
+std::optional<CfsSchema> AmsBackendCfs::fingerprint_schema(const std::string& fingerprint) {
+    const auto pipe = fingerprint.find('|');
+    if (pipe == std::string::npos || fingerprint.find('|', pipe + 1) != std::string::npos) {
+        return std::nullopt;
+    }
+    const std::string material = fingerprint.substr(0, pipe);
+    const std::string color = fingerprint.substr(pipe + 1);
+    const auto is_digit = [](char c) { return c >= '0' && c <= '9'; };
+    const auto is_upper_hex = [&is_digit](char c) { return is_digit(c) || (c >= 'A' && c <= 'F'); };
+    // Stock colour_value is "0RRGGBB"; a stock material_type is a numeric code.
+    if (color.size() == 7 ||
+        (!material.empty() && std::all_of(material.begin(), material.end(), is_digit))) {
+        return CfsSchema::Stock;
+    }
+    // compose_cfs_flat_uid writes six uppercase hex digits.
+    if (color.size() == 6 && std::all_of(color.begin(), color.end(), is_upper_hex)) {
+        return CfsSchema::Flat;
+    }
+    return std::nullopt;
+}
+
 // The flat schema's per-slot fingerprint, fed to the same
 // check_hardware_event_clear path as the stock composite above. It carries
 // exactly the insert rule's evidence fields, material and colour (see
@@ -4756,6 +4777,21 @@ std::map<int, int> AmsBackendCfs::collect_insert_probes_locked(const nlohmann::j
 
 bool AmsBackendCfs::check_hardware_event_clear(SlotInfo& slot, int slot_index,
                                                const std::string& observed_uid) {
+    // A baseline in the other schema's shape describes what the box reported
+    // before it changed schema, not the spool now in the bay, so the reading
+    // is a first observation. The observed side must name the current schema
+    // too: a reading this schema could also have spelled the other way is
+    // compared as usual, which never leaves a slot blind to its own swaps.
+    if (const auto base = rfid_tracker_.baseline(slot_index)) {
+        const auto base_schema = fingerprint_schema(*base);
+        if (base_schema && *base_schema != schema_ && fingerprint_schema(observed_uid) == schema_) {
+            spdlog::info("{} Slot {} fingerprint {} is from the other box schema, "
+                         "re-baselining on {}",
+                         backend_log_tag(), slot_index, *base, observed_uid);
+            rfid_tracker_.forget_baseline(slot_index);
+        }
+    }
+
     std::string old_uid;
     const auto event = rfid_tracker_.observe(slot_index, observed_uid, &old_uid);
 
