@@ -317,6 +317,16 @@ enum class AmsAction {
 };
 
 /**
+ * @brief Does @p action keep the system from taking a new operation?
+ *
+ * Everything but IDLE and ERROR: an operation in flight, a sensor check, or a
+ * pause waiting on the user.
+ */
+inline bool ams_action_holds_system(AmsAction action) {
+    return action != AmsAction::IDLE && action != AmsAction::ERROR;
+}
+
+/**
  * @brief Is the system doing anything at all right now?
  *
  * The "something is happening to this slot" question - the slot pulse asks it,
@@ -327,16 +337,6 @@ enum class AmsAction {
  * asks what the STEP BAR should follow and genuinely differs per backend. This
  * one is the superset.
  */
-/**
- * @brief Does @p action keep the system from taking a new operation?
- *
- * Everything but IDLE and ERROR: an operation in flight, a sensor check, or a
- * pause waiting on the user.
- */
-inline bool ams_action_holds_system(AmsAction action) {
-    return action != AmsAction::IDLE && action != AmsAction::ERROR;
-}
-
 inline bool ams_action_is_busy(AmsAction action) {
     switch (action) {
     case AmsAction::HEATING:
