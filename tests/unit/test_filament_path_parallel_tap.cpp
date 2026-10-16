@@ -117,9 +117,15 @@ TEST_CASE_METHOD(ParallelTapFixture, "PARALLEL canvas: a head tap reaches the to
         tap(x, head.top);
         CHECK(taps.toolheads == std::vector<int>{1});
     }
-    SECTION("the tube one pixel above the glyph is never the head") {
+    SECTION("the tube one pixel above the glyph is the lane's") {
         tap(x, head.top - 1);
         CHECK(taps.toolheads.empty());
+        CHECK(taps.slots == std::vector<int>{1});
+    }
+    SECTION("the tube between the sensor and the glyph is the lane's") {
+        tap(x, (rows.sensor_y + head.top) / 2);
+        CHECK(taps.toolheads.empty());
+        CHECK(taps.slots == std::vector<int>{1});
     }
     SECTION("the glyph's side edges") {
         tap(head.left, (head.top + head.bottom) / 2);

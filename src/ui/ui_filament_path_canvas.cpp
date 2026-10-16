@@ -175,7 +175,9 @@ helix::ui::ParallelTap helix::ui::parallel_tap_at(lv_point_t p, const ParallelTa
         }
         return best;
     };
-    if (p.y < layout.sensor_y) {
+    // The tube runs down to the glyph's top; only a glyph drawn up past the
+    // sensor row cedes the stretch above that row.
+    if (p.y < LV_MAX(layout.sensor_y, layout.head.y1)) {
         const int32_t r = layout.lane_half_width;
         if (const int i = nearest(-r, r); i >= 0) {
             return {ParallelTapTarget::Lane, i};

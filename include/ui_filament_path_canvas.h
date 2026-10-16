@@ -637,7 +637,7 @@ struct ParallelTap {
 struct ParallelTapLayout {
     const int32_t* slot_x = nullptr; ///< Each column's center x
     int slot_count = 0;
-    int32_t sensor_y = 0;        ///< A lane owns everything above this row
+    int32_t sensor_y = 0;        ///< A lane owns at least everything above this row
     int32_t lane_half_width = 0; ///< A lane's reach either side of its column
     lv_area_t head{};            ///< A head glyph's drawn bounds, x relative to its column
 };
@@ -645,10 +645,10 @@ struct ParallelTapLayout {
 /**
  * @brief Pure hit-test for a tap on a PARALLEL path.
  *
- * Above the sensor row a tap is a lane's, so a tap on a tube never reaches a
- * head however tall the glyph is drawn. Below it a tap is a head's only inside
- * a drawn glyph (bounds inclusive). Where neighbours overlap, the nearest
- * column answers.
+ * Above the head glyph's top a tap is a lane's, and above the sensor row it
+ * is a lane's however tall the glyph is drawn, so a tap on a tube never
+ * reaches a head. Below that a tap is a head's only inside a drawn glyph
+ * (bounds inclusive). Where neighbours overlap, the nearest column answers.
  */
 ParallelTap parallel_tap_at(lv_point_t p, const ParallelTapLayout& layout);
 } // namespace helix::ui

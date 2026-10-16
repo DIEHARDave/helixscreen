@@ -63,7 +63,7 @@ TEST_CASE("parallel_tap_at: the glyph's edges are the head, one pixel out is not
     CHECK(tap(200, 430).target == ParallelTapTarget::Toolhead);
     CHECK(tap(188, 400).target == ParallelTapTarget::Toolhead);
     CHECK(tap(212, 400).target == ParallelTapTarget::Toolhead);
-    CHECK(tap(200, 379).target == ParallelTapTarget::None);
+    CHECK(tap(200, 379).target == ParallelTapTarget::Lane);
     CHECK(tap(200, 431).target == ParallelTapTarget::None);
     CHECK(tap(187, 400).target == ParallelTapTarget::None);
     CHECK(tap(213, 400).target == ParallelTapTarget::None);
@@ -76,7 +76,9 @@ TEST_CASE("parallel_tap_at: a tube or spool answers as its lane", "[ams][path][h
         CHECK(t.target == ParallelTapTarget::Lane);
         CHECK(t.slot == 0);
     }
-    CHECK(tap(100, 250).target == ParallelTapTarget::None);
+    // Below the sensor the tube still runs down to the glyph: still the lane's.
+    CHECK(tap(100, 250).target == ParallelTapTarget::Lane);
+    CHECK(tap(100, 379).target == ParallelTapTarget::Lane);
 }
 
 TEST_CASE("parallel_tap_at: between columns is nothing", "[ams][path][hit_test]") {
