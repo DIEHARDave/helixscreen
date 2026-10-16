@@ -118,6 +118,11 @@ void AmsEnvironmentOverlay::init_subjects() {
                                   "env_all_zones_text", subjects_);
         UI_MANAGED_SUBJECT_STRING(queued_banner_subject_, queued_banner_buf_, "",
                                   "env_queued_banner_text", subjects_);
+        UI_MANAGED_SUBJECT_INT(dry_gate_count_subject_, 0, "env_dry_gate_count", subjects_);
+        UI_MANAGED_SUBJECT_INT(dry_rotate_visible_subject_, 0, "env_dry_rotate_visible", subjects_);
+        UI_MANAGED_SUBJECT_INT(dry_rotate_on_subject_, 0, "env_dry_rotate_on", subjects_);
+        UI_MANAGED_SUBJECT_STRING(dry_rotate_label_subject_, dry_rotate_label_buf_, lv_tr("Rotate"),
+                                  "env_dry_rotate_label", subjects_);
     });
 }
 
@@ -133,6 +138,14 @@ void AmsEnvironmentOverlay::register_callbacks() {
                  get_ams_environment_overlay().select_zone(static_cast<size_t>(atoi(ud)));
              }
          }},
+        {"on_env_dry_gate_clicked",
+         [](lv_event_t* e) {
+             if (const char* ud = static_cast<const char*>(lv_event_get_user_data(e))) {
+                 get_ams_environment_overlay().toggle_dry_gate(static_cast<size_t>(atoi(ud)));
+             }
+         }},
+        {"on_env_dry_rotate_clicked",
+         [](lv_event_t*) { get_ams_environment_overlay().toggle_dry_rotate(); }},
         {"on_all_zones_clicked",
          [](lv_event_t*) {
              AmsBackend* backend = AmsState::instance().get_backend();
@@ -186,6 +199,7 @@ lv_obj_t* AmsEnvironmentOverlay::create(lv_obj_t* parent) {
     // The tab <repeat> starts empty: on_ui_destroyed() released the pools a stale
     // count would bind new tabs to. before_show() publishes the real count.
     lv_subject_set_int(&zone_count_subject_, 0);
+    lv_subject_set_int(&dry_gate_count_subject_, 0);
     if (!OverlayBase::create(parent)) {
         return nullptr;
     }
@@ -236,6 +250,8 @@ void AmsEnvironmentOverlay::show_zone(lv_obj_t* parent_screen,
     selected_zone_ = zones_.empty() ? 0 : std::min(selected, zones_.size() - 1);
     with_selector_ =
         with_selector && zones_.size() > 1 && zones_.size() <= helix::printer::kMaxZoneTabs;
+    deselected_dry_gates_.clear();
+    dry_rotate_ = false;
     show(parent_screen);
 }
 
@@ -402,6 +418,85 @@ int AmsEnvironmentOverlay::acting_unit_index() const {
     return -1;
 }
 
+void AmsEnvironmentOverlay::toggle_dry_gate(size_t index) {
+    if (index >= dry_gates_.size()) {
+        return;
+    }
+    const int gate = dry_gates_[index];
+    const auto it = std::find(deselected_dry_gates_.begin(), deselected_dry_gates_.end(), gate);
+    if (it != deselected_dry_gates_.end()) {
+        deselected_dry_gates_.erase(it);
+    } else if (deselected_dry_gates_.size() + 1 < dry_gates_.size()) {
+        deselected_dry_gates_.push_back(gate);
+    }
+    publish_dry_gates();
+}
+
+void AmsEnvironmentOverlay::toggle_dry_rotate() {
+    dry_rotate_ = !dry_rotate_;
+    publish_dry_gates();
+}
+
+std::vector<int> AmsEnvironmentOverlay::selected_dry_gates() const {
+    std::vector<int> selected;
+    for (int gate : dry_gates_) {
+        if (std::find(deselected_dry_gates_.begin(), deselected_dry_gates_.end(), gate) ==
+            deselected_dry_gates_.end()) {
+            selected.push_back(gate);
+        }
+    }
+    if (selected.size() == dry_gates_.size()) {
+        selected.clear();
+    }
+    return selected;
+}
+
+void AmsEnvironmentOverlay::publish_dry_gates() {
+    AmsBackend* backend = AmsState::instance().get_backend();
+    const int unit = acting_unit_index();
+    const DryerInfo dryer = (backend && unit >= 0) ? backend->get_dryer_info(unit) : DryerInfo{};
+
+    // One chip per heated gate on the unit.
+    dry_gates_.clear();
+    if (dryer.supported && dryer.supports_gate_selection) {
+        for (const auto& z : backend->get_environment_zones(unit)) {
+            if (z.dryer.supported) {
+                dry_gates_.insert(dry_gates_.end(), z.gates.begin(), z.gates.end());
+            }
+        }
+        std::sort(dry_gates_.begin(), dry_gates_.end());
+        dry_gates_.erase(std::unique(dry_gates_.begin(), dry_gates_.end()), dry_gates_.end());
+    }
+    // A gate no longer offered (another unit's, after a zone switch) is not a choice.
+    deselected_dry_gates_.erase(
+        std::remove_if(deselected_dry_gates_.begin(), deselected_dry_gates_.end(),
+                       [this](int gate) {
+                           return std::find(dry_gates_.begin(), dry_gates_.end(), gate) ==
+                                  dry_gates_.end();
+                       }),
+        deselected_dry_gates_.end());
+
+    const size_t n = dry_gates_.size();
+    dry_gate_label_pool_.ensure_size(n);
+    dry_gate_selected_pool_.ensure_size(n);
+    for (size_t i = 0; i < n; ++i) {
+        const int gate = dry_gates_[i];
+        const bool selected = std::find(deselected_dry_gates_.begin(), deselected_dry_gates_.end(),
+                                        gate) == deselected_dry_gates_.end();
+        dry_gate_label_pool_.set_string(i, lane_number_text(gate));
+        dry_gate_selected_pool_.set_int(i, selected ? 1 : 0);
+    }
+    if (lv_subject_get_int(&dry_gate_count_subject_) != static_cast<int>(n)) {
+        lv_subject_set_int(&dry_gate_count_subject_, static_cast<int>(n));
+    }
+
+    snprintf(dry_rotate_label_buf_, sizeof(dry_rotate_label_buf_), "%s", lv_tr("Rotate"));
+    lv_subject_copy_string(&dry_rotate_label_subject_, dry_rotate_label_buf_);
+    const bool rotate_offered = n > 0 && dryer.supports_rotation;
+    lv_subject_set_int(&dry_rotate_visible_subject_, rotate_offered ? 1 : 0);
+    lv_subject_set_int(&dry_rotate_on_subject_, rotate_offered && dry_rotate_ ? 1 : 0);
+}
+
 void AmsEnvironmentOverlay::rebuild_tabs() {
     const size_t n = zone_count();
     tab_label_pool_.ensure_size(n);
@@ -517,6 +612,8 @@ void AmsEnvironmentOverlay::on_ui_destroyed() {
     tab_label_pool_.reclaim();
     tab_state_pool_.reclaim();
     tab_active_pool_.reclaim();
+    dry_gate_label_pool_.reclaim();
+    dry_gate_selected_pool_.reclaim();
 }
 
 // ============================================================================
@@ -570,6 +667,7 @@ void AmsEnvironmentOverlay::publish_selected_zone() {
         lv_subject_copy_string(&queued_banner_subject_, queued_banner_buf_);
         slots_text_buf_[0] = '\0';
         lv_subject_copy_string(&slots_text_subject_, slots_text_buf_);
+        publish_dry_gates();
         return;
     }
 
@@ -614,7 +712,13 @@ void AmsEnvironmentOverlay::publish_selected_zone() {
     const float temp_c = zone.env.temperature_c;
     const float humidity_pct = zone.env.humidity_pct;
     const bool has_humidity = zone.env.has_humidity;
-    const DryerInfo& dryer = zone.dryer;
+    // Where gates dry one by one the cycle belongs to the unit: an idle lane on a unit
+    // that is drying shows the running cycle, and Stop is what its button offers.
+    DryerInfo dryer = zone.dryer;
+    if (dryer.supports_gate_selection && backend && zone.unit_index >= 0) {
+        dryer.active = backend->get_dryer_info(zone.unit_index).active;
+    }
+    publish_dry_gates();
 
     lv_subject_set_int(&zone_state_subject_, static_cast<int>(zone.state));
 
@@ -991,8 +1095,10 @@ void AmsEnvironmentOverlay::handle_start_stop() {
                              "attributed to a unit",
                              zone_id);
             } else {
-                spdlog::info("[AmsEnvironmentOverlay] Stopping drying");
-                AmsError result = backend->stop_drying(unit);
+                const std::vector<int> gates = selected_dry_gates();
+                spdlog::info("[AmsEnvironmentOverlay] Stopping drying ({} selected gates)",
+                             gates.size());
+                AmsError result = backend->stop_drying_gates(unit, gates);
                 if (result.success()) {
                     NOTIFY_INFO("{}", lv_tr("Drying stopped"));
                 } else {
@@ -1051,10 +1157,14 @@ void AmsEnvironmentOverlay::handle_start_stop() {
                              "target {}",
                              temp_c, duration_min, humidity_target ? *humidity_target : 0.0f);
 
-                AmsError result =
-                    humidity_target ? backend->start_drying_to_humidity(temp_c, duration_min,
-                                                                        *humidity_target, -1, unit)
-                                    : backend->start_drying(temp_c, duration_min, -1, unit);
+                DryingRequest request;
+                request.temp_c = temp_c;
+                request.duration_min = duration_min;
+                request.humidity_pct = humidity_target;
+                request.unit = unit;
+                request.gates = selected_dry_gates();
+                request.rotate = dry_rotate_ && dryer.supports_rotation;
+                AmsError result = backend->start_drying_request(request);
                 if (result.success()) {
                     // Remember the chosen values so the next open restores them.
                     config->set<int>(config->df() + "ams/dryer_last_temp",

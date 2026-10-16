@@ -921,6 +921,7 @@
   <translation tag="Draw a ripple at each touch — helps diagnose offsets" zh="在每次触摸时绘制涟漪 — 有助于诊断偏移"/>
   <translation tag="Drive Cal" zh="驱动校准"/>
   <translation tag="Drop shadow strength (0 = disabled)" zh="阴影强度（0 = 禁用）"/>
+  <translation tag="Dry" zh="烘干"/>
   <translation tag="Dry Filament" zh="烘干耗材"/>
   <translation tag="Dry Filament on the Bed" zh="在热床上烘干耗材"/>
   <translation tag="Dry spools on the heated bed" zh="在热床上烘干料盘"/>
@@ -2647,6 +2648,7 @@
   <translation tag="Rewinding" zh="回卷中"/>
   <translation tag="Right" zh="右"/>
   <translation tag="Role:" zh="角色："/>
+  <translation tag="Rotate" zh="旋转"/>
   <translation tag="Rotating tips for using your printer" zh="轮播的打印机使用提示"/>
   <translation tag="Rotation" zh="旋转"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" zh="旋转: %d° - 剩余%ds (或等待重试)"/>

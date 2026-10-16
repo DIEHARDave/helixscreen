@@ -921,6 +921,7 @@
   <translation tag="Draw a ripple at each touch — helps diagnose offsets" de="Bei jeder Berührung einen Effekt zeichnen — hilft beim Diagnostizieren von Versätzen"/>
   <translation tag="Drive Cal" de="Antriebs-Kal."/>
   <translation tag="Drop shadow strength (0 = disabled)" de="Schattenstärke (0 = deaktiviert)"/>
+  <translation tag="Dry" de="Trocknen"/>
   <translation tag="Dry Filament" de="Filament trocknen"/>
   <translation tag="Dry Filament on the Bed" de="Filament auf dem Heizbett trocknen"/>
   <translation tag="Dry spools on the heated bed" de="Spulen auf dem Heizbett trocknen"/>
@@ -2647,6 +2648,7 @@
   <translation tag="Rewinding" de="Zurückspulen"/>
   <translation tag="Right" de="Rechts"/>
   <translation tag="Role:" de="Rolle:"/>
+  <translation tag="Rotate" de="Drehen"/>
   <translation tag="Rotating tips for using your printer" de="Wechselnde Tipps zu Ihrem Drucker"/>
   <translation tag="Rotation" de="Drehung"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" de="Drehung: %d° - %ds verbleibend (oder warten zum Wiederholen)"/>

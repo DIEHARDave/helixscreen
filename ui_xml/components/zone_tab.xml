@@ -37,6 +37,10 @@
          (zone_tab_on_primary for the pill pair); the default changes nothing. -->
     <prop name="content_selected_style" type="string" default="zone_tab_label_plain"/>
     <prop name="radius" type="string" default="#border_radius"/>
+    <!-- Vertical padding and label size. A chip row inside a card that has no height to
+         spare (the dryer's lane chips) passes "0" and zone_tab_label_small. -->
+    <prop name="pad_ver" type="string" default="#space_sm"/>
+    <prop name="label_size_style" type="string" default="zone_tab_label_plain"/>
     <!-- Optional light dot (the LEDs overlay): light_subject holds 1 on, 0 off,
          2 unknown; light_color_subject fills the lit dot. Collapsed when empty. -->
     <prop name="light_subject" type="string" default=""/>
@@ -53,18 +57,23 @@
     <style name="zone_tab_pill_selected" bg_opa="255" bg_color="#primary" border_width="0"/>
     <style name="zone_tab_pill_idle" bg_opa="255" bg_color="#card_bg" border_width="0"/>
     <style name="zone_tab_on_primary" text_color="#text_on_primary"/>
+    <!-- Outlined idle pill, for a multi-select chip row on a card, where the card-filled
+         idle pill would vanish into its background. -->
+    <style name="zone_tab_outline_idle"
+           bg_opa="0" border_width="0" outline_width="1" outline_pad="-1" outline_color="#border" outline_opa="255"/>
     <!-- Underline variant: no fill, a primary rule under the selected tab. -->
     <style name="zone_tab_underline_selected"
            bg_opa="0" border_side="bottom" border_width="#tab_underline_width" border_color="#primary" border_opa="255"/>
     <style name="zone_tab_underline_idle" bg_opa="0" border_width="0"/>
     <style name="zone_tab_label_plain"/>
     <style name="zone_tab_label_muted" text_color="#text_muted"/>
+    <style name="zone_tab_label_small" text_font="#font_small"/>
     <!-- The lit dot's own border reset, a style so the light-theme edge can outrank it. -->
     <style name="zone_tab_dot_plain" border_width="0"/>
   </styles>
   <view name="zone_tab"
         extends="lv_button" width="content" height="content" style_radius="$radius" style_pad_hor="#space_md"
-        style_pad_ver="#space_sm" style_shadow_width="0">
+        style_pad_ver="$pad_ver" style_shadow_width="0">
     <!-- Selected tab reads as a filled pill; the rest stay flat. The style
          names come from props so a caller can swap in the filled-pill pair
          without touching this component's AMS behaviour. -->
@@ -120,6 +129,7 @@
         </lv_obj>
       </lv_obj>
       <text_body name="tab_label" width="content" bind_text="$label_subject" hidden="$hide_label">
+        <style name="$label_size_style"/>
         <bind_style_if_not_eq name="$label_idle_style" subject="$active_subject" ref_value="$active_value"/>
         <bind_style_if_eq name="$content_selected_style" subject="$active_subject" ref_value="$active_value"/>
       </text_body>

@@ -356,6 +356,14 @@ with (`zones_`) and a selected index.
   screen.
 - Three `IndexedSubjectPool`s back the tab strip (`env_zone_tab_label/state/active`), reclaimed
   in `on_ui_destroyed()` rather than `on_deactivate()`.
+- On a dryer reporting `supports_gate_selection` the lane line gives way to a row of lane chips
+  (`env_dry_gate_label/selected`, one per heated gate on the shown zone's unit; each lane's
+  state is on the zone tabs and the slot badges) and, with `supports_rotation`, a Rotate chip. Every chip starts selected
+  on each showing and the last selected one cannot be cleared. While every chip is selected,
+  Start and Stop send no gates at all, so the dryer gets exactly the command it gets with no
+  selection; a subset goes out as `DryingRequest::gates` / `stop_drying_gates()`. On such a
+  dryer the button and countdown follow the unit's cycle, not the shown lane's, since the cycle
+  belongs to the unit.
 - The cross-unit affordance ("View all boxes") appears only when the printer reports more zones
   than this view is showing **and** no overview already sits beneath the overlay - reached from
   the list, Back is already the way there, so a second route would stack a duplicate.
@@ -466,6 +474,21 @@ ceiling even though `env_temp_range` is published per zone.
 - Otherwise it adds `" GATES=g,g,g"` listing **every** gate on that unit, empty gates
   included. Per-gate occupancy filtering is a refinement we cannot verify: nobody here owns an
   EMU rig.
+
+**A chosen set of gates.** On a Happy Hare 4 unit whose `filament_heaters` give each gate its own
+heater, `get_dryer_info(unit)` reports `supports_gate_selection`, and `supports_rotation` as well
+when `printer.mmu.espooler` names an eSpooler on one of the unit's gates (`''` means none).
+`start_drying_request()` with `gates` then sends `GATES=` naming only those gates, one command per
+unit they fall in, gates on no unit dropped; `rotate` adds `ROTATE=1`, and a rotation with no
+selection names every gate on the unit, because Happy Hare refuses `ROTATE` without `GATES`.
+`stop_drying_gates(unit, gates)` sends `MMU_HEATER STOP=1 GATES=...`, which cancels just those
+gates and leaves the rest of the cycle running. A duration restart and a temperature-only
+update keep the selection (`dry_gate_targets_`). Happy Hare refuses `DRY=1` while a unit is
+already drying, so one cycle per unit is all there is: the gates are chosen before Start, not
+added to a running cycle. A shared-enclosure unit, and every v3 install, reports neither flag
+and refuses a selection. Each slot also carries its gate's `drying_state` as
+`SlotInfo::drying_state` (short lists leave later gates Idle), which AmsState publishes as
+`ams_slot_<n>_drying` for the slot's drying badge.
 
 **The commands**, all in `src/printer/ams_backend_happy_hare.cpp`:
 

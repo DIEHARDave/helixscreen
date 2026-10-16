@@ -308,6 +308,13 @@ void AmsState::init_subjects(bool register_xml) {
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &slot_remaining_[i]);
 
+        lv_subject_init_int(&slot_drying_[i],
+                            static_cast<int>(helix::printer::ZoneDryingState::Idle));
+        snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_drying", i);
+        subjects_.register_subject(&slot_drying_[i], register_xml ? name_buf : nullptr);
+        if (register_xml)
+            helix::xml::register_subject_in_current_scope(name_buf, &slot_drying_[i]);
+
         lv_subject_init_string(&slot_materials_[i], slot_materials_buf_[i], nullptr,
                                sizeof(slot_materials_buf_[i]), "");
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_material", i);
@@ -769,6 +776,8 @@ void AmsState::register_xml_subject_names() {
         helix::xml::register_subject_in_current_scope(name_buf, &slot_statuses_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_remaining", i);
         helix::xml::register_subject_in_current_scope(name_buf, &slot_remaining_[i]);
+        snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_drying", i);
+        helix::xml::register_subject_in_current_scope(name_buf, &slot_drying_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_material", i);
         helix::xml::register_subject_in_current_scope(name_buf, &slot_materials_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_name", i);
@@ -931,6 +940,13 @@ lv_subject_t* AmsState::get_slot_remaining_subject(int slot_index) {
         return nullptr;
     }
     return &slot_remaining_[slot_index];
+}
+
+lv_subject_t* AmsState::get_slot_drying_subject(int slot_index) {
+    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+        return nullptr;
+    }
+    return &slot_drying_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_material_subject(int slot_index) {

@@ -66,7 +66,42 @@
              controls below command; this says which lanes that covers, which a view
              of one zone has no other way to show. -->
         <text_small name="zone_slots_label"
-                    width="100%" bind_text="ams_env_overlay_slots_text" style_text_color="#text_muted"/>
+                    width="100%" bind_text="ams_env_overlay_slots_text" style_text_color="#text_muted">
+          <bind_flag_if_not_eq subject="env_dry_gate_count" flag="hidden" ref_value="0"/>
+        </text_small>
+
+        <!-- Which lanes a drying start covers, on a dryer that heats lanes one by one.
+             It takes the lane line's place: the chips name the lanes too. Every chip
+             starts selected, which is the whole unit. Each lane's part in a running cycle
+             is on the zone tabs and the slot badges, so the chips carry no state dot and
+             cost the card no more height than the lane line. Rotate turns the selected
+             spools while they dry. -->
+        <lv_obj name="dry_gate_row"
+                width="100%" height="content" flex_flow="row_wrap" style_flex_cross_place="center" style_pad_all="0"
+                style_pad_gap="#space_xs" scrollable="false" hidden="true">
+          <bind_flag_if_eq subject="env_dry_gate_count" flag="hidden" ref_value="0"/>
+          <text_small text="Dry" style_text_color="#text_muted"/>
+          <lv_obj name="dry_gate_chips"
+                  width="content" height="content" flex_flow="row_wrap" style_pad_all="0" style_pad_gap="#space_xs"
+                  scrollable="false">
+            <repeat count="env_dry_gate_count">
+              <zone_tab label_subject="env_dry_gate_label_${i}"
+                        active_subject="env_dry_gate_selected_${i}" tab_index="${i}" callback="on_env_dry_gate_clicked"
+                        selected_style="zone_tab_pill_selected" idle_style="zone_tab_outline_idle"
+                        content_selected_style="zone_tab_on_primary" radius="#border_radius" pad_ver="0"
+                        label_size_style="zone_tab_label_small"/>
+            </repeat>
+          </lv_obj>
+          <lv_obj name="dry_rotate_wrap"
+                  width="content" height="content" style_pad_all="0" scrollable="false" hidden="true">
+            <bind_flag_if_eq subject="env_dry_rotate_visible" flag="hidden" ref_value="0"/>
+            <zone_tab name="dry_rotate_chip"
+                      label_subject="env_dry_rotate_label" active_subject="env_dry_rotate_on"
+                      callback="on_env_dry_rotate_clicked" selected_style="zone_tab_pill_selected"
+                      idle_style="zone_tab_outline_idle" content_selected_style="zone_tab_on_primary"
+                      radius="#border_radius" pad_ver="0" label_size_style="zone_tab_label_small"/>
+          </lv_obj>
+        </lv_obj>
 
         <!-- Without this a queued box looks like a control that did nothing. -->
         <lv_obj name="queued_banner"

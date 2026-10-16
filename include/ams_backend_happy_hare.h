@@ -289,6 +289,10 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     AmsError start_drying_to_humidity(float temp_c, int duration_min, float humidity_pct,
                                       int fan_pct = -1, int unit = 0) override;
     AmsError stop_drying(int unit = 0) override;
+    /// v4 per-gate heaters: GATES= names the selection, ROTATE=1 turns those spools.
+    AmsError start_drying_request(const DryingRequest& request) override;
+    /// v4 per-gate heaters: MMU_HEATER STOP=1 GATES= cancels only those gates.
+    AmsError stop_drying_gates(int unit, const std::vector<int>& gates) override;
     AmsError update_drying(float temp_c = -1, int duration_min = -1, int fan_pct = -1,
                            int unit = 0) override;
 
@@ -439,13 +443,31 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     /// One heater target per command: @p unit's, or for unit<0 on a multi-unit
     /// v4, one per unit that has a heater. Locks mutex_.
     [[nodiscard]] std::vector<std::string> heater_targets_for_unit(int unit) const;
+    /// One heater target per unit @p gates fall in: " UNIT=<n>" where needed, then
+    /// " GATES=<the unit's selected gates>". Gates outside every unit are dropped, so an
+    /// empty result means nothing to command. Caller holds mutex_.
+    [[nodiscard]] std::vector<std::string>
+    heater_targets_for_gates_locked(const std::vector<int>& gates) const;
     /// @p command once per heater target; the first failure stops it.
     AmsError send_heater_command(const std::string& command, int unit);
-    /// dryer_info_ with the capabilities derived from the detected version. Caller holds mutex_.
-    [[nodiscard]] DryerInfo dryer_capabilities_locked() const;
-    /// MMU_HEATER DRY=1 with TEMP and TIMER, plus HUMIDITY when @p humidity_pct is set.
+    /// @p command once per entry of @p targets. A failed DRY=1 stops the targets
+    /// already started.
+    AmsError send_heater_command(const std::string& command,
+                                 const std::vector<std::string>& targets);
+    /// dryer_info_ with the capabilities derived from the detected version and @p unit's
+    /// hardware. Caller holds mutex_.
+    [[nodiscard]] DryerInfo dryer_capabilities_locked(int unit) const;
+    /// Does @p unit (any unit for a negative one) give each gate its own heater?
+    /// Caller holds mutex_.
+    [[nodiscard]] bool unit_has_per_gate_heaters_locked(int unit) const;
+    /// Does @p unit (any unit for a negative one) have a motor that turns its spools?
+    /// Caller holds mutex_.
+    [[nodiscard]] bool unit_turns_spools_locked(int unit) const;
+    /// MMU_HEATER DRY=1 with TEMP and TIMER, plus HUMIDITY when @p humidity_pct is set,
+    /// then @p extra, sent to @p targets (empty: @p unit's whole-unit targets).
     AmsError start_drying_cycle(float temp_c, int duration_min, std::optional<float> humidity_pct,
-                                int unit);
+                                int unit, std::vector<std::string> targets = {},
+                                const std::string& extra = {});
 
     /// UNIT value naming every unit; v4 takes UNIT=ALL on its per-unit commands.
     static constexpr int kAllUnits = -1;
@@ -736,6 +758,10 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     std::time_t dry_end_epoch_ = 0; ///< HelixScreen-initiated drying end (epoch s), 0 = none
     /// Humidity target of the cycle HelixScreen started, carried across a restart
     std::optional<float> dry_humidity_target_;
+    /// Heater targets and trailing parameters (ROTATE=1) of a gate-selected cycle
+    /// HelixScreen started, so a restart drives the same gates. Empty for a whole-unit cycle.
+    std::vector<std::string> dry_gate_targets_;
+    std::string dry_gate_extra_;
     std::function<std::time_t()> now_fn_ = [] { return std::time(nullptr); };
     // Dryer enclosure heaters + environment sensors. Happy Hare supports either a
     // single shared enclosure (scalar filament_heater / environment_sensor) OR a

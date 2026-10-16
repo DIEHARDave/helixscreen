@@ -1021,6 +1021,7 @@ translations:
     — ajuda a diagnosticar deslocamentos
   Drive Cal: Cal de Drive
   Drop shadow strength (0 = disabled): Intensidade da sombra (0 = desabilitado)
+  Dry: Secar
   Dry Filament: Secar filamento
 
   Dry Filament on the Bed: Secar filamento na mesa
@@ -2913,6 +2914,7 @@ translations:
   Rewinding: Rebobinando
   Right: 'Direita'
   'Role:': 'Função:'
+  Rotate: Girar
   Rotating tips for using your printer: Dicas rotativas para sua impressora
   Rotation: Rotação
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Rotação: %d°

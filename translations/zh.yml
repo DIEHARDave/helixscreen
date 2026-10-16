@@ -948,6 +948,7 @@ translations:
   Draw a ripple at each touch — helps diagnose offsets: 在每次触摸时绘制涟漪 — 有助于诊断偏移
   Drive Cal: 驱动校准
   Drop shadow strength (0 = disabled): 阴影强度（0 = 禁用）
+  Dry: 烘干
   Dry Filament: 烘干耗材
 
   Dry Filament on the Bed: 在热床上烘干耗材
@@ -2737,6 +2738,7 @@ translations:
   Rewinding: 回卷中
   Right: '右'
   'Role:': 角色：
+  Rotate: 旋转
   Rotating tips for using your printer: 轮播的打印机使用提示
   Rotation: 旋转
   'Rotation: %d° - %ds remaining (or wait to retry)': '旋转: %d° - 剩余%ds

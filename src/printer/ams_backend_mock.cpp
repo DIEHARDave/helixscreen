@@ -842,8 +842,8 @@ BackendTraits AmsBackendMock::traits() const {
     // environment UI is drivable in --test whatever the emulated firmware has.
     // An empty mode resolves to "dryer" or "passive", both of which have sensors.
     const std::string& mode = environment_mode_;
-    t.has_environment_sensors =
-        mode.empty() || mode == "passive" || mode == "dryer" || mode == "slot";
+    t.has_environment_sensors = mode.empty() || mode == "passive" || mode == "dryer" ||
+                                mode == "slot" || mode == "emu_dryer";
     return t;
 }
 
@@ -1635,6 +1635,27 @@ void AmsBackendMock::set_environment_mode(const std::string& mode) {
 
     if (mode == "emu") {
         unit_dryers_.assign(unit_count, DryerInfo{}); // nothing to drive, only to watch
+    } else if (mode == "emu_dryer") {
+        // A heater per lane, an eSpooler per spool, and a cycle part-way through on the
+        // first unit: lane 1 heating, lane 2 waiting its turn, lane 3 finished.
+        DryerInfo d = heated();
+        d.supports_gate_selection = true;
+        d.supports_rotation = true;
+        unit_dryers_.assign(unit_count, d);
+        int gate_count = 0;
+        for (const auto& u : system_info_.units) {
+            gate_count += u.slot_count;
+        }
+        gate_drying_.assign(static_cast<size_t>(std::max(gate_count, 0)),
+                            helix::printer::ZoneDryingState::Idle);
+        begin_gate_cycle_locked({0, 1, 2});
+        if (gate_drying_.size() > 2) {
+            gate_drying_[2] = helix::printer::ZoneDryingState::Complete;
+        }
+        pending_drying_unit_ = 0;
+        pending_drying_temp_c_ = 55.0f;
+        pending_drying_duration_min_ = 240;
+        pending_drying_elapsed_min_ = 40;
     } else if (mode == "mixed") {
         unit_dryers_.assign(unit_count, DryerInfo{});
         unit_dryers_[0] = heated();
@@ -1684,12 +1705,33 @@ void AmsBackendMock::populate_environment_data(AmsSystemInfo& info) const {
     const bool no_humidity = std::getenv("HELIX_MOCK_NO_HUMIDITY") != nullptr;
     auto mode = resolve_environment_mode();
     if (mode != "passive" && mode != "dryer" && mode != "slot" && mode != "emu" &&
-        mode != "mixed" && mode != "capped") {
+        mode != "emu_dryer" && mode != "mixed" && mode != "capped") {
         return;
     }
 
+    // A cycle that has ended leaves its waiting and heating gates finished.
+    if (mode == "emu_dryer") {
+        for (auto& unit : info.units) {
+            const bool running = static_cast<size_t>(unit.unit_index) < unit_dryers_.size() &&
+                                 unit_dryers_[static_cast<size_t>(unit.unit_index)].active;
+            for (auto& slot : unit.slots) {
+                const auto gate =
+                    static_cast<size_t>(unit.first_slot_global_index + slot.slot_index);
+                if (gate >= gate_drying_.size()) {
+                    continue;
+                }
+                auto state = gate_drying_[gate];
+                if (!running && (state == helix::printer::ZoneDryingState::Active ||
+                                 state == helix::printer::ZoneDryingState::Queued)) {
+                    state = helix::printer::ZoneDryingState::Complete;
+                }
+                slot.drying_state = state;
+            }
+        }
+    }
+
     // EMU: a sealed box per lane, so every slot carries its own reading.
-    if (mode == "emu") {
+    if (mode == "emu" || mode == "emu_dryer") {
         constexpr float lane_humidity[] = {31.0f, 38.0f, 45.0f, 52.0f, 58.0f, 63.0f};
         int lane = 0;
         for (auto& unit : info.units) {
@@ -2008,6 +2050,86 @@ AmsError AmsBackendMock::start_drying(float temp_c, int duration_min, int fan_pc
 
     emit_event(EVENT_STATE_CHANGED);
     return AmsError{AmsResult::SUCCESS};
+}
+
+void AmsBackendMock::begin_gate_cycle_locked(const std::vector<int>& gates) {
+    std::fill(gate_drying_.begin(), gate_drying_.end(), helix::printer::ZoneDryingState::Idle);
+    bool first = true;
+    for (int gate : gates) {
+        if (gate < 0 || static_cast<size_t>(gate) >= gate_drying_.size()) {
+            continue;
+        }
+        gate_drying_[static_cast<size_t>(gate)] = first ? helix::printer::ZoneDryingState::Active
+                                                        : helix::printer::ZoneDryingState::Queued;
+        first = false;
+    }
+}
+
+AmsError AmsBackendMock::start_drying_request(const DryingRequest& request) {
+    bool per_gate = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        per_gate = resolve_environment_mode() == "emu_dryer";
+        if (per_gate) {
+            std::vector<int> gates = request.gates;
+            if (gates.empty()) {
+                for (const auto& u : system_info_.units) {
+                    if (u.unit_index == request.unit) {
+                        for (int i = 0; i < u.slot_count; ++i) {
+                            gates.push_back(u.first_slot_global_index + i);
+                        }
+                    }
+                }
+            }
+            spdlog::info("[AmsBackendMock] Drying {} gate(s) on unit {}{}", gates.size(),
+                         request.unit, request.rotate ? ", rotating spools" : "");
+            begin_gate_cycle_locked(gates);
+        }
+    }
+    if (!per_gate) {
+        return AmsBackend::start_drying_request(request);
+    }
+    return start_drying(request.temp_c, request.duration_min, request.fan_pct, request.unit);
+}
+
+AmsError AmsBackendMock::stop_drying_gates(int unit, const std::vector<int>& gates) {
+    using helix::printer::ZoneDryingState;
+    auto live = [](ZoneDryingState st) {
+        return st == ZoneDryingState::Active || st == ZoneDryingState::Queued;
+    };
+    bool per_gate = false;
+    bool any_left = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        per_gate = resolve_environment_mode() == "emu_dryer";
+        if (per_gate) {
+            for (size_t g = 0; g < gate_drying_.size(); ++g) {
+                const bool named = gates.empty() || std::find(gates.begin(), gates.end(),
+                                                              static_cast<int>(g)) != gates.end();
+                if (named && live(gate_drying_[g])) {
+                    gate_drying_[g] = ZoneDryingState::Cancelled;
+                }
+            }
+            any_left = std::any_of(gate_drying_.begin(), gate_drying_.end(), live);
+            // The next waiting gate takes the heater.
+            if (std::none_of(gate_drying_.begin(), gate_drying_.end(),
+                             [](ZoneDryingState st) { return st == ZoneDryingState::Active; })) {
+                const auto next =
+                    std::find(gate_drying_.begin(), gate_drying_.end(), ZoneDryingState::Queued);
+                if (next != gate_drying_.end()) {
+                    *next = ZoneDryingState::Active;
+                }
+            }
+        }
+    }
+    if (!per_gate) {
+        return AmsBackend::stop_drying_gates(unit, gates);
+    }
+    if (any_left) {
+        emit_event(EVENT_STATE_CHANGED);
+        return AmsError{AmsResult::SUCCESS};
+    }
+    return stop_drying(unit);
 }
 
 AmsError AmsBackendMock::stop_drying(int unit) {
