@@ -1275,7 +1275,7 @@
   <translation tag="Fine" it="Preciso"/>
   <translation tag="Fine Inner" it="Preciso interno"/>
   <translation tag="Fine Outer" it="Preciso esterno"/>
-  <translation tag="Fine-tune" it="Regolazione fine"/>
+  <translation tag="Fine-tune" it="Affina"/>
   <translation tag="Finish" it="Fine"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" it="Termina o annulla la stampa prima di caricare, scaricare o cambiare il filamento"/>
   <translation tag="Finishing clean..." it="Completamento pulizia..."/>
@@ -3071,7 +3071,7 @@
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" it="Regolazione temporanea per questa stampa, salvo salvataggio nel pannello Controlli"/>
   <translation tag="Tertiary" it="Terziario"/>
   <translation tag="Test All Lanes" it="Prova tutte le corsie"/>
-  <translation tag="Test Both" it="Testa entrambi"/>
+  <translation tag="Test Both" it="Entrambi"/>
   <translation tag="Test Connection" it="Test connessione"/>
   <translation tag="Test Grip" it="Prova la presa"/>
   <translation tag="Test Load" it="Prova il caricamento"/>
@@ -3296,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" it="Prova a modificare la ricerca o i filtri"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." it="Riprova l&apos;operazione. Se il problema persiste, controlla eventuali problemi meccanici."/>
   <translation tag="Tune" it="Regola"/>
-  <translation tag="Tune Belts" it="Regola cinghie"/>
+  <translation tag="Tune Belts" it="Regola"/>
   <translation tag="Tuning tower enabled - start a print to test" it="Torre di regolazione abilitata - avvia una stampa per testare"/>
   <translation tag="Turbo" it="Turbo"/>
   <translation tag="Turbo Inner" it="Turbo interno"/>

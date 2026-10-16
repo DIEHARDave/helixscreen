@@ -1403,7 +1403,7 @@ translations:
   Fine: Preciso
   Fine Inner: Preciso interno
   Fine Outer: Preciso esterno
-  Fine-tune: "Regolazione fine"
+  Fine-tune: "Affina"
   Finish: Fine
   Finish or cancel the print before loading, unloading, or changing filament: Termina o annulla la stampa prima di caricare, scaricare o cambiare il filamento
   Finishing clean...: Completamento pulizia...
@@ -3410,7 +3410,7 @@ translations:
   Test RS-485 link to CFS units: 'Prova il collegamento RS-485 alle unità CFS'
   Test Screensaver: Prova salvaschermo
   Test Tracker: Test Tracker
-  Test Both: Testa entrambi
+  Test Both: "Entrambi"
   Test label printed: Etichetta di prova stampata
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Test rotazione: %d°
     (%d/%d) - %ds rimanenti'
@@ -3696,7 +3696,7 @@ translations:
   Try Again: 'Riprova'
   Try the operation again. If it persists, check for mechanical issues.: Riprova l'operazione. Se il problema persiste, controlla eventuali problemi meccanici.
   Tune: Regola
-  Tune Belts: "Regola cinghie"
+  Tune Belts: "Regola"
   Tuning tower enabled - start a print to test: Torre di regolazione abilitata - avvia
     una stampa per testare
   Turbo: Turbo

@@ -2456,8 +2456,8 @@
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" es="Vuelva a asentar el conector del tubo Bowden en la unidad CFS"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." es="Vuelve a sincronizar el estado registrado de Happy Hare con el hardware."/>
   <translation tag="Re-test" es="Probar de nuevo"/>
-  <translation tag="Re-test A" es="Probar A de nuevo"/>
-  <translation tag="Re-test B" es="Probar B de nuevo"/>
+  <translation tag="Re-test A" es="Repetir A"/>
+  <translation tag="Re-test B" es="Repetir B"/>
   <translation tag="Readings from extra temperature sensors" es="Lecturas de sensores adicionales"/>
   <translation tag="Ready" es="Listo"/>
   <translation tag="Ready for filament operations" es="Listo para operaciones de filamento"/>
@@ -3071,7 +3071,7 @@
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" es="Ajuste temporal para esta impresión, a menos que se guarde en el panel de Controles"/>
   <translation tag="Tertiary" es="Terciario"/>
   <translation tag="Test All Lanes" es="Probar todos los carriles"/>
-  <translation tag="Test Both" es="Probar ambos"/>
+  <translation tag="Test Both" es="Ambos"/>
   <translation tag="Test Connection" es="Probar Conexión"/>
   <translation tag="Test Grip" es="Probar el agarre"/>
   <translation tag="Test Load" es="Probar la carga"/>
@@ -3296,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" es="Intente ajustar su búsqueda o filtros"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." es="Intente la operación de nuevo. Si persiste, compruebe si hay problemas mecánicos."/>
   <translation tag="Tune" es="Ajustar"/>
-  <translation tag="Tune Belts" es="Ajustar correas"/>
+  <translation tag="Tune Belts" es="Ajustar"/>
   <translation tag="Tuning tower enabled - start a print to test" es="Torre de ajuste activada - inicie una impresión para probar"/>
   <translation tag="Turbo" es="Turbo"/>
   <translation tag="Turbo Inner" es="Turbo interior"/>

@@ -2705,8 +2705,8 @@ translations:
   Re-syncs Happy Hare's tracked state with the hardware.: Vuelve a sincronizar el
     estado registrado de Happy Hare con el hardware.
   Re-test: Probar de nuevo
-  Re-test A: Probar A de nuevo
-  Re-test B: Probar B de nuevo
+  Re-test A: "Repetir A"
+  Re-test B: "Repetir B"
   Readings from extra temperature sensors: Lecturas de sensores adicionales
   Ready: Listo
   Ready for filament operations: Listo para operaciones de filamento
@@ -3411,7 +3411,7 @@ translations:
   Test RS-485 link to CFS units: 'Probar el enlace RS-485 con las unidades CFS'
   Test Screensaver: Probar Salvapantallas
   Test Tracker: Rastreador de Pruebas
-  Test Both: Probar ambos
+  Test Both: "Ambos"
   Test label printed: Etiqueta de prueba impresa
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Probando rotación: %d°
     (%d/%d) - %ds restantes'
@@ -3696,7 +3696,7 @@ translations:
   Try Again: 'Reintentar'
   Try the operation again. If it persists, check for mechanical issues.: Intente la operación de nuevo. Si persiste, compruebe si hay problemas mecánicos.
   Tune: Ajustar
-  Tune Belts: "Ajustar correas"
+  Tune Belts: "Ajustar"
   Tuning tower enabled - start a print to test: Torre de ajuste activada - inicie
     una impresión para probar
   Turbo: Turbo

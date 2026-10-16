@@ -291,13 +291,13 @@
             <bind_style_if name="bt_flow_row_wrap" cond="ui_is_portrait eq 1"/>
             <ui_button name="btn_retest_a"
                        width="0" height="#button_height" flex_grow="1" icon="refresh" text="Re-test A"
-                       variant="secondary">
+                       variant="secondary" long_mode="dots">
               <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0" flag="hidden"/>
               <event_cb trigger="clicked" callback="belt_tension_retest_a_cb"/>
             </ui_button>
             <ui_button name="btn_retest_b"
                        width="0" height="#button_height" flex_grow="1" icon="refresh" text="Re-test B"
-                       variant="secondary">
+                       variant="secondary" long_mode="dots">
               <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0" flag="hidden"/>
               <event_cb trigger="clicked" callback="belt_tension_retest_b_cb"/>
             </ui_button>

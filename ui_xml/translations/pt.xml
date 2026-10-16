@@ -2456,8 +2456,8 @@
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" pt="Reencaixe o conector do tubo Bowden na unidade CFS"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." pt="Ressincroniza o estado rastreado do Happy Hare com o hardware."/>
   <translation tag="Re-test" pt="Testar novamente"/>
-  <translation tag="Re-test A" pt="Testar A novamente"/>
-  <translation tag="Re-test B" pt="Testar B novamente"/>
+  <translation tag="Re-test A" pt="Repetir A"/>
+  <translation tag="Re-test B" pt="Repetir B"/>
   <translation tag="Readings from extra temperature sensors" pt="Leituras de sensores adicionais"/>
   <translation tag="Ready" pt="Pronto"/>
   <translation tag="Ready for filament operations" pt="Pronto para operações de filamento"/>
@@ -3071,7 +3071,7 @@
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" pt="Ajuste temporário para esta impressão, a menos que salvo no painel de Controles"/>
   <translation tag="Tertiary" pt="Terciário"/>
   <translation tag="Test All Lanes" pt="Testar todas as lanes"/>
-  <translation tag="Test Both" pt="Testar ambos"/>
+  <translation tag="Test Both" pt="Ambos"/>
   <translation tag="Test Connection" pt="Testar Conexão"/>
   <translation tag="Test Grip" pt="Testar a preensão"/>
   <translation tag="Test Load" pt="Testar o carregamento"/>
@@ -3296,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" pt="Tente ajustar sua busca ou filtros"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." pt="Tente a operação novamente. Se persistir, verifique problemas mecânicos."/>
   <translation tag="Tune" pt="Ajustar"/>
-  <translation tag="Tune Belts" pt="Ajustar correias"/>
+  <translation tag="Tune Belts" pt="Ajustar"/>
   <translation tag="Tuning tower enabled - start a print to test" pt="Torre de ajuste habilitada - inicie uma impressão para testar"/>
   <translation tag="Turbo" pt="Turbo"/>
   <translation tag="Turbo Inner" pt="Turbo Interno"/>

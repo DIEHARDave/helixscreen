@@ -3203,7 +3203,7 @@ translations:
   Test RS-485 link to CFS units: 'CFSユニットへのRS-485接続をテスト'
   Test Screensaver: スクリーンセーバーをテスト
   Test Tracker: テストトラッカー
-  Test Both: 両方をテスト
+  Test Both: 両方テスト
   Test label printed: テストラベル印刷完了
   'Testing rotation: %d° (%d/%d) - %ds remaining': '回転テスト: %d° (%d/%d)
     - %ds残り'
@@ -3456,7 +3456,7 @@ translations:
   Try Again: '再試行'
   Try the operation again. If it persists, check for mechanical issues.: もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。
   Tune: チューニング
-  Tune Belts: "ベルトを調整"
+  Tune Belts: "ベルト調整"
   Tuning tower enabled - start a print to test: チューニングタワー有効 - 印刷を開始してテストしてください
   Turbo: ターボ
   Turbo Inner: ターボ・内側

@@ -3071,7 +3071,7 @@
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" ja="コントロールパネルで保存しない限り、この印刷のみの一時的な調整です"/>
   <translation tag="Tertiary" ja="ターシャリ"/>
   <translation tag="Test All Lanes" ja="全レーンをテスト"/>
-  <translation tag="Test Both" ja="両方をテスト"/>
+  <translation tag="Test Both" ja="両方テスト"/>
   <translation tag="Test Connection" ja="接続テスト"/>
   <translation tag="Test Grip" ja="グリップをテスト"/>
   <translation tag="Test Load" ja="ロードをテスト"/>
@@ -3296,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" ja="検索やフィルターを調整してみてください"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." ja="もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。"/>
   <translation tag="Tune" ja="チューニング"/>
-  <translation tag="Tune Belts" ja="ベルトを調整"/>
+  <translation tag="Tune Belts" ja="ベルト調整"/>
   <translation tag="Tuning tower enabled - start a print to test" ja="チューニングタワー有効 - 印刷を開始してテストしてください"/>
   <translation tag="Turbo" ja="ターボ"/>
   <translation tag="Turbo Inner" ja="ターボ・内側"/>
