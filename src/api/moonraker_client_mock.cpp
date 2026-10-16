@@ -168,6 +168,9 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
     dragonbreath_fault_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_FAULT");
     dragonbreath_offline_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_OFFLINE");
     dragonbreath_external_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_EXTERNAL");
+    if (const char* reject = std::getenv("HELIX_MOCK_DRAGONBREATH_REJECT"); reject && *reject) {
+        dragonbreath_reject_code_ = reject;
+    }
     panda_breath_offline_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_OFFLINE");
     panda_breath_auto_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_AUTO");
 
@@ -734,6 +737,16 @@ void MoonrakerClientMock::append_chamber_backend_status(json& status_obj, double
                 {"source", mock_external ? "device" : "klipper"},
                 {"lease_owned", !mock_external && chamber_target > 0.0},
                 {"connected", !mock_offline}};
+            // The rejection fields only once a target has been refused, as a
+            // glue that has rejected nothing yet reports none.
+            if (const int seq = dragonbreath_reject_seq_.load(); seq > 0) {
+                const bool outstanding = dragonbreath_rejection_outstanding_.load();
+                const std::string code = outstanding ? dragonbreath_reject_code_ : std::string();
+                status_obj[diag]["protocol_error"] = code;
+                status_obj[diag]["protocol_error_code"] = code;
+                status_obj[diag]["protocol_error_seq"] = seq;
+                status_obj[diag]["protocol_error_target"] = dragonbreath_reject_target_.load();
+            }
         } else if (backend->id() == "panda_breath") {
             // VENDOR_OK: mirrors the stock Panda Breath binding's status
             // object as captured live on the U1 rig (issue #1290).
@@ -4575,6 +4588,48 @@ void MoonrakerClientMock::set_bed_target(double target) {
 
 void MoonrakerClientMock::set_chamber_target(double target) {
     chamber_target_.store(target);
+}
+
+json MoonrakerClientMock::chamber_route_set_target(double target) {
+    const std::string key = chamber_heater_status_key();
+    if (!dragonbreath_reject_code_.empty()) {
+        const int seq = ++dragonbreath_reject_seq_;
+        dragonbreath_reject_target_.store(target);
+        dragonbreath_rejection_outstanding_.store(true);
+        set_chamber_target(0.0);
+        spdlog::info("[MoonrakerClientMock] Chamber target {}°C refused ({}), seq {}", target,
+                     dragonbreath_reject_code_, seq);
+        json status = {{"dragonbreath",
+                        {{"protocol_error", dragonbreath_reject_code_},
+                         {"protocol_error_code", dragonbreath_reject_code_},
+                         {"protocol_error_seq", seq},
+                         {"protocol_error_target", target}}}};
+        if (!key.empty()) {
+            status[key] = {{"target", 0.0}};
+        }
+        dispatch_status_update(status);
+        return {{"accepted", false},
+                {"pending", false},
+                {"reason", dragonbreath_reject_code_},
+                {"seq", seq},
+                {"target", target}};
+    }
+    set_chamber_target(target);
+    reset_idle_timeout();
+    const bool cleared = dragonbreath_rejection_outstanding_.exchange(false);
+    json status = json::object();
+    if (!key.empty()) {
+        status[key] = {{"target", target}};
+    }
+    if (cleared) {
+        status["dragonbreath"] = {{"protocol_error", ""}, {"protocol_error_code", ""}};
+    }
+    dispatch_status_update(status);
+    return {{"accepted", true},
+            {"pending", false},
+            {"reason", nullptr},
+            {"seq", dragonbreath_reject_seq_.load()},
+            {"target", target}};
 }
 
 void MoonrakerClientMock::dispatch_method_callback(const std::string& method, const json& msg) {

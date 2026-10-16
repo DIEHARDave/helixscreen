@@ -331,7 +331,10 @@ PARALLEL and MIXED take the same shape with `plan_parallel` and `plan_mixed`
 (rows from `parallel_rows()`, MIXED from `compute_mixed_frame`), then draw the
 MIXED hub box and every toolhead glyph over the painted tubes. Their toolheads
 stand on a glyph-bottom line near the canvas bottom; the sensors and the hub
-sit fixed fractions of the run down to them.
+sit fixed fractions of the run down to them. A PARALLEL unit has no housing, so
+`ams_detail_sync_lane_entry()` hands the canvas the spools' flange bottom
+instead of a box front, and `parallel_rows()` hangs each tube's round cap from
+it whenever that leaves room above the sensor.
 
 Each toolhead carries its tool label as a corner badge (`ui_toolhead_badge.h`):
 the spool tool badge's look from the shared `ams_slot_tool_badge_*` tokens and
@@ -379,8 +382,12 @@ the hub and buffer stack above the toolhead glyph (`glyph_top` is
 - **Bands.** Clamp bands replace the sensor dots: prep (per slot with a prep
   sensor), hub entry (HUB), output (hub bottom, not on-toolhead), bypass merge
   (bypass shown) and toolhead (whenever the unit reports a toolhead sensor,
-  `FilamentPathData::has_toolhead_sensor`). PARALLEL and MIXED lanes each get
-  one band at their sensor, read as `TOOLHEAD`. `band_state()`: Error on the active
+  `FilamentPathData::has_toolhead_sensor`). MIXED lanes each get one band at
+  their sensor, read as `TOOLHEAD`; PARALLEL lanes get it only when the unit
+  publishes a toolhead sensor, so a tool changer's tubes run unbanded. A PARALLEL lane whose backend
+  publishes an entry sensor (`slot_has_prep_sensor`) gets a second band three
+  tube gauges below its cap, read as `PREP`; the run between the two bands is
+  `LANE`, so filament only the entry sensor sees fills the tube to that band. `band_state()`: Error on the active
   route at the error segment, Active once triggered on the active route, Loaded
   (the lane's own filament color) once triggered off it, else Empty.
 - **Paint.** `coalesce()` joins adjacent painted segments with equal styles into

@@ -401,6 +401,22 @@ ParallelRows parallel_rows(const FilamentPathData& data, const BaseGeometry& g) 
     r.toolhead_y = toolhead_standing_on(g.y_off + (int32_t)(g.height * PARALLEL_GLYPH_BOTTOM_RATIO),
                                         r.tool_scale);
     r.sensor_y = row_between(r.entry_y, r.toolhead_y, PARALLEL_SENSOR_FRACTION);
+    // The tubes hang from the spools' bottom edge, the round cap's top on it,
+    // when that leaves two tube gauges and a band of tube above the sensor.
+    if (g.lane_entry_y != INT32_MIN) {
+        const int32_t gauge = data.theme.tube_gauge;
+        const int32_t entry_y = g.lane_entry_y + (gauge + 1) / 2;
+        if (entry_y <= r.sensor_y - 2 * gauge - BAND_THICKNESS) {
+            r.entry_y = entry_y;
+            r.sensor_y = row_between(r.entry_y, r.toolhead_y, PARALLEL_SENSOR_FRACTION);
+        }
+    }
+    // A lane's entry sensor clamps the tube three gauges below its cap, clear
+    // of the spool's glow, and keeps two gauges and a band of tube above the
+    // toolhead sensor. On a run too short for both it stands on the cap.
+    const int32_t gauge = data.theme.tube_gauge;
+    r.prep_y =
+        LV_MAX(r.entry_y, LV_MIN(r.entry_y + 3 * gauge, r.sensor_y - 2 * gauge - BAND_THICKNESS));
     return r;
 }
 
@@ -690,12 +706,14 @@ Lane lane_of(const SlotRenderState& s, PathSegment error, lv_color_t bg) {
             lane_error(s, s.is_mounted, error), s.color, bg};
 }
 
-// Spool entry down to the lane's sensor, with its band. The sensor reads
-// filament once it has reached the toolhead segment.
-Route& start_lane(PathPlan& out, const Lane& lane, float x, int32_t entry_y, int32_t sensor_y) {
+// Spool entry down to the lane's sensor, with its band where the unit has
+// one. The sensor reads filament once it has reached the toolhead segment.
+Route& start_lane(PathPlan& out, const Lane& lane, float x, int32_t entry_y, int32_t sensor_y,
+                  bool has_sensor = true) {
     Route& r = new_route(out);
     append_line(r, x, (float)entry_y, x, (float)sensor_y, lane.style(PathSegment::SPOOL));
-    add_band_at_end(out, BandKind::Lane, r, lane.band(PathSegment::TOOLHEAD), lane.color);
+    if (has_sensor)
+        add_band_at_end(out, BandKind::Lane, r, lane.band(PathSegment::TOOLHEAD), lane.color);
     return r;
 }
 
@@ -714,8 +732,22 @@ void plan_parallel(const FilamentPathData& data, const BaseGeometry& g, PathPlan
     for (int i = 0; i < n; i++) {
         const Lane lane = lane_of(states[i], error, data.theme.color_bg);
         const float x = (float)g.slot_x[i];
-        Route& r = start_lane(out, lane, x, entry_y, sensor_y);
-        append_line(r, x, (float)sensor_y, x, nozzle_top, lane.style(PathSegment::NOZZLE));
+        Route* r;
+        if (data.slot_has_prep_sensor[i]) {
+            // Filament the entry sensor alone sees fills the tube to its band.
+            r = &new_route(out);
+            append_line(*r, x, (float)entry_y, x, (float)rows.prep_y,
+                        lane.style(PathSegment::SPOOL));
+            add_band_at_end(out, BandKind::Lane, *r, lane.band(PathSegment::PREP), lane.color);
+            append_line(*r, x, (float)rows.prep_y, x, (float)sensor_y,
+                        lane.style(PathSegment::LANE));
+            if (data.has_toolhead_sensor)
+                add_band_at_end(out, BandKind::Lane, *r, lane.band(PathSegment::TOOLHEAD),
+                                lane.color);
+        } else {
+            r = &start_lane(out, lane, x, entry_y, sensor_y, data.has_toolhead_sensor);
+        }
+        append_line(*r, x, (float)sensor_y, x, nozzle_top, lane.style(PathSegment::NOZZLE));
         if (lane.on)
             out.active_route = i;
     }

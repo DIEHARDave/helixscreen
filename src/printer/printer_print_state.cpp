@@ -99,6 +99,7 @@ void PrinterPrintState::init_subjects(bool register_xml) {
     // Print start progress subjects
     INIT_SUBJECT_INT(print_start_phase, static_cast<int>(PrintStartPhase::IDLE), subjects_,
                      register_xml);
+    INIT_SUBJECT_INT(print_start_chamber_wait, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(print_lifecycle, static_cast<int>(PrintState::Idle), subjects_, register_xml);
     INIT_SUBJECT_INT(job_holds_machine, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(machine_motion_blocked, spool_latch_active_.load() ? 1 : 0, subjects_,
@@ -561,6 +562,7 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                             phase);
                         lv_subject_set_int(&print_start_phase_,
                                            static_cast<int>(PrintStartPhase::IDLE));
+                        lv_subject_set_int(&print_start_chamber_wait_, 0);
                         publish_lifecycle_state();
                         lv_subject_copy_string(&print_start_message_, "");
                         lv_subject_set_int(&print_start_progress_, 0);
@@ -1215,6 +1217,9 @@ void PrinterPrintState::set_print_start_state(PrintStartPhase phase, const char*
                 lv_subject_set_int(&print_outcome_, static_cast<int>(PrintOutcome::NONE));
             }
         }
+        if (phase != PrintStartPhase::SOAKING) {
+            set_print_start_chamber_wait(false);
+        }
         if (lv_subject_get_int(&print_start_phase_) != static_cast<int>(phase)) {
             lv_subject_set_int(&print_start_phase_, static_cast<int>(phase));
             publish_lifecycle_state();
@@ -1236,6 +1241,7 @@ void PrinterPrintState::reset_print_start_state() {
         if (phase != static_cast<int>(PrintStartPhase::IDLE)) {
             spdlog::debug("[PrinterPrintState] Resetting print start state to IDLE");
             lv_subject_set_int(&print_start_phase_, static_cast<int>(PrintStartPhase::IDLE));
+            lv_subject_set_int(&print_start_chamber_wait_, 0);
             publish_lifecycle_state();
             lv_subject_copy_string(&print_start_message_, "");
             lv_subject_set_int(&print_start_progress_, 0);
@@ -1243,6 +1249,13 @@ void PrinterPrintState::reset_print_start_state() {
             update_display_message_visible();
         }
     });
+}
+
+void PrinterPrintState::set_print_start_chamber_wait(bool waiting) {
+    const int value = waiting ? 1 : 0;
+    if (lv_subject_get_int(&print_start_chamber_wait_) != value) {
+        lv_subject_set_int(&print_start_chamber_wait_, value);
+    }
 }
 
 void PrinterPrintState::set_print_in_progress(bool in_progress) {

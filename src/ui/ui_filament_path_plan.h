@@ -132,7 +132,7 @@ MixedFrame compute_mixed_frame(const FilamentPathData& data, const BaseGeometry&
 
 // PARALLEL rows: the lane entries, each tool's entry sensor, and its toolhead.
 struct ParallelRows {
-    int32_t entry_y, sensor_y, toolhead_y, tool_scale;
+    int32_t entry_y, prep_y, sensor_y, toolhead_y, tool_scale;
 };
 ParallelRows parallel_rows(const FilamentPathData& data, const BaseGeometry& g);
 

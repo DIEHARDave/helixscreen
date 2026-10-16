@@ -229,6 +229,22 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
         return true;
     };
 
+    // printer.dragonbreath.set_target - the chamber appliance glue's webhook,
+    // proxied by Moonraker. VENDOR_OK: the mock simulates that appliance.
+    registry["printer.dragonbreath.set_target"] =
+        [](MoonrakerClientMock* self, const json& params,
+           std::function<void(const json&)> success_cb,
+           [[maybe_unused]] std::function<void(const MoonrakerError&)> error_cb) -> bool {
+        const double target = params.contains("target") && params["target"].is_number()
+                                  ? params["target"].get<double>()
+                                  : 0.0;
+        const json reply = self->chamber_route_set_target(target);
+        if (success_cb) {
+            success_cb(reply);
+        }
+        return true;
+    };
+
     // printer.emergency_stop - Execute emergency stop (M112)
     registry["printer.emergency_stop"] =
         [](MoonrakerClientMock* self, [[maybe_unused]] const json& params,

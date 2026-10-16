@@ -275,7 +275,10 @@ MoonrakerClientMock::gcode_heater_temperature(const std::string& gcode) {
         // "HEATER=dragonbreath" for backend-named ones (a hard-coded
         // "chamber" comparison silently ignores those).
         const std::string bare = chamber_heater_bare_name();
-        if (!bare.empty() && gcode.find("HEATER=" + bare) != std::string::npos) {
+        if (!bare.empty() && gcode.find("HEATER=" + bare) != std::string::npos &&
+            !dragonbreath_reject_code_.empty()) {
+            chamber_route_set_target(target);
+        } else if (!bare.empty() && gcode.find("HEATER=" + bare) != std::string::npos) {
             set_chamber_target(target);
             reset_idle_timeout();
             spdlog::info("[MoonrakerClientMock] Chamber target set to {}°C", target);

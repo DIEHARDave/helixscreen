@@ -1119,6 +1119,17 @@ open question of how much of the per-lane loop can be expressed in XML.
 
 ---
 
+### Insert prompts
+
+`FilamentInsertWatcher` opens the slot editor on a lane's `slot_insert_presence()`
+going empty to present, unless the lane's tag reader names the spool
+(`slot_insert_identity()`, `lane_insert_action()` in `include/filament_insert_policy.h`).
+While it waits on the reader or holds the editor open it claims the lane
+(`claim_insert_prompt()`, `include/ui_insert_notice.h`), and the "Same spool?"
+notice stays quiet for a claimed lane. That suppression only works when the
+reader answers after the presence edge, as on the U1's Pending path. A backend
+that queues the notice from the same parse as the edge can still show both.
+
 ## UI Panels
 
 ### AMS Panel (`ui_panel_ams`)

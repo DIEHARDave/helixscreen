@@ -575,6 +575,7 @@ translations:
   Cancel macro not configured: Макрос отмены не настроен
   Cancel print: 'Отменить печать'
   Cancelled: Отменено
+  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Отмена выключит целевую температуру камеры, чтобы ожидание закончилось, затем остановит печать.'
   'Cannot add to queue: internal error': 'Не удалось добавить в очередь: внутренняя ошибка'
   Cannot be changed from here on a multi-unit MMU: Нельзя изменить здесь на MMU с несколькими блоками
   'Cannot control timelapse: printer not connected': 'Невозможно управлять таймлапсом:
@@ -623,6 +624,8 @@ translations:
   Chamber Temperature: Температура камеры
   Chamber and dryer humidity monitoring: Мониторинг влажности камеры и сушилки
   Chamber at %d°C: Камера при %d°C
+  Chamber heater didn't start: 'Нагреватель камеры не запустился'
+  Chamber heater didn't start. {}: 'Нагреватель камеры не запустился. {}'
   Chamber heating to %d°C...: Нагрев камеры до %d°C...
   Chamber target set to {}°C: Целевая температура камеры установлена на {}°C
   Chamber temp must be 0-%d°C: Температура камеры должна быть 0-%d°C
@@ -1110,6 +1113,7 @@ translations:
   Element: Элемент
   Emergency Stop: Аварийная остановка
   Emergency Stop?: Аварийная остановка?
+  Emergency stop: 'Аварийная остановка'
   Emergency stop activated: Аварийная остановка активирована
   'Emergency stop failed: not connected': 'Аварийная остановка не удалась: нет подключения'
   'Emergency stop failed: {}': 'Ошибка аварийной остановки: {}'
@@ -1819,6 +1823,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Хранит собственные данные на этом экране (до 256 КБ).'
   Keep the bypass spool visible when bypass is off: Показывать катушку байпаса, даже когда байпас выключен
+  Keep waiting: 'Продолжить ожидание'
   Kick away: 'Сброс остатка'
   Kinematics: Кинематика
   Klipper: Klipper
@@ -3365,6 +3370,7 @@ translations:
   : "Остановить печать \"{}\"?\n\nЭто нельзя будет отменить через 5 секунд."
   Stop the check?: Остановить проверку?
   Stop the running cycle before starting another: 'Остановите текущий цикл, прежде чем запускать новый'
+  Stop with an emergency stop?: 'Остановить аварийной остановкой?'
   Stopped: Остановлено
   Stopped between Hub and Toolhead: Остановка между хабом и печатающей головкой
   Stopped between Lane and Hub: Остановка между каналом и хабом
@@ -3512,6 +3518,7 @@ translations:
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: Буфер не фиксировал движение 16 секунд. Проверьте засор между CFS и экструдером или заклинивший буфер
   ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
   : 'Камере показалось, что на столе что-то есть, поэтому принтер остановился до начала печати. Если стол чист, это ложная тревога.'
+  The chamber wait already ended; nothing was stopped.: 'Ожидание камеры уже закончилось; ничего не остановлено.'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: Лезвие не вернулось. Проверьте, не намотался ли филамент на режущий механизм
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: Резак смещён. Выполните повторную калибровку командой CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: Экструдер не может тянуть равномерно. Проверьте катушку на запутывание или узел, а трубку PTFE на резкий изгиб
@@ -3519,6 +3526,15 @@ translations:
   : Филамент не дошёл до сопла. CFS не сообщила об ошибке, но датчик печатающей головки по-прежнему не видит филамент. Проверьте, что катушка установлена правильно и путь свободен, затем повторите попытку.
   The filament may not have fully retracted — try again or manually pull: Возможно, филамент втянут не полностью. Повторите или вытяните вручную
   The filament system reported an error: Система филамента сообщила об ошибке
+  The heater can't be changed while the printer is waiting.: 'Нагреватель нельзя изменить, пока принтер ожидает.'
+  The heater did not accept the printer's credentials.: 'Нагреватель не принял учётные данные принтера.'
+  The heater didn't accept the command.: 'Нагреватель не принял команду.'
+  The heater hasn't answered yet. Still trying.: 'Нагреватель ещё не ответил. Продолжаем попытки.'
+  The heater is inhibited.: 'Нагреватель заблокирован.'
+  The heater reports a fault.: 'Нагреватель сообщает о неисправности.'
+  'The heater reports a fault: {}.': 'Нагреватель сообщает о неисправности: {}.'
+  The heater took the target.: 'Нагреватель принял целевую температуру.'
+  The heater was turned off at the heater.: 'Нагреватель был выключен на самом нагревателе.'
   The heater will cycle on and off several times.: Нагреватель будет несколько раз
     включаться и выключаться.
   The helper macros are installed and activate after Klipper restarts.: 'Вспомогательные макросы установлены и активируются после перезапуска Klipper.'
@@ -3531,6 +3547,8 @@ translations:
   The plate finishes its current move, but drying will not start.: 'Стол завершит текущее перемещение, но сушка не начнётся.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены.
+  The print is waiting for the chamber to reach {}°C, but the heater is not heating.: 'Печать ждёт, пока камера нагреется до {}°C, но нагреватель не греет.'
+  The print is waiting for the chamber, but the heater is not heating.: 'Печать ждёт камеру, но нагреватель не греет.'
   The printer applied this value and keeps it for this tool.: 'Принтер применил это значение и сохранил его для этого инструмента.'
   The printer did not change its bed check: 'Принтер не изменил проверку стола'
   'The printer did not change its bed check: {}': 'Принтер не изменил проверку стола: {}'
@@ -3546,6 +3564,9 @@ translations:
   : Принтер выполнит парковку, затем отведёт стол как можно дальше от сопла. Некоторые катушки недостаточно термостойкие и могут деформироваться. С этого экрана ничего не будет двигаться, пока вы не подтвердите, что катушки сняты со стола; Mainsail, макросы и печать, отправленная из слайсера, не блокируются.
 
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: Принтер не запаркован. Продолжение выполнит парковку всех осей, печатающая головка переместится. Убедитесь, что стол свободен.
+  The printer is shut down.: 'Принтер выключен.'
+  ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.
+  : 'Принтер ждёт, пока камера достигнет температуры, и прервать это ожидание могут только аварийная остановка и перезапуск прошивки. Печать остановится сразу, продолжить её будет нельзя.'
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: Принтер не обнаруживает загруженный филамент. Что вы хотите сделать?
   The printer lost power during a print. It can resume where it left off.: Принтер потерял питание во время печати. Он может продолжить с места остановки.
   The printer lost power during a print. The resumed layer may not line up exactly.: Принтер потерял питание во время печати. Возобновлённый слой может не совпасть точно.
@@ -3648,6 +3669,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Этот инструмент
     проверяет каждый винт стола и показывает, насколько его нужно отрегулировать.
   'This update asks for new permissions:': 'Это обновление запрашивает новые разрешения:'
+  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Это ожидание заканчивается только по достижении температуры: для отмены нужны аварийная остановка и перезапуск прошивки.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Z-offset будет применён к вашему концевику, и Klipper перезапустится для сохранения
@@ -3755,6 +3777,7 @@ translations:
   Try adjusting your search or filters: Попробуйте изменить поиск или фильтры
   Try Again: 'Повторить'
   Try the operation again. If it persists, check for mechanical issues.: Повторите операцию. Если проблема не исчезает, проверьте механические неисправности.
+  Trying again...: 'Повторная попытка...'
   Tune: Настройка
   Tuning tower enabled - start a print to test: Башня настройки включена — начните
     печать для теста
@@ -3922,6 +3945,8 @@ translations:
   Waiting for another box to finish.: Ожидание завершения другой коробки.
   Waiting for bed to reach temperature for accurate calibration.: Ожидание нагрева
     стола для точной калибровки.
+  Waiting for chamber {} / {}°C: 'Ожидание камеры {} / {}°C'
+  Waiting for chamber {}°C: 'Ожидание камеры {}°C'
   Waiting for the filament system to report its state: Ожидание состояния системы филамента
   Warm: Тёплый
   Warm Bed: Прогреть стол

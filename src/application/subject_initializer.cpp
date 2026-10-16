@@ -45,6 +45,7 @@
 #include "app_globals.h"
 #include "bed_drying_controller.h"
 #include "bed_mesh_state.h"
+#include "chamber_stall_prompt.h"
 #include "filament_catalog.h"
 #include "filament_database.h"
 #include "filament_op_heater.h"
@@ -429,6 +430,10 @@ void SubjectInitializer::init_observers() {
     // stays false on every other backend). Owns its own observers; RAII cleanup
     // on SubjectInitializer teardown.
     m_plr_offer_controller = std::make_unique<helix::ui::PlrOfferController>();
+
+    // A print held by a chamber wait while the chamber heater is not heating
+    // gets a prompt with a way out; a rejection outside a print gets a toast.
+    m_chamber_stall_prompt = std::make_unique<helix::ui::ChamberStallPrompt>();
 
     // Print outcome telemetry observer (records anonymous print stats when telemetry enabled)
     m_observers.push_back(TelemetryManager::instance().init_print_outcome_observer());

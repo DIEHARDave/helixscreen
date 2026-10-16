@@ -377,6 +377,11 @@ AmsError AmsBackendMock::start() {
             }
             emit_event(EVENT_SLOT_CHANGED);
             spdlog::info("[AMS Mock] Applied initial state scenario: grade (all lanes -> PLA-CF)");
+        } else if (scenario == "feeder") {
+            // Lane 3's filament waits at its feeder, short of its toolhead.
+            set_slot_at_feeder(2);
+            emit_event(EVENT_SLOT_CHANGED);
+            spdlog::info("[AMS Mock] Applied initial state scenario: feeder (slot 2)");
         } else if (scenario == "blocked") {
             // A jammed lane with no error object, as the QIDI Box reports one.
             force_slot_status(1, SlotStatus::BLOCKED);
@@ -660,6 +665,9 @@ PathSegment AmsBackendMock::get_slot_filament_segment(int slot_index) const {
     const auto* entry = slots_.get(slot_index);
     if (!entry) {
         return PathSegment::NONE;
+    }
+    if (slot_index == slot_at_feeder_) {
+        return PathSegment::PREP;
     }
 
     if (entry->info.status != SlotStatus::AVAILABLE &&
@@ -2064,6 +2072,8 @@ void AmsBackendMock::set_tool_changer_mode(bool enabled) {
 
         // Rename unit to reflect tool changer nature
         if (!system_info_.units.empty()) {
+            // klipper-toolchanger publishes no per-tool filament sensor.
+            system_info_.units[0].has_toolhead_sensor = false;
             system_info_.units[0].name = "Mock Tool Changer";
         }
 
@@ -3520,8 +3530,13 @@ PathTopology AmsBackendMock::get_unit_topology(int unit_index) const {
 
 bool AmsBackendMock::slot_has_prep_sensor(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    // Mock always has prep sensors on all valid slots (matches AFC behavior)
-    return slots_.is_valid_index(slot_index);
+    // Every persona's lanes carry an entry sensor except a tool changer's.
+    return system_info_.type != AmsType::TOOL_CHANGER && slots_.is_valid_index(slot_index);
+}
+
+void AmsBackendMock::set_slot_at_feeder(int slot_index) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    slot_at_feeder_ = slot_index;
 }
 
 bool AmsBackendMock::slot_has_load_sensor(int slot_index) const {

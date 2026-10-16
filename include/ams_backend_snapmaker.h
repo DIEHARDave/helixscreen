@@ -195,6 +195,20 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     [[nodiscard]] PathSegment get_slot_filament_segment(int slot_index) const override;
     [[nodiscard]] PathSegment infer_error_segment() const override;
 
+    /// Every feeder's port sensor sits at the top of its tube: the lane's
+    /// entry sensor, read as PREP.
+    [[nodiscard]] bool slot_has_prep_sensor(int slot_index) const override {
+        return slot_index >= 0 && slot_index < NUM_TOOLS;
+    }
+
+    /// Pending while a feeder insert waits on filament_detect.info, then the
+    /// reader's verdict (pending_insert_passes_ / insert_verdict_).
+    [[nodiscard]] InsertIdentity slot_insert_identity(int slot_index) const override;
+
+    /// The feeder port sensor alone: a tool parking or print_task_config's
+    /// filament_exist moves the slot status without a spool going in.
+    [[nodiscard]] std::optional<bool> slot_insert_presence(int slot_index) const override;
+
     // Per-slot "filament is loaded to THIS tool's nozzle". Returns the
     // channel_state latch (loaded_at_toolhead_), driven by filament_feed
     // channel_state transitions: true between load_finish and the next
@@ -686,6 +700,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// toolhead", so only a reported reading answers the parked question.
     std::array<bool, NUM_TOOLS> toolhead_switch_reported_{{false, false, false, false}};
 
+    /// How far tool i's own lane holds filament. Caller holds mutex_.
+    [[nodiscard]] PathSegment slot_segment_locked(int i) const;
+
     /// Filament in tool i's toolhead short of the nozzle. Caller holds mutex_.
     [[nodiscard]] bool parked_in_toolhead_locked(int i) const {
         return !loaded_at_toolhead_[i] && toolhead_switch_reported_[i] &&
@@ -746,6 +763,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// drives (tool-change load/unload, one of our batch ops) never arms it.
     /// Written only from handle_status (the single writer).
     std::array<int, NUM_TOOLS> pending_insert_passes_{{0, 0, 0, 0}};
+
+    /// The reader's verdict on each channel's last judged insert: FromTag,
+    /// NoTag, or NotRead once a new insert arms or the reader never judged one.
+    /// Written only from handle_status, beside pending_insert_passes_.
+    std::array<InsertIdentity, NUM_TOOLS> insert_verdict_{};
 
     /// What each channel's firmware last said about the spool's identity:
     /// whether filament_detect.info named one, and print_task_config's vendor

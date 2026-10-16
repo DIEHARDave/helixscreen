@@ -54,6 +54,7 @@ constexpr CapabilityDef CAPABILITY_DEFS[] = {
     {Capability::HasChamberHeater, "printer_has_chamber_heater", 0},
     {Capability::HasChamberHeaterDiagnostics, "printer_has_chamber_heater_diagnostics", 0},
     {Capability::HasChamberFilterFan, "printer_has_chamber_filter_fan", 0},
+    {Capability::HasChamberTargetRoute, "printer_has_chamber_target_route", 0},
     {Capability::HasChamberElementTemp, "printer_has_chamber_element_temp", 0},
     {Capability::HasChamberDryer, "printer_has_chamber_dryer", 0},
     {Capability::HasChamber, "printer_has_chamber", 0},
@@ -388,6 +389,10 @@ void PrinterCapabilitiesState::set_has_chamber_heater_diagnostics(bool available
 
 void PrinterCapabilitiesState::set_has_chamber_filter_fan(bool available) {
     set_capability(Capability::HasChamberFilterFan, available ? 1 : 0);
+}
+
+void PrinterCapabilitiesState::set_has_chamber_target_route(bool available) {
+    set_capability(Capability::HasChamberTargetRoute, available ? 1 : 0);
 }
 
 void PrinterCapabilitiesState::set_has_chamber_element_temp(bool available) {

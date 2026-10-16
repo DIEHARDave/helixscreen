@@ -312,6 +312,7 @@ void AmsBackendSnapmaker::on_started() {
         // A reconnect re-baselines the feed ports: an insert pending from
         // before it is judged against nothing this session has seen.
         pending_insert_passes_.fill(0);
+        insert_verdict_.fill(InsertIdentity::NotRead);
         feed_presence_seen_.fill(false);
     }
 }
@@ -412,19 +413,17 @@ lv_subject_t* AmsBackendSnapmaker::get_operation_step_index_subject(StepOperatio
 
 PathSegment AmsBackendSnapmaker::get_filament_segment() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (system_info_.current_tool >= 0 && system_info_.filament_loaded) {
-        return PathSegment::NOZZLE;
-    }
-    return PathSegment::SPOOL;
+    // The system path is the mounted tool's own lane: nothing without a tool.
+    return slot_segment_locked(system_info_.current_tool);
 }
 
 PathSegment AmsBackendSnapmaker::get_slot_filament_segment(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    const auto* slot = system_info_.get_slot_global(slot_index);
-    if (!slot)
-        return PathSegment::NONE;
+    return slot_segment_locked(slot_index);
+}
 
-    if (slot_index < 0 || slot_index >= NUM_TOOLS)
+PathSegment AmsBackendSnapmaker::slot_segment_locked(int i) const {
+    if (i < 0 || i >= NUM_TOOLS || !system_info_.get_slot_global(i))
         return PathSegment::NONE;
 
     // Filament in THIS tool's toolhead draws to its own nozzle (PARALLEL: each
@@ -433,20 +432,35 @@ PathSegment AmsBackendSnapmaker::get_slot_filament_segment(int slot_index) const
     // filament_loaded for the picked tool, so the aggregate and per-slot paths
     // agree. The switch alone cannot say "loaded" (it still reads filament
     // after an unload), which is why parked stays distinct from the latch.
-    if (loaded_at_toolhead_[slot_index] || parked_in_toolhead_locked(slot_index)) {
+    if (loaded_at_toolhead_[i] || parked_in_toolhead_locked(i))
         return PathSegment::NOZZLE;
-    }
 
-    // Not loaded to the nozzle. If filament is still staged in the bowden/buffer
-    // — the port sensor reads present, or the motion sensor still lingers
-    // present just after an unload — draw the line down to the toolhead entry
-    // sensor dot but no farther (OUTPUT); the dot stays hollow because the
-    // filament is not fed into the hotend. Otherwise nothing (genuine runout /
-    // empty lane).
-    if (port_sensor_filament_present_[slot_index] || sensor_filament_present_[slot_index]) {
+    // The feeder's port sensor is the lane's entry sensor: filament it alone
+    // sees is at the top of the tube, not threaded toward the toolhead.
+    if (port_sensor_filament_present_[i])
+        return PathSegment::PREP;
+
+    // A toolhead switch that has not reported keeps its "no runout" default,
+    // which draws the tube to the toolhead sensor but not past it.
+    if (sensor_filament_present_[i])
         return PathSegment::OUTPUT;
-    }
     return PathSegment::NONE;
+}
+
+std::optional<bool> AmsBackendSnapmaker::slot_insert_presence(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (slot_index < 0 || slot_index >= NUM_TOOLS || !feed_presence_seen_[slot_index])
+        return std::nullopt;
+    return port_sensor_filament_present_[slot_index];
+}
+
+InsertIdentity AmsBackendSnapmaker::slot_insert_identity(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (slot_index < 0 || slot_index >= NUM_TOOLS)
+        return InsertIdentity::NotRead;
+    if (pending_insert_passes_[slot_index] > 0)
+        return InsertIdentity::Pending;
+    return insert_verdict_[slot_index];
 }
 
 PathSegment AmsBackendSnapmaker::infer_error_segment() const {
@@ -1509,7 +1523,10 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
     if (pending_insert_passes_[i] > 0) {
         pending_insert_passes_[i] = 0;
         if (rfid.uid.empty() && rfid.main_type == "NONE") {
+            insert_verdict_[i] = InsertIdentity::NoTag;
             fx.unverified_insert_lanes.push_back(i);
+        } else {
+            insert_verdict_[i] = InsertIdentity::FromTag;
         }
     }
     if (rfid.main_type != "NONE") {
@@ -1731,6 +1748,7 @@ void AmsBackendSnapmaker::apply_port_presence_locked(int i, bool detected, Frame
         if (detected && feed_presence_seen_[i] && !port_sensor_filament_present_[i] &&
             !firmware_driven) {
             pending_insert_passes_[i] = 1;
+            insert_verdict_[i] = InsertIdentity::NotRead;
         } else if (!detected) {
             pending_insert_passes_[i] = 0;
         }
@@ -2134,6 +2152,8 @@ void AmsBackendSnapmaker::apply_toolhead_sensors_locked(const snapmaker::StatusD
         if (!toolhead_switch_reported_[tool_idx]) {
             toolhead_switch_reported_[tool_idx] = true;
             fx.changed = true;
+            // The unit has a toolhead sensor once any head reports its switch.
+            system_info_.units[0].has_toolhead_sensor = true;
         }
         if (sensor_filament_present_[tool_idx] != present) {
             sensor_filament_present_[tool_idx] = present;
@@ -2225,6 +2245,7 @@ void AmsBackendSnapmaker::converge_lanes_locked(FrameEffects& fx) {
         if (pending_insert_passes_[i] > 0 &&
             ++pending_insert_passes_[i] > kSnapPendingInsertPasses) {
             pending_insert_passes_[i] = 0;
+            insert_verdict_[i] = InsertIdentity::NoTag;
             fx.unverified_insert_lanes.push_back(i);
         }
 

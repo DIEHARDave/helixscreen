@@ -21,6 +21,7 @@
 #include "filament_tube_stroker.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "src/ui/ui_filament_path_internal.h"
+#include "src/ui/ui_filament_path_plan.h"
 #include "theme_manager.h"
 
 #include <algorithm>
@@ -57,9 +58,13 @@ void register_ams_xml_once() {
 
 class AmsTrayPanelFixture : public XMLTestFixture {
   public:
-    void build(const char* env_mode, int gates = 4) {
+    /// A tool changer has no housing, so build() finds no tray for it.
+    void build(const char* env_mode, int gates = 4, bool tool_changer = false) {
         auto mock = std::make_unique<AmsBackendMock>(gates);
-        mock->set_afc_mode(true);
+        if (tool_changer)
+            mock->set_tool_changer_mode(true);
+        else
+            mock->set_afc_mode(true);
         mock->set_environment_mode(env_mode);
         REQUIRE(mock->start().success());
         AmsState::instance().set_backend(std::move(mock));
@@ -87,7 +92,7 @@ class AmsTrayPanelFixture : public XMLTestFixture {
         lv_area_t c;
         lv_obj_get_coords(container_, &c);
         origin_ = {c.x1, c.y1};
-        REQUIRE(helix::ui::ams_detail_tray_geometry(box_, lid_, lid_h_, half_));
+        REQUIRE(helix::ui::ams_detail_tray_geometry(box_, lid_, lid_h_, half_) != tool_changer);
     }
 
     ~AmsTrayPanelFixture() override {
@@ -385,6 +390,82 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
         const int32_t lane_x = cc.x1 + helix::ui::fpath::get_slot_x(data, i, cc.x1);
         CHECK(std::abs(lane_x - (a.x1 + a.x2) / 2) <= 2);
     }
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS tool changer: each tube hangs from just below its spool",
+                 "[ams][tray][ui_integration][filament-path]") {
+    const auto size = GENERATE(std::make_pair(480, 320), std::make_pair(800, 480));
+    CAPTURE(size.first, size.second);
+    helix::test::ScopedGeometry screen(size.first, size.second);
+    build("off", 4, /*tool_changer=*/true);
+
+    lv_obj_t* canvas = lv_obj_find_by_name(panel_obj_, "path_canvas");
+    REQUIRE(canvas != nullptr);
+    auto* data = helix::ui::fpath::get_data(canvas);
+    REQUIRE(data != nullptr);
+    REQUIRE(data->topology == static_cast<int>(PathTopology::PARALLEL));
+    const helix::ui::fpath::ParallelRows rows = helix::ui::fpath::parallel_rows(
+        *data, helix::ui::fpath::compute_base_geometry(canvas, data));
+    const int32_t tube_top = rows.entry_y - (data->theme.tube_gauge + 1) / 2;
+    for (int i = 0; i < 4; ++i) {
+        CAPTURE(i);
+        lv_obj_t* spool = lv_obj_find_by_name(slot(i), "spool_graphic");
+        REQUIRE(spool != nullptr);
+        lv_area_t a;
+        lv_obj_get_coords(spool, &a);
+        const float flange_bottom =
+            (a.y1 + a.y2 + 1) / 2.0f + tray::SPOOL_FLANGE_RADIUS * lv_area_get_width(&a);
+        CAPTURE(a.y1, a.y2, flange_bottom, tube_top);
+        // The tube's cap stands on the flange: clear of the spool, with no gap.
+        CHECK((float)tube_top >= flange_bottom - 1);
+        CHECK((float)tube_top <= flange_bottom + 1);
+    }
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS tool changer: every lane's number badge stays inside its row",
+                 "[ams][tray][ui_integration]") {
+    // Without a tray the badges keep the spool container's corner, which is
+    // wider than a narrow slot.
+    const auto size = GENERATE(std::make_pair(480, 320), std::make_pair(800, 480));
+    CAPTURE(size.first, size.second);
+    helix::test::ScopedGeometry screen(size.first, size.second);
+    build("passive", 4, /*tool_changer=*/true);
+
+    lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
+    REQUIRE(badges != nullptr);
+    REQUIRE(lv_obj_get_child_count(badges) == 4);
+    lv_obj_update_layout(test_screen());
+    lv_area_t layer;
+    lv_obj_get_coords(badges, &layer);
+    for (int i = 0; i < 4; ++i) {
+        CAPTURE(i);
+        lv_area_t b;
+        lv_obj_get_coords(lv_obj_get_child(badges, i), &b);
+        CAPTURE(b.x1, b.x2, layer.x1, layer.x2);
+        // The layer clips its children: a badge past its edge is cut off.
+        CHECK(b.x1 >= layer.x1);
+        CHECK(b.x2 <= layer.x2);
+    }
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS unit: a badge moved onto a layer with no width keeps its corner",
+                 "[ams][tray][ui_integration]") {
+    build("passive", 4, /*tool_changer=*/true);
+    lv_obj_t* wide = lv_obj_create(test_screen());
+    lv_obj_set_size(wide, 400, 100);
+    lv_obj_t* empty = lv_obj_create(test_screen());
+    lv_obj_set_size(empty, 0, 0);
+    lv_obj_update_layout(test_screen());
+
+    lv_obj_t* badge = ui_ams_slot_get_status_badge(slot(0));
+    REQUIRE(badge != nullptr);
+    ui_ams_slot_move_badge_to_layer(slot(0), wide, 100);
+    const int32_t corner_x = lv_obj_get_style_x(badge, LV_PART_MAIN);
+    REQUIRE(corner_x > 0);
+    ui_ams_slot_move_badge_to_layer(slot(0), empty, 100);
+    CHECK(lv_obj_get_style_x(badge, LV_PART_MAIN) == corner_x);
 }
 
 TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a spool name stacks directly over its material",

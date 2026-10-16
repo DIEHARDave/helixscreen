@@ -7,8 +7,10 @@
 #include "ui_update_queue.h"
 
 #include "ams_state.h"
+#include "app_globals.h"
 #include "config.h"
 #include "format_utils.h"
+#include "i_moonraker_api.h"
 #include "json_utils.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "memory_monitor.h"
@@ -17,10 +19,12 @@
 #include "thermal_rate_model.h"
 #include "unit_conversions.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <ctime>
 
 using namespace helix;
@@ -421,6 +425,8 @@ void PrintStartCollector::reset_run_locked() {
     heater_wait_report_time_ = helix::sim::SimulatedClock::time_point::min();
     heater_wait_shown_ = false;
     wait_heater_arrived_at_ = helix::sim::SimulatedClock::time_point::min();
+    heaters_ready_wait_since_ = helix::sim::SimulatedClock::time_point::min();
+    forget_chamber_wait_line_locked();
     pre_wait_phase_ = PrintStartPhase::IDLE;
     pre_wait_message_.clear();
     last_phase_object_state_.clear();
@@ -881,6 +887,9 @@ void PrintStartCollector::check_fallback_completion() {
     // degree or so. The chamber counts only once both heaters are at target.
     // Before the first real signal the proactive detection above owns the
     // heaters.
+    // What this tick read the wait as holding on; the chamber-wait flag
+    // follows it, so the flag drops the tick the chamber stops being why.
+    PrintStartPhase tick_waited_on = PrintStartPhase::IDLE;
     if (real_signal_seen_.load(std::memory_order_relaxed)) {
         bool waiting;
         bool nozzle_short;
@@ -893,18 +902,72 @@ void PrintStartCollector::check_fallback_completion() {
             bed_short = !heating_target_reached_locked(PrintStartPhase::HEATING_BED);
         }
         if (!waiting) {
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                forget_chamber_wait_line_locked();
+            }
             end_heater_wait();
         } else {
             const int chamber_temp =
                 lv_subject_get_int(state_.temperature_state().get_chamber_temp_subject());
             const int chamber_target =
                 lv_subject_get_int(state_.temperature_state().get_chamber_target_subject());
-            const bool chamber_heating = !nozzle_short && !bed_short && chamber_target > 0 &&
+            const auto& temps = state_.temperature_state();
+            const bool heaters_ready = !nozzle_short && !bed_short;
+            const bool chamber_heating = heaters_ready && chamber_target > 0 &&
                                          chamber_temp < chamber_target - TEMP_TOLERANCE_DECIDEGREES;
-            const PrintStartPhase waited_on = nozzle_short      ? PrintStartPhase::HEATING_NOZZLE
-                                              : bed_short       ? PrintStartPhase::HEATING_BED
-                                              : chamber_heating ? PrintStartPhase::SOAKING
-                                                                : PrintStartPhase::IDLE;
+            // The chamber device reporting its own wait (M191) settles it.
+            const bool device_wait = heaters_ready && temps.chamber_wait_active();
+            // A wait that goes on with the nozzle and bed ready while the
+            // chamber heater refused its target is a wait on that chamber: a
+            // TEMPERATURE_WAIT MINIMUM names no heater target. A printer with
+            // no chamber heater soaks on its sensor, and a refusal is what
+            // tells this wait from any other (a probe coil's, say). M109 can
+            // hold a few seconds past arrival while it settles, so this
+            // reading needs the wait to outlast that first.
+            const bool heater_refused =
+                !temps.chamber_heater_name().empty() &&
+                temps.chamber_command_rejection().kind != chamber::CommandRejection::None;
+            // Without a refusal (a slicer that sends no M141, a glue that
+            // reports none), the command at the print position settles it:
+            // a TEMPERATURE_WAIT whose SENSOR is the chamber heater itself.
+            const std::string& chamber_heater = temps.chamber_heater_name();
+            bool chamber_unheated = false;
+            uint64_t read_gen = 0;
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                const auto now = helix::sim::SimulatedClock::now();
+                if (!heaters_ready) {
+                    heaters_ready_wait_since_ = helix::sim::SimulatedClock::time_point::min();
+                    forget_chamber_wait_line_locked();
+                } else if (heaters_ready_wait_since_ ==
+                           helix::sim::SimulatedClock::time_point::min()) {
+                    heaters_ready_wait_since_ = now;
+                }
+                const bool settled =
+                    heaters_ready &&
+                    heaters_ready_wait_since_ != helix::sim::SimulatedClock::time_point::min() &&
+                    now - heaters_ready_wait_since_ >= CHAMBER_WAIT_SETTLE;
+                const bool unheated_heater =
+                    settled && chamber_target <= 0 && !chamber_heater.empty();
+                if (unheated_heater && !heater_refused && !device_wait &&
+                    !chamber_line_requested_) {
+                    chamber_line_requested_ = true;
+                    read_gen = ++chamber_line_gen_;
+                }
+                chamber_unheated =
+                    unheated_heater &&
+                    (heater_refused || wait_names_chamber_heater(chamber_line_, chamber_heater));
+            }
+            if (read_gen != 0) {
+                request_chamber_wait_line(read_gen);
+            }
+            const PrintStartPhase waited_on = nozzle_short ? PrintStartPhase::HEATING_NOZZLE
+                                              : bed_short  ? PrintStartPhase::HEATING_BED
+                                              : device_wait || chamber_heating || chamber_unheated
+                                                  ? PrintStartPhase::SOAKING
+                                                  : PrintStartPhase::IDLE;
+            tick_waited_on = waited_on;
             // The report that shows the waited-on heater arriving is the
             // wait's last, so moving the label to another heater takes a
             // report after the tick that saw it arrive: the next wait.
@@ -922,9 +985,26 @@ void PrintStartCollector::check_fallback_completion() {
                 }
             }
             if (waited_on != PrintStartPhase::IDLE && may_relabel) {
-                relabel_heating_phase(waited_on, /*heater_wait=*/true);
+                relabel_heating_phase(
+                    waited_on, /*heater_wait=*/true,
+                    waited_on == PrintStartPhase::SOAKING
+                        ? chamber_wait_message(chamber_temp,
+                                               device_wait && temps.chamber_wait_target_c() > 0
+                                                   ? static_cast<int>(std::lround(
+                                                         temps.chamber_wait_target_c() * 10))
+                                                   : chamber_target)
+                        : std::string());
             }
         }
+    }
+    {
+        bool chamber_wait;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            chamber_wait = heater_wait_shown_ && current_phase_ == PrintStartPhase::SOAKING &&
+                           tick_waited_on == PrintStartPhase::SOAKING;
+        }
+        state_.print_state().set_print_start_chamber_wait(chamber_wait);
     }
 
     // =========================================================================
@@ -2049,10 +2129,83 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const std::string&
     }
 }
 
-void PrintStartCollector::relabel_heating_phase(PrintStartPhase resolved, bool heater_wait) {
-    const char* message = resolved == PrintStartPhase::HEATING_BED ? lv_tr("Heating Bed...")
-                          : resolved == PrintStartPhase::SOAKING   ? lv_tr("Heating chamber...")
-                                                                   : lv_tr("Heating Nozzle...");
+void PrintStartCollector::forget_chamber_wait_line_locked() {
+    chamber_line_ = {};
+    chamber_line_requested_ = false;
+    ++chamber_line_gen_;
+}
+
+// The command at the print position: virtual_sdcard.file_position, then the
+// bytes before it. Main thread; the answer lands under state_mutex_ and is
+// read on the next tick.
+void PrintStartCollector::request_chamber_wait_line(uint64_t gen) {
+    const char* file = lv_subject_get_string(state_.print_state().get_print_filename_subject());
+    if (!file || !file[0]) {
+        return;
+    }
+    auto self = shared_from_this();
+    const std::string filename = file;
+    client_.send_jsonrpc(
+        "printer.objects.query", {{"objects", {{"virtual_sdcard", {"file_position"}}}}},
+        [self, gen, filename](const json& resp) {
+            const json& result = resp.contains("result") ? resp["result"] : resp;
+            if (!result.contains("status") || !result["status"].contains("virtual_sdcard") ||
+                !result["status"]["virtual_sdcard"].contains("file_position") ||
+                !result["status"]["virtual_sdcard"]["file_position"].is_number()) {
+                return;
+            }
+            const auto pos = result["status"]["virtual_sdcard"]["file_position"].get<uint64_t>();
+            helix::ui::queue_update(
+                "PrintStartCollector::read_chamber_wait_line", [self, gen, filename, pos]() {
+                    IMoonrakerAPI* api = get_moonraker_api();
+                    if (!api || !api->transfers().supports_range_reads()) {
+                        return;
+                    }
+                    constexpr uint64_t kWindow = 256;
+                    const uint64_t from = pos > kWindow ? pos - kWindow : 0;
+                    api->transfers().download_file_range(
+                        "gcodes", filename, from, static_cast<size_t>(pos - from),
+                        [self, gen](const std::string& bytes) {
+                            self->apply_chamber_wait_line(gen, classify_chamber_wait_line(bytes));
+                        },
+                        [](const MoonrakerError& e) {
+                            spdlog::debug("[PrintStartCollector] Chamber wait line not read: {}",
+                                          e.message);
+                        });
+                });
+        },
+        [](const MoonrakerError& e) {
+            spdlog::debug("[PrintStartCollector] virtual_sdcard not read: {}", e.message);
+        });
+}
+
+void PrintStartCollector::apply_chamber_wait_line(uint64_t gen, const ChamberWaitLine& line) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    if (gen != chamber_line_gen_) {
+        return; // read for a wait that has since ended
+    }
+    spdlog::info("[PrintStartCollector] Waiting command: kind {}, sensor '{}'",
+                 static_cast<int>(line.kind), line.sensor);
+    chamber_line_ = line;
+}
+
+std::string PrintStartCollector::chamber_wait_message(int temp_deci, int target_deci) {
+    const int temp_c = static_cast<int>(std::lround(helix::units::from_decidegrees(temp_deci)));
+    if (target_deci > 0) {
+        return fmt::format(
+            fmt::runtime(lv_tr("Waiting for chamber {} / {}°C")), temp_c,
+            static_cast<int>(std::lround(helix::units::from_decidegrees(target_deci))));
+    }
+    return fmt::format(fmt::runtime(lv_tr("Waiting for chamber {}°C")), temp_c);
+}
+
+void PrintStartCollector::relabel_heating_phase(PrintStartPhase resolved, bool heater_wait,
+                                                const std::string& label) {
+    const std::string message =
+        !label.empty()                             ? label
+        : resolved == PrintStartPhase::HEATING_BED ? std::string(lv_tr("Heating Bed..."))
+        : resolved == PrintStartPhase::SOAKING     ? std::string(lv_tr("Heating chamber..."))
+                                                   : std::string(lv_tr("Heating Nozzle..."));
     int progress;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
@@ -2083,12 +2236,19 @@ void PrintStartCollector::relabel_heating_phase(PrintStartPhase resolved, bool h
                 cached_ext_target_.load(std::memory_order_relaxed) > mesh_entry_ext_target_;
             allowed = heating || mesh_gave_way;
         }
-        if (!allowed || current_phase_ == resolved) {
+        // A label carrying live readings follows them within the phase.
+        if (!allowed ||
+            (current_phase_ == resolved && (label.empty() || current_message_ == label))) {
             return;
         }
-        spdlog::info("[PrintStartCollector] Heating correction: phase {} -> {}{}",
-                     static_cast<int>(current_phase_), static_cast<int>(resolved),
-                     heater_wait ? " (heater wait)" : "");
+        if (current_phase_ == resolved) {
+            // A label with live readings follows them once a degree.
+            spdlog::debug("[PrintStartCollector] Heater wait label: '{}'", message);
+        } else {
+            spdlog::info("[PrintStartCollector] Heating correction: phase {} -> {}{}",
+                         static_cast<int>(current_phase_), static_cast<int>(resolved),
+                         heater_wait ? " (heater wait)" : "");
+        }
         if (takeover) {
             heater_wait_shown_ = true;
             pre_wait_phase_ = current_phase_;

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_batch_filament_modal.h"
+#include "ui_insert_notice.h"
 
 #include "../helix_test_fixture.h"
 #include "../test_helpers/backend_user_edit.h"
@@ -18,6 +19,7 @@
 #include "ams_types.h"
 #include "app_globals.h"
 #include "display_numbering.h"
+#include "filament_insert_watcher.h"
 #include "filament_op_execute.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
@@ -1118,10 +1120,9 @@ TEST_CASE_METHOD(SnapmakerFixture,
 // every tool loaded to its own dedicated nozzle renders all the way into the
 // toolhead (NOZZLE); multiple tools can be loaded at once, each to its own
 // nozzle. "Loaded to the nozzle" is the channel_state latch (load_finish), NOT
-// the motion sensor — the sensor lingers present after an unload, which used to
-// leave unloaded lanes rendering as fully loaded. A tool that is present in the
-// buffer but not loaded renders OUTPUT (line to the toolhead entry dot, hollow);
-// an empty lane renders nothing.
+// the motion sensor. A tool whose feeder port sensor alone sees filament
+// renders PREP (the tube down to its entry sensor); an empty lane renders
+// nothing.
 TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker get_slot_filament_segment renders NOZZLE for every loaded tool",
                  "[ams][snapmaker][path]") {
@@ -1152,14 +1153,14 @@ TEST_CASE_METHOD(SnapmakerFixture,
         SnapmakerTestAccess::set_port_sensor_present(backend, 1, false);
         CHECK(backend.get_slot_filament_segment(1) == PathSegment::NONE);
     }
-    SECTION("filament staged in the bowden (not loaded, port present) renders to the dot") {
+    SECTION("filament at the feeder (not loaded, port present) renders to the entry sensor") {
         // U1 post-unload state: filament retracted out of the toolhead but left
         // in the feed tube. Latch clear (unload_finish), toolhead motion sensor
-        // reads empty, buffer/port sensor still present → draw the line down to
-        // the toolhead entry sensor but no farther (OUTPUT), not nothing.
+        // reads empty, the feeder's port sensor still present → the lane reads
+        // at its entry sensor (PREP), not nothing.
         SnapmakerTestAccess::set_sensor_present(backend, 1, false);
         SnapmakerTestAccess::set_port_sensor_present(backend, 1, true);
-        CHECK(backend.get_slot_filament_segment(1) == PathSegment::OUTPUT);
+        CHECK(backend.get_slot_filament_segment(1) == PathSegment::PREP);
     }
 }
 
@@ -1382,7 +1383,36 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parked head draws its per-slot pat
     CHECK(backend.get_slot_filament_segment(3) == PathSegment::NOZZLE);
 
     SnapmakerTestAccess::handle_status(backend, t3_switch(false));
-    CHECK(backend.get_slot_filament_segment(3) == PathSegment::OUTPUT);
+    CHECK(backend.get_slot_filament_segment(3) == PathSegment::PREP);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker feeder port sensor is each lane's entry sensor",
+                 "[ams][snapmaker][path][entry_sensor]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+    for (int i = 0; i < 4; i++)
+        CHECK(backend.slot_has_prep_sensor(i));
+    CHECK_FALSE(backend.slot_has_prep_sensor(4));
+    CHECK_FALSE(backend.slot_has_prep_sensor(-1));
+
+    SECTION("with no tool on the carriage the system path reads nothing") {
+        CHECK(backend.get_filament_segment() == PathSegment::NONE);
+    }
+    SECTION("the mounted tool reports its own lane") {
+        SnapmakerTestAccess::handle_status(backend,
+                                           merged({t3_picked(), t3_feed(), t3_switch(false)}));
+        CHECK(backend.get_filament_segment() == PathSegment::PREP);
+        SnapmakerTestAccess::handle_status(backend, t3_switch(true));
+        CHECK(backend.get_filament_segment() == PathSegment::NOZZLE);
+    }
+    SECTION("an empty mounted lane reads nothing") {
+        SnapmakerTestAccess::handle_status(
+            backend,
+            merged({t3_picked(), make_feed_status(3, "wait_insert", false), t3_switch(false)}));
+        SnapmakerTestAccess::set_port_sensor_present(backend, 3, false);
+        CHECK(backend.get_slot_filament_segment(3) == PathSegment::NONE);
+        CHECK(backend.get_filament_segment() == PathSegment::NONE);
+    }
 }
 
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker active pin alone does not mark a tool loaded",
@@ -1693,8 +1723,8 @@ TEST_CASE_METHOD(SnapmakerFixture,
         SnapmakerTestAccess::handle_status(backend, make_feed_status(2, "unload_finish",
                                                                      /*filament_detected=*/true));
         CHECK_FALSE(SnapmakerTestAccess::loaded_at_toolhead(backend, 2));
-        // Filament is staged in the buffer but NOT at the nozzle.
-        CHECK(backend.get_slot_filament_segment(2) == PathSegment::OUTPUT);
+        // Filament is at the feeder but NOT at the nozzle.
+        CHECK(backend.get_slot_filament_segment(2) == PathSegment::PREP);
     }
 
     SECTION("empty lane draws nothing") {
@@ -3790,6 +3820,149 @@ TEST_CASE_METHOD(SnapmakerInsertFixture,
 
     REQUIRE(toasts.size() == 1);
     CHECK(SnapmakerTestAccess::get_override(backend, 0).has_value());
+}
+
+TEST_CASE_METHOD(SnapmakerInsertFixture, "Snapmaker an insert's identity waits on the tag reader",
+                 "[ams][snapmaker][1710][entry_sensor]") {
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", false));
+    CHECK(backend.slot_insert_identity(0) == InsertIdentity::NotRead);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", true));
+    REQUIRE(backend.slot_insert_identity(0) == InsertIdentity::Pending);
+
+    SECTION("a tagged spool") {
+        SnapmakerTestAccess::handle_status(
+            backend, make_filament_detect_status(0, "PLA", 0xFF00AA00u, "Polymaker",
+                                                 json::array({144, 32, 196, 2})));
+        CHECK(backend.slot_insert_identity(0) == InsertIdentity::FromTag);
+    }
+    SECTION("an untagged spool") {
+        SnapmakerTestAccess::handle_status(
+            backend, make_filament_detect_status(0, "NONE", 0u, "NONE", json::array()));
+        CHECK(backend.slot_insert_identity(0) == InsertIdentity::NoTag);
+    }
+    SECTION("a read that never lands") {
+        for (int i = 0; i < 20; ++i)
+            SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", true));
+        CHECK(backend.slot_insert_identity(0) == InsertIdentity::NoTag);
+    }
+    SECTION("the spool leaves before any read") {
+        SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", false));
+        CHECK(backend.slot_insert_identity(0) == InsertIdentity::NotRead);
+    }
+    // Other lanes saw no insert.
+    CHECK(backend.slot_insert_identity(1) == InsertIdentity::NotRead);
+}
+
+namespace {
+/// One pass of the insert watcher over the backend, as an AMS change runs it.
+int judge(FilamentInsertWatcher& watcher, const AmsBackend& backend) {
+    FilamentInsertContext ctx;
+    ctx.setting_enabled = true;
+    return watcher.judge_lanes(backend, ctx);
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerInsertFixture,
+                 "Snapmaker an idle tool parking an empty lane is no insert",
+                 "[ams][snapmaker][insert_watcher]") {
+    helix::ui::reset_insert_offers_for_test();
+    FilamentInsertWatcher watcher(nullptr);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(1, "wait_insert", false));
+    REQUIRE(judge(watcher, backend) == -1);
+
+    // T1 parks and the task config claims filament: both move the slot
+    // status, but no spool went in.
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"extruder1", json{{"park_pin", true}, {"active_pin", false}}}});
+    CHECK(judge(watcher, backend) == -1);
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"print_task_config",
+                       json{{"filament_exist", json::array({false, true, false, false})}}}});
+    CHECK(backend.slot_insert_presence(1).value_or(true) == false);
+    CHECK(judge(watcher, backend) == -1);
+}
+
+TEST_CASE_METHOD(SnapmakerInsertFixture,
+                 "Snapmaker an untagged insert opens the editor and nothing else",
+                 "[ams][snapmaker][insert_watcher][1710]") {
+    helix::ui::reset_insert_offers_for_test();
+    FilamentInsertWatcher watcher(nullptr);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", false));
+    REQUIRE(judge(watcher, backend) == -1);
+
+    // The port sensor sees the spool; the reader has not answered.
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", true));
+    CHECK(judge(watcher, backend) == -1);
+
+    // The reader finds no tag: the editor is this insert's one prompt.
+    SnapmakerTestAccess::handle_status(
+        backend, make_filament_detect_status(0, "NONE", 0u, "NONE", json::array()));
+    drain();
+    CHECK(judge(watcher, backend) == 0);
+    CHECK(toasts.empty());
+}
+
+TEST_CASE_METHOD(SnapmakerInsertFixture, "Snapmaker a tag-identified insert opens nothing",
+                 "[ams][snapmaker][insert_watcher][1710]") {
+    helix::ui::reset_insert_offers_for_test();
+    FilamentInsertWatcher watcher(nullptr);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", false));
+    REQUIRE(judge(watcher, backend) == -1);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", true));
+    CHECK(judge(watcher, backend) == -1);
+    SnapmakerTestAccess::handle_status(
+        backend, make_filament_detect_status(0, "PLA", 0xFF00AA00u, "Polymaker",
+                                             json::array({144, 32, 196, 2})));
+    drain();
+    CHECK(judge(watcher, backend) == -1);
+    CHECK(toasts.empty());
+    CHECK_FALSE(helix::ui::insert_prompt_claimed(0));
+}
+
+TEST_CASE_METHOD(SnapmakerInsertFixture, "Snapmaker an insert prompt is claimed only by its prompt",
+                 "[ams][snapmaker][insert_watcher]") {
+    helix::ui::reset_insert_offers_for_test();
+    FilamentInsertWatcher watcher(nullptr);
+    for (int lane : {0, 1})
+        SnapmakerTestAccess::handle_status(backend, make_feed_status(lane, "wait_insert", false));
+    REQUIRE(judge(watcher, backend) == -1);
+    for (int lane : {0, 1})
+        SnapmakerTestAccess::handle_status(backend, make_feed_status(lane, "wait_insert", true));
+    REQUIRE(judge(watcher, backend) == -1);
+    REQUIRE(helix::ui::insert_prompt_claimed(0));
+    REQUIRE(helix::ui::insert_prompt_claimed(1));
+
+    SECTION("a lane the editor does not open for holds no claim") {
+        for (int lane : {0, 1})
+            SnapmakerTestAccess::handle_status(
+                backend, make_filament_detect_status(lane, "NONE", 0u, "NONE", json::array()));
+        CHECK(judge(watcher, backend) == 0);
+        CHECK(helix::ui::insert_prompt_claimed(0));
+        CHECK_FALSE(helix::ui::insert_prompt_claimed(1));
+    }
+    SECTION("a held insert a guard now blocks gives its claim back") {
+        SnapmakerTestAccess::handle_status(
+            backend, make_filament_detect_status(0, "NONE", 0u, "NONE", json::array()));
+        FilamentInsertContext ctx;
+        ctx.setting_enabled = true;
+        ctx.editor_open = true;
+        CHECK(watcher.judge_lanes(backend, ctx) == -1);
+        CHECK_FALSE(helix::ui::insert_prompt_claimed(0));
+    }
+    SECTION("a reconnect forgets every claim") {
+        watcher.reseed();
+        CHECK_FALSE(helix::ui::insert_prompt_claimed(0));
+        CHECK_FALSE(helix::ui::insert_prompt_claimed(1));
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker has a toolhead sensor once a head reports its switch",
+                 "[ams][snapmaker][entry_sensor]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+    CHECK_FALSE(backend.get_system_info().units[0].has_toolhead_sensor);
+    SnapmakerTestAccess::handle_status(backend, t3_switch(false));
+    CHECK(backend.get_system_info().units[0].has_toolhead_sensor);
 }
 
 // ============================================================================
