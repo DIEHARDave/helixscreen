@@ -595,6 +595,76 @@ void GCodeLayerRenderer::invalidate_solid_cache() {
     ssao_cache_valid_ = false;
     selection_rim_stamped_ = false;
     exclusion_hatch_stamped_ = false;
+    reset_crease_grids();
+}
+
+void GCodeLayerRenderer::reset_crease_grids() {
+    for (auto& slot : crease_slots_) {
+        slot.layer = -1;
+        slot.grid.release();
+    }
+}
+
+float GCodeLayerRenderer::crease_shade(const ToolpathSegment& seg, int screen_len, int layer_idx,
+                                       CreaseCursor& cur) {
+    // The neighbours are fetched on the layer's first wall, so a layer with
+    // none never builds or loads them.
+    if (!cur.fetched) {
+        cur.below = crease_grid(layer_idx - 1, layer_idx);
+        cur.above = crease_grid(layer_idx + 1, layer_idx);
+        cur.fetched = true;
+    }
+    if (!cur.spacer.needs_sample(seg)) {
+        return cur.factor;
+    }
+    if (screen_len < crease::kMinSamplePx) {
+        if (!cur.spacer.continued()) {
+            cur.factor = 1.0f;
+        }
+        return cur.factor;
+    }
+    const glm::vec2 mid((seg.start.x + seg.end.x) * 0.5f, (seg.start.y + seg.end.y) * 0.5f);
+    const float bend =
+        crease::profile_bend(crease::find_neighbour(cur.below, mid, seg.start.z, &cur.hint_below),
+                             crease::find_neighbour(cur.above, mid, seg.start.z, &cur.hint_above));
+    cur.factor = crease::crease_brightness(bend);
+    return cur.factor;
+}
+
+const helix::gcode::crease::WallGrid* GCodeLayerRenderer::crease_grid(int layer, int drawing) {
+    if (layer < 0 || layer >= get_layer_count()) {
+        return nullptr;
+    }
+    CreaseSlot* victim = &crease_slots_[0];
+    for (auto& slot : crease_slots_) {
+        if (slot.layer == layer) {
+            return &slot.grid;
+        }
+        // Evict whichever slot is furthest from the layer being drawn; an
+        // empty slot is furthest of all.
+        const int dist =
+            slot.layer < 0 ? std::numeric_limits<int>::max() : std::abs(slot.layer - drawing);
+        const int victim_dist =
+            victim->layer < 0 ? std::numeric_limits<int>::max() : std::abs(victim->layer - drawing);
+        if (dist > victim_dist) {
+            victim = &slot;
+        }
+    }
+
+    std::shared_ptr<const std::vector<ToolpathSegment>> holder;
+    const std::vector<ToolpathSegment>* segments = nullptr;
+    if (streaming_controller_) {
+        holder = streaming_controller_->get_layer_segments(static_cast<size_t>(layer));
+        segments = holder.get();
+    } else if (gcode_) {
+        segments = &gcode_->layers[layer].segments;
+    }
+    if (!segments) {
+        return nullptr;
+    }
+    victim->grid.build(*segments);
+    victim->layer = layer;
+    return &victim->grid;
 }
 
 void GCodeLayerRenderer::invalidate_cache() {
@@ -642,6 +712,11 @@ helix::gcode::RenderMemoryReport GCodeLayerRenderer::memory_report() const {
     // Not a canvas any more. The SSAO pass records only the pixels it darkens,
     // so this line is the measurement of that trade rather than a buffer.
     r.add("ssao_undo", ssao_undo_.capacity() * sizeof(SsaoUndoEntry));
+    size_t crease_bytes = 0;
+    for (const auto& slot : crease_slots_) {
+        crease_bytes += slot.grid.memory_bytes();
+    }
+    r.add("crease_grids", crease_bytes);
     return r;
 }
 
@@ -825,6 +900,12 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
     // Compute extrusion line width in pixels (scale-dependent)
     int line_width = get_extrusion_pixel_width();
 
+    const bool crease_on = crease_shading_.load(std::memory_order_relaxed) &&
+                           depth_shading_.load(std::memory_order_relaxed) &&
+                           ssao_enabled_.load(std::memory_order_relaxed) &&
+                           get_view_mode() == ViewMode::FRONT;
+    const float crease_spacing = crease::sample_spacing_mm(scale_);
+
     for (int layer_idx = from_layer; layer_idx <= to_layer; ++layer_idx) {
         // The first layer always renders (the deadline is ahead of it), so a
         // batch makes progress however expensive a single layer is; after
@@ -877,6 +958,8 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
             }
             return last_rendered;
         }
+
+        CreaseCursor crease_cursor(crease_spacing);
 
         for (const auto& seg : *segments) {
             if (!should_render_segment(seg))
@@ -933,6 +1016,11 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
                         if (brightness < 0.15f)
                             brightness = 0.15f;
                     }
+                }
+
+                if (crease_on && crease::is_crease_wall(seg)) {
+                    const int screen_len = std::max(std::abs(p2.x - p1.x), std::abs(p2.y - p1.y));
+                    brightness *= crease_shade(seg, screen_len, layer_idx, crease_cursor);
                 }
 
                 r = apply_shading(r, brightness);
@@ -1220,6 +1308,12 @@ void GCodeLayerRenderer::render(lv_layer_t* layer, const lv_area_t* widget_area)
         const bool cache_complete = (cached_up_to_layer_ >= target_layer);
         if (ssao_on && cache_complete && !ssao_cache_valid_) {
             apply_ssao();
+        }
+        // The wall indexes only serve the build. A new layer arriving later
+        // rebuilds the two it reads, which is cheaper than holding them.
+        if (cache_complete && std::any_of(crease_slots_.begin(), crease_slots_.end(),
+                                          [](const CreaseSlot& c) { return c.layer >= 0; })) {
+            reset_crease_grids();
         }
         blit_cache(layer);
         segments_rendered = last_segment_count_;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "gcode_color_palette.h"
+#include "gcode_crease_shading.h"
 #include "gcode_parser.h"
 #include "gcode_projection.h"
 #include "gcode_raster.h"
@@ -14,8 +15,10 @@
 
 #include <lvgl/lvgl.h>
 
+#include <array>
 #include <atomic>
 #include <glm/glm.hpp>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -257,6 +260,16 @@ class GCodeLayerRenderer {
     /** @brief Check if depth shading is enabled */
     bool get_depth_shading() const {
         return depth_shading_.load(std::memory_order_relaxed);
+    }
+
+    /// Darken outer walls where the surface creases (gcode_crease_shading.h).
+    /// Part of depth shading: it applies only where that does, and only with
+    /// the outline pass on. Takes effect on the next cache build.
+    void set_crease_shading(bool enable) {
+        crease_shading_.store(enable, std::memory_order_relaxed);
+    }
+    bool get_crease_shading() const {
+        return crease_shading_.load(std::memory_order_relaxed);
     }
 
     /// Enable/disable antialiased strokes, independently of the outline pass.
@@ -642,6 +655,7 @@ class GCodeLayerRenderer {
     std::atomic<bool> show_extrusions_{true};
     std::atomic<bool> show_supports_{true};
     std::atomic<bool> depth_shading_{true}; // Enabled by default for 3D-like appearance
+    std::atomic<bool> crease_shading_{true};
     /// The silhouette outline pass and the cheap normal-based shading that goes
     /// with it. Measured at ~2ms per cache revalidation on an AD5M.
     std::atomic<bool> ssao_enabled_{true};
@@ -722,6 +736,16 @@ class GCodeLayerRenderer {
     /// pass restores before it re-scans, which makes both cases exact.
     std::vector<SsaoUndoEntry> ssao_undo_;
     bool ssao_cache_valid_ = false;
+
+    /// Wall indexes of the layers around the one being drawn into the cache.
+    /// Layer L reads L-1 and L+1, and the build walks layers upward, so three
+    /// slots let each layer's index be built once and reused by both
+    /// neighbours.
+    struct CreaseSlot {
+        int layer = -1;
+        crease::WallGrid grid;
+    };
+    std::array<CreaseSlot, 3> crease_slots_;
 
     /// Wall time the current progressive cache build started, and whether its
     /// completion has been reported yet.
@@ -814,6 +838,28 @@ class GCodeLayerRenderer {
 
     // SSAO post-processing, applied to cache_buf_ in place.
     void apply_ssao();
+
+    /// One layer's walk through crease lookups while it draws into the cache.
+    struct CreaseCursor {
+        explicit CreaseCursor(float spacing_mm) : spacer(spacing_mm) {}
+        const crease::WallGrid* below = nullptr;
+        const crease::WallGrid* above = nullptr;
+        bool fetched = false;
+        crease::SampleSpacer spacer;
+        uint32_t hint_below = std::numeric_limits<uint32_t>::max();
+        uint32_t hint_above = std::numeric_limits<uint32_t>::max();
+        float factor = 1.0f;
+    };
+    /// Brightness multiplier for a crease wall drawn `screen_len` pixels long.
+    float crease_shade(const ToolpathSegment& seg, int screen_len, int layer_idx,
+                       CreaseCursor& cur);
+
+    /// The wall index for `layer`, built on first use while drawing `drawing`.
+    /// Null when `layer` is outside the file or its segments fail to load,
+    /// which reads as no layer on that side.
+    const crease::WallGrid* crease_grid(int layer, int drawing);
+    /// Forget every wall index: the layers they describe may have changed.
+    void reset_crease_grids();
 
     /// Put every pixel apply_ssao() darkened back the way it was, and forget
     /// them. Safe to call when nothing is recorded. Must run before anything
