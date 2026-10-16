@@ -19,6 +19,12 @@ namespace helix::three_mf {
 /// The archive entry carrying every sliced plate's summary.
 inline constexpr const char* SLICE_INFO_ENTRY = "Metadata/slice_info.config";
 
+/// Highest filament slot slice_info may name; a slot past it is not a filament.
+inline constexpr int MAX_FILAMENT_SLOTS = 64;
+
+/// Highest plate number slice_info or an entry name may carry.
+inline constexpr int MAX_PLATES = 1000;
+
 /// Largest slice_info.config inflated into memory.
 inline constexpr size_t SLICE_INFO_MAX_BYTES = 256 * 1024;
 

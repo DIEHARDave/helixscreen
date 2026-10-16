@@ -3,7 +3,9 @@
 
 #include "crc32.h"
 #include "three_mf.h"
+#include "three_mf_reader.h"
 #include "tinfl_inflate.h"
+#include "try_reserve.h"
 #include "zip_reader.h"
 
 #include <cstring>
@@ -433,4 +435,73 @@ TEST_CASE("extracted_gcode_name names one plate's G-code beside its archive", "[
     CHECK(extracted_gcode_name("Benchy.3mf", 1, false) == "Benchy.gcode");
     CHECK(extracted_gcode_name("Benchy.3MF", 2, true) == "Benchy_plate2.gcode");
     CHECK(extracted_gcode_name("a.b/Part.gcode.3mf", 12, true) == "a.b/Part_plate12.gcode");
+}
+
+TEST_CASE("a central record whose data runs past the central directory is refused", "[zip]") {
+    auto zip = archive("single_plate.gcode.3mf");
+    const size_t cd = le32(zip.data() + eocd_of(zip) + 16);
+    // The first record's compressed size, made to overrun everything after it.
+    zip[cd + 20] = 0xFF;
+    zip[cd + 21] = 0xFF;
+    zip[cd + 22] = 0xFF;
+    zip[cd + 23] = 0x7F;
+    std::vector<ZipEntry> entries;
+    ZipError err = ZipError::None;
+    REQUIRE_FALSE(parse_central_directory(zip.data(), zip.size(), zip.size(), entries, err));
+    CHECK(err == ZipError::NotZip);
+    CHECK(entries.empty());
+}
+
+TEST_CASE("an entry larger than the caller holds is refused before it is read", "[zip]") {
+    ZipEntry big;
+    big.csize = 10;
+    big.usize = 5000;
+    CHECK_FALSE(helix::zip::entry_fits(big, 4096));
+    big.usize = 10;
+    big.csize = 5000;
+    CHECK_FALSE(helix::zip::entry_fits(big, 4096));
+    big.csize = 4096;
+    big.usize = 4096;
+    CHECK(helix::zip::entry_fits(big, 4096));
+}
+
+TEST_CASE("inflate_entry_to_string fails cleanly when it cannot reserve the output", "[zip]") {
+    const auto zip = archive("single_plate.gcode.3mf");
+    const auto entries = entries_of(zip);
+    const ZipEntry& info = entry_named(entries, helix::three_mf::SLICE_INFO_ENTRY);
+    ZipError err = ZipError::None;
+    const auto bytes =
+        entry_bytes(zip.data() + info.lh_offset, zip.size() - info.lh_offset, info, err);
+    REQUIRE(err == ZipError::None);
+    helix::try_reserve_fails_for_test() = true;
+    std::string out;
+    const bool ok = inflate_entry_to_string<RawInflate>(info, bytes, 64 * 1024, out, err);
+    helix::try_reserve_fails_for_test() = false;
+    CHECK_FALSE(ok);
+    CHECK(err == ZipError::Inflate);
+}
+
+TEST_CASE("parse_slice_info ignores slot and plate numbers no print can have", "[three_mf]") {
+    const std::string xml = "<config><plate>\n"
+                            "<metadata key=\"index\" value=\"3\"/>\n"
+                            "<filament id=\"1e9\" type=\"HUGE\"/>\n"
+                            "<filament id=\"-5\" type=\"NEG\"/>\n"
+                            "<filament id=\"2.5\" type=\"FRAC\"/>\n"
+                            "<filament id=\"nan\" type=\"NAN\"/>\n"
+                            "<filament id=\"2\" type=\"PLA\"/>\n"
+                            "</plate><plate><metadata key=\"index\" value=\"1e12\"/></plate>"
+                            "</config>";
+    SliceInfo info;
+    REQUIRE(parse_slice_info(xml, 3, info));
+    REQUIRE(info.filaments.size() == 1);
+    CHECK(info.filaments[0].id == 2);
+    // A plate number that large names no plate at all.
+    CHECK_FALSE(parse_slice_info(xml, 0, info));
+
+    helix::three_mf::PlateSummary plate;
+    plate.index = 3;
+    plate.info = info;
+    const auto meta = helix::three_mf::plate_file_metadata(plate);
+    CHECK(meta.filament_colors.size() == 2); // slots 1-2, never a billion
+    CHECK(helix::three_mf::plate_of_gcode_entry("Metadata/plate_99999999999.gcode") == 0);
 }

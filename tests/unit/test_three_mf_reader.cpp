@@ -354,3 +354,43 @@ TEST_CASE("entry_payload copies a stored entry and inflates a deflated one", "[t
     // Larger than the caller can hold inflated: refused before it inflates.
     CHECK_FALSE(helix::three_mf::entry_payload(from(*info), *info, 100, out, err));
 }
+
+TEST_CASE_METHOD(ReaderFixture, "read_entry refuses an entry too large to hold without reading it",
+                 "[three_mf][reader]") {
+    put("a.gcode.3mf", fixture("single_plate.gcode.3mf"));
+    helix::zip::ZipEntry huge;
+    huge.name = "Metadata/plate_9.png";
+    huge.csize = helix::three_mf::MAX_ENTRY_BYTES + 1;
+    huge.usize = 10;
+    std::string error;
+    ThreeMfReader::read_entry(
+        transfers, "a.gcode.3mf", huge, [](const std::string&) {},
+        [&error](const std::string& e) { error = e; });
+    CHECK_FALSE(error.empty());
+    CHECK(transfers.ranges == 0);
+}
+
+TEST_CASE_METHOD(ReaderFixture, "the summary cache drops the least recently used archive first",
+                 "[three_mf][reader]") {
+    const std::string bytes = fixture("single_plate.gcode.3mf");
+    auto name = [](int i) { return "f" + std::to_string(i) + ".gcode.3mf"; };
+    for (int i = 0; i < 65; ++i) {
+        put(name(i), bytes);
+    }
+    // Fill the cache, then use the first one again.
+    for (int i = 0; i < 64; ++i) {
+        REQUIRE(summarise(name(i)).ok);
+    }
+    REQUIRE(summarise(name(0)).ok);
+    const int before = transfers.ranges;
+    REQUIRE(summarise(name(0)).ok);
+    CHECK(transfers.ranges == before); // still kept
+
+    // One more archive: f1, now the least recently used, is the one dropped.
+    REQUIRE(summarise(name(64)).ok);
+    const int after_new = transfers.ranges;
+    REQUIRE(summarise(name(0)).ok);
+    CHECK(transfers.ranges == after_new);
+    REQUIRE(summarise(name(1)).ok);
+    CHECK(transfers.ranges > after_new);
+}

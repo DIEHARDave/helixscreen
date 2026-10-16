@@ -9,6 +9,7 @@
 // nothing throws (the firmware builds without exceptions).
 
 #include "crc32.h"
+#include "try_reserve.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -80,6 +81,10 @@ std::optional<uint64_t> archive_size_from_tail(const uint8_t* tail, size_t n);
 
 /// Bytes one ranged read takes to cover @p entry's local header and its data.
 uint64_t entry_read_span(const ZipEntry& entry);
+
+/// Whether @p entry is small enough, stored and inflated, to read whole into
+/// memory under @p max_bytes; refuse it before asking for any of it.
+bool entry_fits(const ZipEntry& entry, size_t max_bytes);
 
 /**
  * @brief Where @p entry's data starts, read from its local header.
@@ -240,7 +245,10 @@ bool inflate_entry_to_string(const ZipEntry& entry, std::string_view data, size_
         error = ZipError::Truncated;
         return false;
     }
-    out.reserve(static_cast<size_t>(entry.usize));
+    if (!try_reserve(out, static_cast<size_t>(entry.usize))) {
+        error = ZipError::Inflate; // no memory for it
+        return false;
+    }
     ZipEntryInflater<Inflate> inflater(entry);
     auto sink = [&out](const uint8_t* p, size_t n) {
         out.append(reinterpret_cast<const char*>(p), n);

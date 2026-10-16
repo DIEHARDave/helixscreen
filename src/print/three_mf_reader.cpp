@@ -4,15 +4,14 @@
 #include "three_mf_reader.h"
 
 #include "tinfl_inflate.h"
+#include "versioned_lru.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
-#include <map>
 #include <mutex>
-#include <tuple>
 
 #if !defined(HELIX_PLATFORM_ESP32)
 #include "hv/md5.h"
@@ -26,8 +25,6 @@ constexpr const char* ROOT = "gcodes";
 
 /// Summaries kept at once; a folder of archives scrolls through a few dozen.
 constexpr size_t CACHE_ENTRIES = 64;
-
-using Key = std::tuple<std::string, uint64_t, double>;
 
 std::string error_text(const std::string& path, zip::ZipError error) {
     return path + ": " + zip::zip_error_name(error);
@@ -107,6 +104,11 @@ void read_plates(const std::shared_ptr<SummaryJob>& job) {
             finish(job);
             return;
         }
+    }
+    if (!zip::entry_fits(*info, SLICE_INFO_MAX_BYTES)) {
+        spdlog::warn("[ThreeMfReader] slice_info in {} is too large to read", job->path);
+        finish(job);
+        return;
     }
     const zip::ZipEntry entry = *info;
     job->transfers->download_file_range(
@@ -236,6 +238,9 @@ zip::ZipError extract_from(FILE* in, uint64_t size, int plate_index, FILE* out) 
 
     // The archive's own checksum of the plate, when it carries one.
     std::string want_md5;
+    if (plate->md5 && !zip::entry_fits(*plate->md5, 256)) {
+        return zip::ZipError::Md5; // no digest is that long
+    }
     if (plate->md5) {
         std::string lh;
         read_at(in, plate->md5->lh_offset,
@@ -317,7 +322,7 @@ zip::ZipError extract_from(FILE* in, uint64_t size, int plate_index, FILE* out) 
 
 struct ThreeMfReader::Cache {
     std::mutex mutex;
-    std::map<Key, ArchiveSummary> summaries;
+    VersionedLru<ArchiveSummary> summaries; ///< by path, for one version of the file
 };
 
 const zip::ZipEntry* plate_thumbnail(const PlateSummary& plate) {
@@ -389,11 +394,11 @@ void ThreeMfReader::clear_cache() {
 void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double modified,
                                  SummaryCallback on_done, ErrorCallback on_error,
                                  ITransfersAPI::CancelFlag cancelled) {
-    Key key{path, size, modified};
+    const FileVersion version{size, static_cast<time_t>(modified)};
     {
         std::lock_guard<std::mutex> lock(cache_->mutex);
-        if (auto it = cache_->summaries.find(key); it != cache_->summaries.end()) {
-            const ArchiveSummary summary = it->second;
+        if (const ArchiveSummary* kept = cache_->summaries.lookup(path, version)) {
+            const ArchiveSummary summary = *kept;
             on_done(summary);
             return;
         }
@@ -406,15 +411,13 @@ void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double 
     job->on_done = std::move(on_done);
     job->on_error = std::move(on_error);
     job->cancelled = std::move(cancelled);
-    job->remember = [cache = cache_, key](const ArchiveSummary& summary) {
-        if (std::get<1>(key) == 0) {
+    job->remember = [cache = cache_, path, version](const ArchiveSummary& summary) {
+        if (version.size_bytes == 0) {
             return; // an unsized read names no version of the file to keep it for
         }
         std::lock_guard<std::mutex> lock(cache->mutex);
-        if (cache->summaries.size() >= CACHE_ENTRIES) {
-            cache->summaries.erase(cache->summaries.begin());
-        }
-        cache->summaries[key] = summary;
+        cache->summaries.put(path, version, summary);
+        cache->summaries.evict(CACHE_ENTRIES); // the least recently used go first
     };
     if (size == 0) {
         read_tail_unsized(job);
@@ -426,7 +429,7 @@ void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double 
 void ThreeMfReader::read_entry(ITransfersAPI& transfers, const std::string& path,
                                const zip::ZipEntry& entry, BytesCallback on_done,
                                ErrorCallback on_error, ITransfersAPI::CancelFlag cancelled) {
-    if (entry.usize > MAX_ENTRY_BYTES) {
+    if (!zip::entry_fits(entry, MAX_ENTRY_BYTES)) {
         on_error(error_text(path + "/" + entry.name, zip::ZipError::Truncated));
         return;
     }

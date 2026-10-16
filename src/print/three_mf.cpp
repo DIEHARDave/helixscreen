@@ -60,6 +60,16 @@ double attr_double(std::string_view tag, std::string_view name) {
     return v ? text_io::parse_leading<double>(*v).value_or(0.0) : 0.0;
 }
 
+/// A whole number in [@p lo, @p hi], or 0 for anything else (absent,
+/// fractional, out of range, not a number): the file is untrusted.
+int attr_index(std::string_view tag, std::string_view name, int lo, int hi) {
+    const double v = attr_double(tag, name);
+    if (!(v >= lo && v <= hi) || v != static_cast<double>(static_cast<int>(v))) {
+        return 0;
+    }
+    return static_cast<int>(v);
+}
+
 /// Calls @p fn with the text of each `<element ...>` tag in @p xml.
 template <class Fn> void for_each_tag(std::string_view xml, std::string_view element, Fn&& fn) {
     const std::string open = "<" + std::string(element);
@@ -92,7 +102,8 @@ int plate_number(std::string_view name, std::string_view suffix) {
                      [](char c) { return std::isdigit(static_cast<unsigned char>(c)); })) {
         return 0;
     }
-    return text_io::parse_int<int>(digits).value_or(0);
+    const int plate = text_io::parse_int<int>(digits).value_or(0);
+    return plate <= MAX_PLATES ? plate : 0;
 }
 
 } // namespace
@@ -149,6 +160,9 @@ std::vector<ThreeMfPlate> sliced_plates(const std::vector<zip::ZipEntry>& entrie
 }
 
 bool parse_slice_info(std::string_view xml, int plate, SliceInfo& out) {
+    if (plate < 1) {
+        return false; // a block whose index is unreadable reads as plate 0
+    }
     size_t at = 0;
     while ((at = xml.find("<plate>", at)) != std::string_view::npos) {
         const size_t end = xml.find("</plate>", at);
@@ -163,7 +177,7 @@ bool parse_slice_info(std::string_view xml, int plate, SliceInfo& out) {
                 return;
             }
             if (*key == "index") {
-                info.plate = static_cast<int>(attr_double(tag, "value"));
+                info.plate = attr_index(tag, "value", 1, MAX_PLATES);
             } else if (*key == "prediction") {
                 info.prediction_s = attr_double(tag, "value");
             } else if (*key == "weight") {
@@ -175,7 +189,10 @@ bool parse_slice_info(std::string_view xml, int plate, SliceInfo& out) {
         }
         for_each_tag(block, "filament", [&info](std::string_view tag) {
             SliceFilament f;
-            f.id = static_cast<int>(attr_double(tag, "id"));
+            f.id = attr_index(tag, "id", 1, MAX_FILAMENT_SLOTS);
+            if (f.id == 0) {
+                return; // not a slot a print can have
+            }
             f.type = std::string(tag_attribute(tag, "type").value_or(""));
             f.color = std::string(tag_attribute(tag, "color").value_or(""));
             f.used_m = attr_double(tag, "used_m");

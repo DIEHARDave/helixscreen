@@ -158,6 +158,13 @@ bool parse_central_directory(const uint8_t* tail, size_t n, uint64_t file_size,
             entries.clear();
             return false;
         }
+        // Its local header and data must end before the central directory
+        // starts; a record claiming more is a lie that would size reads.
+        if (entry.lh_offset + ZIP_LOCAL_HEADER_BYTES + name_len + entry.csize > cd_offset) {
+            error = ZipError::NotZip;
+            entries.clear();
+            return false;
+        }
         entry.name.assign(reinterpret_cast<const char*>(p + CENTRAL_BYTES), name_len);
         entries.push_back(std::move(entry));
         p += record;
@@ -182,6 +189,10 @@ std::optional<uint64_t> archive_size_from_tail(const uint8_t* tail, size_t n) {
         return std::nullopt;
     }
     return size;
+}
+
+bool entry_fits(const ZipEntry& entry, size_t max_bytes) {
+    return entry.csize <= max_bytes && entry.usize <= max_bytes;
 }
 
 uint64_t entry_read_span(const ZipEntry& entry) {
