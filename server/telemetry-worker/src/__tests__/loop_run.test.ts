@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect } from 'vitest'
 import { runLoop, type LoopDeps } from '../loop/run'
+import { loopDeps } from '../loop/wiring'
 import { reportKey, type WeeklyReport } from '../loop/report'
 import { loadState } from '../loop/state'
 import { previousIsoWeek } from '../loop/week'
@@ -235,6 +236,22 @@ describe('runLoop weekly', () => {
     expect(out.skipped.join('\n')).toContain(`state: injected put failure: ${STATE_KEY}`)
   })
 
+  it('skips issue sync with one line when GitHub is not configured, and the email says so', async () => {
+    const r = rig({ tracker: null })
+    const out = await runLoop('weekly', r.deps, false)
+    expect(out.skipped).toEqual(['github: not configured'])
+    expect(out.issues).toEqual([])
+    expect(storedReport(r.store).issues_not_synced).toBe('GitHub is not configured')
+    expect(r.mailer.sent[0].text).toContain('Issues were not synced: GitHub is not configured.')
+    expect(r.mailer.sent[0].text).not.toContain('retried next week')
+  })
+
+  it('says the same in a dry run without GitHub', async () => {
+    const out = await runLoop('weekly', rig({ tracker: null }).deps, true)
+    expect(out.skipped).toEqual(['github: not configured'])
+    expect(out.email?.text).toContain('Issues were not synced')
+  })
+
   it('says so when no mailer is configured', async () => {
     const r = rig({ mailer: null })
     const out = await runLoop('weekly', r.deps, false)
@@ -250,5 +267,22 @@ describe('runLoop weekly', () => {
     expect(r.tracker.calls.every((c) => c.op === 'find')).toBe(true)
     expect(r.mailer.attempts).toEqual([])
     expect(r.store.puts()).toEqual([])
+  })
+})
+
+describe('loopDeps', () => {
+  const config = { accountId: 'a', apiToken: 't' }
+  const base = { TELEMETRY_BUCKET: {} as R2Bucket, CLOUDFLARE_ACCOUNT_ID: 'a' }
+  const github = { GITHUB_REPO: 'acme/widgets', GITHUB_APP_ID: '1', GITHUB_APP_PRIVATE_KEY: 'pem' }
+
+  it('has no tracker when any GitHub App setting is missing', () => {
+    for (const missing of Object.keys(github)) {
+      const env = { ...base, ...github, [missing]: '' }
+      expect(loopDeps(env, config, MONDAY).tracker).toBeNull()
+    }
+  })
+
+  it('has a tracker for the configured repo when all are set', () => {
+    expect(loopDeps({ ...base, ...github }, config, MONDAY).tracker?.repo).toBe('acme/widgets')
   })
 })

@@ -17,7 +17,8 @@ import { isoWeek, previousIsoWeek } from './week'
 export interface LoopDeps {
   health(): Promise<HealthPayload>
   updateGroups(): Promise<UpdateFailureGroup[]>
-  tracker: IssueTracker
+  /** Null when the GitHub App is not configured. */
+  tracker: IssueTracker | null
   /** Null when email is not configured. */
   mailer: Mailer | null
   store: ObjectStore
@@ -41,6 +42,8 @@ export interface LoopResult {
 }
 
 const NOT_CONFIGURED = 'email: not configured'
+const GITHUB_NOT_CONFIGURED = 'github: not configured'
+const GITHUB_REASON = 'GitHub is not configured'
 
 const message = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
@@ -117,12 +120,18 @@ async function runWeekly(deps: LoopDeps, dryRun: boolean): Promise<LoopResult> {
   const state = await loadState(deps.store)
   const health = await deps.health()
   const findings = findingsFromHealth(health, await deps.updateGroups(), week)
-  const issues = await syncIssues(findings, deps.tracker, state, week, deps.dashboardUrl, dryRun)
+  const report: WeeklyReport = { week, generated_at: deps.now.toISOString(), health, findings, issues: [] }
+  const skipped: string[] = []
+  if (deps.tracker) {
+    report.issues = await syncIssues(findings, deps.tracker, state, week, deps.dashboardUrl, dryRun)
+    const titles = new Map(findings.map((f) => [f.fingerprint, f.title]))
+    for (const o of report.issues) if (o.error) skipped.push(`github: ${titles.get(o.fingerprint)}: ${o.error}`)
+  } else {
+    report.issues_not_synced = GITHUB_REASON
+    skipped.push(GITHUB_NOT_CONFIGURED)
+  }
+  const { issues } = report
 
-  const titles = new Map(findings.map((f) => [f.fingerprint, f.title]))
-  const skipped = issues.filter((o) => o.error).map((o) => `github: ${titles.get(o.fingerprint)}: ${o.error}`)
-
-  const report: WeeklyReport = { week, generated_at: deps.now.toISOString(), health, findings, issues }
   const email = weeklyEmail(report, deps.dashboardUrl)
   const result: LoopResult = { mode: 'weekly', week, findings, alertsSent: [], issues, email, skipped }
   if (dryRun) return result

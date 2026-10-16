@@ -151,6 +151,9 @@ function dataHealthSection(report: WeeklyReport): Section {
 const ISSUE_ACTIONS: Partial<Record<IssueOutcome['action'], string>> = { created: 'Opened', commented: 'Commented', reopened: 'Reopened' }
 
 function issueSections(report: WeeklyReport): Section[] {
+  if (report.issues_not_synced) {
+    return [{ title: 'Issues', rows: [[`Issues were not synced: ${report.issues_not_synced}.`]] }]
+  }
   const titles = new Map(report.findings.map((f) => [f.fingerprint, f.title]))
   const titleOf = (fp: string): string => titles.get(fp) ?? 'Untitled finding'
   const touched = report.issues.flatMap((o) => {

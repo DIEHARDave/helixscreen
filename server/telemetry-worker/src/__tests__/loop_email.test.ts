@@ -104,6 +104,18 @@ describe('weeklyEmail', () => {
   })
 })
 
+describe('weeklyEmail without issue sync', () => {
+  const mail = weeklyEmail({ ...report(), issues: [], issues_not_synced: 'GitHub is not configured' }, URL)
+
+  it('says issues were not synced and why, and promises no retry', () => {
+    for (const body of [mail.text, mail.html]) {
+      expect(body).toContain('Issues were not synced: GitHub is not configured.')
+      expect(body).not.toContain('retried next week')
+      expect(body).not.toContain('Issues opened or commented on')
+    }
+  })
+})
+
 describe('alertEmail', () => {
   const findings = [finding(`Crash ${EVIL}`), finding('Ingest of session is low', { kind: 'data_health', dashboardPath: '/' })]
   const mail = alertEmail(findings, URL, '2026-10-19')

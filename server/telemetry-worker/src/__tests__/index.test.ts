@@ -2520,6 +2520,14 @@ describe("feedback loop wiring", () => {
       expect(err.mock.calls.map((c) => c.join(" ")).join("\n")).toContain("email: not configured");
     });
 
+    it("skips issue sync once, with one line, when the GitHub App is not configured", async () => {
+      const err = vi.spyOn(console, "error").mockImplementation(() => {});
+      await runScheduled(LOOP_CRON, MONDAY, createEnv());
+      const weekly = err.mock.calls.map((c) => c.join(" ")).filter((l) => l.includes("weekly run"));
+      expect(weekly).toHaveLength(1);
+      expect(weekly[0].match(/github: not configured/g)).toHaveLength(1);
+    });
+
     it("logs a loop failure with console.error and does not throw", async () => {
       const env = createEnv();
       const err = vi.spyOn(console, "error").mockImplementation(() => {});

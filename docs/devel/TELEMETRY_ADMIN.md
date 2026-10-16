@@ -564,7 +564,7 @@ The workflow pulls the last 28 days of telemetry with `HELIX_TELEMETRY_ADMIN_KEY
 | Name | Purpose |
 |------|---------|
 | `RESEND_API_KEY` | Sends the weekly report and alerts. Unset: the run reports `email: not configured` in `skipped` and sends nothing. |
-| `GITHUB_APP_PRIVATE_KEY` | Private key of the GitHub App (`GITHUB_APP_ID` in `wrangler.toml`) that files issues. Unset: findings are held and the run lists the failures in `skipped`. |
+| `GITHUB_APP_PRIVATE_KEY` | Private key of the GitHub App (`GITHUB_APP_ID` in `wrangler.toml`) that files issues. Unset (or `GITHUB_REPO` / `GITHUB_APP_ID` unset): the weekly run skips issue sync, lists one `github: not configured` in `skipped`, and the email and stored report say issues were not synced that week. |
 
 The recipient, sender, repository and dashboard URL are plain vars in `wrangler.toml` (`NOTIFICATION_EMAIL`, `EMAIL_FROM`, `GITHUB_REPO`, `DASHBOARD_URL`). In the GitHub repository, set the Actions secret `HELIX_TELEMETRY_ADMIN_KEY` (same value as the Worker's `ADMIN_API_KEY`) and, when ready for real issues, the Actions variable `TELEMETRY_PRINTER_ISSUES_LIVE=true`.
 

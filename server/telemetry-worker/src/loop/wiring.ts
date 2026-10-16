@@ -34,8 +34,7 @@ export function loopDeps(env: LoopWorkerEnv, config: QueryConfig, now: Date): Lo
         devices: num(r.devices),
       }));
     },
-    // A missing GitHub secret makes the tracker reject, which the run reports as held issues.
-    tracker: githubIssueTracker(env),
+    tracker: env.GITHUB_REPO && env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY ? githubIssueTracker(env) : null,
     mailer: env.RESEND_API_KEY ? resendMailer(env) : null,
     store: r2Store(env.TELEMETRY_BUCKET),
     now,

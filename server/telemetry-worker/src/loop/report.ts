@@ -13,6 +13,8 @@ export interface WeeklyReport {
   health: HealthPayload
   findings: Finding[]
   issues: IssueOutcome[]
+  /** Why issues were not synced this week; absent when they were. */
+  issues_not_synced?: string
 }
 
 export const REPORT_PREFIX = 'reports/'

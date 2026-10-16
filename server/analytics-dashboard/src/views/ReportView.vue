@@ -36,7 +36,8 @@
 
         <DashSection title="Issues" :loading="loading" :error="error">
           <template v-if="report">
-            <NoData v-if="report.issues.length === 0" />
+            <p v-if="report.issues_not_synced" class="empty-state">Issues were not synced: {{ report.issues_not_synced }}.</p>
+            <NoData v-else-if="report.issues.length === 0" />
             <div v-else class="table-wrapper">
               <table class="data-table">
                 <thead>
