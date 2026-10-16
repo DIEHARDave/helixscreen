@@ -2,7 +2,9 @@
 // Tests for telemetry worker endpoints.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import worker, { configuredFeature, deriveFeatureAdoption, toYesNo } from "../index";
+import worker, { CDN_CRON, LOOP_CRON, configuredFeature, deriveFeatureAdoption, toYesNo } from "../index";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { col } from "../schema";
 import { mapEventToDataPoints } from "../analytics";
 import * as queries from "../queries";
@@ -2461,8 +2463,6 @@ describe("deriveFeatureAdoption", () => {
 // ---------- Feedback loop: cron dispatch, admin run, report endpoints ----------
 
 describe("feedback loop wiring", () => {
-  const CDN_CRON = "10 2 * * *";
-  const LOOP_CRON = "0 13 * * *";
   const TUESDAY = new Date("2026-10-20T13:00:00Z");
   const MONDAY = new Date("2026-10-19T13:00:00Z");
 
@@ -2484,6 +2484,14 @@ describe("feedback loop wiring", () => {
   });
 
   describe("scheduled", () => {
+    it("is scheduled by wrangler.toml for both crons, and nothing else", () => {
+      const toml = readFileSync(resolve(__dirname, "../../wrangler.toml"), "utf8");
+      const line = toml.match(/^\s*crons\s*=\s*\[(.*)\]/m);
+      expect(line).not.toBeNull();
+      const crons = [...line![1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+      expect(crons.sort()).toEqual([CDN_CRON, LOOP_CRON].sort());
+    });
+
     it("runs the daily loop only, on a weekday 13:00 cron", async () => {
       const env = createEnv();
       const fetchSpy = vi.spyOn(globalThis, "fetch");

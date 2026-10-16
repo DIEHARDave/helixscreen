@@ -311,7 +311,9 @@ async function captureCdnFleetDay(env: Env, date: string): Promise<FleetDaySnaps
   return snap;
 }
 
-const LOOP_CRON = "0 13 * * *";
+/** The schedules in wrangler.toml [triggers]: scheduled() runs the loop on LOOP_CRON and the CDN snapshot otherwise. */
+export const CDN_CRON = "10 2 * * *";
+export const LOOP_CRON = "0 13 * * *";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
