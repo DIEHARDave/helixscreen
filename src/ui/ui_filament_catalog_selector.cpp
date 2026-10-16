@@ -348,8 +348,8 @@ void FilamentCatalogSelector::populate_vendor_dropdown() {
             vendor_order_.push_back(extra);
     }
     // The slot's own brand is a vendor even when neither the catalog nor the
-    // host lists it (Snapmaker, on a U1): snapping it to Generic would have an
-    // untouched Save rebrand the spool. It lists with no products, so a Save
+    // host lists it: snapping it to Generic would have an untouched Save
+    // rebrand the spool. It lists with no products, so a Save
     // that keeps it keeps the slot's identity too.
     if (seed_vendor_ && !seed_vendor_->empty() && !is_favorites_vendor(*seed_vendor_) &&
         std::none_of(vendor_order_.begin(), vendor_order_.end(),

@@ -258,26 +258,39 @@ void AmsBackendSnapmaker::on_started() {
     auto loaded =
         helix::ams::make_loaded_override_store(api_, "snapmaker", get_type(), backend_log_tag());
     if (loaded.store) {
-        // A product line stored beside another vendor's brand is a label the
-        // slot kept from a Snapmaker spool that has since left it. Dropped
-        // before the records are classified, so the lane never shows it, and
-        // saved back so lane_data stops stating it.
-        const auto drop_foreign_line = [](helix::ams::FilamentSlotOverride& record) {
+        // A product line the record only remembers, stored beside another
+        // vendor's brand, is a label the slot kept from a Snapmaker spool that
+        // has since left it. Dropped before the records are classified, so the
+        // lane never shows it, and saved back so lane_data stops stating it.
+        // Whether the record declares the name is the record translation's
+        // answer, legacy records included; a declared name is the user's.
+        std::vector<int> repaired;
+        loaded.store->amend_loaded_records([&repaired](int slot_index,
+                                                       helix::ams::FilamentSlotOverride& record,
+                                                       const nlohmann::json& wire) {
             if (!names_foreign_product_line(record.spool_name, record.brand)) {
-                return false;
+                return;
+            }
+            const helix::ams::LaneSources filed =
+                helix::ams::sources_from_record(record, wire, helix::ams::LegacyLockKeys::LaneData);
+            if (!filed.remembered.has_value() ||
+                filed.remembered->spool_name != record.spool_name) {
+                return;
             }
             record.spool_name.clear();
-            return true;
-        };
-        loaded.store->amend_loaded_records(drop_foreign_line);
-        for (auto& [slot_index, record] : loaded.overrides) {
-            const std::string line = record.spool_name;
-            if (drop_foreign_line(record)) {
-                spdlog::info("{} Slot {} dropped product line '{}' stored beside brand '{}'",
-                             backend_log_tag(), slot_index, line, record.brand);
-                helix::ams::save_override_async(loaded.store.get(), slot_index, record,
-                                                backend_log_tag(), "Product-line repair");
+            repaired.push_back(slot_index);
+        });
+        for (const int slot_index : repaired) {
+            auto it = loaded.overrides.find(slot_index);
+            if (it == loaded.overrides.end() ||
+                !names_foreign_product_line(it->second.spool_name, it->second.brand)) {
+                continue;
             }
+            spdlog::info("{} Slot {} dropped product line '{}' stored beside brand '{}'",
+                         backend_log_tag(), slot_index, it->second.spool_name, it->second.brand);
+            it->second.spool_name.clear();
+            helix::ams::save_override_async(loaded.store.get(), slot_index, it->second,
+                                            backend_log_tag(), "Product-line repair");
         }
         helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
                                           backend_index());
@@ -286,6 +299,11 @@ void AmsBackendSnapmaker::on_started() {
         std::lock_guard<std::mutex> lock(mutex_);
         override_store_ = std::move(loaded.store);
         overrides_ = std::move(loaded.overrides);
+        // A reconnect re-baselines what each channel's firmware says: a
+        // silence heard before it says nothing about the channel now.
+        tag_names_identity_.fill(std::nullopt);
+        task_vendor_.fill(std::nullopt);
+        task_official_.fill(std::nullopt);
         helix::ams::bind_fingerprint_persistence(rfid_tracker_, override_store_.get(), overrides_);
         // A reconnect re-baselines the feed ports: an insert pending from
         // before it is judged against nothing this session has seen.
@@ -2240,32 +2258,51 @@ void AmsBackendSnapmaker::retract_unbacked_identity_locked(int slot_index, SlotI
         return;
     }
 
-    // Only what the lane merely remembers retracts: a stored record's
-    // undeclared brand and product line, left from whatever firmware said
-    // when it was written. The same rule the vendor-cache brand follows when a
-    // tag stops naming a vendor. A declared field is the user's and stands,
-    // and so does a brand beside the user's catalog pick, which names it.
+    // Only identity in the firmware's own vocabulary that nobody declared
+    // retracts: a remembered Snapmaker product line, and the Snapmaker brand
+    // beside it, which a stored record copied from what firmware once said.
+    // The same rule the vendor-cache brand follows when a tag stops naming a
+    // vendor. Anything else remembered (a name kept across a Spoolman
+    // unlink, one typed by hand) never came from firmware and stays, as do
+    // declared fields and a brand beside the user's catalog pick, which names
+    // it. A slot whose record still names a Spoolman spool is the spool's.
+    auto ovr = overrides_.find(slot_index);
+    if (ovr != overrides_.end() && ovr->second.spoolman_id > 0) {
+        return;
+    }
     const helix::ams::LaneId lane = lane_id(slot_index);
     const helix::ams::LaneSources sources = helix::ams::lane_sources(lane);
     if (!sources.remembered.has_value()) {
         return;
     }
     helix::ams::Observation kept = *sources.remembered;
+    const auto is_line = [](const std::optional<std::string>& v) {
+        return v.has_value() && is_known_subtype(*v);
+    };
+    const bool drop_name = is_line(kept.spool_name);
+    const bool drop_product = is_line(kept.product_name);
     const bool picked =
         sources.local_user.has_value() && sources.local_user->catalog_id.has_value();
-    const bool drop_brand = kept.brand.has_value() && !picked;
-    const bool drop_line = kept.spool_name.has_value() || kept.product_name.has_value();
-    if (!drop_brand && !drop_line) {
+    const bool drop_brand = (drop_name || drop_product) && kept.brand.has_value() &&
+                            is_product_line_vendor(*kept.brand) && !picked;
+    if (!drop_name && !drop_product && !drop_brand) {
         return;
+    }
+    const helix::ams::Observation dropped = kept;
+    if (drop_name) {
+        kept.spool_name.reset();
+        if (slot.spool_name == *dropped.spool_name) {
+            slot.spool_name.clear();
+        }
+    }
+    if (drop_product) {
+        kept.product_name.reset();
     }
     if (drop_brand) {
         kept.brand.reset();
-        slot.brand.clear();
-    }
-    if (drop_line) {
-        kept.spool_name.reset();
-        kept.product_name.reset();
-        slot.spool_name.clear();
+        if (slot.brand == *dropped.brand) {
+            slot.brand.clear();
+        }
     }
     helix::ams::drop_lane_source(lane, helix::ams::ObservationSource::Remembered);
     const bool kept_any =
@@ -2274,22 +2311,33 @@ void AmsBackendSnapmaker::retract_unbacked_identity_locked(int slot_index, SlotI
         helix::ams::ingest(lane, kept);
     }
 
-    auto ovr = overrides_.find(slot_index);
     if (ovr == overrides_.end()) {
         return;
     }
-    spdlog::info("{} Slot {} firmware states no spool; retracting remembered{}{}",
-                 backend_log_tag(), slot_index,
-                 drop_brand ? " brand '" + ovr->second.brand + "'" : "",
-                 drop_line ? " name '" + ovr->second.spool_name + "'" : "");
-    if (drop_brand) {
-        ovr->second.brand.clear();
+    // The stored record loses a field only where it still holds the value
+    // being retracted; anything it says beyond that is not this rule's to drop.
+    helix::ams::FilamentSlotOverride& record = ovr->second;
+    bool changed = false;
+    if (drop_name && record.spool_name == *dropped.spool_name) {
+        record.spool_name.clear();
+        changed = true;
     }
-    if (drop_line) {
-        ovr->second.spool_name.clear();
+    if (drop_product && record.product_name == *dropped.product_name) {
+        record.product_name.clear();
+        changed = true;
     }
+    if (drop_brand && record.brand == *dropped.brand) {
+        record.brand.clear();
+        changed = true;
+    }
+    if (!changed) {
+        return;
+    }
+    spdlog::info("{} Slot {} firmware states no spool; retracted remembered '{}' '{}'",
+                 backend_log_tag(), slot_index, dropped.brand.value_or(""),
+                 dropped.spool_name.value_or(dropped.product_name.value_or("")));
     if (override_store_) {
-        helix::ams::save_override_async(override_store_.get(), slot_index, ovr->second,
+        helix::ams::save_override_async(override_store_.get(), slot_index, record,
                                         backend_log_tag(), "Retraction");
     }
 }

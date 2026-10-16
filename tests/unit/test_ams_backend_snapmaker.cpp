@@ -4320,11 +4320,11 @@ TEST_CASE("Only a backend whose carriage can be empty says so",
     CHECK_FALSE(afc.carriage_can_be_empty());
 }
 
-// The shapes a U1 holds after its starter spools' product line leaked onto
-// lanes that never carried one (sanitized from a real lane_data namespace):
-// T0 and T1 are Snapmaker PLA and keep SnapSpeed, T2 never had it, and T3 is a
-// Generic ASA spool still labelled SnapSpeed. Loading heals the record, on disk
-// as well as in memory, without the owner editing it.
+// Four records in a real U1's lane_data shape: T0 and T1 are Snapmaker PLA with
+// an undeclared SnapSpeed name, T2 is a Generic ASA catalog pick with no name,
+// and T3 is a Generic ASA catalog pick with an undeclared SnapSpeed name. Load
+// drops the product line only where the brand cannot carry it (T3), on disk as
+// well as in memory; silent firmware then retracts the rest.
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker load drops a product line its brand cannot carry",
                  "[ams][snapmaker][filament_slot_override][spool_name]") {
     MockPrinter mock_printer;
@@ -4563,4 +4563,126 @@ TEST_CASE_METHOD(SnapmakerFixture,
     REQUIRE(ovr.has_value());
     CHECK(ovr->brand == "Polymaker");
     CHECK(ovr->spool_name == "PolyLite");
+}
+
+namespace {
+/// A Snapmaker PLA record in a real U1's lane_data shape: colour and material
+/// declared, the brand and SnapSpeed name only remembered.
+json remembered_snapspeed_record(int slot_index) {
+    return json{
+        {"color", "#080A0D"},      {"helix_declared", json::array({"color_rgb", "material"})},
+        {"helix_material", "PLA"}, {"lane", std::to_string(slot_index)},
+        {"material", "PLA"},       {"spool_name", "SnapSpeed"},
+        {"vendor", "Snapmaker"}};
+}
+
+/// One frame of each firmware source naming nothing on every channel.
+void feed_silent_channels(AmsBackendSnapmaker& backend) {
+    json info = json::array();
+    for (int i = 0; i < 4; ++i) {
+        info.push_back(json{{"MAIN_TYPE", "NONE"}, {"SUB_TYPE", "NONE"}});
+    }
+    SnapmakerTestAccess::handle_status(backend, json{{"filament_detect", json{{"info", info}}}});
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"print_task_config",
+                       json{{"filament_vendor", json::array({"NONE", "NONE", "NONE", "NONE"})},
+                            {"filament_official", json::array({false, false, false, false})}}}});
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker load keeps a product line the record declares",
+                 "[ams][snapmaker][filament_slot_override][spool_name]") {
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+
+    json record = {{"color", "#C0C0C0"},      {"lane", "0"},          {"material", "PLA"},
+                   {"helix_material", "PLA"}, {"spool_name", "Silk"}, {"vendor", "eSUN"}};
+    SECTION("declared by name") {
+        record["helix_declared"] = json::array({"color_rgb", "material", "spool_name"});
+    }
+    SECTION("declared by a record older than the declared set") {
+        record["helix_locked_color"] = true;
+    }
+    mock_printer.client.mock_db_set("lane_data", "T0", record);
+
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend(&api, nullptr);
+    SnapmakerTestAccess::call_on_started(*backend);
+
+    auto ovr = SnapmakerTestAccess::get_override(*backend, 0);
+    REQUIRE(ovr.has_value());
+    CHECK(ovr->spool_name == "Silk");
+    CHECK(mock_printer.client.mock_db_get("lane_data", "T0").value("spool_name", "") == "Silk");
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker retracts a silent channel's product line once",
+                 "[ams][snapmaker][filament_slot_override][spool_name]") {
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    mock_printer.client.mock_db_set("lane_data", "T0", remembered_snapspeed_record(0));
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend(&api, nullptr);
+    SnapmakerTestAccess::call_on_started(*backend);
+
+    feed_silent_channels(*backend);
+    REQUIRE(backend->get_slot_info(0).spool_name.empty());
+    REQUIRE_FALSE(mock_printer.client.mock_db_get("lane_data", "T0").contains("spool_name"));
+
+    // Anything saved again would overwrite this marker.
+    json marker = mock_printer.client.mock_db_get("lane_data", "T0");
+    marker["test_marker"] = true;
+    mock_printer.client.mock_db_set("lane_data", "T0", marker);
+    feed_silent_channels(*backend);
+    feed_silent_channels(*backend);
+    CHECK(mock_printer.client.mock_db_get("lane_data", "T0").value("test_marker", false));
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker retraction leaves a stored record it does not describe alone",
+                 "[ams][snapmaker][filament_slot_override][spool_name]") {
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    mock_printer.client.mock_db_set("lane_data", "T0", remembered_snapspeed_record(0));
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend(&api, nullptr);
+    SnapmakerTestAccess::call_on_started(*backend);
+    helix::ams::FilamentSlotOverride record = *SnapmakerTestAccess::get_override(*backend, 0);
+
+    SECTION("a record bound to a Spoolman spool") {
+        record.spoolman_id = 42;
+        SnapmakerTestAccess::replace_override_record(*backend, 0, record);
+        feed_silent_channels(*backend);
+        CHECK(backend->get_slot_info(0).spool_name == "SnapSpeed");
+        CHECK(SnapmakerTestAccess::get_override(*backend, 0)->spool_name == "SnapSpeed");
+        CHECK(SnapmakerTestAccess::get_override(*backend, 0)->brand == "Snapmaker");
+    }
+    SECTION("a record holding other values") {
+        record.spool_name = "Bench reel";
+        record.brand = "Polymaker";
+        SnapmakerTestAccess::replace_override_record(*backend, 0, record);
+        feed_silent_channels(*backend);
+        CHECK(backend->get_slot_info(0).spool_name.empty());
+        CHECK(SnapmakerTestAccess::get_override(*backend, 0)->spool_name == "Bench reel");
+        CHECK(SnapmakerTestAccess::get_override(*backend, 0)->brand == "Polymaker");
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker re-hears channel silence after a reconnect",
+                 "[ams][snapmaker][filament_slot_override][spool_name]") {
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    mock_printer.client.mock_db_set("lane_data", "T0", remembered_snapspeed_record(0));
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend(&api, nullptr);
+    SnapmakerTestAccess::call_on_started(*backend);
+
+    // The tag's silence, heard before the reconnect.
+    json info = json::array({json{{"MAIN_TYPE", "NONE"}, {"SUB_TYPE", "NONE"}}});
+    SnapmakerTestAccess::handle_status(*backend, json{{"filament_detect", json{{"info", info}}}});
+
+    SnapmakerTestAccess::call_on_started(*backend);
+    SnapmakerTestAccess::handle_status(
+        *backend, json{{"print_task_config",
+                        json{{"filament_vendor", json::array({"NONE", "NONE", "NONE", "NONE"})},
+                             {"filament_official", json::array({false, false, false, false})}}}});
+
+    // print_task_config alone is half a verdict; the tag has not spoken since.
+    CHECK(backend->get_slot_info(0).spool_name == "SnapSpeed");
+    CHECK(SnapmakerTestAccess::get_override(*backend, 0)->spool_name == "SnapSpeed");
 }

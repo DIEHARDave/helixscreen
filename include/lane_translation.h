@@ -40,10 +40,8 @@ enum class LegacyLockKeys {
 /// A field the user did not move is not theirs to claim, and a plain diff of
 /// two snapshots claims three kinds of field they did not move:
 ///   - a binding change carries the spool's own values, so a commit that
-///     links or relinks states the binding and nothing else. An unlink is the
-///     one binding change that also states identity: keeping the slot's brand
-///     and spool name past it is the person's choice, so those two, where the
-///     edit kept them, are theirs;
+///     changes spoolman_id states the binding and nothing else, in both
+///     directions;
 ///   - a cleared field lands on a sentinel (AMS_DEFAULT_SLOT_COLOR, a
 ///     negative weight) that means "no reading", never a chosen value;
 ///   - catalog_id and product_name arrive from the editor's auto-highlighted
@@ -55,11 +53,11 @@ enum class LegacyLockKeys {
 /// engaged; keep_spool_owned_identity() is what the commit applies in their
 /// place.
 ///
-/// spoolman_id is engaged exactly when the binding changed, and only an
-/// unlink's kept brand and spool name are engaged alongside it.
-/// amend_authorship() reads its presence as "this edit changed the binding" and
-/// voids the stored record's earlier declarations on it, so engaging it on an
-/// edit that kept the spool would strip a record of authorship nobody withdrew.
+/// spoolman_id is engaged exactly when the binding changed, and nothing else is
+/// engaged alongside it. amend_authorship() reads its presence as "this edit
+/// changed the binding" and voids the stored record's earlier declarations on
+/// it, so engaging it on an edit that kept the spool would strip a record of
+/// authorship nobody withdrew.
 ///
 /// This answer is what keeps a lane's two stores agreeing. After an edit that
 /// changes the binding (a link, a relink to a different spool, an unlink that
@@ -264,9 +262,10 @@ void withdraw_spool_owned_declarations(FilamentSlotOverride& record);
 /// Blank @p edited's spool name when the edit re-declared the spool under it.
 ///
 /// A spool name describes the spool the brand, material and catalog product
-/// named. An edit that moves any of them (brand and material compared without
-/// case) and leaves the name as it was would label the new spool with the old
-/// one's name. A first catalog pick is not a move: the editor adopts one on
+/// named, a free-form name the user typed as much as a vendor's product line.
+/// An edit that moves any of them (brand and material compared without case)
+/// and leaves the name as it was would label the new spool with the old one's
+/// name. A first catalog pick is not a move: the editor adopts one on
 /// every Save. A name the edit itself changed stands, and so does any name on
 /// a linked lane, which is the spool's own. Returns true when it blanked.
 bool drop_stale_spool_name(const SlotInfo& original, SlotInfo& edited);

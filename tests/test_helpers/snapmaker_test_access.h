@@ -50,6 +50,13 @@ class SnapmakerTestAccess {
         // wrote only this map would leave the lane reading empty.
         helix::test::file_override_as_lane_records(b, slot_index, ovr);
     }
+    /// Replace the stored record alone, leaving the lane as it was filed: the
+    /// shape of a record that moved on after the lane loaded it.
+    static void replace_override_record(AmsBackendSnapmaker& b, int slot_index,
+                                        const helix::ams::FilamentSlotOverride& ovr) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        b.overrides_[slot_index] = ovr;
+    }
     static std::optional<helix::ams::FilamentSlotOverride>
     get_override(const AmsBackendSnapmaker& b, int slot_index) {
         std::lock_guard<std::mutex> lock(b.mutex_);
