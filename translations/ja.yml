@@ -2288,7 +2288,8 @@ translations:
   Place the spools: スプールを置く
 
   Placed: 配置済み
-  Plate {} of {}: 'プレート {} / {}'
+  Plate {}: 'プレート {}'
+  Plate {} ({} of {}): 'プレート {} ({} / {})'
   Platform: プラットフォーム
   'Platform: ': 'プラットフォーム: '
   Play / stop Crockett's Theme: Crockett's Theme を再生/停止

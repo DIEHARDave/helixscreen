@@ -2244,7 +2244,8 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." ru="Поместите файлы изображений (PNG, JPEG, BMP, GIF) в config/custom_images/. Макс. размер: 2048×2048 пикселей."/>
   <translation tag="Place the spools" ru="Положите катушки"/>
   <translation tag="Placed" ru="Добавлено"/>
-  <translation tag="Plate {} of {}" ru="Пластина {} из {}"/>
+  <translation tag="Plate {}" ru="Пластина {}"/>
+  <translation tag="Plate {} ({} of {})" ru="Пластина {} ({} из {})"/>
   <translation tag="Platform" ru="Платформа"/>
   <translation tag="Platform: " ru="Платформа: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" ru="Воспроизвести / остановить «Crockett&apos;s Theme»"/>

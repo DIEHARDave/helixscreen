@@ -2438,7 +2438,8 @@ translations:
   Place the spools: Spulen einlegen
 
   Placed: Platziert
-  Plate {} of {}: 'Platte {} von {}'
+  Plate {}: 'Platte {}'
+  Plate {} ({} of {}): 'Platte {} ({} von {})'
   Platform: Plattform
   'Platform: ': 'Plattform: '
   Play / stop Crockett's Theme: Crockett's Theme abspielen / stoppen

@@ -108,7 +108,7 @@ TEST_CASE_METHOD(ArchivePanel,
     drain();
 
     CHECK(PrintSelectPanelTestAccess::plate_count(*panel_) == 2);
-    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 1 of 2");
+    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 2 (1 of 2)");
     const std::string first_time = PrintSelectPanelTestAccess::selected_print_time(*panel_);
 
     auto* prep = PrintSelectPanelTestAccess::prep_manager(*panel_);
@@ -118,7 +118,7 @@ TEST_CASE_METHOD(ArchivePanel,
 
     PrintSelectPanelTestAccess::step_plate(*panel_, 1);
     drain();
-    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 2 of 2");
+    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 5 (2 of 2)");
     const PrintFileData* row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
     REQUIRE(row);
     CHECK(row->print_time_minutes == 30);
@@ -133,16 +133,18 @@ TEST_CASE_METHOD(ArchivePanel,
 
     // Both ways round, wrapping.
     PrintSelectPanelTestAccess::step_plate(*panel_, 1);
-    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 1 of 2");
+    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 2 (1 of 2)");
     PrintSelectPanelTestAccess::step_plate(*panel_, -1);
-    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 2 of 2");
+    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 5 (2 of 2)");
 }
 
-TEST_CASE_METHOD(ArchivePanel, "one sliced plate shows no stepper", "[print_select][three_mf]") {
+TEST_CASE_METHOD(ArchivePanel, "one sliced plate shows its number and no arrows",
+                 "[print_select][three_mf]") {
     PlantedGcode file("Door.gcode.3mf", "", fixture_bytes("single_plate.gcode.3mf"));
     load(file.name());
     PrintSelectPanelTestAccess::select_file(*panel_, file.name());
     CHECK(PrintSelectPanelTestAccess::plate_count(*panel_) == 1);
+    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 9");
     REQUIRE(PrintSelectPanelTestAccess::prepare_archive_start(*panel_));
     CHECK(PrintSelectPanelTestAccess::prep_manager(*panel_)->archive_plate_for(file.name()) == 9);
 }

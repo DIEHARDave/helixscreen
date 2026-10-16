@@ -2467,7 +2467,8 @@ translations:
   Place the spools: Положите катушки
 
   Placed: Добавлено
-  Plate {} of {}: 'Пластина {} из {}'
+  Plate {}: 'Пластина {}'
+  Plate {} ({} of {}): 'Пластина {} ({} из {})'
   Platform: Платформа
   'Platform: ': 'Платформа: '
   Play / stop Crockett's Theme: Воспроизвести / остановить «Crockett's Theme»

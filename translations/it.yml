@@ -2429,7 +2429,8 @@ translations:
   Place the spools: Appoggia le bobine
 
   Placed: Inserito
-  Plate {} of {}: 'Piatto {} di {}'
+  Plate {}: 'Piatto {}'
+  Plate {} ({} of {}): 'Piatto {} ({} di {})'
   Platform: Piattaforma
   'Platform: ': 'Piattaforma: '
   Play / stop Crockett's Theme: Riproduci / ferma Crockett's Theme

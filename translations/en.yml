@@ -2361,7 +2361,8 @@ translations:
     pixels.'
   Place the spools: Place the spools
   Placed: Placed
-  Plate {} of {}: Plate {} of {}
+  Plate {}: Plate {}
+  Plate {} ({} of {}): Plate {} ({} of {})
   Platform: Platform
   'Platform: ': 'Platform: '
   Play / stop Crockett's Theme: Play / stop Crockett's Theme

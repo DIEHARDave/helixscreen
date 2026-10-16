@@ -2429,7 +2429,8 @@ translations:
   Place the spools: Coloca las bobinas
 
   Placed: En cola
-  Plate {} of {}: 'Placa {} de {}'
+  Plate {}: 'Placa {}'
+  Plate {} ({} of {}): 'Placa {} ({} de {})'
   Platform: Plataforma
   'Platform: ': 'Plataforma: '
   Play / stop Crockett's Theme: Reproducir / detener Crockett's Theme

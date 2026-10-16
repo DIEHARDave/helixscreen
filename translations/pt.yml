@@ -2430,7 +2430,8 @@ translations:
   Place the spools: Coloque os carretéis
 
   Placed: Colocado
-  Plate {} of {}: 'Placa {} de {}'
+  Plate {}: 'Placa {}'
+  Plate {} ({} of {}): 'Placa {} ({} de {})'
   Platform: Plataforma
   'Platform: ': 'Plataforma: '
   Play / stop Crockett's Theme: Reproduzir / parar Crockett's Theme

@@ -2199,7 +2199,8 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." pt="Coloque arquivos de imagem (PNG, JPEG, BMP, GIF) em config/custom_images/. Tamanho máx.: 2048×2048 pixels."/>
   <translation tag="Place the spools" pt="Coloque os carretéis"/>
   <translation tag="Placed" pt="Colocado"/>
-  <translation tag="Plate {} of {}" pt="Placa {} de {}"/>
+  <translation tag="Plate {}" pt="Placa {}"/>
+  <translation tag="Plate {} ({} of {})" pt="Placa {} ({} de {})"/>
   <translation tag="Platform" pt="Plataforma"/>
   <translation tag="Platform: " pt="Plataforma: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" pt="Reproduzir / parar Crockett&apos;s Theme"/>

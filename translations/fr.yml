@@ -2444,7 +2444,8 @@ translations:
   Place the spools: Posez les bobines
 
   Placed: Placé
-  Plate {} of {}: 'Plateau {} sur {}'
+  Plate {}: 'Plateau {}'
+  Plate {} ({} of {}): 'Plateau {} ({} sur {})'
   Platform: Plateforme
   'Platform: ': 'Plateforme : '
   Play / stop Crockett's Theme: Jouer / arrêter Crockett's Theme
