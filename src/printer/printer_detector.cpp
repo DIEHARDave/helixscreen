@@ -1678,6 +1678,10 @@ bool PrinterDetector::is_enclosed(const std::string& printer_name) {
     return printer_flag(printer_name, "enclosed");
 }
 
+bool PrinterDetector::klipper_hides_dot_dirs(const std::string& printer_name) {
+    return printer_flag(printer_name, "klipper_hides_dot_dirs");
+}
+
 // ============================================================================
 // Memory Management
 // ============================================================================

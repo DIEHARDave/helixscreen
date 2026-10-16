@@ -492,6 +492,15 @@ void PrintSelectDetailView::set_analysis_dependencies(IMoonrakerAPI* api,
 // Visibility
 // ============================================================================
 
+void PrintSelectDetailView::set_file_palette(const std::vector<std::string>& filament_colors,
+                                             const std::vector<std::string>& filament_materials) {
+    current_filament_colors_ = filament_colors;
+    current_filament_materials_ = filament_materials;
+    palette_settled_ = !current_filament_colors_.empty();
+    filament_mapping_card_.update(filament_colors, filament_materials);
+    publish_card_visibility();
+}
+
 void PrintSelectDetailView::show(const std::string& filename, const std::string& current_path,
                                  const std::string& filament_type,
                                  const std::vector<std::string>& filament_colors,

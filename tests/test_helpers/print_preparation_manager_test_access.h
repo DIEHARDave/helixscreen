@@ -89,4 +89,27 @@ class PrintPreparationManagerTestAccess {
     static lv_timer_t* pending_wait_timer(const helix::ui::PrintPreparationManager& m) {
         return m.pre_start_wait_guard_.pending_timer();
     }
+
+    /// Extract plate @p plate of the local archive @p local_zip and run @p rewrite on it,
+    /// as an archive start does on its HTTP thread. Returns the copy to upload, or "".
+    static std::string
+    rewrite_archive_plate(const std::string& archive_path, const std::string& local_zip, int plate,
+                          std::function<bool(const std::string& extracted)> changes) {
+        helix::ui::PrintPreparationManager::RewriteRoute route;
+        route.file_path = archive_path;
+        route.local_download_path = local_zip;
+        route.archive_plate = plate;
+        route.rewrite = [changes](const std::string& extracted) {
+            using R = helix::ui::PrintPreparationManager::RewriteResult;
+            if (changes(extracted)) {
+                return R{R::Kind::Rewritten, extracted};
+            }
+            std::remove(extracted.c_str()); // an unchanged rewrite consumes its input
+            return R{R::Kind::Unchanged, {}};
+        };
+        const auto result = helix::ui::PrintPreparationManager::rewrite_archive_plate(route);
+        return result.kind == helix::ui::PrintPreparationManager::RewriteResult::Kind::Rewritten
+                   ? result.modified_path
+                   : std::string();
+    }
 };

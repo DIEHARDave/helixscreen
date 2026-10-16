@@ -10,9 +10,11 @@
  * callers can arrive before, during and after a transfer.
  */
 
+#include "ui_filename_utils.h"
 #include "ui_update_queue.h"
 
 #include "../helix_test_fixture.h"
+#include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/print_status_preview_fixture.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "gcode_preview_fetcher.h"
@@ -389,4 +391,41 @@ TEST_CASE_METHOD(FetcherFixture,
     CHECK_FALSE(fetcher_.is_downloading(local_));
     CHECK(reasons == std::vector<GcodePreviewFetcher::Unavailable>(
                          2, GcodePreviewFetcher::Unavailable::NoLocalCopies));
+}
+
+TEST_CASE_METHOD(FetcherFixture, "Fetcher: a staged .3mf plate is sized by its own metadata",
+                 "[gcode_preview_fetcher][three_mf]") {
+    // The archive it maps back to has no G-code metadata on a printer that
+    // cannot read it; the staged plate does.
+    const std::string staged = helix::gcode::make_extracted_plate_path("Door.gcode.3mf", 9);
+    const std::string dir = helix::gcode_dir_of(staged);
+    helix::PlantedGcode plate(helix::gcode::get_filename_basename(staged), dir,
+                              "; plate 9\nG28\nG1 X10\n");
+    // The mock's transfers find a file by its basename at the root.
+    helix::PlantedGcode plate_for_download(helix::gcode::get_filename_basename(staged), "",
+                                           "; plate 9\nG28\nG1 X10\n");
+    std::vector<std::string> ready;
+    int failed = 0;
+    fetcher_.fetch(
+        staged, [&ready](const std::string& path) { ready.push_back(path); },
+        [&failed](GcodePreviewFetcher::Unavailable) { ++failed; });
+    drain();
+    REQUIRE(transfers_.held_count() == 1);
+    REQUIRE(transfers_.release(staged));
+    drain();
+    CHECK(failed == 0);
+    CHECK(ready.size() == 1);
+}
+
+TEST_CASE("preview_gcode_for shows the G-code a .3mf print runs as", "[filename_utils][three_mf]") {
+    using helix::gcode::preview_gcode_for;
+    const std::string staged = helix::gcode::make_extracted_plate_path("Door.gcode.3mf", 9);
+    CHECK(preview_gcode_for("Door.gcode.3mf", staged) == staged);
+    CHECK(preview_gcode_for("Door.gcode.3mf", "Door_plate9.gcode") == "Door_plate9.gcode");
+    // A .3mf the printer runs itself, and every ordinary print, keep their name.
+    CHECK(preview_gcode_for("Door.gcode.3mf", "Door.gcode.3mf") == "Door.gcode.3mf");
+    CHECK(preview_gcode_for("Door.gcode.3mf", "usb/Door.gcode.3mf") == "Door.gcode.3mf");
+    CHECK(preview_gcode_for("Door.gcode.3mf", "Door.txt") == "Door.gcode.3mf");
+    CHECK(preview_gcode_for("Door.gcode.3mf", "") == "Door.gcode.3mf");
+    CHECK(preview_gcode_for("benchy.gcode", "other.gcode") == "benchy.gcode");
 }

@@ -49,6 +49,22 @@ cd /path/to/helixscreen/moonraker-plugin
 ```
 
 The installer creates a symlink from Moonraker's components directory to `helix_print.py`.
+`helix_3mf.py` and `helix_capabilities.py` must stay beside `helix_print.py`: the plugin
+loads them from the link's target directory, and runs without .3mf conversion when either
+is missing.
+
+Vendor knowledge sits behind capability probes. The plugin asks "does this Moonraker print
+.3mf natively?" through `helix_capabilities.prints_3mf_natively`, which combines a generic
+probe (`VALID_GCODE_EXTS`) with one probe per vendor fork that adds .3mf printing (QIDI's).
+`install.sh` asks "does this Klipper hide dot-directories?" through `klipper_hides_dot_dirs`,
+which combines a generic probe with Forge-X's spelling of the filter. A new vendor gets a
+new probe in that list, never a branch in the generic code.
+
+When Moonraker runs in a chroot (Forge-X), the installer finds it through
+`/proc/<pid>/root` and links the plugin by the path Moonraker sees. When `moonraker.conf`
+is a symlink that includes a `user.moonraker.conf` (a firmware mod owns the main file),
+`[helix_print]` is added to that user file instead. With no `systemctl` or `service` to
+restart Moonraker, `--auto` asks Moonraker to restart itself (`POST /server/restart`).
 
 ### Update Manager (Auto-Updates)
 
@@ -75,11 +91,20 @@ enabled: True
 # Directory for storing modified G-code (relative to gcodes root)
 temp_dir: .helix_temp
 
-# Directory for symlinks (relative to gcodes root)
+# Directory for symlinks (relative to gcodes root). Must be a directory
+# Klipper will open files under: see "Visible symlink directory" below.
 symlink_dir: .helix_print
 
 # Time in seconds to keep temp files after print completes (default: 86400 = 24 hours)
 cleanup_delay: 86400
+
+# Convert each uploaded .gcode.3mf into a printable .gcode (default: True).
+# Off on Moonrakers that print .3mf natively, whatever this says.
+convert_3mf: True
+
+# Start the converted print when the slicer's upload asked to print it
+# (OctoPrint-style `print=true`, as OrcaSlicer's Print button sends). Default: False.
+start_3mf_on_upload: False
 ```
 
 Restart Moonraker after configuration:
@@ -151,6 +176,113 @@ Response:
 | 400 | Original file not found |
 | 500 | Failed to write temp file or create symlink |
 | 503 | Plugin is disabled |
+
+### List .3mf Conversions
+
+```http
+GET /server/helix/3mf_conversions
+GET /server/helix/3mf_conversions?source=parts/benchy.gcode.3mf
+```
+
+JSON-RPC: `server.helix.3mf_conversions`, optional `source`.
+
+Response:
+```json
+{
+  "result": {
+    "conversions": [
+      {
+        "source": "parts/benchy.gcode.3mf",
+        "source_mtime": 1760558186.4,
+        "source_size": 2139171,
+        "plate": 9,
+        "plate_md5": "09c7c682664f918b78ad79bca8996f82",
+        "output": "parts/benchy.gcode",
+        "output_md5": "09c7c682664f918b78ad79bca8996f82",
+        "state": "done",
+        "error": ""
+      }
+    ]
+  }
+}
+```
+
+One entry per sliced plate of each source; a source with no sliced plate (a
+project .3mf) gets one `failed` entry with `plate: 0`. Every path is relative to
+the gcodes root. `source_mtime` / `source_size` are the source file's as
+converted: an entry whose values differ from the file's current ones is stale.
+
+A source's entries always cover every sliced plate it holds. When a conversion
+starts, every plate's entry is written as `pending` (with the source's current
+mtime and size) before any plate is converted, and the finished entries replace
+them together. A listing therefore never shows some plates `done` with others
+missing: "every entry for this source is current and `done`" means every plate
+has its output.
+
+| `state` | Meaning |
+|---------|---------|
+| `done` | `output` holds the plate's G-code, md5 `output_md5` (equal to `plate_md5`) |
+| `pending` | Queued, converting, or waiting for the print that holds `output` to end |
+| `failed` | Not converted; `error` says why. `output` is empty |
+
+With no `source`, every known conversion is listed. A `source` with no entry
+returns an empty list. When the plugin is absent the endpoint is too (HTTP 404,
+JSON-RPC -32601): treat that as "no device-side converter".
+
+## Visible symlink directory
+
+A print started through `print_modified` runs `SDCARD_PRINT_FILE` on the link
+`<symlink_dir>/full/<original path>`. Upstream Klipper opens that under the
+default hidden `.helix_print`, but Forge-X's Klipper drops hidden files and
+directories from the list `SDCARD_PRINT_FILE` resolves against, so there the
+print fails with "Unable to open file". `install.sh --auto` reads the running
+Klipper's `<klipper>/klippy/extras/virtual_sdcard.py`; when it carries that filter, it writes
+`symlink_dir: helix_print` under `[helix_print]`, unless the section already sets
+`symlink_dir`. Nothing else about the plugin depends on the name.
+
+A visible directory shows in every client's file list while a print runs.
+HelixScreen hides it; at startup the plugin also removes any link whose temp file
+is gone, with the directories that leaves empty, so a crash leaves nothing behind.
+The temp files themselves stay under the hidden `temp_dir`: Klipper opens them
+through the link, never by their own path.
+
+## .3mf Conversion
+
+Slicers with a "use 3MF" upload option (OrcaSlicer's `use_3mf`) send
+`<name>.gcode.3mf`: a zip holding the sliced plate as `Metadata/plate_<N>.gcode`.
+A Moonraker that does not list `.3mf` among its G-code extensions stores the zip
+but cannot scan or print it. The plugin turns each one into a plain `.gcode`
+beside it, so Moonraker's metadata, thumbnails and every client work.
+
+- **When:** on each upload, copy or overwrite of a `.3mf` (Moonraker's
+  `file_manager:filelist_changed`), and once at startup for any `.3mf` not yet
+  converted. One conversion runs at a time, off Moonraker's event loop, streaming
+  the inflate (well under 1MB of memory).
+- **Name:** `<stem>.gcode` (`<stem>` is the name without `.gcode.3mf`). It is
+  written only if that path is free or holds the plugin's own earlier conversion
+  of the same source; a file there already identical to the plate (same md5) is
+  reused as it is. Otherwise, and for every plate of a file holding more than one,
+  `<stem>_plate<N>.gcode`. A file the plugin did not write is never overwritten,
+  and a symlink at either name counts as one. The name is checked again after
+  extraction, just before publishing: a file that arrived there meanwhile sends the
+  plate round again under whatever name is free.
+- **Integrity:** the zip's CRC and the plate's `plate_<N>.gcode.md5` are checked
+  before the output is published through Moonraker's own upload path.
+- **Cleanup:** deleting the `.3mf` deletes its outputs, and overwriting it
+  reconverts and drops outputs for plates no longer in it, in both cases only an
+  output the plugin wrote and that is unchanged since. A file being printed is
+  left until the print ends, then deleted (remembered across restarts). A `.3mf`
+  deleted while it converts leaves no output. Unfinished extractions
+  (`<temp_dir>/3mf-*.partial`) are removed at startup.
+- **Unreadable archives:** an encrypted plate, a compression method Python's
+  zipfile lacks, or a damaged zip gives a `failed` entry naming the error.
+- **Auto-start** (`start_3mf_on_upload: True`): an upload carrying `print=true`
+  starts the converted print through Moonraker's own start/queue rules: when the
+  printer is busy and `[file_manager] queue_gcode_uploads` is on, it is queued, and
+  the upload response says `print_queued`. The upload's own conversion goes ahead
+  of any queued backfill. A multi-plate file is converted but not started. This hooks Moonraker's upload
+  method; on a Moonraker whose method does not have the expected shape the hook
+  stays off with a log line, and conversion still works.
 
 ## How It Works
 

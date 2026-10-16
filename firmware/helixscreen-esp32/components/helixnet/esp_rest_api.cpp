@@ -22,6 +22,9 @@
 //   thumbnail bytes (root="gcodes", path=the resolved .thumbs/ path, capped
 //   at HARD_CAP_BYTES), it just isn't wired to a UI yet.
 //
+// ITransfersAPI::download_file_range — REAL: the same lane with the range
+// moved off the start, which a sliced .3mf's thumbnail and summary need.
+//
 // ITransfersAPI::download_file — REAL, capped at WHOLE_FILE_CAP_BYTES and
 // erroring above it: small config files such as AFC.cfg, read into memory.
 //
@@ -191,6 +194,45 @@ void MoonrakerFileTransferAPI::download_file_partial(const std::string& root,
     }
 }
 
+// Bytes from inside a file: the same lane with the range moved off the start.
+// A sliced .3mf's thumbnail and summary come out of its archive this way.
+void MoonrakerFileTransferAPI::download_file_range(const std::string& root, const std::string& path,
+                                                   uint64_t offset, size_t len,
+                                                   StringCallback on_success,
+                                                   ErrorCallback on_error, CancelFlag cancelled) {
+    on_success = helix::http_epoch::guard_reply(on_success, on_error, "download_file_range");
+    if (moonraker_internal::reject_invalid_path(path, "download_file_range", on_error))
+        return;
+    if (moonraker_internal::reject_invalid_file_root(root, "download_file_range", on_error))
+        return;
+    if (http_base_url_.empty() || len == 0) {
+        moonraker_internal::report_error(
+            on_error, MoonrakerErrorType::CONNECTION_LOST, "download_file_range",
+            len == 0 ? "length must be non-zero" : "HTTP base URL not configured");
+        return;
+    }
+
+    std::string url = http_base_url_ + "/server/files/" + root + "/" + esp_url_escape_path(path);
+    bool queued = helix::http::EspHttpLane::instance().submit_get(
+        url, len,
+        [on_success](std::string& body) {
+            if (on_success) {
+                on_success(body);
+            }
+        },
+        [on_error](const std::string& message) {
+            moonraker_internal::report_error(on_error, MoonrakerErrorType::UNKNOWN,
+                                             "download_file_range", message);
+        },
+        std::move(cancelled), offset);
+
+    if (!queued) {
+        moonraker_internal::report_error(on_error, MoonrakerErrorType::QUEUE_FULL,
+                                         "download_file_range",
+                                         "HTTP request could not be queued — try again");
+    }
+}
+
 // --- Asserting stubs: not reachable from the v1 print-select surface (see
 // file header). download_file_to_path is additionally hard-banned by R3
 // regardless of reachability: its contract IS file materialization. ---
@@ -257,6 +299,10 @@ bool MoonrakerFileTransferAPI::supports_local_copies() const {
 
 bool MoonrakerFileTransferAPI::supports_tail_reads() const {
     return false;
+}
+
+bool MoonrakerFileTransferAPI::supports_range_reads() const {
+    return true;
 }
 
 void MoonrakerFileTransferAPI::download_file_to_path(const std::string&, const std::string&,

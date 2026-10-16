@@ -3776,6 +3776,42 @@ TEST_CASE_METHOD(HelixTestFixture,
 }
 
 TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: a printer that cannot print from a dot-directory "
+                 "gets its copies staged in the visible directory",
+                 "[print_preparation][remap][staging]") {
+    lv_init_safe();
+    PrinterStateTestAccess::reset(get_printer_state());
+    get_printer_state().init_subjects(false);
+
+    MockPrinter mock_printer;
+    auto& state = mock_printer.state;
+    auto& api = mock_printer.api;
+    PrintPreparationManager manager;
+    manager.set_dependencies(&api, &state);
+    state.print_state().begin_preparing(PrintJobRef{kRemapFixture, "gcodes", ""});
+
+    const bool forgex = GENERATE(true, false);
+    const std::string route = GENERATE(std::string("remap"), std::string("modify"));
+    CAPTURE(forgex, route);
+    REQUIRE(state.profile_state().set_printer_type(forgex ? "FlashForge Adventurer 5M (ForgeX)"
+                                                          : "FlashForge Adventurer 5M",
+                                                   true, false, false));
+    const std::string root = forgex ? "helix_staging/modified_" : ".helix_temp/modified_";
+    if (route == "remap") {
+        manager.modify_and_print_with_remap(kRemapFixture, {{1, 2}}, nullptr);
+    } else {
+        manager.set_cached_scan_result(gcode::ScanResult{}, kRemapFixture);
+        PrintPreparationManagerTestAccess::modify_and_print(manager, kRemapFixture);
+    }
+    drain_until_quiet();
+
+    const auto& uploads = api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    CHECK(uploads[0].dest_path.rfind(root, 0) == 0);
+    CHECK(gcode::resolve_gcode_filename(uploads[0].dest_path) == kRemapFixture);
+}
+
+TEST_CASE_METHOD(HelixTestFixture,
                  "PrintPreparationManager: a remap that changes nothing prints the original",
                  "[print_preparation][remap]") {
     lv_init_safe();

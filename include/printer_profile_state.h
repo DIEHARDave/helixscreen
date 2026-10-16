@@ -112,6 +112,13 @@ class PrinterProfileState {
         return db_enclosed_;
     }
 
+    /// Whether this printer's Klipper skips dot-directories when it resolves a
+    /// print (the printer database's `klipper_hides_dot_dirs`): files the app
+    /// stages for printing must sit in a visible directory.
+    bool klipper_hides_dot_dirs() const {
+        return db_hides_dot_dirs_;
+    }
+
     /**
      * @brief String subject updated on every change to the resolved type
      *
@@ -139,6 +146,7 @@ class PrinterProfileState {
         ZOffsetCalibrationStrategy::PROBE_CALIBRATE;
     bool external_persistence_ = false;
     bool db_enclosed_ = false;
+    bool db_hides_dot_dirs_ = false;
     bool timelapse_default_enabled_ = false;
     /// What the firmware reports for each pre-print option it stores itself.
     /// Empty on printers whose firmware stores none.

@@ -163,7 +163,7 @@ class PrintStartController {
      */
     void initiate_reprint(const std::string& filename, const std::string& path,
                           const std::set<int>& tools_used, std::function<void()> on_started,
-                          std::function<void()> on_error);
+                          std::function<void()> on_error, int archive_plate = 0);
 
     /**
      * @brief Check if controller is ready to start a print

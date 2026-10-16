@@ -43,6 +43,10 @@
 #include <string>
 #include <vector>
 
+namespace helix::three_mf {
+struct Conversion;
+} // namespace helix::three_mf
+
 namespace helix {
 
 /**
@@ -123,7 +127,11 @@ class IJobAPI {
                                       const std::vector<std::string>& modifications,
                                       ModifiedPrintCallback on_success, ErrorCallback on_error) = 0;
 
-    virtual void check_helix_plugin(BoolCallback on_result, ErrorCallback on_error) = 0;
+    using PluginInfoCallback = std::function<void(const HelixPluginInfo&)>;
+
+    /// Whether the HelixPrint plugin is installed, and its link directory.
+    /// Never reports an error: an absent plugin answers available=false.
+    virtual void check_helix_plugin(PluginInfoCallback on_result, ErrorCallback on_error) = 0;
 
     virtual void pause_print(SuccessCallback on_success, ErrorCallback on_error) = 0;
 
@@ -169,6 +177,14 @@ class IFilesAPI {
 
     virtual void metascan_file(const std::string& filename, FileMetadataCallback on_success,
                                ErrorCallback on_error, bool silent = true) = 0;
+
+    using ArchiveConversionsCallback =
+        std::function<void(const std::vector<three_mf::Conversion>&)>;
+
+    /// What the printer-side .3mf converter has made (server.helix.3mf_conversions).
+    /// A printer without one answers an error: 404 or method-not-found.
+    virtual void get_archive_conversions(ArchiveConversionsCallback on_success,
+                                         ErrorCallback on_error) = 0;
 
     virtual void delete_file(const std::string& filename, SuccessCallback on_success,
                              ErrorCallback on_error) = 0;
@@ -503,10 +519,27 @@ class ITransfersAPI {
                                     size_t max_bytes, StringCallback on_success,
                                     ErrorCallback on_error) = 0;
 
+    /// Download @p len bytes of a file starting at @p offset (HTTP byte range):
+    /// how a ZIP entry is read out of an archive on the printer without
+    /// fetching the archive.
+    ///
+    /// Hands on exactly the bytes from @p offset, fewer when the file ends
+    /// first. A server that ignores Range and sends the whole file still
+    /// yields the right bytes: the leading @p offset are skipped and the
+    /// transfer stops once @p len have arrived.
+    virtual void download_file_range(const std::string& root, const std::string& path,
+                                     uint64_t offset, size_t len, StringCallback on_success,
+                                     ErrorCallback on_error, CancelFlag cancelled = nullptr) = 0;
+
     virtual void download_file_to_path(const std::string& root, const std::string& path,
                                        const std::string& dest_path, StringCallback on_success,
                                        ErrorCallback on_error,
                                        ProgressCallback on_progress = nullptr) = 0;
+
+    /// Whether download_file_range() can fetch bytes from inside a file.
+    virtual bool supports_range_reads() const {
+        return true;
+    }
 
     /// Whether download_file_to_path() can write a local copy. A transport with
     /// nowhere to keep one answers false, and callers skip the request.

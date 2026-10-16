@@ -301,6 +301,11 @@ class PrintSelectDetailView : public OverlayBase {
      */
     void hide();
 
+    /// Replaces the shown file's slicer palette: a .3mf's plates each use
+    /// their own filaments, and stepping to another plate swaps them.
+    void set_file_palette(const std::vector<std::string>& filament_colors,
+                          const std::vector<std::string>& filament_materials);
+
     /// Toggle the preview between slicer-intended colors (true) and actual loaded
     /// AMS slot colors (false). Session-local; the panel's toggle callback calls
     /// this with the switch's checked state.

@@ -62,6 +62,7 @@ enum class ThumbnailSource : uint8_t {
     GcodeExtract, ///< id = gcode path whose header the PNG was extracted from
     Usb,          ///< id = gcode path on a USB stick
     Timelapse,    ///< id = timelapse video filename
+    ArchiveEntry, ///< id = "<archive path>#<entry name>": an image inside a .3mf
 };
 
 /// The string every artifact of (source, id) is hashed from.

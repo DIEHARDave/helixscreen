@@ -593,6 +593,12 @@ class PrintStatusPanel : public OverlayBase {
     void handle_reprint_button(); ///< Reprint the cancelled file
     /// The file Reprint starts: the original, never a rewritten temp copy.
     [[nodiscard]] std::string reprint_filename() const;
+    /// reprint_filename() with the archive plate to extract, for a .3mf printed that way.
+    [[nodiscard]] helix::gcode::ReprintTarget reprint_target() const;
+    /// Reprints @p target with no print controller to route through: a plain
+    /// file starts directly; an archive plate, which only the controller can
+    /// extract, is refused.
+    void reprint_without_controller(const helix::gcode::ReprintTarget& target);
     void handle_files_click(); ///< Open print select while this overlay holds the screen
     void handle_resize();
 

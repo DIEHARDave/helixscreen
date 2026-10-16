@@ -12,11 +12,12 @@
 namespace helix {
 
 /// Values derived from a printer file's content, keyed by the file and kept
-/// for the FileVersion they were read from, bounded by least recent use.
-template <typename T> class VersionedLru {
+/// for the version they were read from (a FileVersion unless @p Version says
+/// otherwise), bounded by least recent use.
+template <typename T, typename Version = FileVersion> class VersionedLru {
   public:
     struct Entry {
-        FileVersion version;
+        Version version;
         T value{};
         uint64_t last_used = 0; ///< higher = more recent
     };
@@ -29,7 +30,7 @@ template <typename T> class VersionedLru {
 
     /// The value under @p key when it was kept for @p version, marked used;
     /// null on a miss or a value kept for another version.
-    [[nodiscard]] T* lookup(const std::string& key, FileVersion version) {
+    [[nodiscard]] T* lookup(const std::string& key, const Version& version) {
         const auto it = entries_.find(key);
         if (it == entries_.end() || it->second.version != version) {
             return nullptr;
@@ -39,7 +40,7 @@ template <typename T> class VersionedLru {
     }
 
     /// Keep @p value for @p version under @p key, marked used.
-    void put(const std::string& key, FileVersion version, T value) {
+    void put(const std::string& key, const Version& version, T value) {
         Entry& e = entries_[key];
         e.version = version;
         e.value = std::move(value);

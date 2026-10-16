@@ -742,6 +742,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
 TEST_CASE_METHOD(DetailDownloadFixture, "A .3mf still fetches metadata for the pre-print checks",
                  "[print_select][detail_view][qidi_3mf]") {
     CacheDirGuard guard;
+    // A printer that reads .3mf archives itself, and so reports their metadata.
+    helix::ScopedEnv native("HELIX_MOCK_3MF_METADATA", "1");
     const std::string name = "qidi_meta_" + std::to_string(::getpid()) + ".gcode.3mf";
     const std::string zip = std::string("PK\x03\x04", 4) + "not gcode";
     PlantedGcode file(name, "", zip);

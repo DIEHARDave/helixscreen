@@ -13,6 +13,7 @@
 #include "../test_helpers/layout_manager_test_access.h"
 #include "layout_manager.h"
 #include "xml_hot_reloader.h"
+#include "xml_registration.h"
 
 #include <chrono>
 #include <filesystem>
@@ -799,6 +800,9 @@ TEST_CASE_METHOD(HotReloadFixture, "globals.xml is never reloaded", "[hot-reload
 
 TEST_CASE_METHOD(HotReloadFixture, "components with C++-injected constants are never reloaded",
                  "[hot-reload]") {
+    // Marked the way a panel marks the component it extends from C++, so the
+    // case does not depend on another test having built that panel first.
+    helix::keep_xml_component_registered("color_picker");
     create_xml("color_picker.xml", "<component><view/></component>");
 
     std::vector<std::string> reloaded;

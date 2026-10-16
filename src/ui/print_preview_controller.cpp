@@ -365,8 +365,15 @@ void PrintPreviewController::load_for_viewing(const std::string& filename) {
         return;
     }
 
+    // A .3mf started from here prints as G-code of its own; that is what renders.
+    const std::string source = helix::gcode::preview_gcode_for(
+        filename, lv_subject_get_string(printer_state_.print_state().get_print_filename_subject()));
+    if (source != filename) {
+        spdlog::debug("[{}] Previewing '{}', the G-code printing for '{}'", log_tag_, source,
+                      filename);
+    }
     fetcher_.fetch(
-        filename, [this, filename](const std::string& path) { load_file(path.c_str(), filename); },
+        source, [this, filename](const std::string& path) { load_file(path.c_str(), filename); },
         [this](helix::ui::GcodePreviewFetcher::Unavailable) { host_.show_viewer(false); });
 }
 

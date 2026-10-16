@@ -68,6 +68,7 @@ bool PrinterProfileState::set_printer_type(const std::string& type, bool has_pro
     pre_print_option_set_ = new_options;
     z_offset_calibration_strategy_ = new_strategy;
     db_enclosed_ = PrinterDetector::is_enclosed(type);
+    db_hides_dot_dirs_ = PrinterDetector::klipper_hides_dot_dirs(type);
 
     if (subjects_initialized_) {
         lv_subject_copy_string(&printer_type_subject_, type.c_str());

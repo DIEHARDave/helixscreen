@@ -75,6 +75,48 @@ struct PrintSelectPanelTestAccess {
         }
     }
 
+    /// Select a listed file and show it in the detail view, as a card tap does.
+    static void select_file(PrintSelectPanel& panel, const std::string& filename) {
+        for (const auto& file : panel.file_list_) {
+            if (!file.is_dir && file.filename == filename) {
+                panel.show_file_in_detail(file);
+                return;
+            }
+        }
+        FAIL("no listed file " << filename);
+    }
+
+    /// The detail view's plate stepper buttons.
+    static void step_plate(PrintSelectPanel& panel, int step) {
+        panel.step_archive_plate(step);
+    }
+
+    /// What Print hands the preparation manager for the selected file, and
+    /// whether it lets the start go ahead.
+    static bool prepare_archive_start(PrintSelectPanel& panel) {
+        return panel.prepare_archive_start();
+    }
+
+    static std::optional<std::string> queueable_path(PrintSelectPanel& panel) {
+        return panel.queueable_path();
+    }
+
+    static int plate_count(PrintSelectPanel& panel) {
+        return lv_subject_get_int(&panel.selected_plate_count_subject_);
+    }
+
+    static std::string plate_text(PrintSelectPanel& panel) {
+        return lv_subject_get_string(&panel.selected_plate_text_subject_);
+    }
+
+    static const std::vector<std::string>& selected_colors(const PrintSelectPanel& panel) {
+        return panel.selected_filament_colors_;
+    }
+
+    static std::string selected_print_time(PrintSelectPanel& panel) {
+        return lv_subject_get_string(&panel.selected_print_time_subject_);
+    }
+
     /// Build the detail view the way the first file open does.
     static void build_detail_view(PrintSelectPanel& panel) {
         panel.create_detail_view();

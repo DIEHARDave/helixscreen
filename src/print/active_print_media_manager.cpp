@@ -12,6 +12,7 @@
 #include "json_utils.h"
 #include "memory_monitor.h"
 #include "observer_factory.h"
+#include "three_mf_reader.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_load_context.h"
 #include "thumbnail_processor.h"
@@ -269,14 +270,10 @@ void ActivePrintMediaManager::self_serve_from_gcode(const std::string& filename,
         return;
     }
     self_serve_pending_for_ = filename;
-    helix::fetch_thumbnail_from_gcode(
-        gcode_path, helix::GCODE_THUMBNAIL_HEADER_BYTES, api_,
-        helix::ThumbnailProcessor::get_target_for_display(helix::ThumbnailSize::Detail), ctx,
-        fetched_thumbnail_callback(filename, ctx),
-        // The error can land after this manager is destroyed (soft restart),
-        // so it runs behind the lifetime guard like every other callback here.
-        lifetime_.bg_cb("ActivePrintMediaManager::on_extract_error", [this, filename](
-                                                                         const std::string& error) {
+    // The error can land after this manager is destroyed (soft restart),
+    // so it runs behind the lifetime guard like every other callback here.
+    const std::function<void(const std::string&)> on_error = lifetime_.bg_cb(
+        "ActivePrintMediaManager::on_extract_error", [this, filename](const std::string& error) {
             // Only the PERMANENT verdict (header read, nothing embedded —
             // GCODE_THUMBNAIL_NONE_EMBEDDED) may stop future attempts;
             // transient failures stay retryable.
@@ -289,7 +286,41 @@ void ActivePrintMediaManager::self_serve_from_gcode(const std::string& filename,
             spdlog::debug("[ActivePrintMediaManager] Gcode header thumbnail extraction "
                           "failed for '{}': {}",
                           filename, error);
-        }));
+        });
+    const helix::ThumbnailTarget target =
+        helix::ThumbnailProcessor::get_target_for_display(helix::ThumbnailSize::Detail);
+    auto on_success = fetched_thumbnail_callback(filename, ctx);
+
+    if (helix::gcode::is_3mf(gcode_path)) {
+        // A .3mf carries its renders as archive entries, never in a G-code
+        // header: the printed plate's render, or the first sliced plate's.
+        const int plate = helix::gcode::rewritten_archive_plate(last_raw_filename_);
+        three_mf::ThreeMfReader(api_->transfers())
+            .read_summary(
+                gcode_path, 0, 0.0,
+                // On the main thread, and only while this manager lives: the
+                // API it fetches through is read there, never carried along.
+                lifetime_.bg_cb("ActivePrintMediaManager::archive_summary",
+                                [this, gcode_path, plate, target, ctx, on_success,
+                                 on_error](const three_mf::ArchiveSummary& summary) {
+                                    const auto* shown = three_mf::find_plate(summary, plate);
+                                    const zip::ZipEntry* entry =
+                                        shown ? three_mf::plate_thumbnail(*shown) : nullptr;
+                                    if (!entry || !api_) {
+                                        on_error(std::string(helix::GCODE_THUMBNAIL_NONE_EMBEDDED) +
+                                                 gcode_path);
+                                        return;
+                                    }
+                                    helix::fetch_thumbnail_from_archive(gcode_path, *entry, 0, api_,
+                                                                        target, ctx, on_success,
+                                                                        on_error);
+                                }),
+                on_error);
+        return;
+    }
+
+    helix::fetch_thumbnail_from_gcode(gcode_path, helix::GCODE_THUMBNAIL_HEADER_BYTES, api_, target,
+                                      ctx, std::move(on_success), on_error);
 #endif
 }
 
@@ -309,6 +340,7 @@ void ActivePrintMediaManager::process_filename(const char* raw_filename) {
     helix::MemoryMonitor::log_now("active_media_process_filename", spdlog::level::debug);
 
     std::string filename = raw_filename;
+    last_raw_filename_ = filename;
 
     // Which print this is - override, retirement and temp-path resolution
     // included - is decided by PrinterPrintState before print_filename_ is
