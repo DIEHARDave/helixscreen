@@ -60,6 +60,17 @@ inline constexpr size_t MAX_CENTRAL_DIRECTORY_BYTES = 1024 * 1024;
 /// Largest entry read_entry() inflates into memory.
 inline constexpr size_t MAX_ENTRY_BYTES = 2 * 1024 * 1024;
 
+/**
+ * @brief An entry's bytes, out of a read of the archive from its local header on.
+ *
+ * Stored entries are copied; deflated ones inflate (tinfl: about 11KB of state
+ * and a 32KB window beside the output) and are refused above @p max_bytes
+ * inflated. False with @p error set when the read does not hold the entry or
+ * it does not check out.
+ */
+bool entry_payload(const std::string& read, const zip::ZipEntry& entry, size_t max_bytes,
+                   std::string& out, zip::ZipError& error);
+
 class ThreeMfReader {
   public:
     using SummaryCallback = std::function<void(const ArchiveSummary&)>;

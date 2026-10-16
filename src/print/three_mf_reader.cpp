@@ -327,6 +327,13 @@ const zip::ZipEntry* plate_thumbnail(const PlateSummary& plate) {
     return plate.thumb_small ? &*plate.thumb_small : nullptr;
 }
 
+bool entry_payload(const std::string& read, const zip::ZipEntry& entry, size_t max_bytes,
+                   std::string& out, zip::ZipError& error) {
+    const std::string_view data = zip::entry_bytes(bytes_of(read), read.size(), entry, error);
+    return error == zip::ZipError::None &&
+           zip::inflate_entry_to_string<RawInflate>(entry, data, max_bytes, out, error);
+}
+
 FileMetadata plate_file_metadata(const PlateSummary& plate) {
     FileMetadata meta;
     meta.estimated_time = plate.info.prediction_s;
@@ -427,13 +434,8 @@ void ThreeMfReader::read_entry(ITransfersAPI& transfers, const std::string& path
         ROOT, path, entry.lh_offset, static_cast<size_t>(zip::entry_read_span(entry)),
         [path, entry, on_done, on_error](const std::string& bytes) {
             zip::ZipError err = zip::ZipError::None;
-            const std::string_view data =
-                zip::entry_bytes(bytes_of(bytes), bytes.size(), entry, err);
             std::string out;
-            if (err == zip::ZipError::None) {
-                zip::inflate_entry_to_string<RawInflate>(entry, data, MAX_ENTRY_BYTES, out, err);
-            }
-            if (err != zip::ZipError::None) {
+            if (!entry_payload(bytes, entry, MAX_ENTRY_BYTES, out, err)) {
                 on_error(error_text(path + "/" + entry.name, err));
                 return;
             }

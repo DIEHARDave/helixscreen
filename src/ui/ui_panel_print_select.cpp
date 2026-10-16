@@ -3918,12 +3918,15 @@ PrintSelectPanel::fetch_esp_thumbnail(size_t index, const std::string& filename,
             "gcodes", helix::gcode::join_gcode_path(current_path_, filename), entry->lh_offset,
             static_cast<size_t>(helix::zip::entry_read_span(*entry)),
             [on_png, e = *entry](const std::string& bytes) {
+                // A deflated render inflates through the ROM's tinfl, its
+                // state and window in PSRAM: about 43KB beside the PNG.
                 helix::zip::ZipError err = helix::zip::ZipError::None;
-                const std::string_view png = helix::zip::entry_bytes(
-                    reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size(), e, err);
-                // A deflated render is not decoded here; it keeps the placeholder.
-                on_png(err == helix::zip::ZipError::None && e.method == 0 ? std::string(png)
-                                                                          : std::string());
+                std::string png;
+                if (!helix::three_mf::entry_payload(bytes, e, ESP32_THUMBNAIL_MAX_BYTES, png,
+                                                    err)) {
+                    png.clear();
+                }
+                on_png(png);
             },
             on_fail, cancelled);
     } else {

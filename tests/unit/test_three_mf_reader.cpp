@@ -328,3 +328,29 @@ TEST_CASE("archive_file_metadata adds up every plate and keeps the shown plate's
     CHECK(meta.filament_type == ";PETG");
     CHECK(meta.filament_colors == std::vector<std::string>{"", "#FF0000"});
 }
+
+TEST_CASE("entry_payload copies a stored entry and inflates a deflated one", "[three_mf][reader]") {
+    const std::string zip = fixture("single_plate.gcode.3mf");
+    std::vector<helix::zip::ZipEntry> entries;
+    ZipError err = ZipError::None;
+    REQUIRE(helix::zip::parse_central_directory(reinterpret_cast<const uint8_t*>(zip.data()),
+                                                zip.size(), zip.size(), entries, err));
+    auto from = [&zip](const helix::zip::ZipEntry& e) {
+        return zip.substr(static_cast<size_t>(e.lh_offset),
+                          static_cast<size_t>(helix::zip::entry_read_span(e)));
+    };
+    const auto* png = helix::three_mf::find_archive_entry(entries, "Metadata/plate_9.png");
+    const auto* info = helix::three_mf::find_archive_entry(entries, "Metadata/slice_info.config");
+    REQUIRE(png);
+    REQUIRE(info);
+    REQUIRE(png->method == 0);
+    REQUIRE(info->method == 8); // a deflated entry, the way a deflated render arrives
+
+    std::string out;
+    CHECK(helix::three_mf::entry_payload(from(*png), *png, 1 << 20, out, err));
+    CHECK(out == disk_text(fixture_dir() + "src/plate_small.png"));
+    CHECK(helix::three_mf::entry_payload(from(*info), *info, 1 << 20, out, err));
+    CHECK(out == disk_text(fixture_dir() + "src/slice_info.config"));
+    // Larger than the caller can hold inflated: refused before it inflates.
+    CHECK_FALSE(helix::three_mf::entry_payload(from(*info), *info, 100, out, err));
+}
