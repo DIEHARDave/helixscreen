@@ -279,13 +279,15 @@ void watch_backend(FilamentOpTicket ticket) {
     }
 }
 
-/// @p surface for a dispatch that runs after a preheat: the surface that asked
-/// may be gone by then, so nothing reaches it except through its guard. A
-/// guard-less surface outlives every dispatch already.
+/// @p surface for a dispatch that runs after a preheat. The surface that asked
+/// may be gone by then, and the op outlives it: the dispatch itself runs
+/// unguarded, while every hook into the surface goes through its guard and is
+/// dropped once the surface is gone. A guard-less surface outlives every
+/// dispatch already.
 ///
 /// The macro prefill is read now, at request time, since its answer is needed
-/// synchronously. A before_macro hook runs through the guard: once the surface
-/// is gone, the macro that needed it is not sent.
+/// synchronously. A before_macro hook runs through the guard too, so a surface
+/// that set one and is gone sends no macro; no guarded surface sets one.
 FilamentOpSurface deferred_surface(const FilamentOpSurface& surface) {
     if (!surface.guard) {
         return surface;
@@ -327,6 +329,16 @@ FilamentOpSurface deferred_surface(const FilamentOpSurface& surface) {
             });
         };
     }
+    if (surface.on_async_success) {
+        s.on_async_success = [guard, hook = surface.on_async_success]() { guard(hook); };
+    }
+    if (surface.on_async_failed) {
+        s.on_async_failed = [guard, hook = surface.on_async_failed](const FilamentOpPlan& plan) {
+            guard([hook, plan]() { hook(plan); });
+        };
+    }
+    // Each hook above carries the guard now, so the dispatch around them need not.
+    s.guard = [](std::function<void()> fn) { fn(); };
     return s;
 }
 

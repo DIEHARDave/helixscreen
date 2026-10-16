@@ -839,7 +839,7 @@ uint64_t sidebar_skips() {
 } // namespace
 
 TEST_CASE_METHOD(HeaterFixture,
-                 "A sidebar closed mid-preheat on the macro tier is never called back",
+                 "A sidebar closed mid-preheat on the macro tier still loads, with no call into it",
                  "[filament][preheat][heater][threading]") {
     // No filament system: the sidebar's load is the LOAD_FILAMENT macro, which
     // takes no parameters, so nothing prompts.
@@ -854,12 +854,14 @@ TEST_CASE_METHOD(HeaterFixture,
     drain_all();
     REQUIRE(heater->get().pending());
 
-    SECTION("closed: the dispatch is dropped at the sidebar's guard") {
+    SECTION("closed: the op runs, and only its hooks into the sidebar are dropped") {
         sidebar.reset();
         feed_nozzle(220, 220);
         drain_all();
-        CHECK(sidebar_skips() >= 1);
-        CHECK_FALSE(sent("LOAD_FILAMENT"));
+        CHECK(sent("LOAD_FILAMENT"));
+        // The macro succeeding reaches no hook: the sidebar sets none on this
+        // tier, and the dispatch is not routed through its guard.
+        CHECK(sidebar_skips() == 0);
     }
     SECTION("open: the same dispatch goes out") {
         feed_nozzle(220, 220);
