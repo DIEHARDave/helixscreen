@@ -906,3 +906,73 @@ G1 X10 Y10 F3000
         REQUIRE(result.find("G1 X10 Y10 F3000") != std::string::npos);
     }
 }
+
+// ============================================================================
+// A scan of other G-code
+// ============================================================================
+
+TEST_CASE("GCodeFileModifier - a line that is not the scanned one is refused",
+          "[gcode][modifier][stale_scan]") {
+    const std::string path = "/tmp/helix_stale_scan_" + std::to_string(getpid()) + ".gcode";
+    {
+        std::ofstream out(path);
+        out << "G28\nPRINT_START BED=60\nBED_MESH_CALIBRATE\nG1 X0 Y0\n";
+    }
+
+    auto rewrite = [&](bool streaming, Modification mod) {
+        GCodeFileModifier modifier;
+        modifier.add_modification(std::move(mod));
+        return streaming ? modifier.apply_streaming(path) : modifier.apply(path);
+    };
+
+    for (const bool streaming : {false, true}) {
+        CAPTURE(streaming);
+
+        SECTION(std::string("comment out, ") + (streaming ? "streaming" : "buffered")) {
+            const auto stale =
+                rewrite(streaming, Modification::comment_out(3).expecting("CLEAN_NOZZLE"));
+            REQUIRE_FALSE(stale.success);
+            REQUIRE(stale.error_message.find("line 3") != std::string::npos);
+            REQUIRE((stale.modified_path.empty() || !std::filesystem::exists(stale.modified_path)));
+
+            const auto fresh =
+                rewrite(streaming, Modification::comment_out(3).expecting("BED_MESH_CALIBRATE\r"));
+            REQUIRE(fresh.success);
+            std::ifstream in(fresh.modified_path);
+            const std::string content((std::istreambuf_iterator<char>(in)),
+                                      std::istreambuf_iterator<char>());
+            REQUIRE(content.find("; BED_MESH_CALIBRATE") != std::string::npos);
+            std::filesystem::remove(fresh.modified_path);
+        }
+
+        SECTION(std::string("replace, ") + (streaming ? "streaming" : "buffered")) {
+            const auto stale =
+                rewrite(streaming, Modification::replace(2, "PRINT_START BED=60 SKIP_MESH=1")
+                                       .expecting("PRINT_START BED=110"));
+            REQUIRE_FALSE(stale.success);
+            REQUIRE((stale.modified_path.empty() || !std::filesystem::exists(stale.modified_path)));
+        }
+    }
+
+    SECTION("disable_operation checks the operation's own line") {
+        DetectedOperation op;
+        op.type = OperationType::BED_MESH;
+        op.embedding = OperationEmbedding::DIRECT_COMMAND;
+        op.line_number = 3;
+        op.raw_line = "BED_MESH_CALIBRATE ADAPTIVE=1";
+        GCodeFileModifier modifier;
+        REQUIRE(modifier.disable_operation(op));
+        REQUIRE_FALSE(modifier.apply(path).success);
+    }
+
+    SECTION("the START_PRINT rewrite checks the scanned call") {
+        // A scan of other G-code whose START_PRINT sits on this file's line 2.
+        const auto scan = GCodeOpsDetector{}.scan_content("G28\nPRINT_START BED=110\nG1 X0 Y0\n");
+        REQUIRE(scan.print_start.line_number == 2);
+        GCodeFileModifier modifier;
+        REQUIRE(modifier.add_print_start_skip_params(scan, {{"SKIP_BED_MESH", "1"}}));
+        REQUIRE_FALSE(modifier.apply(path).success);
+    }
+
+    std::filesystem::remove(path);
+}

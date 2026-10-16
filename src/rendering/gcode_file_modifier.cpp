@@ -12,11 +12,14 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cerrno>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <random>
+#include <string_view>
 #include <unordered_map>
 
 namespace helix {
@@ -37,6 +40,24 @@ std::vector<std::string> split_lines(std::string_view text) {
 // ============================================================================
 // GCodeFileModifier implementation
 // ============================================================================
+
+namespace {
+
+/// @p a and @p b with surrounding whitespace (and a CR) ignored.
+bool same_line(std::string_view a, std::string_view b) {
+    auto trim = [](std::string_view s) {
+        while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) {
+            s.remove_prefix(1);
+        }
+        while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) {
+            s.remove_suffix(1);
+        }
+        return s;
+    };
+    return trim(a) == trim(b);
+}
+
+} // namespace
 
 void GCodeFileModifier::add_modification(Modification mod) {
     modifications_.push_back(std::move(mod));
@@ -75,6 +96,12 @@ void GCodeFileModifier::apply_single_modification(std::vector<std::string>& line
     if (idx >= lines.size()) {
         spdlog::warn("[GCodeFileModifier] Line {} out of range (file has {} lines)",
                      mod.line_number, lines.size());
+        return;
+    }
+
+    if (!mod.expected_line.empty() && !same_line(lines[idx], mod.expected_line)) {
+        result.error_message =
+            "line " + std::to_string(mod.line_number) + " is not the line the scan found there";
         return;
     }
 
@@ -264,6 +291,12 @@ ModificationResult GCodeFileModifier::apply_buffered(const std::string& filepath
     for (const auto& mod : modifications_) {
         apply_single_modification(lines, mod, result);
     }
+    if (!result.error_message.empty()) {
+        result.success = false;
+        spdlog::error("[GCodeFileModifier] Refusing to rewrite {}: {}", filepath,
+                      result.error_message);
+        return result;
+    }
 
     // Generate temp file path
     result.modified_path = generate_temp_path(filepath);
@@ -366,6 +399,17 @@ ModificationResult GCodeFileModifier::apply_streaming(const std::string& filepat
         auto it = lookup.find(line_number);
         if (it != lookup.end()) {
             const auto& mod = it->second;
+
+            if (!mod.expected_line.empty() && !same_line(line, mod.expected_line)) {
+                helix::text_io::close(outfile);
+                std::remove(result.modified_path.c_str());
+                result.success = false;
+                result.error_message =
+                    "line " + std::to_string(line_number) + " is not the line the scan found there";
+                spdlog::error("[GCodeFileModifier] Refusing to rewrite {}: {}", filepath,
+                              result.error_message);
+                return result;
+            }
 
             switch (mod.type) {
             case ModificationType::COMMENT_OUT: {
@@ -471,8 +515,8 @@ bool GCodeFileModifier::disable_operation(const DetectedOperation& op) {
     case OperationEmbedding::DIRECT_COMMAND:
     case OperationEmbedding::MACRO_CALL:
         // Comment out the line containing the operation
-        add_modification(
-            Modification::comment_out(op.line_number, "Disabled " + op.display_name()));
+        add_modification(Modification::comment_out(op.line_number, "Disabled " + op.display_name())
+                             .expecting(op.raw_line));
         spdlog::debug("[GCodeFileModifier] Will disable {} at line {}", op.display_name(),
                       op.line_number);
         return true;
@@ -520,7 +564,8 @@ bool GCodeFileModifier::disable_macro_parameter(const DetectedOperation& op) {
 
     // Add a replacement modification
     add_modification(
-        Modification::replace(op.line_number, modified_line, "Disabled " + op.param_name));
+        Modification::replace(op.line_number, modified_line, "Disabled " + op.param_name)
+            .expecting(op.raw_line));
 
     spdlog::debug("[GCodeFileModifier] Will replace {} param at line {} with value 0/FALSE",
                   op.param_name, op.line_number);
@@ -552,7 +597,8 @@ bool GCodeFileModifier::add_print_start_skip_params(
 
     // Create a REPLACE modification for the PRINT_START line
     add_modification(Modification::replace(scan_result.print_start.line_number, modified_line,
-                                           "HelixScreen: Added skip parameters"));
+                                           "HelixScreen: Added skip parameters")
+                         .expecting(scan_result.print_start.raw_line));
 
     spdlog::info("[GCodeFileModifier] Adding skip params to {} at line {}: {}",
                  scan_result.print_start.macro_name, scan_result.print_start.line_number,

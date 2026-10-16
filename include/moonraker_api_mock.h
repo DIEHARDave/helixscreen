@@ -418,6 +418,21 @@ class MoonrakerFileTransferAPIMock : public MoonrakerFileTransferAPI {
         hold_path_uploads_ = hold;
     }
 
+    /// Make later ranged reads (download_file_partial(), download_file_range())
+    /// wait: neither callback runs until release_held_range_reads().
+    void mock_hold_range_reads(bool hold = true) {
+        hold_range_reads_ = hold;
+    }
+
+    /// Answer every held ranged read, in the order they were asked.
+    void release_held_range_reads() {
+        auto held = std::move(held_range_reads_);
+        held_range_reads_.clear();
+        for (auto& read : held) {
+            read();
+        }
+    }
+
     /// Complete every held upload with success.
     void release_held_path_uploads() {
         auto held = std::move(held_path_uploads_);
@@ -463,6 +478,9 @@ class MoonrakerFileTransferAPIMock : public MoonrakerFileTransferAPI {
     /// @p len bytes at @p offset of a config-root file or a test file.
     void read_range(const std::string& root, const std::string& path, uint64_t offset, size_t len,
                     const char* op, StringCallback on_success, ErrorCallback on_error);
+    void serve_range(const std::string& root, const std::string& path, uint64_t offset, size_t len,
+                     const char* op, const StringCallback& on_success,
+                     const ErrorCallback& on_error);
 
     /// Injected config root: full relative path -> content. Empty = use disk.
     std::map<std::string, std::string> config_files_;
@@ -476,6 +494,8 @@ class MoonrakerFileTransferAPIMock : public MoonrakerFileTransferAPI {
     bool hold_path_uploads_ = false;
     bool no_local_copies_ = false;
     std::vector<SuccessCallback> held_path_uploads_;
+    bool hold_range_reads_ = false;
+    std::vector<std::function<void()>> held_range_reads_;
     std::atomic<int> range_reads_{0};
 };
 

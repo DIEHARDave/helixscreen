@@ -467,6 +467,21 @@ void MoonrakerFileTransferAPIMock::download_file_range(const std::string& root,
 void MoonrakerFileTransferAPIMock::read_range(const std::string& root, const std::string& path,
                                               uint64_t offset, size_t len, const char* op,
                                               StringCallback on_success, ErrorCallback on_error) {
+    if (hold_range_reads_) {
+        held_range_reads_.push_back([this, root, path, offset, len, op,
+                                     on_success = std::move(on_success),
+                                     on_error = std::move(on_error)]() {
+            serve_range(root, path, offset, len, op, on_success, on_error);
+        });
+        return;
+    }
+    serve_range(root, path, offset, len, op, on_success, on_error);
+}
+
+void MoonrakerFileTransferAPIMock::serve_range(const std::string& root, const std::string& path,
+                                               uint64_t offset, size_t len, const char* op,
+                                               const StringCallback& on_success,
+                                               const ErrorCallback& on_error) {
     spdlog::debug("[MoonrakerAPIMock] {}: root='{}', path='{}', {} bytes at {}", op, root, path,
                   len, offset);
 

@@ -633,14 +633,14 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         }
     }
     if (auto it = scans_in_flight_.find(key); it != scans_in_flight_.end()) {
-        if (it->second == version) {
+        if (it->second.version == version) {
             return; // its answer is already on the way
         }
-        // The read under way is of another version; its answer is dropped.
-        it->second = version;
-    } else {
-        scans_in_flight_.emplace(key, version);
     }
+    // A read under way of another version, or of other G-code, is answered
+    // into nothing: only this request's answer is kept.
+    const uint64_t request = ++scan_requests_;
+    scans_in_flight_[key] = InFlightScan{version, request};
     const uint64_t epoch = scan_epoch_;
 
     if (!api_) {
@@ -672,9 +672,10 @@ void PrintPreparationManager::request_scan(const std::string& filename,
     // Both callbacks run on a background thread: parse there, then defer the
     // shared state updates to the main thread.
     // An answer lands only while it is still for the version last asked for.
-    auto current = [this, key, version, epoch]() {
+    auto current = [this, key, request, epoch]() {
         const auto it = scans_in_flight_.find(key);
-        return epoch == scan_epoch_ && it != scans_in_flight_.end() && it->second == version;
+        return epoch == scan_epoch_ && it != scans_in_flight_.end() &&
+               it->second.request == request;
     };
     auto on_content = [this, token, filename, key, version, current](const std::string& content) {
         gcode::GCodeOpsDetector detector;

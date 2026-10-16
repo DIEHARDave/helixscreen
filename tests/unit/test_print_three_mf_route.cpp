@@ -418,6 +418,36 @@ TEST_CASE_METHOD(ArchiveStart, "an archive's pre-print scan reads the G-code tha
     }
 }
 
+TEST_CASE_METHOD(ArchiveStart, "a plate step keeps the scan of the plate now shown",
+                 "[print_preparation][three_mf][scan]") {
+    plant("single_plate.gcode.3mf");
+    PlantedGcode first("Door_first.gcode", "", "G28\nBED_MESH_CALIBRATE\nG1 X0 Y0\n");
+    PlantedGcode second("Door_second.gcode", "", "G28\nPRINT_START BED=60\nG1 X0 Y0\n");
+    const FileVersion version{static_cast<uint64_t>(std::filesystem::file_size(planted->path())),
+                              1};
+    manager.scan_file_for_operations(kArchive, "", "", version);
+    drain_until_quiet();
+
+    auto& transfers = printer.api.transfers_mock();
+    transfers.mock_hold_range_reads();
+    PrintPreparationManager::ArchiveScanSource source;
+    source.plate_gcode = plate_entry("single_plate.gcode.3mf", 9);
+    source.converted_output = "Door_first.gcode";
+    manager.set_archive_scan_source(kArchive, "", version, source);
+    // A step while the first plate's read is still under way.
+    source.converted_output = "Door_second.gcode";
+    manager.set_archive_scan_source(kArchive, "", version, source);
+
+    transfers.mock_hold_range_reads(false);
+    transfers.release_held_range_reads();
+    drain_until_quiet();
+
+    const auto& scan = manager.get_scan_result();
+    REQUIRE(scan.has_value());
+    CHECK(scan->print_start.found);
+    CHECK_FALSE(scan->has_operation(gcode::OperationType::BED_MESH));
+}
+
 TEST_CASE("read_entry_head inflates just the start of a plate", "[three_mf][reader]") {
     MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
     ArchiveTransfers transfers{client, ""};
