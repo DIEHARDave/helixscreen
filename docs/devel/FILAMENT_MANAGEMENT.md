@@ -1049,6 +1049,15 @@ through from the existing file, writes `assets/filaments.json`, and discards the
 cloned Orca checkout. Nothing from the Orca clone is committed — only the
 derived output. Bump `ORCA_TAG` to refresh against newer Orca data.
 
+Products come from the shared `OrcaFilamentLibrary` and from the vendor packs
+named in `VENDOR_PACKS` (`scripts/import_orca_filaments.py`), for filament
+brands Orca profiles only under their own printers (Eryone). To add a brand
+whose pack is `resources/profiles/<Vendor>/filament`, add `<Vendor>` there and
+regenerate. A pack's `@<nozzle>` and `@<printer>` variants are skipped in favour
+of the base profile, and a profile that changes material from its template
+keeps only the temps, range and density it sets itself. Pack types never join
+`orca_library_types`: Orca shows those presets on that vendor's printers only.
+
 `assets/filaments.json` is **generated but committed** (same pattern as fonts
 and translations) — cross-compiled targets need the file present without
 running Python/git-clone during the build.

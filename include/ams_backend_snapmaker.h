@@ -747,6 +747,17 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// Written only from handle_status (the single writer).
     std::array<int, NUM_TOOLS> pending_insert_passes_{{0, 0, 0, 0}};
 
+    /// What each channel's firmware last said about the spool's identity:
+    /// whether filament_detect.info named one, and print_task_config's vendor
+    /// and official flag. Unset until the first frame carrying each.
+    std::array<std::optional<bool>, NUM_TOOLS> tag_names_identity_{};
+    std::array<std::optional<std::string>, NUM_TOOLS> task_vendor_{};
+    std::array<std::optional<bool>, NUM_TOOLS> task_official_{};
+
+    /// On a channel whose firmware states no identity at all, drop the brand
+    /// and product line the lane only remembers. Caller holds mutex_.
+    void retract_unbacked_identity_locked(int slot_index, SlotInfo& slot);
+
     /// Last filament_feed frame's raw per-channel fields (channel_state,
     /// channel_error, filament_detected, module_exist, disable_auto), written
     /// by handle_status before classification. Each write replaces the
@@ -789,9 +800,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     void check_hardware_event_clear(SlotInfo& slot, int slot_index,
                                     const helix::ams::SpoolEvidence& observed);
 
-    /// Brand / spool_name / total_weight_g are kept: firmware populates them
-    /// from the RFID tag. The tag has no colour-name field, so color_name is
-    /// override-exclusive and goes.
+    /// Brand / total_weight_g are kept: firmware populates them from the RFID
+    /// tag. spool_name goes, and each clear restates the tag's product line.
+    /// The tag has no colour-name field, so color_name is override-exclusive
+    /// and goes.
     void clear_override_fields(SlotInfo& slot) const override;
 
     /// Whether the connected firmware ships the AUTO_FEEDING_BATCH macro,

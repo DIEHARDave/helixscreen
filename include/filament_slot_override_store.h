@@ -206,6 +206,17 @@ class FilamentSlotOverrideStore {
         return lane_data_records_;
     }
 
+    /// Rewrite each record last_lane_data_records() holds through @p amend,
+    /// before anything classifies them; @p amend also gets the slot and the
+    /// raw document the record came from. Only this view changes: persisting
+    /// the repair is the caller's save.
+    void amend_loaded_records(const std::function<void(int slot, FilamentSlotOverride&,
+                                                       const nlohmann::json& wire)>& amend) {
+        for (auto& [slot, entry] : lane_data_records_) {
+            amend(slot, entry.record, entry.wire);
+        }
+    }
+
   private:
     // Test-only access to mutate load_timeout_ without exposing a public
     // setter. Per L065, prefer friend-class over test-only public methods.

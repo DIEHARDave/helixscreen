@@ -3221,10 +3221,11 @@ TEST_CASE_METHOD(LVGLTestFixture, "a Snapmaker tag that stops naming a vendor re
     REQUIRE(harness->get_slot_info(0).spool_name == "Silk");
 
     // The firmware spelling "NONE". The record retracts, because whole-record
-    // replacement means it states what THIS read said. SlotInfo keeps the old
-    // value, because its guards test the literal and it has no way to say "no
-    // longer stated". This is the one input where the two layers disagree, and
-    // the disagreement is deliberate.
+    // replacement means it states what THIS read said, and the spool name
+    // retracts with it: firmware stores NONE for a write that sent no product
+    // line, so a kept name would outlive the spool it described. SlotInfo's
+    // brand keeps the old value, because its guard tests the literal and
+    // print_task_config restates the vendor on its own.
     feed_filament_detect(*harness, nlohmann::json{
                                        {"state", nlohmann::json::array({1})},
                                        {"info", nlohmann::json::array({nlohmann::json{
@@ -3241,11 +3242,10 @@ TEST_CASE_METHOD(LVGLTestFixture, "a Snapmaker tag that stops naming a vendor re
     CHECK_FALSE(spelled_none.vendor_cache->brand.has_value());
     CHECK_FALSE(spelled_none.vendor_cache->product_name.has_value());
     CHECK(harness->get_slot_info(0).brand == "Snapmaker");
-    CHECK(harness->get_slot_info(0).spool_name == "Silk");
+    CHECK(harness->get_slot_info(0).spool_name.empty());
 
-    // An ABSENT key is the other spelling of the same silence, and here the two
-    // layers agree: both guards let the empty string through to SlotInfo, so it
-    // blanks rather than keeping.
+    // An ABSENT key is the other spelling of the same silence, and both layers
+    // blank on it.
     feed_filament_detect(*harness, nlohmann::json{
                                        {"state", nlohmann::json::array({1})},
                                        {"info", nlohmann::json::array({nlohmann::json{
@@ -3359,13 +3359,15 @@ TEST_CASE_METHOD(LVGLTestFixture, "Snapmaker's own write-back does not return as
     // Firmware reports the write back through the same object the tag uses,
     // with the same key spellings, on the same physical spool. WEIGHT is the
     // control: nothing POSTs it, so it is a genuine reading and must still be
-    // filed while the four echoed fields are withheld.
+    // filed while the echoed fields are withheld. A Polymaker spool carries no
+    // Snapmaker product line, so the write sent none and firmware stores NONE.
+    REQUIRE_FALSE(api.rest_mock().mock_get_post_history()[0].body["info"].contains("SUB_TYPE"));
     feed_filament_detect(*harness, nlohmann::json{
                                        {"state", nlohmann::json::array({1})},
                                        {"info", nlohmann::json::array({nlohmann::json{
                                                     {"MAIN_TYPE", "PETG"},
                                                     {"MANUFACTURER", "Polymaker"},
-                                                    {"SUB_TYPE", "Matte"},
+                                                    {"SUB_TYPE", "NONE"},
                                                     {"ARGB_COLOR", 0xFF00FF00},
                                                     {"WEIGHT", 1000},
                                                     {"CARD_UID", tag_uid},
@@ -5328,4 +5330,97 @@ TEST_CASE_METHOD(LVGLTestFixture,
                      nlohmann::json{{"toolchanger", {{"status", "ready"}, {"tool_number", 0}}}});
 
     CHECK(harness->get_slot_info(0).color_rgb == kFiledColor);
+}
+
+// A product line the edit re-sent comes back through filament_detect.info in
+// the tag's own spelling. Learning it there would hand the lane our write as a
+// reading, and a clear would then leave it standing as the machine's word.
+TEST_CASE_METHOD(LVGLTestFixture, "Snapmaker's echoed product line is not learned as a spool name",
+                 "[lane][ingest][snapmaker][spool_name]") {
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    SnapmakerHarness harness(&api, nullptr);
+
+    const auto tag_uid = nlohmann::json::array({144, 32, 196, 2});
+    feed_filament_detect(*harness, nlohmann::json{
+                                       {"state", nlohmann::json::array({1})},
+                                       {"info", nlohmann::json::array({nlohmann::json{
+                                                    {"MAIN_TYPE", "PLA"},
+                                                    {"MANUFACTURER", "Snapmaker"},
+                                                    {"SUB_TYPE", "Basic"},
+                                                    {"CARD_UID", tag_uid},
+                                                }})},
+                                   });
+    REQUIRE(harness->get_slot_info(0).spool_name == "Basic");
+
+    auto edit = harness->get_slot_info(0);
+    edit.spool_name = "SnapSpeed";
+    helix::test::edit_slot_as_user(*harness, 0, edit);
+    REQUIRE(api.rest_mock().mock_get_post_history().size() == 1);
+    REQUIRE(api.rest_mock().mock_get_post_history()[0].body["info"].value("SUB_TYPE", "") ==
+            "SnapSpeed");
+
+    feed_filament_detect(*harness, nlohmann::json{
+                                       {"state", nlohmann::json::array({1})},
+                                       {"info", nlohmann::json::array({nlohmann::json{
+                                                    {"MAIN_TYPE", "PLA"},
+                                                    {"MANUFACTURER", "Snapmaker"},
+                                                    {"SUB_TYPE", "SnapSpeed"},
+                                                    {"CARD_UID", tag_uid},
+                                                }})},
+                                   });
+    // The user's own name still shows while their edit stands.
+    CHECK(harness->get_slot_info(0).spool_name == "SnapSpeed");
+
+    harness->clear_slot_override(0);
+    CHECK(harness->get_slot_info(0).spool_name.empty());
+}
+
+// Clear Spool hands the lane back to the machine. The spool name goes with the
+// user's record, and what stands afterwards is the product line the tag itself
+// states, or nothing.
+TEST_CASE_METHOD(LVGLTestFixture, "clearing a Snapmaker spool restates the tag's product line",
+                 "[lane][ingest][snapmaker][spool_name]") {
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    SnapmakerHarness harness(&api, nullptr);
+
+    SECTION("an untagged spool keeps no name") {
+        feed_filament_detect(*harness, nlohmann::json{
+                                           {"state", nlohmann::json::array({1})},
+                                           {"info", nlohmann::json::array({nlohmann::json{
+                                                        {"MAIN_TYPE", "NONE"},
+                                                        {"SUB_TYPE", "NONE"},
+                                                    }})},
+                                       });
+        auto edit = harness->get_slot_info(0);
+        edit.brand = "Generic";
+        edit.material = "ASA";
+        edit.spool_name = "SnapSpeed";
+        helix::test::edit_slot_as_user(*harness, 0, edit);
+        REQUIRE(harness->get_slot_info(0).spool_name == "SnapSpeed");
+
+        harness->clear_slot_override(0);
+        CHECK(harness->get_slot_info(0).spool_name.empty());
+    }
+
+    SECTION("a tagged spool gets the tag's line back") {
+        feed_filament_detect(*harness,
+                             nlohmann::json{
+                                 {"state", nlohmann::json::array({1})},
+                                 {"info", nlohmann::json::array({nlohmann::json{
+                                              {"MAIN_TYPE", "PLA"},
+                                              {"MANUFACTURER", "Snapmaker"},
+                                              {"SUB_TYPE", "Silk"},
+                                              {"CARD_UID", nlohmann::json::array({1, 2, 3, 4})},
+                                          }})},
+                             });
+        auto edit = harness->get_slot_info(0);
+        edit.spool_name = "Bench reel";
+        helix::test::edit_slot_as_user(*harness, 0, edit);
+        REQUIRE(harness->get_slot_info(0).spool_name == "Bench reel");
+
+        harness->clear_slot_override(0);
+        CHECK(harness->get_slot_info(0).spool_name == "Silk");
+    }
 }

@@ -5,6 +5,7 @@
 #include "ams_types.h"
 #include "color_utils.h"
 #include "json_utils.h"
+#include "text_io.h"
 
 #include <algorithm>
 #include <cctype>
@@ -432,6 +433,26 @@ SlotInfo keep_spool_owned_identity(const SlotInfo& original, const SlotInfo& edi
         }
     });
     return applied;
+}
+
+bool drop_stale_spool_name(const SlotInfo& original, SlotInfo& edited) {
+    if (edited.spool_name.empty() || edited.spool_name != original.spool_name) {
+        return false;
+    }
+    if (original.spoolman_id > 0 || edited.spoolman_id > 0) {
+        return false;
+    }
+    const auto moved = [](const std::string& before, const std::string& after) {
+        return text_io::to_lower(before) != text_io::to_lower(after);
+    };
+    const bool product_moved =
+        !original.catalog_id.empty() && original.catalog_id != edited.catalog_id;
+    if (!moved(original.brand, edited.brand) && !moved(original.material, edited.material) &&
+        !product_moved) {
+        return false;
+    }
+    edited.spool_name.clear();
+    return true;
 }
 
 std::vector<std::string_view> spool_owned_fields_dropped(const SlotInfo& original,
