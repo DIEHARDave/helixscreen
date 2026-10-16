@@ -97,6 +97,12 @@ namespace helix::ui {
 std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_t* font,
                              int32_t letter_space = 0);
 
+/// Which long modes a line hold applies in.
+enum class LineHold {
+    Dotted,  ///< Only while the label is in DOTS; out of it the owner sets the height
+    AnyMode, ///< In every long mode: a one-line slot that clips, scrolls or dots
+};
+
 /**
  * Hold a label to exactly one line of its own font
  *
@@ -107,14 +113,16 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
  * later (on LV_EVENT_STYLE_CHANGED, writing only when the value differs).
  * Calling it again on the same label is a no-op beyond re-measuring.
  *
- * The label must be in DOTS mode for the height to be applied. While it stays
- * in DOTS, the hook rewrites any height a caller sets later, so code that
- * wants a different height switches the long mode first; out of DOTS the hook
- * leaves the height alone.
+ * With LineHold::Dotted the label must be in DOTS mode for the height to be
+ * applied. While it stays in DOTS, the hook rewrites any height a caller sets
+ * later, so code that wants a different height switches the long mode first
+ * or calls label_release_lines(); out of DOTS the hook leaves the height alone.
+ * LineHold::AnyMode holds the height whatever the long mode.
  *
  * @param label Label to hold; nullptr is ignored
+ * @param when  Which long modes the hold applies in
  */
-void label_hold_one_line(lv_obj_t* label);
+void label_hold_one_line(lv_obj_t* label, LineHold when = LineHold::Dotted);
 
 /**
  * Let a dotted label wrap to at most @p lines lines of its own font, then ellipsize
@@ -126,13 +134,22 @@ void label_hold_one_line(lv_obj_t* label);
  *
  * @param label Label to hold; nullptr is ignored
  * @param lines Line ceiling; below 1 is ignored
+ * @param when  Which long modes the hold applies in
  */
-void label_hold_lines(lv_obj_t* label, int32_t lines);
+void label_hold_lines(lv_obj_t* label, int32_t lines, LineHold when = LineHold::Dotted);
+
+/**
+ * Stop holding a label: its height and max_height stay as they are until the
+ * caller sets them. Does nothing to a label that is not held.
+ *
+ * @param label Label to release; nullptr is ignored
+ */
+void label_release_lines(lv_obj_t* label);
 
 /**
  * Hold a dotted, content-height label to one line
  *
- * The rule text_* and ui_button apply after their attributes: a label whose
+ * The rule text_* apply after their attributes: a label whose
  * long mode is DOTS, whose height is LV_SIZE_CONTENT and which sets no
  * max_height is held with label_hold_one_line(). An explicit height or a
  * max_height leaves it alone, as does any other long mode.

@@ -997,30 +997,74 @@ TEST_CASE_METHOD(UiButtonTestFixture, "ui_button unstacks to its declared height
     lv_subject_deinit(&stack_when);
 }
 
-// A dotted label under its icon holds one line of its font, so text too long
-// for the button ellipsizes there instead of wrapping out of the bottom.
-TEST_CASE_METHOD(UiButtonTestFixture, "ui_button stacked dotted label stays one line",
+namespace {
+
+/// One line of the label's font plus its own vertical padding.
+int32_t one_line_height(lv_obj_t* label) {
+    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    return lv_font_get_line_height(font) + lv_obj_get_style_space_top(label, LV_PART_MAIN) +
+           lv_obj_get_style_space_bottom(label, LV_PART_MAIN);
+}
+
+/// A button in a 60px box whose stacking follows @p subject_name.
+lv_obj_t* make_flip_button(lv_obj_t* box, const char* subject_name, const char* long_mode) {
+    const char* attrs[] = {
+        "icon",          "tune",      "text",    "Firmware Restart Now", "width",
+        "100%",          "long_mode", long_mode, "stacked_subject",      subject_name,
+        "stacked_if_eq", "1",         nullptr};
+    return static_cast<lv_obj_t*>(lv_xml_create(box, "ui_button", attrs));
+}
+
+} // namespace
+
+// A dotted label holds one line of its font beside its icon and under it, and
+// keeps holding it as the button stacks and unstacks, so text too long for the
+// button ellipsizes there instead of wrapping out of the bottom.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button dotted label stays one line across a restack",
                  "[ui_button][xml][quick]") {
     static lv_subject_t stack_when;
     lv_subject_init_int(&stack_when, 0);
     lv_xml_register_subject(nullptr, "test_button_stack_dots", &stack_when);
     lv_obj_t* box = lv_obj_create(test_screen());
     lv_obj_set_size(box, 60, 90);
-    const char* attrs[] = {
-        "icon",          "tune",      "text", "Firmware Restart Now", "width",
-        "100%",          "long_mode", "dots", "stacked_subject",      "test_button_stack_dots",
-        "stacked_if_eq", "1",         nullptr};
-    lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(box, "ui_button", attrs));
+    lv_obj_t* btn = make_flip_button(box, "test_button_stack_dots", "dots");
     REQUIRE(btn != nullptr);
+    lv_obj_t* label = UITest::button_label(btn);
+
+    for (const int stacked : {1, 0, 1}) {
+        CAPTURE(stacked);
+        lv_subject_set_int(&stack_when, stacked);
+        lv_obj_update_layout(test_screen());
+        REQUIRE(lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) ==
+                (stacked ? LV_FLEX_FLOW_COLUMN : LV_FLEX_FLOW_ROW));
+        CHECK(lv_obj_get_height(label) == one_line_height(label));
+        CHECK(label_inside(btn));
+    }
+    lv_obj_delete(box);
+    lv_subject_deinit(&stack_when);
+}
+
+// Under its icon a wrap-mode label takes its text's own height, including after
+// it has been held to one line beside the icon.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button stacked wrap label keeps content height",
+                 "[ui_button][xml][quick]") {
+    static lv_subject_t stack_when;
+    lv_subject_init_int(&stack_when, 0);
+    lv_xml_register_subject(nullptr, "test_button_stack_wrap", &stack_when);
+    lv_obj_t* box = lv_obj_create(test_screen());
+    lv_obj_set_size(box, 60, 200);
+    lv_obj_t* btn = make_flip_button(box, "test_button_stack_wrap", "wrap");
+    REQUIRE(btn != nullptr);
+    lv_obj_t* label = UITest::button_label(btn);
+    lv_obj_update_layout(test_screen());
+    REQUIRE(lv_obj_get_height(label) == one_line_height(label));
 
     lv_subject_set_int(&stack_when, 1);
+    // A style landing after the restack must not pull the label back to one line.
+    lv_obj_set_style_text_letter_space(label, 1, LV_PART_MAIN);
     lv_obj_update_layout(test_screen());
-    lv_obj_t* label = UITest::button_label(btn);
-    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
-    CHECK(lv_obj_get_height(label) == lv_font_get_line_height(font) +
-                                          lv_obj_get_style_space_top(label, LV_PART_MAIN) +
-                                          lv_obj_get_style_space_bottom(label, LV_PART_MAIN));
-    CHECK(label_inside(btn));
+    CHECK(lv_obj_get_style_height(label, LV_PART_MAIN) == LV_SIZE_CONTENT);
+    CHECK(lv_obj_get_height(label) > one_line_height(label));
     lv_obj_delete(box);
     lv_subject_deinit(&stack_when);
 }
