@@ -2850,6 +2850,7 @@ translations:
   Resetting: Restaurando
   Resetting system: 'Redefinindo o sistema'
   Resetting...: Resetando...
+  Resolve it on the filament system screen, then try again: 'Resolva na tela do sistema de filamento e tente novamente'
   Response (Kp): Resposta (Kp)
   Restart: Reiniciar
   Restart Firmware?: Reiniciar firmware?
@@ -3483,6 +3484,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : O filamento não chegou ao bico. O CFS não reportou nenhum erro, mas o sensor do cabeçote ainda não detecta filamento. Verifique se o carretel está bem encaixado e se o caminho está livre, e tente novamente.
   The filament may not have fully retracted — try again or manually pull: O filamento pode não ter recuado totalmente. Tente novamente ou puxe à mão
+  The filament system needs attention: 'O sistema de filamento precisa de atenção'
   The filament system reported an error: O sistema de filamento reportou um erro
   The heater can't be changed while the printer is waiting.: 'O aquecedor não pode ser alterado enquanto a impressora aguarda.'
   The heater did not accept the printer's credentials.: 'O aquecedor não aceitou as credenciais da impressora.'

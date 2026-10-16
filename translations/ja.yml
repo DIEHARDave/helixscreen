@@ -2686,6 +2686,7 @@ translations:
   Resetting: リセット中
   Resetting system: 'システムをリセットしています'
   Resetting...: リセット中...
+  Resolve it on the filament system screen, then try again: 'フィラメントシステム画面で解決してから再試行してください'
   Response (Kp): 応答 (Kp)
   Restart: 再起動
   Restart Firmware?: ファームウェアを再起動しますか？
@@ -3268,6 +3269,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : フィラメントがノズルに到達しませんでした。CFSはエラーを報告していませんが、ツールヘッドセンサーはまだフィラメントを検出していません。スプールが正しく取り付けられ、フィラメント経路が塞がれていないことを確認して、再試行してください。
   The filament may not have fully retracted — try again or manually pull: フィラメントが完全に戻っていない可能性があります。再試行するか手で引き抜いてください
+  The filament system needs attention: 'フィラメントシステムの対応が必要です'
   The filament system reported an error: フィラメントシステムがエラーを報告しました
   The heater can't be changed while the printer is waiting.: 'プリンターの待機中はヒーターを変更できません。'
   The heater did not accept the printer's credentials.: 'ヒーターがプリンターの認証情報を受け付けませんでした。'

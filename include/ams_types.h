@@ -327,6 +327,16 @@ enum class AmsAction {
  * asks what the STEP BAR should follow and genuinely differs per backend. This
  * one is the superset.
  */
+/**
+ * @brief Does @p action keep the system from taking a new operation?
+ *
+ * Everything but IDLE and ERROR: an operation in flight, a sensor check, or a
+ * pause waiting on the user.
+ */
+inline bool ams_action_holds_system(AmsAction action) {
+    return action != AmsAction::IDLE && action != AmsAction::ERROR;
+}
+
 inline bool ams_action_is_busy(AmsAction action) {
     switch (action) {
     case AmsAction::HEATING:
@@ -1763,7 +1773,7 @@ struct AmsSystemInfo {
      * @return true if actively loading, unloading, etc.
      */
     [[nodiscard]] bool is_busy() const {
-        return action != AmsAction::IDLE && action != AmsAction::ERROR;
+        return ams_action_holds_system(action);
     }
 
     // === Multi-unit helpers ===

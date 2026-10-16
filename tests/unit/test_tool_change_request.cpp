@@ -60,7 +60,7 @@ TEST_CASE("decide_tool_change: the mounted tool is never changed to", "[tool_cha
     // Even with every refusal also true: there is nothing to refuse.
     in.spools_on_bed = true;
     in.lifecycle = PrintState::Printing;
-    in.backend_busy = true;
+    in.backend_action = AmsAction::LOADING;
     const auto d = decide_tool_change(in);
     CHECK(d.verdict == ToolChangeVerdict::AlreadyActive);
     CHECK_FALSE(d.dispatches());
@@ -122,20 +122,43 @@ TEST_CASE("decide_tool_change: Paused on a self-homing backend refuses",
 
 TEST_CASE("decide_tool_change: a busy filament system ignores the request",
           "[tool_change][decision]") {
-    for (bool confirm : {false, true}) {
+    for (AmsAction a : {AmsAction::LOADING, AmsAction::UNLOADING, AmsAction::SELECTING,
+                        AmsAction::CHECKING, AmsAction::HEATING}) {
+        for (bool confirm : {false, true}) {
+            CAPTURE(static_cast<int>(a), confirm);
+            auto in = idle_inputs();
+            in.backend_action = a;
+            in.confirm_enabled = confirm;
+            const auto d = decide_tool_change(in);
+            CHECK(d.verdict == ToolChangeVerdict::Busy);
+            CHECK_FALSE(d.dispatches());
+            CHECK(d.refusal.success());
+        }
+    }
+}
+
+TEST_CASE("decide_tool_change: a filament system paused for attention refuses with a reason",
+          "[tool_change][decision]") {
+    auto in = idle_inputs();
+    in.backend_action = AmsAction::PAUSED;
+    const auto d = decide_tool_change(in);
+    CHECK(d.verdict == ToolChangeVerdict::RefuseNeedsAttention);
+    CHECK_FALSE(d.dispatches());
+    CHECK(d.refusal.user_msg == "The filament system needs attention");
+}
+
+TEST_CASE("decide_tool_change: idle and error states take the change", "[tool_change][decision]") {
+    for (AmsAction a : {AmsAction::IDLE, AmsAction::ERROR}) {
         auto in = idle_inputs();
-        in.backend_busy = true;
-        in.confirm_enabled = confirm;
-        const auto d = decide_tool_change(in);
-        CHECK(d.verdict == ToolChangeVerdict::Busy);
-        CHECK_FALSE(d.dispatches());
-        CHECK(d.refusal.success());
+        in.backend_action = a;
+        in.confirm_enabled = false;
+        CHECK(decide_tool_change(in).verdict == ToolChangeVerdict::Immediate);
     }
 }
 
 TEST_CASE("decide_tool_change: a refusal outranks busy", "[tool_change][decision]") {
     auto in = idle_inputs();
-    in.backend_busy = true;
+    in.backend_action = AmsAction::LOADING;
     in.lifecycle = PrintState::Printing;
     CHECK(decide_tool_change(in).verdict == ToolChangeVerdict::RefusePrint);
     in.lifecycle = PrintState::Idle;
@@ -163,10 +186,15 @@ struct OfferFixture : public LVGLUITestFixture {
         hooks.on_success = [this] { ++successes; };
         hooks.on_failed = [this] { ++failures; };
         hooks.on_declined = [this] { ++declines; };
-        return ui::offer_tool_change(state(), tool, nullptr, std::move(hooks));
+        hooks.resolve_api = [this]() -> IMoonrakerAPI* {
+            ++api_lookups;
+            return nullptr;
+        };
+        return ui::offer_tool_change(state(), tool, std::move(hooks));
     }
 
     ToolChangerRig rig{3};
+    int api_lookups = 0;
     int successes = 0;
     int failures = 0;
     int declines = 0;
@@ -213,6 +241,26 @@ TEST_CASE_METHOD(OfferFixture, "offer_tool_change: setting on asks, naming the t
         CHECK(rig.backend->change_tool_calls == 0);
         CHECK(declines == 1);
     }
+    SECTION("a close no button or dismissal answers reports the decline too") {
+        Modal::hide(ModalStack::instance().top_dialog());
+        process_lvgl(500);
+        ui::UpdateQueue::instance().drain();
+        REQUIRE(ModalStack::instance().stack_empty());
+        CHECK(rig.backend->change_tool_calls == 0);
+        CHECK(declines == 1);
+    }
+}
+
+TEST_CASE_METHOD(OfferFixture, "offer_tool_change: the API is looked up when the change is sent",
+                 "[tool_change][offer]") {
+    set_confirm(true);
+    offer(1);
+    CHECK(api_lookups == 0);
+    test::answer_top_modal("btn_primary");
+    CHECK(api_lookups == 1);
+    // Answered: closing the dialog afterwards reports no decline.
+    process_lvgl(500);
+    CHECK(declines == 0);
 }
 
 TEST_CASE_METHOD(OfferFixture, "offer_tool_change: a failed change toasts and reports it",

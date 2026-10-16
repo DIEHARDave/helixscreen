@@ -366,7 +366,7 @@ ToolSwitcherWidget::ToolSwitcherWidget(PrinterState& printer_state)
 }
 
 std::string ToolSwitcherWidget::tool_text(const ToolInfo& tool, ui::ToolLabelForm form) {
-    return ui::tool_label_in_form(ui::active_tool_noun(), tool.name, tool.index, form);
+    return ui::active_tool_label(tool.name, tool.index, form);
 }
 
 std::string ToolSwitcherWidget::name_text(const ToolInfo& tool) {
@@ -1145,7 +1145,7 @@ void ToolSwitcherWidget::handle_tool_selected(int head_index) {
             }
         });
     };
-    helix::ui::offer_tool_change(printer_state_, tool_index, get_moonraker_api(), std::move(hooks));
+    helix::ui::offer_tool_change(printer_state_, tool_index, std::move(hooks));
 }
 
 // ============================================================================

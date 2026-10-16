@@ -2641,6 +2641,7 @@
   <translation tag="Resetting" ru="Сброс"/>
   <translation tag="Resetting system" ru="Сброс системы"/>
   <translation tag="Resetting..." ru="Сброс..."/>
+  <translation tag="Resolve it on the filament system screen, then try again" ru="Устраните проблему на экране системы филамента и повторите попытку"/>
   <translation tag="Response (Kp)" ru="Отклик (Kp)"/>
   <translation tag="Restart" ru="Перезапуск"/>
   <translation tag="Restart Firmware?" ru="Перезапустить прошивку?"/>
@@ -3194,6 +3195,7 @@
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" ru="Экструдер не может тянуть равномерно. Проверьте катушку на запутывание или узел, а трубку PTFE на резкий изгиб"/>
   <translation tag="The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again." ru="Филамент не дошёл до сопла. CFS не сообщила об ошибке, но датчик печатающей головки по-прежнему не видит филамент. Проверьте, что катушка установлена правильно и путь свободен, затем повторите попытку."/>
   <translation tag="The filament may not have fully retracted — try again or manually pull" ru="Возможно, филамент втянут не полностью. Повторите или вытяните вручную"/>
+  <translation tag="The filament system needs attention" ru="Системе подачи филамента требуется внимание"/>
   <translation tag="The filament system reported an error" ru="Система филамента сообщила об ошибке"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." ru="Нагреватель нельзя изменить, пока принтер ожидает."/>
   <translation tag="The heater did not accept the printer&apos;s credentials." ru="Нагреватель не принял учётные данные принтера."/>

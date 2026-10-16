@@ -2587,6 +2587,7 @@
   <translation tag="Resetting" es="Restableciendo"/>
   <translation tag="Resetting system" es="Reiniciando el sistema"/>
   <translation tag="Resetting..." es="Restableciendo..."/>
+  <translation tag="Resolve it on the filament system screen, then try again" es="Resuélvalo en la pantalla del sistema de filamento y vuelva a intentarlo"/>
   <translation tag="Response (Kp)" es="Respuesta (Kp)"/>
   <translation tag="Restart" es="Reiniciar"/>
   <translation tag="Restart Firmware?" es="¿Reiniciar firmware?"/>
@@ -3134,6 +3135,7 @@
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" es="El extrusor no puede tirar con suavidad. Revise la bobina por si hay enredos o nudos, y el tubo PTFE por si tiene una curva pronunciada"/>
   <translation tag="The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again." es="El filamento no llegó a la boquilla. El CFS no informó ningún error, pero el sensor del cabezal sigue sin detectar filamento. Compruebe que la bobina esté bien colocada y que el recorrido esté despejado, y vuelva a intentarlo."/>
   <translation tag="The filament may not have fully retracted — try again or manually pull" es="Puede que el filamento no se haya retraído por completo. Reintente o tire a mano"/>
+  <translation tag="The filament system needs attention" es="El sistema de filamento requiere atención"/>
   <translation tag="The filament system reported an error" es="El sistema de filamento informó un error"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." es="No se puede cambiar el calentador mientras la impresora espera."/>
   <translation tag="The heater did not accept the printer&apos;s credentials." es="El calentador no aceptó las credenciales de la impresora."/>

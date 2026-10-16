@@ -196,7 +196,7 @@ TEST_CASE_METHOD(ToolheadTapFixture, "the mounted head's tap opens the slot menu
 TEST_CASE_METHOD(ToolheadTapFixture, "a head tap while the filament system is busy is ignored",
                  "[ams][path][toolhead_tap]") {
     set_confirm(false);
-    rig.backend->report_busy = true;
+    rig.backend->report_action = GENERATE(AmsAction::LOADING, AmsAction::CHECKING);
     AmsPanelTestAccess::tap_toolhead(*panel, 1);
     CHECK(rig.backend->change_tool_calls == 0);
     CHECK(ModalStack::instance().stack_empty());
@@ -224,4 +224,16 @@ TEST_CASE_METHOD(ToolheadTapFixture, "a head tap with spools on the bed is refus
     CHECK(rig.backend->change_tool_calls == 0);
     CHECK(rig.warnings.size() == 1);
     state().print_state().set_spool_latch(false);
+}
+
+TEST_CASE_METHOD(ToolheadTapFixture,
+                 "a head tap while the filament system waits on the user is refused with a reason",
+                 "[ams][path][toolhead_tap]") {
+    set_confirm(false);
+    rig.backend->report_action = AmsAction::PAUSED;
+    AmsPanelTestAccess::tap_toolhead(*panel, 1);
+    CHECK(rig.backend->change_tool_calls == 0);
+    CHECK(ModalStack::instance().stack_empty());
+    REQUIRE(rig.warnings.size() == 1);
+    CHECK(rig.warnings[0].find("The filament system needs attention") != std::string::npos);
 }

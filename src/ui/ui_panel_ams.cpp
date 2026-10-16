@@ -1307,8 +1307,7 @@ void AmsPanel::on_path_toolhead_clicked(int slot_index, void* user_data) {
     }
 
     spdlog::info("[AmsPanel] Toolhead {} (T{}) clicked", slot_index, slot->mapped_tool);
-    const auto verdict =
-        helix::ui::offer_tool_change(self->printer_state_, slot->mapped_tool, self->api_);
+    const auto verdict = helix::ui::offer_tool_change(self->printer_state_, slot->mapped_tool);
     // The mounted head's tap is the slot menu's, the same as its tube's.
     if (verdict == helix::ui::ToolChangeVerdict::AlreadyActive) {
         on_path_slot_clicked(slot_index, user_data);

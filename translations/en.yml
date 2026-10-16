@@ -2769,6 +2769,7 @@ translations:
   Resetting: Resetting
   Resetting system: Resetting system
   Resetting...: Resetting...
+  Resolve it on the filament system screen, then try again: Resolve it on the filament system screen, then try again
   Response (Kp): Response (Kp)
   Restart: Restart
   Restart Firmware?: Restart Firmware?
@@ -3381,6 +3382,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   The filament may not have fully retracted — try again or manually pull: The filament may not have fully retracted — try again or manually pull
+  The filament system needs attention: The filament system needs attention
   The filament system reported an error: The filament system reported an error
   The heater can't be changed while the printer is waiting.: The heater can't be changed while the printer is waiting.
   The heater did not accept the printer's credentials.: The heater did not accept the printer's credentials.

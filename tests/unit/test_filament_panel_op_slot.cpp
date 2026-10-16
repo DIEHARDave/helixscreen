@@ -435,6 +435,14 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         CHECK(h.mock->change_tool_calls == 0);
         CHECK(lv_dropdown_get_selected(dd) == 0);
     }
+    SECTION("a programmatic close puts it back too") {
+        Modal::hide(ModalStack::instance().top_dialog());
+        process_lvgl(500);
+        helix::ui::UpdateQueue::instance().drain();
+        REQUIRE(ModalStack::instance().stack_empty());
+        CHECK(h.mock->change_tool_calls == 0);
+        CHECK(lv_dropdown_get_selected(dd) == 0);
+    }
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,

@@ -1982,13 +1982,12 @@ void FilamentPanel::populate_extruder_dropdown() {
     // Build options string ("Tool 1 (T0)\nTool 2 (T1)\n..."). The open list
     // sizes itself to its widest option, so it always has room for the full
     // form; the closed control shows only the G-code name.
-    const auto noun = helix::ui::active_tool_noun();
     std::string options;
     for (const auto& tool : ts.tools()) {
         if (!options.empty())
             options += '\n';
-        options += helix::ui::tool_label_in_form(noun, tool.name, tool.index,
-                                                 helix::ui::ToolLabelForm::Full);
+        options +=
+            helix::ui::active_tool_label(tool.name, tool.index, helix::ui::ToolLabelForm::Full);
     }
     lv_dropdown_set_options(extruder_dropdown_, options.c_str());
 
@@ -2156,7 +2155,9 @@ void FilamentPanel::handle_extruder_changed() {
     spdlog::info("[{}] User selected tool T{}", get_name(), selected);
 
     helix::ui::ToolChangeHooks hooks;
-    hooks.on_success = [label = ts.tools()[selected].display_label]() {
+    const auto& tool = ts.tools()[static_cast<size_t>(selected)];
+    hooks.on_success = [label = helix::ui::active_tool_label(tool.name, tool.index,
+                                                             helix::ui::ToolLabelForm::Full)]() {
         NOTIFY_SUCCESS(lv_tr("Switched to {}"), label);
     };
     hooks.on_failed = object_lifetime_.bg_cb("FilamentPanel::tool_change_err",
@@ -2165,7 +2166,8 @@ void FilamentPanel::handle_extruder_changed() {
     // that is not mounted.
     hooks.on_declined = [this]() { revert_extruder_dropdown(); };
     hooks.owner_token = object_lifetime_.token();
-    helix::ui::offer_tool_change(printer_state_, selected, api_, std::move(hooks));
+    hooks.resolve_api = [this]() { return api_; };
+    helix::ui::offer_tool_change(printer_state_, selected, std::move(hooks));
 }
 
 void FilamentPanel::revert_extruder_dropdown() {

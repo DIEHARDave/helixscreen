@@ -2587,6 +2587,7 @@
   <translation tag="Resetting" zh="重置中"/>
   <translation tag="Resetting system" zh="正在重置系统"/>
   <translation tag="Resetting..." zh="正在重置..."/>
+  <translation tag="Resolve it on the filament system screen, then try again" zh="请在耗材系统界面中处理后重试"/>
   <translation tag="Response (Kp)" zh="响应 (Kp)"/>
   <translation tag="Restart" zh="重启"/>
   <translation tag="Restart Firmware?" zh="重启固件？"/>
@@ -3134,6 +3135,7 @@
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" zh="挤出机无法顺畅拉动。请检查料盘是否缠绕或打结，以及 PTFE 管是否严重弯折"/>
   <translation tag="The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again." zh="耗材未到达喷嘴。CFS 未报告错误，但工具头传感器仍未检测到耗材。请检查料盘是否放置到位、路径是否畅通，然后重试。"/>
   <translation tag="The filament may not have fully retracted — try again or manually pull" zh="耗材可能未完全回抽。请重试或手动抽出"/>
+  <translation tag="The filament system needs attention" zh="耗材系统需要处理"/>
   <translation tag="The filament system reported an error" zh="耗材系统报告错误"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." zh="打印机等待期间无法更改加热器。"/>
   <translation tag="The heater did not accept the printer&apos;s credentials." zh="加热器不接受打印机的凭据。"/>
