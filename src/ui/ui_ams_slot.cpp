@@ -1311,8 +1311,10 @@ void ui_ams_slot_move_badge_to_layer(lv_obj_t* obj, lv_obj_t* badge_layer, int32
     int32_t badge_y = container_top_y + container_h - badge_h - 2;   // -2 from translate_y
     // The spool container is wider than a narrow slot, so an end lane's corner
     // can stand past the row; the layer clips there, so the badge stays inside.
-    lv_obj_update_layout(badge_layer);
-    badge_x = LV_CLAMP(0, badge_x, lv_obj_get_content_width(badge_layer) - badge_w);
+    // A layer not laid out yet has no width to hold it in.
+    const int32_t layer_w = lv_obj_get_content_width(badge_layer);
+    if (layer_w > badge_w)
+        badge_x = LV_CLAMP(0, badge_x, layer_w - badge_w);
 
     // Reparent to badge_layer
     lv_obj_set_parent(data->status_badge_bg, badge_layer);

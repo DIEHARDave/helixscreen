@@ -166,6 +166,16 @@ std::unique_ptr<FilamentPathData> make_data(helix::PathTopology topo) {
     return d;
 }
 
+/// A U1-shaped PARALLEL unit: an entry sensor (the feeder port) and a
+/// toolhead switch on every lane, no load sensor.
+std::unique_ptr<FilamentPathData> make_u1_data() {
+    auto d = make_data(helix::PathTopology::PARALLEL);
+    for (int i = 0; i < 4; i++)
+        d->slot_has_prep_sensor[i] = true;
+    d->has_toolhead_sensor = true;
+    return d;
+}
+
 void load_active(FilamentPathData& d, int slot, helix::PathSegment seg) {
     d.active_slot = slot;
     d.filament_segment = static_cast<int>(seg);
@@ -1085,9 +1095,8 @@ TEST_CASE("FilamentPath plan: PARALLEL tubes hang from below their spools",
 
 TEST_CASE("FilamentPath plan: a PARALLEL entry sensor clamps the tube below its spool",
           "[filament-path][plan][parallel][lane_entry]") {
-    auto d = make_data(helix::PathTopology::PARALLEL);
-    for (int i = 0; i < 3; i++)
-        d->slot_has_prep_sensor[i] = true;
+    auto d = make_u1_data();
+    d->slot_has_prep_sensor[3] = false;
     load_active(*d, 0, PathSegment::NOZZLE);                          // mounted, reading
     d->slot_filament_states[1] = {PathSegment::PREP, SLOT_COLORS[1]}; // at the feeder only
     d->slot_filament_states[3] = {PathSegment::PREP, SLOT_COLORS[3]}; // no sensor published
@@ -1155,6 +1164,33 @@ TEST_CASE("FilamentPath plan: a PARALLEL unit without a toolhead sensor draws no
         CHECK(contiguous(r.path));
         CHECK(near(seg_end(r.path.segs[r.path.count - 1]), 50.0f + 100 * i, 268));
     }
+}
+
+TEST_CASE("FilamentPath plan: a short PARALLEL run keeps its two bands apart",
+          "[filament-path][plan][parallel][lane_entry]") {
+    auto d = make_u1_data();
+    BaseGeometry g = geometry();
+    g.height = 60;
+    const ParallelRows rows = parallel_rows(*d, g);
+    const int32_t gauge = d->theme.tube_gauge;
+    CAPTURE(rows.entry_y, rows.prep_y, rows.sensor_y);
+    // Short enough that three gauges below the cap would crowd the sensor.
+    REQUIRE(rows.sensor_y - rows.entry_y < 3 * gauge + 2 * gauge + BAND_THICKNESS);
+    REQUIRE(rows.sensor_y - rows.entry_y >= 2 * gauge + BAND_THICKNESS);
+    CHECK(rows.sensor_y - rows.prep_y >= 2 * gauge + BAND_THICKNESS);
+    CHECK(rows.prep_y >= rows.entry_y);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "FilamentPath: a PARALLEL lane with a load sensor still retracts to LANE",
+                 "[filament-path][plan][parallel]") {
+    // AFC's PARALLEL units: prep and load sensors on every lane.
+    lv_obj_t* w = make_canvas(test_screen(), static_cast<int>(helix::PathTopology::PARALLEL));
+    ui_filament_path_canvas_set_slot_prep_sensor(w, 1, true);
+    ui_filament_path_canvas_set_slot_load_sensor(w, 1, true);
+    ui_filament_path_canvas_set_active_slot(w, 1);
+    ui_filament_path_canvas_set_filament_segment(w, static_cast<int>(PathSegment::PREP));
+    CHECK(get_data(w)->filament_segment == static_cast<int>(PathSegment::LANE));
 }
 
 TEST_CASE("FilamentPath plan: the mounted PARALLEL tool is one active stroke",

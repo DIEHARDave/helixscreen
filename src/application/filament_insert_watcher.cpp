@@ -6,6 +6,7 @@
 #include "ui_ams_context_menu.h"
 #include "ui_ams_edit_overlay.h"
 #include "ui_external_spool_menu.h"
+#include "ui_insert_notice.h"
 #include "ui_nav.h"
 
 #include "ams_backend.h"
@@ -18,6 +19,8 @@
 #include "settings_manager.h"
 
 #include <spdlog/spdlog.h>
+
+#include <algorithm>
 
 namespace helix {
 
@@ -84,10 +87,6 @@ void FilamentInsertWatcher::on_ams_changed() {
         lane_prev_.clear();
         return;
     }
-    const int count = backend->get_system_info().total_slots;
-    lane_prev_.resize(count > 0 ? count : 0);
-    lane_waiting_.resize(lane_prev_.size(), false);
-
     FilamentInsertContext ctx;
     ctx.print_active =
         lv_subject_get_int(get_printer_state().print_state().get_print_active_subject()) != 0;
@@ -95,37 +94,49 @@ void FilamentInsertWatcher::on_ams_changed() {
     ctx.setting_enabled = SettingsManager::instance().get_filament_auto_open_editor();
     ctx.editor_open = editor_open();
 
+    const int open_slot = judge_lanes(*backend, ctx);
+    if (open_slot >= 0) {
+        open_lane(open_slot);
+    }
+}
+
+int FilamentInsertWatcher::judge_lanes(const AmsBackend& backend, FilamentInsertContext ctx) {
+    const int count = std::max(0, backend.get_system_info().total_slots);
+    lane_prev_.resize(count);
+    lane_waiting_.resize(count, false);
     int open_slot = -1;
     for (int i = 0; i < count; ++i) {
-        if (!backend->slot_has_prep_sensor(i)) {
-            continue;
-        }
-        ctx.is_present = slot_status_reports_filament(backend->get_slot_info(i).status);
+        ctx.is_present = backend.slot_insert_presence(i);
         // An insert held for the lane's tag reader is judged as the edge it was.
         const bool waiting = lane_waiting_[i];
         ctx.was_present = waiting ? std::optional<bool>(false) : lane_prev_[i];
         lane_prev_[i] = ctx.is_present;
         lane_waiting_[i] = false;
+        if (ctx.is_present != true) {
+            ui::release_insert_prompt(i);
+        }
         if (!should_open_editor_on_insert(ctx)) {
             continue;
         }
-        switch (lane_insert_action(backend->slot_insert_identity(i), waiting)) {
+        switch (lane_insert_action(backend.slot_insert_identity(i), waiting)) {
         case InsertEditorAction::Wait:
             lane_waiting_[i] = true;
+            ui::claim_insert_prompt(i);
             break;
         case InsertEditorAction::Open:
-            // Only the first lane to fill opens the editor; later ones are not queued.
+            // The editor is this insert's one prompt. Only the first lane to
+            // fill opens it; later ones are not queued.
+            ui::claim_insert_prompt(i);
             if (open_slot < 0) {
                 open_slot = i;
             }
             break;
         case InsertEditorAction::Ignore:
+            ui::release_insert_prompt(i);
             break;
         }
     }
-    if (open_slot >= 0) {
-        open_lane(open_slot);
-    }
+    return open_slot;
 }
 
 void FilamentInsertWatcher::on_sensor_changed() {

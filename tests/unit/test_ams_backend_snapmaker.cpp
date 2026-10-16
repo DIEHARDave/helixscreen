@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_batch_filament_modal.h"
+#include "ui_insert_notice.h"
 
 #include "../helix_test_fixture.h"
 #include "../test_helpers/backend_user_edit.h"
@@ -18,6 +19,7 @@
 #include "ams_types.h"
 #include "app_globals.h"
 #include "display_numbering.h"
+#include "filament_insert_watcher.h"
 #include "filament_op_execute.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
@@ -3849,6 +3851,81 @@ TEST_CASE_METHOD(SnapmakerInsertFixture, "Snapmaker an insert's identity waits o
     }
     // Other lanes saw no insert.
     CHECK(backend.slot_insert_identity(1) == InsertIdentity::NotRead);
+}
+
+namespace {
+/// One pass of the insert watcher over the backend, as an AMS change runs it.
+int judge(FilamentInsertWatcher& watcher, const AmsBackend& backend) {
+    FilamentInsertContext ctx;
+    ctx.setting_enabled = true;
+    return watcher.judge_lanes(backend, ctx);
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerInsertFixture,
+                 "Snapmaker an idle tool parking an empty lane is no insert",
+                 "[ams][snapmaker][insert_watcher]") {
+    helix::ui::reset_insert_offers_for_test();
+    FilamentInsertWatcher watcher(nullptr);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(1, "wait_insert", false));
+    REQUIRE(judge(watcher, backend) == -1);
+
+    // T1 parks and the task config claims filament: both move the slot
+    // status, but no spool went in.
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"extruder1", json{{"park_pin", true}, {"active_pin", false}}}});
+    CHECK(judge(watcher, backend) == -1);
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"print_task_config",
+                       json{{"filament_exist", json::array({false, true, false, false})}}}});
+    CHECK(backend.slot_insert_presence(1).value_or(true) == false);
+    CHECK(judge(watcher, backend) == -1);
+}
+
+TEST_CASE_METHOD(SnapmakerInsertFixture,
+                 "Snapmaker an untagged insert opens the editor and nothing else",
+                 "[ams][snapmaker][insert_watcher][1710]") {
+    helix::ui::reset_insert_offers_for_test();
+    FilamentInsertWatcher watcher(nullptr);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", false));
+    REQUIRE(judge(watcher, backend) == -1);
+
+    // The port sensor sees the spool; the reader has not answered.
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", true));
+    CHECK(judge(watcher, backend) == -1);
+
+    // The reader finds no tag: the editor is this insert's one prompt.
+    SnapmakerTestAccess::handle_status(
+        backend, make_filament_detect_status(0, "NONE", 0u, "NONE", json::array()));
+    drain();
+    CHECK(judge(watcher, backend) == 0);
+    CHECK(toasts.empty());
+}
+
+TEST_CASE_METHOD(SnapmakerInsertFixture, "Snapmaker a tag-identified insert opens nothing",
+                 "[ams][snapmaker][insert_watcher][1710]") {
+    helix::ui::reset_insert_offers_for_test();
+    FilamentInsertWatcher watcher(nullptr);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", false));
+    REQUIRE(judge(watcher, backend) == -1);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", true));
+    CHECK(judge(watcher, backend) == -1);
+    SnapmakerTestAccess::handle_status(
+        backend, make_filament_detect_status(0, "PLA", 0xFF00AA00u, "Polymaker",
+                                             json::array({144, 32, 196, 2})));
+    drain();
+    CHECK(judge(watcher, backend) == -1);
+    CHECK(toasts.empty());
+    CHECK_FALSE(helix::ui::insert_prompt_claimed(0));
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker has a toolhead sensor once a head reports its switch",
+                 "[ams][snapmaker][entry_sensor]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+    CHECK_FALSE(backend.get_system_info().units[0].has_toolhead_sensor);
+    SnapmakerTestAccess::handle_status(backend, t3_switch(false));
+    CHECK(backend.get_system_info().units[0].has_toolhead_sensor);
 }
 
 // ============================================================================

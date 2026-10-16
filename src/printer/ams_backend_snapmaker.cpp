@@ -193,8 +193,6 @@ AmsBackendSnapmaker::AmsBackendSnapmaker(IMoonrakerAPI* api, helix::IMoonrakerCl
     unit.first_slot_global_index = 0;
     unit.connected = true;
     unit.topology = PathTopology::PARALLEL;
-    // Every toolhead carries its own filament switch (e{N}_filament).
-    unit.has_toolhead_sensor = true;
 
     for (int i = 0; i < NUM_TOOLS; i++) {
         SlotInfo slot;
@@ -447,6 +445,13 @@ PathSegment AmsBackendSnapmaker::slot_segment_locked(int i) const {
     if (sensor_filament_present_[i])
         return PathSegment::OUTPUT;
     return PathSegment::NONE;
+}
+
+std::optional<bool> AmsBackendSnapmaker::slot_insert_presence(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (slot_index < 0 || slot_index >= NUM_TOOLS || !feed_presence_seen_[slot_index])
+        return std::nullopt;
+    return port_sensor_filament_present_[slot_index];
 }
 
 InsertIdentity AmsBackendSnapmaker::slot_insert_identity(int slot_index) const {
@@ -2147,6 +2152,8 @@ void AmsBackendSnapmaker::apply_toolhead_sensors_locked(const snapmaker::StatusD
         if (!toolhead_switch_reported_[tool_idx]) {
             toolhead_switch_reported_[tool_idx] = true;
             fx.changed = true;
+            // The unit has a toolhead sensor once any head reports its switch.
+            system_info_.units[0].has_toolhead_sensor = true;
         }
         if (sensor_filament_present_[tool_idx] != present) {
             sensor_filament_present_[tool_idx] = present;

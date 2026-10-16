@@ -412,9 +412,11 @@ ParallelRows parallel_rows(const FilamentPathData& data, const BaseGeometry& g) 
         }
     }
     // A lane's entry sensor clamps the tube three gauges below its cap, clear
-    // of the spool's glow, and never past halfway to the toolhead sensor.
+    // of the spool's glow, and keeps two gauges and a band of tube above the
+    // toolhead sensor. On a run too short for both it stands on the cap.
+    const int32_t gauge = data.theme.tube_gauge;
     r.prep_y =
-        LV_MIN(r.entry_y + 3 * data.theme.tube_gauge, row_between(r.entry_y, r.sensor_y, 0.5f));
+        LV_MAX(r.entry_y, LV_MIN(r.entry_y + 3 * gauge, r.sensor_y - 2 * gauge - BAND_THICKNESS));
     return r;
 }
 

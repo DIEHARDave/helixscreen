@@ -449,6 +449,25 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
     }
 }
 
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS unit: a badge moved onto a layer with no width keeps its corner",
+                 "[ams][tray][ui_integration]") {
+    build("passive", 4, /*tool_changer=*/true);
+    lv_obj_t* wide = lv_obj_create(test_screen());
+    lv_obj_set_size(wide, 400, 100);
+    lv_obj_t* empty = lv_obj_create(test_screen());
+    lv_obj_set_size(empty, 0, 0);
+    lv_obj_update_layout(test_screen());
+
+    lv_obj_t* badge = ui_ams_slot_get_status_badge(slot(0));
+    REQUIRE(badge != nullptr);
+    ui_ams_slot_move_badge_to_layer(slot(0), wide, 100);
+    const int32_t corner_x = lv_obj_get_style_x(badge, LV_PART_MAIN);
+    REQUIRE(corner_x > 0);
+    ui_ams_slot_move_badge_to_layer(slot(0), empty, 100);
+    CHECK(lv_obj_get_style_x(badge, LV_PART_MAIN) == corner_x);
+}
+
 TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a spool name stacks directly over its material",
                  "[ams][tray][ui_integration][slot_name]") {
     build("passive");

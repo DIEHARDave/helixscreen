@@ -35,6 +35,7 @@
 #include <cstdio>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // ============================================================================
@@ -812,6 +813,7 @@ void ams_detail_update_badges(AmsDetailWidgets& w, lv_obj_t* slot_widgets[], int
     helix::ui::safe_clean_children(w.badge_layer);
 
     int32_t slot_spacing = layout.slot_width - layout.overlap;
+    lv_obj_update_layout(w.badge_layer);
 
     for (int i = 0; i < slot_count; ++i) {
         if (slot_widgets[i]) {
@@ -1277,6 +1279,11 @@ std::unordered_map<int, InsertOffer>& insert_offers() {
     return offers;
 }
 
+std::unordered_set<int>& insert_prompt_claims() {
+    static std::unordered_set<int> claims;
+    return claims;
+}
+
 void clear_if_lane_unchanged(int slot) {
     auto& offers = insert_offers();
     const auto it = offers.find(slot);
@@ -1297,9 +1304,27 @@ void clear_if_lane_unchanged(int slot) {
 
 void reset_insert_offers_for_test() {
     insert_offers().clear();
+    insert_prompt_claims().clear();
+}
+
+void claim_insert_prompt(int slot) {
+    insert_prompt_claims().insert(slot);
+}
+
+void release_insert_prompt(int slot) {
+    insert_prompt_claims().erase(slot);
+}
+
+bool insert_prompt_claimed(int slot) {
+    return insert_prompt_claims().count(slot) != 0;
 }
 
 void offer_clear_after_unverified_insert(int slot) {
+    if (insert_prompt_claimed(slot)) {
+        spdlog::debug("[AMS] Slot {} insert belongs to the slot editor; no same-spool notice",
+                      slot);
+        return;
+    }
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend ||
         clear_spool_blocked_by_print(get_printer_state().print_state().get_print_lifecycle(),

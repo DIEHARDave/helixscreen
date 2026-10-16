@@ -968,6 +968,20 @@ class AmsBackend {
         return InsertIdentity::NotRead;
     }
 
+    /**
+     * @brief The presence reading the insert watcher judges on this lane
+     *
+     * An insert is this reading's empty to present edge. nullopt means the lane
+     * cannot tell an insert. Default: the slot status, on lanes with a prep
+     * sensor. A backend whose status also moves for reasons other than a spool
+     * going in (a tool parking, firmware metadata) answers from the sensor itself.
+     */
+    [[nodiscard]] virtual std::optional<bool> slot_insert_presence(int slot_index) const {
+        if (!slot_has_prep_sensor(slot_index))
+            return std::nullopt;
+        return slot_status_reports_filament(get_slot_info(slot_index).status);
+    }
+
     // ========================================================================
     // Filament Operations
     // ========================================================================

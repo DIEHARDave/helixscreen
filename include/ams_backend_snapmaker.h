@@ -205,6 +205,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// reader's verdict (pending_insert_passes_ / insert_verdict_).
     [[nodiscard]] InsertIdentity slot_insert_identity(int slot_index) const override;
 
+    /// The feeder port sensor alone: a tool parking or print_task_config's
+    /// filament_exist moves the slot status without a spool going in.
+    [[nodiscard]] std::optional<bool> slot_insert_presence(int slot_index) const override;
+
     // Per-slot "filament is loaded to THIS tool's nozzle". Returns the
     // channel_state latch (loaded_at_toolhead_), driven by filament_feed
     // channel_state transitions: true between load_finish and the next

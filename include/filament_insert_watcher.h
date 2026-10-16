@@ -4,6 +4,7 @@
 #pragma once
 
 #include "async_lifetime_guard.h"
+#include "filament_insert_policy.h"
 #include "i_moonraker_api.h"
 #include "observer_factory.h"
 
@@ -11,6 +12,8 @@
 #include <vector>
 
 namespace helix {
+
+class AmsBackend;
 
 /// Opens the per-slot editor when a person newly inserts filament (#1335).
 ///
@@ -26,6 +29,12 @@ class FilamentInsertWatcher {
   public:
     explicit FilamentInsertWatcher(IMoonrakerAPI* api);
     void start(); ///< One-shot; installs the observers
+
+    /// One judging pass over the lanes: updates each lane's baseline and held
+    /// insert, claims the insert prompt for a lane it asks or waits on, and
+    /// returns the lane whose editor to open, or -1. @p ctx carries the guards
+    /// (setting, print, operation, editor); its presence fields are per lane.
+    int judge_lanes(const AmsBackend& backend, FilamentInsertContext ctx);
 
   private:
     void on_ams_changed();
