@@ -12907,6 +12907,44 @@ TEST_CASE("AD5X IFS a firmware change on a slot with no override still re-reads 
     helix::ui::UpdateQueue::instance().drain();
 }
 
+TEST_CASE("AD5X IFS a lock release waits on the lane_data re-read",
+          "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
+    // The outside tool's CHANGE_ZCOLOR releases the user's locks, and the
+    // released record would overwrite the one the tool wrote beside it.
+    Ad5xIfsTmpCacheDir tmp("release_waits_on_reread");
+    Ad5xIfsTmpJsonFile json("release_waits_on_reread",
+                            R"({"FFMInfo":{"ffmColor1":"#FF0000","ffmType1":"PLA"}})");
+    MockPrinter mock_printer;
+
+    helix::test::RegisteredBackend<AmsBackendAd5xIfs> backend_reg(&mock_printer.api, nullptr);
+    AmsBackendAd5xIfs& backend = *backend_reg;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    Ad5xIfsTestAccess::set_local_adventurer_json_path(backend, json.path.string());
+    boot_from_lane_data(backend, mock_printer, tmp.path);
+    firmware_states_slot0(backend, "FF0000", "PLA");
+
+    SlotInfo edit = backend.get_slot_info(0);
+    edit.color_rgb = 0xFFFFFF;
+    edit.material = "SILK";
+    edit.brand = "Sunlu";
+    helix::test::edit_slot_as_user(backend, 0, edit);
+    helix::ui::UpdateQueue::instance().drain();
+
+    const nlohmann::json tool_record = outside_lane_record(0, "#0055FF", "PETG", "Blue PETG", 0);
+    mock_printer.client.mock_db_set("lane_data", "lane1", tool_record);
+    outside_tool_change_zcolor(backend);
+    CHECK(mock_printer.client.mock_db_get("lane_data", "lane1") == tool_record);
+
+    lane_record_reread_lands(backend);
+    CHECK(mock_printer.client.mock_db_get("lane_data", "lane1") == tool_record);
+    const SlotInfo after = backend.get_slot_info(0);
+    CHECK(after.spool_name == "Blue PETG");
+    CHECK(after.material == "PETG");
+    CHECK(after.color_rgb == 0x0055FFu);
+    helix::ui::UpdateQueue::instance().drain();
+}
+
 TEST_CASE("AD5X IFS boot reads the binding an outside tool left in lane_data",
           "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
     Ad5xIfsTmpCacheDir tmp("outside_binding_at_boot");

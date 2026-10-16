@@ -1760,7 +1760,7 @@ void AmsBackendAd5xIfs::release_color_material_locks_locked(int slot_index,
     retract_lane_declaration_locked(slot_index, released);
 
     // Persist so a restart reloads the released record rather than the locked
-    // one. Capture by value: the callback can fire long after this returns.
+    // one.
     publish_override_locked(slot_index, "lock release");
 }
 
