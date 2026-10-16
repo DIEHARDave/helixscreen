@@ -116,6 +116,9 @@ namespace ui {
 namespace {
 
 ChamberStallPrompt* g_prompt = nullptr;
+/// The open emergency-stop confirmation, so the prompt can withdraw it when
+/// the wait it was asked for ends. Cleared by every path that closes it.
+lv_obj_t* g_estop_confirm = nullptr;
 
 /// The chamber prompt. Its subjects are global so the nested
 /// modal_button_row resolves them, and static so they outlive any one show.
@@ -292,15 +295,20 @@ void ChamberStallPrompt::cancel_print(ChamberWaitKind kind) {
     spdlog::info("[ChamberStall] Cancel print: wait kind {}, path {}", static_cast<int>(kind),
                  static_cast<int>(path));
     if (path == ChamberCancelPath::EmergencyStop) {
-        helix::ui::modal_confirm(
+        ConfirmOptions options;
+        options.on_cancel = []() { g_estop_confirm = nullptr; };
+        options.on_dismiss = []() { g_estop_confirm = nullptr; };
+        g_estop_confirm = helix::ui::modal_confirm(
             lv_tr("Stop with an emergency stop?"),
             lv_tr("The printer is waiting for the chamber to reach a temperature, and only an "
                   "emergency stop and a firmware restart end that wait. The print stops at once "
                   "and cannot be resumed."),
-            ModalSeverity::Error, lv_tr("Emergency stop"), []() {
-                spdlog::warn("[ChamberStall] Emergency stop confirmed to end a chamber wait");
-                AbortManager::instance().start_abort(AbortManager::Entry::EmergencyStop);
-            });
+            ModalSeverity::Error, lv_tr("Emergency stop"),
+            []() {
+                g_estop_confirm = nullptr;
+                confirm_emergency_stop();
+            },
+            options);
         return;
     }
     // A target of 0 ends an M191 wait, and so does the cancel itself on
@@ -322,8 +330,48 @@ ChamberWaitLine ChamberStallPrompt::current_wait() const {
     return wait_line_;
 }
 
+// Which wait holds the queue decides how Cancel ends it, so a Cancel tapped
+// while that is still being read waits for the answer, briefly.
+bool ChamberStallPrompt::emergency_stop_confirm_open() {
+    return g_estop_confirm && ModalStack::instance().backdrop_for(g_estop_confirm) != nullptr &&
+           !ModalStack::instance().is_exiting(ModalStack::instance().backdrop_for(g_estop_confirm));
+}
+
+bool ChamberStallPrompt::confirm_emergency_stop() {
+    auto& print = get_printer_state().print_state();
+    const bool waiting = lv_subject_get_int(print.get_print_start_chamber_wait_subject()) != 0;
+    if (!job_holds_machine() || !waiting) {
+        spdlog::warn("[ChamberStall] Emergency stop not sent: the chamber wait already ended "
+                     "(job={}, wait={})",
+                     job_holds_machine(), waiting);
+        ToastManager::instance().show(ToastSeverity::INFO,
+                                      lv_tr("The chamber wait already ended; nothing was stopped."),
+                                      5000);
+        return false;
+    }
+    spdlog::warn("[ChamberStall] Emergency stop confirmed to end a chamber wait");
+    AbortManager::instance().start_abort(AbortManager::Entry::EmergencyStop);
+    return true;
+}
+
 void ChamberStallPrompt::on_cancel() {
-    cancel_print(current_wait().kind);
+    if (!wait_line_pending_ || get_printer_state().temperature_state().chamber_wait_active()) {
+        cancel_print(current_wait().kind);
+        return;
+    }
+    spdlog::info("[ChamberStall] Cancel waits for the waiting command to be read");
+    pending_cancel_ = true;
+    lv_timer_t* timer = lv_timer_create(
+        [](lv_timer_t*) {
+            if (g_prompt && g_prompt->pending_cancel_) {
+                spdlog::info("[ChamberStall] Waiting command not read in time; cancelling");
+                g_prompt->cancel_wait_timer_.release(); // one-shot: LVGL deletes it
+                g_prompt->run_pending_cancel();
+            }
+        },
+        kCancelClassifyWaitMs, nullptr);
+    lv_timer_set_repeat_count(timer, 1);
+    cancel_wait_timer_.reset(timer);
 }
 
 void ChamberStallPrompt::on_try_again() {
@@ -376,14 +424,24 @@ void ChamberStallPrompt::evaluate() {
     in.rejected = lv_subject_get_int(temps.get_chamber_heater_command_rejected_subject()) != 0;
     in.rejection_seq = lv_subject_get_int(temps.get_chamber_heater_rejection_seq_subject());
     in.chamber_target_deci = lv_subject_get_int(temps.get_chamber_target_subject());
-    if (!in.job_active) {
-        wait_line_ = {};
-        wait_line_probed_ = false;
+    // A later chamber wait in the same job may be another command.
+    if (!in.chamber_wait && wait_line_probed_ && !pending_cancel_) {
+        reset_wait_line();
     }
-    if (ChamberStallModal::showing() && ChamberStallArbiter::should_close(in)) {
-        spdlog::info("[ChamberStall] Closing the prompt: job={} wait={} rejected={} target={}",
-                     in.job_active, in.chamber_wait, in.rejected, in.chamber_target_deci);
-        Modal::hide(ChamberStallModal::open_dialog());
+    if (ChamberStallArbiter::should_close(in)) {
+        if (ChamberStallModal::showing()) {
+            spdlog::info("[ChamberStall] Closing the prompt: job={} wait={} rejected={} "
+                         "target={}",
+                         in.job_active, in.chamber_wait, in.rejected, in.chamber_target_deci);
+            Modal::hide(ChamberStallModal::open_dialog());
+        }
+        // An emergency stop asked for to end a wait that has since ended
+        // would stop whatever the printer is doing now.
+        if (emergency_stop_confirm_open()) {
+            spdlog::info("[ChamberStall] Withdrawing the emergency-stop confirmation");
+            Modal::hide(g_estop_confirm);
+            g_estop_confirm = nullptr;
+        }
     }
     switch (arbiter_.decide(in)) {
     case ChamberStallAction::Prompt:
@@ -460,49 +518,86 @@ void ChamberStallPrompt::probe_wait_line() {
         return;
     }
     const std::string filename = file;
+    const uint32_t gen = ++wait_line_gen_;
+    wait_line_pending_ = true;
     auto tok = lifetime_.token();
+    // Every path out of the read lands in on_wait_line() on the main thread,
+    // so a Cancel waiting on the classification always gets an answer.
+    auto give_up = [tok, gen](const char* what, const MoonrakerError& e) {
+        spdlog::info("[ChamberStall] {} not read: {}", what, e.message);
+        tok.defer("ChamberStallPrompt::wait_line_failed", [gen]() {
+            if (g_prompt) {
+                g_prompt->on_wait_line(gen, std::nullopt);
+            }
+        });
+    };
     api->get_client().send_jsonrpc(
         "printer.objects.query", {{"objects", {{"virtual_sdcard", {"file_position"}}}}},
-        [tok, filename](const nlohmann::json& resp) {
+        [tok, filename, gen, give_up](const nlohmann::json& resp) {
             // WebSocket thread: parse only; the download starts on the main thread.
             const nlohmann::json& result = resp.contains("result") ? resp["result"] : resp;
             if (!result.contains("status") || !result["status"].contains("virtual_sdcard") ||
                 !result["status"]["virtual_sdcard"].contains("file_position") ||
                 !result["status"]["virtual_sdcard"]["file_position"].is_number()) {
+                give_up("virtual_sdcard.file_position", MoonrakerError{});
                 return;
             }
             const auto pos = result["status"]["virtual_sdcard"]["file_position"].get<uint64_t>();
-            tok.defer("ChamberStallPrompt::read_wait_line", [tok, filename, pos]() {
+            tok.defer("ChamberStallPrompt::read_wait_line", [tok, filename, pos, gen, give_up]() {
                 IMoonrakerAPI* api = get_moonraker_api();
                 if (!api) {
+                    if (g_prompt) {
+                        g_prompt->on_wait_line(gen, std::nullopt);
+                    }
                     return;
                 }
                 constexpr uint64_t kWindow = 256;
                 const uint64_t from = pos > kWindow ? pos - kWindow : 0;
                 api->transfers().download_file_range(
                     "gcodes", filename, from, static_cast<size_t>(pos - from),
-                    [tok](const std::string& bytes) {
+                    [tok, gen](const std::string& bytes) {
                         const ChamberWaitLine line = classify_chamber_wait_line(bytes);
-                        tok.defer("ChamberStallPrompt::wait_line", [line]() {
-                            if (!g_prompt) {
-                                return;
-                            }
-                            spdlog::info("[ChamberStall] Waiting command: kind {}, {}°C",
-                                         static_cast<int>(line.kind), line.target_c);
-                            g_prompt->wait_line_ = line;
-                            if (ChamberStallModal::showing()) {
-                                g_prompt->refresh_content();
+                        tok.defer("ChamberStallPrompt::wait_line", [line, gen]() {
+                            if (g_prompt) {
+                                g_prompt->on_wait_line(gen, line);
                             }
                         });
                     },
-                    [](const MoonrakerError& e) {
-                        spdlog::info("[ChamberStall] Wait line not read: {}", e.message);
-                    });
+                    [give_up](const MoonrakerError& e) { give_up("Wait line", e); });
             });
         },
-        [](const MoonrakerError& e) {
-            spdlog::info("[ChamberStall] virtual_sdcard not read: {}", e.message);
-        });
+        [give_up](const MoonrakerError& e) { give_up("virtual_sdcard", e); });
+}
+
+void ChamberStallPrompt::on_wait_line(uint32_t gen, std::optional<ChamberWaitLine> line) {
+    if (gen != wait_line_gen_) {
+        return; // a read for a wait that has since ended
+    }
+    wait_line_pending_ = false;
+    if (line) {
+        spdlog::info("[ChamberStall] Waiting command: kind {}, {}°C", static_cast<int>(line->kind),
+                     line->target_c);
+        wait_line_ = *line;
+    }
+    if (ChamberStallModal::showing()) {
+        refresh_content();
+    }
+    if (pending_cancel_) {
+        run_pending_cancel();
+    }
+}
+
+void ChamberStallPrompt::reset_wait_line() {
+    wait_line_ = {};
+    wait_line_probed_ = false;
+    wait_line_pending_ = false;
+    ++wait_line_gen_;
+}
+
+void ChamberStallPrompt::run_pending_cancel() {
+    pending_cancel_ = false;
+    cancel_wait_timer_.reset();
+    cancel_print(current_wait().kind);
 }
 
 void ChamberStallPrompt::show_prompt() {

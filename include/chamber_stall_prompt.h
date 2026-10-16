@@ -2,9 +2,12 @@
 #pragma once
 
 #include "ui_observer_guard.h"
+#include "ui_timer_guard.h"
 
 #include "async_lifetime_guard.h"
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -99,6 +102,14 @@ class ChamberStallPrompt {
     /// emergency-stop path asks for confirmation and acts only on it.
     static void cancel_print(ChamberWaitKind kind);
 
+    /// The emergency-stop confirmation cancel_print() raised is open.
+    static bool emergency_stop_confirm_open();
+
+    /// The confirmed emergency stop, re-checked first: a job still holds the
+    /// machine and the chamber wait it was asked for still blocks it. Returns
+    /// whether it was sent.
+    static bool confirm_emergency_stop();
+
   private:
     void evaluate();
     void show_prompt();
@@ -109,7 +120,14 @@ class ChamberStallPrompt {
     ChamberWaitLine current_wait() const;
     void on_try_again();
     void on_cancel();
+    void on_wait_line(uint32_t gen, std::optional<ChamberWaitLine> line);
+    void reset_wait_line();
+    void run_pending_cancel();
     friend class ChamberStallModalAccess;
+    friend class ChamberStallPromptTestAccess;
+
+    /// How long a Cancel waits for the waiting command to be read.
+    static constexpr uint32_t kCancelClassifyWaitMs = 3000;
 
     ObserverGuard rejected_observer_;
     ObserverGuard seq_observer_;
@@ -122,6 +140,10 @@ class ChamberStallPrompt {
 
     ChamberWaitLine wait_line_;
     bool wait_line_probed_ = false;
+    bool wait_line_pending_ = false; ///< the read is in flight
+    uint32_t wait_line_gen_ = 0;     ///< bumps per read, so a stale answer is dropped
+    bool pending_cancel_ = false;    ///< Cancel tapped while the read was in flight
+    LvglTimerGuard cancel_wait_timer_;
     bool retry_busy_ = false;
     std::string note_; ///< the last Try Again's outcome, "" when none
 };

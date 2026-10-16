@@ -399,10 +399,13 @@ void TemperatureController::send_chamber_target_direct(
             err.type = MoonrakerErrorType::JSON_RPC_ERROR;
             err.method = method;
             // The route's reason is vendor vocabulary: it goes to the log,
-            // and the rejection latch carries the user's words.
-            err.message = reply.outcome == ChamberRouteOutcome::PrinterShutdown
-                              ? std::string(lv_tr("The printer is shut down."))
-                              : std::string(lv_tr("The heater didn't accept the command."));
+            // and the rejection latch carries the user's words. This runs on
+            // the WebSocket thread, so the text is carried as a tag and
+            // translated where it is shown.
+            err.message_tag = reply.outcome == ChamberRouteOutcome::PrinterShutdown
+                                  ? TR_NOOP("The printer is shut down.")
+                                  : TR_NOOP("The heater didn't accept the command.");
+            err.message = err.message_tag;
             spdlog::info("[TemperatureController] Chamber target {}°C refused: {}", celsius,
                          reply.reason.empty() ? "no reason given" : reply.reason);
             fail(err);

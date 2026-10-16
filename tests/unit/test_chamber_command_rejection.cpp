@@ -375,10 +375,14 @@ TEST_CASE_METHOD(RouteFixture,
 TEST_CASE_METHOD(RouteFixture, "what the route answers reaches a plain chamber set",
                  "[chamber][rejection][route]") {
     std::string error;
+    const char* error_tag = nullptr;
     bool succeeded = false;
     helix::SendOptions opts;
     opts.toast = false;
-    opts.on_error = [&error](const MoonrakerError& e) { error = e.message; };
+    opts.on_error = [&error, &error_tag](const MoonrakerError& e) {
+        error = e.localized_message();
+        error_tag = e.message_tag;
+    };
     opts.on_success = [&succeeded]() { succeeded = true; };
 
     SECTION("superseded: the newer target governs, nothing failed") {
@@ -403,6 +407,8 @@ TEST_CASE_METHOD(RouteFixture, "what the route answers reaches a plain chamber s
         drain();
         CHECK_FALSE(succeeded);
         CHECK(error == lv_tr("The printer is shut down."));
+        // Carried untranslated off the WebSocket thread, translated where shown.
+        CHECK(error_tag != nullptr);
     }
 
     SECTION("still pending after the route's wait counts as sent") {
@@ -780,4 +786,126 @@ TEST_CASE_METHOD(PromptFixture, "a wait the device reports as its own M191 is ca
     CHECK(std::string(
               lv_subject_get_string(lv_xml_get_subject(nullptr, "chamber_stall_cancel_hint"))) ==
           lv_tr("Cancelling turns the chamber target off so the wait ends, then stops the print."));
+}
+
+namespace helix::ui {
+class ChamberStallPromptTestAccess {
+  public:
+    /// Stand in for a read of the waiting command that is still in flight.
+    static void begin_read(ChamberStallPrompt& p) {
+        p.wait_line_probed_ = true;
+        p.wait_line_pending_ = true;
+        ++p.wait_line_gen_;
+    }
+    static void answer(ChamberStallPrompt& p, std::optional<ChamberWaitLine> line) {
+        p.on_wait_line(p.wait_line_gen_, line);
+    }
+    static ChamberWaitKind kind(const ChamberStallPrompt& p) {
+        return p.wait_line_.kind;
+    }
+    static bool probed(const ChamberStallPrompt& p) {
+        return p.wait_line_probed_;
+    }
+    static void cancel(ChamberStallPrompt& p) {
+        p.on_cancel();
+    }
+};
+} // namespace helix::ui
+
+using helix::ui::ChamberStallPromptTestAccess;
+
+TEST_CASE_METHOD(PromptFixture, "the emergency-stop confirmation goes when its wait does",
+                 "[chamber][rejection][prompt][prompt_ui][estop]") {
+    AbortManagerTestAccess::reset(helix::AbortManager::instance());
+    helix::AbortManager::instance().init(nullptr, &state());
+    refuse(1);
+    chamber_wait(true);
+    REQUIRE(dialog() != nullptr);
+    helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::TemperatureWait);
+    settle();
+    REQUIRE(helix::ui::ChamberStallPrompt::emergency_stop_confirm_open());
+
+    SECTION("the chamber reaches the wait's temperature") {
+        chamber_wait(false);
+        CHECK_FALSE(helix::ui::ChamberStallPrompt::emergency_stop_confirm_open());
+    }
+    SECTION("the job ends") {
+        state().update_from_status({{"print_stats", {{"state", "complete"}}}});
+        settle();
+        CHECK_FALSE(helix::ui::ChamberStallPrompt::emergency_stop_confirm_open());
+    }
+    CHECK(helix::AbortManager::instance().get_state() == helix::AbortManager::State::IDLE);
+}
+
+TEST_CASE_METHOD(PromptFixture, "a confirmed emergency stop is checked against the wait again",
+                 "[chamber][rejection][prompt][prompt_ui][estop]") {
+    AbortManagerTestAccess::reset(helix::AbortManager::instance());
+    helix::AbortManager::instance().init(nullptr, &state());
+
+    SECTION("the wait already ended: nothing is sent") {
+        chamber_wait(false);
+        CHECK_FALSE(helix::ui::ChamberStallPrompt::confirm_emergency_stop());
+        CHECK(helix::AbortManager::instance().get_state() == helix::AbortManager::State::IDLE);
+    }
+    SECTION("the job already ended: nothing is sent") {
+        chamber_wait(true);
+        state().update_from_status({{"print_stats", {{"state", "complete"}}}});
+        settle();
+        CHECK_FALSE(helix::ui::ChamberStallPrompt::confirm_emergency_stop());
+        CHECK(helix::AbortManager::instance().get_state() == helix::AbortManager::State::IDLE);
+    }
+    SECTION("still waiting: the stop goes out") {
+        chamber_wait(true);
+        CHECK(helix::ui::ChamberStallPrompt::confirm_emergency_stop());
+        CHECK(helix::AbortManager::instance().get_state() ==
+              helix::AbortManager::State::SENT_ESTOP);
+    }
+}
+
+TEST_CASE_METHOD(PromptFixture, "each chamber wait in a job has its command read again",
+                 "[chamber][rejection][prompt][prompt_ui][wait_line]") {
+    refuse(1);
+    chamber_wait(true);
+    REQUIRE(dialog() != nullptr);
+    ChamberStallPromptTestAccess::begin_read(prompt);
+    ChamberStallPromptTestAccess::answer(prompt,
+                                         helix::ChamberWaitLine{helix::ChamberWaitKind::M191, 60});
+    REQUIRE(ChamberStallPromptTestAccess::kind(prompt) == helix::ChamberWaitKind::M191);
+    chamber_wait(false);
+    CHECK(ChamberStallPromptTestAccess::kind(prompt) == helix::ChamberWaitKind::Unknown);
+    CHECK_FALSE(ChamberStallPromptTestAccess::probed(prompt));
+}
+
+TEST_CASE_METHOD(PromptFixture, "Cancel tapped while the waiting command is read waits for it",
+                 "[chamber][rejection][prompt][prompt_ui][wait_line]") {
+    AbortManagerTestAccess::reset(helix::AbortManager::instance());
+    helix::AbortManager::instance().init(nullptr, &state());
+    refuse(1);
+    chamber_wait(true);
+    REQUIRE(dialog() != nullptr);
+    ChamberStallPromptTestAccess::begin_read(prompt);
+    ChamberStallPromptTestAccess::cancel(prompt);
+    settle();
+    REQUIRE(helix::AbortManager::instance().get_state() == helix::AbortManager::State::IDLE);
+
+    SECTION("an M191 answer cancels") {
+        ChamberStallPromptTestAccess::answer(
+            prompt, helix::ChamberWaitLine{helix::ChamberWaitKind::M191, 60});
+        settle();
+        CHECK(helix::AbortManager::instance().get_state() ==
+              helix::AbortManager::State::SENT_CANCEL);
+    }
+    SECTION("a TEMPERATURE_WAIT answer asks for the emergency stop") {
+        ChamberStallPromptTestAccess::answer(
+            prompt, helix::ChamberWaitLine{helix::ChamberWaitKind::TemperatureWait, 35});
+        settle();
+        CHECK(helix::ui::ChamberStallPrompt::emergency_stop_confirm_open());
+        CHECK(helix::AbortManager::instance().get_state() == helix::AbortManager::State::IDLE);
+    }
+    SECTION("no answer in time: the cancel goes out anyway") {
+        process_lvgl(3500);
+        settle();
+        CHECK(helix::AbortManager::instance().get_state() ==
+              helix::AbortManager::State::SENT_CANCEL);
+    }
 }
