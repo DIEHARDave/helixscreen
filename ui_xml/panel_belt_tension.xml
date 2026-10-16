@@ -4,6 +4,10 @@
 <!-- Belt Tension Panel - Two resonance sweeps, compared -->
 <!-- States: 0=START, 1=RUNNING, 2=RESULTS, 3=ERROR, 4=TUNING -->
 <component>
+  <subjects>
+    <!-- Below medium the button rows drop their decorative icons for label room -->
+    <subject_expr name="bt_narrow" expr="ui_breakpoint le 2"/>
+  </subjects>
   <styles>
     <!-- Path A and Path B keep one color each everywhere they appear. -->
     <style name="path_a_text" text_color="#belt_path_a"/>
@@ -131,18 +135,15 @@
                   <bind_flag_if_eq subject="bt_has_similarity_was" flag="hidden" ref_value="0"/>
                 </text_small>
               </lv_obj>
-              <lv_obj name="bt_verdict_chip"
-                      width="content" height="content" style_radius="#space_xl" style_border_width="1" style_bg_opa="40"
-                      style_border_opa="140" style_pad_hor="#space_md" style_pad_ver="#space_xs" scrollable="false">
+              <!-- The verdict chip is one label, capped at the centre's width: a longer verdict ends in dots -->
+              <text_body name="bt_verdict_chip"
+                         width="content" height="content" style_max_width="100%" bind_text="bt_verdict_text"
+                         style_text_align="center" long_mode="dots" style_radius="#space_xl" style_border_width="1"
+                         style_bg_opa="40" style_border_opa="140" style_pad_hor="#space_md" style_pad_ver="#space_xs">
                 <bind_style_if_eq name="chip_matched" subject="bt_verdict" ref_value="0"/>
                 <bind_style_if_eq name="chip_close" subject="bt_verdict" ref_value="1"/>
                 <bind_style_if_eq name="chip_adjust" subject="bt_verdict" ref_value="2"/>
-                <text_body name="bt_verdict_text" bind_text="bt_verdict_text">
-                  <bind_style_if_eq name="chip_matched" subject="bt_verdict" ref_value="0"/>
-                  <bind_style_if_eq name="chip_close" subject="bt_verdict" ref_value="1"/>
-                  <bind_style_if_eq name="chip_adjust" subject="bt_verdict" ref_value="2"/>
-                </text_body>
-              </lv_obj>
+              </text_body>
             </lv_obj>
           </lv_obj>
           <!-- Path B -->
@@ -303,18 +304,24 @@
             <!-- Re-test A/B fold into a menu -->
             <ui_button name="btn_retest_menu"
                        width="0" height="#button_height" flex_grow="1" icon="chevron_down" icon_position="right"
-                       text="Re-test" variant="secondary">
+                       text="Re-test" variant="secondary" long_mode="dots">
               <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
               <event_cb trigger="clicked" callback="belt_tension_retest_menu_cb"/>
             </ui_button>
+            <!-- Below medium Test Both takes only its label's width, leaving the rest to the Re-test menu -->
             <ui_button name="btn_test_both"
-                       width="0" height="#button_height" flex_grow="1" icon="restart" text="Test Both"
-                       variant="secondary">
+                       height="#button_height" icon="restart" text="Test Both" variant="secondary"
+                       icon_hidden_subject="bt_narrow" icon_hidden_if_eq="1">
+              <bind_style_if name="bt_w0_grow" cond="ui_breakpoint gt 2"/>
+              <bind_style_if name="bt_content_w" cond="ui_breakpoint le 2"/>
               <event_cb trigger="clicked" callback="belt_tension_start_cb"/>
             </ui_button>
             <ui_button name="btn_tune"
-                       height="#button_height" icon="rotate_right" bind_text="bt_tune_cta" variant="primary">
-              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0"/>
+                       height="#button_height" icon="rotate_right" bind_text="bt_tune_cta" variant="primary"
+                       icon_hidden_subject="bt_narrow" icon_hidden_if_eq="1">
+              <!-- Below medium Tune takes its label's width too: the Re-test menu gets the rest -->
+              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0 and ui_breakpoint gt 2"/>
+              <bind_style_if name="bt_content_w" cond="ui_is_portrait eq 0 and ui_breakpoint le 2"/>
               <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_cb"/>
             </ui_button>
@@ -568,8 +575,10 @@
                 <event_cb trigger="clicked" callback="belt_tension_tune_amount_inc_cb"/>
               </ui_button>
             </lv_obj>
-            <ui_button name="btn_tune_done"
-                       width="0" height="#button_height" flex_grow="1" text="Good Enough" variant="secondary">
+            <!-- Below medium Good Enough takes only its label's width, leaving the rest to Re-measure -->
+            <ui_button name="btn_tune_done" height="#button_height" text="Good Enough" variant="secondary">
+              <bind_style_if name="bt_w0_grow" cond="ui_breakpoint gt 2"/>
+              <bind_style_if name="bt_content_w" cond="ui_breakpoint le 2"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_done_cb"/>
             </ui_button>
             <ui_button name="btn_tune_swap"
@@ -587,7 +596,8 @@
               <event_cb trigger="clicked" callback="belt_tension_tune_measure_cb"/>
             </ui_button>
             <ui_button name="btn_tune_measure_short"
-                       height="#button_height" icon="waveform" text="Re-measure" variant="primary">
+                       height="#button_height" icon="waveform" text="Re-measure" variant="primary"
+                       icon_hidden_subject="bt_narrow" icon_hidden_if_eq="1" long_mode="dots">
               <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0 or ui_breakpoint eq 0"/>
               <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1 and ui_breakpoint gt 0"/>
               <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>

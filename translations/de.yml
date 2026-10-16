@@ -1314,7 +1314,7 @@ translations:
     {}'
   'Failed to upload remapped G-code: {}': 'Neu zugeordneter G-code konnte nicht hochgeladen
     werden: {}'
-  Fair match: "Mittlere Übereinstimmung"
+  Fair match: "Mäßige Passung"
   Fan: Lüfter
   Fan Calibration: Lüfter-Kalibrierung
   Fan Speeds: 'Lüftergeschwindigkeiten'
@@ -1485,7 +1485,7 @@ translations:
   Good: Gut
   Good Accuracy: Gute Genauigkeit
   Good Enough: "Gut genug"
-  Good match: "Gute Übereinstimmung"
+  Good match: "Gute Passung"
   Got it: Verstanden
   Gray: Grau
   Grip filament: Filament greifen
@@ -2251,7 +2251,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Nicht genug Platz für dieses Widget. Ordnen Sie Widgets neu an oder entfernen Sie welche, um Platz zu schaffen.
   Not in your spools? Set it up: Nicht in Ihren Spulen? Einrichten
   Not now: Nicht jetzt
-  Not turned: 'Nicht gedreht'
+  Not turned: 'Ungedreht'
   Not yet available on this display: 'Auf diesem Display noch nicht verfügbar'
   Not yet calibrated: Noch nicht kalibriert
   Notes: Notizen
@@ -2465,7 +2465,7 @@ translations:
   Point camera at QR code on spool: Kamera auf QR-Code an Spule richten
   Polymaker: Polymaker
   Poor Accuracy: Schlechte Genauigkeit
-  Poor match: "Schlechte Übereinstimmung"
+  Poor match: "Schlechte Passung"
   Port: Port
   Position: Position
   Position unknown: "Position unbekannt"
@@ -2704,7 +2704,7 @@ translations:
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Erneut identifizieren
-  Re-measure: 'Erneut messen'
+  Re-measure: 'Neu messen'
   Re-measure (~{} min): "Messen (~{} Min)"
   Re-measuring Path {}: Messe Pfad {} erneut
   Re-probe: Erneut abtasten
@@ -4163,8 +4163,8 @@ translations:
   '{} started': '{} gestartet'
   '{} target set to {}°C': '{}-Zieltemperatur auf {}°C gesetzt'
   '{} tighter than {}': "{} straffer als {}"
-  '{} turn': "{} Umdrehung"
-  '{} turns': "{} Umdrehungen"
+  '{} turn': "{} Umdr."
+  '{} turns': "{} Umdr."
   '{} updated': '{} aktualisiert'
   '{} widgets': '{} Widgets'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'

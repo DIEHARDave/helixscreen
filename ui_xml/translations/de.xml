@@ -1180,7 +1180,7 @@
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." de="moonraker.conf konnte nicht aktualisiert werden.&#10;Druckerverbindung prüfen."/>
   <translation tag="Failed to upload modified G-code: {}" de="Geänderten G-Code hochladen fehlgeschlagen: {}"/>
   <translation tag="Failed to upload remapped G-code: {}" de="Neu zugeordneter G-code konnte nicht hochgeladen werden: {}"/>
-  <translation tag="Fair match" de="Mittlere Übereinstimmung"/>
+  <translation tag="Fair match" de="Mäßige Passung"/>
   <translation tag="Fan" de="Lüfter"/>
   <translation tag="Fan Calibration" de="Lüfter-Kalibrierung"/>
   <translation tag="Fan Speeds" de="Lüftergeschwindigkeiten"/>
@@ -1343,7 +1343,7 @@
   <translation tag="Good" de="Gut"/>
   <translation tag="Good Accuracy" de="Gute Genauigkeit"/>
   <translation tag="Good Enough" de="Gut genug"/>
-  <translation tag="Good match" de="Gute Übereinstimmung"/>
+  <translation tag="Good match" de="Gute Passung"/>
   <translation tag="Got it" de="Verstanden"/>
   <translation tag="Gray" de="Grau"/>
   <translation tag="Grip filament" de="Filament greifen"/>
@@ -2031,7 +2031,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." de="Nicht genug Platz für dieses Widget. Ordnen Sie Widgets neu an oder entfernen Sie welche, um Platz zu schaffen."/>
   <translation tag="Not in your spools? Set it up" de="Nicht in Ihren Spulen? Einrichten"/>
   <translation tag="Not now" de="Nicht jetzt"/>
-  <translation tag="Not turned" de="Nicht gedreht"/>
+  <translation tag="Not turned" de="Ungedreht"/>
   <translation tag="Not yet available on this display" de="Auf diesem Display noch nicht verfügbar"/>
   <translation tag="Not yet calibrated" de="Noch nicht kalibriert"/>
   <translation tag="Notes" de="Notizen"/>
@@ -2225,7 +2225,7 @@
   <translation tag="Point camera at QR code on spool" de="Kamera auf QR-Code an Spule richten"/>
   <translation tag="Polymaker" de="Polymaker"/>
   <translation tag="Poor Accuracy" de="Schlechte Genauigkeit"/>
-  <translation tag="Poor match" de="Schlechte Übereinstimmung"/>
+  <translation tag="Poor match" de="Schlechte Passung"/>
   <translation tag="Port" de="Port"/>
   <translation tag="Position" de="Position"/>
   <translation tag="Position unknown" de="Position unbekannt"/>
@@ -2448,7 +2448,7 @@
   <translation tag="Raspberry Pi" de="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" de="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" de="Erneut identifizieren"/>
-  <translation tag="Re-measure" de="Erneut messen"/>
+  <translation tag="Re-measure" de="Neu messen"/>
   <translation tag="Re-measure (~{} min)" de="Messen (~{} Min)"/>
   <translation tag="Re-measuring Path {}" de="Messe Pfad {} erneut"/>
   <translation tag="Re-probe" de="Erneut abtasten"/>
@@ -3722,8 +3722,8 @@
   <translation tag="{} started" de="{} gestartet"/>
   <translation tag="{} target set to {}°C" de="{}-Zieltemperatur auf {}°C gesetzt"/>
   <translation tag="{} tighter than {}" de="{} straffer als {}"/>
-  <translation tag="{} turn" de="{} Umdrehung"/>
-  <translation tag="{} turns" de="{} Umdrehungen"/>
+  <translation tag="{} turn" de="{} Umdr."/>
+  <translation tag="{} turns" de="{} Umdr."/>
   <translation tag="{} updated" de="{} aktualisiert"/>
   <translation tag="{} widgets" de="{} Widgets"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." de="{} wechselt zu einem Slot, dessen Filamenttyp UND Farbe beide zur aktiven Spule passen und dessen eigener Port-Sensor Filament erkennt."/>
