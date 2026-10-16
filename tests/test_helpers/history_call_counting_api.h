@@ -76,6 +76,7 @@ class MetadataTableFileAPI : public MoonrakerFileAPI {
     /// directory answers not found.
     void get_directory(const std::string& /*root*/, const std::string& path,
                        FileListCallback on_success, ErrorCallback on_error) override {
+        ++listings;
         auto it = directories.find(path);
         if (it != directories.end()) {
             on_success(it->second);
@@ -85,6 +86,7 @@ class MetadataTableFileAPI : public MoonrakerFileAPI {
     }
 
     std::map<std::string, std::vector<FileInfo>> directories;
+    int listings = 0; ///< get_directory() calls
     std::map<std::string, FileMetadata> table;
     int calls = 0;
     bool hold = false;
