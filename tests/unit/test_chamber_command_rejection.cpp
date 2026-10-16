@@ -765,3 +765,19 @@ TEST_CASE_METHOD(PromptFixture, "the chamber prompt opens on a refused wait and 
         CHECK(dialog() == nullptr);
     }
 }
+
+TEST_CASE_METHOD(PromptFixture, "a wait the device reports as its own M191 is cancelled as one",
+                 "[chamber][rejection][prompt][prompt_ui]") {
+    state().temperature_state().update_from_status(
+        {{"dragonbreath", {{"wait_active", true}, {"wait_target", 45.0}}}});
+    refuse(1);
+    chamber_wait(true);
+    REQUIRE(dialog() != nullptr);
+    // No file read needed: the device named the command and its temperature.
+    const std::string message =
+        lv_subject_get_string(lv_xml_get_subject(nullptr, "chamber_stall_message"));
+    CHECK(message.find("45") != std::string::npos);
+    CHECK(std::string(
+              lv_subject_get_string(lv_xml_get_subject(nullptr, "chamber_stall_cancel_hint"))) ==
+          lv_tr("Cancelling turns the chamber target off so the wait ends, then stops the print."));
+}
