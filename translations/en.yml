@@ -529,6 +529,7 @@ translations:
   Cannot restart — no filename: Cannot restart — no filename
   Cannot run filament operation while printing: Cannot run filament operation while printing
   'Cannot start print: internal error': 'Cannot start print: internal error'
+  'Cannot start print: no temp directory available': 'Cannot start print: no temp directory available'
   'Cannot start print: not connected to printer': 'Cannot start print: not connected
     to printer'
   'Cannot start print: printer is {}': 'Cannot start print: printer is {}'
@@ -810,6 +811,7 @@ translations:
   Could not confirm cancel: Could not confirm cancel
   'Could not copy {} from USB: {}': 'Could not copy {} from USB: {}'
   Could not disconnect from WiFi: Could not disconnect from WiFi
+  'Could not extract plate {} of {}: {}': 'Could not extract plate {} of {}: {}'
   Could not forget device: Could not forget device
   Could not initialize WiFi hardware. Check system configuration.: Could not initialize WiFi hardware. Check system configuration.
   Could not load printer database: Could not load printer database
@@ -1188,6 +1190,7 @@ translations:
   : "Failed to download helixscreen.conf.\nCheck printer connection."
   ? "Failed to download moonraker.conf.\nCheck printer connection."
   : "Failed to download moonraker.conf.\nCheck printer connection."
+  'Failed to download the .3mf for printing: {}': 'Failed to download the .3mf for printing: {}'
   Failed to duplicate spool: Failed to duplicate spool
   'Failed to enable WiFi: {}': 'Failed to enable WiFi: {}'
   Failed to enable tuning tower: Failed to enable tuning tower
@@ -1265,6 +1268,7 @@ translations:
   : "Failed to update moonraker.conf.\nCheck printer connection."
   'Failed to upload modified G-code: {}': 'Failed to upload modified G-code: {}'
   'Failed to upload remapped G-code: {}': 'Failed to upload remapped G-code: {}'
+  'Failed to upload the extracted G-code: {}': 'Failed to upload the extracted G-code: {}'
   Fair match: Fair match
   Fan: Fan
   Fan Calibration: Fan Calibration
@@ -3420,6 +3424,7 @@ translations:
   'These tools have no filament loaded:': 'These tools have no filament loaded:'
   'These tools have no matching filament loaded:': 'These tools have no matching filament
     loaded:'
+  This .3mf has to be converted to G-code on the printer before it can print.: This .3mf has to be converted to G-code on the printer before it can print.
   This AFC system does not support bypass mode: This AFC system does not support bypass mode
   This CFS firmware exposes no external spool slot: This CFS firmware exposes no external spool slot
   This Happy Hare system does not support bypass mode: This Happy Hare system does not support bypass mode

@@ -498,6 +498,7 @@
   <translation tag="Cannot run filament operation while printing" ja="印刷中はフィラメント操作を実行できません"/>
   <translation tag="Cannot save offsets while printing" ja="印刷中はオフセットを保存できません"/>
   <translation tag="Cannot start print: internal error" ja="印刷を開始できません: 内部エラー"/>
+  <translation tag="Cannot start print: no temp directory available" ja="印刷を開始できません: 一時ディレクトリがありません"/>
   <translation tag="Cannot start print: not connected to printer" ja="印刷を開始できません: プリンター未接続"/>
   <translation tag="Cannot start print: printer is {}" ja="印刷を開始できません: プリンターは {} 状態です"/>
   <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." ja="{} を開始できません: オフにした手順についてファイルをまだ確認できていません。少し待ってからもう一度お試しください。"/>
@@ -748,6 +749,7 @@
   <translation tag="Could not confirm cancel" ja="キャンセルを確認できませんでした"/>
   <translation tag="Could not copy {} from USB: {}" ja="{} を USB からコピーできませんでした: {}"/>
   <translation tag="Could not disconnect from WiFi" ja="WiFi から切断できませんでした"/>
+  <translation tag="Could not extract plate {} of {}: {}" ja="プレート {} を {} から抽出できませんでした: {}"/>
   <translation tag="Could not forget device" ja="デバイスの登録を解除できませんでした"/>
   <translation tag="Could not initialize WiFi hardware. Check system configuration." ja="WiFi ハードウェアを初期化できませんでした。システム設定を確認してください。"/>
   <translation tag="Could not load printer database" ja="プリンターデータベースを読み込めませんでした"/>
@@ -1109,6 +1111,7 @@
   <translation tag="Failed to download G-code for remap: {}" ja="リマップ用のG-codeのダウンロードに失敗しました: {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." ja="helixscreen.confのダウンロードに失敗しました。&#10;プリンター接続を確認してください。"/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." ja="moonraker.confのダウンロードに失敗しました。&#10;プリンター接続を確認してください。"/>
+  <translation tag="Failed to download the .3mf for printing: {}" ja="印刷用の .3mf をダウンロードできませんでした: {}"/>
   <translation tag="Failed to duplicate spool" ja="スプールの複製に失敗しました"/>
   <translation tag="Failed to enable WiFi: {}" ja="WiFi を有効にできませんでした: {}"/>
   <translation tag="Failed to enable tuning tower" ja="チューニングタワーの有効化に失敗しました"/>
@@ -1183,6 +1186,7 @@
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." ja="moonraker.confの更新に失敗しました。&#10;プリンター接続を確認してください。"/>
   <translation tag="Failed to upload modified G-code: {}" ja="変更済み G-code のアップロードに失敗しました: {}"/>
   <translation tag="Failed to upload remapped G-code: {}" ja="リマップしたG-codeのアップロードに失敗しました: {}"/>
+  <translation tag="Failed to upload the extracted G-code: {}" ja="抽出した G-code をアップロードできませんでした: {}"/>
   <translation tag="Fair match" ja="まずまずの一致"/>
   <translation tag="Fan" ja="ファン"/>
   <translation tag="Fan Calibration" ja="ファンキャリブレーション"/>
@@ -3160,6 +3164,7 @@
   <translation tag="These tools have incompatible materials loaded:" ja="これらのツールには互換性のない素材がロードされています:"/>
   <translation tag="These tools have no filament loaded:" ja="これらのツールにフィラメントが装填されていません:"/>
   <translation tag="These tools have no matching filament loaded:" ja="これらのツールに一致するフィラメントが装填されていません:"/>
+  <translation tag="This .3mf has to be converted to G-code on the printer before it can print." ja="この .3mf は印刷する前にプリンター上で G-code に変換する必要があります。"/>
   <translation tag="This AFC system does not support bypass mode" ja="この AFC システムはバイパスモードに対応していません"/>
   <translation tag="This CFS firmware exposes no external spool slot" ja="この CFS ファームウェアには外部スプール用スロットがありません"/>
   <translation tag="This Happy Hare system does not support bypass mode" ja="この Happy Hare システムはバイパスモードに対応していません"/>

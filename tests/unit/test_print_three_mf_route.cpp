@@ -1,0 +1,179 @@
+// Copyright (C) 2025-2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "ui_filename_utils.h"
+#include "ui_print_preparation_manager.h"
+
+#include "../helix_test_fixture.h"
+#include "../test_helpers/mock_printer.h"
+#include "../test_helpers/planted_gcode.h"
+#include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/update_queue_test_access.h"
+#include "../ui_test_utils.h"
+#include "app_globals.h"
+#include "moonraker_api_mock.h"
+#include "printer_state.h"
+
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <string>
+
+#include "../catch_amalgamated.hpp"
+
+using namespace helix;
+using namespace helix::ui;
+
+namespace {
+
+std::string fixture_dir() {
+    std::string dir = __FILE__;
+    const auto pos = dir.rfind("/tests/unit/");
+    return pos != std::string::npos ? dir.substr(0, pos) + "/tests/fixtures/three_mf/"
+                                    : "tests/fixtures/three_mf/";
+}
+
+std::string disk_bytes(const std::string& path) {
+    std::ifstream in(path, std::ios::binary);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+
+void drain_until_quiet() {
+    UpdateQueueTestAccess::drain_all(UpdateQueue::instance(), 16);
+}
+
+constexpr const char* kArchive = "Door.gcode.3mf";
+
+struct ArchiveStart : HelixTestFixture {
+    ArchiveStart() {
+        lv_init_safe();
+        // The success path names the print on the GLOBAL state.
+        PrinterStateTestAccess::reset(get_printer_state());
+        get_printer_state().init_subjects(false);
+        manager.set_dependencies(&printer.api, &printer.state);
+        printer.state.print_state().begin_preparing(PrintJobRef{kArchive, "", ""});
+    }
+
+    void plant(const char* fixture) {
+        planted.emplace(kArchive, "", disk_bytes(fixture_dir() + fixture));
+    }
+
+    void start() {
+        manager.start_print(
+            kArchive, "", [this]() { ++navigated; },
+            [this](bool ok, const std::string&) {
+                completed = true;
+                succeeded = ok;
+            });
+        drain_until_quiet();
+    }
+
+    MockPrinter printer;
+    PrintPreparationManager manager;
+    std::optional<PlantedGcode> planted;
+    int navigated = 0;
+    bool completed = false;
+    bool succeeded = false;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(ArchiveStart, "a .3mf plate prints as staged G-code that maps back to the archive",
+                 "[print_preparation][three_mf]") {
+    plant("single_plate.gcode.3mf");
+    manager.set_archive_plate(kArchive, 9);
+    start();
+
+    const auto& uploads = printer.api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    CHECK(uploads[0].root == "gcodes");
+    const std::string& staged = uploads[0].dest_path;
+    INFO(staged);
+    CHECK(staged.compare(staged.size() - 6, 6, ".gcode") == 0);
+    CHECK(gcode::is_uploaded_rewrite_path(staged));
+    CHECK(gcode::trusted_original_path(staged) == kArchive);
+    CHECK(gcode::rewritten_archive_plate(staged) == 9);
+    // What left the machine is the plate, not the archive.
+    CHECK(uploads[0].content == disk_bytes(fixture_dir() + "src/plate.gcode"));
+
+    // Klipper is asked for the staged copy, never through the plugin.
+    REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+    CHECK(printer.api.job_mock().started_prints()[0] == staged);
+    CHECK(printer.api.job_mock().modified_prints().empty());
+
+    // Neither the archive nor the extracted plate outlives the flow.
+    const auto& downloads = printer.api.transfers_mock().download_destinations();
+    REQUIRE(downloads.size() == 1);
+    CHECK_FALSE(std::filesystem::exists(downloads[0]));
+    CHECK_FALSE(std::filesystem::exists(uploads[0].local_path));
+}
+
+TEST_CASE_METHOD(ArchiveStart, "a .3mf the printer reads natively starts as itself",
+                 "[print_preparation][three_mf]") {
+    plant("single_plate.gcode.3mf");
+    SECTION("never marked") {}
+    SECTION("marked, then forgotten") {
+        manager.set_archive_plate(kArchive, 9);
+        manager.set_archive_plate(kArchive, 0);
+    }
+    SECTION("another file marked") {
+        manager.set_archive_plate("Other.gcode.3mf", 2);
+    }
+    start();
+
+    CHECK(printer.api.transfers_mock().path_uploads().empty());
+    CHECK(printer.api.transfers_mock().download_destinations().empty());
+    REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+    CHECK(printer.api.job_mock().started_prints()[0] == kArchive);
+}
+
+TEST_CASE_METHOD(ArchiveStart, "a plate whose checksum fails is not uploaded or started",
+                 "[print_preparation][three_mf]") {
+    plant("bad_md5.gcode.3mf");
+    manager.set_archive_plate(kArchive, 9);
+    start();
+
+    CHECK(printer.api.transfers_mock().path_uploads().empty());
+    CHECK(printer.api.job_mock().started_prints().empty());
+    CHECK(completed);
+    CHECK_FALSE(succeeded);
+    CHECK_FALSE(printer.state.print_state().has_preparing_job());
+    const auto& downloads = printer.api.transfers_mock().download_destinations();
+    REQUIRE(downloads.size() == 1);
+    CHECK_FALSE(std::filesystem::exists(downloads[0]));
+}
+
+TEST_CASE_METHOD(ArchiveStart, "a plate the archive does not hold fails the start",
+                 "[print_preparation][three_mf]") {
+    plant("multi_plate.gcode.3mf");
+    manager.set_archive_plate(kArchive, 9); // plates 2 and 5 only
+    start();
+    CHECK(printer.api.transfers_mock().path_uploads().empty());
+    CHECK(printer.api.job_mock().started_prints().empty());
+    CHECK_FALSE(succeeded);
+}
+
+TEST_CASE_METHOD(ArchiveStart, "the chosen plate of several is the one that prints",
+                 "[print_preparation][three_mf]") {
+    plant("multi_plate.gcode.3mf");
+    manager.set_archive_plate(kArchive, 5);
+    start();
+    const auto& uploads = printer.api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    CHECK(gcode::rewritten_archive_plate(uploads[0].dest_path) == 5);
+    CHECK(uploads[0].content.find("total layer number: 90") != std::string::npos);
+}
+
+TEST_CASE_METHOD(ArchiveStart, "a .3mf plate on a transport without local copies is refused",
+                 "[print_preparation][three_mf]") {
+    plant("single_plate.gcode.3mf");
+    printer.api.transfers_mock().mock_no_local_copies();
+    manager.set_dependencies(&printer.api, &printer.state);
+    manager.set_archive_plate(kArchive, 9);
+    start();
+
+    CHECK(printer.api.transfers_mock().download_destinations().empty());
+    CHECK(printer.api.job_mock().started_prints().empty());
+    CHECK_FALSE(succeeded);
+    CHECK_FALSE(printer.state.print_state().has_preparing_job());
+}

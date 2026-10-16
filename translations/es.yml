@@ -547,6 +547,7 @@ translations:
   Cannot restart — no filename: No se puede reiniciar — sin nombre de archivo
   Cannot run filament operation while printing: No se puede realizar la operación de filamento mientras se imprime
   'Cannot start print: internal error': 'No se puede iniciar impresión: error interno'
+  'Cannot start print: no temp directory available': 'No se puede iniciar la impresión: directorio temporal no disponible'
   'Cannot start print: not connected to printer': 'No se puede iniciar impresión:
     no conectado a la impresora'
   'Cannot start print: printer is {}': 'No se puede iniciar impresión: la impresora
@@ -839,6 +840,7 @@ translations:
   Could not confirm cancel: No se pudo confirmar la cancelación
   'Could not copy {} from USB: {}': 'No se pudo copiar {} desde USB: {}'
   Could not disconnect from WiFi: No se pudo desconectar del WiFi
+  'Could not extract plate {} of {}: {}': 'No se pudo extraer la placa {} de {}: {}'
   Could not forget device: No se pudo olvidar el dispositivo
   Could not initialize WiFi hardware. Check system configuration.: No se pudo inicializar el hardware WiFi. Comprueba la configuración del sistema.
   Could not load printer database: No se pudo cargar la base de datos de impresoras
@@ -1231,6 +1233,7 @@ translations:
   : "Error al descargar helixscreen.conf.\nCompruebe la conexión."
   ? "Failed to download moonraker.conf.\nCheck printer connection."
   : "Error al descargar moonraker.conf.\nCompruebe la conexión."
+  'Failed to download the .3mf for printing: {}': 'No se pudo descargar el .3mf para imprimir: {}'
   Failed to duplicate spool: Error al duplicar el carrete
   'Failed to enable WiFi: {}': 'No se pudo activar el WiFi: {}'
   Failed to enable tuning tower: Error al activar torre de ajuste
@@ -1311,6 +1314,7 @@ translations:
   : "Error al actualizar moonraker.conf.\nCompruebe la conexión."
   'Failed to upload modified G-code: {}': 'Error al subir G-code modificado: {}'
   'Failed to upload remapped G-code: {}': 'Error al subir G-code reasignado: {}'
+  'Failed to upload the extracted G-code: {}': 'No se pudo subir el G-code extraído: {}'
   Fair match: "Coincidencia regular"
   Fan: Ventilador
   Fan Calibration: Calibración del ventilador
@@ -3527,6 +3531,7 @@ translations:
     cargado:'
   'These tools have no matching filament loaded:': 'Estas herramientas no tienen filamento
     compatible cargado:'
+  This .3mf has to be converted to G-code on the printer before it can print.: 'Este .3mf debe convertirse a G-code en la impresora antes de poder imprimirse.'
   This AFC system does not support bypass mode: 'Este sistema AFC no es compatible con el modo bypass'
   This CFS firmware exposes no external spool slot: 'Este firmware del CFS no ofrece una ranura para bobina externa'
   This Happy Hare system does not support bypass mode: 'Este sistema Happy Hare no es compatible con el modo bypass'
