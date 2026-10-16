@@ -282,7 +282,7 @@ bool is_v4_char(char c) {
 // Replace every globally routable IPv6 literal. Runs before the IPv4 pass so a
 // mapped form (::ffff:203.0.113.5) is consumed whole instead of being
 // half-matched on its dotted tail.
-std::string redact_v6(std::string_view text, uint64_t salt) {
+std::string redact_v6(std::string_view text, uint64_t salt, std::string_view fixed = {}) {
     std::string out;
     out.reserve(text.size());
     const size_t n = text.size();
@@ -303,8 +303,11 @@ std::string redact_v6(std::string_view text, uint64_t salt) {
             run.remove_suffix(1);
         uint8_t bytes[16];
         if (left_ok && run.find(':') != std::string_view::npos && parse_ipv6(run, bytes) &&
-            scope_v6(bytes) == IpScope::Global) {
-            out += token(run, "ip#", IP_DOMAIN, salt);
+            (!fixed.empty() || scope_v6(bytes) == IpScope::Global)) {
+            if (fixed.empty())
+                out += token(run, "ip#", IP_DOMAIN, salt);
+            else
+                out += fixed;
             out.append(text.substr(start + run.size(), i - start - run.size()));
         } else {
             out.append(text.substr(start, i - start));
@@ -313,7 +316,7 @@ std::string redact_v6(std::string_view text, uint64_t salt) {
     return out;
 }
 
-std::string redact_v4(std::string_view text, uint64_t salt) {
+std::string redact_v4(std::string_view text, uint64_t salt, std::string_view fixed = {}) {
     std::string out;
     out.reserve(text.size());
     const size_t n = text.size();
@@ -337,8 +340,12 @@ std::string redact_v4(std::string_view text, uint64_t salt) {
         while (!run.empty() && run.back() == '.')
             run.remove_suffix(1);
         uint8_t quad[4];
-        if (left_ok && right_ok && parse_ipv4(run, quad) && scope_v4(quad) == IpScope::Global) {
-            out += token(run, "ip#", IP_DOMAIN, salt);
+        if (left_ok && right_ok && parse_ipv4(run, quad) &&
+            (!fixed.empty() || scope_v4(quad) == IpScope::Global)) {
+            if (fixed.empty())
+                out += token(run, "ip#", IP_DOMAIN, salt);
+            else
+                out += fixed;
             out.append(text.substr(start + run.size(), i - start - run.size()));
         } else {
             out.append(text.substr(start, i - start));
@@ -347,7 +354,144 @@ std::string redact_v4(std::string_view text, uint64_t salt) {
     return out;
 }
 
+bool is_alpha(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+bool is_alnum(char c) {
+    return is_alpha(c) || (c >= '0' && c <= '9');
+}
+
+/// `text` with each whole-word occurrence of an identifier replaced by `<id>`.
+std::string replace_identifiers(std::string text, const std::vector<std::string>& identifiers) {
+    for (const auto& id : identifiers) {
+        if (id.size() < 2)
+            continue;
+        size_t pos = 0;
+        while ((pos = text.find(id, pos)) != std::string::npos) {
+            const size_t end = pos + id.size();
+            const bool left_ok = pos == 0 || !is_word_char(text[pos - 1]);
+            const bool right_ok = end >= text.size() || !is_word_char(text[end]);
+            if (left_ok && right_ok) {
+                text.replace(pos, id.size(), "<id>");
+                pos += 4;
+            } else {
+                pos = end;
+            }
+        }
+    }
+    return text;
+}
+
+/// A dotted name ending in one of these is a file, not a host.
+bool is_file_extension(std::string_view label) {
+    static constexpr std::string_view kExtensions[] = {
+        "sh",   "json", "cfg",  "conf", "env",     "log", "txt", "gz",      "tar",      "tgz",
+        "zip",  "xz",   "bz2",  "py",   "service", "so",  "crt", "pem",     "ini",      "toml",
+        "yaml", "yml",  "xml",  "bin",  "img",     "tmp", "pid", "lock",    "download", "old",
+        "bak",  "md",   "html", "js",   "css",     "png", "jpg", "partial", "socket",   "sock",
+        "d",    "cpp",  "h",    "lua",  "gcode",   "mk",  "db",  "list",    "new",      "orig"};
+    for (auto ext : kExtensions)
+        if (label == ext)
+            return true;
+    return false;
+}
+
+/// `name.name[.name...]` whose last label is alphabetic, at least two letters and
+/// not a file extension.
+bool looks_like_host(std::string_view core) {
+    if (core.empty() || !is_alnum(core.front()))
+        return false;
+    for (char c : core)
+        if (!is_alnum(c) && c != '-' && c != '.' && c != '_')
+            return false;
+    const size_t dot = core.rfind('.');
+    if (dot == std::string_view::npos || dot + 1 >= core.size())
+        return false;
+    const std::string_view last = core.substr(dot + 1);
+    if (last.size() < 2)
+        return false;
+    for (char c : last)
+        if (!is_alpha(c))
+            return false;
+    std::string lower(last);
+    for (auto& c : lower)
+        c = static_cast<char>(c | 0x20);
+    return !is_file_extension(lower);
+}
+
+/// One whitespace-delimited word with its surrounding punctuation already split off.
+std::string scrub_core(std::string_view core) {
+    if (core.find("://") != std::string_view::npos)
+        return "<url>";
+    const size_t at = core.find('@');
+    if (at != std::string_view::npos && at > 0 && at + 1 < core.size())
+        return "<user@host>";
+    // An absolute or home path, alone or as the value of `key=` / `key:`.
+    for (size_t i = 0; i < core.size(); ++i) {
+        const bool home = core[i] == '~' && i + 1 < core.size() && core[i + 1] == '/';
+        if (core[i] != '/' && !home)
+            continue;
+        if (i == 0 || core[i - 1] == '=' || core[i - 1] == ':')
+            return std::string(core.substr(0, i)) + "<path>";
+        break;
+    }
+    if (looks_like_host(core))
+        return "<host>";
+    return std::string(core);
+}
+
+std::string scrub_word(std::string_view word) {
+    static constexpr std::string_view kLead = "\"'([{";
+    static constexpr std::string_view kTrail = "\"')]},;:.!?";
+    size_t b = 0;
+    size_t e = word.size();
+    while (b < e && kLead.find(word[b]) != std::string_view::npos)
+        ++b;
+    while (e > b && kTrail.find(word[e - 1]) != std::string_view::npos)
+        --e;
+    if (b == e)
+        return std::string(word);
+    return std::string(word.substr(0, b)) + scrub_core(word.substr(b, e - b)) +
+           std::string(word.substr(e));
+}
+
+/// `text` cut to `max_len` bytes, backed off to a character boundary and out of
+/// any placeholder the cut would split.
+std::string cap_length(std::string text, size_t max_len) {
+    if (text.size() <= max_len)
+        return text;
+    size_t cut = max_len;
+    while (cut > 0 && (static_cast<unsigned char>(text[cut]) & 0xC0) == 0x80)
+        --cut;
+    text.resize(cut);
+    const size_t open = text.rfind('<');
+    if (open != std::string::npos && text.find('>', open) == std::string::npos)
+        text.resize(open);
+    return text;
+}
+
 } // namespace
+
+std::string telemetry_text(std::string_view text, const std::vector<std::string>& identifiers,
+                           size_t max_len) {
+    std::string pass = replace_identifiers(std::string(text), identifiers);
+    pass = redact_v4(redact_v6(pass, 0, "<ip>"), 0, "<ip>");
+    std::string out;
+    out.reserve(pass.size());
+    size_t i = 0;
+    while (i < pass.size()) {
+        if (pass[i] == ' ' || pass[i] == '\t') {
+            out += pass[i++];
+            continue;
+        }
+        const size_t start = i;
+        while (i < pass.size() && pass[i] != ' ' && pass[i] != '\t')
+            ++i;
+        out += scrub_word(std::string_view(pass).substr(start, i - start));
+    }
+    return cap_length(std::move(out), max_len);
+}
 
 std::string ssid(std::string_view ssid) {
     return token(ssid, "net#", SSID_DOMAIN, boot_salt());

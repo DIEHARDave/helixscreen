@@ -286,8 +286,12 @@ describe("POINT_KINDS table", () => {
           "exit_code": "double3",
           "file_size": "double2",
           "from_version": "blob2",
+          "host": "blob7",
           "http_code": "double1",
+          "install_detail": "blob8",
           "reason": "blob4",
+          "transfer_code": "double4",
+          "transfer_error": "blob6",
           "version": "blob5",
         },
         "update_success": {

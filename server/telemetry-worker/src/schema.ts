@@ -325,6 +325,12 @@ const KINDS: PointKind[] = [
     dbl(1, "http_code"),
     dbl(2, "file_size"),
     dbl(3, "exit_code"),
+    // Why a download or install failed (#1813). Older clients send none of
+    // these, so they read as empty / 0.
+    blob(6, "transfer_error"),
+    blob(7, "host"),
+    blob(8, "install_detail"),
+    dbl(4, "transfer_code"),
   ]),
 
   // blob2 is the release the device is running now; blob4 is where it came from.
