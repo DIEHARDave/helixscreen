@@ -8,6 +8,7 @@
  */
 
 #include "ui_ams_sidebar.h"
+#include "ui_button.h"
 
 #include "../test_fixtures.h"
 #include "ams_backend_mock.h"
@@ -126,5 +127,40 @@ TEST_CASE_METHOD(SidebarGridFixture, "AMS sidebar: a row the actions do not fill
         CHECK(std::abs((settings.x1 - grid.x1) - (grid.x2 - settings.x2)) <= 1);
         // A full row leaves its slack evenly on both sides.
         CHECK(std::abs((unload.x1 - grid.x1) - (grid.x2 - reset.x2)) <= 1);
+    }
+}
+
+// The breakpoint flips the cells between icon over label, icon beside it and
+// label alone on a sidebar already built; every flip leaves each label one
+// line of its font, within its button's width. The display stays 800x480, so
+// tokens keep medium's sizes and a stacked cell's height is not judged here
+// (test_ams_loaded_spool_sidebar.cpp measures that at 480x320).
+TEST_CASE_METHOD(SidebarGridFixture, "AMS sidebar: labels fit across a live restack",
+                 "[ams][sidebar][action_grid]") {
+    for (const int breakpoint : {3, 1, 4, 0, 2, 3, 1}) {
+        CAPTURE(breakpoint);
+        use_breakpoint(breakpoint);
+        for (const char* name : kActions) {
+            CAPTURE(name);
+            lv_obj_t* btn = named(name);
+            lv_obj_t* label = nullptr;
+            for (uint32_t i = 0; i < lv_obj_get_child_count(btn); ++i) {
+                lv_obj_t* child = lv_obj_get_child(btn, static_cast<int32_t>(i));
+                if (lv_obj_check_type(child, &lv_label_class) && child != ui_button_get_icon(btn)) {
+                    label = child;
+                }
+            }
+            REQUIRE(label != nullptr);
+            const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+            CHECK(lv_obj_get_height(label) ==
+                  lv_font_get_line_height(font) + lv_obj_get_style_space_top(label, LV_PART_MAIN) +
+                      lv_obj_get_style_space_bottom(label, LV_PART_MAIN));
+            lv_area_t inner;
+            lv_obj_get_content_coords(btn, &inner);
+            lv_area_t text;
+            lv_obj_get_coords(label, &text);
+            CHECK(text.x1 >= inner.x1);
+            CHECK(text.x2 <= inner.x2);
+        }
     }
 }
