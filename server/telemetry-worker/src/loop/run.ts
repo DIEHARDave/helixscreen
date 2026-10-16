@@ -120,9 +120,7 @@ async function runWeekly(deps: LoopDeps, dryRun: boolean): Promise<LoopResult> {
   const issues = await syncIssues(findings, deps.tracker, state, week, deps.dashboardUrl, dryRun)
 
   const titles = new Map(findings.map((f) => [f.fingerprint, f.title]))
-  const skipped = issues
-    .filter((o) => o.action === 'held' && o.error)
-    .map((o) => `github: ${titles.get(o.fingerprint)}: ${o.error}`)
+  const skipped = issues.filter((o) => o.error).map((o) => `github: ${titles.get(o.fingerprint)}: ${o.error}`)
 
   const report: WeeklyReport = { week, generated_at: deps.now.toISOString(), health, findings, issues }
   const email = weeklyEmail(report, deps.dashboardUrl)

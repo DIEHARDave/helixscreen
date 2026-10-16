@@ -5,6 +5,7 @@
 import { githubFetch, getInstallationToken } from '../../../shared/github'
 import { sendEmail } from '../../../shared/email'
 import { fingerprintInBody } from './fingerprint'
+import { ALL_ISSUE_LABELS, TELEMETRY_LABEL } from './issues'
 import type { IssueRef, IssueTracker, Mailer, ObjectStore } from './types'
 
 export type { IssueRef, IssueTracker, Mailer, ObjectStore } from './types'
@@ -32,6 +33,9 @@ interface GithubIssue {
   state: string
   html_url: string
   body: string | null
+  labels?: Array<string | { name?: string }>
+  /** Present when the item is a pull request; the issues listing returns both. */
+  pull_request?: unknown
 }
 
 function toRef(issue: GithubIssue): IssueRef {
@@ -40,8 +44,32 @@ function toRef(issue: GithubIssue): IssueRef {
     state: issue.state === 'closed' ? 'closed' : 'open',
     url: issue.html_url,
     body: issue.body ?? '',
-    lastTelemetryCommentWeek: null,
+    labels: (issue.labels ?? []).map((l) => (typeof l === 'string' ? l : (l.name ?? ''))),
   }
+}
+
+/** An open issue before a closed one, then the lower number. */
+const preferred = (a: IssueRef, b: IssueRef): boolean =>
+  a.state !== b.state ? a.state === 'open' : a.number < b.number
+
+/** The path of the rel="next" URL in a Link header, or null on the last page. */
+function nextPage(link: string | null): string | null {
+  const m = link?.match(/<([^>]+)>\s*;\s*rel="next"/)
+  if (!m) return null
+  const url = new URL(m[1])
+  return `${url.pathname}${url.search}`
+}
+
+const LIST_PAGE = 100
+
+/** Resets the memo when the work fails, so a later call tries again. */
+function once<T>(work: () => Promise<T>): () => Promise<T> {
+  let memo: Promise<T> | null = null
+  return () =>
+    (memo ??= work().catch((err) => {
+      memo = null
+      throw err
+    }))
 }
 
 export function githubIssueTracker(env: LoopEnv, deps: GithubDeps = {}): IssueTracker {
@@ -57,8 +85,10 @@ export function githubIssueTracker(env: LoopEnv, deps: GithubDeps = {}): IssueTr
   }
   const repo = env.GITHUB_REPO ?? ''
 
+  const send = async (path: string, options: RequestInit = {}): Promise<Response> =>
+    githubFetch(path, await token(), options, USER_AGENT, fetchImpl)
   async function call(path: string, options: RequestInit = {}): Promise<Response> {
-    const res = await githubFetch(path, await token(), options, USER_AGENT, fetchImpl)
+    const res = await send(path, options)
     if (!res.ok) throw new Error(`GitHub ${options.method ?? 'GET'} ${path} ${res.status}: ${await res.text()}`)
     return res
   }
@@ -68,19 +98,49 @@ export function githubIssueTracker(env: LoopEnv, deps: GithubDeps = {}): IssueTr
     body: JSON.stringify(payload),
   })
 
+  // Every telemetry issue by its marker, from one paged listing per run. Search is not
+  // used: it is eventually consistent and its indexing of HTML comments is not relied on.
+  const byFingerprint = new Map<string, IssueRef>()
+  const add = (ref: IssueRef): void => {
+    const fp = fingerprintInBody(ref.body)
+    if (fp === null) return
+    const known = byFingerprint.get(fp)
+    if (!known || preferred(ref, known)) byFingerprint.set(fp, ref)
+  }
+  const loadIndex = once(async () => {
+    let path: string | null = `/repos/${repo}/issues?labels=${TELEMETRY_LABEL}&state=all&per_page=${LIST_PAGE}`
+    while (path) {
+      const res = await call(path)
+      for (const item of (await res.json()) as GithubIssue[]) if (!item.pull_request) add(toRef(item))
+      path = nextPage(res.headers.get('Link'))
+    }
+  })
+
+  // A label missing from the repo can make GitHub reject the create or drop the label.
+  const ensureLabels = once(async () => {
+    for (const name of ALL_ISSUE_LABELS) {
+      const path = `/repos/${repo}/labels`
+      const options = jsonInit('POST', { name })
+      const res = await send(path, options)
+      if (res.ok) continue
+      const text = await res.text()
+      if (res.status === 422 && text.includes('already_exists')) continue
+      throw new Error(`GitHub POST ${path} ${res.status}: ${text}`)
+    }
+  })
+
   return {
     async findByFingerprint(fp) {
-      const q = `repo:${repo} is:issue label:telemetry "telemetry-fp: ${fp}" in:body`
-      const res = await call(`/search/issues?q=${encodeURIComponent(q)}&per_page=30`)
-      const { items } = (await res.json()) as { items: GithubIssue[] }
-      // Search is fuzzy; only an exact marker match is the same finding.
-      const exact = items.filter((i) => fingerprintInBody(i.body ?? '') === fp)
-      exact.sort((a, b) => Number(b.state === 'open') - Number(a.state === 'open') || a.number - b.number)
-      return exact.length ? toRef(exact[0]) : null
+      await loadIndex()
+      const ref = byFingerprint.get(fp)
+      return ref ? { ...ref } : null
     },
     async create(title, body, labels) {
+      await ensureLabels()
       const res = await call(`/repos/${repo}/issues`, jsonInit('POST', { title, body, labels }))
-      return toRef((await res.json()) as GithubIssue)
+      const ref = toRef((await res.json()) as GithubIssue)
+      add(ref)
+      return ref
     },
     async comment(issue, body) {
       await call(`/repos/${repo}/issues/${issue}/comments`, jsonInit('POST', { body }))

@@ -34,7 +34,6 @@ export class FakeTracker implements IssueTracker {
       state,
       url: `https://github.test/issues/${this.nextNumber - 1}`,
       body,
-      lastTelemetryCommentWeek: null,
       title,
       labels: ['telemetry'],
       comments: [] as string[],
@@ -58,7 +57,9 @@ export class FakeTracker implements IssueTracker {
   async create(title: string, body: string, labels: string[]): Promise<IssueRef> {
     this.calls.push({ op: 'create', title, body, labels })
     this.check()
-    return { ...this.seed(body, 'open', title), labels } as IssueRef
+    const made = this.seed(body, 'open', title)
+    made.labels = labels
+    return { ...made }
   }
 
   async comment(issue: number, body: string): Promise<void> {

@@ -163,4 +163,15 @@ describe('syncIssues', () => {
     expect(out.map((o) => o.action)).toEqual(['held', 'created'])
     expect(state.issueComments[fs[0].fingerprint]).toBeUndefined()
   })
+
+  it('reports a created issue that came back without the telemetry label', async () => {
+    const t = new FakeTracker()
+    const orig = t.create.bind(t)
+    t.create = async (title, body) => ({ ...(await orig(title, body, ['crash'])), labels: ['crash'] })
+    const f = finding(1)
+    const out = await syncIssues([f], t, fresh(), W1, URL, false)
+    expect(out).toEqual([
+      { fingerprint: f.fingerprint, action: 'created', issue: { number: 1, url: expect.any(String) }, error: expect.stringMatching(/telemetry label/) },
+    ])
+  })
 })

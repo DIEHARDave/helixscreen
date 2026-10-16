@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { loadState, saveState, alertDue, type LoopState } from '../loop/state'
 import { githubIssueTracker, resendMailer, r2Store } from '../loop/ports'
 import { markerFor } from '../loop/fingerprint'
+import { ALL_ISSUE_LABELS } from '../loop/issues'
 import { ALERT_REPEAT_DAYS } from '../loop/thresholds'
 import { FakeStore, FakeTracker, FakeMailer } from './loop_fakes'
 
@@ -87,52 +88,119 @@ describe('fakes', () => {
 })
 
 interface Seen { url: string; init: RequestInit }
-function fakeFetch(responses: Array<{ status?: number; json?: unknown; text?: string }>) {
+interface FakeResponse { status?: number; json?: unknown; text?: string; headers?: Record<string, string> }
+function fakeFetch(responses: FakeResponse[]) {
   const seen: Seen[] = []
   const impl = (async (url: string, init: RequestInit = {}) => {
     seen.push({ url: String(url), init })
     const r = responses.shift() ?? {}
-    return new Response(r.text ?? JSON.stringify(r.json ?? {}), { status: r.status ?? 200 })
+    return new Response(r.text ?? JSON.stringify(r.json ?? {}), { status: r.status ?? 200, headers: r.headers })
   }) as unknown as typeof fetch
   return { impl, seen }
 }
 const env = { GITHUB_REPO: 'acme/widgets' }
 const getToken = async () => 'tok'
+const issue = (number: number, state: string, body: string, extra: Record<string, unknown> = {}) => ({
+  number, state, html_url: `u${number}`, body, labels: [{ name: 'telemetry' }], ...extra,
+})
+const nextLink = (page: number) => ({
+  Link: `<https://api.github.com/repos/acme/widgets/issues?labels=telemetry&state=all&per_page=100&page=${page}>; rel="next", <https://api.github.com/repos/acme/widgets/issues?page=9>; rel="last"`,
+})
+/** Five label POSTs answered as already existing, so a create can follow. */
+const labelsExist = (): FakeResponse[] =>
+  ALL_ISSUE_LABELS.map(() => ({ status: 422, json: { errors: [{ code: 'already_exists' }] } }))
 
 describe('githubIssueTracker request shape', () => {
-  it('searches all states by label and marker, and returns the exact match', async () => {
+  it('lists telemetry issues in all states and returns the exact marker match', async () => {
     const fp = 'crash_cluster:abc'
     const { impl, seen } = fakeFetch([
-      {
-        json: {
-          items: [
-            { number: 9, state: 'open', html_url: 'u9', body: markerFor('crash_cluster:abcd') },
-            { number: 4, state: 'closed', html_url: 'u4', body: `x ${markerFor(fp)}` },
-          ],
-        },
-      },
+      { json: [issue(9, 'open', markerFor('crash_cluster:abcd')), issue(4, 'closed', `x ${markerFor(fp)}`)] },
     ])
     const ref = await githubIssueTracker(env, { fetch: impl, getToken }).findByFingerprint(fp)
-    expect(ref).toEqual({ number: 4, state: 'closed', url: 'u4', body: `x ${markerFor(fp)}`, lastTelemetryCommentWeek: null })
+    expect(ref).toEqual({ number: 4, state: 'closed', url: 'u4', body: `x ${markerFor(fp)}`, labels: ['telemetry'] })
     const url = new URL(seen[0].url)
-    expect(url.pathname).toBe('/search/issues')
-    expect(url.searchParams.get('q')).toBe(`repo:acme/widgets is:issue label:telemetry "telemetry-fp: ${fp}" in:body`)
-    expect(url.searchParams.get('q')).not.toContain('is:open')
+    expect(url.pathname).toBe('/repos/acme/widgets/issues')
+    expect(url.searchParams.get('labels')).toBe('telemetry')
+    expect(url.searchParams.get('state')).toBe('all')
+    expect(url.searchParams.get('per_page')).toBe('100')
     expect((seen[0].init.headers as Record<string, string>).Authorization).toBe('Bearer tok')
   })
 
-  it('returns null when no result carries the exact marker', async () => {
-    const { impl } = fakeFetch([{ json: { items: [{ number: 1, state: 'open', html_url: 'u', body: 'nothing' }] } }])
+  it('follows the Link header across pages, once per run', async () => {
+    const { impl, seen } = fakeFetch([
+      { json: [issue(1, 'open', markerFor('a:1'))], headers: nextLink(2) },
+      { json: [issue(2, 'open', markerFor('a:2'))] },
+    ])
+    const t = githubIssueTracker(env, { fetch: impl, getToken })
+    expect((await t.findByFingerprint('a:2'))?.number).toBe(2)
+    expect((await t.findByFingerprint('a:1'))?.number).toBe(1)
+    expect(seen).toHaveLength(2)
+    expect(new URL(seen[1].url).searchParams.get('page')).toBe('2')
+  })
+
+  it('prefers an open issue over a closed one, then the lowest number', async () => {
+    const fp = 'error_code:x|1'
+    const { impl } = fakeFetch([
+      { json: [issue(3, 'closed', markerFor(fp)), issue(8, 'open', markerFor(fp))], headers: nextLink(2) },
+      { json: [issue(5, 'open', markerFor(fp))] },
+    ])
+    expect((await githubIssueTracker(env, { fetch: impl, getToken }).findByFingerprint(fp))?.number).toBe(5)
+  })
+
+  it('ignores pull requests carrying the marker', async () => {
+    const fp = 'a:pr'
+    const { impl } = fakeFetch([{ json: [issue(2, 'open', markerFor(fp), { pull_request: { url: 'p' } })] }])
+    expect(await githubIssueTracker(env, { fetch: impl, getToken }).findByFingerprint(fp)).toBeNull()
+  })
+
+  it('returns null when no issue carries the exact marker', async () => {
+    const { impl } = fakeFetch([{ json: [issue(1, 'open', 'nothing')] }])
     expect(await githubIssueTracker(env, { fetch: impl, getToken }).findByFingerprint('a:b')).toBeNull()
   })
 
-  it('creates an issue with title, body and labels', async () => {
-    const { impl, seen } = fakeFetch([{ json: { number: 12, state: 'open', html_url: 'u12', body: 'B' } }])
-    const ref = await githubIssueTracker(env, { fetch: impl, getToken }).create('T', 'B', ['telemetry', 'crash'])
-    expect(ref).toMatchObject({ number: 12, state: 'open', url: 'u12' })
-    expect(seen[0].url).toBe('https://api.github.com/repos/acme/widgets/issues')
-    expect(seen[0].init.method).toBe('POST')
-    expect(JSON.parse(String(seen[0].init.body))).toEqual({ title: 'T', body: 'B', labels: ['telemetry', 'crash'] })
+  it('finds an issue it created earlier in the same run without listing again', async () => {
+    const fp = 'crash_cluster:new'
+    const body = markerFor(fp)
+    const { impl, seen } = fakeFetch([{ json: [] }, ...labelsExist(), { json: issue(21, 'open', body) }])
+    const t = githubIssueTracker(env, { fetch: impl, getToken })
+    expect(await t.findByFingerprint(fp)).toBeNull()
+    await t.create('T', body, ['telemetry'])
+    const calls = seen.length
+    expect((await t.findByFingerprint(fp))?.number).toBe(21)
+    expect(seen).toHaveLength(calls)
+  })
+
+  it('creates an issue with title, body and labels, after ensuring every label once', async () => {
+    const { impl, seen } = fakeFetch([
+      ...labelsExist(),
+      { json: issue(12, 'open', 'B', { labels: [{ name: 'telemetry' }, { name: 'crash' }] }) },
+      { json: issue(13, 'open', 'C') },
+    ])
+    const t = githubIssueTracker(env, { fetch: impl, getToken })
+    const ref = await t.create('T', 'B', ['telemetry', 'crash'])
+    expect(ref).toMatchObject({ number: 12, state: 'open', url: 'u12', labels: ['telemetry', 'crash'] })
+    const labelPosts = seen.slice(0, ALL_ISSUE_LABELS.length)
+    expect(labelPosts.every((s) => s.url === 'https://api.github.com/repos/acme/widgets/labels' && s.init.method === 'POST')).toBe(true)
+    expect(labelPosts.map((s) => JSON.parse(String(s.init.body)).name)).toEqual([...ALL_ISSUE_LABELS])
+    const create = seen[ALL_ISSUE_LABELS.length]
+    expect(create.url).toBe('https://api.github.com/repos/acme/widgets/issues')
+    expect(create.init.method).toBe('POST')
+    expect(JSON.parse(String(create.init.body))).toEqual({ title: 'T', body: 'B', labels: ['telemetry', 'crash'] })
+    await t.create('T2', 'C', ['telemetry'])
+    expect(seen).toHaveLength(ALL_ISSUE_LABELS.length + 2)
+  })
+
+  it('creates the labels that are missing and stops on any other label error', async () => {
+    const created = fakeFetch([{ status: 201, json: {} }, ...labelsExist().slice(1), { json: issue(1, 'open', 'B') }])
+    await githubIssueTracker(env, { fetch: created.impl, getToken }).create('T', 'B', ['telemetry'])
+    expect(created.seen).toHaveLength(ALL_ISSUE_LABELS.length + 1)
+
+    const denied = fakeFetch([{ status: 403, text: 'no permission' }])
+    await expect(githubIssueTracker(env, { fetch: denied.impl, getToken }).create('T', 'B', ['telemetry'])).rejects.toThrow(/403.*no permission/)
+    expect(denied.seen).toHaveLength(1)
+
+    const invalid = fakeFetch([{ status: 422, json: { errors: [{ code: 'invalid' }] } }])
+    await expect(githubIssueTracker(env, { fetch: invalid.impl, getToken }).create('T', 'B', ['telemetry'])).rejects.toThrow(/422/)
   })
 
   it('comments and reopens', async () => {

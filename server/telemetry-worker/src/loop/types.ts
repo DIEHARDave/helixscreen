@@ -10,12 +10,14 @@ export interface IssueRef {
   state: 'open' | 'closed'
   url: string
   body: string
-  /** ISO week of the last telemetry comment. Filled from LoopState by the caller, never by the tracker. */
-  lastTelemetryCommentWeek: string | null
+  labels: string[]
 }
 
 export interface IssueTracker {
-  /** Searches open and closed issues labelled telemetry for the fingerprint's marker. */
+  /**
+   * The issue whose body carries the fingerprint's marker, among open and closed issues
+   * labelled telemetry: an open one first, then the lowest number.
+   */
   findByFingerprint(fp: string): Promise<IssueRef | null>
   create(title: string, body: string, labels: string[]): Promise<IssueRef>
   comment(issue: number, body: string): Promise<void>

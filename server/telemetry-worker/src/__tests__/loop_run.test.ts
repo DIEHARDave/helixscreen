@@ -199,6 +199,15 @@ describe('runLoop weekly', () => {
     expect(storedReport(r.store).issues).toEqual(out.issues)
   })
 
+  it('lists a created issue that lacks the telemetry label in skipped', async () => {
+    const r = rig()
+    const orig = r.tracker.create.bind(r.tracker)
+    r.tracker.create = async (title, body) => ({ ...(await orig(title, body, [])), labels: [] })
+    const out = await runLoop('weekly', r.deps, false)
+    expect(out.issues.map((i) => i.action)).toEqual(['created', 'created'])
+    expect(out.skipped.filter((s) => s.includes('telemetry label'))).toHaveLength(2)
+  })
+
   it('keeps the stored report and state when the mailer throws', async () => {
     const r = rig()
     r.mailer.failWith = new Error('Resend API 500')
