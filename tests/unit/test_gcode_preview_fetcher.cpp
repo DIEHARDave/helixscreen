@@ -424,6 +424,8 @@ TEST_CASE("preview_gcode_for shows the G-code a .3mf print runs as", "[filename_
     CHECK(preview_gcode_for("Door.gcode.3mf", "Door_plate9.gcode") == "Door_plate9.gcode");
     // A .3mf the printer runs itself, and every ordinary print, keep their name.
     CHECK(preview_gcode_for("Door.gcode.3mf", "Door.gcode.3mf") == "Door.gcode.3mf");
+    CHECK(preview_gcode_for("Door.gcode.3mf", "usb/Door.gcode.3mf") == "Door.gcode.3mf");
+    CHECK(preview_gcode_for("Door.gcode.3mf", "Door.txt") == "Door.gcode.3mf");
     CHECK(preview_gcode_for("Door.gcode.3mf", "") == "Door.gcode.3mf");
     CHECK(preview_gcode_for("benchy.gcode", "other.gcode") == "benchy.gcode");
 }
