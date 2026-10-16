@@ -116,12 +116,18 @@ TEST_CASE_METHOD(ArchivePanel,
     REQUIRE(PrintSelectPanelTestAccess::prepare_archive_start(*panel_));
     CHECK(prep->archive_plate_for(file.name()) == 2);
 
+    // The card is about the whole file: both plates added up.
+    const PrintFileData* row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
+    REQUIRE(row);
+    CHECK(row->print_time_minutes == (5238 + 1800) / 60);
+    CHECK(row->filament_grams == Catch::Approx(23.73f + 12.5f));
+
     PrintSelectPanelTestAccess::step_plate(*panel_, 1);
     drain();
     CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 5 (2 of 2)");
-    const PrintFileData* row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
+    row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
     REQUIRE(row);
-    CHECK(row->print_time_minutes == 30);
+    CHECK(row->print_time_minutes == (5238 + 1800) / 60);
     REQUIRE(row->filament_types.size() == 2);
     CHECK(row->filament_types[1] == "PLA");
     CHECK(PrintSelectPanelTestAccess::selected_print_time(*panel_) != first_time);
@@ -285,4 +291,67 @@ TEST_CASE_METHOD(ArchivePanel, "a plate the printer already converted prints fro
         CHECK(prep->archive_plate_for(archive.name()) == 5);
     }
     std::remove(json_path.c_str());
+}
+
+TEST_CASE_METHOD(ArchivePanel, "the detail view shows the plate while the card adds up the file",
+                 "[print_select][three_mf]") {
+    PlantedGcode file("Set.gcode.3mf", "", fixture_bytes("multi_plate.gcode.3mf"));
+    load(file.name());
+    PrintSelectPanelTestAccess::select_file(*panel_, file.name());
+    const std::string plate2 = PrintSelectPanelTestAccess::selected_print_time(*panel_);
+    PrintSelectPanelTestAccess::step_plate(*panel_, 1);
+    const std::string plate5 = PrintSelectPanelTestAccess::selected_print_time(*panel_);
+    const PrintFileData* row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
+    REQUIRE(row);
+    // Three different numbers: plate 2, plate 5, and the card's total.
+    CHECK(plate2 != plate5);
+    CHECK(plate2 != row->print_time_str);
+    CHECK(plate5 != row->print_time_str);
+}
+
+TEST_CASE_METHOD(ArchivePanel,
+                 "a .3mf the printer describes keeps its metadata and gets only "
+                 "what it left out",
+                 "[print_select][three_mf][native]") {
+    // A printer that answers metadata for its .3mf files.
+    ScopedEnv native("HELIX_MOCK_3MF_METADATA", "1");
+    PlantedGcode file("Q2.gcode.3mf", "", fixture_bytes("single_plate.gcode.3mf"));
+    panel_->refresh_files(true);
+    drain();
+    REQUIRE(PrintSelectPanelTestAccess::find_file(*panel_, file.name()));
+
+    FileMetadata meta;
+    meta.filename = file.name();
+    SECTION("time present, thumbnails empty") {
+        meta.estimated_time = 600;
+        meta.filament_weight_total = 5.0;
+        meta.filament_type = "PETG";
+        PrintSelectPanelTestAccess::apply_metadata(*panel_, file.name(), meta);
+        drain();
+        const PrintFileData* row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
+        REQUIRE(row);
+        CHECK(row->thumbnail_path.find(".bin") != std::string::npos);
+        CHECK(row->print_time_minutes == 10);
+        CHECK(row->filament_grams == Catch::Approx(5.0f));
+        CHECK(row->filament_type == "PETG");
+        CHECK_FALSE(row->archive_extract);
+    }
+    SECTION("no time either") {
+        PrintSelectPanelTestAccess::apply_metadata(*panel_, file.name(), meta);
+        drain();
+        const PrintFileData* row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
+        REQUIRE(row);
+        CHECK(row->thumbnail_path.find(".bin") != std::string::npos);
+        CHECK(row->print_time_minutes == 5238 / 60);
+        CHECK(row->filament_grams == Catch::Approx(23.73f));
+        CHECK(row->filament_type == "ABS");
+        CHECK_FALSE(row->archive_extract);
+    }
+    // Either way it prints as the .3mf itself.
+    PrintSelectPanelTestAccess::select_file(*panel_, file.name());
+    REQUIRE(PrintSelectPanelTestAccess::prepare_archive_start(*panel_));
+    auto* prep = PrintSelectPanelTestAccess::prep_manager(*panel_);
+    REQUIRE(prep);
+    CHECK(prep->archive_plate_for(file.name()) == 0);
+    CHECK(prep->printable_path(file.name()) == file.name());
 }

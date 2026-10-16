@@ -351,6 +351,17 @@ FileMetadata plate_file_metadata(const PlateSummary& plate) {
     return meta;
 }
 
+FileMetadata archive_file_metadata(const ArchiveSummary& summary, const PlateSummary& shown) {
+    FileMetadata meta = plate_file_metadata(shown);
+    meta.estimated_time = 0;
+    meta.filament_weight_total = 0;
+    for (const auto& p : summary.plates) {
+        meta.estimated_time += p.info.prediction_s;
+        meta.filament_weight_total += p.info.weight_g;
+    }
+    return meta;
+}
+
 const PlateSummary* find_plate(const ArchiveSummary& summary, int index) {
     for (const auto& p : summary.plates) {
         if (p.index == index) {

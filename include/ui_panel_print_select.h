@@ -414,6 +414,14 @@ class PrintSelectPanel : public PanelBase {
     /// Publishes the selected file's plate stepper: its plate count and label.
     void update_plate_stepper();
 
+    /// The detail view's time, weight and material for the plate shown, where
+    /// the list card carries a several-plate archive's totals.
+    void apply_plate_stats_to_detail();
+
+    /// Fills the stats file @p i's printer metadata left out (time, weight,
+    /// materials, colors) from its archive, for a .3mf the printer reads itself.
+    void fill_missing_from_archive(size_t i);
+
     /// Shows @p file's thumbnail and stats in the detail view (the selected file).
     void show_file_in_detail(const PrintFileData& file);
 

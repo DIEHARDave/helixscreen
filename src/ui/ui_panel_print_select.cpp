@@ -1613,6 +1613,17 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
                 }
             }
 
+            // A printer that reads the .3mf itself can still leave out its
+            // time: the archive's slice summary fills that in.
+            if (helix::gcode::is_3mf(d->filename) && !self->file_list_[d->index].archive_extract &&
+                d->print_time_minutes == 0) {
+                if (self->file_list_[d->index].archive) {
+                    self->fill_missing_from_archive(d->index);
+                } else if (!self->file_list_[d->index].archive_requested) {
+                    self->load_archive(d->index, d->filename, false);
+                }
+            }
+
             // Schedule debounced view refresh
             self->schedule_view_refresh();
 
@@ -2091,8 +2102,74 @@ void PrintSelectPanel::set_selected_file(const char* filename, const char* thumb
     lv_subject_copy_string(&selected_print_height_subject_, print_height);
     lv_subject_copy_string(&selected_layer_height_subject_, layer_height ? layer_height : "");
     lv_subject_copy_string(&selected_filament_type_subject_, filament_type ? filament_type : "");
+    apply_plate_stats_to_detail();
 
     spdlog::info("[{}] Selected file: {}", get_name(), filename);
+}
+
+void PrintSelectPanel::apply_plate_stats_to_detail() {
+    const auto it = std::find_if(file_list_.begin(), file_list_.end(), [this](const auto& f) {
+        return !f.is_dir && f.filename == selected_filename_buffer_;
+    });
+    if (it == file_list_.end() || !it->archive || !it->archive_extract ||
+        it->archive->plates.size() < 2) {
+        return;
+    }
+    const auto* plate = three_mf::find_plate(*it->archive, it->archive_plate);
+    if (!plate) {
+        return;
+    }
+    // The list card adds up every plate; the detail view is about the one shown.
+    const FileMetadata meta = three_mf::plate_file_metadata(*plate);
+    const std::string time =
+        format_print_time(card_total_minutes(static_cast<int>(meta.estimated_time / 60.0)));
+    const std::string weight =
+        format_filament_weight(static_cast<float>(meta.filament_weight_total));
+    lv_subject_copy_string(&selected_print_time_subject_, time.c_str());
+    lv_subject_copy_string(&selected_filament_weight_subject_, weight.c_str());
+    lv_subject_copy_string(&selected_filament_type_subject_, it->filament_type.c_str());
+}
+
+void PrintSelectPanel::fill_missing_from_archive(size_t i) {
+    if (i >= file_list_.size() || !file_list_[i].archive) {
+        return;
+    }
+    PrintFileData& f = file_list_[i];
+    const auto* plate = three_mf::find_plate(*f.archive, f.archive_plate);
+    if (!plate || !plate->has_info) {
+        return;
+    }
+    const FileMetadata meta = three_mf::archive_file_metadata(*f.archive, *plate);
+    bool filled = false;
+    if (f.print_time_minutes == 0 && meta.estimated_time > 0) {
+        f.print_time_minutes = static_cast<int>(meta.estimated_time / 60.0);
+        f.print_time_str = format_print_time(card_total_minutes(f.print_time_minutes));
+        filled = true;
+    }
+    if (f.filament_grams <= 0.0f && meta.filament_weight_total > 0) {
+        f.filament_grams = static_cast<float>(meta.filament_weight_total);
+        f.filament_str = format_filament_weight(f.filament_grams);
+        filled = true;
+    }
+    if (f.filament_types.empty() && !meta.filament_type.empty()) {
+        for (std::string_view t : tio::lines(meta.filament_type, ';')) {
+            f.filament_types.emplace_back(t);
+        }
+        f.filament_type = f.filament_types.front();
+        filled = true;
+    }
+    if (f.filament_colors.empty() && !meta.filament_colors.empty()) {
+        f.filament_colors = meta.filament_colors;
+        filled = true;
+    }
+    if (!filled) {
+        return;
+    }
+    spdlog::debug("[{}] Filled {}'s missing stats from its archive", get_name(), f.filename);
+    schedule_view_refresh();
+    if (f.filename == selected_filename_buffer_) {
+        show_file_in_detail(f);
+    }
 }
 
 void PrintSelectPanel::show_detail_view() {

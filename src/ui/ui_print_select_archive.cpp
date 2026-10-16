@@ -10,6 +10,7 @@
 #include "ui_update_queue.h"
 
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "text_io.h"
 #include "three_mf_reader.h"
 #include "thumbnail_cache.h"
 
@@ -54,31 +55,36 @@ void PrintSelectPanel::load_archive(size_t i, const std::string& filename, bool 
         path, file.file_size_bytes, static_cast<double>(file.modified_timestamp),
         [this, token, i, filename, extract, gen](const three_mf::ArchiveSummary& summary) {
             auto shared = std::make_shared<const three_mf::ArchiveSummary>(summary);
-            token.defer("PrintSelectPanel::archive_summary",
-                        [this, i, filename, extract, gen, shared]() {
-                            if (nav_generation_.load() != gen || i >= file_list_.size() ||
-                                file_list_[i].filename != filename) {
-                                return;
-                            }
-                            PrintFileData& f = file_list_[i];
-                            f.archive = shared;
-                            f.archive_extract = extract;
-                            spdlog::debug("[{}] {} holds {} sliced plate(s)", get_name(), filename,
-                                          shared->plates.size());
-                            if (extract) {
-                                // The plate's summary stands in for the metadata the
-                                // printer has none of; its render follows from there.
-                                const auto* plate = three_mf::find_plate(*shared, f.archive_plate);
-                                process_metadata_result(
-                                    i, filename,
-                                    plate ? three_mf::plate_file_metadata(*plate) : FileMetadata{});
-                            } else {
-                                fetch_archive_thumbnail(i);
-                            }
-                            if (filename == selected_filename_buffer_) {
-                                update_plate_stepper();
-                            }
-                        });
+            token.defer("PrintSelectPanel::archive_summary", [this, i, filename, extract, gen,
+                                                              shared]() {
+                if (nav_generation_.load() != gen || i >= file_list_.size() ||
+                    file_list_[i].filename != filename) {
+                    return;
+                }
+                PrintFileData& f = file_list_[i];
+                f.archive = shared;
+                f.archive_extract = extract;
+                spdlog::debug("[{}] {} holds {} sliced plate(s)", get_name(), filename,
+                              shared->plates.size());
+                if (extract) {
+                    // The plate's summary stands in for the metadata the
+                    // printer has none of; its render follows from there.
+                    const auto* plate = three_mf::find_plate(*shared, f.archive_plate);
+                    process_metadata_result(i, filename,
+                                            plate ? three_mf::archive_file_metadata(*shared, *plate)
+                                                  : FileMetadata{});
+                } else {
+                    // The printer has metadata: the archive fills
+                    // only what it left out.
+                    if (f.original_thumbnail_url.empty()) {
+                        fetch_archive_thumbnail(i);
+                    }
+                    fill_missing_from_archive(i);
+                }
+                if (filename == selected_filename_buffer_) {
+                    update_plate_stepper();
+                }
+            });
         },
         [this, token, i, filename, extract, gen](const std::string& error) {
             spdlog::debug("[PrintSelectPanel] .3mf {} unreadable: {}", filename, error);
@@ -170,16 +176,25 @@ void PrintSelectPanel::step_archive_plate(int step) {
     spdlog::debug("[{}] {}: showing plate {}", get_name(), it->filename, it->archive_plate);
 
     const size_t i = static_cast<size_t>(it - file_list_.begin());
-    process_metadata_result(i, it->filename, three_mf::plate_file_metadata(plates[next]));
     // The plate's own filaments, for the mapping card and the start's palette.
-    const PrintFileData& file = file_list_[i];
+    // The card keeps the whole file's time and weight; the detail view shows
+    // the plate's (apply_plate_stats_to_detail()).
+    const FileMetadata plate_meta = three_mf::plate_file_metadata(plates[next]);
+    PrintFileData& file = *it;
+    file.filament_types.clear();
+    for (std::string_view t : text_io::lines(plate_meta.filament_type, ';')) {
+        file.filament_types.emplace_back(t);
+    }
+    file.filament_colors = plate_meta.filament_colors;
+    file.filament_type = file.filament_types.empty() ? "" : file.filament_types.front();
     selected_filament_type_ = file.filament_type;
     selected_filament_colors_ = file.filament_colors;
     selected_filament_materials_ = file.filament_types;
     if (detail_view_) {
         detail_view_->set_file_palette(file.filament_colors, file.filament_types);
     }
-    update_plate_stepper();
+    fetch_archive_thumbnail(i);
+    show_file_in_detail(file);
 }
 
 void PrintSelectPanel::update_plate_stepper() {

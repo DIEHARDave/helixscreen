@@ -45,6 +45,11 @@ const zip::ZipEntry* plate_thumbnail(const PlateSummary& plate);
 /// by the slicer's filament id.
 FileMetadata plate_file_metadata(const PlateSummary& plate);
 
+/// The whole archive as one file's metadata: @p shown's filaments (what that
+/// plate prints with), and the predicted time and weight of every sliced plate
+/// added up, so a list card is honest about a file holding several.
+FileMetadata archive_file_metadata(const ArchiveSummary& summary, const PlateSummary& shown);
+
 /// The plate @p summary lists as @p index, or its first plate when it has no
 /// such plate, or nullptr when it has none.
 const PlateSummary* find_plate(const ArchiveSummary& summary, int index);

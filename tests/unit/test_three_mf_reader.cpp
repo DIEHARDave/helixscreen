@@ -308,3 +308,23 @@ TEST_CASE("extract_plate refuses a plate whose bytes do not match its checksums"
         CHECK(ThreeMfReader::extract_plate(zip.path + ".absent", 9, out.path) == ZipError::Io);
     }
 }
+
+TEST_CASE("archive_file_metadata adds up every plate and keeps the shown plate's filaments",
+          "[three_mf][reader]") {
+    helix::three_mf::ArchiveSummary summary;
+    helix::three_mf::PlateSummary a, b;
+    a.index = 2;
+    a.info.prediction_s = 600;
+    a.info.weight_g = 10;
+    a.info.filaments = {{1, "PLA", "#FFFFFF", 1, 10}};
+    b.index = 5;
+    b.info.prediction_s = 300;
+    b.info.weight_g = 4;
+    b.info.filaments = {{2, "PETG", "#FF0000", 1, 4}};
+    summary.plates = {a, b};
+    const auto meta = helix::three_mf::archive_file_metadata(summary, summary.plates[1]);
+    CHECK(meta.estimated_time == Catch::Approx(900));
+    CHECK(meta.filament_weight_total == Catch::Approx(14));
+    CHECK(meta.filament_type == ";PETG");
+    CHECK(meta.filament_colors == std::vector<std::string>{"", "#FF0000"});
+}
