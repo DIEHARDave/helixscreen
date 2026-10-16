@@ -427,7 +427,7 @@ void PrintStartCollector::reset_run_locked() {
     heater_wait_shown_ = false;
     wait_heater_arrived_at_ = helix::sim::SimulatedClock::time_point::min();
     heaters_ready_wait_since_ = helix::sim::SimulatedClock::time_point::min();
-    forget_chamber_wait_line_locked();
+    forget_wait_line_locked();
     pre_wait_phase_ = PrintStartPhase::IDLE;
     pre_wait_message_.clear();
     last_phase_object_state_.clear();
@@ -905,10 +905,11 @@ void PrintStartCollector::check_fallback_completion() {
         if (!waiting) {
             {
                 std::lock_guard<std::mutex> lock(state_mutex_);
-                forget_chamber_wait_line_locked();
+                forget_wait_line_locked();
             }
             end_heater_wait();
         } else {
+            request_wait_line();
             const int chamber_temp =
                 lv_subject_get_int(state_.temperature_state().get_chamber_temp_subject());
             const int chamber_target =
@@ -929,18 +930,14 @@ void PrintStartCollector::check_fallback_completion() {
             const bool heater_refused =
                 !temps.chamber_heater_name().empty() &&
                 temps.chamber_command_rejection().kind != chamber::CommandRejection::None;
-            // Without a refusal (a slicer that sends no M141, a glue that
-            // reports none), the command at the print position settles it:
-            // a TEMPERATURE_WAIT whose SENSOR is the chamber heater itself.
             const std::string& chamber_heater = temps.chamber_heater_name();
             bool chamber_unheated = false;
-            uint64_t read_gen = 0;
+            std::optional<PrintStartPhase> named;
             {
                 std::lock_guard<std::mutex> lock(state_mutex_);
                 const auto now = helix::sim::SimulatedClock::now();
                 if (!heaters_ready) {
                     heaters_ready_wait_since_ = helix::sim::SimulatedClock::time_point::min();
-                    forget_chamber_wait_line_locked();
                 } else if (heaters_ready_wait_since_ ==
                            helix::sim::SimulatedClock::time_point::min()) {
                     heaters_ready_wait_since_ = now;
@@ -949,33 +946,30 @@ void PrintStartCollector::check_fallback_completion() {
                     heaters_ready &&
                     heaters_ready_wait_since_ != helix::sim::SimulatedClock::time_point::min() &&
                     now - heaters_ready_wait_since_ >= CHAMBER_WAIT_SETTLE;
-                const bool unheated_heater =
-                    settled && chamber_target <= 0 && !chamber_heater.empty();
-                if (unheated_heater && !heater_refused && !device_wait &&
-                    !chamber_line_requested_) {
-                    chamber_line_requested_ = true;
-                    read_gen = ++chamber_line_gen_;
-                }
                 chamber_unheated =
-                    unheated_heater &&
-                    (heater_refused || wait_names_chamber_heater(chamber_line_, chamber_heater));
+                    settled && chamber_target <= 0 && !chamber_heater.empty() && heater_refused;
+                if (wait_line_read_) {
+                    named = heater_waited_on(wait_line_, chamber_heater);
+                }
             }
-            if (read_gen != 0) {
-                request_chamber_wait_line(read_gen);
-            }
-            const PrintStartPhase waited_on = nozzle_short ? PrintStartPhase::HEATING_NOZZLE
-                                              : bed_short  ? PrintStartPhase::HEATING_BED
-                                              : device_wait || chamber_heating || chamber_unheated
-                                                  ? PrintStartPhase::SOAKING
-                                                  : PrintStartPhase::IDLE;
+            // The command at the print position names the heater when it is
+            // one of the waits; otherwise the heater still short of its
+            // target is the best guess.
+            const PrintStartPhase guessed = nozzle_short ? PrintStartPhase::HEATING_NOZZLE
+                                            : bed_short  ? PrintStartPhase::HEATING_BED
+                                            : device_wait || chamber_heating || chamber_unheated
+                                                ? PrintStartPhase::SOAKING
+                                                : PrintStartPhase::IDLE;
+            const PrintStartPhase waited_on = named.value_or(guessed);
             tick_waited_on = waited_on;
             // The report that shows the waited-on heater arriving is the
-            // wait's last, so moving the label to another heater takes a
-            // report after the tick that saw it arrive: the next wait.
+            // wait's last, so moving the label to another heater on a guess
+            // takes a report after the tick that saw it arrive: the next wait.
+            // The waiting command needs no such proof.
             bool may_relabel = true;
             {
                 std::lock_guard<std::mutex> lock(state_mutex_);
-                if (!heater_wait_shown_ || waited_on == current_phase_) {
+                if (named || !heater_wait_shown_ || waited_on == current_phase_) {
                     wait_heater_arrived_at_ = helix::sim::SimulatedClock::time_point::min();
                 } else if (wait_heater_arrived_at_ ==
                            helix::sim::SimulatedClock::time_point::min()) {
@@ -1197,11 +1191,21 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
     // A heater wait reports once a second for as long as it blocks. The
     // fallback tick reads the stamp; the wait itself is the printer working.
     if (is_heater_wait_report(line)) {
+        bool wait_starts;
         {
             std::lock_guard<std::mutex> lock(state_mutex_);
-            heater_wait_report_time_ = helix::sim::SimulatedClock::now();
+            const auto now = helix::sim::SimulatedClock::now();
+            wait_starts = heater_wait_report_time_ + HEATER_WAIT_REPORT_GAP <= now;
+            heater_wait_report_time_ = now;
         }
         note_inferred_activity();
+        // Read the waiting command now rather than at the next tick, which
+        // would otherwise label the wait's first seconds from a guess.
+        if (wait_starts && real_signal_seen_.load(std::memory_order_relaxed)) {
+            auto self = shared_from_this();
+            helix::ui::queue_update("PrintStartCollector::wait_started",
+                                    [self]() { self->request_wait_line(); });
+        }
     }
 
     // Check for HELIX:PHASE signals (highest priority - definitive signals from plugin/macros)
@@ -2130,19 +2134,57 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const std::string&
     }
 }
 
-void PrintStartCollector::forget_chamber_wait_line_locked() {
-    chamber_line_ = {};
-    chamber_line_requested_ = false;
-    ++chamber_line_gen_;
+void PrintStartCollector::forget_wait_line_locked() {
+    wait_line_ = {};
+    wait_line_read_ = false;
+    wait_line_requested_ = false;
+    wait_line_position_.reset();
+    ++wait_line_gen_;
+}
+
+std::optional<PrintStartPhase>
+PrintStartCollector::heater_waited_on(const helix::WaitLine& line,
+                                      const std::string& chamber_heater) {
+    switch (line.kind) {
+    case helix::WaitKind::M109:
+        return PrintStartPhase::HEATING_NOZZLE;
+    case helix::WaitKind::M190:
+        return PrintStartPhase::HEATING_BED;
+    case helix::WaitKind::M191:
+        return PrintStartPhase::SOAKING;
+    case helix::WaitKind::TemperatureWait:
+        if (line.sensor == "heater_bed") {
+            return PrintStartPhase::HEATING_BED;
+        }
+        if (line.tool) {
+            return PrintStartPhase::HEATING_NOZZLE;
+        }
+        if (helix::wait_names_chamber_heater(line, chamber_heater)) {
+            return PrintStartPhase::SOAKING;
+        }
+        return std::nullopt;
+    case helix::WaitKind::Other:
+        break;
+    }
+    return std::nullopt;
 }
 
 // The command at the print position: the line starting at
-// virtual_sdcard.file_position. Main thread; the answer lands under state_mutex_ and is
-// read on the next tick.
-void PrintStartCollector::request_chamber_wait_line(uint64_t gen) {
+// virtual_sdcard.file_position. Main thread; the position answer and the
+// line land under state_mutex_ and are read on the next tick.
+void PrintStartCollector::request_wait_line() {
+    if (!active_.load()) {
+        return;
+    }
     const char* file = lv_subject_get_string(state_.print_state().get_print_filename_subject());
     if (!file || !file[0]) {
         return;
+    }
+    uint64_t gen;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        wait_line_requested_ = true;
+        gen = wait_line_gen_;
     }
     auto self = shared_from_this();
     const std::string filename = file;
@@ -2153,20 +2195,31 @@ void PrintStartCollector::request_chamber_wait_line(uint64_t gen) {
             if (!position) {
                 return;
             }
+            uint64_t read_gen;
+            {
+                std::lock_guard<std::mutex> lock(self->state_mutex_);
+                if (gen != self->wait_line_gen_ || position == self->wait_line_position_) {
+                    return; // the wait ended, or the line there is already read
+                }
+                self->wait_line_position_ = position;
+                self->wait_line_ = {};
+                self->wait_line_read_ = false;
+                read_gen = ++self->wait_line_gen_;
+            }
             const uint64_t pos = *position;
             helix::ui::queue_update(
-                "PrintStartCollector::read_chamber_wait_line", [self, gen, filename, pos]() {
+                "PrintStartCollector::read_wait_line", [self, read_gen, filename, pos]() {
                     IMoonrakerAPI* api = get_moonraker_api();
                     if (!api || !api->transfers().supports_range_reads()) {
                         return;
                     }
                     helix::read_wait_line_at(
                         api->transfers(), filename, pos,
-                        [self, gen](const helix::WaitLine& line) {
-                            self->apply_chamber_wait_line(gen, line);
+                        [self, read_gen](const helix::WaitLine& line) {
+                            self->apply_wait_line(read_gen, line);
                         },
-                        [](const MoonrakerError& e) {
-                            spdlog::debug("[PrintStartCollector] Chamber wait line not read: {}",
+                        [pos](const MoonrakerError& e) {
+                            spdlog::debug("[PrintStartCollector] Wait line at {} not read: {}", pos,
                                           e.message);
                         });
                 });
@@ -2176,14 +2229,15 @@ void PrintStartCollector::request_chamber_wait_line(uint64_t gen) {
         });
 }
 
-void PrintStartCollector::apply_chamber_wait_line(uint64_t gen, const helix::WaitLine& line) {
+void PrintStartCollector::apply_wait_line(uint64_t gen, const helix::WaitLine& line) {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    if (gen != chamber_line_gen_) {
-        return; // read for a wait that has since ended
+    if (gen != wait_line_gen_) {
+        return; // read for a position or wait that has since moved on
     }
     spdlog::info("[PrintStartCollector] Waiting command: kind {}, sensor '{}'",
                  static_cast<int>(line.kind), line.sensor);
-    chamber_line_ = line;
+    wait_line_ = line;
+    wait_line_read_ = true;
 }
 
 std::string PrintStartCollector::chamber_wait_message(int temp_deci, int target_deci) {

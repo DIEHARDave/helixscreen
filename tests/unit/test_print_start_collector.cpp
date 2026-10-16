@@ -4130,8 +4130,6 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     set_chamber(300, 0);
     set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
     report_for(15);
-    // With no chamber heater there is nothing to read the wait for.
-    CHECK_FALSE(PrintStartCollectorTestAccess::chamber_wait_line_requested(collector()));
     CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
     CHECK(chamber_wait_flag() == 0);
 }
@@ -4158,11 +4156,10 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     set_chamber(280, 0);
     set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
     report_for(6);
-    REQUIRE(PrintStartCollectorTestAccess::chamber_wait_line_requested(collector()));
     CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
 
     SECTION("the line names the chamber heater") {
-        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+        PrintStartCollectorTestAccess::answer_wait_line(
             collector(), helix::classify_wait_line(
                              "TEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35"));
         report_for(2);
@@ -4173,7 +4170,7 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
 
     SECTION("a passive soak on a separate chamber sensor is not a heater stall") {
         state().temperature_state().set_chamber_sensor_name("temperature_sensor chamber");
-        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+        PrintStartCollectorTestAccess::answer_wait_line(
             collector(), helix::classify_wait_line(
                              "TEMPERATURE_WAIT SENSOR=\"temperature_sensor chamber\" MINIMUM=40"));
         report_for(2);
@@ -4182,7 +4179,7 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     }
 
     SECTION("a probe coil's wait is not the chamber's") {
-        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+        PrintStartCollectorTestAccess::answer_wait_line(
             collector(),
             helix::classify_wait_line(
                 "TEMPERATURE_WAIT SENSOR=\"temperature_probe beacon_coil\" MINIMUM=40"));
@@ -4220,11 +4217,96 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     set_chamber(280, 0);
     set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
     report_for(6);
-    REQUIRE(PrintStartCollectorTestAccess::chamber_wait_line_requested(collector()));
+    REQUIRE(PrintStartCollectorTestAccess::wait_line_requested(collector()));
     REQUIRE(transfers.ranges == 1);
     report_for(2);
     CHECK(get_current_phase() == PrintStartPhase::SOAKING);
     CHECK(chamber_wait_flag() == 1);
+}
+
+// The nozzle sits inside the at-target band while the bed is far short, so a
+// guess says bed. The command at the print position says otherwise when it
+// can be read, and only then.
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "a heater wait shows the heater its command names, else the guess",
+                 "[print][collector][heater_wait][wait_line]") {
+    ArchiveTransfers transfers{client(), ""};
+    ArchiveMoonrakerAPIMock api{client(), state(), transfers};
+    IMoonrakerAPI* const previous_api = get_moonraker_api();
+    set_moonraker_api(&api);
+    struct RestoreApi {
+        IMoonrakerAPI* api;
+        ~RestoreApi() {
+            set_moonraker_api(api);
+        }
+    } restore{previous_api};
+    lv_subject_copy_string(state().print_state().get_print_filename_subject(), "u1_print.gcode");
+    set_all_temps(/*bed*/ 450, 1000, /*ext*/ 2090, 2100);
+
+    const auto wait_on = [&](const std::string& command) {
+        const std::string file = "G28\n" + command + "\nG90\n";
+        transfers.put("u1_print.gcode", file);
+        client().set_object_status("virtual_sdcard", {{"file_position", file.find(command)}});
+        report_for(2);
+    };
+
+    SECTION("M109 is the nozzle") {
+        wait_on("M109 S210");
+        REQUIRE(transfers.ranges == 1);
+        CHECK(get_current_phase() == PrintStartPhase::HEATING_NOZZLE);
+    }
+    SECTION("a TEMPERATURE_WAIT on an extruder is the nozzle") {
+        wait_on("TEMPERATURE_WAIT SENSOR=extruder MINIMUM=205");
+        CHECK(get_current_phase() == PrintStartPhase::HEATING_NOZZLE);
+    }
+    SECTION("a command that is no wait leaves the guess") {
+        wait_on("G4 P1000");
+        REQUIRE(transfers.ranges == 1);
+        CHECK(get_current_phase() == PrintStartPhase::HEATING_BED);
+    }
+    SECTION("a failed read leaves the guess") {
+        transfers.fail_ranges = true;
+        wait_on("M109 S210");
+        REQUIRE(transfers.ranges >= 1);
+        CHECK(get_current_phase() == PrintStartPhase::HEATING_BED);
+    }
+    SECTION("the position moving mid-wait reads the next command") {
+        const std::string file = "M109 S170\nM190 S100\nG90\n";
+        transfers.put("u1_print.gcode", file);
+        set_all_temps(/*bed*/ 450, 1000, /*ext*/ 1990, 1700);
+        client().set_object_status("virtual_sdcard", {{"file_position", 0}});
+        report_for(2);
+        REQUIRE(get_current_phase() == PrintStartPhase::HEATING_NOZZLE);
+        // The reports go on without a gap; one tick reads the move, the next shows it.
+        set_all_temps(/*bed*/ 450, 1000, /*ext*/ 1700, 1700);
+        client().set_object_status("virtual_sdcard", {{"file_position", file.find("M190")}});
+        report_for(2);
+        CHECK(transfers.ranges == 2);
+        CHECK(get_current_phase() == PrintStartPhase::HEATING_BED);
+    }
+}
+
+TEST_CASE("the heater a wait command names", "[print][collector][wait_line]") {
+    using helix::classify_wait_line;
+    const std::string heater = "heater_generic dragonbreath";
+    const auto named = [&](const char* line) {
+        return PrintStartCollector::heater_waited_on(classify_wait_line(line), heater);
+    };
+    CHECK(named("M109 S210") == PrintStartPhase::HEATING_NOZZLE);
+    CHECK(named("M109 S170 T2") == PrintStartPhase::HEATING_NOZZLE);
+    CHECK(named("M190 S100") == PrintStartPhase::HEATING_BED);
+    CHECK(named("M191 S60") == PrintStartPhase::SOAKING);
+    CHECK(named("TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM=95") == PrintStartPhase::HEATING_BED);
+    CHECK(named("TEMPERATURE_WAIT SENSOR=extruder2 MINIMUM=200") ==
+          PrintStartPhase::HEATING_NOZZLE);
+    CHECK(named("TEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35") ==
+          PrintStartPhase::SOAKING);
+    CHECK_FALSE(named("TEMPERATURE_WAIT SENSOR=\"temperature_sensor chamber\" MINIMUM=40"));
+    CHECK_FALSE(named("TEMPERATURE_WAIT SENSOR=\"temperature_probe beacon_coil\" MINIMUM=40"));
+    CHECK_FALSE(named("G4 P1000"));
+    CHECK_FALSE(PrintStartCollector::heater_waited_on(
+        classify_wait_line("TEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35"),
+        ""));
 }
 
 TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
@@ -4419,9 +4501,8 @@ TEST_CASE_METHOD(ArtilleryHeaterWaitFixture,
 // blocking waits report once a second: M109 S170 during the switch check,
 // M109 S210 after plate detect, then M109 S170 (a cool-down) straight into
 // M190 S100 until the shutdown. The bed is far below 100C through all of them
-// and the active tool is T2. A wait shows the nozzle while it is short of its
-// target, else the bed; a nozzle cooling to its target is not short, so the
-// cool-down into M190 reads as the bed.
+// and the active tool is T2. Each wait shows the heater its command names, the
+// cool-down included.
 // ============================================================================
 
 namespace {
@@ -4434,10 +4515,26 @@ std::string collector_fixture_dir() {
     return "tests/fixtures/";
 }
 
+/// The U1 start G-code, file lines 80-230 at their real byte offsets
+/// (tests/fixtures/u1_tool_probe_clean_start.gcode begins at byte 4342; the
+/// bytes before it are blank lines here). The waits stand at: M109 T2 S170
+/// 6204, M109 S210 6453, M109 S170 6732, M190 S100 6742, M109 S260 7281,
+/// TEMPERATURE_WAIT 7342, M109 S260 T2 7738.
+std::string u1_start_file() {
+    std::ifstream f(collector_fixture_dir() + "u1_tool_probe_clean_start.gcode", std::ios::binary);
+    REQUIRE(f.is_open());
+    std::string block((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return std::string(4342, '\n') + block;
+}
+
 /// Replays a U1 console capture ("HH:MM:SS.mmm line") at its real timestamps,
 /// with the fallback tick on the ETA timer's 5 s cadence. Heater state comes
 /// from the wait reports themselves (bed and the active tool T2), seeded with
 /// the given values until the first report.
+///
+/// serve() puts the printed file behind a ranged-read transfers API, and
+/// position_at() scripts virtual_sdcard.file_position: from a time on, the
+/// print stands at that byte.
 class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
   public:
     struct Shown {
@@ -4446,6 +4543,23 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
         std::string message;
         int probes;
     };
+
+    SnapmakerReplayFixture() : previous_api_(get_moonraker_api()) {}
+    ~SnapmakerReplayFixture() override {
+        set_moonraker_api(previous_api_);
+    }
+
+    void serve(const std::string& filename, std::string bytes) {
+        transfers_.put(filename, std::move(bytes));
+        set_moonraker_api(&api_);
+        lv_subject_copy_string(state().print_state().get_print_filename_subject(),
+                               filename.c_str());
+    }
+    void position_at(int ms, uint64_t pos) {
+        positions_.push_back({ms, pos});
+    }
+
+    ArchiveTransfers transfers_{client(), ""};
 
     std::vector<Shown> replay(const std::string& file, int bed, int bed_target, int ext,
                               int ext_target) {
@@ -4493,15 +4607,26 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
         };
 
         const std::regex reading(R"((\w+):(-?\d+\.\d) /(-?\d+\.\d))");
+        size_t next_position = 0;
+        const auto stand_at = [&](int at) {
+            while (next_position < positions_.size() &&
+                   positions_[next_position].first <= at - t0) {
+                client().set_object_status("virtual_sdcard",
+                                           {{"file_position", positions_[next_position].second}});
+                ++next_position;
+            }
+        };
         for (const Line& line : lines) {
             while (next_tick <= line.ms) {
                 clock.advance(std::chrono::milliseconds(next_tick - now));
                 now = next_tick;
+                stand_at(now);
                 tick();
                 next_tick += 5000;
             }
             clock.advance(std::chrono::milliseconds(line.ms - now));
             now = line.ms;
+            stand_at(now);
 
             bool target_changed = false;
             for (std::sregex_iterator it(line.text.begin(), line.text.end(), reading), end;
@@ -4558,23 +4683,90 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
         }
         return trace;
     }
+
+  private:
+    IMoonrakerAPI* previous_api_;
+    ArchiveMoonrakerAPIMock api_{client(), state(), transfers_};
+    std::vector<std::pair<int, uint64_t>> positions_;
 };
 } // namespace
 
 TEST_CASE_METHOD(SnapmakerReplayFixture,
                  "Snapmaker U1: real heater waits show the bed heating between firmware phases",
                  "[print][collector][snapmaker][heater_wait][integration]") {
+    // That print's file is not in the repo; it ran the same start block, so
+    // its waits stand where the 2026-10-16 print's do, each from its first
+    // report. The cool-down hands to M190 when T2 first reads within 1C of
+    // 170 (Klipper's settle band), with no gap in the reports.
+    serve("u1_print.gcode", u1_start_file());
+    position_at(3065, 6204);
+    position_at(42926, 6453);
+    position_at(68869, 6732);
+    position_at(83877, 6742);
     const auto shown = replay("u1_heater_wait_console.txt", /*bed*/ 460, 1000, /*ext*/ 1488, 1700);
 
-    // Each wait takes the label on its first report (or the next tick). The
-    // new tool's Z touch ends the first wait; the second ends at the first
-    // tick after its reports stop, giving "Detecting plate" back until the
-    // last wait runs into the shutdown.
+    // The cool-down shows the nozzle from its first report. The M190 that
+    // follows is read at the first tick after the position moves (85 s) and
+    // shown at the next.
     const std::string trace = phase_trace(shown);
     CAPTURE(full_trace(shown));
     REQUIRE(trace == "0:INITIALIZING 5:HEATING_NOZZLE 13:HOMING 28:BED_MESH 42:HEATING_NOZZLE "
-                     "60:BED_MESH 68:HEATING_BED");
+                     "60:BED_MESH 68:HEATING_NOZZLE 90:HEATING_BED");
     REQUIRE(get_current_message() == "Heating Bed...");
+}
+
+TEST_CASE_METHOD(SnapmakerReplayFixture,
+                 "Snapmaker U1: each real wait shows the heater its command waits on",
+                 "[print][collector][snapmaker][heater_wait][wait_line][integration]") {
+    serve("u1_tool_probe_clean.gcode", u1_start_file());
+    position_at(45400, 6204);
+    position_at(84638, 6453);
+    position_at(112782, 6732);
+    position_at(129793, 6742);
+    position_at(529619, 7281);
+    position_at(568504, 7738);
+    const auto shown =
+        replay("u1_tool_probe_clean_console.txt", /*bed*/ 352, 1000, /*ext*/ 1567, 1700);
+    CAPTURE(full_trace(shown));
+
+    // What the display showed at `ms`.
+    const auto at = [&](int ms) {
+        auto it =
+            std::find_if(shown.rbegin(), shown.rend(), [&](const Shown& s) { return s.ms <= ms; });
+        REQUIRE(it != shown.rend());
+        return it->phase;
+    };
+    const auto never_between = [&](int from, int to, PrintStartPhase phase) {
+        CAPTURE(from, to, print_start_phase_name(phase));
+        REQUIRE(at(from) != phase);
+        for (const Shown& s : shown) {
+            if (s.ms > from && s.ms <= to) {
+                CAPTURE(s.ms);
+                REQUIRE(s.phase != phase);
+            }
+        }
+    };
+
+    // Three nozzle waits: M109 T2 S170 ends in the band where the nozzle is
+    // no longer "short", M109 S210 likewise, and M109 S170 cools from 196.
+    // Each is the nozzle at every tick, and never the bed.
+    for (const auto& [from, to] : {std::pair{45400, 51403}, {84638, 96646}, {112782, 129793}}) {
+        CAPTURE(from);
+        REQUIRE(at(to) == PrintStartPhase::HEATING_NOZZLE);
+        never_between(from, to, PrintStartPhase::HEATING_BED);
+    }
+    REQUIRE(at(50000) == PrintStartPhase::HEATING_NOZZLE);
+
+    // M190 S100 follows with no gap in the reports: shown from the tick after
+    // the read at 130 s until G28 Z at 324.9 s, its settling tail included.
+    for (int ms = 135000; ms < 324904; ms += 5000) {
+        CAPTURE(ms);
+        REQUIRE(at(ms) == PrintStartPhase::HEATING_BED);
+    }
+    never_between(319000, 325000, PrintStartPhase::SOAKING);
+
+    REQUIRE(shown.back().phase == PrintStartPhase::HEATING_NOZZLE);
+    REQUIRE(transfers_.ranges == 6);
 }
 
 // ============================================================================
