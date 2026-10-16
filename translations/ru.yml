@@ -324,6 +324,7 @@ translations:
     что хотите отменить печать? Весь прогресс будет потерян.
   Are you sure? This will power off or restart this device.: Вы уверены? Это выключит
     или перезагрузит данное устройство.
+  Ask before switching to another tool: 'Спрашивать перед переключением на другой инструмент'
   Ask for parameters: 'Спрашивать параметры'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Назначьте
     макросы Klipper для управления LED через вкл/выкл, переключение или пресеты
@@ -801,6 +802,7 @@ translations:
   Configuring Moonraker...: Настройка Moonraker...
   Confirm PIN: Подтвердите PIN
   Confirm before running macros: Подтверждать перед запуском макросов
+  Confirm tool changes: 'Подтверждать смену инструмента'
   Connect: Подключить
   Connect a USB label printer first: Сначала подключите USB-принтер этикеток
   Connect an ADXL345 accelerometer to calibrate: Подключите акселерометр ADXL345 для
@@ -3398,6 +3400,7 @@ translations:
   Switch between light and dark themes: Переключение между светлой и тёмной темами
   Switch the active tool or extruder: Смена активного инструмента
   Switch to v%s: 'Перейти на v%s'
+  Switch to {}?: 'Переключиться на {}?'
   Switched to {}: 'Переключено на {}'
   Switches to a backup spool on runout: При обрыве переключится на резервную катушку
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.

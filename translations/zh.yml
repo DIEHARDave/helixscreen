@@ -263,6 +263,7 @@ translations:
   Archive Spool?: 归档料盘？
   Are you sure you want to cancel this print? All progress will be lost.: 确定要取消此打印吗？所有进度将丢失。
   Are you sure? This will power off or restart this device.: 确定吗？这将关闭或重启此设备。
+  Ask before switching to another tool: '切换到其他工具前先询问'
   Ask for parameters: '询问参数'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: 分配 Klipper
     宏通过开/关、切换或预设控制 LED
@@ -692,6 +693,7 @@ translations:
   Configuring Moonraker...: 正在配置 Moonraker...
   Confirm PIN: 确认 PIN 码
   Confirm before running macros: 运行宏前进行确认
+  Confirm tool changes: '确认切换工具'
   Connect: 连接
   Connect a USB label printer first: 请先连接 USB 标签打印机
   Connect an ADXL345 accelerometer to calibrate: 连接 ADXL345 加速度计以进行校准
@@ -3135,6 +3137,7 @@ translations:
   Switch between light and dark themes: 切换浅色和深色主题
   Switch the active tool or extruder: 切换当前工具或挤出机
   Switch to v%s: '切换到 v%s'
+  Switch to {}?: '切换到 {}?'
   Switched to {}: '已切换到 {}'
   Switches to a backup spool on runout: 耗材用尽时切换到备用料盘
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.

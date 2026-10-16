@@ -1,0 +1,101 @@
+// Copyright (C) 2025-2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#pragma once
+
+#include "ams_error.h"
+#include "async_lifetime_guard.h"
+#include "print_lifecycle_state.h"
+
+#include <functional>
+#include <optional>
+#include <string>
+
+namespace helix {
+class PrinterState;
+class IMoonrakerAPI;
+} // namespace helix
+
+namespace helix::ui {
+
+/**
+ * @brief What a request to mount another tool gets, decided before anything moves.
+ *
+ * Every surface that changes tool on a tap (the home tool switcher, the AMS
+ * path canvas toolhead, the filament panel extruder dropdown) asks this one
+ * question, so a tap refused on one is refused on all of them with the same
+ * words, and a confirmation shown on one is shown on all of them.
+ */
+enum class ToolChangeVerdict : uint8_t {
+    AlreadyActive,     ///< The tool is the mounted one: nothing to change
+    RefuseSpoolsOnBed, ///< Spools lie on the bed: the head must not move
+    RefusePrint,       ///< A print owns the toolhead (print_blocks_filament_op)
+    Busy,              ///< The filament system is mid-operation: the tap is ignored
+    ConfirmPaused,     ///< Paused job: always confirmed, the head moves into the part
+    ConfirmSetting,    ///< "Confirm tool changes" is on
+    Immediate,         ///< Change now
+};
+
+/// Everything the verdict depends on, read from live state by tool_change_inputs().
+struct ToolChangeInputs {
+    PrintState lifecycle = PrintState::Idle;
+    bool filament_ops_self_home = false; ///< AmsBackend::filament_ops_self_home(); false with none
+    bool spools_on_bed = false;          ///< PrintStateTracker::spool_latch_active()
+    bool backend_busy = false;           ///< AmsSystemInfo::is_busy()
+    bool already_active = false;         ///< The requested tool is the mounted one
+    bool confirm_enabled = true;         ///< SafetySettingsManager tool-change confirmation
+};
+
+struct ToolChangeDecision {
+    ToolChangeVerdict verdict = ToolChangeVerdict::Immediate;
+    /// The copy to show for RefuseSpoolsOnBed / RefusePrint; success otherwise.
+    AmsError refusal = AmsErrorHelper::success();
+
+    [[nodiscard]] bool dispatches() const {
+        return verdict == ToolChangeVerdict::Immediate ||
+               verdict == ToolChangeVerdict::ConfirmPaused ||
+               verdict == ToolChangeVerdict::ConfirmSetting;
+    }
+};
+
+/**
+ * @brief The refusal a print gives a tool change, or success.
+ *
+ * Same copy the backend produces had the request reached it, so the pre-guard
+ * and the backend refusal never say two different things.
+ */
+[[nodiscard]] AmsError tool_change_print_refusal(PrintState lifecycle, bool filament_ops_self_home);
+
+/// The verdict for @p in. Pure: no state is read.
+[[nodiscard]] ToolChangeDecision decide_tool_change(const ToolChangeInputs& in);
+
+/// The live inputs for a change to @p tool_index on @p printer_state's printer.
+[[nodiscard]] ToolChangeInputs tool_change_inputs(const PrinterState& printer_state,
+                                                  int tool_index);
+
+/// What a caller of offer_tool_change() hears back. Every member is optional.
+struct ToolChangeHooks {
+    /// The change was accepted.
+    std::function<void()> on_success;
+    /// The change was requested and failed, after the shared error toast. May
+    /// run off the main thread: a caller touching LVGL marshals it.
+    std::function<void()> on_failed;
+    /// Nothing was requested: refused, ignored, cancelled or dismissed.
+    std::function<void()> on_declined;
+    /// Gates the confirmation dialog's callbacks, the change itself included.
+    std::optional<LifetimeToken> owner_token;
+};
+
+/**
+ * @brief Decide a change to @p tool_index and carry it out.
+ *
+ * Refusals raise a warning toast; Busy and AlreadyActive are silent. A
+ * confirmation verdict shows a modal_confirm and changes tool on its primary
+ * button. The change goes through ToolState::request_tool_change().
+ *
+ * @return the verdict, so a caller can treat AlreadyActive its own way
+ */
+ToolChangeVerdict offer_tool_change(const PrinterState& printer_state, int tool_index,
+                                    IMoonrakerAPI* api, ToolChangeHooks hooks = {});
+
+} // namespace helix::ui

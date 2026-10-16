@@ -289,6 +289,7 @@ translations:
     sûr de vouloir annuler cette impression ? Toute la progression sera perdue.
   Are you sure? This will power off or restart this device.: Êtes-vous sûr ? Cela
     va éteindre ou redémarrer cet appareil.
+  Ask before switching to another tool: 'Demander avant de passer à un autre outil'
   Ask for parameters: 'Demander les paramètres'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Assigner des
     macros Klipper pour contrôler les LED via on/off, bascule ou préréglages
@@ -761,6 +762,7 @@ translations:
   Configuring Moonraker...: Configuration de Moonraker...
   Confirm PIN: Confirmer le code PIN
   Confirm before running macros: Confirmer avant d'exécuter les macros
+  Confirm tool changes: 'Confirmer les changements d''outil'
   Connect: Connecter
   Connect a USB label printer first: Connectez d'abord une imprimante d'étiquettes
     USB
@@ -3372,6 +3374,7 @@ translations:
   Switch between light and dark themes: Basculer entre les thèmes clair et sombre
   Switch the active tool or extruder: Changer d'outil ou d'extrudeur actif
   Switch to v%s: 'Passer à la v%s'
+  Switch to {}?: 'Passer à {} ?'
   Switched to {}: 'Basculé sur {}'
   Switches to a backup spool on runout: Passe à une bobine de secours en fin de filament
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
