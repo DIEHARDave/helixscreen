@@ -3,6 +3,8 @@
 
 #include "thumbnail_png_stream.h"
 
+#include "crc32.h"
+
 #include <cstdlib>
 #include <cstring>
 
@@ -31,27 +33,6 @@ int channels_for(int color_type) {
     default:
         return 0;
     }
-}
-
-uint32_t crc32_of(const uint8_t* data, size_t size) {
-    static const auto table = [] {
-        struct Table {
-            uint32_t v[256];
-        } t{};
-        for (uint32_t n = 0; n < 256; ++n) {
-            uint32_t c = n;
-            for (int k = 0; k < 8; ++k) {
-                c = (c & 1) ? 0xEDB88320u ^ (c >> 1) : c >> 1;
-            }
-            t.v[n] = c;
-        }
-        return t;
-    }();
-    uint32_t c = 0xFFFFFFFFu;
-    for (size_t i = 0; i < size; ++i) {
-        c = table.v[(c ^ data[i]) & 0xFF] ^ (c >> 8);
-    }
-    return c ^ 0xFFFFFFFFu;
 }
 
 uint8_t paeth(uint8_t a, uint8_t b, uint8_t c) {
@@ -100,7 +81,7 @@ bool for_each_png_idat(const uint8_t* data, size_t size, PngPalette& palette, Pn
         }
         const uint8_t* type = data + at + 4;
         const uint8_t* body = data + at + 8;
-        if (crc32_of(type, len + 4) != be32_at(body + len)) {
+        if (crc32_update(0, type, len + 4) != be32_at(body + len)) {
             return false;
         }
         if (std::memcmp(type, "PLTE", 4) == 0) {

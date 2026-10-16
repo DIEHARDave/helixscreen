@@ -8,6 +8,7 @@
 #include "thumbnail_processor.h"
 #include "thumbnail_rules.h"
 #include "thumbnail_write_journal.h"
+#include "zip_reader.h"
 
 #include <atomic>
 #include <chrono>
@@ -750,5 +751,19 @@ void fetch_thumbnail_from_gcode(const std::string& gcode_path, size_t max_header
                                 ThumbnailLoadContext ctx,
                                 ThumbnailCache::SuccessCallback on_success,
                                 ThumbnailCache::ErrorCallback on_error);
+
+/**
+ * @brief A thumbnail stored inside an archive on the printer: a .3mf's plate render
+ *
+ * The sibling of fetch_thumbnail_from_gcode() for an image that is an entry of
+ * @p archive_path: served from the cache when it holds this entry for an
+ * archive no newer than @p source_modified, else read with one ranged read,
+ * cached as ThumbnailSource::ArchiveEntry and prescaled. Same callback contract.
+ */
+void fetch_thumbnail_from_archive(const std::string& archive_path, const zip::ZipEntry& entry,
+                                  time_t source_modified, IMoonrakerAPI* api,
+                                  const ThumbnailTarget& target, ThumbnailLoadContext ctx,
+                                  ThumbnailCache::SuccessCallback on_success,
+                                  ThumbnailCache::ErrorCallback on_error);
 
 } // namespace helix

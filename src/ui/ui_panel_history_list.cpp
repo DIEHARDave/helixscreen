@@ -1147,7 +1147,7 @@ void HistoryListPanel::handle_reprint() {
         get_print_select_panel(get_printer_state(), get_moonraker_api());
     if (print_panel) {
         // select_file_by_name searches the file list and shows detail view if found
-        if (print_panel->select_file_by_name(job.filename)) {
+        if (print_panel->select_file_by_name(job.filename, job.archive_plate)) {
             spdlog::info("[{}] Navigated to file details for: {}", get_name(), job.filename);
         } else {
             spdlog::warn("[{}] File not found in print panel: {}", get_name(), job.filename);

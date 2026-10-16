@@ -43,8 +43,10 @@ class EspHttpLane {
   public:
     static EspHttpLane& instance();
 
-    // Submits a capped, in-memory GET (HTTP Range: bytes=0-{cap-1}, cap =
-    // clamp_fetch_cap(range_max_bytes)). Returns false immediately — queuing
+    // Submits a capped, in-memory GET (HTTP Range: bytes={offset}-{offset+cap-1},
+    // cap = clamp_fetch_cap(range_max_bytes)). A server that answers a range
+    // starting past 0 with the whole file (200) fails the job: the lane keeps
+    // no more than cap bytes, so it cannot skip to the offset. Returns false immediately — queuing
     // nothing, calling neither callback — if the queue is already at
     // QUEUE_DEPTH or the worker pthread failed to start. Callers MUST NOT
     // block or retry-loop on a false return; a full queue means "try again
@@ -52,7 +54,8 @@ class EspHttpLane {
     // A job whose @p cancelled flag is set by the time the worker takes it is
     // not sent: on_error gets "cancelled" and the queue slot frees at once.
     bool submit_get(std::string url, size_t range_max_bytes, FetchSuccessCb on_success,
-                    FetchErrorCb on_error, FetchCancelFlag cancelled = nullptr);
+                    FetchErrorCb on_error, FetchCancelFlag cancelled = nullptr,
+                    uint64_t offset = 0);
 
     static constexpr size_t QUEUE_DEPTH = 8;
 
@@ -79,6 +82,7 @@ class EspHttpLane {
         FetchSuccessCb on_success;
         FetchErrorCb on_error;
         FetchCancelFlag cancelled;
+        uint64_t offset = 0;
     };
 
     // Caller must already hold mutex_ — mutex_ is a plain std::mutex, so this

@@ -72,6 +72,19 @@ class MetadataTableFileAPI : public MoonrakerFileAPI {
         held.at(index)();
     }
 
+    /// Lists from @p directories (gcodes-root path -> entries); any other
+    /// directory answers not found.
+    void get_directory(const std::string& /*root*/, const std::string& path,
+                       FileListCallback on_success, ErrorCallback on_error) override {
+        auto it = directories.find(path);
+        if (it != directories.end()) {
+            on_success(it->second);
+        } else if (on_error) {
+            on_error(MoonrakerError::json_rpc_error("server.files.get_directory", "Not found"));
+        }
+    }
+
+    std::map<std::string, std::vector<FileInfo>> directories;
     std::map<std::string, FileMetadata> table;
     int calls = 0;
     bool hold = false;

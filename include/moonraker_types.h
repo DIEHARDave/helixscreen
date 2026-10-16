@@ -445,6 +445,14 @@ struct PowerDevice {
 /**
  * @brief Result from start_modified_print() API call
  */
+namespace helix {
+/// What the HelixPrint plugin's status says about itself (server.helix.status).
+struct HelixPluginInfo {
+    bool available = false;  ///< installed and enabled
+    std::string symlink_dir; ///< where it links a modified print; empty when not reported
+};
+} // namespace helix
+
 struct ModifiedPrintResult {
     std::string original_filename; ///< Original file path
     std::string print_filename;    ///< Symlink path used for printing

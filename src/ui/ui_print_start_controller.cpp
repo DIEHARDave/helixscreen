@@ -473,7 +473,7 @@ bool PrintStartController::divert_to_spool_removal() {
 void PrintStartController::initiate_reprint(const std::string& filename, const std::string& path,
                                             const std::set<int>& tools_used,
                                             std::function<void()> on_started,
-                                            std::function<void()> on_error) {
+                                            std::function<void()> on_error, int archive_plate) {
     // path is used for the preparing-job identity; the start RPC takes the bare name.
 
     if (!api_) {
@@ -499,8 +499,25 @@ void PrintStartController::initiate_reprint(const std::string& filename, const s
     printer_state_.print_state().begin_preparing(helix::PrintJobRef{filename, path, ""});
 
     // Lightweight start — the file is already on the printer; no upload/prep.
-    auto start = [this, filename, on_started, on_error]() {
+    // An archive printed as an extracted plate cannot start as itself: it goes
+    // the way Print sends it, extracted again through the preparation manager.
+    auto start = [this, filename, on_started, on_error, archive_plate]() {
         auto tok = lifetime_.token();
+        if (auto* prep = active_prep_manager(); prep && archive_plate > 0) {
+            prep->start_archive_reprint(
+                filename, archive_plate,
+                [tok, on_started, on_error](bool ok, const std::string&) mutable {
+                    tok.defer("PrintStartController::archive_reprint.done",
+                              [ok, on_started, on_error]() {
+                                  if (ok && on_started) {
+                                      on_started();
+                                  } else if (!ok && on_error) {
+                                      on_error();
+                                  }
+                              });
+                });
+            return;
+        }
         api_->job().start_print(
             filename,
             [tok, on_started]() mutable {

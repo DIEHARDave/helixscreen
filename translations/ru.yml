@@ -596,6 +596,7 @@ translations:
   Cannot restart — no filename: Не удалось перезапустить — нет имени файла
   Cannot run filament operation while printing: Во время печати нельзя выполнять операции с филаментом
   'Cannot start print: internal error': 'Невозможно начать печать: внутренняя ошибка'
+  'Cannot start print: no temp directory available': 'Невозможно начать печать: временная директория недоступна'
   'Cannot start print: not connected to printer': 'Невозможно начать печать: не подключено
     к принтеру'
   'Cannot start print: printer is {}': 'Невозможно начать печать: принтер {}'
@@ -887,6 +888,7 @@ translations:
   Could not confirm cancel: Не удалось подтвердить отмену
   'Could not copy {} from USB: {}': 'Не удалось скопировать {} с USB: {}'
   Could not disconnect from WiFi: Не удалось отключиться от WiFi
+  'Could not extract plate {} of {}: {}': 'Не удалось извлечь пластину {} из {}: {}'
   Could not forget device: Не удалось забыть устройство
   Could not initialize WiFi hardware. Check system configuration.: Не удалось инициализировать оборудование WiFi. Проверьте конфигурацию системы.
   Could not load printer database: Не удалось загрузить базу данных принтеров
@@ -1276,6 +1278,7 @@ translations:
   : "Не удалось скачать helixscreen.conf.\nПроверьте подключение принтера."
   ? "Failed to download moonraker.conf.\nCheck printer connection."
   : "Не удалось скачать moonraker.conf.\nПроверьте подключение принтера."
+  'Failed to download the .3mf for printing: {}': 'Не удалось загрузить .3mf для печати: {}'
   Failed to duplicate spool: Не удалось дублировать катушку
   'Failed to enable WiFi: {}': 'Не удалось включить WiFi: {}'
   Failed to enable tuning tower: Не удалось включить башню настройки
@@ -1356,6 +1359,7 @@ translations:
     {}'
   'Failed to upload remapped G-code: {}': 'Не удалось загрузить переназначенный G-code:
     {}'
+  'Failed to upload the extracted G-code: {}': 'Не удалось загрузить извлечённый G-code: {}'
   Fair match: "Среднее совпадение"
   Fan: Вентилятор
   Fan Calibration: Калибровка вентилятора
@@ -2467,6 +2471,8 @@ translations:
   Place the spools: Положите катушки
 
   Placed: Добавлено
+  Plate {}: 'Пластина {}'
+  Plate {} ({} of {}): 'Пластина {} ({} из {})'
   Platform: Платформа
   'Platform: ': 'Платформа: '
   Play / stop Crockett's Theme: Воспроизвести / остановить «Crockett's Theme»
@@ -3583,6 +3589,9 @@ translations:
   'These tools have no filament loaded:': 'В эти инструменты не загружен филамент:'
   'These tools have no matching filament loaded:': 'В этих инструментах нет подходящего
     филамента:'
+  This .3mf has no sliced plate to print.: 'В этом .3mf нет нарезанной пластины для печати.'
+  This .3mf has to be converted to G-code before it can be queued. Print it from here instead.: 'Этот .3mf нужно преобразовать в G-code, прежде чем ставить в очередь. Напечатайте его отсюда.'
+  This .3mf has to be converted to G-code on the printer before it can print.: 'Этот .3mf нужно преобразовать в G-code на принтере, прежде чем его можно будет напечатать.'
   This AFC system does not support bypass mode: 'Эта система AFC не поддерживает режим обхода'
   This CFS firmware exposes no external spool slot: 'Эта прошивка CFS не предоставляет слот для внешней катушки'
   This Happy Hare system does not support bypass mode: 'Эта система Happy Hare не поддерживает режим обхода'

@@ -13,6 +13,7 @@
 #include "system/crash_handler.h"
 #include "system/helix_paths.h"
 #include "text_io.h"
+#include "three_mf_reader.h"
 #include "thumbnail_rules.h"
 
 #include <spdlog/spdlog.h>
@@ -1256,6 +1257,44 @@ std::string ThumbnailCache::get_if_cached(const ThumbnailRequest& req) const {
     return get_if_optimized(cache_id, req.target, req.source_modified);
 }
 
+namespace {
+
+/// @p on_error, run on the main thread whichever thread reports.
+std::function<void(const std::string&)> main_thread_error(const char* tag,
+                                                          ThumbnailCache::ErrorCallback on_error) {
+    return [tag, on_error](const std::string& message) {
+        helix::ui::queue_update(tag, [on_error, message]() { // QUEUE_TAG_OK: callers pass literals
+            if (on_error) {
+                on_error(message);
+            }
+        });
+    };
+}
+
+/// Caches @p png extracted from a file as (@p source, @p id) and feeds it
+/// through the prescale pipeline. HttpExecutor worker; fetch marshals the
+/// callbacks to the main thread and drops a superseded load via @p ctx.
+void cache_extracted_png(ThumbnailSource source, const std::string& id,
+                         const std::vector<uint8_t>& png, time_t source_modified,
+                         IMoonrakerAPI* api, const helix::ThumbnailTarget& target,
+                         ThumbnailLoadContext ctx, ThumbnailCache::SuccessCallback on_success,
+                         const std::function<void(const std::string&)>& report_error) {
+    if (get_thumbnail_cache().save_raw_png(source, id, png).empty()) {
+        spdlog::warn("[ThumbnailCache] Failed to cache extracted thumbnail for {}", id);
+        report_error("failed to cache extracted thumbnail for " + id);
+        return;
+    }
+    ThumbnailRequest req;
+    req.key = id;
+    req.source = source;
+    req.target = target;
+    req.source_modified = source_modified;
+    req.api = api;
+    get_thumbnail_cache().fetch(req, ctx, std::move(on_success), report_error);
+}
+
+} // namespace
+
 void helix::fetch_thumbnail_from_gcode(const std::string& gcode_path, size_t max_header_bytes,
                                        IMoonrakerAPI* api, const helix::ThumbnailTarget& target,
                                        ThumbnailLoadContext ctx,
@@ -1265,14 +1304,8 @@ void helix::fetch_thumbnail_from_gcode(const std::string& gcode_path, size_t max
     // the fetch below are marshalled by the cache. Route everything through
     // the queue so @p on_error always runs on the main thread (the same
     // reason ThumbnailCache wraps its own callbacks — #960, #1202).
-    auto report_error = [on_error](const std::string& message) {
-        helix::ui::queue_update("thumbnail_cache::fetch_thumbnail_from_gcode",
-                                [on_error, message]() {
-                                    if (on_error) {
-                                        on_error(message);
-                                    }
-                                });
-    };
+    auto report_error =
+        main_thread_error("thumbnail_cache::fetch_thumbnail_from_gcode", std::move(on_error));
 
     if (!api) {
         report_error("no API available for gcode thumbnail extraction");
@@ -1299,30 +1332,61 @@ void helix::fetch_thumbnail_from_gcode(const std::string& gcode_path, size_t max
 
             spdlog::debug("[ThumbnailCache] Extracted {}x{} thumbnail ({} bytes) from {}",
                           best.width, best.height, best.png_data.size(), gcode_path);
-
-            std::string lvgl_path = get_thumbnail_cache().save_raw_png(
-                ThumbnailSource::GcodeExtract, gcode_path, best.png_data);
-            if (lvgl_path.empty()) {
-                spdlog::warn("[ThumbnailCache] Failed to cache extracted thumbnail for {}",
-                             gcode_path);
-                report_error("failed to cache extracted thumbnail for " + gcode_path);
-                return;
-            }
-
-            // Feed through the prescale pipeline for .bin generation (avoids
-            // runtime scaling on every frame). fetch marshals the callbacks
-            // to the main thread and drops a superseded load via ctx.
-            ThumbnailRequest req;
-            req.key = gcode_path;
-            req.source = ThumbnailSource::GcodeExtract;
-            req.target = target;
-            req.api = api;
-
-            get_thumbnail_cache().fetch(req, ctx, std::move(on_success), report_error);
+            cache_extracted_png(ThumbnailSource::GcodeExtract, gcode_path, best.png_data, 0, api,
+                                target, ctx, on_success, report_error);
         },
         [gcode_path, report_error](const MoonrakerError& error) {
             spdlog::debug("[ThumbnailCache] Failed to download gcode header for {}: {}", gcode_path,
                           error.message);
             report_error(error.message);
+        });
+}
+
+void helix::fetch_thumbnail_from_archive(const std::string& archive_path,
+                                         const zip::ZipEntry& entry, time_t source_modified,
+                                         IMoonrakerAPI* api, const helix::ThumbnailTarget& target,
+                                         ThumbnailLoadContext ctx,
+                                         ThumbnailCache::SuccessCallback on_success,
+                                         ThumbnailCache::ErrorCallback on_error) {
+    auto report_error =
+        main_thread_error("thumbnail_cache::fetch_thumbnail_from_archive", std::move(on_error));
+    if (!api) {
+        report_error("no API available for archive thumbnail extraction");
+        return;
+    }
+    if constexpr (!gcode_thumbnail_extraction_available()) {
+        report_error("archive thumbnail extraction is not available on this platform");
+        return;
+    }
+
+    const std::string id = archive_path + "#" + entry.name;
+    ThumbnailRequest req;
+    req.key = id;
+    req.source = ThumbnailSource::ArchiveEntry;
+    req.target = target;
+    req.source_modified = source_modified;
+    req.api = api;
+    // Another size of the same render prescales from the PNG already cached.
+    // Writing the PNG again would retire every prescaled size of it, among
+    // them the one a card on screen is drawing.
+    ThumbnailRequest png_req = req;
+    png_req.format = ThumbnailRequest::ThumbnailFormat::FullPng;
+    if (!get_thumbnail_cache().get_if_cached(req).empty() ||
+        !get_thumbnail_cache().get_if_cached(png_req).empty()) {
+        get_thumbnail_cache().fetch(req, ctx, std::move(on_success), report_error);
+        return;
+    }
+
+    three_mf::ThreeMfReader::read_entry(
+        api->transfers(), archive_path, entry,
+        [id, source_modified, api, target, ctx, on_success,
+         report_error](const std::string& bytes) {
+            const std::vector<uint8_t> png(bytes.begin(), bytes.end());
+            cache_extracted_png(ThumbnailSource::ArchiveEntry, id, png, source_modified, api,
+                                target, ctx, on_success, report_error);
+        },
+        [report_error](const std::string& error) {
+            spdlog::debug("[ThumbnailCache] Archive thumbnail read failed: {}", error);
+            report_error(error);
         });
 }

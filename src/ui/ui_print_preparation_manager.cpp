@@ -28,6 +28,7 @@
 #include "scope_exit.h"
 #include "system/telemetry_manager.h"
 #include "text_io.h"
+#include "three_mf_reader.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -41,6 +42,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <unistd.h>
 
 // Forward declaration for global print status panel (declared in ui_panel_print_status.h)
 PrintStatusPanel& get_global_print_status_panel();
@@ -650,8 +652,10 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         return;
     }
 
-    if (helix::gcode::is_3mf(filename)) {
-        // An empty result, not none: a .3mf holds no operations to strip.
+    const auto archive = archive_scan_sources_.find(key);
+    if (helix::gcode::is_3mf(filename) && archive == archive_scan_sources_.end()) {
+        // An empty result, not none: a .3mf with nothing named to print holds
+        // no operations to strip.
         keep_scan(key, filename, version, gcode::ScanResult{},
                   printer_stop_not_run("a .3mf project holds no G-code to scan"));
         return;
@@ -733,9 +737,49 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         return;
     }
 
+    if (archive != archive_scan_sources_.end()) {
+        // What prints for the archive: the printer's conversion, read like any
+        // G-code, or the plate's own entry, inflated out of the archive.
+        const ArchiveScanSource& source = archive->second;
+        if (!source.converted_output.empty()) {
+            api_->transfers().download_file_partial(
+                "gcodes", source.converted_output, helix::PRINTER_STOP_SCAN_BYTES, on_content,
+                [on_failure](const MoonrakerError& error) { on_failure(error.message); });
+        } else {
+            three_mf::ThreeMfReader::read_entry_head(
+                api_->transfers(), file_path, source.plate_gcode, helix::PRINTER_STOP_SCAN_BYTES,
+                on_content, on_failure);
+        }
+        return;
+    }
+
     api_->transfers().download_file_partial(
         "gcodes", file_path, helix::PRINTER_STOP_SCAN_BYTES, on_content,
         [on_failure](const MoonrakerError& error) { on_failure(error.message); });
+}
+
+void PrintPreparationManager::set_archive_scan_source(const std::string& filename,
+                                                      const std::string& current_path,
+                                                      FileVersion version,
+                                                      std::optional<ArchiveScanSource> source) {
+    const std::string key = scan_key(filename, current_path);
+    const auto it = archive_scan_sources_.find(key);
+    const bool had = it != archive_scan_sources_.end();
+    if ((!had && !source) || (had && source && it->second == *source)) {
+        return;
+    }
+    if (source) {
+        archive_scan_sources_[key] = std::move(*source);
+    } else {
+        archive_scan_sources_.erase(key);
+    }
+    // The kept answer was for other G-code: its line numbers describe nothing
+    // that prints now.
+    kept_scans_.erase(key);
+    scans_in_flight_.erase(key);
+    if (key == current_scan_key_) {
+        request_scan(filename, current_path, "", version);
+    }
 }
 
 void PrintPreparationManager::keep_scan(const std::string& key, const std::string& filename,
@@ -1877,13 +1921,14 @@ void PrintPreparationManager::modify_and_print(
     }
 
     RewriteRoute route;
-    route.file_path = file_path;
+    route.file_path = printable_path(file_path);
     route.local_download_path =
         temp_dir + "/helix_download_" + std::to_string(std::time(nullptr)) + ".gcode";
     route.mod_names = std::move(mod_names);
     // Without the plugin the modified copy is started as itself.
     route.use_plugin =
         printer_state_ && printer_state_->plugin_status_state().service_has_helix_plugin();
+    route.archive_plate = archive_plate_for(file_path);
     route.download_error = TR_NOOP("Failed to download G-code for modification: {}");
     route.upload_error = TR_NOOP("Failed to upload modified G-code: {}");
     // Copied for the HTTP thread: every later step reads this file's own scan.
@@ -1954,7 +1999,7 @@ void PrintPreparationManager::modify_and_print_with_remap(
                  remap.size(), file_path);
 
     RewriteRoute route;
-    route.file_path = file_path;
+    route.file_path = printable_path(file_path);
     route.local_download_path = local_download_path;
     for (const auto& [logical, physical] : remap) {
         route.mod_names.push_back("remap_T" + std::to_string(logical) + "_to_T" +
@@ -1963,6 +2008,7 @@ void PrintPreparationManager::modify_and_print_with_remap(
     // The caller guarantees the plugin is installed (open_remap_modal guards on
     // it for the GcodeRewrite strategy).
     route.use_plugin = true;
+    route.archive_plate = archive_plate_for(file_path);
     route.download_error = TR_NOOP("Failed to download G-code for remap: {}");
     route.upload_error = TR_NOOP("Failed to upload remapped G-code: {}");
     route.rewrite = [file_path, remap](const std::string& download_path) {
@@ -2016,8 +2062,16 @@ void PrintPreparationManager::rewrite_and_print(RewriteRoute route,
     // is never in memory, which on a board like the AD5M (~108MB RAM) is the
     // difference between a start and a TTC error.
     auto token = lifetime_.token();
+    // An extracted plate always starts as itself: the plugin would link it
+    // under the archive's name, which Klipper does not print.
+    if (route.archive_plate > 0) {
+        route.use_plugin = false;
+    }
     const auto job = std::make_shared<const RewriteRoute>(std::move(route));
-    const std::string remote_temp_path = gcode::make_rewritten_gcode_path(job->file_path);
+    const std::string remote_temp_path =
+        job->archive_plate > 0
+            ? gcode::make_extracted_plate_path(job->file_path, job->archive_plate, staging_root())
+            : gcode::make_rewritten_gcode_path(job->file_path, staging_root());
 
     spdlog::info("[PrintPreparationManager] Streaming modification: downloading {} to {} "
                  "(plugin: {})",
@@ -2037,7 +2091,9 @@ void PrintPreparationManager::rewrite_and_print(RewriteRoute route,
         // every this->/api_-> access is deferred to the main thread.
         [this, token, job, remote_temp_path, on_navigate_to_status,
          on_completion](const std::string& /*dest_path*/) {
-            const RewriteResult rewritten = job->rewrite(job->local_download_path);
+            const RewriteResult rewritten = job->archive_plate > 0
+                                                ? rewrite_archive_plate(*job)
+                                                : job->rewrite(job->local_download_path);
 
             if (rewritten.kind == RewriteResult::Kind::Failed) {
                 token.defer("PrintPreparationManager::rewrite_failed", [this, on_completion]() {
@@ -2198,9 +2254,146 @@ void PrintPreparationManager::rewrite_and_print(RewriteRoute route,
         download_progress);
 }
 
+void PrintPreparationManager::set_archive_plate(const std::string& file_path, int plate,
+                                                const std::string& converted_output) {
+    const bool marked = plate > 0 || !converted_output.empty();
+    archive_path_ = marked ? file_path : std::string();
+    archive_plate_ = marked && converted_output.empty() ? std::max(plate, 0) : 0;
+    archive_output_ = marked ? converted_output : std::string();
+}
+
+void PrintPreparationManager::start_archive_reprint(const std::string& file_path, int plate,
+                                                    PrintCompletionCallback on_completion) {
+    set_archive_plate(file_path, plate);
+    print_archive_plate(file_path, plate, nullptr, std::move(on_completion));
+}
+
+int PrintPreparationManager::archive_plate_for(const std::string& file_path) const {
+    return !archive_path_.empty() && file_path == archive_path_ ? archive_plate_ : 0;
+}
+
+std::string PrintPreparationManager::printable_path(const std::string& file_path) const {
+    return !archive_output_.empty() && file_path == archive_path_ ? archive_output_ : file_path;
+}
+
+gcode::StagingRoot PrintPreparationManager::staging_root() const {
+    if (!printer_state_) {
+        return gcode::StagingRoot::Hidden;
+    }
+    return gcode::staging_root_for(printer_state_->plugin_status_state().service_has_helix_plugin(),
+                                   printer_state_->plugin_status_state().link_dir(),
+                                   printer_state_->profile_state().klipper_hides_dot_dirs());
+}
+
+PrintPreparationManager::RewriteResult
+PrintPreparationManager::rewrite_archive_plate(const RewriteRoute& job) {
+    // HTTP thread. The archive is extracted beside the other scratch copies,
+    // under the prefix GCodeFileModifier::cleanup_temp_files() reaps after a
+    // crash.
+    const auto extract = [&job]() -> std::string {
+        const std::string out =
+            gcode::GCodeFileModifier::generate_temp_path(gcode::get_filename_basename(
+                three_mf::extracted_gcode_name(job.file_path, job.archive_plate, true)));
+        if (out.empty()) {
+            helix::ui::notify_error_tr(TR_NOOP("Could not extract plate {} of {}: {}"),
+                                       job.archive_plate, job.file_path,
+                                       std::string("no temp directory"));
+            return {};
+        }
+        const zip::ZipError err =
+            three_mf::ThreeMfReader::extract_plate(job.local_download_path, job.archive_plate, out);
+        if (err != zip::ZipError::None) {
+            helix::ui::notify_error_tr(TR_NOOP("Could not extract plate {} of {}: {}"),
+                                       job.archive_plate, job.file_path,
+                                       std::string(zip::zip_error_name(err)));
+            return {};
+        }
+        return out;
+    };
+    const helix::ScopeExit drop_archive([&job]() { hfs::remove(job.local_download_path); });
+
+    const std::string extracted = extract();
+    if (extracted.empty()) {
+        return RewriteResult{RewriteResult::Kind::Failed, {}};
+    }
+    spdlog::info("[PrintPreparationManager] Extracted plate {} of {} to {}", job.archive_plate,
+                 job.file_path, extracted);
+
+    // A rewrite that changes nothing consumes its input, and the archive
+    // itself cannot print, so the plate must outlive the rewrite. A hard link
+    // keeps it at no cost in space, so the archive goes now and the disk never
+    // holds both; where links are unavailable the archive stays until the
+    // rewrite has answered, to extract the plate again from.
+    const std::string kept = extracted + ".keep";
+    const bool linked = ::link(extracted.c_str(), kept.c_str()) == 0;
+    if (linked) {
+        hfs::remove(job.local_download_path);
+    }
+    RewriteResult rewritten = job.rewrite(extracted);
+    if (rewritten.kind == RewriteResult::Kind::Unchanged) {
+        if (linked) {
+            return RewriteResult{RewriteResult::Kind::Rewritten, kept};
+        }
+        const std::string again = extract();
+        rewritten = again.empty() ? RewriteResult{RewriteResult::Kind::Failed, {}}
+                                  : RewriteResult{RewriteResult::Kind::Rewritten, again};
+    } else if (linked) {
+        hfs::remove(kept);
+    }
+    return rewritten;
+}
+
+void PrintPreparationManager::print_archive_plate(const std::string& file_path, int plate,
+                                                  NavigateToStatusCallback on_navigate_to_status,
+                                                  PrintCompletionCallback on_completion) {
+    if (!api_) {
+        NOTIFY_ERROR(lv_tr("Cannot start print: not connected to printer"));
+        abandon_start("archive_no_api", on_completion);
+        return;
+    }
+    if (!transport_keeps_local_copies()) {
+        NOTIFY_WARNING(lv_tr("This .3mf has to be converted to G-code on the printer before it "
+                             "can print."));
+        abandon_start("archive_no_local_copies", on_completion);
+        return;
+    }
+    const std::string local_download_path = gcode::GCodeFileModifier::generate_temp_path(
+        "archive_dl_" + gcode::get_filename_basename(file_path));
+    if (local_download_path.empty()) {
+        NOTIFY_ERROR(lv_tr("Cannot start print: no temp directory available"));
+        abandon_start("archive_no_temp_dir", on_completion);
+        return;
+    }
+
+    spdlog::info("[PrintPreparationManager] Printing plate {} of {} as extracted G-code", plate,
+                 file_path);
+    RewriteRoute route;
+    route.file_path = file_path;
+    route.local_download_path = local_download_path;
+    route.archive_plate = plate;
+    route.download_error = TR_NOOP("Failed to download the .3mf for printing: {}");
+    route.upload_error = TR_NOOP("Failed to upload the extracted G-code: {}");
+    // Nothing to change in the plate: it uploads as extracted.
+    route.rewrite = [](const std::string& extracted) {
+        return RewriteResult{RewriteResult::Kind::Rewritten, extracted};
+    };
+    rewrite_and_print(std::move(route), std::move(on_navigate_to_status), std::move(on_completion));
+}
+
 void PrintPreparationManager::start_print_directly(const std::string& filename,
                                                    NavigateToStatusCallback on_navigate_to_status,
                                                    PrintCompletionCallback on_completion) {
+    if (const int plate = archive_plate_for(filename); plate > 0) {
+        print_archive_plate(filename, plate, std::move(on_navigate_to_status),
+                            std::move(on_completion));
+        return;
+    }
+    if (const std::string printable = printable_path(filename); printable != filename) {
+        spdlog::info("[PrintPreparationManager] Printing the printer's conversion {} of {}",
+                     printable, filename);
+        start_print_directly(printable, std::move(on_navigate_to_status), std::move(on_completion));
+        return;
+    }
     api_->job().start_print(
         filename,
         // Success callback

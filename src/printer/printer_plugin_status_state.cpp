@@ -12,6 +12,8 @@
 
 #include "printer_plugin_status_state.h"
 
+#include "ui_filename_utils.h"
+
 #include "macro_manager.h"
 #include "state/subject_macros.h"
 
@@ -58,6 +60,11 @@ void PrinterPluginStatusState::deinit_subjects() {
 void PrinterPluginStatusState::set_installed(bool installed) {
     lv_subject_set_int(&helix_plugin_installed_, installed ? 1 : 0);
     spdlog::info("[PrinterPluginStatusState] HelixPrint plugin installed: {}", installed);
+}
+
+void PrinterPluginStatusState::set_link_dir(const std::string& dir) {
+    link_dir_ = dir;
+    gcode::set_plugin_link_dir(dir);
 }
 
 void PrinterPluginStatusState::set_helix_macros_base_status(HelixMacrosStatus base) {

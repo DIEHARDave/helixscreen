@@ -1770,20 +1770,16 @@ void PrintStatusPanel::handle_tune_button() {
 }
 
 std::string PrintStatusPanel::reprint_filename() const {
+    return reprint_target().file;
+}
+
+helix::gcode::ReprintTarget PrintStatusPanel::reprint_target() const {
     // print_stats names the copy that ran, which for a print this app
     // rewrote is a temp file deleted when the print ends. An identity this
     // session recorded at commit names the original exactly; without one, the
     // report places the original only when it encodes the whole path.
-    // The recorded identity only fills in what the report cannot place: a
-    // report naming another file means another client printed since.
-    const auto& print_state = printer_state_.print_state();
-    const std::optional<std::string> reported =
-        helix::gcode::trusted_original_path(current_print_filename_);
-    const std::string& recorded = print_state.get_print_identity_override();
-    if (!recorded.empty() && (!reported || *reported == recorded)) {
-        return recorded;
-    }
-    return reported.value_or("");
+    return helix::gcode::reprint_target(printer_state_.print_state().get_print_identity_override(),
+                                        current_print_filename_);
 }
 
 void PrintStatusPanel::handle_reprint_button() {
@@ -1796,8 +1792,11 @@ void PrintStatusPanel::handle_reprint_button() {
         return;
     }
 
-    const std::string filename = reprint_filename();
-    spdlog::info("[{}] Reprint button clicked - reprinting: {}", get_name(), filename);
+    const helix::gcode::ReprintTarget target = reprint_target();
+    const std::string& filename = target.file;
+    spdlog::info("[{}] Reprint button clicked - reprinting: {}{}", get_name(), filename,
+                 target.archive_plate > 0 ? fmt::format(" (plate {})", target.archive_plate)
+                                          : std::string());
 
     if (filename.empty() && !current_print_filename_.empty()) {
         // A same-named file elsewhere is not necessarily the one that printed.
@@ -1841,7 +1840,8 @@ void PrintStatusPanel::handle_reprint_button() {
             [this, tok]() mutable {
                 tok.defer("PrintStatusPanel::reprint_reenable",
                           [this]() { ui_set_button_enabled(btn_cancel_, true); });
-            });
+            },
+            target.archive_plate);
     } else {
         // Fallback: controller unreachable — keep the existing direct path so reprint
         // still works (no U1 pre-send).

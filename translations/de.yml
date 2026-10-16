@@ -557,6 +557,7 @@ translations:
   Cannot run filament operation while printing: Filamentvorgang während des Drucks nicht möglich
   'Cannot start print: internal error': 'Druck kann nicht gestartet werden: interner
     Fehler'
+  'Cannot start print: no temp directory available': 'Druck kann nicht gestartet werden: kein temporäres Verzeichnis verfügbar'
   'Cannot start print: not connected to printer': 'Druck kann nicht gestartet werden:
     nicht mit Drucker verbunden'
   'Cannot start print: printer is {}': 'Druck kann nicht gestartet werden: Drucker
@@ -846,6 +847,7 @@ translations:
   Could not confirm cancel: Abbruch konnte nicht bestätigt werden
   'Could not copy {} from USB: {}': '{} konnte nicht von USB kopiert werden: {}'
   Could not disconnect from WiFi: WiFi-Verbindung konnte nicht getrennt werden
+  'Could not extract plate {} of {}: {}': 'Platte {} von {} konnte nicht extrahiert werden: {}'
   Could not forget device: Gerät konnte nicht vergessen werden
   Could not initialize WiFi hardware. Check system configuration.: WiFi-Hardware konnte nicht initialisiert werden. Prüfe die Systemkonfiguration.
   Could not load printer database: Druckerdatenbank konnte nicht geladen werden
@@ -1242,6 +1244,7 @@ translations:
   : "helixscreen.conf konnte nicht heruntergeladen werden.\nDruckerverbindung prüfen."
   ? "Failed to download moonraker.conf.\nCheck printer connection."
   : "moonraker.conf konnte nicht heruntergeladen werden.\nDruckerverbindung prüfen."
+  'Failed to download the .3mf for printing: {}': 'Die .3mf-Datei konnte nicht zum Drucken heruntergeladen werden: {}'
   Failed to duplicate spool: Spule konnte nicht dupliziert werden
   'Failed to enable WiFi: {}': 'WiFi konnte nicht aktiviert werden: {}'
   Failed to enable tuning tower: Tuning-Tower konnte nicht aktiviert werden
@@ -1326,6 +1329,7 @@ translations:
     {}'
   'Failed to upload remapped G-code: {}': 'Neu zugeordneter G-code konnte nicht hochgeladen
     werden: {}'
+  'Failed to upload the extracted G-code: {}': 'Extrahierter G-code konnte nicht hochgeladen werden: {}'
   Fair match: "Mittlere Übereinstimmung"
   Fan: Lüfter
   Fan Calibration: Lüfter-Kalibrierung
@@ -2438,6 +2442,8 @@ translations:
   Place the spools: Spulen einlegen
 
   Placed: Platziert
+  Plate {}: 'Platte {}'
+  Plate {} ({} of {}): 'Platte {} ({} von {})'
   Platform: Plattform
   'Platform: ': 'Plattform: '
   Play / stop Crockett's Theme: Crockett's Theme abspielen / stoppen
@@ -3546,6 +3552,9 @@ translations:
   'These tools have no filament loaded:': 'Diese Werkzeuge haben kein Filament geladen:'
   'These tools have no matching filament loaded:': 'Diese Werkzeuge haben kein passendes
     Filament geladen:'
+  This .3mf has no sliced plate to print.: 'Diese .3mf-Datei enthält keine geslicte Platte zum Drucken.'
+  This .3mf has to be converted to G-code before it can be queued. Print it from here instead.: 'Diese .3mf-Datei muss erst in G-code umgewandelt werden, bevor sie in die Warteschlange kann. Drucke sie stattdessen von hier.'
+  This .3mf has to be converted to G-code on the printer before it can print.: 'Diese .3mf-Datei muss auf dem Drucker in G-code umgewandelt werden, bevor sie gedruckt werden kann.'
   This AFC system does not support bypass mode: 'Dieses AFC-System unterstützt den Bypass-Modus nicht'
   This CFS firmware exposes no external spool slot: 'Diese CFS-Firmware bietet keinen externen Spulen-Slot'
   This Happy Hare system does not support bypass mode: 'Dieses Happy-Hare-System unterstützt den Bypass-Modus nicht'

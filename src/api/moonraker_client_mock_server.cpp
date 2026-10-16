@@ -430,7 +430,15 @@ void register_server_handlers(std::unordered_map<std::string, MethodHandler>& re
             }
             return true;
         }
-        json response = {{"jsonrpc", "2.0"}, {"result", {{"enabled", true}, {"version", "1.0.1"}}}};
+        // HELIX_MOCK_HELIX_PLUGIN_LINK_DIR names the plugin's link directory
+        // (`symlink_dir`), as a plugin installed on a printer whose Klipper
+        // skips dot-directories reports a visible one.
+        const char* link_dir = std::getenv("HELIX_MOCK_HELIX_PLUGIN_LINK_DIR");
+        json response = {{"jsonrpc", "2.0"},
+                         {"result",
+                          {{"enabled", true},
+                           {"version", "1.0.1"},
+                           {"symlink_dir", link_dir && *link_dir ? link_dir : ".helix_print"}}}};
         if (success_cb) {
             success_cb(response);
         }

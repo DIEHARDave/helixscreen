@@ -20,6 +20,7 @@
 #include "printer_state.h"
 #include "thermal_rate_model.h"
 #include "versioned_lru.h"
+#include "zip_reader.h"
 
 #include <functional>
 #include <lvgl.h>
@@ -457,6 +458,60 @@ class PrintPreparationManager {
                      const std::string& expected_scan_key = {});
 
     /**
+     * @brief Print plate @p plate of the .3mf at @p file_path as extracted G-code.
+     *
+     * For an archive the printer has no metadata for, which Klipper cannot
+     * print as it is: every start of @p file_path from here on downloads the
+     * archive, extracts the plate, and uploads it as a staged .gcode
+     * (gcode::make_extracted_plate_path()) whether or not anything rewrites it.
+     * A plate of 0 forgets the file, and it starts as itself again, which is
+     * how a .3mf the printer reads natively prints. Needs local copies.
+     *
+     * @p converted_output, when the printer-side converter has already turned
+     * this plate into a current, listed G-code: that file starts instead, as
+     * any G-code does, and nothing is extracted.
+     */
+    void set_archive_plate(const std::string& file_path, int plate,
+                           const std::string& converted_output = {});
+
+    /// What prints for an archive, so its scan reads that G-code: the
+    /// printer's conversion of the shown plate, or the plate's own entry.
+    struct ArchiveScanSource {
+        zip::ZipEntry plate_gcode;    ///< the plate's G-code entry in the archive
+        std::string converted_output; ///< the printer's conversion, which prints instead
+        bool operator==(const ArchiveScanSource& o) const {
+            return plate_gcode.name == o.plate_gcode.name &&
+                   plate_gcode.lh_offset == o.plate_gcode.lh_offset &&
+                   converted_output == o.converted_output;
+        }
+    };
+
+    /**
+     * @brief Name what the archive @p filename prints, for its operations scan.
+     *
+     * The scan of a .3mf reads that G-code's head, so the pre-print toggles
+     * act on the plate that prints. A changed source drops the kept scan and,
+     * for the file the detail view shows, scans again. nullopt: nothing to
+     * scan (a .3mf the printer reads itself), as before.
+     */
+    void set_archive_scan_source(const std::string& filename, const std::string& current_path,
+                                 FileVersion version, std::optional<ArchiveScanSource> source);
+
+    /// Reprint plate @p plate of the archive @p file_path as Print would:
+    /// extracted, staged and started, the plate named for every later start
+    /// of the archive too. @p on_completion reports how it ended.
+    void start_archive_reprint(const std::string& file_path, int plate,
+                               PrintCompletionCallback on_completion);
+
+    /// The plate set_archive_plate() named for @p file_path, or 0. Also 0 when
+    /// the printer already converted it: that output prints instead.
+    [[nodiscard]] int archive_plate_for(const std::string& file_path) const;
+
+    /// What a start of @p file_path prints: the printer's own conversion of
+    /// the archive when set_archive_plate() named one, else @p file_path.
+    [[nodiscard]] std::string printable_path(const std::string& file_path) const;
+
+    /**
      * @brief Rewrite tool commands in a G-code file and print the modified copy.
      *
      * For RemapStrategy::GcodeRewrite backends - a tool changer driving its
@@ -712,6 +767,12 @@ class PrintPreparationManager {
     ObserverGuard plugin_observer_;
     /// keeps_local_copies(api_), answered by set_dependencies().
     bool keeps_local_copies_ = true;
+    /// set_archive_plate(): the .3mf that prints as an extracted plate, and the plate.
+    std::string archive_path_;
+    int archive_plate_ = 0;
+    std::string archive_output_; ///< the printer's own conversion, which prints instead
+    /// set_archive_scan_source(), by scan_key().
+    std::map<std::string, ArchiveScanSource> archive_scan_sources_;
     bool skip_reset_sent_ = false; ///< One reset per pending skip, until it reads clear
     void reset_pending_skips();
 
@@ -841,6 +902,8 @@ class PrintPreparationManager {
         std::function<RewriteResult(const std::string& local_download_path)> rewrite;
         const char* download_error = nullptr; ///< toast format, given the error
         const char* upload_error = nullptr;   ///< toast format, given the error
+        /// The .3mf plate to extract before the rewrite, or 0 for plain G-code.
+        int archive_plate = 0;
     };
 
     /**
@@ -853,6 +916,20 @@ class PrintPreparationManager {
      */
     void rewrite_and_print(RewriteRoute route, NavigateToStatusCallback on_navigate_to_status,
                            PrintCompletionCallback on_completion);
+
+    /// Where this printer's staged copies go (StagingRoot): visible when its
+    /// Klipper cannot print from a dot-directory.
+    [[nodiscard]] gcode::StagingRoot staging_root() const;
+
+    /// Extracts the route's plate from its downloaded archive and runs the
+    /// route's rewrite on it. HTTP thread; removes the archive.
+    static RewriteResult rewrite_archive_plate(const RewriteRoute& job);
+
+    /// Starts plate @p plate of the archive @p file_path through
+    /// rewrite_and_print(), the plate uploaded as extracted.
+    void print_archive_plate(const std::string& file_path, int plate,
+                             NavigateToStatusCallback on_navigate_to_status,
+                             PrintCompletionCallback on_completion);
 
     /**
      * @brief Start print directly (no pre-print operations)

@@ -31,6 +31,7 @@
 #include "queued_job_options.h"
 #include "subject_managed_panel.h"
 #include "text_io.h"
+#include "three_mf_reader.h"
 #include "usb_backend.h"
 
 #include <algorithm>
@@ -391,6 +392,53 @@ class PrintSelectPanel : public PanelBase {
     bool refetch_after_connection_loss(size_t i, const std::string& filename,
                                        const MoonrakerError& error);
 
+    // === Sliced .3mf archives (ui_print_select_archive.cpp) ===
+
+    /**
+     * @brief Reads file @p i's .3mf archive: its plates, their time and
+     *        filament, and their renders.
+     *
+     * @p extract: the printer has no metadata for the file, so the archive's
+     * summary stands in for it and Print extracts the plate shown. Without it
+     * the printer reads the .3mf itself and only its render comes from here.
+     */
+    void load_archive(size_t i, const std::string& filename, bool extract);
+
+    /// Fetches the render of file @p i's shown plate as its card thumbnail.
+    void fetch_archive_thumbnail(size_t i);
+
+    /// Shows the plate @p step places before (-1) or after (+1) the selected
+    /// file's current one, in the detail view and its card.
+    void step_archive_plate(int step);
+
+    /// Publishes the selected file's plate stepper: its plate count and label.
+    void update_plate_stepper();
+
+    /// Tells the preparation manager what prints for the selected .3mf (its
+    /// shown plate, or the printer's conversion of it), for the pre-print scan.
+    void sync_archive_scan_source();
+
+    /// The detail view's time, weight and material for the plate shown, where
+    /// the list card carries a several-plate archive's totals.
+    void apply_plate_stats_to_detail();
+
+    /// Fills the stats file @p i's printer metadata left out (time, weight,
+    /// materials, colors) from its archive, for a .3mf the printer reads itself.
+    void fill_missing_from_archive(size_t i);
+
+    /// Shows @p file's thumbnail and stats in the detail view (the selected file).
+    void show_file_in_detail(const PrintFileData& file);
+
+    /// Tells the preparation manager whether the selected file prints as an
+    /// extracted .3mf plate, and which. False, with a toast, when it cannot
+    /// print here at all.
+    bool prepare_archive_start();
+
+    /// What Add to Queue queues for the selected file: itself, the printer's
+    /// conversion of a .3mf's shown plate, or nothing (with a toast) for a
+    /// .3mf that has to be extracted first, which the queue cannot do.
+    std::optional<std::string> queueable_path();
+
     /**
      * @brief Navigate into a subdirectory
      *
@@ -470,7 +518,7 @@ class PrintSelectPanel : public PanelBase {
      * @param filename File name to select (matches against filename field)
      * @return true if file was found and selected, false otherwise
      */
-    bool select_file_by_name(const std::string& filename);
+    bool select_file_by_name(const std::string& filename, int archive_plate = 0);
 
     /**
      * @brief Set a pending file selection (for --select-file flag)
@@ -731,6 +779,11 @@ class PrintSelectPanel : public PanelBase {
     lv_subject_t selected_filament_type_subject_{};
     char selected_filament_type_buffer_[64]; // Longer for full names like "PolyMaker PolyLite ABS"
 
+    /// Sliced plates of the selected .3mf (the plate stepper shows from 2), and its label.
+    lv_subject_t selected_plate_count_subject_{};
+    lv_subject_t selected_plate_text_subject_{};
+    char selected_plate_text_buffer_[48];
+
     lv_subject_t detail_view_visible_subject_{};
 
     /// View mode subject: 0 = CARD, 1 = LIST (XML bindings control visibility)
@@ -775,7 +828,8 @@ class PrintSelectPanel : public PanelBase {
         FileHistoryStatus::NEVER_PRINTED; ///< History status of selected file
     int selected_success_count_ = 0;      ///< Success count of selected file
     std::string
-        pending_file_selection_; ///< File to auto-select when list is populated (--select-file)
+        pending_file_selection_;    ///< File to auto-select when list is populated (--select-file)
+    int pending_archive_plate_ = 0; ///< The plate that selection opens on, for an archive
 
     /// A queued job being walked through the detail view toward a start.
     /// Lives from start_queued_job() until one of:
@@ -862,6 +916,12 @@ class PrintSelectPanel : public PanelBase {
 
     // File data provider (handles Moonraker file fetching and metadata)
     std::unique_ptr<helix::ui::PrintSelectFileProvider> file_provider_;
+
+    // Reads sliced .3mf archives on the printer; set with the API.
+    std::unique_ptr<helix::three_mf::ThreeMfReader> archive_reader_;
+    /// Set when the listing the archive reads under way belong to goes away.
+    std::shared_ptr<std::atomic<bool>> archive_cancel_ = std::make_shared<std::atomic<bool>>(false);
+    void cancel_archive_reads();
 
     // Print start controller (handles print initiation workflow, warnings)
     std::unique_ptr<helix::ui::PrintStartController> print_controller_;

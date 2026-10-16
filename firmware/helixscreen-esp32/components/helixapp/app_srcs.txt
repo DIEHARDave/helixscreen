@@ -111,7 +111,9 @@ src/led/led_controller.cpp
 src/led/led_devices.cpp
 src/led/led_device_page.cpp
 src/print/active_print_media_manager.cpp
+src/print/crc32.cpp
 src/print/filament_sensor_manager.cpp
+src/print/firmware_3mf_extract.cpp
 src/print/preprint_predictor.cpp
 src/print/print_eta_estimator.cpp
 src/print/thumbnail_write_journal.cpp
@@ -127,6 +129,10 @@ src/print/thumbnail_png_stream.cpp
 src/print/thumbnail_rules.cpp
 src/print/thumbnail_slot_pool.cpp
 src/print/thumbnail_target.cpp
+src/print/three_mf.cpp
+src/print/three_mf_conversions.cpp
+src/print/three_mf_reader.cpp
+src/print/zip_reader.cpp
 src/printer/active_material_provider.cpp
 src/printer/afc_config_manager.cpp
 src/printer/afc_defaults.cpp
@@ -565,6 +571,7 @@ src/ui/ui_print_exclude_object_manager.cpp
 src/ui/ui_print_light_timelapse.cpp
 src/ui/ui_print_preparation_manager.cpp
 src/ui/ui_print_select_card_view.cpp
+src/ui/ui_print_select_archive.cpp
 src/ui/ui_print_select_detail_view.cpp
 src/ui/ui_print_select_file_provider.cpp
 src/ui/ui_print_select_file_sorter.cpp

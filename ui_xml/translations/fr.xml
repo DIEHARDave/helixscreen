@@ -502,6 +502,7 @@
   <translation tag="Cannot run filament operation while printing" fr="Impossible d&apos;effectuer une opération de filament pendant l&apos;impression"/>
   <translation tag="Cannot save offsets while printing" fr="Impossible d&apos;enregistrer les offsets pendant l&apos;impression"/>
   <translation tag="Cannot start print: internal error" fr="Impossible de démarrer l&apos;impression : erreur interne"/>
+  <translation tag="Cannot start print: no temp directory available" fr="Impossible de lancer l&apos;impression : aucun répertoire temporaire disponible"/>
   <translation tag="Cannot start print: not connected to printer" fr="Impossible de démarrer l&apos;impression : non connecté à l&apos;imprimante"/>
   <translation tag="Cannot start print: printer is {}" fr="Impossible de démarrer l&apos;impression : l&apos;imprimante est {}"/>
   <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." fr="Impossible de lancer {} : le fichier n&apos;a pas encore pu être vérifié pour les étapes désactivées. Réessayez dans un instant."/>
@@ -752,6 +753,7 @@
   <translation tag="Could not confirm cancel" fr="Impossible de confirmer l&apos;annulation"/>
   <translation tag="Could not copy {} from USB: {}" fr="Impossible de copier {} depuis l&apos;USB : {}"/>
   <translation tag="Could not disconnect from WiFi" fr="Impossible de se déconnecter du WiFi"/>
+  <translation tag="Could not extract plate {} of {}: {}" fr="Impossible d&apos;extraire le plateau {} de {} : {}"/>
   <translation tag="Could not forget device" fr="Impossible d&apos;oublier l&apos;appareil"/>
   <translation tag="Could not initialize WiFi hardware. Check system configuration." fr="Impossible d&apos;initialiser le matériel WiFi. Vérifiez la configuration du système."/>
   <translation tag="Could not load printer database" fr="Impossible de charger la base de données d&apos;imprimantes"/>
@@ -1113,6 +1115,7 @@
   <translation tag="Failed to download G-code for remap: {}" fr="Échec du téléchargement du G-Code pour le remappage : {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." fr="Échec du téléchargement de helixscreen.conf.&#10;Vérifiez la connexion."/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." fr="Échec du téléchargement de moonraker.conf.&#10;Vérifiez la connexion."/>
+  <translation tag="Failed to download the .3mf for printing: {}" fr="Impossible de télécharger le .3mf pour l&apos;impression : {}"/>
   <translation tag="Failed to duplicate spool" fr="Échec de la duplication de la bobine"/>
   <translation tag="Failed to enable WiFi: {}" fr="Impossible d&apos;activer le WiFi : {}"/>
   <translation tag="Failed to enable tuning tower" fr="Échec de l&apos;activation de la tour de réglage"/>
@@ -1187,6 +1190,7 @@
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." fr="Échec de la mise à jour de moonraker.conf.&#10;Vérifiez la connexion."/>
   <translation tag="Failed to upload modified G-code: {}" fr="Échec de l&apos;envoi du G-Code modifié : {}"/>
   <translation tag="Failed to upload remapped G-code: {}" fr="Échec de l&apos;envoi du G-Code remappé : {}"/>
+  <translation tag="Failed to upload the extracted G-code: {}" fr="Impossible de téléverser le G-Code extrait : {}"/>
   <translation tag="Fair match" fr="Correspondance moyenne"/>
   <translation tag="Fan" fr="Ventilateur"/>
   <translation tag="Fan Calibration" fr="Calibration du ventilateur"/>
@@ -2199,6 +2203,8 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." fr="Placez des fichiers image (PNG, JPEG, BMP, GIF) dans config/custom_images/. Taille max. : 2048×2048 pixels."/>
   <translation tag="Place the spools" fr="Posez les bobines"/>
   <translation tag="Placed" fr="Placé"/>
+  <translation tag="Plate {}" fr="Plateau {}"/>
+  <translation tag="Plate {} ({} of {})" fr="Plateau {} ({} sur {})"/>
   <translation tag="Platform" fr="Plateforme"/>
   <translation tag="Platform: " fr="Plateforme : "/>
   <translation tag="Play / stop Crockett&apos;s Theme" fr="Jouer / arrêter Crockett&apos;s Theme"/>
@@ -3170,6 +3176,9 @@
   <translation tag="These tools have incompatible materials loaded:" fr="Ces outils ont des matériaux incompatibles chargés :"/>
   <translation tag="These tools have no filament loaded:" fr="Ces outils n&apos;ont pas de filament chargé :"/>
   <translation tag="These tools have no matching filament loaded:" fr="Ces outils n&apos;ont pas de filament correspondant chargé :"/>
+  <translation tag="This .3mf has no sliced plate to print." fr="Ce .3mf ne contient aucun plateau tranché à imprimer."/>
+  <translation tag="This .3mf has to be converted to G-code before it can be queued. Print it from here instead." fr="Ce .3mf doit être converti en G-Code avant de pouvoir être mis en file d&apos;attente. Imprimez-le d&apos;ici."/>
+  <translation tag="This .3mf has to be converted to G-code on the printer before it can print." fr="Ce .3mf doit être converti en G-Code sur l&apos;imprimante avant de pouvoir être imprimé."/>
   <translation tag="This AFC system does not support bypass mode" fr="Ce système AFC ne prend pas en charge le mode bypass"/>
   <translation tag="This CFS firmware exposes no external spool slot" fr="Ce firmware CFS n&apos;expose pas de slot pour bobine externe"/>
   <translation tag="This Happy Hare system does not support bypass mode" fr="Ce système Happy Hare ne prend pas en charge le mode bypass"/>

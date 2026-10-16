@@ -502,6 +502,7 @@
   <translation tag="Cannot run filament operation while printing" zh="打印期间无法执行耗材操作"/>
   <translation tag="Cannot save offsets while printing" zh="打印时无法保存偏移"/>
   <translation tag="Cannot start print: internal error" zh="无法开始打印: 内部错误"/>
+  <translation tag="Cannot start print: no temp directory available" zh="无法开始打印: 无可用临时目录"/>
   <translation tag="Cannot start print: not connected to printer" zh="无法开始打印: 未连接打印机"/>
   <translation tag="Cannot start print: printer is {}" zh="无法开始打印: 打印机状态为 {}"/>
   <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." zh="无法启动 {}：尚未能针对您关闭的步骤检查该文件。请稍后再试。"/>
@@ -752,6 +753,7 @@
   <translation tag="Could not confirm cancel" zh="无法确认取消"/>
   <translation tag="Could not copy {} from USB: {}" zh="无法从 USB 复制 {}：{}"/>
   <translation tag="Could not disconnect from WiFi" zh="无法断开 WiFi 连接"/>
+  <translation tag="Could not extract plate {} of {}: {}" zh="无法提取第 {} 号板（{}）: {}"/>
   <translation tag="Could not forget device" zh="无法忘记设备"/>
   <translation tag="Could not initialize WiFi hardware. Check system configuration." zh="无法初始化 WiFi 硬件。请检查系统配置。"/>
   <translation tag="Could not load printer database" zh="无法加载打印机数据库"/>
@@ -1113,6 +1115,7 @@
   <translation tag="Failed to download G-code for remap: {}" zh="下载用于重新映射的 G-code 失败：{}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." zh="下载 helixscreen.conf 失败。&#10;请检查打印机连接。"/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." zh="下载 moonraker.conf 失败。&#10;请检查打印机连接。"/>
+  <translation tag="Failed to download the .3mf for printing: {}" zh="无法下载用于打印的 .3mf: {}"/>
   <translation tag="Failed to duplicate spool" zh="复制线轴失败"/>
   <translation tag="Failed to enable WiFi: {}" zh="无法开启 WiFi: {}"/>
   <translation tag="Failed to enable tuning tower" zh="启用调优塔失败"/>
@@ -1187,6 +1190,7 @@
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." zh="更新 moonraker.conf 失败。&#10;请检查打印机连接。"/>
   <translation tag="Failed to upload modified G-code: {}" zh="上传修改后的 G-code 失败: {}"/>
   <translation tag="Failed to upload remapped G-code: {}" zh="上传重新映射的 G-code 失败：{}"/>
+  <translation tag="Failed to upload the extracted G-code: {}" zh="无法上传提取的 G-code: {}"/>
   <translation tag="Fair match" zh="匹配中等"/>
   <translation tag="Fan" zh="风扇"/>
   <translation tag="Fan Calibration" zh="风扇校准"/>
@@ -2199,6 +2203,8 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." zh="将图片文件 (PNG, JPEG, BMP, GIF) 放入 config/custom_images/。最大尺寸: 2048×2048 像素。"/>
   <translation tag="Place the spools" zh="放置料盘"/>
   <translation tag="Placed" zh="已放置"/>
+  <translation tag="Plate {}" zh="第 {} 号板"/>
+  <translation tag="Plate {} ({} of {})" zh="第 {} 号板（{}/{}）"/>
   <translation tag="Platform" zh="平台"/>
   <translation tag="Platform: " zh="平台: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" zh="播放/停止 Crockett&apos;s Theme"/>
@@ -3170,6 +3176,9 @@
   <translation tag="These tools have incompatible materials loaded:" zh="这些工具加载了不兼容的材料："/>
   <translation tag="These tools have no filament loaded:" zh="以下工具未加载耗材:"/>
   <translation tag="These tools have no matching filament loaded:" zh="以下工具未加载匹配的耗材："/>
+  <translation tag="This .3mf has no sliced plate to print." zh="此 .3mf 中没有可打印的已切片板。"/>
+  <translation tag="This .3mf has to be converted to G-code before it can be queued. Print it from here instead." zh="此 .3mf 需要先转换为 G-code 才能加入队列。请直接从这里打印。"/>
+  <translation tag="This .3mf has to be converted to G-code on the printer before it can print." zh="此 .3mf 需要先在打印机上转换为 G-code 才能打印。"/>
   <translation tag="This AFC system does not support bypass mode" zh="此 AFC 系统不支持旁通模式"/>
   <translation tag="This CFS firmware exposes no external spool slot" zh="此 CFS 固件没有外部料盘槽位"/>
   <translation tag="This Happy Hare system does not support bypass mode" zh="此 Happy Hare 系统不支持旁通模式"/>

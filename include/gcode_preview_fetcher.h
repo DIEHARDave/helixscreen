@@ -5,8 +5,8 @@
  * @file gcode_preview_fetcher.h
  * @brief Gets a print's G-code onto local disk for the preview viewer.
  *
- * Acquisition only: the render-mode gates, the cache path, the QIDI native .3mf
- * shadow lookup, the metadata size check, the streaming-safety check and the
+ * Acquisition only: the render-mode gates, the cache path, the firmware .3mf
+ * extract lookup, the metadata size check, the streaming-safety check and the
  * download. It touches no widget; the owner turns the two outcomes into
  * display changes.
  *
@@ -123,7 +123,7 @@ class GcodePreviewFetcher {
         return req->generation != generation_;
     }
 
-    void list_qidi_shadow(const RequestPtr& req);
+    void list_firmware_extract(const RequestPtr& req);
     void lookup_metadata(const RequestPtr& req, const std::string& metadata_target,
                          const std::string& root, const std::string& download_target);
     void stream_if_safe(const RequestPtr& req, const std::string& root,

@@ -550,6 +550,7 @@ translations:
   Cannot restart — no filename: Não é possível reiniciar — sem nome de ficheiro
   Cannot run filament operation while printing: Não é possível executar operações de filamento durante a impressão
   'Cannot start print: internal error': 'Não é possível iniciar impressão: erro interno'
+  'Cannot start print: no temp directory available': 'Não é possível iniciar a impressão: diretório temporário indisponível'
   'Cannot start print: not connected to printer': 'Não é possível iniciar impressão:
     não conectado à impressora'
   'Cannot start print: printer is {}': 'Não é possível iniciar impressão: impressora
@@ -843,6 +844,7 @@ translations:
   Could not confirm cancel: Não foi possível confirmar o cancelamento
   'Could not copy {} from USB: {}': 'Não foi possível copiar {} do USB: {}'
   Could not disconnect from WiFi: Não foi possível desconectar do WiFi
+  'Could not extract plate {} of {}: {}': 'Não foi possível extrair a placa {} de {}: {}'
   Could not forget device: Não foi possível esquecer o dispositivo
   Could not initialize WiFi hardware. Check system configuration.: Não foi possível inicializar o hardware WiFi. Verifique a configuração do sistema.
   Could not load printer database: Não foi possível carregar o banco de dados de impressoras
@@ -1234,6 +1236,7 @@ translations:
   : "Falha ao baixar helixscreen.conf.\nVerifique a conexão da impressora."
   ? "Failed to download moonraker.conf.\nCheck printer connection."
   : "Falha ao baixar moonraker.conf.\nVerifique a conexão da impressora."
+  'Failed to download the .3mf for printing: {}': 'Falha ao baixar o .3mf para impressão: {}'
   Failed to duplicate spool: Falha ao duplicar carretel
   'Failed to enable WiFi: {}': 'Falha ao ativar o WiFi: {}'
   Failed to enable tuning tower: Falha ao habilitar torre de ajuste
@@ -1313,6 +1316,7 @@ translations:
   : "Falha ao atualizar moonraker.conf.\nVerifique a conexão da impressora."
   'Failed to upload modified G-code: {}': 'Falha ao enviar G-code modificado: {}'
   'Failed to upload remapped G-code: {}': 'Falha ao enviar G-code remapeado: {}'
+  'Failed to upload the extracted G-code: {}': 'Falha ao enviar o G-code extraído: {}'
   Fair match: "Correspondência razoável"
   Fan: Ventoinha
   Fan Calibration: Calibração da Ventoinha
@@ -2430,6 +2434,8 @@ translations:
   Place the spools: Coloque os carretéis
 
   Placed: Colocado
+  Plate {}: 'Placa {}'
+  Plate {} ({} of {}): 'Placa {} ({} de {})'
   Platform: Plataforma
   'Platform: ': 'Plataforma: '
   Play / stop Crockett's Theme: Reproduzir / parar Crockett's Theme
@@ -3542,6 +3548,9 @@ translations:
   'These tools have no filament loaded:': 'Estas ferramentas não têm filamento carregado:'
   'These tools have no matching filament loaded:': 'Estas ferramentas não têm filamento
     correspondente carregado:'
+  This .3mf has no sliced plate to print.: 'Este .3mf não tem nenhuma placa fatiada para imprimir.'
+  This .3mf has to be converted to G-code before it can be queued. Print it from here instead.: 'Este .3mf precisa ser convertido em G-code antes de entrar na fila. Imprima-o daqui.'
+  This .3mf has to be converted to G-code on the printer before it can print.: 'Este .3mf precisa ser convertido em G-code na impressora antes de poder imprimir.'
   This AFC system does not support bypass mode: 'Este sistema AFC não oferece suporte ao modo bypass'
   This CFS firmware exposes no external spool slot: 'Este firmware do CFS não expõe um slot para carretel externo'
   This Happy Hare system does not support bypass mode: 'Este sistema Happy Hare não oferece suporte ao modo bypass'

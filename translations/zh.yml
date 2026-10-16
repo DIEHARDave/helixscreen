@@ -507,6 +507,7 @@ translations:
   Cannot restart — no filename: 无法重启 — 没有文件名
   Cannot run filament operation while printing: 打印期间无法执行耗材操作
   'Cannot start print: internal error': '无法开始打印: 内部错误'
+  'Cannot start print: no temp directory available': '无法开始打印: 无可用临时目录'
   'Cannot start print: not connected to printer': '无法开始打印: 未连接打印机'
   'Cannot start print: printer is {}': '无法开始打印: 打印机状态为 {}'
   'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.': '无法启动 {}：尚未能针对您关闭的步骤检查该文件。请稍后再试。'
@@ -773,6 +774,7 @@ translations:
   Could not confirm cancel: 无法确认取消
   'Could not copy {} from USB: {}': '无法从 USB 复制 {}：{}'
   Could not disconnect from WiFi: 无法断开 WiFi 连接
+  'Could not extract plate {} of {}: {}': '无法提取第 {} 号板（{}）: {}'
   Could not forget device: 无法忘记设备
   Could not initialize WiFi hardware. Check system configuration.: 无法初始化 WiFi 硬件。请检查系统配置。
   Could not load printer database: 无法加载打印机数据库
@@ -1149,6 +1151,7 @@ translations:
   : "下载 helixscreen.conf 失败。\n请检查打印机连接。"
   ? "Failed to download moonraker.conf.\nCheck printer connection."
   : "下载 moonraker.conf 失败。\n请检查打印机连接。"
+  'Failed to download the .3mf for printing: {}': '无法下载用于打印的 .3mf: {}'
   Failed to duplicate spool: 复制线轴失败
   'Failed to enable WiFi: {}': '无法开启 WiFi: {}'
   Failed to enable tuning tower: 启用调优塔失败
@@ -1225,6 +1228,7 @@ translations:
   : "更新 moonraker.conf 失败。\n请检查打印机连接。"
   'Failed to upload modified G-code: {}': '上传修改后的 G-code 失败: {}'
   'Failed to upload remapped G-code: {}': 上传重新映射的 G-code 失败：{}
+  'Failed to upload the extracted G-code: {}': '无法上传提取的 G-code: {}'
   Fair match: "匹配中等"
   Fan: 风扇
   Fan Calibration: 风扇校准
@@ -2281,6 +2285,8 @@ translations:
   Place the spools: 放置料盘
 
   Placed: 已放置
+  Plate {}: '第 {} 号板'
+  Plate {} ({} of {}): '第 {} 号板（{}/{}）'
   Platform: 平台
   'Platform: ': '平台: '
   Play / stop Crockett's Theme: 播放/停止 Crockett's Theme
@@ -3304,6 +3310,9 @@ translations:
   'These tools have incompatible materials loaded:': 这些工具加载了不兼容的材料：
   'These tools have no filament loaded:': '以下工具未加载耗材:'
   'These tools have no matching filament loaded:': 以下工具未加载匹配的耗材：
+  This .3mf has no sliced plate to print.: '此 .3mf 中没有可打印的已切片板。'
+  This .3mf has to be converted to G-code before it can be queued. Print it from here instead.: '此 .3mf 需要先转换为 G-code 才能加入队列。请直接从这里打印。'
+  This .3mf has to be converted to G-code on the printer before it can print.: '此 .3mf 需要先在打印机上转换为 G-code 才能打印。'
   This AFC system does not support bypass mode: '此 AFC 系统不支持旁通模式'
   This CFS firmware exposes no external spool slot: '此 CFS 固件没有外部料盘槽位'
   This Happy Hare system does not support bypass mode: '此 Happy Hare 系统不支持旁通模式'

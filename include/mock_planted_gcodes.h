@@ -4,6 +4,7 @@
 
 #include "runtime_config.h"
 
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <utility>
@@ -16,8 +17,12 @@ namespace helix::mock {
 /// planted there moves another process's numbers. Listings, metadata, reads
 /// and deletes see both; the history scan sees only the shipped files.
 /// Empty (the default) means the shipped directory alone.
+/// HELIX_MOCK_GCODE_DIR plants a directory for a whole --test run.
 inline std::string& planted_gcode_dir() {
-    static std::string dir;
+    static std::string dir = [] {
+        const char* env = std::getenv("HELIX_MOCK_GCODE_DIR");
+        return std::string(env ? env : "");
+    }();
     return dir;
 }
 

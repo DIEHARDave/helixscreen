@@ -588,6 +588,11 @@ class PrinterDetector {
     /// (prestonbrown/helixscreen#1730); false when absent or unknown.
     static bool is_enclosed(const std::string& printer_name);
 
+    /// The database's `"klipper_hides_dot_dirs": true` flag for @p printer_name:
+    /// its Klipper skips dot-directories when it resolves a file to print, so a
+    /// copy staged under one fails to open. False when absent or unknown.
+    static bool klipper_hides_dot_dirs(const std::string& printer_name);
+
     /**
      * @brief Check if connected printer is a Creality K1 series
      * @return true if printer type contains both "creality" and "k1"

@@ -502,6 +502,7 @@
   <translation tag="Cannot run filament operation while printing" pt="Não é possível executar operações de filamento durante a impressão"/>
   <translation tag="Cannot save offsets while printing" pt="Não é possível salvar offsets durante a impressão"/>
   <translation tag="Cannot start print: internal error" pt="Não é possível iniciar impressão: erro interno"/>
+  <translation tag="Cannot start print: no temp directory available" pt="Não é possível iniciar a impressão: diretório temporário indisponível"/>
   <translation tag="Cannot start print: not connected to printer" pt="Não é possível iniciar impressão: não conectado à impressora"/>
   <translation tag="Cannot start print: printer is {}" pt="Não é possível iniciar impressão: impressora está {}"/>
   <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." pt="Não é possível iniciar {}: ainda não foi possível verificar o arquivo para as etapas desativadas. Tente novamente em instantes."/>
@@ -752,6 +753,7 @@
   <translation tag="Could not confirm cancel" pt="Não foi possível confirmar o cancelamento"/>
   <translation tag="Could not copy {} from USB: {}" pt="Não foi possível copiar {} do USB: {}"/>
   <translation tag="Could not disconnect from WiFi" pt="Não foi possível desconectar do WiFi"/>
+  <translation tag="Could not extract plate {} of {}: {}" pt="Não foi possível extrair a placa {} de {}: {}"/>
   <translation tag="Could not forget device" pt="Não foi possível esquecer o dispositivo"/>
   <translation tag="Could not initialize WiFi hardware. Check system configuration." pt="Não foi possível inicializar o hardware WiFi. Verifique a configuração do sistema."/>
   <translation tag="Could not load printer database" pt="Não foi possível carregar o banco de dados de impressoras"/>
@@ -1113,6 +1115,7 @@
   <translation tag="Failed to download G-code for remap: {}" pt="Falha ao baixar G-code para remapeamento: {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." pt="Falha ao baixar helixscreen.conf.&#10;Verifique a conexão da impressora."/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." pt="Falha ao baixar moonraker.conf.&#10;Verifique a conexão da impressora."/>
+  <translation tag="Failed to download the .3mf for printing: {}" pt="Falha ao baixar o .3mf para impressão: {}"/>
   <translation tag="Failed to duplicate spool" pt="Falha ao duplicar carretel"/>
   <translation tag="Failed to enable WiFi: {}" pt="Falha ao ativar o WiFi: {}"/>
   <translation tag="Failed to enable tuning tower" pt="Falha ao habilitar torre de ajuste"/>
@@ -1187,6 +1190,7 @@
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." pt="Falha ao atualizar moonraker.conf.&#10;Verifique a conexão da impressora."/>
   <translation tag="Failed to upload modified G-code: {}" pt="Falha ao enviar G-code modificado: {}"/>
   <translation tag="Failed to upload remapped G-code: {}" pt="Falha ao enviar G-code remapeado: {}"/>
+  <translation tag="Failed to upload the extracted G-code: {}" pt="Falha ao enviar o G-code extraído: {}"/>
   <translation tag="Fair match" pt="Correspondência razoável"/>
   <translation tag="Fan" pt="Ventoinha"/>
   <translation tag="Fan Calibration" pt="Calibração da Ventoinha"/>
@@ -2199,6 +2203,8 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." pt="Coloque arquivos de imagem (PNG, JPEG, BMP, GIF) em config/custom_images/. Tamanho máx.: 2048×2048 pixels."/>
   <translation tag="Place the spools" pt="Coloque os carretéis"/>
   <translation tag="Placed" pt="Colocado"/>
+  <translation tag="Plate {}" pt="Placa {}"/>
+  <translation tag="Plate {} ({} of {})" pt="Placa {} ({} de {})"/>
   <translation tag="Platform" pt="Plataforma"/>
   <translation tag="Platform: " pt="Plataforma: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" pt="Reproduzir / parar Crockett&apos;s Theme"/>
@@ -3170,6 +3176,9 @@
   <translation tag="These tools have incompatible materials loaded:" pt="Estas ferramentas têm materiais incompatíveis carregados:"/>
   <translation tag="These tools have no filament loaded:" pt="Estas ferramentas não têm filamento carregado:"/>
   <translation tag="These tools have no matching filament loaded:" pt="Estas ferramentas não têm filamento correspondente carregado:"/>
+  <translation tag="This .3mf has no sliced plate to print." pt="Este .3mf não tem nenhuma placa fatiada para imprimir."/>
+  <translation tag="This .3mf has to be converted to G-code before it can be queued. Print it from here instead." pt="Este .3mf precisa ser convertido em G-code antes de entrar na fila. Imprima-o daqui."/>
+  <translation tag="This .3mf has to be converted to G-code on the printer before it can print." pt="Este .3mf precisa ser convertido em G-code na impressora antes de poder imprimir."/>
   <translation tag="This AFC system does not support bypass mode" pt="Este sistema AFC não oferece suporte ao modo bypass"/>
   <translation tag="This CFS firmware exposes no external spool slot" pt="Este firmware do CFS não expõe um slot para carretel externo"/>
   <translation tag="This Happy Hare system does not support bypass mode" pt="Este sistema Happy Hare não oferece suporte ao modo bypass"/>

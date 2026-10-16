@@ -1602,3 +1602,32 @@ TEST_CASE_METHOD(HistoryManagerTestFixture,
     pump();
     CHECK(manager_->get_jobs().front().exists);
 }
+
+TEST_CASE_METHOD(
+    HistoryManagerTestFixture,
+    "PrintHistoryManager: a plate staged from an archive records the archive and plate",
+    "[history_manager][reprint][three_mf]") {
+    // The printer keeps no metadata for the archive; its listing still has it.
+    FileInfo archive;
+    archive.filename = "Door.gcode.3mf";
+    archive.modified = 9.0;
+    api_->metadata_table().directories["parts"] = {archive};
+    const std::string staged = helix::gcode::make_extracted_plate_path("parts/Door.gcode.3mf", 9);
+
+    install_live_cache({history_job(staged, 300.0)});
+    pump();
+
+    const PrintHistoryJob& job = manager_->get_jobs().front();
+    CHECK(job.filename == "parts/Door.gcode.3mf");
+    CHECK(job.archive_plate == 9);
+    CHECK(job.from_rewrite);
+    CHECK(job.exists);
+
+    SECTION("gone from the listing too: missing") {
+        api_->metadata_table().directories["parts"] = {};
+        manager_->invalidate();
+        PrintHistoryManagerTestAccess::set_loaded_jobs(*manager_, {history_job(staged, 300.0)});
+        pump();
+        CHECK_FALSE(manager_->get_jobs().front().exists);
+    }
+}

@@ -167,7 +167,10 @@ void safety_limits_step(DiscoveryContext& ctx) {
 // early for UI gating.
 void helix_plugin_check_step(DiscoveryContext& ctx) {
     ctx.api.job().check_helix_plugin(
-        [](bool available) { get_printer_state().set_helix_plugin_installed(available); },
+        [](const helix::HelixPluginInfo& info) {
+            get_printer_state().set_helix_plugin_link_dir(info.symlink_dir);
+            get_printer_state().set_helix_plugin_installed(info.available);
+        },
         [](const MoonrakerError&) {
             // Silently treat errors as "plugin not installed"
             get_printer_state().set_helix_plugin_installed(false);

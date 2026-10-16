@@ -179,6 +179,9 @@ class MoonrakerFileAPI : public helix::IFilesAPI {
     void metascan_file(const std::string& filename, FileMetadataCallback on_success,
                        ErrorCallback on_error, bool silent = true) override;
 
+    void get_archive_conversions(ArchiveConversionsCallback on_success,
+                                 ErrorCallback on_error) override;
+
     /**
      * @brief Delete a file
      *

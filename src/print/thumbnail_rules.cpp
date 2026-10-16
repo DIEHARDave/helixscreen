@@ -129,6 +129,8 @@ std::string thumbnail_cache_id(ThumbnailSource source, const std::string& id) {
         return "usb:" + id;
     case ThumbnailSource::Timelapse:
         return "tl_" + std::to_string(std::hash<std::string>{}(id));
+    case ThumbnailSource::ArchiveEntry:
+        return id + "_archive";
     }
     return id;
 }

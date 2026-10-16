@@ -502,6 +502,7 @@
   <translation tag="Cannot run filament operation while printing" en="Cannot run filament operation while printing"/>
   <translation tag="Cannot save offsets while printing" en="Cannot save offsets while printing"/>
   <translation tag="Cannot start print: internal error" en="Cannot start print: internal error"/>
+  <translation tag="Cannot start print: no temp directory available" en="Cannot start print: no temp directory available"/>
   <translation tag="Cannot start print: not connected to printer" en="Cannot start print: not connected to printer"/>
   <translation tag="Cannot start print: printer is {}" en="Cannot start print: printer is {}"/>
   <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." en="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment."/>
@@ -752,6 +753,7 @@
   <translation tag="Could not confirm cancel" en="Could not confirm cancel"/>
   <translation tag="Could not copy {} from USB: {}" en="Could not copy {} from USB: {}"/>
   <translation tag="Could not disconnect from WiFi" en="Could not disconnect from WiFi"/>
+  <translation tag="Could not extract plate {} of {}: {}" en="Could not extract plate {} of {}: {}"/>
   <translation tag="Could not forget device" en="Could not forget device"/>
   <translation tag="Could not initialize WiFi hardware. Check system configuration." en="Could not initialize WiFi hardware. Check system configuration."/>
   <translation tag="Could not load printer database" en="Could not load printer database"/>
@@ -1113,6 +1115,7 @@
   <translation tag="Failed to download G-code for remap: {}" en="Failed to download G-code for remap: {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." en="Failed to download helixscreen.conf.&#10;Check printer connection."/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." en="Failed to download moonraker.conf.&#10;Check printer connection."/>
+  <translation tag="Failed to download the .3mf for printing: {}" en="Failed to download the .3mf for printing: {}"/>
   <translation tag="Failed to duplicate spool" en="Failed to duplicate spool"/>
   <translation tag="Failed to enable WiFi: {}" en="Failed to enable WiFi: {}"/>
   <translation tag="Failed to enable tuning tower" en="Failed to enable tuning tower"/>
@@ -1187,6 +1190,7 @@
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." en="Failed to update moonraker.conf.&#10;Check printer connection."/>
   <translation tag="Failed to upload modified G-code: {}" en="Failed to upload modified G-code: {}"/>
   <translation tag="Failed to upload remapped G-code: {}" en="Failed to upload remapped G-code: {}"/>
+  <translation tag="Failed to upload the extracted G-code: {}" en="Failed to upload the extracted G-code: {}"/>
   <translation tag="Fair match" en="Fair match"/>
   <translation tag="Fan" en="Fan"/>
   <translation tag="Fan Calibration" en="Fan Calibration"/>
@@ -2199,6 +2203,8 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." en="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels."/>
   <translation tag="Place the spools" en="Place the spools"/>
   <translation tag="Placed" en="Placed"/>
+  <translation tag="Plate {}" en="Plate {}"/>
+  <translation tag="Plate {} ({} of {})" en="Plate {} ({} of {})"/>
   <translation tag="Platform" en="Platform"/>
   <translation tag="Platform: " en="Platform: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" en="Play / stop Crockett&apos;s Theme"/>
@@ -3170,6 +3176,9 @@
   <translation tag="These tools have incompatible materials loaded:" en="These tools have incompatible materials loaded:"/>
   <translation tag="These tools have no filament loaded:" en="These tools have no filament loaded:"/>
   <translation tag="These tools have no matching filament loaded:" en="These tools have no matching filament loaded:"/>
+  <translation tag="This .3mf has no sliced plate to print." en="This .3mf has no sliced plate to print."/>
+  <translation tag="This .3mf has to be converted to G-code before it can be queued. Print it from here instead." en="This .3mf has to be converted to G-code before it can be queued. Print it from here instead."/>
+  <translation tag="This .3mf has to be converted to G-code on the printer before it can print." en="This .3mf has to be converted to G-code on the printer before it can print."/>
   <translation tag="This AFC system does not support bypass mode" en="This AFC system does not support bypass mode"/>
   <translation tag="This CFS firmware exposes no external spool slot" en="This CFS firmware exposes no external spool slot"/>
   <translation tag="This Happy Hare system does not support bypass mode" en="This Happy Hare system does not support bypass mode"/>

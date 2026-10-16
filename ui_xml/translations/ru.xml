@@ -541,6 +541,7 @@
   <translation tag="Cannot run filament operation while printing" ru="Во время печати нельзя выполнять операции с филаментом"/>
   <translation tag="Cannot save offsets while printing" ru="Нельзя сохранить смещения во время печати"/>
   <translation tag="Cannot start print: internal error" ru="Невозможно начать печать: внутренняя ошибка"/>
+  <translation tag="Cannot start print: no temp directory available" ru="Невозможно начать печать: временная директория недоступна"/>
   <translation tag="Cannot start print: not connected to printer" ru="Невозможно начать печать: не подключено к принтеру"/>
   <translation tag="Cannot start print: printer is {}" ru="Невозможно начать печать: принтер {}"/>
   <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." ru="Не удалось запустить {}: файл ещё не удалось проверить на отключённые шаги. Повторите попытку через мгновение."/>
@@ -794,6 +795,7 @@
   <translation tag="Could not confirm cancel" ru="Не удалось подтвердить отмену"/>
   <translation tag="Could not copy {} from USB: {}" ru="Не удалось скопировать {} с USB: {}"/>
   <translation tag="Could not disconnect from WiFi" ru="Не удалось отключиться от WiFi"/>
+  <translation tag="Could not extract plate {} of {}: {}" ru="Не удалось извлечь пластину {} из {}: {}"/>
   <translation tag="Could not forget device" ru="Не удалось забыть устройство"/>
   <translation tag="Could not initialize WiFi hardware. Check system configuration." ru="Не удалось инициализировать оборудование WiFi. Проверьте конфигурацию системы."/>
   <translation tag="Could not load printer database" ru="Не удалось загрузить базу данных принтеров"/>
@@ -1155,6 +1157,7 @@
   <translation tag="Failed to download G-code for remap: {}" ru="Не удалось скачать G-code для переназначения: {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." ru="Не удалось скачать helixscreen.conf.&#10;Проверьте подключение принтера."/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." ru="Не удалось скачать moonraker.conf.&#10;Проверьте подключение принтера."/>
+  <translation tag="Failed to download the .3mf for printing: {}" ru="Не удалось загрузить .3mf для печати: {}"/>
   <translation tag="Failed to duplicate spool" ru="Не удалось дублировать катушку"/>
   <translation tag="Failed to enable WiFi: {}" ru="Не удалось включить WiFi: {}"/>
   <translation tag="Failed to enable tuning tower" ru="Не удалось включить башню настройки"/>
@@ -1229,6 +1232,7 @@
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." ru="Не удалось обновить moonraker.conf.&#10;Проверьте подключение принтера."/>
   <translation tag="Failed to upload modified G-code: {}" ru="Не удалось загрузить изменённый G-code: {}"/>
   <translation tag="Failed to upload remapped G-code: {}" ru="Не удалось загрузить переназначенный G-code: {}"/>
+  <translation tag="Failed to upload the extracted G-code: {}" ru="Не удалось загрузить извлечённый G-code: {}"/>
   <translation tag="Fair match" ru="Среднее совпадение"/>
   <translation tag="Fan" ru="Вентилятор"/>
   <translation tag="Fan Calibration" ru="Калибровка вентилятора"/>
@@ -2244,6 +2248,8 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." ru="Поместите файлы изображений (PNG, JPEG, BMP, GIF) в config/custom_images/. Макс. размер: 2048×2048 пикселей."/>
   <translation tag="Place the spools" ru="Положите катушки"/>
   <translation tag="Placed" ru="Добавлено"/>
+  <translation tag="Plate {}" ru="Пластина {}"/>
+  <translation tag="Plate {} ({} of {})" ru="Пластина {} ({} из {})"/>
   <translation tag="Platform" ru="Платформа"/>
   <translation tag="Platform: " ru="Платформа: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" ru="Воспроизвести / остановить «Crockett&apos;s Theme»"/>
@@ -3230,6 +3236,9 @@
   <translation tag="These tools have incompatible materials loaded:" ru="В этих инструментах загружены несовместимые материалы:"/>
   <translation tag="These tools have no filament loaded:" ru="В эти инструменты не загружен филамент:"/>
   <translation tag="These tools have no matching filament loaded:" ru="В этих инструментах нет подходящего филамента:"/>
+  <translation tag="This .3mf has no sliced plate to print." ru="В этом .3mf нет нарезанной пластины для печати."/>
+  <translation tag="This .3mf has to be converted to G-code before it can be queued. Print it from here instead." ru="Этот .3mf нужно преобразовать в G-code, прежде чем ставить в очередь. Напечатайте его отсюда."/>
+  <translation tag="This .3mf has to be converted to G-code on the printer before it can print." ru="Этот .3mf нужно преобразовать в G-code на принтере, прежде чем его можно будет напечатать."/>
   <translation tag="This AFC system does not support bypass mode" ru="Эта система AFC не поддерживает режим обхода"/>
   <translation tag="This CFS firmware exposes no external spool slot" ru="Эта прошивка CFS не предоставляет слот для внешней катушки"/>
   <translation tag="This Happy Hare system does not support bypass mode" ru="Эта система Happy Hare не поддерживает режим обхода"/>

@@ -122,7 +122,7 @@ class MoonrakerJobAPI : public helix::IJobAPI {
      * @param on_result Callback with availability (true if plugin detected)
      * @param on_error Error callback (also means plugin not available)
      */
-    void check_helix_plugin(BoolCallback on_result, ErrorCallback on_error) override;
+    void check_helix_plugin(PluginInfoCallback on_result, ErrorCallback on_error) override;
 
     /**
      * @brief Pause the current print

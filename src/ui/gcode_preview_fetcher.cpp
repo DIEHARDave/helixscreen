@@ -7,6 +7,7 @@
 
 #include "app_globals.h"
 #include "config.h"
+#include "firmware_3mf_extract.h"
 #include "gcode_preview_setup.h"
 #include "i_moonraker_api.h"
 #include "memory_utils.h"
@@ -69,12 +70,18 @@ void GcodePreviewFetcher::fetch(const std::string& filename, ReadyCb on_ready,
     }
 
     if (helix::gcode::is_3mf(filename)) {
-        list_qidi_shadow(req);
+        list_firmware_extract(req);
         return;
     }
     // Metadata gives the size, which decides whether to download at all. This
     // prevents OOM on memory-constrained devices like AD5M.
-    lookup_metadata(req, resolve_gcode_filename(filename), "gcodes", filename);
+    // A staged plate has its own metadata; the archive it maps back to has none
+    // for G-code.
+    lookup_metadata(req,
+                    helix::gcode::rewritten_archive_plate(filename) > 0
+                        ? filename
+                        : resolve_gcode_filename(filename),
+                    "gcodes", filename);
 }
 
 std::string GcodePreviewFetcher::cache_file_name(const char* prefix, const std::string& file_key) {
@@ -104,30 +111,31 @@ void GcodePreviewFetcher::discard_file() {
 // before touching the fetcher or calling the owner.
 
 // A .3mf is a zip archive the viewer cannot read; its G-code is only on show
-// when the firmware extracted the printing plate into the `.temp` root. Without
-// that copy there is nothing to render, and the archive itself is never
-// downloaded.
-void GcodePreviewFetcher::list_qidi_shadow(const RequestPtr& req) {
+// when the firmware extracted the printing plate into a root of its own
+// (firmware_3mf::extract_root()). Without that copy there is nothing to render,
+// and the archive itself is never downloaded.
+void GcodePreviewFetcher::list_firmware_extract(const RequestPtr& req) {
     auto token = lifetime_.token();
+    const std::string root = firmware_3mf::extract_root();
     api_->files().list_files(
-        ".temp", "", false,
-        [this, token, req](const std::vector<FileInfo>& files) {
-            token.defer("GcodePreviewFetcher::qidi_3mf_shadow_list_ok", [this, req, files]() {
+        root, "", false,
+        [this, token, req, root](const std::vector<FileInfo>& files) {
+            token.defer("GcodePreviewFetcher::firmware_3mf_extract_list_ok", [this, req, files,
+                                                                              root]() {
                 if (stale(req)) {
                     return;
                 }
-                spdlog::debug("[{}] .temp returned {} entries for QIDI native 3MF preview lookup",
-                              log_tag_, files.size());
+                spdlog::debug("[{}] {} returned {} entries for the firmware .3mf extract lookup",
+                              log_tag_, root, files.size());
 
-                // A multi-plate .3mf can leave several shadow_native_plate_*.gcode
-                // files in .temp, and Moonraker exposes no plate index for the
+                // A multi-plate .3mf can leave several plate-numbered extracts
+                // there, and Moonraker exposes no plate index for the
                 // active print. The active plate's shadow is (re)written at print
                 // start, so the newest-modified match is the best proxy for "the
                 // plate currently printing".
                 const FileInfo* best = nullptr;
                 for (const auto& file : files) {
-                    if (!helix::gcode::is_native_3mf_shadow(file.path) &&
-                        !helix::gcode::is_qidi_3mf_extract(file.path, req->filename)) {
+                    if (!firmware_3mf::is_extract(file.path, req->filename)) {
                         continue;
                     }
                     if (best == nullptr || file.modified > best->modified) {
@@ -136,27 +144,28 @@ void GcodePreviewFetcher::list_qidi_shadow(const RequestPtr& req) {
                 }
 
                 if (best != nullptr) {
-                    spdlog::debug("[{}] Selected QIDI native 3MF G-code (newest of matches): "
-                                  ".temp/{} ({} bytes, modified {})",
-                                  log_tag_, best->path, best->size, best->modified);
-                    stream_if_safe(req, ".temp", best->path, best->size);
+                    spdlog::debug("[{}] Selected the firmware's .3mf extract (newest of matches): "
+                                  "{}/{} ({} bytes, modified {})",
+                                  log_tag_, root, best->path, best->size, best->modified);
+                    stream_if_safe(req, root, best->path, best->size);
                     return;
                 }
 
-                spdlog::info("[{}] No extracted G-code for '{}' in .temp - keeping the thumbnail",
-                             log_tag_, req->filename);
+                spdlog::info("[{}] No extracted G-code for '{}' in {} - keeping the thumbnail",
+                             log_tag_, req->filename, root);
                 give_up(req, Unavailable::NoGcode);
             });
         },
-        [this, token, req](const MoonrakerError& err) {
-            token.defer("GcodePreviewFetcher::qidi_3mf_shadow_list_err", [this, req, err]() {
-                if (stale(req)) {
-                    return;
-                }
-                spdlog::info("[{}] Cannot list .temp for '{}': {} - keeping the thumbnail",
-                             log_tag_, req->filename, err.message);
-                give_up(req, Unavailable::NoGcode);
-            });
+        [this, token, req, root](const MoonrakerError& err) {
+            token.defer("GcodePreviewFetcher::firmware_3mf_extract_list_err",
+                        [this, req, err, root]() {
+                            if (stale(req)) {
+                                return;
+                            }
+                            spdlog::info("[{}] Cannot list {} for '{}': {} - keeping the thumbnail",
+                                         log_tag_, root, req->filename, err.message);
+                            give_up(req, Unavailable::NoGcode);
+                        });
         });
 }
 
