@@ -65,7 +65,7 @@ DB_RECORD_MAX_AGE = 30 * 86400
 # Plugin version - used for API version detection by clients
 PLUGIN_VERSION = "1.2.0"
 
-# Namespace for key-value storage fallback (Moonraker v0.8.x)
+# Namespace for the key-value storage fallback (database without execute_db_command)
 HELIX_NAMESPACE = "helix_temp_files"
 
 # Provider name stamped on our entry in a history job's auxiliary_data
@@ -159,8 +159,8 @@ class HelixPrint:
         self.gc_path: Optional[Path] = None
 
         # Database backend flags (mutually exclusive, one will be True after init)
-        self._use_sqlite = False      # Moonraker 0.9+ with execute_db_command
-        self._use_namespace = False   # Moonraker 0.8.x with insert_item/get_item
+        self._use_sqlite = False      # database.execute_db_command
+        self._use_namespace = False   # database.insert_item/get_item
 
         # Register API endpoints
         self.server.register_endpoint(
@@ -320,8 +320,8 @@ class HelixPrint:
     async def _init_database(self) -> None:
         """Initialize database for tracking temp files.
 
-        Tries SQLite API first (Moonraker 0.9+), then falls back to
-        namespace key-value API (Moonraker 0.8.x).
+        Uses the database's execute_db_command when it has one, else its
+        namespace key-value API (insert_item/get_item).
         """
         if self.database is None:
             logging.warning(
@@ -329,7 +329,7 @@ class HelixPrint:
             )
             return
 
-        # Try SQLite API first (Moonraker 0.9+)
+        # SQL table through execute_db_command, where the database offers it
         if hasattr(self.database, "execute_db_command"):
             try:
                 await self.database.execute_db_command(
@@ -353,10 +353,11 @@ class HelixPrint:
             except Exception as e:
                 logging.warning(f"HelixPrint: SQLite init failed: {e}, trying namespace API")
 
-        # Fall back to namespace API (Moonraker 0.8.x)
+        # Otherwise the namespace key-value API
         if hasattr(self.database, "insert_item"):
             self._use_namespace = True
-            logging.info("HelixPrint: Using namespace API for persistence (Moonraker 0.8.x)")
+            logging.info("HelixPrint: Using namespace API (insert_item/get_item) for persistence: "
+                "the database has no execute_db_command")
             return
 
         logging.warning("HelixPrint: No compatible database API found, persistence disabled")
