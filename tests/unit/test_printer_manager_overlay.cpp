@@ -12,8 +12,10 @@
  */
 
 #include "ui_printer_manager_overlay.h"
+#include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/printer_manager_overlay_test_access.h"
 #include "config.h"
@@ -245,4 +247,42 @@ TEST_CASE_METHOD(LVGLTestFixture,
     }
     helix::ConfigTestAccess::data(*cfg) = saved;
     helix::ConfigTestAccess::active_printer_id(*cfg) = saved_active;
+}
+
+// =============================================================================
+// Name editing: a tap anywhere outside the input commits
+// =============================================================================
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "PrinterManagerOverlay: a tap anywhere outside the name input ends the edit",
+                 "[printer_manager]") {
+    PrinterManagerOverlay& pm = get_printer_manager_overlay();
+    pm.show(test_screen());
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(30);
+    lv_obj_t* root = pm.get_root();
+    REQUIRE(root != nullptr);
+    lv_subject_t* editing = lv_xml_get_subject(nullptr, "pm_name_editing");
+    REQUIRE(editing != nullptr);
+
+    // The details column scrolls, so it is clickable itself and a tap on it, or
+    // on anything inside it, only reaches the body if it bubbles.
+    for (const char* target : {"overlay_content", "pm_details", "group_software", "pm_row_klipper",
+                               "group_capabilities", "pm_identity_card"}) {
+        INFO("tap on " << target);
+        PrinterManagerOverlayTestAccess::start_name_edit(pm);
+        REQUIRE(lv_subject_get_int(editing) == 1);
+        lv_obj_t* obj = lv_obj_find_by_name(root, target);
+        REQUIRE(obj != nullptr);
+        lv_obj_send_event(obj, LV_EVENT_CLICKED, nullptr);
+        CHECK(lv_subject_get_int(editing) == 0);
+    }
+
+    // A tap on the input itself keeps editing.
+    PrinterManagerOverlayTestAccess::start_name_edit(pm);
+    lv_obj_send_event(lv_obj_find_by_name(root, "pm_printer_name_input"), LV_EVENT_CLICKED,
+                      nullptr);
+    CHECK(lv_subject_get_int(editing) == 1);
+
+    destroy_printer_manager_overlay();
 }

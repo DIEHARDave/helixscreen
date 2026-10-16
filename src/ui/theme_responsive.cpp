@@ -380,21 +380,13 @@ void theme_manager_refresh_orientation(lv_display_t* display) {
         return;
     }
 
-    int is_portrait;
-    if (LayoutManager::instance().is_initialized()) {
-        is_portrait = is_portrait_layout(LayoutManager::instance().type()) ? 1 : 0;
-    } else {
-        lv_display_t* disp = display ? display : lv_display_get_default();
-        if (!disp) {
-            return;
-        }
-        is_portrait =
-            is_portrait_layout(detect_layout_type(lv_display_get_horizontal_resolution(disp),
-                                                  lv_display_get_vertical_resolution(disp)))
-                ? 1
-                : 0;
+    lv_display_t* disp = display ? display : lv_display_get_default();
+    if (!disp && !LayoutManager::instance().is_initialized()) {
+        return;
     }
-    lv_subject_set_int(portrait_subject, is_portrait);
+    const int w = disp ? lv_display_get_horizontal_resolution(disp) : 0;
+    const int h = disp ? lv_display_get_vertical_resolution(disp) : 0;
+    lv_subject_set_int(portrait_subject, app_layout_is_portrait(w, h) ? 1 : 0);
 }
 
 void theme_manager_refresh_layout_constants(lv_display_t* display) {
