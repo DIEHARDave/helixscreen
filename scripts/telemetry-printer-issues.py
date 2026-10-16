@@ -211,11 +211,16 @@ LABEL_DESCRIPTIONS = {
 }
 
 
+def _issue_rank(item: dict) -> tuple:
+    return (item["state"].upper() != "OPEN", item["number"])
+
+
 def load_issue_index() -> dict[str, dict]:
     """Every telemetry issue by fingerprint, from one listing.
 
-    GitHub search does not index the text of an HTML comment, so the marker is
-    matched locally against each body.
+    The marker is matched locally against each body; GitHub search is not relied
+    on to find text inside an HTML comment. When two issues carry one marker, the
+    open one wins, then the lowest number, as in the Worker.
     """
     raw = gh(
         ["issue", "list", "--label", "telemetry", "--state", "all",
@@ -224,7 +229,7 @@ def load_issue_index() -> dict[str, dict]:
     index: dict[str, dict] = {}
     for item in json.loads(raw or "[]"):
         fp = fingerprint_in_body(item.get("body", ""))
-        if fp is not None:
+        if fp is not None and (fp not in index or _issue_rank(item) < _issue_rank(index[fp])):
             index[fp] = item
     return index
 

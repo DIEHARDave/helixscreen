@@ -231,3 +231,18 @@ def test_new_issue_cap_holds_back_the_sixth(monkeypatch, tmp_path, capsys):
     assert issues.main(["--analysis", str(path), "--db", str(db)]) == 0
     assert len([w for w in fake.writes if w[:2] == ["issue", "create"]]) == issues.MAX_NEW_ISSUES
     assert capsys.readouterr().out.count("Held for next run") == 1
+
+
+def test_issue_index_prefers_open_then_lowest_number(monkeypatch):
+    fp = "printer:corexy|stm32h723|350x350x350"
+    listing = [
+        {"number": 2, "state": "CLOSED", "body": issues.marker_for(fp)},
+        {"number": 9, "state": "OPEN", "body": issues.marker_for(fp)},
+        {"number": 4, "state": "OPEN", "body": issues.marker_for(fp)},
+        {"number": 1, "state": "CLOSED", "body": issues.marker_for("printer:closed")},
+        {"number": 3, "state": "CLOSED", "body": issues.marker_for("printer:closed")},
+    ]
+    monkeypatch.setattr(issues, "gh", lambda args: json.dumps(listing))
+    index = issues.load_issue_index()
+    assert index[fp]["number"] == 4
+    assert index["printer:closed"]["number"] == 1
