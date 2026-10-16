@@ -2256,6 +2256,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: No hay espacio suficiente para este widget. Reorganiza o elimina widgets para hacer espacio.
   Not in your spools? Set it up: ¿No está en tus bobinas? Configúralo
   Not now: Ahora no
+  'Not saved to the printer config: Z-offset saving is off for this printer': 'No guardado en la configuración: guardar Z-Offset está desactivado para esta impresora'
   Not yet available on this display: 'Aún no disponible en esta pantalla'
   Not yet calibrated: Aún no calibrado
   Notes: Notas
@@ -2309,6 +2310,7 @@ translations:
   'Off': Apagado
   'Off:': 'Apagado:'
   'Off: runs with these values without asking': 'Desactivado: ejecuta con estos valores sin preguntar'
+  Offer to save Z-offset changes to the printer config: 'Ofrecer guardar los cambios de Z-Offset en la configuración de la impresora'
   Offsets saved: Offsets guardados
   "Old setting on today's data: {} residual - now: {}": 'Ajuste anterior en los datos de hoy: {} de vibración residual - ahora: {}'
   'On': Encendido
@@ -2975,6 +2977,7 @@ translations:
   Save Printer Configuration: Guardar Configuración de Impresora
   Save Theme As: Guardar Tema Como
   Save Z-Offset: Guardar Z-Offset
+  Save Z-Offset Buttons: 'Botones de guardar Z-Offset'
   Save Z-Offset?: ¿Guardar Z-Offset?
   Save changes to persist them across restarts?: ¿Guardar cambios para mantenerlos
     entre reinicios?
@@ -3423,6 +3426,7 @@ translations:
   Temperatures plotted over time: Temperaturas a lo largo del tiempo
   Temperatures saved: Temperaturas guardadas
   Template: Plantilla
+  Temporary adjustment for this print: 'Ajuste temporal para esta impresión'
   Temporary adjustment for this print, unless saved on Controls panel: Ajuste temporal
     para esta impresión, a menos que se guarde en el panel de Controles
   Tertiary: Terciario

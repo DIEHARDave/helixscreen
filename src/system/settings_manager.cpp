@@ -178,6 +178,10 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
     // Per-printer: the detector only exists on the U1.
     {"detection_policy_u1", "detection/policy_u1", Scope::PerPrinter, false, 2, 0, 2,
      "detection_policy_u1"},
+    // helix::zoffset::SaveMode: 0=Auto (off when each tool keeps its own Z
+    // offset), 1=Show, 2=Hide. #1766
+    {"settings_z_offset_save_mode", "z_offset/save_mode", Scope::PerPrinter, false, 0, 0, 2,
+     "z_offset_save_mode"},
 };
 
 SettingsManager& SettingsManager::instance() {

@@ -711,6 +711,25 @@ void ZOffsetCalibrationPanel::send_accept() {
                 tok.defer("ZOffsetCalibrationPanel::on_calibration_result(gcode_fail)",
                           [this]() { on_calibration_result(false, "Failed to set Z-offset"); });
             });
+    } else if (!helix::zoffset::save_enabled()) {
+        // Saving is off for this printer: ACCEPT stages the result for Klipper's
+        // next SAVE_CONFIG and nothing here sends one. The complete state says so.
+        spdlog::info("[ZOffsetCal] Z-offset saving is off - sending ACCEPT without saving");
+        auto tok = lifetime_.token();
+        api_->execute_gcode(
+            "ACCEPT",
+            [this, tok]() {
+                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(accept_nosave_ok)",
+                          [this]() { on_calibration_result(true, ""); });
+            },
+            [this, tok](const MoonrakerError& err) {
+                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(accept_nosave_fail)",
+                          [this, err]() {
+                              on_calibration_result(
+                                  false, fmt::format(fmt::runtime(lv_tr("ACCEPT failed: {}")),
+                                                     err.localized_message()));
+                          });
+            });
     } else {
         // Probe/endstop: ACCEPT then apply+save
         spdlog::info("[ZOffsetCal] Sending ACCEPT");

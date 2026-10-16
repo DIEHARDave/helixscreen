@@ -20,7 +20,9 @@
 #include "app_globals.h"
 #include "moonraker_error.h"
 #include "printer_state.h"
+#include "settings_manager.h"
 #include "tool_state.h"
+#include "z_offset_utils.h"
 
 #include <algorithm>
 #include <string>
@@ -237,7 +239,10 @@ TEST_CASE_METHOD(ToolCalPanelFixture, "tool offset panel: Save commits a pending
     // The SAVE_CONFIG a tool save ends in restarts Klipper, which resets
     // homing_origin: a babystep not applied in that same restart is lost, while
     // its pending delta went on being shown. Save must apply it, as the header
-    // and Controls saves do.
+    // and Controls saves do, once the user has turned Z-offset saving on.
+    auto& settings = helix::SettingsManager::instance();
+    settings.init_subjects();
+    settings.set_z_offset_save_mode(static_cast<int>(helix::zoffset::SaveMode::Show));
     helix::PrinterState& ps = get_printer_state();
     helix::PrinterStateTestAccess::pin_z_offset_strategy(
         ps, helix::ZOffsetCalibrationStrategy::PROBE_CALIBRATE);
@@ -257,6 +262,45 @@ TEST_CASE_METHOD(ToolCalPanelFixture, "tool offset panel: Save commits a pending
     const auto& hist = client->gcode_script_history();
     CHECK(hist[hist.size() - 2] == "Z_OFFSET_APPLY_PROBE");
     CHECK(hist.back() == "SAVE_CONFIG");
+
+    panel.on_deactivate(DeactivateReason::NavigateAway);
+    panel.cleanup();
+    settings.set_z_offset_save_mode(static_cast<int>(helix::zoffset::SaveMode::Auto));
+}
+
+TEST_CASE_METHOD(ToolCalPanelFixture,
+                 "tool offset panel: Save leaves the babystep alone while Z-offset saving is off",
+                 "[ui_integration][toolchanger][tool_offset_cal][save-toggle]") {
+    // A toolchanger defaults to saving off: the tool offsets still save, the
+    // machine-wide babystep is never folded into the config (#1766).
+    auto& settings = helix::SettingsManager::instance();
+    settings.init_subjects();
+    settings.set_z_offset_save_mode(static_cast<int>(helix::zoffset::SaveMode::Auto));
+    REQUIRE_FALSE(helix::zoffset::save_enabled());
+
+    helix::PrinterState& ps = get_printer_state();
+    helix::PrinterStateTestAccess::pin_z_offset_strategy(
+        ps, helix::ZOffsetCalibrationStrategy::PROBE_CALIBRATE);
+    ps.update_from_status(
+        json{{"gcode_move", json{{"homing_origin", json::array({0.0, 0.0, 0.05, 0.0})}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    helix::ToolState::instance().set_tool_offset_local(1, helix::Axis::X, -120);
+    REQUIRE_FALSE(helix::ToolState::instance().dirty_tool_indices().empty());
+
+    helix::ui::ToolOffsetCalibrationPanel panel;
+    panel.init_subjects();
+    panel.on_activate();
+    client->clear_gcode_script_history();
+    panel.send_save();
+    REQUIRE(pump_until([&] { return !client->gcode_script_history().empty(); }, 50));
+
+    const auto& hist = client->gcode_script_history();
+    CHECK(std::any_of(hist.begin(), hist.end(), [](const std::string& script) {
+        return script.find("gcode_x_offset") != std::string::npos;
+    }));
+    for (const auto& script : hist) {
+        CHECK(script.find("Z_OFFSET_APPLY") == std::string::npos);
+    }
 
     panel.on_deactivate(DeactivateReason::NavigateAway);
     panel.cleanup();

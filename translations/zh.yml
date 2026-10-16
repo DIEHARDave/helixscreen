@@ -2113,6 +2113,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: 没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。
   'Not in your spools? Set it up': 不在您的料盘中？立即设置
   Not now: 暂不
+  'Not saved to the printer config: Z-offset saving is off for this printer': '未保存到打印机配置：此打印机已关闭 Z 偏移保存'
   Not yet available on this display: '此屏幕暂不支持'
   Not yet calibrated: 尚未校准
   Notes: 备注
@@ -2166,6 +2167,7 @@ translations:
   'Off': 关
   'Off:': '关:'
   'Off: runs with these values without asking': '关: 不询问,直接以这些值运行'
+  Offer to save Z-offset changes to the printer config: '提供将 Z 偏移更改保存到打印机配置的选项'
   Offsets saved: 偏移已保存
   "Old setting on today's data: {} residual - now: {}": 旧设置（今日数据）：残余 {} — 当前：{}
   'On': 开
@@ -2795,6 +2797,7 @@ translations:
   Save Printer Configuration: 保存打印机配置
   Save Theme As: 主题另存为
   Save Z-Offset: 保存 Z 偏移
+  Save Z-Offset Buttons: '保存 Z 偏移按钮'
   Save Z-Offset?: 保存 Z 偏移？
   Save changes to persist them across restarts?: 保存更改以便在重启后保留？
   'Save failed: {}': '保存失败: {}'
@@ -3208,6 +3211,7 @@ translations:
   Temperatures plotted over time: 温度随时间的变化曲线
   Temperatures saved: 温度已保存
   Template: 模板
+  Temporary adjustment for this print: '此打印的临时调整'
   Temporary adjustment for this print, unless saved on Controls panel: 此打印的临时调整，除非在控制面板上保存
   Tertiary: 第三
   Test All Lanes: '测试所有耗材通道'

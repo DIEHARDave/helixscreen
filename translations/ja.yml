@@ -2120,6 +2120,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。
   Not in your spools? Set it up: スプールにない？登録する
   Not now: 後で
+  'Not saved to the printer config: Z-offset saving is off for this printer': 'プリンター設定に保存されていません：このプリンターでは Z-Offset の保存がオフです'
   Not yet available on this display: 'このディスプレイではまだ利用できません'
   Not yet calibrated: 未キャリブレーション
   Notes: メモ
@@ -2173,6 +2174,7 @@ translations:
   'Off': オフ
   'Off:': 'オフ:'
   'Off: runs with these values without asking': 'オフ: これらの値で確認なしに実行'
+  Offer to save Z-offset changes to the printer config: 'Z-Offset の変更をプリンター設定に保存する操作を表示します'
   Offsets saved: オフセットを保存しました
   "Old setting on today's data: {} residual - now: {}": '旧設定を今日のデータに適用: 残留 {} - 現在: {}'
   'On': オン
@@ -2804,6 +2806,7 @@ translations:
   Save Printer Configuration: プリンター設定を保存
   Save Theme As: テーマを名前を付けて保存
   Save Z-Offset: Z-Offset を保存
+  Save Z-Offset Buttons: 'Z-Offset 保存ボタン'
   Save Z-Offset?: Z-Offset を保存しますか？
   Save changes to persist them across restarts?: 再起動後も変更を保持するために保存しますか？
   'Save failed: {}': '保存に失敗しました: {}'
@@ -3216,6 +3219,7 @@ translations:
   Temperatures plotted over time: 温度の時間変化をグラフ表示
   Temperatures saved: 温度を保存しました
   Template: テンプレート
+  Temporary adjustment for this print: 'この印刷のみの一時的な調整です'
   Temporary adjustment for this print, unless saved on Controls panel: コントロールパネルで保存しない限り、この印刷のみの一時的な調整です
   Tertiary: ターシャリ
   Test All Lanes: '全レーンをテスト'

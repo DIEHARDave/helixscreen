@@ -2296,6 +2296,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место.
   Not in your spools? Set it up: Нет в ваших катушках? Настроить
   Not now: Не сейчас
+  'Not saved to the printer config: Z-offset saving is off for this printer': 'Не сохранено в конфигурации: сохранение Z-Offset для этого принтера выключено'
   Not yet available on this display: 'Пока недоступно на этом дисплее'
   Not yet calibrated: Ещё не откалибровано
   Notes: Заметки
@@ -2349,6 +2350,7 @@ translations:
   'Off': Выкл
   'Off:': 'Выкл:'
   'Off: runs with these values without asking': 'Выкл.: запуск с этими значениями без запроса'
+  Offer to save Z-offset changes to the printer config: 'Предлагать сохранить изменения Z-Offset в конфигурации принтера'
   Offsets saved: Смещения сохранены
   "Old setting on today's data: {} residual - now: {}": 'Прежняя настройка на сегодняшних данных: остаточная вибрация {} — сейчас: {}'
   'On': Вкл
@@ -3021,6 +3023,7 @@ translations:
   Save Printer Configuration: Сохранить конфигурацию принтера
   Save Theme As: Сохранить тему как
   Save Z-Offset: Сохранить Z-Offset
+  Save Z-Offset Buttons: 'Кнопки сохранения Z-Offset'
   Save Z-Offset?: Сохранить Z-Offset?
   Save changes to persist them across restarts?: Сохранить изменения, чтобы они сохранились
     после перезапуска?
@@ -3473,6 +3476,7 @@ translations:
   Temperatures plotted over time: Температуры во времени
   Temperatures saved: Температуры сохранены
   Template: Шаблон
+  Temporary adjustment for this print: 'Временная настройка для этой печати'
   Temporary adjustment for this print, unless saved on Controls panel: Временная настройка
     для этой печати, если не сохранена в панели управления
   Tertiary: Третичный

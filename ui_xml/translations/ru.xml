@@ -2086,6 +2086,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ru="Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место."/>
   <translation tag="Not in your spools? Set it up" ru="Нет в ваших катушках? Настроить"/>
   <translation tag="Not now" ru="Не сейчас"/>
+  <translation tag="Not saved to the printer config: Z-offset saving is off for this printer" ru="Не сохранено в конфигурации: сохранение Z-Offset для этого принтера выключено"/>
   <translation tag="Not yet available on this display" ru="Пока недоступно на этом дисплее"/>
   <translation tag="Not yet calibrated" ru="Ещё не откалибровано"/>
   <translation tag="Notes" ru="Заметки"/>
@@ -2137,6 +2138,7 @@
   <translation tag="Off" ru="Выкл"/>
   <translation tag="Off:" ru="Выкл:"/>
   <translation tag="Off: runs with these values without asking" ru="Выкл.: запуск с этими значениями без запроса"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" ru="Предлагать сохранить изменения Z-Offset в конфигурации принтера"/>
   <translation tag="Offsets saved" ru="Смещения сохранены"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" ru="Прежняя настройка на сегодняшних данных: остаточная вибрация {} — сейчас: {}"/>
   <translation tag="On" ru="Вкл"/>
@@ -2754,6 +2756,7 @@
   <translation tag="Save Printer Configuration" ru="Сохранить конфигурацию принтера"/>
   <translation tag="Save Theme As" ru="Сохранить тему как"/>
   <translation tag="Save Z-Offset" ru="Сохранить Z-Offset"/>
+  <translation tag="Save Z-Offset Buttons" ru="Кнопки сохранения Z-Offset"/>
   <translation tag="Save Z-Offset?" ru="Сохранить Z-Offset?"/>
   <translation tag="Save changes to persist them across restarts?" ru="Сохранить изменения, чтобы они сохранились после перезапуска?"/>
   <translation tag="Save failed: {}" ru="Ошибка сохранения: {}"/>
@@ -3153,6 +3156,7 @@
   <translation tag="Temperatures plotted over time" ru="Температуры во времени"/>
   <translation tag="Temperatures saved" ru="Температуры сохранены"/>
   <translation tag="Template" ru="Шаблон"/>
+  <translation tag="Temporary adjustment for this print" ru="Временная настройка для этой печати"/>
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" ru="Временная настройка для этой печати, если не сохранена в панели управления"/>
   <translation tag="Tertiary" ru="Третичный"/>
   <translation tag="Test All Lanes" ru="Проверить все каналы"/>

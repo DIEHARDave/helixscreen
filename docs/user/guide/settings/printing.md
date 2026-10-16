@@ -40,7 +40,7 @@ Under the sliders, a **Config-defined** section shows your **Max Z Velocity** an
 
 ## Motion
 
-Jog speeds, how far each jog pad button moves, and the Bed tab's Z clearance. See [Motion](../motion.md#motion-settings) for what each one does.
+Jog speeds, how far each jog pad button moves, the Bed tab's Z clearance, and whether Save Z-Offset buttons appear. See [Motion](../motion.md#motion-settings) for what each one does.
 
 ---
 

@@ -2041,6 +2041,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ja="このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。"/>
   <translation tag="Not in your spools? Set it up" ja="スプールにない？登録する"/>
   <translation tag="Not now" ja="後で"/>
+  <translation tag="Not saved to the printer config: Z-offset saving is off for this printer" ja="プリンター設定に保存されていません：このプリンターでは Z-Offset の保存がオフです"/>
   <translation tag="Not yet available on this display" ja="このディスプレイではまだ利用できません"/>
   <translation tag="Not yet calibrated" ja="未キャリブレーション"/>
   <translation tag="Notes" ja="メモ"/>
@@ -2092,6 +2093,7 @@
   <translation tag="Off" ja="オフ"/>
   <translation tag="Off:" ja="オフ:"/>
   <translation tag="Off: runs with these values without asking" ja="オフ: これらの値で確認なしに実行"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" ja="Z-Offset の変更をプリンター設定に保存する操作を表示します"/>
   <translation tag="Offsets saved" ja="オフセットを保存しました"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" ja="旧設定を今日のデータに適用: 残留 {} - 現在: {}"/>
   <translation tag="On" ja="オン"/>
@@ -2700,6 +2702,7 @@
   <translation tag="Save Printer Configuration" ja="プリンター設定を保存"/>
   <translation tag="Save Theme As" ja="テーマを名前を付けて保存"/>
   <translation tag="Save Z-Offset" ja="Z-Offset を保存"/>
+  <translation tag="Save Z-Offset Buttons" ja="Z-Offset 保存ボタン"/>
   <translation tag="Save Z-Offset?" ja="Z-Offset を保存しますか？"/>
   <translation tag="Save changes to persist them across restarts?" ja="再起動後も変更を保持するために保存しますか？"/>
   <translation tag="Save failed: {}" ja="保存に失敗しました: {}"/>
@@ -3093,6 +3096,7 @@
   <translation tag="Temperatures plotted over time" ja="温度の時間変化をグラフ表示"/>
   <translation tag="Temperatures saved" ja="温度を保存しました"/>
   <translation tag="Template" ja="テンプレート"/>
+  <translation tag="Temporary adjustment for this print" ja="この印刷のみの一時的な調整です"/>
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" ja="コントロールパネルで保存しない限り、この印刷のみの一時的な調整です"/>
   <translation tag="Tertiary" ja="ターシャリ"/>
   <translation tag="Test All Lanes" ja="全レーンをテスト"/>

@@ -196,7 +196,12 @@
         <text_small name="z_offset_help_text_manual"
                     width="100%" long_mode="wrap"
                     text="Temporary adjustment for this print, unless saved on Controls panel" hidden="true">
-          <bind_flag_if_eq subject="z_offset_can_save" flag="hidden" ref_value="0"/>
+          <bind_flag_if cond="z_offset_can_save eq 0 or z_offset_save_enabled eq 0" flag="hidden"/>
+        </text_small>
+        <!-- Saving is switched off for this printer (Settings > Motion) -->
+        <text_small name="z_offset_help_text_no_save"
+                    width="100%" long_mode="wrap" text="Temporary adjustment for this print" hidden="true">
+          <bind_flag_if cond="z_offset_can_save eq 0 or z_offset_save_enabled eq 1" flag="hidden"/>
         </text_small>
         <text_small name="z_offset_help_text_auto"
                     width="100%" long_mode="wrap" text="Z-offset is auto-saved by firmware">

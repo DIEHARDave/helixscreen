@@ -13,6 +13,7 @@
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "save_config_restart.h"
+#include "settings_manager.h"
 #include "state/subject_macros.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
@@ -345,11 +346,26 @@ SaveAvailability current_save_availability() {
     facts.global_dirty = lv_subject_get_int(ps.motion_state().get_gcode_z_offset_subject()) != 0;
     facts.tools_dirty =
         lv_subject_get_int(helix::ToolState::instance().get_any_tool_offset_dirty_subject()) == 1;
+    facts.save_enabled = save_enabled();
     return facts;
 }
 
 bool save_available() {
     return save_available(current_save_availability());
+}
+
+bool save_enabled() {
+    const auto mode = static_cast<SaveMode>(SettingsManager::instance().get_z_offset_save_mode());
+    const bool per_tool_z =
+        lv_subject_get_int(
+            helix::ToolState::instance().get_per_tool_axis_supported_subject(Axis::Z)) == 1;
+    return save_enabled(mode, per_tool_z);
+}
+
+void set_save_enabled(bool enabled) {
+    spdlog::info("[zoffset] Z-offset save {} for this printer", enabled ? "enabled" : "disabled");
+    SettingsManager::instance().set_z_offset_save_mode(
+        static_cast<int>(enabled ? SaveMode::Show : SaveMode::Hide));
 }
 
 namespace {
@@ -370,12 +386,16 @@ void republish_save_available(lv_observer_t*, lv_subject_t*);
 struct SaveAvailabilityPublisher {
     SubjectManager subjects;
     lv_subject_t z_offset_save_available_{};
+    lv_subject_t z_offset_save_enabled_{};
     ObserverGuard global_offset_obs;
     ObserverGuard tools_dirty_obs;
     ObserverGuard can_save_obs;
+    ObserverGuard per_tool_z_obs;
+    ObserverGuard save_mode_obs;
 
     void init(bool register_xml) {
         INIT_SUBJECT_INT(z_offset_save_available, 0, subjects, register_xml);
+        INIT_SUBJECT_INT(z_offset_save_enabled, 1, subjects, register_xml);
 
         PrinterState& ps = get_printer_state();
         auto& ts = helix::ToolState::instance();
@@ -385,10 +405,20 @@ struct SaveAvailabilityPublisher {
                 ps.get_subjects_lifetime());
         observe(tools_dirty_obs, ts.get_any_tool_offset_dirty_subject(),
                 ts.get_subjects_lifetime());
+        observe(per_tool_z_obs, ts.get_per_tool_axis_supported_subject(Axis::Z),
+                ts.get_subjects_lifetime());
+        // A printer switch reloads the per-printer row behind this subject, so
+        // observing it covers the switch as well as the settings toggle.
+        auto& settings = SettingsManager::instance();
+        if (settings.are_subjects_initialized()) {
+            observe(save_mode_obs, settings.subject_z_offset_save_mode(),
+                    settings.get_subjects_lifetime());
+        }
     }
 
-    void publish(int available) {
-        lv_subject_set_int(&z_offset_save_available_, available);
+    void publish(bool enabled, bool available) {
+        lv_subject_set_int(&z_offset_save_enabled_, enabled ? 1 : 0);
+        lv_subject_set_int(&z_offset_save_available_, available ? 1 : 0);
     }
 
   private:
@@ -413,7 +443,8 @@ void republish_save_available(lv_observer_t*, lv_subject_t*) {
     if (!storage) {
         return;
     }
-    storage->publish(save_available() ? 1 : 0);
+    const SaveAvailability facts = current_save_availability();
+    storage->publish(facts.save_enabled, save_available(facts));
 }
 
 } // namespace
@@ -446,6 +477,8 @@ void deinit_save_available_subject() {
     storage->global_offset_obs.reset();
     storage->can_save_obs.reset();
     storage->tools_dirty_obs.reset();
+    storage->per_tool_z_obs.reset();
+    storage->save_mode_obs.reset();
     storage->subjects.deinit_all();
     storage.reset();
 }
@@ -453,6 +486,11 @@ void deinit_save_available_subject() {
 lv_subject_t* get_save_available_subject() {
     auto& storage = save_available_storage();
     return storage ? &storage->z_offset_save_available_ : nullptr;
+}
+
+lv_subject_t* get_save_enabled_subject() {
+    auto& storage = save_available_storage();
+    return storage ? &storage->z_offset_save_enabled_ : nullptr;
 }
 
 SubjectLifetime get_save_available_lifetime() {
@@ -531,7 +569,7 @@ void run_shared_save() {
     NOTIFY_INFO(lv_tr("Saving Z-offset..."));
     save_dirty_offsets(
         api, shared_save_watch(), ps.profile_state().z_offset_calibration_strategy(),
-        ps.get_discovery(), current_save_availability().global_dirty,
+        ps.get_discovery(), saves_global(current_save_availability()),
         []() {
             end_shared_save();
             NOTIFY_SUCCESS("{}", lv_tr("Z-offset saved"));
@@ -565,7 +603,7 @@ void save_dirty_offsets_shared() {
     // its parameters — but a firmware that persists immediately restarts
     // nothing, and a confirmation promising a disconnect would be a lie.
     const bool restart_expected =
-        facts.global_dirty ||
+        saves_global(facts) ||
         (facts.tools_dirty &&
          helix::tool_offsets::persist_requires_save_config(ps.get_discovery()));
 

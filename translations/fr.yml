@@ -2271,6 +2271,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Pas assez de place pour ce widget. Réorganisez ou supprimez des widgets pour libérer de l'espace.
   Not in your spools? Set it up: Pas dans vos bobines ? Configurez-la
   Not now: Pas maintenant
+  'Not saved to the printer config: Z-offset saving is off for this printer': 'Non enregistré dans la configuration : l''enregistrement du Z-Offset est désactivé pour cette imprimante'
   Not yet available on this display: 'Pas encore disponible sur cet écran'
   Not yet calibrated: Pas encore calibré
   Notes: Notes
@@ -2324,6 +2325,7 @@ translations:
   'Off': Éteint
   'Off:': 'Arrêt :'
   'Off: runs with these values without asking': 'Désactivé : exécute avec ces valeurs sans demander'
+  Offer to save Z-offset changes to the printer config: 'Proposer d''enregistrer les modifications du Z-Offset dans la configuration de l''imprimante'
   Offsets saved: Offsets enregistrés
   "Old setting on today's data: {} residual - now: {}": 'Ancien réglage sur les données du jour : {} résiduel - maintenant : {}'
   'On': Allumé
@@ -2992,6 +2994,7 @@ translations:
   Save Printer Configuration: Enregistrer la configuration de l'imprimante
   Save Theme As: Enregistrer le thème sous
   Save Z-Offset: Enregistrer le Z-Offset
+  Save Z-Offset Buttons: 'Boutons d''enregistrement du Z-Offset'
   Save Z-Offset?: Enregistrer le Z-Offset ?
   Save changes to persist them across restarts?: Enregistrer les modifications pour
     les conserver après redémarrage ?
@@ -3447,6 +3450,7 @@ translations:
   Temperatures plotted over time: Températures tracées dans le temps
   Temperatures saved: Températures enregistrées
   Template: Modèle
+  Temporary adjustment for this print: 'Ajustement temporaire pour cette impression'
   Temporary adjustment for this print, unless saved on Controls panel: Ajustement
     temporaire pour cette impression, sauf si enregistré dans le panneau Contrôles
   Tertiary: Tertiaire
