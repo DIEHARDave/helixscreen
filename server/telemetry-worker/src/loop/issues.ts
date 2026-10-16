@@ -81,8 +81,23 @@ export function dashboardLink(dashboardUrl: string, path: string): string {
   return `${dashboardUrl.replace(/\/+$/, '')}${path}`
 }
 
-/** Marker first, then the counts, the dashboard link and the ISO week the counts cover. */
-export function issueBody(f: Finding, dashboardUrl: string, week: string): string {
+/**
+ * For a crash cluster, the start of the crash worker's fingerprint
+ * (`<signal>/<version>/<frame>`) that its crash-report issues carry, with a search for
+ * them, so a matching report can be linked by hand. Telemetry has no frame.
+ */
+function crashReportLines(f: Finding, repo: string): string[] {
+  if (f.kind !== 'crash_cluster') return []
+  const prefix = `${f.summary.signal}/${f.summary.version}/`
+  const q = `is:issue label:crash "Fingerprint: ${prefix}" in:body`
+  return [
+    `Crash reports for this cluster carry a fingerprint starting ${codeSpan(prefix)}: <https://github.com/${repo}/issues?q=${encodeURIComponent(q)}>`,
+    '',
+  ]
+}
+
+/** Marker first, then the counts, any crash-report link, the dashboard link and the ISO week the counts cover. */
+export function issueBody(f: Finding, dashboardUrl: string, week: string, repo: string): string {
   return [
     markerFor(f.fingerprint),
     '',
@@ -90,6 +105,7 @@ export function issueBody(f: Finding, dashboardUrl: string, week: string): strin
     '',
     countsTable(f),
     '',
+    ...crashReportLines(f, repo),
     `Dashboard: ${dashboardLink(dashboardUrl, f.dashboardPath)}`,
   ].join('\n')
 }
@@ -148,7 +164,7 @@ export async function syncIssues(
         if (dryRun) {
           outcomes.push({ fingerprint: fp, action: 'created' })
         } else {
-          const made = await tracker.create(issueTitle(f.title), issueBody(f, dashboardUrl, week), issueLabels(f.kind))
+          const made = await tracker.create(issueTitle(f.title), issueBody(f, dashboardUrl, week, tracker.repo), issueLabels(f.kind))
           remember(fp)
           const outcome: IssueOutcome = { fingerprint: fp, action: 'created', issue: { number: made.number, url: made.url } }
           if (!made.labels.includes(TELEMETRY_LABEL)) {

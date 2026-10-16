@@ -130,6 +130,7 @@ export function githubIssueTracker(env: LoopEnv, deps: GithubDeps = {}): IssueTr
   })
 
   return {
+    repo,
     async findByFingerprint(fp) {
       await loadIndex()
       const ref = byFingerprint.get(fp)

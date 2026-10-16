@@ -531,7 +531,7 @@ The 02:10 cron is the unrelated CDN snapshot. Each loop run is isolated: a failu
 
 `findings.ts` turns the Health payload and the update-failure groups into findings. Each finding has a kind (crash cluster, error code, update failure, release regression, data health, printer), a fingerprint, and the actions it earns: every finding appears in the report, some also raise an alert or file an issue. Every number that decides this lives in `server/telemetry-worker/src/loop/thresholds.ts`, with a comment each; change them there and nowhere else. That file also holds the cap on new issues per run (the rest wait for the next run) and the alert repeat interval.
 
-A crash cluster finding is one (signal, fault code, version), summed across boards: the Health payload splits a cluster by board, and since a device reports one board, the per-board device counts add up exactly. The finding lists its boards, files at `CLUSTER_ISSUE_DEVICES` summed devices, and alerts only when no board saw the crash the week before. A run handles each fingerprint once.
+A crash cluster finding is one (signal, fault code, version), summed across boards: the Health payload splits a cluster by board, and since a device reports one board, the per-board device counts add up exactly. The finding lists its boards, files at `CLUSTER_ISSUE_DEVICES` summed devices, and alerts only when no board saw the crash the week before. A run handles each fingerprint once. Its issue body names the prefix (`<SIGNAL>/<version>/`) that the crash worker's fingerprint gives matching crash-report issues, with a `label:crash` search for it, so a report can be linked by hand.
 
 ### Fingerprints and dedupe
 

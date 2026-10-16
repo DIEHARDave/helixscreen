@@ -13,6 +13,7 @@ export type TrackerCall =
   | { op: 'reopen'; issue: number }
 
 export class FakeTracker implements IssueTracker {
+  readonly repo = 'acme/widgets'
   issues: (IssueRef & { title: string; labels: string[]; comments: string[] })[] = []
   calls: TrackerCall[] = []
   /** When set, every call rejects with it. */

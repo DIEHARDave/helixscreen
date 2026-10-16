@@ -26,7 +26,7 @@ const fresh = (): LoopState => ({ alerts: {}, issueComments: {} })
 describe('issueBody', () => {
   it('starts with the marker and carries no 64-hex string', () => {
     const f = finding(1)
-    const body = issueBody(f, URL, W1)
+    const body = issueBody(f, URL, W1, 'acme/widgets')
     expect(body.split('\n')[0]).toBe(markerFor(f.fingerprint))
     expect(fingerprintInBody(body)).toBe(f.fingerprint)
     expect(body).toContain(`${URL}/stability?version=1.0.1`)
@@ -36,11 +36,35 @@ describe('issueBody', () => {
 
   it('renders device-supplied values as escaped code spans, one table row each', () => {
     const f = { ...finding(1), summary: { board: 'pi|4\n| x | y |', version: '@octocat', devices: 4 } }
-    const body = issueBody(f, URL, W1)
+    const body = issueBody(f, URL, W1, 'acme/widgets')
     expect(body).toContain('| board | `pi\\|4 \\| x \\| y \\|` |')
     expect(body).toContain('| version | `@\u200boctocat` |')
     expect(body).toContain('| devices | 4 |')
     expect(body).not.toMatch(/@octocat/)
+  })
+})
+
+describe('issueBody crash-report link', () => {
+  const crash = { ...finding(1), summary: { signal: 'SIGSEGV', fault_code: 'SEGV_MAPERR', version: '1.1.0-beta.9', devices: 4 } }
+
+  it('names the crash worker fingerprint prefix and links a search for it', () => {
+    const body = issueBody(crash, URL, W1, 'acme/widgets')
+    expect(body).toContain('`SIGSEGV/1.1.0-beta.9/`')
+    const link = body.match(/<(https:\/\/github\.com\/acme\/widgets\/issues\?q=[^>]+)>/)
+    expect(link).not.toBeNull()
+    expect(new URLSearchParams(link![1].split('?')[1]).get('q')).toBe('is:issue label:crash "Fingerprint: SIGSEGV/1.1.0-beta.9/" in:body')
+  })
+
+  it('is absent from other kinds', () => {
+    const body = issueBody({ ...crash, kind: 'error_code' }, URL, W1, 'acme/widgets')
+    expect(body).not.toContain('Fingerprint:')
+    expect(body).not.toContain('github.com')
+  })
+
+  it('is part of the body syncIssues files, with the tracker repo', async () => {
+    const t = new FakeTracker()
+    await syncIssues([crash], t, fresh(), W1, URL, false)
+    expect(t.callsOf('create')[0].body).toContain(`https://github.com/${t.repo}/issues?q=`)
   })
 })
 

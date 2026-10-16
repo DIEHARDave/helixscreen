@@ -14,6 +14,8 @@ export interface IssueRef {
 }
 
 export interface IssueTracker {
+  /** owner/name of the repository the issues live in. */
+  readonly repo: string
   /**
    * The issue whose body carries the fingerprint's marker, among open and closed issues
    * labelled telemetry: an open one first, then the lowest number.
