@@ -18,6 +18,8 @@ shift
 exec "$@"
 CLAIM
     chmod +x "$T/scripts/helix-claim"
+    printf '#!/usr/bin/env bash\necho "release-health ran"\n' >"$T/scripts/release-health.sh"
+    chmod +x "$T/scripts/release-health.sh"
     git -C "$T" init -q
     git -C "$T" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
     echo "2.0.0" >"$T/VERSION.txt"
@@ -51,7 +53,7 @@ FAKE
     run scripts/release-gate.sh
     [ "$status" -eq 0 ] || fail "$output"
     [[ "$output" == *"RELEASE GATE: PASS"* ]] || fail "$output"
-    for s in version installer mips:build mips:package mips:binaries mips:no-mocks; do
+    for s in version installer release-health mips:build mips:package mips:binaries mips:no-mocks; do
         echo "$output" | grep -qE "^  PASS  $s " || fail "no PASS row for $s: $output"
     done
     grep -qx -- "--no-print-directory mips-docker HELIX_PACKAGING=1" "$MAKE_ARGS_FILE" || fail "$(cat "$MAKE_ARGS_FILE")"
@@ -103,4 +105,25 @@ FAKE
 @test "an unknown tier is refused" {
     run scripts/release-gate.sh medium
     [ "$status" -eq 2 ] || fail "$output"
+}
+
+@test "the fast tier runs release-health and keeps its output in the step log" {
+    run scripts/release-gate.sh fast
+    [ "$status" -eq 0 ] || fail "$output"
+    echo "$output" | grep -qE "^  PASS  release-health " || fail "$output"
+    grep -q "release-health ran" build/release-gate/release-health.log || fail "no step log"
+}
+
+@test "RELEASE_HEALTH=0 skips release-health" {
+    RELEASE_HEALTH=0 run scripts/release-gate.sh fast
+    [ "$status" -eq 0 ] || fail "$output"
+    echo "$output" | grep -qE "^  SKIP  release-health " || fail "$output"
+    [ ! -e build/release-gate/release-health.log ] || fail "ran anyway"
+}
+
+@test "release-health warnings show on its row, which still passes" {
+    printf '#!/usr/bin/env bash\necho "WARN a"\necho "WARN b"\n' >scripts/release-health.sh
+    run scripts/release-gate.sh fast
+    [ "$status" -eq 0 ] || fail "$output"
+    echo "$output" | grep -qE "^  PASS  release-health \(2 warnings\) " || fail "$output"
 }

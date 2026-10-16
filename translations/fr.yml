@@ -354,6 +354,7 @@ translations:
   Beacon calibrate sent: Beacon calibrage envoyé
   Bed: Plateau
   Bed (°C): Plateau (°C)
+  Bed Clear Check: 'Vérification du plateau libre'
   Bed Heater: Chauffage du plateau
   Bed Level: Niveau du plateau
   Bed Leveling: Mise à niveau du plateau
@@ -369,6 +370,7 @@ translations:
   Bed Screws: Vis du plateau
   Bed Temp: Temp. du plateau
   Bed Temperature: Température du plateau
+  Bed check turned off: 'Vérification du plateau désactivée'
   Bed clear · Start next: 'Plateau libre · Lancer le suivant'
   'Bed cooling, spools still on the bed:': 'Le plateau refroidit, les bobines sont toujours dessus :'
 
@@ -521,6 +523,7 @@ translations:
   Calibration, LED, and system configuration: 'Calibration, LED et configuration système'
   Cam: Cam
   Camera: Caméra
+  Camera checks the bed is empty before each print: 'La caméra vérifie que le plateau est vide avant chaque impression'
   Can't connect — try forgetting and re-pairing the printer: Connexion impossible
     — essayez d'oublier et de réappairer l'imprimante
   Can't move filament while the print is paused: Impossible de déplacer le filament pendant une impression en pause
@@ -530,6 +533,7 @@ translations:
   Cancel Escalation: Annuler l'escalade
   Cancel Print: Annuler l'impression
   Cancel macro not configured: Macro d'annulation non configurée
+  Cancel print: 'Annuler l''impression'
   Cancelled: Annulé
   'Cannot add to queue: internal error': 'Impossible d''ajouter à la file : erreur interne'
   Cannot be changed from here on a multi-unit MMU: Non modifiable ici sur un MMU multi-unités
@@ -2864,6 +2868,7 @@ translations:
   'Restart failed: {}': 'Échec du redémarrage : {}'
   Restart from the beginning to recover: Relancez depuis le début pour récupérer l'impression
   Restart pending: 'Redémarrage en attente'
+  Restart print: 'Relancer l''impression'
   Restart the display application: Redémarrer l'application d'affichage
   Restart the printer or screen: Redémarrer l'imprimante ou l'écran
   Restarting HelixScreen...: Redémarrage de HelixScreen...
@@ -3210,6 +3215,7 @@ translations:
   'Some mapped slots are short on filament:': 'Certains slots affectés manquent de filament :'
   Some settings will take effect after restart.: Certains paramètres prendront effet
     après redémarrage.
+  Something on the bed?: 'Quelque chose sur le plateau ?'
   Sound: Son
   Sound Theme: Thème sonore
   Sounds: Sons
@@ -3450,6 +3456,7 @@ translations:
     anonymes aident à améliorer HelixScreen.
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: Merci ! Les données
     d'utilisation TOTALEMENT anonymes aident à améliorer HelixScreen.
+  That print is no longer paused: 'Cette impression n''est plus en pause'
   'That setting cannot be changed while a print is running': 'Ce réglage ne peut pas être modifié pendant une impression'
   That slot cannot stand in for this one: Cet emplacement ne peut pas remplacer celui-ci
   That tool is already loaded: Cet outil est déjà chargé
@@ -3471,6 +3478,8 @@ translations:
   The bed was reported dirty, so this print cannot resume.: 'Le plateau a été signalé comme sale, cette impression ne peut donc pas reprendre.'
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: Le tampon est peut-être débranché, bloqué ou défectueux. Vérifiez-le avant de réessayer
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: Le tampon n'a détecté aucun mouvement pendant 16 secondes. Vérifiez s'il y a une obstruction entre le CFS et l'extrudeur, ou un tampon bloqué
+  ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
+  : 'La caméra a cru voir quelque chose sur le plateau, l''imprimante s''est donc arrêtée avant d''imprimer. Si le plateau est libre, c''était une fausse alerte.'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: La lame n'est pas revenue. Vérifiez qu'aucun filament n'est enroulé autour du mécanisme de coupe
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: Le coupe-filament est désaligné. Recalibrez avec CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: L'extrudeur n'arrive pas à tirer régulièrement. Vérifiez la bobine (emmêlement ou nœud) et le tube PTFE (coude prononcé)
@@ -3491,6 +3500,8 @@ translations:
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : L'impression est en pause. Changer d'outil maintenant déplace la tête d'impression et remplace le filament au niveau de la buse. Reprenez l'impression une fois le changement terminé.
   The printer applied this value and keeps it for this tool.: 'L''imprimante a appliqué cette valeur et la conserve pour cet outil.'
+  The printer did not change its bed check: 'L''imprimante n''a pas modifié sa vérification du plateau'
+  'The printer did not change its bed check: {}': 'L''imprimante n''a pas modifié sa vérification du plateau: {}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'L''imprimante extrude dans un coin et répète jusqu''à ce que les mesures concordent. Vous ne jugez rien à l''œil.'
   The printer finishes this measurement on its own.: 'L''imprimante termine cette mesure d''elle-même.'
   The printer halted this print and cannot resume it. Restart from the beginning?: L'imprimante
@@ -3591,6 +3602,7 @@ translations:
   This may take up to 30 seconds: Cela peut prendre jusqu'à 30 secondes
   This plugin asks for no special permissions.: 'Ce plugin ne demande aucune autorisation particulière.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Ce plugin permet à HelixScreen de contrôler les options de démarrage d''impression comme le maillage du plateau et QGL.'
+  This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'Cette impression ne peut pas reprendre. Relancez-la, ou désactivez la vérification du plateau si cela se reproduit.'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Cette
     impression nécessite environ %.0fg mais il reste environ %.0fg sur la bobine.
     Démarrer quand même ?
@@ -3735,6 +3747,7 @@ translations:
   Turn On: Allumer
   Turn On LEDs: 'Allumer les LED'
   Turn endless spool on, then set the backup gate: 'Activez la bobine infinie, puis définissez le Gate de secours'
+  Turn off bed check: 'Désactiver la vérification du plateau'
   Turn off detection: Désactiver la détection
   Turn on the lights your light buttons control: Allume les lumières que vos boutons lumière contrôlent
   Turn the extruder heater off after a load or unload finishes: Éteindre le chauffage de l'extrudeur après un chargement ou un déchargement

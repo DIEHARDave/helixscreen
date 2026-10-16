@@ -1370,6 +1370,9 @@
         "stroke_opa": {
           "type": "opa"
         },
+        "max_lines": {
+          "type": "int"
+        },
         "text_transform": {
           "type": "enum",
           "enum": "text_transform"
@@ -1387,6 +1390,9 @@
         },
         "stroke_opa": {
           "type": "opa"
+        },
+        "max_lines": {
+          "type": "int"
         },
         "text_transform": {
           "type": "enum",
@@ -1406,6 +1412,9 @@
         "stroke_opa": {
           "type": "opa"
         },
+        "max_lines": {
+          "type": "int"
+        },
         "text_transform": {
           "type": "enum",
           "enum": "text_transform"
@@ -1423,6 +1432,9 @@
         },
         "stroke_opa": {
           "type": "opa"
+        },
+        "max_lines": {
+          "type": "int"
         },
         "text_transform": {
           "type": "enum",
@@ -1442,6 +1454,9 @@
         "stroke_opa": {
           "type": "opa"
         },
+        "max_lines": {
+          "type": "int"
+        },
         "text_transform": {
           "type": "enum",
           "enum": "text_transform"
@@ -1460,6 +1475,9 @@
         "stroke_opa": {
           "type": "opa"
         },
+        "max_lines": {
+          "type": "int"
+        },
         "text_transform": {
           "type": "enum",
           "enum": "text_transform"
@@ -1476,6 +1494,9 @@
           "type": "color"
         },
         "stroke_opa": {
+          "type": "string"
+        },
+        "max_lines": {
           "type": "string"
         },
         "text_transform": {
@@ -3818,9 +3839,15 @@
     "pin_btn_height",
     "pin_dot_size",
     "play_icon_size",
+    "pm_identity_width",
+    "pm_identity_width_large",
+    "pm_identity_width_medium",
+    "pm_identity_width_small",
+    "pm_identity_width_tiny",
     "pm_image_size",
     "pm_image_size_large",
     "pm_image_size_medium",
+    "pm_image_size_portrait",
     "pm_image_size_small",
     "preview_offset_y",
     "primary",

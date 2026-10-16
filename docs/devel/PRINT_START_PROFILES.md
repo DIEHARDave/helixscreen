@@ -14,8 +14,8 @@ Two sibling docs own the adjacent detail:
 ```
 assets/config/printer_database.json        assets/config/print_start_profiles/
   ┌──────────────────────────────┐           ┌───────────────────┐
-  │ "flashforge_adventurer_5m_   │──refs────> │ forge_x.json      │ Sequential "// State:" signals
-  │   forgex" entry              │           │                   │ + phase_object + status_signals
+  │ "flashforge_adventurer_5m_   │──refs────> │ forge_x.json      │ Context-qualified phase_object
+  │   forgex" entry              │           │                   │ + "// State:" signals
   │ "creality_k2_plus" entry     │──refs────> │ creality_k2.json  │ CFS tags + position + adaptive mesh
   │ "voron_24" entry (no field)  │──(none)──> │ default.json      │ Automatic fallback
   │ (unknown printer)            │──(none)──> │ default.json      │ Automatic fallback
@@ -174,7 +174,7 @@ Aliases accepted alongside the canonical names, for macros already emitting them
 Notes:
 - `IDLE` and `COMPLETE` are lifecycle states, not matchable phases in profiles.
 - `INITIALIZING` is set automatically when PRINT_START is detected. You can also map signals to it for firmware that has distinct pre-homing steps.
-- A single phase can be triggered multiple times (e.g., CLEANING appears 6 times in Forge-X). In sequential mode each hit updates the progress. In weighted mode only the first detection counts.
+- A single phase can be triggered multiple times (e.g., CLEANING appears 6 times in an older Forge-X's `// State:` lines). In sequential mode each hit updates the progress. In weighted mode only the first detection counts.
 
 ---
 
@@ -252,7 +252,12 @@ Profiles live in `assets/config/print_start_profiles/{name}.json`. Every key exc
   // instead of (or alongside) narrating the console
   "phase_object": {
     "object": "operation_context",   // status object name; subscribed automatically
-    "field": "current_state"         // string field inside it
+    "field": "current_state",        // string field inside it
+    // OPTIONAL: a field naming the step the state belongs to - an array
+    // (a stack, outermost first; its last element is used) or a string.
+    // With it set, state_patterns match "<step>/<state>", e.g.
+    // "kamp/LEVELING", instead of the bare state.
+    "context_field": "context_types"
   },
 
   // OPTIONAL: Regex patterns matched against the phase object's field
@@ -307,11 +312,17 @@ Malformed entries warn in the log and are skipped - one bad rule never takes dow
 
 **`hold_minutes_group`** - For text that announces a wait nobody will narrate, such as a heat soak printed before a silent `G4`. Set on a `response_patterns` or `state_patterns` entry, it names the capture group holding a number of minutes (`.` decimal, e.g. `10.0`); a group the pattern does not have is ignored with a warning, a zero or unparseable capture holds nothing, and a hold longer than a day is read as a day. Until the hold ends the printer counts as talking, so no timeout fires, and the held time is left out of the elapsed time the ceiling measures (the backstop leaves out at most one ceiling of it). A console line and its `display_status` copy announce one hold, not two. Declare it only for a wait of known length: a wait on a sensor (`M191`, `TEMPERATURE_WAIT`) has none.
 
+**`counts_probes`** - `false` on a BED_MESH `response_patterns` or `state_patterns` entry whose probing only checks a stored mesh, such as Forge-X's `mesh_validation/CHECKING MESH` (five probes against a 25-point mesh). Its probe lines still count as the printer working, but the label carries no "(N/M)" and no point total is fetched, so it never reads "(5/25)". Default `true`.
+
 **`narrates`** - `false` on a `response_patterns` or `state_patterns` entry whose text names a target rather than a step, such as a macro's `SET_DISPLAY_TEXT MSG="Bed: 90c"`. The match still sets the phase, but like a `status_signals` match it does not count as the printer narrating, so the collector's own homing and heating inference stays on. Default `true`.
 
 **`phase_object` + `state_patterns`** - Best for a printer that publishes its phase as a status string rather than, or as well as, printing it to the console. Two shapes qualify. Firmware or a mod may expose an operation-context object with a state field, which Forge-X does. Stock Klipper always exposes `display_status.message`, which is where a `PRINT_START` macro's own `SET_DISPLAY_TEXT` / `M117` narration lands - and since Klipper does not echo the commands a macro runs, that field is often the only place a macro-driven start is legible at all, which is why the generic profile declares it.
 
 The declared object is subscribed automatically during discovery. Klipper notifies on every field change in the object, so an unchanged state re-arrives regularly; only a NEW state applies, and the latch keeps the last MATCHED state - an unmapped state between two mapped ones is not a change of phase. The state string is matched by `state_patterns`, which share the exact `pattern`/`phase`/`message`/`weight` contract with `response_patterns` (first pattern in file order wins).
+
+**`context_field`** qualifies the state with the step it belongs to. Firmware that nests steps can reuse one state string across them: on Forge-X 1.4.x `current_state` is the innermost context's state, so `LEVELING` set by the print context means "deciding how to level" while the same string inside `kamp` or `bed_level` means the mesh is running, and `FINISHING` ends a nested clean minutes before the print starts. With `context_field` declared the patterns match `<innermost step>/<state>`, which lets a profile anchor every pattern (`^kamp/LEVELING$`). Moonraker sends only the fields that changed, so the collector caches the last value of each field per run (cleared in `start()`) and re-matches the pair when either arrives. A null state - a step that has begun without naming one yet - replaces the outer step's state rather than pairing it with the new step. A context opened before the collector armed is never sent again until it changes, so `start()` queries the object once; that answer fills only fields no frame has delivered, is dropped if a later `start()` has begun another run, and never completes the pre-print: a file without an end macro leaves the last print's stack at `print/PRINTING` until the next start pushes its own.
+
+A context-qualified state is the step running now, not a line that arrived, so it may move the display to any phase, an earlier one included (Forge-X parks and reheats the nozzle after its mesh). While the latest matched one names a pre-print phase, the adaptive and flat timeouts and the first-extrusion fallback wait for the printer to leave that step, or for its context stack to empty; the ceiling and backstop still apply. A bare state gets neither: `display_status.message` keeps the last `SET_DISPLAY_TEXT` long after its step ended. A malformed `context_field` (empty, not a string) drops the whole phase object, since its patterns would only ever miss bare states.
 
 **A profile that declares a phase object but no `state_patterns` matches the state against its `response_patterns` instead** (`src/print/print_start_profile.cpp#try_match_state`). The two feeds carry one phase vocabulary, so a profile whose console and status wording overlap - the generic one, where both feeds say "Homing" and "Bed Mesh" - needs a single list and has no second copy to keep in step. Declaring `state_patterns` is how a profile whose two feeds need different text overrides that. A profile without `phase_object` ignores the frames entirely - the handler is a no-op, which is the fallback guarantee.
 
@@ -515,7 +526,7 @@ Run the app with `-vv`: `PrintStartProfile` logs every signal-format match (`Sig
 | Profile | File | Mode | Printers | Key Feature |
 |---------|------|------|----------|-------------|
 | **Generic** | `default.json` | weighted | All unrecognized printers (70+ database entries carry no profile field) | 9 regex patterns, serving both the console and `display_status.message` via `phase_object`, + 2 rising-edge heating `status_signals`; conservative by design |
-| **Forge-X** | `forge_x.json` | sequential | FlashForge AD5M / AD5M Pro on Forge-X | 14 `// State:` signal mappings + 2 temperature regex patterns + `phase_object` (10 state patterns) + 2 `status_signals` (at_cutter, at_chute) |
+| **Forge-X** | `forge_x.json` | weighted | FlashForge AD5M / AD5M Pro on Forge-X | `phase_object` on `operation_context` qualified by `context_types` (16 anchored `<context>/<STATE>` patterns; only `print/PRINTING` completes) for 1.4.x, 14 `// State:` signal mappings for older versions, 3 response patterns (priming line, clean moves, bed wait). No `status_signals`: the AD5M has no cutter or chute, and its bed runs -110..110, so a negative-corner rule fires on the mesh's first point |
 | **AD5M stock** | `ad5m.json` | weighted | FlashForge Adventurer 5M, AD5M Pro (stock firmware) | 1 signal format + 7 regex patterns |
 | **Creality K1 family** | `creality_k1.json` | weighted | K1, K1C, K1 Max (+ CFS variants) | `position_signals` for the silent prep window |
 | **Creality K2** | `creality_k2.json` | weighted | K2 Plus, K2 Pro | `cfs_signals` + `position_signals` + `adaptive_meshing` - all three heuristic families |
@@ -534,14 +545,14 @@ For printers that don't emit any G-code layer markers (like Forge-X), the system
 | Fallback | Condition | When |
 |----------|-----------|------|
 | Layer edge | `print_stats.info.current_layer` 0 -> 1 (or the counter advancing) while >= 1 | Authoritative when the printer reports layers; the gate rejects a stale value carried over from the previous print |
-| First extrusion | `print_stats.print_duration > 0` | Printers that never report a layer field |
-| Adaptive timeout + temps | Elapsed past the predicted total (x1.5 margin) AND both heaters at target (within 2°C) AND 90s without pre-print activity | Predictions available |
-| Flat timeout + temps | Elapsed > 300s, same temp and activity gates | No prediction data |
+| First extrusion | `print_stats.print_duration > 0` and no context-qualified phase-object step under way (a priming line extrudes before the print) | Printers that never report a layer field |
+| Adaptive timeout + temps | Elapsed past the predicted total (x1.5 margin) AND both heaters at target (within 2°C, and not cooling from more than 5°C above it) AND 90s without pre-print activity AND no context-qualified phase-object step under way | Predictions available |
+| Flat timeout + temps | Elapsed > 300s, same temp, activity and step gates | No prediction data |
 | Ceiling | Elapsed past `max(predicted x2.5, 1800s)` AND 90s without a matched line or probe line, no temp gate | Always - stuck detection for a heater that never settles |
 | Backstop | Twice the ceiling, regardless of chatter or temperature | Always - the one timeout with no quiet requirement |
 | Macro variables | `_START_PRINT.print_started`, `START_PRINT.preparation_done`, `_HELIX_STATE.print_started` | Subscribed via Moonraker |
 
-Timeouts are deliberately reluctant: active mesh probing suppresses every one but the backstop, and a pre-print that is still narrating itself is never timed out on the clock alone (only the backstop ignores that). Activity for the two deadline timeouts is a matched line, a probe line, a `status_signals` rule firing, or a heater reading a degree above its highest yet under its current target; a heater swinging back up to an earlier reading is not a climb. The ceiling counts only matched lines and probe lines: a rule or a heater reads the same frames a stuck heater produces, so neither holds it open.
+Timeouts are deliberately reluctant: active mesh probing suppresses every one but the backstop, and a pre-print that is still narrating itself is never timed out on the clock alone (only the backstop ignores that). Activity for the two deadline timeouts is a matched line (a signal format, a pattern or a phase-object state), a probe line, a `status_signals` rule firing, or a heater reading a degree above its highest yet under its current target; a heater swinging back up to an earlier reading is not a climb. A silent cool-down (M109 to a probing temperature) outlasts the 90s quiet gate, which is why a heater above its target does not count as at target, and a context-qualified step holds the deadline timeouts outright. The ceiling counts only matched lines and probe lines: a rule or a heater reads the same frames a stuck heater produces, so neither holds it open.
 
 ---
 
@@ -606,6 +617,8 @@ Timeouts are deliberately reluctant: active mesh probing suppresses every one bu
 | Position chain wipe → centre → corners → sweep on real captures | `test_print_start_position_classifier.cpp` (corpus: `tests/fixtures/print_start_position_corpus.json`, extracted from the 2026-08-19 K1C klippy.log capture) |
 | Position → message/phase integration, and the no-flag negative | `test_print_start_collector.cpp` - `[position]` integration tests |
 | K1C first-print ETA defaults from measured durations | `test_printer_detector.cpp` - `print_start_default_phases` |
+| A real Forge-X 1.4.2 pre-print completes at `print/PRINTING`, not at the clean's FINISHING or a timeout through the silent cool-down; the mesh starts at `kamp/LEVELING`, not the print's LEVELING, its denominator is 25 and the two cleaning probes are not its points | `test_print_start_collector.cpp` - "real Forge-X 1.4.2 pre-print completes at PRINTING" (replay of `tests/fixtures/forgex_142_console.txt` and `forgex_142_heaters.txt` with reconstructed `operation_context` frames) |
+| Context-qualified phase object: delta frames re-match the cached pair, a null state is not the outer step's, the cache is per run, the start-up query fills only unseen fields, a live state may step back, a live step holds the deadline timeouts and a bare state does not; a heater cooling toward its target is not at target; a signal-format line is activity | `test_print_start_collector.cpp` - `[forge_x]`, "A bare phase-object state does not hold the timeouts", "A heater cooling toward its target is not at target", "A signal-format line counts as activity for the timeouts"; `test_print_start_profile.cpp` - "a context field qualifies the state the patterns match", "a malformed context field drops the phase object", "forge_x state patterns map the mod's state strings" |
 | K2 patterns match the real narration; `BED_MESH_CLEAR` deliberately NOT a mesh pattern | `test_print_start_profile_k2.cpp` (captures: 2026-08-18 K2 Plus klippy.log) |
 | A Klipper shutdown or error stops the collector even while print_stats still reports a job (the U1 reports `paused` after a verify_heater shutdown) | `test_moonraker_manager.cpp` - "should_stop_collector_on_klippy_state stops on shutdown and error" (the decision; the observer wiring in `MoonrakerManager::init_print_start_collector` is not constructible in a unit test) |
 | While a heater wait reports (the once-a-second `B:.. /.. T0:.. /..` lines of M109/M190/TEMPERATURE_WAIT) after a real signal, the label shows the heater short of its target, nozzle first, then the bed, then a chamber heater once both are at target (SOAKING, "Heating chamber..."). A phase signal ends the wait; otherwise the first tick after the reports stop restores the displaced phase, message and sequential progress. Stray lines, a heater merely warming behind a phase, and firmware HEATING_* phases are left alone; reports count as activity for the timeouts | `test_print_start_collector.cpp` - `[heater_wait]` tests, including "a bed wait after plate detect shows Heating Bed until it ends", "a wait shows the nozzle while it is short, then the bed", "a long chamber wait holds the pre-print past its deadline", "A phase signal right after a wait's last report keeps its phase", "A chamber wait does not relabel a heating phase the firmware announced", "A heater wait gives a sequential profile's phase, message and progress back", and "real heater waits show the bed heating between firmware phases" (replay of `tests/fixtures/u1_heater_wait_console.txt`, the 2026-09-23 U1 gcode_store) |

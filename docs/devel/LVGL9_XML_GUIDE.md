@@ -882,6 +882,14 @@ its siblings. HelixScreen closes that gap in one place:
 - **An explicit height opts out.** A px or % `height`, or `style_max_height`,
   leaves the label alone, which is how a deliberately multi-line dotted label is
   written (`option_tile.xml`: `style_max_height="100%"` inside a fixed tile).
+- **`max_lines="N"` wraps first, then dots.** On a `text_*` widget with
+  `long_mode="dots"`, the label wraps to at most N lines of its own font and
+  ellipsizes the last one; shorter text keeps its own height. The cap follows
+  font and padding changes like the one-line hold, a value below 1 counts as 1,
+  and an explicit `height` or `style_max_height` opts out the same way
+  (`helix::ui::label_hold_lines`; `printer_manager_overlay.xml`'s printer name).
+  `text_button` honours it too, but only when given: without it a dotted
+  `text_button` keeps its own sizing.
 - **The label still needs a width bound.** `width="100%"`, or `flex_grow="1"`
   (with `width="1"`/`width="0"`) in a row. With no width, or `width="content"`
   and no `style_max_width`, the text never wraps, so there is nothing to

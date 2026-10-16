@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { computed, ref, watch, type Ref } from 'vue'
+import { computed } from 'vue'
 import { useFiltersStore } from '@/stores/filters'
+import { useLoaded } from '@/composables/useLoaded'
 import { rangeLabel } from '@/utils/format'
 
 type Loader<T> = (queryString: string) => Promise<T>
@@ -31,29 +32,9 @@ function shared<T>(load: Loader<T>, queryString: string): Promise<T> {
  */
 export function useDashData<T>(load: Loader<T>) {
   const filters = useFiltersStore()
-  const data = ref(null) as Ref<T | null>
-  const loading = ref(true)
-  const error = ref('')
-  let latest = 0
-
-  watch(
-    () => filters.queryString,
-    async (queryString) => {
-      const ticket = ++latest
-      loading.value = true
-      error.value = ''
-      try {
-        const result = await shared(load, queryString)
-        if (ticket === latest) data.value = result
-      } catch (e) {
-        if (ticket === latest) error.value = e instanceof Error ? e.message : 'Failed to load data'
-      } finally {
-        if (ticket === latest) loading.value = false
-      }
-    },
-    { immediate: true }
-  )
-
+  const { data, loading, error: failure, missing } = useLoaded((queryString: string) => shared(load, queryString), () => filters.queryString)
+  // A dashboard endpoint that 404s is a failure, not an absent record.
+  const error = computed(() => failure.value || (missing.value ? 'API error: 404 Not Found' : ''))
   const span = computed(() => rangeLabel(filters.range))
   return { data, loading, error, span, filters }
 }

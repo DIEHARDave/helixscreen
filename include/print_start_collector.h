@@ -17,9 +17,11 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -204,6 +206,17 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     }
 
     /**
+     * @brief Whether the printer reports a pre-print step still under way
+     *
+     * True while the latest matched context-qualified phase-object state maps
+     * to a phase short of COMPLETE (a priming line, a cool-down for probing).
+     * Such a step holds the deadline timeouts and the first-extrusion
+     * fallback. A bare phase-object state never counts: a display label
+     * outlives its step.
+     */
+    [[nodiscard]] bool in_live_preprint_step() const;
+
+    /**
      * @brief Record the printer's live bed-mesh presence
      *
      * Fed from the bed_mesh status stream. A mesh that disappears while the
@@ -317,9 +330,13 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      *   flag picks the quiet gate the match refreshes: narration holds every
      *   timeout, inference only the deadline timeouts (note_signal() and
      *   note_inferred_activity()).
+     * @param live_state Whether the match names the step running now rather
+     *   than an event that happened. A context-qualified phase-object state is
+     *   live: it may move the display to any phase, an earlier one included,
+     *   since the printer reports what it is doing, not a line that arrived late.
      */
     void apply_profile_match(const PrintStartProfile::MatchResult& match,
-                             bool marks_real_signal = true);
+                             bool marks_real_signal = true, bool live_state = false);
 
     /// Show a gantry-leveling / Z-tilt phase inferred from the configured
     /// probe points. Inference, not narration: it never mutes the proactive
@@ -335,10 +352,34 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * the match through apply_profile_match(). An unchanged state string does
      * not re-fire; profiles without a phase object ignore every frame.
      *
+     * With a context field declared, the state is matched as
+     * "<innermost context>/<state>". Klipper sends only the fields that
+     * changed, so each field's last value is cached and a frame carrying
+     * either one re-matches the pair.
+     *
      * Thread-safe: runs on the WebSocket background thread, like the other
      * notify_status_update handling in start().
+     *
+     * @param seed_run Set for the answer to the query start() sends, to the
+     *   run that sent it: its values fill only the fields no frame has
+     *   delivered yet, since a frame may be newer, and it is dropped once
+     *   another run has begun.
      */
-    void handle_phase_object_status(const nlohmann::json& status);
+    void handle_phase_object_status(const nlohmann::json& status,
+                                    std::optional<uint64_t> seed_run = std::nullopt);
+
+    /// Fetch the phase object's current state and context once at start():
+    /// a context opened before the collector armed is never sent again
+    /// until it changes, and every state inside it would match without it.
+    void query_phase_object();
+
+    /// The start-up query's answer for run `run`; ignored once a later
+    /// start() has begun another run.
+    void apply_phase_object_query(const nlohmann::json& response, uint64_t run);
+
+    /// Bumped by every start() under state_mutex_, so an answer can tell
+    /// which run asked.
+    std::atomic<uint64_t> run_generation_{0};
 
     /**
      * @brief Check a status frame against the profile's status-signal rules
@@ -411,14 +452,22 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * Inspecting Bed). The probe counters need to reset between sub-phases
      * so the displayed "(N/M)" doesn't roll past M. Caller must hold
      * state_mutex_.
+     *
+     * @param counts_probes Whether the new BED_MESH step's probe lines are
+     *        mesh points to count (mesh_counts_probes_).
      */
     void maybe_reset_for_mesh_subphase_locked(helix::PrintStartPhase next_phase,
-                                              const std::string& next_message);
+                                              const std::string& next_message,
+                                              bool counts_probes = true);
 
     /**
      * @brief Update phase and recalculate progress (weighted mode)
+     *
+     * @param counts_mesh_probes For BED_MESH: whether its probe lines count
+     *        against a point total (see PrintStartProfile::MatchResult).
      */
-    void update_phase(helix::PrintStartPhase phase, const char* message);
+    void update_phase(helix::PrintStartPhase phase, const char* message,
+                      bool counts_mesh_probes = true);
 
     /**
      * @brief Update phase with explicit progress value (sequential mode)
@@ -704,6 +753,24 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// notifies on every field change in the object, so the same state
     /// re-arrives; it must not re-fire the phase. Cleared in start()/reset().
     std::string last_phase_object_state_;
+
+    /// Whether the current BED_MESH step's probe lines are mesh points to
+    /// count. False for a step that only checks a stored mesh: its probes
+    /// still show the printer working, but no "(N/M)" is shown and no point
+    /// total is fetched. Guarded by state_mutex_.
+    bool mesh_counts_probes_ = true;
+
+    /// Last value of the phase object's state and context fields seen in
+    /// any frame; nullopt until one arrives. A null or absent-in-firmware
+    /// state caches as "". Guarded by state_mutex_; cleared in start().
+    std::optional<std::string> phase_object_state_cache_;
+    std::optional<std::string> phase_object_context_cache_;
+
+    /// Phase the latest matched context-qualified phase-object state maps
+    /// to; IDLE when none has matched. While it names a pre-print step the
+    /// deadline timeouts wait for the printer to leave it. Guarded by
+    /// state_mutex_; cleared in start().
+    helix::PrintStartPhase live_object_phase_ = helix::PrintStartPhase::IDLE;
 
     /// Status-signal rules whose predicate held on the last frame carrying
     /// their object — the edge-trigger latch, keyed by rule name. A rule in

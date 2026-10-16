@@ -1567,6 +1567,18 @@ lv_obj_t* ui_button_get_icon(lv_obj_t* btn) {
     return data->icon;
 }
 
+// NAMESPACE_OK: joins this header's global ui_button_* free-function API
+lv_obj_t* ui_button_get_label(lv_obj_t* btn) {
+    if (!btn) {
+        return nullptr;
+    }
+    auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
+    if (!data || data->magic != UiButtonData::MAGIC) {
+        return nullptr;
+    }
+    return data->label;
+}
+
 lv_obj_t* ui_button_get_op_spinner(lv_obj_t* btn) {
     if (!btn) {
         return nullptr;

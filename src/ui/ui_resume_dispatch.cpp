@@ -26,13 +26,28 @@ namespace helix::ui {
 
 namespace {
 
-/// Restart-from-beginning dispatch for the modal shown when
-/// virtual_sdcard.is_active=false makes RESUME a silent no-op. Invoked from the
-/// modal's confirm callback with captured copies, so nothing here can dangle
-/// with the dialog or leak on a dismissal.
-void restart_from_beginning(IMoonrakerAPI* api, const std::string& filename,
-                            const std::string& log_prefix,
-                            const std::function<void()>& on_failure) {
+/// The actual send, reached only after the user confirms.
+void send_cancel_macro(IMoonrakerAPI* api, const std::string& log_prefix) {
+    const auto& cancel_info = StandardMacros::instance().get(StandardMacroSlot::Cancel);
+    spdlog::info("{} Using StandardMacros cancel: {}", log_prefix, cancel_info.get_macro());
+    StandardMacros::instance().execute(
+        StandardMacroSlot::Cancel, api,
+        [log_prefix]() { spdlog::info("{} Print cancelled", log_prefix); },
+        [log_prefix](const MoonrakerError& err) {
+            spdlog::error("{} Failed to cancel print: {}", log_prefix, err.message);
+            // StandardMacros::execute may deliver this from the libhv WebSocket
+            // thread; the toast is main-thread only.
+            queue_update("dispatch_cancel_print::on_error", [err]() {
+                NOTIFY_ERROR(lv_tr("Failed to cancel: {}"), err.localized_message());
+            });
+        });
+}
+
+} // namespace
+
+void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filename,
+                                  const std::string& log_prefix,
+                                  const std::function<void()>& on_failure) {
     if (!api) {
         spdlog::error("{} restart_confirm: api is null", log_prefix);
         if (on_failure)
@@ -88,25 +103,6 @@ void restart_from_beginning(IMoonrakerAPI* api, const std::string& filename,
         });
 }
 
-/// The actual send, reached only after the user confirms.
-void send_cancel_macro(IMoonrakerAPI* api, const std::string& log_prefix) {
-    const auto& cancel_info = StandardMacros::instance().get(StandardMacroSlot::Cancel);
-    spdlog::info("{} Using StandardMacros cancel: {}", log_prefix, cancel_info.get_macro());
-    StandardMacros::instance().execute(
-        StandardMacroSlot::Cancel, api,
-        [log_prefix]() { spdlog::info("{} Print cancelled", log_prefix); },
-        [log_prefix](const MoonrakerError& err) {
-            spdlog::error("{} Failed to cancel print: {}", log_prefix, err.message);
-            // StandardMacros::execute may deliver this from the libhv WebSocket
-            // thread; the toast is main-thread only.
-            queue_update("dispatch_cancel_print::on_error", [err]() {
-                NOTIFY_ERROR(lv_tr("Failed to cancel: {}"), err.localized_message());
-            });
-        });
-}
-
-} // namespace
-
 void show_restart_required_modal(IMoonrakerAPI* api, const std::string& filename,
                                  const std::string& authored_reason, std::string log_prefix,
                                  std::function<void()> on_failure) {
@@ -144,7 +140,7 @@ void show_restart_required_modal(IMoonrakerAPI* api, const std::string& filename
     lv_obj_t* modal = modal_confirm(
         lv_tr("Print Was Terminated"), body.c_str(), ModalSeverity::Warning, lv_tr("Restart"),
         [api, filename, log_prefix, on_failure]() {
-            restart_from_beginning(api, filename, log_prefix, on_failure);
+            restart_print_from_beginning(api, filename, log_prefix, on_failure);
         },
         opts);
     if (!modal) {

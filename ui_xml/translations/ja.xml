@@ -321,6 +321,7 @@
   <translation tag="Beacon calibrate sent" ja="Beaconキャリブレーション送信済み"/>
   <translation tag="Bed" ja="ベッド"/>
   <translation tag="Bed (°C)" ja="ベッド (°C)"/>
+  <translation tag="Bed Clear Check" ja="ベッド上の異物チェック"/>
   <translation tag="Bed Heater" ja="ベッドヒーター"/>
   <translation tag="Bed Level" ja="ベッドレベル"/>
   <translation tag="Bed Leveling" ja="ベッドレベリング"/>
@@ -336,6 +337,7 @@
   <translation tag="Bed Screws" ja="ベッドネジ"/>
   <translation tag="Bed Temp" ja="ベッド温度"/>
   <translation tag="Bed Temperature" ja="ベッド温度"/>
+  <translation tag="Bed check turned off" ja="ベッドチェックをオフにしました"/>
   <translation tag="Bed clear · Start next" ja="ベッド空き · 次を開始"/>
   <translation tag="Bed cooling, spools still on the bed:" ja="ベッド冷却中、スプールはまだベッドの上です:"/>
   <translation tag="Bed is Level!" ja="ベッドが水平です！"/>
@@ -473,6 +475,7 @@
   <translation tag="Calibration, LED, and system configuration" ja="キャリブレーション、LED、システム設定"/>
   <translation tag="Cam" ja="カメラ"/>
   <translation tag="Camera" ja="カメラ"/>
+  <translation tag="Camera checks the bed is empty before each print" ja="印刷を始める前にカメラでベッドが空か確認します"/>
   <translation tag="Can&apos;t connect — try forgetting and re-pairing the printer" ja="接続できません — プリンターの登録を解除して再ペアリングしてください"/>
   <translation tag="Can&apos;t move filament while the print is paused" ja="印刷の一時停止中はフィラメントを動かせません"/>
   <translation tag="Can&apos;t reach this printer. Save anyway?" ja="このプリンターに接続できません。保存しますか？"/>
@@ -481,6 +484,7 @@
   <translation tag="Cancel Escalation" ja="エスカレーションをキャンセル"/>
   <translation tag="Cancel Print" ja="印刷をキャンセル"/>
   <translation tag="Cancel macro not configured" ja="キャンセルマクロが未設定です"/>
+  <translation tag="Cancel print" ja="印刷をキャンセル"/>
   <translation tag="Cancelled" ja="キャンセル済み"/>
   <translation tag="Cannot add to queue: internal error" ja="キューに追加できません: 内部エラー"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" ja="マルチユニット MMU ではここから変更できません"/>
@@ -2584,6 +2588,7 @@
   <translation tag="Restart failed: {}" ja="再起動に失敗しました: {}"/>
   <translation tag="Restart from the beginning to recover" ja="復旧するには最初からやり直してください"/>
   <translation tag="Restart pending" ja="再起動保留中"/>
+  <translation tag="Restart print" ja="印刷を再開始"/>
   <translation tag="Restart the display application" ja="ディスプレイアプリケーションを再起動"/>
   <translation tag="Restart the printer or screen" ja="プリンターまたは画面を再起動します"/>
   <translation tag="Restarting HelixScreen..." ja="HelixScreenを再起動中..."/>
@@ -2878,6 +2883,7 @@
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." ja="一部のフィラメントがスライサーの意図と一致しません。"/>
   <translation tag="Some mapped slots are short on filament:" ja="一部の割り当て済みスロットのフィラメントが不足しています:"/>
   <translation tag="Some settings will take effect after restart." ja="一部の設定は再起動後に有効になります。"/>
+  <translation tag="Something on the bed?" ja="ベッドに何かありますか？"/>
   <translation tag="Sound" ja="サウンド"/>
   <translation tag="Sound Theme" ja="サウンドテーマ"/>
   <translation tag="Sounds" ja="サウンド"/>
@@ -3092,6 +3098,7 @@
   <translation tag="Testing, servo, and motor operations" ja="テスト・サーボ・モーター操作"/>
   <translation tag="Thanks! Anonymous usage data helps improve HelixScreen." ja="ご協力ありがとうございます！匿名の使用データが HelixScreen の改善に役立ちます。"/>
   <translation tag="Thanks! TOTALLY anonymous usage data helps improve HelixScreen." ja="ご協力ありがとうございます！完全匿名の使用データが HelixScreen の改善に役立ちます。"/>
+  <translation tag="That print is no longer paused" ja="その印刷はもう一時停止中ではありません"/>
   <translation tag="That setting cannot be changed while a print is running" ja="印刷中はこの設定を変更できません"/>
   <translation tag="That slot cannot stand in for this one" ja="そのスロットはこのスロットの代わりになりません"/>
   <translation tag="That tool is already loaded" ja="そのツールはすでに装填されています"/>
@@ -3104,6 +3111,7 @@
   <translation tag="The bed was reported dirty, so this print cannot resume." ja="ベッドが汚れていると報告されたため、この印刷を再開できません。"/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" ja="バッファーが未接続、固着、または故障している可能性があります。再試行前に確認してください"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" ja="バッファーが 16 秒間動きを検出しませんでした。CFS とエクストルーダーの間の詰まり、またはバッファーの固着を確認してください"/>
+  <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." ja="カメラがベッド上に何かを検出したため、プリンターは印刷前に停止しました。ベッドに何もなければ誤検出です。"/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" ja="カッターの刃が戻りませんでした。切断機構にフィラメントが巻き付いていないか確認してください"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" ja="カッターの位置がずれています。CALIBRATE_CUT_POS で再校正してください"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" ja="エクストルーダーがスムーズに引き込めません。スプールの絡まりや結び目、PTFE チューブの急な曲がりを確認してください"/>
@@ -3119,6 +3127,8 @@
   <translation tag="The plate finishes its current move, but drying will not start." ja="ベッドは現在の移動を完了しますが、乾燥は開始しません。"/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." ja="印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。"/>
   <translation tag="The printer applied this value and keeps it for this tool." ja="プリンターはこの値を適用し、このツールに保存しました。"/>
+  <translation tag="The printer did not change its bed check" ja="プリンターはベッドチェックを変更しませんでした"/>
+  <translation tag="The printer did not change its bed check: {}" ja="プリンターはベッドチェックを変更しませんでした：{}"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." ja="プリンターは隅で押出しを行い、測定値が一致するまで繰り返します。目視での判断は不要です。"/>
   <translation tag="The printer finishes this measurement on its own." ja="この測定はプリンターが最後まで行います。"/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" ja="プリンターはこの印刷を停止し、再開できません。最初からやり直しますか？"/>
@@ -3188,6 +3198,7 @@
   <translation tag="This may take up to 30 seconds" ja="最大30秒かかる場合があります"/>
   <translation tag="This plugin asks for no special permissions." ja="このプラグインは特別な権限を要求しません。"/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." ja="このプラグインにより、HelixScreen がベッドメッシュや QGL などの印刷開始オプションを制御できます。"/>
+  <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." ja="この印刷は再開できません。印刷をやり直すか、繰り返し起きる場合はベッドチェックをオフにしてください。"/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" ja="この印刷には約 %.0fg 必要ですが、スプールの残量は約 %.0fg です。それでも開始しますか？"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" ja="このプリンターはツールオフセットを自動でキャリブレートできません"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。"/>
@@ -3303,6 +3314,7 @@
   <translation tag="Turn On" ja="オンにする"/>
   <translation tag="Turn On LEDs" ja="LEDを点灯"/>
   <translation tag="Turn endless spool on, then set the backup gate" ja="エンドレススプールを有効にしてから、バックアップゲートを設定してください"/>
+  <translation tag="Turn off bed check" ja="ベッドチェックをオフにする"/>
   <translation tag="Turn off detection" ja="検出をオフにする"/>
   <translation tag="Turn on the lights your light buttons control" ja="ライトボタンが操作するライトを点灯します"/>
   <translation tag="Turn the extruder heater off after a load or unload finishes" ja="装填または排出の完了後にエクストルーダーヒーターをオフにします"/>

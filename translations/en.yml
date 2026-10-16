@@ -338,6 +338,7 @@ translations:
   Beacon calibrate sent: Beacon calibrate sent
   Bed: Bed
   Bed (°C): Bed (°C)
+  Bed Clear Check: Bed Clear Check
   Bed Heater: Bed Heater
   Bed Level: Bed Level
   Bed Leveling: Bed Leveling
@@ -353,6 +354,7 @@ translations:
   Bed Screws: Bed Screws
   Bed Temp: Bed Temp
   Bed Temperature: Bed Temperature
+  Bed check turned off: Bed check turned off
   Bed clear · Start next: Bed clear · Start next
   'Bed cooling, spools still on the bed:': 'Bed cooling, spools still on the bed:'
   Bed is Level!: Bed is Level!
@@ -500,6 +502,7 @@ translations:
   Calibration, LED, and system configuration: Calibration, LED, and system configuration
   Cam: Cam
   Camera: Camera
+  Camera checks the bed is empty before each print: Camera checks the bed is empty before each print
   Can't connect — try forgetting and re-pairing the printer: Can't connect — try forgetting
     and re-pairing the printer
   Can't move filament while the print is paused: Can't move filament while the print is paused
@@ -509,6 +512,7 @@ translations:
   Cancel Escalation: Cancel Escalation
   Cancel Print: Cancel Print
   Cancel macro not configured: Cancel macro not configured
+  Cancel print: Cancel print
   Cancelled: Cancelled
   'Cannot add to queue: internal error': 'Cannot add to queue: internal error'
   Cannot be changed from here on a multi-unit MMU: Cannot be changed from here on a multi-unit MMU
@@ -2766,6 +2770,7 @@ translations:
   'Restart failed: {}': 'Restart failed: {}'
   Restart from the beginning to recover: Restart from the beginning to recover
   Restart pending: Restart pending
+  Restart print: Restart print
   Restart the display application: Restart the display application
   Restart the printer or screen: Restart the printer or screen
   Restarting HelixScreen...: Restarting HelixScreen...
@@ -3099,6 +3104,7 @@ translations:
   'Some mapped slots are short on filament:': 'Some mapped slots are short on filament:'
   Some settings will take effect after restart.: Some settings will take effect after
     restart.
+  Something on the bed?: Something on the bed?
   Sound: Sound
   Sound Theme: Sound Theme
   Sounds: Sounds
@@ -3331,6 +3337,7 @@ translations:
     data helps improve HelixScreen.
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: Thanks! TOTALLY
     anonymous usage data helps improve HelixScreen.
+  That print is no longer paused: That print is no longer paused
   'That setting cannot be changed while a print is running': 'That setting cannot be changed while a print is running'
   That slot cannot stand in for this one: That slot cannot stand in for this one
   That tool is already loaded: That tool is already loaded
@@ -3349,6 +3356,8 @@ translations:
   The bed was reported dirty, so this print cannot resume.: The bed was reported dirty, so this print cannot resume.
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: The buffer may be disconnected, stuck, or faulty. Check it before retrying
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer
+  ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
+  : The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: The cutter blade didn't return — check for filament wrapped around the cutting mechanism
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend
@@ -3368,6 +3377,8 @@ translations:
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   The printer applied this value and keeps it for this tool.: 'The printer applied this value and keeps it for this tool.'
+  The printer did not change its bed check: The printer did not change its bed check
+  'The printer did not change its bed check: {}': 'The printer did not change its bed check: {}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.
   The printer finishes this measurement on its own.: 'The printer finishes this measurement on its own.'
   The printer halted this print and cannot resume it. Restart from the beginning?: The
@@ -3455,6 +3466,7 @@ translations:
   This may take up to 30 seconds: This may take up to 30 seconds
   This plugin asks for no special permissions.: This plugin asks for no special permissions.
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: This plugin lets HelixScreen control print start options like bed mesh and QGL.
+  This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: This
     print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
@@ -3595,6 +3607,7 @@ translations:
   Turn On: Turn On
   Turn On LEDs: Turn On LEDs
   Turn endless spool on, then set the backup gate: Turn endless spool on, then set the backup gate
+  Turn off bed check: Turn off bed check
   Turn off detection: Turn off detection
   Turn on the lights your light buttons control: Turn on the lights your light buttons control
   Turn the extruder heater off after a load or unload finishes: Turn the extruder heater off after a load or unload finishes

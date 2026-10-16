@@ -32,6 +32,12 @@ LayoutType detect_layout_type(int width, int height);
 /// ui_is_portrait is 1.
 bool is_portrait_layout(LayoutType type);
 
+/// Whether the app is laid out in portrait: LayoutManager's answer once it is
+/// initialized, so a --layout override is respected (#1255), and the physical
+/// classification of @p width x @p height before then (early startup, tests).
+/// The value ui_is_portrait publishes, for C++ that decides placement itself.
+bool app_layout_is_portrait(int width, int height);
+
 class LayoutManager {
   public:
     static LayoutManager& instance();

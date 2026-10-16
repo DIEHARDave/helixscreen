@@ -251,6 +251,10 @@ Klipper publishes as `display_status.message`. The generic profile therefore dec
 (`assets/config/print_start_profiles/default.json`) and matches the human-readable text
 the macro is already putting on the screen. The declared object is subscribed
 automatically during discovery, via `PrintStartProfile::required_status_objects()`.
+Firmware that publishes its own step stack (Forge-X's `operation_context`) declares a
+`context_field` as well, so a state is matched together with the step it belongs to and a
+step the printer reports as under way holds the deadline timeouts
+([PRINT_START_PROFILES.md](PRINT_START_PROFILES.md#field-details)).
 
 A profile that declares a phase object but no `state_patterns` matches the state string
 against its `response_patterns` instead
@@ -316,6 +320,28 @@ Weights are recomputed when a heater target first appears or rises by 15°C or m
 bed-first macro issues its `M109` long after preparation begins and the nozzle phase carries
 no weight until it does, and a provisional 0°C-targets estimate must not freeze the display
 when the real one arrives a second later.
+
+A heating phase's duration is a whole climb, from the temperature the heater had when the
+collector started to its target, so `ThermalRateModel::estimate_seconds()` prices it at
+`climb_rate()`: seconds per degree across every step measured so far, else the saved or
+database rate (both whole-climb rates too), else the default. It never uses `best_rate()`,
+the EMA of the latest steps: a bed's last degrees are its slowest, and weights recomputed
+while it crawls them would price the whole climb at that tail rate, two to three times the
+real pre-print. `best_rate()` stays for the degrees just ahead
+(the PID calibration's remaining heat). A raised target starts a new step
+(`ThermalRateModel::note_target()`, fed by the collector before each sample), and once targets
+are reported a sample counts only while a positive target sits above the reading, so the minutes
+a nozzle idles or warms beside the bed at target 0 never enter its rate. A model given no
+targets (the PID calibration tracker) counts every rise. Early in a climb the
+measured average covers only the fast part, so `climb_rate_for(span)` blends it with a known
+rate - the saved history, or a database `thermal_rates` entry - weighted by the share of the
+span measured so far; a measured span as long as the one asked about stands alone. A
+size-guessed default is never blended in: it is no better than the fast start. With the AD5M
+Pro's database rates the Forge-X replay's estimate stays between 842s and 879s against a real
+849s; with only the size guess it reads 631s until the bed's tail is measured, then 849s.
+The PA calibration's heat countdown asks for the remaining span from the live temperature,
+which is what `climb_rate_for()` prices; nothing feeds the model during that heat, so the
+recent-steps rate there would be the last pre-print's tail.
 
 The live countdown is the collector's, not the predictor's: `PrintStartCollector#update_eta_display`. The predictor supplies the historical shape (per-phase weights and a wall-clock total); the collector is what turns that into a number on screen, because three of the four inputs are live printer state the predictor never sees.
 

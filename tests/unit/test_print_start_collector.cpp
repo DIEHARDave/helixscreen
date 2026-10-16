@@ -11,6 +11,7 @@
  */
 
 #include "../test_helpers/print_start_collector_test_access.h"
+#include "moonraker_manager.h"
 #include "print_start_profile.h"
 
 #include <algorithm>
@@ -1800,10 +1801,146 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
 // HEATING after bed mesh probing).
 // ============================================================================
 
+/// A sequential profile narrated by "// State:" lines, with a phase object
+/// matched on its bare state and two position rules. The engine's
+/// sequential-progress, unqualified phase-object and status-signal behaviour
+/// is pinned against it.
+static const char* const kSequentialStateProfile = R"JSON(
+{
+  "name": "Sequential states",
+  "description": "Sequential test profile",
+  "progress_mode": "sequential",
+  "signal_formats": [
+    {
+      "prefix": "// State: ",
+      "mappings": {
+        "PREPARING...":         { "phase": "INITIALIZING",    "message": "Preparing...",             "progress": 3 },
+        "MD5 CHECK":            { "phase": "INITIALIZING",    "message": "Verifying file...",        "progress": 5 },
+        "HOMING...":            { "phase": "HOMING",          "message": "Homing axes...",           "progress": 10 },
+        "PREPARE CLEANING...":  { "phase": "CLEANING",        "message": "Preparing to clean...",    "progress": 15 },
+        "HEATING...":           { "phase": "HEATING_BED",     "message": "Heating...",               "progress": 25 },
+        "CLEANING START SOON":  { "phase": "CLEANING",        "message": "Starting nozzle clean...", "progress": 30 },
+        "CLEANING...":          { "phase": "CLEANING",        "message": "Cleaning nozzle...",       "progress": 38 },
+        "COOLING DOWN...":      { "phase": "CLEANING",        "message": "Cooling for probing...",   "progress": 45 },
+        "FINISHING CLEANING...":{ "phase": "CLEANING",        "message": "Finishing clean...",        "progress": 55 },
+        "DONE!":                { "phase": "CLEANING",        "message": "Nozzle clean complete",    "progress": 57 },
+        "KAMP LEVELING...":     { "phase": "BED_MESH",        "message": "Creating bed mesh...",     "progress": 60 },
+        "WAIT FOR TEMPERATURE...": { "phase": "HEATING_NOZZLE", "message": "Reheating...",           "progress": 82 },
+        "KAMP PRIMING...":      { "phase": "PURGING",         "message": "Priming nozzle...",        "progress": 90 },
+        "PRINTING...":          { "phase": "COMPLETE",         "message": "Starting print...",        "progress": 100 }
+      }
+    }
+  ],
+  "response_patterns": [
+    {
+      "pattern": "// Wait bed temperature to reach (\\d+)",
+      "phase": "HEATING_BED",
+      "message": "Heating bed to $1\u00b0C...",
+      "weight": 15
+    },
+    {
+      "pattern": "// Wait extruder temperature to reach (\\d+)",
+      "phase": "HEATING_NOZZLE",
+      "message": "Heating nozzle to $1\u00b0C...",
+      "weight": 15
+    }
+  ],
+  "phase_object": {
+    "object": "operation_context",
+    "field": "current_state"
+  },
+  "state_patterns": [
+    {
+      "pattern": "HOMING",
+      "phase": "HOMING",
+      "message": "Homing...",
+      "weight": 5
+    },
+    {
+      "pattern": "HEATING",
+      "phase": "HEATING_BED",
+      "message": "Heating Bed...",
+      "weight": 15
+    },
+    {
+      "pattern": "CLEANING",
+      "phase": "CLEANING",
+      "message": "Cleaning Nozzle...",
+      "weight": 20
+    },
+    {
+      "pattern": "LEVELING",
+      "phase": "BED_MESH",
+      "message": "Bed Mesh...",
+      "weight": 25
+    },
+    {
+      "pattern": "MESHING",
+      "phase": "BED_MESH",
+      "message": "Bed Mesh...",
+      "weight": 25
+    },
+    {
+      "pattern": "PARKING",
+      "phase": "INITIALIZING",
+      "message": "Preparing...",
+      "weight": 5
+    },
+    {
+      "pattern": "PRIMING",
+      "phase": "PURGING",
+      "message": "Priming nozzle...",
+      "weight": 10
+    },
+    {
+      "pattern": "PURGING",
+      "phase": "PURGING",
+      "message": "Priming nozzle...",
+      "weight": 10
+    },
+    {
+      "pattern": "PRINTING",
+      "phase": "COMPLETE",
+      "message": "Starting print...",
+      "weight": 100
+    },
+    {
+      "pattern": "FINISHING",
+      "phase": "COMPLETE",
+      "message": "Starting print...",
+      "weight": 100
+    }
+  ],
+  "status_signals": [
+    {
+      "name": "at_cutter",
+      "object": "toolhead",
+      "when": [
+        { "field": "position", "index": 0, "op": "lt", "value": 0.0 },
+        { "field": "position", "index": 1, "op": "lt", "value": 0.0 }
+      ],
+      "phase": "PURGING",
+      "message": "Changing filament...",
+      "weight": 30
+    },
+    {
+      "name": "at_chute",
+      "object": "toolhead",
+      "when": [
+        { "field": "position", "index": 1, "op": "gt", "value": 225.0 }
+      ],
+      "phase": "PURGING",
+      "message": "Purging...",
+      "weight": 20
+    }
+  ]
+}
+)JSON";
+
 /**
- * @brief Test fixture for sequential profile (Forge-X) progress tests
+ * @brief Test fixture for sequential-profile progress tests
  *
- * Loads forge_x profile and provides helpers for dispatching G-code
+ * Loads kSequentialStateProfile and provides helpers for dispatching G-code
  * responses and reading progress values.
  */
 class PrintStartCollectorSequentialFixture : public LVGLTestFixture {
@@ -1814,7 +1951,10 @@ class PrintStartCollectorSequentialFixture : public LVGLTestFixture {
         lv_subject_set_int(state_.print_state().get_print_active_subject(), 1);
         client_ = std::make_unique<MoonrakerClientMock>();
         collector_ = std::make_shared<PrintStartCollector>(*client_, state_);
-        collector_->set_profile(PrintStartProfile::load("forge_x"));
+        auto profile =
+            PrintStartProfileTestAccess::parse(nlohmann::json::parse(kSequentialStateProfile));
+        REQUIRE(profile != nullptr);
+        collector_->set_profile(std::move(profile));
     }
 
     ~PrintStartCollectorSequentialFixture() override {
@@ -3209,7 +3349,7 @@ TEST_CASE("PreprintPredictor has_predictions reflects actual entries", "[print][
  * @brief The K2 tag stream run under the profile that declares it
  *
  * creality_k2.json sets cfs_signals, which is what admits the purge-percent
- * and box-load tag matchers. The base sequential fixture's forge_x profile
+ * and box-load tag matchers. The base sequential fixture's profile
  * deliberately does not.
  */
 class K2TagStreamFixture : public PrintStartCollectorSequentialFixture {
@@ -5114,6 +5254,389 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
 }
 
 // ============================================================================
+// CONTEXT-QUALIFIED PHASE OBJECT
+//
+// Forge-X publishes operation_context: a stack of nested steps (context_types,
+// outermost first) and current_state, the innermost step's state. One state
+// string means different things in different steps, so the profile matches
+// "<innermost type>/<state>". Moonraker sends only the fields that changed.
+// ============================================================================
+
+class ForgeXCollectorFixture : public PrintStartCollectorHeaterFixture {
+  public:
+    ForgeXCollectorFixture() {
+        auto profile = PrintStartProfile::load("forge_x");
+        REQUIRE(profile->name() == "Forge-X Mod");
+        collector().set_profile(std::move(profile));
+    }
+
+    /// One operation_context delta frame through notify_status_update.
+    void context(const json& fields) {
+        client().dispatch_status_update({{"operation_context", fields}});
+        drain_async_updates();
+    }
+};
+
+TEST_CASE_METHOD(ForgeXCollectorFixture, "A context-qualified state names the step it belongs to",
+                 "[print][collector][phase_object][forge_x]") {
+    collector().start();
+    drain_async_updates();
+
+    // The print context's LEVELING only decides how to level.
+    context({{"context_types", {"print"}}, {"current_state", "LEVELING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+
+    // KAMP's own LEVELING is the mesh.
+    context({{"context_types", {"print", "kamp"}}, {"current_state", "LEVELING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+    REQUIRE(get_current_message() == "Creating bed mesh...");
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "Phase-object delta frames re-match the cached state and context",
+                 "[print][collector][phase_object][forge_x]") {
+    collector().start();
+    drain_async_updates();
+
+    context({{"context_types", {"print", "kamp", "nozzle_clean"}}, {"current_state", nullptr}});
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+
+    // A frame carrying only the state pairs it with the cached context.
+    context({{"current_state", "COOLING NOZZLE"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+    REQUIRE(get_current_message() == "Cooling for probing...");
+
+    // FINISHING ends the nested clean, not the pre-print.
+    context({{"current_state", "FINISHING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+    REQUIRE(get_current_message() == "Finishing clean...");
+
+    // A frame carrying only the context pairs it with the cached state:
+    // kamp/FINISHING names nothing, so the display holds.
+    context({{"context_types", {"print", "kamp"}}});
+    REQUIRE(get_current_message() == "Finishing clean...");
+
+    context({{"current_state", "LEVELING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+
+    // A frame carrying neither field changes nothing.
+    context({{"revision", 41}});
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+
+    context({{"context_types", {"print"}}, {"current_state", "PRINTING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "A null state when a nested step begins is not the outer step's state",
+                 "[print][collector][phase_object][forge_x]") {
+    collector().start();
+    drain_async_updates();
+
+    context({{"context_types", {"print"}}, {"current_state", "LEVELING"}});
+    // KAMP opens with no state of its own. Pairing kamp with the print's
+    // LEVELING would claim the mesh ten minutes before it starts.
+    context({{"context_types", {"print", "kamp"}}, {"current_state", nullptr}});
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+    context({{"context_types", {"print", "kamp", "nozzle_clean"}}});
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+
+    context({{"current_state", "HEATING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::HEATING_BED);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "A live state may move the display back to an earlier phase",
+                 "[print][collector][phase_object][forge_x]") {
+    collector().start();
+    drain_async_updates();
+
+    context(
+        {{"context_types", {"print", "kamp", "nozzle_clean"}}, {"current_state", "HEATING BED"}});
+    context({{"current_state", "HEATING NOZZLE"}});
+    context({{"current_state", "CLEANING"}});
+    context({{"context_types", {"print", "kamp"}}, {"current_state", "LEVELING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+
+    // After the mesh the print parks and reheats the nozzle the clean cooled.
+    context({{"context_types", {"print"}}, {"current_state", "PARKING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::HEATING_NOZZLE);
+    REQUIRE(get_current_message() == "Preparing...");
+    context({{"current_state", "HEATING NOZZLE"}});
+    REQUIRE(get_current_message() == "Heating Nozzle...");
+
+    // A console line is an event, not a state: it still cannot drag the
+    // display back to a phase already passed.
+    send_gcode_response("// Wait bed temperature to reach 105 Cº");
+    REQUIRE(get_current_phase() == PrintStartPhase::HEATING_NOZZLE);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture, "The phase-object cache does not outlive the run",
+                 "[print][collector][phase_object][forge_x]") {
+    collector().start();
+    drain_async_updates();
+    context({{"context_types", {"print", "kamp"}}, {"current_state", "HEATING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::HEATING_BED);
+    collector().stop();
+
+    collector().start();
+    drain_async_updates();
+    // The last run's kamp context must not qualify this run's first state.
+    context({{"current_state", "LEVELING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "A context opened before the collector armed qualifies its states",
+                 "[print][collector][phase_object][forge_x]") {
+    // The print context begins in the same breath as print_stats goes to
+    // printing, so its frame can pass before start(), and with no nested
+    // step it never changes again.
+    client().set_object_status("operation_context",
+                               {{"context_types", {"print"}}, {"current_state", "CHECKING FILE"}});
+    collector().start();
+    drain_async_updates();
+    REQUIRE(get_current_message() == "Verifying file...");
+
+    context({{"current_state", "PRIMING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::PURGING);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "The start-up query fills only fields no frame has delivered",
+                 "[print][collector][phase_object][forge_x]") {
+    collector().start();
+    drain_async_updates();
+
+    context({{"context_types", {"print", "kamp"}}});
+    // A late answer to the start-up query still says the print context; the
+    // frame is newer and keeps kamp.
+    PrintStartCollectorTestAccess::feed_phase_object_seed(
+        collector(),
+        {{"operation_context", {{"context_types", {"print"}}, {"current_state", "LEVELING"}}}});
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "The last print's leftover PRINTING does not complete the next one",
+                 "[print][collector][phase_object][forge_x]") {
+    // A file without an end macro leaves its print context standing at
+    // PRINTING; the collector arms a moment before the next START_PRINT
+    // pushes its own context, so the start-up query answers with the old one.
+    client().set_object_status("operation_context",
+                               {{"context_types", {"print"}}, {"current_state", "PRINTING"}});
+    collector().start();
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+    REQUIRE_FALSE(collector().in_live_preprint_step());
+
+    context({{"context_types", {"print", "print"}}, {"current_state", nullptr}});
+    context({{"current_state", "CHECKING FILE"}});
+    REQUIRE(get_current_message() == "Verifying file...");
+
+    // The new print's own PRINTING still completes it.
+    context({{"current_state", "PRINTING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "A late start-up answer from an earlier run does not seed the next",
+                 "[print][collector][phase_object][forge_x]") {
+    const json answer = {
+        {"result",
+         {{"status",
+           {{"operation_context",
+             {{"context_types", {"print", "kamp"}}, {"current_state", "LEVELING"}}}}}}}};
+    collector().start();
+    drain_async_updates();
+    const uint64_t first_run = PrintStartCollectorTestAccess::run_generation(collector());
+    collector().stop();
+    collector().start();
+    drain_async_updates();
+
+    PrintStartCollectorTestAccess::answer_phase_object_query(collector(), answer, first_run);
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+
+    PrintStartCollectorTestAccess::answer_phase_object_query(
+        collector(), answer, PrintStartCollectorTestAccess::run_generation(collector()));
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture, "Bed mesh validation names no point count",
+                 "[print][collector][phase_object][forge_x][mesh]") {
+    // _CHECK_BED_MESH probes five points against the loaded 25-point mesh,
+    // so a count would read "(5/25)" and end there.
+    client().set_config_bed_mesh_probe_count(5, 5);
+    collector().start();
+    drain_async_updates();
+
+    context({{"context_types", {"print", "mesh_validation"}}, {"current_state", "CHECKING MESH"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+    const double points[][2] = {{-110, 60}, {-110, -110}, {60, -110}, {110, -110}, {110, 60}};
+    for (const auto& p : points) {
+        for (int sample = 0; sample < 3; ++sample) {
+            char line[96];
+            std::snprintf(line, sizeof(line), "// probe at %.3f,%.3f is z=-2.100000", p[0], p[1]);
+            send_gcode_response(line);
+        }
+    }
+    drain_async_updates();
+    CHECK(get_current_message() == "Validating bed mesh...");
+    CHECK(PrintStartCollectorTestAccess::get_mesh_probe_total(collector()) == 0);
+    CHECK(PrintStartCollectorTestAccess::get_mesh_probe_current(collector()) == 0);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture, "A KAMP mesh counts its points against the total",
+                 "[print][collector][phase_object][forge_x][mesh]") {
+    client().set_config_bed_mesh_probe_count(5, 5);
+    client().gcode_script("BED_MESH_CLEAR");
+    collector().start();
+    drain_async_updates();
+    context({{"context_types", {"print", "kamp"}}, {"current_state", "LEVELING"}});
+    send_gcode_response("// probe at -105.000,-105.000 is z=-2.025000");
+    drain_async_updates();
+    CHECK(get_current_message() == "Creating bed mesh (1/25)");
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture, "A live pre-print step holds the deadline timeouts",
+                 "[print][collector][phase_object][forge_x][timeout]") {
+    // Heaters at target, the printer silent past the quiet gate and the
+    // deadline: everything a timeout waits for, except that the printer says
+    // it is still cooling the nozzle inside the clean.
+    set_all_temps(1050, 1050, 1200, 1200);
+    collector().start();
+    drain_async_updates();
+    collector().enable_fallbacks();
+    context({{"context_types", {"print", "kamp", "nozzle_clean"}},
+             {"current_state", "COOLING NOZZLE"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+    PrintStartCollectorTestAccess::set_predicted_total(collector(), 180.0f);
+
+    SECTION("the adaptive and flat timeouts wait") {
+        PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
+        tick_fallbacks();
+        REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+        PrintStartCollectorTestAccess::set_predicted_total(collector(), 0.0f);
+        tick_fallbacks();
+        REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+    }
+
+    SECTION("the ceiling still ends it") {
+        PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 1850);
+        tick_fallbacks();
+        REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+    }
+
+    SECTION("a state that names no step does not release the hold") {
+        context({{"context_types", {"print", "kamp"}}, {"current_state", nullptr}});
+        PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
+        tick_fallbacks();
+        REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+    }
+
+    SECTION("an empty context stack releases the hold") {
+        // Every context ended (an error or a restart reset the stack): no
+        // step is under way any more.
+        context({{"context_types", json::array()}, {"current_state", nullptr}});
+        REQUIRE_FALSE(collector().in_live_preprint_step());
+        PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
+        tick_fallbacks();
+        REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+    }
+
+    SECTION("the same step pushed again after the stack emptied holds again") {
+        context({{"context_types", json::array()}, {"current_state", nullptr}});
+        REQUIRE_FALSE(collector().in_live_preprint_step());
+        context({{"context_types", {"print", "kamp", "nozzle_clean"}},
+                 {"current_state", "COOLING NOZZLE"}});
+        REQUIRE(collector().in_live_preprint_step());
+        PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
+        tick_fallbacks();
+        REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+    }
+}
+
+TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
+                 "A bare phase-object state does not hold the timeouts",
+                 "[print][collector][phase_object][timeout]") {
+    // A state with no context is a label that may stay up long after its
+    // step ended (display_status keeps the last SET_DISPLAY_TEXT), so it
+    // leaves the timeouts as they were.
+    auto profile = PrintStartProfileTestAccess::parse(nlohmann::json::parse(
+        R"({"name":"bare","phase_object":{"object":"operation_context","field":"current_state"},)"
+        R"("state_patterns":[{"pattern":"COOLING","phase":"CLEANING","message":"Cooling for probing..."}]})"));
+    REQUIRE(profile != nullptr);
+    collector().set_profile(std::move(profile));
+    set_all_temps(1050, 1050, 1200, 1200);
+    collector().start();
+    drain_async_updates();
+    collector().enable_fallbacks();
+    client().dispatch_status_update({{"operation_context", {{"current_state", "COOLING"}}}});
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+
+    PrintStartCollectorTestAccess::set_predicted_total(collector(), 180.0f);
+    PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
+    tick_fallbacks();
+    REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+}
+
+TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
+                 "A heater cooling toward its target is not at target",
+                 "[print][collector][timeout]") {
+    // M109 down to a probing temperature blocks the queue for minutes with
+    // nothing on the console; the nozzle reads above its target the whole time.
+    const auto tick_at = [this](int ext_decideg, int elapsed_s) {
+        set_all_temps(1050, 1050, ext_decideg, 1200);
+        collector().start();
+        drain_async_updates();
+        reset_collector_to_idle();
+        collector().enable_fallbacks();
+        PrintStartCollectorTestAccess::set_predicted_total(collector(), 180.0f);
+        PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), elapsed_s);
+        tick_fallbacks();
+        tick_fallbacks();
+    };
+
+    SECTION("a nozzle at 141 cooling to 120 waits") {
+        tick_at(1410, 600);
+        REQUIRE(get_current_phase() != PrintStartPhase::COMPLETE);
+    }
+
+    SECTION("a nozzle within 5C above its target has arrived") {
+        tick_at(1240, 600);
+        REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+    }
+
+    SECTION("a nozzle that never cools completes at the ceiling") {
+        tick_at(1410, 1850);
+        REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+    }
+}
+
+TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
+                 "A signal-format line counts as activity for the timeouts",
+                 "[print][collector][timeout][sequential]") {
+    auto profile =
+        PrintStartProfileTestAccess::parse(nlohmann::json::parse(kSequentialStateProfile));
+    REQUIRE(profile != nullptr);
+    collector().set_profile(std::move(profile));
+    set_all_temps(1050, 1050, 2200, 2200);
+    collector().start();
+    drain_async_updates();
+    collector().enable_fallbacks();
+    PrintStartCollectorTestAccess::set_predicted_total(collector(), 180.0f);
+    PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
+
+    send_gcode_response("// State: CLEANING...");
+    tick_fallbacks();
+    REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+}
+
+// ============================================================================
 // STATUS-SIGNAL RULE TESTS
 //
 // Profiles may declare physical phase-inference rules ("status_signals"):
@@ -5231,7 +5754,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     collector().start();
     drain_async_updates();
 
-    // The exact frame that fires forge_x's at_cutter rule does nothing here:
+    // The exact frame that fires the sequential fixture's at_cutter rule does nothing here:
     // an absent declaration is exactly the previous behavior, pinned.
     client().dispatch_status_update({{"toolhead", {{"position", {-2.0, -3.0, 10.0}}}}});
     drain_async_updates();
@@ -5812,6 +6335,359 @@ TEST_CASE_METHOD(CosmosPrintStartReplayFixture,
     CAPTURE(result.trace);
     REQUIRE(result.trace == "0:INITIALIZING 5:HEATING_BED 484:SOAKING 542:BED_MESH "
                             "545:HEATING_NOZZLE 618:COMPLETE");
+}
+
+// ============================================================================
+// REAL FORGE-X 1.4.2 PRE-PRINT REPLAY
+//
+// An AD5M Pro on Forge-X 1.4.2 (2026-10-15, KAMP, ABS 105/265): the console
+// (tests/fixtures/forgex_142_console.txt), the heaters every 5s
+// (tests/fixtures/forgex_142_heaters.txt) and the operation_context frames,
+// at their real times. 1.4.2 prints no "// State:" lines; it narrates through
+// operation_context, which the capture did not record. kForgeXContextFrames
+// rebuilds it from the macros (base.cfg START_PRINT, KAMP, CLEAR_NOZZLE,
+// _WAIT_TEMPERATURE) against the console, as the deltas Moonraker sends.
+// ============================================================================
+
+namespace {
+struct ForgeXFrame {
+    const char* at; ///< HH:MM:SS.mmm
+    const char* fields;
+};
+
+// clang-format off
+const ForgeXFrame kForgeXContextFrames[] = {
+    {"16:19:29.110", R"({"context_types":["print"],"current_state":null})"},
+    {"16:19:31.730", R"({"current_state":"CHECKING FILE"})"},
+    {"16:19:33.000", R"({"current_state":"HOMING"})"},
+    {"16:19:37.400", R"({"current_state":"LEVELING"})"},
+    {"16:19:37.440", R"({"context_types":["print","kamp"],"current_state":null})"},
+    {"16:19:37.444", R"({"context_types":["print","kamp","nozzle_clean"]})"},
+    {"16:19:37.600", R"({"current_state":"HEATING"})"},
+    {"16:19:45.640", R"({"current_state":"HEATING BED"})"},
+    {"16:27:12.290", R"({"current_state":"HEATING NOZZLE"})"},
+    {"16:28:01.640", R"({"current_state":"PREPARING TO CLEAN"})"},
+    {"16:28:15.950", R"({"current_state":"CLEANING"})"},
+    {"16:28:24.440", R"({"current_state":"COOLING NOZZLE"})"},
+    {"16:30:16.120", R"({"current_state":"FINISHING"})"},
+    {"16:30:17.400", R"({"context_types":["print","kamp"],"current_state":"LEVELING"})"},
+    {"16:32:44.605", R"({"context_types":["print"],"current_state":"PARKING"})"},
+    {"16:32:46.690", R"({"current_state":"HEATING NOZZLE"})"},
+    {"16:33:22.920", R"({"current_state":"PARKING"})"},
+    {"16:33:23.120", R"({"current_state":"PRIMING"})"},
+    {"16:33:37.500", R"({"current_state":"PRINTING"})"},
+};
+// clang-format on
+
+int forgex_clock_ms(const std::string& hhmmss) {
+    int h = 0, m = 0;
+    double sec = 0.0;
+    if (std::sscanf(hhmmss.c_str(), "%d:%d:%lf", &h, &m, &sec) != 3) {
+        return -1;
+    }
+    return static_cast<int>(std::lround((h * 3600 + m * 60 + sec) * 1000.0));
+}
+
+/// Fixture lines "HH:MM:SS.mmm rest", '#' lines skipped.
+std::vector<std::pair<int, std::string>> read_forgex_fixture(const std::string& name) {
+    std::vector<std::pair<int, std::string>> rows;
+    std::ifstream f(collector_fixture_dir() + name);
+    for (std::string raw; std::getline(f, raw);) {
+        if (raw.empty() || raw[0] == '#') {
+            continue;
+        }
+        rows.emplace_back(forgex_clock_ms(raw.substr(0, 12)), raw.substr(13));
+    }
+    return rows;
+}
+} // namespace
+
+class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
+  public:
+    struct Result {
+        std::string trace;          ///< "second:PHASE" for every phase change
+        int completed_at_ms{-1};    ///< timeline position of COMPLETE, -1 if never
+        int mesh_entered_at_ms{-1}; ///< first BED_MESH, -1 if never
+        int mesh_probes_at_entry{-1};
+        int mesh_probe_current{0}; ///< when the mesh ended
+        int mesh_probe_total{0};
+        std::string mesh_message;    ///< the last mesh label
+        float first_prediction_s{0}; ///< prediction once the bed target is set
+        float cooldown_prediction_s{0};
+        float max_prediction_s{0};        ///< highest prediction once the bed target is set
+        float min_prediction_s{1.0e9f};   ///< lowest prediction once the bed target is set
+        bool live_step_at_priming{false}; ///< in_live_preprint_step() once priming starts
+        bool live_step_at_complete{true};
+        std::string predictions; ///< "second:total" at every heater sample
+    };
+
+    ForgeXPrintStartReplayFixture() {
+        ThermalRateManager::instance().reset();
+        // What the printer answered: the clean cleared the live mesh, so the
+        // denominator comes from [bed_mesh] probe_count.
+        client().set_config_bed_mesh_probe_count(5, 5);
+        client().gcode_script("BED_MESH_CLEAR");
+    }
+
+    ~ForgeXPrintStartReplayFixture() override {
+        ThermalRateManager::instance().reset();
+    }
+
+    /// @param history_total_s Seconds of one saved pre-print, or 0 for none.
+    Result replay(int history_total_s = 0) {
+        struct Event {
+            int ms;
+            enum Kind { CONSOLE, HEATERS, FRAME } kind;
+            std::string text;
+        };
+        std::vector<Event> events;
+        for (auto& [ms, text] : read_forgex_fixture("forgex_142_console.txt")) {
+            std::string line;
+            for (size_t i = 0; i < text.size(); ++i) {
+                if (text[i] == '\\' && i + 1 < text.size()) {
+                    line += text[i + 1] == 'n' ? '\n' : text[i + 1];
+                    ++i;
+                } else {
+                    line += text[i];
+                }
+            }
+            events.push_back({ms, Event::CONSOLE, line});
+        }
+        for (auto& [ms, text] : read_forgex_fixture("forgex_142_heaters.txt")) {
+            events.push_back({ms, Event::HEATERS, text});
+        }
+        for (const ForgeXFrame& f : kForgeXContextFrames) {
+            events.push_back({forgex_clock_ms(f.at), Event::FRAME, f.fields});
+        }
+        REQUIRE(events.size() == 159 + 172 + std::size(kForgeXContextFrames));
+        std::stable_sort(events.begin(), events.end(),
+                         [](const Event& a, const Event& b) { return a.ms < b.ms; });
+
+        const int t0 = forgex_clock_ms("16:19:28.442"); // SDCARD_PRINT_FILE
+        // The priming line's first extrusion: print_duration starts counting.
+        const int priming_ms = forgex_clock_ms("16:33:23.130") - t0;
+        bool priming_seen = false;
+        const int cooldown_ms = forgex_clock_ms("16:29:30.000") - t0;
+        Result result;
+        int now_ms = 0;
+        PrintStartPhase shown = PrintStartPhase::IDLE;
+        const auto note_phase = [&]() {
+            drain_async_updates();
+            drain_async_updates();
+            const PrintStartPhase phase = get_current_phase();
+            if (phase == PrintStartPhase::BED_MESH) {
+                result.mesh_message = get_current_message();
+                result.mesh_probe_current =
+                    PrintStartCollectorTestAccess::get_mesh_probe_current(collector());
+                result.mesh_probe_total =
+                    PrintStartCollectorTestAccess::get_mesh_probe_total(collector());
+            }
+            if (phase == shown) {
+                return;
+            }
+            shown = phase;
+            if (!result.trace.empty()) {
+                result.trace += ' ';
+            }
+            result.trace +=
+                std::to_string(now_ms / 1000) + ":" + std::string(print_start_phase_name(phase));
+            if (phase == PrintStartPhase::COMPLETE) {
+                result.completed_at_ms = now_ms;
+            }
+            if (phase == PrintStartPhase::BED_MESH && result.mesh_entered_at_ms < 0) {
+                result.mesh_entered_at_ms = now_ms;
+                result.mesh_probes_at_entry = result.mesh_probe_current;
+            }
+        };
+
+        set_all_temps(275, 0, 348, 0);
+        collector().start();
+        collector().enable_fallbacks();
+        if (history_total_s > 0) {
+            helix::PreprintEntry entry{};
+            entry.total_seconds = history_total_s;
+            entry.timestamp = 1;
+            entry.phase_durations = {{static_cast<int>(PrintStartPhase::CLEANING), 120}};
+            entry.temp_bucket = 1;
+            entry.window = helix::PreprintWindow::PrinterEdge;
+            PrintStartCollectorTestAccess::load_prediction_entries(collector(), {entry});
+        }
+        note_phase();
+
+        for (const Event& e : events) {
+            const int at = e.ms - t0;
+            clock_.advance(std::chrono::milliseconds(at - now_ms));
+            now_ms = at;
+            switch (e.kind) {
+            case Event::CONSOLE:
+                send_gcode_response(e.text);
+                break;
+            case Event::FRAME:
+                context(json::parse(e.text));
+                break;
+            case Event::HEATERS: {
+                float bed = 0, ext = 0;
+                int bed_target = 0, ext_target = 0;
+                REQUIRE(std::sscanf(e.text.c_str(), "%f %d %f %d", &bed, &bed_target, &ext,
+                                    &ext_target) == 4);
+                set_all_temps(static_cast<int>(std::lround(bed * 10)), bed_target * 10,
+                              static_cast<int>(std::lround(ext * 10)), ext_target * 10);
+                collector().check_fallback_completion();
+                if (bed_target > 0 && result.first_prediction_s == 0.0f) {
+                    result.first_prediction_s =
+                        PrintStartCollectorTestAccess::get_predicted_total(collector());
+                }
+                const float predicted =
+                    PrintStartCollectorTestAccess::get_predicted_total(collector());
+                if (now_ms >= cooldown_ms && result.cooldown_prediction_s == 0.0f) {
+                    result.cooldown_prediction_s = predicted;
+                }
+                if (bed_target > 0) {
+                    result.max_prediction_s = std::max(result.max_prediction_s, predicted);
+                    result.min_prediction_s = std::min(result.min_prediction_s, predicted);
+                }
+                result.predictions += std::to_string(now_ms / 1000) + ":" +
+                                      std::to_string(static_cast<int>(predicted)) + " ";
+                PrintStartCollectorTestAccess::run_eta_update(collector());
+                break;
+            }
+            }
+            note_phase();
+            if (!priming_seen && now_ms >= priming_ms) {
+                priming_seen = true;
+                result.live_step_at_priming = collector().in_live_preprint_step();
+            }
+            if (result.completed_at_ms >= 0) {
+                result.live_step_at_complete = collector().in_live_preprint_step();
+                break;
+            }
+        }
+        return result;
+    }
+
+  private:
+    PreprintConfigScope config_{"FlashForge Adventurer 5M Pro (ForgeX)"};
+    helix::sim::SimulatedClock::ManualScope clock_{helix::sim::SimSpeed::of(1.0)};
+};
+
+TEST_CASE_METHOD(ForgeXPrintStartReplayFixture,
+                 "PrintStartCollector: real Forge-X 1.4.2 pre-print completes at PRINTING",
+                 "[print][collector][forge_x][integration]") {
+    constexpr float BED_X_MAX = 220.0f;
+    int history_total_s = 0;
+    float min_prediction_s = 0.0f;
+    float max_prediction_s = 1.0e6f;
+    float max_whole_run_s = 849.0f * 1.3f;
+
+    SECTION("with the size-guess heating rates") {
+        ThermalRateManager::instance().apply_archetype_defaults(BED_X_MAX, "");
+    }
+    SECTION("with the heating rates from the printer database") {
+        ThermalRateManager::instance().apply_archetype_defaults(
+            BED_X_MAX, "FlashForge Adventurer 5M Pro (ForgeX)");
+        // The first print is predicted within 15% of the 849s it took.
+        min_prediction_s = 849.0f * 0.85f;
+        max_prediction_s = 849.0f * 1.15f;
+    }
+    SECTION("with a history shorter than this pre-print") {
+        // A saved pre-print a timeout cut short: its deadline passes while
+        // the nozzle cools silently for probing, heaters near their targets.
+        ThermalRateManager::instance().apply_archetype_defaults(BED_X_MAX, "");
+        history_total_s = 380;
+    }
+
+    const Result result = replay(history_total_s);
+    CAPTURE(result.trace, result.first_prediction_s, result.cooldown_prediction_s,
+            result.mesh_message);
+    if (history_total_s > 0) {
+        // The deadline (1.5x the prediction) is behind the cool-down.
+        REQUIRE(result.cooldown_prediction_s * 1.5f <= 600.0f);
+    }
+
+    // The pre-print ends at print/PRINTING (849.1s), not at the clean's
+    // FINISHING (647.7s) or any timeout before it.
+    REQUIRE(result.completed_at_ms == 849058);
+    REQUIRE(result.trace == "0:INITIALIZING 4:HOMING 9:HEATING_BED 463:HEATING_NOZZLE "
+                            "513:CLEANING 648:BED_MESH 796:HEATING_NOZZLE 834:PURGING "
+                            "849:COMPLETE");
+
+    // The mesh starts at kamp/LEVELING (648.96s), not at the print's LEVELING
+    // (8.96s), and the two cleaning probes are not its first points.
+    REQUIRE(result.mesh_entered_at_ms == 648958);
+    REQUIRE(result.mesh_probes_at_entry == 0);
+    REQUIRE(result.mesh_probe_total == 25);
+    REQUIRE(result.mesh_probe_current == 25);
+    REQUIRE(result.mesh_message == "Creating bed mesh (25/25)");
+
+    // The priming line starts print_duration 14s before PRINTING. This printer
+    // reports layers, so only layer 1 completes; one that did not would fall
+    // back to first extrusion, which the priming step holds.
+    REQUIRE(result.live_step_at_priming);
+    REQUIRE_FALSE(MoonrakerManager::should_complete_preprint(
+        /*printer_reports_layers=*/false, /*current_layer=*/0, /*print_duration=*/1,
+        /*seen_layer_zero=*/false, /*layer_advanced=*/false, result.live_step_at_priming));
+    REQUIRE_FALSE(result.live_step_at_complete);
+
+    REQUIRE(result.first_prediction_s >= min_prediction_s);
+    REQUIRE(result.first_prediction_s <= max_prediction_s);
+    // With the database rates the bed's fast first degrees do not drag the
+    // estimate down while it climbs.
+    REQUIRE(result.min_prediction_s >= min_prediction_s);
+    // The prediction holds near the real length through the whole pre-print,
+    // the slow last degrees of the bed included.
+    INFO(result.predictions);
+    REQUIRE(result.max_prediction_s <= max_whole_run_s);
+}
+
+TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
+                 "A bed's slow last degrees do not inflate the predicted pre-print",
+                 "[print][collector][eta][thermal_rate]") {
+    // A generic printer: the bed heats from cold toward 100C the way a bed
+    // does, fast then crawling (100 - 75*e^(-t/150)), and only once it is
+    // within 2C does the macro set the nozzle target. The predicted total is
+    // recomputed then, with the bed deep in its tail.
+    helix::sim::SimulatedClock::ManualScope clock(helix::sim::SimSpeed::of(1.0));
+    PreprintConfigScope config{""};
+    ThermalRateManager::instance().reset();
+    ThermalRateManager::instance().apply_archetype_defaults(235.0f, "");
+
+    set_all_temps(250, 0, 250, 0);
+    collector().start();
+    drain_async_updates();
+    collector().enable_fallbacks();
+
+    float max_prediction = 0.0f;
+    int nozzle_set_at = -1;
+    int done_at = -1;
+    float ext = 25.0f;
+    for (int t = 1; t <= 900 && done_at < 0; ++t) {
+        clock.advance(std::chrono::seconds(1));
+        const float bed = 100.0f - 75.0f * std::exp(-static_cast<float>(t) / 150.0f);
+        if (nozzle_set_at < 0 && bed >= 98.0f) {
+            nozzle_set_at = t;
+        }
+        if (nozzle_set_at >= 0) {
+            ext = std::min(220.0f, ext + 4.0f);
+            if (ext >= 220.0f) {
+                done_at = t;
+            }
+        }
+        set_all_temps(static_cast<int>(bed * 10), 1000, static_cast<int>(ext * 10),
+                      nozzle_set_at >= 0 ? 2200 : 0);
+        collector().check_fallback_completion();
+        PrintStartCollectorTestAccess::run_eta_update(collector());
+        drain_async_updates();
+        if (t >= 5) {
+            max_prediction = std::max(
+                max_prediction, PrintStartCollectorTestAccess::get_predicted_total(collector()));
+        }
+    }
+    REQUIRE(done_at > 0);
+    CAPTURE(nozzle_set_at, done_at, max_prediction);
+    // The generic default phases (homing, mesh, QGL, Z tilt, clean, purge:
+    // 260s) count toward the total whether or not this start runs them.
+    constexpr float GENERIC_DEFAULT_PHASES_S = 260.0f;
+    REQUIRE(max_prediction <= 1.3f * static_cast<float>(done_at) + GENERIC_DEFAULT_PHASES_S);
 }
 
 TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,

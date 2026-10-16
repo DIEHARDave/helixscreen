@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect } from "vitest";
-import { buildHealth, releaseRates, type HealthPayload, type ReleaseCounts } from "../health";
+import { buildHealth, LOW_MIN_MEDIAN, releaseRates, type HealthPayload, type ReleaseCounts } from "../health";
 import { HEALTH_WINDOWS, filterFor, healthQueries, versionInClause, windowClause, type HealthQueryKey } from "../queries";
 
 const KEYS: HealthQueryKey[] = [
@@ -261,6 +261,15 @@ describe("buildHealth", () => {
     it("flags a kind with rows on the 7 prior days and none yesterday, latest 0", () => {
       const { 14: _y, ...prior } = steady(0);
       expect(run(rowsFor("session", prior))).toEqual([{ kind: "session", latest: 0, median: 100, low: true }]);
+    });
+    it("never flags a kind whose median is under LOW_MIN_MEDIAN, even at 0", () => {
+      const low = (median: number) => {
+        const days = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [7 + i, median]));
+        return run(rowsFor("update_failed", days))[0];
+      };
+      expect(low(2)).toEqual({ kind: "update_failed", latest: 0, median: 2, low: false });
+      expect(low(LOW_MIN_MEDIAN - 1).low).toBe(false);
+      expect(low(LOW_MIN_MEDIAN).low).toBe(true);
     });
     it("never flags a kind with sporadic rows (median 0)", () => {
       expect(run(rowsFor("crash", { 14: 1, 9: 2 }))[0]).toEqual({ kind: "crash", latest: 1, median: 0, low: false });

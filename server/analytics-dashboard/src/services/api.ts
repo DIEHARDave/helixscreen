@@ -3,6 +3,7 @@ import { router } from '@/router'
 import type { HealthPayload } from '../../../telemetry-worker/src/health'
 import type { DeviceList, DevicePage } from '../../../telemetry-worker/src/devices'
 import type { NotApplicable } from '../../../telemetry-worker/src/schema'
+import type { WeeklyReport } from '../../../telemetry-worker/src/loop/report'
 import type { RetentionCohort } from '../../../telemetry-worker/src/retention'
 import { withNotApplicable, type WireNotApplicable } from '@/utils/notApplicable'
 
@@ -319,6 +320,18 @@ export const api = {
   async getHealth(queryString: string): Promise<HealthData> {
     const wire = await apiFetch<WireNotApplicable<HealthData>>(`/v1/dashboard/health?${queryString}`)
     return withNotApplicable(wire, HEALTH_BLOCKS)
+  },
+
+  async getReports(): Promise<string[]> {
+    return (await apiFetch<{ weeks: string[] }>('/v1/dashboard/reports')).weeks
+  },
+
+  // A stored report may predate a not_applicable block, so its health part is normalized like the live one.
+  async getReport(week: string): Promise<WeeklyReport> {
+    const wire = await apiFetch<Omit<WeeklyReport, 'health'> & { health: WireNotApplicable<HealthData> }>(
+      `/v1/dashboard/reports/${encodeURIComponent(week)}`
+    )
+    return { ...wire, health: withNotApplicable(wire.health, HEALTH_BLOCKS) }
   },
 
   async getDevices(queryString: string): Promise<DeviceListData> {

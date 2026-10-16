@@ -70,6 +70,9 @@ const RISING_MIN_COUNT = 5;
 /** A kind is low when its latest complete day is under this share of its median. */
 const LOW_SHARE = 0.5;
 
+/** A kind writing fewer rows a day than this is too sparse for a missing day to mean lost data. */
+export const LOW_MIN_MEDIAN = 20;
+
 /** Complete days compared against: the latest plus up to this many before it. */
 const MEDIAN_DAYS = 7;
 
@@ -212,7 +215,7 @@ export function buildHealth(
     .map(([kind, byDay]) => {
       const latest = byDay.get(closedDays[0]) ?? 0;
       const med = median(closedDays.slice(1).map((d) => byDay.get(d) ?? 0));
-      return { kind, latest, median: med, low: med > 0 && latest < med * LOW_SHARE };
+      return { kind, latest, median: med, low: med >= LOW_MIN_MEDIAN && latest < med * LOW_SHARE };
     })
     .sort((a, b) => a.kind.localeCompare(b.kind));
 

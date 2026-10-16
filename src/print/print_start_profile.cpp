@@ -216,6 +216,7 @@ bool PrintStartProfile::match_pattern_list(const std::vector<ResponsePattern>& p
             result.progress = rp.weight; // Caller interprets based on progress_mode
             result.hold_seconds = 0;
             result.narrates = rp.narrates;
+            result.counts_probes = rp.counts_probes;
             if (rp.hold_minutes_group > 0 &&
                 static_cast<size_t>(rp.hold_minutes_group) < match.size()) {
                 // Firmware prints the number with a '.' whatever the UI locale.
@@ -233,6 +234,20 @@ bool PrintStartProfile::match_pattern_list(const std::vector<ResponsePattern>& p
         }
     }
     return false;
+}
+
+std::string PrintStartProfile::innermost_context(const nlohmann::json& value) {
+    if (value.is_string()) {
+        return value.get<std::string>();
+    }
+    if (value.is_array() && !value.empty() && value.back().is_string()) {
+        return value.back().get<std::string>();
+    }
+    return {};
+}
+
+std::string PrintStartProfile::qualify_state(const std::string& context, const std::string& state) {
+    return context + "/" + state;
 }
 
 std::vector<std::string> PrintStartProfile::required_status_objects() const {
@@ -406,6 +421,24 @@ bool PrintStartProfile::parse_json(const json& j, const std::string& source_path
                 phase_object_name_.clear();
                 phase_object_field_.clear();
             }
+            // A bad context qualifier drops the whole phase object: its
+            // state_patterns are written against "<context>/<state>" keys, so
+            // matching bare states against them would only ever miss.
+            if (po.contains("context_field")) {
+                const auto& cf = po["context_field"];
+                if (cf.is_string() && !cf.get_ref<const std::string&>().empty()) {
+                    phase_object_context_field_ = cf.get<std::string>();
+                } else {
+                    spdlog::warn("[PrintStartProfile] phase_object context_field must be a "
+                                 "non-empty string in {} - phase_object ignored",
+                                 source_path);
+                    phase_object_name_.clear();
+                    phase_object_field_.clear();
+                }
+            }
+            if (phase_object_name_.empty()) {
+                phase_object_context_field_.clear();
+            }
         } else {
             spdlog::warn(
                 "[PrintStartProfile] phase_object needs 'object' and 'field' strings in {} - "
@@ -518,6 +551,16 @@ void PrintStartProfile::parse_pattern_array(const nlohmann::json& array,
             } else {
                 spdlog::warn("[PrintStartProfile] Ignoring non-boolean narrates for {} '{}' in {}",
                              kind, pattern_str, source_path);
+            }
+        }
+
+        if (rp_json.contains("counts_probes")) {
+            if (rp_json["counts_probes"].is_boolean()) {
+                rp.counts_probes = rp_json["counts_probes"].get<bool>();
+            } else {
+                spdlog::warn(
+                    "[PrintStartProfile] Ignoring non-boolean counts_probes for {} '{}' in {}",
+                    kind, pattern_str, source_path);
             }
         }
 

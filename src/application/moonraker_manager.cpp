@@ -967,7 +967,8 @@ void MoonrakerManager::init_print_start_collector() {
             collector->note_current_layer(current_layer);
             if (should_complete_preprint(printer_reports_layers, current_layer, print_duration,
                                          collector->has_seen_layer_zero(),
-                                         collector->has_seen_layer_advance())) {
+                                         collector->has_seen_layer_advance(),
+                                         collector->in_live_preprint_step())) {
                 spdlog::info("[MoonrakerManager] Authoritative: pre-print complete via "
                              "print_duration fallback (print_duration={}s, "
                              "printer_reports_layers={}), completing pre-print phase",

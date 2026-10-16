@@ -441,6 +441,13 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// current or a value no build of ours wrote, and is left as found.
     static std::string normalize_legacy_flat_fingerprint(const std::string& stored);
 
+    /// The schema whose feed builds a fingerprint of this shape, or nullopt
+    /// when either could have: stock joins the raw material_type code and
+    /// "0RRGGBB" colour_value, flat joins a material name and six hex digits.
+    /// A baseline of one schema's shape never equals a reading of the other's,
+    /// so check_hardware_event_clear compares only their colours across it.
+    static std::optional<CfsSchema> fingerprint_schema(const std::string& fingerprint);
+
     /// True when this `box` payload comes from the community box.py, i.e. the
     /// firmware speaks CfsMacroVariant::Fork.
     ///

@@ -379,6 +379,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/ams_env_pill.xml",
     "ui_xml/components/ams_environment_indicator.xml",
     "ui_xml/components/barcode_scanner_device_row.xml",
+    "ui_xml/components/bed_check_modal.xml",
     "ui_xml/components/bed_drying_banner.xml",
     "ui_xml/components/bed_mesh_canvas_band.xml",
     "ui_xml/components/bed_mesh_profiles_card.xml",

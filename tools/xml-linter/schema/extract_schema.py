@@ -1091,6 +1091,7 @@ CPP_WIDGET_FILES: dict[str, dict[str, Any]] = {
             "stroke_color": {"type": "color"},
             "stroke_opa": {"type": "opa"},
             "text_transform": {"type": "enum", "enum": "text_transform"},
+            "max_lines": {"type": "int"},
         },
     },
     "ui_text.cpp:text_button": {
