@@ -8,6 +8,7 @@
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "printer_discovery.h"
+#include "safety_settings_manager.h"
 #include "src/ui/panel_widgets/tool_switcher_widget.h"
 #include "tool_state.h"
 
@@ -125,12 +126,14 @@ class GateBackend : public AmsBackendMock {
 
 /// A klipper-toolchanger printer with @p heads heads, each its own extruder,
 /// driven through a GateBackend, with the warning and error toasts recorded.
-/// Head 0 is mounted. Tears it all down on the way out, so later test files
-/// inherit no tools or backend.
+/// Head 0 is mounted. "Confirm tool changes" is off, so a tap dispatches at
+/// once; a test of the confirmation turns it on. Tears it all down on the way
+/// out, so later test files inherit no tools, backend or setting.
 struct ToolChangerRig {
     GateBackend* backend = nullptr;
     std::vector<std::string> warnings;
     std::vector<std::string> errors;
+    bool saved_confirm = SafetySettingsManager::instance().get_tool_change_require_confirmation();
 
     /// @p slots, where given, is the backend's lane count, for a rig whose
     /// lanes outnumber its heads.
@@ -166,9 +169,11 @@ struct ToolChangerRig {
             [this](const std::string& msg) { warnings.push_back(msg); });
         ui::set_test_notification_error_hook(
             [this](const std::string& msg) { errors.push_back(msg); });
+        SafetySettingsManager::instance().set_tool_change_require_confirmation(false);
     }
 
     ~ToolChangerRig() {
+        SafetySettingsManager::instance().set_tool_change_require_confirmation(saved_confirm);
         ui::set_test_notification_warning_hook(nullptr);
         ui::set_test_notification_error_hook(nullptr);
         if (backend) {

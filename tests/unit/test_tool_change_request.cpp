@@ -152,10 +152,6 @@ namespace {
 struct OfferFixture : public LVGLUITestFixture {
     OfferFixture() {
         test::set_wire_state(state(), PrintJobState::STANDBY);
-        saved_confirm = SafetySettingsManager::instance().get_tool_change_require_confirmation();
-    }
-    ~OfferFixture() override {
-        SafetySettingsManager::instance().set_tool_change_require_confirmation(saved_confirm);
     }
 
     void set_confirm(bool on) {
@@ -171,7 +167,6 @@ struct OfferFixture : public LVGLUITestFixture {
     }
 
     ToolChangerRig rig{3};
-    bool saved_confirm = true;
     int successes = 0;
     int failures = 0;
     int declines = 0;

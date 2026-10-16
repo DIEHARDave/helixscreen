@@ -3,7 +3,7 @@
 **Settings > Printing** holds the settings that change how your printer moves, heats and handles filament, and the buttons and macros HelixScreen runs for you. The page has three sections:
 
 - **MACHINE**: Machine Limits, Motion, Retraction Settings and Enclosure
-- **FILAMENT**: Material Temperatures, Allow cold load/unload and Cool nozzle after filament ops
+- **FILAMENT**: Material Temperatures, Allow cold load/unload, Cool nozzle after filament ops and Confirm tool changes
 - **EXTRAS**: Timelapse and Macro Buttons
 
 Looking for how the printer is *drawn* (toolhead picture, G-code preview, Z button labels, bed mesh view)? That's in [Appearance](appearance.md#printer-visuals).
@@ -151,6 +151,19 @@ A filament change heats the nozzle to printing temperature. Left alone, it would
 **Turn this off if your filament system already does it.** [AFC](../filament.md) has its own cool-down after loading, and other filament systems are adding the same. Two timers controlling one heater only confuses things, so keep one and switch the other off.
 
 The setting is per printer, so an AFC printer can turn it off while your other printers keep it. To change the two-minute wait, see [`cooldown_delay_seconds`](../../CONFIGURATION.md#cooldown_delay_seconds).
+
+---
+
+## Confirm tool changes
+
+| Setting | What happens |
+|---------|--------------|
+| **On** (default) | Tapping another tool asks "Switch to Tool 2 (T1)?" before the printer moves |
+| **Off** | Tapping another tool switches to it straight away |
+
+On a printer with more than one toolhead, three places switch tools with a tap: the tool switcher on the home screen, a toolhead on your filament system's screen, and the tool list on the Filament screen. This setting decides whether those taps ask first.
+
+Some things happen whatever the switch says. A paused print always asks, because the toolhead moves while your part is still on the bed. While a print is running or starting, or while spools are on the bed, the change is refused with a message instead. Tapping the filament tube on the filament system's screen never switches tools: it opens the slot menu.
 
 ---
 

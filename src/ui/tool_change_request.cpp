@@ -29,14 +29,17 @@ AmsError tool_change_print_refusal(PrintState lifecycle, bool filament_ops_self_
                                         /*pause_allows_ops=*/!filament_ops_self_home);
 }
 
+AmsError spools_on_bed_refusal() {
+    return AmsError(AmsResult::WRONG_STATE, "Tool change blocked: spools on the bed",
+                    lv_tr(spool_latch_message()), "");
+}
+
 ToolChangeDecision decide_tool_change(const ToolChangeInputs& in) {
     if (in.already_active) {
         return {ToolChangeVerdict::AlreadyActive};
     }
     if (in.spools_on_bed) {
-        return {ToolChangeVerdict::RefuseSpoolsOnBed,
-                AmsError(AmsResult::WRONG_STATE, "Tool change blocked: spools on the bed",
-                         lv_tr(spool_latch_message()), "")};
+        return {ToolChangeVerdict::RefuseSpoolsOnBed, spools_on_bed_refusal()};
     }
     AmsError refusal = tool_change_print_refusal(in.lifecycle, in.filament_ops_self_home);
     if (!refusal.success()) {

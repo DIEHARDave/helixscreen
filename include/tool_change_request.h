@@ -66,6 +66,9 @@ struct ToolChangeDecision {
  */
 [[nodiscard]] AmsError tool_change_print_refusal(PrintState lifecycle, bool filament_ops_self_home);
 
+/// The refusal every move gets while spools lie on the bed.
+[[nodiscard]] AmsError spools_on_bed_refusal();
+
 /// The verdict for @p in. Pure: no state is read.
 [[nodiscard]] ToolChangeDecision decide_tool_change(const ToolChangeInputs& in);
 

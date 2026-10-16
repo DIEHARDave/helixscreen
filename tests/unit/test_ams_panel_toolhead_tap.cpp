@@ -89,7 +89,6 @@ namespace {
 
 struct ToolheadTapFixture : public XMLTestFixture {
     ToolheadTapFixture() {
-        saved_confirm = SafetySettingsManager::instance().get_tool_change_require_confirmation();
         test::set_wire_state(state(), PrintJobState::STANDBY);
         ensure_ams_widgets_registered();
         panel = std::make_unique<AmsPanel>(state(), &api());
@@ -111,7 +110,6 @@ struct ToolheadTapFixture : public XMLTestFixture {
         lv_obj_delete(panel_obj);
         process_lvgl(10);
         panel.reset();
-        SafetySettingsManager::instance().set_tool_change_require_confirmation(saved_confirm);
     }
 
     void set_confirm(bool on) {
@@ -121,7 +119,6 @@ struct ToolheadTapFixture : public XMLTestFixture {
     ToolChangerRig rig{3};
     std::unique_ptr<AmsPanel> panel;
     lv_obj_t* panel_obj = nullptr;
-    bool saved_confirm = true;
 };
 
 } // namespace
