@@ -956,6 +956,18 @@ class AmsBackend {
         return false;
     }
 
+    /**
+     * @brief How the spool last inserted in this lane was identified
+     *
+     * A backend whose tag reader answers after the lane's presence rises
+     * reports Pending until it does, so an insert is not taken as unnamed
+     * before the reader has spoken. Default: NotRead (no reader).
+     */
+    [[nodiscard]] virtual InsertIdentity slot_insert_identity(int slot_index) const {
+        (void)slot_index;
+        return InsertIdentity::NotRead;
+    }
+
     // ========================================================================
     // Filament Operations
     // ========================================================================

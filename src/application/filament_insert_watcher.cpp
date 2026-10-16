@@ -74,6 +74,7 @@ void FilamentInsertWatcher::reseed() {
     // A reconnect, a Klipper restart or a sensor reconfiguration moves readings
     // without anyone inserting filament; whatever arrives next is a snapshot.
     lane_prev_.assign(lane_prev_.size(), std::nullopt);
+    lane_waiting_.assign(lane_waiting_.size(), false);
     sensor_prev_.reset();
 }
 
@@ -85,6 +86,7 @@ void FilamentInsertWatcher::on_ams_changed() {
     }
     const int count = backend->get_system_info().total_slots;
     lane_prev_.resize(count > 0 ? count : 0);
+    lane_waiting_.resize(lane_prev_.size(), false);
 
     FilamentInsertContext ctx;
     ctx.print_active =
@@ -98,13 +100,28 @@ void FilamentInsertWatcher::on_ams_changed() {
         if (!backend->slot_has_prep_sensor(i)) {
             continue;
         }
-        ctx.was_present = lane_prev_[i];
         ctx.is_present = slot_status_reports_filament(backend->get_slot_info(i).status);
-        // Only the first lane to fill opens the editor; later ones are not queued.
-        if (open_slot < 0 && should_open_editor_on_insert(ctx)) {
-            open_slot = i;
-        }
+        // An insert held for the lane's tag reader is judged as the edge it was.
+        const bool waiting = lane_waiting_[i];
+        ctx.was_present = waiting ? std::optional<bool>(false) : lane_prev_[i];
         lane_prev_[i] = ctx.is_present;
+        lane_waiting_[i] = false;
+        if (!should_open_editor_on_insert(ctx)) {
+            continue;
+        }
+        switch (lane_insert_action(backend->slot_insert_identity(i), waiting)) {
+        case InsertEditorAction::Wait:
+            lane_waiting_[i] = true;
+            break;
+        case InsertEditorAction::Open:
+            // Only the first lane to fill opens the editor; later ones are not queued.
+            if (open_slot < 0) {
+                open_slot = i;
+            }
+            break;
+        case InsertEditorAction::Ignore:
+            break;
+        }
     }
     if (open_slot >= 0) {
         open_lane(open_slot);

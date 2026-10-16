@@ -15,7 +15,8 @@ namespace helix {
 /// Opens the per-slot editor when a person newly inserts filament (#1335).
 ///
 /// Two sources, one decision (should_open_editor_on_insert):
-///  - AMS lanes with a prep sensor going empty to present;
+///  - AMS lanes with a prep sensor going empty to present, unless the lane's
+///    tag reader names the spool (lane_insert_action);
 ///  - the ENTRY/TOOLHEAD sensors going empty to present, for a manual load on a
 ///    printer with no AMS or with its bypass engaged. The target is the external
 ///    spool.
@@ -43,6 +44,8 @@ class FilamentInsertWatcher {
     ObserverGuard config_observer_;
     /// Last stated presence per lane; empty means "seed on the next tick".
     std::vector<std::optional<bool>> lane_prev_;
+    /// Lanes whose insert waits on the tag reader's verdict (slot_insert_identity).
+    std::vector<bool> lane_waiting_;
     std::optional<bool> sensor_prev_;
 };
 

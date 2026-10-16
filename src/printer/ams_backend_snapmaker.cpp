@@ -314,6 +314,7 @@ void AmsBackendSnapmaker::on_started() {
         // A reconnect re-baselines the feed ports: an insert pending from
         // before it is judged against nothing this session has seen.
         pending_insert_passes_.fill(0);
+        insert_verdict_.fill(InsertIdentity::NotRead);
         feed_presence_seen_.fill(false);
     }
 }
@@ -446,6 +447,15 @@ PathSegment AmsBackendSnapmaker::slot_segment_locked(int i) const {
     if (sensor_filament_present_[i])
         return PathSegment::OUTPUT;
     return PathSegment::NONE;
+}
+
+InsertIdentity AmsBackendSnapmaker::slot_insert_identity(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (slot_index < 0 || slot_index >= NUM_TOOLS)
+        return InsertIdentity::NotRead;
+    if (pending_insert_passes_[slot_index] > 0)
+        return InsertIdentity::Pending;
+    return insert_verdict_[slot_index];
 }
 
 PathSegment AmsBackendSnapmaker::infer_error_segment() const {
@@ -1508,7 +1518,10 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
     if (pending_insert_passes_[i] > 0) {
         pending_insert_passes_[i] = 0;
         if (rfid.uid.empty() && rfid.main_type == "NONE") {
+            insert_verdict_[i] = InsertIdentity::NoTag;
             fx.unverified_insert_lanes.push_back(i);
+        } else {
+            insert_verdict_[i] = InsertIdentity::FromTag;
         }
     }
     if (rfid.main_type != "NONE") {
@@ -1730,6 +1743,7 @@ void AmsBackendSnapmaker::apply_port_presence_locked(int i, bool detected, Frame
         if (detected && feed_presence_seen_[i] && !port_sensor_filament_present_[i] &&
             !firmware_driven) {
             pending_insert_passes_[i] = 1;
+            insert_verdict_[i] = InsertIdentity::NotRead;
         } else if (!detected) {
             pending_insert_passes_[i] = 0;
         }
@@ -2224,6 +2238,7 @@ void AmsBackendSnapmaker::converge_lanes_locked(FrameEffects& fx) {
         if (pending_insert_passes_[i] > 0 &&
             ++pending_insert_passes_[i] > kSnapPendingInsertPasses) {
             pending_insert_passes_[i] = 0;
+            insert_verdict_[i] = InsertIdentity::NoTag;
             fx.unverified_insert_lanes.push_back(i);
         }
 

@@ -3820,6 +3820,37 @@ TEST_CASE_METHOD(SnapmakerInsertFixture,
     CHECK(SnapmakerTestAccess::get_override(backend, 0).has_value());
 }
 
+TEST_CASE_METHOD(SnapmakerInsertFixture, "Snapmaker an insert's identity waits on the tag reader",
+                 "[ams][snapmaker][1710][entry_sensor]") {
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", false));
+    CHECK(backend.slot_insert_identity(0) == InsertIdentity::NotRead);
+    SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", true));
+    REQUIRE(backend.slot_insert_identity(0) == InsertIdentity::Pending);
+
+    SECTION("a tagged spool") {
+        SnapmakerTestAccess::handle_status(
+            backend, make_filament_detect_status(0, "PLA", 0xFF00AA00u, "Polymaker",
+                                                 json::array({144, 32, 196, 2})));
+        CHECK(backend.slot_insert_identity(0) == InsertIdentity::FromTag);
+    }
+    SECTION("an untagged spool") {
+        SnapmakerTestAccess::handle_status(
+            backend, make_filament_detect_status(0, "NONE", 0u, "NONE", json::array()));
+        CHECK(backend.slot_insert_identity(0) == InsertIdentity::NoTag);
+    }
+    SECTION("a read that never lands") {
+        for (int i = 0; i < 20; ++i)
+            SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", true));
+        CHECK(backend.slot_insert_identity(0) == InsertIdentity::NoTag);
+    }
+    SECTION("the spool leaves before any read") {
+        SnapmakerTestAccess::handle_status(backend, make_feed_status(0, "wait_insert", false));
+        CHECK(backend.slot_insert_identity(0) == InsertIdentity::NotRead);
+    }
+    // Other lanes saw no insert.
+    CHECK(backend.slot_insert_identity(1) == InsertIdentity::NotRead);
+}
+
 // ============================================================================
 // Golden sequence: one full status frame, then the deltas a U1 sends for a
 // load, an unload, an RFID insert, a failed batch head and a temperature-only

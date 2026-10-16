@@ -664,6 +664,17 @@ inline const char* path_topology_to_string(PathTopology topology) {
 }
 
 /**
+ * @brief How the spool last inserted in a lane was identified, on a lane whose
+ *        tag reader answers a moment after presence rises.
+ */
+enum class InsertIdentity : uint8_t {
+    NotRead, ///< No insert under judgement: no reader, or the insert was dropped
+    Pending, ///< Presence rose; the reader has not answered yet
+    FromTag, ///< The reader named the spool
+    NoTag,   ///< The reader found no tag, or never answered in time
+};
+
+/**
  * @brief Unified path segments (AFC-inspired naming)
  *
  * Both Happy Hare and AFC map to these same logical segments. The path
