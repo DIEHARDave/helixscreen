@@ -3781,13 +3781,17 @@ bool PrintSelectPanel::select_file_by_name(const std::string& filename, int arch
     for (size_t i = 0; i < file_list_.size(); ++i) {
         auto& file = file_list_[i];
         if (!file.is_dir && file.filename == filename) {
-            // An archive opens on the plate asked for (a reprint of one).
+            // An archive opens on the plate asked for (a reprint of one): an
+            // archive not read yet reads it that way, one already read shows it.
             if (archive_plate > 0) {
                 file.archive_plate = archive_plate;
             }
             // Found it - simulate a file click
             spdlog::info("[{}] Programmatically selecting file: {}", get_name(), filename);
             handle_file_click(i);
+            if (archive_plate > 0 && i < file_list_.size() && file_list_[i].archive) {
+                show_archive_plate(i, archive_plate);
+            }
             return true;
         }
     }

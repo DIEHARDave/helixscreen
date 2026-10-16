@@ -173,15 +173,25 @@ void PrintSelectPanel::step_archive_plate(int step) {
     const size_t at =
         plate_position(*it->archive, three_mf::find_plate(*it->archive, it->archive_plate)->index);
     const size_t next = step > 0 ? (at + 1) % count : (at + count - 1) % count;
-    it->archive_plate = plates[next].index;
-    spdlog::debug("[{}] {}: showing plate {}", get_name(), it->filename, it->archive_plate);
+    show_archive_plate(static_cast<size_t>(it - file_list_.begin()), plates[next].index);
+}
 
-    const size_t i = static_cast<size_t>(it - file_list_.begin());
+void PrintSelectPanel::show_archive_plate(size_t i, int plate_index) {
+    if (i >= file_list_.size() || !file_list_[i].archive) {
+        return;
+    }
+    PrintFileData& file = file_list_[i];
+    const auto* plate = three_mf::find_plate(*file.archive, plate_index);
+    if (!plate) {
+        return;
+    }
+    file.archive_plate = plate->index;
+    spdlog::debug("[{}] {}: showing plate {}", get_name(), file.filename, file.archive_plate);
+
     // The plate's own filaments, for the mapping card and the start's palette.
     // The card keeps the whole file's time and weight; the detail view shows
     // the plate's (apply_plate_stats_to_detail()).
-    const FileMetadata plate_meta = three_mf::plate_file_metadata(plates[next]);
-    PrintFileData& file = *it;
+    const FileMetadata plate_meta = three_mf::plate_file_metadata(*plate);
     file.filament_types.clear();
     for (std::string_view t : text_io::lines(plate_meta.filament_type, ';')) {
         file.filament_types.emplace_back(t);
