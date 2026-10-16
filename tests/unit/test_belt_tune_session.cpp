@@ -1137,3 +1137,21 @@ TEST_CASE("tune advice: a repeat check keeps the doubled turn", "[belt][tune]") 
     REQUIRE(sweep(s, 112.0f, 100.1f).no_turn);
     CHECK(s.advice().turns == std::optional<float>(0.5f));
 }
+
+TEST_CASE("tune advice: a turn carried past a peakless round still doubles", "[belt][tune]") {
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
+    s.record_turns(0.25f);
+    const auto w = s.zone()->window;
+    BeltCurve flat;
+    for (float f = w.freq_start_hz; f <= w.freq_end_hz; f += 0.78125f) {
+        flat.emplace_back(f, 5.0f);
+    }
+    REQUIRE(s.add_round(one_peak(112.0f, w.freq_start_hz, w.freq_end_hz + 0.5f), flat).outcome ==
+            BeltTuneOutcome::NO_PEAK);
+    // The stepper is left untouched; the quarter turn moved nothing.
+    const auto& r = sweep(s, 112.0f, 100.2f);
+    REQUIRE_FALSE(r.no_turn);
+    REQUIRE(r.outcome == BeltTuneOutcome::NO_MOVEMENT);
+    CHECK(r.turns_measured == Catch::Approx(0.25f));
+    CHECK(s.advice().turns == std::optional<float>(0.5f));
+}

@@ -389,8 +389,8 @@ BeltTuneAdvice BeltTuneSession::advice() const {
             if (it->no_turn) {
                 continue;
             }
-            if (it->outcome == BeltTuneOutcome::NO_MOVEMENT && it->turns_made) {
-                out.turns = round_to_turn_step(2.0f * *it->turns_made);
+            if (it->outcome == BeltTuneOutcome::NO_MOVEMENT && it->turns_measured > 0.0f) {
+                out.turns = round_to_turn_step(2.0f * it->turns_measured);
             }
             break;
         }
@@ -500,6 +500,7 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     // A sample needs the move and the turns behind it from the same zone.
     const float turns_behind = unmeasured_turns_;
     unmeasured_turns_ = 0.0f;
+    r.turns_measured = turns_behind;
 
     if (baseline) {
         previous_gap_hz_.reset();

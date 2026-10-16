@@ -131,6 +131,10 @@ struct BeltTuneRound {
     float adj_hz = 0.0f;
     float gap_hz = 0.0f;             ///< adjusted - reference
     std::optional<float> turns_made; ///< what the stepper recorded before this round
+    /// The turns this round's reading measured: its own plus any carried from
+    /// NO_PEAK or OUT_OF_WINDOW rounds since the last measured one. 0 on a
+    /// round that measured nothing.
+    float turns_measured = 0.0f;
     BeltTuneOutcome outcome = BeltTuneOutcome::NO_PEAK;
     /// NO_PEAK with a peak on the adjusted path only: the reference's peak
     /// left the window, which a turn of the wrong belt does.

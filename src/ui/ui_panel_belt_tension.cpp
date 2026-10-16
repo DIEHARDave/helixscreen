@@ -1407,7 +1407,7 @@ void BeltTensionPanel::handle_tune_confirm_clicked() {
     const float round0 = tune_round0_similarity_;
 
     run_after_ram_check([this, summary, round0]() {
-        // bt_similarity_was reads against the comparison tuning started from.
+        // bt_similarity_was is measured against the comparison tuning started from.
         for (auto& run : runs_) {
             run.previous = run.curve;
             run.has_previous = run.has;
