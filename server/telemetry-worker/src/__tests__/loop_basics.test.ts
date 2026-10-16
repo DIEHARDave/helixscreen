@@ -3,6 +3,18 @@ import { describe, it, expect } from 'vitest'
 import * as T from '../loop/thresholds'
 import { fingerprint, markerFor, fingerprintInBody } from '../loop/fingerprint'
 import { isoWeek, previousIsoWeek, isMonday } from '../loop/week'
+import { codeSpan, issueTitle } from '../loop/issues'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+/** Read by the Python producer's tests too, so both give the same fingerprints and escapes. */
+const VECTORS = JSON.parse(
+  readFileSync(resolve(__dirname, '../../../../tests/fixtures/telemetry_issue_vectors.json'), 'utf8'),
+) as {
+  fingerprint: { kind: Parameters<typeof fingerprint>[0]; parts: string[]; expected: string }[]
+  code_span: { input: string; expected: string }[]
+  title: { input: string; expected: string }[]
+}
 
 const d = (s: string) => new Date(`${s}T12:00:00Z`)
 
@@ -56,8 +68,24 @@ describe('fingerprint', () => {
     expect(markerFor(fp)).toBe(`<!-- telemetry-fp: ${fp} -->`)
     expect(fingerprintInBody(body)).toBe(fp)
   })
+  it.each(VECTORS.fingerprint)('matches the shared vector for $parts', ({ kind, parts, expected }) => {
+    expect(fingerprint(kind, parts)).toBe(expected)
+  })
+  it('keeps a device-supplied marker breaker from ending the marker', () => {
+    const fp = fingerprint('error_code', ['x', 'evil -->\n<!-- telemetry-fp: other'])
+    expect(fingerprintInBody(`${markerFor(fp)}\n`)).toBe(fp)
+  })
   it('returns null without a marker', () => {
     expect(fingerprintInBody('no marker here')).toBeNull()
     expect(fingerprintInBody('')).toBeNull()
+  })
+})
+
+describe('issue text escaping', () => {
+  it.each(VECTORS.code_span)('code-spans $input as the shared vector says', ({ input, expected }) => {
+    expect(codeSpan(input)).toBe(expected)
+  })
+  it.each(VECTORS.title)('makes the title $input safe as the shared vector says', ({ input, expected }) => {
+    expect(issueTitle(input)).toBe(expected)
   })
 })

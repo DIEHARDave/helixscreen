@@ -8,6 +8,8 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).parent.parent.parent
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -37,10 +39,43 @@ def draft_json(body):
     return json.loads(m.group(1))
 
 
-def test_fingerprint_matches_typescript_form():
+# Read by the Worker's vitest suite too, so both producers give the same output.
+VECTORS = json.loads((ROOT / "tests" / "fixtures" / "telemetry_issue_vectors.json").read_text())
+
+
+@pytest.mark.parametrize("vector", VECTORS["fingerprint"], ids=lambda v: v["expected"])
+def test_fingerprint_matches_the_shared_vectors(vector):
+    assert issues.fingerprint(vector["kind"], vector["parts"]) == vector["expected"]
+
+
+@pytest.mark.parametrize("vector", VECTORS["code_span"], ids=lambda v: v["expected"][:20])
+def test_code_span_matches_the_shared_vectors(vector):
+    assert issues.code_span(vector["input"]) == vector["expected"]
+
+
+@pytest.mark.parametrize("vector", VECTORS["title"], ids=lambda v: v["expected"][:20])
+def test_issue_title_matches_the_shared_vectors(vector):
+    assert issues.issue_title(vector["input"]) == vector["expected"]
+
+
+def test_marker_carries_the_fingerprint():
     fp = issues.fingerprint("printer", ["CoreXY", " STM32H723 ", "350x350x330"])
-    assert fp == "printer:corexy|stm32h723|350x350x330"
     assert issues.marker_for(fp) == "<!-- telemetry-fp: printer:corexy|stm32h723|350x350x330 -->"
+
+
+def test_device_strings_are_escaped_in_title_and_body():
+    a = analysis()
+    for key in ("candidate_heuristics_clusters", "undetected_clusters"):
+        for c in a[key]:
+            c["mcu"] = "evil|mcu @octocat\n-->"
+    a["undetected_clusters"][0]["common_names"]["macros.names"] = [["BAD`MACRO|@x", 6]]
+    issue = issues.candidates_to_issues(a, EMPTY_DB)[0]
+    assert "@octocat" not in issue["title"] and "\n" not in issue["title"]
+    body = issue["body"]
+    assert issues.fingerprint_in_body(body) == issue["fingerprint"]
+    assert "- MCU: `evil\\|mcu @\u200boctocat -->`" in body
+    assert "`BAD'MACRO\\|@\u200bx`" in body
+    assert "@octocat" not in body
 
 
 def test_only_clusters_at_or_above_the_device_threshold_become_issues():

@@ -40,8 +40,39 @@ export function issueLabels(kind: FindingKind): string[] {
 /** An issue without the label is invisible to the next run's lookup, which would file it again. */
 const UNLABELLED = `created without the ${TELEMETRY_LABEL} label; add it by hand or the next run files a duplicate`
 
+/** Longest device-supplied value a table cell shows, in code points. */
+const CELL_MAX = 100
+/** Longest issue title, in code points; GitHub rejects titles over 256 characters. */
+const TITLE_MAX = 200
+
+/** Cuts text to `max` code points, marking the cut with "...". */
+function cut(text: string, max: number): string {
+  const points = [...text]
+  return points.length > max ? `${points.slice(0, max).join('')}...` : text
+}
+
+/** One line, cut to `max`; a zero-width space after "@" keeps it from starting a mention. */
+const safeLine = (text: string, max: number): string => cut(text.replace(/\r\n|\r|\n/g, ' '), max).replace(/@/g, '@\u200b')
+
+/**
+ * Device-supplied text as a code span safe in a Markdown table cell: one line, no "|"
+ * to split the row, no backtick to end the span, no mention. The Python producer applies
+ * the same rule; tests/fixtures/telemetry_issue_vectors.json binds the two.
+ */
+export function codeSpan(text: string): string {
+  if (!text) return ''
+  return `\`${safeLine(text, CELL_MAX).replace(/`/g, "'").replace(/\|/g, '\\|')}\``
+}
+
+/** An issue title built from device-supplied text: one line, no mention, within GitHub's limit. */
+export function issueTitle(title: string): string {
+  return safeLine(title, TITLE_MAX)
+}
+
+const cell = (v: string | number): string => (typeof v === 'number' ? String(v) : codeSpan(v))
+
 function countsTable(f: Finding): string {
-  const rows = Object.entries(f.summary).map(([k, v]) => `| ${k} | ${v} |`)
+  const rows = Object.entries(f.summary).map(([k, v]) => `| ${k} | ${cell(v)} |`)
   return ['| Field | Value |', '| --- | --- |', ...rows].join('\n')
 }
 
@@ -115,7 +146,7 @@ export async function syncIssues(
         if (dryRun) {
           outcomes.push({ fingerprint: fp, action: 'created' })
         } else {
-          const made = await tracker.create(f.title, issueBody(f, dashboardUrl, week), issueLabels(f.kind))
+          const made = await tracker.create(issueTitle(f.title), issueBody(f, dashboardUrl, week), issueLabels(f.kind))
           remember(fp)
           const outcome: IssueOutcome = { fingerprint: fp, action: 'created', issue: { number: made.number, url: made.url } }
           if (!made.labels.includes(TELEMETRY_LABEL)) {

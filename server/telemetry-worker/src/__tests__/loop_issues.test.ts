@@ -33,6 +33,15 @@ describe('issueBody', () => {
     expect(body).toContain(W1)
     expect(body).not.toMatch(/[0-9a-f]{64}/i)
   })
+
+  it('renders device-supplied values as escaped code spans, one table row each', () => {
+    const f = { ...finding(1), summary: { board: 'pi|4\n| x | y |', version: '@octocat', devices: 4 } }
+    const body = issueBody(f, URL, W1)
+    expect(body).toContain('| board | `pi\\|4 \\| x \\| y \\|` |')
+    expect(body).toContain('| version | `@\u200boctocat` |')
+    expect(body).toContain('| devices | 4 |')
+    expect(body).not.toMatch(/@octocat/)
+  })
 })
 
 describe('issueLabels', () => {
@@ -45,6 +54,12 @@ describe('issueLabels', () => {
 })
 
 describe('syncIssues', () => {
+  it('files the title through the title escaper', async () => {
+    const t = new FakeTracker()
+    await syncIssues([{ ...finding(1), title: 'Crash @octocat\nin 1.0' }], t, fresh(), W1, URL, false)
+    expect(t.callsOf('create')[0].title).toBe('Crash @\u200boctocat in 1.0')
+  })
+
   it('creates an issue for a new finding and records the week', async () => {
     const t = new FakeTracker()
     const state = fresh()

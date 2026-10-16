@@ -45,9 +45,47 @@ def _load_sibling(filename: str, name: str):
 db_tools = _load_sibling("telemetry-update-printer-db.py", "telemetry_update_printer_db")
 
 
-# Same form as server/telemetry-worker/src/loop/fingerprint.ts.
+# The rules below match server/telemetry-worker/src/loop/fingerprint.ts and issues.ts;
+# tests/fixtures/telemetry_issue_vectors.json binds the two producers.
+FINGERPRINT_PART_MAX = 64
+CELL_MAX = 100
+TITLE_MAX = 200
+_WS_RUN_RE = re.compile(r"[ \t\n\r\f\v]+")
+_UPPER_RE = re.compile(r"[A-Z]")
+_UNSAFE_PART_RE = re.compile(r"[^a-z0-9._:/+\-]")
+_NEWLINE_RE = re.compile(r"\r\n|\r|\n")
+
+
+def fingerprint_part(part: str) -> str:
+    """ASCII whitespace collapsed and trimmed, ASCII lowercased, the rest of
+    [a-z0-9._:/+-] replaced by "_", cut to FINGERPRINT_PART_MAX."""
+    s = _WS_RUN_RE.sub(" ", part).strip(" ")
+    s = _UPPER_RE.sub(lambda m: m.group().lower(), s)
+    return _UNSAFE_PART_RE.sub("_", s)[:FINGERPRINT_PART_MAX]
+
+
 def fingerprint(kind: str, parts: list[str]) -> str:
-    return f"{kind}:" + "|".join(p.strip().lower() for p in parts)
+    return f"{kind}:" + "|".join(fingerprint_part(p) for p in parts)
+
+
+def _safe_line(text: str, limit: int) -> str:
+    """One line, cut to `limit` with "..."; a zero-width space after "@" stops a mention."""
+    s = _NEWLINE_RE.sub(" ", text)
+    if len(s) > limit:
+        s = s[:limit] + "..."
+    return s.replace("@", "@\u200b")
+
+
+def code_span(text: str) -> str:
+    """Device-supplied text as a code span safe in Markdown: one line, no "|",
+    no backtick, no mention."""
+    if not text:
+        return ""
+    return "`" + _safe_line(text, CELL_MAX).replace("`", "'").replace("|", "\\|") + "`"
+
+
+def issue_title(title: str) -> str:
+    return _safe_line(title, TITLE_MAX)
 
 
 def marker_for(fp: str) -> str:
@@ -91,6 +129,16 @@ def _names(common_names: dict, *sources: str) -> list[str]:
     return out
 
 
+def _name_list(names: list[str]) -> str:
+    return ", ".join(code_span(str(n)) for n in names) or "none common to the cluster"
+
+
+def _fenced_json(value) -> str:
+    """JSON for a code fence: a backtick cannot close the fence and "@" cannot
+    mention anyone, while the JSON still parses to the same value."""
+    return json.dumps(value, indent=2).replace("`", "\\u0060").replace("@", "\\u0040")
+
+
 def _body(fp: str, devices: int, cluster: dict, detail: dict, draft: dict) -> str:
     bv = cluster.get("build_volume", {})
     common = detail.get("common_names", {})
@@ -102,16 +150,16 @@ def _body(fp: str, devices: int, cluster: dict, detail: dict, draft: dict) -> st
         f"Telemetry shows {devices} devices with hardware no printer database entry matches.",
         "",
         "**Hardware signature**",
-        f"- Kinematics: {cluster.get('kinematics', 'unknown')}",
-        f"- MCU: {cluster.get('mcu', 'unknown')}",
-        f"- Build volume: ~{_volume(bv)} mm",
-        f"- Sensors: {', '.join(sensors) or 'none common to the cluster'}",
-        f"- Notable macros: {', '.join(macros) or 'none common to the cluster'}",
+        f"- Kinematics: {code_span(str(cluster.get('kinematics', 'unknown')))}",
+        f"- MCU: {code_span(str(cluster.get('mcu', 'unknown')))}",
+        f"- Build volume: ~{code_span(_volume(bv))} mm",
+        f"- Sensors: {_name_list(sensors)}",
+        f"- Notable macros: {_name_list(macros)}",
         "",
         "**Draft `printer_database.json` entry**",
         "",
         "```json",
-        json.dumps(draft, indent=2),
+        _fenced_json(draft),
         "```",
         "",
         "The name and id are placeholders. Review before adding: confirm the model "
@@ -142,7 +190,7 @@ def candidates_to_issues(analysis: dict, db: dict, min_devices: int = MIN_DEVICE
         out.append(
             {
                 "fingerprint": fp,
-                "title": f"Unrecognized printer: {kin}, {mcu}, ~{_volume(bv)} mm",
+                "title": issue_title(f"Unrecognized printer: {kin}, {mcu}, ~{_volume(bv)} mm"),
                 "body": _body(fp, devices, cluster, detail, draft),
                 "labels": list(LABELS),
                 "devices": devices,
