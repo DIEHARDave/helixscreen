@@ -300,8 +300,8 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      *
      * M109 is the nozzle whichever way its temperature moves, M190 the bed,
      * and M191 or a TEMPERATURE_WAIT on @p chamber_heater itself the chamber
-     * (SOAKING). A TEMPERATURE_WAIT on heater_bed or an extruder is that
-     * heater. Anything else names no heater: nullopt.
+     * (SOAKING), but only with a chamber heater configured. A TEMPERATURE_WAIT on heater_bed or an
+     * extruder is that heater. Anything else names no heater: nullopt.
      */
     [[nodiscard]] static std::optional<helix::PrintStartPhase>
     heater_waited_on(const helix::WaitLine& line, const std::string& chamber_heater);
@@ -781,10 +781,11 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// virtual_sdcard.file_position, read again whenever the position moves,
     /// since one wait can hand straight to the next with no gap in the
     /// reports. wait_line_read_ is false until the read for
-    /// wait_line_position_ answers. Guarded by state_mutex_.
+    /// wait_line_position_ answers; wait_line_unreadable_ stops the queries
+    /// for the rest of a wait whose read failed. Guarded by state_mutex_.
     helix::WaitLine wait_line_;
     bool wait_line_read_ = false;
-    bool wait_line_requested_ = false;
+    bool wait_line_unreadable_ = false;
     std::optional<uint64_t> wait_line_position_;
     uint64_t wait_line_gen_ = 0;
 

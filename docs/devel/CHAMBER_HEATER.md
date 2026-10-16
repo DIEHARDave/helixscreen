@@ -255,9 +255,10 @@ follows with `TEMPERATURE_WAIT` on the chamber waits forever.
   as `chamber_wait_active()` / `chamber_wait_target_c()`.
 - **Pre-print label.** While a heater wait keeps reporting, `PrintStartCollector` labels it
   "Waiting for chamber <cur> / <target>°C" when the wait is the chamber's. The command at
-  the print position settles it when it is one: `M191`, or a `TEMPERATURE_WAIT` whose
-  `SENSOR` is the chamber heater itself (`wait_names_chamber_heater()`,
-  `include/chamber_wait_line.h`; read again whenever the position moves). Otherwise, with
+  the print position settles it when it is one: with a chamber heater configured, `M191`
+  or a `TEMPERATURE_WAIT` whose `SENSOR` is the chamber heater itself (`wait_names_chamber_heater()`,
+  `include/chamber_wait_line.h`; read again whenever the position moves). With no chamber
+  heater, `M191` is some macro's wait and names nothing. Otherwise, with
   the nozzle and bed at target: the device reports its own wait (its target), the chamber
   heater is heating toward a target, or, once the wait has outlasted `CHAMBER_WAIT_SETTLE`
   (M109 settling) with the chamber heater at 0 ("Waiting for chamber <cur>°C"), the heater

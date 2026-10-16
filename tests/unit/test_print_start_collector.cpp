@@ -3832,6 +3832,28 @@ TEST_CASE_METHOD(SnapmakerCollectorFixture,
 // ============================================================================
 
 namespace {
+/// The print's file behind a ranged-read transfers API, as the wait-line
+/// reads see it, for as long as this lives.
+class ServedPrint {
+  public:
+    ServedPrint(MoonrakerClientMock& client, PrinterState& state, const std::string& filename)
+        : transfers{client, ""}, api_{client, state, transfers}, previous_(get_moonraker_api()) {
+        set_moonraker_api(&api_);
+        lv_subject_copy_string(state.print_state().get_print_filename_subject(), filename.c_str());
+    }
+    ~ServedPrint() {
+        set_moonraker_api(previous_);
+    }
+    ServedPrint(const ServedPrint&) = delete;
+    ServedPrint& operator=(const ServedPrint&) = delete;
+
+    ArchiveTransfers transfers;
+
+  private:
+    ArchiveMoonrakerAPIMock api_;
+    IMoonrakerAPI* previous_;
+};
+
 class SnapmakerHeaterWaitFixture : public SnapmakerCollectorFixture {
   public:
     SnapmakerHeaterWaitFixture() {
@@ -4217,7 +4239,6 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     set_chamber(280, 0);
     set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
     report_for(6);
-    REQUIRE(PrintStartCollectorTestAccess::wait_line_requested(collector()));
     REQUIRE(transfers.ranges == 1);
     report_for(2);
     CHECK(get_current_phase() == PrintStartPhase::SOAKING);
@@ -4230,17 +4251,8 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
 TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
                  "a heater wait shows the heater its command names, else the guess",
                  "[print][collector][heater_wait][wait_line]") {
-    ArchiveTransfers transfers{client(), ""};
-    ArchiveMoonrakerAPIMock api{client(), state(), transfers};
-    IMoonrakerAPI* const previous_api = get_moonraker_api();
-    set_moonraker_api(&api);
-    struct RestoreApi {
-        IMoonrakerAPI* api;
-        ~RestoreApi() {
-            set_moonraker_api(api);
-        }
-    } restore{previous_api};
-    lv_subject_copy_string(state().print_state().get_print_filename_subject(), "u1_print.gcode");
+    ServedPrint print{client(), state(), "u1_print.gcode"};
+    ArchiveTransfers& transfers = print.transfers;
     set_all_temps(/*bed*/ 450, 1000, /*ext*/ 2090, 2100);
 
     const auto wait_on = [&](const std::string& command) {
@@ -4264,10 +4276,22 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
         REQUIRE(transfers.ranges == 1);
         CHECK(get_current_phase() == PrintStartPhase::HEATING_BED);
     }
-    SECTION("a failed read leaves the guess") {
+    SECTION("a failed read leaves the guess, and the wait stops asking") {
         transfers.fail_ranges = true;
         wait_on("M109 S210");
-        REQUIRE(transfers.ranges >= 1);
+        REQUIRE(transfers.ranges == 1);
+        CHECK(get_current_phase() == PrintStartPhase::HEATING_BED);
+        const int queries = client().call_count("printer.objects.query");
+        report_for(3);
+        CHECK(client().call_count("printer.objects.query") == queries);
+        CHECK(get_current_phase() == PrintStartPhase::HEATING_BED);
+    }
+    SECTION("a transfers API without ranged reads is never asked where the print is") {
+        transfers.ranged = false;
+        const int queries = client().call_count("printer.objects.query");
+        wait_on("M109 S210");
+        CHECK(client().call_count("printer.objects.query") == queries);
+        CHECK(transfers.ranges == 0);
         CHECK(get_current_phase() == PrintStartPhase::HEATING_BED);
     }
     SECTION("the position moving mid-wait reads the next command") {
@@ -4286,6 +4310,82 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     }
 }
 
+// A Voron-style printer with a chamber sensor and no chamber heater, whose
+// [gcode_macro M191] waits on that sensor. M191 there names no heater, so the
+// wait is no chamber-heater stall.
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "M191 on a printer with no chamber heater is not a chamber wait",
+                 "[print][collector][heater_wait][chamber_wait][wait_line]") {
+    ServedPrint print{client(), state(), "u1_print.gcode"};
+    state().temperature_state().set_chamber_sensor_name("temperature_sensor chamber");
+    REQUIRE(state().temperature_state().chamber_heater_name().empty());
+    const std::string file = "G28\nM191 S45\nG90\n";
+    print.transfers.put("u1_print.gcode", file);
+    client().set_object_status("virtual_sdcard", {{"file_position", file.find("M191")}});
+    set_chamber(300, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    report_for(10);
+    REQUIRE(PrintStartCollectorTestAccess::wait_line_kind(collector()) == helix::WaitKind::M191);
+    CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+    CHECK(chamber_wait_flag() == 0);
+}
+
+// An answer for a wait that has ended, or for the previous print, describes
+// a command no longer running. Both reads are async, so either can land late.
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture, "a wait line answered after its wait ended is dropped",
+                 "[print][collector][heater_wait][wait_line]") {
+    ServedPrint print{client(), state(), "u1_print.gcode"};
+    const std::string file = "M109 S210\nG4 P1000\nG90\n";
+    print.transfers.put("u1_print.gcode", file);
+    set_all_temps(/*bed*/ 450, 1000, /*ext*/ 2090, 2100);
+    const auto kind = [&]() { return PrintStartCollectorTestAccess::wait_line_kind(collector()); };
+    const auto end_wait = [&]() {
+        clock_.advance(std::chrono::seconds(5));
+        tick();
+    };
+
+    SECTION("a ranged read still out when the wait ends") {
+        print.transfers.hold_from = 1;
+        client().set_object_status("virtual_sdcard", {{"file_position", 0}});
+        report_for(1);
+        REQUIRE(print.transfers.held.size() == 1);
+        end_wait();
+        print.transfers.release_held();
+        drain_async_updates();
+        CHECK_FALSE(kind());
+    }
+
+    SECTION("a ranged read still out when the next print starts") {
+        print.transfers.hold_from = 1;
+        client().set_object_status("virtual_sdcard", {{"file_position", 0}});
+        report_for(1);
+        REQUIRE(print.transfers.held.size() == 1);
+        collector().stop();
+        collector().start();
+        drain_async_updates();
+        print.transfers.release_held();
+        drain_async_updates();
+        CHECK_FALSE(kind());
+    }
+
+    SECTION("a position query still out when the wait ends") {
+        client().set_object_status("virtual_sdcard", {{"file_position", 0}});
+        client().defer_next("printer.objects.query");
+        clock_.advance(std::chrono::seconds(1));
+        feed_gcode("B:45.0 /100.0 T0:209.0 /210.0");
+        REQUIRE_FALSE(kind());
+        end_wait();
+        // The next wait stands at G4. The held answer, fired now, says M109.
+        client().set_object_status("virtual_sdcard", {{"file_position", file.find("G4")}});
+        report_for(1);
+        REQUIRE(kind() == helix::WaitKind::Other);
+        client().set_object_status("virtual_sdcard", {{"file_position", 0}});
+        client().fire_deferred("printer.objects.query");
+        drain_async_updates();
+        CHECK(kind() == helix::WaitKind::Other);
+    }
+}
+
 TEST_CASE("the heater a wait command names", "[print][collector][wait_line]") {
     using helix::classify_wait_line;
     const std::string heater = "heater_generic dragonbreath";
@@ -4296,6 +4396,7 @@ TEST_CASE("the heater a wait command names", "[print][collector][wait_line]") {
     CHECK(named("M109 S170 T2") == PrintStartPhase::HEATING_NOZZLE);
     CHECK(named("M190 S100") == PrintStartPhase::HEATING_BED);
     CHECK(named("M191 S60") == PrintStartPhase::SOAKING);
+    CHECK_FALSE(PrintStartCollector::heater_waited_on(classify_wait_line("M191 S60"), ""));
     CHECK(named("TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM=95") == PrintStartPhase::HEATING_BED);
     CHECK(named("TEMPERATURE_WAIT SENSOR=extruder2 MINIMUM=200") ==
           PrintStartPhase::HEATING_NOZZLE);
@@ -4544,22 +4645,16 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
         int probes;
     };
 
-    SnapmakerReplayFixture() : previous_api_(get_moonraker_api()) {}
-    ~SnapmakerReplayFixture() override {
-        set_moonraker_api(previous_api_);
-    }
-
     void serve(const std::string& filename, std::string bytes) {
-        transfers_.put(filename, std::move(bytes));
-        set_moonraker_api(&api_);
-        lv_subject_copy_string(state().print_state().get_print_filename_subject(),
-                               filename.c_str());
+        print_.emplace(client(), state(), filename);
+        print_->transfers.put(filename, std::move(bytes));
+    }
+    int ranged_reads() const {
+        return print_ ? print_->transfers.ranges : 0;
     }
     void position_at(int ms, uint64_t pos) {
         positions_.push_back({ms, pos});
     }
-
-    ArchiveTransfers transfers_{client(), ""};
 
     std::vector<Shown> replay(const std::string& file, int bed, int bed_target, int ext,
                               int ext_target) {
@@ -4685,8 +4780,7 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
     }
 
   private:
-    IMoonrakerAPI* previous_api_;
-    ArchiveMoonrakerAPIMock api_{client(), state(), transfers_};
+    std::optional<ServedPrint> print_;
     std::vector<std::pair<int, uint64_t>> positions_;
 };
 } // namespace
@@ -4696,8 +4790,9 @@ TEST_CASE_METHOD(SnapmakerReplayFixture,
                  "[print][collector][snapmaker][heater_wait][integration]") {
     // That print's file is not in the repo; it ran the same start block, so
     // its waits stand where the 2026-10-16 print's do, each from its first
-    // report. The cool-down hands to M190 when T2 first reads within 1C of
-    // 170 (Klipper's settle band), with no gap in the reports.
+    // report. The cool-down hands to M190 at approximately the first report
+    // with T2 within 1C of 170 (Klipper's settle band), with no gap in the
+    // reports.
     serve("u1_print.gcode", u1_start_file());
     position_at(3065, 6204);
     position_at(42926, 6453);
@@ -4718,6 +4813,11 @@ TEST_CASE_METHOD(SnapmakerReplayFixture,
 TEST_CASE_METHOD(SnapmakerReplayFixture,
                  "Snapmaker U1: each real wait shows the heater its command waits on",
                  "[print][collector][snapmaker][heater_wait][wait_line][integration]") {
+    // The capture has no file_position track, so these times are inferred
+    // from the reports: each wait from its first report, and M190 from the
+    // first report with T2 within 1C of 170. Klipper's M109 also waits for
+    // the temperature to stop moving, so the real hand-off is likely a few
+    // seconds later; nothing below pins the hand-off tick.
     serve("u1_tool_probe_clean.gcode", u1_start_file());
     position_at(45400, 6204);
     position_at(84638, 6453);
@@ -4757,16 +4857,16 @@ TEST_CASE_METHOD(SnapmakerReplayFixture,
     }
     REQUIRE(at(50000) == PrintStartPhase::HEATING_NOZZLE);
 
-    // M190 S100 follows with no gap in the reports: shown from the tick after
-    // the read at 130 s until G28 Z at 324.9 s, its settling tail included.
-    for (int ms = 135000; ms < 324904; ms += 5000) {
+    // M190 S100 follows with no gap in the reports: the bed from a few ticks
+    // after the hand-off until G28 Z at 324.9 s, its settling tail included.
+    for (int ms = 145000; ms < 324904; ms += 5000) {
         CAPTURE(ms);
         REQUIRE(at(ms) == PrintStartPhase::HEATING_BED);
     }
     never_between(319000, 325000, PrintStartPhase::SOAKING);
 
     REQUIRE(shown.back().phase == PrintStartPhase::HEATING_NOZZLE);
-    REQUIRE(transfers_.ranges == 6);
+    REQUIRE(ranged_reads() == 6);
 }
 
 // ============================================================================

@@ -15,9 +15,14 @@ class PrintStartCollectorTestAccess {
         }
         c.apply_wait_line(gen, line);
     }
-    static bool wait_line_requested(PrintStartCollector& c) {
+    /// The kind of the command read for the current wait; nullopt until a
+    /// read for the current position answers.
+    static std::optional<helix::WaitKind> wait_line_kind(PrintStartCollector& c) {
         std::lock_guard<std::mutex> lock(c.state_mutex_);
-        return c.wait_line_requested_;
+        if (!c.wait_line_read_) {
+            return std::nullopt;
+        }
+        return c.wait_line_.kind;
     }
 
     static bool is_heater_wait_report(const std::string& line) {

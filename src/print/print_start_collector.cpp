@@ -2137,7 +2137,7 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const std::string&
 void PrintStartCollector::forget_wait_line_locked() {
     wait_line_ = {};
     wait_line_read_ = false;
-    wait_line_requested_ = false;
+    wait_line_unreadable_ = false;
     wait_line_position_.reset();
     ++wait_line_gen_;
 }
@@ -2151,6 +2151,11 @@ PrintStartCollector::heater_waited_on(const helix::WaitLine& line,
     case helix::WaitKind::M190:
         return PrintStartPhase::HEATING_BED;
     case helix::WaitKind::M191:
+        // A printer with no chamber heater runs M191 as a macro over some
+        // other wait, and an M191 there says nothing about a chamber heater.
+        if (chamber_heater.empty()) {
+            return std::nullopt;
+        }
         return PrintStartPhase::SOAKING;
     case helix::WaitKind::TemperatureWait:
         if (line.sensor == "heater_bed") {
@@ -2180,10 +2185,16 @@ void PrintStartCollector::request_wait_line() {
     if (!file || !file[0]) {
         return;
     }
+    IMoonrakerAPI* api = get_moonraker_api();
+    if (!api || !api->transfers().supports_range_reads()) {
+        return; // the line could not be read, so where the print is would go unused
+    }
     uint64_t gen;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        wait_line_requested_ = true;
+        if (wait_line_unreadable_) {
+            return;
+        }
         gen = wait_line_gen_;
     }
     auto self = shared_from_this();
@@ -2218,9 +2229,13 @@ void PrintStartCollector::request_wait_line() {
                         [self, read_gen](const helix::WaitLine& line) {
                             self->apply_wait_line(read_gen, line);
                         },
-                        [pos](const MoonrakerError& e) {
+                        [self, read_gen, pos](const MoonrakerError& e) {
                             spdlog::debug("[PrintStartCollector] Wait line at {} not read: {}", pos,
                                           e.message);
+                            std::lock_guard<std::mutex> lock(self->state_mutex_);
+                            if (read_gen == self->wait_line_gen_) {
+                                self->wait_line_unreadable_ = true;
+                            }
                         });
                 });
         },
