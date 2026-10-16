@@ -185,6 +185,7 @@ class TemperatureService {
     // Chamber-heater diagnostics card (issue #1290): both delegate to the
     // globally-registered TemperatureController — never the api directly.
     static void on_chamber_fault_reset_clicked(lv_event_t* e);
+    static void on_chamber_retry_target_clicked(lv_event_t* e);
     static void on_chamber_filter_fan_clicked(lv_event_t* e);
     static void on_chamber_dryer_start_clicked(lv_event_t* e);
     static void on_chamber_dryer_stop_clicked(lv_event_t* e);

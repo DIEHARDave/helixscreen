@@ -28,6 +28,7 @@ class BedDryingController;
 namespace helix::ui {
 class FilamentOpHeater;
 class PlrOfferController;
+class ChamberStallPrompt;
 } // namespace helix::ui
 
 /**
@@ -147,6 +148,7 @@ class SubjectInitializer {
     // Owned resources
     std::unique_ptr<UsbManager> m_usb_manager;
     std::unique_ptr<helix::ui::PlrOfferController> m_plr_offer_controller;
+    std::unique_ptr<helix::ui::ChamberStallPrompt> m_chamber_stall_prompt;
     std::unique_ptr<helix::TemperatureController> m_temp_controller;
     std::unique_ptr<helix::ui::FilamentOpHeater> m_filament_op_heater;
     std::unique_ptr<helix::BedDryingController> m_bed_drying;

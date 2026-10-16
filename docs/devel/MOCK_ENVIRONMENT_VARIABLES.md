@@ -1171,6 +1171,24 @@ HELIX_MOCK_OBJECTS="heater_generic dragonbreath dragonbreath output_pin dragonbr
   HELIX_MOCK_DRAGONBREATH_FAULT=1 ./build/bin/helix-screen --test -vv
 ```
 
+### `HELIX_MOCK_DRAGONBREATH_REJECT`
+
+Make the appliance turn every chamber target down with this vendor code (for example
+`revision_conflict`, `power_off`, `heater_fault`, `auth_failed`). A target arriving by
+`printer.dragonbreath.set_target` or `SET_HEATER_TEMPERATURE` leaves the heater at 0, the
+status object reports `protocol_error`, `protocol_error_code`, `protocol_error_seq` and
+`protocol_error_target`, and the route answers `accepted: false`. Unset, the mock's route
+takes the target and clears any rejection. Pair with the dragonbreath trio; to reach the
+chamber prompt, also replay `tests/fixtures/u1_chamber_stall_replay.json`:
+
+```bash
+HELIX_MOCK_PRINTER=snapmaker_u1 \
+HELIX_MOCK_OBJECTS="heater_generic dragonbreath dragonbreath output_pin dragonbreath_filter" \
+HELIX_MOCK_DRAGONBREATH_REJECT=revision_conflict \
+HELIX_MOCK_REPLAY=tests/fixtures/u1_chamber_stall_replay.json \
+  ./build/bin/helix-screen --test --sim-speed 6 -vv
+```
+
 ### `HELIX_MOCK_DRAGONBREATH_OFFLINE`
 
 Drop the appliance off its radio link: every synthesized dragonbreath status frame reports `connected: false` instead of `true`, so the diagnostics card banners the offline state and hides its Reset button. A real link drop is brief and unpredictable (the U1 rig flaps for one or two polls roughly every 20 minutes), so this hook is how the sustained-outage path gets exercised on demand.

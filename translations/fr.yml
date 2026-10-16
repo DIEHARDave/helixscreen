@@ -275,6 +275,7 @@ translations:
   Anonymous stats — no personal data, ever.: Statistiques anonymes — jamais de données
     personnelles.
   Anonymous usage statistics: Statistiques d'utilisation anonymes
+  Another controller changed the heater at the same time.: 'Un autre contrôleur a modifié le chauffage au même moment.'
   Any notes...: Des notes...
   App Background: Arrière-plan de l'application
   App startup encountered an error. Some features may be unavailable.: Le démarrage
@@ -586,6 +587,8 @@ translations:
   Chamber and dryer humidity monitoring: Surveillance de l'humidité de la chambre
     et du sécheur
   Chamber at %d°C: Chambre à %d°C
+  Chamber heater didn't start: 'Le chauffage de la chambre n''a pas démarré'
+  Chamber heater didn't start. {}: 'Le chauffage de la chambre n''a pas démarré. {}'
   Chamber heating to %d°C...: Chauffe de la chambre à %d°C...
   Chamber target set to {}°C: Cible de chambre définie à {}°C
   Chamber temp must be 0-%d°C: La température de l'enceinte doit être entre 0 et %d°C
@@ -1791,6 +1794,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Conserve ses propres données sur cet écran (jusqu''à 256 Ko).'
   Keep the bypass spool visible when bypass is off: Garder la bobine de bypass visible lorsque le bypass est désactivé
+  Keep waiting: 'Continuer d''attendre'
   Kick away: 'Éjecter'
   Kinematics: Cinématique
   Klipper: Klipper
@@ -3494,6 +3498,12 @@ translations:
   : Le filament n'est pas arrivé à la buse. Le CFS n'a signalé aucune erreur, mais le capteur de tête d'outil ne détecte toujours pas de filament. Vérifiez que la bobine est bien en place et que le chemin est dégagé, puis réessayez.
   The filament may not have fully retracted — try again or manually pull: Le filament n'est peut-être pas entièrement rétracté. Réessayez ou tirez à la main
   The filament system reported an error: Le système de filament a signalé une erreur
+  The heater can't be changed while the printer is waiting.: 'Le chauffage ne peut pas être modifié pendant que l''imprimante attend.'
+  The heater did not accept the printer's credentials.: 'Le chauffage n''a pas accepté les identifiants de l''imprimante.'
+  The heater refused the command.: 'Le chauffage a refusé la commande.'
+  The heater reports a fault.: 'Le chauffage signale un défaut.'
+  'The heater reports a fault: {}.': 'Le chauffage signale un défaut : {}.'
+  The heater was turned off at the heater.: 'Le chauffage a été éteint sur l''appareil lui-même.'
   The heater will cycle on and off several times.: Le chauffage s'allumera et s'éteindra
     plusieurs fois.
   The helper macros are installed and activate after Klipper restarts.: 'Les macros d''aide sont installées et s''activent après un redémarrage de Klipper.'
@@ -3506,6 +3516,8 @@ translations:
   The plate finishes its current move, but drying will not start.: 'Le plateau termine son déplacement en cours, mais le séchage ne démarrera pas.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : L'impression est en pause. Changer d'outil maintenant déplace la tête d'impression et remplace le filament au niveau de la buse. Reprenez l'impression une fois le changement terminé.
+  The print is waiting for the chamber to reach {}°C, but the heater is not heating.: 'L''impression attend que la chambre atteigne {}°C, mais le chauffage ne chauffe pas.'
+  The print is waiting for the chamber, but the heater is not heating.: 'L''impression attend la chambre, mais le chauffage ne chauffe pas.'
   The printer applied this value and keeps it for this tool.: 'L''imprimante a appliqué cette valeur et la conserve pour cet outil.'
   The printer did not change its bed check: 'L''imprimante n''a pas modifié sa vérification du plateau'
   'The printer did not change its bed check: {}': 'L''imprimante n''a pas modifié sa vérification du plateau: {}'
@@ -3521,6 +3533,7 @@ translations:
 
   : L'imprimante fait sa prise d'origine, puis éloigne le plateau de la buse autant que possible. Certaines bobines ne supportent pas assez la chaleur et peuvent se déformer. Rien ne bouge depuis cet écran tant que vous n'avez pas confirmé que les bobines ne sont plus sur le plateau ; Mainsail, les macros et les impressions envoyées depuis un slicer ne sont pas bloqués.
 
+  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'L''imprimante est occupée à attendre : l''annulation peut nécessiter un arrêt d''urgence et un redémarrage du firmware.'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: L'imprimante n'est pas référencée. Continuer référencera tous les axes et déplacera la tête d'outil. Assurez-vous que le plateau est dégagé.
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: 'L''imprimante ne détecte aucun filament chargé. Que voulez-vous faire ?'
   The printer lost power during a print. It can resume where it left off.: 'L''imprimante
@@ -3915,6 +3928,8 @@ translations:
   Waiting for another box to finish.: En attente de la fin d'une autre boîte.
   Waiting for bed to reach temperature for accurate calibration.: En attente que le
     plateau atteigne la température pour une calibration précise.
+  Waiting for chamber {} / {}°C: 'Attente de la chambre {} / {}°C'
+  Waiting for chamber {}°C: 'Attente de la chambre {}°C'
   Waiting for the filament system to report its state: En attente de l'état du système de filament
   Warm: Chaud
   Warm Bed: Préchauffer le plateau

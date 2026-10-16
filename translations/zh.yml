@@ -253,6 +253,7 @@ translations:
   Anonymous data to help improve HelixScreen: 匿名数据以帮助改进 HelixScreen
   Anonymous stats — no personal data, ever.: 匿名统计 — 绝不收集个人数据。
   Anonymous usage statistics: 匿名使用统计
+  Another controller changed the heater at the same time.: '另一个控制器同时更改了加热器。'
   Any notes...: 备注...
   App Background: 应用背景
   App startup encountered an error. Some features may be unavailable.: 应用程序启动时遇到错误。某些功能可能不可用。
@@ -533,6 +534,8 @@ translations:
   Chamber Temperature: 腔体温度
   Chamber and dryer humidity monitoring: 腔体和干燥器湿度监控
   Chamber at %d°C: 腔体温度：%d°C
+  Chamber heater didn't start: '腔体加热器未启动'
+  Chamber heater didn't start. {}: '腔体加热器未启动。{}'
   Chamber heating to %d°C...: 腔体加热至 %d°C...
   Chamber target set to {}°C: 腔体目标温度设置为 {}°C
   Chamber temp must be 0-%d°C: 腔体温度必须为 0-%d°C
@@ -1660,6 +1663,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: '在此屏幕上保存自己的数据（最多256 KB）。'
   Keep the bypass spool visible when bypass is off: 旁路关闭时保持料盘可见
+  Keep waiting: '继续等待'
   Kick away: '拨除废料'
   Kinematics: 运动学
   Klipper: Klipper
@@ -3250,6 +3254,12 @@ translations:
   : 耗材未到达喷嘴。CFS 未报告错误，但工具头传感器仍未检测到耗材。请检查料盘是否放置到位、路径是否畅通，然后重试。
   The filament may not have fully retracted — try again or manually pull: 耗材可能未完全回抽。请重试或手动抽出
   The filament system reported an error: 耗材系统报告错误
+  The heater can't be changed while the printer is waiting.: '打印机等待期间无法更改加热器。'
+  The heater did not accept the printer's credentials.: '加热器不接受打印机的凭据。'
+  The heater refused the command.: '加热器拒绝了该命令。'
+  The heater reports a fault.: '加热器报告故障。'
+  'The heater reports a fault: {}.': '加热器报告故障：{}。'
+  The heater was turned off at the heater.: '加热器已在加热器本身上关闭。'
   The heater will cycle on and off several times.: 加热器将多次开关循环。
   The helper macros are installed and activate after Klipper restarts.: '帮助宏已安装，将在 Klipper 重启后启用。'
   The left RFID reader in this CFS unit may need service: 此 CFS 单元的左侧 RFID 读取器可能需要维修
@@ -3261,6 +3271,8 @@ translations:
   The plate finishes its current move, but drying will not start.: '热床会完成当前移动,但烘干不会开始。'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 打印已暂停。现在切换工具会移动工具头并更换喷嘴处的耗材。切换完成后请恢复打印。
+  The print is waiting for the chamber to reach {}°C, but the heater is not heating.: '打印正在等待腔体达到 {}°C，但加热器没有加热。'
+  The print is waiting for the chamber, but the heater is not heating.: '打印正在等待腔体，但加热器没有加热。'
   The printer applied this value and keeps it for this tool.: '打印机已应用此值，并为该工具保存。'
   The printer did not change its bed check: '打印机未更改热床检查'
   'The printer did not change its bed check: {}': '打印机未更改热床检查：{}'
@@ -3274,6 +3286,7 @@ translations:
 
   : 打印机会先归位,然后让热床尽量远离喷嘴。有些料盘耐热性不足,可能会变形。在你确认料盘已从热床上取下之前,此屏幕不会移动任何部件;Mainsail、宏以及切片软件发送的打印不会被阻止。
 
+  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: '打印机正忙于等待，因此取消可能需要紧急停止并重启固件。'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: 打印机尚未归位。继续将对所有轴执行归位操作，移动工具头。请确保热床上没有障碍物。
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: 打印机未检测到已加载的耗材。请选择下一步操作。
   The printer lost power during a print. It can resume where it left off.: 打印机在打印过程中断电。可以从中断处继续。
@@ -3626,6 +3639,8 @@ translations:
   Waiting for %s to finish. One heater at a time.: 正在等待 %s 完成。一次只能使用一个加热器。
   Waiting for another box to finish.: 正在等待另一个料盒完成。
   Waiting for bed to reach temperature for accurate calibration.: 等待热床达到温度以进行精确校准。
+  Waiting for chamber {} / {}°C: '等待腔体 {} / {}°C'
+  Waiting for chamber {}°C: '等待腔体 {}°C'
   Waiting for the filament system to report its state: 正在等待耗材系统报告状态
   Warm: 暖色
   Warm Bed: 预热热床

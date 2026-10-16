@@ -254,6 +254,7 @@ translations:
   Anonymous data to help improve HelixScreen: HelixScreen改善のための匿名データ
   Anonymous stats — no personal data, ever.: 匿名の統計情報 — 個人データは一切収集しません。
   Anonymous usage statistics: 匿名の使用統計
+  Another controller changed the heater at the same time.: '別のコントローラーが同時にヒーターを変更しました。'
   Any notes...: メモ...
   App Background: アプリ背景
   App startup encountered an error. Some features may be unavailable.: アプリの起動中にエラーが発生しました。一部の機能が利用できない場合があります。
@@ -534,6 +535,8 @@ translations:
   Chamber Temperature: チャンバー温度
   Chamber and dryer humidity monitoring: チャンバーとドライヤーの湿度監視
   Chamber at %d°C: チャンバー温度：%d°C
+  Chamber heater didn't start: 'チャンバーヒーターが起動しませんでした'
+  Chamber heater didn't start. {}: 'チャンバーヒーターが起動しませんでした。{}'
   Chamber heating to %d°C...: チャンバーを%d°Cに加熱中...
   Chamber target set to {}°C: チャンバー目標温度を{}°C に設定
   Chamber temp must be 0-%d°C: チャンバー温度は 0〜%d°C にしてください
@@ -1665,6 +1668,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'この画面に独自のデータを保存します（最大256 KB）。'
   Keep the bypass spool visible when bypass is off: バイパスオフ時もバイパススプールの表示を維持
+  Keep waiting: '待ち続ける'
   Kick away: 'かき出し'
   Kinematics: キネマティクス
   Klipper: Klipper
@@ -3259,6 +3263,12 @@ translations:
   : フィラメントがノズルに到達しませんでした。CFSはエラーを報告していませんが、ツールヘッドセンサーはまだフィラメントを検出していません。スプールが正しく取り付けられ、フィラメント経路が塞がれていないことを確認して、再試行してください。
   The filament may not have fully retracted — try again or manually pull: フィラメントが完全に戻っていない可能性があります。再試行するか手で引き抜いてください
   The filament system reported an error: フィラメントシステムがエラーを報告しました
+  The heater can't be changed while the printer is waiting.: 'プリンターの待機中はヒーターを変更できません。'
+  The heater did not accept the printer's credentials.: 'ヒーターがプリンターの認証情報を受け付けませんでした。'
+  The heater refused the command.: 'ヒーターがコマンドを拒否しました。'
+  The heater reports a fault.: 'ヒーターが異常を報告しています。'
+  'The heater reports a fault: {}.': 'ヒーターが異常を報告しています: {}。'
+  The heater was turned off at the heater.: 'ヒーター本体で電源がオフにされました。'
   The heater will cycle on and off several times.: ヒーターは数回オン/オフを繰り返します。
   The helper macros are installed and activate after Klipper restarts.: 'ヘルパーマクロはインストール済みで、Klipper の再起動後に有効になります。'
   The left RFID reader in this CFS unit may need service: この CFS ユニットの左側 RFID リーダーは修理が必要な可能性があります
@@ -3270,6 +3280,8 @@ translations:
   The plate finishes its current move, but drying will not start.: 'ベッドは現在の移動を完了しますが、乾燥は開始しません。'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。
+  The print is waiting for the chamber to reach {}°C, but the heater is not heating.: '印刷はチャンバーが{}°Cに達するのを待っていますが、ヒーターが加熱していません。'
+  The print is waiting for the chamber, but the heater is not heating.: '印刷はチャンバーを待っていますが、ヒーターが加熱していません。'
   The printer applied this value and keeps it for this tool.: 'プリンターはこの値を適用し、このツールに保存しました。'
   The printer did not change its bed check: 'プリンターはベッドチェックを変更しませんでした'
   'The printer did not change its bed check: {}': 'プリンターはベッドチェックを変更しませんでした：{}'
@@ -3283,6 +3295,7 @@ translations:
 
   : プリンターはホームに戻ってから、ベッドをノズルからできるだけ離します。耐熱性が足りずに変形するスプールもあります。スプールをベッドから取り出したことを確認するまで、この画面からは何も動きません。Mainsail、マクロ、スライサーから送られた印刷はブロックされません。
 
+  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'プリンターは待機中のため、キャンセルには緊急停止とファームウェアの再起動が必要になる場合があります。'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: プリンターがホーミングされていません。続行すると全軸がホーミングされ、ツールヘッドが移動します。ベッドに物がないことを確認してください。
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: プリンターは現在フィラメントが装填されていることを検出していません。どうしますか？
   The printer lost power during a print. It can resume where it left off.: 印刷中にプリンターの電源が失われました。中断した箇所から再開できます。
@@ -3635,6 +3648,8 @@ translations:
   Waiting for %s to finish. One heater at a time.: '%s の完了を待っています。ヒーターは一度に1つだけです。'
   Waiting for another box to finish.: 別のボックスの完了を待っています。
   Waiting for bed to reach temperature for accurate calibration.: 正確なキャリブレーションのためにベッド温度到達を待機中。
+  Waiting for chamber {} / {}°C: 'チャンバー待機中 {} / {}°C'
+  Waiting for chamber {}°C: 'チャンバー待機中 {}°C'
   Waiting for the filament system to report its state: フィラメントシステムの状態報告を待機中
   Warm: ウォーム
   Warm Bed: ベッドを予熱

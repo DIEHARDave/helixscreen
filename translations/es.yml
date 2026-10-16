@@ -271,6 +271,7 @@ translations:
   Anonymous stats — no personal data, ever.: Estadísticas anónimas — sin datos personales,
     nunca.
   Anonymous usage statistics: Estadísticas de uso anónimas
+  Another controller changed the heater at the same time.: 'Otro controlador cambió el calentador al mismo tiempo.'
   Any notes...: Notas...
   App Background: Fondo de la Aplicación
   App startup encountered an error. Some features may be unavailable.: El inicio de
@@ -579,6 +580,8 @@ translations:
   Chamber Temperature: Temperatura de la cámara
   Chamber and dryer humidity monitoring: Monitoreo de humedad de cámara y secador
   Chamber at %d°C: Cámara a %d°C
+  Chamber heater didn't start: 'El calentador de la cámara no arrancó'
+  Chamber heater didn't start. {}: 'El calentador de la cámara no arrancó. {}'
   Chamber heating to %d°C...: Calentando cámara a %d°C...
   Chamber target set to {}°C: Objetivo de cámara establecido en {}°C
   Chamber temp must be 0-%d°C: La temperatura de la cámara debe ser 0-%d°C
@@ -1777,6 +1780,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Guarda sus propios datos en esta pantalla (hasta 256 KB).'
   Keep the bypass spool visible when bypass is off: Mantener visible la bobina de bypass cuando el bypass está desactivado
+  Keep waiting: 'Seguir esperando'
   Kick away: 'Expulsar'
   Kinematics: Cinemática
   Klipper: Klipper
@@ -3469,6 +3473,12 @@ translations:
   : El filamento no llegó a la boquilla. El CFS no informó ningún error, pero el sensor del cabezal sigue sin detectar filamento. Compruebe que la bobina esté bien colocada y que el recorrido esté despejado, y vuelva a intentarlo.
   The filament may not have fully retracted — try again or manually pull: Puede que el filamento no se haya retraído por completo. Reintente o tire a mano
   The filament system reported an error: El sistema de filamento informó un error
+  The heater can't be changed while the printer is waiting.: 'No se puede cambiar el calentador mientras la impresora espera.'
+  The heater did not accept the printer's credentials.: 'El calentador no aceptó las credenciales de la impresora.'
+  The heater refused the command.: 'El calentador rechazó el comando.'
+  The heater reports a fault.: 'El calentador informa de un fallo.'
+  'The heater reports a fault: {}.': 'El calentador informa de un fallo: {}.'
+  The heater was turned off at the heater.: 'El calentador se apagó desde el propio calentador.'
   The heater will cycle on and off several times.: El calentador se encenderá y apagará
     varias veces.
   The helper macros are installed and activate after Klipper restarts.: 'Las macros de ayuda están instaladas y se activan tras reiniciar Klipper.'
@@ -3482,6 +3492,8 @@ translations:
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : La impresión está pausada. Cambiar de herramienta ahora mueve el cabezal y cambia
     el filamento en la boquilla. Reanude la impresión una vez que el cambio termine.
+  The print is waiting for the chamber to reach {}°C, but the heater is not heating.: 'La impresión espera a que la cámara alcance {}°C, pero el calentador no calienta.'
+  The print is waiting for the chamber, but the heater is not heating.: 'La impresión espera a la cámara, pero el calentador no calienta.'
   The printer applied this value and keeps it for this tool.: 'La impresora aplicó este valor y lo conserva para esta herramienta.'
   The printer did not change its bed check: 'La impresora no cambió su comprobación de cama'
   'The printer did not change its bed check: {}': 'La impresora no cambió su comprobación de cama: {}'
@@ -3496,6 +3508,7 @@ translations:
 
   : La impresora hace home y luego aleja la cama de la boquilla todo lo posible. Algunas bobinas no resisten suficiente calor y pueden deformarse. Nada se mueve desde esta pantalla hasta que confirmes que las bobinas no están en la cama; Mainsail, las macros y las impresiones enviadas desde un slicer no se bloquean.
 
+  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'La impresora está ocupada esperando, así que cancelar puede requerir una parada de emergencia y un reinicio del firmware.'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: La impresora no está referenciada. Si continúa, se referenciarán todos los ejes y el cabezal se moverá. Asegúrese de que la cama esté despejada.
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: La impresora no detecta ningún filamento cargado. ¿Qué desea hacer?
   The printer lost power during a print. It can resume where it left off.: La impresora
@@ -3883,6 +3896,8 @@ translations:
   Waiting for another box to finish.: Esperando a que otra caja termine.
   Waiting for bed to reach temperature for accurate calibration.: Esperando que la
     cama alcance la temperatura para una calibración precisa.
+  Waiting for chamber {} / {}°C: 'Esperando la cámara {} / {}°C'
+  Waiting for chamber {}°C: 'Esperando la cámara {}°C'
   Waiting for the filament system to report its state: Esperando que el sistema de filamento informe su estado
   Warm: Cálido
   Warm Bed: Calentar cama

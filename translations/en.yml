@@ -263,6 +263,7 @@ translations:
   Anonymous data to help improve HelixScreen: Anonymous data to help improve HelixScreen
   Anonymous stats — no personal data, ever.: Anonymous stats — no personal data, ever.
   Anonymous usage statistics: Anonymous usage statistics
+  Another controller changed the heater at the same time.: Another controller changed the heater at the same time.
   Any notes...: Any notes...
   App Background: App Background
   App startup encountered an error. Some features may be unavailable.: App startup
@@ -560,6 +561,8 @@ translations:
   Chamber Temperature: Chamber Temperature
   Chamber and dryer humidity monitoring: Chamber and dryer humidity monitoring
   Chamber at %d°C: Chamber at %d°C
+  Chamber heater didn't start: Chamber heater didn't start
+  Chamber heater didn't start. {}: Chamber heater didn't start. {}
   Chamber heating to %d°C...: Chamber heating to %d°C...
   Chamber target set to {}°C: Chamber target set to {}°C
   Chamber temp must be 0-%d°C: Chamber temp must be 0-%d°C
@@ -1722,6 +1725,7 @@ translations:
   Keep hands clear. The printer moves on its own.: Keep hands clear. The printer moves on its own.
   Keep its own data on this screen (up to 256 KB).: Keep its own data on this screen (up to 256 KB).
   Keep the bypass spool visible when bypass is off: Keep the bypass spool visible when bypass is off
+  Keep waiting: Keep waiting
   Kick away: Kick away
   Kinematics: Kinematics
   Klipper: Klipper
@@ -3372,6 +3376,12 @@ translations:
   : The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   The filament may not have fully retracted — try again or manually pull: The filament may not have fully retracted — try again or manually pull
   The filament system reported an error: The filament system reported an error
+  The heater can't be changed while the printer is waiting.: The heater can't be changed while the printer is waiting.
+  The heater did not accept the printer's credentials.: The heater did not accept the printer's credentials.
+  The heater refused the command.: The heater refused the command.
+  The heater reports a fault.: The heater reports a fault.
+  'The heater reports a fault: {}.': 'The heater reports a fault: {}.'
+  The heater was turned off at the heater.: The heater was turned off at the heater.
   The heater will cycle on and off several times.: The heater will cycle on and off
     several times.
   The helper macros are installed and activate after Klipper restarts.: The helper macros are installed and activate after Klipper restarts.
@@ -3383,6 +3393,8 @@ translations:
   The plate finishes its current move, but drying will not start.: The plate finishes its current move, but drying will not start.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
+  The print is waiting for the chamber to reach {}°C, but the heater is not heating.: The print is waiting for the chamber to reach {}°C, but the heater is not heating.
+  The print is waiting for the chamber, but the heater is not heating.: The print is waiting for the chamber, but the heater is not heating.
   The printer applied this value and keeps it for this tool.: 'The printer applied this value and keeps it for this tool.'
   The printer did not change its bed check: The printer did not change its bed check
   'The printer did not change its bed check: {}': 'The printer did not change its bed check: {}'
@@ -3395,6 +3407,7 @@ translations:
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.
   ? The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked.
   : The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked.
+  The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: The printer isn't detecting that any filament is currently loaded. What would you like to do?
   The printer lost power during a print. It can resume where it left off.: The printer lost power during a print. It can resume where it left off.
@@ -3772,6 +3785,8 @@ translations:
   Waiting for another box to finish.: Waiting for another box to finish.
   Waiting for bed to reach temperature for accurate calibration.: Waiting for bed
     to reach temperature for accurate calibration.
+  Waiting for chamber {} / {}°C: Waiting for chamber {} / {}°C
+  Waiting for chamber {}°C: Waiting for chamber {}°C
   Waiting for the filament system to report its state: Waiting for the filament system to report its state
   Warm: Warm
   Warm Bed: Warm Bed

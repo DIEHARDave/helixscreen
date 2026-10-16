@@ -17,6 +17,7 @@
 #include "active_material_provider.h"
 #include "app_constants.h"
 #include "app_globals.h"
+#include "chamber_stall_prompt.h"
 #include "filament_database.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -175,6 +176,7 @@ TemperatureService::TemperatureService(PrinterState& printer_state, IMoonrakerAP
     // Register XML event callbacks (BEFORE any lv_xml_create calls)
     register_xml_callbacks({
         {"on_chamber_fault_reset_clicked", on_chamber_fault_reset_clicked},
+        {"on_chamber_retry_target_clicked", on_chamber_retry_target_clicked},
         {"on_chamber_filter_fan_clicked", on_chamber_filter_fan_clicked},
         {"on_chamber_dryer_start_clicked", on_chamber_dryer_start_clicked},
         {"on_chamber_dryer_stop_clicked", on_chamber_dryer_stop_clicked},
@@ -417,6 +419,21 @@ void TemperatureService::on_chamber_fault_reset_clicked(lv_event_t* /*e*/) {
         tc->reset_chamber_fault();
     } else {
         spdlog::warn("[TempPanel] chamber fault reset clicked with no controller registered");
+    }
+}
+
+// The route around the gcode queue when there is one, since a refused
+// target often matters most while a wait holds that queue; gcode otherwise.
+void TemperatureService::on_chamber_retry_target_clicked(lv_event_t* /*e*/) {
+    if (helix::ui::ChamberStallPrompt::retry()) {
+        return;
+    }
+    auto* tc = get_temperature_controller();
+    const double target = helix::ui::ChamberStallPrompt::retry_target_c();
+    if (tc && target > 0) {
+        tc->set_target(helix::HeaterType::Chamber, target);
+    } else {
+        spdlog::warn("[TempPanel] chamber retry clicked with no target to resend");
     }
 }
 

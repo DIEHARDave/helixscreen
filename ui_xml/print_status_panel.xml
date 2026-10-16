@@ -78,6 +78,17 @@
         <!-- Unified Temperature Card (nozzle + bed + optional chamber) -->
         <temp_card_unified name="temp_card"/>
 
+        <!-- Chamber heater trouble (fault, offline, or a refused target with Retry).
+             Self-hides while the heater is healthy. Hidden below MEDIUM like the
+             speed row: the action buttons need the height, and the chamber
+             prompt carries a refused target there. -->
+        <lv_obj name="chamber_fault_banner_slot"
+                width="100%" height="content" style_pad_all="0" style_border_width="0" style_bg_opa="0"
+                scrollable="false">
+          <bind_flag_if cond="ui_breakpoint lt 3" flag="hidden"/>
+          <chamber_fault_banner name="chamber_fault_banner"/>
+        </lv_obj>
+
         <!-- Speed / Flow indicators (hidden below MEDIUM: the action buttons need the height) -->
         <!-- Tap switches between percentages and mm/s + mm³/s (same preference as Tune's readouts) -->
         <lv_obj name="speed_flow_row"
