@@ -385,8 +385,10 @@ tests (`tests/unit/test_dryer_summary.cpp`, `[dryer][summary]`).
 
 - **One source per dryer, not per zone.** A unit whose sensors are per lane yields one zone per
   lane over one dryer, so zones with no `dryer.supported` are skipped for sources and boxes are
-  de-duplicated by heater name (or by unit index when there is none). Humidity still counts
-  every zone: `highest_rh_pct` is the highest reading anywhere.
+  de-duplicated by heater name (or by unit index when there is none). `highest_rh_pct` is the
+  highest reading among zones with a dryer, every lane of a shared one included. A passive box's
+  humidity is left to the Humidity widget: shown on a tile whose only dryer is the chamber or
+  the bed, it reads as that dryer's humidity.
 - **A source that is not drying carries no cycle numbers.** Remaining time, progress and target
   are filled only while `drying` is set; the current temperature and humidity are always filled.
   Unknown numbers are -1.

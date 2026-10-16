@@ -180,7 +180,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   never show Save.
 - **A Filament Dryer widget** - every way your printer can dry filament in one tile: heated
   filament boxes, a chamber heater's drying cycle, and drying on the heated bed. Idle it shows
-  the humidity, while drying the time left inside a progress ring, and on a 2x2 tile one row
+  a heated box's humidity, while drying the time left inside a progress ring, and on a 2x2 tile one row
   per dryer. A tap opens that dryer's own screen. It never starts or stops a cycle.
 - **A Host Health widget** - CPU load and temperature, memory and the busiest controller board,
   with a trace of recent load. It turns amber or red at 70% and 90% load, at 70 and 80 C, on CPU

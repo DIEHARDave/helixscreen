@@ -91,7 +91,7 @@ struct DryerSummaryInput {
 struct DryerSummary {
     std::vector<DryerSource> sources; ///< boxes, then chamber, then bed
     int drying_count = 0;
-    int highest_rh_pct = -1; ///< -1 when no zone reports humidity
+    int highest_rh_pct = -1; ///< over zones with a dryer; -1 when none reports humidity
     bool available = false;
 };
 
@@ -120,12 +120,13 @@ constexpr int progress_pct_from(int remaining_min, int duration_min) {
     std::vector<std::string> seen_keys;
 
     for (const auto& zone : in.zones) {
+        // A passive box's humidity is not the reading of anything this tile dries with.
+        if (!zone.dryer.supported)
+            continue;
         if (zone.env.has_humidity) {
             out.highest_rh_pct =
                 std::max(out.highest_rh_pct, static_cast<int>(std::lround(zone.env.humidity_pct)));
         }
-        if (!zone.dryer.supported)
-            continue;
         // A unit whose sensors are per lane yields one zone per lane over one dryer.
         const std::string key = zone.heater_name.empty() ? "unit:" + std::to_string(zone.unit_index)
                                                          : "heater:" + zone.heater_name;

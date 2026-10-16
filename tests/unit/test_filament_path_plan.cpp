@@ -1078,6 +1078,78 @@ TEST_CASE("FilamentPath plan: the mounted PARALLEL tool is one active stroke",
     CHECK(lv_color_eq(docked->fill, lv_color_hex(SLOT_COLORS[0])));
 }
 
+namespace {
+
+// No stroke of the route is filled or lit, and no wall glows.
+void check_route_empty(const Route& r) {
+    REQUIRE(r.path.count > 0);
+    for (int i = 0; i < r.path.count; i++) {
+        CHECK_FALSE(r.style[i].filled);
+        CHECK(r.style[i].wall == TubeWall::Plain);
+    }
+}
+
+} // namespace
+
+TEST_CASE("FilamentPath plan: the active lane's empty tube does not glow",
+          "[filament-path][plan][empty-lane]") {
+    // The active filament segment reads SPOOL (nothing past the spool) while
+    // the active slot's own report says it holds no filament.
+    SECTION("PARALLEL: the mounted tool's lane is empty") {
+        auto d = make_data(helix::PathTopology::PARALLEL);
+        load_active(*d, 0, PathSegment::SPOOL);
+        const PathPlan& plan = parallel_plan(*d);
+        CHECK(plan.active_route == 0);
+        check_route_empty(plan.routes[0]);
+        const SensorBand* b = band_at(plan, 50, 198);
+        REQUIRE(b != nullptr);
+        CHECK(b->state == BandState::Empty);
+    }
+    SECTION("MIXED: the mounted direct lane is empty") {
+        auto d = make_data(helix::PathTopology::MIXED);
+        d->slot_is_hub_routed[2] = true;
+        d->slot_is_hub_routed[3] = true;
+        load_active(*d, 0, PathSegment::SPOOL);
+        check_route_empty(mixed_plan(*d).routes[0]);
+    }
+    SECTION("HUB: the active lane is empty") {
+        auto d = make_data(helix::PathTopology::HUB);
+        load_active(*d, 1, PathSegment::SPOOL);
+        check_route_empty(plan_for(*d).routes[1]);
+    }
+    SECTION("LINEAR: the selected gate is empty") {
+        auto d = make_data(helix::PathTopology::LINEAR);
+        load_active(*d, 2, PathSegment::SPOOL);
+        check_route_empty(plan_for(*d).routes[2]);
+    }
+}
+
+TEST_CASE("FilamentPath plan: filament waiting at the active spool still fills its stub",
+          "[filament-path][plan][empty-lane]") {
+    SECTION("PARALLEL") {
+        auto d = make_data(helix::PathTopology::PARALLEL);
+        load_active(*d, 0, PathSegment::SPOOL);
+        d->slot_filament_states[0] = {PathSegment::SPOOL, SLOT_COLORS[0]};
+        const Route& r = parallel_plan(*d).routes[0];
+        CHECK(r.style[0].filled);
+        CHECK(r.style[0].wall == TubeWall::Active);
+        CHECK_FALSE(r.style[r.path.count - 1].filled);
+    }
+    SECTION("HUB") {
+        auto d = make_data(helix::PathTopology::HUB);
+        load_active(*d, 1, PathSegment::SPOOL);
+        d->slot_filament_states[1] = {PathSegment::SPOOL, SLOT_COLORS[1]};
+        const Route& r = plan_for(*d).routes[1];
+        CHECK(r.style[0].filled);
+        CHECK(r.style[0].wall == TubeWall::Active);
+    }
+    SECTION("a strand in the path counts even before the slot reports it") {
+        auto d = make_data(helix::PathTopology::PARALLEL);
+        load_active(*d, 0, PathSegment::TOOLHEAD);
+        CHECK(parallel_plan(*d).routes[0].style[0].filled);
+    }
+}
+
 TEST_CASE("FilamentPath plan: MIXED direct lanes and the hub trunk reach a nozzle",
           "[filament-path][plan][mixed]") {
     auto d = make_data(helix::PathTopology::MIXED);

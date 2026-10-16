@@ -92,8 +92,12 @@ SlotRenderStates compute_slot_render_states(const FilamentPathData* data) {
         }
 
         // Active slot overrides with current load/unload state when present.
+        // SPOOL reports no strand in the path, so it cannot show filament the
+        // slot's own report says is not there: an empty active lane stays empty.
         s.is_mounted = (i == data->active_slot);
-        if (s.is_mounted && data->filament_segment > 0) {
+        const auto active_seg = static_cast<PathSegment>(data->filament_segment);
+        const bool strand_in_path = active_seg > PathSegment::SPOOL;
+        if (s.is_mounted && active_seg != PathSegment::NONE && (strand_in_path || s.has_filament)) {
             s.has_filament = true;
             s.color = lv_color_hex(data->filament_color);
             s.segment = static_cast<PathSegment>(data->filament_segment);
