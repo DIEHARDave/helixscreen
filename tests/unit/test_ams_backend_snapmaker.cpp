@@ -4686,3 +4686,64 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker re-hears channel silence after a r
     CHECK(backend->get_slot_info(0).spool_name == "SnapSpeed");
     CHECK(SnapmakerTestAccess::get_override(*backend, 0)->spool_name == "SnapSpeed");
 }
+
+// A product-line literal is firmware vocabulary only beside the vendor that
+// sells it. "Silk" kept beside eSUN across a Spoolman unlink names an eSUN
+// product, so a silent channel leaves it standing.
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker keeps a product-line literal beside another brand",
+                 "[ams][snapmaker][spoolman][spool_name]") {
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend(&api, nullptr);
+    SnapmakerTestAccess::call_on_started(*backend);
+
+    SlotInfo linked = backend->get_slot_info(0);
+    linked.spoolman_id = 42;
+    linked.brand = "eSUN";
+    linked.material = "PLA";
+    linked.spool_name = "Silk";
+    helix::test::edit_slot_as_user(*backend, 0, linked);
+    SpoolInfo spool;
+    spool.id = 42;
+    spool.vendor = "eSUN";
+    spool.material = "PLA";
+    spool.filament_name = "Silk";
+    helix::test::spool_states(*backend, 0, spool);
+
+    SlotInfo unlinked = backend->get_slot_info(0);
+    unlinked.spoolman_id = 0;
+    unlinked.spoolman_filament_id = 0;
+    unlinked.spoolman_vendor_id = 0;
+    helix::test::edit_slot_as_user(*backend, 0, unlinked);
+    REQUIRE(backend->get_slot_info(0).spool_name == "Silk");
+
+    feed_silent_channels(*backend);
+
+    CHECK(backend->get_slot_info(0).brand == "eSUN");
+    CHECK(backend->get_slot_info(0).spool_name == "Silk");
+    CHECK(SnapmakerTestAccess::get_override(*backend, 0)->spool_name == "Silk");
+}
+
+// A reconnect starts from no verdict, whether or not a store loads: a frame
+// arriving while the load runs must not be judged against the last session.
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker forgets channel silence as a start begins",
+                 "[ams][snapmaker][filament_slot_override][spool_name]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend(nullptr, nullptr);
+    helix::ams::FilamentSlotOverride record;
+    record.brand = "Snapmaker";
+    record.material = "PLA";
+    record.spool_name = "SnapSpeed";
+    SnapmakerTestAccess::seed_override(*backend, 0, record);
+
+    json info = json::array({json{{"MAIN_TYPE", "NONE"}, {"SUB_TYPE", "NONE"}}});
+    SnapmakerTestAccess::handle_status(*backend, json{{"filament_detect", json{{"info", info}}}});
+    REQUIRE(backend->get_slot_info(0).spool_name == "SnapSpeed");
+
+    SnapmakerTestAccess::call_on_started(*backend);
+    SnapmakerTestAccess::handle_status(
+        *backend, json{{"print_task_config",
+                        json{{"filament_vendor", json::array({"NONE", "NONE", "NONE", "NONE"})},
+                             {"filament_official", json::array({false, false, false, false})}}}});
+
+    CHECK(backend->get_slot_info(0).spool_name == "SnapSpeed");
+}

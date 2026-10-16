@@ -252,6 +252,15 @@ void AmsBackendSnapmaker::on_started() {
     // the libhv thread while we're still inside load_blocking(). Holding
     // mutex_ only during the swap keeps the parse path's read of overrides_
     // coherent without blocking it during the 5s DB round-trip.
+    {
+        // A start forgets what each channel's firmware said: a frame arriving
+        // while the load below runs must not be judged against a silence from
+        // the previous session.
+        std::lock_guard<std::mutex> lock(mutex_);
+        tag_names_identity_.fill(std::nullopt);
+        task_vendor_.fill(std::nullopt);
+        task_official_.fill(std::nullopt);
+    }
     if (!api_)
         return;
 
@@ -299,11 +308,6 @@ void AmsBackendSnapmaker::on_started() {
         std::lock_guard<std::mutex> lock(mutex_);
         override_store_ = std::move(loaded.store);
         overrides_ = std::move(loaded.overrides);
-        // A reconnect re-baselines what each channel's firmware says: a
-        // silence heard before it says nothing about the channel now.
-        tag_names_identity_.fill(std::nullopt);
-        task_vendor_.fill(std::nullopt);
-        task_official_.fill(std::nullopt);
         helix::ams::bind_fingerprint_persistence(rfid_tracker_, override_store_.get(), overrides_);
         // A reconnect re-baselines the feed ports: an insert pending from
         // before it is judged against nothing this session has seen.
@@ -2276,8 +2280,13 @@ void AmsBackendSnapmaker::retract_unbacked_identity_locked(int slot_index, SlotI
         return;
     }
     helix::ams::Observation kept = *sources.remembered;
-    const auto is_line = [](const std::optional<std::string>& v) {
-        return v.has_value() && is_known_subtype(*v);
+    // A product-line literal is Snapmaker's word only beside Snapmaker or no
+    // brand at all; beside another vendor ("eSUN Silk") it names that
+    // vendor's product.
+    const bool line_vendor =
+        !kept.brand.has_value() || kept.brand->empty() || is_product_line_vendor(*kept.brand);
+    const auto is_line = [line_vendor](const std::optional<std::string>& v) {
+        return line_vendor && v.has_value() && is_known_subtype(*v);
     };
     const bool drop_name = is_line(kept.spool_name);
     const bool drop_product = is_line(kept.product_name);
