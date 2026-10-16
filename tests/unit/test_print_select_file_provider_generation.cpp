@@ -18,6 +18,7 @@
  * of sending, letting us deliver them out of order deterministically.
  */
 
+#include "ui_filename_utils.h"
 #include "ui_print_select_file_provider.h"
 
 #include "../test_helpers/scoped_env.h"
@@ -225,6 +226,8 @@ std::vector<std::string> names(const std::vector<PrintFileData>& files) {
 TEST_CASE_METHOD(FileProviderGenFixture,
                  "FileProvider leaves the app's staging directories out of the gcodes root",
                  "[fileprovider][print_select][staging]") {
+    // The plugin's status named a visible link directory.
+    helix::gcode::set_plugin_link_dir("helix_print");
     std::vector<std::string> delivered;
     provider_.set_on_files_ready(
         [&delivered](std::vector<PrintFileData>&& files) { delivered = names(files); });
@@ -241,6 +244,7 @@ TEST_CASE_METHOD(FileProviderGenFixture,
     api_->capturing->success_cbs.back()(listing);
     CHECK(std::find(delivered.begin(), delivered.end(), "helix_staging") != delivered.end());
     CHECK(std::find(delivered.begin(), delivered.end(), "helix_print") != delivered.end());
+    helix::gcode::set_plugin_link_dir("");
 }
 
 TEST_CASE_METHOD(FileProviderGenFixture,

@@ -9,6 +9,7 @@
 #include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/print_preparation_manager_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/scoped_env.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
@@ -18,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <string>
 
 #include "../catch_amalgamated.hpp"
@@ -231,4 +233,48 @@ TEST_CASE_METHOD(ArchiveStart, "staged copies go where the printer's Klipper can
     CHECK(uploads[0].dest_path.rfind(root, 0) == 0);
     REQUIRE(printer.api.job_mock().started_prints().size() == 1);
     CHECK(printer.api.job_mock().started_prints()[0] == uploads[0].dest_path);
+}
+
+TEST_CASE_METHOD(ArchiveStart,
+                 "the plugin's own link directory decides the staging over the database",
+                 "[print_preparation][three_mf][staging]") {
+    plant("single_plate.gcode.3mf");
+    // A stock entry in the database, but the plugin reports a visible link
+    // directory: it found the dot-directory filter on this printer itself.
+    REQUIRE(printer.state.profile_state().set_printer_type("FlashForge Adventurer 5M", true, false,
+                                                           false));
+    printer.state.set_helix_plugin_installed(true);
+    printer.state.set_helix_plugin_link_dir("helix_print");
+    drain_until_quiet();
+    REQUIRE(printer.state.plugin_status_state().link_dir() == "helix_print");
+
+    manager.set_archive_plate(kArchive, 9);
+    start();
+    const auto& uploads = printer.api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    CHECK(uploads[0].dest_path.rfind("helix_staging/modified_", 0) == 0);
+    // Its prints resolve back through that directory too.
+    CHECK(gcode::resolve_gcode_filename("helix_print/full/Door.gcode.3mf") == "Door.gcode.3mf");
+    printer.state.set_helix_plugin_link_dir("");
+    drain_until_quiet();
+}
+
+TEST_CASE("the plugin's status carries its link directory", "[print_preparation][staging][api]") {
+    MockPrinter printer;
+    ScopedEnv installed("HELIX_MOCK_HELIX_PLUGIN", "1");
+    std::optional<HelixPluginInfo> info;
+    SECTION("a visible one") {
+        ScopedEnv dir("HELIX_MOCK_HELIX_PLUGIN_LINK_DIR", "helix_print");
+        printer.api.job().check_helix_plugin([&info](const HelixPluginInfo& i) { info = i; },
+                                             [](const MoonrakerError&) {});
+        REQUIRE(info);
+        CHECK(info->available);
+        CHECK(info->symlink_dir == "helix_print");
+    }
+    SECTION("the default") {
+        printer.api.job().check_helix_plugin([&info](const HelixPluginInfo& i) { info = i; },
+                                             [](const MoonrakerError&) {});
+        REQUIRE(info);
+        CHECK(info->symlink_dir == ".helix_print");
+    }
 }

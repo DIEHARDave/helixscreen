@@ -436,20 +436,54 @@ TEST_CASE("a visible staging root stages where dot-directory-blind Klipper can p
     CHECK_FALSE(helix::gcode::is_uploaded_rewrite_path("x.helix_temp/modified_1p_a.gcode"));
 }
 
-TEST_CASE("the plugin's visible link directory unwraps like the hidden one",
+namespace {
+/// Names the plugin's link directory for one test and forgets it after.
+struct PluginLinkDir {
+    explicit PluginLinkDir(const std::string& dir) {
+        helix::gcode::set_plugin_link_dir(dir);
+    }
+    ~PluginLinkDir() {
+        helix::gcode::set_plugin_link_dir("");
+    }
+};
+} // namespace
+
+TEST_CASE("the plugin's link directory comes from its status, the hidden default always",
           "[filename_utils][identity][staging]") {
+    // Not reported yet: only the plugin's default resolves.
+    CHECK(resolve_gcode_filename(".helix_print/full/parts/benchy.gcode") == "parts/benchy.gcode");
+    CHECK_FALSE(helix::gcode::is_rewritten_gcode_path("helix_print/full/parts/benchy.gcode"));
+    CHECK_FALSE(helix::gcode::is_app_managed_directory("helix_print"));
+
+    PluginLinkDir dir("helix_print/");
+    CHECK(resolve_gcode_filename(".helix_print/full/parts/benchy.gcode") == "parts/benchy.gcode");
     CHECK(resolve_gcode_filename("helix_print/full/parts/benchy.gcode") == "parts/benchy.gcode");
     CHECK(helix::gcode::trusted_original_path("helix_print/full/parts/benchy.gcode") ==
           "parts/benchy.gcode");
     CHECK(helix::gcode::is_rewritten_gcode_path("helix_print/benchy.gcode"));
     CHECK_FALSE(helix::gcode::is_uploaded_rewrite_path("helix_print/benchy.gcode"));
+    CHECK(helix::gcode::is_app_managed_directory("helix_print"));
+}
+
+TEST_CASE("staging follows the plugin's answer, else the printer database",
+          "[filename_utils][staging]") {
+    using helix::gcode::staging_root_for;
+    using helix::gcode::StagingRoot;
+    // The plugin present and its directory known: its visibility decides.
+    CHECK(staging_root_for(true, "helix_print", false) == StagingRoot::Visible);
+    CHECK(staging_root_for(true, ".helix_print", true) == StagingRoot::Hidden);
+    // No plugin, or one that named no directory: the database flag.
+    CHECK(staging_root_for(false, "helix_print", false) == StagingRoot::Hidden);
+    CHECK(staging_root_for(false, "", true) == StagingRoot::Visible);
+    CHECK(staging_root_for(true, "", true) == StagingRoot::Visible);
+    CHECK(staging_root_for(true, "", false) == StagingRoot::Hidden);
 }
 
 TEST_CASE("the app's own gcodes directories are named once", "[filename_utils][staging]") {
     const auto dirs = helix::gcode::staging_dirs();
     CHECK(dirs == std::vector<std::string>{".helix_temp", "helix_staging"});
     CHECK(helix::gcode::is_app_managed_directory("helix_staging"));
-    CHECK(helix::gcode::is_app_managed_directory("helix_print"));
+    CHECK_FALSE(helix::gcode::is_app_managed_directory("helix_print")); // until the plugin says
     CHECK_FALSE(helix::gcode::is_app_managed_directory("parts"));
     CHECK_FALSE(helix::gcode::is_app_managed_directory(".helix_temp"));
 }

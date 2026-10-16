@@ -127,7 +127,11 @@ class IJobAPI {
                                       const std::vector<std::string>& modifications,
                                       ModifiedPrintCallback on_success, ErrorCallback on_error) = 0;
 
-    virtual void check_helix_plugin(BoolCallback on_result, ErrorCallback on_error) = 0;
+    using PluginInfoCallback = std::function<void(const HelixPluginInfo&)>;
+
+    /// Whether the HelixPrint plugin is installed, and its link directory.
+    /// Never reports an error: an absent plugin answers available=false.
+    virtual void check_helix_plugin(PluginInfoCallback on_result, ErrorCallback on_error) = 0;
 
     virtual void pause_print(SuccessCallback on_success, ErrorCallback on_error) = 0;
 

@@ -143,13 +143,29 @@ bool is_rewritten_gcode_path(const std::string& path);
 /// its file list skips them, since a print it cannot list fails to open.
 enum class StagingRoot { Hidden, Visible };
 
+/**
+ * @brief Where this printer's staged copies go.
+ *
+ * The printer's own answer wins: the HelixPrint plugin installs its link
+ * directory visible exactly where Klipper skips dot-directories, so with the
+ * plugin present and its directory known, a visible one means stage visibly.
+ * Without that, @p db_hides_dot_dirs (the printer database's flag) decides.
+ */
+StagingRoot staging_root_for(bool plugin_present, const std::string& plugin_link_dir,
+                             bool db_hides_dot_dirs);
+
 /// Every staging directory, relative to the gcodes root: the startup sweep
 /// empties each.
 std::vector<std::string> staging_dirs();
 
-/// A gcodes-root directory the app owns (visible staging, the plugin's visible
-/// link directory), which the file list leaves out as it does dot-directories.
+/// A gcodes-root directory the app owns (visible staging, the plugin's link
+/// directory), which the file list leaves out as it does dot-directories.
 bool is_app_managed_directory(const std::string& name);
+
+/// The HelixPrint plugin's link directory, as its status reports it: a print
+/// it starts runs `<dir>/full/<original>`, which resolves back to the original
+/// alongside the default `.helix_print`. Empty forgets it. Any thread.
+void set_plugin_link_dir(const std::string& dir);
 
 /**
  * @brief Build the gcodes-root-relative path a rewritten copy is uploaded to.

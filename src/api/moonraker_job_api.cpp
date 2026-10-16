@@ -90,30 +90,33 @@ void MoonrakerJobAPI::cancel_print(SuccessCallback on_success, ErrorCallback on_
 // HelixPrint Plugin Operations
 // ============================================================================
 
-void MoonrakerJobAPI::check_helix_plugin(BoolCallback on_result, ErrorCallback on_error) {
+void MoonrakerJobAPI::check_helix_plugin(PluginInfoCallback on_result, ErrorCallback on_error) {
     spdlog::debug("[Moonraker API] Checking for helix_print plugin");
 
     client_.send_jsonrpc(
         "server.helix.status", json::object(),
         [on_result](const json& response) {
             // Plugin is available
-            bool enabled = true;
+            helix::HelixPluginInfo info;
+            info.available = true;
             std::string version = "unknown";
             if (response.contains("result")) {
                 const auto& r = response["result"];
-                enabled = helix::json_util::safe_bool(r, "enabled", true);
+                info.available = helix::json_util::safe_bool(r, "enabled", true);
                 version = helix::json_util::safe_string(r, "version",
                                                         "1.0.0"); // Old plugins lack version
+                info.symlink_dir = helix::json_util::safe_string(r, "symlink_dir", "");
             }
-            spdlog::info("[Moonraker API] helix_print plugin v{} detected (enabled={})", version,
-                         enabled);
-            on_result(enabled);
+            spdlog::info("[Moonraker API] helix_print plugin v{} detected (enabled={}, links in "
+                         "'{}')",
+                         version, info.available, info.symlink_dir);
+            on_result(info);
         },
         [on_result, on_error](const MoonrakerError& err) {
             // Plugin not available (404 or method not found)
             spdlog::debug("[Moonraker API] helix_print plugin not available: {}", err.message);
             // Don't treat this as an error - just means plugin isn't installed
-            on_result(false);
+            on_result(helix::HelixPluginInfo{});
         },
         0,     // timeout_ms: use default
         true); // silent: suppress RPC_ERROR events/toasts

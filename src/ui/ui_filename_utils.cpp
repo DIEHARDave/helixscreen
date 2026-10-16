@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <ctime>
+#include <mutex>
 #include <optional>
 #include <vector>
 
@@ -93,12 +94,37 @@ std::string get_display_filename(const std::string& path) {
 static const std::string hidden_staging_dir = ".helix_temp";
 static const std::string visible_staging_dir = "helix_staging";
 static const std::string staged_name_prefix = "modified_";
-// Where the HelixPrint plugin links a staged copy: hidden by default, visible
-// where Klipper skips dot-directories. Under its `full/` segment the remainder
-// IS the original's gcodes-relative path; directly under the directory sits
-// only a bare filename.
-static const std::string helix_print_prefixes[] = {".helix_print/", "helix_print/"};
+// Where the HelixPrint plugin links a staged copy: its default directory, and
+// whatever its status names instead (a visible one where Klipper skips
+// dot-directories). Under its `full/` segment the remainder IS the original's
+// gcodes-relative path; directly under the directory sits only a bare filename.
+static const std::string default_plugin_link_dir = ".helix_print";
 static const std::string helix_print_full_segment = "full/";
+
+namespace {
+std::mutex& link_dir_mutex() {
+    static std::mutex m;
+    return m;
+}
+std::string& configured_link_dir() {
+    static std::string dir;
+    return dir;
+}
+} // namespace
+
+void set_plugin_link_dir(const std::string& dir) {
+    std::string clean = dir;
+    while (!clean.empty() && clean.back() == '/') {
+        clean.pop_back();
+    }
+    std::lock_guard<std::mutex> lock(link_dir_mutex());
+    configured_link_dir() = clean;
+}
+
+static std::string plugin_link_dir_copy() {
+    std::lock_guard<std::mutex> lock(link_dir_mutex());
+    return configured_link_dir();
+}
 static const std::string gcode_mod_prefix = "/gcode_mod/mod_";
 static const std::string legacy_prefix = "/tmp/helixscreen_mod_";
 
@@ -106,7 +132,12 @@ static const std::string legacy_prefix = "/tmp/helixscreen_mod_";
 // reports gcodes-relative paths, so the plugin's directory is only ever the
 // leading segment; a user folder of that name deeper down is not a link.
 static size_t helix_print_original_pos(const std::string& path) {
-    for (const auto& prefix : helix_print_prefixes) {
+    const std::string configured = plugin_link_dir_copy();
+    for (const std::string* dir : {&default_plugin_link_dir, &configured}) {
+        if (dir->empty()) {
+            continue;
+        }
+        const std::string prefix = *dir + "/";
         if (path.size() > prefix.size() && path.compare(0, prefix.size(), prefix) == 0) {
             return prefix.size();
         }
@@ -131,12 +162,20 @@ static std::pair<size_t, size_t> find_staged_prefix(const std::string& path) {
     return {std::string::npos, std::string::npos};
 }
 
+StagingRoot staging_root_for(bool plugin_present, const std::string& plugin_link_dir,
+                             bool db_hides_dot_dirs) {
+    if (plugin_present && !plugin_link_dir.empty()) {
+        return plugin_link_dir[0] == '.' ? StagingRoot::Hidden : StagingRoot::Visible;
+    }
+    return db_hides_dot_dirs ? StagingRoot::Visible : StagingRoot::Hidden;
+}
+
 std::vector<std::string> staging_dirs() {
     return {hidden_staging_dir, visible_staging_dir};
 }
 
 bool is_app_managed_directory(const std::string& name) {
-    return name == visible_staging_dir || name == "helix_print";
+    return name == visible_staging_dir || (!name.empty() && name == plugin_link_dir_copy());
 }
 
 bool is_rewritten_gcode_path(const std::string& path) {

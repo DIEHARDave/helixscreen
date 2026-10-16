@@ -85,8 +85,8 @@ TEST_CASE_METHOD(HelixPrintAPITestFixture,
     // (error callback path returns false, not error)
 
     api->job().check_helix_plugin(
-        [this](bool available) {
-            bool_result = available;
+        [this](const helix::HelixPluginInfo& info) {
+            bool_result = info.available;
             success_called = true;
         },
         [this](const MoonrakerError& err) {

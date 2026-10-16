@@ -626,6 +626,11 @@ void PrinterState::set_helix_plugin_installed(bool installed) {
     });
 }
 
+void PrinterState::set_helix_plugin_link_dir(const std::string& dir) {
+    async_lifetime_.defer("PrinterState::set_helix_plugin_link_dir",
+                          [this, dir]() { plugin_status_state_.set_link_dir(dir); });
+}
+
 void PrinterState::set_macro_option_count(size_t count) {
     macro_option_count_ = count;
     update_gcode_modification_visibility();

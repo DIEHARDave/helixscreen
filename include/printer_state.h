@@ -633,6 +633,10 @@ class PrinterState {
      */
     void set_helix_plugin_installed(bool installed);
 
+    /// The plugin's link directory from its status (empty when not reported);
+    /// any thread.
+    void set_helix_plugin_link_dir(const std::string& dir);
+
     /**
      * @brief Set how many PRINT OPTIONS rows the PRINT_START analysis adds
      *

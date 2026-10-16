@@ -2228,9 +2228,12 @@ std::string PrintPreparationManager::printable_path(const std::string& file_path
 }
 
 gcode::StagingRoot PrintPreparationManager::staging_root() const {
-    return printer_state_ && printer_state_->profile_state().klipper_hides_dot_dirs()
-               ? gcode::StagingRoot::Visible
-               : gcode::StagingRoot::Hidden;
+    if (!printer_state_) {
+        return gcode::StagingRoot::Hidden;
+    }
+    return gcode::staging_root_for(printer_state_->plugin_status_state().service_has_helix_plugin(),
+                                   printer_state_->plugin_status_state().link_dir(),
+                                   printer_state_->profile_state().klipper_hides_dot_dirs());
 }
 
 PrintPreparationManager::RewriteResult
