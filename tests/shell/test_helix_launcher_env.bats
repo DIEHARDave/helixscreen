@@ -685,13 +685,149 @@ run_launcher_as_root() {
 @test "env file whose owner or mode cannot be read is refused, not assumed safe" {
     cp "$LAUNCHER" "$MOCK_INSTALL/bin/helix-launcher.sh"
     make_fake_stat
+    make_fake_ls
     printf 'MOONRAKER_HOST=never-loaded\n' > "$MOCK_INSTALL/config/helixscreen.env"
     env -u MOONRAKER_HOST \
-        PATH="$BATS_TEST_TMPDIR/fakebin:$PATH" FAKE_STAT_FAIL=1 \
+        PATH="$BATS_TEST_TMPDIR/fakebin:$PATH" FAKE_STAT_FAIL=1 FAKE_LS_RAW= \
         "$MOCK_INSTALL/bin/helix-launcher.sh" --print-env MOONRAKER_HOST \
         > "$BATS_TEST_TMPDIR/value.out" 2> "$BATS_TEST_TMPDIR/refuse.log"
     [ "$(cat "$BATS_TEST_TMPDIR/value.out")" = "" ]
     grep -q "cannot determine owner/mode" "$BATS_TEST_TMPDIR/refuse.log"
+}
+
+# =============================================================================
+# No stat at all: Forge-X's BusyBox (AD5M) ships without the applet, so the
+# trust gate reads owner, mode and link count from `ls -lnLd` instead.
+# =============================================================================
+
+# A stat that is not there: BusyBox answers a missing applet like this.
+make_no_stat() {
+    mkdir -p "$BATS_TEST_TMPDIR/fakebin"
+    printf '#!/bin/sh\necho "stat: applet not found" >&2\nexit 127\n' \
+        > "$BATS_TEST_TMPDIR/fakebin/stat"
+    chmod +x "$BATS_TEST_TMPDIR/fakebin/stat"
+}
+
+# Fake ls answering `ls -lnLd PATH` in BusyBox's column layout from
+# FAKE_LS_PERM / FAKE_LS_NLINK / FAKE_LS_UID; FAKE_LS_RAW (set, even empty)
+# replaces the whole line. Every other invocation reaches the real ls.
+make_fake_ls() {
+    mkdir -p "$BATS_TEST_TMPDIR/fakebin"
+    cat > "$BATS_TEST_TMPDIR/fakebin/ls" <<FAKE
+#!/bin/sh
+if [ "\$1" = "-lnLd" ]; then
+    if [ -n "\${FAKE_LS_RAW+x}" ]; then
+        [ -n "\$FAKE_LS_RAW" ] && echo "\$FAKE_LS_RAW"
+        exit 0
+    fi
+    echo "\${FAKE_LS_PERM:--rw-r--r--}    \${FAKE_LS_NLINK:-1} \${FAKE_LS_UID:-0}        0              42 Oct 15 12:00 \$2"
+    exit 0
+fi
+exec $(command -v ls) "\$@"
+FAKE
+    chmod +x "$BATS_TEST_TMPDIR/fakebin/ls"
+}
+
+run_launcher_no_stat() {
+    env -u MOONRAKER_HOST PATH="$BATS_TEST_TMPDIR/fakebin:$PATH" "$@" \
+        "$MOCK_INSTALL/bin/helix-launcher.sh" --print-env MOONRAKER_HOST \
+        > "$BATS_TEST_TMPDIR/value.out" 2> "$BATS_TEST_TMPDIR/gate.log"
+}
+
+@test "with no stat, a root-owned 0644 env file is read from ls and loads" {
+    cp "$LAUNCHER" "$MOCK_INSTALL/bin/helix-launcher.sh"
+    make_no_stat
+    make_fake_ls
+    printf 'MOONRAKER_HOST=busybox-ls.local\n' > "$MOCK_INSTALL/config/helixscreen.env"
+    run_launcher_no_stat FAKE_LS_UID=0 FAKE_LS_PERM=-rw-r--r--
+    [ "$(cat "$BATS_TEST_TMPDIR/value.out")" = "busybox-ls.local" ]
+    [ ! -s "$BATS_TEST_TMPDIR/gate.log" ]
+}
+
+@test "with no stat, a group-writable env file owned by a third user is refused" {
+    cp "$LAUNCHER" "$MOCK_INSTALL/bin/helix-launcher.sh"
+    make_no_stat
+    make_fake_ls
+    printf 'MOONRAKER_HOST=never-loaded\n' > "$MOCK_INSTALL/config/helixscreen.env"
+    run_launcher_no_stat FAKE_LS_UID=12345 FAKE_LS_PERM=-rw-rw-r--
+    [ "$(cat "$BATS_TEST_TMPDIR/value.out")" = "" ]
+    grep -q "owned by uid 12345" "$BATS_TEST_TMPDIR/gate.log"
+}
+
+@test "with no stat, a write bit read from ls refuses when the repair does not take" {
+    # The fake ls keeps reporting group write after the chmod, so this passes
+    # only if the letters convert to the octal mode the write-bit mask reads.
+    cp "$LAUNCHER" "$MOCK_INSTALL/bin/helix-launcher.sh"
+    make_no_stat
+    make_fake_ls
+    printf 'MOONRAKER_HOST=never-loaded\n' > "$MOCK_INSTALL/config/helixscreen.env"
+    run_launcher_no_stat FAKE_LS_UID=0 FAKE_LS_PERM=-rw-rw-r--
+    [ "$(cat "$BATS_TEST_TMPDIR/value.out")" = "" ]
+    grep -q "mode 664) is group- or world-writable" "$BATS_TEST_TMPDIR/gate.log"
+}
+
+@test "with no stat, an unparseable ls listing is refused, not assumed safe" {
+    cp "$LAUNCHER" "$MOCK_INSTALL/bin/helix-launcher.sh"
+    make_no_stat
+    make_fake_ls
+    printf 'MOONRAKER_HOST=never-loaded\n' > "$MOCK_INSTALL/config/helixscreen.env"
+    run_launcher_no_stat "FAKE_LS_RAW=ls: unrecognized option: n"
+    [ "$(cat "$BATS_TEST_TMPDIR/value.out")" = "" ]
+    grep -q "cannot determine owner/mode" "$BATS_TEST_TMPDIR/gate.log"
+    run_launcher_no_stat FAKE_LS_UID=root FAKE_LS_PERM=-rw-r--r--
+    [ "$(cat "$BATS_TEST_TMPDIR/value.out")" = "" ]
+    grep -q "cannot determine owner/mode" "$BATS_TEST_TMPDIR/gate.log"
+    run_launcher_no_stat FAKE_LS_UID=0 FAKE_LS_PERM=-rw-r--r-x-
+    [ "$(cat "$BATS_TEST_TMPDIR/value.out")" = "" ]
+    grep -q "cannot determine owner/mode" "$BATS_TEST_TMPDIR/gate.log"
+}
+
+@test "ls permission letters convert to the octal mode stat would print" {
+    make_fake_ls
+    export PATH="$BATS_TEST_TMPDIR/fakebin:$PATH"
+    . "$BATS_TEST_TMPDIR/env_parse.sh"
+    local perm want
+    while read -r perm want; do
+        [ "$(FAKE_LS_UID=7 FAKE_LS_NLINK=3 FAKE_LS_PERM="$perm" helix_ls_stat /x)" = "7 $want 3" ] ||
+            { echo "$perm -> $(FAKE_LS_UID=7 FAKE_LS_NLINK=3 FAKE_LS_PERM="$perm" helix_ls_stat /x), want $want"; return 1; }
+    done <<'CASES'
+-rw-r--r-- 644
+-rw-rw-rw- 666
+---------- 0
+-rwxr-xr-x 755
+-rwsr-xr-x 4755
+-rwSr--r-- 4644
+-rwxr-sr-x 2755
+-rw-r-Sr-- 2644
+drwxrwxrwt 1777
+drwxr-xr-T 1754
+-rwsr-sr-t 7755
+-rw-r--r--. 644
+-rw-r--r--+ 644
+lrwxrwxrwx 777
+CASES
+    [ "$(FAKE_LS_NLINK=2 helix_env_nlink /x)" = "2" ]
+    [ "$(FAKE_LS_UID=0 FAKE_LS_PERM=-rw-r--r-- helix_env_stat /x)" = "0 644" ]
+    [ -z "$(FAKE_LS_RAW='total 0' helix_ls_stat /x)" ]
+    [ -z "$(FAKE_LS_NLINK=x helix_ls_stat /x)" ]
+}
+
+@test "with no stat, BusyBox's own ls passes a symlinked 0644 env file" {
+    command -v busybox >/dev/null 2>&1 || skip "busybox not installed"
+    busybox ls -lnLd / >/dev/null 2>&1 || skip "this busybox has no ls -lnLd"
+    cp "$LAUNCHER" "$MOCK_INSTALL/bin/helix-launcher.sh"
+    make_no_stat
+    printf '#!/bin/sh\nexec busybox ls "$@"\n' > "$BATS_TEST_TMPDIR/fakebin/ls"
+    chmod +x "$BATS_TEST_TMPDIR/fakebin/ls"
+    mkdir -p "$BATS_TEST_TMPDIR/printer_data/config/helixscreen"
+    printf 'MOONRAKER_HOST=forge-x.local\n' \
+        > "$BATS_TEST_TMPDIR/printer_data/config/helixscreen/helixscreen.env"
+    chmod 644 "$BATS_TEST_TMPDIR/printer_data/config/helixscreen/helixscreen.env"
+    ln -s "$BATS_TEST_TMPDIR/printer_data/config/helixscreen/helixscreen.env" \
+        "$MOCK_INSTALL/config/helixscreen.env"
+    run_launcher_no_stat
+    [ "$(cat "$BATS_TEST_TMPDIR/value.out")" = "forge-x.local" ]
+    [ ! -s "$BATS_TEST_TMPDIR/gate.log" ]
 }
 
 # The launcher's --print-env answer for NAME, with the env file holding the
