@@ -195,6 +195,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     [[nodiscard]] PathSegment get_slot_filament_segment(int slot_index) const override;
     [[nodiscard]] PathSegment infer_error_segment() const override;
 
+    /// Every feeder's port sensor sits at the top of its tube: the lane's
+    /// entry sensor, read as PREP.
+    [[nodiscard]] bool slot_has_prep_sensor(int slot_index) const override {
+        return slot_index >= 0 && slot_index < NUM_TOOLS;
+    }
+
     // Per-slot "filament is loaded to THIS tool's nozzle". Returns the
     // channel_state latch (loaded_at_toolhead_), driven by filament_feed
     // channel_state transitions: true between load_finish and the next
@@ -685,6 +691,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// report. Its true default means "no runout", never "filament in the
     /// toolhead", so only a reported reading answers the parked question.
     std::array<bool, NUM_TOOLS> toolhead_switch_reported_{{false, false, false, false}};
+
+    /// How far tool i's own lane holds filament. Caller holds mutex_.
+    [[nodiscard]] PathSegment slot_segment_locked(int i) const;
 
     /// Filament in tool i's toolhead short of the nozzle. Caller holds mutex_.
     [[nodiscard]] bool parked_in_toolhead_locked(int i) const {

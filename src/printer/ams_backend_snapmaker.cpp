@@ -412,19 +412,17 @@ lv_subject_t* AmsBackendSnapmaker::get_operation_step_index_subject(StepOperatio
 
 PathSegment AmsBackendSnapmaker::get_filament_segment() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (system_info_.current_tool >= 0 && system_info_.filament_loaded) {
-        return PathSegment::NOZZLE;
-    }
-    return PathSegment::SPOOL;
+    // The system path is the mounted tool's own lane: nothing without a tool.
+    return slot_segment_locked(system_info_.current_tool);
 }
 
 PathSegment AmsBackendSnapmaker::get_slot_filament_segment(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    const auto* slot = system_info_.get_slot_global(slot_index);
-    if (!slot)
-        return PathSegment::NONE;
+    return slot_segment_locked(slot_index);
+}
 
-    if (slot_index < 0 || slot_index >= NUM_TOOLS)
+PathSegment AmsBackendSnapmaker::slot_segment_locked(int i) const {
+    if (i < 0 || i >= NUM_TOOLS || !system_info_.get_slot_global(i))
         return PathSegment::NONE;
 
     // Filament in THIS tool's toolhead draws to its own nozzle (PARALLEL: each
@@ -433,19 +431,18 @@ PathSegment AmsBackendSnapmaker::get_slot_filament_segment(int slot_index) const
     // filament_loaded for the picked tool, so the aggregate and per-slot paths
     // agree. The switch alone cannot say "loaded" (it still reads filament
     // after an unload), which is why parked stays distinct from the latch.
-    if (loaded_at_toolhead_[slot_index] || parked_in_toolhead_locked(slot_index)) {
+    if (loaded_at_toolhead_[i] || parked_in_toolhead_locked(i))
         return PathSegment::NOZZLE;
-    }
 
-    // Not loaded to the nozzle. If filament is still staged in the bowden/buffer
-    // — the port sensor reads present, or the motion sensor still lingers
-    // present just after an unload — draw the line down to the toolhead entry
-    // sensor dot but no farther (OUTPUT); the dot stays hollow because the
-    // filament is not fed into the hotend. Otherwise nothing (genuine runout /
-    // empty lane).
-    if (port_sensor_filament_present_[slot_index] || sensor_filament_present_[slot_index]) {
+    // The feeder's port sensor is the lane's entry sensor: filament it alone
+    // sees is at the top of the tube, not threaded toward the toolhead.
+    if (port_sensor_filament_present_[i])
+        return PathSegment::PREP;
+
+    // A toolhead switch that has not reported keeps its "no runout" default,
+    // which draws the tube to the toolhead sensor but not past it.
+    if (sensor_filament_present_[i])
         return PathSegment::OUTPUT;
-    }
     return PathSegment::NONE;
 }
 

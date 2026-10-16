@@ -701,6 +701,10 @@ class AmsBackendMock : public AmsBackend {
      */
     void set_snapmaker_mode(bool enabled);
 
+    /// Hold @p slot_index's filament at its feeder: its entry sensor reads it,
+    /// its toolhead has not taken it (HELIX_MOCK_AMS_STATE=feeder).
+    void set_slot_at_feeder(int slot_index);
+
     /**
      * @brief Configure (or clear) the simulated Snapmaker print task.
      *
@@ -1072,6 +1076,7 @@ class AmsBackendMock : public AmsBackend {
 
     // Tool changer mode (alternative to filament system simulation)
     bool tool_changer_mode_ = false; ///< Simulate tool changer instead of filament system
+    int slot_at_feeder_ = -1;        ///< Lane whose filament only its entry sensor sees
 
     // AFC mode (alternative to Happy Hare simulation)
     bool afc_mode_ = false;              ///< Simulate AFC Box Turtle instead of Happy Hare

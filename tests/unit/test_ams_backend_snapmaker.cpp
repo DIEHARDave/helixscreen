@@ -1118,10 +1118,9 @@ TEST_CASE_METHOD(SnapmakerFixture,
 // every tool loaded to its own dedicated nozzle renders all the way into the
 // toolhead (NOZZLE); multiple tools can be loaded at once, each to its own
 // nozzle. "Loaded to the nozzle" is the channel_state latch (load_finish), NOT
-// the motion sensor — the sensor lingers present after an unload, which used to
-// leave unloaded lanes rendering as fully loaded. A tool that is present in the
-// buffer but not loaded renders OUTPUT (line to the toolhead entry dot, hollow);
-// an empty lane renders nothing.
+// the motion sensor. A tool whose feeder port sensor alone sees filament
+// renders PREP (the tube down to its entry sensor); an empty lane renders
+// nothing.
 TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker get_slot_filament_segment renders NOZZLE for every loaded tool",
                  "[ams][snapmaker][path]") {
@@ -1152,14 +1151,14 @@ TEST_CASE_METHOD(SnapmakerFixture,
         SnapmakerTestAccess::set_port_sensor_present(backend, 1, false);
         CHECK(backend.get_slot_filament_segment(1) == PathSegment::NONE);
     }
-    SECTION("filament staged in the bowden (not loaded, port present) renders to the dot") {
+    SECTION("filament at the feeder (not loaded, port present) renders to the entry sensor") {
         // U1 post-unload state: filament retracted out of the toolhead but left
         // in the feed tube. Latch clear (unload_finish), toolhead motion sensor
-        // reads empty, buffer/port sensor still present → draw the line down to
-        // the toolhead entry sensor but no farther (OUTPUT), not nothing.
+        // reads empty, the feeder's port sensor still present → the lane reads
+        // at its entry sensor (PREP), not nothing.
         SnapmakerTestAccess::set_sensor_present(backend, 1, false);
         SnapmakerTestAccess::set_port_sensor_present(backend, 1, true);
-        CHECK(backend.get_slot_filament_segment(1) == PathSegment::OUTPUT);
+        CHECK(backend.get_slot_filament_segment(1) == PathSegment::PREP);
     }
 }
 
@@ -1382,7 +1381,36 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parked head draws its per-slot pat
     CHECK(backend.get_slot_filament_segment(3) == PathSegment::NOZZLE);
 
     SnapmakerTestAccess::handle_status(backend, t3_switch(false));
-    CHECK(backend.get_slot_filament_segment(3) == PathSegment::OUTPUT);
+    CHECK(backend.get_slot_filament_segment(3) == PathSegment::PREP);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker feeder port sensor is each lane's entry sensor",
+                 "[ams][snapmaker][path][entry_sensor]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+    for (int i = 0; i < 4; i++)
+        CHECK(backend.slot_has_prep_sensor(i));
+    CHECK_FALSE(backend.slot_has_prep_sensor(4));
+    CHECK_FALSE(backend.slot_has_prep_sensor(-1));
+
+    SECTION("with no tool on the carriage the system path reads nothing") {
+        CHECK(backend.get_filament_segment() == PathSegment::NONE);
+    }
+    SECTION("the mounted tool reports its own lane") {
+        SnapmakerTestAccess::handle_status(backend,
+                                           merged({t3_picked(), t3_feed(), t3_switch(false)}));
+        CHECK(backend.get_filament_segment() == PathSegment::PREP);
+        SnapmakerTestAccess::handle_status(backend, t3_switch(true));
+        CHECK(backend.get_filament_segment() == PathSegment::NOZZLE);
+    }
+    SECTION("an empty mounted lane reads nothing") {
+        SnapmakerTestAccess::handle_status(
+            backend,
+            merged({t3_picked(), make_feed_status(3, "wait_insert", false), t3_switch(false)}));
+        SnapmakerTestAccess::set_port_sensor_present(backend, 3, false);
+        CHECK(backend.get_slot_filament_segment(3) == PathSegment::NONE);
+        CHECK(backend.get_filament_segment() == PathSegment::NONE);
+    }
 }
 
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker active pin alone does not mark a tool loaded",
@@ -1693,8 +1721,8 @@ TEST_CASE_METHOD(SnapmakerFixture,
         SnapmakerTestAccess::handle_status(backend, make_feed_status(2, "unload_finish",
                                                                      /*filament_detected=*/true));
         CHECK_FALSE(SnapmakerTestAccess::loaded_at_toolhead(backend, 2));
-        // Filament is staged in the buffer but NOT at the nozzle.
-        CHECK(backend.get_slot_filament_segment(2) == PathSegment::OUTPUT);
+        // Filament is at the feeder but NOT at the nozzle.
+        CHECK(backend.get_slot_filament_segment(2) == PathSegment::PREP);
     }
 
     SECTION("empty lane draws nothing") {
