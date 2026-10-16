@@ -239,6 +239,9 @@ inline constexpr std::chrono::system_clock::time_point k_unknown_stamp_before =
 /// Whether @p record declares its material as the user's own choice.
 [[nodiscard]] bool declares_material(const FilamentSlotOverride& record);
 
+/// Whether @p record declares its spool name as the user's own choice.
+[[nodiscard]] bool declares_spool_name(const FilamentSlotOverride& record);
+
 /// Withdraw @p record's colour and material declarations, leaving both values
 /// where they are.
 void withdraw_color_and_material(FilamentSlotOverride& record);

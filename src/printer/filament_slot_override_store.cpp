@@ -1787,15 +1787,16 @@ std::optional<int> FilamentSlotOverrideStore::load_seated_slot_blocking() {
 // Shared firmware -> lane_data mirror helper
 // =============================================================================
 
-DeclaredOnLane declared_on_lane(LaneId lane) {
+DeclaredOnLane declared_on_lane(LaneId lane, const FilamentSlotOverride* record) {
     const LaneSources sources = lane_sources(lane);
-    const auto held = [&sources](auto field) {
+    const auto held = [&sources](auto field, bool user_declares) {
         return (sources.spoolman.has_value() && ((*sources.spoolman).*field).has_value()) ||
-               (sources.local_user.has_value() && ((*sources.local_user).*field).has_value());
+               (user_declares && sources.local_user.has_value() &&
+                ((*sources.local_user).*field).has_value());
     };
     DeclaredOnLane declared;
-    declared.color = held(&Observation::color_rgb);
-    declared.material = held(&Observation::material);
+    declared.color = held(&Observation::color_rgb, !record || declares_color(*record));
+    declared.material = held(&Observation::material, !record || declares_material(*record));
     return declared;
 }
 

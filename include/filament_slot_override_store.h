@@ -379,7 +379,14 @@ struct DeclaredOnLane {
 };
 
 /// What @p lane's declaring sources hold, read from the lane source store.
-[[nodiscard]] DeclaredOnLane declared_on_lane(LaneId lane);
+///
+/// With @p record, the lane's stored override, a value on the lane's user
+/// record counts only where @p record declares that field. The rest of that
+/// record is another tool's statement, filed on the user's rung at load
+/// (prestonbrown/helixscreen#1632): it yields to the next change on the lane
+/// rather than guarding the field against it.
+[[nodiscard]] DeclaredOnLane declared_on_lane(LaneId lane,
+                                              const FilamentSlotOverride* record = nullptr);
 
 /// Mirror firmware-detected color/material into `overrides[slot_index]` and
 /// fire `store->save_async` to push the resulting record to the lane_data

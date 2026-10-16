@@ -346,6 +346,14 @@ class Ad5xIfsTestAccess {
         // wrote only this map would leave the lane reading empty.
         helix::test::file_override_as_lane_records(b, slot_index, ovr);
     }
+    // Install the map load_blocking() returned, as on_started() does, without
+    // filing any lane records: the caller files them through
+    // ingest_legacy_records() against the document the store actually read.
+    static void set_loaded_overrides(AmsBackendAd5xIfs& b,
+                                     std::unordered_map<int, helix::ams::FilamentSlotOverride> m) {
+        std::lock_guard<std::mutex> lock(b.mutex_);
+        b.overrides_ = std::move(m);
+    }
     // Read the override currently staged for a slot (empty optional if none).
     // Lets tests assert what set_slot_info(persist=true) wrote into the
     // in-memory map without going through get_slot_info (which also layers

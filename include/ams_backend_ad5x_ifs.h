@@ -856,6 +856,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
         bool color = false; ///< color_rgb, and the colour name that travels with it.
         bool material = false;
         bool catalog = false; ///< The catalog pick, which is scoped to a material.
+        bool spool_name = false;
     };
     // Retract a lane's stored declaration of the fields named in @p fields,
     // leaving every other field of those records standing. A change reaching

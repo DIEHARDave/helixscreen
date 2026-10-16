@@ -1514,7 +1514,25 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
     // lane source holds is guarded the same way, which is how a linked spool's
     // material survives a type the printer's own menu sets. To re-enable
     // auto-track on a previously-edited slot the user calls clear_slot_override.
-    const helix::ams::DeclaredOnLane declared = helix::ams::declared_on_lane(lane_id(slot_index));
+    //
+    // A value the lane's user record holds that the override does not declare
+    // is another tool's statement, and this restatement is the change it
+    // yields to (prestonbrown/helixscreen#1632): it guards nothing, and on an
+    // unlinked lane the spool name that described it goes with it. A linked
+    // lane's name is the server's.
+    auto it = overrides_.find(slot_index);
+    helix::ams::FilamentSlotOverride* record = it == overrides_.end() ? nullptr : &it->second;
+    const auto lane = lane_id(slot_index);
+    const helix::ams::DeclaredOnLane held = helix::ams::declared_on_lane(lane);
+    const helix::ams::DeclaredOnLane declared = helix::ams::declared_on_lane(lane, record);
+    const bool outside_statement =
+        (held.color && !declared.color) || (held.material && !declared.material);
+    const bool name_released = outside_statement && record && record->spoolman_id == 0 &&
+                               !helix::ams::declares_spool_name(*record);
+    if (name_released) {
+        record->spool_name.clear();
+        record->color_name.clear();
+    }
     bool changed = helix::ams::mirror_firmware_to_lane_data(
         override_store_.get(), overrides_, slot_index, firmware_color, firmware_material,
         /*slot_has_filament=*/true, helix::ams::MirrorPolicy::OverwriteAlways, backend_log_tag(),
@@ -1529,15 +1547,20 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
     // Not gated on `changed`, which says the override needed moving. The lane
     // is a separate store and can be stale on its own, and this path runs only
     // where firmware has deliberately restated the field.
-    auto it = overrides_.find(slot_index);
+    it = overrides_.find(slot_index);
     RetractedFields restated;
     restated.color = it == overrides_.end() || !helix::ams::declares_color(it->second);
     // A linked spool's material never reaches firmware, so a type firmware
     // states does not retract what the server states.
     restated.material = it == overrides_.end() ||
                         (!helix::ams::declares_material(it->second) && !declared.material);
+    restated.spool_name = name_released;
     retract_lane_declaration_locked(slot_index, restated);
 
+    if (name_released && !changed && override_store_) {
+        helix::ams::save_override_async(override_store_.get(), slot_index, it->second,
+                                        backend_log_tag(), "outside statement released");
+    }
     if (!changed)
         return false;
 
@@ -1552,7 +1575,7 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
 void AmsBackendAd5xIfs::retract_lane_declaration_locked(int slot_index, RetractedFields fields) {
     // Caller holds mutex_. See the header for why both stores have to move
     // together.
-    if (!fields.color && !fields.material && !fields.catalog) {
+    if (!fields.color && !fields.material && !fields.catalog && !fields.spool_name) {
         return;
     }
     helix::ams::retract_lane_declarations(lane_id(slot_index),
@@ -1570,6 +1593,9 @@ void AmsBackendAd5xIfs::retract_lane_declaration_locked(int slot_index, Retracte
                                               if (fields.catalog) {
                                                   kept.catalog_id.reset();
                                                   kept.product_name.reset();
+                                              }
+                                              if (fields.spool_name) {
+                                                  kept.spool_name.reset();
                                               }
                                           });
 }

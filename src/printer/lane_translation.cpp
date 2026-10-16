@@ -192,6 +192,9 @@ static_assert(MATERIAL_INDEX < std::tuple_size_v<decltype(FIELD_ROSTER)>,
 // withdraw_cleared_fields() reaches it by position for the same reason the
 // record path reaches colour and material by name.
 constexpr size_t COLOR_NAME_INDEX = index_of("color_name");
+constexpr size_t SPOOL_NAME_INDEX = index_of("spool_name");
+static_assert(SPOOL_NAME_INDEX < std::tuple_size_v<decltype(FIELD_ROSTER)>,
+              "spool name row went missing");
 static_assert(COLOR_NAME_INDEX < std::tuple_size_v<decltype(FIELD_ROSTER)>,
               "colour name row went missing");
 // The binding's own row: withdraw_cleared_fields() spares it, for the reason
@@ -870,6 +873,10 @@ bool declares_color(const FilamentSlotOverride& record) {
 
 bool declares_material(const FilamentSlotOverride& record) {
     return record.declared.test(MATERIAL_INDEX);
+}
+
+bool declares_spool_name(const FilamentSlotOverride& record) {
+    return record.declared.test(SPOOL_NAME_INDEX);
 }
 
 void withdraw_spool_owned_declarations(FilamentSlotOverride& record) {
