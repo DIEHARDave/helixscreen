@@ -245,6 +245,8 @@ tar -xzf helixscreen-pi-v1.1.0.tar.gz
 
 The installer says `Installing the package next to this installer` and shows the package's version in its plan. If the package was built for a different kind of printer or computer, it stops and changes nothing. Adding `--version` or `--update` makes it download from the internet instead.
 
+A beta package (a version like `v1.1.0-beta.9`) puts a new install on the Beta update channel, so later updates stay on betas. If HelixScreen is already installed, the update channel you picked in the app is kept. Change it any time under **Settings > Updates > Update Channel**.
+
 ### Step 3: Complete the Setup Wizard
 
 After installation, HelixScreen starts automatically. The on-screen wizard guides you through:

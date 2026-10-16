@@ -315,3 +315,55 @@ stub_channels() {
     settle_package_beside_installer
     [ -z "$package_dir" ]
 }
+
+# ---------------------------------------------------------------------------
+# The channel a handed-over package puts the install on
+# ---------------------------------------------------------------------------
+
+@test "a prerelease package beside the installer puts a fresh install on beta" {
+    make_payload "$DL/helixscreen" helixscreen-x86-desktop.zip 1.2.3-beta.4
+    run_main_from "$DL/helixscreen" --dry-run
+    [ "$status" -eq 0 ] || fail "dry run failed ($status): $output"
+    contains "Update channel: beta (v1.2.3-beta.4 is a prerelease)" "$output"
+    contains "v1.2.3-beta.4 (beta)" "$output"
+}
+
+@test "a prerelease archive named on the command line puts a fresh install on beta" {
+    make_archive helixscreen-x86-desktop.zip helixscreen-x86-desktop-v1.2.3-beta.4.tar.gz
+    run_main_from "$BATS_TEST_TMPDIR/elsewhere" --desktop --dry-run "$DL/helixscreen-x86-desktop-v1.2.3-beta.4.tar.gz"
+    [ "$status" -eq 0 ] || fail "dry run failed ($status): $output"
+    contains "Update channel: beta (v1.2.3-beta.4 is a prerelease)" "$output"
+    contains "v1.2.3-beta.4 (beta)" "$output"
+}
+
+@test "a stable package leaves the channel alone" {
+    make_payload "$DL/helixscreen" helixscreen-x86-desktop.zip 1.2.3
+    run_main_from "$DL/helixscreen" --dry-run
+    [ "$status" -eq 0 ] || fail "dry run failed ($status): $output"
+    lacks "Update channel: beta" "$output"
+    contains "v1.2.3 (stable)" "$output"
+}
+
+@test "the channel an existing install chose outranks a prerelease package" {
+    make_payload "$DESK" helixscreen-x86-desktop.zip 1.2.2
+    printf '{"config_version":3,"update":{"channel":0}}\n' > "$DESK/config/settings.json"
+    make_payload "$DL/helixscreen" helixscreen-x86-desktop.zip 1.2.3-beta.4
+    run_main_from "$DL/helixscreen" --dry-run
+    [ "$status" -eq 0 ] || fail "dry run failed ($status): $output"
+    lacks "Update channel: beta" "$output"
+    contains "v1.2.3-beta.4 (stable)" "$output"
+}
+
+@test "an unversioned zip leaves the channel alone" {
+    local pkg="$BATS_TEST_TMPDIR/zpkg"
+    make_payload "$pkg" helixscreen-x86-desktop.zip 1.2.3-beta.4
+    head -c 1100000 /dev/urandom > "$pkg/assets/pad.bin"
+    (cd "$pkg" && python3 -c 'import os,sys,zipfile
+z=zipfile.ZipFile(sys.argv[1],"w",zipfile.ZIP_DEFLATED)
+for r,_,fs in os.walk("."):
+    for f in fs: z.write(os.path.join(r,f))' "$DL/helixscreen-x86-desktop.zip")
+    run_main_from "$BATS_TEST_TMPDIR/elsewhere" --desktop --dry-run "$DL/helixscreen-x86-desktop.zip"
+    [ "$status" -eq 0 ] || fail "dry run failed ($status): $output"
+    lacks "Update channel: beta" "$output"
+    contains "local (stable)" "$output"
+}

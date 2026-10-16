@@ -926,16 +926,15 @@ main() {
         version="$package_version"
         # shellcheck disable=SC2154  # set by release.sh (detect_package_beside_installer)
         log_info "Installing the package next to this installer: ${version} (${package_platform})"
-    else
-        if [ -z "$version" ]; then
-            version=$(get_latest_version "$download_platform")
-        else
-            # After resolve_update_channel: a channel read from the installed
-            # config outranks the one a prerelease --version implies. A --local
-            # archive never moves the channel; it picks a build, not a feed.
-            match_channel_to_version "$version"
-        fi
+    elif [ -z "$version" ]; then
+        version=$(get_latest_version "$download_platform")
     fi
+    # A prerelease installed by name, as --version, an archive whose name
+    # carries it, or the package beside the installer, puts the install on
+    # beta. After resolve_update_channel, so a channel read from the installed
+    # config outranks it. A stable version and an unversioned zip ("local")
+    # move nothing, and the latest a channel resolved to is already on it.
+    match_channel_to_version "$version"
     log_info "Target version: ${BOLD}${version}${NC}"
 
     # The release must exist before the plan offers it; HEAD requests only.

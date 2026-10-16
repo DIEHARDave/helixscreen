@@ -98,7 +98,11 @@ The installer auto-detects when HTTPS is unavailable and prints manual download 
 
 A handed-over archive is the version installed: `parse_tarball_version` reads it from the
 filename for the plan (an unversioned zip shows `local`), and nothing consults the channel or
-the network for it.
+the network for it. A prerelease archive (or package, below) moves the install to the beta
+channel exactly as a prerelease `--version` does, through `match_channel_to_version`: the plan
+reads `(beta)` and `seed_update_channel` records it for the app, unless `R2_CHANNEL` was set or
+an existing install's settings.json names a channel, which wins. A stable archive and an
+unversioned zip move nothing.
 
 ### 2a. The Package Beside the Installer
 
@@ -156,7 +160,7 @@ From a repo checkout, the modular installer sources modules directly:
 5. **Path configuration** -- `set_install_paths()` sets `INSTALL_DIR`, `INIT_SCRIPT_DEST`, `PREVIOUS_UI_SCRIPT`, `TMP_DIR`; `mod_payload_mode_block` settles payload mode; `settle_package_beside_installer` drops a package that is the install itself and refuses one for another platform
 6. **Permission check** -- Root required on AD5M/K1; sudo on Pi; refused on `x86-desktop`, which installs as the user and also refuses a directory at its root that is not a desktop install. `--uninstall` branches off here and exits, so it never reaches the confirm point; `parse_installer_args` refuses `--uninstall --dry-run`
 7. **Pre-flight checks** -- `detect_missing_unzip`, `check_requirements`, `detect_missing_runtime_deps`, `check_disk_space`, `detect_init_system`, `check_klipper_ecosystem`
-8. **Version and release** -- `resolve_update_channel` (update or existing install), then the `--local` filename, the package beside the installer, `--version` or `get_latest_version`; `probe_release` HEADs the archive so the plan only offers a release that exists. When every candidate answers 404, `print_release_with_platform_hint` reads the stable, beta and dev manifests in that order and prints the `--version` command for the first release that lists this platform (with `--desktop` for the desktop flavour), or a generic `--version` hint when none can be read. It never installs that release on its own
+8. **Version and release** -- `resolve_update_channel` (update or existing install), then the `--local` filename, the package beside the installer, `--version` or `get_latest_version`, then `match_channel_to_version` on whichever version that settled; `probe_release` HEADs the archive so the plan only offers a release that exists. When every candidate answers 404, `print_release_with_platform_hint` reads the stable, beta and dev manifests in that order and prints the `--version` command for the first release that lists this platform (with `--desktop` for the desktop flavour), or a generic `--version` hint when none can be read. It never installs that release on its own
 9. **Detection for the plan** -- `detect_competing_uis` (only stock UIs that are running or would start at boot; one an earlier install already disabled is not listed), `detect_moonraker_integration`, `detect_kiauh` (no Add when the extension is already installed)
 
 ### The confirm point
