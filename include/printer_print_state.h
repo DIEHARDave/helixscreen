@@ -509,6 +509,14 @@ class PrinterPrintState {
         return &print_start_phase_;
     }
 
+    /// 1 while the job is held by a heater wait on the chamber: the nozzle
+    /// and bed are at target and the wait goes on. Main thread only; any
+    /// phase change other than to SOAKING clears it.
+    lv_subject_t* get_print_start_chamber_wait_subject() {
+        return &print_start_chamber_wait_;
+    }
+    void set_print_start_chamber_wait(bool waiting);
+
     /// Human-readable phase message
     lv_subject_t* get_print_start_message_subject() {
         return &print_start_message_;
@@ -1084,8 +1092,9 @@ class PrinterPrintState {
     lv_subject_t preparing_epoch_{}; // Integer: bumped per preparing job, 0 when none
     int preparing_epoch_counter_ = 0;
     PreparingExit last_preparing_exit_ = PreparingExit::Confirmed;
-    lv_subject_t print_start_message_{};  // String: phase message
-    lv_subject_t print_start_progress_{}; // Integer: 0-100%
+    lv_subject_t print_start_chamber_wait_{}; // Integer 0/1: a heater wait on the chamber
+    lv_subject_t print_start_message_{};      // String: phase message
+    lv_subject_t print_start_progress_{};     // Integer: 0-100%
 
     // Print workflow in-progress subject
     lv_subject_t print_in_progress_{};

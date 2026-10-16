@@ -493,7 +493,12 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * chamber. Main thread only, like everything that sets or clears a
      * wait's label.
      */
-    void relabel_heating_phase(helix::PrintStartPhase resolved, bool heater_wait = false);
+    void relabel_heating_phase(helix::PrintStartPhase resolved, bool heater_wait = false,
+                               const std::string& label = {});
+
+    /// The label a heater wait on the chamber shows: the live chamber
+    /// temperature against its target, or alone when the heater has none.
+    static std::string chamber_wait_message(int temp_deci, int target_deci);
 
     /// Give the phase a heater wait displaced back, if the wait's label is
     /// still the one showing. Main thread only; takes state_mutex_ itself.
@@ -743,6 +748,14 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// state_mutex_.
     helix::sim::SimulatedClock::time_point wait_heater_arrived_at_ =
         helix::sim::SimulatedClock::time_point::min();
+
+    /// When a fallback tick first saw a wait still reporting with the nozzle
+    /// and bed at target, min() otherwise. Guarded by state_mutex_.
+    helix::sim::SimulatedClock::time_point heaters_ready_wait_since_ =
+        helix::sim::SimulatedClock::time_point::min();
+    /// How long a wait must outlast the nozzle and bed arriving before an
+    /// unheated chamber is read as what it waits on.
+    static constexpr auto CHAMBER_WAIT_SETTLE = std::chrono::seconds(5);
 
     /// Nozzle target (°C) when BED_MESH was entered. A higher target while the
     /// mesh is idle is the print-temperature heat that follows it. Guarded by
