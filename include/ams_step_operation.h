@@ -83,9 +83,11 @@ inline StepOperationResult detect_step_operation(AmsAction action, AmsAction pre
         return result;
     }
 
-    // Explicit unload detection (not part of a swap where UNLOADING follows cutting/tip-forming)
+    // Explicit unload detection (not part of a swap where UNLOADING follows cutting/tip-forming).
+    // An unload already on screen keeps its bar when it returns to UNLOADING after a heat step.
     if (is_external && action == AmsAction::UNLOADING && prev_action != AmsAction::CUTTING &&
-        prev_action != AmsAction::FORMING_TIP && current_op != StepOperationType::LOAD_SWAP) {
+        prev_action != AmsAction::FORMING_TIP && current_op != StepOperationType::LOAD_SWAP &&
+        current_op != StepOperationType::UNLOAD) {
         result.should_recreate = true;
         result.op_type = StepOperationType::UNLOAD;
         return result;

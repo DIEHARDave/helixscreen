@@ -1897,7 +1897,9 @@ Two consequences worth naming, because they look like bugs and are not:
   until the backend reports a busy action of its own, which takes over for the rest of the
   operation. Dispatch restarts the budget (`hand_operation_to_backend()`). The hold ends on
   a refused dispatch, a backend `EVENT_ERROR` (Happy Hare emits one when its gcode or the
-  pre-op G28 fails, the U1 when its `AUTO_FEEDING` fails), an abandoned preheat (sidebar torn down, or the nozzle target taken
+  pre-op G28 fails, the U1 when its `AUTO_FEEDING` fails), a backend
+  `EVENT_LOAD_COMPLETE` / `EVENT_UNLOAD_COMPLETE` (the U1 raises one when its
+  `AUTO_FEEDING` answers OK), an abandoned preheat (sidebar torn down, or the nozzle target taken
   away), a backend swap, or the budget running out (prestonbrown/helixscreen#1057).
 
 Two more where the surface deliberately does **not** use the plan's value:

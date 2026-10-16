@@ -438,11 +438,13 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// macro has no interlock, and the command would be bogus there.
     void end_firmware_batch();
 
-    /// Sends a single-head feed command. The firmware publishes nothing for an
-    /// AUTO_FEEDING it refuses, so a gcode error raises EVENT_ERROR, which
-    /// ends the operation the UI is holding for it. A timeout does not: the
-    /// feed may still be running, and channel_state reports its end.
-    AmsError dispatch_feed(const std::string& gcode);
+    /// Sends a single-head feed command. The macro blocks until the feed is
+    /// over, so its answer ends the operation: OK raises @p complete_event and
+    /// an error raises EVENT_ERROR. Either one ends an action the UI is holding
+    /// for a feed the firmware declined without moving channel_state. A
+    /// timeout raises nothing: the feed may still be running, and
+    /// channel_state reports its end.
+    AmsError dispatch_feed(std::string gcode, const char* complete_event);
 
     /// Applied logical-tool -> physical-head routing for the CURRENT print.
     ///

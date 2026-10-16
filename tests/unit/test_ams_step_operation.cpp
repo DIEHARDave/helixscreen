@@ -278,3 +278,16 @@ TEST_CASE("Step operation: stand-alone LOADING from idle is a fresh load",
     REQUIRE(result.should_recreate);
     CHECK(result.op_type == StepOperationType::LOAD_FRESH);
 }
+
+TEST_CASE("Step operation: UNLOADING after HEATING inside an unload keeps its bar",
+          "[ams-step][step-detect]") {
+    // An unload that heats mid-way (Home, Select, Heat, Retract) returns to
+    // UNLOADING; it is the same operation, not a new one.
+    for (bool stand_alone : {false, true}) {
+        INFO("unloads_stand_alone=" << stand_alone);
+        auto result = detect_step_operation(
+            AmsAction::UNLOADING, AmsAction::HEATING, StepOperationType::UNLOAD, true, true,
+            ams_action_is_filament_operation(AmsAction::UNLOADING), stand_alone);
+        CHECK_FALSE(result.should_recreate);
+    }
+}

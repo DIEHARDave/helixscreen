@@ -154,21 +154,29 @@ class AfcOptimisticBackend : public AmsBackendAfc {
 };
 
 /// Snapmaker U1, running, sending through @p api. The firmware publishes
-/// nothing for an AUTO_FEEDING it has accepted until its channel_state moves.
+/// nothing for an AUTO_FEEDING it has accepted until its channel_state moves,
+/// and the AUTO_FEEDING answer arrives only when the feed is over.
 class U1OptimisticBackend : public AmsBackendSnapmaker {
   public:
     explicit U1OptimisticBackend(IMoonrakerAPI* api) : AmsBackendSnapmaker(api, nullptr) {
         running_.store(true);
     }
 
-    /// One head's filament_feed channel through the real status parser.
-    void feed(int extruder, const std::string& channel_state) {
+    /// One head's filament_feed channel and motion sensor through the real
+    /// status parser: a fitted module in automatic mode with its sensor armed,
+    /// unless @p auto_mode says otherwise.
+    void feed(int extruder, const std::string& channel_state, bool auto_mode = true) {
         const char* feed_key = (extruder <= 1) ? "filament_feed left" : "filament_feed right";
-        nlohmann::json status = {{feed_key,
-                                  {{"extruder" + std::to_string(extruder),
-                                    {{"filament_detected", true},
-                                     {"channel_state", channel_state},
-                                     {"channel_error", "ok"}}}}}};
+        nlohmann::json status = {
+            {feed_key,
+             {{"extruder" + std::to_string(extruder),
+               {{"filament_detected", true},
+                {"channel_state", channel_state},
+                {"channel_error", "ok"},
+                {"module_exist", true},
+                {"disable_auto", !auto_mode}}}}},
+            {"filament_motion_sensor e" + std::to_string(extruder) + "_filament",
+             {{"enabled", true}}}};
         SnapmakerTestAccess::handle_status(*this, status);
     }
 
@@ -268,6 +276,13 @@ struct OptimisticSidebarFixture : public XMLTestFixture {
         lv_obj_t* container = lv_obj_find_by_name(panel_, "progress_stepper_container");
         REQUIRE(container != nullptr);
         return !lv_obj_has_flag(container, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    /// The step bar widget the sidebar has built, or null.
+    [[nodiscard]] lv_obj_t* stepper() const {
+        lv_obj_t* container = lv_obj_find_by_name(panel_, "progress_stepper_container");
+        REQUIRE(container != nullptr);
+        return lv_obj_get_child_count(container) > 0 ? lv_obj_get_child(container, 0) : nullptr;
     }
 
     [[nodiscard]] static helix::StepOperationType shown_steps() {
@@ -682,6 +697,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     u1.seat(1);
     AmsState::instance().sync_from_backend();
     hot_nozzle();
+    api_.hold_acks = true;
 
     sidebar_->handle_unload(1);
     REQUIRE(api_.sent == std::vector<std::string>{"AUTO_FEEDING EXTRUDER=1 UNLOAD=1"});
@@ -703,10 +719,38 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     CHECK(shown_steps() == helix::StepOperationType::UNLOAD);
     CHECK(lv_subject_get_int(AmsState::instance().get_ams_operation_phase_subject()) == 2);
 
+    // The macro answers after its last frame; neither one reopens the other.
     u1.feed(1, "unload_finish");
+    api_.ack_held();
     let_watchdog_run();
     CHECK(shown_action() == AmsAction::IDLE);
     CHECK_FALSE(steps_shown());
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Snapmaker U1: the AUTO_FEEDING answer arriving before the last frame keeps "
+                 "the operation",
+                 "[ams][optimistic_action][snapmaker]") {
+    auto& u1 = build_u1();
+    u1.seat(1);
+    AmsState::instance().sync_from_backend();
+    hot_nozzle();
+    api_.hold_acks = true;
+
+    sidebar_->handle_unload(1);
+    u1.feed(1, "unload_doing");
+    let_watchdog_run();
+    REQUIRE(shown_action() == AmsAction::UNLOADING);
+
+    // Status frames are batched, so the answer can overtake unload_finish.
+    api_.ack_held();
+    let_watchdog_run();
+    CHECK(shown_action() == AmsAction::UNLOADING);
+    CHECK(steps_shown());
+
+    u1.feed(1, "unload_finish");
+    let_watchdog_run();
+    CHECK(shown_action() == AmsAction::IDLE);
 }
 
 TEST_CASE_METHOD(OptimisticSidebarFixture,
@@ -716,6 +760,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     u1.feed(2, "preload_finish");
     AmsState::instance().sync_from_backend();
     hot_nozzle();
+    api_.hold_acks = true;
 
     sidebar_->handle_load_with_preheat(2);
     REQUIRE(api_.sent == std::vector<std::string>{"AUTO_FEEDING EXTRUDER=2 LOAD=1"});
@@ -731,7 +776,57 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
 }
 
 TEST_CASE_METHOD(OptimisticSidebarFixture,
-                 "Snapmaker U1: an unload started elsewhere shows the unload steps",
+                 "Snapmaker U1: an AUTO_FEEDING answered with no frame ends the held action",
+                 "[ams][optimistic_action][snapmaker]") {
+    // FEED_AUTO answers OK without moving channel_state when it declines a load
+    // (already loaded, no runout sensor), and the AUTO_FEEDING macro answers OK
+    // after a RESPOND TYPE=error. Its answer means the feed is over either way.
+    auto& u1 = build_u1();
+    u1.feed(2, "preload_finish");
+    AmsState::instance().sync_from_backend();
+    hot_nozzle();
+
+    sidebar_->handle_load_with_preheat(2);
+    REQUIRE(api_.sent == std::vector<std::string>{"AUTO_FEEDING EXTRUDER=2 LOAD=1"});
+    let_watchdog_run();
+    CHECK_FALSE(held());
+    CHECK(shown_action() == AmsAction::IDLE);
+    CHECK_FALSE(steps_shown());
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Snapmaker U1: a load on a head out of automatic mode is refused before sending",
+                 "[ams][optimistic_action][snapmaker]") {
+    auto& u1 = build_u1();
+    u1.feed(2, "preload_finish", /*auto_mode=*/false);
+    AmsState::instance().sync_from_backend();
+    hot_nozzle();
+
+    sidebar_->handle_load_with_preheat(2);
+    CHECK(api_.sent.empty());
+    CHECK_FALSE(held());
+    CHECK(shown_action() == AmsAction::IDLE);
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Snapmaker U1: a timed-out AUTO_FEEDING keeps the held action",
+                 "[ams][optimistic_action][snapmaker]") {
+    // The RPC gave up waiting; the feed may still be running.
+    auto& u1 = build_u1();
+    u1.seat(1);
+    AmsState::instance().sync_from_backend();
+    hot_nozzle();
+    api_.time_out = {"AUTO_FEEDING EXTRUDER=1 UNLOAD=1"};
+
+    sidebar_->handle_unload(1);
+    REQUIRE(api_.sent == std::vector<std::string>{"AUTO_FEEDING EXTRUDER=1 UNLOAD=1"});
+    let_watchdog_run();
+    CHECK(held());
+    CHECK(shown_action() == AmsAction::UNLOADING);
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Snapmaker U1: an unload started elsewhere keeps one unload step bar",
                  "[ams][optimistic_action][snapmaker]") {
     // The Filament panel, the batch picker, a macro or Fluidd: the sidebar did
     // not start it, and the head it empties is loaded.
@@ -745,6 +840,27 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     let_watchdog_run();
     CHECK(shown_steps() == helix::StepOperationType::UNLOAD);
     CHECK(steps_shown());
+
+    // Mark the bar, so a rebuilt one cannot pass for it at a reused address.
+    lv_obj_t* bar = stepper();
+    REQUIRE(bar != nullptr);
+    lv_obj_add_flag(bar, LV_OBJ_FLAG_USER_1);
+
+    for (const char* phase : {"unload_heating", "unload_doing"}) {
+        u1.feed(0, phase);
+        let_watchdog_run();
+        INFO("phase=" << phase);
+        CHECK(shown_steps() == helix::StepOperationType::UNLOAD);
+        CHECK(steps_shown());
+        REQUIRE(stepper() == bar);
+        CHECK(lv_obj_has_flag(bar, LV_OBJ_FLAG_USER_1));
+        CHECK(lv_obj_get_child_count(lv_obj_find_by_name(panel_, "progress_stepper_container")) ==
+              1);
+    }
+
+    u1.feed(0, "unload_finish");
+    let_watchdog_run();
+    CHECK_FALSE(steps_shown());
 }
 
 TEST_CASE_METHOD(OptimisticSidebarFixture,

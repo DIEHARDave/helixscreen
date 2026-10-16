@@ -241,9 +241,14 @@ conservative prefix/suffix fallback for unknown future states
   `holds_optimistic_action`, because `channel_state` stays idle between the firmware
   accepting `AUTO_FEEDING` and its first homing step, and `unloads_stand_alone`, because
   an unload started anywhere else (Filament panel, batch picker, a macro) would otherwise
-  read as the first half of a swap and draw the 6-step load list. A gcode error from a
-  single-head `AUTO_FEEDING` raises `EVENT_ERROR`, which ends the held action
-  (`src/printer/ams_backend_snapmaker.cpp#dispatch_feed`).
+  read as the first half of a swap and draw the 6-step load list. A single-head
+  `AUTO_FEEDING` blocks until the feed is over, so its answer ends the held action: OK
+  raises `EVENT_LOAD_COMPLETE` / `EVENT_UNLOAD_COMPLETE`, an error raises `EVENT_ERROR`,
+  and a timeout raises nothing (`src/printer/ams_backend_snapmaker.cpp#dispatch_feed`).
+  That covers the loads `FEED_AUTO` declines with an OK and no frame; the ones visible in
+  the channel snapshot (already loaded, feeder not in automatic mode, motion sensor
+  disabled) are refused before sending
+  (`src/printer/ams_backend_snapmaker.cpp#do_load_filament`).
 - **The per-tool "loaded at toolhead" latch.** Set on `load_finish`; cleared on
   `unload_finish` / `wait_insert` / `preload_finish`; left unchanged on transient and
   fail states. This latch — not the motion sensor — is the authority for

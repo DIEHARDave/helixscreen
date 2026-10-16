@@ -1514,9 +1514,12 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
             }
         }
     } else if (event == AmsBackend::EVENT_LOAD_COMPLETE ||
-               event == AmsBackend::EVENT_UNLOAD_COMPLETE ||
-               event == AmsBackend::EVENT_TOOL_CHANGED) {
-        // These events indicate state change, sync everything
+               event == AmsBackend::EVENT_UNLOAD_COMPLETE) {
+        // The operation is over, so an optimistic action held over the
+        // backend's silence ends with it; a busy action the backend still
+        // reports keeps the display until its own last frame.
+        queue_sync(true, -1, /*ends_operation=*/true);
+    } else if (event == AmsBackend::EVENT_TOOL_CHANGED) {
         queue_sync(true, -1);
     } else if (event == AmsBackend::EVENT_ERROR) {
         // Error occurred, sync to get error state. An error ends the operation,
