@@ -31,6 +31,7 @@
 #include "queued_job_options.h"
 #include "subject_managed_panel.h"
 #include "text_io.h"
+#include "three_mf_reader.h"
 #include "usb_backend.h"
 
 #include <algorithm>
@@ -391,6 +392,36 @@ class PrintSelectPanel : public PanelBase {
     bool refetch_after_connection_loss(size_t i, const std::string& filename,
                                        const MoonrakerError& error);
 
+    // === Sliced .3mf archives (ui_print_select_archive.cpp) ===
+
+    /**
+     * @brief Reads file @p i's .3mf archive: its plates, their time and
+     *        filament, and their renders.
+     *
+     * @p extract: the printer has no metadata for the file, so the archive's
+     * summary stands in for it and Print extracts the plate shown. Without it
+     * the printer reads the .3mf itself and only its render comes from here.
+     */
+    void load_archive(size_t i, const std::string& filename, bool extract);
+
+    /// Fetches the render of file @p i's shown plate as its card thumbnail.
+    void fetch_archive_thumbnail(size_t i);
+
+    /// Shows the plate @p step places before (-1) or after (+1) the selected
+    /// file's current one, in the detail view and its card.
+    void step_archive_plate(int step);
+
+    /// Publishes the selected file's plate stepper: its plate count and label.
+    void update_plate_stepper();
+
+    /// Shows @p file's thumbnail and stats in the detail view (the selected file).
+    void show_file_in_detail(const PrintFileData& file);
+
+    /// Tells the preparation manager whether the selected file prints as an
+    /// extracted .3mf plate, and which. False, with a toast, when it cannot
+    /// print here at all.
+    bool prepare_archive_start();
+
     /**
      * @brief Navigate into a subdirectory
      *
@@ -731,6 +762,11 @@ class PrintSelectPanel : public PanelBase {
     lv_subject_t selected_filament_type_subject_{};
     char selected_filament_type_buffer_[64]; // Longer for full names like "PolyMaker PolyLite ABS"
 
+    /// Sliced plates of the selected .3mf (the plate stepper shows from 2), and its label.
+    lv_subject_t selected_plate_count_subject_{};
+    lv_subject_t selected_plate_text_subject_{};
+    char selected_plate_text_buffer_[48];
+
     lv_subject_t detail_view_visible_subject_{};
 
     /// View mode subject: 0 = CARD, 1 = LIST (XML bindings control visibility)
@@ -862,6 +898,9 @@ class PrintSelectPanel : public PanelBase {
 
     // File data provider (handles Moonraker file fetching and metadata)
     std::unique_ptr<helix::ui::PrintSelectFileProvider> file_provider_;
+
+    // Reads sliced .3mf archives on the printer; set with the API.
+    std::unique_ptr<helix::three_mf::ThreeMfReader> archive_reader_;
 
     // Print start controller (handles print initiation workflow, warnings)
     std::unique_ptr<helix::ui::PrintStartController> print_controller_;

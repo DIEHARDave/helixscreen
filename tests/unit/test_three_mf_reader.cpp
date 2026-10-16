@@ -206,8 +206,8 @@ TEST_CASE_METHOD(ReaderFixture, "read_entry returns a stored thumbnail's bytes i
 
     std::string got;
     std::string error;
-    reader.read_entry(
-        "a.gcode.3mf", *thumb, [&got](const std::string& b) { got = b; },
+    ThreeMfReader::read_entry(
+        transfers, "a.gcode.3mf", *thumb, [&got](const std::string& b) { got = b; },
         [&error](const std::string& e) { error = e; });
     CHECK(error.empty());
     CHECK(transfers.ranges == before + 1);

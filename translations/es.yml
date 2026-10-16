@@ -2429,6 +2429,7 @@ translations:
   Place the spools: Coloca las bobinas
 
   Placed: En cola
+  Plate {} of {}: 'Placa {} de {}'
   Platform: Plataforma
   'Platform: ': 'Plataforma: '
   Play / stop Crockett's Theme: Reproducir / detener Crockett's Theme
@@ -3531,6 +3532,7 @@ translations:
     cargado:'
   'These tools have no matching filament loaded:': 'Estas herramientas no tienen filamento
     compatible cargado:'
+  This .3mf has no sliced plate to print.: 'Este .3mf no tiene ninguna placa laminada para imprimir.'
   This .3mf has to be converted to G-code on the printer before it can print.: 'Este .3mf debe convertirse a G-code en la impresora antes de poder imprimirse.'
   This AFC system does not support bypass mode: 'Este sistema AFC no es compatible con el modo bypass'
   This CFS firmware exposes no external spool slot: 'Este firmware del CFS no ofrece una ranura para bobina externa'

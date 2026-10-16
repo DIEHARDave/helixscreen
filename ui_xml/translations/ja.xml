@@ -2199,6 +2199,7 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." ja="画像ファイル (PNG, JPEG, BMP, GIF) を config/custom_images/ に配置してください。最大サイズ: 2048×2048 ピクセル。"/>
   <translation tag="Place the spools" ja="スプールを置く"/>
   <translation tag="Placed" ja="配置済み"/>
+  <translation tag="Plate {} of {}" ja="プレート {} / {}"/>
   <translation tag="Platform" ja="プラットフォーム"/>
   <translation tag="Platform: " ja="プラットフォーム: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" ja="Crockett&apos;s Theme を再生/停止"/>
@@ -3164,6 +3165,7 @@
   <translation tag="These tools have incompatible materials loaded:" ja="これらのツールには互換性のない素材がロードされています:"/>
   <translation tag="These tools have no filament loaded:" ja="これらのツールにフィラメントが装填されていません:"/>
   <translation tag="These tools have no matching filament loaded:" ja="これらのツールに一致するフィラメントが装填されていません:"/>
+  <translation tag="This .3mf has no sliced plate to print." ja="この .3mf には印刷できるスライス済みプレートがありません。"/>
   <translation tag="This .3mf has to be converted to G-code on the printer before it can print." ja="この .3mf は印刷する前にプリンター上で G-code に変換する必要があります。"/>
   <translation tag="This AFC system does not support bypass mode" ja="この AFC システムはバイパスモードに対応していません"/>
   <translation tag="This CFS firmware exposes no external spool slot" ja="この CFS ファームウェアには外部スプール用スロットがありません"/>

@@ -2361,6 +2361,7 @@ translations:
     pixels.'
   Place the spools: Place the spools
   Placed: Placed
+  Plate {} of {}: Plate {} of {}
   Platform: Platform
   'Platform: ': 'Platform: '
   Play / stop Crockett's Theme: Play / stop Crockett's Theme
@@ -3424,6 +3425,7 @@ translations:
   'These tools have no filament loaded:': 'These tools have no filament loaded:'
   'These tools have no matching filament loaded:': 'These tools have no matching filament
     loaded:'
+  This .3mf has no sliced plate to print.: This .3mf has no sliced plate to print.
   This .3mf has to be converted to G-code on the printer before it can print.: This .3mf has to be converted to G-code on the printer before it can print.
   This AFC system does not support bypass mode: This AFC system does not support bypass mode
   This CFS firmware exposes no external spool slot: This CFS firmware exposes no external spool slot

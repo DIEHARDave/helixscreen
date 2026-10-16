@@ -40,6 +40,15 @@ struct ArchiveSummary {
 /// The thumbnail entry to draw for @p plate: the full render, else the small one.
 const zip::ZipEntry* plate_thumbnail(const PlateSummary& plate);
 
+/// @p plate's summary as the metadata Moonraker reports for a G-code file:
+/// predicted time, weight, and per-tool materials, colors and grams, slot-aligned
+/// by the slicer's filament id.
+FileMetadata plate_file_metadata(const PlateSummary& plate);
+
+/// The plate @p summary lists as @p index, or its first plate when it has no
+/// such plate, or nullptr when it has none.
+const PlateSummary* find_plate(const ArchiveSummary& summary, int index);
+
 /// Largest central directory read_summary() fetches when the tail read missed part of it.
 inline constexpr size_t MAX_CENTRAL_DIRECTORY_BYTES = 1024 * 1024;
 
@@ -67,9 +76,11 @@ class ThreeMfReader {
                       SummaryCallback on_done, ErrorCallback on_error,
                       ITransfersAPI::CancelFlag cancelled = nullptr);
 
-    /// Reads and, when it is deflated, inflates one entry of the archive at @p path.
-    void read_entry(const std::string& path, const zip::ZipEntry& entry, BytesCallback on_done,
-                    ErrorCallback on_error, ITransfersAPI::CancelFlag cancelled = nullptr);
+    /// Reads and, when it is deflated, inflates one entry of the archive at
+    /// @p path: one ranged read through @p transfers.
+    static void read_entry(ITransfersAPI& transfers, const std::string& path,
+                           const zip::ZipEntry& entry, BytesCallback on_done,
+                           ErrorCallback on_error, ITransfersAPI::CancelFlag cancelled = nullptr);
 
     /**
      * @brief Writes plate @p plate's G-code from the local archive @p local_zip to @p local_gcode.

@@ -1,6 +1,8 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_filename_utils.h"
+
 #include "env_knobs.h"
 #include "gcode_parser.h"
 #include "mock_disk_usage.h"
@@ -40,10 +42,10 @@ static bool scan_gcode_dir(const std::string& dir_path, std::vector<std::string>
             continue;
         }
 
-        // Check for .gcode extension (case insensitive)
+        // .gcode files, and the sliced .3mf archives a slicer can upload instead
         std::string ext = name.substr(name.length() - 6);
         ext = helix::text_io::to_lower(ext);
-        if (ext != ".gcode") {
+        if (ext != ".gcode" && !helix::gcode::is_3mf(name)) {
             continue;
         }
 
@@ -358,6 +360,14 @@ static bool metadata_404_enabled() {
     return helix::env_flag("HELIX_MOCK_METADATA_404");
 }
 
+/// Whether the mock has metadata for @p filename. A .3mf has none, as on a
+/// stock Moonraker, unless HELIX_MOCK_3MF_METADATA=1 makes the mock a printer
+/// that reads .3mf archives natively.
+static bool metadata_missing(const std::string& filename) {
+    return metadata_404_enabled() ||
+           (helix::gcode::is_3mf(filename) && !helix::env_flag("HELIX_MOCK_3MF_METADATA"));
+}
+
 void register_file_handlers(std::unordered_map<std::string, MethodHandler>& registry) {
     // server.files.list - List files in a directory
     registry["server.files.list"] =
@@ -436,7 +446,7 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         if (params.contains("filename")) {
             filename = params["filename"].get<std::string>();
         }
-        if (metadata_404_enabled() && error_cb) {
+        if (metadata_missing(filename) && error_cb) {
             error_cb(MoonrakerError::file_not_found("server.files.metadata", filename));
             return true;
         }
@@ -465,7 +475,7 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         if (params.contains("filename")) {
             filename = params["filename"].get<std::string>();
         }
-        if (metadata_404_enabled() && error_cb) {
+        if (metadata_missing(filename) && error_cb) {
             error_cb(MoonrakerError::file_not_found("server.files.metascan", filename));
             return true;
         }
@@ -479,6 +489,32 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
             MoonrakerError err = MoonrakerError::validation_error("server.files.metascan",
                                                                   "Missing filename parameter");
             error_cb(err);
+        }
+        return true;
+    };
+
+    // server.helix.3mf_conversions - the printer-side .3mf converter's provenance.
+    // Absent by default, as on a printer without the converter;
+    // HELIX_MOCK_3MF_CONVERSIONS=<file> serves that JSON file as the result.
+    registry["server.helix.3mf_conversions"] =
+        [](MoonrakerClientMock* /*self*/, const json& /*params*/,
+           std::function<void(const json&)> success_cb,
+           std::function<void(const MoonrakerError&)> error_cb) -> bool {
+        const char* path = std::getenv("HELIX_MOCK_3MF_CONVERSIONS");
+        json result = json::object();
+        if (path && *path) {
+            const std::string text = helix::text_io::read_file(path).value_or("");
+            result = json::parse(text, nullptr, false);
+        }
+        if (!path || !*path || result.is_discarded()) {
+            if (error_cb) {
+                error_cb(
+                    MoonrakerError::unknown("Method not found", "server.helix.3mf_conversions"));
+            }
+            return true;
+        }
+        if (success_cb) {
+            success_cb(json{{"jsonrpc", "2.0"}, {"result", result}});
         }
         return true;
     };

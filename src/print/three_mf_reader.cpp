@@ -302,6 +302,39 @@ const zip::ZipEntry* plate_thumbnail(const PlateSummary& plate) {
     return plate.thumb_small ? &*plate.thumb_small : nullptr;
 }
 
+FileMetadata plate_file_metadata(const PlateSummary& plate) {
+    FileMetadata meta;
+    meta.estimated_time = plate.info.prediction_s;
+    meta.filament_weight_total = plate.info.weight_g;
+    size_t tools = 0;
+    for (const auto& f : plate.info.filaments) {
+        tools = std::max(tools, static_cast<size_t>(std::max(f.id, 1)));
+        meta.filament_total += f.used_m * 1000.0;
+    }
+    std::vector<std::string> types(tools);
+    meta.filament_colors.assign(tools, "");
+    meta.filament_weights.assign(tools, 0.0);
+    for (const auto& f : plate.info.filaments) {
+        const size_t t = static_cast<size_t>(std::max(f.id, 1)) - 1;
+        types[t] = f.type;
+        meta.filament_colors[t] = f.color;
+        meta.filament_weights[t] = f.used_g;
+    }
+    for (size_t t = 0; t < types.size(); ++t) {
+        meta.filament_type += (t ? ";" : "") + types[t];
+    }
+    return meta;
+}
+
+const PlateSummary* find_plate(const ArchiveSummary& summary, int index) {
+    for (const auto& p : summary.plates) {
+        if (p.index == index) {
+            return &p;
+        }
+    }
+    return summary.plates.empty() ? nullptr : &summary.plates.front();
+}
+
 ThreeMfReader::ThreeMfReader(ITransfersAPI& transfers)
     : transfers_(transfers), cache_(std::make_shared<Cache>()) {}
 
@@ -344,14 +377,14 @@ void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double 
     read_tail(job, std::min<uint64_t>(size, zip::ZIP_TAIL_READ_BYTES), true);
 }
 
-void ThreeMfReader::read_entry(const std::string& path, const zip::ZipEntry& entry,
-                               BytesCallback on_done, ErrorCallback on_error,
-                               ITransfersAPI::CancelFlag cancelled) {
+void ThreeMfReader::read_entry(ITransfersAPI& transfers, const std::string& path,
+                               const zip::ZipEntry& entry, BytesCallback on_done,
+                               ErrorCallback on_error, ITransfersAPI::CancelFlag cancelled) {
     if (entry.usize > MAX_ENTRY_BYTES) {
         on_error(error_text(path + "/" + entry.name, zip::ZipError::Truncated));
         return;
     }
-    transfers_.download_file_range(
+    transfers.download_file_range(
         ROOT, path, entry.lh_offset, static_cast<size_t>(zip::entry_read_span(entry)),
         [path, entry, on_done, on_error](const std::string& bytes) {
             zip::ZipError err = zip::ZipError::None;

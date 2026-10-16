@@ -2467,6 +2467,7 @@ translations:
   Place the spools: Положите катушки
 
   Placed: Добавлено
+  Plate {} of {}: 'Пластина {} из {}'
   Platform: Платформа
   'Platform: ': 'Платформа: '
   Play / stop Crockett's Theme: Воспроизвести / остановить «Crockett's Theme»
@@ -3576,6 +3577,7 @@ translations:
   'These tools have no filament loaded:': 'В эти инструменты не загружен филамент:'
   'These tools have no matching filament loaded:': 'В этих инструментах нет подходящего
     филамента:'
+  This .3mf has no sliced plate to print.: 'В этом .3mf нет нарезанной пластины для печати.'
   This .3mf has to be converted to G-code on the printer before it can print.: 'Этот .3mf нужно преобразовать в G-code на принтере, прежде чем его можно будет напечатать.'
   This AFC system does not support bypass mode: 'Эта система AFC не поддерживает режим обхода'
   This CFS firmware exposes no external spool slot: 'Эта прошивка CFS не предоставляет слот для внешней катушки'

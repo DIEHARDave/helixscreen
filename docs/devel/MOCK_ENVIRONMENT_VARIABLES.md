@@ -135,6 +135,38 @@ Make `server.files.metadata` and `server.files.metascan` fail with a 404, as Moo
 
 With metadata unavailable, the UI falls back to reading thumbnails and layer counts straight out of the gcode file, which is the per-file path that #1706 froze. This knob forces that fallback without needing a metadata-less server.
 
+### `HELIX_MOCK_GCODE_DIR`
+
+Add a local directory to the mock printer's gcodes root for the whole run, beside `assets/test_gcodes`: listings, metadata and every transfer see its files.
+
+| Property | Value |
+|----------|-------|
+| **Values** | path to a directory |
+| **Default** | unset (`assets/test_gcodes` alone) |
+| **File** | `include/mock_planted_gcodes.h` |
+
+How a `--test` run gets a sliced `.gcode.3mf` onto the print-select screen without adding it to the shared test directory.
+
+### `HELIX_MOCK_3MF_METADATA`
+
+Make the mock report metadata for `.3mf` files, as a printer that reads `.3mf` archives itself does. By default the mock answers a `.3mf`'s metadata and metascan with a 404, as a stock Moonraker does, and print select reads the archive instead and prints a plate as extracted G-code.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `1`, `true`, `yes` or `on` enables |
+| **Default** | unset (`.3mf` metadata 404s) |
+| **File** | `src/api/moonraker_client_mock_files.cpp` |
+
+### `HELIX_MOCK_3MF_CONVERSIONS`
+
+Serve a JSON file as the result of `server.helix.3mf_conversions`, the printer-side `.3mf` converter's provenance (`{"conversions":[{"source", "source_mtime", "source_size", "plate", "output", "state", ...}]}`). Unset, the method is not found, as on a printer without the converter.
+
+| Property | Value |
+|----------|-------|
+| **Values** | path to a JSON file |
+| **Default** | unset (no converter) |
+| **File** | `src/api/moonraker_client_mock_files.cpp` |
+
 ### `HELIX_MOCK_PLUGINS_DIR`
 
 Serve the `config/helixscreen/plugins/` folder of the mock printer from a local directory, so a `--test` run lists and downloads plugins exactly like a printer would.

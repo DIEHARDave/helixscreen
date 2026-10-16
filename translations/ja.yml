@@ -2288,6 +2288,7 @@ translations:
   Place the spools: スプールを置く
 
   Placed: 配置済み
+  Plate {} of {}: 'プレート {} / {}'
   Platform: プラットフォーム
   'Platform: ': 'プラットフォーム: '
   Play / stop Crockett's Theme: Crockett's Theme を再生/停止
@@ -3306,6 +3307,7 @@ translations:
   'These tools have incompatible materials loaded:': 'これらのツールには互換性のない素材がロードされています:'
   'These tools have no filament loaded:': 'これらのツールにフィラメントが装填されていません:'
   'These tools have no matching filament loaded:': 'これらのツールに一致するフィラメントが装填されていません:'
+  This .3mf has no sliced plate to print.: 'この .3mf には印刷できるスライス済みプレートがありません。'
   This .3mf has to be converted to G-code on the printer before it can print.: 'この .3mf は印刷する前にプリンター上で G-code に変換する必要があります。'
   This AFC system does not support bypass mode: 'この AFC システムはバイパスモードに対応していません'
   This CFS firmware exposes no external spool slot: 'この CFS ファームウェアには外部スプール用スロットがありません'

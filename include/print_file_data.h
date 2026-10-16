@@ -19,6 +19,9 @@
 // Forward declarations for factory methods (avoid header coupling)
 struct FileInfo;
 struct UsbGcodeFile;
+namespace helix::three_mf {
+struct ArchiveSummary;
+} // namespace helix::three_mf
 
 /**
  * @brief Print history status for file list display
@@ -82,6 +85,16 @@ struct PrintFileData {
 
     // Metadata loading state (travels with file during sorting)
     bool metadata_fetched = false; ///< True if metadata has been loaded
+
+    // A sliced .3mf, read from its archive (null for anything else, and for a
+    // .3mf not read yet)
+    std::shared_ptr<const helix::three_mf::ArchiveSummary> archive;
+    /// The printer has no metadata for this .3mf: it prints as an extracted plate.
+    bool archive_extract = false;
+    /// Its archive read has been started; it is not started again for this entry.
+    bool archive_requested = false;
+    /// The plate the card and the detail view show and Print prints (0 = the first).
+    int archive_plate = 0;
 
     // Print history status (from PrintHistoryManager)
     FileHistoryStatus history_status = FileHistoryStatus::NEVER_PRINTED;

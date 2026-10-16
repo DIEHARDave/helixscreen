@@ -2199,6 +2199,7 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." it="Posiziona file immagine (PNG, JPEG, BMP, GIF) in config/custom_images/. Dimensione max: 2048×2048 pixel."/>
   <translation tag="Place the spools" it="Appoggia le bobine"/>
   <translation tag="Placed" it="Inserito"/>
+  <translation tag="Plate {} of {}" it="Piatto {} di {}"/>
   <translation tag="Platform" it="Piattaforma"/>
   <translation tag="Platform: " it="Piattaforma: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" it="Riproduci / ferma Crockett&apos;s Theme"/>
@@ -3164,6 +3165,7 @@
   <translation tag="These tools have incompatible materials loaded:" it="Questi strumenti hanno caricati materiali incompatibili:"/>
   <translation tag="These tools have no filament loaded:" it="Questi strumenti non hanno filamento caricato:"/>
   <translation tag="These tools have no matching filament loaded:" it="Questi strumenti non hanno filamento corrispondente caricato:"/>
+  <translation tag="This .3mf has no sliced plate to print." it="Questo .3mf non contiene alcun piatto sezionato da stampare."/>
   <translation tag="This .3mf has to be converted to G-code on the printer before it can print." it="Questo .3mf deve essere convertito in G-code sulla stampante prima di poter essere stampato."/>
   <translation tag="This AFC system does not support bypass mode" it="Questo sistema AFC non supporta la modalità bypass"/>
   <translation tag="This CFS firmware exposes no external spool slot" it="Questo firmware CFS non offre uno slot per bobine esterne"/>

@@ -43,6 +43,10 @@
 #include <string>
 #include <vector>
 
+namespace helix::three_mf {
+struct Conversion;
+} // namespace helix::three_mf
+
 namespace helix {
 
 /**
@@ -169,6 +173,14 @@ class IFilesAPI {
 
     virtual void metascan_file(const std::string& filename, FileMetadataCallback on_success,
                                ErrorCallback on_error, bool silent = true) = 0;
+
+    using ArchiveConversionsCallback =
+        std::function<void(const std::vector<three_mf::Conversion>&)>;
+
+    /// What the printer-side .3mf converter has made (server.helix.3mf_conversions).
+    /// A printer without one answers an error: 404 or method-not-found.
+    virtual void get_archive_conversions(ArchiveConversionsCallback on_success,
+                                         ErrorCallback on_error) = 0;
 
     virtual void delete_file(const std::string& filename, SuccessCallback on_success,
                              ErrorCallback on_error) = 0;

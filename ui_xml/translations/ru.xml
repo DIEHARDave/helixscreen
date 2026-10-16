@@ -2244,6 +2244,7 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." ru="Поместите файлы изображений (PNG, JPEG, BMP, GIF) в config/custom_images/. Макс. размер: 2048×2048 пикселей."/>
   <translation tag="Place the spools" ru="Положите катушки"/>
   <translation tag="Placed" ru="Добавлено"/>
+  <translation tag="Plate {} of {}" ru="Пластина {} из {}"/>
   <translation tag="Platform" ru="Платформа"/>
   <translation tag="Platform: " ru="Платформа: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" ru="Воспроизвести / остановить «Crockett&apos;s Theme»"/>
@@ -3224,6 +3225,7 @@
   <translation tag="These tools have incompatible materials loaded:" ru="В этих инструментах загружены несовместимые материалы:"/>
   <translation tag="These tools have no filament loaded:" ru="В эти инструменты не загружен филамент:"/>
   <translation tag="These tools have no matching filament loaded:" ru="В этих инструментах нет подходящего филамента:"/>
+  <translation tag="This .3mf has no sliced plate to print." ru="В этом .3mf нет нарезанной пластины для печати."/>
   <translation tag="This .3mf has to be converted to G-code on the printer before it can print." ru="Этот .3mf нужно преобразовать в G-code на принтере, прежде чем его можно будет напечатать."/>
   <translation tag="This AFC system does not support bypass mode" ru="Эта система AFC не поддерживает режим обхода"/>
   <translation tag="This CFS firmware exposes no external spool slot" ru="Эта прошивка CFS не предоставляет слот для внешней катушки"/>

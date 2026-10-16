@@ -272,6 +272,9 @@ void PrintSelectPanel::init_subjects() {
                               "selected_layer_height", subjects_);
     UI_MANAGED_SUBJECT_STRING(selected_filament_type_subject_, selected_filament_type_buffer_, "",
                               "selected_filament_type", subjects_);
+    UI_MANAGED_SUBJECT_INT(selected_plate_count_subject_, 0, "selected_plate_count", subjects_);
+    UI_MANAGED_SUBJECT_STRING(selected_plate_text_subject_, selected_plate_text_buffer_, "",
+                              "selected_plate_text", subjects_);
     // Initialize detail view visibility subject (0 = hidden, 1 = visible)
     UI_MANAGED_SUBJECT_INT(detail_view_visible_subject_, 0, "detail_view_visible", subjects_);
 
@@ -322,6 +325,10 @@ void PrintSelectPanel::init_subjects() {
          [](lv_event_t*) { get_global_print_select_panel().start_print(); }},
         {"on_print_select_delete_button",
          [](lv_event_t*) { get_global_print_select_panel().show_delete_confirmation(); }},
+        {"on_print_select_plate_prev",
+         [](lv_event_t*) { get_global_print_select_panel().step_archive_plate(-1); }},
+        {"on_print_select_plate_next",
+         [](lv_event_t*) { get_global_print_select_panel().step_archive_plate(1); }},
         {"on_print_select_detail_backdrop",
          [](lv_event_t* e) {
              // Only close if clicking the backdrop itself, not child widgets
@@ -1052,6 +1059,20 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
                 // Empty metadata means file hasn't been scanned yet (e.g. USB symlinks).
                 bool metadata_empty = metadata.thumbnails.empty() && metadata.estimated_time == 0;
 
+                if (metadata_empty && helix::gcode::is_3mf(filename)) {
+                    // The printer reads this .3mf but says nothing about it:
+                    // its render comes out of the archive, and a metascan
+                    // would only parse the zip as G-code.
+                    token.defer("PrintSelectPanel::metadata_empty_archive",
+                                [self, i, filename, captured_gen, metadata]() {
+                                    if (self->nav_generation_.load() != captured_gen) {
+                                        return;
+                                    }
+                                    self->process_metadata_result(i, filename, metadata);
+                                });
+                    return;
+                }
+
                 if (metadata_empty) {
                     token.defer("PrintSelectPanel::metadata_empty_metascan", [self, i, filename,
                                                                               file_path,
@@ -1122,6 +1143,12 @@ void PrintSelectPanel::fetch_metadata_range(size_t start, size_t end) {
                     }
 
                     if (!self->api_) {
+                        return;
+                    }
+                    if (helix::gcode::is_3mf(filename)) {
+                        // No metadata for a .3mf: the printer cannot read it,
+                        // so its archive describes it and Print extracts a plate.
+                        self->load_archive(i, filename, true);
                         return;
                     }
                     spdlog::debug("[{}] Triggering metascan for {} after metadata failure",
@@ -1487,18 +1514,8 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
                                         // metadata)
                                         if (strcmp(t->panel->selected_filename_buffer_,
                                                    t->filename.c_str()) == 0) {
-                                            const auto& file = t->panel->file_list_[t->index];
-                                            std::string filament_display =
-                                                file.filament_name.empty() ? file.filament_type
-                                                                           : file.filament_name;
-                                            t->panel->set_selected_file(
-                                                file.filename.c_str(), file.thumbnail_path.c_str(),
-                                                file.print_time_str.c_str(),
-                                                file.filament_str.c_str(),
-                                                file.layer_count_str.c_str(),
-                                                file.print_height_str.c_str(),
-                                                file.layer_height_str.c_str(),
-                                                filament_display.c_str());
+                                            t->panel->show_file_in_detail(
+                                                t->panel->file_list_[t->index]);
                                             spdlog::debug(
                                                 "[{}] Updated detail view thumbnail for {}",
                                                 t->panel->get_name(), t->filename);
@@ -1515,6 +1532,14 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
                     // ESP32: no disk thumbnail cache; see sync_esp_thumbnails().
                     self->sync_esp_thumbnails(self->esp_window_first_, self->esp_window_end_);
 #endif
+                }
+            } else if (helix::gcode::is_3mf(d->filename)) {
+                // A .3mf keeps its renders inside the archive, never in a
+                // G-code header.
+                if (self->file_list_[d->index].archive) {
+                    self->fetch_archive_thumbnail(d->index);
+                } else if (!self->file_list_[d->index].archive_requested) {
+                    self->load_archive(d->index, d->filename, false);
                 }
             } else if (self->api_ && helix::gcode_thumbnail_extraction_available()) {
                 // No thumbnail from metadata - try extracting from gcode file directly
@@ -1609,8 +1634,19 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     }
 }
 
+void PrintSelectPanel::show_file_in_detail(const PrintFileData& file) {
+    const std::string& filament_display =
+        file.filament_name.empty() ? file.filament_type : file.filament_name;
+    set_selected_file(file.filename.c_str(), file.thumbnail_path.c_str(),
+                      file.print_time_str.c_str(), file.filament_str.c_str(),
+                      file.layer_count_str.c_str(), file.print_height_str.c_str(),
+                      file.layer_height_str.c_str(), filament_display.c_str());
+}
+
 void PrintSelectPanel::set_api(IMoonrakerAPI* api) {
     api_ = api;
+    // Reads through the old API's transfers; load_archive() makes a new one.
+    archive_reader_.reset();
 
     // Update file provider's API reference (it was created with nullptr in setup())
     if (file_provider_) {
@@ -2009,6 +2045,7 @@ void PrintSelectPanel::set_selected_file(const char* filename, const char* thumb
                                          const char* layer_height, const char* filament_type) {
     create_detail_view();
     lv_subject_copy_string(&selected_filename_subject_, filename);
+    update_plate_stepper();
 
     // Display filename strips .gcode extension for cleaner UI
     std::string display_name = strip_gcode_extension(filename);
@@ -2858,6 +2895,10 @@ void PrintSelectPanel::start_print(bool force) {
         }
     }
 
+    if (!prepare_archive_start()) {
+        return;
+    }
+
     // Everything about the tapped file is read now: a USB copy lands later,
     // by when the user may have opened another file.
     const std::string filename = selected_filename_buffer_;
@@ -2878,6 +2919,36 @@ void PrintSelectPanel::start_print(bool force) {
     }
     dispatch_print(filename, current_path_, colors, thumbnail, std::move(exclude_picks),
                    std::move(scan_key));
+}
+
+bool PrintSelectPanel::prepare_archive_start() {
+    auto* prep = print_preparation_manager();
+    const std::string path =
+        helix::gcode::join_gcode_path(current_path_, selected_filename_buffer_);
+    const auto it = std::find_if(file_list_.begin(), file_list_.end(), [this](const auto& f) {
+        return !f.is_dir && f.filename == selected_filename_buffer_;
+    });
+    if (it == file_list_.end() || !it->archive_extract || !selected_local_path_.empty()) {
+        if (prep) {
+            prep->set_archive_plate(path, 0);
+        }
+        return true;
+    }
+    const auto* plate =
+        it->archive ? three_mf::find_plate(*it->archive, it->archive_plate) : nullptr;
+    if (!plate) {
+        NOTIFY_WARNING(lv_tr("This .3mf has no sliced plate to print."));
+        return false;
+    }
+    if (!helix::ui::PrintPreparationManager::keeps_local_copies(api_)) {
+        NOTIFY_WARNING(lv_tr("This .3mf has to be converted to G-code on the printer before it "
+                             "can print."));
+        return false;
+    }
+    if (prep) {
+        prep->set_archive_plate(path, plate->index);
+    }
+    return true;
 }
 
 bool PrintSelectPanel::refuse_start_with_every_object_picked() {
@@ -3659,8 +3730,8 @@ PrintSelectPanel::EspThumbnailFetch
 PrintSelectPanel::fetch_esp_thumbnail(size_t index, const std::string& filename,
                                       const std::string& thumb_path) {
     constexpr size_t ESP32_THUMBNAIL_MAX_BYTES = 512 * 1024;
-    // An error reported before download_file_partial() returns means nothing
-    // was started: either the lane's queue was full, or the request was invalid.
+    // An error reported before the download call returns means nothing was
+    // started: either the lane's queue was full, or the request was invalid.
     auto submitting = std::make_shared<std::atomic<bool>>(true);
     auto refused = std::make_shared<std::atomic<bool>>(false);
     auto rejected = std::make_shared<std::atomic<bool>>(false);
@@ -3669,77 +3740,75 @@ PrintSelectPanel::fetch_esp_thumbnail(size_t index, const std::string& filename,
     const helix::ThumbnailTarget target = helix::ThumbnailProcessor::get_target_for_display();
 
     auto cancelled = std::make_shared<std::atomic<bool>>(false);
-    api_->transfers().download_file_partial(
-        "gcodes", thumb_path, ESP32_THUMBNAIL_MAX_BYTES,
-        [this, tok, index, filename, target, slots = esp_slots_,
-         cancelled](const std::string& png_bytes) {
-            helix::ThumbnailDecodeFailure failure{};
-            if (cancelled->load()) {
-                // Its card left the screen while this was downloading.
-                tok.defer("PrintSelectPanel::on_psram_thumbnail_cancelled", [this]() {
-                    --esp_thumbnails_in_flight_;
-                    esp_lane_refused_ = false;
-                    sync_esp_thumbnails(esp_window_first_, esp_window_end_);
-                });
-                return;
-            }
-            auto thumb = helix::ui::EspPsramThumbnail::create_decoded(
-                png_bytes, target.width, target.height, slots, failure);
-            if (!thumb) {
-                // Slots in use against the pool's size, and free PSRAM against
-                // the decode floor, say which memory ran out.
-                spdlog::warn("[PrintSelectPanel] Could not decode thumbnail {}: {} (slots {}/{} "
-                             "in use, PSRAM free {})",
-                             filename,
-                             failure == helix::ThumbnailDecodeFailure::OutOfMemory
-                                 ? "out of memory"
-                                 : "corrupt or too large",
-                             slots ? slots->in_use() : 0, slots ? slots->allocated() : 0,
-                             heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
-            }
-            tok.defer("PrintSelectPanel::on_psram_thumbnail_fetched",
-                      [this, index, filename, cancelled, thumb = std::move(thumb)]() mutable {
-                          --esp_thumbnails_in_flight_;
-                          esp_lane_refused_ = false; // this fetch's lane slot is free
-                          // Kept only while its card is still on screen and this is
-                          // still the fetch it wants.
-                          if (thumb && !cancelled->load() && index < file_list_.size() &&
-                              file_list_[index].filename == filename &&
-                              file_list_[index].esp_thumbnail_tried) {
-                              file_list_[index].esp_thumbnail = std::move(thumb);
-                              if (card_view_) {
-                                  card_view_->update_thumbnail(index, file_list_[index]);
-                              }
-                              // A detail view opened before its card's image
-                              // arrived shows it now.
-                              // Visibility, not detail_view_open_: Back pops the
-                              // overlay without clearing that flag.
-                              if (detail_view_ && detail_view_->is_visible() &&
-                                  lv_subject_get_int(&selected_has_thumbnail_subject_) == 0 &&
-                                  filename == selected_filename_buffer_ &&
-                                  show_esp_detail_thumbnail(filename.c_str())) {
-                                  lv_subject_set_int(&selected_has_thumbnail_subject_, 1);
-                              }
+    auto on_png = [this, tok, index, filename, target, slots = esp_slots_,
+                   cancelled](const std::string& png_bytes) {
+        helix::ThumbnailDecodeFailure failure{};
+        if (cancelled->load()) {
+            // Its card left the screen while this was downloading.
+            tok.defer("PrintSelectPanel::on_psram_thumbnail_cancelled", [this]() {
+                --esp_thumbnails_in_flight_;
+                esp_lane_refused_ = false;
+                sync_esp_thumbnails(esp_window_first_, esp_window_end_);
+            });
+            return;
+        }
+        auto thumb = helix::ui::EspPsramThumbnail::create_decoded(png_bytes, target.width,
+                                                                  target.height, slots, failure);
+        if (!thumb) {
+            // Slots in use against the pool's size, and free PSRAM against
+            // the decode floor, say which memory ran out.
+            spdlog::warn("[PrintSelectPanel] Could not decode thumbnail {}: {} (slots {}/{} "
+                         "in use, PSRAM free {})",
+                         filename,
+                         failure == helix::ThumbnailDecodeFailure::OutOfMemory
+                             ? "out of memory"
+                             : "corrupt or too large",
+                         slots ? slots->in_use() : 0, slots ? slots->allocated() : 0,
+                         heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+        }
+        tok.defer("PrintSelectPanel::on_psram_thumbnail_fetched",
+                  [this, index, filename, cancelled, thumb = std::move(thumb)]() mutable {
+                      --esp_thumbnails_in_flight_;
+                      esp_lane_refused_ = false; // this fetch's lane slot is free
+                      // Kept only while its card is still on screen and this is
+                      // still the fetch it wants.
+                      if (thumb && !cancelled->load() && index < file_list_.size() &&
+                          file_list_[index].filename == filename &&
+                          file_list_[index].esp_thumbnail_tried) {
+                          file_list_[index].esp_thumbnail = std::move(thumb);
+                          if (card_view_) {
+                              card_view_->update_thumbnail(index, file_list_[index]);
                           }
-                          sync_esp_thumbnails(esp_window_first_, esp_window_end_);
-                      });
-        },
-        [this, tok, index, filename, cancelled, submitting, refused,
-         rejected](const MoonrakerError& error) {
-            if (submitting->load()) {
-                if (error.type == MoonrakerErrorType::QUEUE_FULL) {
-                    refused->store(true);
-                } else {
-                    rejected->store(true);
-                    spdlog::debug("[PrintSelectPanel] PSRAM thumbnail fetch failed for {}: {}",
-                                  filename, error.message);
-                }
-                return;
+                          // A detail view opened before its card's image
+                          // arrived shows it now.
+                          // Visibility, not detail_view_open_: Back pops the
+                          // overlay without clearing that flag.
+                          if (detail_view_ && detail_view_->is_visible() &&
+                              lv_subject_get_int(&selected_has_thumbnail_subject_) == 0 &&
+                              filename == selected_filename_buffer_ &&
+                              show_esp_detail_thumbnail(filename.c_str())) {
+                              lv_subject_set_int(&selected_has_thumbnail_subject_, 1);
+                          }
+                      }
+                      sync_esp_thumbnails(esp_window_first_, esp_window_end_);
+                  });
+    };
+    auto on_fail = [this, tok, index, filename, cancelled, submitting, refused,
+                    rejected](const MoonrakerError& error) {
+        if (submitting->load()) {
+            if (error.type == MoonrakerErrorType::QUEUE_FULL) {
+                refused->store(true);
+            } else {
+                rejected->store(true);
+                spdlog::debug("[PrintSelectPanel] PSRAM thumbnail fetch failed for {}: {}",
+                              filename, error.message);
             }
-            spdlog::debug("[PrintSelectPanel] PSRAM thumbnail fetch failed for {}: {}", filename,
-                          error.message);
-            tok.defer("PrintSelectPanel::on_psram_thumbnail_failed", [this, index, filename,
-                                                                      cancelled]() {
+            return;
+        }
+        spdlog::debug("[PrintSelectPanel] PSRAM thumbnail fetch failed for {}: {}", filename,
+                      error.message);
+        tok.defer(
+            "PrintSelectPanel::on_psram_thumbnail_failed", [this, index, filename, cancelled]() {
                 --esp_thumbnails_in_flight_;
                 esp_lane_refused_ = false;
                 const bool shown = index < file_list_.size() &&
@@ -3754,8 +3823,29 @@ PrintSelectPanel::fetch_esp_thumbnail(size_t index, const std::string& filename,
                 }
                 sync_esp_thumbnails(esp_window_first_, esp_window_end_);
             });
-        },
-        cancelled);
+    };
+    // A .3mf's render is an entry of its archive, read in one range.
+    const PrintFileData& file = file_list_[index];
+    const auto* plate =
+        file.archive ? helix::three_mf::find_plate(*file.archive, file.archive_plate) : nullptr;
+    const helix::zip::ZipEntry* entry = plate ? helix::three_mf::plate_thumbnail(*plate) : nullptr;
+    if (entry) {
+        api_->transfers().download_file_range(
+            "gcodes", helix::gcode::join_gcode_path(current_path_, filename), entry->lh_offset,
+            static_cast<size_t>(helix::zip::entry_read_span(*entry)),
+            [on_png, e = *entry](const std::string& bytes) {
+                helix::zip::ZipError err = helix::zip::ZipError::None;
+                const std::string_view png = helix::zip::entry_bytes(
+                    reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size(), e, err);
+                // A deflated render is not decoded here; it keeps the placeholder.
+                on_png(err == helix::zip::ZipError::None && e.method == 0 ? std::string(png)
+                                                                          : std::string());
+            },
+            on_fail, cancelled);
+    } else {
+        api_->transfers().download_file_partial("gcodes", thumb_path, ESP32_THUMBNAIL_MAX_BYTES,
+                                                on_png, on_fail, cancelled);
+    }
     submitting->store(false);
     if (refused->load()) {
         return EspThumbnailFetch::QueueFull;
@@ -3838,7 +3928,10 @@ void PrintSelectPanel::sync_esp_thumbnails(size_t first, size_t end, bool keep_o
         if (i >= first && i < end) {
             f.esp_thumbnail_shown = esp_show_tick_;
         }
-        states[i].fetchable = !f.is_dir && !f.original_thumbnail_url.empty();
+        const auto* plate =
+            f.archive ? helix::three_mf::find_plate(*f.archive, f.archive_plate) : nullptr;
+        states[i].fetchable = !f.is_dir && (!f.original_thumbnail_url.empty() ||
+                                            (plate && helix::three_mf::plate_thumbnail(*plate)));
         states[i].tried = f.esp_thumbnail_tried;
         states[i].held = f.esp_thumbnail ? f.esp_thumbnail->bytes() : 0;
         states[i].last_shown = f.esp_thumbnail_shown;

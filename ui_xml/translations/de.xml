@@ -2199,6 +2199,7 @@
   <translation tag="Place image files (PNG, JPEG, BMP, GIF) in config/custom_images/. Max size: 2048×2048 pixels." de="Bilddateien (PNG, JPEG, BMP, GIF) in config/custom_images/ ablegen. Max. Größe: 2048×2048 Pixel."/>
   <translation tag="Place the spools" de="Spulen einlegen"/>
   <translation tag="Placed" de="Platziert"/>
+  <translation tag="Plate {} of {}" de="Platte {} von {}"/>
   <translation tag="Platform" de="Plattform"/>
   <translation tag="Platform: " de="Plattform: "/>
   <translation tag="Play / stop Crockett&apos;s Theme" de="Crockett&apos;s Theme abspielen / stoppen"/>
@@ -3164,6 +3165,7 @@
   <translation tag="These tools have incompatible materials loaded:" de="Diese Werkzeuge haben inkompatible Materialien geladen:"/>
   <translation tag="These tools have no filament loaded:" de="Diese Werkzeuge haben kein Filament geladen:"/>
   <translation tag="These tools have no matching filament loaded:" de="Diese Werkzeuge haben kein passendes Filament geladen:"/>
+  <translation tag="This .3mf has no sliced plate to print." de="Diese .3mf-Datei enthält keine geslicte Platte zum Drucken."/>
   <translation tag="This .3mf has to be converted to G-code on the printer before it can print." de="Diese .3mf-Datei muss auf dem Drucker in G-code umgewandelt werden, bevor sie gedruckt werden kann."/>
   <translation tag="This AFC system does not support bypass mode" de="Dieses AFC-System unterstützt den Bypass-Modus nicht"/>
   <translation tag="This CFS firmware exposes no external spool slot" de="Diese CFS-Firmware bietet keinen externen Spulen-Slot"/>

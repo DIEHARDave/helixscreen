@@ -11,11 +11,14 @@
 #include "helix_fs.h"
 #include "i_moonraker_api.h"
 #include "print_file_data.h"
+#include "three_mf_conversions.h"
 #include "thumbnail_cache.h"
 #include "try_reserve.h"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <memory>
 #include <unordered_map>
 
 namespace helix::ui {
@@ -193,9 +196,57 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
                           dir_count, file_count);
 
             // Deliver results via callback (metadata_fetched is now in each file struct)
-            if (on_ready) {
-                on_ready(std::move(file_list));
+            if (!on_ready) {
+                return;
             }
+            const bool has_archive =
+                std::any_of(file_list.begin(), file_list.end(), [](const PrintFileData& f) {
+                    return !f.is_dir && gcode::is_3mf(f.filename);
+                });
+            if (!has_archive || !self->api_) {
+                on_ready(std::move(file_list));
+                return;
+            }
+            // A .3mf the printer has already converted is listed beside its
+            // G-code; only the G-code needs showing.
+            std::vector<three_mf::ListedFile> listed;
+            listed.reserve(files.size());
+            for (const auto& f : files) {
+                if (!f.is_dir) {
+                    listed.push_back(
+                        {gcode::join_gcode_path(path_copy, f.filename), f.size, f.modified});
+                }
+            }
+            auto shared_list = std::make_shared<std::vector<PrintFileData>>(std::move(file_list));
+            self->api_->files().get_archive_conversions(
+                [self, shared_list, listed, path_copy, on_ready,
+                 gen](const std::vector<three_mf::Conversion>& conversions) {
+                    if (gen != self->refresh_generation_.load()) {
+                        return;
+                    }
+                    const auto hidden = three_mf::converted_archives(conversions, listed);
+                    auto& list = *shared_list;
+                    list.erase(std::remove_if(list.begin(), list.end(),
+                                              [&hidden, &path_copy](const PrintFileData& f) {
+                                                  return !f.is_dir &&
+                                                         hidden.count(gcode::join_gcode_path(
+                                                             path_copy, f.filename)) != 0;
+                                              }),
+                               list.end());
+                    if (!hidden.empty()) {
+                        spdlog::debug("[FileProvider] Hiding {} converted .3mf archive(s)",
+                                      hidden.size());
+                    }
+                    on_ready(std::move(list));
+                },
+                [self, shared_list, on_ready, gen](const MoonrakerError& error) {
+                    if (gen != self->refresh_generation_.load()) {
+                        return;
+                    }
+                    // No converter on this printer: every archive shows.
+                    spdlog::trace("[FileProvider] No .3mf conversions: {}", error.message);
+                    on_ready(std::move(*shared_list));
+                });
         },
         // Error callback
         [self, on_err, gen](const MoonrakerError& error) {
