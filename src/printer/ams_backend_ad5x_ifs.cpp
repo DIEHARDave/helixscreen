@@ -1517,9 +1517,9 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
     //
     // A value the lane's user record holds that the override does not declare
     // is another tool's statement, and this restatement is the change it
-    // yields to (prestonbrown/helixscreen#1632): it guards nothing, and on an
-    // unlinked lane the spool name that described it goes with it. A linked
-    // lane's name is the server's.
+    // yields to (prestonbrown/helixscreen#1632): it guards nothing, and the
+    // spool name that described it goes with it. Linking a spool drops the
+    // statement, so a linked lane never holds one.
     auto it = overrides_.find(slot_index);
     helix::ams::FilamentSlotOverride* record = it == overrides_.end() ? nullptr : &it->second;
     const auto lane = lane_id(slot_index);
@@ -1527,8 +1527,8 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
     const helix::ams::DeclaredOnLane declared = helix::ams::declared_on_lane(lane, record);
     const bool outside_statement =
         (held.color && !declared.color) || (held.material && !declared.material);
-    const bool name_released = outside_statement && record && record->spoolman_id == 0 &&
-                               !helix::ams::declares_spool_name(*record);
+    const bool name_released =
+        outside_statement && record && !helix::ams::declares_spool_name(*record);
     if (name_released) {
         record->spool_name.clear();
         record->color_name.clear();
@@ -1557,10 +1557,6 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
     restated.spool_name = name_released;
     retract_lane_declaration_locked(slot_index, restated);
 
-    if (name_released && !changed && override_store_) {
-        helix::ams::save_override_async(override_store_.get(), slot_index, it->second,
-                                        backend_log_tag(), "outside statement released");
-    }
     if (!changed)
         return false;
 

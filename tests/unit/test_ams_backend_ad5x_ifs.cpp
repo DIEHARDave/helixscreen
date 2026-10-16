@@ -12525,6 +12525,52 @@ TEST_CASE("AD5X IFS an outside tool's CHANGE_ZCOLOR replaces an earlier HelixScr
     helix::ui::UpdateQueue::instance().drain();
 }
 
+TEST_CASE("AD5X IFS a spool linked over an outside tool's lane keeps its name through a firmware "
+          "change",
+          "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
+    // Linking replaces the outside statement, so the firmware change that
+    // follows has no statement to release and the spool's name stands.
+    Ad5xIfsTmpCacheDir tmp("outside_then_linked");
+    MockPrinter mock_printer;
+    mock_printer.client.mock_db_set("lane_data", "lane1",
+                                    outside_lane_record(0, "#FF0000", "PLA", "Red PLA", 0));
+
+    helix::test::RegisteredBackend<AmsBackendAd5xIfs> backend_reg(&mock_printer.api, nullptr);
+    AmsBackendAd5xIfs& backend = *backend_reg;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    boot_from_lane_data(backend, mock_printer, tmp.path);
+    firmware_states_slot0(backend, "FF0000", "PLA");
+
+    SpoolInfo spool;
+    spool.id = 42;
+    spool.vendor = "Polymaker";
+    spool.filament_name = "PolyLite PLA";
+    spool.material = "PLA";
+    spool.color_hex = "FF0000";
+    SlotInfo link = backend.get_slot_info(0);
+    link.spoolman_id = 42;
+    helix::test::edit_slot_as_user(backend, 0, link);
+    helix::test::spool_states(backend, 0, spool);
+    backend.repaint_slot_from_lane(0);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(backend.get_slot_info(0).spoolman_id == 42);
+    {
+        const auto linked = helix::ams::lane_sources(backend_reg.lane(0));
+        REQUIRE(linked.spoolman.has_value());
+        REQUIRE((!linked.local_user.has_value() || (!linked.local_user->color_rgb.has_value() &&
+                                                    !linked.local_user->material.has_value())));
+    }
+
+    outside_tool_change_zcolor(backend);
+
+    const auto lane = helix::ams::lane_sources(backend_reg.lane(0));
+    REQUIRE(lane.spoolman.has_value());
+    CHECK(lane.spoolman->spool_name == std::string("PolyLite PLA"));
+    CHECK(backend.get_slot_info(0).spoolman_id == 42);
+    helix::ui::UpdateQueue::instance().drain();
+}
+
 TEST_CASE("AD5X IFS a HelixScreen edit survives a firmware revert no CHANGE_ZCOLOR announced",
           "[ams][ad5x][ad5x_ifs][lane_data][1632][965]") {
     // Adventurer5M.json changing on its own is not an edit: the post-print
