@@ -53,6 +53,7 @@ enum class FailureKind {
     Transfer,     ///< the connection failed after the request was sent
     NoResponse,   ///< the connection closed before a status line arrived
     ShortBody,    ///< the body ended before its Content-Length
+    EmptyBody,    ///< a 200 response with no body at all
     Redirect,     ///< a redirect that downgrades to http, or too many of them
     FileOpen,     ///< the staging file could not be created
     FileWrite,    ///< writing the staging file failed (ENOSPC, EIO)

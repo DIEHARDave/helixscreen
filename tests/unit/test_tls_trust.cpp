@@ -598,6 +598,22 @@ TEST_CASE("trusted_download names why it failed", "[tls][transfer_failure]") {
         CHECK(f.http_status == 200);
     }
 
+    SECTION("a 200 with an empty body") {
+        TlsServer server(trusted,
+                         [](const std::string&, const std::string&) { return ok_response(""); });
+        const auto f = download_failure(server.url("/f"), dest, ctx);
+        CHECK(f.kind == FailureKind::EmptyBody);
+        CHECK(f.http_status == 200);
+    }
+
+    SECTION("a 200 with an empty close-delimited body") {
+        TlsServer server(trusted, [](const std::string&, const std::string&) {
+            return std::string("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+        });
+        const auto f = download_failure(server.url("/f"), dest, ctx);
+        CHECK(f.kind == FailureKind::EmptyBody);
+    }
+
     SECTION("a connection closed before any response") {
         RawServer server("");
         const auto f = download_failure(server.url("http", "/f"), dest, ctx);
@@ -691,6 +707,7 @@ TEST_CASE("classify_send_failure separates the connection stages", "[tls][transf
     CHECK(kind(-ETIMEDOUT, none, true).kind == FailureKind::Timeout);
     CHECK(kind(ECONNRESET, after_handshake, true).kind == FailureKind::Transfer);
     CHECK(kind(ECONNRESET, after_handshake, true).code == ECONNRESET);
+    CHECK(kind(EAGAIN, after_handshake, true).kind == FailureKind::Timeout);
 }
 
 TEST_CASE("failure_kind_name gives every kind a fixed token", "[tls][transfer_failure]") {
@@ -705,6 +722,7 @@ TEST_CASE("failure_kind_name gives every kind a fixed token", "[tls][transfer_fa
     CHECK(std::string(failure_kind_name(FailureKind::Transfer)) == "transfer");
     CHECK(std::string(failure_kind_name(FailureKind::NoResponse)) == "no_response");
     CHECK(std::string(failure_kind_name(FailureKind::ShortBody)) == "short_body");
+    CHECK(std::string(failure_kind_name(FailureKind::EmptyBody)) == "empty_body");
     CHECK(std::string(failure_kind_name(FailureKind::Redirect)) == "redirect");
     CHECK(std::string(failure_kind_name(FailureKind::FileOpen)) == "file_open");
     CHECK(std::string(failure_kind_name(FailureKind::FileWrite)) == "file_write");

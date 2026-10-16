@@ -421,7 +421,7 @@ TEST_CASE("redact::telemetry_text removes paths, addresses, hosts and user names
         CHECK_FALSE(leaks(out, "192.168.1.50"));
         CHECK_FALSE(leaks(out, "203.0.113.5"));
         CHECK_FALSE(leaks(out, "fe80::1"));
-        CHECK(out == "connect <ip>:7125 then <ip> and <ip>");
+        CHECK(out == "connect <ip> then <ip> and <ip>");
     }
 
     SECTION("host names, URLs and user@host") {
@@ -444,7 +444,66 @@ TEST_CASE("redact::telemetry_text removes paths, addresses, hosts and user names
         CHECK_FALSE(leaks(out, "K1C-7F3A"));
         CHECK(out == "user <id> on <id>, owner=<id>");
         // A name is replaced as a word, never inside a longer one.
-        CHECK(telemetry_text("pipeline ok", {"pi"}, 200) == "pipeline ok");
+        CHECK(telemetry_text("pipeline ok", {"pipe"}, 200) == "pipeline ok");
+    }
+
+    SECTION("identifiers match in any case") {
+        CHECK(telemetry_text("on MyPrinter and myprinter", {"myprinter"}, 200) ==
+              "on <id> and <id>");
+    }
+
+    SECTION("short, generic and all-digit identifiers are ignored") {
+        CHECK(telemetry_text("pi user root printer klipper admin",
+                             {"pi", "user", "root", "printer", "klipper", "admin", "abc"},
+                             200) == "pi user root printer klipper admin");
+        // An all-digit identifier never splits an address.
+        CHECK(telemetry_text("at 10.1680.1.5 and 10.0.168.1", {"1680", "168"}, 200) ==
+              "at 10.1680.1.5 and <ip>");
+    }
+
+    SECTION("host:port and ip:port drop everything after the address") {
+        CHECK(telemetry_text("reach printer.local:7125 failed", {}, 200) == "reach <host> failed");
+        const std::string out =
+            telemetry_text("GET 192.168.1.50:7125/printer/info?api_key=abc123 401", {}, 200);
+        INFO(out);
+        CHECK_FALSE(leaks(out, "abc123"));
+        CHECK(out == "GET <ip> 401");
+    }
+
+    SECTION("scheme-less URLs") {
+        const std::string out = telemetry_text("from github.com/foo/bar?token=abc", {}, 200);
+        INFO(out);
+        CHECK_FALSE(leaks(out, "abc"));
+        CHECK(out == "from <path>");
+    }
+
+    SECTION("paths after any punctuation") {
+        for (const char* shape :
+             {"a,/home/alice/x", "->/home/alice/x", "-o/home/alice/x", "~alice/x"}) {
+            const std::string out = telemetry_text(std::string("see ") + shape, {}, 200);
+            INFO(shape << " -> " << out);
+            CHECK_FALSE(leaks(out, "alice"));
+            CHECK(out == "see <path>");
+        }
+        CHECK(telemetry_text("see </home/alice/x>", {}, 200) == "see <<path>>");
+    }
+
+    SECTION("credential values") {
+        for (const char* shape : {"pass=hunter2", "password=hunter2", "token=hunter2",
+                                  "api_key=hunter2", "secret:hunter2", "auth=hunter2",
+                                  "Authorization: Bearer hunter2", "PASSWORD= hunter2"}) {
+            const std::string out = telemetry_text(shape, {}, 200);
+            INFO(shape << " -> " << out);
+            CHECK_FALSE(leaks(out, "hunter2"));
+            CHECK(out.find("<redacted>") != std::string::npos);
+        }
+    }
+
+    SECTION("MAC addresses") {
+        const std::string out =
+            telemetry_text("wlan0 aa:bb:cc:dd:ee:0f and AA-BB-CC-DD-EE-0F", {}, 200);
+        INFO(out);
+        CHECK(out == "wlan0 <mac> and <mac>");
     }
 
     SECTION("diagnostic words survive") {
@@ -464,5 +523,7 @@ TEST_CASE("redact::telemetry_text caps the length without splitting a character"
     CHECK(telemetry_text("abc\xC3\xA9xyz", {}, 4) == "abc");
     // A placeholder is never left half-written.
     CHECK(telemetry_text("bad /etc/x", {}, 7) == "bad ");
+    // A literal '<' that begins no placeholder is text, not a cut point.
+    CHECK(telemetry_text("need <100MB free", {}, 9) == "need <100");
     CHECK(telemetry_text("", {}, 10).empty());
 }

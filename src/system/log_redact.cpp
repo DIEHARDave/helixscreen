@@ -358,22 +358,98 @@ bool is_alpha(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-bool is_alnum(char c) {
-    return is_alpha(c) || (c >= '0' && c <= '9');
+bool is_digit(char c) {
+    return c >= '0' && c <= '9';
 }
 
-/// `text` with each whole-word occurrence of an identifier replaced by `<id>`.
+bool is_alnum(char c) {
+    return is_alpha(c) || is_digit(c);
+}
+
+char lower_char(char c) {
+    return (c >= 'A' && c <= 'Z') ? static_cast<char>(c | 0x20) : c;
+}
+
+std::string lowercase(std::string_view s) {
+    std::string out(s);
+    for (auto& c : out)
+        c = lower_char(c);
+    return out;
+}
+
+bool is_space(char c) {
+    return c == ' ' || c == '\t';
+}
+
+/// Every placeholder telemetry_text() writes.
+constexpr std::string_view kPlaceholders[] = {"<ip>",  "<mac>",  "<id>",        "<path>",
+                                              "<url>", "<host>", "<user@host>", "<redacted>"};
+
+/// The placeholder `s` starts with, or empty.
+std::string_view leading_placeholder(std::string_view s) {
+    for (auto p : kPlaceholders)
+        if (s.substr(0, p.size()) == p)
+            return p;
+    return {};
+}
+
+/// Every MAC address (six hex pairs joined by ':' or '-') replaced by `<mac>`.
+std::string replace_macs(const std::string& text) {
+    std::string out;
+    out.reserve(text.size());
+    const size_t n = text.size();
+    size_t i = 0;
+    while (i < n) {
+        bool match = i + 17 <= n && (i == 0 || !is_word_char(text[i - 1])) &&
+                     (i + 17 == n || !is_word_char(text[i + 17]));
+        for (size_t g = 0; match && g < 6; ++g) {
+            const size_t at = i + g * 3;
+            match = hex_value(text[at]) >= 0 && hex_value(text[at + 1]) >= 0 &&
+                    (g == 5 || text[at + 2] == ':' || text[at + 2] == '-');
+        }
+        if (match) {
+            out += "<mac>";
+            i += 17;
+        } else {
+            out += text[i++];
+        }
+    }
+    return out;
+}
+
+/// Names too generic to identify a device, which also stand for platforms and
+/// software in installer output.
+bool is_generic_name(std::string_view lower) {
+    static constexpr std::string_view kGeneric[] = {"pi",   "printer", "root",
+                                                    "user", "admin",   "klipper"};
+    for (auto g : kGeneric)
+        if (lower == g)
+            return true;
+    return false;
+}
+
+/// `text` with each whole-word occurrence of an identifier, in any case,
+/// replaced by `<id>`. Runs after the IP pass, so an all-digit identifier can
+/// no longer split an address.
 std::string replace_identifiers(std::string text, const std::vector<std::string>& identifiers) {
-    for (const auto& id : identifiers) {
-        if (id.size() < 2)
+    for (const auto& raw : identifiers) {
+        const std::string id = lowercase(raw);
+        if (id.size() < 4 || is_generic_name(id))
             continue;
+        bool all_digits = true;
+        for (char c : id)
+            all_digits = all_digits && is_digit(c);
+        if (all_digits)
+            continue;
+        std::string lower = lowercase(text);
         size_t pos = 0;
-        while ((pos = text.find(id, pos)) != std::string::npos) {
+        while ((pos = lower.find(id, pos)) != std::string::npos) {
             const size_t end = pos + id.size();
-            const bool left_ok = pos == 0 || !is_word_char(text[pos - 1]);
-            const bool right_ok = end >= text.size() || !is_word_char(text[end]);
+            const bool left_ok = pos == 0 || !is_word_char(lower[pos - 1]);
+            const bool right_ok = end >= lower.size() || !is_word_char(lower[end]);
             if (left_ok && right_ok) {
                 text.replace(pos, id.size(), "<id>");
+                lower.replace(pos, id.size(), "<id>");
                 pos += 4;
             } else {
                 pos = end;
@@ -397,9 +473,18 @@ bool is_file_extension(std::string_view label) {
     return false;
 }
 
-/// `name.name[.name...]` whose last label is alphabetic, at least two letters and
-/// not a file extension.
+/// `name.name[.name...]` with an optional `:port`, whose last label is
+/// alphabetic, at least two letters and not a file extension.
 bool looks_like_host(std::string_view core) {
+    if (const size_t colon = core.rfind(':'); colon != std::string_view::npos) {
+        const std::string_view port = core.substr(colon + 1);
+        bool digits = !port.empty();
+        for (char c : port)
+            digits = digits && is_digit(c);
+        if (!digits)
+            return false;
+        core = core.substr(0, colon);
+    }
     if (core.empty() || !is_alnum(core.front()))
         return false;
     for (char c : core)
@@ -414,27 +499,66 @@ bool looks_like_host(std::string_view core) {
     for (char c : last)
         if (!is_alpha(c))
             return false;
-    std::string lower(last);
-    for (auto& c : lower)
-        c = static_cast<char>(c | 0x20);
-    return !is_file_extension(lower);
+    return !is_file_extension(lowercase(last));
+}
+
+/// `key=value` or `key:value` whose key names a secret: the length of the key
+/// and separator, or 0.
+size_t credential_key_length(std::string_view core) {
+    static constexpr std::string_view kSecretWords[] = {
+        "pass", "pwd", "token", "secret", "auth", "key", "credential", "cookie", "session"};
+    const size_t sep = core.find_first_of("=:");
+    if (sep == std::string_view::npos || sep == 0 || sep + 1 >= core.size())
+        return 0;
+    const std::string key = lowercase(core.substr(0, sep));
+    for (char c : key)
+        if (!is_word_char(c) && c != '.')
+            return 0;
+    for (auto w : kSecretWords)
+        if (key.find(w) != std::string::npos)
+            return sep + 1;
+    return 0;
+}
+
+/// A word with a '/' that names no path: a step counter ("2/6") or a phrase.
+bool is_safe_slash_word(std::string_view core) {
+    static constexpr std::string_view kSafe[] = {"and/or", "n/a", "i/o", "tcp/ip", "read/write"};
+    const std::string lower = lowercase(core);
+    for (auto s : kSafe)
+        if (lower == s)
+            return true;
+    const size_t slash = core.find('/');
+    if (slash == 0 || slash + 1 >= core.size() || core.find('/', slash + 1) != std::string::npos)
+        return false;
+    for (size_t i = 0; i < core.size(); ++i)
+        if (i != slash && !is_digit(core[i]))
+            return false;
+    return true;
 }
 
 /// One whitespace-delimited word with its surrounding punctuation already split off.
 std::string scrub_core(std::string_view core) {
+    // An address or name already replaced keeps only its placeholder: a port,
+    // path or query after it can carry anything.
+    if (auto p = leading_placeholder(core); !p.empty())
+        return std::string(p);
     if (core.find("://") != std::string_view::npos)
         return "<url>";
     const size_t at = core.find('@');
     if (at != std::string_view::npos && at > 0 && at + 1 < core.size())
         return "<user@host>";
-    // An absolute or home path, alone or as the value of `key=` / `key:`.
-    for (size_t i = 0; i < core.size(); ++i) {
-        const bool home = core[i] == '~' && i + 1 < core.size() && core[i + 1] == '/';
-        if (core[i] != '/' && !home)
-            continue;
-        if (i == 0 || core[i - 1] == '=' || core[i - 1] == ':')
-            return std::string(core.substr(0, i)) + "<path>";
-        break;
+    if (const size_t key = credential_key_length(core))
+        return std::string(core.substr(0, key)) + "<redacted>";
+    if (core.find('/') != std::string_view::npos || core.front() == '~') {
+        if (is_safe_slash_word(core))
+            return std::string(core);
+        // `key=/path` and `key:/path` keep their key.
+        const size_t slash = core.find_first_of("/~");
+        const std::string_view prefix = core.substr(0, slash);
+        bool plain_key = !prefix.empty() && (prefix.back() == '=' || prefix.back() == ':');
+        for (size_t i = 0; plain_key && i + 1 < prefix.size(); ++i)
+            plain_key = is_word_char(prefix[i]) || prefix[i] == '.';
+        return plain_key ? std::string(prefix) + "<path>" : "<path>";
     }
     if (looks_like_host(core))
         return "<host>";
@@ -442,13 +566,15 @@ std::string scrub_core(std::string_view core) {
 }
 
 std::string scrub_word(std::string_view word) {
-    static constexpr std::string_view kLead = "\"'([{";
-    static constexpr std::string_view kTrail = "\"')]},;:.!?";
+    static constexpr std::string_view kLead = "\"'([{<,";
+    static constexpr std::string_view kTrail = "\"')]}>,;:.!?";
     size_t b = 0;
     size_t e = word.size();
-    while (b < e && kLead.find(word[b]) != std::string_view::npos)
+    while (b < e && leading_placeholder(word.substr(b)).empty() &&
+           kLead.find(word[b]) != std::string_view::npos)
         ++b;
-    while (e > b && kTrail.find(word[e - 1]) != std::string_view::npos)
+    while (e > b && kTrail.find(word[e - 1]) != std::string_view::npos &&
+           !(word[e - 1] == '>' && !leading_placeholder(word.substr(b, e - b)).empty()))
         --e;
     if (b == e)
         return std::string(word);
@@ -466,8 +592,15 @@ std::string cap_length(std::string text, size_t max_len) {
         --cut;
     text.resize(cut);
     const size_t open = text.rfind('<');
-    if (open != std::string::npos && text.find('>', open) == std::string::npos)
-        text.resize(open);
+    if (open != std::string::npos && text.find('>', open) == std::string::npos) {
+        const std::string_view tail = std::string_view(text).substr(open);
+        for (auto p : kPlaceholders) {
+            if (p.substr(0, tail.size()) == tail) {
+                text.resize(open);
+                break;
+            }
+        }
+    }
     return text;
 }
 
@@ -475,20 +608,35 @@ std::string cap_length(std::string text, size_t max_len) {
 
 std::string telemetry_text(std::string_view text, const std::vector<std::string>& identifiers,
                            size_t max_len) {
-    std::string pass = replace_identifiers(std::string(text), identifiers);
-    pass = redact_v4(redact_v6(pass, 0, "<ip>"), 0, "<ip>");
+    std::string pass = redact_v4(redact_v6(text, 0, "<ip>"), 0, "<ip>");
+    pass = replace_macs(pass);
+    pass = replace_identifiers(std::move(pass), identifiers);
     std::string out;
     out.reserve(pass.size());
+    // Words still to mask after a bare secret key ("Authorization: Bearer x").
+    int mask_next = 0;
     size_t i = 0;
     while (i < pass.size()) {
-        if (pass[i] == ' ' || pass[i] == '\t') {
+        if (is_space(pass[i])) {
             out += pass[i++];
             continue;
         }
         const size_t start = i;
-        while (i < pass.size() && pass[i] != ' ' && pass[i] != '\t')
+        while (i < pass.size() && !is_space(pass[i]))
             ++i;
-        out += scrub_word(std::string_view(pass).substr(start, i - start));
+        const std::string_view word = std::string_view(pass).substr(start, i - start);
+        if (mask_next > 0) {
+            --mask_next;
+            const std::string lower = lowercase(word);
+            if (lower == "bearer" || lower == "basic" || lower == "token")
+                mask_next = 1;
+            out += mask_next > 0 ? std::string(word) : "<redacted>";
+            continue;
+        }
+        if ((word.back() == ':' || word.back() == '=') &&
+            credential_key_length(std::string(word) + "x") == word.size())
+            mask_next = 1;
+        out += scrub_word(word);
     }
     return cap_length(std::move(out), max_len);
 }

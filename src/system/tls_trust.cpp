@@ -97,8 +97,12 @@ int verify_cb(int ok, X509_STORE_CTX* store) {
 void info_cb(const SSL*, int where, int) {
     if (!t_trace)
         return;
-    if (where & SSL_CB_HANDSHAKE_START)
+    // TLS 1.3 sends post-handshake messages that report as another start, so a
+    // start always reopens the handshake.
+    if (where & SSL_CB_HANDSHAKE_START) {
         t_trace->handshake_started = true;
+        t_trace->handshake_done = false;
+    }
     if (where & SSL_CB_HANDSHAKE_DONE)
         t_trace->handshake_done = true;
 }
@@ -202,6 +206,8 @@ const char* failure_kind_name(FailureKind kind) {
         return "no_response";
     case FailureKind::ShortBody:
         return "short_body";
+    case FailureKind::EmptyBody:
+        return "empty_body";
     case FailureKind::Redirect:
         return "redirect";
     case FailureKind::FileOpen:
@@ -224,7 +230,8 @@ TransferFailure classify_send_failure(int rc, const SendTrace& trace, bool host_
         f.code = trace.cert_error;
     } else if (trace.handshake_started && !trace.handshake_done) {
         f.kind = FailureKind::TlsHandshake;
-    } else if (rc == ERR_TASK_TIMEOUT || rc == -ETIMEDOUT) {
+    } else if (rc == ERR_TASK_TIMEOUT || rc == -ETIMEDOUT || rc == EAGAIN || rc == EWOULDBLOCK) {
+        // A receive that outlives SO_RCVTIMEO fails with EAGAIN.
         f.kind = FailureKind::Timeout;
     } else if (rc < 0) {
         // libhv returns a connect-stage failure negated, and a send or receive
@@ -354,8 +361,9 @@ size_t trusted_download(const std::string& url, const std::string& path,
     req->timeout = 3600;
     FILE* file = std::fopen(partial.c_str(), "wb");
     if (!file) {
+        const int open_errno = errno;
         req->ParseUrl();
-        set_failure(failure, FailureKind::FileOpen, errno, *req);
+        set_failure(failure, FailureKind::FileOpen, open_errno, *req);
         return 0;
     }
     size_t content_length = 0;
@@ -409,6 +417,8 @@ size_t trusted_download(const std::string& url, const std::string& path,
         f = sent;
     } else if (resp->status_code != 200) {
         f.kind = FailureKind::Http;
+    } else if (received == 0) {
+        f.kind = FailureKind::EmptyBody;
     }
     if (f.kind != FailureKind::None) {
         if (failure) {

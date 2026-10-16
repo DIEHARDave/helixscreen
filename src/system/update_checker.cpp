@@ -1019,17 +1019,6 @@ static constexpr uint64_t DOWNLOAD_SPACE_FLOOR_BYTES = 50ULL * 1024 * 1024;
 // over-blocking users on tight rootfs. Bump in lockstep if archives grow.
 static constexpr uint64_t DOWNLOAD_SPACE_DEFAULT_BYTES = 120ULL * 1024 * 1024;
 
-// The filename used to stage the downloaded archive in TMP_DIR. The name
-// matches whatever format the release URL points at: zips keep a .zip
-// extension so downstream extract_installer_from_tarball() can dispatch on
-// the path. get_download_path() always returns the legacy tar.gz name for
-// back-compat with external callers; do_download() rewrites the path when
-// the URL is a .zip (see below).
-// Dot-prefixed so the whole derived family — .zip twin, .validate and
-// .installer scratch dirs, .install.log fallback — lands hidden wherever the
-// free-space search puts it. On boards whose gcodes root IS the data partition
-// (the AD5M symlinks /data whole into it) a plainly named archive shows up in
-// the user's print-file picker for the whole update.
 /// The device's host name and the login it runs under, for scrubbing text bound
 /// for telemetry. From the environment, not getpwuid(): a static glibc build
 /// cannot load NSS.
@@ -1052,6 +1041,17 @@ static std::vector<std::string> device_identifiers() {
     return ids;
 }
 
+// The filename used to stage the downloaded archive in TMP_DIR. The name
+// matches whatever format the release URL points at: zips keep a .zip
+// extension so downstream extract_installer_from_tarball() can dispatch on
+// the path. get_download_path() always returns the legacy tar.gz name for
+// back-compat with external callers; do_download() rewrites the path when
+// the URL is a .zip (see below).
+// Dot-prefixed so the whole derived family — .zip twin, .validate and
+// .installer scratch dirs, .install.log fallback — lands hidden wherever the
+// free-space search puts it. On boards whose gcodes root IS the data partition
+// (the AD5M symlinks /data whole into it) a plainly named archive shows up in
+// the user's print-file picker for the whole update.
 static const char* const DOWNLOAD_FILENAME = ".helixscreen-update.tar.gz";
 static const char* const DOWNLOAD_FILENAME_ZIP = ".helixscreen-update.zip";
 
