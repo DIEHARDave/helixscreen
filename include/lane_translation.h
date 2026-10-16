@@ -259,6 +259,16 @@ void withdraw_spool_owned_declarations(FilamentSlotOverride& record);
 [[nodiscard]] SlotInfo keep_spool_owned_identity(const SlotInfo& original, const SlotInfo& edited,
                                                  const std::optional<Observation>& spool_record);
 
+/// Blank @p edited's spool name when the edit re-declared the spool under it.
+///
+/// A spool name describes the spool the brand, material and catalog product
+/// named. An edit that moves any of them (brand and material compared without
+/// case) and leaves the name as it was would label the new spool with the old
+/// one's name. A first catalog pick is not a move: the editor adopts one on
+/// every Save. A name the edit itself changed stands, and so does any name on
+/// a linked lane, which is the spool's own. Returns true when it blanked.
+bool drop_stale_spool_name(const SlotInfo& original, SlotInfo& edited);
+
 /// The roster names, as `helix_declared` spells them, of the fields a linked
 /// spool owns that @p edited moved away from @p original and @p applied does
 /// not carry. Empty for an edit that changes or clears the binding.

@@ -206,6 +206,15 @@ class FilamentSlotOverrideStore {
         return lane_data_records_;
     }
 
+    /// Rewrite each record last_lane_data_records() holds through @p amend,
+    /// before anything classifies them. Only this view changes: persisting the
+    /// repair is the caller's save.
+    void amend_loaded_records(const std::function<void(FilamentSlotOverride&)>& amend) {
+        for (auto& [slot, entry] : lane_data_records_) {
+            amend(entry.record);
+        }
+    }
+
   private:
     // Test-only access to mutate load_timeout_ without exposing a public
     // setter. Per L065, prefer friend-class over test-only public methods.

@@ -3311,3 +3311,61 @@ TEST_CASE_METHOD(LVGLUITestFixture, "scan row shows only for a scanned slot and 
 
     close_editor_overlay();
 }
+
+// A product line ("SnapSpeed") names the spool it came on. Picking another
+// vendor's product re-declares the spool, so the old line must not ride along
+// and label a Generic spool; an untouched Save keeps it.
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "spool-edit Save drops a spool name the new pick does not carry",
+                 "[ams_edit_overlay][spool_edit][spool_name]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    SlotInfo slot;
+    slot.slot_index = 0;
+    slot.spoolman_id = 0;
+    slot.brand = "SUNLU";
+    slot.material = "PLA";
+    slot.color_rgb = 0xFEF043;
+    slot.spool_name = "SnapSpeed";
+    slot.catalog_id = "sunlu-pla-plus-2-0";
+    slot.product_name = "PLA+ 2.0";
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, slot, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    access.call_enter_spool_edit();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    REQUIRE(access.details_selector().current_vendor() == "SUNLU");
+
+    SECTION("an untouched Save keeps the name") {
+        access.call_handle_spool_edit_save();
+        UpdateQueue::instance().drain();
+        process_lvgl(10);
+        CHECK(access.working_info().brand == "SUNLU");
+        CHECK(access.working_info().spool_name == "SnapSpeed");
+    }
+
+    SECTION("another product of the same vendor drops it") {
+        access.details_selector().select_product_for_test("sunlu-pla-marble");
+        REQUIRE(access.details_selector().highlighted() != nullptr);
+        access.call_handle_spool_edit_save();
+        UpdateQueue::instance().drain();
+        process_lvgl(10);
+        CHECK(access.working_info().catalog_id == "sunlu-pla-marble");
+        CHECK(access.working_info().spool_name.empty());
+    }
+
+    SECTION("another vendor drops it") {
+        access.details_selector().change_vendor_for_test(1); // Generic
+        REQUIRE(access.details_selector().current_vendor() == "Generic");
+        access.call_handle_spool_edit_save();
+        UpdateQueue::instance().drain();
+        process_lvgl(10);
+        CHECK(access.working_info().brand == "Generic");
+        CHECK(access.working_info().spool_name.empty());
+    }
+
+    close_editor_overlay();
+}

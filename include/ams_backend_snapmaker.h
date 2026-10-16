@@ -775,9 +775,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     void check_hardware_event_clear(SlotInfo& slot, int slot_index,
                                     const helix::ams::SpoolEvidence& observed);
 
-    /// Brand / spool_name / total_weight_g are kept: firmware populates them
-    /// from the RFID tag. The tag has no colour-name field, so color_name is
-    /// override-exclusive and goes.
+    /// Brand / total_weight_g are kept: firmware populates them from the RFID
+    /// tag. spool_name goes, and each clear restates the tag's product line.
+    /// The tag has no colour-name field, so color_name is override-exclusive
+    /// and goes.
     void clear_override_fields(SlotInfo& slot) const override;
 
     /// Whether the connected firmware ships the AUTO_FEEDING_BATCH macro,

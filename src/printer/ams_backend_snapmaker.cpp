@@ -28,6 +28,7 @@
 #include "snapmaker_channel_state.h"
 #include "snapmaker_resume.h"
 #include "snapmaker_status_parse.h"
+#include "text_io.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -64,14 +65,14 @@ constexpr int kSnapPendingInsertPasses = 8;
 }
 
 // Snapmaker's recognized filament SUB_TYPE product lines. The RFID read path
-// stores SUB_TYPE into SlotInfo::spool_name (see handle_status), but a
-// user can edit spool_name to a free-form string ("My Custom Spool"). Both the
-// apply_user_edit firmware round-trip (POST /printer/filament_detect/set) and the
-// #991 post-runout SET_PRINT_FILAMENT_CONFIG re-assert must only treat
-// spool_name as a SUB_TYPE when it matches one of these — a single source of
-// truth for "is this a real product line?".
+// stores SUB_TYPE into SlotInfo::spool_name (see apply_rfid_entry_locked), but
+// a user can edit spool_name to a free-form string ("My Custom Spool"), so a
+// spool_name is only a product line when it matches one of these.
 constexpr std::array<std::string_view, 8> KNOWN_SUB_TYPES = {
     "Basic", "Matte", "SnapSpeed", "Silk", "Support", "HF", "95A", "95A HF"};
+
+// The vendor whose spools the product lines above name.
+constexpr std::string_view PRODUCT_LINE_VENDOR = "Snapmaker";
 
 [[nodiscard]] bool is_known_subtype(const std::string& s) {
     for (const auto& st : KNOWN_SUB_TYPES) {
@@ -80,6 +81,27 @@ constexpr std::array<std::string_view, 8> KNOWN_SUB_TYPES = {
         }
     }
     return false;
+}
+
+[[nodiscard]] bool is_product_line_vendor(const std::string& brand) {
+    return helix::text_io::to_lower(brand) == helix::text_io::to_lower(PRODUCT_LINE_VENDOR);
+}
+
+/// True when @p spool_name is a product line that @p brand cannot carry: the
+/// label of a Snapmaker spool left on a slot now declared as another vendor's.
+/// An empty brand names no vendor, so it contradicts nothing.
+[[nodiscard]] bool names_foreign_product_line(const std::string& spool_name,
+                                              const std::string& brand) {
+    return is_known_subtype(spool_name) && !brand.empty() && !is_product_line_vendor(brand);
+}
+
+/// The product line the lane's tag states, or empty. The vendor-cache record
+/// holds the last tag reading with our own write-back already withheld, so this
+/// is the machine's word on the spool and never an echo of an edit.
+[[nodiscard]] std::string tag_product_line(helix::ams::LaneId lane) {
+    const std::optional<helix::ams::Observation> cache =
+        helix::ams::lane_sources(lane).vendor_cache;
+    return cache.has_value() ? cache->product_name.value_or(std::string{}) : std::string{};
 }
 
 // Map a raw firmware channel_error token to a user-facing message. The firmware
@@ -235,6 +257,27 @@ void AmsBackendSnapmaker::on_started() {
     auto loaded =
         helix::ams::make_loaded_override_store(api_, "snapmaker", get_type(), backend_log_tag());
     if (loaded.store) {
+        // A product line stored beside another vendor's brand is a label the
+        // slot kept from a Snapmaker spool that has since left it. Dropped
+        // before the records are classified, so the lane never shows it, and
+        // saved back so lane_data stops stating it.
+        const auto drop_foreign_line = [](helix::ams::FilamentSlotOverride& record) {
+            if (!names_foreign_product_line(record.spool_name, record.brand)) {
+                return false;
+            }
+            record.spool_name.clear();
+            return true;
+        };
+        loaded.store->amend_loaded_records(drop_foreign_line);
+        for (auto& [slot_index, record] : loaded.overrides) {
+            const std::string line = record.spool_name;
+            if (drop_foreign_line(record)) {
+                spdlog::info("{} Slot {} dropped product line '{}' stored beside brand '{}'",
+                             backend_log_tag(), slot_index, line, record.brand);
+                helix::ams::save_override_async(loaded.store.get(), slot_index, record,
+                                                backend_log_tag(), "Product-line repair");
+            }
+        }
         helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
                                           backend_index());
     }
@@ -997,13 +1040,13 @@ AmsError AmsBackendSnapmaker::apply_user_edit(int slot_index, const SlotInfo& in
         if (!info.material.empty())
             info_obj["MAIN_TYPE"] = info.material;
         // SUB_TYPE is restricted to Snapmaker's known product lines per the
-        // firmware spec. spool_name carries the SUB_TYPE on the read path
-        // (see handle_status), but UI-edited spool_name may be a free-
-        // form string ("My Custom Spool"). Only round-trip when it matches a
-        // known sub_type — otherwise omit and let firmware preserve whatever
-        // it had. The free-form string still lives in lane_data. Shares the
-        // is_known_subtype() helper with the #991 resume re-assert path.
-        if (is_known_subtype(info.spool_name)) {
+        // firmware spec, and goes out only on a spool declared as Snapmaker's:
+        // firmware files whatever this POST says as an official reading and
+        // reports it back through filament_detect.info, so a line sent beside
+        // another brand returns as a tag naming it. Firmware builds the entry
+        // fresh from this body, so an omitted SUB_TYPE is stored as NONE. A
+        // free-form spool_name still lives in lane_data.
+        if (is_known_subtype(info.spool_name) && is_product_line_vendor(info.brand)) {
             info_obj["SUB_TYPE"] = info.spool_name;
         }
         info_obj["RGB_1"] = info.color_rgb;
@@ -1432,14 +1475,6 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
         if (brand != "NONE")
             slot->brand = brand;
         slot->color_rgb = rfid.color_rgb;
-        // SUB_TYPE is Snapmaker's filament product-line name (e.g.
-        // "SnapSpeed" for their PLA line — akin to Polymaker's
-        // "PolyLite"). Maps to spool_name, NOT color_name. The
-        // Snapmaker RFID doesn't expose a dedicated color-name
-        // field — color_name stays unset here and is user-editable
-        // via the edit modal's color picker.
-        if (rfid.sub_type != "NONE")
-            slot->spool_name = rfid.sub_type;
         slot->nozzle_temp_min = rfid.hotend_min_temp;
         slot->nozzle_temp_max = rfid.hotend_max_temp;
         slot->bed_temp = rfid.bed_temp;
@@ -1478,10 +1513,7 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
         // SUB_TYPE names the product line inside MAIN_TYPE
         // ("Silk" inside "PLA"), so it is the branded product
         // and routing it to material would destroy the
-        // material. The SlotInfo field above keeps its own
-        // spelling, and splits from this record on the
-        // literal "NONE" for the same reason the brand guard
-        // does.
+        // material.
         if (!rfid.sub_type.empty() && rfid.sub_type != "NONE")
             cache.product_name = rfid.sub_type;
         if (rfid.weight_g > 0)
@@ -1504,6 +1536,15 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
             spdlog::debug("{} Slot {} withheld {} field(s) echoing our own write",
                           backend_log_tag(), i, withheld);
         }
+        // SUB_TYPE is Snapmaker's product-line name ("SnapSpeed" for
+        // their PLA line, akin to Polymaker's "PolyLite"), shown as
+        // the spool name; the tag carries no colour name. Taken from
+        // the record after the echo guard, so firmware repeating our
+        // own write is never learned as the spool's name, and blank
+        // when the tag names no line: firmware stores NONE for a
+        // write that sent none, and a kept name would outlive the
+        // spool it described.
+        slot->spool_name = cache.product_name.value_or(std::string{});
         helix::ams::ingest(lane_id(i), cache);
     }
     fx.changed = true;
@@ -2327,11 +2368,14 @@ void AmsBackendSnapmaker::check_hardware_event_clear(SlotInfo& slot, int slot_in
     // policy. Caller already holds mutex_.
     (void)ovr_it; // erased inside clear_override_locked
     clear_override_locked(slot_index, &slot);
+    slot.spool_name = tag_product_line(lane_id(slot_index));
 }
 
 void AmsBackendSnapmaker::clear_override_fields(SlotInfo& slot) const {
-    // All three Spoolman handles go. The full SlotInfo::clear_spoolman_link()
-    // is withheld: it also zeroes spool_name, which the RFID tag re-supplies.
+    // All three Spoolman handles go. The spool name goes with the record that
+    // named it; the callers restate the tag's own product line, which no clear
+    // touches.
+    slot.spool_name.clear();
     slot.spoolman_id = 0;
     slot.spoolman_vendor_id = 0;
     slot.spoolman_filament_id = 0;
@@ -2358,6 +2402,7 @@ void AmsBackendSnapmaker::clear_slot_override(int slot_index) {
         }
         spdlog::info("{} Slot {} override cleared by user request", backend_log_tag(), slot_index);
         clear_override_locked(slot_index, slot);
+        slot->spool_name = tag_product_line(lane_id(slot_index));
     }
 
     emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
