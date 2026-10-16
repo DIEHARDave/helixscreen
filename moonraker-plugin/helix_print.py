@@ -33,13 +33,20 @@ Configuration (moonraker.conf):
     temp_dir: .helix_temp
     symlink_dir: .helix_print
     cleanup_delay: 86400
+    convert_3mf: True
+    start_3mf_on_upload: False
+
+The .3mf converter lives in helix_3mf.py and the capability probes in
+helix_capabilities.py, both beside this file (README.md, ".3mf Conversion").
 """
 
 from __future__ import annotations
 
 import glob as glob_module
+import importlib.util
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -57,13 +64,65 @@ HELIX_TEMP_TABLE = "helix_temp_files"
 DB_RECORD_MAX_AGE = 30 * 86400
 
 # Plugin version - used for API version detection by clients
-PLUGIN_VERSION = "1.1.0"
+PLUGIN_VERSION = "1.2.0"
 
-# Namespace for key-value storage fallback (Moonraker v0.8.x)
+# Namespace for the key-value storage fallback (database without execute_db_command)
 HELIX_NAMESPACE = "helix_temp_files"
+
+def _ns_key(temp_filename: str) -> List[str]:
+    """A namespace key naming one record. Moonraker's database splits a string
+    key on "." into nested keys, and rejects one with an empty segment, which
+    every ".helix_temp/..." name has; a one-element list is taken whole."""
+    return [temp_filename]
+
+
+def _legacy_records(value: Any, depth: int = 0) -> List[Dict[str, Any]]:
+    """Print records nested inside a namespace value.
+
+    A record stored under a dotted string key lands nested by the key's
+    segments ("helix_temp/modified_1_x.gcode" -> {"gcode": record} under
+    "helix_temp/modified_1_x"), so the value at a top-level key is either a
+    record or dicts leading to one.
+    """
+    if not isinstance(value, dict) or depth > 8:
+        return []
+    if "temp_filename" in value:
+        return [value]
+    found: List[Dict[str, Any]] = []
+    for child in value.values():
+        found.extend(_legacy_records(child, depth + 1))
+    return found
+
 
 # Provider name stamped on our entry in a history job's auxiliary_data
 HELIX_AUX_PROVIDER = "helix_print"
+
+
+def _load_sibling(name: str) -> Optional[Any]:
+    """Load <name>.py from beside this file.
+
+    Moonraker imports this component through a symlink in its components
+    directory, where no sibling module exists, so the import follows the link
+    to the plugin's own directory. None when the file is missing or fails to
+    load: the plugin then runs without what it provides.
+    """
+    path = Path(__file__).resolve().parent / f"{name}.py"
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location(name, str(path))
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        logging.exception(f"HelixPrint: {name}.py failed to load")
+        return None
+    return module
+
+
+helix_capabilities = _load_sibling("helix_capabilities")
+helix_3mf = _load_sibling("helix_3mf")
 
 
 class PrintInfo:
@@ -106,6 +165,9 @@ class HelixPrint:
         self.symlink_dir = config.get("symlink_dir", ".helix_print")
         self.cleanup_delay = config.getint("cleanup_delay", 86400)  # 24 hours
         self.enabled = config.getboolean("enabled", True)
+        self.convert_3mf = config.getboolean("convert_3mf", True)
+        self.start_3mf_on_upload = config.getboolean("start_3mf_on_upload", False)
+        self.converter: Optional[Any] = None
 
         # Validate directory names don't contain path separators
         if "/" in self.temp_dir:
@@ -124,8 +186,8 @@ class HelixPrint:
         self.gc_path: Optional[Path] = None
 
         # Database backend flags (mutually exclusive, one will be True after init)
-        self._use_sqlite = False      # Moonraker 0.9+ with execute_db_command
-        self._use_namespace = False   # Moonraker 0.8.x with insert_item/get_item
+        self._use_sqlite = False      # database.execute_db_command
+        self._use_namespace = False   # database.insert_item/get_item
 
         # Register API endpoints
         self.server.register_endpoint(
@@ -137,6 +199,11 @@ class HelixPrint:
             "/server/helix/status",
             ["GET"],
             self._handle_status,
+        )
+        self.server.register_endpoint(
+            "/server/helix/3mf_conversions",
+            ["GET"],
+            self._handle_3mf_conversions,
         )
 
         # Register event handlers
@@ -234,6 +301,37 @@ class HelixPrint:
         # Schedule startup cleanup
         self.eventloop.register_callback(self._startup_cleanup)
 
+        await self._start_3mf_converter()
+
+    async def _start_3mf_converter(self) -> None:
+        if not (self.enabled and self.convert_3mf):
+            return
+        if helix_3mf is None or helix_capabilities is None:
+            logging.warning(
+                "HelixPrint: helix_3mf.py or helix_capabilities.py not found, .3mf conversion off"
+            )
+            return
+        self.converter = helix_3mf.Helix3mfConverter(
+            self.server,
+            self.file_manager,
+            self.database,
+            self.klippy_apis,
+            self.gc_path,
+            self.temp_dir,
+            self.start_3mf_on_upload,
+            helix_capabilities.prints_3mf_natively,
+        )
+        try:
+            await self.converter.start()
+        except Exception:
+            logging.exception("HelixPrint: .3mf converter failed to start")
+            await self.converter.close()
+            self.converter.active = False
+
+    async def close(self) -> None:
+        if self.converter is not None:
+            await self.converter.close()
+
     async def _ensure_directories(self) -> None:
         """Ensure temp and symlink directories exist."""
         if self.gc_path is None:
@@ -252,8 +350,8 @@ class HelixPrint:
     async def _init_database(self) -> None:
         """Initialize database for tracking temp files.
 
-        Tries SQLite API first (Moonraker 0.9+), then falls back to
-        namespace key-value API (Moonraker 0.8.x).
+        Uses the database's execute_db_command when it has one, else its
+        namespace key-value API (insert_item/get_item).
         """
         if self.database is None:
             logging.warning(
@@ -261,7 +359,7 @@ class HelixPrint:
             )
             return
 
-        # Try SQLite API first (Moonraker 0.9+)
+        # SQL table through execute_db_command, where the database offers it
         if hasattr(self.database, "execute_db_command"):
             try:
                 await self.database.execute_db_command(
@@ -285,10 +383,11 @@ class HelixPrint:
             except Exception as e:
                 logging.warning(f"HelixPrint: SQLite init failed: {e}, trying namespace API")
 
-        # Fall back to namespace API (Moonraker 0.8.x)
+        # Otherwise the namespace key-value API
         if hasattr(self.database, "insert_item"):
             self._use_namespace = True
-            logging.info("HelixPrint: Using namespace API for persistence (Moonraker 0.8.x)")
+            logging.info("HelixPrint: Using namespace API (insert_item/get_item) for persistence: "
+                "the database has no execute_db_command")
             return
 
         logging.warning("HelixPrint: No compatible database API found, persistence disabled")
@@ -306,7 +405,17 @@ class HelixPrint:
             "cleanup_delay": self.cleanup_delay,
             "active_prints": len(self.active_prints),
             "version": PLUGIN_VERSION,
+            "convert_3mf": self.converter is not None and self.converter.active,
+            "start_3mf_on_upload": (
+                self.converter is not None and self.converter.hook_installed
+            ),
         }
+
+    async def _handle_3mf_conversions(self, web_request: WebRequest) -> Dict[str, Any]:
+        """List .3mf conversions (README.md, "List .3mf Conversions")."""
+        if self.converter is None:
+            return {"conversions": []}
+        return await self.converter.handle_conversions(web_request)
 
     async def _handle_print_modified(
         self, web_request: WebRequest
@@ -383,7 +492,14 @@ class HelixPrint:
         # `full/` segment, so the filename Klipper reports names the original on
         # its own. The segment tells clients this shape from the bare-filename
         # links earlier plugin versions made directly in the symlink directory.
-        symlink_filename = f"{self.symlink_dir}/full/{original_filename}"
+        # Klipper only opens .gcode/.g/.gco names, so a .3mf original is linked
+        # under the .gcode name it stands for.
+        link_name = original_filename
+        if link_name.lower().endswith(".3mf"):
+            link_name = link_name[: -len(".3mf")]
+            if not link_name.lower().endswith(".gcode"):
+                link_name += ".gcode"
+        symlink_filename = f"{self.symlink_dir}/full/{link_name}"
         symlink_path = self.gc_path / symlink_filename
 
         # Validate symlink path: it must land inside the symlink directory.
@@ -547,7 +663,7 @@ class HelixPrint:
                 # Use temp_filename as key (unique per print)
                 await self.database.insert_item(
                     HELIX_NAMESPACE,
-                    print_info.temp_filename,
+                    _ns_key(print_info.temp_filename),
                     record,
                 )
         except Exception as e:
@@ -752,13 +868,13 @@ class HelixPrint:
             elif self._use_namespace:
                 # Update record in namespace storage
                 record = await self.database.get_item(
-                    HELIX_NAMESPACE, print_info.temp_filename
+                    HELIX_NAMESPACE, _ns_key(print_info.temp_filename), None
                 )
                 if record:
                     record["cleanup_scheduled_at"] = cleanup_time
                     record["status"] = "pending_cleanup"
                     await self.database.update_item(
-                        HELIX_NAMESPACE, print_info.temp_filename, record
+                        HELIX_NAMESPACE, _ns_key(print_info.temp_filename), record
                     )
                 else:
                     logging.warning(
@@ -833,11 +949,13 @@ class HelixPrint:
                     ("cleaned", temp_filename),
                 )
             elif self._use_namespace:
-                record = await self.database.get_item(HELIX_NAMESPACE, temp_filename)
+                record = await self.database.get_item(
+                    HELIX_NAMESPACE, _ns_key(temp_filename), None
+                )
                 if record:
                     record["status"] = "cleaned"
                     await self.database.update_item(
-                        HELIX_NAMESPACE, temp_filename, record
+                        HELIX_NAMESPACE, _ns_key(temp_filename), record
                     )
                 else:
                     logging.debug(
@@ -846,10 +964,80 @@ class HelixPrint:
         except Exception as e:
             logging.warning(f"HelixPrint: Failed to update cleanup status: {e}")
 
+    async def _namespace_items(self) -> List[Any]:
+        """(key, value) pairs of our namespace; empty when it does not exist.
+
+        get_item with no key returns the whole namespace as a dict, and with a
+        default it does not raise for a namespace never written. That is what
+        Moonraker 0.9.3's database offers; ns_items is used where get_item
+        cannot answer that way.
+        """
+        try:
+            whole = await self.database.get_item(HELIX_NAMESPACE, None, {})
+        except Exception:
+            whole = None
+        if isinstance(whole, dict):
+            return list(whole.items())
+        if hasattr(self.database, "ns_items"):
+            try:
+                return list(await self.database.ns_items(HELIX_NAMESPACE))
+            except Exception:
+                return []
+        return []
+
+    async def _migrate_legacy_keys(self) -> None:
+        """Re-store records a dotted string key left nested, one record per key.
+
+        Each is re-inserted under its own temp_filename and the old top-level
+        entry deleted. A value holding no record is left alone.
+        """
+        for key, value in await self._namespace_items():
+            if isinstance(value, dict) and value.get("temp_filename") == key:
+                continue
+            records = _legacy_records(value)
+            if not records:
+                continue
+            for record in records:
+                await self.database.insert_item(
+                    HELIX_NAMESPACE, _ns_key(record["temp_filename"]), record
+                )
+            await self.database.delete_item(HELIX_NAMESPACE, _ns_key(key))
+            logging.info(
+                f"HelixPrint: Re-keyed {len(records)} temp file record(s) stored as {key!r}"
+            )
+
+    def _sweep_dangling_links(self) -> int:
+        """Remove print links whose temp file is gone, and the directories
+        that leaves empty.
+
+        Needs no database record, so a link a crash or a lost record left
+        behind is still found. That matters most where symlink_dir is a
+        visible directory (a Klipper that will not open files under a hidden
+        one), because every leftover link shows in the file list. A link
+        whose target still exists may belong to a print in progress and is
+        kept.
+        """
+        if self.gc_path is None:
+            return 0
+        root = self.gc_path / self.symlink_dir
+        if root.is_symlink() or not root.is_dir():
+            return 0
+        removed = 0
+        for dirpath, _dirs, files in os.walk(root, followlinks=False):
+            for name in files:
+                link = Path(dirpath) / name
+                if link.is_symlink() and not link.exists():
+                    self._remove_symlink(link)
+                    removed += 1
+        return removed
+
     async def _startup_cleanup(self) -> None:
         """Clean up stale temp files on startup."""
         if self.gc_path is None:
             return
+        removed = self._sweep_dangling_links()
+        if removed:
+            logging.info(f"HelixPrint: Removed {removed} print links with no file behind them")
         if not self._use_sqlite and not self._use_namespace:
             return
 
@@ -872,13 +1060,8 @@ class HelixPrint:
                     pending_records = [dict(r) for r in rows]
 
             elif self._use_namespace:
-                # Get all items and filter in Python
-                try:
-                    all_items = await self.database.ns_items(HELIX_NAMESPACE)
-                except self.server.error:
-                    # Namespace doesn't exist yet (no records inserted)
-                    all_items = []
-                for key, record in all_items:
+                await self._migrate_legacy_keys()
+                for key, record in await self._namespace_items():
                     if (
                         record.get("status") == "pending_cleanup"
                         and record.get("cleanup_scheduled_at")
@@ -916,7 +1099,7 @@ class HelixPrint:
                 elif self._use_namespace:
                     record["status"] = "cleaned"
                     await self.database.update_item(
-                        HELIX_NAMESPACE, temp_filename, record
+                        HELIX_NAMESPACE, _ns_key(temp_filename), record
                     )
                 cleaned_count += 1
 
@@ -941,19 +1124,13 @@ class HelixPrint:
                     purged_count = deleted.rowcount
 
             elif self._use_namespace:
-                # Get all items and delete old ones
-                try:
-                    all_items = await self.database.ns_items(HELIX_NAMESPACE)
-                except self.server.error:
-                    # Namespace doesn't exist yet
-                    all_items = []
-                for key, record in all_items:
+                for key, record in await self._namespace_items():
                     if (
                         record.get("status") == "cleaned"
                         and record.get("created_at")
                         and record["created_at"] < purge_cutoff
                     ):
-                        await self.database.delete_item(HELIX_NAMESPACE, key)
+                        await self.database.delete_item(HELIX_NAMESPACE, _ns_key(key))
                         purged_count += 1
 
             if purged_count > 0:

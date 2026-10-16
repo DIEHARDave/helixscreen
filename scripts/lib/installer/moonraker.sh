@@ -89,6 +89,33 @@ find_moonraker_update_manager_dir() {
         done
     done
 
+    # Last, the running Moonraker itself, seen through its own root: Forge-X
+    # runs it in a chroot (/data/.mod/.forge-x) that no static path names.
+    local pkg
+    pkg=$(running_moonraker_package_dir)
+    if [ -n "$pkg" ] && [ -d "$pkg/components/update_manager" ]; then
+        echo "$pkg/components/update_manager"
+        return 0
+    fi
+
+    echo ""
+}
+
+# Print the running Moonraker's python package directory (the one holding
+# moonraker.py) as a path from here: its argv names paths inside its own
+# root, which is a chroot's directory when it runs in one. Empty when no
+# Moonraker is running. HELIX_PROC_ROOT is the tests' seam.
+running_moonraker_package_dir() {
+    local proc="${HELIX_PROC_ROOT:-/proc}" f script root
+    for f in "$proc"/[0-9]*/cmdline; do
+        [ -r "$f" ] || continue
+        script=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/moonraker\.py$/ { print; exit }')
+        case "$script" in /*) ;; *) continue ;; esac
+        root=$(readlink "$(dirname "$f")/root" 2>/dev/null) || root=""
+        [ "$root" = "/" ] && root=""
+        echo "${root%/}$(dirname "$script")"
+        return 0
+    done
     echo ""
 }
 
@@ -832,8 +859,32 @@ restart_moonraker() {
         fi
     done
 
+    # No service manager this script can reach (Forge-X runs Moonraker in its
+    # chroot, outside any init script here): ask Moonraker to restart itself.
+    if request_moonraker_restart; then
+        log_info "Asked Moonraker to restart itself to apply configuration"
+        return 0
+    fi
+
     log_warn "Could not find a way to restart Moonraker - restart it manually for the configuration change to take effect."
     return 0
+}
+
+# POST /server/restart: Moonraker re-launches itself in place, the one restart
+# that works where no service manager reaches it (Forge-X's chroot). Real curl
+# first, then wget, which BusyBox carries where curl is absent or an impostor;
+# -sf and wget's own status make an HTTP error (a 401) a failure.
+# Kept identical in moonraker-plugin/install.sh, which runs standalone (piped
+# from GitHub, or from an install tree without scripts/lib) and cannot source
+# this file; a bats test holds the two copies equal.
+# Returns 0 when Moonraker accepted the request.
+request_moonraker_restart() {
+    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
+    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
+        return 0
+    fi
+    command -v wget >/dev/null 2>&1 &&
+        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
 }
 
 # What configure_moonraker_updates would add, for the plan. Read-only: the
