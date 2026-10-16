@@ -1112,7 +1112,7 @@ export function topVersionsQuery(days: number, filters?: FilterParams, limit = S
  * print is running (src/system/update_checker.cpp). It is not a failure, so the
  * release update failure count leaves it out.
  */
-const UPDATE_DEFERRED_REASON = "print_in_progress";
+export const UPDATE_DEFERRED_REASON = "print_in_progress";
 
 /**
  * Sessions, crashes and self-update outcomes per version in the window `when`
@@ -1355,6 +1355,22 @@ export function errorCodesSql(w: readonly [number, number], filters?: FilterPara
     FROM ${DATASET}
     WHERE ${windowClause(w)} AND index1 = 'error_encountered'${filterFor("error_encountered", filters)}
     GROUP BY category, code${byVersion ? ", version" : ""}`;
+}
+
+/**
+ * Failed self-updates grouped by (platform, reason) in window `w`, leaving out
+ * the deferred-for-print reason: sample-weighted failures and distinct devices,
+ * as rows { platform, reason, failures, devices }.
+ */
+export function updateFailureGroupsQuery(w: readonly [number, number]): string {
+  return `SELECT
+      ${updateFailed("app_platform")} as platform,
+      ${updateFailed("reason")} as reason,
+      ${wCount()} as failures,
+      count(DISTINCT ${updateFailed("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 = 'update_failed' AND ${updateFailed("reason")} != '${UPDATE_DEFERRED_REASON}'
+    GROUP BY platform, reason`;
 }
 
 /**

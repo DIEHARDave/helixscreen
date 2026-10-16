@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   FILTERED_ENDPOINTS,
+  UNFILTERED_ENDPOINTS,
   filterSets,
   DEFAULT_DELAY_MS,
   formatSmokeTable,
@@ -81,9 +82,10 @@ describe("smoke endpoint coverage", () => {
     const served = new Set<string>();
     for (const m of src.matchAll(/url\.pathname === "\/v1\/dashboard\/([a-z\/-]+)"/g)) served.add(m[1]);
     expect(served.size).toBeGreaterThan(10);
-    const covered = new Set([...FILTERED_ENDPOINTS, "device/"]);
+    const covered = new Set([...FILTERED_ENDPOINTS, ...UNFILTERED_ENDPOINTS, "device/", "reports/"]);
     for (const route of served) expect(covered.has(route), route).toBe(true);
     expect(src).toContain('startsWith("/v1/dashboard/device/")');
+    expect(src).toContain('startsWith("/v1/dashboard/reports/")');
   });
 });
 

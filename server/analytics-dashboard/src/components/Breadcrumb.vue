@@ -1,6 +1,11 @@
 <template>
   <nav class="breadcrumb" aria-label="Current view">
-    <span v-if="!deviceId" class="crumb crumb-tab">{{ tabLabel }}</span>
+    <template v-if="reportWeek">
+      <router-link :to="{ path: '/reports' }" class="crumb crumb-link">Reports</router-link>
+      <span class="crumb-sep" aria-hidden="true">›</span>
+      <span class="crumb crumb-tab">{{ reportWeek }}</span>
+    </template>
+    <span v-else-if="!deviceId" class="crumb crumb-tab">{{ tabLabel }}</span>
     <template v-for="key in DASH_FILTER_KEYS" :key="key">
       <button
         v-for="value in filtersStore[key]"
@@ -34,7 +39,8 @@ const TAB_LABELS: Record<string, string> = {
   fleet: 'Fleet',
   usage: 'Usage',
   prints: 'Prints',
-  devices: 'Devices'
+  devices: 'Devices',
+  reports: 'Reports'
 }
 
 const route = useRoute()
@@ -42,6 +48,9 @@ const filtersStore = useFiltersStore()
 
 const routeName = computed(() => (typeof route.name === 'string' ? route.name : ''))
 const tabLabel = computed(() => TAB_LABELS[routeName.value] ?? route.path)
+
+// On a report page the trail ends in a link back to the report list, then the week.
+const reportWeek = computed(() => (routeName.value === 'report' ? String(route.params.week ?? '') : ''))
 
 // On a device page the trail ends in a link back to the filtered device list, then the device.
 const deviceId = computed(() => (routeName.value === 'device' ? String(route.params.id ?? '') : ''))

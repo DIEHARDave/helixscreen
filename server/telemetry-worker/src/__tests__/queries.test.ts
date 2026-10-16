@@ -194,6 +194,8 @@ describe("query builders", () => {
     const out =
       name === "crashListQuery"
         ? (fn as (d: number, l: number, f?: FilterParams) => string)(30, 10, filters)
+        : name === "updateFailureGroupsQuery"
+          ? (fn as (w: readonly [number, number]) => string)([0, 7])
         : name === "releaseScorecardQueries"
           ? (fn as (v: string[], d: number, f?: FilterParams) => string[])(["1.0.0", "v1.1.0"], 30, filters)
           : name === "retentionQuery"
@@ -402,7 +404,12 @@ describe("queries over delta kinds", () => {
   it("read only deduplicated schema-3 rows", () => {
     let checked = 0;
     for (const [name, fn] of builders) {
-      const out = name === "crashListQuery" ? fn(30, 10) : fn(30, undefined);
+      const out =
+        name === "crashListQuery"
+          ? fn(30, 10)
+          : name === "updateFailureGroupsQuery"
+            ? (fn as unknown as (w: readonly [number, number]) => string)([0, 7])
+            : fn(30, undefined);
       for (const sql of Array.isArray(out) ? out : [out]) {
         for (const kind of DELTA_KINDS) {
           if (!sql.includes(`'${kind}'`)) continue;

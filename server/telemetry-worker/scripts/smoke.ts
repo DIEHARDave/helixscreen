@@ -40,6 +40,9 @@ export const FILTERED_ENDPOINTS = [
   "fleet/retention",
 ];
 
+/** Endpoints in /v1/dashboard/ that ignore the range and filter parameters. */
+export const UNFILTERED_ENDPOINTS = ["reports"];
+
 export interface SmokeResult {
   label: string;
   path: string;
@@ -174,6 +177,11 @@ async function main(): Promise<void> {
       }
     }
   }
+
+  const reports = (await check("reports list", "/v1/dashboard/reports")) as { weeks?: string[] } | null;
+  const newestWeek = reports?.weeks?.[0];
+  if (newestWeek) await check("reports/<newest week>", `/v1/dashboard/reports/${newestWeek}`);
+  await check("reports/bad week is 400", "/v1/dashboard/reports/latest", 400);
 
   const releasesPath = releasesVersionsPath(matrix);
   if (releasesPath) await check("releases two newest versions", releasesPath);
