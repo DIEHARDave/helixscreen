@@ -54,6 +54,13 @@ describe('issueLabels', () => {
 })
 
 describe('syncIssues', () => {
+  it('handles a fingerprint once per run', async () => {
+    const t = new FakeTracker()
+    const out = await syncIssues([finding(1), { ...finding(1), title: 'twin' }], t, fresh(), W1, URL, false)
+    expect(out.map((o) => o.action)).toEqual(['created'])
+    expect(t.callsOf('create')).toHaveLength(1)
+  })
+
   it('files the title through the title escaper', async () => {
     const t = new FakeTracker()
     await syncIssues([{ ...finding(1), title: 'Crash @octocat\nin 1.0' }], t, fresh(), W1, URL, false)

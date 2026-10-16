@@ -118,9 +118,11 @@ export async function syncIssues(
     if (!dryRun) state.issueComments[fp] = week
   }
 
+  const handled = new Set<string>()
   for (const f of findings) {
-    if (!f.actions.includes('issue')) continue
+    if (!f.actions.includes('issue') || handled.has(f.fingerprint)) continue
     const fp = f.fingerprint
+    handled.add(fp)
     try {
       const existing = await tracker.findByFingerprint(fp)
       if (existing) {

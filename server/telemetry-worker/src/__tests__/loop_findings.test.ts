@@ -29,11 +29,11 @@ function health(over: Partial<HealthPayload> = {}): HealthPayload {
   }
 }
 
-const cluster = (devices: number, prev = 0, version = '1.0.4') => ({
+const cluster = (devices: number, prev = 0, version = '1.0.4', board = 'rpi4') => ({
   signal: 'SIGSEGV',
   fault_code: 'SEGV_MAPERR',
   version,
-  board: 'rpi4',
+  board,
   cur: devices * 2,
   prev,
   devices,
@@ -55,6 +55,30 @@ describe('crash clusters', () => {
     const f = run(health({ crash_clusters: [cluster(T.CLUSTER_ALERT_DEVICES - 1)] }))
     expect(f).toHaveLength(1)
     expect(f[0].actions).toEqual(['report'])
+  })
+
+  it('sums one crash across boards into one finding that crosses the thresholds', () => {
+    const half = Math.ceil(T.CLUSTER_ISSUE_DEVICES / 2)
+    const f = run(health({ crash_clusters: [cluster(half, 0, '1.0.4', 'rpi4'), cluster(half, 0, '1.0.4', 'rpi5')] }))
+    expect(f).toHaveLength(1)
+    expect(f[0].actions).toEqual(['alert', 'issue', 'report'])
+    expect(f[0].summary).toMatchObject({ boards: 'rpi4, rpi5', devices: half * 2, crashes: half * 4, previous_crashes: 0 })
+    expect(f[0].dashboardPath).toBe('/stability?version=1.0.4&board=rpi4%2Crpi5')
+  })
+
+  it('makes one finding per fingerprint, whatever the spelling of its parts', () => {
+    const rows = [cluster(1, 0, '1.0.4', 'a'), { ...cluster(1, 0, '1.0.4', 'b'), signal: ' sigsegv ' }, cluster(1, 0, '1.0.5', 'a')]
+    const f = run(health({ crash_clusters: rows }))
+    expect(f.map((x) => x.fingerprint).sort()).toEqual([
+      'crash_cluster:sigsegv|segv_maperr|1.0.4',
+      'crash_cluster:sigsegv|segv_maperr|1.0.5',
+    ])
+  })
+
+  it('does not alert an aggregate one of whose boards crashed last week', () => {
+    const f = run(health({ crash_clusters: [cluster(T.CLUSTER_ALERT_DEVICES, 0, '1.0.4', 'rpi4'), cluster(1, 2, '1.0.4', 'rpi5')] }))
+    expect(f).toHaveLength(1)
+    expect(f[0].actions).toEqual(['issue', 'report'])
   })
 
   it('does not alert a cluster that crashed last week, but still files it', () => {

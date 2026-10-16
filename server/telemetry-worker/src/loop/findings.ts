@@ -54,26 +54,45 @@ function actionsFor(alert: boolean, issue: boolean): Action[] {
   return [...(alert ? (['alert'] as const) : []), ...(issue ? (['issue'] as const) : []), 'report']
 }
 
+type CrashRow = HealthPayload['crash_clusters'][number]
+
+/**
+ * One finding per (signal, fault, version). The payload splits a cluster by board, and
+ * a device reports one board, so the per-board device counts are disjoint and sum
+ * exactly. The aggregate is new only when no board saw it last week.
+ */
 function crashFindings(health: HealthPayload): Ranked[] {
-  return health.crash_clusters.map((c) => ({
-    devices: c.devices,
-    finding: {
-      kind: 'crash_cluster',
-      fingerprint: fingerprint('crash_cluster', [c.signal, c.fault_code, c.version]),
-      actions: actionsFor(c.devices >= CLUSTER_ALERT_DEVICES && c.prev === 0, c.devices >= CLUSTER_ISSUE_DEVICES),
-      title: `Crash ${c.signal} ${c.fault_code} in ${c.version}`,
-      summary: {
-        signal: c.signal,
-        fault_code: c.fault_code,
-        version: c.version,
-        board: c.board,
-        crashes: c.cur,
-        previous_crashes: c.prev,
-        devices: c.devices,
+  const groups = new Map<string, CrashRow[]>()
+  for (const c of health.crash_clusters) {
+    const fp = fingerprint('crash_cluster', [c.signal, c.fault_code, c.version])
+    groups.set(fp, [...(groups.get(fp) ?? []), c])
+  }
+  return [...groups].map(([fp, rows]) => {
+    const { signal, fault_code, version } = rows[0]
+    const sum = (pick: (c: CrashRow) => number): number => rows.reduce((n, c) => n + pick(c), 0)
+    const devices = sum((c) => c.devices)
+    const prev = sum((c) => c.prev)
+    const boards = [...new Set(rows.map((c) => c.board))].sort()
+    return {
+      devices,
+      finding: {
+        kind: 'crash_cluster',
+        fingerprint: fp,
+        actions: actionsFor(devices >= CLUSTER_ALERT_DEVICES && prev === 0, devices >= CLUSTER_ISSUE_DEVICES),
+        title: `Crash ${signal} ${fault_code} in ${version}`,
+        summary: {
+          signal,
+          fault_code,
+          version,
+          boards: boards.join(', '),
+          crashes: sum((c) => c.cur),
+          previous_crashes: prev,
+          devices,
+        },
+        dashboardPath: `/stability${query({ version, board: boards.join(',') })}`,
       },
-      dashboardPath: `/stability${query({ version: c.version, board: c.board })}`,
-    },
-  }))
+    }
+  })
 }
 
 function errorFindings(health: HealthPayload): Ranked[] {
