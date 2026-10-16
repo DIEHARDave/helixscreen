@@ -171,6 +171,14 @@ void PrintSelectPanel::step_archive_plate(int step) {
 
     const size_t i = static_cast<size_t>(it - file_list_.begin());
     process_metadata_result(i, it->filename, three_mf::plate_file_metadata(plates[next]));
+    // The plate's own filaments, for the mapping card and the start's palette.
+    const PrintFileData& file = file_list_[i];
+    selected_filament_type_ = file.filament_type;
+    selected_filament_colors_ = file.filament_colors;
+    selected_filament_materials_ = file.filament_types;
+    if (detail_view_) {
+        detail_view_->set_file_palette(file.filament_colors, file.filament_types);
+    }
     update_plate_stepper();
 }
 

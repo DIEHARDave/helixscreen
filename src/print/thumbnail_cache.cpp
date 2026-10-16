@@ -1366,7 +1366,13 @@ void helix::fetch_thumbnail_from_archive(const std::string& archive_path,
     req.target = target;
     req.source_modified = source_modified;
     req.api = api;
-    if (!get_thumbnail_cache().get_if_cached(req).empty()) {
+    // Another size of the same render prescales from the PNG already cached.
+    // Writing the PNG again would retire every prescaled size of it, among
+    // them the one a card on screen is drawing.
+    ThumbnailRequest png_req = req;
+    png_req.format = ThumbnailRequest::ThumbnailFormat::FullPng;
+    if (!get_thumbnail_cache().get_if_cached(req).empty() ||
+        !get_thumbnail_cache().get_if_cached(png_req).empty()) {
         get_thumbnail_cache().fetch(req, ctx, std::move(on_success), report_error);
         return;
     }

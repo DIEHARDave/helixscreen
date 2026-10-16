@@ -7,6 +7,8 @@
 #include "../test_helpers/print_select_panel_test_access.h"
 #include "../test_helpers/scoped_env.h"
 #include "three_mf_reader.h"
+#include "thumbnail_cache.h"
+#include "thumbnail_load_context.h"
 
 #include <filesystem>
 #include <fstream>
@@ -123,6 +125,9 @@ TEST_CASE_METHOD(ArchivePanel,
     REQUIRE(row->filament_types.size() == 2);
     CHECK(row->filament_types[1] == "PLA");
     CHECK(PrintSelectPanelTestAccess::selected_print_time(*panel_) != first_time);
+    // The plate's own filaments reach the mapping card and the start.
+    CHECK(PrintSelectPanelTestAccess::selected_colors(*panel_) ==
+          std::vector<std::string>{"#000000", "#FF0000"});
     REQUIRE(PrintSelectPanelTestAccess::prepare_archive_start(*panel_));
     CHECK(prep->archive_plate_for(file.name()) == 5);
 
@@ -207,4 +212,34 @@ TEST_CASE_METHOD(ArchivePanel, "a .3mf the printer converted hides behind its G-
         CHECK(listed());
     }
     std::remove(json_path.c_str());
+}
+
+TEST_CASE_METHOD(ArchivePanel, "a second size of a .3mf render keeps the card's prescaled image",
+                 "[print_select][three_mf][thumbnail]") {
+    PlantedGcode file("Door.gcode.3mf", "", fixture_bytes("single_plate.gcode.3mf"));
+    const PrintFileData& row = load(file.name());
+    REQUIRE(row.archive);
+    const std::string card = row.thumbnail_path;
+    REQUIRE(card.rfind("A:", 0) == 0);
+    REQUIRE(std::filesystem::exists(card.substr(2)));
+    const int reads = mock().transfers_mock().range_reads();
+
+    // Print status asks for the same render at its own, larger size.
+    std::string detail;
+    const auto* plate = three_mf::find_plate(*row.archive, 0);
+    REQUIRE(plate);
+    auto alive = std::make_shared<std::atomic<bool>>(true);
+    std::atomic<uint32_t> gen{0};
+    helix::fetch_thumbnail_from_archive(
+        file.name(), *three_mf::plate_thumbnail(*plate), row.modified_timestamp, api_.get(),
+        helix::ThumbnailProcessor::get_target_for_display(helix::ThumbnailSize::Detail),
+        ThumbnailLoadContext::capture(alive, &gen),
+        [&detail](const std::string& path, bool) { detail = path; }, nullptr);
+    drain();
+
+    CHECK_FALSE(detail.empty());
+    CHECK(detail != card);
+    CHECK(std::filesystem::exists(card.substr(2)));
+    // Prescaled from the cached PNG, not read again.
+    CHECK(mock().transfers_mock().range_reads() == reads);
 }

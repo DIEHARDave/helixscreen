@@ -105,6 +105,10 @@ struct PrintSelectPanelTestAccess {
         return lv_subject_get_string(&panel.selected_plate_text_subject_);
     }
 
+    static const std::vector<std::string>& selected_colors(const PrintSelectPanel& panel) {
+        return panel.selected_filament_colors_;
+    }
+
     static std::string selected_print_time(PrintSelectPanel& panel) {
         return lv_subject_get_string(&panel.selected_print_time_subject_);
     }
