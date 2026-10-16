@@ -3919,6 +3919,43 @@ TEST_CASE_METHOD(SnapmakerInsertFixture, "Snapmaker a tag-identified insert open
     CHECK_FALSE(helix::ui::insert_prompt_claimed(0));
 }
 
+TEST_CASE_METHOD(SnapmakerInsertFixture, "Snapmaker an insert prompt is claimed only by its prompt",
+                 "[ams][snapmaker][insert_watcher]") {
+    helix::ui::reset_insert_offers_for_test();
+    FilamentInsertWatcher watcher(nullptr);
+    for (int lane : {0, 1})
+        SnapmakerTestAccess::handle_status(backend, make_feed_status(lane, "wait_insert", false));
+    REQUIRE(judge(watcher, backend) == -1);
+    for (int lane : {0, 1})
+        SnapmakerTestAccess::handle_status(backend, make_feed_status(lane, "wait_insert", true));
+    REQUIRE(judge(watcher, backend) == -1);
+    REQUIRE(helix::ui::insert_prompt_claimed(0));
+    REQUIRE(helix::ui::insert_prompt_claimed(1));
+
+    SECTION("a lane the editor does not open for holds no claim") {
+        for (int lane : {0, 1})
+            SnapmakerTestAccess::handle_status(
+                backend, make_filament_detect_status(lane, "NONE", 0u, "NONE", json::array()));
+        CHECK(judge(watcher, backend) == 0);
+        CHECK(helix::ui::insert_prompt_claimed(0));
+        CHECK_FALSE(helix::ui::insert_prompt_claimed(1));
+    }
+    SECTION("a held insert a guard now blocks gives its claim back") {
+        SnapmakerTestAccess::handle_status(
+            backend, make_filament_detect_status(0, "NONE", 0u, "NONE", json::array()));
+        FilamentInsertContext ctx;
+        ctx.setting_enabled = true;
+        ctx.editor_open = true;
+        CHECK(watcher.judge_lanes(backend, ctx) == -1);
+        CHECK_FALSE(helix::ui::insert_prompt_claimed(0));
+    }
+    SECTION("a reconnect forgets every claim") {
+        watcher.reseed();
+        CHECK_FALSE(helix::ui::insert_prompt_claimed(0));
+        CHECK_FALSE(helix::ui::insert_prompt_claimed(1));
+    }
+}
+
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker has a toolhead sensor once a head reports its switch",
                  "[ams][snapmaker][entry_sensor]") {
     helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);

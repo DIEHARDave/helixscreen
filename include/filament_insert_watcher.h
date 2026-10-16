@@ -36,10 +36,13 @@ class FilamentInsertWatcher {
     /// (setting, print, operation, editor); its presence fields are per lane.
     int judge_lanes(const AmsBackend& backend, FilamentInsertContext ctx);
 
+    /// Forget every baseline, held insert and prompt claim: a reconnect, Klipper
+    /// restart or sensor reconfiguration moves readings with no insert.
+    void reseed();
+
   private:
     void on_ams_changed();
     void on_sensor_changed();
-    void reseed();
     [[nodiscard]] bool operation_busy() const;
     void open_lane(int slot_index);
     void open_external();

@@ -79,6 +79,7 @@ void FilamentInsertWatcher::reseed() {
     lane_prev_.assign(lane_prev_.size(), std::nullopt);
     lane_waiting_.assign(lane_waiting_.size(), false);
     sensor_prev_.reset();
+    ui::release_all_insert_prompts();
 }
 
 void FilamentInsertWatcher::on_ams_changed() {
@@ -112,10 +113,12 @@ int FilamentInsertWatcher::judge_lanes(const AmsBackend& backend, FilamentInsert
         ctx.was_present = waiting ? std::optional<bool>(false) : lane_prev_[i];
         lane_prev_[i] = ctx.is_present;
         lane_waiting_[i] = false;
-        if (ctx.is_present != true) {
-            ui::release_insert_prompt(i);
-        }
         if (!should_open_editor_on_insert(ctx)) {
+            // A held insert a guard now blocks gets no prompt from the editor,
+            // so it gives the claim back.
+            if (waiting || ctx.is_present != true) {
+                ui::release_insert_prompt(i);
+            }
             continue;
         }
         switch (lane_insert_action(backend.slot_insert_identity(i), waiting)) {
@@ -125,10 +128,12 @@ int FilamentInsertWatcher::judge_lanes(const AmsBackend& backend, FilamentInsert
             break;
         case InsertEditorAction::Open:
             // The editor is this insert's one prompt. Only the first lane to
-            // fill opens it; later ones are not queued.
-            ui::claim_insert_prompt(i);
+            // fill opens it; later ones are not queued and claim nothing.
             if (open_slot < 0) {
                 open_slot = i;
+                ui::claim_insert_prompt(i);
+            } else {
+                ui::release_insert_prompt(i);
             }
             break;
         case InsertEditorAction::Ignore:

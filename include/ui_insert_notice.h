@@ -35,6 +35,7 @@ void reset_insert_offers_for_test();
 void claim_insert_prompt(int slot);
 void release_insert_prompt(int slot);
 [[nodiscard]] bool insert_prompt_claimed(int slot);
+void release_all_insert_prompts();
 
 } // namespace ui
 } // namespace helix

@@ -1315,6 +1315,10 @@ void release_insert_prompt(int slot) {
     insert_prompt_claims().erase(slot);
 }
 
+void release_all_insert_prompts() {
+    insert_prompt_claims().clear();
+}
+
 bool insert_prompt_claimed(int slot) {
     return insert_prompt_claims().count(slot) != 0;
 }
