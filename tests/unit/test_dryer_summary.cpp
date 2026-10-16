@@ -107,15 +107,29 @@ TEST_CASE("dryer summary: an idle source carries no cycle numbers", "[dryer][sum
     CHECK(s.sources[0].target_c == -1);
 }
 
-TEST_CASE("dryer summary: highest RH spans every zone that reports humidity", "[dryer][summary]") {
+TEST_CASE("dryer summary: highest RH counts only zones with a dryer", "[dryer][summary]") {
     DryerSummaryInput in;
     in.zones = {box(0, "A", true, false, 0, 0, 31.4f), box(1, "B", false, false, 0, 0, 52.6f),
-                box(2, "C", true)};
+                box(2, "C", true, false, 0, 0, 44.6f), box(3, "D", true)};
     const DryerSummary s = summarize_dryers(in);
-    CHECK(s.highest_rh_pct == 53);
-    CHECK(s.sources.size() == 2);
+    CHECK(s.highest_rh_pct == 45);
+    CHECK(s.sources.size() == 3);
     CHECK(s.sources[0].humidity_pct == 31);
-    CHECK(s.sources[1].humidity_pct == -1);
+    CHECK(s.sources[2].humidity_pct == -1);
+}
+
+TEST_CASE("dryer summary: a passive box's humidity never reaches a chamber-only tile",
+          "[dryer][summary]") {
+    DryerSummaryInput in;
+    in.zones = {box(0, "CFS", false, false, 0, 0, 19.0f)};
+    in.chamber.available = true;
+    in.chamber.current_c = 30;
+    const DryerSummary s = summarize_dryers(in);
+    CHECK(s.available);
+    CHECK(s.highest_rh_pct == -1);
+    REQUIRE(s.sources.size() == 1);
+    CHECK(s.sources[0].kind == DryerSourceKind::Chamber);
+    CHECK(s.sources[0].humidity_pct == -1);
 }
 
 TEST_CASE("dryer summary: zones over one unit dryer make one row", "[dryer][summary]") {
