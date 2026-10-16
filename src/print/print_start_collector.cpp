@@ -2190,10 +2190,11 @@ void PrintStartCollector::apply_chamber_wait_line(uint64_t gen, const ChamberWai
 }
 
 std::string PrintStartCollector::chamber_wait_message(int temp_deci, int target_deci) {
-    const int temp_c = static_cast<int>(std::lround(temp_deci / 10.0));
+    const int temp_c = static_cast<int>(std::lround(helix::units::from_decidegrees(temp_deci)));
     if (target_deci > 0) {
-        return fmt::format(fmt::runtime(lv_tr("Waiting for chamber {} / {}°C")), temp_c,
-                           static_cast<int>(std::lround(target_deci / 10.0)));
+        return fmt::format(
+            fmt::runtime(lv_tr("Waiting for chamber {} / {}°C")), temp_c,
+            static_cast<int>(std::lround(helix::units::from_decidegrees(target_deci))));
     }
     return fmt::format(fmt::runtime(lv_tr("Waiting for chamber {}°C")), temp_c);
 }
