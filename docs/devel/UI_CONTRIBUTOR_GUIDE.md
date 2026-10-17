@@ -478,9 +478,9 @@ wherever a humidity reading sits beside a drop, never `<icon src="water">`:
 - `bind_value`: an int subject in **tenths of a percent** (455 = 45.5%RH), the unit
   `HumiditySensorManager` publishes. Below zero means no reading: the drop draws as a faint
   outline with no fill, so a missing sensor never reads as a dry box. 0% draws an empty,
-  faintly tinted drop; 85% and above a full one (the level is linear in height up to
-  there, and the swell calms as it nears the tip so a nearly full drop never shows a
-  notch).
+  faintly tinted drop; 100% a full one. The mean water line sits at the reading's share of
+  the drop's height, bottom to tip, so 50% reads as half; the swell flattens at the floor
+  and near the tip so a nearly full drop never shows a notch.
 - `size`: `xs`..`xl`, the same box an `icon` of that size takes, so it swaps in for one
   without moving the layout. The box follows the widget's text font, so
   `<bind_tile_rung ladder="icon">` re-faces it exactly as it does an icon. An explicit

@@ -149,11 +149,14 @@ float wave_amplitude(const DropShape& s) {
 }
 
 float fill_height(float fraction) {
-    return std::min(1.0f, clamp01(fraction) / 0.85f);
+    return clamp01(fraction);
 }
 
 float amplitude_at(const DropShape& s, float fraction) {
-    const float calm = clamp01((1.0f - fill_height(fraction)) / 0.25f);
+    const float h = fill_height(fraction);
+    // Flat at the floor and the tip, so an empty drop shows no water and a
+    // nearly full one no notch.
+    const float calm = std::min(clamp01(h / 0.1f), clamp01((1.0f - h) / 0.25f));
     return wave_amplitude(s) * calm;
 }
 
@@ -164,11 +167,7 @@ float fill_fraction(int humidity_x10) {
 }
 
 float surface_level(const DropShape& s, float fraction) {
-    const float a = amplitude_at(s, fraction);
-    const float sw = stroke_width(s);
-    const float empty = s.bottom() - sw + a;
-    const float full = s.tip_y + sw - a;
-    return empty + (full - empty) * fill_height(fraction);
+    return s.bottom() - (s.bottom() - s.tip_y) * fill_height(fraction);
 }
 
 float wave_y(const DropShape& s, float level, float amplitude, float phase, float x) {

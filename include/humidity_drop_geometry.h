@@ -42,21 +42,21 @@ float stroke_width(const DropShape& s);
 /// down at icon size so the level still reads.
 float wave_amplitude(const DropShape& s);
 
-/// The fraction of the drop's height a reading fills, 0..1. A reading at 85% or
-/// more fills it to the tip.
+/// The fraction of the drop's height a reading fills, 0..1: the reading itself,
+/// clamped, so 50% fills half way up.
 float fill_height(float fraction);
 
-/// The amplitude at @p fraction: the full swell, calming as the water rises into
-/// the narrow tip so a nearly full drop reads full rather than notched.
+/// The amplitude at @p fraction: the full swell through the middle, flat at the
+/// floor (an empty drop shows no water) and calming into the narrow tip (a
+/// nearly full drop reads full rather than notched).
 float amplitude_at(const DropShape& s, float fraction);
 
 /// The fill fraction 0..1 a reading shows; below zero when there is no reading.
 /// Readings past 100% clamp to full.
 float fill_fraction(int humidity_x10);
 
-/// The still water line for @p fraction: at 0 every crest sits under the inside
-/// of the bottom, at a full fill_height() every trough sits over the inside of
-/// the tip, so 0% and 85%+ read as empty and full instead of a sliver or a gap.
+/// The mean water line for @p fraction: fill_height() of the way from the
+/// drop's bottom to its tip.
 float surface_level(const DropShape& s, float fraction);
 
 /// The wave's y at column @p x: @p level displaced by a sine two crests to the

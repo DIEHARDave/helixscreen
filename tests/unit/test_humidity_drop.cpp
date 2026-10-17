@@ -142,18 +142,18 @@ TEST_CASE("humidity_drop: fill fraction clamps and flags unknown", "[humidity_dr
     CHECK(fill_fraction(-250) < 0.0f);
 }
 
-TEST_CASE("humidity_drop: 0% sits every crest below the floor, 100% every trough over the tip",
+TEST_CASE("humidity_drop: the water line sits at the reading's share of the height",
           "[humidity_drop]") {
     const DropShape s = fit_drop(64, 64);
-    const float sw = stroke_width(s);
-    const float empty = surface_level(s, 0.0f);
-    const float full = surface_level(s, 1.0f);
-    CHECK(empty - amplitude_at(s, 0.0f) >= s.bottom() - sw - 0.001f);
-    CHECK(full + amplitude_at(s, 1.0f) <= s.tip_y + sw + 0.001f);
-    // Rising as the fraction grows (y grows downward), the tip reached at 85%.
-    CHECK(surface_level(s, 0.5f) < surface_level(s, 0.15f));
-    CHECK(surface_level(s, 0.85f) == Catch::Approx(full));
-    CHECK(surface_level(s, 0.85f) < surface_level(s, 0.15f));
+    const float height = s.bottom() - s.tip_y;
+    CHECK(surface_level(s, 0.0f) == Catch::Approx(s.bottom()));
+    CHECK(surface_level(s, 0.25f) == Catch::Approx(s.bottom() - 0.25f * height));
+    CHECK(surface_level(s, 0.5f) == Catch::Approx(s.bottom() - 0.5f * height));
+    CHECK(surface_level(s, 0.75f) == Catch::Approx(s.bottom() - 0.75f * height));
+    CHECK(surface_level(s, 1.0f) == Catch::Approx(s.tip_y));
+    // Flat at both ends: 0% shows no water above the floor, 100% no gap at the tip.
+    CHECK(amplitude_at(s, 0.0f) == 0.0f);
+    CHECK(amplitude_at(s, 1.0f) == 0.0f);
 }
 
 TEST_CASE("humidity_drop: the wave stays within its amplitude and repeats each drop width",
@@ -173,18 +173,17 @@ TEST_CASE("humidity_drop: the wave stays within its amplitude and repeats each d
     CHECK(back_phase(1.0f) - back_phase(0.0f) < 0.0f);
 }
 
-TEST_CASE("humidity_drop: the fill reaches the tip at 85% and calms as it rises",
-          "[humidity_drop]") {
+TEST_CASE("humidity_drop: the swell is full mid-drop and calms at both ends", "[humidity_drop]") {
     CHECK(fill_height(0.0f) == 0.0f);
-    CHECK(fill_height(0.425f) == Catch::Approx(0.5f));
-    CHECK(fill_height(0.85f) == 1.0f);
+    CHECK(fill_height(0.5f) == Catch::Approx(0.5f));
+    CHECK(fill_height(1.5f) == 1.0f);
     CHECK(fill_height(1.0f) == 1.0f);
     const DropShape s = fit_drop(128, 128);
     // A full swell through the middle, gone by the time the drop is full.
     CHECK(amplitude_at(s, 0.5f) == Catch::Approx(wave_amplitude(s)));
-    CHECK(amplitude_at(s, 0.75f) < amplitude_at(s, 0.5f));
-    CHECK(amplitude_at(s, 0.75f) > 0.0f);
-    CHECK(amplitude_at(s, 0.85f) == 0.0f);
+    CHECK(amplitude_at(s, 0.85f) < amplitude_at(s, 0.5f));
+    CHECK(amplitude_at(s, 0.85f) > 0.0f);
+    CHECK(amplitude_at(s, 0.05f) < amplitude_at(s, 0.5f));
 }
 
 TEST_CASE("humidity_drop: a large drop swells; an icon keeps a readable level", "[humidity_drop]") {
@@ -318,8 +317,9 @@ TEST_CASE("humidity_drop: the fill grows with humidity", "[humidity_drop]") {
     CHECK(f15 > 0);
     CHECK(f15 < f50);
     CHECK(f50 < f85);
-    // 85% and up read as full.
-    CHECK(f85 == f100);
+    // Past 85% only the outline-thin tip is left to fill.
+    CHECK(f85 <= f100);
+    CHECK(count_fill(render(size, size, 750)) < f85);
 }
 
 TEST_CASE("humidity_drop: half full fills below the middle, not above it", "[humidity_drop]") {
