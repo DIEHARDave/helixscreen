@@ -14,11 +14,13 @@
 #include "print_start_purge_shape.h"
 #include "printer_state.h"
 #include "simulated_clock.h"
+#include "start_block_steps.h"
 #include "thermal_rate_model.h"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -512,6 +514,34 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// temperature against its target, or alone when the heater has none.
     static std::string chamber_wait_message(int temp_deci, int target_deci);
 
+    /// Follow virtual_sdcard.file_position through the start block, on a
+    /// profile whose start sequence the slicer writes into the file. The
+    /// first position read fetches and scans the file's head. Any thread.
+    void handle_start_block_position(const nlohmann::json& status);
+    /// Fetch and scan the head of @p filename for run @p run. Main thread.
+    void request_start_block(uint64_t run, std::string filename);
+    /// Show the step run @p run reached, unless the console already named
+    /// what that line is doing. Dropped once another run has begun or the
+    /// pre-print is COMPLETE. Any thread; takes state_mutex_ itself.
+    void apply_start_block_step(const helix::StartBlockStep& step, uint64_t run);
+
+    /// Run @p apply, the phase match of console line @p line, and if it
+    /// changed the phase or message shown, stamp console_phase_time_ with it
+    /// and drop any deferred step. Takes state_mutex_ itself; @p apply must
+    /// not hold it.
+    void apply_console_phase(const std::string& line, const std::function<void()>& apply);
+    /// Show the deferred start-block step once the console grace has passed.
+    /// Any thread; takes state_mutex_ itself.
+    void flush_deferred_start_block_step();
+
+    /// Make @p phase current, crediting the time since the last change to the
+    /// phase it replaces. Caller holds state_mutex_.
+    void enter_phase_locked(helix::PrintStartPhase phase);
+    /// Time spent in @p phase this run, its visit now under way included.
+    /// Zero for IDLE, INITIALIZING and COMPLETE, which are not timed. Caller
+    /// holds state_mutex_.
+    std::chrono::seconds phase_seconds_locked(helix::PrintStartPhase phase) const;
+
     /// Ask where the print is, and read the command there if the position
     /// moved since the last read. Main thread.
     void request_wait_line();
@@ -677,8 +707,11 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     std::atomic<bool> fallbacks_enabled_{false};
     std::atomic<helix::SubscriptionId> macro_subscription_id_{0};
 
-    // Phase timing for duration prediction (protected by state_mutex_)
-    std::map<int, helix::sim::SimulatedClock::time_point> phase_enter_times_;
+    // Phase timing for duration prediction (protected by state_mutex_). A
+    // phase can be shown more than once in one start (a toolchanger probes Z
+    // after every tool pick), so each keeps the sum of its visits.
+    std::map<int, helix::sim::SimulatedClock::duration> phase_time_spent_;
+    helix::sim::SimulatedClock::time_point phase_since_;
     helix::PreprintPredictor predictor_;
     int loaded_temp_bucket_{0};
     /// Which window this run is measuring. Defaults to PrinterEdge: an
@@ -785,6 +818,33 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// for the rest of a wait whose read failed. Guarded by state_mutex_.
     helix::WaitLine wait_line_;
     bool wait_line_read_ = false;
+    /// The start block's steps and how far the print is through them, on a
+    /// scripted-start profile. start_block_requested_ is set once the head
+    /// read is on its way. Guarded by state_mutex_.
+    helix::StartBlockFollower start_block_;
+    bool start_block_requested_ = false;
+    /// virtual_sdcard.file_position and print_stats.filename as this run's
+    /// status frames last carried them. Guarded by state_mutex_.
+    std::optional<uint64_t> file_position_;
+    std::string frame_filename_;
+    /// A step that reached its line within the console grace, while the
+    /// console's latest change came from a line its command does not print:
+    /// the previous command's last words. It shows once the grace passes,
+    /// unless the console changes the display again first. The console line
+    /// behind that change is console_phase_line_. Guarded by state_mutex_.
+    std::optional<helix::StartBlockStep> deferred_step_;
+    uint64_t deferred_step_run_ = 0;
+    std::string console_phase_line_;
+    /// Set to stop the head read in flight: a new run or stop().
+    std::shared_ptr<std::atomic<bool>> start_block_cancel_;
+    /// When a console line last changed the phase shown. A step whose position
+    /// arrives within START_BLOCK_CONSOLE_GRACE after it is the line the
+    /// console line came from: Moonraker batches status frames, so a command's
+    /// own first words reach us before the position that names its line.
+    /// Guarded by state_mutex_.
+    helix::sim::SimulatedClock::time_point console_phase_time_ =
+        helix::sim::SimulatedClock::time_point::min();
+    static constexpr auto START_BLOCK_CONSOLE_GRACE = std::chrono::seconds(1);
     bool wait_line_unreadable_ = false;
     std::optional<uint64_t> wait_line_position_;
     uint64_t wait_line_gen_ = 0;

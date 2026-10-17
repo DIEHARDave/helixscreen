@@ -14,8 +14,8 @@ namespace helix {
 
 class ITransfersAPI;
 
-/// virtual_sdcard.file_position from a printer.objects.query response;
-/// nullopt when the response does not carry it.
+/// virtual_sdcard.file_position from a printer.objects.query response or a
+/// notify_status_update status object; nullopt when it does not carry it.
 std::optional<uint64_t> virtual_sdcard_file_position(const json& query_response);
 
 /// Read the command the print is executing: the line starting at

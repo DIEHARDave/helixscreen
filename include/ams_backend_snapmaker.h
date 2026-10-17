@@ -15,6 +15,7 @@
 
 #include <array>
 #include <chrono>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -197,10 +198,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     [[nodiscard]] PathSegment infer_error_segment() const override;
 
     /// Every feeder's port sensor sits at the top of its tube: the lane's
-    /// entry sensor, read as PREP.
-    [[nodiscard]] bool slot_has_prep_sensor(int slot_index) const override {
-        return slot_index >= 0 && slot_index < NUM_TOOLS;
-    }
+    /// entry sensor, read as PREP. A head fed from upstream has none of its
+    /// own (head_is_upstream_fed_locked()).
+    [[nodiscard]] bool slot_has_prep_sensor(int slot_index) const override;
 
     /// Pending while a feeder insert waits on filament_detect.info, then the
     /// reader's verdict (pending_insert_passes_ / insert_verdict_).
@@ -471,6 +471,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// channel_state reports its end.
     AmsError dispatch_feed(std::string gcode, const char* complete_event);
 
+    /// dispatch_feed() with the answer handed to the caller: @p on_ok on OK,
+    /// @p on_failed on an error or a timeout. Both run on the main thread.
+    AmsError dispatch_feed(std::string gcode, std::function<void()> on_ok,
+                           std::function<void(const MoonrakerError&)> on_failed);
+
     /// Applied logical-tool -> physical-head routing for the CURRENT print.
     ///
     /// The capability question generic code asks; the vendor knowledge (that the
@@ -521,6 +526,35 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
                                                      const std::any& value) const;
 
   protected:
+    // Extension points for hardware hung off the U1's heads. Each default is
+    // the stock U1's answer, and each is called with mutex_ held.
+
+    /// Whether @p head is fed from upstream of its feeder port, through a
+    /// bowden from another unit. Its feed channel's filament_detected is then
+    /// that unit's gate, not a spool seated at the head's port: no PREP
+    /// sensor, no insert presence, no insert to judge.
+    [[nodiscard]] virtual bool head_is_upstream_fed_locked(int head) const {
+        (void)head;
+        return false;
+    }
+
+    /// Whether a channel reaching preload_finish straight from an unload's
+    /// in-progress states ends that unload on @p head. A stock unload ends at
+    /// unload_finish and only rests at preload_finish.
+    [[nodiscard]] virtual bool preload_finish_ends_unload_locked(int head) const {
+        (void)head;
+        return false;
+    }
+
+    /// Reads the extension's own status objects out of one frame, ahead of the
+    /// U1's own sections, so they see this frame's answers from the hooks
+    /// above. Sets @p changed when it moved anything published; the frame
+    /// notifies once either way.
+    virtual void apply_extension_locked(const nlohmann::json& status, bool& changed) {
+        (void)status;
+        (void)changed;
+    }
+
     void on_started() override;
     void handle_status(const nlohmann::json& status) override;
     const char* backend_log_tag() const override {
@@ -793,6 +827,21 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// frame carrying it.
     std::array<std::optional<std::string>, NUM_TOOLS> task_type_{};
 
+    /// print_task_config.filament_color_rgba per head, decoded. Unset until the
+    /// first frame carrying a colour that decodes.
+    std::array<std::optional<uint32_t>, NUM_TOOLS> task_color_{};
+
+    /// The temperatures and spool weight the last tag reading on each channel
+    /// wrote onto SlotInfo, which no lane record carries. Unset until a tag is
+    /// read, and again once retract_tag_reading_locked() takes them back.
+    struct TagSlotValues {
+        int nozzle_temp_min = 0;
+        int nozzle_temp_max = 0;
+        int bed_temp = 0;
+        float total_weight_g = 0;
+    };
+    std::array<std::optional<TagSlotValues>, NUM_TOOLS> tag_slot_values_{};
+
     /// Whether filament_detect.info last showed a real card on each channel: a
     /// CARD_UID with a nonzero byte. Unset until the first entry for it.
     std::array<std::optional<bool>, NUM_TOOLS> tag_has_card_{};
@@ -832,6 +881,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// and product line the lane only remembers. Caller holds mutex_.
     void retract_unbacked_identity_locked(int slot_index, SlotInfo& slot);
 
+    /// On a channel whose tag reader names no tag, drop the lane's vendor-cache
+    /// record and take what it stated off @p slot, falling back to what
+    /// print_task_config last said. Returns whether a record was dropped.
+    /// Caller holds mutex_.
+    bool retract_tag_reading_locked(int slot_index, SlotInfo& slot);
+
     /// Last filament_feed frame's raw per-channel fields (channel_state,
     /// channel_error, filament_detected, module_exist, disable_auto), written
     /// by handle_status before classification. Each write replaces the
@@ -845,6 +900,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// unload heats with the channel still at preload_finish), so only this
     /// lets preload_finish resolve the op. Under mutex_.
     std::array<bool, NUM_TOOLS> preload_in_flight_{};
+
+    /// Per channel: the last in-progress channel_state was an unload_*. Lets
+    /// preload_finish_ends_unload_locked() tell an unload's end from the rest
+    /// state an unload starts from. Under mutex_.
+    std::array<bool, NUM_TOOLS> unload_in_flight_{};
 
     /// Layer a configured FilamentSlotOverride for `slot_index` over `slot`,
     /// mutating `slot` in place. Override wins for every non-default field.

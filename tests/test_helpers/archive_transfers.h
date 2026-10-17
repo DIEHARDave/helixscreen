@@ -44,6 +44,8 @@ class ArchiveTransfers : public MoonrakerFileTransferAPIMock {
             return;
         }
         ++ranges;
+        last_cancel = cancelled;
+        range_requests.push_back({offset, len});
         if (fail_ranges || (fail_from > 0 && ranges >= fail_from)) {
             on_error(MoonrakerError::file_not_found("download_file_range", "failed by test"));
             return;
@@ -114,6 +116,8 @@ class ArchiveTransfers : public MoonrakerFileTransferAPIMock {
     int fail_from = 0; ///< Ranged reads from this one on (1-based) fail; 0 = none
     int hold_from = 0; ///< Ranged reads from this one on wait for release_held(); 0 = none
     std::vector<std::function<void(bool)>> held;
+    CancelFlag last_cancel; ///< The cancel flag the last ranged read was given
+    std::vector<std::pair<uint64_t, size_t>> range_requests; ///< offset, length of each
     std::vector<std::string> downloaded_to;
 
   private:

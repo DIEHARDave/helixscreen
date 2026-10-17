@@ -102,3 +102,31 @@ TEST_CASE("portrait preview: rows fit, edge in a tile's bottom outer quarter is 
     CHECK(BASE - h <= GAP + TILE / 2);
     CHECK(mid_tile(edge_for(avail, h)));
 }
+
+TEST_CASE("portrait preview: fit_all shows the whole content when the floor allows",
+          "[print_detail_layout]") {
+    // avail 378, content 220: cutting row 2 would leave h = avail - TARGET, but
+    // the whole 220 fits with a 158px preview, still above the 150 floor.
+    const int avail = 378;
+    const int content = 220;
+    const int h = decide_detail_portrait_preview(W, avail, content, GRID_TOP, TILE, GAP, true);
+    CHECK(h == avail - content);
+    CHECK(h >= FLOOR);
+    CHECK(edge_for(avail, h) == content);
+    // Without fit_all the same column keeps cutting row 2.
+    CHECK(decide_detail_portrait_preview(W, avail, content, GRID_TOP, TILE, GAP) == avail - TARGET);
+}
+
+TEST_CASE("portrait preview: fit_all falls back to cutting row 2 below the floor",
+          "[print_detail_layout]") {
+    // Showing all 300 would need a 78px preview, under the 150 floor.
+    const int avail = 378;
+    CHECK(decide_detail_portrait_preview(W, avail, 300, GRID_TOP, TILE, GAP, true) ==
+          avail - TARGET);
+}
+
+TEST_CASE("portrait preview: fit_all leaves a column that already fits at base alone",
+          "[print_detail_layout]") {
+    const int avail = BASE + 200;
+    CHECK(decide_detail_portrait_preview(W, avail, 150, GRID_TOP, TILE, GAP, true) == BASE);
+}
