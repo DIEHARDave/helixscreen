@@ -202,7 +202,7 @@ struct OpenedMaze {
     explicit OpenedMaze(uint32_t seed) {
         std::minstd_rand rng(seed);
         Frame frame(8, 8, PixelFormat::XRGB8888);
-        sim.init(frame.target, MazeArt{}, rng, 4);
+        sim.init(frame.target, rng, 4, MazeArt{});
         const int n = sim.map().cells();
         start = sim.walker().cell_y() * n + sim.walker().cell_x();
         for (const MazeItem& item : sim.items()) {
@@ -548,7 +548,7 @@ TEST_CASE("every opened maze reaches its exit, rocks and all", "[screensaver][ma
         std::minstd_rand rng(seed);
         MazeSim sim;
         Frame frame(16, 12, PixelFormat::XRGB8888);
-        sim.init(frame.target, MazeArt{}, rng, 4);
+        sim.init(frame.target, rng, 4, MazeArt{});
         std::vector<DirtyRect> dirty;
         for (int i = 0; i < 60000 && sim.exits_reached() == 0 && sim.abandoned() == 0; i++) {
             sim.step(100, frame.target, rng, dirty);
@@ -558,7 +558,7 @@ TEST_CASE("every opened maze reaches its exit, rocks and all", "[screensaver][ma
         CHECK(sim.walker().moves() <= sim.step_bound());
         if (seed == 1) {
             // A new run counts from zero.
-            sim.init(frame.target, MazeArt{}, rng, 4);
+            sim.init(frame.target, rng, 4, MazeArt{});
             CHECK(sim.exits_reached() == 0);
         }
     }
@@ -1231,13 +1231,13 @@ TEST_CASE("frames of every size, level and depth stay inside their rows", "[scre
                 FrameTarget target{bytes.data(), stride, w, h, fmt};
                 std::minstd_rand rng(w * 31 + h + static_cast<uint32_t>(level));
                 MazeSim sim;
-                sim.init(target, MazeArt{}, rng, level);
+                sim.init(target, rng, level, MazeArt{});
                 std::vector<DirtyRect> dirty;
                 for (int i = 0; i < 24; i++) {
                     if (i == 8) {
-                        sim.set_level(helix::ui::MAZE_LEVEL_COUNT - 1);
+                        sim.request_level(helix::ui::MAZE_LEVEL_COUNT - 1);
                     } else if (i == 16) {
-                        sim.set_level(0);
+                        sim.request_level(0);
                     }
                     sim.step(dts[i % 8], target, rng, dirty);
                 }
@@ -1300,7 +1300,7 @@ TEST_CASE("an XRGB8888 maze frame keeps every X byte opaque", "[screensaver][maz
     std::minstd_rand rng(9);
     MazeSim sim;
     Frame frame(128, 80, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 0);
+    sim.init(frame.target, rng, 0, MazeArt{});
     std::vector<DirtyRect> dirty;
     for (int i = 0; i < 20; i++) {
         sim.step(33, frame.target, rng, dirty);
@@ -1410,7 +1410,7 @@ TEST_CASE("a maze run replays exactly from a seed", "[screensaver][maze]") {
         std::minstd_rand rng(seed);
         MazeSim sim;
         Frame frame(96, 64, PixelFormat::RGB565);
-        sim.init(frame.target, MazeArt{}, rng, 1);
+        sim.init(frame.target, rng, 1, MazeArt{});
         std::vector<DirtyRect> dirty;
         for (int i = 0; i < 120; i++) {
             sim.step(33, frame.target, rng, dirty);
@@ -1425,7 +1425,7 @@ TEST_CASE("every maze frame dirties the whole canvas", "[screensaver][maze]") {
     std::minstd_rand rng(2);
     MazeSim sim;
     Frame frame(96, 64, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 0);
+    sim.init(frame.target, rng, 0, MazeArt{});
     std::vector<DirtyRect> dirty;
     sim.step(16, frame.target, rng, dirty);
     REQUIRE(dirty.size() == 1);
@@ -1436,7 +1436,7 @@ TEST_CASE("a cleared maze holds no render buffers", "[screensaver][maze]") {
     std::minstd_rand rng(4);
     MazeSim sim;
     Frame frame(160, 96, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 0);
+    sim.init(frame.target, rng, 0, MazeArt{});
     REQUIRE(sim.renderer().heap_bytes() > 160u * 96u * 4u);
     sim.clear();
     CHECK(sim.renderer().heap_bytes() == 0);
@@ -1448,7 +1448,7 @@ TEST_CASE("a scene places start, exit, logos, rocks and a toolhead", "[screensav
     std::minstd_rand rng(21);
     MazeSim sim;
     Frame frame(64, 48, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 3);
+    sim.init(frame.target, rng, 3, MazeArt{});
     int counts[5] = {};
     for (const MazeItem& item : sim.items()) {
         counts[static_cast<int>(item.kind)]++;
@@ -1467,7 +1467,7 @@ TEST_CASE("the walk waits in the exit's doorway with the smiley in view", "[scre
         std::minstd_rand rng(seed);
         MazeSim sim;
         Frame frame(160, 96, PixelFormat::XRGB8888);
-        sim.init(frame.target, MazeArt{}, rng, 0);
+        sim.init(frame.target, rng, 0, MazeArt{});
         std::vector<DirtyRect> dirty;
         for (int i = 0; i < 40000 && !sim.holding_exit(); i++) {
             sim.step(50, frame.target, rng, dirty);
@@ -1494,7 +1494,7 @@ TEST_CASE("touching a rock flips the view and swaps hands; reaching the exit sta
     std::minstd_rand rng(17);
     MazeSim sim;
     Frame frame(48, 32, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 3);
+    sim.init(frame.target, rng, 3, MazeArt{});
     std::vector<DirtyRect> dirty;
     bool saw_flip = false;
     bool saw_left = false;

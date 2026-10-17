@@ -725,6 +725,10 @@ void MazeMap::release() {
     size_ = 0;
 }
 
+size_t MazeMap::heap_bytes() const {
+    return buffer_bytes(tiles_, stack_, scratch_, pictures_, boundary_);
+}
+
 void MazeMap::set_tiles(int size, std::vector<MazeTile> tiles, std::vector<uint8_t> pictures) {
     size_ = size;
     tiles_ = std::move(tiles);
@@ -839,6 +843,10 @@ void MazeWalker::reserve(int cells) {
 void MazeWalker::release() {
     release_buffers(seen_, prev_, queue_, path_);
     path_pos_ = 0;
+}
+
+size_t MazeWalker::heap_bytes() const {
+    return buffer_bytes(seen_, prev_, queue_, path_);
 }
 
 int MazeWalker::track_state(const MazeMap& map) {
@@ -1605,8 +1613,8 @@ void MazeRenderer::render(const MazeMap& map, const std::vector<MazeItem>& items
     });
 }
 
-void MazeSim::init(const FrameTarget& frame, const MazeArt& art, std::minstd_rand& rng,
-                   size_t level) {
+void MazeSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level,
+                   const MazeArt& art) {
     renderer_.init(frame.w, frame.h, frame.format, art, level);
     items_.clear();
     items_.reserve(4 + LOGO_COUNT + ROCK_COUNT);
@@ -1630,6 +1638,11 @@ void MazeSim::clear() {
     release_buffers(items_, taken_, dist_, queue_);
     flip_left_ms_ = 0;
     exit_left_ms_ = 0;
+}
+
+size_t MazeSim::heap_bytes() const {
+    return renderer_.heap_bytes() + map_.heap_bytes() + walker_.heap_bytes() +
+           toolhead_.heap_bytes() + buffer_bytes(items_, taken_, dist_, queue_);
 }
 
 uint32_t MazeSim::step_bound() const {

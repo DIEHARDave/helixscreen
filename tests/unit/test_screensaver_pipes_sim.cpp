@@ -1238,7 +1238,6 @@ int steps_to_dissolve(PipesSim& sim, Frame& f, std::minstd_rand& rng) {
 TEST_CASE("the first screen starts at yrot 0 with its starting pipes drawn",
           "[screensaver][pipes_sim]") {
     Frame f(160, 96);
-    fill_white(f);
     PipesSim sim;
     std::minstd_rand rng(1);
     sim.init(f.target, rng, 0);
@@ -1348,14 +1347,14 @@ TEST_CASE("a level's scale waits for the next screen", "[screensaver][pipes_sim]
     std::minstd_rand rng(5);
     sim.init(f.target, rng, 0);
     CHECK(sim.renderer().scale() == 1);
-    sim.set_level(2);
+    sim.request_level(2);
     std::vector<DirtyRect> dirty;
     while (sim.screens_started() < 2) {
         REQUIRE(sim.renderer().scale() == 1);
         sim.step(100, f.target, rng, dirty);
     }
     CHECK(sim.renderer().scale() == 2);
-    sim.set_level(0);
+    sim.request_level(0);
     sim.step(100, f.target, rng, dirty);
     CHECK(sim.renderer().scale() == 2);
     while (sim.screens_started() < 3) {

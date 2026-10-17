@@ -919,7 +919,6 @@ void PipesDissolve::step(uint32_t dt_ms, const FrameTarget& frame, std::vector<D
 
 void PipesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level) {
     level_ = std::min(level, PIPES_LEVEL_COUNT - 1);
-    PixelWriter(frame).fill({0, 0, 0});
     renderer_.init(frame.w, frame.h, PIPES_LEVELS[level_].scale);
     dissolve_.init(frame.w, frame.h);
     pieces_.clear();
@@ -983,7 +982,7 @@ void PipesSim::step(uint32_t dt_ms, const FrameTarget& frame, std::minstd_rand& 
     start_screen(frame, rng, dirty);
 }
 
-void PipesSim::set_level(size_t level) {
+void PipesSim::request_level(size_t level) {
     level_ = std::min(level, PIPES_LEVEL_COUNT - 1);
 }
 

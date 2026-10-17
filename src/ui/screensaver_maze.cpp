@@ -9,9 +9,10 @@
 
 #include "app_globals.h"
 #include "helix_fs.h"
+#include "lv_draw_buf_guard.h"
 #include "moonraker_types.h"
 #include "print_history_manager.h"
-#include "printer_image_manager.h"
+#include "screensaver_image.h"
 #include "screensaver_motion.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_processor.h"
@@ -21,7 +22,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <draw/lv_image_decoder_private.h>
 #include <string>
 #include <unordered_set>
 
@@ -182,7 +182,7 @@ void load_image(const std::string& path, MazeImage& out, const char* what, int m
     }
     if (max_side > 0) {
         lv_image_header_t header{};
-        if (lv_image_decoder_get_info(path.c_str(), &header) != LV_RESULT_OK) {
+        if (!saver_image_info(path.c_str(), header)) {
             spdlog::debug("[Screensaver] Maze {} '{}' did not decode", what, path);
             return;
         }
@@ -194,21 +194,16 @@ void load_image(const std::string& path, MazeImage& out, const char* what, int m
             return;
         }
     }
-    lv_image_decoder_dsc_t dsc;
-    const lv_result_t res = lv_image_decoder_open(&dsc, path.c_str(), nullptr);
-    if (res != LV_RESULT_OK || dsc.decoded == nullptr) {
-        spdlog::debug("[Screensaver] Maze {} '{}' did not decode", what, path);
-        if (res == LV_RESULT_OK) {
-            lv_image_decoder_close(&dsc);
-        }
+    lv_draw_buf_t* decoded = saver_decode_image(path.c_str(), what, spdlog::level::debug);
+    if (decoded == nullptr) {
         return;
     }
-    if (!to_argb(dsc.decoded, out)) {
+    if (!to_argb(decoded, out)) {
         spdlog::debug("[Screensaver] Maze {} '{}' has colour format {}, not used", what, path,
-                      static_cast<int>(dsc.decoded->header.cf));
+                      static_cast<int>(decoded->header.cf));
         out = MazeImage{};
     }
-    lv_image_decoder_close(&dsc);
+    helix::safe_draw_buf_destroy(decoded, "maze_art");
     if (reduce_to > 0 && !out.empty()) {
         out = reduce_maze_image(out, reduce_to);
     }
@@ -251,12 +246,11 @@ MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng) {
         sources.files = cached_art_paths(candidates, maze_cached_thumbnail, MAZE_ART_FILES,
                                          MAZE_ART_FILE_PROBES, sources.recent);
     }
-    sources.printer = helix::PrinterImageManager::instance().get_displayed_image_path(screen_w);
+    sources.printer = saver_printer_image_path(screen_w);
     return sources;
 }
 
 bool MazeScreensaver::on_start() {
-    spdlog::info("[Screensaver] Starting 3D maze");
     const auto started = std::chrono::steady_clock::now();
     auto elapsed_ms = [&started]() {
         return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -286,26 +280,10 @@ bool MazeScreensaver::on_start() {
                   sources.recent.size(), sources.files.size(),
                   sources.printer.empty() ? "none" : "yes", art.pictures.size(), elapsed_ms());
 
-    FrameTarget frame = canvas().frame();
-    sim_.init(frame, art, rng(), level());
-    spdlog::debug("[Screensaver] Maze started ({}x{}, level {}, logo {}, {} pictures)", screen_w(),
-                  screen_h(), level(), art.logo.empty() ? "drawn" : "decoded",
+    start_sim(art);
+    spdlog::debug("[Screensaver] Maze logo {}, {} pictures", art.logo.empty() ? "drawn" : "decoded",
                   sim_.renderer().picture_count());
     return true;
-}
-
-void MazeScreensaver::on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty) {
-    FrameTarget frame = canvas().frame();
-    sim_.step(dt_ms, frame, rng(), dirty);
-}
-
-void MazeScreensaver::on_level_request(size_t level) {
-    apply_level(level);
-    sim_.set_level(this->level());
-}
-
-void MazeScreensaver::on_stop() {
-    sim_.clear();
 }
 
 } // namespace helix::ui

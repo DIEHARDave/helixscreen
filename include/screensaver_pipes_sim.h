@@ -486,12 +486,14 @@ enum class PipesPhase : uint8_t { GROWING, DISSOLVING };
  */
 class PipesSim {
   public:
-    /// Fills the frame black and starts the first screen at yrot 0.
+    static constexpr const auto& LEVELS = PIPES_LEVELS;
+
+    /// Starts the first screen at yrot 0 on a frame that is already black.
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level);
     void step(uint32_t dt_ms, const FrameTarget& frame, std::minstd_rand& rng,
               std::vector<DirtyRect>& dirty);
     /// The level's scale applies from the next screen.
-    void set_level(size_t level);
+    void request_level(size_t level);
     /// Releases every buffer.
     void clear();
 
