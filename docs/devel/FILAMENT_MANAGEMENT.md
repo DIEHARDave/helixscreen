@@ -505,7 +505,7 @@ When it runs, the production path is `PrintSelectPanel::apply_remap()` -> `Print
 
 The strategy is guarded in `open_remap_modal()` (`include/ui_panel_print_select.h`), which asks `PrintPreparationManager::check_modification_capability()` rather than testing for the plugin itself: rewriting a file before printing is the same act the pre-print options perform, and two copies of "may we modify this file" is how one of them ends up offering a picker the other would refuse. `tests/unit/test_gcode_tool_remapper.cpp` pins the four families, the detector and the swap collision-safety; `tests/unit/test_remap_strategy.cpp` pins the strategy half and the pick rule; `tests/unit/test_start_macro_remap_note.cpp` pins the scan lookup and the note text; `tests/unit/test_filament_mapping_modal_cancel.cpp` pins that the banner tracks the picks and never leaks into a show that set no note (the subjects behind it are process-wide).
 
-User-facing counterpart: [Tool Mapping § Printers that remap by rewriting the file](../user/guide/filament.md#printers-that-remap-by-rewriting-the-file).
+User-facing counterpart: [Filament Mapping § Printers that map filament by rewriting the file](../user/guide/filament.md#printers-that-map-filament-by-rewriting-the-file).
 
 ### AD5X IFS material/color reconcile (locks, insert, #1065/#1071)
 

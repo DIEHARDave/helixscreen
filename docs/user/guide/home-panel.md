@@ -523,7 +523,7 @@ The **Job Queue** widget is available when Moonraker has its `[job_queue]` compo
 
 **Start next** starts the job in one tap, with the pre-print options it was queued with, or the defaults when it has none. The job leaves the queue only once the print has started. The same checks run as when you press Print in the file view: a material or spool warning asks you first, and a printer that is busy says so and keeps the job queued.
 
-Two cases open the job in the file view instead, with a notice saying why: a job the widget cannot check (for example a file it cannot read), and a job where a tool has no loaded slot, where you pick the **Remap** choice. In the file view, the Print button reads **Checking file…** while the scan it needs is still running.
+Two cases open the job in the file view instead, with a notice saying why: a job the widget cannot check (for example a file it cannot read), and a job where a tool has no loaded slot, where you pick **Map Filament…**. In the file view, the Print button reads **Checking file…** while the scan it needs is still running.
 
 Tap anywhere else on the widget to open the [Job Queue Manager](#job-queue-manager).
 

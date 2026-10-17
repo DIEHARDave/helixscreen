@@ -274,7 +274,7 @@ Labels include spool name, material, color swatch, temperatures, and a QR code. 
 - **ACE** (Anycubic ACE Pro) — supported on native Anycubic firmware (the `filament_hub` Klipper object, e.g. Kobra on Rinkhals) and on the community ValgACE/BunnyACE/DuckACE Klipper drivers
 - **Tool changers** — supported
 
-Features include visual slot configuration with tool badges, endless spool arrows, tap-to-edit popup, Spoolman integration, and material compatibility validation.
+Features include visual slot configuration with tool badges, Endless Spool arrows, Filament Mapping, tap-to-edit popup, Spoolman integration, and material compatibility validation.
 
 ### Can I customize the home screen widgets?
 

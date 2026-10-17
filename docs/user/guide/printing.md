@@ -216,7 +216,7 @@ During printing, frame captures happen automatically based on your timelapse set
 You don't have to wait for a print to end before picking the next one. While a print is running - or still preparing, before its first layer - open any file and its **Print** button becomes **Add to Queue**, marked with a clock icon. A toast confirms the job's position ("Added to queue (position 2)").
 
 - The pre-print options you set on that screen (bed mesh, nozzle cleaning and so on) are saved with the queued job and come back when the job starts.
-- The filament mapping is not saved: it is worked out again when the job actually starts, against the filament loaded at that moment.
+- Filament Mapping is not saved with the job: it is worked out again when the job actually starts, against the filament loaded at that moment.
 
 **Where to see the queue:**
 
