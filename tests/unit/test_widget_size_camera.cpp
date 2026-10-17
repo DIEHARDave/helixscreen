@@ -211,7 +211,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // lv_image_decoder_get_info() and silently leaves src null, see
     // lv_image.c:180-201) so clearing it on this transition is a real
     // assertion, not a check against an already-null default.
-    lv_image_set_src(camera_image, "A:assets/images/ams/spoolman_64.png");
+    lv_image_set_src(camera_image, "A:assets/images/helix-icon-64.png");
     REQUIRE(lv_image_get_src(camera_image) != nullptr);
 
     h.resize(4, 4, w_normal() - 1, h_tall() - 1);
@@ -230,7 +230,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // true). Re-seed the sentinel source; a correct edge-triggered
     // implementation must NOT re-enter the "compact && !was_compact" branch,
     // so the sentinel must survive AND stop_stream_calls must not advance.
-    lv_image_set_src(camera_image, "A:assets/images/ams/spoolman_24.png");
+    lv_image_set_src(camera_image, "A:assets/images/ams/afc_64.png");
     h.resize(3, 3, w_normal() - 1, h_tall() - 1); // spans vary, width identical
     process_lvgl(30);
 
