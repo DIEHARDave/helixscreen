@@ -72,22 +72,31 @@ and insert notice. The toolhead switch and the `load_finish` latch stay the head
 
 ## Commands
 
+While the engine contract is in force every head goes through the engine's commands,
+feeder and manual heads included: the engine owns the feed state machine for all four.
+
 | Operation | ACE-fed head | Feeder / manual head |
 |---|---|---|
-| Load head lane h | `ACE_LOAD_HEAD HEAD=h` (the engine picks the bay) | `AUTO_FEEDING EXTRUDER=h LOAD=1` |
-| Load bay (k,s) into its head h | `ACE_LOAD_HEAD HEAD=h ACE=k SLOT=s`, both always sent | n/a |
-| Same, h holding filament | `ACE_UNLOAD_HEAD HEAD=h` then the load, one script | n/a |
+| Load head lane h, head mode | `ACE_LOAD_HEAD HEAD=h` (the engine picks the wired unit and the head's last bay) | `ACE_LOAD_HEAD HEAD=h` (side feeder) |
+| Load head lane h, multi mode | `ACE_LOAD_HEAD HEAD=h ACE=k SLOT=s` from `head_source[h]`; refused when none is recorded, since a bare load takes the globally active unit | `ACE_LOAD_HEAD HEAD=h` |
+| Load bay (k,s) into its empty head h | `ACE_LOAD_HEAD HEAD=h ACE=k SLOT=s`, both always sent | n/a |
+| Same, h holding filament | `ACE_UNLOAD_HEAD HEAD=h` alone; the load follows once a frame shows the head empty | n/a |
 | Load a bay while a print is printing or paused | refused, nothing sent: the engine swaps mid-print as the sliced file asks | |
-| Unload h, or its routed bay | `ACE_UNLOAD_HEAD HEAD=h` | `AUTO_FEEDING EXTRUDER=h UNLOAD=1` |
+| Unload h, or its routed bay | `ACE_UNLOAD_HEAD HEAD=h` | `ACE_UNLOAD_HEAD HEAD=h` (tip-pull) |
 | Select a bay | `T<h>` when it is h's routed bay, refused otherwise | |
 | Batch unload covering every loaded head | `ACE_UNLOAD_ALL_HEADS` | |
-| Batch unload, part of the loaded heads | one line per head, as above | |
-| Batch load | refused when any selected head is ACE-fed | inherited |
+| Batch unload, part of the loaded heads | `ACE_UNLOAD_HEAD` per head, one script | |
+| Batch load | refused when any selected head is ACE-fed | `ACE_LOAD_HEAD` per head, one script |
 | Dry unit k | `ACE_DRY ACE=k TEMP=t DURATION=m`; stop `ACE_STOP_DRYING ACE=k` | |
 
 `ACE_LOAD_HEAD` answers OK and feeds nothing into a head that already holds filament, and
-returns silently for a bay whose gate is empty, which is why the backend sends the unload
-itself and refuses an empty bay before sending anything. `needs_unload_before_load()` is
+returns silently for a bay whose gate is empty. So the backend refuses an empty bay before
+sending anything, and swaps a bay into an occupied head in two steps: the unload goes
+alone, and the load waits (`AmsBackendMultiAce::advance_pending_load`) for a frame showing
+`head_source[h]` null and the head's load latch clear. The unload's OK is not that proof;
+it opens a 15 s window, and a head still occupied when it closes drops the load. A failed
+unload, or any other filament op, drops it at once. `ACE_SWAP_HEAD` would do both in one
+command, but its behaviour outside a print is unconfirmed. `needs_unload_before_load()` is
 false for a bay: the screen's swap ladder would send `T<h>`, which loads no bay.
 
 An ACE head's unload ends at `preload_finish`, not `unload_finish`: multiACE's feed unload

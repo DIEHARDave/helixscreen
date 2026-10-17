@@ -15,6 +15,7 @@
 
 #include <array>
 #include <chrono>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -469,6 +470,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// timeout raises nothing: the feed may still be running, and
     /// channel_state reports its end.
     AmsError dispatch_feed(std::string gcode, const char* complete_event);
+
+    /// dispatch_feed() with the answer handed to the caller: @p on_ok on OK,
+    /// @p on_failed on an error or a timeout. Both run on the main thread.
+    AmsError dispatch_feed(std::string gcode, std::function<void()> on_ok,
+                           std::function<void(const MoonrakerError&)> on_failed);
 
     /// Applied logical-tool -> physical-head routing for the CURRENT print.
     ///

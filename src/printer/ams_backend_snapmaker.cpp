@@ -578,18 +578,25 @@ AmsError AmsBackendSnapmaker::do_unload_filament(int slot_index) {
 }
 
 AmsError AmsBackendSnapmaker::dispatch_feed(std::string gcode, const char* complete_event) {
-    // FEED_AUTO homes itself, and both callbacks run on the main thread.
-    return ensure_homed_then(
+    return dispatch_feed(
         std::move(gcode), [this, complete_event] { emit_event(complete_event); },
         [this](const MoonrakerError& err) {
             if (err.type != MoonrakerErrorType::TIMEOUT) {
                 emit_event(EVENT_ERROR, err.message);
             }
-        },
-        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, /*skip_homing=*/true, /*silent=*/true,
-        // The error callback only ends the operation, so Klipper's `!!`
-        // broadcast stays the thing that shows the user why.
-        /*caller_surfaces_errors=*/false);
+        });
+}
+
+AmsError AmsBackendSnapmaker::dispatch_feed(std::string gcode, std::function<void()> on_ok,
+                                            std::function<void(const MoonrakerError&)> on_failed) {
+    // FEED_AUTO homes itself, and both callbacks run on the main thread.
+    return ensure_homed_then(std::move(gcode), std::move(on_ok), std::move(on_failed),
+                             IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, /*skip_homing=*/true,
+                             /*silent=*/true,
+                             // The error callback only ends the operation, so
+                             // Klipper's `!!` broadcast stays the thing that
+                             // shows the user why.
+                             /*caller_surfaces_errors=*/false);
 }
 
 AmsError AmsBackendSnapmaker::do_filament_batch(const std::vector<int>& slots, bool load) {

@@ -78,11 +78,32 @@ class CapturingMultiAce : public AmsBackendMultiAce {
         sent.push_back(gcode);
         return AmsErrorHelper::success();
     }
-    AmsError execute_gcode(const std::string& gcode, std::function<void()>,
-                           std::function<void(const MoonrakerError&)>, bool) override {
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                           std::function<void(const MoonrakerError&)> on_error, bool) override {
         sent.push_back(gcode);
+        last_ok = std::move(on_complete);
+        last_error = std::move(on_error);
         return AmsErrorHelper::success();
     }
+
+    /// The firmware's answer to the last command, delivered as the base
+    /// delivers it: on the main thread through the update queue.
+    void answer_ok() {
+        REQUIRE(last_ok);
+        last_ok();
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    }
+    void answer_error(const std::string& message) {
+        REQUIRE(last_error);
+        MoonrakerError err;
+        err.type = MoonrakerErrorType::JSON_RPC_ERROR;
+        err.message = message;
+        last_error(err);
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    }
+
+    std::function<void()> last_ok;
+    std::function<void(const MoonrakerError&)> last_error;
 
     void frame(const json& status) {
         SnapmakerTestAccess::handle_status(*this, status);
@@ -317,11 +338,47 @@ TEST_CASE_METHOD(MultiAceFixture, "load into an occupied head unloads first", "[
     REQUIRE(info.current_slot == 0);
     CHECK_FALSE(b.needs_unload_before_load(info, multiace::bay_global(0, 1)));
 
-    // Head 0 is routed from ACE 1 bay 1; loading bay 2 swaps it.
+    // Head 0 is routed from ACE 1 bay 1; loading bay 2 unloads it first, alone.
     REQUIRE(b.load_filament(multiace::bay_global(0, 1)).success());
     REQUIRE(b.sent.size() == 1);
-    CHECK(b.sent[0] == "ACE_UNLOAD_HEAD HEAD=0\nACE_LOAD_HEAD HEAD=0 ACE=0 SLOT=1");
+    CHECK(b.sent[0] == "ACE_UNLOAD_HEAD HEAD=0");
 
+    SECTION("the load goes once a frame shows the head empty") {
+        b.answer_ok();
+        CHECK(b.sent.size() == 1);
+        b.frame(feed_frame(0, "unload_doing"));
+        CHECK(b.sent.size() == 1);
+        json emptied = {{"ace", {{"head_source", {{"2", {{"ace_index", 2}, {"slot", 3}}}}}}}};
+        emptied.update(feed_frame(0, "preload_finish"));
+        b.frame(emptied);
+        REQUIRE(b.sent.size() == 2);
+        CHECK(b.sent[1] == "ACE_LOAD_HEAD HEAD=0 ACE=0 SLOT=1");
+        // Sent once, not on every later frame.
+        b.frame(feed_frame(0, "preload_finish"));
+        CHECK(b.sent.size() == 2);
+    }
+    SECTION("an unload that answers OK while head_source survives loads nothing") {
+        b.answer_ok();
+        b.frame(feed_frame(0, "preload_finish"));
+        b.frame(json{{"ace", {{"swap_phase", "idle"}}}});
+        CHECK(b.sent.size() == 1);
+    }
+    SECTION("a cleared head_source with the head still loaded loads nothing") {
+        b.frame(feed_frame(0, "load_finish"));
+        b.frame(json{{"ace", {{"head_source", json::object()}}}});
+        CHECK(b.sent.size() == 1);
+    }
+    SECTION("a failed unload drops the load") {
+        b.answer_error("unload failed");
+        b.frame(json{{"ace", {{"head_source", json::object()}}}});
+        CHECK(b.sent.size() == 1);
+    }
+    SECTION("another filament op drops the load") {
+        REQUIRE(b.unload_filament(1).success());
+        b.frame(json{{"ace", {{"head_source", json::object()}}}});
+        REQUIRE(b.sent.size() == 2);
+        CHECK(b.sent[1] == "ACE_UNLOAD_HEAD HEAD=1");
+    }
     SECTION("the routed bay of a loaded head is already loaded") {
         b.frame(feed_frame(0, "load_finish"));
         b.sent.clear();
@@ -340,19 +397,43 @@ TEST_CASE_METHOD(MultiAcePrintFixture, "bay swap refused while paused", "[multia
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
 
-TEST_CASE_METHOD(MultiAceFixture, "feeder head keeps the native path", "[multiace]") {
+TEST_CASE_METHOD(MultiAceFixture, "every head goes through the engine while it is active",
+                 "[multiace]") {
     CapturingMultiAce b;
     b.frame(ace_frame("head_mode_2ace_2feeder.json"));
 
+    // Heads 2 and 3 load from their side feeders, but the engine owns the
+    // feed state machine for them too.
     REQUIRE(b.load_filament(2).success());
     REQUIRE(b.unload_filament(3).success());
     REQUIRE(b.load_filament(1).success());
     REQUIRE(b.unload_filament(0).success());
     REQUIRE(b.sent.size() == 4);
-    CHECK(b.sent[0] == "AUTO_FEEDING EXTRUDER=2 LOAD=1");
-    CHECK(b.sent[1] == "AUTO_FEEDING EXTRUDER=3 UNLOAD=1");
+    CHECK(b.sent[0] == "ACE_LOAD_HEAD HEAD=2");
+    CHECK(b.sent[1] == "ACE_UNLOAD_HEAD HEAD=3");
+    // Head mode: the engine picks the wired unit and the head's last bay.
     CHECK(b.sent[2] == "ACE_LOAD_HEAD HEAD=1");
     CHECK(b.sent[3] == "ACE_UNLOAD_HEAD HEAD=0");
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "multi mode always names the bay of a head load", "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("multi_mode_2ace.json"));
+
+    // Head 1 was last fed from ACE 2 bay 2.
+    REQUIRE(b.load_filament(1).success());
+    // Head 3 is manual: the engine loads it by hand-feed rules, no bay.
+    REQUIRE(b.load_filament(3).success());
+    REQUIRE(b.sent.size() == 2);
+    CHECK(b.sent[0] == "ACE_LOAD_HEAD HEAD=1 ACE=1 SLOT=1");
+    CHECK(b.sent[1] == "ACE_LOAD_HEAD HEAD=3");
+
+    // Head 0 has no recorded bay, and a bare load would take the active unit's.
+    b.sent.clear();
+    const AmsError refused = b.load_filament(0);
+    CHECK_FALSE(refused.success());
+    CHECK(refused.user_msg == "Select a filament slot to load");
+    CHECK(b.sent.empty());
 }
 
 TEST_CASE_METHOD(MultiAceFixture, "a routed bay unloads and selects through its head",
@@ -403,7 +484,12 @@ TEST_CASE_METHOD(MultiAceFixture, "batch ops with ACE-fed heads", "[multiace]") 
         b.frame(feed_frame(1, "load_finish"));
         REQUIRE(b.unload_filament_batch({0, 2}).success());
         REQUIRE(b.sent.size() == 1);
-        CHECK(b.sent[0] == "ACE_UNLOAD_HEAD HEAD=0\nAUTO_FEEDING EXTRUDER=2 UNLOAD=1");
+        CHECK(b.sent[0] == "ACE_UNLOAD_HEAD HEAD=0\nACE_UNLOAD_HEAD HEAD=2");
+    }
+    SECTION("a batch load of feeder heads goes through the engine") {
+        REQUIRE(b.load_filament_batch({3, 2}).success());
+        REQUIRE(b.sent.size() == 1);
+        CHECK(b.sent[0] == "ACE_LOAD_HEAD HEAD=3\nACE_LOAD_HEAD HEAD=2");
     }
 }
 

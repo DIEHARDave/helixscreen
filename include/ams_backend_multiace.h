@@ -7,6 +7,8 @@
 #include "multiace_status.h"
 
 #include <array>
+#include <chrono>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>
@@ -72,6 +74,9 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     [[nodiscard]] bool preload_finish_ends_unload_locked(int head) const override;
     void apply_extension_locked(const nlohmann::json& status, bool& changed) override;
 
+    /// The base frame parse, then the deferred bay load it may release.
+    void handle_status(const nlohmann::json& status) override;
+
     /// Bays are painted from each frame and have no lane records to repaint
     /// from; a lane repaint would blank them.
     SlotInfo* cached_slot_locked(int slot_index) override;
@@ -109,6 +114,30 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     /// total_slots with them. Caller holds mutex_.
     void rebuild_units_locked();
 
+    /// A bay load waiting on its head's unload. ACE_LOAD_HEAD feeds nothing
+    /// into a head that still holds filament, so the load is sent only once a
+    /// frame shows the head empty: head_source[head] null and the load latch
+    /// clear. An OK from the unload is not that proof; it starts a grace
+    /// window, and a head still occupied when the window closes drops the load.
+    struct PendingBayLoad {
+        int head = -1;
+        std::pair<int, int> bay{-1, -1};
+        uint64_t id = 0;
+        bool unload_answered = false;
+        std::chrono::steady_clock::time_point deadline{};
+    };
+
+    /// How long after the unload's answer the frames have to show the head
+    /// empty. Moonraker batches status, so the frame can trail the answer.
+    static constexpr std::chrono::seconds kPendingLoadGrace{15};
+
+    /// Drops a pending bay load: another filament op owns the heads now.
+    void cancel_pending_load(const char* why);
+
+    /// Sends the pending bay load when this frame shows its head empty, and
+    /// drops it once its grace window has closed. Main thread, mutex_ not held.
+    void advance_pending_load();
+
     // Engine state, merged across delta frames. All under mutex_.
     std::optional<int> api_version_;
     multiace::Mode mode_ = multiace::Mode::UNKNOWN;
@@ -124,6 +153,10 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     int64_t event_seq_ = -1;
     /// api_version mismatch already logged, so a stream of frames logs once.
     bool api_mismatch_logged_ = false;
+
+    /// Under mutex_.
+    std::optional<PendingBayLoad> pending_load_;
+    uint64_t next_pending_id_ = 1;
 };
 
 } // namespace helix

@@ -334,38 +334,81 @@ bool AmsBackendMultiAce::slot_is_actively_loaded(int slot_index) const {
 // ============================================================================
 
 AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
+    cancel_pending_load("a new load");
     int head = -1;
+    bool engine = false;
+    bool ace_head = false;
     std::optional<std::pair<int, int>> bay;
-    std::optional<std::pair<int, int>> routed;
+    std::optional<std::pair<int, int>> recorded;
+    bool head_has_source = false;
     bool bay_empty = false;
+    multiace::Mode mode = multiace::Mode::UNKNOWN;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        engine = active_locked();
+        mode = mode_;
         if (slot_index >= 0 && slot_index < kHeads) {
-            head = ace_fed_locked(slot_index) ? slot_index : -1;
+            head = engine ? slot_index : -1;
         } else if (const auto h = head_for_global_locked(slot_index)) {
             head = *h;
             bay = multiace::bay_of(slot_index);
-            routed = routed_bay_locked(head);
             const SlotInfo* slot = system_info_.get_slot_global(slot_index);
             bay_empty = !slot || slot->status == SlotStatus::EMPTY;
         } else if (multiace::bay_of(slot_index)) {
             return AmsErrorHelper::not_supported("Loading an ACE bay no toolhead is wired to");
         }
+        if (head >= 0) {
+            ace_head = ace_fed_locked(head);
+            const auto& src = head_source_[static_cast<size_t>(head)];
+            head_has_source = src.has_value();
+            if (src && src->ace >= 0 && src->slot >= 0) {
+                recorded = std::make_pair(src->ace, src->slot);
+            }
+        }
     }
 
     if (head < 0) {
-        // A feeder or manual head, no engine contract, or no slot at all: the
-        // U1's own path, which validates the index.
+        // No engine contract, or no slot at all: the U1's own path, which
+        // validates the index.
         return AmsBackendSnapmaker::do_load_filament(slot_index);
     }
 
     const bool head_loaded = AmsBackendSnapmaker::slot_has_filament_at_toolhead(head);
+    const auto already_loaded = [&] {
+        return AmsErrorHelper::slot_ineligible(
+            lane_noun(), slot_index,
+            filament_op_eligibility_reason(FilamentOpEligibility::AlreadyLoaded));
+    };
+
     if (!bay) {
         if (head_loaded) {
-            return AmsErrorHelper::slot_ineligible(
-                lane_noun(), slot_index,
-                filament_op_eligibility_reason(FilamentOpEligibility::AlreadyLoaded));
+            return already_loaded();
         }
+        if (!ace_head) {
+            // A feeder or manual head: the engine loads it through the side
+            // feeder, under the same feeder preconditions the U1 checks.
+            switch (const auto e = slot_op_eligibility(head, /*load=*/true)) {
+            case FilamentOpEligibility::FeederUnavailable:
+            case FilamentOpEligibility::SensorDisabled:
+                return AmsErrorHelper::slot_ineligible(lane_noun(), slot_index,
+                                                       filament_op_eligibility_reason(e));
+            default:
+                break;
+            }
+            return dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
+        }
+        if (mode == multiace::Mode::MULTI) {
+            // Multi mode defaults a bare load to the globally active unit, not
+            // to anything this head was fed from, so the bay is always named.
+            if (!recorded) {
+                return AmsError(AmsResult::WRONG_STATE,
+                                "multi mode: head " + std::to_string(head) +
+                                    " has no recorded bay to load from",
+                                lv_tr("Select a filament slot to load"), "", slot_index);
+            }
+            return dispatch_feed(multiace::load_gcode(head, recorded), EVENT_LOAD_COMPLETE);
+        }
+        // Head mode defaults to the wired unit and the head's last bay.
         return dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
     }
 
@@ -377,27 +420,118 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
     if (bay_empty) {
         return AmsErrorHelper::slot_not_available(lane_noun(), slot_index);
     }
-    if (routed == bay && head_loaded) {
-        return AmsErrorHelper::slot_ineligible(
-            lane_noun(), slot_index,
-            filament_op_eligibility_reason(FilamentOpEligibility::AlreadyLoaded));
+    if (head_loaded && recorded == bay) {
+        return already_loaded();
+    }
+    if (!head_loaded && !head_has_source) {
+        return dispatch_feed(multiace::load_gcode(head, bay), EVENT_LOAD_COMPLETE);
     }
 
-    // ACE_LOAD_HEAD answers OK and feeds nothing into a head that already
-    // holds filament, so a head holding another bay is unloaded in the same
-    // script. Klipper stops the script at the first line that raises.
-    std::string gcode = multiace::load_gcode(head, bay);
-    if (head_loaded || routed) {
-        gcode = multiace::unload_gcode(head) + "\n" + gcode;
+    // ACE_LOAD_HEAD answers OK and feeds nothing into a head that still holds
+    // filament, so the unload goes alone and the load waits for a frame that
+    // shows the head empty (advance_pending_load()).
+    uint64_t id = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        id = next_pending_id_++;
+        PendingBayLoad pending;
+        pending.head = head;
+        pending.bay = *bay;
+        pending.id = id;
+        pending_load_ = pending;
     }
-    return dispatch_feed(std::move(gcode), EVENT_LOAD_COMPLETE);
+    const auto answered = [this, id] {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (pending_load_ && pending_load_->id == id) {
+            pending_load_->unload_answered = true;
+            pending_load_->deadline = std::chrono::steady_clock::now() + kPendingLoadGrace;
+        }
+    };
+    auto err = dispatch_feed(multiace::unload_gcode(head), answered,
+                             [this, id, answered](const MoonrakerError& e) {
+                                 if (e.type == MoonrakerErrorType::TIMEOUT) {
+                                     // The unload may still be running; the frames decide.
+                                     answered();
+                                     return;
+                                 }
+                                 {
+                                     std::lock_guard<std::mutex> lock(mutex_);
+                                     if (pending_load_ && pending_load_->id == id) {
+                                         pending_load_.reset();
+                                     }
+                                 }
+                                 emit_event(EVENT_ERROR, e.message);
+                             });
+    if (!err.success()) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (pending_load_ && pending_load_->id == id) {
+            pending_load_.reset();
+        }
+    }
+    return err;
+}
+
+void AmsBackendMultiAce::handle_status(const nlohmann::json& status) {
+    AmsBackendSnapmaker::handle_status(status);
+    advance_pending_load();
+}
+
+void AmsBackendMultiAce::cancel_pending_load(const char* why) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pending_load_) {
+        spdlog::info("{} Dropping the load of ACE {} bay {} into head {}: {}", backend_log_tag(),
+                     pending_load_->bay.first + 1, pending_load_->bay.second + 1,
+                     pending_load_->head + 1, why);
+        pending_load_.reset();
+    }
+}
+
+void AmsBackendMultiAce::advance_pending_load() {
+    PendingBayLoad pending;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!pending_load_) {
+            return;
+        }
+        pending = *pending_load_;
+    }
+    // Takes mutex_ itself, so read before the decision below re-takes it.
+    const bool head_loaded = AmsBackendSnapmaker::slot_has_filament_at_toolhead(pending.head);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!pending_load_ || pending_load_->id != pending.id) {
+            return;
+        }
+        const bool empty =
+            !head_loaded && !head_source_[static_cast<size_t>(pending.head)].has_value();
+        if (!active_locked()) {
+            pending_load_.reset();
+            return;
+        }
+        if (!empty) {
+            if (pending.unload_answered && std::chrono::steady_clock::now() > pending.deadline) {
+                spdlog::warn("{} Head {} still holds filament after its unload; not loading ACE "
+                             "{} bay {}",
+                             backend_log_tag(), pending.head + 1, pending.bay.first + 1,
+                             pending.bay.second + 1);
+                pending_load_.reset();
+            }
+            return;
+        }
+        pending_load_.reset();
+    }
+    spdlog::info("{} Head {} is empty; loading ACE {} bay {}", backend_log_tag(), pending.head + 1,
+                 pending.bay.first + 1, pending.bay.second + 1);
+    dispatch_feed(multiace::load_gcode(pending.head, pending.bay), EVENT_LOAD_COMPLETE);
 }
 
 AmsError AmsBackendMultiAce::do_unload_filament(int slot_index) {
+    cancel_pending_load("an unload");
     int head = slot_index;
-    bool ace_head = false;
+    bool engine = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        engine = active_locked();
         if (head < 0) {
             head = system_info_.current_slot;
         }
@@ -408,15 +542,16 @@ AmsError AmsBackendMultiAce::do_unload_filament(int slot_index) {
             }
             head = *h;
         }
-        ace_head = ace_fed_locked(head);
     }
-    if (!ace_head) {
+    if (!engine || head < 0) {
         return AmsBackendSnapmaker::do_unload_filament(head);
     }
+    // Every head, ACE-fed or not: the engine owns the feed state machine.
     return dispatch_feed(multiace::unload_gcode(head), EVENT_UNLOAD_COMPLETE);
 }
 
 AmsError AmsBackendMultiAce::do_select_slot(int slot_index) {
+    cancel_pending_load("a tool change");
     if (slot_index < kHeads) {
         return AmsBackendSnapmaker::do_select_slot(slot_index);
     }
@@ -439,12 +574,14 @@ AmsError AmsBackendMultiAce::do_select_slot(int slot_index) {
 }
 
 AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bool load) {
+    cancel_pending_load("a batch operation");
     std::vector<int> heads;
-    std::vector<bool> ace_heads;
-    std::vector<int> loaded_heads;
+    bool engine = false;
+    bool any_ace = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (active_locked()) {
+        engine = active_locked();
+        if (engine) {
             for (int s : slots) {
                 int head = s;
                 if (s >= kHeads) {
@@ -454,43 +591,52 @@ AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bo
                     }
                     head = *h;
                 }
+                if (head < 0 || head >= kHeads) {
+                    return validate_slot_index_locked(head);
+                }
                 if (std::find(heads.begin(), heads.end(), head) == heads.end()) {
                     heads.push_back(head);
-                    ace_heads.push_back(ace_fed_locked(head));
+                    any_ace = any_ace || ace_fed_locked(head);
                 }
             }
         }
     }
-    const bool any_ace = std::find(ace_heads.begin(), ace_heads.end(), true) != ace_heads.end();
-    if (!any_ace) {
+    if (!engine) {
         return AmsBackendSnapmaker::do_filament_batch(slots, load);
     }
-    if (load) {
+    if (heads.empty()) {
+        return AmsErrorHelper::invalid_parameter("empty batch");
+    }
+    if (load && any_ace) {
         return AmsErrorHelper::not_supported("Batch load into ACE-fed toolheads");
     }
 
-    for (int h = 0; h < kHeads; ++h) {
-        if (AmsBackendSnapmaker::slot_has_filament_at_toolhead(h)) {
-            loaded_heads.push_back(h);
+    if (!load) {
+        std::vector<int> loaded_heads;
+        for (int h = 0; h < kHeads; ++h) {
+            if (AmsBackendSnapmaker::slot_has_filament_at_toolhead(h)) {
+                loaded_heads.push_back(h);
+            }
+        }
+        std::vector<int> sorted = heads;
+        std::sort(sorted.begin(), sorted.end());
+        if (!loaded_heads.empty() && sorted == loaded_heads) {
+            // The engine's own unload-all, whose sequencing covers every
+            // loaded head, ACE-fed or not.
+            return dispatch_feed(multiace::unload_all_gcode(), EVENT_UNLOAD_COMPLETE);
         }
     }
-    std::vector<int> sorted = heads;
-    std::sort(sorted.begin(), sorted.end());
-    if (!loaded_heads.empty() && sorted == loaded_heads) {
-        // The engine's own unload-all, whose sequencing covers every loaded
-        // head, ACE-fed or not.
-        return dispatch_feed(multiace::unload_all_gcode(), EVENT_UNLOAD_COMPLETE);
-    }
 
+    // One engine command per head; Klipper stops the script at the first one
+    // that raises.
     std::string script;
-    for (size_t i = 0; i < heads.size(); ++i) {
+    for (int h : heads) {
         if (!script.empty()) {
             script += "\n";
         }
-        script += ace_heads[i] ? multiace::unload_gcode(heads[i])
-                               : batch_feed_gcode({heads[i]}, /*load=*/false);
+        script += load ? multiace::load_gcode(h, std::nullopt) : multiace::unload_gcode(h);
     }
-    return dispatch_feed(std::move(script), EVENT_UNLOAD_COMPLETE);
+    return dispatch_feed(std::move(script), load ? EVENT_LOAD_COMPLETE : EVENT_UNLOAD_COMPLETE);
 }
 
 // ============================================================================
