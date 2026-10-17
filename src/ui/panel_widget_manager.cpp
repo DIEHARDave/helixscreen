@@ -873,8 +873,9 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
     } else if (widget_config.has_pending_anchors()) {
         if (content_box_measured && printer_ready) {
             // A layout the printer's own screen published replaces the default
-            // before it is ever applied.
-            if (!HomeLayoutSync::instance().seed_pending_default(widget_config, grid_dims.cols,
+            // before it is ever applied, unless the layout is being edited.
+            if (widget_config.edit_session_open() ||
+                !HomeLayoutSync::instance().seed_pending_default(widget_config, grid_dims.cols,
                                                                  grid_dims.rows)) {
                 widget_config.apply_pending_anchors(grid_dims.cols, grid_dims.rows);
             }

@@ -241,6 +241,22 @@ The mock client connects over loopback, which always reads as same-host — this
 HELIX_MOCK_REMOTE_PRINTER=1 ./build/bin/helix-screen --test -vv
 ```
 
+### `HELIX_MOCK_HOME_LAYOUT`
+
+**Published home layout:** Pre-seeds the mock Moonraker database's `helix-screen` / `home_layout` record, the one a printer's own screen publishes its home layout to.
+
+| Property | Value |
+|----------|-------|
+| **Values** | Path to a JSON file holding the published payload (`schema`, `grid`, `main_page_index`, `pages`) |
+| **Default** | unset (no layout published) |
+| **File** | `src/api/moonraker_client_mock.cpp` (constructor); payload shape in `include/home_layout_share.h` |
+
+Pair it with `HELIX_MOCK_REMOTE_PRINTER=1` and a fresh `HELIX_CONFIG_DIR` to watch a new remote client seed its home layout; an unreadable file logs a warning and publishes nothing.
+
+```bash
+HELIX_MOCK_REMOTE_PRINTER=1 HELIX_MOCK_HOME_LAYOUT=/tmp/layout.json ./build/bin/helix-screen --test -vv
+```
+
 #### Seeing the Adaptive Bed Mesh toggle
 
 Adaptive bed mesh is a property of the **single** Bed Mesh pre-print option (on a

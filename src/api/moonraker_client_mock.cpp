@@ -12,6 +12,7 @@
 #include "env_knobs.h"
 #include "gcode_parser.h"
 #include "helix_thread.h"
+#include "home_layout_share.h"
 #include "macro_param_cache.h"
 #include "mock_persona.h"
 #include "mock_planted_gcodes.h"
@@ -173,6 +174,23 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
     }
     panda_breath_offline_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_OFFLINE");
     panda_breath_auto_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_AUTO");
+
+    // HELIX_MOCK_HOME_LAYOUT=<json file> pre-seeds the database record the
+    // printer's own screen publishes its home layout to.
+    if (const char* layout_path = std::getenv("HELIX_MOCK_HOME_LAYOUT");
+        layout_path && *layout_path) {
+        std::ifstream layout_file(layout_path);
+        json layout = layout_file.good() ? json::parse(layout_file, nullptr, false) : json();
+        if (layout.is_discarded() || !layout.is_object()) {
+            spdlog::warn("[MoonrakerClientMock] HELIX_MOCK_HOME_LAYOUT '{}' is not a readable "
+                         "JSON object",
+                         layout_path);
+        } else {
+            mock_db_set(helix::home_layout::kNamespace, helix::home_layout::kKey, layout);
+            spdlog::info("[MoonrakerClientMock] Pre-seeded the published home layout from '{}'",
+                         layout_path);
+        }
+    }
 
     // Initialize idle timeout tracking
     last_activity_time_ = std::chrono::steady_clock::now();

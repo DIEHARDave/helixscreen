@@ -97,6 +97,10 @@ class HomeLayoutSync {
         Layout layout;
     };
 
+    /// Import @p seed into @p config on a @p cols x @p rows grid, log and toast.
+    /// False, with @p config untouched, when the import refuses it.
+    bool import_seed(PanelWidgetConfig& config, const Layout& seed, int cols, int rows);
+
     using ReplyHandler = std::function<void(std::optional<Layout>)>;
 
     /// Request the published layout; @p on_reply runs on the main thread,

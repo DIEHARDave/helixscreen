@@ -754,3 +754,52 @@ TEST_CASE_METHOD(SeedPopulateFixture, "late reply skips the import while home is
     CHECK(toasts.empty());
     CHECK(capture.count_containing("Home is being edited") == 1);
 }
+
+TEST_CASE_METHOD(SeedPopulateFixture, "late reply whose import is refused leaves the layout alone",
+                 "[home_layout_sync][seed]") {
+    const auto defaults = default_seats();
+
+    LogCapture capture;
+    connect_remote_with(unknown_widget_payload());
+
+    CHECK(seats() == defaults);
+    CHECK(home().is_unedited_default());
+    CHECK(toasts.empty());
+    CHECK(capture.count_containing("did not import") == 1);
+    CHECK_FALSE(HomeLayoutSync::instance().take_seed("printer_a").has_value());
+}
+
+TEST_CASE_METHOD(SeedPopulateFixture,
+                 "late reply with no grid and no pending anchors keeps the seed",
+                 "[home_layout_sync][seed]") {
+    global_config_->set<json>(
+        home_path(),
+        json{{"main_page_index", 0},
+             {"pages", json::array({json{{"id", "main"},
+                                         {"widgets", json::array({json{{"id", "temperature"},
+                                                                       {"enabled", true}}})}}})}});
+    auto& mgr = PanelWidgetManager::instance();
+    home().mark_dirty();
+    mgr.clear_panel_config("home");
+    REQUIRE_FALSE(home().has_pending_anchors());
+    REQUIRE(home().stamped_grid() == std::pair<int, int>(0, 0));
+
+    connect_remote_with(valid_published_payload());
+
+    CHECK(toasts.empty());
+    CHECK(HomeLayoutSync::instance().take_seed("printer_a").has_value());
+}
+
+TEST_CASE_METHOD(SeedPopulateFixture, "populate while home is being edited does not take the seed",
+                 "[home_layout_sync][seed]") {
+    connect_remote_with(valid_published_payload());
+    REQUIRE(home().has_pending_anchors());
+    home().set_edit_session_open(true);
+
+    populate();
+    home().set_edit_session_open(false);
+
+    CHECK(toasts.empty());
+    CHECK(home().is_unedited_default());
+    CHECK(HomeLayoutSync::instance().take_seed("printer_a").has_value());
+}

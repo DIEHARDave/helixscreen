@@ -117,6 +117,20 @@ void HomeLayoutSync::fetch_now(std::function<void(std::optional<Layout>)> done) 
         });
 }
 
+bool HomeLayoutSync::import_seed(PanelWidgetConfig& config, const Layout& seed, int cols,
+                                 int rows) {
+    if (!config.import_layout(seed, cols, rows)) {
+        spdlog::info("[HomeLayoutSync] The printer's home layout did not import; keeping the "
+                     "default layout");
+        return false;
+    }
+    spdlog::info("[HomeLayoutSync] Seeded the home layout from the printer's screen ({}x{} onto "
+                 "{}x{})",
+                 seed.cols, seed.rows, cols, rows);
+    show_seeded_toast();
+    return true;
+}
+
 bool HomeLayoutSync::seed_pending_default(PanelWidgetConfig& config, int cols, int rows) {
     if (config.panel_id() != kHomePanelId) {
         return false;
@@ -125,16 +139,7 @@ bool HomeLayoutSync::seed_pending_default(PanelWidgetConfig& config, int cols, i
     if (!seed) {
         return false;
     }
-    if (!config.import_layout(*seed, cols, rows)) {
-        spdlog::info("[HomeLayoutSync] The printer's home layout did not import; using the "
-                     "default layout");
-        return false;
-    }
-    spdlog::info("[HomeLayoutSync] Seeded the home layout from the printer's screen ({}x{} onto "
-                 "{}x{})",
-                 seed->cols, seed->rows, cols, rows);
-    show_seeded_toast();
-    return true;
+    return import_seed(config, *seed, cols, rows);
 }
 
 void HomeLayoutSync::adopt_late_seed(const std::string& printer_id) {
@@ -160,16 +165,9 @@ void HomeLayoutSync::adopt_late_seed(const std::string& printer_id) {
         spdlog::debug("[HomeLayoutSync] Home layout is the user's own; ignoring the printer's");
         return;
     }
-    if (!config.import_layout(*seed, cols, rows)) {
-        spdlog::info("[HomeLayoutSync] The printer's home layout did not import; keeping the "
-                     "default layout");
-        return;
+    if (import_seed(config, *seed, cols, rows)) {
+        manager.notify_config_changed(kHomePanelId);
     }
-    spdlog::info("[HomeLayoutSync] Replaced the default home layout with the printer's ({}x{} "
-                 "onto {}x{})",
-                 seed->cols, seed->rows, cols, rows);
-    manager.notify_config_changed(kHomePanelId);
-    show_seeded_toast();
 }
 
 void HomeLayoutSync::set_seed_listener(std::function<void(const std::string&)> fn) {
