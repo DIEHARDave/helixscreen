@@ -595,13 +595,13 @@ TEST_CASE("emission follows time, not frame rate", "[screensaver][aqua][droplets
     // Which crests qualify depends on the rate of rise each frame measures, so one seed's
     // count wanders a little between frame rates; summed over several it holds.
     const auto emitted = [](uint32_t period, uint32_t seed) {
-        TestFrame frame(200, 120, PixelFormat::RGB565);
+        TestFrame frame(80, 48, PixelFormat::RGB565);
         std::minstd_rand rng(seed);
         AquaSim sim;
         const ClockReading r = reading_at(9 * 3600);
         sim.init(frame.target, rng, 1, r);
         std::vector<DirtyRect> dirty;
-        for (uint32_t t = 0; t < 120000; t += period) {
+        for (uint32_t t = 0; t < 60000; t += period) {
             sim.step(period, frame.target, rng, r, dirty);
         }
         return static_cast<double>(sim.splashes().emitted());
@@ -609,12 +609,12 @@ TEST_CASE("emission follows time, not frame rate", "[screensaver][aqua][droplets
     double fast = 0.0;
     double slow = 0.0;
     for (const uint32_t seed : {3u, 4u, 5u, 6u}) {
-        fast += emitted(16, seed);
-        slow += emitted(50, seed);
+        fast += emitted(33, seed);
+        slow += emitted(100, seed);
     }
-    REQUIRE(slow > 80.0);
+    REQUIRE(slow > 300.0);
     CHECK(fast == Catch::Approx(slow).epsilon(0.15));
-    // A per-frame emission would throw about three times as many at 16 ms frames.
+    // A per-frame emission would throw about three times as many at 33 ms frames.
     CHECK(fast < 1.5 * slow);
 }
 
