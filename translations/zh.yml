@@ -268,6 +268,8 @@ translations:
   Archive Spool?: 归档料盘？
   Are you sure you want to cancel this print? All progress will be lost.: 确定要取消此打印吗？所有进度将丢失。
   Are you sure? This will power off or restart this device.: 确定吗？这将关闭或重启此设备。
+  Arrows + Home: '方向键 + 归位'
+  Arrows: '方向键'
   Ask before switching to another tool: '切换到其他工具前先询问'
   Ask for parameters: '询问参数'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: 分配 Klipper
@@ -305,6 +307,7 @@ translations:
   Available Networks: 可用网络
   Available networks: 可用网络
   Average: 平均值
+  Axis Rows: '按轴分行'
   Axis limits unknown: 轴限位未知
   B · 1,1: "B · 1,1"
   BACK: 后侧
@@ -943,6 +946,7 @@ translations:
   Distance from lane extruder to hub: '从耗材通道挤出机到集线器的距离'
   Distance from toolhead sensor to nozzle tip: '从工具头传感器到喷嘴尖端的距离'
   Distance moved per jog button tap: 每按一次移动按钮移动的距离
+  Distance moved per jog button tap. The arrow layouts offer every distance as a step.: '每按一次移动按钮移动的距离。方向键布局将每个距离作为步进提供。'
   Do not power off your printer.: 请勿关闭打印机电源。
   Do not touch the printer during calibration: 校准期间请勿触碰打印机
   Dock: 归位
@@ -1558,6 +1562,7 @@ translations:
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : '按住多久才算长按（毫秒）。若编辑模式等误触发，请调大'
   How many labels to print: 打印多少张标签
+  How the Jog tab arranges its buttons: '点动页按钮的排列方式'
   How the toolhead icon appears: 工具头图标的显示方式
   Hub: 集线器
   Hub & Cutter: '集线器与切刀'
@@ -1664,11 +1669,13 @@ translations:
   Job Queue: 任务队列
   Job queue not enabled in Moonraker: 'Moonraker 未启用任务队列'
   Jog: '点动'
+  Jog Pad: '点动盘'
   Jog Speed XY: XY 移动速度
   Jog Speed Z: Z 移动速度
   Jog Y until the nozzle is centered over the chute opening, then tap Save.: 点动 Y 轴，直到喷嘴位于排料口开口中心，然后点击保存。
 
   'Jog failed: {}': '移动失败: {}'
+  Jog layout, speeds and step distances: '点动布局、速度与步进距离'
   Jog speeds and step distances: 移动速度与步进距离
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: 加入
     HelixScreen 的 Discord 社区，参与讨论、获取技巧、故障排除帮助和功能请求。
@@ -3945,6 +3952,7 @@ translations:
   '{} LED strips available': '{} 条 LED 灯带可用'
   '{} and {} are both mapped here': '{} 和 {} 都映射到这里'
   '{} available': '{} 可用'
+  '{} axes homed': '{} 轴已归位'
   '{} axis homed': '{} 轴已归位'
   '{} cannot be skipped: its name has characters the printer cannot be sent': '无法排除 {}：名称包含无法发送到打印机的字符'
   '{} changed': '{} 个已更改'

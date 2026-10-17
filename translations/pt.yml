@@ -289,6 +289,8 @@ translations:
     de que deseja cancelar esta impressão? Todo o progresso será perdido.
   Are you sure? This will power off or restart this device.: Tem certeza? Isso desligará
     ou reiniciará este dispositivo.
+  Arrows + Home: 'Setas + Início'
+  Arrows: 'Setas'
   Ask before switching to another tool: 'Perguntar antes de trocar para outra ferramenta'
   Ask for parameters: 'Perguntar parâmetros'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Atribuir macros
@@ -330,6 +332,7 @@ translations:
   Available Networks: Redes Disponíveis
   Available networks: Redes disponíveis
   Average: Média
+  Axis Rows: 'Linhas por eixo'
   Axis limits unknown: Limites do eixo desconhecidos
   B · 1,1: "B · 1,1"
   BACK: TRÁS
@@ -1015,6 +1018,7 @@ translations:
   Distance from lane extruder to hub: 'Distância do extrusor da lane ao hub'
   Distance from toolhead sensor to nozzle tip: 'Distância do sensor do cabeçote à ponta do bico'
   Distance moved per jog button tap: Distância movida por toque no botão de movimento
+  Distance moved per jog button tap. The arrow layouts offer every distance as a step.: 'Distância movida por toque no botão de movimento. As disposições com setas oferecem cada distância como passo.'
   Do not power off your printer.: Não desligue sua impressora.
   Do not touch the printer during calibration: Não toque na impressora durante a calibração
   Dock: Encaixar
@@ -1663,6 +1667,7 @@ translations:
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Quanto tempo segurar para contar como pressão longa, em ms (aumente se o modo de edição ou outras ações dispararem por acidente)'
   How many labels to print: Quantas etiquetas imprimir
+  How the Jog tab arranges its buttons: 'Como a aba Jog organiza os seus botões'
   How the toolhead icon appears: Como o ícone do cabeçote aparece
   Hub: Hub
   Hub & Cutter: 'Hub e cortador'
@@ -1782,11 +1787,13 @@ translations:
   Job Queue: Fila de Trabalhos
   Job queue not enabled in Moonraker: 'Fila de trabalhos não ativada no Moonraker'
   Jog: Jog
+  Jog Pad: 'Pad de jog'
   Jog Speed XY: Velocidade de movimento XY
   Jog Speed Z: Velocidade de movimento Z
   Jog Y until the nozzle is centered over the chute opening, then tap Save.: Mova Y até o bocal ficar centralizado sobre a abertura da calha e toque em Salvar.
 
   'Jog failed: {}': 'Falha ao mover: {}'
+  Jog layout, speeds and step distances: 'Disposição, velocidades e distâncias de passo do movimento'
   Jog speeds and step distances: Velocidades de movimento e distâncias de passo
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: Participe
     da comunidade HelixScreen no Discord para discussões, dicas, ajuda na solução
@@ -4216,6 +4223,7 @@ translations:
   '{} LED strips available': '{} fitas de LED disponíveis'
   '{} and {} are both mapped here': '{} e {} estão ambos atribuídos aqui'
   '{} available': '{} disponível'
+  '{} axes homed': 'Eixos {} referenciados'
   '{} axis homed': Eixo {} referenciado
   '{} cannot be skipped: its name has characters the printer cannot be sent': '{} não pode ser excluído: o nome tem caracteres que não podem ser enviados à impressora'
   '{} changed': '{} alterado(s)'

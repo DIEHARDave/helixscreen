@@ -294,6 +294,8 @@ translations:
     verloren.
   Are you sure? This will power off or restart this device.: Sind Sie sicher? Dies
     schaltet dieses Gerät aus oder startet es neu.
+  Arrows + Home: 'Pfeile + Home'
+  Arrows: 'Pfeile'
   Ask before switching to another tool: 'Vor dem Wechsel zu einem anderen Werkzeug fragen'
   Ask for parameters: 'Nach Parametern fragen'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Klipper-Makros
@@ -335,6 +337,7 @@ translations:
   Available Networks: Verfügbare Netzwerke
   Available networks: Verfügbare Netzwerke
   Average: Durchschnitt
+  Axis Rows: 'Achsenreihen'
   Axis limits unknown: Achsgrenzen unbekannt
   B · 1,1: "B · 1,1"
   BACK: HINTEN
@@ -1019,6 +1022,7 @@ translations:
   Distance from lane extruder to hub: 'Abstand vom Spurextruder zum Hub'
   Distance from toolhead sensor to nozzle tip: 'Abstand vom Werkzeugkopfsensor zur Düsenspitze'
   Distance moved per jog button tap: Strecke pro Tipp auf eine Bewegungstaste
+  Distance moved per jog button tap. The arrow layouts offer every distance as a step.: 'Strecke pro Tipp auf eine Bewegungstaste. Die Pfeil-Layouts bieten jede Strecke als Schritt an.'
   Do not power off your printer.: Drucker nicht ausschalten.
   Do not touch the printer during calibration: Drucker während der Kalibrierung nicht
     berühren
@@ -1671,6 +1675,7 @@ translations:
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Wie lange gedrückt werden muss, damit es als langes Drücken zählt, in ms (erhöhen, wenn der Bearbeitungsmodus oder andere Aktionen versehentlich auslösen)'
   How many labels to print: Wie viele Etiketten drucken
+  How the Jog tab arranges its buttons: 'Wie der Verfahren-Tab seine Tasten anordnet'
   How the toolhead icon appears: Darstellung des Toolhead-Symbols
   Hub: Hub
   Hub & Cutter: 'Hub & Schneider'
@@ -1789,11 +1794,13 @@ translations:
   Job Queue: Auftragswarteschlange
   Job queue not enabled in Moonraker: 'Auftragswarteschlange in Moonraker nicht aktiviert'
   Jog: 'Verfahren'
+  Jog Pad: 'Verfahrpad'
   Jog Speed XY: Bewegungsgeschwindigkeit XY
   Jog Speed Z: Bewegungsgeschwindigkeit Z
   Jog Y until the nozzle is centered over the chute opening, then tap Save.: Verfahren Sie Y, bis die Düse mittig über der Rinnenöffnung steht, und tippen Sie dann auf Speichern.
 
   'Jog failed: {}': 'Bewegung fehlgeschlagen: {}'
+  Jog layout, speeds and step distances: 'Verfahr-Layout, Geschwindigkeiten und Schrittweiten'
   Jog speeds and step distances: Bewegungsgeschwindigkeiten und Schrittweiten
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: Tritt
     der HelixScreen-Community auf Discord bei für Diskussionen, Tipps, Hilfe zur Fehlerbehebung
@@ -4222,6 +4229,7 @@ translations:
   '{} LED strips available': '{} LED-Streifen verfügbar'
   '{} and {} are both mapped here': '{} und {} sind beide hier zugewiesen'
   '{} available': '{} verfügbar'
+  '{} axes homed': '{}-Achsen referenziert'
   '{} axis homed': '{}-Achse referenziert'
   '{} cannot be skipped: its name has characters the printer cannot be sent': '{} kann nicht ausgeschlossen werden: Der Name enthält Zeichen, die nicht an den Drucker gesendet werden können'
   '{} changed': '{} geändert'

@@ -329,6 +329,8 @@ translations:
     что хотите отменить печать? Весь прогресс будет потерян.
   Are you sure? This will power off or restart this device.: Вы уверены? Это выключит
     или перезагрузит данное устройство.
+  Arrows + Home: 'Стрелки + Домой'
+  Arrows: 'Стрелки'
   Ask before switching to another tool: 'Спрашивать перед переключением на другой инструмент'
   Ask for parameters: 'Спрашивать параметры'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Назначьте
@@ -373,6 +375,7 @@ translations:
   Available Networks: Доступные сети
   Available networks: Доступные сети
   Average: Среднее
+  Axis Rows: 'Ряды по осям'
   Axis limits unknown: Границы оси неизвестны
   B · 1,1: "B · 1,1"
   BACK: ЗАД
@@ -1058,6 +1061,7 @@ translations:
   Distance from lane extruder to hub: 'Расстояние от канала экструдера до хаба'
   Distance from toolhead sensor to nozzle tip: 'Расстояние от датчика печатающей головки до кончика сопла'
   Distance moved per jog button tap: Расстояние за одно нажатие кнопки перемещения
+  Distance moved per jog button tap. The arrow layouts offer every distance as a step.: 'Расстояние за одно нажатие кнопки перемещения. Раскладки со стрелками предлагают каждое расстояние как шаг.'
   Do not power off your printer.: Не выключайте принтер.
   Do not touch the printer during calibration: Не трогайте принтер во время калибровки
   Dock: Парковать
@@ -1703,6 +1707,7 @@ translations:
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : 'Сколько удерживать, чтобы нажатие считалось долгим, в мс (увеличьте, если режим редактирования срабатывает случайно)'
   How many labels to print: Сколько этикеток напечатать
+  How the Jog tab arranges its buttons: 'Как вкладка «Джог» располагает кнопки'
   How the toolhead icon appears: Как отображается значок печатающей головки
   Hub: Хаб
   Hub & Cutter: 'Хаб и резак'
@@ -1822,11 +1827,13 @@ translations:
   Job Queue: Очередь заданий
   Job queue not enabled in Moonraker: 'Очередь заданий не включена в Moonraker'
   Jog: 'Джог'
+  Jog Pad: 'Джог-панель'
   Jog Speed XY: Скорость перемещения XY
   Jog Speed Z: Скорость перемещения Z
   Jog Y until the nozzle is centered over the chute opening, then tap Save.: Двигайте Y, пока сопло не встанет по центру отверстия жёлоба, затем нажмите «Сохранить».
 
   'Jog failed: {}': 'Перемещение не удалось: {}'
+  Jog layout, speeds and step distances: 'Раскладка, скорости и шаги перемещения'
   Jog speeds and step distances: Скорости и шаги перемещения
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: Присоединяйтесь
     к сообществу HelixScreen в Discord для обсуждений, советов, помощи в устранении
@@ -4254,6 +4261,7 @@ translations:
   '{} LED strips available': 'Доступно светодиодных лент: {}'
   '{} and {} are both mapped here': '{} и {} оба назначены сюда'
   '{} available': Доступна версия {}
+  '{} axes homed': 'Оси {} запаркованы'
   '{} axis homed': Ось {} запаркована
   '{} cannot be skipped: its name has characters the printer cannot be sent': '{} нельзя исключить: имя содержит символы, которые нельзя отправить на принтер'
   '{} changed': 'изменено: {}'

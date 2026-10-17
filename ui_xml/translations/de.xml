@@ -265,6 +265,8 @@
   <translation tag="Archive Spool?" de="Spule archivieren?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." de="Sind Sie sicher, dass Sie diesen Druck abbrechen möchten? Der gesamte Fortschritt geht verloren."/>
   <translation tag="Are you sure? This will power off or restart this device." de="Sind Sie sicher? Dies schaltet dieses Gerät aus oder startet es neu."/>
+  <translation tag="Arrows" de="Pfeile"/>
+  <translation tag="Arrows + Home" de="Pfeile + Home"/>
   <translation tag="Ask before switching to another tool" de="Vor dem Wechsel zu einem anderen Werkzeug fragen"/>
   <translation tag="Ask for parameters" de="Nach Parametern fragen"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" de="Klipper-Makros zuweisen, um LEDs per Ein/Aus, Umschalten oder Voreinstellungen zu steuern"/>
@@ -301,6 +303,7 @@
   <translation tag="Available Networks" de="Verfügbare Netzwerke"/>
   <translation tag="Available networks" de="Verfügbare Netzwerke"/>
   <translation tag="Average" de="Durchschnitt"/>
+  <translation tag="Axis Rows" de="Achsenreihen"/>
   <translation tag="Axis limits unknown" de="Achsgrenzen unbekannt"/>
   <translation tag="B · 1,1" de="B · 1,1"/>
   <translation tag="BACK" de="HINTEN"/>
@@ -915,6 +918,7 @@
   <translation tag="Distance from lane extruder to hub" de="Abstand vom Spurextruder zum Hub"/>
   <translation tag="Distance from toolhead sensor to nozzle tip" de="Abstand vom Werkzeugkopfsensor zur Düsenspitze"/>
   <translation tag="Distance moved per jog button tap" de="Strecke pro Tipp auf eine Bewegungstaste"/>
+  <translation tag="Distance moved per jog button tap. The arrow layouts offer every distance as a step." de="Strecke pro Tipp auf eine Bewegungstaste. Die Pfeil-Layouts bieten jede Strecke als Schritt an."/>
   <translation tag="Do not power off your printer." de="Drucker nicht ausschalten."/>
   <translation tag="Do not touch the printer during calibration" de="Drucker während der Kalibrierung nicht berühren"/>
   <translation tag="Dock" de="Andocken"/>
@@ -1507,6 +1511,7 @@
   <translation tag="How far filament is pushed back into the box on eject (mm)" de="Wie weit das Filament beim Auswerfen in die Box zurückgeschoben wird (mm)"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" de="Wie lange gedrückt werden muss, damit es als langes Drücken zählt, in ms (erhöhen, wenn der Bearbeitungsmodus oder andere Aktionen versehentlich auslösen)"/>
   <translation tag="How many labels to print" de="Wie viele Etiketten drucken"/>
+  <translation tag="How the Jog tab arranges its buttons" de="Wie der Verfahren-Tab seine Tasten anordnet"/>
   <translation tag="How the toolhead icon appears" de="Darstellung des Toolhead-Symbols"/>
   <translation tag="Hub" de="Hub"/>
   <translation tag="Hub &amp; Cutter" de="Hub &amp; Schneider"/>
@@ -1609,10 +1614,12 @@
   <translation tag="Job Queue" de="Auftragswarteschlange"/>
   <translation tag="Job queue not enabled in Moonraker" de="Auftragswarteschlange in Moonraker nicht aktiviert"/>
   <translation tag="Jog" de="Verfahren"/>
+  <translation tag="Jog Pad" de="Verfahrpad"/>
   <translation tag="Jog Speed XY" de="Bewegungsgeschwindigkeit XY"/>
   <translation tag="Jog Speed Z" de="Bewegungsgeschwindigkeit Z"/>
   <translation tag="Jog Y until the nozzle is centered over the chute opening, then tap Save." de="Verfahren Sie Y, bis die Düse mittig über der Rinnenöffnung steht, und tippen Sie dann auf Speichern."/>
   <translation tag="Jog failed: {}" de="Bewegung fehlgeschlagen: {}"/>
+  <translation tag="Jog layout, speeds and step distances" de="Verfahr-Layout, Geschwindigkeiten und Schrittweiten"/>
   <translation tag="Jog speeds and step distances" de="Bewegungsgeschwindigkeiten und Schrittweiten"/>
   <translation tag="Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests." de="Tritt der HelixScreen-Community auf Discord bei für Diskussionen, Tipps, Hilfe zur Fehlerbehebung und Funktionswünsche."/>
   <translation tag="Joining Wi-Fi disconnects the wired network." de="Mit WiFi verbinden trennt das kabelgebundene Netzwerk."/>
@@ -3778,6 +3785,7 @@
   <translation tag="{} LED strips available" de="{} LED-Streifen verfügbar"/>
   <translation tag="{} and {} are both mapped here" de="{} und {} sind beide hier zugewiesen"/>
   <translation tag="{} available" de="{} verfügbar"/>
+  <translation tag="{} axes homed" de="{}-Achsen referenziert"/>
   <translation tag="{} axis homed" de="{}-Achse referenziert"/>
   <translation tag="{} cannot be skipped: its name has characters the printer cannot be sent" de="{} kann nicht ausgeschlossen werden: Der Name enthält Zeichen, die nicht an den Drucker gesendet werden können"/>
   <translation tag="{} changed" de="{} geändert"/>

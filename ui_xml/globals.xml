@@ -518,6 +518,25 @@
     <px name="button_height_sm_xlarge" value="48"/>
     <px name="button_height_sm_xxlarge" value="56"/>
 
+    <!-- jog_mode_h / jog_mode_w: a jog mode key in the pad layout (icon over
+         label). The height holds touch_target_min; the width cap keeps the key
+         within 1.4x its height, so a wide row centres its keys instead of
+         stretching them into bars. -->
+    <px name="jog_mode_h_micro" value="48"/>
+    <px name="jog_mode_h_tiny" value="48"/>
+    <px name="jog_mode_h_small" value="56"/>
+    <px name="jog_mode_h_medium" value="64"/>
+    <px name="jog_mode_h_large" value="80"/>
+    <px name="jog_mode_h_xlarge" value="88"/>
+    <px name="jog_mode_h_xxlarge" value="104"/>
+    <px name="jog_mode_w_micro" value="67"/>
+    <px name="jog_mode_w_tiny" value="67"/>
+    <px name="jog_mode_w_small" value="78"/>
+    <px name="jog_mode_w_medium" value="90"/>
+    <px name="jog_mode_w_large" value="112"/>
+    <px name="jog_mode_w_xlarge" value="123"/>
+    <px name="jog_mode_w_xxlarge" value="145"/>
+
     <!-- touch_target_min: the least height a tappable control may have, whatever
          the breakpoint; a compact layout trades width or rows, never this.
          One exception: an action prompt's swatch grid keeps every color visible,
@@ -572,7 +591,7 @@
     <!-- Other component dimensions -->
     <!-- header_height is responsive: _small/_medium/_large registered as header_height based on screen height -->
     <px name="header_height_micro" value="28"/>
-    <px name="header_height_tiny" value="32"/>
+    <px name="header_height_tiny" value="33"/>
     <px name="header_height_small" value="48"/>
     <px name="header_height_medium" value="56"/>
     <px name="header_height_large" value="60"/>
@@ -775,6 +794,17 @@
     <string name="font_body_xlarge" value="noto_sans_24"/>
     <string name="font_body_xxlarge" value="noto_sans_32"/>
     <!-- NO BASE font_body - registered at runtime -->
+    <!-- font_jog_key variants: the Axis Rows jog keys. Body text where the keys
+         are small; the heading face from large up, where a body label leaves
+         most of a key empty. Each value is a face its tier already links. -->
+    <string name="font_jog_key_micro" value="noto_sans_12"/>
+    <string name="font_jog_key_tiny" value="noto_sans_12"/>
+    <string name="font_jog_key_small" value="noto_sans_14"/>
+    <string name="font_jog_key_medium" value="noto_sans_18"/>
+    <string name="font_jog_key_large" value="noto_sans_28"/>
+    <string name="font_jog_key_xlarge" value="noto_sans_32"/>
+    <string name="font_jog_key_xxlarge" value="noto_sans_40"/>
+    <!-- NO BASE font_jog_key - registered at runtime -->
     <!-- font_small variants (hints, helpers, chart labels) - uses Light weight -->
     <string name="font_small_micro" value="noto_sans_light_10"/>
     <string name="font_small_tiny" value="noto_sans_light_11"/>
@@ -814,6 +844,16 @@
     <string name="icon_font_xs_xlarge" value="mdi_icons_24"/>
     <string name="icon_font_xs_xxlarge" value="mdi_icons_32"/>
     <!-- NO BASE icon_font_xs - registered at runtime -->
+    <!-- icon_font_jog_key: the Axis Rows jog-key arrows, sized with
+         font_jog_key (ui_button icon_size="jog_key"). -->
+    <string name="icon_font_jog_key_micro" value="mdi_icons_16"/>
+    <string name="icon_font_jog_key_tiny" value="mdi_icons_24"/>
+    <string name="icon_font_jog_key_small" value="mdi_icons_24"/>
+    <string name="icon_font_jog_key_medium" value="mdi_icons_24"/>
+    <string name="icon_font_jog_key_large" value="mdi_icons_32"/>
+    <string name="icon_font_jog_key_xlarge" value="mdi_icons_48"/>
+    <string name="icon_font_jog_key_xxlarge" value="mdi_icons_64"/>
+    <!-- NO BASE icon_font_jog_key - registered at runtime -->
     <!-- icon_font_sm: Small inline icons (metadata, hints, small indicators) -->
     <string name="icon_font_sm_micro" value="mdi_icons_16"/>
     <string name="icon_font_sm_tiny" value="mdi_icons_24"/>

@@ -265,6 +265,8 @@
   <translation tag="Archive Spool?" ja="スプールをアーカイブしますか？"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." ja="この印刷をキャンセルしますか？すべての進行状況が失われます。"/>
   <translation tag="Are you sure? This will power off or restart this device." ja="よろしいですか？このデバイスの電源がオフまたは再起動されます。"/>
+  <translation tag="Arrows" ja="方向キー"/>
+  <translation tag="Arrows + Home" ja="方向キー + ホーム"/>
   <translation tag="Ask before switching to another tool" ja="別のツールに切り替える前に確認する"/>
   <translation tag="Ask for parameters" ja="パラメータを確認する"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" ja="Klipper マクロを割り当ててオン/オフ、トグル、プリセットで LED を制御"/>
@@ -301,6 +303,7 @@
   <translation tag="Available Networks" ja="利用可能なネットワーク"/>
   <translation tag="Available networks" ja="利用可能なネットワーク"/>
   <translation tag="Average" ja="平均"/>
+  <translation tag="Axis Rows" ja="軸ごとの列"/>
   <translation tag="Axis limits unknown" ja="軸の限界は不明です"/>
   <translation tag="B · 1,1" ja="B · 1,1"/>
   <translation tag="BACK" ja="背面"/>
@@ -915,6 +918,7 @@
   <translation tag="Distance from lane extruder to hub" ja="レーンのエクストルーダーからハブまでの距離"/>
   <translation tag="Distance from toolhead sensor to nozzle tip" ja="ツールヘッドセンサーからノズル先端までの距離"/>
   <translation tag="Distance moved per jog button tap" ja="ジョグボタン1回あたりの移動距離"/>
+  <translation tag="Distance moved per jog button tap. The arrow layouts offer every distance as a step." ja="ジョグボタン1回あたりの移動距離。方向キーレイアウトでは各距離をステップとして選べます。"/>
   <translation tag="Do not power off your printer." ja="プリンターの電源を切らないでください。"/>
   <translation tag="Do not touch the printer during calibration" ja="キャリブレーション中はプリンターに触れないでください"/>
   <translation tag="Dock" ja="ドック"/>
@@ -1507,6 +1511,7 @@
   <translation tag="How far filament is pushed back into the box on eject (mm)" ja="取り出し時にフィラメントをボックスへ押し戻す距離 (mm)"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" ja="長押しと判定されるまでの保持時間（ミリ秒）。編集モードなどが誤動作する場合は大きくしてください"/>
   <translation tag="How many labels to print" ja="印刷するラベル枚数"/>
+  <translation tag="How the Jog tab arranges its buttons" ja="ジョグタブのボタン配置"/>
   <translation tag="How the toolhead icon appears" ja="ツールヘッドアイコンの表示スタイル"/>
   <translation tag="Hub" ja="ハブ"/>
   <translation tag="Hub &amp; Cutter" ja="ハブとカッター"/>
@@ -1609,10 +1614,12 @@
   <translation tag="Job Queue" ja="ジョブキュー"/>
   <translation tag="Job queue not enabled in Moonraker" ja="Moonraker でジョブキューが有効になっていません"/>
   <translation tag="Jog" ja="ジョグ"/>
+  <translation tag="Jog Pad" ja="ジョグパッド"/>
   <translation tag="Jog Speed XY" ja="XY ジョグ速度"/>
   <translation tag="Jog Speed Z" ja="Z ジョグ速度"/>
   <translation tag="Jog Y until the nozzle is centered over the chute opening, then tap Save." ja="Yをジョグしてノズルがシュートの開口部の中心に来たら、保存をタップします。"/>
   <translation tag="Jog failed: {}" ja="ジョグに失敗しました: {}"/>
+  <translation tag="Jog layout, speeds and step distances" ja="ジョグのレイアウト、速度とステップ距離"/>
   <translation tag="Jog speeds and step distances" ja="ジョグ速度とステップ距離"/>
   <translation tag="Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests." ja="Discord で HelixScreen コミュニティに参加して、ディスカッション、ヒント、トラブルシューティング支援、機能リクエストを共有しましょう。"/>
   <translation tag="Joining Wi-Fi disconnects the wired network." ja="WiFi に接続すると、有線ネットワークが切断されます。"/>
@@ -3778,6 +3785,7 @@
   <translation tag="{} LED strips available" ja="{} 個の LED ストリップが利用可能です"/>
   <translation tag="{} and {} are both mapped here" ja="{} と {} の両方がここに割り当てられています"/>
   <translation tag="{} available" ja="{} が利用可能"/>
+  <translation tag="{} axes homed" ja="{} 軸がホーミング済み"/>
   <translation tag="{} axis homed" ja="{} 軸がホーミング済み"/>
   <translation tag="{} cannot be skipped: its name has characters the printer cannot be sent" ja="{} は除外できません: 名前にプリンターへ送信できない文字が含まれています"/>
   <translation tag="{} changed" ja="変更 {} 件"/>

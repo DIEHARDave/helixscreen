@@ -711,7 +711,8 @@ Located in the `motion` section. These back the jog pad; set them from the scree
     "coarse_outer": 10.0,
     "turbo_inner": 10.0,
     "turbo_outer": 50.0,
-    "show_actual_position": false
+    "show_actual_position": false,
+    "layout": 0
   }
 }
 ```
@@ -732,6 +733,12 @@ Located in the `motion` section. These back the jog pad; set them from the scree
 **Type:** number
 **Range:** `0.01` - `200`
 **Description:** Distance in mm moved per tap, for each jog mode's inner and outer ring. Defaults: Fine 0.1/1, Coarse 1/10, Turbo 10/50. The ring labels on the jog pad show whatever you set.
+
+### `layout`
+**Type:** integer
+**Default:** `0`
+**Range:** `0` - `3`
+**Description:** The Motion screen's Jog-tab layout: `0` the jog pad, `1` Arrows, `2` Arrows + Home, `3` Axis Rows. Set from Settings > Printing > Motion > Layout.
 
 ### `show_actual_position`
 **Type:** boolean

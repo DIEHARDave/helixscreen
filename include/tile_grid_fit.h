@@ -80,4 +80,44 @@ inline TileGridFit fit_tile_grid(int count, int content_w, int content_h, int ga
     return best;
 }
 
+/// One key size for a fixed grid of keys.
+struct KeyGridFit {
+    int key_w = 0;
+    int key_h = 0;
+};
+
+/**
+ * @brief Key size for a fixed `cols` x `rows` grid of keys in a box.
+ *
+ * Unlike fit_tile_grid() the arrangement is given, and the keys do not fill
+ * their cells: a key is square at the tighter axis's cell size and stretches
+ * the other way to at most `max_aspect` times that, so a wide or tall box
+ * leaves room around the grid instead of drawing slabs. Either side is lifted
+ * to `min_key` where its cell has that much room, and never exceeds its cell.
+ *
+ * @param cols, rows Grid size in keys; fractional for a key half as wide.
+ * @param free_w, free_h The box less the gaps between keys, in px.
+ */
+inline KeyGridFit fit_key_grid(double cols, double rows, int free_w, int free_h, int min_key,
+                               double max_aspect = 1.4) {
+    KeyGridFit fit;
+    if (cols <= 0 || rows <= 0 || free_w <= 0 || free_h <= 0) {
+        return fit;
+    }
+    const double cell_w = free_w / cols;
+    const double cell_h = free_h / rows;
+    const double square = cell_w < cell_h ? cell_w : cell_h;
+    auto side = [&](double cell) {
+        double v = square * max_aspect;
+        if (v > cell)
+            v = cell;
+        if (v < min_key)
+            v = cell < min_key ? cell : min_key;
+        return static_cast<int>(v);
+    };
+    fit.key_w = side(cell_w);
+    fit.key_h = side(cell_h);
+    return fit;
+}
+
 } // namespace helix::ui
