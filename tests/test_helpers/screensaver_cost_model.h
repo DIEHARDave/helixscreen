@@ -3,6 +3,7 @@
 #pragma once
 
 #include "screensaver_frame.h"
+#include "screensaver_gate.h"
 
 #include <vector>
 
@@ -42,5 +43,10 @@ struct SaverLoad {
         pixels /= frames;
     }
 };
+
+/// A saver's budget on a `cores`-core board while the printer is idle, as a percent of a core.
+inline double budget_pct(int cores) {
+    return 100.0 * helix::ui::saver_budget_share(cores, false);
+}
 
 } // namespace helix::test

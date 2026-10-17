@@ -59,6 +59,8 @@ struct HyperspaceCamera {
 
 class HyperspaceSim {
   public:
+    static constexpr const auto& LEVELS = HYPERSPACE_LEVELS;
+
     /// Most star flares at any level.
     static constexpr size_t MAX_STARS = 160;
     /// Flares one starburst throws.

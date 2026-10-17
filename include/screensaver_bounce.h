@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <iterator>
 #include <lvgl.h>
 #include <optional>
 #include <random>
@@ -115,20 +116,25 @@ class BouncingPrinterScreensaver : public helix::ui::SaverBase {
     void on_frame(uint32_t dt_ms, std::vector<helix::ui::DirtyRect>& dirty) override;
     void on_stop() override;
     size_t ladder_size() const override {
-        return sizeof(LEVEL_PERIODS_MS) / sizeof(LEVEL_PERIODS_MS[0]);
+        return std::size(LEVELS);
     }
     uint32_t ladder_period_ms(size_t level) const override {
-        return LEVEL_PERIODS_MS[level];
+        return helix::ui::ladder_period(LEVELS, level);
     }
 
   private:
     friend class BounceTestAccess;
 
-    /// Frame period per level: 16 ms with confetti corners, 33 ms with confetti corners, 33 ms
-    /// with the corner flash alone.
-    static constexpr uint32_t LEVEL_PERIODS_MS[] = {helix::ui::SAVER_FAST_PERIOD, 33, 33};
-    /// First level that celebrates a corner with the flash alone.
-    static constexpr size_t FLASH_ONLY_LEVEL = 2;
+    struct Level {
+        uint32_t period_ms; ///< frame period in ms
+        bool confetti;      ///< a corner throws confetti as well as flashing
+    };
+    /// The ladder, most expensive level first.
+    static constexpr Level LEVELS[] = {
+        {helix::ui::SAVER_FAST_PERIOD, true},
+        {33, true},
+        {33, false},
+    };
 
     /// Decode the active printer image into a persistent draw buffer
     bool decode_sprite();

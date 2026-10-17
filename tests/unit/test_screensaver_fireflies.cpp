@@ -5,6 +5,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_cost_model.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_canvas.h"
 #include "screensaver_fireflies.h"
@@ -13,9 +14,7 @@
 #include "screensaver_registry.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
-#include <cstring>
 #include <random>
 #include <set>
 #include <sstream>
@@ -24,30 +23,23 @@
 
 #include "../catch_amalgamated.hpp"
 
+using helix::test::bench_ms_per_frame;
+using helix::test::diff_against;
+using helix::test::FrameDiff;
+using helix::test::lit_pixels;
+using helix::test::non_opaque_pixels;
+using helix::test::TestFrame;
 using helix::ui::DirtyRect;
 using helix::ui::FIREFLIES_LEVEL_COUNT;
 using helix::ui::FIREFLIES_LEVELS;
 using helix::ui::FIREFLIES_MAX_BAITS;
 using helix::ui::FirefliesScreensaver;
 using helix::ui::FirefliesSim;
-using helix::ui::FireflyVec;
 using helix::ui::FrameTarget;
+using helix::ui::length;
 using helix::ui::PixelFormat;
 using helix::ui::Rgb;
-
-namespace helix::ui {
-
-/// Reads the sim a FirefliesScreensaver owns.
-class FirefliesScreensaverTestAccess {
-  public:
-    static const FirefliesSim& sim(const FirefliesScreensaver& saver) {
-        return saver.sim_;
-    }
-};
-
-} // namespace helix::ui
-
-using helix::ui::FirefliesScreensaverTestAccess;
+using helix::ui::SaverVec3;
 
 namespace {
 
@@ -55,40 +47,16 @@ constexpr uint32_t W = 320;
 constexpr uint32_t H = 200;
 constexpr uint32_t FRAME_MS = 33;
 
-uint32_t bytes_per_pixel(PixelFormat format) {
-    return format == PixelFormat::RGB565 ? 2 : 4;
-}
-
-/// A heap frame whose rows are wider than w * bytes per pixel, as LVGL's aligned strides can be.
-struct SimFrame {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-
-    SimFrame(PixelFormat format, uint32_t w = W, uint32_t h = H) {
-        const uint32_t bpp = bytes_per_pixel(format);
-        const uint32_t stride = w * bpp + 3 * bpp;
-        bytes.assign(static_cast<size_t>(stride) * h, 0);
-        target = {bytes.data(), stride, w, h, format};
-    }
-    SimFrame(const SimFrame&) = delete;
-    SimFrame& operator=(const SimFrame&) = delete;
-};
-
 /// A sim and its frame.
-struct Swarm {
-    std::minstd_rand rng;
-    FirefliesSim sim;
-    SimFrame frame;
-    std::vector<DirtyRect> dirty;
-
+struct Swarm : helix::test::SimRun<FirefliesSim> {
     Swarm(uint32_t seed, size_t level = 0, PixelFormat format = PixelFormat::XRGB8888,
           uint32_t w = W, uint32_t h = H)
-        : rng(seed), frame(format, w, h) {
-        sim.init(frame.target, rng, level);
+        : SimRun(seed, w, h, format) {
+        init(level);
     }
 
     void step(uint32_t dt_ms = FRAME_MS) {
-        sim.step(dt_ms, frame.target, rng, dirty);
+        SimRun::step(dt_ms);
     }
 
     /// Steps `frame_ms` frames until `ms` have passed.
@@ -99,7 +67,7 @@ struct Swarm {
     }
 };
 
-bool same_vec(const FireflyVec& a, const FireflyVec& b) {
+bool same_vec(const SaverVec3& a, const SaverVec3& b) {
     return screensaver_same_bits(a.x, b.x) && screensaver_same_bits(a.y, b.y) &&
            screensaver_same_bits(a.z, b.z);
 }
@@ -121,12 +89,6 @@ bool same_positions(const FirefliesSim& a, const FirefliesSim& b) {
         }
     }
     return true;
-}
-
-void fire(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
 }
 
 } // namespace
@@ -221,21 +183,10 @@ TEST_CASE("a fireflies level change leaves the motion untouched", "[screensaver]
 
 namespace {
 
-float distance(const FireflyVec& a, const FireflyVec& b) {
-    const float dx = a.x - b.x;
-    const float dy = a.y - b.y;
-    const float dz = a.z - b.z;
-    return std::sqrt(dx * dx + dy * dy + dz * dz);
-}
-
-float magnitude(const FireflyVec& v) {
-    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
 float mean_distance_to_bait(const FirefliesSim& sim) {
     double sum = 0;
     for (const FirefliesSim::Fly& f : sim.flies()) {
-        sum += distance(f.pos, sim.baits()[f.bait].pos);
+        sum += length(f.pos - sim.baits()[f.bait].pos);
     }
     return static_cast<float>(sum / static_cast<double>(sim.flies().size()));
 }
@@ -267,13 +218,13 @@ TEST_CASE("baits and flies keep to their top speeds", "[screensaver][fireflies_s
             if (!b.alive) {
                 continue;
             }
-            REQUIRE(magnitude(b.vel) <= FIREFLIES_BAIT_SPEED * mult + 1e-3f);
+            REQUIRE(length(b.vel) <= FIREFLIES_BAIT_SPEED * mult + 1e-3f);
             REQUIRE(std::fabs(b.pos.x) <= half_w + 1.0f);
             REQUIRE(std::fabs(b.pos.y) <= 40.0f + 1.0f);
             REQUIRE(std::fabs(b.pos.z) <= 25.0f + 1.0f);
         }
         for (const FirefliesSim::Fly& f : s.sim.flies()) {
-            const float speed = magnitude(f.vel);
+            const float speed = length(f.vel);
             REQUIRE(speed <= FIREFLIES_FLY_SPEED * f.pace * mult + 1e-3f);
             fastest_fly = std::max(fastest_fly, speed);
         }
@@ -331,7 +282,7 @@ TEST_CASE("a fly's hue swings 20 degrees either way with its speed",
         const FirefliesSim::Fly& f = s.sim.flies()[i];
         const float offset = wrap180(s.sim.fly_hue_deg(i) - s.sim.baits()[f.bait].hue_deg);
         const float expected =
-            -20.0f + 40.0f * std::min(1.0f, magnitude(f.vel) / helix::ui::FIREFLIES_FLY_SPEED);
+            -20.0f + 40.0f * std::min(1.0f, length(f.vel) / helix::ui::FIREFLIES_FLY_SPEED);
         CAPTURE(i, offset, expected);
         REQUIRE(s.sim.fly_hue_deg(i) >= 0.0f);
         REQUIRE(s.sim.fly_hue_deg(i) < 360.0f);
@@ -397,9 +348,9 @@ TEST_CASE("the wind takes a new heading every 4 to 8 tail lengths",
             changes.push_back(s.sim.last_wind_change_ms());
         }
         if (s.sim.mode() != helix::ui::FirefliesMode::WIND_GUST) {
-            strongest_calm = std::max(strongest_calm, magnitude(s.sim.wind()));
+            strongest_calm = std::max(strongest_calm, length(s.sim.wind()));
         }
-        total += magnitude(s.sim.wind());
+        total += length(s.sim.wind());
         samples++;
     }
     REQUIRE(s.sim.wind_changes() >= 10);
@@ -553,8 +504,8 @@ TEST_CASE("a merge moves the smallest swarm to the nearest other bait",
             continue;
         }
         if (nearest == FIREFLIES_MAX_BAITS ||
-            distance(s.sim.baits()[i].pos, s.sim.baits()[smallest].pos) <
-                distance(s.sim.baits()[nearest].pos, s.sim.baits()[smallest].pos)) {
+            length(s.sim.baits()[i].pos - s.sim.baits()[smallest].pos) <
+                length(s.sim.baits()[nearest].pos - s.sim.baits()[smallest].pos)) {
             nearest = i;
         }
     }
@@ -591,7 +542,7 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         s.run_for(1000);
         REQUIRE(s.sim.mode() == FirefliesMode::STOP);
         for (const size_t i : alive_baits(s.sim)) {
-            CHECK(magnitude(s.sim.baits()[i].vel) < 0.5f);
+            CHECK(length(s.sim.baits()[i].vel) < 0.5f);
         }
     }
 
@@ -603,7 +554,7 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         const std::vector<size_t> baits = alive_baits(s.sim);
         std::vector<float> travelled(FIREFLIES_MAX_BAITS, 0.0f);
         for (int i = 0; i < 300; i++) {
-            std::vector<FireflyVec> was;
+            std::vector<SaverVec3> was;
             for (const FirefliesSim::Bait& b : s.sim.baits()) {
                 was.push_back(b.pos);
             }
@@ -611,8 +562,8 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
             REQUIRE(s.sim.mode() == FirefliesMode::LOOP);
             for (const size_t b : baits) {
                 const FirefliesSim::Bait& bait = s.sim.baits()[b];
-                REQUIRE(distance(bait.pos, bait.loop_centre) <= 20.0f);
-                travelled[b] += distance(bait.pos, was[b]);
+                REQUIRE(length(bait.pos - bait.loop_centre) <= 20.0f);
+                travelled[b] += length(bait.pos - was[b]);
             }
         }
         for (const size_t b : baits) {
@@ -628,7 +579,7 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         for (int i = 0; i < 100; i++) {
             s.step(10);
             for (const FirefliesSim::Fly& f : s.sim.flies()) {
-                fastest = std::max(fastest, magnitude(f.vel));
+                fastest = std::max(fastest, length(f.vel));
             }
         }
         CHECK(fastest > 1.5f * FIREFLIES_FLY_SPEED);
@@ -636,41 +587,28 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
         s.run_for(2000, 10);
         for (const FirefliesSim::Fly& f : s.sim.flies()) {
-            CHECK(magnitude(f.vel) <= FIREFLIES_FLY_SPEED + 1e-3f);
+            CHECK(length(f.vel) <= FIREFLIES_FLY_SPEED + 1e-3f);
         }
     }
 
     SECTION("wind gust") {
         Swarm s(38);
         s.run_for(1000);
-        const float calm = magnitude(s.sim.wind());
+        const float calm = length(s.sim.wind());
         REQUIRE(calm > 0.0f);
         REQUIRE(s.sim.begin_mode(FirefliesMode::WIND_GUST, 4000, s.rng));
         s.run_for(1000, 10);
-        CHECK(magnitude(s.sim.wind()) >= 3.0f * calm);
+        CHECK(length(s.sim.wind()) >= 3.0f * calm);
         s.run_for(3500, 10);
         REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
-        CHECK(magnitude(s.sim.wind()) <= 6.0f + 1e-3f);
+        CHECK(length(s.sim.wind()) <= 6.0f + 1e-3f);
     }
 }
 
 namespace {
 
-/// Pixels of `frame` with any light in them.
-size_t lit_pixels(const SimFrame& frame) {
-    const helix::ui::PixelWriter writer(frame.target);
-    size_t lit = 0;
-    for (int32_t y = 0; y < static_cast<int32_t>(frame.target.h); y++) {
-        for (int32_t x = 0; x < static_cast<int32_t>(frame.target.w); x++) {
-            const Rgb c = writer.get(x, y);
-            lit += (c.r | c.g | c.b) != 0 ? 1 : 0;
-        }
-    }
-    return lit;
-}
-
 /// Sum of every channel of every pixel of `frame`.
-uint64_t light_sum(const SimFrame& frame) {
+uint64_t light_sum(const TestFrame& frame) {
     const helix::ui::PixelWriter writer(frame.target);
     uint64_t sum = 0;
     for (int32_t y = 0; y < static_cast<int32_t>(frame.target.h); y++) {
@@ -682,12 +620,6 @@ uint64_t light_sum(const SimFrame& frame) {
     return sum;
 }
 
-bool in_some_box(const std::vector<DirtyRect>& boxes, int32_t x, int32_t y) {
-    return std::any_of(boxes.begin(), boxes.end(), [&](const DirtyRect& r) {
-        return x >= r.x1 && x <= r.x2 && y >= r.y1 && y <= r.y2;
-    });
-}
-
 } // namespace
 
 TEST_CASE("every changed fireflies pixel lies in a dirty box", "[screensaver][fireflies_sim]") {
@@ -695,7 +627,6 @@ TEST_CASE("every changed fireflies pixel lies in a dirty box", "[screensaver][fi
         for (const size_t level : {size_t{0}, helix::ui::FIREFLIES_LEVEL_COUNT - 1}) {
             CAPTURE(static_cast<int>(format), level);
             Swarm s(41, level, format);
-            const uint32_t bpp = bytes_per_pixel(format);
             bool changed_any = false;
             // Split first unless every slot is taken; the other change follows.
             const bool split_first = s.sim.baits_alive() < FIREFLIES_MAX_BAITS;
@@ -715,19 +646,13 @@ TEST_CASE("every changed fireflies pixel lies in a dirty box", "[screensaver][fi
                 if (frame == 150) {
                     s.sim.request_level(level == 0 ? helix::ui::FIREFLIES_LEVEL_COUNT - 1 : 0);
                 }
-                const std::vector<uint8_t> before = s.frame.bytes;
+                const std::vector<uint8_t> before = s.frame.snapshot();
                 s.step();
                 REQUIRE(s.dirty.size() <= helix::ui::FIREFLIES_MAX_DIRTY_AREAS);
-                for (size_t i = 0; i < before.size(); i++) {
-                    if (before[i] == s.frame.bytes[i]) {
-                        continue;
-                    }
-                    changed_any = true;
-                    const auto y = static_cast<int32_t>(i / s.frame.target.stride);
-                    const auto x = static_cast<int32_t>(i % s.frame.target.stride / bpp);
-                    CAPTURE(frame, x, y);
-                    REQUIRE(in_some_box(s.dirty, x, y));
-                }
+                const FrameDiff diff = diff_against(before, s.frame, s.dirty);
+                changed_any = changed_any || diff.changed > 0;
+                CAPTURE(frame);
+                REQUIRE(diff.uncovered == 0);
             }
             CHECK(split);
             CHECK(merged);
@@ -743,36 +668,22 @@ TEST_CASE("fireflies draw only light on black, and never past a row",
     constexpr uint32_t OH = 203;
     for (const PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
         CAPTURE(static_cast<int>(format));
-        const uint32_t bpp = bytes_per_pixel(format);
-        const uint32_t stride = OW * bpp + 7;
-        // One sentinel row below the frame.
-        std::vector<uint8_t> bytes(static_cast<size_t>(stride) * (OH + 1), UNTOUCHED);
-        FrameTarget target{bytes.data(), stride, OW, OH, format};
+        // Every byte starts untouched, a guard row lies below the frame, and the canvas hands a
+        // saver a black frame.
+        TestFrame frame(OW, OH, format, 7, UNTOUCHED, UNTOUCHED);
+        helix::ui::PixelWriter(frame.target).fill({0, 0, 0});
         std::minstd_rand rng(43);
         FirefliesSim sim;
         std::vector<DirtyRect> dirty;
-        sim.init(target, rng, 0);
+        sim.init(frame.target, rng, 0);
         for (int i = 0; i < 150; i++) {
-            sim.step(FRAME_MS, target, rng, dirty);
+            sim.step(FRAME_MS, frame.target, rng, dirty);
         }
-        bool padding_kept = true;
-        bool opaque = true;
-        bool lit = false;
-        for (uint32_t y = 0; y <= OH; y++) {
-            for (uint32_t b = 0; b < stride; b++) {
-                const uint8_t v = bytes[static_cast<size_t>(y) * stride + b];
-                if (y == OH || b >= OW * bpp) {
-                    padding_kept = padding_kept && v == UNTOUCHED;
-                } else if (format == PixelFormat::XRGB8888 && b % 4 == 3) {
-                    opaque = opaque && v == 0xFF;
-                } else {
-                    lit = lit || v != 0;
-                }
-            }
+        CHECK(frame.padding_intact());
+        if (format == PixelFormat::XRGB8888) {
+            CHECK(non_opaque_pixels(frame.target) == 0);
         }
-        CHECK(padding_kept);
-        CHECK(opaque);
-        CHECK(lit);
+        CHECK(lit_pixels(frame.target) > 0);
     }
 }
 
@@ -782,9 +693,10 @@ TEST_CASE("an RGB565 swarm shows at least 60% of the light an XRGB8888 one does"
     Swarm narrow(44, 0, PixelFormat::RGB565);
     wide.run_for(3000);
     narrow.run_for(3000);
-    const size_t wide_lit = lit_pixels(wide.frame);
+    const size_t wide_lit = lit_pixels(wide.frame.target);
     REQUIRE(wide_lit > 500);
-    CHECK(static_cast<double>(lit_pixels(narrow.frame)) >= 0.6 * static_cast<double>(wide_lit));
+    CHECK(static_cast<double>(lit_pixels(narrow.frame.target)) >=
+          0.6 * static_cast<double>(wide_lit));
 }
 
 TEST_CASE("glow brightens the swarm", "[screensaver][fireflies_sim]") {
@@ -840,7 +752,7 @@ TEST_CASE("each fireflies rung lights less than the one above", "[screensaver][f
     for (size_t level = 0; level < FIREFLIES_LEVEL_COUNT; level++) {
         Swarm s(52, level, PixelFormat::XRGB8888, 800, 480);
         s.run_for(4000);
-        lit.push_back(lit_pixels(s.frame));
+        lit.push_back(lit_pixels(s.frame.target));
     }
     for (size_t level = 2; level < FIREFLIES_LEVEL_COUNT; level++) {
         CAPTURE(level, lit[level - 1], lit[level]);
@@ -853,7 +765,7 @@ TEST_CASE("a fireflies level draws only its first flies", "[screensaver][firefli
     const auto bodies_lit = [](size_t level) {
         Swarm s(54, level, PixelFormat::XRGB8888, 800, 480);
         s.step(0);
-        return lit_pixels(s.frame);
+        return lit_pixels(s.frame.target);
     };
     const size_t all = bodies_lit(2);
     const size_t few = bodies_lit(FIREFLIES_LEVEL_COUNT - 1);
@@ -883,12 +795,12 @@ double fireflies_cost(size_t level) {
 
 // The model prices only the redraw LVGL does for the dirty areas, not the sim's own drawing into
 // the canvas, so it understates fireflies; the device gate is the real measure.
-TEST_CASE("the fireflies bottom rung's redraw fits a 1-core board's 10% budget",
+TEST_CASE("the fireflies bottom rung's redraw fits a 1-core board's budget",
           "[screensaver][fireflies_sim]") {
     const double bottom = fireflies_cost(FIREFLIES_LEVEL_COUNT - 1);
     const double top = fireflies_cost(0);
     CAPTURE(bottom, top);
-    CHECK(bottom < 10.0);
+    CHECK(bottom < helix::test::budget_pct(1));
     CHECK(top > bottom);
 }
 
@@ -897,16 +809,8 @@ TEST_CASE("fireflies frame cost per level", "[.][fireflies_bench]") {
     for (size_t level = 0; level < FIREFLIES_LEVEL_COUNT; level++) {
         Swarm s(3, level, PixelFormat::XRGB8888, 800, 480);
         s.run_for(5000);
-        constexpr int FRAMES = 150;
         const uint32_t period = FIREFLIES_LEVELS[level].period_ms;
-        const auto start = std::chrono::steady_clock::now();
-        for (int i = 0; i < FRAMES; i++) {
-            s.step(period);
-        }
-        const double ms =
-            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start)
-                .count() /
-            FRAMES;
+        const double ms = bench_ms_per_frame([&] { s.step(period); }, 150);
         report << "L" << level << " " << ms << " ms/frame\n";
     }
     WARN(report.str());
@@ -927,7 +831,7 @@ TEST_CASE("a new wind heading during a gust never compounds the gust",
                 REQUIRE(s.sim.begin_mode(FirefliesMode::WIND_GUST, 4000, s.rng));
             }
             s.step(100);
-            strongest = std::max(strongest, magnitude(s.sim.wind()));
+            strongest = std::max(strongest, length(s.sim.wind()));
         }
         REQUIRE(s.sim.wind_changes() >= changes_before + 3);
         CHECK(strongest <= GUST_MAX + 1e-3f);
@@ -936,7 +840,7 @@ TEST_CASE("a new wind heading during a gust never compounds the gust",
         for (uint32_t t = 0; t < 3000; t += 100) {
             s.step(100);
             REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
-            CHECK(magnitude(s.sim.wind()) <= WIND_MAX + 1e-3f);
+            CHECK(length(s.sim.wind()) <= WIND_MAX + 1e-3f);
         }
     }
 }
@@ -972,26 +876,24 @@ TEST_CASE_METHOD(LVGLTestFixture,
     ss.request_level(last);
     CHECK(ss.level() == last);
     CHECK(SaverTestAccess::timer(ss)->period == FIREFLIES_LEVELS[last].period_ms);
-    lv_tick_inc(100);
-    fire(SaverTestAccess::timer(ss));
+    advance_saver(ss, 100);
     CHECK(ss.is_active());
-    CHECK(FirefliesScreensaverTestAccess::sim(ss).level() == last);
+    CHECK(ss.sim().level() == last);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "a stopped fireflies saver holds no buffers",
                  "[screensaver][screensaver_fireflies]") {
     FirefliesScreensaver ss;
-    CHECK(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    CHECK(ss.sim().heap_bytes() == 0);
     {
         ScreensaverStopOnExit<FirefliesScreensaver> stop_on_exit{ss};
         ss.start();
         REQUIRE(ss.is_active());
-        lv_tick_inc(16);
-        fire(SaverTestAccess::timer(ss));
-        REQUIRE(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() > 0);
+        advance_saver(ss, 16);
+        REQUIRE(ss.sim().heap_bytes() > 0);
     }
     CHECK_FALSE(ss.is_active());
-    CHECK(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    CHECK(ss.sim().heap_bytes() == 0);
 }
 
 TEST_CASE("fireflies is registered by name at both depths",

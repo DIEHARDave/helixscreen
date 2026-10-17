@@ -4,6 +4,7 @@
 
 #include "screensaver_frame.h"
 #include "screensaver_motion.h"
+#include "screensaver_vec.h"
 
 #include <array>
 #include <cstddef>
@@ -112,28 +113,25 @@ float fireflies_tail_brightness(float u);
 /// rounded, at least 1 inside [0, 1].
 int32_t fireflies_tail_width(float u, float max_px);
 
-/// A point or direction in world units: x right, y down, z away from the camera.
-struct FireflyVec {
-    float x = 0.0f;
-    float y = 0.0f;
-    float z = 0.0f;
-};
-
+/// Positions and directions are SaverVec3s in world units: x right, y down, z away from the
+/// camera.
 class FirefliesSim {
   public:
+    static constexpr const auto& LEVELS = FIREFLIES_LEVELS;
+
     struct Bait {
-        FireflyVec pos;
-        FireflyVec vel;
-        FireflyVec target;      ///< waypoint the bait steers for
-        FireflyVec loop_centre; ///< centre LOOP circles
+        SaverVec3 pos;
+        SaverVec3 vel;
+        SaverVec3 target;      ///< waypoint the bait steers for
+        SaverVec3 loop_centre; ///< centre LOOP circles
         float hue_deg = 0.0f;
         int32_t retarget_ms = 0; ///< left before a new waypoint
         bool alive = false;
     };
 
     struct Fly {
-        FireflyVec pos;
-        FireflyVec vel;
+        SaverVec3 pos;
+        SaverVec3 vel;
         float pace = 1.0f; ///< this fly's share of the top speed and acceleration, 0.75 to 1
         uint8_t bait = 0;  ///< index into baits()
     };
@@ -188,7 +186,7 @@ class FirefliesSim {
     uint32_t tail_age_ms() const;
 
     /// Wind now, world units per second; a tail point of age a is drawn displaced by wind * a.
-    const FireflyVec& wind() const {
+    const SaverVec3& wind() const {
         return wind_;
     }
     /// Times the wind has taken a new heading since init().
@@ -216,7 +214,7 @@ class FirefliesSim {
     static constexpr uint32_t MAX_STEPS_PER_FRAME = 50;
 
     void advance_one(std::minstd_rand& rng);
-    FireflyVec random_waypoint(std::minstd_rand& rng) const;
+    SaverVec3 random_waypoint(std::minstd_rand& rng) const;
     float speed_mult() const;
     bool split(std::minstd_rand& rng);
     bool merge();
@@ -243,11 +241,11 @@ class FirefliesSim {
     int32_t next_mode_ms_ = 0;
     uint32_t modes_begun_[FIREFLIES_MODE_COUNT]{};
 
-    FireflyVec wind_{};
+    SaverVec3 wind_{};
     /// The wind before any gust: a new heading eases from this, never from the gusted wind_.
-    FireflyVec base_wind_{};
-    FireflyVec wind_from_{};
-    FireflyVec wind_to_{};
+    SaverVec3 base_wind_{};
+    SaverVec3 wind_from_{};
+    SaverVec3 wind_to_{};
     int32_t wind_left_ms_ = 0;
     uint32_t wind_changes_ = 0;
     uint64_t last_wind_change_ms_ = 0;
