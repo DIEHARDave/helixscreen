@@ -557,14 +557,18 @@ void AmsBackendMultiAce::advance_pending_load() {
         }
         const bool empty =
             !head_loaded && !head_source_[static_cast<size_t>(pending.head)].has_value();
+        // Expiry is judged before emptiness: a head that empties only after
+        // its window closed was emptied by something other than this unload,
+        // and the user has already been told the load is off.
+        const bool expired = pending.unload_answered &&
+                             std::chrono::steady_clock::now() > pending.unload_answered_at + grace;
         if (!active_locked()) {
             dropped = "multiACE stopped driving the ACE units";
+        } else if (expired) {
+            dropped =
+                fmt::format("toolhead {} did not empty in time after its unload", pending.head + 1);
         } else if (empty) {
             send = true;
-        } else if (pending.unload_answered &&
-                   std::chrono::steady_clock::now() > pending.unload_answered_at + grace) {
-            dropped =
-                fmt::format("toolhead {} still holds filament after its unload", pending.head + 1);
         } else {
             return;
         }

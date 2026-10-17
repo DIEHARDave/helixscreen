@@ -652,6 +652,17 @@ TEST_CASE_METHOD(MultiAceFixture, "a dropped bay load says so", "[multiace]") {
         b.frame(json{{"ace", {{"head_source", json::object()}}}});
         CHECK(b.sent.size() == 1);
     }
+    SECTION("a late empty frame after the window closed loads nothing") {
+        b.close_pending_window();
+        b.answer_ok();
+        // The first frame after the answer already shows the head empty, but
+        // the window is shut.
+        json emptied = {{"ace", {{"head_source", json::object()}}}};
+        emptied.update(feed_frame(0, "preload_finish"));
+        b.frame(emptied);
+        CHECK(b.sent.size() == 1);
+        CHECK(b.errors.size() == 1);
+    }
     SECTION("the engine stops driving the units") {
         b.frame(json{{"ace", {{"mode", "normal"}}}});
         REQUIRE(b.errors.size() == 1);
@@ -668,7 +679,14 @@ TEST_CASE_METHOD(MultiAcePrintFixture, "a pending bay load yields to a print", "
     REQUIRE(b.sent.size() == 1);
     b.answer_ok();
 
-    helix::test::set_wire_state(state, PrintJobState::PAUSED);
+    SECTION("the printer reports the print") {
+        helix::test::set_wire_state(state, PrintJobState::PAUSED);
+    }
+    SECTION("a print start this screen is preparing, not yet on the wire") {
+        state.print_state().set_print_start_state(PrintStartPhase::HOMING, "", 0);
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+        REQUIRE(state.print_state().get_print_lifecycle() == PrintState::Preparing);
+    }
     b.frame(json{{"ace", {{"head_source", json::object()}}}});
     CHECK(b.sent.size() == 1);
     CHECK(b.errors.size() == 1);

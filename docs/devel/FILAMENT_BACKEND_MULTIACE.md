@@ -94,8 +94,11 @@ returns silently for a bay whose gate is empty. So the backend refuses an empty 
 sending anything, and swaps a bay into an occupied head in two steps: the unload goes
 alone, and the load waits (`AmsBackendMultiAce::advance_pending_load`) for a frame showing
 `head_source[h]` null and the head's load latch clear. The unload's OK is not that proof;
-it opens a 15 s window, and a head still occupied when it closes drops the load. So does the
-engine leaving multi/head mode, or a print holding the heads by the time the head empties;
+it opens a 15 s window, and a head that has not emptied when it closes drops the load, even
+if the frame that finally shows it empty arrives later. So does the
+engine leaving multi/head mode, or a print holding the heads by the time the head empties
+(the shared print-active rule, so a start this screen is preparing counts before the printer
+reports it);
 each of those raises EVENT_ERROR naming the bay. A failed unload, or any other filament op
 (a tool change and a tool park included), drops it at once. A head loaded with no recorded
 `head_source` refuses a bay swap outright: the engine has no bay to return that strand to. `ACE_SWAP_HEAD` would do both in one
@@ -126,6 +129,10 @@ Idle, the fault is a refusal of the command the user just sent. Every other line
 
 - The path view: one physical nozzle per head across the overview, the upstream caption on
   an ACE-fed head, spool numbering that counts a routed bay once.
+- A print started from another client (Mainsail, Fluidd, the slicer) while a bay swap's
+  unload runs: if its start has not reached a status frame by the frame that shows the head
+  empty, the deferred load is still sent, and Klipper queues it behind the start. This screen
+  has no signal for a start it did not make until the printer reports it.
 - Mock mode (`HELIX_MOCK_AMS=multiace`).
 - Editing a bay's spool: `apply_user_edit` and `sync_external_identity` answer only the four
   heads, so a bay edit is refused as an invalid slot.
