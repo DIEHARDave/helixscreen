@@ -484,6 +484,7 @@
   <translation tag="Cancel" it="Annulla"/>
   <translation tag="Cancel Escalation" it="Annulla escalation"/>
   <translation tag="Cancel Print" it="Annulla stampa"/>
+  <translation tag="Cancel Scheduled Pause" it="Annulla pausa programmata"/>
   <translation tag="Cancel macro not configured" it="Macro annullamento non configurata"/>
   <translation tag="Cancel print" it="Annulla stampa"/>
   <translation tag="Cancelled" it="Annullato"/>
@@ -503,6 +504,7 @@
   <translation tag="Cannot restart — no filename" it="Impossibile riavviare — nessun nome file"/>
   <translation tag="Cannot run filament operation while printing" it="Impossibile eseguire operazioni sul filamento durante la stampa"/>
   <translation tag="Cannot save offsets while printing" it="Impossibile salvare gli offset durante la stampa"/>
+  <translation tag="Cannot schedule a pause: printer not connected" it="Impossibile programmare una pausa: stampante non connessa"/>
   <translation tag="Cannot start print: internal error" it="Impossibile avviare stampa: errore interno"/>
   <translation tag="Cannot start print: no temp directory available" it="Impossibile avviare la stampa: directory temporanea non disponibile"/>
   <translation tag="Cannot start print: not connected to printer" it="Impossibile avviare stampa: non connesso alla stampante"/>
@@ -588,6 +590,7 @@
   <translation tag="Checking…" it="Verifica in corso…"/>
   <translation tag="Choose 12-hour or 24-hour time display" it="Scegli formato orario 12 ore o 24 ore"/>
   <translation tag="Choose Filament" it="Scegli filamento"/>
+  <translation tag="Choose Layer" it="Scegli strato"/>
   <translation tag="Choose Model" it="Scegli modello"/>
   <translation tag="Choose an existing filament, or tap + New to create one." it="Scegli un filamento esistente, o tocca + Nuovo per crearne uno."/>
   <translation tag="Choose display language" it="Scegli lingua di visualizzazione"/>
@@ -923,6 +926,7 @@
   <translation tag="Draw a ripple at each touch — helps diagnose offsets" it="Disegna un&apos;onda a ogni tocco — aiuta a diagnosticare gli scostamenti"/>
   <translation tag="Drive Cal" it="Cal. drive"/>
   <translation tag="Drop shadow strength (0 = disabled)" it="Intensità ombra (0 = disabilitata)"/>
+  <translation tag="Dry" it="Essicca"/>
   <translation tag="Dry Filament" it="Essicca filamento"/>
   <translation tag="Dry Filament on the Bed" it="Essicca il filamento sul piano"/>
   <translation tag="Dry spools on the heated bed" it="Essicca le bobine sul piano riscaldato"/>
@@ -1173,6 +1177,7 @@
   <translation tag="Failed to save setup completion" it="Impossibile salvare completamento configurazione"/>
   <translation tag="Failed to save spool" it="Salvataggio bobina fallito"/>
   <translation tag="Failed to save theme file" it="Salvataggio file tema fallito"/>
+  <translation tag="Failed to schedule the pause: {}" it="Impossibile programmare la pausa: {}"/>
   <translation tag="Failed to send command: {}" it="Impossibile inviare comando: {}"/>
   <translation tag="Failed to send print data" it="Impossibile inviare i dati di stampa"/>
   <translation tag="Failed to send status request" it="Impossibile inviare la richiesta di stato"/>
@@ -1667,6 +1672,7 @@
   <translation tag="Layer Height" it="Altezza layer"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." it="Layer Macro cattura un fotogramma per ogni cambio di strato. Ideale per la maggior parte delle stampe."/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." it="La modalità layer cattura un fotogramma per cambio layer. Ideale per la maggior parte delle stampe."/>
+  <translation tag="Layer {} of {}." it="Strato {} di {}."/>
   <translation tag="Layers" it="Layer"/>
   <translation tag="Layout" it="Layout"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." it="Le modifiche al layout sono disattivate in modalità provvisoria. Riavvia per modificare."/>
@@ -1928,6 +1934,7 @@
   <translation tag="New printer successfully added" it="Nuova stampante aggiunta con successo"/>
   <translation tag="New profile name" it="Nome nuovo profilo"/>
   <translation tag="Next" it="Avanti"/>
+  <translation tag="Next Layer" it="Strato successivo"/>
   <translation tag="Next: {}" it="Prossimo: {}"/>
   <translation tag="Niimbot (Bluetooth)" it="Niimbot (Bluetooth)"/>
   <translation tag="No" it="No"/>
@@ -1982,6 +1989,7 @@
   <translation tag="No media installed" it="Nessun supporto installato"/>
   <translation tag="No mesh data" it="Nessun dato mesh"/>
   <translation tag="No mesh loaded" it="Nessuna mesh caricata"/>
+  <translation tag="No message" it="Nessun messaggio"/>
   <translation tag="No multi-filament system detected" it="Nessun sistema multi-filamento rilevato"/>
   <translation tag="No network. Scan QR code to report on your phone." it="Nessuna rete. Scansiona il QR code per segnalare dal telefono."/>
   <translation tag="No networks found" it="Nessuna rete trovata"/>
@@ -1990,6 +1998,7 @@
   <translation tag="No objects" it="Nessun oggetto"/>
   <translation tag="No objects defined for this print" it="Nessun oggetto definito per questa stampa"/>
   <translation tag="No output yet" it="Nessun output"/>
+  <translation tag="No pause scheduled." it="Nessuna pausa programmata."/>
   <translation tag="No presets configured" it="Nessun preset configurato"/>
   <translation tag="No preview" it="Nessuna anteprima"/>
   <translation tag="No print history found" it="Nessuno storico stampe trovato"/>
@@ -2094,6 +2103,7 @@
   <translation tag="Off" it="Off"/>
   <translation tag="Off:" it="Off:"/>
   <translation tag="Off: runs with these values without asking" it="Disattivato: esegue con questi valori senza chiedere"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" it="Proponi di salvare le modifiche allo Z-Offset nella configurazione della stampante"/>
   <translation tag="Offsets saved" it="Offset salvati"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" it="Impostazione precedente sui dati di oggi: residuo {} - ora: {}"/>
   <translation tag="On" it="On"/>
@@ -2183,6 +2193,8 @@
   <translation tag="Path {}" it="Percorso {}"/>
   <translation tag="Path {} before" it="Percorso {} prima"/>
   <translation tag="Pause" it="Pausa"/>
+  <translation tag="Pause Layer" it="Strato di pausa"/>
+  <translation tag="Pause at Layer" it="Pausa allo strato"/>
   <translation tag="Pause macro not configured" it="Macro pausa non configurata"/>
   <translation tag="Pause on Detection" it="Pausa al rilevamento"/>
   <translation tag="Pause the print first, then load, unload, or change filament" it="Metti prima in pausa la stampa, poi carica, scarica o cambia il filamento"/>
@@ -2190,6 +2202,7 @@
   <translation tag="Pause, resume, or stop the print" it="Pausa, riprendi o ferma la stampa"/>
   <translation tag="Paused" it="In pausa"/>
   <translation tag="Paused (attention needed)" it="In pausa (attenzione richiesta)"/>
+  <translation tag="Pausing at layer {}." it="Pausa allo strato {}."/>
   <translation tag="Pausing..." it="Sospensione..."/>
   <translation tag="Peak Freq" it="Freq. picco"/>
   <translation tag="Peak:" it="Picco:"/>
@@ -2333,6 +2346,7 @@
   <translation tag="Printer Firmware Disconnected" it="Firmware stampante disconnesso"/>
   <translation tag="Printer Image" it="Immagine stampante"/>
   <translation tag="Printer Manager" it="Gestione stampante"/>
+  <translation tag="Printer Message" it="Messaggio della stampante"/>
   <translation tag="Printer Model" it="Modello stampante"/>
   <translation tag="Printer Name" it="Nome stampante"/>
   <translation tag="Printer Setup: Connection" it="Config. stampante: Connessione"/>
@@ -2650,6 +2664,7 @@
   <translation tag="Rewinding" it="Riavvolgimento"/>
   <translation tag="Right" it="Destra"/>
   <translation tag="Role:" it="Ruolo:"/>
+  <translation tag="Rotate" it="Ruota"/>
   <translation tag="Rotating tips for using your printer" it="Suggerimenti a rotazione per l&apos;uso"/>
   <translation tag="Rotation" it="Rotazione"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" it="Rotazione: %d° - %ds rimanenti (o attendi per riprovare)"/>
@@ -2703,6 +2718,7 @@
   <translation tag="Save Printer Configuration" it="Salva configurazione stampante"/>
   <translation tag="Save Theme As" it="Salva tema come"/>
   <translation tag="Save Z-Offset" it="Salva Z-Offset"/>
+  <translation tag="Save Z-Offset Buttons" it="Pulsanti salva Z-Offset"/>
   <translation tag="Save Z-Offset?" it="Salvare Z-Offset?"/>
   <translation tag="Save changes to persist them across restarts?" it="Salvare le modifiche per mantenerle dopo i riavvii?"/>
   <translation tag="Save failed: {}" it="Salvataggio fallito: {}"/>
@@ -3008,6 +3024,7 @@
   <translation tag="Stopped between Hub and Toolhead" it="Fermo tra Hub e testina"/>
   <translation tag="Stopped between Lane and Hub" it="Fermo tra corsia e Hub"/>
   <translation tag="Stopped between Spool and Lane" it="Fermo tra bobina e corsia"/>
+  <translation tag="Stopped drying %s" it="Essiccazione interrotta: %s"/>
   <translation tag="Stops all motion. Requires firmware restart." it="Ferma tutto il movimento. Richiede riavvio firmware."/>
   <translation tag="Stow" it="Ritrai"/>
   <translation tag="Subtle" it="Sobrio"/>
@@ -3152,9 +3169,11 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." it="Le macro di ausilio sono installate e si attivano dopo il riavvio di Klipper."/>
   <translation tag="The left RFID reader in this CFS unit may need service" it="Il lettore RFID sinistro di questa unità CFS potrebbe richiedere assistenza"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." it="La bobina caricata è {}, ma questo file è stato sezionato per {}. Il filamento con cariche richiede un flusso più basso e un ugello indurito."/>
+  <translation tag="The message your printer&apos;s macros show (M117)" it="Il messaggio mostrato dalle macro della stampante (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." it="L&apos;ugello fa alcuni brevi movimenti di prova in un angolo, lontano dall&apos;area di stampa, e ripete finché i valori convergono."/>
   <translation tag="The plate and the spools are still hot. Use gloves." it="Il piano e le bobine sono ancora caldi. Usa i guanti."/>
   <translation tag="The plate finishes its current move, but drying will not start." it="Il piano termina lo spostamento in corso, ma l&apos;essiccazione non partirà."/>
+  <translation tag="The print is on its last layer." it="La stampa è all&apos;ultimo strato."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." it="La stampa è in pausa. Cambiare utensile ora muove la testina e sostituisce il filamento all&apos;ugello. Riprendi la stampa al termine del cambio."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." it="La stampa attende che la camera raggiunga {}°C, ma il riscaldatore non sta scaldando."/>
   <translation tag="The print is waiting for the chamber, but the heater is not heating." it="La stampa attende la camera, ma il riscaldatore non sta scaldando."/>
@@ -3236,7 +3255,9 @@
   <translation tag="This plugin asks for no special permissions." it="Questo plugin non richiede permessi speciali."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." it="Questo plugin permette a HelixScreen di controllare opzioni avvio stampa come mesh piano e QGL."/>
   <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." it="Questa stampa non può essere ripresa. Riavviala, oppure disattiva il controllo del piano se continua a succedere."/>
+  <translation tag="This print does not report layers, so no layer pause can be scheduled." it="Questa stampa non riporta gli strati, quindi non è possibile programmare una pausa a uno strato."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" it="Questa stampa richiede circa %.0fg ma la bobina ne ha circa %.0fg rimanenti. Avviare comunque?"/>
+  <translation tag="This print never reports layer {}." it="Questa stampa non riporta mai lo strato {}."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" it="Questa stampante non può calibrare automaticamente gli offset degli strumenti"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." it="Questa stampante riempie i suoi gate da Spoolman. HelixScreen ha svuotato la propria copia; rimuovi la bobina in Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." it="Questa stampante riempie i suoi gate da Spoolman. Modifica colore, materiale e bobina in Spoolman."/>
@@ -3615,6 +3636,7 @@
   <translation tag="Z-offset saved" it="Z-offset salvato"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." it="Z-offset salvato ({:+.3f}mm). Riavvio Klipper..."/>
   <translation tag="Z-offset saved - Klipper restarting..." it="Z-offset salvato - Riavvio Klipper..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." it="Il salvataggio dello Z-Offset è disattivato, quindi HelixScreen non lo ha salvato. Klipper lo conserva fino al prossimo salvataggio della configurazione."/>
   <translation tag="Z:" it="Z:"/>
   <translation tag="Z: 0.000" it="Z: 0.000"/>
   <translation tag="already loaded" it="già caricato"/>

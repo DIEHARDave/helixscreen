@@ -621,6 +621,42 @@ Almost everything uses flexbox. The three flows you'll see:
 <lv_obj flex_flow="row_wrap"/>   <!-- Horizontal, wraps to new rows when full -->
 ```
 
+### A wrapping grid of tiles that must fit its card
+
+A `row_wrap` grid of equal tiles with fixed percentage widths fixes its column
+count, so more visible tiles than it planned for spill into a row the card
+clips, and a portrait card gets the same shape as a landscape one. Let the
+shape follow the box instead: `fit_tile_grid()` (`include/tile_grid_fit.h`)
+takes the visible tile count, the grid's content size, the gap and the minimum
+tile that holds an icon over a one-line label, and returns columns, rows and
+whether labels fit. It scores every shape by how far its tile clears that
+minimum on the tighter axis, so a wide card gets 3x2 for six tiles, a tall one
+2x3, and a large one can go wider.
+
+The Controls panel's Calibration & Tools card is the reference wiring:
+
+- The grid carries `<event_cb trigger="layout_changed" .../>`. LVGL sends it after
+  every flex pass of the grid, which covers a tile hiding or showing and the card
+  resizing. The callback (`ControlsPanel::update_calib_grid`) counts the
+  children without `hidden`, measures the grid's content box and its
+  `pad_column` / `pad_row`, and sets every cell to the whole-pixel `tile_w` x
+  `tile_h` the fit returns. That is measured layout (a structural exception):
+  percentage widths cannot account for the gaps, so on a narrow grid with a wide
+  gap they wrap the last tile into a row the card clips. It writes a size only
+  when it changes, because each write lays the grid out again.
+- Each tile is a `calib_tile` cell around a `home_action_tile` that fills it, and
+  hides its label from `calib_grid_labels` (the fit's `fits`). Visibility
+  bindings go on the cell, so a hidden tile drops out of the count.
+- The minimum tile is a responsive token pair (`calib_tile_min_width` /
+  `calib_tile_min_height` in `globals.xml`), read with
+  `theme_manager_get_spacing()`.
+
+Do not compute the tile count from the subjects the tiles' visibility bindings
+read: that is a second copy of every tile's rule. And avoid a `<subject_expr>`
+over printer subjects for this: a printer switch deinitializes and re-creates
+them while the component stays registered, so the derived subject stops
+updating.
+
 ### flex_grow
 
 Children with `flex_grow` expand to fill remaining space in their parent. The parent **must** have an explicit size (not `content`).
@@ -863,6 +899,8 @@ You're free to rearrange the visual hierarchy, change flex directions, adjust si
 ### One tree, restyled for portrait
 
 A panel usually needs no portrait override. The print file detail view is the pattern: one widget tree, with complementary `bind_style` pairs keyed on `ui_is_portrait` carrying every restyle that is a style property (row vs column, which side grows, the button tier). The inline attribute for a restyled property must come off the widget, because an inline attribute beats a bound style and freezes one orientation. What styles cannot express (a size measured from runtime pixels) is measured in C++: `src/ui/ui_print_select_detail_view.cpp#fit_portrait_preview` reads the options column's real content height and sets the preview card's height from `include/print_detail_layout.h#decide_detail_portrait_preview`. See `ui_xml/print_file_detail.xml` for the whole shape.
+
+The Controls panel's top row (`ui_xml/controls_panel.xml`) is the same pattern with a wrapping flow: three cards side by side in landscape, and in portrait the row wraps to Position beside Temperature with Cooling across the full width below. Two traps it shows: a style that sets `flex_flow` needs `layout="flex"` with it, because the inline attribute it replaces set both; and `ui_card` sets its own size locally when it is created, so no bound style can resize it. Put the card in a plain `lv_obj` cell that carries the bound sizes, and give the card `width="100%" height="100%"`.
 
 ### Priority panels to override
 

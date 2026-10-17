@@ -244,7 +244,12 @@ std::vector<helix::printer::EnvironmentZone> AmsBackend::get_environment_zones(i
                 z.unit_index = unit_idx;
                 z.env = *s.environment;
                 z.dryer = dryer;
-                z.state = state;
+                // A dryer that heats gates one by one reports each lane's own part in
+                // the cycle; one running gate does not make the whole unit Active.
+                z.state = dryer.supports_gate_selection ? s.drying_state : state;
+                if (dryer.supports_gate_selection) {
+                    z.dryer.active = z.state == ZoneDryingState::Active;
+                }
                 zones.push_back(std::move(z));
             }
         } else if (au.environment.has_value() || dryer.supported) {
@@ -269,6 +274,24 @@ std::vector<helix::printer::EnvironmentZone> AmsBackend::get_environment_zones(i
         }
     }
     return zones;
+}
+
+AmsError AmsBackend::start_drying_request(const DryingRequest& request) {
+    if (!request.gates.empty() || request.rotate) {
+        return AmsErrorHelper::not_supported("Drying selected gates");
+    }
+    if (request.humidity_pct) {
+        return start_drying_to_humidity(request.temp_c, request.duration_min, *request.humidity_pct,
+                                        request.fan_pct, request.unit);
+    }
+    return start_drying(request.temp_c, request.duration_min, request.fan_pct, request.unit);
+}
+
+AmsError AmsBackend::stop_drying_gates(int unit, const std::vector<int>& gates) {
+    if (!gates.empty()) {
+        return AmsErrorHelper::not_supported("Drying selected gates");
+    }
+    return stop_drying(unit);
 }
 
 AmsError AmsBackend::unload_active_filament() {

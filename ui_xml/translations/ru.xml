@@ -523,6 +523,7 @@
   <translation tag="Cancel" ru="Отмена"/>
   <translation tag="Cancel Escalation" ru="Отменить эскалацию"/>
   <translation tag="Cancel Print" ru="Отменить печать"/>
+  <translation tag="Cancel Scheduled Pause" ru="Отменить запланированную паузу"/>
   <translation tag="Cancel macro not configured" ru="Макрос отмены не настроен"/>
   <translation tag="Cancel print" ru="Отменить печать"/>
   <translation tag="Cancelled" ru="Отменено"/>
@@ -542,6 +543,7 @@
   <translation tag="Cannot restart — no filename" ru="Не удалось перезапустить — нет имени файла"/>
   <translation tag="Cannot run filament operation while printing" ru="Во время печати нельзя выполнять операции с филаментом"/>
   <translation tag="Cannot save offsets while printing" ru="Нельзя сохранить смещения во время печати"/>
+  <translation tag="Cannot schedule a pause: printer not connected" ru="Невозможно запланировать паузу: принтер не подключён"/>
   <translation tag="Cannot start print: internal error" ru="Невозможно начать печать: внутренняя ошибка"/>
   <translation tag="Cannot start print: no temp directory available" ru="Невозможно начать печать: временная директория недоступна"/>
   <translation tag="Cannot start print: not connected to printer" ru="Невозможно начать печать: не подключено к принтеру"/>
@@ -627,6 +629,7 @@
   <translation tag="Checking…" ru="Проверка…"/>
   <translation tag="Choose 12-hour or 24-hour time display" ru="Выберите 12-часовой или 24-часовой формат времени"/>
   <translation tag="Choose Filament" ru="Выбрать филамент"/>
+  <translation tag="Choose Layer" ru="Выбрать слой"/>
   <translation tag="Choose Model" ru="Выберите модель"/>
   <translation tag="Choose an existing filament, or tap + New to create one." ru="Выберите существующий филамент или нажмите + Новый, чтобы создать."/>
   <translation tag="Choose display language" ru="Выберите язык интерфейса"/>
@@ -965,6 +968,7 @@
   <translation tag="Draw a ripple at each touch — helps diagnose offsets" ru="Рисовать круг при каждом касании — помогает диагностировать смещения"/>
   <translation tag="Drive Cal" ru="Кал. привода"/>
   <translation tag="Drop shadow strength (0 = disabled)" ru="Интенсивность тени (0 = отключено)"/>
+  <translation tag="Dry" ru="Сушка"/>
   <translation tag="Dry Filament" ru="Сушка филамента"/>
   <translation tag="Dry Filament on the Bed" ru="Сушка филамента на столе"/>
   <translation tag="Dry spools on the heated bed" ru="Сушка катушек на нагреваемом столе"/>
@@ -1215,6 +1219,7 @@
   <translation tag="Failed to save setup completion" ru="Не удалось сохранить завершение настройки"/>
   <translation tag="Failed to save spool" ru="Не удалось сохранить катушку"/>
   <translation tag="Failed to save theme file" ru="Не удалось сохранить файл темы"/>
+  <translation tag="Failed to schedule the pause: {}" ru="Не удалось запланировать паузу: {}"/>
   <translation tag="Failed to send command: {}" ru="Не удалось отправить команду: {}"/>
   <translation tag="Failed to send print data" ru="Не удалось отправить данные печати"/>
   <translation tag="Failed to send status request" ru="Не удалось отправить запрос статуса"/>
@@ -1712,6 +1717,7 @@
   <translation tag="Layer Height" ru="Высота слоя"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." ru="Слоевой макрос захватывает один кадр при смене слоя. Подходит для большинства печатей."/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." ru="Послойный режим захватывает один кадр на каждую смену слоя. Лучший выбор для большинства печатей."/>
+  <translation tag="Layer {} of {}." ru="Слой {} из {}."/>
   <translation tag="Layers" ru="Слои"/>
   <translation tag="Layout" ru="Раскладка"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." ru="Изменение раскладки отключено в безопасном режиме. Перезапустите, чтобы редактировать."/>
@@ -1973,6 +1979,7 @@
   <translation tag="New printer successfully added" ru="Новый принтер успешно добавлен"/>
   <translation tag="New profile name" ru="Новое имя профиля"/>
   <translation tag="Next" ru="Далее"/>
+  <translation tag="Next Layer" ru="Следующий слой"/>
   <translation tag="Next: {}" ru="Далее: {}"/>
   <translation tag="Niimbot (Bluetooth)" ru="Niimbot (Bluetooth)"/>
   <translation tag="No" ru="Нет"/>
@@ -2027,6 +2034,7 @@
   <translation tag="No media installed" ru="Носитель не установлен"/>
   <translation tag="No mesh data" ru="Нет данных сетки"/>
   <translation tag="No mesh loaded" ru="Сетка не загружена"/>
+  <translation tag="No message" ru="Нет сообщения"/>
   <translation tag="No multi-filament system detected" ru="Мультифиламентная система не обнаружена"/>
   <translation tag="No network. Scan QR code to report on your phone." ru="Нет сети. Отсканируйте QR-код, чтобы отправить отчёт с телефона."/>
   <translation tag="No networks found" ru="Сети не найдены"/>
@@ -2035,6 +2043,7 @@
   <translation tag="No objects" ru="Нет объектов"/>
   <translation tag="No objects defined for this print" ru="Для этой печати не определены объекты"/>
   <translation tag="No output yet" ru="Нет вывода"/>
+  <translation tag="No pause scheduled." ru="Пауза не запланирована."/>
   <translation tag="No presets configured" ru="Пресеты не настроены"/>
   <translation tag="No preview" ru="Нет предпросмотра"/>
   <translation tag="No print history found" ru="История печати не найдена"/>
@@ -2139,6 +2148,7 @@
   <translation tag="Off" ru="Выкл"/>
   <translation tag="Off:" ru="Выкл:"/>
   <translation tag="Off: runs with these values without asking" ru="Выкл.: запуск с этими значениями без запроса"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" ru="Предлагать сохранить изменения Z-Offset в конфигурации принтера"/>
   <translation tag="Offsets saved" ru="Смещения сохранены"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" ru="Прежняя настройка на сегодняшних данных: остаточная вибрация {} — сейчас: {}"/>
   <translation tag="On" ru="Вкл"/>
@@ -2228,6 +2238,8 @@
   <translation tag="Path {}" ru="Путь {}"/>
   <translation tag="Path {} before" ru="Путь {} раньше"/>
   <translation tag="Pause" ru="Пауза"/>
+  <translation tag="Pause Layer" ru="Слой паузы"/>
+  <translation tag="Pause at Layer" ru="Пауза на слое"/>
   <translation tag="Pause macro not configured" ru="Макрос паузы не настроен"/>
   <translation tag="Pause on Detection" ru="Пауза при обнаружении"/>
   <translation tag="Pause the print first, then load, unload, or change filament" ru="Сначала приостановите печать, затем загружайте, выгружайте или меняйте филамент"/>
@@ -2235,6 +2247,7 @@
   <translation tag="Pause, resume, or stop the print" ru="Пауза, продолжение или остановка"/>
   <translation tag="Paused" ru="Приостановлено"/>
   <translation tag="Paused (attention needed)" ru="Приостановлено (требует внимания)"/>
+  <translation tag="Pausing at layer {}." ru="Пауза на слое {}."/>
   <translation tag="Pausing..." ru="Приостановка..."/>
   <translation tag="Peak Freq" ru="Пиковая частота"/>
   <translation tag="Peak:" ru="Пик:"/>
@@ -2384,6 +2397,7 @@
   <translation tag="Printer Firmware Disconnected" ru="Прошивка принтера отключена"/>
   <translation tag="Printer Image" ru="Изображение принтера"/>
   <translation tag="Printer Manager" ru="Менеджер принтеров"/>
+  <translation tag="Printer Message" ru="Сообщение принтера"/>
   <translation tag="Printer Model" ru="Модель принтера"/>
   <translation tag="Printer Name" ru="Название принтера"/>
   <translation tag="Printer Setup: Connection" ru="Настройка принтера: Подключение"/>
@@ -2704,6 +2718,7 @@
   <translation tag="Rewinding" ru="Перемотка"/>
   <translation tag="Right" ru="Справа"/>
   <translation tag="Role:" ru="Тип:"/>
+  <translation tag="Rotate" ru="Вращать"/>
   <translation tag="Rotating tips for using your printer" ru="Сменяющиеся советы по печати"/>
   <translation tag="Rotation" ru="Поворот"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" ru="Поворот: %d° - осталось %ds (или подождите для повтора)"/>
@@ -2757,6 +2772,7 @@
   <translation tag="Save Printer Configuration" ru="Сохранить конфигурацию принтера"/>
   <translation tag="Save Theme As" ru="Сохранить тему как"/>
   <translation tag="Save Z-Offset" ru="Сохранить Z-Offset"/>
+  <translation tag="Save Z-Offset Buttons" ru="Кнопки сохранения Z-Offset"/>
   <translation tag="Save Z-Offset?" ru="Сохранить Z-Offset?"/>
   <translation tag="Save changes to persist them across restarts?" ru="Сохранить изменения, чтобы они сохранились после перезапуска?"/>
   <translation tag="Save failed: {}" ru="Ошибка сохранения: {}"/>
@@ -3068,6 +3084,7 @@
   <translation tag="Stopped between Hub and Toolhead" ru="Остановка между хабом и печатающей головкой"/>
   <translation tag="Stopped between Lane and Hub" ru="Остановка между каналом и хабом"/>
   <translation tag="Stopped between Spool and Lane" ru="Остановка между катушкой и каналом"/>
+  <translation tag="Stopped drying %s" ru="Сушка остановлена: %s"/>
   <translation tag="Stops all motion. Requires firmware restart." ru="Останавливает всё движение. Требуется перезапуск прошивки."/>
   <translation tag="Stow" ru="Убрать"/>
   <translation tag="Subtle" ru="Сдержанный"/>
@@ -3212,9 +3229,11 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." ru="Вспомогательные макросы установлены и активируются после перезапуска Klipper."/>
   <translation tag="The left RFID reader in this CFS unit may need service" ru="Левому RFID-считывателю этого блока CFS может требоваться обслуживание"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." ru="Загружена катушка {}, но файл нарезан для {}. Филамент с наполнителем печатается с меньшим потоком и требует закалённого сопла."/>
+  <translation tag="The message your printer&apos;s macros show (M117)" ru="Сообщение, которое показывают макросы принтера (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." ru="Сопло делает несколько коротких тестовых перемещений в углу, в стороне от зоны печати, и повторяет их до сходимости."/>
   <translation tag="The plate and the spools are still hot. Use gloves." ru="Стол и катушки ещё горячие. Используйте перчатки."/>
   <translation tag="The plate finishes its current move, but drying will not start." ru="Стол завершит текущее перемещение, но сушка не начнётся."/>
+  <translation tag="The print is on its last layer." ru="Печатается последний слой."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." ru="Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." ru="Печать ждёт, пока камера нагреется до {}°C, но нагреватель не греет."/>
   <translation tag="The print is waiting for the chamber, but the heater is not heating." ru="Печать ждёт камеру, но нагреватель не греет."/>
@@ -3296,7 +3315,9 @@
   <translation tag="This plugin asks for no special permissions." ru="Этот плагин не запрашивает специальных разрешений."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." ru="Этот плагин позволяет HelixScreen управлять опциями начала печати, такими как сетка стола и QGL."/>
   <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." ru="Эту печать нельзя продолжить. Перезапустите её или отключите проверку стола, если это повторяется."/>
+  <translation tag="This print does not report layers, so no layer pause can be scheduled." ru="Эта печать не сообщает слои, поэтому паузу на слое запланировать нельзя."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" ru="Для этой печати нужно около %.0fг, но на катушке осталось около %.0fг. Всё равно начать?"/>
+  <translation tag="This print never reports layer {}." ru="Эта печать никогда не сообщает слой {}."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" ru="Этот принтер не может калибровать смещения инструментов автоматически"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman."/>
@@ -3675,6 +3696,7 @@
   <translation tag="Z-offset saved" ru="Z-offset сохранён"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." ru="Z-offset сохранён ({:+.3f}мм). Перезапуск Klipper..."/>
   <translation tag="Z-offset saved - Klipper restarting..." ru="Z-смещение сохранено — Klipper перезапускается..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." ru="Сохранение Z-Offset выключено, поэтому HelixScreen не сохранил это. Klipper хранит значение до следующего сохранения конфигурации."/>
   <translation tag="Z:" ru="Z:"/>
   <translation tag="Z: 0.000" ru="Z: 0.000"/>
   <translation tag="already loaded" ru="уже загружен"/>

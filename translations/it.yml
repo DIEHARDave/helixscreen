@@ -526,6 +526,7 @@ translations:
   Cancel: Annulla
   Cancel Escalation: Annulla escalation
   Cancel Print: Annulla stampa
+  Cancel Scheduled Pause: 'Annulla pausa programmata'
   Cancel macro not configured: Macro annullamento non configurata
   Cancel print: 'Annulla stampa'
   Cancelled: Annullato
@@ -550,6 +551,7 @@ translations:
     alla stampante'
   Cannot restart — no filename: Impossibile riavviare — nessun nome file
   Cannot run filament operation while printing: Impossibile eseguire operazioni sul filamento durante la stampa
+  'Cannot schedule a pause: printer not connected': 'Impossibile programmare una pausa: stampante non connessa'
   'Cannot start print: internal error': 'Impossibile avviare stampa: errore interno'
   'Cannot start print: no temp directory available': 'Impossibile avviare la stampa: directory temporanea non disponibile'
   'Cannot start print: not connected to printer': 'Impossibile avviare stampa: non
@@ -644,6 +646,7 @@ translations:
   Checking…: Verifica in corso…
   Choose 12-hour or 24-hour time display: Scegli formato orario 12 ore o 24 ore
   Choose Filament: Scegli filamento
+  Choose Layer: 'Scegli strato'
   Choose Model: Scegli modello
   Choose an existing filament, or tap + New to create one.: Scegli un filamento esistente,
     o tocca + Nuovo per crearne uno.
@@ -1020,6 +1023,7 @@ translations:
     — aiuta a diagnosticare gli scostamenti
   Drive Cal: Cal. drive
   Drop shadow strength (0 = disabled): Intensità ombra (0 = disabilitata)
+  Dry: Essicca
   Dry Filament: Essicca filamento
 
   Dry Filament on the Bed: Essicca il filamento sul piano
@@ -1296,6 +1300,7 @@ translations:
   Failed to save setup completion: Impossibile salvare completamento configurazione
   Failed to save spool: Salvataggio bobina fallito
   Failed to save theme file: Salvataggio file tema fallito
+  'Failed to schedule the pause: {}': 'Impossibile programmare la pausa: {}'
   'Failed to send command: {}': 'Impossibile inviare comando: {}'
   Failed to send print data: Impossibile inviare i dati di stampa
   Failed to send status request: Impossibile inviare la richiesta di stato
@@ -1855,6 +1860,7 @@ translations:
   Layer mode captures one frame per layer change. Best for most prints.: La modalità
     layer cattura un fotogramma per cambio layer. Ideale per la maggior parte delle
     stampe.
+  Layer {} of {}.: 'Strato {} di {}.'
   Layers: Layer
   Layout: Layout
   Layout changes are off in safe mode. Restart to edit.: 'Le modifiche al layout sono disattivate in modalità provvisoria. Riavvia per modificare.'
@@ -2132,6 +2138,7 @@ translations:
   New printer successfully added: Nuova stampante aggiunta con successo
   New profile name: Nome nuovo profilo
   Next: Avanti
+  Next Layer: 'Strato successivo'
   'Next: {}': 'Prossimo: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
@@ -2192,6 +2199,7 @@ translations:
   No media installed: Nessun supporto installato
   No mesh data: Nessun dato mesh
   No mesh loaded: Nessuna mesh caricata
+  No message: 'Nessun messaggio'
   No multi-filament system detected: Nessun sistema multi-filamento rilevato
   No network. Scan QR code to report on your phone.: Nessuna rete. Scansiona il QR
     code per segnalare dal telefono.
@@ -2201,6 +2209,7 @@ translations:
   No objects: 'Nessun oggetto'
   No objects defined for this print: Nessun oggetto definito per questa stampa
   No output yet: Nessun output
+  No pause scheduled.: 'Nessuna pausa programmata.'
   No presets configured: Nessun preset configurato
   No preview: Nessuna anteprima
   No print history found: Nessuno storico stampe trovato
@@ -2311,6 +2320,7 @@ translations:
   'Off': 'Off'
   'Off:': 'Off:'
   'Off: runs with these values without asking': 'Disattivato: esegue con questi valori senza chiedere'
+  Offer to save Z-offset changes to the printer config: 'Proponi di salvare le modifiche allo Z-Offset nella configurazione della stampante'
   Offsets saved: Offset salvati
   "Old setting on today's data: {} residual - now: {}": 'Impostazione precedente sui dati di oggi: residuo {} - ora: {}'
   'On': 'On'
@@ -2409,6 +2419,8 @@ translations:
   Path {}: Percorso {}
   Path {} before: Percorso {} prima
   Pause: Pausa
+  Pause Layer: 'Strato di pausa'
+  Pause at Layer: 'Pausa allo strato'
   Pause macro not configured: Macro pausa non configurata
   Pause on Detection: Pausa al rilevamento
   Pause the print first, then load, unload, or change filament: Metti prima in pausa la stampa, poi carica, scarica o cambia il filamento
@@ -2416,6 +2428,7 @@ translations:
   Pause, resume, or stop the print: Pausa, riprendi o ferma la stampa
   Paused: In pausa
   Paused (attention needed): In pausa (attenzione richiesta)
+  Pausing at layer {}.: 'Pausa allo strato {}.'
   Pausing...: Sospensione...
   Peak Freq: Freq. picco
   'Peak:': 'Picco:'
@@ -2567,6 +2580,7 @@ translations:
   Printer Firmware Disconnected: Firmware stampante disconnesso
   Printer Image: Immagine stampante
   Printer Manager: Gestione stampante
+  Printer Message: 'Messaggio della stampante'
   Printer Model: Modello stampante
   Printer Name: Nome stampante
   'Printer Setup: Connection': 'Config. stampante: Connessione'
@@ -2912,6 +2926,7 @@ translations:
   Rewinding: Riavvolgimento
   Right: 'Destra'
   'Role:': 'Ruolo:'
+  Rotate: Ruota
   Rotating tips for using your printer: Suggerimenti a rotazione per l'uso
   Rotation: Rotazione
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Rotazione: %d°
@@ -2975,6 +2990,7 @@ translations:
   Save Printer Configuration: Salva configurazione stampante
   Save Theme As: Salva tema come
   Save Z-Offset: Salva Z-Offset
+  Save Z-Offset Buttons: 'Pulsanti salva Z-Offset'
   Save Z-Offset?: Salvare Z-Offset?
   Save changes to persist them across restarts?: Salvare le modifiche per mantenerle
     dopo i riavvii?
@@ -3328,6 +3344,7 @@ translations:
   Stopped between Hub and Toolhead: Fermo tra Hub e testina
   Stopped between Lane and Hub: Fermo tra corsia e Hub
   Stopped between Spool and Lane: Fermo tra bobina e corsia
+  Stopped drying %s: 'Essiccazione interrotta: %s'
   Stops all motion. Requires firmware restart.: Ferma tutto il movimento. Richiede
     riavvio firmware.
   Stow: Ritrai
@@ -3497,10 +3514,12 @@ translations:
   The left RFID reader in this CFS unit may need service: Il lettore RFID sinistro di questa unità CFS potrebbe richiedere assistenza
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : La bobina caricata è {}, ma questo file è stato sezionato per {}. Il filamento con cariche richiede un flusso più basso e un ugello indurito.
+  The message your printer's macros show (M117): 'Il messaggio mostrato dalle macro della stampante (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: 'L''ugello fa alcuni brevi movimenti di prova in un angolo, lontano dall''area di stampa, e ripete finché i valori convergono.'
   The plate and the spools are still hot. Use gloves.: Il piano e le bobine sono ancora caldi. Usa i guanti.
 
   The plate finishes its current move, but drying will not start.: 'Il piano termina lo spostamento in corso, ma l''essiccazione non partirà.'
+  The print is on its last layer.: 'La stampa è all''ultimo strato.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : La stampa è in pausa. Cambiare utensile ora muove la testina e sostituisce il
     filamento all'ugello. Riprendi la stampa al termine del cambio.
@@ -3611,9 +3630,11 @@ translations:
   This plugin asks for no special permissions.: 'Questo plugin non richiede permessi speciali.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Questo plugin permette a HelixScreen di controllare opzioni avvio stampa come mesh piano e QGL.'
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'Questa stampa non può essere ripresa. Riavviala, oppure disattiva il controllo del piano se continua a succedere.'
+  This print does not report layers, so no layer pause can be scheduled.: 'Questa stampa non riporta gli strati, quindi non è possibile programmare una pausa a uno strato.'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Questa
     stampa richiede circa %.0fg ma la bobina ne ha circa %.0fg rimanenti. Avviare
     comunque?
+  This print never reports layer {}.: 'Questa stampa non riporta mai lo strato {}.'
   This printer cannot calibrate tool offsets automatically: Questa stampante non può calibrare automaticamente gli offset degli strumenti
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Questa stampante riempie i suoi gate da Spoolman. HelixScreen ha svuotato la propria copia; rimuovi la bobina in Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Questa stampante riempie i suoi gate da Spoolman. Modifica colore, materiale e bobina in Spoolman.
@@ -4040,6 +4061,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z-offset salvato ({:+.3f}mm).
     Riavvio Klipper...
   Z-offset saved - Klipper restarting...: Z-offset salvato - Riavvio Klipper...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Il salvataggio dello Z-Offset è disattivato, quindi HelixScreen non lo ha salvato. Klipper lo conserva fino al prossimo salvataggio della configurazione.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'già caricato'

@@ -77,6 +77,10 @@ struct ToolInfo {
     DetectState detect_state = DetectState::UNAVAILABLE;
     int backend_index = -1; ///< Which AMS backend feeds this tool (-1 = direct drive)
     int backend_slot = -1;  ///< Fixed slot in that backend (-1 = any/dynamic)
+    /// This tool's lane is the one seated in its head, whether that head is
+    /// mounted or parked. Where a hub feeds several lanes into one head, it
+    /// says which of them the head holds.
+    bool lane_seated = false;
 
     // Spoolman spool assignment (persisted per-tool)
     int spoolman_id = 0;           ///< Spoolman spool ID (0=not tracked)
@@ -101,12 +105,16 @@ struct PhysicalHead {
     std::optional<std::string> extruder_name;
     /// Every tool that prints through this head, ascending. Never empty.
     std::vector<int> tool_indices;
+    /// The tool whose lane is seated in this head, or -1 where none is, or
+    /// where more than one claims it and so none can be believed.
+    int seated_tool = -1;
 
     [[nodiscard]] bool holds_tool(int tool_index) const;
     /// The tool that stands for this head: @p active_tool when it prints
-    /// through this head, else the head's lowest tool. Selecting the head
-    /// sends this tool, so mounting a head that is already mounted changes
-    /// nothing and mounting another loads its lowest lane.
+    /// through this head, else the tool whose lane is seated in it, else the
+    /// head's lowest tool. Selecting the head sends this tool, so mounting a
+    /// head that is already mounted changes nothing, and mounting a parked one
+    /// keeps the lane it holds instead of swapping filament on the way.
     [[nodiscard]] int representative_tool(int active_tool) const;
 };
 
@@ -133,6 +141,10 @@ struct ToolTopology {
     /// where the backend does not say, which leaves the tool the extruder it
     /// already had.
     std::vector<std::string> tool_extruder;
+    /// Whether each tool's lane is the one seated in its head, mounted or
+    /// parked, indexed like tool_to_slot. Empty where the backend does not
+    /// say, which leaves no lane seated.
+    std::vector<bool> tool_seated;
     int backend_index = 0; ///< Source backend in AmsState::backends_
 };
 

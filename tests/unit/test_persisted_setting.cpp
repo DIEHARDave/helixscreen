@@ -262,6 +262,9 @@ const std::vector<Row>& rows() {
         {"detection_policy_u1", Mgr::Settings, true, "detection/policy_u1", false, 2, 0, 2,
          "detection_policy_u1", true, SETI(sm().set_detection_policy_u1),
          GET(sm().get_detection_policy_u1), NOSUBJ},
+        {"settings_z_offset_save_mode", Mgr::Settings, true, "z_offset/save_mode", false, 0, 0, 2,
+         "z_offset_save_mode", true, SETI(sm().set_z_offset_save_mode),
+         GET(sm().get_z_offset_save_mode), SUBJ(sm().subject_z_offset_save_mode)},
     };
     return r;
 }

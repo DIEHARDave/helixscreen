@@ -70,6 +70,7 @@ struct ToolInfo {
     DetectState detect_state = DetectState::UNAVAILABLE; // Physical presence detection
     int backend_index = -1;                           // AMS backend feeding this tool (-1 = direct drive)
     int backend_slot = -1;                            // Fixed slot in that backend (-1 = any/dynamic)
+    bool lane_seated = false;                         // This tool's lane is the one seated in its head
 };
 ```
 
@@ -200,7 +201,7 @@ Updates `active_tool_index_` and the `active_tool` subject.
 
 Whether `-1` is a real active-tool value depends on the topology. When an AMS
 backend owns the tool list, `build_ams_topology()`
-(`src/printer/ams_state_tool_mapping.cpp#build_ams_topology`) fills
+(`src/printer/ams_state_tool_mapping.cpp#"build_ams_topology(AmsBackend* backend, int backend_index,"`) fills
 `ToolTopology::allows_empty_carriage` from `AmsBackend::carriage_can_be_empty()`
 (`include/ams_backend.h#AmsBackend/carriage_can_be_empty`). By default that answers
 `load_mounts_tool()`: true where selecting a slot physically mounts a tool, so the
@@ -304,6 +305,8 @@ themselves are read through the `tool_offset_*()` accessors rather than subjects
 | `backend_slot` | `0+` | Fixed slot assignment |
 
 This allows a tool changer where T0 feeds from an AFC (backend 0) and T1 feeds from a Happy Hare (backend 1), each with independent slot tracking.
+
+`ToolInfo.lane_seated` comes from `ToolTopology::tool_seated`, which `build_ams_topology()` fills from each lane's `slot_is_actively_loaded()` on every push. Where a hub feeds several lanes into one head, it names the lane the head holds, mounted or parked, and `PhysicalHead::representative_tool()` sends that lane when the head is selected rather than the head's lowest (prestonbrown/helixscreen#1811).
 
 ---
 

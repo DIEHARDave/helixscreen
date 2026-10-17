@@ -512,6 +512,7 @@ translations:
   Cancel: Cancel
   Cancel Escalation: Cancel Escalation
   Cancel Print: Cancel Print
+  Cancel Scheduled Pause: Cancel Scheduled Pause
   Cancel macro not configured: Cancel macro not configured
   Cancel print: Cancel print
   Cancelled: Cancelled
@@ -534,6 +535,7 @@ translations:
   'Cannot reprint: not connected to printer': 'Cannot reprint: not connected to printer'
   Cannot restart — no filename: Cannot restart — no filename
   Cannot run filament operation while printing: Cannot run filament operation while printing
+  'Cannot schedule a pause: printer not connected': 'Cannot schedule a pause: printer not connected'
   'Cannot start print: internal error': 'Cannot start print: internal error'
   'Cannot start print: no temp directory available': 'Cannot start print: no temp directory available'
   'Cannot start print: not connected to printer': 'Cannot start print: not connected
@@ -627,6 +629,7 @@ translations:
   Checking…: Checking…
   Choose 12-hour or 24-hour time display: Choose 12-hour or 24-hour time display
   Choose Filament: Choose Filament
+  Choose Layer: Choose Layer
   Choose Model: Choose Model
   Choose an existing filament, or tap + New to create one.: Choose an existing filament,
     or tap + New to create one.
@@ -990,6 +993,7 @@ translations:
     — helps diagnose offsets
   Drive Cal: Drive Cal
   Drop shadow strength (0 = disabled): Drop shadow strength (0 = disabled)
+  Dry: Dry
   Dry Filament: Dry Filament
   Dry Filament on the Bed: Dry Filament on the Bed
   Dry spools on the heated bed: Dry spools on the heated bed
@@ -1253,6 +1257,7 @@ translations:
   Failed to save setup completion: Failed to save setup completion
   Failed to save spool: Failed to save spool
   Failed to save theme file: Failed to save theme file
+  'Failed to schedule the pause: {}': 'Failed to schedule the pause: {}'
   'Failed to send command: {}': 'Failed to send command: {}'
   Failed to send print data: Failed to send print data
   Failed to send status request: Failed to send status request
@@ -1797,6 +1802,7 @@ translations:
     captures one frame per layer change. Best for most prints.
   Layer mode captures one frame per layer change. Best for most prints.: Layer mode
     captures one frame per layer change. Best for most prints.
+  Layer {} of {}.: Layer {} of {}.
   Layers: Layers
   Layout: Layout
   Layout changes are off in safe mode. Restart to edit.: Layout changes are off in safe mode. Restart to edit.
@@ -2072,6 +2078,7 @@ translations:
   New printer successfully added: New printer successfully added
   New profile name: New profile name
   Next: Next
+  Next Layer: Next Layer
   'Next: {}': 'Next: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
@@ -2129,6 +2136,7 @@ translations:
   No media installed: No media installed
   No mesh data: No mesh data
   No mesh loaded: No mesh loaded
+  No message: No message
   No multi-filament system detected: No multi-filament system detected
   No network. Scan QR code to report on your phone.: No network. Scan QR code to report
     on your phone.
@@ -2138,6 +2146,7 @@ translations:
   No objects: No objects
   No objects defined for this print: No objects defined for this print
   No output yet: No output yet
+  No pause scheduled.: No pause scheduled.
   No presets configured: No presets configured
   No preview: No preview
   No print history found: No print history found
@@ -2246,6 +2255,7 @@ translations:
   'Off': 'Off'
   'Off:': 'Off:'
   'Off: runs with these values without asking': 'Off: runs with these values without asking'
+  Offer to save Z-offset changes to the printer config: Offer to save Z-offset changes to the printer config
   Offsets saved: Offsets saved
   "Old setting on today's data: {} residual - now: {}": "Old setting on today's data: {} residual - now: {}"
   'On': 'On'
@@ -2341,6 +2351,8 @@ translations:
   Path {}: Path {}
   Path {} before: Path {} before
   Pause: Pause
+  Pause Layer: Pause Layer
+  Pause at Layer: Pause at Layer
   Pause macro not configured: Pause macro not configured
   Pause on Detection: Pause on Detection
   Pause the print first, then load, unload, or change filament: Pause the print first,
@@ -2349,6 +2361,7 @@ translations:
   Pause, resume, or stop the print: Pause, resume, or stop the print
   Paused: Paused
   Paused (attention needed): Paused (attention needed)
+  Pausing at layer {}.: Pausing at layer {}.
   Pausing...: Pausing...
   Peak Freq: Peak Freq
   'Peak:': 'Peak:'
@@ -2497,6 +2510,7 @@ translations:
   Printer Firmware Disconnected: Printer Firmware Disconnected
   Printer Image: Printer Image
   Printer Manager: Printer Manager
+  Printer Message: Printer Message
   Printer Model: Printer Model
   Printer Name: Printer Name
   'Printer Setup: Connection': 'Printer Setup: Connection'
@@ -2835,6 +2849,7 @@ translations:
   Rewinding: Rewinding
   Right: Right
   'Role:': 'Role:'
+  Rotate: Rotate
   Rotating tips for using your printer: Rotating tips for using your printer
   Rotation: Rotation
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Rotation: %d°
@@ -2896,6 +2911,7 @@ translations:
   Save Printer Configuration: Save Printer Configuration
   Save Theme As: Save Theme As
   Save Z-Offset: Save Z-Offset
+  Save Z-Offset Buttons: Save Z-Offset Buttons
   Save Z-Offset?: Save Z-Offset?
   Save changes to persist them across restarts?: Save changes to persist them across
     restarts?
@@ -3233,6 +3249,7 @@ translations:
   Stopped between Hub and Toolhead: Stopped between Hub and Toolhead
   Stopped between Lane and Hub: Stopped between Lane and Hub
   Stopped between Spool and Lane: Stopped between Spool and Lane
+  Stopped drying %s: Stopped drying %s
   Stops all motion. Requires firmware restart.: Stops all motion. Requires firmware
     restart.
   Stow: Stow
@@ -3401,9 +3418,11 @@ translations:
   The left RFID reader in this CFS unit may need service: The left RFID reader in this CFS unit may need service
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
+  The message your printer's macros show (M117): The message your printer's macros show (M117)
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.
   The plate and the spools are still hot. Use gloves.: The plate and the spools are still hot. Use gloves.
   The plate finishes its current move, but drying will not start.: The plate finishes its current move, but drying will not start.
+  The print is on its last layer.: The print is on its last layer.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: The print is waiting for the chamber to reach {}°C, but the heater is not heating.
@@ -3505,8 +3524,10 @@ translations:
   This plugin asks for no special permissions.: This plugin asks for no special permissions.
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: This plugin lets HelixScreen control print start options like bed mesh and QGL.
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.
+  This print does not report layers, so no layer pause can be scheduled.: This print does not report layers, so no layer pause can be scheduled.
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: This
     print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?
+  This print never reports layer {}.: This print never reports layer {}.
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.
@@ -3927,6 +3948,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z-offset saved ({:+.3f}mm). Klipper
     restarting...
   Z-offset saved - Klipper restarting...: Z-offset saved - Klipper restarting...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: already loaded

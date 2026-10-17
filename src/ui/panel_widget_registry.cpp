@@ -62,6 +62,7 @@ void register_host_health_widget();
 void register_exclude_map_widget();
 void register_active_spool_widget();
 void register_bypass_widget();
+void register_display_message_widget();
 #if HELIX_HAS_CAMERA
 void register_camera_widget();
 #endif
@@ -149,6 +150,9 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     // a drag cannot put it back there; height still scales down to one cell.
     {"clog_detection",   TR_NOOP("Clog Detection"),    "gauge",            TR_NOOP("Clog and flow health while printing"),   "clog_meter_mode",    "Requires clog detection hardware",    CAT_FILAMENT, false, 4, 2, 4, 2, 8, 4, false, true, true},
     {"filament_buffer",  TR_NOOP("Filament Buffer"),   "arrow_up_down",    TR_NOOP("Filament buffer position against its target"), "buffer_present", "Requires a filament pressure sensor or sync feedback", CAT_FILAMENT, false, 2, 2, 2, 2, 4, 2, false, false, false},
+    // One half-row tall is a status line: a single line of the message, scrolling when it
+    // is too long. Taller boxes wrap it.
+    {"display_message",  TR_NOOP("Printer Message"),   "message",          TR_NOOP("The message your printer's macros show (M117)"), nullptr,  nullptr,                           CAT_PRINT,    false, 4, 2, 2, 1, BAND_COLSPAN, 6, false, true, true},
     {"print_stats",      TR_NOOP("Print Stats"),       "printer_3d",       TR_NOOP("Print hours this week and lifetime totals"),      nullptr,              nullptr,                               CAT_PRINT,    false, 4, 4, 2, 1, 6, 4, false, true, true},
     {"maintenance",      TR_NOOP("Maintenance"),       "wrench",           TR_NOOP("Service hours for the filter, nozzle, and rails"), nullptr,           nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, 8, 4, false, true, true},
     // Two cells square by default: at two cells tall the tile shows a live tail
@@ -390,6 +394,7 @@ void init_widget_registrations() {
     register_preheat_widget();
     register_active_spool_widget();
     register_bypass_widget();
+    register_display_message_widget();
     register_tool_switcher_widget();
     register_nozzle_temps_widget();
     register_speed_flow_widget();

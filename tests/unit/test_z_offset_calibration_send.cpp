@@ -24,11 +24,14 @@
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
+#include "settings_manager.h"
 #include "test_helpers/printer_state_test_access.h"
 #include "test_helpers/update_queue_test_access.h"
 #include "test_helpers/zoffset_calibration_test_access.h"
 
+#include <algorithm>
 #include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 #include "hv/json.hpp"
@@ -119,6 +122,58 @@ TEST_CASE_METHOD(CalibrationSendFixture,
     set_printing(true);
 
     CHECK(accept_sends() == "SET_GCODE_OFFSET Z=-0.150");
+}
+
+// ============================================================================
+// The per-printer Z-offset save setting (#1766)
+// ============================================================================
+
+namespace {
+
+/// Accept a probe calibration with saving set to @p mode and return every
+/// script that went on the wire.
+std::vector<std::string> probe_accept_scripts(helix::zoffset::SaveMode mode) {
+    auto& settings = helix::SettingsManager::instance();
+    settings.init_subjects();
+    settings.set_z_offset_save_mode(static_cast<int>(mode));
+    helix::PrinterStateTestAccess::pin_z_offset_strategy(
+        get_printer_state(), ZOffsetCalibrationStrategy::PROBE_CALIBRATE);
+
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
+    MoonrakerAPI api(client, get_printer_state());
+    ZOffsetCalibrationPanel panel;
+    panel.set_api(&api);
+    ZOffsetCalibrationTestAccess::send_accept(panel);
+    for (int i = 0; i < 20; ++i) {
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    }
+    std::vector<std::string> sent = client.gcode_script_history();
+    settings.set_z_offset_save_mode(static_cast<int>(helix::zoffset::SaveMode::Auto));
+    return sent;
+}
+
+bool sent_any(const std::vector<std::string>& scripts, const std::string& needle) {
+    return std::any_of(scripts.begin(), scripts.end(),
+                       [&](const std::string& s) { return s.find(needle) != std::string::npos; });
+}
+
+} // namespace
+
+TEST_CASE_METHOD(CalibrationSendFixture,
+                 "Calibration accept: saving off accepts without writing the config",
+                 "[ui_integration][zoffset][save-toggle]") {
+    const auto sent = probe_accept_scripts(helix::zoffset::SaveMode::Hide);
+    CHECK(sent_any(sent, "ACCEPT"));
+    CHECK_FALSE(sent_any(sent, "Z_OFFSET_APPLY"));
+    CHECK_FALSE(sent_any(sent, "SAVE_CONFIG"));
+}
+
+TEST_CASE_METHOD(CalibrationSendFixture,
+                 "Calibration accept: saving on applies and saves the result",
+                 "[ui_integration][zoffset][save-toggle]") {
+    const auto sent = probe_accept_scripts(helix::zoffset::SaveMode::Show);
+    CHECK(sent_any(sent, "ACCEPT"));
+    CHECK(sent_any(sent, "Z_OFFSET_APPLY_PROBE"));
 }
 
 // ============================================================================

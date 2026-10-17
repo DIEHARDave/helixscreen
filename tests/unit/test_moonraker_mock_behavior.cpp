@@ -65,6 +65,7 @@
 #include "../../include/runtime_config.h"
 #include "../../include/ui_update_queue.h"
 #include "../helix_test_fixture.h"
+#include "../test_helpers/scoped_env.h"
 #include "../test_helpers/scoped_runtime_config.h"
 #include "moonraker_api.h"
 
@@ -72,6 +73,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -3592,6 +3594,106 @@ TEST_CASE("MoonrakerClientMock: M117 sets display_status.message", "[mock][displ
         // above) - none should have been produced by this M117 call.
         REQUIRE_FALSE(toolhead_captured.contains("homed_axes"));
     }
+}
+
+TEST_CASE("MoonrakerClientMock: print-start steps show the macro chatter a printer would",
+          "[mock][display_message]") {
+    using Mock = MoonrakerClientMock;
+    CHECK(std::string(Mock::print_start_display_message(0)) == "Heating...");
+    CHECK(std::string(Mock::print_start_display_message(1)) == "Homing...");
+    CHECK(std::string(Mock::print_start_display_message(2)) == "Homing...");
+    CHECK(std::string(Mock::print_start_display_message(3)) == "Heating bed...");
+    CHECK(std::string(Mock::print_start_display_message(4)) == "Heating nozzle...");
+    CHECK(std::string(Mock::print_start_display_message(5)) == "Leveling Gantry...");
+    CHECK(std::string(Mock::print_start_display_message(6)) == "Calibrating bed mesh...");
+    CHECK(std::string(Mock::print_start_display_message(7)) == "Purging nozzle");
+    CHECK(std::string(Mock::print_start_display_message(8)) == "Purging nozzle");
+}
+
+TEST_CASE("MoonrakerClientMock: HELIX_MOCK_DISPLAY_MESSAGE presets the display message",
+          "[mock][display_message]") {
+    SECTION("idle with no knob and no M117 publishes no message") {
+        helix::ScopedEnv env("HELIX_MOCK_DISPLAY_MESSAGE", nullptr);
+        TestableMoonrakerMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+        CHECK(mock.current_display_message().is_null());
+    }
+
+    SECTION("the knob's text is published while idle") {
+        helix::ScopedEnv env("HELIX_MOCK_DISPLAY_MESSAGE", "Nozzle wiped, ready");
+        TestableMoonrakerMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+        REQUIRE(mock.current_display_message().is_string());
+        CHECK(mock.current_display_message().get<std::string>() == "Nozzle wiped, ready");
+    }
+
+    SECTION("an M117 replaces the preset, and a bare M117 clears it") {
+        helix::ScopedEnv env("HELIX_MOCK_DISPLAY_MESSAGE", "Nozzle wiped, ready");
+        TestableMoonrakerMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+        mock.gcode_script("M117 Calibrating");
+        CHECK(mock.current_display_message().get<std::string>() == "Calibrating");
+        mock.gcode_script("M117");
+        CHECK(mock.current_display_message().get<std::string>() == "");
+    }
+
+    SECTION("the subscription snapshot carries the preset message") {
+        helix::ScopedEnv env("HELIX_MOCK_DISPLAY_MESSAGE", "Nozzle wiped, ready");
+        TestableMoonrakerMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+        json message;
+        bool answered = false;
+        mock.send_jsonrpc(
+            "printer.objects.subscribe", {{"objects", {{"display_status", nullptr}}}},
+            [&](json response) {
+                answered = true;
+                message = response["result"]["status"]["display_status"]["message"];
+            },
+            nullptr);
+        REQUIRE(answered);
+        REQUIRE(message.is_string());
+        CHECK(message.get<std::string>() == "Nozzle wiped, ready");
+    }
+
+    SECTION("an empty knob presets nothing") {
+        helix::ScopedEnv env("HELIX_MOCK_DISPLAY_MESSAGE", "");
+        TestableMoonrakerMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+        CHECK(mock.current_display_message().is_null());
+    }
+}
+
+TEST_CASE("MoonrakerClientMock: periodic broadcasts carry each print-start step's message",
+          "[mock][display_message][slow]") {
+    helix::ScopedEnv env("HELIX_MOCK_DISPLAY_MESSAGE", nullptr);
+    MockBehaviorTestFixture fixture;
+    MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24, 20.0);
+    mock.register_notify_update(fixture.create_capture_callback());
+    mock.connect("ws://mock/websocket", []() {}, []() {});
+
+    mock.gcode_script("SDCARD_PRINT_FILE FILENAME=3DBenchy.gcode");
+    fixture.reset();
+    REQUIRE(fixture.wait_for_callbacks(3, 8000));
+    mock.stop_temperature_simulation();
+
+    // A step-specific message, not the generic one a printer with no PRINT_START
+    // chatter would show.
+    const std::set<std::string> step_messages = {"Homing...", "Heating bed...", "Heating nozzle...",
+                                                 "Leveling Gantry...", "Calibrating bed mesh..."};
+    bool saw_step_message = false;
+    for (const auto& notification : fixture.get_notifications()) {
+        if (!notification.contains("params") || !notification["params"].is_array() ||
+            notification["params"].empty()) {
+            continue;
+        }
+        const json& status = notification["params"][0];
+        if (!status.is_object() || !status.contains("print_stats") ||
+            !status.contains("display_status")) {
+            continue;
+        }
+        const json& message = status["display_status"]["message"];
+        if (message.is_string() && step_messages.count(message.get<std::string>()) > 0) {
+            saw_step_message = true;
+        }
+    }
+    CHECK(saw_step_message);
+
+    mock.disconnect();
 }
 
 // ============================================================================

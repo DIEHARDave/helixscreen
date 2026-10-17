@@ -48,10 +48,12 @@ enum class ZOffsetTuneHint {
  * @param db_persists the printer database does not say the firmware drops the offset
  *        (`z_offset_persists`, default true)
  * @param tool_change_resets the printer database's `tool_change_resets_z_offset`
+ * @param save_enabled the user offers Z-offset saves on this printer
+ *        (helix::zoffset::save_enabled()); off turns a Save step into no save path
  */
 ZOffsetTuneHint resolve_z_offset_tune_hint(ZOffsetCalibrationStrategy strategy,
                                            bool external_persistence, bool db_persists,
-                                           bool tool_change_resets);
+                                           bool tool_change_resets, bool save_enabled);
 
 /**
  * @brief The printer type and what it decides: the pre-print option set and the
@@ -160,6 +162,11 @@ class PrinterProfileState {
     lv_subject_t* get_z_offset_can_save_subject() {
         return &z_offset_can_save_;
     }
+    /// Whether Z-offset saving is offered on this printer, as
+    /// helix::zoffset::save_enabled() decides it; feeds the tune hint.
+    /// Returns true when the published hint changed.
+    bool set_z_offset_save_enabled(bool enabled);
+
     /// The ZOffsetTuneHint for the resolved type, as an int.
     lv_subject_t* get_z_offset_tune_hint_subject() {
         return &z_offset_tune_hint_;
@@ -177,6 +184,9 @@ class PrinterProfileState {
         ZOffsetCalibrationStrategy::PROBE_CALIBRATE;
     bool external_persistence_ = false;
     ZOffsetTuneHint z_offset_tune_hint_value_ = ZOffsetTuneHint::SAVE_ON_CONTROLS;
+    bool z_offset_save_enabled_ = true;
+    bool db_z_offset_persists_ = true;
+    bool db_tool_change_resets_z_offset_ = false;
     bool db_enclosed_ = false;
     bool db_hides_dot_dirs_ = false;
     bool timelapse_default_enabled_ = false;

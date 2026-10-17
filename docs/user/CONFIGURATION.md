@@ -890,6 +890,14 @@ Located in the `printer` section:
 **Values:** `0` = 0.05 mm, `1` = 0.025 mm, `2` = 0.01 mm, `3` = 0.005 mm
 **Description:** The Z-offset step size the print Tune overlay's nudge buttons use, remembered between prints. Picking a size on the overlay writes this; there is nothing to gain from editing it by hand.
 
+### `z_offset.save_mode`
+> Added in 1.1.
+
+**Type:** integer
+**Default:** `0`
+**Values:** `0` = Auto, `1` = Show, `2` = Hide
+**Description:** Whether HelixScreen offers to save Z-offset changes to the printer config. Hide removes every Save Z-Offset button (header, Controls, home widget) and the save step of Z-offset calibration; baby-stepping still works for the current session. Auto hides them on printers where each tool keeps its own Z offset (toolchangers) and shows them everywhere else. Set it from **Settings > Motion > Save Z-Offset Buttons**.
+
 ---
 
 ## LED Settings
@@ -1376,6 +1384,7 @@ For what each widget does and how big it can get, see the [Home Panel guide](gui
 | `print_status` | Print Status | Yes | No |
 | `control_buttons` | Print Controls | No | No |
 | `print_stats` | Print Stats | No | No |
+| `display_message` | Printer Message | No | No |
 | `speed_flow` | Speed / Flow | No | No |
 | `z_offset` | Z-Offset | No | No |
 | `exclude_map` | Exclude Objects | No | Klipper `[exclude_object]` |
