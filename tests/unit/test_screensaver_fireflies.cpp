@@ -284,6 +284,139 @@ TEST_CASE("a stall advances the swarm a capped step", "[screensaver][fireflies_s
     CHECK(s.sim.elapsed_ms() == 500);
 }
 
+namespace {
+
+/// `deg` wrapped into [-180, 180).
+float wrap180(float deg) {
+    float d = std::fmod(deg + 180.0f, 360.0f);
+    if (d < 0.0f) {
+        d += 360.0f;
+    }
+    return d - 180.0f;
+}
+
+} // namespace
+
+TEST_CASE("each swarm's hue turns 15 degrees a second", "[screensaver][fireflies_sim]") {
+    Swarm s(21);
+    std::vector<float> before;
+    for (const FirefliesSim::Bait& b : s.sim.baits()) {
+        before.push_back(b.hue_deg);
+    }
+    s.run_for(2000, 10);
+    REQUIRE(s.sim.elapsed_ms() == 2000);
+    for (size_t i = 0; i < s.sim.baits().size(); i++) {
+        const FirefliesSim::Bait& b = s.sim.baits()[i];
+        if (!b.alive) {
+            continue;
+        }
+        CAPTURE(i, before[i], b.hue_deg);
+        CHECK(b.hue_deg >= 0.0f);
+        CHECK(b.hue_deg < 360.0f);
+        CHECK(std::fabs(wrap180(b.hue_deg - before[i] - 30.0f)) < 0.01f);
+    }
+}
+
+TEST_CASE("a fly's hue swings 20 degrees either way with its speed",
+          "[screensaver][fireflies_sim]") {
+    Swarm s(23);
+    s.run_for(3000);
+    float lowest = 0.0f;
+    float highest = 0.0f;
+    for (size_t i = 0; i < s.sim.flies().size(); i++) {
+        const FirefliesSim::Fly& f = s.sim.flies()[i];
+        const float offset = wrap180(s.sim.fly_hue_deg(i) - s.sim.baits()[f.bait].hue_deg);
+        const float expected =
+            -20.0f + 40.0f * std::min(1.0f, length(f.vel) / helix::ui::FIREFLIES_FLY_SPEED);
+        CAPTURE(i, offset, expected);
+        REQUIRE(s.sim.fly_hue_deg(i) >= 0.0f);
+        REQUIRE(s.sim.fly_hue_deg(i) < 360.0f);
+        CHECK(std::fabs(offset - expected) < 0.01f);
+        lowest = std::min(lowest, offset);
+        highest = std::max(highest, offset);
+    }
+    CHECK(lowest < -5.0f);
+    CHECK(highest > 5.0f);
+}
+
+TEST_CASE("a fly's tail grows to 2.25 s of history and stops there",
+          "[screensaver][fireflies_sim]") {
+    Swarm s(24);
+    const size_t n = s.sim.flies().size();
+    const auto all_ages_in = [&](uint32_t lo, uint32_t hi) {
+        for (size_t i = 0; i < n; i++) {
+            if (s.sim.tail_age_ms(i) < lo || s.sim.tail_age_ms(i) >= hi) {
+                return false;
+            }
+        }
+        return true;
+    };
+    CHECK(all_ages_in(0, 1));
+    s.run_for(1000, 10);
+    CHECK(all_ages_in(1000, 1001));
+    s.run_for(4000, 10);
+    REQUIRE(s.sim.elapsed_ms() == 5000);
+    CHECK(all_ages_in(2250, 2300));
+    s.run_for(40, 10);
+    CHECK(all_ages_in(2250, 2300));
+    CHECK(s.sim.tail_age_ms(0) == 2290);
+    s.run_for(24960, 10);
+    REQUIRE(s.sim.elapsed_ms() == 30000);
+    CHECK(all_ages_in(2250, 2300));
+}
+
+TEST_CASE("a tail is widest and brightest in its middle and dims toward its old end",
+          "[screensaver][fireflies_sim]") {
+    using helix::ui::fireflies_tail_brightness;
+    using helix::ui::fireflies_tail_width;
+    const auto b = fireflies_tail_brightness;
+    CHECK(b(0.0f) == 0.0f);
+    CHECK(std::fabs(b(1.0f)) < 1e-6f);
+    CHECK(b(0.5f) > b(0.1f));
+    CHECK(b(0.5f) > b(0.9f));
+    CHECK(b(0.9f) < b(0.1f));
+    CHECK(b(-0.1f) == 0.0f);
+    CHECK(b(1.1f) == 0.0f);
+    CHECK(fireflies_tail_width(0.5f, 3.0f) == 3);
+    CHECK(fireflies_tail_width(0.0f, 3.0f) == 1);
+    CHECK(fireflies_tail_width(0.5f, 1.0f) == 1);
+    CHECK(fireflies_tail_width(0.25f, 5.0f) == 4);
+}
+
+TEST_CASE("the wind takes a new heading every 4 to 8 tail lengths",
+          "[screensaver][fireflies_sim]") {
+    Swarm s(22);
+    std::vector<uint64_t> changes;
+    uint32_t seen = 0;
+    float strongest_calm = 0.0f;
+    double total = 0.0;
+    int samples = 0;
+    for (uint32_t t = 0; t < 200000; t += 100) {
+        s.step(100);
+        if (s.sim.wind_changes() != seen) {
+            REQUIRE(s.sim.wind_changes() == seen + 1);
+            seen = s.sim.wind_changes();
+            changes.push_back(s.sim.last_wind_change_ms());
+        }
+        if (s.sim.mode() != helix::ui::FirefliesMode::WIND_GUST) {
+            strongest_calm = std::max(strongest_calm, length(s.sim.wind()));
+        }
+        total += length(s.sim.wind());
+        samples++;
+    }
+    REQUIRE(s.sim.wind_changes() >= 10);
+    CHECK(changes[0] >= 9000);
+    CHECK(changes[0] <= 18000);
+    for (size_t i = 1; i < changes.size(); i++) {
+        CAPTURE(i);
+        CHECK(changes[i] - changes[i - 1] >= 9000);
+        CHECK(changes[i] - changes[i - 1] <= 18000);
+    }
+    CHECK(strongest_calm <= 6.0f + 1e-3f);
+    // Blowing at all: the tails bend.
+    CHECK(total / samples > 1.5);
+}
+
 // ============================================================================
 // FirefliesScreensaver
 // ============================================================================

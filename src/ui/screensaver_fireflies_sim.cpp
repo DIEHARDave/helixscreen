@@ -88,7 +88,41 @@ int32_t random_ms(std::minstd_rand& rng, int32_t lo, int32_t hi) {
     return lo + random_below(rng, hi - lo + 1);
 }
 
+constexpr float PI = 3.14159265f;
+
+/// `deg` wrapped into [0, 360).
+float wrap360(float deg) {
+    float d = std::fmod(deg, 360.0f);
+    if (d < 0.0f) {
+        d += 360.0f;
+    }
+    return d >= 360.0f ? 0.0f : d;
+}
+
+static_assert(FIREFLIES_TAIL_SAMPLE_MS % FIREFLIES_STEP_MS == 0,
+              "tail samples fall on whole steps");
+
+// The wind: its strength in units per second, how much flatter than level it blows, and how
+// long a new heading takes to ease in.
+constexpr float WIND_MIN = 2.0f;
+constexpr float WIND_MAX = 6.0f;
+constexpr float WIND_RISE = 0.3f;
+constexpr float WIND_EASE_MS = 2000.0f;
+
 } // namespace
+
+float fireflies_tail_brightness(float u) {
+    if (!(u >= 0.0f && u <= 1.0f)) {
+        return 0.0f;
+    }
+    return std::sin(PI * u) * (1.0f - 0.5f * u);
+}
+
+int32_t fireflies_tail_width(float u, float max_px) {
+    const float clamped = std::clamp(u, 0.0f, 1.0f);
+    const float w = 1.0f + (max_px - 1.0f) * std::sin(PI * clamped);
+    return std::max<int32_t>(1, static_cast<int32_t>(std::lround(w)));
+}
 
 FireflyVec FirefliesSim::random_waypoint(std::minstd_rand& rng) const {
     return {uniform(rng, -0.5f, 0.5f) * world_w_ * WAYPOINT_INSET,
@@ -120,6 +154,7 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
         b.retarget_ms = random_ms(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
         b.hue_deg = 360.0f * static_cast<float>(i) / static_cast<float>(n) +
                     uniform(rng, 0.0f, SWARM_HUE_JITTER_DEG);
+        hue_origin_[i] = b.hue_deg;
     }
 
     const size_t flies =
@@ -152,6 +187,48 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
     mode_left_ms_ = 0;
     mode_total_ms_ = 0;
     std::fill(std::begin(modes_begun_), std::end(modes_begun_), 0u);
+
+    new_wind_heading(rng);
+    wind_from_ = wind_to_;
+    wind_changes_ = 0;
+    last_wind_change_ms_ = 0;
+    update_wind();
+}
+
+void FirefliesSim::new_wind_heading(std::minstd_rand& rng) {
+    const float heading = uniform(rng, 0.0f, 2.0f * PI);
+    const float rise = uniform(rng, -1.0f, 1.0f) * WIND_RISE;
+    const float strength = uniform(rng, WIND_MIN, WIND_MAX);
+    const FireflyVec dir{std::cos(heading), rise, std::sin(heading)};
+    wind_from_ = wind_;
+    wind_to_ = dir * (strength / std::sqrt(length_sq(dir)));
+    wind_left_ms_ = random_ms(rng, static_cast<int32_t>(FIREFLIES_WIND_MIN_MS),
+                              static_cast<int32_t>(FIREFLIES_WIND_MAX_MS));
+    wind_changes_++;
+    last_wind_change_ms_ = elapsed_ms_;
+}
+
+void FirefliesSim::update_wind() {
+    const float eased =
+        std::min(1.0f, static_cast<float>(elapsed_ms_ - last_wind_change_ms_) / WIND_EASE_MS);
+    wind_ = wind_from_ + (wind_to_ - wind_from_) * eased;
+}
+
+float FirefliesSim::fly_hue_deg(size_t i) const {
+    const Fly& f = flies_[i];
+    const float speed = std::sqrt(length_sq(f.vel));
+    const float swing = -FIREFLIES_HUE_SWING_DEG + 2.0f * FIREFLIES_HUE_SWING_DEG *
+                                                       std::min(1.0f, speed / FIREFLIES_FLY_SPEED);
+    return wrap360(baits_[f.bait].hue_deg + swing);
+}
+
+uint32_t FirefliesSim::tail_age_ms(size_t i) const {
+    (void)i;
+    if (tail_count_ == 0) {
+        return 0;
+    }
+    return static_cast<uint32_t>(tail_count_ - 1) * FIREFLIES_TAIL_SAMPLE_MS +
+           static_cast<uint32_t>(elapsed_ms_ % FIREFLIES_TAIL_SAMPLE_MS);
 }
 
 void FirefliesSim::clear() {
@@ -250,6 +327,29 @@ void FirefliesSim::advance_one(std::minstd_rand& rng) {
     }
 
     elapsed_ms_ += FIREFLIES_STEP_MS;
+
+    const double seconds = static_cast<double>(elapsed_ms_) / 1000.0;
+    for (size_t i = 0; i < baits_.size(); i++) {
+        baits_[i].hue_deg = wrap360(static_cast<float>(std::fmod(
+            hue_origin_[i] + static_cast<double>(FIREFLIES_HUE_RATE_DPS) * seconds, 360.0)));
+    }
+
+    wind_left_ms_ -= static_cast<int32_t>(FIREFLIES_STEP_MS);
+    if (wind_left_ms_ <= 0) {
+        new_wind_heading(rng);
+    }
+    update_wind();
+
+    if (elapsed_ms_ % FIREFLIES_TAIL_SAMPLE_MS == 0) {
+        tail_head_ = (tail_head_ + FIREFLIES_TAIL_POINTS - 1) % FIREFLIES_TAIL_POINTS;
+        tail_count_ = std::min(tail_count_ + 1, FIREFLIES_TAIL_POINTS);
+        for (size_t i = 0; i < flies_.size(); i++) {
+            int16_t* t = &tail_[(i * FIREFLIES_TAIL_POINTS + tail_head_) * 3];
+            t[0] = to_fixed(flies_[i].pos.x);
+            t[1] = to_fixed(flies_[i].pos.y);
+            t[2] = to_fixed(flies_[i].pos.z);
+        }
+    }
 }
 
 void FirefliesSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,

@@ -210,6 +210,8 @@ class FirefliesSim {
     void advance_one(std::minstd_rand& rng);
     FireflyVec random_waypoint(std::minstd_rand& rng) const;
     float speed_mult() const;
+    void new_wind_heading(std::minstd_rand& rng);
+    void update_wind();
     void schedule_next_mode(std::minstd_rand& rng);
     template <typename Px> void draw(FrameTarget& frame, std::vector<DirtyRect>& dirty);
 
@@ -237,6 +239,8 @@ class FirefliesSim {
     uint64_t last_wind_change_ms_ = 0;
 
     std::vector<Bait> baits_; ///< FIREFLIES_MAX_BAITS slots
+    /// Per bait slot, the hue at elapsed 0 that its hue_deg turns from.
+    float hue_origin_[FIREFLIES_MAX_BAITS]{};
     std::vector<Fly> flies_;
     /// FIREFLIES_TAIL_POINTS per fly, newest first from tail_head_, in fixed point (1/64 unit).
     std::vector<int16_t> tail_;
