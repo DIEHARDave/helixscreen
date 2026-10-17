@@ -5,6 +5,7 @@
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_canvas.h"
+#include "screensaver_clock_reading.h"
 #include "screensaver_flip_clock.h"
 #include "screensaver_flip_clock_sim.h"
 #include "screensaver_pixel_writer.h"
@@ -17,26 +18,26 @@
 
 #include "../catch_amalgamated.hpp"
 
+using helix::ui::CLOCK_COUNTDOWN_RESYNC_S;
+using helix::ui::CLOCK_DONE_HOLD_MS;
+using helix::ui::CLOCK_DRIFT_STEP_MS;
 using helix::ui::clock_face;
+using helix::ui::CLOCK_MAX_COUNTDOWN_S;
+using helix::ui::ClockInput;
+using helix::ui::ClockMeridiem;
+using helix::ui::ClockMode;
+using helix::ui::ClockPrintPhase;
 using helix::ui::countdown_face;
 using helix::ui::DirtyRect;
 using helix::ui::FLIP_CLOCK_LEVEL_COUNT;
 using helix::ui::FLIP_CLOCK_LEVELS;
-using helix::ui::FLIP_COUNTDOWN_RESYNC_S;
-using helix::ui::FLIP_DONE_HOLD_MS;
-using helix::ui::FLIP_DRIFT_STEP_MS;
 using helix::ui::FLIP_DURATION_MS;
-using helix::ui::FLIP_MAX_COUNTDOWN_S;
 using helix::ui::FlipCaption;
-using helix::ui::FlipClockInput;
 using helix::ui::FlipClockScreensaver;
 using helix::ui::FlipClockSim;
 using helix::ui::FlipClockState;
 using helix::ui::FlipFace;
 using helix::ui::FlipLayout;
-using helix::ui::FlipMeridiem;
-using helix::ui::FlipMode;
-using helix::ui::FlipPrintPhase;
 using helix::ui::FlipShape;
 using helix::ui::FrameTarget;
 using helix::ui::PixelFormat;
@@ -73,10 +74,10 @@ constexpr int32_t hms(int32_t h, int32_t m, int32_t s = 0) {
     return h * 3600 + m * 60 + s;
 }
 
-FlipClockInput printing(int32_t remaining_s, int32_t progress = 40) {
-    FlipClockInput in;
+ClockInput printing(int32_t remaining_s, int32_t progress = 40) {
+    ClockInput in;
     in.seconds_of_day = hms(14, 0);
-    in.print.phase = FlipPrintPhase::PRINTING;
+    in.print.phase = ClockPrintPhase::PRINTING;
     in.print.remaining_s = remaining_s;
     in.print.progress_pct = progress;
     return in;
@@ -179,21 +180,21 @@ TEST_CASE("the clock face shows 24-hour time with a leading zero and no marker",
     CHECK(clock_face(hms(9, 5), true).shape == shape_of({2, 2}));
     CHECK(cards_text(clock_face(hms(0, 0), true)) == "00:00");
     CHECK(cards_text(clock_face(hms(23, 59, 59), true)) == "23:59");
-    CHECK(clock_face(hms(13, 0), true).meridiem == FlipMeridiem::NONE);
+    CHECK(clock_face(hms(13, 0), true).meridiem == ClockMeridiem::NONE);
     CHECK(clock_face(hms(13, 0), true).caption == FlipCaption::NONE);
 }
 
 TEST_CASE("the clock face shows 12-hour time with a blank leading card, marked AM or PM",
           "[screensaver][screensaver_flip_clock]") {
     CHECK(cards_text(clock_face(hms(0, 30), false)) == "12:30");
-    CHECK(clock_face(hms(0, 30), false).meridiem == FlipMeridiem::AM);
+    CHECK(clock_face(hms(0, 30), false).meridiem == ClockMeridiem::AM);
     CHECK(cards_text(clock_face(hms(9, 42), false)) == " 9:42");
     CHECK(clock_face(hms(9, 42), false).shape == shape_of({2, 2}));
-    CHECK(clock_face(hms(11, 59), false).meridiem == FlipMeridiem::AM);
+    CHECK(clock_face(hms(11, 59), false).meridiem == ClockMeridiem::AM);
     CHECK(cards_text(clock_face(hms(12, 0), false)) == "12:00");
-    CHECK(clock_face(hms(12, 0), false).meridiem == FlipMeridiem::PM);
+    CHECK(clock_face(hms(12, 0), false).meridiem == ClockMeridiem::PM);
     CHECK(cards_text(clock_face(hms(13, 7), false)) == " 1:07");
-    CHECK(clock_face(hms(23, 59), false).meridiem == FlipMeridiem::PM);
+    CHECK(clock_face(hms(23, 59), false).meridiem == ClockMeridiem::PM);
 }
 
 TEST_CASE("the countdown face shows H:MM:SS under an hour, past ten hours and at the limits",
@@ -210,8 +211,8 @@ TEST_CASE("the countdown face shows H:MM:SS under an hour, past ten hours and at
     CHECK(cards_text(countdown_face(0)) == "0:00:00");
     CHECK(cards_text(countdown_face(-5)) == "0:00:00");
     CHECK(cards_text(countdown_face(hms(123, 4, 5))) == "123:04:05");
-    CHECK(cards_text(countdown_face(FLIP_MAX_COUNTDOWN_S)) == "999:59:59");
-    CHECK(cards_text(countdown_face(FLIP_MAX_COUNTDOWN_S + 3600)) == "999:59:59");
+    CHECK(cards_text(countdown_face(CLOCK_MAX_COUNTDOWN_S)) == "999:59:59");
+    CHECK(cards_text(countdown_face(CLOCK_MAX_COUNTDOWN_S + 3600)) == "999:59:59");
 }
 
 // ============================================================================
@@ -221,51 +222,51 @@ TEST_CASE("the countdown face shows H:MM:SS under an hour, past ten hours and at
 TEST_CASE("the clock shows the time unless a print has a remaining-time estimate",
           "[screensaver][screensaver_flip_clock]") {
     FlipClockState state;
-    FlipClockInput in;
+    ClockInput in;
     in.seconds_of_day = hms(21, 5);
     in.use_24h = true;
 
     SECTION("idle") {
         state.step(16, in);
-        CHECK(state.mode() == FlipMode::CLOCK);
+        CHECK(state.mode() == ClockMode::CLOCK);
         CHECK(cards_text(state.face()) == "21:05");
     }
     SECTION("preparing without an estimate") {
-        in.print.phase = FlipPrintPhase::PREPARING;
+        in.print.phase = ClockPrintPhase::PREPARING;
         state.step(16, in);
-        CHECK(state.mode() == FlipMode::CLOCK);
+        CHECK(state.mode() == ClockMode::CLOCK);
     }
     SECTION("preparing once an estimate exists") {
-        in.print.phase = FlipPrintPhase::PREPARING;
+        in.print.phase = ClockPrintPhase::PREPARING;
         in.print.remaining_s = 600;
         state.step(16, in);
-        CHECK(state.mode() == FlipMode::COUNTDOWN);
+        CHECK(state.mode() == ClockMode::COUNTDOWN);
         CHECK(cards_text(state.face()) == "0:10:00");
     }
     SECTION("printing without an estimate") {
-        in.print.phase = FlipPrintPhase::PRINTING;
+        in.print.phase = ClockPrintPhase::PRINTING;
         in.print.remaining_s = -1;
         state.step(16, in);
-        CHECK(state.mode() == FlipMode::CLOCK);
+        CHECK(state.mode() == ClockMode::CLOCK);
     }
     SECTION("a finished print the clock never saw running") {
-        in.print.phase = FlipPrintPhase::COMPLETE;
+        in.print.phase = ClockPrintPhase::COMPLETE;
         in.print.remaining_s = 0;
         state.step(16, in);
-        CHECK(state.mode() == FlipMode::CLOCK);
+        CHECK(state.mode() == ClockMode::CLOCK);
     }
 }
 
 TEST_CASE("a running print counts down with the end time and progress under the cards",
           "[screensaver][screensaver_flip_clock]") {
     FlipClockState state;
-    FlipClockInput in = printing(hms(1, 2, 3), 63);
+    ClockInput in = printing(hms(1, 2, 3), 63);
     in.seconds_of_day = hms(20, 40, 0);
     state.step(16, in);
-    REQUIRE(state.mode() == FlipMode::COUNTDOWN);
+    REQUIRE(state.mode() == ClockMode::COUNTDOWN);
     const FlipFace face = state.face();
     CHECK(cards_text(face) == "1:02:03");
-    CHECK(face.meridiem == FlipMeridiem::NONE);
+    CHECK(face.meridiem == ClockMeridiem::NONE);
     CHECK(face.caption == FlipCaption::DONE_AT);
     CHECK(face.progress_pct == 63);
     // 20:40:00 + 1:02:03 = 21:42:03
@@ -274,7 +275,7 @@ TEST_CASE("a running print counts down with the end time and progress under the 
 
 TEST_CASE("the end time wraps past midnight", "[screensaver][screensaver_flip_clock]") {
     FlipClockState state;
-    FlipClockInput in = printing(hms(0, 30));
+    ClockInput in = printing(hms(0, 30));
     in.seconds_of_day = hms(23, 50);
     state.step(16, in);
     CHECK(state.face().eta_minute_of_day == 20);
@@ -283,7 +284,7 @@ TEST_CASE("the end time wraps past midnight", "[screensaver][screensaver_flip_cl
 TEST_CASE("the countdown ticks at wall-clock rate and ignores small estimate jitter",
           "[screensaver][screensaver_flip_clock]") {
     FlipClockState state;
-    FlipClockInput in = printing(1000);
+    ClockInput in = printing(1000);
     state.step(16, in);
     REQUIRE(state.countdown_s() == 1000);
 
@@ -294,7 +295,7 @@ TEST_CASE("the countdown ticks at wall-clock rate and ignores small estimate jit
     CHECK(state.countdown_s() == 997);
 
     // An estimate a few seconds above the running count never flips it backwards.
-    in.print.remaining_s = 997 + FLIP_COUNTDOWN_RESYNC_S;
+    in.print.remaining_s = 997 + CLOCK_COUNTDOWN_RESYNC_S;
     state.step(0, in);
     CHECK(state.countdown_s() == 997);
 
@@ -316,14 +317,14 @@ TEST_CASE("the countdown ticks at wall-clock rate and ignores small estimate jit
 TEST_CASE("a paused print freezes the countdown under PAUSED until it resumes",
           "[screensaver][screensaver_flip_clock]") {
     FlipClockState state;
-    FlipClockInput in = printing(hms(0, 30));
+    ClockInput in = printing(hms(0, 30));
     state.step(16, in);
     state.step(5000, in);
     REQUIRE(state.countdown_s() == hms(0, 29, 55));
 
-    in.print.phase = FlipPrintPhase::PAUSED;
+    in.print.phase = ClockPrintPhase::PAUSED;
     state.step(16, in);
-    CHECK(state.mode() == FlipMode::PAUSED);
+    CHECK(state.mode() == ClockMode::PAUSED);
     CHECK(state.face().caption == FlipCaption::PAUSED);
     for (int i = 0; i < 300; i++) {
         state.step(1000, in);
@@ -331,9 +332,9 @@ TEST_CASE("a paused print freezes the countdown under PAUSED until it resumes",
     CHECK(state.countdown_s() == hms(0, 29, 55));
     CHECK(cards_text(state.face()) == "0:29:55");
 
-    in.print.phase = FlipPrintPhase::PRINTING;
+    in.print.phase = ClockPrintPhase::PRINTING;
     state.step(0, in);
-    CHECK(state.mode() == FlipMode::COUNTDOWN);
+    CHECK(state.mode() == ClockMode::COUNTDOWN);
     state.step(1000, in);
     CHECK(state.countdown_s() == hms(0, 29, 54));
 }
@@ -341,50 +342,50 @@ TEST_CASE("a paused print freezes the countdown under PAUSED until it resumes",
 TEST_CASE("a finished print holds 0:00:00 and DONE for a minute, then shows the clock",
           "[screensaver][screensaver_flip_clock]") {
     FlipClockState state;
-    FlipClockInput in = printing(30, 99);
+    ClockInput in = printing(30, 99);
     in.use_24h = true;
     state.step(16, in);
-    REQUIRE(state.mode() == FlipMode::COUNTDOWN);
+    REQUIRE(state.mode() == ClockMode::COUNTDOWN);
 
-    in.print.phase = FlipPrintPhase::COMPLETE;
+    in.print.phase = ClockPrintPhase::COMPLETE;
     in.print.remaining_s = 0;
     state.step(16, in);
-    CHECK(state.mode() == FlipMode::DONE);
+    CHECK(state.mode() == ClockMode::DONE);
     CHECK(cards_text(state.face()) == "0:00:00");
     CHECK(state.face().caption == FlipCaption::DONE);
 
-    state.step(FLIP_DONE_HOLD_MS - 100, in);
-    CHECK(state.mode() == FlipMode::DONE);
+    state.step(CLOCK_DONE_HOLD_MS - 100, in);
+    CHECK(state.mode() == ClockMode::DONE);
     state.step(100, in);
-    CHECK(state.mode() == FlipMode::CLOCK);
+    CHECK(state.mode() == ClockMode::CLOCK);
     CHECK(cards_text(state.face()) == "14:00");
 
     // Still complete a while later: the hold does not come back.
-    state.step(FLIP_DONE_HOLD_MS, in);
-    CHECK(state.mode() == FlipMode::CLOCK);
+    state.step(CLOCK_DONE_HOLD_MS, in);
+    CHECK(state.mode() == ClockMode::CLOCK);
 }
 
 TEST_CASE("a cancelled print goes straight back to the clock",
           "[screensaver][screensaver_flip_clock]") {
     FlipClockState state;
-    FlipClockInput in = printing(300);
+    ClockInput in = printing(300);
     state.step(16, in);
-    in.print.phase = FlipPrintPhase::NONE;
+    in.print.phase = ClockPrintPhase::NONE;
     in.print.remaining_s = -1;
     state.step(16, in);
-    CHECK(state.mode() == FlipMode::CLOCK);
+    CHECK(state.mode() == ClockMode::CLOCK);
 }
 
 TEST_CASE("the flip clock reads the print lifecycle, with ended prints as no print",
           "[screensaver][screensaver_flip_clock]") {
-    using helix::ui::flip_print_phase;
-    CHECK(flip_print_phase(PrintState::Idle) == FlipPrintPhase::NONE);
-    CHECK(flip_print_phase(PrintState::Preparing) == FlipPrintPhase::PREPARING);
-    CHECK(flip_print_phase(PrintState::Printing) == FlipPrintPhase::PRINTING);
-    CHECK(flip_print_phase(PrintState::Paused) == FlipPrintPhase::PAUSED);
-    CHECK(flip_print_phase(PrintState::Complete) == FlipPrintPhase::COMPLETE);
-    CHECK(flip_print_phase(PrintState::Cancelled) == FlipPrintPhase::NONE);
-    CHECK(flip_print_phase(PrintState::Error) == FlipPrintPhase::NONE);
+    using helix::ui::clock_print_phase;
+    CHECK(clock_print_phase(PrintState::Idle) == ClockPrintPhase::NONE);
+    CHECK(clock_print_phase(PrintState::Preparing) == ClockPrintPhase::PREPARING);
+    CHECK(clock_print_phase(PrintState::Printing) == ClockPrintPhase::PRINTING);
+    CHECK(clock_print_phase(PrintState::Paused) == ClockPrintPhase::PAUSED);
+    CHECK(clock_print_phase(PrintState::Complete) == ClockPrintPhase::COMPLETE);
+    CHECK(clock_print_phase(PrintState::Cancelled) == ClockPrintPhase::NONE);
+    CHECK(clock_print_phase(PrintState::Error) == ClockPrintPhase::NONE);
 }
 
 // ============================================================================
@@ -471,15 +472,15 @@ TEST_CASE("the drift moves the cards once per step and stays within its range",
           "[screensaver][screensaver_flip_clock]") {
     int32_t dx = 0;
     int32_t dy = 0;
-    helix::ui::flip_drift_at(0, 20, 10, dx, dy);
+    helix::ui::clock_drift_at(0, 20, 10, dx, dy);
     CHECK(dx == 0);
     CHECK(dy == 0);
-    helix::ui::flip_drift_at(FLIP_DRIFT_STEP_MS - 1, 20, 10, dx, dy);
+    helix::ui::clock_drift_at(CLOCK_DRIFT_STEP_MS - 1, 20, 10, dx, dy);
     CHECK(dx == 0);
     CHECK(dy == 0);
     bool moved = false;
     for (uint32_t step = 1; step < 200; step++) {
-        helix::ui::flip_drift_at(step * FLIP_DRIFT_STEP_MS, 20, 10, dx, dy);
+        helix::ui::clock_drift_at(step * CLOCK_DRIFT_STEP_MS, 20, 10, dx, dy);
         CHECK(std::abs(dx) <= 20);
         CHECK(std::abs(dy) <= 10);
         moved = moved || dx != 0 || dy != 0;
@@ -708,7 +709,7 @@ TEST_CASE("every pixel a flip clock frame changes lies in one of its dirty boxes
     SimFrame frame(480, 272, format);
     FlipClockSim sim;
     FlipClockState state;
-    FlipClockInput in;
+    ClockInput in;
     in.seconds_of_day = hms(9, 59, 58);
     state.step(0, in);
     sim.init(frame.target, 0, state.face());
@@ -720,21 +721,21 @@ TEST_CASE("every pixel a flip clock frame changes lies in one of its dirty boxes
     // drift steps along the way.
     for (int i = 0; i < 2000; i++) {
         if (i == 400) {
-            in.print.phase = FlipPrintPhase::PRINTING;
+            in.print.phase = ClockPrintPhase::PRINTING;
             in.print.remaining_s = hms(0, 1, 5);
         }
         if (i == 900) {
-            in.print.phase = FlipPrintPhase::PAUSED;
+            in.print.phase = ClockPrintPhase::PAUSED;
         }
         if (i == 1000) {
-            in.print.phase = FlipPrintPhase::PRINTING;
+            in.print.phase = ClockPrintPhase::PRINTING;
         }
         if (i == 1500) {
-            in.print.phase = FlipPrintPhase::COMPLETE;
+            in.print.phase = ClockPrintPhase::COMPLETE;
             in.print.remaining_s = 0;
         }
         in.seconds_of_day = (in.seconds_of_day + (i % 3 == 0 ? 1 : 0)) % 86400;
-        const uint32_t dt = i % 50 == 0 ? FLIP_DRIFT_STEP_MS / 4 : 33;
+        const uint32_t dt = i % 50 == 0 ? CLOCK_DRIFT_STEP_MS / 4 : 33;
         state.step(dt, in);
         const std::vector<uint8_t> before = frame.bytes;
         sim.step(dt, frame.target, state.face(), dirty);
@@ -751,12 +752,12 @@ TEST_CASE("a flip clock run replays exactly", "[screensaver][screensaver_flip_cl
         SimFrame frame(320, 200, PixelFormat::RGB565);
         FlipClockSim sim;
         FlipClockState state;
-        FlipClockInput in = printing(hms(2, 0, 0));
+        ClockInput in = printing(hms(2, 0, 0));
         state.step(0, in);
         sim.init(frame.target, 0, state.face());
         std::vector<DirtyRect> dirty;
         for (int i = 0; i < 600; i++) {
-            const uint32_t dt = i % 97 == 0 ? FLIP_DRIFT_STEP_MS / 2 : 33;
+            const uint32_t dt = i % 97 == 0 ? CLOCK_DRIFT_STEP_MS / 2 : 33;
             state.step(dt, in);
             sim.step(dt, frame.target, state.face(), dirty);
         }
@@ -791,17 +792,17 @@ TEST_CASE_METHOD(LVGLTestFixture, "the flip clock saver counts down the print it
                  "[screensaver][screensaver_flip_clock]") {
     FlipClockScreensaver ss;
     ScreensaverStopOnExit<FlipClockScreensaver> stop_on_exit{ss};
-    FlipClockInput reported = printing(hms(1, 0, 0), 50);
+    ClockInput reported = printing(hms(1, 0, 0), 50);
     ss.set_input_source([&reported] { return reported; });
     ss.start();
     REQUIRE(ss.is_active());
-    CHECK(ss.state().mode() == FlipMode::COUNTDOWN);
+    CHECK(ss.state().mode() == ClockMode::COUNTDOWN);
     CHECK(cards_text(ss.state().face()) == "1:00:00");
 
-    reported.print.phase = FlipPrintPhase::PAUSED;
+    reported.print.phase = ClockPrintPhase::PAUSED;
     lv_tick_inc(33);
     fire(SaverTestAccess::timer(ss));
-    CHECK(ss.state().mode() == FlipMode::PAUSED);
+    CHECK(ss.state().mode() == ClockMode::PAUSED);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

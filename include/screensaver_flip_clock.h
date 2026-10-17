@@ -7,6 +7,7 @@
 #include "print_lifecycle_state.h"
 #include "screensaver.h"
 #include "screensaver_base.h"
+#include "screensaver_clock.h"
 #include "screensaver_flip_clock_sim.h"
 
 #include <cstdint>
@@ -28,13 +29,6 @@ namespace helix::ui {
  */
 inline constexpr lv_color_format_t FLIP_CLOCK_CANVAS_FORMAT = PIPES_CANVAS_FORMAT;
 
-/// The local time of day and the 12/24-hour setting, with no print.
-FlipClockInput flip_clock_now();
-
-/// The flip clock's reading of the app's print lifecycle: cancelled and failed prints read as
-/// no print.
-FlipPrintPhase flip_print_phase(PrintState state);
-
 /**
  * @brief Split-flap clock that counts a running print down
  *
@@ -44,13 +38,13 @@ FlipPrintPhase flip_print_phase(PrintState state);
  */
 class FlipClockScreensaver : public SaverBase {
   public:
-    using InputSource = std::function<FlipClockInput()>;
+    using InputSource = std::function<ClockInput()>;
 
     ScreensaverType type() const override {
         return ScreensaverType::FLIP_CLOCK;
     }
 
-    /// Where each frame reads the time and the print; unset reads flip_clock_now().
+    /// Where each frame reads the time and the print; unset reads saver_clock_now().
     void set_input_source(InputSource source) {
         source_ = std::move(source);
     }
@@ -75,15 +69,10 @@ class FlipClockScreensaver : public SaverBase {
     void on_level_request(size_t level) override;
 
   private:
-    struct DrawnText {
-        std::string text;
-        DirtyRect box;
-    };
-
-    FlipClockInput read_input() const;
+    ClockInput read_input() const;
     /// Redraws the caption and marker when their text changes or the cards drew over them.
     void draw_texts(const std::vector<DirtyRect>& card_dirty, std::vector<DirtyRect>& dirty);
-    void draw_text(DrawnText& drawn, const std::string& text, const DirtyRect& box,
+    void draw_text(SaverLabel& label, const std::string& text, const DirtyRect& box,
                    const std::vector<DirtyRect>& card_dirty, bool on_card,
                    std::vector<DirtyRect>& dirty);
     std::string caption_text(const FlipFace& face) const;
@@ -92,8 +81,8 @@ class FlipClockScreensaver : public SaverBase {
     InputSource source_;
     FlipClockState state_;
     FlipClockSim sim_;
-    DrawnText caption_;
-    DrawnText meridiem_;
+    SaverLabel caption_;
+    SaverLabel meridiem_;
 };
 
 } // namespace helix::ui
