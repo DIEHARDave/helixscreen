@@ -2263,6 +2263,37 @@ TEST_CASE_METHOD(SnapmakerFixture,
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker restart forgets the previous session's tag and task values",
+                 "[ams][snapmaker][rfid]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    // print_task_config names one colour, then the tag reads another, so the
+    // slot shows the tag's while the task colour waits behind it.
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"print_task_config",
+                       json{{"filament_color_rgba",
+                             json::array({"AA0000FF", "AA0000FF", "AA0000FF", "AA0000FF"})}}}});
+    SnapmakerTestAccess::handle_status(
+        backend,
+        make_filament_detect_status(0, "PLA", 0xFF202020u, "Snapmaker", json::array({1, 2, 3, 4})));
+    REQUIRE(backend.get_slot_info(0).color_rgb == 0x202020u);
+    REQUIRE(backend.get_slot_info(0).nozzle_temp_max == 220);
+
+    SnapmakerTestAccess::call_on_started(backend);
+    SnapmakerTestAccess::handle_status(backend, untagged_frame());
+
+    // Neither value the previous session recorded is judged against: the
+    // temperatures are not taken back as that session's tag's, and the colour
+    // does not fall back to that session's task colour.
+    auto info = backend.get_slot_info(0);
+    CHECK(info.nozzle_temp_min == 190);
+    CHECK(info.nozzle_temp_max == 220);
+    CHECK(info.bed_temp == 60);
+    CHECK(info.color_rgb != 0xAA0000u);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker apply_user_edit writes override and survives status update",
                  "[ams][snapmaker][filament_slot_override]") {
     // The next firmware status update wipes an edit kept only in memory, so the
