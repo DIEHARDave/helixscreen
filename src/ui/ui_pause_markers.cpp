@@ -3,6 +3,9 @@
 
 #include "ui_pause_markers.h"
 
+#include "ui_print_layer_pause.h"
+
+#include "app_globals.h"
 #include "gcode_pause_scan.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -10,6 +13,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 namespace helix::ui {
 
@@ -22,6 +26,7 @@ struct PauseMarkerCtx {
     helix::PrinterState* ps{nullptr};
     lv_obj_t* owner{nullptr};
     ObserverGuard version_guard;
+    ObserverGuard beta_guard;
 };
 
 void pause_markers_invalidate(PauseMarkerCtx* ctx, int /*version*/) {
@@ -32,17 +37,26 @@ void pause_markers_invalidate(PauseMarkerCtx* ctx, int /*version*/) {
     }
 }
 
-bool pauses_visible(PauseMarkerCtx* ctx, helix::PrinterState*& out_ps) {
+/// Every tick to draw, as fractions along the bar: the pauses in the file and
+/// the pause scheduled at runtime. Both pass the identity gate inside
+/// PrinterPrintState, so a scan that finished after a print switch is
+/// invisible.
+std::vector<float> marker_fractions(PauseMarkerCtx* ctx) {
+    std::vector<float> fractions;
     if (!ctx || !ctx->ps) {
-        return false;
+        return fractions;
     }
-    // The identity gate: only the pauses of the file currently being printed
-    // may appear, so a scan that finished after a print switch is invisible.
-    if (!ctx->ps->print_state().pause_markers_match_current_file()) {
-        return false;
+    const auto& print = ctx->ps->print_state();
+    if (print.pause_markers_match_current_file()) {
+        const auto axis = print.get_pause_marker_axis();
+        for (const auto& pause : print.get_scheduled_pauses()) {
+            fractions.push_back(helix::gcode::display_fraction(pause, axis));
+        }
     }
-    out_ps = ctx->ps;
-    return true;
+    if (auto runtime = print.layer_pause_marker_fraction(); runtime && layer_pause_beta_enabled()) {
+        fractions.push_back(*runtime);
+    }
+    return fractions;
 }
 
 void fill_tick_dsc(lv_draw_line_dsc_t& dsc) {
@@ -58,8 +72,9 @@ void fill_tick_dsc(lv_draw_line_dsc_t& dsc) {
 // pause's fraction spans the bar's height so it reads against both the track
 // and the fill that may already cover it.
 void bar_pause_marker_draw_cb(lv_event_t* e) {
-    PrinterState* ps = nullptr;
-    if (!pauses_visible(static_cast<PauseMarkerCtx*>(lv_event_get_user_data(e)), ps)) {
+    const auto fractions =
+        marker_fractions(static_cast<PauseMarkerCtx*>(lv_event_get_user_data(e)));
+    if (fractions.empty()) {
         return;
     }
     lv_layer_t* layer = lv_event_get_layer(e);
@@ -79,9 +94,7 @@ void bar_pause_marker_draw_cb(lv_event_t* e) {
 
     lv_draw_line_dsc_t dsc;
     fill_tick_dsc(dsc);
-    const auto axis = ps->print_state().get_pause_marker_axis();
-    for (const auto& pause : ps->print_state().get_scheduled_pauses()) {
-        const float fraction = helix::gcode::display_fraction(pause, axis);
+    for (const float fraction : fractions) {
         dsc.p1.x =
             static_cast<float>(coords.x1 + pad_left + static_cast<int32_t>(fraction * track_width));
         dsc.p1.y = static_cast<float>(coords.y1);
@@ -95,8 +108,9 @@ void bar_pause_marker_draw_cb(lv_event_t* e) {
 // short radial line crossing the track at start + fraction * sweep, so it
 // stays legible over both the unfilled track and the filled arc.
 void arc_pause_marker_draw_cb(lv_event_t* e) {
-    PrinterState* ps = nullptr;
-    if (!pauses_visible(static_cast<PauseMarkerCtx*>(lv_event_get_user_data(e)), ps)) {
+    const auto fractions =
+        marker_fractions(static_cast<PauseMarkerCtx*>(lv_event_get_user_data(e)));
+    if (fractions.empty()) {
         return;
     }
     lv_layer_t* layer = lv_event_get_layer(e);
@@ -136,9 +150,7 @@ void arc_pause_marker_draw_cb(lv_event_t* e) {
 
     lv_draw_line_dsc_t dsc;
     fill_tick_dsc(dsc);
-    const auto axis = ps->print_state().get_pause_marker_axis();
-    for (const auto& pause : ps->print_state().get_scheduled_pauses()) {
-        const float fraction = helix::gcode::display_fraction(pause, axis);
+    for (const float fraction : fractions) {
         // LVGL angles: 0deg at 3 o'clock, growing clockwise, y axis down —
         // plain cos/sin with +angle lands where lv_arc draws it.
         const float angle =
@@ -161,6 +173,7 @@ void pause_marker_delete_cb(lv_event_t* e) {
     // Drop the observer before freeing the ctx it hands to its handler.
     // The subject itself outlives the widget (owned by PrinterPrintState).
     ctx->version_guard.reset();
+    ctx->beta_guard.reset();
     delete ctx;
 }
 
@@ -178,6 +191,14 @@ void attach_pause_markers(lv_obj_t* widget, helix::PrinterState& printer_state,
         printer_state.print_state().get_pause_markers_version_subject(), ctx,
         [](PauseMarkerCtx* self, int version) { pause_markers_invalidate(self, version); },
         printer_state.get_subjects_lifetime(), Dispatch::Immediate);
+    // The runtime layer-pause tick is a beta feature; toggling beta must
+    // redraw it in or out.
+    if (lv_subject_t* beta = lv_xml_get_subject(nullptr, "show_beta_features")) {
+        ctx->beta_guard = observe<int>(
+            beta, ctx,
+            [](PauseMarkerCtx* self, int version) { pause_markers_invalidate(self, version); },
+            get_app_globals_subjects_lifetime(), Dispatch::Immediate);
+    }
     lv_obj_add_event_cb(widget, draw_cb, LV_EVENT_DRAW_POST, ctx);
     lv_obj_add_event_cb(widget, pause_marker_delete_cb, LV_EVENT_DELETE, ctx);
     lv_obj_invalidate(widget);

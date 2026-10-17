@@ -166,6 +166,17 @@ class PrintStartController {
                           std::function<void()> on_error, int archive_plate = 0);
 
     /**
+     * @brief initiate_reprint() with a routing the caller knows.
+     *
+     * For a file whose tool-to-head map is fixed by whoever generated it, so
+     * the pre-print send writes @p routing instead of the last job's.
+     */
+    void initiate_reprint_with_routing(const std::string& filename, const std::set<int>& tools_used,
+                                       const std::map<int, int>& routing,
+                                       std::function<void()> on_started,
+                                       std::function<void()> on_error);
+
+    /**
      * @brief Check if controller is ready to start a print
      *
      * @return true if a filename is set and a detail view or a prep manager is available
@@ -240,6 +251,12 @@ class PrintStartController {
      * @param on_done     Called on success — proceeds with the actual print start.
      * @param on_abort    Called on error — caller is responsible for re-enabling UI state.
      */
+    void reprint_impl(const std::string& filename, const std::string& path,
+                      const std::set<int>& tools_used,
+                      const std::optional<std::map<int, int>>& routing,
+                      std::function<void()> on_started, std::function<void()> on_error,
+                      int archive_plate);
+
     void send_backend_preprint_then(const std::set<int>& tools_used,
                                     const std::map<int, int>& remap, std::function<void()> on_done,
                                     std::function<void()> on_abort);

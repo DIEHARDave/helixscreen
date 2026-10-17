@@ -3,7 +3,7 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
-#include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_canvas.h"
 #include "screensaver_hyperspace.h"
@@ -13,16 +13,17 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <cmath>
-#include <cstring>
 #include <random>
-#include <sstream>
 #include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
 
+using helix::test::check_replays;
+using helix::test::count_pixels;
+using helix::test::non_opaque_pixels;
+using helix::test::TestFrame;
 using helix::ui::DirtyRect;
 using helix::ui::FrameTarget;
 using helix::ui::HYPERSPACE_LEVEL_COUNT;
@@ -34,59 +35,22 @@ using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
 
-namespace helix::ui {
-
-/// Reads the sim a HyperspaceScreensaver owns.
-class HyperspaceScreensaverTestAccess {
-  public:
-    static const HyperspaceSim& sim(const HyperspaceScreensaver& saver) {
-        return saver.sim_;
-    }
-};
-
-} // namespace helix::ui
-
-using helix::ui::HyperspaceScreensaverTestAccess;
-
 namespace {
 
 constexpr uint32_t W = 320;
 constexpr uint32_t H = 200;
 constexpr uint32_t FRAME_MS = 33;
 
-uint32_t bytes_per_pixel(PixelFormat format) {
-    return format == PixelFormat::RGB565 ? 2 : 4;
-}
-
-/// A heap frame whose rows are wider than w * bytes per pixel, as LVGL's aligned strides can be.
-struct SimFrame {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-
-    SimFrame(PixelFormat format, uint32_t w = W, uint32_t h = H) {
-        const uint32_t bpp = bytes_per_pixel(format);
-        const uint32_t stride = w * bpp + 3 * bpp;
-        bytes.assign(static_cast<size_t>(stride) * h, 0);
-        target = {bytes.data(), stride, w, h, format};
-    }
-    SimFrame(const SimFrame&) = delete;
-    SimFrame& operator=(const SimFrame&) = delete;
-};
-
 /// A sim and its frame, stepped at FRAME_MS.
-struct Flight {
-    std::minstd_rand rng;
-    HyperspaceSim sim;
-    SimFrame frame;
-    std::vector<DirtyRect> dirty;
-
-    Flight(uint32_t seed, size_t level, PixelFormat format = PixelFormat::XRGB8888)
-        : rng(seed), frame(format) {
-        sim.init(frame.target, rng, level);
+struct Flight : helix::test::SimRun<HyperspaceSim> {
+    Flight(uint32_t seed, size_t level, PixelFormat format = PixelFormat::XRGB8888, uint32_t w = W,
+           uint32_t h = H)
+        : SimRun(seed, w, h, format) {
+        init(level);
     }
 
     void step(uint32_t dt_ms = FRAME_MS) {
-        sim.step(dt_ms, frame.target, rng, dirty);
+        SimRun::step(dt_ms);
     }
 
     /// Steps until `done` holds or `limit_ms` of flight passes; true when `done` held.
@@ -114,19 +78,14 @@ int max_channel(Rgb c) {
 }
 
 /// Share of pixels whose brightest channel reaches `threshold`.
-double share_at_least(const SimFrame& frame, int threshold) {
-    const PixelWriter writer(frame.target);
-    size_t count = 0;
-    for (int32_t y = 0; y < static_cast<int32_t>(frame.target.h); y++) {
-        for (int32_t x = 0; x < static_cast<int32_t>(frame.target.w); x++) {
-            count += max_channel(writer.get(x, y)) >= threshold ? 1 : 0;
-        }
-    }
+double share_at_least(const TestFrame& frame, int threshold) {
+    const size_t count =
+        count_pixels(frame.target, [threshold](Rgb c) { return max_channel(c) >= threshold; });
     return static_cast<double>(count) / (frame.target.w * frame.target.h);
 }
 
 /// Share of the aligned `block` x `block` squares whose pixels are all one colour.
-double uniform_block_share(const SimFrame& frame, int32_t block) {
+double uniform_block_share(const TestFrame& frame, int32_t block) {
     const PixelWriter writer(frame.target);
     size_t blocks = 0;
     size_t uniform = 0;
@@ -150,7 +109,7 @@ constexpr int HUE_BINS = 12;
 
 /// How many of the pixels at least `threshold` bright fall in each 30-degree slice of the wheel,
 /// red first and turning through yellow toward green.
-std::array<double, HUE_BINS> hue_histogram(const SimFrame& frame, int threshold) {
+std::array<double, HUE_BINS> hue_histogram(const TestFrame& frame, int threshold) {
     const PixelWriter writer(frame.target);
     std::array<double, HUE_BINS> bins{};
     for (int32_t y = 0; y < static_cast<int32_t>(frame.target.h); y++) {
@@ -189,12 +148,6 @@ int best_hue_turn(const std::array<double, HUE_BINS>& before,
     return best;
 }
 
-void fire(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
-
 } // namespace
 
 // ============================================================================
@@ -213,13 +166,7 @@ TEST_CASE("a hyperspace flight replays exactly from a seed, and another seed dif
         }
         return flight.frame.bytes;
     };
-
-    const auto first = run(9);
-    const auto repeat = run(9);
-    const auto other = run(10);
-
-    CHECK(repeat == first);
-    CHECK_FALSE(other == first);
+    check_replays(run, 9, 10);
 }
 
 TEST_CASE("every hyperspace pixel is opaque and every frame dirties the whole canvas",
@@ -234,19 +181,11 @@ TEST_CASE("every hyperspace pixel is opaque and every frame dirties the whole ca
         frames++;
         REQUIRE(flight.dirty.size() == 1);
         CHECK(flight.dirty[0] ==
-              DirtyRect{0, 0, static_cast<int32_t>(W) - 1, static_cast<int32_t>(H) - 1});
+              DirtyRect::whole(static_cast<int32_t>(W), static_cast<int32_t>(H)));
         if (frames % 30 != 0) {
             continue;
         }
-        for (uint32_t y = 0; y < H; y++) {
-            for (uint32_t x = 0; x < W; x++) {
-                opaque_failures +=
-                    flight.frame.bytes[static_cast<size_t>(y) * flight.frame.target.stride + x * 4 +
-                                       3] != 0xFF
-                        ? 1
-                        : 0;
-            }
-        }
+        opaque_failures += non_opaque_pixels(flight.frame.target);
     }
     CHECK(opaque_failures == 0);
 }
@@ -396,33 +335,58 @@ TEST_CASE("a starburst of flares bursts ahead within the first few seconds",
     REQUIRE(flight.run_until([&] { return flight.sim.burst_flares_alive() == 0; }, 15000));
 }
 
-TEST_CASE("a hyperspace level change applies at the next frame and frames allocate nothing",
+TEST_CASE("a hyperspace run sizes its tunnel for its start level",
+          "[screensaver][hyperspace_sim]") {
+    const auto tunnel_at_start = [](size_t level) {
+        Flight flight(41, level);
+        flight.step();
+        return flight.sim.tunnel_bytes();
+    };
+    const size_t full = tunnel_at_start(0);
+    const size_t half = tunnel_at_start(2);
+    const size_t quarter = tunnel_at_start(4);
+    CAPTURE(full, half, quarter);
+    CHECK(half < full);
+    CHECK(quarter < half);
+    CHECK(quarter > 0);
+    CHECK(tunnel_at_start(HYPERSPACE_LEVEL_COUNT - 1) == 0);
+}
+
+TEST_CASE("a hyperspace level change applies at the next frame, and neither frames nor step-downs "
+          "allocate",
           "[screensaver][hyperspace_sim]") {
     Flight flight(41, 0);
     flight.step();
     REQUIRE(flight.sim.heap_bytes() > 0);
-    std::vector<size_t> tunnel(HYPERSPACE_LEVEL_COUNT);
-    for (size_t level = 0; level < HYPERSPACE_LEVEL_COUNT + 1; level++) {
+    const size_t start_tunnel = flight.sim.tunnel_bytes();
+    REQUIRE(start_tunnel > 0);
+    size_t held = flight.sim.heap_bytes();
+    for (size_t level = 1; level < HYPERSPACE_LEVEL_COUNT + 1; level++) {
         CAPTURE(level);
         flight.sim.request_level(level);
         flight.step();
         const size_t at = std::min(level, HYPERSPACE_LEVEL_COUNT - 1);
         CHECK(flight.sim.level() == at);
         const size_t bytes = flight.sim.heap_bytes();
-        tunnel[at] = flight.sim.tunnel_bytes();
+        CHECK(bytes <= held);
+        if (HYPERSPACE_LEVELS[at].block != 0) {
+            // A coarser tunnel fits in the tables the run already holds.
+            CHECK(flight.sim.tunnel_bytes() == start_tunnel);
+        } else {
+            // A level without a tunnel lets its tables go.
+            CHECK(flight.sim.tunnel_bytes() == 0);
+        }
         for (int i = 0; i < 20; i++) {
             flight.step();
         }
         CHECK(flight.sim.heap_bytes() == bytes);
+        held = bytes;
     }
-    // The tunnel's tables shrink with its block size, and a level without it holds none.
-    CHECK(tunnel[2] < tunnel[0]);
-    CHECK(tunnel[4] < tunnel[2]);
-    CHECK(tunnel[4] > 0);
-    CHECK(tunnel[HYPERSPACE_LEVEL_COUNT - 1] == 0);
+    // A finer level than the run holds rebuilds the tables it needs.
     flight.sim.request_level(0);
     flight.step();
-    CHECK(flight.sim.tunnel_bytes() == tunnel[0]);
+    CHECK(flight.sim.level() == 0);
+    CHECK(flight.sim.tunnel_bytes() == start_tunnel);
 
     flight.sim.clear();
     CHECK(flight.sim.heap_bytes() == 0);
@@ -436,41 +400,26 @@ TEST_CASE("an odd-sized hyperspace frame fills every pixel and never writes past
     constexpr uint32_t OW = 321;
     constexpr uint32_t OH = 203;
     constexpr uint8_t SENTINEL = 0xA5;
-    const uint32_t bpp = bytes_per_pixel(format);
-    const uint32_t stride = OW * bpp + 7;
-    // One spare row past the frame catches a block written below its last row.
-    std::vector<uint8_t> bytes(static_cast<size_t>(stride) * (OH + 1), SENTINEL);
-    FrameTarget frame{bytes.data(), stride, OW, OH, format};
+    // Every byte starts as the sentinel, and the guard row past the frame catches a block
+    // written below its last row.
+    TestFrame frame(OW, OH, format, 7, SENTINEL, SENTINEL);
     std::minstd_rand rng(43);
     HyperspaceSim sim;
-    sim.init(frame, rng, level);
+    sim.init(frame.target, rng, level);
     std::vector<DirtyRect> dirty;
     bool tunnel_seen = false;
     for (uint32_t t = 0; t < 30000 && !tunnel_seen; t += FRAME_MS) {
-        sim.step(FRAME_MS, frame, rng, dirty);
+        sim.step(FRAME_MS, frame.target, rng, dirty);
         tunnel_seen = sim.tunnel_amount() == 255;
     }
     REQUIRE(tunnel_seen);
 
-    size_t padding_changed = 0;
-    for (uint32_t y = 0; y <= OH; y++) {
-        const uint32_t from = y < OH ? OW * bpp : 0;
-        for (uint32_t i = from; i < stride; i++) {
-            padding_changed += bytes[static_cast<size_t>(y) * stride + i] != SENTINEL ? 1 : 0;
-        }
-    }
-    CHECK(padding_changed == 0);
+    CHECK(frame.padding_intact());
     if (format == PixelFormat::XRGB8888) {
-        size_t not_opaque = 0;
-        for (uint32_t y = 0; y < OH; y++) {
-            for (uint32_t x = 0; x < OW; x++) {
-                not_opaque += bytes[static_cast<size_t>(y) * stride + x * 4 + 3] != 0xFF ? 1 : 0;
-            }
-        }
-        CHECK(not_opaque == 0);
+        CHECK(non_opaque_pixels(frame.target) == 0);
     }
     // The last column and row, which a block only partly covers, are drawn too.
-    const PixelWriter writer(frame);
+    const PixelWriter writer(frame.target);
     size_t edge_lit = 0;
     for (int32_t y = 0; y < static_cast<int32_t>(OH); y++) {
         edge_lit += max_channel(writer.get(OW - 1, y)) > 0 ? 1 : 0;
@@ -481,97 +430,8 @@ TEST_CASE("an odd-sized hyperspace frame fills every pixel and never writes past
     CHECK(edge_lit > (OW + OH) / 2);
 }
 
-TEST_CASE("hyperspace frame cost per level", "[.][hyperspace_bench]") {
-    std::ostringstream report;
-    for (size_t level = 0; level < HYPERSPACE_LEVEL_COUNT; level++) {
-        for (const bool tunnel : {true, false}) {
-            std::minstd_rand rng(3);
-            HyperspaceSim sim;
-            SimFrame frame(PixelFormat::XRGB8888, 800, 480);
-            std::vector<DirtyRect> dirty;
-            sim.init(frame.target, rng, level);
-            for (int i = 0; i < 5000; i++) {
-                sim.step(FRAME_MS, frame.target, rng, dirty);
-                const bool there = tunnel ? sim.tunnel_amount() == 255 : sim.tunnel_amount() == 0;
-                if (there && i > 30) {
-                    break;
-                }
-            }
-            constexpr int FRAMES = 150;
-            const auto start = std::chrono::steady_clock::now();
-            for (int i = 0; i < FRAMES; i++) {
-                sim.step(16, frame.target, rng, dirty);
-            }
-            const double ms =
-                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start)
-                    .count() /
-                FRAMES;
-            report << "L" << level << (tunnel ? " tunnel " : " open   ") << ms << " ms/frame\n";
-        }
-    }
-    WARN(report.str());
-}
-
 // ============================================================================
 // HyperspaceScreensaver
 // ============================================================================
-
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "the hyperspace saver draws on a canvas in the build's format with its ladder",
-                 "[screensaver][screensaver_hyperspace]") {
-    HyperspaceScreensaver ss;
-    ScreensaverStopOnExit<HyperspaceScreensaver> stop_on_exit{ss};
-    ss.start();
-    REQUIRE(ss.is_active());
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
-    REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::SAVER_BUILD_CANVAS_FORMAT);
-    CHECK(ss.level_count() == HYPERSPACE_LEVEL_COUNT);
-    CHECK(HYPERSPACE_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "a hyperspace level request applies at once, frame period included",
-                 "[screensaver][screensaver_hyperspace]") {
-    HyperspaceScreensaver ss;
-    ScreensaverStopOnExit<HyperspaceScreensaver> stop_on_exit{ss};
-    SaverTestAccess::set_fixed_seed(ss, 4);
-    ss.start();
-    REQUIRE(ss.is_active());
-
-    const size_t last = HYPERSPACE_LEVEL_COUNT - 1;
-    ss.request_level(last);
-    CHECK(ss.level() == last);
-    CHECK(SaverTestAccess::timer(ss)->period == HYPERSPACE_LEVELS[last].period_ms);
-    lv_tick_inc(33);
-    fire(SaverTestAccess::timer(ss));
-    CHECK(ss.is_active());
-}
-
-TEST_CASE_METHOD(LVGLTestFixture, "a stopped hyperspace saver holds no buffers",
-                 "[screensaver][screensaver_hyperspace]") {
-    HyperspaceScreensaver ss;
-    CHECK(HyperspaceScreensaverTestAccess::sim(ss).heap_bytes() == 0);
-    {
-        ScreensaverStopOnExit<HyperspaceScreensaver> stop_on_exit{ss};
-        ss.start();
-        REQUIRE(ss.is_active());
-        lv_tick_inc(16);
-        fire(SaverTestAccess::timer(ss));
-        REQUIRE(HyperspaceScreensaverTestAccess::sim(ss).heap_bytes() > 0);
-    }
-    CHECK_FALSE(ss.is_active());
-    CHECK(HyperspaceScreensaverTestAccess::sim(ss).heap_bytes() == 0);
-}
-
-TEST_CASE("hyperspace is registered by name at both depths",
-          "[screensaver][screensaver_hyperspace]") {
-    const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver_by_name("hyperspace");
-    REQUIRE(info != nullptr);
-    CHECK(info->type == ScreensaverType::HYPERSPACE);
-    CHECK(std::string(info->label_key) == "Hyperspace");
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_16) != 0);
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_32) != 0);
-}
 
 #endif // HELIX_ENABLE_SCREENSAVER

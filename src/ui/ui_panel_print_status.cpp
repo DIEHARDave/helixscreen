@@ -597,6 +597,8 @@ void PrintStatusPanel::init_subjects() {
     light_timelapse_controls_.init_subjects();
     light_timelapse_controls_.set_api(api_);
     set_global_light_timelapse_controls(&light_timelapse_controls_);
+    layer_pause_controls_.init_subjects(printer_state_);
+    layer_pause_controls_.set_api(api_);
 
     // Preparing state subjects
     UI_MANAGED_SUBJECT_INT(preparing_visible_subject_, 0, "preparing_visible", subjects_);
@@ -938,6 +940,7 @@ void PrintStatusPanel::deinit_subjects() {
     // Clear light/timelapse global accessor
     set_global_light_timelapse_controls(nullptr);
     light_timelapse_controls_.deinit_subjects();
+    layer_pause_controls_.deinit_subjects();
 
     // Reset observers on local subjects BEFORE deinit frees them.
     // subjects_.deinit_all() calls lv_subject_deinit which frees observer

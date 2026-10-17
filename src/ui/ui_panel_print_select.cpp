@@ -129,12 +129,30 @@ PrintSelectPanel* get_print_select_panel(PrinterState& printer_state, IMoonraker
     return g_print_select_panel.get();
 }
 
+// NAMESPACE_OK: beside get_global_print_select_panel, the global accessor it complements
+PrintSelectPanel* find_print_select_panel() {
+    return g_print_select_panel.get();
+}
+
 PrintSelectPanel& get_global_print_select_panel() {
     if (!g_print_select_panel) {
         spdlog::error(
             "[PrintSelectPanel] get_global_print_select_panel() called before panel created");
     }
     return *g_print_select_panel;
+}
+
+std::vector<std::string> PrintSelectPanel::printer_thumbnail_keys() const {
+    std::vector<std::string> keys;
+    if (usb_source_ && usb_source_->is_usb_active()) {
+        return keys;
+    }
+    for (const PrintFileData& file : file_list_) {
+        if (!file.is_dir && !file.original_thumbnail_url.empty()) {
+            keys.push_back(file.original_thumbnail_url);
+        }
+    }
+    return keys;
 }
 
 // ============================================================================

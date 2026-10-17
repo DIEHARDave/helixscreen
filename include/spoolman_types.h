@@ -26,6 +26,12 @@
 // Spoolman Data Types
 // ============================================================================
 
+/// Spoolman filament extra field that carries a pressure advance K. One per
+/// filament: K belongs to the material and the extruder, not to one spool.
+namespace helix {
+inline constexpr const char* SPOOLMAN_PA_EXTRA_KEY = "pressure_advance";
+} // namespace helix
+
 /**
  * @brief Vendor information from Spoolman
  */
@@ -118,6 +124,10 @@ struct SpoolInfo {
     int bed_temp_min = 0;
     int bed_temp_max = 0;
     int bed_temp_recommended = 0;
+
+    /// Pressure advance K saved on the filament (extra field
+    /// SPOOLMAN_PA_EXTRA_KEY), nullopt when none is saved.
+    std::optional<float> pressure_advance;
 
     /**
      * @brief Get remaining percentage

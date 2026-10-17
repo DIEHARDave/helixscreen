@@ -10,6 +10,7 @@
  * Run with: ./build/bin/helix-tests "[widget_size][tile]"
  */
 
+#include "ui_humidity_drop.h"
 #include "ui_tile_rung.h"
 #include "ui_update_queue.h"
 
@@ -379,7 +380,9 @@ void collect_icon_fonts(lv_obj_t* root, std::vector<const lv_font_t*>& out) {
     for (uint32_t i = 0; i < n; ++i) {
         lv_obj_t* child = lv_obj_get_child(root, i);
         const lv_font_t* f = lv_obj_get_style_text_font(child, LV_PART_MAIN);
-        if (lv_obj_check_type(child, &lv_label_class) && helix::ui::is_icon_font(f)) {
+        const bool glyph =
+            lv_obj_check_type(child, &lv_label_class) || helix::ui::is_humidity_drop(child);
+        if (glyph && helix::ui::is_icon_font(f)) {
             out.push_back(f);
         }
         collect_icon_fonts(child, out);

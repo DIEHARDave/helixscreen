@@ -11,10 +11,14 @@
 #include "refresh_period_hold.h"
 #include "screen_hide_hold.h"
 #include "screensaver.h"
+#include "screensaver_aqua.h"
 #include "screensaver_base.h"
 #include "screensaver_bounce.h"
+#include "screensaver_clock_saver.h"
+#include "screensaver_fireflies.h"
 #include "screensaver_fireworks.h"
 #include "screensaver_flip_clock.h"
+#include "screensaver_highfly.h"
 #include "screensaver_hyperspace.h"
 #include "screensaver_level_store.h"
 #include "screensaver_maze.h"
@@ -23,6 +27,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <utility>
 
 namespace helix {
@@ -51,15 +56,15 @@ ScreensaverManager::ScreensaverManager() : cpu_clock_(helix::ui::read_process_cp
     screensavers_.push_back(std::make_unique<helix::ui::FireworksScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::MazeScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::HyperspaceScreensaver>());
-    auto flip_clock = std::make_unique<helix::ui::FlipClockScreensaver>();
-    flip_clock->set_input_source([this] {
-        helix::ui::FlipClockInput in = helix::ui::flip_clock_now();
-        if (host_.print_status) {
-            in.print = host_.print_status();
+    screensavers_.push_back(std::make_unique<helix::ui::FlipClockScreensaver>());
+    screensavers_.push_back(std::make_unique<helix::ui::FirefliesScreensaver>());
+    screensavers_.push_back(std::make_unique<helix::ui::AquaScreensaver>());
+    screensavers_.push_back(std::make_unique<helix::ui::HighFlyScreensaver>());
+    for (auto& saver : screensavers_) {
+        if (helix::ui::ClockInputSink* sink = saver->clock_input_sink()) {
+            sink->set_input_source([this] { return clock_input(); });
         }
-        return in;
-    });
-    screensavers_.push_back(std::move(flip_clock));
+    }
 
     for (const char* name : savers_missing_for_build_depth()) {
         spdlog::error("[ScreensaverManager] {} is listed as drawing at this colour depth but no "
@@ -84,7 +89,15 @@ void ScreensaverManager::set_host(helix::ui::SaverHost host) {
     host_ = std::move(host);
 }
 
-void ScreensaverManager::start(ScreensaverType type) {
+helix::ui::ClockInput ScreensaverManager::clock_input() const {
+    helix::ui::ClockInput in = helix::ui::saver_clock_now();
+    if (host_.print_status) {
+        in.print = host_.print_status();
+    }
+    return in;
+}
+
+void ScreensaverManager::start(ScreensaverType type, bool preview) {
     if (type == ScreensaverType::OFF) {
         stop();
         return;
@@ -100,7 +113,8 @@ void ScreensaverManager::start(ScreensaverType type) {
 
     // The screen hold stays out until the new saver has started or failed, so the panel is
     // never uncovered between the two.
-    end_current();
+    end_current(helix::SaverRunEnd::OTHER);
+    counting_ = !preview;
     if (runs != type) {
         spdlog::info("[ScreensaverManager] Type {} is stored as too heavy for board {} on {}; "
                      "running type {} instead",
@@ -127,6 +141,7 @@ void ScreensaverManager::launch(ScreensaverType type) {
                      board_, version_);
         release_refresh_period();
         show_black_screen(type);
+        count_run_start(helix::SAVER_USAGE_BLACK_SCREEN);
         hold_screen();
         return;
     }
@@ -146,6 +161,7 @@ void ScreensaverManager::launch(ScreensaverType type) {
     active_ = saver;
     active_info_ = info;
     begin_gate(plan);
+    count_run_start(info->name);
     hold_screen();
     spdlog::info("[ScreensaverManager] Started screensaver type {}", static_cast<int>(type));
 }
@@ -212,8 +228,8 @@ void ScreensaverManager::refresh_identity() {
     board_ = helix::ui::board_fingerprint(board_facts(caps));
 }
 
-void ScreensaverManager::stop() {
-    end_current();
+void ScreensaverManager::stop(helix::SaverRunEnd how) {
+    end_current(how);
     // The idle stretch the next run subtracts starts now.
     baseline_.reset();
     sampled_ = false;
@@ -221,8 +237,19 @@ void ScreensaverManager::stop() {
     release_refresh_period();
 }
 
-void ScreensaverManager::end_current() {
+void ScreensaverManager::count_run_start(const char* name) {
+    if (counting_) {
+        usage_.begin(name, std::chrono::steady_clock::now());
+    }
+}
+
+void ScreensaverManager::count_run_end(helix::SaverRunEnd how, std::optional<size_t> level) {
+    usage_.end(how, level, std::chrono::steady_clock::now());
+}
+
+void ScreensaverManager::end_current(helix::SaverRunEnd how) {
     if (active_) {
+        count_run_end(how, active_->level());
         active_->stop();
         spdlog::info("[ScreensaverManager] Stopped screensaver type {}",
                      static_cast<int>(active_->type()));
@@ -230,6 +257,7 @@ void ScreensaverManager::end_current() {
         active_info_ = nullptr;
     }
     if (black_screen_type_ != ScreensaverType::OFF) {
+        count_run_end(how, std::nullopt);
         black_screen_.destroy();
         spdlog::info("[ScreensaverManager] Stopped screensaver type {} (black screen)",
                      static_cast<int>(black_screen_type_));
@@ -360,6 +388,7 @@ void ScreensaverManager::on_idle_check_tick() {
                      active_info_->name, *share * 100.0, budget * 100.0,
                      printing ? " while printing" : "");
         record_level(gated_level_, true);
+        count_run_end(helix::SaverRunEnd::TOO_HEAVY, gated_level_);
         const ScreensaverType type = active_->type();
         active_->stop();
         active_ = nullptr;

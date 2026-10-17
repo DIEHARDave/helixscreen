@@ -464,6 +464,8 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info, helix::ui::L
                                s.temp_text.c_str(),
                                "humidity_text",
                                s.humidity_text.c_str(),
+                               "humidity",
+                               s.humidity.c_str(),
                                "humidity_status",
                                s.humidity_status.c_str(),
                                "humidity_visible",

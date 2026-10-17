@@ -35,8 +35,7 @@ for label in $SAVERS; do
     else
         : > "$local_hist"
     fi
-    python3 "$PERF_HERE/ctparse.py" "$local_hist" "$ARM" "$label" "${raw:-GATE_RAW missing}" |
-        sed "s/^/$ARM run=$RUN gate /" >> "$OUT"
+    perf_record_gate "$ARM" "$RUN" "$label" "$local_hist" "$raw"
     echo "$ARM run=$RUN gate $label THERMAL mid-run $(cat "$mid_thermal" 2>/dev/null)" >> "$OUT"
 done
 grep " run=$RUN gate " "$OUT" | tail -n 16

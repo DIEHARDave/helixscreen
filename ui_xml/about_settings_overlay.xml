@@ -118,7 +118,7 @@
                 style_radius="#border_radius" scrollable="false">
           <text_tiny name="licenses_text"
                      width="100%" style_text_color="#text_muted" style_text_line_space="4"
-                     text="HelixScreen — GPL-3.0&#10;LVGL — MIT License&#10;helix-xml — MIT License (our fork of LVGL's XML engine)&#10;libhv — BSD 3-Clause License&#10;spdlog — MIT License&#10;nlohmann/json — MIT License&#10;SDL2 — zlib License&#10;Expat — MIT License&#10;md4c — MIT License&#10;ThorVG — MIT License&#10;GLM — Happy Bunny or MIT License&#10;quirc — ISC License&#10;lv_i18n — MIT License&#10;lv_markdown — MIT License&#10;stb — MIT License / Public Domain&#10;mdns — Public Domain&#10;linenoise — BSD 2-Clause License&#10;libnl — LGPL 2.1&#10;minilzo — GPL 2.0&#10;cpp-terminal — MIT License&#10;wpa_supplicant — BSD 3-Clause License"/>
+                     text="HelixScreen — GPL-3.0&#10;LVGL — MIT License&#10;helix-xml — MIT License (our fork of LVGL's XML engine)&#10;libhv — BSD 3-Clause License&#10;spdlog — MIT License&#10;nlohmann/json — MIT License&#10;SDL2 — zlib License&#10;Expat — MIT License&#10;md4c — MIT License&#10;ThorVG — MIT License&#10;GLM — Happy Bunny or MIT License&#10;quirc — ISC License&#10;lv_i18n — MIT License&#10;lv_markdown — MIT License&#10;stb — MIT License / Public Domain&#10;mdns — Public Domain&#10;linenoise — BSD 2-Clause License&#10;libnl — LGPL 2.1&#10;minilzo — GPL 2.0&#10;cpp-terminal — MIT License&#10;wpa_supplicant — BSD 3-Clause License&#10;freeglut teapot data — MIT License"/>
         </lv_obj>
       </lv_obj>
       <!-- Credits -->

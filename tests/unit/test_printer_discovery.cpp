@@ -1950,17 +1950,28 @@ TEST_CASE("PrinterDiscovery: filament diameter comes from the extruder section",
     REQUIRE(discovery.filament_diameter_mm() == Catch::Approx(1.75f));
 
     SECTION("a 2.85 mm extruder is read") {
-        discovery.parse_filament_diameter(json{{"extruder", {{"filament_diameter", 2.85}}}});
+        discovery.parse_extruder_dimensions(json{{"extruder", {{"filament_diameter", 2.85}}}});
         CHECK(discovery.filament_diameter_mm() == Catch::Approx(2.85f));
 
         discovery.clear();
         CHECK(discovery.filament_diameter_mm() == Catch::Approx(1.75f));
     }
 
+    SECTION("the nozzle diameter is read beside it and reset with it") {
+        REQUIRE(discovery.nozzle_diameter_mm() == Catch::Approx(0.4f));
+        discovery.parse_extruder_dimensions(
+            json{{"extruder", {{"filament_diameter", 1.75}, {"nozzle_diameter", 0.6}}}});
+        CHECK(discovery.nozzle_diameter_mm() == Catch::Approx(0.6f));
+        discovery.parse_extruder_dimensions(json{{"extruder", {{"nozzle_diameter", 0}}}});
+        CHECK(discovery.nozzle_diameter_mm() == Catch::Approx(0.6f));
+        discovery.clear();
+        CHECK(discovery.nozzle_diameter_mm() == Catch::Approx(0.4f));
+    }
+
     SECTION("a missing, null or non-positive value keeps the default") {
-        discovery.parse_filament_diameter(json{{"heater_bed", {{"max_temp", 120}}}});
-        discovery.parse_filament_diameter(json{{"extruder", {{"filament_diameter", nullptr}}}});
-        discovery.parse_filament_diameter(json{{"extruder", {{"filament_diameter", 0}}}});
+        discovery.parse_extruder_dimensions(json{{"heater_bed", {{"max_temp", 120}}}});
+        discovery.parse_extruder_dimensions(json{{"extruder", {{"filament_diameter", nullptr}}}});
+        discovery.parse_extruder_dimensions(json{{"extruder", {{"filament_diameter", 0}}}});
         CHECK(discovery.filament_diameter_mm() == Catch::Approx(1.75f));
     }
 }

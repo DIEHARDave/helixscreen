@@ -74,6 +74,7 @@ All developer documentation lives here. When working on features, look up the re
 | `MULTI_EXTRUDER_TEMPERATURE.md` | Multi-extruder temperature tracking, ExtruderInfo, dynamic subjects |
 | `TOOL_ABSTRACTION.md` | ToolState singleton, ToolInfo, tool-to-backend mapping, DetectState |
 | `INPUT_SHAPER.md` | Calibration panels, frequency response charts, CSV parser, PID |
+| `PRESSURE_ADVANCE_TUNING.md` | Pressure advance tuned by eye on a live test print: tower generator, host-driven ramp, band picker, Spoolman extra field, the `helix-screen`/`pressure_advance` Moonraker key a slicer plugin can read |
 | `BELT_TUNER.md` | Pluck-based belt tension tuner: Klipper UDS accel stream, pluck detection, harmonic pitch estimation. **Read its Validation status section first - the feature is green in CI and has never measured a real belt, and its thresholds are circular** |
 | `BELT_TENSION.md` | Belt Tension check: two `TEST_RESONANCES` sweeps compared as curves, the Start gate, provisional verdict constants, mock knobs |
 | `PREPRINT_PREDICTION.md` | ETA prediction engine, phase timing, weighted history |
@@ -82,7 +83,7 @@ All developer documentation lives here. When working on features, look up the re
 | `PRINT_CONTROL_BUTTONS.md` | PrintControlButtons controller: owned subjects, pure view function, optimistic pending-action machine, 2x1 home widget, panel delegation |
 | `PRINT_START_PROFILES.md` | Print start phase detection, developer guide: the observer pipeline, arming, the five signal sources (console, probe lines, bed-mesh flap, toolhead position, fallbacks), evidence kinds, JSON profile schema, authoring a profile for a new printer, threading/lifetime rules, and which tests pin what |
 | `PRINT_START_INTEGRATION.md` | User-facing macro setup for print start tracking |
-| `Z_OFFSET_PERSISTENCE.md` | Firmware that stores the z-offset outside `gcode_move` and zeroes the live one between prints (ZMOD on AD5M/AD5X): why the idle reading lies, the `persisted_z_offset` subjects, the relative-vs-absolute `SET_GCODE_OFFSET` rule, and the one-row recipe for adding a firmware |
+| `Z_OFFSET_PERSISTENCE.md` | Firmware that stores the z-offset outside `gcode_move` and zeroes the live one between prints (ZMOD on AD5M/AD5X): why the idle reading lies, the `persisted_z_offset` subjects, the relative-vs-absolute `SET_GCODE_OFFSET` rule, the one-row recipe for adding a firmware, and the per-printer Save Z-Offset setting (`zoffset::save_enabled()`) with what it hides and how it changes the Print Tune hint |
 | `POWER_LOSS_RECOVERY.md` | Resume-after-power-loss: the passive Snapmaker and Qidi backends vs the **active, side-effectful** Creality probe, capability detection per firmware, and the mandatory probe-before-resume safety invariant |
 | `UPDATE_SYSTEM.md` | Update channels (stable/beta/dev), R2 CDN, Moonraker updater |
 | `SOUND_SYSTEM.md` | Audio architecture, JSON themes, backends (SDL, ALSA, PWM, M300). User guide: `../user/guide/settings/sound.md` |

@@ -45,6 +45,14 @@ std::string format_localized_short_date(const struct tm* tm_info);
 /// Localized weekday abbreviation ("Mon", "lun.", "月") from tm_wday.
 std::string format_localized_weekday_abbr(const struct tm* tm_info);
 
+/// Long date with the month's full name and the year, from tm_mday, tm_mon and tm_year.
+/// Examples: "October 21, 2019" (en), "21. Oktober 2019" (de), "21 de octubre de 2019" (es),
+/// "2019年10月21日" (ja)
+std::string format_localized_long_date(const struct tm* tm_info);
+
+/// Localized full weekday name ("Monday", "lundi", "月曜日") from tm_wday.
+std::string format_localized_weekday(const struct tm* tm_info);
+
 /// Get the default time format for a language (true = 24h, false = 12h)
 bool locale_default_24h(const std::string& lang_code);
 

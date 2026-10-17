@@ -16,6 +16,7 @@
 #include "ui_dialog.h"
 #include "ui_gcode_viewer.h"
 #include "ui_gradient_canvas.h"
+#include "ui_humidity_drop.h"
 #include "ui_icon.h"
 #include "ui_severity_card.h"
 #include "ui_switch.h"
@@ -130,6 +131,7 @@ void LVGLUITestFixture::register_widgets() {
     // Register C++ widgets in dependency order
     // These are needed before XML components that embed them
     helix::ui::icon::register_widget();
+    helix::ui::register_humidity_drop_widget();
     helix::ui::register_tile_rung_binding();
     ui_switch_register();
     ui_card_register();

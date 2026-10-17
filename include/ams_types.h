@@ -997,6 +997,26 @@ struct BufferHealth {
     }
 };
 
+namespace printer {
+
+/**
+ * @brief What a zone or a slot is doing, from the firmware's per-gate drying states.
+ *
+ * `Queued` is its own answer rather than a shade of `Active`: a backend that caps
+ * simultaneous heaters leaves later zones waiting, and a waiting zone shown as idle reads
+ * as a control that did nothing. `Cancelled` and `Complete` likewise differ - one answers
+ * "someone stopped it", the other "it finished".
+ */
+enum class ZoneDryingState : int {
+    Idle = 0,     ///< Not part of any cycle
+    Queued = 1,   ///< In the cycle, waiting for a concurrency slot
+    Active = 2,   ///< Heater on now
+    Complete = 3, ///< Ran to the end
+    Cancelled = 4 ///< Stopped before finishing
+};
+
+} // namespace printer
+
 /**
  * @brief Information about a single slot/lane
  *
@@ -1092,6 +1112,10 @@ struct SlotInfo {
 
     // Per-slot environment sensors (optional — most backends don't have these)
     std::optional<EnvironmentData> environment; ///< nullopt = no per-slot sensors
+
+    /// This slot's part in a drying cycle, for a dryer that drives its gates one by one
+    /// (DryerInfo::supports_gate_selection). Idle everywhere else.
+    printer::ZoneDryingState drying_state = printer::ZoneDryingState::Idle;
 
     /**
      * @brief Get remaining percentage
@@ -2045,6 +2069,14 @@ struct DryerInfo {
     /// Unset means the dryer either applies no target or does not say which.
     std::optional<float> default_humidity_target;
 
+    /// Can a cycle be started and stopped on a chosen subset of this dryer's gates? True
+    /// only where each gate has its own heater, so the subset is what actually heats.
+    bool supports_gate_selection = false;
+
+    /// Can a cycle turn the selected spools while it dries? Needs a motor that drives
+    /// the spool itself, and an explicit gate selection to say which ones.
+    bool supports_rotation = false;
+
     /// Highest humidity target, in %RH, a surface offers.
     static constexpr float kMaxHumidityTargetPct = 99.0f;
 
@@ -2110,6 +2142,22 @@ struct DryerInfo {
             return false;
         return std::abs(current_temp_c - target_temp_c) <= tolerance_c;
     }
+};
+
+/**
+ * @brief Everything a drying start asks of a backend.
+ *
+ * Empty @p gates leaves the choice to the dryer, which is the whole unit or whatever
+ * the firmware defaults to: exactly the start a backend sends with no selection at all.
+ */
+struct DryingRequest {
+    float temp_c = 0.0f;
+    int duration_min = 0;
+    std::optional<float> humidity_pct; ///< Unset leaves the dryer's own target
+    int fan_pct = -1;                  ///< -1 = backend default
+    int unit = 0;
+    std::vector<int> gates; ///< Global gate indices; needs DryerInfo::supports_gate_selection
+    bool rotate = false;    ///< Needs DryerInfo::supports_rotation
 };
 
 /**

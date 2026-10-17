@@ -237,9 +237,10 @@ position. Two things read it, so they cannot disagree about where a field lives:
 - Queries name columns with `server/telemetry-worker/src/schema.ts#col` (`col(kind, field)`), never a literal `blobN`.
 
 `server/telemetry-worker/src/schema.ts#EVENT_FANOUT` lists the point kinds each event type writes (`panel_usage` fans out to
-`panel_usage`, `widget_interaction` and `overlay_visit`; `settings_snapshot` to
-`settings_snapshot` and `widget_placement`; `settings_changes` to one `settings_change`
-point per change). `server/telemetry-worker/src/schema.ts#R2_ONLY` lists fields kept out of Analytics Engine on purpose.
+`panel_usage`, `widget_interaction` and `overlay_visit`; `screensaver_usage` to one
+`screensaver_usage` point per saver and one `screensaver_level` point per saver and settled
+level; `settings_snapshot` to `settings_snapshot` and `widget_placement`; `settings_changes`
+to one `settings_change` point per change). `server/telemetry-worker/src/schema.ts#R2_ONLY` lists fields kept out of Analytics Engine on purpose.
 
 **Slots are append-only.** Analytics Engine rows are read by position for 90 days, so a
 field never changes its `blobN` / `doubleN`. A new field takes the next unused slot of its
@@ -339,8 +340,8 @@ a real-time clock reports arbitrary dates.
 
 ## Delta snapshots and the idempotency key
 
-`panel_usage` and `connection_stability` report what accumulated in one window, not
-lifetime totals. Each event carries:
+`panel_usage`, `connection_stability` and `screensaver_usage` report what accumulated in
+one window, not lifetime totals. Each event carries:
 
 - `boot_id`: 16 random hex characters, new for every process start and never stored on
   the device
@@ -727,8 +728,9 @@ those explicitly, so the stamped `app_version` never overwrites the update's tar
 | `memory_snapshot` | Periodic memory check | trigger, uptime_sec, rss_kb, vm_size_kb, vm_peak_kb, vm_hwm_kb, private_dirty_kb, private_clean_kb, shared_clean_kb, pss_kb, system_total_mb, system_available_mb |
 | `memory_warning` | Memory threshold breach | level, reason, rss_kb, vm_size_kb, vm_hwm_kb, vm_swap_kb, system_total_mb, system_available_mb, growth_5min_kb, private_dirty_kb, pss_kb |
 | `hardware_profile` | Hardware/feature inventory | printer.*, mcus.*, extruders.*, fans.*, steppers.*, leds.*, sensors.*, probe.*, capabilities.*, ams.*, tools.*, macros.*, printer_objects[] |
-| `settings_snapshot` | User configuration | theme, theme_name, brightness_pct, screensaver_timeout_sec, screen_blank_timeout_sec, locale, sound_enabled, auto_update_channel, animations_enabled, time_format, home_widgets[], spoolman_configured, theme_changed, multi_printer |
+| `settings_snapshot` | User configuration | theme, theme_name, brightness_pct, screensaver_timeout_sec, screen_blank_timeout_sec, screensaver_type, locale, sound_enabled, auto_update_channel, animations_enabled, time_format, home_widgets[], spoolman_configured, theme_changed, multi_printer |
 | `panel_usage` | Navigation delta for one window | boot_id, snapshot_seq, session_duration_sec (window length), panel_time_sec.*, panel_visits.*, widget_interactions.*, overlay_visits.*, overlay_open_count |
+| `screensaver_usage` | Screensaver delta for one window | boot_id, snapshot_seq, saver_shown_sec.*, saver_starts.*, saver_woke_by_touch.*, saver_stopped_other.*, saver_too_heavy.*, saver_settled_levels.* |
 | `connection_stability` | Connection delta for one window | boot_id, snapshot_seq, session_duration_sec, connect_count, disconnect_count, total_connected_sec, total_disconnected_sec, longest_disconnect_sec, klippy_error_count, klippy_shutdown_count |
 | `print_start_context` | Print metadata at start | source, has_thumbnail, file_size_bucket, slicer, ams_active |
 | `error_encountered` | Rate-limited error log | category, code, context, uptime_sec |
@@ -747,6 +749,7 @@ those explicitly, so the stamped `app_version` never overwrites the update's tar
 | `memory_warning` | Memory threshold breach | Rate-limited: 1/level/5min |
 | `panel_usage` | Periodic snapshot (4h) and app shutdown | ~every 4h; each carries only its own window |
 | `connection_stability` | Periodic snapshot (4h) and app shutdown | ~every 4h; each carries only its own window |
+| `screensaver_usage` | Periodic snapshot (4h) and app shutdown | ~every 4h, only for a window in which a saver ran |
 | `print_outcome` | Print reaches terminal state | Per print |
 | `print_start_context` | Print starts (metadata callback) | Per print |
 | `error_encountered` | On non-fatal error | Rate-limited: 1/category/5min |
@@ -757,7 +760,7 @@ those explicitly, so the stamped `app_version` never overwrites the update's tar
 | `update_failed` | Update failure | Per failure |
 | `update_success` | Next boot after update | Once per update |
 
-`panel_usage` and `connection_stability` are the delta events: see [Delta snapshots and
+`panel_usage`, `connection_stability` and `screensaver_usage` are the delta events: see [Delta snapshots and
 the idempotency key](#delta-snapshots-and-the-idempotency-key). The client sends no `feature_adoption` event. Adoption is derived from the `overlay_visit` and `widget_interaction` points
 that `panel_usage` fans out to (see [Feature adoption](#feature-adoption)).
 
@@ -775,6 +778,31 @@ Each is a tri-state `settings_snapshot` column (blobs 13-15): `"1"`, `"0"`, or e
 client too old to send it. The Features view lists them under `configured`: devices that
 reported the flag on over devices that reported it at all
 (`server/telemetry-worker/src/index.ts#configuredFeature`).
+
+### screensaver_usage Event Details
+
+`ScreensaverManager` accumulates the window on the main thread (`include/screensaver_usage.h`,
+`helix::SaverUsage`) and `TelemetryManager` reads and resets it through
+`set_screensaver_usage()`; the saver code has no telemetry dependency. Every map is keyed by
+the saver's stable registry name (`SCREENSAVERS` in `include/screensaver_registry.h`, the same
+name `settings_snapshot.screensaver_type` carries), plus `black_screen` for the static screen
+shown when every saver is too heavy for the board. A Test-button preview is not counted.
+
+| Field | Meaning |
+|-------|---------|
+| `saver_shown_sec` | Seconds on screen in the window; an open run counts up to the snapshot, sub-second remainders carry into the next window |
+| `saver_starts` | Runs started in the window, the fallback that replaces a too-heavy saver included |
+| `saver_woke_by_touch` | Runs ended by user input |
+| `saver_stopped_other` | Runs ended any other way: display sleep, an app wake (print done, remote control), a switch of saver, shutdown |
+| `saver_too_heavy` | Runs the gate ended over budget at the lowest level, handing over to the fallback |
+| `saver_settled_levels` | Ended runs per `"<name>:<level>"`, the gate level the run ended at (0 is the full effect); the black screen has none |
+
+Each ended run counts in exactly one of the three ending maps. A run spanning a snapshot counts
+its start in one window and its ending in a later one. The worker fans the five per-saver maps
+out to one `screensaver_usage` point per name (`shown_sec`, `starts`, `woke_by_touch`,
+`stopped_other`, `too_heavy`) and `saver_settled_levels` to one `screensaver_level` point per
+key (`saver_name`, `level`, `runs`), both with the delta columns. No dashboard view reads them
+yet.
 
 ### hardware_profile Event Details
 

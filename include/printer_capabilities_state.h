@@ -48,6 +48,7 @@ enum class Capability : uint8_t {
     HasChamber,                  ///< chamber sensor OR heater
     HasScrewsTilt,               ///< screws_tilt_adjust
     HasExcludeObject,            ///< [exclude_object]
+    HasLayerPause,               ///< macros that pause a running print at a layer
     HasToolOffsetCal,            ///< automatic tool offset calibration
     HideManualZCalibration,      ///< tool offset calibration also sets the reference tool's Z
     HasPaCal,                    ///< firmware measures pressure advance

@@ -265,6 +265,15 @@ const deltaColumns = [
 
 const kind = (name: string, columns: ColumnDef[]): PointKind => ({ kind: name, columns });
 
+/** screensaver_usage's per-saver maps, each keyed by the saver's stable name. */
+export const SAVER_MAPS = [
+  "saver_shown_sec",
+  "saver_starts",
+  "saver_woke_by_touch",
+  "saver_stopped_other",
+  "saver_too_heavy",
+] as const;
+
 // ---------- The table ----------
 
 const KINDS: PointKind[] = [
@@ -414,6 +423,8 @@ const KINDS: PointKind[] = [
     blob(13, "spoolman_configured", triState(flat("spoolman_configured"))),
     blob(14, "theme_changed", triState(flat("theme_changed"))),
     blob(15, "multi_printer", triState(flat("multi_printer"))),
+    // The configured saver's stable registry name, "off" for none; "" is a client too old to send it.
+    blob(16, "screensaver_type"),
   ]),
 
   // One point per distinct home widget id; `count` is how many times it is placed.
@@ -452,6 +463,29 @@ const KINDS: PointKind[] = [
     ...deltaColumns,
     dbl(1, "session_duration_sec"),
     dbl(2, "count", fromItem("count", "overlay_visits.*")),
+  ]),
+
+  // One point per saver in the event's saver maps.
+  kind("screensaver_usage", [
+    device,
+    ...versionPlatform,
+    blob(4, "saver_name", fromItem("saver_name", ...SAVER_MAPS.map((m) => `${m}.*`))),
+    ...deltaColumns,
+    dbl(1, "shown_sec", fromItem("shown_sec", "saver_shown_sec.*")),
+    dbl(2, "starts", fromItem("starts", "saver_starts.*")),
+    dbl(3, "woke_by_touch", fromItem("woke_by_touch", "saver_woke_by_touch.*")),
+    dbl(4, "stopped_other", fromItem("stopped_other", "saver_stopped_other.*")),
+    dbl(5, "too_heavy", fromItem("too_heavy", "saver_too_heavy.*")),
+  ]),
+
+  // One point per (saver, gate level) a run ended at; `runs` is how many did.
+  kind("screensaver_level", [
+    device,
+    ...versionPlatform,
+    blob(4, "saver_name", fromItem("saver_name", "saver_settled_levels.*")),
+    ...deltaColumns,
+    dbl(1, "level", fromItem("level", "saver_settled_levels.*")),
+    dbl(2, "runs", fromItem("runs", "saver_settled_levels.*")),
   ]),
 
   kind("connection_stability", [
@@ -572,6 +606,7 @@ export const EVENT_FANOUT: Record<string, string[]> = {
   settings_snapshot: ["settings_snapshot", "widget_placement"],
   panel_usage: ["panel_usage", "widget_interaction", "overlay_visit"],
   connection_stability: ["connection_stability"],
+  screensaver_usage: ["screensaver_usage", "screensaver_level"],
   print_start_context: ["print_start_context"],
   error_encountered: ["error_encountered"],
   performance_snapshot: ["performance_snapshot"],
@@ -621,7 +656,12 @@ export const R2_ONLY: Record<string, string[]> = mergeLists(
   // The session kind reads its app section, which repeats these envelope fields.
   { session: ["app_version", "app_platform", "app_board"] },
   // Marks a snapshot taken at shutdown, which describes the sender rather than the window.
-  { panel_usage: ["is_shutdown"], connection_stability: ["is_shutdown"], performance_snapshot: ["is_shutdown"] },
+  {
+    panel_usage: ["is_shutdown"],
+    connection_stability: ["is_shutdown"],
+    screensaver_usage: ["is_shutdown"],
+    performance_snapshot: ["is_shutdown"],
+  },
   // Session detail the hardware_profile kind stores in queryable form (model, MCU,
   // volume, capability bits), or that no dashboard view reads.
   {

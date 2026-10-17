@@ -42,6 +42,7 @@
 #include "temperature_sensor_manager.h"
 #include "temperature_service.h"
 #include "theme_manager.h"
+#include "tile_grid_fit.h"
 #include "tool_state.h"
 #include "ui/ui_cleanup_helpers.h"
 #include "ui/ui_widget_helpers.h"
@@ -155,6 +156,8 @@ void ControlsPanel::init_subjects() {
                               subjects_);
     UI_MANAGED_SUBJECT_INT(more_sensors_count_, 0, "controls_more_sensors_count", subjects_);
 
+    UI_MANAGED_SUBJECT_INT(calib_grid_labels_, 1, "calib_grid_labels", subjects_);
+
     // Fan speed display
     UI_MANAGED_SUBJECT_STRING(fan_speed_subject_, fan_speed_buf_, lv_tr("Off"),
                               "controls_fan_speed", subjects_);
@@ -257,6 +260,8 @@ void ControlsPanel::init_subjects() {
          [](lv_event_t*) { get_global_controls_panel().handle_calibration_screws(); }},
         {"on_calibration_motors",
          [](lv_event_t*) { get_global_controls_panel().handle_calibration_motors(); }},
+        {"on_calib_grid_layout_changed",
+         [](lv_event_t* e) { update_calib_grid(lv_event_get_current_target_obj(e)); }},
 
         {"on_controls_home_all",
          [](lv_event_t*) { get_global_controls_panel().handle_home_all(); }},
@@ -1135,6 +1140,47 @@ void ControlsPanel::handle_fan_slider_changed(int value) {
 void ControlsPanel::handle_motors_clicked() {
     spdlog::debug("[{}] Motors Disable card clicked - showing confirmation", get_name());
     helix::ui::show_motors_off_confirm(api_, motors_confirmation_dialog_, object_lifetime_.token());
+}
+
+// DECLARATIVE_OK: measured layout. Which tiles are visible is decided by each
+// tile's own XML binding, so the count is read off the laid-out grid rather than
+// re-derived from the subjects those bindings watch; the cell size is computed
+// from the grid's measured box, gaps included, so the cells can never wrap into
+// a row the card clips. Static and found by name because the subject belongs to
+// whichever panel instance built this grid.
+void ControlsPanel::update_calib_grid(lv_obj_t* grid) {
+    lv_subject_t* labels = lv_xml_get_subject(nullptr, "calib_grid_labels");
+    if (grid == nullptr || labels == nullptr) {
+        return;
+    }
+    int visible = 0;
+    const uint32_t count = lv_obj_get_child_count(grid);
+    for (uint32_t i = 0; i < count; ++i) {
+        if (!lv_obj_has_flag(lv_obj_get_child(grid, static_cast<int32_t>(i)), LV_OBJ_FLAG_HIDDEN)) {
+            ++visible;
+        }
+    }
+    const helix::ui::TileGridFit fit = helix::ui::fit_tile_grid(
+        visible, lv_obj_get_content_width(grid), lv_obj_get_content_height(grid),
+        lv_obj_get_style_pad_column(grid, LV_PART_MAIN),
+        lv_obj_get_style_pad_row(grid, LV_PART_MAIN),
+        theme_manager_get_spacing("calib_tile_min_width"),
+        theme_manager_get_spacing("calib_tile_min_height"));
+    if (fit.tile_w <= 0 || fit.tile_h <= 0) {
+        return;
+    }
+    // This runs from the grid's own LAYOUT_CHANGED: setting an unchanged size
+    // would dirty the layout again, so only a real change is written.
+    for (uint32_t i = 0; i < count; ++i) {
+        lv_obj_t* cell = lv_obj_get_child(grid, static_cast<int32_t>(i));
+        if (lv_obj_get_style_width(cell, LV_PART_MAIN) != fit.tile_w) {
+            lv_obj_set_width(cell, fit.tile_w);
+        }
+        if (lv_obj_get_style_height(cell, LV_PART_MAIN) != fit.tile_h) {
+            lv_obj_set_height(cell, fit.tile_h);
+        }
+    }
+    lv_subject_set_int(labels, fit.fits ? 1 : 0);
 }
 
 void ControlsPanel::handle_calibration_bed_mesh() {

@@ -132,7 +132,7 @@ How the print status screen draws the file that's printing.
 |--------|--------------|
 | **Auto** (default) | HelixScreen picks for your hardware: 3D where the screen can handle it, lighter views where it can't |
 | **3D View** | A 3D model of the toolpath you can turn and zoom |
-| **2D Layers** | A flat view of one layer at a time. Lighter than 3D |
+| **2D Layers** | A fixed corner view of the model, drawn layer by layer, with ledges and rims shaded so the shape reads. Lighter than 3D |
 | **Thumbnail Only** | Just the picture your slicer saved in the file. The lightest option |
 
 Pick a lighter option if the print status screen is slow on your printer.

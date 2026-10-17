@@ -86,6 +86,13 @@ void invalidate_font_cache();
 void set_source(lv_obj_t* icon, const char* icon_name);
 
 /**
+ * The MDI font an icon of @p size_str draws in ("xs" .. "xl").
+ *
+ * For widgets that size themselves to sit where an icon of that size would.
+ */
+const lv_font_t* font_for_size(const char* size_str);
+
+/**
  * Change the icon size at runtime.
  *
  * @param icon      Icon widget

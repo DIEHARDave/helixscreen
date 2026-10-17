@@ -483,9 +483,9 @@ The K2 build default applies only when the backlight is a sysfs device (`/sys/cl
 
 ### `screensaver_type`
 **Type:** string
-**Default:** `"toasters"`
-**Values:** `"off"`, `"toasters"` (Flying Toasters), `"starfield"`, `"pipes"` (3D Pipes), `"bounce"` (Bouncing Printer), `"fireworks"`, `"logo"` (Bouncing Logo), `"maze"` (3D Maze), `"hyperspace"`, `"flipclock"` (Flip Clock)
-**Description:** Which screensaver plays when the screen has been idle. Choose it in **Settings > Display**. It starts at the `dim_sec` mark, alongside dimming, and stops when `sleep_sec` takes the display down. On a panel with no backlight control the screensaver is the only idle indication you get. A fresh install selects Flying Toasters on every device that has screensavers. Names are not case-sensitive. Older versions stored a number here (`0` = Off through `9` = Flip Clock, in the order above); a number is still read as the screensaver it stood for and is rewritten as its name on the next update. A value that names no screensaver reads as the default. Each screensaver checks its own cost on your device and lowers its frame rate or detail if it would slow the printer. One that is still too heavy is left out of the list, and another plays in its place (see `screensaver_levels`). Your choice stays saved here either way.
+**Default:** `"flipclock"`
+**Values:** `"off"`, `"toasters"` (Flying Toasters), `"starfield"`, `"pipes"` (3D Pipes), `"bounce"` (Bouncing Printer), `"fireworks"`, `"logo"` (Bouncing Logo), `"maze"` (3D Maze), `"hyperspace"`, `"flipclock"` (Flip Clock), `"fireflies"`, `"aqua"` (Aqua Surface), `"highfly"` (High Fly)
+**Description:** Which screensaver plays when the screen has been idle. Choose it in **Settings > Display**. It starts at the `dim_sec` mark, alongside dimming, and stops when `sleep_sec` takes the display down. On a panel with no backlight control the screensaver is the only idle indication you get. A fresh install selects the Flip Clock on every device that has screensavers. Names are not case-sensitive. Older versions stored a number here (`0` = Off through `9` = Flip Clock, in the order above); a number is still read as the screensaver it stood for and is rewritten as its name on the next update. A value that names no screensaver reads as the default. Each screensaver checks its own cost on your device and lowers its frame rate or detail if it would slow the printer. One that is still too heavy is left out of the list, and another plays in its place (see `screensaver_levels`). Your choice stays saved here either way.
 
 ### `screensaver_levels`
 **Type:** object
@@ -711,7 +711,8 @@ Located in the `motion` section. These back the jog pad; set them from the scree
     "coarse_outer": 10.0,
     "turbo_inner": 10.0,
     "turbo_outer": 50.0,
-    "show_actual_position": false
+    "show_actual_position": false,
+    "layout": 0
   }
 }
 ```
@@ -732,6 +733,12 @@ Located in the `motion` section. These back the jog pad; set them from the scree
 **Type:** number
 **Range:** `0.01` - `200`
 **Description:** Distance in mm moved per tap, for each jog mode's inner and outer ring. Defaults: Fine 0.1/1, Coarse 1/10, Turbo 10/50. The ring labels on the jog pad show whatever you set.
+
+### `layout`
+**Type:** integer
+**Default:** `0`
+**Range:** `0` - `3`
+**Description:** The Motion screen's Jog-tab layout: `0` the jog pad, `1` Arrows, `2` Arrows + Home, `3` Axis Rows. Set from Settings > Printing > Motion > Layout.
 
 ### `show_actual_position`
 **Type:** boolean
@@ -889,6 +896,14 @@ Located in the `printer` section:
 **Default:** `2`
 **Values:** `0` = 0.05 mm, `1` = 0.025 mm, `2` = 0.01 mm, `3` = 0.005 mm
 **Description:** The Z-offset step size the print Tune overlay's nudge buttons use, remembered between prints. Picking a size on the overlay writes this; there is nothing to gain from editing it by hand.
+
+### `z_offset.save_mode`
+> Added in 1.1.
+
+**Type:** integer
+**Default:** `0`
+**Values:** `0` = Auto, `1` = Show, `2` = Hide
+**Description:** Whether HelixScreen offers to save Z-offset changes to the printer config. Hide removes every Save Z-Offset button (header, Controls, home widget) and the save step of Z-offset calibration; baby-stepping still works for the current session. Auto hides them on printers where each tool keeps its own Z offset (toolchangers) and shows them everywhere else. Set it from **Settings > Motion > Save Z-Offset Buttons**.
 
 ---
 
@@ -1376,6 +1391,7 @@ For what each widget does and how big it can get, see the [Home Panel guide](gui
 | `print_status` | Print Status | Yes | No |
 | `control_buttons` | Print Controls | No | No |
 | `print_stats` | Print Stats | No | No |
+| `display_message` | Printer Message | No | No |
 | `speed_flow` | Speed / Flow | No | No |
 | `z_offset` | Z-Offset | No | No |
 | `exclude_map` | Exclude Objects | No | Klipper `[exclude_object]` |

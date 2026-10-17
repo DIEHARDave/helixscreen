@@ -48,8 +48,8 @@ TEST_CASE("v28 writes the frozen table's name for every legacy number",
 
 TEST_CASE("v28 turns an out-of-range screensaver number into the default saver",
           "[config][migration][screensaver_setting]") {
-    CHECK(migrate(10) == "toasters");
-    CHECK(migrate(-3) == "toasters");
+    CHECK(migrate(10) == "flipclock");
+    CHECK(migrate(-3) == "flipclock");
 }
 
 TEST_CASE("v28 leaves a stored name and every other value as it is",

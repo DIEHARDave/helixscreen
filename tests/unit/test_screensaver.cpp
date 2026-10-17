@@ -18,7 +18,7 @@ using namespace helix;
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 TEST_CASE_METHOD(LVGLTestFixture,
-                 "a fresh install defaults the screensaver to flying toasters on every tier",
+                 "a fresh install defaults the screensaver to the flip clock on every tier",
                  "[screensaver][display_settings]") {
     Config* config = Config::get_instance();
     const bool had_type = config->exists("/display/screensaver_type");
@@ -34,7 +34,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     DisplaySettingsManager::instance().init_subjects();
     CHECK(DisplaySettingsManager::instance().get_screensaver_type() ==
-          static_cast<int>(helix::ui::DEFAULT_SCREENSAVER_TYPE));
+          static_cast<int>(ScreensaverType::FLIP_CLOCK));
     DisplaySettingsManager::instance().deinit_subjects();
 
     if (had_type) {
@@ -344,17 +344,6 @@ SpriteTally check_sprites_at(const FlyingToasterScreensaver& ss, uint32_t elapse
 }
 
 } // namespace
-
-TEST_CASE_METHOD(
-    LVGLTestFixture,
-    "FlyingToasterScreensaver level 0: configured period, else 16 ms, with the refresh equal",
-    "[screensaver][screensaver_motion]") {
-    const uint32_t configured_ms = GENERATE(as<uint32_t>{}, 0, 20);
-    INFO("configured period " << configured_ms << " ms");
-    const LevelZeroPeriods periods = level_zero_periods<FlyingToasterScreensaver>(configured_ms);
-    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : helix::ui::SAVER_FAST_PERIOD));
-    CHECK(periods.refresh_ms == periods.timer_ms);
-}
 
 TEST_CASE_METHOD(
     LVGLTestFixture,
@@ -837,12 +826,6 @@ using PipesAccess = PipesScreensaverTestAccess;
 // A pipe grows one grid step per 100 ms of frame time.
 constexpr uint32_t PIPES_STEP_MS = 100;
 
-void run_timer(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
-
 /// Counts the draw tasks `obj` itself adds to refreshes and snapshots, for as long as it lives.
 class DrawTaskCounter {
   public:
@@ -876,11 +859,6 @@ class DrawTaskCounter {
 };
 
 using helix::test::InvalidatedAreas;
-
-bool area_contains(const lv_area_t& outer, const lv_area_t& inner) {
-    return outer.x1 <= inner.x1 && outer.y1 <= inner.y1 && outer.x2 >= inner.x2 &&
-           outer.y2 >= inner.y2;
-}
 
 lv_area_t coords_of(lv_obj_t* obj) {
     lv_obj_update_layout(obj);
@@ -1000,8 +978,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         const std::vector<uint8_t> before(buf->data, buf->data + buf->data_size);
         invalidated.areas.clear();
 
-        lv_tick_inc(PIPES_STEP_MS);
-        run_timer(SaverTestAccess::timer(ss));
+        advance_saver(ss, PIPES_STEP_MS);
 
         const PixelChanges changes = diff_canvas(before, buf, canvas_coords, invalidated.areas);
         REQUIRE(changes.changed > 0);
@@ -1013,7 +990,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     }
 }
 
-TEST_CASE_METHOD(LVGLTestFixture, "a pipes grid reset invalidates the whole canvas",
+TEST_CASE_METHOD(LVGLTestFixture, "the pipes dissolve invalidates every pixel it clears",
                  "[screensaver][screensaver_canvas]") {
     PipesScreensaver ss;
     ScreensaverStopOnExit<PipesScreensaver> stop_on_exit{ss};
@@ -1022,16 +999,27 @@ TEST_CASE_METHOD(LVGLTestFixture, "a pipes grid reset invalidates the whole canv
     REQUIRE(ss.is_active());
     lv_obj_t* canvas = SaverTestAccess::canvas(ss);
     REQUIRE(canvas != nullptr);
+    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(canvas);
+    REQUIRE(buf != nullptr);
+    REQUIRE(lv_color_format_get_size(static_cast<lv_color_format_t>(buf->header.cf)) == 4);
     const lv_area_t canvas_coords = coords_of(canvas);
 
-    PipesAccess::set_total_segments(ss, PipesAccess::max_segments() + 1);
-    InvalidatedAreas invalidated(lv_obj_get_display(canvas));
-    lv_tick_inc(PIPES_STEP_MS);
-    run_timer(SaverTestAccess::timer(ss));
-    REQUIRE(PipesAccess::total_segments(ss) == 0);
+    for (int i = 0; i < 20000 && PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::GROWING;
+         i++) {
+        advance_saver(ss, 3 * PIPES_STEP_MS);
+    }
+    REQUIRE(PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::DISSOLVING);
 
-    CHECK(std::any_of(invalidated.areas.begin(), invalidated.areas.end(),
-                      [&](const lv_area_t& a) { return area_contains(a, canvas_coords); }));
+    size_t cleared = 0;
+    while (PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::DISSOLVING) {
+        const std::vector<uint8_t> before(buf->data, buf->data + buf->data_size);
+        InvalidatedAreas invalidated(lv_obj_get_display(canvas));
+        advance_saver(ss, PIPES_STEP_MS);
+        const PixelChanges changes = diff_canvas(before, buf, canvas_coords, invalidated.areas);
+        cleared += changes.changed;
+        CHECK(changes.outside_areas == 0);
+    }
+    CHECK(cleared > 0);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture,
@@ -1079,23 +1067,6 @@ using helix::default_refr_timer_period;
 constexpr uint32_t GLOBAL_PERIOD_MS = 40;
 // Unlike the 16 ms default, so the checks see the configured period reach each saver.
 constexpr uint32_t SAVER_PERIOD_MS = 20;
-
-/// Sets the global and screensaver refresh periods through the environment and applies
-/// them as DisplayManager::init() does. Puts the environment and both timers back when the
-/// test ends.
-struct SaverRefreshEnv {
-    helix::ScopedTimerPeriods timers;
-    helix::ScopedEnv global{"HELIX_REFR_PERIOD_MS"};
-    helix::ScopedEnv scope{"HELIX_REFR_PERIOD_SCOPE"};
-    helix::ScopedEnv saver{"HELIX_SCREENSAVER_REFR_PERIOD_MS"};
-
-    SaverRefreshEnv() {
-        setenv("HELIX_REFR_PERIOD_MS", "40", 1);
-        unsetenv("HELIX_REFR_PERIOD_SCOPE");
-        setenv("HELIX_SCREENSAVER_REFR_PERIOD_MS", "20", 1);
-        helix::apply_refresh_timing(helix::refresh_timing_from_env());
-    }
-};
 
 /// Period of the timer the manager's running saver ticks on.
 uint32_t running_saver_timer_period(ScreensaverType type) {
@@ -1302,17 +1273,6 @@ TEST_CASE_METHOD(LVGLTestFixture, "BouncingPrinterScreensaver creates overlay on
     REQUIRE(children_final <= children_after);
 }
 
-TEST_CASE_METHOD(
-    LVGLTestFixture,
-    "BouncingPrinterScreensaver level 0: configured period, else 16 ms, with the refresh equal",
-    "[screensaver][screensaver_motion]") {
-    const uint32_t configured_ms = GENERATE(as<uint32_t>{}, 0, 20);
-    INFO("configured period " << configured_ms << " ms");
-    const LevelZeroPeriods periods = level_zero_periods<BouncingPrinterScreensaver>(configured_ms);
-    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : helix::ui::SAVER_FAST_PERIOD));
-    CHECK(periods.refresh_ms == periods.timer_ms);
-}
-
 // The motion is a pure function of elapsed time, so the parts that decide where
 // the sprite is and whether it just hit something are testable without a display.
 
@@ -1504,14 +1464,7 @@ TEST_CASE_METHOD(
     "without HELIX_SCREENSAVER_REFR_PERIOD_MS the display refreshes at the saver's level period",
     "[screensaver][refresh_period]") {
     auto& mgr = ScreensaverManager::instance();
-    helix::ScopedTimerPeriods timers;
-    helix::ScopedEnv global{"HELIX_REFR_PERIOD_MS"};
-    helix::ScopedEnv scope{"HELIX_REFR_PERIOD_SCOPE"};
-    helix::ScopedEnv saver_period{"HELIX_SCREENSAVER_REFR_PERIOD_MS"};
-    setenv("HELIX_REFR_PERIOD_MS", "40", 1);
-    unsetenv("HELIX_REFR_PERIOD_SCOPE");
-    unsetenv("HELIX_SCREENSAVER_REFR_PERIOD_MS");
-    helix::apply_refresh_timing(helix::refresh_timing_from_env());
+    SaverRefreshEnv env(std::nullopt);
     StopSaverOnExit stop_on_exit;
     REQUIRE_FALSE(helix::active_refresh_period_hold().is_held());
 
@@ -1625,10 +1578,12 @@ TEST_CASE_METHOD(LVGLTestFixture,
         ScreensaverStopOnExit<PipesScreensaver> stop_on_exit{ss};
         ss.start();
         REQUIRE(ss.is_active());
-        CHECK(ss.level_count() == 2);
+        CHECK(ss.level_count() == 3);
         CHECK(SaverTestAccess::timer(ss)->period == helix::ui::SAVER_FAST_PERIOD);
         ss.request_level(1);
         CHECK(SaverTestAccess::timer(ss)->period == 33);
+        ss.request_level(2);
+        CHECK(SaverTestAccess::timer(ss)->period == 100);
     }
 
     SECTION("bouncing printer") {
