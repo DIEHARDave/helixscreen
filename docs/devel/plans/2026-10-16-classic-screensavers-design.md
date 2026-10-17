@@ -273,9 +273,9 @@ with highlights forming smooth isophote rings.
 **Camera:** telephoto, which is what removed the "black hump" where the near edge towered over the
 surface behind it. The prototype settings were:
 - near edge at depth 3.5, 4.0 units deep;
-- focal length 500 px at 800 wide;
+- focal length 500 px at the 400 px internal width;
 - camera height 0.8;
-- horizon about 45 px above centre.
+- horizon about 92 px above centre at 240 internal rows.
 
 **Water surface:** the height is an analytic sum, evaluated each frame into a grid (the
 prototype's grid was 160 × 64), with a sin lookup table. It sums three things:
@@ -442,6 +442,27 @@ batch with one land gate:
 - the shared clock extraction, the heightfield renderer, Aqua Surface and High Fly. These go on
   one branch, since both savers depend on the clock and the renderer. This branch is the largest;
   its plan may split it into stacked commits, clock and renderer first.
+
+**Plans:** one per branch, beside this file: `-pipes.md`, `-maze.md`, `-fireflies.md` and
+`-sky-water.md`.
+
+**Where the branches collide, and the rules that settle it:**
+- **Merge order** into `feature/classic-screensavers`: fireflies, then sky-water, then pipes,
+  then maze. Each later branch merges the integration branch in, rather than rebasing, and resolves
+  the collision there.
+- **Registry enum** values are pre-assigned: FIREFLIES = 10, AQUA = 11, HIGHFLY = 12. The
+  registry test requires the rows to run in order with no gaps, so sky-water's registry commit
+  waits for fireflies' registry commit to reach the integration branch, and merges it in first.
+- **`include/screensaver_pixel_writer.h`** gains:
+  - `hue_color` and `add_light`, moved there from hyperspace by the fireflies branch;
+  - additions from pipes and sky-water.
+
+  Every addition is additive, and nobody forks a second copy of a helper that already exists.
+- **`PIPES_CANVAS_FORMAT`** is renamed `LV_DRAW_CANVAS_FORMAT` by the pipes branch, because pipes
+  stops using it. Pipes merges after sky-water, so the rename also updates the references in Aqua
+  and High Fly.
+- **`ScreensaverManager`, `ui_xml/settings_display_overlay.xml` and `translations/*.yml`** are
+  touched by both fireflies and sky-water. These are additive merges.
 
 Each branch shows before and after screenshots, or a short recording, from a headless mock run
 (`ctl screensaver <name>`). Preston judges how the pixels look.
