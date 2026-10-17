@@ -628,12 +628,17 @@ void MotionPanel::begin_jog_hold(const char* button_name, lv_obj_t* button) {
         return;
     snprintf(jog_hold_button_, sizeof(jog_hold_button_), "%s", button_name);
     jog_hold_obj_ = button;
+    jog_hold_has_obj_ = button != nullptr;
     jog_hold_repeated_ = false;
     jog_hold_timer_.begin(&MotionPanel::jog_hold_fire, this);
 }
 
 bool MotionPanel::jog_hold_fire(void* user_data) {
     auto* self = static_cast<MotionPanel*>(user_data);
+    if (self->jog_hold_has_obj_ && !self->jog_hold_obj_.get()) {
+        spdlog::debug("[MotionPanel] Held jog button deleted; ending the hold");
+        return false;
+    }
     // The first tick is this press's initial jog; later ones are repeats.
     const bool is_repeat = self->jog_hold_repeated_;
     self->jog_hold_repeated_ = true;
@@ -839,6 +844,22 @@ void MotionPanel::register_position_observers() {
         self->refresh_tab_labels();
         self->update_z_axis_label(self->bed_moves_);
     });
+
+    // A layout swap deletes the held button without a RELEASED. A pad built
+    // while another layout showed was fitted to a hidden, zero-size wrapper,
+    // so it is re-fitted once the swap has laid out.
+    layout_observer_ = observe<int>(
+        SettingsManager::instance().subject_motion_layout(), this,
+        [](MotionPanel* self, int) {
+            self->stop_hold_repeat();
+            self->lifetime_.defer("MotionPanel::refit_pad", [self]() {
+                if (self->jog_pad_ && self->overlay_root_) {
+                    self->fit_jog_pad();
+                    lv_obj_invalidate(self->jog_pad_);
+                }
+            });
+        },
+        SettingsManager::instance().get_subjects_lifetime());
 
     coordinate_mode_observer_ = observe<int>(
         SettingsManager::instance().subject_motion_show_actual_position(), this,
@@ -1280,7 +1301,11 @@ void MotionPanel::home_axes(const std::string& axes) {
             if (axes.empty()) {
                 helix::ui::notify_tr(ToastSeverity::SUCCESS, TR_NOOP("All axes homed"));
             } else {
-                helix::ui::notify_tr(ToastSeverity::SUCCESS, TR_NOOP("{} axis homed"), axes);
+                if (axes.size() == 1) {
+                    helix::ui::notify_tr(ToastSeverity::SUCCESS, TR_NOOP("{} axis homed"), axes);
+                } else {
+                    helix::ui::notify_tr(ToastSeverity::SUCCESS, TR_NOOP("{} axes homed"), axes);
+                }
             }
         },
         [](const MoonrakerError& err) {

@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <!-- The Fine / Coarse / Turbo jog mode buttons, the selected one solid.
+       The instance sizes the row; `button_height` sizes the buttons in it
+       and `icon_position` stacks the icon over the label where the row is
+       narrow. -->
+  <api>
+    <prop name="icon_position" type="string" default="left"/>
+    <prop name="button_height" type="string" default="#button_height"/>
+  </api>
+  <view name="motion_jog_modes"
+        extends="lv_obj" width="100%" height="content" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
+        scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
+    <ui_button name="jog_mode_fine"
+               width="0" height="$button_height" flex_grow="1" style_min_width="0" style_pad_hor="#space_xxs"
+               text="Fine" icon="tortoise" icon_position="$icon_position">
+      <bind_style name="styles.choice_selected" subject="motion_jog_mode_fine_active" ref_value="1"/>
+      <bind_style name="styles.choice_idle" subject="motion_jog_mode_fine_active" ref_value="0"/>
+      <event_cb trigger="clicked" callback="on_jog_mode_fine"/>
+    </ui_button>
+    <ui_button name="jog_mode_coarse"
+               width="0" height="$button_height" flex_grow="1" style_min_width="0" style_pad_hor="#space_xxs"
+               text="Coarse" icon="rabbit" icon_position="$icon_position">
+      <bind_style name="styles.choice_selected" subject="motion_jog_mode_coarse_active" ref_value="1"/>
+      <bind_style name="styles.choice_idle" subject="motion_jog_mode_coarse_active" ref_value="0"/>
+      <event_cb trigger="clicked" callback="on_jog_mode_coarse"/>
+    </ui_button>
+    <ui_button name="jog_mode_turbo"
+               width="0" height="$button_height" flex_grow="1" style_min_width="0" style_pad_hor="#space_xxs"
+               text="Turbo" icon="flash" icon_position="$icon_position">
+      <bind_style name="styles.choice_selected" subject="motion_jog_mode_turbo_active" ref_value="1"/>
+      <bind_style name="styles.choice_idle" subject="motion_jog_mode_turbo_active" ref_value="0"/>
+      <event_cb trigger="clicked" callback="on_jog_mode_turbo"/>
+    </ui_button>
+  </view>
+</component>

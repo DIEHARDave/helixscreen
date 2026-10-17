@@ -4027,6 +4027,7 @@ translations:
   '{} LED strips available': '{} LED strips available'
   '{} and {} are both mapped here': '{} and {} are both mapped here'
   '{} available': '{} available'
+  '{} axes homed': '{} axes homed'
   '{} axis homed': '{} axis homed'
   '{} cannot be skipped: its name has characters the printer cannot be sent': '{} cannot be skipped: its name has characters the printer cannot be sent'
   '{} changed': '{} changed'

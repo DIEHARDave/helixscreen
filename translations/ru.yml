@@ -4188,6 +4188,7 @@ translations:
   '{} LED strips available': 'Доступно светодиодных лент: {}'
   '{} and {} are both mapped here': '{} и {} оба назначены сюда'
   '{} available': Доступна версия {}
+  '{} axes homed': 'Оси {} запаркованы'
   '{} axis homed': Ось {} запаркована
   '{} cannot be skipped: its name has characters the printer cannot be sent': '{} нельзя исключить: имя содержит символы, которые нельзя отправить на принтер'
   '{} changed': 'изменено: {}'

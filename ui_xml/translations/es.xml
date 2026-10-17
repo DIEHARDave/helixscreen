@@ -3715,6 +3715,7 @@
   <translation tag="{} LED strips available" es="{} tiras LED disponibles"/>
   <translation tag="{} and {} are both mapped here" es="{} y {} están asignados aquí"/>
   <translation tag="{} available" es="{} disponible"/>
+  <translation tag="{} axes homed" es="Ejes {} en origen"/>
   <translation tag="{} axis homed" es="Eje {} en origen"/>
   <translation tag="{} cannot be skipped: its name has characters the printer cannot be sent" es="{} no se puede excluir: su nombre tiene caracteres que no se pueden enviar a la impresora"/>
   <translation tag="{} changed" es="{} cambiado(s)"/>

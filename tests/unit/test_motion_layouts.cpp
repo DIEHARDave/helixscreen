@@ -30,6 +30,8 @@
 #include "static_panel_registry.h"
 
 #include <array>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -236,6 +238,16 @@ class LayoutFixture : public LVGLUITestFixture {
         drain();
     }
 
+    /// Click @p name inside the widget named @p scope.
+    static void click_in(const char* scope, const char* name) {
+        lv_obj_t* parent = find(scope);
+        REQUIRE(parent != nullptr);
+        lv_obj_t* obj = lv_obj_find_by_name(parent, name);
+        REQUIRE(obj != nullptr);
+        lv_obj_send_event(obj, LV_EVENT_CLICKED, nullptr);
+        drain();
+    }
+
     RecordingMotionAPI& motion() {
         return api_.recording_;
     }
@@ -365,7 +377,7 @@ TEST_CASE_METHOD(LayoutFixture, "motion layout: axis rows move the jog mode's di
     CHECK(motion().moves[3].dz == Catch::Approx(-10.0));
 
     // The rows' mode buttons switch the distances the rows move.
-    click("rows_mode_fine");
+    click_in("rows_modes", "jog_mode_fine");
     CHECK(panel.get_jog_mode() == helix::JogMode::Fine);
     click("rows_x_plus_large");
     REQUIRE(motion().moves.size() == 5);
@@ -451,4 +463,148 @@ TEST_CASE_METHOD(LayoutFixture, "motion layout: the settings dropdown picks the 
     helix::SettingsManager::instance().set_motion_layout(MotionLayout::AxisRows);
     drain();
     CHECK(lv_dropdown_get_selected(dropdown) == 3);
+}
+
+namespace {
+
+/// One jog key and the relative move a tap on it must send.
+struct ExpectedJog {
+    const char* name;
+    double dx, dy, dz;
+};
+
+size_t jog_buttons_declared(const char* path) {
+    std::ifstream file(path);
+    std::stringstream text;
+    text << file.rdbuf();
+    const std::string xml = text.str();
+    size_t n = 0;
+    for (size_t pos = 0; (pos = xml.find("<motion_jog_button ", pos)) != std::string::npos; ++pos)
+        ++n;
+    return n;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LayoutFixture, "motion layout: every jog key sends its own move",
+                 "[motion-layout][xml]") {
+    // Coarse mode (inner 1, outer 10), selected step 0.1 (index 0), a
+    // head-moves printer, everything homed mid-envelope: no clamp, no
+    // inversion, and every distance distinct per key class.
+    struct LayoutCase {
+        MotionLayout layout;
+        const char* file;
+        std::vector<ExpectedJog> keys;
+    };
+    const std::vector<LayoutCase> cases = {
+        {MotionLayout::Pad,
+         "ui_xml/motion_panel.xml",
+         // The Z column is declared once per orientation; the landscape copy is built.
+         {{"z_up_large", 0, 0, 10},
+          {"z_up_small", 0, 0, 1},
+          {"z_down_small", 0, 0, -1},
+          {"z_down_large", 0, 0, -10}}},
+        {MotionLayout::Arrows,
+         "ui_xml/components/motion_jog_arrows.xml",
+         {{"arrows_x_minus", -0.1, 0, 0},
+          {"arrows_x_plus", 0.1, 0, 0},
+          {"arrows_y_plus", 0, 0.1, 0},
+          {"arrows_y_minus", 0, -0.1, 0},
+          {"arrows_z_up", 0, 0, 0.1},
+          {"arrows_z_down", 0, 0, -0.1}}},
+        {MotionLayout::ArrowsHome,
+         "ui_xml/components/motion_jog_arrows_home.xml",
+         {{"cross_x_minus", -0.1, 0, 0},
+          {"cross_x_plus", 0.1, 0, 0},
+          {"cross_y_plus", 0, 0.1, 0},
+          {"cross_y_minus", 0, -0.1, 0},
+          {"cross_z_up", 0, 0, 0.1},
+          {"cross_z_down", 0, 0, -0.1}}},
+        {MotionLayout::AxisRows,
+         "ui_xml/components/motion_jog_rows.xml",
+         {{"rows_x_minus_large", -10, 0, 0},
+          {"rows_x_minus_small", -1, 0, 0},
+          {"rows_x_plus_small", 1, 0, 0},
+          {"rows_x_plus_large", 10, 0, 0},
+          {"rows_y_minus_large", 0, -10, 0},
+          {"rows_y_minus_small", 0, -1, 0},
+          {"rows_y_plus_small", 0, 1, 0},
+          {"rows_y_plus_large", 0, 10, 0},
+          {"rows_z_down_large", 0, 0, -10},
+          {"rows_z_down_small", 0, 0, -1},
+          {"rows_z_up_small", 0, 0, 1},
+          {"rows_z_up_large", 0, 0, 10}}},
+    };
+
+    show_with(MotionLayout::Pad);
+    auto& panel = get_global_motion_panel();
+    panel.set_jog_mode(helix::JogMode::Coarse);
+    for (const auto& lc : cases) {
+        helix::SettingsManager::instance().set_motion_layout(lc.layout);
+        drain();
+        if (find("step_0"))
+            click("step_0");
+        const size_t declared = jog_buttons_declared(lc.file);
+        const size_t expected =
+            lc.layout == MotionLayout::Pad ? 2 * lc.keys.size() : lc.keys.size();
+        INFO(lc.file << " declares " << declared << " jog keys");
+        REQUIRE(declared == expected);
+        for (const auto& key : lc.keys) {
+            INFO("key " << key.name);
+            motion().moves.clear();
+            click(key.name);
+            REQUIRE(motion().moves.size() == 1);
+            CHECK(motion().moves[0].dx == Catch::Approx(key.dx));
+            CHECK(motion().moves[0].dy == Catch::Approx(key.dy));
+            CHECK(motion().moves[0].dz == Catch::Approx(key.dz));
+        }
+    }
+}
+
+TEST_CASE_METHOD(LayoutFixture, "motion layout: a held key deleted mid-hold stops jogging",
+                 "[motion-layout][xml]") {
+    show_with(MotionLayout::Arrows);
+    auto& panel = get_global_motion_panel();
+    lv_obj_t* arrow = find("arrows_x_plus");
+    REQUIRE(arrow);
+    lv_obj_send_event(arrow, LV_EVENT_PRESSED, nullptr);
+    REQUIRE(panel.jog_hold_timer().ticking());
+
+    // Deleting the held key sends no RELEASED.
+    lv_obj_delete(arrow);
+    drain();
+    // The first tick finds the key gone and ends the hold without jogging.
+    panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS);
+    CHECK_FALSE(panel.jog_hold_timer().ticking());
+    CHECK_FALSE(
+        panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS + helix::HoldRepeat::INTERVAL_MS));
+    CHECK(motion().moves.empty());
+}
+
+TEST_CASE_METHOD(LayoutFixture, "motion layout: a layout change ends a hold",
+                 "[motion-layout][xml]") {
+    show_with(MotionLayout::Arrows);
+    auto& panel = get_global_motion_panel();
+    lv_obj_t* arrow = find("arrows_y_plus");
+    REQUIRE(arrow);
+    lv_obj_send_event(arrow, LV_EVENT_PRESSED, nullptr);
+    REQUIRE(panel.jog_hold_timer().ticking());
+
+    helix::SettingsManager::instance().set_motion_layout(MotionLayout::AxisRows);
+    drain();
+    CHECK_FALSE(panel.jog_hold_timer().ticking());
+    CHECK_FALSE(panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS));
+    CHECK(motion().moves.empty());
+}
+
+TEST_CASE_METHOD(LayoutFixture, "motion layout: the pad fits when it appears after another layout",
+                 "[motion-layout][xml]") {
+    show_with(MotionLayout::AxisRows);
+    helix::SettingsManager::instance().set_motion_layout(MotionLayout::Pad);
+    drain();
+    lv_obj_update_layout(lv_screen_active());
+    lv_obj_t* pad = find("jog_pad");
+    REQUIRE(pad);
+    CHECK(lv_obj_get_width(pad) > 50);
+    CHECK(lv_obj_get_width(pad) == lv_obj_get_height(pad));
 }

@@ -4150,6 +4150,7 @@ translations:
   '{} LED strips available': '{} fitas de LED disponíveis'
   '{} and {} are both mapped here': '{} e {} estão ambos atribuídos aqui'
   '{} available': '{} disponível'
+  '{} axes homed': 'Eixos {} referenciados'
   '{} axis homed': Eixo {} referenciado
   '{} cannot be skipped: its name has characters the printer cannot be sent': '{} não pode ser excluído: o nome tem caracteres que não podem ser enviados à impressora'
   '{} changed': '{} alterado(s)'

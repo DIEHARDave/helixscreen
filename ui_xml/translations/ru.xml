@@ -3778,6 +3778,7 @@
   <translation tag="{} LED strips available" ru="Доступно светодиодных лент: {}"/>
   <translation tag="{} and {} are both mapped here" ru="{} и {} оба назначены сюда"/>
   <translation tag="{} available" ru="Доступна версия {}"/>
+  <translation tag="{} axes homed" ru="Оси {} запаркованы"/>
   <translation tag="{} axis homed" ru="Ось {} запаркована"/>
   <translation tag="{} cannot be skipped: its name has characters the printer cannot be sent" ru="{} нельзя исключить: имя содержит символы, которые нельзя отправить на принтер"/>
   <translation tag="{} changed" ru="изменено: {}"/>

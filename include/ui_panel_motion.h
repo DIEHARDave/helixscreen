@@ -355,6 +355,9 @@ class MotionPanel : public OverlayBase {
     /// The held button. A button disabled under the finger never receives
     /// RELEASED, so LVGL would leave it drawn pressed.
     helix::ui::WidgetRef jog_hold_obj_;
+    /// A widget was recorded for this hold. Deleting it (a layout swap, a
+    /// reload) sends no RELEASED, so a recorded widget gone null ends the hold.
+    bool jog_hold_has_obj_ = false;
 
     /// stop_hold_repeat() sweeps both this timer and the pad's on every
     /// teardown path.
@@ -430,6 +433,7 @@ class MotionPanel : public OverlayBase {
     ObserverGuard bed_moves_observer_;
     ObserverGuard homed_axes_observer_;
     ObserverGuard jog_ready_observer_;
+    ObserverGuard layout_observer_;
 
     // Actual (live) positions in mm; the readouts show these when the
     // coordinate preference is "actual", the commanded current_x_/y_/z_
