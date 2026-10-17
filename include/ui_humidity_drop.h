@@ -31,6 +31,9 @@ void register_humidity_drop_widget();
 /// a percent; below zero = no reading).
 void humidity_drop_set_value(lv_obj_t* obj, int humidity_x10);
 
+/// Whether @p obj is a <humidity_drop>: like an icon, it draws a glyph sized by its text font.
+bool is_humidity_drop(const lv_obj_t* obj);
+
 /// The reading a drop shows; humidity_drop::kUnknown when it has none.
 int humidity_drop_value(lv_obj_t* obj);
 

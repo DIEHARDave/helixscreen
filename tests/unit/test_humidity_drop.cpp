@@ -351,6 +351,8 @@ TEST_CASE_METHOD(XMLTestFixture, "humidity_drop: size matches the water icon of 
         CHECK(lv_obj_get_width(drop) == lv_obj_get_width(icon));
         CHECK(lv_obj_get_height(drop) == lv_obj_get_height(icon));
         CHECK(lv_obj_get_width(drop) > 0);
+        CHECK(helix::ui::is_humidity_drop(drop));
+        CHECK_FALSE(helix::ui::is_humidity_drop(icon));
         lv_obj_delete(icon);
         lv_obj_delete(drop);
     }

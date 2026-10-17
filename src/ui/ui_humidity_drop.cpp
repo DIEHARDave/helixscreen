@@ -279,6 +279,10 @@ void humidity_drop_set_value(lv_obj_t* obj, int humidity_x10) {
     lv_obj_invalidate(obj);
 }
 
+bool is_humidity_drop(const lv_obj_t* obj) {
+    return obj && std::find(s_drops.begin(), s_drops.end(), obj) != s_drops.end();
+}
+
 int humidity_drop_value(lv_obj_t* obj) {
     const HumidityDropData* d = data_of(obj);
     return d ? d->value : hd::kUnknown;
