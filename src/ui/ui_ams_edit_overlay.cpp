@@ -1041,11 +1041,16 @@ void AmsEditOverlay::handle_spool_edit_save(bool finish) {
                         // dirty state doesn't light up from a logistics-only edit.
                         original_info_.remaining_weight_g = working_info_.remaining_weight_g;
                         original_info_.total_weight_g = working_info_.total_weight_g;
+                        // The lane's Spoolman record still holds the weight this
+                        // write replaced, and it outranks the edit until re-read.
+                        const int saved_spool_id = working_info_.spoolman_id;
                         if (finish) {
                             // Header Save: finish the whole edit and close.
                             commit_and_close();
+                            SpoolmanManager::refresh_spool(saved_spool_id);
                             return;
                         }
+                        SpoolmanManager::refresh_spool(saved_spool_id);
                         switch_to_form();
                         update_ui();
                         update_temp_display();

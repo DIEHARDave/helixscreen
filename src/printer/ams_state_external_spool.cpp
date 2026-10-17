@@ -63,6 +63,11 @@ void AmsState::set_external_spool_info_in_memory(const SlotInfo& info) {
 
 void AmsState::set_external_spool_info(const SlotInfo& info) {
     assert_main_thread();
+    store_external_spool_info(info);
+    notify_external_spool_changed(info);
+}
+
+void AmsState::store_external_spool_info(const SlotInfo& info) {
     // Moving the binding to a different spool retires the previous spool's
     // records: its Spoolman record, the user's pick, the kept identity and the
     // meter's count all describe a spool that is no longer bound, and resolve()
@@ -80,7 +85,6 @@ void AmsState::set_external_spool_info(const SlotInfo& info) {
     }
     in_memory_external_spool_.reset(); // Persistent write wins; let SettingsManager be the source.
     helix::SettingsManager::instance().set_external_spool_info(info);
-    notify_external_spool_changed(info);
 }
 
 void AmsState::notify_external_spool_changed(const SlotInfo& info) {
@@ -118,13 +122,17 @@ void AmsState::apply_external_spool_store(const SlotInfo& info) {
     // S5 + S7 — same emptiness predicate as the FilamentPanel completion arm
     const SlotInfo original = raw_external_spool_info().value_or(SlotInfo{});
     if (info.spoolman_id > 0 || !info.material.empty()) {
-        set_external_spool_info(info);
+        store_external_spool_info(info);
         // The edit files on the bypass lane like a slot edit files on its
-        // lane: set_external_spool_info() has already taken the previous
+        // lane: store_external_spool_info() has already taken the previous
         // spool's records with any binding move, and the user's own values
         // now stand as LocalUser.
         helix::ams::commit_slot_edit(helix::ams::BYPASS_LANE_ID,
                                      helix::ams::user_edit_observation(original, info));
+        // Observers re-read the resolved record, where the lane's previous
+        // LocalUser weight outranks the raw one, so they hear of the edit only
+        // once the lane carries it.
+        notify_external_spool_changed(info);
     } else {
         // Takes the lane's declarations with it, exactly as it takes the
         // stored record's identity.

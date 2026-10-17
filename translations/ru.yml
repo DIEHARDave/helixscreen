@@ -324,6 +324,7 @@ translations:
     что хотите отменить печать? Весь прогресс будет потерян.
   Are you sure? This will power off or restart this device.: Вы уверены? Это выключит
     или перезагрузит данное устройство.
+  Ask before switching to another tool: 'Спрашивать перед переключением на другой инструмент'
   Ask for parameters: 'Спрашивать параметры'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Назначьте
     макросы Klipper для управления LED через вкл/выкл, переключение или пресеты
@@ -801,6 +802,7 @@ translations:
   Configuring Moonraker...: Настройка Moonraker...
   Confirm PIN: Подтвердите PIN
   Confirm before running macros: Подтверждать перед запуском макросов
+  Confirm tool changes: 'Подтверждать смену инструмента'
   Connect: Подключить
   Connect a USB label printer first: Сначала подключите USB-принтер этикеток
   Connect an ADXL345 accelerometer to calibrate: Подключите акселерометр ADXL345 для
@@ -2894,6 +2896,7 @@ translations:
   Resetting: Сброс
   Resetting system: 'Сброс системы'
   Resetting...: Сброс...
+  Resolve it on the filament system screen, then try again: 'Устраните проблему на экране системы филамента и повторите попытку'
   Response (Kp): Отклик (Kp)
   Restart: Перезапуск
   Restart Firmware?: Перезапустить прошивку?
@@ -3400,6 +3403,7 @@ translations:
   Switch between light and dark themes: Переключение между светлой и тёмной темами
   Switch the active tool or extruder: Смена активного инструмента
   Switch to v%s: 'Перейти на v%s'
+  Switch to {}?: 'Переключиться на {}?'
   Switched to {}: 'Переключено на {}'
   Switches to a backup spool on runout: При обрыве переключится на резервную катушку
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
@@ -3475,9 +3479,10 @@ translations:
   Temperatures plotted over time: Температуры во времени
   Temperatures saved: Температуры сохранены
   Template: Шаблон
-  Temporary adjustment for this print: 'Временная настройка для этой печати'
+  Temporary adjustment for this print: "Временная настройка для этой печати"
   Temporary adjustment for this print, unless saved on Controls panel: Временная настройка
     для этой печати, если не сохранена в панели управления
+  Temporary for this print; a tool change resets it: "Временно для этой печати; смена инструмента сбрасывает её"
   Tertiary: Третичный
   Test All Lanes: 'Проверить все каналы'
   Test Connection: Тест соединения
@@ -3528,6 +3533,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : Филамент не дошёл до сопла. CFS не сообщила об ошибке, но датчик печатающей головки по-прежнему не видит филамент. Проверьте, что катушка установлена правильно и путь свободен, затем повторите попытку.
   The filament may not have fully retracted — try again or manually pull: Возможно, филамент втянут не полностью. Повторите или вытяните вручную
+  The filament system needs attention: 'Системе подачи филамента требуется внимание'
   The filament system reported an error: Система филамента сообщила об ошибке
   The heater can't be changed while the printer is waiting.: 'Нагреватель нельзя изменить, пока принтер ожидает.'
   The heater did not accept the printer's credentials.: 'Нагреватель не принял учётные данные принтера.'

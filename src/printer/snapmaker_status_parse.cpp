@@ -4,6 +4,7 @@
 #include "snapmaker_status_parse.h"
 
 #include "ams_status_json.h"
+#include "json_utils.h"
 #include "lane_translation.h"
 #include "text_io.h"
 
@@ -115,22 +116,32 @@ SnapmakerRfidInfo parse_rfid_info(const nlohmann::json& json) {
     // comma-joined string so the override system's baseline comparison is a
     // simple string == string check. Empty / missing array stays as empty
     // string (treated as "no tag / unread" by check_hardware_event_clear).
-    if (json.contains("CARD_UID") && json["CARD_UID"].is_array()) {
-        const auto& arr = json["CARD_UID"];
+    const nlohmann::json* card_uid = json_util::find_member(json, "CARD_UID");
+    if (card_uid && card_uid->is_array()) {
         std::string uid;
-        for (size_t i = 0; i < arr.size(); ++i) {
-            if (!arr[i].is_number()) {
+        bool has_card = false;
+        bool readable = true;
+        for (const auto& byte : *card_uid) {
+            if (!byte.is_number()) {
+                readable = false;
                 // If any byte isn't a number, bail out — partial UIDs aren't
                 // safe to compare. Leave info.uid empty so the check is a
                 // no-op for this parse.
                 uid.clear();
                 break;
             }
+            const std::int64_t value = json_util::as_int64(byte);
+            has_card = has_card || value != 0;
             if (!uid.empty())
                 uid.push_back(',');
-            uid += std::to_string(arr[i].get<int>());
+            uid += std::to_string(value);
+        }
+        if (readable) {
+            info.has_card = has_card;
         }
         info.uid = std::move(uid);
+    } else if (card_uid && card_uid->is_number()) {
+        info.has_card = json_util::as_double(*card_uid) != 0.0;
     }
 
     return info;

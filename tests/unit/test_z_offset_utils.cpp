@@ -62,22 +62,6 @@ TEST_CASE("format_offset: negative microns", "[zoffset][format]") {
 }
 
 // ============================================================================
-// is_auto_saved tests
-// ============================================================================
-
-TEST_CASE("is_auto_saved: FIRMWARE_MANAGED returns true", "[zoffset][strategy]") {
-    REQUIRE(is_auto_saved(ZOffsetCalibrationStrategy::FIRMWARE_MANAGED) == true);
-}
-
-TEST_CASE("is_auto_saved: PROBE_CALIBRATE returns false", "[zoffset][strategy]") {
-    REQUIRE(is_auto_saved(ZOffsetCalibrationStrategy::PROBE_CALIBRATE) == false);
-}
-
-TEST_CASE("is_auto_saved: ENDSTOP returns false", "[zoffset][strategy]") {
-    REQUIRE(is_auto_saved(ZOffsetCalibrationStrategy::ENDSTOP) == false);
-}
-
-// ============================================================================
 // displayed_z_offset_microns
 //
 // Firmware that persists the z-offset itself (ZMOD) zeroes Klipper's live

@@ -459,6 +459,41 @@ TEST_CASE("the external spool's meter outranks a stale local weight on the bypas
     CHECK(shown->remaining_weight_g == 490.0f);
 }
 
+TEST_CASE("a weight edit on the external spool reaches observers as the edited weight",
+          "[external_spool][1632]") {
+    ExternalSpoolCommitFixture fixture;
+    AmsState::instance().init_subjects(true);
+
+    // A manual entry the user already declared a weight for.
+    SlotInfo manual;
+    manual.material = "PLA";
+    manual.remaining_weight_g = 0.0f;
+    manual.total_weight_g = 1000.0f;
+    AmsState::instance().commit_external_spool_edit(manual);
+    REQUIRE(helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID).local_user.has_value());
+
+    // Displays re-read the resolved record when the colour subject fires, and
+    // never again until it fires next, so what they read then is what stays on screen.
+    static float seen_weight = -1.0f;
+    seen_weight = -1.0f;
+    lv_observer_t* observer = lv_subject_add_observer(
+        AmsState::instance().get_external_spool_color_subject(),
+        [](lv_observer_t*, lv_subject_t*) {
+            if (auto ext = AmsState::instance().get_external_spool_info()) {
+                seen_weight = ext->remaining_weight_g;
+            }
+        },
+        nullptr);
+
+    SlotInfo edited = manual;
+    edited.remaining_weight_g = 100.0f;
+    AmsState::instance().commit_external_spool_edit(edited);
+    lv_observer_remove(observer);
+
+    REQUIRE(AmsState::instance().get_external_spool_info()->remaining_weight_g == 100.0f);
+    CHECK(seen_weight == 100.0f);
+}
+
 TEST_CASE("re-linking the external spool drops the previous spool's lane record",
           "[external_spool][1632]") {
     ExternalSpoolCommitFixture fixture;

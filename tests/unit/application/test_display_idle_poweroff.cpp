@@ -32,6 +32,7 @@
 #include "display_manager.h"
 #include "display_settings_manager.h"
 #include "lvgl_test_fixture.h"
+#include "misc/lv_timer_private.h" // read timer period
 #include "screen_hide_hold.h"
 #include "test_helpers/application_test_access.h"
 #include "test_helpers/display_manager_test_access.h"

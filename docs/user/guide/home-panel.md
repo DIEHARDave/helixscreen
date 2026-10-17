@@ -464,7 +464,7 @@ While **not** in Edit Mode, widgets respond to taps and other gestures:
 | Motion | Opens the Motion panel overlay |
 | Toolhead | Opens the Motion panel. The **Home All** button homes the printer instead |
 | Bed Mesh | Opens the Bed Mesh screen. With no mesh loaded and nothing printing, 2x2 and larger offers **Calibrate** and **Load profile** |
-| Tool Switcher | Switches to the tapped tool; tapping the mounted tool, or the single large button on small widgets, opens the tool picker. **Park** docks the mounted tool |
+| Tool Switcher | Switches to the tapped tool, asking first unless [Confirm tool changes](settings/printing.md#confirm-tool-changes) is off; tapping the mounted tool, or the single large button on small widgets, opens the tool picker. **Park** docks the mounted tool |
 | Power | Toggles the bound power device |
 | Shutdown/Reboot | Shows confirmation, then shuts down/reboots |
 | Firmware Restart | Restarts Klipper firmware |
@@ -699,9 +699,12 @@ The widget updates automatically when the active tool changes, whether you switc
 
 Tap a tool that is not mounted to switch to it. Tapping the tool that is already mounted opens the tool picker instead.
 
-- **When idle**, the tool change happens right away.
-- **When paused**, a confirmation dialog appears first, because changing tools mid-print can cause problems. Printers whose filament change homes the toolhead itself (such as the AD5X) refuse tool changes while paused as well.
+- **When idle**, HelixScreen asks "Switch to Tool 2 (T1)?" first. Turn off [Confirm tool changes](settings/printing.md#confirm-tool-changes) in Settings > Printing to switch right away.
+- **When paused**, a confirmation dialog always appears first, because changing tools mid-print can cause problems. Printers whose filament change homes the toolhead itself (such as the AD5X) refuse tool changes while paused as well.
 - **While printing or preparing to print**, and while spools are [drying on the bed](temperature.md#drying-filament-on-the-bed), switching is unavailable: the tools are greyed out, and a tap shows a warning instead of changing tools.
+- **While your filament system needs attention** (it has stopped and is waiting for you), a tap shows a warning instead. While it is busy loading or unloading, a tap does nothing.
+
+A toolhead on your [filament system's screen](filament.md#switching-toolheads-from-the-filament-path) and the tool list on the Filament screen switch tools the same way.
 
 ### Parking the Tool
 

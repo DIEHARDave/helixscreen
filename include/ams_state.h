@@ -1999,6 +1999,10 @@ class AmsState {
     /** @brief Fire external_spool_color_ subject to notify observers of spool changes */
     void notify_external_spool_changed(const SlotInfo& info);
 
+    /// set_external_spool_info() without the notify, for a caller that still
+    /// has lane sources to file before observers may re-read the record.
+    void store_external_spool_info(const SlotInfo& info);
+
     /** @brief Set "Currently Loaded" subjects to default/empty state with guards */
     void set_current_loaded_defaults(bool write_header = true);
 

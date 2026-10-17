@@ -175,6 +175,8 @@ src/printer/bed_mesh_state.cpp
 src/printer/chamber_heater_assignment.cpp
 src/printer/chamber_heater_backend_dragonbreath.cpp
 src/printer/chamber_wait_line.cpp
+src/printer/gcode_wait_line.cpp
+src/printer/wait_line_reader.cpp
 src/printer/chamber_heater_backend_generic.cpp
 src/printer/chamber_heater_backend_panda_breath.cpp
 src/printer/consumption_sink.cpp
@@ -424,6 +426,7 @@ src/ui/bed_drying_controller.cpp
 src/ui/temperature_service.cpp
 src/ui/theme_loader.cpp
 src/ui/theme_manager_new.cpp
+src/ui/tool_change_request.cpp
 src/ui/touch_calibration.cpp
 src/ui/touch_calibration_layout.cpp
 src/ui/touch_calibration_controller.cpp

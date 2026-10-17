@@ -48,13 +48,15 @@ On the Creality K2, the bottom of the slider stays a little brighter than the nu
 
 ## Screen Dim
 
-How long the screen waits with nobody touching it before it dims: **Never**, **30 seconds**, **1 minute**, **2 minutes**, **5 minutes** or **10 minutes** (the default). Only shown on screens that can change their brightness.
+How long the screen waits with nobody touching it before it dims: **Never**, **30 seconds**, **1 minute**, **2 minutes**, **5 minutes** or **10 minutes** (the default). Only shown on screens that can change their brightness. Touch the screen to bring it back to full brightness; that touch presses nothing (see [Display Sleep](#display-sleep)).
 
 ---
 
 ## Display Sleep
 
 How long the screen waits before it turns off completely: **Never**, **1 minute**, **5 minutes**, **10 minutes**, **20 minutes** (the default) or **30 minutes**. Touch the screen to wake it.
+
+The touch that wakes the screen never presses anything, whether the screen was asleep, dimmed or showing a screensaver. The screen comes back as soon as your finger lands, but nothing under it is pressed, held or scrolled, however long you hold or drag. Lift your finger, then tap what you want.
 
 Sleeping turns the backlight off. On the rare screen with no adjustable backlight, HelixScreen powers the panel down instead. If your screen stays faintly lit while asleep, or doesn't come back when you touch it, you can force the behavior in `settings.json`:
 
@@ -87,7 +89,7 @@ Each screensaver checks how much processor time it takes on your printer. If it 
 
 ### Test Screensaver
 
-Appears under the Screensaver row when a screensaver is selected. Tap it to see the screensaver right away instead of waiting for the screen to go idle; it plays what the idle screen would. Touch the screen to stop it.
+Appears under the Screensaver row when a screensaver is selected. Tap it to see the screensaver right away instead of waiting for the screen to go idle; it plays what the idle screen would. Touch the screen to stop it; like any wake touch, that touch presses nothing.
 
 ---
 

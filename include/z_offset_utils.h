@@ -25,10 +25,6 @@ class PrinterState;
 
 namespace helix::zoffset {
 
-/// Returns true and shows toast if strategy auto-persists (FIRMWARE_MANAGED).
-/// Callers should return early when this returns true.
-bool is_auto_saved(ZOffsetCalibrationStrategy strategy);
-
 /// Format microns as "+0.050mm" or "-0.025mm". Empty string if microns == 0.
 void format_delta(int microns, char* buf, size_t buf_size);
 

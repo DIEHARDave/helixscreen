@@ -7,18 +7,22 @@
 class PrintStartCollectorTestAccess {
   public:
     /// Answer the current wait's read of the command at the print position.
-    static void answer_chamber_wait_line(PrintStartCollector& c,
-                                         const helix::ChamberWaitLine& line) {
+    static void answer_wait_line(PrintStartCollector& c, const helix::WaitLine& line) {
         uint64_t gen;
         {
             std::lock_guard<std::mutex> lock(c.state_mutex_);
-            gen = c.chamber_line_gen_;
+            gen = c.wait_line_gen_;
         }
-        c.apply_chamber_wait_line(gen, line);
+        c.apply_wait_line(gen, line);
     }
-    static bool chamber_wait_line_requested(PrintStartCollector& c) {
+    /// The kind of the command read for the current wait; nullopt until a
+    /// read for the current position answers.
+    static std::optional<helix::WaitKind> wait_line_kind(PrintStartCollector& c) {
         std::lock_guard<std::mutex> lock(c.state_mutex_);
-        return c.chamber_line_requested_;
+        if (!c.wait_line_read_) {
+            return std::nullopt;
+        }
+        return c.wait_line_.kind;
     }
 
     static bool is_heater_wait_report(const std::string& line) {

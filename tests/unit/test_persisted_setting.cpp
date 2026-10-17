@@ -96,6 +96,11 @@ const std::vector<Row>& rows() {
         {"settings_allow_cold_extrude", Mgr::Safety, false, "/safety/allow_cold_extrude", true, 0,
          0, 1, "allow_cold_extrude", true, SETB(safety().set_allow_cold_extrude),
          GET(safety().get_allow_cold_extrude), SUBJ(safety().subject_allow_cold_extrude)},
+        {"settings_tool_change_confirm", Mgr::Safety, false,
+         "/safety/tool_change_require_confirmation", true, 1, 0, 1, "tool_change_confirm", true,
+         SETB(safety().set_tool_change_require_confirmation),
+         GET(safety().get_tool_change_require_confirmation),
+         SUBJ(safety().subject_tool_change_require_confirmation)},
 
         // InputSettingsManager
         {"settings_scroll_throw", Mgr::Input, false, "/input/scroll_throw", false, 25, 5, 50,

@@ -218,6 +218,12 @@ Both entries grey out for the same reasons the Filament panel's buttons do: whil
 
 > The same Load and Unload are on the **Filament panel**, which acts on the external spool whenever bypass is the current selection.
 
+### Switching Toolheads from the Filament Path
+
+On printers with a toolhead per slot (the Snapmaker U1, tool changers, and AFC or Happy Hare set up as a tool changer), the filament path draws every toolhead. **Tap a toolhead that is not mounted** to switch to it. HelixScreen asks "Switch to Tool 2 (T1)?" first, unless you turned off [Confirm tool changes](settings/printing.md#confirm-tool-changes). The same rules apply as on the home screen's [Tool Switcher](home-panel.md#switching-tools): a paused print always asks, and a running print, spools on the bed, or a filament system waiting for you refuses the change with a message.
+
+Tapping the mounted toolhead, or any slot's filament tube or spool, opens the slot menu below instead, so a tap meant for the filament never moves the toolhead.
+
 ### Slot Context Menu
 
 **Tap any slot** to open a context menu with actions for that specific slot:
@@ -403,7 +409,7 @@ Other backends show their own (usually smaller) set of sections, or none at all.
 ### Tips
 
 - When an AMS slot is actively loaded, its material information drives spool preset behavior — you'll see a spool preset button on the Filament and Temperature panels, and purge macros receive the correct temperature automatically. See [External Spool Configuration](#external-spool-configuration) for details.
-- The filament path diagram at the bottom of the slot view is interactive — you can tap slot entry points to trigger a load.
+- The filament path diagram at the bottom of the slot view is interactive: tap a slot's spool or tube to open its slot menu, and on printers with a toolhead per slot, tap another toolhead to [switch to it](#switching-toolheads-from-the-filament-path).
 - During a load or unload, watch the step progress in the sidebar to track exactly where the operation is.
 
 ---
@@ -514,9 +520,13 @@ Each channel has an RFID reader that reads Snapmaker filament tags automatically
 
 You can still edit spool info manually from the slot context menu for spools without a tag.
 
+**Setting the material for a spool without a tag.** The U1 keeps its own record of what each head holds, and it refuses to resume a paused print while a head the print uses has no material in that record (the printer reports `e1 not edit filament`, counting heads from 0). When you set a head's material in HelixScreen, the printer's record is updated too: on stock firmware with the printer's own filament command, and on the Extended Firmware through its filament endpoint. A vendor other than Snapmaker is recorded as "Generic", and a sub-type other than one of Snapmaker's product lines as "Basic". HelixScreen only fills a blank record or writes a material you changed yourself, and it doesn't rewrite the record when the material hasn't changed, because each write resets that head's flow calibration. With the RFID reader turned off, HelixScreen can't tell a Snapmaker spool from any other, so a material you set on such a head replaces what its tag recorded.
+
 ### Runout and Resume
 
-The U1 tracks filament with a motion sensor per tool. When a runout fires mid-print, HelixScreen prepares the printer before resuming — disabling the runout sensor, heating the tool, priming a short length of filament past the encoder, and re-enabling the sensor — so a plain Resume actually continues the print. If the motion sensor reports a runout but filament is still physically present (a stale sensor reading), HelixScreen recovers silently without prompting you.
+The U1 tracks filament with a motion sensor per tool. When you resume a print that paused for something other than a runout, HelixScreen first checks the printer's filament record for every head the print uses. If a head's record is blank but HelixScreen knows its material, HelixScreen fills the record in before resuming. After a runout it doesn't, because you may have loaded a different spool. If the record stays blank, the resume is refused and HelixScreen explains that the head needs its material set.
+
+After a runout, HelixScreen has the printer refeed the head from its feeder (heating, feeding and purging, which takes about a minute and a half) before it sends Resume, so a plain Resume actually continues the print. If the motion sensor reports a runout but filament is still physically present (a stale sensor reading), HelixScreen recovers silently without prompting you.
 
 > **Note:** Because each toolhead is independent, the Snapmaker backend has no Home, Recover, Reset, Bypass, or Endless Spool controls — those apply to shared-path AMS hardware only.
 

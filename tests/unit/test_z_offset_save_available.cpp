@@ -214,6 +214,19 @@ TEST_CASE_METHOD(SaveAvailableFixture,
 }
 
 TEST_CASE_METHOD(SaveAvailableFixture,
+                 "z_offset_tune_hint: Print Tune calls the offset temporary while saving is off",
+                 "[zoffset][save-rule][subject][save-toggle]") {
+    lv_subject_t* hint = get_printer_state().profile_state().get_z_offset_tune_hint_subject();
+    REQUIRE(lv_subject_get_int(hint) == static_cast<int>(helix::ZOffsetTuneHint::SAVE_ON_CONTROLS));
+
+    set_per_tool_z(true); // the toolchanger default turns saving off
+    CHECK(lv_subject_get_int(hint) == static_cast<int>(helix::ZOffsetTuneHint::TEMPORARY));
+
+    helix::zoffset::set_save_enabled(true);
+    CHECK(lv_subject_get_int(hint) == static_cast<int>(helix::ZOffsetTuneHint::SAVE_ON_CONTROLS));
+}
+
+TEST_CASE_METHOD(SaveAvailableFixture,
                  "z_offset_save_enabled: turning it on overrides the toolchanger default",
                  "[zoffset][save-rule][subject][save-toggle]") {
     set_per_tool_z(true);

@@ -124,9 +124,10 @@ scp -O helixscreen-ad5m.zip root@<printer-ip>:/data/
 # SSH into printer
 ssh root@<printer-ip>
 
-# Extract to /opt (Forge-X location)
-cd /opt
-unzip -q /data/helixscreen-ad5m.zip
+# Extract to /opt/helixscreen (Forge-X location). The zip has no folder
+# inside it, so give unzip the destination folder.
+mkdir -p /opt/helixscreen
+unzip -q /data/helixscreen-ad5m.zip -d /opt/helixscreen
 
 # Stop GuppyScreen
 /opt/config/mod/.root/S80guppyscreen stop 2>/dev/null || true
@@ -162,9 +163,10 @@ scp -O helixscreen-ad5m.zip root@<printer-ip>:/mnt/data/
 # SSH into printer
 ssh root@<printer-ip>
 
-# Extract to /root/printer_software (Klipper Mod location)
-cd /root/printer_software
-unzip -q /mnt/data/helixscreen-ad5m.zip
+# Extract to /root/printer_software/helixscreen (Klipper Mod location). The
+# zip has no folder inside it, so give unzip the destination folder.
+mkdir -p /root/printer_software/helixscreen
+unzip -q /mnt/data/helixscreen-ad5m.zip -d /root/printer_software/helixscreen
 
 # Stop KlipperScreen
 /etc/init.d/S80klipperscreen stop 2>/dev/null || true

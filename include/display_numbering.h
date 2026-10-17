@@ -206,4 +206,10 @@ LaneNoun active_lane_noun();
  */
 LaneNoun active_tool_noun();
 
+/**
+ * @brief tool_label_in_form() under active_tool_noun(): what every surface
+ *        naming a tool of the connected printer shows ("Toolhead 3 (T2)" on a U1).
+ */
+std::string active_tool_label(std::string_view name, int index, ToolLabelForm form);
+
 } // namespace helix::ui

@@ -66,6 +66,11 @@ struct SnapmakerRfidInfo {
     /// Used by the override system as the hardware-event signal: a change
     /// means the physical spool was swapped.
     std::string uid;
+    /// Whether CARD_UID names a real card: a nonzero integer, or an array with a
+    /// nonzero byte. The firmware reports a scalar 0 or an all-zero array for no
+    /// card (reader off, untagged spool, an endpoint write). nullopt when the
+    /// entry carries no readable CARD_UID.
+    std::optional<bool> has_card;
 };
 
 namespace snapmaker {
