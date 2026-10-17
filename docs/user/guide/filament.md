@@ -514,9 +514,13 @@ Each channel has an RFID reader that reads Snapmaker filament tags automatically
 
 You can still edit spool info manually from the slot context menu for spools without a tag.
 
+**Setting the material for a spool without a tag.** The U1 keeps its own record of what each head holds, and it refuses to resume a paused print while a head the print uses has no material in that record (the printer reports `e1 not edit filament`, counting heads from 0). When you set a head's material in HelixScreen, the printer's record is updated too: on stock firmware with the printer's own filament command, and on the Extended Firmware through its filament endpoint. A vendor other than Snapmaker is recorded as "Generic", and a sub-type other than one of Snapmaker's product lines as "Basic". HelixScreen leaves a head holding a Snapmaker RFID spool alone, and it doesn't rewrite the record when the material hasn't changed, because each write resets that head's flow calibration.
+
 ### Runout and Resume
 
-The U1 tracks filament with a motion sensor per tool. When a runout fires mid-print, HelixScreen prepares the printer before resuming — disabling the runout sensor, heating the tool, priming a short length of filament past the encoder, and re-enabling the sensor — so a plain Resume actually continues the print. If the motion sensor reports a runout but filament is still physically present (a stale sensor reading), HelixScreen recovers silently without prompting you.
+The U1 tracks filament with a motion sensor per tool. When you resume a paused print, HelixScreen first checks the printer's filament record for every head the print uses. If a head's record is blank but HelixScreen knows its material, HelixScreen fills the record in before resuming. If neither knows the material, the resume is refused and HelixScreen explains that the head needs its material set.
+
+After a runout, HelixScreen then has the printer refeed the head from its feeder (heating, feeding and purging, which takes about a minute and a half) before it sends Resume, so a plain Resume actually continues the print. If the motion sensor reports a runout but filament is still physically present (a stale sensor reading), HelixScreen recovers silently without prompting you.
 
 > **Note:** Because each toolhead is independent, the Snapmaker backend has no Home, Recover, Reset, Bypass, or Endless Spool controls — those apply to shared-path AMS hardware only.
 

@@ -170,14 +170,24 @@ from real RFID spools remain rig-pending; code-verified is not field-verified.
 
 The firmware refuses RESUME with `e<N> not edit filament` while a head the task uses has
 no `print_task_config.filament_type`, and only an RFID spool or `SET_PRINT_FILAMENT_CONFIG`
-fills it. A user edit sends that command when `filament_detect/set` was not accepted
-(stock firmware 404s it; an accepted POST is mirrored into the record by the extension and
-marks the head official) and the record names a different type or none, since every send
-runs `FLOW_RESET_K`. VENDOR is `Snapmaker` or `Generic`, FILAMENT_SUBTYPE a known product
+fills it. Every material edit POSTs `filament_detect/set` first. On the Extended Firmware an
+accepted POST fills the record itself: measured on a rig, head 1's
+`filament_type`/`filament_vendor`/`filament_sub_type` went `NONE` -> `PLA`/`Generic`/`Basic`
+within 2 s of an HTTP 200, survived `FIRMWARE_RESTART`, and left `filament_edit` False; a POST
+of `NONE` values clears it again. Stock firmware 404s the endpoint. So the edit sends
+`SET_PRINT_FILAMENT_CONFIG` only when the POST was not accepted, and only when the record
+names a different type or none (or, before any `print_task_config` frame has arrived, when
+the edit declared a material), since every send runs `FLOW_RESET_K`. Sending it beside an
+accepted POST would race a write the extension marks official, which refuses the command
+without FORCE. VENDOR is `Snapmaker` or `Generic`, FILAMENT_SUBTYPE a known product
 line or `Basic`, and FORCE is never sent, so an official head is left alone
-(`src/printer/ams_backend_snapmaker.cpp#write_task_filament_record`). `prepare_for_resume`
-writes the same record first for any used head whose record is blank while the slot knows
-its material, before the runout refeed
+(`src/printer/ams_backend_snapmaker.cpp#write_task_filament_record`). A record filled once can still
+be blank by the time a print pauses (a later firmware filament operation can clear it), so
+`prepare_for_resume` writes the same record for any used head whose record is blank while
+the slot knows its material. It runs after the Terminal classification and before the
+runout refeed, and while paused, where the command is accepted. The used heads are
+`extruders_used`, or the active head when that reads all false. A head whose material is
+unknown here too gets nothing; RESUME's refusal reaches `classify_error`, which names the head and says it needs a material
 (`src/printer/ams_backend_snapmaker.cpp#resume_record_repair_locked`).
 
 Why `AUTO_FEEDING ... LOAD=1` and not the obvious alternatives — the source records the

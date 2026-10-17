@@ -5157,6 +5157,31 @@ TEST_CASE_METHOD(SnapmakerFixture,
     CHECK(h.config_writes().empty());
 }
 
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker record writes against a live U1 print_task_config",
+                 "[ams][snapmaker][filament_record]") {
+    // A rig's idle record: two blank heads, two ASA heads, head 3 an RFID spool.
+    lv_init_safe();
+    FilamentRecordHarness h("record_write_live_frame");
+    h.frame(make_task_filament({"NONE", "NONE", "ASA", "ASA"}, {false, false, false, true},
+                               std::vector<bool>{false, false, false, false}));
+    h.stock_firmware();
+    h.printer.client.clear_gcode_script_history();
+
+    SlotInfo asa = inland_pla();
+    asa.material = "ASA";
+    REQUIRE(helix::test::apply_edit(h.backend, 2, asa).success());
+    REQUIRE(helix::test::apply_edit(h.backend, 3, inland_pla()).success());
+    FilamentRecordHarness::drain();
+    CHECK(h.config_writes().empty());
+
+    REQUIRE(helix::test::apply_edit(h.backend, 0, asa).success());
+    FilamentRecordHarness::drain();
+    const auto writes = h.config_writes();
+    REQUIRE(writes.size() == 2);
+    CHECK(writes[0] == "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=0 VENDOR=Generic "
+                       "FILAMENT_TYPE=ASA FILAMENT_SUBTYPE=Basic");
+}
+
 TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker an official RFID head's record is never written or forced",
                  "[ams][snapmaker][filament_record]") {
