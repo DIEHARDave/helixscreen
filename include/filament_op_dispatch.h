@@ -64,7 +64,7 @@ struct BackendCaps {
     /// SAME slot the plan targets. It is a per-lane question: on a MIXED unit a
     /// direct-fed lane and a hub-routed one get different answers.
     bool needs_unload_before_load = false;
-    bool is_tool_changer = false; ///< get_type() == AmsType::TOOL_CHANGER
+    bool load_mounts_tool = false; ///< AmsBackend::load_mounts_tool()
     /// AmsBackend::is_bypass_active(). Distinct from
     /// !requires_slot_selection_for_load(): that answer is also false for a
     /// backend that simply does not need a slot, and the two want opposite
@@ -152,7 +152,7 @@ struct BackendCaps {
         if (caps.load_feeds_filament) {
             return {FilamentTier::AmsBackend, FilamentRefusal::None, AmsCall::Load, target_slot};
         }
-        if (caps.is_tool_changer && sys.current_slot >= 0 && sys.current_slot == target_slot) {
+        if (caps.load_mounts_tool && sys.current_slot >= 0 && sys.current_slot == target_slot) {
             return {FilamentTier::Refused, FilamentRefusal::AlreadyMounted, AmsCall::None, -1};
         }
         // Load-vs-swap: a machine that already has filament seated cannot simply

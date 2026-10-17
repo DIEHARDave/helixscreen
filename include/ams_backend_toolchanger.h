@@ -113,6 +113,9 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         t.load_mounts_tool = true;
         // So no hot nozzle is needed to unmount one either.
         t.supports_auto_heat_on_unload = true;
+        // Reset re-runs the changer's initialisation, which the toolchanger's own
+        // recovery already offers.
+        t.supports_reset = false;
         return t;
     }();
     /// With a firmware feed command (Z-Mod's afclite shim), Load feeds filament
@@ -133,6 +136,26 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// Mounts the tool; Load is a feed on a machine that has one.
     AmsError select_gate(int slot_index) override {
         return tool_feed_.present ? select_slot(slot_index) : AmsBackend::select_gate(slot_index);
+    }
+
+    /// One head per tool, fed from that tool's own slot.
+    [[nodiscard]] int filament_head_count() const override {
+        return get_system_info().total_slots;
+    }
+    [[nodiscard]] std::optional<int> head_for_slot(int slot) const override {
+        if (slot < 0 || slot >= get_system_info().total_slots) {
+            return std::nullopt;
+        }
+        return slot;
+    }
+    [[nodiscard]] std::optional<int> head_source_slot(int head) const override {
+        return head_for_slot(head);
+    }
+    [[nodiscard]] std::optional<bool> head_has_filament(int head) const override {
+        if (!head_for_slot(head)) {
+            return std::nullopt;
+        }
+        return can_unload_from_toolhead(head);
     }
 
     /// Z-Mod's Creator 5 has no automatic unload: the user cuts the filament at

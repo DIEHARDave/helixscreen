@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "filament_action_set.h"
 #include "filament_op_dispatch.h"
 #include "filament_op_router.h"
 #include "filament_op_slot_resolver.h"
@@ -56,6 +57,15 @@ namespace helix::ui {
  */
 [[nodiscard]] BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out,
                                             int target_slot);
+
+/**
+ * @brief Read the filament action decision's inputs off a live AmsBackend.
+ *
+ * selected_head stays -1: a surface with a selection sets it itself.
+ *
+ * @param backend May be null; the view then reports no backend.
+ */
+[[nodiscard]] FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& state);
 
 /// The extruder a filament op heats, and the numbers a nozzle prefill holds to.
 struct OpNozzle {

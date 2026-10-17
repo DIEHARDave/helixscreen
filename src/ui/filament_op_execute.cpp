@@ -24,6 +24,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
@@ -66,7 +67,7 @@ BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out, int 
     caps.present = true;
     caps.requires_slot_selection_for_load = backend->requires_slot_selection_for_load();
     caps.needs_unload_before_load = backend->needs_unload_before_load(info_out, target_slot);
-    caps.is_tool_changer = backend->get_type() == AmsType::TOOL_CHANGER;
+    caps.load_mounts_tool = backend->load_mounts_tool();
     caps.load_feeds_filament = backend->load_feeds_filament();
     // Distinct from !requires_slot_selection_for_load(): plan_load() needs to
     // tell "bypass is suppressing the lane tier" apart from "this backend
@@ -77,6 +78,51 @@ BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out, int 
     // resolvable unload target.
     caps.toolhead_unaccounted = backend->toolhead_filament_unaccounted().value_or(false);
     return caps;
+}
+
+FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& state) {
+    FilamentHeadView view;
+    if (!backend) {
+        return view;
+    }
+    view.backend_present = true;
+    const AmsSystemInfo sys = backend->get_system_info();
+    view.max_heads_per_op = backend->max_heads_per_filament_op();
+    view.heads_dock = backend->carriage_can_be_empty();
+    view.supports_park = backend->supports_tool_park();
+    view.system_busy = sys.is_busy();
+    view.print_blocks_op = print_blocks_filament_op(state.print_state().get_print_lifecycle(),
+                                                    backend->filament_ops_self_home());
+    // Which head is on the carriage means something only where heads dock.
+    if (view.heads_dock && sys.current_slot >= 0) {
+        view.mounted_head = backend->head_for_slot(sys.current_slot).value_or(-1);
+    }
+    // A machine that cannot tell a fed strand from an inserted one never reads
+    // a head as already loaded.
+    const bool can_tell_fed = !backend->load_feeds_filament();
+
+    const int count = backend->filament_head_count();
+    view.heads.reserve(static_cast<size_t>(std::max(count, 0)));
+    for (int head = 0; head < count; ++head) {
+        HeadState hs;
+        hs.ops = backend->head_filament_ops(head);
+        hs.source_slot = backend->head_source_slot(head);
+        if (hs.source_slot) {
+            hs.source_present = slot_presence(backend->get_slot_info(*hs.source_slot));
+            if (can_tell_fed) {
+                hs.at_nozzle = backend->can_unload_from_toolhead(*hs.source_slot);
+            }
+        }
+        hs.has_filament = backend->head_has_filament(head);
+        // A head with no assigned source still unloads through its own slot,
+        // where the slot of the same index feeds it.
+        hs.unload_slot = hs.source_slot;
+        if (!hs.unload_slot && backend->head_for_slot(head) == head) {
+            hs.unload_slot = head;
+        }
+        view.heads.push_back(std::move(hs));
+    }
+    return view;
 }
 
 FilamentOpPlan plan_live_load(const AmsSystemInfo& info, const BackendCaps& caps, int target_slot) {

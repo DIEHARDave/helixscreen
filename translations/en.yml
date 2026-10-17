@@ -240,6 +240,7 @@ translations:
   Allwinner: Allwinner
   Already connecting — wait a moment and try again: Already connecting — wait a moment
     and try again
+  Already mounted: Already mounted
   Always Show Bypass Spool: Always Show Bypass Spool
   Always show Android navigation bar instead of using gestures: Always show Android
     navigation bar instead of using gestures
@@ -289,6 +290,7 @@ translations:
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Assign Klipper
     macros to control LEDs via on/off, toggle, or presets
   Assign a role to enable sensor monitoring: Assign a role to enable sensor monitoring
+  Assign a slot first: Assign a slot first
   Assisted Retract: Assisted Retract
   Assisting: Assisting
   At least {} lines in helixscreen.env were ignored: At least {} lines in helixscreen.env were ignored
@@ -3602,6 +3604,7 @@ translations:
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   This replaces this screen's home layout for this printer with the one on the printer's own screen.: This replaces this screen's home layout for this printer with the one on the printer's own screen.
+  This slot feeds no tool: This slot feeds no tool
   This system does not support bypass mode: This system does not support bypass mode
   This tool probes each bed screw and tells you how much to adjust.: This tool probes
     each bed screw and tells you how much to adjust.

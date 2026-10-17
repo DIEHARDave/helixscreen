@@ -366,7 +366,7 @@ TEST_CASE("plan_load: toolchanger refuses a load on the tool already mounted",
     // every later operation via is_busy(). The sidebar has always refused here.
     AmsSystemInfo sys = make_sys(5, /*current_slot=*/4);
     BackendCaps tc = fresh_ams();
-    tc.is_tool_changer = true;
+    tc.load_mounts_tool = true;
     tc.needs_unload_before_load = true;
 
     auto plan = plan_load(sys, tc, /*target_slot=*/4, /*macro_available=*/true,
@@ -382,7 +382,7 @@ TEST_CASE("plan_load: toolchanger still swaps to a DIFFERENT tool",
     // being a toolchanger.
     AmsSystemInfo sys = make_sys(5, /*current_slot=*/4);
     BackendCaps tc = fresh_ams();
-    tc.is_tool_changer = true;
+    tc.load_mounts_tool = true;
     tc.needs_unload_before_load = true;
 
     auto plan = plan_load(sys, tc, /*target_slot=*/1, /*macro_available=*/true,

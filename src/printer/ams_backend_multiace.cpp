@@ -309,6 +309,40 @@ PathSegment AmsBackendMultiAce::get_slot_filament_segment(int slot_index) const 
     return AmsBackendSnapmaker::get_slot_filament_segment(routed_head);
 }
 
+std::optional<int> AmsBackendMultiAce::head_for_slot(int slot) const {
+    if (slot >= 0 && slot < kHeads) {
+        return slot;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    return head_for_global_locked(slot);
+}
+
+std::optional<int> AmsBackendMultiAce::head_source_slot(int head) const {
+    if (head < 0 || head >= kHeads) {
+        return std::nullopt;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!ace_fed_locked(head)) {
+        return head;
+    }
+    std::vector<int> bays;
+    for (int global = kHeads; global < system_info_.total_slots; ++global) {
+        if (head_for_global_locked(global) == head) {
+            bays.push_back(global);
+        }
+    }
+    if (bays.size() == 1) {
+        return bays.front();
+    }
+    if (const auto routed = routed_bay_locked(head)) {
+        const int global = multiace::bay_global(routed->first, routed->second);
+        if (std::find(bays.begin(), bays.end(), global) != bays.end()) {
+            return global;
+        }
+    }
+    return std::nullopt;
+}
+
 bool AmsBackendMultiAce::needs_unload_before_load(const AmsSystemInfo& info,
                                                   int target_slot) const {
     if (multiace::bay_of(target_slot)) {

@@ -295,6 +295,27 @@ AmsError AmsBackend::stop_drying_gates(int unit, const std::vector<int>& gates) 
     return stop_drying(unit);
 }
 
+HeadFilamentOps AmsBackend::head_filament_ops(int /*head*/) const {
+    HeadFilamentOps ops;
+    if (unload_is_manual()) {
+        ops.unload = FilamentOpSupport::Manual;
+        ops.unload_reason = lv_tr("This printer has no automatic unload. Cut the filament at the "
+                                  "head and pull it out by hand.");
+    }
+    return ops;
+}
+
+std::optional<int> AmsBackend::head_source_slot(int head) const {
+    const AmsSystemInfo info = get_system_info();
+    for (int slot = 0; slot < info.total_slots; ++slot) {
+        const SlotInfo* lane = info.get_slot_global(slot);
+        if (lane && lane->mapped_tool == head && head_for_slot(slot) == head) {
+            return slot;
+        }
+    }
+    return std::nullopt;
+}
+
 AmsError AmsBackend::unload_active_filament() {
     // Single source of truth for "unload active slot". Reads current_slot ONCE
     // from the same get_system_info() snapshot the caller would use, then

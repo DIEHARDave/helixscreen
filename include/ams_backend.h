@@ -78,7 +78,7 @@ struct BackendTraits {
     bool hub_on_toolhead = false;
     bool has_per_slot_loaded_authority = false;
     bool filament_ops_self_home = false;
-    bool supports_batch_filament_ops = false;
+    bool supports_reset = true;
     bool reset_moves_filament = false;
     bool supports_recover_with_state = false;
     bool supports_lane_preload = false;
@@ -116,6 +116,27 @@ struct BackendTraits {
     bool operator!=(const BackendTraits& o) const {
         return !(*this == o);
     }
+};
+
+/// How a head's filament op is done on this machine.
+enum class FilamentOpSupport : uint8_t {
+    Automatic,   ///< The backend runs it
+    Manual,      ///< The user does it by hand; the reason says how
+    Unavailable, ///< It cannot be done here; the reason says why
+};
+
+/**
+ * @brief What one head can do with filament, and why not.
+ *
+ * Answers filament questions only. Whether the head is mounted is never an
+ * input: a backend that needs the tool on the carriage to feed it mounts the
+ * tool inside the op.
+ */
+struct HeadFilamentOps {
+    FilamentOpSupport load = FilamentOpSupport::Automatic;
+    FilamentOpSupport unload = FilamentOpSupport::Automatic;
+    std::string load_reason;   ///< Translated; empty when load is Automatic
+    std::string unload_reason; ///< Translated; empty when unload is Automatic
 };
 
 /**
@@ -1220,8 +1241,54 @@ class AmsBackend {
      * load_filament_batch() / unload_filament_batch().
      */
     [[nodiscard]] bool supports_batch_filament_ops() const {
-        return traits().supports_batch_filament_ops;
+        return max_heads_per_filament_op() > 1;
     }
+
+    // ========================================================================
+    // Heads (backend-neutral filament questions)
+    //
+    // A head is a nozzle filament is fed into. None of these read the current
+    // tool or slot: which head is mounted or active is never an input to a
+    // filament op.
+    // ========================================================================
+
+    /// How many heads filament can be fed into. One on a shared toolhead.
+    [[nodiscard]] virtual int filament_head_count() const {
+        return 1;
+    }
+
+    /// The head @p slot feeds, or nullopt when it feeds none (an invalid slot,
+    /// or a source not routed to any head).
+    [[nodiscard]] virtual std::optional<int> head_for_slot(int slot) const {
+        if (slot < 0 || slot >= get_system_info().total_slots) {
+            return std::nullopt;
+        }
+        return 0;
+    }
+
+    /// Whether @p head's load and unload are automatic, manual or unavailable,
+    /// with the reason for anything but automatic.
+    [[nodiscard]] virtual HeadFilamentOps head_filament_ops(int head) const;
+
+    /// Whether @p head holds filament that an unload would act on. nullopt when
+    /// nothing on this machine can tell. Never "is the head mounted".
+    [[nodiscard]] virtual std::optional<bool> head_has_filament(int head) const {
+        if (head != 0) {
+            return std::nullopt;
+        }
+        return is_filament_loaded();
+    }
+
+    /// How many heads one load or unload may name. More than one means
+    /// load_filament_batch() / unload_filament_batch() run them together.
+    [[nodiscard]] virtual int max_heads_per_filament_op() const {
+        return 1;
+    }
+
+    /// The slot @p head is fed from: its Assigned Tool slot, the lane whose
+    /// mapped tool is @p head and which feeds that head. nullopt when no slot
+    /// is assigned to it.
+    [[nodiscard]] virtual std::optional<int> head_source_slot(int head) const;
 
     /**
      * @brief Whether a batch this process dispatched is still unverified
@@ -1430,6 +1497,17 @@ class AmsBackend {
      */
     [[nodiscard]] bool reset_moves_filament() const {
         return traits().reset_moves_filament;
+    }
+
+    /**
+     * @brief Whether the sidebar's Reset button means anything here.
+     *
+     * False where the backend has no state for a reset to clear that its own
+     * recovery does not already cover: a tool changer, whose reset re-runs its
+     * initialisation, and the Snapmaker U1, whose reset is a no-op.
+     */
+    [[nodiscard]] bool supports_reset() const {
+        return traits().supports_reset;
     }
 
     /**

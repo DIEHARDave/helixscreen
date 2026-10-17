@@ -110,7 +110,7 @@ BackendCaps bypassed_ams() {
 
 BackendCaps seated_toolchanger() {
     BackendCaps caps = fresh_ams();
-    caps.is_tool_changer = true;
+    caps.load_mounts_tool = true;
     caps.needs_unload_before_load = true;
     return caps;
 }

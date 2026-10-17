@@ -232,6 +232,7 @@
   <translation tag="Allow display to sleep during active prints" it="Consenti sospensione display durante la stampa"/>
   <translation tag="Allwinner" it="Allwinner"/>
   <translation tag="Already connecting — wait a moment and try again" it="Connessione già in corso — attendi un momento e riprova"/>
+  <translation tag="Already mounted" it="Già montato"/>
   <translation tag="Always Show Bypass Spool" it="Mostra sempre bobina di bypass"/>
   <translation tag="Always show Android navigation bar instead of using gestures" it="Mostra sempre la barra di navigazione Android invece dei gesti"/>
   <translation tag="Ambient Transfer" it="Trasferimento ambiente"/>
@@ -272,6 +273,7 @@
   <translation tag="Ask for parameters" it="Chiedi i parametri"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" it="Assegna macro Klipper per controllare LED tramite on/off, alternanza o preset"/>
   <translation tag="Assign a role to enable sensor monitoring" it="Assegna un ruolo per abilitare il monitoraggio del sensore"/>
+  <translation tag="Assign a slot first" it="Assegna prima uno slot"/>
   <translation tag="Assisted Retract" it="Retrazione assistita"/>
   <translation tag="Assisting" it="Assistenza"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" it="Almeno {} righe di helixscreen.env sono state ignorate"/>
@@ -3326,6 +3328,7 @@
   <translation tag="This replaces the printer&apos;s helper macros with the current version and restarts Klipper." it="Sostituisce le macro di ausilio della stampante con la versione attuale e riavvia Klipper."/>
   <translation tag="This replaces the printer&apos;s helper macros with the current version. A print is running, so Klipper restarts after it finishes." it="Sostituisce le macro di ausilio della stampante con la versione attuale. Una stampa è in corso, quindi Klipper verrà riavviato al termine."/>
   <translation tag="This replaces this screen&apos;s home layout for this printer with the one on the printer&apos;s own screen." it="Questo sostituisce il layout della schermata iniziale di questo schermo per questa stampante con quello dello schermo della stampante."/>
+  <translation tag="This slot feeds no tool" it="Questo slot non alimenta alcuno strumento"/>
   <translation tag="This system does not support bypass mode" it="Questo sistema non supporta la modalità bypass"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." it="Questo strumento sonda ogni vite del piano e indica quanto regolare."/>
   <translation tag="This update asks for new permissions:" it="Questo aggiornamento richiede nuovi permessi:"/>

@@ -233,6 +233,7 @@ translations:
   Allow display to sleep during active prints: 印刷中のスリープを許可
   Allwinner: Allwinner
   Already connecting — wait a moment and try again: 接続処理中です — 少し待ってからもう一度お試しください
+  Already mounted: '装着済み'
   Always Show Bypass Spool: バイパススプールを常に表示
   Always show Android navigation bar instead of using gestures: ジェスチャーの代わりにAndroidナビゲーションバーを常に表示
   Ambient Transfer: 環境熱伝達
@@ -277,6 +278,7 @@ translations:
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Klipper マクロを割り当ててオン/オフ、トグル、プリセットで
     LED を制御
   Assign a role to enable sensor monitoring: センサー監視を有効にするには役割を割り当ててください
+  Assign a slot first: '先にスロットを割り当ててください'
   Assisted Retract: 'アシスト付き引き戻し'
   Assisting: アシスト中
   At least {} lines in helixscreen.env were ignored: 'helixscreen.env の少なくとも{}行が無視されました'
@@ -3482,6 +3484,7 @@ translations:
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : 'プリンターのヘルパーマクロを現在のバージョンに置き換えます。印刷中のため、Klipper は印刷完了後に再起動されます。'
   This replaces this screen's home layout for this printer with the one on the printer's own screen.: "この画面のこのプリンター用ホームレイアウトを、プリンター本体の画面のレイアウトに置き換えます。"
+  This slot feeds no tool: 'このスロットはどのツールにも供給しません'
   This system does not support bypass mode: 'このシステムはバイパスモードに対応していません'
   This tool probes each bed screw and tells you how much to adjust.: このツールは各ベッドネジをプローブし、どのくらい調整が必要かを教えます。
   'This update asks for new permissions:': 'この更新は新しい権限を要求します：'

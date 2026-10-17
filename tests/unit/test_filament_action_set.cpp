@@ -1,0 +1,335 @@
+// Copyright (C) 2025-2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * @file test_filament_action_set.cpp
+ * @brief The backend-neutral filament action decision and the backend answers
+ *        it is built from.
+ */
+
+#include "ams_backend_snapmaker.h"
+#include "filament_action_set.h"
+
+#include <optional>
+#include <vector>
+
+#include "../catch_amalgamated.hpp"
+
+using helix::FilamentOpSupport;
+using helix::HeadFilamentOps;
+using namespace helix::ui;
+
+namespace {
+
+HeadState ready_head(int slot) {
+    HeadState head;
+    head.source_slot = slot;
+    head.unload_slot = slot;
+    head.source_present = true;
+    head.at_nozzle = false;
+    head.has_filament = false;
+    return head;
+}
+
+HeadState loaded_head(int slot) {
+    HeadState head = ready_head(slot);
+    head.at_nozzle = true;
+    head.has_filament = true;
+    return head;
+}
+
+HeadState manual_head(int slot) {
+    HeadState head = ready_head(slot);
+    head.ops.load = FilamentOpSupport::Manual;
+    head.ops.unload = FilamentOpSupport::Manual;
+    head.ops.load_reason = "by hand (load)";
+    head.ops.unload_reason = "by hand (unload)";
+    return head;
+}
+
+FilamentHeadView view_of(std::vector<HeadState> heads) {
+    FilamentHeadView view;
+    view.backend_present = true;
+    view.heads = std::move(heads);
+    return view;
+}
+
+/// Four heads, one per lane, as on a Snapmaker U1.
+class FourHeadBackend : public helix::AmsBackendSnapmaker {
+  public:
+    FourHeadBackend() : helix::AmsBackendSnapmaker(nullptr, nullptr) {}
+    helix::AmsSystemInfo get_system_info() const override {
+        helix::AmsSystemInfo info;
+        info.total_slots = 4;
+        return info;
+    }
+    bool can_unload_from_toolhead(int slot_index) const override {
+        return slot_index == 1;
+    }
+    bool slot_filament_parked_in_toolhead(int slot_index) const override {
+        return slot_index == 2;
+    }
+};
+
+} // namespace
+
+TEST_CASE("filament actions: one automatic head shows Load and Unload", "[filament][actions]") {
+    const auto actions = decide_filament_actions(view_of({loaded_head(0)}));
+    CHECK(actions.load.visible);
+    CHECK(actions.unload.visible);
+    CHECK(actions.unload.enabled);
+    CHECK_FALSE(actions.unload_opens_picker);
+    CHECK_FALSE(actions.mount.visible);
+    CHECK_FALSE(actions.park.visible);
+}
+
+TEST_CASE("filament actions: no backend offers nothing", "[filament][actions]") {
+    FilamentHeadView view = view_of({ready_head(0)});
+    view.backend_present = false;
+    const auto actions = decide_filament_actions(view);
+    CHECK_FALSE(actions.load.visible);
+    CHECK_FALSE(actions.unload.visible);
+}
+
+TEST_CASE("filament actions: Load needs an assigned slot", "[filament][actions]") {
+    HeadState head = ready_head(0);
+    head.source_slot.reset();
+    const auto actions = decide_filament_actions(view_of({head}));
+    CHECK(actions.load.visible);
+    CHECK_FALSE(actions.load.enabled);
+    CHECK_FALSE(actions.load.reason.empty());
+
+    // A source known to be empty, or already fed, leaves nothing to load and
+    // says nothing: the slot grid shows both.
+    HeadState empty = ready_head(0);
+    empty.source_present = false;
+    CHECK_FALSE(decide_filament_actions(view_of({empty})).load.enabled);
+    CHECK(decide_filament_actions(view_of({empty})).load.reason.empty());
+    CHECK_FALSE(decide_filament_actions(view_of({loaded_head(0)})).load.enabled);
+
+    // A source that cannot say whether it holds filament stays loadable.
+    HeadState unknown = ready_head(0);
+    unknown.source_present.reset();
+    unknown.at_nozzle.reset();
+    CHECK(decide_filament_actions(view_of({unknown})).load.enabled);
+}
+
+TEST_CASE("filament actions: Unload needs filament in some head", "[filament][actions]") {
+    CHECK_FALSE(decide_filament_actions(view_of({ready_head(0), ready_head(1)})).unload.enabled);
+    CHECK(decide_filament_actions(view_of({ready_head(0), loaded_head(1)})).unload.enabled);
+
+    // A head that cannot tell is not offered an unload.
+    HeadState unknown = ready_head(0);
+    unknown.has_filament.reset();
+    CHECK_FALSE(decide_filament_actions(view_of({unknown})).unload.enabled);
+}
+
+TEST_CASE("filament actions: busy and print gating disable everything without a reason",
+          "[filament][actions]") {
+    for (int which = 0; which < 2; ++which) {
+        FilamentHeadView view = view_of({loaded_head(0), ready_head(1)});
+        view.heads_dock = true;
+        view.supports_park = true;
+        view.mounted_head = 0;
+        (which == 0 ? view.system_busy : view.print_blocks_op) = true;
+        const auto actions = decide_filament_actions(view);
+        CHECK(actions.load.visible);
+        CHECK_FALSE(actions.load.enabled);
+        CHECK(actions.load.reason.empty());
+        CHECK_FALSE(actions.unload.enabled);
+        CHECK(actions.unload.reason.empty());
+        CHECK(actions.park.visible);
+        CHECK_FALSE(actions.park.enabled);
+    }
+}
+
+TEST_CASE("filament actions: a docking machine with no automatic op falls back to Mount and Park",
+          "[filament][actions]") {
+    FilamentHeadView view = view_of({manual_head(0), manual_head(1), manual_head(2)});
+    view.heads_dock = true;
+    view.supports_park = true;
+    view.mounted_head = 1;
+    const auto actions = decide_filament_actions(view);
+    CHECK_FALSE(actions.load.visible);
+    CHECK_FALSE(actions.unload.visible);
+    CHECK(actions.mount.visible);
+    CHECK(actions.mount.enabled);
+    CHECK(actions.park.visible);
+    CHECK(actions.park.enabled);
+
+    // Mount names the selected tool when there is one.
+    view.selected_head = 1;
+    const auto on_mounted = decide_filament_actions(view);
+    CHECK_FALSE(on_mounted.mount.enabled);
+    CHECK_FALSE(on_mounted.mount.reason.empty());
+    view.selected_head = 2;
+    CHECK(decide_filament_actions(view).mount.enabled);
+
+    // A machine whose heads do not dock has nothing to mount: it keeps
+    // Load and Unload, disabled with the reason.
+    view.heads_dock = false;
+    const auto shared = decide_filament_actions(view);
+    CHECK(shared.load.visible);
+    CHECK_FALSE(shared.load.enabled);
+    CHECK(shared.load.reason == "by hand (load)");
+    CHECK_FALSE(shared.mount.visible);
+}
+
+TEST_CASE("filament actions: Park is hidden with nothing mounted", "[filament][actions]") {
+    FilamentHeadView view = view_of({manual_head(0), manual_head(1)});
+    view.heads_dock = true;
+    view.supports_park = true;
+    view.mounted_head = -1;
+    CHECK_FALSE(decide_filament_actions(view).park.visible);
+
+    // A feeding changer shows Park beside Load and Unload.
+    FilamentHeadView feeding = view_of({ready_head(0), loaded_head(1)});
+    feeding.heads_dock = true;
+    feeding.supports_park = true;
+    feeding.mounted_head = 1;
+    const auto actions = decide_filament_actions(feeding);
+    CHECK(actions.load.visible);
+    CHECK(actions.park.visible);
+    CHECK_FALSE(actions.mount.visible);
+    feeding.supports_park = false;
+    CHECK_FALSE(decide_filament_actions(feeding).park.visible);
+}
+
+TEST_CASE("filament actions: a Manual direction is disabled with its reason",
+          "[filament][actions]") {
+    HeadState head = loaded_head(0);
+    head.ops.unload = FilamentOpSupport::Manual;
+    head.ops.unload_reason = "cut it";
+    const auto actions = decide_filament_actions(view_of({head}));
+    CHECK(actions.load.visible);
+    CHECK(actions.unload.visible);
+    CHECK_FALSE(actions.unload.enabled);
+    CHECK(actions.unload.reason == "cut it");
+}
+
+TEST_CASE("filament actions: multi-head unload opens the picker", "[filament][actions]") {
+    CHECK(decide_filament_actions(view_of({loaded_head(0), ready_head(1)})).unload_opens_picker);
+    CHECK_FALSE(decide_filament_actions(view_of({loaded_head(0)})).unload_opens_picker);
+}
+
+TEST_CASE("slot actions: Mount targets the tapped head and refuses the mounted one",
+          "[filament][actions]") {
+    FilamentHeadView view = view_of({manual_head(0), manual_head(1)});
+    view.heads_dock = true;
+    view.supports_park = true;
+    view.mounted_head = 0;
+
+    const auto parked = decide_slot_actions(view, 1);
+    CHECK(parked.load.visible);
+    CHECK_FALSE(parked.load.enabled);
+    CHECK(parked.load.reason == "by hand (load)");
+    CHECK(parked.unload.reason == "by hand (unload)");
+    CHECK(parked.mount.visible);
+    CHECK(parked.mount.enabled);
+    CHECK_FALSE(parked.park.visible);
+
+    const auto mounted = decide_slot_actions(view, 0);
+    CHECK(mounted.mount.visible);
+    CHECK_FALSE(mounted.mount.enabled);
+    CHECK_FALSE(mounted.mount.reason.empty());
+    CHECK(mounted.park.visible);
+    CHECK(mounted.park.enabled);
+
+    // An automatic head keeps its filament actions and offers no Mount.
+    FilamentHeadView automatic = view_of({ready_head(0), ready_head(1)});
+    automatic.heads_dock = true;
+    const auto feeds = decide_slot_actions(automatic, 1);
+    CHECK(feeds.load.enabled);
+    CHECK(feeds.unload.enabled);
+    CHECK_FALSE(feeds.mount.visible);
+}
+
+TEST_CASE("slot actions: a slot that feeds no head says so", "[filament][actions]") {
+    const auto actions = decide_slot_actions(view_of({ready_head(0)}), -1);
+    CHECK(actions.load.visible);
+    CHECK_FALSE(actions.load.enabled);
+    CHECK_FALSE(actions.load.reason.empty());
+    CHECK_FALSE(actions.unload.enabled);
+}
+
+TEST_CASE("head picker: rows follow the source slot, preselect the selected or mounted head",
+          "[filament][actions]") {
+    FilamentHeadView view = view_of({ready_head(5), ready_head(6), loaded_head(7)});
+    view.mounted_head = 1;
+
+    auto rows = decide_head_picker_rows(view, HeadPickOp::Load);
+    REQUIRE(rows.size() == 3);
+    CHECK(rows[0].slot == 5);
+    CHECK(rows[2].slot == 7);
+    CHECK(rows[0].enabled);
+    CHECK_FALSE(rows[0].preselected);
+    CHECK(rows[1].preselected);
+
+    // A selection outranks the mounted head.
+    view.selected_head = 0;
+    rows = decide_head_picker_rows(view, HeadPickOp::Load);
+    CHECK(rows[0].preselected);
+    CHECK_FALSE(rows[1].preselected);
+
+    // A preselection is never forced onto a head with nothing to do.
+    view.selected_head = 2;
+    rows = decide_head_picker_rows(view, HeadPickOp::Load);
+    CHECK(rows[2].enabled);
+    CHECK_FALSE(rows[2].preselected);
+    rows = decide_head_picker_rows(view, HeadPickOp::Unload);
+    CHECK(rows[2].preselected);
+    CHECK_FALSE(rows[0].preselected);
+
+    // Mount offers every head but the mounted one.
+    view.selected_head = -1;
+    rows = decide_head_picker_rows(view, HeadPickOp::Mount);
+    CHECK(rows[0].enabled);
+    CHECK_FALSE(rows[1].enabled);
+    CHECK_FALSE(rows[1].reason.empty());
+}
+
+TEST_CASE("head picker: a head with no assigned slot is disabled with a reason",
+          "[filament][actions]") {
+    HeadState unassigned = ready_head(0);
+    unassigned.source_slot.reset();
+    HeadState manual = manual_head(1);
+    const auto rows =
+        decide_head_picker_rows(view_of({unassigned, manual, ready_head(2)}), HeadPickOp::Load);
+    CHECK_FALSE(rows[0].enabled);
+    CHECK_FALSE(rows[0].reason.empty());
+    CHECK(rows[0].slot == -1);
+    CHECK_FALSE(rows[1].enabled);
+    CHECK(rows[1].reason == "by hand (load)");
+    CHECK(rows[2].enabled);
+}
+
+TEST_CASE("backend filament ops: defaults answer one automatic head", "[ams][filament_ops]") {
+    // The plain U1 shape stands in for "any backend" on the base-class
+    // answers it does not override.
+    struct Plain : public helix::AmsBackendSnapmaker {
+        Plain() : helix::AmsBackendSnapmaker(nullptr, nullptr) {}
+    } plain;
+    const HeadFilamentOps ops = plain.AmsBackend::head_filament_ops(0);
+    CHECK(ops.load == FilamentOpSupport::Automatic);
+    CHECK(ops.unload == FilamentOpSupport::Automatic);
+    CHECK(ops.load_reason.empty());
+    CHECK(plain.AmsBackend::filament_head_count() == 1);
+    CHECK(plain.AmsBackend::max_heads_per_filament_op() == 1);
+}
+
+TEST_CASE("backend filament ops: Snapmaker answers four heads, batch of four",
+          "[ams][filament_ops]") {
+    FourHeadBackend backend;
+    CHECK(backend.filament_head_count() == 4);
+    CHECK(backend.max_heads_per_filament_op() == 4);
+    CHECK(backend.supports_batch_filament_ops());
+    CHECK(backend.head_for_slot(3) == 3);
+    CHECK_FALSE(backend.head_for_slot(4).has_value());
+    CHECK(backend.head_source_slot(2) == 2);
+    CHECK_FALSE(backend.supports_reset());
+    // Loaded to the nozzle and parked short of it both hold filament.
+    CHECK(backend.head_has_filament(0) == false);
+    CHECK(backend.head_has_filament(1) == true);
+    CHECK(backend.head_has_filament(2) == true);
+    CHECK_FALSE(backend.head_has_filament(4).has_value());
+}

@@ -121,10 +121,12 @@ TEST_CASE("Real kTraits keep the answers the UI branches on", "[ams][traits]") {
     CHECK(AmsBackendHappyHare::kTraits.has_physical_tray);
     CHECK_FALSE(AmsBackendHappyHare::kTraits.recovers_filament_on_resume);
     CHECK_FALSE(AmsBackendHappyHare::kTraits.should_suppress_idle_runout_modal);
-    CHECK_FALSE(AmsBackendHappyHare::kTraits.supports_batch_filament_ops);
+    CHECK(AmsBackendHappyHare::kTraits.supports_reset);
     CHECK_FALSE(AmsBackendHappyHare::kTraits.allows_implicit_chaining);
     CHECK_FALSE(AmsBackendSnapmaker::kTraits.has_physical_tray);
-    CHECK(AmsBackendSnapmaker::kTraits.supports_batch_filament_ops);
+    // Reset is offered only where it clears something the backend keeps.
+    CHECK_FALSE(AmsBackendSnapmaker::kTraits.supports_reset);
+    CHECK_FALSE(AmsBackendToolChanger::kTraits.supports_reset);
     // Only a backend silent until its firmware starts holds the UI's action.
     CHECK(AmsBackendHappyHare::kTraits.holds_optimistic_action);
     CHECK_FALSE(AmsBackendAfc::kTraits.holds_optimistic_action);

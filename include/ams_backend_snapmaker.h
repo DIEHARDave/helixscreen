@@ -160,10 +160,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         // runout — the slicer auto-feeds heads the print doesn't use → empty head →
         // runout cancel.
         t.requires_preprint_send = true;
-        // The U1's four independent feeders can be driven as one batch: the
-        // firmware sequences per-extruder AUTO_FEEDING itself. Gates the batch
-        // Load/Unload affordance in the UI.
-        t.supports_batch_filament_ops = true;
+        // The sidebar's Reset has nothing to clear here: the firmware's own
+        // feed state machine recovers each head.
+        t.supports_reset = false;
         // channel_state stays idle between AUTO_FEEDING being accepted and the
         // firmware's first homing step.
         t.holds_optimistic_action = true;
@@ -180,6 +179,29 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     // a load feeds filament rather than mounting a tool.
     [[nodiscard]] bool carriage_can_be_empty() const override {
         return true;
+    }
+
+    /// One head per extruder, each fed by the lane of the same index.
+    [[nodiscard]] int filament_head_count() const override {
+        return NUM_TOOLS;
+    }
+    [[nodiscard]] std::optional<int> head_for_slot(int slot) const override {
+        if (slot < 0 || slot >= NUM_TOOLS) {
+            return std::nullopt;
+        }
+        return slot;
+    }
+    [[nodiscard]] std::optional<int> head_source_slot(int head) const override {
+        return head_for_slot(head);
+    }
+    /// Loaded to the nozzle, or parked in the toolhead short of it: either way
+    /// an unload has filament to act on.
+    [[nodiscard]] std::optional<bool> head_has_filament(int head) const override;
+
+    /// The four independent feeders run as one batch: the firmware sequences
+    /// per-extruder AUTO_FEEDING itself.
+    [[nodiscard]] int max_heads_per_filament_op() const override {
+        return NUM_TOOLS;
     }
 
     // FEED_AUTO homes and sets its own nozzle target from the lane's material:

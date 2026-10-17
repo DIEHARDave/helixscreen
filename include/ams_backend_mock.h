@@ -282,6 +282,15 @@ class AmsBackendMock : public AmsBackend {
     [[nodiscard]] bool owns_tool_mapping_table() const override;
     [[nodiscard]] bool carriage_can_be_empty() const override;
 
+    /// One head per slot where the persona's backend has one per tool (tool
+    /// changer, Snapmaker), one shared head otherwise; the Snapmaker batches
+    /// all of them, as AmsBackendSnapmaker does.
+    [[nodiscard]] int filament_head_count() const override;
+    [[nodiscard]] std::optional<int> head_for_slot(int slot) const override;
+    [[nodiscard]] std::optional<int> head_source_slot(int head) const override;
+    [[nodiscard]] std::optional<bool> head_has_filament(int head) const override;
+    [[nodiscard]] int max_heads_per_filament_op() const override;
+
     /// Emulate a backend that declares a different route. The shape worth
     /// reaching for is RemapStrategy::None — ACE, or a single-extruder printer
     /// with no AMS — which no mock MODE produces, and which several tests need

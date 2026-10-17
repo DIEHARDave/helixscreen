@@ -4099,6 +4099,52 @@ bool AmsBackendMock::carriage_can_be_empty() const {
     return snapmaker || load_mounts_tool();
 }
 
+int AmsBackendMock::filament_head_count() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return is_tool_changer(system_info_.type) ? system_info_.total_slots : 1;
+}
+
+std::optional<int> AmsBackendMock::head_for_slot(int slot) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (slot < 0 || slot >= system_info_.total_slots) {
+        return std::nullopt;
+    }
+    return is_tool_changer(system_info_.type) ? slot : 0;
+}
+
+std::optional<int> AmsBackendMock::head_source_slot(int head) const {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (is_tool_changer(system_info_.type)) {
+            if (head < 0 || head >= system_info_.total_slots) {
+                return std::nullopt;
+            }
+            return head;
+        }
+    }
+    return AmsBackend::head_source_slot(head);
+}
+
+std::optional<bool> AmsBackendMock::head_has_filament(int head) const {
+    bool per_tool = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        per_tool = is_tool_changer(system_info_.type);
+        if (per_tool && (head < 0 || head >= system_info_.total_slots)) {
+            return std::nullopt;
+        }
+    }
+    if (per_tool) {
+        return can_unload_from_toolhead(head);
+    }
+    return AmsBackend::head_has_filament(head);
+}
+
+int AmsBackendMock::max_heads_per_filament_op() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return snapmaker_mode_ ? system_info_.total_slots : 1;
+}
+
 void AmsBackendMock::set_remap_strategy(RemapStrategy strategy) {
     std::lock_guard<std::mutex> lock(mutex_);
     remap_strategy_ = strategy;

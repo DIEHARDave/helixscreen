@@ -785,6 +785,13 @@ bool AmsBackendSnapmaker::slot_has_filament_at_toolhead(int slot_index) const {
     return loaded_at_toolhead_[slot_index];
 }
 
+std::optional<bool> AmsBackendSnapmaker::head_has_filament(int head) const {
+    if (head < 0 || head >= NUM_TOOLS) {
+        return std::nullopt;
+    }
+    return can_unload_from_toolhead(head) || slot_filament_parked_in_toolhead(head);
+}
+
 bool AmsBackendSnapmaker::slot_filament_parked_in_toolhead(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
     if (slot_index < 0 || slot_index >= NUM_TOOLS) {

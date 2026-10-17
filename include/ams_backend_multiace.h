@@ -46,6 +46,14 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     [[nodiscard]] bool needs_unload_before_load(const AmsSystemInfo& info,
                                                 int target_slot) const override;
 
+    /// A head slot feeds itself; a bay feeds the head its mode routes it to,
+    /// and an unrouted bay feeds none.
+    [[nodiscard]] std::optional<int> head_for_slot(int slot) const override;
+    /// An ACE-fed head's source is its one routed bay; with several bays wired
+    /// to it, the bay loaded into it now, else none. A head the ACE does not
+    /// feed is its own source.
+    [[nodiscard]] std::optional<int> head_source_slot(int head) const override;
+
     [[nodiscard]] bool can_unload_from_toolhead(int slot_index) const override;
     [[nodiscard]] bool slot_has_filament_at_toolhead(int slot_index) const override;
     [[nodiscard]] bool slot_is_actively_loaded(int slot_index) const override;

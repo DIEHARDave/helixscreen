@@ -198,6 +198,7 @@ lv_subject_t s_load_disabled{};
 lv_subject_t s_reset_disabled{};
 lv_subject_t s_check_gates_disabled{};
 lv_subject_t s_supports_batch{};
+lv_subject_t s_supports_reset{};
 bool s_gating_subjects_initialized = false;
 SubjectManager s_subjects;
 
@@ -214,11 +215,16 @@ void init_button_gating_subjects() {
     // Start hidden: the batch button exists only on backends that implement
     // batch ops, and no backend is known until the first refresh.
     lv_subject_init_int(&s_supports_batch, 0);
+    // Shown by default, as on most backends; refresh_button_gating() runs in
+    // setup(), before the sidebar is first drawn, and hides it where Reset has
+    // nothing to clear.
+    lv_subject_init_int(&s_supports_reset, 1);
     s_subjects.publish("ams_sidebar_unload_disabled", &s_unload_disabled);
     s_subjects.publish("ams_sidebar_load_disabled", &s_load_disabled);
     s_subjects.publish("ams_sidebar_reset_disabled", &s_reset_disabled);
     s_subjects.publish("ams_sidebar_check_gates_disabled", &s_check_gates_disabled);
     s_subjects.publish("ams_sidebar_supports_batch", &s_supports_batch);
+    s_subjects.publish("ams_sidebar_supports_reset", &s_supports_reset);
     s_gating_subjects_initialized = true;
 
     StaticSubjectRegistry::instance().register_deinit("AmsSidebarButtonGating", []() {
@@ -1434,6 +1440,7 @@ void AmsOperationSidebar::refresh_button_gating() {
     AmsBackend* backend = AmsState::instance().get_backend();
     lv_subject_set_int(&s_supports_batch,
                        backend && backend->supports_batch_filament_ops() ? 1 : 0);
+    lv_subject_set_int(&s_supports_reset, backend && backend->supports_reset() ? 1 : 0);
 }
 
 bool AmsOperationSidebar::refuse_if_busy_or_printing() const {
@@ -1728,7 +1735,7 @@ void AmsOperationSidebar::handle_load_with_preheat(int slot_index) {
         heater && heater->refuse_while_heating(FilamentHeatOp::Load, this, "[AmsSidebar]")) {
         return;
     }
-    if (!caps.is_tool_changer) {
+    if (!caps.load_mounts_tool) {
         start_operation(plan.ams_call == helix::ui::AmsCall::Load ? StepOperationType::LOAD_FRESH
                                                                   : StepOperationType::LOAD_SWAP,
                         slot_index);

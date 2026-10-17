@@ -287,6 +287,7 @@ translations:
   Allwinner: Allwinner
   Already connecting — wait a moment and try again: Подключение уже выполняется —
     подождите и попробуйте снова
+  Already mounted: 'Уже установлен'
   Always Show Bypass Spool: Всегда показывать катушку байпаса
   Always show Android navigation bar instead of using gestures: Всегда показывать
     панель навигации Android вместо жестов
@@ -337,6 +338,7 @@ translations:
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Назначьте
     макросы Klipper для управления LED через вкл/выкл, переключение или пресеты
   Assign a role to enable sensor monitoring: Назначьте роль для мониторинга датчика
+  Assign a slot first: 'Сначала назначьте слот'
   Assisted Retract: 'Ретракция с поддержкой'
   Assisting: Помощь
   At least {} lines in helixscreen.env were ignored: 'В helixscreen.env проигнорировано не менее {} строк'
@@ -3754,6 +3756,7 @@ translations:
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : 'Это заменит вспомогательные макросы принтера текущей версией. Идёт печать, поэтому Klipper перезапустится после её завершения.'
   This replaces this screen's home layout for this printer with the one on the printer's own screen.: "Раскладка главного экрана этого экрана для данного принтера будет заменена раскладкой с экрана самого принтера."
+  This slot feeds no tool: 'Этот слот не подаёт филамент ни в один инструмент'
   This system does not support bypass mode: 'Эта система не поддерживает режим обхода'
   This tool probes each bed screw and tells you how much to adjust.: Этот инструмент
     проверяет каждый винт стола и показывает, насколько его нужно отрегулировать.

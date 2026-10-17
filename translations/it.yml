@@ -246,6 +246,7 @@ translations:
   Allwinner: Allwinner
   Already connecting — wait a moment and try again: Connessione già in corso — attendi
     un momento e riprova
+  Already mounted: 'Già montato'
   Always Show Bypass Spool: Mostra sempre bobina di bypass
   Always show Android navigation bar instead of using gestures: Mostra sempre la barra
     di navigazione Android invece dei gesti
@@ -299,6 +300,7 @@ translations:
     Klipper per controllare LED tramite on/off, alternanza o preset
   Assign a role to enable sensor monitoring: Assegna un ruolo per abilitare il monitoraggio
     del sensore
+  Assign a slot first: 'Assegna prima uno slot'
   Assisted Retract: 'Retrazione assistita'
   Assisting: Assistenza
   At least {} lines in helixscreen.env were ignored: 'Almeno {} righe di helixscreen.env sono state ignorate'
@@ -3709,6 +3711,7 @@ translations:
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : 'Sostituisce le macro di ausilio della stampante con la versione attuale. Una stampa è in corso, quindi Klipper verrà riavviato al termine.'
   This replaces this screen's home layout for this printer with the one on the printer's own screen.: "Questo sostituisce il layout della schermata iniziale di questo schermo per questa stampante con quello dello schermo della stampante."
+  This slot feeds no tool: 'Questo slot non alimenta alcuno strumento'
   This system does not support bypass mode: 'Questo sistema non supporta la modalità bypass'
   This tool probes each bed screw and tells you how much to adjust.: Questo strumento
     sonda ogni vite del piano e indica quanto regolare.
