@@ -184,11 +184,26 @@ std::map<std::string, std::string> read_fingerprints() {
         std::istringstream fields(line);
         std::string name;
         std::string value;
-        if (fields >> name >> value) {
-            values[name] = value;
+        std::string accepted;
+        if (fields >> name) {
+            while (fields >> value) {
+                accepted += accepted.empty() ? value : " " + value;
+            }
+            values[name] = accepted;
         }
     }
     return values;
+}
+
+bool accepts(const std::string& accepted, const std::string& value) {
+    std::istringstream tokens(accepted);
+    std::string token;
+    while (tokens >> token) {
+        if (token == value) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void write_fingerprints(const std::map<std::string, std::string>& values) {
@@ -199,8 +214,9 @@ void write_fingerprints(const std::map<std::string, std::string>& values) {
     }
 }
 
-/// Fingerprints are recorded with the Linux x86-64 test build; another compiler or target may
-/// contract floating point differently and draw a pixel one step apart.
+/// Fingerprints are recorded with the Linux x86-64 test builds; another compiler or target may
+/// contract floating point differently and draw a pixel one step apart. A line may list one
+/// value per toolchain that draws the saver differently (clang on thelio, g++ in CI's image).
 void skip_off_the_recording_platform() {
 #if !(defined(__linux__) && defined(__x86_64__))
     SKIP("screensaver fingerprints are recorded on x86-64 Linux");
@@ -210,7 +226,10 @@ void skip_off_the_recording_platform() {
 void check_fingerprint(const std::string& name, uint64_t value) {
     if (std::getenv("HELIX_SCREENSAVER_FINGERPRINT_WRITE") != nullptr) {
         std::map<std::string, std::string> values = read_fingerprints();
-        values[name] = hex(value);
+        std::string& accepted = values[name];
+        if (!accepts(accepted, hex(value))) {
+            accepted += accepted.empty() ? hex(value) : " " + hex(value);
+        }
         write_fingerprints(values);
         FAIL("recorded " << name << " " << hex(value) << " in " << FINGERPRINT_FILE
                          << "; unset HELIX_SCREENSAVER_FINGERPRINT_WRITE to compare");
@@ -218,7 +237,8 @@ void check_fingerprint(const std::string& name, uint64_t value) {
     const std::map<std::string, std::string> recorded = read_fingerprints();
     INFO("fingerprint file " << FINGERPRINT_FILE << " (run helix-tests from the repo root)");
     REQUIRE(recorded.count(name) == 1);
-    CHECK(hex(value) == recorded.at(name));
+    INFO("accepted " << recorded.at(name));
+    CHECK(accepts(recorded.at(name), hex(value)));
 }
 
 } // namespace
