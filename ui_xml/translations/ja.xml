@@ -941,6 +941,7 @@
   <translation tag="EEPROM error on CFS unit" ja="CFS ユニットの EEPROM エラー"/>
   <translation tag="EMERGENCY STOP" ja="緊急停止"/>
   <translation tag="EMPTY" ja="空"/>
+  <translation tag="ETA {}" ja="終了予定 {}"/>
   <translation tag="EXTRAS" ja="その他"/>
   <translation tag="Each fan can only be selected once" ja="各ファンは一度のみ選択できます"/>
   <translation tag="Edit" ja="編集"/>
@@ -3739,6 +3740,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." ja="{}は印刷中です。切り替えても印刷は続行されます。"/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" ja="{} で画面のクラッシュが繰り返されました。接続するプリンターを選んでください"/>
   <translation tag="{} kept crashing the panel; switched back to {}" ja="{} で画面のクラッシュが繰り返されたため、{} に戻しました"/>
+  <translation tag="{} left" ja="残り {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" ja="helixscreen.env の{}行が無視されました"/>
   <translation tag="{} m" ja="{} m"/>
   <translation tag="{} macro not configured" ja="{} マクロが未設定です"/>

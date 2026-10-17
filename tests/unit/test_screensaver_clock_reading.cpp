@@ -2,13 +2,22 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "../lvgl_test_fixture.h"
+#include "display_settings_manager.h"
+#include "locale_formats.h"
+#include "screensaver_clock.h"
 #include "screensaver_clock_reading.h"
 #include "screensaver_stroke_digits.h"
+#include "system_settings_manager.h"
 
 #include <cstdint>
+#include <ctime>
+#include <string>
 
 #include "../catch_amalgamated.hpp"
 
+using helix::DisplaySettingsManager;
+using helix::TimeFormat;
 using helix::ui::CLOCK_DONE_HOLD_MS;
 using helix::ui::clock_time;
 using helix::ui::ClockDate;
@@ -209,6 +218,132 @@ TEST_CASE("clear frees the coverage", "[screensaver][clock_reading]") {
     set.clear();
     CHECK(set.heap_bytes() == 0);
     CHECK(set.at(3, 0, 0) == 0);
+}
+
+// ============================================================================
+// Text
+// ============================================================================
+
+namespace {
+
+/// Sets the app language for one test and puts English back after it.
+struct LanguageScope {
+    explicit LanguageScope(const std::string& lang) {
+        set(lang);
+    }
+    ~LanguageScope() {
+        set("en");
+    }
+    static void set(const std::string& lang) {
+        helix::SystemSettingsManager::instance().set_language(lang);
+        helix::ui::locale_set_language(lang);
+    }
+};
+
+/// Pins the Time Format setting for one test and restores what it was.
+struct TimeFormatScope {
+    explicit TimeFormatScope(TimeFormat format)
+        : saved(DisplaySettingsManager::instance().get_time_format()) {
+        DisplaySettingsManager::instance().set_time_format(format);
+    }
+    ~TimeFormatScope() {
+        DisplaySettingsManager::instance().set_time_format(saved);
+    }
+    TimeFormat saved;
+};
+
+struct tm october_21_2019() {
+    struct tm t {};
+    t.tm_year = 2019 - 1900;
+    t.tm_mon = 9;
+    t.tm_mday = 21;
+    t.tm_wday = 1;
+    return t;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture, "the long date and weekday read in the active language",
+                 "[screensaver][clock_reading][locale]") {
+    const struct tm day = october_21_2019();
+    {
+        LanguageScope lang("en");
+        CHECK(helix::ui::format_localized_long_date(&day) == "October 21, 2019");
+        CHECK(helix::ui::format_localized_weekday(&day) == "Monday");
+    }
+    {
+        LanguageScope lang("de");
+        CHECK(helix::ui::format_localized_long_date(&day) == "21. Oktober 2019");
+        CHECK(helix::ui::format_localized_weekday(&day) == "Montag");
+    }
+    {
+        LanguageScope lang("fr");
+        CHECK(helix::ui::format_localized_long_date(&day) == "21 octobre 2019");
+        CHECK(helix::ui::format_localized_weekday(&day) == "lundi");
+    }
+    {
+        LanguageScope lang("es");
+        CHECK(helix::ui::format_localized_long_date(&day) == "21 de octubre de 2019");
+        CHECK(helix::ui::format_localized_weekday(&day) == "lunes");
+    }
+    {
+        LanguageScope lang("ja");
+        CHECK(helix::ui::format_localized_long_date(&day) == "2019年10月21日");
+        CHECK(helix::ui::format_localized_weekday(&day) == "月曜日");
+    }
+    {
+        LanguageScope lang("ru");
+        CHECK(helix::ui::format_localized_long_date(&day) == "21 октября 2019");
+    }
+    {
+        LanguageScope lang("xx");
+        CHECK(helix::ui::format_localized_long_date(&day) == "October 21, 2019");
+    }
+    CHECK(helix::ui::format_localized_weekday(nullptr).empty());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "the print readout says when it ends and how long is left",
+                 "[screensaver][clock_reading]") {
+    LanguageScope lang("en");
+    TimeFormatScope format(TimeFormat::HOUR_12);
+    helix::ui::ClockReading reading;
+    reading.mode = ClockMode::COUNTDOWN;
+    reading.eta_minute_of_day = 1360;
+    reading.countdown_s = 4320;
+    helix::ui::ClockPrintText text = helix::ui::clock_print_text(reading);
+    CHECK(text.eta == "ETA 10:40 PM");
+    CHECK(text.left == "1h 12m left");
+
+    reading.mode = ClockMode::PAUSED;
+    text = helix::ui::clock_print_text(reading);
+    CHECK(text.eta == "PAUSED");
+    CHECK(text.left == "1h 12m left");
+
+    reading.mode = ClockMode::DONE;
+    text = helix::ui::clock_print_text(reading);
+    CHECK(text.eta == "DONE");
+    CHECK(text.left.empty());
+
+    reading.mode = ClockMode::CLOCK;
+    text = helix::ui::clock_print_text(reading);
+    CHECK(text.eta.empty());
+    CHECK(text.left.empty());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "the date text joins nothing and uses locale_formats",
+                 "[screensaver][clock_reading]") {
+    LanguageScope lang("en");
+    const helix::ui::ClockDateText text = helix::ui::clock_date_text(ClockDate{2019, 10, 21, 1});
+    CHECK(text.date == "October 21, 2019");
+    CHECK(text.weekday == "Monday");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "the meridiem reads AM or PM and nothing in 24-hour time",
+                 "[screensaver][clock_reading]") {
+    LanguageScope lang("en");
+    CHECK(helix::ui::clock_meridiem_text(ClockMeridiem::AM) == "AM");
+    CHECK(helix::ui::clock_meridiem_text(ClockMeridiem::PM) == "PM");
+    CHECK(helix::ui::clock_meridiem_text(ClockMeridiem::NONE).empty());
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

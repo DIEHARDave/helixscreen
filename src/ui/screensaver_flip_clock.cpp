@@ -4,8 +4,6 @@
 
 #include "screensaver_flip_clock.h"
 
-#include "ui_format_utils.h"
-
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "screensaver_pixel_writer.h"
 
@@ -13,7 +11,6 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <ctime>
 
 namespace helix::ui {
 
@@ -21,17 +18,6 @@ namespace {
 
 /// Caption and marker text: dimmer than the digits, so the cards stay the subject.
 constexpr Rgb TEXT_COLOR{150, 150, 150};
-
-/// A local struct tm at `minute_of_day` today, for the app's time formatters.
-struct tm tm_at_minute(int32_t minute_of_day) {
-    const time_t now = time(nullptr);
-    struct tm tm_info {};
-    localtime_r(&now, &tm_info);
-    tm_info.tm_hour = minute_of_day / 60;
-    tm_info.tm_min = minute_of_day % 60;
-    tm_info.tm_sec = 0;
-    return tm_info;
-}
 
 } // namespace
 
@@ -76,9 +62,8 @@ void FlipClockScreensaver::on_level_request(size_t level) {
 std::string FlipClockScreensaver::caption_text(const FlipFace& face) const {
     switch (face.caption) {
     case FlipCaption::DONE_AT: {
-        const struct tm eta = tm_at_minute(face.eta_minute_of_day);
-        return fmt::format(fmt::runtime(lv_tr("done at {} · {}%")), format_time(&eta),
-                           face.progress_pct);
+        return fmt::format(fmt::runtime(lv_tr("done at {} · {}%")),
+                           clock_minute_text(face.eta_minute_of_day), face.progress_pct);
     }
     case FlipCaption::PAUSED:
         return lv_tr("PAUSED");
@@ -91,14 +76,7 @@ std::string FlipClockScreensaver::caption_text(const FlipFace& face) const {
 }
 
 std::string FlipClockScreensaver::meridiem_text(const FlipFace& face) const {
-    if (face.meridiem == ClockMeridiem::NONE) {
-        return {};
-    }
-    // The C library's AM/PM, which is what format_time() shows elsewhere in the app.
-    struct tm tm_info = tm_at_minute(face.meridiem == ClockMeridiem::AM ? 0 : 12 * 60);
-    char buf[16] = {};
-    strftime(buf, sizeof(buf), "%p", &tm_info);
-    return buf;
+    return clock_meridiem_text(face.meridiem);
 }
 
 void FlipClockScreensaver::draw_texts(const std::vector<DirtyRect>& card_dirty,

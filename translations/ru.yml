@@ -1089,6 +1089,7 @@ translations:
   EEPROM error on CFS unit: Ошибка EEPROM в блоке CFS
   EMERGENCY STOP: АВАРИЙНАЯ ОСТАНОВКА
   EMPTY: ПУСТО
+  ETA {}: 'Окончание {}'
   EXTRAS: ДОПОЛНИТЕЛЬНО
   Each fan can only be selected once: Каждый вентилятор можно выбрать только один
     раз
@@ -4217,6 +4218,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{} ещё печатает. Печать продолжится после переключения.'
   '{} is not available on this device. Printing original file.': '{} недоступно на этом устройстве. Будет напечатан исходный файл.'
   '{} is not set up on this printer': '{} не настроен на этом принтере'
+  '{} left': 'осталось {}'
   '{} lines in helixscreen.env were ignored': 'В helixscreen.env проигнорировано строк: {}'
   '{} kept crashing the panel; switched back to {}': '{} постоянно вызывал сбой экрана; возврат к {}'
   '{} kept crashing the panel; pick a printer to connect': '{} постоянно вызывал сбой экрана; выберите принтер для подключения'

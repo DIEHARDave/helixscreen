@@ -1008,6 +1008,7 @@ translations:
   EEPROM error on CFS unit: EEPROM error on CFS unit
   EMERGENCY STOP: EMERGENCY STOP
   EMPTY: EMPTY
+  ETA {}: ETA {}
   EXTRAS: EXTRAS
   Each fan can only be selected once: Each fan can only be selected once
   Edit: Edit
@@ -4048,6 +4049,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{} is still printing. The print keeps running after you switch.'
   '{} is not available on this device. Printing original file.': '{} is not available on this device. Printing original file.'
   '{} is not set up on this printer': '{} is not set up on this printer'
+  '{} left': '{} left'
   '{} lines in helixscreen.env were ignored': '{} lines in helixscreen.env were ignored'
   '{} kept crashing the panel; switched back to {}': '{} kept crashing the panel; switched back to {}'
   '{} kept crashing the panel; pick a printer to connect': '{} kept crashing the panel; pick a printer to connect'

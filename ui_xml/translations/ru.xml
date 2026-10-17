@@ -983,6 +983,7 @@
   <translation tag="EEPROM error on CFS unit" ru="Ошибка EEPROM в блоке CFS"/>
   <translation tag="EMERGENCY STOP" ru="АВАРИЙНАЯ ОСТАНОВКА"/>
   <translation tag="EMPTY" ru="ПУСТО"/>
+  <translation tag="ETA {}" ru="Окончание {}"/>
   <translation tag="EXTRAS" ru="ДОПОЛНИТЕЛЬНО"/>
   <translation tag="Each fan can only be selected once" ru="Каждый вентилятор можно выбрать только один раз"/>
   <translation tag="Edit" ru="Редактировать"/>
@@ -3808,6 +3809,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." ru="{} ещё печатает. Печать продолжится после переключения."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" ru="{} постоянно вызывал сбой экрана; выберите принтер для подключения"/>
   <translation tag="{} kept crashing the panel; switched back to {}" ru="{} постоянно вызывал сбой экрана; возврат к {}"/>
+  <translation tag="{} left" ru="осталось {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" ru="В helixscreen.env проигнорировано строк: {}"/>
   <translation tag="{} m" ru="{} м"/>
   <translation tag="{} macro not configured" ru="Макрос {} не настроен"/>

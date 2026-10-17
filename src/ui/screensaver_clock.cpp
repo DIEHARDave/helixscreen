@@ -4,8 +4,15 @@
 
 #include "screensaver_clock.h"
 
+#include "ui_format_utils.h"
+
 #include "display_settings_manager.h"
+#include "format_utils.h"
+#include "locale_formats.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "theme_manager.h"
+
+#include <spdlog/fmt/fmt.h>
 
 #include <algorithm>
 #include <ctime>
@@ -16,6 +23,17 @@ namespace {
 
 /// Breakpoint fonts a clock line may use, largest first.
 constexpr const char* CLOCK_FONTS[] = {"font_heading", "font_body", "font_small", "font_xs"};
+
+/// A local struct tm at `minute_of_day` today, for the app's time formatters.
+struct tm tm_at_minute(int32_t minute_of_day) {
+    const time_t now = time(nullptr);
+    struct tm tm_info {};
+    localtime_r(&now, &tm_info);
+    tm_info.tm_hour = minute_of_day / 60;
+    tm_info.tm_min = minute_of_day % 60;
+    tm_info.tm_sec = 0;
+    return tm_info;
+}
 
 } // namespace
 
@@ -49,6 +67,56 @@ ClockPrintPhase clock_print_phase(PrintState state) {
         break;
     }
     return ClockPrintPhase::NONE;
+}
+
+std::string clock_minute_text(int32_t minute_of_day) {
+    const struct tm tm_info = tm_at_minute(((minute_of_day % 1440) + 1440) % 1440);
+    return format_time(&tm_info);
+}
+
+ClockPrintText clock_print_text(const ClockReading& reading) {
+    ClockPrintText text;
+    const auto left = [&reading] {
+        return fmt::format(fmt::runtime(lv_tr("{} left")),
+                           helix::format::duration(reading.countdown_s));
+    };
+    switch (reading.mode) {
+    case ClockMode::COUNTDOWN:
+        text.eta = fmt::format(fmt::runtime(lv_tr("ETA {}")),
+                               clock_minute_text(reading.eta_minute_of_day));
+        text.left = left();
+        break;
+    case ClockMode::PAUSED:
+        text.eta = lv_tr("PAUSED");
+        text.left = left();
+        break;
+    case ClockMode::DONE:
+        text.eta = lv_tr("DONE");
+        break;
+    case ClockMode::CLOCK:
+        break;
+    }
+    return text;
+}
+
+ClockDateText clock_date_text(const ClockDate& date) {
+    struct tm tm_info {};
+    tm_info.tm_year = date.year - 1900;
+    tm_info.tm_mon = date.month - 1;
+    tm_info.tm_mday = date.day;
+    tm_info.tm_wday = date.weekday;
+    return {format_localized_long_date(&tm_info), format_localized_weekday(&tm_info)};
+}
+
+std::string clock_meridiem_text(ClockMeridiem meridiem) {
+    if (meridiem == ClockMeridiem::NONE) {
+        return {};
+    }
+    // The C library's AM/PM, which is what format_time() shows elsewhere in the app.
+    struct tm tm_info = tm_at_minute(meridiem == ClockMeridiem::AM ? 0 : 12 * 60);
+    char buf[16] = {};
+    strftime(buf, sizeof(buf), "%p", &tm_info);
+    return buf;
 }
 
 const lv_font_t* clock_font_fitting(int32_t height) {

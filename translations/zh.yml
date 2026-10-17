@@ -973,6 +973,7 @@ translations:
   EEPROM error on CFS unit: CFS 单元 EEPROM 错误
   EMERGENCY STOP: 紧急停止
   EMPTY: 空
+  ETA {}: '预计 {}'
   EXTRAS: 其他
   Each fan can only be selected once: 每个风扇只能选择一次
   Edit: 编辑
@@ -3900,6 +3901,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{} 仍在打印。切换后打印会继续进行。'
   '{} is not available on this device. Printing original file.': '此设备不支持{}。将打印原始文件。'
   '{} is not set up on this printer': '{} 未在此打印机上设置'
+  '{} left': '剩余 {}'
   '{} lines in helixscreen.env were ignored': 'helixscreen.env 中有 {} 行被忽略'
   '{} kept crashing the panel; switched back to {}': '{} 反复导致屏幕崩溃，已切换回 {}'
   '{} kept crashing the panel; pick a printer to connect': '{} 反复导致屏幕崩溃，请选择要连接的打印机'

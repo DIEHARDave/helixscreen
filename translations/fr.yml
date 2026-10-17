@@ -1053,6 +1053,7 @@ translations:
   EEPROM error on CFS unit: Erreur EEPROM sur l'unité CFS
   EMERGENCY STOP: ARRÊT D'URGENCE
   EMPTY: VIDE
+  ETA {}: 'Fin {}'
   EXTRAS: SUPPLÉMENTS
   Each fan can only be selected once: Chaque ventilateur ne peut être sélectionné
     qu'une fois
@@ -4202,6 +4203,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{} imprime encore. L''impression continue après le changement.'
   '{} is not available on this device. Printing original file.': '{} n''est pas disponible sur cet appareil. Impression du fichier original.'
   '{} is not set up on this printer': "{} n'est pas configuré sur cette imprimante"
+  '{} left': '{} restant'
   '{} lines in helixscreen.env were ignored': '{} lignes de helixscreen.env ont été ignorées'
   '{} kept crashing the panel; switched back to {}': '{} a planté l''écran à plusieurs reprises ; retour à {}'
   '{} kept crashing the panel; pick a printer to connect': '{} a planté l''écran à plusieurs reprises ; choisissez une imprimante à connecter'

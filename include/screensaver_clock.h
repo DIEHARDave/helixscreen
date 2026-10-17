@@ -51,6 +51,10 @@ ClockDateText clock_date_text(const ClockDate& date);
 /// The C library's AM/PM for `meridiem`, empty for NONE.
 std::string clock_meridiem_text(ClockMeridiem meridiem);
 
+/// Local minute `minute_of_day` (0 to 1439) as the app shows a time of day: "9:41 PM" or
+/// "21:41", per the Time Format setting.
+std::string clock_minute_text(int32_t minute_of_day);
+
 /// Largest breakpoint text font no taller than `height` px, or the smallest when none fits.
 const lv_font_t* clock_font_fitting(int32_t height);
 

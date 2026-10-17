@@ -941,6 +941,7 @@
   <translation tag="EEPROM error on CFS unit" de="EEPROM-Fehler an der CFS-Einheit"/>
   <translation tag="EMERGENCY STOP" de="NOTAUS"/>
   <translation tag="EMPTY" de="LEER"/>
+  <translation tag="ETA {}" de="Ende {}"/>
   <translation tag="EXTRAS" de="EXTRAS"/>
   <translation tag="Each fan can only be selected once" de="Jeder Lüfter kann nur einmal ausgewählt werden"/>
   <translation tag="Edit" de="Bearbeiten"/>
@@ -3739,6 +3740,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." de="{} druckt noch. Der Druck läuft nach dem Wechsel weiter."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" de="{} hat den Bildschirm wiederholt abstürzen lassen; Drucker zum Verbinden auswählen"/>
   <translation tag="{} kept crashing the panel; switched back to {}" de="{} hat den Bildschirm wiederholt abstürzen lassen; zurück zu {} gewechselt"/>
+  <translation tag="{} left" de="noch {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" de="{} Zeilen in helixscreen.env wurden ignoriert"/>
   <translation tag="{} m" de="{} m"/>
   <translation tag="{} macro not configured" de="{}-Makro nicht konfiguriert"/>
