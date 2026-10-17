@@ -82,6 +82,7 @@ An animation that plays while the screen is idle. It starts when the screen woul
 | **3D Maze** | A walk through a brick maze, as in the old Windows screensaver: spinning HelixScreen icons, rocks that flip the view upside down, and a smiley at the exit |
 | **Hyperspace** | A flight through glowing rainbow space: star flares stream past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts ahead |
 | **Flip Clock** | A split-flap clock in the 12- or 24-hour format you chose under Time Format, one card per digit; only the digits that change flip. While a print runs it counts down the time left as hours, minutes and seconds, with the finish time and progress underneath. A paused print freezes the count under PAUSED; a finished one shows DONE for a minute, then the clock comes back |
+| **Fireflies** | Coloured swarms of glowing fireflies chase each other through the dark, trailing long tails that drift in the wind; now and then a swarm stops, circles, splits in two or joins another |
 
 Each screensaver checks how much processor time it takes on your printer. If it would slow the printer down, it lowers its frame rate or detail. If that's still too much, your printer can't run it: it disappears from the list, and Flying Toasters (or the next screensaver your printer can run) plays in its place. The list then shows the one that plays. Your choice is still saved, so moving your settings to a faster printer brings it back. Only if no screensaver fits does the screen go black instead. The check runs again after an update.
 

@@ -580,6 +580,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Hyperspace screensaver** - a flight through glowing rainbow space: star flares stream
   past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts
   ahead. Select it under Settings > Display > Screensaver.
+- **Fireflies screensaver** - coloured swarms of glowing fireflies chase each other through
+  the dark, trailing long tails that drift in the wind. Now and then a swarm stops, circles,
+  speeds up, splits in two or joins another. Select it under Settings > Display > Screensaver.
 - **A screensaver your printer can't run is left out** - each saver measures what it costs
   on your board, and one that would still slow the printer at its lightest setting drops out
   of the list. Another saver plays in its place instead of a black screen, and your choice

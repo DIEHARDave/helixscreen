@@ -1336,6 +1336,7 @@
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" ru="Завершите или отмените печать перед загрузкой, выгрузкой или сменой филамента"/>
   <translation tag="Finishing clean..." ru="Завершение очистки..."/>
   <translation tag="Finishing up..." ru="Завершение..."/>
+  <translation tag="Fireflies" ru="Светлячки"/>
   <translation tag="Fireworks" ru="Фейерверк"/>
   <translation tag="Firmware Restart" ru="Перезапуск прошивки"/>
   <translation tag="Firmware reports no bypass. Enable if you feed filament straight to the extruder" ru="Прошивка не сообщает о байпасе. Включите, если филамент подаётся прямо в экструдер."/>

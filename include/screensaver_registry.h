@@ -36,6 +36,7 @@ enum class ScreensaverType : int {
     MAZE_3D = 7,
     HYPERSPACE = 8,
     FLIP_CLOCK = 9,
+    FIREFLIES = 10,
 };
 
 namespace helix::ui {
@@ -72,6 +73,7 @@ inline constexpr ScreensaverInfo SCREENSAVERS[] = {
     {ScreensaverType::MAZE_3D, "maze", "3D Maze", SAVER_DEPTH_16 | SAVER_DEPTH_32},
     {ScreensaverType::HYPERSPACE, "hyperspace", "Hyperspace", SAVER_DEPTH_16 | SAVER_DEPTH_32},
     {ScreensaverType::FLIP_CLOCK, "flipclock", "Flip Clock", SAVER_DEPTH_16 | SAVER_DEPTH_32},
+    {ScreensaverType::FIREFLIES, "fireflies", "Fireflies", SAVER_DEPTH_16 | SAVER_DEPTH_32},
 };
 
 inline constexpr size_t SCREENSAVER_COUNT = std::size(SCREENSAVERS);
