@@ -1177,15 +1177,17 @@ struct SlotInfo {
     /**
      * @brief Copy the filament fields an edit or an identity sync carries
      *
-     * Colour, material, brand, catalog pick, Spoolman link, weights and
-     * temperatures. Tool mapping, status and indices are the caller's.
+     * Colour (multi-colour included), material, brand, catalog pick, Spoolman
+     * link, weights and temperatures. Tool mapping, status and indices are the
+     * caller's.
      *
      * @return Whether any of them changed
      */
     bool assign_filament_fields(const SlotInfo& other) {
         auto fields = [](auto& s) {
-            return std::tuple_cat(identity_fields(s),
-                                  std::tie(s.nozzle_temp_min, s.nozzle_temp_max, s.bed_temp));
+            return std::tuple_cat(
+                identity_fields(s),
+                std::tie(s.multi_color_hexes, s.nozzle_temp_min, s.nozzle_temp_max, s.bed_temp));
         };
         const bool changed = fields(*this) != fields(other);
         fields(*this) = fields(other);

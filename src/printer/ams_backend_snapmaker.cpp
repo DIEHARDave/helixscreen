@@ -292,6 +292,7 @@ void AmsBackendSnapmaker::on_started() {
         task_color_.fill(std::nullopt);
         task_subtype_.fill(std::nullopt);
         tag_slot_values_.fill(std::nullopt);
+        tag_readings_.fill(std::nullopt);
         tag_has_card_.fill(std::nullopt);
     }
     if (!api_)
@@ -1526,6 +1527,7 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
             cache.total_weight_g = static_cast<float>(rfid.weight_g);
         tag_slot_values_[static_cast<size_t>(i)] = TagSlotValues{
             slot->nozzle_temp_min, slot->nozzle_temp_max, slot->bed_temp, slot->total_weight_g};
+        record_tag_reading_locked(i, rfid, cache, *slot);
         // SUB_TYPE is Snapmaker's product-line name ("SnapSpeed" for
         // their PLA line, akin to Polymaker's "PolyLite"), shown as
         // the spool name; the tag carries no colour name. Blank when
@@ -2224,6 +2226,52 @@ void AmsBackendSnapmaker::converge_lanes_locked(FrameEffects& fx) {
     }
 }
 
+void AmsBackendSnapmaker::record_tag_reading_locked(int slot_index, const SnapmakerRfidInfo& rfid,
+                                                    const helix::ams::Observation& cache,
+                                                    SlotInfo& slot) {
+    const auto i = static_cast<size_t>(slot_index);
+    std::optional<helix::ams::TagReading>& kept = tag_readings_[i];
+    const std::string previous_multi = kept ? kept->multi_color_hexes : std::string{};
+    if (!rfid.has_card.value_or(false)) {
+        kept.reset();
+    } else {
+        helix::ams::TagReading reading = helix::ams::tag_reading_from(cache);
+        // Zero is the firmware's spelling of a temperature the tag left out.
+        if (rfid.hotend_min_temp > 0) {
+            reading.nozzle_temp_min = rfid.hotend_min_temp;
+        }
+        if (rfid.hotend_max_temp > 0) {
+            reading.nozzle_temp_max = rfid.hotend_max_temp;
+        }
+        if (rfid.bed_temp > 0) {
+            reading.bed_temp = rfid.bed_temp;
+        }
+        reading.multi_color_hexes = rfid.multi_color_hexes;
+        kept = std::move(reading);
+    }
+
+    // No lane record carries a multi-colour, so the tag's is laid onto the slot
+    // here, and only while nobody declares the lane's colour: a declared colour
+    // replaced the tag's and must survive this frame.
+    if (helix::ams::declared_on_lane(lane_id(slot_index)).color) {
+        return;
+    }
+    const std::string& now = kept ? kept->multi_color_hexes : std::string{};
+    if (!now.empty()) {
+        slot.multi_color_hexes = now;
+    } else if (!previous_multi.empty() && slot.multi_color_hexes == previous_multi) {
+        slot.multi_color_hexes.clear();
+    }
+}
+
+std::optional<helix::ams::TagReading> AmsBackendSnapmaker::tag_reading(int slot_index) const {
+    if (slot_index < 0 || slot_index >= NUM_TOOLS) {
+        return std::nullopt;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    return tag_readings_[static_cast<size_t>(slot_index)];
+}
+
 bool AmsBackendSnapmaker::retract_tag_reading_locked(int slot_index, SlotInfo& slot) {
     const helix::ams::LaneId lane = lane_id(slot_index);
     const std::optional<helix::ams::Observation> cache =
@@ -2268,6 +2316,11 @@ bool AmsBackendSnapmaker::retract_tag_reading_locked(int slot_index, SlotInfo& s
         }
     }
     tag_slot_values_[i].reset();
+    if (const auto& kept = tag_readings_[i]; kept && !kept->multi_color_hexes.empty() &&
+                                             slot.multi_color_hexes == kept->multi_color_hexes) {
+        slot.multi_color_hexes.clear();
+    }
+    tag_readings_[i].reset();
     if (cache->product_name.has_value()) {
         if (slot.spool_name == *cache->product_name) {
             slot.spool_name.clear();

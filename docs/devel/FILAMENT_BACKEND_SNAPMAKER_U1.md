@@ -171,6 +171,14 @@ spool stays loaded, reports `NONE` for that spool: the lane then drops its spool
 temperatures and weight, and material, brand and colour fall back to
 `print_task_config`.
 
+**Tag reading.** `tag_reading()` answers the channel's last entry that a real card stands
+behind (`has_card`, a nonzero `CARD_UID`): the vendor-cache fields, the temperatures and
+weight the tag states (a `0` is one it left out), and the multi-colour from `COLOR_NUMS`
+and `RGB_1..RGB_5` as `#RRGGBB,#RRGGBB`. A filled entry with no card was written over the
+API, not read off a spool, and is no reading. The multi-colour is laid onto
+`SlotInfo::multi_color_hexes` only while the lane declares no colour, so a colour the user
+picks survives the next read (`src/printer/ams_backend_snapmaker.cpp#record_tag_reading_locked`).
+
 ### Commands the Backend Emits
 
 | Command / call | Used for |

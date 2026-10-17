@@ -4995,3 +4995,211 @@ TEST_CASE_METHOD(LVGLTestFixture, "clearing a Snapmaker spool restates the tag's
         CHECK(harness->get_slot_info(0).spool_name == "Silk");
     }
 }
+
+// ============================================================================
+// Tag readings: what each tag-reading backend keeps of the tag under an edit
+// ============================================================================
+
+using helix::ams::TagField;
+
+TEST_CASE_METHOD(LVGLTestFixture, "a Snapmaker card's reading outlives a user's colour",
+                 "[lane][snapmaker][tag_reading]") {
+    SnapmakerHarness harness(nullptr, nullptr);
+    const nlohmann::json card{
+        {"state", nlohmann::json::array({1})},
+        {"info", nlohmann::json::array({nlohmann::json{
+                     {"MAIN_TYPE", "PLA"},
+                     {"MANUFACTURER", "Snapmaker"},
+                     {"SUB_TYPE", "Matte"},
+                     {"ARGB_COLOR", 0xFFED2C2C},
+                     {"HOTEND_MIN_TEMP", 190},
+                     {"HOTEND_MAX_TEMP", 220},
+                     {"BED_TEMP", 60},
+                     {"WEIGHT", 1000},
+                     {"COLOR_NUMS", 2},
+                     {"RGB_1", 0xED2C2C},
+                     {"RGB_2", 0x00FF00},
+                     {"CARD_UID", nlohmann::json::array({144, 32, 196, 2})},
+                 }})},
+    };
+    feed_filament_detect(*harness, card);
+
+    const auto tag = harness->tag_reading(0);
+    REQUIRE(tag.has_value());
+    CHECK(tag->material == "PLA");
+    CHECK(tag->brand == "Snapmaker");
+    CHECK(tag->product_name == "Matte");
+    CHECK(tag->color_rgb == std::optional<uint32_t>(0xED2C2Cu));
+    CHECK(tag->multi_color_hexes == "#ED2C2C,#00FF00");
+    CHECK(tag->nozzle_temp_min == std::optional<int>(190));
+    CHECK(tag->nozzle_temp_max == std::optional<int>(220));
+    CHECK(tag->bed_temp == std::optional<int>(60));
+    CHECK(tag->total_weight_g == std::optional<float>(1000.0F));
+    CHECK(harness->get_slot_info(0).multi_color_hexes == "#ED2C2C,#00FF00");
+    CHECK(harness->tag_provenance(0).from_tag(TagField::Color));
+    CHECK(harness->tag_provenance(0).from_tag(TagField::Material));
+
+    // Picking one colour replaces the multi-colour, and the tag's next read
+    // leaves the pick standing.
+    auto edit = harness->get_slot_info(0);
+    edit.color_rgb = 0x123456u;
+    edit.multi_color_hexes.clear();
+    helix::test::edit_slot_as_user(*harness, 0, edit);
+    feed_filament_detect(*harness, card);
+
+    const auto shown = harness->get_slot_info(0);
+    CHECK(shown.color_rgb == 0x123456u);
+    CHECK(shown.multi_color_hexes.empty());
+    REQUIRE(harness->tag_reading(0).has_value());
+    CHECK(harness->tag_reading(0)->color_rgb == std::optional<uint32_t>(0xED2C2Cu));
+    const auto p = harness->tag_provenance(0);
+    CHECK_FALSE(p.from_tag(TagField::Color));
+    CHECK(p.from_tag(TagField::Material));
+
+    const auto reset = helix::ams::reset_to_tag(shown, *harness->tag_reading(0));
+    CHECK(reset.color_rgb == 0xED2C2Cu);
+    CHECK(reset.multi_color_hexes == "#ED2C2C,#00FF00");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a Snapmaker entry with no card behind it is no tag reading",
+                 "[lane][snapmaker][tag_reading]") {
+    SnapmakerHarness harness(nullptr, nullptr);
+    feed_filament_detect(*harness, nlohmann::json{
+                                       {"state", nlohmann::json::array({1})},
+                                       {"info", nlohmann::json::array({nlohmann::json{
+                                                    {"MAIN_TYPE", "PLA"},
+                                                    {"VENDOR", "Generic"},
+                                                    {"ARGB_COLOR", 0xFFED2C2C},
+                                                    {"CARD_UID", 0},
+                                                }})},
+                                   });
+    CHECK_FALSE(harness->tag_reading(0).has_value());
+    CHECK_FALSE(harness->tag_provenance(0).any());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a CFS bay's tag reading outlives a user's edit",
+                 "[lane][cfs][tag_reading]") {
+    CfsHarness harness(nullptr, nullptr);
+    const nlohmann::json box = flat_box(nlohmann::json::array({nlohmann::json{{"index", 0},
+                                                                              {"material", "PETG"},
+                                                                              {"brand", "Creality"},
+                                                                              {"color", "#ED2C2C"},
+                                                                              {"present", true}}}));
+    feed_cfs_box(*harness, box);
+
+    REQUIRE(harness->tag_reading(0).has_value());
+    CHECK(harness->tag_reading(0)->material == "PETG");
+    CHECK(harness->tag_provenance(0).from_tag(TagField::Brand));
+
+    auto edit = harness->get_slot_info(0);
+    edit.material = "ABS";
+    edit.color_rgb = 0x00FF00u;
+    helix::test::edit_slot_as_user(*harness, 0, edit);
+    feed_cfs_box(*harness, box);
+
+    const auto shown = harness->get_slot_info(0);
+    REQUIRE(shown.material == "ABS");
+    REQUIRE(shown.color_rgb == 0x00FF00u);
+    const auto tag = harness->tag_reading(0);
+    REQUIRE(tag.has_value());
+    CHECK(tag->material == "PETG");
+    CHECK(tag->color_rgb == std::optional<uint32_t>(0xED2C2Cu));
+    const auto p = harness->tag_provenance(0);
+    CHECK_FALSE(p.from_tag(TagField::Material));
+    CHECK_FALSE(p.from_tag(TagField::Color));
+    CHECK(p.from_tag(TagField::Brand));
+
+    const auto reset = helix::ams::reset_to_tag(shown, *tag);
+    CHECK(reset.material == "PETG");
+    CHECK(reset.color_rgb == 0xED2C2Cu);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "ACE keeps only an identified read as the tag's",
+                 "[lane][ace][tag_reading]") {
+    AceHarness harness(nullptr, nullptr);
+    const auto frame = [](const nlohmann::json& rfid) {
+        return nlohmann::json{
+            {"slots", nlohmann::json::array({nlohmann::json{
+                          {"status", "ready"},
+                          {"color", nlohmann::json::array({237, 44, 44})},
+                          {"type", "PETG"},
+                          {"temp_min", 230},
+                          {"temp_max", 250},
+                          {"rfid", rfid},
+                      }})},
+        };
+    };
+
+    SECTION("an identified read is kept and outlives a user's edit") {
+        feed_ace(*harness, frame(2));
+        const auto tag = harness->tag_reading(0);
+        REQUIRE(tag.has_value());
+        CHECK(tag->material == "PETG");
+        CHECK(tag->color_rgb == std::optional<uint32_t>(0xED2C2Cu));
+        CHECK(tag->nozzle_temp_max == std::optional<int>(250));
+
+        auto edit = harness->get_slot_info(0);
+        edit.color_rgb = 0x00FF00u;
+        helix::test::edit_slot_as_user(*harness, 0, edit);
+        feed_ace(*harness, frame(2));
+        CHECK(harness->get_slot_info(0).color_rgb == 0x00FF00u);
+        CHECK(harness->tag_reading(0)->color_rgb == std::optional<uint32_t>(0xED2C2Cu));
+        CHECK_FALSE(harness->tag_provenance(0).from_tag(TagField::Color));
+        CHECK(harness->tag_provenance(0).from_tag(TagField::Material));
+
+        // A finished read that found no tag ends it.
+        feed_ace(*harness, frame(1));
+        CHECK_FALSE(harness->tag_reading(0).has_value());
+    }
+    SECTION("the hub's own memory is no tag") {
+        feed_ace(*harness, frame(false));
+        CHECK_FALSE(harness->tag_reading(0).has_value());
+        feed_ace(*harness, frame(0));
+        CHECK_FALSE(harness->tag_reading(0).has_value());
+    }
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "ACE's REST bridge leaves a user's edit standing",
+                 "[lane][ace][tag_reading]") {
+    AceHarness harness(nullptr, nullptr);
+    const nlohmann::json slots{
+        {"slots",
+         nlohmann::json::array({nlohmann::json{
+             {"status", "ready"}, {"color", "#ED2C2C"}, {"material", "PETG"}, {"rfid", 2}}})},
+    };
+    AceTestAccess::parse_slots(*harness, slots);
+    REQUIRE(harness->get_slot_info(0).color_rgb == 0xED2C2Cu);
+
+    auto edit = harness->get_slot_info(0);
+    edit.color_rgb = 0x00FF00u;
+    edit.material = "ABS";
+    helix::test::edit_slot_as_user(*harness, 0, edit);
+    AceTestAccess::parse_slots(*harness, slots);
+
+    const auto shown = harness->get_slot_info(0);
+    CHECK(shown.color_rgb == 0x00FF00u);
+    CHECK(shown.material == "ABS");
+    REQUIRE(harness->tag_reading(0).has_value());
+    CHECK(harness->tag_reading(0)->material == "PETG");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "AFC's colour scan is the lane's tag reading",
+                 "[lane][afc][tag_reading]") {
+    AfcHarness harness(nullptr, nullptr);
+    init_afc_lanes(*harness);
+    feed_afc_lane(
+        *harness, "lane1",
+        nlohmann::json{{"color", "#FFFFFF"}, {"material", "PLA"}, {"td1_color", "FF8800"}});
+
+    const auto tag = harness->tag_reading(0);
+    REQUIRE(tag.has_value());
+    CHECK(tag->color_rgb == std::optional<uint32_t>(0xFF8800u));
+    CHECK_FALSE(tag->material.has_value());
+    CHECK_FALSE(harness->tag_provenance(0).from_tag(TagField::Color));
+
+    const auto reset = helix::ams::reset_to_tag(harness->get_slot_info(0), *tag);
+    CHECK(reset.color_rgb == 0xFF8800u);
+    CHECK(reset.material == "PLA");
+
+    CHECK_FALSE(harness->tag_reading(1).has_value());
+}

@@ -343,6 +343,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// The channel's last reading of a real card (CARD_UID nonzero): an entry
+    /// with no card behind it was written over the API, not read off a spool.
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
     void persist_external_identity_impl(int slot_index,
@@ -615,6 +619,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     void apply_active_tool_locked(const snapmaker::StatusDelta& delta, FrameEffects& fx);
     void apply_filament_detect_locked(const snapmaker::StatusDelta& delta, FrameEffects& fx);
     void apply_rfid_entry_locked(int slot_index, const SnapmakerRfidInfo& rfid, FrameEffects& fx);
+    /// Keep this entry as the channel's tag reading when a real card is behind
+    /// it (the vendor-cache @p cache plus the temperatures and multi-colour the
+    /// lane model has no field for), and lay the tag's multi-colour onto
+    /// @p slot unless the lane declares a colour.
+    void record_tag_reading_locked(int slot_index, const SnapmakerRfidInfo& rfid,
+                                   const helix::ams::Observation& cache, SlotInfo& slot);
     void apply_feed_channels_locked(const snapmaker::StatusDelta& delta, FrameEffects& fx);
     void apply_feed_channel_locked(const snapmaker::FeedChannelDelta& channel, FrameEffects& fx);
     /// The feed-port flag: its false -> true edge is an insert into the channel.
@@ -857,6 +867,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         float total_weight_g = 0;
     };
     std::array<std::optional<TagSlotValues>, NUM_TOOLS> tag_slot_values_{};
+
+    /// The last reading of a real card on each channel, as tag_reading()
+    /// reports it. Unset when the channel's entry names no card or no tag.
+    /// Written only from handle_status; read under mutex_.
+    std::array<std::optional<helix::ams::TagReading>, NUM_TOOLS> tag_readings_{};
 
     /// Whether filament_detect.info last showed a real card on each channel: a
     /// CARD_UID with a nonzero byte. Unset until the first entry for it.

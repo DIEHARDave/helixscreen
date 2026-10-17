@@ -284,6 +284,42 @@ AmsBackendQidi::~AmsBackendQidi() = default;
 
 // --- Lifecycle hooks ---
 
+void AmsBackendQidi::fold_tag_reading_locked(int slot_index, const helix::ams::Observation& stated,
+                                             const helix::ams::Observation& filed,
+                                             std::optional<int> nozzle_min,
+                                             std::optional<int> nozzle_max) {
+    // The temperatures are the filament profile's, so they stand or fall with
+    // the material the same id names.
+    const auto with_temps = [&](helix::ams::TagReading reading) {
+        if (reading.material) {
+            reading.nozzle_temp_min = nozzle_min;
+            reading.nozzle_temp_max = nozzle_max;
+        }
+        return reading;
+    };
+    std::optional<helix::ams::TagReading> kept;
+    if (auto it = tag_readings_.find(slot_index); it != tag_readings_.end()) {
+        kept = it->second;
+    }
+    std::optional<helix::ams::TagReading> folded =
+        helix::ams::fold_tag_frame(kept, with_temps(helix::ams::tag_reading_from(stated)),
+                                   with_temps(helix::ams::tag_reading_from(filed)));
+    if (folded) {
+        tag_readings_[slot_index] = std::move(*folded);
+    } else {
+        tag_readings_.erase(slot_index);
+    }
+}
+
+std::optional<helix::ams::TagReading> AmsBackendQidi::tag_reading(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = tag_readings_.find(slot_index);
+    if (it == tag_readings_.end()) {
+        return std::nullopt;
+    }
+    return it->second;
+}
+
 void AmsBackendQidi::on_started() {
     // Load persisted per-slot overrides before any parse can run, so the
     // fingerprint baseline and a staged clear agree about what the user had.
@@ -300,6 +336,7 @@ void AmsBackendQidi::on_started() {
             std::lock_guard<std::mutex> lock(mutex_);
             override_store_ = std::move(loaded.store);
             overrides_ = std::move(loaded.overrides);
+            tag_readings_.clear();
             // A persisted fingerprint from a build whose composite counted the
             // vendor id seeds a baseline the current composite never matches,
             // which would read as a swap at the first poll and clear every
@@ -903,11 +940,19 @@ void AmsBackendQidi::parse_save_variables(const nlohmann::json& variables) {
         // lands would linger forever, the > 0 gates below having nothing to
         // overwrite.
         helix::ams::Observation cache(helix::ams::ObservationSource::VendorCache);
+        std::optional<int> profile_nozzle_min;
+        std::optional<int> profile_nozzle_max;
         if (rfid.filament_id > 0) {
             auto p = fila_profiles_.find(rfid.filament_id);
             if (p != fila_profiles_.end()) {
                 slot->nozzle_temp_min = p->second.nozzle_min;
                 slot->nozzle_temp_max = p->second.nozzle_max;
+                if (p->second.nozzle_min > 0) {
+                    profile_nozzle_min = p->second.nozzle_min;
+                }
+                if (p->second.nozzle_max > 0) {
+                    profile_nozzle_max = p->second.nozzle_max;
+                }
                 if (!p->second.type.empty()) {
                     slot->material = p->second.type;
                     cache.material = p->second.type;
@@ -949,8 +994,10 @@ void AmsBackendQidi::parse_save_variables(const nlohmann::json& variables) {
         // no id keys restates the write the same way and is judged the same
         // way. A key carried with 0 never reaches here armed: it moves the
         // fingerprint first, and the clear that follows drops the guard.
+        const helix::ams::Observation stated = cache;
         own_write_echoes_.withhold(i, std::string{}, cache);
         helix::ams::ingest(lane_id(i), cache);
+        fold_tag_reading_locked(i, stated, cache, profile_nozzle_min, profile_nozzle_max);
 
         // An insert the ids did not vouch for: the table rows are the Box's
         // memory of the last spool, so a spool that goes in without moving

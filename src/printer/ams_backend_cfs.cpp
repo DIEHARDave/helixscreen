@@ -413,6 +413,7 @@ void AmsBackendCfs::on_started() {
         std::lock_guard<std::mutex> lock(mutex_);
         mirrors_sorted_ = false;
         endless_spool_enable_reported_ = false;
+        tag_readings_.clear();
     }
 
     // Restore the persisted stock-dialect bypass declaration. The
@@ -1840,8 +1841,10 @@ void AmsBackendCfs::file_box_readings(const AmsSystemInfo& new_info) {
                 // back, not a tag read. The boundary stays empty: the
                 // fingerprint's own swap detection and Clear Spool are
                 // what end the suppression.
+                const helix::ams::Observation stated = cache;
                 own_write_echoes_.withhold(slot.global_index, std::string{}, cache);
                 helix::ams::ingest(lane, cache);
+                fold_tag_reading_locked(slot, stated, cache);
 
                 // Whether the identity declared on this bay still names
                 // what is in it. The id is new_info's, which is the flat
@@ -1858,6 +1861,45 @@ void AmsBackendCfs::file_box_readings(const AmsSystemInfo& new_info) {
             }
         }
     }
+}
+
+void AmsBackendCfs::fold_tag_reading_locked(const SlotInfo& slot,
+                                            const helix::ams::Observation& stated,
+                                            const helix::ams::Observation& filed) {
+    // The temperatures are the catalog's for the material code, so they stand
+    // or fall with the material.
+    const auto with_temps = [&slot](helix::ams::TagReading reading) {
+        if (reading.material) {
+            if (slot.nozzle_temp_min > 0) {
+                reading.nozzle_temp_min = slot.nozzle_temp_min;
+            }
+            if (slot.nozzle_temp_max > 0) {
+                reading.nozzle_temp_max = slot.nozzle_temp_max;
+            }
+        }
+        return reading;
+    };
+    std::optional<helix::ams::TagReading> kept;
+    if (auto it = tag_readings_.find(slot.global_index); it != tag_readings_.end()) {
+        kept = it->second;
+    }
+    std::optional<helix::ams::TagReading> folded =
+        helix::ams::fold_tag_frame(kept, with_temps(helix::ams::tag_reading_from(stated)),
+                                   with_temps(helix::ams::tag_reading_from(filed)));
+    if (folded) {
+        tag_readings_[slot.global_index] = std::move(*folded);
+    } else {
+        tag_readings_.erase(slot.global_index);
+    }
+}
+
+std::optional<helix::ams::TagReading> AmsBackendCfs::tag_reading(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = tag_readings_.find(slot_index);
+    if (it == tag_readings_.end()) {
+        return std::nullopt;
+    }
+    return it->second;
 }
 
 void AmsBackendCfs::apply_box_frame_locked(BoxFrame& f) {

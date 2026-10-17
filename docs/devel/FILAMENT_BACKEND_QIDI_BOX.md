@@ -87,6 +87,15 @@ Spools identify via MIFARE Classic RFID tags. Data lives in sector 1 block 0. Th
 - [n0cloud/qidi-box-rfid-manager](https://github.com/n0cloud/qidi-box-rfid-manager) — mobile
 - [LexyGuru/Qidi_RFID_App](https://github.com/LexyGuru/Qidi_RFID_App)
 
+The Box saves what it read off a tag as `filament_slot<N>` / `color_slot<N>` /
+`vendor_slot<N>` ids, and `tag_reading()` is those ids resolved through the Box tables
+(material, colour, brand) plus the filament profile's nozzle range. HelixScreen's own edit
+writes the same variables, so the reading is folded frame by frame
+(`helix::ams::fold_tag_frame`): fields the own-write echo guard withholds keep the tag's
+value. After a restart the saved ids are the user's and become the reading, and an id set
+from the printer's own screen cannot be told from a tag read
+(`src/printer/ams_backend_qidi.cpp#fold_tag_reading_locked`).
+
 ### Slot Metadata, Swap Detection and the Metadata Clear
 
 Slot identity is the three save_variables row indices `filament_slot<N>` /

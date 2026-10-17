@@ -147,6 +147,11 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// A bay's last identified tag read (rfid true, or 2): material, colour and
+    /// the temperatures the frame carried. Dropped when the bay empties or a
+    /// finished read finds no tag.
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
     void persist_external_identity_impl(int slot_index,
@@ -277,6 +282,16 @@ class AmsBackendAce : public AmsSubscriptionBackend {
 
   private:
     friend class AceTestAccess;
+
+    /// Keep or drop bay @p slot_index's tag reading from one frame's slot entry:
+    /// its rfid state, the frame's @p material and @p color, its temp_min /
+    /// temp_max, and @p present. Caller holds mutex_.
+    void note_tag_frame_locked(int slot_index, const nlohmann::json& slot_json,
+                               const std::optional<std::string>& material,
+                               const std::optional<uint32_t>& color, std::optional<bool> present);
+
+    /// Per bay, the last identified tag read. Under mutex_.
+    std::vector<std::optional<helix::ams::TagReading>> tag_readings_;
 
     // ========================================================================
     // REST Fallback (for BunnyACE/DuckACE without get_status())

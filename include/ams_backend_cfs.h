@@ -236,6 +236,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// The box's record of the bay's tag, kept while our own write-back holds
+    /// the box record (helix::ams::fold_tag_frame).
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
     void persist_external_identity_impl(int slot_index,
@@ -670,6 +674,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// Files firmware's own account of every bay the frame described as lane
     /// readings; takes mutex_ itself.
     void file_box_readings(const AmsSystemInfo& new_info);
+    /// Fold one bay's box record into tag_readings_: @p stated is what the box
+    /// said, @p filed what the own-write echo guard let through. Caller holds
+    /// mutex_.
+    void fold_tag_reading_locked(const SlotInfo& slot, const helix::ams::Observation& stated,
+                                 const helix::ams::Observation& filed);
     void apply_box_frame_locked(BoxFrame& frame);
     /// Applies the endless-spool enable bit, then replaces the unit list, tool
     /// map and grouping with the parse.
@@ -995,6 +1004,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     // last read there. All access under mutex_.
     std::unordered_map<int, bool> bay_present_;
     std::unordered_map<int, helix::ams::SpoolEvidence> bay_evidence_;
+
+    /// Each bay's tag reading, folded frame by frame from the box record so a
+    /// field our own write replaced keeps the tag's value. All access under
+    /// mutex_.
+    std::unordered_map<int, helix::ams::TagReading> tag_readings_;
 
     // A stock-schema insert whose RFID probe has not answered yet. The stock
     // arrays latch the pulled spool's colour and material, so the edge frame
