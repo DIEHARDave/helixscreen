@@ -4,6 +4,8 @@
 
 #include "screensaver_maze_sim.h"
 
+#include "screensaver_buffer.h"
+#include "screensaver_fast_math.h"
 #include "screensaver_motion.h"
 #include "screensaver_pixel_writer.h"
 #include "thumbnail_downscale.h"
@@ -14,12 +16,12 @@
 #include <memory>
 
 using helix::ui::screensaver::random_below;
+using helix::ui::screensaver::random_int;
+using helix::ui::screensaver::smoothstep01;
 
 namespace helix::ui {
 
 namespace {
-
-constexpr float PI_F = 3.14159265f;
 
 // Texture and sprite slots.
 constexpr size_t TEX_BRICK = 0;
@@ -65,10 +67,6 @@ SpriteStyle style_of(MazeItemKind kind) {
         return {0.35f, 0.175f, false, false, 0.15f};
     }
     return {0.5f, 0.5f, false, false, 0.15f};
-}
-
-float smoothstep(float t) {
-    return t * t * (3.0f - 2.0f * t);
 }
 
 uint8_t clamp_u8(float v) {
@@ -161,7 +159,7 @@ void fit_image(Canvas64& dst, const MazeImage& img, int bx, int by, int bw, int 
 /// A Helix-like mark for when the icon cannot be decoded: two strands winding round an axis.
 void draw_fallback_mark(Canvas64& dst) {
     for (int v = 4; v < 60; v++) {
-        const float phase = (v - 4) / 56.0f * 3.0f * PI_F;
+        const float phase = (v - 4) / 56.0f * 3.0f * SAVER_PI;
         const float s = std::sin(phase);
         const float depth = std::cos(phase);
         const int ua = static_cast<int>(32.0f + 18.0f * s);
@@ -191,7 +189,7 @@ void draw_rock(Canvas64& dst, int frame) {
         {11, 10, 2}, {10, 7, 6}, {7, 1, 8},  {3, 9, 4},  {3, 4, 2},   {3, 2, 6}, {3, 6, 8},
         {3, 8, 9},   {4, 9, 5},  {2, 4, 11}, {6, 2, 10}, {8, 6, 7},   {9, 8, 1},
     };
-    const float theta = 2.0f * PI_F * static_cast<float>(frame) / MazeRenderer::ROCK_FRAMES;
+    const float theta = 2.0f * SAVER_PI * static_cast<float>(frame) / MazeRenderer::ROCK_FRAMES;
     const float tilt = 0.5f;
     float p[12][3];
     for (int i = 0; i < 12; i++) {
@@ -290,7 +288,7 @@ void draw_toolhead(Canvas64& dst) {
             const float dy = v + 0.5f - 22.0f;
             const float d = std::sqrt(dx * dx + dy * dy);
             if (d <= 12.0f) {
-                const bool blade = std::fmod(std::atan2(dy, dx) + PI_F, PI_F / 3.0f) < 0.5f;
+                const bool blade = std::fmod(std::atan2(dy, dx) + SAVER_PI, SAVER_PI / 3.0f) < 0.5f;
                 dst.set(u, v,
                         d <= 3.0f ? Rgb{30, 30, 34}
                         : blade   ? Rgb{40, 90, 160}
@@ -394,15 +392,6 @@ template <typename Px> constexpr Px sprite_key() {
 template <typename Px> Px pack_sprite(Rgb c, PixelFormat format) {
     const auto v = static_cast<Px>(PixelWriter::pack(c, format));
     return v == sprite_key<Px>() ? static_cast<Px>(v ^ 1u) : v;
-}
-
-/// Gives a vector's heap back; clear() keeps the capacity.
-template <typename T> void free_vector(std::vector<T>& v) {
-    std::vector<T>().swap(v);
-}
-
-template <typename T> size_t held_bytes(const std::vector<T>& v) {
-    return v.capacity() * sizeof(T);
 }
 
 /// Fog brightness of band `b`: MAZE_FOG_ONE down to the farthest fog in even steps.
@@ -517,8 +506,8 @@ void MazeMap::hang_pictures(std::minstd_rand& rng) {
     }
     for (int p = 0; p < PICTURE_WALLS; p++) {
         for (int attempt = 0; attempt < 2000 && !hung[p]; attempt++) {
-            const int x = 1 + random_below(rng, size_ - 2);
-            const int y = 1 + random_below(rng, size_ - 2);
+            const int x = random_int(rng, 1, size_ - 2);
+            const int y = random_int(rng, 1, size_ - 2);
             if (tile(x, y) != MazeTile::BRICK) {
                 continue;
             }
@@ -699,7 +688,7 @@ void MazeMap::open_up(int keep_a, int keep_b, std::minstd_rand& rng) {
     };
     Room rooms[ROOMS_MIN + 1] = {};
     int placed = 0;
-    const int wanted = ROOMS_MIN + random_below(rng, 2);
+    const int wanted = random_int(rng, ROOMS_MIN, ROOMS_MIN + 1);
     for (int r = 0; r < wanted; r++) {
         for (int attempt = 0; attempt < 50; attempt++) {
             const int shape = random_below(rng, 3);
@@ -732,11 +721,7 @@ void MazeMap::open_up(int keep_a, int keep_b, std::minstd_rand& rng) {
 }
 
 void MazeMap::release() {
-    std::vector<MazeTile>().swap(tiles_);
-    std::vector<int>().swap(stack_);
-    std::vector<int>().swap(scratch_);
-    std::vector<uint8_t>().swap(pictures_);
-    std::vector<uint8_t>().swap(boundary_);
+    release_buffers(tiles_, stack_, scratch_, pictures_, boundary_);
     size_ = 0;
 }
 
@@ -788,10 +773,15 @@ int next_heading(const MazeMap& map, int cx, int cy, int d_in, bool left_handed)
     return (d_in + 2) & 3;
 }
 
-/// Fraction of a segment covered at time fraction `u`: linear, or slowing to rest at the end
-/// from the same starting speed.
-float covered(float u, bool ease_out) {
-    return ease_out ? u * (2.0f - u) : u;
+/// Fraction of a move covered at time fraction `u` while slowing to rest at the end, from the
+/// speed a linear move has.
+float ease_out(float u) {
+    return u * (2.0f - u);
+}
+
+/// Fraction of a segment covered at time fraction `u`: linear, or eased out.
+float covered(float u, bool eases_out) {
+    return eases_out ? ease_out(u) : u;
 }
 
 float cell_centre(int c) {
@@ -799,7 +789,7 @@ float cell_centre(int c) {
 }
 
 float heading_angle(float quarters) {
-    return quarters * (PI_F * 0.5f);
+    return quarters * (SAVER_PI * 0.5f);
 }
 
 } // namespace
@@ -847,10 +837,7 @@ void MazeWalker::reserve(int cells) {
 }
 
 void MazeWalker::release() {
-    free_vector(seen_);
-    free_vector(prev_);
-    free_vector(queue_);
-    free_vector(path_);
+    release_buffers(seen_, prev_, queue_, path_);
     path_pos_ = 0;
 }
 
@@ -953,7 +940,7 @@ void MazeWalker::plan_segment(const MazeMap& map) {
     }
     kind_ = diff == 0 ? Segment::STRAIGHT : Segment::TURN;
     // Two tiles straight, or a quarter arc of radius one tile, at the same speed.
-    const float length = diff == 0 ? 2.0f : PI_F * 0.5f;
+    const float length = diff == 0 ? 2.0f : SAVER_PI * 0.5f;
     const float base = static_cast<float>(move_ms_) * length * 0.5f;
     duration_ms_ =
         std::max<uint32_t>(1, static_cast<uint32_t>(std::lround(base * (ease_out_ ? 2.0f : 1.0f))));
@@ -1029,7 +1016,7 @@ MazePose MazeWalker::pose() const {
         p.x = cx;
         p.y = cy;
         if (!planned_ || t < spin_ms) {
-            const float f = spin_ms > 0.0f ? smoothstep(t / spin_ms) : 0.0f;
+            const float f = spin_ms > 0.0f ? smoothstep01(t / spin_ms) : 0.0f;
             p.angle = heading_angle(static_cast<float>(d_in_) + f * spin_quarters_);
             return p;
         }
@@ -1053,7 +1040,7 @@ MazePose MazeWalker::pose() const {
         const float sign = d_out_ == ((d_in_ + 1) & 3) ? 1.0f : -1.0f;
         const float pillar_x = cx - in_x + out_x;
         const float pillar_y = cy - in_y + out_y;
-        const float phi = std::atan2(-out_y, -out_x) + sign * f * (PI_F * 0.5f);
+        const float phi = std::atan2(-out_y, -out_x) + sign * f * (SAVER_PI * 0.5f);
         p.x = pillar_x + std::cos(phi);
         p.y = pillar_y + std::sin(phi);
         p.angle = heading_angle(static_cast<float>(d_in_) + sign * f);
@@ -1064,7 +1051,7 @@ MazePose MazeWalker::pose() const {
         const float spin_ms = 2.0f * static_cast<float>(turn_ms_);
         if (t < in_ms) {
             const float u = t / in_ms;
-            const float d = u * (2.0f - u);
+            const float d = ease_out(u);
             p.x = cx - in_x + in_x * d;
             p.y = cy - in_y + in_y * d;
             p.angle = heading_angle(static_cast<float>(d_in_));
@@ -1072,7 +1059,7 @@ MazePose MazeWalker::pose() const {
             p.x = cx;
             p.y = cy;
             p.angle = heading_angle(static_cast<float>(d_in_) +
-                                    smoothstep((t - in_ms) / spin_ms) * spin_quarters_);
+                                    smoothstep01((t - in_ms) / spin_ms) * spin_quarters_);
         } else {
             const float u = (t - in_ms - spin_ms) / in_ms;
             p.x = cx + out_x * u * u;
@@ -1104,49 +1091,30 @@ void MazeRenderer::init(uint32_t w, uint32_t h, PixelFormat format, const MazeAr
             (static_cast<float>(i) + 0.5f) / static_cast<float>(MAZE_FOG_STEPS_PER_TILE)));
     }
     sprite_order_.reserve(32);
-    if (format == PixelFormat::RGB565) {
-        build<uint16_t>(art);
-    } else {
-        build<uint32_t>(art);
-    }
+    with_pixel_type(format, [&](auto px) { build<decltype(px)>(art); });
     set_level(level);
 }
 
 void MazeRenderer::release() {
     auto free_store = [](auto& st) {
-        free_vector(st.frame);
-        free_vector(st.textures);
-        free_vector(st.sprites);
-        free_vector(st.ceil_rows);
-        free_vector(st.floor_rows);
-        free_vector(st.row);
-        free_vector(st.fog_bands);
-        free_vector(st.fog_tint);
+        release_buffers(st.frame, st.textures, st.sprites, st.ceil_rows, st.floor_rows, st.row,
+                        st.fog_bands, st.fog_tint);
     };
     free_store(s16_);
     free_store(s32_);
-    free_vector(zbuf_);
-    free_vector(wall_top_);
-    free_vector(wall_bottom_);
-    free_vector(row_dist_q16_);
-    free_vector(src_rows_);
-    free_vector(sprite_order_);
-    free_vector(fog_k_);
-    free_vector(row_band_);
-    free_vector(wall_k_);
+    release_buffers(zbuf_, wall_top_, wall_bottom_, row_dist_q16_, src_rows_, sprite_order_, fog_k_,
+                    row_band_, wall_k_);
     w_ = h_ = iw_ = ih_ = 0;
 }
 
-size_t MazeRenderer::buffer_bytes() const {
+size_t MazeRenderer::heap_bytes() const {
     auto store_bytes = [](const auto& s) {
-        return held_bytes(s.frame) + held_bytes(s.textures) + held_bytes(s.sprites) +
-               held_bytes(s.ceil_rows) + held_bytes(s.floor_rows) + held_bytes(s.row) +
-               held_bytes(s.fog_bands) + held_bytes(s.fog_tint);
+        return buffer_bytes(s.frame, s.textures, s.sprites, s.ceil_rows, s.floor_rows, s.row,
+                            s.fog_bands, s.fog_tint);
     };
-    return store_bytes(s16_) + store_bytes(s32_) + held_bytes(zbuf_) + held_bytes(wall_top_) +
-           held_bytes(wall_bottom_) + held_bytes(row_dist_q16_) + held_bytes(src_rows_) +
-           held_bytes(sprite_order_) + held_bytes(fog_k_) + held_bytes(row_band_) +
-           held_bytes(wall_k_);
+    return store_bytes(s16_) + store_bytes(s32_) +
+           buffer_bytes(zbuf_, wall_top_, wall_bottom_, row_dist_q16_, src_rows_, sprite_order_,
+                        fog_k_, row_band_, wall_k_);
 }
 
 uint32_t MazeRenderer::internal_pixel(uint32_t x, uint32_t y) const {
@@ -1159,9 +1127,9 @@ void MazeRenderer::set_level(size_t level) {
     if (w_ == 0 || h_ == 0) {
         return;
     }
-    const uint32_t s = MAZE_LEVELS[level_].scale;
-    iw_ = (w_ + s - 1) / s;
-    ih_ = (h_ + s - 1) / s;
+    const int32_t s = MAZE_LEVELS[level_].scale;
+    iw_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(w_), s));
+    ih_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(h_), s));
     focal_ = maze_focal(iw_, ih_);
     plane_len_ = 0.5f * static_cast<float>(iw_) / focal_;
     for (uint32_t y = 0; y < ih_; y++) {
@@ -1169,11 +1137,7 @@ void MazeRenderer::set_level(size_t level) {
         row_dist_q16_[y] = static_cast<int32_t>(dist * 65536.0f);
         row_band_[y] = nearest_band(fog_k_at(dist));
     }
-    if (format_ == PixelFormat::RGB565) {
-        apply_level<uint16_t>();
-    } else {
-        apply_level<uint32_t>();
-    }
+    with_pixel_type(format_, [this](auto px) { apply_level<decltype(px)>(); });
 }
 
 float MazeRenderer::row_distance(uint32_t y) const {
@@ -1226,7 +1190,7 @@ template <typename Px> void MazeRenderer::apply_level() {
         }
         return;
     }
-    free_vector(st.fog_bands);
+    release_buffer(st.fog_bands);
     for (uint32_t y = 0; y < ih_; y++) {
         const uint32_t k = fog_k_at(row_distance(y));
         st.ceil_rows[y] =
@@ -1511,7 +1475,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
     const float fh = static_cast<float>(ih_);
     const Px key = sprite_key<Px>();
     // Phase within one turn, from an integer that wraps instead of a float that loses precision.
-    const float spin_phase = 2.0f * PI_F * static_cast<float>(elapsed_ms % SPIN_PERIOD_MS) /
+    const float spin_phase = 2.0f * SAVER_PI * static_cast<float>(elapsed_ms % SPIN_PERIOD_MS) /
                              static_cast<float>(SPIN_PERIOD_MS);
 
     for (const SpriteDraw& s : sprite_order_) {
@@ -1606,7 +1570,7 @@ template <typename Px> void MazeRenderer::blit(float flip, FrameTarget& out) {
         }
     } else {
         // Rows squash toward the horizon, through zero, and open out mirrored.
-        const float s = std::cos(flip * PI_F);
+        const float s = std::cos(flip * SAVER_PI);
         const float c = static_cast<float>(ih) * 0.5f;
         for (int y = 0; y < ih; y++) {
             int src = -1;
@@ -1636,11 +1600,9 @@ void MazeRenderer::render(const MazeMap& map, const std::vector<MazeItem>& items
     if (iw_ == 0 || ih_ == 0 || out.w != w_ || out.h != h_ || out.format != format_) {
         return;
     }
-    if (format_ == PixelFormat::RGB565) {
-        render_as<uint16_t>(map, items, pose, flip, elapsed_ms, out);
-    } else {
-        render_as<uint32_t>(map, items, pose, flip, elapsed_ms, out);
-    }
+    with_pixel_type(format_, [&](auto px) {
+        render_as<decltype(px)>(map, items, pose, flip, elapsed_ms, out);
+    });
 }
 
 void MazeSim::init(const FrameTarget& frame, const MazeArt& art, std::minstd_rand& rng,
@@ -1665,10 +1627,7 @@ void MazeSim::clear() {
     map_.release();
     walker_.release();
     toolhead_.release();
-    free_vector(items_);
-    free_vector(taken_);
-    free_vector(dist_);
-    free_vector(queue_);
+    release_buffers(items_, taken_, dist_, queue_);
     flip_left_ms_ = 0;
     exit_left_ms_ = 0;
 }
@@ -1849,7 +1808,7 @@ void MazeSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     advance(dt_ms, rng);
     renderer_.render(map_, items_, walker_.pose(), flip(), elapsed_ms_, frame);
     dirty.clear();
-    dirty.push_back({0, 0, static_cast<int32_t>(frame.w) - 1, static_cast<int32_t>(frame.h) - 1});
+    dirty.push_back(DirtyRect::whole(static_cast<int32_t>(frame.w), static_cast<int32_t>(frame.h)));
 }
 
 } // namespace helix::ui

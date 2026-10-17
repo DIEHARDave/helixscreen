@@ -493,22 +493,6 @@ TEST_CASE("the brightest point of a material faces the half vector", "[screensav
 
 namespace {
 
-PipeVec3 sub(PipeVec3 a, PipeVec3 b) {
-    return {a.x - b.x, a.y - b.y, a.z - b.z};
-}
-
-PipeVec3 cross(PipeVec3 a, PipeVec3 b) {
-    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
-}
-
-float dot3(PipeVec3 a, PipeVec3 b) {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-
-float len(PipeVec3 a) {
-    return std::sqrt(dot3(a, a));
-}
-
 /// Triangles whose winding agrees with their vertex normals, out of those with any area.
 std::pair<size_t, size_t> outward_winding(const PipeMesh& m) {
     size_t good = 0;
@@ -517,13 +501,13 @@ std::pair<size_t, size_t> outward_winding(const PipeMesh& m) {
         const PipeVertex& a = m.verts[m.tris[t]];
         const PipeVertex& b = m.verts[m.tris[t + 1]];
         const PipeVertex& c = m.verts[m.tris[t + 2]];
-        const PipeVec3 face = cross(sub(b.p, a.p), sub(c.p, a.p));
-        if (len(face) < 1e-6f) {
+        const PipeVec3 face = cross(b.p - a.p, c.p - a.p);
+        if (length(face) < 1e-6f) {
             continue;
         }
         const PipeVec3 n{a.n.x + b.n.x + c.n.x, a.n.y + b.n.y + c.n.y, a.n.z + b.n.z + c.n.z};
         total++;
-        good += dot3(face, n) > 0.0f ? 1 : 0;
+        good += dot(face, n) > 0.0f ? 1 : 0;
     }
     return {good, total};
 }
@@ -568,15 +552,15 @@ TEST_CASE("every mesh has unit outward normals and outward winding", "[screensav
     REQUIRE(!teapot.tris.empty());
 
     for (const PipeVertex& v : cyl.verts) {
-        CHECK(len(v.n) == Catch::Approx(1.0f).margin(1e-4));
-        CHECK(dot3(v.n, {v.p.x, v.p.y, 0.0f}) > 0.0f);
+        CHECK(length(v.n) == Catch::Approx(1.0f).margin(1e-4));
+        CHECK(dot(v.n, {v.p.x, v.p.y, 0.0f}) > 0.0f);
     }
     for (const PipeVertex& v : ball.verts) {
-        CHECK(len(v.n) == Catch::Approx(1.0f).margin(1e-4));
-        CHECK(dot3(v.n, v.p) > 0.0f);
+        CHECK(length(v.n) == Catch::Approx(1.0f).margin(1e-4));
+        CHECK(dot(v.n, v.p) > 0.0f);
     }
     for (const PipeVertex& v : elbow.verts) {
-        CHECK(len(v.n) == Catch::Approx(1.0f).margin(1e-4));
+        CHECK(length(v.n) == Catch::Approx(1.0f).margin(1e-4));
     }
     for (const PipeMesh* m : {&cyl, &ball, &elbow}) {
         const auto [good, total] = outward_winding(*m);
@@ -584,7 +568,7 @@ TEST_CASE("every mesh has unit outward normals and outward winding", "[screensav
         CHECK(good == total);
     }
     for (const PipeVertex& v : teapot.verts) {
-        CHECK(len(v.n) == Catch::Approx(1.0f).margin(1e-3));
+        CHECK(length(v.n) == Catch::Approx(1.0f).margin(1e-3));
     }
     const auto [good, total] = outward_winding(teapot);
     REQUIRE(total > 1000);
@@ -641,7 +625,7 @@ TEST_CASE("the ball is the original's big ball", "[screensaver][pipes_sim]") {
     pipes_build_ball(ball);
     CHECK(pipes_ball_radius() == Catch::Approx(1.441921f).margin(1e-5));
     for (const PipeVertex& v : ball.verts) {
-        CHECK(len(v.p) == Catch::Approx(1.441921f).margin(1e-5));
+        CHECK(length(v.p) == Catch::Approx(1.441921f).margin(1e-5));
     }
 }
 
@@ -1091,9 +1075,9 @@ TEST_CASE("at scale 2 every 2x2 block is one colour", "[screensaver][pipes_sim]"
 TEST_CASE("a released renderer holds no buffers", "[screensaver][pipes_sim]") {
     PipesRenderer r;
     r.init(160, 96, 1);
-    CHECK(r.buffer_bytes() > 160u * 96u * 4u);
+    CHECK(r.heap_bytes() > 160u * 96u * 4u);
     r.release();
-    CHECK(r.buffer_bytes() == 0);
+    CHECK(r.heap_bytes() == 0);
 }
 
 // ============================================================================
@@ -1465,11 +1449,11 @@ TEST_CASE("a cleared pipes sim holds no buffers", "[screensaver][pipes_sim]") {
     PipesSim sim;
     std::minstd_rand rng(2);
     sim.init(f.target, rng, 0);
-    CHECK(sim.buffer_bytes() > 0);
-    CHECK(sim.screen().grid().buffer_bytes() > 0);
+    CHECK(sim.heap_bytes() > 0);
+    CHECK(sim.screen().grid().heap_bytes() > 0);
     sim.clear();
-    CHECK(sim.buffer_bytes() == 0);
-    CHECK(sim.screen().grid().buffer_bytes() == 0);
+    CHECK(sim.heap_bytes() == 0);
+    CHECK(sim.screen().grid().heap_bytes() == 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

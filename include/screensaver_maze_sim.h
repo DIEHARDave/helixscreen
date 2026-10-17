@@ -373,7 +373,7 @@ class MazeRenderer {
     /// Frees every buffer init() allocated; render() draws nothing until the next init().
     void release();
     /// Heap bytes the renderer holds.
-    size_t buffer_bytes() const;
+    size_t heap_bytes() const;
     uint32_t internal_w() const {
         return iw_;
     }

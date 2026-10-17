@@ -993,12 +993,12 @@ TEST_CASE("a flat level gives the fog bands back", "[screensaver][maze]") {
         2u * helix::ui::MAZE_FOG_BANDS * MazeRenderer::TEX * MazeRenderer::TEX * 2u;
     MazeRenderer r;
     r.init(800, 480, PixelFormat::RGB565, MazeArt{}, 1);
-    const size_t textured = r.buffer_bytes();
+    const size_t textured = r.heap_bytes();
     r.set_level(2);
-    CHECK(textured - r.buffer_bytes() >= bands);
+    CHECK(textured - r.heap_bytes() >= bands);
     MazeRenderer flat;
     flat.init(800, 480, PixelFormat::RGB565, MazeArt{}, 2);
-    CHECK(flat.buffer_bytes() == r.buffer_bytes());
+    CHECK(flat.heap_bytes() == r.heap_bytes());
 }
 
 TEST_CASE("a symmetric scene renders symmetric wall slices", "[screensaver][maze]") {
@@ -1262,7 +1262,7 @@ TEST_CASE("an RGB565 maze holds its frame and art at two bytes a pixel", "[scree
     wide.init(800, 480, PixelFormat::XRGB8888, MazeArt{});
     narrow.init(800, 480, PixelFormat::RGB565, MazeArt{});
     // Everything per pixel halves; only the per-row and per-column tables stay the same size.
-    CHECK(narrow.buffer_bytes() * 10 < wide.buffer_bytes() * 6);
+    CHECK(narrow.heap_bytes() * 10 < wide.heap_bytes() * 6);
 }
 
 TEST_CASE("RGB565 and XRGB8888 renders of one scene agree within two 565 steps",
@@ -1380,7 +1380,7 @@ TEST_CASE("the maze ladder runs 16, 33, 33, 50, 66 ms and shrinks the internal f
     MazeRenderer low;
     low.init(800, 480, PixelFormat::RGB565, MazeArt{}, 3);
     CHECK(low.internal_w() == 200);
-    CHECK(r.buffer_bytes() - low.buffer_bytes() >= (800u * 480u - 200u * 120u) * 2u);
+    CHECK(r.heap_bytes() - low.heap_bytes() >= (800u * 480u - 200u * 120u) * 2u);
 }
 
 TEST_CASE("the flat-floor level draws the floor as one colour per row", "[screensaver][maze]") {
@@ -1437,9 +1437,9 @@ TEST_CASE("a cleared maze holds no render buffers", "[screensaver][maze]") {
     MazeSim sim;
     Frame frame(160, 96, PixelFormat::XRGB8888);
     sim.init(frame.target, MazeArt{}, rng, 0);
-    REQUIRE(sim.renderer().buffer_bytes() > 160u * 96u * 4u);
+    REQUIRE(sim.renderer().heap_bytes() > 160u * 96u * 4u);
     sim.clear();
-    CHECK(sim.renderer().buffer_bytes() == 0);
+    CHECK(sim.renderer().heap_bytes() == 0);
     CHECK(sim.items().capacity() == 0);
     CHECK(sim.map().size() == 0);
 }
