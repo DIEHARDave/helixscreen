@@ -417,6 +417,245 @@ TEST_CASE("the wind takes a new heading every 4 to 8 tail lengths",
     CHECK(total / samples > 1.5);
 }
 
+namespace {
+
+using helix::ui::FirefliesMode;
+
+std::vector<size_t> swarm_sizes(const FirefliesSim& sim) {
+    std::vector<size_t> sizes(sim.baits().size(), 0);
+    for (const FirefliesSim::Fly& f : sim.flies()) {
+        sizes[f.bait]++;
+    }
+    return sizes;
+}
+
+std::vector<uint8_t> fly_baits(const FirefliesSim& sim) {
+    std::vector<uint8_t> out;
+    for (const FirefliesSim::Fly& f : sim.flies()) {
+        out.push_back(f.bait);
+    }
+    return out;
+}
+
+bool every_fly_chases_a_live_bait(const FirefliesSim& sim) {
+    return std::all_of(sim.flies().begin(), sim.flies().end(), [&](const FirefliesSim::Fly& f) {
+        return f.bait < sim.baits().size() && sim.baits()[f.bait].alive;
+    });
+}
+
+} // namespace
+
+TEST_CASE("ten minutes of fireflies runs every mode and never orphans a fly",
+          "[screensaver][fireflies_sim]") {
+    Swarm s(31, 0, PixelFormat::XRGB8888, 160, 96);
+    for (uint32_t t = 0; t < 600000; t += 100) {
+        s.step(100);
+        REQUIRE(s.sim.baits_alive() >= 2);
+        REQUIRE(s.sim.baits_alive() <= 5);
+        REQUIRE(every_fly_chases_a_live_bait(s.sim));
+    }
+    for (const FirefliesMode m :
+         {FirefliesMode::STOP, FirefliesMode::LOOP, FirefliesMode::GLOW, FirefliesMode::HYPERSPEED,
+          FirefliesMode::SPLIT, FirefliesMode::MERGE, FirefliesMode::WIND_GUST}) {
+        CAPTURE(static_cast<int>(m));
+        CHECK(s.sim.modes_begun(m) >= 1);
+    }
+    CHECK(s.sim.modes_begun(FirefliesMode::NORMAL) == 0);
+}
+
+TEST_CASE("a split at five baits and a merge at two are refused", "[screensaver][fireflies_sim]") {
+    Swarm s(32);
+    for (int k = 0; k < 5 && s.sim.baits_alive() < FIREFLIES_MAX_BAITS; k++) {
+        REQUIRE(s.sim.begin_mode(FirefliesMode::SPLIT, 0, s.rng));
+    }
+    REQUIRE(s.sim.baits_alive() == FIREFLIES_MAX_BAITS);
+    const std::vector<uint8_t> at_five = fly_baits(s.sim);
+    const uint32_t splits = s.sim.modes_begun(FirefliesMode::SPLIT);
+    CHECK_FALSE(s.sim.begin_mode(FirefliesMode::SPLIT, 0, s.rng));
+    CHECK(s.sim.baits_alive() == FIREFLIES_MAX_BAITS);
+    CHECK(fly_baits(s.sim) == at_five);
+    CHECK(s.sim.modes_begun(FirefliesMode::SPLIT) == splits);
+
+    for (int k = 0; k < 5 && s.sim.baits_alive() > helix::ui::FIREFLIES_MIN_BAITS; k++) {
+        REQUIRE(s.sim.begin_mode(FirefliesMode::MERGE, 0, s.rng));
+        REQUIRE(every_fly_chases_a_live_bait(s.sim));
+    }
+    REQUIRE(s.sim.baits_alive() == helix::ui::FIREFLIES_MIN_BAITS);
+    const std::vector<uint8_t> at_two = fly_baits(s.sim);
+    CHECK_FALSE(s.sim.begin_mode(FirefliesMode::MERGE, 0, s.rng));
+    CHECK(s.sim.baits_alive() == helix::ui::FIREFLIES_MIN_BAITS);
+    CHECK(fly_baits(s.sim) == at_two);
+}
+
+TEST_CASE("a split hands every other fly to a new bait", "[screensaver][fireflies_sim]") {
+    Swarm s(33);
+    s.run_for(1000);
+    if (s.sim.baits_alive() == FIREFLIES_MAX_BAITS) {
+        REQUIRE(s.sim.begin_mode(FirefliesMode::MERGE, 0, s.rng));
+    }
+    REQUIRE(s.sim.baits_alive() < FIREFLIES_MAX_BAITS);
+    const std::vector<size_t> before = swarm_sizes(s.sim);
+    size_t parent = 0;
+    for (size_t i = 0; i < before.size(); i++) {
+        if (s.sim.baits()[i].alive && before[i] > before[parent]) {
+            parent = i;
+        }
+    }
+    const FirefliesSim::Bait parent_bait = s.sim.baits()[parent];
+    std::vector<bool> was_alive;
+    for (const FirefliesSim::Bait& b : s.sim.baits()) {
+        was_alive.push_back(b.alive);
+    }
+
+    REQUIRE(s.sim.begin_mode(FirefliesMode::SPLIT, 0, s.rng));
+    CHECK(s.sim.mode() == FirefliesMode::NORMAL);
+    size_t born = FIREFLIES_MAX_BAITS;
+    for (size_t i = 0; i < was_alive.size(); i++) {
+        if (!was_alive[i] && s.sim.baits()[i].alive) {
+            born = i;
+        }
+    }
+    REQUIRE(born < FIREFLIES_MAX_BAITS);
+    const std::vector<size_t> after = swarm_sizes(s.sim);
+    const size_t c = before[parent];
+    CHECK(after[parent] == (c + 1) / 2);
+    CHECK(after[born] == c / 2);
+    const FirefliesSim::Bait& child = s.sim.baits()[born];
+    CHECK(std::fabs(wrap180(child.hue_deg - parent_bait.hue_deg - 120.0f)) < 0.01f);
+    CHECK(same_vec(child.pos, parent_bait.pos));
+    CHECK(child.vel.x == -parent_bait.vel.x);
+    CHECK(every_fly_chases_a_live_bait(s.sim));
+
+    // The split swarms go on drawing their hues apart by the same 120 degrees.
+    s.run_for(1000, 10);
+    CHECK(std::fabs(wrap180(s.sim.baits()[born].hue_deg - s.sim.baits()[parent].hue_deg - 120.0f)) <
+          0.01f);
+}
+
+TEST_CASE("a merge moves the smallest swarm to the nearest other bait",
+          "[screensaver][fireflies_sim]") {
+    Swarm s(34);
+    s.run_for(1000);
+    for (int k = 0; k < 5 && s.sim.baits_alive() < 4; k++) {
+        REQUIRE(s.sim.begin_mode(FirefliesMode::SPLIT, 0, s.rng));
+    }
+    REQUIRE(s.sim.baits_alive() >= 4);
+    s.run_for(1000);
+    const std::vector<size_t> before = swarm_sizes(s.sim);
+    size_t smallest = FIREFLIES_MAX_BAITS;
+    for (size_t i = 0; i < before.size(); i++) {
+        if (s.sim.baits()[i].alive &&
+            (smallest == FIREFLIES_MAX_BAITS || before[i] < before[smallest])) {
+            smallest = i;
+        }
+    }
+    size_t nearest = FIREFLIES_MAX_BAITS;
+    for (size_t i = 0; i < before.size(); i++) {
+        if (i == smallest || !s.sim.baits()[i].alive) {
+            continue;
+        }
+        if (nearest == FIREFLIES_MAX_BAITS ||
+            distance(s.sim.baits()[i].pos, s.sim.baits()[smallest].pos) <
+                distance(s.sim.baits()[nearest].pos, s.sim.baits()[smallest].pos)) {
+            nearest = i;
+        }
+    }
+    REQUIRE(nearest < FIREFLIES_MAX_BAITS);
+    const size_t alive = s.sim.baits_alive();
+
+    REQUIRE(s.sim.begin_mode(FirefliesMode::MERGE, 0, s.rng));
+    const std::vector<size_t> after = swarm_sizes(s.sim);
+    CHECK(s.sim.baits_alive() == alive - 1);
+    CHECK_FALSE(s.sim.baits()[smallest].alive);
+    CHECK(after[smallest] == 0);
+    CHECK(after[nearest] == before[nearest] + before[smallest]);
+    CHECK(every_fly_chases_a_live_bait(s.sim));
+}
+
+TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a gust quadruples "
+          "the wind",
+          "[screensaver][fireflies_sim]") {
+    using helix::ui::FIREFLIES_FLY_SPEED;
+    const auto alive_baits = [](const FirefliesSim& sim) {
+        std::vector<size_t> out;
+        for (size_t i = 0; i < sim.baits().size(); i++) {
+            if (sim.baits()[i].alive) {
+                out.push_back(i);
+            }
+        }
+        return out;
+    };
+
+    SECTION("stop") {
+        Swarm s(35);
+        s.run_for(1000);
+        REQUIRE(s.sim.begin_mode(FirefliesMode::STOP, 5000, s.rng));
+        s.run_for(1000);
+        REQUIRE(s.sim.mode() == FirefliesMode::STOP);
+        for (const size_t i : alive_baits(s.sim)) {
+            CHECK(length(s.sim.baits()[i].vel) < 0.5f);
+        }
+    }
+
+    SECTION("loop") {
+        Swarm s(36);
+        s.run_for(1000);
+        REQUIRE(s.sim.begin_mode(FirefliesMode::LOOP, 6000, s.rng));
+        s.run_for(1000, 10);
+        const std::vector<size_t> baits = alive_baits(s.sim);
+        std::vector<float> travelled(FIREFLIES_MAX_BAITS, 0.0f);
+        for (int i = 0; i < 300; i++) {
+            std::vector<FireflyVec> was;
+            for (const FirefliesSim::Bait& b : s.sim.baits()) {
+                was.push_back(b.pos);
+            }
+            s.step(10);
+            REQUIRE(s.sim.mode() == FirefliesMode::LOOP);
+            for (const size_t b : baits) {
+                const FirefliesSim::Bait& bait = s.sim.baits()[b];
+                REQUIRE(distance(bait.pos, bait.loop_centre) <= 20.0f);
+                travelled[b] += distance(bait.pos, was[b]);
+            }
+        }
+        for (const size_t b : baits) {
+            CHECK(travelled[b] >= 60.0f);
+        }
+    }
+
+    SECTION("hyperspeed") {
+        Swarm s(37);
+        s.run_for(1000);
+        REQUIRE(s.sim.begin_mode(FirefliesMode::HYPERSPEED, 3000, s.rng));
+        float fastest = 0.0f;
+        for (int i = 0; i < 100; i++) {
+            s.step(10);
+            for (const FirefliesSim::Fly& f : s.sim.flies()) {
+                fastest = std::max(fastest, length(f.vel));
+            }
+        }
+        CHECK(fastest > 1.5f * FIREFLIES_FLY_SPEED);
+        s.run_for(2000, 10);
+        REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
+        s.run_for(2000, 10);
+        for (const FirefliesSim::Fly& f : s.sim.flies()) {
+            CHECK(length(f.vel) <= FIREFLIES_FLY_SPEED + 1e-3f);
+        }
+    }
+
+    SECTION("wind gust") {
+        Swarm s(38);
+        s.run_for(1000);
+        const float calm = length(s.sim.wind());
+        REQUIRE(calm > 0.0f);
+        REQUIRE(s.sim.begin_mode(FirefliesMode::WIND_GUST, 4000, s.rng));
+        s.run_for(1000, 10);
+        CHECK(length(s.sim.wind()) >= 3.0f * calm);
+        s.run_for(3500, 10);
+        REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
+        CHECK(length(s.sim.wind()) <= 6.0f + 1e-3f);
+    }
+}
+
 // ============================================================================
 // FirefliesScreensaver
 // ============================================================================

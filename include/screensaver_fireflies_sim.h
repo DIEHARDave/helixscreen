@@ -5,6 +5,7 @@
 #include "screensaver_frame.h"
 #include "screensaver_motion.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
@@ -210,6 +211,9 @@ class FirefliesSim {
     void advance_one(std::minstd_rand& rng);
     FireflyVec random_waypoint(std::minstd_rand& rng) const;
     float speed_mult() const;
+    bool split(std::minstd_rand& rng);
+    bool merge();
+    std::array<size_t, FIREFLIES_MAX_BAITS> swarm_sizes() const;
     void new_wind_heading(std::minstd_rand& rng);
     void update_wind();
     void schedule_next_mode(std::minstd_rand& rng);
@@ -241,6 +245,8 @@ class FirefliesSim {
     std::vector<Bait> baits_; ///< FIREFLIES_MAX_BAITS slots
     /// Per bait slot, the hue at elapsed 0 that its hue_deg turns from.
     float hue_origin_[FIREFLIES_MAX_BAITS]{};
+    /// Per bait slot, where on LOOP's circle the bait started.
+    float loop_phase_[FIREFLIES_MAX_BAITS]{};
     std::vector<Fly> flies_;
     /// FIREFLIES_TAIL_POINTS per fly, newest first from tail_head_, in fixed point (1/64 unit).
     std::vector<int16_t> tail_;
