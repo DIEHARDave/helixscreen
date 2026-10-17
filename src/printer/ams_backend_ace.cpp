@@ -771,19 +771,13 @@ AmsError AmsBackendAce::update_drying(float temp_c, int duration_min, int fan_pc
     if (!err.success()) {
         return err;
     }
-    float target_temp = temp_c;
-    int target_duration = duration_min;
+    DryerInfo dryer;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (temp_c < 0)
-            target_temp = dryer_info_.target_temp_c;
-        if (duration_min < 0) {
-            // A temperature change restarts the cycle, so it must restart on what is
-            // left. Reusing the session length would silently hand back time served.
-            target_duration = dryer_info_.remaining_min > 0 ? dryer_info_.remaining_min
-                                                            : dryer_info_.duration_min;
-        }
+        dryer = dryer_info_;
     }
+    const auto [target_temp, target_duration] =
+        helix::ace::restart_request(dryer, temp_c, duration_min);
     return start_drying(target_temp, target_duration, fan_pct, unit);
 }
 

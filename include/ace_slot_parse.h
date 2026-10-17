@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "hv/json.hpp"
 
@@ -61,5 +62,12 @@ void apply_dryer_state(const nlohmann::json& data, DryerInfo& dryer);
 /// @p temp_c and @p duration_min are both in range.
 [[nodiscard]] std::optional<AmsError> check_dryer_request(const DryerInfo& dryer, float temp_c,
                                                           int duration_min);
+
+/// The (temperature, duration) a stop-and-restart adjustment of a running
+/// cycle starts with: a negative @p temp_c keeps the cycle's target, a negative
+/// @p duration_min keeps what is left of it (the session length when the dryer
+/// reports no remaining time).
+[[nodiscard]] std::pair<float, int> restart_request(const DryerInfo& dryer, float temp_c,
+                                                    int duration_min);
 
 } // namespace helix::ace

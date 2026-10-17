@@ -21,6 +21,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "macro_patterns.h"
 #include "moonraker_api.h"
+#include "multiace_status.h"
 #include "pause_cause.h"
 #include "post_op_cooldown_manager.h"
 #include "printer_discovery.h"
@@ -172,6 +173,10 @@ nlohmann::json AmsBackendSnapmaker::required_status_objects(const helix::Printer
     const std::string batch_macro = hw.macro_config_name(helix::macro_patterns::AUTO_FEEDING_BATCH);
     if (!batch_macro.empty()) {
         objects[fmt::format("gcode_macro {}", batch_macro)] = nullptr;
+    }
+    // ACE units hung off the heads (AmsBackendMultiAce reads it).
+    if (multiace::present(hw)) {
+        objects["ace"] = nullptr;
     }
     return objects;
 }
