@@ -742,33 +742,13 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
     t_sim_ = 0.0f;
     drift_.reset();
     emit_steps_.reset();
-    build_env(env_);
-    build_wrinkle(wrinkle_);
-    build_tint(tint_);
-
     const int32_t iw0 = (w_ + 1) / 2;
     const float focal0 = FOCAL_AT_400 * static_cast<float>(iw0) / 400.0f;
     water_.init(rng, AQUA_GRID_X, AQUA_GRID_Z, (static_cast<float>(iw0) / 2.0f + 8.0f) / focal0);
-    splashes_.init(AQUA_MAX_DROPLETS);
-    landed_.clear();
-    landed_.reserve(AQUA_MAX_DROPLETS);
-    glints_.clear();
-    glints_.reserve(GLINT_CAP);
-    spray_.clear();
-    spray_.reserve(AQUA_MAX_DROPLETS + GLINT_CAP);
-    last_spray_.clear();
-    last_spray_.reserve(AQUA_MAX_DROPLETS + GLINT_CAP);
-    bubbles_.resize(BUBBLE_COUNT);
-    for (Bubble& b : bubbles_) {
-        b.x = random_between(rng, 0.0f, static_cast<float>(w_));
-        b.y = random_between(rng, 0.0f, static_cast<float>(h_));
-        b.speed = random_between(rng, 0.15f, 0.6f);
-        b.phase = random_between(rng, 0.0f, SAVER_TWO_PI);
-    }
-    edge_rows_.assign(static_cast<size_t>(w_), static_cast<float>(h_));
-    rim_.assign(static_cast<size_t>(w_), AQUA_RIM_FLOOR);
+    build_scene(rng);
 
-    // Size every buffer for the finest rung first, so a later rung change allocates nothing.
+    // Size every buffer for the finest rung any later step down reaches (the still rung renders
+    // at the finest scale), so a rung change allocates nothing.
     level_ = 0;
     apply_view();
     level_ = std::min(level, AQUA_LEVEL_COUNT - 1);
@@ -787,7 +767,45 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
     water_.evaluate(0.0f, rng);
     FrameTarget out = frame;
     paint_all(out, reading);
+    if (AQUA_LEVELS[level_].still) {
+        release_scene();
+    }
     shown_ = reading;
+}
+
+void AquaSim::build_scene(std::minstd_rand& rng) {
+    build_env(env_);
+    build_wrinkle(wrinkle_);
+    build_tint(tint_);
+    splashes_.init(AQUA_MAX_DROPLETS);
+    landed_.clear();
+    landed_.reserve(AQUA_MAX_DROPLETS);
+    glints_.clear();
+    glints_.reserve(GLINT_CAP);
+    spray_.clear();
+    spray_.reserve(AQUA_MAX_DROPLETS + GLINT_CAP);
+    last_spray_.clear();
+    last_spray_.reserve(AQUA_MAX_DROPLETS + GLINT_CAP);
+    bubbles_.resize(BUBBLE_COUNT);
+    for (Bubble& b : bubbles_) {
+        b.x = random_between(rng, 0.0f, static_cast<float>(w_));
+        b.y = random_between(rng, 0.0f, static_cast<float>(h_));
+        b.speed = random_between(rng, 0.15f, 0.6f);
+        b.phase = random_between(rng, 0.0f, SAVER_TWO_PI);
+    }
+    edge_rows_.assign(static_cast<size_t>(w_), static_cast<float>(h_));
+    rim_.assign(static_cast<size_t>(w_), AQUA_RIM_FLOOR);
+    scene_released_ = false;
+}
+
+void AquaSim::release_scene() {
+    water_.clear();
+    splashes_.clear();
+    renderer_.clear();
+    release_buffers(env_, wrinkle_, tint_, frame_, rim_, landed_, glints_, bubbles_, last_spray_,
+                    spray_, grid_gx_, grid_gz_, grid_thin_, grid_mean_, col_i_, col_f_, el_,
+                    prev_el_, front_shade_, scratch_, edge_rows_);
+    scene_released_ = true;
 }
 
 void AquaSim::apply_view() {
@@ -1130,15 +1148,24 @@ void AquaSim::request_level(size_t level) {
         return;
     }
     level_ = next;
-    apply_view();
     painted_ = false;
+    if (!scene_released_) {
+        // A released scene is built again, at this rung, by the next step.
+        apply_view();
+    }
 }
 
 float AquaSim::rim_brightness(int32_t x) const {
+    if (rim_.empty()) {
+        return AQUA_RIM_FLOOR;
+    }
     return rim_[static_cast<size_t>(std::clamp(x, 0, w_ - 1))];
 }
 
 float AquaSim::rim_row(int32_t x) const {
+    if (edge_rows_.empty()) {
+        return static_cast<float>(h_);
+    }
     return edge_rows_[static_cast<size_t>(std::clamp(x, 0, w_ - 1))];
 }
 
@@ -1146,6 +1173,12 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
                    const ClockReading& reading, std::vector<DirtyRect>& dirty) {
     dirty.clear();
     const AquaLevel& lv = AQUA_LEVELS[level_];
+    if (scene_released_ && (!lv.still || !painted_)) {
+        // A rung change after the still one: the water comes back before it is drawn.
+        build_scene(rng);
+        apply_view();
+        water_.evaluate(t_sim_, rng);
+    }
 
     const bool moved = drift_.step(dt_ms);
     if (moved) {
@@ -1158,6 +1191,7 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
         if (!painted_) {
             paint_all(frame, reading);
             dirty.push_back(whole);
+            release_scene();
         } else if (moved) {
             // The clock steps aside: put the water back under where it was, keep what is under
             // where it goes, and draw it there. The water itself is not rendered again.
@@ -1266,13 +1300,9 @@ size_t AquaSim::heap_bytes() const {
 }
 
 void AquaSim::clear() {
-    water_.clear();
-    splashes_.clear();
-    renderer_.clear();
+    release_scene();
     digits_.clear();
-    release_buffers(env_, wrinkle_, tint_, frame_, rim_, landed_, glints_, bubbles_, last_spray_,
-                    spray_, grid_gx_, grid_gz_, grid_thin_, grid_mean_, col_i_, col_f_, el_,
-                    prev_el_, front_shade_, scratch_, edge_rows_, clock_save_);
+    release_buffer(clock_save_);
     clock_saved_box_ = {};
     painted_ = false;
 }

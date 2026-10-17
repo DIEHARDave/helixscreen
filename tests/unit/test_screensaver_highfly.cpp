@@ -756,24 +756,38 @@ TEST_CASE("the ladder drops layers before coarsening the deck and ends standing 
     CHECK(d.uncovered == 0);
 }
 
-TEST_CASE("high fly frames allocate nothing and clear frees everything", "[screensaver][highfly]") {
+TEST_CASE(
+    "high fly frames and step-downs never grow the heap, and the still rung keeps only the clock",
+    "[screensaver][highfly]") {
+    const size_t start = GENERATE(range(size_t{0}, HIGHFLY_LEVEL_COUNT));
+    CAPTURE(start);
     TestFrame frame(800, 480, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
-    sim.init(frame.target, rng, 0, r);
+    sim.init(frame.target, rng, start, r);
     std::vector<DirtyRect> dirty;
     const size_t heap = sim.heap_bytes();
     CHECK(heap <= 4608u * 1024u);
-    for (int i = 0; i < 100; i++) {
-        sim.step(33, frame.target, rng, r, dirty);
-        if (i == 50) {
-            sim.request_level(3);
+    for (size_t level = start; level < HIGHFLY_LEVEL_COUNT; level++) {
+        sim.request_level(level);
+        for (int i = 0; i < 20; i++) {
+            sim.step(level + 1 == HIGHFLY_LEVEL_COUNT ? 250 : 33, frame.target, rng, r, dirty);
+            CHECK(sim.heap_bytes() <= heap);
         }
     }
-    sim.request_level(HIGHFLY_LEVEL_COUNT - 1);
-    sim.step(250, frame.target, rng, r, dirty);
-    CHECK(sim.heap_bytes() == heap);
+    // The still rung has painted its scene and holds just what redraws the clock.
+    const size_t still = sim.heap_bytes();
+    if (start + 1 < HIGHFLY_LEVEL_COUNT) {
+        CHECK(still * 2 < heap);
+    }
+
+    // A finer rung asked for afterwards builds the scene again and draws it whole.
+    sim.request_level(1);
+    sim.step(33, frame.target, rng, r, dirty);
+    CHECK(sim.heap_bytes() > still);
+    CHECK(dirty.size() == 1);
+    CHECK(dirty[0] == DirtyRect::whole(800, 480));
     sim.clear();
     CHECK(sim.heap_bytes() == 0);
 }
