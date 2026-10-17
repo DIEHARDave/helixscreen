@@ -13,10 +13,12 @@
 #include "screensaver_registry.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <random>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -868,6 +870,26 @@ TEST_CASE("the fireflies bottom rung fits a 1-core board's 10% budget",
     CAPTURE(bottom, top);
     CHECK(bottom < 10.0);
     CHECK(top > bottom);
+}
+
+TEST_CASE("fireflies frame cost per level", "[.][fireflies_bench]") {
+    std::ostringstream report;
+    for (size_t level = 0; level < FIREFLIES_LEVEL_COUNT; level++) {
+        Swarm s(3, level, PixelFormat::XRGB8888, 800, 480);
+        s.run_for(5000);
+        constexpr int FRAMES = 150;
+        const uint32_t period = FIREFLIES_LEVELS[level].period_ms;
+        const auto start = std::chrono::steady_clock::now();
+        for (int i = 0; i < FRAMES; i++) {
+            s.step(period);
+        }
+        const double ms =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start)
+                .count() /
+            FRAMES;
+        report << "L" << level << " " << ms << " ms/frame\n";
+    }
+    WARN(report.str());
 }
 
 // ============================================================================
