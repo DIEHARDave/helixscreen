@@ -21,14 +21,6 @@ namespace helix::ui {
 
 class SaverTestAccess;
 
-/// Levels on the starfield and pipes ladder.
-inline constexpr size_t TWO_LEVEL_COUNT = 2;
-
-/// Frame period of `level` on that ladder: 16 ms, then 33 ms.
-constexpr uint32_t two_level_period_ms(size_t level) {
-    return level == 0 ? SAVER_FAST_PERIOD : 33;
-}
-
 /**
  * @brief Sequences the parts every screensaver runs on
  *

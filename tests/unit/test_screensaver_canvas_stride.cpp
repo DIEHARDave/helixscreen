@@ -93,7 +93,7 @@ TEST_CASE("screensaver_canvas_stride_bytes matches lv_canvas_set_buffer's stride
 // XRGB8888 image byte for byte, so a canvas pixel whose X byte is not 0xFF draws
 // transparent there (docs/devel/GPU_ACCELERATION.md, "The alpha trap"). The test
 // display ignores that byte, so these tests read it from the raw canvas buffer.
-// The pipes canvas is ARGB8888: see test_screensaver_pipes_canvas.cpp.
+// The pipes canvas takes the same format: see test_screensaver_pipes_canvas.cpp.
 // ============================================================================
 
 namespace {

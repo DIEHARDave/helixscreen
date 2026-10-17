@@ -842,7 +842,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     REQUIRE(ss.is_active());
     const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
     REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::PIPES_CANVAS_FORMAT);
+    CHECK(buf->header.cf == helix::ui::LV_DRAW_CANVAS_FORMAT);
     CHECK(ss.level_count() == HIGHFLY_LEVEL_COUNT);
     lv_tick_inc(33);
     fire(SaverTestAccess::timer(ss));

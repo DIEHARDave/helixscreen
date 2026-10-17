@@ -1013,7 +1013,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     }
 }
 
-TEST_CASE_METHOD(LVGLTestFixture, "a pipes grid reset invalidates the whole canvas",
+TEST_CASE_METHOD(LVGLTestFixture, "the pipes dissolve invalidates every pixel it clears",
                  "[screensaver][screensaver_canvas]") {
     PipesScreensaver ss;
     ScreensaverStopOnExit<PipesScreensaver> stop_on_exit{ss};
@@ -1022,16 +1022,29 @@ TEST_CASE_METHOD(LVGLTestFixture, "a pipes grid reset invalidates the whole canv
     REQUIRE(ss.is_active());
     lv_obj_t* canvas = SaverTestAccess::canvas(ss);
     REQUIRE(canvas != nullptr);
+    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(canvas);
+    REQUIRE(buf != nullptr);
+    REQUIRE(lv_color_format_get_size(static_cast<lv_color_format_t>(buf->header.cf)) == 4);
     const lv_area_t canvas_coords = coords_of(canvas);
 
-    PipesAccess::set_total_segments(ss, PipesAccess::max_segments() + 1);
-    InvalidatedAreas invalidated(lv_obj_get_display(canvas));
-    lv_tick_inc(PIPES_STEP_MS);
-    run_timer(SaverTestAccess::timer(ss));
-    REQUIRE(PipesAccess::total_segments(ss) == 0);
+    for (int i = 0; i < 20000 && PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::GROWING;
+         i++) {
+        lv_tick_inc(3 * PIPES_STEP_MS);
+        run_timer(SaverTestAccess::timer(ss));
+    }
+    REQUIRE(PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::DISSOLVING);
 
-    CHECK(std::any_of(invalidated.areas.begin(), invalidated.areas.end(),
-                      [&](const lv_area_t& a) { return area_contains(a, canvas_coords); }));
+    size_t cleared = 0;
+    while (PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::DISSOLVING) {
+        const std::vector<uint8_t> before(buf->data, buf->data + buf->data_size);
+        InvalidatedAreas invalidated(lv_obj_get_display(canvas));
+        lv_tick_inc(PIPES_STEP_MS);
+        run_timer(SaverTestAccess::timer(ss));
+        const PixelChanges changes = diff_canvas(before, buf, canvas_coords, invalidated.areas);
+        cleared += changes.changed;
+        CHECK(changes.outside_areas == 0);
+    }
+    CHECK(cleared > 0);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture,
@@ -1625,10 +1638,12 @@ TEST_CASE_METHOD(LVGLTestFixture,
         ScreensaverStopOnExit<PipesScreensaver> stop_on_exit{ss};
         ss.start();
         REQUIRE(ss.is_active());
-        CHECK(ss.level_count() == 2);
+        CHECK(ss.level_count() == 3);
         CHECK(SaverTestAccess::timer(ss)->period == helix::ui::SAVER_FAST_PERIOD);
         ss.request_level(1);
         CHECK(SaverTestAccess::timer(ss)->period == 33);
+        ss.request_level(2);
+        CHECK(SaverTestAccess::timer(ss)->period == 100);
     }
 
     SECTION("bouncing printer") {

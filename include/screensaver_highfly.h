@@ -42,7 +42,7 @@ class HighFlyScreensaver : public SaverBase {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return PIPES_CANVAS_FORMAT;
+        return LV_DRAW_CANVAS_FORMAT;
     }
     bool on_start() override;
     void on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty) override;

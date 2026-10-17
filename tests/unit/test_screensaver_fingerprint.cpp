@@ -97,11 +97,6 @@ uint64_t pipes_run(uint32_t seed) {
     REQUIRE(ss.is_active());
     uint64_t run = fold(FNV_OFFSET, canvas_hash(pipes_canvas(ss)));
     for (int frame = 1; frame <= 120; frame++) {
-        if (frame == 61) {
-            // A full grid makes this frame reset the scene under a new camera.
-            PipesScreensaverTestAccess::set_total_segments(
-                ss, PipesScreensaverTestAccess::max_segments() + 1);
-        }
         lv_tick_inc(100);
         fire(pipes_timer(ss));
         if (frame % 20 == 0) {
