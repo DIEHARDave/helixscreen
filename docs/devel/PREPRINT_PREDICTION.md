@@ -283,25 +283,28 @@ authoritative and the proactive detector must stay quiet.
 
 ## Phase Timing Tracking
 
-Phase durations are computed from timestamps, not explicitly timed:
+A phase's duration is the time it was the phase on display, summed over every visit:
 
-1. When `update_phase()` is called with a new phase, the enter time is recorded in `phase_enter_times_` (a `map<int, steady_clock::time_point>`). IDLE, INITIALIZING and COMPLETE are not recorded, and a phase entered a second time keeps its first timestamp
-2. On COMPLETE, `save_prediction_entry()` sorts phases by enter time and computes each phase's duration as the interval to the next phase (or to "now" for the last phase)
+1. Every change of `current_phase_` goes through `enter_phase_locked()` (`src/print/print_start_collector.cpp#enter_phase_locked`), which credits the time since the last change to the phase being left (`phase_time_spent_`). The phase-signal path, the heater-wait relabel and its restore all change the phase this way
+2. `phase_seconds_locked()` reads a phase's total, the visit under way included. It is what `save_prediction_entry()` records on COMPLETE, what the current phase's elapsed time in the ETA and the progress bar reads, and what `get_current_phase_elapsed_seconds()` returns. IDLE, INITIALIZING and COMPLETE read zero: they are not timed
 
 ```
-Phase enter times:          Duration calculation:
-  HOMING      @ T+0s         HOMING: T+25 - T+0  = 25s
-  HEATING_BED @ T+25s        (heating: not recorded in the entry)
-  BED_MESH    @ T+115s       BED_MESH: T+145 - T+115 = 30s
-  PURGING     @ T+145s       PURGING: now - T+145 = ~20s
+Shown:                       Recorded:
+  HOMING      T+0  .. T+25    HOMING:   25 + 20 = 45s
+  HEATING_BED T+25 .. T+115   (heating: not recorded in the entry)
+  HOMING      T+115.. T+135   BED_MESH: 30s
+  BED_MESH    T+135.. T+165   PURGING:  ~20s
+  PURGING     T+165.. now
 ```
 
-The 90 seconds between T+25 and T+115 belong to no phase in that entry: the phases sum to
-75s while the entry's `total` is the ~165s of wall clock. Three exclusions shape what gets
-recorded:
+Firmware that walks back and forth between phases makes the sum matter: a Snapmaker U1
+start shows HOMING three times (G28 X Y and a Z touch after the tool pick and before the
+mesh), CLEANING twice and BED_MESH twice, with heater waits between them. The 90 seconds of
+heating belong to no phase in that entry, so the phases sum to less than the entry's
+`total` of wall clock. Three exclusions shape what gets recorded:
 
 - **Heating phases.** HEATING_BED and HEATING_NOZZLE are skipped. Heating time is modelled by `ThermalRateModel` from live temperatures, which adapts to the actual start temperature and target instead of averaging over prints that heated to different numbers.
-- **Zero-second phases.** Two phases entered inside the same second give a duration of 0, which would drag that phase's median down and suppress the default floor that `compute_predicted_weights()` applies.
+- **Zero-second phases.** A phase shown for under a second gives a duration of 0, which would drag that phase's median down and suppress the default floor that `compute_predicted_weights()` applies.
 - **Whole entries from fallback completions.** When the collector completes on a timeout rather than on an end-of-preparation signal, `save_prediction_entry()` returns without saving. Those phases may be interrupted or incomplete, and a short bogus entry would shorten the adaptive timeout on the next print, which shortens the entry after that.
 
 An entry with no timed phases at all is dropped ("No phase timings to save"), so a printer
@@ -418,7 +421,7 @@ Entries are stored in the main config file (`config/settings.json`) at the JSON 
 
 ### Save Flow
 
-1. `PrintStartCollector::save_prediction_entry()` computes durations from `phase_enter_times_`, returning early on a fallback-timeout completion or when no phase was timed
+1. `PrintStartCollector::save_prediction_entry()` reads each phase's summed time (`phase_seconds_locked()`), returning early on a fallback-timeout completion or when no phase was timed
 2. Adds the entry to the in-memory predictor via `add_entry()` (which enforces the FIFO trim to `MAX_ENTRIES`)
 3. Schedules `PreprintPredictor::append_to_config()` plus `Config::save()` onto the main thread via `queue_update()`. It appends to the entries already on disk and trims only the new entry's own (temp bucket, window) population to `MAX_ENTRIES`, then the whole list to `MAX_STORED_ENTRIES` (15), so a save never drops another bucket's or window's history. The same save flushes the thermal model's learned heating rates (`ThermalRateManager::save_to_config()`), which is where the heating half of an ETA lives
 

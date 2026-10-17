@@ -881,7 +881,7 @@ its siblings. HelixScreen closes that gap in one place:
   font or padding change (`helix::ui::label_hold_one_line`, `include/ui_text.h`).
 - **An explicit height opts out.** A px or % `height`, or `style_max_height`,
   leaves the label alone, which is how a deliberately multi-line dotted label is
-  written (`option_tile.xml`: `style_max_height="100%"` inside a fixed tile).
+  written (`panel_widget_tips.xml`: `style_max_height="100%"` inside a fixed cell).
 - **`max_lines="N"` wraps first, then dots.** On a `text_*` widget with
   `long_mode="dots"`, the label wraps to at most N lines of its own font and
   ellipsizes the last one; shorter text keeps its own height. The cap follows
@@ -1309,7 +1309,7 @@ One centred icon over one label, filling its cell (`ui_xml/components/home_actio
 
 #### option_tile
 
-One pre-print option as a checkable tile: an icon and a two-line label in an outline, with a corner check tab that appears only while checked (`ui_xml/components/option_tile.xml`). The whole tile is the tap target. Its view sets `state_trickle`, so the tile's checked state reaches the children and each child styles itself with a `-checked` state style (the border turns `#primary`, the icon tints, the tab's `style_opa` goes 255). You do not instantiate it from XML: `PrePrintOptionsRenderer` creates one tile per option and binds the option's subject to the tile's checked state (`src/ui/ui_pre_print_options_renderer.cpp`). The tile height and the tab's negative lift come from the `option_tile_height_*` / `option_tile_tab_lift_*` token ladders in `ui_xml/globals.xml`.
+One pre-print option as a toggle pill: an icon and a label of up to two lines (`max_lines="2"`, word-wrapped, then ellipsized), with no check box (`ui_xml/components/option_tile.xml`). The whole pill is the tap target. Off, it wears `styles.chip_idle` (an outline, label muted); on, `styles.chip_active` (the primary-tinted fill and outline the LED chips use), and a check replaces the icon in the same slot so the label never moves. Its view sets `state_trickle`, so the pill's checked state reaches the children and each child styles itself with a `-checked` state style. You do not instantiate it from XML: `PrePrintOptionsRenderer` creates one pill per option and binds the option's subject to the pill's checked state (`src/ui/ui_pre_print_options_renderer.cpp`). The pill height comes from the `option_tile_height_*` token ladder in `ui_xml/globals.xml`.
 
 | Prop | Default | Purpose |
 |------|---------|---------|

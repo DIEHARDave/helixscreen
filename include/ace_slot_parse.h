@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+#pragma once
+
+#include "ams_error.h"
+#include "ams_types.h"
+
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <utility>
+
+#include "hv/json.hpp"
+
+/**
+ * @file ace_slot_parse.h
+ * @brief How an Anycubic ACE Pro states a bay and its dryer, for every driver
+ *        that reports one.
+ *
+ * The ACE backend (ValgACE, native GoKlipper, the Kobra S1 fork, the REST
+ * bridge) and the multiACE backend on a Snapmaker U1 read the same hub
+ * firmware's vocabulary: slot status words, an `[r,g,b]` colour, a material
+ * under `material` or `type`, and a dryer object. One reader per field keeps
+ * the backends from drifting apart. Pure: no I/O, no locks.
+ */
+namespace helix::ace {
+
+/// The ACE Pro dryer's hardware range.
+inline constexpr float kDryerMinTempC = 35.0f;
+inline constexpr float kDryerMaxTempC = 55.0f;
+inline constexpr int kDryerMaxDurationMin = 720;
+
+/// An ACE Pro dryer's capabilities, inactive. ACE_START_DRYING and
+/// ACE_STOP_DRYING are the whole surface, with no set-temperature-while-running
+/// command, so both live-adjust flags stay false and every adjustment stops and
+/// restarts the cycle.
+[[nodiscard]] DryerInfo ace_pro_dryer_info();
+
+/// The colour a slot states: an `[r,g,b]` triplet of numbers, or a hex string
+/// in the shared lane colour grammar. Empty when the value carries no colour (a
+/// short or non-numeric array, a string the grammar refuses, any other type).
+/// That is a different answer from pure black, which ACE reports for an empty
+/// bay and which is a real reading.
+[[nodiscard]] std::optional<uint32_t> parse_slot_color(const nlohmann::json& color_val);
+
+/// One slot's material: `material` (Kobra S1 fork / native / multiACE) wins over
+/// `type` (ValgACE) when both are stated. Empty or absent states no reading.
+[[nodiscard]] std::optional<std::string> read_slot_material(const nlohmann::json& slot_json);
+
+/// empty/runout -> EMPTY; available/loaded/ready/preload/running -> AVAILABLE;
+/// anything else (including "unknown") -> UNKNOWN.
+[[nodiscard]] SlotStatus slot_status_from_string(const std::string& status_str);
+
+/// Fold one status-shaped object's dryer state into @p dryer, under either
+/// spelling: `dryer` (ValgACE/native) or `dryer_status` (Kobra S1 fork,
+/// multiACE), each with either nested key set ({status, target_temp, duration,
+/// remain_time} or {active, current_temp, remaining_minutes, duration_minutes}).
+/// Also reads the top-level ambient `temp`, which a stated dryer current temp
+/// overrides. Absent keys leave @p dryer as it was.
+void apply_dryer_state(const nlohmann::json& data, DryerInfo& dryer);
+
+/// The refusal for a drying request outside @p dryer's range, or nullopt when
+/// @p temp_c and @p duration_min are both in range.
+[[nodiscard]] std::optional<AmsError> check_dryer_request(const DryerInfo& dryer, float temp_c,
+                                                          int duration_min);
+
+/// The (temperature, duration) a stop-and-restart adjustment of a running
+/// cycle starts with: a negative @p temp_c keeps the cycle's target, a negative
+/// @p duration_min keeps what is left of it (the session length when the dryer
+/// reports no remaining time).
+[[nodiscard]] std::pair<float, int> restart_request(const DryerInfo& dryer, float temp_c,
+                                                    int duration_min);
+
+} // namespace helix::ace

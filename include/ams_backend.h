@@ -3520,10 +3520,14 @@ class AmsBackend {
      * @param detected_type The detected AMS type from printer discovery
      * @param api Pointer to IMoonrakerAPI for sending commands
      * @param client Pointer to helix::IMoonrakerClient for subscriptions
+     * @param hw The discovered hardware, for a type whose backend has variants
+     *        told apart by what else the printer carries. Null builds the
+     *        type's base backend.
      * @return Unique pointer to backend instance, or nullptr if type is NONE
      */
     static std::unique_ptr<AmsBackend> create(AmsType detected_type, IMoonrakerAPI* api,
-                                              helix::IMoonrakerClient* client);
+                                              helix::IMoonrakerClient* client,
+                                              const helix::PrinterDiscovery* hw = nullptr);
 
     /**
      * @brief Create mock backend for testing

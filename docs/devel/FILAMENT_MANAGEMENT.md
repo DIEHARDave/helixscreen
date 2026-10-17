@@ -834,7 +834,7 @@ Each entry in the `filaments` array is one branded product:
   "density": 1.24,              // OPTIONAL — else inherit type
   "codes": { "cfs": "07001" },  // OPTIONAL, open scheme-keyed map (see below)
   "orca_id": "OGF...",          // provenance: OrcaSlicer filament_id (NOT a CFS code)
-  "source": "orca"              // provenance: orca | cfs-seed | user
+  "source": "orca"              // provenance: orca | cfs-seed | helix-seed | vendor-spec | user
 }
 ```
 
@@ -1053,7 +1053,7 @@ This shallow-clones OrcaSlicer's `resources/profiles` at the pinned tag into
 `build/orca-profiles` (sparse checkout, blob-filtered), runs
 `scripts/import_orca_filaments.py` to resolve `inherits` chains, extract
 facts, and union them with the preserved CFS-code seed
-(`scripts/fixtures/cfs_seed.json`), carries the hand-maintained `types` table
+(`scripts/fixtures/filament_seed.json`), carries the hand-maintained `types` table
 through from the existing file, writes `assets/filaments.json`, and discards the
 cloned Orca checkout. Nothing from the Orca clone is committed — only the
 derived output. Bump `ORCA_TAG` to refresh against newer Orca data.
@@ -2093,6 +2093,7 @@ Each backend has its own leaf doc covering the protocol, data sources, G-code co
 | CFS | Creality Filament System (K2 built-in; K1/K1C/K1 Max upgrade) | [FILAMENT_BACKEND_CFS.md](FILAMENT_BACKEND_CFS.md) |
 | QIDI Box | QIDI PLUS4 / Q2 / MAX4 RFID hub, chainable to 4 boxes | [FILAMENT_BACKEND_QIDI_BOX.md](FILAMENT_BACKEND_QIDI_BOX.md) |
 | Snapmaker U1 | SnapSwap 4-toolhead parallel toolchanger with per-channel RFID | [FILAMENT_BACKEND_SNAPMAKER_U1.md](FILAMENT_BACKEND_SNAPMAKER_U1.md) |
+| multiACE | Snapmaker U1 with 1-4 ACE Pro units upstream of its heads; the U1 backend plus ACE units, chosen in the factory from the discovered hardware | [FILAMENT_BACKEND_MULTIACE.md](FILAMENT_BACKEND_MULTIACE.md) |
 
 ### AmsType Enum
 

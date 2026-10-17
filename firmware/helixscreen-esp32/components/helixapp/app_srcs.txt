@@ -138,6 +138,7 @@ src/printer/active_material_provider.cpp
 src/printer/afc_config_manager.cpp
 src/printer/afc_defaults.cpp
 src/printer/afc_fault_position.cpp
+src/printer/ace_slot_parse.cpp
 src/printer/ams_backend.cpp
 src/printer/ams_backend_registry.cpp
 src/printer/ams_backend_ace.cpp
@@ -145,6 +146,7 @@ src/printer/ams_backend_ad5x_ifs.cpp
 src/printer/ams_backend_afc.cpp
 src/printer/ams_backend_cfs.cpp
 src/printer/ams_backend_happy_hare.cpp
+src/printer/ams_backend_multiace.cpp
 src/printer/ams_backend_openams.cpp
 src/printer/ams_bypass_policy.cpp
 src/printer/ams_backend_qidi.cpp
@@ -177,6 +179,7 @@ src/printer/chamber_heater_assignment.cpp
 src/printer/chamber_heater_backend_dragonbreath.cpp
 src/printer/chamber_wait_line.cpp
 src/printer/gcode_wait_line.cpp
+src/printer/multiace_status.cpp
 src/printer/wait_line_reader.cpp
 src/printer/chamber_heater_backend_generic.cpp
 src/printer/chamber_heater_backend_panda_breath.cpp
@@ -790,6 +793,10 @@ src/print/print_start_collector.cpp
 #   print_start_position_classifier.cpp: pure-logic member of the print-start
 #     collector (KEPT above); no subjects, threads, or platform deps.
 src/print/print_start_position_classifier.cpp
+#   start_block_steps.cpp: pure-logic member of the print-start collector
+#     (KEPT above): scans a start block for its steps; deps are gcode_ops_detector.cpp
+#     and text_io, already in this manifest.
+src/print/start_block_steps.cpp
 #   print_start_profile.cpp: PrintStartProfile::load() is called directly from
 #     moonraker_manager.cpp (KEPT) AND from print_start_collector.cpp. JSON-profile
 #     loader; only dep is data_root_resolver.cpp (already in this manifest).
