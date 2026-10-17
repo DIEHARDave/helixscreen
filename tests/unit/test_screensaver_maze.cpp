@@ -150,6 +150,15 @@ std::pair<int, int> dead_end(const MazeMap& map, int& heading) {
     return {0, 0};
 }
 
+/// A w x h image of one colour.
+helix::ui::MazeImage solid(int w, int h, uint32_t argb) {
+    helix::ui::MazeImage img;
+    img.w = w;
+    img.h = h;
+    img.argb.assign(static_cast<size_t>(w * h), argb);
+    return img;
+}
+
 /// room(15) with a 7 x 7 brick island in its middle (tiles 4..10): cells 2..4 square are
 /// inside it, and the ring of cells round it circles it.
 MazeMap island_room() {
@@ -796,9 +805,7 @@ TEST_CASE("a picture wall is drawn at its fogged colour", "[screensaver][maze]")
     using helix::ui::maze_fog_k;
     using helix::ui::maze_fog_slot_depth;
     MazeArt art;
-    art.picture.w = 4;
-    art.picture.h = 4;
-    art.picture.argb.assign(16, 0xFF00FF00u);
+    art.pictures = {solid(4, 4, 0xFF00FF00u)};
     const int size = 15;
     std::vector<MazeTile> tiles(static_cast<size_t>(size * size), MazeTile::BRICK);
     for (int y = 1; y < size - 1; y++) {
@@ -973,9 +980,8 @@ TEST_CASE("a sprite behind a wall draws nothing; in front of it, it draws", "[sc
 TEST_CASE("picture walls read the right way round from all four sides", "[screensaver][maze]") {
     // Left half red, right half blue.
     MazeArt art;
-    art.picture.w = 2;
-    art.picture.h = 1;
-    art.picture.argb = {0xFFFF0000u, 0xFF0000FFu};
+    art.pictures.push_back(solid(2, 1, 0xFFFF0000u));
+    art.pictures[0].argb[1] = 0xFF0000FFu;
     const int size = 15;
     std::vector<MazeTile> tiles(static_cast<size_t>(size * size), MazeTile::BRICK);
     for (int y = 1; y < size - 1; y++) {
@@ -993,7 +999,7 @@ TEST_CASE("picture walls read the right way round from all four sides", "[screen
     MazeRenderer r;
     Frame frame(320, 200, PixelFormat::XRGB8888);
     r.init(320, 200, PixelFormat::XRGB8888, art);
-    REQUIRE(r.has_picture());
+    REQUIRE(r.picture_count() == 1);
     for (int heading = 0; heading < 4; heading++) {
         INFO("heading " << heading);
         // Three tiles back from the picture tile's centre, facing it.
@@ -1010,6 +1016,126 @@ TEST_CASE("picture walls read the right way round from all four sides", "[screen
         CHECK((right & 0xFF) > 100);
         CHECK((right >> 16 & 0xFF) < 60);
     }
+}
+
+TEST_CASE("reduce_maze_image fits a box and keeps aspect", "[screensaver][maze]") {
+    using helix::ui::MazeImage;
+    using helix::ui::reduce_maze_image;
+    const MazeImage big = reduce_maze_image(solid(128, 64, 0xFFFF0000u), 64);
+    CHECK(big.w == 64);
+    CHECK(big.h == 32);
+    REQUIRE(big.argb.size() == 64u * 32u);
+    for (uint32_t p : big.argb) {
+        REQUIRE(p == 0xFFFF0000u);
+    }
+    const MazeImage small = reduce_maze_image(solid(10, 10, 0xFF123456u), 64);
+    CHECK(small.w == 10);
+    CHECK(small.h == 10);
+    CHECK(small.argb == solid(10, 10, 0xFF123456u).argb);
+
+    MazeImage pair = solid(2, 1, 0xFFFF0000u);
+    pair.argb[1] = 0xFF0000FFu;
+    const MazeImage one = reduce_maze_image(pair, 1);
+    REQUIRE(one.w == 1);
+    REQUIRE(one.h == 1);
+    const uint32_t r = one.argb[0] >> 16 & 0xFF;
+    const uint32_t b = one.argb[0] & 0xFF;
+    CHECK((r == 127 || r == 128));
+    CHECK((b == 127 || b == 128));
+
+    // Left half clear white, right half opaque blue.
+    MazeImage half = solid(4, 4, 0x00FFFFFFu);
+    for (int y = 0; y < 4; y++) {
+        half.argb[static_cast<size_t>(y * 4 + 2)] = 0xFF0000FFu;
+        half.argb[static_cast<size_t>(y * 4 + 3)] = 0xFF0000FFu;
+    }
+    const MazeImage two = reduce_maze_image(half, 2);
+    REQUIRE(two.w == 2);
+    REQUIRE(two.h == 2);
+    CHECK((two.argb[0] >> 24) == 0);
+    CHECK(two.argb[1] == 0xFF0000FFu);
+    CHECK(reduce_maze_image(MazeImage{}, 64).empty());
+}
+
+namespace {
+
+/// A 15-tile room with picture walls at the east and north wall centres, given indices.
+MazeMap two_picture_room(uint8_t east, uint8_t north) {
+    const int size = 15;
+    std::vector<MazeTile> tiles(static_cast<size_t>(size * size), MazeTile::BRICK);
+    std::vector<uint8_t> pictures(tiles.size(), 0);
+    for (int y = 1; y < size - 1; y++) {
+        for (int x = 1; x < size - 1; x++) {
+            tiles[static_cast<size_t>(y * size + x)] = MazeTile::OPEN;
+        }
+    }
+    const size_t e = static_cast<size_t>((size / 2) * size + size - 1);
+    const size_t n = static_cast<size_t>(size / 2);
+    tiles[e] = MazeTile::PICTURE;
+    pictures[e] = east;
+    tiles[n] = MazeTile::PICTURE;
+    pictures[n] = north;
+    MazeMap map;
+    map.set_tiles(size, tiles, pictures);
+    return map;
+}
+
+/// The centre pixel facing east (heading 0) or north (heading 3) at the room's wall centres.
+uint32_t centre_facing(MazeRenderer& r, const MazeMap& map, int heading) {
+    Frame frame(160, 100, PixelFormat::XRGB8888);
+    const MazePose pose = heading == 0 ? MazePose{14.0f - 3.0f, 7.5f, 0.0f}
+                                       : MazePose{7.5f, 1.0f + 3.0f, -3.14159265f * 0.5f};
+    r.render(map, {}, pose, 0.0f, 0, frame.target);
+    return r.internal_pixel(r.internal_w() / 2, r.internal_h() / 2);
+}
+
+bool red_dominant(uint32_t p) {
+    return (p >> 16 & 0xFF) > 100 && (p & 0xFF) < 60;
+}
+
+bool blue_dominant(uint32_t p) {
+    return (p & 0xFF) > 100 && (p >> 16 & 0xFF) < 60;
+}
+
+} // namespace
+
+TEST_CASE("each picture wall shows its own picture", "[screensaver][maze]") {
+    MazeArt art;
+    art.pictures = {solid(4, 4, 0xFFFF0000u), solid(4, 4, 0xFF0000FFu)};
+    MazeRenderer r;
+    r.init(160, 100, PixelFormat::XRGB8888, art);
+    const MazeMap map = two_picture_room(0, 1);
+    CHECK(red_dominant(centre_facing(r, map, 0)));
+    CHECK(blue_dominant(centre_facing(r, map, 3)));
+}
+
+TEST_CASE("picture indices wrap by the picture count", "[screensaver][maze]") {
+    MazeArt art;
+    art.pictures = {solid(4, 4, 0xFFFF0000u), solid(4, 4, 0xFF0000FFu)};
+    MazeRenderer r;
+    r.init(160, 100, PixelFormat::XRGB8888, art);
+    const MazeMap map = two_picture_room(5, 4);
+    CHECK(blue_dominant(centre_facing(r, map, 0)));
+    CHECK(red_dominant(centre_facing(r, map, 3)));
+}
+
+TEST_CASE("pictures past twelve are ignored, empty ones skipped", "[screensaver][maze]") {
+    MazeArt art;
+    for (int i = 0; i < 14; i++) {
+        art.pictures.push_back(solid(4, 4, 0xFF000000u | static_cast<uint32_t>(i * 16)));
+    }
+    MazeRenderer r;
+    r.init(64, 48, PixelFormat::RGB565, art);
+    CHECK(r.picture_count() == helix::ui::MAZE_MAX_PICTURES);
+
+    MazeArt sparse;
+    sparse.pictures = {helix::ui::MazeImage{}, solid(4, 4, 0xFFFF0000u), helix::ui::MazeImage{},
+                       solid(4, 4, 0xFF0000FFu)};
+    MazeRenderer s;
+    s.init(160, 100, PixelFormat::XRGB8888, sparse);
+    CHECK(s.picture_count() == 2);
+    // Index 1 is the second picture that is there: blue.
+    CHECK(blue_dominant(centre_facing(s, two_picture_room(1, 0), 0)));
 }
 
 TEST_CASE("frames of every size, level and depth stay inside their rows", "[screensaver][maze]") {
@@ -1331,15 +1457,13 @@ TEST_CASE("a helix logo from outside replaces the drawn mark", "[screensaver][ma
 
 TEST_CASE("picture walls show the picture only when there is one", "[screensaver][maze]") {
     MazeArt with;
-    with.picture.w = 4;
-    with.picture.h = 4;
-    with.picture.argb.assign(16, 0xFF00FF00u);
+    with.pictures = {solid(4, 4, 0xFF00FF00u)};
     MazeRenderer a;
     MazeRenderer b;
     a.init(32, 32, PixelFormat::XRGB8888, with);
     b.init(32, 32, PixelFormat::XRGB8888, MazeArt{});
-    CHECK(a.has_picture());
-    CHECK_FALSE(b.has_picture());
+    CHECK(a.picture_count() == 1);
+    CHECK(b.picture_count() == 0);
 }
 
 TEST_CASE("PixelWriter::pack writes what put() writes", "[screensaver][maze]") {

@@ -24,8 +24,8 @@ constexpr float PI_F = 3.14159265f;
 constexpr size_t TEX_BRICK = 0;
 constexpr size_t TEX_FLOOR = 1;
 constexpr size_t TEX_CEIL = 2;
-constexpr size_t TEX_PICTURE = 3;
-constexpr size_t TEX_COUNT = 4;
+/// The first picture; each picture after it takes the next slot.
+constexpr size_t TEX_PICTURE0 = 3;
 
 constexpr size_t SPR_LOGO = 0;
 constexpr size_t SPR_START = 1;
@@ -426,6 +426,32 @@ uint8_t nearest_band(uint32_t k) {
 }
 
 } // namespace
+
+MazeImage reduce_maze_image(const MazeImage& src, int max_side) {
+    if (src.empty() || max_side <= 0) {
+        return {};
+    }
+    if (src.w <= max_side && src.h <= max_side) {
+        return src;
+    }
+    const float k = static_cast<float>(max_side) / static_cast<float>(std::max(src.w, src.h));
+    MazeImage out;
+    out.w = std::max(1, static_cast<int>(std::lround(static_cast<float>(src.w) * k)));
+    out.h = std::max(1, static_cast<int>(std::lround(static_cast<float>(src.h) * k)));
+    out.argb.resize(static_cast<size_t>(out.w) * static_cast<size_t>(out.h));
+    const float sx = static_cast<float>(src.w) / static_cast<float>(out.w);
+    const float sy = static_cast<float>(src.h) / static_cast<float>(out.h);
+    for (int y = 0; y < out.h; y++) {
+        for (int x = 0; x < out.w; x++) {
+            const Rgba s = sample_box(src, x * sx, y * sy, (x + 1) * sx, (y + 1) * sy);
+            const auto a = static_cast<uint32_t>(std::lround(s.a * 255.0f));
+            out.argb[static_cast<size_t>(y) * out.w + x] =
+                a << 24 | static_cast<uint32_t>(s.c.r) << 16 | static_cast<uint32_t>(s.c.g) << 8 |
+                s.c.b;
+        }
+    }
+    return out;
+}
 
 uint32_t maze_fog_k(float depth) {
     const float fall = std::exp(-std::max(0.0f, depth - MAZE_FOG_START) / MAZE_FOG_SCALE);
@@ -1212,7 +1238,11 @@ template <typename Px> void MazeRenderer::build(const MazeArt& art) {
     st.ceil_rows.assign(h_, 0);
     st.floor_rows.assign(h_, 0);
     st.row.assign(w_, 0);
-    st.textures.assign(TEX_COUNT * TEX * TEX, 0);
+    picture_count_ = 0;
+    for (const MazeImage& img : art.pictures) {
+        picture_count_ += !img.empty() && picture_count_ < MAZE_MAX_PICTURES ? 1 : 0;
+    }
+    st.textures.assign((TEX_PICTURE0 + picture_count_) * TEX * TEX, 0);
     st.sprites.assign(SPR_COUNT * TEX * TEX, 0);
     auto pack = [this](Rgb c) { return static_cast<Px>(PixelWriter::pack(c, format_)); };
 
@@ -1231,12 +1261,27 @@ template <typename Px> void MazeRenderer::build(const MazeArt& art) {
         }
     }
 
+    auto tex = [&st](size_t slot, int u, int v) -> Px& {
+        return st.textures[(slot * TEX + static_cast<size_t>(u)) * TEX + static_cast<size_t>(v)];
+    };
+    for (int u = 0; u < TEX; u++) {
+        for (int v = 0; v < TEX; v++) {
+            tex(TEX_BRICK, u, v) = pack(brick_texel(u, v));
+            tex(TEX_FLOOR, u, v) = pack(floor_texel(u, v));
+            tex(TEX_CEIL, u, v) = pack(ceiling_texel(u, v));
+        }
+    }
+
     // Heap, not static: the saver holds no memory while it is not running.
     auto pic_owner = std::make_unique<Canvas64>();
     Canvas64& pic = *pic_owner;
-    pic.clear();
-    has_picture_ = !art.picture.empty();
-    if (has_picture_) {
+    size_t slot = TEX_PICTURE0;
+    for (const MazeImage& img : art.pictures) {
+        if (img.empty() || slot >= TEX_PICTURE0 + picture_count_) {
+            continue;
+        }
+        // A wooden frame round a matte, the image fitted inside, on the brick.
+        pic.clear();
         const Rgb matte{225, 215, 190};
         for (int v = 8; v < 56; v++) {
             for (int u = 10; u < 54; u++) {
@@ -1244,20 +1289,13 @@ template <typename Px> void MazeRenderer::build(const MazeArt& art) {
                 pic.set(u, v, frame ? Rgb{70, 45, 25} : matte);
             }
         }
-        fit_image(pic, art.picture, 15, 13, 34, 38, &matte);
-    }
-    auto tex = [&st](size_t slot, int u, int v) -> Px& {
-        return st.textures[(slot * TEX + static_cast<size_t>(u)) * TEX + static_cast<size_t>(v)];
-    };
-    for (int u = 0; u < TEX; u++) {
-        for (int v = 0; v < TEX; v++) {
-            const Rgb brick = brick_texel(u, v);
-            const Rgb picture = pic.on[u][v] ? pic.c[u][v] : brick;
-            tex(TEX_BRICK, u, v) = pack(brick);
-            tex(TEX_PICTURE, u, v) = pack(picture);
-            tex(TEX_FLOOR, u, v) = pack(floor_texel(u, v));
-            tex(TEX_CEIL, u, v) = pack(ceiling_texel(u, v));
+        fit_image(pic, img, 15, 13, 34, 38, &matte);
+        for (int u = 0; u < TEX; u++) {
+            for (int v = 0; v < TEX; v++) {
+                tex(slot, u, v) = pic.on[u][v] ? pack(pic.c[u][v]) : tex(TEX_BRICK, u, v);
+            }
         }
+        slot++;
     }
     pic_owner.reset();
 
@@ -1367,8 +1405,10 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
         if ((side == 0 && rdx < 0.0f) || (side == 1 && rdy > 0.0f)) {
             tex_u = TEX - 1 - tex_u;
         }
-        const bool picture = has_picture_ && map.tile(mx, my) == MazeTile::PICTURE;
-        const size_t tex = picture ? TEX_PICTURE : TEX_BRICK;
+        size_t tex = TEX_BRICK;
+        if (picture_count_ > 0 && map.tile(mx, my) == MazeTile::PICTURE) {
+            tex = TEX_PICTURE0 + map.picture_index(mx, my) % picture_count_;
+        }
         uint32_t k = fog_k_at(perp);
         if (side == 1) {
             k = (k * MAZE_SIDE_K + MAZE_FOG_ONE / 2) >> 5;

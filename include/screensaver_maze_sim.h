@@ -332,12 +332,20 @@ struct MazeImage {
     }
 };
 
-/// Artwork from outside the simulation. Either may be empty: the logo then falls back to a
-/// drawn mark and picture walls show plain brick.
+/// Most pictures a maze hangs; picture walls beyond that repeat them.
+inline constexpr size_t MAZE_MAX_PICTURES = 12;
+
+/// Artwork from outside the simulation. Any of it may be empty: the logo then falls back to a
+/// drawn mark, and with no pictures the picture walls show plain brick.
 struct MazeArt {
     MazeImage logo;
-    MazeImage picture;
+    /// Hung in order on picture indices modulo their count; empty images are skipped.
+    std::vector<MazeImage> pictures;
 };
+
+/// `src` scaled down to fit a `max_side` square, aspect kept, each pixel the alpha-weighted
+/// average of the box it covers; an image that already fits comes back as it is.
+MazeImage reduce_maze_image(const MazeImage& src, int max_side);
 
 /**
  * @brief Draws the maze from a pose with one ray per column
@@ -396,9 +404,9 @@ class MazeRenderer {
     uint32_t wall_fog_k(uint32_t x) const {
         return wall_k_[x];
     }
-    /// Whether picture walls show a picture.
-    bool has_picture() const {
-        return has_picture_;
+    /// Distinct pictures the picture walls show; 0 means they show brick.
+    size_t picture_count() const {
+        return picture_count_;
     }
 
   private:
@@ -463,7 +471,7 @@ class MazeRenderer {
     float focal_ = 1.0f;
     float plane_len_ = 0.0f;
     size_t level_ = 0;
-    bool has_picture_ = false;
+    size_t picture_count_ = 0;
 
     Store<uint16_t> s16_;
     Store<uint32_t> s32_;

@@ -97,13 +97,18 @@ bool MazeScreensaver::on_start() {
     spdlog::info("[Screensaver] Starting 3D maze");
     MazeArt art;
     load_image(LOGO_PATH, art.logo, "logo");
-    load_image(helix::PrinterImageManager::instance().get_displayed_image_path(screen_w()),
-               art.picture, "picture");
+    MazeImage picture;
+    load_image(helix::PrinterImageManager::instance().get_displayed_image_path(screen_w()), picture,
+               "picture");
+    const bool has_picture = !picture.empty();
+    if (has_picture) {
+        art.pictures.push_back(std::move(picture));
+    }
     FrameTarget frame = canvas().frame();
     sim_.init(frame, art, rng(), level());
     spdlog::debug("[Screensaver] Maze started ({}x{}, level {}, logo {}, picture {})", screen_w(),
                   screen_h(), level(), art.logo.empty() ? "drawn" : "decoded",
-                  art.picture.empty() ? "none" : "decoded");
+                  has_picture ? "decoded" : "none");
     return true;
 }
 
