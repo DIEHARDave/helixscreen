@@ -20,9 +20,12 @@
 #include "screensaver_base.h"
 #include "screensaver_gate.h"
 #include "screensaver_level_store.h"
+#include "screensaver_usage.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -583,6 +586,114 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK(lv_dropdown_get_selected(dropdown) == selected);
 
     lv_obj_delete(root);
+}
+
+namespace {
+
+/// The manager's usage window as of now.
+helix::SaverUsageWindow usage_now(ScreensaverManager& mgr) {
+    return mgr.usage().window(std::chrono::steady_clock::now());
+}
+
+/// Empties the manager's usage window, which carries over from earlier tests.
+void clear_usage(ScreensaverManager& mgr) {
+    mgr.stop();
+    mgr.usage().reset_window(std::chrono::steady_clock::now());
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "usage counts a run's start, how it ended and the level it settled at",
+                 "[screensaver][screensaver_gate][screensaver_usage]") {
+    GateHarness gate;
+    setenv("HELIX_SCREENSAVER_BUDGET_PCT", "20", 1);
+    gate.run(10.0, 0.0);
+    clear_usage(gate.mgr);
+
+    gate.mgr.start(ScreensaverType::FLYING_TOASTERS);
+    REQUIRE(gate.running() != nullptr);
+    CHECK(gate.mgr.usage().running());
+    gate.run(0.75, 0.9);
+    gate.run(5.5, 0.5);
+    REQUIRE(gate.running()->level() == 1);
+    gate.mgr.stop(helix::SaverRunEnd::TOUCH);
+
+    gate.mgr.start(ScreensaverType::FLYING_TOASTERS);
+    REQUIRE(gate.running() != nullptr);
+    gate.mgr.stop();
+
+    const helix::SaverUsageWindow w = usage_now(gate.mgr);
+    CHECK(w.starts == std::map<std::string, int>{{"toasters", 2}});
+    CHECK(w.woke_by_touch == std::map<std::string, int>{{"toasters", 1}});
+    CHECK(w.stopped_other == std::map<std::string, int>{{"toasters", 1}});
+    CHECK(w.too_heavy.empty());
+    CHECK(w.settled_levels == std::map<std::string, int>{{"toasters:1", 2}});
+    CHECK_FALSE(gate.mgr.usage().running());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "usage counts a too-heavy run under its own name and its fallback as a new run",
+                 "[screensaver][screensaver_gate][screensaver_usage]") {
+    GateHarness gate;
+    setenv("HELIX_SCREENSAVER_BUDGET_PCT", "10", 1);
+    gate.run(10.0, 0.0);
+    clear_usage(gate.mgr);
+
+    gate.mgr.start(ScreensaverType::MAZE_3D);
+    helix::ui::SaverBase* maze = gate.running();
+    REQUIRE(maze != nullptr);
+    run_past_bottom(gate, *maze);
+    REQUIRE(gate.running() != nullptr);
+    REQUIRE(gate.running()->type() == helix::ui::DEFAULT_SCREENSAVER_TYPE);
+    gate.mgr.stop(helix::SaverRunEnd::TOUCH);
+
+    const std::string fallback =
+        helix::ui::find_screensaver(helix::ui::DEFAULT_SCREENSAVER_TYPE)->name;
+    const std::string bottom = "maze:" + std::to_string(maze->level_count() - 1);
+    const helix::SaverUsageWindow w = usage_now(gate.mgr);
+    CHECK(w.starts == std::map<std::string, int>{{"maze", 1}, {fallback, 1}});
+    CHECK(w.too_heavy == std::map<std::string, int>{{"maze", 1}});
+    CHECK(w.woke_by_touch == std::map<std::string, int>{{fallback, 1}});
+    CHECK(w.stopped_other.empty());
+    CHECK(w.settled_levels == std::map<std::string, int>{{bottom, 1}, {fallback + ":0", 1}});
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "usage counts the black screen under its own name",
+                 "[screensaver][screensaver_gate][screensaver_usage]") {
+    GateHarness gate;
+    const std::string board = ScreensaverManagerTestAccess::current_board(gate.mgr);
+    for (const helix::ui::ScreensaverInfo& row : helix::ui::SCREENSAVERS) {
+        gate.store(row.name, {0, true, helix_version_full(), board});
+    }
+    clear_usage(gate.mgr);
+
+    gate.mgr.start(ScreensaverType::MAZE_3D);
+    REQUIRE(ScreensaverManagerTestAccess::showing_black_screen(gate.mgr));
+    gate.mgr.stop(helix::SaverRunEnd::TOUCH);
+
+    const helix::SaverUsageWindow w = usage_now(gate.mgr);
+    CHECK(w.starts == std::map<std::string, int>{{helix::SAVER_USAGE_BLACK_SCREEN, 1}});
+    CHECK(w.woke_by_touch == std::map<std::string, int>{{helix::SAVER_USAGE_BLACK_SCREEN, 1}});
+    CHECK(w.settled_levels.empty());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "usage leaves a settings preview out",
+                 "[screensaver][screensaver_gate][screensaver_usage]") {
+    GateHarness gate;
+    clear_usage(gate.mgr);
+
+    gate.mgr.start(ScreensaverType::STARFIELD, /*preview=*/true);
+    REQUIRE(gate.running() != nullptr);
+    CHECK_FALSE(gate.mgr.usage().running());
+    gate.mgr.stop(helix::SaverRunEnd::TOUCH);
+    CHECK(usage_now(gate.mgr).empty());
+
+    // The next real run counts again.
+    gate.mgr.start(ScreensaverType::STARFIELD);
+    REQUIRE(gate.running() != nullptr);
+    gate.mgr.stop(helix::SaverRunEnd::TOUCH);
+    CHECK(usage_now(gate.mgr).starts == std::map<std::string, int>{{"starfield", 1}});
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

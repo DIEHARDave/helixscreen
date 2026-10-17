@@ -120,8 +120,9 @@ Recorded once per session. Helps us understand user preferences so we can choose
 | `spoolman_configured` | Whether a Spoolman server is connected | `true` |
 | `theme_changed` | Whether you picked a theme other than the default | `false` |
 | `multi_printer` | Whether more than one printer is set up | `false` |
+| `screensaver_type` | The screensaver you picked, or `off` | `"maze"` |
 
-The last three are yes/no answers only. They tell us how many people use these features without needing a screen visit to prove it.
+`spoolman_configured`, `theme_changed` and `multi_printer` are yes/no answers only. They tell us how many people use these features without needing a screen visit to prove it.
 
 ### Panel Usage
 
@@ -139,6 +140,22 @@ Each report covers only the time since the previous one, not a running total, so
 | `widget_interactions` | How many times each home-screen widget was tapped | `{"temperature": 5}` |
 
 Only screen and widget names are recorded, never what you did on them.
+
+### Screensaver Usage
+
+Recorded every 4 hours and when HelixScreen closes, only for a period in which a screensaver ran. Tells us which screensavers people keep, and which ones are too heavy for their printer so we can make them lighter. Like Panel Usage, each report covers only the time since the previous one. A preview from the Test button in Display settings is not counted.
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| `snapshot_seq` | Report number within this run, starting at 0 | `3` |
+| `saver_shown_sec` | How long each screensaver was on screen in that period (seconds) | `{"maze": 5400}` |
+| `saver_starts` | How many times each one started | `{"maze": 3}` |
+| `saver_woke_by_touch` | How many times a touch ended it | `{"maze": 2}` |
+| `saver_stopped_other` | How many times something else ended it: the screen going to sleep, a print finishing, a switch to another screensaver | `{"maze": 1}` |
+| `saver_too_heavy` | How many times it was too heavy for your printer even at its lightest setting, so another one took over | `{"maze": 0}` |
+| `saver_settled_levels` | How many runs ended at each setting, as name and level: 0 is the full effect, higher numbers are lighter | `{"maze:1": 3}` |
+
+When every screensaver is too heavy for your printer, a plain black screen shows instead and is counted as `black_screen`.
 
 ### Performance Snapshots
 

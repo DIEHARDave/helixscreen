@@ -32,6 +32,7 @@
 #include "platform_table.h"
 #include "printer_state.h"
 #include "screen_locality.h"
+#include "screensaver_registry.h"
 #include "system/crash_handler.h"
 #include "system/crash_history.h"
 #include "system/ingest_client.h"
@@ -91,15 +92,17 @@ std::string strip_instance_suffix(const std::string& id) {
 constexpr const char* ACCUMULATOR_FILE = "telemetry_snapshot.json";
 
 /// Event kinds that carry a window's activity rather than a point in time.
-constexpr const char* DELTA_KINDS[] = {"panel_usage", "connection_stability"};
+constexpr const char* DELTA_KINDS[] = {"panel_usage", "connection_stability", "screensaver_usage"};
 
 /// Delta fields that add when two windows merge, and the one that takes the max.
 constexpr const char* DELTA_SUMMED_FIELDS[] = {"session_duration_sec", "overlay_open_count",
                                                "connect_count",        "disconnect_count",
                                                "total_connected_sec",  "total_disconnected_sec",
                                                "klippy_error_count",   "klippy_shutdown_count"};
-constexpr const char* DELTA_SUMMED_MAPS[] = {"panel_time_sec", "panel_visits",
-                                             "widget_interactions", "overlay_visits"};
+constexpr const char* DELTA_SUMMED_MAPS[] = {
+    "panel_time_sec",  "panel_visits",        "widget_interactions", "overlay_visits",
+    "saver_shown_sec", "saver_starts",        "saver_woke_by_touch", "saver_stopped_other",
+    "saver_too_heavy", "saver_settled_levels"};
 constexpr const char* DELTA_MAX_FIELD = "longest_disconnect_sec";
 
 bool is_delta_event(const json& event) {
@@ -324,6 +327,7 @@ void TelemetryManager::shutdown() {
     // Record session-summary events before shutting down
     record_panel_usage();
     record_connection_stability();
+    record_screensaver_usage();
     record_performance_snapshot();
     // Drain the final AsyncLifetime skip window. is_shutdown_snapshot_ is true
     // so record_async_lifetime_snapshot emits even if this window's count is
@@ -571,6 +575,41 @@ void TelemetryManager::reset_panel_usage_window(std::chrono::steady_clock::time_
     widget_interactions_.clear();
     overlay_open_count_ = 0;
     overlay_visits_.clear();
+}
+
+void TelemetryManager::set_screensaver_usage(helix::SaverUsage* usage) {
+    saver_usage_ = usage;
+}
+
+void TelemetryManager::record_screensaver_usage() {
+    if (shutting_down_.load() || !initialized_.load() || !enabled_.load() || !saver_usage_) {
+        return;
+    }
+
+    const auto now = tracker_now();
+    json delta = screensaver_usage_delta(now);
+    if (delta_has_activity(delta)) {
+        spdlog::debug("[TelemetryManager] Recording screensaver usage delta (seq={})",
+                      snapshot_seq_);
+        enqueue_event(build_delta_event("screensaver_usage", delta));
+    }
+    saver_usage_->reset_window(now);
+}
+
+nlohmann::json
+TelemetryManager::screensaver_usage_delta(std::chrono::steady_clock::time_point now) const {
+    json delta = json::object();
+    if (!saver_usage_) {
+        return delta;
+    }
+    const helix::SaverUsageWindow w = saver_usage_->window(now);
+    delta["saver_shown_sec"] = json(w.shown_sec);
+    delta["saver_starts"] = json(w.starts);
+    delta["saver_woke_by_touch"] = json(w.woke_by_touch);
+    delta["saver_stopped_other"] = json(w.stopped_other);
+    delta["saver_too_heavy"] = json(w.too_heavy);
+    delta["saver_settled_levels"] = json(w.settled_levels);
+    return delta;
 }
 
 void TelemetryManager::notify_connection_state_changed(int state) {
@@ -2160,6 +2199,11 @@ nlohmann::json TelemetryManager::build_settings_snapshot_event() const {
     event["brightness_pct"] = DisplaySettingsManager::instance().get_brightness();
     event["screensaver_timeout_sec"] = DisplaySettingsManager::instance().get_display_dim_sec();
     event["screen_blank_timeout_sec"] = DisplaySettingsManager::instance().get_display_sleep_sec();
+    const auto& display = DisplaySettingsManager::instance();
+    event["screensaver_type"] = display.screensaver_enabled()
+                                    ? helix::ui::screensaver_name(static_cast<ScreensaverType>(
+                                          display.get_screensaver_type()))
+                                    : helix::ui::SCREENSAVER_OFF_NAME;
     event["locale"] = SystemSettingsManager::instance().get_language();
     event["sound_enabled"] = AudioSettingsManager::instance().get_sounds_enabled();
     event["auto_update_channel"] = SystemSettingsManager::instance().get_update_channel();
@@ -2726,6 +2770,7 @@ void TelemetryManager::fire_periodic_snapshot() {
 
     record_panel_usage();
     record_connection_stability();
+    record_screensaver_usage();
     record_async_lifetime_snapshot();
 
     snapshot_seq_++;
@@ -2795,6 +2840,7 @@ void TelemetryManager::save_accumulator() const {
     state["persisted_at"] = get_timestamp();
     state["panel_usage"] = panel_usage_delta(now);
     state["connection_stability"] = connection_stability_delta(now);
+    state["screensaver_usage"] = screensaver_usage_delta(now);
 
     const std::string path = (fs::path(config_dir_) / ACCUMULATOR_FILE).string();
     if (helix::text_io::write_file_atomic(path, helix::json_util::safe_dump(state, 2))) {

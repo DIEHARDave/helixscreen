@@ -641,6 +641,9 @@ int Application::run(int argc, char** argv) {
     // Note: record_session() is called after m_session.init_panel_subjects() so that
     // SettingsManager subjects are ready and the enabled state can be synced.
     TelemetryManager::instance().init(user_config_dir);
+#ifdef HELIX_ENABLE_SCREENSAVER
+    TelemetryManager::instance().set_screensaver_usage(&ScreensaverManager::instance().usage());
+#endif
 
     // First heap snapshot, before panel construction and XML load. Later
     // snapshots are diffed against this to narrow down which startup phase

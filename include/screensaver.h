@@ -10,6 +10,7 @@
 #include "screensaver_cpu_clock.h"
 #include "screensaver_gate.h"
 #include "screensaver_overlay.h"
+#include "screensaver_usage.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -131,8 +132,10 @@ class ScreensaverManager {
      * configured (helix::RefreshPeriodHold). The black screen does not take that hold.
      * A saver that fails to start leaves the manager inactive, and the screen and
      * refresh period as they were before any saver ran.
+     *
+     * A run counts in usage() unless `preview` says it is the settings Test button's.
      */
-    void start(ScreensaverType type);
+    void start(ScreensaverType type, bool preview = false);
 
     /**
      * @brief Registry savers this build can draw but has no instance for
@@ -176,8 +179,13 @@ class ScreensaverManager {
     };
     static SettingsDropdown settings_dropdown(ScreensaverType configured);
 
-    /** @brief Stop whatever screensaver or black screen is active */
-    void stop();
+    /** @brief Stop whatever screensaver or black screen is active; `how` is what usage() records */
+    void stop(helix::SaverRunEnd how = helix::SaverRunEnd::OTHER);
+
+    /// Seconds shown, starts and run endings per saver for telemetry; previews are left out.
+    helix::SaverUsage& usage() {
+        return usage_;
+    }
 
     /** @brief True while a screensaver or its black screen is up */
     bool is_active() const;
@@ -237,7 +245,13 @@ class ScreensaverManager {
     void begin_gate(const StartPlan& plan);
 
     /// Stops the running saver or black screen without giving back the holds.
-    void end_current();
+    void end_current(helix::SaverRunEnd how);
+
+    /// Records in usage_ that a run of `name` started, unless this one is a preview.
+    void count_run_start(const char* name);
+
+    /// Records in usage_ that the counted run ended, at `level` (none for the black screen).
+    void count_run_end(helix::SaverRunEnd how, std::optional<size_t> level);
 
     /// Shows the static black overlay in place of `type`.
     void show_black_screen(ScreensaverType type);
@@ -281,6 +295,10 @@ class ScreensaverManager {
     bool sampled_ = false;
     std::string version_;
     std::string board_;
+
+    helix::SaverUsage usage_;
+    /// False while the running saver is a preview, which usage_ leaves out.
+    bool counting_ = false;
 };
 
 #endif // HELIX_ENABLE_SCREENSAVER

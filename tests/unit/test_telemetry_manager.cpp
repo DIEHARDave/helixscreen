@@ -28,10 +28,13 @@
 #include "app_globals.h"
 #include "async_lifetime_guard.h"
 #include "config.h"
+#include "display_settings_manager.h"
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
 #include "platform_table.h"
 #include "printer_state.h"
+#include "screensaver_registry.h"
+#include "screensaver_usage.h"
 #include "system/sha256_util.h"
 #include "system/telemetry_manager.h"
 #include "theme_loader.h"
@@ -2984,6 +2987,172 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     CHECK(fresh[0]["session_duration_sec"] == 300);
 }
 
+namespace {
+
+/// A screensaver usage source attached to the manager for the life of the object.
+class ScopedSaverUsage {
+  public:
+    explicit ScopedSaverUsage(TelemetryManager& tm) : tm_(tm) {
+        tm_.set_screensaver_usage(&usage);
+    }
+    ~ScopedSaverUsage() {
+        tm_.set_screensaver_usage(nullptr);
+    }
+    ScopedSaverUsage(const ScopedSaverUsage&) = delete;
+    ScopedSaverUsage& operator=(const ScopedSaverUsage&) = delete;
+
+    helix::SaverUsage usage;
+
+  private:
+    TelemetryManager& tm_;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(TelemetryTestFixture,
+                 "record_screensaver_usage sends the window's runs per saver and starts a new one",
+                 "[telemetry][screensaver_usage]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+    ScopedSaverUsage source(tm);
+    const auto t0 = TelemetryManagerTestAccess::now(tm);
+    source.usage.begin("maze", t0);
+    source.usage.end(helix::SaverRunEnd::TOO_HEAVY, 4, t0 + 20s);
+    source.usage.begin("pipes", t0 + 20s);
+    source.usage.end(helix::SaverRunEnd::TOUCH, 1, t0 + 80s);
+    source.usage.begin("pipes", t0 + 100s);
+    TelemetryManagerTestAccess::advance_clock(tm, 130s);
+
+    tm.record_screensaver_usage();
+
+    auto events = queued_events(tm, "screensaver_usage");
+    REQUIRE(events.size() == 1);
+    const json& e = events[0];
+    CHECK(e["schema_version"] == 3);
+    CHECK(e["snapshot_seq"] == 0);
+    CHECK(e["is_shutdown"] == false);
+    CHECK(e.contains("boot_id"));
+    CHECK(e["saver_shown_sec"] == json{{"maze", 20}, {"pipes", 90}});
+    CHECK(e["saver_starts"] == json{{"maze", 1}, {"pipes", 2}});
+    CHECK(e["saver_woke_by_touch"] == json{{"pipes", 1}});
+    CHECK(e["saver_stopped_other"] == json::object());
+    CHECK(e["saver_too_heavy"] == json{{"maze", 1}});
+    CHECK(e["saver_settled_levels"] == json{{"maze:4", 1}, {"pipes:1", 1}});
+
+    // The open run carries on into the next window, counted from the reset.
+    TelemetryManagerTestAccess::advance_clock(tm, 10s);
+    source.usage.end(helix::SaverRunEnd::OTHER, 0, TelemetryManagerTestAccess::now(tm));
+    tm.record_screensaver_usage();
+    events = queued_events(tm, "screensaver_usage");
+    REQUIRE(events.size() == 2);
+    CHECK(events[1]["saver_shown_sec"] == json{{"pipes", 10}});
+    CHECK(events[1]["saver_starts"] == json::object());
+    CHECK(events[1]["saver_stopped_other"] == json{{"pipes", 1}});
+    CHECK(events[1]["saver_settled_levels"] == json{{"pipes:0", 1}});
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture,
+                 "record_screensaver_usage sends nothing for a window with no saver activity",
+                 "[telemetry][screensaver_usage]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    SECTION("no source attached") {
+        tm.record_screensaver_usage();
+        CHECK(queued_events(tm, "screensaver_usage").empty());
+    }
+    SECTION("a source with nothing in its window") {
+        ScopedSaverUsage source(tm);
+        tm.record_screensaver_usage();
+        CHECK(queued_events(tm, "screensaver_usage").empty());
+    }
+}
+
+TEST_CASE_METHOD(
+    TelemetryTestFixture,
+    "record_screensaver_usage sends nothing while telemetry is off and keeps the window",
+    "[telemetry][screensaver_usage]") {
+    auto& tm = TelemetryManager::instance();
+    ScopedSaverUsage source(tm);
+    const auto t0 = TelemetryManagerTestAccess::now(tm);
+    source.usage.begin("maze", t0);
+    source.usage.end(helix::SaverRunEnd::TOUCH, 0, t0 + 5s);
+
+    tm.record_screensaver_usage();
+    CHECK(tm.get_queue_snapshot().empty());
+
+    tm.set_enabled(true);
+    tm.record_screensaver_usage();
+    const auto events = queued_events(tm, "screensaver_usage");
+    REQUIRE(events.size() == 1);
+    CHECK(events[0]["saver_woke_by_touch"] == json{{"maze", 1}});
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture,
+                 "screensaver_usage rides the periodic snapshot and an unclean exit's recovery",
+                 "[telemetry][screensaver_usage][snapshot][delta]") {
+    auto& tm = TelemetryManager::instance();
+    TelemetryManagerTestAccess::disable_network(tm);
+    tm.set_enabled(true);
+    ScopedSaverUsage source(tm);
+    const auto t0 = TelemetryManagerTestAccess::now(tm);
+    source.usage.begin("fireflies", t0);
+    source.usage.end(helix::SaverRunEnd::TOUCH, 2, t0 + 30s);
+    TelemetryManagerTestAccess::advance_clock(tm, 4h);
+    tm.fire_periodic_snapshot();
+    auto events = queued_events(tm, "screensaver_usage");
+    REQUIRE(events.size() == 1);
+    CHECK(events[0]["snapshot_seq"] == 0);
+    CHECK(events[0]["saver_shown_sec"] == json{{"fireflies", 30}});
+
+    // Persisted by the hourly tick, then lost with the power and sent on the next boot.
+    const auto t1 = TelemetryManagerTestAccess::now(tm);
+    source.usage.begin("aqua", t1);
+    source.usage.end(helix::SaverRunEnd::OTHER, 1, t1 + 45s);
+    TelemetryManagerTestAccess::advance_clock(tm, 1min);
+    TelemetryManagerTestAccess::fire_auto_send_tick(tm);
+    const std::string old_boot = TelemetryManagerTestAccess::boot_id(tm);
+    TelemetryManagerTestAccess::simulate_unclean_exit(tm);
+    tm.init(temp_dir().string());
+
+    std::vector<json> recovered;
+    for (const auto& e : queued_events(tm, "screensaver_usage")) {
+        if (e["boot_id"] == old_boot && e["snapshot_seq"] == 1) {
+            recovered.push_back(e);
+        }
+    }
+    REQUIRE(recovered.size() == 1);
+    CHECK(recovered[0]["saver_shown_sec"] == json{{"aqua", 45}});
+    CHECK(recovered[0]["saver_stopped_other"] == json{{"aqua", 1}});
+    CHECK(recovered[0]["saver_settled_levels"] == json{{"aqua:1", 1}});
+}
+
+#ifdef HELIX_ENABLE_SCREENSAVER
+TEST_CASE_METHOD(TelemetryTestFixture,
+                 "settings_snapshot names the configured screensaver by its stable name",
+                 "[telemetry][settings][screensaver_usage]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+    auto& display = DisplaySettingsManager::instance();
+    const int saved = display.get_screensaver_type();
+
+    auto snapshot_type = [&]() {
+        tm.clear_queue();
+        tm.record_settings_snapshot();
+        const auto events = queued_events(tm, "settings_snapshot");
+        REQUIRE(events.size() == 1);
+        return events[0]["screensaver_type"];
+    };
+
+    display.set_screensaver_type(static_cast<int>(ScreensaverType::MAZE_3D));
+    CHECK(snapshot_type() == "maze");
+    display.set_screensaver_type(static_cast<int>(ScreensaverType::OFF));
+    CHECK(snapshot_type() == "off");
+
+    display.set_screensaver_type(saved);
+}
+#endif
+
 TEST_CASE_METHOD(TelemetryTestFixture,
                  "Snapshot deltas: a window already in the saved queue is not recovered twice",
                  "[telemetry][snapshot][delta]") {
@@ -3708,7 +3877,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Envelope: every event carries all five e
     for (const char* name :
          {"session", "print_outcome", "update_failed", "update_success", "memory_snapshot",
           "memory_warning", "hardware_profile", "settings_snapshot", "panel_usage",
-          "connection_stability", "performance_snapshot", "settings_changes",
+          "connection_stability", "screensaver_usage", "performance_snapshot", "settings_changes",
           "async_lifetime_skips", "print_start_context", "error_encountered", "crash"}) {
         INFO("event: " << name);
         REQUIRE(events.count(name) == 1);

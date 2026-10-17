@@ -350,10 +350,15 @@ describe("excludedBy", () => {
 describe("deltaSource", () => {
   const key = ["device_id", "boot_id", "snapshot_seq"].map((f) => col("panel_usage", f));
 
-  it("names the four delta point kinds", () => {
-    expect([...DELTA_KINDS].sort()).toEqual(
-      ["connection_stability", "overlay_visit", "panel_usage", "widget_interaction"],
-    );
+  it("names the six delta point kinds", () => {
+    expect([...DELTA_KINDS].sort()).toEqual([
+      "connection_stability",
+      "overlay_visit",
+      "panel_usage",
+      "screensaver_level",
+      "screensaver_usage",
+      "widget_interaction",
+    ]);
   });
 
   it("reads schema-3 rows of its kind only", () => {

@@ -6,6 +6,7 @@
 #include "async_lifetime_guard.h"
 #include "config.h"
 #include "memory_monitor.h"
+#include "screensaver_usage.h"
 #include "system/telemetry_manager.h"
 #include "telemetry_manager_test_access.h"
 
@@ -165,6 +166,21 @@ inline std::map<std::string, nlohmann::json> record_one_of_every_event(Telemetry
     tm.notify_klippy_state_changed(3);
     tm.record_connection_stability();
     collect();
+
+    {
+        helix::SaverUsage usage;
+        tm.set_screensaver_usage(&usage);
+        const auto start = TelemetryManagerTestAccess::now(tm);
+        usage.begin("maze", start);
+        usage.end(helix::SaverRunEnd::TOO_HEAVY, 3, start + 40s);
+        usage.begin("pipes", start + 40s);
+        usage.end(helix::SaverRunEnd::TOUCH, 0, start + 100s);
+        usage.begin("pipes", start + 120s);
+        usage.end(helix::SaverRunEnd::OTHER, 1, start + 150s);
+        tm.record_screensaver_usage();
+        tm.set_screensaver_usage(nullptr);
+        collect();
+    }
 
     tm.record_frame_time(8000); // a snapshot is only built once a frame was sampled
     tm.record_performance_snapshot();
