@@ -4,14 +4,108 @@
 
 #include "screensaver_maze.h"
 
+#include "ui_filename_utils.h"
+
+#include "moonraker_types.h"
 #include "printer_image_manager.h"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <draw/lv_image_decoder_private.h>
 #include <string>
+#include <unordered_set>
 
 namespace helix::ui {
+
+std::vector<MazeArtCandidate> history_art_candidates(const std::vector<PrintHistoryJob>& jobs,
+                                                     size_t max_jobs) {
+    std::vector<MazeArtCandidate> out;
+    std::unordered_set<std::string> files;
+    std::vector<const ThumbnailInfo*> thumbs;
+    for (const PrintHistoryJob& job : jobs) {
+        if (out.size() >= max_jobs) {
+            break;
+        }
+        if (job.thumbnails.empty() || !files.insert(job.filename).second) {
+            continue;
+        }
+        thumbs.clear();
+        for (const ThumbnailInfo& t : job.thumbnails) {
+            thumbs.push_back(&t);
+        }
+        auto fits = [](const ThumbnailInfo* t) {
+            return std::max(t->width, t->height) <= MAZE_ART_MAX_SOURCE_SIDE;
+        };
+        std::stable_sort(thumbs.begin(), thumbs.end(),
+                         [&fits](const ThumbnailInfo* a, const ThumbnailInfo* b) {
+                             if (fits(a) != fits(b)) {
+                                 return fits(a);
+                             }
+                             return fits(a) ? a->pixel_count() > b->pixel_count()
+                                            : a->pixel_count() < b->pixel_count();
+                         });
+        const std::string dir = helix::gcode_dir_of(job.filename);
+        MazeArtCandidate keys;
+        for (const ThumbnailInfo* t : thumbs) {
+            keys.push_back(resolve_thumbnail_path(t->relative_path, dir));
+        }
+        out.push_back(std::move(keys));
+    }
+    return out;
+}
+
+std::vector<std::string> cached_art_paths(const std::vector<MazeArtCandidate>& candidates,
+                                          const MazeArtLookup& lookup, size_t max,
+                                          size_t max_probes,
+                                          const std::vector<std::string>& taken) {
+    std::vector<std::string> out;
+    size_t probes = 0;
+    auto used = [&](const std::string& path) {
+        return std::find(out.begin(), out.end(), path) != out.end() ||
+               std::find(taken.begin(), taken.end(), path) != taken.end();
+    };
+    for (const MazeArtCandidate& keys : candidates) {
+        for (const std::string& key : keys) {
+            if (out.size() >= max || probes >= max_probes) {
+                return out;
+            }
+            probes++;
+            std::string path = lookup(key);
+            if (path.empty()) {
+                continue;
+            }
+            if (!used(path)) {
+                out.push_back(std::move(path));
+            }
+            break;
+        }
+    }
+    return out;
+}
+
+std::vector<std::string> mix_maze_art(const MazeArtSources& sources, size_t max) {
+    std::vector<std::string> out;
+    auto add = [&](const std::string& path) {
+        if (out.size() < max && !path.empty() &&
+            std::find(out.begin(), out.end(), path) == out.end()) {
+            out.push_back(path);
+        }
+    };
+    const size_t rounds = std::max(sources.recent.size(), sources.files.size());
+    for (size_t i = 0; i < std::max<size_t>(rounds, 1); i++) {
+        if (i < sources.recent.size()) {
+            add(sources.recent[i]);
+        }
+        if (i < sources.files.size()) {
+            add(sources.files[i]);
+        }
+        if (i == 0) {
+            add(sources.printer);
+        }
+    }
+    return out;
+}
 
 namespace {
 

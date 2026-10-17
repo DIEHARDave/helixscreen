@@ -4,6 +4,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "print_history_data.h"
 #include "screensaver_maze.h"
 #include "screensaver_maze_sim.h"
 #include "screensaver_pixel_writer.h"
@@ -11,7 +12,9 @@
 #include <cmath>
 #include <cstring>
 #include <deque>
+#include <map>
 #include <random>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -1483,6 +1486,75 @@ TEST_CASE("PixelWriter::pack writes what put() writes", "[screensaver][maze]") {
             CHECK(v == packed);
         }
     }
+}
+
+namespace {
+
+PrintHistoryJob history_job(const std::string& filename, std::vector<ThumbnailInfo> thumbnails) {
+    PrintHistoryJob job;
+    job.filename = filename;
+    job.thumbnails = std::move(thumbnails);
+    return job;
+}
+
+} // namespace
+
+TEST_CASE("history art candidates: each file once, its thumbnails largest first",
+          "[screensaver][maze]") {
+    using helix::ui::history_art_candidates;
+    const std::vector<PrintHistoryJob> jobs{
+        history_job("sub/a.gcode", {{".thumbs/a-32.png", 32, 32}, {".thumbs/a-300.png", 300, 300}}),
+        history_job("b.gcode", {}),
+        history_job("c.gcode", {{".thumbs/c.png", 300, 300}}),
+        history_job("sub/a.gcode", {{".thumbs/a-32.png", 32, 32}}),
+    };
+    const auto all = history_art_candidates(jobs, 5);
+    REQUIRE(all.size() == 2);
+    CHECK(all[0] == std::vector<std::string>{"sub/.thumbs/a-300.png", "sub/.thumbs/a-32.png"});
+    CHECK(all[1] == std::vector<std::string>{".thumbs/c.png"});
+    const auto first = history_art_candidates(jobs, 1);
+    REQUIRE(first.size() == 1);
+    CHECK(first[0] == all[0]);
+    // A thumbnail too big to decode goes after the ones that fit.
+    const auto big = history_art_candidates(
+        {history_job("d.gcode", {{"d-600.png", 600, 600}, {"d-100.png", 100, 100}})}, 5);
+    REQUIRE(big.size() == 1);
+    CHECK(big[0] == std::vector<std::string>{"d-100.png", "d-600.png"});
+}
+
+TEST_CASE("cached art paths take one cached key per candidate within their probes",
+          "[screensaver][maze]") {
+    using helix::ui::cached_art_paths;
+    const std::map<std::string, std::string> cache{{"k1", "A:/c/1.bin"}, {"k3", "A:/c/3.png"}};
+    std::vector<std::string> asked;
+    const helix::ui::MazeArtLookup lookup = [&](const std::string& key) {
+        asked.push_back(key);
+        const auto it = cache.find(key);
+        return it == cache.end() ? std::string() : it->second;
+    };
+    const std::vector<helix::ui::MazeArtCandidate> candidates{{"k0", "k1"}, {"k2"}, {"k3"}};
+    CHECK(cached_art_paths(candidates, lookup, 5, 10) ==
+          std::vector<std::string>{"A:/c/1.bin", "A:/c/3.png"});
+    asked.clear();
+    CHECK(cached_art_paths(candidates, lookup, 1, 10) == std::vector<std::string>{"A:/c/1.bin"});
+    CHECK(asked == std::vector<std::string>{"k0", "k1"});
+    asked.clear();
+    CHECK(cached_art_paths(candidates, lookup, 5, 2) == std::vector<std::string>{"A:/c/1.bin"});
+    CHECK(asked == std::vector<std::string>{"k0", "k1"});
+    CHECK(cached_art_paths(candidates, lookup, 5, 10, {"A:/c/1.bin"}) ==
+          std::vector<std::string>{"A:/c/3.png"});
+}
+
+TEST_CASE("maze art mixes recent prints, other files and the printer", "[screensaver][maze]") {
+    using helix::ui::MazeArtSources;
+    using helix::ui::mix_maze_art;
+    using V = std::vector<std::string>;
+    const MazeArtSources full{{"r1", "r2", "r3"}, {"f1", "f2"}, "p"};
+    CHECK(mix_maze_art(full, 12) == V{"r1", "f1", "p", "r2", "f2", "r3"});
+    CHECK(mix_maze_art(full, 3) == V{"r1", "f1", "p"});
+    CHECK(mix_maze_art(MazeArtSources{{"a"}, {"a", "b"}, ""}, 12) == V{"a", "b"});
+    CHECK(mix_maze_art(MazeArtSources{{}, {}, "p"}, 12) == V{"p"});
+    CHECK(mix_maze_art(MazeArtSources{}, 12).empty());
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "the maze saver declares the maze ladder",
