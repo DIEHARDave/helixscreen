@@ -440,9 +440,9 @@
               <bind_flag_if cond="macro_1_light eq 0 or led_controllable eq 0" flag="hidden"/>
               <!-- DUPLICATE_NAME_OK: each slot cell hands itself to its own LedWidget, which finds light_button inside that cell -->
               <ui_button name="light_button"
-                         width="100%" height="100%" style_pad_ver="0" style_flex_track_place="center"
-                         variant="secondary" flex_flow="row" style_flex_main_place="center"
-                         style_flex_cross_place="center" style_pad_gap="#space_xs" focusable="false">
+                         width="100%" height="100%" style_pad_ver="0" variant="secondary" flex_flow="row"
+                         style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs"
+                         focusable="false">
                 <bind_state_if cond="printer_connection_state ne 2 or led_command_in_flight eq 1" state="disabled"/>
                 <!-- DUPLICATE_NAME_OK: found per cell by that cell's LedWidget -->
                 <icon name="light_icon"
@@ -471,9 +471,9 @@
               <bind_flag_if cond="macro_2_light eq 0 or led_controllable eq 0" flag="hidden"/>
               <!-- DUPLICATE_NAME_OK: each slot cell hands itself to its own LedWidget, which finds light_button inside that cell -->
               <ui_button name="light_button"
-                         width="100%" height="100%" style_pad_ver="0" style_flex_track_place="center"
-                         variant="secondary" flex_flow="row" style_flex_main_place="center"
-                         style_flex_cross_place="center" style_pad_gap="#space_xs" focusable="false">
+                         width="100%" height="100%" style_pad_ver="0" variant="secondary" flex_flow="row"
+                         style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs"
+                         focusable="false">
                 <bind_state_if cond="printer_connection_state ne 2 or led_command_in_flight eq 1" state="disabled"/>
                 <!-- DUPLICATE_NAME_OK: found per cell by that cell's LedWidget -->
                 <icon name="light_icon"
@@ -498,9 +498,9 @@
               <bind_flag_if cond="macro_3_light eq 0 or led_controllable eq 0" flag="hidden"/>
               <!-- DUPLICATE_NAME_OK: each slot cell hands itself to its own LedWidget, which finds light_button inside that cell -->
               <ui_button name="light_button"
-                         width="100%" height="100%" style_pad_ver="0" style_flex_track_place="center"
-                         variant="secondary" flex_flow="row" style_flex_main_place="center"
-                         style_flex_cross_place="center" style_pad_gap="#space_xs" focusable="false">
+                         width="100%" height="100%" style_pad_ver="0" variant="secondary" flex_flow="row"
+                         style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs"
+                         focusable="false">
                 <bind_state_if cond="printer_connection_state ne 2 or led_command_in_flight eq 1" state="disabled"/>
                 <!-- DUPLICATE_NAME_OK: found per cell by that cell's LedWidget -->
                 <icon name="light_icon"
@@ -525,9 +525,9 @@
               <bind_flag_if cond="macro_4_light eq 0 or led_controllable eq 0" flag="hidden"/>
               <!-- DUPLICATE_NAME_OK: each slot cell hands itself to its own LedWidget, which finds light_button inside that cell -->
               <ui_button name="light_button"
-                         width="100%" height="100%" style_pad_ver="0" style_flex_track_place="center"
-                         variant="secondary" flex_flow="row" style_flex_main_place="center"
-                         style_flex_cross_place="center" style_pad_gap="#space_xs" focusable="false">
+                         width="100%" height="100%" style_pad_ver="0" variant="secondary" flex_flow="row"
+                         style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_xs"
+                         focusable="false">
                 <bind_state_if cond="printer_connection_state ne 2 or led_command_in_flight eq 1" state="disabled"/>
                 <!-- DUPLICATE_NAME_OK: found per cell by that cell's LedWidget -->
                 <icon name="light_icon"
