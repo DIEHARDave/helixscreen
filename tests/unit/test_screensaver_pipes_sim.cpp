@@ -6,9 +6,12 @@
 #include "screensaver_pipes_sim.h"
 
 #include <array>
+#include <cmath>
+#include <cstdlib>
 #include <random>
 #include <set>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -19,6 +22,36 @@ namespace {
 
 bool dims_eq(PipeGridDims a, PipeGridDims b) {
     return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+bool vec_near(PipeVec3 a, PipeVec3 b, float eps = 1e-4f) {
+    return std::fabs(a.x - b.x) <= eps && std::fabs(a.y - b.y) <= eps &&
+           std::fabs(a.z - b.z) <= eps;
+}
+
+bool same_piece(const PipePiece& a, const PipePiece& b) {
+    return a.kind == b.kind && vec_near(a.at, b.at) && a.dir == b.dir && a.from == b.from &&
+           a.length == b.length && a.material == b.material;
+}
+
+PipePiece piece(PipePieceKind kind, PipeVec3 at, PipeDir dir = PipeDir::POS_X,
+                PipeDir from = PipeDir::POS_X, float length = 0.0f, uint8_t material = 0) {
+    PipePiece p;
+    p.kind = kind;
+    p.at = at;
+    p.dir = dir;
+    p.from = from;
+    p.length = length;
+    p.material = material;
+    return p;
+}
+
+bool rgb_near(Rgb a, Rgb b, int tol = 1) {
+    return std::abs(a.r - b.r) <= tol && std::abs(a.g - b.g) <= tol && std::abs(a.b - b.b) <= tol;
+}
+
+int channel_sum(Rgb c) {
+    return c.r + c.g + c.b;
 }
 
 } // namespace
@@ -208,6 +241,247 @@ TEST_CASE("a pipe's straight weight is 1-4, or 25-100 one time in 20", "[screens
     }
     CHECK(counts[25] > 0);
     CHECK(counts[100] > 0);
+}
+
+// ============================================================================
+// One screen of pipes
+// ============================================================================
+
+TEST_CASE("pieces sit where the original draws them", "[screensaver][pipes_sim]") {
+    const PipeGridDims dims{15, 9, 15};
+    CHECK(vec_near(pipes_node_world({7, 4, 7}, dims), {0, 0, 0}));
+    CHECK(vec_near(pipes_node_world({0, 0, 0}, dims), {-49, -28, -49}));
+    CHECK(vec_near(pipes_node_world({14, 8, 14}, dims), {49, 28, 49}));
+
+    std::vector<PipePiece> out;
+    pipes_emit_start({7, 4, 7}, PipeDir::POS_Y, dims, 3, out);
+    REQUIRE(out.size() == 2);
+    CHECK(same_piece(
+        out[0], piece(PipePieceKind::BALL, {0, 0, 0}, PipeDir::POS_X, PipeDir::POS_X, 0.0f, 3)));
+    CHECK(same_piece(out[1], piece(PipePieceKind::CYLINDER, {0, 1, 0}, PipeDir::POS_Y,
+                                   PipeDir::POS_X, 5.0f, 3)));
+
+    out.clear();
+    pipes_emit_move({7, 4, 7}, PipeDir::POS_X, PipeDir::POS_X, PipeJoint::BALL, dims, 5, out);
+    REQUIRE(out.size() == 1);
+    CHECK(same_piece(out[0], piece(PipePieceKind::CYLINDER, {-1, 0, 0}, PipeDir::POS_X,
+                                   PipeDir::POS_X, 7.0f, 5)));
+
+    out.clear();
+    pipes_emit_move({7, 4, 7}, PipeDir::POS_X, PipeDir::POS_Z, PipeJoint::ELBOW, dims, 6, out);
+    REQUIRE(out.size() == 2);
+    CHECK(same_piece(
+        out[0], piece(PipePieceKind::ELBOW, {0, 0, 0}, PipeDir::POS_Z, PipeDir::POS_X, 0.0f, 6)));
+    CHECK(same_piece(out[1], piece(PipePieceKind::CYLINDER, {0, 0, 1}, PipeDir::POS_Z,
+                                   PipeDir::POS_X, 5.0f, 6)));
+
+    for (auto [joint, kind] : {std::pair{PipeJoint::BALL, PipePieceKind::BALL},
+                               std::pair{PipeJoint::TEAPOT, PipePieceKind::TEAPOT}}) {
+        out.clear();
+        pipes_emit_move({7, 4, 7}, PipeDir::NEG_Y, PipeDir::NEG_X, joint, dims, 7, out);
+        REQUIRE(out.size() == 2);
+        CHECK(same_piece(out[0], piece(kind, {0, 0, 0}, PipeDir::POS_X, PipeDir::POS_X, 0.0f, 7)));
+        CHECK(same_piece(out[1], piece(PipePieceKind::CYLINDER, {-1, 0, 0}, PipeDir::NEG_X,
+                                       PipeDir::POS_X, 5.0f, 7)));
+    }
+
+    out.clear();
+    pipes_emit_end({0, 0, 0}, dims, 9, out);
+    REQUIRE(out.size() == 1);
+    CHECK(same_piece(out[0], piece(PipePieceKind::BALL, {-49, -28, -49}, PipeDir::POS_X,
+                                   PipeDir::POS_X, 0.0f, 9)));
+}
+
+TEST_CASE("a screen begins with 2 to 4 pipes on distinct taken nodes", "[screensaver][pipes_sim]") {
+    std::set<int> counts;
+    for (uint32_t seed = 1; seed <= 300; seed++) {
+        std::minstd_rand rng(seed);
+        PipesScreen screen;
+        std::vector<PipePiece> out;
+        screen.begin({15, 9, 15}, rng, out);
+        int alive = 0;
+        std::set<std::tuple<int, int, int>> positions;
+        for (const PipeState& p : screen.pipes()) {
+            if (!p.alive) {
+                continue;
+            }
+            alive++;
+            positions.insert({p.pos.x, p.pos.y, p.pos.z});
+            CHECK_FALSE(screen.grid().empty(p.pos));
+            CHECK(p.material < PIPE_MATERIAL_COUNT);
+            CHECK(p.segment_count == 0);
+        }
+        CHECK(alive >= PIPES_MIN_ACTIVE);
+        CHECK(alive <= PIPES_MAX_ACTIVE);
+        CHECK(alive == screen.pipes_counted());
+        CHECK(alive == screen.pipes_started());
+        CHECK(positions.size() == static_cast<size_t>(alive));
+        CHECK_FALSE(out.empty());
+        counts.insert(alive);
+    }
+    CHECK(counts == std::set<int>{2, 3, 4});
+}
+
+TEST_CASE("a screen starts exactly 7 pipes before it finishes", "[screensaver][pipes_sim]") {
+    for (uint32_t seed = 1; seed <= 40; seed++) {
+        std::minstd_rand rng(seed);
+        PipesScreen screen;
+        std::vector<PipePiece> out;
+        screen.begin({15, 9, 15}, rng, out);
+        int steps = 0;
+        while (screen.step(rng, out) && steps < 20000) {
+            steps++;
+        }
+        REQUIRE(steps < 20000);
+        CHECK(screen.finished());
+        CHECK(screen.pipes_started() == PIPES_PER_SCREEN);
+        CHECK(screen.grid().empty_count() > 0);
+    }
+}
+
+TEST_CASE("a pipe stops only where every neighbour is taken", "[screensaver][pipes_sim]") {
+    std::minstd_rand rng(5);
+    PipesScreen screen;
+    std::vector<PipePiece> out;
+    screen.begin({15, 9, 15}, rng, out);
+    bool any_stuck = false;
+    for (int s = 0; s < 20000 && screen.step(rng, out); s++) {
+        for (const PipeState& p : screen.pipes()) {
+            if (!p.alive || !p.stuck) {
+                continue;
+            }
+            any_stuck = true;
+            for (int d = 0; d < PIPE_DIR_COUNT; d++) {
+                CHECK_FALSE(screen.grid().empty(pipe_step(p.pos, static_cast<PipeDir>(d))));
+            }
+        }
+    }
+    REQUIRE(any_stuck);
+}
+
+TEST_CASE("a grid that runs out of nodes ends the screen", "[screensaver][pipes_sim]") {
+    for (uint32_t seed = 1; seed <= 20; seed++) {
+        std::minstd_rand rng(seed);
+        PipesScreen screen;
+        std::vector<PipePiece> out;
+        // Two nodes: the first pipe takes both, the rest find nothing.
+        screen.begin({2, 1, 1}, rng, out);
+        CHECK(screen.pipes_started() == 1);
+        CHECK(screen.grid().empty_count() == 0);
+        CHECK(screen.step(rng, out));
+        CHECK_FALSE(screen.step(rng, out));
+        CHECK(screen.pipes_started() == 1);
+
+        // One node: a teapot, then nothing.
+        out.clear();
+        screen.begin({1, 1, 1}, rng, out);
+        REQUIRE(out.size() == 1);
+        CHECK(out[0].kind == PipePieceKind::TEAPOT);
+        CHECK_FALSE(screen.step(rng, out));
+        CHECK(screen.pipes_started() == 1);
+    }
+}
+
+TEST_CASE("over many turns a third of the joints are balls", "[screensaver][pipes_sim]") {
+    std::minstd_rand rng(99);
+    PipesScreen screen;
+    std::vector<PipePiece> out;
+    std::array<uint64_t, 3> joints{};
+    uint64_t straight = 0;
+    while (joints[0] + joints[1] + joints[2] < 20000) {
+        screen.begin({15, 9, 15}, rng, out);
+        while (screen.step(rng, out)) {
+            out.clear();
+        }
+        for (size_t i = 0; i < 3; i++) {
+            joints[i] += screen.joint_counts()[i];
+        }
+        straight += screen.straight_steps();
+        out.clear();
+    }
+    const uint64_t total = joints[0] + joints[1] + joints[2];
+    const double ball = double(joints[1]) / double(joints[0] + joints[1]);
+    CHECK(ball > 0.31);
+    CHECK(ball < 0.355);
+    CHECK(double(joints[2]) <= 0.004 * double(total));
+    // Straight on carries its weight (2.5 on average) against up to four empty turns, so it
+    // wins about 40% of steps, well above the 20% an unweighted pick among five would give.
+    const double straight_share = double(straight) / double(straight + total);
+    CHECK(straight_share > 0.33);
+    CHECK(straight_share < 0.5);
+}
+
+TEST_CASE("a screen replays exactly from a seed", "[screensaver][pipes_sim]") {
+    std::minstd_rand rng_a(77);
+    std::minstd_rand rng_b(77);
+    PipesScreen a;
+    PipesScreen b;
+    std::vector<PipePiece> out_a;
+    std::vector<PipePiece> out_b;
+    a.begin({15, 9, 15}, rng_a, out_a);
+    b.begin({15, 9, 15}, rng_b, out_b);
+    for (int s = 0; s < 300; s++) {
+        a.step(rng_a, out_a);
+        b.step(rng_b, out_b);
+        REQUIRE(a.pipes() == b.pipes());
+    }
+    REQUIRE(out_a.size() == out_b.size());
+    for (size_t i = 0; i < out_a.size(); i++) {
+        CHECK(same_piece(out_a[i], out_b[i]));
+    }
+}
+
+// ============================================================================
+// Materials and lighting
+// ============================================================================
+
+TEST_CASE("the material table is the original's 16", "[screensaver][pipes_sim]") {
+    REQUIRE(PIPE_MATERIAL_COUNT == 16);
+    CHECK(PIPE_MATERIALS[0].kd[0] == Catch::Approx(0.07568f));
+    CHECK(PIPE_MATERIALS[0].kd[1] == Catch::Approx(0.61424f));
+    CHECK(PIPE_MATERIALS[0].shininess == Catch::Approx(76.8f));
+    CHECK(PIPE_MATERIALS[2].kd[0] == Catch::Approx(1.0f));
+    CHECK(PIPE_MATERIALS[2].kd[1] == Catch::Approx(0.829f));
+    CHECK(PIPE_MATERIALS[2].shininess == Catch::Approx(11.264f));
+    CHECK(PIPE_MATERIALS[5].shininess == Catch::Approx(27.897436f));
+    CHECK(PIPE_MATERIALS[15].ks[0] == Catch::Approx(0.7f));
+    CHECK(PIPE_MATERIALS[15].ks[2] == Catch::Approx(0.7f));
+    CHECK(PIPE_MATERIALS[15].shininess == Catch::Approx(10.0f));
+}
+
+TEST_CASE("the light and half vector are fixed in eye space", "[screensaver][pipes_sim]") {
+    CHECK(vec_near(pipes_light_dir(), {0.457496f, 0.457496f, 0.762493f}, 1e-5f));
+    CHECK(vec_near(pipes_half_vector(), {0.243674f, 0.243674f, 0.938747f}, 1e-5f));
+}
+
+TEST_CASE("pipes_shade is GL fixed-function lighting", "[screensaver][pipes_sim]") {
+    const PipeMaterial& emerald = PIPE_MATERIALS[0];
+    const PipeMaterial& ruby = PIPE_MATERIALS[3];
+    const PipeMaterial& white_rubber = PIPE_MATERIALS[15];
+    CHECK(rgb_near(pipes_shade(emerald, pipes_light_dir()), {27, 207, 27}));
+    CHECK(rgb_near(pipes_shade(emerald, pipes_half_vector()), {186, 255, 186}));
+    CHECK(rgb_near(pipes_shade(emerald, {0, 0, -1}), {6, 49, 6}));
+    CHECK(rgb_near(pipes_shade(emerald, {0, 0, 1}), {22, 170, 22}));
+    CHECK(rgb_near(pipes_shade(ruby, pipes_light_dir()), {207, 15, 15}));
+    CHECK(rgb_near(pipes_shade(ruby, pipes_half_vector()), {255, 173, 173}));
+    CHECK(rgb_near(pipes_shade(white_rubber, {0, 0, 1}), {206, 206, 206}));
+    CHECK(rgb_near(pipes_shade(white_rubber, {0, 0, -1}), {14, 14, 14}));
+}
+
+TEST_CASE("the brightest point of a material faces the half vector", "[screensaver][pipes_sim]") {
+    std::minstd_rand rng(31);
+    std::normal_distribution<float> gauss;
+    for (const PipeMaterial& m : PIPE_MATERIALS) {
+        const int peak = channel_sum(pipes_shade(m, pipes_half_vector()));
+        for (int i = 0; i < 200; i++) {
+            PipeVec3 n{gauss(rng), gauss(rng), gauss(rng)};
+            const float len = std::sqrt(n.x * n.x + n.y * n.y + n.z * n.z);
+            n = {n.x / len, n.y / len, n.z / len};
+            // The diffuse term pulls the true maximum a hair from H toward L, worth under a
+            // unit per channel; anywhere else is darker.
+            CHECK(peak + 3 >= channel_sum(pipes_shade(m, n)));
+        }
+    }
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

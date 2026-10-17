@@ -189,6 +189,251 @@ PipeDir pipes_choose_direction(const PipesGrid& grid, PipeNode pos, PipeDir last
     return ties[static_cast<size_t>(random_below(rng, tie_count))];
 }
 
+// ============================================================================
+// Materials and lighting
+// ============================================================================
+
+namespace {
+
+PipeVec3 normalized(PipeVec3 v) {
+    const float len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (len <= 0.0f) {
+        return {};
+    }
+    return {v.x / len, v.y / len, v.z / len};
+}
+
+float dot(PipeVec3 a, PipeVec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/// Light-model ambient (1.0) plus the light's own ambient (0.1).
+constexpr float AMBIENT_SCALE = 1.1f;
+
+} // namespace
+
+PipeVec3 pipes_light_dir() {
+    return normalized({90.0f, 90.0f, 150.0f});
+}
+
+PipeVec3 pipes_half_vector() {
+    const PipeVec3 l = pipes_light_dir();
+    return normalized({l.x, l.y, l.z + 1.0f});
+}
+
+Rgb pipes_shade(const PipeMaterial& m, PipeVec3 n) {
+    const float nl = dot(n, pipes_light_dir());
+    const float nh = std::max(0.0f, dot(n, pipes_half_vector()));
+    const float diffuse = std::max(0.0f, nl);
+    const float spec = nl > 0.0f ? std::pow(nh, m.shininess) : 0.0f;
+    std::array<uint8_t, 3> c{};
+    for (size_t i = 0; i < 3; i++) {
+        const float v = AMBIENT_SCALE * m.ka[i] + m.kd[i] * diffuse + m.ks[i] * spec;
+        c[i] = static_cast<uint8_t>(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f));
+    }
+    return {c[0], c[1], c[2]};
+}
+
+// ============================================================================
+// One screen of pipes
+// ============================================================================
+
+namespace {
+
+PipeVec3 add_scaled(PipeVec3 a, PipeVec3 d, float s) {
+    return {a.x + d.x * s, a.y + d.y * s, a.z + d.z * s};
+}
+
+PipePiece joint_piece(PipePieceKind kind, PipeVec3 at, uint8_t material) {
+    PipePiece p;
+    p.kind = kind;
+    p.at = at;
+    p.material = material;
+    return p;
+}
+
+PipePiece cylinder_piece(PipeVec3 at, PipeDir dir, float length, uint8_t material) {
+    PipePiece p;
+    p.kind = PipePieceKind::CYLINDER;
+    p.at = at;
+    p.dir = dir;
+    p.length = length;
+    p.material = material;
+    return p;
+}
+
+constexpr float SHORT_PIPE = PIPES_PITCH - 2.0f * PIPES_RADIUS;
+
+} // namespace
+
+PipeVec3 pipes_node_world(PipeNode n, PipeGridDims dims) {
+    const auto axis = [](int i, int dim) {
+        return (static_cast<float>(i) - static_cast<float>(dim - 1) * 0.5f) * PIPES_PITCH;
+    };
+    return {axis(n.x, dims.x), axis(n.y, dims.y), axis(n.z, dims.z)};
+}
+
+PipeVec3 pipes_dir_vec(PipeDir d) {
+    switch (d) {
+    case PipeDir::POS_X:
+        return {1, 0, 0};
+    case PipeDir::NEG_X:
+        return {-1, 0, 0};
+    case PipeDir::POS_Y:
+        return {0, 1, 0};
+    case PipeDir::NEG_Y:
+        return {0, -1, 0};
+    case PipeDir::POS_Z:
+        return {0, 0, 1};
+    case PipeDir::NEG_Z:
+        return {0, 0, -1};
+    case PipeDir::NONE:
+        break;
+    }
+    return {};
+}
+
+void pipes_emit_start(PipeNode node, PipeDir first, PipeGridDims dims, uint8_t material,
+                      std::vector<PipePiece>& out) {
+    const PipeVec3 c = pipes_node_world(node, dims);
+    out.push_back(joint_piece(PipePieceKind::BALL, c, material));
+    out.push_back(cylinder_piece(add_scaled(c, pipes_dir_vec(first), PIPES_RADIUS), first,
+                                 SHORT_PIPE, material));
+}
+
+void pipes_emit_move(PipeNode node, PipeDir last, PipeDir next, PipeJoint joint, PipeGridDims dims,
+                     uint8_t material, std::vector<PipePiece>& out) {
+    const PipeVec3 c = pipes_node_world(node, dims);
+    const PipeVec3 d = pipes_dir_vec(next);
+    if (next == last) {
+        out.push_back(cylinder_piece(add_scaled(c, d, -PIPES_RADIUS), next, PIPES_PITCH, material));
+        return;
+    }
+    switch (joint) {
+    case PipeJoint::ELBOW: {
+        PipePiece elbow = joint_piece(PipePieceKind::ELBOW, c, material);
+        elbow.from = last;
+        elbow.dir = next;
+        out.push_back(elbow);
+        break;
+    }
+    case PipeJoint::BALL:
+        out.push_back(joint_piece(PipePieceKind::BALL, c, material));
+        break;
+    case PipeJoint::TEAPOT:
+        out.push_back(joint_piece(PipePieceKind::TEAPOT, c, material));
+        break;
+    }
+    out.push_back(cylinder_piece(add_scaled(c, d, PIPES_RADIUS), next, SHORT_PIPE, material));
+}
+
+void pipes_emit_end(PipeNode node, PipeGridDims dims, uint8_t material,
+                    std::vector<PipePiece>& out) {
+    out.push_back(joint_piece(PipePieceKind::BALL, pipes_node_world(node, dims), material));
+}
+
+void PipesScreen::begin(PipeGridDims dims, std::minstd_rand& rng, std::vector<PipePiece>& out) {
+    grid_.reset(dims);
+    pipes_ = {};
+    joints_ = {};
+    straight_ = 0;
+    started_ = 0;
+    max_pipes_ = PIPES_PER_SCREEN;
+    const int n =
+        std::min(PIPES_PER_SCREEN,
+                 PIPES_MIN_ACTIVE + random_below(rng, PIPES_MAX_ACTIVE - PIPES_MIN_ACTIVE + 1));
+    counted_ = n;
+    for (size_t i = 0; i < static_cast<size_t>(n); i++) {
+        if (!start_pipe(i, rng, out)) {
+            pipes_[i].alive = false;
+            max_pipes_ = counted_;
+        }
+    }
+}
+
+bool PipesScreen::start_pipe(size_t i, std::minstd_rand& rng, std::vector<PipePiece>& out) {
+    PipeState& p = pipes_[i];
+    PipeNode node;
+    if (!grid_.random_empty(rng, node)) {
+        return false;
+    }
+    grid_.take(node);
+    p = {};
+    p.alive = true;
+    p.pos = node;
+    p.material = static_cast<uint8_t>(random_below(rng, static_cast<int>(PIPE_MATERIAL_COUNT)));
+    p.weight_straight = pipes_choose_weight_straight(rng);
+    p.last = static_cast<PipeDir>(random_below(rng, PIPE_DIR_COUNT));
+    started_++;
+    const PipeDir first = pipes_choose_direction(grid_, node, p.last, p.weight_straight, rng);
+    if (first == PipeDir::NONE) {
+        out.push_back(
+            joint_piece(PipePieceKind::TEAPOT, pipes_node_world(node, grid_.dims()), p.material));
+        p.stuck = true;
+        return true;
+    }
+    pipes_emit_start(node, first, grid_.dims(), p.material, out);
+    p.pos = pipe_step(node, first);
+    grid_.take(p.pos);
+    p.last = first;
+    return true;
+}
+
+void PipesScreen::grow_pipe(PipeState& p, std::minstd_rand& rng, std::vector<PipePiece>& out) {
+    const PipeDir next = pipes_choose_direction(grid_, p.pos, p.last, p.weight_straight, rng);
+    if (next == PipeDir::NONE) {
+        pipes_emit_end(p.pos, grid_.dims(), p.material, out);
+        p.stuck = true;
+        return;
+    }
+    PipeJoint joint = PipeJoint::ELBOW;
+    if (next != p.last) {
+        joint = pipes_choose_joint(rng);
+        joints_[static_cast<size_t>(joint)]++;
+    } else {
+        straight_++;
+    }
+    pipes_emit_move(p.pos, p.last, next, joint, grid_.dims(), p.material, out);
+    p.pos = pipe_step(p.pos, next);
+    grid_.take(p.pos);
+    p.last = next;
+    p.segment_count++;
+}
+
+bool PipesScreen::step(std::minstd_rand& rng, std::vector<PipePiece>& out) {
+    for (size_t i = 0; i < pipes_.size(); i++) {
+        PipeState& p = pipes_[i];
+        if (!p.alive || !p.stuck) {
+            continue;
+        }
+        if (++counted_ > max_pipes_) {
+            p.alive = false;
+        } else if (!start_pipe(i, rng, out)) {
+            p.alive = false;
+            max_pipes_ = counted_;
+        }
+    }
+    for (PipeState& p : pipes_) {
+        if (p.alive && !p.stuck) {
+            grow_pipe(p, rng, out);
+        }
+    }
+    return !finished();
+}
+
+bool PipesScreen::finished() const {
+    return std::none_of(pipes_.begin(), pipes_.end(), [](const PipeState& p) { return p.alive; });
+}
+
+void PipesScreen::release() {
+    grid_.release();
+    pipes_ = {};
+    counted_ = 0;
+    started_ = 0;
+    joints_ = {};
+    straight_ = 0;
+}
+
 } // namespace helix::ui
 
 #endif // HELIX_ENABLE_SCREENSAVER
