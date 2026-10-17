@@ -1219,9 +1219,8 @@ void Modal::esc_key_cb(lv_event_t* e) {
 
     auto* self = static_cast<Modal*>(lv_event_get_user_data(e));
     if (self) {
-        // Instance modal - call on_cancel to allow override
         spdlog::debug("[{}] ESC key pressed - closing", self->get_name());
-        self->on_cancel();
+        self->on_escape();
     } else {
         // Static modal - hide topmost
         lv_obj_t* top = ModalStack::instance().top_dialog();
