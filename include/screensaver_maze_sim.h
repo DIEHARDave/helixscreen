@@ -55,6 +55,43 @@ inline float maze_focal(uint32_t w, uint32_t h) {
     return vertical > horizontal ? vertical : horizontal;
 }
 
+/// Distance fog: a surface d tiles away keeps k / MAZE_FOG_ONE of its colour and takes the
+/// rest from MAZE_FOG_TINT, with k = round(32 * (FLOOR + (1 - FLOOR) * exp(-(d - START) / SCALE))).
+inline constexpr uint32_t MAZE_FOG_ONE = 32;
+inline constexpr float MAZE_FOG_START = 1.0f;
+inline constexpr float MAZE_FOG_SCALE = 6.0f;
+inline constexpr float MAZE_FOG_FLOOR = 0.15f;
+inline constexpr Rgb MAZE_FOG_TINT{6, 6, 10};
+/// The renderer reads k from a table of MAZE_FOG_SLOTS depths, MAZE_FOG_STEPS_PER_TILE a tile;
+/// the textured floor and ceiling from MAZE_FOG_BANDS pre-fogged copies of their textures.
+inline constexpr int MAZE_FOG_STEPS_PER_TILE = 4;
+inline constexpr int MAZE_FOG_SLOTS = 128;
+inline constexpr int MAZE_FOG_BANDS = 16;
+/// Faces that run east-west keep this much of their light, out of MAZE_FOG_ONE, as
+/// Wolfenstein drew them.
+inline constexpr uint32_t MAZE_SIDE_K = 21;
+/// The floor and ceiling of the flat levels, before fog.
+inline constexpr Rgb MAZE_FLAT_FLOOR{130, 86, 48};
+inline constexpr Rgb MAZE_FLAT_CEILING{175, 172, 165};
+
+/// Fog brightness, out of MAZE_FOG_ONE, of a surface `depth` tiles away.
+uint32_t maze_fog_k(float depth);
+/// The fog table slot holding `depth`, clamped to the table.
+inline int maze_fog_slot(float depth) {
+    const float s = depth * static_cast<float>(MAZE_FOG_STEPS_PER_TILE);
+    if (!(s > 0.0f)) {
+        return 0;
+    }
+    return s >= static_cast<float>(MAZE_FOG_SLOTS - 1) ? MAZE_FOG_SLOTS - 1 : static_cast<int>(s);
+}
+/// The depth at the centre of `depth`'s table slot: the depth the renderer fogs it as.
+inline float maze_fog_slot_depth(float depth) {
+    return (static_cast<float>(maze_fog_slot(depth)) + 0.5f) /
+           static_cast<float>(MAZE_FOG_STEPS_PER_TILE);
+}
+/// `c` at fog brightness `k`: (c * k + tint * (32 - k) + 16) >> 5 per channel.
+Rgb maze_fog(Rgb c, uint32_t k);
+
 /// What a map tile holds.
 enum class MazeTile : uint8_t {
     OPEN = 0,
@@ -287,6 +324,11 @@ class MazeRenderer {
     }
     /// Packed pixel at internal (x, y) of the last render, before the flip.
     uint32_t internal_pixel(uint32_t x, uint32_t y) const;
+    /// Fog brightness, out of MAZE_FOG_ONE, of the wall in internal column `x` in the last
+    /// render, the darker east-west side included.
+    uint32_t wall_fog_k(uint32_t x) const {
+        return wall_k_[x];
+    }
     /// Whether picture walls show a picture.
     bool has_picture() const {
         return has_picture_;
@@ -299,9 +341,13 @@ class MazeRenderer {
         std::vector<Px> frame;      ///< column-major internal frame
         std::vector<Px> textures;   ///< each TEX x TEX, column-major: [u * TEX + v]
         std::vector<Px> sprites;    ///< laid out the same; sprite_key<Px>() draws nothing
-        std::vector<Px> ceil_rows;  ///< flat ceiling colour per internal row
-        std::vector<Px> floor_rows; ///< flat floor colour per internal row
+        std::vector<Px> ceil_rows;  ///< flat ceiling colour per internal row, fogged
+        std::vector<Px> floor_rows; ///< flat floor colour per internal row, fogged
         std::vector<Px> row;        ///< one output row, built once per internal row
+        /// MAZE_FOG_BANDS fogged floor textures, then as many ceilings; textured levels only.
+        std::vector<Px> fog_bands;
+        /// Per k, the tint's share in the format's working form: two words, see shade().
+        std::vector<uint32_t> fog_tint;
     };
     struct SpriteDraw {
         float depth; ///< squared distance, for drawing far to near
@@ -332,6 +378,14 @@ class MazeRenderer {
     void draw_sprites(const std::vector<MazeItem>& items, const MazePose& pose,
                       uint32_t elapsed_ms);
     template <typename Px> void blit(float flip, FrameTarget& out);
+    template <typename Px> void build_fog_bands();
+    /// `p` at fog brightness `k`, as maze_fog() computes it, in the store's format.
+    template <typename Px> Px shade(Px p, uint32_t k) const;
+    /// Distance to the floor (or ceiling) point the centre of internal row `y` sees.
+    float row_distance(uint32_t y) const;
+    uint32_t fog_k_at(float depth) const {
+        return fog_k_[static_cast<size_t>(maze_fog_slot(depth))];
+    }
 
     PixelFormat format_ = PixelFormat::XRGB8888;
     uint32_t w_ = 0;
@@ -350,6 +404,9 @@ class MazeRenderer {
     std::vector<int> wall_top_;
     std::vector<int> wall_bottom_;
     std::vector<int32_t> row_dist_q16_; ///< floor distance of each internal row, 16.16
+    std::vector<uint8_t> fog_k_;        ///< fog brightness of each depth slot
+    std::vector<uint8_t> row_band_;     ///< fog band of each internal row
+    std::vector<uint8_t> wall_k_;       ///< fog brightness of each internal column's wall
     std::vector<int> src_rows_;         ///< internal row each output row reads, -1 for black
     std::vector<SpriteDraw> sprite_order_;
 };

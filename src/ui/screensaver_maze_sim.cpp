@@ -22,12 +22,10 @@ constexpr float PI_F = 3.14159265f;
 
 // Texture and sprite slots.
 constexpr size_t TEX_BRICK = 0;
-constexpr size_t TEX_BRICK_DARK = 1;
-constexpr size_t TEX_PICTURE = 2;
-constexpr size_t TEX_PICTURE_DARK = 3;
-constexpr size_t TEX_FLOOR = 4;
-constexpr size_t TEX_CEIL = 5;
-constexpr size_t TEX_COUNT = 6;
+constexpr size_t TEX_FLOOR = 1;
+constexpr size_t TEX_CEIL = 2;
+constexpr size_t TEX_PICTURE = 3;
+constexpr size_t TEX_COUNT = 4;
 
 constexpr size_t SPR_LOGO = 0;
 constexpr size_t SPR_START = 1;
@@ -44,9 +42,6 @@ constexpr int PICTURE_WALLS = 6;
 /// Logos turn once every this many ms; rocks show a new rotation frame this often.
 constexpr uint32_t SPIN_PERIOD_MS = 3000;
 constexpr uint32_t ROCK_FRAME_MS = 90;
-
-/// Wall-darkening of faces that run east-west, as Wolfenstein drew them.
-constexpr float DARK_SIDE = 0.65f;
 
 struct SpriteStyle {
     float size;     ///< height, tiles
@@ -412,7 +407,42 @@ template <typename T> size_t held_bytes(const std::vector<T>& v) {
     return v.capacity() * sizeof(T);
 }
 
+/// Fog brightness of band `b`: MAZE_FOG_ONE down to the farthest fog in even steps.
+uint32_t band_k(int b) {
+    const auto far_k = static_cast<float>(maze_fog_k(1e9f));
+    const float step = (static_cast<float>(MAZE_FOG_ONE) - far_k) / (MAZE_FOG_BANDS - 1);
+    return MAZE_FOG_ONE - static_cast<uint32_t>(std::lround(static_cast<float>(b) * step));
+}
+
+/// The band whose brightness is nearest `k`.
+uint8_t nearest_band(uint32_t k) {
+    int best = 0;
+    for (int b = 1; b < MAZE_FOG_BANDS; b++) {
+        const auto dk = [k](int band) {
+            return std::abs(static_cast<int>(band_k(band)) - static_cast<int>(k));
+        };
+        if (dk(b) < dk(best)) {
+            best = b;
+        }
+    }
+    return static_cast<uint8_t>(best);
+}
+
 } // namespace
+
+uint32_t maze_fog_k(float depth) {
+    const float fall = std::exp(-std::max(0.0f, depth - MAZE_FOG_START) / MAZE_FOG_SCALE);
+    return static_cast<uint32_t>(std::lround(static_cast<float>(MAZE_FOG_ONE) *
+                                             (MAZE_FOG_FLOOR + (1.0f - MAZE_FOG_FLOOR) * fall)));
+}
+
+Rgb maze_fog(Rgb c, uint32_t k) {
+    const uint32_t m = MAZE_FOG_ONE - k;
+    auto ch = [k, m](uint8_t v, uint8_t t) {
+        return static_cast<uint8_t>((v * k + t * m + 16) >> 5);
+    };
+    return {ch(c.r, MAZE_FOG_TINT.r), ch(c.g, MAZE_FOG_TINT.g), ch(c.b, MAZE_FOG_TINT.b)};
+}
 
 void MazeMap::generate(int cells, std::minstd_rand& rng) {
     size_ = 2 * cells + 1;
@@ -712,6 +742,13 @@ void MazeRenderer::init(uint32_t w, uint32_t h, PixelFormat format, const MazeAr
     wall_bottom_.assign(w, 0);
     row_dist_q16_.assign(h, 0);
     src_rows_.assign(h, -1);
+    row_band_.assign(h, 0);
+    wall_k_.assign(w, static_cast<uint8_t>(MAZE_FOG_ONE));
+    fog_k_.resize(MAZE_FOG_SLOTS);
+    for (int i = 0; i < MAZE_FOG_SLOTS; i++) {
+        fog_k_[static_cast<size_t>(i)] = static_cast<uint8_t>(maze_fog_k(
+            (static_cast<float>(i) + 0.5f) / static_cast<float>(MAZE_FOG_STEPS_PER_TILE)));
+    }
     sprite_order_.reserve(32);
     if (format == PixelFormat::RGB565) {
         build<uint16_t>(art);
@@ -729,6 +766,8 @@ void MazeRenderer::release() {
         free_vector(st.ceil_rows);
         free_vector(st.floor_rows);
         free_vector(st.row);
+        free_vector(st.fog_bands);
+        free_vector(st.fog_tint);
     };
     free_store(s16_);
     free_store(s32_);
@@ -738,17 +777,22 @@ void MazeRenderer::release() {
     free_vector(row_dist_q16_);
     free_vector(src_rows_);
     free_vector(sprite_order_);
+    free_vector(fog_k_);
+    free_vector(row_band_);
+    free_vector(wall_k_);
     w_ = h_ = iw_ = ih_ = 0;
 }
 
 size_t MazeRenderer::buffer_bytes() const {
     auto store_bytes = [](const auto& s) {
         return held_bytes(s.frame) + held_bytes(s.textures) + held_bytes(s.sprites) +
-               held_bytes(s.ceil_rows) + held_bytes(s.floor_rows) + held_bytes(s.row);
+               held_bytes(s.ceil_rows) + held_bytes(s.floor_rows) + held_bytes(s.row) +
+               held_bytes(s.fog_bands) + held_bytes(s.fog_tint);
     };
     return store_bytes(s16_) + store_bytes(s32_) + held_bytes(zbuf_) + held_bytes(wall_top_) +
            held_bytes(wall_bottom_) + held_bytes(row_dist_q16_) + held_bytes(src_rows_) +
-           held_bytes(sprite_order_);
+           held_bytes(sprite_order_) + held_bytes(fog_k_) + held_bytes(row_band_) +
+           held_bytes(wall_k_);
 }
 
 uint32_t MazeRenderer::internal_pixel(uint32_t x, uint32_t y) const {
@@ -767,16 +811,51 @@ void MazeRenderer::set_level(size_t level) {
     focal_ = maze_focal(iw_, ih_);
     plane_len_ = 0.5f * static_cast<float>(iw_) / focal_;
     for (uint32_t y = 0; y < ih_; y++) {
-        // Distance to the floor (or ceiling) point the centre of row y sees, the eye half a
-        // tile above it.
-        const float denom = std::fabs(2.0f * y + 1.0f - static_cast<float>(ih_));
-        const float dist = std::min(focal_ / std::max(denom, 1.0f), 1000.0f);
+        const float dist = row_distance(y);
         row_dist_q16_[y] = static_cast<int32_t>(dist * 65536.0f);
+        row_band_[y] = nearest_band(fog_k_at(dist));
     }
     if (format_ == PixelFormat::RGB565) {
         apply_level<uint16_t>();
     } else {
         apply_level<uint32_t>();
+    }
+}
+
+float MazeRenderer::row_distance(uint32_t y) const {
+    // The eye is half a tile above the floor and below the ceiling.
+    const float denom = std::fabs(2.0f * static_cast<float>(y) + 1.0f - static_cast<float>(ih_));
+    return std::min(focal_ / std::max(denom, 1.0f), 1000.0f);
+}
+
+template <typename Px> Px MazeRenderer::shade(Px p, uint32_t k) const {
+    const uint32_t* t = store<Px>().fog_tint.data() + 2 * static_cast<size_t>(k);
+    if constexpr (sizeof(Px) == 2) {
+        // 0x07E0F81F spreads the three fields apart so one multiply scales them all.
+        uint32_t x = (p | static_cast<uint32_t>(p) << 16) & 0x07E0F81Fu;
+        x = (x * k + t[0]) >> 5 & 0x07E0F81Fu;
+        return static_cast<Px>(x | x >> 16);
+    } else {
+        const uint32_t rb = ((p & 0xFF00FFu) * k + t[0]) >> 5 & 0xFF00FFu;
+        const uint32_t g = ((p & 0xFF00u) * k + t[1]) >> 5 & 0xFF00u;
+        return 0xFF000000u | rb | g;
+    }
+}
+
+template <typename Px> void MazeRenderer::build_fog_bands() {
+    Store<Px>& st = store<Px>();
+    constexpr size_t TEXELS = static_cast<size_t>(TEX) * TEX;
+    st.fog_bands.resize(2 * MAZE_FOG_BANDS * TEXELS);
+    const Px* floor_tex = st.textures.data() + TEX_FLOOR * TEXELS;
+    const Px* ceil_tex = st.textures.data() + TEX_CEIL * TEXELS;
+    for (int b = 0; b < MAZE_FOG_BANDS; b++) {
+        const uint32_t k = band_k(b);
+        Px* floor_band = st.fog_bands.data() + static_cast<size_t>(b) * TEXELS;
+        Px* ceil_band = floor_band + MAZE_FOG_BANDS * TEXELS;
+        for (size_t i = 0; i < TEXELS; i++) {
+            floor_band[i] = shade<Px>(floor_tex[i], k);
+            ceil_band[i] = shade<Px>(ceil_tex[i], k);
+        }
     }
 }
 
@@ -787,13 +866,19 @@ template <typename Px> void MazeRenderer::apply_level() {
     if (st.frame.size() < static_cast<size_t>(iw_) * ih_) {
         st.frame.resize(static_cast<size_t>(iw_) * ih_);
     }
-    const float half = static_cast<float>(ih_) * 0.5f;
+    if (MAZE_LEVELS[level_].textured_floor) {
+        if (st.fog_bands.empty()) {
+            build_fog_bands<Px>();
+        }
+        return;
+    }
+    free_vector(st.fog_bands);
     for (uint32_t y = 0; y < ih_; y++) {
-        const float t = std::fabs(static_cast<float>(y) + 0.5f - half) / half; // 0 at horizon
+        const uint32_t k = fog_k_at(row_distance(y));
         st.ceil_rows[y] =
-            static_cast<Px>(PixelWriter::pack(mix({35, 35, 38}, {175, 172, 165}, t), format_));
+            static_cast<Px>(PixelWriter::pack(maze_fog(MAZE_FLAT_CEILING, k), format_));
         st.floor_rows[y] =
-            static_cast<Px>(PixelWriter::pack(mix({35, 23, 14}, {130, 86, 48}, t), format_));
+            static_cast<Px>(PixelWriter::pack(maze_fog(MAZE_FLAT_FLOOR, k), format_));
     }
 }
 
@@ -805,6 +890,21 @@ template <typename Px> void MazeRenderer::build(const MazeArt& art) {
     st.textures.assign(TEX_COUNT * TEX * TEX, 0);
     st.sprites.assign(SPR_COUNT * TEX * TEX, 0);
     auto pack = [this](Rgb c) { return static_cast<Px>(PixelWriter::pack(c, format_)); };
+
+    st.fog_tint.assign(2 * (MAZE_FOG_ONE + 1), 0);
+    for (uint32_t k = 0; k <= MAZE_FOG_ONE; k++) {
+        // The tint's share plus the rounding half, in the lanes shade() multiplies in.
+        const uint32_t m = MAZE_FOG_ONE - k;
+        uint32_t* t = st.fog_tint.data() + 2 * static_cast<size_t>(k);
+        if constexpr (sizeof(Px) == 2) {
+            t[0] = (static_cast<uint32_t>(MAZE_FOG_TINT.r >> 3) * m + 16) << 11 |
+                   (static_cast<uint32_t>(MAZE_FOG_TINT.g >> 2) * m + 16) << 21 |
+                   (static_cast<uint32_t>(MAZE_FOG_TINT.b >> 3) * m + 16);
+        } else {
+            t[0] = (MAZE_FOG_TINT.r * m + 16) << 16 | (MAZE_FOG_TINT.b * m + 16);
+            t[1] = (MAZE_FOG_TINT.g * m + 16) << 8;
+        }
+    }
 
     // Heap, not static: the saver holds no memory while it is not running.
     auto pic_owner = std::make_unique<Canvas64>();
@@ -829,9 +929,7 @@ template <typename Px> void MazeRenderer::build(const MazeArt& art) {
             const Rgb brick = brick_texel(u, v);
             const Rgb picture = pic.on[u][v] ? pic.c[u][v] : brick;
             tex(TEX_BRICK, u, v) = pack(brick);
-            tex(TEX_BRICK_DARK, u, v) = pack(scaled(brick, DARK_SIDE));
             tex(TEX_PICTURE, u, v) = pack(picture);
-            tex(TEX_PICTURE_DARK, u, v) = pack(scaled(picture, DARK_SIDE));
             tex(TEX_FLOOR, u, v) = pack(floor_texel(u, v));
             tex(TEX_CEIL, u, v) = pack(ceiling_texel(u, v));
         }
@@ -902,8 +1000,9 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
     const bool textured = MAZE_LEVELS[level_].textured_floor;
     const auto pos_xq = static_cast<int32_t>(pose.x * 65536.0f);
     const auto pos_yq = static_cast<int32_t>(pose.y * 65536.0f);
-    const Px* floor_tex = st.textures.data() + TEX_FLOOR * TEX * TEX;
-    const Px* ceil_tex = st.textures.data() + TEX_CEIL * TEX * TEX;
+    // Textured levels hold the floor and ceiling bands; flat ones read neither.
+    const Px* floor_bands = st.fog_bands.data();
+    const Px* ceil_bands = textured ? floor_bands + MAZE_FOG_BANDS * TEX * TEX : nullptr;
     const int ih = static_cast<int>(ih_);
     const int max_steps = 4 * std::max(map.size(), 1);
 
@@ -944,7 +1043,12 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
             tex_u = TEX - 1 - tex_u;
         }
         const bool picture = has_picture_ && map.tile(mx, my) == MazeTile::PICTURE;
-        const size_t tex = (picture ? TEX_PICTURE : TEX_BRICK) + (side == 1 ? 1 : 0);
+        const size_t tex = picture ? TEX_PICTURE : TEX_BRICK;
+        uint32_t k = fog_k_at(perp);
+        if (side == 1) {
+            k = (k * MAZE_SIDE_K + MAZE_FOG_ONE / 2) >> 5;
+        }
+        wall_k_[x] = static_cast<uint8_t>(k);
 
         const float line_h = focal_ / perp;
         const float top_f = (static_cast<float>(ih) - line_h) * 0.5f;
@@ -963,9 +1067,21 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
         const auto step = static_cast<uint32_t>(static_cast<int64_t>(TEX * 65536.0 / line_h));
         auto tp = static_cast<uint32_t>(
             static_cast<int64_t>((static_cast<double>(y0) + 0.5 - top_f) * TEX * 65536.0 / line_h));
-        for (int y = y0; y < y1; y++) {
-            col[y] = texcol[(tp >> 16) & (TEX - 1)];
-            tp += step;
+        if (y1 - y0 > TEX) {
+            // Taller than the texture: shade each texel once, not each pixel it covers.
+            Px shaded[TEX];
+            for (int v = 0; v < TEX; v++) {
+                shaded[v] = shade<Px>(texcol[v], k);
+            }
+            for (int y = y0; y < y1; y++) {
+                col[y] = shaded[(tp >> 16) & (TEX - 1)];
+                tp += step;
+            }
+        } else {
+            for (int y = y0; y < y1; y++) {
+                col[y] = shade<Px>(texcol[(tp >> 16) & (TEX - 1)], k);
+                tp += step;
+            }
         }
 
         if (!textured) {
@@ -979,18 +1095,20 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
         }
         const auto rdxq = static_cast<int32_t>(rdx * 65536.0f);
         const auto rdyq = static_cast<int32_t>(rdy * 65536.0f);
+        // Each row reads its own fog band: the band's offset plus the texel.
         auto texel = [&](int y) {
             const int64_t d = row_dist_q16_[static_cast<size_t>(y)];
             const auto fx = static_cast<int32_t>(pos_xq + ((d * rdxq) >> 16));
             const auto fy = static_cast<int32_t>(pos_yq + ((d * rdyq) >> 16));
-            return static_cast<size_t>((fx >> 10) & (TEX - 1)) * TEX +
+            return static_cast<size_t>(row_band_[static_cast<size_t>(y)]) * TEX * TEX +
+                   static_cast<size_t>((fx >> 10) & (TEX - 1)) * TEX +
                    static_cast<size_t>((fy >> 10) & (TEX - 1));
         };
         for (int y = 0; y < y0; y++) {
-            col[y] = ceil_tex[texel(y)];
+            col[y] = ceil_bands[texel(y)];
         }
         for (int y = y1; y < ih; y++) {
-            col[y] = floor_tex[texel(y)];
+            col[y] = floor_bands[texel(y)];
         }
     }
 }
@@ -1078,6 +1196,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
         const auto vstart =
             static_cast<uint32_t>((static_cast<float>(ys) + 0.5f - y0) * TEX * 65536.0f / h);
         const Px* spr = st.sprites.data() + slot * TEX * TEX;
+        const uint32_t k = fog_k_at(ty);
         for (int x = xs; x < xe; x++) {
             if (ty >= zbuf_[static_cast<size_t>(x)]) {
                 continue;
@@ -1095,7 +1214,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
                 if (px == key || (style.screen_door && ((x + y) & 1) != 0)) {
                     continue;
                 }
-                col[y] = px;
+                col[y] = shade<Px>(px, k);
             }
         }
     }

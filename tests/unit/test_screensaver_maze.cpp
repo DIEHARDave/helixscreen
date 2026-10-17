@@ -423,6 +423,173 @@ TEST_CASE("a sprite stands the height its distance gives", "[screensaver][maze]"
     CHECK(std::abs((last - first + 1) - 0.55f * focal / 4.0f) <= 1.0f);
 }
 
+TEST_CASE("the fog curve and blend", "[screensaver][maze]") {
+    using helix::ui::maze_fog;
+    using helix::ui::maze_fog_k;
+    using helix::ui::maze_fog_slot_depth;
+    CHECK(maze_fog_k(0.5f) == 32);
+    CHECK(maze_fog_k(1.0f) == 32);
+    CHECK(maze_fog_k(2.0f) == 28);
+    CHECK(maze_fog_k(4.0f) == 21);
+    CHECK(maze_fog_k(7.0f) == 15);
+    CHECK(maze_fog_k(13.0f) == 8);
+    CHECK(maze_fog_k(100.0f) == 5);
+    for (float d = 0.0f; d < 40.0f; d += 0.25f) {
+        INFO("depth " << d);
+        CHECK(maze_fog_k(d + 0.25f) <= maze_fog_k(d));
+    }
+    CHECK(maze_fog({200, 100, 50}, 32) == Rgb{200, 100, 50});
+    CHECK(maze_fog({255, 255, 255}, 15) == Rgb{123, 123, 125});
+    CHECK(maze_fog({0, 0, 0}, 5) == Rgb{5, 5, 8});
+    CHECK(maze_fog_slot_depth(3.5f) == Catch::Approx(3.625f));
+    CHECK(maze_fog_slot_depth(1000.0f) == Catch::Approx(31.875f));
+    CHECK(maze_fog_slot_depth(-2.0f) == Catch::Approx(0.125f));
+}
+
+TEST_CASE("a wall's fog follows its distance, darker on the y side", "[screensaver][maze]") {
+    using helix::ui::maze_fog_k;
+    using helix::ui::maze_fog_slot_depth;
+    const int size = 15;
+    MazeMap map = room(size);
+    MazeRenderer r;
+    Frame frame(160, 100, PixelFormat::XRGB8888);
+    r.init(160, 100, PixelFormat::XRGB8888, MazeArt{});
+    const uint32_t k = maze_fog_k(maze_fog_slot_depth(3.5f));
+    REQUIRE(k < 32);
+    const uint32_t mid = r.internal_w() / 2;
+    r.render(map, {}, MazePose{static_cast<float>(size - 1) - 3.5f, size * 0.5f, 0.0f}, 0.0f, 0,
+             frame.target);
+    CHECK(r.wall_fog_k(mid) == k);
+    // Facing north, 3.5 tiles from the north wall's face at y = 1.
+    r.render(map, {}, MazePose{size * 0.5f, 4.5f, -3.14159265f * 0.5f}, 0.0f, 0, frame.target);
+    REQUIRE(r.wall_distance(mid) == Catch::Approx(3.5f).margin(0.01f));
+    CHECK(r.wall_fog_k(mid) == (k * helix::ui::MAZE_SIDE_K + 16) >> 5);
+}
+
+TEST_CASE("a picture wall is drawn at its fogged colour", "[screensaver][maze]") {
+    using helix::ui::maze_fog;
+    using helix::ui::maze_fog_k;
+    using helix::ui::maze_fog_slot_depth;
+    MazeArt art;
+    art.picture.w = 4;
+    art.picture.h = 4;
+    art.picture.argb.assign(16, 0xFF00FF00u);
+    const int size = 15;
+    std::vector<MazeTile> tiles(static_cast<size_t>(size * size), MazeTile::BRICK);
+    for (int y = 1; y < size - 1; y++) {
+        for (int x = 1; x < size - 1; x++) {
+            tiles[static_cast<size_t>(y * size + x)] = MazeTile::OPEN;
+        }
+    }
+    tiles[static_cast<size_t>((size / 2) * size + size - 1)] = MazeTile::PICTURE;
+    MazeMap map;
+    map.set_tiles(size, tiles);
+    MazeRenderer r;
+    Frame frame(160, 100, PixelFormat::XRGB8888);
+    r.init(160, 100, PixelFormat::XRGB8888, art, 0);
+    r.render(map, {}, MazePose{static_cast<float>(size - 1) - 3.5f, size * 0.5f, 0.0f}, 0.0f, 0,
+             frame.target);
+    const Rgb expected = maze_fog({0, 255, 0}, maze_fog_k(maze_fog_slot_depth(3.5f)));
+    REQUIRE(expected.g < 255);
+    CHECK(r.internal_pixel(r.internal_w() / 2, r.internal_h() / 2) ==
+          PixelWriter::pack(expected, PixelFormat::XRGB8888));
+}
+
+TEST_CASE("a sprite takes the fog of its distance", "[screensaver][maze]") {
+    using helix::ui::maze_fog;
+    using helix::ui::maze_fog_k;
+    using helix::ui::maze_fog_slot_depth;
+    MazeMap map = corridor(11);
+    MazeArt art;
+    art.logo.w = 8;
+    art.logo.h = 8;
+    art.logo.argb.assign(64, 0xFFFFFFFFu);
+    MazeRenderer r;
+    Frame frame(160, 100, PixelFormat::XRGB8888);
+    r.init(160, 100, PixelFormat::XRGB8888, art);
+    const MazePose pose{1.5f, 5.5f, 0.0f};
+    r.render(map, {}, pose, 0.0f, 0, frame.target);
+    std::vector<uint32_t> bare(r.internal_w() * r.internal_h());
+    for (uint32_t x = 0; x < r.internal_w(); x++) {
+        for (uint32_t y = 0; y < r.internal_h(); y++) {
+            bare[x * r.internal_h() + y] = r.internal_pixel(x, y);
+        }
+    }
+    std::vector<MazeItem> logo{{MazeItemKind::LOGO, 5.5f, 5.5f, true}};
+    r.render(map, logo, pose, 0.0f, 0, frame.target);
+    const uint32_t expected = PixelWriter::pack(
+        maze_fog({255, 255, 255}, maze_fog_k(maze_fog_slot_depth(4.0f))), PixelFormat::XRGB8888);
+    REQUIRE(expected != PixelWriter::pack({255, 255, 255}, PixelFormat::XRGB8888));
+    size_t changed = 0;
+    for (uint32_t x = 0; x < r.internal_w(); x++) {
+        for (uint32_t y = 0; y < r.internal_h(); y++) {
+            const uint32_t px = r.internal_pixel(x, y);
+            if (px != bare[x * r.internal_h() + y]) {
+                changed++;
+                REQUIRE(px == expected);
+            }
+        }
+    }
+    CHECK(changed >= 20);
+}
+
+TEST_CASE("flat levels bake the fog into each row", "[screensaver][maze]") {
+    using helix::ui::MAZE_FLAT_CEILING;
+    using helix::ui::MAZE_FLAT_FLOOR;
+    using helix::ui::maze_fog;
+    using helix::ui::maze_fog_k;
+    using helix::ui::maze_fog_slot_depth;
+    MazeMap map = room(15);
+    MazeRenderer r;
+    Frame frame(128, 96, PixelFormat::XRGB8888);
+    r.init(128, 96, PixelFormat::XRGB8888, MazeArt{}, 2);
+    REQUIRE(r.internal_w() == 64);
+    REQUIRE(r.internal_h() == 48);
+    r.render(map, {}, MazePose{7.5f, 7.5f, 0.0f}, 0.0f, 0, frame.target);
+    // Focal 24: row 30 sees the floor 24 / 13 tiles away, row 17 the ceiling as far, row 47
+    // the floor half a tile away.
+    const uint32_t k = maze_fog_k(maze_fog_slot_depth(24.0f / 13.0f));
+    REQUIRE(k < 32);
+    const auto fmt = PixelFormat::XRGB8888;
+    for (uint32_t x = 0; x < r.internal_w(); x++) {
+        INFO("column " << x);
+        CHECK(r.internal_pixel(x, 30) == PixelWriter::pack(maze_fog(MAZE_FLAT_FLOOR, k), fmt));
+        CHECK(r.internal_pixel(x, 17) == PixelWriter::pack(maze_fog(MAZE_FLAT_CEILING, k), fmt));
+        CHECK(r.internal_pixel(x, 47) == PixelWriter::pack(MAZE_FLAT_FLOOR, fmt));
+    }
+}
+
+TEST_CASE("a textured floor darkens with distance", "[screensaver][maze]") {
+    MazeMap map = room(31);
+    MazeRenderer r;
+    Frame frame(128, 96, PixelFormat::XRGB8888);
+    r.init(128, 96, PixelFormat::XRGB8888, MazeArt{}, 1);
+    r.render(map, {}, MazePose{1.5f, 15.5f, 0.0f}, 0.0f, 0, frame.target);
+    auto luminance = [&](uint32_t y) {
+        double sum = 0.0;
+        for (uint32_t x = 0; x < r.internal_w(); x++) {
+            const uint32_t p = r.internal_pixel(x, y);
+            sum += 0.3 * (p >> 16 & 0xFF) + 0.59 * (p >> 8 & 0xFF) + 0.11 * (p & 0xFF);
+        }
+        return sum / r.internal_w();
+    };
+    // Row 25 sees the floor 8 tiles off, row 47 half a tile off.
+    CHECK(luminance(25) < 0.6 * luminance(47));
+}
+
+TEST_CASE("a flat level gives the fog bands back", "[screensaver][maze]") {
+    const size_t bands =
+        2u * helix::ui::MAZE_FOG_BANDS * MazeRenderer::TEX * MazeRenderer::TEX * 2u;
+    MazeRenderer r;
+    r.init(800, 480, PixelFormat::RGB565, MazeArt{}, 1);
+    const size_t textured = r.buffer_bytes();
+    r.set_level(2);
+    CHECK(textured - r.buffer_bytes() >= bands);
+    MazeRenderer flat;
+    flat.init(800, 480, PixelFormat::RGB565, MazeArt{}, 2);
+    CHECK(flat.buffer_bytes() == r.buffer_bytes());
+}
+
 TEST_CASE("a symmetric scene renders symmetric wall slices", "[screensaver][maze]") {
     MazeMap map = corridor(11);
     MazeRenderer r;
@@ -512,10 +679,11 @@ TEST_CASE("picture walls read the right way round from all four sides", "[screen
         const uint32_t row = r.internal_h() / 2;
         const uint32_t left = r.internal_pixel(r.internal_w() / 2 - 10, row);
         const uint32_t right = r.internal_pixel(r.internal_w() / 2 + 10, row);
-        CHECK((left >> 16 & 0xFF) > 150);
-        CHECK((left & 0xFF) < 100);
-        CHECK((right & 0xFF) > 150);
-        CHECK((right >> 16 & 0xFF) < 100);
+        // Fogged and, on the east-west faces, darkened: read which channel dominates.
+        CHECK((left >> 16 & 0xFF) > 100);
+        CHECK((left & 0xFF) < 60);
+        CHECK((right & 0xFF) > 100);
+        CHECK((right >> 16 & 0xFF) < 60);
     }
 }
 
@@ -588,9 +756,10 @@ TEST_CASE("RGB565 and XRGB8888 renders of one scene agree to 565 precision",
         for (int32_t x = 0; x < 96; x++) {
             const Rgb a = p32.get(x, y);
             const Rgb b = p16.get(x, y);
-            REQUIRE(std::abs(a.r - b.r) <= 8);
-            REQUIRE(std::abs(a.g - b.g) <= 4);
-            REQUIRE(std::abs(a.b - b.b) <= 8);
+            // Two 565 steps: the fog shades again in 565's own precision.
+            REQUIRE(std::abs(a.r - b.r) <= 16);
+            REQUIRE(std::abs(a.g - b.g) <= 8);
+            REQUIRE(std::abs(a.b - b.b) <= 16);
             lit += (a.r | a.g | a.b) != 0 ? 1 : 0;
         }
     }
