@@ -550,8 +550,45 @@ TEST_CASE_METHOD(MultiAceFixture, "coded 525 error files under its head", "[mult
     REQUIRE(during);
     CHECK_FALSE(during->command_refusal);
 
+    // Index 0 is also the engine's "no head": a fault that names none gets no
+    // toolhead label.
+    const auto headless =
+        b.classify_error("!! 0003-0525-0000-0200 [multiACE] HEAD must be 0-3", idle);
+    REQUIRE(headless);
+    CHECK(headless->detail == "[multiACE] HEAD must be 0-3");
+    const auto head_one = b.classify_error(
+        "!! 0003-0525-0000-0203 [multiACE] head 1 has filament of ACE 1 / Slot 2 STAGED", idle);
+    REQUIRE(head_one);
+    CHECK(head_one->detail.find("Toolhead 1: ") == 0);
+    const auto head_ten = b.classify_error("!! 0003-0525-0000-0203 head 10 x", idle);
+    REQUIRE(head_ten);
+    CHECK(head_ten->detail == "head 10 x");
+
     // Not multiACE's: another module id, or a code outside its band.
     CHECK_FALSE(b.classify_error("!! 0003-0523-0002-0207 runout", idle));
     CHECK_FALSE(b.classify_error("!! 0003-0525-0002-0100 something", idle));
     CHECK_FALSE(b.classify_error("// 0003-0525-0002-0207 echo", idle));
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "only the four heads are tools", "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    REQUIRE(b.get_system_info().total_slots == 20);
+
+    CHECK_FALSE(b.change_tool(8).success());
+    CHECK_FALSE(b.change_tool(4).success());
+    CHECK(b.sent.empty());
+    REQUIRE(b.change_tool(3).success());
+    REQUIRE(b.sent.size() == 1);
+    CHECK(b.sent[0] == "T3");
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a stock U1 keeps a PREP sensor on every head",
+                 "[multiace][snapmaker]") {
+    AmsBackendSnapmaker stock(nullptr, nullptr);
+    for (int h = 0; h < 4; ++h) {
+        CHECK(stock.slot_has_prep_sensor(h));
+    }
+    CHECK_FALSE(stock.slot_has_prep_sensor(4));
+    CHECK_FALSE(stock.slot_has_prep_sensor(-1));
 }

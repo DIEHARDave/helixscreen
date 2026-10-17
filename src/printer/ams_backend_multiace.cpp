@@ -12,6 +12,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cctype>
 
 namespace helix {
 
@@ -22,6 +23,32 @@ namespace {
 constexpr int kMultiAceFaultId = 525;
 constexpr int kMultiAceCodeFirst = 200;
 constexpr int kMultiAceCodeLast = 299;
+
+/// The head a multiACE fault names. The engine sends index 0 both for head 0
+/// and for a fault tied to no head, so index 0 counts only when the message
+/// names the head, which it does in its own 1-based words ("head 1").
+std::optional<int> fault_head(int index, const std::string& message) {
+    if (index < 0 || index >= multiace::kHeadCount) {
+        return std::nullopt;
+    }
+    if (index > 0) {
+        return index;
+    }
+    std::string lower = message;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    for (size_t at = lower.find("head 1"); at != std::string::npos;
+         at = lower.find("head 1", at + 1)) {
+        const size_t end = at + 6;
+        const bool word_start = at == 0 || !std::isalpha(static_cast<unsigned char>(lower[at - 1]));
+        const bool number_ends =
+            end >= lower.size() || !std::isdigit(static_cast<unsigned char>(lower[end]));
+        if (word_start && number_ends) {
+            return 0;
+        }
+    }
+    return std::nullopt;
+}
 
 std::string head_extruder_name(int head) {
     return head == 0 ? std::string("extruder") : fmt::format("extruder{}", head);
@@ -573,6 +600,13 @@ AmsError AmsBackendMultiAce::do_select_slot(int slot_index) {
     return do_change_tool(head);
 }
 
+AmsError AmsBackendMultiAce::do_change_tool(int tool_number) {
+    if (tool_number >= kHeads) {
+        return AmsErrorHelper::tool_out_of_range(tool_number);
+    }
+    return AmsBackendSnapmaker::do_change_tool(tool_number);
+}
+
 AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bool load) {
     cancel_pending_load("a batch operation");
     std::vector<int> heads;
@@ -736,12 +770,13 @@ AmsBackendMultiAce::classify_error(const std::string& raw_line,
         message.pop_back();
     }
 
-    const int head = std::clamp(code->index, 0, kHeads - 1);
     std::vector<helix::RecoveryAction> actions;
     actions.push_back({lv_tr("OK"), "", "ams_backend_multiace::fault_dismiss", "", false});
+    const std::optional<int> head = fault_head(code->index, message);
     helix::ErrorEvent e = helix::make_ams_fault_event(
         helix::ErrorSource::SNAPMAKER, lv_tr("Filament operation failed"),
-        fmt::format("{}: {}", AmsErrorHelper::position_label(tool_noun(), head), message),
+        head ? fmt::format("{}: {}", AmsErrorHelper::position_label(tool_noun(), *head), message)
+             : message,
         std::move(actions));
     e.code = token;
     e.raw_detail = detail;

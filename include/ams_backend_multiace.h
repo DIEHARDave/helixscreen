@@ -68,6 +68,8 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     AmsError do_load_filament(int slot_index) override;
     AmsError do_unload_filament(int slot_index) override;
     AmsError do_select_slot(int slot_index) override;
+    /// Only the four heads are tools; the bay indices beyond them are not.
+    AmsError do_change_tool(int tool_number) override;
     AmsError do_filament_batch(const std::vector<int>& slots, bool load) override;
 
     [[nodiscard]] bool head_is_upstream_fed_locked(int head) const override;

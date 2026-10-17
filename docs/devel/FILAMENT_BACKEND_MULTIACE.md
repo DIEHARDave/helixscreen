@@ -115,14 +115,17 @@ backend (`helix::ace::check_dryer_request`, `helix::ace::restart_request`).
 multiACE raises its own faults in the U1's coded form, id 525 with a 200-band code and the
 head as index (multiACE's `_ace_error` in its ace.py), so they arrive as `!! LLLL-0525-000H-02CC <message>`.
 `AmsBackendMultiAce::classify_error` files them as a filament fault on that head, with the
-engine's own message; idle, it is a refusal of the command the user just sent. Every other
-line goes to the U1 backend's classifier.
+engine's own message. The engine also sends index 0 for a fault tied to no head (a malformed
+command, code 200), so index 0 carries a toolhead label only when the message names head 1.
+Idle, the fault is a refusal of the command the user just sent. Every other line goes to the U1 backend's classifier.
 
 ## Not yet
 
 - The path view: one physical nozzle per head across the overview, the upstream caption on
   an ACE-fed head, spool numbering that counts a routed bay once.
 - Mock mode (`HELIX_MOCK_AMS=multiace`).
+- Editing a bay's spool: `apply_user_edit` and `sync_external_identity` answer only the four
+  heads, so a bay edit is refused as an invalid slot.
 - The `multiace_event` console watcher (`multiace::parse_event_line` exists), the spool
   table and bindings, bay identity edits, device actions (quad replenish, head rewiring) and
   `ACE_PRELOAD` batch loads.

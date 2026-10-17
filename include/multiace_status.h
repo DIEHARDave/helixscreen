@@ -160,8 +160,10 @@ candidate_bays(Mode mode, int head, const std::array<int, kHeadCount>& head_ace,
 /// token that is not key=value.
 [[nodiscard]] std::optional<Event> parse_event_line(std::string_view line);
 
-/// `ACE_LOAD_HEAD HEAD=h`, plus `ACE=k SLOT=s` when @p bay is set. Both are
-/// always sent together: the engine defaults a missing SLOT per mode.
+/// `ACE_LOAD_HEAD HEAD=h`, plus `ACE=k SLOT=s` when @p bay is set; a bay is
+/// always sent whole, since the engine defaults a missing SLOT per mode. The
+/// bare form leaves the bay to the engine, which is well-defined only in HEAD
+/// mode and for a head the ACE does not feed.
 [[nodiscard]] std::string load_gcode(int head, std::optional<std::pair<int, int>> bay);
 [[nodiscard]] std::string unload_gcode(int head);
 [[nodiscard]] std::string unload_all_gcode();
