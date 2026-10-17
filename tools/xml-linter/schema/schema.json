@@ -1564,6 +1564,9 @@
         "label_hidden_if_eq": {
           "type": "int"
         },
+        "label_hidden_cond": {
+          "type": "string"
+        },
         "icon_hidden_subject": {
           "type": "string"
         },

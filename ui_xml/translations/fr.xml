@@ -1339,6 +1339,7 @@
   <translation tag="Found {} at {}." fr="{} trouvée à {}."/>
   <translation tag="Framerate" fr="Fréquence d&apos;images"/>
   <translation tag="From Buffer" fr="Depuis tampon"/>
+  <translation tag="From Printer" fr="Depuis l&apos;imprimante"/>
   <translation tag="From SpoolmanDB" fr="Depuis SpoolmanDB"/>
   <translation tag="From Version" fr="Depuis la version"/>
   <translation tag="Front" fr="Avant"/>

@@ -1445,3 +1445,15 @@ TEST_CASE_METHOD(WidgetCatalogCategoryFixture,
     deliver_defs_change();
     settle();
 }
+
+TEST_CASE("Widget catalog: portrait width keeps a working panel, never wider than the screen",
+          "[widget_catalog][catalog_width]") {
+    using helix::WidgetCatalogOverlay;
+    CHECK_FALSE(WidgetCatalogOverlay::portrait_width_px(800, 480).has_value());
+    CHECK_FALSE(WidgetCatalogOverlay::portrait_width_px(480, 272).has_value());
+    CHECK(WidgetCatalogOverlay::portrait_width_px(272, 480) == 272);
+    CHECK(WidgetCatalogOverlay::portrait_width_px(480, 800) == 480);
+    CHECK(WidgetCatalogOverlay::portrait_width_px(600, 1024) == 560);
+    CHECK(WidgetCatalogOverlay::portrait_width_px(800, 1280) == 560);
+    CHECK(WidgetCatalogOverlay::portrait_width_px(1080, 1920) == 756);
+}

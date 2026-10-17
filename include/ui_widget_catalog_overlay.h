@@ -50,6 +50,13 @@ class WidgetCatalogOverlay {
                      WidgetSelectedCallback on_select, CatalogClosedCallback on_close = nullptr,
                      WidgetFitCallback fits = nullptr);
 
+    /// Pixel width a portrait screen gives both catalog levels, or nullopt in
+    /// landscape, where the XML's 70% applies. Portrait keeps 70% but never
+    /// drops below the panel an 800x480 landscape screen gets, capped at the
+    /// screen: narrow portrait panels go full width, wide ones keep the grid
+    /// visible beside the list.
+    static std::optional<int32_t> portrait_width_px(int32_t screen_w, int32_t screen_h);
+
     /// Widget defs belonging to @p category, in registry order.
     ///
     /// Pure — reads the registry and nothing else — so the grouping can be

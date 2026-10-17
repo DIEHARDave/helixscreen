@@ -1386,6 +1386,7 @@ translations:
   Found {} at {}.: '{} を {} で検出しました。'
   Framerate: フレームレート
   From Buffer: バッファから
+  From Printer: 'プリンターから'
   From SpoolmanDB: 'SpoolmanDB から'
   From Version: 更新前バージョン
   Front: '手前'
