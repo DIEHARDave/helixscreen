@@ -263,6 +263,10 @@ void PrintStartCollector::start() {
         // status frames, edge-triggered. No-op unless the profile declares any.
         self->handle_status_signals(status);
 
+        // A start sequence written into the file: the line the print stands
+        // on is the step running. No-op unless the profile says so.
+        self->handle_start_block_position(status);
+
         // Check _START_PRINT.print_started (AD5M KAMP macro)
         if (status.contains("gcode_macro _START_PRINT")) {
             const auto& macro = status["gcode_macro _START_PRINT"];
@@ -409,7 +413,12 @@ void PrintStartCollector::reset_run_locked() {
     current_phase_ = PrintStartPhase::INITIALIZING;
     print_start_detected_ = false;
     max_sequential_progress_ = 0;
-    phase_enter_times_.clear();
+    phase_time_spent_.clear();
+    phase_since_ = printing_state_start_;
+    start_block_.set_steps({});
+    start_block_requested_ = false;
+    start_block_position_.reset();
+    console_phase_time_ = helix::sim::SimulatedClock::time_point::min();
     mesh_probe_current_ = 0;
     mesh_probe_total_ = 0;
     mesh_points_.reset();
@@ -1238,6 +1247,10 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
         if (profile_->try_match_signal(line, match)) {
             real_signal_seen_.store(true, std::memory_order_relaxed);
             note_signal();
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                console_phase_time_ = helix::sim::SimulatedClock::now();
+            }
             // Profile messages are English tags — resolve through the pack.
             match.message = lv_tr(match.message.c_str());
             if (profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
@@ -1550,7 +1563,18 @@ void PrintStartCollector::check_phase_patterns(const std::string& line) {
 
     PrintStartProfile::MatchResult match;
     if (profile_->try_match_pattern(line, match)) {
+        PrintStartPhase phase_before;
+        std::string message_before;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            phase_before = current_phase_;
+            message_before = current_message_;
+        }
         apply_profile_match(match);
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (current_phase_ != phase_before || current_message_ != message_before) {
+            console_phase_time_ = helix::sim::SimulatedClock::now();
+        }
     }
 }
 
@@ -2033,21 +2057,12 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const char* messag
         }
         maybe_reset_for_mesh_subphase_locked(phase, message ? message : "", counts_mesh_probes);
         entering_mesh = entering_mesh && mesh_counts_probes_;
-        current_phase_ = phase;
+        enter_phase_locked(phase);
         current_message_ = message ? message : "";
         // A phase signal means the queue moved on from any heater wait.
         heater_wait_shown_ = false;
         heater_wait_report_time_ = helix::sim::SimulatedClock::time_point::min();
         detected_phases_.insert(phase); // Track for progress calculation
-
-        // Record phase enter timestamp (skip IDLE and INITIALIZING)
-        int phase_int = static_cast<int>(phase);
-        if (phase != PrintStartPhase::IDLE && phase != PrintStartPhase::INITIALIZING &&
-            phase != PrintStartPhase::COMPLETE) {
-            if (phase_enter_times_.find(phase_int) == phase_enter_times_.end()) {
-                phase_enter_times_[phase_int] = helix::sim::SimulatedClock::now();
-            }
-        }
 
         if (phase == PrintStartPhase::COMPLETE) {
             should_save = true;
@@ -2095,21 +2110,12 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const std::string&
             pre_mesh_points_.reset();
         }
         maybe_reset_for_mesh_subphase_locked(phase, message);
-        current_phase_ = phase;
+        enter_phase_locked(phase);
         current_message_ = message;
         // A phase signal means the queue moved on from any heater wait.
         heater_wait_shown_ = false;
         heater_wait_report_time_ = helix::sim::SimulatedClock::time_point::min();
         detected_phases_.insert(phase);
-
-        // Record phase enter timestamp (skip IDLE and INITIALIZING)
-        int phase_int = static_cast<int>(phase);
-        if (phase != PrintStartPhase::IDLE && phase != PrintStartPhase::INITIALIZING &&
-            phase != PrintStartPhase::COMPLETE) {
-            if (phase_enter_times_.find(phase_int) == phase_enter_times_.end()) {
-                phase_enter_times_[phase_int] = helix::sim::SimulatedClock::now();
-            }
-        }
 
         // Monotonic progress guard: never allow progress to decrease in sequential mode
         // (except COMPLETE which always goes to 100%)
@@ -2244,6 +2250,112 @@ void PrintStartCollector::request_wait_line() {
         });
 }
 
+void PrintStartCollector::handle_start_block_position(const json& status) {
+    if (!profile_ || !profile_->scripted_start()) {
+        return;
+    }
+    const std::optional<uint64_t> position = helix::virtual_sdcard_file_position(status);
+    if (!position) {
+        return;
+    }
+    std::optional<helix::StartBlockStep> step;
+    bool request = false;
+    uint64_t run = 0;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        start_block_position_ = position;
+        if (!start_block_requested_) {
+            start_block_requested_ = true;
+            request = true;
+            run = run_generation_.load();
+        } else {
+            step = start_block_.advance(*position);
+        }
+    }
+    if (request) {
+        auto self = shared_from_this();
+        helix::ui::queue_update("PrintStartCollector::request_start_block",
+                                [self, run]() { self->request_start_block(run); });
+    }
+    if (step) {
+        apply_start_block_step(*step);
+    }
+}
+
+void PrintStartCollector::request_start_block(uint64_t run) {
+    const char* file = lv_subject_get_string(state_.print_state().get_print_filename_subject());
+    IMoonrakerAPI* api = get_moonraker_api();
+    const bool readable = file && file[0] && api && api->transfers().supports_range_reads();
+    if (!active_.load() || run != run_generation_.load() || !readable) {
+        if (!file || !file[0]) {
+            // The filename arrives in the same frames as the position; the
+            // next position asks again.
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            if (run == run_generation_.load()) {
+                start_block_requested_ = false;
+            }
+        }
+        return;
+    }
+    auto self = shared_from_this();
+    const std::string filename = file;
+    api->transfers().download_file_range(
+        "gcodes", filename, 0, helix::kStartBlockHeadBytes,
+        [self, run, filename](const std::string& head) {
+            auto steps = helix::scan_start_block(head, head.size() >= helix::kStartBlockHeadBytes);
+            std::optional<helix::StartBlockStep> step;
+            {
+                std::lock_guard<std::mutex> lock(self->state_mutex_);
+                if (run != self->run_generation_.load()) {
+                    return;
+                }
+                spdlog::info("[PrintStartCollector] Start block of {}: {} steps", filename,
+                             steps.size());
+                self->start_block_.set_steps(std::move(steps));
+                if (self->start_block_position_) {
+                    step = self->start_block_.advance(*self->start_block_position_);
+                }
+            }
+            if (step && self->active_.load()) {
+                self->apply_start_block_step(*step);
+            }
+        },
+        [filename](const MoonrakerError& e) {
+            spdlog::debug("[PrintStartCollector] Start block of {} not read: {}", filename,
+                          e.message);
+        });
+}
+
+void PrintStartCollector::apply_start_block_step(const helix::StartBlockStep& step) {
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (console_phase_time_ + START_BLOCK_CONSOLE_GRACE > helix::sim::SimulatedClock::now()) {
+            spdlog::debug("[PrintStartCollector] Start-block step at {} left to the console",
+                          step.offset);
+            return;
+        }
+    }
+    const PrintStartPhase phase = helix::start_block_step_phase(step.kind);
+    const char* message = phase_signal_message(phase);
+    switch (step.kind) {
+    case helix::StartBlockStepKind::HomeAxes:
+        message = lv_tr("Homing axes...");
+        break;
+    case helix::StartBlockStepKind::ProbeZ:
+        message = lv_tr("Probing Z...");
+        break;
+    case helix::StartBlockStepKind::BedMesh:
+        message = lv_tr("Bed mesh...");
+        break;
+    default:
+        break;
+    }
+    spdlog::debug("[PrintStartCollector] Start-block step at {} -> phase {}", step.offset,
+                  static_cast<int>(phase));
+    PrintStartProfile::MatchResult match{phase, message, 0};
+    apply_profile_match(match, /*marks_real_signal=*/true, /*live_state=*/true);
+}
+
 void PrintStartCollector::apply_wait_line(uint64_t gen, const helix::WaitLine& line) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     if (gen != wait_line_gen_) {
@@ -2361,10 +2473,9 @@ void PrintStartCollector::end_heater_wait() {
 
 int PrintStartCollector::switch_phase_locked(PrintStartPhase phase, const std::string& message) {
     maybe_reset_for_mesh_subphase_locked(phase, message);
-    current_phase_ = phase;
+    enter_phase_locked(phase);
     current_message_ = message;
     detected_phases_.insert(phase);
-    phase_enter_times_.try_emplace(static_cast<int>(phase), helix::sim::SimulatedClock::now());
     // A sequential profile's progress moves only with its own signals.
     if (profile_ && profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
         return max_sequential_progress_;
@@ -2452,17 +2563,11 @@ int PrintStartCollector::calculate_progress_locked() const {
                                   0.95f);
         } else {
             // Time-based for non-heating phases
-            auto enter_it = phase_enter_times_.find(static_cast<int>(current_phase_));
-            if (enter_it != phase_enter_times_.end()) {
-                float elapsed =
-                    static_cast<float>(std::chrono::duration_cast<std::chrono::seconds>(
-                                           helix::sim::SimulatedClock::now() - enter_it->second)
-                                           .count());
-                auto pred = predictor_.predicted_phases();
-                auto pred_it = pred.find(static_cast<int>(current_phase_));
-                if (pred_it != pred.end() && pred_it->second > 0) {
-                    phase_frac = std::min(elapsed / static_cast<float>(pred_it->second), 0.95f);
-                }
+            const float elapsed = static_cast<float>(phase_seconds_locked(current_phase_).count());
+            auto pred = predictor_.predicted_phases();
+            auto pred_it = pred.find(static_cast<int>(current_phase_));
+            if (pred_it != pred.end() && pred_it->second > 0) {
+                phase_frac = std::min(elapsed / static_cast<float>(pred_it->second), 0.95f);
             }
         }
         progress += cur_it->second * phase_frac;
@@ -2527,13 +2632,32 @@ bool PrintStartCollector::phase_skipped_locked(int phase) const {
 
 int PrintStartCollector::get_current_phase_elapsed_seconds() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    int phase_int = static_cast<int>(current_phase_);
-    auto it = phase_enter_times_.find(phase_int);
-    if (it == phase_enter_times_.end()) {
-        return 0;
+    return static_cast<int>(phase_seconds_locked(current_phase_).count());
+}
+
+void PrintStartCollector::enter_phase_locked(PrintStartPhase phase) {
+    if (phase != current_phase_) {
+        const auto now = helix::sim::SimulatedClock::now();
+        phase_time_spent_[static_cast<int>(current_phase_)] += now - phase_since_;
+        phase_since_ = now;
     }
-    auto elapsed = helix::sim::SimulatedClock::now() - it->second;
-    return static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsed).count());
+    current_phase_ = phase;
+}
+
+std::chrono::seconds PrintStartCollector::phase_seconds_locked(PrintStartPhase phase) const {
+    if (phase == PrintStartPhase::IDLE || phase == PrintStartPhase::INITIALIZING ||
+        phase == PrintStartPhase::COMPLETE) {
+        return std::chrono::seconds::zero();
+    }
+    helix::sim::SimulatedClock::duration spent{};
+    if (const auto it = phase_time_spent_.find(static_cast<int>(phase));
+        it != phase_time_spent_.end()) {
+        spent = it->second;
+    }
+    if (phase == current_phase_) {
+        spent += helix::sim::SimulatedClock::now() - phase_since_;
+    }
+    return std::chrono::duration_cast<std::chrono::seconds>(spent);
 }
 
 // ============================================================================
@@ -2571,13 +2695,7 @@ void PrintStartCollector::update_eta_display() {
 
         auto completed = get_completed_phase_ints_locked();
         int current = static_cast<int>(current_phase_);
-        int phase_elapsed = 0;
-        auto it = phase_enter_times_.find(current);
-        if (it != phase_enter_times_.end()) {
-            phase_elapsed = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(
-                                                 helix::sim::SimulatedClock::now() - it->second)
-                                                 .count());
-        }
+        const int phase_elapsed = static_cast<int>(phase_seconds_locked(current_phase_).count());
 
         // Compute remaining from composite per-phase durations (weights * total)
         float remaining_f = 0.0f;
@@ -3040,32 +3158,20 @@ void PrintStartCollector::save_prediction_entry() {
         std::lock_guard<std::mutex> lock(state_mutex_);
         start_time = printing_state_start_;
 
-        // Build sorted list of phase enter times
-        std::vector<std::pair<int, helix::sim::SimulatedClock::time_point>> sorted_phases(
-            phase_enter_times_.begin(), phase_enter_times_.end());
-        std::sort(sorted_phases.begin(), sorted_phases.end(),
-                  [](const auto& a, const auto& b) { return a.second < b.second; });
-
-        for (size_t i = 0; i < sorted_phases.size(); ++i) {
-            int phase_int = sorted_phases[i].first;
-            // Heating phases tracked by ThermalRateModel, not predictor
-            if (phase_int == static_cast<int>(PrintStartPhase::HEATING_BED) ||
-                phase_int == static_cast<int>(PrintStartPhase::HEATING_NOZZLE)) {
+        // Heating phases are tracked by ThermalRateModel, not the predictor.
+        // A phase entered within the second it left (G28 followed at once by
+        // proactive HEATING_BED detection on AD5M) records nothing: HOMING=0
+        // entries would poison the MAD filter and suppress the default-floor
+        // fallback in compute_predicted_weights().
+        for (int phase_int = 0; phase_int < helix::print_start_phase_count(); ++phase_int) {
+            const auto phase = static_cast<PrintStartPhase>(phase_int);
+            if (phase == PrintStartPhase::HEATING_BED || phase == PrintStartPhase::HEATING_NOZZLE) {
                 continue;
             }
-            auto end_time = (i + 1 < sorted_phases.size()) ? sorted_phases[i + 1].second : now;
-            int duration = static_cast<int>(
-                std::chrono::duration_cast<std::chrono::seconds>(end_time - sorted_phases[i].second)
-                    .count());
-            // Skip zero-second phases — these happen when two phases enter
-            // within the same second (e.g. G28 followed immediately by
-            // proactive HEATING_BED detection on AD5M). Recording HOMING=0
-            // repeatedly would poison the MAD filter and suppress the
-            // default-floor fallback in compute_predicted_weights().
-            if (duration <= 0) {
-                continue;
+            const int duration = static_cast<int>(phase_seconds_locked(phase).count());
+            if (duration > 0) {
+                phase_durations[phase_int] = duration;
             }
-            phase_durations[phase_int] = duration;
         }
 
         // --- Diagnostic: predicted vs actual per-phase ---

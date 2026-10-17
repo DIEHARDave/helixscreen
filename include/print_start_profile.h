@@ -268,6 +268,13 @@ class PrintStartProfile {
         return cfs_signals_;
     }
 
+    /// True when the slicer writes this printer's start sequence into the
+    /// file instead of calling a PRINT_START macro that runs it, so the line
+    /// at virtual_sdcard.file_position names the step running now.
+    bool scripted_start() const {
+        return scripted_start_;
+    }
+
     /// True when this printer's pre-print chain goes silent (no
     /// gcode_response markers) for minutes while it homes Z, validates the
     /// mesh at its corners, and sweeps a calibration mesh — but toolhead
@@ -367,6 +374,7 @@ class PrintStartProfile {
     ProgressMode progress_mode_ = ProgressMode::WEIGHTED;
     bool adaptive_meshing_{false};
     bool cfs_signals_{false};
+    bool scripted_start_{false};
     bool position_signals_{false};
     std::vector<SignalFormat> signal_formats_;
     std::vector<ResponsePattern> response_patterns_;

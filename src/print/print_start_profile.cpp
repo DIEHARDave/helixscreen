@@ -319,6 +319,11 @@ bool PrintStartProfile::parse_json(const json& j, const std::string& source_path
         cfs_signals_ = j["cfs_signals"].get<bool>();
     }
 
+    // Start sequence inlined in the print file (optional, defaults to false)
+    if (j.contains("scripted_start") && j["scripted_start"].is_boolean()) {
+        scripted_start_ = j["scripted_start"].get<bool>();
+    }
+
     // Silent-window position inference (optional, defaults to false)
     if (j.contains("position_signals") && j["position_signals"].is_boolean()) {
         position_signals_ = j["position_signals"].get<bool>();

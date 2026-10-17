@@ -68,6 +68,8 @@ struct DetectionConfig {
     int max_scan_lines = 500;            ///< Stop scanning after this many lines
     bool stop_at_first_extrusion = true; ///< Stop when G1 with positive E detected
     bool stop_at_layer_marker = true;    ///< Stop when ;LAYER_CHANGE detected
+    /// Keep every line that runs an operation, not only the first of each type.
+    bool every_occurrence = false;
 };
 
 /**
@@ -105,6 +107,9 @@ struct ScanResult {
     PrintStartCallInfo print_start; ///< Info about PRINT_START call (if found)
     /// EXCLUDE_OBJECT_DEFINE objects in the scanned head, in file order.
     std::vector<GCodeObject> objects;
+    /// Byte offset of the first line that extrudes (G1 with a positive E), when
+    /// the scan reached one.
+    std::optional<size_t> first_extrusion_offset;
 
     /**
      * @brief Check if a specific operation type was detected
@@ -225,7 +230,10 @@ class GCodeOpsDetector {
                     ScanResult& result) const;
 
     /**
-     * @brief Check if line indicates first extrusion
+     * @brief Whether a line is a G1 move with a positive E
+     *
+     * Only the command word and the parameters before any `;` count, so a
+     * comment that happens to hold "G1" and " E5" is not an extrusion.
      */
     [[nodiscard]] bool is_first_extrusion(const std::string& line) const;
 

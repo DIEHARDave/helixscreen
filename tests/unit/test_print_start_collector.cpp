@@ -4655,9 +4655,23 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
     void position_at(int ms, uint64_t pos) {
         positions_.push_back({ms, pos});
     }
+    /// Also deliver each position as a subscribed virtual_sdcard.file_position
+    /// frame, from a track of "seconds byte" lines the way a 1 Hz poll saw them.
+    void stream_positions(const std::string& track) {
+        std::ifstream f(collector_fixture_dir() + track);
+        REQUIRE(f.is_open());
+        double sec = 0.0;
+        uint64_t pos = 0;
+        while (f >> sec >> pos) {
+            position_at(static_cast<int>(std::lround(sec * 1000)), pos);
+        }
+        REQUIRE(positions_.size() > 10);
+        stream_positions_ = true;
+    }
 
+    /// @p tool is the active extruder's id in the wait reports ("T2").
     std::vector<Shown> replay(const std::string& file, int bed, int bed_target, int ext,
-                              int ext_target) {
+                              int ext_target, const std::string& tool = "T2") {
         const std::string path = collector_fixture_dir() + file;
         std::ifstream f(path);
         INFO("fixture: " << path);
@@ -4703,25 +4717,37 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
 
         const std::regex reading(R"((\w+):(-?\d+\.\d) /(-?\d+\.\d))");
         size_t next_position = 0;
+        // Each position from its own time on, up to @p at.
         const auto stand_at = [&](int at) {
             while (next_position < positions_.size() &&
                    positions_[next_position].first <= at - t0) {
+                const int moved = t0 + positions_[next_position].first;
+                if (moved > now) {
+                    clock.advance(std::chrono::milliseconds(moved - now));
+                    now = moved;
+                }
                 client().set_object_status("virtual_sdcard",
                                            {{"file_position", positions_[next_position].second}});
+                if (stream_positions_) {
+                    client().dispatch_status_update(
+                        {{"virtual_sdcard",
+                          {{"file_position", positions_[next_position].second}}}});
+                    note();
+                }
                 ++next_position;
             }
         };
         for (const Line& line : lines) {
             while (next_tick <= line.ms) {
+                stand_at(next_tick);
                 clock.advance(std::chrono::milliseconds(next_tick - now));
                 now = next_tick;
-                stand_at(now);
                 tick();
                 next_tick += 5000;
             }
+            stand_at(line.ms);
             clock.advance(std::chrono::milliseconds(line.ms - now));
             now = line.ms;
-            stand_at(now);
 
             bool target_changed = false;
             for (std::sregex_iterator it(line.text.begin(), line.text.end(), reading), end;
@@ -4733,7 +4759,7 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
                     target_changed |= target != bed_target;
                     bed = temp;
                     bed_target = target;
-                } else if (id == "T2") {
+                } else if (id == tool) {
                     target_changed |= target != ext_target;
                     ext = temp;
                     ext_target = target;
@@ -4782,8 +4808,144 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
   private:
     std::optional<ServedPrint> print_;
     std::vector<std::pair<int, uint64_t>> positions_;
+    bool stream_positions_ = false;
 };
 } // namespace
+
+// ============================================================================
+// Snapmaker U1 replay with the print position: a one-head print's console from
+// file open to its first layer (tests/fixtures/u1_bmcu_console.txt, 2026-10-17),
+// virtual_sdcard.file_position as a 1 Hz poll saw it (u1_bmcu_positions.txt,
+// "seconds byte"), and the file's start block at its real offsets
+// (u1_bmcu_start.gcode, from byte 12744). The head reports as T1. The
+// firmware's print_task_config skipped BED_MESH_CALIBRATE ("does not do
+// auto-leveling"), so the position jumps from G28 Z straight to M109 S260.
+// ============================================================================
+
+namespace {
+std::string u1_bmcu_file() {
+    std::ifstream f(collector_fixture_dir() + "u1_bmcu_start.gcode", std::ios::binary);
+    REQUIRE(f.is_open());
+    std::string block((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return std::string(12744, '\n') + block;
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerReplayFixture,
+                 "Snapmaker U1: the print position shows the cleans, Z probes and prime line",
+                 "[print][collector][snapmaker][start_block][integration]") {
+    serve("u1_bmcu.gcode", u1_bmcu_file());
+    stream_positions("u1_bmcu_positions.txt");
+    const auto shown = replay("u1_bmcu_console.txt", /*bed*/ 230, 0, /*ext*/ 250, 0, "T1");
+    CAPTURE(full_trace(shown));
+
+    // The firmware's action codes name the bed inspect, the extruder check,
+    // the feed and the plate detect; the heater waits name their heater. The
+    // position adds the rest: G28 X Y, each clean, each G28 Z and the prime
+    // line, each from the moment the print reaches its line. The skipped mesh
+    // never shows.
+    REQUIRE(phase_trace(shown) ==
+            "0:INITIALIZING 0:HOMING 26:BED_MESH 87:INITIALIZING 94:HEATING_NOZZLE "
+            "115:INITIALIZING 145:HEATING_NOZZLE 186:CLEANING 190:HOMING 210:BED_MESH "
+            "224:HEATING_NOZZLE 234:CLEANING 249:HEATING_NOZZLE 270:HEATING_BED 319:HOMING "
+            "340:HEATING_NOZZLE 359:PURGING");
+    const auto message_at = [&](int s) {
+        const auto it = std::find_if(shown.begin(), shown.end(),
+                                     [&](const Shown& x) { return x.ms / 1000 == s; });
+        REQUIRE(it != shown.end());
+        return it->message;
+    };
+    CHECK(message_at(0) == "Preparing Print...");
+    CHECK(shown[1].message == "Homing axes...");
+    CHECK(message_at(190) == "Probing Z...");
+    CHECK(message_at(319) == "Probing Z...");
+    CHECK(message_at(186) == "Cleaning Nozzle...");
+    CHECK(message_at(359) == "Purging...");
+    for (const Shown& s : shown) {
+        CHECK(s.message != "Bed mesh...");
+    }
+    // The head read, then one read per wait line.
+    REQUIRE(ranged_reads() >= 1);
+
+    // Each phase's history entry is the time it showed, over every visit:
+    // HOMING three times, CLEANING and BED_MESH twice.
+    collector().complete_from_external_signal("first layer");
+    drain_async_updates();
+    const int end_ms = shown.back().ms + 17400; // the last line, 377.3 s
+    std::map<int, int> shown_ms;
+    for (size_t i = 0; i < shown.size(); ++i) {
+        const int until = i + 1 < shown.size() ? shown[i + 1].ms : end_ms;
+        shown_ms[static_cast<int>(shown[i].phase)] += until - shown[i].ms;
+    }
+    const auto entries = collector().predictor().get_entries();
+    REQUIRE_FALSE(entries.empty());
+    const auto& durations = entries.back().phase_durations;
+    CAPTURE(durations.size());
+    for (const PrintStartPhase phase : {PrintStartPhase::HOMING, PrintStartPhase::BED_MESH,
+                                        PrintStartPhase::CLEANING, PrintStartPhase::PURGING}) {
+        const int p = static_cast<int>(phase);
+        CAPTURE(print_start_phase_name(phase));
+        REQUIRE(durations.count(p) == 1);
+        CHECK(durations.at(p) == Catch::Approx(shown_ms[p] / 1000).margin(1));
+    }
+    CHECK(durations.count(static_cast<int>(PrintStartPhase::CLEANING)) == 1);
+    CHECK(durations.at(static_cast<int>(PrintStartPhase::CLEANING)) < 25);
+    // Nothing showed SOAKING, and INITIALIZING and the heating phases are not
+    // recorded as phases.
+    CHECK(durations.count(static_cast<int>(PrintStartPhase::SOAKING)) == 0);
+    CHECK(durations.count(static_cast<int>(PrintStartPhase::INITIALIZING)) == 0);
+    CHECK(durations.count(static_cast<int>(PrintStartPhase::HEATING_BED)) == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerReplayFixture,
+                 "Snapmaker U1: a firmware code on a step's line is not overwritten by the step",
+                 "[print][collector][snapmaker][start_block]") {
+    // BED_MESH_CALIBRATE announces its 60 s soak first thing, and its status
+    // frame, batched, arrives after that console line.
+    std::string file = u1_bmcu_file();
+    serve("u1_bmcu.gcode", file);
+    helix::sim::SimulatedClock::ManualScope clock(helix::sim::SimSpeed::of(1.0));
+    collector().start();
+    drain_async_updates();
+    const auto at = [&](uint64_t pos) {
+        client().dispatch_status_update({{"virtual_sdcard", {{"file_position", pos}}}});
+        drain_async_updates();
+        drain_async_updates();
+    };
+    at(14316); // G28 Z: the first position reads the head
+    at(14316);
+    REQUIRE(get_current_phase() == PrintStartPhase::HOMING);
+    REQUIRE(get_current_message() == "Probing Z...");
+
+    clock.advance(std::chrono::seconds(20));
+    feed_gcode("// Success: Set action code BED_PREHEATING");
+    REQUIRE(get_current_phase() == PrintStartPhase::SOAKING);
+    clock.advance(std::chrono::milliseconds(250));
+    at(14559);
+    CHECK(get_current_phase() == PrintStartPhase::SOAKING);
+    CHECK(get_current_message() == "Heat Soaking...");
+
+    // A step with no console line ahead of it shows.
+    clock.advance(std::chrono::seconds(60));
+    at(14840);
+    CHECK(get_current_phase() == PrintStartPhase::PURGING);
+}
+
+TEST_CASE_METHOD(SnapmakerCollectorFixture,
+                 "A profile without a scripted start does not read the print's head",
+                 "[print][collector][start_block]") {
+    collector().set_profile(PrintStartProfile::load_default());
+    ServedPrint print(client(), state(), "plain.gcode");
+    print.transfers.put("plain.gcode", "G28\nCLEAN_NOZZLE\nG1 X10 E5\n");
+    collector().start();
+    drain_async_updates();
+    client().dispatch_status_update({{"virtual_sdcard", {{"file_position", 4}}}});
+    drain_async_updates();
+    client().dispatch_status_update({{"virtual_sdcard", {{"file_position", 4}}}});
+    drain_async_updates();
+    CHECK(print.transfers.ranges == 0);
+    CHECK(get_current_phase() != PrintStartPhase::CLEANING);
+}
 
 TEST_CASE_METHOD(SnapmakerReplayFixture,
                  "Snapmaker U1: real heater waits show the bed heating between firmware phases",
