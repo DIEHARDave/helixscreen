@@ -226,3 +226,42 @@ TEST_CASE_METHOD(CopyLayoutFixture,
     CHECK(rebuilds_ == 0);
     CHECK(toasts == std::vector<std::string>{"This printer's screen has not shared a layout"});
 }
+
+TEST_CASE_METHOD(CopyLayoutFixture, "copy layout ignores a second tap while the fetch is in flight",
+                 "[widget_catalog][copy_layout]") {
+    set_locality(true);
+    client_.mock_db_set(home_layout::kNamespace, home_layout::kKey, published_layout());
+
+    // Both taps land before the queued reply is drained.
+    lv_obj_send_event(row_, LV_EVENT_CLICKED, nullptr);
+    lv_obj_send_event(row_, LV_EVENT_CLICKED, nullptr);
+    process_lvgl(50);
+    drain();
+
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    answer_modal("btn_secondary");
+    CHECK(ModalStack::instance().top_dialog() == nullptr);
+
+    // The flag cleared with the reply: a later tap fetches again.
+    tap_copy();
+    CHECK(ModalStack::instance().top_dialog() != nullptr);
+}
+
+TEST_CASE_METHOD(CopyLayoutFixture, "copy layout confirm after the catalog closed does nothing",
+                 "[widget_catalog][copy_layout]") {
+    set_locality(true);
+    client_.mock_db_set(home_layout::kNamespace, home_layout::kKey, published_layout());
+
+    tap_copy();
+    REQUIRE(ModalStack::instance().top_dialog() != nullptr);
+    WidgetCatalogOverlay::close();
+    process_lvgl(50);
+    drain();
+    REQUIRE(WidgetCatalogOverlay::active_root() == nullptr);
+
+    answer_modal("btn_primary");
+
+    CHECK(seats() == edited_);
+    CHECK(rebuilds_ == 0);
+}

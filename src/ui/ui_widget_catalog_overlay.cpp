@@ -69,6 +69,11 @@ struct DefRowIdentity {
 // one, and a close-then-reopen can reuse the overlay's address.
 uint32_t g_catalog_generation = 0;
 
+// The catalog generation whose "Copy layout from printer" fetch is in flight, or 0.
+// A show() bumps the generation, so a fetch abandoned by a close never blocks the
+// next opening.
+uint32_t g_copy_fetch_generation = 0;
+
 struct CatalogState {
     lv_obj_t* overlay_root = nullptr;
     lv_obj_t* backdrop = nullptr;      // Semi-transparent dark backdrop behind the catalog
@@ -254,9 +259,21 @@ void apply_printer_layout(const home_layout::ParsedLayout& layout) {
 }
 
 void on_catalog_copy_layout(lv_event_t* /*e*/) {
+    const uint32_t generation = g_catalog_generation;
+    if (!g_catalog_state.overlay_root || g_copy_fetch_generation == generation) {
+        return;
+    }
     spdlog::info("[WidgetCatalog] Copy layout from printer requested");
+    g_copy_fetch_generation = generation;
 
-    HomeLayoutSync::instance().fetch_now([](std::optional<home_layout::ParsedLayout> layout) {
+    HomeLayoutSync::instance().fetch_now([generation](
+                                             std::optional<home_layout::ParsedLayout> layout) {
+        if (g_copy_fetch_generation == generation) {
+            g_copy_fetch_generation = 0;
+        }
+        if (generation != g_catalog_generation || !g_catalog_state.overlay_root) {
+            return;
+        }
         if (!layout) {
             ToastManager::instance().show(
                 ToastSeverity::INFO, lv_tr("This printer's screen has not shared a layout"), 3000);
@@ -266,8 +283,11 @@ void on_catalog_copy_layout(lv_event_t* /*e*/) {
             lv_tr("Copy Layout From Printer?"),
             lv_tr("This replaces this screen's home layout for this printer with the one "
                   "on the printer's own screen."),
-            ModalSeverity::Warning, lv_tr("Copy"),
-            [layout = std::move(*layout)] { apply_printer_layout(layout); });
+            ModalSeverity::Warning, lv_tr("Copy"), [generation, layout = std::move(*layout)] {
+                if (generation == g_catalog_generation && g_catalog_state.overlay_root) {
+                    apply_printer_layout(layout);
+                }
+            });
     });
 }
 
