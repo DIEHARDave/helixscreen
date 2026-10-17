@@ -284,6 +284,7 @@ translations:
     de que deseja cancelar esta impressão? Todo o progresso será perdido.
   Are you sure? This will power off or restart this device.: Tem certeza? Isso desligará
     ou reiniciará este dispositivo.
+  Ask before switching to another tool: 'Perguntar antes de trocar para outra ferramenta'
   Ask for parameters: 'Perguntar parâmetros'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Atribuir macros
     Klipper para controlar LEDs via ligar/desligar, alternar ou predefinições
@@ -755,6 +756,7 @@ translations:
   Configuring Moonraker...: Configurando Moonraker...
   Confirm PIN: Confirmar PIN
   Confirm before running macros: Confirmar antes de executar macros
+  Confirm tool changes: 'Confirmar trocas de ferramenta'
   Connect: Conectar
   Connect a USB label printer first: Conecte primeiro uma impressora de etiquetas
     USB
@@ -2848,6 +2850,7 @@ translations:
   Resetting: Restaurando
   Resetting system: 'Redefinindo o sistema'
   Resetting...: Resetando...
+  Resolve it on the filament system screen, then try again: 'Resolva na tela do sistema de filamento e tente novamente'
   Response (Kp): Resposta (Kp)
   Restart: Reiniciar
   Restart Firmware?: Reiniciar firmware?
@@ -3353,6 +3356,7 @@ translations:
   Switch between light and dark themes: Alternar entre temas claro e escuro
   Switch the active tool or extruder: Trocar a ferramenta ou extrusor ativo
   Switch to v%s: 'Mudar para a v%s'
+  Switch to {}?: 'Trocar para {}?'
   Switched to {}: 'Alterado para {}'
   Switches to a backup spool on runout: Troca para um carretel de reserva ao acabar
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
@@ -3428,8 +3432,10 @@ translations:
   Temperatures plotted over time: Temperaturas ao longo do tempo
   Temperatures saved: Temperaturas salvas
   Template: Modelo
+  Temporary adjustment for this print: "Ajuste temporário para esta impressão"
   Temporary adjustment for this print, unless saved on Controls panel: Ajuste temporário
     para esta impressão, a menos que salvo no painel de Controles
+  Temporary for this print; a tool change resets it: "Temporário para esta impressão; uma troca de ferramenta o redefine"
   Tertiary: Terciário
   Test All Lanes: 'Testar todas as lanes'
   Test Connection: Testar Conexão
@@ -3480,6 +3486,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : O filamento não chegou ao bico. O CFS não reportou nenhum erro, mas o sensor do cabeçote ainda não detecta filamento. Verifique se o carretel está bem encaixado e se o caminho está livre, e tente novamente.
   The filament may not have fully retracted — try again or manually pull: O filamento pode não ter recuado totalmente. Tente novamente ou puxe à mão
+  The filament system needs attention: 'O sistema de filamento precisa de atenção'
   The filament system reported an error: O sistema de filamento reportou um erro
   The heater can't be changed while the printer is waiting.: 'O aquecedor não pode ser alterado enquanto a impressora aguarda.'
   The heater did not accept the printer's credentials.: 'O aquecedor não aceitou as credenciais da impressora.'

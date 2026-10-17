@@ -195,6 +195,10 @@ LaneNoun active_tool_noun() {
     return backend ? backend->tool_noun() : LaneNoun::Tool;
 }
 
+std::string active_tool_label(std::string_view name, int index, ToolLabelForm form) {
+    return tool_label_in_form(active_tool_noun(), name, index, form);
+}
+
 bool tool_badges_add_information(const std::vector<int>& tool_to_slot, int slot_count) {
     if (tool_to_slot.empty())
         return true;

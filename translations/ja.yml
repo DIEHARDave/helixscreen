@@ -264,6 +264,7 @@ translations:
   Archive Spool?: スプールをアーカイブしますか？
   Are you sure you want to cancel this print? All progress will be lost.: この印刷をキャンセルしますか？すべての進行状況が失われます。
   Are you sure? This will power off or restart this device.: よろしいですか？このデバイスの電源がオフまたは再起動されます。
+  Ask before switching to another tool: '別のツールに切り替える前に確認する'
   Ask for parameters: 'パラメータを確認する'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Klipper マクロを割り当ててオン/オフ、トグル、プリセットで
     LED を制御
@@ -694,6 +695,7 @@ translations:
   Configuring Moonraker...: Moonrakerを設定中...
   Confirm PIN: PIN を確認
   Confirm before running macros: マクロ実行前に確認する
+  Confirm tool changes: 'ツール交換を確認する'
   Connect: 接続
   Connect a USB label printer first: 先にUSBラベルプリンターを接続してください
   Connect an ADXL345 accelerometer to calibrate: キャリブレーションには ADXL345 加速度センサーを接続してください
@@ -2684,6 +2686,7 @@ translations:
   Resetting: リセット中
   Resetting system: 'システムをリセットしています'
   Resetting...: リセット中...
+  Resolve it on the filament system screen, then try again: 'フィラメントシステム画面で解決してから再試行してください'
   Response (Kp): 応答 (Kp)
   Restart: 再起動
   Restart Firmware?: ファームウェアを再起動しますか？
@@ -3144,6 +3147,7 @@ translations:
   Switch between light and dark themes: ライトテーマとダークテーマを切り替え
   Switch the active tool or extruder: アクティブなツールやエクストルーダーを切り替え
   Switch to v%s: 'v%s に切り替え'
+  Switch to {}?: '{} に切り替えますか?'
   Switched to {}: '{} に切替えました'
   Switches to a backup spool on runout: フィラメント切れ時にバックアップスプールへ切り替えます
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
@@ -3216,7 +3220,9 @@ translations:
   Temperatures plotted over time: 温度の時間変化をグラフ表示
   Temperatures saved: 温度を保存しました
   Template: テンプレート
+  Temporary adjustment for this print: "この印刷のみの一時的な調整です"
   Temporary adjustment for this print, unless saved on Controls panel: コントロールパネルで保存しない限り、この印刷のみの一時的な調整です
+  Temporary for this print; a tool change resets it: "この印刷のみの一時的な調整です。ツール交換でリセットされます"
   Tertiary: ターシャリ
   Test All Lanes: '全レーンをテスト'
   Test Connection: 接続テスト
@@ -3265,6 +3271,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : フィラメントがノズルに到達しませんでした。CFSはエラーを報告していませんが、ツールヘッドセンサーはまだフィラメントを検出していません。スプールが正しく取り付けられ、フィラメント経路が塞がれていないことを確認して、再試行してください。
   The filament may not have fully retracted — try again or manually pull: フィラメントが完全に戻っていない可能性があります。再試行するか手で引き抜いてください
+  The filament system needs attention: 'フィラメントシステムの対応が必要です'
   The filament system reported an error: フィラメントシステムがエラーを報告しました
   The heater can't be changed while the printer is waiting.: 'プリンターの待機中はヒーターを変更できません。'
   The heater did not accept the printer's credentials.: 'ヒーターがプリンターの認証情報を受け付けませんでした。'

@@ -276,6 +276,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   tool keeps its own first-layer height, and the save button appears whenever any tool's
   offset is unsaved and writes it permanently. It used to vanish after the next Klipper
   restart.
+- **Tap a toolhead on the filament path to switch to it** - on the Snapmaker U1, tool
+  changers, and AFC or Happy Hare in toolchanger mode, tapping a head that is not mounted
+  offers to switch to it; a tube, a spool or the mounted head still opens the slot menu.
+  A new **Confirm tool changes** setting (Settings > Printing, on by default, shown only on
+  multi-tool printers) decides whether that tap, the home Tool Switcher and the Filament
+  screen's tool list ask first. A paused print always asks, and all three refuse the same
+  way while printing, with spools on the bed, or while the filament system needs attention.
 - **Snapmaker U1: load or unload several toolheads at once** - a picker lists every head
   with what it holds, pre-ticks loaded heads for an unload, and says which heads cannot take
   the operation and why. The printer's own batch command does the work, preheating the next
@@ -996,6 +1003,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Printing and preview**
 
+- **A heater wait names the heater it waits on** - during print preparation the label reads
+  the waiting command (M109, M190, M191 or TEMPERATURE_WAIT) instead of guessing from which
+  heater is short, so a nozzle settling at its target, a cool-down before probing, or the
+  tail of a bed wait no longer shows the wrong heater.
 - **Creality error codes are explained on every printer** (#1513) - pre-heat, MCU link and
   out-of-range errors showed as raw firmware codes on printers without a CFS.
 - **Print preparation shows what the printer is waiting for** - during a long heat-up after
@@ -1139,6 +1150,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   coded faults showed raw console text. A spaghetti pause is no longer called a dirty bed.
 - **Per-filament temperatures and per-head end unload** did not work against the real
   firmware.
+- **A refused resume explains itself** - when a head has no filament type set, Resume shows
+  "Filament not set" with what to do, instead of a raw "Failed to resume" toast.
+- **Print Tune no longer says the Z-offset is auto-saved** - on the U1 a baby step lasts
+  until the next tool change or the end of the print, and Print Tune now says so.
+- **Pre-print steps read right** - the Z touch after each tool pick shows as Probing Z
+  instead of Bed mesh, and the firmware's bed soak and mesh steps get their own labels.
 
 **Setup and installing**
 

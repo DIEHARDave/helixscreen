@@ -261,6 +261,7 @@
   <translation tag="Archive Spool?" en="Archive Spool?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." en="Are you sure you want to cancel this print? All progress will be lost."/>
   <translation tag="Are you sure? This will power off or restart this device." en="Are you sure? This will power off or restart this device."/>
+  <translation tag="Ask before switching to another tool" en="Ask before switching to another tool"/>
   <translation tag="Ask for parameters" en="Ask for parameters"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" en="Assign Klipper macros to control LEDs via on/off, toggle, or presets"/>
   <translation tag="Assign a role to enable sensor monitoring" en="Assign a role to enable sensor monitoring"/>
@@ -680,6 +681,7 @@
   <translation tag="Configuring Moonraker..." en="Configuring Moonraker..."/>
   <translation tag="Confirm PIN" en="Confirm PIN"/>
   <translation tag="Confirm before running macros" en="Confirm before running macros"/>
+  <translation tag="Confirm tool changes" en="Confirm tool changes"/>
   <translation tag="Connect" en="Connect"/>
   <translation tag="Connect a USB label printer first" en="Connect a USB label printer first"/>
   <translation tag="Connect an ADXL345 accelerometer to calibrate" en="Connect an ADXL345 accelerometer to calibrate"/>
@@ -2585,6 +2587,7 @@
   <translation tag="Resetting" en="Resetting"/>
   <translation tag="Resetting system" en="Resetting system"/>
   <translation tag="Resetting..." en="Resetting..."/>
+  <translation tag="Resolve it on the filament system screen, then try again" en="Resolve it on the filament system screen, then try again"/>
   <translation tag="Response (Kp)" en="Response (Kp)"/>
   <translation tag="Restart" en="Restart"/>
   <translation tag="Restart Firmware?" en="Restart Firmware?"/>
@@ -3024,6 +3027,7 @@
   <translation tag="Switch between light and dark themes" en="Switch between light and dark themes"/>
   <translation tag="Switch the active tool or extruder" en="Switch the active tool or extruder"/>
   <translation tag="Switch to v%s" en="Switch to v%s"/>
+  <translation tag="Switch to {}?" en="Switch to {}?"/>
   <translation tag="Switched to {}" en="Switched to {}"/>
   <translation tag="Switches to a backup spool on runout" en="Switches to a backup spool on runout"/>
   <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." en="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature."/>
@@ -3093,7 +3097,9 @@
   <translation tag="Temperatures plotted over time" en="Temperatures plotted over time"/>
   <translation tag="Temperatures saved" en="Temperatures saved"/>
   <translation tag="Template" en="Template"/>
+  <translation tag="Temporary adjustment for this print" en="Temporary adjustment for this print"/>
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" en="Temporary adjustment for this print, unless saved on Controls panel"/>
+  <translation tag="Temporary for this print; a tool change resets it" en="Temporary for this print; a tool change resets it"/>
   <translation tag="Tertiary" en="Tertiary"/>
   <translation tag="Test All Lanes" en="Test All Lanes"/>
   <translation tag="Test Both" en="Test Both"/>
@@ -3131,6 +3137,7 @@
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" en="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend"/>
   <translation tag="The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again." en="The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again."/>
   <translation tag="The filament may not have fully retracted — try again or manually pull" en="The filament may not have fully retracted — try again or manually pull"/>
+  <translation tag="The filament system needs attention" en="The filament system needs attention"/>
   <translation tag="The filament system reported an error" en="The filament system reported an error"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." en="The heater can&apos;t be changed while the printer is waiting."/>
   <translation tag="The heater did not accept the printer&apos;s credentials." en="The heater did not accept the printer&apos;s credentials."/>

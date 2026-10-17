@@ -261,6 +261,7 @@
   <translation tag="Archive Spool?" es="¿Archivar bobina?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." es="¿Está seguro de que desea cancelar esta impresión? Todo el progreso se perderá."/>
   <translation tag="Are you sure? This will power off or restart this device." es="¿Está seguro? Esto apagará o reiniciará este dispositivo."/>
+  <translation tag="Ask before switching to another tool" es="Preguntar antes de cambiar a otra herramienta"/>
   <translation tag="Ask for parameters" es="Preguntar parámetros"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" es="Asignar macros de Klipper para controlar LEDs vía encendido/apagado, alternar o preajustes"/>
   <translation tag="Assign a role to enable sensor monitoring" es="Asigne un rol para habilitar el monitoreo del sensor"/>
@@ -680,6 +681,7 @@
   <translation tag="Configuring Moonraker..." es="Configurando Moonraker..."/>
   <translation tag="Confirm PIN" es="Confirmar PIN"/>
   <translation tag="Confirm before running macros" es="Confirmar antes de ejecutar macros"/>
+  <translation tag="Confirm tool changes" es="Confirmar cambios de herramienta"/>
   <translation tag="Connect" es="Conectar"/>
   <translation tag="Connect a USB label printer first" es="Conecte primero una impresora de etiquetas USB"/>
   <translation tag="Connect an ADXL345 accelerometer to calibrate" es="Conecte un acelerómetro ADXL345 para calibrar"/>
@@ -2585,6 +2587,7 @@
   <translation tag="Resetting" es="Restableciendo"/>
   <translation tag="Resetting system" es="Reiniciando el sistema"/>
   <translation tag="Resetting..." es="Restableciendo..."/>
+  <translation tag="Resolve it on the filament system screen, then try again" es="Resuélvalo en la pantalla del sistema de filamento y vuelva a intentarlo"/>
   <translation tag="Response (Kp)" es="Respuesta (Kp)"/>
   <translation tag="Restart" es="Reiniciar"/>
   <translation tag="Restart Firmware?" es="¿Reiniciar firmware?"/>
@@ -3024,6 +3027,7 @@
   <translation tag="Switch between light and dark themes" es="Cambiar entre temas claro y oscuro"/>
   <translation tag="Switch the active tool or extruder" es="Cambiar la herramienta o extrusor activo"/>
   <translation tag="Switch to v%s" es="Cambiar a la v%s"/>
+  <translation tag="Switch to {}?" es="¿Cambiar a {}?"/>
   <translation tag="Switched to {}" es="Cambiado a {}"/>
   <translation tag="Switches to a backup spool on runout" es="Cambia a una bobina de respaldo al agotarse"/>
   <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." es="Cambiar de nuevo a PID cambia cómo se controla este calentador y luego lo calibra. Eso tarda varios minutos a temperatura."/>
@@ -3093,7 +3097,9 @@
   <translation tag="Temperatures plotted over time" es="Temperaturas a lo largo del tiempo"/>
   <translation tag="Temperatures saved" es="Temperaturas guardadas"/>
   <translation tag="Template" es="Plantilla"/>
+  <translation tag="Temporary adjustment for this print" es="Ajuste temporal para esta impresión"/>
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" es="Ajuste temporal para esta impresión, a menos que se guarde en el panel de Controles"/>
+  <translation tag="Temporary for this print; a tool change resets it" es="Temporal para esta impresión; un cambio de herramienta lo restablece"/>
   <translation tag="Tertiary" es="Terciario"/>
   <translation tag="Test All Lanes" es="Probar todos los carriles"/>
   <translation tag="Test Both" es="Probar ambos"/>
@@ -3131,6 +3137,7 @@
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" es="El extrusor no puede tirar con suavidad. Revise la bobina por si hay enredos o nudos, y el tubo PTFE por si tiene una curva pronunciada"/>
   <translation tag="The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again." es="El filamento no llegó a la boquilla. El CFS no informó ningún error, pero el sensor del cabezal sigue sin detectar filamento. Compruebe que la bobina esté bien colocada y que el recorrido esté despejado, y vuelva a intentarlo."/>
   <translation tag="The filament may not have fully retracted — try again or manually pull" es="Puede que el filamento no se haya retraído por completo. Reintente o tire a mano"/>
+  <translation tag="The filament system needs attention" es="El sistema de filamento requiere atención"/>
   <translation tag="The filament system reported an error" es="El sistema de filamento informó un error"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." es="No se puede cambiar el calentador mientras la impresora espera."/>
   <translation tag="The heater did not accept the printer&apos;s credentials." es="El calentador no aceptó las credenciales de la impresora."/>
