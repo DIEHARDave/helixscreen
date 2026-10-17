@@ -54,6 +54,23 @@ bool has_estop_button(const std::string& xml) {
             xml.find("callback=\"lock_screen_estop_clicked\"") != std::string::npos);
 }
 
+/// The keyboard manager initialised on @p parent for one test, reset after.
+struct ScopedKeyboard {
+    explicit ScopedKeyboard(lv_obj_t* parent) {
+        release();
+        KeyboardManager::instance().init(parent);
+    }
+    ~ScopedKeyboard() {
+        release();
+    }
+    ScopedKeyboard(const ScopedKeyboard&) = delete;
+    ScopedKeyboard& operator=(const ScopedKeyboard&) = delete;
+    static void release() {
+        KeyboardManager::instance().reset();
+        helix::ui::UpdateQueue::instance().drain();
+    }
+};
+
 struct NavbarFixture : public LVGLUITestFixture {
     NavbarFixture() {
         estop_visible_ = lv_xml_get_subject(nullptr, "estop_visible");
@@ -228,19 +245,7 @@ TEST_CASE_METHOD(NavbarFixture, "navbar E-stop stays reachable above the keyboar
                  "[estop_navbar][navigation]") {
     // The keyboard spans the bottom of the screen, navbar included, which is
     // where the E-stop sits.
-    struct KeyboardOwner {
-        explicit KeyboardOwner(lv_obj_t* parent) {
-            release();
-            KeyboardManager::instance().init(parent);
-        }
-        ~KeyboardOwner() {
-            release();
-        }
-        static void release() {
-            KeyboardManager::instance().reset();
-            helix::ui::UpdateQueue::instance().drain();
-        }
-    } keyboard(test_screen());
+    ScopedKeyboard keyboard(test_screen());
 
     set_visible(1);
     lv_obj_t* textarea = lv_textarea_create(test_screen());
@@ -270,25 +275,30 @@ TEST_CASE_METHOD(NavbarFixture, "navbar E-stop stays reachable above the keyboar
     CHECK(button.y1 == slot.y1);
 }
 
+TEST_CASE_METHOD(NavbarFixture, "a keyboard opened over a modal does not lift the E-stop over it",
+                 "[estop_navbar][navigation][modal_covers_navbar]") {
+    ScopedKeyboard keyboard(test_screen());
+    set_visible(1);
+    lv_obj_t* dialog =
+        helix::ui::modal_confirm("Title", "Message", ModalSeverity::Info, "OK", [] {});
+    REQUIRE(dialog != nullptr);
+    lv_obj_t* backdrop = lv_obj_get_parent(dialog);
+
+    lv_obj_t* textarea = lv_textarea_create(dialog);
+    KeyboardManager::instance().show(textarea);
+    REQUIRE(KeyboardManager::instance().is_visible());
+
+    CHECK(index_of(estop_) < index_of(backdrop));
+    KeyboardManager::instance().hide();
+}
+
 TEST_CASE_METHOD(NavbarFixture,
                  "a portrait keyboard covers the navbar E-stop instead of lifting it",
                  "[estop_navbar][navigation]") {
     // A bottom bar: wider than tall, along the bottom of the screen.
     lv_obj_set_size(navbar_, lv_obj_get_width(test_screen()), 70);
     lv_obj_align(navbar_, LV_ALIGN_BOTTOM_MID, 0, 0);
-    struct KeyboardOwner {
-        explicit KeyboardOwner(lv_obj_t* parent) {
-            release();
-            KeyboardManager::instance().init(parent);
-        }
-        ~KeyboardOwner() {
-            release();
-        }
-        static void release() {
-            KeyboardManager::instance().reset();
-            helix::ui::UpdateQueue::instance().drain();
-        }
-    } keyboard(test_screen());
+    ScopedKeyboard keyboard(test_screen());
 
     set_visible(1);
     REQUIRE(lv_obj_get_width(navbar_) > lv_obj_get_height(navbar_));
@@ -308,19 +318,7 @@ TEST_CASE_METHOD(NavbarFixture,
                  "[estop_navbar][navigation][modal_covers_navbar]") {
     lv_obj_set_size(navbar_, lv_obj_get_width(test_screen()), 70);
     lv_obj_align(navbar_, LV_ALIGN_BOTTOM_MID, 0, 0);
-    struct KeyboardOwner {
-        explicit KeyboardOwner(lv_obj_t* parent) {
-            release();
-            KeyboardManager::instance().init(parent);
-        }
-        ~KeyboardOwner() {
-            release();
-        }
-        static void release() {
-            KeyboardManager::instance().reset();
-            helix::ui::UpdateQueue::instance().drain();
-        }
-    } keyboard(test_screen());
+    ScopedKeyboard keyboard(test_screen());
 
     set_visible(1);
     lv_obj_t* textarea = lv_textarea_create(test_screen());
