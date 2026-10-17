@@ -909,6 +909,7 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                                     hardware_.parse_build_volume(settings);
                                     hardware_.parse_extruder_dimensions(settings);
                                     hardware_.parse_leveling_probe_points(settings);
+                                    hardware_.parse_probe_xy_offset(settings);
                                 }
 
                                 // Which macros take the host down with them.

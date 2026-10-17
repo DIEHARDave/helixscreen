@@ -216,3 +216,60 @@ TEST_CASE_METHOD(CalibrationSendFixture, "Calibration abort: a hot-reload rebuil
     // run the printer is still executing.
     CHECK(abort_sends_for(DeactivateReason::Rebuild).empty());
 }
+
+// ============================================================================
+// Start: the head goes over the plate centre before the calibrate command
+// ============================================================================
+
+namespace {
+
+/// Start a calibration on a homed printer with 0-350 XY travel and return
+/// every line sent, joined, up to and including the one carrying @p command.
+std::string start_script(ZOffsetCalibrationStrategy strategy, const std::string& command) {
+    auto& ps = get_printer_state();
+    helix::PrinterStateTestAccess::pin_z_offset_strategy(ps, strategy);
+    ps.update_from_status(
+        json{{"toolhead", json{{"homed_axes", "xyz"},
+                               {"axis_minimum", json::array({0.0, 0.0, 0.0, 0.0})},
+                               {"axis_maximum", json::array({350.0, 350.0, 340.0, 0.0})}}}});
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
+    MoonrakerAPI api(client, ps);
+    api.hardware() = helix::PrinterDiscovery{};
+    ZOffsetCalibrationPanel panel;
+    panel.set_api(&api);
+    ZOffsetCalibrationTestAccess::begin_probe_sequence(panel);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    std::string sent;
+    for (const auto& s : client.gcode_script_history()) {
+        sent += sent.empty() ? s : "\n" + s;
+        if (s.find(command) != std::string::npos) {
+            return sent;
+        }
+    }
+    return "";
+}
+
+} // namespace
+
+TEST_CASE_METHOD(CalibrationSendFixture,
+                 "Calibration start: a homed printer moves to the centre before probing",
+                 "[ui_integration][zoffset][zoffset_center]") {
+    CHECK(start_script(ZOffsetCalibrationStrategy::PROBE_CALIBRATE, "PROBE_CALIBRATE") ==
+          "G90\nG1 Z5.0 F600\nG1 X175.0 Y175.0 F6000\nPROBE_CALIBRATE");
+}
+
+TEST_CASE_METHOD(CalibrationSendFixture,
+                 "Calibration start: the endstop calibration starts over the centre",
+                 "[ui_integration][zoffset][zoffset_center]") {
+    CHECK(start_script(ZOffsetCalibrationStrategy::ENDSTOP, "Z_ENDSTOP_CALIBRATE") ==
+          "G90\nG1 Z5.0 F600\nG1 X175.0 Y175.0 F6000\nZ_ENDSTOP_CALIBRATE");
+}
+
+TEST_CASE_METHOD(CalibrationSendFixture,
+                 "Calibration start: the manual gcode offset lowers over the plate centre",
+                 "[ui_integration][zoffset][zoffset_center]") {
+    CHECK(start_script(ZOffsetCalibrationStrategy::FIRMWARE_MANAGED, "G1 Z0.1") ==
+          "G90\nG1 Z5.0 F600\nG1 X175.0 Y175.0 F6000\nG1 Z0.1 F300");
+}

@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -641,6 +642,23 @@ class PrinterDiscovery {
     }
 
     /**
+     * @brief Read the Z probe's XY offset from the nozzle
+     *
+     * From x_offset/y_offset of the first Klipper Z probe section present:
+     * [probe], [bltouch], [smart_effector], [load_cell_probe], or a
+     * [probe_eddy_current <name>]. An axis the section omits is 0, Klipper's
+     * default. No such section leaves the offset unknown.
+     *
+     * @param settings JSON object from a configfile.settings response
+     */
+    void parse_probe_xy_offset(const nlohmann::json& settings);
+
+    /// The Z probe's XY offset from the nozzle; nullopt when no probe section is configured.
+    [[nodiscard]] const std::optional<ProbeXYOffset>& probe_xy_offset() const {
+        return probe_xy_offset_;
+    }
+
+    /**
      * @brief Resolve the command that toggles a filament sensor in firmware
      *
      * A [gcode_macro SET_FILAMENT_SENSOR] wrapper must rename the builtin
@@ -1008,6 +1026,7 @@ class PrinterDiscovery {
     static constexpr float DEFAULT_NOZZLE_DIAMETER_MM = 0.4f;
     float nozzle_diameter_mm_ = DEFAULT_NOZZLE_DIAMETER_MM; ///< [extruder] nozzle_diameter
     std::vector<LevelingProbePoint> leveling_probe_points_; ///< [quad_gantry_level]/[z_tilt] points
+    std::optional<ProbeXYOffset> probe_xy_offset_;          ///< Z probe x_offset/y_offset
     int chamber_fan_resting_deci_ = 0; ///< Cooling fan's configured resting/off target
                                        ///< (decidegrees), from configfile.settings
                                        ///< target_temp. 0 = unknown. M141 S0 returns here.

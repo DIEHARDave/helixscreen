@@ -1518,6 +1518,7 @@ void MoonrakerClientMock::populate_capabilities() {
     discovery_.modify_hardware([&](PrinterDiscovery& hw) {
         hw.parse_config_keys(mock_config);
         hw.parse_build_volume(mock_config);
+        hw.parse_probe_xy_offset(mock_config);
         macros_snapshot = hw.macros();
     });
 

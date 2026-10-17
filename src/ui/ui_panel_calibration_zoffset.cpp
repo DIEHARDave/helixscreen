@@ -14,6 +14,7 @@
 #include "config.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
+#include "motion_presets.h"
 #include "observer_factory.h"
 #include "printer_state.h"
 #include "probe_preparation.h"
@@ -22,6 +23,7 @@
 #include "static_panel_registry.h"
 #include "toolhead_homing.h"
 #include "ui/ui_widget_helpers.h"
+#include "z_offset_calibration_approach.h"
 #include "z_offset_persistence.h"
 #include "z_offset_utils.h"
 
@@ -434,6 +436,21 @@ void ZOffsetCalibrationPanel::arm_saving_timeout() {
 // GCODE COMMANDS (strategy-aware dispatch)
 // ============================================================================
 
+using helix::zoffset_cal::ReadingPoint;
+
+static zoffset_cal::ApproachInputs approach_inputs(IMoonrakerAPI& api, PrinterState& ps,
+                                                   ReadingPoint point, bool all_homed) {
+    zoffset_cal::ApproachInputs in;
+    in.all_homed = all_homed;
+    in.point = point;
+    in.gcode_travel = ps.motion_state().get_gcode_axis_bounds();
+    in.plate = preset_area(ps.motion_state().get_axis_bounds(), in.gcode_travel,
+                           api.hardware().build_volume());
+    in.circular_bed = circular_bed_kinematics(api.hardware().kinematics());
+    in.probe_offset = api.hardware().probe_xy_offset();
+    return in;
+}
+
 void ZOffsetCalibrationPanel::start_calibration() {
     if (!api_) {
         spdlog::error("[ZOffsetCal] No IMoonrakerAPI");
@@ -503,25 +520,22 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
     const bool all_homed = helix::toolhead_is_homed(ps);
 
     if (strategy == ZOffsetCalibrationStrategy::FIRMWARE_MANAGED) {
-        // Manual Z calibrate: home, move to center, lower to Z0.1
+        // Manual Z calibrate: home, move over the plate centre, lower to Z0.1
         cumulative_z_delta_ = 0.0f;
 
-        // Use hardcoded center (110, 110) as safe default for most printers
-        float center_x = 110.0f;
-        float center_y = 110.0f;
-
-        std::string gcode;
-        if (!all_homed) {
-            gcode = "G28\n";
+        const auto approach = zoffset_cal::calibration_approach(
+            approach_inputs(*api_, ps, ReadingPoint::Nozzle, all_homed));
+        if (!approach.nozzle) {
+            // Lowering to Z0.1 at a guessed XY can put the nozzle off the plate.
+            spdlog::warn(
+                "[ZOffsetCal] Plate bounds unknown, not starting gcode_offset calibration");
+            on_calibration_result(false, "Bed size unknown");
+            return;
         }
-
-        char move_cmd[128];
-        snprintf(move_cmd, sizeof(move_cmd), "G1 X%.1f Y%.1f Z5 F3000\nG1 Z0.1 F300", center_x,
-                 center_y);
-        gcode += move_cmd;
+        std::string gcode = approach.gcode + "G1 Z0.1 F300";
 
         spdlog::info("[ZOffsetCal] Starting gcode_offset calibration (center={:.1f},{:.1f})",
-                     center_x, center_y);
+                     *approach.nozzle->x, *approach.nozzle->y);
 
         auto tok = lifetime_.token();
         api_->execute_gcode(
@@ -553,38 +567,32 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
             IAdvancedAPI::PROBING_TIMEOUT_MS);
     } else {
         // Probe calibrate or endstop strategy
-        std::string gcode;
         if (!all_homed) {
             // Diagnostic-only re-fetch — all_homed above already decided the branch.
             const char* homed_dbg =
                 lv_subject_get_string(ps.motion_state().get_homed_axes_subject());
             spdlog::info("[ZOffsetCal] Axes not homed (homed_axes='{}'), homing first",
                          homed_dbg ? homed_dbg : "");
-            gcode = "G28\n";
         }
 
-        const char* calibrate_cmd = nullptr;
-        if (strategy == ZOffsetCalibrationStrategy::ENDSTOP) {
-            calibrate_cmd = "Z_ENDSTOP_CALIBRATE";
+        auto sensors = helix::sensors::ProbeSensorManager::instance().get_sensors();
+        const auto probe_type =
+            sensors.empty() ? helix::sensors::ProbeSensorType::STANDARD : sensors[0].type;
+        const auto command = zoffset_cal::calibration_command(strategy, probe_type);
+        const char* calibrate_cmd = command.gcode;
+
+        // Every calibrate command reads at the current XY, so the head goes
+        // over the plate centre even when nothing needed homing.
+        const auto approach =
+            zoffset_cal::calibration_approach(approach_inputs(*api_, ps, command.point, all_homed));
+        if (approach.nozzle) {
+            spdlog::info("[ZOffsetCal] Calibration start position X{:.1f} Y{:.1f}",
+                         *approach.nozzle->x, *approach.nozzle->y);
         } else {
-            // Check probe type for probe-specific calibration commands
-            auto& probe_mgr = helix::sensors::ProbeSensorManager::instance();
-            auto sensors = probe_mgr.get_sensors();
-            auto probe_type =
-                sensors.empty() ? helix::sensors::ProbeSensorType::STANDARD : sensors[0].type;
-            switch (probe_type) {
-            case helix::sensors::ProbeSensorType::CARTOGRAPHER:
-                calibrate_cmd = "CARTOGRAPHER_SCAN_CALIBRATE";
-                break;
-            case helix::sensors::ProbeSensorType::BEACON:
-                calibrate_cmd = "BEACON_CALIBRATE";
-                break;
-            default:
-                calibrate_cmd = "PROBE_CALIBRATE";
-                break;
-            }
+            spdlog::warn("[ZOffsetCal] Plate bounds unknown, calibrating at the current position");
         }
-        // Prepare the probe after homing, immediately before the calibrate command.
+        std::string gcode = approach.gcode;
+        // Prepare the probe after the approach, immediately before the calibrate command.
         const uint32_t prep_timeout_ms = helix::probe_prep::append_preparation(
             gcode, helix::probe_prep::Operation::ZOffsetCalibrate, calibrate_cmd);
         gcode += calibrate_cmd;
