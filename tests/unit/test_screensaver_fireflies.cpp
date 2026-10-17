@@ -3,25 +3,47 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_test_access.h"
+#include "screensaver_canvas.h"
+#include "screensaver_fireflies.h"
 #include "screensaver_fireflies_sim.h"
 #include "screensaver_pixel_writer.h"
+#include "screensaver_registry.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <random>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
 
 using helix::ui::DirtyRect;
+using helix::ui::FIREFLIES_LEVEL_COUNT;
+using helix::ui::FIREFLIES_LEVELS;
 using helix::ui::FIREFLIES_MAX_BAITS;
+using helix::ui::FirefliesScreensaver;
 using helix::ui::FirefliesSim;
 using helix::ui::FireflyVec;
 using helix::ui::FrameTarget;
 using helix::ui::PixelFormat;
+
+namespace helix::ui {
+
+/// Reads the sim a FirefliesScreensaver owns.
+class FirefliesScreensaverTestAccess {
+  public:
+    static const FirefliesSim& sim(const FirefliesScreensaver& saver) {
+        return saver.sim_;
+    }
+};
+
+} // namespace helix::ui
+
+using helix::ui::FirefliesScreensaverTestAccess;
 
 namespace {
 
@@ -97,6 +119,12 @@ bool same_positions(const FirefliesSim& a, const FirefliesSim& b) {
     return true;
 }
 
+void fire(lv_timer_t* timer) {
+    REQUIRE(timer != nullptr);
+    REQUIRE(timer->timer_cb != nullptr);
+    timer->timer_cb(timer);
+}
+
 } // namespace
 
 // ============================================================================
@@ -155,6 +183,69 @@ TEST_CASE("a cleared fireflies sim holds nothing", "[screensaver][fireflies_sim]
     CHECK(s.sim.baits().size() == FIREFLIES_MAX_BAITS);
     s.sim.clear();
     CHECK(s.sim.heap_bytes() == 0);
+}
+
+// ============================================================================
+// FirefliesScreensaver
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "the fireflies saver draws on a canvas in the build's format with its ladder",
+                 "[screensaver][screensaver_fireflies]") {
+    FirefliesScreensaver ss;
+    ScreensaverStopOnExit<FirefliesScreensaver> stop_on_exit{ss};
+    ss.start();
+    REQUIRE(ss.is_active());
+    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
+    REQUIRE(buf != nullptr);
+    CHECK(buf->header.cf == helix::ui::SAVER_BUILD_CANVAS_FORMAT);
+    CHECK(ss.level_count() == FIREFLIES_LEVEL_COUNT);
+    CHECK(FIREFLIES_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "a fireflies level request applies at once, frame period included",
+                 "[screensaver][screensaver_fireflies]") {
+    FirefliesScreensaver ss;
+    ScreensaverStopOnExit<FirefliesScreensaver> stop_on_exit{ss};
+    SaverTestAccess::set_fixed_seed(ss, 4);
+    ss.start();
+    REQUIRE(ss.is_active());
+
+    const size_t last = FIREFLIES_LEVEL_COUNT - 1;
+    ss.request_level(last);
+    CHECK(ss.level() == last);
+    CHECK(SaverTestAccess::timer(ss)->period == FIREFLIES_LEVELS[last].period_ms);
+    lv_tick_inc(100);
+    fire(SaverTestAccess::timer(ss));
+    CHECK(ss.is_active());
+    CHECK(FirefliesScreensaverTestAccess::sim(ss).level() == last);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a stopped fireflies saver holds no buffers",
+                 "[screensaver][screensaver_fireflies]") {
+    FirefliesScreensaver ss;
+    CHECK(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    {
+        ScreensaverStopOnExit<FirefliesScreensaver> stop_on_exit{ss};
+        ss.start();
+        REQUIRE(ss.is_active());
+        lv_tick_inc(16);
+        fire(SaverTestAccess::timer(ss));
+        REQUIRE(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() > 0);
+    }
+    CHECK_FALSE(ss.is_active());
+    CHECK(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+}
+
+TEST_CASE("fireflies is registered by name at both depths",
+          "[screensaver][screensaver_fireflies]") {
+    const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver_by_name("fireflies");
+    REQUIRE(info != nullptr);
+    CHECK(info->type == ScreensaverType::FIREFLIES);
+    CHECK(std::string(info->label_key) == "Fireflies");
+    CHECK((info->depths & helix::ui::SAVER_DEPTH_16) != 0);
+    CHECK((info->depths & helix::ui::SAVER_DEPTH_32) != 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER
