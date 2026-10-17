@@ -368,10 +368,8 @@ void ColorPicker::update_preview(uint32_t color_rgb, bool from_hsv_picker, bool 
     selected_color_ = color_rgb;
 
     // Update preview swatches
-    if (preview_)
-        lv_obj_set_style_bg_color(preview_, lv_color_hex(color_rgb), 0);
-    if (preview_tiny_)
-        lv_obj_set_style_bg_color(preview_tiny_, lv_color_hex(color_rgb), 0);
+    helix::ui::apply_swatch_color(preview_, color_rgb, "");
+    helix::ui::apply_swatch_color(preview_tiny_, color_rgb, "");
 
     // Update hex input (unless change came from hex input itself)
     if (!from_hex_input) {

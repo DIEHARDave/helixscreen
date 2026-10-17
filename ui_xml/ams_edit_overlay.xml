@@ -97,10 +97,7 @@
             <lv_obj width="100%"
                     height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                     style_pad_gap="#space_sm" clickable="false" event_bubble="true" scrollable="false">
-              <lv_obj name="card_color_swatch"
-                      width="28" height="28" style_radius="#border_radius_small" style_bg_color="#card_bg"
-                      style_bg_opa="255" style_border_width="1" style_border_color="#text_muted" style_border_opa="80"
-                      clickable="false" event_bubble="true" scrollable="false"/>
+              <color_dot name="card_color_swatch" size="#swatch_grid_size" color="#card_bg"/>
               <text_body name="card_identity_label"
                          text="" flex_grow="1" long_mode="dots" clickable="false" event_bubble="true"/>
               <!-- Trailing Spoolman-tracked badge. Rendered at the asset's
@@ -266,10 +263,7 @@
                     style_flex_cross_place="center" scrollable="false">
               <text_small text="Color"/>
               <!-- Selected-color preview -->
-              <lv_obj name="details_color_preview"
-                      width="28" height="28" style_radius="#border_radius_small" style_bg_color="#card_bg"
-                      style_bg_opa="255" style_border_width="2" style_border_color="#text_muted" style_border_opa="80"
-                      scrollable="false"/>
+              <color_dot name="details_color_preview" size="#swatch_grid_size" color="#card_bg"/>
               <!-- Custom-hue escape hatch: opens the color view (swatches + HSV) -->
               <ui_button name="btn_details_custom_color" width="28" height="28" icon="pencil" variant="ghost">
                 <event_cb trigger="clicked" callback="ams_edit_custom_color_cb"/>
@@ -281,10 +275,7 @@
                     width="100%" height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_sm"
                     style_flex_cross_place="center" scrollable="false">
               <bind_flag_if cond="ams_edit_has_scan eq 0" flag="hidden"/>
-              <lv_obj name="details_scan_swatch"
-                      width="28" height="28" style_radius="#border_radius_small" style_bg_color="#card_bg"
-                      style_bg_opa="255" style_border_width="2" style_border_color="#text_muted" style_border_opa="80"
-                      scrollable="false"/>
+              <color_dot name="details_scan_swatch" size="#swatch_grid_size" color="#card_bg"/>
               <text_small bind_text="ams_edit_scan_text"/>
               <ui_button name="btn_use_scanned_color"
                          width="content" height="#button_height_sm" text="Use Scan" variant="secondary">
@@ -447,10 +438,10 @@
           <lv_obj width="content"
                   height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
                   style_flex_cross_place="start" style_pad_gap="#space_sm" scrollable="false">
-            <lv_obj name="ams_color_preview"
-                    width="#color_preview_size" height="#color_preview_size_small" style_radius="#border_radius"
-                    style_bg_color="#card_bg" style_bg_opa="255" style_border_width="2" style_border_color="#text_muted"
-                    style_border_opa="80" scrollable="false"/>
+            <!-- A colour area, not a swatch: a rounded rect. -->
+            <swatch_paint name="ams_color_preview"
+                          width="#color_preview_size" height="#color_preview_size_small" style_radius="#border_radius"
+                          color="#card_bg"/>
             <text_input name="ams_color_hex_input"
                         width="100" height="content" max_length="9" text="#808080" placeholder_text="#hex_placeholder"
                         style_outline_width="0" scrollable="false">

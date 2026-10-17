@@ -168,12 +168,13 @@ void FilamentSlotPicker::create_slot_row(lv_obj_t* list, int index,
 
     if (auto* swatch = helix::ui::find_required(row, "swatch", "FilamentSlotPicker")) {
         if (slot.is_empty) {
-            lv_obj_set_style_bg_opa(swatch, LV_OPA_TRANSP, 0);
+            helix::ui::clear_swatch_color(swatch);
             lv_obj_set_style_border_width(swatch, 2, 0);
             lv_obj_set_style_border_color(swatch, theme_manager_get_color("warning"), 0);
             lv_obj_set_style_border_opa(swatch, LV_OPA_COVER, 0);
         } else {
-            helix::ui::apply_swatch_color(swatch, slot.color_rgb, slot.multi_color_hexes);
+            helix::ui::apply_swatch_color(swatch, slot.color_rgb, slot.multi_color_hexes,
+                                          helix::ui::swatch_finish(slot.finish));
         }
     }
 

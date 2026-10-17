@@ -606,7 +606,8 @@ void AmsEditOverlay::render_spool_list(const std::string& filter) {
         lv_obj_t* swatch = helix::ui::find_required(item, "spool_swatch", get_name());
         if (swatch) {
             uint32_t rgb = helix::parse_hex_color(spool.color_hex).value_or(0x808080);
-            helix::ui::apply_swatch_color(swatch, rgb, spool.multi_color_hexes);
+            helix::ui::apply_swatch_color(swatch, rgb, spool.multi_color_hexes,
+                                          helix::ui::swatch_finish(spool.finish()));
         }
 
         // Disable spools already assigned to other tools
@@ -1476,8 +1477,7 @@ void AmsEditOverlay::update_ui() {
     lv_obj_t* card_color_swatch =
         helix::ui::find_required(overlay_root_, "card_color_swatch", get_name());
     if (card_color_swatch) {
-        helix::ui::apply_swatch_color(card_color_swatch, working_info_.color_rgb,
-                                      working_info_.multi_color_hexes);
+        helix::ui::apply_swatch_color(card_color_swatch, working_info_);
     }
 
     // Remaining bar + label — display-only. Unknown weight data
