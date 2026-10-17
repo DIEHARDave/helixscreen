@@ -129,6 +129,7 @@ callback:on_pid_temp_up
 callback:on_printer_selected
 callback:on_qr_scanner_close
 callback:on_runout_sensor_dropdown_changed
+callback:on_spoolman_add_spool_clicked
 callback:on_spoolman_cancel_setup_clicked
 callback:on_spoolman_change_clicked
 callback:on_spoolman_connect_clicked

@@ -1405,6 +1405,7 @@
   <translation tag="Found {} at {}." ru="{} найден по адресу {}."/>
   <translation tag="Framerate" ru="Частота кадров"/>
   <translation tag="From Buffer" ru="Из буфера"/>
+  <translation tag="From Printer" ru="С принтера"/>
   <translation tag="From SpoolmanDB" ru="Из SpoolmanDB"/>
   <translation tag="From Version" ru="С версии"/>
   <translation tag="Front" ru="Спереди"/>

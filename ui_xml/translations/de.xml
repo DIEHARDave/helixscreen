@@ -1360,6 +1360,7 @@
   <translation tag="Found {} at {}." de="{} unter {} gefunden."/>
   <translation tag="Framerate" de="Bildrate"/>
   <translation tag="From Buffer" de="Aus Puffer"/>
+  <translation tag="From Printer" de="Vom Drucker"/>
   <translation tag="From SpoolmanDB" de="Aus SpoolmanDB"/>
   <translation tag="From Version" de="Von Version"/>
   <translation tag="Front" de="Vorne"/>

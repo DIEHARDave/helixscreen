@@ -1360,6 +1360,7 @@
   <translation tag="Found {} at {}." ja="{} を {} で検出しました。"/>
   <translation tag="Framerate" ja="フレームレート"/>
   <translation tag="From Buffer" ja="バッファから"/>
+  <translation tag="From Printer" ja="プリンターから"/>
   <translation tag="From SpoolmanDB" ja="SpoolmanDB から"/>
   <translation tag="From Version" ja="更新前バージョン"/>
   <translation tag="Front" ja="手前"/>

@@ -1404,6 +1404,7 @@ translations:
   Found {} at {}.: '已发现 {}，地址为 {}。'
   Framerate: 帧率
   From Buffer: 来自缓冲区
+  From Printer: '从打印机'
   From SpoolmanDB: '来自 SpoolmanDB'
   From Version: 起始版本
   Front: '前'

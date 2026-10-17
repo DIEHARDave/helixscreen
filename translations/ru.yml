@@ -1541,6 +1541,7 @@ translations:
   Found {} at {}.: '{} найден по адресу {}.'
   Framerate: Частота кадров
   From Buffer: Из буфера
+  From Printer: 'С принтера'
   From SpoolmanDB: 'Из SpoolmanDB'
   From Version: С версии
   Front: 'Спереди'

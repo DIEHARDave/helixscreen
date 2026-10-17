@@ -1564,6 +1564,9 @@
         "label_hidden_if_eq": {
           "type": "int"
         },
+        "label_hidden_cond": {
+          "type": "string"
+        },
         "icon_hidden_subject": {
           "type": "string"
         },
@@ -3301,6 +3304,7 @@
     "card_max_width",
     "card_min_width",
     "card_width",
+    "catalog_min_width",
     "chamber_header_gap",
     "chamber_header_gap_large",
     "chamber_header_gap_medium",

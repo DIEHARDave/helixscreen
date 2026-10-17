@@ -10,6 +10,7 @@
 #include "ui_variant.h"
 
 #include "helix-xml/src/xml/lv_xml.h"
+#include "helix-xml/src/xml/lv_xml_expr.h"
 #include "helix-xml/src/xml/lv_xml_parser.h"
 #include "helix-xml/src/xml/lv_xml_utils.h"
 #include "helix-xml/src/xml/lv_xml_widget.h"
@@ -1312,6 +1313,29 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
                                  reinterpret_cast<intptr_t>(lv_observer_get_user_data(o));
                              ui_button_set_label_hidden(target, lv_subject_get_int(s) == ref);
                          });
+    }
+
+    // The expression spelling: label_hidden_cond="ui_is_portrait and ui_breakpoint lt 3"
+    // hides the label while the condition holds, resolved in this button's scope.
+    const char* label_hidden_cond = lv_xml_get_value_of(attrs, "label_hidden_cond");
+    if (label_hidden_cond && label_hidden_cond[0] != '\0' && data &&
+        data->magic == UiButtonData::MAGIC && data->label) {
+        lv_xml_expr_t* expr = lv_xml_expr_compile(
+            label_hidden_cond,
+            [](void* ctx, const char* name) -> lv_subject_t* {
+                return lv_xml_get_subject(static_cast<lv_xml_component_scope_t*>(ctx), name);
+            },
+            &state->scope);
+        if (expr) {
+            lv_xml_expr_bind(
+                expr, btn,
+                [](void* user_data, int32_t value) {
+                    ui_button_set_label_hidden(static_cast<lv_obj_t*>(user_data), value != 0);
+                },
+                btn);
+        } else {
+            spdlog::warn("[ui_button] label_hidden_cond '{}' does not compile", label_hidden_cond);
+        }
     }
 
     // The icon's spelling of label_hidden_subject: a button that reads as text

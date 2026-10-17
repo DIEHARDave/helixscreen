@@ -1360,6 +1360,7 @@
   <translation tag="Found {} at {}." zh="已发现 {}，地址为 {}。"/>
   <translation tag="Framerate" zh="帧率"/>
   <translation tag="From Buffer" zh="来自缓冲区"/>
+  <translation tag="From Printer" zh="从打印机"/>
   <translation tag="From SpoolmanDB" zh="来自 SpoolmanDB"/>
   <translation tag="From Version" zh="起始版本"/>
   <translation tag="Front" zh="前"/>

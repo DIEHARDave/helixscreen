@@ -85,9 +85,7 @@ class CopyLayoutFixture : public LVGLUITestFixture {
         PanelWidgetManager::instance().register_rebuild_callback("home", [this] { ++rebuilds_; });
         WidgetCatalogOverlay::show(test_screen(), home(), [](const std::string&) {});
         process_lvgl(10);
-        group_ = lv_obj_find_by_name(test_screen(), "copy_layout_group");
-        row_ = lv_obj_find_by_name(test_screen(), "row_copy_layout");
-        REQUIRE(group_ != nullptr);
+        row_ = lv_obj_find_by_name(WidgetCatalogOverlay::active_root(), "action_button_2");
         REQUIRE(row_ != nullptr);
     }
 
@@ -162,7 +160,6 @@ class CopyLayoutFixture : public LVGLUITestFixture {
     std::string saved_active_id_;
     json saved_home_;
     std::vector<std::string> edited_;
-    lv_obj_t* group_ = nullptr;
     lv_obj_t* row_ = nullptr;
     int rebuilds_ = 0;
 };
@@ -172,11 +169,11 @@ class CopyLayoutFixture : public LVGLUITestFixture {
 TEST_CASE_METHOD(CopyLayoutFixture, "copy layout action hidden when Local or Unknown",
                  "[widget_catalog][copy_layout]") {
     // Unknown until the connection's verdict lands.
-    CHECK(lv_obj_has_flag(group_, LV_OBJ_FLAG_HIDDEN));
+    CHECK(lv_obj_has_flag(row_, LV_OBJ_FLAG_HIDDEN));
     set_locality(false);
-    CHECK(lv_obj_has_flag(group_, LV_OBJ_FLAG_HIDDEN));
+    CHECK(lv_obj_has_flag(row_, LV_OBJ_FLAG_HIDDEN));
     set_locality(true);
-    CHECK_FALSE(lv_obj_has_flag(group_, LV_OBJ_FLAG_HIDDEN));
+    CHECK_FALSE(lv_obj_has_flag(row_, LV_OBJ_FLAG_HIDDEN));
 }
 
 TEST_CASE_METHOD(CopyLayoutFixture, "copy layout confirm imports and notifies",

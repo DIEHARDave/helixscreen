@@ -1405,6 +1405,7 @@
   <translation tag="Found {} at {}." de="{} unter {} gefunden." en="Found {} at {}." es="{} encontrada en {}." fr="{} trouvée à {}." it="{} trovata su {}." ja="{} を {} で検出しました。" pt="{} encontrada em {}." ru="{} найден по адресу {}." zh="已发现 {}，地址为 {}。"/>
   <translation tag="Framerate" de="Bildrate" en="Framerate" es="Cuadros por segundo" fr="Fréquence d&apos;images" it="Frequenza fotogrammi" ja="フレームレート" pt="Taxa de Quadros" ru="Частота кадров" zh="帧率"/>
   <translation tag="From Buffer" de="Aus Puffer" en="From Buffer" es="Desde búfer" fr="Depuis tampon" it="Dal buffer" ja="バッファから" pt="Do buffer" ru="Из буфера" zh="来自缓冲区"/>
+  <translation tag="From Printer" de="Vom Drucker" en="From Printer" es="Desde impresora" fr="Depuis l&apos;imprimante" it="Dalla stampante" ja="プリンターから" pt="Da impressora" ru="С принтера" zh="从打印机"/>
   <translation tag="From SpoolmanDB" de="Aus SpoolmanDB" en="From SpoolmanDB" es="De SpoolmanDB" fr="Depuis SpoolmanDB" it="Da SpoolmanDB" ja="SpoolmanDB から" pt="Do SpoolmanDB" ru="Из SpoolmanDB" zh="来自 SpoolmanDB"/>
   <translation tag="From Version" de="Von Version" en="From Version" es="Desde la versión" fr="Depuis la version" it="Dalla versione" ja="更新前バージョン" pt="Da Versão" ru="С версии" zh="起始版本"/>
   <translation tag="Front" de="Vorne" en="Front" es="Delante" fr="Avant" it="Davanti" ja="手前" pt="Frente" ru="Спереди" zh="前"/>
