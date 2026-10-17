@@ -1329,6 +1329,24 @@ class AmsState {
     }
 
     /**
+     * @brief The loaded filament's multi-colour list (CSV, SlotInfo::multi_color_hexes)
+     *
+     * Written before current_color, so a current_color observer reads the matching list.
+     */
+    lv_subject_t* get_current_colors_subject() {
+        return &current_colors_;
+    }
+
+    /**
+     * @brief The names the loaded filament's finish is read from (SlotInfo::finish_text())
+     *
+     * Written before current_color, so a current_color observer reads the matching finish.
+     */
+    lv_subject_t* get_current_finish_subject() {
+        return &current_finish_;
+    }
+
+    /**
      * @brief Get current fill percent subject
      * @return Subject holding the loaded spool's fill in the
      *         SlotInfo::display_fill_pct() encoding (0-100, -1 = no data)
@@ -2021,6 +2039,11 @@ class AmsState {
     /** @brief Set "Currently Loaded" subjects to default/empty state with guards */
     void set_current_loaded_defaults(bool write_header = true);
 
+    /// Publish the loaded filament's swatch: its colours and finish names
+    /// first, then its colour, whose observers repaint from all three.
+    void set_current_paint(uint32_t rgb, const std::string& multi_color_hexes = "",
+                           const std::string& finish_text = "");
+
     /** @brief Sync clog detection meter subjects from system info */
     void sync_clog_meter_from_info(const AmsSystemInfo& info);
 
@@ -2441,6 +2464,10 @@ class AmsState {
     char current_weight_text_buf_[32];
     lv_subject_t current_has_weight_{};
     lv_subject_t current_color_{};
+    lv_subject_t current_colors_{};
+    char current_colors_buf_[128];
+    lv_subject_t current_finish_{};
+    char current_finish_buf_[192];
     lv_subject_t current_fill_pct_{};
 
     // Per-slot subjects (color, status, remaining filament)
