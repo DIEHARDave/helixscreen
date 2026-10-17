@@ -18,6 +18,7 @@
     <prop name="disconnected" type="subject" default="ams_env_ind_off_flag"/>
     <prop name="temp_text" type="subject" default="ams_env_ind_0_temp_text"/>
     <prop name="humidity_text" type="subject" default="ams_env_ind_0_humidity_text"/>
+    <prop name="humidity" type="subject" default="ams_env_ind_0_humidity"/>
     <prop name="humidity_status" type="subject" default="ams_env_ind_0_humidity_status"/>
     <prop name="humidity_visible" type="subject" default="ams_env_ind_0_humidity_visible"/>
     <prop name="visible" type="subject" default="ams_env_ind_0_visible"/>
@@ -102,8 +103,9 @@
       <!-- Environment indicator (temp/humidity/dryer) — to the right; hidden when no sensors -->
       <ams_environment_indicator name="env_indicator"
                                  event_bubble="true" temp_text="$temp_text" humidity_text="$humidity_text"
-                                 humidity_status="$humidity_status" humidity_visible="$humidity_visible"
-                                 visible="$visible" drying_active="$drying_active" drying_text="$drying_text">
+                                 humidity="$humidity" humidity_status="$humidity_status"
+                                 humidity_visible="$humidity_visible" visible="$visible" drying_active="$drying_active"
+                                 drying_text="$drying_text">
         <bind_style_if_eq name="unit_offline" subject="$disconnected" ref_value="1"/>
       </ams_environment_indicator>
     </lv_obj>

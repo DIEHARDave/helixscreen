@@ -464,6 +464,40 @@ not link renders tofu). An
 inline `style_text_font` attribute still outranks a bound style (see
 `LVGL9_XML_GUIDE.md` § Conditional Style Bindings).
 
+### humidity_drop
+
+A water drop filled from the bottom to the level of a humidity reading, its surface a
+two-tone wave (a darker wave behind a lighter one) with a highlight on the bulb. Use it
+wherever a humidity reading sits beside a drop, never `<icon src="water">`:
+
+```xml
+<humidity_drop bind_value="chamber_humidity" size="sm"/>
+<humidity_drop name="lane_humidity_icon" size="sm"/>  <!-- filled from C++ -->
+```
+
+- `bind_value`: an int subject in **tenths of a percent** (455 = 45.5%RH), the unit
+  `HumiditySensorManager` publishes. Below zero means no reading: the drop draws as a faint
+  outline with no fill, so a missing sensor never reads as a dry box. 0% draws an empty,
+  faintly tinted drop; 100% a full one.
+- `size`: `xs`..`xl`, the same box an `icon` of that size takes, so it swaps in for one
+  without moving the layout. The box follows the widget's text font, so
+  `<bind_tile_rung ladder="icon">` re-faces it exactly as it does an icon. An explicit
+  `width`/`height` overrides the font and the drop fits that box.
+- Colours come from the theme's `info` token (outline), a step darker (back wave) and a
+  step lighter (front wave). No variant: the drop is always water-coloured.
+- A drop with no subject (a per-slot reading, say) is filled with
+  `helix::ui::humidity_drop_set_value()`.
+
+With the animations setting on, a partial fill's surface drifts. Every drop shares one
+100ms timer that advances a common phase and invalidates only drops that are visible
+(`lv_obj_is_visible`) with a partial fill; an empty, full or unknown drop never redraws for
+it, and with animations off nothing moves at all. Each drop rasterizes itself into a small
+ARGB8888 buffer it owns (re-rendered only when size, reading, phase or palette changes) and
+draws that as one image, so a frame costs one blit per drop. The pure geometry and the
+rasterizer live in `include/humidity_drop_geometry.h` (no LVGL; tested in
+`tests/unit/test_humidity_drop.cpp`, tag `[humidity_drop]`), the widget in
+`src/ui/ui_humidity_drop.cpp`.
+
 ### spinner
 
 Responsive loading spinner. Sizes adapt per breakpoint.

@@ -423,6 +423,12 @@ void AmsState::init_subjects(bool register_xml) {
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_text_[i]);
 
+        lv_subject_init_int(&env_ind_humidity_[i], -1);
+        snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity", i);
+        subjects_.register_subject(&env_ind_humidity_[i], register_xml ? name_buf : nullptr);
+        if (register_xml)
+            helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_[i]);
+
         lv_subject_init_int(&env_ind_humidity_status_[i], 0);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_status", i);
         subjects_.register_subject(&env_ind_humidity_status_[i], register_xml ? name_buf : nullptr);
@@ -521,6 +527,13 @@ void AmsState::init_subjects(bool register_xml) {
     if (register_xml)
         helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_text",
                                                       &env_ind_detail_humidity_text_);
+
+    lv_subject_init_int(&env_ind_detail_humidity_, -1);
+    subjects_.register_subject(&env_ind_detail_humidity_,
+                               register_xml ? "ams_env_ind_detail_humidity" : nullptr);
+    if (register_xml)
+        helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity",
+                                                      &env_ind_detail_humidity_);
 
     lv_subject_init_int(&env_ind_detail_humidity_status_, 0);
     subjects_.register_subject(&env_ind_detail_humidity_status_,
@@ -825,6 +838,8 @@ void AmsState::register_xml_subject_names() {
         helix::xml::register_subject_in_current_scope(name_buf, &env_ind_temp_text_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_text", i);
         helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_text_[i]);
+        snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity", i);
+        helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_status", i);
         helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_status_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_visible", i);
@@ -844,6 +859,8 @@ void AmsState::register_xml_subject_names() {
                                                   &env_ind_detail_temp_text_);
     helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_text",
                                                   &env_ind_detail_humidity_text_);
+    helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity",
+                                                  &env_ind_detail_humidity_);
     helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_status",
                                                   &env_ind_detail_humidity_status_);
     helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_visible",
@@ -1028,6 +1045,13 @@ lv_subject_t* AmsState::get_env_ind_visible_subject(int unit_index) {
     return &env_ind_visible_[unit_index];
 }
 
+lv_subject_t* AmsState::get_env_ind_humidity_subject(int unit_index) {
+    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+        return nullptr;
+    }
+    return &env_ind_humidity_[unit_index];
+}
+
 lv_subject_t* AmsState::get_env_ind_humidity_status_subject(int unit_index) {
     if (unit_index < 0 || unit_index >= MAX_UNITS) {
         return nullptr;
@@ -1062,6 +1086,7 @@ AmsState::EnvIndicatorSubjectNames AmsState::env_indicator_subject_names(int uni
     if (unit_index < 0 || unit_index >= MAX_UNITS) {
         names.temp_text = ENV_IND_OFF_TEXT_SUBJECT;
         names.humidity_text = ENV_IND_OFF_TEXT_SUBJECT;
+        names.humidity = ENV_IND_OFF_FLAG_SUBJECT;
         names.drying_text = ENV_IND_OFF_TEXT_SUBJECT;
         names.humidity_status = ENV_IND_OFF_FLAG_SUBJECT;
         names.humidity_visible = ENV_IND_OFF_FLAG_SUBJECT;
@@ -1077,6 +1102,7 @@ AmsState::EnvIndicatorSubjectNames AmsState::env_indicator_subject_names(int uni
     };
     names.temp_text = expand("temp_text");
     names.humidity_text = expand("humidity_text");
+    names.humidity = expand("humidity");
     names.humidity_status = expand("humidity_status");
     names.humidity_visible = expand("humidity_visible");
     names.visible = expand("visible");

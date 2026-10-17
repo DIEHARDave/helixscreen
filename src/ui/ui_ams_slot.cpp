@@ -6,6 +6,7 @@
 #include "ui_ams_lane_spool.h"
 #include "ui_ams_slot_layout.h"
 #include "ui_fonts.h"
+#include "ui_humidity_drop.h"
 #include "ui_observer_guard.h"
 #include "ui_text.h"
 #include "ui_toolhead_badge.h"
@@ -112,6 +113,7 @@ struct AmsSlotData {
     lv_obj_t* container = nullptr;       // The ams_slot widget itself
     lv_obj_t* lane_humidity = nullptr;   // Droplet + value row, under a per-lane lid
     lv_obj_t* lane_humidity_text = nullptr; // The row's value
+    lv_obj_t* lane_humidity_drop = nullptr; // The row's drop, filled to the value
     lv_obj_t* lane_temp_row = nullptr;      // Thermometer + value, above the humidity
     lv_obj_t* lane_temp_text = nullptr;
     lv_obj_t* lane_remaining = nullptr; // Measured remaining length, under the material
@@ -315,6 +317,9 @@ static void apply_lane_humidity(AmsSlotData* data, AmsBackend* backend) {
         snprintf(text, sizeof(text), "%d%%", (int)std::lround(env->humidity_pct));
     // DECLARATIVE_OK: per-slot reading with no per-slot humidity subject
     lv_label_set_text(data->lane_humidity_text, text);
+    helix::ui::humidity_drop_set_value(
+        data->lane_humidity_drop,
+        (env && env->has_humidity) ? static_cast<int>(std::lround(env->humidity_pct * 10.0f)) : -1);
 
     if (!data->lane_temp_row || !data->lane_temp_text)
         return;
@@ -820,6 +825,7 @@ static void* ams_slot_xml_create(lv_xml_parser_state_t* state, const char** attr
     data->tool_badge = helix::ui::find_required(obj, "tool_badge_label", "AmsSlot");
     data->lane_humidity = lv_obj_find_by_name(obj, "lane_humidity");
     data->lane_humidity_text = lv_obj_find_by_name(obj, "lane_humidity_text");
+    data->lane_humidity_drop = lv_obj_find_by_name(obj, "lane_humidity_icon");
     data->lane_temp_row = lv_obj_find_by_name(obj, "lane_temp_row");
     data->lane_temp_text = lv_obj_find_by_name(obj, "lane_temp_text");
     data->lane_remaining = lv_obj_find_by_name(obj, "lane_remaining");

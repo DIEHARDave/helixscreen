@@ -10,6 +10,7 @@
 #include "ui_ams_slot.h"
 #include "ui_endless_spool_arrows.h"
 #include "ui_filament_path_canvas.h"
+#include "ui_humidity_drop.h"
 #include "ui_panel_ams.h"
 #include "ui_spool_canvas.h"
 
@@ -288,6 +289,10 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS per-lane sensors: each lane's humidit
         const char* value = lv_label_get_text(lv_obj_get_child(hum_row, 1));
         REQUIRE(value != nullptr);
         CHECK(std::strchr(value, '%') != nullptr);
+        // The drop fills to the reading the text states.
+        const int drop_x10 = helix::ui::humidity_drop_value(lv_obj_get_child(hum_row, 0));
+        CHECK(drop_x10 >= 0);
+        CHECK(std::abs((drop_x10 + 5) / 10 - std::atoi(value)) <= 1);
 
         // Above its material label.
         lv_obj_t* label = lv_obj_find_by_name(slot(i), "material_label");

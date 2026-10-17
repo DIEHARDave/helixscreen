@@ -363,6 +363,7 @@ src/ui/panel_widget_manager.cpp
 src/ui/buffer_slider_geometry.cpp
 src/ui/clog_meter_geometry.cpp
 src/ui/clog_meter_model.cpp
+src/ui/humidity_drop_geometry.cpp
 src/ui/panel_widget_registry.cpp
 src/ui/panel_widgets/active_spool_widget.cpp
 src/ui/panel_widgets/bed_mesh_tile_widget.cpp
@@ -509,6 +510,7 @@ src/ui/ui_gradient_canvas.cpp
 src/ui/ui_heater_icon_binder.cpp
 src/ui/ui_heating_animator.cpp
 src/ui/ui_history_list_view.cpp
+src/ui/ui_humidity_drop.cpp
 src/ui/ui_icon.cpp
 src/ui/ui_icon_picker.cpp
 src/ui/ui_info_qr_modal.cpp

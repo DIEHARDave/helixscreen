@@ -13,7 +13,8 @@
     - material_label: text_small showing material type (PLA, PETG, etc.), or the name
       alone when the name already states the material
     - lane_humidity: per-lane climate under a per-lane lid: thermometer +
-      lane_temp_text when the lane reports a temperature, droplet + lane_humidity_text
+      lane_temp_text when the lane reports a temperature, lane_humidity_icon (a
+      humidity_drop the C++ fills to the reading) + lane_humidity_text
     - lane_remaining: measured remaining length, under the spool
     - spool_container: holds the lane spool widget and the badges
     - lane_spool: ams_lane_spool widget (spool graphic, empty placeholder,
@@ -55,7 +56,7 @@
               width="content" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
               style_pad_gap="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
               event_bubble="true">
-        <icon name="lane_humidity_icon" src="water" size="sm" variant="secondary" clickable="false" event_bubble="true"/>
+        <humidity_drop name="lane_humidity_icon" size="sm" clickable="false" event_bubble="true"/>
         <text_small name="lane_humidity_text" text="" clickable="false" event_bubble="true"/>
       </lv_obj>
     </lv_obj>
