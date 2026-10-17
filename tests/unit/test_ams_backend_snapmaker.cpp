@@ -5066,6 +5066,15 @@ TEST_CASE("Snapmaker filament config gcode maps vendor and subtype to firmware v
         CHECK(g.find(';') == std::string::npos);
         CHECK(g.find('#') == std::string::npos);
     }
+    SECTION("force appends FORCE=1 to both lines") {
+        SlotInfo s;
+        s.material = "PLA";
+        s.color_rgb = 0x000000;
+        CHECK(AmsBackendSnapmaker::build_filament_config_gcode(2, s, true) ==
+              "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=2 VENDOR=Generic FILAMENT_TYPE=PLA "
+              "FILAMENT_SUBTYPE=Basic FORCE=1\n"
+              "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=2 FILAMENT_COLOR_RGBA=000000FF FORCE=1");
+    }
     SECTION("no material, or none left after cleaning, writes nothing") {
         SlotInfo s;
         CHECK(AmsBackendSnapmaker::build_filament_config_gcode(0, s).empty());
@@ -5335,5 +5344,98 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume repair never runs on a Term
     FilamentRecordHarness::drain();
 
     CHECK(captured.result == AmsResult::RESUME_REQUIRES_RESTART);
+    CHECK(h.config_writes().empty());
+}
+
+namespace {
+/// filament_detect frame whose entry for @p head carries @p card_uid and no
+/// filament identity: an untagged channel, or a filament_detect/set write that
+/// was later cleared.
+json make_detect_card(int head, const json& card_uid) {
+    json info = json::array();
+    for (int i = 0; i < 4; ++i) {
+        info.push_back(i == head ? json{{"MAIN_TYPE", "NONE"}, {"CARD_UID", card_uid}}
+                                 : json{{"MAIN_TYPE", "NONE"}});
+    }
+    return json{{"filament_detect", json{{"info", info}}}};
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker resume forces the record of a head official only by an endpoint write",
+                 "[ams][snapmaker][filament_record][resume]") {
+    // The Extended Firmware's filament_detect/set marks the head official and a
+    // later clear leaves it so; with no card behind it the firmware refuses a
+    // plain write, and RESUME stays refused.
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_on_runout();
+    FilamentRecordHarness h("resume_repair_forced");
+    helix::test::edit_slot_as_user(h.backend, 1, inland_pla());
+    h.frame(make_detect_card(1, json::array({0, 0, 0, 0})));
+    h.frame(make_task_filament({"NONE", "NONE", "ASA", "ASA"}, {false, true, false, true},
+                               std::vector<bool>{false, true, false, false}));
+    SnapmakerTestAccess::set_current_slot(h.backend, 1);
+    h.printer.client.clear_gcode_script_history();
+
+    bool fired = false;
+    h.backend.prepare_for_resume(1, [&](const AmsError& err) { fired = err.success(); });
+    FilamentRecordHarness::drain();
+
+    const auto writes = h.config_writes();
+    REQUIRE(writes.size() == 2);
+    CHECK(writes[0] == "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1 VENDOR=Generic "
+                       "FILAMENT_TYPE=PLA FILAMENT_SUBTYPE=Basic FORCE=1");
+    CHECK(writes[1] ==
+          "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1 FILAMENT_COLOR_RGBA=FF5500FF FORCE=1");
+    CHECK(fired);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume never writes over a real RFID card's record",
+                 "[ams][snapmaker][filament_record][resume]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_on_runout();
+    FilamentRecordHarness h("resume_repair_real_card");
+    helix::test::edit_slot_as_user(h.backend, 1, inland_pla());
+    h.frame(make_detect_card(1, json::array({144, 32, 196, 2})));
+    h.frame(make_task_filament({"NONE", "NONE", "NONE", "NONE"}, {false, true, false, false},
+                               std::vector<bool>{false, true, false, false}));
+    SnapmakerTestAccess::set_current_slot(h.backend, 1);
+    h.printer.client.clear_gcode_script_history();
+
+    bool fired = false;
+    h.backend.prepare_for_resume(1, [&](const AmsError& err) { fired = err.success(); });
+    FilamentRecordHarness::drain();
+
+    CHECK(h.config_writes().empty());
+    CHECK(fired);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker an edit forces the record of an official head with no card",
+                 "[ams][snapmaker][filament_record]") {
+    lv_init_safe();
+    FilamentRecordHarness h("record_write_forced");
+    h.frame(make_detect_card(2, json::array({0, 0, 0, 0})));
+    h.frame(make_task_filament({"NONE", "NONE", "ASA", "NONE"}, {false, false, true, false}));
+    h.stock_firmware();
+    h.printer.client.clear_gcode_script_history();
+
+    REQUIRE(helix::test::apply_edit(h.backend, 2, inland_pla()).success());
+    FilamentRecordHarness::drain();
+
+    const auto writes = h.config_writes();
+    REQUIRE(writes.size() == 2);
+    CHECK(writes[0] == "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=2 VENDOR=Generic "
+                       "FILAMENT_TYPE=PLA FILAMENT_SUBTYPE=Basic FORCE=1");
+
+    // The same head with a real card is the tag's to keep.
+    h.frame(make_detect_card(2, json::array({144, 32, 196, 2})));
+    h.printer.client.clear_gcode_script_history();
+    SlotInfo petg = inland_pla();
+    petg.material = "PETG";
+    REQUIRE(helix::test::apply_edit(h.backend, 2, petg).success());
+    FilamentRecordHarness::drain();
     CHECK(h.config_writes().empty());
 }

@@ -290,6 +290,7 @@ void AmsBackendSnapmaker::on_started() {
         task_vendor_.fill(std::nullopt);
         task_official_.fill(std::nullopt);
         task_type_.fill(std::nullopt);
+        tag_has_card_.fill(std::nullopt);
     }
     if (!api_)
         return;
@@ -1564,6 +1565,10 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
     // at all and the fingerprint comes out empty (no signal).
     tag_names_identity_[static_cast<size_t>(i)] =
         rfid.main_type != "NONE" || (!rfid.sub_type.empty() && rfid.sub_type != "NONE");
+    // An all-zero or absent CARD_UID is no card: what an untagged channel and a
+    // filament_detect/set write report.
+    tag_has_card_[static_cast<size_t>(i)] =
+        rfid.uid.find_first_of("123456789") != std::string::npos;
     helix::ams::SpoolEvidence& evidence = fx.observed_evidence[i];
     evidence.tag_uid = rfid.uid;
     if (!rfid.uid.empty()) {
@@ -2773,7 +2778,8 @@ std::string AmsBackendSnapmaker::preprint_gcode(const std::set<int>& tools_used,
     return out;
 }
 
-std::string AmsBackendSnapmaker::build_filament_config_gcode(int head, const SlotInfo& slot) {
+std::string AmsBackendSnapmaker::build_filament_config_gcode(int head, const SlotInfo& slot,
+                                                             bool force) {
     if (is_unset_filament_type(slot.material)) {
         return {};
     }
@@ -2789,11 +2795,27 @@ std::string AmsBackendSnapmaker::build_filament_config_gcode(int head, const Slo
         gcode_param_value(is_known_subtype(slot.spool_name) ? slot.spool_name : "Basic");
     // Colour rides its own line, as the stock screen sends it: the firmware's
     // colour forms are parsed apart from the identity fields.
+    const char* force_arg = force ? " FORCE=1" : "";
     return fmt::format(
         "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER={0} VENDOR={1} FILAMENT_TYPE={2} "
-        "FILAMENT_SUBTYPE={3}\n"
-        "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER={0} FILAMENT_COLOR_RGBA={4:06X}FF",
-        head, vendor, type, subtype, slot.color_rgb & 0xFFFFFFu);
+        "FILAMENT_SUBTYPE={3}{5}\n"
+        "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER={0} FILAMENT_COLOR_RGBA={4:06X}FF{5}",
+        head, vendor, type, subtype, slot.color_rgb & 0xFFFFFFu, force_arg);
+}
+
+std::optional<bool> AmsBackendSnapmaker::record_write_needs_force_locked(int head) const {
+    const auto idx = static_cast<size_t>(head);
+    if (!task_official_[idx].value_or(false)) {
+        return false;
+    }
+    // filament_official alone does not mean a tag: the Extended Firmware's
+    // filament_detect/set marks every write carrying fields official, and a
+    // later clear leaves the flag set. Only a card the reader saw is the
+    // tag's record to keep.
+    if (tag_has_card_[idx].value_or(true)) {
+        return std::nullopt;
+    }
+    return true;
 }
 
 void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& info,
@@ -2802,13 +2824,16 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
         return;
     }
     const auto idx = static_cast<size_t>(head);
+    bool force = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (task_official_[idx].value_or(false)) {
-            spdlog::debug("{} head {} holds an official RFID record; leaving it to the tag",
+        const std::optional<bool> needs_force = record_write_needs_force_locked(head);
+        if (!needs_force) {
+            spdlog::debug("{} head {} holds an RFID tag's record; leaving it to the tag",
                           backend_log_tag(), head);
             return;
         }
+        force = *needs_force;
         // The command runs FLOW_RESET_K on the head, so a save that leaves the
         // firmware's type standing must not send it.
         const bool record_differs = task_type_[idx].has_value()
@@ -2820,7 +2845,7 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
             return;
         }
     }
-    const std::string gcode = build_filament_config_gcode(head, info);
+    const std::string gcode = build_filament_config_gcode(head, info, force);
     if (gcode.empty()) {
         return;
     }
@@ -2846,7 +2871,11 @@ std::string AmsBackendSnapmaker::resume_record_repair_locked(int active_slot) co
     for (int head = 0; head < NUM_TOOLS; ++head) {
         const auto idx = static_cast<size_t>(head);
         if (!used[idx] || !task_type_[idx].has_value() ||
-            !is_unset_filament_type(*task_type_[idx]) || task_official_[idx].value_or(false)) {
+            !is_unset_filament_type(*task_type_[idx])) {
+            continue;
+        }
+        const std::optional<bool> needs_force = record_write_needs_force_locked(head);
+        if (!needs_force) {
             continue;
         }
         const SlotInfo* slot =
@@ -2854,7 +2883,7 @@ std::string AmsBackendSnapmaker::resume_record_repair_locked(int active_slot) co
         if (!slot) {
             continue;
         }
-        const std::string gcode = build_filament_config_gcode(head, *slot);
+        const std::string gcode = build_filament_config_gcode(head, *slot, *needs_force);
         if (gcode.empty()) {
             continue;
         }

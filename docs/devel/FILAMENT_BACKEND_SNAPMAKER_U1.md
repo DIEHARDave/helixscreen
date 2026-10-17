@@ -170,24 +170,34 @@ from real RFID spools remain rig-pending; code-verified is not field-verified.
 
 The firmware refuses RESUME with `e<N> not edit filament` while a head the task uses has
 no `print_task_config.filament_type`, and only an RFID spool or `SET_PRINT_FILAMENT_CONFIG`
-fills it. Every material edit POSTs `filament_detect/set` first. On the Extended Firmware an
-accepted POST fills the record itself: measured on a rig, head 1's
+fills it.
+
+Every material edit POSTs `filament_detect/set` first. On the Extended Firmware an accepted
+POST fills the record itself: measured on a rig, head 1's
 `filament_type`/`filament_vendor`/`filament_sub_type` went `NONE` -> `PLA`/`Generic`/`Basic`
-within 2 s of an HTTP 200, survived `FIRMWARE_RESTART`, and left `filament_edit` False; a POST
-of `NONE` values clears it again. Stock firmware 404s the endpoint. So the edit sends
-`SET_PRINT_FILAMENT_CONFIG` only when the POST was not accepted, and only when the record
-names a different type or none (or, before any `print_task_config` frame has arrived, when
-the edit declared a material), since every send runs `FLOW_RESET_K`. Sending it beside an
-accepted POST would race a write the extension marks official, which refuses the command
-without FORCE. VENDOR is `Snapmaker` or `Generic`, FILAMENT_SUBTYPE a known product
-line or `Basic`, and FORCE is never sent, so an official head is left alone
-(`src/printer/ams_backend_snapmaker.cpp#write_task_filament_record`). A record filled once can still
-be blank by the time a print pauses (a later firmware filament operation can clear it), so
-`prepare_for_resume` writes the same record for any used head whose record is blank while
-the slot knows its material. It runs after the Terminal classification and before the
-runout refeed, and while paused, where the command is accepted. The used heads are
-`extruders_used`, or the active head when that reads all false. A head whose material is
-unknown here too gets nothing; RESUME's refusal reaches `classify_error`, which names the head and says it needs a material
+within 2 s of an HTTP 200 and survived `FIRMWARE_RESTART`. The same POST sets
+`filament_official` True for that head, and nothing the endpoint accepts clears it: a POST of
+`NONE` values blanks the type and leaves the head official. Stock firmware 404s the
+endpoint. So the edit sends `SET_PRINT_FILAMENT_CONFIG` only when the POST was not accepted,
+and only when the record names a different type or none (or, before any `print_task_config`
+frame has arrived, when the edit declared a material), since every send runs
+`FLOW_RESET_K`. VENDOR is `Snapmaker` or `Generic`, FILAMENT_SUBTYPE a known product line or
+`Basic` (`src/printer/ams_backend_snapmaker.cpp#write_task_filament_record`).
+
+`filament_official` therefore does not mean an RFID tag. The backend decides that from
+`filament_detect.info[ch].CARD_UID`: a UID with a nonzero byte is a real card, while an
+absent or all-zero UID (an untagged channel, an endpoint write) is none. A head with a real
+card is never written. A head that is official with no card is written with `FORCE=1`, which
+the firmware requires there. A head that is official before any card reading has arrived is
+left alone (`src/printer/ams_backend_snapmaker.cpp#record_write_needs_force_locked`).
+
+A record filled once can still be blank by the time a print pauses (a later firmware
+filament operation can clear it), so `prepare_for_resume` writes the same record, under the
+same card rule, for any used head whose record is blank while the slot knows its material.
+It runs after the Terminal classification and before the runout refeed, and while paused,
+where the command is accepted. The used heads are `extruders_used`, or the active head when
+that reads all false. A head whose material is unknown here too gets nothing; RESUME's
+refusal reaches `classify_error`, which names the head and says it needs a material
 (`src/printer/ams_backend_snapmaker.cpp#resume_record_repair_locked`).
 
 Why `AUTO_FEEDING ... LOAD=1` and not the obvious alternatives — the source records the
@@ -711,7 +721,7 @@ pause uses `id=523, code=39`. These ids match the U1 exception-object scheme doc
 | `filament_color` | `int[4]` | `0xAARRGGBB` |
 | `filament_color_rgba` | `str[4]` | 8-char `"RRGGBBAA"` |
 | `filament_color_multi` | `dict[4]` | `{nums, alpha, mode, colors:[…]}` for multicolor spools |
-| `filament_official` | `bool[4]` | true = Snapmaker RFID spool (locks `SET_PRINT_FILAMENT_CONFIG` w/o FORCE) |
+| `filament_official` | `bool[4]` | true = Snapmaker RFID spool, or any Extended Firmware `filament_detect/set` write (locks `SET_PRINT_FILAMENT_CONFIG` w/o FORCE) |
 | `filament_sku`, `filament_soft`, `filament_edit` | per-head | SKU id; "soft" flag; UI-editable flag |
 | `flow_calibrate`, `flow_calib_extruders[4]`, `auto_bed_leveling`, `time_lapse_camera`, `shaper_calibrate` | prefs | task prefs |
 | `auto_replenish_filament`, `replenish_ignore_color` | prefs | runout auto-replenish behaviour |
@@ -895,7 +905,9 @@ which sets the map and derives `extruders_used` from per-tool usage in one comma
    are **physical** (0–3).
 3. **Respect `filament_official`.** A slot holding a Snapmaker RFID spool rejects
    `SET_PRINT_FILAMENT_CONFIG` unless `FORCE=1` is passed. Do not blindly overwrite
-   official slots.
+   official slots. The flag is also set by any Extended Firmware `filament_detect/set`
+   write and never cleared by it, so tell a real tag by its nonzero `CARD_UID` (see
+   "Commands the Backend Emits").
 4. **Read state from `printer.print_task_config`.** A standard Klipper status object,
    subscribed wholesale by the discovery sequence. Fields of interest:
    `extruder_map_table`, `extruders_used`, `filament_exist`,

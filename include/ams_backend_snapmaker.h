@@ -396,9 +396,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// when it names one, else "Basic". Values are cleaned of quote and gcode
     /// comment characters and single-quoted when they hold a space, the shape
     /// Klipper's parameter splitter reads. Empty when the slot names no
-    /// material. Never sends FORCE: an official RFID head refuses it, and that
-    /// record is the tag's to keep.
-    [[nodiscard]] static std::string build_filament_config_gcode(int head, const SlotInfo& slot);
+    /// material. @p force appends FORCE=1 to both lines, which a head the
+    /// firmware calls official requires.
+    [[nodiscard]] static std::string build_filament_config_gcode(int head, const SlotInfo& slot,
+                                                                 bool force = false);
 
     /// One multi-line feed script covering @p slots, in the order given,
     /// newline-joined with no trailing newline. Empty @p slots yields the
@@ -791,6 +792,16 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// this: the user's own declaration is laid over it. Unset until the first
     /// frame carrying it.
     std::array<std::optional<std::string>, NUM_TOOLS> task_type_{};
+
+    /// Whether filament_detect.info last showed a real card on each channel: a
+    /// CARD_UID with a nonzero byte. Unset until the first entry for it.
+    std::array<std::optional<bool>, NUM_TOOLS> tag_has_card_{};
+
+    /// How a SET_PRINT_FILAMENT_CONFIG may reach @p head: false plain, true
+    /// with FORCE=1 (the firmware calls the head official but no card backs
+    /// it), nullopt not at all (a real tag's record, or no card reading yet
+    /// beside an official flag). Caller holds mutex_.
+    [[nodiscard]] std::optional<bool> record_write_needs_force_locked(int head) const;
 
     /// After a user edit the paxx endpoint did not take, write the material
     /// into the head's firmware record when that record names a different type
