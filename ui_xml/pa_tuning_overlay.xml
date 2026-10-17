@@ -137,11 +137,24 @@
             <bind_state_if_not_eq subject="pa_tune_stage" state="disabled" ref_value="2"/>
             <event_cb trigger="clicked" callback="on_pa_tune_nudge" user_data="-1"/>
           </ui_button>
-          <lv_obj width="1"
-                  height="content" flex_grow="1" style_pad_all="0" flex_flow="column" style_flex_cross_place="center"
-                  style_flex_track_place="center" scrollable="false">
+          <lv_obj name="pa_dial_center"
+                  width="1" height="100%" flex_grow="1" style_pad_all="0" flex_flow="column"
+                  style_flex_cross_place="center" style_pad_gap="#space_xxs" scrollable="false">
             <text_small text="Pressure advance" style_text_color="#text_muted"/>
             <lv_label name="pa_k_big" bind_text="pa_tune_k_big" style_text_font="#font_display" style_text_color="#text"/>
+            <!-- The band log so far, newest first: what has printed at which K,
+                 while there is still time to compare it with the tower. -->
+            <lv_obj name="pa_run_bands"
+                    width="100%" flex_grow="1" style_pad_all="0" flex_flow="column" style_pad_gap="0" scrollable="true">
+              <repeat count="pa_tune_band_count">
+                <lv_obj name="pa_run_band_${i}"
+                        width="100%" height="content" style_pad_all="0" flex_flow="row" scrollable="false">
+                  <text_small name="pa_run_band_range_${i}"
+                              bind_text="pa_tune_band_range_${i}" flex_grow="1" style_text_color="#text_muted"/>
+                  <text_small name="pa_run_band_k_${i}" bind_text="pa_tune_band_k_${i}"/>
+                </lv_obj>
+              </repeat>
+            </lv_obj>
           </lv_obj>
           <ui_button name="pa_btn_plus" width="#pa_tune_nudge_w" height="#pa_tune_nudge_h" icon="plus" icon_size="lg">
             <bind_state_if_not_eq subject="pa_tune_stage" state="disabled" ref_value="2"/>

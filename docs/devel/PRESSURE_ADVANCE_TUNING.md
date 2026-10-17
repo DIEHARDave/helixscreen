@@ -24,15 +24,23 @@ firmware-measured calibration is a separate screen (`include/ui_panel_calibratio
    (direct drive sweeps 0 to 0.1, bowden 0 to 1.0) and edit the start and end K.
 2. `pa::generate_test_gcode()` writes a 40 mm hollow square tower centred on the bed
    (`toolhead.axis_minimum/maximum` in gcode space): two walls at 100 mm/s, 0.2 mm
-   layers, a 1 mm base, ten 3 mm bands, a brim and a prime line. It heats, homes, selects
-   the tool, reports layers with `SET_PRINT_STATS_INFO` and never sets K. It is uploaded
+   layers (line width from `[extruder] nozzle_diameter`), a 1 mm base, ten 3 mm bands, a
+   brim and a prime line. It starts through the printer's own start macro, found by
+   `pa::pick_machine_macros()` among `PrintStartAnalyzer::MACRO_NAMES` in the discovered
+   macro set, passing bed and nozzle temperatures under the parameter names that macro
+   takes (`BED_TEMP`/`BED`/..., `EXTRUDER_TEMP`/`EXTRUDER`/...). A macro that takes no
+   recognisable temperatures is called bare with the heaters already started; with no
+   start macro the file homes and heats itself. `M190`/`M109` follow either way. It ends
+   through the matching end macro (`END_MACRO_NAMES`) or a plain cooldown. It reports
+   layers with `SET_PRINT_STATS_INFO` and never sets K. It is uploaded
    to the gcodes root as `helix_pa_tuning.gcode` (one fixed name, overwritten each run)
    and started.
 3. HelixScreen drives K: when `print_stats.info.current_layer` enters a new band it sends
    `SET_PRESSURE_ADVANCE EXTRUDER=<tuned extruder> ADVANCE=<k>`. Driving it from the
    host rather than a `TUNING_TOWER` command in the file is what lets the user take over
    at any moment.
-4. The tuner raises itself over the auto-opened Print Status. A -/+ tap (step 0.001,
+4. The tuner raises itself over the auto-opened Print Status and lists the bands printed
+   so far (newest first) under the K readout. A -/+ tap (step 0.001,
    0.005, 0.01 or 0.05) stops the ramp for the rest of the print, so the value the user
    is judging is not moved away under them.
 5. Each layer records the K the printer **reported** (`extruder*.pressure_advance`),

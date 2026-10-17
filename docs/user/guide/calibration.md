@@ -284,8 +284,8 @@ Works on any Klipper printer. HelixScreen prints a small test tower, raises pres
 1. Open **Advanced > Calibration > Pressure Advance Tuning**.
 2. On a printer with more than one tool, pick the tool. Tap the material preset that matches what's loaded; it sets the nozzle and bed temperature.
 3. Choose **Direct drive** or **Bowden**. That sets a sensible range (0 to 0.1 for direct drive, 0 to 1.0 for Bowden); adjust **Start K** and **End K** with **-** and **+** if you want a different range.
-4. Clear the plate, tap **Print Test Tower** and confirm. HelixScreen uploads a 40 mm hollow tower (about 31 mm tall, roughly 11 minutes plus heating) and starts it.
-5. The tuner fills the screen while the tower prints: the pressure advance in effect, large, and the current layer and height. The value steps up every 3 mm.
+4. Clear the plate, tap **Print Test Tower** and confirm. HelixScreen uploads a hollow tower 40 mm wide and about 31 mm tall (roughly 11 minutes plus heating) and starts it. It begins with your printer's own start macro (PRINT_START or similar, with the bed and nozzle temperatures), so homing, leveling and purging happen the way they do for a sliced file, and ends with your end macro. A printer without a start macro just homes and heats.
+5. The tuner fills the screen while the tower prints: the pressure advance in effect, large, and the current layer and height. The value steps up every 3 mm. Under the value, a list shows each height range printed so far and the value it printed at, newest first.
 6. Watch the corners. Tap **-** or **+** at any time (pick the step size along the bottom): the automatic steps stop and your value stays until the print ends, so you can judge it.
 7. When the print finishes, or you tap **End Test**, you get a list of height ranges and the value that was in effect for each. Measure up from the plate, find the band with sharp corners (no bulge, no gap), tap it and tap **Apply**. **Keep current** keeps whatever value you ended on. **Discard** puts back the value you started with.
 

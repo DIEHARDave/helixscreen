@@ -3,6 +3,7 @@
 
 #include "../../include/pa_tuning.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -377,4 +378,77 @@ TEST_CASE("the Moonraker record keeps every filament and extruder it has seen", 
 
     // Garbage in the key is replaced, not merged into.
     CHECK(merge_moonraker_record("junk", second)["last"]["k"].get<double>() == Catch::Approx(0.5));
+}
+
+namespace {
+
+MacroParamsLookup lookup(std::map<std::string, std::vector<std::string>> macros) {
+    return [macros](const std::string& name) -> std::optional<std::vector<std::string>> {
+        auto it = macros.find(name);
+        if (it == macros.end()) {
+            return std::nullopt;
+        }
+        return it->second;
+    };
+}
+
+const std::vector<std::string> kStart = {"PRINT_START", "START_PRINT"};
+const std::vector<std::string> kEnd = {"PRINT_END", "END_PRINT"};
+
+} // namespace
+
+TEST_CASE("the printer's own start and end macros are picked with their temperature params",
+          "[pa_tuning][pa_macros]") {
+    auto m = pick_machine_macros(
+        kStart, kEnd, lookup({{"START_PRINT", {"BED", "EXTRUDER", "CHAMBER"}}, {"END_PRINT", {}}}));
+    CHECK(m.start == "START_PRINT");
+    CHECK(m.start_bed_param == "BED");
+    CHECK(m.start_nozzle_param == "EXTRUDER");
+    CHECK(m.end == "END_PRINT");
+    CHECK(start_macro_call(m, 60, 215) == "START_PRINT BED=60 EXTRUDER=215");
+
+    SECTION("the explicit spelling wins when a macro takes both") {
+        auto both = pick_machine_macros(
+            kStart, kEnd, lookup({{"PRINT_START", {"BED", "BED_TEMP", "EXTRUDER_TEMP"}}}));
+        CHECK(both.start_bed_param == "BED_TEMP");
+        CHECK(both.end.empty());
+    }
+    SECTION("a macro with no recognisable temperatures is called bare") {
+        auto bare = pick_machine_macros(kStart, kEnd, lookup({{"PRINT_START", {"MESH"}}}));
+        CHECK(start_macro_call(bare, 60, 215) == "PRINT_START");
+    }
+    SECTION("no macro at all, and no lookup, mean no call") {
+        CHECK(pick_machine_macros(kStart, kEnd, lookup({})).start.empty());
+        CHECK(pick_machine_macros(kStart, kEnd, nullptr).start.empty());
+        CHECK(start_macro_call(MachineMacros{}, 60, 215).empty());
+    }
+}
+
+TEST_CASE("the tower starts through the start macro and ends through the end macro",
+          "[pa_tuning][pa_macros]") {
+    TestPrintParams p;
+    p.bed_temp = 60;
+    p.nozzle_temp = 215;
+    p.macros = MachineMacros{"PRINT_START", "BED_TEMP", "EXTRUDER_TEMP", "PRINT_END"};
+    const std::string gcode = generate_test_gcode(p);
+    CHECK(gcode.find("\nPRINT_START BED_TEMP=60 EXTRUDER_TEMP=215\n") != std::string::npos);
+    CHECK(gcode.find("\nG28\n") == std::string::npos);
+    // The macro heats in its own order: nothing heats before it.
+    CHECK(gcode.find("M104") == std::string::npos);
+    CHECK(gcode.find("M109 S215") > gcode.find("PRINT_START"));
+    CHECK(gcode.find("\nPRINT_END\n") != std::string::npos);
+    CHECK(gcode.find("M104 S0") == std::string::npos);
+
+    SECTION("a macro that takes no temperatures gets the heaters started first") {
+        p.macros = MachineMacros{"PRINT_START", "", "", ""};
+        const std::string bare = generate_test_gcode(p);
+        CHECK(bare.find("M104 S215") < bare.find("\nPRINT_START\n"));
+        CHECK(bare.find("M104 S0") != std::string::npos);
+    }
+    SECTION("no start macro homes and heats itself") {
+        p.macros = MachineMacros{};
+        const std::string plain = generate_test_gcode(p);
+        CHECK(plain.find("\nG28\n") != std::string::npos);
+        CHECK(plain.find("M140 S60") < plain.find("\nG28\n"));
+    }
 }

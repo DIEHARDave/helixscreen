@@ -130,6 +130,65 @@ float ramp_k_for_layer(const TowerGeometry& g, const Ramp& r, int layer) {
     return clamp_k(r.start_k + step * static_cast<float>(band));
 }
 
+namespace {
+
+/// Spellings slicers' start gcode passes temperatures to a start macro under,
+/// most explicit first.
+constexpr const char* BED_PARAMS[] = {"BED_TEMP", "BED", "BED_TEMPERATURE", "BEDTEMP"};
+constexpr const char* NOZZLE_PARAMS[] = {
+    "EXTRUDER_TEMP", "EXTRUDER", "HOTEND_TEMP",         "HOTEND",
+    "NOZZLE_TEMP",   "NOZZLE",   "EXTRUDER_TEMPERATURE"};
+
+template <size_t N>
+std::string first_known(const std::vector<std::string>& params, const char* const (&names)[N]) {
+    for (const char* name : names) {
+        if (std::find(params.begin(), params.end(), name) != params.end()) {
+            return name;
+        }
+    }
+    return {};
+}
+
+} // namespace
+
+MachineMacros pick_machine_macros(const std::vector<std::string>& start_candidates,
+                                  const std::vector<std::string>& end_candidates,
+                                  const MacroParamsLookup& params_of) {
+    MachineMacros m;
+    if (!params_of) {
+        return m;
+    }
+    for (const auto& name : start_candidates) {
+        if (auto params = params_of(name)) {
+            m.start = name;
+            m.start_bed_param = first_known(*params, BED_PARAMS);
+            m.start_nozzle_param = first_known(*params, NOZZLE_PARAMS);
+            break;
+        }
+    }
+    for (const auto& name : end_candidates) {
+        if (params_of(name)) {
+            m.end = name;
+            break;
+        }
+    }
+    return m;
+}
+
+std::string start_macro_call(const MachineMacros& m, int bed_temp, int nozzle_temp) {
+    if (m.start.empty()) {
+        return {};
+    }
+    std::string call = m.start;
+    if (!m.start_bed_param.empty()) {
+        call += fmt::format(" {}={}", m.start_bed_param, bed_temp);
+    }
+    if (!m.start_nozzle_param.empty()) {
+        call += fmt::format(" {}={}", m.start_nozzle_param, nozzle_temp);
+    }
+    return call;
+}
+
 int estimate_print_seconds(const TestPrintParams& p) {
     const int layers = layer_count(p.geometry, p.bands);
     double seconds = 0.0;
@@ -184,11 +243,24 @@ std::string generate_test_gcode(const TestPrintParams& p) {
     if (!p.material.empty()) {
         line(fmt::format("; filament_type = {}", p.material));
     }
+    const std::string start_call = start_macro_call(p.macros, p.bed_temp, p.nozzle_temp);
+    const bool macro_heats =
+        !p.macros.start_bed_param.empty() && !p.macros.start_nozzle_param.empty();
     line("G90");
+    if (start_call.empty() || !macro_heats) {
+        // Nothing will heat the machine for us, or the macro takes no
+        // temperatures: start heating now. A macro that does take them is left
+        // to its own order, which often probes with a cool nozzle.
+        line(fmt::format("M140 S{}", p.bed_temp));
+        line(fmt::format("M104{} S{}", tool_arg, p.nozzle_temp));
+    }
+    if (start_call.empty()) {
+        line("G28");
+    } else {
+        line(start_call);
+        line("G90");
+    }
     line("M83");
-    line(fmt::format("M140 S{}", p.bed_temp));
-    line(fmt::format("M104{} S{}", tool_arg, p.nozzle_temp));
-    line("G28");
     line(fmt::format("M190 S{}", p.bed_temp));
     if (p.tool >= 0) {
         line(fmt::format("T{}", p.tool));
@@ -250,6 +322,10 @@ std::string generate_test_gcode(const TestPrintParams& p) {
     }
 
     line("G1 E-1 F2100");
+    if (!p.macros.end.empty()) {
+        line(p.macros.end);
+        return out;
+    }
     line("G91");
     line("G1 Z10 F600");
     line("G90");

@@ -154,6 +154,8 @@ class PaTuningOverlay : public OverlayBase {
     void begin_upload();
     void fail_start(const std::string& message);
     helix::pa::TestPrintParams build_params() const;
+    /// The printer's own start and end macros, from the discovered macro set.
+    static helix::pa::MachineMacros machine_macros();
     /// Klipper extruder the selected tool prints with.
     std::string extruder_for_tool(int tool) const;
 
@@ -172,7 +174,8 @@ class PaTuningOverlay : public OverlayBase {
     void refresh_running();
 
     // --- pick / result ---
-    void refresh_bands();
+    /// Fill the band rows; the running log reads newest first, the picker lowest first.
+    void refresh_bands(bool newest_first = false);
     void select_band(int index);
     void apply_pick();
     void show_result();
@@ -220,7 +223,7 @@ class PaTuningOverlay : public OverlayBase {
     lv_subject_t end_k_{};
     char end_k_buf_[16] = {};
     lv_subject_t summary_{};
-    char summary_buf_[192] = {};
+    char summary_buf_[384] = {};
     lv_subject_t can_start_{};
 
     lv_subject_t k_big_{};

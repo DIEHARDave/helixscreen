@@ -13,8 +13,10 @@
 #include "filament_database.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "macro_param_cache.h"
 #include "observer_factory.h"
 #include "preset_materials.h"
+#include "print_start_analyzer.h"
 #include "printer_state.h"
 #include "spoolman_types.h"
 #include "tool_state.h"
@@ -291,6 +293,8 @@ helix::pa::TestPrintParams PaTuningOverlay::build_params() const {
     }
     auto& state = get_printer_state();
     p.filament_diameter_mm = state.get_discovery().filament_diameter_mm();
+    p.nozzle_diameter_mm = state.get_discovery().nozzle_diameter_mm();
+    p.macros = machine_macros();
     const AxisBounds b = state.motion_state().get_gcode_axis_bounds();
     if (b.has_x && b.has_y) {
         p.bed_x_min = b.x_min;
@@ -302,6 +306,25 @@ helix::pa::TestPrintParams PaTuningOverlay::build_params() const {
         p.tool = selected_tool_;
     }
     return p;
+}
+
+helix::pa::MachineMacros PaTuningOverlay::machine_macros() {
+    const auto& cache = MacroParamCache::instance();
+    const std::vector<std::string> starts(std::begin(PrintStartAnalyzer::MACRO_NAMES),
+                                          std::end(PrintStartAnalyzer::MACRO_NAMES));
+    const std::vector<std::string> ends(std::begin(PrintStartAnalyzer::END_MACRO_NAMES),
+                                        std::end(PrintStartAnalyzer::END_MACRO_NAMES));
+    return helix::pa::pick_machine_macros(
+        starts, ends, [&cache](const std::string& name) -> std::optional<std::vector<std::string>> {
+            if (!cache.has_macro(name)) {
+                return std::nullopt;
+            }
+            std::vector<std::string> params;
+            for (const auto& param : cache.get(name).params) {
+                params.push_back(param.name);
+            }
+            return params;
+        });
 }
 
 std::string PaTuningOverlay::extruder_for_tool(int tool) const {
@@ -323,12 +346,16 @@ void PaTuningOverlay::refresh_setup() {
     const int layers = helix::pa::layer_count(params.geometry, params.bands);
     const int minutes = std::max(1, helix::pa::estimate_print_seconds(params) / 60);
     const std::string summary = fmt::format(
-        fmt::runtime(lv_tr("{:.0f} mm tower, {:.0f} mm tall, about {} min plus heating. K steps "
-                           "from {} to {} in {} bands of {:.0f} mm, at {}°C.")),
-        params.geometry.size_mm, helix::pa::layer_z(params.geometry, layers), minutes,
-        helix::pa::format_k(ramp_.start_k), helix::pa::format_k(ramp_.end_k), ramp_.bands,
+        fmt::runtime(lv_tr("Test tower {:.0f} mm wide and {:.0f} mm tall, about {} min plus "
+                           "heating: {} bands of {:.0f} mm at {}°C.")),
+        params.geometry.size_mm, helix::pa::layer_z(params.geometry, layers), minutes, ramp_.bands,
         params.geometry.band_mm, nozzle_temp_);
-    lv_subject_copy_string(&summary_, summary.c_str());
+    const auto macros = params.macros;
+    const std::string starts =
+        macros.start.empty()
+            ? std::string(lv_tr("It homes and heats on its own (no start macro found)."))
+            : fmt::format(fmt::runtime(lv_tr("It starts with your {} macro.")), macros.start);
+    lv_subject_copy_string(&summary_, fmt::format("{} {}", summary, starts).c_str());
 
     auto& state = get_printer_state();
     const bool busy = job_holds_machine(state.print_state().get_print_lifecycle());
@@ -582,14 +609,18 @@ void PaTuningOverlay::refresh_running() {
                                       session_.ramp().bands);
     }
     lv_subject_copy_string(&mode_text_, mode.c_str());
+    refresh_bands(/*newest_first=*/true);
 }
 
 // ============================================================================
 // PICK / RESULT
 // ============================================================================
 
-void PaTuningOverlay::refresh_bands() {
-    const auto bands = session_.bands();
+void PaTuningOverlay::refresh_bands(bool newest_first) {
+    auto bands = session_.bands();
+    if (newest_first) {
+        std::reverse(bands.begin(), bands.end());
+    }
     const int n = std::min(static_cast<int>(bands.size()), MAX_BANDS);
     if (static_cast<int>(bands.size()) > MAX_BANDS) {
         spdlog::warn("[{}] {} bands logged; the picker shows the first {}", get_name(),

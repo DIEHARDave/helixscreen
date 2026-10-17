@@ -131,7 +131,7 @@ TEST_CASE_METHOD(AmsSlotSinkFixture, "AmsSlotSink: apply_delta decrements remain
 TEST_CASE_METHOD(AmsSlotSinkFixture, "consumption sinks meter at the printer's filament diameter",
                  "[consumption_sink][filament_diameter]") {
     helix::PrinterDiscovery hw;
-    hw.parse_filament_diameter(nlohmann::json{{"extruder", {{"filament_diameter", 2.85}}}});
+    hw.parse_extruder_dimensions(nlohmann::json{{"extruder", {{"filament_diameter", 2.85}}}});
     get_printer_state().set_hardware(hw);
 
     // 1000mm of 2.85mm PLA at 1.24 g/cm^3 is 6.379 cm^3, 7.91 g.

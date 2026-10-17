@@ -81,6 +81,31 @@ int band_for_layer(const TowerGeometry& g, int bands, int layer);
 /// The ramp's planned K for 1-based `layer`.
 float ramp_k_for_layer(const TowerGeometry& g, const Ramp& r, int layer);
 
+/// How the test print starts and ends on this printer. Its own start macro,
+/// when it has one, homes, levels and primes the way every sliced file does;
+/// without one the file homes and heats by itself.
+struct MachineMacros {
+    std::string start;              ///< empty: plain G28 and heat
+    std::string start_bed_param;    ///< empty when the macro takes none we recognise
+    std::string start_nozzle_param; ///< likewise
+    std::string end;                ///< empty: plain cooldown
+};
+
+/// The parameters a macro takes (upper case), or nullopt when the printer has
+/// no macro of that name.
+using MacroParamsLookup =
+    std::function<std::optional<std::vector<std::string>>(const std::string& name)>;
+
+/// The first start and end macros the printer defines, in candidate order, and
+/// the start macro's bed and nozzle temperature parameters.
+MachineMacros pick_machine_macros(const std::vector<std::string>& start_candidates,
+                                  const std::vector<std::string>& end_candidates,
+                                  const MacroParamsLookup& params_of);
+
+/// The start macro call with the temperatures it accepts, e.g.
+/// "PRINT_START BED_TEMP=60 EXTRUDER_TEMP=210". Empty without a start macro.
+std::string start_macro_call(const MachineMacros& m, int bed_temp, int nozzle_temp);
+
 /// Everything the gcode generator needs. Coordinates are gcode space.
 struct TestPrintParams {
     TowerGeometry geometry;
@@ -100,11 +125,13 @@ struct TestPrintParams {
     float first_layer_speed_mm_s = 25.0f;
     /// Part-cooling fan from the third layer on, 0-100.
     int fan_percent = 100;
+    MachineMacros macros;
     std::string material;
 };
 
-/// Generate the test print. Self-contained: heats, homes, primes, prints, and
-/// cools down; reports layers with SET_PRINT_STATS_INFO; never sets K.
+/// Generate the test print: starts through the printer's start macro (or homes
+/// and heats itself), primes, prints, and ends through the end macro (or cools
+/// down itself); reports layers with SET_PRINT_STATS_INFO; never sets K.
 std::string generate_test_gcode(const TestPrintParams& p);
 
 /// Rough wall-clock for the print itself, heat-up excluded.

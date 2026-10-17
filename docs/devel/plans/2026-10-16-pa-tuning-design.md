@@ -12,8 +12,10 @@ AUTO RAMP + LIVE OVERRIDE, during a test print HelixScreen generates.
    (direct drive 0 -> 0.1, bowden 0 -> 1.0), editable start/end K.
 2. **Print**: `pa::generate_test_gcode()` writes a 40 mm hollow square tower (2 walls,
    0.2 mm layers, 1 mm base + 10 bands of 3 mm, 4-loop brim, prime line), uploads it as
-   `helix_pa_tuning.gcode` and starts it. The file reports layers with
-   `SET_PRINT_STATS_INFO` and carries no PA commands.
+   `helix_pa_tuning.gcode` and starts it. It starts and ends through the printer's own
+   start/end macros (temperatures passed under the macro's parameter names), falling back
+   to G28 + heat. The file reports layers with `SET_PRINT_STATS_INFO` and carries no PA
+   commands.
 3. **Ramp**: HelixScreen sends `SET_PRESSURE_ADVANCE EXTRUDER=<tuned> ADVANCE=k` when a
    layer enters a new band (`print_layer_current` subject).
 4. **Override**: the full-screen tuner shows the reported K, layer and height, and -/+
