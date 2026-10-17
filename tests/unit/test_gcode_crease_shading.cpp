@@ -450,3 +450,44 @@ TEST_CASE_METHOD(LVGLTestFixture, "crease: a file without wall types renders unc
     REQUIRE(p.darker == 0);
     REQUIRE(p.lighter == 0);
 }
+
+TEST_CASE_METHOD(LVGLTestFixture, "crease: wall indexes live only while the cache builds",
+                 "[gcode][crease][layer_renderer]") {
+    const auto gcode = make_stepped_tower(FeatureType::OuterWall);
+    GCodeLayerRenderer r;
+    r.set_gcode(&gcode);
+    r.set_ghost_mode(false);
+    r.set_canvas_size(kCanvasPx, kCanvasPx);
+    r.auto_fit();
+
+    // A partial batch leaves the neighbours of its last layer indexed, and the
+    // memory report counts them.
+    GCodeLayerRendererTestAccess::pin_layers_per_frame(r, 100);
+    REQUIRE(GCodeLayerRendererTestAccess::render_solid_batch(r, 0, 5, kCanvasPx, kCanvasPx) == 5);
+    REQUIRE(r.memory_report().bytes_for("crease_grids") > 0);
+
+    // Once render() sees the cache complete, they are given back.
+    lv_obj_t* canvas = lv_canvas_create(test_screen());
+    static uint8_t buf[static_cast<size_t>(kCanvasPx) * kCanvasPx * 4];
+    lv_canvas_set_buffer(canvas, buf, kCanvasPx, kCanvasPx, LV_COLOR_FORMAT_ARGB8888);
+    lv_obj_update_layout(canvas);
+    r.set_current_layer(19);
+    auto frame = [&]() {
+        lv_layer_t layer;
+        lv_area_t clip = {0, 0, kCanvasPx - 1, kCanvasPx - 1};
+        lv_canvas_init_layer(canvas, &layer);
+        r.render(&layer, &clip);
+        lv_canvas_finish_layer(canvas, &layer);
+    };
+    for (int i = 0; i < 3; ++i) {
+        frame();
+    }
+    int guard = 0;
+    while (r.needs_more_frames() && guard++ < 500) {
+        frame();
+    }
+    REQUIRE(guard < 500);
+    REQUIRE(r.get_cached_up_to_layer() == 19);
+    frame();
+    REQUIRE(r.memory_report().bytes_for("crease_grids") == 0);
+}
