@@ -22,11 +22,11 @@ namespace helix::ui {
  * @brief Color format of the flip clock canvas
  *
  * The cards are written pixel by pixel, but the caption and the AM/PM marker are drawn with
- * lv_draw_label, so the canvas takes the pipes format for the reason PIPES_CANVAS_FORMAT
- * gives: a 32 bpp blend must land on real alpha. PixelWriter's XRGB8888 path writes an alpha
+ * lv_draw_label, so the canvas takes LV_DRAW_CANVAS_FORMAT for the reason it gives: a 32 bpp
+ * blend must land on real alpha. PixelWriter's XRGB8888 path writes an alpha
  * byte of 0xFF, which is an opaque ARGB8888 pixel.
  */
-inline constexpr lv_color_format_t FLIP_CLOCK_CANVAS_FORMAT = PIPES_CANVAS_FORMAT;
+inline constexpr lv_color_format_t FLIP_CLOCK_CANVAS_FORMAT = LV_DRAW_CANVAS_FORMAT;
 
 /// The local time of day and the 12/24-hour setting, with no print.
 FlipClockInput flip_clock_now();

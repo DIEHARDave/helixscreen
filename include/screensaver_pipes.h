@@ -28,7 +28,7 @@ class PipesScreensaver : public helix::ui::SaverBase {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return helix::ui::PIPES_CANVAS_FORMAT;
+        return helix::ui::LV_DRAW_CANVAS_FORMAT;
     }
     bool on_start() override;
     void on_frame(uint32_t dt_ms, std::vector<helix::ui::DirtyRect>& dirty) override;
