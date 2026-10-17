@@ -10,6 +10,18 @@
          when a remap is unavailable, and a card dimmed through LV_STATE_DISABLED
          also stops receiving touches. -->
     <style name="mapping_rows_unmappable" opa="128"/>
+    <!-- Filament card shapes. Stacked: the FILAMENTS header on top, the chips
+         on a row of their own under it. Inline (small portrait, where the
+         preview and the options compete for one column): title, chips and the
+         tap cue share ONE row, giving the chip row's height back to the
+         options. Paired so every size is covered; inline width or flex_flow
+         attributes on these widgets would win over the bound styles. -->
+    <style name="fil_card_stacked" layout="flex" flex_flow="column"/>
+    <style name="fil_card_inline" layout="flex" flex_flow="row" flex_cross_place="center"/>
+    <style name="fil_head_stacked" width="100%"/>
+    <style name="fil_head_inline" width="content"/>
+    <style name="fil_chips_stacked" width="100%" flex_grow="0"/>
+    <style name="fil_chips_inline" width="0" flex_grow="1"/>
     <!-- Landscape: preview column left, options column right. Portrait: the
          preview block on top, options below, both full width. Paired so each
          orientation is always covered; inline attributes would win over them.
@@ -320,8 +332,9 @@
                  backend is stopped by on_color_card_clicked()'s own guard, not by
                  the flag. Tracked; do not read this binding as authoritative. -->
             <ui_card name="filament_mapping_card"
-                     width="100%" style_pad_ver="#space_sm" style_pad_gap="#space_xs" style_bg_color="#elevated_bg"
-                     flex_flow="column">
+                     width="100%" style_pad_ver="#space_sm" style_pad_gap="#space_xs" style_bg_color="#elevated_bg">
+              <bind_style_if name="fil_card_stacked" cond="ui_is_portrait eq 0 or ui_breakpoint ge 2"/>
+              <bind_style_if name="fil_card_inline" cond="ui_is_portrait eq 1 and ui_breakpoint lt 2"/>
               <bind_flag_if_eq subject="filament_mapping_visible" flag="hidden" ref_value="0"/>
               <!-- Hidden in queue mode: the mapping is not saved with the job, it
                    is recomputed against the lanes loaded when the job starts. The
@@ -329,10 +342,20 @@
                    reasons), so no C++ writer composes them. -->
               <bind_flag_if_eq subject="print_select_button_mode" flag="hidden" ref_value="1"/>
               <bind_flag_if_eq subject="color_card_remappable" flag="clickable" ref_value="1"/>
-              <lv_obj width="100%"
+              <lv_obj name="color_card_header"
                       height="content" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="row"
                       style_flex_cross_place="center" scrollable="false" clickable="false" event_bubble="true">
+                <bind_style_if name="fil_head_stacked" cond="ui_is_portrait eq 0 or ui_breakpoint ge 2"/>
+                <bind_style_if name="fil_head_inline" cond="ui_is_portrait eq 1 and ui_breakpoint lt 2"/>
                 <text_small text="FILAMENTS" clickable="false" event_bubble="true"/>
+                <!-- Holds the header at the tap cue's height while the cue is out
+                   of the flow (stacked), so the title stays centred on the cue's
+                   line. Inline, the cue is in the row and this goes. -->
+                <icon name="color_card_header_strut"
+                      src="chevron_right" size="sm" variant="secondary" style_opa="0" clickable="false"
+                      event_bubble="true">
+                  <bind_flag_if cond="ui_is_portrait eq 1 and ui_breakpoint lt 2" flag="hidden"/>
+                </icon>
                 <icon name="filament_mismatch_icon"
                       src="alert" size="sm" variant="warning" clickable="false" event_bubble="true">
                   <bind_flag_if_eq subject="filament_mismatch" flag="hidden" ref_value="0"/>
@@ -349,27 +372,6 @@
                       src="close" size="sm" variant="danger" clickable="false" event_bubble="true">
                   <bind_flag_if_eq subject="empty_tools_warning" flag="hidden" ref_value="0"/>
                 </icon>
-                <!-- Spacer: pushes the tap cue to the trailing edge without giving
-                     the label a width that would fight the icons. -->
-                <lv_obj name="color_card_header_spacer"
-                        width="content" height="1" flex_grow="1" style_pad_all="0" style_bg_opa="0"
-                        style_border_width="0" scrollable="false" clickable="false" event_bubble="true"/>
-                <!-- The tap cue. Same chevron every tappable row in the app uses
-                     (setting_action_row.xml, ams_edit_overlay.xml), so it reads as
-                     "this opens something" without a label to translate. -->
-                <icon name="color_card_remap_chevron"
-                      src="chevron_right" size="sm" variant="secondary" clickable="false" event_bubble="true">
-                  <bind_flag_if_eq subject="color_card_remappable" flag="hidden" ref_value="0"/>
-                </icon>
-                <!-- Takes the chevron's place when a remap is unavailable or will
-                     cost something. Its own clickable object, never a bubbling chip:
-                     the card greys itself with LV_STATE_DISABLED and LVGL delivers
-                     no pointer events to a disabled object, so an icon relying on
-                     the card's handler would be dead exactly when it is needed. -->
-                <icon name="color_card_remap_help" src="help_circle" size="sm" variant="secondary" clickable="true">
-                  <bind_flag_if_eq subject="color_card_remap_help_visible" flag="hidden" ref_value="0"/>
-                  <event_cb trigger="clicked" callback="on_color_card_remap_help"/>
-                </icon>
               </lv_obj>
               <!-- height is FIXED, not "content": the filament_swatch chips inside are
                    height="100%" and collapse to zero in a content-height parent. And
@@ -381,9 +383,10 @@
                    here shortens the chips instead of growing the row - the card is flex
                    column with style_pad_gap, which is what spaces this from the header. -->
               <lv_obj name="filament_mapping_rows"
-                      width="100%" height="#filament_chip_row_height" style_pad_all="0" style_pad_gap="#space_xs"
-                      flex_flow="row" style_flex_main_place="center" scrollable="false" clickable="false"
-                      event_bubble="true">
+                      height="#filament_chip_row_height" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="row"
+                      style_flex_main_place="center" scrollable="false" clickable="false" event_bubble="true">
+                <bind_style_if name="fil_chips_stacked" cond="ui_is_portrait eq 0 or ui_breakpoint ge 2"/>
+                <bind_style_if name="fil_chips_inline" cond="ui_is_portrait eq 1 and ui_breakpoint lt 2"/>
                 <bind_style_if_eq name="mapping_rows_unmappable" subject="color_card_remap_needs_setup" ref_value="1"/>
                 <bind_flag_if_eq subject="detail_mapping_ready" flag="hidden" ref_value="0"/>
                 <!-- Chips added dynamically in C++ (clickable=false + event_bubble=true
@@ -394,9 +397,10 @@
                    Height, flow and alignment all mirror filament_mapping_rows above,
                    so nothing moves when detail_mapping_ready flips. -->
               <lv_obj name="mapping_skeleton"
-                      width="100%" height="#filament_chip_row_height" style_pad_all="0" style_pad_gap="#space_xs"
-                      flex_flow="row" style_flex_main_place="center" scrollable="false" clickable="false"
-                      event_bubble="true">
+                      height="#filament_chip_row_height" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="row"
+                      style_flex_main_place="center" scrollable="false" clickable="false" event_bubble="true">
+                <bind_style_if name="fil_chips_stacked" cond="ui_is_portrait eq 0 or ui_breakpoint ge 2"/>
+                <bind_style_if name="fil_chips_inline" cond="ui_is_portrait eq 1 and ui_breakpoint lt 2"/>
                 <bind_flag_if_eq subject="detail_mapping_ready" flag="hidden" ref_value="1"/>
                 <!-- SIZE_OK: chip width mirrors filament_swatch.xml's literal 40 -->
                 <lv_obj width="40"
@@ -406,6 +410,31 @@
                 <lv_obj width="40"
                         height="100%" style_radius="4" style_bg_color="#card_bg" style_bg_opa="100" clickable="false"
                         event_bubble="true"/>
+              </lv_obj>
+              <!-- The tap cue, last in the card so it ends the inline row. Stacked,
+                   it leaves the flow and sits at the top right, on the header's
+                   line. -->
+              <lv_obj name="color_card_header_end"
+                      width="content" height="content" align="top_right" style_pad_all="0" style_bg_opa="0"
+                      style_border_width="0" flex_flow="row" style_flex_cross_place="center" scrollable="false"
+                      clickable="false" event_bubble="true">
+                <bind_flag_if cond="ui_is_portrait eq 0 or ui_breakpoint ge 2" flag="ignore_layout"/>
+                <!-- The tap cue. Same chevron every tappable row in the app uses
+                       (setting_action_row.xml, ams_edit_overlay.xml), so it reads as
+                       "this opens something" without a label to translate. -->
+                <icon name="color_card_remap_chevron"
+                      src="chevron_right" size="sm" variant="secondary" clickable="false" event_bubble="true">
+                  <bind_flag_if_eq subject="color_card_remappable" flag="hidden" ref_value="0"/>
+                </icon>
+                <!-- Takes the chevron's place when a remap is unavailable or will
+                       cost something. Its own clickable object, never a bubbling chip:
+                       the card greys itself with LV_STATE_DISABLED and LVGL delivers
+                       no pointer events to a disabled object, so an icon relying on
+                       the card's handler would be dead exactly when it is needed. -->
+                <icon name="color_card_remap_help" src="help_circle" size="sm" variant="secondary" clickable="true">
+                  <bind_flag_if_eq subject="color_card_remap_help_visible" flag="hidden" ref_value="0"/>
+                  <event_cb trigger="clicked" callback="on_color_card_remap_help"/>
+                </icon>
               </lv_obj>
             </ui_card>
 

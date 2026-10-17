@@ -493,7 +493,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **More room on small print file screens** - the sliced-colors switch is now a palette
   button on the 3D preview, the filament card is more compact, and on 480x320 and smaller
   screens the pre-print time estimate gives its line to the options, so four options fit
-  there without scrolling in landscape.
+  there without scrolling in landscape. On small portrait screens the filament chips share
+  the FILAMENTS title's line and the preview gives up just enough height for every option
+  to show.
 - **Delete and Print stay on screen** - the filament mapping and the options scroll in one
   column that ends above the buttons, so starting the print never depends on finding
   the button at the bottom of a scroll. A fade with a small arrow sits on the list's bottom
