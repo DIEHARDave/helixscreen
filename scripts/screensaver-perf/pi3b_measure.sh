@@ -55,8 +55,8 @@ sleep 5
 cpu_window 20
 sudo_ rm -f /tmp/hm_strace.txt
 sudo_ timeout 10 strace -f -ttt -e trace=ioctl -o /tmp/hm_strace.txt -p "$PID" 2>/dev/null
-echo "STOPPED_MIDRUN $(sudo_ journalctl -u helixscreen --since "$T_START" --no-pager -o cat 2>/dev/null | grep -c 'Stopping')"
-echo "STARTED $(sudo_ journalctl -u helixscreen --since "$T_START" --no-pager -o cat 2>/dev/null | grep -c 'Started screensaver type')"
+echo "STOPPED_MIDRUN $(saver_stops "$T_START")"
+echo "STARTED $(saver_starts "$T_START")"
 
 ctl wake
 sleep 1

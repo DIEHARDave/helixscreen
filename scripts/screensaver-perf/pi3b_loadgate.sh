@@ -58,8 +58,8 @@ if [ -n "$NAV" ]; then
     kill "$NAV" 2>/dev/null
     wait "$NAV" 2>/dev/null
 fi
-STARTED=$(sudo_ journalctl -u helixscreen --since "$T_START" --no-pager -o cat 2>/dev/null | grep -c "Started screensaver type")
-STOPPED=$(sudo_ journalctl -u helixscreen --since "$T_START" --no-pager -o cat 2>/dev/null | grep -c "Stopped screensaver type")
+STARTED=$(saver_starts "$T_START")
+STOPPED=$(saver_stops "$T_START")
 CT_ERR=$(grep -v -i "password" "$HIST.err" | grep -v "cpu_dma_latency" | head -n 1 | tr ' ' '_')
 rm -f "$HIST.err"
 

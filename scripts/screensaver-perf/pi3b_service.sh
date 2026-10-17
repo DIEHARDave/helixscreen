@@ -78,12 +78,10 @@ collect)
     sudo_ rm -f "$FILE"
     ;;
 crashes)
-    sudo_ journalctl -u helixscreen --since "${SINCE:?} UTC" --no-pager -o cat 2>/dev/null |
-        grep -c 'Child exited with code 139'
+    app_journal "${SINCE:?} UTC" | grep -c 'Child exited with code 139'
     ;;
 journal)
-    sudo_ journalctl -u helixscreen --since "${SINCE:?} UTC" --no-pager -o cat 2>/dev/null |
-        grep -E "${PATTERN:?}"
+    app_journal "${SINCE:?} UTC" | grep -E "${PATTERN:?}"
     ;;
 display_value)
     python3 -c 'import json, sys; print(json.dumps(json.load(open(sys.argv[1])).get("display", {}).get(sys.argv[2]), sort_keys=True))' \

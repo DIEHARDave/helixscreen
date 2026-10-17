@@ -87,19 +87,40 @@ perf_record_gate() {
         sed "s/^/$arm run=$run gate /" >> "$HELIX_PERF_SCRATCH/results/$arm.txt"
 }
 
-# Stable screensaver name a workload runs (include/screensaver_registry.h), or off for the
-# idle, off and ui workloads, which run no saver.
+# The registry every saver name comes from. A test points it at a fixture.
+PERF_REGISTRY=${PERF_REGISTRY:-$PERF_REPO/include/screensaver_registry.h}
+
+# Every stable screensaver name, one per line: the name in each row of the SCREENSAVERS table,
+# read from the source so a saver added there is a workload here with no edit.
+perf_saver_names() {
+    awk '/SCREENSAVERS\[\] = \{/ {inside = 1; next}
+        inside && /^\};/ {exit}
+        inside && /ScreensaverType::/ { pending = 1 }
+        pending && match($0, /"[a-z0-9_]+"/) { print substr($0, RSTART + 1, RLENGTH - 2); pending = 0 }' \
+        "$PERF_REGISTRY" 2> /dev/null
+}
+
+# Stable screensaver name a workload runs, or off for the idle, off and ui workloads, which run
+# no saver.
 perf_saver_name() {
     case $1 in
-    idle | off | ui) echo off ;;
-    toasters | starfield | pipes | bounce | fireworks | logo | maze | hyperspace | flipclock | fireflies)
-        echo "$1"
-        ;;
-    *)
-        echo "perf_saver_name: unknown workload '$1'" >&2
-        return 1
+    idle | off | ui)
+        echo off
+        return 0
         ;;
     esac
+    local names
+    names=$(perf_saver_names)
+    if [ -z "$names" ]; then
+        echo "perf_saver_name: no screensaver names in $PERF_REGISTRY" >&2
+        return 1
+    fi
+    if grep -qx -F -e "$1" <<< "$names"; then
+        echo "$1"
+        return 0
+    fi
+    echo "perf_saver_name: unknown workload '$1' (savers: $(tr '\n' ' ' <<< "$names"))" >&2
+    return 1
 }
 
 # EGL vsync and a 1 ms main-loop floor keep 16 ms frames even. Every device run sets both:

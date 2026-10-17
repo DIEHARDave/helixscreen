@@ -62,3 +62,18 @@ cpu_pct() {
 gate_raw() {
     echo "GATE_RAW hist=$1 ct_exit=$2 ct_err=${3:-none} helix_cpu=$4 saver_started=$5 saver_stopped_midrun=$6"
 }
+
+# The app's journal since <since> (a journalctl --since value), one message per line.
+app_journal() {
+    sudo_ journalctl -u helixscreen --since "$1" --no-pager -o cat 2> /dev/null
+}
+
+# How many savers the manager started, and stopped, since <since>. Only the manager's own
+# lines count: a saver's "Stopping type N" and any other "Stopping" line do not.
+saver_starts() {
+    app_journal "$1" | grep -c "Started screensaver type"
+}
+
+saver_stops() {
+    app_journal "$1" | grep -c "Stopped screensaver type"
+}

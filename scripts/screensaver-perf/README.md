@@ -49,9 +49,9 @@ measurement passes (default `idle toasters starfield pipes`) and `SAVERS` select
 (default `off toasters starfield pipes`). Setting only one leaves the other at its default, so
 `SAVERS="off fireworks"` gates fireworks while still measuring the default four. Workload names
 come from `perf_saver_name` in `perf_env.sh`: `idle`, `off` and `ui` run no saver, and every
-stable saver name (`toasters`, `starfield`, `pipes`, `bounce`, `fireworks`, `logo`, `maze`,
-`hyperspace`, `flipclock`, `fireflies`) runs that saver through `helix-screen ctl screensaver <name>`, the Test
-Screensaver path, which needs no settings change and so leaves the configured saver alone. A
+stable saver name in the `SCREENSAVERS` table of `include/screensaver_registry.h` (`toasters`,
+`pipes`, `flipclock` and the rest, read from that file) runs that saver through
+`helix-screen ctl screensaver <name>`, the Test Screensaver path, which needs no settings change and so leaves the configured saver alone. A
 saver the board has marked too heavy runs its fallback there, so check the `STARTED` line's
 type before reading a number as that saver's.
 

@@ -119,3 +119,80 @@ lib_sh() {
     [[ "${lines[0]}" == "armA run=2 gate RESULT arm=armA saver=toasters samples=10 "*"helix_cpu=3.0%"* ]] || fail "toasters RESULT line: ${lines[0]}"
     [[ "${lines[1]}" == "armA run=2 gate RESULT arm=armA saver=off "*"helix_cpu=-1%"* ]]
 }
+
+# Every stable name in the SCREENSAVERS table, read independently of perf_env.sh: inside the
+# table the only all-lowercase string literals are the names (labels are capitalised).
+registry_names() {
+    awk '/SCREENSAVERS\[\] = \{/ {inside = 1; next} inside && /^\};/ {exit} inside' \
+        "${1:-$ROOT/include/screensaver_registry.h}" | grep -oE '"[a-z0-9_]+"' | tr -d '"'
+}
+
+@test "perf_saver_name accepts every name the registry defines, and nothing else" {
+    perf_env
+    names=$(registry_names)
+    rows=$(awk '/SCREENSAVERS\[\] = \{/ {inside = 1; next} inside && /^\};/ {exit} inside' \
+        "$ROOT/include/screensaver_registry.h" | grep -c 'ScreensaverType::')
+    [ "$(echo "$names" | wc -l)" -eq "$rows" ] || fail "registry_names found $(echo "$names" | wc -l) of $rows rows"
+    contains fireflies "$names" || return 1
+    for name in $names; do
+        run perf_saver_name "$name"
+        [ "$status" -eq 0 ] && [ "$output" = "$name" ] || fail "rejected registry name '$name': $output"
+    done
+    [ "$(perf_saver_names | sort)" = "$(echo "$names" | sort)" ] || fail "perf_saver_names: $(perf_saver_names)"
+    run perf_saver_name toaster
+    [ "$status" -ne 0 ]
+    contains "unknown workload 'toaster'" "$output"
+}
+
+@test "perf_saver_name maps idle, off and ui to off" {
+    perf_env
+    for workload in idle off ui; do
+        run perf_saver_name "$workload"
+        [ "$status" -eq 0 ] && [ "$output" = off ] || fail "$workload gave '$output'"
+    done
+}
+
+@test "a saver added to the registry is a workload with no edit to the perf scripts" {
+    perf_env
+    PERF_REGISTRY="$BATS_TEST_TMPDIR/registry.h"
+    # Two rows after fireflies, one wrapped the way clang-format wraps a long row.
+    awk '{ print } /"fireflies"/ {
+        print "    {ScreensaverType::AQUA, \"aqua\", \"Aqua Surface\", SAVER_DEPTH_16 | SAVER_DEPTH_32},"
+        print "    {ScreensaverType::HIGHFLY,"
+        print "     \"highfly\", \"High Fly\", SAVER_DEPTH_16 | SAVER_DEPTH_32},"
+    }' "$ROOT/include/screensaver_registry.h" > "$PERF_REGISTRY"
+    contains '"highfly"' "$(cat "$PERF_REGISTRY")" || return 1
+    for name in aqua highfly fireflies; do
+        run perf_saver_name "$name"
+        [ "$status" -eq 0 ] && [ "$output" = "$name" ] || fail "rejected '$name': $output"
+    done
+}
+
+@test "perf_saver_name refuses to guess when the registry cannot be read" {
+    perf_env
+    PERF_REGISTRY="$BATS_TEST_TMPDIR/missing.h"
+    run perf_saver_name toasters
+    [ "$status" -ne 0 ]
+    contains "no screensaver names in $PERF_REGISTRY" "$output"
+}
+
+@test "saver_starts and saver_stops count only the manager's start and stop lines" {
+    mock_command_script sudo '[ "$1" = "-n" ] && shift; exec "$@"'
+    mock_command_script journalctl 'echo "args=$*" > "$BATS_TEST_TMPDIR/journal-args"
+printf "%s\n" "[ScreensaverManager] Started screensaver type 3" "[Screensaver] Stopping type 3" \
+    "[ScreensaverManager] Stopped screensaver type 3 (black screen)" "[Wifi] Stopping scan" \
+    "[ScreensaverManager] Started screensaver type 5"'
+    run lib_sh 'echo "starts=$(saver_starts "2026-10-16 10:00:00")"' 'echo "stops=$(saver_stops "2026-10-16 10:00:00")"'
+    [ "$status" -eq 0 ]
+    [ "${lines[0]}" = "starts=2" ]
+    [ "${lines[1]}" = "stops=1" ]
+    contains "--since 2026-10-16 10:00:00" "$(cat "$BATS_TEST_TMPDIR/journal-args")"
+}
+
+@test "the measure and load-gate steps count saver starts and stops through device_lib.sh" {
+    for step in pi3b_measure.sh pi3b_loadgate.sh; do
+        contains 'saver_stops "$T_START"' "$(cat "$PERF/$step")" || return 1
+        contains 'saver_starts "$T_START"' "$(cat "$PERF/$step")" || return 1
+        lacks 'journalctl' "$(cat "$PERF/$step")" || return 1
+    done
+}
