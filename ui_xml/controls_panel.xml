@@ -32,10 +32,14 @@
          card sits in a plain cell because ui_card sets its own size locally,
          which a bound style cannot override. -->
     <style name="top_row_landscape" height="55%" layout="flex" flex_flow="row"/>
-    <style name="top_row_portrait" height="69%" layout="flex" flex_flow="row_wrap"/>
+    <style name="top_row_portrait" height="64%" layout="flex" flex_flow="row_wrap"/>
     <style name="top_card_landscape" height="100%" flex_grow="1"/>
-    <style name="top_card_half" height="50%" flex_grow="1"/>
-    <style name="top_card_full" height="47%" flex_grow="0"/>
+    <style name="top_card_half" height="47%" flex_grow="1"/>
+    <style name="top_card_full" height="51%" flex_grow="0"/>
+    <!-- Portrait sizes buttons from the tall axis; the inline Motion button needs
+         only a small one, which leaves the Calibration card room for labels -->
+    <style name="action_row_landscape" height="#button_height"/>
+    <style name="action_row_portrait" height="#button_height_sm"/>
     <!-- Homing indicator styles for Position card -->
     <style name="indicator_homed" bg_color="#success"/>
     <style name="indicator_unhomed" bg_color="#text_muted"/>
@@ -131,8 +135,10 @@
                Motion takes the rest; Motors Off drops its label where the row is
                too short for one. -->
           <lv_obj name="position_action_row"
-                  width="100%" height="#button_height" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+                  width="100%" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                   style_pad_gap="#space_xs" scrollable="false">
+            <bind_style_if_eq name="action_row_landscape" subject="ui_is_portrait" ref_value="0"/>
+            <bind_style_if_eq name="action_row_portrait" subject="ui_is_portrait" ref_value="1"/>
             <!-- Icon over label like Motors Off beside it, so the icons share a line
                  and the labels the next; inline where Motors Off is icon-only. -->
             <ui_button name="btn_motion"

@@ -442,7 +442,7 @@
     <px name="calib_tile_min_height_tiny" value="40"/>
     <px name="calib_tile_min_height_small" value="44"/>
     <px name="calib_tile_min_height_medium" value="56"/>
-    <px name="calib_tile_min_height_large" value="80"/>
+    <px name="calib_tile_min_height_large" value="76"/>
     <px name="calib_tile_min_height_xlarge" value="88"/>
     <!-- Motors Off beside Motion on the Controls position card: at least 40px
          wide to tap, with the glyph sized to the one-button-tall row -->

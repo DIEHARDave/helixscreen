@@ -515,7 +515,7 @@ const TokenEntry k_token_table[] = {
     {"px", "calib_tile_min_height_tiny", "40"},
     {"px", "calib_tile_min_height_small", "44"},
     {"px", "calib_tile_min_height_medium", "56"},
-    {"px", "calib_tile_min_height_large", "80"},
+    {"px", "calib_tile_min_height_large", "76"},
     {"px", "calib_tile_min_height_xlarge", "88"},
     {"string", "controls_toggle_icon_size_micro", "xs"},
     {"string", "controls_toggle_icon_size_tiny", "sm"},
