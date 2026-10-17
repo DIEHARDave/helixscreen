@@ -10,6 +10,7 @@
 #include "ui_humidity_drop.h"
 #include "ui_icon.h"
 #include "ui_progress_bar.h"
+#include "ui_swatch.h"
 #include "ui_switch.h"
 #include "ui_temp_display.h"
 #include "ui_text.h"
@@ -209,6 +210,7 @@ void XMLTestFixture::setup_global_xml_registrations_once() {
     helix::ui::icon::register_widget();         // icon component
     helix::ui::register_humidity_drop_widget(); // humidity_drop
     helix::ui::register_tile_rung_binding();    // <bind_tile_rung>
+    helix::ui::register_swatch_paint_widget();  // <swatch_paint>, inside color_swatch
     ui_text_init();                             // text_heading, text_body, text_small, text_xs
     ui_text_input_init();                       // text_input (textarea with bind_text support)
     ui_button_init();                           // ui_button with bind_icon support
