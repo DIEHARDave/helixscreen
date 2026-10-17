@@ -249,4 +249,10 @@ void MoonrakerSpoolmanAPI::search_spoolman_external_filaments(const std::string&
     task10_unimplemented_err("MoonrakerSpoolmanAPI::search_spoolman_external_filaments", err);
 }
 
+void MoonrakerSpoolmanAPI::set_spoolman_filament_extra_number(int, const std::string&,
+                                                              const std::string&, double,
+                                                              SuccessCallback, ErrorCallback err) {
+    task10_unimplemented_err("MoonrakerSpoolmanAPI::set_spoolman_filament_extra_number", err);
+}
+
 // (further symbols appended here as later tasks' link passes demand them)
