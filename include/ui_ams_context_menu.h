@@ -184,9 +184,6 @@ class AmsContextMenu : public ContextMenu {
     /// 1 = Purge enabled. External-spool menu only; the lane menu has no Purge
     /// entry, so nothing binds this there.
     static lv_subject_t slot_can_purge_subject_;
-    /// 1 = this backend's load/unload mount and unmount a tool, so the menu
-    /// shows the tool wording instead of the filament wording.
-    static lv_subject_t slot_mounts_tool_subject_;
     /// One-line reason the unload is unavailable, and whether to show it.
     /// Text and visibility are separate because bind_flag needs an int.
     static lv_subject_t slot_unload_hint_subject_;

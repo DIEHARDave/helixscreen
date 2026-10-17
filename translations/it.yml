@@ -1376,7 +1376,6 @@ translations:
   Feed filament: Alimenta filamento
   Feed filament directly to extruder: Alimenta filamento direttamente all'estrusore
   Feed filament from current slot: 'Alimenta il filamento dallo slot corrente'
-  Feed filament into {}'s extruder, then tap Continue: 'Inserisci il filamento nell''estrusore di {}, poi tocca Continua'
   Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload: Inserisci il filamento a mano oltre il sensore, poi premi Riprendi — oppure annulla la stampa per usare Carica/Scarica
   Feeder: Alimentatore
   Feeders: Alimentatori
@@ -1740,7 +1739,9 @@ translations:
     riduce gli artefatti da vibrazione (ringing) nelle stampe.
   'Input: ': 'Ingresso: '
   InputShaper: InputShaper
+  Insert filament: 'Inserisci filamento'
   Insert filament before resuming: Inserire filamento prima di riprendere
+  Insert filament into {}, then tap Continue: 'Inserisci il filamento in {}, poi tocca Continua'
   Inspecting bed...: Ispezione piano...
   Install: Installa
   Install HelixPrint Plugin: Installa plugin HelixPrint

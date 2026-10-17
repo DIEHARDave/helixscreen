@@ -1332,7 +1332,6 @@ translations:
   Feed filament: Feed filament
   Feed filament directly to extruder: Feed filament directly to extruder
   Feed filament from current slot: Feed filament from current slot
-  Feed filament into {}'s extruder, then tap Continue: Feed filament into {}'s extruder, then tap Continue
   Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload: Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload
   Feeder: Feeder
   Feeders: Feeders
@@ -1689,7 +1688,9 @@ translations:
     reduces vibration artifacts (ringing) in your prints.
   'Input: ': 'Input: '
   InputShaper: InputShaper
+  Insert filament: Insert filament
   Insert filament before resuming: Insert filament before resuming
+  Insert filament into {}, then tap Continue: Insert filament into {}, then tap Continue
   'Inspecting bed...': 'Inspecting bed...'
   Install: Install
   Install HelixPrint Plugin: Install HelixPrint Plugin

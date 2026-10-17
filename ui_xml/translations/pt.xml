@@ -1251,7 +1251,6 @@
   <translation tag="Feed filament" pt="Alimentar filamento"/>
   <translation tag="Feed filament directly to extruder" pt="Alimentar filamento diretamente ao extrusor"/>
   <translation tag="Feed filament from current slot" pt="Alimentar filamento a partir do slot atual"/>
-  <translation tag="Feed filament into {}&apos;s extruder, then tap Continue" pt="Insira o filamento no extrusor de {} e toque em Continuar"/>
   <translation tag="Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload" pt="Alimente o filamento manualmente até passar do sensor e toque em Retomar — ou cancele a impressão para usar Carregar/Descarregar"/>
   <translation tag="Feeder" pt="Alimentador"/>
   <translation tag="Feeders" pt="Alimentadores"/>
@@ -1580,7 +1579,9 @@
   <translation tag="Input shaping reduces vibration artifacts (ringing) in your prints." pt="O input shaping reduz artefatos de vibração (ringing) nas suas impressões."/>
   <translation tag="Input: " pt="Entrada: "/>
   <translation tag="InputShaper" pt="InputShaper"/>
+  <translation tag="Insert filament" pt="Inserir filamento"/>
   <translation tag="Insert filament before resuming" pt="Insira filamento antes de retomar"/>
+  <translation tag="Insert filament into {}, then tap Continue" pt="Insira o filamento em {} e toque em Continuar"/>
   <translation tag="Inspecting bed..." pt="Inspecionando a mesa..."/>
   <translation tag="Install" pt="Instalar"/>
   <translation tag="Install HelixPrint Plugin" pt="Instalar Plugin HelixPrint"/>

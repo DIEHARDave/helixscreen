@@ -199,8 +199,9 @@ Tests (`tests/unit/test_filament_action_set.cpp`, `[filament][actions]`):
 
 MedusaHC is no longer a no-feeder changer. `toolchanger_addon::feeds_through_mount()` marks
 it, its heads answer Automatic with `needs_mount_to_feed()` true, and
-`include/mount_feed_sequence.h` runs one LOADING/UNLOADING operation: mount, heat, operator
-prompt (Klipper action prompt), purge (or the printer's `LOAD_FILAMENT T=` macro), restore
-the carriage; unload retracts (or `UNLOAD_FILAMENT T=`), opens the feeder, restores. Refused
-while printing or paused. Feeder buttons send plain `OPEN` / `CLOSE`. Tests:
+`include/mount_feed_sequence.h` runs one LOADING/UNLOADING operation: mount, heat, an
+"Insert filament into Tool N" prompt (Klipper action prompt; the extruder grabs the strand),
+slow extrude and purge (or the printer's `LOAD_FILAMENT T=` macro), restore the carriage;
+unload retracts fully (or `UNLOAD_FILAMENT T=`) and restores, with no `OPEN`. Refused while
+printing or paused. Feeder buttons send plain `OPEN` / `CLOSE`. Tests:
 `tests/unit/test_toolchanger_mount_feed.cpp` (`[mount_feed]`).

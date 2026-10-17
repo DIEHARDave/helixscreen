@@ -1418,7 +1418,6 @@ translations:
   Feed filament: Подать филамент
   Feed filament directly to extruder: Подать филамент напрямую в экструдер
   Feed filament from current slot: 'Подать филамент из текущего слота'
-  Feed filament into {}'s extruder, then tap Continue: 'Вставьте филамент в экструдер {} и нажмите «Продолжить»'
   Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload: Вставьте филамент вручную за датчик и нажмите «Продолжить» — либо отмените печать и воспользуйтесь «Загрузить»/«Выгрузить»
   Feeder: Фидер
   Feeders: Фидеры
@@ -1783,7 +1782,9 @@ translations:
     уменьшает артефакты вибрации (эхо) в ваших отпечатках.
   'Input: ': 'Вход: '
   InputShaper: InputShaper
+  Insert filament: 'Вставить филамент'
   Insert filament before resuming: Вставьте филамент перед возобновлением
+  Insert filament into {}, then tap Continue: 'Вставьте филамент в {} и нажмите «Продолжить»'
   Inspecting bed...: Осмотр стола...
   Install: Установить
   Install HelixPrint Plugin: Установить плагин HelixPrint

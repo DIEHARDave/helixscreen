@@ -1251,7 +1251,6 @@
   <translation tag="Feed filament" ja="フィラメントを送る"/>
   <translation tag="Feed filament directly to extruder" ja="フィラメントをエクストルーダーに直接供給"/>
   <translation tag="Feed filament from current slot" ja="現在のスロットからフィラメントを送る"/>
-  <translation tag="Feed filament into {}&apos;s extruder, then tap Continue" ja="{}の押出機にフィラメントを差し込み、続行をタップしてください"/>
   <translation tag="Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload" ja="フィラメントを手でセンサー先まで挿入して「再開」を押してください。または印刷をキャンセルして「装填」「排出」を使用してください"/>
   <translation tag="Feeder" ja="フィーダー"/>
   <translation tag="Feeders" ja="フィーダー"/>
@@ -1580,7 +1579,9 @@
   <translation tag="Input shaping reduces vibration artifacts (ringing) in your prints." ja="インプットシェーピングは印刷物の振動アーティファクト（リンギング）を軽減します。"/>
   <translation tag="Input: " ja="入力: "/>
   <translation tag="InputShaper" ja="InputShaper"/>
+  <translation tag="Insert filament" ja="フィラメントを差し込む"/>
   <translation tag="Insert filament before resuming" ja="再開前にフィラメントを挿入してください"/>
+  <translation tag="Insert filament into {}, then tap Continue" ja="{}にフィラメントを差し込み、続行をタップしてください"/>
   <translation tag="Inspecting bed..." ja="ベッドを検査中..."/>
   <translation tag="Install" ja="インストール"/>
   <translation tag="Install HelixPrint Plugin" ja="HelixPrint プラグインをインストール"/>

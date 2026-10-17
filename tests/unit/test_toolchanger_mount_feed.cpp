@@ -17,6 +17,7 @@
 #include "macro_param_cache.h"
 #include "mount_feed_sequence.h"
 
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <unordered_set>
@@ -39,7 +40,7 @@ mf::Request load_request() {
     r.mount_gcode = "SELECT_TOOL T=2";
     r.restore_gcode = "SELECT_TOOL T=0";
     r.prompt_title = "Load filament";
-    r.prompt_text = "Feed filament into Tool 3's extruder, then tap Continue";
+    r.prompt_text = "Insert filament into Tool 3, then tap Continue";
     r.continue_label = "Continue";
     r.cancel_label = "Cancel";
     return r;
@@ -107,7 +108,7 @@ TEST_CASE("mount-to-feed: a load mounts, heats, prompts, purges and restores",
     CHECK(stages[0].step == mf::Step::Mount);
     CHECK(stages[0].gcode == "SELECT_TOOL T=2");
     CHECK(stages[1].gcode == "M109 S215");
-    CHECK(stages[2].step == mf::Step::Feed);
+    CHECK(stages[2].step == mf::Step::Insert);
     CHECK(stages[2].awaits_operator);
     CHECK(stages[2].gcode.find("action:prompt_begin Load filament") != std::string::npos);
     CHECK(stages[2].gcode.find("MSG=HELIX_MOUNT_FEED_CONTINUE|primary") != std::string::npos);
@@ -139,10 +140,10 @@ TEST_CASE("mount-to-feed: the printer's own macro replaces the built-in moves",
 
     mf::Request unload = load_request();
     unload.load = false;
-    unload.release_gcode = "OPEN";
+    // No feeder release: the retract alone takes the strand fully out.
     CHECK(gcodes(mf::plan(unload)) ==
           std::vector<std::string>{"SELECT_TOOL T=2", "M109 S215",
-                                   "M83\nG1 E-25 F1800\nG1 E-150 F1200\nM104 S0", "OPEN",
+                                   "M83\nG1 E-25 F1800\nG1 E-150 F1200\nM104 S0",
                                    "SELECT_TOOL T=0"});
     unload.macro = "UNLOAD_FILAMENT";
     CHECK(mf::plan(unload)[2].gcode == "UNLOAD_FILAMENT T=2\nM104 S0");
@@ -191,7 +192,7 @@ TEST_CASE("mount-to-feed: the run waits on the operator and cleans up on Cancel"
     run.stage_done();
     CHECK(run.step_index() == 1);
     run.stage_done();
-    REQUIRE(run.current_step() == mf::Step::Feed);
+    REQUIRE(run.current_step() == mf::Step::Insert);
     run.stage_done(); // the prompt is up
     CHECK(run.awaiting_operator());
     CHECK_FALSE(run.current_gcode().has_value());
@@ -260,7 +261,8 @@ TEST_CASE("MedusaHC loads through the carriage and puts the old tool back",
     CHECK_FALSE(tc.can_cancel_operation());
 }
 
-TEST_CASE("MedusaHC unloads, releases the feeder and parks when nothing was mounted",
+TEST_CASE("MedusaHC unloads by retracting fully, sends no OPEN, and parks when nothing was "
+          "mounted",
           "[toolchanger][mount_feed][medusahc]") {
     AckingChanger tc(4);
     tc.set_feeder(toolchanger_addon::Feeder{true, "MedusaHC", "OPEN", "CLOSE"});
@@ -272,9 +274,8 @@ TEST_CASE("MedusaHC unloads, releases the feeder and parks when nothing was moun
     tc.ack();
     CHECK(tc.sent_.back() == "M83\nG1 E-25 F1800\nG1 E-150 F1200\nM104 S0");
     tc.ack();
-    CHECK(tc.sent_.back() == "OPEN");
-    tc.ack();
     CHECK(tc.sent_.back() == "UNSELECT_TOOL");
+    CHECK(std::find(tc.sent_.begin(), tc.sent_.end(), "OPEN") == tc.sent_.end());
     tc.ack();
     CHECK(tc.get_current_action() == AmsAction::IDLE);
 }
@@ -351,8 +352,9 @@ TEST_CASE("MedusaHC shows the mount-to-feed steps for a load and an unload",
     AckingChanger tc(4);
     const auto load = tc.get_operation_step_model(StepOperationType::LOAD_FRESH);
     REQUIRE(load.steps.size() == 5);
-    CHECK(load.steps[2].label == "Feed filament");
+    CHECK(load.steps[2].label == "Insert filament");
     const auto unload = tc.get_operation_step_model(StepOperationType::UNLOAD);
-    REQUIRE(unload.steps.size() == 5);
-    CHECK(unload.steps[3].label == "Release filament");
+    REQUIRE(unload.steps.size() == 4);
+    CHECK(unload.steps[2].label == "Retract filament");
+    CHECK(unload.steps[3].label == "Restore tool");
 }

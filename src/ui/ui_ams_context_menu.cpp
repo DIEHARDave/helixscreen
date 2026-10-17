@@ -41,7 +41,6 @@ bool AmsContextMenu::subjects_initialized_ = false;
 lv_subject_t AmsContextMenu::slot_is_loaded_subject_;
 lv_subject_t AmsContextMenu::slot_can_load_subject_;
 lv_subject_t AmsContextMenu::slot_can_purge_subject_;
-lv_subject_t AmsContextMenu::slot_mounts_tool_subject_;
 lv_subject_t AmsContextMenu::slot_unload_hint_subject_;
 lv_subject_t AmsContextMenu::slot_unload_hint_visible_subject_;
 char AmsContextMenu::slot_unload_hint_buf_[128];
@@ -72,7 +71,6 @@ void AmsContextMenu::init_subjects() {
     lv_subject_init_int(&slot_is_loaded_subject_, 0);
     lv_subject_init_int(&slot_can_load_subject_, 1);
     lv_subject_init_int(&slot_can_purge_subject_, 1);
-    lv_subject_init_int(&slot_mounts_tool_subject_, 0);
     lv_subject_init_int(&slot_unload_hint_visible_subject_, 0);
     lv_subject_init_string(&slot_unload_hint_subject_, slot_unload_hint_buf_, nullptr,
                            sizeof(slot_unload_hint_buf_), "");
@@ -95,7 +93,6 @@ void AmsContextMenu::init_subjects() {
     lv_xml_register_subject(nullptr, "ams_slot_is_loaded", &slot_is_loaded_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_can_load", &slot_can_load_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_can_purge", &slot_can_purge_subject_);
-    lv_xml_register_subject(nullptr, "ams_slot_mounts_tool", &slot_mounts_tool_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_unload_hint", &slot_unload_hint_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_unload_hint_visible",
                             &slot_unload_hint_visible_subject_);
@@ -271,7 +268,6 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
         // tree is rebuilt from XML each time. A lane menu shown earlier leaves
         // its answers behind, so a bypass menu that did not clear them would
         // render that lane's unload refusal under the bypass spool's own Unload.
-        lv_subject_set_int(&slot_mounts_tool_subject_, 0);
         lv_subject_copy_string(&slot_unload_hint_subject_, "");
         lv_subject_set_int(&slot_unload_hint_visible_subject_, 0);
         lv_subject_copy_string(&slot_load_hint_subject_, "");
@@ -414,9 +410,6 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
         }
     }
 
-    // A column that offers Mount or Park is about the tool, not filament.
-    const bool tool_column = acts.mount.visible || acts.park.visible;
-    lv_subject_set_int(&slot_mounts_tool_subject_, tool_column ? 1 : 0);
     lv_subject_set_int(&slot_mount_subject_, acts.mount.visible ? (acts.mount.enabled ? 2 : 1) : 0);
     lv_subject_set_int(&slot_park_subject_, acts.park.visible ? (acts.park.enabled ? 2 : 1) : 0);
 

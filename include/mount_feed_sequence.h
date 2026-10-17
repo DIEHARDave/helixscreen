@@ -8,9 +8,10 @@
  *
  * A hotend changer with one extruder drive (MedusaHC) can only move filament
  * through the tool on the carriage. A Load there is one operation of named
- * stages: mount the tool, heat it, ask the operator to feed the strand in,
- * draw it in and purge, then put the carriage back as it was. An Unload mounts,
- * heats, retracts, releases the feeder and restores the carriage.
+ * stages: mount the tool, heat it, ask the operator to insert the strand (the
+ * extruder grabs it), draw it in slowly and purge, then put the carriage back
+ * as it was. An Unload mounts, heats, retracts the strand fully out and
+ * restores the carriage.
  *
  * Everything here is plain values and gcode text, so the sequence is testable
  * with no printer. The backend sends each stage, advances on its ack, and
@@ -36,7 +37,7 @@ struct CachedMacroInfo;
 
 namespace helix::mount_feed {
 
-enum class Step : uint8_t { Mount, Heat, Feed, Purge, Retract, Release, Restore };
+enum class Step : uint8_t { Mount, Heat, Insert, Purge, Retract, Restore };
 
 /// The steps a Load or an Unload shows, in order. Mount and Restore are
 /// skipped when the tool is already on the carriage.
@@ -55,7 +56,6 @@ struct Request {
     int temp_c = 0;
     std::string mount_gcode;   ///< Mounts @ref head; empty when it is already mounted
     std::string restore_gcode; ///< Puts the carriage back; empty when nothing changes
-    std::string release_gcode; ///< Unload: opens the feeder so the strand comes free
     /// The printer's own LOAD_FILAMENT / UNLOAD_FILAMENT taking T=, run in
     /// place of the built-in feed or retract moves; empty for the built-in ones.
     std::string macro;

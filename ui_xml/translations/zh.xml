@@ -1251,7 +1251,6 @@
   <translation tag="Feed filament" zh="进料"/>
   <translation tag="Feed filament directly to extruder" zh="将耗材直接送入挤出机"/>
   <translation tag="Feed filament from current slot" zh="从当前槽位送入耗材"/>
-  <translation tag="Feed filament into {}&apos;s extruder, then tap Continue" zh="将耗材送入{}的挤出机，然后点击继续"/>
   <translation tag="Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload" zh="用手将耗材送过传感器后按“恢复”，或取消打印以使用“加载/卸载”"/>
   <translation tag="Feeder" zh="送料器"/>
   <translation tag="Feeders" zh="送料器"/>
@@ -1580,7 +1579,9 @@
   <translation tag="Input shaping reduces vibration artifacts (ringing) in your prints." zh="输入整形可减少打印件中的振动伪影（振纹）。"/>
   <translation tag="Input: " zh="输入: "/>
   <translation tag="InputShaper" zh="InputShaper"/>
+  <translation tag="Insert filament" zh="插入耗材"/>
   <translation tag="Insert filament before resuming" zh="恢复前请插入耗材"/>
+  <translation tag="Insert filament into {}, then tap Continue" zh="将耗材插入{}，然后点击继续"/>
   <translation tag="Inspecting bed..." zh="正在检查热床..."/>
   <translation tag="Install" zh="安装"/>
   <translation tag="Install HelixPrint Plugin" zh="安装 HelixPrint 插件"/>

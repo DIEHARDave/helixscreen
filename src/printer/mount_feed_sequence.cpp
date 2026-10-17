@@ -50,9 +50,9 @@ std::string with_heater_off(std::string gcode) {
 
 std::vector<Step> steps(bool load) {
     if (load) {
-        return {Step::Mount, Step::Heat, Step::Feed, Step::Purge, Step::Restore};
+        return {Step::Mount, Step::Heat, Step::Insert, Step::Purge, Step::Restore};
     }
-    return {Step::Mount, Step::Heat, Step::Retract, Step::Release, Step::Restore};
+    return {Step::Mount, Step::Heat, Step::Retract, Step::Restore};
 }
 
 const char* step_label(Step step) {
@@ -61,14 +61,12 @@ const char* step_label(Step step) {
         return "Mount tool";
     case Step::Heat:
         return "Heat nozzle";
-    case Step::Feed:
-        return "Feed filament";
+    case Step::Insert:
+        return "Insert filament";
     case Step::Purge:
         return "Purge";
     case Step::Retract:
         return "Retract filament";
-    case Step::Release:
-        return "Release filament";
     case Step::Restore:
         return "Restore tool";
     }
@@ -82,12 +80,11 @@ AmsAction step_action(Step step) {
         return AmsAction::SELECTING;
     case Step::Heat:
         return AmsAction::HEATING;
-    case Step::Feed:
+    case Step::Insert:
         return AmsAction::LOADING;
     case Step::Purge:
         return AmsAction::PURGING;
     case Step::Retract:
-    case Step::Release:
         return AmsAction::UNLOADING;
     }
     return AmsAction::LOADING;
@@ -120,19 +117,19 @@ std::vector<Stage> plan(const Request& r) {
     }
     stages.push_back({Step::Heat, heat_gcode(r.temp_c)});
     if (r.load) {
-        stages.push_back({Step::Feed, prompt_gcode(r), /*awaits_operator=*/true});
-        // Draw the strand in slowly, purge the old color, retract off the melt.
+        stages.push_back({Step::Insert, prompt_gcode(r), /*awaits_operator=*/true});
+        // The extruder grabs the inserted strand: draw it in slowly, purge the
+        // old color, retract off the melt.
         const std::string feed = r.macro.empty()
                                      ? "M83\nG1 E5 F60\nG1 E50 F300\nG1 E50 F300\nG1 E-10 F1800"
                                      : fmt::format("{} T={} TEMP={}", r.macro, r.head, r.temp_c);
         stages.push_back({Step::Purge, prompt_end_gcode() + "\n" + with_heater_off(feed)});
     } else {
+        // Off the melt, then the rest of the way until the strand is out of the
+        // extruder.
         const std::string retract = r.macro.empty() ? "M83\nG1 E-25 F1800\nG1 E-150 F1200"
                                                     : fmt::format("{} T={}", r.macro, r.head);
         stages.push_back({Step::Retract, with_heater_off(retract)});
-        if (!r.release_gcode.empty()) {
-            stages.push_back({Step::Release, r.release_gcode});
-        }
     }
     if (!r.restore_gcode.empty()) {
         stages.push_back({Step::Restore, r.restore_gcode});
@@ -231,7 +228,7 @@ void Run::abort() {
     // Heater off and the carriage back where it was. A prompt still open is
     // closed with it.
     std::string cleanup;
-    if (awaiting_operator_ || current_step() == Step::Feed) {
+    if (awaiting_operator_ || current_step() == Step::Insert) {
         cleanup = prompt_end_gcode() + "\n";
     }
     cleanup += "M104 S0";

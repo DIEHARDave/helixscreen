@@ -1438,9 +1438,6 @@ AmsError AmsBackendToolChanger::start_mount_feed(int head, bool load) {
         helix::ui::resolve_load_preheat_material(head, &slot, nullptr)
             .value_or(helix::ui::PreheatTarget{app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP, ""})
             .temp_c;
-    if (!load) {
-        req.release_gcode = feeder_.open_gcode;
-    }
     // The printer's own macro, when it takes the tool, does the feed or the
     // retract in place of the built-in moves.
     const char* macro_name = load ? "LOAD_FILAMENT" : "UNLOAD_FILAMENT";
@@ -1449,8 +1446,8 @@ AmsError AmsBackendToolChanger::start_mount_feed(int head, bool load) {
     }
     const std::string tool = helix::ui::lane_label(lane_noun(), head);
     req.prompt_title = lv_tr("Load filament");
-    req.prompt_text = fmt::format(
-        fmt::runtime(lv_tr("Feed filament into {}'s extruder, then tap Continue")), tool);
+    req.prompt_text =
+        fmt::format(fmt::runtime(lv_tr("Insert filament into {}, then tap Continue")), tool);
     req.continue_label = lv_tr("Continue");
     req.cancel_label = lv_tr("Cancel");
 

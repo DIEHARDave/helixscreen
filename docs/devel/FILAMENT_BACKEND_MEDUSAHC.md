@@ -145,9 +145,11 @@ operation whose step bar is the stage list:
 |------|-------|--------|-------|
 | Mount tool | `SELECT_TOOL T=<n>` (or the machine's own `T<n>`); skipped when already mounted | Mount tool | same |
 | Heat nozzle | `M109 S<material temp>` (the target slot's material, else 220) | Heat nozzle | same |
-| Feed filament | an action prompt: "Feed filament into Tool N's extruder, then tap Continue", with Continue and Cancel | Retract filament | `M83`, `G1 E-25 F1800`, `G1 E-150 F1200`, `M104 S0` |
-| Purge | `M83`, `G1 E5 F60`, `G1 E50 F300` twice, `G1 E-10 F1800`, `M104 S0` | Release filament | the feeder's open command (`OPEN`) |
-| Restore tool | remount the tool that was on the carriage, or park if none was | Restore tool | same |
+| Insert filament | an action prompt: "Insert filament into Tool N, then tap Continue", with Continue and Cancel. The extruder grabs the strand itself: nothing is opened and nothing is pushed by hand past it | Retract filament | `M83`, `G1 E-25 F1800`, `G1 E-150 F1200` (until the strand is fully out), `M104 S0` |
+| Purge | `M83`, `G1 E5 F60` (slow draw), `G1 E50 F300` twice, `G1 E-10 F1800`, `M104 S0` | Restore tool | remount the tool that was on the carriage, or park if none was |
+| Restore tool | same as Unload's | | |
+
+Neither direction sends `OPEN`: the feeder buttons stay a separate control.
 
 The prompt is Klipper's own action prompt, raised with `RESPOND TYPE=command` lines, so it
 shows on this screen and on Mainsail/Fluidd alike, and it needs `[respond]`. Its buttons
