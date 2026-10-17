@@ -169,8 +169,8 @@ from real RFID spools remain rig-pending; code-verified is not field-verified.
 | `SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=<head> VENDOR=… FILAMENT_TYPE=… FILAMENT_SUBTYPE=…` + `FILAMENT_COLOR_RGBA=…` | The head's `print_task_config` record, which RESUME requires (below) |
 
 The firmware refuses RESUME with `e<N> not edit filament` while a head the task uses has
-no `print_task_config.filament_type`, and only an RFID spool or `SET_PRINT_FILAMENT_CONFIG`
-fills it.
+no `print_task_config.filament_type`. An RFID spool, `SET_PRINT_FILAMENT_CONFIG`, and on
+the Extended Firmware an accepted `filament_detect/set` POST fill it.
 
 Every material edit POSTs `filament_detect/set` first. On the Extended Firmware an accepted
 POST fills the record itself: measured on a rig, head 1's
@@ -195,13 +195,17 @@ firmware requires there; with the reader off a real Snapmaker spool also reads `
 record is overwritten too. A head that is official with no card reading is left alone (`src/printer/ams_backend_snapmaker.cpp#record_write_needs_force_locked`).
 
 A record filled once can still be blank by the time a print pauses (a later firmware
-filament operation can clear it), so `prepare_for_resume` writes the same record, under the
-same card rule, for any used head whose record is blank while the slot knows its material.
-It runs after the Terminal classification and before the runout refeed, and while paused,
-where the command is accepted. The used heads are `extruders_used`, or the active head when
-that reads all false. A head whose material is unknown here too gets nothing; RESUME's
-refusal reaches `classify_error`, which names the head and says it needs a material
-(`src/printer/ams_backend_snapmaker.cpp#resume_record_repair_locked`).
+filament operation can clear it). `prepare_for_resume` classifies the pause first on every
+path, so a Terminal pause writes nothing. A pause that is not a runout then writes the same
+record, under the same card rule, for every used head whose record is blank while the slot
+knows its material and the record has been seen; each head goes out as its own request, in
+order, and a refused one does not stop the rest. The used heads are the union of
+`extruders_used` (which can read all false mid-print), the heads the task's snapshotted
+extruder map routes to, and the head paused on. A runout pause writes nothing: the user may
+have loaded a different spool, so the material remembered for the old one would be recorded
+against it, and the refeed runs alone. A head left blank gets RESUME's refusal, which
+`classify_error` explains by naming the head and saying it needs a material
+(`src/printer/ams_backend_snapmaker.cpp#resume_record_repairs_locked`).
 
 Why `AUTO_FEEDING ... LOAD=1` and not the obvious alternatives — the source records the
 trail (`src/printer/ams_backend_snapmaker.cpp#do_load_filament`): bare `T{n}` is a no-op when the target tool
@@ -320,8 +324,9 @@ conservative prefix/suffix fallback for unknown future states
   `!! e<N> not edit filament`. `classify_error()` turns it, while paused or printing, into a
   "Filament not set" modal naming the 1-based slot, with a lone OK: no single gcode fixes it,
   and offering Resume would loop. It reaches the user only for a head whose material
-  HelixScreen does not know either: `prepare_for_resume` first writes the record of every used
-  head the slot can answer for (see "Commands the Backend Emits"). The event sets
+  HelixScreen does not know either, or after a runout: on any other pause
+  `prepare_for_resume` first writes the record of every used head the slot can answer for
+  (see "Commands the Backend Emits"). The event sets
   `command_refusal`, so the resume caller's raw
   "Failed to resume:" toast stands down for it and runs only if the explanation never
   arrives (`RPC_ERROR_OWNERSHIP.md` § "A refusal the classifier explains";
