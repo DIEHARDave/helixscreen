@@ -9,8 +9,9 @@
      values are the DevicePage enums (include/led/led_device_page.h). -->
 <component>
   <styles>
-    <!-- Power: filled with the light's color when on, an outline otherwise. -->
-    <style name="power_on" bg_opa="255" border_width="0"/>
+    <!-- Power: filled with the light's color when on (led_power_fill), an
+         outline otherwise. -->
+    <style name="power_base" bg_opa="0" border_width="0"/>
     <style name="power_off" bg_opa="0" border_width="#led_ring_width" border_color="#text_muted"/>
     <!-- One PowerOnly lamp (a non-PWM pin) spans the page, so its button centers. -->
     <style name="lamp_wide" flex_grow="1" flex_main_place="center"/>
@@ -75,10 +76,13 @@
                   width="#led_power_size" height="#led_power_size" style_radius="9999" clickable="true"
                   scrollable="false" style_pad_all="0">
             <bind_flag_if_gt subject="led_page_lamp" flag="hidden" ref_value="1"/>
-            <bind_style_if_eq name="power_on" subject="led_page_on" ref_value="1"/>
+            <style name="power_base"/>
             <bind_style_if_not_eq name="power_off" subject="led_page_on" ref_value="1"/>
-            <bind_style_prop prop="bg_color" subject="led_page_color"/>
-            <bind_style_if name="styles.contrast_edge" cond="settings_dark_mode eq 0 and led_page_on eq 1"/>
+            <!-- Lit: filled with the light's colour, edged where it meets the surface -->
+            <swatch_paint name="led_power_fill"
+                          width="100%" height="100%" bind_color="led_page_color" clickable="false" event_bubble="true">
+              <bind_flag_if_not_eq subject="led_page_on" flag="hidden" ref_value="1"/>
+            </swatch_paint>
             <icon name="led_power_icon_on" src="power" size="md" align="center" clickable="false" event_bubble="true">
               <bind_style_prop prop="text_color" subject="led_page_fill_text"/>
               <bind_flag_if_not_eq subject="led_page_on" flag="hidden" ref_value="1"/>
