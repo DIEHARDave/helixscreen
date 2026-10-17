@@ -533,7 +533,7 @@ ad5x_check_chroot_context() {
 # Detection cascade (most reliable first):
 #   1. systemd: systemctl show klipper.service
 #   2. Process table: ps for running klipper
-#   3. printer_data scan: /home/*/printer_data
+#   3. printer_data scan: ${HELIX_HOME_ROOT:-/home}/*/printer_data
 #   4. Well-known users: biqu, pi, mks
 #   5. Fallback: root
 # Sets: KLIPPER_USER, KLIPPER_HOME
@@ -564,14 +564,16 @@ detect_klipper_user() {
 
     # 3. printer_data directory scan
     local pd_dir
-    for pd_dir in /home/*/printer_data; do
+    local home_root="${HELIX_HOME_ROOT:-/home}"
+    for pd_dir in "$home_root"/*/printer_data; do
         [ -d "$pd_dir" ] || continue
         local pd_user
-        pd_user=$(echo "$pd_dir" | sed 's|^/home/||;s|/printer_data$||')
+        pd_user=${pd_dir%/printer_data}
+        pd_user=${pd_user##*/}
         if [ -n "$pd_user" ] && id "$pd_user" >/dev/null 2>&1; then
             KLIPPER_USER="$pd_user"
             KLIPPER_GROUP=$(_resolve_primary_group "$pd_user")
-            KLIPPER_HOME="/home/$pd_user"
+            KLIPPER_HOME="$home_root/$pd_user"
             log_info "Klipper user (printer_data): $KLIPPER_USER (group: $KLIPPER_GROUP)"
             return 0
         fi
