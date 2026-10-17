@@ -36,8 +36,7 @@
         <!-- Collapse/expand the filter dropdowns -->
         <ui_button name="filter_toggle"
                    width="#input_height" height="100%" variant="secondary" style_pad_all="0" clickable="true"
-                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
-                   style_flex_track_place="center">
+                   flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center">
           <event_cb trigger="clicked" callback="history_filters_toggle"/>
           <!-- Icon as a child (not the icon= attr) so ui_button's contrast pass
                leaves its colour alone; the accent is driven reactively by the
