@@ -5,6 +5,7 @@
 
 #include "ui_callback_helpers.h"
 #include "ui_event_safety.h"
+#include "ui_exclude_object_badges.h"
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 #include "ui_panel_print_status.h"
@@ -342,6 +343,18 @@ bool ExcludeMapWidget::fits_at(int width_px, int height_px) const {
            decide(width_px, height_px, ExcludeMapState::NoObjects, 1).fits;
 }
 
+std::string ExcludeMapWidget::current_display_name(const std::string& current) const {
+    if (current.empty()) {
+        return {};
+    }
+    lv_obj_t* label =
+        widget_obj_ ? lv_obj_find_by_name(widget_obj_, "exclude_map_now_name") : nullptr;
+    const lv_font_t* font = label ? lv_obj_get_style_text_font(label, LV_PART_MAIN)
+                                  : theme_manager_get_font("font_small");
+    return helix::ui::object_display_name(
+        printer_state_.excluded_objects_state().get_defined_objects(), current, font);
+}
+
 void ExcludeMapWidget::publish(const Live& live) {
     helix::ui::set_int_if_changed(&s_placeholder_subject, verdict_.placeholder ? 1 : 0);
     helix::ui::set_int_if_changed(&s_show_map_subject, verdict_.show_map ? 1 : 0);
@@ -379,7 +392,8 @@ void ExcludeMapWidget::publish(const Live& live) {
                                           std::string(printing_text(live.counts)).c_str());
         helix::ui::copy_string_if_changed(&s_skipped_text_subject,
                                           std::string(skipped_text(live.counts.skipped)).c_str());
-        helix::ui::copy_string_if_changed(&s_current_name_subject, live.current.c_str());
+        helix::ui::copy_string_if_changed(&s_current_name_subject,
+                                          current_display_name(live.current).c_str());
         break;
     }
 }

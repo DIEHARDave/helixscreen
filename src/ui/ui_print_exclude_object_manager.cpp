@@ -4,6 +4,7 @@
 #include "ui_print_exclude_object_manager.h"
 
 #include "ui_error_reporting.h"
+#include "ui_exclude_object_badges.h"
 #include "ui_gcode_viewer.h"
 #include "ui_toast_manager.h"
 #include "ui_update_queue.h"
@@ -188,8 +189,10 @@ void PrintExcludeObjectManager::handle_object_long_press(const char* object_name
         handle_exclude_cancelled();
     });
 
+    const std::string shown = object_message_name(
+        printer_state_.excluded_objects_state().get_defined_objects(), object_name);
     std::string message = fmt::format(
-        lv_tr("Stop printing \"{}\"?\n\nThis cannot be undone after 5 seconds."), object_name);
+        lv_tr("Stop printing \"{}\"?\n\nThis cannot be undone after 5 seconds."), shown);
     const char* attrs[] = {"title", lv_tr("Exclude Object?"), "message", message.c_str(), nullptr};
 
     if (!exclude_modal_.show(lv_screen_active(), attrs)) {
@@ -231,7 +234,10 @@ void PrintExcludeObjectManager::handle_exclude_confirmed() {
     lv_timer_set_repeat_count(exclude_undo_timer_, 1);
 
     // Show toast with "Undo" action button
-    std::string toast_msg = "Excluding \"" + pending_exclude_object_ + "\"...";
+    const std::string toast_msg = fmt::format(
+        fmt::runtime(lv_tr("Excluding \"{}\"...")),
+        object_message_name(printer_state_.excluded_objects_state().get_defined_objects(),
+                            pending_exclude_object_));
     ToastManager::instance().show_with_action(
         ToastSeverity::WARNING, toast_msg.c_str(), "Undo",
         [](void* user_data) {
@@ -450,7 +456,11 @@ void PrintExcludeObjectManager::on_exclude_rpc_error(const std::string& object_n
     auto defer_tok = lifetime_.token();
     defer_tok.defer("PrintExcludeObjectManager::exclude_error", [this, object_name, err]() {
         awaiting_confirmation_.erase(object_name);
-        NOTIFY_ERROR(lv_tr("Failed to exclude '{}': {}"), object_name, err.localized_message());
+        NOTIFY_ERROR(
+            lv_tr("Failed to exclude '{}': {}"),
+            object_message_name(printer_state_.excluded_objects_state().get_defined_objects(),
+                                object_name),
+            err.localized_message());
 
         if (gcode_viewer_) {
             ui_gcode_viewer_set_excluded_objects(gcode_viewer_, excluded_objects_);

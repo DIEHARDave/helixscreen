@@ -508,14 +508,28 @@ void ui_text_apply_transform(lv_obj_t* label, const char* transform) {
 /// "…" when @p font has the glyph, else the three-dot spelling LVGL's own DOTS mode uses.
 static const char* ellipsis_for(const lv_font_t* font) {
     static constexpr const char* ELLIPSIS = "\xE2\x80\xA6"; // U+2026
-    lv_font_glyph_dsc_t glyph;
-    if (lv_font_get_glyph_dsc(font, &glyph, 0x2026, 0) && !glyph.is_placeholder) {
-        return ELLIPSIS;
-    }
-    return "...";
+    return helix::ui::font_renders_text(font, ELLIPSIS) ? ELLIPSIS : "...";
 }
 
 namespace helix::ui {
+
+bool font_renders_text(const lv_font_t* font, const char* text) {
+    if (!font || !text) {
+        return true;
+    }
+    uint32_t i = 0;
+    while (text[i] != '\0') {
+        const uint32_t letter = lv_text_encoded_next(text, &i);
+        if (letter < 0x20) {
+            continue;
+        }
+        lv_font_glyph_dsc_t glyph;
+        if (!lv_font_get_glyph_dsc(font, &glyph, letter, 0) || glyph.is_placeholder) {
+            return false;
+        }
+    }
+    return true;
+}
 
 std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_t* font,
                              int32_t letter_space) {

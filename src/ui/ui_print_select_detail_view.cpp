@@ -5,6 +5,7 @@
 
 #include "ui_callback_helpers.h"
 #include "ui_error_reporting.h"
+#include "ui_exclude_object_badges.h"
 #include "ui_filename_utils.h"
 #include "ui_gcode_viewer.h"
 #include "ui_icon.h"
@@ -2018,9 +2019,10 @@ void PrintSelectDetailView::toggle_exclude_pick(const std::string& name) {
     auto picks = exclude_objects_.get_excluded_objects();
     if (picks.erase(defined) == 0) {
         if (!moonraker_internal::is_safe_object_name(defined)) {
-            NOTIFY_WARNING(lv_tr("{} cannot be skipped: its name has characters the printer "
-                                 "cannot be sent"),
-                           defined);
+            NOTIFY_WARNING(
+                lv_tr("{} cannot be skipped: its name has characters the printer "
+                      "cannot be sent"),
+                helix::ui::object_message_name(exclude_objects_.get_defined_objects(), defined));
             return;
         }
         picks.insert(defined);

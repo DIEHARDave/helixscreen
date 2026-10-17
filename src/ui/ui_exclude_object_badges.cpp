@@ -3,11 +3,18 @@
 
 #include "ui_exclude_object_badges.h"
 
+#include "ui_text.h"
+
 #include "display_numbering.h"
 #include "gcode_parser.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "printer_excluded_objects_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "theme_manager.h"
+
+#include <spdlog/fmt/fmt.h>
+
+#include <algorithm>
 
 namespace helix::ui {
 
@@ -61,6 +68,27 @@ std::vector<ObjectBadge> compute_object_badges(const PrinterExcludedObjectsState
         badges.push_back(std::move(b));
     }
     return badges;
+}
+
+std::string object_display_name(const std::string& name, int defined_index, const lv_font_t* font) {
+    if (!name.empty() && font_renders_text(font, name.c_str())) {
+        return name;
+    }
+    if (defined_index < 0) {
+        return lv_tr("Object");
+    }
+    return fmt::format(fmt::runtime(lv_tr("Object {}")), lane_number_text(defined_index));
+}
+
+std::string object_display_name(const std::vector<std::string>& defined, const std::string& name,
+                                const lv_font_t* font) {
+    const auto it = std::find(defined.begin(), defined.end(), name);
+    const int index = it == defined.end() ? -1 : static_cast<int>(it - defined.begin());
+    return object_display_name(name, index, font);
+}
+
+std::string object_message_name(const std::vector<std::string>& defined, const std::string& name) {
+    return object_display_name(defined, name, theme_manager_get_font("font_body"));
 }
 
 lv_color_t object_badge_color(int defined_index) {

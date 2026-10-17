@@ -3,6 +3,7 @@
 #include "pre_start_exclude.h"
 
 #include "ui_error_reporting.h"
+#include "ui_exclude_object_badges.h"
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
@@ -107,7 +108,13 @@ void report_unsent(const std::vector<std::string>& names) {
         spdlog::info("[PreStartExclude] Print ended before {} could be skipped", join_names(names));
         return;
     }
-    NOTIFY_ERROR(lv_tr("Could not skip {}"), join_names(names));
+    const auto& defined = get_printer_state().excluded_objects_state().get_defined_objects();
+    std::vector<std::string> shown;
+    shown.reserve(names.size());
+    for (const auto& n : names) {
+        shown.push_back(object_message_name(defined, n));
+    }
+    NOTIFY_ERROR(lv_tr("Could not skip {}"), join_names(shown));
 }
 
 } // namespace
