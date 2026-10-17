@@ -374,7 +374,9 @@ filament panel's extruder dropdown (`src/ui/ui_panel_filament.cpp#handle_extrude
   `ToolState::request_tool_change()`. The dialog's primary button decides again from live
   inputs, because a print can start or the filament system can pause while it is open: a
   second verdict that does not dispatch reports itself as the tap would have (the refusal
-  toast, or nothing for Busy and AlreadyActive) and runs `on_declined`. `ToolChangeHooks` reports back: `on_success`,
+  toast, or nothing for Busy and AlreadyActive) and runs `on_declined`. A print paused since
+  the dialog opened turns `ConfirmSetting` into `ConfirmPaused`: the change is not sent but
+  offered again once the dialog has closed, so the user answers the paused warning. `ToolChangeHooks` reports back: `on_success`,
   `on_failed` (after the shared "Tool change failed" toast, possibly off the main thread),
   and `on_declined` for every path that requested nothing, a dialog dismissal included.
   The filament panel uses `on_declined` to put its dropdown back on the mounted tool.

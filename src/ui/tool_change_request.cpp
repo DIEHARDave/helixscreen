@@ -5,6 +5,7 @@
 
 #include "ui_error_reporting.h"
 #include "ui_modal.h"
+#include "ui_update_queue.h"
 
 #include "ams_state.h"
 #include "app_globals.h"
@@ -137,13 +138,16 @@ std::string full_tool_label(int tool_index) {
 /// What an open confirmation owes its caller: the change on the primary
 /// button, on_declined on every other way the dialog closes. The primary
 /// button decides again from live state, because a print can start or the
-/// filament system can stop while the dialog is open. A close that
+/// filament system can stop while the dialog is open. A print paused since
+/// the dialog opened asks again with the paused warning instead of changing. A close that
 /// fires no dialog callback (a programmatic hide) still drops the dialog's
 /// callbacks, and with them the last reference to this.
 class PendingChange {
   public:
-    PendingChange(const PrinterState& printer_state, int tool_index, ToolChangeHooks hooks)
-        : printer_state_(printer_state), tool_index_(tool_index), hooks_(std::move(hooks)) {}
+    PendingChange(const PrinterState& printer_state, int tool_index, bool warned_paused,
+                  ToolChangeHooks hooks)
+        : printer_state_(printer_state), tool_index_(tool_index), warned_paused_(warned_paused),
+          hooks_(std::move(hooks)) {}
     PendingChange(const PendingChange&) = delete;
     PendingChange& operator=(const PendingChange&) = delete;
 
@@ -166,6 +170,10 @@ class PendingChange {
             return;
         }
         settled_ = true;
+        if (decision.verdict == ToolChangeVerdict::ConfirmPaused && !warned_paused_) {
+            reoffer();
+            return;
+        }
         dispatch(tool_index_, hooks_);
     }
 
@@ -180,8 +188,25 @@ class PendingChange {
     }
 
   private:
+    /// Offer the change afresh once this dialog has closed: confirm() runs
+    /// before the dialog hides, so a dialog raised here would stack under it.
+    void reoffer() {
+        spdlog::info("[ToolChange] Print paused while confirming T{}: asking again", tool_index_);
+        std::optional<LifetimeToken> token = hooks_.owner_token;
+        auto again = [&printer_state = printer_state_, tool_index = tool_index_,
+                      hooks = std::move(hooks_)]() mutable {
+            offer_tool_change(printer_state, tool_index, std::move(hooks));
+        };
+        if (token) {
+            token->defer("ToolChange::reoffer", std::move(again));
+        } else {
+            queue_update("ToolChange::reoffer", std::move(again));
+        }
+    }
+
     const PrinterState& printer_state_;
     int tool_index_;
+    bool warned_paused_;
     ToolChangeHooks hooks_;
     bool settled_ = false;
 };
@@ -215,7 +240,8 @@ ToolChangeVerdict offer_tool_change(const PrinterState& printer_state, int tool_
                    : fmt::format(fmt::runtime(lv_tr("Switch to {}?")), full_tool_label(tool_index));
         ConfirmOptions options;
         options.owner_token = hooks.owner_token;
-        auto pending = std::make_shared<PendingChange>(printer_state, tool_index, std::move(hooks));
+        auto pending =
+            std::make_shared<PendingChange>(printer_state, tool_index, paused, std::move(hooks));
         options.on_cancel = [pending] { pending->decline(); };
         options.on_dismiss = [pending] { pending->decline(); };
         modal_confirm(

@@ -366,3 +366,34 @@ TEST_CASE_METHOD(OfferFixture,
     CHECK(declines == 1);
     CHECK(rig.warnings.empty());
 }
+
+TEST_CASE_METHOD(OfferFixture,
+                 "offer_tool_change: a print paused while the dialog is open asks again with the "
+                 "paused warning",
+                 "[tool_change][offer][recheck][paused]") {
+    set_confirm(true);
+    REQUIRE(offer(1) == ToolChangeVerdict::ConfirmSetting);
+    test::set_wire_state(state(), PrintJobState::PAUSED);
+    test::answer_top_modal("btn_primary");
+    process_lvgl(500);
+    ui::UpdateQueue::instance().drain();
+    CHECK(rig.backend->change_tool_calls == 0);
+    CHECK(declines == 0);
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_t* message = lv_obj_find_by_name(dialog, "dialog_message");
+    REQUIRE(message != nullptr);
+    CHECK(std::string(lv_label_get_text(message)).find("The print is paused") != std::string::npos);
+
+    SECTION("confirming the paused warning changes tool") {
+        test::answer_top_modal("btn_primary");
+        CHECK(rig.backend->change_tool_calls == 1);
+        CHECK(successes == 1);
+        CHECK(declines == 0);
+    }
+    SECTION("cancelling it reports the decline once") {
+        test::answer_top_modal("btn_secondary");
+        CHECK(rig.backend->change_tool_calls == 0);
+        CHECK(declines == 1);
+    }
+}

@@ -104,8 +104,10 @@ struct ToolChangeHooks {
  * Refusals raise a warning toast; Busy and AlreadyActive raise nothing. A
  * confirmation verdict shows a modal_confirm whose primary button decides again
  * from live state and changes tool only if that verdict still dispatches,
- * otherwise reporting it as a tap would; however else the dialog closes, or
- * when the second verdict withholds the change, on_declined runs. The change goes
+ * otherwise reporting it as a tap would; a print paused since the dialog
+ * opened closes it and offers the change again, so the paused warning is the
+ * one answered. However else the dialog closes, or when the second verdict
+ * withholds the change, on_declined runs. The change goes
  * through ToolState::request_tool_change().
  *
  * @return the verdict, so a caller can treat AlreadyActive its own way
