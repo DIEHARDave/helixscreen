@@ -79,9 +79,9 @@ namespace helix::ui {
  * character of @p text
  *
  * A character no font in the chain carries draws as a placeholder box, so text
- * that fails this check shows up as tofu. Control characters (below U+0020)
- * are layout, not glyphs, and always pass. Empty text passes; a null font
- * cannot be asked, so it passes too.
+ * that fails this check shows up as tofu, and so does malformed UTF-8, which
+ * fails it too. Control characters (below U+0020) are layout, not glyphs, and
+ * always pass. Empty text passes; a null font cannot be asked, so it passes too.
  *
  * Pure over its arguments; it neither reads nor writes a widget.
  *

@@ -10,11 +10,10 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "printer_excluded_objects_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
+#include "text_io.h"
 #include "theme_manager.h"
 
 #include <spdlog/fmt/fmt.h>
-
-#include <algorithm>
 
 namespace helix::ui {
 
@@ -80,11 +79,19 @@ std::string object_display_name(const std::string& name, int defined_index, cons
     return fmt::format(fmt::runtime(lv_tr("Object {}")), lane_number_text(defined_index));
 }
 
+int defined_object_index(const std::vector<std::string>& defined, const std::string& name) {
+    const std::string wanted = helix::text_io::to_upper(name);
+    for (size_t i = 0; i < defined.size(); ++i) {
+        if (helix::text_io::to_upper(defined[i]) == wanted) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
 std::string object_display_name(const std::vector<std::string>& defined, const std::string& name,
                                 const lv_font_t* font) {
-    const auto it = std::find(defined.begin(), defined.end(), name);
-    const int index = it == defined.end() ? -1 : static_cast<int>(it - defined.begin());
-    return object_display_name(name, index, font);
+    return object_display_name(name, defined_object_index(defined, name), font);
 }
 
 std::string object_message_name(const std::vector<std::string>& defined, const std::string& name) {

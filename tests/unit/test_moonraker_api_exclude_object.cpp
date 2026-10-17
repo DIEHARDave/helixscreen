@@ -457,6 +457,17 @@ TEST_CASE_METHOD(ExcludeObjectTestFixture, "exclude_object rejects malformed UTF
     SECTION("Unicode line separator") {
         expect_rejected("Part\xE2\x80\xA8G28"); // U+2028
     }
+    SECTION("Unicode whitespace Klipper strips or splits on") {
+        expect_rejected("Part\xC2\xA0");             // U+00A0 NO-BREAK SPACE
+        expect_rejected("Part\xE1\x9A\x80x");        // U+1680
+        expect_rejected("Part\xE1\xA0\x8Ex");        // U+180E
+        expect_rejected("Part\xE2\x80\x80x");        // U+2000
+        expect_rejected("Part\xE2\x80\x8Ax");        // U+200A
+        expect_rejected("Part\xE2\x80\xA9x");        // U+2029
+        expect_rejected("Part\xE2\x80\xAFx");        // U+202F
+        expect_rejected("Part\xE2\x81\x9Fx");        // U+205F
+        expect_rejected("\xE6\xB5\x8B\xE3\x80\x80"); // 测 then U+3000 IDEOGRAPHIC SPACE
+    }
 }
 
 // ============================================================================

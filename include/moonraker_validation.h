@@ -42,6 +42,19 @@ void report_validation_error(const std::function<void(const MoonrakerError&)>& o
                              const char* method, const std::string& detail,
                              const std::string& user_message);
 
+/**
+ * @brief Whether @p cp is a non-ASCII codepoint Python's str.isspace() treats as whitespace
+ *
+ * Klipper strips and splits G-code lines with Python's Unicode-aware whitespace rules, so
+ * any of these inside a parameter value truncates it the way an ASCII space does. U+180E
+ * (no longer whitespace in Unicode, still in older tables) is included as well.
+ */
+inline bool is_unicode_space(uint32_t cp) {
+    return cp == 0x85 || cp == 0xA0 || cp == 0x1680 || cp == 0x180E ||
+           (cp >= 0x2000 && cp <= 0x200A) || cp == 0x2028 || cp == 0x2029 || cp == 0x202F ||
+           cp == 0x205F || cp == 0x3000;
+}
+
 } // namespace helix
 
 namespace moonraker_internal {
@@ -96,11 +109,11 @@ inline bool is_safe_file_root(const std::string& root) {
  * breaks EXCLUDE_OBJECT for most real-world prints (prestonbrown/helixscreen#768).
  *
  * Allows: alphanumeric, `_ - . : ( ) [ ]`, and well-formed UTF-8 for any codepoint from
- * U+00A0 up other than U+2028/U+2029. Rejects everything else — which keeps G-code
- * injection vectors closed: `;` (comment), `\n\r` (line injection), control chars, quotes,
- * backslash, and — critically — whitespace. Klipper's G-code parser tokenizes parameters
- * on whitespace, so a NAME containing a space would either truncate (wrong object excluded)
- * or leak trailing tokens into the parameter list. Slicers URL-encode/underscore-replace
+ * U+00A0 up that is not Unicode whitespace (helix::is_unicode_space()). Rejects everything else —
+ * which keeps G-code injection vectors closed: `;` (comment), `\n\r` (line injection), control
+ * chars, quotes, backslash, and — critically — whitespace. Klipper's G-code parser tokenizes
+ * parameters on whitespace, so a NAME containing a space would either truncate (wrong object
+ * excluded) or leak trailing tokens into the parameter list. Slicers URL-encode/underscore-replace
  * spaces in object names, so disallowing space breaks nothing real.
  *
  * Non-ASCII is allowed because slicers keep the model's own name, so a Chinese or Japanese
@@ -166,7 +179,7 @@ inline bool is_safe_object_name(const std::string& str) {
         const bool overlong = cp < MIN_FOR_LENGTH[length];
         const bool surrogate = cp >= 0xD800 && cp <= 0xDFFF;
         // U+0080..U+009F are C1 controls; U+00A0 opens the printable range.
-        if (overlong || surrogate || cp > 0x10FFFF || cp < 0xA0 || cp == 0x2028 || cp == 0x2029) {
+        if (overlong || surrogate || cp > 0x10FFFF || cp < 0xA0 || helix::is_unicode_space(cp)) {
             return false;
         }
         i += length;

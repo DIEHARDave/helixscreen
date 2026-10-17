@@ -45,6 +45,12 @@ TEST_CASE("font_renders_text rejects text with any glyph the font lacks",
     CHECK_FALSE(font_renders_text(kFont, kMixed));
 }
 
+TEST_CASE("font_renders_text rejects malformed UTF-8", "[object_display_name][ui_text]") {
+    CHECK_FALSE(font_renders_text(kFont, "Pi\xE8"
+                                         "ce"));       // lead byte with no continuation
+    CHECK_FALSE(font_renders_text(kFont, "Part\x80")); // lone continuation byte
+}
+
 TEST_CASE("font_renders_text follows the font's fallback chain", "[object_display_name][ui_text]") {
     // A copy whose own glyph table has nothing, falling back to the real font.
     lv_font_t empty = noto_sans_14;
@@ -80,4 +86,21 @@ TEST_CASE_METHOD(LVGLTestFixture, "object_display_name numbers by position in th
     CHECK(object_display_name(defined, kCjk, kFont) == "Object 2");
     CHECK(object_display_name(defined, kMixed, kFont) == "Object 3");
     CHECK(object_display_name(defined, "\xE6\x9C\xAA\xE7\x9F\xA5", kFont) == "Object"); // 未知
+}
+
+TEST_CASE("defined_object_index matches names case-insensitively, as Klipper stores them",
+          "[object_display_name][pre_start_exclude]") {
+    const std::vector<std::string> defined = {"CONE_ID_0", "CUBE_\xE7\xAB\x8B\xE6\x96\xB9"};
+    CHECK(defined_object_index(defined, "CONE_ID_0") == 0);
+    CHECK(defined_object_index(defined, "Cone_id_0") == 0);
+    CHECK(defined_object_index(defined, kMixed) == 1);
+    CHECK(defined_object_index(defined, "Cylinder") == -1);
+    CHECK(defined_object_index({}, "Cone_id_0") == -1);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "object_display_name numbers a viewer-cased name Klipper upper-cased",
+                 "[object_display_name]") {
+    const std::vector<std::string> defined = {"CONE_ID_0", "CUBE_\xE7\xAB\x8B\xE6\x96\xB9"};
+    CHECK(object_display_name(defined, kMixed, kFont) == "Object 2");
 }

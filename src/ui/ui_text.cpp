@@ -520,6 +520,10 @@ bool font_renders_text(const lv_font_t* font, const char* text) {
     uint32_t i = 0;
     while (text[i] != '\0') {
         const uint32_t letter = lv_text_encoded_next(text, &i);
+        // The loop stops at the terminator, so a 0 here is a byte the decoder rejected.
+        if (letter == 0) {
+            return false;
+        }
         if (letter < 0x20) {
             continue;
         }

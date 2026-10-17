@@ -32,13 +32,8 @@ bool pre_start_exclude_available(bool printer_has_exclude_object, bool is_3mf,
 
 std::string canonical_object_name(const std::vector<std::string>& defined,
                                   const std::string& name) {
-    const std::string wanted = helix::text_io::to_upper(name);
-    for (const auto& d : defined) {
-        if (helix::text_io::to_upper(d) == wanted) {
-            return d;
-        }
-    }
-    return {};
+    const int index = defined_object_index(defined, name);
+    return index < 0 ? std::string{} : defined[static_cast<size_t>(index)];
 }
 
 bool every_object_picked(const std::vector<std::string>& defined,

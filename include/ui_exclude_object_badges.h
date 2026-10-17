@@ -81,7 +81,15 @@ std::vector<ObjectBadge> compute_object_badges(const PrinterExcludedObjectsState
  */
 std::string object_display_name(const std::string& name, int defined_index, const lv_font_t* font);
 
-/// object_display_name() with the index looked up in @p defined.
+/**
+ * @brief Position of @p name in @p defined, or -1 when no defined object matches.
+ *
+ * Compared ASCII upper-case: Klipper stores object names upper-cased, while the
+ * viewer and the file keep the slicer's casing.
+ */
+int defined_object_index(const std::vector<std::string>& defined, const std::string& name);
+
+/// object_display_name() with the index from defined_object_index().
 std::string object_display_name(const std::vector<std::string>& defined, const std::string& name,
                                 const lv_font_t* font);
 
