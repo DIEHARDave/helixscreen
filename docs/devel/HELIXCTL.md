@@ -413,6 +413,11 @@ input pipeline**, so gestures behave exactly as they do under a finger.
 Each command returns only after LVGL has sampled the device twice, so sequences do
 not race the indev timer.
 
+Every pointer command wakes the display before it sets the pointer state, so a
+`press` or `tap` on a sleeping, dimmed or screensaver-covered display is an ordinary
+press on an awake one. `ctl` cannot produce a wake touch; the swallow of a real wake
+touch (`SCREENSAVERS.md` § Waking) is covered by `[wake_swallow]` in the unit suite.
+
 The device is created lazily on the first pointer command and coexists with the
 real SDL/evdev pointer; LVGL supports multiple pointer indevs. Instances that never
 receive a pointer command never register it.
