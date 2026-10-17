@@ -1457,6 +1457,7 @@
   <translation tag="Home all axes to use the map" de="Alle Achsen referenzieren, um die Karte zu nutzen"/>
   <translation tag="Home and sweep the cutter to re-find its position" de="Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln"/>
   <translation tag="Home failed" de="Referenzfahrt fehlgeschlagen"/>
+  <translation tag="Home layout copied from the printer&apos;s screen" de="Startbildschirm-Layout vom Bildschirm des Druckers übernommen"/>
   <translation tag="Home printer first?" de="Drucker zuerst referenzieren?"/>
   <translation tag="Homing AFC system..." de="AFC-Referenzfahrt..."/>
   <translation tag="Homing Failed" de="Referenzfahrt fehlgeschlagen"/>

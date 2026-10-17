@@ -1603,6 +1603,7 @@ translations:
   Home all axes to use the map: Porta tutti gli assi in posizione per usare la mappa
   Home and sweep the cutter to re-find its position: Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione
   Home failed: Homing fallito
+  Home layout copied from the printer's screen: "Layout della schermata iniziale copiato dallo schermo della stampante"
   Home printer first?: Eseguire prima l'homing della stampante?
   Home Selector: Homing selettore
   Homing AFC system...: Homing sistema AFC...

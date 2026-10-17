@@ -1502,6 +1502,7 @@
   <translation tag="Home all axes to use the map" ru="Выполните парковку всех осей, чтобы использовать карту"/>
   <translation tag="Home and sweep the cutter to re-find its position" ru="Ищет ноль и прощупывает резак, чтобы заново найти его позицию"/>
   <translation tag="Home failed" ru="Парковка не удалась"/>
+  <translation tag="Home layout copied from the printer&apos;s screen" ru="Макет главного экрана скопирован с экрана принтера"/>
   <translation tag="Home printer first?" ru="Сначала запарковать принтер?"/>
   <translation tag="Homing AFC system..." ru="Парковка системы AFC..."/>
   <translation tag="Homing Failed" ru="Ошибка парковки"/>

@@ -1457,6 +1457,7 @@
   <translation tag="Home all axes to use the map" it="Porta tutti gli assi in posizione per usare la mappa"/>
   <translation tag="Home and sweep the cutter to re-find its position" it="Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione"/>
   <translation tag="Home failed" it="Homing fallito"/>
+  <translation tag="Home layout copied from the printer&apos;s screen" it="Layout della schermata iniziale copiato dallo schermo della stampante"/>
   <translation tag="Home printer first?" it="Eseguire prima l&apos;homing della stampante?"/>
   <translation tag="Homing AFC system..." it="Homing sistema AFC..."/>
   <translation tag="Homing Failed" it="Azzeramento non riuscito"/>

@@ -1505,6 +1505,7 @@ translations:
   Home all axes to use the map: 请先归位所有轴以使用地图
   Home and sweep the cutter to re-find its position: 归零并扫过切刀以重新找到其位置
   Home failed: 归位失败
+  Home layout copied from the printer's screen: "已从打印机屏幕复制主屏幕布局"
   Home printer first?: 先将打印机归位？
   Home Selector: 选择器归位
   Homing AFC system...: AFC系统归位中...

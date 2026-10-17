@@ -1647,6 +1647,7 @@ translations:
   Home all axes to use the map: Выполните парковку всех осей, чтобы использовать карту
   Home and sweep the cutter to re-find its position: Ищет ноль и прощупывает резак, чтобы заново найти его позицию
   Home failed: Парковка не удалась
+  Home layout copied from the printer's screen: "Макет главного экрана скопирован с экрана принтера"
   Home printer first?: Сначала запарковать принтер?
   Home Selector: Парковать селектор
   Homing AFC system...: Парковка системы AFC...

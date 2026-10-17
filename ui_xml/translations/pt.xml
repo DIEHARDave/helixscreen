@@ -1457,6 +1457,7 @@
   <translation tag="Home all axes to use the map" pt="Referencie todos os eixos para usar o mapa"/>
   <translation tag="Home and sweep the cutter to re-find its position" pt="Referencia e varre o cortador para reencontrar sua posição"/>
   <translation tag="Home failed" pt="Homing falhou"/>
+  <translation tag="Home layout copied from the printer&apos;s screen" pt="Layout da tela inicial copiado da tela da impressora"/>
   <translation tag="Home printer first?" pt="Fazer home da impressora primeiro?"/>
   <translation tag="Homing AFC system..." pt="Homing do sistema AFC..."/>
   <translation tag="Homing Failed" pt="Falha ao referenciar"/>

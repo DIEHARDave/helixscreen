@@ -14,6 +14,7 @@
 #include "filament_sensor_manager.h"
 #include "grid_edit_mode.h"
 #include "grid_layout.h"
+#include "home_layout_sync.h"
 #include "humidity_sensor_manager.h"
 #include "layout_manager.h"
 #include "layout_port.h"
@@ -864,7 +865,12 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
                       panel_id);
     } else if (widget_config.has_pending_anchors()) {
         if (content_box_measured && printer_ready) {
-            widget_config.apply_pending_anchors(grid_dims.cols, grid_dims.rows);
+            // A layout the printer's own screen published replaces the default
+            // before it is ever applied.
+            if (!HomeLayoutSync::instance().seed_pending_default(widget_config, grid_dims.cols,
+                                                                 grid_dims.rows)) {
+                widget_config.apply_pending_anchors(grid_dims.cols, grid_dims.rows);
+            }
             entries_replaced = true;
         } else if (content_box_measured) {
             entries_replaced = widget_config.reresolve_default_if_changed(

@@ -3,6 +3,8 @@
 
 #include "home_layout_sync.h"
 
+#include "ui_toast_manager.h"
+
 #include "app_globals.h"
 #include "config.h"
 #include "helix_version.h"
@@ -35,6 +37,11 @@ std::size_t payload_hash(nlohmann::json payload) {
     return std::hash<std::string>{}(json_util::safe_dump(payload));
 }
 
+void show_seeded_toast() {
+    ToastManager::instance().show(ToastSeverity::INFO,
+                                  lv_tr("Home layout copied from the printer's screen"), 3000);
+}
+
 } // namespace
 
 HomeLayoutSync& HomeLayoutSync::instance() {
@@ -46,6 +53,7 @@ void HomeLayoutSync::init(IMoonrakerAPI& api) {
     api_ = &api;
     PanelWidgetConfig::set_save_listener(
         [](const PanelWidgetConfig& config) { HomeLayoutSync::instance().publish(config); });
+    seed_listener_ = [this](const std::string& printer_id) { adopt_late_seed(printer_id); };
 }
 
 void HomeLayoutSync::shutdown() {
@@ -107,6 +115,61 @@ void HomeLayoutSync::fetch_now(std::function<void(std::optional<Layout>)> done) 
                 done(std::nullopt);
             }
         });
+}
+
+bool HomeLayoutSync::seed_pending_default(PanelWidgetConfig& config, int cols, int rows) {
+    if (config.panel_id() != kHomePanelId) {
+        return false;
+    }
+    std::optional<Layout> seed = take_seed(active_printer_id());
+    if (!seed) {
+        return false;
+    }
+    if (!config.import_layout(*seed, cols, rows)) {
+        spdlog::info("[HomeLayoutSync] The printer's home layout did not import; using the "
+                     "default layout");
+        return false;
+    }
+    spdlog::info("[HomeLayoutSync] Seeded the home layout from the printer's screen ({}x{} onto "
+                 "{}x{})",
+                 seed->cols, seed->rows, cols, rows);
+    show_seeded_toast();
+    return true;
+}
+
+void HomeLayoutSync::adopt_late_seed(const std::string& printer_id) {
+    auto& manager = PanelWidgetManager::instance();
+    PanelWidgetConfig& config = manager.get_widget_config(kHomePanelId);
+    const auto [cols, rows] = config.stamped_grid();
+    if (config.has_pending_anchors() || cols <= 0 || rows <= 0) {
+        spdlog::debug("[HomeLayoutSync] Home default not applied yet; keeping the seed for the "
+                      "first READY populate");
+        return;
+    }
+    // Taken from here on: each remaining outcome is final for this seed.
+    std::optional<Layout> seed = take_seed(printer_id);
+    if (!seed) {
+        return;
+    }
+    if (config.edit_session_open()) {
+        spdlog::debug("[HomeLayoutSync] Home is being edited; not replacing it with the printer's "
+                      "layout");
+        return;
+    }
+    if (!config.is_unedited_default()) {
+        spdlog::debug("[HomeLayoutSync] Home layout is the user's own; ignoring the printer's");
+        return;
+    }
+    if (!config.import_layout(*seed, cols, rows)) {
+        spdlog::info("[HomeLayoutSync] The printer's home layout did not import; keeping the "
+                     "default layout");
+        return;
+    }
+    spdlog::info("[HomeLayoutSync] Replaced the default home layout with the printer's ({}x{} "
+                 "onto {}x{})",
+                 seed->cols, seed->rows, cols, rows);
+    manager.notify_config_changed(kHomePanelId);
+    show_seeded_toast();
 }
 
 void HomeLayoutSync::set_seed_listener(std::function<void(const std::string&)> fn) {

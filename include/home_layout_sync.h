@@ -37,8 +37,9 @@ class HomeLayoutSync {
     HomeLayoutSync(const HomeLayoutSync&) = delete;
     HomeLayoutSync& operator=(const HomeLayoutSync&) = delete;
 
-    /// Use @p api for every database call and install the PanelWidgetConfig
-    /// save listener. @p api must outlive the next shutdown().
+    /// Use @p api for every database call, install the PanelWidgetConfig
+    /// save listener, and make adopt_late_seed() the seed listener.
+    /// @p api must outlive the next shutdown().
     void init(IMoonrakerAPI& api);
 
     /// Forget the API and the listener, drop what is held, and discard every
@@ -62,6 +63,20 @@ class HomeLayoutSync {
     /// the main thread with the layout, or nullopt when there is none, it is
     /// unreadable, the request failed, or the active printer changed meanwhile.
     void fetch_now(std::function<void(std::optional<Layout>)> done);
+
+    /// The populate-time seed point, for a home layout whose default anchors
+    /// are about to be applied on a @p cols x @p rows grid: take the seed held
+    /// for the active printer and import it into @p config, then toast. True
+    /// on import; false, with @p config untouched, when @p config is not the
+    /// home panel, no seed is held, or the import refuses it.
+    bool seed_pending_default(PanelWidgetConfig& config, int cols, int rows);
+
+    /// A seed held for @p printer_id after the home default was applied:
+    /// import it while the layout is still an unedited default on a known
+    /// grid, then rebuild home and toast. A layout still waiting for its
+    /// anchors, or with no grid yet, leaves the seed for seed_pending_default().
+    /// An edited layout, or one under an open edit session, drops it.
+    void adopt_late_seed(const std::string& printer_id);
 
     /// Told on the main thread each time a fetched seed is held for the active
     /// printer, with that printer's id. The listener calls take_seed() to

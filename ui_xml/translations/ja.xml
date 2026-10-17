@@ -1457,6 +1457,7 @@
   <translation tag="Home all axes to use the map" ja="マップを使うには全軸をホーミングしてください"/>
   <translation tag="Home and sweep the cutter to re-find its position" ja="原点復帰後にカッターを走査して位置を再検出します"/>
   <translation tag="Home failed" ja="ホーミング失敗"/>
+  <translation tag="Home layout copied from the printer&apos;s screen" ja="プリンターの画面からホーム画面のレイアウトをコピーしました"/>
   <translation tag="Home printer first?" ja="先にプリンターをホーミングしますか？"/>
   <translation tag="Homing AFC system..." ja="AFCシステムをホーミング中..."/>
   <translation tag="Homing Failed" ja="ホーミングに失敗しました"/>

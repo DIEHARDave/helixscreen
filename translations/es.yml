@@ -1606,6 +1606,7 @@ translations:
   Home all axes to use the map: Lleva todos los ejes al origen para usar el mapa
   Home and sweep the cutter to re-find its position: Referencia y barrido del cortador para volver a encontrar su posición
   Home failed: Error en referencia
+  Home layout copied from the printer's screen: "Diseño de la pantalla de inicio copiado de la pantalla de la impresora"
   Home printer first?: ¿Referenciar la impresora primero?
   Home Selector: Referenciar selector
   Homing AFC system...: Referenciando sistema AFC...

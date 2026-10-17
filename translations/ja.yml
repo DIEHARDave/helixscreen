@@ -1509,6 +1509,7 @@ translations:
   Home all axes to use the map: マップを使うには全軸をホーミングしてください
   Home and sweep the cutter to re-find its position: 原点復帰後にカッターを走査して位置を再検出します
   Home failed: ホーミング失敗
+  Home layout copied from the printer's screen: "プリンターの画面からホーム画面のレイアウトをコピーしました"
   Home printer first?: 先にプリンターをホーミングしますか？
   Home Selector: セレクターをホーミング
   Homing AFC system...: AFCシステムをホーミング中...
