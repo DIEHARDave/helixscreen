@@ -294,6 +294,7 @@ translations:
     sûr de vouloir annuler cette impression ? Toute la progression sera perdue.
   Are you sure? This will power off or restart this device.: Êtes-vous sûr ? Cela
     va éteindre ou redémarrer cet appareil.
+  Ask before switching to another tool: 'Demander avant de passer à un autre outil'
   Ask for parameters: 'Demander les paramètres'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Assigner des
     macros Klipper pour contrôler les LED via on/off, bascule ou préréglages
@@ -538,6 +539,7 @@ translations:
   Cancel: Annuler
   Cancel Escalation: Annuler l'escalade
   Cancel Print: Annuler l'impression
+  Cancel Scheduled Pause: 'Annuler la pause prévue'
   Cancel macro not configured: Macro d'annulation non configurée
   Cancel print: 'Annuler l''impression'
   Cancelled: Annulé
@@ -562,6 +564,7 @@ translations:
     à l''imprimante'
   Cannot restart — no filename: Impossible de redémarrer — pas de nom de fichier
   Cannot run filament operation while printing: Impossible d'effectuer une opération de filament pendant l'impression
+  'Cannot schedule a pause: printer not connected': 'Impossible de prévoir une pause : imprimante non connectée'
   'Cannot start print: internal error': 'Impossible de démarrer l''impression : erreur
     interne'
   'Cannot start print: no temp directory available': 'Impossible de lancer l''impression : aucun répertoire temporaire disponible'
@@ -658,6 +661,7 @@ translations:
   Checking…: Vérification…
   Choose 12-hour or 24-hour time display: Choisir l'affichage 12 heures ou 24 heures
   Choose Filament: Choisir le filament
+  Choose Layer: 'Choisir la couche'
   Choose Model: Choisir le modèle
   Choose an existing filament, or tap + New to create one.: Choisissez un filament
     existant, ou appuyez sur + Nouveau pour en créer un.
@@ -768,6 +772,7 @@ translations:
   Configuring Moonraker...: Configuration de Moonraker...
   Confirm PIN: Confirmer le code PIN
   Confirm before running macros: Confirmer avant d'exécuter les macros
+  Confirm tool changes: 'Confirmer les changements d''outil'
   Connect: Connecter
   Connect a USB label printer first: Connectez d'abord une imprimante d'étiquettes
     USB
@@ -1036,6 +1041,7 @@ translations:
     contact — aide à diagnostiquer les décalages
   Drive Cal: Cal entraîn.
   Drop shadow strength (0 = disabled): Intensité de l'ombre portée (0 = désactivé)
+  Dry: Sécher
   Dry Filament: Sécher le filament
 
   Dry Filament on the Bed: Sécher le filament sur le plateau
@@ -1323,6 +1329,7 @@ translations:
   Failed to save spool: Échec de l'enregistrement de la bobine
   Failed to save theme file: Échec de l'enregistrement du fichier de thème
   'Failed to save to Spoolman: {}': "Échec de l'enregistrement dans Spoolman : {}"
+  'Failed to schedule the pause: {}': 'Échec de la programmation de la pause : {}'
   'Failed to send command: {}': 'Échec de l''envoi de la commande : {}'
   Failed to send print data: Échec de l'envoi des données d'impression
   Failed to send status request: Échec de l'envoi de la demande d'état
@@ -1885,6 +1892,7 @@ translations:
   Layer mode captures one frame per layer change. Best for most prints.: Le mode couche
     capture une image par changement de couche. Idéal pour la plupart des impressions.
   Layer {} of {} · {:.2f} mm: Couche {} sur {} · {:.2f} mm
+  Layer {} of {}.: 'Couche {} sur {}.'
   Layers: Couches
   Layout: Disposition
   Layout changes are off in safe mode. Restart to edit.: 'Les modifications de disposition sont désactivées en mode sans échec. Redémarrez pour modifier.'
@@ -2167,6 +2175,7 @@ translations:
   New printer successfully added: Nouvelle imprimante ajoutée avec succès
   New profile name: Nouveau nom de profil
   Next: Suivant
+  Next Layer: 'Couche suivante'
   'Next: {}': 'À suivre : {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Non
@@ -2229,6 +2238,7 @@ translations:
   No media installed: Aucun média installé
   No mesh data: Pas de données de maillage
   No mesh loaded: Aucun maillage de plateau chargé
+  No message: 'Aucun message'
   No multi-filament system detected: Aucun système multi-filaments détecté
   No network. Scan QR code to report on your phone.: Pas de réseau. Scannez le QR
     code pour signaler depuis votre téléphone.
@@ -2238,6 +2248,7 @@ translations:
   No objects: 'Aucun objet'
   No objects defined for this print: Aucun objet défini pour cette impression
   No output yet: Aucune sortie
+  No pause scheduled.: 'Aucune pause prévue.'
   No presets configured: Aucun préréglage configuré
   No preview: Pas d'aperçu
   No print history found: Aucun historique d'impression
@@ -2348,6 +2359,7 @@ translations:
   'Off': Éteint
   'Off:': 'Arrêt :'
   'Off: runs with these values without asking': 'Désactivé : exécute avec ces valeurs sans demander'
+  Offer to save Z-offset changes to the printer config: 'Proposer d''enregistrer les modifications du Z-Offset dans la configuration de l''imprimante'
   Offsets saved: Offsets enregistrés
   "Old setting on today's data: {} residual - now: {}": 'Ancien réglage sur les données du jour : {} résiduel - maintenant : {}'
   'On': Allumé
@@ -2446,6 +2458,8 @@ translations:
   Path {}: Chemin {}
   Path {} before: Chemin {} avant
   Pause: Pause
+  Pause Layer: 'Couche de pause'
+  Pause at Layer: 'Pause à la couche'
   Pause macro not configured: Macro de pause non configurée
   Pause on Detection: Pause à la détection
   Pause the print first, then load, unload, or change filament: Mettez d'abord l'impression en pause, puis chargez, déchargez ou changez le filament
@@ -2453,6 +2467,7 @@ translations:
   Pause, resume, or stop the print: Mettre en pause, reprendre ou arrêter
   Paused: En pause
   Paused (attention needed): En pause (attention requise)
+  Pausing at layer {}.: 'Pause à la couche {}.'
   Pausing...: Pause en cours...
   Peak Freq: Fréq. pic
   'Peak:': 'Pic :'
@@ -2615,6 +2630,7 @@ translations:
   Printer Firmware Disconnected: Firmware imprimante déconnecté
   Printer Image: Image de l'imprimante
   Printer Manager: Gestionnaire d'imprimante
+  Printer Message: 'Message de l''imprimante'
   Printer Model: Modèle d'imprimante
   Printer Name: Nom de l'imprimante
   'Printer Setup: Connection': 'Config. imprimante : Connexion'
@@ -2899,6 +2915,7 @@ translations:
   Resetting: Réinitialisation
   Resetting system: 'Réinitialisation du système'
   Resetting...: Réinitialisation...
+  Resolve it on the filament system screen, then try again: 'Résolvez-le sur l''écran du système de filament, puis réessayez'
   Response (Kp): Réponse (Kp)
   Restart: Redémarrer
   Restart Firmware?: Redémarrer le firmware ?
@@ -2964,6 +2981,7 @@ translations:
   Rewinding: Rembobinage
   Right: 'Droite'
   'Role:': 'Rôle :'
+  Rotate: Tourner
   Rotating tips for using your printer: Conseils variés pour votre imprimante
   Rotation: Rotation
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Rotation : %d°
@@ -3026,6 +3044,7 @@ translations:
   Save Printer Configuration: Enregistrer la configuration de l'imprimante
   Save Theme As: Enregistrer le thème sous
   Save Z-Offset: Enregistrer le Z-Offset
+  Save Z-Offset Buttons: 'Boutons d''enregistrement du Z-Offset'
   Save Z-Offset?: Enregistrer le Z-Offset ?
   Save changes to persist them across restarts?: Enregistrer les modifications pour
     les conserver après redémarrage ?
@@ -3387,6 +3406,7 @@ translations:
   Stopped between Hub and Toolhead: Arrêté entre le Hub et la tête d'outil
   Stopped between Lane and Hub: Arrêté entre la voie et le Hub
   Stopped between Spool and Lane: Arrêté entre la bobine et la voie
+  Stopped drying %s: 'Séchage arrêté : %s'
   Stops all motion. Requires firmware restart.: Arrête tout mouvement. Nécessite un
     redémarrage du firmware.
   Stow: Ranger
@@ -3410,6 +3430,7 @@ translations:
   Switch between light and dark themes: Basculer entre les thèmes clair et sombre
   Switch the active tool or extruder: Changer d'outil ou d'extrudeur actif
   Switch to v%s: 'Passer à la v%s'
+  Switch to {}?: 'Passer à {} ?'
   Switched to {}: 'Basculé sur {}'
   Switches to a backup spool on runout: Passe à une bobine de secours en fin de filament
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
@@ -3485,8 +3506,10 @@ translations:
   Temperatures plotted over time: Températures tracées dans le temps
   Temperatures saved: Températures enregistrées
   Template: Modèle
+  Temporary adjustment for this print: "Ajustement temporaire pour cette impression"
   Temporary adjustment for this print, unless saved on Controls panel: Ajustement
     temporaire pour cette impression, sauf si enregistré dans le panneau Contrôles
+  Temporary for this print; a tool change resets it: "Temporaire pour cette impression ; un changement d'outil le réinitialise"
   Tertiary: Tertiaire
   Test All Lanes: 'Tester toutes les voies'
   Test Connection: Tester la connexion
@@ -3540,6 +3563,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : Le filament n'est pas arrivé à la buse. Le CFS n'a signalé aucune erreur, mais le capteur de tête d'outil ne détecte toujours pas de filament. Vérifiez que la bobine est bien en place et que le chemin est dégagé, puis réessayez.
   The filament may not have fully retracted — try again or manually pull: Le filament n'est peut-être pas entièrement rétracté. Réessayez ou tirez à la main
+  The filament system needs attention: 'Le système de filament demande votre attention'
   The filament system reported an error: Le système de filament a signalé une erreur
   The heater can't be changed while the printer is waiting.: 'Le chauffage ne peut pas être modifié pendant que l''imprimante attend.'
   The heater did not accept the printer's credentials.: 'Le chauffage n''a pas accepté les identifiants de l''imprimante.'
@@ -3556,12 +3580,14 @@ translations:
   The left RFID reader in this CFS unit may need service: Le lecteur RFID gauche de cette unité CFS nécessite peut-être une intervention
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : La bobine chargée est {}, mais ce fichier a été tranché pour {}. Un filament chargé fonctionne à un débit plus faible et nécessite une buse durcie.
+  The message your printer's macros show (M117): 'Le message affiché par les macros de votre imprimante (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: 'La buse fait quelques mouvements de test dans un coin, à l''écart de la zone d''impression, et répète jusqu''à convergence.'
   The plate and the spools are still hot. Use gloves.: Le plateau et les bobines sont encore chauds. Portez des gants.
 
   The plate finishes its current move, but drying will not start.: 'Le plateau termine son déplacement en cours, mais le séchage ne démarrera pas.'
   The print ended before any layer was printed. Nothing was changed.: L'impression s'est terminée avant la première couche. Rien n'a été modifié.
   The print is cancelled and you pick the best band from what has printed so far.: L'impression est annulée et vous choisissez la meilleure bande parmi ce qui a été imprimé.
+  The print is on its last layer.: 'L''impression en est à sa dernière couche.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : L'impression est en pause. Changer d'outil maintenant déplace la tête d'impression et remplace le filament au niveau de la buse. Reprenez l'impression une fois le changement terminé.
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: 'L''impression attend que la chambre atteigne {}°C, mais le chauffage ne chauffe pas.'
@@ -3604,7 +3630,6 @@ translations:
     quand même ?
   The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service: Le capteur de cette unité CFS ne peut pas être lu. Vérifiez son raccordement, sinon l'unité nécessite une intervention
   The speed of one fan you choose: La vitesse d'un ventilateur choisi
-  The test print could not start.: L'impression de test n'a pas pu démarrer.
   The time, date, and system uptime: Heure, date et temps de fonctionnement
   The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?: La tête d'outil contient du filament mais aucun slot de l'AMS ne le signale comme chargé. Retirez-le manuellement avant d'imprimer. Démarrer quand même ?
   ? The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?
@@ -3677,9 +3702,11 @@ translations:
   This plugin asks for no special permissions.: 'Ce plugin ne demande aucune autorisation particulière.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Ce plugin permet à HelixScreen de contrôler les options de démarrage d''impression comme le maillage du plateau et QGL.'
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'Cette impression ne peut pas reprendre. Relancez-la, ou désactivez la vérification du plateau si cela se reproduit.'
+  This print does not report layers, so no layer pause can be scheduled.: 'Cette impression ne signale pas ses couches, aucune pause par couche ne peut donc être prévue.'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Cette
     impression nécessite environ %.0fg mais il reste environ %.0fg sur la bobine.
     Démarrer quand même ?
+  This print never reports layer {}.: 'Cette impression ne signale jamais la couche {}.'
   This printer cannot calibrate tool offsets automatically: Cette imprimante ne peut pas calibrer les offsets d'outil automatiquement
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Cette imprimante remplit ses gates depuis Spoolman. HelixScreen a effacé sa propre copie ; retirez la bobine dans Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Cette imprimante remplit ses gates depuis Spoolman. Effectuez les changements de couleur, matériau et bobine dans Spoolman.
@@ -4111,6 +4138,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z-offset enregistré ({:+.3f}mm).
     Redémarrage de Klipper...
   Z-offset saved - Klipper restarting...: Z-offset enregistré - Redémarrage de Klipper...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'L''enregistrement du Z-Offset est désactivé : HelixScreen ne l''a pas enregistré. Klipper le conserve jusqu''au prochain enregistrement de la configuration.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'déjà chargé'

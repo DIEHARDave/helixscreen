@@ -205,16 +205,29 @@
           <text_small name="z_target_other"
                       width="content" bind_text="tune_z_other_display" style_text_color="#text_muted"/>
         </lv_obj>
+        <!-- The help lines give way on the smallest portrait panel, where the
+             controls above them already fill the height. -->
         <lv_obj width="100%" height="content" style_pad_all="0" flex_flow="column" scrollable="false">
           <bind_flag_if cond="ui_breakpoint le 0" flag="hidden"/>
+          <!-- One of four, picked by z_offset_tune_hint (ZOffsetTuneHint in
+               include/printer_profile_state.h). -->
           <text_small name="z_offset_help_text_manual"
                       width="100%" long_mode="wrap"
                       text="Temporary adjustment for this print, unless saved on Controls panel" hidden="true">
-            <bind_flag_if_eq subject="z_offset_can_save" flag="hidden" ref_value="0"/>
+            <bind_flag_if_not_eq subject="z_offset_tune_hint" flag="hidden" ref_value="0"/>
           </text_small>
           <text_small name="z_offset_help_text_auto"
-                      width="100%" long_mode="wrap" text="Z-offset is auto-saved by firmware">
-            <bind_flag_if_eq subject="z_offset_can_save" flag="hidden" ref_value="1"/>
+                      width="100%" long_mode="wrap" text="Z-offset is auto-saved by firmware" hidden="true">
+            <bind_flag_if_not_eq subject="z_offset_tune_hint" flag="hidden" ref_value="1"/>
+          </text_small>
+          <text_small name="z_offset_help_text_temporary"
+                      width="100%" long_mode="wrap" text="Temporary adjustment for this print" hidden="true">
+            <bind_flag_if_not_eq subject="z_offset_tune_hint" flag="hidden" ref_value="2"/>
+          </text_small>
+          <text_small name="z_offset_help_text_tool_change"
+                      width="100%" long_mode="wrap" text="Temporary for this print; a tool change resets it"
+                      hidden="true">
+            <bind_flag_if_not_eq subject="z_offset_tune_hint" flag="hidden" ref_value="3"/>
           </text_small>
         </lv_obj>
       </lv_obj>

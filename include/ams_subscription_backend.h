@@ -406,6 +406,21 @@ class AmsSubscriptionBackend : public AmsBackend {
         return nullptr;
     }
 
+    /// File @p obs, read out of @p entry on a re-read of the lane-record store,
+    /// as another tool's edit on @p lane when it is one and newer than what
+    /// stands there (file_outside_edit_if_newer()). Returns true when it filed.
+    ///
+    /// A co-authored namespace carries the mirror of this backend's own write,
+    /// and firmware mirrors a write back with none of our authorship keys, so a
+    /// foreign-looking record can still be that echo: @p obs first loses what
+    /// the slot's standing declaration explains, and while that declaration
+    /// stands our unconfirmed write is the newer statement and nothing files.
+    /// A stored record is not a live producer, so a value that differs from the
+    /// declaration releases nothing. Takes mutex_.
+    bool file_reread_outside_edit(helix::ams::LaneId lane, int slot_index,
+                                  const helix::ams::LaneDataRecord& entry,
+                                  helix::ams::Observation& obs);
+
     /// Clear @p slot_index's user override from every store holding it: the
     /// in-memory map, the lane's records, the echo guard and the persisted
     /// record. @p slot, when non-null, also loses clear_override_fields().

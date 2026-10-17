@@ -2387,6 +2387,24 @@ class AmsBackend {
     }
 
     /**
+     * @brief Start drying as @p request describes
+     *
+     * The one entry point a surface needs whatever the dryer can do. With no gates and
+     * no rotation it is exactly start_drying(), or start_drying_to_humidity() when a
+     * target is set, so a backend overrides it only to take a gate selection
+     * (DryerInfo::supports_gate_selection) or spool rotation (supports_rotation).
+     */
+    virtual AmsError start_drying_request(const DryingRequest& request);
+
+    /**
+     * @brief Stop drying on @p gates only, or everything on @p unit when empty
+     *
+     * Empty @p gates is exactly stop_drying(). Gates need
+     * DryerInfo::supports_gate_selection; the rest of the cycle keeps running.
+     */
+    virtual AmsError stop_drying_gates(int unit, const std::vector<int>& gates);
+
+    /**
      * @brief Update drying parameters while running
      *
      * Adjusts temperature, duration, or fan speed during an active dry cycle.

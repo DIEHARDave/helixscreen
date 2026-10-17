@@ -139,7 +139,7 @@ A true 4-toolhead changer, running on the U1's built-in 3.5" screen. Each of the
 - **Per-filament temperatures**: the U1 keeps its own load/unload temperature table per filament, and HelixScreen reads it: a load preheats to the temperature the firmware measured for that filament rather than a generic default
 - **Faults in plain language**: the U1's numeric fault codes arrive translated into a sentence saying what went wrong, not just the code
 - **Screws-tilt calibration** driven through the firmware, with a pre-flight check that asks you to take the PEI sheet off the bed first - probing through it gives wrong results
-- **Firmware-managed Z-offset** and dedicated print-start tracking; near-certain auto-detection
+- **Dedicated print-start tracking** and near-certain auto-detection. Z-offset baby steps are temporary: the firmware re-applies each head's own stored offset on every tool change. See [Printing → Z-Offset](printing.md#z-offset--baby-steps)
 
 **Requirements:** SSH access — either stock firmware 1.2+ (via its **Root access** option) or PAXX Extended Firmware (SSH on by default). Reinstall after any firmware update. See [Installation → Snapmaker U1](install-u1.md).
 

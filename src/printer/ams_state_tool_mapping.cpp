@@ -51,9 +51,14 @@ std::optional<helix::ToolTopology> build_ams_topology(AmsBackend* backend, int b
     topo.tool_count = static_cast<int>(mapping.size());
     // Which head each tool prints through: the extruder its slot feeds.
     topo.tool_extruder.reserve(mapping.size());
+    // And whether its lane is the one that head holds: a hub feeds several
+    // lanes into one head, and the head keeps whichever is seated there while
+    // it is parked.
+    topo.tool_seated.reserve(mapping.size());
     for (const int slot : mapping) {
         const SlotInfo* info_slot = slot >= 0 ? info.get_slot_global(slot) : nullptr;
         topo.tool_extruder.push_back(info_slot ? info_slot->extruder_name : std::string());
+        topo.tool_seated.push_back(slot >= 0 && backend->slot_is_actively_loaded(slot));
     }
     topo.tool_to_slot = std::move(mapping);
     topo.active_tool = backend->get_current_tool();

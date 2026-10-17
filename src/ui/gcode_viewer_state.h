@@ -325,13 +325,12 @@ class GCodeViewerState {
     /// Mutually exclusive with gcode_file - exactly one should hold data.
     std::unique_ptr<helix::gcode::GCodeStreamingController> streaming_controller_;
 
-    /// Scheduled pauses of the loaded file + the axis its progress bar fills
-    /// on, collected by whichever path read it (streaming layer-index scan or
-    /// full-load parse loop). The panel's load callback publishes them into
-    /// PrinterPrintState, which knows which print the file belongs to.
-    std::vector<helix::gcode::ScheduledPause> scheduled_pauses;
-    helix::gcode::ProgressAxis scheduled_pauses_axis{helix::gcode::ProgressAxis::BytePosition};
-    bool has_pause_scan{false};
+    /// Scheduled pauses and layer marks of the loaded file + the axis its
+    /// progress bar fills on, collected by whichever path read it (streaming
+    /// layer-index scan or full-load parse loop). The panel's load callback
+    /// publishes them into PrinterPrintState, which knows which print the file
+    /// belongs to.
+    helix::gcode::PauseScanPtr pause_scan; ///< null until a scan ran
 
     /// Print progress layer (set via ui_gcode_viewer_set_print_progress)
     /// -1 means "show all layers" (preview mode), >= 0 means "show up to this layer"

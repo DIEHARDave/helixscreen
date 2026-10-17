@@ -51,6 +51,7 @@
 #include "temperature_service.h"
 #include "text_io.h"
 #include "theme_manager.h"
+#include "tool_change_request.h"
 #include "tool_state.h"
 #include "toolhead_homing.h"
 #include "ui/ui_widget_helpers.h"
@@ -1981,13 +1982,12 @@ void FilamentPanel::populate_extruder_dropdown() {
     // Build options string ("Tool 1 (T0)\nTool 2 (T1)\n..."). The open list
     // sizes itself to its widest option, so it always has room for the full
     // form; the closed control shows only the G-code name.
-    const auto noun = helix::ui::active_tool_noun();
     std::string options;
     for (const auto& tool : ts.tools()) {
         if (!options.empty())
             options += '\n';
-        options += helix::ui::tool_label_in_form(noun, tool.name, tool.index,
-                                                 helix::ui::ToolLabelForm::Full);
+        options +=
+            helix::ui::active_tool_label(tool.name, tool.index, helix::ui::ToolLabelForm::Full);
     }
     lv_dropdown_set_options(extruder_dropdown_, options.c_str());
 
@@ -2154,22 +2154,34 @@ void FilamentPanel::handle_extruder_changed() {
 
     spdlog::info("[{}] User selected tool T{}", get_name(), selected);
 
-    ts.request_tool_change(
-        selected, api_,
-        [label = ts.tools()[selected].display_label]() {
-            NOTIFY_SUCCESS(lv_tr("Switched to {}"), label);
-        },
-        object_lifetime_.bg_cb("FilamentPanel::tool_change_err", [this](const std::string& error) {
-            NOTIFY_ERROR(lv_tr("Tool change failed: {}"), error);
-            // Revert dropdown to actual active tool
-            if (extruder_dropdown_) {
-                int active = helix::ToolState::instance().active_tool_index();
-                if (active >= 0) {
-                    lv_dropdown_set_selected(extruder_dropdown_, static_cast<uint32_t>(active));
-                }
-                sync_tool_dropdown_text();
-            }
-        }));
+    helix::ui::ToolChangeHooks hooks;
+    const auto& tool = ts.tools()[static_cast<size_t>(selected)];
+    hooks.on_success = [label = helix::ui::active_tool_label(tool.name, tool.index,
+                                                             helix::ui::ToolLabelForm::Full)]() {
+        NOTIFY_SUCCESS(lv_tr("Switched to {}"), label);
+    };
+    hooks.on_failed = object_lifetime_.bg_cb("FilamentPanel::tool_change_err",
+                                             [this]() { revert_extruder_dropdown(); });
+    // A refused, ignored or cancelled change leaves the dropdown naming a tool
+    // that is not mounted.
+    hooks.on_declined = [this]() { revert_extruder_dropdown(); };
+    hooks.owner_token = object_lifetime_.token();
+    hooks.resolve_api = [this]() { return api_; };
+    helix::ui::offer_tool_change(printer_state_, selected, std::move(hooks));
+}
+
+void FilamentPanel::revert_extruder_dropdown() {
+    // A confirmation dialog can outlive the widgets it was opened over (a hot
+    // reload rebuilding the panel), and its close is what calls this.
+    if (!extruder_dropdown_ || !lv_is_initialized() || !lv_obj_is_valid(extruder_dropdown_)) {
+        return;
+    }
+    const int active = helix::ToolState::instance().active_tool_index();
+    if (active >= 0) {
+        lv_dropdown_set_selected(extruder_dropdown_, static_cast<uint32_t>(active));
+    }
+    sync_tool_dropdown_text();
+    update_filament_op_buttons();
 }
 
 void FilamentPanel::handle_spool_preset_button() {

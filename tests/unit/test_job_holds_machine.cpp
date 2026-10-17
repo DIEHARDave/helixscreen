@@ -510,6 +510,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/job_queue_modal.xml",
     "ui_xml/klipper_recovery_dialog.xml",
     "ui_xml/label_printer_settings.xml",
+    "ui_xml/layer_pause_modal.xml",
     "ui_xml/led_control_overlay.xml",
     "ui_xml/led_list_chip.xml",
     "ui_xml/led_picker.xml",

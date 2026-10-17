@@ -346,6 +346,24 @@ class Ad5xIfsTestAccess {
         // wrote only this map would leave the lane reading empty.
         helix::test::file_override_as_lane_records(b, slot_index, ovr);
     }
+    // on_started()'s install of the store it loaded, for a fixture that
+    // loaded one against a mock namespace.
+    static void adopt_loaded_override_store(AmsBackendAd5xIfs& b,
+                                            helix::ams::LoadedOverrideStore loaded) {
+        b.adopt_loaded_override_store(std::move(loaded));
+    }
+    // The lane_data re-read the debounce fires, run now, as the debounce
+    // runs it: its gate open again first.
+    static void fire_lane_record_reread(AmsBackendAd5xIfs& b) {
+        b.lane_reread_pending_.store(false);
+        b.reread_lane_records();
+    }
+    static bool lane_reread_pending(const AmsBackendAd5xIfs& b) {
+        return b.lane_reread_pending_.load();
+    }
+    static bool lane_reread_owed(const AmsBackendAd5xIfs& b) {
+        return b.lane_reread_owed_.load();
+    }
     // Read the override currently staged for a slot (empty optional if none).
     // Lets tests assert what set_slot_info(persist=true) wrote into the
     // in-memory map without going through get_slot_info (which also layers

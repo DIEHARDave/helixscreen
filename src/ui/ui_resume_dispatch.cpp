@@ -15,6 +15,7 @@
 #include "moonraker_job_api.h"
 #include "print_start_checks.h"
 #include "printer_state.h"
+#include "rpc_error_correlation.h"
 #include "standard_macros.h"
 
 #include <spdlog/fmt/fmt.h>
@@ -174,7 +175,12 @@ void dispatch_prepared_resume(IMoonrakerAPI* api, std::string log_prefix,
                 spdlog::error("{} Failed to resume: {}", log_prefix, err.message);
                 helix::ui::queue_update(
                     "dispatch_prepared_resume::on_macro_error", [err, on_failure]() {
-                        NOTIFY_ERROR(lv_tr("Failed to resume: {}"), err.localized_message());
+                        // A classifier that owns this refusal explains it from
+                        // Klipper's `!!` copy; the raw words beside it would be a
+                        // second report of one rejection.
+                        rpc_error_correlation::report_unless_explained(err.message, [err]() {
+                            NOTIFY_ERROR(lv_tr("Failed to resume: {}"), err.localized_message());
+                        });
                         if (on_failure)
                             on_failure();
                     });

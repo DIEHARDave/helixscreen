@@ -92,8 +92,21 @@ This section is for replacing the printer's built-in display with HelixScreen ru
 ### Prerequisites
 
 - A QIDI printer with a Linux framebuffer display (Q2, Max 4 — **not** Plus 4, see Display Compatibility above)
-- SSH access to the printer
+- SSH access to the printer (logins below)
 - Stock firmware works directly. Community firmware like [53Aries/Q2-Firmware](https://github.com/53Aries/Q2-Firmware) or [FreeQIDI](https://github.com/Phil1988/FreeQIDI) may also be used.
+
+### SSH Logins
+
+Stock firmware has SSH open, but the default login differs by model. The default user is not root and `sudo` asks for the same password; it is never passwordless.
+
+| Model | User / password | Source |
+|-------|-----------------|--------|
+| Q2 | `mks` / `makerbase` | community-documented ([Camden-Winder/Qidi-Q2-superuser](https://github.com/Camden-Winder/Qidi-Q2-superuser)) and our Q2 testers |
+| Max 4 | `qidi` / `qiditech` | community-documented ([QidiMax4CommunityWiki](https://github.com/thelegendtubaguy/QidiMax4CommunityWiki/blob/main/docs/ssh_os.md)) |
+| Plus 5 | unconfirmed; SSH is open. Same Debian 11 board generation as the Max 4, so try `qidi` / `qiditech` first, then `mks` / `makerbase` | one owner's notes ([randomm/qidi-plus5-orca-lan](https://github.com/randomm/qidi-plus5-orca-lan/blob/main/NOTES.md)) |
+| Plus 4, 3-series, Q1 Pro (MKSPI) | `mks` / `makerbase`; `root` also uses `makerbase` | [qidi-community/Plus4-Wiki](https://github.com/qidi-community/Plus4-Wiki/blob/main/content/ssh-access/README.md) |
+
+On Q2 firmware 01.01.02 and newer the Klipper files move from `/home/mks` to `/home/qidi` and `printer.cfg` is owned by `qidi`. The `mks` login still works, but editing config needs `sudo`. None of these logins has been checked on a Max 4 or Plus 5 we own; corrections go in a [new issue](https://github.com/prestonbrown/helixscreen/issues/new).
 
 ### One-Line Installer (Recommended)
 
@@ -103,7 +116,7 @@ The standard HelixScreen installer works on QIDI hardware out of the box. SSH in
 curl -sSL https://releases.helixscreen.org/install.sh | sh
 ```
 
-The installer auto-detects QIDI-class SBCs (hostname `linaro-alip` + `/home/mks` on stock Q2; the same Pi/aarch64 binary covers Max 4) and sets up the systemd service, launcher, and config under the correct user.
+The installer auto-detects QIDI-class SBCs (hostname `linaro-alip` plus `/home/mks` or `/home/qidi`; the same Pi/aarch64 binary covers Max 4) and sets up the systemd service, launcher, and config under the correct user.
 
 ### Manual Deployment (Alternative)
 
@@ -254,7 +267,7 @@ Gathered from firmware analysis and user reports:
 - **Display:** 4.3" 480x272 IPS capacitive (Goodix touch)
 - **Touch digitizer (measured, #943):** `Goodix Capacitive TouchScreen` on `/dev/input/event0` (phys `input/ts`), reporting both legacy ABS_X/Y and MT position axes. It **over-reports its ABS range**: EVIOCGABS advertises 0..799 x 0..479 (an 800x480 panel) but the glass only emits ~460x237, so evdev's linear scale delivers touches compressed to ~0.57x/0.49y of the screen — until first calibration only the top-left ~55%x49% of the UI is reachable. The affine calibration absorbs the compression fully (a≈1.74, e≈1.93); calibration working "correctly" can look broken mid-capture because raw capture space is that compressed space. Evidence: debug bundle N4ZN3YY2 (v0.99.114); the calibration span-check logs the captured/target ratio on every run. A controller that reports honestly needs no affine — don't copy this fix class elsewhere without the span-check evidence.
 - **WiFi:** USB dongle, Realtek RTL8188GU (Tenda), 2.4 GHz only
-- **SSH:** user `mks`, password `makerbase`
+- **SSH:** user `mks`, password `makerbase`; `sudo` asks for the same password (see [SSH Logins](#ssh-logins) for other models)
 - **Klipper stack:** Standard Klipper + Moonraker (port 7125) + Fluidd, managed via systemd. The Moonraker is a QIDI-customized fork: `/server/files/metadata` 404s for every file (a whitelist drops `thumbnails`, and a firmware-only mmu_server.py component calls `metadata.main(config)` across a signature mismatch), so HelixScreen extracts print thumbnails from the gcode header client-side instead of trusting metadata.
 - **.3mf plate thumbnails:** the stock screen client is what materialised the plate images QIDI's Moonraker hardcodes metadata at (`gcodes/.thumbs/<subdir>/<stem>/plate_N.png`), so stopping it leaves every uploaded `.3mf` thumbnail 404ing for Fluidd and HelixScreen alike (prestonbrown/helixscreen#1713). HelixScreen's installer installs a replacement helper: `config/qidi_3mf_thumbs.py` (stdlib Python, extracts `Metadata/plate_N.png` from each `.3mf`) driven by the `helixscreen-3mf-thumbs.path`/`.service` units, running as the Klipper user on gcodes changes and once at boot. Only installed where Moonraker's file_manager metadata.py contains the `generate_thumb_path` function; older QIDI firmware extracts thumbnails itself. The gate and unit install live in `config/qidi-3mf-thumbs-units.sh`, called both by the installer and by the post-Moonraker-update refresh (an in-app update runs under NoNewPrivileges and cannot write /etc itself), so an updating machine gains the units without a reinstall.
 - **Stock UI:** Closed-source binary at `/home/mks/QD_Q2/bin/client`, pinned to CPU core 0 via `taskset`

@@ -34,6 +34,7 @@ inline constexpr std::array<const char*, 2> kAd5xIfsSensorObjectPrefixes = {
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -856,6 +857,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
         bool color = false; ///< color_rgb, and the colour name that travels with it.
         bool material = false;
         bool catalog = false; ///< The catalog pick, which is scoped to a material.
+        bool spool_name = false;
     };
     // Retract a lane's stored declaration of the fields named in @p fields,
     // leaving every other field of those records standing. A change reaching
@@ -923,6 +925,28 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     void recheck_ifs_vars_macro();
     void unregister_moonraker_listeners();
     void schedule_json_reread();
+    // Install the store on_started() loaded: file its records onto the lanes,
+    // remember each slot's document as read, then take the store and map.
+    void adopt_loaded_override_store(helix::ams::LoadedOverrideStore loaded);
+    // Re-read lane_data once a burst of firmware colour/type changes settles.
+    // A tool that changes a slot from outside writes its lane record beside
+    // the firmware change, and nothing else reads lane_data after boot
+    // (prestonbrown/helixscreen#1632). Debounced like schedule_json_reread(),
+    // so a burst issues one read.
+    void schedule_lane_record_reread();
+    void reread_lane_records();
+    // Save @p slot_index's override to lane_data, or hold it until the owed
+    // lane_data re-read has run. Caller holds mutex_.
+    void publish_override_locked(int slot_index, const char* reason);
+    // File each record that changed since it was last read as another tool's
+    // edit when it is one and newer (file_reread_outside_edit()), and move the
+    // slot's override onto it. Main thread.
+    void
+    apply_reread_lane_records(const std::unordered_map<int, helix::ams::LaneDataRecord>& records);
+    // Publish the saves the owed re-read held, except for a slot in @p taken,
+    // which took the tool's record. Runs when the read lands and when it
+    // fails. Main thread; takes mutex_.
+    void release_held_lane_saves(const std::unordered_set<int>& taken);
     // True when `content` differs from the last observed Adventurer5M.json
     // body. Updates last_json_content_ on change. Single source of truth for
     // the "did the JSON change?" decision used by both the initial read and
@@ -1456,6 +1480,17 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     bool ifs_vars_repair_staged_ = false;
 
     std::atomic<bool> reread_pending_{false};
+    std::atomic<bool> lane_reread_pending_{false};
+    // A re-read is scheduled and has not yet run, so lane_data may hold a
+    // newer record than anything we would publish over it.
+    std::atomic<bool> lane_reread_owed_{false};
+    // Slots whose save waits on that re-read, with the reason each save was
+    // made for the log when it publishes. Under mutex_.
+    std::unordered_map<int, std::string> lane_saves_held_;
+    // Each slot's lane_data document as last read, so a re-read files only a
+    // record that changed since: an unchanged document says nothing new, and
+    // an outside record carries no stamp to order it by. Under mutex_.
+    std::unordered_map<int, nlohmann::json> lane_wire_seen_;
 
     // Main-thread-only: counts CHANGE_ZCOLOR trigger lines seen in the gcode
     // stream since the last coalesced re-read fired. zmod re-emits CHANGE_ZCOLOR

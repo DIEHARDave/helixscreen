@@ -268,6 +268,7 @@ translations:
   Archive Spool?: 归档料盘？
   Are you sure you want to cancel this print? All progress will be lost.: 确定要取消此打印吗？所有进度将丢失。
   Are you sure? This will power off or restart this device.: 确定吗？这将关闭或重启此设备。
+  Ask before switching to another tool: '切换到其他工具前先询问'
   Ask for parameters: '询问参数'
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: 分配 Klipper
     宏通过开/关、切换或预设控制 LED
@@ -495,6 +496,7 @@ translations:
   Cancel: 取消
   Cancel Escalation: 取消升级
   Cancel Print: 取消打印
+  Cancel Scheduled Pause: '取消已设置的暂停'
   Cancel macro not configured: 取消宏未配置
   Cancel print: '取消打印'
   Cancelled: 已取消
@@ -513,6 +515,7 @@ translations:
   'Cannot reprint: not connected to printer': '无法重新打印: 未连接打印机'
   Cannot restart — no filename: 无法重启 — 没有文件名
   Cannot run filament operation while printing: 打印期间无法执行耗材操作
+  'Cannot schedule a pause: printer not connected': '无法设置暂停：打印机未连接'
   'Cannot start print: internal error': '无法开始打印: 内部错误'
   'Cannot start print: no temp directory available': '无法开始打印: 无可用临时目录'
   'Cannot start print: not connected to printer': '无法开始打印: 未连接打印机'
@@ -601,6 +604,7 @@ translations:
   Checking…: 检查中…
   Choose 12-hour or 24-hour time display: 选择 12 小时制或 24 小时制
   Choose Filament: 选择耗材
+  Choose Layer: '选择层'
   Choose Model: 选择型号
   Choose an existing filament, or tap + New to create one.: 选择已有耗材，或点击 + 新建来创建。
   Choose display language: 选择显示语言
@@ -699,6 +703,7 @@ translations:
   Configuring Moonraker...: 正在配置 Moonraker...
   Confirm PIN: 确认 PIN 码
   Confirm before running macros: 运行宏前进行确认
+  Confirm tool changes: '确认切换工具'
   Connect: 连接
   Connect a USB label printer first: 请先连接 USB 标签打印机
   Connect an ADXL345 accelerometer to calibrate: 连接 ADXL345 加速度计以进行校准
@@ -956,6 +961,7 @@ translations:
   Draw a ripple at each touch — helps diagnose offsets: 在每次触摸时绘制涟漪 — 有助于诊断偏移
   Drive Cal: 驱动校准
   Drop shadow strength (0 = disabled): 阴影强度（0 = 禁用）
+  Dry: 烘干
   Dry Filament: 烘干耗材
 
   Dry Filament on the Bed: 在热床上烘干耗材
@@ -1219,6 +1225,7 @@ translations:
   Failed to save spool: 保存料盘失败
   Failed to save theme file: 保存主题文件失败
   'Failed to save to Spoolman: {}': '保存到Spoolman失败: {}'
+  'Failed to schedule the pause: {}': '设置暂停失败：{}'
   'Failed to send command: {}': '发送命令失败: {}'
   Failed to send print data: 发送打印数据失败
   Failed to send status request: 发送状态请求失败
@@ -1746,6 +1753,7 @@ translations:
   Layer Macro captures one frame per layer change. Best for most prints.: 层变化宏在每次层变化时捕获一帧。适合大多数打印。
   Layer mode captures one frame per layer change. Best for most prints.: 层模式在每次换层时捕获一帧。适用于大多数打印。
   Layer {} of {} · {:.2f} mm: 第 {} / {} 层 · {:.2f} mm
+  Layer {} of {}.: '第 {} 层，共 {} 层。'
   Layers: 层
   Layout: 布局
   Layout changes are off in safe mode. Restart to edit.: '安全模式下无法更改布局。请重启后再编辑。'
@@ -2016,6 +2024,7 @@ translations:
   New printer successfully added: 新打印机已成功添加
   New profile name: 新配置名称
   Next: 下一步
+  Next Layer: '下一层'
   'Next: {}': '下一个：{}'
   Niimbot (Bluetooth): Niimbot（蓝牙）
   'No': 否
@@ -2073,6 +2082,7 @@ translations:
   No media installed: 未安装介质
   No mesh data: 没有网格数据
   No mesh loaded: 未加载网格
+  No message: '无消息'
   No multi-filament system detected: 未检测到多耗材系统
   No network. Scan QR code to report on your phone.: 无网络。扫描二维码在手机上报告。
   No networks found: 未找到网络
@@ -2081,6 +2091,7 @@ translations:
   No objects: '无对象'
   No objects defined for this print: 此次打印未定义对象
   No output yet: 暂无输出
+  No pause scheduled.: '未设置暂停。'
   No presets configured: 未配置预设
   No preview: 无预览
   No print history found: 未找到打印历史
@@ -2190,6 +2201,7 @@ translations:
   'Off': 关
   'Off:': '关:'
   'Off: runs with these values without asking': '关: 不询问,直接以这些值运行'
+  Offer to save Z-offset changes to the printer config: '提供将 Z 偏移更改保存到打印机配置的选项'
   Offsets saved: 偏移已保存
   "Old setting on today's data: {} residual - now: {}": 旧设置（今日数据）：残余 {} — 当前：{}
   'On': 开
@@ -2284,6 +2296,8 @@ translations:
   Path {}: 路径 {}
   Path {} before: 路径 {}（之前）
   Pause: 暂停
+  Pause Layer: '暂停层'
+  Pause at Layer: '在指定层暂停'
   Pause macro not configured: 暂停宏未配置
   Pause on Detection: 检测到故障时暂停
   Pause the print first, then load, unload, or change filament: 请先暂停打印，然后再加载、卸载或更换耗材
@@ -2291,6 +2305,7 @@ translations:
   Pause, resume, or stop the print: 暂停、恢复或停止打印
   Paused: 已暂停
   Paused (attention needed): 已暂停（需要处理）
+  Pausing at layer {}.: '将在第 {} 层暂停。'
   Pausing...: 暂停中...
   Peak Freq: 峰值频率
   'Peak:': 峰值：
@@ -2443,6 +2458,7 @@ translations:
   Printer Firmware Disconnected: 打印机固件已断开
   Printer Image: 打印机图片
   Printer Manager: 打印机管理
+  Printer Message: '打印机消息'
   Printer Model: 打印机型号
   Printer Name: 打印机名称
   'Printer Setup: Connection': 打印机设置：连接
@@ -2709,6 +2725,7 @@ translations:
   Resetting: 重置中
   Resetting system: '正在重置系统'
   Resetting...: 正在重置...
+  Resolve it on the filament system screen, then try again: '请在耗材系统界面中处理后重试'
   Response (Kp): 响应 (Kp)
   Restart: 重启
   Restart Firmware?: 重启固件？
@@ -2771,6 +2788,7 @@ translations:
   Rewinding: 回卷中
   Right: '右'
   'Role:': 角色：
+  Rotate: 旋转
   Rotating tips for using your printer: 轮播的打印机使用提示
   Rotation: 旋转
   'Rotation: %d° - %ds remaining (or wait to retry)': '旋转: %d° - 剩余%ds
@@ -2829,6 +2847,7 @@ translations:
   Save Printer Configuration: 保存打印机配置
   Save Theme As: 主题另存为
   Save Z-Offset: 保存 Z 偏移
+  Save Z-Offset Buttons: '保存 Z 偏移按钮'
   Save Z-Offset?: 保存 Z 偏移？
   Save changes to persist them across restarts?: 保存更改以便在重启后保留？
   'Save failed: {}': '保存失败: {}'
@@ -3154,6 +3173,7 @@ translations:
   Stopped between Hub and Toolhead: 停在集线器与工具头之间
   Stopped between Lane and Hub: 停在耗材通道与集线器之间
   Stopped between Spool and Lane: 停在料盘与耗材通道之间
+  Stopped drying %s: '已停止烘干：%s'
   Stops all motion. Requires firmware restart.: 停止所有运动。需要固件重启。
   Stow: 收回
   Subtle: 微妙
@@ -3173,6 +3193,7 @@ translations:
   Switch between light and dark themes: 切换浅色和深色主题
   Switch the active tool or extruder: 切换当前工具或挤出机
   Switch to v%s: '切换到 v%s'
+  Switch to {}?: '切换到 {}?'
   Switched to {}: '已切换到 {}'
   Switches to a backup spool on runout: 耗材用尽时切换到备用料盘
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
@@ -3246,7 +3267,9 @@ translations:
   Temperatures plotted over time: 温度随时间的变化曲线
   Temperatures saved: 温度已保存
   Template: 模板
+  Temporary adjustment for this print: "此打印的临时调整"
   Temporary adjustment for this print, unless saved on Controls panel: 此打印的临时调整，除非在控制面板上保存
+  Temporary for this print; a tool change resets it: "仅限此打印的临时调整；换工具会将其重置"
   Tertiary: 第三
   Test All Lanes: '测试所有耗材通道'
   Test Connection: 测试连接
@@ -3296,6 +3319,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : 耗材未到达喷嘴。CFS 未报告错误，但工具头传感器仍未检测到耗材。请检查料盘是否放置到位、路径是否畅通，然后重试。
   The filament may not have fully retracted — try again or manually pull: 耗材可能未完全回抽。请重试或手动抽出
+  The filament system needs attention: '耗材系统需要处理'
   The filament system reported an error: 耗材系统报告错误
   The heater can't be changed while the printer is waiting.: '打印机等待期间无法更改加热器。'
   The heater did not accept the printer's credentials.: '加热器不接受打印机的凭据。'
@@ -3311,12 +3335,14 @@ translations:
   The left RFID reader in this CFS unit may need service: 此 CFS 单元的左侧 RFID 读取器可能需要维修
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : 当前装载的料盘是 {}，但此文件为 {} 切片。填充耗材需要以更低的流量运行，且需要硬化喷嘴。
+  The message your printer's macros show (M117): '打印机宏显示的消息 (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: '喷嘴在远离打印区域的角落进行几次短促的测试挤出，并重复直到读数一致。'
   The plate and the spools are still hot. Use gloves.: 热床和料盘仍然很烫。请戴手套。
 
   The plate finishes its current move, but drying will not start.: '热床会完成当前移动,但烘干不会开始。'
   The print ended before any layer was printed. Nothing was changed.: 打印在任何一层完成前就结束了。未做任何更改。
   The print is cancelled and you pick the best band from what has printed so far.: 打印将被取消,你可以从已打印的部分中选择最佳区段。
+  The print is on its last layer.: '正在打印最后一层。'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 打印已暂停。现在切换工具会移动工具头并更换喷嘴处的耗材。切换完成后请恢复打印。
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: '打印正在等待腔体达到 {}°C，但加热器没有加热。'
@@ -3350,7 +3376,6 @@ translations:
   The runout sensor indicates no filament is loaded. Start print anyway?: 断料传感器显示未装载耗材。仍要开始打印吗？
   The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service: 无法读取此 CFS 单元的传感器。请检查其连接，否则该单元可能需要维修
   The speed of one fan you choose: 所选风扇的转速
-  The test print could not start.: 无法开始测试打印。
   The time, date, and system uptime: 时间、日期和系统运行时长
   The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?: 工具头内有耗材，但没有 AMS 槽位报告已装载。请在打印前手动取出耗材。仍要开始打印吗？
   ? The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?
@@ -3412,8 +3437,10 @@ translations:
   This plugin asks for no special permissions.: '此插件不请求任何特殊权限。'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: '此插件让 HelixScreen 控制打印启动选项，如热床网格和 QGL。'
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: '此打印无法继续。请重新开始打印；如果反复出现，可关闭热床检查。'
+  This print does not report layers, so no layer pause can be scheduled.: '此打印未报告层信息，因此无法设置按层暂停。'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: 本次打印需要约
     %.0fg，但料盘仅剩约 %.0fg。仍要开始吗？
+  This print never reports layer {}.: '此打印从不报告第 {} 层。'
   This printer cannot calibrate tool offsets automatically: 此打印机无法自动校准工具偏移
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: 此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: 此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。
@@ -3810,6 +3837,7 @@ translations:
   Z-offset saved: Z 偏移已保存
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z 偏移已保存 ({:+.3f}mm)。Klipper 正在重启...
   Z-offset saved - Klipper restarting...: Z 偏移已保存 - Klipper 重启中...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Z 偏移保存已关闭，因此 HelixScreen 未保存此值。Klipper 会保留它，直到下次保存配置。'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: '已加载'

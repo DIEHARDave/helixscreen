@@ -286,6 +286,7 @@ class AmsPanel : public PanelBase {
     // === Path Canvas Callbacks ===
 
     static void on_path_slot_clicked(int slot_index, void* user_data);
+    static void on_path_toolhead_clicked(int slot_index, void* user_data);
     static void on_path_hub_clicked_thunk(lv_point_t click_pt, void* user_data);
     static void on_bypass_spool_clicked(void* user_data);
 

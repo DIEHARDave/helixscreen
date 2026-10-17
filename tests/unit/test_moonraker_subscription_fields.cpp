@@ -929,3 +929,23 @@ TEST_CASE("Subscription: loaded leveling-skip wrappers subscribe their gates and
         CHECK_FALSE(subs.contains("quad_gantry_level"));
     }
 }
+
+TEST_CASE("Subscription: layer-pause state macro subscribed only with the macros",
+          "[moonraker][subscription][layer_pause]") {
+    SECTION("absent without the scheduling macros") {
+        DiscoveryFixture fx;
+        fx.add("gcode_macro SET_PRINT_STATS_INFO", {});
+        REQUIRE_FALSE(fx.build().contains("gcode_macro SET_PRINT_STATS_INFO"));
+    }
+
+    SECTION("narrowed to the two schedule variables when offered") {
+        DiscoveryFixture fx;
+        fx.add("gcode_macro SET_PAUSE_NEXT_LAYER", {});
+        fx.add("gcode_macro SET_PAUSE_AT_LAYER", {});
+        fx.add("gcode_macro SET_PRINT_STATS_INFO", {});
+        json subs = fx.build();
+        REQUIRE(has_field(subs, "gcode_macro SET_PRINT_STATS_INFO", "pause_next_layer"));
+        REQUIRE(has_field(subs, "gcode_macro SET_PRINT_STATS_INFO", "pause_at_layer"));
+        REQUIRE(subs["gcode_macro SET_PRINT_STATS_INFO"].size() == 2);
+    }
+}

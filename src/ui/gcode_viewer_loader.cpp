@@ -243,9 +243,9 @@ struct AsyncBuildResult {
 #ifdef ENABLE_3D_RENDERER
     std::unique_ptr<helix::gcode::RibbonGeometry> geometry; ///< Full detail geometry
 #endif
-    /// Scheduled pauses + their axis, from the same parse pass (full-load mode).
-    std::vector<helix::gcode::ScheduledPause> scheduled_pauses;
-    helix::gcode::ProgressAxis scheduled_pauses_axis{helix::gcode::ProgressAxis::BytePosition};
+    /// Scheduled pauses, layer marks and their axis, from the same parse pass
+    /// (full-load mode).
+    helix::gcode::PauseScanPtr pause_scan;
     std::string error_msg;
     bool success{true};
     bool force_2d = false; ///< Budget system forced 2D fallback
@@ -296,9 +296,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
         st->renderer_->release_geometry();
     }
 #endif
-    st->scheduled_pauses.clear();
-    st->scheduled_pauses_axis = helix::gcode::ProgressAxis::BytePosition;
-    st->has_pause_scan = false;
+    st->pause_scan.reset();
 
     // =========================================================================
     // PHASE 0: Streaming Mode Detection (Phase 6)
@@ -387,11 +385,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                         // The layer scan collected this file's scheduled pauses on
                         // the same pass; remember them for the load callback.
                         const auto& stats = st->streaming_controller_->get_index_stats();
-                        st->scheduled_pauses = stats.scheduled_pauses;
-                        st->scheduled_pauses_axis = stats.has_m73
-                                                        ? helix::gcode::ProgressAxis::SlicerTime
-                                                        : helix::gcode::ProgressAxis::BytePosition;
-                        st->has_pause_scan = true;
+                        st->pause_scan = stats.pause_scan;
 
                         // Initialize 2D renderer with streaming controller
                         st->layer_renderer_2d_ =
@@ -534,8 +528,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                     }
                 }
 
-                result->scheduled_pauses = pause_scan.pauses();
-                result->scheduled_pauses_axis = pause_scan.axis();
+                result->pause_scan = pause_scan.take_shared();
 
                 if (cancelled_mid_parse) {
                     spdlog::debug("[GCode Viewer] Build cancelled mid-parse, discarding");
@@ -610,9 +603,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
 
                     // Store G-code data
                     st->gcode_file = std::move(r->gcode_file);
-                    st->scheduled_pauses = std::move(r->scheduled_pauses);
-                    st->scheduled_pauses_axis = r->scheduled_pauses_axis;
-                    st->has_pause_scan = true;
+                    st->pause_scan = std::move(r->pause_scan);
 
                     // Update 2D renderer if it exists (prevents dangling pointer).
                     // The whole colour chain runs here, not just the palette:

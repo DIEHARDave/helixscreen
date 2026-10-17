@@ -4,6 +4,8 @@
 #include "gcode_layer_renderer.h"
 
 #include <chrono>
+#include <cstdint>
+#include <cstring>
 #include <thread>
 #include <utility>
 
@@ -101,6 +103,24 @@ class GCodeLayerRendererTestAccess {
                                   int width, int height) {
         renderer.ensure_cache(width, height);
         return renderer.render_layers_to_cache(from_layer, to_layer);
+    }
+
+    /// One ARGB word of the solid cache, or 0 outside it / with no cache.
+    static uint32_t cache_pixel(const GCodeLayerRenderer& renderer, int x, int y) {
+        const lv_draw_buf_t* buf = renderer.cache_buf_;
+        if (!buf || x < 0 || y < 0 || x >= static_cast<int>(buf->header.w) ||
+            y >= static_cast<int>(buf->header.h)) {
+            return 0;
+        }
+        uint32_t px;
+        std::memcpy(&px, buf->data + static_cast<size_t>(y) * buf->header.stride + x * 4u, 4);
+        return px;
+    }
+
+    /// Run the silhouette outline pass the way render() does once the solid
+    /// cache is complete, so a captured cache looks like what the app shows.
+    static void apply_outline(GCodeLayerRenderer& renderer) {
+        renderer.apply_ssao();
     }
 
     /// Pin the adaptive layer count. render_layers_to_cache reads it per call;

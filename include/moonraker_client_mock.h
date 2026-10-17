@@ -903,6 +903,17 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// object. Empty when the file is not loaded.
     [[nodiscard]] json skip_wrapper_status() const;
 
+    /// HELIX_MOCK_LAYER_PAUSE (default on): the client.cfg layer-pause macros.
+    [[nodiscard]] static bool layer_pause_macros_loaded();
+    /// `gcode_macro SET_PRINT_STATS_INFO` with the schedule; empty when off.
+    [[nodiscard]] json layer_pause_status() const;
+    /// Add the three macros' objects to an objects list when loaded.
+    static void append_layer_pause_objects(json& objects);
+    /// The simulated print reached a new layer: fire a scheduled pause.
+    void layer_pause_on_layer(int previous_layer, int current_layer);
+    /// CANCEL_PRINT clears both schedules, as client.cfg's does.
+    void reset_layer_pause();
+
     /// A print-start step reaching its wrapper: true, and the flag restored,
     /// when a skip was set for it.
     bool consume_skip(helix::skip_wrappers::Op op);
@@ -1988,6 +1999,11 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     std::atomic<double> print_progress_{0.0}; // 0.0 to 1.0
     /// Last layer announced on the console. Sim thread only.
     int last_console_layer_ = 0;
+    int layer_pause_last_layer_ = 0; ///< status thread only
+    std::atomic<bool> layer_pause_next_{false};
+    std::atomic<int> layer_pause_next_armed_at_{0}; ///< layer the request arrived on
+    std::atomic<bool> layer_pause_at_enable_{false};
+    std::atomic<int> layer_pause_at_layer_{0};
     std::atomic<int> speed_factor_{100}; // Percentage
     std::atomic<int> flow_factor_{100};  // Percentage
     std::atomic<int> fan_speed_{0};      // 0-255
@@ -2353,12 +2369,21 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
         return cfs_loaded_slot_.load() >= 0;
     }
 
+    /// display_status.message as the mock publishes it now: the last M117 once one was
+    /// sent (an empty one included), else the print-start chatter for the current phase,
+    /// else null.
+    [[nodiscard]] json current_display_message() const;
+    /// The M117 a typical PRINT_START macro shows during a simulated print-start step
+    /// (a SimulatedPrintStartPhase value).
+    static const char* print_start_display_message(uint8_t simulated_phase);
+
   private:
     // --- gcode_script() handlers (moonraker_client_mock_gcode*.cpp) -----------
     // One handler per command family. A handler returns a code to end the
     // script, or std::nullopt to let the checks after it see the same line.
     using GcodeResult = std::optional<int>;
     GcodeResult gcode_skip_wrappers(const std::string& gcode);
+    GcodeResult gcode_layer_pause(const std::string& gcode);
     GcodeResult gcode_ifs_module(const std::string& gcode);
     GcodeResult gcode_medusa(const std::string& gcode);
     GcodeResult gcode_zmod(const std::string& gcode);

@@ -293,22 +293,26 @@ def transform(settings):
 ' "${2:-}" FRAGMENT_JSON="$1"
 }
 
-# Persist a channel match_channel_to_version derived from a prerelease version
-# as the app's /update/channel, or its updater offers stable while Moonraker's
-# update_manager follows beta. A channel already in settings.json is the user's
+# Persist the channel match_channel_to_version settled (a prerelease version's
+# beta, or a beta or dev R2_CHANNEL) as the app's /update/channel, or its
+# updater offers stable while Moonraker's update_manager follows beta. A channel already in settings.json is the user's
 # and stays. Runs after setup_config_symlink so the write reaches printer_data.
 #
 # The rolling backups get the same default. A settings.json this creates has no
 # config_version, and Config::init replaces such a document wholesale with a
 # backup that survived an uninstall, which would take the channel with it.
 seed_update_channel() {
-    [ "${_R2_CHANNEL_FROM_VERSION:-}" = "yes" ] || return 0
-    local fragment='{"update": {"channel": 1}}' tier name
+    [ "${_R2_CHANNEL_TO_SEED:-}" = "yes" ] || return 0
+    local num=1 label=beta label_cap=Beta fragment tier name
+    if [ "${R2_CHANNEL:-}" = dev ]; then
+        num=2 label=dev label_cap=Dev
+    fi
+    fragment="{\"update\": {\"channel\": $num}}"
     if merge_settings_defaults "$fragment"; then
-        log_info "App update channel: beta, unless settings.json already named one"
+        log_info "App update channel: $label, unless settings.json already named one"
     else
-        log_warn "Could not record the beta update channel in settings.json;"
-        log_warn "choose Beta in the app's update settings to keep receiving beta builds."
+        log_warn "Could not record the $label update channel in settings.json;"
+        log_warn "choose $label_cap in the app's update settings to keep receiving $label builds."
     fi
     config_backup_tiers | while IFS= read -r tier; do
         for name in $(config_backup_names); do

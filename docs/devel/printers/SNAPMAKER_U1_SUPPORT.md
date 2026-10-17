@@ -275,23 +275,43 @@ When the U1 is detected, the printer database record provides these metadata fie
 | `probe_type` | `eddy_current` |
 | `toolhead_style` | `snapmaker_u1` |
 | `preset` | `snapmaker_u1` |
-| `z_offset_calibration_strategy` | `probe_calibrate` |
+| `z_offset_calibration_strategy` | `firmware_managed` |
+| `z_offset_persists` | `false` |
+| `tool_change_resets_z_offset` | `true` |
 
 The `snapmaker_u1` preset causes the first-run wizard to auto-skip hardware steps that do not apply to the U1 (e.g., probe wiring, toolhead identification).
 
+**Z-offset adjustments are temporary.** HelixScreen offers no Save Z Offset step on
+the U1 (`firmware_managed`), and the firmware does not persist a `SET_GCODE_OFFSET`
+adjustment either. Each head keeps its own stored offset (`extruder.gcode_offset`,
+set by the firmware's own `PROBE_XYZ_OFFSET_CALIBRATE SAVE_INFO=1`), and activating a
+head re-applies that offset with an absolute `SET_GCODE_OFFSET X= Y= Z=`
+(the firmware's `active_gcode_offset()` in its klippy kinematics/extruder.py, called
+from its virtual_sdcard.py on each tool change). A babystep therefore lasts until the next tool change or the end of the
+print, and Print Tune says so (`ZOffsetTuneHint::TEMPORARY_TOOL_CHANGE`).
+
+`Z_OFFSET_APPLY_PROBE` is no way out either (measured on the device): it writes the
+first head's coil section and folds the active head's per-head offset into it, so it is
+not a save of the babystep and HelixScreen never sends it here.
+
 ## Print Start Tracking
 
-HelixScreen uses the `snapmaker_u1` print start profile (`config/print_start_profiles/snapmaker_u1.json`) to track progress through the startup sequence. The profile uses weighted progress mode with these phases:
+HelixScreen uses the `snapmaker_u1` print start profile (`assets/config/print_start_profiles/snapmaker_u1.json`) in weighted progress mode, so each phase's share of the bar comes from the ETA engine rather than the profile. The U1's PRINT_START is inlined into the slicer gcode, and the profile reads the firmware's own action codes (`// Success: Set action code <CODE>` and `// Success: Changed main state to PRINTING with action <CODE>`) plus two console lines:
 
-1. Homing (10%)
-2. Bed heating (20%)
-3. Nozzle heating (20%)
-4. Z tilt adjust (15%)
-5. Bed mesh calibration (15%)
-6. Nozzle cleaning (10%)
-7. Purging (10%)
+| Signal | Phase | Label |
+|--------|-------|-------|
+| `// trigger_mcu_pos: {` (G28 X/Y) | HOMING | Homing axes... |
+| `// z offset: ` (the G28 Z touch, after every tool pick and before the mesh) | HOMING | Probing Z... |
+| `PRINT_SWITCH_CHECKING` | INITIALIZING | Checking extruders... |
+| `PRINT_AUTO_FEEDING` / `PRINT_REPLENISHING` | INITIALIZING | Loading filament... / Replenishing filament... |
+| `PRINT_BED_DETECTING`, `DETECT_PLATE` | BED_MESH | Inspecting bed... / Detecting plate... |
+| `BED_PREHEATING` (the firmware's bed soak) | SOAKING | Heat Soaking... |
+| `BED_PRESCANNING` (four corners) | BED_MESH | Validating bed mesh... |
+| `BED_LEVELING` | BED_MESH | Bed mesh... (its message change restarts the probe count) |
+| `PRINT_PREEXTRUDING` | PURGING | Priming... |
+| `PRINT_RESUMING` | INITIALIZING | Resuming print... |
 
-The progress bar updates as each phase completes, so you can see exactly where your printer is in its startup routine.
+`// z_mesh_complete:` also comes from G28 Z, so it maps to nothing. Heating has no pattern: while an M109/M190/TEMPERATURE_WAIT reports, the collector reads the command at `virtual_sdcard.file_position` and names the heater it waits on (`PRINT_START_PROFILES.md`, the heater-wait row of the test table). The first model layer, not an action code, ends the pre-print.
 
 ## Pre-Print Flow Calibration (Pressure Advance)
 
