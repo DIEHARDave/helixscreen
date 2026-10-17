@@ -295,7 +295,11 @@ void ExcludeObjectSideList::create_row(lv_obj_t* parent, const ObjectBadge& badg
     if (!row) {
         return;
     }
-    helix::ui::set_row_label_text(row, "object_name", name.c_str());
+    if (lv_obj_t* label = lv_obj_find_by_name(row, "object_name")) {
+        const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+        helix::ui::set_row_label_text(row, "object_name",
+                                      object_display_name(name, badge.defined_index, font).c_str());
+    }
 
     // L069: the row is a plain lv_obj, so the user_data slot is ours. The
     // helper owns the copy and frees it on LV_EVENT_DELETE. An excluded row

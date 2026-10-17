@@ -334,6 +334,24 @@ TEST_CASE_METHOD(SideListFixture, "A row tap hands the object's name to the tap 
     CHECK(taps[0] == "obj_4");
 }
 
+TEST_CASE_METHOD(SideListFixture,
+                 "A row whose name the font cannot draw reads Object <n> and taps the real name",
+                 "[exclude_side_list][object_display_name]") {
+    const std::string cjk = "\xE7\xAB\x8B\xE6\x96\xB9\xE4\xBD\x93"; // 立方体
+    objects().set_defined_objects({"Cube_id_0", cjk});
+    settle();
+    const auto rows = rows_of(container);
+    REQUIRE(rows.size() == 2);
+
+    CHECK(shows_text(rows[0], "Cube_id_0"));
+    CHECK(shows_text(rows[1], "Object 2"));
+    CHECK_FALSE(shows_text(rows[1], cjk.c_str()));
+
+    lv_obj_send_event(rows[1], LV_EVENT_CLICKED, nullptr);
+    REQUIRE(taps.size() == 1);
+    CHECK(taps[0] == cjk);
+}
+
 TEST_CASE_METHOD(SideListFixture, "In toggle mode a picked row reads Excluded and stays tappable",
                  "[exclude_side_list][pre_start_exclude]") {
     objects().set_current_object("");

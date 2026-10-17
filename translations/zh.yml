@@ -1123,6 +1123,7 @@ translations:
   Exclude Object?: '排除对象？'
   Exclude Objects: '排除对象'
   Excluded: 已排除
+  Excluding "{}"...: '正在排除"{}"...'
   Exclusion cancelled: 排除已取消
   Execute printer macros: 执行打印机宏
   Exhaust Fan: 排气扇
@@ -2220,8 +2221,10 @@ translations:
   'ON: {} | OFF: {}': '开: {} | 关: {}'
   OS: OS
   'OS: ': '操作系统: '
+  Object: '对象'
   Object picks apply only to prints started now: '对象选择仅适用于现在开始的打印'
   Object positions unavailable: 对象位置不可用
+  Object {}: '对象 {}'
   Objects: 对象
   Objects in the print, with a tap to open the skip map: '打印中的对象，点按打开跳过地图'
   'Off': 关

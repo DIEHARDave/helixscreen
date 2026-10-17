@@ -1088,6 +1088,7 @@
   <translation tag="Exclude Object?" zh="排除对象？"/>
   <translation tag="Exclude Objects" zh="排除对象"/>
   <translation tag="Excluded" zh="已排除"/>
+  <translation tag="Excluding &quot;{}&quot;..." zh="正在排除&quot;{}&quot;..."/>
   <translation tag="Exclusion cancelled" zh="排除已取消"/>
   <translation tag="Execute printer macros" zh="执行打印机宏"/>
   <translation tag="Exhaust Fan" zh="排气扇"/>
@@ -2143,8 +2144,10 @@
   <translation tag="ON: {} | OFF: {}" zh="开: {} | 关: {}"/>
   <translation tag="OS" zh="OS"/>
   <translation tag="OS: " zh="操作系统: "/>
+  <translation tag="Object" zh="对象"/>
   <translation tag="Object picks apply only to prints started now" zh="对象选择仅适用于现在开始的打印"/>
   <translation tag="Object positions unavailable" zh="对象位置不可用"/>
+  <translation tag="Object {}" zh="对象 {}"/>
   <translation tag="Objects" zh="对象"/>
   <translation tag="Objects in the print, with a tap to open the skip map" zh="打印中的对象，点按打开跳过地图"/>
   <translation tag="Off" zh="关"/>

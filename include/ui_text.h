@@ -75,6 +75,22 @@ void ui_text_apply_transform(lv_obj_t* label, const char* transform);
 namespace helix::ui {
 
 /**
+ * Whether @p font, through its fallback chain, has a real glyph for every
+ * character of @p text
+ *
+ * A character no font in the chain carries draws as a placeholder box, so text
+ * that fails this check shows up as tofu, and so does malformed UTF-8, which
+ * fails it too. Control characters (below U+0020) are layout, not glyphs, and
+ * always pass. Empty text passes; a null font cannot be asked, so it passes too.
+ *
+ * Pure over its arguments; it neither reads nor writes a widget.
+ *
+ * @param font Font the text is drawn with
+ * @param text UTF-8 text to check
+ */
+bool font_renders_text(const lv_font_t* font, const char* text);
+
+/**
  * Fit text into a width by replacing its middle with an ellipsis
  *
  * Text that measures within @p max_width comes back unchanged. Text that
