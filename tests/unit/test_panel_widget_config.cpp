@@ -3453,3 +3453,19 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     CHECK_FALSE(wc.is_unedited_default());
     CHECK_FALSE(get_saved_root().contains("default"));
 }
+
+TEST_CASE("PanelWidgetRegistry: screen-scoped widgets are exactly the six",
+          "[panel_widget][widget_scope]") {
+    std::set<std::string> screen;
+    for (const auto& def : get_all_widget_defs()) {
+        if (def.scope == WidgetScope::Screen) {
+            screen.insert(def.id);
+        }
+    }
+    const std::set<std::string> expected = {"network", "clock",         "lock",
+                                            "tips",    "notifications", "shutdown"};
+    REQUIRE(screen == expected);
+    REQUIRE(is_screen_scoped("clock"));
+    REQUIRE_FALSE(is_screen_scoped("host_health"));
+    REQUIRE_FALSE(is_screen_scoped("no_such_widget"));
+}
