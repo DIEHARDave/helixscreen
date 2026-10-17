@@ -11,6 +11,7 @@
 #include "refresh_period_hold.h"
 #include "screen_hide_hold.h"
 #include "screensaver.h"
+#include "screensaver_aqua.h"
 #include "screensaver_base.h"
 #include "screensaver_bounce.h"
 #include "screensaver_fireflies.h"
@@ -56,6 +57,9 @@ ScreensaverManager::ScreensaverManager() : cpu_clock_(helix::ui::read_process_cp
     flip_clock->set_input_source([this] { return clock_input(); });
     screensavers_.push_back(std::move(flip_clock));
     screensavers_.push_back(std::make_unique<helix::ui::FirefliesScreensaver>());
+    auto aqua = std::make_unique<helix::ui::AquaScreensaver>();
+    aqua->set_input_source([this] { return clock_input(); });
+    screensavers_.push_back(std::move(aqua));
 
     for (const char* name : savers_missing_for_build_depth()) {
         spdlog::error("[ScreensaverManager] {} is listed as drawing at this colour depth but no "
