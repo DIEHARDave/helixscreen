@@ -76,6 +76,10 @@ struct AvailableSlot {
     /// ~200 aggregate initializers in the mapper tests stay valid.
     helix::ui::LaneNoun noun = helix::ui::LaneNoun::Slot;
 
+    /// The names the loaded filament's finish is read from
+    /// (SlotInfo::finish_text()); empty for none. Defaulted for the same reason.
+    std::string finish_text = {};
+
     /// Unique key for this slot across all backends
     SlotKey key() const {
         return {slot_index, backend_index};

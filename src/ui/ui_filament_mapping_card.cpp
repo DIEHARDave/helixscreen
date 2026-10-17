@@ -3,6 +3,7 @@
 #include "ui_filament_mapping_card.h"
 
 #include "ui_fonts.h"
+#include "ui_swatch.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -410,8 +411,8 @@ void FilamentMappingCard::rebuild_compact_view() {
         // TOP band: the gcode file's intended colour for this tool.
         if (auto* top = helix::ui::find_required(chip, "top_band", "FilamentMapping")) {
             if (tool.color_known) {
-                lv_obj_set_style_bg_opa(top, LV_OPA_COVER, 0); // DECLARATIVE_OK: see above
-                lv_obj_set_style_bg_color(top, lv_color_hex(tool.color_rgb), 0);
+                // The file names only a colour: no split, no finish.
+                helix::ui::apply_swatch_color(top, tool.color_rgb, "");
             } else {
                 // No fill: painting the neutral stand-in reads as "this file
                 // prints in grey", a claim nothing has made. (K2 Plus report.)
@@ -452,11 +453,14 @@ void FilamentMappingCard::rebuild_compact_view() {
             (resolved && !resolved->is_empty) ? lv_color_hex(resolved->color_rgb) : neutral;
         if (auto* bottom = helix::ui::find_required(chip, "bottom_band", "FilamentMapping")) {
             if (slot_empty) {
-                // Declarative empty_slot style (warning border, reduced opacity)
-                // declared in filament_swatch.xml under selector user_1.
+                // Declarative empty_slot style (warning border, faded neutral
+                // fill) declared in filament_swatch.xml under selector user_1.
+                // The band is not a filament colour, so it stays unpainted.
                 lv_obj_add_state(bottom, LV_STATE_USER_1);
             } else if (resolved) {
-                lv_obj_set_style_bg_color(bottom, slot_color, 0); // DECLARATIVE_OK: see above
+                helix::ui::apply_swatch_color(
+                    bottom, resolved->color_rgb, resolved->multi_color_hexes,
+                    helix::ui::swatch_finish_from_variant(resolved->finish_text));
             } else {
                 // No lane chosen yet: naming one would be a claim the mapping has
                 // not made, so the band stays blank.

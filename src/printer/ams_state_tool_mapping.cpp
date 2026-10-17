@@ -126,6 +126,7 @@ std::vector<helix::AvailableSlot> AmsState::collect_available_slots() const {
                 as.color_rgb = slot_info.color_rgb;
                 as.multi_color_hexes = slot_info.multi_color_hexes;
                 as.material = slot_info.material;
+                as.finish_text = slot_info.finish_text();
                 as.is_empty = (slot_info.status == SlotStatus::EMPTY ||
                                slot_info.status == SlotStatus::UNKNOWN);
                 as.remaining_weight_g = slot_info.remaining_weight_g;
