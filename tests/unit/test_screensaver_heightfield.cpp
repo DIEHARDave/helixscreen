@@ -504,6 +504,28 @@ TEST_CASE("upscale writes only the rows asked for and returns that box",
     }
 }
 
+TEST_CASE("upscale writes only the columns asked for and returns that box",
+          "[screensaver][heightfield]") {
+    const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
+    const int32_t scale = GENERATE(2, 4);
+    CAPTURE(static_cast<int>(format), scale);
+    std::vector<Rgb> frame(10 * 6, Rgb{200, 200, 200});
+    Canvas c(10 * scale, 6 * scale, format, 0, 0x11);
+    const DirtyRect box = upscale_frame(frame, 10, 6, scale, 1, 4, c.target, 3, 7);
+    CHECK(box == DirtyRect{3 * scale, scale, 7 * scale - 1, 4 * scale - 1});
+    const PixelWriter w(c.target);
+    for (int32_t y = 0; y < 6 * scale; y++) {
+        for (int32_t x = 0; x < 10 * scale; x++) {
+            const bool in = x >= box.x1 && x <= box.x2 && y >= box.y1 && y <= box.y2;
+            const uint32_t bpp = bytes_per_pixel(format);
+            const bool touched =
+                c.bytes[static_cast<size_t>(y) * c.target.stride + x * bpp] != 0x11;
+            CAPTURE(x, y);
+            CHECK(touched == in);
+        }
+    }
+}
+
 TEST_CASE("an odd-sized canvas never writes past a row", "[screensaver][heightfield]") {
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
     const int32_t scale = GENERATE(2, 4);

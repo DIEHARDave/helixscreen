@@ -424,16 +424,20 @@ inline void write_pixel(uint8_t* row, int32_t x, int32_t y, PixelFormat format, 
 } // namespace
 
 DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int32_t scale,
-                        int32_t y_from, int32_t y_to, FrameTarget& out) {
+                        int32_t y_from, int32_t y_to, FrameTarget& out, int32_t x_from,
+                        int32_t x_to) {
     scale = std::max(1, scale);
     y_from = std::max(0, y_from);
     y_to = std::min(h, y_to);
+    x_from = std::max(0, x_from);
+    x_to = std::min(w, x_to);
     const auto ow = static_cast<int32_t>(out.w);
     const auto oh = static_cast<int32_t>(out.h);
-    const int32_t cols = std::min(w * scale, ow);
+    const int32_t cols = std::min(x_to * scale, ow);
+    const int32_t ox0 = std::min(x_from * scale, ow);
     const int32_t oy0 = std::min(y_from * scale, oh);
     const int32_t oy1 = std::min(y_to * scale, oh);
-    if (cols <= 0 || oy1 <= oy0) {
+    if (cols <= ox0 || oy1 <= oy0) {
         return {};
     }
 
@@ -442,7 +446,7 @@ DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int
         const int32_t sy = oy / scale;
         const Rgb* a = &frame[static_cast<size_t>(sy) * w];
         if (scale != 2) {
-            for (int32_t ox = 0; ox < cols; ox++) {
+            for (int32_t ox = ox0; ox < cols; ox++) {
                 const Rgb c = a[ox / scale];
                 write_pixel(row, ox, oy, out.format, c.r, c.g, c.b);
             }
@@ -460,11 +464,9 @@ DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int
         uint32_t pr = 0, pg = 0, pb = 0;
         uint32_t cr = 0, cg = 0, cb = 0;
         uint32_t nr = 0, ng = 0, nb = 0;
-        vert(0, cr, cg, cb);
-        pr = cr;
-        pg = cg;
-        pb = cb;
-        for (int32_t sx = 0; sx < w; sx++) {
+        vert(x_from, cr, cg, cb);
+        vert(std::max(0, x_from - 1), pr, pg, pb);
+        for (int32_t sx = x_from; sx < x_to; sx++) {
             if (sx + 1 < w) {
                 vert(sx + 1, nr, ng, nb);
             } else {
@@ -489,7 +491,7 @@ DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int
             cb = nb;
         }
     }
-    return {0, oy0, cols - 1, oy1 - 1};
+    return {ox0, oy0, cols - 1, oy1 - 1};
 }
 
 } // namespace helix::ui

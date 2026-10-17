@@ -183,14 +183,15 @@ class HeightfieldRenderer {
 };
 
 /**
- * @brief Writes rows [y_from, y_to) of a row-major `w` x `h` frame into `out`, each pixel
- * filling `scale` x `scale` canvas pixels
+ * @brief Writes rows [y_from, y_to) and columns [x_from, x_to) of a row-major `w` x `h` frame
+ * into `out`, each pixel filling `scale` x `scale` canvas pixels
  *
- * Scale 2 interpolates bilinearly (weights 3/4 and 1/4 between neighbours); any other scale
- * replicates. RGB565 output is dithered (PixelWriter::put_dithered). Returns the canvas box
- * written.
+ * Scale 2 interpolates bilinearly (weights 3/4 and 1/4 between neighbours, rows clamped to the
+ * band written, columns reaching one past the range); any other scale replicates. RGB565
+ * output is dithered (PixelWriter::put_dithered). Returns the canvas box written.
  */
 DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int32_t scale,
-                        int32_t y_from, int32_t y_to, FrameTarget& out);
+                        int32_t y_from, int32_t y_to, FrameTarget& out, int32_t x_from = 0,
+                        int32_t x_to = INT32_MAX);
 
 } // namespace helix::ui
