@@ -316,6 +316,12 @@ std::vector<Idle> idle_modes() {
 // The latch on its own
 // ============================================================================
 
+namespace {
+using S = helix::WakeTouchLatch::Sample;
+constexpr uint32_t WAKE_AT = 1000;
+constexpr uint32_t WINDOW_END = WAKE_AT + helix::WakeTouchLatch::REARM_MS;
+} // namespace
+
 TEST_CASE("the wake latch swallows the waking touch until it lifts", "[display][wake_swallow]") {
     helix::WakeTouchLatch latch;
     int asked = 0;
@@ -324,45 +330,88 @@ TEST_CASE("the wake latch swallows the waking touch until it lifts", "[display][
         ++asked;
         return waking;
     };
-    using S = helix::WakeTouchLatch::Sample;
 
     // The finger rests at (5,6), then lands at (100,100) and drags while the display sleeps.
-    CHECK_FALSE(latch.filter(S{false, 5, 6}, wakes).pressed);
-    S out = latch.filter(S{true, 100, 100}, wakes);
+    CHECK_FALSE(latch.filter(S{false, 5, 6}, WAKE_AT - 30, wakes).pressed);
+    S out = latch.filter(S{true, 100, 100}, WAKE_AT, wakes);
     CHECK_FALSE(out.pressed);
     CHECK(out.x == 5);
     CHECK(out.y == 6);
     CHECK(latch.swallowing());
 
     waking = false; // the display is awake from here on
-    out = latch.filter(S{true, 140, 300}, wakes);
+    out = latch.filter(S{true, 140, 300}, WAKE_AT + 100, wakes);
     CHECK_FALSE(out.pressed);
     CHECK(out.x == 5); // a swallowed drag does not move the pointer either
     CHECK(out.y == 6);
+    // Still held past the window: still swallowed.
+    CHECK_FALSE(latch.filter(S{true, 140, 300}, WINDOW_END + 50, wakes).pressed);
     CHECK(asked == 1); // one wake decision per touch
 
-    // The lift ends it and is reported where it happened.
-    out = latch.filter(S{false, 140, 300}, wakes);
+    // A lift past the window ends it and is reported where it happened.
+    out = latch.filter(S{false, 140, 300}, WINDOW_END + 80, wakes);
     CHECK_FALSE(out.pressed);
     CHECK(out.x == 140);
     CHECK_FALSE(latch.swallowing());
 
     // The next press passes unchanged.
-    out = latch.filter(S{true, 20, 30}, wakes);
+    out = latch.filter(S{true, 20, 30}, WINDOW_END + 120, wakes);
     CHECK(out.pressed);
     CHECK(out.x == 20);
     CHECK(out.y == 30);
     CHECK(asked == 2);
 }
 
+TEST_CASE("the wake latch swallows contact chatter inside the re-arm window",
+          "[display][wake_swallow]") {
+    helix::WakeTouchLatch latch;
+    bool waking = true;
+    auto wakes = [&](int32_t, int32_t) { return waking; };
+
+    latch.filter(S{false, 5, 6}, WAKE_AT - 30, wakes);
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, WAKE_AT, wakes).pressed);
+    waking = false;
+
+    // Press, release, press, release, all inside the window: nothing gets through.
+    CHECK_FALSE(latch.filter(S{false, 100, 100}, WAKE_AT + 30, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, WAKE_AT + 60, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{false, 100, 100}, WAKE_AT + 90, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, WAKE_AT + 120, wakes).pressed);
+    CHECK(latch.swallowing());
+
+    // A chatter press still down at the end of the window stays swallowed until it lifts.
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, WINDOW_END + 10, wakes).pressed);
+    CHECK_FALSE(latch.filter(S{false, 100, 100}, WINDOW_END + 40, wakes).pressed);
+    CHECK_FALSE(latch.swallowing());
+
+    // A deliberate tap after the window is an ordinary press.
+    CHECK(latch.filter(S{true, 100, 100}, WINDOW_END + 300, wakes).pressed);
+}
+
+TEST_CASE("a release inside the window, then quiet, ends the latch at the next press",
+          "[display][wake_swallow]") {
+    // A device that reads only on events reports nothing between the lift and the next
+    // touch, so the press after the window has to end the latch itself.
+    helix::WakeTouchLatch latch;
+    bool waking = true;
+    auto wakes = [&](int32_t, int32_t) { return waking; };
+
+    CHECK_FALSE(latch.filter(S{true, 100, 100}, WAKE_AT, wakes).pressed);
+    waking = false;
+    CHECK_FALSE(latch.filter(S{false, 100, 100}, WAKE_AT + 50, wakes).pressed);
+    REQUIRE(latch.swallowing());
+
+    CHECK(latch.filter(S{true, 300, 200}, WINDOW_END + 500, wakes).pressed);
+    CHECK_FALSE(latch.swallowing());
+}
+
 TEST_CASE("the wake latch changes nothing while the display is awake", "[display][wake_swallow]") {
     helix::WakeTouchLatch latch;
     auto awake = [](int32_t, int32_t) { return false; };
-    using S = helix::WakeTouchLatch::Sample;
 
-    CHECK(latch.filter(S{true, 1, 2}, awake).pressed);
-    CHECK(latch.filter(S{true, 3, 4}, awake).x == 3);
-    CHECK_FALSE(latch.filter(S{false, 3, 4}, awake).pressed);
+    CHECK(latch.filter(S{true, 1, 2}, 0, awake).pressed);
+    CHECK(latch.filter(S{true, 3, 4}, 10, awake).x == 3);
+    CHECK_FALSE(latch.filter(S{false, 3, 4}, 20, awake).pressed);
     CHECK_FALSE(latch.swallowing());
 }
 
@@ -460,4 +509,28 @@ TEST_CASE_METHOD(LVGLTestFixture, "a drag that wakes the display scrolls nothing
     }
     chain.hold(LV_INDEV_STATE_RELEASED, LIST_TOP, 50);
     CHECK(g_counts.scroll_begin >= 1);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "contact chatter on the wake touch clicks nothing",
+                 "[application][display][input][wake][wake_swallow]") {
+    // The wrapped chain only: the latch's re-arm window lives in the read wrapper.
+    const Idle idle = GENERATE(from_range(idle_modes()));
+    CAPTURE(idle_name(idle));
+
+    WakeChain chain(DisplayBackendType::FBDEV);
+    chain.build_targets(test_screen());
+    chain.go_idle(idle);
+
+    // Press, release, press, release, 30 ms each: all inside the re-arm window.
+    chain.hold(LV_INDEV_STATE_PRESSED, ON_BUTTON, 30);
+    chain.hold(LV_INDEV_STATE_RELEASED, ON_BUTTON, 30);
+    chain.hold(LV_INDEV_STATE_PRESSED, ON_BUTTON, 30);
+    chain.hold(LV_INDEV_STATE_RELEASED, ON_BUTTON, 300);
+    CHECK(g_counts.pressed == 0);
+    CHECK(g_counts.clicked == 0);
+    CHECK_FALSE(chain.asleep_or_dimmed());
+
+    // A deliberate tap after the window clicks once.
+    chain.tap(ON_BUTTON, 50);
+    CHECK(g_counts.clicked == 1);
 }

@@ -1016,7 +1016,7 @@ void DisplayManager::sleep_aware_read_cb(lv_indev_t* indev, lv_indev_data_t* dat
     // that touch as released until the finger lifts.
     const bool was_swallowing = dm->m_wake_latch.swallowing();
     const helix::WakeTouchLatch::Sample out = dm->m_wake_latch.filter(
-        {data->state == LV_INDEV_STATE_PRESSED, data->point.x, data->point.y},
+        {data->state == LV_INDEV_STATE_PRESSED, data->point.x, data->point.y}, lv_tick_get(),
         [dm](int32_t x, int32_t y) { return dm->m_sleep.note_press(x, y); });
     data->state = out.pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
     data->point.x = out.x;

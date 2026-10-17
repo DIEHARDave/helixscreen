@@ -570,8 +570,8 @@ void DisplaySleepController::wake() {
 }
 
 bool DisplaySleepController::note_press(int x, int y) {
-    // Decided on the raw press, because LVGL only updates its activity time on PRESSED
-    // and evdev can drain a quick tap's press and release in one read.
+    // The caller hides this press from LVGL, so it never reaches LVGL's activity clock;
+    // m_wake_requested is how the next idle tick learns of it.
     if (!m_display_sleeping && !m_display_dimmed) {
         return false;
     }
