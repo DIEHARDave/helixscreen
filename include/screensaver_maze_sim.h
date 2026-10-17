@@ -93,22 +93,27 @@ Rgb maze_fog(Rgb c, uint32_t k);
 enum class MazeTile : uint8_t {
     OPEN = 0,
     BRICK = 1,
-    /// Brick with the printer picture hung on it, or plain brick when there is no picture.
+    /// Brick with a picture hung on it (MazeMap::picture_index says which), or plain brick
+    /// when there are no pictures.
     PICTURE = 2,
 };
 
 /// The tile map.
 class MazeMap {
   public:
+    /// Interior walls of a maze that get a picture, each with its own index.
+    static constexpr int PICTURE_WALLS = 16;
+
     /// Carves a perfect maze (no loops, every cell reachable) of `cells` x `cells` with a
-    /// recursive backtracker, and hangs pictures on a few interior walls.
+    /// recursive backtracker, and hangs PICTURE_WALLS pictures on interior walls.
     void generate(int cells, std::minstd_rand& rng);
 
     /// Frees the tiles; the map is empty until the next generate().
     void release();
 
-    /// A hand-built map of `size` x `size` tiles in row order; for tests.
-    void set_tiles(int size, std::vector<MazeTile> tiles);
+    /// A hand-built map of `size` x `size` tiles in row order, with each tile's picture index
+    /// (none: all 0); for tests.
+    void set_tiles(int size, std::vector<MazeTile> tiles, std::vector<uint8_t> pictures = {});
 
     /// Tiles per side.
     int size() const {
@@ -125,10 +130,26 @@ class MazeMap {
     }
     /// True when the wall between cell (cx, cy) and its neighbour in `heading` is open.
     bool passage(int cx, int cy, int heading) const;
+    /// Which picture hangs on tile (x, y); 0 outside the map and on tiles without one.
+    uint8_t picture_index(int x, int y) const;
+    /// True for a wall joined to the outer ring through walls (4-connected), and outside the
+    /// map. A hand on such a wall follows it round to every cell along it; a wall that is not
+    /// is an island a wall follower can circle for ever.
+    bool boundary_wall(int x, int y) const;
 
   private:
+    size_t index(int x, int y) const {
+        return static_cast<size_t>(y) * static_cast<size_t>(size_) + static_cast<size_t>(x);
+    }
+    /// Marks the walls joined to the outer ring.
+    void label_walls();
+    /// Hangs every picture index 0..PICTURE_WALLS-1 the map lacks on a wall facing open floor.
+    void hang_pictures(std::minstd_rand& rng);
+
     int size_ = 0;
     std::vector<MazeTile> tiles_;
+    std::vector<uint8_t> pictures_;
+    std::vector<uint8_t> boundary_;
     /// Cells still to backtrack from while carving, kept to reuse its allocation.
     std::vector<int> stack_;
 };

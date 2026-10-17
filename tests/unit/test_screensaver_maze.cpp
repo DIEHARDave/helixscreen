@@ -221,6 +221,83 @@ TEST_CASE("a maze hangs pictures only on walls, and out of bounds reads as brick
     CHECK(map.tile(map.size(), 3) == MazeTile::BRICK);
 }
 
+TEST_CASE("a perfect maze has no islands: every wall reaches the outside", "[screensaver][maze]") {
+    for (uint32_t seed = 1; seed <= 50; seed++) {
+        INFO("seed " << seed);
+        std::minstd_rand rng(seed);
+        MazeMap map;
+        map.generate(MazeSim::CELLS, rng);
+        for (int y = 0; y < map.size(); y++) {
+            for (int x = 0; x < map.size(); x++) {
+                if (map.wall(x, y)) {
+                    REQUIRE(map.boundary_wall(x, y));
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("an island is not on the boundary", "[screensaver][maze]") {
+    const int size = 15;
+    std::vector<MazeTile> tiles(static_cast<size_t>(size * size), MazeTile::BRICK);
+    for (int y = 1; y < size - 1; y++) {
+        for (int x = 1; x < size - 1; x++) {
+            const bool island = x >= 4 && x <= 10 && y >= 4 && y <= 10;
+            tiles[static_cast<size_t>(y * size + x)] = island ? MazeTile::BRICK : MazeTile::OPEN;
+        }
+    }
+    MazeMap map;
+    map.set_tiles(size, tiles);
+    CHECK_FALSE(map.boundary_wall(4, 4));
+    CHECK_FALSE(map.boundary_wall(10, 10));
+    CHECK(map.boundary_wall(0, 7));
+    CHECK(map.boundary_wall(-1, 3));
+    CHECK_FALSE(map.boundary_wall(7, 1));
+}
+
+TEST_CASE("a generated maze hangs 16 pictures, indices 0..15 once each", "[screensaver][maze]") {
+    for (uint32_t seed = 1; seed <= 50; seed++) {
+        INFO("seed " << seed);
+        std::minstd_rand rng(seed);
+        MazeMap map;
+        map.generate(MazeSim::CELLS, rng);
+        std::vector<int> seen(MazeMap::PICTURE_WALLS, 0);
+        for (int y = 0; y < map.size(); y++) {
+            for (int x = 0; x < map.size(); x++) {
+                if (map.tile(x, y) == MazeTile::PICTURE) {
+                    const int i = map.picture_index(x, y);
+                    REQUIRE(i < MazeMap::PICTURE_WALLS);
+                    seen[static_cast<size_t>(i)]++;
+                } else {
+                    CHECK(map.picture_index(x, y) == 0);
+                }
+            }
+        }
+        for (int i = 0; i < MazeMap::PICTURE_WALLS; i++) {
+            CHECK(seen[static_cast<size_t>(i)] == 1);
+        }
+    }
+}
+
+TEST_CASE("set_tiles carries picture indices", "[screensaver][maze]") {
+    const int size = 15;
+    std::vector<MazeTile> tiles(static_cast<size_t>(size * size), MazeTile::BRICK);
+    std::vector<uint8_t> pictures(tiles.size(), 0);
+    tiles[static_cast<size_t>(3 * size + 2)] = MazeTile::PICTURE;
+    pictures[static_cast<size_t>(3 * size + 2)] = 3;
+    tiles[static_cast<size_t>(6 * size + 4)] = MazeTile::PICTURE;
+    pictures[static_cast<size_t>(6 * size + 4)] = 7;
+    MazeMap map;
+    map.set_tiles(size, tiles, pictures);
+    CHECK(map.picture_index(2, 3) == 3);
+    CHECK(map.picture_index(4, 6) == 7);
+    CHECK(map.picture_index(-1, 6) == 0);
+    MazeMap bare;
+    bare.set_tiles(size, tiles);
+    CHECK(bare.picture_index(2, 3) == 0);
+    CHECK(bare.picture_index(4, 6) == 0);
+}
+
 TEST_CASE("the wall follower passes every cell of a perfect maze within the step bound",
           "[screensaver][maze]") {
     const uint32_t bound = 4u * MazeSim::CELLS * MazeSim::CELLS;

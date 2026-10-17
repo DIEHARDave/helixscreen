@@ -36,9 +36,6 @@ constexpr size_t SPR_COUNT = SPR_ROCK0 + MazeRenderer::ROCK_FRAMES;
 
 constexpr int TEX = MazeRenderer::TEX;
 
-/// Interior walls of a maze that get a picture.
-constexpr int PICTURE_WALLS = 6;
-
 /// Logos turn once every this many ms; rocks show a new rotation frame this often.
 constexpr uint32_t SPIN_PERIOD_MS = 3000;
 constexpr uint32_t ROCK_FRAME_MS = 90;
@@ -479,18 +476,59 @@ void MazeMap::generate(int cells, std::minstd_rand& rng) {
         stack_.push_back(ny * cells + nx);
     }
 
-    int hung = 0;
-    for (int attempt = 0; attempt < 400 && hung < PICTURE_WALLS; attempt++) {
-        const int x = 1 + random_below(rng, size_ - 2);
-        const int y = 1 + random_below(rng, size_ - 2);
-        if (tile(x, y) != MazeTile::BRICK) {
-            continue;
+    pictures_.assign(tiles_.size(), 0);
+    hang_pictures(rng);
+    label_walls();
+}
+
+void MazeMap::hang_pictures(std::minstd_rand& rng) {
+    bool hung[PICTURE_WALLS] = {};
+    for (size_t i = 0; i < tiles_.size(); i++) {
+        if (tiles_[i] == MazeTile::PICTURE && pictures_[i] < PICTURE_WALLS) {
+            hung[pictures_[i]] = true;
         }
-        const bool faces_open =
-            !wall(x - 1, y) || !wall(x + 1, y) || !wall(x, y - 1) || !wall(x, y + 1);
-        if (faces_open) {
-            tiles_[static_cast<size_t>(y) * size_ + x] = MazeTile::PICTURE;
-            hung++;
+    }
+    for (int p = 0; p < PICTURE_WALLS; p++) {
+        for (int attempt = 0; attempt < 2000 && !hung[p]; attempt++) {
+            const int x = 1 + random_below(rng, size_ - 2);
+            const int y = 1 + random_below(rng, size_ - 2);
+            if (tile(x, y) != MazeTile::BRICK) {
+                continue;
+            }
+            const bool faces_open =
+                !wall(x - 1, y) || !wall(x + 1, y) || !wall(x, y - 1) || !wall(x, y + 1);
+            if (faces_open) {
+                tiles_[index(x, y)] = MazeTile::PICTURE;
+                pictures_[index(x, y)] = static_cast<uint8_t>(p);
+                hung[p] = true;
+            }
+        }
+    }
+}
+
+void MazeMap::label_walls() {
+    boundary_.assign(tiles_.size(), 0);
+    stack_.clear();
+    auto push = [this](int x, int y) {
+        if (x >= 0 && y >= 0 && x < size_ && y < size_ && wall(x, y) &&
+            boundary_[index(x, y)] == 0) {
+            boundary_[index(x, y)] = 1;
+            stack_.push_back(static_cast<int>(index(x, y)));
+        }
+    };
+    for (int i = 0; i < size_; i++) {
+        push(i, 0);
+        push(i, size_ - 1);
+        push(0, i);
+        push(size_ - 1, i);
+    }
+    while (!stack_.empty()) {
+        const int t = stack_.back();
+        stack_.pop_back();
+        const int x = t % size_;
+        const int y = t / size_;
+        for (int d = 0; d < 4; d++) {
+            push(x + HEADING_DX[d], y + HEADING_DY[d]);
         }
     }
 }
@@ -498,19 +536,38 @@ void MazeMap::generate(int cells, std::minstd_rand& rng) {
 void MazeMap::release() {
     std::vector<MazeTile>().swap(tiles_);
     std::vector<int>().swap(stack_);
+    std::vector<uint8_t>().swap(pictures_);
+    std::vector<uint8_t>().swap(boundary_);
     size_ = 0;
 }
 
-void MazeMap::set_tiles(int size, std::vector<MazeTile> tiles) {
+void MazeMap::set_tiles(int size, std::vector<MazeTile> tiles, std::vector<uint8_t> pictures) {
     size_ = size;
     tiles_ = std::move(tiles);
+    pictures_ = std::move(pictures);
+    pictures_.resize(tiles_.size(), 0);
+    label_walls();
 }
 
 MazeTile MazeMap::tile(int x, int y) const {
     if (x < 0 || y < 0 || x >= size_ || y >= size_) {
         return MazeTile::BRICK;
     }
-    return tiles_[static_cast<size_t>(y) * size_ + x];
+    return tiles_[index(x, y)];
+}
+
+uint8_t MazeMap::picture_index(int x, int y) const {
+    if (tile(x, y) != MazeTile::PICTURE || x < 0 || y < 0 || x >= size_ || y >= size_) {
+        return 0;
+    }
+    return pictures_[index(x, y)];
+}
+
+bool MazeMap::boundary_wall(int x, int y) const {
+    if (x < 0 || y < 0 || x >= size_ || y >= size_) {
+        return true;
+    }
+    return boundary_[index(x, y)] != 0;
 }
 
 bool MazeMap::passage(int cx, int cy, int heading) const {
