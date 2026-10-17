@@ -1389,6 +1389,25 @@ TEST_CASE("every maze frame dirties the whole canvas", "[screensaver][maze]") {
     CHECK(dirty[0] == DirtyRect{0, 0, 95, 63});
 }
 
+TEST_CASE("maze frames and step-downs never grow the heap from any starting rung",
+          "[screensaver][maze]") {
+    for (PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
+        for (size_t start = 0; start < helix::ui::MAZE_LEVEL_COUNT; start++) {
+            INFO("start " << start << " format " << static_cast<int>(format));
+            helix::test::SimRun<MazeSim> run(6, 96, 64, format);
+            run.init(start, MazeArt{});
+            const size_t heap = run.sim.heap_bytes();
+            for (size_t level = start; level < helix::ui::MAZE_LEVEL_COUNT; level++) {
+                run.sim.request_level(level);
+                for (int i = 0; i < 4; i++) {
+                    run.step(33);
+                    REQUIRE(run.sim.heap_bytes() <= heap);
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("a cleared maze holds no render buffers", "[screensaver][maze]") {
     std::minstd_rand rng(4);
     MazeSim sim;

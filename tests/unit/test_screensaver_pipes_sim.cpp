@@ -1332,22 +1332,75 @@ TEST_CASE("both depths run the same scene", "[screensaver][pipes_sim]") {
     }
 }
 
-TEST_CASE("pipes frames and level changes allocate nothing", "[screensaver][pipes_sim]") {
-    // Started at the coarsest rung, so a step up to the finest is the case that would grow.
-    helix::test::SimRun<PipesSim> run(9, 160, 96);
-    run.init(PIPES_LEVEL_COUNT - 1);
-    const size_t heap = run.sim.heap_bytes();
-    REQUIRE(heap > 0);
-    for (size_t level : {size_t{0}, PIPES_LEVEL_COUNT - 1, size_t{0}}) {
-        run.sim.request_level(level);
-        const uint32_t screens = run.sim.screens_started();
-        while (run.sim.screens_started() < screens + 1) {
-            run.step(100);
-            run.dirty.clear();
+namespace {
+
+/// Requests `level` and steps until the next screen has started at its scale, checking after
+/// every step that the sim holds `heap` bytes (0: not checked).
+void run_screen_at(helix::test::SimRun<PipesSim>& run, size_t level, size_t heap = 0) {
+    run.sim.request_level(level);
+    const uint32_t screens = run.sim.screens_started();
+    while (run.sim.screens_started() < screens + 1) {
+        run.step(100);
+        run.dirty.clear();
+        if (heap != 0) {
             REQUIRE(run.sim.heap_bytes() == heap);
         }
-        REQUIRE(run.sim.renderer().scale() == PIPES_LEVELS[level].scale);
     }
+    REQUIRE(run.sim.renderer().scale() == PIPES_LEVELS[level].scale);
+}
+
+/// Depth-buffer bytes at `level` for a 160 x 96 frame.
+size_t depth_bytes(size_t level) {
+    const int32_t s = PIPES_LEVELS[level].scale;
+    return static_cast<size_t>(scaled_extent(160, s)) * scaled_extent(96, s) * sizeof(float);
+}
+
+} // namespace
+
+TEST_CASE("pipes frames and step-downs allocate nothing from any starting rung",
+          "[screensaver][pipes_sim]") {
+    for (PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
+        for (size_t start = 0; start < PIPES_LEVEL_COUNT; start++) {
+            INFO("start " << start << " format " << static_cast<int>(format));
+            helix::test::SimRun<PipesSim> run(9, 160, 96, format);
+            run.init(start);
+            const size_t heap = run.sim.heap_bytes();
+            REQUIRE(heap > 0);
+            for (size_t level = start; level < PIPES_LEVEL_COUNT; level++) {
+                run_screen_at(run, level, heap);
+            }
+        }
+    }
+}
+
+TEST_CASE("a pipes run that starts at the coarse rung holds only the coarse depth buffer",
+          "[screensaver][pipes_sim]") {
+    const size_t last = PIPES_LEVEL_COUNT - 1;
+    REQUIRE(PIPES_LEVELS[last].scale > PIPES_LEVELS[0].scale);
+    helix::test::SimRun<PipesSim> fine(9, 160, 96);
+    helix::test::SimRun<PipesSim> coarse(9, 160, 96);
+    fine.init(0);
+    coarse.init(last);
+    CHECK(fine.sim.heap_bytes() - coarse.sim.heap_bytes() == depth_bytes(0) - depth_bytes(last));
+}
+
+TEST_CASE("a finer level mid-run grows the depth buffer and keeps drawing",
+          "[screensaver][pipes_sim]") {
+    const size_t last = PIPES_LEVEL_COUNT - 1;
+    helix::test::SimRun<PipesSim> run(9, 160, 96);
+    run.init(last);
+    const size_t coarse = run.sim.heap_bytes();
+    run_screen_at(run, 0);
+    CHECK(run.sim.heap_bytes() >= coarse + depth_bytes(0) - depth_bytes(last));
+    // The finer screen draws: a few growth steps light pixels, all inside their dirty boxes.
+    for (int i = 0; i < 5; i++) {
+        const std::vector<uint8_t> before = run.frame.snapshot();
+        run.step(100);
+        REQUIRE(diff_against(before, run.frame, run.dirty).uncovered == 0);
+        run.dirty.clear();
+    }
+    CHECK(lit_pixels(run.frame.target) > 0);
+    CHECK(run.frame.padding_intact());
 }
 
 TEST_CASE("a cleared pipes sim holds no buffers", "[screensaver][pipes_sim]") {

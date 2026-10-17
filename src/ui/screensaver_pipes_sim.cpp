@@ -617,7 +617,6 @@ uint16_t lut_value(float v) {
 void PipesRenderer::init(uint32_t w, uint32_t h, uint8_t scale) {
     w_ = w;
     h_ = h;
-    inv_depth_.reserve(static_cast<size_t>(w) * h);
     set_scale(scale);
     pipes_build_cylinder(cylinder_);
     pipes_build_ball(ball_);

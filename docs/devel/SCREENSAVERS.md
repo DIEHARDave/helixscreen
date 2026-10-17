@@ -267,6 +267,13 @@ build draws at its depth, otherwise the first registered saver that does, and Of
    `.rodata` are fine). Everything is allocated in `on_start()` and released, capacity included,
    in `on_stop()`; `clear()` on a vector keeps its capacity, so swap it with an empty one. Check
    with `size build/obj/ui/screensaver_<name>*.o`.
+7. Size every buffer for the level the run starts at. A run never steps up (the gate only steps
+   down), so each later rung is coarser and fits in the capacity already held: a step down
+   allocates nothing, and a board that starts at a low rung never holds the top rung's memory.
+   A buffer only some rungs use (maze's fogged floor and ceiling bands) is freed on a rung that
+   drops it. A request for a finer level mid-run (a test, or a forced level) reallocates
+   then; that is the rare path. A sim's tests pin this: no heap growth across frames and step
+   downs from every starting rung, in both formats.
 
 ## Fireflies
 
