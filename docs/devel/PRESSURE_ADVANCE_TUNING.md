@@ -78,7 +78,9 @@ keeps the ramp going, and the Tune overlay shows a Tuner button while a run is a
   on a delta the square inscribed in the reachable circle.
 - **Start.** The uploaded file starts through `PrintStartController::initiate_reprint()`,
   the path any file already on the printer takes, so a toolchanger's used-extruder send
-  happens; a cooldown follows the end macro.
+  happens; a cooldown follows the end macro. Known gap: it does not go through
+  `PrintPreparationManager::start_print()`, so that path's file scan, pre-print options,
+  AMS remap and spools-on-bed checks do not run for the tower.
 - **Bands.** More bands than rows are merged pairwise where K differs least
   (`pa::fit_bands()`), so late nudges stay pickable.
 
