@@ -137,6 +137,7 @@ translations:
   A motor's parameters couldn't be written. Power-cycle the printer to retry: モーターのパラメーターを書き込めませんでした。プリンターの電源を入れ直して再試行してください
   A newer version of the helper macros is available: 'ヘルパーマクロの新しいバージョンが利用可能です'
   A picture of your printer: プリンターの画像
+  A print is already running.: すでに印刷中です。
   A print is in progress - restart still pending: '印刷中です - 再起動は保留中'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: このゲートで印刷中です。HelixScreen 側のコピーはクリアしました。印刷終了後に再度クリアしてください。
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "スプールがベッド上にあるとされている状態で印刷が開始されました。まだ置かれている場合は、今すぐ緊急停止でプリンターを止めてください。"
@@ -189,6 +190,7 @@ translations:
   Actions: アクション
   Active: アクティブ
   Active Spool: アクティブスプール
+  'Active spool: {}': '使用中のスプール: {}'
   Actual: 現在
   Adaptive Bed Mesh: 適応ベッドメッシュ
   Add: 追加
@@ -258,6 +260,8 @@ translations:
   App Background: アプリ背景
   App startup encountered an error. Some features may be unavailable.: アプリの起動中にエラーが発生しました。一部の機能が利用できない場合があります。
   Appearance: 外観
+  ? "Applied to {}. Klipper forgets it on restart: enter {} as Pressure advance in your slicer's filament profile, or save it to the spool."
+  : '{}に適用しました。Klipperは再起動で忘れます: スライサーのフィラメントプロファイルでPressure Advanceに{}を入力するか、スプールに保存してください。'
   Applies to: 適用対象
   Apply: 適用
   Archive: アーカイブ
@@ -381,6 +385,7 @@ translations:
   Both: 両方
   Bouncing Logo: バウンドロゴ
   Bouncing Printer: バウンドプリンター
+  Bowden: ボーデン
   Bowden Length: 'ボーデン長'
   Bowden tube length from hub to toolhead: 'ハブからツールヘッドまでのボーデンチューブ長'
   Box: ボックス
@@ -624,6 +629,7 @@ translations:
 
   : ベッドの上と下を片付けてください。スプールをベッドに置き、箱(印刷したふたやフィラメントの梱包箱)でかぶせてドアを閉めてください。
 
+  Clear the plate and load {}. The tower prints in the middle of the bed.: ベッドを片付けて{}をロードしてください。タワーはベッド中央に印刷されます。
   Cleared from settings — system unpair failed, may need OS Bluetooth: 設定から削除しました。システムのペアリング解除に失敗、OS
     の Bluetooth 設定が必要な場合があります
   Clipboard unavailable - use SSH: クリップボード利用不可 - SSHを使用してください
@@ -907,6 +913,7 @@ translations:
   Devices: デバイス
   Different filament?: 別のフィラメント？
   Digital Clock: 'デジタル時計'
+  Direct drive: ダイレクトドライブ
   Disable: 無効化
   Disable Bypass: バイパスを無効化
   Disable Motors?: モーターを無効にしますか？
@@ -1035,6 +1042,9 @@ translations:
 
   Encoder: エンコーダー
   Encoder Error: 'エンコーダーエラー'
+  End K: 終了K
+  End Test: テスト終了
+  End the test print?: テスト印刷を終了しますか?
   Ended: 終了
   Endless Spool: 'エンドレススプール'
   Endless spool failover cleared for every slot: 'すべてのスロットのエンドレススプール設定を消去しました'
@@ -1211,11 +1221,13 @@ translations:
   Failed to save setup completion: セットアップ完了の保存に失敗しました
   Failed to save spool: スプールの保存に失敗しました
   Failed to save theme file: テーマファイルの保存に失敗しました
+  'Failed to save to Spoolman: {}': 'Spoolmanへの保存に失敗しました: {}'
   'Failed to send command: {}': 'コマンドの送信に失敗しました: {}'
   Failed to send print data: 印刷データの送信に失敗しました
   Failed to send status request: ステータス要求の送信に失敗しました
   Failed to set active spool: アクティブスプールの設定に失敗しました
   'Failed to set flow rate: {}': 'フロー率の設定に失敗しました: {}'
+  'Failed to set pressure advance: {}': 'Pressure Advanceの設定に失敗しました: {}'
   'Failed to set print speed: {}': '印刷速度の設定に失敗しました: {}'
   'Failed to set temperature: {}': '温度の設定に失敗しました: {}'
   'Failed to set {} temp: {}': '{} 温度の設定に失敗しました: {}'
@@ -1468,6 +1480,7 @@ translations:
   Heating Bed...: ベッド加熱中...
   Heating Chamber...: チャンバー加熱中...
   Heating Nozzle...: ノズル加熱中...
+  Heating and homing: 加熱とホーミング中
   Heating bed to $1°C...: ベッドを$1°Cに加熱中...
   Heating bed...: ベッド加熱中...
   Heating chamber...: チャンバー加熱中...
@@ -1665,6 +1678,7 @@ translations:
   Keep Spool Info on Eject: 取り出し時にスプール情報を保持
   Keep clear of the printer while the toolhead is moving: ツールヘッドが動いている間はプリンターから離れてください
   Keep current: 現状維持
+  Keep current ({}): 現在の値を維持 ({})
   Keep hands clear. The printer moves on its own.: 手を近づけないでください。プリンターは自動で動きます。
 
   Keep its own data on this screen (up to 256 KB).: 'この画面に独自のデータを保存します（最大256 KB）。'
@@ -1734,6 +1748,7 @@ translations:
   Layer Macro captures one frame per layer change. Best for most prints.: レイヤーマクロはレイヤーが変わるごとに
     1 フレームを撮影します。ほとんどの印刷に最適です。
   Layer mode captures one frame per layer change. Best for most prints.: レイヤーモードはレイヤー変更ごとに1フレームをキャプチャします。ほとんどの印刷に最適です。
+  Layer {} of {} · {:.2f} mm: レイヤー {} / {} · {:.2f} mm
   Layers: レイヤー
   Layout: レイアウト
   Layout changes are off in safe mode. Restart to edit.: 'セーフモードではレイアウトを変更できません。編集するには再起動してください。'
@@ -1805,6 +1820,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': タイルを長押しして編集モードに入ります — ウィジェットの並べ替え、サイズ変更、削除、追加や、好みのレイアウトに合わせたページの追加ができます。
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'ホーム画面のグリッドを長押しするとウィジェットを並べ替えできます（誤動作する場合はオフにしてください）'
   Longest Disconnect: 最長切断時間
+  Looking for the active spool...: 使用中のスプールを検索中...
   Lost connection during print — try again: 印刷中に接続が切断されました — もう一度お試しください
   Lost connection to CFS unit: CFS ユニットとの接続が切断されました
   'Lot # (optional)': ロット番号（オプション）
@@ -1869,6 +1885,7 @@ translations:
   Manual Feed: '手動送り'
   Manual Retract: '手動引き戻し'
   Manual feed and retract operations: 手動送り・引き戻し操作
+  'Manual: the ramp has stopped at your value': '手動: ランプはあなたの値で停止しました'
   Manually clear the jam and retry the operation: 詰まりを手動で取り除いてから、もう一度お試しください
   Manually pull the filament back through the connector: コネクターからフィラメントを手で引き戻してください
   Map to closest colors with matching material: 一致する素材で最も近い色に割り当て
@@ -1897,6 +1914,8 @@ translations:
   Measure: '測定'
   Measure every tool's XYZ offset automatically: 各ツールの XYZ オフセットを自動で測定します
   Measure pressure advance automatically: 'Pressure Advance を自動で測定します'
+  ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
+  : ベッドから高さを測ってください。膨らみもすき間もないきれいな角が正しいKです。各行は高さの範囲と、その印刷中にプリンターが報告したKです。
   Measured (shaper off): 測定値（シェーパーオフ時）
   Measured filament diameter: 測定したフィラメント直径
   Measured pressure advance: '測定された Pressure Advance'
@@ -2025,12 +2044,14 @@ translations:
   No Spools: スプールなし
   No USB printer detected: USB プリンターが検出されません
   No USB printers found: USBプリンターが見つかりません
+  No active Spoolman spool.: Spoolmanで使用中のスプールがありません。
   No automatic backup-spool package is installed: 自動バックアップスプール用プラグインが未インストールです
   No buffer data available: バッファーデータがありません
   No camera — use USB barcode scanner: カメラなし — USB バーコードスキャナーを使用してください
   No chamber temperature sensor detected: 'チャンバー温度センサーが検出されません'
   No changes to revert: 元に戻す変更はありません
   No color: 色なし
+  No connection to the printer.: プリンターに接続されていません。
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: 乾燥機がありません。最良の結果を得るには、乾燥剤入りの密封ドライボックスにフィラメントを保管してください。
   No effects available: 利用可能なエフェクトがありません
   No events queued: キューにイベントはありません
@@ -2288,6 +2309,7 @@ translations:
   Pick: 選択
   Pick Color: 色を選択
   Pick how HelixScreen behaves. You can change any of these later in Settings.: 'HelixScreen の動作を選択します。すべて後で「設定」から変更できます。'
+  Pick the best band: 最適な区間を選択
   Pick up tool: ツールを取得
   Picking up tool: ツールを取得中
   Pill: ピル
@@ -2360,6 +2382,10 @@ translations:
   Presets come from the WLED device. Edit them in the WLED app.: プリセットはWLEDデバイスから取得されます。WLEDアプリで編集してください。
   Press Abort to stop: 中止するには「中止」を押してください
   Press Scan to search: スキャンを押して検索
+  Pressure Advance Tuning: Pressure Advance調整
+  Pressure advance: Pressure Advance
+  ? 'Pressure advance climbs as the tower grows. Watch the corners: tap - or + whenever you like and the ramp stops so you can judge your own value.'
+  : 'タワーが高くなるにつれてPressure Advanceが上がります。角を見てください: いつでも-か+をタップするとランプが止まり、自分の値を判断できます。'
   'Pressure:': '圧力:'
   Pressure Adv.: 'Pressure Adv.'
   Pressure Advance: 'Pressure Advance'
@@ -2392,9 +2418,11 @@ translations:
   Print Start: 印刷開始
   Print Stats: '印刷統計'
   Print Status: 印刷ステータス
+  Print Test Tower: テストタワーを印刷
   Print Time: 印刷時間
   Print Tuning: 印刷チューニング
   Print Was Terminated: 印刷が中止されました
+  Print a test tower and tune K by eye: テストタワーを印刷して目視でKを調整
   Print cancelled: 印刷がキャンセルされました
   Print did not start: 印刷は開始されませんでした
   Print complete: 印刷完了
@@ -2411,6 +2439,7 @@ translations:
   Print setup failed: 印刷のセットアップに失敗しました
   'Print setup failed: internal error': '印刷のセットアップに失敗しました: 内部エラー'
   Print status: 印刷ステータス
+  Print the test tower?: テストタワーを印刷しますか?
   Print timed out waiting for completion: 印刷の完了待ちでタイムアウトしました
   'Printed %d time': '%d 回印刷済み'
   'Printed %d times': '%d 回印刷済み'
@@ -2554,6 +2583,8 @@ translations:
   'RSS:': 'RSS:'
   Rails: 'レール'
   Ramming Volume: 'ラミング量'
+  'Ramp: band {} of {}': 'ランプ: 区間 {} / {}'
+  'Ramp: base layers': 'ランプ: ベースレイヤー'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: 再識別
@@ -2809,10 +2840,12 @@ translations:
   'Save failed: {}': '保存に失敗しました: {}'
   Save Offsets: オフセットを保存
   Save offsets?: オフセットを保存しますか？
+  Save to Spool: スプールに保存
   Save to Spoolman: Spoolman に保存
   Saved Z-Offset: 保存されたZ-Offset
   Saved to crash_report.txt (QR not available): crash_report.txt に保存しました（QR 利用不可）
   Saved to printer configuration.: プリンター設定に保存しました。
+  Saved to {}. It applies whenever this filament becomes active.: '{}に保存しました。このフィラメントが使用中になるたびに適用されます。'
   Saved values, and whether to ask before running: '保存した値と、実行前に確認するかどうか'
   Saves to Klipper config and restarts firmware.: Klipper 設定に保存してファームウェアを再起動します。
   Saving Configuration...: 設定を保存中...
@@ -3046,6 +3079,7 @@ translations:
   Spoolman connected!: Spoolman に接続しました！
   Spoolman found! Configuring...: Spoolman を検出しました！設定中...
   Spoolman has no spools configured: Spoolman にスプールが設定されていません
+  Spoolman is not available.: Spoolmanを利用できません。
   Spoolman is not configured — nothing to remove.: Spoolman が設定されていません — 削除する項目はありません。
   Spoolman is offline, so brand and material can't be saved.: Spoolman がオフラインのため、ブランドと素材を保存できません。
   Spoolman is offline. Brand and material can change once it's back.: Spoolman がオフラインです。復帰後にブランドと素材を変更できます。
@@ -3080,6 +3114,7 @@ translations:
   Start Anyway: このまま開始
   Start Calibration: キャリブレーション開始
   Start Drying: 乾燥開始
+  Start K: 開始K
   Start Print: 印刷を開始
   Start Probing: プローブ開始
   Start a new {} h interval? The hours counted so far are discarded.: '新しい {} 時間の間隔を開始しますか？これまでの時間は破棄されます。'
@@ -3251,6 +3286,7 @@ translations:
   : アニメーション付きスクリーンセーバーが印刷に干渉しないよう、このデバイスではオフになっています。設定 > ディスプレイで再度有効にできます。
   The bed has cooled. Take the spools off the plate, then confirm.: ベッドが冷えました。スプールをベッドから取り出してから確認してください。
 
+  The bed is too small for the test tower, or its size is unknown.: ベッドがテストタワーには小さすぎるか、サイズが不明です。
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: ベッドをオフにします。取り出したことを確認するまで、スプールはベッド上にあるものとして扱われます。
 
   The bed was reported dirty, so this print cannot resume.: 'ベッドが汚れていると報告されたため、この印刷を再開できません。'
@@ -3284,6 +3320,8 @@ translations:
   The plate and the spools are still hot. Use gloves.: ベッドとスプールはまだ熱いです。手袋を使ってください。
 
   The plate finishes its current move, but drying will not start.: 'ベッドは現在の移動を完了しますが、乾燥は開始しません。'
+  The print ended before any layer was printed. Nothing was changed.: レイヤーが印刷される前に印刷が終了しました。何も変更されていません。
+  The print is cancelled and you pick the best band from what has printed so far.: 印刷をキャンセルし、ここまで印刷された中から最適な区間を選びます。
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: '印刷はチャンバーが{}°Cに達するのを待っていますが、ヒーターが加熱していません。'
@@ -3498,6 +3536,7 @@ translations:
   Try the operation again. If it persists, check for mechanical issues.: もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。
   Trying again...: '再試行中...'
   Tune: チューニング
+  Tuner: 調整
   Tuning tower enabled - start a print to test: チューニングタワー有効 - 印刷を開始してテストしてください
   Turbo: ターボ
   Turbo Inner: ターボ・内側
@@ -3865,6 +3904,7 @@ translations:
   tall: 高さ
   target {}%: '目標 {}%'
   target {}°: '目標 {}°'
+  the extruder: エクストルーダー
   this week: 今週
   too slow: 遅すぎ
   tool(s): ツール
@@ -3875,6 +3915,7 @@ translations:
   v{} is available. Tap to update.: v{} が利用可能です。タップして更新してください。
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant が動作していません。WiFi 機能は利用できません。
   you have: 現在は
+  '{:.0f} mm tower, {:.0f} mm tall, about {} min plus heating. K steps from {} to {} in {} bands of {:.0f} mm, at {}°C.': '{:.0f} mmのタワー、高さ{:.0f} mm、約{}分+加熱。Kは{}から{}まで{}区間(各{:.0f} mm)で上昇、{}°C。'
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 約{}分'
   '{} ({})': '{}（{}）'
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'

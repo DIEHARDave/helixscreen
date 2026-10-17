@@ -91,6 +91,8 @@
         </lv_obj>
       </lv_obj>
       <!-- Reset Speed & Flow Button -->
+      <!-- Pressure advance, live -->
+      <tune_pa_row name="tune_pa_row"/>
       <ui_button name="btn_reset" width="100%" icon="refresh" text="Reset Speed &amp; Flow to 100%">
         <event_cb trigger="clicked" callback="on_tune_reset_clicked"/>
       </ui_button>

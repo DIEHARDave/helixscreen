@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <string>
 
 /**
@@ -52,6 +53,17 @@ std::array<std::string, PRESET_COUNT> all();
 /// Display label for a slot: "Bambu PLA" when a branded filament is attached to
 /// the slot, otherwise just the material name. Never use this as a material key.
 std::string display_label(int slot);
+
+/// Nozzle and bed temperature a slot prints at, whole °C.
+struct SlotTemps {
+    int nozzle = 0;
+    int bed = 0;
+};
+
+/// The slot's temperatures: the attached branded product's when there is one,
+/// otherwise the filament database recommendation. nullopt when the slot is
+/// out of range or its material is unknown.
+std::optional<SlotTemps> slot_temps(int slot);
 
 /// "220°C / 60°C" style summary for a slot (branded product temps when attached,
 /// otherwise the filament database recommendation). "---" if the material is unknown.

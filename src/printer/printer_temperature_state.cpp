@@ -110,6 +110,14 @@ void PrinterTemperatureState::init_subjects(bool register_xml) {
         helix::xml::register_subject_in_current_scope("extruder_power", &active_extruder_power_);
     }
 
+    lv_subject_init_int(&active_extruder_pa_, -1);
+    subjects_.register_subject(&active_extruder_pa_,
+                               register_xml ? "extruder_pressure_advance" : nullptr);
+    if (register_xml) {
+        helix::xml::register_subject_in_current_scope("extruder_pressure_advance",
+                                                      &active_extruder_pa_);
+    }
+
     // Heater duty cycle, whole percent, -1 = the heater reports none.
     INIT_SUBJECT_INT(bed_power, -1, subjects_, register_xml);
     INIT_SUBJECT_INT(chamber_power, -1, subjects_,
@@ -279,6 +287,11 @@ void PrinterTemperatureState::deinit_subjects() {
 }
 
 namespace {
+
+/// K as the active pressure-advance subject stores it: x 10000.
+int pa_to_subject(float k) {
+    return static_cast<int>(std::lround(k * 10000.0f));
+}
 
 /// Single extruder: "Nozzle". Multiple: "Nozzle 1", "Nozzle 2", ... in the
 /// current language.
@@ -471,6 +484,17 @@ void PrinterTemperatureState::set_active_extruder(const std::string& name) {
         int new_power = lv_subject_get_int(info.power_subject.get());
         lv_subject_set_int(&active_extruder_power_, new_power);
     }
+    lv_subject_set_int(&active_extruder_pa_,
+                       info.pressure_advance < 0.0f ? -1 : pa_to_subject(info.pressure_advance));
+}
+
+std::optional<float>
+PrinterTemperatureState::extruder_pressure_advance(const std::string& name) const {
+    auto it = extruders_.find(name);
+    if (it == extruders_.end() || it->second.pressure_advance < 0.0f) {
+        return std::nullopt;
+    }
+    return it->second.pressure_advance;
 }
 
 const std::string& PrinterTemperatureState::active_extruder_name() const {
@@ -533,6 +557,13 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
             lv_subject_set_int(info.target_subject.get(), target_deci);
         }
 
+        if (data.contains("pressure_advance") && data["pressure_advance"].is_number()) {
+            info.pressure_advance = data["pressure_advance"].get<float>();
+        }
+        if (data.contains("smooth_time") && data["smooth_time"].is_number()) {
+            info.smooth_time = data["smooth_time"].get<float>();
+        }
+
         publish_power(name, info.power_subject.get());
     }
 
@@ -552,6 +583,11 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
         if (active.contains("target") && active["target"].is_number()) {
             int target_deci = helix::units::json_to_decidegrees(active, "target");
             lv_subject_set_int(&active_extruder_target_, target_deci);
+        }
+
+        if (active.contains("pressure_advance") && active["pressure_advance"].is_number()) {
+            lv_subject_set_int(&active_extruder_pa_,
+                               pa_to_subject(active["pressure_advance"].get<float>()));
         }
     }
 

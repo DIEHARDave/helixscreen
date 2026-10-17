@@ -143,6 +143,7 @@ translations:
   A motor's parameters couldn't be written. Power-cycle the printer to retry: Die Parameter eines Motors konnten nicht geschrieben werden. Drucker aus- und einschalten und erneut versuchen
   A newer version of the helper macros is available: 'Eine neuere Version der Hilfsmakros ist verfügbar'
   A picture of your printer: Ein Bild Ihres Druckers
+  A print is already running.: Ein Druck läuft bereits.
   A print is in progress - restart still pending: 'Ein Druck läuft - Neustart noch ausstehend'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: Auf diesem Gate läuft ein Druck. HelixScreen hat seine eigene Kopie gelöscht; leere ihn nach Druckende erneut.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "Ein Druck wurde gestartet, während Spulen als auf dem Heizbett liegend markiert sind. Falls sie noch dort liegen, stoppe den Drucker sofort mit dem Notaus."
@@ -199,6 +200,7 @@ translations:
   Actions: Aktionen
   Active: Aktiv
   Active Spool: Aktive Spule
+  'Active spool: {}': 'Aktive Spule: {}'
   Actual: Aktuell
   Adaptive Bed Mesh: Adaptives Bettnetz
   Add: Hinzufügen
@@ -280,6 +282,8 @@ translations:
     der App ist ein Fehler aufgetreten. Einige Funktionen sind möglicherweise nicht
     verfügbar.
   Appearance: Darstellung
+  ? "Applied to {}. Klipper forgets it on restart: enter {} as Pressure advance in your slicer's filament profile, or save it to the spool."
+  : 'Auf {} angewendet. Klipper vergisst den Wert beim Neustart: Trage {} als Pressure Advance im Filamentprofil deines Slicers ein oder speichere ihn auf der Spule.'
   Applies to: Gilt für
   Apply: Anwenden
   Archive: Archivieren
@@ -414,6 +418,7 @@ translations:
   Both: Beide
   Bouncing Logo: Bouncing Logo
   Bouncing Printer: Bouncing Printer
+  Bowden: Bowden
   Bowden Length: 'Bowden-Länge'
   Bowden tube length from hub to toolhead: 'Länge des Bowdenschlauchs vom Hub zum Werkzeugkopf'
   Box: Box
@@ -684,6 +689,7 @@ translations:
 
   : Räume den Bereich über und unter dem Heizbett frei. Lege die Spulen auf das Heizbett, decke sie mit einer Kiste ab (einem gedruckten Deckel oder der Filamentverpackung) und schließe die Tür.
 
+  Clear the plate and load {}. The tower prints in the middle of the bed.: Räume das Heizbett und lade {}. Der Turm wird in der Mitte des Betts gedruckt.
   Cleared from settings — system unpair failed, may need OS Bluetooth: Aus Einstellungen
     entfernt – System-Entkopplung fehlgeschlagen, ggf. OS-Bluetooth nötig
   Clipboard unavailable - use SSH: Zwischenablage nicht verfügbar - verwenden Sie
@@ -980,6 +986,7 @@ translations:
   Devices: Geräte
   Different filament?: Anderes Filament?
   Digital Clock: 'Digitaluhr'
+  Direct drive: Direktantrieb
   Disable: Deaktivieren
   Disable Bypass: Bypass deaktivieren
   Disable Motors?: Motoren deaktivieren?
@@ -1111,6 +1118,9 @@ translations:
 
   Encoder: Encoder
   Encoder Error: 'Encoder-Fehler'
+  End K: End-K
+  End Test: Test beenden
+  End the test print?: Testdruck beenden?
   Ended: Beendet
   Endless Spool: 'Endlosspule'
   Endless spool failover cleared for every slot: 'Endlosspulen-Zuordnung für alle Slots gelöscht'
@@ -1305,11 +1315,13 @@ translations:
   Failed to save setup completion: Setup-Abschluss speichern fehlgeschlagen
   Failed to save spool: Spule konnte nicht gespeichert werden
   Failed to save theme file: Fehler beim Speichern der Thema-Datei
+  'Failed to save to Spoolman: {}': 'Speichern in Spoolman fehlgeschlagen: {}'
   'Failed to send command: {}': 'Befehl senden fehlgeschlagen: {}'
   Failed to send print data: Druckdaten konnten nicht gesendet werden
   Failed to send status request: Statusanfrage konnte nicht gesendet werden
   Failed to set active spool: Aktive Spule konnte nicht gesetzt werden
   'Failed to set flow rate: {}': 'Flussrate setzen fehlgeschlagen: {}'
+  'Failed to set pressure advance: {}': 'Pressure Advance konnte nicht gesetzt werden: {}'
   'Failed to set print speed: {}': 'Druckgeschwindigkeit setzen fehlgeschlagen: {}'
   'Failed to set temperature: {}': 'Temperatur setzen fehlgeschlagen: {}'
   'Failed to set {} temp: {}': '{}-Temperatur setzen fehlgeschlagen: {}'
@@ -1572,6 +1584,7 @@ translations:
   Heating Bed...: Bett aufheizen...
   Heating Chamber...: Kammer aufheizen...
   Heating Nozzle...: Düse aufheizen...
+  Heating and homing: Aufheizen und Referenzfahrt
   Heating bed to $1°C...: Bett heizt auf $1°C auf...
   Heating bed...: Bett aufheizen...
   Heating chamber...: Kammer aufheizen...
@@ -1786,6 +1799,7 @@ translations:
   Keep Spool Info on Eject: Spuleninfo beim Auswerfen behalten
   Keep clear of the printer while the toolhead is moving: Abstand zum Drucker halten, während sich der Werkzeugkopf bewegt
   Keep current: Aktuelle behalten
+  Keep current ({}): Aktuellen behalten ({})
   Keep hands clear. The printer moves on its own.: Hände fernhalten. Der Drucker bewegt sich von selbst.
 
   Keep its own data on this screen (up to 256 KB).: 'Speichert eigene Daten auf diesem Bildschirm (bis zu 256 KB).'
@@ -1863,6 +1877,7 @@ translations:
     erfasst ein Bild pro Schichtwechsel. Am besten für die meisten Drucke.
   Layer mode captures one frame per layer change. Best for most prints.: Schichtmodus
     nimmt ein Bild pro Schichtwechsel auf. Am besten für die meisten Drucke.
+  Layer {} of {} · {:.2f} mm: Schicht {} von {} · {:.2f} mm
   Layers: Schichten
   Layout: Layout
   Layout changes are off in safe mode. Restart to edit.: 'Layout-Änderungen sind im abgesicherten Modus deaktiviert. Starten Sie neu, um zu bearbeiten.'
@@ -1936,6 +1951,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Lange auf eine Kachel drücken, um in den Bearbeitungsmodus zu wechseln — Widgets neu anordnen, in der Größe ändern, entfernen oder hinzufügen und weitere Seiten für Ihr bevorzugtes Layout anlegen.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Lange auf das Startraster drücken, um Widgets neu anzuordnen (ausschalten, wenn es versehentlich auslöst)'
   Longest Disconnect: Längste Trennung
+  Looking for the active spool...: Suche aktive Spule...
   Lost connection during print — try again: Verbindung während des Drucks verloren
     — erneut versuchen
   Lost connection to CFS unit: Verbindung zur CFS-Einheit verloren
@@ -2004,6 +2020,7 @@ translations:
   Manual Feed: 'Manueller Vorschub'
   Manual Retract: 'Manueller Einzug'
   Manual feed and retract operations: Manuelle Vorschub- und Einzugsvorgänge
+  'Manual: the ramp has stopped at your value': 'Manuell: Die Rampe hält bei deinem Wert'
   Manually clear the jam and retry the operation: Beseitigen Sie den Stau manuell und wiederholen Sie den Vorgang
   Manually pull the filament back through the connector: Filament von Hand durch den Anschluss zurückziehen
   Map to closest colors with matching material: Nächste Farben mit passendem Material
@@ -2033,6 +2050,8 @@ translations:
   Measure: 'Messen'
   Measure every tool's XYZ offset automatically: Misst den XYZ-Offset jedes Werkzeugs automatisch
   Measure pressure advance automatically: 'Misst Pressure Advance automatisch'
+  ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
+  : Von der Platte aus messen. Scharfe Ecken ohne Wulst und ohne Lücke zeigen das richtige K. Jede Zeile ist ein Höhenbereich mit dem K, das der Drucker dabei gemeldet hat.
   Measured (shaper off): Gemessen (Shaper aus)
   Measured filament diameter: Gemessener Filamentdurchmesser
   Measured pressure advance: 'Gemessener Pressure Advance'
@@ -2166,12 +2185,14 @@ translations:
   No Spools: Keine Spulen
   No USB printer detected: Kein USB-Drucker erkannt
   No USB printers found: Keine USB-Drucker gefunden
+  No active Spoolman spool.: Keine aktive Spoolman-Spule.
   No automatic backup-spool package is installed: Kein Plugin für automatische Reserve-Spule installiert
   No buffer data available: Keine Pufferdaten verfügbar
   No camera — use USB barcode scanner: Keine Kamera — USB-Barcode-Scanner verwenden
   No chamber temperature sensor detected: 'Kein Kammertemperatursensor erkannt'
   No changes to revert: Keine Änderungen zum Zurücksetzen
   No color: Keine Farbe
+  No connection to the printer.: Keine Verbindung zum Drucker.
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: Kein
     Trockner verfügbar. Filament in einer versiegelten Trockenbox mit Trockenmittel
     lagern.
@@ -2437,6 +2458,7 @@ translations:
   Pick: Auswählen
   Pick Color: Farbe wählen
   Pick how HelixScreen behaves. You can change any of these later in Settings.: 'Wähle, wie sich HelixScreen verhält. Du kannst alles später in den Einstellungen ändern.'
+  Pick the best band: Besten Bereich wählen
   Pick up tool: Werkzeug aufnehmen
   Picking up tool: Werkzeug aufnehmen
   Pill: Pille
@@ -2513,6 +2535,10 @@ translations:
   Presets come from the WLED device. Edit them in the WLED app.: Voreinstellungen kommen vom WLED-Gerät. Bearbeiten Sie sie in der WLED-App.
   Press Abort to stop: Zum Stoppen Abbrechen drücken
   Press Scan to search: Scannen drücken zum Suchen
+  Pressure Advance Tuning: Pressure-Advance-Tuning
+  Pressure advance: Pressure Advance
+  ? 'Pressure advance climbs as the tower grows. Watch the corners: tap - or + whenever you like and the ramp stops so you can judge your own value.'
+  : 'Pressure Advance steigt mit der Turmhöhe. Beobachte die Ecken: Tippe jederzeit - oder +, dann stoppt die Rampe und du kannst deinen eigenen Wert beurteilen.'
   'Pressure:': 'Druck:'
   Pressure Adv.: 'Pressure Adv.'
   Pressure Advance: 'Pressure Advance'
@@ -2545,9 +2571,11 @@ translations:
   Print Start: Druckstart
   Print Stats: 'Druckstatistik'
   Print Status: Druckstatus
+  Print Test Tower: Testturm drucken
   Print Time: Druckzeit
   Print Tuning: Druck-Feinabstimmung
   Print Was Terminated: Druck wurde abgebrochen
+  Print a test tower and tune K by eye: Testturm drucken und K nach Augenmaß einstellen
   Print cancelled: Druck abgebrochen
   Print did not start: Druck wurde nicht gestartet
   Print complete: Druck abgeschlossen
@@ -2567,6 +2595,7 @@ translations:
   'Print setup failed: internal error': 'Druckvorbereitung fehlgeschlagen: interner
     Fehler'
   Print status: Druckstatus
+  Print the test tower?: Testturm drucken?
   Print timed out waiting for completion: Druck – Zeitüberschreitung beim Warten auf
     Fertigstellung
   'Printed %d time': '%d-mal gedruckt'
@@ -2717,6 +2746,8 @@ translations:
   'RSS:': 'RSS:'
   Rails: 'Schienen'
   Ramming Volume: 'Ramming-Volumen'
+  'Ramp: band {} of {}': 'Rampe: Bereich {} von {}'
+  'Ramp: base layers': 'Rampe: Basisschichten'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Erneut identifizieren
@@ -2988,11 +3019,13 @@ translations:
   'Save failed: {}': 'Speichern fehlgeschlagen: {}'
   Save Offsets: Offsets speichern
   Save offsets?: Offsets speichern?
+  Save to Spool: Auf Spule speichern
   Save to Spoolman: In Spoolman speichern
   Saved Z-Offset: Gespeicherter Z-Offset
   Saved to crash_report.txt (QR not available): In crash_report.txt gespeichert (QR
     nicht verfügbar)
   Saved to printer configuration.: In Druckerkonfiguration gespeichert.
+  Saved to {}. It applies whenever this filament becomes active.: Auf {} gespeichert. Der Wert wird angewendet, sobald dieses Filament aktiv wird.
   Saved values, and whether to ask before running: 'Gespeicherte Werte und ob vor dem Ausführen gefragt wird'
   Saves to Klipper config and restarts firmware.: Speichert in Klipper-Konfiguration
     und startet Firmware neu.
@@ -3252,6 +3285,7 @@ translations:
   Spoolman connected!: Spoolman verbunden!
   Spoolman found! Configuring...: Spoolman gefunden! Wird konfiguriert...
   Spoolman has no spools configured: Spoolman hat keine Spulen konfiguriert
+  Spoolman is not available.: Spoolman ist nicht verfügbar.
   Spoolman is not configured — nothing to remove.: Spoolman ist nicht konfiguriert –
     nichts zu entfernen.
   Spoolman is offline, so brand and material can't be saved.: Spoolman ist offline, daher können Marke und Material nicht gespeichert werden.
@@ -3288,6 +3322,7 @@ translations:
   Start Anyway: Trotzdem starten
   Start Calibration: Kalibrierung starten
   Start Drying: Trocknung starten
+  Start K: Start-K
   Start Print: Druck starten
   Start Probing: Abtasten starten
   Start a new {} h interval? The hours counted so far are discarded.: 'Ein neues Intervall von {} Std beginnen? Die bisher gezählten Stunden werden verworfen.'
@@ -3468,6 +3503,7 @@ translations:
     dass er Drucke stört. Sie können ihn unter Einstellungen > Anzeige wieder aktivieren.
   The bed has cooled. Take the spools off the plate, then confirm.: Das Heizbett ist abgekühlt. Nimm die Spulen vom Heizbett und bestätige dann.
 
+  The bed is too small for the test tower, or its size is unknown.: Das Bett ist zu klein für den Testturm oder seine Größe ist unbekannt.
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: Das Heizbett schaltet ab. Die Spulen bleiben als auf dem Heizbett liegend gesperrt, bis du bestätigst, dass sie entnommen sind.
 
   The bed was reported dirty, so this print cannot resume.: 'Das Heizbett wurde als verschmutzt gemeldet, daher kann dieser Druck nicht fortgesetzt werden.'
@@ -3502,6 +3538,8 @@ translations:
   The plate and the spools are still hot. Use gloves.: Heizbett und Spulen sind noch heiß. Trage Handschuhe.
 
   The plate finishes its current move, but drying will not start.: 'Das Heizbett beendet die laufende Bewegung, aber die Trocknung startet nicht.'
+  The print ended before any layer was printed. Nothing was changed.: Der Druck endete, bevor eine Schicht gedruckt wurde. Nichts wurde geändert.
+  The print is cancelled and you pick the best band from what has printed so far.: Der Druck wird abgebrochen und du wählst den besten Bereich aus dem bisher Gedruckten.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : Der Druck ist pausiert. Ein Werkzeugwechsel bewegt jetzt den Werkzeugkopf und
     tauscht das Filament an der Düse. Setzen Sie den Druck fort, sobald der Wechsel
@@ -3747,6 +3785,7 @@ translations:
   Try the operation again. If it persists, check for mechanical issues.: Versuchen Sie den Vorgang erneut. Wenn das Problem bestehen bleibt, prüfen Sie auf mechanische Probleme.
   Trying again...: 'Erneuter Versuch...'
   Tune: Abstimmen
+  Tuner: Tuner
   Tuning tower enabled - start a print to test: Tuning-Tower aktiviert - starten Sie
     einen Druck zum Testen
   Turbo: Turbo
@@ -4132,6 +4171,7 @@ translations:
   tall: hoch
   target {}%: 'Ziel {}%'
   target {}°: 'Ziel {}°'
+  the extruder: den Extruder
   this week: diese Woche
   too slow: zu langsam
   tool(s): Werkzeug(e)
@@ -4142,6 +4182,7 @@ translations:
   v{} is available. Tap to update.: v{} ist verfügbar. Tippen zum Aktualisieren.
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant läuft nicht. WiFi-Funktionen sind nicht verfügbar.
   you have: Sie haben
+  '{:.0f} mm tower, {:.0f} mm tall, about {} min plus heating. K steps from {} to {} in {} bands of {:.0f} mm, at {}°C.': '{:.0f} mm Turm, {:.0f} mm hoch, etwa {} min plus Aufheizen. K steigt von {} auf {} in {} Bereichen zu {:.0f} mm, bei {}°C.'
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · ca. {} Min.'
   '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} Hardware-Probleme'

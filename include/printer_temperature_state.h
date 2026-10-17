@@ -9,6 +9,7 @@
 #include <cmath>
 #include <lvgl.h>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -49,6 +50,10 @@ struct ExtruderInfo {
     /// so a filament swap can still heat the nozzle enough to purge the previous
     /// material. Reset on unload (via clear_load_latch); in-memory only.
     float last_nonzero_target = 0.0f;
+    /// Klipper's reported pressure advance K and smooth time, negative until
+    /// the extruder reports them.
+    float pressure_advance = -1.0f;
+    float smooth_time = -1.0f;
     std::unique_ptr<lv_subject_t> temp_subject;   ///< Decidegrees (value * 10)
     std::unique_ptr<lv_subject_t> target_subject; ///< Decidegrees
     std::unique_ptr<lv_subject_t> power_subject;  ///< Duty in whole percent, -1 until reported
@@ -139,6 +144,16 @@ class PrinterTemperatureState {
     lv_subject_t* get_extruder_power_subject() {
         return &active_extruder_power_;
     }
+
+    /// The active extruder's pressure advance K x 10000 (0.0420 is 420), -1
+    /// until it reports one. Registered as "extruder_pressure_advance".
+    lv_subject_t* get_active_extruder_pressure_advance_subject() {
+        return &active_extruder_pa_;
+    }
+
+    /// A specific extruder's reported pressure advance K, nullopt until it
+    /// reports one or when no such extruder exists.
+    std::optional<float> extruder_pressure_advance(const std::string& name) const;
     lv_subject_t* get_bed_power_subject() {
         return &bed_power_;
     }
@@ -570,6 +585,7 @@ class PrinterTemperatureState {
     // 0.0-1.0 on a heater object; a temperature_fan reports a speed instead and
     // never publishes power, so -1 is a lasting state, not just a startup one.
     lv_subject_t active_extruder_power_{};
+    lv_subject_t active_extruder_pa_{};
     lv_subject_t bed_power_{};
     lv_subject_t chamber_power_{};
     SubjectLifetime bed_temp_lifetime_;

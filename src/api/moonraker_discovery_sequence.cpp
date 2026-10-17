@@ -19,6 +19,7 @@
 #include "helix_version.h"
 #include "humidity_sensor_types.h"
 #include "hv/requests.h"
+#include "klipper_extruder_naming.h"
 #include "led/led_controller.h"
 #include "macro_executor.h"
 #include "macro_fan_analyzer.h"
@@ -1249,9 +1250,13 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     // PrinterTemperatureState reads temperature, target and duty cycle. Power
     // is what distinguishes an element working flat out from one barely
     // ticking over at the same temperature, so it is worth the field.
+    // An extruder also carries pressure advance, which the tuning screens read
+    // back as the truth of what is in effect.
     static const json heater_fields = json::array({"temperature", "target", "power"});
+    static const json extruder_fields =
+        json::array({"temperature", "target", "power", "pressure_advance", "smooth_time"});
     for (const auto& heater : heaters) {
-        subscription_objects[heater] = heater_fields;
+        subscription_objects[heater] = is_extruder_name(heater) ? extruder_fields : heater_fields;
     }
 
     // All discovered sensors. temperature_fan also lives in fans and is

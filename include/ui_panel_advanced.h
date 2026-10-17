@@ -114,6 +114,7 @@ class AdvancedPanel : public PanelBase {
     void handle_console_clicked();
     void handle_history_clicked();
     void handle_pid_tuning_clicked();
+    void handle_pa_tuning_clicked();
     void handle_timelapse_setup_clicked();
     void handle_helix_plugin_install_clicked();
     void handle_helix_plugin_uninstall_clicked();

@@ -38,6 +38,16 @@ namespace helix::spoolman_detail {
  */
 SpoolInfo parse_spool_info(const nlohmann::json& spool_json);
 
+/// Spoolman stores every extra value as a JSON-encoded string: "0.042" for a
+/// float field, "\"0.042\"" for a text one. The number either way, or nullopt
+/// when the key is absent or holds no number.
+std::optional<double> parse_extra_number(const nlohmann::json& extra, const std::string& key);
+
+/// @p value encoded for an extra field of @p field_type, the inverse of
+/// parse_extra_number(): a text field gets a quoted string, every other type
+/// the bare number.
+std::string encode_extra_number(const std::string& field_type, double value);
+
 /**
  * @brief Parse one SpoolmanDB filament, or nullopt for an entry that is not an
  * object or carries no id. Never throws.
@@ -175,6 +185,11 @@ class MoonrakerSpoolmanAPI : public helix::ISpoolmanAPI {
     void update_spoolman_filament_color(int filament_id, const std::string& color_hex,
                                         SuccessCallback on_success,
                                         ErrorCallback on_error) override;
+
+    void set_spoolman_filament_extra_number(int filament_id, const std::string& key,
+                                            const std::string& display_name, double value,
+                                            SuccessCallback on_success,
+                                            ErrorCallback on_error) override;
 
     // ========================================================================
     // Vendor & Filament Operations

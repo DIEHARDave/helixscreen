@@ -167,6 +167,7 @@
   <translation tag="A motor&apos;s parameters couldn&apos;t be written. Power-cycle the printer to retry" ru="Не удалось записать параметры двигателя. Выключите и включите принтер и повторите попытку"/>
   <translation tag="A newer version of the helper macros is available" ru="Доступна более новая версия вспомогательных макросов"/>
   <translation tag="A picture of your printer" ru="Изображение вашего принтера"/>
+  <translation tag="A print is already running." ru="Печать уже идёт."/>
   <translation tag="A print is in progress - restart still pending" ru="Идёт печать - перезапуск ещё отложен"/>
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." ru="На этом шлюзе идёт печать. HelixScreen очистил свою копию; после окончания печати очистите его снова."/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." ru="Печать началась, когда катушки отмечены как лежащие на столе. Если они всё ещё там, немедленно остановите принтер аварийной остановкой."/>
@@ -221,6 +222,7 @@
   <translation tag="Actions" ru="Действия"/>
   <translation tag="Active" ru="Активно"/>
   <translation tag="Active Spool" ru="Активная катушка"/>
+  <translation tag="Active spool: {}" ru="Активная катушка: {}"/>
   <translation tag="Actual" ru="Текущая"/>
   <translation tag="Adaptive Bed Mesh" ru="Адаптивная сетка стола"/>
   <translation tag="Add" ru="Добавить"/>
@@ -288,6 +290,7 @@
   <translation tag="App Background" ru="Фон приложения"/>
   <translation tag="App startup encountered an error. Some features may be unavailable." ru="При запуске приложения произошла ошибка. Некоторые функции могут быть недоступны."/>
   <translation tag="Appearance" ru="Внешний вид"/>
+  <translation tag="Applied to {}. Klipper forgets it on restart: enter {} as Pressure advance in your slicer&apos;s filament profile, or save it to the spool." ru="Применено к {}. Klipper забудет значение после перезапуска: укажите {} как Pressure Advance в профиле филамента в слайсере или сохраните его на катушку."/>
   <translation tag="Applies to" ru="Применяется к"/>
   <translation tag="Apply" ru="Применить"/>
   <translation tag="Archive" ru="Архивировать"/>
@@ -415,6 +418,7 @@
   <translation tag="Both" ru="Оба"/>
   <translation tag="Bouncing Logo" ru="Прыгающий логотип"/>
   <translation tag="Bouncing Printer" ru="Прыгающий принтер"/>
+  <translation tag="Bowden" ru="Боуден"/>
   <translation tag="Bowden Length" ru="Длина боудена"/>
   <translation tag="Bowden tube length from hub to toolhead" ru="Длина боуден-трубки от хаба до печатающей головки"/>
   <translation tag="Box" ru="Бокс"/>
@@ -650,6 +654,7 @@
   <translation tag="Clear all spool failover assignments" ru="Очистить все назначения резервных катушек"/>
   <translation tag="Clear failed" ru="Ошибка очистки"/>
   <translation tag="Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament&apos;s packaging) and close the door." ru="Освободите место над столом и под ним. Положите катушки на стол, накройте их коробкой (напечатанной крышкой или упаковкой филамента) и закройте дверцу."/>
+  <translation tag="Clear the plate and load {}. The tower prints in the middle of the bed." ru="Освободите стол и загрузите {}. Башня печатается в центре стола."/>
   <translation tag="Cleared from settings — system unpair failed, may need OS Bluetooth" ru="Удалено из настроек; не удалось отменить сопряжение в системе, возможно нужен Bluetooth ОС"/>
   <translation tag="Clipboard unavailable - use SSH" ru="Буфер обмена недоступен - используйте SSH"/>
   <translation tag="Clog" ru="Засор"/>
@@ -922,6 +927,7 @@
   <translation tag="Devices" ru="Устройства"/>
   <translation tag="Different filament?" ru="Другой филамент?"/>
   <translation tag="Digital Clock" ru="Цифровые часы"/>
+  <translation tag="Direct drive" ru="Директ"/>
   <translation tag="Disable" ru="Отключить"/>
   <translation tag="Disable Bypass" ru="Отключить байпас"/>
   <translation tag="Disable Motors?" ru="Отключить моторы?"/>
@@ -1039,6 +1045,9 @@
   <translation tag="Enclosure" ru="Корпус"/>
   <translation tag="Encoder" ru="Энкодер"/>
   <translation tag="Encoder Error" ru="Ошибка энкодера"/>
+  <translation tag="End K" ru="Конечный K"/>
+  <translation tag="End Test" ru="Завершить тест"/>
+  <translation tag="End the test print?" ru="Завершить тестовую печать?"/>
   <translation tag="Ended" ru="Завершено"/>
   <translation tag="Endless Spool" ru="Бесконечная катушка"/>
   <translation tag="Endless spool failover cleared for every slot" ru="Резервные катушки очищены для всех слотов"/>
@@ -1213,11 +1222,13 @@
   <translation tag="Failed to save setup completion" ru="Не удалось сохранить завершение настройки"/>
   <translation tag="Failed to save spool" ru="Не удалось сохранить катушку"/>
   <translation tag="Failed to save theme file" ru="Не удалось сохранить файл темы"/>
+  <translation tag="Failed to save to Spoolman: {}" ru="Не удалось сохранить в Spoolman: {}"/>
   <translation tag="Failed to send command: {}" ru="Не удалось отправить команду: {}"/>
   <translation tag="Failed to send print data" ru="Не удалось отправить данные печати"/>
   <translation tag="Failed to send status request" ru="Не удалось отправить запрос статуса"/>
   <translation tag="Failed to set active spool" ru="Не удалось установить активную катушку"/>
   <translation tag="Failed to set flow rate: {}" ru="Не удалось задать поток: {}"/>
+  <translation tag="Failed to set pressure advance: {}" ru="Не удалось задать Pressure Advance: {}"/>
   <translation tag="Failed to set print speed: {}" ru="Не удалось задать скорость печати: {}"/>
   <translation tag="Failed to set temperature: {}" ru="Не удалось задать температуру: {}"/>
   <translation tag="Failed to set {} temp: {}" ru="Не удалось задать темп. {}: {}"/>
@@ -1461,6 +1472,7 @@
   <translation tag="Heating Bed..." ru="Нагрев стола..."/>
   <translation tag="Heating Chamber..." ru="Нагрев камеры..."/>
   <translation tag="Heating Nozzle..." ru="Нагрев сопла..."/>
+  <translation tag="Heating and homing" ru="Нагрев и парковка"/>
   <translation tag="Heating bed to $1°C..." ru="Нагрев стола до $1°C..."/>
   <translation tag="Heating bed..." ru="Нагрев стола..."/>
   <translation tag="Heating chamber..." ru="Нагрев камеры..."/>
@@ -1649,6 +1661,7 @@
   <translation tag="Keep Spool Info on Eject" ru="Сохранять данные катушки при извлечении"/>
   <translation tag="Keep clear of the printer while the toolhead is moving" ru="Не приближайтесь к принтеру, пока перемещается печатающая головка"/>
   <translation tag="Keep current" ru="Оставить текущую"/>
+  <translation tag="Keep current ({})" ru="Оставить текущее ({})"/>
   <translation tag="Keep hands clear. The printer moves on its own." ru="Держите руки подальше. Принтер двигается сам."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." ru="Хранит собственные данные на этом экране (до 256 КБ)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" ru="Показывать катушку байпаса, даже когда байпас выключен"/>
@@ -1710,6 +1723,7 @@
   <translation tag="Layer Height" ru="Высота слоя"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." ru="Слоевой макрос захватывает один кадр при смене слоя. Подходит для большинства печатей."/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." ru="Послойный режим захватывает один кадр на каждую смену слоя. Лучший выбор для большинства печатей."/>
+  <translation tag="Layer {} of {} · {:.2f} mm" ru="Слой {} из {} · {:.2f} мм"/>
   <translation tag="Layers" ru="Слои"/>
   <translation tag="Layout" ru="Раскладка"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." ru="Изменение раскладки отключено в безопасном режиме. Перезапустите, чтобы редактировать."/>
@@ -1780,6 +1794,7 @@
   <translation tag="Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout." ru="Долгое нажатие на любую плитку переводит в режим редактирования — переставляйте, изменяйте размер, удаляйте или добавляйте виджеты, а также добавляйте дополнительные страницы под свой макет."/>
   <translation tag="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)" ru="Долгое нажатие на сетку главного экрана переставляет виджеты (отключите, если срабатывает случайно)"/>
   <translation tag="Longest Disconnect" ru="Самое долгое отключение"/>
+  <translation tag="Looking for the active spool..." ru="Поиск активной катушки..."/>
   <translation tag="Lost connection during print — try again" ru="Потеряно соединение во время печати — попробуйте снова"/>
   <translation tag="Lost connection to CFS unit" ru="Потеряна связь с блоком CFS"/>
   <translation tag="Lot # (optional)" ru="Партия # (необязательно)"/>
@@ -1843,6 +1858,7 @@
   <translation tag="Manual Feed" ru="Ручная подача"/>
   <translation tag="Manual Retract" ru="Ручная ретракция"/>
   <translation tag="Manual feed and retract operations" ru="Операции ручной подачи и ретракции"/>
+  <translation tag="Manual: the ramp has stopped at your value" ru="Вручную: рампа остановлена на вашем значении"/>
   <translation tag="Manually clear the jam and retry the operation" ru="Устраните затор вручную и повторите операцию"/>
   <translation tag="Manually pull the filament back through the connector" ru="Вытяните филамент вручную через разъём"/>
   <translation tag="Map to closest colors with matching material" ru="Подобрать ближайшие цвета с подходящим материалом"/>
@@ -1870,6 +1886,7 @@
   <translation tag="Measure" ru="Измерить"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" ru="Автоматически измеряет смещение XYZ каждого инструмента"/>
   <translation tag="Measure pressure advance automatically" ru="Автоматически измеряет Pressure Advance"/>
+  <translation tag="Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed." ru="Отсчитывайте высоту от стола. Острые углы без наплывов и пропусков означают верный K. Каждая строка - диапазон высот и K, который принтер сообщал во время его печати."/>
   <translation tag="Measured (shaper off)" ru="Измерено (шейпер выключен)"/>
   <translation tag="Measured filament diameter" ru="Измеренный диаметр филамента"/>
   <translation tag="Measured pressure advance" ru="Измеренный Pressure Advance"/>
@@ -1994,12 +2011,14 @@
   <translation tag="No Spools" ru="Нет катушек"/>
   <translation tag="No USB printer detected" ru="USB-принтер не обнаружен"/>
   <translation tag="No USB printers found" ru="USB-принтеры не найдены"/>
+  <translation tag="No active Spoolman spool." ru="Нет активной катушки Spoolman."/>
   <translation tag="No automatic backup-spool package is installed" ru="Плагин автоматической резервной катушки не установлен"/>
   <translation tag="No buffer data available" ru="Данные буфера недоступны"/>
   <translation tag="No camera — use USB barcode scanner" ru="Нет камеры — используйте USB сканер штрих-кодов"/>
   <translation tag="No chamber temperature sensor detected" ru="Датчик температуры камеры не обнаружен"/>
   <translation tag="No changes to revert" ru="Нет изменений для отката"/>
   <translation tag="No color" ru="Без цвета"/>
+  <translation tag="No connection to the printer." ru="Нет связи с принтером."/>
   <translation tag="No dryer available. Store filament in a sealed dry box with desiccant for best results." ru="Сушилка недоступна. Храните филамент в герметичном контейнере с влагопоглотителем для лучших результатов."/>
   <translation tag="No effects available" ru="Нет доступных эффектов"/>
   <translation tag="No events queued" ru="Нет событий в очереди"/>
@@ -2247,6 +2266,7 @@
   <translation tag="Pick" ru="Выбрать"/>
   <translation tag="Pick Color" ru="Выбрать цвет"/>
   <translation tag="Pick how HelixScreen behaves. You can change any of these later in Settings." ru="Выберите, как будет вести себя HelixScreen. Всё это можно изменить позже в Настройках."/>
+  <translation tag="Pick the best band" ru="Выберите лучшую полосу"/>
   <translation tag="Pick up tool" ru="Забрать инструмент"/>
   <translation tag="Picking up tool" ru="Захват инструмента"/>
   <translation tag="Pill" ru="Овал"/>
@@ -2320,6 +2340,9 @@
   <translation tag="Pressure Adv." ru="Pressure Adv."/>
   <translation tag="Pressure Advance" ru="Pressure Advance"/>
   <translation tag="Pressure Advance Calibration" ru="Калибровка Pressure Advance"/>
+  <translation tag="Pressure Advance Tuning" ru="Настройка Pressure Advance"/>
+  <translation tag="Pressure advance" ru="Pressure Advance"/>
+  <translation tag="Pressure advance climbs as the tower grows. Watch the corners: tap - or + whenever you like and the ramp stops so you can judge your own value." ru="Pressure Advance растёт вместе с башней. Следите за углами: нажмите - или + в любой момент, и рампа остановится, чтобы вы оценили своё значение."/>
   <translation tag="Pressure:" ru="Давление:"/>
   <translation tag="Preview Sounds" ru="Предпросмотр звуков"/>
   <translation tag="Previous" ru="Прежняя"/>
@@ -2349,9 +2372,11 @@
   <translation tag="Print Start" ru="Начало печати"/>
   <translation tag="Print Stats" ru="Статистика печати"/>
   <translation tag="Print Status" ru="Статус печати"/>
+  <translation tag="Print Test Tower" ru="Печать тестовой башни"/>
   <translation tag="Print Time" ru="Время печати"/>
   <translation tag="Print Tuning" ru="Настройка печати"/>
   <translation tag="Print Was Terminated" ru="Печать была прекращена"/>
+  <translation tag="Print a test tower and tune K by eye" ru="Напечатать тестовую башню и подобрать K на глаз"/>
   <translation tag="Print cancelled" ru="Печать отменена"/>
   <translation tag="Print complete" ru="Печать завершена"/>
   <translation tag="Print did not start" ru="Печать не началась"/>
@@ -2371,6 +2396,7 @@
   <translation tag="Print setup failed" ru="Не удалось подготовить печать"/>
   <translation tag="Print setup failed: internal error" ru="Не удалось подготовить печать: внутренняя ошибка"/>
   <translation tag="Print status" ru="Статус печати"/>
+  <translation tag="Print the test tower?" ru="Напечатать тестовую башню?"/>
   <translation tag="Print timed out waiting for completion" ru="Время ожидания завершения печати истекло"/>
   <translation tag="Printed %d time" ru="Напечатано %d раз"/>
   <translation tag="Printed %d times" ru="Напечатано %d раза"/>
@@ -2515,6 +2541,8 @@
   <translation tag="RSS:" ru="RSS:"/>
   <translation tag="Rails" ru="Направл."/>
   <translation tag="Ramming Volume" ru="Объём рэмминга"/>
+  <translation tag="Ramp: band {} of {}" ru="Рампа: полоса {} из {}"/>
+  <translation tag="Ramp: base layers" ru="Рампа: базовые слои"/>
   <translation tag="Raspberry Pi" ru="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" ru="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" ru="Определить снова"/>
@@ -2758,10 +2786,12 @@
   <translation tag="Save changes to persist them across restarts?" ru="Сохранить изменения, чтобы они сохранились после перезапуска?"/>
   <translation tag="Save failed: {}" ru="Ошибка сохранения: {}"/>
   <translation tag="Save offsets?" ru="Сохранить смещения?"/>
+  <translation tag="Save to Spool" ru="Сохранить на катушку"/>
   <translation tag="Save to Spoolman" ru="Сохранить в Spoolman"/>
   <translation tag="Saved Z-Offset" ru="Сохранённый Z-Offset"/>
   <translation tag="Saved to crash_report.txt (QR not available)" ru="Сохранено в crash_report.txt (QR недоступен)"/>
   <translation tag="Saved to printer configuration." ru="Сохранено в конфигурацию принтера."/>
+  <translation tag="Saved to {}. It applies whenever this filament becomes active." ru="Сохранено в {}. Применяется каждый раз, когда этот филамент становится активным."/>
   <translation tag="Saved values, and whether to ask before running" ru="Сохранённые значения и запрос перед запуском"/>
   <translation tag="Saves to Klipper config and restarts firmware." ru="Сохраняет в конфигурацию Klipper и перезапускает прошивку."/>
   <translation tag="Saving Configuration..." ru="Сохранение конфигурации..."/>
@@ -2986,6 +3016,7 @@
   <translation tag="Spoolman connected!" ru="Spoolman подключен!"/>
   <translation tag="Spoolman found! Configuring..." ru="Spoolman найден! Настройка..."/>
   <translation tag="Spoolman has no spools configured" ru="В Spoolman нет настроенных катушек"/>
+  <translation tag="Spoolman is not available." ru="Spoolman недоступен."/>
   <translation tag="Spoolman is not configured — nothing to remove." ru="Spoolman не настроен — удалять нечего."/>
   <translation tag="Spoolman is offline, so brand and material can&apos;t be saved." ru="Spoolman не в сети, поэтому бренд и материал не могут быть сохранены."/>
   <translation tag="Spoolman is offline. Brand and material can change once it&apos;s back." ru="Spoolman не в сети. Бренд и материал можно будет изменить после его восстановления."/>
@@ -3024,6 +3055,7 @@
   <translation tag="Start Calibration" ru="Начать калибровку"/>
   <translation tag="Start Check" ru="Начать проверку"/>
   <translation tag="Start Drying" ru="Начать сушку"/>
+  <translation tag="Start K" ru="Начальный K"/>
   <translation tag="Start Print" ru="Начать печать"/>
   <translation tag="Start Probing" ru="Начать зондирование"/>
   <translation tag="Start a new {} h interval? The hours counted so far are discarded." ru="Начать новый интервал {} ч? Отсчитанные часы будут сброшены."/>
@@ -3180,6 +3212,7 @@
   <translation tag="The Spoolman spool currently loaded" ru="Текущая катушка Spoolman"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." ru="Анимированная заставка была отключена на данном устройстве, чтобы она не мешала печати. Вы можете снова включить её в Настройки &gt; Дисплей."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." ru="Стол остыл. Снимите катушки со стола, затем подтвердите."/>
+  <translation tag="The bed is too small for the test tower, or its size is unknown." ru="Стол слишком мал для тестовой башни, или его размер неизвестен."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." ru="Стол выключится. Катушки считаются лежащими на столе, пока вы не подтвердите, что сняли их."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." ru="Стол помечен как загрязнённый, поэтому печать не может быть продолжена."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" ru="Буфер может быть отключён, заклинен или неисправен. Проверьте его перед повтором"/>
@@ -3208,6 +3241,8 @@
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." ru="Сопло делает несколько коротких тестовых перемещений в углу, в стороне от зоны печати, и повторяет их до сходимости."/>
   <translation tag="The plate and the spools are still hot. Use gloves." ru="Стол и катушки ещё горячие. Используйте перчатки."/>
   <translation tag="The plate finishes its current move, but drying will not start." ru="Стол завершит текущее перемещение, но сушка не начнётся."/>
+  <translation tag="The print ended before any layer was printed. Nothing was changed." ru="Печать завершилась до первого слоя. Ничего не изменено."/>
+  <translation tag="The print is cancelled and you pick the best band from what has printed so far." ru="Печать будет отменена, и вы выберете лучшую полосу из уже напечатанного."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." ru="Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." ru="Печать ждёт, пока камера нагреется до {}°C, но нагреватель не греет."/>
   <translation tag="The print is waiting for the chamber, but the heater is not heating." ru="Печать ждёт камеру, но нагреватель не греет."/>
@@ -3396,6 +3431,7 @@
   <translation tag="Try the operation again. If it persists, check for mechanical issues." ru="Повторите операцию. Если проблема не исчезает, проверьте механические неисправности."/>
   <translation tag="Trying again..." ru="Повторная попытка..."/>
   <translation tag="Tune" ru="Настройка"/>
+  <translation tag="Tuner" ru="Настройка"/>
   <translation tag="Tuning tower enabled - start a print to test" ru="Башня настройки включена — начните печать для теста"/>
   <translation tag="Turbo" ru="Турбо"/>
   <translation tag="Turbo Inner" ru="Турбо (внутренний)"/>
@@ -3754,6 +3790,7 @@
   <translation tag="tall" ru="высотой"/>
   <translation tag="target {}%" ru="цель {}%"/>
   <translation tag="target {}°" ru="цель {}°"/>
+  <translation tag="the extruder" ru="экструдер"/>
   <translation tag="this week" ru="за неделю"/>
   <translation tag="too slow" ru="слишком медленно"/>
   <translation tag="tool(s)" ru="инструмент(ы)"/>
@@ -3764,6 +3801,7 @@
   <translation tag="v{} is available. Tap to update." ru="v{} доступна. Нажмите для обновления."/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ru="wpa_supplicant не запущен. Функции WiFi недоступны."/>
   <translation tag="you have" ru="у вас"/>
+  <translation tag="{:.0f} mm tower, {:.0f} mm tall, about {} min plus heating. K steps from {} to {} in {} bands of {:.0f} mm, at {}°C." ru="Башня {:.0f} мм, высота {:.0f} мм, около {} мин плюс нагрев. K растёт от {} до {} за {} полос по {:.0f} мм, при {}°C."/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин"/>
   <translation tag="{} ({})" ru="{} ({})"/>
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>

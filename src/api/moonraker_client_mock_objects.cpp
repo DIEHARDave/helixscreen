@@ -699,10 +699,12 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
 
             // extruder
             if (objects.contains("extruder")) {
-                status_obj["extruder"] = {{"temperature", 25.0},
-                                          {"target", 0.0},
-                                          {"power", 0.0},
-                                          {"pressure_advance", 0.04}};
+                status_obj["extruder"] = {
+                    {"temperature", 25.0},
+                    {"target", 0.0},
+                    {"power", 0.0},
+                    {"pressure_advance", self->pressure_advance_for("extruder").advance},
+                    {"smooth_time", self->pressure_advance_for("extruder").smooth_time}};
             }
 
             // Toolchanger secondary extruders (HELIX_MOCK_AMS=toolchanger registers
@@ -712,22 +714,28 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             //   extruder3 COOLING (200, no target). The contains() guard is
             //   self-limiting: these heaters only exist in toolchanger mode.
             if (objects.contains("extruder1")) {
-                status_obj["extruder1"] = {{"temperature", 150.0},
-                                           {"target", 250.0},
-                                           {"power", 0.8},
-                                           {"pressure_advance", 0.04}};
+                status_obj["extruder1"] = {
+                    {"temperature", 150.0},
+                    {"target", 250.0},
+                    {"power", 0.8},
+                    {"pressure_advance", self->pressure_advance_for("extruder1").advance},
+                    {"smooth_time", self->pressure_advance_for("extruder1").smooth_time}};
             }
             if (objects.contains("extruder2")) {
-                status_obj["extruder2"] = {{"temperature", 248.0},
-                                           {"target", 250.0},
-                                           {"power", 0.2},
-                                           {"pressure_advance", 0.04}};
+                status_obj["extruder2"] = {
+                    {"temperature", 248.0},
+                    {"target", 250.0},
+                    {"power", 0.2},
+                    {"pressure_advance", self->pressure_advance_for("extruder2").advance},
+                    {"smooth_time", self->pressure_advance_for("extruder2").smooth_time}};
             }
             if (objects.contains("extruder3")) {
-                status_obj["extruder3"] = {{"temperature", 200.0},
-                                           {"target", 0.0},
-                                           {"power", 0.0},
-                                           {"pressure_advance", 0.04}};
+                status_obj["extruder3"] = {
+                    {"temperature", 200.0},
+                    {"target", 0.0},
+                    {"power", 0.0},
+                    {"pressure_advance", self->pressure_advance_for("extruder3").advance},
+                    {"smooth_time", self->pressure_advance_for("extruder3").smooth_time}};
             }
 
             // toolhead
