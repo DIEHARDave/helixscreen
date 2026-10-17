@@ -2,6 +2,8 @@
 
 #include "screensaver_fireflies_sim.h"
 
+#include "screensaver_buffer.h"
+#include "screensaver_fast_math.h"
 #include "screensaver_pixel_writer.h"
 
 #include <algorithm>
@@ -13,7 +15,9 @@ namespace helix::ui {
 namespace {
 
 using screensaver::random_below;
-using screensaver::unit_random;
+using screensaver::random_between;
+using screensaver::random_int;
+using screensaver::wrap_period;
 
 // Baits wander a box inset by this share of each half-extent.
 constexpr float WAYPOINT_INSET = 0.9f;
@@ -25,20 +29,7 @@ constexpr float TAIL_FIXED_SCALE = 64.0f;
 
 int16_t to_fixed(float v) {
     return static_cast<int16_t>(
-        std::clamp(std::lround(v * TAIL_FIXED_SCALE), long{INT16_MIN}, long{INT16_MAX}));
-}
-
-float uniform(std::minstd_rand& rng, float lo, float hi) {
-    return lo + (hi - lo) * unit_random(rng);
-}
-
-template <typename T> size_t bytes_of(const std::vector<T>& v) {
-    return v.capacity() * sizeof(T);
-}
-
-/// Empties `v` and returns its storage, which clear() alone keeps.
-template <typename T> void free_buffer(std::vector<T>& v) {
-    std::vector<T>().swap(v);
+        std::clamp(round_px(v * TAIL_FIXED_SCALE), int32_t{INT16_MIN}, int32_t{INT16_MAX}));
 }
 
 constexpr float STEP_S = static_cast<float>(FIREFLIES_STEP_MS) / 1000.0f;
@@ -48,28 +39,6 @@ constexpr float WAYPOINT_REACHED = 5.0f;
 constexpr int32_t RETARGET_MIN_MS = 2000;
 constexpr int32_t RETARGET_MAX_MS = 5000;
 
-FireflyVec operator+(FireflyVec a, FireflyVec b) {
-    return {a.x + b.x, a.y + b.y, a.z + b.z};
-}
-FireflyVec operator-(FireflyVec a, FireflyVec b) {
-    return {a.x - b.x, a.y - b.y, a.z - b.z};
-}
-FireflyVec operator*(FireflyVec a, float k) {
-    return {a.x * k, a.y * k, a.z * k};
-}
-float length_sq(FireflyVec v) {
-    return v.x * v.x + v.y * v.y + v.z * v.z;
-}
-
-/// `v` shortened to at most `max_len`.
-FireflyVec clamp_length(FireflyVec v, float max_len) {
-    const float sq = length_sq(v);
-    if (sq <= max_len * max_len || sq == 0.0f) {
-        return v;
-    }
-    return v * (max_len / std::sqrt(sq));
-}
-
 /**
  * @brief Steers `vel` toward `desired` for one step
  *
@@ -77,22 +46,16 @@ FireflyVec clamp_length(FireflyVec v, float max_len) {
  * passing it, and the result is capped at `speed`. There is no slow-down on arrival, so a chaser
  * swings through its target instead of settling on it.
  */
-void steer(FireflyVec& vel, FireflyVec desired, float speed, float accel) {
+void steer(SaverVec3& vel, SaverVec3 desired, float speed, float accel) {
     vel = clamp_length(vel + clamp_length(desired - vel, accel * STEP_S), speed);
 }
 
 /// Velocity of top speed `speed` from `from` toward `to`; zero when they coincide.
-FireflyVec seek(FireflyVec from, FireflyVec to, float speed) {
-    const FireflyVec d = to - from;
+SaverVec3 seek(SaverVec3 from, SaverVec3 to, float speed) {
+    const SaverVec3 d = to - from;
     const float sq = length_sq(d);
-    return sq == 0.0f ? FireflyVec{} : d * (speed / std::sqrt(sq));
+    return sq == 0.0f ? SaverVec3{} : d * (speed / std::sqrt(sq));
 }
-
-int32_t random_ms(std::minstd_rand& rng, int32_t lo, int32_t hi) {
-    return lo + random_below(rng, hi - lo + 1);
-}
-
-constexpr float PI = 3.14159265f;
 
 // Modes: how long NORMAL runs between the others, LOOP's circle, and SPLIT's hue step.
 constexpr int32_t NORMAL_MIN_MS = 8000;
@@ -103,15 +66,6 @@ constexpr float SPLIT_HUE_DEG = 120.0f;
 // A gust blows this many times the wind, easing in and out over GUST_EASE_MS.
 constexpr float GUST_MULT = 4.0f;
 constexpr float GUST_EASE_MS = 500.0f;
-
-/// `deg` wrapped into [0, 360).
-float wrap360(float deg) {
-    float d = std::fmod(deg, 360.0f);
-    if (d < 0.0f) {
-        d += 360.0f;
-    }
-    return d >= 360.0f ? 0.0f : d;
-}
 
 static_assert(FIREFLIES_TAIL_SAMPLE_MS % FIREFLIES_STEP_MS == 0,
               "tail samples fall on whole steps");
@@ -129,19 +83,19 @@ float fireflies_tail_brightness(float u) {
     if (!(u >= 0.0f && u <= 1.0f)) {
         return 0.0f;
     }
-    return std::sin(PI * u) * (1.0f - 0.5f * u);
+    return std::sin(SAVER_PI * u) * (1.0f - 0.5f * u);
 }
 
 int32_t fireflies_tail_width(float u, float max_px) {
     const float clamped = std::clamp(u, 0.0f, 1.0f);
-    const float w = 1.0f + (max_px - 1.0f) * std::sin(PI * clamped);
+    const float w = 1.0f + (max_px - 1.0f) * std::sin(SAVER_PI * clamped);
     return std::max<int32_t>(1, static_cast<int32_t>(std::lround(w)));
 }
 
-FireflyVec FirefliesSim::random_waypoint(std::minstd_rand& rng) const {
-    return {uniform(rng, -0.5f, 0.5f) * world_w_ * WAYPOINT_INSET,
-            uniform(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_H * WAYPOINT_INSET,
-            uniform(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_D * WAYPOINT_INSET};
+SaverVec3 FirefliesSim::random_waypoint(std::minstd_rand& rng) const {
+    return {random_between(rng, -0.5f, 0.5f) * world_w_ * WAYPOINT_INSET,
+            random_between(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_H * WAYPOINT_INSET,
+            random_between(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_D * WAYPOINT_INSET};
 }
 
 float FirefliesSim::speed_mult() const {
@@ -163,29 +117,27 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
     now_tiles_.assign(drawn_tiles_.size(), 0);
 
     baits_.assign(FIREFLIES_MAX_BAITS, Bait{});
-    const size_t n =
-        FIREFLIES_MIN_BAITS +
-        static_cast<size_t>(random_below(rng, FIREFLIES_MAX_BAITS - FIREFLIES_MIN_BAITS + 1));
+    const auto n = static_cast<size_t>(random_int(rng, static_cast<int>(FIREFLIES_MIN_BAITS),
+                                                  static_cast<int>(FIREFLIES_MAX_BAITS)));
     for (size_t i = 0; i < n; i++) {
         Bait& b = baits_[i];
         b.alive = true;
         b.pos = random_waypoint(rng);
         b.target = random_waypoint(rng);
-        b.retarget_ms = random_ms(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
+        b.retarget_ms = random_int(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
         b.hue_deg = 360.0f * static_cast<float>(i) / static_cast<float>(n) +
-                    uniform(rng, 0.0f, SWARM_HUE_JITTER_DEG);
+                    random_between(rng, 0.0f, SWARM_HUE_JITTER_DEG);
         hue_origin_[i] = b.hue_deg;
     }
 
-    const size_t flies =
-        FIREFLIES_MIN_FLIES +
-        static_cast<size_t>(random_below(rng, FIREFLIES_MAX_FLIES - FIREFLIES_MIN_FLIES + 1));
+    const auto flies = static_cast<size_t>(random_int(rng, static_cast<int>(FIREFLIES_MIN_FLIES),
+                                                      static_cast<int>(FIREFLIES_MAX_FLIES)));
     flies_.resize(flies);
     for (Fly& f : flies_) {
-        f.pos = {uniform(rng, -0.5f, 0.5f) * world_w_,
-                 uniform(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_H,
-                 uniform(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_D};
-        f.pace = uniform(rng, FLY_PACE_MIN, 1.0f);
+        f.pos = {random_between(rng, -0.5f, 0.5f) * world_w_,
+                 random_between(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_H,
+                 random_between(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_D};
+        f.pace = random_between(rng, FLY_PACE_MIN, 1.0f);
         f.bait = static_cast<uint8_t>(random_below(rng, static_cast<int>(n)));
     }
 
@@ -207,7 +159,7 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
     mode_left_ms_ = 0;
     mode_total_ms_ = 0;
     std::fill(std::begin(modes_begun_), std::end(modes_begun_), 0u);
-    next_mode_ms_ = random_ms(rng, NORMAL_MIN_MS, NORMAL_MAX_MS);
+    next_mode_ms_ = random_int(rng, NORMAL_MIN_MS, NORMAL_MAX_MS);
 
     base_wind_ = {};
     new_wind_heading(rng);
@@ -218,14 +170,14 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
 }
 
 void FirefliesSim::new_wind_heading(std::minstd_rand& rng) {
-    const float heading = uniform(rng, 0.0f, 2.0f * PI);
-    const float rise = uniform(rng, -1.0f, 1.0f) * WIND_RISE;
-    const float strength = uniform(rng, WIND_MIN, WIND_MAX);
-    const FireflyVec dir{std::cos(heading), rise, std::sin(heading)};
+    const float heading = random_between(rng, 0.0f, 2.0f * SAVER_PI);
+    const float rise = random_between(rng, -1.0f, 1.0f) * WIND_RISE;
+    const float strength = random_between(rng, WIND_MIN, WIND_MAX);
+    const SaverVec3 dir{std::cos(heading), rise, std::sin(heading)};
     wind_from_ = base_wind_;
     wind_to_ = dir * (strength / std::sqrt(length_sq(dir)));
-    wind_left_ms_ = random_ms(rng, static_cast<int32_t>(FIREFLIES_WIND_MIN_MS),
-                              static_cast<int32_t>(FIREFLIES_WIND_MAX_MS));
+    wind_left_ms_ = random_int(rng, static_cast<int32_t>(FIREFLIES_WIND_MIN_MS),
+                               static_cast<int32_t>(FIREFLIES_WIND_MAX_MS));
     wind_changes_++;
     last_wind_change_ms_ = elapsed_ms_;
 }
@@ -248,7 +200,7 @@ float FirefliesSim::fly_hue_deg(size_t i) const {
     const float speed = std::sqrt(length_sq(f.vel));
     const float swing = -FIREFLIES_HUE_SWING_DEG + 2.0f * FIREFLIES_HUE_SWING_DEG *
                                                        std::min(1.0f, speed / FIREFLIES_FLY_SPEED);
-    return wrap360(baits_[f.bait].hue_deg + swing);
+    return wrap_period(baits_[f.bait].hue_deg + swing, 360.0f);
 }
 
 uint32_t FirefliesSim::tail_age_ms() const {
@@ -260,22 +212,17 @@ uint32_t FirefliesSim::tail_age_ms() const {
 }
 
 void FirefliesSim::clear() {
-    free_buffer(baits_);
-    free_buffer(flies_);
-    free_buffer(tail_);
+    release_buffers(baits_, flies_, tail_, drawn_tiles_, now_tiles_);
     tail_head_ = 0;
     tail_count_ = 0;
     steps_.reset();
     elapsed_ms_ = 0;
-    free_buffer(drawn_tiles_);
-    free_buffer(now_tiles_);
     tiles_x_ = 0;
     tiles_y_ = 0;
 }
 
 size_t FirefliesSim::heap_bytes() const {
-    return bytes_of(baits_) + bytes_of(flies_) + bytes_of(tail_) + bytes_of(drawn_tiles_) +
-           bytes_of(now_tiles_);
+    return buffer_bytes(baits_, flies_, tail_, drawn_tiles_, now_tiles_);
 }
 
 void FirefliesSim::request_level(size_t level) {
@@ -353,11 +300,11 @@ bool FirefliesSim::split(std::minstd_rand& rng) {
     child.pos = from.pos;
     child.vel = from.vel * -1.0f;
     child.target = random_waypoint(rng);
-    child.retarget_ms = random_ms(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
+    child.retarget_ms = random_int(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
     hue_origin_[slot] = hue_origin_[parent] + SPLIT_HUE_DEG;
-    child.hue_deg = wrap360(from.hue_deg + SPLIT_HUE_DEG);
+    child.hue_deg = wrap_period(from.hue_deg + SPLIT_HUE_DEG, 360.0f);
     child.loop_centre = from.loop_centre;
-    loop_phase_[slot] = loop_phase_[parent] + PI;
+    loop_phase_[slot] = loop_phase_[parent] + SAVER_PI;
     bool odd = false;
     for (Fly& f : flies_) {
         if (f.bait != parent) {
@@ -422,15 +369,15 @@ void FirefliesSim::schedule_next_mode(std::minstd_rand& rng) {
     };
     for (;;) {
         const auto mode = static_cast<FirefliesMode>(
-            1 + random_below(rng, static_cast<int>(FIREFLIES_MODE_COUNT) - 1));
+            random_int(rng, 1, static_cast<int>(FIREFLIES_MODE_COUNT) - 1));
         const Span span = DURATIONS[static_cast<size_t>(mode)];
-        const int32_t duration = span.hi == 0 ? 0 : random_ms(rng, span.lo, span.hi);
+        const int32_t duration = span.hi == 0 ? 0 : random_int(rng, span.lo, span.hi);
         if (begin_mode(mode, static_cast<uint32_t>(duration), rng)) {
             break;
         }
     }
     if (mode_ == FirefliesMode::NORMAL) {
-        next_mode_ms_ = random_ms(rng, NORMAL_MIN_MS, NORMAL_MAX_MS);
+        next_mode_ms_ = random_int(rng, NORMAL_MIN_MS, NORMAL_MAX_MS);
     }
 }
 
@@ -439,7 +386,7 @@ void FirefliesSim::advance_one(std::minstd_rand& rng) {
         mode_left_ms_ -= static_cast<int32_t>(FIREFLIES_STEP_MS);
         if (mode_left_ms_ <= 0) {
             mode_ = FirefliesMode::NORMAL;
-            next_mode_ms_ = random_ms(rng, NORMAL_MIN_MS, NORMAL_MAX_MS);
+            next_mode_ms_ = random_int(rng, NORMAL_MIN_MS, NORMAL_MAX_MS);
         }
     } else {
         next_mode_ms_ -= static_cast<int32_t>(FIREFLIES_STEP_MS);
@@ -452,23 +399,23 @@ void FirefliesSim::advance_one(std::minstd_rand& rng) {
     const float mult = speed_mult();
     const float bait_speed = FIREFLIES_BAIT_SPEED * mult;
     const float bait_accel = FIREFLIES_BAIT_ACCEL * mult;
-    const FireflyVec half{world_w_ / 2.0f, FIREFLIES_WORLD_H / 2.0f, FIREFLIES_WORLD_D / 2.0f};
+    const SaverVec3 half{world_w_ / 2.0f, FIREFLIES_WORLD_H / 2.0f, FIREFLIES_WORLD_D / 2.0f};
     for (size_t i = 0; i < baits_.size(); i++) {
         Bait& b = baits_[i];
         if (!b.alive) {
             continue;
         }
-        FireflyVec desired{};
+        SaverVec3 desired{};
         if (mode_ == FirefliesMode::LOOP) {
             const float a = loop_phase_[i] + LOOP_RATE * mode_s;
-            b.target = b.loop_centre + FireflyVec{std::cos(a), 0.0f, std::sin(a)} * LOOP_RADIUS;
+            b.target = b.loop_centre + SaverVec3{std::cos(a), 0.0f, std::sin(a)} * LOOP_RADIUS;
             desired = seek(b.pos, b.target, bait_speed);
         } else if (mode_ != FirefliesMode::STOP) {
             b.retarget_ms -= static_cast<int32_t>(FIREFLIES_STEP_MS);
             if (b.retarget_ms <= 0 ||
                 length_sq(b.target - b.pos) < WAYPOINT_REACHED * WAYPOINT_REACHED) {
                 b.target = random_waypoint(rng);
-                b.retarget_ms = random_ms(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
+                b.retarget_ms = random_int(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
             }
             desired = seek(b.pos, b.target, bait_speed);
         }
@@ -497,8 +444,10 @@ void FirefliesSim::advance_one(std::minstd_rand& rng) {
 
     const double seconds = static_cast<double>(elapsed_ms_) / 1000.0;
     for (size_t i = 0; i < baits_.size(); i++) {
-        baits_[i].hue_deg = wrap360(static_cast<float>(std::fmod(
-            hue_origin_[i] + static_cast<double>(FIREFLIES_HUE_RATE_DPS) * seconds, 360.0)));
+        baits_[i].hue_deg = wrap_period(
+            static_cast<float>(std::fmod(
+                hue_origin_[i] + static_cast<double>(FIREFLIES_HUE_RATE_DPS) * seconds, 360.0)),
+            360.0f);
     }
 
     wind_left_ms_ -= static_cast<int32_t>(FIREFLIES_STEP_MS);
@@ -538,11 +487,6 @@ constexpr float TAIL_LIGHT = 160.0f;
 constexpr float HALO_LIGHT = 80.0f;
 constexpr float GLOW_GAIN = 1.6f;
 
-// The frame rows are written as whole uint32_t / uint16_t pixels, which match PixelWriter's byte
-// layout only on a little-endian CPU.
-static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__,
-              "pixels are written as little-endian words");
-
 /// A world point on screen: its pixel position and how much nearer than the box's middle it is.
 struct Projected {
     float x;
@@ -561,7 +505,7 @@ template <typename Px> class LightPainter {
         if (x < 0 || y < 0 || x >= w_ || y >= h_ || (r | g | b) == 0) {
             return;
         }
-        Px* p = reinterpret_cast<Px*>(frame_.data + static_cast<size_t>(y) * frame_.stride) + x;
+        Px* p = frame_row<Px>(frame_, y) + x;
         if constexpr (sizeof(Px) == 2) {
             add_light(p, r, g, b, BAYER_4X4[y & 3][x & 3]);
         } else {
@@ -602,7 +546,7 @@ uint32_t scaled(uint8_t channel, float light) {
 
 template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<DirtyRect>& dirty) {
     // Black out what the last frame drew, tile by tile.
-    const auto black = static_cast<Px>(sizeof(Px) == 4 ? 0xFF000000u : 0u);
+    const auto black = static_cast<Px>(PixelWriter::pack({}, frame.format));
     for (int32_t ty = 0; ty < tiles_y_; ty++) {
         const uint8_t* row = &drawn_tiles_[static_cast<size_t>(ty) * static_cast<size_t>(tiles_x_)];
         for (int32_t tx = 0; tx < tiles_x_;) {
@@ -618,7 +562,7 @@ template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<D
             const int32_t x2 = std::min(tx * FIREFLIES_TILE_PX, w_);
             const int32_t y_end = std::min((ty + 1) * FIREFLIES_TILE_PX, h_);
             for (int32_t y = ty * FIREFLIES_TILE_PX; y < y_end; y++) {
-                Px* out = reinterpret_cast<Px*>(frame.data + static_cast<size_t>(y) * frame.stride);
+                Px* out = frame_row<Px>(frame, y);
                 std::fill(out + x1, out + x2, black);
             }
         }
@@ -630,7 +574,7 @@ template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<D
     const bool halo = mode_ == FirefliesMode::GLOW && lv.halo;
     const float half_w = static_cast<float>(w_) / 2.0f;
     const float half_h = static_cast<float>(h_) / 2.0f;
-    const auto project = [&](FireflyVec p, Projected& out) {
+    const auto project = [&](SaverVec3 p, Projected& out) {
         const float depth = p.z + CAM_DIST;
         if (depth < NEAREST) {
             return false;
@@ -665,9 +609,9 @@ template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<D
             if (age_b > tail_ms) {
                 break;
             }
-            const FireflyVec wp{static_cast<float>(tail[slot * 3]) / TAIL_FIXED_SCALE,
-                                static_cast<float>(tail[slot * 3 + 1]) / TAIL_FIXED_SCALE,
-                                static_cast<float>(tail[slot * 3 + 2]) / TAIL_FIXED_SCALE};
+            const SaverVec3 wp{static_cast<float>(tail[slot * 3]) / TAIL_FIXED_SCALE,
+                               static_cast<float>(tail[slot * 3 + 1]) / TAIL_FIXED_SCALE,
+                               static_cast<float>(tail[slot * 3 + 2]) / TAIL_FIXED_SCALE};
             Projected b{};
             if (!project(wp + wind_ * (age_b / 1000.0f), b)) {
                 break;
@@ -856,11 +800,8 @@ void FirefliesSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rn
     for (uint32_t i = 0; i < steps; i++) {
         advance_one(rng);
     }
-    if (frame.format == PixelFormat::RGB565) {
-        draw<uint16_t>(frame, dirty);
-    } else {
-        draw<uint32_t>(frame, dirty);
-    }
+    with_pixel_type(frame.format,
+                    [&](auto pixel_type) { draw<decltype(pixel_type)>(frame, dirty); });
 }
 
 } // namespace helix::ui

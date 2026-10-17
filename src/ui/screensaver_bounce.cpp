@@ -11,6 +11,7 @@
 #include "platform_capabilities.h"
 #include "printer_image_manager.h"
 #include "printer_images.h"
+#include "screensaver_fast_math.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
@@ -186,7 +187,7 @@ void BouncingPrinterScreensaver::seed_motion() {
 
     for (int attempt = 0; attempt < SEED_ATTEMPTS; ++attempt) {
         const float deg = ANGLE_MIN_DEG + unit_random(rng()) * ANGLE_SPAN_DEG;
-        const float theta = deg * (static_cast<float>(M_PI) / 180.0f);
+        const float theta = deg * (helix::ui::SAVER_PI / 180.0f);
         const float sx = (unit_random(rng()) < 0.5f) ? -1.0f : 1.0f;
         const float sy = (unit_random(rng()) < 0.5f) ? -1.0f : 1.0f;
 

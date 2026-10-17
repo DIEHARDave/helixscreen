@@ -30,10 +30,10 @@ using helix::ui::FIREFLIES_LEVELS;
 using helix::ui::FIREFLIES_MAX_BAITS;
 using helix::ui::FirefliesScreensaver;
 using helix::ui::FirefliesSim;
-using helix::ui::FireflyVec;
 using helix::ui::FrameTarget;
 using helix::ui::PixelFormat;
 using helix::ui::Rgb;
+using helix::ui::SaverVec3;
 
 namespace helix::ui {
 
@@ -99,7 +99,7 @@ struct Swarm {
     }
 };
 
-bool same_vec(const FireflyVec& a, const FireflyVec& b) {
+bool same_vec(const SaverVec3& a, const SaverVec3& b) {
     return screensaver_same_bits(a.x, b.x) && screensaver_same_bits(a.y, b.y) &&
            screensaver_same_bits(a.z, b.z);
 }
@@ -221,14 +221,14 @@ TEST_CASE("a fireflies level change leaves the motion untouched", "[screensaver]
 
 namespace {
 
-float distance(const FireflyVec& a, const FireflyVec& b) {
+float distance(const SaverVec3& a, const SaverVec3& b) {
     const float dx = a.x - b.x;
     const float dy = a.y - b.y;
     const float dz = a.z - b.z;
     return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-float magnitude(const FireflyVec& v) {
+float magnitude(const SaverVec3& v) {
     return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
@@ -603,7 +603,7 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         const std::vector<size_t> baits = alive_baits(s.sim);
         std::vector<float> travelled(FIREFLIES_MAX_BAITS, 0.0f);
         for (int i = 0; i < 300; i++) {
-            std::vector<FireflyVec> was;
+            std::vector<SaverVec3> was;
             for (const FirefliesSim::Bait& b : s.sim.baits()) {
                 was.push_back(b.pos);
             }

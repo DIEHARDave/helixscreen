@@ -2,6 +2,8 @@
 
 #include "screensaver_fireworks_sim.h"
 
+#include "screensaver_buffer.h"
+#include "screensaver_fast_math.h"
 #include "screensaver_motion.h"
 #include "screensaver_pixel_writer.h"
 
@@ -14,9 +16,8 @@ namespace helix::ui {
 namespace {
 
 using screensaver::random_below;
+using screensaver::random_int;
 using screensaver::unit_random;
-
-constexpr float PI = 3.14159265f;
 
 constexpr Rgb SKY_TOP = {2, 3, 10};       // near black overhead
 constexpr Rgb SKY_HORIZON = {12, 20, 52}; // deep navy where the sky meets the hills
@@ -98,23 +99,8 @@ constexpr int PALM_MAX_COMETS = 12;
 constexpr int CROSSETTE_MIN_STARS = 6;
 constexpr int CROSSETTE_MAX_STARS = 18;
 
-uint8_t mix_channel(uint8_t a, uint8_t b, float t) {
-    const float v = static_cast<float>(a) + (static_cast<float>(b) - static_cast<float>(a)) * t;
-    return static_cast<uint8_t>(std::clamp(v + 0.5f, 0.0f, 255.0f));
-}
-
-Rgb mix(Rgb a, Rgb b, float t) {
-    return {mix_channel(a.r, b.r, t), mix_channel(a.g, b.g, t), mix_channel(a.b, b.b, t)};
-}
-
-/// `c` at `amount` of its brightness, 0 to 255.
-Rgb dimmed(Rgb c, uint32_t amount) {
-    return {static_cast<uint8_t>(c.r * amount / 255), static_cast<uint8_t>(c.g * amount / 255),
-            static_cast<uint8_t>(c.b * amount / 255)};
-}
-
 int16_t to_pixel(float v) {
-    return static_cast<int16_t>(std::clamp(std::lround(v), -16000L, 16000L));
+    return static_cast<int16_t>(std::clamp(round_px(v), -16000, 16000));
 }
 
 } // namespace
@@ -131,19 +117,19 @@ void FireworksSim::init(FrameTarget& frame, std::minstd_rand& rng, size_t level,
     sky_rows_.resize(static_cast<size_t>(h_));
     for (int32_t y = 0; y < h_; y++) {
         const float t = h_ > 1 ? static_cast<float>(y) / static_cast<float>(h_ - 1) : 0.0f;
-        sky_rows_[static_cast<size_t>(y)] = mix(SKY_TOP, SKY_HORIZON, t);
+        sky_rows_[static_cast<size_t>(y)] = mix_rgb(SKY_TOP, SKY_HORIZON, t);
     }
 
     // Rolling hills: three waves with random phases give one height per column.
-    const float phase_a = unit_random(rng) * 2.0f * PI;
-    const float phase_b = unit_random(rng) * 2.0f * PI;
-    const float phase_c = unit_random(rng) * 2.0f * PI;
+    const float phase_a = unit_random(rng) * 2.0f * SAVER_PI;
+    const float phase_b = unit_random(rng) * 2.0f * SAVER_PI;
+    const float phase_c = unit_random(rng) * 2.0f * SAVER_PI;
     hill_top_.resize(static_cast<size_t>(w_));
     for (int32_t x = 0; x < w_; x++) {
         const float fx = static_cast<float>(x) / static_cast<float>(std::max(w_, 1));
-        const float share = 0.14f + 0.05f * std::sin(fx * 2.0f * PI * 1.1f + phase_a) +
-                            0.025f * std::sin(fx * 2.0f * PI * 3.0f + phase_b) +
-                            0.01f * std::sin(fx * 2.0f * PI * 9.0f + phase_c);
+        const float share = 0.14f + 0.05f * std::sin(fx * 2.0f * SAVER_PI * 1.1f + phase_a) +
+                            0.025f * std::sin(fx * 2.0f * SAVER_PI * 3.0f + phase_b) +
+                            0.01f * std::sin(fx * 2.0f * SAVER_PI * 9.0f + phase_c);
         const int32_t top = h_ - static_cast<int32_t>(share * static_cast<float>(h_));
         hill_top_[static_cast<size_t>(x)] = static_cast<int16_t>(std::clamp<int32_t>(top, 0, h_));
     }
@@ -154,8 +140,8 @@ void FireworksSim::init(FrameTarget& frame, std::minstd_rand& rng, size_t level,
     for (int i = 0; i < STAR_COUNT && w_ > 0 && h_ > 0; i++) {
         int32_t x = random_below(rng, w_);
         const int32_t y = random_below(rng, std::max(1, h_ * 7 / 10));
-        const auto star_level = static_cast<uint8_t>(
-            STAR_MIN_LEVEL + random_below(rng, STAR_MAX_LEVEL - STAR_MIN_LEVEL + 1));
+        const auto star_level =
+            static_cast<uint8_t>(random_int(rng, STAR_MIN_LEVEL, STAR_MAX_LEVEL));
         for (int32_t tries = 0; tries < w_ && star_y_[static_cast<size_t>(x)] >= 0; tries++) {
             x = (x + 1) % w_;
         }
@@ -211,11 +197,7 @@ size_t FireworksSim::sparks_in_use() const {
 }
 
 void FireworksSim::clear() {
-    std::vector<Spark>().swap(sparks_);
-    std::vector<Rgb>().swap(sky_rows_);
-    std::vector<int16_t>().swap(hill_top_);
-    std::vector<int16_t>().swap(star_y_);
-    std::vector<uint8_t>().swap(star_level_);
+    release_buffers(sparks_, sky_rows_, hill_top_, star_y_, star_level_);
     for (Burst& b : bursts_) {
         b = Burst{};
     }
@@ -252,8 +234,7 @@ size_t FireworksSim::in_flight() const {
 int32_t FireworksSim::next_gap_ms(std::minstd_rand& rng) const {
     const uint32_t min_gap = pacing_.min_gap_ms;
     const uint32_t max_gap = std::max(pacing_.max_gap_ms, min_gap);
-    return static_cast<int32_t>(min_gap + static_cast<uint32_t>(random_below(
-                                              rng, static_cast<int>(max_gap - min_gap + 1))));
+    return random_int(rng, static_cast<int>(min_gap), static_cast<int>(max_gap));
 }
 
 void FireworksSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
@@ -324,8 +305,8 @@ void FireworksSim::advance(uint32_t step_ms, std::minstd_rand& rng) {
         if (finale_left_ == 0) {
             const int extra = std::max(0, static_cast<int>(pacing_.finale_max_shells) -
                                               pacing_.finale_min_shells);
-            finale_left_ = static_cast<uint8_t>(
-                std::max(1, pacing_.finale_min_shells + random_below(rng, extra + 1)));
+            finale_left_ = static_cast<uint8_t>(std::max(
+                1, random_int(rng, pacing_.finale_min_shells, pacing_.finale_min_shells + extra)));
             finale_gap_ms_ = static_cast<int32_t>(pacing_.finale_span_ms / finale_left_);
             launch_in_ms_ = 0;
         }
@@ -482,8 +463,8 @@ void FireworksSim::burst(const Rocket& rocket, std::minstd_rand& rng) {
 
     const float speed =
         (kind.speed_min + (kind.speed_max - kind.speed_min) * unit_random(rng)) * scale_;
-    const float tilt = std::cos(unit_random(rng) * 0.45f * PI);
-    const float spin = unit_random(rng) * 2.0f * PI;
+    const float tilt = std::cos(unit_random(rng) * 0.45f * SAVER_PI);
+    const float spin = unit_random(rng) * 2.0f * SAVER_PI;
     for (int i = 0; i < count; i++) {
         Spark* spark = take_spark();
         if (spark == nullptr) {
@@ -495,14 +476,14 @@ void FireworksSim::burst(const Rocket& rocket, std::minstd_rand& rng) {
         if (rocket.kind == BurstKind::PALM) {
             // Comets spread evenly round the burst, thrown slightly upward, so each arcs over
             // and falls like a frond.
-            const float theta = 2.0f * PI *
+            const float theta = 2.0f * SAVER_PI *
                                 (static_cast<float>(i) + 0.4f * (unit_random(rng) - 0.5f)) /
                                 static_cast<float>(count);
             dx = std::cos(theta);
             dy = std::sin(theta) - 0.55f;
             spark_speed = speed * (0.9f + 0.1f * unit_random(rng));
         } else if (rocket.kind == BurstKind::RING) {
-            const float theta = 2.0f * PI * static_cast<float>(i) / static_cast<float>(count);
+            const float theta = 2.0f * SAVER_PI * static_cast<float>(i) / static_cast<float>(count);
             const float cx = std::cos(theta);
             const float cy = std::sin(theta) * tilt;
             dx = cx * std::cos(spin) - cy * std::sin(spin);
@@ -510,7 +491,7 @@ void FireworksSim::burst(const Rocket& rocket, std::minstd_rand& rng) {
         } else {
             // A direction uniform over a sphere, seen face on: an evenly filled ball.
             const float z = 2.0f * unit_random(rng) - 1.0f;
-            const float phi = 2.0f * PI * unit_random(rng);
+            const float phi = 2.0f * SAVER_PI * unit_random(rng);
             const float radius = std::sqrt(std::max(0.0f, 1.0f - z * z));
             dx = radius * std::cos(phi);
             dy = radius * std::sin(phi);
@@ -521,8 +502,7 @@ void FireworksSim::burst(const Rocket& rocket, std::minstd_rand& rng) {
         spark->y = rocket.y;
         spark->vx = dx * spark_speed + rocket.vx * 0.3f;
         spark->vy = dy * spark_speed + rocket.vy * 0.3f;
-        spark->life_ms = static_cast<uint16_t>(
-            kind.life_min_ms + random_below(rng, kind.life_max_ms - kind.life_min_ms + 1));
+        spark->life_ms = static_cast<uint16_t>(random_int(rng, kind.life_min_ms, kind.life_max_ms));
         spark->color = rocket.color;
         spark->flags = SPARK_ALIVE;
         spark->burst = static_cast<uint8_t>(slot);
@@ -537,22 +517,21 @@ void FireworksSim::split(Spark& spark, std::minstd_rand& rng) {
     const Spark star = spark;
     Burst& owner = bursts_[star.burst];
     // The four fragments fly out across the star's path, as an X over its direction of travel.
-    const float base = std::atan2(star.vy, star.vx) + 0.25f * PI;
+    const float base = std::atan2(star.vy, star.vx) + 0.25f * SAVER_PI;
     const float push = CROSSETTE_FRAGMENT_SPEED * scale_;
     for (int k = 0; k < CROSSETTE_FRAGMENTS; k++) {
         Spark* fragment = k == 0 ? &spark : take_spark();
         if (fragment == nullptr) {
             break; // the pool is full: the star splits into fewer fragments
         }
-        const float theta = base + 0.5f * PI * static_cast<float>(k);
+        const float theta = base + 0.5f * SAVER_PI * static_cast<float>(k);
         *fragment = Spark{};
         fragment->x = star.x;
         fragment->y = star.y;
         fragment->vx = star.vx * 0.35f + std::cos(theta) * push;
         fragment->vy = star.vy * 0.35f + std::sin(theta) * push;
         fragment->life_ms = static_cast<uint16_t>(
-            CROSSETTE_FRAGMENT_MIN_MS +
-            random_below(rng, CROSSETTE_FRAGMENT_MAX_MS - CROSSETTE_FRAGMENT_MIN_MS + 1));
+            random_int(rng, CROSSETTE_FRAGMENT_MIN_MS, CROSSETTE_FRAGMENT_MAX_MS));
         fragment->color = star.color;
         fragment->flags = SPARK_ALIVE | SPARK_SPLIT;
         fragment->burst = star.burst;
@@ -597,22 +576,23 @@ void FireworksSim::draw_spark(PixelWriter& writer, Spark& spark, std::minstd_ran
         if ((spark.age_ms + phase) % STROBE_PERIOD_MS >= STROBE_ON_MS) {
             return;
         }
-        color = f < EMBER_END ? STROBE_WHITE
-                              : dimmed(STROBE_WHITE,
-                                       static_cast<uint32_t>(
-                                           255.0f * (1.0f - (f - EMBER_END) / (1.0f - EMBER_END))));
+        color = f < EMBER_END
+                    ? STROBE_WHITE
+                    : scale_rgb(STROBE_WHITE,
+                                static_cast<uint32_t>(
+                                    255.0f * (1.0f - (f - EMBER_END) / (1.0f - EMBER_END))));
     } else if (f > FLICKER_FROM && random_below(rng, 4) == 0) {
         // Late in its life a spark flickers: on some frames it is not drawn.
         return;
     } else if (f < FLASH_END) {
         // White flash, the shell colour, ember orange, then a fade into the sky.
-        color = mix(WHITE, spark.color, f / FLASH_END);
+        color = mix_rgb(WHITE, spark.color, f / FLASH_END);
     } else if (f < COLOR_END) {
         color = spark.color;
     } else if (f < EMBER_END) {
-        color = mix(spark.color, EMBER, (f - COLOR_END) / (EMBER_END - COLOR_END));
+        color = mix_rgb(spark.color, EMBER, (f - COLOR_END) / (EMBER_END - COLOR_END));
     } else {
-        color = dimmed(
+        color = scale_rgb(
             EMBER, static_cast<uint32_t>(255.0f * (1.0f - (f - EMBER_END) / (1.0f - EMBER_END))));
     }
 
@@ -627,7 +607,7 @@ void FireworksSim::draw_spark(PixelWriter& writer, Spark& spark, std::minstd_ran
         static_cast<uint8_t>(spark.flags | SPARK_DRAWN | (f < big_until ? SPARK_DRAWN_BIG : 0));
     visit_spark_points(spark, bursts_[spark.burst].trail,
                        [&](int32_t x, int32_t y, uint32_t amount) {
-                           light_point(writer, x, y, dimmed(color, amount), box);
+                           light_point(writer, x, y, scale_rgb(color, amount), box);
                        });
 }
 
@@ -655,7 +635,7 @@ void FireworksSim::draw_rocket(PixelWriter& writer, Rocket& rocket, DirtyRect& b
     PixelWriter::line(
         rocket.head_x, rocket.head_y, rocket.tail_x, rocket.tail_y, [&](int32_t x, int32_t y) {
             light_point(writer, x, y,
-                        dimmed(ROCKET, static_cast<uint32_t>(255 - 195 * index / points)), box);
+                        scale_rgb(ROCKET, static_cast<uint32_t>(255 - 195 * index / points)), box);
             index++;
         });
 }

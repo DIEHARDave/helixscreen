@@ -4,6 +4,7 @@
 
 #include "screensaver_starfield_sim.h"
 
+#include "screensaver_fast_math.h"
 #include "screensaver_motion.h"
 #include "screensaver_pixel_writer.h"
 
@@ -50,19 +51,10 @@ void assign_tint(std::minstd_rand& rng, uint8_t& r, uint8_t& g, uint8_t& b) {
 /// wrote (empty when the square is entirely outside the frame).
 DirtyRect fill_square(PixelWriter& writer, const FrameTarget& target, int sx, int sy, int size,
                       Rgb color) {
-    const int x1 = std::max(sx, 0);
-    const int y1 = std::max(sy, 0);
-    const int x2 = std::min(sx + size, static_cast<int>(target.w)) - 1;
-    const int y2 = std::min(sy + size, static_cast<int>(target.h)) - 1;
-    if (x2 < x1 || y2 < y1) {
-        return {};
-    }
-    for (int y = y1; y <= y2; y++) {
-        for (int x = x1; x <= x2; x++) {
-            writer.put(x, y, color);
-        }
-    }
-    return {x1, y1, x2, y2};
+    const DirtyRect box = DirtyRect{sx, sy, sx + size - 1, sy + size - 1}.clipped(
+        static_cast<int32_t>(target.w), static_cast<int32_t>(target.h));
+    writer.fill_rect(box, color);
+    return box;
 }
 
 } // namespace
@@ -76,7 +68,7 @@ void StarfieldSim::init(uint32_t w, uint32_t h, std::minstd_rand& rng) {
     star_dirty_.resize(NUM_STARS);
     active_count_ = NUM_STARS;
     for (auto& star : stars_) {
-        float angle = unit_random(rng) * 2.0f * 3.14159265f;
+        float angle = unit_random(rng) * 2.0f * SAVER_PI;
         float radius = 0.1f + unit_random(rng) * 0.9f;
         star.x = radius * std::cos(angle);
         star.y = radius * std::sin(angle);
@@ -91,7 +83,7 @@ void StarfieldSim::init(uint32_t w, uint32_t h, std::minstd_rand& rng) {
 
 void StarfieldSim::recycle(Star& star, std::minstd_rand& rng) {
     // Pick random angle + radius so stars fly uniformly in all directions
-    float angle = unit_random(rng) * 2.0f * 3.14159265f;
+    float angle = unit_random(rng) * 2.0f * SAVER_PI;
     float radius = 0.3f + unit_random(rng) * 0.7f;
     star.x = radius * std::cos(angle);
     star.y = radius * std::sin(angle);
