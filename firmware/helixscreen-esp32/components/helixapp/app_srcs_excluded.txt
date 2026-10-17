@@ -257,6 +257,7 @@ src/ui/screensaver_hyperspace_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_frame.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_frame_timer.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_gate.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_heightfield.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_level_store.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_manager.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_maze.cpp  # not in the v1 Core+AMS cut
