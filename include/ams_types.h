@@ -1312,6 +1312,13 @@ struct SlotInfo {
         }
         return weight + " \xC2\xB7 " + length;
     }
+
+    /// The names a finish is read from (material, product, colour name, spool
+    /// name) as one text, in that order: what a finish subject carries, so
+    /// helix::filament_finish_of() reads the same finish swatch_finish_of() does.
+    [[nodiscard]] std::string finish_text() const {
+        return material + " " + product_name + " " + color_name + " " + spool_name;
+    }
 };
 
 /// A logo image and how the UI draws it.

@@ -47,7 +47,8 @@
       </pass_through>
     </pass_through>
     <tool_switcher_band name="tool_switcher_face_band"
-                        color="tool_switcher_face_color" has_color="tool_switcher_face_has_color"
+                        color="tool_switcher_face_color" colors="tool_switcher_face_colors"
+                        finish="tool_switcher_face_finish" has_color="tool_switcher_face_has_color"
                         text="tool_switcher_face_material" text_color="tool_switcher_face_band_text"/>
     <event_cb trigger="clicked" callback="tool_switcher_face_cb"/>
   </view>
