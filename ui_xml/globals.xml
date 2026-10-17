@@ -647,11 +647,10 @@
 
 
     <!-- input_height: standard height for all input fields (textareas, dropdowns,
-         icon toggles). Static 48px historically — now a responsive ladder so inputs
-         scale up on bigger screens instead of looking cramped (history panel search
-         box, spoolman search, modal text inputs, wifi password row, etc.). Small
-         breakpoints keep 48 (no regression on cramped Snapmaker U1 / 480x320). -->
-    <px name="input_height_micro" value="48"/>
+         icon toggles). A responsive ladder, so inputs scale up on bigger screens.
+         Micro (480x272) matches its 12px body font and 26px buttons; tiny and small
+         keep 48 for the cramped 480x320 panels. -->
+    <px name="input_height_micro" value="32"/>
     <px name="input_height_tiny" value="48"/>
     <px name="input_height_small" value="48"/>
     <px name="input_height_medium" value="52"/>

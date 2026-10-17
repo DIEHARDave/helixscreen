@@ -615,7 +615,7 @@ const TokenEntry k_token_table[] = {
     {"px", "dialog_content_max_large", "440"},
     {"px", "dialog_content_max_xlarge", "600"},
     {"px", "dialog_content_max_xxlarge", "800"},
-    {"px", "input_height_micro", "48"},
+    {"px", "input_height_micro", "32"},
     {"px", "input_height_tiny", "48"},
     {"px", "input_height_small", "48"},
     {"px", "input_height_medium", "52"},
