@@ -17,6 +17,7 @@
 
 using helix::ui::screensaver::random_below;
 using helix::ui::screensaver::random_int;
+using helix::ui::screensaver::shuffle_in_place;
 using helix::ui::screensaver::smoothstep01;
 
 namespace helix::ui {
@@ -69,19 +70,6 @@ SpriteStyle style_of(MazeItemKind kind) {
     return {0.5f, 0.5f, false, false, 0.15f};
 }
 
-uint8_t clamp_u8(float v) {
-    return static_cast<uint8_t>(std::clamp(v, 0.0f, 255.0f));
-}
-
-Rgb scaled(Rgb c, float k) {
-    return {clamp_u8(c.r * k), clamp_u8(c.g * k), clamp_u8(c.b * k)};
-}
-
-Rgb mix(Rgb a, Rgb b, float t) {
-    return {clamp_u8(a.r + (b.r - a.r) * t), clamp_u8(a.g + (b.g - a.g) * t),
-            clamp_u8(a.b + (b.b - a.b) * t)};
-}
-
 /// Average colour and coverage of the image over the box [x0, x1) x [y0, y1), in image pixels.
 struct Rgba {
     Rgb c;
@@ -108,7 +96,7 @@ Rgba sample_box(const MazeImage& img, float x0, float y0, float x1, float y1) {
     }
     Rgba out;
     if (a > 0.0f) {
-        out.c = {clamp_u8(r / a), clamp_u8(g / a), clamp_u8(b / a)};
+        out.c = {to_u8(r / a), to_u8(g / a), to_u8(b / a)};
     }
     out.a = n > 0 ? a / static_cast<float>(n) : 0.0f;
     return out;
@@ -148,7 +136,7 @@ void fit_image(Canvas64& dst, const MazeImage& img, int bx, int by, int bw, int 
             }
             const Rgba s = sample_box(img, sx, sy, sx + 1.0f / k, sy + 1.0f / k);
             if (matte != nullptr) {
-                dst.set(u, v, mix(*matte, s.c, s.a));
+                dst.set(u, v, mix_rgb(*matte, s.c, s.a));
             } else if (s.a >= 0.5f) {
                 dst.set(u, v, s.c);
             }
@@ -164,8 +152,8 @@ void draw_fallback_mark(Canvas64& dst) {
         const float depth = std::cos(phase);
         const int ua = static_cast<int>(32.0f + 18.0f * s);
         const int ub = static_cast<int>(32.0f - 18.0f * s);
-        const Rgb a = scaled({0, 170, 255}, 0.7f + 0.3f * depth);
-        const Rgb b = scaled({235, 240, 255}, 0.7f - 0.3f * depth);
+        const Rgb a = scale_rgb_by({0, 170, 255}, 0.7f + 0.3f * depth);
+        const Rgb b = scale_rgb_by({235, 240, 255}, 0.7f - 0.3f * depth);
         // The strand in front draws last.
         for (int pass = 0; pass < 2; pass++) {
             const bool a_front = depth >= 0.0f;
@@ -223,7 +211,7 @@ void draw_rock(Canvas64& dst, int frame) {
         const float len = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
         const float lambert =
             std::max(0.0f, (n[0] * light[0] + n[1] * light[1] + n[2] * light[2]) / len);
-        const Rgb shade = scaled({150, 150, 156}, 0.35f + 0.75f * lambert);
+        const Rgb shade = scale_rgb_by({150, 150, 156}, 0.35f + 0.75f * lambert);
         const float ax = 32 + a[0] * radius, ay = 32 - a[1] * radius;
         const float bx = 32 + b[0] * radius, by = 32 - b[1] * radius;
         const float cx = 32 + c[0] * radius, cy = 32 - c[1] * radius;
@@ -325,11 +313,11 @@ Rgb brick_texel(int u, int v) {
     const int shifted = u + (row % 2) * 16;
     const int col = shifted / 32;
     if (v % 16 < 2 || shifted % 32 < 2) {
-        return scaled({170, 165, 155}, 0.9f + 0.2f * hash_unit(u, v));
+        return scale_rgb_by({170, 165, 155}, 0.9f + 0.2f * hash_unit(u, v));
     }
     const float brick = 0.8f + 0.35f * hash_unit(col, row);
     const float grit = 0.9f + 0.2f * hash_unit(u * 7, v * 3);
-    return scaled({150, 58, 40}, brick * grit);
+    return scale_rgb_by({150, 58, 40}, brick * grit);
 }
 
 Rgb floor_texel(int x, int y) {
@@ -339,7 +327,7 @@ Rgb floor_texel(int x, int y) {
     }
     const float grain = std::sin((x + plank * 13) * 0.35f + std::sin(y * 0.9f) * 1.5f);
     const float tone = 0.85f + 0.25f * hash_unit(plank, 2) + 0.08f * grain;
-    return scaled({135, 88, 48}, tone * (0.94f + 0.12f * hash_unit(x, y)));
+    return scale_rgb_by({135, 88, 48}, tone * (0.94f + 0.12f * hash_unit(x, y)));
 }
 
 Rgb ceiling_texel(int x, int y) {
@@ -347,7 +335,8 @@ Rgb ceiling_texel(int x, int y) {
         return {140, 140, 134};
     }
     const float speck = hash_unit(x * 5, y * 11);
-    return speck > 0.93f ? Rgb{150, 148, 140} : scaled({205, 202, 192}, 0.95f + 0.05f * speck);
+    return speck > 0.93f ? Rgb{150, 148, 140}
+                         : scale_rgb_by({205, 202, 192}, 0.95f + 0.05f * speck);
 }
 
 template <typename Px>
@@ -649,7 +638,7 @@ void MazeMap::open_up(int keep_a, int keep_b, std::minstd_rand& rng) {
             scratch_.push_back(c);
         }
     }
-    std::shuffle(scratch_.begin(), scratch_.end(), rng);
+    shuffle_in_place(rng, scratch_.begin(), scratch_.end());
     const auto braids = static_cast<int>(std::lround(BRAID_SHARE * scratch_.size()));
     int braided = 0;
     for (size_t i = 0; i < scratch_.size() && braided < braids; i++) {

@@ -14,6 +14,7 @@
 #include "print_history_manager.h"
 #include "screensaver_image.h"
 #include "screensaver_motion.h"
+#include "screensaver_pixel_writer.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_processor.h"
 #include "thumbnail_rules.h"
@@ -151,10 +152,11 @@ bool to_argb(const lv_draw_buf_t* buf, MazeImage& out) {
                 break;
             case LV_COLOR_FORMAT_RGB565:
             case LV_COLOR_FORMAT_RGB565A8: {
-                const auto v = static_cast<uint32_t>(row[x * 2] | row[x * 2 + 1] << 8);
-                r = (v >> 11 & 0x1F) << 3;
-                g = (v >> 5 & 0x3F) << 2;
-                b = (v & 0x1F) << 3;
+                const Rgb c =
+                    PixelWriter::unpack565(static_cast<uint16_t>(row[x * 2] | row[x * 2 + 1] << 8));
+                r = c.r;
+                g = c.g;
+                b = c.b;
                 if (cf == LV_COLOR_FORMAT_RGB565A8) {
                     // The alpha plane follows the colour plane, one byte per pixel.
                     const uint8_t* alpha = buf->data + static_cast<size_t>(stride) * h;
@@ -242,7 +244,7 @@ MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng) {
         for (std::string& key : panel->printer_thumbnail_keys()) {
             candidates.push_back({std::move(key)});
         }
-        std::shuffle(candidates.begin(), candidates.end(), rng);
+        screensaver::shuffle_in_place(rng, candidates.begin(), candidates.end());
         sources.files = cached_art_paths(candidates, maze_cached_thumbnail, MAZE_ART_FILES,
                                          MAZE_ART_FILE_PROBES, sources.recent);
     }
