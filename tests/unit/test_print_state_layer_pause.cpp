@@ -11,6 +11,8 @@
 
 #include "../lvgl_test_fixture.h"
 #include "layer_pause.h"
+#include "printer_capabilities_state.h"
+#include "printer_discovery.h"
 #include "printer_state.h"
 
 #include "../catch_amalgamated.hpp"
@@ -152,4 +154,42 @@ TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: no state object means no read-
     state_.update_from_status(
         {{kStateObject, {{"pause_at_layer", {{"enable", true}, {"layer", 7}}}}}});
     CHECK(pending() == 0);
+}
+
+TEST_CASE_METHOD(LayerPauseFixture,
+                 "Layer pause: a current_layer report alone proves slicer layers",
+                 "[layer_pause][print_state]") {
+    printing(3, 10);
+    state_.print_state().reset_for_new_print();
+    REQUIRE_FALSE(state_.print_state().slicer_reports_layers());
+    // A delta frame carries only what changed: here, the layer.
+    state_.update_from_status(
+        {{"print_stats",
+          {{"filename", "a.gcode"}, {"state", "printing"}, {"info", {{"current_layer", 4}}}}}});
+    CHECK(state_.print_state().slicer_reports_layers());
+    CHECK(availability() == A::Ready);
+}
+
+TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: discovery publishes the capability and read-back",
+                 "[layer_pause][print_state]") {
+    auto capability = [this] {
+        return lv_subject_get_int(
+            state_.capabilities_state().subject(helix::Capability::HasLayerPause));
+    };
+    PrinterDiscovery hw;
+    hw.parse_objects(json::array({"print_stats", "gcode_macro SET_PAUSE_NEXT_LAYER",
+                                  "gcode_macro SET_PAUSE_AT_LAYER", kStateObject}));
+    state_.set_hardware(hw);
+    CHECK(capability() == 1);
+
+    // The state object discovery named is the one read back.
+    printing(3, 10);
+    state_.update_from_status(
+        {{kStateObject, {{"pause_at_layer", {{"enable", true}, {"layer", 8}}}}}});
+    CHECK(pending() == 8);
+
+    PrinterDiscovery plain;
+    plain.parse_objects(json::array({"print_stats", "gcode_macro PAUSE"}));
+    state_.set_hardware(plain);
+    CHECK(capability() == 0);
 }

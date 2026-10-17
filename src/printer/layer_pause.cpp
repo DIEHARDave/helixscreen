@@ -118,10 +118,9 @@ bool Tracker::apply_status(const nlohmann::json& object) {
 }
 
 bool Tracker::on_layer(int current_layer) {
-    if (readback_) {
-        return false; // the macros report their own firing
-    }
-    const Schedule before = sent_;
+    // Only what was sent expires here; read-back, when present, wins in
+    // effective() and the macros report their own firing.
+    const Schedule before = effective();
     // SET_PAUSE_NEXT_LAYER fires on the next layer report after it was sent.
     if (sent_.next_layer && current_layer > next_layer_sent_at_) {
         sent_.next_layer = false;
@@ -131,7 +130,7 @@ bool Tracker::on_layer(int current_layer) {
     if (sent_.at_layer > 0 && current_layer >= sent_.at_layer) {
         sent_.at_layer = 0;
     }
-    return sent_ != before;
+    return effective() != before;
 }
 
 Availability classify(bool print_active, bool slicer_reports_layers, int current_layer,
