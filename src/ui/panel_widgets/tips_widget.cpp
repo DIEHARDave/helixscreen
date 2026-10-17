@@ -13,6 +13,7 @@
 #include "exception_policy.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "helix-xml/src/xml/lv_xml_utils.h"
+#include "helix_psram_attr.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "panel_widget_registry.h"
 #include "panel_widget_size.h"
@@ -35,7 +36,7 @@ static constexpr uint32_t TIP_FADE_DURATION_MS = 300;
 
 // Subject owned by TipsWidget module — created before XML bindings resolve
 static lv_subject_t s_status_subject;
-static char s_status_buffer[512];
+static HELIX_PSRAM_BSS char s_status_buffer[512];
 static helix::WidgetSubjects s_subjects{"TipsWidgetSubjects"};
 
 /// Widest unbreakable run of any tip title in `font`. LVGL wraps after any of
