@@ -3,7 +3,7 @@
 Tuning Klipper's pressure advance (K) by eye on a live test print, plus a plain live
 K stepper in the print Tune overlay. Issue: prestonbrown/helixscreen#982. The automatic,
 firmware-measured calibration is a separate screen (`include/ui_panel_calibration_pa.h`,
-`helix::pacal`) and applies nothing.
+`helix::pacal`); HelixScreen applies nothing from it, the printer does or you copy the value to the slicer.
 
 ## Key files
 

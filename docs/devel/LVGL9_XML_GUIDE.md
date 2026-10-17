@@ -1132,6 +1132,8 @@ Semantic button with variant-based styling and auto-contrast text.
 
 **Built-in defaults:** Responsive `button_height` (48/52/72px), `border_radius`, auto-contrast text color
 
+**XML children:** A `ui_button` with no `icon`, no `text` and no layout of its own takes its children from XML and centres them on every axis, so a `flex_flow` row of icon plus caption lines up with a text button beside it. `style_flex_*` attributes on the button override the centring.
+
 **Reactive text with subject binding:**
 
 `ui_button` supports two ways to bind text to a subject:
