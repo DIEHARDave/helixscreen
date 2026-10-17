@@ -54,14 +54,18 @@ dimmed or under a screensaver. On every embedded backend the sleep-aware read wr
 (`src/application/display_manager.cpp#sleep_aware_read_cb`) asks
 `DisplaySleepController::note_press()` whether a press is waking the display; when it is,
 `helix::WakeTouchLatch` (`include/wake_touch_latch.h`) reports every read of that touch as
-released, at the pointer's resting point, until the finger lifts. LVGL sees no press, drag or
+released, at the pointer's resting point, until the finger lifts. A lift within
+`WakeTouchLatch::REARM_MS` (200 ms) of the waking press keeps the latch armed, so contact
+chatter as the finger lands, or a stray contact from a panel just powered on, is swallowed
+too; a tap after the window is an ordinary one. LVGL sees no press, drag or
 long press, so neither the overlay nor anything under it can act. The wake itself runs on the
 press: the next idle tick calls `DisplaySleepController::wake()`, which stops the saver and
 restores brightness while the finger is still down.
 
 `wake()` also runs `DisplayManager::cancel_pointer_presses()` on every pointer. A pointer the
-wrapper does not cover (SDL, which carries Android's touch) has already handed the press to
-LVGL; the cancel resets it and makes it wait for release, so it cannot click, long-press or
+wrapper does not cover has already handed the press to LVGL: SDL's (which carries Android's
+touch), an evdev USB mouse beside the touchscreen on the DRM and fbdev backends, and the
+`ctl` pointer; the cancel resets it and makes it wait for release, so it cannot click, long-press or
 scroll, though the widget under it still sees PRESSED and PRESSING. Every wake counts as
 activity, so the swallowed touch does not leave the display to dim again on the next tick.
 
