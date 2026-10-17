@@ -79,28 +79,6 @@ static_assert(TUNNEL_MAX + GOO_MAX <= 255, "tunnel and goo must add without carr
 static_assert(TUNNEL_MAX / 8 + GOO_MAX / 8 <= 31 && TUNNEL_MAX / 4 + GOO_MAX / 4 <= 63,
               "tunnel and goo must add without carrying at RGB565");
 
-/// Fully saturated colour `h` of 256 round the wheel.
-Rgb hue_color(uint32_t h) {
-    h &= 255;
-    const uint32_t sector = h * 6 / 256;
-    const auto ramp = static_cast<uint8_t>(h * 6 - sector * 256);
-    const auto fall = static_cast<uint8_t>(255 - ramp);
-    switch (sector) {
-    case 0:
-        return {255, ramp, 0};
-    case 1:
-        return {fall, 255, 0};
-    case 2:
-        return {0, 255, ramp};
-    case 3:
-        return {0, fall, 255};
-    case 4:
-        return {ramp, 0, 255};
-    default:
-        return {255, 0, fall};
-    }
-}
-
 // The frame rows are written as whole uint32_t / uint16_t pixels, which match PixelWriter's byte
 // layout only on a little-endian CPU.
 static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__,
@@ -111,23 +89,6 @@ constexpr uint32_t X_BYTE = 0xFF000000u;
 
 uint8_t scale8(uint32_t v, uint32_t amount) {
     return static_cast<uint8_t>(std::min<uint32_t>(255, v * amount / 255));
-}
-
-/// Adds light (r, g, b) to the pixel at `p`, each channel saturating.
-inline void add_light(uint32_t* p, uint32_t r, uint32_t g, uint32_t b) {
-    const uint32_t v = *p;
-    const uint32_t nr = std::min<uint32_t>(255, (v >> 16 & 0xFF) + r);
-    const uint32_t ng = std::min<uint32_t>(255, (v >> 8 & 0xFF) + g);
-    const uint32_t nb = std::min<uint32_t>(255, (v & 0xFF) + b);
-    *p = 0xFF000000u | nr << 16 | ng << 8 | nb;
-}
-
-inline void add_light(uint16_t* p, uint32_t r, uint32_t g, uint32_t b) {
-    const uint32_t v = *p;
-    const uint32_t nr = std::min<uint32_t>(31, (v >> 11) + (r >> 3));
-    const uint32_t ng = std::min<uint32_t>(63, (v >> 5 & 0x3F) + (g >> 2));
-    const uint32_t nb = std::min<uint32_t>(31, (v & 0x1F) + (b >> 3));
-    *p = static_cast<uint16_t>(nr << 11 | ng << 5 | nb);
 }
 
 template <typename Px> Px* row_at(FrameTarget& frame, int32_t y) {

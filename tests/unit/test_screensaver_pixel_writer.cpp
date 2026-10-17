@@ -216,3 +216,53 @@ TEST_CASE("PixelWriter lines visit both ends and step at most one pixel per axis
         }
     }
 }
+
+TEST_CASE("hue_color walks the wheel in 256 steps", "[screensaver][pixel_writer]") {
+    using helix::ui::hue_color;
+    CHECK(hue_color(0) == Rgb{255, 0, 0});
+    CHECK(hue_color(128) == Rgb{0, 255, 255});
+    CHECK(hue_color(256) == hue_color(0));
+    CHECK(hue_color(43) == Rgb{253, 255, 0});
+}
+
+TEST_CASE("add_light saturates each XRGB8888 channel and keeps the X byte",
+          "[screensaver][pixel_writer]") {
+    uint32_t px = 0xFF0A1420u;
+    helix::ui::add_light(&px, 250, 1, 2);
+    CHECK(px == 0xFFFF1522u);
+}
+
+TEST_CASE("an RGB565 add finer than one level shows as an ordered pattern",
+          "[screensaver][pixel_writer]") {
+    using helix::ui::BAYER_4X4;
+    uint16_t tile[4][4] = {};
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            helix::ui::add_light(&tile[y][x], 4, 4, 4, BAYER_4X4[y][x]);
+        }
+    }
+    int r = 0;
+    int g = 0;
+    int b = 0;
+    for (const auto& row : tile) {
+        for (const uint16_t v : row) {
+            r += v >> 11;
+            g += v >> 5 & 0x3F;
+            b += v & 0x1F;
+        }
+    }
+    CHECK(r == 8);
+    CHECK(g == 16);
+    CHECK(b == 8);
+
+    // Undithered, light under one level of red or blue truncates to nothing.
+    uint16_t plain = 0;
+    for (int i = 0; i < 16; i++) {
+        helix::ui::add_light(&plain, 4, 0, 4);
+    }
+    CHECK(plain == 0);
+
+    uint16_t white = 0xFFFF;
+    helix::ui::add_light(&white, 255, 255, 255, 15);
+    CHECK(white == 0xFFFF);
+}
