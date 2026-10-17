@@ -512,6 +512,7 @@ translations:
   Cancel: Cancel
   Cancel Escalation: Cancel Escalation
   Cancel Print: Cancel Print
+  Cancel Scheduled Pause: Cancel Scheduled Pause
   Cancel macro not configured: Cancel macro not configured
   Cancel print: Cancel print
   Cancelled: Cancelled
@@ -534,6 +535,7 @@ translations:
   'Cannot reprint: not connected to printer': 'Cannot reprint: not connected to printer'
   Cannot restart — no filename: Cannot restart — no filename
   Cannot run filament operation while printing: Cannot run filament operation while printing
+  'Cannot schedule a pause: printer not connected': 'Cannot schedule a pause: printer not connected'
   'Cannot start print: internal error': 'Cannot start print: internal error'
   'Cannot start print: no temp directory available': 'Cannot start print: no temp directory available'
   'Cannot start print: not connected to printer': 'Cannot start print: not connected
@@ -627,6 +629,7 @@ translations:
   Checking…: Checking…
   Choose 12-hour or 24-hour time display: Choose 12-hour or 24-hour time display
   Choose Filament: Choose Filament
+  Choose Layer: Choose Layer
   Choose Model: Choose Model
   Choose an existing filament, or tap + New to create one.: Choose an existing filament,
     or tap + New to create one.
@@ -1254,6 +1257,7 @@ translations:
   Failed to save setup completion: Failed to save setup completion
   Failed to save spool: Failed to save spool
   Failed to save theme file: Failed to save theme file
+  'Failed to schedule the pause: {}': 'Failed to schedule the pause: {}'
   'Failed to send command: {}': 'Failed to send command: {}'
   Failed to send print data: Failed to send print data
   Failed to send status request: Failed to send status request
@@ -1798,6 +1802,7 @@ translations:
     captures one frame per layer change. Best for most prints.
   Layer mode captures one frame per layer change. Best for most prints.: Layer mode
     captures one frame per layer change. Best for most prints.
+  Layer {} of {}.: Layer {} of {}.
   Layers: Layers
   Layout: Layout
   Layout changes are off in safe mode. Restart to edit.: Layout changes are off in safe mode. Restart to edit.
@@ -2073,6 +2078,7 @@ translations:
   New printer successfully added: New printer successfully added
   New profile name: New profile name
   Next: Next
+  Next Layer: Next Layer
   'Next: {}': 'Next: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
@@ -2140,6 +2146,7 @@ translations:
   No objects: No objects
   No objects defined for this print: No objects defined for this print
   No output yet: No output yet
+  No pause scheduled.: No pause scheduled.
   No presets configured: No presets configured
   No preview: No preview
   No print history found: No print history found
@@ -2344,6 +2351,8 @@ translations:
   Path {}: Path {}
   Path {} before: Path {} before
   Pause: Pause
+  Pause Layer: Pause Layer
+  Pause at Layer: Pause at Layer
   Pause macro not configured: Pause macro not configured
   Pause on Detection: Pause on Detection
   Pause the print first, then load, unload, or change filament: Pause the print first,
@@ -2352,6 +2361,7 @@ translations:
   Pause, resume, or stop the print: Pause, resume, or stop the print
   Paused: Paused
   Paused (attention needed): Paused (attention needed)
+  Pausing at layer {}.: Pausing at layer {}.
   Pausing...: Pausing...
   Peak Freq: Peak Freq
   'Peak:': 'Peak:'
@@ -3412,6 +3422,7 @@ translations:
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.
   The plate and the spools are still hot. Use gloves.: The plate and the spools are still hot. Use gloves.
   The plate finishes its current move, but drying will not start.: The plate finishes its current move, but drying will not start.
+  The print is on its last layer.: The print is on its last layer.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: The print is waiting for the chamber to reach {}°C, but the heater is not heating.
@@ -3513,8 +3524,10 @@ translations:
   This plugin asks for no special permissions.: This plugin asks for no special permissions.
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: This plugin lets HelixScreen control print start options like bed mesh and QGL.
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.
+  This print does not report layers, so no layer pause can be scheduled.: This print does not report layers, so no layer pause can be scheduled.
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: This
     print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?
+  This print never reports layer {}.: This print never reports layer {}.
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.

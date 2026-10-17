@@ -491,6 +491,7 @@ translations:
   Cancel: キャンセル
   Cancel Escalation: エスカレーションをキャンセル
   Cancel Print: 印刷をキャンセル
+  Cancel Scheduled Pause: '予約した一時停止を取り消す'
   Cancel macro not configured: キャンセルマクロが未設定です
   Cancel print: '印刷をキャンセル'
   Cancelled: キャンセル済み
@@ -509,6 +510,7 @@ translations:
   'Cannot reprint: not connected to printer': '再印刷できません: プリンター未接続'
   Cannot restart — no filename: 再起動できません — ファイル名がありません
   Cannot run filament operation while printing: 印刷中はフィラメント操作を実行できません
+  'Cannot schedule a pause: printer not connected': '一時停止を予約できません: プリンターが接続されていません'
   'Cannot start print: internal error': '印刷を開始できません: 内部エラー'
   'Cannot start print: no temp directory available': '印刷を開始できません: 一時ディレクトリがありません'
   'Cannot start print: not connected to printer': '印刷を開始できません: プリンター未接続'
@@ -597,6 +599,7 @@ translations:
   Checking…: 確認中…
   Choose 12-hour or 24-hour time display: 12時間表示または24時間表示を選択
   Choose Filament: フィラメントを選択
+  Choose Layer: 'レイヤーを選択'
   Choose Model: モデルを選択
   Choose an existing filament, or tap + New to create one.: 既存のフィラメントを選択するか、+ 新規をタップして作成してください。
   Choose display language: 表示言語を選択
@@ -1214,6 +1217,7 @@ translations:
   Failed to save setup completion: セットアップ完了の保存に失敗しました
   Failed to save spool: スプールの保存に失敗しました
   Failed to save theme file: テーマファイルの保存に失敗しました
+  'Failed to schedule the pause: {}': '一時停止を予約できませんでした: {}'
   'Failed to send command: {}': 'コマンドの送信に失敗しました: {}'
   Failed to send print data: 印刷データの送信に失敗しました
   Failed to send status request: ステータス要求の送信に失敗しました
@@ -1737,6 +1741,7 @@ translations:
   Layer Macro captures one frame per layer change. Best for most prints.: レイヤーマクロはレイヤーが変わるごとに
     1 フレームを撮影します。ほとんどの印刷に最適です。
   Layer mode captures one frame per layer change. Best for most prints.: レイヤーモードはレイヤー変更ごとに1フレームをキャプチャします。ほとんどの印刷に最適です。
+  Layer {} of {}.: 'レイヤー {} / {}。'
   Layers: レイヤー
   Layout: レイアウト
   Layout changes are off in safe mode. Restart to edit.: 'セーフモードではレイアウトを変更できません。編集するには再起動してください。'
@@ -2003,6 +2008,7 @@ translations:
   New printer successfully added: 新しいプリンターを追加しました
   New profile name: 新しいプロファイル名
   Next: 次へ
+  Next Layer: '次のレイヤー'
   'Next: {}': '次の印刷：{}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': いいえ
@@ -2068,6 +2074,7 @@ translations:
   No objects: 'オブジェクトなし'
   No objects defined for this print: この印刷にはオブジェクトが定義されていません
   No output yet: 出力なし
+  No pause scheduled.: '一時停止の予約はありません。'
   No presets configured: プリセットが設定されていません
   No preview: プレビューなし
   No print history found: 印刷履歴が見つかりません
@@ -2272,6 +2279,8 @@ translations:
   Path {}: パス {}
   Path {} before: パス{}（以前）
   Pause: 一時停止
+  Pause Layer: '一時停止レイヤー'
+  Pause at Layer: 'レイヤーで一時停止'
   Pause macro not configured: 一時停止マクロが未設定です
   Pause on Detection: 検出時に一時停止
   Pause the print first, then load, unload, or change filament: 先に印刷を一時停止してから、装填・排出・フィラメント交換を行ってください
@@ -2279,6 +2288,7 @@ translations:
   Pause, resume, or stop the print: 印刷の一時停止、再開、停止
   Paused: 一時停止
   Paused (attention needed): 一時停止（対応が必要）
+  Pausing at layer {}.: 'レイヤー {} で一時停止します。'
   Pausing...: 一時停止中...
   Peak Freq: ピーク周波数
   'Peak:': 'ピーク:'
@@ -3299,6 +3309,7 @@ translations:
   The plate and the spools are still hot. Use gloves.: ベッドとスプールはまだ熱いです。手袋を使ってください。
 
   The plate finishes its current move, but drying will not start.: 'ベッドは現在の移動を完了しますが、乾燥は開始しません。'
+  The print is on its last layer.: '最後のレイヤーを印刷中です。'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: '印刷はチャンバーが{}°Cに達するのを待っていますが、ヒーターが加熱していません。'
@@ -3393,8 +3404,10 @@ translations:
   This plugin asks for no special permissions.: 'このプラグインは特別な権限を要求しません。'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'このプラグインにより、HelixScreen がベッドメッシュや QGL などの印刷開始オプションを制御できます。'
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'この印刷は再開できません。印刷をやり直すか、繰り返し起きる場合はベッドチェックをオフにしてください。'
+  This print does not report layers, so no layer pause can be scheduled.: 'この印刷はレイヤーを報告しないため、レイヤーでの一時停止は予約できません。'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: この印刷には約
     %.0fg 必要ですが、スプールの残量は約 %.0fg です。それでも開始しますか？
+  This print never reports layer {}.: 'この印刷はレイヤー {} を報告しません。'
   This printer cannot calibrate tool offsets automatically: このプリンターはツールオフセットを自動でキャリブレートできません
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。

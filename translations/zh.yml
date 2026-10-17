@@ -490,6 +490,7 @@ translations:
   Cancel: 取消
   Cancel Escalation: 取消升级
   Cancel Print: 取消打印
+  Cancel Scheduled Pause: '取消已设置的暂停'
   Cancel macro not configured: 取消宏未配置
   Cancel print: '取消打印'
   Cancelled: 已取消
@@ -508,6 +509,7 @@ translations:
   'Cannot reprint: not connected to printer': '无法重新打印: 未连接打印机'
   Cannot restart — no filename: 无法重启 — 没有文件名
   Cannot run filament operation while printing: 打印期间无法执行耗材操作
+  'Cannot schedule a pause: printer not connected': '无法设置暂停：打印机未连接'
   'Cannot start print: internal error': '无法开始打印: 内部错误'
   'Cannot start print: no temp directory available': '无法开始打印: 无可用临时目录'
   'Cannot start print: not connected to printer': '无法开始打印: 未连接打印机'
@@ -596,6 +598,7 @@ translations:
   Checking…: 检查中…
   Choose 12-hour or 24-hour time display: 选择 12 小时制或 24 小时制
   Choose Filament: 选择耗材
+  Choose Layer: '选择层'
   Choose Model: 选择型号
   Choose an existing filament, or tap + New to create one.: 选择已有耗材，或点击 + 新建来创建。
   Choose display language: 选择显示语言
@@ -1210,6 +1213,7 @@ translations:
   Failed to save setup completion: 保存设置完成状态失败
   Failed to save spool: 保存料盘失败
   Failed to save theme file: 保存主题文件失败
+  'Failed to schedule the pause: {}': '设置暂停失败：{}'
   'Failed to send command: {}': '发送命令失败: {}'
   Failed to send print data: 发送打印数据失败
   Failed to send status request: 发送状态请求失败
@@ -1731,6 +1735,7 @@ translations:
   Layer Height: 层高
   Layer Macro captures one frame per layer change. Best for most prints.: 层变化宏在每次层变化时捕获一帧。适合大多数打印。
   Layer mode captures one frame per layer change. Best for most prints.: 层模式在每次换层时捕获一帧。适用于大多数打印。
+  Layer {} of {}.: '第 {} 层，共 {} 层。'
   Layers: 层
   Layout: 布局
   Layout changes are off in safe mode. Restart to edit.: '安全模式下无法更改布局。请重启后再编辑。'
@@ -1997,6 +2002,7 @@ translations:
   New printer successfully added: 新打印机已成功添加
   New profile name: 新配置名称
   Next: 下一步
+  Next Layer: '下一层'
   'Next: {}': '下一个：{}'
   Niimbot (Bluetooth): Niimbot（蓝牙）
   'No': 否
@@ -2061,6 +2067,7 @@ translations:
   No objects: '无对象'
   No objects defined for this print: 此次打印未定义对象
   No output yet: 暂无输出
+  No pause scheduled.: '未设置暂停。'
   No presets configured: 未配置预设
   No preview: 无预览
   No print history found: 未找到打印历史
@@ -2265,6 +2272,8 @@ translations:
   Path {}: 路径 {}
   Path {} before: 路径 {}（之前）
   Pause: 暂停
+  Pause Layer: '暂停层'
+  Pause at Layer: '在指定层暂停'
   Pause macro not configured: 暂停宏未配置
   Pause on Detection: 检测到故障时暂停
   Pause the print first, then load, unload, or change filament: 请先暂停打印，然后再加载、卸载或更换耗材
@@ -2272,6 +2281,7 @@ translations:
   Pause, resume, or stop the print: 暂停、恢复或停止打印
   Paused: 已暂停
   Paused (attention needed): 已暂停（需要处理）
+  Pausing at layer {}.: '将在第 {} 层暂停。'
   Pausing...: 暂停中...
   Peak Freq: 峰值频率
   'Peak:': 峰值：
@@ -3290,6 +3300,7 @@ translations:
   The plate and the spools are still hot. Use gloves.: 热床和料盘仍然很烫。请戴手套。
 
   The plate finishes its current move, but drying will not start.: '热床会完成当前移动,但烘干不会开始。'
+  The print is on its last layer.: '正在打印最后一层。'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 打印已暂停。现在切换工具会移动工具头并更换喷嘴处的耗材。切换完成后请恢复打印。
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: '打印正在等待腔体达到 {}°C，但加热器没有加热。'
@@ -3384,8 +3395,10 @@ translations:
   This plugin asks for no special permissions.: '此插件不请求任何特殊权限。'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: '此插件让 HelixScreen 控制打印启动选项，如热床网格和 QGL。'
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: '此打印无法继续。请重新开始打印；如果反复出现，可关闭热床检查。'
+  This print does not report layers, so no layer pause can be scheduled.: '此打印未报告层信息，因此无法设置按层暂停。'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: 本次打印需要约
     %.0fg，但料盘仅剩约 %.0fg。仍要开始吗？
+  This print never reports layer {}.: '此打印从不报告第 {} 层。'
   This printer cannot calibrate tool offsets automatically: 此打印机无法自动校准工具偏移
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: 此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: 此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。

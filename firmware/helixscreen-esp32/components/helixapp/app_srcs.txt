@@ -237,6 +237,7 @@ src/printer/snapmaker_status_parse.cpp
 src/printer/status_dispatch.cpp
 src/printer/preprint_skip_wrappers.cpp
 src/printer/z_offset_persistence.cpp
+src/printer/layer_pause.cpp
 src/printer/fixed_tool_topology.cpp
 src/printer/plr_backend.cpp
 src/printer/plr_offer.cpp
@@ -577,6 +578,7 @@ src/ui/ui_position_utils.cpp
 src/ui/ui_pre_print_options_renderer.cpp
 src/ui/ui_print_exclude_object_manager.cpp
 src/ui/ui_print_light_timelapse.cpp
+src/ui/ui_print_layer_pause.cpp
 src/ui/ui_print_preparation_manager.cpp
 src/ui/ui_print_select_card_view.cpp
 src/ui/ui_print_select_archive.cpp
@@ -813,6 +815,7 @@ src/calibration/shaper_csv_parser.cpp
 # MOCK: src/api/moonraker_client_mock_queue.cpp
 # MOCK: src/api/moonraker_client_mock_server.cpp
 # MOCK: src/api/moonraker_client_mock_skips.cpp
+# MOCK: src/api/moonraker_client_mock_layer_pause.cpp
 # MOCK: src/printer/ams_backend_mock.cpp
 src/system/host_identity.cpp
 src/system/env_refusal_notice.cpp

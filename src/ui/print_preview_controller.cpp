@@ -255,11 +255,9 @@ void PrintPreviewController::on_viewer_loaded(lv_obj_t* viewer, void* user_data,
     // lands after the print switched publishes a list that does not
     // match the new print, and its markers stay hidden.
     {
-        std::vector<helix::gcode::ScheduledPause> pauses;
-        helix::gcode::ProgressAxis axis = helix::gcode::ProgressAxis::BytePosition;
-        if (helix::ui_gcode_viewer_get_scheduled_pauses(viewer, pauses, axis)) {
-            self->printer_state_.print_state().set_scheduled_pauses(std::move(pauses), axis,
-                                                                    self->gcode_load_filename_);
+        if (auto scan = helix::ui_gcode_viewer_get_pause_scan(viewer)) {
+            self->printer_state_.print_state().set_pause_scan(std::move(scan),
+                                                              self->gcode_load_filename_);
         }
     }
 

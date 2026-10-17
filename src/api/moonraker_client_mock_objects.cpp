@@ -598,6 +598,11 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                     status_obj[name] = status;
                 }
             }
+            for (const auto& [name, status] : self->layer_pause_status().items()) {
+                if (objects.contains(name)) {
+                    status_obj[name] = status;
+                }
+            }
 
             // Test-set status objects (set_object_status()): served only when
             // the query asks for the object, like every branch above.
@@ -968,6 +973,11 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             // HELIX_MOCK_SKIP_WRAPPERS: the skip flags and leveling `applied`.
             const json wrapper_status = self->skip_wrapper_status();
             for (const auto& [name, status] : wrapper_status.items()) {
+                if (objects.contains(name)) {
+                    status_obj[name] = status;
+                }
+            }
+            for (const auto& [name, status] : self->layer_pause_status().items()) {
                 if (objects.contains(name)) {
                     status_obj[name] = status;
                 }

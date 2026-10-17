@@ -528,6 +528,7 @@ translations:
   Cancel: Cancelar
   Cancel Escalation: Cancelar Escalado
   Cancel Print: Cancelar Impresión
+  Cancel Scheduled Pause: 'Cancelar pausa programada'
   Cancel macro not configured: Macro de cancelar no configurado
   Cancel print: 'Cancelar impresión'
   Cancelled: Cancelado
@@ -552,6 +553,7 @@ translations:
     a la impresora'
   Cannot restart — no filename: No se puede reiniciar — sin nombre de archivo
   Cannot run filament operation while printing: No se puede realizar la operación de filamento mientras se imprime
+  'Cannot schedule a pause: printer not connected': 'No se puede programar una pausa: impresora no conectada'
   'Cannot start print: internal error': 'No se puede iniciar impresión: error interno'
   'Cannot start print: no temp directory available': 'No se puede iniciar la impresión: directorio temporal no disponible'
   'Cannot start print: not connected to printer': 'No se puede iniciar impresión:
@@ -647,6 +649,7 @@ translations:
   Checking…: Comprobando…
   Choose 12-hour or 24-hour time display: Elija visualización de hora de 12 o 24 horas
   Choose Filament: Elegir Filamento
+  Choose Layer: 'Elegir capa'
   Choose Model: Elegir Modelo
   Choose an existing filament, or tap + New to create one.: Elige un filamento o toca
     + Nuevo para crear uno.
@@ -1300,6 +1303,7 @@ translations:
   Failed to save setup completion: Error al guardar finalización de configuración
   Failed to save spool: Error al guardar bobina
   Failed to save theme file: Error al guardar archivo de tema
+  'Failed to schedule the pause: {}': 'No se pudo programar la pausa: {}'
   'Failed to send command: {}': 'Error al enviar comando: {}'
   Failed to send print data: Error al enviar los datos de impresión
   Failed to send status request: Error al enviar la solicitud de estado
@@ -1855,6 +1859,7 @@ translations:
     captura un fotograma por cada cambio de capa. Lo mejor para la mayoría de impresiones.
   Layer mode captures one frame per layer change. Best for most prints.: El modo de
     capa captura un cuadro por cambio de capa. Mejor para la mayoría de las impresiones.
+  Layer {} of {}.: 'Capa {} de {}.'
   Layers: Capas
   Layout: Distribución
   Layout changes are off in safe mode. Restart to edit.: 'Los cambios de diseño están desactivados en modo seguro. Reinicie para editar.'
@@ -2133,6 +2138,7 @@ translations:
   New printer successfully added: Nueva impresora añadida correctamente
   New profile name: Nombre del nuevo perfil
   Next: Siguiente
+  Next Layer: 'Siguiente capa'
   'Next: {}': 'Siguiente: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
@@ -2203,6 +2209,7 @@ translations:
   No objects: 'Sin objetos'
   No objects defined for this print: No hay objetos definidos para esta impresión
   No output yet: Sin salida aún
+  No pause scheduled.: 'No hay pausa programada.'
   No presets configured: No hay preajustes configurados
   No preview: Sin vista previa
   No print history found: Sin historial de impresión
@@ -2412,6 +2419,8 @@ translations:
   Path {}: Ruta {}
   Path {} before: Ruta {} antes
   Pause: Pausar
+  Pause Layer: 'Capa de pausa'
+  Pause at Layer: 'Pausar en capa'
   Pause macro not configured: Macro de pausa no configurado
   Pause on Detection: Pausar al detectar
   Pause the print first, then load, unload, or change filament: Pause primero la impresión y luego cargue, descargue o cambie el filamento
@@ -2419,6 +2428,7 @@ translations:
   Pause, resume, or stop the print: Pausar, reanudar o detener la impresión
   Paused: Pausado
   Paused (attention needed): Pausado (requiere atención)
+  Pausing at layer {}.: 'Pausa en la capa {}.'
   Pausing...: Pausando...
   Peak Freq: Frec Pico
   'Peak:': 'Pico:'
@@ -3510,6 +3520,7 @@ translations:
   The plate and the spools are still hot. Use gloves.: La cama y las bobinas siguen calientes. Usa guantes.
 
   The plate finishes its current move, but drying will not start.: 'La cama termina su movimiento actual, pero el secado no empezará.'
+  The print is on its last layer.: 'La impresión está en su última capa.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : La impresión está pausada. Cambiar de herramienta ahora mueve el cabezal y cambia
     el filamento en la boquilla. Reanude la impresión una vez que el cambio termine.
@@ -3621,9 +3632,11 @@ translations:
   This plugin asks for no special permissions.: 'Este plugin no pide permisos especiales.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Este plugin permite que HelixScreen controle opciones de inicio de impresión como malla de cama y QGL.'
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'Esta impresión no se puede reanudar. Reiníciala o desactiva la comprobación de cama si sigue ocurriendo.'
+  This print does not report layers, so no layer pause can be scheduled.: 'Esta impresión no informa capas, así que no se puede programar una pausa en una capa.'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Esta
     impresión necesita aproximadamente %.0fg pero la bobina tiene aproximadamente
     %.0fg restantes. ¿Iniciar de todos modos?
+  This print never reports layer {}.: 'Esta impresión nunca informa la capa {}.'
   This printer cannot calibrate tool offsets automatically: Esta impresora no puede calibrar los offsets de herramienta automáticamente
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Esta impresora llena sus gates desde Spoolman. HelixScreen borró su propia copia; quita la bobina en Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Esta impresora llena sus gates desde Spoolman. Haz los cambios de color, material y bobina en Spoolman.
