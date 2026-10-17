@@ -1253,6 +1253,10 @@ bool AmsState::clear_unused_slot_subjects(int total_slots) {
             lv_subject_set_int(&slot_colors_[i], default_color);
             any_slot_changed = true;
         }
+        if (lv_subject_get_int(&slot_paints_[i]) != 0) {
+            lv_subject_set_int(&slot_paints_[i], 0);
+            any_slot_changed = true;
+        }
         int default_status = static_cast<int>(SlotStatus::UNKNOWN);
         if (lv_subject_get_int(&slot_statuses_[i]) != default_status) {
             lv_subject_set_int(&slot_statuses_[i], default_status);
@@ -1390,6 +1394,13 @@ bool AmsState::write_slot_subjects(AmsBackend& backend, int slot_index, const Sl
     int new_fill = slot.display_fill_pct();
     if (lv_subject_get_int(&slot_fills_[slot_index]) != new_fill) {
         lv_subject_set_int(&slot_fills_[slot_index], new_fill);
+        changed = true;
+    }
+
+    // Multi-colour list and finish: a swatch beside the colour repaints on it.
+    const int new_paint = slot.paint_key();
+    if (lv_subject_get_int(&slot_paints_[slot_index]) != new_paint) {
+        lv_subject_set_int(&slot_paints_[slot_index], new_paint);
         changed = true;
     }
 

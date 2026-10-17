@@ -346,6 +346,7 @@ struct LaneSpoolData {
     // RAII observer handles - automatically removed when this struct is destroyed.
     ObserverGuard lane_state_observer;
     ObserverGuard color_observer;
+    ObserverGuard paint_observer; ///< the slot's multi-colour list and finish
     ObserverGuard fill_observer;
     ObserverGuard has_error_observer;
     ObserverGuard severity_observer;
@@ -378,6 +379,7 @@ static void unregister_lane_spool_data(lv_obj_t* obj) {
             data->lifetime.reset();
             data->lane_state_observer.reset();
             data->color_observer.reset();
+            data->paint_observer.reset();
             data->fill_observer.reset();
             data->has_error_observer.reset();
             data->severity_observer.reset();
@@ -400,6 +402,7 @@ static void cleanup_all_lane_spool_data() {
         data->lifetime.reset();
         data->lane_state_observer.release();
         data->color_observer.release();
+        data->paint_observer.release();
         data->fill_observer.release();
         data->has_error_observer.release();
         data->severity_observer.release();
@@ -599,6 +602,7 @@ static void setup_lane_spool_observers(LaneSpoolData* data) {
     data->lifetime.reset();
     lv_subject_t* lane_state_subject = state.get_slot_lane_state_subject(b, slot, data->lifetime);
     lv_subject_t* color_subject = state.get_slot_color_subject(b, slot, data->lifetime);
+    lv_subject_t* paint_subject = state.get_slot_paint_subject(b, slot, data->lifetime);
     lv_subject_t* fill_subject = state.get_slot_fill_subject(b, slot, data->lifetime);
     lv_subject_t* has_error_subject = state.get_slot_has_error_subject(b, slot, data->lifetime);
     lv_subject_t* severity_subject = state.get_slot_error_severity_subject(b, slot, data->lifetime);
@@ -626,6 +630,17 @@ static void setup_lane_spool_observers(LaneSpoolData* data) {
                 auto* d = get_lane_spool_data(o);
                 if (d)
                     apply_color(d, color_int);
+            },
+            lifetime);
+    }
+    if (paint_subject) {
+        // The split and finish can change under an unchanged colour.
+        data->paint_observer = observe<int>(
+            paint_subject, obj,
+            [](lv_obj_t* o, int /*paint_key*/) {
+                auto* d = get_lane_spool_data(o);
+                if (d)
+                    apply_color(d, static_cast<int>(d->color_int));
             },
             lifetime);
     }
@@ -767,6 +782,7 @@ static void ams_lane_spool_xml_apply(lv_xml_parser_state_t* state, const char** 
             if (new_index != data->slot_index) {
                 data->lane_state_observer.reset();
                 data->color_observer.reset();
+                data->paint_observer.reset();
                 data->fill_observer.reset();
                 data->has_error_observer.reset();
                 data->severity_observer.reset();
@@ -795,6 +811,7 @@ void ams_lane_spool_set_index(lv_obj_t* spool, int slot_index, int backend_index
     data->lifetime.reset();
     data->lane_state_observer.reset();
     data->color_observer.reset();
+    data->paint_observer.reset();
     data->fill_observer.reset();
     data->has_error_observer.reset();
     data->severity_observer.reset();
