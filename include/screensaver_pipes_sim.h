@@ -389,9 +389,11 @@ PipeVec3 pipes_xform_point(const PipeXform& xf, PipeVec3 p);
  */
 class PipesRenderer {
   public:
-    /// Sizes the depth buffer for a `w` x `h` canvas drawn in `scale` x `scale` blocks, and
-    /// builds the meshes and lighting tables.
+    /// Sizes the depth buffer for a `w` x `h` canvas at the finest scale, so no later scale
+    /// allocates, builds the meshes and lighting tables, and draws in `scale` x `scale` blocks.
     void init(uint32_t w, uint32_t h, uint8_t scale);
+    /// Draws in `scale` x `scale` blocks from now on, with an empty depth buffer.
+    void set_scale(uint8_t scale);
     void release();
     void set_view(float yrot_deg);
     /// Empties the depth buffer; the frame itself is the dissolve's to clear.

@@ -1332,6 +1332,24 @@ TEST_CASE("both depths run the same scene", "[screensaver][pipes_sim]") {
     }
 }
 
+TEST_CASE("pipes frames and level changes allocate nothing", "[screensaver][pipes_sim]") {
+    // Started at the coarsest rung, so a step up to the finest is the case that would grow.
+    helix::test::SimRun<PipesSim> run(9, 160, 96);
+    run.init(PIPES_LEVEL_COUNT - 1);
+    const size_t heap = run.sim.heap_bytes();
+    REQUIRE(heap > 0);
+    for (size_t level : {size_t{0}, PIPES_LEVEL_COUNT - 1, size_t{0}}) {
+        run.sim.request_level(level);
+        const uint32_t screens = run.sim.screens_started();
+        while (run.sim.screens_started() < screens + 1) {
+            run.step(100);
+            run.dirty.clear();
+            REQUIRE(run.sim.heap_bytes() == heap);
+        }
+        REQUIRE(run.sim.renderer().scale() == PIPES_LEVELS[level].scale);
+    }
+}
+
 TEST_CASE("a cleared pipes sim holds no buffers", "[screensaver][pipes_sim]") {
     TestFrame f(160, 96, PixelFormat::XRGB8888);
     PipesSim sim;

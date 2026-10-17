@@ -617,12 +617,8 @@ uint16_t lut_value(float v) {
 void PipesRenderer::init(uint32_t w, uint32_t h, uint8_t scale) {
     w_ = w;
     h_ = h;
-    scale_ = std::max<uint8_t>(1, scale);
-    iw_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(w), scale_));
-    ih_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(h), scale_));
-    focal_ = static_cast<float>(ih_) * 0.5f;
-    // A fresh vector, so a smaller scale gives the larger buffer back.
-    std::vector<float>(static_cast<size_t>(iw_) * ih_, 0.0f).swap(inv_depth_);
+    inv_depth_.reserve(static_cast<size_t>(w) * h);
+    set_scale(scale);
     pipes_build_cylinder(cylinder_);
     pipes_build_ball(ball_);
     pipes_build_elbow(elbow_);
@@ -660,6 +656,14 @@ void PipesRenderer::release() {
 size_t PipesRenderer::heap_bytes() const {
     return buffer_bytes(inv_depth_, screen_, lut_) + cylinder_.heap_bytes() + ball_.heap_bytes() +
            elbow_.heap_bytes() + teapot_.heap_bytes();
+}
+
+void PipesRenderer::set_scale(uint8_t scale) {
+    scale_ = std::max<uint8_t>(1, scale);
+    iw_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(w_), scale_));
+    ih_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(h_), scale_));
+    focal_ = static_cast<float>(ih_) * 0.5f;
+    inv_depth_.assign(static_cast<size_t>(iw_) * ih_, 0.0f);
 }
 
 void PipesRenderer::set_view(float yrot_deg) {
@@ -933,7 +937,7 @@ void PipesSim::start_screen(const FrameTarget& frame, std::minstd_rand& rng,
                             std::vector<DirtyRect>& dirty) {
     const uint8_t scale = PIPES_LEVELS[level_].scale;
     if (renderer_.scale() != scale) {
-        renderer_.init(frame.w, frame.h, scale);
+        renderer_.set_scale(scale);
     }
     const PipeGridDims dims =
         pipes_grid_dims(static_cast<int32_t>(frame.w), static_cast<int32_t>(frame.h));
