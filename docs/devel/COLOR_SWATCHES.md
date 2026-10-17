@@ -70,6 +70,14 @@ tested in `tests/unit/test_ui_swatch.cpp` (`[swatch]`), next to pixel tests of
 linear gradient, so the rim is anti-aliased and the bands have no seams; past four colours
 the eight gradient stops blend one stop per colour.
 
+## Looking at it
+
+`HELIX_MOCK_AMS_STATE=finishes` gives the mock lanes a silk, a three-colour silk, a marble,
+a sparkle, a matte and a two-colour filament, so every surface that paints a spool shows
+each. `HELIX_SWATCH_GALLERY_DIR=<dir> ./build/bin/helix-tests '[swatch_gallery]'` writes
+`gallery-light.png` and `gallery-dark.png`: a circle, a chip and a 3D spool per finish on
+the theme's own background.
+
 ## The gate
 
 `scripts/check_hand_rolled_swatch.py` (`qc_hand_rolled_swatch`) fails a new circle filled
