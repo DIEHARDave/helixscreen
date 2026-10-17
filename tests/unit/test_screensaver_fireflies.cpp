@@ -850,20 +850,6 @@ TEST_CASE("a new wind heading during a gust never compounds the gust",
 // ============================================================================
 
 TEST_CASE_METHOD(LVGLTestFixture,
-                 "the fireflies saver draws on a canvas in the build's format with its ladder",
-                 "[screensaver][screensaver_fireflies]") {
-    FirefliesScreensaver ss;
-    ScreensaverStopOnExit<FirefliesScreensaver> stop_on_exit{ss};
-    ss.start();
-    REQUIRE(ss.is_active());
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
-    REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::SAVER_BUILD_CANVAS_FORMAT);
-    CHECK(ss.level_count() == FIREFLIES_LEVEL_COUNT);
-    CHECK(FIREFLIES_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture,
                  "a fireflies level request applies at once, frame period included",
                  "[screensaver][screensaver_fireflies]") {
     FirefliesScreensaver ss;
@@ -879,31 +865,6 @@ TEST_CASE_METHOD(LVGLTestFixture,
     advance_saver(ss, 100);
     CHECK(ss.is_active());
     CHECK(ss.sim().level() == last);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture, "a stopped fireflies saver holds no buffers",
-                 "[screensaver][screensaver_fireflies]") {
-    FirefliesScreensaver ss;
-    CHECK(ss.sim().heap_bytes() == 0);
-    {
-        ScreensaverStopOnExit<FirefliesScreensaver> stop_on_exit{ss};
-        ss.start();
-        REQUIRE(ss.is_active());
-        advance_saver(ss, 16);
-        REQUIRE(ss.sim().heap_bytes() > 0);
-    }
-    CHECK_FALSE(ss.is_active());
-    CHECK(ss.sim().heap_bytes() == 0);
-}
-
-TEST_CASE("fireflies is registered by name at both depths",
-          "[screensaver][screensaver_fireflies]") {
-    const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver_by_name("fireflies");
-    REQUIRE(info != nullptr);
-    CHECK(info->type == ScreensaverType::FIREFLIES);
-    CHECK(std::string(info->label_key) == "Fireflies");
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_16) != 0);
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_32) != 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

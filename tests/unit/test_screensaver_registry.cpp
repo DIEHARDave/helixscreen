@@ -364,3 +364,33 @@ TEST_CASE("a stored screensaver setting reads leniently and falls back to the de
         CHECK(screensaver_from_setting(nullptr, fallback) == fallback);
     }
 }
+
+#ifdef HELIX_ENABLE_SCREENSAVER
+
+#include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_manager_test_access.h"
+#include "screensaver.h"
+#include "screensaver_canvas.h"
+
+TEST_CASE_METHOD(LVGLTestFixture, "every registered saver this build draws starts from the manager",
+                 "[screensaver][screensaver_registry]") {
+    helix::ScopedGateEnv gate_env;
+
+    auto& mgr = ScreensaverManager::instance();
+    size_t started = 0;
+    for (const helix::ui::ScreensaverInfo& info : helix::ui::SCREENSAVERS) {
+        CAPTURE(info.name);
+        if ((info.depths & helix::ui::SAVER_BUILD_DEPTH) == 0) {
+            continue;
+        }
+        mgr.start(info.type);
+        CHECK(mgr.is_active());
+        // Every registered saver runs on SaverBase, so the gate can measure it.
+        CHECK(helix::ScreensaverManagerTestAccess::active(mgr) != nullptr);
+        started += 1;
+        mgr.stop();
+    }
+    CHECK(started > 0);
+}
+
+#endif // HELIX_ENABLE_SCREENSAVER

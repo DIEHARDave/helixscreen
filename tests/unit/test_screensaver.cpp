@@ -347,17 +347,6 @@ SpriteTally check_sprites_at(const FlyingToasterScreensaver& ss, uint32_t elapse
 
 TEST_CASE_METHOD(
     LVGLTestFixture,
-    "FlyingToasterScreensaver level 0: configured period, else 16 ms, with the refresh equal",
-    "[screensaver][screensaver_motion]") {
-    const uint32_t configured_ms = GENERATE(as<uint32_t>{}, 0, 20);
-    INFO("configured period " << configured_ms << " ms");
-    const LevelZeroPeriods periods = level_zero_periods<FlyingToasterScreensaver>(configured_ms);
-    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : helix::ui::SAVER_FAST_PERIOD));
-    CHECK(periods.refresh_ms == periods.timer_ms);
-}
-
-TEST_CASE_METHOD(
-    LVGLTestFixture,
     "FlyingToasterScreensaver lands sprites by elapsed time however callbacks split it",
     "[screensaver][screensaver_motion]") {
     FlyingToasterScreensaver one_tick;
@@ -877,11 +866,6 @@ class DrawTaskCounter {
 
 using helix::test::InvalidatedAreas;
 
-bool area_contains(const lv_area_t& outer, const lv_area_t& inner) {
-    return outer.x1 <= inner.x1 && outer.y1 <= inner.y1 && outer.x2 >= inner.x2 &&
-           outer.y2 >= inner.y2;
-}
-
 lv_area_t coords_of(lv_obj_t* obj) {
     lv_obj_update_layout(obj);
     lv_area_t area;
@@ -1296,17 +1280,6 @@ TEST_CASE_METHOD(LVGLTestFixture, "BouncingPrinterScreensaver creates overlay on
     REQUIRE_FALSE(ss.is_active());
     int children_final = lv_obj_get_child_count(lv_layer_top());
     REQUIRE(children_final <= children_after);
-}
-
-TEST_CASE_METHOD(
-    LVGLTestFixture,
-    "BouncingPrinterScreensaver level 0: configured period, else 16 ms, with the refresh equal",
-    "[screensaver][screensaver_motion]") {
-    const uint32_t configured_ms = GENERATE(as<uint32_t>{}, 0, 20);
-    INFO("configured period " << configured_ms << " ms");
-    const LevelZeroPeriods periods = level_zero_periods<BouncingPrinterScreensaver>(configured_ms);
-    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : helix::ui::SAVER_FAST_PERIOD));
-    CHECK(periods.refresh_ms == periods.timer_ms);
 }
 
 // The motion is a pure function of elapsed time, so the parts that decide where

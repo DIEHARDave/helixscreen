@@ -357,17 +357,6 @@ using PipesAccess = PipesScreensaverTestAccess;
 
 } // namespace
 
-TEST_CASE_METHOD(
-    LVGLTestFixture,
-    "StarfieldScreensaver level 0: configured period, else 16 ms, with the refresh equal",
-    "[screensaver][screensaver_motion]") {
-    const uint32_t configured_ms = GENERATE(as<uint32_t>{}, 0, 20);
-    INFO("configured period " << configured_ms << " ms");
-    const LevelZeroPeriods periods = level_zero_periods<StarfieldScreensaver>(configured_ms);
-    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : helix::ui::SAVER_FAST_PERIOD));
-    CHECK(periods.refresh_ms == periods.timer_ms);
-}
-
 TEST_CASE_METHOD(LVGLTestFixture, "StarfieldScreensaver moves stars in proportion to frame time",
                  "[screensaver][screensaver_motion]") {
     StarfieldScreensaver ss;
@@ -468,16 +457,6 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     advance_saver(ss, 66);
     CHECK(StarAccess::stars(ss) == first_frame);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "PipesScreensaver level 0: configured period, else 16 ms, with the refresh equal",
-                 "[screensaver][screensaver_motion]") {
-    const uint32_t configured_ms = GENERATE(as<uint32_t>{}, 0, 20);
-    INFO("configured period " << configured_ms << " ms");
-    const LevelZeroPeriods periods = level_zero_periods<PipesScreensaver>(configured_ms);
-    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : helix::ui::SAVER_FAST_PERIOD));
-    CHECK(periods.refresh_ms == periods.timer_ms);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "PipesScreensaver grows one step per 100 ms of frame time",

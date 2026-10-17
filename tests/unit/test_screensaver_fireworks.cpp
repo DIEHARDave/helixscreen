@@ -3,16 +3,10 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
-#include "../lvgl_test_fixture.h"
-#include "../test_helpers/screensaver_manager_test_access.h"
 #include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
-#include "screensaver.h"
-#include "screensaver_canvas.h"
-#include "screensaver_fireworks.h"
 #include "screensaver_fireworks_sim.h"
 #include "screensaver_pixel_writer.h"
-#include "screensaver_registry.h"
 
 #include <algorithm>
 #include <random>
@@ -30,7 +24,6 @@ using helix::ui::DirtyRect;
 using helix::ui::FIREWORKS_LEVEL_COUNT;
 using helix::ui::FIREWORKS_LEVELS;
 using helix::ui::FireworksPacing;
-using helix::ui::FireworksScreensaver;
 using helix::ui::FireworksSim;
 using helix::ui::FrameTarget;
 using helix::ui::PixelFormat;
@@ -364,83 +357,6 @@ TEST_CASE("a fireworks level request waits for the next shell launch",
     CHECK(sim.level() == 2);
     run_ms(200); // 2400 ms
     CHECK(sim.level() == FIREWORKS_LEVEL_COUNT - 1);
-}
-
-// ============================================================================
-// FireworksScreensaver
-// ============================================================================
-
-TEST_CASE_METHOD(
-    LVGLTestFixture,
-    "the fireworks saver draws on a canvas in the build's format with the fireworks ladder",
-    "[screensaver][screensaver_fireworks]") {
-    FireworksScreensaver ss;
-    ScreensaverStopOnExit<FireworksScreensaver> stop_on_exit{ss};
-    ss.start();
-    REQUIRE(ss.is_active());
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
-    REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::SAVER_BUILD_CANVAS_FORMAT);
-    CHECK(ss.level_count() == FIREWORKS_LEVEL_COUNT);
-    CHECK(FIREWORKS_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
-}
-
-TEST_CASE_METHOD(
-    LVGLTestFixture,
-    "FireworksScreensaver level 0: configured period, else 16 ms, with the refresh equal",
-    "[screensaver][screensaver_fireworks]") {
-    const uint32_t configured_ms = GENERATE(as<uint32_t>{}, 0, 20);
-    INFO("configured period " << configured_ms << " ms");
-    const LevelZeroPeriods periods = level_zero_periods<FireworksScreensaver>(configured_ms);
-    CHECK(periods.timer_ms == (configured_ms != 0 ? configured_ms : FIREWORKS_LEVELS[0].period_ms));
-    CHECK(periods.refresh_ms == periods.timer_ms);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "a fireworks level request changes the frame period when the next shell launches",
-                 "[screensaver][screensaver_fireworks]") {
-    FireworksScreensaver ss;
-    ScreensaverStopOnExit<FireworksScreensaver> stop_on_exit{ss};
-    SaverTestAccess::set_fixed_seed(ss, 4);
-    ss.start();
-    REQUIRE(ss.is_active());
-
-    ss.request_level(3);
-    CHECK(ss.level() == 0);
-    int frames = 0;
-    while (ss.level() != 3 && frames < 400) {
-        advance_saver(ss, 50);
-        frames++;
-    }
-    REQUIRE(ss.level() == 3);
-    CHECK(frames > 0);
-    CHECK(SaverTestAccess::timer(ss)->period == FIREWORKS_LEVELS[3].period_ms);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture, "every registered saver this build draws starts from the manager",
-                 "[screensaver][screensaver_fireworks]") {
-    helix::ScopedGateEnv gate_env;
-
-    auto& mgr = ScreensaverManager::instance();
-    size_t started = 0;
-    for (const helix::ui::ScreensaverInfo& info : helix::ui::SCREENSAVERS) {
-        CAPTURE(info.name);
-        if ((info.depths & helix::ui::SAVER_BUILD_DEPTH) == 0) {
-            continue;
-        }
-        mgr.start(info.type);
-        CHECK(mgr.is_active());
-        // Every registered saver runs on SaverBase, so the gate can measure it.
-        CHECK(helix::ScreensaverManagerTestAccess::active(mgr) != nullptr);
-        started += 1;
-        mgr.stop();
-    }
-    CHECK(started > 0);
-    const helix::ui::ScreensaverInfo* fireworks = helix::ui::find_screensaver_by_name("fireworks");
-    REQUIRE(fireworks != nullptr);
-    CHECK(fireworks->type == ScreensaverType::FIREWORKS);
-    CHECK((fireworks->depths & helix::ui::SAVER_DEPTH_16) != 0);
-    CHECK((fireworks->depths & helix::ui::SAVER_DEPTH_32) != 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

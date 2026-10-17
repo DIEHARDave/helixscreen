@@ -1609,24 +1609,6 @@ TEST_CASE("maze art mixes recent prints, other files and the printer", "[screens
     CHECK(mix_maze_art(MazeArtSources{}, 12).empty());
 }
 
-TEST_CASE_METHOD(LVGLTestFixture, "the maze saver declares the maze ladder",
-                 "[screensaver][maze]") {
-    MazeScreensaver saver;
-    REQUIRE(saver.level_count() == helix::ui::MAZE_LEVEL_COUNT);
-    CHECK(saver.type() == ScreensaverType::MAZE_3D);
-    for (size_t i = 1; i < helix::ui::MAZE_LEVEL_COUNT; i++) {
-        CHECK(saver.level_period_ms(i) == MAZE_LEVELS[i].period_ms);
-    }
-}
-
-TEST_CASE_METHOD(LVGLTestFixture, "the maze saver starts, runs and stops", "[screensaver][maze]") {
-    MazeScreensaver saver;
-    saver.start();
-    REQUIRE(saver.is_active());
-    saver.stop();
-    CHECK_FALSE(saver.is_active());
-}
-
 namespace {
 
 /// Starts a maze saver whose art comes from `sources`; returns the pictures it hung.

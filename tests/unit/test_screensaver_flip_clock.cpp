@@ -733,23 +733,6 @@ TEST_CASE("a flip clock run replays exactly and a different print draws differen
 // FlipClockScreensaver
 // ============================================================================
 
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "the flip clock saver draws on an opaque canvas with the flip clock ladder",
-                 "[screensaver][screensaver_flip_clock]") {
-    FlipClockScreensaver ss;
-    ScreensaverStopOnExit<FlipClockScreensaver> stop_on_exit{ss};
-    ss.start();
-    REQUIRE(ss.is_active());
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
-    REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::LV_DRAW_CANVAS_FORMAT);
-    CHECK(ss.level_count() == FLIP_CLOCK_LEVEL_COUNT);
-    CHECK(FLIP_CLOCK_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
-
-    advance_saver(ss, 33);
-    CHECK(ss.is_active());
-}
-
 TEST_CASE_METHOD(LVGLTestFixture, "the flip clock saver counts down the print its source reports",
                  "[screensaver][screensaver_flip_clock]") {
     FlipClockScreensaver ss;

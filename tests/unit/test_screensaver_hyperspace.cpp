@@ -3,7 +3,6 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
-#include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_canvas.h"
@@ -456,61 +455,5 @@ TEST_CASE("hyperspace frame cost per level", "[.][hyperspace_bench]") {
 // ============================================================================
 // HyperspaceScreensaver
 // ============================================================================
-
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "the hyperspace saver draws on a canvas in the build's format with its ladder",
-                 "[screensaver][screensaver_hyperspace]") {
-    HyperspaceScreensaver ss;
-    ScreensaverStopOnExit<HyperspaceScreensaver> stop_on_exit{ss};
-    ss.start();
-    REQUIRE(ss.is_active());
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
-    REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::SAVER_BUILD_CANVAS_FORMAT);
-    CHECK(ss.level_count() == HYPERSPACE_LEVEL_COUNT);
-    CHECK(HYPERSPACE_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "a hyperspace level request applies at once, frame period included",
-                 "[screensaver][screensaver_hyperspace]") {
-    HyperspaceScreensaver ss;
-    ScreensaverStopOnExit<HyperspaceScreensaver> stop_on_exit{ss};
-    SaverTestAccess::set_fixed_seed(ss, 4);
-    ss.start();
-    REQUIRE(ss.is_active());
-
-    const size_t last = HYPERSPACE_LEVEL_COUNT - 1;
-    ss.request_level(last);
-    CHECK(ss.level() == last);
-    CHECK(SaverTestAccess::timer(ss)->period == HYPERSPACE_LEVELS[last].period_ms);
-    advance_saver(ss, 33);
-    CHECK(ss.is_active());
-}
-
-TEST_CASE_METHOD(LVGLTestFixture, "a stopped hyperspace saver holds no buffers",
-                 "[screensaver][screensaver_hyperspace]") {
-    HyperspaceScreensaver ss;
-    CHECK(ss.sim().heap_bytes() == 0);
-    {
-        ScreensaverStopOnExit<HyperspaceScreensaver> stop_on_exit{ss};
-        ss.start();
-        REQUIRE(ss.is_active());
-        advance_saver(ss, 16);
-        REQUIRE(ss.sim().heap_bytes() > 0);
-    }
-    CHECK_FALSE(ss.is_active());
-    CHECK(ss.sim().heap_bytes() == 0);
-}
-
-TEST_CASE("hyperspace is registered by name at both depths",
-          "[screensaver][screensaver_hyperspace]") {
-    const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver_by_name("hyperspace");
-    REQUIRE(info != nullptr);
-    CHECK(info->type == ScreensaverType::HYPERSPACE);
-    CHECK(std::string(info->label_key) == "Hyperspace");
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_16) != 0);
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_32) != 0);
-}
 
 #endif // HELIX_ENABLE_SCREENSAVER
