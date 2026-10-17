@@ -3,6 +3,8 @@
 
 #include "ui_pause_markers.h"
 
+#include "ui_print_layer_pause.h"
+
 #include "gcode_pause_scan.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -49,7 +51,7 @@ std::vector<float> marker_fractions(PauseMarkerCtx* ctx) {
             fractions.push_back(helix::gcode::display_fraction(pause, axis));
         }
     }
-    if (auto runtime = print.layer_pause_marker_fraction()) {
+    if (auto runtime = print.layer_pause_marker_fraction(); runtime && layer_pause_beta_enabled()) {
         fractions.push_back(*runtime);
     }
     return fractions;
