@@ -16,14 +16,15 @@
 
 #include <iterator>
 #include <sstream>
+#include <type_traits>
 
 #include "../catch_amalgamated.hpp"
 
 // What every sim promises its saver, checked once over every sim: dirty boxes cover what a step
 // changes, rows stay inside their stride, XRGB8888 stays opaque, a seed replays and another
-// seed differs, the heap never grows past what init sized (rule 7 in
-// docs/devel/SCREENSAVERS.md), and clear() frees it all. A sim's own tests cover the runs
-// particular to it.
+// seed differs, the heap never grows past what init sized and a still rung frees its scene
+// (rule 7 in docs/devel/SCREENSAVERS.md), and clear() frees it all. A sim's own tests cover the
+// runs particular to it.
 
 using helix::test::check_replays;
 using helix::test::diff_against;
@@ -116,6 +117,12 @@ template <typename Sim> constexpr size_t level_count() {
     return std::size(Sim::LEVELS);
 }
 
+/// True when the sim's ladder rows have a `still` flag: its last rung paints once, then keeps
+/// only what redraws the clock.
+template <typename Sim, typename = void> struct has_still_rung : std::false_type {};
+template <typename Sim>
+struct has_still_rung<Sim, std::void_t<decltype(Sim::LEVELS[0].still)>> : std::true_type {};
+
 } // namespace
 
 #define HELIX_EVERY_SIM                                                                            \
@@ -171,7 +178,7 @@ TEMPLATE_TEST_CASE("a sim run replays exactly from a seed, and another seed diff
 }
 
 TEMPLATE_TEST_CASE("a sim never holds more than init sized across frames and step-downs, from "
-                   "every starting rung, and clear frees it all",
+                   "every starting rung, the still rung frees its scene, and clear frees it all",
                    "[screensaver][screensaver_sim_contract]", HELIX_EVERY_SIM) {
     for (const PixelFormat format : FORMATS) {
         for (size_t start = 0; start < level_count<TestType>(); start++) {
@@ -189,6 +196,12 @@ TEMPLATE_TEST_CASE("a sim never holds more than init sized across frames and ste
                 }
             }
             CHECK(most == sized);
+            if constexpr (has_still_rung<TestType>::value) {
+                // Once the still rung has painted, the scene behind the clock is freed.
+                if (start + 1 < level_count<TestType>()) {
+                    CHECK(r.run.sim.heap_bytes() * 2 < sized);
+                }
+            }
             r.run.sim.clear();
             CHECK(r.run.sim.heap_bytes() == 0);
         }
