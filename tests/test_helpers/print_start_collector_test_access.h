@@ -158,6 +158,12 @@ class PrintStartCollectorTestAccess {
         return c.run_generation_.load();
     }
 
+    /// Show a start-block step as run `run` reached it.
+    static void apply_start_block_step(PrintStartCollector& c, const helix::StartBlockStep& step,
+                                       uint64_t run) {
+        c.apply_start_block_step(step, run);
+    }
+
     /// Deliver a start-up query answer tagged with run `run`.
     static void answer_phase_object_query(PrintStartCollector& c, const nlohmann::json& response,
                                           uint64_t run) {

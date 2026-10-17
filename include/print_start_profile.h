@@ -183,6 +183,16 @@ class PrintStartProfile {
     bool try_match_signal(const std::string& line, MatchResult& result) const;
 
     /**
+     * @brief Whether a start-block command prints @p console_line while it runs
+     *
+     * From `start_block_owned_lines`: per upper-case command word, the text a
+     * console line contains when that command printed it (an action code, a
+     * probe report). Such a line refines the step it belongs to rather than
+     * naming the step before it.
+     */
+    bool start_block_step_owns(const std::string& command, const std::string& console_line) const;
+
+    /**
      * @brief Try to match a line against response patterns (regex)
      *
      * Runs regex search against each response pattern. Supports $1, $2
@@ -266,6 +276,13 @@ class PrintStartProfile {
     /// "percent" plus "num:" must not hijack the phase into PURGING.
     bool cfs_signals() const {
         return cfs_signals_;
+    }
+
+    /// True when the slicer writes this printer's start sequence into the
+    /// file instead of calling a PRINT_START macro that runs it, so the line
+    /// at virtual_sdcard.file_position names the step running now.
+    bool scripted_start() const {
+        return scripted_start_;
     }
 
     /// True when this printer's pre-print chain goes silent (no
@@ -367,6 +384,8 @@ class PrintStartProfile {
     ProgressMode progress_mode_ = ProgressMode::WEIGHTED;
     bool adaptive_meshing_{false};
     bool cfs_signals_{false};
+    bool scripted_start_{false};
+    std::unordered_map<std::string, std::vector<std::string>> start_block_owned_lines_;
     bool position_signals_{false};
     std::vector<SignalFormat> signal_formats_;
     std::vector<ResponsePattern> response_patterns_;

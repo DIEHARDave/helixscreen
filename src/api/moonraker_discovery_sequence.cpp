@@ -1224,8 +1224,13 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     // pl_env_valid / file_path: Snapmaker-fork Power-Loss-Recovery fields.
     // Absent (harmless) on mainline Klipper — Moonraker sends explicit null
     // for a subscribed field the connected firmware never populates.
+    // file_position: the byte the print stands on, which names the start-
+    // sequence step running on a printer whose slicer inlines it
+    // (PrintStartCollector). It moves exactly when progress does, so it adds
+    // no frames.
     subscription_objects["virtual_sdcard"] =
-        json::array({"progress", "layer", "layer_count", "is_active", "pl_env_valid", "file_path"});
+        json::array({"progress", "layer", "layer_count", "is_active", "pl_env_valid", "file_path",
+                     "file_position"});
     subscription_objects["toolhead"] =
         json::array({"position", "homed_axes", "kinematics", "extruder", "max_velocity",
                      "axis_minimum", "axis_maximum"});
