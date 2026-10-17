@@ -32,6 +32,11 @@ Modal class (C++ RAII lifecycle, show/hide, button wiring)
 5. The **ModalStack** tracks the backdrop/dialog pair for z-ordering
 6. On hide, an **exit animation** plays, then both backdrop and dialog are destroyed
 
+**An open modal covers the navbar, E-stop included.** `ModalStack` holds the screen chrome under
+its backdrops (`helix::ui::set_chrome_covered()`), so a tap meant to dismiss the modal cannot land
+on a navbar button. The one exception is the E-stop's own confirmation, which calls
+`Modal::set_covers_chrome(dialog, false)` so a second press on the E-stop reaches the button.
+
 Backdrops are always created in C++ -- never in XML. This avoids the old pattern of inline XML backdrops that caused double-backdrop bugs and inconsistent behavior.
 
 ---
@@ -214,12 +219,22 @@ The Modal destructor auto-hides if visible, so storing a `Modal` subclass as a m
 |------|---------|------------|
 | `on_show()` | no-op | After modal is created and visible |
 | `on_hide()` | no-op | Before modal is destroyed |
-| `on_ok()` | `hide()` | When primary button is clicked |
-| `on_cancel()` | `hide()` | When secondary button is clicked |
-| `on_tertiary()` | `hide()` | Third button clicked |
-| `on_quaternary()` | `hide()` | Fourth button clicked |
-| `on_quinary()` | `hide()` | Fifth button clicked |
-| `on_senary()` | `hide()` | Sixth button clicked |
+| `on_dismissed()` | no-op | After `on_hide()`, when the close was not a button's answer: backdrop tap, hot reload, a system sweep, or a programmatic `hide()` |
+| `on_ok()` | `hide(ButtonPress)` | When primary button is clicked |
+| `on_cancel()` | `hide(ButtonPress)` | When secondary button is clicked, and on ESC |
+| `on_tertiary()` | `hide(ButtonPress)` | Third button clicked |
+| `on_quaternary()` | `hide(ButtonPress)` | Fourth button clicked |
+| `on_quinary()` | `hide(ButtonPress)` | Fifth button clicked |
+| `on_senary()` | `hide(ButtonPress)` | Sixth button clicked |
+
+**`on_dismissed()` is where a subclass resolves state its buttons were meant to resolve.**
+A button's answer closes with `hide(ModalCloseReason::ButtonPress)`; every other close reaches
+`on_dismissed()` once. Override it when the caller holds a pending guard or the dialog previews a
+change it must revert: `ExcludeObjectModal` reports a cancel, `LanAuthPromptModal` drops the
+request, `FilamentMappingModal` reverts the auto-color-map toggle. Cleanup that must run on every
+close, answered or not, belongs in `on_hide()` (`MacroParamModal` drops its widget pointers
+there). A button handler that closes the dialog passes `ButtonPress`, or its close reads as a
+dismissal.
 
 ### Button Wiring Helpers
 

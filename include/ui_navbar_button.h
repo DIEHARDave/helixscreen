@@ -12,9 +12,11 @@ namespace helix::ui {
 /**
  * @brief A button kept over one of the navbar's slots
  *
- * It lives on the screen, not inside the navbar, so it stays above every overlay,
- * modal and keypad backdrop. It is registered as always-on-top screen chrome,
- * which is what keeps stale-overlay sweeps from hiding it. The E-stop and the
+ * It lives on the screen, not inside the navbar, so it stays above every overlay
+ * and keypad backdrop. An open modal covers it, except the E-stop's own
+ * confirmation; an open keyboard over its slot covers it unless it rides above
+ * the keyboard. It is registered as always-on-top screen chrome, which is what
+ * keeps stale-overlay sweeps from hiding it. The E-stop and the
  * spools-on-the-bed button are the two.
  */
 class NavbarButton {
