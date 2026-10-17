@@ -6,6 +6,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_manager_test_access.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_aqua.h"
 #include "screensaver_canvas.h"
@@ -818,6 +819,47 @@ TEST_CASE_METHOD(LVGLTestFixture, "the flip clock saver counts down the print it
     lv_tick_inc(33);
     fire(SaverTestAccess::timer(ss));
     CHECK(ss.clock().mode() == ClockMode::PAUSED);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "the clock that follows a finished print shows whole cards where the caption was",
+                 "[screensaver][screensaver_flip_clock]") {
+    FlipClockScreensaver ss;
+    ScreensaverStopOnExit<FlipClockScreensaver> stop_on_exit{ss};
+    ClockInput reported = printing(30, 90);
+    ss.set_input_source([&reported] { return reported; });
+    ss.start();
+    REQUIRE(ss.is_active());
+    REQUIRE(!ss.sim().layout().caption.empty());
+    advance_saver(ss, 33);
+    reported.print.phase = ClockPrintPhase::COMPLETE;
+    for (uint32_t ms = 0; ms <= CLOCK_DONE_HOLD_MS + 1000; ms += 500) {
+        advance_saver(ss, 500);
+    }
+    REQUIRE(ss.clock().mode() == ClockMode::CLOCK);
+
+    // Every card pixel off the split line and clear of the rounded corners is card or digit,
+    // never the black background.
+    const FrameTarget frame =
+        helix::test::frame_of(lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss)));
+    const PixelWriter writer(frame);
+    const FlipLayout& layout = ss.sim().layout();
+    REQUIRE(layout.caption.empty());
+    size_t black = 0;
+    for (size_t i = 0; i < layout.card_count; i++) {
+        const DirtyRect& card = layout.cards[i];
+        for (int32_t y = card.y1 + layout.corner; y <= card.y2 - layout.corner; y++) {
+            const int32_t row = y - card.y1;
+            if (row >= layout.split_top && row < layout.split_bottom) {
+                continue;
+            }
+            for (int32_t x = card.x1 + layout.corner; x <= card.x2 - layout.corner; x++) {
+                const Rgb c = writer.get(x, y);
+                black += c.r == 0 && c.g == 0 && c.b == 0 ? 1 : 0;
+            }
+        }
+    }
+    CHECK(black == 0);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "the manager feeds every clock saver the print its host reports",

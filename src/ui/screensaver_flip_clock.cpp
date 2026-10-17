@@ -10,8 +10,6 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
-
 namespace helix::ui {
 
 namespace {
@@ -56,13 +54,11 @@ void FlipClockScreensaver::draw_text(SaverLabel& label, const std::string& text,
     if (!label.needs_draw(text, box, under)) {
         return;
     }
-    const bool covered = std::any_of(under.begin(), under.end(),
-                                     [&box](const DirtyRect& r) { return r.intersects(box); });
-
-    // Old text goes first: the caption sits on the black background, the marker on the first
-    // card, which the sim draws again.
+    // Old text goes first, unless the frame just repainted beneath it: the caption sits on
+    // the black background, the marker on the first card, which the sim draws again.
+    const bool repainted = label.needs_draw(label.text(), label.box(), under);
     FrameTarget frame = canvas().frame();
-    if (!label.text().empty() && !covered) {
+    if (!label.text().empty() && !repainted) {
         if (on_card) {
             sim_.redraw_card(frame, 0, dirty);
         } else {
