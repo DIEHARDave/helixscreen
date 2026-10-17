@@ -61,6 +61,12 @@ constexpr float LAYER_HB = -7.0f;
 constexpr float TOWER_Q = 0.22f;
 constexpr float TOWER_HB = -8.0f;
 constexpr float TOWER_Z_ENTER = 330.0f;
+/// A tower enters this far to the side, as a share of the half-width at its entry depth; it
+/// keeps its world x, so it slides outward as it nears, and drifts on the wind besides.
+constexpr float TOWER_SIDE_MIN = 0.30f;
+constexpr float TOWER_SIDE_MAX = 0.50f;
+constexpr float TOWER_WIND_MIN = 1.0f;
+constexpr float TOWER_WIND_MAX = 2.5f;
 /// Towers fade out from TOWER_FADE_FROM to TOWER_Z_LEAVE as they come near, then go, so no
 /// more than two are ever up with one entering every 13 to 14 s.
 constexpr float TOWER_FADE_FROM = 120.0f;
@@ -625,6 +631,10 @@ float highfly_whiteout(float since_start_s) {
     return 1.0f - smooth01((since_start_s - hold_end) / HIGHFLY_FLY_OUT_S);
 }
 
+Rgb highfly_inside(Rgb scene, float amt) {
+    return lerp(scene, INSIDE, std::clamp(amt, 0.0f, 1.0f) * HIGHFLY_WHITEOUT_MAX);
+}
+
 float highfly_layer_visibility(float deck_z, float layer_z) {
     if (!std::isfinite(deck_z)) {
         return 1.0f;
@@ -780,14 +790,7 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     next_variant_ = 0;
     next_left_ = unit_random(rng) < 0.5f;
     // One tower already up when the run starts, part way in.
-    Tower& first = towers_[0];
-    first.z = uniform(rng, 160.0f, 260.0f);
-    first.lateral = (next_left_ ? -1.0f : 1.0f) * uniform(rng, 0.40f, 0.60f);
-    first.size = uniform(rng, 0.95f, 1.2f);
-    first.variant = next_variant_;
-    first.live = true;
-    next_variant_ = static_cast<uint8_t>((next_variant_ + 1) % HIGHFLY_TOWER_VARIANTS);
-    next_left_ = !next_left_;
+    spawn_tower(towers_[0], -uniform(rng, 7.0f, 17.0f), rng);
     next_tower_at_ = uniform(rng, 5.0f, 9.0f);
     next_tower_s_ = next_tower_at_;
     fly_start_s_ = uniform(rng, HIGHFLY_FLY_MIN_S, HIGHFLY_FLY_MAX_S);
@@ -938,6 +941,27 @@ void HighFlySim::build_polar() {
     }
 }
 
+HighFlySim::Billboard HighFlySim::tower_billboard(const Tower& t) const {
+    const HighFlyTexture& tex = towers_tex_[t.variant];
+    Billboard b;
+    b.tex = &tex;
+    b.z = t.z;
+    b.q = TOWER_Q * t.size;
+    b.xw0 = t.x + t.drift * (t_ - t.entered_s) - static_cast<float>(tex.w) * b.q / 2.0f;
+    b.hb = TOWER_HB;
+    b.alpha = std::clamp((TOWER_Z_ENTER - t.z) / 50.0f, 0.0f, 1.0f) *
+              std::clamp((t.z - TOWER_Z_LEAVE) / (TOWER_FADE_FROM - TOWER_Z_LEAVE), 0.0f, 1.0f);
+    b.fogmul = TOWER_FOGMUL;
+    return b;
+}
+
+DirtyRect HighFlySim::tower_box(size_t i) const {
+    if (i >= towers_.size() || !towers_[i].live) {
+        return {};
+    }
+    return billboard_box(tower_billboard(towers_[i]));
+}
+
 int HighFlySim::tower_variant(size_t i) const {
     if (i >= towers_.size() || !towers_[i].live) {
         return -1;
@@ -961,10 +985,30 @@ size_t HighFlySim::towers_visible() const {
     return n;
 }
 
+void HighFlySim::spawn_tower(Tower& slot, float entered_s, std::minstd_rand& rng) {
+    const float side = next_left_ ? -1.0f : 1.0f;
+    slot.entered_s = entered_s;
+    slot.z = TOWER_Z_ENTER - (t_ - entered_s) * HIGHFLY_SPEED;
+    slot.x = side * uniform(rng, TOWER_SIDE_MIN, TOWER_SIDE_MAX) * TOWER_Z_ENTER * FOV;
+    slot.drift = side * uniform(rng, TOWER_WIND_MIN, TOWER_WIND_MAX);
+    slot.size = uniform(rng, 0.95f, 1.2f);
+    slot.variant = next_variant_;
+    slot.live = true;
+    next_variant_ = static_cast<uint8_t>((next_variant_ + 1) % HIGHFLY_TOWER_VARIANTS);
+    next_left_ = !next_left_;
+}
+
 void HighFlySim::update_schedule(std::minstd_rand& rng) {
-    // Towers move with the deck and leave once faded near the camera.
+    // Towers come on at the deck's speed and leave once faded near the camera or gone off
+    // the side.
     for (Tower& t : towers_) {
-        if (t.live && t.z < TOWER_Z_LEAVE) {
+        if (!t.live) {
+            continue;
+        }
+        t.z = TOWER_Z_ENTER - (t_ - t.entered_s) * HIGHFLY_SPEED;
+        Billboard b = tower_billboard(t);
+        b.alpha = 1.0f; // off screen is a matter of where it is, not how faded
+        if (t.z < TOWER_Z_LEAVE || billboard_box(b).empty()) {
             t.live = false;
         }
     }
@@ -980,13 +1024,7 @@ void HighFlySim::update_schedule(std::minstd_rand& rng) {
             // Both slots up: the nearer one goes to make room.
             slot = towers_[0].z < towers_[1].z ? &towers_[0] : &towers_[1];
         }
-        slot->z = TOWER_Z_ENTER - (t_ - next_tower_at_) * HIGHFLY_SPEED;
-        slot->live = true;
-        slot->variant = next_variant_;
-        next_variant_ = static_cast<uint8_t>((next_variant_ + 1) % HIGHFLY_TOWER_VARIANTS);
-        slot->lateral = (next_left_ ? -1.0f : 1.0f) * uniform(rng, 0.40f, 0.60f);
-        slot->size = uniform(rng, 0.95f, 1.2f);
-        next_left_ = !next_left_;
+        spawn_tower(*slot, next_tower_at_, rng);
         if (tower_entries_.size() < tower_entries_.capacity()) {
             tower_entries_.push_back(next_tower_at_);
         }
@@ -1031,17 +1069,7 @@ size_t HighFlySim::collect_billboards(Billboard* out, size_t cap) const {
             if (!t.live || n >= cap) {
                 continue;
             }
-            const HighFlyTexture& tex = towers_tex_[t.variant];
-            Billboard& b = out[n++];
-            b.tex = &tex;
-            b.z = t.z;
-            b.q = TOWER_Q * t.size;
-            b.xw0 = t.lateral * t.z * FOV - static_cast<float>(tex.w) * b.q / 2.0f;
-            b.hb = TOWER_HB;
-            b.alpha =
-                std::clamp((TOWER_Z_ENTER - t.z) / 50.0f, 0.0f, 1.0f) *
-                std::clamp((t.z - TOWER_Z_LEAVE) / (TOWER_FADE_FROM - TOWER_Z_LEAVE), 0.0f, 1.0f);
-            b.fogmul = TOWER_FOGMUL;
+            out[n++] = tower_billboard(t);
         }
     }
     // The cloud the camera is about to fly into.
@@ -1231,12 +1259,11 @@ void HighFlySim::compose(int32_t from) {
     const float since = t_ - fly_start_s_;
     const float amt = highfly_whiteout(since);
     if (amt > 0.0f) {
-        const float k = amt * HIGHFLY_WHITEOUT_MAX;
         const float shift = t_ * 120.0f;
         for (int32_t y = 0; y < ih_; y++) {
             Rgb* row = &frame_[static_cast<size_t>(y) * iw_];
             for (int32_t x = 0; x < iw_; x++) {
-                Rgb c = lerp(row[x], INSIDE, k);
+                const Rgb c = highfly_inside(row[x], amt);
                 const size_t pi = (static_cast<size_t>(y) * iw_ + x) * 3;
                 const float lr = static_cast<float>(polar_[pi]) / 64.0f - 300.0f - shift;
                 const float ang = static_cast<float>(polar_[pi + 1]) / 256.0f;

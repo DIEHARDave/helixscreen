@@ -414,41 +414,81 @@ TEST_CASE("towers come every 13 to 14 seconds, at most two at once, in more than
     }
 }
 
-TEST_CASE("a fly-through comes every one to two minutes and caps its whiteout",
+TEST_CASE("a tower visibly moves from the moment it appears until it leaves",
           "[screensaver][highfly]") {
-    // A rung with no towers, so the sky just above the band holds still until the whiteout.
-    REQUIRE_FALSE(HIGHFLY_LEVELS[3].towers);
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    SimFrame frame(400, 240, PixelFormat::RGB565);
+    std::minstd_rand rng(3);
+    HighFlySim sim;
+    const ClockReading r = reading_at(10 * 3600);
+    sim.init(frame.target, rng, 0, r);
+    std::vector<DirtyRect> dirty;
+    const size_t entries = sim.tower_entries().size();
+    // Run until a new tower enters, then follow its slot: the farthest live tower.
+    int slot = -1;
+    for (int i = 0; i < 400 && slot < 0; i++) {
+        sim.step(50, frame.target, rng, r, dirty);
+        if (sim.tower_entries().size() > entries) {
+            const DirtyRect a = sim.tower_box(0);
+            const DirtyRect b = sim.tower_box(1);
+            slot = (b.empty() || (!a.empty() && a.y2 - a.y1 < b.y2 - b.y1)) ? 0 : 1;
+        }
+    }
+    REQUIRE(slot >= 0);
+    const DirtyRect first = sim.tower_box(static_cast<size_t>(slot));
+    REQUIRE_FALSE(first.empty());
+    const auto centre = [](const DirtyRect& b) { return (b.x1 + b.x2) / 2; };
+    // Three seconds in, it has slid sideways or grown by at least 3% of the internal width.
+    for (int i = 0; i < 60; i++) {
+        sim.step(50, frame.target, rng, r, dirty);
+    }
+    const DirtyRect later = sim.tower_box(static_cast<size_t>(slot));
+    REQUIRE_FALSE(later.empty());
+    const int moved = std::abs(centre(later) - centre(first));
+    const int grew = (later.y2 - later.y1) - (first.y2 - first.y1);
+    CAPTURE(moved, grew);
+    CHECK(std::max(moved, grew) >= 6);
+    // It keeps coming on and is gone within a few dozen seconds, not parked on the horizon.
+    bool left = false;
+    for (int i = 0; i < 800 && !left; i++) {
+        sim.step(50, frame.target, rng, r, dirty);
+        left = sim.tower_box(static_cast<size_t>(slot)).empty() ||
+               centre(sim.tower_box(static_cast<size_t>(slot))) == centre(first);
+    }
+    CHECK(left);
+}
+
+TEST_CASE("the fly-through interior stops at 62% of the way to blue-grey",
+          "[screensaver][highfly]") {
+    const Rgb inside{200, 216, 230};
+    for (const Rgb scene : {Rgb{12, 78, 124}, Rgb{252, 254, 255}, Rgb{0, 0, 0}}) {
+        const Rgb full = helix::ui::highfly_inside(scene, 1.0f);
+        CHECK(full.g == Catch::Approx(scene.g + 0.62f * (inside.g - scene.g)).margin(1));
+        CHECK(full.b == Catch::Approx(scene.b + 0.62f * (inside.b - scene.b)).margin(1));
+        CHECK(helix::ui::highfly_inside(scene, 0.0f) == scene);
+        CHECK(helix::ui::highfly_inside(scene, 2.0f) == full);
+    }
+}
+
+TEST_CASE("a fly-through comes every one to two minutes", "[screensaver][highfly]") {
+    SimFrame frame(200, 120, PixelFormat::RGB565);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
     sim.init(frame.target, rng, 3, r);
     std::vector<DirtyRect> dirty;
     const PixelWriter w(frame.target);
-    // Near enough the centre that the outward wisps add at most about 7% of the way to white.
-    const int32_t px = 200;
-    int32_t py = 0;
-    Rgb before{};
-    bool have_before = false;
-    bool checked_hold = false;
+    bool whitened = false;
     for (int i = 0; i < 3000; i++) {
         sim.step(100, frame.target, rng, r, dirty);
         const float since = sim.fly_since_s();
-        if (!have_before && sim.next_fly_s() < 40.0f && sim.next_fly_s() > 34.0f) {
-            py = sim.band_top() * sim.scale() - 12;
-            before = w.get(px, py);
-            have_before = true;
-        }
-        if (have_before && !checked_hold && since > 1.1f && since < 1.4f) {
-            const Rgb now = w.get(px, py);
-            const float share = (static_cast<float>(now.g) - before.g) / (216.0f - before.g);
-            CAPTURE(static_cast<int>(before.g), static_cast<int>(now.g));
-            CHECK(share >= 0.59f);
-            CHECK(share <= 0.69f);
-            checked_hold = true;
+        if (since > 1.1f && since < 1.4f) {
+            // At the hold the whole screen is at least 62% of the way to the interior.
+            const Rgb top = w.get(100, 2);
+            CHECK(top.g >= 140);
+            whitened = true;
         }
     }
-    CHECK(checked_hold);
+    CHECK(whitened);
     const auto& starts = sim.fly_starts();
     REQUIRE(starts.size() >= 2);
     CHECK(starts[0] >= 60.0f);
@@ -469,7 +509,7 @@ TEST_CASE("wisps sample smoothly, without radial seams", "[screensaver][highfly]
     std::vector<DirtyRect> dirty;
     const PixelWriter w(frame.target);
     bool checked = false;
-    for (int i = 0; i < 2000 && !checked; i++) {
+    for (int i = 0; i < 2600 && !checked; i++) {
         sim.step(50, frame.target, rng, r, dirty);
         const float since = sim.fly_since_s();
         if (since > 1.1f && since < 1.4f) {

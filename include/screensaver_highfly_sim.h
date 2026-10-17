@@ -100,6 +100,10 @@ float highfly_whiteout(float since_start_s);
 /// deck is there (deck_z infinite).
 float highfly_layer_visibility(float deck_z, float layer_z);
 
+/// `scene` seen from inside the fly-through cloud `amt` (0 to 1) of the way in: eased toward
+/// the blue-grey interior, never more than HIGHFLY_WHITEOUT_MAX of the way.
+Rgb highfly_inside(Rgb scene, float amt);
+
 /// Where the clock sits on a w x h canvas, moved by the drift (dx, dy).
 struct HighFlyClockLayout {
     int32_t digit_unit = 0;            ///< big numerals' glyph unit
@@ -158,6 +162,8 @@ class HighFlySim {
     }
     /// Shape (0 to HIGHFLY_TOWER_VARIANTS - 1) of tower slot `i`, or -1 when the slot is empty.
     int tower_variant(size_t i) const;
+    /// Internal-frame box tower slot `i` covers, empty when the slot is empty or off screen.
+    DirtyRect tower_box(size_t i) const;
     /// Seconds into the run each tower so far entered.
     const std::vector<float>& tower_entries() const {
         return tower_entries_;
@@ -175,7 +181,9 @@ class HighFlySim {
   private:
     struct Tower {
         float z = 0.0f;
-        float lateral = 0.0f; ///< share of the half-width at that depth
+        float entered_s = 0.0f; ///< run time it entered at TOWER_Z_ENTER
+        float x = 0.0f;         ///< world x of its centre when it entered
+        float drift = 0.0f;     ///< wind, world units per second sideways
         float size = 1.0f;
         uint8_t variant = 0;
         bool live = false;
@@ -199,6 +207,10 @@ class HighFlySim {
     void build_sky();
     void build_polar();
     void update_schedule(std::minstd_rand& rng);
+    /// Starts a tower in `slot` that entered at run time `entered_s`.
+    void spawn_tower(Tower& slot, float entered_s, std::minstd_rand& rng);
+    /// The billboard tower `t` draws as.
+    Billboard tower_billboard(const Tower& t) const;
     /// Composes the internal frame: rows from `from` down, plus the boxes in `boxes_`.
     void compose(int32_t from);
     void draw_billboard(const Billboard& b);
