@@ -224,7 +224,7 @@ Separate from where the offset lives, the user can withhold Z-offset saves per p
 toggle writes Show or Hide; nothing writes Auto back.
 
 `helix::zoffset::save_enabled(SaveMode, per_tool_z_offsets)`
-(`include/z_offset_utils.h#save_enabled`) is the one decision. Auto turns saving off where
+(`include/z_offset_utils.h#"constexpr bool save_enabled(SaveMode mode, bool per_tool_z_offsets)"`) is the one decision. Auto turns saving off where
 `ToolState`'s `per_tool_z_supported` is 1, because a machine-wide save folds the live offset
 into the probe or endstop underneath every tool's offset at once. Every consumer reads the
 result, never the setting:
@@ -251,7 +251,7 @@ no save to withhold, and the Motion row is hidden while `z_offset_can_save` is 0
   a Save button is offered. A printer can be `firmware_managed` there without having
   a persistence provider here.
 - What Print Tune tells the user is a third answer, `ZOffsetTuneHint`
-  (`include/printer_profile_state.h#resolve_z_offset_tune_hint`). It claims
+  (`src/printer/printer_profile_state.cpp#resolve_z_offset_tune_hint`). It claims
   "auto-saved by firmware" only for a `firmware_managed` printer whose firmware
   persists the offset: a latched provider here, or a database row that does not set
   `"z_offset_persists": false`. The Snapmaker U1 sets it, because its firmware keeps

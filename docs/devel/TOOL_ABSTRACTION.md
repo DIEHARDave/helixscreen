@@ -201,7 +201,7 @@ Updates `active_tool_index_` and the `active_tool` subject.
 
 Whether `-1` is a real active-tool value depends on the topology. When an AMS
 backend owns the tool list, `build_ams_topology()`
-(`src/printer/ams_state_tool_mapping.cpp#build_ams_topology`) fills
+(`src/printer/ams_state_tool_mapping.cpp#"build_ams_topology(AmsBackend* backend, int backend_index,"`) fills
 `ToolTopology::allows_empty_carriage` from `AmsBackend::carriage_can_be_empty()`
 (`include/ams_backend.h#AmsBackend/carriage_can_be_empty`). By default that answers
 `load_mounts_tool()`: true where selecting a slot physically mounts a tool, so the
