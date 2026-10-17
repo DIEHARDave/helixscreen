@@ -262,6 +262,7 @@ src/ui/screensaver_maze_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_overlay.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_pipes.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_pipes_sim.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_pipes_teapot.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_starfield.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_starfield_sim.cpp  # not in the v1 Core+AMS cut
 src/system/splash_asset_choice.cpp  # not in the v1 Core+AMS cut

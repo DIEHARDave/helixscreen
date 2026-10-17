@@ -5,6 +5,7 @@
 
 #include "screensaver_pipes_sim.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -481,6 +482,201 @@ TEST_CASE("the brightest point of a material faces the half vector", "[screensav
             // unit per channel; anywhere else is darker.
             CHECK(peak + 3 >= channel_sum(pipes_shade(m, n)));
         }
+    }
+}
+
+// ============================================================================
+// Meshes
+// ============================================================================
+
+namespace {
+
+PipeVec3 sub(PipeVec3 a, PipeVec3 b) {
+    return {a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+PipeVec3 cross(PipeVec3 a, PipeVec3 b) {
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+float dot3(PipeVec3 a, PipeVec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+float len(PipeVec3 a) {
+    return std::sqrt(dot3(a, a));
+}
+
+/// Triangles whose winding agrees with their vertex normals, out of those with any area.
+std::pair<size_t, size_t> outward_winding(const PipeMesh& m) {
+    size_t good = 0;
+    size_t total = 0;
+    for (size_t t = 0; t + 2 < m.tris.size(); t += 3) {
+        const PipeVertex& a = m.verts[m.tris[t]];
+        const PipeVertex& b = m.verts[m.tris[t + 1]];
+        const PipeVertex& c = m.verts[m.tris[t + 2]];
+        const PipeVec3 face = cross(sub(b.p, a.p), sub(c.p, a.p));
+        if (len(face) < 1e-6f) {
+            continue;
+        }
+        const PipeVec3 n{a.n.x + b.n.x + c.n.x, a.n.y + b.n.y + c.n.y, a.n.z + b.n.z + c.n.z};
+        total++;
+        good += dot3(face, n) > 0.0f ? 1 : 0;
+    }
+    return {good, total};
+}
+
+/// The 16 world positions of a ring of `mesh` starting at vertex `first`.
+std::vector<PipeVec3> ring(const PipeMesh& mesh, size_t first, const PipeXform& xf) {
+    std::vector<PipeVec3> out;
+    for (size_t k = 0; k < static_cast<size_t>(PIPES_SLICES); k++) {
+        out.push_back(pipes_xform_point(xf, mesh.verts[first + k].p));
+    }
+    return out;
+}
+
+bool same_point_sets(const std::vector<PipeVec3>& a, const std::vector<PipeVec3>& b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (const PipeVec3& p : a) {
+        const bool found =
+            std::any_of(b.begin(), b.end(), [&](const PipeVec3& q) { return vec_near(p, q); });
+        if (!found) {
+            return false;
+        }
+    }
+    return true;
+}
+
+} // namespace
+
+TEST_CASE("every mesh has unit outward normals and outward winding", "[screensaver][pipes_sim]") {
+    PipeMesh cyl;
+    PipeMesh ball;
+    PipeMesh elbow;
+    PipeMesh teapot;
+    pipes_build_cylinder(cyl);
+    pipes_build_ball(ball);
+    pipes_build_elbow(elbow);
+    pipes_build_teapot(teapot);
+    REQUIRE(!cyl.tris.empty());
+    REQUIRE(!ball.tris.empty());
+    REQUIRE(!elbow.tris.empty());
+    REQUIRE(!teapot.tris.empty());
+
+    for (const PipeVertex& v : cyl.verts) {
+        CHECK(len(v.n) == Catch::Approx(1.0f).margin(1e-4));
+        CHECK(dot3(v.n, {v.p.x, v.p.y, 0.0f}) > 0.0f);
+    }
+    for (const PipeVertex& v : ball.verts) {
+        CHECK(len(v.n) == Catch::Approx(1.0f).margin(1e-4));
+        CHECK(dot3(v.n, v.p) > 0.0f);
+    }
+    for (const PipeVertex& v : elbow.verts) {
+        CHECK(len(v.n) == Catch::Approx(1.0f).margin(1e-4));
+    }
+    for (const PipeMesh* m : {&cyl, &ball, &elbow}) {
+        const auto [good, total] = outward_winding(*m);
+        CHECK(total > 0);
+        CHECK(good == total);
+    }
+    for (const PipeVertex& v : teapot.verts) {
+        CHECK(len(v.n) == Catch::Approx(1.0f).margin(1e-3));
+    }
+    const auto [good, total] = outward_winding(teapot);
+    REQUIRE(total > 1000);
+    CHECK(static_cast<double>(good) >= 0.98 * static_cast<double>(total));
+}
+
+TEST_CASE("elbow end rings meet the cylinders without a crack", "[screensaver][pipes_sim]") {
+    PipeMesh cyl;
+    PipeMesh elbow;
+    pipes_build_cylinder(cyl);
+    pipes_build_elbow(elbow);
+    const size_t last_ring = elbow.verts.size() - static_cast<size_t>(PIPES_SLICES);
+    int pairs = 0;
+    for (int f = 0; f < PIPE_DIR_COUNT; f++) {
+        for (int d = 0; d < PIPE_DIR_COUNT; d++) {
+            const auto from = static_cast<PipeDir>(f);
+            const auto dir = static_cast<PipeDir>(d);
+            if (dir == from || dir == pipe_opposite(from)) {
+                continue;
+            }
+            pairs++;
+            const PipeVec3 node{3.0f, -2.0f, 5.0f};
+            PipePiece joint;
+            joint.kind = PipePieceKind::ELBOW;
+            joint.at = node;
+            joint.from = from;
+            joint.dir = dir;
+            const PipeXform jx = pipes_piece_xform(joint);
+
+            const PipeVec3 fv = pipes_dir_vec(from);
+            PipePiece in;
+            in.kind = PipePieceKind::CYLINDER;
+            in.dir = from;
+            in.length = 7.0f;
+            in.at = {node.x - 8.0f * fv.x, node.y - 8.0f * fv.y, node.z - 8.0f * fv.z};
+            CHECK(same_point_sets(ring(elbow, 0, jx),
+                                  ring(cyl, PIPES_SLICES, pipes_piece_xform(in))));
+
+            const PipeVec3 dv = pipes_dir_vec(dir);
+            PipePiece out;
+            out.kind = PipePieceKind::CYLINDER;
+            out.dir = dir;
+            out.length = 5.0f;
+            out.at = {node.x + dv.x, node.y + dv.y, node.z + dv.z};
+            CHECK(
+                same_point_sets(ring(elbow, last_ring, jx), ring(cyl, 0, pipes_piece_xform(out))));
+        }
+    }
+    CHECK(pairs == 24);
+}
+
+TEST_CASE("the ball is the original's big ball", "[screensaver][pipes_sim]") {
+    PipeMesh ball;
+    pipes_build_ball(ball);
+    CHECK(pipes_ball_radius() == Catch::Approx(1.441921f).margin(1e-5));
+    for (const PipeVertex& v : ball.verts) {
+        CHECK(len(v.p) == Catch::Approx(1.441921f).margin(1e-5));
+    }
+}
+
+TEST_CASE("the teapot is the original's size", "[screensaver][pipes_sim]") {
+    PipeMesh teapot;
+    pipes_build_teapot(teapot);
+    PipeVec3 lo{1e9f, 1e9f, 1e9f};
+    PipeVec3 hi{-1e9f, -1e9f, -1e9f};
+    for (const PipeVertex& v : teapot.verts) {
+        lo = {std::min(lo.x, v.p.x), std::min(lo.y, v.p.y), std::min(lo.z, v.p.z)};
+        hi = {std::max(hi.x, v.p.x), std::max(hi.y, v.p.y), std::max(hi.z, v.p.z)};
+    }
+    CHECK(lo.x == Catch::Approx(-3.75f).margin(0.02));
+    // The spout's tip lies inside its control hull, which reaches 3.525 data units (4.40625).
+    CHECK(hi.x > 4.25f);
+    CHECK(hi.x <= 4.40625f);
+    CHECK(lo.y == Catch::Approx(-1.875f).margin(0.02));
+    CHECK(hi.y == Catch::Approx(2.0625f).margin(0.02));
+    CHECK(lo.z == Catch::Approx(-2.5f).margin(0.02));
+    CHECK(hi.z == Catch::Approx(2.5f).margin(0.02));
+}
+
+TEST_CASE("an elbow's centreline bends round (0, r, -r)", "[screensaver][pipes_sim]") {
+    PipeMesh elbow;
+    pipes_build_elbow(elbow);
+    REQUIRE(elbow.verts.size() % static_cast<size_t>(PIPES_SLICES) == 0);
+    for (size_t first = 0; first < elbow.verts.size(); first += PIPES_SLICES) {
+        PipeVec3 mean{};
+        for (size_t k = 0; k < static_cast<size_t>(PIPES_SLICES); k++) {
+            const PipeVec3& p = elbow.verts[first + k].p;
+            mean = {mean.x + p.x / PIPES_SLICES, mean.y + p.y / PIPES_SLICES,
+                    mean.z + p.z / PIPES_SLICES};
+        }
+        CHECK(mean.x == Catch::Approx(0.0f).margin(1e-5));
+        const float dy = mean.y - PIPES_RADIUS;
+        const float dz = mean.z + PIPES_RADIUS;
+        CHECK(std::sqrt(dy * dy + dz * dz) == Catch::Approx(PIPES_RADIUS).margin(1e-5));
     }
 }
 

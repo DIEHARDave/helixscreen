@@ -434,6 +434,181 @@ void PipesScreen::release() {
     straight_ = 0;
 }
 
+// ============================================================================
+// Meshes
+// ============================================================================
+
+namespace {
+
+constexpr float PI_F = 3.14159265358979f;
+
+/// Bend segments of an elbow.
+constexpr int ELBOW_SEGMENTS = 6;
+/// Latitude bands of a ball.
+constexpr int BALL_STACKS = 8;
+
+/// Joins ring `a` to ring `b` (PIPES_SLICES vertices each, b ahead of a along the tube) with
+/// triangles facing out when each ring runs counter-clockwise about the direction of travel.
+void join_rings(uint16_t a, uint16_t b, std::vector<uint16_t>& tris) {
+    for (int k = 0; k < PIPES_SLICES; k++) {
+        const int k1 = (k + 1) % PIPES_SLICES;
+        const auto a0 = static_cast<uint16_t>(a + k);
+        const auto a1 = static_cast<uint16_t>(a + k1);
+        const auto b0 = static_cast<uint16_t>(b + k);
+        const auto b1 = static_cast<uint16_t>(b + k1);
+        tris.insert(tris.end(), {a0, a1, b1, a0, b1, b0});
+    }
+}
+
+float slice_angle(int k) {
+    return static_cast<float>(k) * 2.0f * PI_F / static_cast<float>(PIPES_SLICES);
+}
+
+} // namespace
+
+float pipes_ball_radius() {
+    return std::sqrt(2.0f) * PIPES_RADIUS / std::cos(PI_F / static_cast<float>(PIPES_SLICES));
+}
+
+void pipes_build_cylinder(PipeMesh& out) {
+    out.verts.clear();
+    out.tris.clear();
+    for (int ring = 0; ring < 2; ring++) {
+        for (int k = 0; k < PIPES_SLICES; k++) {
+            const float c = std::cos(slice_angle(k));
+            const float s = std::sin(slice_angle(k));
+            out.verts.push_back(
+                {{PIPES_RADIUS * c, PIPES_RADIUS * s, static_cast<float>(ring)}, {c, s, 0.0f}});
+        }
+    }
+    join_rings(0, PIPES_SLICES, out.tris);
+}
+
+void pipes_build_ball(PipeMesh& out) {
+    out.verts.clear();
+    out.tris.clear();
+    const float radius = pipes_ball_radius();
+    // Poles on the z axis, rings of PIPES_SLICES between them.
+    out.verts.push_back({{0, 0, -radius}, {0, 0, -1}});
+    for (int stack = 1; stack < BALL_STACKS; stack++) {
+        const float polar = PI_F * static_cast<float>(stack) / static_cast<float>(BALL_STACKS);
+        const float z = -std::cos(polar);
+        const float rr = std::sin(polar);
+        for (int k = 0; k < PIPES_SLICES; k++) {
+            const PipeVec3 n{rr * std::cos(slice_angle(k)), rr * std::sin(slice_angle(k)), z};
+            out.verts.push_back({{n.x * radius, n.y * radius, n.z * radius}, n});
+        }
+    }
+    const auto top = static_cast<uint16_t>(out.verts.size());
+    out.verts.push_back({{0, 0, radius}, {0, 0, 1}});
+    for (int k = 0; k < PIPES_SLICES; k++) {
+        const auto k1 = static_cast<uint16_t>(1 + (k + 1) % PIPES_SLICES);
+        out.tris.insert(out.tris.end(), {0, k1, static_cast<uint16_t>(1 + k)});
+    }
+    for (int stack = 1; stack + 1 < BALL_STACKS; stack++) {
+        join_rings(static_cast<uint16_t>(1 + (stack - 1) * PIPES_SLICES),
+                   static_cast<uint16_t>(1 + stack * PIPES_SLICES), out.tris);
+    }
+    const auto last = static_cast<uint16_t>(1 + (BALL_STACKS - 2) * PIPES_SLICES);
+    for (int k = 0; k < PIPES_SLICES; k++) {
+        const auto k1 = static_cast<uint16_t>(last + (k + 1) % PIPES_SLICES);
+        out.tris.insert(out.tris.end(), {static_cast<uint16_t>(last + k), k1, top});
+    }
+}
+
+void pipes_build_elbow(PipeMesh& out) {
+    out.verts.clear();
+    out.tris.clear();
+    const float r = PIPES_RADIUS;
+    for (int seg = 0; seg <= ELBOW_SEGMENTS; seg++) {
+        const float phi = 0.5f * PI_F * static_cast<float>(seg) / ELBOW_SEGMENTS;
+        // Centreline round (0, r, -r); the ring's frame is x and e2, with x cross e2 the
+        // direction of travel.
+        const PipeVec3 centre{0.0f, r - r * std::cos(phi), -r + r * std::sin(phi)};
+        const PipeVec3 e2{0.0f, std::cos(phi), -std::sin(phi)};
+        for (int k = 0; k < PIPES_SLICES; k++) {
+            const float c = std::cos(slice_angle(k));
+            const float s = std::sin(slice_angle(k));
+            const PipeVec3 n{c, s * e2.y, s * e2.z};
+            out.verts.push_back({{centre.x + r * n.x, centre.y + r * n.y, centre.z + r * n.z}, n});
+        }
+    }
+    for (int seg = 0; seg < ELBOW_SEGMENTS; seg++) {
+        join_rings(static_cast<uint16_t>(seg * PIPES_SLICES),
+                   static_cast<uint16_t>((seg + 1) * PIPES_SLICES), out.tris);
+    }
+}
+
+namespace {
+
+PipeVec3 cross3(PipeVec3 a, PipeVec3 b) {
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+/// The fixed axis-aligned pair across `d`, with x cross y = d.
+void cylinder_basis(PipeDir d, PipeVec3& x, PipeVec3& y) {
+    switch (d) {
+    case PipeDir::POS_X:
+        x = {0, 1, 0};
+        y = {0, 0, 1};
+        return;
+    case PipeDir::NEG_X:
+        x = {0, 1, 0};
+        y = {0, 0, -1};
+        return;
+    case PipeDir::POS_Y:
+        x = {0, 0, 1};
+        y = {1, 0, 0};
+        return;
+    case PipeDir::NEG_Y:
+        x = {0, 0, 1};
+        y = {-1, 0, 0};
+        return;
+    case PipeDir::POS_Z:
+        x = {1, 0, 0};
+        y = {0, 1, 0};
+        return;
+    case PipeDir::NEG_Z:
+    case PipeDir::NONE:
+        x = {1, 0, 0};
+        y = {0, -1, 0};
+        return;
+    }
+}
+
+} // namespace
+
+PipeXform pipes_piece_xform(const PipePiece& piece) {
+    PipeXform xf;
+    xf.t = piece.at;
+    switch (piece.kind) {
+    case PipePieceKind::CYLINDER: {
+        cylinder_basis(piece.dir, xf.x, xf.y);
+        const PipeVec3 d = pipes_dir_vec(piece.dir);
+        xf.z = {d.x * piece.length, d.y * piece.length, d.z * piece.length};
+        break;
+    }
+    case PipePieceKind::ELBOW:
+        xf.z = pipes_dir_vec(piece.from);
+        xf.y = pipes_dir_vec(piece.dir);
+        xf.x = cross3(xf.y, xf.z);
+        break;
+    case PipePieceKind::BALL:
+    case PipePieceKind::TEAPOT:
+        xf.x = {1, 0, 0};
+        xf.y = {0, 1, 0};
+        xf.z = {0, 0, 1};
+        break;
+    }
+    return xf;
+}
+
+PipeVec3 pipes_xform_point(const PipeXform& xf, PipeVec3 p) {
+    return {p.x * xf.x.x + p.y * xf.y.x + p.z * xf.z.x + xf.t.x,
+            p.x * xf.x.y + p.y * xf.y.y + p.z * xf.z.y + xf.t.y,
+            p.x * xf.x.z + p.y * xf.y.z + p.z * xf.z.z + xf.t.z};
+}
+
 } // namespace helix::ui
 
 #endif // HELIX_ENABLE_SCREENSAVER

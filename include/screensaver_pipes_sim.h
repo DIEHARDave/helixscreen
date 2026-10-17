@@ -319,6 +319,52 @@ class PipesScreen {
     uint32_t straight_ = 0;
 };
 
+/// A mesh vertex in the piece's own frame.
+struct PipeVertex {
+    PipeVec3 p;
+    PipeVec3 n; ///< unit, outward
+};
+
+struct PipeMesh {
+    std::vector<PipeVertex> verts;
+    std::vector<uint16_t> tris; ///< three indices per triangle, counter-clockwise from outside
+
+    size_t buffer_bytes() const {
+        return verts.capacity() * sizeof(PipeVertex) + tris.capacity() * sizeof(uint16_t);
+    }
+};
+
+/// Unit cylinder along +z from 0 to 1, radius PIPES_RADIUS, PIPES_SLICES facets, open ends.
+void pipes_build_cylinder(PipeMesh& out);
+/// Sphere of radius sqrt(2) r / cos(pi / PIPES_SLICES), so it covers a pipe end r from its centre.
+void pipes_build_ball(PipeMesh& out);
+/// Quarter torus, bend radius = tube radius = r: enters at (0, 0, -r) heading +z, leaves at
+/// (0, r, 0) heading +y; the bend centre is (0, r, -r).
+void pipes_build_elbow(PipeMesh& out);
+/// The Newell teapot (freeglut's patch data), scaled 0.5 x 2.5 r, z-up data turned y-up and
+/// dropped 1.5 data units: x in [-3.75, 4.41], y in [-1.875, 2.0625].
+void pipes_build_teapot(PipeMesh& out);
+
+/// Radius of a ball joint or cap.
+float pipes_ball_radius();
+
+/// Mesh frame to world: p_world = p.x * x + p.y * y + p.z * z + t.
+struct PipeXform {
+    PipeVec3 x;
+    PipeVec3 y;
+    PipeVec3 z;
+    PipeVec3 t;
+};
+/**
+ * @brief Where a piece's mesh goes
+ *
+ * CYLINDER: z = dir scaled by length, x and y the fixed axis-aligned basis of dir's axis.
+ * ELBOW: z = from, y = dir, x = y cross z. BALL and TEAPOT: world axes. t = piece.at.
+ */
+PipeXform pipes_piece_xform(const PipePiece& piece);
+/// `p` carried from mesh frame to world by `xf`.
+PipeVec3 pipes_xform_point(const PipeXform& xf, PipeVec3 p);
+
 } // namespace helix::ui
 
 #endif // HELIX_ENABLE_SCREENSAVER
