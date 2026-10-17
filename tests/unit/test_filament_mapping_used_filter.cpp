@@ -30,6 +30,7 @@
  */
 
 #include "ui_filament_mapping_card.h"
+#include "ui_swatch.h"
 #include "ui_update_queue.h"
 
 #include "../mapping_card_render_fixture.h"
@@ -375,6 +376,7 @@ TEST_CASE_METHOD(MappingCardRenderFixture, "Unknown gcode colour draws no fill o
     lv_obj_t* const band = lv_obj_find_by_name(lv_obj_get_child(rows, 0), "top_band");
     REQUIRE(band != nullptr);
     CHECK(lv_obj_get_style_bg_opa(band, LV_PART_MAIN) == LV_OPA_TRANSP);
+    CHECK_FALSE(helix::ui::has_swatch_paint(band));
 
     process_lvgl(100);
 }
@@ -659,6 +661,49 @@ TEST_CASE_METHOD(MappingCardRenderFixture,
     CHECK(lv_obj_get_child_count(rows) == 6);         // all six fit now, no pill
     CHECK(lv_obj_get_child(rows, 0) != first_before); // really re-rendered
     CHECK(lv_obj_find_by_name(lv_obj_get_child(rows, 5), "top_band") != nullptr);
+
+    process_lvgl(100);
+}
+
+TEST_CASE_METHOD(MappingCardRenderFixture,
+                 "Both bands paint through the swatch painter; an empty lane stays a faded outline",
+                 "[filament_mapping][swatch]") {
+    auto slot = mock->get_slot_info(0);
+    slot.color_rgb = 0xFF0000;
+    slot.multi_color_hexes = "#FF0000,#00FF00,#0000FF";
+    slot.material = "PLA";
+    slot.product_name = "Silk Rainbow";
+    mock->sync_external_identity(0, slot);
+    mock->force_slot_status(1, helix::SlotStatus::EMPTY);
+    card.update({"#FF0000", "#00FF00"}, {"PLA", "PLA"});
+    card.set_mappings(mappings_to_slots({0, 1}));
+    REQUIRE(lv_obj_get_child_count(rows) == 2);
+
+    // The file's colour on top: one colour, no finish.
+    lv_obj_t* const chip = lv_obj_get_child(rows, 0);
+    lv_obj_t* const top = lv_obj_find_by_name(chip, "top_band");
+    REQUIRE(top != nullptr);
+    REQUIRE(helix::ui::has_swatch_paint(top));
+    const auto top_colors = helix::ui::swatch_paint_colors(top);
+    REQUIRE(top_colors.size() == 1);
+    CHECK((lv_color_to_u32(top_colors[0]) & 0xFFFFFF) == 0xFF0000u);
+    CHECK(helix::ui::swatch_paint_finish(top) == helix::ui::SwatchFinish::Plain);
+
+    // The mapped lane below: its split and its finish.
+    lv_obj_t* const bottom = lv_obj_find_by_name(chip, "bottom_band");
+    REQUIRE(bottom != nullptr);
+    REQUIRE(helix::ui::has_swatch_paint(bottom));
+    CHECK(helix::ui::swatch_paint_colors(bottom).size() == 3);
+    CHECK(helix::ui::swatch_paint_finish(bottom) == helix::ui::SwatchFinish::Silk);
+
+    // An empty lane is no filament colour: unpainted, the empty_slot style's
+    // faded fill and warning border.
+    lv_obj_t* const empty = lv_obj_find_by_name(lv_obj_get_child(rows, 1), "bottom_band");
+    REQUIRE(empty != nullptr);
+    REQUIRE(lv_obj_has_state(empty, LV_STATE_USER_1));
+    CHECK_FALSE(helix::ui::has_swatch_paint(empty));
+    CHECK(lv_obj_get_style_bg_opa(empty, LV_PART_MAIN) == 60);
+    CHECK(lv_obj_get_style_border_width(empty, LV_PART_MAIN) == 2);
 
     process_lvgl(100);
 }

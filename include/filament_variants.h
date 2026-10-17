@@ -216,4 +216,8 @@ enum class FilamentFinish : unsigned char { None, Silk, Matte, Marble, Sparkle }
  */
 FilamentFinish filament_finish_of(std::string_view name);
 
+/// The word for @p finish ("Silk", "Matte", "Marble", "Sparkle"; "" for none):
+/// what a finish subject carries, read back by filament_finish_of().
+const char* filament_finish_name(FilamentFinish finish);
+
 } // namespace helix

@@ -1146,6 +1146,15 @@ TEST_CASE_METHOD(OverlayXmlFixture, "overlay XML: a tab dot shows exactly its de
         {{"neopixel sb_leds", {{"color_data", {{1.0, 0.0, 0.0}}}}}});
     drain();
     CHECK(visible_dots("led_tab_1") == std::vector<int>{0});
+    // The lit dot is a colour swatch: the painter draws the LED's colour and
+    // owns its edge, so the dot itself carries no border.
+    lv_obj_t* lit = lv_obj_find_by_name(need("led_tab_1"), "light_dot_lit");
+    REQUIRE(lit != nullptr);
+    lv_obj_t* disc = lv_obj_find_by_name(lit, "color_swatch_disc");
+    REQUIRE(disc != nullptr);
+    CHECK(helix::ui::has_swatch_paint(disc));
+    CHECK((lv_color_to_u32(helix::ui::swatch_color_of(lit)) & 0xFFFFFF) == 0xFF0000u);
+    CHECK(lv_obj_get_style_border_width(disc, LV_PART_MAIN) == 0);
 
     LedController::instance().update_from_status(
         {{"neopixel sb_leds", {{"color_data", {{0.0, 0.0, 0.0}}}}}});

@@ -1883,8 +1883,19 @@ void AmsState::set_current_loaded_defaults(bool write_header) {
         lv_subject_copy_string(&current_weight_text_, "");
     }
     lv_subject_set_int(&current_has_weight_, 0);
-    lv_subject_set_int(&current_color_, 0x505050);
+    set_current_paint(0x505050);
     lv_subject_set_int(&current_fill_pct_, 0);
+}
+
+void AmsState::set_current_paint(uint32_t rgb, const std::string& multi_color_hexes,
+                                 const std::string& finish_name) {
+    if (strcmp(lv_subject_get_string(&current_colors_), multi_color_hexes.c_str()) != 0) {
+        lv_subject_copy_string(&current_colors_, multi_color_hexes.c_str());
+    }
+    if (strcmp(lv_subject_get_string(&current_finish_), finish_name.c_str()) != 0) {
+        lv_subject_copy_string(&current_finish_, finish_name.c_str());
+    }
+    lv_subject_set_int(&current_color_, static_cast<int>(rgb));
 }
 
 void AmsState::sync_current_loaded_from_backend() {
@@ -2007,7 +2018,6 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
 
     if (!loaded_backend) {
         set_current_loaded_defaults();
-        lv_subject_set_int(&current_color_, 0x505050);
         return;
     }
 
@@ -2031,8 +2041,8 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         auto ext_spool = get_external_spool_info();
         if (ext_spool.has_value()) {
             const auto& ext = ext_spool.value();
-            int ext_color = static_cast<int>(ext.color_rgb);
-            lv_subject_set_int(&current_color_, ext_color);
+            set_current_paint(ext.color_rgb, ext.multi_color_hexes,
+                              filament_finish_name(ext.finish()));
             lv_subject_set_int(&current_fill_pct_, ext.display_fill_pct());
 
             // Build label from spool info — same resolver as the loaded-slot
@@ -2069,7 +2079,7 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
                 lv_subject_copy_string(&current_weight_text_, "");
             }
             lv_subject_set_int(&current_has_weight_, 0);
-            lv_subject_set_int(&current_color_, 0x888888);
+            set_current_paint(0x888888);
             lv_subject_set_int(&current_fill_pct_, -1);
         }
     } else if (slot_index >= 0 && filament_loaded) {
@@ -2094,8 +2104,8 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         }
 
         // Set color
-        int slot_color = static_cast<int>(slot_info.color_rgb);
-        lv_subject_set_int(&current_color_, slot_color);
+        set_current_paint(slot_info.color_rgb, slot_info.multi_color_hexes,
+                          filament_finish_name(slot_info.finish()));
         lv_subject_set_int(&current_fill_pct_, slot_info.display_fill_pct());
 
         // Build the material label. The slot's own name/brand/material win, the

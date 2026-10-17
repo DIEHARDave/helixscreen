@@ -82,6 +82,7 @@
     </lv_obj>
     <tool_switcher_band name="tool_switcher_seg_band"
                         band_h="$band_h" band_labelled="$band_labelled" color="tool_switcher_seg_${index}_color"
+                        colors="tool_switcher_seg_${index}_colors" finish="tool_switcher_seg_${index}_finish"
                         has_color="tool_switcher_seg_${index}_has_color" text="tool_switcher_seg_${index}_material"
                         text_color="tool_switcher_seg_${index}_band_text"/>
     <event_cb trigger="clicked" callback="tool_switcher_segment_cb" user_data="$index"/>

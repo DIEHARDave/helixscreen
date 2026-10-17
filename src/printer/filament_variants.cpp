@@ -595,4 +595,20 @@ FilamentFinish filament_finish_of(std::string_view name) {
     return FilamentFinish::None;
 }
 
+const char* filament_finish_name(FilamentFinish finish) {
+    switch (finish) {
+    case FilamentFinish::Silk:
+        return "Silk"; // i18n: do not translate
+    case FilamentFinish::Matte:
+        return "Matte"; // i18n: do not translate
+    case FilamentFinish::Marble:
+        return "Marble"; // i18n: do not translate
+    case FilamentFinish::Sparkle:
+        return "Sparkle"; // i18n: do not translate
+    case FilamentFinish::None:
+        break;
+    }
+    return "";
+}
+
 } // namespace helix
