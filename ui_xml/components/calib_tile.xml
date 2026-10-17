@@ -23,7 +23,7 @@
     <!-- Percentages of the grid, leaving room for the gaps between cells -->
     <style name="calib_cols_1" width="100%"/>
     <style name="calib_cols_2" width="48%"/>
-    <style name="calib_cols_3" width="32%"/>
+    <style name="calib_cols_3" width="31%"/>
     <style name="calib_cols_4" width="23%"/>
     <style name="calib_rows_1" height="100%"/>
     <style name="calib_rows_2" height="48%"/>
