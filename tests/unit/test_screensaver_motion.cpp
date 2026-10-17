@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <cstring>
 #include <random>
 #include <utility>
 #include <vector>
@@ -223,10 +222,6 @@ TEST_CASE("random_below stays within [0, n) and reaches every value", "[screensa
 
 namespace {
 
-bool same_bits(float a, float b) {
-    return std::memcmp(&a, &b, sizeof(float)) == 0;
-}
-
 int32_t fireflies_random_ms(std::minstd_rand& rng, int32_t lo, int32_t hi) {
     return lo + random_below(rng, hi - lo + 1);
 }
@@ -280,12 +275,13 @@ TEST_CASE("random_between is fireflies' uniform and random_normal(mean, sd) its 
     std::minstd_rand a(7);
     std::minstd_rand b(7);
     for (int i = 0; i < 2000; i++) {
-        REQUIRE(same_bits(random_between(a, -3.5f, 12.25f), fireflies_uniform(b, -3.5f, 12.25f)));
+        REQUIRE(screensaver_same_bits(random_between(a, -3.5f, 12.25f),
+                                      fireflies_uniform(b, -3.5f, 12.25f)));
     }
     for (int i = 0; i < 2000; i++) {
         const float got = random_normal(a, -0.1f, 0.3f);
         const float expect = -0.1f + 0.3f * random_normal(b);
-        REQUIRE(same_bits(got, expect));
+        REQUIRE(screensaver_same_bits(got, expect));
     }
 }
 
@@ -338,10 +334,10 @@ TEST_CASE("wrap_period is fireflies' wrap360 and never returns the period",
     size_t mismatches = 0;
     for (int i = -400000; i <= 400000; i++) {
         const float deg = static_cast<float>(i) * 0.0037f;
-        mismatches += !same_bits(wrap_period(deg, 360.0f), fireflies_wrap360(deg));
+        mismatches += !screensaver_same_bits(wrap_period(deg, 360.0f), fireflies_wrap360(deg));
     }
     for (const float edge : {-360.0f, 360.0f, -720.0f, std::nextafter(0.0f, -1.0f), -1e-7f}) {
-        mismatches += !same_bits(wrap_period(edge, 360.0f), fireflies_wrap360(edge));
+        mismatches += !screensaver_same_bits(wrap_period(edge, 360.0f), fireflies_wrap360(edge));
         CHECK(wrap_period(edge, 360.0f) < 360.0f);
         CHECK(wrap_period(edge, 360.0f) >= 0.0f);
     }
@@ -358,12 +354,6 @@ namespace {
 
 using StarAccess = StarfieldScreensaverTestAccess;
 using PipesAccess = PipesScreensaverTestAccess;
-
-void run_timer(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
 
 } // namespace
 
@@ -391,11 +381,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "StarfieldScreensaver moves stars in proportio
     const auto placed = StarAccess::stars(ss);
     REQUIRE_FALSE(placed.empty());
 
-    lv_tick_inc(66);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 66);
     const auto after_66 = StarAccess::stars(ss);
-    lv_tick_inc(11);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 11);
     const auto after_77 = StarAccess::stars(ss);
 
     for (size_t i = 0; i < placed.size(); i++) {
@@ -435,8 +423,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "StarfieldScreensaver with the same seed repla
     int recycled = 0;
     for (int frame = 0; frame < 30; frame++) {
         lv_tick_inc(33);
-        run_timer(SaverTestAccess::timer(a));
-        run_timer(SaverTestAccess::timer(b));
+        fire_timer(SaverTestAccess::timer(a));
+        fire_timer(SaverTestAccess::timer(b));
         for (const auto& star : StarAccess::stars(a)) {
             if (screensaver_same_bits(star.z, 1.0f)) {
                 recycled++;
@@ -457,8 +445,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     ss.start();
     REQUIRE(ss.is_active());
     const auto at_start = StarAccess::stars(ss);
-    lv_tick_inc(66);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 66);
     const auto first_frame = StarAccess::stars(ss);
 
     int moved = 0;
@@ -479,8 +466,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     REQUIRE(ss.is_active());
     CHECK(StarAccess::stars(ss) == at_start);
 
-    lv_tick_inc(66);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 66);
     CHECK(StarAccess::stars(ss) == first_frame);
 }
 
@@ -510,10 +496,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "PipesScreensaver grows one step per 100 ms of
     REQUIRE(PipesAccess::same_scene(one_call, per_step));
 
     for (int i = 0; i < 3; i++) {
-        lv_tick_inc(100);
-        run_timer(SaverTestAccess::timer(per_step));
+        advance_saver(per_step, 100);
     }
-    run_timer(SaverTestAccess::timer(one_call));
+    fire_timer(SaverTestAccess::timer(one_call));
 
     // A 300 ms gap grows each of the two starting pipes three times.
     const auto pipes = PipesAccess::pipes(one_call);
@@ -531,18 +516,16 @@ TEST_CASE_METHOD(LVGLTestFixture, "PipesScreensaver caps the steps one callback 
     REQUIRE(ss.is_active());
 
     // Four steps are due; three are drawn.
-    lv_tick_inc(450);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 450);
     CHECK(PipesAccess::pipes(ss)[0].segment_count == 3);
     CHECK(PipesAccess::pipes(ss)[1].segment_count == 3);
 
     // The fourth is dropped rather than owed to the next callback.
-    run_timer(SaverTestAccess::timer(ss));
+    fire_timer(SaverTestAccess::timer(ss));
     CHECK(PipesAccess::pipes(ss)[0].segment_count == 3);
 
     // The 50 ms left over still counts toward the next step.
-    lv_tick_inc(50);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 50);
     CHECK(PipesAccess::pipes(ss)[0].segment_count == 4);
 }
 
@@ -556,8 +539,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     ss.start();
     REQUIRE(ss.is_active());
     const auto at_start = PipesAccess::pipes(ss);
-    lv_tick_inc(250);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 250);
     REQUIRE(PipesAccess::pipes(ss)[0].segment_count == 2);
 
     ss.stop();
@@ -569,11 +551,9 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(PipesAccess::pipes(ss)[1] == at_start[1]);
 
     // Neither the 50 ms left from the first run nor the time spent stopped counts.
-    lv_tick_inc(60);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 60);
     CHECK(PipesAccess::pipes(ss)[0].segment_count == 0);
-    lv_tick_inc(40);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 40);
     CHECK(PipesAccess::pipes(ss)[0].segment_count == 1);
 }
 
@@ -601,8 +581,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "PipesScreensaver with the same seed replays t
     // The two grow in turn, so a random sequence they shared would steer them apart.
     for (int i = 0; i < 20; i++) {
         lv_tick_inc(100);
-        run_timer(SaverTestAccess::timer(a));
-        run_timer(SaverTestAccess::timer(b));
+        fire_timer(SaverTestAccess::timer(a));
+        fire_timer(SaverTestAccess::timer(b));
     }
     int grown = 0;
     for (const auto& pipe : PipesAccess::pipes(a)) {
@@ -643,8 +623,7 @@ TEST_CASE_METHOD(
     const uint32_t first = PipesAccess::sim(ss).screens_started();
     for (int i = 0; i < 20000 && PipesAccess::sim(ss).screens_started() == first; i++) {
         REQUIRE(PipesAccess::sim(ss).renderer().scale() == 1);
-        lv_tick_inc(300);
-        run_timer(SaverTestAccess::timer(ss));
+        advance_saver(ss, 300);
     }
     REQUIRE(PipesAccess::sim(ss).screens_started() == first + 1);
     CHECK(PipesAccess::sim(ss).renderer().scale() == 2);

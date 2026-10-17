@@ -4,12 +4,12 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_pixel_writer.h"
 #include "screensaver_starfield_sim.h"
 
 #include <algorithm>
-#include <cstring>
 #include <random>
 #include <utility>
 #include <vector>
@@ -25,84 +25,13 @@ namespace {
 
 constexpr uint32_t FRAME_W = 320;
 constexpr uint32_t FRAME_H = 200;
-// Wider than 4 bytes per pixel, as LVGL's aligned strides can be, so a write indexed by
-// width instead of stride lands on the wrong row.
-constexpr uint32_t FRAME_STRIDE = FRAME_W * 4 + 12;
 
-/// A heap frame painted opaque black.
-struct Frame {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-
-    Frame() : bytes(static_cast<size_t>(FRAME_STRIDE) * FRAME_H, 0) {
-        target = {bytes.data(), FRAME_STRIDE, FRAME_W, FRAME_H};
+/// A frame painted opaque black, as the canvas hands one to a saver.
+struct Frame : helix::test::TestFrame {
+    Frame() : TestFrame(FRAME_W, FRAME_H, helix::ui::PixelFormat::XRGB8888) {
         helix::ui::PixelWriter(target).fill(helix::ui::Rgb{0, 0, 0});
     }
-    Frame(const Frame&) = delete;
-    Frame& operator=(const Frame&) = delete;
 };
-
-bool rect_contains(const DirtyRect& r, uint32_t x, uint32_t y) {
-    const auto px = static_cast<int32_t>(x);
-    const auto py = static_cast<int32_t>(y);
-    return !r.empty() && px >= r.x1 && px <= r.x2 && py >= r.y1 && py <= r.y2;
-}
-
-struct Diff {
-    size_t changed = 0;
-    size_t outside = 0;
-};
-
-/// Counts the pixels of `after` that differ from `before`, and those of them outside every
-/// box in `rects`.
-Diff diff_frames(const std::vector<uint8_t>& before, const FrameTarget& after,
-                 const std::vector<DirtyRect>& rects) {
-    Diff diff;
-    for (uint32_t y = 0; y < after.h; y++) {
-        for (uint32_t x = 0; x < after.w; x++) {
-            const size_t i = static_cast<size_t>(y) * after.stride + x * 4;
-            if (std::memcmp(&before[i], after.data + i, 4) == 0) {
-                continue;
-            }
-            diff.changed++;
-            const bool covered =
-                std::any_of(rects.begin(), rects.end(),
-                            [x, y](const DirtyRect& r) { return rect_contains(r, x, y); });
-            diff.outside += covered ? 0 : 1;
-        }
-    }
-    return diff;
-}
-
-/// Pixels with any colour.
-size_t lit_pixels(const FrameTarget& f) {
-    size_t count = 0;
-    for (uint32_t y = 0; y < f.h; y++) {
-        const uint8_t* row = f.data + static_cast<size_t>(y) * f.stride;
-        for (uint32_t x = 0; x < f.w; x++) {
-            count += (row[x * 4] | row[x * 4 + 1] | row[x * 4 + 2]) != 0 ? 1 : 0;
-        }
-    }
-    return count;
-}
-
-/// Pixels whose X byte is not 0xFF.
-size_t non_opaque_pixels(const FrameTarget& f) {
-    size_t count = 0;
-    for (uint32_t y = 0; y < f.h; y++) {
-        const uint8_t* row = f.data + static_cast<size_t>(y) * f.stride;
-        for (uint32_t x = 0; x < f.w; x++) {
-            count += row[x * 4 + 3] != 0xFF ? 1 : 0;
-        }
-    }
-    return count;
-}
-
-void run_timer(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
 
 } // namespace
 
@@ -119,11 +48,11 @@ TEST_CASE("StarfieldSim dirties every pixel its step changes", "[screensaver][st
     size_t changed = 0;
     for (int step = 0; step < 90; step++) {
         CAPTURE(step);
-        const std::vector<uint8_t> before = frame.bytes;
+        const std::vector<uint8_t> before = frame.snapshot();
         std::vector<DirtyRect> dirty;
         sim.step(33, frame.target, rng, dirty);
-        const Diff diff = diff_frames(before, frame.target, dirty);
-        CHECK(diff.outside == 0);
+        const helix::test::FrameDiff diff = helix::test::diff_against(before, frame, dirty);
+        CHECK(diff.uncovered == 0);
         changed += diff.changed;
     }
     REQUIRE(changed > 0);
@@ -173,11 +102,9 @@ TEST_CASE("StarfieldSim replays exactly from a seed", "[screensaver][starfield_s
         return std::make_pair(frame.bytes, dirty);
     };
 
-    const auto first = run(42);
     const Frame black;
-    REQUIRE(first.first != black.bytes);
-    CHECK(run(42) == first);
-    CHECK_FALSE(run(43).first == first.first);
+    REQUIRE(run(42).first != black.bytes);
+    helix::test::check_replays(run, 42, 43);
 }
 
 TEST_CASE("every X byte of a StarfieldSim frame stays 0xFF as stars move and recycle",
@@ -186,15 +113,15 @@ TEST_CASE("every X byte of a StarfieldSim frame stays 0xFF as stars move and rec
     StarfieldSim sim;
     Frame frame;
     sim.init(frame.target, rng, 0);
-    REQUIRE(non_opaque_pixels(frame.target) == 0);
+    REQUIRE(helix::test::non_opaque_pixels(frame.target) == 0);
 
     size_t most_lit = 0;
     std::vector<DirtyRect> dirty;
     for (int step = 0; step < 120; step++) {
         CAPTURE(step);
         sim.step(33, frame.target, rng, dirty);
-        most_lit = std::max(most_lit, lit_pixels(frame.target));
-        CHECK(non_opaque_pixels(frame.target) == 0);
+        most_lit = std::max(most_lit, helix::test::lit_pixels(frame.target));
+        CHECK(helix::test::non_opaque_pixels(frame.target) == 0);
     }
     // The check covered drawn stars, not only the black background.
     REQUIRE(most_lit > 0);
@@ -319,8 +246,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a starfield frame invalidates only what its s
     const int64_t canvas_px = lv_area_get_size(&coords);
 
     helix::test::InvalidatedAreas invalidated(lv_obj_get_display(canvas_obj));
-    lv_tick_inc(33);
-    run_timer(SaverTestAccess::timer(ss));
+    advance_saver(ss, 33);
 
     // The frame erases and redraws the star cluster, so it invalidates, and every area
     // it invalidates is a fraction of the canvas.
@@ -348,8 +274,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     StarAccess::place_stars(ss, 0.02f, -0.02f, 0.9f);
     const auto step_frame = [&]() {
         invalidated.areas.clear();
-        lv_tick_inc(33);
-        run_timer(SaverTestAccess::timer(ss));
+        advance_saver(ss, 33);
     };
 
     step_frame();

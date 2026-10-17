@@ -29,9 +29,6 @@ constexpr uint32_t PANEL_W = 800;
 constexpr uint32_t PANEL_H = 480;
 constexpr int64_t PANEL_PX = static_cast<int64_t>(PANEL_W) * PANEL_H;
 
-/// A saver gets a quarter of a core on a two-core board while the printer is idle.
-constexpr double TWO_CORE_BUDGET = 25.0;
-
 /// Flies `stars` for `frames` and averages what each frame asked to have redrawn.
 SaverLoad measure(int stars, int frames) {
     std::vector<uint8_t> bytes(static_cast<size_t>(PANEL_W) * PANEL_H * 2, 0);
@@ -92,7 +89,7 @@ TEST_CASE("the starfield's lowest rung fits a two-core board", "[screensaver][st
 
     const SaverLoad load = measure(stars, 240);
     CAPTURE(stars, load.areas, load.pixels);
-    CHECK(load.cost() < TWO_CORE_BUDGET);
+    CHECK(load.cost() < helix::test::budget_pct(2));
 
     // And the rungs are ordered: each costs less than the one above it.
     double previous = 0.0;
