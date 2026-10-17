@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <initializer_list>
 #include <string>
@@ -94,36 +95,83 @@ inline bool is_safe_file_root(const std::string& root) {
  * (e.g., `Part.stl_id_0_copy_0`, `model-v2.3mf`, `component:sub`). Rejecting these silently
  * breaks EXCLUDE_OBJECT for most real-world prints (prestonbrown/helixscreen#768).
  *
- * Allows: alphanumeric, `_ - . : ( ) [ ]`. Rejects everything else — which keeps G-code
+ * Allows: alphanumeric, `_ - . : ( ) [ ]`, and well-formed UTF-8 for any codepoint from
+ * U+00A0 up other than U+2028/U+2029. Rejects everything else — which keeps G-code
  * injection vectors closed: `;` (comment), `\n\r` (line injection), control chars, quotes,
  * backslash, and — critically — whitespace. Klipper's G-code parser tokenizes parameters
  * on whitespace, so a NAME containing a space would either truncate (wrong object excluded)
  * or leak trailing tokens into the parameter list. Slicers URL-encode/underscore-replace
  * spaces in object names, so disallowing space breaks nothing real.
+ *
+ * Non-ASCII is allowed because slicers keep the model's own name, so a Chinese or Japanese
+ * model file defines `EXCLUDE_OBJECT_DEFINE NAME=测试件.stl_id_0_copy_0`, and Klipper accepts
+ * it. Every byte of a multi-byte UTF-8 sequence is >= 0x80, so none can be one of the ASCII
+ * delimiters above. The sequence must be well-formed because the name travels in a JSON-RPC
+ * request, and malformed UTF-8 cannot be serialized.
  */
 inline bool is_safe_object_name(const std::string& str) {
     if (str.empty()) {
         return false;
     }
 
-    return std::all_of(str.begin(), str.end(), [](char c) {
-        if (std::isalnum(static_cast<unsigned char>(c))) {
-            return true;
+    size_t i = 0;
+    while (i < str.size()) {
+        const auto c = static_cast<unsigned char>(str[i]);
+        if (c < 0x80) {
+            if (std::isalnum(c)) {
+                ++i;
+                continue;
+            }
+            switch (c) {
+            case '_':
+            case '-':
+            case '.':
+            case ':':
+            case '(':
+            case ')':
+            case '[':
+            case ']':
+                ++i;
+                continue;
+            default:
+                return false;
+            }
         }
-        switch (c) {
-        case '_':
-        case '-':
-        case '.':
-        case ':':
-        case '(':
-        case ')':
-        case '[':
-        case ']':
-            return true;
-        default:
+
+        size_t length = 0;
+        uint32_t cp = 0;
+        if ((c & 0xE0) == 0xC0) {
+            length = 2;
+            cp = c & 0x1F;
+        } else if ((c & 0xF0) == 0xE0) {
+            length = 3;
+            cp = c & 0x0F;
+        } else if ((c & 0xF8) == 0xF0) {
+            length = 4;
+            cp = c & 0x07;
+        } else {
             return false;
         }
-    });
+        if (i + length > str.size()) {
+            return false;
+        }
+        for (size_t k = 1; k < length; ++k) {
+            const auto cont = static_cast<unsigned char>(str[i + k]);
+            if ((cont & 0xC0) != 0x80) {
+                return false;
+            }
+            cp = (cp << 6) | (cont & 0x3F);
+        }
+        static constexpr uint32_t MIN_FOR_LENGTH[] = {0, 0, 0x80, 0x800, 0x10000};
+        const bool overlong = cp < MIN_FOR_LENGTH[length];
+        const bool surrogate = cp >= 0xD800 && cp <= 0xDFFF;
+        // U+0080..U+009F are C1 controls; U+00A0 opens the printable range.
+        if (overlong || surrogate || cp > 0x10FFFF || cp < 0xA0 || cp == 0x2028 || cp == 0x2029) {
+            return false;
+        }
+        i += length;
+    }
+    return true;
 }
 
 /**
