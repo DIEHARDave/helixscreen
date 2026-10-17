@@ -763,6 +763,17 @@
     <string name="font_body_xlarge" value="noto_sans_24"/>
     <string name="font_body_xxlarge" value="noto_sans_32"/>
     <!-- NO BASE font_body - registered at runtime -->
+    <!-- font_jog_key variants: the Axis Rows jog keys. Body text where the keys
+         are small; the heading face from large up, where a body label leaves
+         most of a key empty. Each value is a face its tier already links. -->
+    <string name="font_jog_key_micro" value="noto_sans_12"/>
+    <string name="font_jog_key_tiny" value="noto_sans_12"/>
+    <string name="font_jog_key_small" value="noto_sans_14"/>
+    <string name="font_jog_key_medium" value="noto_sans_18"/>
+    <string name="font_jog_key_large" value="noto_sans_28"/>
+    <string name="font_jog_key_xlarge" value="noto_sans_32"/>
+    <string name="font_jog_key_xxlarge" value="noto_sans_40"/>
+    <!-- NO BASE font_jog_key - registered at runtime -->
     <!-- font_small variants (hints, helpers, chart labels) - uses Light weight -->
     <string name="font_small_micro" value="noto_sans_light_10"/>
     <string name="font_small_tiny" value="noto_sans_light_11"/>
@@ -802,6 +813,16 @@
     <string name="icon_font_xs_xlarge" value="mdi_icons_24"/>
     <string name="icon_font_xs_xxlarge" value="mdi_icons_32"/>
     <!-- NO BASE icon_font_xs - registered at runtime -->
+    <!-- icon_font_jog_key: the Axis Rows jog-key arrows, sized with
+         font_jog_key (ui_button icon_size="jog_key"). -->
+    <string name="icon_font_jog_key_micro" value="mdi_icons_16"/>
+    <string name="icon_font_jog_key_tiny" value="mdi_icons_24"/>
+    <string name="icon_font_jog_key_small" value="mdi_icons_24"/>
+    <string name="icon_font_jog_key_medium" value="mdi_icons_24"/>
+    <string name="icon_font_jog_key_large" value="mdi_icons_32"/>
+    <string name="icon_font_jog_key_xlarge" value="mdi_icons_48"/>
+    <string name="icon_font_jog_key_xxlarge" value="mdi_icons_64"/>
+    <!-- NO BASE icon_font_jog_key - registered at runtime -->
     <!-- icon_font_sm: Small inline icons (metadata, hints, small indicators) -->
     <string name="icon_font_sm_micro" value="mdi_icons_16"/>
     <string name="icon_font_sm_tiny" value="mdi_icons_24"/>

@@ -13,7 +13,7 @@
             width="100%" height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
             scrollable="false" flex_flow="row" style_pad_gap="#space_sm">
       <lv_obj name="cross_xy"
-              width="0" height="100%" flex_grow="3" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
+              width="0" height="100%" flex_grow="2" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
               scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
         <lv_obj width="0"
                 height="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
@@ -22,8 +22,8 @@
                   height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
                   clickable="false"/>
           <motion_jog_button name="cross_x_minus"
-                             width="100%" height="0" jog="x_minus_step" flex_grow="1" icon="arrow_left"
-                             variant="secondary"/>
+                             width="100%" height="0" icon_size="jog_key" jog="x_minus_step" flex_grow="1"
+                             icon="arrow_left" variant="secondary"/>
           <lv_obj width="100%"
                   height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
                   clickable="false"/>
@@ -32,13 +32,14 @@
                 height="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
                 flex_flow="column" style_pad_gap="#space_xs">
           <motion_jog_button name="cross_y_plus"
-                             width="100%" height="0" jog="y_plus_step" flex_grow="1" icon="arrow_up" variant="secondary"/>
+                             width="100%" height="0" icon_size="jog_key" jog="y_plus_step" flex_grow="1" icon="arrow_up"
+                             variant="secondary"/>
           <motion_home_button name="cross_home_xy"
                               width="100%" height="0" flex_grow="1" axis="XY"
                               needs_home="motion_x_homed eq 0 or motion_y_homed eq 0"/>
           <motion_jog_button name="cross_y_minus"
-                             width="100%" height="0" jog="y_minus_step" flex_grow="1" icon="arrow_down"
-                             variant="secondary"/>
+                             width="100%" height="0" icon_size="jog_key" jog="y_minus_step" flex_grow="1"
+                             icon="arrow_down" variant="secondary"/>
         </lv_obj>
         <lv_obj width="0"
                 height="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
@@ -47,8 +48,8 @@
                   height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
                   clickable="false"/>
           <motion_jog_button name="cross_x_plus"
-                             width="100%" height="0" jog="x_plus_step" flex_grow="1" icon="arrow_right"
-                             variant="secondary"/>
+                             width="100%" height="0" icon_size="jog_key" jog="x_plus_step" flex_grow="1"
+                             icon="arrow_right" variant="secondary"/>
           <lv_obj width="100%"
                   height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
                   clickable="false"/>
@@ -60,14 +61,14 @@
               width="0" height="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
               scrollable="false" flex_flow="column" style_pad_gap="#space_xs">
         <motion_jog_button name="cross_z_up"
-                           width="100%" height="0" jog="z_up_step" flex_grow="1" icon="arrow_up"
+                           width="100%" height="0" icon_size="jog_key" jog="z_up_step" flex_grow="1" icon="arrow_up"
                            bind_icon="motion_z_up_icon" variant="secondary">
           <bind_state_if_eq subject="motion_z_up_blocked" state="disabled" ref_value="1"/>
         </motion_jog_button>
         <motion_home_button name="cross_home_z"
                             width="100%" height="0" flex_grow="1" axis="Z" needs_home="motion_z_homed eq 0"/>
         <motion_jog_button name="cross_z_down"
-                           width="100%" height="0" jog="z_down_step" flex_grow="1" icon="arrow_down"
+                           width="100%" height="0" icon_size="jog_key" jog="z_down_step" flex_grow="1" icon="arrow_down"
                            bind_icon="motion_z_down_icon" variant="secondary">
           <bind_state_if_eq subject="motion_z_down_blocked" state="disabled" ref_value="1"/>
         </motion_jog_button>

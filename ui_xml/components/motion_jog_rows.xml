@@ -9,7 +9,8 @@
        The Z row's arrows carry the kinematics-aware icons and limit states of
        the pad layout's Z column, and follow its bed_moves inversion. Portrait
        rows are narrow and tall, so the jog keys stack their icon over the
-       distance there. -->
+       distance there. Labels and arrows use the jog-key font tier, which grows
+       with the keys on large screens. -->
   <view name="motion_jog_rows"
         extends="lv_obj" width="100%" height="100%" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
         scrollable="false" flex_flow="column" style_pad_gap="#space_xs">
@@ -17,87 +18,89 @@
             width="100%" height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
             scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
       <motion_home_button name="rows_home_all"
-                          width="0" height="100%" flex_grow="1" text="All" axis="all"
+                          width="0" height="100%" style_text_font="#font_jog_key" flex_grow="1" text="All" axis="all"
                           needs_home="motion_x_homed eq 0 or motion_y_homed eq 0 or motion_z_homed eq 0"/>
-      <motion_leveling_row name="rows_leveling" width="0" height="100%" flex_grow="2"/>
+      <motion_leveling_row name="rows_leveling" width="0" height="100%" style_text_font="#font_jog_key" flex_grow="2"/>
     </lv_obj>
     <lv_obj name="rows_x"
             width="100%" height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
             scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
       <motion_jog_button name="rows_x_minus_large"
-                         width="0" height="100%" jog="x_minus_large" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_left" label="motion_jog_outer_label"
-                         variant="secondary"/>
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="x_minus_large"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_left" label="motion_jog_outer_label" variant="secondary"/>
       <motion_jog_button name="rows_x_minus_small"
-                         width="0" height="100%" jog="x_minus_small" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_left" label="motion_jog_inner_label"
-                         variant="secondary"/>
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="x_minus_small"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_left" label="motion_jog_inner_label" variant="secondary"/>
       <motion_home_button name="rows_home_x"
-                          width="0" height="100%" flex_grow="1" text="X" icon="" axis="X"
-                          needs_home="motion_x_homed eq 0"/>
+                          width="0" height="100%" style_text_font="#font_jog_key" flex_grow="1" text="X" icon=""
+                          axis="X" needs_home="motion_x_homed eq 0"/>
       <motion_jog_button name="rows_x_plus_small"
-                         width="0" height="100%" jog="x_plus_small" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_right" label="motion_jog_inner_label"
-                         variant="secondary"/>
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="x_plus_small"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_right" label="motion_jog_inner_label" variant="secondary"/>
       <motion_jog_button name="rows_x_plus_large"
-                         width="0" height="100%" jog="x_plus_large" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_right" label="motion_jog_outer_label"
-                         variant="secondary"/>
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="x_plus_large"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_right" label="motion_jog_outer_label" variant="secondary"/>
     </lv_obj>
     <lv_obj name="rows_y"
             width="100%" height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
             scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
       <motion_jog_button name="rows_y_minus_large"
-                         width="0" height="100%" jog="y_minus_large" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_down" label="motion_jog_outer_label"
-                         variant="secondary"/>
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="y_minus_large"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_down" label="motion_jog_outer_label" variant="secondary"/>
       <motion_jog_button name="rows_y_minus_small"
-                         width="0" height="100%" jog="y_minus_small" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_down" label="motion_jog_inner_label"
-                         variant="secondary"/>
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="y_minus_small"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_down" label="motion_jog_inner_label" variant="secondary"/>
       <motion_home_button name="rows_home_y"
-                          width="0" height="100%" flex_grow="1" text="Y" icon="" axis="Y"
-                          needs_home="motion_y_homed eq 0"/>
+                          width="0" height="100%" style_text_font="#font_jog_key" flex_grow="1" text="Y" icon=""
+                          axis="Y" needs_home="motion_y_homed eq 0"/>
       <motion_jog_button name="rows_y_plus_small"
-                         width="0" height="100%" jog="y_plus_small" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_up" label="motion_jog_inner_label"
-                         variant="secondary"/>
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="y_plus_small"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_up" label="motion_jog_inner_label" variant="secondary"/>
       <motion_jog_button name="rows_y_plus_large"
-                         width="0" height="100%" jog="y_plus_large" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_up" label="motion_jog_outer_label"
-                         variant="secondary"/>
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="y_plus_large"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_up" label="motion_jog_outer_label" variant="secondary"/>
     </lv_obj>
     <lv_obj name="rows_z"
             width="100%" height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
             scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
       <motion_jog_button name="rows_z_down_large"
-                         width="0" height="100%" jog="z_down_large" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_down" bind_icon="motion_z_down_icon"
-                         label="motion_jog_outer_label" variant="secondary">
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="z_down_large"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_down" bind_icon="motion_z_down_icon" label="motion_jog_outer_label"
+                         variant="secondary">
         <bind_state_if_eq subject="motion_z_down_blocked" state="disabled" ref_value="1"/>
       </motion_jog_button>
       <motion_jog_button name="rows_z_down_small"
-                         width="0" height="100%" jog="z_down_small" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_down" bind_icon="motion_z_down_icon"
-                         label="motion_jog_inner_label" variant="secondary">
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="z_down_small"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_down" bind_icon="motion_z_down_icon" label="motion_jog_inner_label"
+                         variant="secondary">
         <bind_state_if_eq subject="motion_z_down_blocked" state="disabled" ref_value="1"/>
       </motion_jog_button>
       <motion_home_button name="rows_home_z"
-                          width="0" height="100%" flex_grow="1" text="Z" icon="" axis="Z"
-                          needs_home="motion_z_homed eq 0"/>
+                          width="0" height="100%" style_text_font="#font_jog_key" flex_grow="1" text="Z" icon=""
+                          axis="Z" needs_home="motion_z_homed eq 0"/>
       <motion_jog_button name="rows_z_up_small"
-                         width="0" height="100%" jog="z_up_small" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_up" bind_icon="motion_z_up_icon"
-                         label="motion_jog_inner_label" variant="secondary">
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="z_up_small"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_up" bind_icon="motion_z_up_icon" label="motion_jog_inner_label" variant="secondary">
         <bind_state_if_eq subject="motion_z_up_blocked" state="disabled" ref_value="1"/>
       </motion_jog_button>
       <motion_jog_button name="rows_z_up_large"
-                         width="0" height="100%" jog="z_up_large" stacked_subject="ui_is_portrait" stacked_if_eq="1"
-                         style_pad_hor="#space_xxs" flex_grow="2" icon="arrow_up" bind_icon="motion_z_up_icon"
-                         label="motion_jog_outer_label" variant="secondary">
+                         width="0" height="100%" icon_size="jog_key" style_text_font="#font_jog_key" jog="z_up_large"
+                         stacked_subject="ui_is_portrait" stacked_if_eq="1" style_pad_hor="#space_xxs" flex_grow="2"
+                         icon="arrow_up" bind_icon="motion_z_up_icon" label="motion_jog_outer_label" variant="secondary">
         <bind_state_if_eq subject="motion_z_up_blocked" state="disabled" ref_value="1"/>
       </motion_jog_button>
     </lv_obj>
-    <motion_jog_modes name="rows_modes" height="0" flex_grow="1" button_height="100%"/>
+    <motion_jog_modes name="rows_modes" height="0" flex_grow="1" button_height="100%" text_font="#font_jog_key"/>
   </view>
 </component>
