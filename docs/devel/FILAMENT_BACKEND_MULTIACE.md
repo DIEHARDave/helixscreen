@@ -86,7 +86,7 @@ feeder and manual heads included: the engine owns the feed state machine for all
 | Select a bay | `T<h>` when it is h's routed bay, refused otherwise | |
 | Batch unload covering every loaded head | `ACE_UNLOAD_ALL_HEADS` | |
 | Batch unload, part of the loaded heads | `ACE_UNLOAD_HEAD` per head, one script | |
-| Batch load | refused when any selected head is ACE-fed | `ACE_LOAD_HEAD` per head, one script |
+| Batch load | refused when any selected head is ACE-fed | `ACE_LOAD_HEAD` per head, one script, after every head passes the single-load checks |
 | Dry unit k | `ACE_DRY ACE=k TEMP=t DURATION=m`; stop `ACE_STOP_DRYING ACE=k` | |
 
 `ACE_LOAD_HEAD` answers OK and feeds nothing into a head that already holds filament, and
@@ -94,8 +94,11 @@ returns silently for a bay whose gate is empty. So the backend refuses an empty 
 sending anything, and swaps a bay into an occupied head in two steps: the unload goes
 alone, and the load waits (`AmsBackendMultiAce::advance_pending_load`) for a frame showing
 `head_source[h]` null and the head's load latch clear. The unload's OK is not that proof;
-it opens a 15 s window, and a head still occupied when it closes drops the load. A failed
-unload, or any other filament op, drops it at once. `ACE_SWAP_HEAD` would do both in one
+it opens a 15 s window, and a head still occupied when it closes drops the load. So does the
+engine leaving multi/head mode, or a print holding the heads by the time the head empties;
+each of those raises EVENT_ERROR naming the bay. A failed unload, or any other filament op
+(a tool change and a tool park included), drops it at once. A head loaded with no recorded
+`head_source` refuses a bay swap outright: the engine has no bay to return that strand to. `ACE_SWAP_HEAD` would do both in one
 command, but its behaviour outside a print is unconfirmed. `needs_unload_before_load()` is
 false for a bay: the screen's swap ladder would send `T<h>`, which loads no bay.
 

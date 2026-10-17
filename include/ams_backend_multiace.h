@@ -70,6 +70,7 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     AmsError do_select_slot(int slot_index) override;
     /// Only the four heads are tools; the bay indices beyond them are not.
     AmsError do_change_tool(int tool_number) override;
+    AmsError do_park_active_tool() override;
     AmsError do_filament_batch(const std::vector<int>& slots, bool load) override;
 
     [[nodiscard]] bool head_is_upstream_fed_locked(int head) const override;
@@ -126,7 +127,7 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
         std::pair<int, int> bay{-1, -1};
         uint64_t id = 0;
         bool unload_answered = false;
-        std::chrono::steady_clock::time_point deadline{};
+        std::chrono::steady_clock::time_point unload_answered_at{};
     };
 
     /// How long after the unload's answer the frames have to show the head
@@ -137,8 +138,15 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     void cancel_pending_load(const char* why);
 
     /// Sends the pending bay load when this frame shows its head empty, and
-    /// drops it once its grace window has closed. Main thread, mutex_ not held.
+    /// drops it, raising EVENT_ERROR, once its grace window has closed, the
+    /// engine stops driving the units, or a print holds the heads. Main
+    /// thread, mutex_ not held.
     void advance_pending_load();
+
+    /// Why head @p head cannot take a lane load now, or nullopt: filament
+    /// already at the head, or for a head the ACE does not feed, the U1's own
+    /// feeder preconditions. Takes mutex_ itself.
+    [[nodiscard]] std::optional<AmsError> head_load_refusal(int head, bool ace_head) const;
 
     // Engine state, merged across delta frames. All under mutex_.
     std::optional<int> api_version_;
@@ -159,6 +167,11 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     /// Under mutex_.
     std::optional<PendingBayLoad> pending_load_;
     uint64_t next_pending_id_ = 1;
+
+  protected:
+    /// kPendingLoadGrace, held per backend so a test can close the window.
+    /// Under mutex_.
+    std::chrono::milliseconds pending_load_grace_{kPendingLoadGrace};
 };
 
 } // namespace helix

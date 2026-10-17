@@ -360,6 +360,28 @@ bool AmsBackendMultiAce::slot_is_actively_loaded(int slot_index) const {
 // Filament operations
 // ============================================================================
 
+std::optional<AmsError> AmsBackendMultiAce::head_load_refusal(int head, bool ace_head) const {
+    if (AmsBackendSnapmaker::slot_has_filament_at_toolhead(head)) {
+        return AmsErrorHelper::slot_ineligible(
+            lane_noun(), head,
+            filament_op_eligibility_reason(FilamentOpEligibility::AlreadyLoaded));
+    }
+    if (ace_head) {
+        return std::nullopt;
+    }
+    // A feeder or manual head: the engine loads it through the side feeder,
+    // under the same feeder preconditions the U1 checks.
+    switch (const auto e = slot_op_eligibility(head, /*load=*/true)) {
+    case FilamentOpEligibility::AlreadyLoaded:
+    case FilamentOpEligibility::FeederUnavailable:
+    case FilamentOpEligibility::SensorDisabled:
+        return AmsErrorHelper::slot_ineligible(lane_noun(), head,
+                                               filament_op_eligibility_reason(e));
+    default:
+        return std::nullopt;
+    }
+}
+
 AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
     cancel_pending_load("a new load");
     int head = -1;
@@ -408,20 +430,10 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
     };
 
     if (!bay) {
-        if (head_loaded) {
-            return already_loaded();
+        if (auto refusal = head_load_refusal(head, ace_head)) {
+            return *refusal;
         }
         if (!ace_head) {
-            // A feeder or manual head: the engine loads it through the side
-            // feeder, under the same feeder preconditions the U1 checks.
-            switch (const auto e = slot_op_eligibility(head, /*load=*/true)) {
-            case FilamentOpEligibility::FeederUnavailable:
-            case FilamentOpEligibility::SensorDisabled:
-                return AmsErrorHelper::slot_ineligible(lane_noun(), slot_index,
-                                                       filament_op_eligibility_reason(e));
-            default:
-                break;
-            }
             return dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
         }
         if (mode == multiace::Mode::MULTI) {
@@ -450,6 +462,16 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
     if (head_loaded && recorded == bay) {
         return already_loaded();
     }
+    if (head_loaded && !head_has_source) {
+        // Filament at the head that the engine has no record of: no bay of
+        // its own to return it to, so a swap would feed a second strand.
+        return AmsError(AmsResult::WRONG_STATE,
+                        "head " + std::to_string(head) +
+                            " is loaded with no recorded source; refusing a bay swap",
+                        AmsErrorHelper::position_label(tool_noun(), head) + ": " +
+                            lv_tr("Unload from toolhead first"),
+                        "", slot_index);
+    }
     if (!head_loaded && !head_has_source) {
         return dispatch_feed(multiace::load_gcode(head, bay), EVENT_LOAD_COMPLETE);
     }
@@ -471,7 +493,7 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (pending_load_ && pending_load_->id == id) {
             pending_load_->unload_answered = true;
-            pending_load_->deadline = std::chrono::steady_clock::now() + kPendingLoadGrace;
+            pending_load_->unload_answered_at = std::chrono::steady_clock::now();
         }
     };
     auto err = dispatch_feed(multiace::unload_gcode(head), answered,
@@ -515,15 +537,19 @@ void AmsBackendMultiAce::cancel_pending_load(const char* why) {
 
 void AmsBackendMultiAce::advance_pending_load() {
     PendingBayLoad pending;
+    std::chrono::milliseconds grace{};
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!pending_load_) {
             return;
         }
         pending = *pending_load_;
+        grace = pending_load_grace_;
     }
     // Takes mutex_ itself, so read before the decision below re-takes it.
     const bool head_loaded = AmsBackendSnapmaker::slot_has_filament_at_toolhead(pending.head);
+    std::string dropped;
+    bool send = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!pending_load_ || pending_load_->id != pending.id) {
@@ -532,20 +558,31 @@ void AmsBackendMultiAce::advance_pending_load() {
         const bool empty =
             !head_loaded && !head_source_[static_cast<size_t>(pending.head)].has_value();
         if (!active_locked()) {
-            pending_load_.reset();
-            return;
-        }
-        if (!empty) {
-            if (pending.unload_answered && std::chrono::steady_clock::now() > pending.deadline) {
-                spdlog::warn("{} Head {} still holds filament after its unload; not loading ACE "
-                             "{} bay {}",
-                             backend_log_tag(), pending.head + 1, pending.bay.first + 1,
-                             pending.bay.second + 1);
-                pending_load_.reset();
-            }
+            dropped = "multiACE stopped driving the ACE units";
+        } else if (empty) {
+            send = true;
+        } else if (pending.unload_answered &&
+                   std::chrono::steady_clock::now() > pending.unload_answered_at + grace) {
+            dropped =
+                fmt::format("toolhead {} still holds filament after its unload", pending.head + 1);
+        } else {
             return;
         }
         pending_load_.reset();
+    }
+    if (send) {
+        // A print that took the heads while the unload ran owns them now.
+        if (auto err = refuse_if_printing(/*paused_blocks=*/true); !err.success()) {
+            dropped = "a print holds the toolheads";
+        }
+    }
+    if (!dropped.empty()) {
+        spdlog::warn("{} Not loading ACE {} bay {} into head {}: {}", backend_log_tag(),
+                     pending.bay.first + 1, pending.bay.second + 1, pending.head + 1, dropped);
+        emit_event(EVENT_ERROR,
+                   fmt::format("ACE {} bay {} was not loaded: {}", pending.bay.first + 1,
+                               pending.bay.second + 1, dropped));
+        return;
     }
     spdlog::info("{} Head {} is empty; loading ACE {} bay {}", backend_log_tag(), pending.head + 1,
                  pending.bay.first + 1, pending.bay.second + 1);
@@ -601,10 +638,16 @@ AmsError AmsBackendMultiAce::do_select_slot(int slot_index) {
 }
 
 AmsError AmsBackendMultiAce::do_change_tool(int tool_number) {
+    cancel_pending_load("a tool change");
     if (tool_number >= kHeads) {
         return AmsErrorHelper::tool_out_of_range(tool_number);
     }
     return AmsBackendSnapmaker::do_change_tool(tool_number);
+}
+
+AmsError AmsBackendMultiAce::do_park_active_tool() {
+    cancel_pending_load("a tool park");
+    return AmsBackendSnapmaker::do_park_active_tool();
 }
 
 AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bool load) {
@@ -643,6 +686,15 @@ AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bo
     }
     if (load && any_ace) {
         return AmsErrorHelper::not_supported("Batch load into ACE-fed toolheads");
+    }
+    if (load) {
+        // Every head is checked before anything is sent: Klipper aborts the
+        // rest of a script at the first line that raises.
+        for (int h : heads) {
+            if (auto refusal = head_load_refusal(h, /*ace_head=*/false)) {
+                return *refusal;
+            }
+        }
     }
 
     if (!load) {

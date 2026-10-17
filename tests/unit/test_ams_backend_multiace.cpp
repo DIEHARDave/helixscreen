@@ -105,6 +105,20 @@ class CapturingMultiAce : public AmsBackendMultiAce {
     std::function<void()> last_ok;
     std::function<void(const MoonrakerError&)> last_error;
 
+    void close_pending_window() {
+        pending_load_grace_ = std::chrono::milliseconds{0};
+    }
+
+    /// Every EVENT_ERROR payload the backend raises.
+    std::vector<std::string> errors;
+    void record_errors() {
+        set_event_callback([this](const std::string& ev, const std::string& data) {
+            if (ev == EVENT_ERROR) {
+                errors.push_back(data);
+            }
+        });
+    }
+
     void frame(const json& status) {
         SnapmakerTestAccess::handle_status(*this, status);
     }
@@ -379,6 +393,12 @@ TEST_CASE_METHOD(MultiAceFixture, "load into an occupied head unloads first", "[
         REQUIRE(b.sent.size() == 2);
         CHECK(b.sent[1] == "ACE_UNLOAD_HEAD HEAD=1");
     }
+    SECTION("a tool change drops the load") {
+        REQUIRE(b.change_tool(1).success());
+        b.frame(json{{"ace", {{"head_source", json::object()}}}});
+        REQUIRE(b.sent.size() == 2);
+        CHECK(b.sent[1] == "T1");
+    }
     SECTION("the routed bay of a loaded head is already loaded") {
         b.frame(feed_frame(0, "load_finish"));
         b.sent.clear();
@@ -486,10 +506,32 @@ TEST_CASE_METHOD(MultiAceFixture, "batch ops with ACE-fed heads", "[multiace]") 
         REQUIRE(b.sent.size() == 1);
         CHECK(b.sent[0] == "ACE_UNLOAD_HEAD HEAD=0\nACE_UNLOAD_HEAD HEAD=2");
     }
-    SECTION("a batch load of feeder heads goes through the engine") {
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "batch load runs the single-load checks per head", "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_2ace_2feeder.json"));
+
+    SECTION("feeder heads go through the engine") {
         REQUIRE(b.load_filament_batch({3, 2}).success());
         REQUIRE(b.sent.size() == 1);
         CHECK(b.sent[0] == "ACE_LOAD_HEAD HEAD=3\nACE_LOAD_HEAD HEAD=2");
+    }
+    SECTION("a loaded head refuses the whole batch") {
+        b.frame(feed_frame(2, "load_finish"));
+        CHECK_FALSE(b.load_filament_batch({3, 2}).success());
+        CHECK(b.sent.empty());
+    }
+    SECTION("a feeder out of automatic mode refuses the whole batch") {
+        b.frame(json{{"filament_feed right",
+                      {{"extruder3",
+                        {{"filament_detected", true},
+                         {"channel_state", "wait_insert"},
+                         {"channel_error", "ok"},
+                         {"module_exist", false}}}}}});
+        CHECK_FALSE(b.load_filament_batch({2, 3}).success());
+        CHECK_FALSE(b.load_filament(3).success());
+        CHECK(b.sent.empty());
     }
 }
 
@@ -591,4 +633,57 @@ TEST_CASE_METHOD(MultiAceFixture, "a stock U1 keeps a PREP sensor on every head"
     }
     CHECK_FALSE(stock.slot_has_prep_sensor(4));
     CHECK_FALSE(stock.slot_has_prep_sensor(-1));
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a dropped bay load says so", "[multiace]") {
+    CapturingMultiAce b;
+    b.record_errors();
+    b.frame(ace_frame("head_mode_4ace.json"));
+    REQUIRE(b.load_filament(multiace::bay_global(0, 1)).success());
+    REQUIRE(b.sent.size() == 1);
+
+    SECTION("the head still holds filament when the window closes") {
+        b.close_pending_window();
+        b.answer_ok();
+        b.frame(feed_frame(0, "preload_finish"));
+        REQUIRE(b.errors.size() == 1);
+        CHECK(b.errors[0].find("ACE 1 bay 2 was not loaded") == 0);
+        // Dropped for good: a later empty frame sends nothing.
+        b.frame(json{{"ace", {{"head_source", json::object()}}}});
+        CHECK(b.sent.size() == 1);
+    }
+    SECTION("the engine stops driving the units") {
+        b.frame(json{{"ace", {{"mode", "normal"}}}});
+        REQUIRE(b.errors.size() == 1);
+        b.frame(json{{"ace", {{"mode", "head"}, {"head_source", json::object()}}}});
+        CHECK(b.sent.size() == 1);
+    }
+}
+
+TEST_CASE_METHOD(MultiAcePrintFixture, "a pending bay load yields to a print", "[multiace]") {
+    CapturingMultiAce b(api.get(), &client);
+    b.record_errors();
+    b.frame(ace_frame("head_mode_4ace.json"));
+    REQUIRE(b.load_filament(multiace::bay_global(0, 1)).success());
+    REQUIRE(b.sent.size() == 1);
+    b.answer_ok();
+
+    helix::test::set_wire_state(state, PrintJobState::PAUSED);
+    b.frame(json{{"ace", {{"head_source", json::object()}}}});
+    CHECK(b.sent.size() == 1);
+    CHECK(b.errors.size() == 1);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a loaded head with no recorded source refuses a bay swap",
+                 "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    // Head 1 holds filament the engine has no head_source for.
+    b.frame(feed_frame(1, "load_finish"));
+
+    const AmsError refused = b.load_filament(multiace::bay_global(1, 0));
+    CHECK_FALSE(refused.success());
+    CHECK(refused.user_msg == "Toolhead 2: Unload from toolhead first");
+    CHECK(b.sent.empty());
 }
