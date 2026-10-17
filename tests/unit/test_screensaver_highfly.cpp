@@ -96,11 +96,6 @@ using helix::ui::SaverTestAccess;
 
 namespace {
 
-bool inside(const DirtyRect& inner, const DirtyRect& outer) {
-    return inner.x1 >= outer.x1 && inner.y1 >= outer.y1 && inner.x2 <= outer.x2 &&
-           inner.y2 <= outer.y2;
-}
-
 float luminance(Rgb c) {
     return 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
 }
@@ -307,7 +302,7 @@ TEST_CASE("the sky above the cloud band repaints only for the clock without towe
                          clock.x2 + 2 * sim.scale(), clock.y2 + 2 * sim.scale()};
         for (const DirtyRect& d : dirty) {
             if (d.y1 < band) {
-                CHECK(inside(d, padded));
+                CHECK(helix::test::contains(padded, d));
             }
         }
         checked++;
@@ -749,7 +744,7 @@ TEST_CASE("the ladder drops layers before coarsening the deck and ends standing 
     sim.step(250, frame.target, rng, reading_at(sod + 60), dirty);
     REQUIRE_FALSE(dirty.empty());
     for (const DirtyRect& d : dirty) {
-        CHECK(inside(d, padded));
+        CHECK(helix::test::contains(padded, d));
     }
     const auto d = diff_against(before, frame, dirty);
     CHECK(d.changed > 0);

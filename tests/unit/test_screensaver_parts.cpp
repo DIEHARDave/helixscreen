@@ -48,9 +48,8 @@ using helix::ui::SaverOverlay;
 namespace {
 
 bool box_covers(const std::vector<DirtyRect>& boxes, const DirtyRect& r) {
-    return std::any_of(boxes.begin(), boxes.end(), [&](const DirtyRect& b) {
-        return b.x1 <= r.x1 && b.y1 <= r.y1 && b.x2 >= r.x2 && b.y2 >= r.y2;
-    });
+    return std::any_of(boxes.begin(), boxes.end(),
+                       [&](const DirtyRect& b) { return helix::test::contains(b, r); });
 }
 
 bool areas_cover_point(const std::vector<lv_area_t>& areas, int32_t x, int32_t y) {

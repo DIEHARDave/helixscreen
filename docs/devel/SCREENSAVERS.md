@@ -257,7 +257,7 @@ build draws at its depth, otherwise the first registered saver that does, and Of
    `ScreensaverManager::ScreensaverManager`.
 4. Add the new sources to `firmware/helixscreen-esp32/components/helixapp/app_srcs_excluded.txt`
    (the Makefile screensaver filter picks up `src/ui/screensaver_*.cpp` by itself).
-5. Test determinism per seed, that dirty areas cover every changed pixel, and the ladder, with
+5. Add the saver and its sim to the contract tests (step 8), test what is particular to it with
    the sim kit (`tests/test_helpers/screensaver_sim_kit.h`: `TestFrame`, `SimRun`, `diff_against`,
    `check_replays`), and record the saver's pixel fingerprint in
    `tests/unit/test_screensaver_fingerprint.cpp` (`HELIX_SCREENSAVER_FINGERPRINT_WRITE=1` records
@@ -267,13 +267,23 @@ build draws at its depth, otherwise the first registered saver that does, and Of
    `.rodata` are fine). Everything is allocated in `on_start()` and released, capacity included,
    in `on_stop()`; `clear()` on a vector keeps its capacity, so swap it with an empty one. Check
    with `size build/obj/ui/screensaver_<name>*.o`.
-7. Size every buffer for the level the run starts at. A run never steps up (the gate only steps
-   down), so each later rung is coarser and fits in the capacity already held: a step down
-   allocates nothing, and a board that starts at a low rung never holds the top rung's memory.
-   A buffer only some rungs use (maze's fogged floor and ceiling bands) is freed on a rung that
-   drops it. A request for a finer level mid-run (a test, or a forced level) reallocates
-   then; that is the rare path. A sim's tests pin this: no heap growth across frames and step
-   downs from every starting rung, in both formats.
+7. Size for the largest need of any rung from the start level down; never grow on a step down;
+   free what the still rung doesn't need after its paint. A run never steps up (the gate only
+   steps down), so init sizes for the start rung and every rung below it (a ladder whose still
+   rung is finer than the rung above, as Aqua's and High Fly's are, counts that rung too), a step
+   down allocates nothing, and a board that starts at a low rung never holds the top rung's
+   memory. A buffer only some rungs use (maze's fogged floor and ceiling bands) is freed on a
+   rung that drops it, and a still rung frees the scene behind its clock once it has painted it.
+   A request for a finer level mid-run (a test, or a forced level) reallocates then; that is the
+   rare path.
+8. Two test files check every saver and sim, so a new one only adds itself to their type lists:
+   `tests/unit/test_screensaver_contract.cpp` (level 0's period and refresh, registration, the
+   canvas format, the sim's ladder, a level request reaching the frame period, a stopped saver
+   holding no sim buffers, the stride-derived canvas extent, the X byte) and
+   `tests/unit/test_screensaver_sim_contract.cpp` (dirty boxes cover every change, rows stay in
+   bounds, XRGB8888 stays opaque, a seed replays and another differs, the heap never rises above
+   its init value from any starting rung, a still rung frees its scene, `clear()` frees it all;
+   and `[.][saver_bench]`, ms per frame at every rung). Every sim implements `heap_bytes()`.
 
 ## Fireflies
 

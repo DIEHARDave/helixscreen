@@ -9,6 +9,7 @@
 #include "app_globals.h"
 #include "print_history_data.h"
 #include "printer_state.h"
+#include "screensaver_fast_math.h"
 #include "screensaver_maze.h"
 #include "screensaver_maze_sim.h"
 #include "screensaver_pixel_writer.h"
@@ -846,7 +847,8 @@ TEST_CASE("a wall's fog follows its distance, darker on the y side", "[screensav
              frame.target);
     CHECK(r.wall_fog_k(mid) == k);
     // Facing north, 3.5 tiles from the north wall's face at y = 1.
-    r.render(map, {}, MazePose{size * 0.5f, 4.5f, -3.14159265f * 0.5f}, 0.0f, 0, frame.target);
+    r.render(map, {}, MazePose{size * 0.5f, 4.5f, -helix::ui::SAVER_PI * 0.5f}, 0.0f, 0,
+             frame.target);
     REQUIRE(r.wall_distance(mid) == Catch::Approx(3.5f).margin(0.01f));
     CHECK(r.wall_fog_k(mid) == (k * helix::ui::MAZE_SIDE_K + 16) >> 5);
 }
@@ -1057,7 +1059,7 @@ TEST_CASE("picture walls read the right way round from all four sides", "[screen
         // Three tiles back from the picture tile's centre, facing it.
         const MazePose pose{picture[heading][0] + 0.5f - 3.0f * helix::ui::HEADING_DX[heading],
                             picture[heading][1] + 0.5f - 3.0f * helix::ui::HEADING_DY[heading],
-                            heading * 3.14159265f * 0.5f};
+                            heading * helix::ui::SAVER_PI * 0.5f};
         r.render(map, {}, pose, 0.0f, 0, frame.target);
         const uint32_t row = r.internal_h() / 2;
         const uint32_t left = r.internal_pixel(r.internal_w() / 2 - 10, row);
@@ -1136,7 +1138,7 @@ MazeMap two_picture_room(uint8_t east, uint8_t north) {
 uint32_t centre_facing(MazeRenderer& r, const MazeMap& map, int heading) {
     TestFrame frame(160, 100, PixelFormat::XRGB8888);
     const MazePose pose = heading == 0 ? MazePose{14.0f - 3.0f, 7.5f, 0.0f}
-                                       : MazePose{7.5f, 1.0f + 3.0f, -3.14159265f * 0.5f};
+                                       : MazePose{7.5f, 1.0f + 3.0f, -helix::ui::SAVER_PI * 0.5f};
     r.render(map, {}, pose, 0.0f, 0, frame.target);
     return r.internal_pixel(r.internal_w() / 2, r.internal_h() / 2);
 }

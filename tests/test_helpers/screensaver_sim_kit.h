@@ -126,6 +126,12 @@ inline bool covers(const std::vector<DirtyRect>& dirty, int32_t x, int32_t y) {
     });
 }
 
+/// True when `outer` contains all of `inner`.
+inline bool contains(const DirtyRect& outer, const DirtyRect& inner) {
+    return outer.x1 <= inner.x1 && outer.y1 <= inner.y1 && outer.x2 >= inner.x2 &&
+           outer.y2 >= inner.y2;
+}
+
 /// What changed between a snapshot and a frame, against the boxes a step reported.
 struct FrameDiff {
     size_t changed = 0;    ///< pixels whose bytes differ
