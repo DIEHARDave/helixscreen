@@ -114,16 +114,17 @@ std::vector<StartBlockStep> scan_start_block(std::string_view head, bool truncat
     config.stop_at_first_extrusion = false;
     config.stop_at_layer_marker = true;
     config.every_occurrence = true;
-    const gcode::ScanResult scan = GCodeOpsDetector(config).scan_content(std::string(head));
+    const gcode::ScanResult scan = GCodeOpsDetector(config).scan_content(head);
 
     std::vector<StartBlockStep> steps;
     for (const auto& op : scan.operations) {
         if (const auto kind = step_kind(op)) {
-            steps.push_back({op.byte_offset, *kind, runs_on_its_line(*kind)});
+            steps.push_back({op.byte_offset, *kind, runs_on_its_line(*kind),
+                             text_io::to_upper(GCodeOpsDetector::command_word(op.raw_line))});
         }
     }
     if (scan.first_extrusion_offset) {
-        steps.push_back({*scan.first_extrusion_offset, StartBlockStepKind::Purge, false});
+        steps.push_back({*scan.first_extrusion_offset, StartBlockStepKind::Purge, false, "G1"});
     }
     // One step per line: the first a line maps to.
     std::stable_sort(

@@ -182,7 +182,7 @@ ScanResult GCodeOpsDetector::scan_file(const std::string& filepath) const {
     return scan_lines([&file](std::string& line) { return file.next(line); });
 }
 
-ScanResult GCodeOpsDetector::scan_content(const std::string& content) const {
+ScanResult GCodeOpsDetector::scan_content(std::string_view content) const {
     auto records = helix::text_io::lines(content);
     auto it = records.begin();
     const auto end = records.end();

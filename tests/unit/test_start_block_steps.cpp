@@ -94,6 +94,15 @@ TEST_CASE("start block: what a line runs decides its step", "[start_block]") {
     SECTION("the block ends at the first layer") {
         CHECK(kinds("G28\n;LAYER_CHANGE\nCLEAN_NOZZLE\nG1 X1 E2\n") == std::vector{Kind::HomeAxes});
     }
+    SECTION("CRLF lines keep their real offsets") {
+        const auto steps = scan_start_block("M104 S0\r\nG28 Z\r\nCLEAN_NOZZLE\r\n", false);
+        REQUIRE(steps.size() == 2);
+        CHECK(steps[0].offset == 9);
+        CHECK(steps[0].kind == Kind::ProbeZ);
+        CHECK(steps[0].command == "G28");
+        CHECK(steps[1].offset == 16);
+        CHECK(steps[1].command == "CLEAN_NOZZLE");
+    }
     SECTION("a read cut mid-line drops that line") {
         const auto steps = scan_start_block("G28\nBED_MESH_CALIBR", true);
         REQUIRE(steps.size() == 1);

@@ -183,6 +183,16 @@ class PrintStartProfile {
     bool try_match_signal(const std::string& line, MatchResult& result) const;
 
     /**
+     * @brief Whether a start-block command prints @p console_line while it runs
+     *
+     * From `start_block_owned_lines`: per upper-case command word, the text a
+     * console line contains when that command printed it (an action code, a
+     * probe report). Such a line refines the step it belongs to rather than
+     * naming the step before it.
+     */
+    bool start_block_step_owns(const std::string& command, const std::string& console_line) const;
+
+    /**
      * @brief Try to match a line against response patterns (regex)
      *
      * Runs regex search against each response pattern. Supports $1, $2
@@ -375,6 +385,7 @@ class PrintStartProfile {
     bool adaptive_meshing_{false};
     bool cfs_signals_{false};
     bool scripted_start_{false};
+    std::unordered_map<std::string, std::vector<std::string>> start_block_owned_lines_;
     bool position_signals_{false};
     std::vector<SignalFormat> signal_formats_;
     std::vector<ResponsePattern> response_patterns_;

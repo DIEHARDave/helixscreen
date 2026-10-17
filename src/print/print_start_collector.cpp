@@ -317,6 +317,7 @@ void PrintStartCollector::start() {
                     collector->update_eta_display();
                     collector->check_purge_shape();
                     collector->check_fallback_completion();
+                    collector->flush_deferred_start_block_step();
                 }
             },
             ETA_UPDATE_INTERVAL_MS, this);
@@ -348,6 +349,13 @@ void PrintStartCollector::stop() {
     }
 
     fallbacks_enabled_.store(false);
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (start_block_cancel_) {
+            start_block_cancel_->store(true);
+            start_block_cancel_.reset();
+        }
+    }
 
     // Delete ETA timer (must be on main thread, but stop() is always called from main thread)
     if (eta_timer_) {
@@ -417,7 +425,14 @@ void PrintStartCollector::reset_run_locked() {
     phase_since_ = printing_state_start_;
     start_block_.set_steps({});
     start_block_requested_ = false;
-    start_block_position_.reset();
+    file_position_.reset();
+    frame_filename_.clear();
+    deferred_step_.reset();
+    console_phase_line_.clear();
+    if (start_block_cancel_) {
+        start_block_cancel_->store(true);
+        start_block_cancel_.reset();
+    }
     console_phase_time_ = helix::sim::SimulatedClock::time_point::min();
     mesh_probe_current_ = 0;
     mesh_probe_total_ = 0;
@@ -1247,17 +1262,15 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
         if (profile_->try_match_signal(line, match)) {
             real_signal_seen_.store(true, std::memory_order_relaxed);
             note_signal();
-            {
-                std::lock_guard<std::mutex> lock(state_mutex_);
-                console_phase_time_ = helix::sim::SimulatedClock::now();
-            }
             // Profile messages are English tags — resolve through the pack.
             match.message = lv_tr(match.message.c_str());
-            if (profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
-                update_phase(match.phase, match.message, match.progress);
-            } else {
-                update_phase(match.phase, match.message.c_str());
-            }
+            apply_console_phase(line, [&] {
+                if (profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
+                    update_phase(match.phase, match.message, match.progress);
+                } else {
+                    update_phase(match.phase, match.message.c_str());
+                }
+            });
             return;
         }
     }
@@ -1563,18 +1576,25 @@ void PrintStartCollector::check_phase_patterns(const std::string& line) {
 
     PrintStartProfile::MatchResult match;
     if (profile_->try_match_pattern(line, match)) {
-        PrintStartPhase phase_before;
-        std::string message_before;
-        {
-            std::lock_guard<std::mutex> lock(state_mutex_);
-            phase_before = current_phase_;
-            message_before = current_message_;
-        }
-        apply_profile_match(match);
+        apply_console_phase(line, [&] { apply_profile_match(match); });
+    }
+}
+
+void PrintStartCollector::apply_console_phase(const std::string& line,
+                                              const std::function<void()>& apply) {
+    PrintStartPhase phase_before;
+    std::string message_before;
+    {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        if (current_phase_ != phase_before || current_message_ != message_before) {
-            console_phase_time_ = helix::sim::SimulatedClock::now();
-        }
+        phase_before = current_phase_;
+        message_before = current_message_;
+    }
+    apply();
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    if (current_phase_ != phase_before || current_message_ != message_before) {
+        console_phase_time_ = helix::sim::SimulatedClock::now();
+        console_phase_line_ = line;
+        deferred_step_.reset();
     }
 }
 
@@ -2205,45 +2225,58 @@ void PrintStartCollector::request_wait_line() {
     }
     auto self = shared_from_this();
     const std::string filename = file;
+    const auto read_at = [self, gen, filename](uint64_t pos) {
+        const std::optional<uint64_t> position = pos;
+        uint64_t read_gen;
+        {
+            std::lock_guard<std::mutex> lock(self->state_mutex_);
+            if (gen != self->wait_line_gen_ || position == self->wait_line_position_) {
+                return; // the wait ended, or the line there is already read
+            }
+            self->wait_line_position_ = position;
+            self->wait_line_ = {};
+            self->wait_line_read_ = false;
+            read_gen = ++self->wait_line_gen_;
+        }
+        helix::ui::queue_update(
+            "PrintStartCollector::read_wait_line", [self, read_gen, filename, pos]() {
+                IMoonrakerAPI* api = get_moonraker_api();
+                if (!api || !api->transfers().supports_range_reads()) {
+                    return;
+                }
+                helix::read_wait_line_at(
+                    api->transfers(), filename, pos,
+                    [self, read_gen](const helix::WaitLine& line) {
+                        self->apply_wait_line(read_gen, line);
+                    },
+                    [self, read_gen, pos](const MoonrakerError& e) {
+                        spdlog::debug("[PrintStartCollector] Wait line at {} not read: {}", pos,
+                                      e.message);
+                        std::lock_guard<std::mutex> lock(self->state_mutex_);
+                        if (read_gen == self->wait_line_gen_) {
+                            self->wait_line_unreadable_ = true;
+                        }
+                    });
+            });
+    };
+    // A subscribed position is current; the query covers a printer whose
+    // frames have not carried one yet.
+    std::optional<uint64_t> subscribed;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        subscribed = file_position_;
+    }
+    if (subscribed) {
+        read_at(*subscribed);
+        return;
+    }
     client_.send_jsonrpc(
         "printer.objects.query", {{"objects", {{"virtual_sdcard", {"file_position"}}}}},
-        [self, gen, filename](const json& resp) {
-            const std::optional<uint64_t> position = helix::virtual_sdcard_file_position(resp);
-            if (!position) {
-                return;
+        [read_at](const json& resp) {
+            if (const std::optional<uint64_t> position =
+                    helix::virtual_sdcard_file_position(resp)) {
+                read_at(*position);
             }
-            uint64_t read_gen;
-            {
-                std::lock_guard<std::mutex> lock(self->state_mutex_);
-                if (gen != self->wait_line_gen_ || position == self->wait_line_position_) {
-                    return; // the wait ended, or the line there is already read
-                }
-                self->wait_line_position_ = position;
-                self->wait_line_ = {};
-                self->wait_line_read_ = false;
-                read_gen = ++self->wait_line_gen_;
-            }
-            const uint64_t pos = *position;
-            helix::ui::queue_update(
-                "PrintStartCollector::read_wait_line", [self, read_gen, filename, pos]() {
-                    IMoonrakerAPI* api = get_moonraker_api();
-                    if (!api || !api->transfers().supports_range_reads()) {
-                        return;
-                    }
-                    helix::read_wait_line_at(
-                        api->transfers(), filename, pos,
-                        [self, read_gen](const helix::WaitLine& line) {
-                            self->apply_wait_line(read_gen, line);
-                        },
-                        [self, read_gen, pos](const MoonrakerError& e) {
-                            spdlog::debug("[PrintStartCollector] Wait line at {} not read: {}", pos,
-                                          e.message);
-                            std::lock_guard<std::mutex> lock(self->state_mutex_);
-                            if (read_gen == self->wait_line_gen_) {
-                                self->wait_line_unreadable_ = true;
-                            }
-                        });
-                });
         },
         [](const MoonrakerError& e) {
             spdlog::debug("[PrintStartCollector] virtual_sdcard not read: {}", e.message);
@@ -2251,23 +2284,39 @@ void PrintStartCollector::request_wait_line() {
 }
 
 void PrintStartCollector::handle_start_block_position(const json& status) {
-    if (!profile_ || !profile_->scripted_start()) {
-        return;
-    }
     const std::optional<uint64_t> position = helix::virtual_sdcard_file_position(status);
-    if (!position) {
+    const json* print_stats = json_util::find_member(status, "print_stats");
+    const json* filename = print_stats ? json_util::find_member(*print_stats, "filename") : nullptr;
+    if (!position && !(filename && filename->is_string())) {
         return;
     }
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (position) {
+            file_position_ = position;
+        }
+        if (filename && filename->is_string()) {
+            frame_filename_ = filename->get<std::string>();
+        }
+    }
+    if (!position || !profile_ || !profile_->scripted_start()) {
+        return;
+    }
+    flush_deferred_start_block_step();
     std::optional<helix::StartBlockStep> step;
     bool request = false;
     uint64_t run = 0;
+    std::string file;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        start_block_position_ = position;
+        if (!active_.load() || current_phase_ == PrintStartPhase::COMPLETE) {
+            return;
+        }
+        run = run_generation_.load();
         if (!start_block_requested_) {
             start_block_requested_ = true;
             request = true;
-            run = run_generation_.load();
+            file = frame_filename_;
         } else {
             step = start_block_.advance(*position);
         }
@@ -2275,19 +2324,27 @@ void PrintStartCollector::handle_start_block_position(const json& status) {
     if (request) {
         auto self = shared_from_this();
         helix::ui::queue_update("PrintStartCollector::request_start_block",
-                                [self, run]() { self->request_start_block(run); });
+                                [self, run, file = std::move(file)]() mutable {
+                                    self->request_start_block(run, std::move(file));
+                                });
     }
     if (step) {
-        apply_start_block_step(*step);
+        apply_start_block_step(*step, run);
     }
 }
 
-void PrintStartCollector::request_start_block(uint64_t run) {
-    const char* file = lv_subject_get_string(state_.print_state().get_print_filename_subject());
+void PrintStartCollector::request_start_block(uint64_t run, std::string filename) {
+    // The run's own frames name its file; the subject is the fallback for a
+    // reprint, whose frames need not repeat an unchanged name.
+    if (filename.empty()) {
+        const char* subject =
+            lv_subject_get_string(state_.print_state().get_print_filename_subject());
+        filename = subject ? subject : "";
+    }
     IMoonrakerAPI* api = get_moonraker_api();
-    const bool readable = file && file[0] && api && api->transfers().supports_range_reads();
+    const bool readable = !filename.empty() && api && api->transfers().supports_range_reads();
     if (!active_.load() || run != run_generation_.load() || !readable) {
-        if (!file || !file[0]) {
+        if (filename.empty()) {
             // The filename arrives in the same frames as the position; the
             // next position asks again.
             std::lock_guard<std::mutex> lock(state_mutex_);
@@ -2297,11 +2354,24 @@ void PrintStartCollector::request_start_block(uint64_t run) {
         }
         return;
     }
-    auto self = shared_from_this();
-    const std::string filename = file;
+    auto cancel = std::make_shared<std::atomic<bool>>(false);
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (run != run_generation_.load()) {
+            return;
+        }
+        start_block_cancel_ = cancel;
+    }
+    // The answer lands on the transfer's thread, which must not hold the last
+    // reference: the destructor deletes an LVGL timer.
+    std::weak_ptr<PrintStartCollector> weak = weak_from_this();
     api->transfers().download_file_range(
         "gcodes", filename, 0, helix::kStartBlockHeadBytes,
-        [self, run, filename](const std::string& head) {
+        [weak, run, filename](const std::string& head) {
+            auto self = weak.lock();
+            if (!self) {
+                return;
+            }
             auto steps = helix::scan_start_block(head, head.size() >= helix::kStartBlockHeadBytes);
             std::optional<helix::StartBlockStep> step;
             {
@@ -2312,28 +2382,47 @@ void PrintStartCollector::request_start_block(uint64_t run) {
                 spdlog::info("[PrintStartCollector] Start block of {}: {} steps", filename,
                              steps.size());
                 self->start_block_.set_steps(std::move(steps));
-                if (self->start_block_position_) {
-                    step = self->start_block_.advance(*self->start_block_position_);
+                if (self->file_position_) {
+                    step = self->start_block_.advance(*self->file_position_);
                 }
             }
-            if (step && self->active_.load()) {
-                self->apply_start_block_step(*step);
+            if (step) {
+                self->apply_start_block_step(*step, run);
             }
+            // The weak_ptr's lock may be the last reference; hand it to the
+            // main thread so the destructor runs there.
+            helix::ui::queue_update("PrintStartCollector::start_block_read", [self]() {});
         },
         [filename](const MoonrakerError& e) {
             spdlog::debug("[PrintStartCollector] Start block of {} not read: {}", filename,
                           e.message);
-        });
+        },
+        cancel);
 }
 
-void PrintStartCollector::apply_start_block_step(const helix::StartBlockStep& step) {
+void PrintStartCollector::apply_start_block_step(const helix::StartBlockStep& step, uint64_t run) {
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        if (console_phase_time_ + START_BLOCK_CONSOLE_GRACE > helix::sim::SimulatedClock::now()) {
-            spdlog::debug("[PrintStartCollector] Start-block step at {} left to the console",
-                          step.offset);
+        if (!active_.load() || run != run_generation_.load() ||
+            current_phase_ == PrintStartPhase::COMPLETE) {
             return;
         }
+        if (console_phase_time_ + START_BLOCK_CONSOLE_GRACE > helix::sim::SimulatedClock::now()) {
+            if (profile_ && profile_->start_block_step_owns(step.command, console_phase_line_)) {
+                spdlog::debug("[PrintStartCollector] Start-block step at {} left to its own "
+                              "console line",
+                              step.offset);
+                deferred_step_.reset();
+            } else {
+                spdlog::debug("[PrintStartCollector] Start-block step at {} deferred past the "
+                              "previous command's console line",
+                              step.offset);
+                deferred_step_ = step;
+                deferred_step_run_ = run;
+            }
+            return;
+        }
+        deferred_step_.reset();
     }
     const PrintStartPhase phase = helix::start_block_step_phase(step.kind);
     const char* message = phase_signal_message(phase);
@@ -2354,6 +2443,22 @@ void PrintStartCollector::apply_start_block_step(const helix::StartBlockStep& st
                   static_cast<int>(phase));
     PrintStartProfile::MatchResult match{phase, message, 0};
     apply_profile_match(match, /*marks_real_signal=*/true, /*live_state=*/true);
+}
+
+void PrintStartCollector::flush_deferred_start_block_step() {
+    std::optional<helix::StartBlockStep> step;
+    uint64_t run = 0;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (!deferred_step_ ||
+            console_phase_time_ + START_BLOCK_CONSOLE_GRACE > helix::sim::SimulatedClock::now()) {
+            return;
+        }
+        step = std::move(deferred_step_);
+        deferred_step_.reset();
+        run = deferred_step_run_;
+    }
+    apply_start_block_step(*step, run);
 }
 
 void PrintStartCollector::apply_wait_line(uint64_t gen, const helix::WaitLine& line) {

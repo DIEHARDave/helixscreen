@@ -4652,6 +4652,10 @@ class SnapmakerReplayFixture : public SnapmakerCollectorFixture {
     int ranged_reads() const {
         return print_ ? print_->transfers.ranges : 0;
     }
+    ServedPrint& served() {
+        REQUIRE(print_);
+        return *print_;
+    }
     void position_at(int ms, uint64_t pos) {
         positions_.push_back({ms, pos});
     }
@@ -4864,8 +4868,10 @@ TEST_CASE_METHOD(SnapmakerReplayFixture,
     for (const Shown& s : shown) {
         CHECK(s.message != "Bed mesh...");
     }
-    // The head read, then one read per wait line.
-    REQUIRE(ranged_reads() >= 1);
+    // One head read; every other ranged read is a wait line's.
+    const auto& reads = served().transfers.range_requests;
+    CHECK(std::count(reads.begin(), reads.end(),
+                     std::pair<uint64_t, size_t>{0, helix::kStartBlockHeadBytes}) == 1);
 
     // Each phase's history entry is the time it showed, over every visit:
     // HOMING three times, CLEANING and BED_MESH twice.
@@ -4924,11 +4930,169 @@ TEST_CASE_METHOD(SnapmakerReplayFixture,
     at(14559);
     CHECK(get_current_phase() == PrintStartPhase::SOAKING);
     CHECK(get_current_message() == "Heat Soaking...");
+    // The mesh command prints that code itself, so the step is not held for
+    // later either.
+    clock.advance(std::chrono::seconds(2));
+    at(14559);
+    CHECK(get_current_message() == "Heat Soaking...");
 
     // A step with no console line ahead of it shows.
     clock.advance(std::chrono::seconds(60));
     at(14840);
     CHECK(get_current_phase() == PrintStartPhase::PURGING);
+}
+
+TEST_CASE_METHOD(SnapmakerReplayFixture,
+                 "Snapmaker U1: a start-block step from another run or after COMPLETE is dropped",
+                 "[print][collector][snapmaker][start_block]") {
+    serve("u1_bmcu.gcode", u1_bmcu_file());
+    collector().start();
+    drain_async_updates();
+    const uint64_t run = PrintStartCollectorTestAccess::run_generation(collector());
+    const helix::StartBlockStep clean{14002, helix::StartBlockStepKind::CleanNozzle, false};
+
+    PrintStartCollectorTestAccess::apply_start_block_step(collector(), clean, run - 1);
+    drain_async_updates();
+    CHECK(get_current_phase() == PrintStartPhase::INITIALIZING);
+    // The same step from this run shows, so the drop above is the run's doing.
+    PrintStartCollectorTestAccess::apply_start_block_step(
+        collector(), {13756, helix::StartBlockStepKind::HomeAxes, true}, run);
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::HOMING);
+
+    collector().complete_from_external_signal("first layer");
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+    PrintStartCollectorTestAccess::apply_start_block_step(collector(), clean, run);
+    drain_async_updates();
+    CHECK(get_current_phase() == PrintStartPhase::COMPLETE);
+}
+
+TEST_CASE_METHOD(SnapmakerReplayFixture,
+                 "Snapmaker U1: stopping the collector cancels the head read in flight",
+                 "[print][collector][snapmaker][start_block]") {
+    serve("u1_bmcu.gcode", u1_bmcu_file());
+    served().transfers.hold_from = 1;
+    collector().start();
+    drain_async_updates();
+    client().dispatch_status_update({{"virtual_sdcard", {{"file_position", 14002}}}});
+    drain_async_updates();
+    REQUIRE(served().transfers.ranges == 1);
+    REQUIRE(served().transfers.last_cancel);
+    CHECK_FALSE(served().transfers.last_cancel->load());
+
+    collector().stop();
+    CHECK(served().transfers.last_cancel->load());
+    served().transfers.release_held();
+    drain_async_updates();
+}
+
+namespace {
+/// A started U1 collector serving the BMCU file, with position frames.
+class SnapmakerStartBlockFixture : public SnapmakerReplayFixture {
+  public:
+    SnapmakerStartBlockFixture() {
+        serve("u1_bmcu.gcode", u1_bmcu_file());
+        collector().start();
+        drain_async_updates();
+    }
+    void at(uint64_t pos) {
+        client().dispatch_status_update({{"virtual_sdcard", {{"file_position", pos}}}});
+        drain_async_updates();
+        drain_async_updates();
+    }
+    helix::sim::SimulatedClock::ManualScope clock{helix::sim::SimSpeed::of(1.0)};
+};
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerStartBlockFixture,
+                 "Snapmaker U1: a step after the previous command's last code shows once the "
+                 "grace passes",
+                 "[print][collector][snapmaker][start_block]") {
+    at(13824); // G28 Z I140 J140: the first position reads the head
+    at(13824);
+    REQUIRE(get_current_message() == "Probing Z...");
+
+    clock.advance(std::chrono::seconds(10));
+    feed_gcode("// Success: Set action code DETECT_PLATE");
+    REQUIRE(get_current_message() == "Detecting plate...");
+    // The position passes ROUGHLY_CLEAN_NOZZLE: no command of the block prints
+    // DETECT_PLATE for a clean, so the code was the plate detect's last word.
+    clock.advance(std::chrono::milliseconds(300));
+    at(14023);
+    CHECK(get_current_message() == "Detecting plate...");
+
+    SECTION("it shows once the grace passes") {
+        clock.advance(std::chrono::seconds(1));
+        at(14023);
+        CHECK(get_current_phase() == PrintStartPhase::CLEANING);
+        CHECK(get_current_message() == "Cleaning Nozzle...");
+    }
+    SECTION("a console change after it cancels it") {
+        clock.advance(std::chrono::milliseconds(300));
+        feed_gcode("// Success: Set action code PRINT_SWITCH_CHECKING");
+        REQUIRE(get_current_message() == "Checking extruders...");
+        clock.advance(std::chrono::seconds(2));
+        at(14023);
+        CHECK(get_current_message() == "Checking extruders...");
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerStartBlockFixture,
+                 "Snapmaker U1: a repeated action code that changes nothing does not hold a step",
+                 "[print][collector][snapmaker][start_block]") {
+    at(13824);
+    at(13824);
+    clock.advance(std::chrono::seconds(10));
+    feed_gcode("// Success: Set action code DETECT_PLATE");
+    clock.advance(std::chrono::seconds(5));
+    feed_gcode("// Success: Set action code DETECT_PLATE");
+    clock.advance(std::chrono::milliseconds(300));
+    at(14023);
+    CHECK(get_current_phase() == PrintStartPhase::CLEANING);
+}
+
+TEST_CASE_METHOD(SnapmakerStartBlockFixture,
+                 "Snapmaker U1: a heater wait reads its line at the subscribed position",
+                 "[print][collector][snapmaker][start_block][wait_line]") {
+    collector().enable_fallbacks();
+    at(14271); // M109 S170, a cool-down; no virtual_sdcard query is answered
+    at(14271);
+    set_all_temps(/*bed*/ 870, 1000, /*ext*/ 1900, 1700);
+    feed_gcode("B:87.0 /100.0 T1:190.0 /170.0");
+    for (int i = 0; i < 2; ++i) {
+        collector().check_fallback_completion();
+        drain_async_updates();
+        drain_async_updates();
+    }
+    // The nozzle above its target reads as arrived, so a guess says the bed.
+    CHECK(get_current_phase() == PrintStartPhase::HEATING_NOZZLE);
+}
+
+TEST_CASE_METHOD(SnapmakerReplayFixture,
+                 "Snapmaker U1: a head read answered after a new start shows nothing",
+                 "[print][collector][snapmaker][start_block]") {
+    serve("u1_bmcu.gcode", u1_bmcu_file());
+    served().transfers.hold_from = 1;
+    collector().start();
+    drain_async_updates();
+    client().dispatch_status_update({{"virtual_sdcard", {{"file_position", 14023}}}});
+    drain_async_updates();
+    REQUIRE(served().transfers.ranges == 1);
+
+    // The next print's file has no steps; its frames name it.
+    collector().stop();
+    served().transfers.put("other.gcode", std::string(14100, '\n') + "M104 S0\n");
+    collector().start();
+    drain_async_updates();
+    client().dispatch_status_update({{"print_stats", {{"filename", "other.gcode"}}},
+                                     {"virtual_sdcard", {{"file_position", 14023}}}});
+    drain_async_updates();
+    REQUIRE(served().transfers.ranges == 2);
+    served().transfers.release_held();
+    drain_async_updates();
+    drain_async_updates();
+    CHECK(get_current_phase() == PrintStartPhase::INITIALIZING);
 }
 
 TEST_CASE_METHOD(SnapmakerCollectorFixture,

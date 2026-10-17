@@ -20,6 +20,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -517,11 +518,21 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// profile whose start sequence the slicer writes into the file. The
     /// first position read fetches and scans the file's head. Any thread.
     void handle_start_block_position(const nlohmann::json& status);
-    /// Fetch and scan the print file's head for run @p run. Main thread.
-    void request_start_block(uint64_t run);
-    /// Show the step the print reached, unless the console already named
-    /// what that line is doing. Any thread; takes state_mutex_ itself.
-    void apply_start_block_step(const helix::StartBlockStep& step);
+    /// Fetch and scan the head of @p filename for run @p run. Main thread.
+    void request_start_block(uint64_t run, std::string filename);
+    /// Show the step run @p run reached, unless the console already named
+    /// what that line is doing. Dropped once another run has begun or the
+    /// pre-print is COMPLETE. Any thread; takes state_mutex_ itself.
+    void apply_start_block_step(const helix::StartBlockStep& step, uint64_t run);
+
+    /// Run @p apply, the phase match of console line @p line, and if it
+    /// changed the phase or message shown, stamp console_phase_time_ with it
+    /// and drop any deferred step. Takes state_mutex_ itself; @p apply must
+    /// not hold it.
+    void apply_console_phase(const std::string& line, const std::function<void()>& apply);
+    /// Show the deferred start-block step once the console grace has passed.
+    /// Any thread; takes state_mutex_ itself.
+    void flush_deferred_start_block_step();
 
     /// Make @p phase current, crediting the time since the last change to the
     /// phase it replaces. Caller holds state_mutex_.
@@ -697,8 +708,8 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     std::atomic<helix::SubscriptionId> macro_subscription_id_{0};
 
     // Phase timing for duration prediction (protected by state_mutex_). A
-    // phase can be shown more than once in one start (a U1 probes Z after
-    // every tool pick), so each keeps the sum of its visits.
+    // phase can be shown more than once in one start (a toolchanger probes Z
+    // after every tool pick), so each keeps the sum of its visits.
     std::map<int, helix::sim::SimulatedClock::duration> phase_time_spent_;
     helix::sim::SimulatedClock::time_point phase_since_;
     helix::PreprintPredictor predictor_;
@@ -809,11 +820,23 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     bool wait_line_read_ = false;
     /// The start block's steps and how far the print is through them, on a
     /// scripted-start profile. start_block_requested_ is set once the head
-    /// read is on its way; start_block_position_ is the last position seen.
-    /// Guarded by state_mutex_.
+    /// read is on its way. Guarded by state_mutex_.
     helix::StartBlockFollower start_block_;
     bool start_block_requested_ = false;
-    std::optional<uint64_t> start_block_position_;
+    /// virtual_sdcard.file_position and print_stats.filename as this run's
+    /// status frames last carried them. Guarded by state_mutex_.
+    std::optional<uint64_t> file_position_;
+    std::string frame_filename_;
+    /// A step that reached its line within the console grace, while the
+    /// console's latest change came from a line its command does not print:
+    /// the previous command's last words. It shows once the grace passes,
+    /// unless the console changes the display again first. The console line
+    /// behind that change is console_phase_line_. Guarded by state_mutex_.
+    std::optional<helix::StartBlockStep> deferred_step_;
+    uint64_t deferred_step_run_ = 0;
+    std::string console_phase_line_;
+    /// Set to stop the head read in flight: a new run or stop().
+    std::shared_ptr<std::atomic<bool>> start_block_cancel_;
     /// When a console line last changed the phase shown. A step whose position
     /// arrives within START_BLOCK_CONSOLE_GRACE after it is the line the
     /// console line came from: Moonraker batches status frames, so a command's

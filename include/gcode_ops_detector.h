@@ -183,7 +183,7 @@ class GCodeOpsDetector {
      * @param content G-code content as string
      * @return ScanResult containing all detected operations
      */
-    [[nodiscard]] ScanResult scan_content(const std::string& content) const;
+    [[nodiscard]] ScanResult scan_content(std::string_view content) const;
 
     /**
      * @brief Add a custom detection pattern

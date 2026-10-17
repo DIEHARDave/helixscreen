@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -29,6 +30,9 @@ struct StartBlockStep {
     /// the work. A macro or a move is queued and returns at once, so its work
     /// runs while the position stands on a later line.
     bool runs_on_its_line = false;
+    /// The line's command word, upper-cased: what a profile names to say
+    /// which console lines the command prints while it runs.
+    std::string command;
 };
 
 /// The phase a step shows.

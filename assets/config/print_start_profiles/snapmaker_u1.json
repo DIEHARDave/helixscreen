@@ -4,6 +4,10 @@
   "progress_mode": "weighted",
   "adaptive_meshing": true,
   "scripted_start": true,
+  "start_block_owned_lines": {
+    "BED_MESH_CALIBRATE": ["BED_PREHEATING", "BED_PRESCANNING", "BED_LEVELING", "// z offset: "],
+    "G28": ["// trigger_mcu_pos: ", "// z offset: "]
+  },
   "signal_formats": [
     {
       "prefix": "// Success: Set action code ",
