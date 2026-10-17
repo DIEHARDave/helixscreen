@@ -292,10 +292,10 @@ TEST_CASE_METHOD(LVGLTestFixture,
     SECTION("with the default too heavy as well, the first registry saver that is not") {
         gate.store(helix::ui::find_screensaver(helix::ui::DEFAULT_SCREENSAVER_TYPE)->name,
                    {2, true, version, board});
-        CHECK(gate.mgr.runnable_type(ScreensaverType::MAZE_3D) == ScreensaverType::STARFIELD);
+        CHECK(gate.mgr.runnable_type(ScreensaverType::MAZE_3D) == ScreensaverType::FLYING_TOASTERS);
         gate.mgr.start(ScreensaverType::MAZE_3D);
         REQUIRE(gate.running() != nullptr);
-        CHECK(gate.running()->type() == ScreensaverType::STARFIELD);
+        CHECK(gate.running()->type() == ScreensaverType::FLYING_TOASTERS);
     }
     SECTION("the mark from another board or version is not too heavy here") {
         gate.store("maze", {3, true, version, "fbdev/1c/0bm/1x1/16bpp"});
