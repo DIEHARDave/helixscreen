@@ -62,6 +62,11 @@ void PrinterNetworkState::init_subjects(bool register_xml) {
     // UI-facing mirror of helix::is_moonraker_on_same_host().
     INIT_SUBJECT_INT(moonraker_is_remote, 0, subjects_, register_xml);
 
+    // Locality verdict for the current connection (MoonrakerLocality). Unlike
+    // moonraker_is_remote it distinguishes "not settled yet" from "local".
+    INIT_SUBJECT_INT(moonraker_locality, static_cast<int>(MoonrakerLocality::Unknown), subjects_,
+                     register_xml);
+
     INIT_SUBJECT_INT(klippy_state_message_seq, 0, subjects_, register_xml);
 
     subjects_initialized_ = true;
@@ -114,6 +119,17 @@ void PrinterNetworkState::set_moonraker_is_remote_internal(bool remote) {
     spdlog::info("[PrinterNetworkState] moonraker_is_remote: {} ({} Moonraker)", value,
                  remote ? "remote" : "same-host");
     lv_subject_set_int(&moonraker_is_remote_, value);
+}
+
+void PrinterNetworkState::set_moonraker_locality_internal(MoonrakerLocality locality) {
+    if (!subjects_initialized_) {
+        return;
+    }
+    const int value = static_cast<int>(locality);
+    if (lv_subject_get_int(&moonraker_locality_) == value)
+        return;
+    spdlog::debug("[PrinterNetworkState] moonraker_locality: {}", value);
+    lv_subject_set_int(&moonraker_locality_, value);
 }
 
 void PrinterNetworkState::set_network_status(int status) {

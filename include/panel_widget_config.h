@@ -7,6 +7,7 @@
 
 #include "default_layout_resolver.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -111,6 +112,23 @@ class PanelWidgetConfig {
     }
 
     static constexpr uint32_t SAVE_SETTLE_MS = 2000;
+
+    /// Told after every write that persisted this panel's layout for the
+    /// active printer: save(), and save_soon() / flush_pending_save() once
+    /// they write. Not told when the config write failed, or when a held
+    /// save lands on a printer that is no longer active. Main thread. One
+    /// listener process-wide; an empty function removes it.
+    static void set_save_listener(std::function<void(const PanelWidgetConfig&)> fn);
+
+    const std::string& panel_id() const {
+        return panel_id_;
+    }
+
+    /// The layout as save() writes it: `{pages, main_page_index, ...}`, the
+    /// input build_payload() takes.
+    nlohmann::json published_pages() const {
+        return serialize_pages();
+    }
 
     // ========================================================================
     // Backward-compatible accessors (delegate to page 0)

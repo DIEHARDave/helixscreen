@@ -568,6 +568,19 @@ void PanelWidgetConfig::flush_pending_save() {
     write_to(path);
 }
 
+namespace {
+
+std::function<void(const PanelWidgetConfig&)>& save_listener() {
+    static std::function<void(const PanelWidgetConfig&)> listener;
+    return listener;
+}
+
+} // namespace
+
+void PanelWidgetConfig::set_save_listener(std::function<void(const PanelWidgetConfig&)> fn) {
+    save_listener() = std::move(fn);
+}
+
 void PanelWidgetConfig::save() {
     deferred_save_.cancel();
     write_to(config_.df() + "panel_widgets/" + panel_id_);
@@ -619,7 +632,14 @@ void PanelWidgetConfig::write_to(const std::string& panel_path) {
     }
 
     config_.set<json>(panel_path, root);
-    config_.save();
+    if (!config_.save()) {
+        return;
+    }
+    // A held save can land after the active printer changed; that layout is
+    // not the one the connected printer shows.
+    if (save_listener() && panel_path == config_.df() + "panel_widgets/" + panel_id_) {
+        save_listener()(*this);
+    }
 }
 
 void PanelWidgetConfig::clear_legacy_units() {

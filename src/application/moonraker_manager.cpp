@@ -26,6 +26,7 @@
 #include "config.h"
 #include "env_knobs.h"
 #include "filament_sensor_manager.h"
+#include "home_layout_sync.h"
 #include "host_identity.h"
 #include "i_moonraker_client.h"
 #include "json_utils.h"
@@ -181,6 +182,9 @@ void MoonrakerManager::shutdown() {
     }
     m_client.reset();
 
+    // Before the API it calls goes away; replies still queued are discarded.
+    helix::HomeLayoutSync::instance().shutdown();
+
     // Safe now — no callbacks can fire after client destruction.
     // Note: m_api holds a MoonrakerClient& that is now dangling, but
     // ~MoonrakerAPI() only joins HTTP threads and deinits subjects.
@@ -308,6 +312,11 @@ void MoonrakerManager::process_notifications() {
                     moonraker_remote = true;
                 }
                 get_printer_state().set_moonraker_is_remote(moonraker_remote);
+                helix::HomeLayoutSync::instance().on_connected();
+            } else if (new_state != static_cast<int>(ConnectionState::CONNECTED)) {
+                // The verdict belonged to the connection that just ended.
+                get_printer_state().clear_moonraker_locality();
+                helix::HomeLayoutSync::instance().on_disconnected();
             }
 
             // Auto-close Connection Failed modal when connection is restored
@@ -650,6 +659,9 @@ void MoonrakerManager::create_api(const RuntimeConfig& runtime_config) {
 
     // Set API for SpoolmanManager weight polling
     SpoolmanManager::instance().set_api(m_api.get());
+
+    // Publish / fetch the home layout through Moonraker's database
+    helix::HomeLayoutSync::instance().init(*m_api);
 
     // Note: EmergencyStopOverlay::init() and create() are called from Application
     // after both MoonrakerManager and SubjectInitializer are ready

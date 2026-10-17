@@ -13,6 +13,7 @@
 #include "boot_crash_guard.h"
 #include "config.h"
 #include "connection_state.h"
+#include "home_layout_sync.h"
 #include "observer_factory.h"
 #include "print_lifecycle_state.h"
 #include "printer_cache_registry.h"
@@ -60,6 +61,15 @@ namespace {
 /// A job the user would be walking away from: preparing, printing or paused.
 bool active_printer_is_printing() {
     return PrintLifecycleState::is_active(get_printer_state().print_state().get_print_lifecycle());
+}
+
+/// The active printer moved: drop every per-printer cache, and the connection's
+/// locality verdict and anything fetched under it, which describe the printer
+/// left behind until the new one's CONNECTED edge.
+void forget_previous_printer() {
+    PrinterCacheRegistry::instance().invalidate_all();
+    get_printer_state().clear_moonraker_locality();
+    HomeLayoutSync::instance().on_disconnected();
 }
 
 } // namespace
@@ -243,7 +253,7 @@ bool PrinterSwitchFlow::switch_printer(const std::string& printer_id) {
     // The active printer just changed, so df() now points at the new printer — fire every
     // registered per-printer cache invalidator BEFORE teardown, while df() is already
     // correct, so nothing keeps serving the previous printer's values (#804).
-    PrinterCacheRegistry::instance().invalidate_all();
+    forget_previous_printer();
 
     const std::string title =
         fmt::format(fmt::runtime(lv_tr("Switching to {}")), m_config->get_active_printer_name());
@@ -292,7 +302,7 @@ void PrinterSwitchFlow::add_printer_via_wizard() {
 
     // Same active-printer change as switch_printer(): Config::df() has moved to the new
     // entry, so every per-printer cache must be dropped before teardown.
-    PrinterCacheRegistry::instance().invalidate_all();
+    forget_previous_printer();
 
     // The rebuild runs the wizard itself when is_wizard_required() returns true (it does for
     // the new empty entry), so the wizard must not be launched again here.
@@ -349,7 +359,7 @@ void PrinterSwitchFlow::cancel_add_printer_wizard() {
 
         // set_active_printer() above restored the previous printer, so Config::df() moved
         // again — drop every per-printer cache before teardown.
-        PrinterCacheRegistry::instance().invalidate_all();
+        forget_previous_printer();
 
         const std::string title = fmt::format(fmt::runtime(lv_tr("Switching to {}")),
                                               m_config->get_active_printer_name());
