@@ -52,10 +52,10 @@ The AD5X's four-color **IFS (Intelligent Filament System)** is fully integrated,
 
 **What works:**
 - **4-slot IFS** — load, unload, and select filament per slot, with per-slot color and material tracking and per-port filament-presence sensors
-- **Automatic tool-to-port mapping** for multi-color prints (T0–T15 → physical ports), correct even with slot renumbering enabled. Remapping a tool writes the printer's own tool map, so what HelixScreen shows is what the printer will do
+- **Automatic Filament Mapping** for multi-color prints (T0–T15 → physical ports), correct even with slot renumbering enabled. Mapping filament writes the printer's own tool map, so what HelixScreen shows is what the printer will do
 - **External-spool bypass mode** for feeding a spool directly — engages runout protection on the toolhead sensor automatically, and publishes the spool to OrcaSlicer as an extra lane
 - **[Spoolman](filament-tracking.md) integration** for assigning tracked spools to slots
-- **Infinite Spool Mode** reporting — when a slot runs out, the IFS automatically switches to another slot with the same filament type *and* color, if one is loaded. HelixScreen tells you this plainly on the runout screen and in the AMS panel
+- **Infinite Spool Mode** (Endless Spool) reporting — when a slot runs out, the IFS automatically switches to another slot with the same filament type *and* color, if one is loaded. HelixScreen tells you this plainly on the runout screen and in the AMS panel
 - **Firmware-managed Z-offset** — ZMOD stores the offset itself, so there is no Save step. HelixScreen shows the *stored* value while the printer is idle, where other interfaces read 0.000, and adjusts from it correctly. See [Printing → Z-Offset](printing.md#z-offset--baby-steps)
 
 **Requirements:** ZMOD firmware v1.7.0 or newer (a community firmware mod, separate from FlashForge stock). See [Installation → Adventurer 5X](install-ad5x.md).
@@ -89,7 +89,7 @@ Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware
 
 **What works:**
 - **Full CFS multi-material** — up to 4 units × 4 slots (16 colors): per-slot color, material type, and remaining filament length; per-unit temperature and humidity; load/unload
-- **Auto-refill / backup spool** switching, run by the CFS itself, and tool-to-slot color mapping. A runout always pauses the print first, and the box only swaps to another slot when auto-refill is on and that slot holds the exact same material *and* colour - otherwise the print stays paused
+- **Auto-Refill** (Endless Spool), run by the CFS itself, and Filament Mapping. A runout always pauses the print first, and the box only switches to another slot when Auto-Refill is on and that slot holds the exact same material *and* colour - otherwise the print stays paused
 - **Humidity and temperature monitoring** - each CFS unit is one box on the [filament environment screen](filament.md#filament-drying-and-humidity). The CFS has no heater, so there are readings to watch but no drying controls
 - **External-spool bypass** — toggle it in the AMS panel: the CFS is stood down, the toolhead runout sensor is switched on for protection, and the spool is published to OrcaSlicer as an extra lane. See [Filament → CFS and the External Spool](filament.md#cfs-and-the-external-spool)
 - **Chamber heater** control (K2 Pro / Plus)
@@ -110,7 +110,7 @@ Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware
 The 4-series QIDI printers integrate the **QIDI Box** filament changer. The Q2, Plus 5 and Max 4 can run HelixScreen on-device; the Plus 4 (and the 3-series X-Smart 3 / X-Plus 3 / X-Max 3 / Q1 Pro) use a serial TJC display that HelixScreen can't drive on-device, so those are **remote-control only** — run HelixScreen on a separate device pointed at the printer's Moonraker.
 
 **What works:**
-- **QIDI Box filament changer** (4, 8, 12, or 16 slots) — per-slot status, tool-to-slot mapping, and load / unload / change-tool control
+- **QIDI Box filament changer** (4, 8, 12, or 16 slots) — per-slot status, Filament Mapping and Assigned Tool, and load / unload / change-tool control
 - **QIDI Box drying** - the box's PTC heater, its temperature and its humidity are all on the box's [filament environment screen](filament.md#filament-drying-and-humidity)
 - **Chamber heater** control on enclosed models
 - **QIDI-specific print-start tracking** (homing → bed heat → nozzle clean → Z-tilt → mesh → nozzle heat → chamber heat)
@@ -134,7 +134,7 @@ A true 4-toolhead changer, running on the U1's built-in 3.5" screen. Each of the
 - **RFID filament recognition** via the built-in reader
 - **Per-extruder feed/load state and runout handling** with automatic resume
 - **Batch load and unload**: the AMS panel's Load and Unload buttons open a picker covering several heads at once; the U1 runs its own batch command, preheating the next head while the current one finishes. See [Filament](filament.md#sidebar)
-- **The firmware's print preferences**: under the AMS panel's **Settings** button, in the **Print Behaviour** section: auto-replenish (and whether replenish ignores color), filament tangle detection with a low/medium/high sensitivity, per-head **Unload at end** toggles, and turning the LED off when the print ends. The toggles show the firmware's stored values and write changes back to the firmware
+- **The firmware's print preferences**: under the AMS panel's **Settings** button, in the **Print Behaviour** section: **Auto-Replenish** (Endless Spool, and whether replenish ignores color), filament tangle detection with a low/medium/high sensitivity, per-head **Unload at end** toggles, and turning the LED off when the print ends. The toggles show the firmware's stored values and write changes back to the firmware
 - **Pre-print options that stick**: the toggles offered before a print starts (bed mesh, input shaper, pressure advance, timelapse) read the firmware's stored settings and write your choice back to them, instead of resetting to a default every print
 - **Per-filament temperatures**: the U1 keeps its own load/unload temperature table per filament, and HelixScreen reads it: a load preheats to the temperature the firmware measured for that filament rather than a generic default
 - **Faults in plain language**: the U1's numeric fault codes arrive translated into a sentence saying what went wrong, not just the code

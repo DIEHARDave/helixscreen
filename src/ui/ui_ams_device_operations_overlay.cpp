@@ -223,11 +223,11 @@ void AmsDeviceOperationsOverlay::register_callbacks() {
              // can_reset_endless_spool_subject_ from editable(), which a reset does not
              // change, and this overlay renders no endless-spool assignments at all (the
              // backup arrows live on AmsPanel and are not refreshed from here) - so
-             // without a toast, wiping every spool's failover looks exactly like a no-op.
+             // without a toast, wiping every backup looks exactly like a no-op.
              helix::ui::modal_confirm(
                  lv_tr("Reset Endless Spool?"),
-                 lv_tr("This clears every spool's failover assignment. The print will stop on "
-                       "runout until you set up failover again."),
+                 lv_tr("This clears every Endless Spool backup. The print will stop on runout "
+                       "until you set up Endless Spool again."),
                  ModalSeverity::Warning, lv_tr("Reset"), [] {
                      AmsBackend* b = AmsState::instance().get_backend();
                      if (!b) {
@@ -235,9 +235,9 @@ void AmsDeviceOperationsOverlay::register_callbacks() {
                      }
                      AmsError result = b->reset_endless_spool();
                      if (!result.success()) {
-                         helix::ui::notify_ams_error(result, lv_tr("Reset endless spool failed"));
+                         helix::ui::notify_ams_error(result, lv_tr("Reset Endless Spool failed"));
                      } else {
-                         NOTIFY_INFO("{}", lv_tr("Endless spool failover cleared for every slot"));
+                         NOTIFY_INFO("{}", lv_tr("Endless Spool backups cleared"));
                      }
                      get_ams_device_operations_overlay().refresh();
                  });

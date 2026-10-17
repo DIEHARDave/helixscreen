@@ -329,7 +329,7 @@ chose while the rewritten body selects others. The rewrite handles `INITIAL_TOOL
 `TOOL=`, and the Filament Mapping dialog warns about the rest while the picks move a tool; see
 [the remapper](FILAMENT_MANAGEMENT.md#gcode-tool-remapper). The recommended slicer start
 G-code for these machines is in the user guide,
-[Printers that remap by rewriting the file](../user/guide/filament.md#printers-that-remap-by-rewriting-the-file).
+[Printers that map filament by rewriting the file](../user/guide/filament.md#printers-that-map-filament-by-rewriting-the-file).
 
 `HELIX_MOCK_AMS=medusahc-fork` runs the rewrite route end to end in `--test`; set
 `helix_plugin_installed` to `1` with `ctl set` to get past the plugin gate.

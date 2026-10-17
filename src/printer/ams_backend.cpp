@@ -102,7 +102,7 @@ AmsError endless_spool_read_only_error(helix::printer::EndlessSpoolRestriction r
     return AmsError(AmsResult::NOT_SUPPORTED,
                     "Endless spool is read-only on this backend" +
                         (reason.empty() ? std::string() : " (" + reason + ")"),
-                    reason.empty() ? std::string("Endless spool cannot be changed here") : reason,
+                    reason.empty() ? std::string("Endless Spool cannot be changed here") : reason,
                     "");
 }
 

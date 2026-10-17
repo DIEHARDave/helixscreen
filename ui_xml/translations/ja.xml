@@ -274,6 +274,7 @@
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" ja="Klipper マクロを割り当ててオン/オフ、トグル、プリセットで LED を制御"/>
   <translation tag="Assign a role to enable sensor monitoring" ja="センサー監視を有効にするには役割を割り当ててください"/>
   <translation tag="Assign a slot first" ja="先にスロットを割り当ててください"/>
+  <translation tag="Assigned Tool" ja="割り当てツール"/>
   <translation tag="Assisted Retract" ja="アシスト付き引き戻し"/>
   <translation tag="Assisting" ja="アシスト中"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" ja="helixscreen.env の少なくとも{}行が無視されました"/>
@@ -286,21 +287,19 @@
   <translation tag="Auto Fans" ja="自動ファン"/>
   <translation tag="Auto-Detect" ja="自動検出"/>
   <translation tag="Auto-Heat on Load" ja="装填時に自動加熱"/>
+  <translation tag="Auto-Replenish" ja="自動補充"/>
   <translation tag="Auto-detect" ja="自動検出"/>
   <translation tag="Auto-install only works on local Moonraker" ja="自動インストールはローカルの Moonraker でのみ動作します"/>
   <translation tag="Auto-lock" ja="自動ロック"/>
   <translation tag="Auto-poll for weight updates" ja="重量更新の自動ポーリング"/>
   <translation tag="Auto-probe or manually check screw heights" ja="自動プローブまたは手動でネジの高さを確認"/>
-  <translation tag="Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout" ja="自動補充はオンですが、フィラメントが一致するスロットが2つないため、フィラメント切れになっても何も切り替わりません"/>
   <translation tag="Auto-render video" ja="動画を自動レンダリング"/>
-  <translation tag="Auto-replenish filament" ja="フィラメントを自動補充"/>
   <translation tag="Auto-tuning Shapers..." ja="シェーパーを自動調整中..."/>
   <translation tag="Auto-uninstall only works on local Moonraker" ja="自動アンインストールはローカルの Moonraker でのみ動作します"/>
   <translation tag="Automatic" ja="自動"/>
   <translation tag="Automatic Heater Control Calibration" ja="自動ヒーター制御キャリブレーション"/>
   <translation tag="Automatic LED Control" ja="自動LED制御"/>
   <translation tag="Automatic calibration" ja="自動キャリブレーション"/>
-  <translation tag="Automatic slot swap on runout" ja="フィラメント切れ時の自動スロット切り替え"/>
   <translation tag="Aux" ja="補助"/>
   <translation tag="Available" ja="利用可能"/>
   <translation tag="Available Networks" ja="利用可能なネットワーク"/>
@@ -320,8 +319,13 @@
   <translation tag="BLUETOOTH SCANNERS" ja="Bluetooth スキャナー"/>
   <translation tag="Back" ja="戻る"/>
   <translation tag="Backtrace: {} frames" ja="バックトレース: {} フレーム"/>
+  <translation tag="Backup Feeder" ja="予備フィーダー"/>
+  <translation tag="Backup Gate" ja="予備ゲート"/>
+  <translation tag="Backup Lane" ja="予備レーン"/>
+  <translation tag="Backup Slot" ja="予備スロット"/>
+  <translation tag="Backup Tool" ja="予備ツール"/>
+  <translation tag="Backup Toolhead" ja="予備ツールヘッド"/>
   <translation tag="Backup lane name contains invalid characters" ja="バックアップレーン名に無効な文字が含まれています"/>
-  <translation tag="Backup spool switching state unknown" ja="バックアップスプール切り替えの状態は不明です"/>
   <translation tag="Balanced" ja="均衡"/>
   <translation tag="Barcode Scanner" ja="バーコードスキャナー"/>
   <translation tag="Base" ja="基準"/>
@@ -509,8 +513,6 @@
   <translation tag="Cannot open or close the feeder while a print is active" ja="印刷中はフィーダーを開閉できません"/>
   <translation tag="Cannot park while a print is active" ja="印刷中はパーキングできません"/>
   <translation tag="Cannot perform this action now" ja="現在この操作は実行できません"/>
-  <translation tag="Cannot remap G-code: no temp directory available" ja="G-codeをリマップできません: 一時ディレクトリが利用できません"/>
-  <translation tag="Cannot remap: internal error" ja="リマップできません: 内部エラー"/>
   <translation tag="Cannot reprint: not connected to printer" ja="再印刷できません: プリンター未接続"/>
   <translation tag="Cannot restart — no filename" ja="再起動できません — ファイル名がありません"/>
   <translation tag="Cannot run filament operation while printing" ja="印刷中はフィラメント操作を実行できません"/>
@@ -623,7 +625,7 @@
   <translation tag="Clear All Events" ja="すべてのイベントをクリア"/>
   <translation tag="Clear Console?" ja="コンソールをクリアしますか？"/>
   <translation tag="Clear Spool" ja="スプールを解除"/>
-  <translation tag="Clear all spool failover assignments" ja="すべての予備スプール割り当てを消去"/>
+  <translation tag="Clear every Endless Spool backup" ja="エンドレススプールの予備をすべて消去"/>
   <translation tag="Clear failed" ja="クリアに失敗しました"/>
   <translation tag="Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament&apos;s packaging) and close the door." ja="ベッドの上と下を片付けてください。スプールをベッドに置き、箱(印刷したふたやフィラメントの梱包箱)でかぶせてドアを閉めてください。"/>
   <translation tag="Clear the plate and load {}. The tower prints in the middle of the bed." ja="ベッドを片付けて{}をロードしてください。タワーはベッド中央に印刷されます。"/>
@@ -692,7 +694,6 @@
   <translation tag="Configured aux fan not found" ja="設定済みの補助ファンが見つかりません"/>
   <translation tag="Configured filament sensor not found" ja="設定済みのフィラメントセンサーが見つかりません"/>
   <translation tag="Configured hardware no longer present" ja="設定済みのハードウェアが見つかりません"/>
-  <translation tag="Configured in the backup-spool package, not from here" ja="バックアップスプール用プラグイン側で設定します"/>
   <translation tag="Configuring Moonraker..." ja="Moonrakerを設定中..."/>
   <translation tag="Confirm PIN" ja="PIN を確認"/>
   <translation tag="Confirm before running macros" ja="マクロ実行前に確認する"/>
@@ -798,7 +799,10 @@
   <translation tag="Could not start Bluetooth discovery" ja="Bluetooth の検出を開始できませんでした"/>
   <translation tag="Could not update filaments" ja="フィラメントを更新できませんでした"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." ja="Spoolman のステータスを確認できませんでした。Moonraker がまだ再起動中の可能性があります。"/>
+  <translation tag="Couldn&apos;t assign the tool" ja="ツールを割り当てられませんでした"/>
   <translation tag="Couldn&apos;t clear the printer&apos;s gate map" ja="プリンターのゲートマップをクリアできませんでした"/>
+  <translation tag="Couldn&apos;t map filament: internal error" ja="フィラメントをマッピングできません: 内部エラー"/>
+  <translation tag="Couldn&apos;t map filament: no temp directory available" ja="フィラメントをマッピングできません: 一時ディレクトリが利用できません"/>
   <translation tag="Couldn&apos;t save the material name" ja="材料名を保存できませんでした"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ja="プリンターのゲートマップを保存できませんでした"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ja="Spoolman に保存できませんでした。このプリンターでは何も変更されていません。"/>
@@ -1014,7 +1018,6 @@
   <translation tag="Enable or disable the hub cutter" ja="ハブカッターの有効／無効"/>
   <translation tag="Enable plugin?" ja="プラグインを有効化しますか？"/>
   <translation tag="Enable purging during tool changes" ja="ツール交換時のパージを有効化"/>
-  <translation tag="Enable/disable automatic backup spool switching" ja="予備スプールへの自動切り替えの有効／無効"/>
   <translation tag="Enable/disable quiet operation mode" ja="静音動作モードの有効／無効"/>
   <translation tag="Enabled" ja="有効"/>
   <translation tag="Enabled. Open its settings, or disable it?" ja="有効です。設定を開くか、無効化しますか？"/>
@@ -1027,8 +1030,11 @@
   <translation tag="End the test print?" ja="テスト印刷を終了しますか?"/>
   <translation tag="Ended" ja="終了"/>
   <translation tag="Endless Spool" ja="エンドレススプール"/>
-  <translation tag="Endless spool failover cleared for every slot" ja="すべてのスロットのエンドレススプール設定を消去しました"/>
-  <translation tag="Endless spool is turned off on this MMU" ja="この MMU ではエンドレススプールが無効です"/>
+  <translation tag="Endless Spool backups cleared" ja="エンドレススプールの予備を消去しました"/>
+  <translation tag="Endless Spool is configured in its package, not from here" ja="エンドレススプールはプラグイン側で設定します"/>
+  <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" ja="エンドレススプールはオンですが、フィラメントが一致するスロットが2つないため、フィラメント切れになっても何も切り替わりません"/>
+  <translation tag="Endless Spool is turned off on this MMU" ja="この MMU ではエンドレススプールが無効です"/>
+  <translation tag="Endless Spool state unknown" ja="エンドレススプールの状態は不明です"/>
   <translation tag="Ensure Happy Hare or AFC is installed and configured" ja="Happy Hare または AFC がインストールされ、設定されていることを確認してください"/>
   <translation tag="Enter Current PIN" ja="現在の PIN を入力"/>
   <translation tag="Enter G-code command..." ja="G-code コマンドを入力..."/>
@@ -1143,8 +1149,8 @@
   <translation tag="Failed to delete spool" ja="スプールの削除に失敗しました"/>
   <translation tag="Failed to disable WiFi: {}" ja="WiFi を無効にできませんでした: {}"/>
   <translation tag="Failed to discard recovery data: {}" ja="復旧データの破棄に失敗しました: {}"/>
+  <translation tag="Failed to download G-code for Filament Mapping: {}" ja="フィラメントマッピング用のG-codeのダウンロードに失敗しました: {}"/>
   <translation tag="Failed to download G-code for modification: {}" ja="G-code の変更用ダウンロードに失敗しました: {}"/>
-  <translation tag="Failed to download G-code for remap: {}" ja="リマップ用のG-codeのダウンロードに失敗しました: {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." ja="helixscreen.confのダウンロードに失敗しました。&#10;プリンター接続を確認してください。"/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." ja="moonraker.confのダウンロードに失敗しました。&#10;プリンター接続を確認してください。"/>
   <translation tag="Failed to download the .3mf for printing: {}" ja="印刷用の .3mf をダウンロードできませんでした: {}"/>
@@ -1175,13 +1181,12 @@
   <translation tag="Failed to open temperature graph" ja="温度グラフを開けませんでした"/>
   <translation tag="Failed to pause print: {}" ja="印刷の一時停止に失敗しました: {}"/>
   <translation tag="Failed to purge: {}" ja="パージに失敗しました: {}"/>
-  <translation tag="Failed to read G-code for remap" ja="リマップ用のG-codeの読み込みに失敗しました"/>
+  <translation tag="Failed to read G-code for Filament Mapping" ja="フィラメントマッピング用のG-codeの読み込みに失敗しました"/>
   <translation tag="Failed to read config." ja="設定の読み込みに失敗しました。"/>
   <translation tag="Failed to read config. Check connection." ja="設定の読み込みに失敗しました。接続を確認してください。"/>
   <translation tag="Failed to read moonraker.conf." ja="moonraker.confの読み込みに失敗しました。"/>
   <translation tag="Failed to read printer status" ja="プリンターステータスの読み込みに失敗しました"/>
   <translation tag="Failed to refresh file list" ja="ファイルリストの更新に失敗しました"/>
-  <translation tag="Failed to remap G-code: {}" ja="G-codeのリマップに失敗しました: {}"/>
   <translation tag="Failed to render label" ja="ラベルのレンダリングに失敗しました"/>
   <translation tag="Failed to reprint: {}" ja="再印刷に失敗しました: {}"/>
   <translation tag="Failed to reset theme" ja="テーマのリセットに失敗しました"/>
@@ -1189,6 +1194,7 @@
   <translation tag="Failed to restart Moonraker." ja="Moonrakerの再起動に失敗しました。"/>
   <translation tag="Failed to restart: {}" ja="再起動に失敗しました: {}"/>
   <translation tag="Failed to resume: {}" ja="再開に失敗しました: {}"/>
+  <translation tag="Failed to rewrite G-code for Filament Mapping: {}" ja="フィラメントマッピング用のG-codeの書き換えに失敗しました: {}"/>
   <translation tag="Failed to save LED configuration" ja="LED設定の保存に失敗しました"/>
   <translation tag="Failed to save WiFi network" ja="WiFi ネットワークを保存できませんでした"/>
   <translation tag="Failed to save config." ja="設定の保存に失敗しました。"/>
@@ -1224,8 +1230,8 @@
   <translation tag="Failed to update moonraker.conf." ja="moonraker.confの更新に失敗しました。"/>
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." ja="moonraker.confの更新に失敗しました。&#10;プリンター接続を確認してください。"/>
   <translation tag="Failed to upload modified G-code: {}" ja="変更済み G-code のアップロードに失敗しました: {}"/>
-  <translation tag="Failed to upload remapped G-code: {}" ja="リマップしたG-codeのアップロードに失敗しました: {}"/>
   <translation tag="Failed to upload the extracted G-code: {}" ja="抽出した G-code をアップロードできませんでした: {}"/>
+  <translation tag="Failed to upload the rewritten G-code: {}" ja="書き換えたG-codeのアップロードに失敗しました: {}"/>
   <translation tag="Fair match" ja="まずまずの一致"/>
   <translation tag="Fan" ja="ファン"/>
   <translation tag="Fan Calibration" ja="ファンキャリブレーション"/>
@@ -1260,6 +1266,9 @@
   <translation tag="Filament In The Toolhead" ja="ツールヘッドにフィラメントがあります"/>
   <translation tag="Filament Jam" ja="フィラメントの詰まり"/>
   <translation tag="Filament Mapping" ja="フィラメントマッピング"/>
+  <translation tag="Filament Mapping is not available on this device." ja="このデバイスではフィラメントマッピングを利用できません。"/>
+  <translation tag="Filament Mapping is unavailable" ja="フィラメントマッピングは利用できません"/>
+  <translation tag="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" ja="このプリンターはフィラメントマッピングに対応していないため、プリンターで割り当てられたツールで印刷します"/>
   <translation tag="Filament Runout" ja="フィラメント切れ"/>
   <translation tag="Filament Sensor" ja="フィラメントセンサー"/>
   <translation tag="Filament System Error" ja="フィラメントシステムエラー"/>
@@ -1296,11 +1305,9 @@
   <translation tag="Filament ran out - nothing at the toolhead and the print is paused." ja="フィラメントが切れました - ツールヘッドには何も残っておらず、印刷は一時停止しています。"/>
   <translation tag="Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume." ja="フィラメントが切れましたが、CFSは切り替え可能な一致するスプールを見つけられませんでした。同じ材料と色のスプールを装填してから再開してください。"/>
   <translation tag="Filament ran out at the toolhead" ja="ツールヘッドでフィラメントが切れました"/>
-  <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." ja="フィラメントが切れました。自動補充がオフのため、CFSは自動でスプールを切り替えません。フィラメントを装填してから再開してください。"/>
+  <translation tag="Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume." ja="フィラメントが切れました。自動補充がオフのため、CFSは自動でスプールを切り替えません。フィラメントを装填してから再開してください。"/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." ja="フィラメントが切れました。CFSは適合するスプールを認識していますが、該当するスロットは空です。いずれかを装填してから再開してください。"/>
   <translation tag="Filament reload failed" ja="フィラメントの再装填に失敗しました"/>
-  <translation tag="Filament remap not supported on this printer — print will use the firmware&apos;s current tool mapping" ja="このプリンターはフィラメントの再割り当てに対応していません — 印刷はファームウェアの現在のツール割り当てを使用します"/>
-  <translation tag="Filament remapping is unavailable" ja="フィラメントのリマップは利用できません"/>
   <translation tag="Filament runout" ja="フィラメント切れ"/>
   <translation tag="Filament runout and motion detection sensors" ja="フィラメント切れとモーション検出センサー"/>
   <translation tag="Filament saved" ja="フィラメントを保存しました"/>
@@ -1742,7 +1749,7 @@
   <translation tag="Load Filament" ja="フィラメントを装填"/>
   <translation tag="Load Profile" ja="プロファイルを読み込む"/>
   <translation tag="Load a filament first before trying to unload" ja="排出する前にまずフィラメントを装填してください"/>
-  <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" ja="このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください"/>
+  <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" ja="このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください"/>
   <translation tag="Load and unload filament at the tool by hand" ja="フィラメントはツールで手動でロード・アンロードしてください"/>
   <translation tag="Load cancelled: nozzle target dropped" ja="装填をキャンセル: ノズルの目標温度が下がりました"/>
   <translation tag="Load complete" ja="ロード完了"/>
@@ -1752,7 +1759,7 @@
   <translation tag="Load into which tool?" ja="どのツールにロードしますか？"/>
   <translation tag="Load or unload filament." ja="フィラメントを装填または排出します。"/>
   <translation tag="Load the required filaments or start anyway?" ja="必要なフィラメントを装填しますか？それともこのまま開始しますか？"/>
-  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." ja="スプールのロード、アンロード、交換を行います。マルチフィラメントシステムを一目で確認し、色をスロットにマッピングし、ランアウトセンサーを監視できます。"/>
+  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." ja="スプールのロード、アンロード、交換を行います。マルチフィラメントシステムを一目で確認し、フィラメントをツールにマッピングし、ランアウトセンサーを監視できます。"/>
   <translation tag="Load..." ja="装填..."/>
   <translation tag="Loaded" ja="装填済み"/>
   <translation tag="Loading" ja="ロード中"/>
@@ -1849,6 +1856,7 @@
   <translation tag="Manual: the ramp has stopped at your value" ja="手動: ランプはあなたの値で停止しました"/>
   <translation tag="Manually clear the jam and retry the operation" ja="詰まりを手動で取り除いてから、もう一度お試しください"/>
   <translation tag="Manually pull the filament back through the connector" ja="コネクターからフィラメントを手で引き戻してください"/>
+  <translation tag="Map Filament…" ja="フィラメントをマッピング…"/>
   <translation tag="Map to closest colors with matching material" ja="一致する素材で最も近い色に割り当て"/>
   <translation tag="Mapping Error" ja="マッピングエラー"/>
   <translation tag="Marginal" ja="やや不良"/>
@@ -1988,6 +1996,7 @@
   <translation tag="No Bluetooth printer selected — pick one in settings" ja="Bluetooth プリンターが選択されていません — 設定で選択してください"/>
   <translation tag="No Bluetooth printers found" ja="Bluetooth プリンターが見つかりません"/>
   <translation tag="No Camera" ja="カメラなし"/>
+  <translation tag="No Endless Spool package is installed" ja="エンドレススプール用プラグインが未インストールです"/>
   <translation tag="No Filament Detected" ja="フィラメント未検出"/>
   <translation tag="No Hardware Issues" ja="ハードウェアの問題なし"/>
   <translation tag="No History" ja="履歴なし"/>
@@ -2004,7 +2013,6 @@
   <translation tag="No USB printer detected" ja="USB プリンターが検出されません"/>
   <translation tag="No USB printers found" ja="USBプリンターが見つかりません"/>
   <translation tag="No active Spoolman spool." ja="Spoolmanで使用中のスプールがありません。"/>
-  <translation tag="No automatic backup-spool package is installed" ja="自動バックアップスプール用プラグインが未インストールです"/>
   <translation tag="No buffer data available" ja="バッファーデータがありません"/>
   <translation tag="No camera — use USB barcode scanner" ja="カメラなし — USB バーコードスキャナーを使用してください"/>
   <translation tag="No chamber temperature sensor detected" ja="チャンバー温度センサーが検出されません"/>
@@ -2525,7 +2533,7 @@
   <translation tag="RFCOMM connect failed: " ja="RFCOMM 接続に失敗しました: "/>
   <translation tag="RFID reader malfunction (left)" ja="RFID リーダーの異常（左）"/>
   <translation tag="RFID reader malfunction (right)" ja="RFID リーダーの異常（右）"/>
-  <translation tag="RFID, auto-refill, nozzle and link care" ja="RFID、自動補充、ノズルと接続のメンテナンス"/>
+  <translation tag="RFID, Auto-Refill, nozzle and link care" ja="RFID、自動補充、ノズルと接続のメンテナンス"/>
   <translation tag="RH" ja="RH"/>
   <translation tag="RSS" ja="RSS"/>
   <translation tag="RSS:" ja="RSS:"/>
@@ -2590,11 +2598,6 @@
   <translation tag="Remaining" ja="残り"/>
   <translation tag="Remaining (g)" ja="残量 (g)"/>
   <translation tag="Remaining Weight (g)" ja="残量（g）"/>
-  <translation tag="Remap Tool" ja="ツールを再割当"/>
-  <translation tag="Remapping G-code is not available on this device." ja="このデバイスでは G-code をリマップできません。"/>
-  <translation tag="Remapping rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally." ja="リマップは印刷前にジョブファイルを書き換えます。このプリンターのMoonrakerは旧バージョンのため、HelixPrintプラグインが後から元のファイル名を復元できず、完了したジョブは書き換え後の名前で表示されます。リマップ自体は正常に動作します。"/>
-  <translation tag="Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." ja="リマップは印刷前にジョブファイルを書き換えます。HelixPrintプラグインがない場合、書き換えられたコピーが印刷履歴に残るため、完了したジョブは選んだファイルではなくmodified_1730824_benchy.gcodeのような名前で表示されます。&#10;&#10;プラグインのインストールはすぐに完了し、再起動は必要ありません。"/>
-  <translation tag="Remap…" ja="リマップ…"/>
   <translation tag="Remember slot spool details across an eject" ja="取り出し後もスロットのスプール情報を記憶します"/>
   <translation tag="Remove" ja="削除"/>
   <translation tag="Remove PIN" ja="PIN を削除"/>
@@ -2617,7 +2620,7 @@
   <translation tag="Replace" ja="置き換え"/>
   <translation tag="Replace Profile?" ja="プロファイルを置き換えますか？"/>
   <translation tag="Replay Welcome Tour" ja="ウェルカムツアーを再生"/>
-  <translation tag="Replenish ignores colour" ja="補充時に色を無視"/>
+  <translation tag="Replenish ignores color" ja="補充時に色を無視"/>
   <translation tag="Replenishing filament..." ja="フィラメントを補充中..."/>
   <translation tag="Report saved to crash_report.txt" ja="crash_report.txt にレポートを保存しました"/>
   <translation tag="Reprint" ja="再印刷"/>
@@ -2639,6 +2642,7 @@
   <translation tag="Reset Distances" ja="距離をリセット"/>
   <translation tag="Reset Distances?" ja="距離をリセットしますか？"/>
   <translation tag="Reset Endless Spool" ja="エンドレススプールをリセット"/>
+  <translation tag="Reset Endless Spool failed" ja="エンドレススプールのリセットに失敗しました"/>
   <translation tag="Reset Endless Spool?" ja="エンドレススプールをリセットしますか？"/>
   <translation tag="Reset Home Screen?" ja="ホーム画面をリセットしますか？"/>
   <translation tag="Reset Motor Timer" ja="モータータイマーをリセット"/>
@@ -2646,7 +2650,6 @@
   <translation tag="Reset Speed &amp; Flow to 100%" ja="速度とフローを100%にリセット"/>
   <translation tag="Reset Tags" ja="タグをリセット"/>
   <translation tag="Reset all settings and restart wizard" ja="すべての設定をリセットしてウィザードを再開"/>
-  <translation tag="Reset endless spool failed" ja="エンドレススプールのリセットに失敗しました"/>
   <translation tag="Reset failed" ja="リセットに失敗しました"/>
   <translation tag="Reset motor run-time counter" ja="モーターの稼働時間カウンターをリセット"/>
   <translation tag="Reset tags" ja="タグをリセット"/>
@@ -2905,7 +2908,7 @@
   <translation tag="Set local timezone for time display" ja="時刻表示用のローカルタイムゾーンを設定"/>
   <translation tag="Set logging verbosity for troubleshooting" ja="トラブルシューティング用のログの詳細レベルを設定"/>
   <translation tag="Set temperature between {}°C and {}°C" ja="温度は {}〜{}°C にしてください"/>
-  <translation tag="Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle" ja="このスロットのフィラメントの種類と色を手動で設定してください。タグが読み取れるはずの場合は、ボックスが停止しているときにラベルをリーダー側に向けてスプールを入れ直してください"/>
+  <translation tag="Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle" ja="このスロットのフィラメントの種類と色を手動で設定してください。タグが読み取れるはずの場合は、ボックスが停止しているときにラベルをリーダー側に向けてスプールを入れ直してください"/>
   <translation tag="Set up" ja="セットアップ"/>
   <translation tag="Set up your label printer in Settings" ja="設定でラベルプリンターをセットアップしてください"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." ja="実際に選択・装填されている状態を設定します。何も動きません。"/>
@@ -3104,10 +3107,12 @@
   <translation tag="Switch a power device on or off" ja="電源デバイスのオン/オフ切り替え"/>
   <translation tag="Switch between light and dark themes" ja="ライトテーマとダークテーマを切り替え"/>
   <translation tag="Switch the active tool or extruder" ja="アクティブなツールやエクストルーダーを切り替え"/>
+  <translation tag="Switch to a backup slot on runout" ja="フィラメント切れ時に予備スロットへ切り替え"/>
+  <translation tag="Switch to a matching slot on runout" ja="フィラメント切れ時に一致するスロットへ切り替え"/>
   <translation tag="Switch to v%s" ja="v%s に切り替え"/>
   <translation tag="Switch to {}?" ja="{} に切り替えますか?"/>
   <translation tag="Switched to {}" ja="{} に切替えました"/>
-  <translation tag="Switches to a backup spool on runout" ja="フィラメント切れ時にバックアップスプールへ切り替えます"/>
+  <translation tag="Switches to another spool on runout" ja="フィラメント切れ時に別のスプールへ切り替えます"/>
   <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." ja="PIDに戻すと、このヒーターの制御方法が変わり、その後キャリブレーションが行われます。温度に達した状態で数分かかります。"/>
   <translation tag="Switching back to PID requires a config change and Klipper restart." ja="PIDに戻すには設定変更とKlipperの再起動が必要です。"/>
   <translation tag="Switching heater control to MPC. Klipper will restart." ja="ヒーター制御をMPCに切り替えます。Klipperが再起動します。"/>
@@ -3260,7 +3265,7 @@
   <translation tag="The printer lost power while printing {}. Resume where it left off?" ja="{} の印刷中にプリンターの電源が失われました。中断した箇所から再開しますか？"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." ja="{} の印刷中にプリンターの電源が失われました。再開したレイヤーがわずかにずれる可能性があります。"/>
   <translation tag="The printer rejected the filament configuration. The print was not started." ja="プリンターがフィラメント設定を拒否しました。印刷は開始されませんでした。"/>
-  <translation tag="The printer&apos;s firmware chooses the backup spool itself" ja="バックアップスプールはプリンターのファームウェアが選びます"/>
+  <translation tag="The printer&apos;s firmware chooses where to switch on runout" ja="フィラメント切れ時の切り替え先はプリンターのファームウェアが選びます"/>
   <translation tag="The requested position is outside the printer&apos;s bounds" ja="指定された位置はプリンターの可動範囲外です"/>
   <translation tag="The right RFID reader in this CFS unit may need service" ja="この CFS ユニットの右側 RFID リーダーは修理が必要な可能性があります"/>
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" ja="フィラメント切れセンサーがフィラメント未装填を検出しました。それでも印刷を開始しますか？"/>
@@ -3299,7 +3304,7 @@
   <translation tag="This cannot be undone." ja="この操作は元に戻せません。"/>
   <translation tag="This channel offers v{}, older than the installed v{}. Anything added since then will be removed." ja="このチャンネルが提供するのは v{} で、インストール済みの v{} より古いバージョンです。それ以降に追加されたものは削除されます。"/>
   <translation tag="This check runs Klipper&apos;s resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.&#10;&#10;Each sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs." ja="このチェックはKlipperの共振テストを各ベルトパスに沿って実行し、2つの応答を比較します。バランスの取れたベルトは同じ形の曲線になり、ピークが同じ周波数に現れます。&#10;&#10;各スイープには数分かかり、ツールヘッドが動きます。実行中はプリンターから離れてください。"/>
-  <translation tag="This clears every spool&apos;s failover assignment. The print will stop on runout until you set up failover again." ja="すべてのスプールの予備割り当てを消去します。再設定するまで、フィラメント切れで印刷が停止します。"/>
+  <translation tag="This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again." ja="エンドレススプールの予備をすべて消去します。エンドレススプールを再設定するまで、フィラメント切れで印刷が停止します。"/>
   <translation tag="This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen." ja="このデバイスには有線ネットワーク接続がありません。WiFiをオフにすると、この画面からのみオンに戻せます。"/>
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" ja="このデバイスの RAM は {} MB しかありません。共振キャリブレーションはメモリを大量に消費し、プリンターのファームウェアが &quot;Timer Too Close&quot; エラーを報告したり、テスト中に再起動したりする可能性があります。それでも続行しますか？"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" ja="このデバイスの RAM は非常に少ないです。共振キャリブレーションはメモリを大量に消費し、&quot;Timer Too Close&quot; エラーを引き起こす可能性があります。それでも続行しますか？"/>
@@ -3325,7 +3330,7 @@
   <translation tag="This print never reports layer {}." ja="この印刷はレイヤー {} を報告しません。"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" ja="このプリンターはツールオフセットを自動でキャリブレートできません"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。"/>
-  <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。"/>
+  <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。"/>
   <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." ja="このプリンターには自動アンロード機能がありません。ヘッド部分でフィラメントを切り、手で引き抜いてください。"/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." ja="このプリンターは {} のようです（信頼度 {}%）が、{} として設定されています。誤ったタイプでは不正確な印刷前オプションとプリセットが適用されます。"/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" ja="このプリンターのネットワークサービスが WiFi 無線を制御しています"/>
@@ -3380,6 +3385,8 @@
   <translation tag="Tips" ja="ヒント"/>
   <translation tag="Tips database format error" ja="ヒントデータベースの形式エラー"/>
   <translation tag="Tips database not found" ja="ヒントデータベースが見つかりません"/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally." ja="フィラメントをマッピングするため、HelixScreenは印刷前にジョブファイルを書き換えます。このプリンターのMoonrakerは旧バージョンのため、HelixPrintプラグインが後から元のファイル名を復元できず、完了したジョブは書き換え後の名前で表示されます。フィラメントマッピング自体は正常に動作します。"/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." ja="フィラメントをマッピングするため、HelixScreenは印刷前にジョブファイルを書き換えます。HelixPrintプラグインがない場合、書き換えられたコピーが印刷履歴に残るため、完了したジョブは選んだファイルではなくmodified_1730824_benchy.gcodeのような名前で表示されます。&#10;&#10;プラグインのインストールはすぐに完了し、再起動は必要ありません。"/>
   <translation tag="Toggle" ja="トグル"/>
   <translation tag="Toggle (fire-and-forget)" ja="トグル（状態追跡なし）"/>
   <translation tag="Toggle AFC LED strip" ja="AFC LEDストリップを切り替え"/>
@@ -3396,7 +3403,6 @@
   <translation tag="Tool Switcher" ja="ツール切り替え"/>
   <translation tag="Tool change failed: {}" ja="ツール変更に失敗しました: {}"/>
   <translation tag="Tool change to T{}" ja="ツールを T{} に変更しています"/>
-  <translation tag="Tool mapping failed" ja="ツールマッピングに失敗しました"/>
   <translation tag="Tool offsets (mm)" ja="ツールオフセット (mm)"/>
   <translation tag="Tool offsets saved" ja="ツールオフセットを保存しました"/>
   <translation tag="Tool swap" ja="ツール交換"/>
@@ -3437,12 +3443,12 @@
   <translation tag="Turbo" ja="ターボ"/>
   <translation tag="Turbo Inner" ja="ターボ・内側"/>
   <translation tag="Turbo Outer" ja="ターボ・外側"/>
+  <translation tag="Turn Endless Spool on, then set the Backup Gate" ja="エンドレススプールを有効にしてから、バックアップゲートを設定してください"/>
   <translation tag="Turn LED off when the print ends" ja="印刷終了時に LED を消灯"/>
   <translation tag="Turn Off" ja="オフにする"/>
   <translation tag="Turn Off WiFi?" ja="WiFiをオフにしますか？"/>
   <translation tag="Turn On" ja="オンにする"/>
   <translation tag="Turn On LEDs" ja="LEDを点灯"/>
-  <translation tag="Turn endless spool on, then set the backup gate" ja="エンドレススプールを有効にしてから、バックアップゲートを設定してください"/>
   <translation tag="Turn off bed check" ja="ベッドチェックをオフにする"/>
   <translation tag="Turn off detection" ja="検出をオフにする"/>
   <translation tag="Turn on the lights your light buttons control" ja="ライトボタンが操作するライトを点灯します"/>
@@ -3678,7 +3684,7 @@
   <translation tag="Your printer at a glance" ja="プリンターを一目で確認"/>
   <translation tag="Your printer has an automatic filament changer" ja="プリンターに自動フィラメントチェンジャーが搭載されています"/>
   <translation tag="Your printer was offline during setup, so hardware options were skipped. Set them up now?" ja="セットアップ中にプリンターがオフラインだったため、ハードウェアオプションはスキップされました。今すぐ設定しますか？"/>
-  <translation tag="Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide." ja="{} の行には、リマップで変更されないツールごとの設定が含まれています ({})。リマップしたツールが加熱されない可能性があります。ユーザーガイドの「Tool Mapping」を参照してください。"/>
+  <translation tag="Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide." ja="{} の行には、フィラメントマッピングで変更されないツールごとの設定が含まれています ({})。フィラメントをマッピングしたツールが加熱されない可能性があります。ユーザーガイドの「Filament Mapping」を参照してください。"/>
   <translation tag="Z" ja="Z"/>
   <translation tag="Z Calibration" ja="Z キャリブレーション"/>
   <translation tag="Z Movement" ja="Z移動"/>
@@ -3834,8 +3840,8 @@
   <translation tag="{} is blocked — manual intervention required" ja="{} がブロックされています — 手動での対応が必要です"/>
   <translation tag="{} is due: {} h reached" ja="{}の交換時期です: {} 時間に到達"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." ja="{} は現在の印刷に給紙中です。印刷終了後にクリアしてください。"/>
-  <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." ja="{} はインストールされていますが、予備スプールへの切り替えがオフになっているため、自動切り替えは行われません。"/>
-  <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." ja="{} はインストールされていますが、予備スプールの設定を読み取れませんでした - 自動切り替えを当てにしないでください。"/>
+  <translation tag="{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout." ja="{} はインストールされていますが、エンドレススプールの設定がオフになっているため、フィラメント切れになっても何も切り替わりません。"/>
+  <translation tag="{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool." ja="{} はインストールされていますが、エンドレススプールの設定を読み取れませんでした - エンドレススプールを当てにしないでください。"/>
   <translation tag="{} is not available on this device. Printing original file." ja="このデバイスでは {} を利用できません。元のファイルを印刷します。"/>
   <translation tag="{} is not set up on this printer" ja="{} はこのプリンターで設定されていません"/>
   <translation tag="{} is still printing. The print keeps running after you switch." ja="{}は印刷中です。切り替えても印刷は続行されます。"/>
@@ -3869,7 +3875,7 @@
   <translation tag="{} target set to {}°C" ja="{} 目標温度を {}°C に設定しました"/>
   <translation tag="{} updated" ja="{} を更新しました"/>
   <translation tag="{} widgets" ja="ウィジェット {} 個"/>
-  <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." ja="{} は、フィラメントの種類と色の両方がアクティブなスプールと一致し、かつ自身のポートセンサーがフィラメントを検知しているスロットに切り替えます。"/>
+  <translation tag="{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present." ja="{} は、フィラメントの種類と色の両方がアクティブなスプールと一致し、かつ自身のポートセンサーがフィラメントを検知しているスロットに切り替えます。"/>
   <translation tag="{} · {}" ja="{} · {}"/>
   <translation tag="{} · {} · {}" ja="{} · {} · {}"/>
   <translation tag="{} — response timed out" ja="{} — 応答タイムアウト"/>

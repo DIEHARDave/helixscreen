@@ -58,6 +58,8 @@ lv_subject_t AmsContextMenu::slot_load_hint_visible_subject_;
 char AmsContextMenu::slot_load_hint_buf_[192];
 lv_subject_t AmsContextMenu::slot_mount_subject_;
 lv_subject_t AmsContextMenu::slot_park_subject_;
+lv_subject_t AmsContextMenu::slot_backup_label_subject_;
+char AmsContextMenu::slot_backup_label_buf_[64];
 
 // ============================================================================
 // Construction / Destruction
@@ -87,6 +89,8 @@ void AmsContextMenu::init_subjects() {
                            sizeof(slot_load_hint_buf_), "");
     lv_subject_init_int(&slot_mount_subject_, 0);
     lv_subject_init_int(&slot_park_subject_, 0);
+    lv_subject_init_string(&slot_backup_label_subject_, slot_backup_label_buf_, nullptr,
+                           sizeof(slot_backup_label_buf_), "");
 
     lv_xml_register_subject(nullptr, "ams_slot_is_loaded", &slot_is_loaded_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_can_load", &slot_can_load_subject_);
@@ -108,6 +112,7 @@ void AmsContextMenu::init_subjects() {
                             &slot_load_hint_visible_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_mount", &slot_mount_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_park", &slot_park_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_backup_label", &slot_backup_label_subject_);
 
     subjects_initialized_ = true;
 }
@@ -967,7 +972,7 @@ void AmsContextMenu::handle_tool_changed() {
         auto result = backend_->set_tool_mapping(tool_number, get_item_index());
         if (!result.success()) {
             // notify_ams_error() logs the technical message itself.
-            helix::ui::notify_ams_error(result, lv_tr("Tool mapping failed"));
+            helix::ui::notify_ams_error(result, lv_tr("Couldn't assign the tool"));
         }
     }
     // Note: "None" selection doesn't clear mapping - user needs to map another slot to that tool
@@ -1051,11 +1056,9 @@ void AmsContextMenu::configure_dropdowns() {
 
     bool show_any_dropdown = false;
 
-    // No tool-mapping dropdown here: remapping is reached from the filament
-    // card on the print-detail view, which has the file's tool list to map
-    // against. A commented-out attempt lived here for a while, written against
-    // the retired capability struct; it is deleted rather than migrated because
-    // nothing has wanted this surface since the shared picker shipped.
+    // The tool row stays hidden: a slot's Assigned Tool is set from the spool
+    // editor, and per-print Filament Mapping from the filament card on the
+    // print-detail view, which has the file's tool list to map against.
     (void)tool_row;
 
     // Configure endless spool dropdown — see decide_show_backup_row().
@@ -1064,6 +1067,8 @@ void AmsContextMenu::configure_dropdowns() {
         if (decide_show_backup_row(es_caps, backend_->get_endless_spool_config(),
                                    get_item_index())) {
             populate_backup_dropdown();
+            lv_subject_copy_string(&slot_backup_label_subject_,
+                                   helix::ui::backup_lane_text(menu_lane_noun()).c_str());
             if (backup_row) {
                 lv_obj_remove_flag(backup_row, LV_OBJ_FLAG_HIDDEN);
             }

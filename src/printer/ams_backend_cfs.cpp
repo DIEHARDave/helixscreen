@@ -4173,7 +4173,7 @@ AmsBackendCfs::classify_error(const std::string& raw_line,
         message = lv_tr("Filament ran out and the CFS found no matching spool to switch to. "
                         "Load a spool of the same material and color, then resume.");
     } else if (refill_disabled) {
-        message = lv_tr("Filament ran out. Auto-refill is off, so the CFS will not switch "
+        message = lv_tr("Filament ran out. Auto-Refill is off, so the CFS will not switch "
                         "spools on its own. Load filament, then resume.");
     } else if (no_tray_available) {
         message = lv_tr("Filament ran out. The CFS knows which spools match, but those slots "
@@ -4327,7 +4327,7 @@ std::vector<helix::printer::DeviceSection> AmsBackendCfs::get_device_sections() 
     // renders only actions whose section matches one declared here.
     using DS = helix::printer::DeviceSection;
     std::vector<DS> sections = {
-        DS{"maintenance", "Maintenance", 0, "RFID, auto-refill, nozzle and link care"},
+        DS{"maintenance", "Maintenance", 0, "RFID, Auto-Refill, nozzle and link care"},
     };
     if (macro_variant_ == CfsMacroVariant::K1) {
         sections.push_back(
@@ -4351,7 +4351,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() co
         DA::button("refresh_rfid", "Refresh RFID", "maintenance", "",
                    "Re-read spool RFID tags and remaining length"),
         DA::toggle("toggle_auto_refill", "Toggle Auto-Refill", "maintenance",
-                   std::move(auto_refill), "", "Enable/disable automatic backup spool switching"),
+                   std::move(auto_refill), "", "Switch to a matching slot on runout"),
         DA::button("nozzle_clean", "Clean Nozzle", "maintenance", "",
                    "Wipe nozzle on silicone cleaning strip"),
         DA::button("comm_test", "Communication Test", "maintenance", "",

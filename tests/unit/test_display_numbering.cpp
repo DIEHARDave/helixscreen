@@ -73,6 +73,15 @@ TEST_CASE("noun_text covers every LaneNoun", "[numbering]") {
     CHECK(noun_text(LaneNoun::Toolhead) == "Toolhead");
 }
 
+TEST_CASE("backup_lane_text names the Endless Spool field in each noun", "[numbering]") {
+    CHECK(backup_lane_text(LaneNoun::Slot) == "Backup Slot");
+    CHECK(backup_lane_text(LaneNoun::Lane) == "Backup Lane");
+    CHECK(backup_lane_text(LaneNoun::Gate) == "Backup Gate");
+    CHECK(backup_lane_text(LaneNoun::Tool) == "Backup Tool");
+    CHECK(backup_lane_text(LaneNoun::Feeder) == "Backup Feeder");
+    CHECK(backup_lane_text(LaneNoun::Toolhead) == "Backup Toolhead");
+}
+
 TEST_CASE("lane_range_label spells a span with the plural noun", "[numbering]") {
     CHECK(lane_range_label(LaneNoun::Slot, 0, 3) == "Slots 1-4");
     CHECK(lane_range_label(LaneNoun::Lane, 0, 3) == "Lanes 1-4");

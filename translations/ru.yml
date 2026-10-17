@@ -339,6 +339,7 @@ translations:
     макросы Klipper для управления LED через вкл/выкл, переключение или пресеты
   Assign a role to enable sensor monitoring: Назначьте роль для мониторинга датчика
   Assign a slot first: 'Сначала назначьте слот'
+  Assigned Tool: Назначенный инструмент
   Assisted Retract: 'Ретракция с поддержкой'
   Assisting: Помощь
   At least {} lines in helixscreen.env were ignored: 'В helixscreen.env проигнорировано не менее {} строк'
@@ -355,6 +356,7 @@ translations:
   Auto Fans: Автоматические вентиляторы
   Auto-Detect: Автоопределение
   Auto-Heat on Load: Автонагрев при загрузке
+  Auto-Replenish: Автопополнение
   Auto-detect: Автоопределение
   Auto-install only works on local Moonraker: Автоустановка работает только с локальным
     Moonraker
@@ -362,9 +364,7 @@ translations:
   Auto-poll for weight updates: Автоопрос обновлений веса
   Auto-probe or manually check screw heights: Автозондирование или ручная проверка
     высоты винтов
-  Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout: Автопополнение включено, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает
   Auto-render video: Автоматический рендер видео
-  'Auto-replenish filament': 'Автопополнение филамента'
   Auto-tuning Shapers...: Автонастройка Input Shaper...
   Auto-uninstall only works on local Moonraker: Автоудаление работает только с локальным
     Moonraker
@@ -372,7 +372,6 @@ translations:
   Automatic Heater Control Calibration: Автоматическая калибровка нагревателя
   Automatic LED Control: Автоматическое управление LED
   Automatic calibration: 'Автоматическая калибровка'
-  Automatic slot swap on runout: 'Автоматическая смена слота при окончании'
   Aux: Доп
   Available: Доступен
   Available Networks: Доступные сети
@@ -396,8 +395,13 @@ translations:
     few: 'Трассировка: {} кадра'
     many: 'Трассировка: {} кадров'
     other: 'Трассировка: {} кадра'
+  Backup Feeder: Резервный фидер
+  Backup Gate: Резервный шлюз
+  Backup Lane: Резервный канал
+  Backup Slot: Резервный слот
+  Backup Tool: Резервный инструмент
+  Backup Toolhead: Резервная печатающая головка
   Backup lane name contains invalid characters: 'Имя резервного канала содержит недопустимые символы'
-  Backup spool switching state unknown: 'Резервная катушка: состояние неизвестно'
   Balanced: Сбалансирован
   Barcode Scanner: Сканер штрих-кодов
   Base: Опорный
@@ -603,9 +607,6 @@ translations:
   Cannot open or close the feeder while a print is active: 'Нельзя открыть или закрыть фидер во время печати'
   Cannot park while a print is active: 'Нельзя припарковать во время печати'
   Cannot perform this action now: Сейчас это действие выполнить нельзя
-  'Cannot remap G-code: no temp directory available': 'Не удалось переназначить G-code:
-    нет доступной временной директории'
-  'Cannot remap: internal error': 'Не удалось переназначить: внутренняя ошибка'
   'Cannot reprint: not connected to printer': 'Невозможно перепечатать: не подключено
     к принтеру'
   Cannot restart — no filename: Не удалось перезапустить — нет имени файла
@@ -732,7 +733,7 @@ translations:
   Clear All Events: Очистить все события
   Clear Console?: Очистить консоль?
   Clear Spool: Убрать катушку
-  Clear all spool failover assignments: 'Очистить все назначения резервных катушек'
+  Clear every Endless Spool backup: Очистить все резервы бесконечной катушки
   Clear failed: Ошибка очистки
   ? Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament's packaging) and close the door.
 
@@ -814,7 +815,6 @@ translations:
   Configured aux fan not found: 'Настроенный дополнительный вентилятор не найден'
   Configured filament sensor not found: 'Настроенный датчик филамента не найден'
   Configured hardware no longer present: 'Настроенное оборудование больше не обнаруживается'
-  Configured in the backup-spool package, not from here: Настраивается в плагине резервной катушки, не здесь
   Configuring Moonraker...: Настройка Moonraker...
   Confirm PIN: Подтвердите PIN
   Confirm before running macros: Подтверждать перед запуском макросов
@@ -938,7 +938,10 @@ translations:
   Could not update filaments: Не удалось обновить филаменты
   Could not verify Spoolman status. Moonraker may still be restarting.: Не удалось
     проверить статус Spoolman. Moonraker может ещё перезапускаться.
+  Couldn't assign the tool: Не удалось назначить инструмент
   Couldn't clear the printer's gate map: Не удалось очистить карту шлюзов принтера
+  "Couldn't map filament: internal error": 'Не удалось сопоставить филамент: внутренняя ошибка'
+  "Couldn't map filament: no temp directory available": 'Не удалось сопоставить филамент: нет доступной временной директории'
   Couldn't save the material name: 'Не удалось сохранить название материала'
   Couldn't save the printer's gate map: Не удалось сохранить карту шлюзов принтера
   Couldn't save to Spoolman. Nothing changed on this printer.: Не удалось сохранить в Spoolman. На этом принтере ничего не изменено.
@@ -1166,7 +1169,6 @@ translations:
   Enable or disable the hub cutter: 'Включить или выключить резак хаба'
   Enable plugin?: 'Включить плагин?'
   Enable purging during tool changes: 'Включить продувку при смене инструмента'
-  Enable/disable automatic backup spool switching: 'Включить/выключить автопереключение на резервную катушку'
   Enable/disable quiet operation mode: 'Включить/выключить тихий режим работы'
   Enabled: Включено
   Enabled. Open its settings, or disable it?: 'Включено. Открыть его настройки или отключить?'
@@ -1181,8 +1183,11 @@ translations:
   End the test print?: Завершить тестовую печать?
   Ended: Завершено
   Endless Spool: 'Бесконечная катушка'
-  Endless spool failover cleared for every slot: 'Резервные катушки очищены для всех слотов'
-  Endless spool is turned off on this MMU: 'Бесконечная катушка отключена на этом MMU'
+  Endless Spool backups cleared: Резервы бесконечной катушки очищены
+  Endless Spool is configured in its package, not from here: Бесконечная катушка настраивается в своём плагине, не здесь
+  Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Бесконечная катушка включена, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает
+  Endless Spool is turned off on this MMU: 'Бесконечная катушка отключена на этом MMU'
+  Endless Spool state unknown: 'Бесконечная катушка: состояние неизвестно'
   Ensure Happy Hare or AFC is installed and configured: Убедитесь, что Happy Hare или AFC установлен и настроен
   Enter Current PIN: Введите текущий PIN
   Enter G-code command...: Введите команду G-code...
@@ -1303,10 +1308,9 @@ translations:
   Failed to delete spool: Не удалось удалить катушку
   'Failed to disable WiFi: {}': 'Не удалось выключить WiFi: {}'
   'Failed to discard recovery data: {}': 'Не удалось удалить данные восстановления: {}'
+  'Failed to download G-code for Filament Mapping: {}': 'Не удалось скачать G-code для сопоставления филамента: {}'
   'Failed to download G-code for modification: {}': 'Не удалось скачать G-code для
     изменения: {}'
-  'Failed to download G-code for remap: {}': 'Не удалось скачать G-code для переназначения:
-    {}'
   ? "Failed to download helixscreen.conf.\nCheck printer connection."
   : "Не удалось скачать helixscreen.conf.\nПроверьте подключение принтера."
   ? "Failed to download moonraker.conf.\nCheck printer connection."
@@ -1340,14 +1344,13 @@ translations:
   Failed to open temperature graph: Не удалось открыть график температуры
   'Failed to pause print: {}': 'Не удалось приостановить печать: {}'
   'Failed to purge: {}': 'Не удалось прочистить: {}'
-  Failed to read G-code for remap: Не удалось прочитать G-code для переназначения
+  Failed to read G-code for Filament Mapping: Не удалось прочитать G-code для сопоставления филамента
   Failed to read config.: Не удалось прочитать конфигурацию.
   Failed to read config. Check connection.: Не удалось прочитать конфигурацию. Проверьте
     подключение.
   Failed to read moonraker.conf.: Не удалось прочитать moonraker.conf.
   Failed to read printer status: Не удалось прочитать статус принтера
   Failed to refresh file list: Не удалось обновить список файлов
-  'Failed to remap G-code: {}': 'Не удалось переназначить G-code: {}'
   Failed to render label: Не удалось отрендерить этикетку
   'Failed to reprint: {}': 'Не удалось перепечатать: {}'
   Failed to reset theme: Не удалось сбросить тему
@@ -1355,6 +1358,7 @@ translations:
   Failed to restart Moonraker.: Не удалось перезапустить Moonraker.
   'Failed to restart: {}': 'Не удалось перезапустить: {}'
   'Failed to resume: {}': 'Не удалось возобновить: {}'
+  'Failed to rewrite G-code for Filament Mapping: {}': 'Не удалось переписать G-code для сопоставления филамента: {}'
   Failed to save LED configuration: Не удалось сохранить настройки LED
   Failed to save WiFi network: Не удалось сохранить сеть WiFi
   Failed to save config.: Не удалось сохранить конфигурацию.
@@ -1393,9 +1397,8 @@ translations:
   : "Не удалось обновить moonraker.conf.\nПроверьте подключение принтера."
   'Failed to upload modified G-code: {}': 'Не удалось загрузить изменённый G-code:
     {}'
-  'Failed to upload remapped G-code: {}': 'Не удалось загрузить переназначенный G-code:
-    {}'
   'Failed to upload the extracted G-code: {}': 'Не удалось загрузить извлечённый G-code: {}'
+  'Failed to upload the rewritten G-code: {}': 'Не удалось загрузить переписанный G-code: {}'
   Fair match: "Среднее совпадение"
   Fan: Вентилятор
   Fan Calibration: Калибровка вентилятора
@@ -1429,7 +1432,10 @@ translations:
   Filament Humidity: Влажность филамента
   Filament In The Toolhead: Филамент в печатающей головке
   Filament Jam: 'Затор филамента'
-  Filament Mapping: Назначение филамента
+  Filament Mapping: Сопоставление филамента
+  Filament Mapping is not available on this device.: Сопоставление филамента недоступно на этом устройстве.
+  Filament Mapping is unavailable: Сопоставление филамента недоступно
+  Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Этот принтер не поддерживает сопоставление филамента, поэтому печать использует инструменты, назначенные на принтере
   Filament Runout: Окончание филамента
   Filament Sensor: Датчик филамента
   Filament System Error: Ошибка системы филамента
@@ -1471,11 +1477,9 @@ translations:
   ? Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   : 'Филамент закончился, и CFS не нашла подходящей катушки для замены. Загрузите катушку того же материала и цвета и продолжите печать.'
   Filament ran out at the toolhead: 'Филамент закончился у печатающей головки'
-  Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'Филамент закончился. Автопополнение выключено, поэтому CFS не сменит катушку сам. Загрузите филамент и продолжите печать.'
+  Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'Филамент закончился. Автопополнение выключено, поэтому CFS не сменит катушку сам. Загрузите филамент и продолжите печать.'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: Филамент закончился. CFS знает, какие катушки подходят, но эти слоты пусты. Загрузите одну из них, затем продолжите печать.
   Filament reload failed: Не удалось повторно подать филамент
-  Filament remap not supported on this printer — print will use the firmware's current tool mapping: Этот принтер не поддерживает переназначение филамента — печать будет использовать текущее назначение инструментов в прошивке
-  Filament remapping is unavailable: Переназначение филамента недоступно
   Filament runout: Окончание филамента
   Filament runout and motion detection sensors: Датчики окончания и движения филамента
   Filament saved: Филамент сохранён
@@ -1974,7 +1978,7 @@ translations:
   Load Failed: 'Не удалось загрузить'
   Load Filament: Загрузить филамент
   Load a filament first before trying to unload: Сначала загрузите филамент, прежде чем пытаться его выгрузить
-  Load a new spool in this slot, or turn on auto-refill to switch to a matching one: Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую
+  Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую
   Load and unload filament at the tool by hand: 'Загружайте и выгружайте филамент вручную на инструменте'
   'Load cancelled: nozzle target dropped': 'Загрузка отменена: цель сопла снижена'
   Load complete: 'Загрузка завершена'
@@ -1986,7 +1990,8 @@ translations:
   Load Profile: 'Загрузить профиль'
   Load the required filaments or start anyway?: Загрузить нужные филаменты или начать
     без них?
-  'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте цвета со слотами и отслеживайте датчики окончания филамента.'
+  ? Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors.
+  : Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте филамент с инструментами и отслеживайте датчики окончания филамента.
   Load...: Загрузить...
   Loaded: Загружен
   Loading: Загрузка
@@ -2088,6 +2093,7 @@ translations:
   'Manual: the ramp has stopped at your value': 'Вручную: рампа остановлена на вашем значении'
   Manually clear the jam and retry the operation: Устраните затор вручную и повторите операцию
   Manually pull the filament back through the connector: Вытяните филамент вручную через разъём
+  Map Filament…: Сопоставить филамент…
   Map to closest colors with matching material: Подобрать ближайшие цвета с подходящим
     материалом
   Mapping Error: 'Ошибка привязки'
@@ -2236,6 +2242,7 @@ translations:
     — выберите его в настройках
   No Bluetooth printers found: Bluetooth-принтеры не найдены
   No Camera: Нет камеры
+  No Endless Spool package is installed: Плагин бесконечной катушки не установлен
   No Filament Detected: Филамент не обнаружен
   No Hardware Issues: 'Проблем с оборудованием нет'
   No History: Нет истории
@@ -2254,7 +2261,6 @@ translations:
   No USB printer detected: USB-принтер не обнаружен
   No USB printers found: USB-принтеры не найдены
   No active Spoolman spool.: Нет активной катушки Spoolman.
-  No automatic backup-spool package is installed: Плагин автоматической резервной катушки не установлен
   No buffer data available: Данные буфера недоступны
   No camera — use USB barcode scanner: Нет камеры — используйте USB сканер штрих-кодов
   No chamber temperature sensor detected: 'Датчик температуры камеры не обнаружен'
@@ -2824,7 +2830,7 @@ translations:
   'RFCOMM connect failed: ': 'Не удалось подключиться по RFCOMM: '
   RFID reader malfunction (left): Неисправность RFID-считывателя (левый)
   RFID reader malfunction (right): Неисправность RFID-считывателя (правый)
-  RFID, auto-refill, nozzle and link care: RFID, автопополнение, уход за соплом и связью
+  RFID, Auto-Refill, nozzle and link care: RFID, автопополнение, уход за соплом и связью
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -2895,13 +2901,6 @@ translations:
   Remaining: 'Осталось'
   Remaining (g): Осталось (г)
   Remaining Weight (g): Оставшийся вес (г)
-  Remap Tool: Переназначить инструмент
-  Remapping G-code is not available on this device.: 'Переназначение G-code недоступно на этом устройстве.'
-  ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : Переназначение переписывает файл задания перед печатью. Moonraker этого принтера слишком старый, чтобы плагин HelixPrint потом восстановил исходное имя файла, поэтому выполненное задание отображается под изменённым именем. Само переназначение работает нормально.
-  ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : "Переназначение переписывает файл задания перед печатью. Без плагина HelixPrint в историю печати попадает изменённая копия, поэтому выполненные задания отображаются под именами вроде modified_1730824_benchy.gcode вместо выбранного файла.\n\nУстановка плагина занимает немного времени и не требует перезапуска."
-  Remap…: Переназначить…
   Remember slot spool details across an eject: Запоминать данные катушки слота после извлечения
   Remove: Удалить
   Remove PIN: Удалить PIN
@@ -2927,7 +2926,7 @@ translations:
   Replace: "Заменить"
   Replace Profile?: "Заменить профиль?"
   Replay Welcome Tour: Повторить приветственный тур
-  'Replenish ignores colour': 'Пополнение игнорирует цвет'
+  Replenish ignores color: 'Пополнение игнорирует цвет'
   Replenishing filament...: Пополнение филамента...
   Report saved to crash_report.txt: Отчёт сохранён в crash_report.txt
   Reprint: Повторить печать
@@ -2950,13 +2949,13 @@ translations:
   Reset Distances: Сброс расстояний
   Reset Distances?: Сбросить расстояния?
   Reset Endless Spool: 'Сбросить бесконечную катушку'
+  Reset Endless Spool failed: 'Не удалось сбросить бесконечную катушку'
   Reset Endless Spool?: 'Сбросить бесконечную катушку?'
   Reset Home Screen?: Сбросить главный экран?
   Reset Motor Timer: 'Сбросить таймер мотора'
   Reset Servo Counter: 'Сбросить счётчик сервопривода'
   Reset Speed & Flow to 100%: Сбросить скорость и поток на 100%
   Reset all settings and restart wizard: Сбросить все настройки и перезапустить мастер
-  Reset endless spool failed: 'Не удалось сбросить бесконечную катушку'
   Reset failed: Ошибка сброса
   Reset motor run-time counter: 'Сбросить счётчик наработки мотора'
   Reset tags: Сбросить отметки
@@ -3248,7 +3247,7 @@ translations:
   Set logging verbosity for troubleshooting: Установить уровень детализации журнала
     для устранения неполадок
   Set temperature between {}°C and {}°C: 'Установите температуру от {}°C до {}°C'
-  ? Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
+  ? Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
   : Задайте тип и цвет филамента для этого слота вручную. Если метка должна читаться, переустановите катушку этикеткой к считывателю, когда блок простаивает
   Set up: Настроить
   Set up your label printer in Settings: Настройте принтер этикеток в Настройках
@@ -3326,7 +3325,7 @@ translations:
   Software Updates: Обновления ПО
   Some filaments don't match the slicer's intent.: Некоторые филаменты не соответствуют
     замыслу слайсера.
-  'Some mapped slots are short on filament:': 'В некоторых назначенных слотах мало филамента:'
+  'Some mapped slots are short on filament:': 'В некоторых сопоставленных слотах мало филамента:'
   Some settings will take effect after restart.: Некоторые настройки вступят в силу
     после перезапуска.
   Something on the bed?: 'Что-то на столе?'
@@ -3481,10 +3480,12 @@ translations:
   Switch Sensors: Датчики-переключатели
   Switch between light and dark themes: Переключение между светлой и тёмной темами
   Switch the active tool or extruder: Смена активного инструмента
+  Switch to a backup slot on runout: Переключаться на резервный слот при окончании филамента
+  Switch to a matching slot on runout: Переключаться на подходящий слот при окончании филамента
   Switch to v%s: 'Перейти на v%s'
   Switch to {}?: 'Переключиться на {}?'
   Switched to {}: 'Переключено на {}'
-  Switches to a backup spool on runout: При обрыве переключится на резервную катушку
+  Switches to another spool on runout: При обрыве переключится на другую катушку
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
   : Возврат к PID меняет способ управления этим нагревателем, а затем калибрует его. Это занимает несколько минут при рабочей температуре.
   Switching back to PID requires a config change and Klipper restart.: Возврат к PID требует изменения конфига и перезапуска Klipper.
@@ -3668,7 +3669,7 @@ translations:
   The printer lost power while printing {}. The resumed layer may not line up exactly.: Принтер потерял питание при печати {}. Возобновлённый слой может не совпасть точно.
   The printer rejected the filament configuration. The print was not started.: Принтер
     отклонил конфигурацию филамента. Печать не была запущена.
-  The printer's firmware chooses the backup spool itself: Прошивка принтера сама выбирает резервную катушку
+  The printer's firmware chooses where to switch on runout: Прошивка принтера сама выбирает, на что переключиться при обрыве
   The requested position is outside the printer's bounds: 'Запрошенная позиция находится за пределами рабочей области принтера'
   The right RFID reader in this CFS unit may need service: Правому RFID-считывателю этого блока CFS может требоваться обслуживание
   The runout sensor indicates no filament is loaded. Start print anyway?: Датчик окончания
@@ -3718,7 +3719,7 @@ translations:
   This channel offers v{}, older than the installed v{}. Anything added since then will be removed.: 'Этот канал предлагает v{}, старее установленной v{}. Всё добавленное с тех пор будет удалено.'
   ? "This check runs Klipper's resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.\n\nEach sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs."
   : "Эта проверка запускает резонансный тест Klipper по каждому пути ремня и сравнивает два отклика. Сбалансированные ремни дают кривые одинаковой формы с пиками на одних и тех же частотах.\n\nКаждый свип занимает несколько минут и перемещает печатающую головку; держитесь подальше от принтера во время работы."
-  This clears every spool's failover assignment. The print will stop on runout until you set up failover again.: 'Это очистит назначение резервной катушки для всех катушек. Печать будет останавливаться при окончании филамента, пока вы не настроите их заново.'
+  This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again.: Это очистит все резервы бесконечной катушки. Печать будет останавливаться при окончании филамента, пока вы снова не настроите бесконечную катушку.
   This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen.: У этого устройства нет проводного подключения к сети. Если выключить WiFi, включить его обратно можно будет только с этого экрана.
   ? This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a "Timer Too Close" error or restart mid-test. Continue anyway?
   : На этом устройстве всего {} МБ ОЗУ. Калибровка резонансов требует много памяти и может привести к тому, что прошивка принтера сообщит об ошибке "Timer Too Close" или перезапустится во время теста. Всё равно продолжить?
@@ -3750,7 +3751,7 @@ translations:
   This print never reports layer {}.: 'Эта печать никогда не сообщает слой {}.'
   This printer cannot calibrate tool offsets automatically: Этот принтер не может калибровать смещения инструментов автоматически
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman.
-  This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman.
+  This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman.
   This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: У этого принтера нет автоматической выгрузки. Отрежьте филамент у головки и вытащите его вручную.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : Этот принтер похож на {} (уверенность {}%), но настроен как {}. Неверный тип применяет неправильные параметры перед печатью и пресеты.
@@ -3825,6 +3826,10 @@ translations:
   Tips: 'Советы'
   Tips database format error: Ошибка формата базы данных советов
   Tips database not found: База данных советов не найдена
+  ? To map filament, HelixScreen rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally.
+  : Чтобы сопоставить филамент, HelixScreen переписывает файл задания перед печатью. Moonraker этого принтера слишком старый, чтобы плагин HelixPrint потом восстановил исходное имя файла, поэтому выполненное задание отображается под изменённым именем. Само сопоставление филамента работает нормально.
+  ? "To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
+  : "Чтобы сопоставить филамент, HelixScreen переписывает файл задания перед печатью. Без плагина HelixPrint в историю печати попадает изменённая копия, поэтому выполненные задания отображаются под именами вроде modified_1730824_benchy.gcode вместо выбранного файла.\n\nУстановка плагина занимает немного времени и не требует перезапуска."
   Toggle: Переключить
   Toggle (fire-and-forget): Переключение (без отслеживания)
   Toggle AFC LED strip: 'Переключить LED-ленту AFC'
@@ -3841,7 +3846,6 @@ translations:
   Tool Switcher: 'Переключатель инструментов'
   'Tool change failed: {}': 'Ошибка смены инструмента: {}'
   Tool change to T{}: 'Смена инструмента на T{}'
-  Tool mapping failed: Ошибка сопоставления инструмента
   Tool offsets (mm): Смещения инструментов (мм)
   Tool offsets saved: Смещения инструментов сохранены
   Tool swap: Смена инструмента
@@ -3884,12 +3888,12 @@ translations:
   Turbo: Турбо
   Turbo Inner: Турбо (внутренний)
   Turbo Outer: Турбо (внешний)
+  Turn Endless Spool on, then set the Backup Gate: 'Включите бесконечную катушку, затем задайте резервный шлюз'
   'Turn LED off when the print ends': 'Выключать светодиод по окончании печати'
   Turn Off: Выключить
   Turn Off WiFi?: Выключить WiFi?
   Turn On: Включить
   Turn On LEDs: 'Включить LED'
-  Turn endless spool on, then set the backup gate: 'Включите бесконечную катушку, затем задайте резервный шлюз'
   Turn off bed check: 'Отключить проверку стола'
   Turn off detection: Отключить обнаружение
   Turn on the lights your light buttons control: Включает свет, которым управляют кнопки света
@@ -3957,7 +3961,7 @@ translations:
   Unloading filament...: Выгрузка филамента...
   Unloads After Print: Выгрузка после печати
   Unlock: Разблокировать
-  Unmapped: Не назначен
+  Unmapped: Не сопоставлен
   Unmount: Снять
   Unretract Extra: Дополнительная подача
   Unretract Speed: Скорость возврата
@@ -4140,8 +4144,8 @@ translations:
   Your printer has an automatic filament changer: Ваш принтер оснащён автоматическим
     сменщиком филамента
   Your printer was offline during setup, so hardware options were skipped. Set them up now?: Принтер был не в сети во время настройки, поэтому параметры оборудования пропущены. Настроить их сейчас?
-  ? Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide.
-  : "Строка {} передаёт настройки для отдельных инструментов, которые переназначение не меняет ({}). Переназначенный инструмент может не нагреться. См. раздел «Tool Mapping» в руководстве пользователя."
+  ? Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide.
+  : Строка {} передаёт настройки для отдельных инструментов, которые сопоставление филамента не меняет ({}). Инструмент, с которым вы сопоставите филамент, может не нагреться. См. раздел «Filament Mapping» в руководстве пользователя.
   Z: Z
   Z Calibration: Калибровка Z
   Z Movement: Движение Z
@@ -4317,8 +4321,8 @@ translations:
   '{} is blocked — manual intervention required': '{}: блокировка — требуется ручное вмешательство'
   '{} is due: {} h reached': '{}: пора обслуживать, {} ч достигнуто'
   '{} is feeding the current print. Clear it after the print ends.': '{}: подаёт филамент для текущей печати. Удалите катушку после завершения печати.'
-  '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} установлен, но переключение на резервную катушку выключено, поэтому автоматической замены не будет.'
-  '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} установлен, но прочитать его настройку резервной катушки не удалось - не рассчитывайте на автоматическую замену.'
+  '{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout.': '{} установлен, но его настройка бесконечной катушки выключена, поэтому при обрыве ничего не переключится.'
+  '{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool.': '{} установлен, но прочитать его настройку бесконечной катушки не удалось - не рассчитывайте на бесконечную катушку.'
   '{} is still printing. The print keeps running after you switch.': '{} ещё печатает. Печать продолжится после переключения.'
   '{} is not available on this device. Printing original file.': '{} недоступно на этом устройстве. Будет напечатан исходный файл.'
   '{} is not set up on this printer': '{} не настроен на этом принтере'
@@ -4369,7 +4373,7 @@ translations:
   '{} target set to {}°C': Целевая температура {} — {}°C
   '{} updated': '{}: обновлено'
   '{} widgets': 'Виджетов: {}'
-  ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
+  ? '{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present.'
   : '{} переключится на слот, у которого тип филамента И цвет совпадают с активной катушкой, а собственный датчик порта видит филамент.'
   '{} · {}': '{} · {}'
   '{} · {} · {}': '{} · {} · {}'

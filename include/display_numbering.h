@@ -131,6 +131,14 @@ bool tool_badges_add_information(const std::vector<int>& tool_to_slot, int slot_
 std::string noun_text(LaneNoun noun);
 
 /**
+ * @brief The Endless Spool field's name for @p noun: "Backup Slot", "Backup Gate".
+ *
+ * A whole translated phrase per noun, not "Backup " + noun_text(): the
+ * qualifier goes after the noun in most locales and is often compounded into it.
+ */
+std::string backup_lane_text(LaneNoun noun);
+
+/**
  * @brief A physical position: "Slot 1", "Lane 2", "Tool 4".
  * @return empty when @p index is negative
  */

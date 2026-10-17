@@ -68,7 +68,7 @@
         <lv_obj name="container_spoolman" width="100%" style_pad_all="0" scrollable="false">
           <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
           <setting_action_row name="row_spoolman"
-                              label="Spoolman" icon="inventory" description="Filament tracking and inventory">
+                              label="Spoolman" icon="spoolman" description="Filament tracking and inventory">
             <event_cb trigger="clicked" callback="on_advanced_spoolman"/>
           </setting_action_row>
         </lv_obj>
@@ -83,7 +83,7 @@
         <!-- Fallback message when Spoolman not available -->
         <lv_obj name="container_no_spoolman" width="100%" style_pad_all="0" scrollable="false">
           <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="1"/>
-          <setting_info_row name="row_no_spoolman" label="Spoolman" icon="inventory" value="Not configured"/>
+          <setting_info_row name="row_no_spoolman" label="Spoolman" icon="spoolman" value="Not configured"/>
         </lv_obj>
       </setting_group>
       <!-- ================================================================== -->

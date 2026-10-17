@@ -1116,6 +1116,41 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK(std::string(lv_label_get_text(header)) == "Gate 3");
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: the Endless Spool row is labelled in the backend's own word",
+                 "[ui][ams][context_menu]") {
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+
+    const auto backup_label_after_show = [this](bool afc) {
+        auto backend = std::make_unique<AmsBackendMock>(4);
+        backend->set_afc_mode(afc);
+        backend->set_endless_spool_supported(true);
+        backend->set_endless_spool_editable(true);
+
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                      /*is_loaded=*/false, backend.get()));
+
+        lv_obj_t* row = lv_obj_find_by_name(test_screen(), "backup_dropdown_row");
+        REQUIRE(row != nullptr);
+        REQUIRE_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+
+        lv_subject_t* subject = lv_xml_get_subject(nullptr, "ams_slot_backup_label");
+        REQUIRE(subject != nullptr);
+        const std::string from_subject = lv_subject_get_string(subject);
+
+        lv_obj_t* label = lv_obj_find_by_name(row, "backup_label");
+        REQUIRE(label != nullptr);
+        CHECK(std::string(lv_label_get_text(label)) == from_subject);
+
+        menu.hide();
+        return from_subject;
+    };
+
+    CHECK(backup_label_after_show(/*afc=*/false) == "Backup Gate");
+    CHECK(backup_label_after_show(/*afc=*/true) == "Backup Lane");
+}
+
 // ============================================================================
 // on_created: Clear Spool greys out with a reason while its lane feeds the job
 // ============================================================================

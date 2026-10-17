@@ -618,7 +618,7 @@ class PrintSelectDetailView : public OverlayBase {
      * @brief Open the filament mapping modal (tool→slot reassignment).
      *
      * Thin passthrough to the embedded FilamentMappingCard's modal. Used by the
-     * pre-flight gate's "Remap…" button for native-routing backends (AFC, Happy
+     * pre-flight gate's "Map Filament…" button for native-routing backends (AFC, Happy
      * Hare, CFS, AD5X-IFS, toolchanger). Applied mappings flow through the card's
      * existing on_mappings_changed path, which recomputes pre-flight.
      */
@@ -1007,7 +1007,7 @@ class PrintSelectDetailView : public OverlayBase {
 
     // Fired when the user taps the filament card. Set by PrintSelectPanel to
     // open the remap modal — the same entry point the preflight-check modal's
-    // "Remap…" button uses. Empty on backends where the card is purely
+    // "Map Filament…" button uses. Empty on backends where the card is purely
     // informational.
     std::function<void()> on_remap_requested_;
     std::function<void()> on_plugin_setup_requested_;
