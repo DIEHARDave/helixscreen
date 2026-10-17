@@ -7222,13 +7222,16 @@ TEST_CASE("Happy Hare v4 drives a chosen set of gates on per-gate heaters",
                   "MMU_HEATER TEMP=55 UNIT=1 GATES=7,8", "MMU_HEATER STOP=1 UNIT=1 GATES=6,7,8,9",
                   "MMU_HEATER DRY=1 TEMP=50 TIMER=90 ROTATE=1 UNIT=1 GATES=7,8"});
 
-        // A whole-unit cycle afterwards forgets the selection.
+        // A stop ends the selection with the cycle, and a whole-unit cycle carries none.
         CHECK(helper.stop_drying(1).success());
-        CHECK(helper.start_drying(50.0f, 60, -1, 1).success());
         helper.clear_captured_gcodes();
         CHECK(helper.update_drying(55.0f, -1, -1, 1).success());
+        CHECK(helper.start_drying(50.0f, 60, -1, 1).success());
+        CHECK(helper.update_drying(55.0f, -1, -1, 1).success());
         CHECK(helper.captured_gcodes ==
-              std::vector<std::string>{"MMU_HEATER TEMP=55 UNIT=1 GATES=6,7,8,9"});
+              std::vector<std::string>{"MMU_HEATER TEMP=55 UNIT=1 GATES=6,7,8,9",
+                                       "MMU_HEATER DRY=1 TEMP=50 TIMER=60 UNIT=1 GATES=6,7,8,9",
+                                       "MMU_HEATER TEMP=55 UNIT=1 GATES=6,7,8,9"});
     }
 }
 

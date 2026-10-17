@@ -96,6 +96,17 @@ RecordingLaneRig* show_overlay(bool per_lane) {
     return raw;
 }
 
+/// Tap the lane chip at @p index, the way a finger does.
+void tap_chip(int index) {
+    lv_obj_t* chips = find_widget("dry_gate_chips");
+    REQUIRE(index < static_cast<int>(lv_obj_get_child_count(chips)));
+    lv_obj_send_event(lv_obj_get_child(chips, index), LV_EVENT_CLICKED, nullptr);
+}
+
+void tap_rotate() {
+    lv_obj_send_event(find_widget("dry_rotate_chip"), LV_EVENT_CLICKED, nullptr);
+}
+
 void press_start_stop() {
     lv_obj_send_event(find_widget("btn_start_stop"), LV_EVENT_CLICKED, nullptr);
 }
@@ -150,7 +161,7 @@ TEST_CASE_METHOD(XMLTestFixture, "A per-lane dryer offers a chip per lane, all s
         CHECK_FALSE(backend->starts[0].rotate);
     }
     SECTION("a deselected lane is left out") {
-        overlay.toggle_dry_gate(1);
+        tap_chip(1);
         CHECK(subject_int("env_dry_gate_selected_1") == 0);
         press_start_stop();
         REQUIRE(backend->starts.size() == 1);
@@ -174,7 +185,7 @@ TEST_CASE_METHOD(XMLTestFixture, "A per-lane dryer offers a chip per lane, all s
         CHECK(backend->starts[0].gates == std::vector<int>{3});
     }
     SECTION("rotation rides the start") {
-        overlay.toggle_dry_rotate();
+        tap_rotate();
         CHECK(subject_int("env_dry_rotate_on") == 1);
         overlay.toggle_dry_gate(0);
         press_start_stop();
@@ -200,13 +211,37 @@ TEST_CASE_METHOD(XMLTestFixture, "A per-lane dryer offers a chip per lane, all s
 TEST_CASE_METHOD(XMLTestFixture, "A fresh showing starts with every lane selected again",
                  "[ams][dryer][dry_gates][overlay]") {
     reset_overlay_singleton();
-    show_overlay(true);
-    get_ams_environment_overlay().toggle_dry_gate(2);
-    get_ams_environment_overlay().toggle_dry_rotate();
-    reset_overlay_singleton();
+    auto* backend = show_overlay(true);
+    tap_chip(2);
+    tap_rotate();
+    REQUIRE(subject_int("env_dry_gate_selected_2") == 0);
+    REQUIRE(subject_int("env_dry_rotate_on") == 1);
 
-    show_overlay(true);
+    // Shown again on the same instance, as a second tap on the box would.
+    get_ams_environment_overlay().show_zone(lv_screen_active(), backend->get_environment_zones(0),
+                                            0, false);
+    helix::ui::UpdateQueue::instance().drain();
     CHECK(subject_int("env_dry_gate_selected_2") == 1);
     CHECK(subject_int("env_dry_rotate_on") == 0);
+    finish();
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "An overlay with no zone offers no lane chips",
+                 "[ams][dryer][dry_gates][overlay]") {
+    reset_overlay_singleton();
+    show_overlay(true);
+    REQUIRE(subject_int("env_dry_gate_count") == 4);
+
+    // The printer's filament system goes away beneath the open overlay: nothing reports
+    // a box any more, so the chips go with it.
+    auto bare = std::make_unique<AmsBackendMock>(4);
+    bare->set_dryer_enabled(false);
+    bare->set_environment_mode("off");
+    REQUIRE(bare->get_environment_zones(-1).empty());
+    AmsState::instance().set_backend(std::move(bare));
+    get_ams_environment_overlay().show_zone(lv_screen_active(), {}, 0, false);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(subject_int("env_dry_gate_count") == 0);
+    CHECK(subject_int("env_dry_rotate_visible") == 0);
     finish();
 }

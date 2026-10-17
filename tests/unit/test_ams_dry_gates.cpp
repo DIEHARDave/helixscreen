@@ -113,6 +113,8 @@ TEST_CASE("The per-lane mock rig dries lanes one by one", "[ams][dryer][dry_gate
     const auto dryer = mock->get_dryer_info(0);
     CHECK(dryer.supports_gate_selection);
     CHECK(dryer.supports_rotation);
+    // Its boxes report sensors, so the AMS panel offers the way into the dryer overlay.
+    CHECK(mock->has_environment_sensors());
 
     SECTION("a cycle is already part-way through when the user walks up") {
         // start() has not run, so the declared cycle is the configured state alone.
