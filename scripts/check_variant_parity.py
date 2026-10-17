@@ -83,11 +83,15 @@ ALLOWED_OMISSIONS: dict[str, dict[str, dict[str, str]]] = {
             "at breakpoint 1. Multi-tool micro loses the T0 hint — cosmetic.",
             "macro_header_visible": "collapses the Quick Actions header to reclaim vertical "
             "space; micro's macro section is laid out to not need it.",
+            "ui_is_portrait": "the base restyles its top row for portrait; 480x272 is a landscape "
+            "layout only, so micro has no portrait arrangement to switch to.",
         },
         "condition": {
             # Only for the conds CONDITION_ALLOWANCE_SCOPE below names.
             "calib_tile@disabled_cond": "only the QGL and Z-Tilt cells disable while a leveling "
             "operation runs, and the micro Calibration & Tools card has neither cell.",
+            "bind_style_if@cond": "the base's Motion button goes inline in portrait as well as at "
+            "tiny; micro is landscape-only and always lays Motion out inline.",
         },
     },
     "ui_xml/portrait/print_status_panel.xml": {
@@ -113,6 +117,7 @@ ALLOWED_OMISSIONS: dict[str, dict[str, dict[str, str]]] = {
 CONDITION_ALLOWANCE_SCOPE: dict[str, dict[str, re.Pattern]] = {
     "ui_xml/micro/controls_panel.xml": {
         "calib_tile@disabled_cond": re.compile(r"^controls_operation_in_progress eq 1$"),
+        "bind_style_if@cond": re.compile(r"^ui_breakpoint (ge 2 and|le 1 or) ui_is_portrait eq [01]$"),
     },
     "ui_xml/portrait/print_status_panel.xml": {
         "bind_style_if@cond": re.compile(r"^print_status_row\d_tall eq 1$"),
