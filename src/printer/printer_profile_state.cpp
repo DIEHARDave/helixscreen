@@ -12,6 +12,18 @@
 
 namespace helix {
 
+ZOffsetTuneHint resolve_z_offset_tune_hint(ZOffsetCalibrationStrategy strategy,
+                                           bool external_persistence, bool db_persists,
+                                           bool tool_change_resets) {
+    if (strategy != ZOffsetCalibrationStrategy::FIRMWARE_MANAGED) {
+        return ZOffsetTuneHint::SAVE_ON_CONTROLS;
+    }
+    if (external_persistence || db_persists) {
+        return ZOffsetTuneHint::AUTO_SAVED;
+    }
+    return tool_change_resets ? ZOffsetTuneHint::TEMPORARY_TOOL_CHANGE : ZOffsetTuneHint::TEMPORARY;
+}
+
 void PrinterProfileState::init_subjects(bool register_xml) {
     if (subjects_initialized_) {
         return;
@@ -21,8 +33,10 @@ void PrinterProfileState::init_subjects(bool register_xml) {
     // XML binds it; observers attach programmatically (printer artwork).
     INIT_SUBJECT_STRING(printer_type_subject, "", subjects_, false);
 
-    // Z-offset save visibility (1 = manual save needed, 0 = firmware auto-saves)
+    // Z-offset save visibility (1 = Save Z Offset offered, 0 = no Save step)
     INIT_SUBJECT_INT(z_offset_can_save, 1, subjects_, register_xml);
+    INIT_SUBJECT_INT(z_offset_tune_hint, static_cast<int>(z_offset_tune_hint_value_), subjects_,
+                     register_xml);
     subjects_initialized_ = true;
 }
 
@@ -60,13 +74,19 @@ bool PrinterProfileState::set_printer_type(const std::string& type, bool has_pro
         new_strategy = ZOffsetCalibrationStrategy::FIRMWARE_MANAGED;
     }
 
-    if (type == printer_type_ && new_strategy == z_offset_calibration_strategy_) {
+    const ZOffsetTuneHint new_hint = resolve_z_offset_tune_hint(
+        new_strategy, external_persistence_, PrinterDetector::z_offset_persists(type),
+        PrinterDetector::tool_change_resets_z_offset(type));
+
+    if (type == printer_type_ && new_strategy == z_offset_calibration_strategy_ &&
+        new_hint == z_offset_tune_hint_value_) {
         return false;
     }
 
     printer_type_ = type;
     pre_print_option_set_ = new_options;
     z_offset_calibration_strategy_ = new_strategy;
+    z_offset_tune_hint_value_ = new_hint;
     db_enclosed_ = PrinterDetector::is_enclosed(type);
     db_hides_dot_dirs_ = PrinterDetector::klipper_hides_dot_dirs(type);
 
@@ -77,10 +97,10 @@ bool PrinterProfileState::set_printer_type(const std::string& type, bool has_pro
     // Synthesize runtime-dependent options (timelapse) on top of the DB load.
     apply_dynamic_options(exclude_object_known, timelapse_available);
 
-    // 0 when firmware/macros auto-persist (FIRMWARE_MANAGED)
     if (subjects_initialized_) {
         lv_subject_set_int(&z_offset_can_save_,
                            new_strategy != ZOffsetCalibrationStrategy::FIRMWARE_MANAGED ? 1 : 0);
+        lv_subject_set_int(&z_offset_tune_hint_, static_cast<int>(new_hint));
     }
     return true;
 }

@@ -6,7 +6,6 @@
 #include "ui_error_reporting.h"
 #include "ui_modal.h"
 #include "ui_observer_guard.h"
-#include "ui_toast_manager.h"
 
 #include "app_globals.h"
 #include "config.h"
@@ -32,19 +31,6 @@
 #include <optional>
 
 namespace helix::zoffset {
-
-bool is_auto_saved(ZOffsetCalibrationStrategy strategy) {
-    if (strategy == ZOffsetCalibrationStrategy::FIRMWARE_MANAGED) {
-        // FIRMWARE_MANAGED means firmware or macros handle Z-offset persistence
-        // (e.g., FlashForge firmware, Artillery M1 save-zoffset macro).
-        // HelixScreen should not offer its own save path.
-        spdlog::debug("[ZOffsetUtils] Z-offset auto-saved by firmware (firmware_managed strategy)");
-        ToastManager::instance().show(ToastSeverity::INFO,
-                                      lv_tr("Z-offset is auto-saved by firmware"), 3000);
-        return true;
-    }
-    return false;
-}
 
 void format_delta(int microns, char* buf, size_t buf_size) {
     if (microns == 0) {

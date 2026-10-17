@@ -838,6 +838,36 @@ TEST_CASE_METHOD(SpoolmanLaneFixture,
 }
 
 TEST_CASE_METHOD(SpoolmanLaneFixture,
+                 "SpoolmanManager: a targeted refresh re-reads a linked external spool",
+                 "[spoolman][lane][1632]") {
+    SlotInfo ext;
+    ext.spoolman_id = 1;
+    ext.material = "PLA";
+    ext.remaining_weight_g = 400.0F;
+    ext.total_weight_g = 1000.0F;
+    AmsState::instance().set_external_spool_info(ext);
+    state_polymaker_pla(server_spool(1));
+
+    lv_tick_inc(1000);
+    poll();
+    REQUIRE(AmsState::instance().get_external_spool_info()->remaining_weight_g == 850.0F);
+
+    // The user's weight edit reached the server.
+    server_spool(1).remaining_weight_g = 90.0;
+
+    // The poll that just ran holds the debounce down, so only the targeted
+    // read can carry the server's new number to the lane.
+    SpoolmanManager::instance().refresh_spoolman_weights();
+    drain();
+    REQUIRE(AmsState::instance().get_external_spool_info()->remaining_weight_g == 850.0F);
+
+    SpoolmanManager::refresh_spool(1);
+    drain();
+
+    CHECK(AmsState::instance().get_external_spool_info()->remaining_weight_g == 90.0F);
+}
+
+TEST_CASE_METHOD(SpoolmanLaneFixture,
                  "SpoolmanManager: an external spool fetch moves the stored binding with it",
                  "[spoolman][lane][1632]") {
     SlotInfo ext;
