@@ -189,3 +189,16 @@ TEST_CASE_METHOD(SaveModeFixture, "An emptied field is not saved as a value",
 
     CHECK(saved_record.values == ParamValues{{"SPEED", "40"}});
 }
+
+TEST_CASE_METHOD(SaveModeFixture, "A backdrop close leaves no live instance behind",
+                 "[macro][macro_params][macro_param_defaults_modal][dismiss]") {
+    show_run();
+    lv_obj_send_event(modal.backdrop(), LV_EVENT_CLICKED, nullptr);
+    process_lvgl(20);
+    REQUIRE(modal.dialog() == nullptr);
+
+    // A late Run press from the closed dialog's callbacks reaches nothing.
+    helix::MacroParamModal::run_cb(nullptr);
+    process_lvgl(20);
+    CHECK(runs == 0);
+}
