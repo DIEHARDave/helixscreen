@@ -355,13 +355,72 @@ TEST_CASE("a wall straight ahead has the slice height its distance gives, with n
 
     const uint32_t mid = r.internal_w() / 2;
     CHECK(r.wall_distance(mid) == Catch::Approx(3.5f).margin(0.01f));
-    const int expected = static_cast<int>(static_cast<float>(r.internal_h()) / 3.5f);
+    const float focal = helix::ui::maze_focal(r.internal_w(), r.internal_h());
+    const int expected = static_cast<int>(focal / 3.5f);
+    REQUIRE(expected == 14);
     CHECK(std::abs((r.wall_bottom(mid) - r.wall_top(mid)) - expected) <= 1);
     // A flat wall square to the view stands the same height across every column that hits it.
     for (uint32_t x = 0; x < r.internal_w(); x++) {
         INFO("column " << x);
         CHECK(r.wall_distance(x) == Catch::Approx(3.5f).margin(0.01f));
     }
+}
+
+TEST_CASE("the maze sees 90 degrees vertically, capped at 120 across", "[screensaver][maze]") {
+    using helix::ui::maze_focal;
+    CHECK(maze_focal(800, 480) == Catch::Approx(240.0f));
+    CHECK(maze_focal(400, 240) == Catch::Approx(120.0f));
+    // The horizontal cap binds on a wide frame.
+    CHECK(maze_focal(480, 272) == Catch::Approx(138.564f).margin(0.01f));
+    CHECK(maze_focal(1920, 440) == Catch::Approx(554.256f).margin(0.01f));
+    CHECK(maze_focal(480, 800) == Catch::Approx(400.0f));
+    CHECK(maze_focal(1, 1) == Catch::Approx(0.5f));
+}
+
+TEST_CASE("the wall top is where the focal length puts it", "[screensaver][maze]") {
+    const int size = 15;
+    MazeMap map = room(size);
+    MazeRenderer r;
+    Frame frame(160, 100, PixelFormat::XRGB8888);
+    r.init(160, 100, PixelFormat::XRGB8888, MazeArt{});
+    const MazePose pose{static_cast<float>(size - 1) - 3.5f, size * 0.5f, 0.0f};
+    r.render(map, {}, pose, 0.0f, 0, frame.target);
+    const uint32_t mid = r.internal_w() / 2;
+    const float focal = helix::ui::maze_focal(r.internal_w(), r.internal_h());
+    CHECK(r.wall_top(mid) ==
+          static_cast<int>(std::floor((static_cast<float>(r.internal_h()) - focal / 3.5f) * 0.5f)));
+}
+
+TEST_CASE("a sprite stands the height its distance gives", "[screensaver][maze]") {
+    MazeMap map = corridor(11);
+    MazeArt art;
+    art.logo.w = 8;
+    art.logo.h = 8;
+    art.logo.argb.assign(64, 0xFFFFFFFFu);
+    MazeRenderer r;
+    Frame frame(160, 100, PixelFormat::XRGB8888);
+    r.init(160, 100, PixelFormat::XRGB8888, art);
+    const MazePose pose{1.5f, 5.5f, 0.0f};
+    r.render(map, {}, pose, 0.0f, 0, frame.target);
+    const uint32_t mid = r.internal_w() / 2;
+    std::vector<uint32_t> bare(r.internal_h());
+    for (uint32_t y = 0; y < r.internal_h(); y++) {
+        bare[y] = r.internal_pixel(mid, y);
+    }
+    std::vector<MazeItem> logo{{MazeItemKind::LOGO, 5.5f, 5.5f, true}};
+    r.render(map, logo, pose, 0.0f, 0, frame.target);
+    int first = -1;
+    int last = -1;
+    for (uint32_t y = 0; y < r.internal_h(); y++) {
+        if (r.internal_pixel(mid, y) != bare[y]) {
+            first = first < 0 ? static_cast<int>(y) : first;
+            last = static_cast<int>(y);
+        }
+    }
+    REQUIRE(first >= 0);
+    const float focal = helix::ui::maze_focal(r.internal_w(), r.internal_h());
+    // The logo fills 60 of its 64 texels, 0.55 tiles tall, 4 tiles away.
+    CHECK(std::abs((last - first + 1) - 0.55f * focal / 4.0f) <= 1.0f);
 }
 
 TEST_CASE("a symmetric scene renders symmetric wall slices", "[screensaver][maze]") {
@@ -718,7 +777,9 @@ TEST_CASE("the walk waits in the exit's doorway with the smiley in view", "[scre
                 yellow += c.r > 200 && c.g > 170 && c.b < 90 ? 1 : 0;
             }
         }
-        CHECK(yellow > 160u * 96u / 50u);
+        // The smiley stands 0.6 tiles tall a tile ahead: a sixth of its square is yellow.
+        const float side = 0.6f * helix::ui::maze_focal(160, 96);
+        CHECK(static_cast<float>(yellow) > side * side / 6.0f);
     }
 }
 

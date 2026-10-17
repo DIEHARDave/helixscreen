@@ -41,6 +41,20 @@ inline constexpr MazeLevel MAZE_LEVELS[] = {
 
 inline constexpr size_t MAZE_LEVEL_COUNT = std::size(MAZE_LEVELS);
 
+/// Half the vertical field of view as a tangent: 1 is 90 degrees, the original's.
+inline constexpr float MAZE_VFOV_HALF_TAN = 1.0f;
+/// Half the widest horizontal field of view as a tangent: tan 60 degrees, 120 across. A frame
+/// wider than that ratio narrows its vertical view instead of bending further at the edges.
+inline constexpr float MAZE_HFOV_MAX_HALF_TAN = 1.7320508f;
+
+/// Focal length in pixels of a w x h view: square pixels, 90 degrees vertically unless that
+/// would see more than 120 degrees across.
+inline float maze_focal(uint32_t w, uint32_t h) {
+    const float vertical = static_cast<float>(h) * 0.5f / MAZE_VFOV_HALF_TAN;
+    const float horizontal = static_cast<float>(w) * 0.5f / MAZE_HFOV_MAX_HALF_TAN;
+    return vertical > horizontal ? vertical : horizontal;
+}
+
 /// What a map tile holds.
 enum class MazeTile : uint8_t {
     OPEN = 0,
@@ -324,6 +338,9 @@ class MazeRenderer {
     uint32_t h_ = 0;
     uint32_t iw_ = 0;
     uint32_t ih_ = 0;
+    /// Focal length in internal pixels, and the camera plane's half width it gives.
+    float focal_ = 1.0f;
+    float plane_len_ = 0.0f;
     size_t level_ = 0;
     bool has_picture_ = false;
 

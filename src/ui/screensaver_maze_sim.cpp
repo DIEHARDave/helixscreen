@@ -764,10 +764,13 @@ void MazeRenderer::set_level(size_t level) {
     const uint32_t s = MAZE_LEVELS[level_].scale;
     iw_ = (w_ + s - 1) / s;
     ih_ = (h_ + s - 1) / s;
+    focal_ = maze_focal(iw_, ih_);
+    plane_len_ = 0.5f * static_cast<float>(iw_) / focal_;
     for (uint32_t y = 0; y < ih_; y++) {
-        // Distance to the floor (or ceiling) point the centre of row y sees.
+        // Distance to the floor (or ceiling) point the centre of row y sees, the eye half a
+        // tile above it.
         const float denom = std::fabs(2.0f * y + 1.0f - static_cast<float>(ih_));
-        const float dist = std::min(static_cast<float>(ih_) / std::max(denom, 1.0f), 1000.0f);
+        const float dist = std::min(focal_ / std::max(denom, 1.0f), 1000.0f);
         row_dist_q16_[y] = static_cast<int32_t>(dist * 65536.0f);
     }
     if (format_ == PixelFormat::RGB565) {
@@ -894,9 +897,8 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
     Store<Px>& st = store<Px>();
     const float dir_x = std::cos(pose.angle);
     const float dir_y = std::sin(pose.angle);
-    const float plane_len = 0.5f * static_cast<float>(iw_) / static_cast<float>(ih_);
-    const float plane_x = -dir_y * plane_len;
-    const float plane_y = dir_x * plane_len;
+    const float plane_x = -dir_y * plane_len_;
+    const float plane_y = dir_x * plane_len_;
     const bool textured = MAZE_LEVELS[level_].textured_floor;
     const auto pos_xq = static_cast<int32_t>(pose.x * 65536.0f);
     const auto pos_yq = static_cast<int32_t>(pose.y * 65536.0f);
@@ -944,7 +946,7 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
         const bool picture = has_picture_ && map.tile(mx, my) == MazeTile::PICTURE;
         const size_t tex = (picture ? TEX_PICTURE : TEX_BRICK) + (side == 1 ? 1 : 0);
 
-        const float line_h = static_cast<float>(ih) / perp;
+        const float line_h = focal_ / perp;
         const float top_f = (static_cast<float>(ih) - line_h) * 0.5f;
         const int top = static_cast<int>(std::floor(top_f));
         const int bottom = static_cast<int>(std::floor(top_f + line_h));
@@ -1011,9 +1013,8 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
 
     const float dir_x = std::cos(pose.angle);
     const float dir_y = std::sin(pose.angle);
-    const float plane_len = 0.5f * static_cast<float>(iw_) / static_cast<float>(ih_);
-    const float plane_x = -dir_y * plane_len;
-    const float plane_y = dir_x * plane_len;
+    const float plane_x = -dir_y * plane_len_;
+    const float plane_y = dir_x * plane_len_;
     const float inv_det = 1.0f / (plane_x * dir_y - dir_x * plane_y);
     const float fw = static_cast<float>(iw_);
     const float fh = static_cast<float>(ih_);
@@ -1033,7 +1034,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
             continue;
         }
         const float screen_x = fw * 0.5f * (1.0f + tx / ty);
-        const float h = style.size * fh / ty;
+        const float h = style.size * focal_ / ty;
         float width_k = 1.0f;
         bool mirror = false;
         size_t slot = SPR_LOGO;
@@ -1063,7 +1064,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
         if (w < 1.0f) {
             continue;
         }
-        const float centre_y = fh * 0.5f + (0.5f - style.center_z) * fh / ty;
+        const float centre_y = fh * 0.5f + (0.5f - style.center_z) * focal_ / ty;
         const float x0 = screen_x - w * 0.5f;
         const float y0 = centre_y - h * 0.5f;
         const int xs = std::max(0, static_cast<int>(std::ceil(x0 - 0.5f)));
