@@ -39,11 +39,11 @@ using helix::AmsState;
 
 namespace {
 
-/// The seven environment-indicator subjects a unit card binds, in the order
+/// The eight environment-indicator subjects a unit card binds, in the order
 /// ams_unit_card.xml declares them.
-constexpr const char* kEnvIndSuffixes[] = {"temp_text",        "humidity_text", "humidity_status",
-                                           "humidity_visible", "visible",       "drying_active",
-                                           "drying_text"};
+constexpr const char* kEnvIndSuffixes[] = {"temp_text",       "humidity_text",    "humidity",
+                                           "humidity_status", "humidity_visible", "visible",
+                                           "drying_active",   "drying_text"};
 
 std::string env_ind_name(int unit, const char* suffix) {
     char buf[64];
@@ -162,8 +162,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "Unit cards past the cap bind to the always-of
     for (int unit = 0; unit < AmsState::MAX_UNITS + 4; ++unit) {
         const auto names = AmsState::env_indicator_subject_names(unit);
         for (const std::string& name :
-             {names.temp_text, names.humidity_text, names.humidity_status, names.humidity_visible,
-              names.visible, names.drying_active, names.drying_text}) {
+             {names.temp_text, names.humidity_text, names.humidity, names.humidity_status,
+              names.humidity_visible, names.visible, names.drying_active, names.drying_text}) {
             INFO("unit " << unit << " binds " << name);
             CHECK(lv_xml_get_subject(nullptr, name.c_str()) != nullptr);
         }
@@ -174,6 +174,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Unit cards past the cap bind to the always-of
     const auto in_range = AmsState::env_indicator_subject_names(4);
     CHECK(in_range.temp_text == "ams_env_ind_4_temp_text");
     CHECK(in_range.humidity_text == "ams_env_ind_4_humidity_text");
+    CHECK(in_range.humidity == "ams_env_ind_4_humidity");
     CHECK(in_range.humidity_status == "ams_env_ind_4_humidity_status");
     CHECK(in_range.humidity_visible == "ams_env_ind_4_humidity_visible");
     CHECK(in_range.visible == "ams_env_ind_4_visible");
@@ -191,6 +192,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Unit cards past the cap bind to the always-of
         CHECK(over.temp_text == off_text);
         CHECK(over.humidity_text == off_text);
         CHECK(over.drying_text == off_text);
+        CHECK(over.humidity == off_flag);
         CHECK(over.humidity_status == off_flag);
         CHECK(over.humidity_visible == off_flag);
         CHECK(over.visible == off_flag);

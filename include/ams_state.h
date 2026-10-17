@@ -166,6 +166,7 @@ class AmsState {
     struct EnvIndicatorSubjectNames {
         std::string temp_text;
         std::string humidity_text;
+        std::string humidity;
         std::string humidity_status;
         std::string humidity_visible;
         std::string visible;
@@ -1653,6 +1654,9 @@ class AmsState {
     /// Drying active flag (1=drying, 0=passive)
     [[nodiscard]] lv_subject_t* get_env_ind_drying_active_subject(int unit_index);
 
+    /// Humidity for the indicator's drop, in tenths of %RH; -1 with no reading
+    [[nodiscard]] lv_subject_t* get_env_ind_humidity_subject(int unit_index);
+
     /// Humidity status for indicator (0=ok/green, 1=warn/yellow, 2=danger/red)
     [[nodiscard]] lv_subject_t* get_env_ind_humidity_status_subject(int unit_index);
 
@@ -2501,6 +2505,7 @@ class AmsState {
     lv_subject_t env_ind_humidity_text_[MAX_UNITS]{};
     char env_ind_humidity_text_buf_[MAX_UNITS][ENV_IND_TEXT_BUF_SIZE]{};
     lv_subject_t env_ind_visible_[MAX_UNITS]{};
+    lv_subject_t env_ind_humidity_[MAX_UNITS]{};        // int: tenths of %RH, -1 = no reading
     lv_subject_t env_ind_humidity_status_[MAX_UNITS]{}; // 0=ok, 1=warn, 2=danger
     lv_subject_t env_ind_humidity_visible_[MAX_UNITS]{};
     lv_subject_t env_ind_drying_active_[MAX_UNITS]{};
@@ -2518,6 +2523,7 @@ class AmsState {
     char env_ind_detail_temp_text_buf_[ENV_IND_TEXT_BUF_SIZE]{};
     lv_subject_t env_ind_detail_humidity_text_{};
     char env_ind_detail_humidity_text_buf_[ENV_IND_TEXT_BUF_SIZE]{};
+    lv_subject_t env_ind_detail_humidity_{};
     lv_subject_t env_ind_detail_humidity_status_{};
     lv_subject_t env_ind_detail_humidity_visible_{};
     lv_subject_t env_ind_detail_visible_{};
@@ -2530,6 +2536,7 @@ class AmsState {
     struct UnitEnvIndicator {
         std::string temp_text;
         std::string humidity_text;
+        int humidity_x10 = -1;   // tenths of %RH, -1 = no reading
         int humidity_status = 0; // 0=ok, 1=warn, 2=danger
         bool humidity_visible = false;
         bool visible = false;

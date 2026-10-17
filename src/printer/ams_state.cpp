@@ -47,6 +47,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <optional>
@@ -1171,6 +1172,9 @@ AmsState::UnitEnvIndicator AmsState::compute_unit_env_indicator(AmsBackend* back
         // Format humidity text (e.g., "46%")
         snprintf(buf, sizeof(buf), "%d%%", static_cast<int>(unit.environment->humidity_pct));
         out.humidity_text = buf;
+        if (unit.environment->has_humidity)
+            out.humidity_x10 =
+                std::max(0, static_cast<int>(std::lround(unit.environment->humidity_pct * 10.0f)));
 
         // Humidity status color from the most restrictive loaded material:
         // 0=ok (green), 1=warn (yellow), 2=danger (red)
@@ -1231,6 +1235,7 @@ void set_string_if_changed(lv_subject_t* subject, const std::string& value) {
 void AmsState::publish_unit_env_indicator(int idx, const UnitEnvIndicator& e) {
     set_string_if_changed(&env_ind_temp_text_[idx], e.temp_text);
     set_string_if_changed(&env_ind_humidity_text_[idx], e.humidity_text);
+    lv_subject_set_int(&env_ind_humidity_[idx], e.humidity_x10);
     lv_subject_set_int(&env_ind_humidity_status_[idx], e.humidity_status);
     lv_subject_set_int(&env_ind_humidity_visible_[idx], e.humidity_visible ? 1 : 0);
     lv_subject_set_int(&env_ind_visible_[idx], e.visible ? 1 : 0);
@@ -1635,6 +1640,7 @@ void AmsState::mirror_detail_env_subjects(AmsBackend* backend, const AmsSystemIn
     }
     set_string_if_changed(&env_ind_detail_temp_text_, e.temp_text);
     set_string_if_changed(&env_ind_detail_humidity_text_, e.humidity_text);
+    lv_subject_set_int(&env_ind_detail_humidity_, e.humidity_x10);
     lv_subject_set_int(&env_ind_detail_humidity_status_, e.humidity_status);
     lv_subject_set_int(&env_ind_detail_humidity_visible_, e.humidity_visible ? 1 : 0);
     lv_subject_set_int(&env_ind_detail_visible_, e.visible ? 1 : 0);

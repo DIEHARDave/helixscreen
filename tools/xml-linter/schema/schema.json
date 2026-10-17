@@ -1967,6 +1967,24 @@
       "attributes": {},
       "inherits": "lv_obj"
     },
+    "humidity_drop": {
+      "attributes": {
+        "bind_value": {
+          "type": "string"
+        },
+        "size": {
+          "type": "enum",
+          "enum": "_widget_size"
+        },
+        "width": {
+          "type": "string"
+        },
+        "height": {
+          "type": "string"
+        }
+      },
+      "inherits": "lv_obj"
+    },
     "leader_line": {
       "attributes": {},
       "inherits": "lv_obj"
@@ -2942,6 +2960,7 @@
     "ams_lane_bar",
     "ams_lane_spool",
     "belt_path_sketch",
+    "humidity_drop",
     "leader_line",
     "lv_obj-bind_tile_rung"
   ],

@@ -100,7 +100,7 @@ The slot view shows all your filament slots in a visual tray layout:
 - **Spool labels**: Above each spool. With four slots or fewer, the label shows the spool's name (for example "Bone White") over its material (PLA, PETG, ABS, etc.). When the name already says the material, as in "PLA+ Bone White", only the name is shown, and a slot with no name shows just the material. With five or more slots there is only room for the material, shortened to its first four letters. On smaller screens five or more labels alternate between two rows, so neighbours never overlap, and a thin line leads from a raised label down to its spool.
 - **Status badge** — Slot number with color-coded background (green = loaded, gray = empty, red = error)
 - **Tool badge**: A small badge (T0, T1, etc.) on a slot shows which tool prints from it. When every tool feeds the slot of its own number (T0 the first slot, T1 the second, and so on), the badges would only repeat the slot numbers, so they are hidden. They appear when the tools are mapped any other way, for example after you remap a tool or when two tools share a slot. A badge in the warning color marks a mapping you set yourself rather than the one your system reports.
-- **Environment pill**: On a box that reports temperature or humidity, a pill stands at the right end of the box: a thermometer with the temperature over a water drop with the humidity. While the box dries, the temperature line shows the heat icon and the time left. Tap the pill to open that box's drying and humidity screen (see [Filament Drying and Humidity](#filament-drying-and-humidity)). Boxes with no readings have no pill, and the box takes the full width.
+- **Environment pill**: On a box that reports temperature or humidity, a pill stands at the right end of the box: a thermometer with the temperature over a water drop with the humidity. The drop fills to the humidity reading, so a wet box shows a full drop at a glance; a box whose sensor gives no reading shows an empty outline. While the box dries, the temperature line shows the heat icon and the time left. Tap the pill to open that box's drying and humidity screen (see [Filament Drying and Humidity](#filament-drying-and-humidity)). Boxes with no readings have no pill, and the box takes the full width.
 
 Below the slot grid, a **filament path diagram** shows the routing from slots through the hub/selector to the toolhead. This updates in real time during load/unload operations, including eject animations when retracting filament at the slot sensor. On the Anycubic ACE the path reads the hub and toolhead sensors the driver publishes, so a strand parked partway down the tube is drawn where it actually sits - short of the hub - rather than back at the spool.
 
@@ -647,7 +647,7 @@ AFC (Box Turtle, OpenAMS), AD5X IFS, Snapmaker U1 and tool changers report no en
 
 ### Opening a Box
 
-On the **Filament** panel, any box with a reading or a heater shows a small badge beside its slots: a thermometer with the temperature, and a water drop with the humidity where a sensor exists. Tap the badge. That is the whole route - there is nothing to open under Settings.
+On the **Filament** panel, any box with a reading or a heater shows a small badge beside its slots: a thermometer with the temperature, and a water drop with the humidity where a sensor exists. The drop fills up to the reading: nearly empty in a dry box, nearly full in a humid one. Tap the badge. That is the whole route - there is nothing to open under Settings.
 
 What opens depends on how many boxes that unit has:
 

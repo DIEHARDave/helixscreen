@@ -73,6 +73,7 @@ void AmsEnvironmentOverlay::init_subjects() {
                                   "ams_env_overlay_target_temp_text", subjects_);
         UI_MANAGED_SUBJECT_STRING(humidity_text_subject_, humidity_text_buf_, "--",
                                   "ams_env_overlay_humidity_text", subjects_);
+        UI_MANAGED_SUBJECT_INT(humidity_subject_, -1, "ams_env_overlay_humidity", subjects_);
         UI_MANAGED_SUBJECT_INT(humidity_visible_subject_, 0, "ams_env_overlay_humidity_visible",
                                subjects_);
         UI_MANAGED_SUBJECT_STRING(title_text_subject_, title_text_buf_, "",
@@ -663,6 +664,7 @@ void AmsEnvironmentOverlay::publish_selected_zone() {
         lv_subject_set_int(&humidity_target_visible_subject_, 0);
         lv_subject_set_int(&drying_active_subject_, 0);
         lv_subject_set_int(&humidity_visible_subject_, 0);
+        lv_subject_set_int(&humidity_subject_, -1);
         lv_subject_set_int(&all_zones_visible_subject_, 0);
         lv_subject_set_int(&zone_state_subject_,
                            static_cast<int>(helix::printer::ZoneDryingState::Idle));
@@ -779,6 +781,10 @@ void AmsEnvironmentOverlay::publish_selected_zone() {
         snprintf(humidity_text_buf_, sizeof(humidity_text_buf_), "--");
     }
     lv_subject_copy_string(&humidity_text_subject_, humidity_text_buf_);
+    // The drop shows no reading exactly when the text does.
+    lv_subject_set_int(&humidity_subject_, has_humidity && humidity_pct > 0
+                                               ? static_cast<int>(std::lround(humidity_pct * 10.0f))
+                                               : -1);
 
     // Humidity readout + Material Comfort strip, for THIS zone. Matches the
     // badge's own rule (AmsState env_ind_humidity_visible): a reading exists

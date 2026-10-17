@@ -237,6 +237,7 @@ class AmsEnvironmentOverlay : public OverlayBase {
     /// and the Material Comfort strip, both of which need a real reading to say
     /// anything true. Per-overlay rather than the shown unit's
     /// ams_env_ind_<i>_humidity_visible so it cannot answer for the wrong unit.
+    lv_subject_t humidity_subject_{}; ///< tenths of %RH for the drop; -1 = no reading
     lv_subject_t humidity_visible_subject_{};
 
     lv_subject_t title_text_subject_{};
