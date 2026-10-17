@@ -15,7 +15,7 @@ host) are covered too, because that path costs almost nothing once the SSH engin
 
 | Question | Decision |
 |----------|----------|
-| How HelixScreen reaches a modded printer | Flash the mod's own unmodified file, then install over SSH once Moonraker answers. We never repack anyone's firmware. Our own ff5m image, which already contains HelixScreen, is the one exception, because it is ours |
+| How HelixScreen reaches a modded printer | Flash the mod's own unmodified file, then install HelixScreen once Moonraker answers (over SSH, or through the mod's own switch where it has one). We never repack or host anyone's firmware, and we maintain no firmware image of our own |
 | Where firmware comes from | Each mod's own GitHub releases. We host only a signed manifest naming URL + sha256 |
 | When the app is unsure of hardware revision or firmware version | Refuse and link the manual guide. Never write a stick on a guess |
 | Framework | Tauri: Rust core, web UI. Qt is the fallback if Linux WebKitGTK proves painful |
@@ -36,12 +36,13 @@ recipe:
 
 `helix` state offers **upgrade** (newer release over the existing install), **reinstall**,
 or **restore stock**. Upgrade uses whichever path the printer already updates through:
-`install.sh --update` over SSH, ZMOD's update_manager entry, or, for AD5M on our ff5m image,
-flashing the newer ff5m image from a stick ("upgrade image").
+`install.sh --update` over SSH, or ZMOD's update_manager entry. An AD5M still running the
+old `prestonbrown/ff5m` image is `modded:forge-x` with HelixScreen installed, and upgrades
+over SSH like any other.
 
 A `modded` printer skips straight to the steps after the mod: a K1 that already has Simple AF
 or Helper Script goes directly to `helix_install`, and an AD5X with ZMOD goes directly to
-`DISPLAY_OFF HELIX=1`. The manifest maps `(printer, state, version)` to a recipe; anything it
+`DISPLAY_OFF HELIX=1`, on an AD5M as on an AD5X. The manifest maps `(printer, state, version)` to a recipe; anything it
 does not map is refused.
 
 ## Architecture
@@ -134,7 +135,7 @@ v1 is the minimum. Adding a printer later is a manifest entry, a recipe and scre
 | QIDI Q2 / Max 4 / Plus 5 (stock Moonraker counts as `modded`) | n/a | discover -> probe -> `info` (QIDI Studio box sync and cloud stop) -> `ssh_login` tries `qidi`/`qiditech` then `mks`/`makerbase` -> `helix_install` | `--update` |
 | Creality K2 / Plus / Pro (stock Moonraker) | n/a | `user_action` root toggle (verify: SSH open) -> `ssh_login` `creality_2024`, else the password the screen shows -> `helix_install` | `--update` |
 | Creality K1 / K1C / K1 Max | `ask` root option visible (no: 2025 K1C, refuse) -> `info` restoring stock later means a factory reset -> `user_action` root toggle -> `ssh_login` `creality_2023` -> `require` fw >= 1.3.3.5, no Helper Script remnants -> `ssh_run` Simple AF `installer.sh --install <probe>` -> `helix_install` | Simple AF or Helper Script present: `helix_install` | `--update` |
-| FlashForge AD5M / Pro | discover (UDP model) -> `ask` stock version -> `require` 2.6.5-3.1.5 -> `download` ff5m -> `write_stick` -> `user_action` flash -> `wait_for` Moonraker | Forge-X / Klipper Mod: `ssh_login` -> `helix_install` | `--update`, or newer ff5m image from a stick |
+| FlashForge AD5M / Pro | discover (UDP model) -> `ask` stock version -> below 2.7.5: `user_action` update stock from the printer's own menu, then ask again -> `download` ZMOD -> `write_stick` -> `user_action` flash -> `wait_for` Moonraker -> `moonraker_gcode DISPLAY_OFF HELIX=1` -> `wait_for` HelixScreen | ZMOD: `moonraker_gcode` step onward. Forge-X / Klipper Mod: `ssh_login` (`root`/`root`, `root`/`klipper`) -> `helix_install` | ZMOD's update_manager; Forge-X / Klipper Mod `--update` |
 | FlashForge AD5X | discover -> `ask` stock version -> `require` ZMOD window (1.1.7-1.2.3, 3.0.3, 3.0.9, 3.1.0) -> `download` ZMOD -> `write_stick` -> `user_action` flash -> `wait_for` Moonraker (40 min, remove stick after) -> `moonraker_gcode DISPLAY_OFF HELIX=1` -> `wait_for` HelixScreen | ZMOD present: `moonraker_gcode` step onward | ZMOD's update_manager |
 
 AD5X stock above 3.1.0 needs a factory-downgrade recipe. It ships in v1 only after a
@@ -150,7 +151,7 @@ recipes `ask` with a picture of the About screen.
 | K1 | Simple AF run time; which `--install` probe a stock K1 needs (likely `loadcells`) | ours |
 | K2 | Fixed `creality_2024` or a per-unit password on current firmware; does Moonraker answer before root | ours |
 | AD5X | Does `DISPLAY_OFF HELIX=1` through the API complete; does it reboot mid-way; screen-switch-back macro for restore | ours, unplugged |
-| AD5M | Forge-X uninstall `.tgz` on our ff5m fork | tester |
+| AD5M | Does ZMOD's `DISPLAY_OFF HELIX=1` work on the AD5M as on the AD5X (our installer already has an AD5M ZMOD hook); stock update path below 2.7.5 | tester |
 | Generic | sudo over PTY on MainsailOS | pi5, pi3 |
 | Max 4 / Plus 5 | Logins (Plus 5 unconfirmed); ships "community-verified" | none |
 
@@ -181,7 +182,7 @@ A `restore` recipe per printer. The UI states how far back each goes before the 
 |---------|-------------|-----|
 | Generic / QIDI / K2 | Stock screen | `install.sh --uninstall` |
 | K1 | Simple AF's GrumpyScreen; full stock needs a factory reset or Creality's recovery | uninstall, then link |
-| AD5M | Stock firmware | Forge-X uninstall `.tgz` on a stick |
+| AD5M | Stock screen with ZMOD kept, or fully stock; Forge-X / Klipper Mod installs: stock screen of that mod | ZMOD macro or `REMOVE_ZMOD`; `install.sh --uninstall` |
 | AD5X | Stock screen with ZMOD kept, or fully stock | ZMOD macro, or `REMOVE_ZMOD` |
 
 ## Testing
@@ -221,7 +222,5 @@ A `restore` recipe per printer. The UI states how far back each goes before the 
 
 ## Before building
 
-- **ff5m license.** `prestonbrown/ff5m` reports Apache-2.0; upstream Forge-X is GPL-3.0. The
-  fork's license must be corrected before the app downloads from it.
 - **Ask the mod maintainers** (pellcorp, ghzserg) whether they are comfortable with the app
   driving their installers, and agree on a support path for failures inside their step.
