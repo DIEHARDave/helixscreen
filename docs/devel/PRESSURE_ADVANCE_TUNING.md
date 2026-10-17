@@ -70,15 +70,23 @@ keeps the ramp going, and the Tune overlay shows a Tuner button while a run is a
 - **Original K.** The run records the extruder's reported K at start (unknown stays
   unknown: no restore). The end gcode reports a layer past the last, which the session
   treats as the end of logging, then sets the original K back before the end macro;
-  Keep current re-sends the K the tower ended on.
+  Keep current re-sends the K the tower ended on. Both usually arrive in one status
+  frame, and PrinterState parses the extruder before print_stats, so the restore can be
+  seen while the top layer is still current: an unasked report of the original K on the
+  top layer ends logging the same way.
+- **The file is spent.** When the tower's print ends by any route, or fails to start,
+  `helix_pa_tuning.gcode` is deleted from the printer; history then marks the job's
+  file as gone and offers no reprint, which would restore a stale K.
 - **Foreign prints.** Outside the run's own print, nothing sends K while
   `job_holds_machine()`: a pick, a discard or a restore never lands in another job.
 - **Printable area.** `pa::printable_area()`: the `[bed_mesh]` plate within the axes, so
   a negative `position_min` for a purge bucket never carries the prime line off the plate;
   on a delta the square inscribed in the reachable circle.
 - **Start.** The uploaded file starts through `PrintStartController::initiate_reprint()`,
-  the path any file already on the printer takes, so a toolchanger's used-extruder send
-  happens; a cooldown follows the end macro. Known gap: it does not go through
+  the path any file already on the printer takes, with an explicit identity routing for
+  the tuned tool (`initiate_reprint_with_routing()`), so a U1's pre-print send puts the
+  tower on the head that was heated rather than the last job's crossover; a cooldown
+  follows the end macro. Known gap: it does not go through
   `PrintPreparationManager::start_print()`, so that path's file scan, pre-print options,
   AMS remap and spools-on-bed checks do not run for the tower.
 - **Bands.** More bands than rows are merged pairwise where K differs least

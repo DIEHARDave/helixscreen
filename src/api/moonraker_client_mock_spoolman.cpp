@@ -674,6 +674,11 @@ bool MockSpoolmanServer::proxy(const json& params, json& result, MoonrakerError&
     }
     if (auto id = id_after(path, "/v1/filament/")) {
         if (method == "GET") {
+            if (next_filament_get_result) {
+                result = *next_filament_get_result;
+                next_filament_get_result.reset();
+                return true;
+            }
             for (const auto& f : filament_list()) {
                 if (f.id == *id) {
                     result = with_extra(filament_json(f), f.id);

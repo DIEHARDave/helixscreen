@@ -430,13 +430,22 @@ void MoonrakerSpoolmanAPI::set_spoolman_filament_extra_number(
             "server.spoolman.proxy", get_params,
             [this, filament_id, key, value, field_type, on_success,
              on_error](const json& response) {
-                nlohmann::json extra = nlohmann::json::object();
-                if (response.contains("result") && response["result"].is_object()) {
-                    const auto& filament = response["result"];
-                    const auto it = filament.find("extra");
-                    if (it != filament.end() && it->is_object()) {
-                        extra = *it;
+                // Without the filament there is nothing to merge into, and an
+                // older Spoolman would take the one-key dict as all there is.
+                if (!response.contains("result") || !response["result"].is_object()) {
+                    spdlog::warn("[SpoolmanAPI] Filament {} read back no object; not writing",
+                                 filament_id);
+                    if (on_error) {
+                        on_error(MoonrakerError::unknown("Spoolman returned no filament to update",
+                                                         "server.spoolman.proxy"));
                     }
+                    return;
+                }
+                nlohmann::json extra = nlohmann::json::object();
+                const auto& filament = response["result"];
+                const auto it = filament.find("extra");
+                if (it != filament.end() && it->is_object()) {
+                    extra = *it;
                 }
                 extra[key] = spoolman_detail::encode_extra_number(field_type, value);
                 nlohmann::json body;

@@ -240,12 +240,16 @@ class TuningSession {
     /// 1-based layer now printing. 0 means not started yet; a layer past the
     /// tower's last is the end gcode, and records nothing.
     void on_layer(int layer);
-    /// The printer reported K for the extruder being tuned.
+    /// The printer reported K for the extruder being tuned. On the top layer
+    /// the original K coming back unasked is the end gcode's restore, which can
+    /// arrive in the same status frame as the end marker and ahead of it: it
+    /// ends logging instead of overwriting the top band.
     void on_k_reported(float k);
     /// The print ended, by any route. With nothing observed the run is void.
     void on_print_ended();
-    /// Nudge K by `delta`. Stops the ramp for the rest of the print.
-    void nudge(float delta);
+    /// Nudge K by `delta`. Stops the ramp for the rest of the print. False
+    /// (nothing sent) outside the print or once the tower is done.
+    bool nudge(float delta);
     /// Pick one of bands(max). Returns false for an index out of range.
     bool pick_band(int index, size_t max = SIZE_MAX);
     /// Keep the K the tower ended on (the end gcode restores the original, so

@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <ctime>
+#include <map>
 #include <set>
 #include <string>
 
@@ -79,10 +80,9 @@ void PaTuningOverlay::send_k(float k) {
 }
 
 bool PaTuningOverlay::nudge_by(float delta) {
-    if (stage_ != RUNNING) {
+    if (stage_ != RUNNING || !session_.nudge(delta)) {
         return false;
     }
-    session_.nudge(delta);
     refresh_running();
     return true;
 }
@@ -473,7 +473,9 @@ void PaTuningOverlay::confirm_and_start() {
 }
 
 void PaTuningOverlay::fail_start(const std::string& message) {
-    spdlog::warn("[{}] {}", get_name(), message);
+    if (!message.empty()) {
+        spdlog::warn("[{}] {}", get_name(), message);
+    }
     lv_subject_copy_string(&error_, message.c_str());
     set_stage(SETUP);
     refresh_setup();
@@ -520,27 +522,53 @@ void PaTuningOverlay::begin_upload() {
         }));
 }
 
+std::map<int, int> PaTuningOverlay::tower_routing(int tuned_tool) {
+    // The tower's tool prints on its own head: the one heated and tuned. A
+    // previous job's crossover must not carry over to it.
+    const int tool = std::max(0, tuned_tool);
+    return {{tool, tool}};
+}
+
 void PaTuningOverlay::start_uploaded_print() {
-    auto on_failed = [this]() {
+    // The controller's failure path already shows its own error, so the setup
+    // screen only returns; the raw fallback has no other message and says one.
+    auto on_failed = [this](const std::string& message) {
         stop_observing();
         session_.abandon();
-        fail_start(lv_tr("The test print could not start."));
+        delete_tower_file();
+        fail_start(message);
     };
     // The reprint path: a file already on the printer gets the same pre-start
-    // send (a toolchanger's used-extruder map) as any other start.
+    // send (a toolchanger's extruder map) as any other start, with the
+    // tower's own routing rather than the last job's.
     auto* select_panel = get_print_select_panel(get_printer_state(), api_);
     if (auto* controller = select_panel ? select_panel->get_print_start_controller() : nullptr) {
-        std::set<int> tools_used{std::max(0, tuned_tool_)};
+        const int tool = std::max(0, tuned_tool_);
         auto tok = object_lifetime_.token();
-        controller->initiate_reprint(
-            TEST_FILENAME, "", tools_used, []() {},
-            [tok, on_failed]() { tok.defer("PaTuningOverlay::start_failed", on_failed); });
+        controller->initiate_reprint_with_routing(
+            TEST_FILENAME, std::set<int>{tool}, tower_routing(tuned_tool_), []() {},
+            [tok, on_failed]() {
+                tok.defer("PaTuningOverlay::start_failed", [on_failed]() { on_failed({}); });
+            });
         return;
     }
     api_->job().start_print(
         TEST_FILENAME, []() {},
         object_lifetime_.bg_cb("PaTuningOverlay::start_failed",
-                               [on_failed](const MoonrakerError&) { on_failed(); }));
+                               [on_failed](const MoonrakerError& err) { on_failed(err.message); }));
+}
+
+void PaTuningOverlay::delete_tower_file() {
+    if (!api_) {
+        return;
+    }
+    // A tower reprinted from history would restore the K this run started
+    // from, long after it stopped being the original.
+    api_->files().delete_file(
+        std::string("gcodes/") + TEST_FILENAME, []() {},
+        [](const MoonrakerError& err) {
+            spdlog::warn("[PA Tuning] Could not delete {}: {}", TEST_FILENAME, err.message);
+        });
 }
 
 // ============================================================================
@@ -595,6 +623,7 @@ void PaTuningOverlay::on_print_state(PrintJobState state) {
     }
     session_.on_print_ended();
     stop_observing();
+    delete_tower_file();
     if (session_.state() == helix::pa::TuningSession::State::Picking) {
         picked_ = -1;
         refresh_bands();

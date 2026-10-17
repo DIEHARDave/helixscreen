@@ -510,6 +510,13 @@ void TuningSession::on_k_reported(float k) {
     if (tower_done_) {
         return;
     }
+    const bool on_top_layer = layer_ >= layer_count(geometry_, ramp_.bands);
+    const bool asked_for = last_sent_ && same_k(*last_sent_, k);
+    if (state_ == State::Printing && on_top_layer && original_k_ && same_k(*original_k_, k) &&
+        !asked_for) {
+        tower_done_ = true;
+        return;
+    }
     current_k_ = k;
     if (state_ == State::Printing && layer_ > 0) {
         const float bottom = layer_ <= 1 ? 0.0f : layer_z(geometry_, layer_ - 1);
@@ -527,15 +534,16 @@ void TuningSession::on_print_ended() {
     }
 }
 
-void TuningSession::nudge(float delta) {
+bool TuningSession::nudge(float delta) {
     if (state_ != State::Printing || tower_done_) {
-        return;
+        return false;
     }
     // The base is what was last asked for, so taps faster than the printer's
     // report accumulate instead of all starting from the same stale value.
     const float base = last_sent_.value_or(current_k_);
     mode_ = Mode::Manual;
     send(base + delta);
+    return true;
 }
 
 bool TuningSession::pick_band(int index, size_t max) {

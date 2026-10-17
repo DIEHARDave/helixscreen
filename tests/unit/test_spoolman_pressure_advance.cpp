@@ -232,3 +232,25 @@ TEST_CASE_METHOD(ApplyFixture, "with beta features off, activation never sends K
     CHECK(client.last_send_script() == "M220 S120");
     CHECK_FALSE(helix::tune::pressure_advance_enabled());
 }
+
+TEST_CASE("a filament read back as no object is never written over", "[spoolman][pa_tune]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    auto& server = client.spoolman_mock();
+    const int filament_id = first_filament_id(client);
+    json result;
+    MoonrakerError err;
+    REQUIRE(server.proxy({{"request_method", "POST"},
+                          {"path", "/v1/field/filament/pressure_advance"},
+                          {"body", {{"name", "PA"}, {"field_type", "float"}}}},
+                         result, err));
+    server.next_filament_get_result = json::array();
+    const size_t patches = server.filament_updates.size();
+    bool failed = false;
+    api.spoolman().set_spoolman_filament_extra_number(
+        filament_id, SPOOLMAN_PA_EXTRA_KEY, "Pressure advance", 0.042, []() {},
+        [&](const MoonrakerError&) { failed = true; });
+    CHECK(failed);
+    CHECK(server.filament_updates.size() == patches);
+}

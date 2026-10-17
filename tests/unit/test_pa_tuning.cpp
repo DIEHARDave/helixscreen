@@ -576,3 +576,42 @@ TEST_CASE("nothing logs or nudges once the tower is done", "[pa_tuning][pa_sessi
     rig.session.on_print_ended();
     CHECK(rig.session.bands().back().k == Catch::Approx(0.09f));
 }
+
+TEST_CASE("the restore arriving ahead of the end marker does not overwrite the top band",
+          "[pa_tuning][pa_session]") {
+    SessionRig rig;
+    rig.session.start(rig.g, rig.r, 0.04f);
+    rig.session.on_print_started();
+    for (int layer = 1; layer <= 156; ++layer) {
+        rig.layer_and_echo(layer);
+    }
+    // One status frame carries the end gcode's restore and its layer marker,
+    // and the extruder is parsed before print_stats: K first, then the layer.
+    rig.session.on_k_reported(0.04f);
+    rig.session.on_layer(157);
+    rig.session.on_print_ended();
+    REQUIRE(rig.session.state() == TuningSession::State::Picking);
+    CHECK(rig.session.bands().back().k == Catch::Approx(0.09f));
+    CHECK(rig.session.ending_k() == Catch::Approx(0.09f));
+
+    SECTION("a nudge back to the original on the top layer is still logged") {
+        SessionRig n;
+        n.session.start(n.g, n.r, 0.04f);
+        n.session.on_print_started();
+        n.layer_and_echo(156);
+        REQUIRE(n.session.nudge(0.04f - 0.09f));
+        n.session.on_k_reported(0.04f);
+        CHECK(n.session.bands().back().k == Catch::Approx(0.04f));
+    }
+}
+
+TEST_CASE("a nudge after the tower is done reports that nothing was sent",
+          "[pa_tuning][pa_session]") {
+    SessionRig rig;
+    rig.session.start(rig.g, rig.r, 0.04f);
+    rig.session.on_print_started();
+    rig.layer_and_echo(1);
+    CHECK(rig.session.nudge(0.001f));
+    rig.session.on_layer(157);
+    CHECK_FALSE(rig.session.nudge(0.001f));
+}

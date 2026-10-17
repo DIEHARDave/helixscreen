@@ -7,6 +7,7 @@
 #include "../lvgl_test_fixture.h"
 #include "app_globals.h"
 #include "moonraker_api.h"
+#include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
 #include "tool_state.h"
@@ -160,4 +161,78 @@ TEST_CASE("AMS lanes into one hotend are one head, and select no tool", "[pa_tun
     // Out-of-range picks clamp to a real head.
     CHECK(PaTuningOverlay::choose_head({t0, t5}, true, 9, 0, "extruder").tool == 5);
     CHECK(PaTuningOverlay::choose_head({}, true, 0, 0, "extruder1").extruder == "extruder1");
+}
+
+TEST_CASE_METHOD(TunerFixture,
+                 "one status frame with the restore and the end marker keeps "
+                 "the top band",
+                 "[pa_tune][pa_tuner]") {
+    start_session();
+    printing(1);
+    report_k(0.0);
+    printing(156);
+    report_k(0.09);
+    // As Moonraker delivers it: both changes in a single notification.
+    status({{"extruder", {{"pressure_advance", 0.04}}},
+            {"print_stats", {{"info", {{"current_layer", 157}, {"total_layer", 156}}}}}});
+    status({{"print_stats", {{"state", "complete"}}}});
+    REQUIRE(overlay.stage() == PaTuningOverlay::PICK);
+    CHECK(overlay.session_for_test().bands().back().k == Catch::Approx(0.09f));
+}
+
+TEST_CASE_METHOD(TunerFixture, "after the tower is done the Tune row sends on its own",
+                 "[pa_tune][pa_tuner]") {
+    start_session();
+    printing(1);
+    report_k(0.0);
+    printing(157); // the end gcode's marker
+    CHECK_FALSE(overlay.nudge_by(0.001f));
+}
+
+TEST_CASE("the tower's pre-print routing is its own tool on its own head", "[pa_tune][pa_tuner]") {
+    CHECK(PaTuningOverlay::tower_routing(2) == std::map<int, int>{{2, 2}});
+    CHECK(PaTuningOverlay::tower_routing(-1) == std::map<int, int>{{0, 0}});
+}
+
+namespace {
+
+/// The overlay over the API mock, which records deletes.
+struct TunerMockApiFixture : LVGLTestFixture {
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api{client, get_printer_state()};
+    PaTuningOverlay overlay;
+
+    TunerMockApiFixture() {
+        get_printer_state().init_subjects(false);
+        get_printer_state().set_klippy_state_sync(KlippyState::READY);
+        get_printer_state().temperature_state().init_extruders({"extruder"});
+        overlay.init_subjects();
+        overlay.set_api(&api);
+        overlay.set_extruder_for_test("extruder");
+        overlay.set_raise_on_start_for_test(false);
+    }
+    ~TunerMockApiFixture() override {
+        overlay.cleanup();
+        status({{"print_stats", {{"state", "standby"}, {"filename", ""}}}});
+    }
+    void status(const json& s) {
+        get_printer_state().update_from_status(s);
+        helix::ui::UpdateQueue::instance().drain();
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(TunerMockApiFixture, "the tower file is deleted when its print ends",
+                 "[pa_tune][pa_tuner]") {
+    overlay.session_for_test().start(pa::TowerGeometry{}, pa::Ramp{}, 0.04f);
+    overlay.begin_observing_for_test();
+    status({{"print_stats",
+             {{"state", "printing"},
+              {"filename", PaTuningOverlay::TEST_FILENAME},
+              {"info", {{"current_layer", 3}, {"total_layer", 156}}}}}});
+    CHECK(api.files_mock().deleted_files().empty());
+    status({{"print_stats", {{"state", "cancelled"}}}});
+    CHECK(api.files_mock().deleted_files() ==
+          std::vector<std::string>{std::string("gcodes/") + PaTuningOverlay::TEST_FILENAME});
 }

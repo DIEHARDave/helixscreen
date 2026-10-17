@@ -6,6 +6,7 @@
 #include "spoolman_types.h"
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -79,6 +80,10 @@ class MockSpoolmanServer {
     };
     /// Every PATCH /v1/filament/{id}
     std::vector<FilamentUpdateRecord> filament_updates;
+    /// When set, the next GET /v1/filament/{id} answers this verbatim, for a
+    /// test of a server returning something other than a filament object.
+    std::optional<json> next_filament_get_result;
+
     /// POST /v1/field/filament/{key} bodies, with the key
     std::vector<std::pair<std::string, json>> defined_filament_fields;
 

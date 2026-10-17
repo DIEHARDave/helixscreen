@@ -15,6 +15,7 @@
 #include "tool_state.h"
 
 #include <lvgl.h>
+#include <map>
 #include <optional>
 #include <string>
 
@@ -122,6 +123,9 @@ class PaTuningOverlay : public OverlayBase {
         int tool;
         std::string extruder;
     };
+    /// The pre-print routing for the tower: its tool on its own head.
+    static std::map<int, int> tower_routing(int tuned_tool);
+
     static HeadChoice choose_head(const std::vector<PhysicalHead>& heads, bool multi_extruder,
                                   int selected, int active_tool,
                                   const std::string& active_extruder);
@@ -179,6 +183,8 @@ class PaTuningOverlay : public OverlayBase {
     /// kinematics. nullopt when the axes are unknown.
     static std::optional<helix::pa::PrintArea> printable_area();
     void start_uploaded_print();
+    /// Remove the generated file from the printer, so it cannot be reprinted.
+    void delete_tower_file();
 
     // --- run ---
     void begin_observing();
