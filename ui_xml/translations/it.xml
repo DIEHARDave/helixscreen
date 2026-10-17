@@ -3007,6 +3007,7 @@
   <translation tag="Stopped between Hub and Toolhead" it="Fermo tra Hub e testina"/>
   <translation tag="Stopped between Lane and Hub" it="Fermo tra corsia e Hub"/>
   <translation tag="Stopped between Spool and Lane" it="Fermo tra bobina e corsia"/>
+  <translation tag="Stopped drying %s" it="Essiccazione interrotta: %s"/>
   <translation tag="Stops all motion. Requires firmware restart." it="Ferma tutto il movimento. Richiede riavvio firmware."/>
   <translation tag="Stow" it="Ritrai"/>
   <translation tag="Subtle" it="Sobrio"/>

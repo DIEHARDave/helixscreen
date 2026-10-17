@@ -3007,6 +3007,7 @@
   <translation tag="Stopped between Hub and Toolhead" zh="停在集线器与工具头之间"/>
   <translation tag="Stopped between Lane and Hub" zh="停在耗材通道与集线器之间"/>
   <translation tag="Stopped between Spool and Lane" zh="停在料盘与耗材通道之间"/>
+  <translation tag="Stopped drying %s" zh="已停止烘干：%s"/>
   <translation tag="Stops all motion. Requires firmware restart." zh="停止所有运动。需要固件重启。"/>
   <translation tag="Stow" zh="收回"/>
   <translation tag="Subtle" zh="微妙"/>

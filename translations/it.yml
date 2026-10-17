@@ -3327,6 +3327,7 @@ translations:
   Stopped between Hub and Toolhead: Fermo tra Hub e testina
   Stopped between Lane and Hub: Fermo tra corsia e Hub
   Stopped between Spool and Lane: Fermo tra bobina e corsia
+  Stopped drying %s: 'Essiccazione interrotta: %s'
   Stops all motion. Requires firmware restart.: Ferma tutto il movimento. Richiede
     riavvio firmware.
   Stow: Ritrai

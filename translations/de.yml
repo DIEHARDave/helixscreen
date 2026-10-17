@@ -3335,6 +3335,7 @@ translations:
   Stopped between Hub and Toolhead: Zwischen Hub und Werkzeugkopf gestoppt
   Stopped between Lane and Hub: Zwischen Spur und Hub gestoppt
   Stopped between Spool and Lane: Zwischen Spule und Spur gestoppt
+  Stopped drying %s: 'Trocknen gestoppt: %s'
   Stops all motion. Requires firmware restart.: Stoppt alle Bewegung. Erfordert Firmware-Neustart.
   Stow: Einfahren
   Subtle: Dezent

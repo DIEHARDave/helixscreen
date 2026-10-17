@@ -363,7 +363,10 @@ with (`zones_`) and a selected index.
   Start and Stop send no gates at all, so the dryer gets exactly the command it gets with no
   selection; a subset goes out as `DryingRequest::gates` / `stop_drying_gates()`. On such a
   dryer the button and countdown follow the unit's cycle, not the shown lane's, since the cycle
-  belongs to the unit.
+  belongs to the unit. Each chip is `#touch_target_min` square; while they show, the comfort
+  list wraps 2x2 at every breakpoint, and at Micro the comfort strip hides (the humidity readout
+  stays). A Stop on a subset names what it stopped ("Stopped drying Gate 2, Gate 3",
+  `stopped_lanes_text()`).
 - The cross-unit affordance ("View all boxes") appears only when the printer reports more zones
   than this view is showing **and** no overview already sits beneath the overlay - reached from
   the list, Back is already the way there, so a second route would stack a duplicate.
@@ -483,7 +486,11 @@ unit they fall in, gates on no unit dropped; `rotate` adds `ROTATE=1`, and a rot
 selection names every gate on the unit, because Happy Hare refuses `ROTATE` without `GATES`.
 `stop_drying_gates(unit, gates)` sends `MMU_HEATER STOP=1 GATES=...`, which cancels just those
 gates and leaves the rest of the cycle running. A duration restart and a temperature-only
-update keep the selection (`dry_gate_targets_`). Happy Hare refuses `DRY=1` while a unit is
+update drive the gates still in the selection (`dry_gates_`): a partial stop removes its gates
+from it, because a later `MMU_HEATER TEMP= GATES=` is raw heater control in Happy Hare and would
+heat a stopped gate outside any cycle, and the selection is forgotten once a status frame shows
+none of its gates queued or active after one has shown them drying (complete or cancelled at
+the printer). Happy Hare refuses `DRY=1` while a unit is
 already drying, so one cycle per unit is all there is: the gates are chosen before Start, not
 added to a running cycle. A shared-enclosure unit, and every v3 install, reports neither flag
 and refuses a selection. Each slot also carries its gate's `drying_state` as

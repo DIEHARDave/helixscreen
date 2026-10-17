@@ -691,7 +691,9 @@ On a Happy Hare 4 unit that has its own heater on every lane (an EMU-style build
 
 - **Tap a chip to leave that lane out** of the next dry, and tap it again to put it back. The last selected chip can't be cleared: a dry needs at least one lane.
 - **Rotate** appears when the unit has an eSpooler. Turn it on and the selected spools are turned while they dry. Happy Hare only rotates a spool whose filament end has been pulled back out of the gate and fixed to the spool, and it warns in the console about any lane that isn't.
-- **Stop Drying with some chips cleared** stops only the selected lanes; the others keep drying. With every chip selected it stops the whole cycle.
+- **Stop Drying with some chips cleared** stops only the selected lanes, and the notice names them ("Stopped drying Gate 2, Gate 3"); the others keep drying. With every chip selected it stops the whole cycle.
+
+To make room for the chips, the Material Comfort list wraps into two columns while they show, and on the smallest screens (480x272) it is hidden; the humidity reading above it stays.
 
 Happy Hare runs one drying cycle per unit, so pick your lanes before you tap **Start Drying**. A lane can't be added to a cycle that is already running: stop it and start again with the new selection. On these units the button and the time left follow the unit's cycle, so a lane that isn't drying still shows **Stop Drying** while its neighbours are.
 

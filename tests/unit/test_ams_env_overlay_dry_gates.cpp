@@ -245,3 +245,8 @@ TEST_CASE_METHOD(XMLTestFixture, "An overlay with no zone offers no lane chips",
     CHECK(subject_int("env_dry_rotate_visible") == 0);
     finish();
 }
+
+TEST_CASE("A Stop on some lanes names the lanes it stopped", "[ams][dryer][dry_gates]") {
+    CHECK(stopped_lanes_text({1, 2}, LaneNoun::Gate) == "Stopped drying Gate 2, Gate 3");
+    CHECK(stopped_lanes_text({0}, LaneNoun::Lane) == "Stopped drying Lane 1");
+}

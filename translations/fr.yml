@@ -3351,6 +3351,7 @@ translations:
   Stopped between Hub and Toolhead: Arrêté entre le Hub et la tête d'outil
   Stopped between Lane and Hub: Arrêté entre la voie et le Hub
   Stopped between Spool and Lane: Arrêté entre la bobine et la voie
+  Stopped drying %s: 'Séchage arrêté : %s'
   Stops all motion. Requires firmware restart.: Arrête tout mouvement. Nécessite un
     redémarrage du firmware.
   Stow: Ranger

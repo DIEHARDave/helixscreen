@@ -3007,6 +3007,7 @@
   <translation tag="Stopped between Hub and Toolhead" pt="Parado entre o Hub e o cabeçote"/>
   <translation tag="Stopped between Lane and Hub" pt="Parado entre a Lane e o Hub"/>
   <translation tag="Stopped between Spool and Lane" pt="Parado entre o carretel e a Lane"/>
+  <translation tag="Stopped drying %s" pt="Secagem parada: %s"/>
   <translation tag="Stops all motion. Requires firmware restart." pt="Para todo movimento. Requer reinício do firmware."/>
   <translation tag="Stow" pt="Guardar"/>
   <translation tag="Subtle" pt="Sutil"/>

@@ -463,11 +463,12 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     /// Does @p unit (any unit for a negative one) have a motor that turns its spools?
     /// Caller holds mutex_.
     [[nodiscard]] bool unit_turns_spools_locked(int unit) const;
-    /// MMU_HEATER DRY=1 with TEMP and TIMER, plus HUMIDITY when @p humidity_pct is set,
-    /// then @p extra, sent to @p targets (empty: @p unit's whole-unit targets).
+    /// MMU_HEATER DRY=1 with TEMP and TIMER, plus HUMIDITY when @p humidity_pct is set and
+    /// ROTATE=1 when @p rotate, sent to @p gates (empty: @p unit's whole-unit targets).
     AmsError start_drying_cycle(float temp_c, int duration_min, std::optional<float> humidity_pct,
-                                int unit, std::vector<std::string> targets = {},
-                                const std::string& extra = {});
+                                int unit, std::vector<int> gates = {}, bool rotate = false);
+    /// Forget the selected gates of a cycle HelixScreen started. Caller holds mutex_.
+    void forget_dry_gates_locked();
 
     /// UNIT value naming every unit; v4 takes UNIT=ALL on its per-unit commands.
     static constexpr int kAllUnits = -1;
@@ -758,10 +759,14 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     std::time_t dry_end_epoch_ = 0; ///< HelixScreen-initiated drying end (epoch s), 0 = none
     /// Humidity target of the cycle HelixScreen started, carried across a restart
     std::optional<float> dry_humidity_target_;
-    /// Heater targets and trailing parameters (ROTATE=1) of a gate-selected cycle
-    /// HelixScreen started, so a restart drives the same gates. Empty for a whole-unit cycle.
-    std::vector<std::string> dry_gate_targets_;
-    std::string dry_gate_extra_;
+    /// Gates still drying in a gate-selected cycle HelixScreen started, so a restart or a
+    /// temperature change drives those gates and no others. Empty for a whole-unit cycle,
+    /// and emptied by a stop or once Happy Hare reports every one of them finished.
+    std::vector<int> dry_gates_;
+    bool dry_rotate_ = false;
+    /// Set once a status frame shows one of dry_gates_ queued or active. Until then a
+    /// frame describing the moment before the start must not read as the cycle ending.
+    bool dry_gates_seen_live_ = false;
     std::function<std::time_t()> now_fn_ = [] { return std::time(nullptr); };
     // Dryer enclosure heaters + environment sensors. Happy Hare supports either a
     // single shared enclosure (scalar filament_heater / environment_sensor) OR a

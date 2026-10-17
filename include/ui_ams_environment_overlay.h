@@ -18,6 +18,7 @@
 #include "ui_observer_guard.h"
 
 #include "ams_environment_zone.h"
+#include "display_numbering.h"
 #include "helix/xml/indexed_subject_pool.h"
 #include "overlay_base.h"
 #include "static_panel_registry.h"
@@ -312,6 +313,10 @@ class AmsEnvironmentOverlay : public OverlayBase {
     helix::xml::IndexedSubjectPool dry_gate_selected_pool_{
         "env_dry_gate_selected", helix::xml::IndexedSubjectPool::Type::Int};
 };
+
+/// The notice for a Stop that applied to some of a dryer's lanes only: "Stopped drying
+/// Gate 2, Gate 3", in the system's own lane noun.
+[[nodiscard]] std::string stopped_lanes_text(const std::vector<int>& gates, LaneNoun noun);
 
 inline AmsEnvironmentOverlay& get_ams_environment_overlay() {
     return lazy_global<AmsEnvironmentOverlay>("AmsEnvironmentOverlay");

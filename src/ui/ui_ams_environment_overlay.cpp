@@ -1076,6 +1076,20 @@ void AmsEnvironmentOverlay::auto_select_preset() {
 // STATIC CALLBACKS
 // ============================================================================
 
+std::string stopped_lanes_text(const std::vector<int>& gates, LaneNoun noun) {
+    std::string lanes;
+    for (int gate : gates) {
+        if (!lanes.empty()) {
+            lanes += ", ";
+        }
+        lanes += lane_label(noun, gate);
+    }
+    // One key with the list inside it, so a translator can place the list.
+    char buf[160];
+    snprintf(buf, sizeof(buf), lv_tr("Stopped drying %s"), lanes.c_str());
+    return buf;
+}
+
 void AmsEnvironmentOverlay::handle_start_stop() {
     AmsBackend* backend = AmsState::instance().get_backend();
 
@@ -1099,8 +1113,10 @@ void AmsEnvironmentOverlay::handle_start_stop() {
                 spdlog::info("[AmsEnvironmentOverlay] Stopping drying ({} selected gates)",
                              gates.size());
                 AmsError result = backend->stop_drying_gates(unit, gates);
-                if (result.success()) {
+                if (result.success() && gates.empty()) {
                     NOTIFY_INFO("{}", lv_tr("Drying stopped"));
+                } else if (result.success()) {
+                    NOTIFY_INFO("{}", stopped_lanes_text(gates, backend->lane_noun()));
                 } else {
                     helix::ui::notify_ams_error(result, lv_tr("Stop failed"));
                 }

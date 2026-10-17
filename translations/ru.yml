@@ -3377,6 +3377,7 @@ translations:
   Stopped between Hub and Toolhead: Остановка между хабом и печатающей головкой
   Stopped between Lane and Hub: Остановка между каналом и хабом
   Stopped between Spool and Lane: Остановка между катушкой и каналом
+  Stopped drying %s: 'Сушка остановлена: %s'
   Stops all motion. Requires firmware restart.: Останавливает всё движение. Требуется
     перезапуск прошивки.
   Stow: Убрать

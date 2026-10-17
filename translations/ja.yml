@@ -3127,6 +3127,7 @@ translations:
   Stopped between Hub and Toolhead: ハブとツールヘッドの間で停止
   Stopped between Lane and Hub: レーンとハブの間で停止
   Stopped between Spool and Lane: スプールとレーンの間で停止
+  Stopped drying %s: '乾燥を停止しました: %s'
   Stops all motion. Requires firmware restart.: すべての動作を停止します。ファームウェアの再起動が必要です。
   Stow: 格納
   Subtle: サトル

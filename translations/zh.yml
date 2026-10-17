@@ -3118,6 +3118,7 @@ translations:
   Stopped between Hub and Toolhead: 停在集线器与工具头之间
   Stopped between Lane and Hub: 停在耗材通道与集线器之间
   Stopped between Spool and Lane: 停在料盘与耗材通道之间
+  Stopped drying %s: '已停止烘干：%s'
   Stops all motion. Requires firmware restart.: 停止所有运动。需要固件重启。
   Stow: 收回
   Subtle: 微妙

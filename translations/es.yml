@@ -3327,6 +3327,7 @@ translations:
   Stopped between Hub and Toolhead: Detenido entre el Hub y el cabezal
   Stopped between Lane and Hub: Detenido entre el carril y el Hub
   Stopped between Spool and Lane: Detenido entre la bobina y el carril
+  Stopped drying %s: 'Secado detenido: %s'
   Stops all motion. Requires firmware restart.: Detiene todo movimiento. Requiere
     reinicio de firmware.
   Stow: Guardar

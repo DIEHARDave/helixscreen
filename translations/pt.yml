@@ -3332,6 +3332,7 @@ translations:
   Stopped between Hub and Toolhead: Parado entre o Hub e o cabeçote
   Stopped between Lane and Hub: Parado entre a Lane e o Hub
   Stopped between Spool and Lane: Parado entre o carretel e a Lane
+  Stopped drying %s: 'Secagem parada: %s'
   Stops all motion. Requires firmware restart.: Para todo movimento. Requer reinício
     do firmware.
   Stow: Guardar

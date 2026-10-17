@@ -18,7 +18,8 @@
          4-tall column: it leaves the dryer stack 94px for 120px of controls,
          which centers its overflow and slices both the preset dropdown and the
          Start/Stop button (#1192). Wrapping to 2x2 halves the strip and buys
-         back the 26px the controls need. Set via style, not inline, because an
+         back the 26px the controls need. The lane chips' row costs the same
+         room at every breakpoint, so while it shows the list wraps there too. Set via style, not inline, because an
          inline attribute would override the bind (CRITICAL RULE #6).
          `layout` is spelled out in both: flex_flow alone sets FLEX_FLOW but not
          LAYOUT, and a container with a flow and no layout runs no layout at all
@@ -72,10 +73,12 @@
 
         <!-- Which lanes a drying start covers, on a dryer that heats lanes one by one.
              It takes the lane line's place: the chips name the lanes too. Every chip
-             starts selected, which is the whole unit. Each lane's part in a running cycle
-             is on the zone tabs and the slot badges, so the chips carry no state dot and
-             cost the card no more height than the lane line. Rotate turns the selected
-             spools while they dry. -->
+             starts selected, which is the whole unit. Each chip is a full finger target
+             (#touch_target_min square); the room comes from the comfort list, which
+             wraps while the chips show, and at Micro from the comfort strip, which hides.
+             Each lane's part in a running cycle is on the zone tabs and the slot badges,
+             so the chips carry no state dot. Rotate turns the selected spools while they
+             dry. -->
         <lv_obj name="dry_gate_row"
                 width="100%" height="content" flex_flow="row_wrap" style_flex_cross_place="center" style_pad_all="0"
                 style_pad_gap="#space_xs" scrollable="false" hidden="true">
@@ -89,7 +92,7 @@
                         active_subject="env_dry_gate_selected_${i}" tab_index="${i}" callback="on_env_dry_gate_clicked"
                         selected_style="zone_tab_pill_selected" idle_style="zone_tab_outline_idle"
                         content_selected_style="zone_tab_on_primary" radius="#border_radius" pad_ver="0"
-                        label_size_style="zone_tab_label_small"/>
+                        min_height="#touch_target_min" min_width="#touch_target_min"/>
             </repeat>
           </lv_obj>
           <lv_obj name="dry_rotate_wrap"
@@ -99,7 +102,7 @@
                       label_subject="env_dry_rotate_label" active_subject="env_dry_rotate_on"
                       callback="on_env_dry_rotate_clicked" selected_style="zone_tab_pill_selected"
                       idle_style="zone_tab_outline_idle" content_selected_style="zone_tab_on_primary"
-                      radius="#border_radius" pad_ver="0" label_size_style="zone_tab_label_small"/>
+                      radius="#border_radius" pad_ver="0" min_height="#touch_target_min"/>
           </lv_obj>
         </lv_obj>
 
@@ -282,7 +285,10 @@
         <lv_obj name="comfort_strip"
                 width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_md"
                 scrollable="false" hidden="true">
-          <bind_flag_if_not_eq subject="ams_env_overlay_humidity_visible" flag="hidden" ref_value="1"/>
+          <!-- At Micro the lane chips, a full finger target tall, take the strip's room;
+               the humidity readout above still shows. -->
+          <bind_flag_if cond="ams_env_overlay_humidity_visible ne 1 or (ui_breakpoint eq 0 and env_dry_gate_count gt 0)"
+                        flag="hidden"/>
 
           <divider_horizontal width="100%"/>
 
@@ -299,8 +305,8 @@
             <lv_obj width="content"
                     height="content" style_pad_all="0" style_flex_cross_place="start" style_pad_row="#space_xs"
                     style_pad_column="#space_md" scrollable="false">
-              <bind_style_if_eq name="comfort_list_micro" subject="ui_breakpoint" ref_value="0"/>
-              <bind_style_if_ge name="comfort_list_wide" subject="ui_breakpoint" ref_value="1"/>
+              <bind_style_if name="comfort_list_micro" cond="ui_breakpoint eq 0 or env_dry_gate_count gt 0"/>
+              <bind_style_if name="comfort_list_wide" cond="ui_breakpoint ge 1 and env_dry_gate_count eq 0"/>
 
               <lv_obj name="comfort_row_0"
                       width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"

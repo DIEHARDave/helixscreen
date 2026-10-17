@@ -3067,6 +3067,7 @@
   <translation tag="Stopped between Hub and Toolhead" ru="Остановка между хабом и печатающей головкой"/>
   <translation tag="Stopped between Lane and Hub" ru="Остановка между каналом и хабом"/>
   <translation tag="Stopped between Spool and Lane" ru="Остановка между катушкой и каналом"/>
+  <translation tag="Stopped drying %s" ru="Сушка остановлена: %s"/>
   <translation tag="Stops all motion. Requires firmware restart." ru="Останавливает всё движение. Требуется перезапуск прошивки."/>
   <translation tag="Stow" ru="Убрать"/>
   <translation tag="Subtle" ru="Сдержанный"/>

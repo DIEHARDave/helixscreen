@@ -1221,6 +1221,24 @@ void AmsBackendHappyHare::apply_mmu_drying_locked(const happy_hare::DryingDelta&
         }
         gate_drying_states_ = *drying.per_gate;
         dryer_info_.active = any_active;
+        // Once the gates HelixScreen selected have been seen drying, a frame with none of
+        // them queued or active is the cycle ending (complete or cancelled at the
+        // printer), and a later temperature change must not reach them.
+        if (!dry_gates_.empty()) {
+            const bool live = std::any_of(dry_gates_.begin(), dry_gates_.end(), [this](int g) {
+                const auto st = helix::printer::zone_drying_state_from_firmware(
+                    g >= 0 && g < static_cast<int>(gate_drying_states_.size())
+                        ? gate_drying_states_[static_cast<size_t>(g)]
+                        : std::string{});
+                return st == helix::printer::ZoneDryingState::Active ||
+                       st == helix::printer::ZoneDryingState::Queued;
+            });
+            if (live) {
+                dry_gates_seen_live_ = true;
+            } else if (dry_gates_seen_live_) {
+                forget_dry_gates_locked();
+            }
+        }
         spdlog::trace("[AMS HappyHare] Dryer state (array): active={}", any_active);
     }
 }
@@ -3684,7 +3702,7 @@ AmsError AmsBackendHappyHare::start_drying_request(const DryingRequest& request)
         return AmsBackend::start_drying_request(request);
     }
 
-    std::vector<std::string> targets;
+    std::vector<int> selected;
     std::optional<float> humidity;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -3710,21 +3728,35 @@ AmsError AmsBackendHappyHare::start_drying_request(const DryingRequest& request)
                 }
             }
         }
-        targets = heater_targets_for_gates_locked(gates);
+        // Gates on no unit cannot be named in a command; keep the rest, in order.
+        for (int gate : gates) {
+            if (unit_index_for_gate(system_info_, gate) >= 0 &&
+                std::find(selected.begin(), selected.end(), gate) == selected.end()) {
+                selected.push_back(gate);
+            } else if (unit_index_for_gate(system_info_, gate) < 0) {
+                spdlog::warn("[AMS HappyHare] Gate {} is on no unit, left out of MMU_HEATER", gate);
+            }
+        }
+        std::sort(selected.begin(), selected.end());
     }
-    if (targets.empty()) {
+    if (selected.empty()) {
         return AmsError{AmsResult::WRONG_STATE, "None of the selected gates exist",
                         "No gate to dry", "Select a gate on this unit."};
     }
     (void)request.fan_pct; // Happy Hare MMU_HEATER does not accept a FAN parameter
     return start_drying_cycle(request.temp_c, request.duration_min, humidity, request.unit,
-                              std::move(targets), request.rotate ? " ROTATE=1" : "");
+                              std::move(selected), request.rotate);
+}
+
+void AmsBackendHappyHare::forget_dry_gates_locked() {
+    dry_gates_.clear();
+    dry_rotate_ = false;
+    dry_gates_seen_live_ = false;
 }
 
 AmsError AmsBackendHappyHare::start_drying_cycle(float temp_c, int duration_min,
                                                  std::optional<float> humidity_pct, int unit,
-                                                 std::vector<std::string> targets,
-                                                 const std::string& extra) {
+                                                 std::vector<int> gates, bool rotate) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!dryer_info_.supported) {
@@ -3739,20 +3771,29 @@ AmsError AmsBackendHappyHare::start_drying_cycle(float temp_c, int duration_min,
     if (humidity_pct) {
         cmd += fmt::format(" HUMIDITY={:.0f}", *humidity_pct);
     }
-    cmd += extra;
+    const bool gate_selection = !gates.empty();
+    if (gate_selection && rotate) {
+        cmd += " ROTATE=1";
+    }
 
-    const bool gate_selection = !targets.empty();
+    // heater_targets_for_unit() locks internally, so it is called with no lock held.
+    std::vector<std::string> targets;
     if (!gate_selection) {
-        // heater_targets_for_unit() locks internally, so it is called with no lock held.
         targets = heater_targets_for_unit(unit);
     }
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        if (gate_selection) {
+            targets = heater_targets_for_gates_locked(gates);
+        }
         dryer_info_.duration_min = duration_min;
         dry_end_epoch_ = now_fn_() + static_cast<std::time_t>(duration_min) * 60;
         dry_humidity_target_ = humidity_pct;
-        dry_gate_targets_ = gate_selection ? targets : std::vector<std::string>{};
-        dry_gate_extra_ = gate_selection ? extra : std::string{};
+        forget_dry_gates_locked();
+        if (gate_selection) {
+            dry_gates_ = std::move(gates);
+            dry_rotate_ = rotate;
+        }
     }
 
     spdlog::info(
@@ -3771,7 +3812,7 @@ AmsError AmsBackendHappyHare::stop_drying(int unit) {
         }
         dry_end_epoch_ = 0;
         dry_humidity_target_.reset();
-        dry_gate_targets_.clear();
+        forget_dry_gates_locked();
         dryer_info_.active = false;
         dryer_info_.remaining_min = 0;
         dryer_info_.duration_min = 0;
@@ -3792,6 +3833,21 @@ AmsError AmsBackendHappyHare::stop_drying_gates(int unit, const std::vector<int>
             return AmsErrorHelper::not_supported("Drying selected gates");
         }
         targets = heater_targets_for_gates_locked(gates);
+        // A stopped gate leaves the selection, or a later temperature change, which is raw
+        // heater control in Happy Hare, would heat it again outside any cycle.
+        if (!targets.empty() && !dry_gates_.empty()) {
+            dry_gates_.erase(std::remove_if(dry_gates_.begin(), dry_gates_.end(),
+                                            [&gates](int g) {
+                                                return std::find(gates.begin(), gates.end(), g) !=
+                                                       gates.end();
+                                            }),
+                             dry_gates_.end());
+            if (dry_gates_.empty()) {
+                dry_end_epoch_ = 0;
+                dry_humidity_target_.reset();
+                forget_dry_gates_locked();
+            }
+        }
     }
     if (targets.empty()) {
         return AmsError{AmsResult::WRONG_STATE, "None of the selected gates exist",
@@ -3819,23 +3875,22 @@ AmsError AmsBackendHappyHare::update_drying(float temp_c, int duration_min, int 
         // A gate-selected cycle restarts on the same gates, rotating as it was.
         float target = temp_c;
         std::optional<float> humidity;
-        std::vector<std::string> gate_targets;
-        std::string gate_extra;
+        std::vector<int> gates;
+        bool rotate = false;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (!want_temp) {
                 target = dryer_info_.target_temp_c;
             }
             humidity = dry_humidity_target_;
-            gate_targets = dry_gate_targets_;
-            gate_extra = dry_gate_extra_;
+            gates = dry_gates_;
+            rotate = dry_rotate_;
         }
         auto stopped = stop_drying(unit);
         if (!stopped.success()) {
             return stopped;
         }
-        return start_drying_cycle(target, duration_min, humidity, unit, std::move(gate_targets),
-                                  gate_extra);
+        return start_drying_cycle(target, duration_min, humidity, unit, std::move(gates), rotate);
     }
 
     // Temperature alone re-sends the setpoint and leaves the cycle and its timer alone. On
@@ -3844,7 +3899,9 @@ AmsError AmsBackendHappyHare::update_drying(float temp_c, int duration_min, int 
     std::vector<std::string> gate_targets;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        gate_targets = dry_gate_targets_;
+        if (!dry_gates_.empty()) {
+            gate_targets = heater_targets_for_gates_locked(dry_gates_);
+        }
     }
     const std::string cmd = fmt::format("MMU_HEATER TEMP={:.0f}", temp_c);
     return gate_targets.empty() ? send_heater_command(cmd, unit)

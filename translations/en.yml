@@ -3232,6 +3232,7 @@ translations:
   Stopped between Hub and Toolhead: Stopped between Hub and Toolhead
   Stopped between Lane and Hub: Stopped between Lane and Hub
   Stopped between Spool and Lane: Stopped between Spool and Lane
+  Stopped drying %s: Stopped drying %s
   Stops all motion. Requires firmware restart.: Stops all motion. Requires firmware
     restart.
   Stow: Stow
