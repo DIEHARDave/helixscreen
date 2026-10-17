@@ -582,6 +582,13 @@ Design work overrides `superpowers:brainstorming` and `superpowers:writing-plans
   `scripts/syntax_check.py` pass before execution starts. A plan of uncompiled code is a second
   codebase that drifts from the first.
 
+Execution overrides `superpowers:subagent-driven-development`, `executing-plans`,
+`requesting-code-review` and `test-driven-development` here: § Verification Cadence wins.
+No per-task review or re-review: the implementer self-checks and runs its tags, and the
+batch gets one review at the finish. Each plan or skill's "verify" step means its tags, not a
+sweep, gate or mutation run. TDD still holds: the new test goes red first, which is the
+one hand-break proof.
+
 ---
 
 ## Autonomous Sessions
