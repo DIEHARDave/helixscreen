@@ -61,7 +61,7 @@
       <!-- ================================================================ -->
       <ui_card name="details_card"
                width="100%" flex_grow="1" style_radius="#border_radius" style_pad_all="#space_md" flex_flow="column"
-               style_pad_gap="#space_sm">
+               style_pad_gap="#space_xs">
 
         <!-- How much of the printer is inside this box. The header names the box the
              controls below command; this says which lanes that covers, which a view
@@ -150,7 +150,11 @@
                     <bind_flag_if_eq subject="ams_env_overlay_drying_active" flag="hidden" ref_value="0"/>
                   </text_heading>
                 </lv_obj>
-                <text_small text="Temperature" style_text_color="#text_muted"/>
+                <text_small text="Temperature" style_text_color="#text_muted">
+                  <!-- At Micro and Tiny the readouts stack, and the caption under each one is
+                       the height the column does not have; the icon names the reading. -->
+                  <bind_flag_if cond="ui_breakpoint le 1" flag="hidden"/>
+                </text_small>
               </lv_obj>
 
               <!-- Humidity (only when a sensor is present) -->
@@ -164,7 +168,9 @@
                   <icon src="water" size="lg" variant="primary"/>
                   <text_heading bind_text="ams_env_overlay_humidity_text"/>
                 </lv_obj>
-                <text_small text="Humidity" style_text_color="#text_muted"/>
+                <text_small text="Humidity" style_text_color="#text_muted">
+                  <bind_flag_if cond="ui_breakpoint le 1" flag="hidden"/>
+                </text_small>
               </lv_obj>
             </lv_obj>
 
@@ -202,7 +208,7 @@
 
             <!-- Dryer Controls (visible when dryer supported) -->
             <lv_obj name="dryer_controls_section"
-                    width="100%" height="100%" style_pad_all="0" flex_flow="column" style_pad_gap="#space_md"
+                    width="100%" height="100%" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs"
                     style_flex_main_place="center" scrollable="false" hidden="true">
               <bind_flag_if_eq subject="ams_env_overlay_dryer_visible" flag="hidden" ref_value="0"/>
 
@@ -283,7 +289,7 @@
         <!-- humidity sensor is present (it needs humidity to compute).       -->
         <!-- ============================================================== -->
         <lv_obj name="comfort_strip"
-                width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_md"
+                width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm"
                 scrollable="false" hidden="true">
           <!-- At Micro the lane chips, a full finger target tall, take the strip's room;
                the humidity readout above still shows. -->
@@ -305,8 +311,8 @@
             <lv_obj width="content"
                     height="content" style_pad_all="0" style_flex_cross_place="start" style_pad_row="#space_xs"
                     style_pad_column="#space_md" scrollable="false">
-              <bind_style_if name="comfort_list_micro" cond="ui_breakpoint eq 0 or env_dry_gate_count gt 0"/>
-              <bind_style_if name="comfort_list_wide" cond="ui_breakpoint ge 1 and env_dry_gate_count eq 0"/>
+              <bind_style_if name="comfort_list_micro" cond="ui_breakpoint le 1 or env_dry_gate_count gt 0"/>
+              <bind_style_if name="comfort_list_wide" cond="ui_breakpoint ge 2 and env_dry_gate_count eq 0"/>
 
               <lv_obj name="comfort_row_0"
                       width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
