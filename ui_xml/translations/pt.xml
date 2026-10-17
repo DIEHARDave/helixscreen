@@ -257,6 +257,7 @@
   <translation tag="Appearance" pt="Aparência"/>
   <translation tag="Applies to" pt="Aplica-se a"/>
   <translation tag="Apply" pt="Aplicar"/>
+  <translation tag="Aqua Surface" pt="Superfície da água"/>
   <translation tag="Archive" pt="Arquivar"/>
   <translation tag="Archive Spool?" pt="Arquivar Carretel?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." pt="Tem certeza de que deseja cancelar esta impressão? Todo o progresso será perdido."/>
@@ -941,6 +942,7 @@
   <translation tag="EEPROM error on CFS unit" pt="Erro de EEPROM na unidade CFS"/>
   <translation tag="EMERGENCY STOP" pt="PARADA DE EMERGÊNCIA"/>
   <translation tag="EMPTY" pt="VAZIO"/>
+  <translation tag="ETA {}" pt="Término {}"/>
   <translation tag="EXTRAS" pt="EXTRAS"/>
   <translation tag="Each fan can only be selected once" pt="Cada ventoinha só pode ser selecionada uma vez"/>
   <translation tag="Edit" pt="Editar"/>
@@ -1446,6 +1448,7 @@
   <translation tag="Hide Firmware Noise" pt="Ocultar Ruído do Firmware"/>
   <translation tag="Hide Temperature Reports" pt="Ocultar Relatórios de Temperatura"/>
   <translation tag="Hide the on-screen keyboard while a USB keyboard is attached" pt="Ocultar o teclado na tela enquanto um teclado USB estiver conectado"/>
+  <translation tag="High Fly" pt="Acima das nuvens"/>
   <translation tag="High Water Mark" pt="Marca de Pico"/>
   <translation tag="Hold anywhere to cancel" pt="Segure em qualquer lugar para cancelar"/>
   <translation tag="Holding nozzle at {}°C to purge previous filament." pt="Mantendo o bico a {}°C para purgar o filamento anterior."/>
@@ -3740,6 +3743,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." pt="{} ainda está imprimindo. A impressão continua depois da troca."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" pt="{} travou a tela repetidamente; escolha uma impressora para conectar"/>
   <translation tag="{} kept crashing the panel; switched back to {}" pt="{} travou a tela repetidamente; voltou para {}"/>
+  <translation tag="{} left" pt="{} restantes"/>
   <translation tag="{} lines in helixscreen.env were ignored" pt="{} linhas do helixscreen.env foram ignoradas"/>
   <translation tag="{} m" pt="{} m"/>
   <translation tag="{} macro not configured" pt="Macro {} não configurado"/>

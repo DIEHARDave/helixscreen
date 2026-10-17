@@ -583,6 +583,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Fireflies screensaver** - coloured swarms of glowing fireflies chase each other through
   the dark, trailing long tails that drift in the wind. Now and then a swarm stops, circles,
   speeds up, splits in two or joins another. Select it under Settings > Display > Screensaver.
+- **Aqua Surface and High Fly screensavers** - two clock savers after the old Flash
+  originals. Aqua Surface is dark, glassy water sloshing in slow motion behind a tank wall,
+  with a three-ring clock in the water and the date under it; a droplet flung from a crest
+  always falls back into the water. High Fly skims sunlit cloud tops under a deep blue sky,
+  passing tall clouds and now and then flying through one, with a large thin clock at the
+  cloud line. While a print runs, both show when it ends and how long is left. Select them
+  under Settings > Display > Screensaver.
 - **A screensaver your printer can't run is left out** - each saver measures what it costs
   on your board, and one that would still slow the printer at its lightest setting drops out
   of the list. Another saver plays in its place instead of a black screen, and your choice

@@ -6,8 +6,8 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "screensaver_clock_reading.h"
 #include "screensaver_cpu_clock.h"
-#include "screensaver_flip_clock_sim.h"
 #include "screensaver_gate.h"
 #include "screensaver_overlay.h"
 
@@ -102,7 +102,7 @@ struct SaverHost {
     /// Running display path for the board fingerprint: "sdl", "fbdev", "drm" or "egl".
     std::string display_backend;
     /// The print's phase, time left and progress; unset reads as no print.
-    std::function<FlipClockPrint()> print_status;
+    std::function<ClockPrint()> print_status;
 };
 
 } // namespace helix::ui
@@ -276,6 +276,9 @@ class ScreensaverManager {
 
     /** @brief Give back the hold taken by hold_refresh_period(), if one is out */
     void release_refresh_period();
+
+    /// The local time, date and the host's print, for the clock savers.
+    helix::ui::ClockInput clock_input() const;
 
     std::vector<std::unique_ptr<helix::ui::SaverBase>> screensavers_;
     helix::ui::SaverBase* active_ = nullptr;

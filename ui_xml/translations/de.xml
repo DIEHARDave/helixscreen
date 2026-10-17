@@ -257,6 +257,7 @@
   <translation tag="Appearance" de="Darstellung"/>
   <translation tag="Applies to" de="Gilt für"/>
   <translation tag="Apply" de="Anwenden"/>
+  <translation tag="Aqua Surface" de="Wasseroberfläche"/>
   <translation tag="Archive" de="Archivieren"/>
   <translation tag="Archive Spool?" de="Spule archivieren?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." de="Sind Sie sicher, dass Sie diesen Druck abbrechen möchten? Der gesamte Fortschritt geht verloren."/>
@@ -941,6 +942,7 @@
   <translation tag="EEPROM error on CFS unit" de="EEPROM-Fehler an der CFS-Einheit"/>
   <translation tag="EMERGENCY STOP" de="NOTAUS"/>
   <translation tag="EMPTY" de="LEER"/>
+  <translation tag="ETA {}" de="Ende {}"/>
   <translation tag="EXTRAS" de="EXTRAS"/>
   <translation tag="Each fan can only be selected once" de="Jeder Lüfter kann nur einmal ausgewählt werden"/>
   <translation tag="Edit" de="Bearbeiten"/>
@@ -1446,6 +1448,7 @@
   <translation tag="Hide Firmware Noise" de="Firmware-Rauschen ausblenden"/>
   <translation tag="Hide Temperature Reports" de="Temperaturberichte ausblenden"/>
   <translation tag="Hide the on-screen keyboard while a USB keyboard is attached" de="Bildschirmtastatur ausblenden, solange eine USB-Tastatur angeschlossen ist"/>
+  <translation tag="High Fly" de="Über den Wolken"/>
   <translation tag="High Water Mark" de="Höchststand"/>
   <translation tag="Hold anywhere to cancel" de="Zum Abbrechen an beliebiger Stelle gedrückt halten"/>
   <translation tag="Holding nozzle at {}°C to purge previous filament." de="Düse wird bei {}°C gehalten, um vorheriges Filament auszuspülen."/>
@@ -3740,6 +3743,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." de="{} druckt noch. Der Druck läuft nach dem Wechsel weiter."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" de="{} hat den Bildschirm wiederholt abstürzen lassen; Drucker zum Verbinden auswählen"/>
   <translation tag="{} kept crashing the panel; switched back to {}" de="{} hat den Bildschirm wiederholt abstürzen lassen; zurück zu {} gewechselt"/>
+  <translation tag="{} left" de="noch {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" de="{} Zeilen in helixscreen.env wurden ignoriert"/>
   <translation tag="{} m" de="{} m"/>
   <translation tag="{} macro not configured" de="{}-Makro nicht konfiguriert"/>

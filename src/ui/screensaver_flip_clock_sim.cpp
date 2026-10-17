@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 
 namespace helix::ui {
 
@@ -30,106 +29,14 @@ void add_group(FlipFace& face, int32_t value, uint8_t width, bool leading_zero) 
     }
 }
 
-// ---------- Glyphs ----------
-//
-// Digits are strokes of width GLYPH_STROKE along lines and circular arcs, in a box one unit
-// wide and GLYPH_PATH_H tall (y down). Angles are degrees, 0 pointing right and growing
-// clockwise on screen, so -90 is the top of a circle.
-
-constexpr float GLYPH_PATH_H = 1.6f;
-constexpr float GLYPH_STROKE = 0.2f;
-constexpr float GLYPH_W = 1.0f + GLYPH_STROKE;
-constexpr float GLYPH_H = GLYPH_PATH_H + GLYPH_STROKE;
-
-struct Stroke {
-    bool arc;
-    float a, b, c, d, e; ///< line: x0 y0 x1 y1; arc: cx cy r start sweep
-};
-
-constexpr Stroke line(float x0, float y0, float x1, float y1) {
-    return {false, x0, y0, x1, y1, 0.0f};
-}
-constexpr Stroke arc(float cx, float cy, float r, float start, float sweep) {
-    return {true, cx, cy, r, start, sweep};
-}
-
-constexpr size_t MAX_STROKES = 4;
-
-struct GlyphDef {
-    size_t count;
-    Stroke strokes[MAX_STROKES];
-};
-
-constexpr GlyphDef SIX = {3,
-                          {arc(0.5f, 1.1f, 0.5f, 0.0f, 360.0f), line(0.0f, 1.1f, 0.0f, 0.5f),
-                           arc(0.5f, 0.5f, 0.5f, 180.0f, 125.0f)}};
-
-constexpr GlyphDef GLYPHS[10] = {
-    {4,
-     {arc(0.5f, 0.5f, 0.5f, 180.0f, 180.0f), arc(0.5f, 1.1f, 0.5f, 0.0f, 180.0f),
-      line(0.0f, 0.5f, 0.0f, 1.1f), line(1.0f, 0.5f, 1.0f, 1.1f)}},
-    {2, {line(0.55f, 0.0f, 0.55f, 1.6f), line(0.55f, 0.0f, 0.2f, 0.3f)}},
-    {3,
-     {arc(0.5f, 0.5f, 0.5f, 180.0f, 215.0f), line(0.91f, 0.787f, 0.0f, 1.6f),
-      line(0.0f, 1.6f, 1.0f, 1.6f)}},
-    {2, {arc(0.5f, 0.38f, 0.38f, 200.0f, 250.0f), arc(0.5f, 1.18f, 0.42f, 270.0f, 250.0f)}},
-    {3,
-     {line(0.72f, 0.0f, 0.72f, 1.6f), line(0.72f, 0.0f, 0.0f, 1.08f),
-      line(0.0f, 1.08f, 1.0f, 1.08f)}},
-    {3,
-     {line(0.92f, 0.0f, 0.12f, 0.0f), line(0.12f, 0.0f, 0.09f, 0.813f),
-      arc(0.5f, 1.1f, 0.5f, 215.0f, 280.0f)}},
-    SIX,
-    {2, {line(0.0f, 0.0f, 1.0f, 0.0f), line(1.0f, 0.0f, 0.32f, 1.6f)}},
-    {2, {arc(0.5f, 0.38f, 0.38f, 0.0f, 360.0f), arc(0.5f, 1.18f, 0.42f, 0.0f, 360.0f)}},
-    {0, {}}, // a six turned upside down
-};
-
-float dist_to_line(const Stroke& s, float px, float py) {
-    const float vx = s.c - s.a;
-    const float vy = s.d - s.b;
-    const float len2 = vx * vx + vy * vy;
-    float t = len2 > 0.0f ? ((px - s.a) * vx + (py - s.b) * vy) / len2 : 0.0f;
-    t = std::clamp(t, 0.0f, 1.0f);
-    return std::hypot(px - (s.a + t * vx), py - (s.b + t * vy));
-}
-
-float dist_to_arc(const Stroke& s, float px, float py) {
-    const float dx = px - s.a;
-    const float dy = py - s.b;
-    const float dist = std::hypot(dx, dy);
-    if (s.e >= 360.0f) {
-        return std::fabs(dist - s.c);
-    }
-    const float angle = std::atan2(dy, dx) * 180.0f / PI;
-    const float rel = std::fmod(angle - s.d + 720.0f, 360.0f);
-    if (rel <= s.e) {
-        return std::fabs(dist - s.c);
-    }
-    const float a0 = s.d * PI / 180.0f;
-    const float a1 = (s.d + s.e) * PI / 180.0f;
-    return std::min(std::hypot(px - (s.a + s.c * std::cos(a0)), py - (s.b + s.c * std::sin(a0))),
-                    std::hypot(px - (s.a + s.c * std::cos(a1)), py - (s.b + s.c * std::sin(a1))));
-}
-
-/// Distance in glyph units from (px, py) to the nearest stroke centre line of `digit`.
-float glyph_distance(int digit, float px, float py) {
-    // Nine is six turned half a turn about the path box's centre.
-    if (digit == 9) {
-        return glyph_distance(6, 1.0f - px, GLYPH_PATH_H - py);
-    }
-    const GlyphDef& def = GLYPHS[digit];
-    float best = 1e9f;
-    for (size_t i = 0; i < def.count; i++) {
-        const Stroke& s = def.strokes[i];
-        best = std::min(best, s.arc ? dist_to_arc(s, px, py) : dist_to_line(s, px, py));
-    }
-    return best;
-}
-
 // ---------- Layout ----------
 //
 // Sizes in glyph units: a card holds one digit box.
+
+/// The cards' bold digits.
+constexpr float GLYPH_STROKE = 0.2f;
+constexpr float GLYPH_W = 1.0f + GLYPH_STROKE;
+constexpr float GLYPH_H = STROKE_DIGIT_PATH_H + GLYPH_STROKE;
 
 constexpr float CARD_PAD_X = 0.32f;
 constexpr float CARD_PAD_Y = 0.45f;
@@ -251,22 +158,16 @@ uint8_t FlipShape::card_count() const {
 }
 
 FlipFace clock_face(int32_t seconds_of_day, bool use_24h) {
-    const int32_t sod = ((seconds_of_day % 86400) + 86400) % 86400;
-    const int32_t hour = sod / 3600;
-    const int32_t minute = sod / 60 % 60;
+    const ClockTime t = clock_time(seconds_of_day, use_24h);
     FlipFace face;
-    if (use_24h) {
-        add_group(face, hour, 2, true);
-    } else {
-        add_group(face, hour % 12 == 0 ? 12 : hour % 12, 2, false);
-        face.meridiem = hour < 12 ? FlipMeridiem::AM : FlipMeridiem::PM;
-    }
-    add_group(face, minute, 2, true);
+    add_group(face, t.hour, 2, use_24h);
+    face.meridiem = t.meridiem;
+    add_group(face, t.minute, 2, true);
     return face;
 }
 
 FlipFace countdown_face(int32_t seconds) {
-    const int32_t s = std::clamp(seconds, 0, FLIP_MAX_COUNTDOWN_S);
+    const int32_t s = std::clamp(seconds, 0, CLOCK_MAX_COUNTDOWN_S);
     const int32_t hours = s / 3600;
     FlipFace face;
     add_group(face, hours, hours >= 100 ? 3 : (hours >= 10 ? 2 : 1), false);
@@ -277,92 +178,39 @@ FlipFace countdown_face(int32_t seconds) {
 
 // ---------- FlipClockState ----------
 
-int32_t FlipClockState::countdown_s() const {
-    return std::max(0, anchor_s_ - static_cast<int32_t>(since_anchor_ms_ / 1000));
+FlipFace flip_face(const ClockReading& reading) {
+    switch (reading.mode) {
+    case ClockMode::CLOCK:
+        break;
+    case ClockMode::COUNTDOWN: {
+        FlipFace face = countdown_face(reading.countdown_s);
+        face.caption = FlipCaption::DONE_AT;
+        face.eta_minute_of_day = reading.eta_minute_of_day;
+        face.progress_pct = reading.progress_pct;
+        return face;
+    }
+    case ClockMode::PAUSED: {
+        FlipFace face = countdown_face(reading.countdown_s);
+        face.caption = FlipCaption::PAUSED;
+        return face;
+    }
+    case ClockMode::DONE: {
+        FlipFace face = countdown_face(0);
+        face.caption = FlipCaption::DONE;
+        return face;
+    }
+    }
+    const ClockTime& t = reading.time;
+    return clock_face(t.hour_of_day * 3600 + t.minute * 60 + t.second, reading.use_24h);
 }
 
 void FlipClockState::reset() {
     *this = FlipClockState{};
 }
 
-void FlipClockState::step(uint32_t dt_ms, const FlipClockInput& in) {
-    if (mode_ == FlipMode::COUNTDOWN) {
-        since_anchor_ms_ += dt_ms;
-    }
-    if (mode_ == FlipMode::DONE) {
-        done_ms_ += dt_ms;
-    }
-    const auto anchor = [this](int32_t seconds) {
-        anchored_ = true;
-        anchor_s_ = seconds;
-        since_anchor_ms_ = 0;
-    };
-
-    const FlipClockPrint& print = in.print;
-    switch (print.phase) {
-    case FlipPrintPhase::PREPARING:
-    case FlipPrintPhase::PRINTING:
-        if (!anchored_ && print.remaining_s > 0) {
-            anchor(print.remaining_s);
-        } else if (anchored_ && print.remaining_s >= 0 &&
-                   std::abs(print.remaining_s - countdown_s()) > FLIP_COUNTDOWN_RESYNC_S) {
-            anchor(print.remaining_s);
-        }
-        mode_ = anchored_ ? FlipMode::COUNTDOWN : FlipMode::CLOCK;
-        break;
-    case FlipPrintPhase::PAUSED:
-        if (!anchored_ && print.remaining_s > 0) {
-            anchor(print.remaining_s);
-        }
-        if (anchored_) {
-            anchor(countdown_s());
-            mode_ = FlipMode::PAUSED;
-        } else {
-            mode_ = FlipMode::CLOCK;
-        }
-        break;
-    case FlipPrintPhase::COMPLETE:
-        if (mode_ == FlipMode::COUNTDOWN || mode_ == FlipMode::PAUSED) {
-            mode_ = FlipMode::DONE;
-            done_ms_ = 0;
-        } else if (mode_ == FlipMode::DONE && done_ms_ >= FLIP_DONE_HOLD_MS) {
-            mode_ = FlipMode::CLOCK;
-        }
-        anchored_ = false;
-        break;
-    case FlipPrintPhase::NONE:
-        mode_ = FlipMode::CLOCK;
-        anchored_ = false;
-        break;
-    }
-    face_ = build_face(in);
-}
-
-FlipFace FlipClockState::build_face(const FlipClockInput& in) const {
-    switch (mode_) {
-    case FlipMode::CLOCK:
-        return clock_face(in.seconds_of_day, in.use_24h);
-    case FlipMode::COUNTDOWN: {
-        FlipFace face = countdown_face(countdown_s());
-        face.caption = FlipCaption::DONE_AT;
-        const int32_t sod = ((in.seconds_of_day % 86400) + 86400) % 86400;
-        face.eta_minute_of_day =
-            static_cast<int32_t>((static_cast<int64_t>(sod) + countdown_s()) / 60 % 1440);
-        face.progress_pct = std::clamp(in.print.progress_pct, 0, 100);
-        return face;
-    }
-    case FlipMode::PAUSED: {
-        FlipFace face = countdown_face(countdown_s());
-        face.caption = FlipCaption::PAUSED;
-        return face;
-    }
-    case FlipMode::DONE: {
-        FlipFace face = countdown_face(0);
-        face.caption = FlipCaption::DONE;
-        return face;
-    }
-    }
-    return clock_face(in.seconds_of_day, in.use_24h);
+void FlipClockState::step(uint32_t dt_ms, const ClockInput& in) {
+    state_.step(dt_ms, in);
+    face_ = flip_face(state_.reading());
 }
 
 // ---------- Layout ----------
@@ -437,15 +285,9 @@ FlipLayout layout_flip_cards(int32_t w, int32_t h, const FlipShape& shape, int32
 void flip_drift_range(int32_t w, int32_t h, const FlipShape& shape, int32_t& max_dx,
                       int32_t& max_dy) {
     const Arrangement a = arrange(w, h, shape);
-    max_dx = std::max(0, std::min((w - a.content_w) / 2 - 1, std::max(4, w / 25)));
-    max_dy = std::max(0, std::min((h - a.content_h) / 2 - 1, std::max(4, h / 25)));
-}
-
-void flip_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t& dx, int32_t& dy) {
-    const auto step = static_cast<float>(elapsed_ms / FLIP_DRIFT_STEP_MS);
-    // Two incommensurate rates, so the path does not retrace itself for hours.
-    dx = static_cast<int32_t>(std::lround(static_cast<float>(max_dx) * std::sin(step * 0.61f)));
-    dy = static_cast<int32_t>(std::lround(static_cast<float>(max_dy) * std::sin(step * 0.37f)));
+    const int32_t x1 = (w - a.content_w) / 2;
+    const int32_t y1 = (h - a.content_h) / 2;
+    clock_drift_range({x1, y1, x1 + a.content_w - 1, y1 + a.content_h - 1}, w, h, max_dx, max_dy);
 }
 
 // ---------- FlipClockSim ----------
@@ -500,9 +342,6 @@ float FlipClockSim::flip_progress(size_t i) const {
 
 void FlipClockSim::clear() {
     glyphs_.clear();
-    glyphs_.shrink_to_fit();
-    glyph_w_ = 0;
-    glyph_h_ = 0;
     layout_ = {};
 }
 
@@ -517,7 +356,7 @@ void FlipClockSim::step(uint32_t dt_ms, FrameTarget& frame, const FlipFace& face
     flip_drift_range(frame_w_, frame_h_, face.shape, max_dx, max_dy);
     int32_t dx = 0;
     int32_t dy = 0;
-    flip_drift_at(elapsed_ms_, max_dx, max_dy, dx, dy);
+    clock_drift_at(elapsed_ms_, max_dx, max_dy, dx, dy);
 
     if (face.shape != layout_.shape || dx != drift_x_ || dy != drift_y_) {
         drift_x_ = dx;
@@ -574,7 +413,7 @@ void FlipClockSim::relayout(FrameTarget& frame, const FlipShape& shape,
     }
     const int32_t old_unit = layout_.unit;
     layout_ = layout_flip_cards(frame_w_, frame_h_, shape, drift_x_, drift_y_);
-    if (layout_.unit != old_unit || glyphs_.empty()) {
+    if (layout_.unit != old_unit || glyphs_.coverage.empty()) {
         build_glyphs();
     }
     for (size_t i = 0; i < layout_.card_count; i++) {
@@ -589,31 +428,7 @@ void FlipClockSim::relayout(FrameTarget& frame, const FlipShape& shape,
 }
 
 void FlipClockSim::build_glyphs() {
-    const Metrics m = metrics_for(layout_.unit);
-    glyph_w_ = m.glyph_w;
-    glyph_h_ = m.glyph_h;
-    glyphs_.assign(static_cast<size_t>(glyph_w_) * glyph_h_ * 10, 0);
-    const auto unit = static_cast<float>(layout_.unit);
-    const float half = GLYPH_STROKE / 2.0f;
-    for (int digit = 0; digit < 10; digit++) {
-        uint8_t* out = &glyphs_[static_cast<size_t>(digit) * glyph_w_ * glyph_h_];
-        for (int32_t y = 0; y < glyph_h_; y++) {
-            const float py = (static_cast<float>(y) + 0.5f) / unit - half;
-            for (int32_t x = 0; x < glyph_w_; x++) {
-                const float px = (static_cast<float>(x) + 0.5f) / unit - half;
-                const float edge = (half - glyph_distance(digit, px, py)) * unit + 0.5f;
-                out[static_cast<size_t>(y) * glyph_w_ + x] =
-                    static_cast<uint8_t>(std::lround(std::clamp(edge, 0.0f, 1.0f) * 255.0f));
-            }
-        }
-    }
-}
-
-uint8_t FlipClockSim::glyph_coverage(int digit, int32_t gx, int32_t gy) const {
-    if (digit < 0 || digit > 9 || gx < 0 || gy < 0 || gx >= glyph_w_ || gy >= glyph_h_) {
-        return 0;
-    }
-    return glyphs_[(static_cast<size_t>(digit) * glyph_h_ + gy) * glyph_w_ + gx];
+    build_stroke_digits(layout_.unit, GLYPH_STROKE, glyphs_);
 }
 
 uint8_t FlipClockSim::corner_coverage(int32_t x, int32_t y) const {
@@ -641,7 +456,7 @@ Rgb FlipClockSim::face_pixel(const FlipCard& card, int32_t x, int32_t y) const {
         return base;
     }
     const Metrics m = metrics_for(layout_.unit);
-    const uint8_t cov = glyph_coverage(card.digit - '0', x - m.pad_x, y - m.pad_y);
+    const uint8_t cov = glyphs_.at(card.digit - '0', x - m.pad_x, y - m.pad_y);
     return cov == 0 ? base : blend(base, DIGIT, cov);
 }
 

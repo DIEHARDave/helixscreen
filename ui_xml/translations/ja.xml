@@ -257,6 +257,7 @@
   <translation tag="Appearance" ja="外観"/>
   <translation tag="Applies to" ja="適用対象"/>
   <translation tag="Apply" ja="適用"/>
+  <translation tag="Aqua Surface" ja="水面"/>
   <translation tag="Archive" ja="アーカイブ"/>
   <translation tag="Archive Spool?" ja="スプールをアーカイブしますか？"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." ja="この印刷をキャンセルしますか？すべての進行状況が失われます。"/>
@@ -941,6 +942,7 @@
   <translation tag="EEPROM error on CFS unit" ja="CFS ユニットの EEPROM エラー"/>
   <translation tag="EMERGENCY STOP" ja="緊急停止"/>
   <translation tag="EMPTY" ja="空"/>
+  <translation tag="ETA {}" ja="終了予定 {}"/>
   <translation tag="EXTRAS" ja="その他"/>
   <translation tag="Each fan can only be selected once" ja="各ファンは一度のみ選択できます"/>
   <translation tag="Edit" ja="編集"/>
@@ -1446,6 +1448,7 @@
   <translation tag="Hide Firmware Noise" ja="ファームウェアノイズを非表示"/>
   <translation tag="Hide Temperature Reports" ja="温度レポートを非表示"/>
   <translation tag="Hide the on-screen keyboard while a USB keyboard is attached" ja="USBキーボード接続中は画面キーボードを非表示にする"/>
+  <translation tag="High Fly" ja="雲の上"/>
   <translation tag="High Water Mark" ja="最大値"/>
   <translation tag="Hold anywhere to cancel" ja="どこかを長押ししてキャンセル"/>
   <translation tag="Holding nozzle at {}°C to purge previous filament." ja="前のフィラメントをパージするためノズルを {}°C に保持しています。"/>
@@ -3740,6 +3743,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." ja="{}は印刷中です。切り替えても印刷は続行されます。"/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" ja="{} で画面のクラッシュが繰り返されました。接続するプリンターを選んでください"/>
   <translation tag="{} kept crashing the panel; switched back to {}" ja="{} で画面のクラッシュが繰り返されたため、{} に戻しました"/>
+  <translation tag="{} left" ja="残り {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" ja="helixscreen.env の{}行が無視されました"/>
   <translation tag="{} m" ja="{} m"/>
   <translation tag="{} macro not configured" ja="{} マクロが未設定です"/>

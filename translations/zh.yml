@@ -259,6 +259,7 @@ translations:
   Appearance: 外观
   Applies to: 适用于
   Apply: 应用
+  Aqua Surface: '水面'
   Archive: 归档
   Archive Spool?: 归档料盘？
   Are you sure you want to cancel this print? All progress will be lost.: 确定要取消此打印吗？所有进度将丢失。
@@ -973,6 +974,7 @@ translations:
   EEPROM error on CFS unit: CFS 单元 EEPROM 错误
   EMERGENCY STOP: 紧急停止
   EMPTY: 空
+  ETA {}: '预计 {}'
   EXTRAS: 其他
   Each fan can only be selected once: 每个风扇只能选择一次
   Edit: 编辑
@@ -1495,6 +1497,7 @@ translations:
   Hide Firmware Noise: 隐藏固件噪声
   Hide Temperature Reports: 隐藏温度报告
   Hide the on-screen keyboard while a USB keyboard is attached: 连接 USB 键盘时隐藏屏幕键盘
+  High Fly: '云端飞翔'
   High Water Mark: 峰值标记
   Hold anywhere to cancel: 长按任意位置取消
   Holding nozzle at {}°C to purge previous filament.: 将喷嘴保持在 {}°C 以清洗之前的耗材。
@@ -3901,6 +3904,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{} 仍在打印。切换后打印会继续进行。'
   '{} is not available on this device. Printing original file.': '此设备不支持{}。将打印原始文件。'
   '{} is not set up on this printer': '{} 未在此打印机上设置'
+  '{} left': '剩余 {}'
   '{} lines in helixscreen.env were ignored': 'helixscreen.env 中有 {} 行被忽略'
   '{} kept crashing the panel; switched back to {}': '{} 反复导致屏幕崩溃，已切换回 {}'
   '{} kept crashing the panel; pick a printer to connect': '{} 反复导致屏幕崩溃，请选择要连接的打印机'

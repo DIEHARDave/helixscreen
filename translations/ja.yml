@@ -260,6 +260,7 @@ translations:
   Appearance: 外観
   Applies to: 適用対象
   Apply: 適用
+  Aqua Surface: '水面'
   Archive: アーカイブ
   Archive Spool?: スプールをアーカイブしますか？
   Are you sure you want to cancel this print? All progress will be lost.: この印刷をキャンセルしますか？すべての進行状況が失われます。
@@ -976,6 +977,7 @@ translations:
   EEPROM error on CFS unit: CFS ユニットの EEPROM エラー
   EMERGENCY STOP: 緊急停止
   EMPTY: 空
+  ETA {}: '終了予定 {}'
   EXTRAS: その他
   Each fan can only be selected once: 各ファンは一度のみ選択できます
   Edit: 編集
@@ -1499,6 +1501,7 @@ translations:
   Hide Firmware Noise: ファームウェアノイズを非表示
   Hide Temperature Reports: 温度レポートを非表示
   Hide the on-screen keyboard while a USB keyboard is attached: USBキーボード接続中は画面キーボードを非表示にする
+  High Fly: '雲の上'
   High Water Mark: 最大値
   Hold anywhere to cancel: どこかを長押ししてキャンセル
   Holding nozzle at {}°C to purge previous filament.: 前のフィラメントをパージするためノズルを {}°C に保持しています。
@@ -3911,6 +3914,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{}は印刷中です。切り替えても印刷は続行されます。'
   '{} is not available on this device. Printing original file.': 'このデバイスでは {} を利用できません。元のファイルを印刷します。'
   '{} is not set up on this printer': '{} はこのプリンターで設定されていません'
+  '{} left': '残り {}'
   '{} lines in helixscreen.env were ignored': 'helixscreen.env の{}行が無視されました'
   '{} kept crashing the panel; switched back to {}': '{} で画面のクラッシュが繰り返されたため、{} に戻しました'
   '{} kept crashing the panel; pick a printer to connect': '{} で画面のクラッシュが繰り返されました。接続するプリンターを選んでください'

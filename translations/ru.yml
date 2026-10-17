@@ -318,6 +318,7 @@ translations:
   Appearance: Внешний вид
   Applies to: Применяется к
   Apply: Применить
+  Aqua Surface: 'Водная гладь'
   Archive: Архивировать
   Archive Spool?: Архивировать катушку?
   Are you sure you want to cancel this print? All progress will be lost.: Вы уверены,
@@ -1089,6 +1090,7 @@ translations:
   EEPROM error on CFS unit: Ошибка EEPROM в блоке CFS
   EMERGENCY STOP: АВАРИЙНАЯ ОСТАНОВКА
   EMPTY: ПУСТО
+  ETA {}: 'Окончание {}'
   EXTRAS: ДОПОЛНИТЕЛЬНО
   Each fan can only be selected once: Каждый вентилятор можно выбрать только один
     раз
@@ -1637,6 +1639,7 @@ translations:
   Hide Firmware Noise: Скрыть служебные сообщения прошивки
   Hide Temperature Reports: Скрыть отчёты о температуре
   Hide the on-screen keyboard while a USB keyboard is attached: Скрывать экранную клавиатуру, пока подключена USB-клавиатура
+  High Fly: 'Над облаками'
   High Water Mark: Пиковое значение
   Hold anywhere to cancel: Удерживайте в любом месте для отмены
   Holding nozzle at {}°C to purge previous filament.: Удержание сопла при {}°C для очистки от предыдущего филамента.
@@ -4218,6 +4221,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{} ещё печатает. Печать продолжится после переключения.'
   '{} is not available on this device. Printing original file.': '{} недоступно на этом устройстве. Будет напечатан исходный файл.'
   '{} is not set up on this printer': '{} не настроен на этом принтере'
+  '{} left': 'осталось {}'
   '{} lines in helixscreen.env were ignored': 'В helixscreen.env проигнорировано строк: {}'
   '{} kept crashing the panel; switched back to {}': '{} постоянно вызывал сбой экрана; возврат к {}'
   '{} kept crashing the panel; pick a printer to connect': '{} постоянно вызывал сбой экрана; выберите принтер для подключения'

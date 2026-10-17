@@ -257,6 +257,7 @@
   <translation tag="Appearance" en="Appearance"/>
   <translation tag="Applies to" en="Applies to"/>
   <translation tag="Apply" en="Apply"/>
+  <translation tag="Aqua Surface" en="Aqua Surface"/>
   <translation tag="Archive" en="Archive"/>
   <translation tag="Archive Spool?" en="Archive Spool?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." en="Are you sure you want to cancel this print? All progress will be lost."/>
@@ -941,6 +942,7 @@
   <translation tag="EEPROM error on CFS unit" en="EEPROM error on CFS unit"/>
   <translation tag="EMERGENCY STOP" en="EMERGENCY STOP"/>
   <translation tag="EMPTY" en="EMPTY"/>
+  <translation tag="ETA {}" en="ETA {}"/>
   <translation tag="EXTRAS" en="EXTRAS"/>
   <translation tag="Each fan can only be selected once" en="Each fan can only be selected once"/>
   <translation tag="Edit" en="Edit"/>
@@ -1446,6 +1448,7 @@
   <translation tag="Hide Firmware Noise" en="Hide Firmware Noise"/>
   <translation tag="Hide Temperature Reports" en="Hide Temperature Reports"/>
   <translation tag="Hide the on-screen keyboard while a USB keyboard is attached" en="Hide the on-screen keyboard while a USB keyboard is attached"/>
+  <translation tag="High Fly" en="High Fly"/>
   <translation tag="High Water Mark" en="High Water Mark"/>
   <translation tag="Hold anywhere to cancel" en="Hold anywhere to cancel"/>
   <translation tag="Holding nozzle at {}°C to purge previous filament." en="Holding nozzle at {}°C to purge previous filament."/>
@@ -3740,6 +3743,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." en="{} is still printing. The print keeps running after you switch."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" en="{} kept crashing the panel; pick a printer to connect"/>
   <translation tag="{} kept crashing the panel; switched back to {}" en="{} kept crashing the panel; switched back to {}"/>
+  <translation tag="{} left" en="{} left"/>
   <translation tag="{} lines in helixscreen.env were ignored" en="{} lines in helixscreen.env were ignored"/>
   <translation tag="{} m" en="{} m"/>
   <translation tag="{} macro not configured" en="{} macro not configured"/>

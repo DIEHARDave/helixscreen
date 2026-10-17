@@ -257,6 +257,7 @@
   <translation tag="Appearance" fr="Apparence"/>
   <translation tag="Applies to" fr="S&apos;applique à"/>
   <translation tag="Apply" fr="Appliquer"/>
+  <translation tag="Aqua Surface" fr="Surface aquatique"/>
   <translation tag="Archive" fr="Archiver"/>
   <translation tag="Archive Spool?" fr="Archiver la bobine ?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." fr="Êtes-vous sûr de vouloir annuler cette impression ? Toute la progression sera perdue."/>
@@ -941,6 +942,7 @@
   <translation tag="EEPROM error on CFS unit" fr="Erreur EEPROM sur l&apos;unité CFS"/>
   <translation tag="EMERGENCY STOP" fr="ARRÊT D&apos;URGENCE"/>
   <translation tag="EMPTY" fr="VIDE"/>
+  <translation tag="ETA {}" fr="Fin {}"/>
   <translation tag="EXTRAS" fr="SUPPLÉMENTS"/>
   <translation tag="Each fan can only be selected once" fr="Chaque ventilateur ne peut être sélectionné qu&apos;une fois"/>
   <translation tag="Edit" fr="Modifier"/>
@@ -1446,6 +1448,7 @@
   <translation tag="Hide Firmware Noise" fr="Masquer le bruit du firmware"/>
   <translation tag="Hide Temperature Reports" fr="Masquer les rapports de température"/>
   <translation tag="Hide the on-screen keyboard while a USB keyboard is attached" fr="Masquer le clavier à l&apos;écran lorsqu&apos;un clavier USB est branché"/>
+  <translation tag="High Fly" fr="Au-dessus des nuages"/>
   <translation tag="High Water Mark" fr="Pic d&apos;utilisation"/>
   <translation tag="Hold anywhere to cancel" fr="Maintenez n&apos;importe où pour annuler"/>
   <translation tag="Holding nozzle at {}°C to purge previous filament." fr="Maintien de la buse à {}°C pour purger le filament précédent."/>
@@ -3740,6 +3743,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." fr="{} imprime encore. L&apos;impression continue après le changement."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" fr="{} a planté l&apos;écran à plusieurs reprises ; choisissez une imprimante à connecter"/>
   <translation tag="{} kept crashing the panel; switched back to {}" fr="{} a planté l&apos;écran à plusieurs reprises ; retour à {}"/>
+  <translation tag="{} left" fr="{} restant"/>
   <translation tag="{} lines in helixscreen.env were ignored" fr="{} lignes de helixscreen.env ont été ignorées"/>
   <translation tag="{} m" fr="{} m"/>
   <translation tag="{} macro not configured" fr="Macro {} non configurée"/>

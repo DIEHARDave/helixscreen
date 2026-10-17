@@ -11,11 +11,13 @@
 #include "refresh_period_hold.h"
 #include "screen_hide_hold.h"
 #include "screensaver.h"
+#include "screensaver_aqua.h"
 #include "screensaver_base.h"
 #include "screensaver_bounce.h"
 #include "screensaver_fireflies.h"
 #include "screensaver_fireworks.h"
 #include "screensaver_flip_clock.h"
+#include "screensaver_highfly.h"
 #include "screensaver_hyperspace.h"
 #include "screensaver_level_store.h"
 #include "screensaver_maze.h"
@@ -53,15 +55,15 @@ ScreensaverManager::ScreensaverManager() : cpu_clock_(helix::ui::read_process_cp
     screensavers_.push_back(std::make_unique<helix::ui::MazeScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::HyperspaceScreensaver>());
     auto flip_clock = std::make_unique<helix::ui::FlipClockScreensaver>();
-    flip_clock->set_input_source([this] {
-        helix::ui::FlipClockInput in = helix::ui::flip_clock_now();
-        if (host_.print_status) {
-            in.print = host_.print_status();
-        }
-        return in;
-    });
+    flip_clock->set_input_source([this] { return clock_input(); });
     screensavers_.push_back(std::move(flip_clock));
     screensavers_.push_back(std::make_unique<helix::ui::FirefliesScreensaver>());
+    auto aqua = std::make_unique<helix::ui::AquaScreensaver>();
+    aqua->set_input_source([this] { return clock_input(); });
+    screensavers_.push_back(std::move(aqua));
+    auto highfly = std::make_unique<helix::ui::HighFlyScreensaver>();
+    highfly->set_input_source([this] { return clock_input(); });
+    screensavers_.push_back(std::move(highfly));
 
     for (const char* name : savers_missing_for_build_depth()) {
         spdlog::error("[ScreensaverManager] {} is listed as drawing at this colour depth but no "
@@ -84,6 +86,14 @@ ScreensaverManager::~ScreensaverManager() = default;
 
 void ScreensaverManager::set_host(helix::ui::SaverHost host) {
     host_ = std::move(host);
+}
+
+helix::ui::ClockInput ScreensaverManager::clock_input() const {
+    helix::ui::ClockInput in = helix::ui::saver_clock_now();
+    if (host_.print_status) {
+        in.print = host_.print_status();
+    }
+    return in;
 }
 
 void ScreensaverManager::start(ScreensaverType type) {

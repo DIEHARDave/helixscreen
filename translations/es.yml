@@ -278,6 +278,7 @@ translations:
   Appearance: Apariencia
   Applies to: Se aplica a
   Apply: Aplicar
+  Aqua Surface: 'Superficie acuática'
   Archive: Archivar
   Archive Spool?: ¿Archivar bobina?
   Are you sure you want to cancel this print? All progress will be lost.: ¿Está seguro
@@ -1046,6 +1047,7 @@ translations:
   EEPROM error on CFS unit: Error de EEPROM en la unidad CFS
   EMERGENCY STOP: PARADA DE EMERGENCIA
   EMPTY: VACÍO
+  ETA {}: 'Fin {}'
   EXTRAS: EXTRAS
   Each fan can only be selected once: Cada ventilador solo se puede seleccionar una
     vez
@@ -1595,6 +1597,7 @@ translations:
   Hide Firmware Noise: Ocultar Ruido del Firmware
   Hide Temperature Reports: Ocultar Reportes de Temperatura
   Hide the on-screen keyboard while a USB keyboard is attached: Ocultar el teclado en pantalla mientras haya un teclado USB conectado
+  High Fly: 'Sobre las nubes'
   High Water Mark: Marca de máximo histórico
   Hold anywhere to cancel: Mantén pulsado en cualquier lugar para cancelar
   Holding nozzle at {}°C to purge previous filament.: Manteniendo la boquilla a {}°C
@@ -4168,6 +4171,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{} sigue imprimiendo. La impresión continúa después de cambiar.'
   '{} is not available on this device. Printing original file.': '{} no está disponible en este dispositivo. Se imprimirá el archivo original.'
   '{} is not set up on this printer': '{} no está configurado en esta impresora'
+  '{} left': 'quedan {}'
   '{} lines in helixscreen.env were ignored': '{} líneas de helixscreen.env fueron ignoradas'
   '{} kept crashing the panel; switched back to {}': '{} bloqueó la pantalla repetidamente; se volvió a {}'
   '{} kept crashing the panel; pick a printer to connect': '{} bloqueó la pantalla repetidamente; elige una impresora para conectar'

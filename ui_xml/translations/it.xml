@@ -257,6 +257,7 @@
   <translation tag="Appearance" it="Aspetto"/>
   <translation tag="Applies to" it="Si applica a"/>
   <translation tag="Apply" it="Applica"/>
+  <translation tag="Aqua Surface" it="Superficie dell&apos;acqua"/>
   <translation tag="Archive" it="Archivia"/>
   <translation tag="Archive Spool?" it="Archiviare bobina?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." it="Sei sicuro di voler annullare questa stampa? Tutto il progresso verrà perso."/>
@@ -941,6 +942,7 @@
   <translation tag="EEPROM error on CFS unit" it="Errore EEPROM sull&apos;unità CFS"/>
   <translation tag="EMERGENCY STOP" it="ARRESTO EMERGENZA"/>
   <translation tag="EMPTY" it="VUOTO"/>
+  <translation tag="ETA {}" it="Fine {}"/>
   <translation tag="EXTRAS" it="EXTRA"/>
   <translation tag="Each fan can only be selected once" it="Ogni ventola può essere selezionata solo una volta"/>
   <translation tag="Edit" it="Modifica"/>
@@ -1446,6 +1448,7 @@
   <translation tag="Hide Firmware Noise" it="Nascondi rumore firmware"/>
   <translation tag="Hide Temperature Reports" it="Nascondi report temperature"/>
   <translation tag="Hide the on-screen keyboard while a USB keyboard is attached" it="Nascondi la tastiera su schermo quando è collegata una tastiera USB"/>
+  <translation tag="High Fly" it="Sopra le nuvole"/>
   <translation tag="High Water Mark" it="Picco massimo"/>
   <translation tag="Hold anywhere to cancel" it="Tieni premuto ovunque per annullare"/>
   <translation tag="Holding nozzle at {}°C to purge previous filament." it="Mantenimento ugello a {}°C per spurgare il filamento precedente."/>
@@ -3740,6 +3743,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." it="{} sta ancora stampando. La stampa continua dopo il cambio."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" it="{} ha bloccato ripetutamente lo schermo; scegli una stampante a cui connetterti"/>
   <translation tag="{} kept crashing the panel; switched back to {}" it="{} ha bloccato ripetutamente lo schermo; tornato a {}"/>
+  <translation tag="{} left" it="{} rimanenti"/>
   <translation tag="{} lines in helixscreen.env were ignored" it="{} righe di helixscreen.env sono state ignorate"/>
   <translation tag="{} m" it="{} m"/>
   <translation tag="{} macro not configured" it="Macro {} non configurata"/>

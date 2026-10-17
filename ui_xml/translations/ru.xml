@@ -290,6 +290,7 @@
   <translation tag="Appearance" ru="Внешний вид"/>
   <translation tag="Applies to" ru="Применяется к"/>
   <translation tag="Apply" ru="Применить"/>
+  <translation tag="Aqua Surface" ru="Водная гладь"/>
   <translation tag="Archive" ru="Архивировать"/>
   <translation tag="Archive Spool?" ru="Архивировать катушку?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." ru="Вы уверены, что хотите отменить печать? Весь прогресс будет потерян."/>
@@ -983,6 +984,7 @@
   <translation tag="EEPROM error on CFS unit" ru="Ошибка EEPROM в блоке CFS"/>
   <translation tag="EMERGENCY STOP" ru="АВАРИЙНАЯ ОСТАНОВКА"/>
   <translation tag="EMPTY" ru="ПУСТО"/>
+  <translation tag="ETA {}" ru="Окончание {}"/>
   <translation tag="EXTRAS" ru="ДОПОЛНИТЕЛЬНО"/>
   <translation tag="Each fan can only be selected once" ru="Каждый вентилятор можно выбрать только один раз"/>
   <translation tag="Edit" ru="Редактировать"/>
@@ -1491,6 +1493,7 @@
   <translation tag="Hide Firmware Noise" ru="Скрыть служебные сообщения прошивки"/>
   <translation tag="Hide Temperature Reports" ru="Скрыть отчёты о температуре"/>
   <translation tag="Hide the on-screen keyboard while a USB keyboard is attached" ru="Скрывать экранную клавиатуру, пока подключена USB-клавиатура"/>
+  <translation tag="High Fly" ru="Над облаками"/>
   <translation tag="High Water Mark" ru="Пиковое значение"/>
   <translation tag="Hold anywhere to cancel" ru="Удерживайте в любом месте для отмены"/>
   <translation tag="Holding nozzle at {}°C to purge previous filament." ru="Удержание сопла при {}°C для очистки от предыдущего филамента."/>
@@ -3809,6 +3812,7 @@
   <translation tag="{} is still printing. The print keeps running after you switch." ru="{} ещё печатает. Печать продолжится после переключения."/>
   <translation tag="{} kept crashing the panel; pick a printer to connect" ru="{} постоянно вызывал сбой экрана; выберите принтер для подключения"/>
   <translation tag="{} kept crashing the panel; switched back to {}" ru="{} постоянно вызывал сбой экрана; возврат к {}"/>
+  <translation tag="{} left" ru="осталось {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" ru="В helixscreen.env проигнорировано строк: {}"/>
   <translation tag="{} m" ru="{} м"/>
   <translation tag="{} macro not configured" ru="Макрос {} не настроен"/>
