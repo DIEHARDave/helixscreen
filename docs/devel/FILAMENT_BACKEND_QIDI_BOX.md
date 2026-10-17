@@ -29,7 +29,7 @@ The `assets/config/printer_database.json` entries for `qidi_plus_4`, `qidi_q2`, 
 
 ### Firmware Openness
 
-QIDI printers (Q1 Pro and newer) run forks of Klipper and Moonraker from [QIDITECH/klipper](https://github.com/QIDITECH/klipper) and [QIDITECH/moonraker](https://github.com/QIDITECH/moonraker). SSH is open by default (`mks` / `makerbase`), and KIAUH is pre-installed. QIDI discourages upstream Klipper updates because their board requires their fork.
+QIDI printers (Q1 Pro and newer) run forks of Klipper and Moonraker from [QIDITECH/klipper](https://github.com/QIDITECH/klipper) and [QIDITECH/moonraker](https://github.com/QIDITECH/moonraker). SSH is open by default, with a login that differs by model (`mks` / `makerbase` on the Q2, `qidi` / `qiditech` on the Max 4; full table in [QIDI_SUPPORT.md#ssh-logins](printers/QIDI_SUPPORT.md#ssh-logins)), and KIAUH is pre-installed. QIDI discourages upstream Klipper updates because their board requires their fork.
 
 **The Box firmware itself ships as obfuscated `.so` Python extension modules.** A community open-source reimplementation at [qidi-community/Plus4-Wiki customisable_qidibox_firmware](https://github.com/qidi-community/Plus4-Wiki/tree/main/content/customisable_qidibox_firmware) replaces six modules (box_detect.py, box_rfid.py, box_stepper.py, box_extras.py, aht20_f.py, buttons_irq.py) with editable Python. Maintainers label it "strongly WIP." This repo is the primary protocol reference for a HelixScreen integrator.
 

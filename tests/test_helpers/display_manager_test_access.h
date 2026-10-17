@@ -5,7 +5,6 @@
 #include "backlight_backend.h"
 #include "display_backend.h"
 #include "display_manager.h"
-#include "misc/lv_timer_private.h" // timer_cb: identifies the wake gate's own timer
 
 #include <memory>
 
@@ -172,27 +171,11 @@ class DisplayManagerTestAccess {
         return dm.m_sleep.m_sleep_overlay;
     }
 
-    // The wake-touch gate wake_display() engages (#1245). Private on the
-    // manager and normally only reachable through a full wake, which also
-    // repaints; the gate is driven directly here so the assertions are about
-    // the gate alone.
-    static void disable_input_briefly(DisplayManager& dm) {
-        dm.disable_input_briefly();
-    }
-
-    // Run every pending wake-gate re-enable timer now, which re-enables the
-    // pointer indevs it disabled and deletes itself. Left armed, its 200ms
-    // would elapse inside a later case's lv_timer_handler() and enable every
-    // pointer indev in the process, including one that case disabled on purpose.
-    static void finish_input_gate() {
-        lv_timer_t* timer = lv_timer_get_next(nullptr);
-        while (timer) {
-            lv_timer_t* next = lv_timer_get_next(timer);
-            if (timer->timer_cb == &DisplayManager::reenable_input_cb) {
-                timer->timer_cb(timer);
-            }
-            timer = next;
-        }
+    // The press cancel wake_display() runs on every pointer (#1245). Private on the
+    // manager and normally only reachable through a full wake, which also repaints;
+    // driven directly here so the assertions are about the cancel alone.
+    static void cancel_pointer_presses() {
+        DisplayManager::cancel_pointer_presses();
     }
 
     // Exercises the wake-side panel restore (power-on / unblank / overlay removal)
@@ -220,6 +203,10 @@ class DisplayManagerTestAccess {
 
     static void set_display_sleeping(DisplayManager& dm, bool sleeping) {
         dm.m_sleep.m_display_sleeping = sleeping;
+    }
+
+    static void set_display_dimmed(DisplayManager& dm, bool dimmed) {
+        dm.m_sleep.m_display_dimmed = dimmed;
     }
 
     // Set by sleep_aware_read_cb when a press arrives while asleep or dimmed.
