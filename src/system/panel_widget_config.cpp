@@ -11,6 +11,7 @@
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "helix_fs.h"
+#include "home_layout_share.h"
 #include "json_utils.h"
 #include "layout_manager.h"
 #include "layout_port.h"
@@ -1360,29 +1361,8 @@ void PanelWidgetConfig::switch_to_grid(int cols, int rows) {
     // shipped defaults: it is the layout the user was last looking at, and the
     // remapper seats it on the new grid or drops a widget to auto-placement,
     // per widget, rather than failing the layout.
-    int seated = 0;
-    if (old_cols > 0 && old_rows > 0) {
-        for (auto& page : pages_) {
-            std::vector<LegacyPlacement> saved;
-            saved.reserve(page.widgets.size());
-            for (const auto& e : page.widgets) {
-                saved.push_back({e.id, e.col, e.row, e.colspan, e.rowspan});
-            }
-            const auto ported = port_legacy_layout(saved, old_cols, old_rows, cols, rows);
-            for (size_t i = 0; i < page.widgets.size() && i < ported.size(); ++i) {
-                if (ported[i].seated) {
-                    page.widgets[i].col = ported[i].col;
-                    page.widgets[i].row = ported[i].row;
-                    page.widgets[i].colspan = ported[i].colspan;
-                    page.widgets[i].rowspan = ported[i].rowspan;
-                    ++seated;
-                } else {
-                    page.widgets[i].col = -1;
-                    page.widgets[i].row = -1;
-                }
-            }
-        }
-    }
+    const int seated =
+        (old_cols > 0 && old_rows > 0) ? port_pages(old_cols, old_rows, cols, rows) : 0;
 
     grid_signature_ = target;
     if (keep_default) {
@@ -1403,6 +1383,105 @@ void PanelWidgetConfig::switch_to_grid(int cols, int rows) {
                  "the rest auto-placed)",
                  panel_id_, target, outgoing, seated);
     save();
+}
+
+int PanelWidgetConfig::port_pages(int old_cols, int old_rows, int cols, int rows) {
+    int seated = 0;
+    for (auto& page : pages_) {
+        std::vector<LegacyPlacement> saved;
+        saved.reserve(page.widgets.size());
+        for (const auto& e : page.widgets) {
+            saved.push_back({e.id, e.col, e.row, e.colspan, e.rowspan});
+        }
+        const auto ported = port_legacy_layout(saved, old_cols, old_rows, cols, rows);
+        for (size_t i = 0; i < page.widgets.size() && i < ported.size(); ++i) {
+            if (ported[i].seated) {
+                page.widgets[i].col = ported[i].col;
+                page.widgets[i].row = ported[i].row;
+                page.widgets[i].colspan = ported[i].colspan;
+                page.widgets[i].rowspan = ported[i].rowspan;
+                ++seated;
+            } else {
+                page.widgets[i].col = -1;
+                page.widgets[i].row = -1;
+            }
+        }
+    }
+    return seated;
+}
+
+bool PanelWidgetConfig::payload_holds_a_widget(const nlohmann::json& payload) {
+    const json* pages = helix::json_util::find_member(payload, "pages");
+    if (!pages || !pages->is_array()) {
+        return false;
+    }
+    for (const auto& page_json : *pages) {
+        const json* widgets = helix::json_util::find_member(page_json, "widgets");
+        if (widgets && widgets->is_array() &&
+            !parse_widget_array(*widgets, /*append_registry_defaults=*/false).empty()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool PanelWidgetConfig::import_layout(const helix::home_layout::ParsedLayout& layout, int cols,
+                                      int rows) {
+    if (cols <= 0 || rows <= 0 || layout.cols <= 0 || layout.rows <= 0) {
+        spdlog::warn("[PanelWidgetConfig] '{}': import refused, grid {}x{} -> {}x{}", panel_id_,
+                     layout.cols, layout.rows, cols, rows);
+        return false;
+    }
+    // Validated in full on a copy: restore_pages() rebuilds defaults from a
+    // payload with no usable page, so it must only ever see one that has one.
+    json payload = layout.pages_payload;
+    if (!helix::home_layout::strip_screen_scoped(payload) || !payload_holds_a_widget(payload)) {
+        spdlog::warn("[PanelWidgetConfig] '{}': import refused, no page holds a printer widget",
+                     panel_id_);
+        return false;
+    }
+
+    restore_pages(payload);
+    // The import is the user's arrangement, whatever bookkeeping it carried.
+    read_default_block(json());
+    legacy_units_ = false;
+    legacy_rows_ = 0;
+    loaded_ = true;
+
+    // Every parked grid is a port of the layout being replaced, and would bring
+    // it back on the next grid change.
+    parked_grids_ = json::object();
+    // Run on an identical grid too: there the port copies each placement as it
+    // is and clamps one that lies off the grid.
+    const int seated = port_pages(layout.cols, layout.rows, cols, rows);
+    grid_signature_ = std::to_string(cols) + "x" + std::to_string(rows);
+
+    // Screen-scoped widgets describe this screen, so it keeps its own. A copy
+    // the registry appended disabled is replaced by the enabled one.
+    auto& main_widgets = pages_[main_page_index_].widgets;
+    int added = 0;
+    for (auto& entry : build_defaults()) {
+        if (!entry.enabled || !is_screen_scoped(entry.id) || is_enabled(entry.id)) {
+            continue;
+        }
+        for (auto& page : pages_) {
+            auto& w = page.widgets;
+            w.erase(std::remove_if(w.begin(), w.end(),
+                                   [&](const PanelWidgetEntry& e) { return e.id == entry.id; }),
+                    w.end());
+        }
+        entry.col = -1;
+        entry.row = -1;
+        main_widgets.push_back(std::move(entry));
+        ++added;
+    }
+
+    spdlog::info("[PanelWidgetConfig] '{}': imported a {}x{} layout onto the {} grid ({} page(s), "
+                 "{} widget(s) seated, {} screen widget(s) added)",
+                 panel_id_, layout.cols, layout.rows, grid_signature_, pages_.size(), seated,
+                 added);
+    save();
+    return true;
 }
 
 void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {

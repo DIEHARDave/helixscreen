@@ -18,6 +18,10 @@ namespace helix {
 
 class Config;
 
+namespace home_layout {
+struct ParsedLayout;
+}
+
 struct PanelWidgetEntry {
     std::string id;
     bool enabled;
@@ -415,6 +419,23 @@ class PanelWidgetConfig {
     /// is not saved: it resolves for the new grid once the session closes.
     void switch_to_grid(int cols, int rows);
 
+    /// Replace this panel's layout with @p layout, a layout arranged on a
+    /// layout.cols x layout.rows grid (another screen's), made to fit the
+    /// @p cols x @p rows grid this screen shows.
+    ///
+    /// Screen-scoped widgets are stripped from the import, and this screen's
+    /// own default-enabled screen-scoped widgets are added to the main page,
+    /// enabled and unplaced. The placements go through the same porter
+    /// switch_to_grid() seeds a new grid with, which on an identical grid
+    /// copies them one-to-one and clamps anything off it. The result is the
+    /// user's layout (no default block), the only arrangement held (every
+    /// parked grid is discarded, since each is a port of the layout replaced),
+    /// and is saved once.
+    ///
+    /// Returns false, changing nothing and saving nothing, when either grid has
+    /// a non-positive axis or no page keeps a known widget after stripping.
+    bool import_layout(const helix::home_layout::ParsedLayout& layout, int cols, int rows);
+
     /// Apply the default anchors for a now-known grid, stamp the default block
     /// with their signature and hash, and persist. No-op unless has_pending_anchors().
     void apply_pending_anchors(int grid_cols, int grid_rows);
@@ -539,6 +560,17 @@ class PanelWidgetConfig {
 
     /// Replace pages_ from a payload produced by serialize_pages().
     void restore_pages(const nlohmann::json& payload);
+
+    /// True when some page of a restore_pages() payload holds an entry
+    /// parse_widget_array() keeps as a known widget, the registry's appended
+    /// defaults aside.
+    bool payload_holds_a_widget(const nlohmann::json& payload);
+
+    /// Reseat every page's placements, counted against an @p old_cols x
+    /// @p old_rows grid, onto a @p cols x @p rows grid through
+    /// port_legacy_layout(). An entry the port cannot seat is left unplaced.
+    /// Returns how many were seated.
+    int port_pages(int old_cols, int old_rows, int cols, int rows);
 
     /// Parse a JSON array of widget entries into a vector, applying migrations.
     /// If append_registry_defaults is true, appends missing registry widgets.
