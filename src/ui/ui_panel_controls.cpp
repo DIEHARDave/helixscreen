@@ -155,6 +155,8 @@ void ControlsPanel::init_subjects() {
                               subjects_);
     UI_MANAGED_SUBJECT_INT(more_sensors_count_, 0, "controls_more_sensors_count", subjects_);
 
+    UI_MANAGED_SUBJECT_INT(calib_grid_columns_, 2, "calib_grid_columns", subjects_);
+
     // Fan speed display
     UI_MANAGED_SUBJECT_STRING(fan_speed_subject_, fan_speed_buf_, lv_tr("Off"),
                               "controls_fan_speed", subjects_);
@@ -257,6 +259,8 @@ void ControlsPanel::init_subjects() {
          [](lv_event_t*) { get_global_controls_panel().handle_calibration_screws(); }},
         {"on_calibration_motors",
          [](lv_event_t*) { get_global_controls_panel().handle_calibration_motors(); }},
+        {"on_calib_grid_layout_changed",
+         [](lv_event_t* e) { update_calib_grid_columns(lv_event_get_current_target_obj(e)); }},
 
         {"on_controls_home_all",
          [](lv_event_t*) { get_global_controls_panel().handle_home_all(); }},
@@ -1135,6 +1139,35 @@ void ControlsPanel::handle_fan_slider_changed(int value) {
 void ControlsPanel::handle_motors_clicked() {
     spdlog::debug("[{}] Motors Disable card clicked - showing confirmation", get_name());
     helix::ui::show_motors_off_confirm(api_, motors_confirmation_dialog_, object_lifetime_.token());
+}
+
+int helix::ui::calib_grid_columns(int visible_tiles) {
+    if (visible_tiles >= 7) {
+        return 4;
+    }
+    if (visible_tiles >= 5) {
+        return 3;
+    }
+    return 2;
+}
+
+// DECLARATIVE_OK: which tiles are visible is decided by each tile's own XML
+// binding, so the count is read off the laid-out grid rather than re-derived
+// from the subjects those bindings watch. Static and found by name because the
+// subject belongs to whichever panel instance built this grid.
+void ControlsPanel::update_calib_grid_columns(lv_obj_t* grid) {
+    lv_subject_t* columns = lv_xml_get_subject(nullptr, "calib_grid_columns");
+    if (grid == nullptr || columns == nullptr) {
+        return;
+    }
+    int visible = 0;
+    const uint32_t count = lv_obj_get_child_count(grid);
+    for (uint32_t i = 0; i < count; ++i) {
+        if (!lv_obj_has_flag(lv_obj_get_child(grid, static_cast<int32_t>(i)), LV_OBJ_FLAG_HIDDEN)) {
+            ++visible;
+        }
+    }
+    lv_subject_set_int(columns, helix::ui::calib_grid_columns(visible));
 }
 
 void ControlsPanel::handle_calibration_bed_mesh() {

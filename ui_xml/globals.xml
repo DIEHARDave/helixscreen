@@ -429,15 +429,9 @@
     <!-- accent_bar_width moved to home_panel.xml -->
     <!-- accent_bar_height moved to home_panel.xml -->
     <!-- accent_bar_gap moved to home_panel.xml -->
-    <!-- Controls > Calibration & Tools: a tile's share of its row. Two per row
-         up to large, so the usual four-tile set is a 2x2 grid with one-line
-         labels; three from xlarge up. Two rows fill the card. -->
-    <string name="calib_cell_width_micro" value="48%"/>
-    <string name="calib_cell_width_tiny" value="48%"/>
-    <string name="calib_cell_width_small" value="48%"/>
-    <string name="calib_cell_width_medium" value="48%"/>
-    <string name="calib_cell_width_large" value="48%"/>
-    <string name="calib_cell_width_xlarge" value="32%"/>
+    <!-- Controls > Calibration & Tools: a tile's share of its column. Two rows
+         fill the card; the column count follows the visible tiles
+         (calib_grid_columns in controls_panel.xml). -->
     <percentage name="calib_cell_height" value="48%"/>
     <!-- Motors Off beside Motion on the Controls position card: at least 40px
          wide to tap, with the glyph sized to the one-button-tall row -->

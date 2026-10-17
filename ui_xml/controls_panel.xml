@@ -29,6 +29,10 @@
     <!-- Homing indicator styles for Position card -->
     <style name="indicator_homed" bg_color="#success"/>
     <style name="indicator_unhomed" bg_color="#text_muted"/>
+    <!-- Calibration tile width for each calib_grid_columns value -->
+    <style name="calib_cols_2" width="48%"/>
+    <style name="calib_cols_3" width="32%"/>
+    <style name="calib_cols_4" width="23%"/>
   </styles>
   <!-- Main container: 3+2 layout (3 cards top, 2 cards bottom) -->
   <!-- NOTE: Using explicit heights (55%) instead of flex-grow to work around LVGL bug
@@ -351,57 +355,86 @@
                       text_transform="uppercase" style_translate_y="2" style_text_color="#text"/>
         </lv_obj>
         <!-- Calibration grid: one wrapping flow of tiles, so a hidden tile drops
-             out and whatever is visible packs without gaps; #calib_cell_width
-             sets the tiles per row. -->
+             out and whatever is visible packs without gaps. Each layout pass
+             recounts the visible tiles into calib_grid_columns, which picks the
+             tile width so they always fit two rows. -->
         <lv_obj name="calib_tools_grid"
                 width="100%" flex_grow="1" style_pad_all="0" flex_flow="row_wrap" style_flex_main_place="center"
                 style_flex_track_place="space_evenly" style_pad_row="#space_xs" style_pad_column="#space_xs"
                 scrollable="false">
-          <home_action_tile width="#calib_cell_width"
-                            height="#calib_cell_height" flex_grow="0" icon="grid_large" icon_variant="text"
-                            icon_size="#calib_icon_size" label="Bed Mesh" callback="on_calibration_bed_mesh"
-                            button_name="btn_bed_mesh" icon_name="btn_bed_mesh_icon" label_hidden_cond="0 eq 1"/>
-          <home_action_tile width="#calib_cell_width"
-                            height="#calib_cell_height" flex_grow="0" icon="z_closer" icon_variant="text"
-                            icon_size="#calib_icon_size" label="Z Calibration" callback="on_calibration_zoffset"
-                            button_name="btn_z_calibration" icon_name="btn_z_calibration_icon"
-                            label_hidden_cond="0 eq 1" moves_machine="true">
+          <event_cb trigger="layout_changed" callback="on_calib_grid_layout_changed"/>
+          <home_action_tile height="#calib_cell_height"
+                            flex_grow="0" icon="grid_large" icon_variant="text" icon_size="#calib_icon_size"
+                            label="Bed Mesh" callback="on_calibration_bed_mesh" button_name="btn_bed_mesh"
+                            icon_name="btn_bed_mesh_icon"
+                            label_hidden_cond="calib_grid_columns eq 4 and ui_breakpoint le 1">
+            <style name="calib_cols_2"/>
+            <bind_style_if_eq name="calib_cols_3" subject="calib_grid_columns" ref_value="3"/>
+            <bind_style_if_eq name="calib_cols_4" subject="calib_grid_columns" ref_value="4"/>
+          </home_action_tile>
+          <home_action_tile height="#calib_cell_height"
+                            flex_grow="0" icon="z_closer" icon_variant="text" icon_size="#calib_icon_size"
+                            label="Z Calibration" callback="on_calibration_zoffset" button_name="btn_z_calibration"
+                            icon_name="btn_z_calibration_icon"
+                            label_hidden_cond="calib_grid_columns eq 4 and ui_breakpoint le 1" moves_machine="true">
+            <style name="calib_cols_2"/>
+            <bind_style_if_eq name="calib_cols_3" subject="calib_grid_columns" ref_value="3"/>
+            <bind_style_if_eq name="calib_cols_4" subject="calib_grid_columns" ref_value="4"/>
             <bind_flag_if cond="printer_has_tool_offset_cal eq 1 and show_beta_features eq 1 and hide_manual_z_calibration eq 1"
                           flag="hidden"/>
           </home_action_tile>
-          <home_action_tile width="#calib_cell_width"
-                            height="#calib_cell_height" flex_grow="0" icon="axis_arrow" icon_variant="text"
-                            icon_size="#calib_icon_size" label="Tool Offsets" callback="on_calibration_tool_offsets"
-                            button_name="btn_tool_offsets" icon_name="btn_tool_offsets_icon" label_hidden_cond="0 eq 1"
-                            moves_machine="true" hidden="true">
+          <home_action_tile height="#calib_cell_height"
+                            flex_grow="0" icon="axis_arrow" icon_variant="text" icon_size="#calib_icon_size"
+                            label="Tool Offsets" callback="on_calibration_tool_offsets" button_name="btn_tool_offsets"
+                            icon_name="btn_tool_offsets_icon"
+                            label_hidden_cond="calib_grid_columns eq 4 and ui_breakpoint le 1" moves_machine="true"
+                            hidden="true">
+            <style name="calib_cols_2"/>
+            <bind_style_if_eq name="calib_cols_3" subject="calib_grid_columns" ref_value="3"/>
+            <bind_style_if_eq name="calib_cols_4" subject="calib_grid_columns" ref_value="4"/>
             <bind_flag_if cond="printer_has_tool_offset_cal eq 0 or show_beta_features eq 0" flag="hidden"/>
           </home_action_tile>
-          <home_action_tile width="#calib_cell_width"
-                            height="#calib_cell_height" flex_grow="0" icon="spirit_level" icon_variant="text"
-                            icon_size="#calib_icon_size" label="QGL" callback="on_controls_qgl" button_name="btn_qgl"
-                            icon_name="btn_qgl_icon" label_hidden_cond="0 eq 1" moves_machine="true"
+          <home_action_tile height="#calib_cell_height"
+                            flex_grow="0" icon="spirit_level" icon_variant="text" icon_size="#calib_icon_size"
+                            label="QGL" callback="on_controls_qgl" button_name="btn_qgl" icon_name="btn_qgl_icon"
+                            label_hidden_cond="calib_grid_columns eq 4 and ui_breakpoint le 1" moves_machine="true"
                             disabled_cond="controls_operation_in_progress eq 1" hidden="true">
+            <style name="calib_cols_2"/>
+            <bind_style_if_eq name="calib_cols_3" subject="calib_grid_columns" ref_value="3"/>
+            <bind_style_if_eq name="calib_cols_4" subject="calib_grid_columns" ref_value="4"/>
             <bind_flag_if cond="printer_has_qgl eq 0" flag="hidden"/>
           </home_action_tile>
-          <home_action_tile width="#calib_cell_width"
-                            height="#calib_cell_height" flex_grow="0" icon="spirit_level" icon_variant="text"
-                            icon_size="#calib_icon_size" label="Z-Tilt" callback="on_controls_z_tilt"
-                            button_name="btn_z_tilt" icon_name="btn_z_tilt_icon" label_hidden_cond="0 eq 1"
-                            moves_machine="true" disabled_cond="controls_operation_in_progress eq 1" hidden="true">
+          <home_action_tile height="#calib_cell_height"
+                            flex_grow="0" icon="spirit_level" icon_variant="text" icon_size="#calib_icon_size"
+                            label="Z-Tilt" callback="on_controls_z_tilt" button_name="btn_z_tilt"
+                            icon_name="btn_z_tilt_icon"
+                            label_hidden_cond="calib_grid_columns eq 4 and ui_breakpoint le 1" moves_machine="true"
+                            disabled_cond="controls_operation_in_progress eq 1" hidden="true">
+            <style name="calib_cols_2"/>
+            <bind_style_if_eq name="calib_cols_3" subject="calib_grid_columns" ref_value="3"/>
+            <bind_style_if_eq name="calib_cols_4" subject="calib_grid_columns" ref_value="4"/>
             <bind_flag_if cond="printer_has_z_tilt eq 0" flag="hidden"/>
           </home_action_tile>
-          <home_action_tile width="#calib_cell_width"
-                            height="#calib_cell_height" flex_grow="0" icon="gauge" icon_variant="text"
-                            icon_size="#calib_icon_size" label="Pressure Adv." callback="on_calibration_pa"
-                            button_name="btn_pa_cal" icon_name="btn_pa_cal_icon" label_hidden_cond="0 eq 1"
-                            moves_machine="true" hidden="true">
+          <home_action_tile height="#calib_cell_height"
+                            flex_grow="0" icon="gauge" icon_variant="text" icon_size="#calib_icon_size"
+                            label="Pressure Adv." callback="on_calibration_pa" button_name="btn_pa_cal"
+                            icon_name="btn_pa_cal_icon"
+                            label_hidden_cond="calib_grid_columns eq 4 and ui_breakpoint le 1" moves_machine="true"
+                            hidden="true">
+            <style name="calib_cols_2"/>
+            <bind_style_if_eq name="calib_cols_3" subject="calib_grid_columns" ref_value="3"/>
+            <bind_style_if_eq name="calib_cols_4" subject="calib_grid_columns" ref_value="4"/>
             <bind_flag_if cond="printer_has_pa_cal eq 0" flag="hidden"/>
           </home_action_tile>
-          <home_action_tile width="#calib_cell_width"
-                            height="#calib_cell_height" flex_grow="0" icon="wrench" icon_variant="text"
-                            icon_size="#calib_icon_size" label="Bed Screws" callback="on_calibration_screws"
-                            button_name="btn_screws" icon_name="btn_screws_icon" label_hidden_cond="0 eq 1"
-                            moves_machine="true" hidden="true">
+          <home_action_tile height="#calib_cell_height"
+                            flex_grow="0" icon="wrench" icon_variant="text" icon_size="#calib_icon_size"
+                            label="Bed Screws" callback="on_calibration_screws" button_name="btn_screws"
+                            icon_name="btn_screws_icon"
+                            label_hidden_cond="calib_grid_columns eq 4 and ui_breakpoint le 1" moves_machine="true"
+                            hidden="true">
+            <style name="calib_cols_2"/>
+            <bind_style_if_eq name="calib_cols_3" subject="calib_grid_columns" ref_value="3"/>
+            <bind_style_if_eq name="calib_cols_4" subject="calib_grid_columns" ref_value="4"/>
             <bind_flag_if cond="printer_has_screws_tilt eq 0" flag="hidden"/>
           </home_action_tile>
         </lv_obj>
