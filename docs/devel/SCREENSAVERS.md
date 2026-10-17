@@ -19,9 +19,16 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver_gate.h`, `include/screensaver_cpu_clock.h` | Budget, decision, idle baseline, windows, environment switches, the CPU clock seam |
 | `include/screensaver_level_store.h` | Board fingerprint and the stored level per saver |
 | `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the too-heavy fallback and the last-resort black screen |
-| `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h`, `include/screensaver_flip_clock.h` | The savers |
+| `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h`, `include/screensaver_flip_clock.h`, `include/screensaver_aqua.h`, `include/screensaver_highfly.h` | The savers |
 | `include/screensaver_maze_sim.h`, `include/screensaver_maze.h` | The 3D maze: maze generation, the wall-following walk, and the raycaster that draws it. No LVGL in the sim |
-| `include/screensaver_flip_clock_sim.h` | Flip clock: what it shows (`FlipClockState`), the card layout, and the drawing (`FlipClockSim`). No LVGL |
+| `include/screensaver_flip_clock_sim.h` | Flip clock: the cards a reading shows (`flip_face`, `FlipClockState`), the card layout, and the drawing (`FlipClockSim`). No LVGL |
+| `include/screensaver_clock_reading.h` | What every clock saver reads: `ClockState` (the countdown, pause and done-hold machine), `ClockReading`, `clock_time`, `clock_drift_at`. No LVGL |
+| `include/screensaver_clock.h` | The app side of the clock savers: `saver_clock_now`, `clock_print_phase`, the print, date and AM/PM text, `clock_font_fitting`, and `SaverLabel`, a text line kept over a scene that repaints beneath it |
+| `include/screensaver_stroke_digits.h` | Digits as strokes along lines and arcs, rasterised at any size and stroke weight: the flip clock's bold cards, Aqua's ring digits and High Fly's thin numerals |
+| `include/screensaver_heightfield.h` | The voxel-space column renderer for a surface seen at a grazing angle (`HeightfieldRenderer`), and `upscale_frame`. No LVGL |
+| `include/screensaver_fast_math.h` | Table sine and e^-s, built at compile time into .rodata |
+| `include/screensaver_aqua_sim.h`, `include/screensaver_aqua.h` | Aqua Surface: the water (`AquaWater`), droplets (`AquaSplashes`), the ring clock and the scene (`AquaSim`) |
+| `include/screensaver_highfly_sim.h`, `include/screensaver_highfly.h` | High Fly: the cloud field, textures, the thin clock and the scene (`HighFlySim`) |
 | `scripts/screensaver-perf/` | Measuring a saver on a real board |
 
 ## The foundation
@@ -43,7 +50,12 @@ bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps t
 33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms; hyperspace per `HYPERSPACE_LEVELS`, which keeps 33 ms past level 0
 and then draws its tunnel and goo in 2x2 blocks, drops the goo, draws the tunnel in 4x4 blocks, and
 last drops the tunnel and flies 96 of its 160 stars; the flip clock per `FLIP_CLOCK_LEVELS`: the folding
-flip at 33 ms, then an instant digit swap checked every 250 ms. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
+flip at 33 ms, then an instant digit swap checked every 250 ms; Aqua Surface per `AQUA_LEVELS`: the
+water at half resolution at 33 ms, then quarter resolution with fewer slices at 50 ms and
+100 ms (no new splashes at 100 ms), and last a still frame that redraws only the clock every
+250 ms; High Fly per `HIGHFLY_LEVELS`: half resolution at 33 ms, the same without the
+translucent layers, quarter resolution with fewer slices and no towers at 50 ms, and last a
+still frame that redraws only the clock. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).
 
@@ -165,28 +177,117 @@ build draws at its depth, otherwise the first registered saver that does, and Of
 
 ## Flip clock
 
-The flip clock is the one saver that reads app state. `SaverHost::print_status` hands it the
-print lifecycle, the remaining time the print status panel shows (`print_time_left`, smoothed
-by `PrintEtaEstimator`) and the displayed progress; `flip_clock_now()` adds the local time and
-the Time Format setting. `FlipClockState` turns that into a face:
+The clock savers (the flip clock, Aqua Surface and High Fly) are the ones that read app state.
+`SaverHost::print_status` hands them the print lifecycle, the remaining time the print status panel shows (`print_time_left`, smoothed
+by `PrintEtaEstimator`) and the displayed progress; `saver_clock_now()` adds the local time,
+the date and the Time Format setting. `ClockState` (shared with Aqua Surface and High Fly)
+decides what the clock reads, and `flip_face` turns that reading into cards:
 
 - Idle, cancelled, failed, or preparing with no estimate yet: the time of day, HH:MM, with
   AM/PM on the first hour card in 12-hour mode, where that card is blank before 10.
 - A print with an estimate: H:MM:SS (as many hour cards as the hours need, up to
-  `FLIP_MAX_COUNTDOWN_S`) counting down at wall-clock rate, with "done at
-  <time> · <n>%" under the cards. An estimate within `FLIP_COUNTDOWN_RESYNC_S` of the running
+  `CLOCK_MAX_COUNTDOWN_S`) counting down at wall-clock rate, with "done at
+  <time> · <n>%" under the cards. An estimate within `CLOCK_COUNTDOWN_RESYNC_S` of the running
   count is ignored, so estimator jitter never flips the seconds backwards.
 - Paused: the count freezes under PAUSED.
-- A print the clock saw finish: 0:00:00 and DONE for `FLIP_DONE_HOLD_MS`, then the clock.
+- A print the clock saw finish: 0:00:00 and DONE for `CLOCK_DONE_HOLD_MS`, then the clock.
 
 Every digit has its own card, grouped by a `FlipShape` (hours, minutes, seconds).
 `layout_flip_cards` puts every group in one row with a colon between groups, or, when that
 gives larger cards (portrait), one group per row. `FlipClockSim` draws the digits from
-strokes (lines and arcs) into a coverage cache sized to the layout, so they scale to any
-screen and draw at both depths. Only the cards whose digit changes flip, each with its own
+strokes (lines and arcs, `build_stroke_digits` at a stroke of 0.2) into a coverage cache
+sized to the layout, so they scale to any screen and draw at both depths. Only the cards whose digit changes flip, each with its own
 fold and dirty box, all at once when several change (09:59 to 10:00 flips four, 10:59 to
 11:00 three); nothing is written between changes. A new shape (the clock becoming a
-countdown, the hours gaining a digit) and the drift every `FLIP_DRIFT_STEP_MS` repaint the
-layout whole. The caption and AM/PM marker are `lv_draw_label` text on the canvas,
-which is why its canvas uses the pipes format.
+countdown, the hours gaining a digit) and the drift every `CLOCK_DRIFT_STEP_MS` repaint the
+layout whole. The caption and AM/PM marker are `lv_draw_label` text on the canvas
+(`SaverLabel`), which is why its canvas uses the pipes format.
 
+
+## The shared clock face
+
+`ClockState::step` takes the time, the date and the print each frame and keeps one reading:
+the time of day, or a countdown anchored to the print's remaining time (jitter under
+`CLOCK_COUNTDOWN_RESYNC_S` ignored), frozen while paused, and DONE for `CLOCK_DONE_HOLD_MS`
+after a print it saw finish. The flip clock replaces the time with the countdown; Aqua
+Surface and High Fly keep the time as the main readout and show the print as secondary text
+from `clock_print_text`: "ETA 9:41 PM" and "1h 12m left". With no print they show
+`clock_date_text`, the long date and weekday from `locale_formats`
+(`format_localized_long_date`, `format_localized_weekday`). All three drift by
+`clock_drift_at` every `CLOCK_DRIFT_STEP_MS` against burn-in.
+
+Text on a canvas that repaints beneath it is a `SaverLabel`: it redraws its line when the text
+or box changes, or when a box the frame repainted crosses it. The scene puts the pixels back
+first; the label never erases.
+
+## The heightfield renderer
+
+Aqua Surface and High Fly are both a surface seen at a grazing angle from just above it, drawn
+by `HeightfieldRenderer`, a voxel-space column renderer. Depth slices run front to back, each
+`dz_grow` thicker than the last; for each slice the scene fills one row of heights and colours
+(`HeightfieldScene::sample_slice`), the renderer projects each height to a screen row, and
+where that row rises above the column's current top it fills the span and raises the top. The
+cost is columns x slices samples plus the fills, whatever the scene shows; per-slice constants
+are tables built once per view, so the inner loop has no divide.
+
+- A span shades from this slice's colour at its top to the previous slice's at its bottom,
+  only where the previous slice also drew the column. Elsewhere it is flat, or near colours
+  would smear upward as icicles.
+- `FEATHERED_SILHOUETTE` (water) draws hard spans, then gives the final silhouette pixel its
+  fractional coverage and a [1 2 1] smoothing across columns.
+- `SOFT_UNDER` (clouds) composites the top `feather_px` rows of each new span under what is
+  already there and raises the column's top only to the span's top plus the feather, so
+  farther clouds show through soft edges.
+- `sink_depth` scales near heights down so near clouds pass under the camera instead of being
+  cut into a wall by the near plane.
+
+`render()` leaves premultiplied colour, coverage and the slice where coverage reached half
+(for depth-testing billboards); `resolve()` composes that over a background into a row-major
+frame; `upscale_frame()` writes rows and columns of it to the canvas at 2x (bilinear) or any
+other scale (replicated), dithered at 16 bpp. Both savers render at half the canvas and
+upscale.
+
+## Aqua Surface
+
+Calm, dark, glassy water sloshing in slow motion behind a tank wall (`AquaSim`). The height is
+an analytic sum evaluated each frame into a grid indexed by screen column and depth: three
+tank sloshing modes, four steep Gerstner waves with a one-pass inversion (crests stay peaked),
+and impulse pulses that split and travel apart, all on sim time at a quarter of real time.
+The shading is fresnel reflection (floored at `AQUA_FRESNEL_FLOOR`) of four soft "softbox"
+bands, read from an environment table pre-blurred at six levels and picked per pixel by how
+fast the reflection changes across neighbours, plus a sun glint, light through thin crests,
+and one octave of wrinkle; then a near-neutral cool tint.
+
+- The near edge always carries a lit meniscus (`AQUA_RIM_FLOOR`); below it are near-black
+  water, a faint downward smear of the edge's light, and rising bubbles.
+- Droplets fly from fast-rising crests near the front on a 50 ms emission step. A droplet
+  lives until it is below the surface at its own position, never on a timer, and lands with
+  a brief glint. `AQUA_MAX_DROPLETS` caps what is emitted; nothing in flight is culled.
+- The ring clock: the hour ring fills through the 12 or 24 hours, the minute ring through the
+  hour, and the small top ring through the minute, or the print's progress while one runs.
+  The date or print line under the rings is a `SaverLabel`.
+- A frame repaints the water band (from the highest silhouette down, the clock included) and
+  the boxes of droplets above it. The last rung keeps the scene still and redraws only the
+  clock, from a copy of the pixels under it.
+
+## High Fly
+
+A flight just above sunlit cloud tops (`HighFlySim`). Back to front: a static sky with a sun
+glow and four soft shafts, built once; a far billow band, a tileable texture drifting sideways
+so the skyline is never flat; the deck, the column renderer over a baked 256 x 256 tileable
+cloud heightfield (puffs at three scales, noise, a talus pass and a blur; shaded by Lambert
+light and two scales of ambient occlusion) scrolling toward the camera, with near clouds
+pushed to white and far ones fogged toward the horizon blue; translucent full-width layers
+and towering cumulus billboards, each depth-tested per pixel against the deck; and a static
+white haze over the bottom rows.
+
+- Towers: three shapes baked at start, lit from above with sunlit crowns; one enters every
+  13 to 14 s on alternating sides and fades out as it nears, so no more than two are up.
+- A fly-through every one to two minutes: the cloud ahead grows from the centre, the screen
+  eases toward a blue-grey interior capped at `HIGHFLY_WHITEOUT_MAX` so the clock stays
+  readable, wisps stream outward from a polar lookup sampled bilinearly, and it clears.
+- The clock: thin stroke numerals at the cloud line with superscript seconds, AM/PM under
+  them and a two-line date (or the print's ETA and time left) on the left.
+- A frame repaints the band of rows from the far billows or the deck down, plus boxes above it
+  for the clock, towers and the approaching cloud; a fly-through repaints the whole screen. The
+  last rung keeps the scene still and redraws only the clock.
