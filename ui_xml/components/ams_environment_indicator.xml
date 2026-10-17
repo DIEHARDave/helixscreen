@@ -70,7 +70,7 @@
               style_flex_cross_place="center" style_pad_gap="#space_xxs" scrollable="false" clickable="false"
               event_bubble="true" hidden="true">
         <bind_flag_if_not_eq subject="$humidity_visible" flag="hidden" ref_value="1"/>
-        <humidity_drop bind_value="$humidity" size="sm" clickable="false" event_bubble="true"/>
+        <humidity_drop name="env_humidity_drop" bind_value="$humidity" size="sm" clickable="false" event_bubble="true"/>
         <!-- OK (green/default) — visible when status=0 -->
         <text_small bind_text="$humidity_text" clickable="false" event_bubble="true" hidden="true">
           <bind_flag_if_not_eq subject="$humidity_status" flag="hidden" ref_value="0"/>
