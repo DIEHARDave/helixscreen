@@ -21,6 +21,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace helix {
@@ -307,12 +308,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     AmsError cancel() override;
 
     // Resume preparation. A Terminal pause answers RESUME_REQUIRES_RESTART at
-    // once. Otherwise every used head whose print_task_config record names no
-    // filament type while the slot knows its material gets that record written
-    // first (the firmware refuses RESUME without it); then, when
-    // sensor_filament_present_ is false for the active tool, AUTO_FEEDING
-    // refeeds it before the caller dispatches RESUME. on_ready is always called
-    // on the main thread.
+    // once. After a runout (sensor_filament_present_ false for the active
+    // tool) AUTO_FEEDING refeeds it before the caller dispatches RESUME.
+    // Otherwise every used head whose print_task_config record names no
+    // filament type while the slot knows its material gets that record
+    // written (the firmware refuses RESUME without it). on_ready is always
+    // called on the main thread.
     void prepare_for_resume(int slot_index, ResumeReadyCallback on_ready) override;
 
     // The firmware refuses RESUME while a used extruder still has no material
@@ -393,11 +394,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// print_task_config for physical head @p head: one line for vendor, type
     /// and subtype, one for colour. VENDOR is "Snapmaker" for a Snapmaker spool
     /// and "Generic" otherwise; FILAMENT_SUBTYPE is the spool's product line
-    /// when it names one, else "Basic". Values are cleaned of quote and gcode
-    /// comment characters and single-quoted when they hold a space, the shape
-    /// Klipper's parameter splitter reads. Empty when the slot names no
-    /// material. @p force appends FORCE=1 to both lines, which a head the
-    /// firmware calls official requires.
+    /// when it names one, else "Basic". Empty when the slot names no material
+    /// or one IMoonrakerAPI::is_safe_material_param() refuses; values with a
+    /// space are quoted by IMoonrakerAPI::gcode_param_value(). @p force appends FORCE=1 to both
+    /// lines, which a head the firmware calls official requires.
     [[nodiscard]] static std::string build_filament_config_gcode(int head, const SlotInfo& slot,
                                                                  bool force = false);
 
@@ -809,20 +809,24 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// been seen. Main thread.
     void write_task_filament_record(int head, const SlotInfo& info, bool material_declared);
 
-    /// SET_PRINT_FILAMENT_CONFIG lines for every head the paused task uses whose
+    /// One SET_PRINT_FILAMENT_CONFIG script per head the paused task uses whose
     /// firmware record names no type while the slot knows its material: the
-    /// record the firmware's RESUME gate checks. @p active_slot stands in for
-    /// the used heads when the task reports none. Caller holds mutex_.
-    [[nodiscard]] std::string resume_record_repair_locked(int active_slot) const;
+    /// record the firmware's RESUME gate checks. The used heads are the union
+    /// of extruders_used, the heads the task's map routes to, and
+    /// @p active_slot. Caller holds mutex_.
+    [[nodiscard]] std::vector<std::pair<int, std::string>>
+    resume_record_repairs_locked(int active_slot) const;
 
-    /// Send @p repair (when non-empty) and run @p next on the main thread once it
-    /// answers, whatever the answer: a refused repair leaves RESUME to report
-    /// the firmware's own refusal. Runs @p next at once when there is nothing
-    /// to send.
-    void send_resume_repair_then(const std::string& repair, std::function<void()> next);
+    /// Send each of @p repairs as its own request, in order, then run @p next
+    /// on the main thread, whatever each answered: a refused head leaves RESUME
+    /// to report the firmware's own refusal. Runs @p next at once when there
+    /// is nothing to send.
+    void send_resume_repairs_then(std::vector<std::pair<int, std::string>> repairs,
+                                  std::function<void()> next);
 
-    /// prepare_for_resume past classification: the runout refeed, or nothing.
-    void continue_resume_prep(int slot, bool sensor_present, ResumeReadyCallback on_ready);
+    /// prepare_for_resume after a runout on @p slot: AUTO_FEEDING refeeds it
+    /// before the caller dispatches RESUME.
+    void run_runout_refeed(int slot, ResumeReadyCallback on_ready);
 
     /// On a channel whose firmware states no identity at all, drop the brand
     /// and product line the lane only remembers. Caller holds mutex_.

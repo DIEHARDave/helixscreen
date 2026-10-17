@@ -5061,16 +5061,16 @@ TEST_CASE("Snapmaker filament config gcode maps vendor and subtype to firmware v
         s.color_rgb = 0x00000A;
         CHECK(AmsBackendSnapmaker::build_filament_config_gcode(3, s) ==
               "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=3 VENDOR=Snapmaker FILAMENT_TYPE=TPU "
-              "FILAMENT_SUBTYPE='95A HF'\n"
+              "FILAMENT_SUBTYPE=\"95A HF\"\n"
               "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=3 FILAMENT_COLOR_RGBA=00000AFF");
     }
-    SECTION("a material carrying gcode metacharacters cannot end the command") {
+    SECTION("a material with a space is quoted; one the allowlist refuses writes nothing") {
         SlotInfo s;
-        s.material = "PLA Silk'; M112 #x";
-        const std::string g = AmsBackendSnapmaker::build_filament_config_gcode(0, s);
-        CHECK(g.find("FILAMENT_TYPE='PLA Silk M112 x' ") != std::string::npos);
-        CHECK(g.find(';') == std::string::npos);
-        CHECK(g.find('#') == std::string::npos);
+        s.material = "Silk PLA";
+        CHECK(AmsBackendSnapmaker::build_filament_config_gcode(0, s).find(
+                  "FILAMENT_TYPE=\"Silk PLA\" ") != std::string::npos);
+        s.material = "PLA\"; M112";
+        CHECK(AmsBackendSnapmaker::build_filament_config_gcode(0, s).empty());
     }
     SECTION("force appends FORCE=1 to both lines") {
         SlotInfo s;
@@ -5253,6 +5253,8 @@ TEST_CASE_METHOD(SnapmakerFixture,
                  "[ams][snapmaker][filament_record]") {
     lv_init_safe();
     FilamentRecordHarness h("record_write_official");
+    h.frame(
+        make_rig_detect({0, json::array({144, 32, 196, 2}), 0, 0}, {false, true, false, false}));
     h.frame(make_task_filament({"PETG", "PETG", "PETG", "PETG"}, {false, true, false, false}));
     h.stock_firmware();
     h.printer.client.clear_gcode_script_history();
@@ -5310,8 +5312,10 @@ TEST_CASE_METHOD(SnapmakerFixture,
     CHECK(captured.success());
 }
 
-TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume repair lands before the runout refeed",
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume after a runout refeeds and repairs nothing",
                  "[ams][snapmaker][filament_record][resume]") {
+    // After a runout the user may have loaded a different spool, so the
+    // material remembered for the old one is not recorded against it.
     lv_init_safe();
     helix::ui::UpdateQueue::instance().init();
     pause_on_runout();
@@ -5328,12 +5332,8 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker resume repair lands before the run
     FilamentRecordHarness::drain();
 
     const auto hist = h.history();
-    const size_t config_at =
-        index_of_containing(hist, "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1");
-    const size_t feed_at = index_of_containing(hist, "AUTO_FEEDING EXTRUDER=1 LOAD=1");
-    REQUIRE(config_at < hist.size());
-    REQUIRE(feed_at < hist.size());
-    CHECK(config_at < feed_at);
+    CHECK(index_of_containing(hist, "AUTO_FEEDING EXTRUDER=1 LOAD=1") < hist.size());
+    CHECK(h.config_writes().empty());
     CHECK(fired);
 }
 
@@ -5495,4 +5495,168 @@ TEST_CASE_METHOD(SnapmakerFixture,
     REQUIRE(helix::test::apply_edit(h.backend, 2, petg).success());
     FilamentRecordHarness::drain();
     CHECK(h.config_writes().empty());
+}
+
+namespace {
+/// print_task_config frame carrying only a routing table and the used-heads flags.
+json make_task_routing(std::vector<int> map, std::vector<bool> used) {
+    map.resize(32, 0);
+    json map_arr = json::array();
+    for (int head : map) {
+        map_arr.push_back(head);
+    }
+    json used_arr = json::array();
+    for (bool b : used) {
+        used_arr.push_back(b);
+    }
+    return json{
+        {"print_task_config", json{{"extruder_map_table", map_arr}, {"extruders_used", used_arr}}}};
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker resume repairs a blank head the task routes to but is not paused on",
+                 "[ams][snapmaker][filament_record][resume]") {
+    // Two-head print on heads 0 and 2, paused on head 0. extruders_used reads
+    // all false mid-print, so head 2 is known only from the task's map.
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_on_runout();
+    FilamentRecordHarness h("resume_repair_map_heads");
+    helix::test::edit_slot_as_user(h.backend, 1, inland_pla());
+    helix::test::edit_slot_as_user(h.backend, 2, inland_pla());
+    h.frame(make_task_routing({0, 2, 0, 0}, {true, false, true, false}));
+    h.frame(make_task_routing({0, 2, 0, 0}, {false, false, false, false}));
+    h.frame(make_task_filament({"PLA", "NONE", "NONE", "NONE"}));
+    SnapmakerTestAccess::set_current_slot(h.backend, 0);
+    h.printer.client.clear_gcode_script_history();
+
+    bool fired = false;
+    h.backend.prepare_for_resume(0, [&](const AmsError& err) { fired = err.success(); });
+    FilamentRecordHarness::drain();
+
+    const auto writes = h.config_writes();
+    REQUIRE(writes.size() == 2);
+    CHECK(writes[0].rfind("SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=2 ", 0) == 0);
+    CHECK(fired);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker resume with all-false used heads repairs the head paused on",
+                 "[ams][snapmaker][filament_record][resume]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_on_runout();
+    FilamentRecordHarness h("resume_repair_active_only");
+    helix::test::edit_slot_as_user(h.backend, 1, inland_pla());
+    helix::test::edit_slot_as_user(h.backend, 2, inland_pla());
+    h.frame(make_task_filament({"NONE", "NONE", "NONE", "NONE"}, {false, false, false, false},
+                               std::vector<bool>{false, false, false, false}));
+    SnapmakerTestAccess::set_current_slot(h.backend, 1);
+    h.printer.client.clear_gcode_script_history();
+
+    h.backend.prepare_for_resume(1, [](const AmsError&) {});
+    FilamentRecordHarness::drain();
+
+    const auto writes = h.config_writes();
+    REQUIRE(writes.size() == 2);
+    CHECK(writes[0].rfind("SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1 ", 0) == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker a refused head repair still repairs the next head and readies once",
+                 "[ams][snapmaker][filament_record][resume]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_on_runout();
+    FilamentRecordHarness h("resume_repair_refused");
+    helix::test::edit_slot_as_user(h.backend, 1, inland_pla());
+    helix::test::edit_slot_as_user(h.backend, 2, inland_pla());
+    h.frame(make_task_filament({"NONE", "NONE", "NONE", "NONE"}, {false, false, false, false},
+                               std::vector<bool>{false, true, true, false}));
+    SnapmakerTestAccess::set_current_slot(h.backend, 1);
+    h.printer.client.clear_gcode_script_history();
+    h.printer.client.force_next_gcode_error(MoonrakerErrorType::JSON_RPC_ERROR, "refused",
+                                            "CONFIG_EXTRUDER=1");
+
+    int ready_calls = 0;
+    bool success = false;
+    h.backend.prepare_for_resume(1, [&](const AmsError& err) {
+        ++ready_calls;
+        success = err.success();
+    });
+    FilamentRecordHarness::drain();
+
+    CHECK(ready_calls == 1);
+    CHECK(success);
+    const auto hist = h.history();
+    CHECK(index_of_containing(hist, "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=2 ") < hist.size());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker resume writes nothing before the firmware record has been seen",
+                 "[ams][snapmaker][filament_record][resume]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    pause_on_runout();
+    FilamentRecordHarness h("resume_repair_unseen");
+    helix::test::edit_slot_as_user(h.backend, 1, inland_pla());
+    SnapmakerTestAccess::set_current_slot(h.backend, 1);
+    h.printer.client.clear_gcode_script_history();
+
+    bool fired = false;
+    h.backend.prepare_for_resume(1, [&](const AmsError& err) { fired = err.success(); });
+    FilamentRecordHarness::drain();
+
+    CHECK(h.config_writes().empty());
+    CHECK(fired);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker a Terminal pause with no active tool writes no record",
+                 "[ams][snapmaker][filament_record][resume]") {
+    lv_init_safe();
+    helix::ui::UpdateQueue::instance().init();
+    PrinterState& ps = get_printer_state();
+    PrinterStateTestAccess::reset(ps);
+    ps.init_subjects(false);
+    ps.update_from_status(
+        json{{"print_stats",
+              {{"state", "paused"},
+               {"exception", {{"id", 532}, {"code", 1}, {"message", "detected dirty bed"}}}}},
+             {"virtual_sdcard", {{"is_active", false}}}});
+    FilamentRecordHarness h("resume_repair_terminal_no_tool");
+    helix::test::edit_slot_as_user(h.backend, 1, inland_pla());
+    h.frame(make_task_filament({"NONE", "NONE", "NONE", "NONE"}, {false, false, false, false},
+                               std::vector<bool>{false, true, false, false}));
+    SnapmakerTestAccess::set_current_slot(h.backend, -1);
+    h.printer.client.clear_gcode_script_history();
+
+    AmsError captured{AmsResult::SUCCESS};
+    h.backend.prepare_for_resume(-1, [&](const AmsError& err) { captured = err; });
+    FilamentRecordHarness::drain();
+
+    CHECK(captured.result == AmsResult::RESUME_REQUIRES_RESTART);
+    CHECK(h.config_writes().empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker a filament_detect/set answered state:error falls back to the gcode",
+                 "[ams][snapmaker][filament_record]") {
+    lv_init_safe();
+    FilamentRecordHarness h("record_write_state_error");
+    h.frame(make_task_filament({"NONE", "NONE", "NONE", "NONE"}));
+    RestResponse refused;
+    refused.success = true;
+    refused.status_code = 200;
+    refused.data = {{"state", "error"}, {"message", "unsupported fields: X"}};
+    h.printer.api.rest_mock().mock_queue_post_response("/printer/filament_detect/set", refused);
+    h.printer.client.clear_gcode_script_history();
+
+    REQUIRE(helix::test::apply_edit(h.backend, 1, inland_pla()).success());
+    FilamentRecordHarness::drain();
+
+    const auto writes = h.config_writes();
+    REQUIRE(writes.size() == 2);
+    CHECK(writes[0].rfind("SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1 ", 0) == 0);
 }
