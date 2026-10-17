@@ -5137,6 +5137,27 @@ TEST_CASE_METHOD(SnapmakerFixture,
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker an unseen firmware record is written only for a declared material",
+                 "[ams][snapmaker][filament_record]") {
+    lv_init_safe();
+    FilamentRecordHarness h("record_write_unseen");
+    h.stock_firmware();
+    h.printer.client.clear_gcode_script_history();
+
+    REQUIRE(helix::test::apply_edit(h.backend, 0, inland_pla()).success());
+    FilamentRecordHarness::drain();
+    CHECK(h.config_writes().size() == 2);
+
+    // The same material again, colour moved: the user declared no material.
+    h.printer.client.clear_gcode_script_history();
+    SlotInfo recolour = h.backend.get_slot_info(0);
+    recolour.color_rgb = 0x00FF00;
+    REQUIRE(helix::test::apply_edit(h.backend, 0, recolour).success());
+    FilamentRecordHarness::drain();
+    CHECK(h.config_writes().empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker an official RFID head's record is never written or forced",
                  "[ams][snapmaker][filament_record]") {
     lv_init_safe();
