@@ -244,6 +244,7 @@ const std::vector<Pinned>& pinned_values() {
         {"settings_snapshot", "brightness_pct", 0, false},
         {"settings_snapshot", "screensaver_timeout_sec", 0, false},
         {"settings_snapshot", "screen_blank_timeout_sec", 0, false},
+        {"settings_snapshot", "screensaver_type", "<state>", false},
         {"settings_snapshot", "sound_enabled", false, false},
         {"settings_snapshot", "animations_enabled", false, false},
         {"settings_snapshot", "theme_changed", false, false},
@@ -345,7 +346,7 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Contract: every event matches its golden
     tm.set_enabled(true);
     tm.clear_queue();
     const auto events = record_one_of_every_event(tm, *this);
-    REQUIRE(events.size() == 16);
+    REQUIRE(events.size() == 17);
 
     const bool update = std::getenv("HELIX_UPDATE_GOLDENS") != nullptr;
     for (const auto& [name, raw] : events) {

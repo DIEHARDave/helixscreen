@@ -602,6 +602,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   on your board, and one that would still slow the printer at its lightest setting drops out
   of the list. Another saver plays in its place instead of a black screen, and your choice
   stays saved for a faster printer. 3D Maze and Hyperspace are too heavy for the AD5M.
+- **Telemetry counts screensavers** - with telemetry on, the settings report names the
+  screensaver you picked, and a report every 4 hours says how long each one showed, how often
+  it started, whether a touch or something else ended it, and how light a setting it had to
+  drop to on your board. The Test button's previews are not counted.
 - **All five screensavers on every board** - Flying Toasters, Starfield, 3D Pipes, Bouncing
   Printer and Fireworks now run on the AD5M and Centauri Carbon too, which had none, and on
   every other board with a 16-bit display. Each saver draws less on a slower board rather

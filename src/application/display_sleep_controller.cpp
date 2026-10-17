@@ -408,7 +408,9 @@ void DisplaySleepController::tick() {
         break;
     case helix::IdleAction::Wake:
         m_wake_requested = false;
+        m_wake_from_input = true;
         wake();
+        m_wake_from_input = false;
         break;
     case helix::IdleAction::Sleep:
         enter_sleep(sleep_timeout_sec);
@@ -505,7 +507,8 @@ void DisplaySleepController::wake() {
     m_preview_start_tick_ms = 0;
     // Stop screensaver on wake
     if (m_screensaver_active) {
-        ScreensaverManager::instance().stop();
+        ScreensaverManager::instance().stop(m_wake_from_input ? helix::SaverRunEnd::TOUCH
+                                                              : helix::SaverRunEnd::OTHER);
         m_screensaver_active = false;
     }
     // Resume only a suspend this manager requested. enter_sleep() stops the
@@ -604,7 +607,7 @@ void DisplaySleepController::preview_screensaver(int type) {
     // Suspend active panel so widget timers stop updating the background
     NavigationManager::instance().suspend_active();
     m_lifecycle_suspended = true;
-    ScreensaverManager::instance().start(ss_type);
+    ScreensaverManager::instance().start(ss_type, /*preview=*/true);
     // Mark display as dimmed so wake() runs on touch; is_preview
     // flag suppresses auto-lock on dismiss.
     m_display_dimmed = true;

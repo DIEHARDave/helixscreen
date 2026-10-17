@@ -237,6 +237,33 @@ describe("POINT_KINDS table", () => {
           "source": "blob7",
           "tool_count_used": "double1",
         },
+        "screensaver_level": {
+          "app_board": "blob14",
+          "app_platform": "blob3",
+          "app_version": "blob2",
+          "boot_id": "blob13",
+          "device_id": "blob1",
+          "level": "double1",
+          "runs": "double2",
+          "saver_name": "blob4",
+          "schema_version": "double9",
+          "snapshot_seq": "double10",
+        },
+        "screensaver_usage": {
+          "app_board": "blob14",
+          "app_platform": "blob3",
+          "app_version": "blob2",
+          "boot_id": "blob13",
+          "device_id": "blob1",
+          "saver_name": "blob4",
+          "schema_version": "double9",
+          "shown_sec": "double1",
+          "snapshot_seq": "double10",
+          "starts": "double2",
+          "stopped_other": "double4",
+          "too_heavy": "double5",
+          "woke_by_touch": "double3",
+        },
         "session": {
           "app_board": "blob11",
           "app_platform": "blob3",
@@ -273,6 +300,7 @@ describe("POINT_KINDS table", () => {
           "multi_printer": "blob15",
           "screen_blank_timeout_sec": "double3",
           "screensaver_timeout_sec": "double2",
+          "screensaver_type": "blob16",
           "sound_enabled": "double4",
           "spoolman_configured": "blob13",
           "theme": "blob8",
@@ -464,6 +492,65 @@ describe("table-driven writer", () => {
     expect(points[1].doubles!.slice(0, 2)).toEqual([600, 4]);
     expect(points[2].blobs![3]).toBe("settings");
     expect(points[2].doubles!.slice(0, 2)).toEqual([600, 3]);
+  });
+
+  it("fans a screensaver_usage event out to one point per saver and one per settled level", () => {
+    const points = mapEventToDataPoints({
+      event: "screensaver_usage",
+      device_id: "dev",
+      schema_version: 3,
+      boot_id: "boot-3",
+      snapshot_seq: 2,
+      app_version: "1.1.0",
+      saver_shown_sec: { maze: 40, pipes: 90 },
+      saver_starts: { maze: 1, pipes: 2 },
+      saver_woke_by_touch: { pipes: 1 },
+      saver_stopped_other: { pipes: 1 },
+      saver_too_heavy: { maze: 1 },
+      saver_settled_levels: { "maze:3": 1, "pipes:0": 1, "pipes:1": 1 },
+    });
+    expect(points.map((p) => p.indexes![0])).toEqual([
+      "screensaver_usage",
+      "screensaver_usage",
+      "screensaver_level",
+      "screensaver_level",
+      "screensaver_level",
+    ]);
+    for (const p of points) {
+      const kind = p.indexes![0];
+      expect(p.blobs![Number(col(kind, "boot_id").slice(4)) - 1]).toBe("boot-3");
+      expect(p.doubles![Number(col(kind, "schema_version").slice(6)) - 1]).toBe(3);
+      expect(p.doubles![Number(col(kind, "snapshot_seq").slice(6)) - 1]).toBe(2);
+    }
+    const usage = (kind: string, p: (typeof points)[number], f: string) =>
+      p.doubles![Number(col(kind, f).slice(6)) - 1];
+    const saver = (p: (typeof points)[number]) => p.blobs![Number(col("screensaver_usage", "saver_name").slice(4)) - 1];
+
+    const [maze, pipes] = points;
+    expect(saver(maze)).toBe("maze");
+    expect(["shown_sec", "starts", "woke_by_touch", "stopped_other", "too_heavy"].map((f) => usage("screensaver_usage", maze, f))).toEqual([40, 1, 0, 0, 1]);
+    expect(saver(pipes)).toBe("pipes");
+    expect(["shown_sec", "starts", "woke_by_touch", "stopped_other", "too_heavy"].map((f) => usage("screensaver_usage", pipes, f))).toEqual([90, 2, 1, 1, 0]);
+
+    const levels = points.slice(2).map((p) => [
+      p.blobs![Number(col("screensaver_level", "saver_name").slice(4)) - 1],
+      usage("screensaver_level", p, "level"),
+      usage("screensaver_level", p, "runs"),
+    ]);
+    expect(levels).toEqual([
+      ["maze", 3, 1],
+      ["pipes", 0, 1],
+      ["pipes", 1, 1],
+    ]);
+  });
+
+  it("writes no screensaver points for an event with empty saver maps", () => {
+    expect(mapEventToDataPoints({ event: "screensaver_usage", device_id: "dev" })).toEqual([]);
+  });
+
+  it("reads settings_snapshot's screensaver_type into its own blob", () => {
+    const [dp] = mapEventToDataPoints({ event: "settings_snapshot", device_id: "d", screensaver_type: "maze" });
+    expect(dp.blobs![Number(col("settings_snapshot", "screensaver_type").slice(4)) - 1]).toBe("maze");
   });
 
   it("stamps the delta envelope on connection_stability", () => {

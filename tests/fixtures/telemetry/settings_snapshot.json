@@ -16,6 +16,7 @@
   "schema_version": 3,
   "screen_blank_timeout_sec": 0,
   "screensaver_timeout_sec": 0,
+  "screensaver_type": "<state>",
   "sound_enabled": false,
   "spoolman_configured": false,
   "theme": "<state>",

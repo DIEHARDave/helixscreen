@@ -61,6 +61,7 @@
 #include "async_lifetime_guard.h"
 #include "lvgl.h"
 #include "memory_monitor.h"
+#include "screensaver_usage.h"
 #include "subject_managed_panel.h"
 
 #include <array>
@@ -332,6 +333,24 @@ class TelemetryManager {
      * Must be called from the LVGL/main thread only (accesses session trackers).
      */
     void record_panel_usage();
+
+    /**
+     * @brief Enqueue a screensaver_usage delta and start a new window
+     *
+     * Per saver: seconds shown, starts, how runs ended and the gate level each settled at, read
+     * from the source set_screensaver_usage() gave. A window with no saver activity, or no source,
+     * enqueues nothing. No-op if telemetry is disabled.
+     *
+     * Must be called from the LVGL/main thread only (the source is written there).
+     */
+    void record_screensaver_usage();
+
+    /**
+     * @brief Where record_screensaver_usage() reads the screensaver windows
+     *
+     * The source must outlive this manager's use of it; nullptr detaches it. Main thread only.
+     */
+    void set_screensaver_usage(helix::SaverUsage* usage);
 
     /**
      * @brief Notify that the active panel has changed
@@ -1013,6 +1032,9 @@ class TelemetryManager {
     /// of @p now. An open outage is measured from its real start.
     nlohmann::json connection_stability_delta(std::chrono::steady_clock::time_point now) const;
 
+    /// The screensaver_usage fields of the source's window as of @p now; empty with no source.
+    nlohmann::json screensaver_usage_delta(std::chrono::steady_clock::time_point now) const;
+
     /// Zero the panel accumulators and start a new window at @p now.
     void reset_panel_usage_window(std::chrono::steady_clock::time_point now);
 
@@ -1255,6 +1277,9 @@ class TelemetryManager {
     std::chrono::steady_clock::time_point panel_start_time_;
     int overlay_open_count_{0};
     std::unordered_map<std::string, int> overlay_visits_;
+
+    // Screensaver runs, accumulated by ScreensaverManager.
+    helix::SaverUsage* saver_usage_ = nullptr;
 
     // Error rate limiting (max 1 event per category per 5 minutes).
     // Protected by mutex_ — accessed from background threads via record_error().

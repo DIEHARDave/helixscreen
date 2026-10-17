@@ -6,6 +6,7 @@ import {
   EVENT_FANOUT,
   MAX_SLOT,
   POINT_KINDS,
+  SAVER_MAPS,
   type EventRecord,
   type FieldType,
 } from "./schema";
@@ -116,6 +117,33 @@ function fanOutItems(kind: string, event: EventRecord): Array<EventRecord | unde
       return panelNames(event).size > 0
         ? countedItems(event.overlay_visits, "overlay_name")
         : [];
+
+    case "screensaver_usage": {
+      const map = (field: string) => (event[field] ?? {}) as Record<string, unknown>;
+      const names = new Set(SAVER_MAPS.flatMap((m) => Object.keys(map(m))));
+      return [...names].map((saver_name) => ({
+        saver_name,
+        shown_sec: map("saver_shown_sec")[saver_name],
+        starts: map("saver_starts")[saver_name],
+        woke_by_touch: map("saver_woke_by_touch")[saver_name],
+        stopped_other: map("saver_stopped_other")[saver_name],
+        too_heavy: map("saver_too_heavy")[saver_name],
+      }));
+    }
+
+    // Keys are "<saver>:<level>"; a saver name never contains ':'.
+    case "screensaver_level":
+      return Object.entries((event.saver_settled_levels ?? {}) as Record<string, unknown>).map(
+        ([key, runs]) => {
+          const at = key.lastIndexOf(":");
+          const level = at < 0 ? NaN : Number(key.slice(at + 1));
+          return {
+            saver_name: at < 0 ? key : key.slice(0, at),
+            level: Number.isFinite(level) ? level : undefined,
+            runs,
+          };
+        },
+      );
 
     case "widget_placement": {
       const homeWidgets = event.home_widgets;
