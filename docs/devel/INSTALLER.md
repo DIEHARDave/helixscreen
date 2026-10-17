@@ -394,6 +394,20 @@ The output layer is in `scripts/lib/installer/common.sh` (steps, logging), `plan
 - **Log location.** The log is written to the scratch dir while the run is going, then `finalize_install_log` moves it to `install_log_dest`: `$KLIPPER_HOME/printer_data/logs/helixscreen-install.log` when `printer_data` exists (Mainsail and Fluidd list it), otherwise `logs/helixscreen-install.log` under `install_state_root` (outside the install dir, which an update replaces whole). The previous run's log is kept as `.1`.
 - **Environment.** `HELIX_INSTALL_VERBOSE`, `HELIX_INSTALL_TTY`, `HELIX_INSTALL_LOGO=kitty|iterm|sixel|text` (skips the terminal query and forces that logo), and `HELIX_TTY_DEVICE` (the file the `Continue?` prompt and the logo query use; tests point it at a nonexistent path so no prompt can block).
 
+### Machine-readable progress
+
+`--progress` makes a driving program (the desktop installer over SSH) able to follow a run. The human output stays on stderr, unchanged; stdout carries one line per event, tab-separated, every line starting `HELIX-PROGRESS`:
+
+| Line | Meaning |
+|------|---------|
+| `platform<TAB><platform>` | Once, after platform detection. |
+| `step<TAB><n><TAB><total><TAB><status><TAB><title><TAB><detail>` | `status` is `start`, then exactly one of `ok`, `fail`, `skip` for the same `n`. `detail` is empty on `start` and `skip`. A skipped step's number is reused by the next step, matching the `[n/N]` the human output shows. |
+| `result<TAB>ok` / `result<TAB>fail<TAB><reason>` | Last line of every run, sent from the exit handler. `reason` is the failing step's reason, else `exit <status>`. |
+
+A run that fails before platform detection (a bad argument, for one) sends `result` with no `platform` line. When no step named a reason, the `fail` reason is `exit <status>`. The `platform` value is the final one the install uses, so a desktop x86 run reports `x86-desktop`.
+
+Tabs, newlines and carriage returns inside a title or detail become single spaces, so a record never splits. All emission goes through `_progress_emit` in `scripts/lib/installer/common.sh`; without `--progress` it prints nothing.
+
 ## Mod-Managed Hosts: the Payload Contract (Forge-X)
 
 Some Adventurer hosts run a firmware **mod** - a git-managed tree that owns the machine's

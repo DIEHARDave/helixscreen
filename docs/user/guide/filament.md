@@ -220,7 +220,7 @@ Both entries grey out for the same reasons the Filament panel's buttons do: whil
 
 ### Switching Toolheads from the Filament Path
 
-On printers with a toolhead per slot (the Snapmaker U1, tool changers, and AFC or Happy Hare set up as a tool changer), the filament path draws every toolhead. **Tap a toolhead that is not mounted** to switch to it. HelixScreen asks "Switch to Tool 2 (T1)?" first, unless you turned off [Confirm tool changes](settings/printing.md#confirm-tool-changes). The same rules apply as on the home screen's [Tool Switcher](home-panel.md#switching-tools): a paused print always asks, and a running print, spools on the bed, or a filament system waiting for you refuses the change with a message.
+On printers with a toolhead per slot (the Snapmaker U1, tool changers, and AFC units with an extruder for each lane), the filament path draws every toolhead. **Tap a toolhead that is not mounted** to switch to it. HelixScreen asks "Switch to Tool 2 (T1)?" first, unless you turned off [Confirm tool changes](settings/printing.md#confirm-tool-changes). The same rules apply as on the home screen's [Tool Switcher](home-panel.md#switching-tools): a paused print always asks, and a running print, spools on the bed, or a filament system waiting for you refuses the change with a message.
 
 Tapping the mounted toolhead, or any slot's filament tube or spool, opens the slot menu below instead, so a tap meant for the filament never moves the toolhead.
 

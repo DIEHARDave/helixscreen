@@ -38,13 +38,32 @@ trap 'STEP_FAIL_REASON=interrupted; exit 129' HUP
 trap 'STEP_FAIL_REASON=interrupted; exit 130' INT
 trap 'STEP_FAIL_REASON=interrupted; exit 143' TERM
 
+# The last progress line: ok on a clean exit, else the failing step's reason
+# (or the exit status when no step named one). Sent once per run.
+_progress_result() { # exit status
+    [ "$PROGRESS" = 1 ] && [ "$PROGRESS_RESULT_SENT" = 0 ] || return 0
+    PROGRESS_RESULT_SENT=1
+    if [ "$STEP_OPEN" = 1 ]; then
+        _progress_emit step "$STEP_PROGRESS_N" "$STEP_TOTAL" fail "$STEP_TITLE" "${STEP_FAIL_REASON:-}"
+        STEP_OPEN=0
+    fi
+    if [ "$1" -eq 0 ]; then
+        _progress_emit result ok
+    else
+        _progress_emit result fail "${STEP_FAIL_REASON:-exit $1}"
+    fi
+}
+
 # The failure block's closing lines, for a run that passed the confirm point
 # and then stopped: the failed step, what state the printer is in, and where
 # the full log is. The log is kept before anything prints, and nothing here
 # may end the shell early: stderr can be a terminal that no longer exists.
 installer_exit_report() { # exit status
     set +e
-    [ "$1" -ne 0 ] && [ -n "${HELIX_CONFIRMED:-}" ] || return 0
+    if ! { [ "$1" -ne 0 ] && [ -n "${HELIX_CONFIRMED:-}" ]; }; then
+        _progress_result "$1"
+        return 0
+    fi
     _ier_state=$(install_state_line)
     finalize_install_log
     step_fail "${STEP_FAIL_REASON:-}"
@@ -56,6 +75,7 @@ installer_exit_report() { # exit status
     if [ -n "${INSTALL_LOG_KEPT:-}" ]; then
         printf '%s\n' "Full log: $(display_path "$INSTALL_LOG_KEPT")" >&2
     fi
+    _progress_result "$1"
     return 0
 }
 
@@ -146,6 +166,8 @@ usage() {
     echo "                 (e.g. curl ... | sh -s -- --clean --yes)"
     echo "  --dry-run      Show what would be installed and changed, then exit."
     echo "                 Changes nothing; exits non-zero if a check would stop the install."
+    echo "  --progress     Also print one machine-readable HELIX-PROGRESS line per event"
+    echo "                 on stdout (see docs/devel/INSTALLER.md)."
     echo "  --verbose, -v  Print every detail line and command output as it happens."
     echo "                 The full log is always written either way."
     echo "  --version VER  Install specific version (default: latest)"
@@ -235,6 +257,10 @@ parse_installer_args() {
             --dry-run)
                 # shellcheck disable=SC2034  # consumed by main()'s read-only pass
                 DRY_RUN=true
+                shift
+                ;;
+            --progress)
+                PROGRESS=1
                 shift
                 ;;
             --verbose|-v)
@@ -819,6 +845,7 @@ main() {
     platform=$(detect_platform)
     print_platform_banner "$platform"
     resolve_x86_flavour
+    _progress_emit platform "$platform"
     # For platforms that share a binary with pi/pi32 (e.g. m1), the download
     # URL uses the donor platform key while $platform stays put so hooks,
     # banner, and competing-UI shutdown still target the real device.
