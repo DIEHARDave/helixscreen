@@ -153,8 +153,8 @@ class ThemeEditorOverlay : public OverlayBase {
 
     lv_obj_t* panel_ = nullptr;
     /// One colour per palette slot; theme_editor_overlay.xml's swatches bind
-    /// "theme_swatch_color_<i>".
-    helix::xml::IndexedSubjectPool swatch_color_pool_{"theme_swatch_color",
+    /// "theme_editor_role_color_<i>".
+    helix::xml::IndexedSubjectPool swatch_color_pool_{"theme_editor_role_color",
                                                       helix::xml::IndexedSubjectPool::Type::Color};
 
     // Color picker for swatch editing

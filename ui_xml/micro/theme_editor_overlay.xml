@@ -28,7 +28,7 @@
                    height="content" flex_grow="1" flex_flow="row" style_pad_all="#space_xs" style_pad_gap="#space_xs"
                    style_radius="#border_radius_small" style_flex_cross_place="center">
             <color_swatch name="swatch_${i}"
-                          index="${i}" color_subject="theme_swatch_color_${i}" size="#theme_swatch_size" reach="0"
+                          index="${i}" color_subject="theme_editor_role_color_${i}" size="#theme_swatch_size" reach="0"
                           hit="0" callback="on_theme_swatch_clicked"/>
             <lv_obj width="0"
                     height="content" flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs"

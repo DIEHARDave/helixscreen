@@ -85,6 +85,7 @@ std::vector<uint32_t> swatch_colors(lv_obj_t* grid) {
 struct GridFixture : public LVGLTestFixture {
     GridFixture() {
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/globals.xml") == LV_RESULT_OK);
+        helix::ui::register_swatch_paint_widget();
         helix::ui::ensure_swatch_grid_subjects();
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/color_swatch.xml") ==
                 LV_RESULT_OK);
@@ -205,6 +206,7 @@ struct PaletteSwitchFixture : public LVGLTestFixture {
 
     PaletteSwitchFixture() {
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/globals.xml") == LV_RESULT_OK);
+        helix::ui::register_swatch_paint_widget();
         helix::ui::ensure_swatch_grid_subjects();
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/color_swatch.xml") ==
                 LV_RESULT_OK);
