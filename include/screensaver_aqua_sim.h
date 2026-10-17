@@ -347,6 +347,7 @@ class AquaSim {
     std::vector<float> grid_gx_;
     std::vector<float> grid_gz_;
     std::vector<float> grid_thin_;
+    std::vector<float> grid_mean_; ///< one grid row's local mean, then the blur's scratch
     // Per internal column: grid column and its weight, and the last slice's reflection.
     std::vector<int32_t> col_i_;
     std::vector<float> col_f_;

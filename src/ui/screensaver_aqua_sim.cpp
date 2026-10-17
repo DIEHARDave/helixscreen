@@ -832,6 +832,7 @@ void AquaSim::apply_view() {
     grid_gx_.resize(gcells);
     grid_gz_.resize(gcells);
     grid_thin_.resize(gcells);
+    grid_mean_.resize(static_cast<size_t>(water_.grid_x()) * 2);
     frame_.resize(static_cast<size_t>(iw_) * ih_);
     col_i_.resize(static_cast<size_t>(iw_));
     col_f_.resize(static_cast<size_t>(iw_));
@@ -865,6 +866,10 @@ void AquaSim::derive_grids() {
         const int32_t kl = std::max(0, k - 1);
         const int32_t kr = std::min(gz - 1, k + 1);
         const float zspan = static_cast<float>(kr - kl) * dzz;
+        // Each cell's mean over the nine cells round it along the row, the row's ends held.
+        float* mean = grid_mean_.data();
+        std::copy(h + static_cast<size_t>(k) * gx, h + static_cast<size_t>(k + 1) * gx, mean);
+        box_blur(mean, gx, 1, 4, false, false, mean + gx, 1);
         for (int32_t i = 0; i < gx; i++) {
             const int32_t il = std::max(0, i - 1);
             const int32_t ir = std::min(gx - 1, i + 1);
@@ -874,12 +879,7 @@ void AquaSim::derive_grids() {
             const float slope_x = hu / z;
             grid_gx_[idx] = slope_x;
             grid_gz_[idx] = hz - water_.cell_u(i) * slope_x;
-            float mean = 0.0f;
-            for (int32_t j = -4; j <= 4; j++) {
-                mean += h[k * gx + std::clamp(i + j, 0, gx - 1)];
-            }
-            mean /= 9.0f;
-            grid_thin_[idx] = std::clamp((h[idx] - mean) / 0.12f, 0.0f, 1.0f);
+            grid_thin_[idx] = std::clamp((h[idx] - mean[i]) / 0.12f, 0.0f, 1.0f);
         }
     }
 }
@@ -1265,9 +1265,10 @@ size_t AquaSim::heap_bytes() const {
            buffer_bytes(tint_) + buffer_bytes(frame_) + buffer_bytes(rim_) + buffer_bytes(landed_) +
            buffer_bytes(glints_) + buffer_bytes(bubbles_) + buffer_bytes(last_spray_) +
            buffer_bytes(spray_) + buffer_bytes(grid_gx_) + buffer_bytes(grid_gz_) +
-           buffer_bytes(grid_thin_) + buffer_bytes(col_i_) + buffer_bytes(col_f_) +
-           buffer_bytes(el_) + buffer_bytes(prev_el_) + buffer_bytes(front_shade_) +
-           buffer_bytes(scratch_) + buffer_bytes(edge_rows_) + buffer_bytes(clock_save_);
+           buffer_bytes(grid_thin_) + buffer_bytes(grid_mean_) + buffer_bytes(col_i_) +
+           buffer_bytes(col_f_) + buffer_bytes(el_) + buffer_bytes(prev_el_) +
+           buffer_bytes(front_shade_) + buffer_bytes(scratch_) + buffer_bytes(edge_rows_) +
+           buffer_bytes(clock_save_);
 }
 
 void AquaSim::clear() {
@@ -1288,6 +1289,7 @@ void AquaSim::clear() {
     release_buffer(grid_gx_);
     release_buffer(grid_gz_);
     release_buffer(grid_thin_);
+    release_buffer(grid_mean_);
     release_buffer(col_i_);
     release_buffer(col_f_);
     release_buffer(el_);
