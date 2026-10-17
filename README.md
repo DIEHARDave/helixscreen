@@ -182,7 +182,7 @@ Add `--clean` to wipe HelixScreen's settings and start fresh (it asks for confir
 
 Also available through [KIAUH](https://github.com/dw-0/kiauh) as an extension.
 
-**Flashforge AD5M/Pro:** We provide a [ready-made firmware image](https://github.com/prestonbrown/ff5m) (Forge-X fork with HelixScreen pre-configured) — just flash from a USB drive. Or install manually on an existing Forge-X/Klipper Mod setup.
+**Flashforge AD5M/Pro:** Install the [Forge-X](https://github.com/DrA1ex/ff5m) firmware mod and then HelixScreen, or turn HelixScreen on from [ZMOD](https://github.com/ghzserg/zmod). See the [AD5M guide](docs/user/guide/install-ad5m.md).
 
 **Android (experimental):** There is an Android build for watching and controlling a printer from a phone or tablet. It is not on Google Play yet, so download the APK from the [latest release](https://github.com/prestonbrown/helixscreen/releases/latest) and install it. `helixscreen-android-arm64-v<VERSION>.apk` covers essentially any modern phone or tablet. Nothing gets installed on the printer; the app just needs to reach Moonraker on your network. See [Android app](docs/user/INSTALL.md#android-app-experimental).
 

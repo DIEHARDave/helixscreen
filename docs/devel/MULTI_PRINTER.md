@@ -313,6 +313,13 @@ User taps "+ Add Printer" (in PrinterSwitchMenu or PrinterListOverlay)
     9. Clear re-entrancy guard
 ```
 
+After the wizard completes and the connection comes up, a screen reaching a remote Moonraker
+that runs HelixScreen on its own display seeds the new printer's home layout from the layout
+that screen published (`include/home_layout_sync.h#HomeLayoutSync`). The new entry has
+no saved home layout, so the seed applies at the first default resolution, and the user can
+pull it again from the widget catalog. Details in "Layouts shared by the printer's own
+screen" in `LAYOUT_SYSTEM.md`.
+
 ### Cancel Recovery
 
 If the user cancels the wizard:

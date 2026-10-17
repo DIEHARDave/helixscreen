@@ -7,6 +7,7 @@
 
 #include "default_layout_resolver.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -17,6 +18,10 @@
 namespace helix {
 
 class Config;
+
+namespace home_layout {
+struct ParsedLayout;
+}
 
 struct PanelWidgetEntry {
     std::string id;
@@ -89,6 +94,12 @@ class PanelWidgetConfig {
     /// the path it was requested for, so the reload cannot discard it.
     void mark_dirty();
 
+    /// mark_dirty() for a new active printer: the next load() also re-derives
+    /// had_saved_layout() from that printer's settings. A plain mark_dirty()
+    /// keeps the answer, since this process's own saves would otherwise turn a
+    /// printer that never had a saved layout into one that does.
+    void mark_printer_changed();
+
     /// Save current order to config now. Replaces a save held by save_soon().
     void save();
 
@@ -107,6 +118,23 @@ class PanelWidgetConfig {
     }
 
     static constexpr uint32_t SAVE_SETTLE_MS = 2000;
+
+    /// Told after every write that persisted this panel's layout for the
+    /// active printer: save(), and save_soon() / flush_pending_save() once
+    /// they write. Not told when the config write failed, or when a held
+    /// save lands on a printer that is no longer active. Main thread. One
+    /// listener process-wide; an empty function removes it.
+    static void set_save_listener(std::function<void(const PanelWidgetConfig&)> fn);
+
+    const std::string& panel_id() const {
+        return panel_id_;
+    }
+
+    /// The layout as save() writes it: `{pages, main_page_index, ...}`, the
+    /// input build_payload() takes.
+    nlohmann::json published_pages() const {
+        return serialize_pages();
+    }
 
     // ========================================================================
     // Backward-compatible accessors (delegate to page 0)
@@ -312,6 +340,15 @@ class PanelWidgetConfig {
     /// own placement.
     bool is_unedited_default() const;
 
+    /// True when this printer's settings held a panel_widgets node for the
+    /// panel when load() first ran, or after reset_to_defaults() ran: someone
+    /// has had a say in this layout, so an unedited default here is a chosen
+    /// one and is never replaced by a layout copied from the printer's screen.
+    /// Derived at load, never persisted.
+    bool had_saved_layout() const {
+        return had_saved_layout_;
+    }
+
     /// Resolve the default layout again for a @p cols x @p rows grid and, when
     /// the result differs from what is stamped, install it on page 0, stamp it
     /// and save once (through save_soon()). Returns true when it rewrote the
@@ -415,6 +452,23 @@ class PanelWidgetConfig {
     /// is not saved: it resolves for the new grid once the session closes.
     void switch_to_grid(int cols, int rows);
 
+    /// Replace this panel's layout with @p layout, a layout arranged on a
+    /// layout.cols x layout.rows grid (another screen's), made to fit the
+    /// @p cols x @p rows grid this screen shows.
+    ///
+    /// Screen-scoped widgets are stripped from the import, and this screen's
+    /// own default-enabled screen-scoped widgets are added to the main page,
+    /// enabled and unplaced. The placements go through the same porter
+    /// switch_to_grid() seeds a new grid with, which on an identical grid
+    /// copies them one-to-one and clamps anything off it. The result is the
+    /// user's layout (no default block), the only arrangement held (every
+    /// parked grid is discarded, since each is a port of the layout replaced),
+    /// and is saved once.
+    ///
+    /// Returns false, changing nothing and saving nothing, when either grid has
+    /// a non-positive axis or no page keeps a known widget after stripping.
+    bool import_layout(const helix::home_layout::ParsedLayout& layout, int cols, int rows);
+
     /// Apply the default anchors for a now-known grid, stamp the default block
     /// with their signature and hash, and persist. No-op unless has_pending_anchors().
     void apply_pending_anchors(int grid_cols, int grid_rows);
@@ -472,6 +526,8 @@ class PanelWidgetConfig {
     size_t main_page_index_ = 0;
     int next_page_id_ = 1;
     bool loaded_ = false;
+    bool had_saved_layout_ = false;
+    bool saved_layout_known_ = false;
     /// The `default` block: present when the pages came from the defaults
     /// builder. An empty signature means the anchors still wait for a measured
     /// grid; the hash is arrangement_hash() of the pages as stamped.
@@ -539,6 +595,17 @@ class PanelWidgetConfig {
 
     /// Replace pages_ from a payload produced by serialize_pages().
     void restore_pages(const nlohmann::json& payload);
+
+    /// True when some page of a restore_pages() payload holds an entry
+    /// parse_widget_array() keeps as a known widget, the registry's appended
+    /// defaults aside.
+    bool payload_holds_a_widget(const nlohmann::json& payload);
+
+    /// Reseat every page's placements, counted against an @p old_cols x
+    /// @p old_rows grid, onto a @p cols x @p rows grid through
+    /// port_legacy_layout(). An entry the port cannot seat is left unplaced.
+    /// Returns how many were seated.
+    int port_pages(int old_cols, int old_rows, int cols, int rows);
 
     /// Parse a JSON array of widget entries into a vector, applying migrations.
     /// If append_registry_defaults is true, appends missing registry widgets.

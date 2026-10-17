@@ -467,6 +467,21 @@ class PrinterState {
     /// helix::is_moonraker_on_same_host() directly.
     bool is_moonraker_remote();
 
+    /// Locality verdict for the CURRENT connection: Unknown until its CONNECTED
+    /// edge calls set_moonraker_is_remote(), which sets Local or Remote. Unlike
+    /// is_moonraker_remote(), which reads 0 (local) before any verdict and
+    /// keeps the previous printer's value across a switch, this never reports
+    /// a verdict the current connection has not made. The value is current as
+    /// soon as the setter returns; the moonraker_locality subject follows
+    /// through the UI queue. Any thread.
+    helix::MoonrakerLocality moonraker_locality() const {
+        return static_cast<helix::MoonrakerLocality>(moonraker_locality_.load());
+    }
+
+    /// Back to Unknown. Called on every non-CONNECTED connection edge and on a
+    /// printer switch. Thread-safe; the subject write is deferred.
+    void clear_moonraker_locality();
+
     /**
      * @brief Set Klipper firmware state (thread-safe, async)
      *
@@ -863,6 +878,7 @@ class PrinterState {
 
     /// Network state component (connection, klippy, nav buttons)
     helix::PrinterNetworkState network_state_;
+    std::atomic<int> moonraker_locality_{static_cast<int>(helix::MoonrakerLocality::Unknown)};
 
     /// Versions state component (klipper and moonraker version strings)
     helix::PrinterVersionsState versions_state_;

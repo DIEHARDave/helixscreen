@@ -66,7 +66,7 @@ documents below record which.
 
 | Project | Printers | Notes |
 |---------|----------|-------|
-| [Forge-X](https://github.com/DrA1ex/ff5m) | AD5M / Pro | Moonraker, GuppyScreen; HelixScreen ready-made image at [prestonbrown/ff5m](https://github.com/prestonbrown/ff5m) |
+| [Forge-X](https://github.com/DrA1ex/ff5m) | AD5M / Pro | Moonraker, GuppyScreen; HelixScreen installs over SSH |
 | [ZMOD](https://github.com/ghzserg/zmod) | AD5M / Pro, AD5X | Moonraker; installs and updates HelixScreen on the AD5X |
 | [Klipper Mod](https://github.com/xblax/flashforge_ad5m_klipper_mod) | AD5M / Pro | Buildroot; can package HelixScreen via `ad5m-br` |
 | [Guilouz Helper Script](https://github.com/Guilouz/Creality-K1-and-K1-Max) | K1 series | Moonraker, Fluidd |

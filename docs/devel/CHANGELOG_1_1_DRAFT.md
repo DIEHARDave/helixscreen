@@ -139,6 +139,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Home screen widgets**
 
+- **A new screen starts with the printer's own home layout** - when a printer runs HelixScreen on
+  its own display, other screens that connect to it copy that home layout the first time (your
+  macro, LED, fan, sensor and camera picks included), and the Widget Catalog has a "Copy layout
+  from printer" button to do it again.
+
 - **The home screen's printer picture shows what the printer is doing (#1397)** - while the
   nozzle, bed or chamber heats, and until a heater that was turned off drops below 50°C, a
   temperature chip sits on the picture; the part fan shows its speed and the light shows
@@ -1174,6 +1179,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Display and touch**
 
+- **The touch that wakes the screen pressed whatever was under it** - from a dimmed screen
+  the waking tap went straight through (a tap meant to wake it could press Back), and from
+  sleep or a screensaver a slightly long touch could too. The waking touch now does nothing
+  until the finger lifts, in every mode.
 - **Rotated panels** (#1580) - touch no longer drifts from the picture on displays using
   hardware planes.
 - **Scroll Guard had no effect** - with the post-scroll click guard turned on, a tap right after
@@ -1208,6 +1217,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   until the next tool change or the end of the print, and Print Tune now says so.
 - **Pre-print steps read right** - the Z touch after each tool pick shows as Probing Z
   instead of Bed mesh, and the firmware's bed soak and mesh steps get their own labels.
+- **A material set on the screen reaches the printer** - a head's material set in HelixScreen
+  is written to the U1's own filament record, and before resuming a pause (other than a
+  runout) a used head with a blank record is filled in from the material HelixScreen knows,
+  so Resume is no longer refused with "not edit filament".
 
 **Setup and installing**
 

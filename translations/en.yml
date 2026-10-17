@@ -810,9 +810,12 @@ translations:
   Cooling Tube Retraction: Cooling Tube Retraction
   'Cooling for probing...': 'Cooling for probing...'
   Copied to clipboard!: Copied to clipboard!
+  Copy: Copy
   Copy Command: Copy Command
+  Copy Layout From Printer?: Copy Layout From Printer?
   Copy failed - use SSH manually: Copy failed - use SSH manually
   Copy it into this filament's slicer profile. The printer keeps nothing.: 'Copy it into this filament''s slicer profile. The printer keeps nothing.'
+  Copy layout from printer: Copy layout from printer
   Copying from USB: Copying from USB
   Copying from USB stopped responding: Copying from USB stopped responding
   Copying from USB...: Copying from USB...
@@ -831,6 +834,7 @@ translations:
   ? "Could not check webcam status.\nCheck printer connection."
   : "Could not check webcam status.\nCheck printer connection."
   Could not confirm cancel: Could not confirm cancel
+  Could not copy the printer's layout: Could not copy the printer's layout
   'Could not copy {} from USB: {}': 'Could not copy {} from USB: {}'
   Could not disconnect from WiFi: Could not disconnect from WiFi
   'Could not extract plate {} of {}: {}': 'Could not extract plate {} of {}: {}'
@@ -1577,6 +1581,7 @@ translations:
   Home all axes to use the map: Home all axes to use the map
   Home and sweep the cutter to re-find its position: Home and sweep the cutter to re-find its position
   Home failed: Home failed
+  Home layout copied from the printer's screen: Home layout copied from the printer's screen
   Home printer first?: Home printer first?
   Home Selector: Home Selector
   Homing AFC system...: Homing AFC system...
@@ -3585,11 +3590,13 @@ translations:
   : This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   This printer's network service controls the WiFi radio: This printer's network service controls the WiFi radio
   This printer's network service manages saved WiFi networks: This printer's network service manages saved WiFi networks
+  This printer's screen has not shared a layout: This printer's screen has not shared a layout
   ? This removes the plugin's Moonraker component and restarts Moonraker. The printer will briefly disconnect. If old phase-tracking lines are still in PRINT_START, they are removed too, with backups kept. A Klipper restart applies that.
   : This removes the plugin's Moonraker component and restarts Moonraker. The printer will briefly disconnect. If old phase-tracking lines are still in PRINT_START, they are removed too, with backups kept. A Klipper restart applies that.
   This replaces the printer's helper macros with the current version and restarts Klipper.: This replaces the printer's helper macros with the current version and restarts Klipper.
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
+  This replaces this screen's home layout for this printer with the one on the printer's own screen.: This replaces this screen's home layout for this printer with the one on the printer's own screen.
   This system does not support bypass mode: This system does not support bypass mode
   This tool probes each bed screw and tells you how much to adjust.: This tool probes
     each bed screw and tells you how much to adjust.
@@ -3819,6 +3826,7 @@ translations:
   Use first HID scanner found: Use first HID scanner found
   Use printer type to select image: Use printer type to select image
   Use Scan: Use Scan
+  Use the home layout set on the printer's own screen: Use the home layout set on the printer's own screen
   User intervention required: User intervention required
   VM Peak: VM Peak
   VM Size: VM Size

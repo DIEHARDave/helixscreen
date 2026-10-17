@@ -833,9 +833,12 @@ translations:
   Cooling Tube Retraction: 'Retrazione del tubo di raffreddamento'
   Cooling for probing...: Raffreddamento per il sondaggio...
   Copied to clipboard!: Copiato negli appunti!
+  Copy: "Copia"
   Copy Command: Copia comando
+  Copy Layout From Printer?: "Copiare il layout dalla stampante?"
   Copy failed - use SSH manually: Copia fallita - usa SSH manualmente
   Copy it into this filament's slicer profile. The printer keeps nothing.: 'Copialo nel profilo slicer di questo filamento. La stampante non conserva nulla.'
+  Copy layout from printer: "Copia layout dalla stampante"
   Copying from USB: 'Copia da USB'
   Copying from USB stopped responding: 'La copia da USB non risponde più'
   Copying from USB...: 'Copia da USB...'
@@ -855,6 +858,7 @@ translations:
   ? "Could not check webcam status.\nCheck printer connection."
   : "Impossibile verificare stato webcam.\nControllare la connessione della stampante."
   Could not confirm cancel: Impossibile confermare l'annullamento
+  Could not copy the printer's layout: "Impossibile copiare il layout della stampante"
   'Could not copy {} from USB: {}': 'Impossibile copiare {} da USB: {}'
   Could not disconnect from WiFi: Impossibile disconnettersi dal WiFi
   'Could not extract plate {} of {}: {}': 'Impossibile estrarre il piatto {} da {}: {}'
@@ -1626,6 +1630,7 @@ translations:
   Home all axes to use the map: Porta tutti gli assi in posizione per usare la mappa
   Home and sweep the cutter to re-find its position: Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione
   Home failed: Homing fallito
+  Home layout copied from the printer's screen: "Layout della schermata iniziale copiato dallo schermo della stampante"
   Home printer first?: Eseguire prima l'homing della stampante?
   Home Selector: Homing selettore
   Homing AFC system...: Homing sistema AFC...
@@ -3692,11 +3697,13 @@ translations:
   : Questa stampante sembra una {} (affidabilità {}%), ma è configurata come {}. Un tipo errato applica opzioni pre-stampa e preset errati.
   This printer's network service controls the WiFi radio: Il servizio di rete di questa stampante controlla la radio WiFi
   This printer's network service manages saved WiFi networks: Il servizio di rete di questa stampante gestisce le reti WiFi salvate
+  This printer's screen has not shared a layout: "Lo schermo di questa stampante non ha condiviso un layout"
   ? This removes the plugin's Moonraker component and restarts Moonraker. The printer will briefly disconnect. If old phase-tracking lines are still in PRINT_START, they are removed too, with backups kept. A Klipper restart applies that.
   : Questo rimuove il componente Moonraker del plugin e riavvia Moonraker. La stampante si disconnetterà brevemente. Se sono ancora presenti vecchie righe di tracciamento delle fasi in PRINT_START, vengono rimosse anch'esse, mantenendo i backup. Un riavvio di Klipper applica ciò.
   This replaces the printer's helper macros with the current version and restarts Klipper.: 'Sostituisce le macro di ausilio della stampante con la versione attuale e riavvia Klipper.'
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : 'Sostituisce le macro di ausilio della stampante con la versione attuale. Una stampa è in corso, quindi Klipper verrà riavviato al termine.'
+  This replaces this screen's home layout for this printer with the one on the printer's own screen.: "Questo sostituisce il layout della schermata iniziale di questo schermo per questa stampante con quello dello schermo della stampante."
   This system does not support bypass mode: 'Questo sistema non supporta la modalità bypass'
   This tool probes each bed screw and tells you how much to adjust.: Questo strumento
     sonda ogni vite del piano e indica quanto regolare.
@@ -3930,6 +3937,7 @@ translations:
   Use first HID scanner found: 'Usa il primo scanner HID trovato'
   Use printer type to select image: Usa il tipo di stampante per selezionare l'immagine
   Use Scan: Usa scansione
+  Use the home layout set on the printer's own screen: "Usa il layout iniziale impostato sullo schermo della stampante"
   User intervention required: 'Intervento manuale richiesto'
   VM Peak: Picco VM
   VM Size: Dimensione VM

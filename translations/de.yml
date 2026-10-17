@@ -841,9 +841,12 @@ translations:
   Cooling Tube Retraction: 'Kühlrohr-Rückzug'
   Cooling for probing...: Abkühlen zum Abtasten...
   Copied to clipboard!: In Zwischenablage kopiert!
+  Copy: "Kopieren"
   Copy Command: Befehl kopieren
+  Copy Layout From Printer?: "Layout vom Drucker kopieren?"
   Copy failed - use SSH manually: Kopieren fehlgeschlagen – SSH verwenden
   Copy it into this filament's slicer profile. The printer keeps nothing.: 'Trage ihn ins Slicer-Profil dieses Filaments ein. Der Drucker speichert nichts.'
+  Copy layout from printer: "Layout vom Drucker kopieren"
   Copying from USB: 'Kopieren von USB'
   Copying from USB stopped responding: 'Kopieren von USB reagiert nicht mehr'
   Copying from USB...: 'Kopieren von USB...'
@@ -863,6 +866,7 @@ translations:
   ? "Could not check webcam status.\nCheck printer connection."
   : "Webcam-Status konnte nicht geprüft werden.\nDruckerverbindung prüfen."
   Could not confirm cancel: Abbruch konnte nicht bestätigt werden
+  Could not copy the printer's layout: "Das Layout des Druckers konnte nicht kopiert werden"
   'Could not copy {} from USB: {}': '{} konnte nicht von USB kopiert werden: {}'
   Could not disconnect from WiFi: WiFi-Verbindung konnte nicht getrennt werden
   'Could not extract plate {} of {}: {}': 'Platte {} von {} konnte nicht extrahiert werden: {}'
@@ -1638,6 +1642,7 @@ translations:
   Home all axes to use the map: Alle Achsen referenzieren, um die Karte zu nutzen
   Home and sweep the cutter to re-find its position: Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln
   Home failed: Referenzfahrt fehlgeschlagen
+  Home layout copied from the printer's screen: "Startbildschirm-Layout vom Bildschirm des Druckers übernommen"
   Home printer first?: Drucker zuerst referenzieren?
   Home Selector: Selektor referenzieren
   Homing AFC system...: AFC-Referenzfahrt...
@@ -3701,11 +3706,13 @@ translations:
   : Dieser Drucker sieht aus wie ein {} ({}% Konfidenz), ist aber als {} eingerichtet. Ein falscher Typ wendet falsche Optionen und Voreinstellungen für die Druckvorbereitung an.
   This printer's network service controls the WiFi radio: Der Netzwerkdienst dieses Druckers steuert das WiFi-Funkmodul
   This printer's network service manages saved WiFi networks: Der Netzwerkdienst dieses Druckers verwaltet gespeicherte WiFi-Netzwerke
+  This printer's screen has not shared a layout: "Der Bildschirm dieses Druckers hat kein Layout geteilt"
   ? This removes the plugin's Moonraker component and restarts Moonraker. The printer will briefly disconnect. If old phase-tracking lines are still in PRINT_START, they are removed too, with backups kept. A Klipper restart applies that.
   : Dies entfernt die Moonraker-Komponente des Plugins und startet Moonraker neu. Der Drucker wird kurz getrennt. Falls in PRINT_START noch alte Zeilen zur Phasenverfolgung vorhanden sind, werden sie ebenfalls entfernt, wobei Backups aufbewahrt werden. Ein Klipper-Neustart wendet das an.
   This replaces the printer's helper macros with the current version and restarts Klipper.: 'Dies ersetzt die Hilfsmakros des Druckers durch die aktuelle Version und startet Klipper neu.'
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : 'Dies ersetzt die Hilfsmakros des Druckers durch die aktuelle Version. Ein Druck läuft, daher wird Klipper nach dessen Abschluss neu gestartet.'
+  This replaces this screen's home layout for this printer with the one on the printer's own screen.: "Dadurch wird das Startbildschirm-Layout dieses Bildschirms für diesen Drucker durch das Layout vom Bildschirm des Druckers ersetzt."
   This system does not support bypass mode: 'Dieses System unterstützt den Bypass-Modus nicht'
   This tool probes each bed screw and tells you how much to adjust.: Dieses Werkzeug
     tastet jede Bettschraube ab und zeigt Ihnen, wie viel Sie einstellen müssen.
@@ -3939,6 +3946,7 @@ translations:
   Use first HID scanner found: 'Ersten gefundenen HID-Scanner verwenden'
   Use printer type to select image: Druckertyp zur Bildauswahl verwenden
   Use Scan: Scan verwenden
+  Use the home layout set on the printer's own screen: "Das Startbildschirm-Layout vom Bildschirm des Druckers verwenden"
   User intervention required: 'Manueller Eingriff erforderlich'
   VM Peak: VM-Spitze
   VM Size: VM-Größe

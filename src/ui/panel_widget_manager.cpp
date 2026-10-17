@@ -14,6 +14,7 @@
 #include "filament_sensor_manager.h"
 #include "grid_edit_mode.h"
 #include "grid_layout.h"
+#include "home_layout_sync.h"
 #include "humidity_sensor_manager.h"
 #include "layout_manager.h"
 #include "layout_port.h"
@@ -670,8 +671,15 @@ bool PanelWidgetManager::refresh_live_default(const std::string& panel_id) {
     }
     auto& widget_config = get_widget_config(panel_id);
     const auto [cols, rows] = widget_config.stamped_grid();
-    return widget_config.reresolve_default_if_changed(cols, rows,
-                                                      readiness == LayoutReadiness::Ready);
+    const bool ready = readiness == LayoutReadiness::Ready;
+    // A pending default shown on a stamped grid resolves for good here, at the
+    // first READY populate, so this is a seed point too.
+    if (ready && widget_config.has_pending_anchors() && !widget_config.edit_session_open() &&
+        cols > 0 && rows > 0 &&
+        HomeLayoutSync::instance().seed_pending_default(widget_config, cols, rows)) {
+        return true;
+    }
+    return widget_config.reresolve_default_if_changed(cols, rows, ready);
 }
 
 std::vector<std::unique_ptr<PanelWidget>>
@@ -864,7 +872,13 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
                       panel_id);
     } else if (widget_config.has_pending_anchors()) {
         if (content_box_measured && printer_ready) {
-            widget_config.apply_pending_anchors(grid_dims.cols, grid_dims.rows);
+            // A layout the printer's own screen published replaces the default
+            // before it is ever applied, unless the layout is being edited.
+            if (widget_config.edit_session_open() ||
+                !HomeLayoutSync::instance().seed_pending_default(widget_config, grid_dims.cols,
+                                                                 grid_dims.rows)) {
+                widget_config.apply_pending_anchors(grid_dims.cols, grid_dims.rows);
+            }
             entries_replaced = true;
         } else if (content_box_measured) {
             entries_replaced = widget_config.reresolve_default_if_changed(
@@ -2162,7 +2176,7 @@ void PanelWidgetManager::clear_all_panel_configs() {
     // (the #804 load() guard otherwise serves the stale layout indefinitely).
     for (auto& [panel_id, config] : panel_configs_) {
         (void)panel_id;
-        config.mark_dirty();
+        config.mark_printer_changed();
     }
     // Drop the per-page widget-list cache wholesale — it keys on "panel:page" and
     // describes the old printer's resolved widget list. Grid descriptors stay

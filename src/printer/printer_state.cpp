@@ -220,7 +220,9 @@ void PrinterState::init_subjects(bool register_xml) {
     // Initialize capabilities state component (hardware capabilities, feature availability)
     capabilities_state_.init_subjects(register_xml);
 
-    // Initialize network state component (connection, klippy, nav buttons)
+    // Initialize network state component (connection, klippy, nav buttons).
+    // The locality verdict starts where its subject does.
+    moonraker_locality_.store(static_cast<int>(helix::MoonrakerLocality::Unknown));
     network_state_.init_subjects(register_xml);
 
     // Excluded objects state component (excluded_objects_version, excluded_objects set)
@@ -407,9 +409,20 @@ void PrinterState::set_printer_connection_state(int state, const char* message) 
 }
 
 void PrinterState::set_moonraker_is_remote(bool remote) {
+    const auto locality =
+        remote ? helix::MoonrakerLocality::Remote : helix::MoonrakerLocality::Local;
+    moonraker_locality_.store(static_cast<int>(locality));
     // Thread-safe wrapper: defer LVGL subject updates to main thread
-    async_lifetime_.defer("PrinterState::set_moonraker_is_remote", [this, remote]() {
+    async_lifetime_.defer("PrinterState::set_moonraker_is_remote", [this, remote, locality]() {
         network_state_.set_moonraker_is_remote_internal(remote);
+        network_state_.set_moonraker_locality_internal(locality);
+    });
+}
+
+void PrinterState::clear_moonraker_locality() {
+    moonraker_locality_.store(static_cast<int>(helix::MoonrakerLocality::Unknown));
+    async_lifetime_.defer("PrinterState::clear_moonraker_locality", [this]() {
+        network_state_.set_moonraker_locality_internal(helix::MoonrakerLocality::Unknown);
     });
 }
 

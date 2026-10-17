@@ -104,10 +104,10 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     //                                                                                                                                          hint                                cat              en  col row min_c min_r max_c max_r  multi  half_c half_r merges_card
     {"printer_image",    TR_NOOP("Printer Image"),    "rotate_3d",        TR_NOOP("A picture of your printer"),    nullptr,              nullptr,                               CAT_PRINT,    true,  4, 4, 2, 2, 8, 6, false, true, true, false},
     {"print_status",     TR_NOOP("Print Status"),     "printer_3d",       TR_NOOP("Progress, file, and time remaining"),     nullptr,              nullptr,                               CAT_PRINT,    true,  4, 4, 4, 2, BAND_COLSPAN, 6, false, true, true, false},
-    {"shutdown",         TR_NOOP("Shutdown/Reboot"),   "power",            TR_NOOP("Shut down or restart the host"),  "platform_host_power_supported", "Not available on Android",                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
-    {"lock",             TR_NOOP("Lock Screen"),       "lock",             TR_NOOP("Lock the screen with your PIN"),      nullptr,              nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
+    {"shutdown",         TR_NOOP("Shutdown/Reboot"),   "power",            TR_NOOP("Shut down or restart the host"),  "platform_host_power_supported", "Not available on Android",                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true, true, nullptr, nullptr, WidgetScope::Screen},
+    {"lock",             TR_NOOP("Lock Screen"),       "lock",             TR_NOOP("Lock the screen with your PIN"),      nullptr,              nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true, true, nullptr, nullptr, WidgetScope::Screen},
     {"power_device",     TR_NOOP("Power"),            "power_cycle",      TR_NOOP("Switch a power device on or off"),            "power_device_count", "Requires Moonraker power device",     CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, true, true, true},
-    {"network",          TR_NOOP("Network"),          "wifi_strength_4",  TR_NOOP("Wi-Fi or ethernet connection status"),          nullptr,              nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
+    {"network",          TR_NOOP("Network"),          "wifi_strength_4",  TR_NOOP("Wi-Fi or ethernet connection status"),          nullptr,              nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true, true, nullptr, nullptr, WidgetScope::Screen},
     {"firmware_restart", TR_NOOP("Firmware Restart"),  "cog_refresh",      TR_NOOP("Restart Klipper without rebooting"), nullptr,              nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
     {"tool_switcher",    TR_NOOP("Tool Switcher"),     "arrow_left_right", TR_NOOP("Switch the active tool or extruder"),    nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, 8, 4, false, true, true},
     {"led",              TR_NOOP("LED Light"),         "lightbulb_outline",TR_NOOP("Turn the printer's lights on or off"),        "led_controllable",   "No LED strips detected",              CAT_CONTROLS, true,  2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, true, true, true},
@@ -131,7 +131,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"favorite_macro", TR_NOOP("Macro Button"),    "play",             TR_NOOP("Run a macro you choose, in one tap"),     nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, true, true, true},
     {"macros",           TR_NOOP("Macros"),            "script_text",      TR_NOOP("Browse and run your Klipper macros"),           nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
     {"motion",           TR_NOOP("Motion"),            "cursor_move",      TR_NOOP("Open motion controls for jogging"),           nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
-    {"clock",            TR_NOOP("Digital Clock"),     "clock",            TR_NOOP("The time, date, and system uptime"),    nullptr,              nullptr,                               CAT_SYSTEM,   false, 4, 2, 2, 2, 6, 6, false, true, true},
+    {"clock",            TR_NOOP("Digital Clock"),     "clock",            TR_NOOP("The time, date, and system uptime"),    nullptr,              nullptr,                               CAT_SYSTEM,   false, 4, 2, 2, 2, 6, 6, false, true, true, true, nullptr, nullptr, WidgetScope::Screen},
     {"host_health",      TR_NOOP("Host Health"),       "gauge",            TR_NOOP("Host and MCU load, temperature, and memory"), "perf_available",   "Requires Moonraker performance data", CAT_SYSTEM,   false, 4, 2, 1, 1, 8, 8, false, true, true},
     {"control_buttons",  TR_NOOP("Print Controls"),    "pause",            TR_NOOP("Pause, resume, or stop the print"),   nullptr,              nullptr,                               CAT_PRINT,    false, 4, 2, 2, 2, 8, 4},
     {"job_queue",        TR_NOOP("Job Queue"),         "progress_clock",   TR_NOOP("Print jobs waiting to run"),        "printer_has_job_queue", TR_NOOP("Job queue not enabled in Moonraker"), CAT_PRINT, false, 4, 4, 2, 1, 8, 6, false, true, true},
@@ -142,7 +142,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"bed_mesh_tile",    TR_NOOP("Bed Mesh"),          "grid_large",       TR_NOOP("Heightmap and flatness of the active bed mesh"), "printer_has_bed_mesh", "No bed mesh support detected",      CAT_CONTROLS, false, 4, 4, 1, 1, 12, 8, false, true, true},
     {"toolhead",         TR_NOOP("Toolhead"),          "axis_arrow",       TR_NOOP("Toolhead position and homing, with a plate view and Home All"), nullptr,           nullptr,                               CAT_CONTROLS, false, 4, 4, 1, 1, 8, 8, false, true, true},
     //                                                                                                                                          hint                                cat              en  col row min_c min_r max_c max_r  multi  half_c half_r merges_card
-    {"tips",             TR_NOOP("Tips"),              "help_circle",      TR_NOOP("Rotating tips for using your printer"),             nullptr,              nullptr,                               CAT_SYSTEM,   true,  8, 4, 4, 2, BAND_COLSPAN, 4, false, true, true, false},
+    {"tips",             TR_NOOP("Tips"),              "help_circle",      TR_NOOP("Rotating tips for using your printer"),             nullptr,              nullptr,                               CAT_SYSTEM,   true,  8, 4, 4, 2, BAND_COLSPAN, 4, false, true, true, false, nullptr, nullptr, WidgetScope::Screen},
     // Two cells wide by one tall: the FlowGuard scale is horizontal, and it
     // carries a label at each end (#1017). One cell across had the arc, its
     // value and its mode text stacked in a box narrower than the words —
@@ -161,7 +161,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
 #if HELIX_HAS_CAMERA
     {"camera",           TR_NOOP("Camera"),            "webcam",           TR_NOOP("Live view from your webcam"),           nullptr,              nullptr,                               CAT_PRINT,    false, 4, 4, 2, 2, 8, 6, false, true, true, false},
 #endif
-    {"notifications",    TR_NOOP("Notifications"),     "notifications",    TR_NOOP("Alerts and messages waiting for you"),    nullptr,              nullptr,                               CAT_SYSTEM,   true,  2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
+    {"notifications",    TR_NOOP("Notifications"),     "notifications",    TR_NOOP("Alerts and messages waiting for you"),    nullptr,              nullptr,                               CAT_SYSTEM,   true,  2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true, true, nullptr, nullptr, WidgetScope::Screen},
 };
 // clang-format on
 
@@ -257,6 +257,11 @@ const PanelWidgetDef* find_widget_def(std::string_view id) {
             return &*it;
     }
     return nullptr;
+}
+
+bool is_screen_scoped(const std::string& widget_id) {
+    const PanelWidgetDef* def = find_widget_def(widget_id);
+    return def && def->scope == WidgetScope::Screen;
 }
 
 size_t widget_def_count() {

@@ -769,9 +769,12 @@ translations:
   Cooling Tube Retraction: '冷却管回抽'
   Cooling for probing...: 正在降温以便探测...
   Copied to clipboard!: 已复制到剪贴板！
+  Copy: "复制"
   Copy Command: 复制命令
+  Copy Layout From Printer?: "从打印机复制布局？"
   Copy failed - use SSH manually: 复制失败 - 请手动使用 SSH
   Copy it into this filament's slicer profile. The printer keeps nothing.: '请把它复制到该耗材的切片软件配置中。打印机不会保存任何内容。'
+  Copy layout from printer: "从打印机复制布局"
   Copying from USB: '正在从 USB 复制'
   Copying from USB stopped responding: '从 USB 复制已停止响应'
   Copying from USB...: '正在从 USB 复制...'
@@ -790,6 +793,7 @@ translations:
   ? "Could not check webcam status.\nCheck printer connection."
   : "无法检查摄像头状态。\n请检查打印机连接。"
   Could not confirm cancel: 无法确认取消
+  Could not copy the printer's layout: "无法复制打印机的布局"
   'Could not copy {} from USB: {}': '无法从 USB 复制 {}：{}'
   Could not disconnect from WiFi: 无法断开 WiFi 连接
   'Could not extract plate {} of {}: {}': '无法提取第 {} 号板（{}）: {}'
@@ -1528,6 +1532,7 @@ translations:
   Home all axes to use the map: 请先归位所有轴以使用地图
   Home and sweep the cutter to re-find its position: 归零并扫过切刀以重新找到其位置
   Home failed: 归位失败
+  Home layout copied from the printer's screen: "已从打印机屏幕复制主屏幕布局"
   Home printer first?: 先将打印机归位？
   Home Selector: 选择器归位
   Homing AFC system...: AFC系统归位中...
@@ -3456,11 +3461,13 @@ translations:
   : 此打印机看起来是 {}（置信度 {}%），但当前设置为 {}。错误的类型会应用不正确的打印前选项和预设。
   This printer's network service controls the WiFi radio: 此打印机的网络服务控制 WiFi 无线模块
   This printer's network service manages saved WiFi networks: 此打印机的网络服务管理已保存的 WiFi 网络
+  This printer's screen has not shared a layout: "此打印机的屏幕尚未共享布局"
   ? This removes the plugin's Moonraker component and restarts Moonraker. The printer will briefly disconnect. If old phase-tracking lines are still in PRINT_START, they are removed too, with backups kept. A Klipper restart applies that.
   : 这会移除插件的 Moonraker 组件并重启 Moonraker。打印机将短暂断开连接。如果 PRINT_START 中仍有旧的阶段跟踪行，它们也会被移除，但会保留备份。重启 Klipper 后生效。
   This replaces the printer's helper macros with the current version and restarts Klipper.: '这会将打印机的帮助宏替换为当前版本并重启 Klipper。'
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : '这会将打印机的帮助宏替换为当前版本。当前正在打印，Klipper 将在打印结束后重启。'
+  This replaces this screen's home layout for this printer with the one on the printer's own screen.: "这将用打印机自身屏幕上的布局替换此屏幕上该打印机的主屏幕布局。"
   This system does not support bypass mode: '此系统不支持旁通模式'
   This tool probes each bed screw and tells you how much to adjust.: 此工具探测每个热床螺丝并告诉您需要调整多少。
   'This update asks for new permissions:': '此更新请求新的权限：'
@@ -3675,6 +3682,7 @@ translations:
   Use first HID scanner found: '使用找到的第一个 HID 扫描器'
   Use printer type to select image: 使用打印机类型选择图片
   Use Scan: 使用扫描
+  Use the home layout set on the printer's own screen: "使用打印机自身屏幕上设置的主屏幕布局"
   User intervention required: '需要手动干预'
   VM Peak: 虚拟内存峰值
   VM Size: 虚拟内存大小

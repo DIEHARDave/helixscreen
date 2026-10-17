@@ -962,6 +962,68 @@ on.
 A third case is neither: when placement failed only because the temporary `firmware_restart`
 widget was injected, the widget is skipped and logged, with nothing written at all.
 
+## Layouts shared by the printer's own screen
+
+A printer's own HelixScreen (the one whose Moonraker runs on its host) publishes its home
+layout to Moonraker. A screen that reaches that printer over the network seeds its own home
+layout from it, and the widget catalog offers "Copy layout from printer" to pull it again.
+There is no live sync: after a copy the layout belongs to the screen that took it.
+
+**Payload.** Moonraker database namespace `helix-screen`, key `home_layout`
+(`include/home_layout_share.h#kNamespace`, `kKey`). The value is
+`{schema, grid: "<cols>x<rows>", pages, main_page_index, saved_at, app_version}`, built by
+`build_payload` (`include/home_layout_share.h`) from `serialize_pages()` with
+the `default` block and `next_page_id` left out. `parked_grids` and anchors are not
+published. `parse_payload` accepts only the schema it knows (`kSchema`), a grid of
+1 to 64 columns and rows, and at least one page that keeps an entry; anything else is
+treated as "no published layout". `app_version` is informational and never a gate. Unknown
+widget ids and unknown per-widget config keys are tolerated the way `settings.json` is.
+
+**Which widgets travel.** Widgets are printer-scoped or screen-scoped
+(`include/panel_widget_registry.h#WidgetScope`). Screen-scoped entries
+(`network`, `clock`, `lock`, `tips`, `notifications`, `shutdown`) describe the device they
+sit on, so `strip_screen_scoped` removes them from a payload before import, drops the pages
+that leaves empty and re-points `main_page_index`. The importing screen keeps its own
+defaults for those widgets.
+
+**Who publishes, and when.** `include/home_layout_sync.h#HomeLayoutSync` publishes only
+when the connection's locality verdict (the `moonraker_locality` subject,
+`include/printer_network_state.h`) is `Local`. `Unknown`, which is what a connection reads
+before its verdict is set, publishes nothing. It publishes once per connect and after each
+home-layout save, skips a payload identical to the last one posted on the connection
+(`saved_at` aside), and never publishes an unedited default.
+
+**Who fetches, and when it seeds.** A screen whose locality is `Remote` fetches on connect and
+holds the result tagged with the active printer id. Automatic seeding only happens for a
+printer that has never had a saved home layout
+(`include/panel_widget_config.h#had_saved_layout`): it is derived from the
+printer's settings at load, never persisted, and `mark_printer_changed` re-derives it on a
+printer switch. A Reset counts as someone having had a say, so after a Reset the layout stays
+the generator default. The seed is taken at the points where a default is resolved:
+`HomeLayoutSync::seed_pending_default` when populate applies a pending default, and
+`HomeLayoutSync::adopt_late_seed` for a reply that arrives after the default was applied but
+while the layout is still an unedited default on a known grid. Both skip while edit mode is
+open. No published layout, an unreadable payload or a newer schema falls back to the
+generator default without a message; a successful seed toasts.
+
+**`import_layout`.** `include/panel_widget_config.h#import_layout` takes the
+parsed payload and the importing screen's grid. The payload is checked in full first, so a
+refused import (non-positive grid axis, or no page keeping a known widget) changes and saves
+nothing. On success the layout is loaded as authored for its source grid and ported to the
+local grid by the same path a first visit to a new grid uses
+(`src/ui/layout_port.cpp#port_legacy_layout`). Every parked grid is discarded, since each is
+a port of the layout being replaced. The result is the user's own layout with no default
+marker, saved once.
+
+**After the seed.** The copied layout is owned by the screen that took it. Edits on either
+side never propagate, a later publish never replaces it automatically, and Reset in the
+catalog gives the generator default, not the printer's layout.
+
+**Manual copy.** `src/ui/ui_widget_catalog_overlay.cpp#on_catalog_copy_layout` fetches through
+`HomeLayoutSync::fetch_now`, asks for confirmation, and replaces the current layout whether
+or not it was edited. It is hidden on the printer's own screen. To try it under `--test`, see
+`HELIX_MOCK_HOME_LAYOUT` in `MOCK_ENVIRONMENT_VARIABLES.md`.
+
 ---
 
 ## Technical Reference
