@@ -4,6 +4,7 @@
 
 #include "screensaver_aqua_sim.h"
 
+#include "screensaver_fast_math.h"
 #include "screensaver_pixel_writer.h"
 
 #include <algorithm>
@@ -54,93 +55,6 @@ constexpr Rgb RING_FILL{220, 226, 232};
 constexpr Rgb DIGIT_COLOR{230, 236, 242};
 constexpr float DIGIT_OPACITY = 0.9f;
 constexpr float DIGIT_STROKE = 0.06f;
-
-// ---------- Tables ----------
-//
-// Built at compile time into .rodata: a 1024-step sine and e^-s over [0, EXP_MAX].
-
-constexpr int SIN_N = 1024;
-constexpr int EXP_N = 512;
-constexpr double EXP_MAX = 9.0;
-
-constexpr double cx_sin(double x) {
-    // x in [-pi, pi]: the Taylor series converges to float precision in a dozen terms.
-    double term = x;
-    double sum = x;
-    for (int n = 1; n < 14; n++) {
-        term *= -x * x / static_cast<double>((2 * n) * (2 * n + 1));
-        sum += term;
-    }
-    return sum;
-}
-
-constexpr double cx_exp(double x) {
-    double term = 1.0;
-    double sum = 1.0;
-    for (int n = 1; n < 60; n++) {
-        term *= x / static_cast<double>(n);
-        sum += term;
-    }
-    return sum;
-}
-
-struct SinTable {
-    float v[SIN_N + 1];
-};
-constexpr SinTable make_sin_table() {
-    SinTable t{};
-    constexpr double pi = 3.14159265358979323846;
-    for (int i = 0; i <= SIN_N; i++) {
-        double a = 2.0 * pi * static_cast<double>(i) / SIN_N;
-        if (a > pi) {
-            a -= 2.0 * pi;
-        }
-        t.v[i] = static_cast<float>(cx_sin(a));
-    }
-    return t;
-}
-constexpr SinTable SIN_TABLE = make_sin_table();
-
-struct ExpTable {
-    float v[EXP_N + 1];
-};
-constexpr ExpTable make_exp_table() {
-    ExpTable t{};
-    for (int i = 0; i <= EXP_N; i++) {
-        t.v[i] = static_cast<float>(1.0 / cx_exp(EXP_MAX * static_cast<double>(i) / EXP_N));
-    }
-    return t;
-}
-constexpr ExpTable EXP_TABLE = make_exp_table();
-
-inline float fast_sin(float x) {
-    const float f = x * (static_cast<float>(SIN_N) / TWO_PI);
-    const float fl = std::floor(f);
-    const float frac = f - fl;
-    const int i = static_cast<int>(static_cast<int64_t>(fl) & (SIN_N - 1));
-    return SIN_TABLE.v[i] + (SIN_TABLE.v[i + 1] - SIN_TABLE.v[i]) * frac;
-}
-
-inline float fast_cos(float x) {
-    return fast_sin(x + PI / 2.0f);
-}
-
-/// e^-s for s >= 0, 0 past EXP_MAX.
-inline float fast_exp_neg(float s) {
-    if (s <= 0.0f) {
-        return 1.0f;
-    }
-    const float f = s * (static_cast<float>(EXP_N) / static_cast<float>(EXP_MAX));
-    if (f >= static_cast<float>(EXP_N)) {
-        return 0.0f;
-    }
-    const auto i = static_cast<int>(f);
-    return EXP_TABLE.v[i] + (EXP_TABLE.v[i + 1] - EXP_TABLE.v[i]) * (f - static_cast<float>(i));
-}
-
-inline float gauss(float q) {
-    return fast_exp_neg(q * q);
-}
 
 float omega_for(float k) {
     return std::sqrt(GRAVITY * k * std::tanh(k * TANK_DEPTH));
@@ -315,7 +229,8 @@ float AquaWater::height(float x, float z, float t) const {
         const float c = 1.3f * age;
         const float env = e.amp * std::exp(-age / 3.0f) * std::min(1.0f, age / 0.6f) * 0.5f;
         const float sigma = 0.22f + 0.18f * age;
-        h += env * gauss(z - e.z) * (gauss((x - e.x - c) / sigma) + gauss((x - e.x + c) / sigma));
+        h += env * fast_gauss(z - e.z) *
+             (fast_gauss((x - e.x - c) / sigma) + fast_gauss((x - e.x + c) / sigma));
     }
     return h;
 }
@@ -359,7 +274,7 @@ void AquaWater::evaluate(float t, std::minstd_rand& rng) {
         const float z = cell_z(k);
         float row_env[IMPULSE_CAP];
         for (size_t n = 0; n < live_n; n++) {
-            row_env[n] = live[n].env * gauss(z - live[n].z);
+            row_env[n] = live[n].env * fast_gauss(z - live[n].z);
         }
         float* row = &h_[static_cast<size_t>(k) * gx_];
         for (int32_t i = 0; i < gx_; i++) {
@@ -376,8 +291,8 @@ void AquaWater::evaluate(float t, std::minstd_rand& rng) {
                     continue;
                 }
                 const Live& e = live[n];
-                h += row_env[n] *
-                     (gauss((x - e.x - e.c) / e.sigma) + gauss((x - e.x + e.c) / e.sigma));
+                h += row_env[n] * (fast_gauss((x - e.x - e.c) / e.sigma) +
+                                   fast_gauss((x - e.x + e.c) / e.sigma));
             }
             row[i] = h;
         }
@@ -823,8 +738,10 @@ void build_wrinkle(std::vector<float>& out) {
             for (int32_t z = 0; z < N; z++) {
                 for (int32_t x = 0; x < N; x++) {
                     const int32_t idx = ((fx * x + fz * z) % N + N) % N;
-                    const float ca = SIN_TABLE.v[(idx * (SIN_N / N) + SIN_N / 4) & (SIN_N - 1)];
-                    const float sa = SIN_TABLE.v[idx * (SIN_N / N)];
+                    const float ca =
+                        FAST_SIN_TABLE
+                            .v[(idx * (FAST_SIN_N / N) + FAST_SIN_N / 4) & (FAST_SIN_N - 1)];
+                    const float sa = FAST_SIN_TABLE.v[idx * (FAST_SIN_N / N)];
                     h[static_cast<size_t>(z) * N + x] += amp * (ca * cp - sa * spp);
                 }
             }
