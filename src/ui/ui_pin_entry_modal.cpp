@@ -11,6 +11,7 @@
 #include "ui_callback_helpers.h"
 #include "ui_effects.h"
 #include "ui_event_safety.h"
+#include "ui_modal.h"
 #include "ui_next_tick.h"
 #include "ui_pin_utils.h"
 #include "ui_utils.h"
@@ -95,6 +96,8 @@ void PinEntryModal::create() {
     lv_obj_set_style_radius(backdrop_, 0, 0);
     lv_obj_add_flag(backdrop_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_remove_flag(backdrop_, LV_OBJ_FLAG_SCROLLABLE);
+    // The PIN pad is modal: it holds the navbar, E-stop included, under its backdrop.
+    helix::ui::set_chrome_covered(true);
     helix::ui::bring_to_front(backdrop_);
 
     // Create the dialog from XML component
@@ -132,6 +135,7 @@ void PinEntryModal::destroy_async() {
     // Use lv_obj_delete_async for LVGL objects — auto-cancelled if parent is
     // deleted first, preventing use-after-free in lv_event_mark_deleted (#543).
     if (backdrop_) {
+        helix::ui::set_chrome_covered(ModalStack::instance().covers_chrome());
         helix::ui::safe_delete_deferred(backdrop_);
         dialog_ = nullptr;
     }
