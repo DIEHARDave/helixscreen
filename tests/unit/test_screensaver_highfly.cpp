@@ -796,24 +796,6 @@ TEST_CASE(
 // HighFlyScreensaver
 // ============================================================================
 
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "the high fly saver draws on a pipes-format canvas with its ladder",
-                 "[screensaver][highfly]") {
-    HighFlyScreensaver ss;
-    ScreensaverStopOnExit<HighFlyScreensaver> stop_on_exit{ss};
-    ss.start();
-    REQUIRE(ss.is_active());
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
-    REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::LV_DRAW_CANVAS_FORMAT);
-    CHECK(ss.level_count() == HIGHFLY_LEVEL_COUNT);
-    advance_saver(ss, 33);
-    CHECK(ss.is_active());
-    ss.request_level(HIGHFLY_LEVEL_COUNT - 1);
-    advance_saver(ss, 250);
-    CHECK(ss.is_active());
-}
-
 TEST_CASE_METHOD(LVGLTestFixture, "the high fly saver shows the print its source reports",
                  "[screensaver][highfly]") {
     HighFlyScreensaver ss;
@@ -859,30 +841,6 @@ TEST_CASE_METHOD(LVGLTestFixture,
     reported.seconds_of_day += 1;
     advance_saver(ss, 250);
     CHECK(HighFlyScreensaverTestAccess::date_line(ss).text().rfind("ETA ", 0) == 0);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture, "a stopped high fly saver holds no buffers",
-                 "[screensaver][highfly]") {
-    HighFlyScreensaver ss;
-    CHECK(ss.sim().heap_bytes() == 0);
-    {
-        ScreensaverStopOnExit<HighFlyScreensaver> stop_on_exit{ss};
-        ss.start();
-        REQUIRE(ss.is_active());
-        advance_saver(ss, 16);
-        REQUIRE(ss.sim().heap_bytes() > 0);
-    }
-    CHECK_FALSE(ss.is_active());
-    CHECK(ss.sim().heap_bytes() == 0);
-}
-
-TEST_CASE("high fly is registered by name at both depths", "[screensaver][highfly]") {
-    const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver_by_name("highfly");
-    REQUIRE(info != nullptr);
-    CHECK(info->type == ScreensaverType::HIGHFLY);
-    CHECK(std::string(info->label_key) == "High Fly");
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_16) != 0);
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_32) != 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

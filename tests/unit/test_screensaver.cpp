@@ -826,12 +826,6 @@ using PipesAccess = PipesScreensaverTestAccess;
 // A pipe grows one grid step per 100 ms of frame time.
 constexpr uint32_t PIPES_STEP_MS = 100;
 
-void run_timer(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
-
 /// Counts the draw tasks `obj` itself adds to refreshes and snapshots, for as long as it lives.
 class DrawTaskCounter {
   public:
@@ -984,8 +978,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         const std::vector<uint8_t> before(buf->data, buf->data + buf->data_size);
         invalidated.areas.clear();
 
-        lv_tick_inc(PIPES_STEP_MS);
-        run_timer(SaverTestAccess::timer(ss));
+        advance_saver(ss, PIPES_STEP_MS);
 
         const PixelChanges changes = diff_canvas(before, buf, canvas_coords, invalidated.areas);
         REQUIRE(changes.changed > 0);
@@ -1013,8 +1006,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "the pipes dissolve invalidates every pixel it
 
     for (int i = 0; i < 20000 && PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::GROWING;
          i++) {
-        lv_tick_inc(3 * PIPES_STEP_MS);
-        run_timer(SaverTestAccess::timer(ss));
+        advance_saver(ss, 3 * PIPES_STEP_MS);
     }
     REQUIRE(PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::DISSOLVING);
 
@@ -1022,8 +1014,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "the pipes dissolve invalidates every pixel it
     while (PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::DISSOLVING) {
         const std::vector<uint8_t> before(buf->data, buf->data + buf->data_size);
         InvalidatedAreas invalidated(lv_obj_get_display(canvas));
-        lv_tick_inc(PIPES_STEP_MS);
-        run_timer(SaverTestAccess::timer(ss));
+        advance_saver(ss, PIPES_STEP_MS);
         const PixelChanges changes = diff_canvas(before, buf, canvas_coords, invalidated.areas);
         cleared += changes.changed;
         CHECK(changes.outside_areas == 0);

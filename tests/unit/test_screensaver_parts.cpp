@@ -59,12 +59,6 @@ bool areas_cover_point(const std::vector<lv_area_t>& areas, int32_t x, int32_t y
     });
 }
 
-void fire(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
-
 lv_area_t coords_of(lv_obj_t* obj) {
     lv_obj_update_layout(obj);
     lv_area_t area;
@@ -343,9 +337,9 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(timer.timer()->period == 20);
 
     lv_tick_inc(25);
-    fire(timer.timer());
+    fire_timer(timer.timer());
     lv_tick_inc(7);
-    fire(timer.timer());
+    fire_timer(timer.timer());
 
     CHECK(dts == std::vector<uint32_t>{25, 7});
     timer.cancel();
@@ -360,7 +354,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "changing a saver frame timer's period keeps m
     timer.set_period(33);
     CHECK(timer.timer()->period == 33);
     lv_tick_inc(15);
-    fire(timer.timer());
+    fire_timer(timer.timer());
     CHECK(last_dt == 25);
     timer.cancel();
 }
@@ -429,8 +423,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(SaverTestAccess::canvas(saver) == nullptr);
     CHECK(lv_obj_get_style_bg_opa(SaverTestAccess::overlay(saver), LV_PART_MAIN) == LV_OPA_COVER);
     helix::test::InvalidatedAreas invalidated(lv_display_get_default());
-    lv_tick_inc(16);
-    fire(SaverTestAccess::timer(saver));
+    advance_saver(saver, 16);
     CHECK(saver.frame_dts == std::vector<uint32_t>{16});
     CHECK(invalidated.areas.empty());
 }
@@ -461,8 +454,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     const lv_area_t coords = coords_of(SaverTestAccess::canvas(saver));
     helix::test::InvalidatedAreas invalidated(lv_display_get_default());
 
-    lv_tick_inc(30);
-    fire(SaverTestAccess::timer(saver));
+    advance_saver(saver, 30);
 
     CHECK(saver.frame_dts == std::vector<uint32_t>{30});
     REQUIRE(invalidated.areas.size() == 1);

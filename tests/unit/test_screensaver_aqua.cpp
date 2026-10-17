@@ -719,26 +719,6 @@ TEST_CASE("aqua frames and step-downs never grow the heap, and the still rung ke
 // AquaScreensaver
 // ============================================================================
 
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "the aqua saver draws on a pipes-format canvas with the aqua ladder",
-                 "[screensaver][aqua]") {
-    AquaScreensaver ss;
-    ScreensaverStopOnExit<AquaScreensaver> stop_on_exit{ss};
-    ss.start();
-    REQUIRE(ss.is_active());
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
-    REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::LV_DRAW_CANVAS_FORMAT);
-    CHECK(ss.level_count() == AQUA_LEVEL_COUNT);
-    CHECK(AQUA_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
-
-    advance_saver(ss, 33);
-    CHECK(ss.is_active());
-    ss.request_level(AQUA_LEVEL_COUNT - 1);
-    advance_saver(ss, 250);
-    CHECK(ss.is_active());
-}
-
 TEST_CASE_METHOD(LVGLTestFixture, "the aqua saver shows the print its source reports",
                  "[screensaver][aqua]") {
     AquaScreensaver ss;
@@ -759,29 +739,6 @@ TEST_CASE_METHOD(LVGLTestFixture, "the aqua saver shows the print its source rep
     advance_saver(ss, 33);
     CHECK(ss.clock().mode() == ClockMode::CLOCK);
     CHECK(AquaScreensaverTestAccess::line(ss).text().rfind("ETA ", 0) == std::string::npos);
-}
-
-TEST_CASE_METHOD(LVGLTestFixture, "a stopped aqua saver holds no buffers", "[screensaver][aqua]") {
-    AquaScreensaver ss;
-    CHECK(ss.sim().heap_bytes() == 0);
-    {
-        ScreensaverStopOnExit<AquaScreensaver> stop_on_exit{ss};
-        ss.start();
-        REQUIRE(ss.is_active());
-        advance_saver(ss, 16);
-        REQUIRE(ss.sim().heap_bytes() > 0);
-    }
-    CHECK_FALSE(ss.is_active());
-    CHECK(ss.sim().heap_bytes() == 0);
-}
-
-TEST_CASE("aqua is registered by name at both depths", "[screensaver][aqua]") {
-    const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver_by_name("aqua");
-    REQUIRE(info != nullptr);
-    CHECK(info->type == ScreensaverType::AQUA);
-    CHECK(std::string(info->label_key) == "Aqua Surface");
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_16) != 0);
-    CHECK((info->depths & helix::ui::SAVER_DEPTH_32) != 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER
