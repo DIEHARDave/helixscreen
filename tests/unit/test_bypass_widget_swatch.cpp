@@ -22,6 +22,7 @@ using namespace helix;
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "bypass: the external spool dot paints the spool's colours and finish",
                  "[bypass][swatch][panel_widget]") {
+    AmsState::instance().init_subjects(true);
     SlotInfo ext;
     ext.color_rgb = 0xFF0000;
     ext.multi_color_hexes = "#FF0000,#00FF00";

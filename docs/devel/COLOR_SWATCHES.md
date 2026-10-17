@@ -14,7 +14,7 @@ draws its own.
 | Edge | One rule: a swatch gets a `#border` edge when any of its colours has a WCAG contrast ratio under `SWATCH_EDGE_CONTRAST_RATIO` (1.75) against the theme's `screen_bg` or `elevated_bg`. It is judged at draw time from the live theme, so nothing republishes on a theme switch. No swatch carries a border of its own and no rule keys on dark mode. |
 | Selection | One mark: `color_swatch`'s inside ring (`selected_subject` + `index`). |
 | Multi-colour | A filament with two or more colours (`SlotInfo::multi_color_hexes`, Spoolman's `multi_color_hexes`) shows them everywhere its colour shows, as equal-area bands across the top-left to bottom-right diagonal, clipped to the shape. |
-| Finish | Silk, matte, marble and sparkle come from the filament's names, never from a widget. Below `SWATCH_FINISH_MIN_PX` (16 px) on the short side a finish cannot be read and the swatch paints plain. |
+| Finish | Silk, matte, marble and sparkle come from the filament's names, never from a widget. A swatch with less area than a `SWATCH_FINISH_MIN_PX` (16 px) square cannot show a finish and paints plain; a long thin band or a spool body of the same short side keeps it. |
 
 ## Finishes
 

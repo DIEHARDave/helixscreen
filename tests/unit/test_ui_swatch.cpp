@@ -116,12 +116,14 @@ TEST_CASE("swatch_finish_of: a slot's finish comes from its first name that has 
     CHECK(helix::ui::swatch_finish_of(slot) == SwatchFinish::Silk);
 }
 
-TEST_CASE("swatch_effective_finish: below the minimum size a finish paints plain", "[swatch]") {
+TEST_CASE("swatch_effective_finish: below the minimum area a finish paints plain", "[swatch]") {
     const int32_t m = helix::ui::SWATCH_FINISH_MIN_PX;
     CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Silk, m, m) == SwatchFinish::Silk);
     CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Silk, m - 1, m) == SwatchFinish::Plain);
-    CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Marble, 80, m - 1) ==
-          SwatchFinish::Plain);
+    CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Marble, 8, 8) == SwatchFinish::Plain);
+    // A long thin band (a spool's wound body, a tool band) keeps its finish.
+    CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Marble, 80, m - 4) ==
+          SwatchFinish::Marble);
     CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Sparkle, 80, 40) ==
           SwatchFinish::Sparkle);
 }

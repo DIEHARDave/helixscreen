@@ -524,7 +524,9 @@ SwatchFinish swatch_finish_of(const helix::SlotInfo& slot) {
 }
 
 SwatchFinish swatch_effective_finish(SwatchFinish finish, int32_t w, int32_t h) {
-    return std::min(w, h) < SWATCH_FINISH_MIN_PX ? SwatchFinish::Plain : finish;
+    // By area, so a long thin band or a spool's wound body keeps its finish
+    // while a dot of the same short side does not.
+    return w * h < SWATCH_FINISH_MIN_PX * SWATCH_FINISH_MIN_PX ? SwatchFinish::Plain : finish;
 }
 
 lv_color_t swatch_matte_color(lv_color_t c) {
