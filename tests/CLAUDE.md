@@ -147,7 +147,7 @@ Key the choice on the question you actually have, not on a phase of work:
 | **Can this test fail at all?** | break the line it covers, rerun that one case, restore | one `make t` cycle |
 | Do any assertions only look like assertions? | `make check-tautology`, `make test-vacuous` | 3s, seconds |
 | Does any test even reach this code? | `make cov-diff` | minutes |
-| Do my changed lines have detection? | `make mutate-diff` | 2-4 min per hunk |
+| Do my changed lines have detection? | `make mutate-diff MUTATE_ARGS="--tests '[touched tags]'"`, **once per batch, at the finish** | per hunk: one rebuild + those tags |
 | Did I break something elsewhere in C++? | `make unit-sweep` | ~50s idle, minutes loaded |
 | Will CI's unit job pass? | `make unit-sweep NPROCS=8`: CI runs `nproc*2` = 8 shards on its 4-core runners, so tests share a process with different neighbours than the local 96 | ~100s |
 | Am I finished - did I break anything, anywhere? | `make full-test-run` | ~2m, **once, at the end** |
@@ -429,10 +429,16 @@ Only reverting the hunk and watching for red finds it.
 
 ### When to run it, and where the record goes
 
-Run `make mutate-diff` once, over the whole branch, when the feature or change is done and
-before the final review. A review fix after that is the delta since the proven commit, which
-the next run picks up on its own. Never run it per task or per commit while work is in progress: each
-run costs minutes per hunk, and hunks a later commit rewrites get mutated twice for nothing.
+Run `make mutate-diff` once per batch, at the finish: after the batch's one review, before
+its one `land-gate`, over the hunks the batch changed, scoped to the tests that cover them
+(`MUTATE_ARGS="--tests '[tag1],[tag2]'"`). Each hunk then rebuilds and reruns only those
+tags, not the suite. When several branches land together, it runs once over the merged
+result, never once per branch. A review fix after that is the delta since the proven commit,
+which the next run picks up on its own. Never run it per task, per commit or per agent while
+work is in progress: hunks a later commit rewrites get mutated twice for nothing. A
+whole-branch run against the full suite is a release check, not a landing check. While
+building, a new test's proof is one hand break of the line it pins (above). Root
+`CLAUDE.md` § Verification Cadence has the whole schedule.
 
 Red-green is invisible after the fact. A test that was mutated and verified is
 indistinguishable from one nobody checked, which is why the discipline decays.
