@@ -104,7 +104,7 @@ void dispatch(int tool_index, const ToolChangeHooks& hooks) {
 std::string full_tool_label(int tool_index) {
     const auto& tools = ToolState::instance().tools();
     if (tool_index < 0 || tool_index >= static_cast<int>(tools.size())) {
-        return fmt::format("T{}", tool_index);
+        return tool_label(tool_index);
     }
     const ToolInfo& tool = tools[static_cast<size_t>(tool_index)];
     return active_tool_label(tool.name, tool.index, ToolLabelForm::Full);
