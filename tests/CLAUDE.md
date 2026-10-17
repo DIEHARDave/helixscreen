@@ -278,7 +278,9 @@ the last is an oracle:
 suite reads, and runs it. A hunk that survives reversion is a change no test
 detects, whatever the diff's test files claim. It is the only tool here that sees
 the adjacent-invariant failure, so scope it (`MUTATE_ARGS="--limit 5"`, or
-`--tests "[ams]"`) rather than skipping it.
+`--tests "[ams]"`) rather than skipping it. A filter as narrow as one tag is safe:
+the run counts the cases it selects and uses no more shards than that, and a
+filter matching no case stops before the baseline with the filter named.
 
 **Read the first two lines: they say what the run is about.**
 

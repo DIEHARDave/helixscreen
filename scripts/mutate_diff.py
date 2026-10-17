@@ -1266,6 +1266,27 @@ def terminate_live_procs(grace=5.0):
     _live_procs.clear()
 
 
+def count_catch2_cases(root, test_bin, filt):
+    """How many cases `filt` selects, or None when the binary cannot say."""
+    p = subprocess.run([str(test_bin), filt, '--list-tests'], cwd=root,
+                       capture_output=True, text=True)
+    m = re.search(r'^(\d+) matching test cases?\s*$', p.stdout, re.M)
+    return int(m.group(1)) if m else None
+
+
+def fit_shards(requested, matched):
+    """Shards to run for a filter selecting `matched` cases.
+
+    A shard that matches no case exits non-zero and names no failure, which
+    reads as a suite that judged nothing, so a narrow filter gets one shard per
+    case and no more. A filter that selects nothing is an operator error, not
+    a baseline: raises ValueError.
+    """
+    if matched == 0:
+        raise ValueError('matches no test case')
+    return max(1, min(requested, matched))
+
+
 def run_catch2(root, test_bin, filt, shards, log, timeout=None):
     """(state, reason) for the C++ suite. Stops at the first failing case.
 
@@ -2162,6 +2183,19 @@ def main():
                 print(f'FAIL: baseline build is broken. See {args.log}', file=sys.stderr)
                 return 2
             print(f'  build ok ({secs:.0f}s)')
+        if 'catch2' in needed:
+            suites.ensure_catch2_binary()
+            matched = count_catch2_cases(root, suites.catch2_bin, args.tests)
+            if matched is not None:
+                try:
+                    args.shards = fit_shards(args.shards, matched)
+                except ValueError as e:
+                    print(f'FAIL: --tests {args.tests!r} {e}. Check the tag spelling '
+                          f'with: build/bin/helix-tests {args.tests!r} --list-tests',
+                          file=sys.stderr)
+                    return 2
+                print(f'  catch2: {matched} case(s) match {args.tests!r}, '
+                      f'{args.shards} shard(s)')
         for suite in sorted(needed):
             state, why = suites.run(suite)
             if RUN_STATE.out_of_time:
