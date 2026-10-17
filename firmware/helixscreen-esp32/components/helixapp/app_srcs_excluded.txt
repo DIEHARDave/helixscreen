@@ -245,6 +245,7 @@ src/ui/recovery_modal_presenter.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_aqua.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_aqua_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_base.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_blur.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_bounce.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_canvas.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_clock.cpp  # not in the v1 Core+AMS cut

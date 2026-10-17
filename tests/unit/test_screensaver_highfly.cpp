@@ -32,6 +32,18 @@ class HighFlySimTestAccess {
             tower.entered_s += delta;
         }
     }
+    /// Moves the next fly-through's start to `t` seconds into the run.
+    static void set_fly_start(HighFlySim& sim, double t) {
+        sim.fly_start_s_ = t;
+    }
+    /// Flattens the wisp table, so a fly-through shows its interior alone.
+    static void still_wisps(HighFlySim& sim) {
+        std::fill(sim.wisp_.begin(), sim.wisp_.end(), 0.0f);
+    }
+    /// Makes the next step repaint the whole canvas, as the first frame does.
+    static void repaint_all(HighFlySim& sim) {
+        sim.painted_ = false;
+    }
 };
 
 /// Reads the sim and the text lines a HighFlyScreensaver owns.
@@ -377,6 +389,73 @@ TEST_CASE("every pixel a high fly frame changes lies in one of its dirty boxes",
     CHECK(uncovered == 0);
 }
 
+TEST_CASE("each frame repaints where the towers and the clock just were, through a busy drift",
+          "[screensaver][highfly]") {
+    const ClockReading r = reading_at(10 * 3600);
+    // Find a drift step with both towers up; the towers' schedule does not depend on when the
+    // fly-through comes, so a probe run with none finds it.
+    double drift_at = -1.0;
+    {
+        SimFrame probe_frame(400, 240, PixelFormat::RGB565);
+        std::minstd_rand rng(3);
+        HighFlySim probe;
+        probe.init(probe_frame.target, rng, 0, r);
+        HighFlySimTestAccess::set_fly_start(probe, 4000.0);
+        std::vector<DirtyRect> dirty;
+        DirtyRect clock = probe.clock_layout().bounds;
+        for (int i = 0; i < 6000 && drift_at < 0.0; i++) {
+            probe.step(100, probe_frame.target, rng, r, dirty);
+            if (!(probe.clock_layout().bounds == clock)) {
+                clock = probe.clock_layout().bounds;
+                if (probe.towers_visible() == 2) {
+                    drift_at = probe.elapsed_s();
+                }
+            }
+        }
+    }
+    REQUIRE(drift_at > 0.0);
+
+    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    std::minstd_rand rng(3);
+    HighFlySim sim;
+    sim.init(frame.target, rng, 0, r);
+    // The cloud ahead shows for about 32 s before its whiteout: put that over the drift step.
+    HighFlySimTestAccess::set_fly_start(sim, drift_at + 20.0);
+    std::vector<DirtyRect> dirty;
+    bool busy_drift = false;
+    size_t missed = 0;
+    for (int i = 0; i < 6000; i++) {
+        // Where the towers and the clock were: each frame's dirty boxes must cover all of it,
+        // or the old pixels stay on screen as a strip.
+        std::vector<DirtyRect> was;
+        for (size_t t = 0; t < 2; t++) {
+            const DirtyRect b = sim.tower_box(t);
+            if (!b.empty()) {
+                was.push_back({b.x1 * 2, b.y1 * 2, b.x2 * 2 + 1, b.y2 * 2 + 1});
+            }
+        }
+        const DirtyRect clock_before = sim.clock_layout().bounds;
+        was.push_back(clock_before);
+        sim.step(100, frame.target, rng, r, dirty);
+        const bool drifted = !(sim.clock_layout().bounds == clock_before);
+        if (drifted) {
+            busy_drift = busy_drift || (sim.towers_visible() == 2 && sim.next_fly_s() < 32.0f);
+        }
+        for (const DirtyRect& w : was) {
+            for (int32_t y = std::max(0, w.y1); y <= std::min(239, w.y2); y++) {
+                for (int32_t x = std::max(0, w.x1); x <= std::min(399, w.x2); x++) {
+                    missed += box_covers(dirty, x, y) ? 0 : 1;
+                }
+            }
+        }
+        if (sim.fly_since_s() >= 0.0f) {
+            break; // the whiteout repaints everything anyway
+        }
+    }
+    CHECK(missed == 0);
+    CHECK(busy_drift);
+}
+
 TEST_CASE("the sun glows at the top centre", "[screensaver][highfly]") {
     SimFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
@@ -462,12 +541,17 @@ TEST_CASE("a tower visibly moves from the moment it appears until it leaves",
     const int grew = (later.y2 - later.y1) - (first.y2 - first.y1);
     CAPTURE(moved, grew);
     CHECK(std::max(moved, grew) >= 6);
-    // It keeps coming on and is gone within a few dozen seconds, not parked on the horizon.
+    // It keeps coming on and is gone within 40 s, not parked on the horizon. Leaving shows as
+    // the slot going empty, or, if the next tower takes the slot in the same frame, as the
+    // tower in it suddenly far smaller: a newcomer at the entry depth.
     bool left = false;
+    int32_t height = later.y2 - later.y1;
     for (int i = 0; i < 800 && !left; i++) {
         sim.step(50, frame.target, rng, r, dirty);
-        left = sim.tower_box(static_cast<size_t>(slot)).empty() ||
-               centre(sim.tower_box(static_cast<size_t>(slot))) == centre(first);
+        const DirtyRect now = sim.tower_box(static_cast<size_t>(slot));
+        const int32_t now_h = now.y2 - now.y1;
+        left = now.empty() || now_h * 10 < height * 7;
+        height = now_h;
     }
     CHECK(left);
 }
@@ -549,6 +633,59 @@ TEST_CASE("the fly-through interior stops at 62% of the way to blue-grey",
         CHECK(helix::ui::highfly_inside(scene, 0.0f) == scene);
         CHECK(helix::ui::highfly_inside(scene, 2.0f) == full);
     }
+}
+
+TEST_CASE("a fly-through renders its interior 62% of the way over the scene",
+          "[screensaver][highfly]") {
+    // Two runs from one seed, the second with its fly-through pushed past the end: at the
+    // hold, the first frame is the second's scene taken 62% of the way to the interior.
+    SimFrame with(400, 240, PixelFormat::XRGB8888);
+    SimFrame without(400, 240, PixelFormat::XRGB8888);
+    std::minstd_rand rng_a(3);
+    std::minstd_rand rng_b(3);
+    HighFlySim a;
+    HighFlySim b;
+    const ClockReading r = reading_at(10 * 3600);
+    a.init(with.target, rng_a, 3, r);
+    b.init(without.target, rng_b, 3, r);
+    HighFlySimTestAccess::set_fly_start(a, 40.0);
+    HighFlySimTestAccess::set_fly_start(b, 4000.0);
+    HighFlySimTestAccess::still_wisps(a);
+    std::vector<DirtyRect> dirty;
+    bool held = false;
+    for (int i = 0; i < 600 && !held; i++) {
+        a.step(100, with.target, rng_a, r, dirty);
+        b.step(100, without.target, rng_b, r, dirty);
+        held = a.fly_since_s() > 1.1f && a.fly_since_s() < 1.4f;
+    }
+    REQUIRE(held);
+    const PixelWriter wa(with.target);
+    const PixelWriter wb(without.target);
+    const DirtyRect clock = a.clock_layout().bounds;
+    const Rgb inside{200, 216, 230};
+    size_t checked = 0;
+    double whitened = 0.0;
+    for (int32_t y = 4; y < 236; y += 9) {
+        for (int32_t x = 4; x < 396; x += 11) {
+            if (x >= clock.x1 && x <= clock.x2 && y >= clock.y1 && y <= clock.y2) {
+                continue;
+            }
+            const Rgb pa = wa.get(x, y);
+            const Rgb pb = wb.get(x, y);
+            whitened += std::abs(pa.g - pb.g);
+            if (std::abs(inside.b - pb.b) < 40) {
+                continue; // too near the interior colour already to measure the share
+            }
+            const float share = (static_cast<float>(pa.b) - pb.b) / (inside.b - pb.b);
+            CAPTURE(x, y, static_cast<int>(pa.b), static_cast<int>(pb.b));
+            CHECK(share >= 0.59f);
+            CHECK(share <= 0.69f);
+            checked++;
+        }
+    }
+    CHECK(checked > 40);
+    // And the whiteout is there to see: the frames differ by many levels on average.
+    CHECK(whitened / 600.0 > 20.0);
 }
 
 TEST_CASE("a fly-through comes every one to two minutes", "[screensaver][highfly]") {

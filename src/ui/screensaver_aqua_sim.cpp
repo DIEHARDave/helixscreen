@@ -4,6 +4,7 @@
 
 #include "screensaver_aqua_sim.h"
 
+#include "screensaver_blur.h"
 #include "screensaver_buffer.h"
 #include "screensaver_fast_math.h"
 #include "screensaver_pixel_writer.h"
@@ -112,17 +113,6 @@ float rim_profile(float d) {
     const auto i = static_cast<size_t>(std::floor(d - XS[0]));
     const float f = d - XS[i];
     return YS[i] + (YS[i + 1] - YS[i]) * f;
-}
-
-/// Mean of `in` over a box `radius` either side, clamped at the ends.
-void box_filter(const float* in, float* out, int32_t n, int32_t radius) {
-    for (int32_t i = 0; i < n; i++) {
-        float sum = 0.0f;
-        for (int32_t k = -radius; k <= radius; k++) {
-            sum += in[std::clamp(i + k, 0, n - 1)];
-        }
-        out[i] = sum / static_cast<float>(2 * radius + 1);
-    }
 }
 
 bool same_face(const ClockReading& a, const ClockReading& b) {
@@ -929,8 +919,11 @@ DirtyRect AquaSim::paint_water(FrameTarget& frame) {
     // Below the near edge: near-black water lit faintly by the edge above it.
     float* smear = scratch_.data();
     float* rim = scratch_.data() + iw_;
-    box_filter(front_shade_.data(), smear, iw_, 7);
-    box_filter(front_shade_.data(), rim, iw_, 2);
+    float* tmp = scratch_.data() + 2 * iw_;
+    std::copy(front_shade_.begin(), front_shade_.end(), smear);
+    std::copy(front_shade_.begin(), front_shade_.end(), rim);
+    box_blur(smear, iw_, 1, 7, false, false, tmp, 1);
+    box_blur(rim, iw_, 1, 2, false, false, tmp, 1);
     for (int32_t x = 0; x < iw_; x++) {
         const float edge = renderer_.front_top_at(x);
         const float base = smear[x] * 0.25f;

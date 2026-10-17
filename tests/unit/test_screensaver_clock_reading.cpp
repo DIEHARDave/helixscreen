@@ -228,6 +228,24 @@ TEST_CASE("nine is six turned half a turn", "[screensaver][clock_reading]") {
           helix::ui::stroke_digit_distance(6, 0.5f, 0.5f));
 }
 
+TEST_CASE("a digit's halo spreads past its strokes and fades out", "[screensaver][clock_reading]") {
+    StrokeDigitSet thin;
+    helix::ui::build_stroke_digits(50, 0.06f, thin);
+    StrokeDigitSet halo;
+    helix::ui::build_stroke_halo(thin, 5, halo);
+    CHECK(halo.w == thin.w + 10);
+    CHECK(halo.h == thin.h + 10);
+    // Digit one's upright: covered under the stroke, still shaded a few px beside it, clear
+    // well away from it.
+    const auto x = static_cast<int32_t>((0.55f + 0.03f) * 50.0f) + 5;
+    const int32_t y = halo.h / 2;
+    CHECK(halo.at(1, x, y) > 120);
+    CHECK(halo.at(1, x + 4, y) > 30);
+    CHECK(halo.at(1, x + 4, y) < halo.at(1, x, y));
+    CHECK(halo.at(1, x + 12, y) == 0);
+    CHECK(halo.at(1, 0, y) == 0);
+}
+
 TEST_CASE("clear frees the coverage", "[screensaver][clock_reading]") {
     StrokeDigitSet set;
     helix::ui::build_stroke_digits(40, 0.1f, set);

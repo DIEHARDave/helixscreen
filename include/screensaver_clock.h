@@ -71,8 +71,22 @@ const lv_font_t* clock_font_fitting(int32_t height);
  * Removing old text is the scene's job: the caller repaints the old box before draw() when
  * the text changes or moves.
  */
+/// A soft shadow a SaverLabel draws under its text: the text in `color`, smeared `radius` px
+/// round in every direction at about `opa` all told.
+struct SaverLabelHalo {
+    Rgb color{};
+    lv_opa_t opa = LV_OPA_TRANSP;
+    int32_t radius = 0;
+};
+
 class SaverLabel {
   public:
+    /// Draws a soft shadow under the text from now on; the text then reaches `halo.radius`
+    /// px outside its box, which is what draw() adds to `dirty`.
+    void set_halo(const SaverLabelHalo& halo) {
+        halo_ = halo;
+    }
+
     /// Draws `text` into `box` if needed and adds `box` to `dirty` when it does. Returns true
     /// when it drew.
     bool draw(SaverCanvas& canvas, const std::string& text, const DirtyRect& box, Rgb color,
@@ -92,6 +106,7 @@ class SaverLabel {
   private:
     std::string text_;
     DirtyRect box_;
+    SaverLabelHalo halo_;
 };
 
 } // namespace helix::ui

@@ -14,6 +14,9 @@ namespace {
 
 /// The date block and AM/PM: the numerals' pale blue-white, a little more see-through.
 constexpr Rgb TEXT_COLOR{226, 238, 250};
+/// Their soft shadow, the numerals' deep blue.
+constexpr Rgb TEXT_HALO{10, 50, 92};
+constexpr lv_opa_t TEXT_HALO_OPA = LV_OPA_60;
 
 } // namespace
 
@@ -33,6 +36,10 @@ bool HighFlyScreensaver::on_start() {
     day_line_.reset();
     meridiem_.reset();
     texts_built_ = false;
+    const SaverLabelHalo halo{TEXT_HALO, TEXT_HALO_OPA, sim_.clock_layout().text_halo};
+    date_line_.set_halo(halo);
+    day_line_.set_halo(halo);
+    meridiem_.set_halo(halo);
     under_.reserve(SAVER_MAX_DIRTY_AREAS);
     std::vector<DirtyRect> dirty;
     draw_texts(dirty, dirty);

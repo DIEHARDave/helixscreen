@@ -4,6 +4,8 @@
 
 #include "screensaver_stroke_digits.h"
 
+#include "screensaver_blur.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -140,6 +142,46 @@ void build_stroke_digits(int32_t unit, float stroke, StrokeDigitSet& out) {
                 cov[static_cast<size_t>(y) * out.w + x] =
                     static_cast<uint8_t>(std::lround(std::clamp(edge, 0.0f, 1.0f) * 255.0f));
             }
+        }
+    }
+}
+
+void build_stroke_halo(const StrokeDigitSet& digits, int32_t radius, StrokeDigitSet& out) {
+    radius = std::max<int32_t>(1, radius);
+    out.w = digits.w + 2 * radius;
+    out.h = digits.h + 2 * radius;
+    out.coverage.assign(static_cast<size_t>(out.w) * out.h * 10, 0);
+    const int32_t grow = std::max<int32_t>(1, radius / 3);
+    const int32_t soften = std::max<int32_t>(1, radius / 2);
+    std::vector<float> grid(static_cast<size_t>(out.w) * out.h);
+    std::vector<float> wide(grid.size());
+    std::vector<float> tmp(grid.size());
+    for (int digit = 0; digit < 10; digit++) {
+        std::fill(grid.begin(), grid.end(), 0.0f);
+        for (int32_t y = 0; y < digits.h; y++) {
+            for (int32_t x = 0; x < digits.w; x++) {
+                grid[static_cast<size_t>(y + radius) * out.w + x + radius] =
+                    static_cast<float>(digits.at(digit, x, y)) / 255.0f;
+            }
+        }
+        // Widen the strokes so the blur leaves a body of shade behind them, not a faint rim.
+        for (int32_t y = 0; y < out.h; y++) {
+            for (int32_t x = 0; x < out.w; x++) {
+                float most = 0.0f;
+                for (int32_t dy = -grow; dy <= grow; dy++) {
+                    const int32_t yy = std::clamp(y + dy, 0, out.h - 1);
+                    for (int32_t dx = -grow; dx <= grow; dx++) {
+                        const int32_t xx = std::clamp(x + dx, 0, out.w - 1);
+                        most = std::max(most, grid[static_cast<size_t>(yy) * out.w + xx]);
+                    }
+                }
+                wide[static_cast<size_t>(y) * out.w + x] = most;
+            }
+        }
+        box_blur(wide.data(), out.w, out.h, soften, false, false, tmp.data(), 3);
+        uint8_t* cov = &out.coverage[static_cast<size_t>(digit) * out.w * out.h];
+        for (size_t i = 0; i < wide.size(); i++) {
+            cov[i] = static_cast<uint8_t>(std::lround(std::clamp(wide[i], 0.0f, 1.0f) * 255.0f));
         }
     }
 }

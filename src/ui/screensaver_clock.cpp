@@ -145,8 +145,10 @@ const lv_font_t* clock_font_fitting(int32_t height) {
 bool SaverLabel::draw(SaverCanvas& canvas, const std::string& text, const DirtyRect& box, Rgb color,
                       lv_opa_t opa, lv_text_align_t align, const std::vector<DirtyRect>& under,
                       std::vector<DirtyRect>& dirty) {
+    const int32_t reach = std::max<int32_t>(0, halo_.radius);
+    const DirtyRect outer{box.x1 - reach, box.y1 - reach, box.x2 + reach, box.y2 + reach};
     const bool covered = std::any_of(under.begin(), under.end(),
-                                     [&box](const DirtyRect& r) { return r.intersects(box); });
+                                     [&outer](const DirtyRect& r) { return r.intersects(outer); });
     if (text == text_ && box == box_ && !covered) {
         return false;
     }
@@ -172,11 +174,29 @@ bool SaverLabel::draw(SaverCanvas& canvas, const std::string& text, const DirtyR
     label.text_local = 1;
     const int32_t font_h = theme_manager_get_font_height(font);
     const int32_t top = box.y1 + std::max(0, (box.y2 - box.y1 + 1 - font_h) / 2);
+    const int32_t pad = std::max<int32_t>(0, halo_.radius);
+    const DirtyRect painted{box.x1 - pad, box.y1 - pad, box.x2 + pad, box.y2 + pad};
+    canvas.mark_dirty(painted.x1, painted.y1, painted.x2, painted.y2);
+    if (pad > 0 && halo_.opa > 0) {
+        // The text smeared round a ring and a half ring at low opacity reads as a soft shadow.
+        lv_draw_label_dsc_t shade = label;
+        shade.color = lv_color_make(halo_.color.r, halo_.color.g, halo_.color.b);
+        shade.opa = static_cast<lv_opa_t>(std::max(1, halo_.opa / 12));
+        constexpr int32_t RING[8][2] = {{2, 0}, {-2, 0}, {0, 2},  {0, -2},
+                                        {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
+        for (const int32_t step : {pad, std::max<int32_t>(1, pad / 2)}) {
+            for (const auto& d : RING) {
+                const int32_t ox = d[0] * step / 2;
+                const int32_t oy = d[1] * step / 2;
+                lv_area_t at{box.x1 + ox, top + oy, box.x2 + ox, box.y2 + oy};
+                lv_draw_label(&layer, &shade, &at);
+            }
+        }
+    }
     lv_area_t area{box.x1, top, box.x2, box.y2};
-    canvas.mark_dirty(box.x1, box.y1, box.x2, box.y2);
     lv_draw_label(&layer, &label, &area);
     canvas.finish_layer(&layer);
-    dirty.push_back(box);
+    dirty.push_back(painted);
     return true;
 }
 

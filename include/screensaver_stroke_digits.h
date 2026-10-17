@@ -47,4 +47,13 @@ struct StrokeDigitSet {
  */
 void build_stroke_digits(int32_t unit, float stroke, StrokeDigitSet& out);
 
+/**
+ * @brief A soft halo for each of `digits`: its coverage widened by a third of `radius` and
+ * blurred by half of it, in boxes `radius` px larger on every side
+ *
+ * Built once per glyph size; a clock draws it under the digits in a dark colour so pale
+ * strokes stay readable over bright clouds.
+ */
+void build_stroke_halo(const StrokeDigitSet& digits, int32_t radius, StrokeDigitSet& out);
+
 } // namespace helix::ui

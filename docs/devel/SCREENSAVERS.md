@@ -297,7 +297,9 @@ white haze over the bottom rows.
   from a polar lookup sampled bilinearly, and it clears. Over the clock the two together cover
   at most `HIGHFLY_CLOCK_COVER_MAX` of the scene, so the numerals stay readable.
 - The clock: thin stroke numerals at the cloud line with superscript seconds, AM/PM under
-  them and a two-line date (or the print's ETA and time left) on the left.
+  them and a two-line date (or the print's ETA and time left) on the left. Every part has a
+  soft deep-blue shadow so it reads over white cloud: under the numerals a halo baked once per
+  glyph size (`build_stroke_halo`), under the text lines a `SaverLabelHalo`.
 - A frame repaints the band of rows from the far billows or the deck down, plus boxes above it
   for the clock, towers and the approaching cloud; a fly-through repaints the whole screen. The
   last rung keeps the scene still and redraws only the clock.

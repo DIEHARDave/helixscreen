@@ -4,6 +4,7 @@
 
 #include "screensaver_highfly_sim.h"
 
+#include "screensaver_blur.h"
 #include "screensaver_buffer.h"
 #include "screensaver_fast_math.h"
 #include "screensaver_motion.h"
@@ -49,6 +50,10 @@ constexpr Rgb C_FOG{30, 110, 162};
 constexpr Rgb INSIDE{200, 216, 230};
 constexpr Rgb NUMERAL{226, 238, 250};
 constexpr float NUMERAL_OPACITY = 0.85f;
+/// The numerals' soft shadow: the sky's deep blue, barely there over sky, enough to lift the
+/// pale strokes off white cloud.
+constexpr Rgb HALO{10, 50, 92};
+constexpr float HALO_OPACITY = 0.45f;
 constexpr float DIGIT_STROKE = 0.06f;
 
 const HeightfieldFog FOG{25.0f, 300.0f, 0.8f, false};
@@ -97,47 +102,6 @@ Rgb shade_to_rgb(float s) {
 }
 
 // ---------- Grid helpers ----------
-
-/// Box blur of radius `r`, three passes, each axis wrapping or clamping at its ends.
-void box_blur(std::vector<float>& a, int32_t w, int32_t h, int32_t r, bool wrap_x, bool wrap_y,
-              std::vector<float>& tmp) {
-    if (r <= 0) {
-        return;
-    }
-    tmp.resize(a.size());
-    const float inv = 1.0f / static_cast<float>(2 * r + 1);
-    const auto pass = [&](bool along_x) {
-        const int32_t len = along_x ? w : h;
-        const int32_t lines = along_x ? h : w;
-        const bool wrap = along_x ? wrap_x : wrap_y;
-        for (int32_t l = 0; l < lines; l++) {
-            const auto at = [&](int32_t i) -> float {
-                if (wrap) {
-                    i = ((i % len) + len) % len;
-                } else {
-                    i = std::clamp(i, 0, len - 1);
-                }
-                return along_x ? a[static_cast<size_t>(l) * w + i]
-                               : a[static_cast<size_t>(i) * w + l];
-            };
-            float sum = 0.0f;
-            for (int32_t k = -r; k <= r; k++) {
-                sum += at(k);
-            }
-            for (int32_t i = 0; i < len; i++) {
-                const size_t o =
-                    along_x ? static_cast<size_t>(l) * w + i : static_cast<size_t>(i) * w + l;
-                tmp[o] = sum * inv;
-                sum += at(i + r + 1) - at(i - r);
-            }
-        }
-        a.swap(tmp);
-    };
-    for (int pass_n = 0; pass_n < 3; pass_n++) {
-        pass(true);
-        pass(false);
-    }
-}
 
 float stddev(const std::vector<float>& a) {
     double sum = 0.0;
@@ -663,16 +627,22 @@ HighFlyClockLayout layout_highfly_clock(int32_t w, int32_t h, int32_t dx, int32_
     const int32_t date_y = y1 + px(0.10f * static_cast<float>(gh));
     l.date_line = {lx1, date_y, lx2, date_y + line_h - 1};
     l.day_line = {lx1, date_y + line_h, lx2, date_y + 2 * line_h - 1};
+    l.halo = std::max(3, px(0.12f * u));
+    l.second_halo = std::max(2, px(0.12f * u * 0.6f));
     l.bounds = {};
     for (const DirtyRect& d : l.digits) {
-        l.bounds.add(d);
+        l.bounds.add(d.x1 - l.halo, d.y1 - l.halo, d.x2 + l.halo, d.y2 + l.halo);
     }
     for (const DirtyRect& d : l.seconds) {
-        l.bounds.add(d);
+        l.bounds.add(d.x1 - l.second_halo, d.y1 - l.second_halo, d.x2 + l.second_halo,
+                     d.y2 + l.second_halo);
     }
-    l.bounds.add(l.meridiem);
-    l.bounds.add(l.date_line);
-    l.bounds.add(l.day_line);
+    // The text lines' soft shadow reaches this far round their boxes.
+    l.text_halo = std::max(2, px(0.04f * u));
+    for (const DirtyRect& d : {l.meridiem, l.date_line, l.day_line}) {
+        l.bounds.add(d.x1 - l.text_halo, d.y1 - l.text_halo, d.x2 + l.text_halo,
+                     d.y2 + l.text_halo);
+    }
     return l;
 }
 
@@ -785,6 +755,8 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     update_clock_layout();
     build_stroke_digits(clock_.digit_unit, DIGIT_STROKE, digits_);
     build_stroke_digits(clock_.second_unit, DIGIT_STROKE, second_digits_);
+    build_stroke_halo(digits_, clock_.halo, digit_halo_);
+    build_stroke_halo(second_digits_, clock_.second_halo, second_halo_);
 
     FrameTarget out = frame;
     paint_all(out, reading);
@@ -1250,9 +1222,10 @@ void HighFlySim::compose(int32_t from) {
         // The wisp table repeats every 64 rows.
         const auto shift = static_cast<float>(std::fmod(t_ * 120.0, 64.0));
         // Over the clock the interior and the wisps together stay translucent enough to read
-        // the numerals through, easing to no limit a few pixels outside it.
+        // the numerals through, easing to no limit over a tenth of the screen round it, so the
+        // limit never shows as an edge.
         const DirtyRect clock = clock_box_internal();
-        const float feather = 6.0f;
+        const float feather = 0.1f * static_cast<float>(ih_);
         for (int32_t y = 0; y < ih_; y++) {
             Rgb* row = &frame_[static_cast<size_t>(y) * iw_];
             for (int32_t x = 0; x < iw_; x++) {
@@ -1264,7 +1237,7 @@ void HighFlySim::compose(int32_t from) {
                 const float a = std::clamp(1.5f * n_wisp, 0.0f, 1.0f) * rf * amt * 0.7f;
                 const float out_x = static_cast<float>(std::max({clock.x1 - x, x - clock.x2, 0}));
                 const float out_y = static_cast<float>(std::max({clock.y1 - y, y - clock.y2, 0}));
-                const float near = std::clamp(1.0f - std::max(out_x, out_y) / feather, 0.0f, 1.0f);
+                const float near = smoothstep01(1.0f - std::hypot(out_x, out_y) / feather);
                 const float most = 1.0f - near * (1.0f - HIGHFLY_CLOCK_COVER_MAX);
                 row[x] = highfly_inside(row[x], amt, a, most);
             }
@@ -1274,49 +1247,81 @@ void HighFlySim::compose(int32_t from) {
 
 void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) const {
     PixelWriter writer(frame);
-    const auto glyph = [&](const StrokeDigitSet& set, const DirtyRect& box, int digit) {
+    const auto glyph = [&](const StrokeDigitSet& set, int32_t ox, int32_t oy, int digit, Rgb color,
+                           float opacity) {
         for (int32_t gy = 0; gy < set.h; gy++) {
             for (int32_t gx = 0; gx < set.w; gx++) {
                 const uint8_t cov = set.at(digit, gx, gy);
-                const int32_t x = box.x1 + gx;
-                const int32_t y = box.y1 + gy;
+                const int32_t x = ox + gx;
+                const int32_t y = oy + gy;
                 if (cov == 0 || !writer.contains(x, y)) {
                     continue;
                 }
-                const float a = NUMERAL_OPACITY * static_cast<float>(cov) / 255.0f;
-                writer.put_dithered(x, y, mix_rgb(writer.get(x, y), NUMERAL, a));
+                const float a = opacity * static_cast<float>(cov) / 255.0f;
+                writer.put_dithered(x, y, mix_rgb(writer.get(x, y), color, a));
             }
         }
     };
     const int32_t hour = reading.time.hour;
     const int32_t minute = reading.time.minute;
     const int32_t second = reading.time.second;
-    glyph(digits_, clock_.digits[0], hour / 10 % 10);
-    glyph(digits_, clock_.digits[1], hour % 10);
-    glyph(digits_, clock_.digits[3], minute / 10);
-    glyph(digits_, clock_.digits[4], minute % 10);
-    glyph(second_digits_, clock_.seconds[0], second / 10);
-    glyph(second_digits_, clock_.seconds[1], second % 10);
+    struct Place {
+        const StrokeDigitSet& set;
+        const StrokeDigitSet& halo;
+        int32_t pad;
+        const DirtyRect& box;
+        int digit;
+    };
+    const Place places[] = {
+        {digits_, digit_halo_, clock_.halo, clock_.digits[0], hour / 10 % 10},
+        {digits_, digit_halo_, clock_.halo, clock_.digits[1], hour % 10},
+        {digits_, digit_halo_, clock_.halo, clock_.digits[3], minute / 10},
+        {digits_, digit_halo_, clock_.halo, clock_.digits[4], minute % 10},
+        {second_digits_, second_halo_, clock_.second_halo, clock_.seconds[0], second / 10},
+        {second_digits_, second_halo_, clock_.second_halo, clock_.seconds[1], second % 10},
+    };
+    // Every shadow first, so none falls across a neighbour's strokes.
+    for (const Place& p : places) {
+        glyph(p.halo, p.box.x1 - p.pad, p.box.y1 - p.pad, p.digit, HALO, HALO_OPACITY);
+    }
 
-    // The colon: two round dots.
+    // The colon: two round dots, each with a soft shadow of its own.
     const DirtyRect& c = clock_.digits[2];
     const float r = std::max(1.0f, 0.05f * static_cast<float>(clock_.digit_unit));
+    const auto halo = static_cast<float>(clock_.halo);
     const float cx = static_cast<float>(c.x1 + c.x2 + 1) / 2.0f;
-    for (const float share : {0.35f, 0.75f}) {
-        const float cy = static_cast<float>(c.y1) + static_cast<float>(c.y2 - c.y1 + 1) * share;
-        for (int32_t y = static_cast<int32_t>(cy - r - 1.0f);
-             y <= static_cast<int32_t>(cy + r + 1.0f); y++) {
-            for (int32_t x = static_cast<int32_t>(cx - r - 1.0f);
-                 x <= static_cast<int32_t>(cx + r + 1.0f); x++) {
-                if (!writer.contains(x, y)) {
-                    continue;
-                }
-                const float d = std::hypot(static_cast<float>(x) + 0.5f - cx,
-                                           static_cast<float>(y) + 0.5f - cy);
-                const float cov = std::clamp(r - d + 0.5f, 0.0f, 1.0f);
-                if (cov > 0.0f) {
-                    writer.put_dithered(x, y,
-                                        mix_rgb(writer.get(x, y), NUMERAL, NUMERAL_OPACITY * cov));
+    for (const bool shadow : {true, false}) {
+        if (!shadow) {
+            for (const Place& p : places) {
+                glyph(p.set, p.box.x1, p.box.y1, p.digit, NUMERAL, NUMERAL_OPACITY);
+            }
+        }
+        const float reach = shadow ? r + halo : r;
+        for (const float share : {0.35f, 0.75f}) {
+            const float cy = static_cast<float>(c.y1) + static_cast<float>(c.y2 - c.y1 + 1) * share;
+            for (int32_t y = static_cast<int32_t>(cy - reach - 1.0f);
+                 y <= static_cast<int32_t>(cy + reach + 1.0f); y++) {
+                for (int32_t x = static_cast<int32_t>(cx - reach - 1.0f);
+                     x <= static_cast<int32_t>(cx + reach + 1.0f); x++) {
+                    if (!writer.contains(x, y)) {
+                        continue;
+                    }
+                    const float d = std::hypot(static_cast<float>(x) + 0.5f - cx,
+                                               static_cast<float>(y) + 0.5f - cy);
+                    if (shadow) {
+                        const float fall =
+                            std::clamp((reach - d) / std::max(halo, 1.0f), 0.0f, 1.0f);
+                        if (fall > 0.0f) {
+                            writer.put_dithered(
+                                x, y, mix_rgb(writer.get(x, y), HALO, HALO_OPACITY * fall * fall));
+                        }
+                        continue;
+                    }
+                    const float cov = std::clamp(r - d + 0.5f, 0.0f, 1.0f);
+                    if (cov > 0.0f) {
+                        writer.put_dithered(
+                            x, y, mix_rgb(writer.get(x, y), NUMERAL, NUMERAL_OPACITY * cov));
+                    }
                 }
             }
         }
@@ -1479,7 +1484,8 @@ size_t HighFlySim::heap_bytes() const {
                band_.heap_bytes() + buffer_bytes(wisp_) + buffer_bytes(polar_) +
                buffer_bytes(col_u0_) + buffer_bytes(col_fu_) + buffer_bytes(tower_entries_) +
                buffer_bytes(fly_starts_) + buffer_bytes(boxes_) + buffer_bytes(last_boxes_) +
-               digits_.heap_bytes() + second_digits_.heap_bytes();
+               digits_.heap_bytes() + second_digits_.heap_bytes() + digit_halo_.heap_bytes() +
+               second_halo_.heap_bytes();
     for (const HighFlyTexture& t : layers_) {
         n += t.heap_bytes();
     }
@@ -1513,6 +1519,8 @@ void HighFlySim::clear() {
     release_buffer(last_boxes_);
     digits_.clear();
     second_digits_.clear();
+    digit_halo_.clear();
+    second_halo_.clear();
     towers_ = {};
     painted_ = false;
 }

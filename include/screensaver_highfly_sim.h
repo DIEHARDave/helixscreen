@@ -116,9 +116,12 @@ struct HighFlyClockLayout {
     int32_t second_unit = 0;           ///< seconds' glyph unit
     std::array<DirtyRect, 5> digits{}; ///< H H : M M, the hours with a leading zero
     std::array<DirtyRect, 2> seconds{};
-    DirtyRect meridiem;  ///< under the seconds
-    DirtyRect date_line; ///< left block, first line
-    DirtyRect day_line;  ///< left block, second line
+    int32_t halo = 0; ///< soft shadow round the numerals, px either side
+    int32_t second_halo = 0;
+    int32_t text_halo = 0; ///< soft shadow round the date block and AM/PM, px either side
+    DirtyRect meridiem;    ///< under the seconds
+    DirtyRect date_line;   ///< left block, first line
+    DirtyRect day_line;    ///< left block, second line
     DirtyRect bounds;
 };
 HighFlyClockLayout layout_highfly_clock(int32_t w, int32_t h, int32_t dx, int32_t dy);
@@ -278,6 +281,8 @@ class HighFlySim {
     HighFlyClockLayout clock_;
     StrokeDigitSet digits_;
     StrokeDigitSet second_digits_;
+    StrokeDigitSet digit_halo_; ///< digits_ widened and blurred, drawn under them
+    StrokeDigitSet second_halo_;
     ClockReading shown_;
 };
 
