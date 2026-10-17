@@ -41,7 +41,6 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
-#include <iterator>
 
 namespace helix {
 
@@ -821,7 +820,7 @@ std::vector<PhysicalHead> physical_heads(const std::vector<ToolInfo>& tools) {
         }
         if (shared == heads.end()) {
             heads.push_back({named ? extruder : std::nullopt, {}});
-            shared = std::prev(heads.end());
+            shared = heads.end() - 1;
         }
         shared->tool_indices.push_back(static_cast<int>(i));
     }
