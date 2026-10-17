@@ -13,6 +13,7 @@
 
 #include "misc/lv_timer_private.h"
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <iterator>
@@ -251,45 +252,35 @@ class StarfieldScreensaverTestAccess {
 
 class PipesScreensaverTestAccess {
   public:
-    struct PipeState {
-        int x;
-        int y;
-        int z;
-        int dir;
-        int segment_count;
-        bool alive;
-
-        bool operator==(const PipeState& o) const {
-            return x == o.x && y == o.y && z == o.z && dir == o.dir &&
-                   segment_count == o.segment_count && alive == o.alive;
-        }
-    };
-
-    static int max_segments() {
-        return PipesScreensaver::MAX_SEGMENTS;
+    static const helix::ui::PipesSim& sim(const PipesScreensaver& ss) {
+        return ss.sim_;
     }
 
-    static int total_segments(const PipesScreensaver& ss) {
-        return ss.total_segments_;
+    static std::array<helix::ui::PipeState, helix::ui::PIPES_MAX_ACTIVE>
+    pipes(const PipesScreensaver& ss) {
+        return ss.sim_.screen().pipes();
     }
 
-    static void set_total_segments(PipesScreensaver& ss, int total) {
-        ss.total_segments_ = total;
-    }
-
-    static std::vector<PipeState> pipes(const PipesScreensaver& ss) {
-        std::vector<PipeState> out;
-        for (const auto& p : ss.pipes_) {
-            out.push_back(
-                {p.pos.x, p.pos.y, p.pos.z, static_cast<int>(p.dir), p.segment_count, p.alive});
-        }
-        return out;
-    }
-
-    /// True when both savers hold the same grid occupancy, pipes and camera.
+    /// True when both savers hold the same grid occupancy (every node), pipes, view and phase.
     static bool same_scene(const PipesScreensaver& a, const PipesScreensaver& b) {
-        return std::memcmp(a.grid_, b.grid_, sizeof(a.grid_)) == 0 &&
-               std::memcmp(a.cam_pos_, b.cam_pos_, sizeof(a.cam_pos_)) == 0 && pipes(a) == pipes(b);
+        const helix::ui::PipesGrid& ga = a.sim_.screen().grid();
+        const helix::ui::PipesGrid& gb = b.sim_.screen().grid();
+        const helix::ui::PipeGridDims da = ga.dims();
+        const helix::ui::PipeGridDims db = gb.dims();
+        if (da.x != db.x || da.y != db.y || da.z != db.z) {
+            return false;
+        }
+        for (int z = 0; z < da.z; z++) {
+            for (int y = 0; y < da.y; y++) {
+                for (int x = 0; x < da.x; x++) {
+                    if (ga.empty({x, y, z}) != gb.empty({x, y, z})) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return pipes(a) == pipes(b) && a.sim_.yrot_deg() == b.sim_.yrot_deg() &&
+               a.sim_.phase() == b.sim_.phase();
     }
 };
 
