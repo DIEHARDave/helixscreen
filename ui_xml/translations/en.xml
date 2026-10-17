@@ -1031,8 +1031,8 @@
   <translation tag="Endless Spool backups cleared" en="Endless Spool backups cleared"/>
   <translation tag="Endless Spool is configured in its package, not from here" en="Endless Spool is configured in its package, not from here"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" en="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout"/>
+  <translation tag="Endless Spool is turned off on this MMU" en="Endless Spool is turned off on this MMU"/>
   <translation tag="Endless Spool state unknown" en="Endless Spool state unknown"/>
-  <translation tag="Endless spool is turned off on this MMU" en="Endless spool is turned off on this MMU"/>
   <translation tag="Ensure Happy Hare or AFC is installed and configured" en="Ensure Happy Hare or AFC is installed and configured"/>
   <translation tag="Enter Current PIN" en="Enter Current PIN"/>
   <translation tag="Enter G-code command..." en="Enter G-code command..."/>
@@ -1265,6 +1265,7 @@
   <translation tag="Filament Mapping" en="Filament Mapping"/>
   <translation tag="Filament Mapping is not available on this device." en="Filament Mapping is not available on this device."/>
   <translation tag="Filament Mapping is unavailable" en="Filament Mapping is unavailable"/>
+  <translation tag="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" en="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer"/>
   <translation tag="Filament Runout" en="Filament Runout"/>
   <translation tag="Filament Sensor" en="Filament Sensor"/>
   <translation tag="Filament System Error" en="Filament System Error"/>
@@ -1292,7 +1293,6 @@
   <translation tag="Filament is still present after the cut — the blade may be dull or misaligned" en="Filament is still present after the cut — the blade may be dull or misaligned"/>
   <translation tag="Filament jam detected" en="Filament jam detected"/>
   <translation tag="Filament jammed at the extruder gear" en="Filament jammed at the extruder gear"/>
-  <translation tag="Filament mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" en="Filament mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer"/>
   <translation tag="Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head." en="Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head."/>
   <translation tag="Filament never reached the CFS hub sensor" en="Filament never reached the CFS hub sensor"/>
   <translation tag="Filament not set" en="Filament not set"/>
@@ -1302,7 +1302,7 @@
   <translation tag="Filament ran out - nothing at the toolhead and the print is paused." en="Filament ran out - nothing at the toolhead and the print is paused."/>
   <translation tag="Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume." en="Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume."/>
   <translation tag="Filament ran out at the toolhead" en="Filament ran out at the toolhead"/>
-  <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." en="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume."/>
+  <translation tag="Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume." en="Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume."/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." en="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume."/>
   <translation tag="Filament reload failed" en="Filament reload failed"/>
   <translation tag="Filament runout" en="Filament runout"/>
@@ -1746,7 +1746,7 @@
   <translation tag="Load Filament" en="Load Filament"/>
   <translation tag="Load Profile" en="Load Profile"/>
   <translation tag="Load a filament first before trying to unload" en="Load a filament first before trying to unload"/>
-  <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" en="Load a new spool in this slot, or turn on auto-refill to switch to a matching one"/>
+  <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" en="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one"/>
   <translation tag="Load cancelled: nozzle target dropped" en="Load cancelled: nozzle target dropped"/>
   <translation tag="Load complete" en="Load complete"/>
   <translation tag="Load failed" en="Load failed"/>
@@ -2525,7 +2525,7 @@
   <translation tag="RFCOMM connect failed: " en="RFCOMM connect failed: "/>
   <translation tag="RFID reader malfunction (left)" en="RFID reader malfunction (left)"/>
   <translation tag="RFID reader malfunction (right)" en="RFID reader malfunction (right)"/>
-  <translation tag="RFID, auto-refill, nozzle and link care" en="RFID, auto-refill, nozzle and link care"/>
+  <translation tag="RFID, Auto-Refill, nozzle and link care" en="RFID, Auto-Refill, nozzle and link care"/>
   <translation tag="RH" en="RH"/>
   <translation tag="RSS" en="RSS"/>
   <translation tag="RSS:" en="RSS:"/>
@@ -3433,12 +3433,12 @@
   <translation tag="Turbo" en="Turbo"/>
   <translation tag="Turbo Inner" en="Turbo Inner"/>
   <translation tag="Turbo Outer" en="Turbo Outer"/>
+  <translation tag="Turn Endless Spool on, then set the Backup Gate" en="Turn Endless Spool on, then set the Backup Gate"/>
   <translation tag="Turn LED off when the print ends" en="Turn LED off when the print ends"/>
   <translation tag="Turn Off" en="Turn Off"/>
   <translation tag="Turn Off WiFi?" en="Turn Off WiFi?"/>
   <translation tag="Turn On" en="Turn On"/>
   <translation tag="Turn On LEDs" en="Turn On LEDs"/>
-  <translation tag="Turn endless spool on, then set the backup gate" en="Turn endless spool on, then set the backup gate"/>
   <translation tag="Turn off bed check" en="Turn off bed check"/>
   <translation tag="Turn off detection" en="Turn off detection"/>
   <translation tag="Turn on the lights your light buttons control" en="Turn on the lights your light buttons control"/>

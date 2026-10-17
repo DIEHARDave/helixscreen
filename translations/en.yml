@@ -1100,8 +1100,8 @@ translations:
   Endless Spool backups cleared: Endless Spool backups cleared
   Endless Spool is configured in its package, not from here: Endless Spool is configured in its package, not from here
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout
+  Endless Spool is turned off on this MMU: Endless Spool is turned off on this MMU
   Endless Spool state unknown: Endless Spool state unknown
-  Endless spool is turned off on this MMU: Endless spool is turned off on this MMU
   Ensure Happy Hare or AFC is installed and configured: Ensure Happy Hare or AFC is installed and configured
   Enter Current PIN: Enter Current PIN
   Enter G-code command...: Enter G-code command...
@@ -1346,6 +1346,7 @@ translations:
   Filament Mapping: Filament Mapping
   Filament Mapping is not available on this device.: Filament Mapping is not available on this device.
   Filament Mapping is unavailable: Filament Mapping is unavailable
+  Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer
   Filament Runout: Filament Runout
   Filament Sensor: Filament Sensor
   Filament System Error: Filament System Error
@@ -1376,7 +1377,6 @@ translations:
   Filament is still present after the cut — the blade may be dull or misaligned: Filament is still present after the cut — the blade may be dull or misaligned
   Filament jam detected: Filament jam detected
   Filament jammed at the extruder gear: Filament jammed at the extruder gear
-  Filament mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Filament mapping isn't supported on this printer, so the print uses the tools assigned on the printer
   Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head.: Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head.
   Filament never reached the CFS hub sensor: Filament never reached the CFS hub sensor
   Filament not set: Filament not set
@@ -1387,7 +1387,7 @@ translations:
   ? Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   : Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   Filament ran out at the toolhead: Filament ran out at the toolhead
-  Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.
+  Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.
   Filament reload failed: Filament reload failed
   Filament runout: Filament runout
@@ -1875,7 +1875,7 @@ translations:
   Load Failed: Load Failed
   Load Filament: Load Filament
   Load a filament first before trying to unload: Load a filament first before trying to unload
-  Load a new spool in this slot, or turn on auto-refill to switch to a matching one: Load a new spool in this slot, or turn on auto-refill to switch to a matching one
+  Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one
   'Load cancelled: nozzle target dropped': 'Load cancelled: nozzle target dropped'
   Load complete: Load complete
   Load failed: Load failed
@@ -2700,7 +2700,7 @@ translations:
   'RFCOMM connect failed: ': 'RFCOMM connect failed: '
   RFID reader malfunction (left): RFID reader malfunction (left)
   RFID reader malfunction (right): RFID reader malfunction (right)
-  RFID, auto-refill, nozzle and link care: RFID, auto-refill, nozzle and link care
+  RFID, Auto-Refill, nozzle and link care: RFID, Auto-Refill, nozzle and link care
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3729,12 +3729,12 @@ translations:
   Turbo: Turbo
   Turbo Inner: Turbo Inner
   Turbo Outer: Turbo Outer
+  Turn Endless Spool on, then set the Backup Gate: Turn Endless Spool on, then set the Backup Gate
   'Turn LED off when the print ends': 'Turn LED off when the print ends'
   Turn Off: Turn Off
   Turn Off WiFi?: Turn Off WiFi?
   Turn On: Turn On
   Turn On LEDs: Turn On LEDs
-  Turn endless spool on, then set the backup gate: Turn endless spool on, then set the backup gate
   Turn off bed check: Turn off bed check
   Turn off detection: Turn off detection
   Turn on the lights your light buttons control: Turn on the lights your light buttons control

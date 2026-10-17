@@ -1031,8 +1031,8 @@
   <translation tag="Endless Spool backups cleared" es="Reservas de la bobina infinita borradas"/>
   <translation tag="Endless Spool is configured in its package, not from here" es="La bobina infinita se configura en su plugin, no aquí"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" es="La bobina infinita está activada, pero no hay dos ranuras con el mismo filamento, así que no se activará ningún cambio al agotarse"/>
+  <translation tag="Endless Spool is turned off on this MMU" es="La bobina infinita está desactivada en este MMU"/>
   <translation tag="Endless Spool state unknown" es="Estado de la bobina infinita desconocido"/>
-  <translation tag="Endless spool is turned off on this MMU" es="La bobina infinita está desactivada en este MMU"/>
   <translation tag="Ensure Happy Hare or AFC is installed and configured" es="Asegúrese de que Happy Hare o AFC esté instalado y configurado"/>
   <translation tag="Enter Current PIN" es="Introduce el PIN actual"/>
   <translation tag="Enter G-code command..." es="Ingrese comando G-code..."/>
@@ -1265,6 +1265,7 @@
   <translation tag="Filament Mapping" es="Mapeo de Filamento"/>
   <translation tag="Filament Mapping is not available on this device." es="El mapeo de filamento no está disponible en este dispositivo."/>
   <translation tag="Filament Mapping is unavailable" es="El mapeo de filamento no está disponible"/>
+  <translation tag="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" es="Esta impresora no admite el mapeo de filamento, así que la impresión usa las herramientas asignadas en la impresora"/>
   <translation tag="Filament Runout" es="Filamento Agotado"/>
   <translation tag="Filament Sensor" es="Sensor de Filamento"/>
   <translation tag="Filament System Error" es="Error del sistema de filamento"/>
@@ -1292,7 +1293,6 @@
   <translation tag="Filament is still present after the cut — the blade may be dull or misaligned" es="Todavía hay filamento después del corte. La cuchilla puede estar desafilada o mal alineada"/>
   <translation tag="Filament jam detected" es="Atasco de filamento detectado"/>
   <translation tag="Filament jammed at the extruder gear" es="Filamento atascado en el engranaje del extrusor"/>
-  <translation tag="Filament mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" es="Esta impresora no admite el mapeo de filamento, así que la impresión usa las herramientas asignadas en la impresora"/>
   <translation tag="Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head." es="Debe haber filamento cargado en el extrusor y la placa puesta, sin nada que estorbe al cabezal."/>
   <translation tag="Filament never reached the CFS hub sensor" es="El filamento nunca llegó al sensor del concentrador del CFS"/>
   <translation tag="Filament not set" es="Filamento no asignado"/>
@@ -1302,7 +1302,7 @@
   <translation tag="Filament ran out - nothing at the toolhead and the print is paused." es="El filamento se agotó - no queda nada en el cabezal y la impresión está en pausa."/>
   <translation tag="Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume." es="El filamento se agotó y el CFS no encontró ninguna bobina compatible a la que cambiar. Carga una bobina del mismo material y color, y reanuda."/>
   <translation tag="Filament ran out at the toolhead" es="El filamento se agotó en el cabezal"/>
-  <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." es="El filamento se agotó. El rellenado automático está desactivado, así que el CFS no cambiará de bobina por sí solo. Carga filamento y reanuda."/>
+  <translation tag="Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume." es="El filamento se agotó. El rellenado automático está desactivado, así que el CFS no cambiará de bobina por sí solo. Carga filamento y reanuda."/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." es="El filamento se agotó. El CFS sabe qué bobinas coinciden, pero esas ranuras están vacías. Cargue una de ellas y reanude."/>
   <translation tag="Filament reload failed" es="Error al recargar el filamento"/>
   <translation tag="Filament runout" es="Filamento agotado"/>
@@ -1746,7 +1746,7 @@
   <translation tag="Load Filament" es="Cargar Filamento"/>
   <translation tag="Load Profile" es="Cargar perfil"/>
   <translation tag="Load a filament first before trying to unload" es="Cargue primero filamento antes de intentar descargar"/>
-  <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" es="Cargue una bobina nueva en esta ranura, o active el rellenado automático para cambiar a una equivalente"/>
+  <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" es="Cargue una bobina nueva en esta ranura, o active el rellenado automático para cambiar a una equivalente"/>
   <translation tag="Load cancelled: nozzle target dropped" es="Carga cancelada: el objetivo de la boquilla bajó"/>
   <translation tag="Load complete" es="Carga completa"/>
   <translation tag="Load failed" es="Error al cargar"/>
@@ -1754,7 +1754,7 @@
   <translation tag="Load filament first" es="Cargue filamento primero"/>
   <translation tag="Load or unload filament." es="Carga o descarga filamento."/>
   <translation tag="Load the required filaments or start anyway?" es="¿Cargar los filamentos requeridos o iniciar de todos modos?"/>
-  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." es="Carga, descarga e intercambia bobinas. Ve tu sistema multi-filamento de un vistazo, asigna filamento a las herramientas y monitoriza los sensores de agotamiento."/>
+  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." es="Carga, descarga e intercambia bobinas. Ve tu sistema multi-filamento de un vistazo, mapea el filamento a las herramientas y monitoriza los sensores de agotamiento."/>
   <translation tag="Load..." es="Cargar..."/>
   <translation tag="Loaded" es="Cargado"/>
   <translation tag="Loading" es="Cargando"/>
@@ -2525,7 +2525,7 @@
   <translation tag="RFCOMM connect failed: " es="Error al conectar RFCOMM: "/>
   <translation tag="RFID reader malfunction (left)" es="Fallo del lector RFID (izquierdo)"/>
   <translation tag="RFID reader malfunction (right)" es="Fallo del lector RFID (derecho)"/>
-  <translation tag="RFID, auto-refill, nozzle and link care" es="RFID, rellenado automático, cuidado de boquilla y enlace"/>
+  <translation tag="RFID, Auto-Refill, nozzle and link care" es="RFID, rellenado automático, cuidado de boquilla y enlace"/>
   <translation tag="RH" es="HR"/>
   <translation tag="RSS" es="RSS"/>
   <translation tag="RSS:" es="RSS:"/>
@@ -3433,12 +3433,12 @@
   <translation tag="Turbo" es="Turbo"/>
   <translation tag="Turbo Inner" es="Turbo interior"/>
   <translation tag="Turbo Outer" es="Turbo exterior"/>
+  <translation tag="Turn Endless Spool on, then set the Backup Gate" es="Active la bobina infinita y luego configure el Gate de respaldo"/>
   <translation tag="Turn LED off when the print ends" es="Apagar el LED al terminar la impresión"/>
   <translation tag="Turn Off" es="Apagar"/>
   <translation tag="Turn Off WiFi?" es="¿Desactivar WiFi?"/>
   <translation tag="Turn On" es="Encender"/>
   <translation tag="Turn On LEDs" es="Encender los LED"/>
-  <translation tag="Turn endless spool on, then set the backup gate" es="Active la bobina infinita y luego configure el Gate de respaldo"/>
   <translation tag="Turn off bed check" es="Desactivar comprobación de cama"/>
   <translation tag="Turn off detection" es="Desactivar detección"/>
   <translation tag="Turn on the lights your light buttons control" es="Enciende las luces que controlan tus botones de luz"/>
@@ -3673,7 +3673,7 @@
   <translation tag="Your printer at a glance" es="Tu impresora de un vistazo"/>
   <translation tag="Your printer has an automatic filament changer" es="Tu impresora tiene un cambiador de filamento automático"/>
   <translation tag="Your printer was offline during setup, so hardware options were skipped. Set them up now?" es="Su impresora estaba desconectada durante la configuración, por lo que se omitieron las opciones de hardware. ¿Configurarlas ahora?"/>
-  <translation tag="Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide." es="Su línea {} pasa ajustes por herramienta que el mapeo de filamento no cambia ({}). Es posible que una herramienta a la que asigne filamento no se caliente. Consulte «Filament Mapping» en la guía del usuario."/>
+  <translation tag="Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide." es="Su línea {} pasa ajustes por herramienta que el mapeo de filamento no cambia ({}). Es posible que una herramienta a la que mapee filamento no se caliente. Consulte «Filament Mapping» en la guía del usuario."/>
   <translation tag="Z" es="Z"/>
   <translation tag="Z Calibration" es="Calibración Z"/>
   <translation tag="Z Movement" es="Movimiento Z"/>

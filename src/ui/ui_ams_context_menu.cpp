@@ -1014,7 +1014,7 @@ void AmsContextMenu::configure_dropdowns() {
                                    get_item_index())) {
             populate_backup_dropdown();
             lv_subject_copy_string(&slot_backup_label_subject_,
-                                   helix::ui::backup_lane_text(backend_->lane_noun()).c_str());
+                                   helix::ui::backup_lane_text(menu_lane_noun()).c_str());
             if (backup_row) {
                 lv_obj_remove_flag(backup_row, LV_OBJ_FLAG_HIDDEN);
             }

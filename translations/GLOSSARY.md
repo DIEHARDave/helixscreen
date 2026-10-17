@@ -105,7 +105,7 @@ translation agents (the relevant column is injected into their prompts).
 | English | de | es | fr | it | ja | pt | ru | zh |
 |---|---|---|---|---|---|---|---|---|
 | Endless Spool | Endlosspule | Bobina infinita | Bobine infinie | Bobina infinita | エンドレススプール | Carretel infinito | Бесконечная катушка | 无限料盘 |
-| Filament Mapping | Filament-Zuordnung | Mapeo de Filamento | Mappage du filament | Mappatura filamento | フィラメントマッピング | Mapeamento de Filamento | Назначение филамента | 耗材映射 |
+| Filament Mapping | Filament-Zuordnung | Mapeo de Filamento | Mappage du filament | Mappatura filamento | フィラメントマッピング | Mapeamento de Filamento | Сопоставление филамента | 耗材映射 |
 | Assigned Tool | Zugewiesenes Werkzeug | Herramienta asignada | Outil attribué | Strumento assegnato | 割り当てツール | Ferramenta atribuída | Назначенный инструмент | 已分配工具 |
 
 ### Actions

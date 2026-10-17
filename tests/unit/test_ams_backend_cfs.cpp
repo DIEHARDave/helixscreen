@@ -4967,7 +4967,7 @@ TEST_CASE("CFS runout: 'disable material automatic refill' raises one runout fau
     CHECK(ev->severity == helix::ErrorSeverity::CRITICAL);
     CHECK(ev->title == std::string("Filament runout"));
     // This branch must say WHY nothing happened — auto-refill is switched off.
-    CHECK(ev->detail.find("Auto-refill is off") != std::string::npos);
+    CHECK(ev->detail.find("Auto-Refill is off") != std::string::npos);
     CHECK(ev->raw_detail == "disable material automatic refill");
     REQUIRE(ev->recovery_actions.size() == 2);
     CHECK(ev->recovery_actions[0].gcode == "RESUME");
@@ -5382,7 +5382,7 @@ TEST_CASE("CFS runout: terse 'no auto refill' wording is recognized", "[ams][cfs
     auto ev = backend.classify_error("// no auto refill", paused_ctx());
     REQUIRE(ev.has_value());
     CHECK(ev->title == std::string("Filament runout"));
-    CHECK(ev->detail.find("Auto-refill is off") != std::string::npos);
+    CHECK(ev->detail.find("Auto-Refill is off") != std::string::npos);
     CHECK(ev->raw_detail == "no auto refill");
     REQUIRE(ev->recovery_actions.size() == 2);
 }
@@ -5440,7 +5440,7 @@ TEST_CASE("CFS runout: matcher survives the sentence being reworded", "[ams][cfs
     SECTION("refill-off branch, alternate phrasing") {
         auto ev = backend.classify_error("// Material automatic refill is disabled", paused_ctx());
         REQUIRE(ev.has_value());
-        CHECK(ev->detail.find("Auto-refill is off") != std::string::npos);
+        CHECK(ev->detail.find("Auto-Refill is off") != std::string::npos);
     }
     SECTION("bare line with no // prefix still matches") {
         auto ev = backend.classify_error("no identical supplies", paused_ctx());

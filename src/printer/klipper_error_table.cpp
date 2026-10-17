@@ -143,7 +143,7 @@ static const std::unordered_map<std::string, KlipperErrorEntry> KlipperErrorTabl
       AmsAlertLevel::SLOT, fmt_unit_slot}},
     {"key839",
      {TR_NOOP("Filament ran out"),
-      TR_NOOP("Load a new spool in this slot, or turn on auto-refill to switch to a matching one"),
+      TR_NOOP("Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one"),
       AmsAlertLevel::SLOT, fmt_unit_slot}},
     {"key840",
      {TR_NOOP("CFS is busy"),

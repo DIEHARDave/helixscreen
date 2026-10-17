@@ -10,7 +10,7 @@ When you start a multi-color or multi-tool print, HelixScreen compares what the 
 
 This check runs automatically. You don't turn it on; it's part of starting any print on a system with a multi-slot filament backend (AMS, CFS, IFS, Box Turtle, Happy Hare, etc.). On a single-extruder printer with no such system, there are no slots to compare against, so this dialog never appears — filament presence there is handled by your runout sensor instead.
 
-**Printing from bypass is the other exception.** When bypass is engaged, filament goes straight to the extruder without passing through any slot, so there is no slot for the check to look at and every tool would read as unfed. Rather than warn about all of them, HelixScreen skips the slot checks for as long as bypass stays engaged — and tells you so: the file details show a **Bypass active** note (and, for a single-tool file, hide the filament mapping card entirely — the lanes aren't feeding this print, so there is nothing to assign), and if the material you set on the external spool doesn't match what the file was sliced for (for example, the file says ASA but the spool holds PLA), you get one **Material Mismatch** warning naming the spool. A same-material *grade* difference there — file sliced ASA-GF, spool holding plain ASA — raises the [Filament Grade Mismatch](#the-filament-grade-mismatch-dialog) warning below instead. Tap **Start Anyway** to print regardless. Disengage bypass and the slot checks come back on the next print — you don't have to restart anything.
+**Printing from bypass is the other exception.** When bypass is engaged, filament goes straight to the extruder without passing through any slot, so there is no slot for the check to look at and every tool would read as unfed. Rather than warn about all of them, HelixScreen skips the slot checks for as long as bypass stays engaged — and tells you so: the file details show a **Bypass active** note (and, for a single-tool file, hide the Filament Mapping card entirely — the lanes aren't feeding this print, so there is nothing to assign), and if the material you set on the external spool doesn't match what the file was sliced for (for example, the file says ASA but the spool holds PLA), you get one **Material Mismatch** warning naming the spool. A same-material *grade* difference there — file sliced ASA-GF, spool holding plain ASA — raises the [Filament Grade Mismatch](#the-filament-grade-mismatch-dialog) warning below instead. Tap **Start Anyway** to print regardless. Disengage bypass and the slot checks come back on the next print — you don't have to restart anything.
 
 ### What the check looks at
 
@@ -47,7 +47,7 @@ Below the rows, a short explanation calls out the first blocking problem, for ex
 | **Cancel** | Backs out without printing. Load or map the missing filament, then start again. |
 | **Print Anyway** | Starts the print despite the warning. Use this only if you know the check is wrong (for example, filament is physically loaded but not yet detected). |
 
-> **Note:** An empty slot is the only thing that raises this dialog. A **material or color mismatch does not stop the print** — those are advisory. They show up as a warning icon on the filament mapping card when you pick the file (see [Filament Mapping](filament.md#filament-mapping)), and if the dialog is already open for an empty slot, mismatched tools show an amber warning glyph on their row too.
+> **Note:** An empty slot is the only thing that raises this dialog. A **material or color mismatch does not stop the print** — those are advisory. They show up as a warning icon on the Filament Mapping card when you pick the file (see [Filament Mapping](filament.md#filament-mapping)), and if the dialog is already open for an empty slot, mismatched tools show an amber warning glyph on their row too.
 
 > **Tip:** If you meant to load that filament, tap **Cancel**, sort out the slot from the [AMS panel](filament.md#ams--multi-material-systems), and start the print again — the check re-runs each time. It also re-runs the moment your filament system's state changes, so loading a slot (or engaging bypass) while the file is still open clears the warning without reopening it.
 
@@ -65,7 +65,7 @@ It lists each unmatched tool with the color and material the file wants:
 
 | Button | Action |
 |--------|--------|
-| **Cancel** | Backs out without printing. Assign the tool from [Filament Mapping](filament.md#filament-mapping), then start again. |
+| **Cancel** | Backs out without printing. Map the tool to a slot in [Filament Mapping](filament.md#filament-mapping), then start again. |
 | **Start Anyway** | Starts the print regardless. Your printer's firmware decides what to do when it reaches that tool. |
 
 The name is a little misleading — despite "Color Mismatch", a merely *wrong* color never raises it. It only appears when a tool has no matching filament at all.

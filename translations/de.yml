@@ -1145,8 +1145,8 @@ translations:
   Endless Spool backups cleared: Endlosspulen-Reserven gelöscht
   Endless Spool is configured in its package, not from here: Die Endlosspule wird im zugehörigen Plugin konfiguriert, nicht hier
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Die Endlosspule ist an, aber es gibt keine zwei Slots mit passendem Filament, daher wird bei Filamentende nichts gewechselt
+  Endless Spool is turned off on this MMU: 'Die Endlosspule ist auf diesem MMU deaktiviert'
   Endless Spool state unknown: 'Endlosspule: Status unbekannt'
-  Endless spool is turned off on this MMU: 'Die Endlosspule ist auf diesem MMU deaktiviert'
   Ensure Happy Hare or AFC is installed and configured: Stellen Sie sicher, dass Happy Hare oder AFC installiert und konfiguriert ist
   Enter Current PIN: Aktuelle PIN eingeben
   Enter G-code command...: G-Code-Befehl eingeben...
@@ -1402,6 +1402,7 @@ translations:
   Filament Mapping: Filament-Zuordnung
   Filament Mapping is not available on this device.: Die Filament-Zuordnung ist auf diesem Gerät nicht verfügbar.
   Filament Mapping is unavailable: Filament-Zuordnung ist nicht verfügbar
+  Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Filament-Zuordnung wird von diesem Drucker nicht unterstützt, daher verwendet der Druck die am Drucker zugewiesenen Werkzeuge
   Filament Runout: Filament aufgebraucht
   Filament Sensor: Filamentsensor
   Filament System Error: Filamentsystemfehler
@@ -1433,7 +1434,6 @@ translations:
   Filament is still present after the cut — the blade may be dull or misaligned: Nach dem Schnitt ist noch Filament vorhanden. Die Klinge ist möglicherweise stumpf oder falsch ausgerichtet
   Filament jam detected: Filamentstau erkannt
   Filament jammed at the extruder gear: Filament am Extruderrad verklemmt
-  Filament mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Filament-Zuordnung wird von diesem Drucker nicht unterstützt, daher verwendet der Druck die am Drucker zugewiesenen Werkzeuge
   Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head.: 'Filament muss im Extruder geladen und die Druckplatte aufgesetzt sein, mit nichts im Weg des Werkzeugkopfs.'
   Filament never reached the CFS hub sensor: Filament hat den CFS-Hub-Sensor nie erreicht
   Filament not set: 'Filament nicht gesetzt'
@@ -1444,7 +1444,7 @@ translations:
   ? Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   : 'Filament zu Ende und das CFS hat keine passende Spule zum Wechseln gefunden. Lade eine Spule mit gleichem Material und gleicher Farbe und setze dann fort.'
   Filament ran out at the toolhead: 'Filament am Werkzeugkopf zu Ende'
-  Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'Filament zu Ende. Automatisches Nachfüllen ist aus, daher wechselt das CFS die Spule nicht von selbst. Filament laden und dann fortsetzen.'
+  Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'Filament zu Ende. Automatisches Nachfüllen ist aus, daher wechselt das CFS die Spule nicht von selbst. Filament laden und dann fortsetzen.'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: Das Filament ist zu Ende. Das CFS weiß, welche Spulen passen, aber diese Slots sind leer. Laden Sie eine davon und setzen Sie dann fort.
   Filament reload failed: Erneutes Laden des Filaments fehlgeschlagen
   Filament runout: Filament aufgebraucht
@@ -1943,7 +1943,7 @@ translations:
   Load Failed: 'Laden fehlgeschlagen'
   Load Filament: Filament laden
   Load a filament first before trying to unload: Laden Sie zuerst Filament, bevor Sie entladen
-  Load a new spool in this slot, or turn on auto-refill to switch to a matching one: Neue Spule in diesen Slot einlegen oder das automatische Nachfüllen aktivieren, um auf eine passende zu wechseln
+  Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Neue Spule in diesen Slot einlegen oder das automatische Nachfüllen aktivieren, um auf eine passende zu wechseln
   'Load cancelled: nozzle target dropped': 'Laden abgebrochen: Düsen-Zieltemperatur gesunken'
   Load complete: 'Laden abgeschlossen'
   Load failed: Laden fehlgeschlagen
@@ -2782,7 +2782,7 @@ translations:
   'RFCOMM connect failed: ': 'RFCOMM-Verbindung fehlgeschlagen: '
   RFID reader malfunction (left): Fehlfunktion des RFID-Lesers (links)
   RFID reader malfunction (right): Fehlfunktion des RFID-Lesers (rechts)
-  RFID, auto-refill, nozzle and link care: RFID, automatisches Nachfüllen, Düsen- und Verbindungspflege
+  RFID, Auto-Refill, nozzle and link care: RFID, automatisches Nachfüllen, Düsen- und Verbindungspflege
   RH: rF
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3846,12 +3846,12 @@ translations:
   Turbo: Turbo
   Turbo Inner: Turbo Innen
   Turbo Outer: Turbo Außen
+  Turn Endless Spool on, then set the Backup Gate: 'Aktivieren Sie die Endlosspule und legen Sie dann das Backup-Gate fest'
   'Turn LED off when the print ends': 'LED am Druckende ausschalten'
   Turn Off: Ausschalten
   Turn Off WiFi?: WiFi ausschalten?
   Turn On: Einschalten
   Turn On LEDs: 'LEDs einschalten'
-  Turn endless spool on, then set the backup gate: 'Aktivieren Sie die Endlosspule und legen Sie dann das Backup-Gate fest'
   Turn off bed check: 'Bettprüfung ausschalten'
   Turn off detection: Erkennung ausschalten
   Turn on the lights your light buttons control: Schaltet die Lichter ein, die Ihre Lichttasten steuern

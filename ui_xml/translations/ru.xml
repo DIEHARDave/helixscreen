@@ -841,8 +841,8 @@
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." ru="Не удалось проверить статус Spoolman. Moonraker может ещё перезапускаться."/>
   <translation tag="Couldn&apos;t assign the tool" ru="Не удалось назначить инструмент"/>
   <translation tag="Couldn&apos;t clear the printer&apos;s gate map" ru="Не удалось очистить карту шлюзов принтера"/>
-  <translation tag="Couldn&apos;t map filament: internal error" ru="Не удалось назначить филамент: внутренняя ошибка"/>
-  <translation tag="Couldn&apos;t map filament: no temp directory available" ru="Не удалось назначить филамент: нет доступной временной директории"/>
+  <translation tag="Couldn&apos;t map filament: internal error" ru="Не удалось сопоставить филамент: внутренняя ошибка"/>
+  <translation tag="Couldn&apos;t map filament: no temp directory available" ru="Не удалось сопоставить филамент: нет доступной временной директории"/>
   <translation tag="Couldn&apos;t save the material name" ru="Не удалось сохранить название материала"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ru="Не удалось сохранить карту шлюзов принтера"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ru="Не удалось сохранить в Spoolman. На этом принтере ничего не изменено."/>
@@ -1073,8 +1073,8 @@
   <translation tag="Endless Spool backups cleared" ru="Резервы бесконечной катушки очищены"/>
   <translation tag="Endless Spool is configured in its package, not from here" ru="Бесконечная катушка настраивается в своём плагине, не здесь"/>
   <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" ru="Бесконечная катушка включена, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает"/>
+  <translation tag="Endless Spool is turned off on this MMU" ru="Бесконечная катушка отключена на этом MMU"/>
   <translation tag="Endless Spool state unknown" ru="Бесконечная катушка: состояние неизвестно"/>
-  <translation tag="Endless spool is turned off on this MMU" ru="Бесконечная катушка отключена на этом MMU"/>
   <translation tag="Ensure Happy Hare or AFC is installed and configured" ru="Убедитесь, что Happy Hare или AFC установлен и настроен"/>
   <translation tag="Enter Current PIN" ru="Введите текущий PIN"/>
   <translation tag="Enter G-code command..." ru="Введите команду G-code..."/>
@@ -1189,7 +1189,7 @@
   <translation tag="Failed to delete spool" ru="Не удалось удалить катушку"/>
   <translation tag="Failed to disable WiFi: {}" ru="Не удалось выключить WiFi: {}"/>
   <translation tag="Failed to discard recovery data: {}" ru="Не удалось удалить данные восстановления: {}"/>
-  <translation tag="Failed to download G-code for Filament Mapping: {}" ru="Не удалось скачать G-code для назначения филамента: {}"/>
+  <translation tag="Failed to download G-code for Filament Mapping: {}" ru="Не удалось скачать G-code для сопоставления филамента: {}"/>
   <translation tag="Failed to download G-code for modification: {}" ru="Не удалось скачать G-code для изменения: {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." ru="Не удалось скачать helixscreen.conf.&#10;Проверьте подключение принтера."/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." ru="Не удалось скачать moonraker.conf.&#10;Проверьте подключение принтера."/>
@@ -1221,7 +1221,7 @@
   <translation tag="Failed to open temperature graph" ru="Не удалось открыть график температуры"/>
   <translation tag="Failed to pause print: {}" ru="Не удалось приостановить печать: {}"/>
   <translation tag="Failed to purge: {}" ru="Не удалось прочистить: {}"/>
-  <translation tag="Failed to read G-code for Filament Mapping" ru="Не удалось прочитать G-code для назначения филамента"/>
+  <translation tag="Failed to read G-code for Filament Mapping" ru="Не удалось прочитать G-code для сопоставления филамента"/>
   <translation tag="Failed to read config." ru="Не удалось прочитать конфигурацию."/>
   <translation tag="Failed to read config. Check connection." ru="Не удалось прочитать конфигурацию. Проверьте подключение."/>
   <translation tag="Failed to read moonraker.conf." ru="Не удалось прочитать moonraker.conf."/>
@@ -1234,7 +1234,7 @@
   <translation tag="Failed to restart Moonraker." ru="Не удалось перезапустить Moonraker."/>
   <translation tag="Failed to restart: {}" ru="Не удалось перезапустить: {}"/>
   <translation tag="Failed to resume: {}" ru="Не удалось возобновить: {}"/>
-  <translation tag="Failed to rewrite G-code for Filament Mapping: {}" ru="Не удалось переписать G-code для назначения филамента: {}"/>
+  <translation tag="Failed to rewrite G-code for Filament Mapping: {}" ru="Не удалось переписать G-code для сопоставления филамента: {}"/>
   <translation tag="Failed to save LED configuration" ru="Не удалось сохранить настройки LED"/>
   <translation tag="Failed to save WiFi network" ru="Не удалось сохранить сеть WiFi"/>
   <translation tag="Failed to save config." ru="Не удалось сохранить конфигурацию."/>
@@ -1304,9 +1304,10 @@
   <translation tag="Filament Humidity" ru="Влажность филамента"/>
   <translation tag="Filament In The Toolhead" ru="Филамент в печатающей головке"/>
   <translation tag="Filament Jam" ru="Затор филамента"/>
-  <translation tag="Filament Mapping" ru="Назначение филамента"/>
-  <translation tag="Filament Mapping is not available on this device." ru="Назначение филамента недоступно на этом устройстве."/>
-  <translation tag="Filament Mapping is unavailable" ru="Назначение филамента недоступно"/>
+  <translation tag="Filament Mapping" ru="Сопоставление филамента"/>
+  <translation tag="Filament Mapping is not available on this device." ru="Сопоставление филамента недоступно на этом устройстве."/>
+  <translation tag="Filament Mapping is unavailable" ru="Сопоставление филамента недоступно"/>
+  <translation tag="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" ru="Этот принтер не поддерживает сопоставление филамента, поэтому печать использует инструменты, назначенные на принтере"/>
   <translation tag="Filament Runout" ru="Окончание филамента"/>
   <translation tag="Filament Sensor" ru="Датчик филамента"/>
   <translation tag="Filament System Error" ru="Ошибка системы филамента"/>
@@ -1334,7 +1335,6 @@
   <translation tag="Filament is still present after the cut — the blade may be dull or misaligned" ru="После реза филамент остался. Возможно, лезвие затупилось или смещено"/>
   <translation tag="Filament jam detected" ru="Обнаружен затор филамента"/>
   <translation tag="Filament jammed at the extruder gear" ru="Филамент застрял в шестерне экструдера"/>
-  <translation tag="Filament mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" ru="Этот принтер не поддерживает назначение филамента, поэтому печать использует инструменты, назначенные на принтере"/>
   <translation tag="Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head." ru="В экструдере должен быть филамент, стол установлен, и ничто не мешает печатающей головке."/>
   <translation tag="Filament never reached the CFS hub sensor" ru="Филамент не дошёл до датчика хаба CFS"/>
   <translation tag="Filament not set" ru="Филамент не задан"/>
@@ -1344,7 +1344,7 @@
   <translation tag="Filament ran out - nothing at the toolhead and the print is paused." ru="Филамент закончился - у печатающей головки ничего нет, печать приостановлена."/>
   <translation tag="Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume." ru="Филамент закончился, и CFS не нашла подходящей катушки для замены. Загрузите катушку того же материала и цвета и продолжите печать."/>
   <translation tag="Filament ran out at the toolhead" ru="Филамент закончился у печатающей головки"/>
-  <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." ru="Филамент закончился. Автопополнение выключено, поэтому CFS не сменит катушку сам. Загрузите филамент и продолжите печать."/>
+  <translation tag="Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume." ru="Филамент закончился. Автопополнение выключено, поэтому CFS не сменит катушку сам. Загрузите филамент и продолжите печать."/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." ru="Филамент закончился. CFS знает, какие катушки подходят, но эти слоты пусты. Загрузите одну из них, затем продолжите печать."/>
   <translation tag="Filament reload failed" ru="Не удалось повторно подать филамент"/>
   <translation tag="Filament runout" ru="Окончание филамента"/>
@@ -1791,7 +1791,7 @@
   <translation tag="Load Filament" ru="Загрузить филамент"/>
   <translation tag="Load Profile" ru="Загрузить профиль"/>
   <translation tag="Load a filament first before trying to unload" ru="Сначала загрузите филамент, прежде чем пытаться его выгрузить"/>
-  <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" ru="Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую"/>
+  <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" ru="Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую"/>
   <translation tag="Load cancelled: nozzle target dropped" ru="Загрузка отменена: цель сопла снижена"/>
   <translation tag="Load complete" ru="Загрузка завершена"/>
   <translation tag="Load failed" ru="Ошибка загрузки"/>
@@ -1799,7 +1799,7 @@
   <translation tag="Load filament first" ru="Сначала загрузите филамент"/>
   <translation tag="Load or unload filament." ru="Загружайте или выгружайте филамент."/>
   <translation tag="Load the required filaments or start anyway?" ru="Загрузить нужные филаменты или начать без них?"/>
-  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." ru="Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, назначайте филамент инструментам и отслеживайте датчики окончания филамента."/>
+  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." ru="Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте филамент с инструментами и отслеживайте датчики окончания филамента."/>
   <translation tag="Load..." ru="Загрузить..."/>
   <translation tag="Loaded" ru="Загружен"/>
   <translation tag="Loading" ru="Загрузка"/>
@@ -1896,7 +1896,7 @@
   <translation tag="Manual: the ramp has stopped at your value" ru="Вручную: рампа остановлена на вашем значении"/>
   <translation tag="Manually clear the jam and retry the operation" ru="Устраните затор вручную и повторите операцию"/>
   <translation tag="Manually pull the filament back through the connector" ru="Вытяните филамент вручную через разъём"/>
-  <translation tag="Map Filament…" ru="Назначить филамент…"/>
+  <translation tag="Map Filament…" ru="Сопоставить филамент…"/>
   <translation tag="Map to closest colors with matching material" ru="Подобрать ближайшие цвета с подходящим материалом"/>
   <translation tag="Mapping Error" ru="Ошибка привязки"/>
   <translation tag="Marginal" ru="Допустимо"/>
@@ -2579,7 +2579,7 @@
   <translation tag="RFCOMM connect failed: " ru="Не удалось подключиться по RFCOMM: "/>
   <translation tag="RFID reader malfunction (left)" ru="Неисправность RFID-считывателя (левый)"/>
   <translation tag="RFID reader malfunction (right)" ru="Неисправность RFID-считывателя (правый)"/>
-  <translation tag="RFID, auto-refill, nozzle and link care" ru="RFID, автопополнение, уход за соплом и связью"/>
+  <translation tag="RFID, Auto-Refill, nozzle and link care" ru="RFID, автопополнение, уход за соплом и связью"/>
   <translation tag="RH" ru="RH"/>
   <translation tag="RSS" ru="RSS"/>
   <translation tag="RSS:" ru="RSS:"/>
@@ -3019,7 +3019,7 @@
   <translation tag="Soft" ru="Мягкий"/>
   <translation tag="Software Updates" ru="Обновления ПО"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." ru="Некоторые филаменты не соответствуют замыслу слайсера."/>
-  <translation tag="Some mapped slots are short on filament:" ru="В некоторых назначенных слотах мало филамента:"/>
+  <translation tag="Some mapped slots are short on filament:" ru="В некоторых сопоставленных слотах мало филамента:"/>
   <translation tag="Some settings will take effect after restart." ru="Некоторые настройки вступят в силу после перезапуска."/>
   <translation tag="Something on the bed?" ru="Что-то на столе?"/>
   <translation tag="Sound" ru="Звук"/>
@@ -3435,8 +3435,8 @@
   <translation tag="Tips" ru="Советы"/>
   <translation tag="Tips database format error" ru="Ошибка формата базы данных советов"/>
   <translation tag="Tips database not found" ru="База данных советов не найдена"/>
-  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally." ru="Чтобы назначить филамент, HelixScreen переписывает файл задания перед печатью. Moonraker этого принтера слишком старый, чтобы плагин HelixPrint потом восстановил исходное имя файла, поэтому выполненное задание отображается под изменённым именем. Само назначение филамента работает нормально."/>
-  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." ru="Чтобы назначить филамент, HelixScreen переписывает файл задания перед печатью. Без плагина HelixPrint в историю печати попадает изменённая копия, поэтому выполненные задания отображаются под именами вроде modified_1730824_benchy.gcode вместо выбранного файла.&#10;&#10;Установка плагина занимает немного времени и не требует перезапуска."/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally." ru="Чтобы сопоставить филамент, HelixScreen переписывает файл задания перед печатью. Moonraker этого принтера слишком старый, чтобы плагин HelixPrint потом восстановил исходное имя файла, поэтому выполненное задание отображается под изменённым именем. Само сопоставление филамента работает нормально."/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." ru="Чтобы сопоставить филамент, HelixScreen переписывает файл задания перед печатью. Без плагина HelixPrint в историю печати попадает изменённая копия, поэтому выполненные задания отображаются под именами вроде modified_1730824_benchy.gcode вместо выбранного файла.&#10;&#10;Установка плагина занимает немного времени и не требует перезапуска."/>
   <translation tag="Toggle" ru="Переключить"/>
   <translation tag="Toggle (fire-and-forget)" ru="Переключение (без отслеживания)"/>
   <translation tag="Toggle AFC LED strip" ru="Переключить LED-ленту AFC"/>
@@ -3493,12 +3493,12 @@
   <translation tag="Turbo" ru="Турбо"/>
   <translation tag="Turbo Inner" ru="Турбо (внутренний)"/>
   <translation tag="Turbo Outer" ru="Турбо (внешний)"/>
+  <translation tag="Turn Endless Spool on, then set the Backup Gate" ru="Включите бесконечную катушку, затем задайте резервный шлюз"/>
   <translation tag="Turn LED off when the print ends" ru="Выключать светодиод по окончании печати"/>
   <translation tag="Turn Off" ru="Выключить"/>
   <translation tag="Turn Off WiFi?" ru="Выключить WiFi?"/>
   <translation tag="Turn On" ru="Включить"/>
   <translation tag="Turn On LEDs" ru="Включить LED"/>
-  <translation tag="Turn endless spool on, then set the backup gate" ru="Включите бесконечную катушку, затем задайте резервный шлюз"/>
   <translation tag="Turn off bed check" ru="Отключить проверку стола"/>
   <translation tag="Turn off detection" ru="Отключить обнаружение"/>
   <translation tag="Turn on the lights your light buttons control" ru="Включает свет, которым управляют кнопки света"/>
@@ -3561,7 +3561,7 @@
   <translation tag="Unloading filament..." ru="Выгрузка филамента..."/>
   <translation tag="Unloads After Print" ru="Выгрузка после печати"/>
   <translation tag="Unlock" ru="Разблокировать"/>
-  <translation tag="Unmapped" ru="Не назначен"/>
+  <translation tag="Unmapped" ru="Не сопоставлен"/>
   <translation tag="Unmount" ru="Снять"/>
   <translation tag="Unretract Extra" ru="Дополнительная подача"/>
   <translation tag="Unretract Speed" ru="Скорость возврата"/>
@@ -3733,7 +3733,7 @@
   <translation tag="Your printer at a glance" ru="Ваш принтер одним взглядом"/>
   <translation tag="Your printer has an automatic filament changer" ru="Ваш принтер оснащён автоматическим сменщиком филамента"/>
   <translation tag="Your printer was offline during setup, so hardware options were skipped. Set them up now?" ru="Принтер был не в сети во время настройки, поэтому параметры оборудования пропущены. Настроить их сейчас?"/>
-  <translation tag="Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide." ru="Строка {} передаёт настройки для отдельных инструментов, которые назначение филамента не меняет ({}). Инструмент, которому вы назначите филамент, может не нагреться. См. раздел «Filament Mapping» в руководстве пользователя."/>
+  <translation tag="Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide." ru="Строка {} передаёт настройки для отдельных инструментов, которые сопоставление филамента не меняет ({}). Инструмент, с которым вы сопоставите филамент, может не нагреться. См. раздел «Filament Mapping» в руководстве пользователя."/>
   <translation tag="Z" ru="Z"/>
   <translation tag="Z Calibration" ru="Калибровка Z"/>
   <translation tag="Z Movement" ru="Движение Z"/>

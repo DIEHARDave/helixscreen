@@ -1070,8 +1070,8 @@ translations:
   Endless Spool backups cleared: エンドレススプールの予備を消去しました
   Endless Spool is configured in its package, not from here: エンドレススプールはプラグイン側で設定します
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: エンドレススプールはオンですが、フィラメントが一致するスロットが2つないため、フィラメント切れになっても何も切り替わりません
+  Endless Spool is turned off on this MMU: 'この MMU ではエンドレススプールが無効です'
   Endless Spool state unknown: エンドレススプールの状態は不明です
-  Endless spool is turned off on this MMU: 'この MMU ではエンドレススプールが無効です'
   Ensure Happy Hare or AFC is installed and configured: Happy Hare または AFC がインストールされ、設定されていることを確認してください
   Enter Current PIN: 現在の PIN を入力
   Enter G-code command...: G-code コマンドを入力...
@@ -1308,6 +1308,7 @@ translations:
   Filament Mapping: フィラメントマッピング
   Filament Mapping is not available on this device.: このデバイスではフィラメントマッピングを利用できません。
   Filament Mapping is unavailable: フィラメントマッピングは利用できません
+  Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: このプリンターはフィラメントマッピングに対応していないため、プリンターで割り当てられたツールで印刷します
   Filament Runout: フィラメント切れ
   Filament Sensor: フィラメントセンサー
   Filament System Error: フィラメントシステムエラー
@@ -1338,7 +1339,6 @@ translations:
   Filament is still present after the cut — the blade may be dull or misaligned: 切断後もフィラメントが残っています。刃が摩耗しているか、位置がずれている可能性があります
   Filament jam detected: フィラメントの詰まりを検出しました
   Filament jammed at the extruder gear: エクストルーダーギアでフィラメントが詰まりました
-  Filament mapping isn't supported on this printer, so the print uses the tools assigned on the printer: このプリンターはフィラメントマッピングに対応していないため、プリンターで割り当てられたツールで印刷します
   Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head.: 'エクストルーダーにフィラメントが装填され、ビルドプレートが取り付けられ、ツールヘッドの邪魔になる物がないことを確認してください。'
   Filament never reached the CFS hub sensor: フィラメントが CFS ハブセンサーに到達しませんでした
   Filament not set: 'フィラメント未設定'
@@ -1349,7 +1349,7 @@ translations:
   ? Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   : 'フィラメントが切れましたが、CFSは切り替え可能な一致するスプールを見つけられませんでした。同じ材料と色のスプールを装填してから再開してください。'
   Filament ran out at the toolhead: 'ツールヘッドでフィラメントが切れました'
-  Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'フィラメントが切れました。自動補充がオフのため、CFSは自動でスプールを切り替えません。フィラメントを装填してから再開してください。'
+  Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'フィラメントが切れました。自動補充がオフのため、CFSは自動でスプールを切り替えません。フィラメントを装填してから再開してください。'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: フィラメントが切れました。CFSは適合するスプールを認識していますが、該当するスロットは空です。いずれかを装填してから再開してください。
   Filament reload failed: フィラメントの再装填に失敗しました
   Filament runout: フィラメント切れ
@@ -1816,7 +1816,7 @@ translations:
   Load Failed: '装填に失敗しました'
   Load Filament: フィラメントを装填
   Load a filament first before trying to unload: 排出する前にまずフィラメントを装填してください
-  Load a new spool in this slot, or turn on auto-refill to switch to a matching one: このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください
+  Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください
   'Load cancelled: nozzle target dropped': '装填をキャンセル: ノズルの目標温度が下がりました'
   Load complete: 'ロード完了'
   Load failed: 装填に失敗しました
@@ -2622,7 +2622,7 @@ translations:
   'RFCOMM connect failed: ': 'RFCOMM 接続に失敗しました: '
   RFID reader malfunction (left): RFID リーダーの異常（左）
   RFID reader malfunction (right): RFID リーダーの異常（右）
-  RFID, auto-refill, nozzle and link care: RFID、自動補充、ノズルと接続のメンテナンス
+  RFID, Auto-Refill, nozzle and link care: RFID、自動補充、ノズルと接続のメンテナンス
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3599,12 +3599,12 @@ translations:
   Turbo: ターボ
   Turbo Inner: ターボ・内側
   Turbo Outer: ターボ・外側
+  Turn Endless Spool on, then set the Backup Gate: 'エンドレススプールを有効にしてから、バックアップゲートを設定してください'
   'Turn LED off when the print ends': '印刷終了時に LED を消灯'
   Turn Off: オフにする
   Turn Off WiFi?: WiFiをオフにしますか？
   Turn On: オンにする
   Turn On LEDs: 'LEDを点灯'
-  Turn endless spool on, then set the backup gate: 'エンドレススプールを有効にしてから、バックアップゲートを設定してください'
   Turn off bed check: 'ベッドチェックをオフにする'
   Turn off detection: 検出をオフにする
   Turn on the lights your light buttons control: ライトボタンが操作するライトを点灯します
@@ -3844,7 +3844,7 @@ translations:
   Your printer has an automatic filament changer: プリンターに自動フィラメントチェンジャーが搭載されています
   Your printer was offline during setup, so hardware options were skipped. Set them up now?: セットアップ中にプリンターがオフラインだったため、ハードウェアオプションはスキップされました。今すぐ設定しますか？
   ? Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide.
-  : '{} の行には、フィラメントマッピングで変更されないツールごとの設定が含まれています ({})。フィラメントを割り当てたツールが加熱されない可能性があります。ユーザーガイドの「Filament Mapping」を参照してください。'
+  : '{} の行には、フィラメントマッピングで変更されないツールごとの設定が含まれています ({})。フィラメントをマッピングしたツールが加熱されない可能性があります。ユーザーガイドの「Filament Mapping」を参照してください。'
   Z: Z
   Z Calibration: Z キャリブレーション
   Z Movement: Z移動

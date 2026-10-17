@@ -1140,8 +1140,8 @@ translations:
   Endless Spool backups cleared: Reservas do carretel infinito limpas
   Endless Spool is configured in its package, not from here: O carretel infinito é configurado no seu plugin, não aqui
   Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: O carretel infinito está ligado, mas nenhum par de slots tem filamento compatível, então nada trocará ao acabar o filamento
+  Endless Spool is turned off on this MMU: 'O carretel infinito está desativado neste MMU'
   Endless Spool state unknown: Estado do carretel infinito desconhecido
-  Endless spool is turned off on this MMU: 'O carretel infinito está desativado neste MMU'
   Ensure Happy Hare or AFC is installed and configured: Certifique-se de que o Happy Hare ou o AFC esteja instalado e configurado
   Enter Current PIN: Digite o PIN Atual
   Enter G-code command...: Digite o comando G-code...
@@ -1390,6 +1390,7 @@ translations:
   Filament Mapping: Mapeamento de Filamento
   Filament Mapping is not available on this device.: O mapeamento de filamento não está disponível neste dispositivo.
   Filament Mapping is unavailable: O mapeamento de filamento está indisponível
+  Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Esta impressora não suporta o mapeamento de filamento, então a impressão usa as ferramentas atribuídas na impressora
   Filament Runout: Fim de Filamento
   Filament Sensor: Sensor de Filamento
   Filament System Error: Erro do sistema de filamento
@@ -1421,7 +1422,6 @@ translations:
   Filament is still present after the cut — the blade may be dull or misaligned: Ainda há filamento após o corte. A lâmina pode estar cega ou desalinhada
   Filament jam detected: Entupimento de filamento detectado
   Filament jammed at the extruder gear: Filamento preso na engrenagem do extrusor
-  Filament mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Esta impressora não suporta o mapeamento de filamento, então a impressão usa as ferramentas atribuídas na impressora
   Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head.: 'O filamento deve estar carregado no extrusor e a placa montada, sem nada no caminho do cabeçote.'
   Filament never reached the CFS hub sensor: O filamento nunca chegou ao sensor do hub do CFS
   Filament not set: 'Filamento não definido'
@@ -1432,7 +1432,7 @@ translations:
   ? Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   : 'O filamento acabou e o CFS não encontrou um carretel compatível para trocar. Carregue um carretel do mesmo material e cor e retome.'
   Filament ran out at the toolhead: 'O filamento acabou no cabeçote'
-  Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'O filamento acabou. O reabastecimento automático está desligado, então o CFS não trocará de carretel sozinho. Carregue filamento e retome.'
+  Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'O filamento acabou. O reabastecimento automático está desligado, então o CFS não trocará de carretel sozinho. Carregue filamento e retome.'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: O filamento acabou. O CFS sabe quais carretéis correspondem, mas esses slots estão vazios. Carregue um deles e depois retome.
   Filament reload failed: Falha ao recarregar o filamento
   Filament runout: Fim de filamento
@@ -1936,7 +1936,7 @@ translations:
   Load Failed: 'Falha ao carregar'
   Load Filament: Carregar Filamento
   Load a filament first before trying to unload: Carregue primeiro filamento antes de tentar descarregar
-  Load a new spool in this slot, or turn on auto-refill to switch to a matching one: Carregue um novo carretel neste slot, ou ative o reabastecimento automático para mudar para um equivalente
+  Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Carregue um novo carretel neste slot, ou ative o reabastecimento automático para mudar para um equivalente
   'Load cancelled: nozzle target dropped': 'Carregamento cancelado: o alvo do bico caiu'
   Load complete: 'Carregamento concluído'
   Load failed: Falha ao carregar
@@ -2776,7 +2776,7 @@ translations:
   'RFCOMM connect failed: ': 'Falha ao conectar RFCOMM: '
   RFID reader malfunction (left): Falha do leitor RFID (esquerdo)
   RFID reader malfunction (right): Falha do leitor RFID (direito)
-  RFID, auto-refill, nozzle and link care: RFID, reabastecimento automático, cuidados com bico e enlace
+  RFID, Auto-Refill, nozzle and link care: RFID, reabastecimento automático, cuidados com bico e enlace
   RH: UR
   RSS: RSS
   'RSS:': 'RSS:'
@@ -3842,12 +3842,12 @@ translations:
   Turbo: Turbo
   Turbo Inner: Turbo Interno
   Turbo Outer: Turbo Externo
+  Turn Endless Spool on, then set the Backup Gate: 'Ative o carretel infinito e depois defina o Gate de reserva'
   'Turn LED off when the print ends': 'Desligar o LED ao terminar a impressão'
   Turn Off: Desligar
   Turn Off WiFi?: Desligar WiFi?
   Turn On: Ligar
   Turn On LEDs: 'Ligar os LEDs'
-  Turn endless spool on, then set the backup gate: 'Ative o carretel infinito e depois defina o Gate de reserva'
   Turn off bed check: 'Desligar verificação da mesa'
   Turn off detection: Desligar detecção
   Turn on the lights your light buttons control: Liga as luzes que os botões de luz controlam

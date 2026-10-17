@@ -3259,8 +3259,8 @@ AmsError AmsBackendHappyHare::apply_endless_spool_backup(int slot_index, int bac
         if (!system_info_.endless_spool_enabled) {
             return AmsError(AmsResult::WRONG_STATE,
                             "MMU_ENDLESS_SPOOL ignores GROUPS while endless spool is disabled",
-                            lv_tr("Endless spool is turned off on this MMU"),
-                            lv_tr("Turn endless spool on, then set the backup gate"));
+                            lv_tr("Endless Spool is turned off on this MMU"),
+                            lv_tr("Turn Endless Spool on, then set the Backup Gate"));
         }
 
         const int n = slots_.slot_count();
