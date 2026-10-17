@@ -267,7 +267,7 @@ void AmsState::init_backends_from_hardware(const helix::PrinterDiscovery& hardwa
         spdlog::info("[AMS State] Creating backend for: {} ({})", system.name,
                      ams_type_to_string(system.type));
 
-        auto backend = AmsBackend::create(system.type, api, client);
+        auto backend = AmsBackend::create(system.type, api, client, &hardware);
         if (!backend) {
             spdlog::warn("[AMS State] Failed to create {} backend", system.name);
             continue;

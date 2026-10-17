@@ -120,8 +120,8 @@ The active tool is detected from extruder pin state or `toolhead.extruder`, and
 
 | Tag field | Maps to | Notes |
 |-----------|---------|-------|
-| `MAIN_TYPE` | `material` | e.g. "PLA", "PETG"; `"NONE"` skips the whole slot's RFID apply |
-| `SUB_TYPE` | `spool_name` | Snapmaker product line, e.g. "SnapSpeed" |
+| `MAIN_TYPE` | `material` | e.g. "PLA", "PETG"; `"NONE"` skips the whole slot's RFID apply, and with `SUB_TYPE` also absent or `NONE` drops the lane's vendor-cache record |
+| `SUB_TYPE` | `spool_name` | Snapmaker product line, e.g. "SnapSpeed"; blank beside a brand other than Snapmaker or empty, where it is firmware's placeholder |
 | `MANUFACTURER` (fallback `VENDOR`) | `brand` | |
 | `ARGB_COLOR` | `color_rgb` | masked to the low 24 bits |
 | `HOTEND_MIN_TEMP` / `HOTEND_MAX_TEMP` / `BED_TEMP` | `nozzle_temp_min` / `nozzle_temp_max` / `bed_temp` | |
@@ -138,7 +138,12 @@ marks any `filament_detect/set` with fields as OFFICIAL and builds the entry fre
 the body, so a SUB_TYPE the POST omits is stored as `NONE`, and one it sends comes back
 through `filament_detect.info` looking like a tag read. `spool_name` follows the tag
 record after the own-write echo guard, so a `NONE` SUB_TYPE blanks it and our echo is
-never learned as the spool's name (`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`).
+never learned as the spool's name
+(`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`). Every path that names
+the spool from the tag (the read itself, a user clear, a swap-detected clear) goes
+through `tag_spool_name`, which blanks a known product line beside a non-Snapmaker brand:
+`build_filament_config_gcode` writes `Basic` for any slot that names no product line, so
+"Generic" + "Basic" names no line.
 On load, a stored product line the record does not declare, beside a non-Snapmaker
 brand, is dropped and the record saved back (`src/printer/ams_backend_snapmaker.cpp#on_started`). A channel whose firmware states no
 identity at all (tag `MAIN_TYPE`/`SUB_TYPE` NONE, `print_task_config` vendor NONE and not
@@ -148,11 +153,27 @@ fields, any other remembered name or brand, a brand beside a catalog pick, and a
 bound to a Spoolman spool all stay
 (`src/printer/ams_backend_snapmaker.cpp#retract_unbacked_identity_locked`).
 
+The vendor-cache record mirrors `filament_detect.info`, so an entry that names no tag
+(`MAIN_TYPE` NONE, `SUB_TYPE` absent or NONE) drops it: a clear then cannot restate the
+product line, material, brand or colour of a tag the reader no longer reports. A slot
+field still holding the dropped record's value falls back to what `print_task_config`
+last said for that head, or blank/default where it never spoke; the tag's nozzle and
+bed temperatures and spool weight go back to SlotInfo's defaults, unless the lane holds a
+user's declaration or a bound Spoolman spool, and are never recorded as the tag's while a
+write of ours may still be echoing. A field something else has written since stays. A `print_task_config` `filament_type` of `NONE` or empty is no
+material, never the literal. A repeat of the same silence finds nothing to drop and reports
+no change (`src/printer/ams_backend_snapmaker.cpp#retract_tag_reading_locked`).
+
 Every row above is code-verified against `parse_rfid_info()` and the apply loop
 (`src/printer/snapmaker_status_parse.cpp#parse_rfid_info`, `src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`): tag identity rides
 `filament_detect.info[ch].CARD_UID`, and a `MAIN_TYPE == "NONE"` tag skips the field
-apply while its UID is still captured for swap detection (`:1173-1182`). Physical reads
-from real RFID spools remain rig-pending; code-verified is not field-verified.
+apply (dropping the cached reading, above) while its UID is still captured for swap
+detection (`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`). Physical
+reads from real RFID spools remain rig-pending; code-verified is not field-verified. In
+particular, a reader that is disabled, or a restart that does not re-read while a tagged
+spool stays loaded, reports `NONE` for that spool: the lane then drops its spool name,
+temperatures and weight, and material, brand and colour fall back to
+`print_task_config`.
 
 ### Commands the Backend Emits
 

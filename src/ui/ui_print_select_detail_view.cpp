@@ -2749,11 +2749,15 @@ void PrintSelectDetailView::fit_portrait_preview() {
     const int tile_h = first_tile ? lv_obj_get_height(first_tile) : 0;
     const int gap = grid ? lv_obj_get_style_pad_row(grid, LV_PART_MAIN) : 0;
 
-    const int h =
-        helix::ui::decide_detail_portrait_preview(width, avail, content, grid_top, tile_h, gap);
+    // Micro and tiny: the same breakpoint gate the XML uses for the inline
+    // filament card and the hidden prep line.
+    lv_subject_t* const bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
+    const bool fit_all = bp && lv_subject_get_int(bp) < 2;
+    const int h = helix::ui::decide_detail_portrait_preview(width, avail, content, grid_top, tile_h,
+                                                            gap, fit_all);
     spdlog::trace("[DetailView] fit_portrait_preview: card {} -> {} (avail {} content {} grid_top "
-                  "{} tile {} gap {})",
-                  lv_obj_get_height(card), h, avail, content, grid_top, tile_h, gap);
+                  "{} tile {} gap {} fit_all {})",
+                  lv_obj_get_height(card), h, avail, content, grid_top, tile_h, gap, fit_all);
     if (lv_obj_get_height(card) != h) {
         // DECLARATIVE_OK: measured layout; the height depends on runtime
         // pixel sizes the XML cannot know.

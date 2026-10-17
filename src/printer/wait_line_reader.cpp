@@ -9,6 +9,9 @@ namespace helix {
 std::optional<uint64_t> virtual_sdcard_file_position(const json& query_response) {
     const json* result = json_util::find_member(query_response, "result");
     const json* status = json_util::find_member(result ? *result : query_response, "status");
+    if (!status) {
+        status = &query_response; // a notify_status_update status object
+    }
     const json* sdcard = status ? json_util::find_member(*status, "virtual_sdcard") : nullptr;
     const json* position = sdcard ? json_util::find_member(*sdcard, "file_position") : nullptr;
     uint64_t pos = 0;

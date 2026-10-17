@@ -187,6 +187,17 @@ bool PrintStartProfile::try_match_signal(const std::string& line, MatchResult& r
     return false;
 }
 
+bool PrintStartProfile::start_block_step_owns(const std::string& command,
+                                              const std::string& console_line) const {
+    const auto it = start_block_owned_lines_.find(command);
+    if (it == start_block_owned_lines_.end()) {
+        return false;
+    }
+    return std::any_of(it->second.begin(), it->second.end(), [&](const std::string& text) {
+        return console_line.find(text) != std::string::npos;
+    });
+}
+
 bool PrintStartProfile::try_match_pattern(const std::string& line, MatchResult& result) const {
     return match_pattern_list(response_patterns_, line, result);
 }
@@ -317,6 +328,26 @@ bool PrintStartProfile::parse_json(const json& j, const std::string& source_path
     // Creality tag stream in gcode_response (optional, defaults to false)
     if (j.contains("cfs_signals") && j["cfs_signals"].is_boolean()) {
         cfs_signals_ = j["cfs_signals"].get<bool>();
+    }
+
+    // Start sequence inlined in the print file (optional, defaults to false)
+    if (j.contains("scripted_start") && j["scripted_start"].is_boolean()) {
+        scripted_start_ = j["scripted_start"].get<bool>();
+    }
+
+    // Console lines a start-block command prints while it runs (optional)
+    if (j.contains("start_block_owned_lines") && j["start_block_owned_lines"].is_object()) {
+        for (const auto& [command, lines] : j["start_block_owned_lines"].items()) {
+            if (!lines.is_array()) {
+                continue;
+            }
+            auto& owned = start_block_owned_lines_[helix::text_io::to_upper(command)];
+            for (const auto& text : lines) {
+                if (text.is_string() && !text.get_ref<const std::string&>().empty()) {
+                    owned.push_back(text.get<std::string>());
+                }
+            }
+        }
     }
 
     // Silent-window position inference (optional, defaults to false)

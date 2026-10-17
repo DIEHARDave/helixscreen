@@ -313,6 +313,34 @@ HelixScreen uses the `snapmaker_u1` print start profile (`assets/config/print_st
 
 `// z_mesh_complete:` also comes from G28 Z, so it maps to nothing. Heating has no pattern: while an M109/M190/TEMPERATURE_WAIT reports, the collector reads the command at `virtual_sdcard.file_position` and names the heater it waits on (`PRINT_START_PROFILES.md`, the heater-wait row of the test table). The first model layer, not an action code, ends the pre-print.
 
+### The print position fills the silent steps
+
+The nozzle cleans and the prime line say nothing on the console, so the profile sets `scripted_start` and the collector follows `virtual_sdcard.file_position` through the start block the slicer wrote (`PRINT_START_PROFILES.md`, `scripted_start`). Each `*_CLEAN_NOZZLE*` line shows "Cleaning Nozzle...", each `G28 Z` "Probing Z...", `BED_MESH_CALIBRATE` "Bed mesh..." and the first extruding `G1` "Purging...". The action codes above still name the steps inside a line (the soak, the corners, the mesh, the plate), and arrive before the frame naming the line. The profile's `start_block_owned_lines` says which command prints which, taken from the console captures: `BED_MESH_CALIBRATE` prints BED_PREHEATING, BED_PRESCANNING, BED_LEVELING and a `// z offset:` touch, and `G28` prints `// trigger_mcu_pos:` and `// z offset:`. The clean macros print no code at all, so none is listed for them.
+
+What one print showed, read-only from the printer at 1 Hz on 2026-10-17 (`tests/fixtures/u1_bmcu_*`, one head, reported as T1). The position is where the print stood; the clean macros queue their moves and return, so the position passes their line at once and stands on the next while they run.
+
+| s | Position (byte, line) | Console | Shown |
+|---|---|---|---|
+| 0 | 12961 `G28 X Y` | `trigger_mcu_pos` | HOMING, Homing axes... |
+| 26 | 13011 `DEFECT_DETECTION_DETECT_BED` | `PRINT_BED_DETECTING`, five samples | BED_MESH, Inspecting bed... |
+| 87 | 13339 `SM_PRINT_AUTO_FEED EXTRUDER=1` | `PRINT_SWITCH_CHECKING`, `PRINT_AUTO_FEEDING`; an M109 to 280 inside the feed | INITIALIZING, Loading filament..., the nozzle wait at 94-115 s |
+| 144 | 13743 `M109 T0 S170` | wait reports, nozzle cooling 256 -> 172 | HEATING_NOZZLE |
+| 187 | 13790 (past 13756 `ROUGHLY_CLEAN_NOZZLE_WITH_DISCARD`) | none | CLEANING |
+| 190 | 13824 `G28 Z I140 J140` | `// z offset:`, probes at 140,140 | HOMING, Probing Z... |
+| 209 | 13879 `DETECT_BED_PLATE` | `DETECT_PLATE` | BED_MESH, Detecting plate... |
+| 224 | 13992 `M109 S210` | wait reports | HEATING_NOZZLE |
+| 234-249 | 14023-14197 (past 14002 `ROUGHLY_CLEAN_NOZZLE`, then on 14057 `FINELY_CLEAN_NOZZLE_STAGE_1` and 14197 `_STAGE_2`) | the stage probes at y 276.5 | CLEANING |
+| 249 | 14271 `M109 S170` | wait reports, cooling 194 -> 170 | HEATING_NOZZLE |
+| 264 | 14281 `M190 S100` | wait reports, bed 90 -> 99 | HEATING_BED (from the next fallback tick, 270 s) |
+| 319 | 14316 `G28 Z` | `// z offset:`, probes at the mesh's corner | HOMING, Probing Z... |
+| 340 | 14818 `M109 S260` (the position never stood on 14559 `BED_MESH_CALIBRATE`) | `print_task_config configuration does not do auto-leveling` | HEATING_NOZZLE |
+| 360 | 14840 `G1 X110 E15 F360` | none | PURGING |
+| 376 | 16178, the first layer | | |
+
+That print ran no mesh, so it cannot answer whether an `ADAPTIVE=0` mesh's point count can be read ahead of time: there was no `BED_PRESCANNING`, `BED_LEVELING` or `PRINT_PREEXTRUDING`, and no probe table. The start block names the grid itself (`PROBE_COUNT=4,4 ADAPTIVE=0`), so a print with auto-leveling on would settle it. The `BED_PREHEATING` soak runs inside the mesh line, which is what keeps "Heat Soaking..." up when the position reaches it.
+
+Each phase's history entry is the time it showed, summed over its visits (`PREPRINT_PREDICTION.md`, Phase Timing Tracking): that print records HOMING 67 s, BED_MESH 74 s, CLEANING 18 s and PURGING 17 s. INITIALIZING (the feed) and the heater waits are not recorded as phases.
+
 ## Pre-Print Flow Calibration (Pressure Advance)
 
 The U1 auto-calibrates pressure advance per extruder at the start of every print (the "Purging" phase above). Snapmaker calls this **flow calibration**, but the value it computes and applies is the Klipper pressure-advance K.

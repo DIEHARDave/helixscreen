@@ -7,6 +7,7 @@
 // AmsEditOverlayViewTestAccess friend shim.
 
 #include "ui_ams_edit_overlay.h"
+#include "ui_icon_codepoints.h"
 #include "ui_modal.h"
 #include "ui_nav_manager.h"
 #include "ui_update_queue.h"
@@ -302,6 +303,48 @@ TEST_CASE_METHOD(LVGLUITestFixture, "card tap opens spool-edit; change-filament 
     close_editor_overlay();
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "spool card puts an untracked slot's spool name between brand and material",
+                 "[ams_edit_overlay][card]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    SlotInfo info = untracked_slot();
+    info.brand = "Snapmaker";
+    info.material = "PLA";
+    info.spool_name = "SnapSpeed";
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    lv_obj_t* label = access.widget("card_identity_label");
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "Snapmaker \xC2\xB7 SnapSpeed \xC2\xB7 PLA");
+    close_editor_overlay();
+
+    // An empty brand still reads Generic in the three-part form.
+    info.brand.clear();
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    label = access.widget("card_identity_label");
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "Generic \xC2\xB7 SnapSpeed \xC2\xB7 PLA");
+    close_editor_overlay();
+
+    // A name that already states the brand and the material prints once.
+    info.brand = "eSUN";
+    info.material = "PLA+";
+    info.spool_name = "eSUN PLA+";
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    label = access.widget("card_identity_label");
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "eSUN PLA+");
+    close_editor_overlay();
+}
+
 TEST_CASE_METHOD(LVGLUITestFixture, "spool card shows Brand · Material for untracked slots",
                  "[ams_edit_overlay][card]") {
     auto& overlay = get_ams_edit_overlay();
@@ -351,6 +394,15 @@ TEST_CASE_METHOD(LVGLUITestFixture, "spool card shows spool name + mark for trac
     lv_obj_t* mark = access.widget("chip_spoolman_mark");
     REQUIRE(mark != nullptr);
     CHECK_FALSE(lv_obj_has_flag(mark, LV_OBJ_FLAG_HIDDEN));
+
+    // Both marks draw the Spoolman glyph; a misspelled or empty icon name
+    // would fall back to image_broken_variant and still render.
+    const char* spoolman_glyph = helix::ui::icon::lookup_codepoint("spoolman");
+    REQUIRE(spoolman_glyph != nullptr);
+    CHECK(std::string(lv_label_get_text(mark)) == spoolman_glyph);
+    lv_obj_t* header_mark = access.widget("header_title_badge_icon");
+    REQUIRE(header_mark != nullptr);
+    CHECK(std::string(lv_label_get_text(header_mark)) == spoolman_glyph);
 
     CHECK(access.widget("spool_details_row") == nullptr);
 

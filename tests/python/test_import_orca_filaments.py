@@ -221,7 +221,7 @@ def test_vendor_pack_types_stay_out_of_library_types():
 
 
 def test_build_catalog_guards_against_id_collisions():
-    # _merge_cfs_seed recomputes every seed id from brand+name, so a seed entry's
+    # _merge_seed recomputes every seed id from brand+name, so a seed entry's
     # DECLARED id can never collide on its own -- the collision that _dedupe_ids
     # actually guards against is two different (brand, name) pairs that slug to the
     # same string. Here "Polymaker-ABS"/"Pro" and Orca's "Polymaker"/"ABS Pro" both
@@ -283,7 +283,7 @@ def test_build_product_never_emits_a_degenerate_range():
 
 
 def test_assert_no_degenerate_ranges_rejects_any_source():
-    # The catch-all gate. cfs_seed entries write nozzle_min/nozzle_max straight
+    # The catch-all gate. seed entries write nozzle_min/nozzle_max straight
     # through without going near build_product(), so this is the only check that
     # covers every product regardless of where it came from.
     import pytest
@@ -301,7 +301,7 @@ def test_assert_no_degenerate_ranges_rejects_any_source():
 # Seed merge (the duplicate Generic/PETG-CF defect)
 # ---------------------------------------------------------------------------
 
-def test_merge_cfs_seed_folds_into_orca_despite_type_disagreement():
+def test_merge_seed_folds_into_orca_despite_type_disagreement():
     # Orca labels their Generic PETG-CF profile with filament_type "PETG". The seed
     # entry is correctly typed "PETG-CF". Keying the merge on type made these two
     # different products, so the seed appended and _dedupe_ids renamed it
@@ -313,7 +313,7 @@ def test_merge_cfs_seed_folds_into_orca_despite_type_disagreement():
                  "type": "PETG", "nozzle": 255, "orca_id": "OGFG99", "source": "orca"}]
     seed = [{"id": "generic-generic-petg-cf", "brand": "Generic", "name": "Generic PETG-CF",
              "type": "PETG-CF", "codes": {"cfs": "00014"}, "source": "cfs-seed"}]
-    imp._merge_cfs_seed(products, seed)
+    imp._merge_seed(products, seed)
 
     assert len(products) == 1
     p = products[0]
@@ -323,7 +323,7 @@ def test_merge_cfs_seed_folds_into_orca_despite_type_disagreement():
     assert p["codes"]["cfs"] == "00014"  # seed's CFS code folded in, not lost
 
 
-def test_merge_cfs_seed_still_appends_unmatched_entries():
+def test_merge_seed_still_appends_unmatched_entries():
     # The relaxed key must not swallow seed entries that have no Orca counterpart
     # (CFS-only variants, and the helix-seed placeholders that make a
     # filament_database.h type reachable in the picker).
@@ -335,24 +335,24 @@ def test_merge_cfs_seed_still_appends_unmatched_entries():
         {"id": "creality-cr-abs", "brand": "Creality", "name": "CR-ABS",
          "type": "ABS", "codes": {"cfs": "07001"}, "source": "cfs-seed"},
     ]
-    imp._merge_cfs_seed(products, seed)
+    imp._merge_seed(products, seed)
 
     by_id = {p["id"]: p for p in products}
     assert set(by_id) == {"generic-pla", "generic-ppa", "creality-cr-abs"}
     assert by_id["creality-cr-abs"]["codes"]["cfs"] == "07001"
 
 
-def test_merge_cfs_seed_does_not_clobber_an_existing_orca_code():
+def test_merge_seed_does_not_clobber_an_existing_orca_code():
     products = [{"id": "generic-pla", "brand": "Generic", "name": "PLA", "type": "PLA",
                  "codes": {"cfs": "99999"}, "source": "orca"}]
     seed = [{"id": "x", "brand": "Generic", "name": "PLA", "type": "PLA",
              "codes": {"cfs": "00001", "other": "abc"}, "source": "cfs-seed"}]
-    imp._merge_cfs_seed(products, seed)
+    imp._merge_seed(products, seed)
     assert len(products) == 1
     assert products[0]["codes"] == {"cfs": "99999", "other": "abc"}
 
 
-def test_merge_cfs_seed_does_not_fold_plus_variant_into_base():
+def test_merge_seed_does_not_fold_plus_variant_into_base():
     # _name_key stripped "+" along with every other non-alnum character, so a seed
     # entry named "PLA+" normalized to the same key as Orca's "PLA" and merged --
     # the seed's type then won (by design, see the disagreement test above), which
@@ -363,7 +363,7 @@ def test_merge_cfs_seed_does_not_fold_plus_variant_into_base():
                  "type": "PLA", "source": "orca"}]
     seed = [{"id": "generic-pla-plus", "brand": "Generic", "name": "PLA+",
              "type": "PLA+", "codes": {"cfs": "10001"}, "source": "cfs-seed"}]
-    imp._merge_cfs_seed(products, seed)
+    imp._merge_seed(products, seed)
 
     by_id = {p["id"]: p for p in products}
     assert set(by_id) == {"generic-pla", "generic-pla-plus"}
@@ -458,12 +458,12 @@ def test_main_carries_the_types_table_through_a_regen(tmp_path, monkeypatch):
     seed.write_text("[]")
     seen = {}
 
-    def fake_build(orca, cfs_seed, type_ranges, library_marker="x"):
+    def fake_build(orca, seed, type_ranges, library_marker="x"):
         seen["ranges"] = type_ranges
         return [], []
 
     monkeypatch.setattr(imp, "build_catalog", fake_build)
-    assert imp.main(["--orca", FIX, "--cfs-seed", str(seed), "--out", str(out)]) == 0
+    assert imp.main(["--orca", FIX, "--seed", str(seed), "--out", str(out)]) == 0
     assert seen["ranges"] == {"ABS": (245, 265)}
     assert json.loads(out.read_text())["types"] == types
 
@@ -474,7 +474,7 @@ def test_main_refuses_an_output_without_a_types_table(tmp_path):
     seed = tmp_path / "seed.json"
     seed.write_text("[]")
     try:
-        imp.main(["--orca", FIX, "--cfs-seed", str(seed), "--out", str(out)])
+        imp.main(["--orca", FIX, "--seed", str(seed), "--out", str(out)])
     except SystemExit:
         pass
     else:
