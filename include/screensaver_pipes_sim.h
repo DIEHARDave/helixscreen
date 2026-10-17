@@ -31,12 +31,12 @@ struct PipesLevel {
     uint8_t scale;
 };
 
-/// The ladder, most expensive level first. A frame between growth steps draws nothing, so the
-/// period mostly paces the dissolve; the last rung also quarters the raster work.
+/// The ladder, most expensive level first. Rasterizing is a small part of a frame's cost, so
+/// the last rung saves mostly by its longer period; it also quarters the raster work.
 inline constexpr PipesLevel PIPES_LEVELS[] = {
     {SAVER_FAST_PERIOD, 1},
     {33, 1},
-    {50, 2},
+    {100, 2},
 };
 inline constexpr size_t PIPES_LEVEL_COUNT = std::size(PIPES_LEVELS);
 
@@ -361,6 +361,11 @@ void pipes_build_elbow(PipeMesh& out);
 /// dropped 1.5 data units: x in [-3.75, 4.41], y in [-1.875, 2.0625].
 void pipes_build_teapot(PipeMesh& out);
 
+/// a x b.
+PipeVec3 pipes_cross(PipeVec3 a, PipeVec3 b);
+/// |v|.
+float pipes_length(PipeVec3 v);
+
 /// Radius of a ball joint or cap.
 float pipes_ball_radius();
 
@@ -395,7 +400,7 @@ class PipesRenderer {
     /// builds the meshes and lighting tables.
     void init(uint32_t w, uint32_t h, uint8_t scale);
     void release();
-    void set_view(float yrot_deg, PipeGridDims dims);
+    void set_view(float yrot_deg);
     /// Empties the depth buffer; the frame itself is the dissolve's to clear.
     void clear_depth();
     /// Draws `piece` and returns the canvas box it may have written (empty when off screen).
@@ -430,7 +435,6 @@ class PipesRenderer {
     float focal_ = 0.0f;
     float cos_y_ = 1.0f;
     float sin_y_ = 0.0f;
-    PipeGridDims dims_;
     std::vector<float> inv_depth_;
     PipeMesh cylinder_;
     PipeMesh ball_;

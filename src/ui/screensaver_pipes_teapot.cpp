@@ -145,14 +145,6 @@ Cubic bernstein(float t) {
         {-3.0f * s * s, 3.0f * s * s - 6.0f * t * s, 6.0f * t * s - 3.0f * t * t, 3.0f * t * t}};
 }
 
-PipeVec3 cross(PipeVec3 a, PipeVec3 b) {
-    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
-}
-
-float length(PipeVec3 v) {
-    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
 /// One patch's 16 control points in data units, its x and y signs applied.
 using Patch = std::array<PipeVec3, 16>;
 
@@ -183,7 +175,7 @@ void evaluate(const Patch& p, float u, float v, PipeVec3& pos, PipeVec3& normal)
             dv = {dv.x + wv * c.x, dv.y + wv * c.y, dv.z + wv * c.z};
         }
     }
-    normal = cross(du, dv);
+    normal = pipes_cross(du, dv);
 }
 
 /// Data-space (z up) to model space (y up), scaled and dropped.
@@ -211,16 +203,16 @@ void add_patch(const Patch& p, PipeMesh& out) {
             PipeVec3 point;
             PipeVec3 n;
             evaluate(p, u, v, point, n);
-            if (length(n) < 1e-5f) {
+            if (pipes_length(n) < 1e-5f) {
                 PipeVec3 unused;
                 evaluate(p, std::clamp(u, INSET, 1.0f - INSET), std::clamp(v, INSET, 1.0f - INSET),
                          unused, n);
             }
-            const float len = length(n);
+            const float len = pipes_length(n);
             n = len > 0.0f ? PipeVec3{n.x / len, n.y / len, n.z / len} : PipeVec3{0, 0, 1};
             const PipeVec3 away{point.x - TEAPOT_INSIDE.x, point.y - TEAPOT_INSIDE.y,
                                 point.z - TEAPOT_INSIDE.z};
-            const float away_len = length(away);
+            const float away_len = pipes_length(away);
             if (away_len > 0.0f) {
                 outward += (n.x * away.x + n.y * away.y + n.z * away.z) / away_len;
             }

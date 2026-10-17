@@ -822,7 +822,7 @@ size_t changed_outside(const std::vector<uint8_t>& before, const FrameTarget& f,
 TEST_CASE("the camera projects the original's view", "[screensaver][pipes_sim]") {
     PipesRenderer r;
     r.init(800, 480, 1);
-    r.set_view(0.0f, {15, 9, 15});
+    r.set_view(0.0f);
     float sx = 0;
     float sy = 0;
     REQUIRE(r.project({0, 0, 0}, sx, sy));
@@ -839,7 +839,7 @@ TEST_CASE("the camera projects the original's view", "[screensaver][pipes_sim]")
     CHECK(sy == Catch::Approx(217.6f).margin(0.01));
 
     // Turned 90 degrees, +x points away from the camera.
-    r.set_view(90.0f, {15, 9, 15});
+    r.set_view(90.0f);
     REQUIRE(r.project({10, 0, 0}, sx, sy));
     CHECK(sx == Catch::Approx(400.0f).margin(0.01));
     CHECK(sy == Catch::Approx(240.0f).margin(0.01));
@@ -849,7 +849,7 @@ TEST_CASE("the camera projects the original's view", "[screensaver][pipes_sim]")
 
     // Scale 2 rasterizes at half size and reports canvas pixels.
     r.init(800, 480, 2);
-    r.set_view(0.0f, {15, 9, 15});
+    r.set_view(0.0f);
     REQUIRE(r.project({7, 0, 0}, sx, sy));
     CHECK(sx == Catch::Approx(422.4f).margin(0.01));
 }
@@ -858,7 +858,7 @@ TEST_CASE("draw order never changes the picture", "[screensaver][pipes_sim]") {
     const auto render = [](const std::vector<PipePiece>& pieces, uint64_t& hash, Rgb& centre) {
         PipesRenderer r;
         r.init(800, 480, 1);
-        r.set_view(0.0f, {15, 9, 15});
+        r.set_view(0.0f);
         r.clear_depth();
         Frame f(800, 480);
         for (const PipePiece& p : pieces) {
@@ -890,7 +890,7 @@ TEST_CASE("a pipe is as fat as its radius over its depth", "[screensaver][pipes_
     const auto lit_rows = [](PipeVec3 at) {
         PipesRenderer r;
         r.init(800, 480, 1);
-        r.set_view(0.0f, {15, 9, 15});
+        r.set_view(0.0f);
         Frame f(800, 480);
         r.draw(f.target, cylinder_at(at, PipeDir::POS_X, 7.0f, 15));
         int rows = 0;
@@ -910,7 +910,7 @@ TEST_CASE("a pipe is as fat as its radius over its depth", "[screensaver][pipes_
 TEST_CASE("the highlight sits up-right of centre on every ball", "[screensaver][pipes_sim]") {
     PipesRenderer r;
     r.init(800, 480, 1);
-    r.set_view(0.0f, {15, 9, 15});
+    r.set_view(0.0f);
     float cx = 0;
     float cy = 0;
     int32_t bx = 0;
@@ -955,7 +955,7 @@ TEST_CASE("the highlight sits up-right of centre on every ball", "[screensaver][
 TEST_CASE("an elbow joins its two pipes with no gap", "[screensaver][pipes_sim]") {
     PipesRenderer r;
     r.init(800, 480, 1);
-    r.set_view(0.0f, {15, 9, 15});
+    r.set_view(0.0f);
     Frame f(800, 480);
     const PipeGridDims dims{15, 9, 15};
     const PipeVec3 node = pipes_node_world({7, 4, 7}, dims);
@@ -990,7 +990,7 @@ TEST_CASE("the renderer dirties every pixel a piece changes", "[screensaver][pip
     for (uint8_t scale : {1, 2}) {
         PipesRenderer r;
         r.init(320, 192, scale);
-        r.set_view(23.0f, {15, 9, 15});
+        r.set_view(23.0f);
         Frame f(320, 192);
         size_t total_changed = 0;
         for (const PipePiece& p : random_pieces(41, 50)) {
@@ -1010,8 +1010,8 @@ TEST_CASE("RGB565 and XRGB8888 renders of one scene agree to 565 precision",
     PipesRenderer r16;
     r32.init(160, 96, 1);
     r16.init(160, 96, 1);
-    r32.set_view(41.0f, {15, 9, 15});
-    r16.set_view(41.0f, {15, 9, 15});
+    r32.set_view(41.0f);
+    r16.set_view(41.0f);
     Frame f32(160, 96, PixelFormat::XRGB8888);
     Frame f16(160, 96, PixelFormat::RGB565);
     for (const PipePiece& p : random_pieces(7, 30)) {
@@ -1039,7 +1039,7 @@ TEST_CASE("RGB565 and XRGB8888 renders of one scene agree to 565 precision",
 TEST_CASE("an XRGB8888 pipes frame keeps every X byte opaque", "[screensaver][pipes_sim]") {
     PipesRenderer r;
     r.init(160, 96, 1);
-    r.set_view(0.0f, {15, 9, 15});
+    r.set_view(0.0f);
     Frame f(160, 96);
     for (const PipePiece& p : random_pieces(3, 40)) {
         r.draw(f.target, p);
@@ -1060,7 +1060,7 @@ TEST_CASE("frames of every size and scale stay inside their rows", "[screensaver
             for (PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
                 PipesRenderer r;
                 r.init(w, h, scale);
-                r.set_view(0.0f, pipes_grid_dims(static_cast<int32_t>(w), static_cast<int32_t>(h)));
+                r.set_view(0.0f);
                 Frame f(w, h, format);
                 for (const PipePiece& p : random_pieces(w * 31 + scale, 40)) {
                     r.draw(f.target, p);
@@ -1074,7 +1074,7 @@ TEST_CASE("frames of every size and scale stay inside their rows", "[screensaver
 TEST_CASE("at scale 2 every 2x2 block is one colour", "[screensaver][pipes_sim]") {
     PipesRenderer r;
     r.init(160, 96, 2);
-    r.set_view(0.0f, {15, 9, 15});
+    r.set_view(0.0f);
     Frame f(160, 96);
     r.draw(f.target, ball_at({0, 0, 40}, 8));
     REQUIRE(lit_pixels(f) > 0);

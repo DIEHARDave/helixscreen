@@ -191,6 +191,14 @@ PipeDir pipes_choose_direction(const PipesGrid& grid, PipeNode pos, PipeDir last
     return ties[static_cast<size_t>(random_below(rng, tie_count))];
 }
 
+PipeVec3 pipes_cross(PipeVec3 a, PipeVec3 b) {
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+float pipes_length(PipeVec3 v) {
+    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
 // ============================================================================
 // Materials and lighting
 // ============================================================================
@@ -198,7 +206,7 @@ PipeDir pipes_choose_direction(const PipesGrid& grid, PipeNode pos, PipeDir last
 namespace {
 
 PipeVec3 normalized(PipeVec3 v) {
-    const float len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    const float len = pipes_length(v);
     if (len <= 0.0f) {
         return {};
     }
@@ -543,10 +551,6 @@ void pipes_build_elbow(PipeMesh& out) {
 
 namespace {
 
-PipeVec3 cross3(PipeVec3 a, PipeVec3 b) {
-    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
-}
-
 /// The fixed axis-aligned pair across `d`, with x cross y = d.
 void cylinder_basis(PipeDir d, PipeVec3& x, PipeVec3& y) {
     switch (d) {
@@ -593,7 +597,7 @@ PipeXform pipes_piece_xform(const PipePiece& piece) {
     case PipePieceKind::ELBOW:
         xf.z = pipes_dir_vec(piece.from);
         xf.y = pipes_dir_vec(piece.dir);
-        xf.x = cross3(xf.y, xf.z);
+        xf.x = pipes_cross(xf.y, xf.z);
         break;
     case PipePieceKind::BALL:
     case PipePieceKind::TEAPOT:
@@ -637,7 +641,8 @@ void PipesRenderer::init(uint32_t w, uint32_t h, uint8_t scale) {
     iw_ = (w + scale_ - 1) / scale_;
     ih_ = (h + scale_ - 1) / scale_;
     focal_ = static_cast<float>(ih_) * 0.5f;
-    inv_depth_.assign(static_cast<size_t>(iw_) * ih_, 0.0f);
+    // A fresh vector, so a smaller scale gives the larger buffer back.
+    std::vector<float>(static_cast<size_t>(iw_) * ih_, 0.0f).swap(inv_depth_);
     pipes_build_cylinder(cylinder_);
     pipes_build_ball(ball_);
     pipes_build_elbow(elbow_);
@@ -681,11 +686,10 @@ size_t PipesRenderer::buffer_bytes() const {
            screen_.capacity() * sizeof(ScreenVertex) + lut_.capacity() * sizeof(uint16_t);
 }
 
-void PipesRenderer::set_view(float yrot_deg, PipeGridDims dims) {
+void PipesRenderer::set_view(float yrot_deg) {
     const float rad = yrot_deg * PI_F / 180.0f;
     cos_y_ = std::cos(rad);
     sin_y_ = std::sin(rad);
-    dims_ = dims;
 }
 
 void PipesRenderer::clear_depth() {
@@ -973,7 +977,7 @@ void PipesSim::start_screen(const FrameTarget& frame, std::minstd_rand& rng,
     const PipeGridDims dims =
         pipes_grid_dims(static_cast<int32_t>(frame.w), static_cast<int32_t>(frame.h));
     renderer_.clear_depth();
-    renderer_.set_view(yrot_deg_, dims);
+    renderer_.set_view(yrot_deg_);
     pieces_.clear();
     screen_.begin(dims, rng, pieces_);
     draw_pieces(frame, dirty);

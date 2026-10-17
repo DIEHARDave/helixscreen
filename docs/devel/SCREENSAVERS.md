@@ -38,7 +38,7 @@ opens `SaverCanvas::begin_layer()`, marks what it draws with `mark_dirty()` and 
 Every ladder starts at 16 ms (`SAVER_FAST_PERIOD`, one refresh of a 60 Hz panel), or at
 `HELIX_SCREENSAVER_REFR_PERIOD_MS` when that is set for manual testing
 (`SaverBase::level_period_ms`); levels 1 and up keep their declared periods either way. Starfield
-then runs at 33 ms; pipes per `PIPES_LEVELS`: 16 ms, 33 ms, then 50 ms at half resolution (the
+then runs at 33 ms; pipes per `PIPES_LEVELS`: 16 ms, 33 ms, then 100 ms at half resolution (the
 scale changes at the next screen); toasters at 33 ms with every sprite, then 33 ms with ten; the
 bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps the sprite and drops the tint and corner celebration) at 33 ms, then 33 ms with the corner flash but no confetti; fireworks per
 `FIREWORKS_LEVELS`; the 3D maze per `MAZE_LEVELS`: full resolution at 16 ms, then half resolution at
@@ -101,7 +101,8 @@ time in a thousand.
   the short side, in random order) over 2 s of frame time, then the next screen starts with
   the view turned a further 9.73156 degrees about the vertical.
 - **Cost**: only the pieces of each step and the dissolve's blocks are written and dirtied.
-  The bottom rung rasterizes at half resolution; the z-buffer is sized for it, so a level's
+  Rasterizing is a small part of the cost, so the bottom rung saves mostly by its 100 ms
+  period; it also rasterizes at half resolution, and the z-buffer is sized for it, so a level's
   scale waits for the next screen.
 
 ## The gate

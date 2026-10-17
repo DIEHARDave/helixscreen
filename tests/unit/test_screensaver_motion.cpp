@@ -483,7 +483,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "the pipes saver declares the pipes ladder",
     PipesScreensaver ss;
     REQUIRE(ss.level_count() == 3);
     CHECK(ss.level_period_ms(1) == 33);
-    CHECK(ss.level_period_ms(2) == 50);
+    CHECK(ss.level_period_ms(2) == 100);
     for (size_t i = 0; i < helix::ui::PIPES_LEVEL_COUNT; i++) {
         CHECK(helix::ui::PIPES_LEVELS[i].scale == (i == 2 ? 2 : 1));
     }
@@ -502,7 +502,7 @@ TEST_CASE_METHOD(
 
     ss.request_level(2);
     CHECK(ss.level() == 2);
-    CHECK(SaverTestAccess::timer(ss)->period == 50);
+    CHECK(SaverTestAccess::timer(ss)->period == 100);
     CHECK(PipesAccess::sim(ss).renderer().scale() == 1);
 
     // Run the screen out and through its dissolve; the next screen draws at half resolution.

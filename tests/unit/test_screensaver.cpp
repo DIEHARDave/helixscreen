@@ -1643,7 +1643,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         ss.request_level(1);
         CHECK(SaverTestAccess::timer(ss)->period == 33);
         ss.request_level(2);
-        CHECK(SaverTestAccess::timer(ss)->period == 50);
+        CHECK(SaverTestAccess::timer(ss)->period == 100);
     }
 
     SECTION("bouncing printer") {
