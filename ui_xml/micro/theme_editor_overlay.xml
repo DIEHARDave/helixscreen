@@ -22,10 +22,11 @@
            palette slot; the click handler reads it from user_data. -->
       <lv_obj name="theme_swatch_list"
               width="100%" height="content" scrollable="false" style_pad_left="#space_xs" style_pad_right="#space_xs"
-              style_pad_top="0" style_pad_bottom="#space_xs" flex_flow="row_wrap" style_pad_gap="#space_xxs">
+              style_pad_top="0" style_pad_bottom="#space_xs" flex_flow="row_wrap" style_flex_main_place="space_between"
+              style_pad_gap="#space_xxs">
         <repeat count="16">
-          <ui_card width="40%"
-                   height="content" flex_grow="1" flex_flow="row" style_pad_all="#space_xs" style_pad_gap="#space_xs"
+          <ui_card width="49%"
+                   height="content" flex_flow="row" style_pad_all="#space_xs" style_pad_gap="#space_xs"
                    style_radius="#border_radius_small" style_flex_cross_place="center">
             <color_swatch name="swatch_${i}"
                           index="${i}" color_subject="theme_editor_role_color_${i}" size="#theme_swatch_size" reach="0"
