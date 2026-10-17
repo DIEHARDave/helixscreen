@@ -383,6 +383,28 @@ void ActionPromptModal::create_buttons() {
     }
 
     fit_swatch_rows(button_container, swatch_rows, swatch_cols);
+    size_swatch_discs();
+}
+
+// DECLARATIVE_OK: measured layout. A swatch circle is as large as its tile's
+// shorter side, which only a layout pass knows.
+void ActionPromptModal::size_swatch_discs() {
+    lv_obj_t* screen = dialog_ ? lv_obj_get_parent(dialog_) : nullptr;
+    if (screen == nullptr) {
+        return;
+    }
+    lv_obj_update_layout(screen);
+    for (lv_obj_t* button : created_buttons_) {
+        lv_obj_t* disc = lv_obj_find_by_name(button, "color_swatch_disc");
+        if (disc == nullptr) {
+            continue;
+        }
+        const int32_t side =
+            std::min(lv_obj_get_content_width(button), lv_obj_get_content_height(button));
+        if (side > 0) {
+            lv_obj_set_size(disc, side, side);
+        }
+    }
 }
 
 // DECLARATIVE_OK: measured layout. The card and tile sizes depend on the
@@ -483,11 +505,24 @@ void ActionPromptModal::create_button(const PromptButton& btn, lv_obj_t* contain
     const std::optional<uint32_t> fill_rgb = helix::parse_hex_color(btn.hex_color);
     const lv_color_t bg_color = fill_rgb ? lv_color_hex(*fill_rgb) : get_button_color(btn.color);
     if (is_swatch(btn)) {
-        // A color tile with no text is a swatch, and wears the swatch edge so a
-        // white tile on a light card or a black one on a dark card stays visible.
-        lv_obj_set_style_border_width(button, theme_manager_get_spacing("border_width"),
-                                      LV_PART_MAIN);
-        helix::ui::apply_swatch_color(button, *fill_rgb, "");
+        // A color tile with no text is a swatch: the tile stays the touch
+        // target and shows a circle of its color, which the swatch painter
+        // edges when it blends into the card. size_swatch_discs() fits the
+        // circle to the tile once the grid is laid out.
+        lv_obj_set_style_bg_opa(button, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(button, 0, LV_PART_MAIN);
+        lv_obj_t* disc = lv_obj_create(button);
+        lv_obj_set_name(disc, "color_swatch_disc");
+        lv_obj_remove_flag(disc, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_remove_flag(disc, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(disc, LV_OBJ_FLAG_EVENT_BUBBLE);
+        lv_obj_set_style_border_width(disc, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(disc, 0, LV_PART_MAIN);
+        lv_obj_set_style_radius(disc, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+        const int32_t button_h = theme_manager_get_spacing("button_height");
+        lv_obj_set_size(disc, button_h, button_h);
+        lv_obj_center(disc);
+        helix::ui::apply_swatch_color(disc, *fill_rgb, "");
     } else {
         lv_obj_set_style_bg_color(button, bg_color, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(button, LV_OPA_COVER, LV_PART_MAIN);

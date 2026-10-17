@@ -150,6 +150,10 @@ class ActionPromptModal : public Modal {
      */
     void fit_swatch_rows(lv_obj_t* button_container, const std::vector<lv_obj_t*>& rows,
                          int32_t cols);
+
+    /// Fit each swatch tile's circle to the tile's shorter side.
+    void size_swatch_discs();
+
     /**
      * @brief Create a single button inside @p container.
      *
