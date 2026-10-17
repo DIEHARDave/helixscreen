@@ -357,6 +357,10 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
             t.backend_index = topo.backend_index;
             t.backend_slot =
                 (i < static_cast<int>(topo.tool_to_slot.size())) ? topo.tool_to_slot[i] : -1;
+            // Seated before the version bump below, so nothing that reads the
+            // tools from that notification sees a rebuilt list with no seat.
+            t.lane_seated = i < static_cast<int>(topo.tool_seated.size()) &&
+                            topo.tool_seated[static_cast<size_t>(i)];
             // Carry over the hardware mappings init_tools set up, from the
             // tool that printed through the same extruder where the backend
             // names it. A hub feeds several lanes, and so several tools, into
@@ -433,6 +437,20 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
         lv_subject_set_int(&tools_version_, version);
         spdlog::info("[ToolState] AMS topology applied: {} tools (version {})", tools_.size(),
                      version);
+    }
+
+    // Which lane a head holds moves with every load and unload, without the
+    // shape changing, so it is applied on every push and bumps no version.
+    bool seated_changed = false;
+    for (size_t i = 0; i < tools_.size(); ++i) {
+        const bool seated = i < topo.tool_seated.size() && topo.tool_seated[i];
+        if (tools_[i].lane_seated != seated) {
+            tools_[i].lane_seated = seated;
+            seated_changed = true;
+        }
+    }
+    if (seated_changed) {
+        heads_cache_.reset();
     }
 
     int new_active = topo.active_tool;
@@ -787,7 +805,10 @@ bool PhysicalHead::holds_tool(int tool_index) const {
 }
 
 int PhysicalHead::representative_tool(int active_tool) const {
-    return holds_tool(active_tool) ? active_tool : tool_indices.front();
+    if (holds_tool(active_tool)) {
+        return active_tool;
+    }
+    return seated_tool >= 0 ? seated_tool : tool_indices.front();
 }
 
 std::vector<PhysicalHead> physical_heads(const std::vector<ToolInfo>& tools) {
@@ -801,10 +822,22 @@ std::vector<PhysicalHead> physical_heads(const std::vector<ToolInfo>& tools) {
                 return h.extruder_name == extruder;
             });
         }
-        if (shared != heads.end()) {
-            shared->tool_indices.push_back(static_cast<int>(i));
-        } else {
-            heads.push_back({named ? extruder : std::nullopt, {static_cast<int>(i)}});
+        if (shared == heads.end()) {
+            heads.push_back({named ? extruder : std::nullopt, {}});
+            shared = heads.end() - 1;
+        }
+        shared->tool_indices.push_back(static_cast<int>(i));
+    }
+    for (PhysicalHead& head : heads) {
+        int seated_count = 0;
+        for (const int t : head.tool_indices) {
+            if (tools[static_cast<size_t>(t)].lane_seated) {
+                head.seated_tool = t;
+                ++seated_count;
+            }
+        }
+        if (seated_count > 1) {
+            head.seated_tool = -1;
         }
     }
     return heads;

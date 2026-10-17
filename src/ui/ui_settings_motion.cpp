@@ -13,6 +13,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "settings_manager.h"
 #include "static_panel_registry.h"
+#include "z_offset_utils.h"
 
 #include <spdlog/spdlog.h>
 
@@ -189,6 +190,8 @@ void MotionSettingsOverlay::register_callbacks() {
          }},
         {"on_reset_distances",
          [](lv_event_t*) { get_motion_settings_overlay().handle_reset_distances(); }},
+        {"on_z_offset_save_toggled",
+         [](lv_event_t* e) { helix::zoffset::set_save_enabled(ui::event_checked(e)); }},
     });
 }
 

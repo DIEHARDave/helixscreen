@@ -113,6 +113,30 @@
                     text="" align="center" style_text_color="#text" clickable="false" event_bubble="true"/>
       </lv_obj>
 
+      <!-- Drying badge, on the spool face right of its hub, where the dry-box view's
+           neighbouring spools cannot cover it: this lane's part in a drying cycle, on a dryer that
+           heats lanes one by one. Same icons as the environment overlay's zone tabs:
+           clock queued, heat waves drying, check done, cross cancelled. C++ shows the
+           badge and the one icon for the state; idle shows nothing. -->
+      <lv_obj name="drying_badge"
+              width="#ams_slot_status_badge_size" height="#ams_slot_status_badge_size" align="center"
+              style_translate_x="#ams_slot_status_badge_size" style_radius="10" style_bg_color="#ams_badge_bg"
+              style_bg_opa="255" style_border_width="#ams_slot_badge_border_w" style_border_color="#card_bg"
+              style_pad_all="0" scrollable="false" clickable="false" event_bubble="true" hidden="true">
+        <icon name="drying_badge_queued"
+              src="progress_clock" size="xs" variant="secondary" align="center" clickable="false" event_bubble="true"
+              hidden="true"/>
+        <icon name="drying_badge_active"
+              src="heat_wave" size="xs" variant="warning" align="center" clickable="false" event_bubble="true"
+              hidden="true"/>
+        <icon name="drying_badge_complete"
+              src="check_circle" size="xs" variant="success" align="center" clickable="false" event_bubble="true"
+              hidden="true"/>
+        <icon name="drying_badge_cancelled"
+              src="close_circle" size="xs" variant="danger" align="center" clickable="false" event_bubble="true"
+              hidden="true"/>
+      </lv_obj>
+
     </lv_obj>
     <!-- Measured remaining length (CFS measuring wheel), on the tray front under its
          spool; hidden while the lane has none -->

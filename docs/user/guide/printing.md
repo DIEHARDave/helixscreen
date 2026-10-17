@@ -162,12 +162,37 @@ The Print Status panel shows:
 
 **Pause ticks on the progress bar.** Scheduled stops in the file - filament changes (`M600`), `PAUSE`/`M601` commands, and slicer pause-at-layer markers - each draw a small tick on the progress bar where they fall, on both the print screen and the home print card. On a file sliced with `M73` progress markers, the ticks sit at the slicer's own percentages.
 
+### Pausing at a Layer (Beta)
+
+> **Beta feature.** This only appears with [beta features](beta-features.md) turned on.
+
+You can tell a running print to pause at a layer you pick - to drop in a magnet or nut, or swap filament for a color band - even when the file has no pause in it.
+
+**What it needs:**
+
+- **The pause macros in your printer config.** Your config must include `SET_PAUSE_NEXT_LAYER` and `SET_PAUSE_AT_LAYER`. Mainsail's and Fluidd's standard client macros (`mainsail.cfg` / `fluidd.cfg`) have both, and so does the Snapmaker U1's stock firmware. Without them, this option does not appear.
+- **Layer info from your slicer.** The pause fires when the file tells Klipper a new layer has started (`SET_PRINT_STATS_INFO CURRENT_LAYER=...`). Many slicer profiles do not add this; [Troubleshooting → Layer count is wrong, stuck at 0, or total layers missing](../TROUBLESHOOTING.md#layer-count-is-wrong-stuck-at-0-or-total-layers-missing) shows the two lines to add. Without it the option is shown but disabled, with a note saying the print does not report layers.
+
+**Scheduling a pause:**
+
+1. During a print, tap the **layer count** on the print screen (the row with the layers icon). A small pause symbol next to it shows it can be tapped.
+2. Choose **Next Layer** to pause when the next layer starts, or **Choose Layer** and enter a layer number. Only layers still ahead of the print are accepted, and only ones the file actually reports: the pause fires on an exact layer number, so a layer the file skips would never trigger it.
+3. The layer count now shows an orange pause symbol with the layer it will stop at, and a tick appears on the progress bar.
+
+When the print reaches that layer, it pauses the way your **Pause** button does (your printer's `PAUSE` macro, or `M600` if your config sets that). Tap **Resume** to continue.
+
+**Cancelling:** tap the layer count again and choose **Cancel Scheduled Pause**. A pause you scheduled here that the print never reached is cleared when the print finishes, is cancelled or fails, so it cannot catch the next print by surprise.
+
+> **Note:** A pause scheduled from Mainsail or Fluidd shows here too, since they use the same macros.
+
 ### View Toggle (Progress / Complete)
 
 When the G-code viewer is active during a print, a small floating button appears in the top-left corner. Tap it to switch between:
 
 - **Progress view** (default): Shows layers printed so far in solid color with a faded "ghost" preview of unprinted layers above.
 - **Complete view**: Shows the entire finished object with all layers solid — useful for seeing what the final print will look like.
+
+In the 2D view, outer walls darken where the surface folds, so overhang ledges, rims and steps read as edges while straight and evenly sloped walls keep the filament color (#1314).
 
 The icon shows a cube (tap to see the complete model) or stacked layers (tap to return to progress view). The toggle resets automatically when a new print starts.
 
@@ -277,10 +302,22 @@ Choose a step size (0.05 / 0.025 / 0.01 / 0.005 mm), then tap up/down to raise o
 
 An adjustment made from the Tune overlay is temporary - it lasts for this print unless you save it from Controls.
 
-**If there is no Save Z-Offset button**, your printer's firmware stores the offset
-itself and there is nothing to save - what you dialed in is already kept and is
-re-applied at the start of the next print. This is the case on the FlashForge
-AD5M / AD5X running ZMOD, and on the Snapmaker U1.
+The Save Z-Offset buttons can be turned off for a printer with **Save Z-Offset Buttons** in [Settings > Motion](motion.md#motion-settings). They start off on tool changers.
+
+**If there is no Save Z-Offset button**, the Tune overlay's hint under the
+Z-offset row says which case you are in:
+
+- **"Z-offset is auto-saved by firmware"**: your printer's firmware stores the
+  offset itself and there is nothing to save - what you dialed in is already kept
+  and is re-applied at the start of the next print. This is the case on the
+  FlashForge AD5M / AD5X running ZMOD.
+- **"Temporary adjustment for this print"**: nothing saves the adjustment,
+  usually because **Save Z-Offset Buttons** is off for this printer. Turn it
+  back on in Settings > Motion to save from Controls.
+- **"Temporary for this print; a tool change resets it"**: nothing saves the
+  adjustment. On the Snapmaker U1 each head keeps its own stored offset, which the
+  firmware re-applies whenever that head is picked up, so a baby step lasts only
+  until the next tool change or the end of the print.
 
 > **AD5M / AD5X (ZMOD):** the firmware clears the *live* offset when a print
 > ends, so other interfaces can show 0.000 while idle even though your real

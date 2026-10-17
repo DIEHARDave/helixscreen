@@ -164,9 +164,11 @@ class FilamentSlotOverrideStore {
     /// several writers share can ask for one at any time.
     ///
     /// @p cb is never called on failure: a re-read that could not reach the
-    /// database must leave what a lane already knows standing. @p cb runs on
-    /// the API's callback thread; marshal from there.
-    void reload_async(ReloadCallback cb);
+    /// database must leave what a lane already knows standing. @p on_failure,
+    /// when given, is called instead, for a caller holding work until the read
+    /// lands. Exactly one of the two runs, on the API's callback thread;
+    /// marshal from there.
+    void reload_async(ReloadCallback cb, std::function<void()> on_failure = nullptr);
 
     using SaveCallback = std::function<void(bool success, std::string error)>;
     void save_async(int slot_index, const FilamentSlotOverride& override, SaveCallback cb);
@@ -379,7 +381,14 @@ struct DeclaredOnLane {
 };
 
 /// What @p lane's declaring sources hold, read from the lane source store.
-[[nodiscard]] DeclaredOnLane declared_on_lane(LaneId lane);
+///
+/// With @p record, the lane's stored override, a value on the lane's user
+/// record counts only where @p record declares that field. The rest of that
+/// record is another tool's statement, filed on the user's rung at load
+/// (prestonbrown/helixscreen#1632): it yields to the next change on the lane
+/// rather than guarding the field against it.
+[[nodiscard]] DeclaredOnLane declared_on_lane(LaneId lane,
+                                              const FilamentSlotOverride* record = nullptr);
 
 /// Mirror firmware-detected color/material into `overrides[slot_index]` and
 /// fire `store->save_async` to push the resulting record to the lane_data

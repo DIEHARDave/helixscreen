@@ -120,6 +120,7 @@ The built-in catalog (gate subjects from the def table; "-" means always availab
 | `clog_detection` | `ClogDetectionWidget` (the FlowGuard bar) | `clog_meter_mode` |
 | `filament_buffer` | `FilamentBufferWidget` | `buffer_present` |
 | `print_stats` | `PrintStatsWidget` | - |
+| `display_message` | `DisplayMessageWidget` | - |
 | `gcode_console` | `GCodeConsoleWidget` | - |
 | `camera` | `CameraWidget`, `HELIX_HAS_CAMERA` builds only | - |
 | `notifications` | `TileWidget` (sizing only) | - |

@@ -11,7 +11,7 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver_registry.h` | `ScreensaverType`, the `SCREENSAVERS` rows (type, stable name, label key, color depths), clamp, the stable names and the frozen legacy type numbers, the fresh-install default, the too-heavy fallback order and the settings dropdown's choices. Always compiled |
 | `include/screensaver_setting.h` | Reading the persisted choice: a name in any case, or a legacy number |
 | `include/screensaver_base.h` | `SaverBase`: start, frame and stop sequence, levels, level requests |
-| `include/screensaver_overlay.h` | `SaverOverlay`: the black touch-absorbing overlay on `lv_layer_top()` |
+| `include/screensaver_overlay.h` | `SaverOverlay`: the black, clickable overlay on `lv_layer_top()`, so nothing beneath it is ever the press target |
 | `include/screensaver_canvas.h` | `SaverCanvas`: stride-sized buffer, format per depth, hide-before-free, dirty areas merged to 32, the dirty-box layer session |
 | `include/screensaver_frame_timer.h` | `SaverFrameTimer`: frame timer with a `MotionClock`, period changes without a motion jump |
 | `include/refresh_period_hold.h` | The display refresh while a saver runs, at the saver's current period; `period()` holds `HELIX_SCREENSAVER_REFR_PERIOD_MS` |
@@ -46,6 +46,28 @@ last drops the tunnel and flies 96 of its 160 stars; the flip clock per `FLIP_CL
 flip at 33 ms, then an instant digit swap checked every 250 ms. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).
+
+## Waking
+
+The touch that wakes the display never presses anything, whether the display is asleep,
+dimmed or under a screensaver. On every embedded backend the sleep-aware read wrapper
+(`src/application/display_manager.cpp#sleep_aware_read_cb`) asks
+`DisplaySleepController::note_press()` whether a press is waking the display; when it is,
+`helix::WakeTouchLatch` (`include/wake_touch_latch.h`) reports every read of that touch as
+released, at the pointer's resting point, until the finger lifts. A lift within
+`WakeTouchLatch::REARM_MS` (200 ms) of the waking press keeps the latch armed, so contact
+chatter as the finger lands, or a stray contact from a panel just powered on, is swallowed
+too; a tap after the window is an ordinary one. LVGL sees no press, drag or
+long press, so neither the overlay nor anything under it can act. The wake itself runs on the
+press: the next idle tick calls `DisplaySleepController::wake()`, which stops the saver and
+restores brightness while the finger is still down.
+
+`wake()` also runs `DisplayManager::cancel_pointer_presses()` on every pointer. A pointer the
+wrapper does not cover has already handed the press to LVGL: SDL's (which carries Android's
+touch), an evdev USB mouse beside the touchscreen on the DRM and fbdev backends, and the
+`ctl` pointer; the cancel resets it and makes it wait for release, so it cannot click, long-press or
+scroll, though the widget under it still sees PRESSED and PRESSING. Every wake counts as
+activity, so the swallowed touch does not leave the display to dim again on the next tick.
 
 ## The 3D maze
 

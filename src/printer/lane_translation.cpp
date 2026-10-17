@@ -192,6 +192,9 @@ static_assert(MATERIAL_INDEX < std::tuple_size_v<decltype(FIELD_ROSTER)>,
 // withdraw_cleared_fields() reaches it by position for the same reason the
 // record path reaches colour and material by name.
 constexpr size_t COLOR_NAME_INDEX = index_of("color_name");
+constexpr size_t SPOOL_NAME_INDEX = index_of("spool_name");
+static_assert(SPOOL_NAME_INDEX < std::tuple_size_v<decltype(FIELD_ROSTER)>,
+              "spool name row went missing");
 static_assert(COLOR_NAME_INDEX < std::tuple_size_v<decltype(FIELD_ROSTER)>,
               "colour name row went missing");
 // The binding's own row: withdraw_cleared_fields() spares it, for the reason
@@ -515,6 +518,21 @@ Observation declared_from_record(const FilamentSlotOverride& record) {
         }
     });
     return obs;
+}
+
+void amend_record(FilamentSlotOverride& record, const Observation& obs) {
+    for_each_field([&](const auto& f) {
+        using Row = std::decay_t<decltype(f)>;
+        if constexpr (!skipped<decltype(f.record)>) {
+            const auto& value = obs.*(f.obs);
+            if (!value.has_value())
+                return;
+            record.*(f.record) = *value;
+            if constexpr (Row::kind == FieldKind::Color) {
+                record.color_set = true;
+            }
+        }
+    });
 }
 
 bool wire_authored_by_firmware(const nlohmann::json& wire) {
@@ -870,6 +888,10 @@ bool declares_color(const FilamentSlotOverride& record) {
 
 bool declares_material(const FilamentSlotOverride& record) {
     return record.declared.test(MATERIAL_INDEX);
+}
+
+bool declares_spool_name(const FilamentSlotOverride& record) {
+    return record.declared.test(SPOOL_NAME_INDEX);
 }
 
 void withdraw_spool_owned_declarations(FilamentSlotOverride& record) {

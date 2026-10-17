@@ -116,6 +116,9 @@ struct AmsSlotData {
     lv_obj_t* lane_temp_text = nullptr;
     lv_obj_t* lane_remaining = nullptr; // Measured remaining length, under the material
     bool show_lane_humidity = false;
+    lv_obj_t* drying_badge = nullptr;       // Top-right drying-state badge
+    lv_obj_t* drying_icons[4] = {};         // Queued, active, complete, cancelled
+    lv_subject_t* drying_subject = nullptr; // Subject the badge is bound to
 
     // Pulsing state - when true, highlight updates are skipped to preserve animation
     bool is_pulsing = false;
@@ -331,6 +334,37 @@ static void apply_lane_humidity(AmsSlotData* data, AmsBackend* backend) {
         lv_obj_remove_flag(data->lane_temp_row, LV_OBJ_FLAG_HIDDEN);
     else
         lv_obj_add_flag(data->lane_temp_row, LV_OBJ_FLAG_HIDDEN);
+}
+
+/// Bind the drying badge to @p subject (nullptr unbinds it and leaves it hidden). The
+/// slot index, and so the subject, arrives after the view is built, so the binding is
+/// made here rather than in XML.
+static void bind_drying_badge(AmsSlotData* data, lv_subject_t* subject) {
+    if (!data || !data->drying_badge || data->drying_subject == subject)
+        return;
+    if (data->drying_subject) {
+        lv_obj_remove_from_subject(data->drying_badge, data->drying_subject);
+        for (lv_obj_t* icon : data->drying_icons) {
+            if (icon)
+                lv_obj_remove_from_subject(icon, data->drying_subject);
+        }
+    }
+    data->drying_subject = subject;
+    if (!subject) {
+        lv_obj_add_flag(data->drying_badge, LV_OBJ_FLAG_HIDDEN); // DECLARATIVE_OK: unbound
+        return;
+    }
+    using helix::printer::ZoneDryingState;
+    lv_obj_bind_flag_if_eq(data->drying_badge, subject, LV_OBJ_FLAG_HIDDEN,
+                           static_cast<int>(ZoneDryingState::Idle));
+    constexpr ZoneDryingState kIconState[4] = {ZoneDryingState::Queued, ZoneDryingState::Active,
+                                               ZoneDryingState::Complete,
+                                               ZoneDryingState::Cancelled};
+    for (int i = 0; i < 4; ++i) {
+        if (data->drying_icons[i])
+            lv_obj_bind_flag_if_not_eq(data->drying_icons[i], subject, LV_OBJ_FLAG_HIDDEN,
+                                       static_cast<int>(kIconState[i]));
+    }
 }
 
 // ============================================================================
@@ -669,6 +703,10 @@ static void setup_slot_observers(AmsSlotData* data) {
         data->remaining_observer.reset();
     }
 
+    // Only the primary backend publishes the per-slot drying subject.
+    bind_drying_badge(data,
+                      backend_idx == 0 ? state.get_slot_drying_subject(data->slot_index) : nullptr);
+
     if (current_slot_subject) {
         data->current_slot_observer = observe<int>(
             current_slot_subject, obj,
@@ -823,6 +861,11 @@ static void* ams_slot_xml_create(lv_xml_parser_state_t* state, const char** attr
     data->lane_temp_row = lv_obj_find_by_name(obj, "lane_temp_row");
     data->lane_temp_text = lv_obj_find_by_name(obj, "lane_temp_text");
     data->lane_remaining = lv_obj_find_by_name(obj, "lane_remaining");
+    data->drying_badge = lv_obj_find_by_name(obj, "drying_badge");
+    data->drying_icons[0] = lv_obj_find_by_name(obj, "drying_badge_queued");
+    data->drying_icons[1] = lv_obj_find_by_name(obj, "drying_badge_active");
+    data->drying_icons[2] = lv_obj_find_by_name(obj, "drying_badge_complete");
+    data->drying_icons[3] = lv_obj_find_by_name(obj, "drying_badge_cancelled");
 
     // Validate required children were found
     if (!data->spool_container || !data->lane_spool) {

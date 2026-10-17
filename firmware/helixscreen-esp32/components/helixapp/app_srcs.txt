@@ -175,6 +175,8 @@ src/printer/bed_mesh_state.cpp
 src/printer/chamber_heater_assignment.cpp
 src/printer/chamber_heater_backend_dragonbreath.cpp
 src/printer/chamber_wait_line.cpp
+src/printer/gcode_wait_line.cpp
+src/printer/wait_line_reader.cpp
 src/printer/chamber_heater_backend_generic.cpp
 src/printer/chamber_heater_backend_panda_breath.cpp
 src/printer/consumption_sink.cpp
@@ -235,6 +237,7 @@ src/printer/snapmaker_status_parse.cpp
 src/printer/status_dispatch.cpp
 src/printer/preprint_skip_wrappers.cpp
 src/printer/z_offset_persistence.cpp
+src/printer/layer_pause.cpp
 src/printer/fixed_tool_topology.cpp
 src/printer/plr_backend.cpp
 src/printer/plr_offer.cpp
@@ -369,6 +372,7 @@ src/ui/panel_widgets/camera_widget.cpp
 src/ui/panel_widgets/clock_widget.cpp
 src/ui/panel_widgets/clog_detection_widget.cpp
 src/ui/panel_widgets/control_buttons_widget.cpp
+src/ui/panel_widgets/display_message_widget.cpp
 src/ui/panel_widgets/fan_stack_widget.cpp
 src/ui/panel_widgets/fan_widget.cpp
 src/ui/panel_widgets/exclude_map_widget.cpp
@@ -424,6 +428,7 @@ src/ui/bed_drying_controller.cpp
 src/ui/temperature_service.cpp
 src/ui/theme_loader.cpp
 src/ui/theme_manager_new.cpp
+src/ui/tool_change_request.cpp
 src/ui/touch_calibration.cpp
 src/ui/touch_calibration_layout.cpp
 src/ui/touch_calibration_controller.cpp
@@ -573,6 +578,7 @@ src/ui/ui_position_utils.cpp
 src/ui/ui_pre_print_options_renderer.cpp
 src/ui/ui_print_exclude_object_manager.cpp
 src/ui/ui_print_light_timelapse.cpp
+src/ui/ui_print_layer_pause.cpp
 src/ui/ui_print_preparation_manager.cpp
 src/ui/ui_print_select_card_view.cpp
 src/ui/ui_print_select_archive.cpp
@@ -809,6 +815,7 @@ src/calibration/shaper_csv_parser.cpp
 # MOCK: src/api/moonraker_client_mock_queue.cpp
 # MOCK: src/api/moonraker_client_mock_server.cpp
 # MOCK: src/api/moonraker_client_mock_skips.cpp
+# MOCK: src/api/moonraker_client_mock_layer_pause.cpp
 # MOCK: src/printer/ams_backend_mock.cpp
 src/system/host_identity.cpp
 src/system/env_refusal_notice.cpp

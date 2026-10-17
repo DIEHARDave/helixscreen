@@ -96,6 +96,11 @@ const std::vector<Row>& rows() {
         {"settings_allow_cold_extrude", Mgr::Safety, false, "/safety/allow_cold_extrude", true, 0,
          0, 1, "allow_cold_extrude", true, SETB(safety().set_allow_cold_extrude),
          GET(safety().get_allow_cold_extrude), SUBJ(safety().subject_allow_cold_extrude)},
+        {"settings_tool_change_confirm", Mgr::Safety, false,
+         "/safety/tool_change_require_confirmation", true, 1, 0, 1, "tool_change_confirm", true,
+         SETB(safety().set_tool_change_require_confirmation),
+         GET(safety().get_tool_change_require_confirmation),
+         SUBJ(safety().subject_tool_change_require_confirmation)},
 
         // InputSettingsManager
         {"settings_scroll_throw", Mgr::Input, false, "/input/scroll_throw", false, 25, 5, 50,
@@ -261,6 +266,9 @@ const std::vector<Row>& rows() {
         {"detection_policy_u1", Mgr::Settings, true, "detection/policy_u1", false, 2, 0, 2,
          "detection_policy_u1", true, SETI(sm().set_detection_policy_u1),
          GET(sm().get_detection_policy_u1), NOSUBJ},
+        {"settings_z_offset_save_mode", Mgr::Settings, true, "z_offset/save_mode", false, 0, 0, 2,
+         "z_offset_save_mode", true, SETI(sm().set_z_offset_save_mode),
+         GET(sm().get_z_offset_save_mode), SUBJ(sm().subject_z_offset_save_mode)},
     };
     return r;
 }

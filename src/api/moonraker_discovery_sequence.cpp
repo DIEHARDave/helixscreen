@@ -19,6 +19,7 @@
 #include "helix_version.h"
 #include "humidity_sensor_types.h"
 #include "hv/requests.h"
+#include "layer_pause.h"
 #include "led/led_controller.h"
 #include "macro_executor.h"
 #include "macro_fan_analyzer.h"
@@ -1454,6 +1455,12 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     // machines have them and what their objects are called.
     for (const auto& object : helix::toolchanger_addon::required_status_objects(hw)) {
         subscription_objects[object] = nullptr;
+    }
+
+    // Scheduled layer pause: the macro whose variables hold the schedule.
+    // See include/layer_pause.h.
+    for (const auto& obj : helix::layer_pause::required_status_objects(hw)) {
+        subscription_objects[obj] = json::array({"pause_next_layer", "pause_at_layer"});
     }
 
     // Firmware retraction. PrinterCalibrationState reads the four tunable

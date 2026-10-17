@@ -721,6 +721,7 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_resume(const std::st
 // CANCEL_PRINT - Cancel current print
 MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_cancel_print(const std::string&) {
     cancel_print_internal();
+    reset_layer_pause();
     return std::nullopt;
 }
 
@@ -1146,6 +1147,7 @@ int MoonrakerClientMock::gcode_script(const std::string& raw_gcode) {
     GcodeResult r;
 
     gcode_skip_wrappers(g);
+    gcode_layer_pause(g);
     if (is_mock_ifs_module() && (r = gcode_ifs_module(g))) {
         return *r;
     }

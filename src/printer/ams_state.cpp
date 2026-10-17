@@ -1271,6 +1271,10 @@ bool AmsState::clear_unused_slot_subjects(int total_slots) {
         if (strcmp(lv_subject_get_string(&slot_remaining_[i]), "") != 0) {
             lv_subject_copy_string(&slot_remaining_[i], "");
         }
+        const int idle = static_cast<int>(helix::printer::ZoneDryingState::Idle);
+        if (lv_subject_get_int(&slot_drying_[i]) != idle) {
+            lv_subject_set_int(&slot_drying_[i], idle);
+        }
         // Clear material for unused slots — bump so the label clears (#1065)
         if (strcmp(lv_subject_get_string(&slot_materials_[i]), "") != 0) {
             lv_subject_copy_string(&slot_materials_[i], "");
@@ -1389,6 +1393,12 @@ bool AmsState::write_slot_subjects(AmsBackend& backend, int slot_index, const Sl
     std::string remaining = slot.remaining_length_display();
     if (strcmp(lv_subject_get_string(&slot_remaining_[slot_index]), remaining.c_str()) != 0) {
         lv_subject_copy_string(&slot_remaining_[slot_index], remaining.c_str());
+    }
+
+    // The lane's part in a drying cycle, for the drying badge on its slot.
+    const int new_drying = static_cast<int>(slot.drying_state);
+    if (lv_subject_get_int(&slot_drying_[slot_index]) != new_drying) {
+        lv_subject_set_int(&slot_drying_[slot_index], new_drying);
     }
 
     // Material type. The ams_slot widget binds this subject directly (its

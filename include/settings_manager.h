@@ -793,6 +793,23 @@ class SettingsManager {
     }
 
     // =========================================================================
+    // Z-OFFSET SAVE (per-printer; the decision lives in helix::zoffset)
+    // =========================================================================
+
+    /// Whether the app offers to persist the Z offset on this printer, as a
+    /// helix::zoffset::SaveMode: 0=Auto, 1=Show, 2=Hide. Read it through
+    /// helix::zoffset::save_enabled(), which resolves Auto.
+    int get_z_offset_save_mode() const {
+        return settings_.get(Key::ZOffsetSaveMode);
+    }
+    void set_z_offset_save_mode(int mode) {
+        settings_.set(Key::ZOffsetSaveMode, mode);
+    }
+    lv_subject_t* subject_z_offset_save_mode() {
+        return settings_.subject(Key::ZOffsetSaveMode);
+    }
+
+    // =========================================================================
     // BARCODE SCANNER (owned by SettingsManager — manual device selection)
     // =========================================================================
 
@@ -863,6 +880,7 @@ class SettingsManager {
         DetectionEnabled,
         DetectionPauseOnDetect,
         DetectionPolicyU1,
+        ZOffsetSaveMode,
         COUNT
     };
     settings::PersistedSettings<Key, static_cast<size_t>(Key::COUNT)> settings_;

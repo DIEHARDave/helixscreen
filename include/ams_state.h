@@ -1460,6 +1460,17 @@ class AmsState {
     [[nodiscard]] lv_subject_t* get_slot_remaining_subject(int slot_index);
 
     /**
+     * @brief Get the drying-state subject for a specific slot (primary backend)
+     *
+     * Holds a helix::printer::ZoneDryingState as int: Idle everywhere except a dryer
+     * that drives its gates one by one.
+     *
+     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @return Subject pointer or nullptr if out of range
+     */
+    [[nodiscard]] lv_subject_t* get_slot_drying_subject(int slot_index);
+
+    /**
      * @brief Get per-slot material-type subject (primary backend's flat array).
      *
      * Holds the last-synced material string ("PLA", "PETG", …, or "" when the
@@ -1999,6 +2010,10 @@ class AmsState {
     /** @brief Fire external_spool_color_ subject to notify observers of spool changes */
     void notify_external_spool_changed(const SlotInfo& info);
 
+    /// set_external_spool_info() without the notify, for a caller that still
+    /// has lane sources to file before observers may re-read the record.
+    void store_external_spool_info(const SlotInfo& info);
+
     /** @brief Set "Currently Loaded" subjects to default/empty state with guards */
     void set_current_loaded_defaults(bool write_header = true);
 
@@ -2429,6 +2444,7 @@ class AmsState {
     lv_subject_t slot_statuses_[MAX_SLOTS]{};
     lv_subject_t slot_remaining_[MAX_SLOTS]{}; // string: "52m" or "432g" or ""
     char slot_remaining_buf_[MAX_SLOTS][16];   // buffers for remaining strings
+    lv_subject_t slot_drying_[MAX_SLOTS]{};    // int: helix::printer::ZoneDryingState
     lv_subject_t slot_materials_[MAX_SLOTS]{}; // string: "PLA", "PETG", … or "" (last synced type)
     char slot_materials_buf_[MAX_SLOTS][24]; // buffers for material strings (holds "PETG-CF" etc.)
     lv_subject_t slot_names_[MAX_SLOTS]{};   // string: slot card spool name, or ""

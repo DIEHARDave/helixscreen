@@ -674,6 +674,8 @@ void ZOffsetCalibrationPanel::send_accept() {
     final_offset_ = current_z_;
     on_calibration_result(true, "");
 
+    // FIRMWARE_MANAGED ignores the Z-offset save setting on purpose: the
+    // firmware persists the offset itself, so there is no save to withhold.
     if (strategy == ZOffsetCalibrationStrategy::FIRMWARE_MANAGED) {
         // Apply cumulative delta as gcode Z offset
         set_state(State::SAVING);
@@ -710,6 +712,25 @@ void ZOffsetCalibrationPanel::send_accept() {
                 spdlog::error("[ZOffsetCal] SET_GCODE_OFFSET failed: {}", err.message);
                 tok.defer("ZOffsetCalibrationPanel::on_calibration_result(gcode_fail)",
                           [this]() { on_calibration_result(false, "Failed to set Z-offset"); });
+            });
+    } else if (!helix::zoffset::save_enabled()) {
+        // Saving is off for this printer: ACCEPT stages the result for Klipper's
+        // next SAVE_CONFIG and nothing here sends one. The complete state says so.
+        spdlog::info("[ZOffsetCal] Z-offset saving is off - sending ACCEPT without saving");
+        auto tok = lifetime_.token();
+        api_->execute_gcode(
+            "ACCEPT",
+            [this, tok]() {
+                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(accept_nosave_ok)",
+                          [this]() { on_calibration_result(true, ""); });
+            },
+            [this, tok](const MoonrakerError& err) {
+                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(accept_nosave_fail)",
+                          [this, err]() {
+                              on_calibration_result(
+                                  false, fmt::format(fmt::runtime(lv_tr("ACCEPT failed: {}")),
+                                                     err.localized_message()));
+                          });
             });
     } else {
         // Probe/endstop: ACCEPT then apply+save
