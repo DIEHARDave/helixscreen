@@ -345,7 +345,7 @@ TEST_CASE("Unmounting uses the machine's own drop command", "[ams][toolchanger][
     tc.set_tool_sensor(toolchanger_addon::resolve_tool_sensor(hw));
     tc.feed(json{{"medusahc", {{"state", "ready"}, {"current_tool", 1}}}});
 
-    auto err = tc.unload_filament(1);
+    auto err = tc.park_active_tool();
     REQUIRE(err.success());
     REQUIRE_FALSE(tc.sent().empty());
     // DROP_TOOL takes no tool argument: there is only ever one tool on the head.
@@ -470,7 +470,7 @@ TEST_CASE("A tool changer's steps project SELECTING, and docking projects UNLOAD
 
 TEST_CASE("A running swap publishes its step's action, and the closing grip reads IDLE",
           "[ams][toolchanger][coarse]") {
-    // The unmount dispatches as UNLOADING, but its first step releases the
+    // The park dispatches as UNLOADING, but its first step releases the
     // filament, which projects SELECTING. The grip that closes the swap lands
     // on the frame that ends it, and a finished swap reads IDLE whatever step
     // index it left behind.
@@ -485,7 +485,7 @@ TEST_CASE("A running swap publishes its step's action, and the closing grip read
     AmsState::instance().set_active_step_operation(StepOperationType::UNLOAD);
     tc.feed(
         json{{"medusahc", {{"operation", "idle"}, {"current_tool", 0}, {"feeder_open", false}}}});
-    REQUIRE(tc.unload_filament(0).success());
+    REQUIRE(tc.park_active_tool().success());
 
     tc.feed(
         json{{"medusahc", {{"operation", "idle"}, {"current_tool", 0}, {"feeder_open", true}}}});
@@ -794,13 +794,16 @@ TEST_CASE("A fresh dispatch does not inherit the previous swap's gripper latch",
 // Wording and refusals
 // ============================================================================
 
-TEST_CASE("A changer's load mounts a tool rather than moving filament",
-          "[ams][toolchanger][labels]") {
-    // Drives the Mount/Unmount wording. Asked as a capability so the Snapmaker
-    // U1 - a tool changer whose load really does feed filament - keeps the
-    // filament wording.
+TEST_CASE("A MedusaHC changer loads and unloads filament by hand", "[ams][toolchanger][labels]") {
+    // Until its feed command is known, MedusaHC is a no-feed changer: the
+    // sidebar offers Mount and Park, and Load/Unload explain themselves.
     ToolChangerHelper tc(2);
-    CHECK(tc.load_mounts_tool());
+    tc.set_tool_sensor(toolchanger_addon::resolve_tool_sensor(medusahc_discovery()));
+    const auto ops = tc.head_filament_ops(0);
+    CHECK(ops.load == FilamentOpSupport::Manual);
+    CHECK(ops.unload == FilamentOpSupport::Manual);
+    CHECK_FALSE(ops.load_reason.empty());
+    CHECK(tc.carriage_can_be_empty());
 }
 
 TEST_CASE("A blocked unmount explains itself only when it can", "[ams][toolchanger][labels]") {

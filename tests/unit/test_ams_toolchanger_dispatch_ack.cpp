@@ -148,12 +148,12 @@ bool trace_contains(const std::vector<helix::AmsAction>& trace, helix::AmsAction
 // The reported defect: a no-op SELECT_TOOL must still end the operation
 // =============================================================================
 
-TEST_CASE("Toolchanger load on the already-mounted tool resolves on the macro ack",
+TEST_CASE("Toolchanger mount of the already-mounted tool resolves on the macro ack",
           "[ams][toolchanger][dispatch][1183]") {
     ToolChangerDispatchHelper h(5);
     h.seat_tool(4); // T4 already on the carriage — SELECT_TOOL T=4 is a firmware no-op
 
-    REQUIRE(h.load_filament(4).success());
+    REQUIRE(h.change_tool(4).success());
     REQUIRE(h.sent().size() == 1);
     CHECK(h.sent()[0] == "SELECT_TOOL T=4");
 
@@ -173,12 +173,12 @@ TEST_CASE("Toolchanger load on the already-mounted tool resolves on the macro ac
     CHECK(h.action() == helix::AmsAction::IDLE);
 }
 
-TEST_CASE("Toolchanger no-op load does not lock out the next operation",
+TEST_CASE("Toolchanger no-op mount does not lock out the next operation",
           "[ams][toolchanger][dispatch][1183]") {
     ToolChangerDispatchHelper h(5);
     h.seat_tool(4);
 
-    REQUIRE(h.load_filament(4).success());
+    REQUIRE(h.change_tool(4).success());
     REQUIRE(h.ack_available(0));
     h.ack(0);
 
@@ -188,7 +188,7 @@ TEST_CASE("Toolchanger no-op load does not lock out the next operation",
     // the 120 s UI guard.
     REQUIRE_FALSE(h.get_system_info().is_busy());
 
-    helix::AmsError second = h.load_filament(2);
+    helix::AmsError second = h.change_tool(2);
     CHECK(second.success());
     CHECK(h.sent().size() == 2);
 }
@@ -202,7 +202,7 @@ TEST_CASE("Toolchanger macro ack does not truncate a real tool change",
     ToolChangerDispatchHelper h(5);
     h.seat_tool(0);
 
-    REQUIRE(h.load_filament(3).success());
+    REQUIRE(h.change_tool(3).success());
     REQUIRE(h.ack_available(0));
 
     // Firmware picked the change up and is mid-swap. SELECT_TOOL's ack lands
@@ -241,7 +241,7 @@ TEST_CASE("Toolchanger never takes the swap arm, so a remap cannot mount the wro
     REQUIRE(seated.current_slot == 0); // a tool is always on the carriage
     CHECK_FALSE(h.needs_unload_before_load(seated, /*target_slot=*/3));
 
-    REQUIRE(h.load_filament(3).success());
+    REQUIRE(h.change_tool(3).success());
     REQUIRE(h.sent().size() == 1);
     CHECK(h.sent()[0] == "SELECT_TOOL T=3"); // the tapped tool, whatever the map says
 }
@@ -252,7 +252,7 @@ TEST_CASE("Toolchanger dispatch failure reverts the optimistic action",
     h.seat_tool(1);
 
     // An out-of-range tool never reaches the wire.
-    helix::AmsError err = h.load_filament(99);
+    helix::AmsError err = h.change_tool(99);
     CHECK_FALSE(err.success());
     CHECK(h.sent().empty());
     CHECK(h.action() == helix::AmsAction::IDLE);

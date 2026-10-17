@@ -1742,6 +1742,7 @@
   <translation tag="Load Profile" pt="Carregar perfil"/>
   <translation tag="Load a filament first before trying to unload" pt="Carregue primeiro filamento antes de tentar descarregar"/>
   <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" pt="Carregue um novo carretel neste slot, ou ative o reabastecimento automático para mudar para um equivalente"/>
+  <translation tag="Load and unload filament at the tool by hand" pt="Carregue e descarregue o filamento à mão na ferramenta"/>
   <translation tag="Load cancelled: nozzle target dropped" pt="Carregamento cancelado: o alvo do bico caiu"/>
   <translation tag="Load complete" pt="Carregamento concluído"/>
   <translation tag="Load failed" pt="Falha ao carregar"/>
@@ -1921,6 +1922,7 @@
   <translation tag="Motors stay on while a print is active" pt="Os motores permanecem ativos durante uma impressão"/>
   <translation tag="Mount" pt="Montar"/>
   <translation tag="Mount which tool?" pt="Montar qual ferramenta?"/>
+  <translation tag="Mount..." pt="Montar..."/>
   <translation tag="Move" pt="Mover"/>
   <translation tag="Move out of range" pt="Movimento fora do alcance"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." pt="Mova o papel para frente e para trás enquanto ajusta. Pare quando o papel prender levemente, mas ainda deslizar."/>

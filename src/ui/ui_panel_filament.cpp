@@ -2545,14 +2545,6 @@ FilamentPanelOutcome panel_load_outcome(const FilamentOpPlan& plan) {
 
     case FilamentTier::Refused:
         switch (plan.refusal) {
-        case FilamentRefusal::AlreadyMounted:
-            // SELECT_TOOL on the tool already on the carriage is a firmware
-            // no-op; dispatching it left the Load button spinning for the full
-            // guard timeout (bundle 9KRXZ62P). Refuse without arming guard or
-            // spinner -- but say so, the user did press the button. Not the
-            // slot-picker redirect either: there is nothing to pick.
-            out.toast = lv_tr("That tool is already loaded");
-            break;
         case FilamentRefusal::BypassLoaded:
             // The bypass spool is still across the toolhead switch. That switch
             // sits above the cutter and reads the upstream piece, so no unload

@@ -1742,6 +1742,7 @@
   <translation tag="Load Profile" it="Carica profilo"/>
   <translation tag="Load a filament first before trying to unload" it="Prima carica il filamento, poi prova a scaricarlo"/>
   <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" it="Caricare una nuova bobina in questo slot, oppure attivare il rifornimento automatico per passare a una compatibile"/>
+  <translation tag="Load and unload filament at the tool by hand" it="Carica e scarica il filamento a mano sullo strumento"/>
   <translation tag="Load cancelled: nozzle target dropped" it="Caricamento annullato: il target dell&apos;ugello è sceso"/>
   <translation tag="Load complete" it="Caricamento completato"/>
   <translation tag="Load failed" it="Caricamento non riuscito"/>
@@ -1921,6 +1922,7 @@
   <translation tag="Motors stay on while a print is active" it="I motori restano attivi durante una stampa"/>
   <translation tag="Mount" it="Monta"/>
   <translation tag="Mount which tool?" it="Quale strumento montare?"/>
+  <translation tag="Mount..." it="Monta..."/>
   <translation tag="Move" it="Sposta"/>
   <translation tag="Move out of range" it="Movimento fuori intervallo"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." it="Muovere la carta avanti e indietro durante la regolazione. Fermarsi quando la carta si blocca leggermente ma ancora scorre."/>

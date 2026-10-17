@@ -241,14 +241,13 @@ ACE-Pro adapter, #974).
 
 ### Batch Load/Unload
 
-The U1 is the only backend whose sidebar offers multi-slot Load/Unload All: its `kTraits`
-sets `supports_batch_filament_ops` (`include/ams_backend_snapmaker.h#AmsBackendSnapmaker`;
-the default is false and no other backend sets it; the mock's Snapmaker persona copies the
-U1's `kTraits`). The sidebar opens
-`BatchFilamentModal` (`include/ui_batch_filament_modal.h`), which dispatches the whole ticked
-set in one call; `load_filament_batch()` / `unload_filament_batch()` route it through the shared
-`run_filament_op()` executor, so the operation bar, error surfacing and skip handling are the
-same as a single-slot op.
+The U1 answers `max_heads_per_filament_op()` 4 (`include/ams_backend_snapmaker.h#AmsBackendSnapmaker`;
+the default is 1, and the mock's Snapmaker persona answers the same). The sidebar's Load and
+Unload open the head picker (`BatchFilamentModal`, `include/ui_batch_filament_modal.h`) with
+up to four heads tickable; several ticked run as one call, where `load_filament_batch()` /
+`unload_filament_batch()` route through the shared `run_filament_op()` executor, so the
+operation bar, error surfacing and skip handling are the same as a single-slot op. One
+ticked head takes the per-slot path.
 
 `do_filament_batch()` (`src/printer/ams_backend_snapmaker.cpp#do_filament_batch`) builds one gcode
 script per batch in two shapes:
@@ -474,7 +473,7 @@ Extended Firmware endpoint that 404s on stock firmware; the override still persi
 | Recover / Reset / Cancel | No | All three return `not_supported` (`src/printer/ams_backend_snapmaker.cpp#recover`) |
 | Operation step bar | Yes | Firmware-driven per-direction steps via `ams_operation_phase`; Heat step live |
 | Homing and heating | Firmware | `FEED_AUTO` homes and sets its own nozzle target (`load_homing` / `load_heating`, `unload_homing` / `unload_heating`), so `delegates_homing_to_printer()` and `supports_auto_heat_on_load()` are true: no G28 and no UI preheat from us |
-| Batch load/unload | Yes | The only backend with `supports_batch_filament_ops() = true`; see Batch Load/Unload above |
+| Batch load/unload | Yes | `max_heads_per_filament_op()` = 4; see Batch Load/Unload above |
 | Per-slot loaded authority | Override | `slot_is_actively_loaded()` returns `status == LOADED` verbatim (hub table, `src/printer/ams_backend_snapmaker.cpp#slot_is_actively_loaded`) |
 | Path visualization | Yes | NOZZLE when the latch is set or the toolhead switch reads filament, PREP when only the feeder's port sensor does (it is each lane's entry sensor, `slot_has_prep_sensor()`), OUTPUT when only an unreported toolhead switch's default says so, NONE otherwise (`src/printer/ams_backend_snapmaker.cpp#slot_segment_locked`). The system segment is the mounted tool's own lane, NONE with no tool on the carriage |
 | RFID | Yes | Per-channel tag read; UID change clears the slot override |

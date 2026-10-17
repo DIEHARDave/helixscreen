@@ -4772,7 +4772,6 @@ TEST_CASE("Only a backend whose carriage can be empty says so",
     CHECK(snapmaker.carriage_can_be_empty());
 
     AmsBackendAfc afc(nullptr, nullptr);
-    REQUIRE_FALSE(afc.load_mounts_tool());
     CHECK_FALSE(afc.carriage_can_be_empty());
 }
 

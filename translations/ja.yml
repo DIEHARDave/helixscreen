@@ -1812,6 +1812,7 @@ translations:
   Load Filament: フィラメントを装填
   Load a filament first before trying to unload: 排出する前にまずフィラメントを装填してください
   Load a new spool in this slot, or turn on auto-refill to switch to a matching one: このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください
+  Load and unload filament at the tool by hand: 'フィラメントはツールで手動でロード・アンロードしてください'
   'Load cancelled: nozzle target dropped': '装填をキャンセル: ノズルの目標温度が下がりました'
   Load complete: 'ロード完了'
   Load failed: 装填に失敗しました
@@ -1993,6 +1994,7 @@ translations:
   Motors stay on while a print is active: 印刷中はモーターを停止できません
   Mount: 装着
   Mount which tool?: 'どのツールを装着しますか？'
+  Mount...: '装着...'
   Move: 移動
   Move out of range: '移動範囲外です'
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: 調整中は紙を前後に動かしてください。紙がわずかに引っかかりながらも滑る状態で止めてください。

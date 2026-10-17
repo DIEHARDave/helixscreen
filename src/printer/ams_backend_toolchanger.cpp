@@ -1372,41 +1372,61 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
 
 // ============================================================================
 
-AmsError AmsBackendToolChanger::do_load_filament(int slot_index) {
-    if (tool_feed_.present) {
-        // The firmware feeds the head itself, and heats it. Only a command the
-        // printer published is sent, so a head with no lane is refused.
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            AmsError slot_valid = validate_slot_index_locked(slot_index);
-            if (!slot_valid) {
-                return slot_valid;
-            }
-        }
-        const auto head = static_cast<size_t>(slot_index);
-        if (head >= tool_feed_.head_gcode.size() || tool_feed_.head_gcode[head].empty()) {
-            return AmsErrorHelper::not_supported("filament feed for this tool");
-        }
-        std::string cmd = tool_feed_.head_gcode[head];
-        spdlog::info("[AMS ToolChanger] Feeding tool {} via {}: {}", slot_index,
-                     tool_feed_.provider_name, cmd);
-        return dispatch_operation(std::move(cmd), AmsAction::LOADING);
+HeadFilamentOps AmsBackendToolChanger::head_ops_for(bool feeds_head, bool cut_to_unload) {
+    HeadFilamentOps ops;
+    const char* by_hand = lv_tr("Load and unload filament at the tool by hand");
+    if (!feeds_head) {
+        ops.load = FilamentOpSupport::Manual;
+        ops.load_reason = by_hand;
     }
-    // For tool changers, "load filament" means "mount tool"
-    return do_change_tool(slot_index);
+    ops.unload = FilamentOpSupport::Manual;
+    ops.unload_reason = cut_to_unload ? lv_tr("This printer has no automatic unload. Cut the "
+                                              "filament at the head and pull it out by hand.")
+                                      : by_hand;
+    return ops;
+}
+
+HeadFilamentOps AmsBackendToolChanger::head_filament_ops(int head) const {
+    const bool feeds = tool_feed_.present && head >= 0 &&
+                       static_cast<size_t>(head) < tool_feed_.head_gcode.size() &&
+                       !tool_feed_.head_gcode[static_cast<size_t>(head)].empty();
+    return head_ops_for(feeds, unload_is_manual());
+}
+
+AmsError AmsBackendToolChanger::do_load_filament(int slot_index) {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        AmsError slot_valid = validate_slot_index_locked(slot_index);
+        if (!slot_valid) {
+            return slot_valid;
+        }
+    }
+    // Only a feed the printer published is sent. A load never mounts a tool:
+    // the toolhead tap does that.
+    const auto head = static_cast<size_t>(slot_index);
+    if (!tool_feed_.present || head >= tool_feed_.head_gcode.size() ||
+        tool_feed_.head_gcode[head].empty()) {
+        return AmsError(AmsResult::NOT_SUPPORTED, "No filament feed for this tool",
+                        head_filament_ops(slot_index).load_reason, "");
+    }
+    // The firmware feeds the head itself, and heats it.
+    std::string cmd = tool_feed_.head_gcode[head];
+    spdlog::info("[AMS ToolChanger] Feeding tool {} via {}: {}", slot_index,
+                 tool_feed_.provider_name, cmd);
+    return dispatch_operation(std::move(cmd), AmsAction::LOADING);
 }
 
 AmsError AmsBackendToolChanger::do_unload_filament(int slot_index) {
-    // For tool changers, "unload" means unmount a specific tool (or current if -1)
+    // No feed reverses on a tool changer: taking filament out is the user's
+    // job, and an unload never unmounts a tool (park_active_tool() does).
+    return AmsError(AmsResult::NOT_SUPPORTED, "No filament unload on this tool changer",
+                    head_filament_ops(std::max(slot_index, 0)).unload_reason, "");
+}
+
+AmsError AmsBackendToolChanger::do_park_active_tool() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
-
-        if (slot_index >= 0) {
-            AmsError slot_valid = validate_slot_index_locked(slot_index);
-            if (!slot_valid) {
-                return slot_valid;
-            }
-        } else if (system_info_.current_tool < 0) {
+        if (system_info_.current_tool < 0) {
             return AmsErrorHelper::not_loaded();
         }
     }
@@ -1418,7 +1438,7 @@ AmsError AmsBackendToolChanger::do_unload_filament(int slot_index) {
         if (tool_commands_.unselect.empty()) {
             return AmsErrorHelper::not_supported("unmount");
         }
-        spdlog::info("[AMS ToolChanger] Unmounting via {}: {}", tool_commands_.provider_name,
+        spdlog::info("[AMS ToolChanger] Parking via {}: {}", tool_commands_.provider_name,
                      tool_commands_.unselect);
         return dispatch_operation(tool_commands_.unselect, AmsAction::UNLOADING);
     }
@@ -1426,13 +1446,7 @@ AmsError AmsBackendToolChanger::do_unload_filament(int slot_index) {
     // UNSELECT_TOOL has the same no-op shortcut as SELECT_TOOL — unmounting when
     // nothing is on the carriage returns without touching toolchanger.status —
     // so it needs the same optimistic-set + ack-resolution treatment (#1183).
-    if (slot_index >= 0) {
-        std::string cmd = "UNSELECT_TOOL T=" + std::to_string(slot_index);
-        spdlog::info("[AMS ToolChanger] Unmounting tool {}: {}", slot_index, cmd);
-        return dispatch_operation(std::move(cmd), AmsAction::UNLOADING);
-    }
-
-    spdlog::info("[AMS ToolChanger] Unmounting current tool");
+    spdlog::info("[AMS ToolChanger] Parking the current tool");
     return dispatch_operation("UNSELECT_TOOL", AmsAction::UNLOADING);
 }
 

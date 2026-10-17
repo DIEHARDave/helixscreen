@@ -67,7 +67,6 @@ BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out, int 
     caps.present = true;
     caps.requires_slot_selection_for_load = backend->requires_slot_selection_for_load();
     caps.needs_unload_before_load = backend->needs_unload_before_load(info_out, target_slot);
-    caps.load_mounts_tool = backend->load_mounts_tool();
     caps.load_feeds_filament = backend->load_feeds_filament();
     // Distinct from !requires_slot_selection_for_load(): plan_load() needs to
     // tell "bypass is suppressing the lane tier" apart from "this backend
@@ -555,18 +554,11 @@ void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surfa
             surface.on_refused(plan);
             return;
         }
-        // AlreadyMounted: SELECT_TOOL on the carriage tool is a firmware no-op
-        // that would leave the dialog looking like it did something.
         // SelectSlot: no lane resolved, and a surface with no picker cannot
         // offer one. Never navigate from here: tearing a dialog out from under
         // the user is what on_refused exists to let a surface decide.
-        if (plan.refusal == helix::ui::FilamentRefusal::AlreadyMounted) {
-            spdlog::info("{} Load refused — tool {} already mounted", log_tag, slot);
-            NOTIFY_INFO(lv_tr("That tool is already loaded"));
-        } else {
-            spdlog::info("{} Load refused — no slot resolved", log_tag);
-            NOTIFY_WARNING(lv_tr("Select a filament slot to load"));
-        }
+        spdlog::info("{} Load refused — no slot resolved", log_tag);
+        NOTIFY_WARNING(lv_tr("Select a filament slot to load"));
         return;
 
     case helix::ui::FilamentTier::Macro: {

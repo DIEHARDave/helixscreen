@@ -1806,6 +1806,7 @@ translations:
   Load Filament: 加载耗材
   Load a filament first before trying to unload: 请先装载耗材，再尝试卸载
   Load a new spool in this slot, or turn on auto-refill to switch to a matching one: 请在此槽位装入新料盘，或开启自动续料以切换到匹配的料盘
+  Load and unload filament at the tool by hand: '请在工具上手动装入和卸载耗材'
   'Load cancelled: nozzle target dropped': '加载已取消：喷嘴目标温度已降低'
   Load complete: '装载完成'
   Load failed: 装载失败
@@ -1987,6 +1988,7 @@ translations:
   Motors stay on while a print is active: 打印期间电机保持开启
   Mount: 装上
   Mount which tool?: '装上哪个工具？'
+  Mount...: '装上...'
   Move: 移动
   Move out of range: '移动超出范围'
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: 调整时前后移动纸张。当纸张有轻微阻力但仍能滑动时停止。

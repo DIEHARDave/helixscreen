@@ -87,8 +87,8 @@ struct FilamentPanelOutcome {
     bool guard_armed = false;
 
     /// Send the user to the AMS panel to pick a slot. FilamentRefusal::SelectSlot
-    /// only -- AlreadyMounted has nothing left to pick, and BypassLoaded needs a
-    /// hand at the toolhead rather than a different lane.
+    /// only -- BypassLoaded needs a hand at the toolhead rather than a
+    /// different lane.
     bool navigate_to_ams = false;
 
     /// arm_manual_pull_prompt() runs before dispatch -- nothing reels this spool

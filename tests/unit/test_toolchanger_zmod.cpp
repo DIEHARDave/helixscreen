@@ -114,11 +114,11 @@ TEST_CASE("Mounting on Z-Mod sends _T_IN", "[toolchanger][zmod][commands]") {
 
 TEST_CASE("Parking on Z-Mod sends _T_OUT", "[toolchanger][zmod][commands]") {
     // Separate from mounting: the helper never acks gcode, so a mount stays in
-    // flight and a following unmount would be refused as busy.
+    // flight and a following park would be refused as busy.
     ToolChangerHelper tc(4);
     wire_zmod(tc);
     tc.feed(json{{"zmod_color", {{"active_tool_id", 2}}}});
-    REQUIRE(tc.unload_filament(2).success());
+    REQUIRE(tc.park_active_tool().success());
     CHECK(tc.sent().back() == "_T_OUT");
 }
 
@@ -753,13 +753,17 @@ TEST_CASE("Every filament-unload dispatch stops at the notice on a manual-unload
     CHECK(tc.sent().size() == sent_before);
 }
 
-TEST_CASE("An explicit park still unmounts on Z-Mod", "[toolchanger][zmod][manual_unload]") {
-    // The unmount control calls the backend directly and must not be swallowed
-    // by the filament-unload notice.
+TEST_CASE("An explicit park still unmounts on Z-Mod, and Unload never does",
+          "[toolchanger][zmod][manual_unload]") {
+    // Park calls the backend directly and is not swallowed by the
+    // filament-unload notice; Unload is a filament op and sends nothing.
     ToolChangerHelper tc(4);
     wire_zmod(tc);
     tc.feed(json{{"zmod_color", {{"active_tool_id", 1}}}});
-    REQUIRE(tc.unload_filament(1).success());
+    const size_t before = tc.sent().size();
+    CHECK_FALSE(tc.unload_filament(1).success());
+    CHECK(tc.sent().size() == before);
+    REQUIRE(tc.park_active_tool().success());
     CHECK(tc.sent().back() == "_T_OUT");
 }
 
@@ -815,22 +819,29 @@ TEST_CASE("Load with the afclite shim sends CHANGE_TOOL for that head's lane",
     }
 }
 
-TEST_CASE("Load on Z-Mod without the shim still mounts", "[toolchanger][zmod][feed]") {
+TEST_CASE("Load on Z-Mod without the shim refuses and mounts nothing",
+          "[toolchanger][zmod][feed]") {
     ToolChangerHelper tc(4);
     wire_zmod_with(tc, zmod_c5_discovery());
     tc.feed(json{{"zmod_color", {{"active_tool_id", -1}}}});
-    REQUIRE(tc.load_filament(2).success());
-    CHECK(tc.sent().back() == "_T_IN T=2");
+    const size_t sent_before = tc.sent().size();
+    const AmsError err = tc.load_filament(2);
+    CHECK_FALSE(err.success());
+    CHECK_FALSE(err.user_msg.empty());
+    CHECK(tc.sent().size() == sent_before);
     CHECK_FALSE(tc.load_feeds_filament());
+    CHECK(tc.head_filament_ops(2).load == helix::FilamentOpSupport::Manual);
 }
 
-TEST_CASE("Mounting stays _T_IN when Load is a feed", "[toolchanger][zmod][feed]") {
+TEST_CASE("A feed is no select-slot action: mounting is the toolhead tap",
+          "[toolchanger][zmod][feed]") {
     ToolChangerHelper tc(4);
     wire_zmod_with(tc, zmod_c5_afclite_discovery());
     tc.feed(json{{"zmod_color", {{"active_tool_id", -1}}}});
-    REQUIRE(tc.supports_gate_select());
-    REQUIRE(tc.select_gate(2).success());
-    CHECK(tc.sent().back() == "_T_IN T=2");
+    CHECK_FALSE(tc.supports_gate_select());
+    CHECK(tc.head_filament_ops(2).load == helix::FilamentOpSupport::Automatic);
+    // The Creator 5 cuts to unload, with or without the shim.
+    CHECK(tc.head_filament_ops(2).unload == helix::FilamentOpSupport::Manual);
 }
 
 TEST_CASE("Mounting with change_tool is untouched by the feed", "[toolchanger][zmod][feed]") {
@@ -841,14 +852,20 @@ TEST_CASE("Mounting with change_tool is untouched by the feed", "[toolchanger][z
     CHECK(tc.sent().back() == "_T_IN T=1");
 }
 
-TEST_CASE("A klipper-toolchanger machine keeps Load as SELECT_TOOL", "[toolchanger][zmod][feed]") {
+TEST_CASE("A klipper-toolchanger machine with no feed never mounts on Load or Unload",
+          "[toolchanger][zmod][feed]") {
     ToolChangerHelper tc(4);
     CHECK_FALSE(tc.load_feeds_filament());
     CHECK_FALSE(tc.supports_gate_select());
     CHECK_FALSE(tc.supports_auto_heat_on_load());
-    CHECK(tc.load_mounts_tool());
-    REQUIRE(tc.load_filament(1).success());
-    CHECK(tc.sent().back() == "SELECT_TOOL T=1");
+    const auto ops = tc.head_filament_ops(1);
+    CHECK(ops.load == helix::FilamentOpSupport::Manual);
+    CHECK(ops.unload == helix::FilamentOpSupport::Manual);
+    CHECK(ops.load_reason == ops.unload_reason);
+    const size_t sent_before = tc.sent().size();
+    CHECK_FALSE(tc.load_filament(1).success());
+    CHECK_FALSE(tc.unload_filament(1).success());
+    CHECK(tc.sent().size() == sent_before);
 }
 
 TEST_CASE("Load plans as a feed on a head that is already mounted, only with the shim",
@@ -869,15 +886,6 @@ TEST_CASE("Load plans as a feed on a head that is already mounted, only with the
     caps = helix::ui::read_backend_caps(&with_shim, info, 1);
     plan = helix::ui::plan_load(info, caps, 1, false, false);
     CHECK(plan.ams_call == helix::ui::AmsCall::Load);
-
-    // Without the shim the mounted tool is a refused no-op, as on any changer.
-    ToolChangerHelper plain(4);
-    wire_zmod_with(plain, zmod_c5_discovery());
-    plain.feed(json{{"zmod_color", {{"active_tool_id", 2}}}});
-    caps = helix::ui::read_backend_caps(&plain, info, 2);
-    plan = helix::ui::plan_load(info, caps, 2, false, false);
-    CHECK(plan.tier == helix::ui::FilamentTier::Refused);
-    CHECK(plan.refusal == helix::ui::FilamentRefusal::AlreadyMounted);
 }
 
 TEST_CASE("Load stays enabled on a loaded head only when Load is a feed",

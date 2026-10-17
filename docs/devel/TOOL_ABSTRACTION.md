@@ -203,18 +203,16 @@ Whether `-1` is a real active-tool value depends on the topology. When an AMS
 backend owns the tool list, `build_ams_topology()`
 (`src/printer/ams_state_tool_mapping.cpp#"build_ams_topology(AmsBackend* backend, int backend_index,"`) fills
 `ToolTopology::allows_empty_carriage` from `AmsBackend::carriage_can_be_empty()`
-(`include/ams_backend.h#AmsBackend/carriage_can_be_empty`). By default that answers
-`load_mounts_tool()`: true where selecting a slot physically mounts a tool, so the
-carriage can also hold nothing, as on a tool changer like the FlashForge Creator 5.
+(`include/ams_backend.h#AmsBackend/carriage_can_be_empty`). It defaults to false; a
+backend whose heads dock answers true, so the carriage can also hold nothing, as on a tool
+changer like the FlashForge Creator 5.
 `ToolState::set_ams_topology()` (`src/printer/tool_state.cpp#set_ams_topology`) then
 publishes `active_tool` = -1 and the UI shows no head as active. Lane-based systems
 (AFC, AMS) leave the flag false and keep the fallback: an out-of-range report maps to
 T0, because a lane feeder always has a tool behind it.
 
-A tool changer whose load feeds filament rather than mounting a head can still dock
-every head. The Snapmaker U1 is one: `load_mounts_tool()` is false there, but
-`AmsBackendSnapmaker` overrides `carriage_can_be_empty()` to true, because
-`PARK_EXTRUDER` leaves the carriage empty. The U1's backend owns no tool table, so no
+The Snapmaker U1 docks every head too: `AmsBackendSnapmaker` answers
+`carriage_can_be_empty()` true, because `PARK_EXTRUDER` leaves the carriage empty. The U1's backend owns no tool table, so no
 topology is built and `ToolState` keeps the tools it enumerated from the extruders. The
 active tool cannot come from the status frame either: `toolhead.extruder` and
 `toolchanger.tool_number` keep naming the last head used after it is parked. So

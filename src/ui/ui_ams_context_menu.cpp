@@ -53,6 +53,11 @@ lv_subject_t AmsContextMenu::slot_clear_hint_subject_;
 lv_subject_t AmsContextMenu::slot_clear_hint_visible_subject_;
 char AmsContextMenu::slot_clear_hint_buf_[192];
 lv_subject_t AmsContextMenu::slot_preload_subject_;
+lv_subject_t AmsContextMenu::slot_load_hint_subject_;
+lv_subject_t AmsContextMenu::slot_load_hint_visible_subject_;
+char AmsContextMenu::slot_load_hint_buf_[192];
+lv_subject_t AmsContextMenu::slot_mount_subject_;
+lv_subject_t AmsContextMenu::slot_park_subject_;
 
 // ============================================================================
 // Construction / Destruction
@@ -77,6 +82,11 @@ void AmsContextMenu::init_subjects() {
     lv_subject_init_string(&slot_clear_hint_subject_, slot_clear_hint_buf_, nullptr,
                            sizeof(slot_clear_hint_buf_), "");
     lv_subject_init_int(&slot_preload_subject_, 0);
+    lv_subject_init_int(&slot_load_hint_visible_subject_, 0);
+    lv_subject_init_string(&slot_load_hint_subject_, slot_load_hint_buf_, nullptr,
+                           sizeof(slot_load_hint_buf_), "");
+    lv_subject_init_int(&slot_mount_subject_, 0);
+    lv_subject_init_int(&slot_park_subject_, 0);
 
     lv_xml_register_subject(nullptr, "ams_slot_is_loaded", &slot_is_loaded_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_can_load", &slot_can_load_subject_);
@@ -93,6 +103,11 @@ void AmsContextMenu::init_subjects() {
     lv_xml_register_subject(nullptr, "ams_slot_clear_hint_visible",
                             &slot_clear_hint_visible_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_preload", &slot_preload_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_load_hint", &slot_load_hint_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_load_hint_visible",
+                            &slot_load_hint_visible_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_mount", &slot_mount_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_park", &slot_park_subject_);
 
     subjects_initialized_ = true;
 }
@@ -254,6 +269,10 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
         lv_subject_set_int(&slot_mounts_tool_subject_, 0);
         lv_subject_copy_string(&slot_unload_hint_subject_, "");
         lv_subject_set_int(&slot_unload_hint_visible_subject_, 0);
+        lv_subject_copy_string(&slot_load_hint_subject_, "");
+        lv_subject_set_int(&slot_load_hint_visible_subject_, 0);
+        lv_subject_set_int(&slot_mount_subject_, 0);
+        lv_subject_set_int(&slot_park_subject_, 0);
         lv_subject_copy_string(&slot_eject_hint_subject_, "");
         lv_subject_set_int(&slot_eject_hint_visible_subject_, 0);
 
@@ -356,9 +375,21 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
     const SlotOpDecision ops =
         decide_slot_ops(backend_, slot_index, pending_is_loaded_, system_busy, print_blocks_op,
                         backend_ && backend_->toolhead_filament_unaccounted().value_or(false));
+
+    // What this slot's head can do with filament, and Mount/Park where it can
+    // do nothing itself. A reason here is a capability refusal: it withdraws the
+    // filament action whatever the slot's own state says.
+    const int head = backend_ ? backend_->head_for_slot(slot_index).value_or(-1) : -1;
+    const helix::ui::FilamentActionSet acts = helix::ui::decide_slot_actions(
+        helix::ui::read_filament_head_view(backend_, get_printer_state()), head);
     // The dispatched action, not just the label: handle_unload() reads this.
     unload_mode_ = ops.unload_mode;
-    lv_subject_set_int(&slot_is_loaded_subject_, ops.unload_enabled ? 1 : 0);
+    // Only the heated toolhead unload is the head's filament op; Eject and
+    // Recover are lane-side and answer to the lane alone.
+    const bool unload_withdrawn =
+        ops.unload_mode == UnloadMode::Unload && !acts.unload.reason.empty();
+    const bool unload_enabled = ops.unload_enabled && !unload_withdrawn;
+    lv_subject_set_int(&slot_is_loaded_subject_, unload_enabled ? 1 : 0);
 
     lv_obj_t* btn_unload = helix::ui::find_required(menu_obj, "btn_unload", "AmsContextMenu");
     if (btn_unload) {
@@ -374,36 +405,34 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
             break;
         case UnloadMode::Unload:
         case UnloadMode::Unavailable:
-            // XML defaults: "Unload" - unless this backend's unload is an
-            // unmount, in which case say so.
-            if (backend_ && backend_->load_mounts_tool()) {
-                ui_button_set_text(btn_unload, lv_tr("Unmount"));
-            }
-            break;
+            break; // XML default: "Unload"
         }
     }
 
-    // A changer's load/unload mount and unmount a tool: no filament is fed and
-    // nothing is heated or purged, so the filament wording actively misleads.
-    // Asked as a capability, not a type - the Snapmaker U1 is a tool changer
-    // whose load DOES feed filament and keeps the default labels.
-    const bool mounts_tool = backend_ && backend_->load_mounts_tool();
-    lv_subject_set_int(&slot_mounts_tool_subject_, mounts_tool ? 1 : 0);
-    // A changer with a firmware feed keeps Load as a feed; mounting is then the
-    // separate Select slot action.
-    if (mounts_tool && !backend_->load_feeds_filament()) {
-        if (lv_obj_t* btn_load = helix::ui::find_required(menu_obj, "btn_load", "AmsContextMenu")) {
-            ui_button_set_text(btn_load, lv_tr("Mount"));
-        }
-    }
+    // A column that offers Mount or Park is about the tool, not filament.
+    const bool tool_column = acts.mount.visible || acts.park.visible;
+    lv_subject_set_int(&slot_mounts_tool_subject_, tool_column ? 1 : 0);
+    lv_subject_set_int(&slot_mount_subject_, acts.mount.visible ? (acts.mount.enabled ? 2 : 1) : 0);
+    lv_subject_set_int(&slot_park_subject_, acts.park.visible ? (acts.park.enabled ? 2 : 1) : 0);
 
-    // A disabled button with no stated reason reads as a bug. Only populated
-    // when the backend has something actionable to say - "nothing is loaded" is
-    // not worth a line, because there is visibly nothing to unload.
-    const std::string unload_hint = (!ops.unload_enabled && backend_)
-                                        ? backend_->unload_blocked_reason(slot_index)
-                                        : std::string();
+    // A disabled button with no stated reason reads as a bug. The head's reason
+    // comes first; otherwise the backend's, only when it has something
+    // actionable to say - "nothing is loaded" is not worth a line, because
+    // there is visibly nothing to unload.
+    const std::string load_hint = acts.load.reason;
+    std::string unload_hint;
+    if (unload_withdrawn) {
+        unload_hint = acts.unload.reason;
+    } else if (!ops.unload_enabled && backend_) {
+        unload_hint = backend_->unload_blocked_reason(slot_index);
+    }
+    // One reason covering both directions is said once.
+    if (unload_hint == load_hint) {
+        unload_hint.clear();
+    }
     // Already translated by the backend, which had the literal to extract.
+    lv_subject_copy_string(&slot_load_hint_subject_, load_hint.c_str());
+    lv_subject_set_int(&slot_load_hint_visible_subject_, load_hint.empty() ? 0 : 1);
     lv_subject_copy_string(&slot_unload_hint_subject_, unload_hint.c_str());
     lv_subject_set_int(&slot_unload_hint_visible_subject_, unload_hint.empty() ? 0 : 1);
 
@@ -416,8 +445,9 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
     lv_subject_copy_string(&slot_eject_hint_subject_, eject_hint.c_str());
     lv_subject_set_int(&slot_eject_hint_visible_subject_, eject_hint.empty() ? 0 : 1);
 
-    lv_subject_set_int(&slot_can_load_subject_, ops.can_load ? 1 : 0);
-    if (!ops.can_load) {
+    const bool can_load = ops.can_load && acts.load.reason.empty();
+    lv_subject_set_int(&slot_can_load_subject_, can_load ? 1 : 0);
+    if (!can_load) {
         spdlog::debug("[AmsContextMenu] Load disabled for slot {}: busy={}, loaded={} "
                       "(live={}), has_filament={}, print_blocks_op={}",
                       slot_index, system_busy, ops.is_loaded, ops.live_loaded,
@@ -584,6 +614,16 @@ void AmsContextMenu::handle_gate_check() {
 void AmsContextMenu::handle_preload() {
     spdlog::info("[AmsContextMenu] Preload requested for slot {}", get_item_index());
     dispatch_ams_action(MenuAction::PRELOAD);
+}
+
+void AmsContextMenu::handle_mount() {
+    spdlog::info("[AmsContextMenu] Mount requested for slot {}", get_item_index());
+    dispatch_ams_action(MenuAction::MOUNT);
+}
+
+void AmsContextMenu::handle_park() {
+    spdlog::info("[AmsContextMenu] Park requested from slot {}", get_item_index());
+    dispatch_ams_action(MenuAction::PARK);
 }
 
 void AmsContextMenu::handle_edit() {
@@ -757,6 +797,8 @@ void AmsContextMenu::register_callbacks() {
         {"ams_context_gate_select_cb", on_gate_select_cb},
         {"ams_context_gate_check_cb", on_gate_check_cb},
         {"ams_context_preload_cb", on_preload_cb},
+        {"ams_context_mount_cb", on_mount_cb},
+        {"ams_context_park_cb", on_park_cb},
         {"ams_context_edit_cb", on_edit_cb},
         {"ams_context_clear_spool_cb", on_clear_spool_cb},
         {"ams_context_spoolman_cb", on_spoolman_cb},
@@ -808,6 +850,18 @@ void AmsContextMenu::on_gate_check_cb(lv_event_t* /*e*/) {
     auto* self = get_active_instance();
     if (self) {
         self->handle_gate_check();
+    }
+}
+
+void AmsContextMenu::on_mount_cb(lv_event_t* /*e*/) {
+    if (auto* self = get_active_instance()) {
+        self->handle_mount();
+    }
+}
+
+void AmsContextMenu::on_park_cb(lv_event_t* /*e*/) {
+    if (auto* self = get_active_instance()) {
+        self->handle_park();
     }
 }
 

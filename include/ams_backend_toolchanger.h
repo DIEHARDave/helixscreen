@@ -108,35 +108,43 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         // The per-slot tool badge ("T0", "T1", ...) is redundant with the toolhead
         // label shown below each slot on a tool changer.
         t.should_hide_slot_tool_badge = true;
-        // Load is SELECT_TOOL and unload is UNSELECT_TOOL: a mount and an unmount,
-        // with no filament motion of any kind. See do_load_filament().
-        t.load_mounts_tool = true;
-        // So no hot nozzle is needed to unmount one either.
-        t.supports_auto_heat_on_unload = true;
         // Reset re-runs the changer's initialisation, which the toolchanger's own
         // recovery already offers.
         t.supports_reset = false;
         return t;
     }();
     /// With a firmware feed command (Z-Mod's afclite shim), Load feeds filament
-    /// and the firmware heats the head it feeds. The carriage semantics (a tool
-    /// can be mounted or parked, Unmount) stay those of kTraits.
+    /// and the firmware heats the head it feeds.
     static constexpr BackendTraits kTraitsWithFeed = [] {
         BackendTraits t = kTraits;
         t.load_feeds_filament = true;
         t.supports_auto_heat_on_load = true;
-        // Mounting a tool is the select-slot action once Load is a feed.
-        t.supports_gate_select = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {
         return tool_feed_.present ? kTraitsWithFeed : kTraits;
     }
 
-    /// Mounts the tool; Load is a feed on a machine that has one.
-    AmsError select_gate(int slot_index) override {
-        return tool_feed_.present ? select_slot(slot_index) : AmsBackend::select_gate(slot_index);
+    /// Every tool docks: the carriage can hold none.
+    [[nodiscard]] bool carriage_can_be_empty() const override {
+        return true;
     }
+
+    /**
+     * @brief What each head can do with filament.
+     *
+     * Nothing on a klipper-toolchanger moves filament unless the firmware
+     * publishes a feed for that head: then Load is that feed. No feed reverses,
+     * so Unload is always the user's job. Mounting and parking are never a
+     * filament op: the toolhead tap and park_active_tool() do those.
+     */
+    [[nodiscard]] HeadFilamentOps head_filament_ops(int head) const override;
+
+    /// The answers head_filament_ops() gives, shared with the mock so its
+    /// tool-changer persona cannot drift from this backend.
+    /// @param feeds_head    The firmware publishes a feed for the head.
+    /// @param cut_to_unload The machine's unload is a cut at the head (unload_is_manual()).
+    [[nodiscard]] static HeadFilamentOps head_ops_for(bool feeds_head, bool cut_to_unload);
 
     /// One head per tool, fed from that tool's own slot.
     [[nodiscard]] int filament_head_count() const override {
@@ -152,11 +160,9 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
                                                       const AmsSystemInfo&) const override {
         return head_for_slot(head);
     }
-    [[nodiscard]] std::optional<bool> head_has_filament(int head) const override {
-        if (!head_for_slot(head)) {
-            return std::nullopt;
-        }
-        return can_unload_from_toolhead(head);
+    /// Nothing here senses filament in a head.
+    [[nodiscard]] std::optional<bool> head_has_filament(int) const override {
+        return std::nullopt;
     }
 
     /// Z-Mod's Creator 5 has no automatic unload: the user cuts the filament at
@@ -257,11 +263,9 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
      */
     AmsError do_change_tool(int tool_number) override;
 
-    /// The unmount Unload already sends with no tool named: whatever is on the
-    /// carriage goes back to its dock.
-    AmsError do_park_active_tool() override {
-        return do_unload_filament(-1);
-    }
+    /// Whatever is on the carriage goes back to its dock: UNSELECT_TOOL, or the
+    /// machine's own unmount where its extra runs the swap.
+    AmsError do_park_active_tool() override;
 
   public:
     /// A machine whose own swap commands have no unmount can only trade one

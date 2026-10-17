@@ -92,9 +92,10 @@ TEMPLATE_TEST_CASE("Every subscription backend bounds slot indices through the b
         constexpr bool eject_validates = is_ad5x || is_qidi ||
                                          std::is_same_v<TestType, AmsBackendAfc> ||
                                          std::is_same_v<TestType, AmsBackendHappyHare>;
-        constexpr bool unload_validates = is_ad5x || is_qidi ||
-                                          std::is_same_v<TestType, AmsBackendSnapmaker> ||
-                                          std::is_same_v<TestType, AmsBackendToolChanger>;
+        // A tool changer refuses every unload before it reads the slot: no
+        // feed reverses there.
+        constexpr bool unload_validates =
+            is_ad5x || is_qidi || std::is_same_v<TestType, AmsBackendSnapmaker>;
         constexpr bool mapping_validates = is_qidi || is_cfs;
 
         for (int bad : {-2, 3}) {

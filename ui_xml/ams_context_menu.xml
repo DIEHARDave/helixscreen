@@ -38,9 +38,9 @@
           <lv_obj name="col_heading"
                   width="100%" height="content" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="column"
                   scrollable="false" clickable="false">
-            <!-- Two fixed headings rather than one rewritten from C++: on a
-                 changer this column mounts and unmounts tools, and nothing
-                 about it is filament. -->
+            <!-- Two fixed headings rather than one rewritten from C++: where a
+                 head's filament is all by hand, this column offers Mount and
+                 Park, and nothing in it moves filament. -->
             <text_small name="col_filament_label" text="Filament" style_text_color="#text_muted">
               <bind_flag_if_eq subject="ams_slot_mounts_tool" flag="hidden" ref_value="1"/>
             </text_small>
@@ -72,6 +72,28 @@
             <bind_state_if_eq subject="ams_slot_is_loaded" state="disabled" ref_value="0"/>
             <event_cb trigger="clicked" callback="ams_context_unload_cb"/>
           </ui_button>
+          <!-- Why this head's Load (and Unload, when the reason is the same) is
+               unavailable. Text and visibility come from decide_slot_actions(). -->
+          <text_small name="load_blocked_hint"
+                      width="100%" long_mode="wrap" bind_text="ams_slot_load_hint" style_text_color="#text_muted">
+            <bind_flag_if_eq subject="ams_slot_load_hint_visible" flag="hidden" ref_value="0"/>
+          </text_small>
+          <!-- Mount the tool this slot feeds, and Park the mounted one: offered
+               where the head's filament is all by hand (decide_slot_actions()). -->
+          <ui_button name="btn_mount"
+                     height="#button_height_sm" icon="swap_horizontal" text="Mount" variant="ghost" clickable="true"
+                     style_flex_main_place="start">
+            <bind_flag_if_eq subject="ams_slot_mount" flag="hidden" ref_value="0"/>
+            <bind_state_if_eq subject="ams_slot_mount" state="disabled" ref_value="1"/>
+            <event_cb trigger="clicked" callback="ams_context_mount_cb"/>
+          </ui_button>
+          <ui_button name="btn_park"
+                     height="#button_height_sm" icon="eject" text="Park" variant="ghost" clickable="true"
+                     style_flex_main_place="start">
+            <bind_flag_if_eq subject="ams_slot_park" flag="hidden" ref_value="0"/>
+            <bind_state_if_eq subject="ams_slot_park" state="disabled" ref_value="1"/>
+            <event_cb trigger="clicked" callback="ams_context_park_cb"/>
+          </ui_button>
           <!-- Purge (external spool only; hidden for lanes). The lane menu has no
                purge action - purging is about what is at the nozzle, not a lane. -->
           <ui_button name="btn_purge"
@@ -86,9 +108,8 @@
                       width="100%" long_mode="wrap" bind_text="ams_slot_eject_hint" style_text_color="#text_muted">
             <bind_flag_if_eq subject="ams_slot_eject_hint_visible" flag="hidden" ref_value="0"/>
           </text_small>
-          <!-- Unload/Unmount refusal the user can act on (e.g. a tool changer
-               whose dock sensors cannot identify the mounted tool). Text and
-               visibility both come from AmsBackend::unload_blocked_reason(). -->
+          <!-- Unload refusal the user can act on: the head's reason from
+               decide_slot_actions(), else AmsBackend::unload_blocked_reason(). -->
           <text_small name="unload_blocked_hint"
                       width="100%" long_mode="wrap" bind_text="ams_slot_unload_hint" style_text_color="#text_muted">
             <bind_flag_if_eq subject="ams_slot_unload_hint_visible" flag="hidden" ref_value="0"/>

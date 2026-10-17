@@ -285,6 +285,8 @@ class AmsBackendMock : public AmsBackend {
     /// One head per slot where the persona's backend has one per tool (tool
     /// changer, Snapmaker), one shared head otherwise; the Snapmaker batches
     /// all of them, as AmsBackendSnapmaker does.
+    /// A tool-changer persona answers as AmsBackendToolChanger does with no feed.
+    [[nodiscard]] HeadFilamentOps head_filament_ops(int head) const override;
     [[nodiscard]] int filament_head_count() const override;
     [[nodiscard]] std::optional<int> head_for_slot(int slot) const override;
     [[nodiscard]] std::optional<int> head_source_slot(int head,

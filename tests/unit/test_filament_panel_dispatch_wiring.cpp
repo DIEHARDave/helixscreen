@@ -108,46 +108,11 @@ BackendCaps bypassed_ams() {
     return caps;
 }
 
-BackendCaps seated_toolchanger() {
-    BackendCaps caps = fresh_ams();
-    caps.load_mounts_tool = true;
-    caps.needs_unload_before_load = true;
-    return caps;
-}
-
 } // namespace
 
 // =============================================================================
 // Load — refusals
 // =============================================================================
-
-TEST_CASE("Load on the already-mounted tool arms no guard and no spinner",
-          "[filament][dispatch][wiring][1183]") {
-    // The whole point of the refusal: the panel used to dispatch here, and the
-    // firmware no-op left operation_guard_ running for its full timeout with the
-    // Load button spinning and every other op locked out by is_busy().
-    AmsSystemInfo sys = make_sys(5, /*current_slot=*/4);
-
-    FilamentPanelOutcome out = load_outcome(sys, seated_toolchanger(), /*target_slot=*/4,
-                                            /*macro_available=*/true);
-    CHECK(out.tier == FilamentTier::Refused);
-    CHECK_FALSE(out.guard_armed);
-    CHECK(out.call == AmsCall::None);
-}
-
-TEST_CASE("Load on the already-mounted tool still tells the user something",
-          "[filament][dispatch][wiring][1183]") {
-    // AmsOperationSidebar refuses silently, which is tolerable on a slot grid
-    // where the active slot is already highlighted. On the Filament panel the
-    // user pressed a button and gets no other feedback, so a toast is required.
-    AmsSystemInfo sys = make_sys(5, /*current_slot=*/4);
-
-    FilamentPanelOutcome out = load_outcome(sys, seated_toolchanger(), /*target_slot=*/4,
-                                            /*macro_available=*/true);
-    CHECK(out.toast == "That tool is already loaded");
-    // Not the slot-picker redirect: there is nothing to pick, the tool is on.
-    CHECK_FALSE(out.navigate_to_ams);
-}
 
 TEST_CASE("Load with no resolved slot redirects to the AMS slot picker",
           "[filament][dispatch][wiring]") {
@@ -159,19 +124,6 @@ TEST_CASE("Load with no resolved slot redirects to the AMS slot picker",
     CHECK(out.toast == "Select a filament slot to load");
     CHECK(out.navigate_to_ams);
     CHECK_FALSE(out.guard_armed);
-}
-
-TEST_CASE("The two load refusals do not share a toast or a navigation",
-          "[filament][dispatch][wiring][1183]") {
-    // Guard rail: collapsing AlreadyMounted into the SelectSlot arm would send a
-    // toolchanger user to the AMS panel to re-pick the tool they already have.
-    AmsSystemInfo mounted = make_sys(5, /*current_slot=*/2);
-    AmsSystemInfo empty = make_sys(5, /*current_slot=*/-1);
-
-    FilamentPanelOutcome a = load_outcome(mounted, seated_toolchanger(), 2, true);
-    FilamentPanelOutcome b = load_outcome(empty, fresh_ams(), -1, true);
-    CHECK(a.toast != b.toast);
-    CHECK(a.navigate_to_ams != b.navigate_to_ams);
 }
 
 // =============================================================================

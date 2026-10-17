@@ -168,13 +168,20 @@ On small portrait screens there is room for the steps only as a row of dots, so 
 | Button | Action |
 |--------|--------|
 | **Bypass** (toggle) | Feed filament directly to the extruder, bypassing the AMS. Shown when your hardware supports bypass, or when you turn on **Enable Bypass Controls** - see [When Bypass Doesn't Appear](#when-bypass-doesnt-appear). The toggle is guarded: it can't be changed while a job holds the machine (a "Bypass cannot be changed while printing" warning appears), if a lane's filament is loaded it is unloaded first before bypass engages, and where a hardware sensor owns the bypass the toggle only reports that the sensor is in control. |
-| **Load...** | Snapmaker U1 only: opens a picker to load several heads at once - see below. On other systems, tap a slot in the slot view and choose **Load** |
-| **Unload** | Retract the currently loaded filament back to its slot. It also works when filament is stuck in the toolhead and no slot claims it, on systems that can tell. If your system needs to know which slot that filament came from and cannot tell, Unload first asks **Which lane is in the toolhead?** - pick the lane, or tap outside the list to cancel. On the Snapmaker U1 it reads **Unload...** and opens a picker instead - see below |
+| **Load...** | Opens a picker naming each tool and the slot it loads from - the slot set as its **Assigned Tool**. Pick the tool and confirm. To load any other slot, tap that slot in the slot view and choose **Load** |
+| **Unload** | Retract the currently loaded filament back to its slot. It also works when filament is stuck in the toolhead and no slot claims it, on systems that can tell. If your system needs to know which slot that filament came from and cannot tell, Unload first asks **Which lane is in the toolhead?** - pick the lane, or tap outside the list to cancel. On a printer with several toolheads it reads **Unload...** and opens the picker instead - see below |
+| **Mount...** / **Park** | Tool changers. **Mount...** picks a tool and puts it on the carriage; **Park** puts the mounted tool back in its dock. On a tool changer that cannot feed filament itself, these stand where Load and Unload would be |
 | **Reset** | Reset the AMS system state (useful after jams or errors) |
 | **Check slots** | Happy Hare only: checks every slot's sensor. The printer parks the toolhead and moves each lane's filament to test it, so the button is greyed out while a print is running |
 | **Settings** | Open the AMS Management overlay for advanced controls |
 
-**Loading or unloading several heads at once (Snapmaker U1).** The U1 has a toolhead per slot, so **Load** and **Unload** there open a picker listing every head with what it holds - the material and whether it is loaded, ready to load, or empty. Unload comes with the loaded heads already ticked; Load comes with the empty-but-fed heads ticked. Tick the heads you want and confirm: if a ticked head turns out not to take the operation, it is skipped with a warning naming the head and the reason, and the rest continue. The U1 runs its own batch command, which preheats the next head while the current one finishes.
+**Load and Unload always mean filament.** They never mount or park a tool - that is what tapping a toolhead, **Mount...** and **Park** are for. A printer that needs a tool on the carriage to feed it mounts the tool as part of the load.
+
+**The tool picker.** Each row names a tool and, where it is not the tool's own, the slot it uses, with what that slot holds - the material and whether it is loaded, ready to load, or empty. The tool you have selected, or else the one on the carriage, comes ticked when it can take the operation. A tool with no slot assigned to it is greyed out with **Assign a slot first**; set one with **Assigned Tool** in the slot's menu.
+
+**Loading or unloading several heads at once (Snapmaker U1).** The U1 has a toolhead per slot, so its picker lets you tick up to four heads. If a ticked head turns out not to take the operation, it is skipped with a warning naming the head and the reason, and the rest continue. The U1 runs its own batch command, which preheats the next head while the current one finishes.
+
+**Tool changers that cannot feed filament.** On a klipper-toolchanger (MedusaHC included) with no feed command, filament goes in and out of each tool by hand. The sidebar shows **Mount...** and **Park** instead of Load and Unload, and a slot's menu shows Load and Unload greyed out with **Load and unload filament at the tool by hand**, plus **Mount** (or **Park**, on the mounted tool). On the Creator 5 with the afclite feed, Load feeds the tool and Unload stays a cut by hand.
 
 ### When Bypass Doesn't Appear
 

@@ -115,4 +115,15 @@ struct ToolChangeHooks {
 ToolChangeVerdict offer_tool_change(const PrinterState& printer_state, int tool_index,
                                     ToolChangeHooks hooks = {});
 
+/**
+ * @brief Put the mounted tool back in its dock, behind the refusals every move gets.
+ *
+ * Refused, with a warning toast, while spools lie on the bed or a job holds the
+ * machine (paused included: a print resumed with its tool docked prints
+ * nothing). Does nothing when nothing is mounted or the backend cannot park.
+ *
+ * @return true when the park was sent
+ */
+bool request_tool_park(const PrinterState& printer_state);
+
 } // namespace helix::ui

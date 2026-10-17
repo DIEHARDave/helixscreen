@@ -1742,6 +1742,7 @@
   <translation tag="Load Profile" ja="プロファイルを読み込む"/>
   <translation tag="Load a filament first before trying to unload" ja="排出する前にまずフィラメントを装填してください"/>
   <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" ja="このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください"/>
+  <translation tag="Load and unload filament at the tool by hand" ja="フィラメントはツールで手動でロード・アンロードしてください"/>
   <translation tag="Load cancelled: nozzle target dropped" ja="装填をキャンセル: ノズルの目標温度が下がりました"/>
   <translation tag="Load complete" ja="ロード完了"/>
   <translation tag="Load failed" ja="装填に失敗しました"/>
@@ -1921,6 +1922,7 @@
   <translation tag="Motors stay on while a print is active" ja="印刷中はモーターを停止できません"/>
   <translation tag="Mount" ja="装着"/>
   <translation tag="Mount which tool?" ja="どのツールを装着しますか？"/>
+  <translation tag="Mount..." ja="装着..."/>
   <translation tag="Move" ja="移動"/>
   <translation tag="Move out of range" ja="移動範囲外です"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." ja="調整中は紙を前後に動かしてください。紙がわずかに引っかかりながらも滑る状態で止めてください。"/>

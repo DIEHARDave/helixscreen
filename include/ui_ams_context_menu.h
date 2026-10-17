@@ -87,7 +87,9 @@ class AmsContextMenu : public ContextMenu {
         SPOOLMAN,         ///< Assign Spoolman spool
         SCAN_QR,          ///< Scan QR code to assign spool
         PURGE,            ///< Purge the current filament through the nozzle
-        TOGGLE_BYPASS     ///< Engage or disengage bypass (external spool only)
+        TOGGLE_BYPASS,    ///< Engage or disengage bypass (external spool only)
+        MOUNT,            ///< Mount the tool this slot feeds
+        PARK              ///< Put the mounted tool back in its dock
     };
 
     using ActionCallback = std::function<void(MenuAction action, int slot_index)>;
@@ -206,6 +208,14 @@ class AmsContextMenu : public ContextMenu {
     /// disabled (busy, filament loaded, or a print blocks filament ops),
     /// 2 = enabled.
     static lv_subject_t slot_preload_subject_;
+    // Why this head's Load is unavailable, from decide_slot_actions().
+    static lv_subject_t slot_load_hint_subject_;
+    static lv_subject_t slot_load_hint_visible_subject_;
+    static char slot_load_hint_buf_[192];
+    // Mount and Park for a head whose filament is all by hand: 0 hidden,
+    // 1 disabled, 2 enabled.
+    static lv_subject_t slot_mount_subject_;
+    static lv_subject_t slot_park_subject_;
     static bool subjects_initialized_;
 
     // === Backend reference for dropdown operations ===
@@ -244,6 +254,8 @@ class AmsContextMenu : public ContextMenu {
     void handle_gate_select();
     void handle_gate_check();
     void handle_preload();
+    void handle_mount();
+    void handle_park();
     void handle_edit();
     void handle_clear_spool();
     void handle_purge();
@@ -441,6 +453,8 @@ class AmsContextMenu : public ContextMenu {
     static void on_gate_select_cb(lv_event_t* e);
     static void on_gate_check_cb(lv_event_t* e);
     static void on_preload_cb(lv_event_t* e);
+    static void on_mount_cb(lv_event_t* e);
+    static void on_park_cb(lv_event_t* e);
     static void on_edit_cb(lv_event_t* e);
     static void on_clear_spool_cb(lv_event_t* e);
     static void on_purge_cb(lv_event_t* e);

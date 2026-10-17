@@ -72,7 +72,6 @@ namespace helix {
  * so the mock cannot drift from the hardware it emulates.
  */
 struct BackendTraits {
-    bool load_mounts_tool = false;
     bool load_feeds_filament = false;
     bool tracks_consumption_natively = false;
     bool hub_on_toolhead = false;
@@ -648,43 +647,24 @@ class AmsBackend {
     }
 
     /**
-     * @brief True when load/unload MOUNT and UNMOUNT a tool instead of moving filament.
-     *
-     * A hotend or toolhead changer's "load" is `SELECT_TOOL`: no filament is fed,
-     * nothing is heated by us, nothing purges. Surfaces are expected to say so -
-     * calling that button "Load" invites the reasonable reading that the tool
-     * gets picked up, heated and then actually loaded with filament, which is
-     * not what happens.
-     *
-     * NOT the same question as `is_tool_changer()`. The Snapmaker U1 is a tool
-     * changer whose load really does feed filament through the selected
-     * toolhead, so it stays false here and keeps the filament wording.
-     */
-    [[nodiscard]] bool load_mounts_tool() const {
-        return traits().load_mounts_tool;
-    }
-
-    /**
      * @brief True when the carriage can hold no tool at all, so a current tool
      *        of -1 means "nothing mounted" rather than "nothing loaded".
      *
-     * Every machine whose load mounts a tool can park it. A tool changer whose
-     * load feeds filament (the Snapmaker U1) parks its heads too, so it
-     * overrides this while load_mounts_tool() stays false.
+     * A machine whose heads dock (a tool changer, the Snapmaker U1) answers
+     * true: its heads are mounted and parked, which is never a filament op.
      */
     [[nodiscard]] virtual bool carriage_can_be_empty() const {
-        return load_mounts_tool();
+        return false;
     }
 
     /**
-     * @brief True when Load feeds filament into a head on a machine whose heads are
-     *        otherwise mounted and unmounted.
+     * @brief True when Load is a firmware feed that cannot tell an inserted strand
+     *        from a fed one.
      *
      * A changer whose firmware offers a feed command (see
-     * toolchanger_addon::ToolFeed) answers Load with that feed, and mounting a
-     * tool becomes the separate select-slot action. Such a machine cannot tell
-     * an inserted strand from a fed one, so a head that reads loaded still
-     * accepts Load, and the firmware heats the right head itself.
+     * toolchanger_addon::ToolFeed) answers Load with that feed. A head that
+     * reads loaded still accepts Load there, and the firmware heats the right
+     * head itself.
      */
     [[nodiscard]] bool load_feeds_filament() const {
         return traits().load_feeds_filament;

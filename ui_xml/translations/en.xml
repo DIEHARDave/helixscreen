@@ -1742,6 +1742,7 @@
   <translation tag="Load Profile" en="Load Profile"/>
   <translation tag="Load a filament first before trying to unload" en="Load a filament first before trying to unload"/>
   <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" en="Load a new spool in this slot, or turn on auto-refill to switch to a matching one"/>
+  <translation tag="Load and unload filament at the tool by hand" en="Load and unload filament at the tool by hand"/>
   <translation tag="Load cancelled: nozzle target dropped" en="Load cancelled: nozzle target dropped"/>
   <translation tag="Load complete" en="Load complete"/>
   <translation tag="Load failed" en="Load failed"/>
@@ -1921,6 +1922,7 @@
   <translation tag="Motors stay on while a print is active" en="Motors stay on while a print is active"/>
   <translation tag="Mount" en="Mount"/>
   <translation tag="Mount which tool?" en="Mount which tool?"/>
+  <translation tag="Mount..." en="Mount..."/>
   <translation tag="Move" en="Move"/>
   <translation tag="Move out of range" en="Move out of range"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." en="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides."/>

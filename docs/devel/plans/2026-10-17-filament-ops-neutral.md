@@ -115,7 +115,7 @@ struct HeadFilamentOps {
 [[nodiscard]] virtual HeadFilamentOps head_filament_ops(int head) const;   // Automatic, or Manual from unload_is_manual()
 [[nodiscard]] virtual std::optional<bool> head_has_filament(int head) const; // is_filament_loaded() on one head
 [[nodiscard]] virtual int max_heads_per_filament_op() const;           // 1
-[[nodiscard]] std::optional<int> head_source_slot(int head) const;     // the Assigned Tool slot: mapped_tool == head and head_for_slot(slot) == head
+[[nodiscard]] virtual std::optional<int> head_source_slot(int head, const AmsSystemInfo& info) const; // the Assigned Tool slot: mapped_tool == head and head_for_slot(slot) == head
 [[nodiscard]] bool supports_reset() const;                              // BackendTraits::supports_reset, default true
 ```
 

@@ -289,13 +289,16 @@ TEST_CASE_METHOD(PreheatSkipFixture, "preheat_skip_reason: an unload answers to 
     CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &cold) ==
           PreheatSkip::None);
 
-    // A tool changer's unload is an unmount: no filament crosses the hotend.
-    helix::AmsBackendToolChanger changer(nullptr, nullptr);
-    REQUIRE(changer.supports_auto_heat_on_unload());
-    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &changer) ==
+    // AFC's TOOL_UNLOAD heats the extruder itself.
+    helix::AmsBackendAfc afc(nullptr, nullptr);
+    REQUIRE(afc.supports_auto_heat_on_unload());
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &afc) ==
           PreheatSkip::BackendSelfHeats);
 
-    // The load claim alone is no reason to skip an unload.
+    // The unload claim alone is no reason to skip a load on a backend that
+    // does not claim that too.
+    helix::AmsBackendToolChanger changer(nullptr, nullptr);
+    REQUIRE_FALSE(changer.supports_auto_heat_on_unload());
     FilamentOpPlan load = plan_at(FilamentTier::AmsBackend);
     CHECK(helix::ui::preheat_skip_reason(load, StandardMacroSlot::LoadFilament, &changer) ==
           PreheatSkip::None);

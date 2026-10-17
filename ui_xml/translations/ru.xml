@@ -1787,6 +1787,7 @@
   <translation tag="Load Profile" ru="Загрузить профиль"/>
   <translation tag="Load a filament first before trying to unload" ru="Сначала загрузите филамент, прежде чем пытаться его выгрузить"/>
   <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" ru="Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую"/>
+  <translation tag="Load and unload filament at the tool by hand" ru="Загружайте и выгружайте филамент вручную на инструменте"/>
   <translation tag="Load cancelled: nozzle target dropped" ru="Загрузка отменена: цель сопла снижена"/>
   <translation tag="Load complete" ru="Загрузка завершена"/>
   <translation tag="Load failed" ru="Ошибка загрузки"/>
@@ -1966,6 +1967,7 @@
   <translation tag="Motors stay on while a print is active" ru="Моторы остаются включены во время печати"/>
   <translation tag="Mount" ru="Установить"/>
   <translation tag="Mount which tool?" ru="Какой инструмент установить?"/>
+  <translation tag="Mount..." ru="Установить..."/>
   <translation tag="Move" ru="Двигать"/>
   <translation tag="Move out of range" ru="Движение за пределами диапазона"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." ru="Перемещайте бумагу вперёд-назад во время регулировки. Остановитесь, когда бумага слегка цепляется, но ещё скользит."/>

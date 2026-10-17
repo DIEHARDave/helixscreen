@@ -39,6 +39,7 @@
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "temperature_controller.h"
+#include "tool_change_request.h"
 #include "toolhead_homing.h"
 #include "ui/ui_cleanup_helpers.h"
 
@@ -200,6 +201,10 @@ lv_subject_t s_check_gates_disabled{};
 lv_subject_t s_load_hidden{};
 lv_subject_t s_unload_hidden{};
 lv_subject_t s_unload_picks{};
+lv_subject_t s_mount_hidden{};
+lv_subject_t s_mount_disabled{};
+lv_subject_t s_park_hidden{};
+lv_subject_t s_park_disabled{};
 lv_subject_t s_action_reason{};
 lv_subject_t s_action_reason_shown{};
 char s_action_reason_buf[192];
@@ -221,6 +226,11 @@ void init_button_gating_subjects() {
     lv_subject_init_int(&s_load_hidden, 0);
     lv_subject_init_int(&s_unload_hidden, 0);
     lv_subject_init_int(&s_unload_picks, 0);
+    // Mount and Park appear only where a backend says its heads dock.
+    lv_subject_init_int(&s_mount_hidden, 1);
+    lv_subject_init_int(&s_mount_disabled, 1);
+    lv_subject_init_int(&s_park_hidden, 1);
+    lv_subject_init_int(&s_park_disabled, 1);
     lv_subject_init_string(&s_action_reason, s_action_reason_buf, nullptr,
                            sizeof(s_action_reason_buf), "");
     lv_subject_init_int(&s_action_reason_shown, 0);
@@ -235,6 +245,10 @@ void init_button_gating_subjects() {
     s_subjects.publish("ams_sidebar_load_hidden", &s_load_hidden);
     s_subjects.publish("ams_sidebar_unload_hidden", &s_unload_hidden);
     s_subjects.publish("ams_sidebar_unload_picks", &s_unload_picks);
+    s_subjects.publish("ams_sidebar_mount_hidden", &s_mount_hidden);
+    s_subjects.publish("ams_sidebar_mount_disabled", &s_mount_disabled);
+    s_subjects.publish("ams_sidebar_park_hidden", &s_park_hidden);
+    s_subjects.publish("ams_sidebar_park_disabled", &s_park_disabled);
     s_subjects.publish("ams_sidebar_action_reason", &s_action_reason);
     s_subjects.publish("ams_sidebar_action_reason_shown", &s_action_reason_shown);
     s_subjects.publish("ams_sidebar_supports_reset", &s_supports_reset);
@@ -312,6 +326,18 @@ void AmsOperationSidebar::register_callbacks_static() {
          [](lv_event_t* e) {
              if (auto* self = get_instance_from_event(e)) {
                  self->handle_load();
+             }
+         }},
+        {"ams_sidebar_mount_clicked",
+         [](lv_event_t* e) {
+             if (auto* self = get_instance_from_event(e)) {
+                 self->open_head_picker(HeadPickOp::Mount);
+             }
+         }},
+        {"ams_sidebar_park_clicked",
+         [](lv_event_t* e) {
+             if (auto* self = get_instance_from_event(e)) {
+                 helix::ui::request_tool_park(self->printer_state_);
              }
          }},
     });
@@ -1384,6 +1410,10 @@ void AmsOperationSidebar::refresh_button_gating() {
     lv_subject_set_int(&s_unload_hidden, actions.unload.visible ? 0 : 1);
     lv_subject_set_int(&s_unload_disabled, actions.unload.enabled ? 0 : 1);
     lv_subject_set_int(&s_unload_picks, actions.unload_opens_picker ? 1 : 0);
+    lv_subject_set_int(&s_mount_hidden, actions.mount.visible ? 0 : 1);
+    lv_subject_set_int(&s_mount_disabled, actions.mount.enabled ? 0 : 1);
+    lv_subject_set_int(&s_park_hidden, actions.park.visible ? 0 : 1);
+    lv_subject_set_int(&s_park_disabled, actions.park.enabled ? 0 : 1);
 
     // One line under the grid says why an action is unavailable; the first
     // reason wins, Load before Unload.
@@ -1454,7 +1484,16 @@ void AmsOperationSidebar::open_head_picker(HeadPickOp op) {
 }
 
 void AmsOperationSidebar::run_picked(HeadPickOp op, const std::vector<HeadPickRow>& chosen) {
-    if (chosen.empty() || refuse_if_busy_or_printing()) {
+    if (chosen.empty()) {
+        return;
+    }
+    // A mount answers to the tool-change verdict, which confirms a paused job's
+    // move instead of refusing it.
+    if (op == HeadPickOp::Mount) {
+        helix::ui::offer_tool_change(printer_state_, chosen.front().head);
+        return;
+    }
+    if (refuse_if_busy_or_printing()) {
         return;
     }
     // One head takes the per-slot path, with its preheat and stepper; several
@@ -1715,10 +1754,7 @@ void AmsOperationSidebar::handle_load_with_preheat(int slot_index) {
             NOTIFY_INFO(lv_tr("Remove the bypass spool from the toolhead first"));
             return;
         }
-        spdlog::debug("[AmsSidebar] Load of slot {} refused ({})", slot_index,
-                      plan.refusal == helix::ui::FilamentRefusal::AlreadyMounted
-                          ? "already mounted"
-                          : "no slot selected");
+        spdlog::debug("[AmsSidebar] Load of slot {} refused (no slot selected)", slot_index);
         return;
     }
 
@@ -1732,26 +1768,18 @@ void AmsOperationSidebar::handle_load_with_preheat(int slot_index) {
         return;
     }
 
-    // Tool changers keep their fast path: no optimistic HEATING stepper.
-    // SELECT_TOOL owns its own heat sequence (the backend claims it, so the
-    // heater skips too), and the backend sets SELECTING at dispatch and resolves
-    // it on the macro ack (#1183) — an optimistic HEATING would fight that.
-    //
-    // Everything else arms the stepper now, before any preheat. plan.ams_call
-    // carries the load-vs-swap answer (needs_unload_before_load, centralized so
-    // the UI and backend agree — K1 CFS reports a preloaded cassette slot with an
-    // empty nozzle and a SWAP there would cut nothing and stall at the cut step,
-    // #968).
+    // The stepper is armed now, before any preheat. plan.ams_call carries the
+    // load-vs-swap answer (needs_unload_before_load, centralized so the UI and
+    // backend agree — K1 CFS reports a preloaded cassette slot with an empty
+    // nozzle and a SWAP there would cut nothing and stall at the cut step, #968).
     // Asked before the stepper is armed: a refusal leaves it to the op heating.
     if (auto* heater = get_filament_op_heater();
         heater && heater->refuse_while_heating(FilamentHeatOp::Load, this, "[AmsSidebar]")) {
         return;
     }
-    if (!caps.load_mounts_tool) {
-        start_operation(plan.ams_call == helix::ui::AmsCall::Load ? StepOperationType::LOAD_FRESH
-                                                                  : StepOperationType::LOAD_SWAP,
-                        slot_index);
-    }
+    start_operation(plan.ams_call == helix::ui::AmsCall::Load ? StepOperationType::LOAD_FRESH
+                                                              : StepOperationType::LOAD_SWAP,
+                    slot_index);
 
     // The backend's load homes inside its own ensure_homed_then() once the
     // nozzle is up to temperature.

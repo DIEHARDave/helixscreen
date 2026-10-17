@@ -1742,6 +1742,7 @@
   <translation tag="Load Profile" zh="加载配置"/>
   <translation tag="Load a filament first before trying to unload" zh="请先装载耗材，再尝试卸载"/>
   <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" zh="请在此槽位装入新料盘，或开启自动续料以切换到匹配的料盘"/>
+  <translation tag="Load and unload filament at the tool by hand" zh="请在工具上手动装入和卸载耗材"/>
   <translation tag="Load cancelled: nozzle target dropped" zh="加载已取消：喷嘴目标温度已降低"/>
   <translation tag="Load complete" zh="装载完成"/>
   <translation tag="Load failed" zh="装载失败"/>
@@ -1921,6 +1922,7 @@
   <translation tag="Motors stay on while a print is active" zh="打印期间电机保持开启"/>
   <translation tag="Mount" zh="装上"/>
   <translation tag="Mount which tool?" zh="装上哪个工具？"/>
+  <translation tag="Mount..." zh="装上..."/>
   <translation tag="Move" zh="移动"/>
   <translation tag="Move out of range" zh="移动超出范围"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." zh="调整时前后移动纸张。当纸张有轻微阻力但仍能滑动时停止。"/>

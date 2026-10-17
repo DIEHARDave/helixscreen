@@ -695,6 +695,12 @@ PathSegment AmsBackendMock::infer_error_segment() const {
 }
 
 AmsError AmsBackendMock::load_filament(int slot_index) {
+    if (const HeadFilamentOps ops = head_filament_ops(std::max(slot_index, 0));
+        ops.load != FilamentOpSupport::Automatic) {
+        // The backend this persona stands in for refuses the same way.
+        return AmsError(AmsResult::NOT_SUPPORTED, "No filament feed for this tool", ops.load_reason,
+                        "");
+    }
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -742,6 +748,11 @@ AmsError AmsBackendMock::load_filament(int slot_index) {
 }
 
 AmsError AmsBackendMock::unload_filament(int slot_index) {
+    if (const HeadFilamentOps ops = head_filament_ops(std::max(slot_index, 0));
+        ops.unload != FilamentOpSupport::Automatic) {
+        return AmsError(AmsResult::NOT_SUPPORTED, "No filament unload on this tool changer",
+                        ops.unload_reason, "");
+    }
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -4089,14 +4100,24 @@ bool AmsBackendMock::owns_tool_mapping_table() const {
 }
 
 bool AmsBackendMock::carriage_can_be_empty() const {
-    bool snapmaker = false;
+    // AmsBackendSnapmaker and AmsBackendToolChanger dock their heads; every
+    // other mode answers what the backend it stands in for answers.
+    std::lock_guard<std::mutex> lock(mutex_);
+    return snapmaker_mode_ || system_info_.type == AmsType::TOOL_CHANGER;
+}
+
+HeadFilamentOps AmsBackendMock::head_filament_ops(int head) const {
+    bool changer = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        snapmaker = snapmaker_mode_;
+        changer = system_info_.type == AmsType::TOOL_CHANGER;
     }
-    // AmsBackendSnapmaker parks its heads; every other mode answers what the
-    // backend it stands in for answers. traits() takes mutex_ itself.
-    return snapmaker || load_mounts_tool();
+    // The mock tool changer has no firmware feed, so it answers as
+    // AmsBackendToolChanger does without one.
+    if (changer) {
+        return AmsBackendToolChanger::head_ops_for(/*feeds_head=*/false, /*cut_to_unload=*/false);
+    }
+    return AmsBackend::head_filament_ops(head);
 }
 
 int AmsBackendMock::filament_head_count() const {

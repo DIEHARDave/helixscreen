@@ -24,6 +24,7 @@
 #include "printer_detector.h"
 #include "printer_state.h" // PrinterState, complete for get_print_lifecycle()
 #include "theme_manager.h"
+#include "tool_change_request.h"
 #include "ui/ams_drawing_utils.h"
 
 #include <spdlog/spdlog.h>
@@ -1109,6 +1110,8 @@ bool ams_dispatch_backend_action(AmsContextMenu::MenuAction action, int slot,
     case MenuAction::CHECK_GATE:
     case MenuAction::PRELOAD:
     case MenuAction::CLEAR_SPOOL:
+    case MenuAction::MOUNT:
+    case MenuAction::PARK:
         break;
     default:
         return false; // caller's own switch owns it
@@ -1153,6 +1156,19 @@ bool ams_dispatch_backend_action(AmsContextMenu::MenuAction action, int slot,
         }
         break;
     }
+
+    case MenuAction::MOUNT: {
+        // The toolhead tap's own verdict: refusals and the paused-job
+        // confirmation are the same as from any other tool control.
+        if (const auto head = backend->head_for_slot(slot)) {
+            offer_tool_change(get_printer_state(), *head);
+        }
+        break;
+    }
+
+    case MenuAction::PARK:
+        request_tool_park(get_printer_state());
+        break;
 
     case MenuAction::CHECK_GATE: {
         AmsError error = backend->check_gate(slot);

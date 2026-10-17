@@ -1789,14 +1789,70 @@ None of the five surfaces navigate away to dispatch anymore. `plan_load()` /
 `plan_unload()` answer the tier decision for all of them; `filament_op_execute.h` runs
 that decision for the three surfaces above that don't own a per-surface execution ladder.
 
-**Batch load/unload** is a sixth surface, gated per backend: only a backend whose `kTraits`
-sets `supports_batch_filament_ops` gets the multi-slot Load All / Unload All button in
-the AMS operation sidebar, which opens `BatchFilamentModal`
-(`include/ui_batch_filament_modal.h`). The Snapmaker U1 is the only real backend that
-qualifies today. The modal dispatches the whole selected set through the backend's
-`load_filament_batch()` / `unload_filament_batch()`, which route through the
-same `run_filament_op()` executor as a single-slot op; the per-backend script shapes live in
-each backend's doc ([Snapmaker U1](FILAMENT_BACKEND_SNAPMAKER_U1.md)).
+**The head picker** (`BatchFilamentModal`, `include/ui_batch_filament_modal.h`) is what the
+sidebar's Load and Unload open, described in
+[§ Backend-neutral filament operations](#backend-neutral-filament-operations). It decides
+nothing: it hands the chosen heads back to the sidebar. One head takes the per-slot path
+above; several (a backend whose `max_heads_per_filament_op()` is above one, the Snapmaker
+U1 today) run through `load_filament_batch()` / `unload_filament_batch()`, which route
+through the same `run_filament_op()` executor as a single-slot op. The per-backend script
+shapes live in each backend's doc ([Snapmaker U1](FILAMENT_BACKEND_SNAPMAKER_U1.md)).
+
+### Backend-neutral filament operations
+
+**Load and Unload mean filament on every printer.** They never mount or park a tool:
+mounting is the toolhead tap (`offer_tool_change()`, `include/tool_change_request.h`) and
+the sidebar's Mount cell, parking is `request_tool_park()`. A backend that needs a tool on
+the carriage to feed it mounts the tool inside its own load. The UI never asks which
+backend it is on: `scripts/check_filament_ops_neutral.py` fails a `get_type()` call or an
+`AmsType::` name in the filament-op files.
+
+The backend answers per-head questions (`include/ams_backend.h`, "Heads"), none of which
+read the current tool or slot:
+
+| Query | Answers |
+|-------|---------|
+| `filament_head_count()` | Nozzles filament is fed into. 1 on a shared toolhead |
+| `head_for_slot(slot)` | The head a slot feeds; nullopt for one routed nowhere (an unrouted multiACE bay) |
+| `head_source_slot(head, info)` | The head's Assigned Tool slot: what a Load feeds |
+| `head_filament_ops(head)` | `FilamentOpSupport` per direction (Automatic, Manual, Unavailable) with a translated reason for anything but Automatic |
+| `head_has_filament(head)` | Filament an Unload would act on; nullopt where nothing senses it |
+| `max_heads_per_filament_op()` | How many heads one op may name; above one means a batch |
+| `supports_reset()` | Whether the sidebar's Reset means anything (a trait) |
+
+`include/filament_action_set.h` turns those answers into what a surface offers, as plain
+values a test can build: `read_filament_head_view()` (`include/filament_op_execute.h`)
+reads a `FilamentHeadView` off the live backend, and three pure functions decide.
+
+- `decide_filament_actions()` is the sidebar. Load opens the head picker on every printer;
+  Unload is one tap on one head and the picker on several. A docking machine
+  (`carriage_can_be_empty()`) where no head has an automatic filament op shows **Mount...**
+  and **Park** in their place. Where heads dock and a feed exists, Park stands beside Load
+  and Unload. A direction no head can do by machine is disabled with the head's reason,
+  shown in the line under the grid.
+- `decide_slot_actions(view, head)` is the slot context menu. Load and Unload stay,
+  disabled with the head's reason where it is not automatic; a head with no automatic op
+  on a docking machine adds Mount (disabled with "Already mounted" on the mounted one) and,
+  on the mounted head, Park.
+- `decide_head_picker_rows(view, op)` is the picker. A row names the slot the op uses; a
+  head with no assigned slot is disabled with "Assign a slot first". The preselection is
+  the selected head, else the mounted one, and only when that head can act. It is a
+  preselection, never a precondition.
+
+Busy and print gating disable every action with no reason (the stepper or the print says
+why). The shared executor (`execute_filament_load()` / `execute_filament_unload()`) and
+the sidebar's per-slot handlers refuse a non-automatic head through
+`notify_if_filament_op_unavailable()`, which toasts the reason and sends nothing, so a
+runout dialog or the sensor tile explains instead of mounting. The runout surfaces take
+their head from the runout itself: `FilamentSensorManager::real_runout_lane()` through
+`runout_target_slot()`.
+
+| Backend | Heads | Load / Unload |
+|---|---|---|
+| Happy Hare, AFC (one extruder), ACE, CFS, QIDI, AD5X IFS, OpenAMS | 1 | Automatic |
+| Snapmaker U1, multiACE | 4 | Automatic, batch of 4; a multiACE bay maps to its routed head |
+| Creator 5 with the afclite feed | one per tool | Load Automatic (the feed), Unload Manual (cut at the head) |
+| klipper-toolchanger with no feed, MedusaHC | one per tool | Manual: the sidebar shows Mount and Park |
 
 ### The dispatch ladder
 
@@ -1827,7 +1883,6 @@ slot's `mapped_tool`. Every other call takes the slot.
 | Refusal | Meaning | Reached from |
 |---------|---------|--------------|
 | `SelectSlot` | The backend wants a slot and none resolved | Load only |
-| `AlreadyMounted` | The requested tool is already on the carriage. `SELECT_TOOL` on it is a firmware no-op (9KRXZ62P) | Load only, tool changers only |
 | `NothingLoaded` | No slot resolved, or nothing at that slot worth pulling | Unload only — its *only* refusal |
 
 ### One deliberate asymmetry between load and unload
@@ -1898,7 +1953,7 @@ carry a comment saying so. Read `include/filament_op_dispatch.h` before "fixing"
 |----------|-------------|
 | Which tier does this operation take? | `plan_load()` / `plan_unload()` |
 | Is this a fresh load or a swap? | `plan_load()` via `needs_unload_before_load()` -> `AmsCall::ChangeTool` |
-| Is the requested tool already mounted? | `plan_load()` -> `FilamentRefusal::AlreadyMounted` |
+| Can this head's Load or Unload run on this printer at all? | `AmsBackend::head_filament_ops()`, asked through `filament_action_set.h` and `notify_if_filament_op_unavailable()` |
 | Is there anything at this slot to unload? | `unload_target_is_loaded()` — actively loaded, **or** filament at the toolhead, **or** it is the current slot (the runout-recovery case, #995 / #1199). The `ACTIVE_HEAD_SLOT` sentinel (-1) counts only while the backend reports the toolhead unaccounted (#1324) |
 | Which slot do this tool's buttons act on? | `resolve_op_button_slot()` |
 | Are Load / Unload enabled right now? | `compute_op_button_gating()` — load state *and* print state |

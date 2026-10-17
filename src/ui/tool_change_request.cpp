@@ -258,4 +258,34 @@ ToolChangeVerdict offer_tool_change(const PrinterState& printer_state, int tool_
     return decision.verdict;
 }
 
+bool request_tool_park(const PrinterState& printer_state) {
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (!backend || !backend->supports_tool_park()) {
+        return false;
+    }
+    if (printer_state.print_state().spool_latch_active()) {
+        spdlog::info("[ToolPark] Refused: spools are on the bed");
+        notify_ams_warning(spools_on_bed_refusal());
+        return false;
+    }
+    if (job_holds_machine(printer_state.print_state().get_print_lifecycle())) {
+        spdlog::info("[ToolPark] Refused: print in progress");
+        notify_ams_warning(AmsError(AmsResult::WRONG_STATE, "Tool park blocked: print in progress",
+                                    lv_tr("Cannot park while a print is active"), ""));
+        return false;
+    }
+    const int active = ToolState::instance().active_tool_index();
+    if (active < 0) {
+        spdlog::debug("[ToolPark] Ignored: no tool mounted");
+        return false;
+    }
+    spdlog::info("[ToolPark] Parking T{}", active);
+    const AmsError err = backend->park_active_tool();
+    if (!err.success()) {
+        notify_ams_error(err);
+        return false;
+    }
+    return true;
+}
+
 } // namespace helix::ui

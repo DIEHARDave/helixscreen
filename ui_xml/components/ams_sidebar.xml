@@ -9,6 +9,7 @@
     Callbacks (registered by AmsOperationSidebar::register_callbacks_static()):
     - ams_sidebar_bypass_toggled: Bypass toggle switch
     - ams_sidebar_load_clicked: Load button (opens the head picker)
+    - ams_sidebar_mount_clicked / ams_sidebar_park_clicked: Mount and Park
     - ams_sidebar_unload_clicked: Unload buttons (btn_unload, btn_batch_unload)
     - ams_sidebar_reset_clicked: Reset button
     - ams_sidebar_check_gates_clicked: Check slots button (Happy Hare only)
@@ -142,6 +143,34 @@
         <bind_flag_if cond="ams_sidebar_unload_hidden eq 1 or ams_sidebar_unload_picks eq 0" flag="hidden"/>
         <bind_state_if_eq subject="ams_sidebar_unload_disabled" state="disabled" ref_value="1"/>
         <event_cb trigger="clicked" callback="ams_sidebar_unload_clicked"/>
+      </ui_button>
+      <!-- On a machine whose heads dock and whose filament is all by hand, Mount
+           and Park stand where Load and Unload would. Park also stands beside
+           Load and Unload where the heads dock and a feed exists. Both come from
+           decide_filament_actions(). Mount answers to the tool-change verdict,
+           which confirms a paused job's move, so it carries no toolhead guard;
+           Park does: a print resumed with its tool docked prints nothing. -->
+      <ui_button name="btn_mount"
+                 variant="secondary" icon="swap_horizontal" text="Mount..." stacked_subject="ams_actions_stacked"
+                 stacked_if_eq="1" long_mode="dots" icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1">
+        <style name="styles.action_cell"/>
+        <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
+        <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>
+        <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
+        <bind_flag_if_eq subject="ams_sidebar_mount_hidden" flag="hidden" ref_value="1"/>
+        <bind_state_if_eq subject="ams_sidebar_mount_disabled" state="disabled" ref_value="1"/>
+        <event_cb trigger="clicked" callback="ams_sidebar_mount_clicked"/>
+      </ui_button>
+      <ui_button name="btn_park"
+                 variant="secondary" icon="eject" text="Park" stacked_subject="ams_actions_stacked" stacked_if_eq="1"
+                 long_mode="dots" icon_hidden_subject="ams_actions_text_only" icon_hidden_if_eq="1" moves_machine="true">
+        <style name="styles.action_cell"/>
+        <bind_style_if name="styles.action_cell_text" cond="ams_actions_text_only eq 1"/>
+        <bind_style_if name="styles.action_cell_stacked" cond="ams_actions_stacked eq 1"/>
+        <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
+        <bind_flag_if_eq subject="ams_sidebar_park_hidden" flag="hidden" ref_value="1"/>
+        <bind_state_if_eq subject="ams_sidebar_park_disabled" state="disabled" ref_value="1"/>
+        <event_cb trigger="clicked" callback="ams_sidebar_park_clicked"/>
       </ui_button>
       <!-- Reset Button - hidden where the backend has no reset to offer (supports_reset) -->
       <!-- Disabled state comes from ams_sidebar_reset_disabled, which

@@ -1974,6 +1974,7 @@ translations:
   Load Filament: Загрузить филамент
   Load a filament first before trying to unload: Сначала загрузите филамент, прежде чем пытаться его выгрузить
   Load a new spool in this slot, or turn on auto-refill to switch to a matching one: Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую
+  Load and unload filament at the tool by hand: 'Загружайте и выгружайте филамент вручную на инструменте'
   'Load cancelled: nozzle target dropped': 'Загрузка отменена: цель сопла снижена'
   Load complete: 'Загрузка завершена'
   Load failed: Ошибка загрузки
@@ -2161,6 +2162,7 @@ translations:
   Motors stay on while a print is active: Моторы остаются включены во время печати
   Mount: Установить
   Mount which tool?: 'Какой инструмент установить?'
+  Mount...: 'Установить...'
   Move: Двигать
   Move out of range: 'Движение за пределами диапазона'
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: Перемещайте

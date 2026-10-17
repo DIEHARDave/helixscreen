@@ -1078,28 +1078,7 @@ bool ToolSwitcherWidget::refuse_machine_action(const char* technical,
 }
 
 void ToolSwitcherWidget::handle_park_requested() {
-    AmsBackend* backend = AmsState::instance().get_backend();
-    if (!backend || !backend->supports_tool_park()) {
-        return;
-    }
-
-    // A print resumed with its tool docked prints nothing.
-    if (refuse_machine_action("Tool park blocked: print in progress",
-                              lv_tr("Cannot park while a print is active"))) {
-        return;
-    }
-
-    const int active = ToolState::instance().active_tool_index();
-    if (active < 0) {
-        spdlog::debug("[ToolSwitcher] Park ignored: no tool mounted");
-        return;
-    }
-
-    spdlog::info("[ToolSwitcher] Parking T{}", active);
-    const AmsError err = backend->park_active_tool();
-    if (!err.success()) {
-        helix::ui::notify_ams_error(err);
-    }
+    helix::ui::request_tool_park(printer_state_);
 }
 
 void ToolSwitcherWidget::handle_feeder_toggled() {
