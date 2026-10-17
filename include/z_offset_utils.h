@@ -261,9 +261,6 @@ void deinit_save_available_subject();
 /// The published subject, or nullptr before init_save_available_subject().
 lv_subject_t* get_save_available_subject();
 
-/// `z_offset_save_enabled`, or nullptr before init_save_available_subject().
-lv_subject_t* get_save_enabled_subject();
-
 /// The lifetime token an observer of get_save_available_subject() must carry, so a
 /// deinit of the subject cannot leave it pointing at freed memory. Empty (expired)
 /// before init_save_available_subject().

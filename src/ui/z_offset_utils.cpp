@@ -488,11 +488,6 @@ lv_subject_t* get_save_available_subject() {
     return storage ? &storage->z_offset_save_available_ : nullptr;
 }
 
-lv_subject_t* get_save_enabled_subject() {
-    auto& storage = save_available_storage();
-    return storage ? &storage->z_offset_save_enabled_ : nullptr;
-}
-
 SubjectLifetime get_save_available_lifetime() {
     auto& storage = save_available_storage();
     return storage ? storage->subjects.get_subjects_lifetime() : SubjectLifetime{};
@@ -569,7 +564,7 @@ void run_shared_save() {
     NOTIFY_INFO(lv_tr("Saving Z-offset..."));
     save_dirty_offsets(
         api, shared_save_watch(), ps.profile_state().z_offset_calibration_strategy(),
-        ps.get_discovery(), saves_global(current_save_availability()),
+        ps.get_discovery(), current_save_availability().global_dirty,
         []() {
             end_shared_save();
             NOTIFY_SUCCESS("{}", lv_tr("Z-offset saved"));
@@ -603,7 +598,7 @@ void save_dirty_offsets_shared() {
     // its parameters — but a firmware that persists immediately restarts
     // nothing, and a confirmation promising a disconnect would be a lie.
     const bool restart_expected =
-        saves_global(facts) ||
+        facts.global_dirty ||
         (facts.tools_dirty &&
          helix::tool_offsets::persist_requires_save_config(ps.get_discovery()));
 
