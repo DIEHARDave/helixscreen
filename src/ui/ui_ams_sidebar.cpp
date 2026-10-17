@@ -578,22 +578,20 @@ void AmsOperationSidebar::init_observers() {
         },
         AmsState::instance().get_subjects_lifetime());
 
-    // Color observer: paints the loaded filament's colour on the card's bar
-    // (below medium) and its spool (medium up); XML picks which one shows.
+    // Paint observers: the loaded filament's colour, multi-colour list and
+    // finish on the card's bar (below medium) and its spool (medium up); XML
+    // picks which one shows.
     color_observer_ = observe<int>(
         AmsState::instance().get_current_color_subject(), this,
-        [](AmsOperationSidebar* self, int color_int) {
-            if (!self->active_ || !self->sidebar_root_ || !self->loaded_card_)
-                return;
-            lv_color_t color = lv_color_hex(static_cast<uint32_t>(color_int));
-            if (lv_obj_t* swatch = lv_obj_find_by_name(self->loaded_card_, "loaded_swatch")) {
-                lv_obj_set_style_bg_color(swatch, color, 0);
-                lv_obj_set_style_border_color(swatch, color, 0);
-            }
-            if (lv_obj_t* spool = lv_obj_find_by_name(self->loaded_card_, "loaded_spool")) {
-                ui_spool_canvas_set_color(spool, color);
-            }
-        },
+        [](AmsOperationSidebar* self, int) { self->paint_loaded_filament(); },
+        AmsState::instance().get_subjects_lifetime());
+    colors_observer_ = observe<const char*>(
+        AmsState::instance().get_current_colors_subject(), this,
+        [](AmsOperationSidebar* self, const char*) { self->paint_loaded_filament(); },
+        AmsState::instance().get_subjects_lifetime());
+    finish_observer_ = observe<const char*>(
+        AmsState::instance().get_current_finish_subject(), this,
+        [](AmsOperationSidebar* self, const char*) { self->paint_loaded_filament(); },
         AmsState::instance().get_subjects_lifetime());
 
     // Fill observer: how much is left on the loaded spool, in the
@@ -693,6 +691,8 @@ void AmsOperationSidebar::cleanup() {
     active_backend_observer_.reset();
     bypass_spool_observer_.reset();
     color_observer_.reset();
+    colors_observer_.reset();
+    finish_observer_.reset();
     fill_observer_.reset();
     step_index_observer_.reset(); // [L085] reset(), never release()
     extruder_temp_observer_.reset();
@@ -814,6 +814,19 @@ void AmsOperationSidebar::sync_reset_button_label() {
 // ============================================================================
 // Current Loaded Display
 // ============================================================================
+
+void AmsOperationSidebar::paint_loaded_filament() {
+    if (!active_ || !sidebar_root_ || !loaded_card_)
+        return;
+    const auto paint = AmsState::instance().current_paint();
+    const auto finish = helix::ui::swatch_finish(paint.finish);
+    if (lv_obj_t* swatch = lv_obj_find_by_name(loaded_card_, "loaded_swatch")) {
+        helix::ui::apply_swatch_color(swatch, paint.rgb, paint.multi_color_hexes, finish);
+    }
+    if (lv_obj_t* spool = lv_obj_find_by_name(loaded_card_, "loaded_spool")) {
+        helix::ui::spool_canvas_set_filament(spool, paint.rgb, paint.multi_color_hexes, finish);
+    }
+}
 
 void AmsOperationSidebar::update_current_loaded_display() {
     if (!sidebar_root_) {

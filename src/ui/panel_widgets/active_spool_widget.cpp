@@ -224,7 +224,12 @@ void ActiveSpoolWidget::update_spool_display() {
 
     // Update the active spool canvas
     if (active_spool) {
-        ui_spool_canvas_set_color(active_spool, spool_color);
+        if (has_spool && source_slot)
+            helix::ui::spool_canvas_set_filament(active_spool, active->color_rgb,
+                                                 source_slot->multi_color_hexes,
+                                                 helix::ui::swatch_finish_of(*source_slot));
+        else
+            ui_spool_canvas_set_color(active_spool, spool_color);
         ui_spool_canvas_set_fill_level(active_spool, fill_level);
         // Semi-transparent when no spool assigned
         lv_obj_set_style_opa(active_spool, has_spool ? LV_OPA_COVER : LV_OPA_40, 0);

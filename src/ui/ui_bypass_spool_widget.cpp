@@ -50,7 +50,7 @@ void bypass_spool_sync_from_state(BypassSpoolWidgets& w, bool show) {
         return;
     }
     if (auto ext = ams.get_external_spool_info()) {
-        bypass_spool_set_color(w, ext->color_rgb);
+        bypass_spool_set_filament(w, *ext);
         bypass_spool_set_has_spool(w, true);
         bypass_spool_set_material(w, ext->material.c_str());
     } else {
@@ -162,6 +162,18 @@ void bypass_spool_set_color(BypassSpoolWidgets& w, uint32_t color_rgb) {
     w.cached_color_rgb = color_rgb;
     ui_spool_canvas_set_color(w.spool_canvas, lv_color_hex(color_rgb));
     ui_spool_canvas_redraw(w.spool_canvas);
+}
+
+void bypass_spool_set_filament(BypassSpoolWidgets& w, const SlotInfo& slot) {
+    if (!w.spool_canvas) {
+        return;
+    }
+    // The canvas dedups on its own render key. The plain-colour cache records
+    // the colour but not as painted, so a later plain colour always repaints
+    // over the split and finish.
+    w.color_painted = false;
+    w.cached_color_rgb = slot.color_rgb;
+    spool_canvas_set_filament(w.spool_canvas, slot);
 }
 
 void bypass_spool_set_has_spool(BypassSpoolWidgets& w, bool has_spool) {

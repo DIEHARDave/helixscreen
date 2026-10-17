@@ -92,8 +92,6 @@ lv_obj_t* AmsEditOverlay::find_widget(const char* name) const {
 bool AmsEditOverlay::show_for_slot(lv_obj_t* parent, int slot_index, const SlotInfo& initial_info,
                                    IMoonrakerAPI* api, CompletionCallback on_complete,
                                    bool open_on_picker) {
-    // Its preset grids draw edges by contrast with the current theme's surfaces.
-    refresh_swatch_edges();
     // Store per-invocation state (QrScannerOverlay pattern: params + callback
     // stored on the singleton before push)
     slot_index_ = slot_index;
@@ -608,7 +606,8 @@ void AmsEditOverlay::render_spool_list(const std::string& filter) {
         lv_obj_t* swatch = helix::ui::find_required(item, "spool_swatch", get_name());
         if (swatch) {
             uint32_t rgb = helix::parse_hex_color(spool.color_hex).value_or(0x808080);
-            helix::ui::apply_swatch_color(swatch, rgb, spool.multi_color_hexes);
+            helix::ui::apply_swatch_color(swatch, rgb, spool.multi_color_hexes,
+                                          helix::ui::swatch_finish(spool.finish()));
         }
 
         // Disable spools already assigned to other tools
@@ -1162,9 +1161,7 @@ void AmsEditOverlay::handle_quick_swatch(lv_obj_t* swatch) {
     if (!swatch) {
         return;
     }
-    lv_color_t c = lv_obj_get_style_bg_color(swatch, LV_PART_MAIN);
-    details_color_ = (static_cast<uint32_t>(c.red) << 16) | (static_cast<uint32_t>(c.green) << 8) |
-                     static_cast<uint32_t>(c.blue);
+    details_color_ = lv_color_to_u32(helix::ui::swatch_color_of(swatch)) & 0xFFFFFF;
     details_color_set_ = true;
     lv_obj_t* preview =
         helix::ui::find_required(overlay_root_, "details_color_preview", get_name());
@@ -1480,8 +1477,7 @@ void AmsEditOverlay::update_ui() {
     lv_obj_t* card_color_swatch =
         helix::ui::find_required(overlay_root_, "card_color_swatch", get_name());
     if (card_color_swatch) {
-        helix::ui::apply_swatch_color(card_color_swatch, working_info_.color_rgb,
-                                      working_info_.multi_color_hexes);
+        helix::ui::apply_swatch_color(card_color_swatch, working_info_);
     }
 
     // Remaining bar + label — display-only. Unknown weight data
@@ -1715,9 +1711,7 @@ void AmsEditOverlay::handle_color_swatch(lv_obj_t* swatch) {
     if (!swatch) {
         return;
     }
-    lv_color_t c = lv_obj_get_style_bg_color(swatch, LV_PART_MAIN);
-    uint32_t rgb = (static_cast<uint32_t>(c.red) << 16) | (static_cast<uint32_t>(c.green) << 8) |
-                   static_cast<uint32_t>(c.blue);
+    const uint32_t rgb = lv_color_to_u32(helix::ui::swatch_color_of(swatch)) & 0xFFFFFF;
     apply_color(rgb); // preset tap applies immediately and returns
 }
 

@@ -242,6 +242,9 @@ void AmsState::init_subjects(bool register_xml) {
                                                       &current_has_weight_);
 
     INIT_SUBJECT_INT(current_color, 0x505050, subjects_, register_xml);
+    // Read by C++ alongside current_color (ui_ams_current_tool.cpp), never bound in XML.
+    INIT_SUBJECT_STRING(current_colors, "", subjects_, false);
+    INIT_SUBJECT_STRING(current_finish, "", subjects_, false);
     INIT_SUBJECT_INT(current_fill_pct, 0, subjects_,
                      register_xml); // SUBJECT_OK: AmsOperationSidebar draws it on the loaded spool
 
@@ -337,6 +340,10 @@ void AmsState::init_subjects(bool register_xml) {
         subjects_.register_subject(&slot_fills_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &slot_fills_[i]);
+
+        // Per-slot paint key, C++ only: lane spools repaint on it.
+        lv_subject_init_int(&slot_paints_[i], 0);
+        subjects_.register_subject(&slot_paints_[i], nullptr);
 
         // Per-slot LIVE state subjects (path segment, toolhead-present, active-loaded)
         lv_subject_init_int(&slot_segments_[i], static_cast<int>(PathSegment::NONE));
@@ -1228,6 +1235,12 @@ lv_subject_t* AmsState::get_slot_name_subject(int backend_index, int slot_index,
                                 slot_names_);
 }
 
+lv_subject_t* AmsState::get_slot_paint_subject(int backend_index, int slot_index,
+                                               SubjectLifetime& lifetime) {
+    return backend_slot_subject(backend_index, slot_index, lifetime, &BackendSlotSubjects::paints,
+                                slot_paints_);
+}
+
 lv_subject_t* AmsState::get_slot_lane_state_subject(int backend_index, int slot_index,
                                                     SubjectLifetime& lifetime) {
     return backend_slot_subject(backend_index, slot_index, lifetime,
@@ -1254,6 +1267,7 @@ void AmsState::BackendSlotSubjects::init(int count) {
     lane_states.resize(count);
     has_errors.resize(count);
     severities.resize(count);
+    paints.resize(count);
     material_bufs.resize(count);
     materials.resize(count);
     name_bufs.resize(count);
@@ -1265,6 +1279,7 @@ void AmsState::BackendSlotSubjects::init(int count) {
         lv_subject_init_int(&lane_states[i], static_cast<int>(helix::ui::LaneState::Empty));
         lv_subject_init_int(&has_errors[i], 0);
         lv_subject_init_int(&severities[i], static_cast<int>(SlotError::Severity::INFO));
+        lv_subject_init_int(&paints[i], 0);
         lv_subject_init_string(&materials[i], material_bufs[i].data(), nullptr,
                                BackendSlotSubjects::MATERIAL_BUF_SIZE, "");
         lv_subject_init_string(&names[i], name_bufs[i].data(), nullptr, SLOT_NAME_BUF_SIZE, "");
@@ -1285,7 +1300,8 @@ void AmsState::BackendSlotSubjects::deinit() {
         lv_subject_deinit(&c);
     for (auto& s : statuses)
         lv_subject_deinit(&s);
-    for (auto* group : {&fills, &lane_states, &has_errors, &severities, &materials, &names})
+    for (auto* group :
+         {&fills, &lane_states, &has_errors, &severities, &paints, &materials, &names})
         for (auto& subj : *group)
             lv_subject_deinit(&subj);
     colors.clear();
@@ -1294,6 +1310,7 @@ void AmsState::BackendSlotSubjects::deinit() {
     lane_states.clear();
     has_errors.clear();
     severities.clear();
+    paints.clear();
     materials.clear();
     material_bufs.clear();
     names.clear();
@@ -1305,6 +1322,7 @@ void AmsState::BackendSlotSubjects::write(int i, const SlotInfo& slot) {
     lv_subject_set_int(&colors[i], static_cast<int>(slot.color_rgb));
     lv_subject_set_int(&statuses[i], static_cast<int>(slot.status));
     lv_subject_set_int(&fills[i], slot.display_fill_pct());
+    lv_subject_set_int(&paints[i], slot.paint_key());
     lv_subject_set_int(&lane_states[i], static_cast<int>(helix::ui::classify_lane(slot)));
     // No prev buffer, so LVGL notifies on every copy; compare here instead.
     if (strcmp(lv_subject_get_string(&materials[i]), slot.material.c_str()) != 0)

@@ -9,6 +9,7 @@
 #include "ui_heater_config.h"
 #include "ui_nav.h"
 #include "ui_next_tick.h"
+#include "ui_swatch.h"
 #include "ui_temperature_utils.h"
 #include "ui_utils.h"
 
@@ -568,9 +569,8 @@ void TempGraphOverlay::create_chips() {
         lv_obj_t* dot = lv_obj_create(chip);
         lv_obj_set_size(dot, 8, 8);
         lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(dot, s.color, 0);
         lv_obj_set_style_border_width(dot, 0, 0);
+        helix::ui::apply_swatch_color(dot, lv_color_to_u32(s.color) & 0xFFFFFF, "");
         lv_obj_remove_flag(
             dot, static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
         lv_obj_add_flag(dot, LV_OBJ_FLAG_EVENT_BUBBLE);

@@ -202,7 +202,9 @@ void SpoolmanListView::configure_row(RowWidgets& rw, const SpoolInfo& spool, int
     if (rw.canvas) {
         lv_color_t color =
             parse_spool_color(spool.color_hex, theme_manager_get_color("text_muted"));
-        ui_spool_canvas_set_color(rw.canvas, color);
+        helix::ui::spool_canvas_set_filament(rw.canvas, lv_color_to_u32(color) & 0xFFFFFF,
+                                             spool.multi_color_hexes,
+                                             helix::ui::swatch_finish(spool.finish()));
 
         // remaining_percent() reports 0 for an unweighed spool, which is honest for
         // the percent label but would draw the spool empty. Weightless draws full.

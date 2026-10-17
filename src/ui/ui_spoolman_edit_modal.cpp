@@ -341,7 +341,9 @@ void SpoolEditModal::update_spool_preview() {
     // Set color from spool's hex color
     lv_color_t color =
         parse_spool_color(working_spool_.color_hex, theme_manager_get_color("text_muted"));
-    ui_spool_canvas_set_color(canvas, color);
+    helix::ui::spool_canvas_set_filament(canvas, lv_color_to_u32(color) & 0xFFFFFF,
+                                         working_spool_.multi_color_hexes,
+                                         helix::ui::swatch_finish(working_spool_.finish()));
 
     // Set fill level from remaining weight; an unweighed spool draws full, the
     // same answer SlotInfo::display_fill_level() gives for a lane with no weights.

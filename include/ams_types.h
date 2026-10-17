@@ -4,6 +4,7 @@
 #pragma once
 
 #include "filament_database.h"
+#include "filament_variants.h"
 #include "klipper_extruder_naming.h"
 #include "translation_loader.h"
 
@@ -1148,6 +1149,35 @@ struct SlotInfo {
      */
     [[nodiscard]] bool is_multi_color() const {
         return !multi_color_hexes.empty();
+    }
+
+    /**
+     * @brief A key for how a swatch paints this slot beyond its colour: its
+     *        multi-colour list and finish. Equal keys paint alike.
+     */
+    [[nodiscard]] int paint_key() const {
+        uint32_t h = 2166136261u ^ static_cast<uint32_t>(finish());
+        for (char c : multi_color_hexes) {
+            h = (h ^ static_cast<unsigned char>(c)) * 16777619u;
+        }
+        return static_cast<int>(h & 0x7FFFFFFF);
+    }
+
+    /**
+     * @brief The surface finish the filament's names announce (silk, matte, ...)
+     *
+     * The first of material, product name and spool name that names one wins.
+     * Never the colour name: "Stone Grey" is a plain grey, not a marble.
+     * Swatches paint it; see helix::filament_finish_of().
+     */
+    [[nodiscard]] FilamentFinish finish() const {
+        for (const std::string* name : {&material, &product_name, &spool_name}) {
+            const FilamentFinish f = filament_finish_of(*name);
+            if (f != FilamentFinish::None) {
+                return f;
+            }
+        }
+        return FilamentFinish::None;
     }
 
     /**

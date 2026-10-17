@@ -95,8 +95,6 @@ class LedControlOverlay : public OverlayBase {
     void load_page_state();
     void publish_page();
     void publish_color_state();
-    /// Edges are judged against the current theme's surfaces.
-    void publish_swatch_edges();
     void publish_list();
     void on_led_state_changed();
     /// Polls the focused WLED strip and re-reads its page when the poll lands.
@@ -169,9 +167,6 @@ class LedControlOverlay : public OverlayBase {
     lv_subject_t swatch_count_{};
     helix::xml::IndexedSubjectPool swatch_color_pool_{"led_swatch_color",
                                                       helix::xml::IndexedSubjectPool::Type::Color};
-    /// 1 where a swatch's fill is near-white and needs the light-theme hairline.
-    helix::xml::IndexedSubjectPool swatch_edge_pool_{"led_swatch_edge",
-                                                     helix::xml::IndexedSubjectPool::Type::Int};
     lv_subject_t selected_swatch_{};
     lv_subject_t page_list_title_{};
     char page_list_title_buf_[64] = {0};
@@ -184,7 +179,6 @@ class LedControlOverlay : public OverlayBase {
     char page_note_buf_[128] = {0};
 
     ObserverGuard state_observer_;
-    ObserverGuard theme_observer_;
 
     std::string focused_strip_;
     std::string last_focused_; ///< for this session only
