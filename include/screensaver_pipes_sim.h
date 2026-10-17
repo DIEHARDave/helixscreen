@@ -365,6 +365,65 @@ PipeXform pipes_piece_xform(const PipePiece& piece);
 /// `p` carried from mesh frame to world by `xf`.
 PipeVec3 pipes_xform_point(const PipeXform& xf, PipeVec3 p);
 
+/**
+ * @brief Draws pieces into a frame with a z-buffer and the fixed light
+ *
+ * Perspective with focal length (internal height / 2), the view turned `yrot` about +y and
+ * pushed PIPES_VIEW_DIST back. Each triangle interpolates inverse depth and the eye-space
+ * normal; a pixel is written only where it is nearer than what the buffer holds, so draw
+ * order never changes the picture. Shading reads per-material tables built by init().
+ */
+class PipesRenderer {
+  public:
+    /// Sizes the depth buffer for a `w` x `h` canvas drawn in `scale` x `scale` blocks, and
+    /// builds the meshes and lighting tables.
+    void init(uint32_t w, uint32_t h, uint8_t scale);
+    void release();
+    void set_view(float yrot_deg, PipeGridDims dims);
+    /// Empties the depth buffer; the frame itself is the dissolve's to clear.
+    void clear_depth();
+    /// Draws `piece` and returns the canvas box it may have written (empty when off screen).
+    DirtyRect draw(const FrameTarget& frame, const PipePiece& piece);
+    /// Canvas position of world point `p`; false behind the near plane.
+    bool project(PipeVec3 p, float& sx, float& sy) const;
+    uint8_t scale() const {
+        return scale_;
+    }
+    size_t buffer_bytes() const;
+
+  private:
+    /// A mesh vertex carried to the screen: internal pixels, inverse depth, eye normal.
+    struct ScreenVertex {
+        float x;
+        float y;
+        float inv_depth;
+        PipeVec3 n;
+    };
+
+    const PipeMesh& mesh_for(PipePieceKind kind) const;
+    /// World point to eye space: turned by the view, then pushed back.
+    PipeVec3 to_eye(PipeVec3 p) const;
+    void raster_triangle(const FrameTarget& frame, const ScreenVertex& a, const ScreenVertex& b,
+                         const ScreenVertex& c, const uint16_t* lut);
+
+    uint32_t w_ = 0;
+    uint32_t h_ = 0;
+    uint8_t scale_ = 1;
+    uint32_t iw_ = 0; ///< internal width, ceil(w / scale)
+    uint32_t ih_ = 0;
+    float focal_ = 0.0f;
+    float cos_y_ = 1.0f;
+    float sin_y_ = 0.0f;
+    PipeGridDims dims_;
+    std::vector<float> inv_depth_;
+    PipeMesh cylinder_;
+    PipeMesh ball_;
+    PipeMesh elbow_;
+    PipeMesh teapot_;
+    std::vector<ScreenVertex> screen_;
+    std::vector<uint16_t> lut_; ///< per material: ambient + diffuse by n.L, specular by n.H
+};
+
 } // namespace helix::ui
 
 #endif // HELIX_ENABLE_SCREENSAVER

@@ -4,6 +4,8 @@
 
 #include "screensaver_pipes_sim.h"
 
+#include "screensaver_pixel_writer.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -607,6 +609,273 @@ PipeVec3 pipes_xform_point(const PipeXform& xf, PipeVec3 p) {
     return {p.x * xf.x.x + p.y * xf.y.x + p.z * xf.z.x + xf.t.x,
             p.x * xf.x.y + p.y * xf.y.y + p.z * xf.z.y + xf.t.y,
             p.x * xf.x.z + p.y * xf.y.z + p.z * xf.z.z + xf.t.z};
+}
+
+// ============================================================================
+// Renderer
+// ============================================================================
+
+namespace {
+
+constexpr int LUT_AD = 256;    ///< ambient + diffuse entries over n.L in [0, 1]
+constexpr int LUT_SPEC = 1024; ///< specular entries over n.H in [0, 1]
+constexpr size_t LUT_STRIDE = 3 * (LUT_AD + LUT_SPEC);
+
+/// Nearer than this a triangle is not drawn (nothing in the grid comes close).
+constexpr float NEAR_DEPTH = 0.5f;
+
+uint16_t lut_value(float v) {
+    return static_cast<uint16_t>(std::lround(std::max(0.0f, v) * 255.0f));
+}
+
+} // namespace
+
+void PipesRenderer::init(uint32_t w, uint32_t h, uint8_t scale) {
+    w_ = w;
+    h_ = h;
+    scale_ = std::max<uint8_t>(1, scale);
+    iw_ = (w + scale_ - 1) / scale_;
+    ih_ = (h + scale_ - 1) / scale_;
+    focal_ = static_cast<float>(ih_) * 0.5f;
+    inv_depth_.assign(static_cast<size_t>(iw_) * ih_, 0.0f);
+    pipes_build_cylinder(cylinder_);
+    pipes_build_ball(ball_);
+    pipes_build_elbow(elbow_);
+    pipes_build_teapot(teapot_);
+    const size_t most = std::max(
+        {cylinder_.verts.size(), ball_.verts.size(), elbow_.verts.size(), teapot_.verts.size()});
+    screen_.assign(most, ScreenVertex{});
+    lut_.assign(LUT_STRIDE * PIPE_MATERIAL_COUNT, 0);
+    for (size_t m = 0; m < PIPE_MATERIAL_COUNT; m++) {
+        const PipeMaterial& mat = PIPE_MATERIALS[m];
+        uint16_t* base = lut_.data() + m * LUT_STRIDE;
+        for (size_t c = 0; c < 3; c++) {
+            uint16_t* ad = base + c * LUT_AD;
+            uint16_t* sp = base + 3 * LUT_AD + c * LUT_SPEC;
+            for (int i = 0; i < LUT_AD; i++) {
+                const float nl = static_cast<float>(i) / (LUT_AD - 1);
+                ad[i] = lut_value(AMBIENT_SCALE * mat.ka[c] + mat.kd[c] * nl);
+            }
+            for (int i = 0; i < LUT_SPEC; i++) {
+                const float nh = static_cast<float>(i) / (LUT_SPEC - 1);
+                sp[i] = lut_value(mat.ks[c] * std::pow(nh, mat.shininess));
+            }
+        }
+    }
+}
+
+void PipesRenderer::release() {
+    std::vector<float>().swap(inv_depth_);
+    for (PipeMesh* m : {&cylinder_, &ball_, &elbow_, &teapot_}) {
+        std::vector<PipeVertex>().swap(m->verts);
+        std::vector<uint16_t>().swap(m->tris);
+    }
+    std::vector<ScreenVertex>().swap(screen_);
+    std::vector<uint16_t>().swap(lut_);
+    w_ = h_ = iw_ = ih_ = 0;
+}
+
+size_t PipesRenderer::buffer_bytes() const {
+    return inv_depth_.capacity() * sizeof(float) + cylinder_.buffer_bytes() + ball_.buffer_bytes() +
+           elbow_.buffer_bytes() + teapot_.buffer_bytes() +
+           screen_.capacity() * sizeof(ScreenVertex) + lut_.capacity() * sizeof(uint16_t);
+}
+
+void PipesRenderer::set_view(float yrot_deg, PipeGridDims dims) {
+    const float rad = yrot_deg * PI_F / 180.0f;
+    cos_y_ = std::cos(rad);
+    sin_y_ = std::sin(rad);
+    dims_ = dims;
+}
+
+void PipesRenderer::clear_depth() {
+    std::fill(inv_depth_.begin(), inv_depth_.end(), 0.0f);
+}
+
+PipeVec3 PipesRenderer::to_eye(PipeVec3 p) const {
+    return {p.x * cos_y_ + p.z * sin_y_, p.y, -p.x * sin_y_ + p.z * cos_y_ - PIPES_VIEW_DIST};
+}
+
+bool PipesRenderer::project(PipeVec3 p, float& sx, float& sy) const {
+    const PipeVec3 e = to_eye(p);
+    const float d = -e.z;
+    if (d < NEAR_DEPTH) {
+        return false;
+    }
+    const auto s = static_cast<float>(scale_);
+    sx = (static_cast<float>(iw_) * 0.5f + focal_ * e.x / d) * s;
+    sy = (static_cast<float>(ih_) * 0.5f - focal_ * e.y / d) * s;
+    return true;
+}
+
+const PipeMesh& PipesRenderer::mesh_for(PipePieceKind kind) const {
+    switch (kind) {
+    case PipePieceKind::CYLINDER:
+        return cylinder_;
+    case PipePieceKind::ELBOW:
+        return elbow_;
+    case PipePieceKind::BALL:
+        return ball_;
+    case PipePieceKind::TEAPOT:
+        break;
+    }
+    return teapot_;
+}
+
+DirtyRect PipesRenderer::draw(const FrameTarget& frame, const PipePiece& piece) {
+    DirtyRect box;
+    if (iw_ == 0 || ih_ == 0 || inv_depth_.empty()) {
+        return box;
+    }
+    const PipeMesh& mesh = mesh_for(piece.kind);
+    const PipeXform xf = pipes_piece_xform(piece);
+    // Normals turn with the frame's axes; only a cylinder's z is scaled, and its normals have
+    // no z part.
+    const PipeVec3 nz = normalized(xf.z);
+    float min_x = 1e30f;
+    float min_y = 1e30f;
+    float max_x = -1e30f;
+    float max_y = -1e30f;
+    for (size_t i = 0; i < mesh.verts.size(); i++) {
+        const PipeVertex& v = mesh.verts[i];
+        const PipeVec3 e = to_eye(pipes_xform_point(xf, v.p));
+        const PipeVec3 wn{v.n.x * xf.x.x + v.n.y * xf.y.x + v.n.z * nz.x,
+                          v.n.x * xf.x.y + v.n.y * xf.y.y + v.n.z * nz.y,
+                          v.n.x * xf.x.z + v.n.y * xf.y.z + v.n.z * nz.z};
+        ScreenVertex& sv = screen_[i];
+        sv.n = {wn.x * cos_y_ + wn.z * sin_y_, wn.y, -wn.x * sin_y_ + wn.z * cos_y_};
+        const float d = -e.z;
+        if (d < NEAR_DEPTH) {
+            sv.inv_depth = -1.0f;
+            continue;
+        }
+        sv.inv_depth = 1.0f / d;
+        sv.x = static_cast<float>(iw_) * 0.5f + focal_ * e.x * sv.inv_depth;
+        sv.y = static_cast<float>(ih_) * 0.5f - focal_ * e.y * sv.inv_depth;
+        min_x = std::min(min_x, sv.x);
+        max_x = std::max(max_x, sv.x);
+        min_y = std::min(min_y, sv.y);
+        max_y = std::max(max_y, sv.y);
+    }
+    if (min_x > max_x) {
+        return box;
+    }
+    const uint16_t* lut = lut_.data() + (piece.material % PIPE_MATERIAL_COUNT) * LUT_STRIDE;
+    for (size_t t = 0; t + 2 < mesh.tris.size(); t += 3) {
+        const ScreenVertex& a = screen_[mesh.tris[t]];
+        const ScreenVertex& b = screen_[mesh.tris[t + 1]];
+        const ScreenVertex& c = screen_[mesh.tris[t + 2]];
+        if (a.inv_depth < 0.0f || b.inv_depth < 0.0f || c.inv_depth < 0.0f) {
+            continue;
+        }
+        raster_triangle(frame, a, b, c, lut);
+    }
+    // Every write lands inside the vertices' box, padded a pixel for the sampling.
+    const auto clamp_x = [&](float v) {
+        return static_cast<int32_t>(std::clamp(v, -1.0f, static_cast<float>(iw_)));
+    };
+    const auto clamp_y = [&](float v) {
+        return static_cast<int32_t>(std::clamp(v, -1.0f, static_cast<float>(ih_)));
+    };
+    const int32_t ix1 = std::max(0, clamp_x(std::floor(min_x)) - 1);
+    const int32_t iy1 = std::max(0, clamp_y(std::floor(min_y)) - 1);
+    const int32_t ix2 = std::min(static_cast<int32_t>(iw_) - 1, clamp_x(std::ceil(max_x)) + 1);
+    const int32_t iy2 = std::min(static_cast<int32_t>(ih_) - 1, clamp_y(std::ceil(max_y)) + 1);
+    if (ix2 < ix1 || iy2 < iy1) {
+        return box;
+    }
+    const int32_t s = scale_;
+    box.add(ix1 * s, iy1 * s, std::min(static_cast<int32_t>(frame.w) - 1, (ix2 + 1) * s - 1),
+            std::min(static_cast<int32_t>(frame.h) - 1, (iy2 + 1) * s - 1));
+    return box;
+}
+
+void PipesRenderer::raster_triangle(const FrameTarget& frame, const ScreenVertex& a,
+                                    const ScreenVertex& b0, const ScreenVertex& c0,
+                                    const uint16_t* lut) {
+    // Counter-clockwise in eye space (y up) is clockwise on screen (y down): a front face has
+    // negative screen area. Swapping two vertices makes it positive for the edge tests.
+    const float area = (b0.x - a.x) * (c0.y - a.y) - (b0.y - a.y) * (c0.x - a.x);
+    if (area >= 0.0f) {
+        return;
+    }
+    const ScreenVertex& b = c0;
+    const ScreenVertex& c = b0;
+    const float inv_area = -1.0f / area;
+
+    const int32_t x1 = std::max(0, static_cast<int32_t>(std::floor(std::min({a.x, b.x, c.x}))));
+    const int32_t y1 = std::max(0, static_cast<int32_t>(std::floor(std::min({a.y, b.y, c.y}))));
+    const int32_t x2 = std::min(static_cast<int32_t>(iw_) - 1,
+                                static_cast<int32_t>(std::ceil(std::max({a.x, b.x, c.x}))));
+    const int32_t y2 = std::min(static_cast<int32_t>(ih_) - 1,
+                                static_cast<int32_t>(std::ceil(std::max({a.y, b.y, c.y}))));
+    if (x2 < x1 || y2 < y1) {
+        return;
+    }
+
+    // Edge function of edge (p, q), positive inside. A pixel centre on a shared edge passes
+    // both triangles' tests; the second fails the depth test, so it is drawn once.
+    struct Edge {
+        float dx;
+        float dy;
+    };
+    const auto make_edge = [](const ScreenVertex& p, const ScreenVertex& q) {
+        return Edge{q.x - p.x, q.y - p.y};
+    };
+    const Edge e0 = make_edge(b, c); // weight of a
+    const Edge e1 = make_edge(c, a); // weight of b
+    const Edge e2 = make_edge(a, b); // weight of c
+    const auto eval = [](const Edge& e, const ScreenVertex& p, float x, float y) {
+        return e.dx * (y - p.y) - e.dy * (x - p.x);
+    };
+
+    const PipeVec3 light = pipes_light_dir();
+    const PipeVec3 half = pipes_half_vector();
+    const uint16_t* ad[3] = {lut, lut + LUT_AD, lut + 2 * LUT_AD};
+    const uint16_t* sp[3] = {lut + 3 * LUT_AD, lut + 3 * LUT_AD + LUT_SPEC,
+                             lut + 3 * LUT_AD + 2 * LUT_SPEC};
+    PixelWriter out(frame);
+    const int32_t s = scale_;
+    for (int32_t py = y1; py <= y2; py++) {
+        const float fy = static_cast<float>(py) + 0.5f;
+        float w0 = eval(e0, b, static_cast<float>(x1) + 0.5f, fy);
+        float w1 = eval(e1, c, static_cast<float>(x1) + 0.5f, fy);
+        float w2 = eval(e2, a, static_cast<float>(x1) + 0.5f, fy);
+        float* depth_row = inv_depth_.data() + static_cast<size_t>(py) * iw_;
+        for (int32_t px = x1; px <= x2; px++, w0 -= e0.dy, w1 -= e1.dy, w2 -= e2.dy) {
+            if (w0 < 0.0f || w1 < 0.0f || w2 < 0.0f) {
+                continue;
+            }
+            const float l0 = w0 * inv_area;
+            const float l1 = w1 * inv_area;
+            const float l2 = w2 * inv_area;
+            const float inv_depth = l0 * a.inv_depth + l1 * b.inv_depth + l2 * c.inv_depth;
+            if (inv_depth <= depth_row[px]) {
+                continue;
+            }
+            depth_row[px] = inv_depth;
+            PipeVec3 n{l0 * a.n.x + l1 * b.n.x + l2 * c.n.x, l0 * a.n.y + l1 * b.n.y + l2 * c.n.y,
+                       l0 * a.n.z + l1 * b.n.z + l2 * c.n.z};
+            n = normalized(n);
+            const float nl = dot(n, light);
+            const auto il = static_cast<size_t>(std::lround(std::clamp(nl, 0.0f, 1.0f) * 255.0f));
+            const auto ih = static_cast<size_t>(
+                std::lround(std::clamp(dot(n, half), 0.0f, 1.0f) * (LUT_SPEC - 1)));
+            uint8_t rgb[3];
+            for (size_t ch = 0; ch < 3; ch++) {
+                const int v = ad[ch][il] + (nl > 0.0f ? sp[ch][ih] : 0);
+                rgb[ch] = static_cast<uint8_t>(std::min(255, v));
+            }
+            const Rgb colour{rgb[0], rgb[1], rgb[2]};
+            const int32_t cx2 = std::min(static_cast<int32_t>(frame.w), (px + 1) * s);
+            const int32_t cy2 = std::min(static_cast<int32_t>(frame.h), (py + 1) * s);
+            for (int32_t cy = py * s; cy < cy2; cy++) {
+                for (int32_t cx = px * s; cx < cx2; cx++) {
+                    out.put_dithered(cx, cy, colour);
+                }
+            }
+        }
+    }
 }
 
 } // namespace helix::ui

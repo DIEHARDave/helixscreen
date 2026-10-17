@@ -4,11 +4,13 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_pipes_sim.h"
+#include "screensaver_pixel_writer.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <random>
 #include <set>
 #include <tuple>
@@ -678,6 +680,420 @@ TEST_CASE("an elbow's centreline bends round (0, r, -r)", "[screensaver][pipes_s
         const float dz = mean.z + PIPES_RADIUS;
         CHECK(std::sqrt(dy * dy + dz * dz) == Catch::Approx(PIPES_RADIUS).margin(1e-5));
     }
+}
+
+// ============================================================================
+// Renderer
+// ============================================================================
+
+namespace {
+
+constexpr uint32_t ROW_PAD = 12;
+constexpr uint8_t CANARY = 0xA5;
+
+/// A heap frame of `format`, painted black, rows padded with canary bytes past their pixels.
+struct Frame {
+    std::vector<uint8_t> bytes;
+    FrameTarget target;
+
+    Frame(uint32_t w, uint32_t h, PixelFormat format = PixelFormat::XRGB8888) {
+        const uint32_t bpp = format == PixelFormat::RGB565 ? 2 : 4;
+        const uint32_t stride = w * bpp + ROW_PAD;
+        bytes.assign(static_cast<size_t>(stride) * h, CANARY);
+        target = {bytes.data(), stride, w, h, format};
+        PixelWriter(target).fill({0, 0, 0});
+    }
+    Frame(const Frame&) = delete;
+    Frame& operator=(const Frame&) = delete;
+
+    Rgb at(int32_t x, int32_t y) const {
+        return PixelWriter(target).get(x, y);
+    }
+    bool canaries_intact() const {
+        const uint32_t bpp = target.format == PixelFormat::RGB565 ? 2 : 4;
+        for (uint32_t y = 0; y < target.h; y++) {
+            const uint8_t* row = target.data + static_cast<size_t>(y) * target.stride;
+            for (uint32_t i = target.w * bpp; i < target.stride; i++) {
+                if (row[i] != CANARY) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+};
+
+uint64_t frame_hash(const FrameTarget& f) {
+    const uint32_t bpp = f.format == PixelFormat::RGB565 ? 2 : 4;
+    uint64_t hash = 1469598103934665603ULL;
+    for (uint32_t y = 0; y < f.h; y++) {
+        const uint8_t* row = f.data + static_cast<size_t>(y) * f.stride;
+        for (uint32_t i = 0; i < f.w * bpp; i++) {
+            hash = (hash ^ row[i]) * 1099511628211ULL;
+        }
+    }
+    return hash;
+}
+
+bool lit(Rgb c) {
+    return c.r != 0 || c.g != 0 || c.b != 0;
+}
+
+size_t lit_pixels(const Frame& f) {
+    size_t n = 0;
+    for (uint32_t y = 0; y < f.target.h; y++) {
+        for (uint32_t x = 0; x < f.target.w; x++) {
+            n += lit(f.at(static_cast<int32_t>(x), static_cast<int32_t>(y))) ? 1 : 0;
+        }
+    }
+    return n;
+}
+
+PipePiece ball_at(PipeVec3 at, uint8_t material) {
+    return piece(PipePieceKind::BALL, at, PipeDir::POS_X, PipeDir::POS_X, 0.0f, material);
+}
+
+PipePiece cylinder_at(PipeVec3 at, PipeDir dir, float length, uint8_t material) {
+    return piece(PipePieceKind::CYLINDER, at, dir, PipeDir::POS_X, length, material);
+}
+
+/// The brightest pixel (by channel sum) and its position.
+Rgb brightest(const Frame& f, int32_t& bx, int32_t& by) {
+    Rgb best{};
+    bx = by = -1;
+    for (uint32_t y = 0; y < f.target.h; y++) {
+        for (uint32_t x = 0; x < f.target.w; x++) {
+            const Rgb c = f.at(static_cast<int32_t>(x), static_cast<int32_t>(y));
+            if (channel_sum(c) > channel_sum(best)) {
+                best = c;
+                bx = static_cast<int32_t>(x);
+                by = static_cast<int32_t>(y);
+            }
+        }
+    }
+    return best;
+}
+
+/// Random pieces inside a 15 x 9 x 15 grid: every kind, any heading, any material.
+std::vector<PipePiece> random_pieces(uint32_t seed, size_t count) {
+    std::minstd_rand rng(seed);
+    const PipeGridDims dims{15, 9, 15};
+    std::vector<PipePiece> out;
+    for (size_t i = 0; i < count; i++) {
+        const PipeNode node{screensaver::random_below(rng, dims.x),
+                            screensaver::random_below(rng, dims.y),
+                            screensaver::random_below(rng, dims.z)};
+        PipePiece p;
+        p.kind = static_cast<PipePieceKind>(screensaver::random_below(rng, 4));
+        p.at = pipes_node_world(node, dims);
+        p.material = static_cast<uint8_t>(screensaver::random_below(rng, 16));
+        p.dir = static_cast<PipeDir>(screensaver::random_below(rng, PIPE_DIR_COUNT));
+        p.from = static_cast<PipeDir>((static_cast<int>(p.dir) + 2) % PIPE_DIR_COUNT);
+        p.length = screensaver::random_below(rng, 2) == 0 ? 7.0f : 5.0f;
+        out.push_back(p);
+    }
+    return out;
+}
+
+/// Pixels that differ between `before` and the frame, outside `box`.
+size_t changed_outside(const std::vector<uint8_t>& before, const FrameTarget& f,
+                       const DirtyRect& box, size_t& changed) {
+    const uint32_t bpp = f.format == PixelFormat::RGB565 ? 2 : 4;
+    size_t outside = 0;
+    for (uint32_t y = 0; y < f.h; y++) {
+        for (uint32_t x = 0; x < f.w; x++) {
+            const size_t i = static_cast<size_t>(y) * f.stride + x * bpp;
+            if (std::memcmp(&before[i], f.data + i, bpp) == 0) {
+                continue;
+            }
+            changed++;
+            const auto px = static_cast<int32_t>(x);
+            const auto py = static_cast<int32_t>(y);
+            const bool inside =
+                !box.empty() && px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2;
+            outside += inside ? 0 : 1;
+        }
+    }
+    return outside;
+}
+
+} // namespace
+
+TEST_CASE("the camera projects the original's view", "[screensaver][pipes_sim]") {
+    PipesRenderer r;
+    r.init(800, 480, 1);
+    r.set_view(0.0f, {15, 9, 15});
+    float sx = 0;
+    float sy = 0;
+    REQUIRE(r.project({0, 0, 0}, sx, sy));
+    CHECK(sx == Catch::Approx(400.0f).margin(0.01));
+    CHECK(sy == Catch::Approx(240.0f).margin(0.01));
+    REQUIRE(r.project({0, 0, 50}, sx, sy));
+    CHECK(sx == Catch::Approx(400.0f).margin(0.01));
+    CHECK(sy == Catch::Approx(240.0f).margin(0.01));
+    REQUIRE(r.project({7, 0, 0}, sx, sy));
+    CHECK(sx == Catch::Approx(422.4f).margin(0.01));
+    CHECK(sy == Catch::Approx(240.0f).margin(0.01));
+    REQUIRE(r.project({0, 7, 0}, sx, sy));
+    CHECK(sx == Catch::Approx(400.0f).margin(0.01));
+    CHECK(sy == Catch::Approx(217.6f).margin(0.01));
+
+    // Turned 90 degrees, +x points away from the camera.
+    r.set_view(90.0f, {15, 9, 15});
+    REQUIRE(r.project({10, 0, 0}, sx, sy));
+    CHECK(sx == Catch::Approx(400.0f).margin(0.01));
+    CHECK(sy == Catch::Approx(240.0f).margin(0.01));
+    REQUIRE(r.project({10, 7, 0}, sx, sy));
+    CHECK(sy == Catch::Approx(240.0f - 240.0f * 7.0f / 85.0f).margin(0.01));
+    CHECK_FALSE(r.project({-80, 0, 0}, sx, sy));
+
+    // Scale 2 rasterizes at half size and reports canvas pixels.
+    r.init(800, 480, 2);
+    r.set_view(0.0f, {15, 9, 15});
+    REQUIRE(r.project({7, 0, 0}, sx, sy));
+    CHECK(sx == Catch::Approx(422.4f).margin(0.01));
+}
+
+TEST_CASE("draw order never changes the picture", "[screensaver][pipes_sim]") {
+    const auto render = [](const std::vector<PipePiece>& pieces, uint64_t& hash, Rgb& centre) {
+        PipesRenderer r;
+        r.init(800, 480, 1);
+        r.set_view(0.0f, {15, 9, 15});
+        r.clear_depth();
+        Frame f(800, 480);
+        for (const PipePiece& p : pieces) {
+            r.draw(f.target, p);
+        }
+        hash = frame_hash(f.target);
+        centre = f.at(400, 240);
+    };
+    const PipePiece near_emerald = ball_at({0.5f, 0, 40}, 0);
+    const PipePiece far_ruby = ball_at({0, 0, 30}, 3);
+    uint64_t h1 = 0;
+    uint64_t h2 = 0;
+    Rgb c1;
+    Rgb c2;
+    render({far_ruby, near_emerald}, h1, c1);
+    render({near_emerald, far_ruby}, h2, c2);
+    CHECK(h1 == h2);
+    CHECK(c1.g > 2 * c1.r);
+
+    const PipePiece near_ball = ball_at({0, 0, 40}, 0);
+    const PipePiece far_cylinder = cylinder_at({-3.5f, 0, 30}, PipeDir::POS_X, 7.0f, 3);
+    render({far_cylinder, near_ball}, h1, c1);
+    render({near_ball, far_cylinder}, h2, c2);
+    CHECK(h1 == h2);
+    CHECK(c1.g > 2 * c1.r);
+}
+
+TEST_CASE("a pipe is as fat as its radius over its depth", "[screensaver][pipes_sim]") {
+    const auto lit_rows = [](PipeVec3 at) {
+        PipesRenderer r;
+        r.init(800, 480, 1);
+        r.set_view(0.0f, {15, 9, 15});
+        Frame f(800, 480);
+        r.draw(f.target, cylinder_at(at, PipeDir::POS_X, 7.0f, 15));
+        int rows = 0;
+        for (int32_t y = 0; y < 480; y++) {
+            rows += lit(f.at(400, y)) ? 1 : 0;
+        }
+        return rows;
+    };
+    const int near_rows = lit_rows({-3.5f, 0, 50});
+    CHECK(near_rows >= 18);
+    CHECK(near_rows <= 21);
+    const int far_rows = lit_rows({-3.5f, 0, -25});
+    CHECK(far_rows >= 4);
+    CHECK(far_rows <= 6);
+}
+
+TEST_CASE("the highlight sits up-right of centre on every ball", "[screensaver][pipes_sim]") {
+    PipesRenderer r;
+    r.init(800, 480, 1);
+    r.set_view(0.0f, {15, 9, 15});
+    float cx = 0;
+    float cy = 0;
+    int32_t bx = 0;
+    int32_t by = 0;
+
+    Frame centred(800, 480);
+    r.draw(centred.target, ball_at({0, 0, 40}, 0));
+    const Rgb c1 = brightest(centred, bx, by);
+    REQUIRE(r.project({0, 0, 40}, cx, cy));
+    const float dx1 = static_cast<float>(bx) + 0.5f - cx;
+    const float dy1 = static_cast<float>(by) + 0.5f - cy;
+    CHECK(dx1 >= 1.0f);
+    CHECK(dx1 <= 4.0f);
+    CHECK(dy1 >= -4.0f);
+    CHECK(dy1 <= -1.0f);
+
+    r.clear_depth();
+    Frame offset(800, 480);
+    r.draw(offset.target, ball_at({8, 6, 40}, 0));
+    const Rgb c2 = brightest(offset, bx, by);
+    REQUIRE(r.project({8, 6, 40}, cx, cy));
+    CHECK(static_cast<float>(bx) + 0.5f - cx > 0.0f);
+    CHECK(static_cast<float>(by) + 0.5f - cy < 0.0f);
+    CHECK(rgb_near(c1, c2, 16));
+    CHECK(rgb_near(c1, pipes_shade(PIPE_MATERIALS[0], pipes_half_vector()), 16));
+
+    // On a pipe the highlight runs along the side facing up-right.
+    r.clear_depth();
+    Frame across(800, 480);
+    r.draw(across.target, cylinder_at({-3.5f, 0, 40}, PipeDir::POS_X, 7.0f, 0));
+    brightest(across, bx, by);
+    REQUIRE(r.project({0, 0, 40}, cx, cy));
+    CHECK(static_cast<float>(by) + 0.5f < cy);
+
+    r.clear_depth();
+    Frame upright(800, 480);
+    r.draw(upright.target, cylinder_at({0, -3.5f, 40}, PipeDir::POS_Y, 7.0f, 0));
+    brightest(upright, bx, by);
+    CHECK(static_cast<float>(bx) + 0.5f > cx);
+}
+
+TEST_CASE("an elbow joins its two pipes with no gap", "[screensaver][pipes_sim]") {
+    PipesRenderer r;
+    r.init(800, 480, 1);
+    r.set_view(0.0f, {15, 9, 15});
+    Frame f(800, 480);
+    const PipeGridDims dims{15, 9, 15};
+    const PipeVec3 node = pipes_node_world({7, 4, 7}, dims);
+    const PipeVec3 prev = pipes_node_world({6, 4, 7}, dims);
+    r.draw(f.target, cylinder_at({prev.x - 1, prev.y, prev.z}, PipeDir::POS_X, 7.0f, 9));
+    r.draw(f.target, piece(PipePieceKind::ELBOW, node, PipeDir::POS_Y, PipeDir::POS_X, 0.0f, 9));
+    r.draw(f.target, cylinder_at({node.x, node.y + 1, node.z}, PipeDir::POS_Y, 5.0f, 9));
+
+    std::vector<PipeVec3> line;
+    for (float t = prev.x - 1.0f; t <= node.x - 1.0f; t += 0.05f) {
+        line.push_back({t, 0, 0});
+    }
+    // The elbow's centreline is a quarter circle of radius r round (node.x - r, node.y + r).
+    for (float a = 0.0f; a <= 1.5708f; a += 0.05f) {
+        line.push_back({node.x - 1.0f + std::sin(a), node.y + 1.0f - std::cos(a), 0});
+    }
+    // Up to a pixel short of the short pipe's open end, where the next piece takes over.
+    for (float t = node.y + 1.0f; t <= node.y + 5.8f; t += 0.05f) {
+        line.push_back({0, t, 0});
+    }
+    int dark = 0;
+    for (const PipeVec3& p : line) {
+        float sx = 0;
+        float sy = 0;
+        REQUIRE(r.project(p, sx, sy));
+        dark += lit(f.at(static_cast<int32_t>(sx), static_cast<int32_t>(sy))) ? 0 : 1;
+    }
+    CHECK(dark == 0);
+}
+
+TEST_CASE("the renderer dirties every pixel a piece changes", "[screensaver][pipes_sim]") {
+    for (uint8_t scale : {1, 2}) {
+        PipesRenderer r;
+        r.init(320, 192, scale);
+        r.set_view(23.0f, {15, 9, 15});
+        Frame f(320, 192);
+        size_t total_changed = 0;
+        for (const PipePiece& p : random_pieces(41, 50)) {
+            const std::vector<uint8_t> before = f.bytes;
+            size_t changed = 0;
+            const DirtyRect box = r.draw(f.target, p);
+            CHECK(changed_outside(before, f.target, box, changed) == 0);
+            total_changed += changed;
+        }
+        CHECK(total_changed > 0);
+    }
+}
+
+TEST_CASE("RGB565 and XRGB8888 renders of one scene agree to 565 precision",
+          "[screensaver][pipes_sim]") {
+    PipesRenderer r32;
+    PipesRenderer r16;
+    r32.init(160, 96, 1);
+    r16.init(160, 96, 1);
+    r32.set_view(41.0f, {15, 9, 15});
+    r16.set_view(41.0f, {15, 9, 15});
+    Frame f32(160, 96, PixelFormat::XRGB8888);
+    Frame f16(160, 96, PixelFormat::RGB565);
+    for (const PipePiece& p : random_pieces(7, 30)) {
+        r32.draw(f32.target, p);
+        r16.draw(f16.target, p);
+    }
+    REQUIRE(lit_pixels(f32) > 0);
+    int worst_r = 0;
+    int worst_g = 0;
+    int worst_b = 0;
+    for (int32_t y = 0; y < 96; y++) {
+        for (int32_t x = 0; x < 160; x++) {
+            const Rgb a = f32.at(x, y);
+            const Rgb b = f16.at(x, y);
+            worst_r = std::max(worst_r, std::abs(a.r - b.r));
+            worst_g = std::max(worst_g, std::abs(a.g - b.g));
+            worst_b = std::max(worst_b, std::abs(a.b - b.b));
+        }
+    }
+    CHECK(worst_r <= 8);
+    CHECK(worst_g <= 4);
+    CHECK(worst_b <= 8);
+}
+
+TEST_CASE("an XRGB8888 pipes frame keeps every X byte opaque", "[screensaver][pipes_sim]") {
+    PipesRenderer r;
+    r.init(160, 96, 1);
+    r.set_view(0.0f, {15, 9, 15});
+    Frame f(160, 96);
+    for (const PipePiece& p : random_pieces(3, 40)) {
+        r.draw(f.target, p);
+    }
+    REQUIRE(lit_pixels(f) > 0);
+    for (uint32_t y = 0; y < 96; y++) {
+        for (uint32_t x = 0; x < 160; x++) {
+            REQUIRE(f.target.data[static_cast<size_t>(y) * f.target.stride + x * 4 + 3] == 0xFF);
+        }
+    }
+}
+
+TEST_CASE("frames of every size and scale stay inside their rows", "[screensaver][pipes_sim]") {
+    const std::array<std::pair<uint32_t, uint32_t>, 4> sizes{
+        {{1, 1}, {7, 5}, {161, 97}, {800, 480}}};
+    for (const auto& [w, h] : sizes) {
+        for (uint8_t scale : {1, 2}) {
+            for (PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
+                PipesRenderer r;
+                r.init(w, h, scale);
+                r.set_view(0.0f, pipes_grid_dims(static_cast<int32_t>(w), static_cast<int32_t>(h)));
+                Frame f(w, h, format);
+                for (const PipePiece& p : random_pieces(w * 31 + scale, 40)) {
+                    r.draw(f.target, p);
+                }
+                CHECK(f.canaries_intact());
+            }
+        }
+    }
+}
+
+TEST_CASE("at scale 2 every 2x2 block is one colour", "[screensaver][pipes_sim]") {
+    PipesRenderer r;
+    r.init(160, 96, 2);
+    r.set_view(0.0f, {15, 9, 15});
+    Frame f(160, 96);
+    r.draw(f.target, ball_at({0, 0, 40}, 8));
+    REQUIRE(lit_pixels(f) > 0);
+    for (int32_t y = 0; y < 96; y += 2) {
+        for (int32_t x = 0; x < 160; x += 2) {
+            const Rgb c = f.at(x, y);
+            CHECK(f.at(x + 1, y) == c);
+            CHECK(f.at(x, y + 1) == c);
+            CHECK(f.at(x + 1, y + 1) == c);
+        }
+    }
+}
+
+TEST_CASE("a released renderer holds no buffers", "[screensaver][pipes_sim]") {
+    PipesRenderer r;
+    r.init(160, 96, 1);
+    CHECK(r.buffer_bytes() > 160u * 96u * 4u);
+    r.release();
+    CHECK(r.buffer_bytes() == 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER
