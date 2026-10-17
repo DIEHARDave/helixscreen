@@ -102,6 +102,20 @@ TEST_CASE("humidity_drop: half width runs from the tip to the round bottom", "[h
     }
 }
 
+TEST_CASE("humidity_drop: the sides pinch in on the way up to the tip", "[humidity_drop]") {
+    const DropShape s = fit_drop(100, 100);
+    // Between the row halfway up the point and the tip, the edge runs inside the
+    // straight chord joining them: concave, a teardrop rather than a cone.
+    const float mid_y = (s.tip_y + s.cy) / 2.0f;
+    const float mid_hw = half_width(s, mid_y);
+    for (float f = 0.2f; f <= 0.8f; f += 0.1f) {
+        const float y = mid_y + (s.tip_y - mid_y) * f;
+        CHECK(half_width(s, y) < mid_hw * (1.0f - f));
+    }
+    // Still a point: just below the tip the sides already stand apart.
+    CHECK(half_width(s, s.tip_y + 2.0f) > 0.2f);
+}
+
 TEST_CASE("humidity_drop: signed distance is negative inside, positive outside",
           "[humidity_drop]") {
     const DropShape s = fit_drop(100, 100);
