@@ -143,7 +143,8 @@ void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t
     burst_in_ms_ =
         random_int(rng, FIRST_BURST_MIN_MS, FIRST_BURST_MIN_MS + FIRST_BURST_SPAN_MS - 1);
     bursts_started_ = 0;
-    tables_stale_ = true;
+    // The tunnel tables are sized here, for the start level, so a frame allocates nothing.
+    build_tables();
 }
 
 void HyperspaceSim::clear() {
