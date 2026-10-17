@@ -7,6 +7,7 @@
 #include "ui_swatch.h"
 
 #include "color_utils.h"
+#include "helix-xml/src/xml/lv_xml.h"
 #include "sound_manager.h"
 #include "theme_manager.h"
 
@@ -511,17 +512,12 @@ void ActionPromptModal::create_button(const PromptButton& btn, lv_obj_t* contain
         // circle to the tile once the grid is laid out.
         lv_obj_set_style_bg_opa(button, LV_OPA_TRANSP, LV_PART_MAIN);
         lv_obj_set_style_pad_all(button, 0, LV_PART_MAIN);
-        lv_obj_t* disc = lv_obj_create(button);
-        lv_obj_set_name(disc, "color_swatch_disc");
-        lv_obj_remove_flag(disc, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_remove_flag(disc, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(disc, LV_OBJ_FLAG_EVENT_BUBBLE);
-        lv_obj_set_style_border_width(disc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(disc, 0, LV_PART_MAIN);
-        lv_obj_set_style_radius(disc, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-        const int32_t button_h = theme_manager_get_spacing("button_height");
-        lv_obj_set_size(disc, button_h, button_h);
-        lv_obj_center(disc);
+        // A button's height until size_swatch_discs() measures the tile.
+        const std::string side = std::to_string(theme_manager_get_spacing("button_height"));
+        const char* disc_attrs[] = {"name",  "color_swatch_disc", "align",  "center",
+                                    "width", side.c_str(),        "height", side.c_str(),
+                                    nullptr};
+        auto* disc = static_cast<lv_obj_t*>(lv_xml_create(button, "swatch_paint", disc_attrs));
         helix::ui::apply_swatch_color(disc, *fill_rgb, "");
     } else {
         lv_obj_set_style_bg_color(button, bg_color, LV_PART_MAIN);

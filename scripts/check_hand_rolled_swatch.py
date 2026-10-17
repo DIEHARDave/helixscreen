@@ -70,7 +70,7 @@ CPP_RADIUS = re.compile(
     r"\.radius\s*=\s*LV_RADIUS_CIRCLE|lv_obj_set_style_radius\s*\([^;]*LV_RADIUS_CIRCLE")
 CPP_FILL = re.compile(
     r"(?:\.bg_color\s*=|lv_obj_set_style_bg_color\s*\()[^;]*"
-    r"(?:color_rgb|filament|spool|slot|led|tool_color|swatch|preset)", re.I)
+    r"(?:color_rgb|filament|spool|slot|\bled|led_|tool_color|swatch|preset)", re.I)
 CPP_WINDOW = 8
 LINE_COMMENT = re.compile(r"//.*$")
 XML_COMMENT = re.compile(r"<!--.*?-->", re.S)

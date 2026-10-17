@@ -79,6 +79,17 @@ CPP
     [ "$status" -eq 1 ] || fail "lv_obj circle passed: $output"
 }
 
+@test "catches an LED colour, and not a word that merely contains led" {
+    printf 'void f(lv_obj_t* o, lv_color_t led_color) {\n    lv_obj_set_style_radius(o, LV_RADIUS_CIRCLE, 0);\n    lv_obj_set_style_bg_color(o, led_color, 0);\n}\n' \
+        > "$ROOT/src/ui/x.cpp"
+    run_gate
+    [ "$status" -eq 1 ] || fail "LED circle passed: $output"
+    printf 'void f(lv_obj_t* o) {\n    lv_obj_set_style_radius(o, LV_RADIUS_CIRCLE, 0);\n    lv_obj_set_style_bg_color(o, theme_manager_get_color("disabled"), 0);\n}\n' \
+        > "$ROOT/src/ui/x.cpp"
+    run_gate
+    [ "$status" -eq 0 ] || fail "a 'disabled' theme colour was counted: $output"
+}
+
 # ------------------------------------------------------------- the quiet half
 
 @test "the swatch components and a fixed-token circle are quiet" {
