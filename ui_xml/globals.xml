@@ -446,6 +446,13 @@
     <px name="calib_tile_min_height_xlarge" value="88"/>
     <!-- Motors Off beside Motion on the Controls position card: at least 40px
          wide to tap, with the glyph sized to the one-button-tall row -->
+    <!-- Motion + Motors Off row on a portrait Controls panel: Motion is inline
+         there, so the row only has to hold the Motors Off icon over its label -->
+    <px name="controls_action_row_portrait_tiny" value="40"/>
+    <px name="controls_action_row_portrait_small" value="48"/>
+    <px name="controls_action_row_portrait_medium" value="48"/>
+    <px name="controls_action_row_portrait_large" value="60"/>
+    <px name="controls_action_row_portrait_xlarge" value="64"/>
     <string name="controls_toggle_icon_size_micro" value="xs"/>
     <string name="controls_toggle_icon_size_tiny" value="sm"/>
     <string name="controls_toggle_icon_size_small" value="sm"/>

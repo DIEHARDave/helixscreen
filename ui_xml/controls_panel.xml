@@ -37,9 +37,9 @@
     <style name="top_card_half" height="47%" flex_grow="1"/>
     <style name="top_card_full" height="51%" flex_grow="0"/>
     <!-- Portrait sizes buttons from the tall axis; the inline Motion button needs
-         only a small one, which leaves the Calibration card room for labels -->
+         a shorter row, which leaves the Calibration card room for labels -->
     <style name="action_row_landscape" height="#button_height"/>
-    <style name="action_row_portrait" height="#button_height_sm"/>
+    <style name="action_row_portrait" height="#controls_action_row_portrait"/>
     <!-- Homing indicator styles for Position card -->
     <style name="indicator_homed" bg_color="#success"/>
     <style name="indicator_unhomed" bg_color="#text_muted"/>
@@ -175,9 +175,9 @@
         <bind_style_if_eq name="top_card_landscape" subject="ui_is_portrait" ref_value="0"/>
         <bind_style_if_eq name="top_card_half" subject="ui_is_portrait" ref_value="1"/>
         <ui_card name="card_temperatures"
-                 width="100%" height="100%" flex_flow="column" style_flex_main_place="start"
-                 style_flex_cross_place="center" style_radius="#border_radius" style_pad_all="#space_sm"
-                 scrollable="false" clickable="true">
+                 width="100%" height="100%" flex_flow="column" style_flex_main_place="space_between"
+                 style_pad_gap="#space_xxs" style_flex_cross_place="center" style_radius="#border_radius"
+                 style_pad_all="#space_sm" scrollable="false" clickable="true">
           <event_cb trigger="clicked" callback="on_nozzle_temp_clicked"/>
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
@@ -443,16 +443,16 @@
                   style_pad_gap="0" flex_flow="row" scrollable="false" style_border_width="1"
                   style_border_color="#text_muted" style_border_opa="60">
             <ui_button name="btn_home_all"
-                       width="0" height="100%" style_min_width="content" style_pad_hor="#space_xs" text="All"
-                       flex_grow="1" style_radius="0" style_border_width="0" moves_machine="true">
+                       width="0" height="100%" style_pad_ver="0" style_min_width="content" style_pad_hor="#space_xs"
+                       text="All" flex_grow="1" style_radius="0" style_border_width="0" moves_machine="true">
               <bind_style name="home_btn_homed" subject="all_homed" ref_value="1"/>
               <bind_style name="home_btn_unhomed" subject="all_homed" ref_value="0"/>
               <bind_state_if_eq subject="controls_operation_in_progress" state="disabled" ref_value="1"/>
               <event_cb trigger="clicked" callback="on_controls_home_all"/>
             </ui_button>
             <ui_button name="btn_home_x"
-                       width="0" height="100%" style_min_width="content" style_pad_hor="#space_xs" text="X"
-                       flex_grow="1" style_radius="0" style_border_width="1" style_border_side="left"
+                       width="0" height="100%" style_pad_ver="0" style_min_width="content" style_pad_hor="#space_xs"
+                       text="X" flex_grow="1" style_radius="0" style_border_width="1" style_border_side="left"
                        style_border_color="#text_muted" style_border_opa="60" moves_machine="true">
               <bind_style name="home_btn_homed" subject="x_homed" ref_value="1"/>
               <bind_style name="home_btn_unhomed" subject="x_homed" ref_value="0"/>
@@ -461,8 +461,8 @@
               <event_cb trigger="clicked" callback="on_controls_home_x"/>
             </ui_button>
             <ui_button name="btn_home_y"
-                       width="0" height="100%" style_min_width="content" style_pad_hor="#space_xs" text="Y"
-                       flex_grow="1" style_radius="0" style_border_width="1" style_border_side="left"
+                       width="0" height="100%" style_pad_ver="0" style_min_width="content" style_pad_hor="#space_xs"
+                       text="Y" flex_grow="1" style_radius="0" style_border_width="1" style_border_side="left"
                        style_border_color="#text_muted" style_border_opa="60" moves_machine="true">
               <bind_style name="home_btn_homed" subject="y_homed" ref_value="1"/>
               <bind_style name="home_btn_unhomed" subject="y_homed" ref_value="0"/>
@@ -471,8 +471,8 @@
               <event_cb trigger="clicked" callback="on_controls_home_y"/>
             </ui_button>
             <ui_button name="btn_home_xy"
-                       width="0" height="100%" style_min_width="content" style_pad_hor="#space_xs" text="XY"
-                       flex_grow="1" style_radius="0" style_border_width="1" style_border_side="left"
+                       width="0" height="100%" style_pad_ver="0" style_min_width="content" style_pad_hor="#space_xs"
+                       text="XY" flex_grow="1" style_radius="0" style_border_width="1" style_border_side="left"
                        style_border_color="#text_muted" style_border_opa="60" moves_machine="true">
               <bind_style name="home_btn_homed" subject="xy_homed" ref_value="1"/>
               <bind_style name="home_btn_unhomed" subject="xy_homed" ref_value="0"/>
@@ -481,8 +481,8 @@
               <event_cb trigger="clicked" callback="on_controls_home_xy"/>
             </ui_button>
             <ui_button name="btn_home_z"
-                       width="0" height="100%" style_min_width="content" style_pad_hor="#space_xs" text="Z"
-                       flex_grow="1" style_radius="0" style_border_width="1" style_border_side="left"
+                       width="0" height="100%" style_pad_ver="0" style_min_width="content" style_pad_hor="#space_xs"
+                       text="Z" flex_grow="1" style_radius="0" style_border_width="1" style_border_side="left"
                        style_border_color="#text_muted" style_border_opa="60" moves_machine="true">
               <bind_style name="home_btn_homed" subject="z_homed" ref_value="1"/>
               <bind_style name="home_btn_unhomed" subject="z_homed" ref_value="0"/>
@@ -500,8 +500,8 @@
           <lv_obj width="100%"
                   height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
             <ui_button name="btn_macro_1"
-                       width="0" height="#button_height" flex_grow="1" bind_text="macro_1_name" variant="secondary"
-                       style_text_font="#font_small" long_mode="wrap" moves_machine="true">
+                       width="0" height="#button_height" style_pad_ver="0" flex_grow="1" bind_text="macro_1_name"
+                       variant="secondary" style_text_font="#font_small" long_mode="wrap" moves_machine="true">
               <bind_flag_if_eq subject="macro_1_visible" flag="hidden" ref_value="0"/>
               <!-- Two disable reasons that compose: moves_machine carries the
                    job guard, this bind carries the availability half. -->
@@ -514,7 +514,8 @@
               <bind_flag_if cond="macro_1_light eq 0 or led_controllable eq 0" flag="hidden"/>
               <!-- DUPLICATE_NAME_OK: each slot cell hands itself to its own LedWidget, which finds light_button inside that cell -->
               <ui_button name="light_button"
-                         width="100%" height="100%" variant="secondary" flex_flow="row" style_flex_main_place="center"
+                         width="100%" height="100%" style_pad_ver="0" style_flex_track_place="center"
+                         variant="secondary" flex_flow="row" style_flex_main_place="center"
                          style_flex_cross_place="center" style_pad_gap="#space_xs" focusable="false">
                 <bind_state_if cond="printer_connection_state ne 2 or led_command_in_flight eq 1" state="disabled"/>
                 <!-- DUPLICATE_NAME_OK: found per cell by that cell's LedWidget -->
@@ -525,8 +526,8 @@
               </ui_button>
             </lv_obj>
             <ui_button name="btn_macro_2"
-                       width="0" height="#button_height" flex_grow="1" bind_text="macro_2_name" variant="secondary"
-                       style_text_font="#font_small" long_mode="wrap" moves_machine="true">
+                       width="0" height="#button_height" style_pad_ver="0" flex_grow="1" bind_text="macro_2_name"
+                       variant="secondary" style_text_font="#font_small" long_mode="wrap" moves_machine="true">
               <bind_flag_if_eq subject="macro_2_visible" flag="hidden" ref_value="0"/>
               <!-- Two disable reasons that compose: moves_machine carries the
                    job guard, this bind carries the availability half. -->
@@ -539,7 +540,8 @@
               <bind_flag_if cond="macro_2_light eq 0 or led_controllable eq 0" flag="hidden"/>
               <!-- DUPLICATE_NAME_OK: each slot cell hands itself to its own LedWidget, which finds light_button inside that cell -->
               <ui_button name="light_button"
-                         width="100%" height="100%" variant="secondary" flex_flow="row" style_flex_main_place="center"
+                         width="100%" height="100%" style_pad_ver="0" style_flex_track_place="center"
+                         variant="secondary" flex_flow="row" style_flex_main_place="center"
                          style_flex_cross_place="center" style_pad_gap="#space_xs" focusable="false">
                 <bind_state_if cond="printer_connection_state ne 2 or led_command_in_flight eq 1" state="disabled"/>
                 <!-- DUPLICATE_NAME_OK: found per cell by that cell's LedWidget -->
@@ -554,8 +556,8 @@
           <lv_obj width="100%"
                   height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
             <ui_button name="btn_macro_3"
-                       width="0" height="#button_height" flex_grow="1" bind_text="macro_3_name" variant="secondary"
-                       style_text_font="#font_small" long_mode="wrap" moves_machine="true">
+                       width="0" height="#button_height" style_pad_ver="0" flex_grow="1" bind_text="macro_3_name"
+                       variant="secondary" style_text_font="#font_small" long_mode="wrap" moves_machine="true">
               <bind_flag_if_eq subject="macro_3_visible" flag="hidden" ref_value="0"/>
               <!-- Two disable reasons that compose: moves_machine carries the
                    job guard, this bind carries the availability half. -->
@@ -568,7 +570,8 @@
               <bind_flag_if cond="macro_3_light eq 0 or led_controllable eq 0" flag="hidden"/>
               <!-- DUPLICATE_NAME_OK: each slot cell hands itself to its own LedWidget, which finds light_button inside that cell -->
               <ui_button name="light_button"
-                         width="100%" height="100%" variant="secondary" flex_flow="row" style_flex_main_place="center"
+                         width="100%" height="100%" style_pad_ver="0" style_flex_track_place="center"
+                         variant="secondary" flex_flow="row" style_flex_main_place="center"
                          style_flex_cross_place="center" style_pad_gap="#space_xs" focusable="false">
                 <bind_state_if cond="printer_connection_state ne 2 or led_command_in_flight eq 1" state="disabled"/>
                 <!-- DUPLICATE_NAME_OK: found per cell by that cell's LedWidget -->
@@ -579,8 +582,8 @@
               </ui_button>
             </lv_obj>
             <ui_button name="btn_macro_4"
-                       width="0" height="#button_height" flex_grow="1" bind_text="macro_4_name" variant="secondary"
-                       style_text_font="#font_small" long_mode="wrap" moves_machine="true">
+                       width="0" height="#button_height" style_pad_ver="0" flex_grow="1" bind_text="macro_4_name"
+                       variant="secondary" style_text_font="#font_small" long_mode="wrap" moves_machine="true">
               <bind_flag_if_eq subject="macro_4_visible" flag="hidden" ref_value="0"/>
               <!-- Two disable reasons that compose: moves_machine carries the
                    job guard, this bind carries the availability half. -->
@@ -593,7 +596,8 @@
               <bind_flag_if cond="macro_4_light eq 0 or led_controllable eq 0" flag="hidden"/>
               <!-- DUPLICATE_NAME_OK: each slot cell hands itself to its own LedWidget, which finds light_button inside that cell -->
               <ui_button name="light_button"
-                         width="100%" height="100%" variant="secondary" flex_flow="row" style_flex_main_place="center"
+                         width="100%" height="100%" style_pad_ver="0" style_flex_track_place="center"
+                         variant="secondary" flex_flow="row" style_flex_main_place="center"
                          style_flex_cross_place="center" style_pad_gap="#space_xs" focusable="false">
                 <bind_state_if cond="printer_connection_state ne 2 or led_command_in_flight eq 1" state="disabled"/>
                 <!-- DUPLICATE_NAME_OK: found per cell by that cell's LedWidget -->
