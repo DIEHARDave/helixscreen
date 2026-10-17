@@ -35,6 +35,25 @@ The distance labels printed on the rings update to match the active jog mode.
 
 ---
 
+## Jog Layouts
+
+> Added in 1.1.
+
+**Settings > Printing > Motion > Layout** changes how the Jog tab arranges its buttons. The Move and Bed tabs are the same in every layout.
+
+| Layout | What it shows |
+|--------|---------------|
+| **Jog Pad** (default) | The circular jog pad, the Z column and the Fine / Coarse / Turbo buttons described below. |
+| **Arrows** | An XY cross of arrow keys, an up/down Z pair, and Home All / X / Y / Z on the right, with a row of step sizes underneath. Every arrow moves the selected step. |
+| **Arrows + Home** | The same arrows with a home key in the middle of each cross: the XY one homes X and Y, the Z one homes Z. Home All, Home X and Home Y sit on the right. |
+| **Axis Rows** | Four rows of five keys. The X, Y and Z rows each hold two minus keys, the axis key and two plus keys; the keys move the current jog mode's two distances, and tapping the axis key homes that axis. The fourth row holds the Fine / Coarse / Turbo buttons, Home All and the leveling buttons. |
+
+Keys stay close to square at every screen size, and each layout fills the room the tab has. In the two arrow layouts the home keys sit beside the arrows in landscape and in a row under them in portrait. On a 480x320 screen the header is 33 pixels tall and the cog button is left out; use the Settings path there.
+
+The step sizes in the two arrow layouts are every distance set in the Motion settings, smallest first, with repeats dropped: the defaults give 0.1, 1, 10 and 50. The selected step is remembered. In every layout a home key stays solid until its axis is homed, the leveling buttons (QGL, Z-Tilt) appear when the printer has them, and the Z keys use the same Bed / Print Head arrows and limit greying as the Z column.
+
+---
+
 ## Jog Modes
 
 Three modes control how far the print head moves per tap. Toggle between them using the **Fine**, **Coarse**, and **Turbo** buttons below the jog pad.
@@ -57,17 +76,19 @@ The Z-axis buttons on the right follow the same mode - their labels update to sh
 
 > Added in 1.1.
 
-Besides the distances, the jog pad's own speed is adjustable. There are two places to reach the settings, and both open the same panel:
+Besides the distances, the Jog-tab layout and the jog speed are adjustable. There are two places to reach the settings, and both open the same panel:
 
 - the **cog icon** in the Motion screen's header, next to the title (hidden on small screens - use the Settings path there)
 - **Settings > Printing > Motion**
 
 | Setting | What It Does |
 |---------|--------------|
+| **Layout** | Which [Jog layout](#jog-layouts) the Jog tab uses. Remembered per printer. |
 | **Jog Speed XY** | How fast the toolhead travels on X/Y taps, in mm/s. The slider tops out at what the printer itself allows - its reported maximum feedrates - so you cannot ask for more than the machine will do. If you stored a speed and the printer later reports a lower ceiling (a firmware change, a different printer), the stored choice is kept but applied at the new ceiling. |
 | **Jog Speed Z** | Same, for the Z axis. |
-| **Fine / Coarse / Turbo distances** | The inner- and outer-ring distance for each of the three jog modes. Each distance is tapped in on a keypad; the inner and outer values of a mode cannot cross. |
+| **Fine / Coarse / Turbo distances** | The inner- and outer-ring distance for each of the three jog modes. Each distance is tapped in on a keypad; the inner and outer values of a mode cannot cross. The arrow layouts offer all of them as steps. |
 | **Bed Map Clearance** | How high the nozzle must be before a [Bed tab](#bed-tab) move travels, 1 to 50 mm (default 5 mm). Below it, the nozzle lifts to this height first. |
+| **Save Z-Offset Buttons** | Whether HelixScreen offers to save Z-offset changes to your printer config for this printer. Off removes the Save Z-Offset button from the header, the Controls screen and the Z-offset home widget, and Z-offset calibration stops saving its result; baby-stepping still adjusts the current session. It starts off on toolchangers, where each tool keeps its own Z offset and one stray save would change all of them, and on everywhere else. Not shown on printers whose firmware saves the Z offset itself. |
 | **Reset Distances** | Puts every distance back to the defaults shown in the table above. Asks for confirmation first. |
 
 ---
@@ -174,7 +195,7 @@ A status message confirms when homing begins and when it completes, the same way
 
 ## Leveling on the Controls Panel
 
-The Controls panel's **Calibration & Tools** card holds the calibration actions your printer supports, in a grid that keeps each label on one line:
+The Controls panel's **Calibration & Tools** card holds the calibration actions your printer supports. The grid rearranges itself to fit the card: on a landscape screen five or six buttons sit three across in two rows, a taller card stacks them two across, and every button keeps its label on one line. When the card is too small for labels at all, as on a 480x800 portrait screen, the buttons show their icons alone. In portrait the panel's top cards rearrange too: **Position** sits beside **Temperature**, with **Cooling** across the full width below them.
 
 - **Bed Mesh** and **Z Calibration**
 - **QGL** - Quad Gantry Level (shown only when `quad_gantry_level` is configured)

@@ -231,6 +231,114 @@ void SpoolmanManager::set_api(IMoonrakerAPI* api) {
     reset_circuit_breaker();
 }
 
+void SpoolmanManager::fetch_linked_external_spool(int ext_spoolman_id) {
+    api_->spoolman().get_spoolman_spool(
+        ext_spoolman_id,
+        [ext_spoolman_id](const std::optional<SpoolInfo>& spool_opt) {
+            if (!spool_opt.has_value()) {
+                spdlog::warn("[SpoolmanManager] External spool Spoolman #{} not found",
+                             ext_spoolman_id);
+                helix::ui::queue_update("SpoolmanManager::ext_unresolvable", [ext_spoolman_id]() {
+                    note_identity_unresolvable(ext_spoolman_id);
+                    if (s_shutdown_flag.load(std::memory_order_acquire)) {
+                        return;
+                    }
+                    AmsState& state = AmsState::instance();
+                    const auto raw = state.raw_external_spool_info();
+                    if (!raw.has_value() || raw->spoolman_id != ext_spoolman_id) {
+                        // The binding moved while this denial was in
+                        // flight; its records were already retired by
+                        // the rebind, and a newer spool's records are
+                        // not this denial's to touch.
+                        return;
+                    }
+                    // Same contract as a denied slot: the record described
+                    // a spool Spoolman no longer knows, so it stops being
+                    // a source the resolved read can rank. The resolved
+                    // view is captured first, while the record still
+                    // stands, and what it carried goes back on the lane
+                    // as remembered - a delete is bookkeeping, not a
+                    // spool change, and the display keeps the freshest
+                    // identity it had. The kept record names no spool
+                    // (both binding ids zeroed) or the record
+                    // translation would stand the Spoolman record just
+                    // dropped right back up.
+                    const bool had_record =
+                        helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID).spoolman.has_value();
+                    const std::optional<SlotInfo> kept_view = state.get_external_spool_info();
+                    helix::ams::drop_lane_source(helix::ams::BYPASS_LANE_ID,
+                                                 helix::ams::ObservationSource::Spoolman);
+                    if (had_record && kept_view.has_value()) {
+                        SlotInfo kept = *kept_view;
+                        kept.spoolman_id = 0;
+                        kept.spoolman_filament_id = 0;
+                        const helix::ams::Observation nothing_declared(
+                            helix::ams::ObservationSource::Remembered);
+                        helix::ams::file_kept_identity(
+                            helix::ams::BYPASS_LANE_ID, helix::ams::BYPASS_SLOT_INDEX,
+                            helix::ams::user_override_from_slot_info(nothing_declared, kept,
+                                                                     kept.material, nullptr));
+                    }
+                    state.bump_slots_version();
+                });
+                return;
+            }
+
+            const SpoolInfo& spool = spool_opt.value();
+            float new_remaining = static_cast<float>(spool.remaining_weight_g);
+            float new_total = static_cast<float>(spool.initial_weight_g);
+
+            helix::ui::queue_update("SpoolmanManager::ext_weights", [ext_spoolman_id, new_remaining,
+                                                                     new_total, spool]() {
+                if (s_shutdown_flag.load(std::memory_order_acquire)) {
+                    return;
+                }
+
+                // Same shape as the slot arm: cache the identity before
+                // any early return, then file the spool on the bypass
+                // lane and let resolve() rank it.
+                const bool identity_is_new = cache_identity(spool);
+
+                AmsState& state = AmsState::instance();
+                if (identity_is_new) {
+                    // One spool can be linked on a lane as well as here.
+                    state.refresh_slot_names();
+                    state.bump_slots_version();
+                }
+                auto ext = state.raw_external_spool_info();
+                if (!ext.has_value() || ext->spoolman_id != ext_spoolman_id) {
+                    spdlog::debug(
+                        "[SpoolmanManager] External spool changed, skipping stale update");
+                    return;
+                }
+
+                if (SpoolmanManager::file_spool_on_lane(helix::ams::BYPASS_LANE_ID, spool)) {
+                    // The stored binding is what a restart reads before any
+                    // poll answers, so the fetched record moves it too, the
+                    // same reason a slot fetch persists its lane record.
+                    SlotInfo stored = *ext;
+                    apply_spool_to_slot(stored, spool);
+                    if (spool.initial_weight_g <= 0) {
+                        // No weight stated is not a zero weight: the filing
+                        // above skipped the weights for the same reason.
+                        stored.remaining_weight_g = ext->remaining_weight_g;
+                        stored.total_weight_g = ext->total_weight_g;
+                    }
+                    state.set_external_spool_info(stored);
+                    state.bump_slots_version();
+                    spdlog::debug("[SpoolmanManager] Filed external spool weights on bypass lane: "
+                                  "{:.0f}g / {:.0f}g",
+                                  new_remaining, new_total);
+                }
+            });
+        },
+        [ext_spoolman_id](const MoonrakerError& err) {
+            spdlog::warn("[SpoolmanManager] Failed to fetch external spool Spoolman #{}: {}",
+                         ext_spoolman_id, err.message);
+        },
+        /*silent=*/true);
+}
+
 void SpoolmanManager::fetch_linked_slot(int backend_index, int slot_index, int spoolman_id) {
     api_->spoolman().get_spoolman_spool(
         spoolman_id,
@@ -431,6 +539,8 @@ void SpoolmanManager::refresh_spool(int spool_id) {
             }
         }
     }
+    const int ext_spoolman_id =
+        AmsState::instance().raw_external_spool_info().value_or(SlotInfo{}).spoolman_id;
 
     SpoolmanManager& mgr = instance();
     std::lock_guard<std::recursive_mutex> lock(mgr.mutex_);
@@ -450,6 +560,9 @@ void SpoolmanManager::refresh_spool(int spool_id) {
                 mgr.fetch_linked_slot(entry.first, i, spool_id);
             }
         }
+    }
+    if (ext_spoolman_id == spool_id) {
+        mgr.fetch_linked_external_spool(spool_id);
     }
 }
 
@@ -554,118 +667,7 @@ void SpoolmanManager::refresh_spoolman_weights() {
     if (ext_spool.has_value() && ext_spool->spoolman_id > 0 &&
         !is_identity_unresolvable(ext_spool->spoolman_id)) {
         ++linked_count;
-        int ext_spoolman_id = ext_spool->spoolman_id;
-
-        api_->spoolman().get_spoolman_spool(
-            ext_spoolman_id,
-            [ext_spoolman_id](const std::optional<SpoolInfo>& spool_opt) {
-                if (!spool_opt.has_value()) {
-                    spdlog::warn("[SpoolmanManager] External spool Spoolman #{} not found",
-                                 ext_spoolman_id);
-                    helix::ui::queue_update(
-                        "SpoolmanManager::ext_unresolvable", [ext_spoolman_id]() {
-                            note_identity_unresolvable(ext_spoolman_id);
-                            if (s_shutdown_flag.load(std::memory_order_acquire)) {
-                                return;
-                            }
-                            AmsState& state = AmsState::instance();
-                            const auto raw = state.raw_external_spool_info();
-                            if (!raw.has_value() || raw->spoolman_id != ext_spoolman_id) {
-                                // The binding moved while this denial was in
-                                // flight; its records were already retired by
-                                // the rebind, and a newer spool's records are
-                                // not this denial's to touch.
-                                return;
-                            }
-                            // Same contract as a denied slot: the record described
-                            // a spool Spoolman no longer knows, so it stops being
-                            // a source the resolved read can rank. The resolved
-                            // view is captured first, while the record still
-                            // stands, and what it carried goes back on the lane
-                            // as remembered - a delete is bookkeeping, not a
-                            // spool change, and the display keeps the freshest
-                            // identity it had. The kept record names no spool
-                            // (both binding ids zeroed) or the record
-                            // translation would stand the Spoolman record just
-                            // dropped right back up.
-                            const bool had_record =
-                                helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID)
-                                    .spoolman.has_value();
-                            const std::optional<SlotInfo> kept_view =
-                                state.get_external_spool_info();
-                            helix::ams::drop_lane_source(helix::ams::BYPASS_LANE_ID,
-                                                         helix::ams::ObservationSource::Spoolman);
-                            if (had_record && kept_view.has_value()) {
-                                SlotInfo kept = *kept_view;
-                                kept.spoolman_id = 0;
-                                kept.spoolman_filament_id = 0;
-                                const helix::ams::Observation nothing_declared(
-                                    helix::ams::ObservationSource::Remembered);
-                                helix::ams::file_kept_identity(
-                                    helix::ams::BYPASS_LANE_ID, helix::ams::BYPASS_SLOT_INDEX,
-                                    helix::ams::user_override_from_slot_info(
-                                        nothing_declared, kept, kept.material, nullptr));
-                            }
-                            state.bump_slots_version();
-                        });
-                    return;
-                }
-
-                const SpoolInfo& spool = spool_opt.value();
-                float new_remaining = static_cast<float>(spool.remaining_weight_g);
-                float new_total = static_cast<float>(spool.initial_weight_g);
-
-                helix::ui::queue_update("SpoolmanManager::ext_weights", [ext_spoolman_id,
-                                                                         new_remaining, new_total,
-                                                                         spool]() {
-                    if (s_shutdown_flag.load(std::memory_order_acquire)) {
-                        return;
-                    }
-
-                    // Same shape as the slot arm: cache the identity before
-                    // any early return, then file the spool on the bypass
-                    // lane and let resolve() rank it.
-                    const bool identity_is_new = cache_identity(spool);
-
-                    AmsState& state = AmsState::instance();
-                    if (identity_is_new) {
-                        // One spool can be linked on a lane as well as here.
-                        state.refresh_slot_names();
-                        state.bump_slots_version();
-                    }
-                    auto ext = state.raw_external_spool_info();
-                    if (!ext.has_value() || ext->spoolman_id != ext_spoolman_id) {
-                        spdlog::debug(
-                            "[SpoolmanManager] External spool changed, skipping stale update");
-                        return;
-                    }
-
-                    if (SpoolmanManager::file_spool_on_lane(helix::ams::BYPASS_LANE_ID, spool)) {
-                        // The stored binding is what a restart reads before any
-                        // poll answers, so the fetched record moves it too, the
-                        // same reason a slot fetch persists its lane record.
-                        SlotInfo stored = *ext;
-                        apply_spool_to_slot(stored, spool);
-                        if (spool.initial_weight_g <= 0) {
-                            // No weight stated is not a zero weight: the filing
-                            // above skipped the weights for the same reason.
-                            stored.remaining_weight_g = ext->remaining_weight_g;
-                            stored.total_weight_g = ext->total_weight_g;
-                        }
-                        state.set_external_spool_info(stored);
-                        state.bump_slots_version();
-                        spdlog::debug(
-                            "[SpoolmanManager] Filed external spool weights on bypass lane: "
-                            "{:.0f}g / {:.0f}g",
-                            new_remaining, new_total);
-                    }
-                });
-            },
-            [ext_spoolman_id](const MoonrakerError& err) {
-                spdlog::warn("[SpoolmanManager] Failed to fetch external spool Spoolman #{}: {}",
-                             ext_spoolman_id, err.message);
-            },
-            /*silent=*/true);
+        fetch_linked_external_spool(ext_spool->spoolman_id);
     }
 
     if (linked_count > 0) {

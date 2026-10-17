@@ -14,7 +14,7 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver_sim_contract.h`, `include/screensaver_sim_saver.h` | The calling shape of a sim (`init_sim`, `step_sim`, with or without an rng) and `SimSaver<Sim>`, which implements every `SaverBase` hook from it |
 | `include/screensaver_clock_saver.h` | `ClockSaver<Sim, State>`: a SimSaver whose sim draws a clock, with the input source (`ClockInputSink`, reached through `Screensaver::clock_input_sink()`), the clock state, the text cache and the redraw-over-what-changed step |
 | `include/screensaver_image.h` | Decoding a sprite or picture once into an owned draw buffer, reading an image header, and the printer picture a saver shows |
-| `include/screensaver_overlay.h` | `SaverOverlay`: the black touch-absorbing overlay on `lv_layer_top()` |
+| `include/screensaver_overlay.h` | `SaverOverlay`: the black, clickable overlay on `lv_layer_top()`, so nothing beneath it is ever the press target |
 | `include/screensaver_canvas.h` | `SaverCanvas`: stride-sized buffer, the two canvas formats (`SAVER_BUILD_CANVAS_FORMAT`, `LV_DRAW_CANVAS_FORMAT`), hide-before-free, dirty areas reduced to `SAVER_MAX_DIRTY_AREAS` or the whole canvas (`reduce_dirty`), the dirty-box layer session |
 | `include/screensaver_frame_timer.h` | `SaverFrameTimer`: frame timer with a `MotionClock`, period changes without a motion jump |
 | `include/refresh_period_hold.h` | The display refresh while a saver runs, at the saver's current period; `period()` holds `HELIX_SCREENSAVER_REFR_PERIOD_MS` |
@@ -75,6 +75,28 @@ translucent layers, quarter resolution with fewer slices and no towers at 50 ms 
 and last a still frame that redraws only the clock. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).
+
+## Waking
+
+The touch that wakes the display never presses anything, whether the display is asleep,
+dimmed or under a screensaver. On every embedded backend the sleep-aware read wrapper
+(`src/application/display_manager.cpp#sleep_aware_read_cb`) asks
+`DisplaySleepController::note_press()` whether a press is waking the display; when it is,
+`helix::WakeTouchLatch` (`include/wake_touch_latch.h`) reports every read of that touch as
+released, at the pointer's resting point, until the finger lifts. A lift within
+`WakeTouchLatch::REARM_MS` (200 ms) of the waking press keeps the latch armed, so contact
+chatter as the finger lands, or a stray contact from a panel just powered on, is swallowed
+too; a tap after the window is an ordinary one. LVGL sees no press, drag or
+long press, so neither the overlay nor anything under it can act. The wake itself runs on the
+press: the next idle tick calls `DisplaySleepController::wake()`, which stops the saver and
+restores brightness while the finger is still down.
+
+`wake()` also runs `DisplayManager::cancel_pointer_presses()` on every pointer. A pointer the
+wrapper does not cover has already handed the press to LVGL: SDL's (which carries Android's
+touch), an evdev USB mouse beside the touchscreen on the DRM and fbdev backends, and the
+`ctl` pointer; the cancel resets it and makes it wait for release, so it cannot click, long-press or
+scroll, though the widget under it still sees PRESSED and PRESSING. Every wake counts as
+activity, so the swallowed touch does not leave the display to dim again on the next tick.
 
 ## The 3D maze
 

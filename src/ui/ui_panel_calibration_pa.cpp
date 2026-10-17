@@ -20,6 +20,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
 #include "pa_calibration.h"
+#include "pa_tuning.h"
 #include "preset_materials.h"
 #include "printer_state.h"
 #include "static_panel_registry.h"
@@ -41,11 +42,7 @@ namespace helix::ui {
 
 namespace {
 
-/// Four decimals, always. Every digit is meaningful, and a value shown as
-/// "0.04" would be typed into a slicer as a different filament's setting.
-std::string format_k(float k) {
-    return fmt::format("{:.4f}", k);
-}
+using helix::pa::format_k;
 
 /// m:ss, the shape of a clock somebody is actually waiting on.
 std::string format_clock(int seconds) {

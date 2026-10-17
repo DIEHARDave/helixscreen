@@ -524,11 +524,15 @@ void DisplaySleepController::wake() {
     constexpr bool was_preview = false;
 #endif
 
-    // Gate input if waking from full sleep (not dim)
-    // This prevents the wake touch from triggering UI actions
-    if (was_sleeping) {
-        m_host.gate_input();
+    // Ends any press LVGL has already started on every pointer, so the wake touch cannot
+    // click, long-press or scroll whatever it landed on.
+    m_host.cancel_pointer_presses();
 
+    // A swallowed wake touch never reaches LVGL's activity clock, so without this the
+    // display would wake and dim or sleep again on the next tick.
+    lv_display_trigger_activity(nullptr);
+
+    if (was_sleeping) {
         // Restore the panel output (unblank / power-on / remove overlay) BEFORE
         // the synchronous render below so the framebuffer is ready when LVGL
         // paints — honoring the #303 black-screen-on-wake race.
@@ -540,11 +544,6 @@ void DisplaySleepController::wake() {
         // on some hardware (#303). lv_refr_now() renders synchronously.
         lv_obj_invalidate(lv_screen_active());
         lv_refr_now(nullptr);
-
-        // Reset LVGL's inactivity timer so we don't immediately go back to sleep.
-        // When touch is absorbed by sleep_aware_read_cb, LVGL doesn't register activity,
-        // so without this the display would wake and immediately sleep again.
-        lv_display_trigger_activity(nullptr);
     }
 
     // Restore configured brightness from settings
@@ -574,23 +573,15 @@ void DisplaySleepController::wake() {
 }
 
 bool DisplaySleepController::note_press(int x, int y) {
-    // If sleeping or dimmed and touch detected, request wake.
-    // During sleep: absorb the touch so it doesn't trigger UI actions.
-    // During dim: let the touch pass through but still flag for wake.
-    // This is necessary because LVGL only updates last_activity_time on PRESSED,
-    // but evdev drains all buffered events in one read — if press+release both
-    // arrive in one poll (quick tap or slow main loop), the final state is
-    // RELEASED and LVGL never registers activity.
-    if (m_display_sleeping) {
-        m_wake_requested = true;
-        spdlog::info("[DisplaySleep] Wake touch absorbed at ({},{}) while sleeping", x, y);
-        return true;
+    // The caller hides this press from LVGL, so it never reaches LVGL's activity clock;
+    // m_wake_requested is how the next idle tick learns of it.
+    if (!m_display_sleeping && !m_display_dimmed) {
+        return false;
     }
-    if (m_display_dimmed) {
-        m_wake_requested = true;
-        spdlog::info("[DisplaySleep] Wake touch at ({},{}) while dim — passing through", x, y);
-    }
-    return false;
+    m_wake_requested = true;
+    spdlog::info("[DisplaySleep] Wake touch at ({},{}) while {}: swallowed until release", x, y,
+                 m_display_sleeping ? "sleeping" : "dimmed");
+    return true;
 }
 
 #ifdef HELIX_ENABLE_SCREENSAVER

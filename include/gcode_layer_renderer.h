@@ -4,6 +4,7 @@
 #pragma once
 
 #include "gcode_color_palette.h"
+#include "gcode_crease_shading.h"
 #include "gcode_parser.h"
 #include "gcode_projection.h"
 #include "gcode_raster.h"
@@ -14,8 +15,10 @@
 
 #include <lvgl/lvgl.h>
 
+#include <array>
 #include <atomic>
 #include <glm/glm.hpp>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -257,6 +260,20 @@ class GCodeLayerRenderer {
     /** @brief Check if depth shading is enabled */
     bool get_depth_shading() const {
         return depth_shading_.load(std::memory_order_relaxed);
+    }
+
+    /// Darken outer walls where the surface creases (gcode_crease_shading.h).
+    /// Part of depth shading: it applies only where that does, and only with
+    /// the outline pass on. Invalidates the cache: the colours are baked in.
+    void set_crease_shading(bool enable) {
+        if (crease_shading_.load(std::memory_order_relaxed) == enable) {
+            return;
+        }
+        crease_shading_.store(enable, std::memory_order_relaxed);
+        invalidate_solid_cache();
+    }
+    bool get_crease_shading() const {
+        return crease_shading_.load(std::memory_order_relaxed);
     }
 
     /// Enable/disable antialiased strokes, independently of the outline pass.
@@ -642,6 +659,7 @@ class GCodeLayerRenderer {
     std::atomic<bool> show_extrusions_{true};
     std::atomic<bool> show_supports_{true};
     std::atomic<bool> depth_shading_{true}; // Enabled by default for 3D-like appearance
+    std::atomic<bool> crease_shading_{true};
     /// The silhouette outline pass and the cheap normal-based shading that goes
     /// with it. Measured at ~2ms per cache revalidation on an AD5M.
     std::atomic<bool> ssao_enabled_{true};
@@ -722,6 +740,28 @@ class GCodeLayerRenderer {
     /// pass restores before it re-scans, which makes both cases exact.
     std::vector<SsaoUndoEntry> ssao_undo_;
     bool ssao_cache_valid_ = false;
+
+    /// Wall indexes of the layers around the one being drawn into the cache.
+    /// Layer L reads up to kNeighbourDepth layers each side, and the build
+    /// walks layers upward, so this many slots let each layer's index be built
+    /// once and reused by every layer that reads it.
+    struct CreaseSlot {
+        int layer = -1;
+        crease::WallGrid grid;
+    };
+    std::array<CreaseSlot, 2 * crease::kNeighbourDepth + 1> crease_slots_;
+    /// The layer that already waited one frame for a neighbour to stream in.
+    /// It loads synchronously on its retry, so a slow source delays a layer
+    /// by one frame at most and never stalls the build.
+    int crease_deferred_layer_ = -1;
+
+    /// A streamed layer whose read failed, and how many frames it has been
+    /// retried. A read error can be transient (a busy SD card, a network
+    /// mount), so the layer is retried a few frames before it is skipped; a
+    /// truly unreadable layer must not stall the build.
+    int unreadable_layer_ = -1;
+    int unreadable_retries_ = 0;
+    static constexpr int MAX_UNREADABLE_RETRIES = 3;
 
     /// Wall time the current progressive cache build started, and whether its
     /// completion has been reported yet.
@@ -814,6 +854,34 @@ class GCodeLayerRenderer {
 
     // SSAO post-processing, applied to cache_buf_ in place.
     void apply_ssao();
+
+    /// One layer's walk through crease lookups while it draws into the cache.
+    struct CreaseCursor {
+        explicit CreaseCursor(float spacing_mm) : spacer(spacing_mm) {}
+        crease::NeighbourSide below;
+        crease::NeighbourSide above;
+        crease::SampleSpacer spacer;
+        float factor = 1.0f;
+    };
+    /// Fill `cur` with the neighbouring layers' wall indexes for `layer_idx`.
+    /// Returns false when a neighbour is not resident and `allow_load` is
+    /// false: the layer should wait for the next frame.
+    bool prepare_crease_layer(int layer_idx, CreaseCursor& cur, bool allow_load);
+    /// Brightness multiplier for a crease wall drawn `screen_len` pixels long.
+    float crease_shade(const ToolpathSegment& seg, int screen_len, CreaseCursor& cur);
+
+    enum class CreaseFetch : uint8_t { Ready, NotResident, LoadFailed };
+    /// The wall index for `layer`, built on first use while drawing `drawing`.
+    /// Without `allow_load`, a streamed layer that is not resident is
+    /// requested from the prefetch worker and reported NotResident.
+    CreaseFetch crease_grid(int layer, int drawing, bool allow_load, const crease::WallGrid*& out);
+    /// Z of a layer, from the parsed file or the streaming index.
+    float layer_z(int layer) const;
+    /// True when a streamed load of `layer` returned no segments although the
+    /// index counted lines in it: the controller's form of a failed read.
+    bool streamed_read_failed(int layer, const std::vector<ToolpathSegment>* segments) const;
+    /// Forget every wall index: the layers they describe may have changed.
+    void reset_crease_grids();
 
     /// Put every pixel apply_ssao() darkened back the way it was, and forget
     /// them. Safe to call when nothing is recorded. Must run before anything

@@ -591,3 +591,41 @@ def test_a_tracked_child_does_not_start_with_stop_signals_blocked(tmp_path):
     mask = int(out.split()[1], 16)
     for sig in md.STOP_SIGNALS:
         assert not mask & (1 << (sig - 1)), out
+
+
+# ---------------------------------------------------------------------------
+# Shards fit the filter: a shard that matches no case judges nothing, so a
+# narrow --tests must not be split wider than the cases it selects.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize('requested, matched, expected', [
+    (8, 3, 3),
+    (8, 50, 8),
+    (8, 1, 1),
+    (1, 50, 1),
+])
+def test_shards_never_exceed_the_matched_cases(requested, matched, expected):
+    assert md.fit_shards(requested, matched) == expected
+
+
+def test_a_filter_matching_nothing_is_refused():
+    with pytest.raises(ValueError, match='matches no test case'):
+        md.fit_shards(8, 0)
+
+
+def _fake_catch2(tmp_path, footer):
+    exe = tmp_path / 'helix-tests'
+    exe.write_text(f'#!/bin/sh\necho "Matching test cases:"\necho "  a case"\n'
+                   f'echo\necho "{footer}"\n')
+    exe.chmod(0o755)
+    return exe
+
+
+@pytest.mark.parametrize('footer, expected', [
+    ('3 matching test cases', 3),
+    ('1 matching test case', 1),
+    ('0 matching test cases', 0),
+    ('no listing here', None),
+])
+def test_case_count_is_read_from_the_catch2_listing(tmp_path, footer, expected):
+    exe = _fake_catch2(tmp_path, footer)
+    assert md.count_catch2_cases(tmp_path, exe, '[tag]') == expected

@@ -77,6 +77,16 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 ### Added
 
+**Calibration**
+
+- **Pressure advance tuning on a live test print** (#982) - Advanced > Calibration > Pressure
+  Advance Tuning (beta) prints a small test tower and raises pressure advance with height; tap - or
+  + at any moment to take over, then pick the height band that looked best from what the
+  printer reported. The result is applied, can be saved to the spool's Spoolman filament
+  (applied again whenever that filament becomes active, never mid-print), and is kept in
+  Moonraker's database for slicer plugins. The print Tune overlay also gains a live
+  pressure advance row.
+
 **Home screen**
 
 - **The home screen is one square-cell grid on every panel** (#1126, #1559) - both axes now
@@ -129,6 +139,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Home screen widgets**
 
+- **A new screen starts with the printer's own home layout** - when a printer runs HelixScreen on
+  its own display, other screens that connect to it copy that home layout the first time (your
+  macro, LED, fan, sensor and camera picks included), and the Widget Catalog has a "Copy layout
+  from printer" button to do it again.
+
 - **The home screen's printer picture shows what the printer is doing (#1397)** - while the
   nozzle, bed or chamber heats, and until a heater that was turned off drops below 50°C, a
   temperature chip sits on the picture; the part fan shows its speed and the light shows
@@ -173,6 +188,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   following the percent or mm/s choice the print screen uses. At its largest size it gains
   - and + buttons in 5% steps while printing, and a long press on a value puts it back to
   100%. Tap anywhere else on the tile to open Tune.
+- **A Printer Message widget** (#1125) - the line your macros show with `M117` or
+  `SET_DISPLAY_TEXT` ("Heating bed...", "Homing..."), the message a stock printer LCD keeps
+  on screen. It shows with or without a print running and reads "No message" when there is
+  none. At half a row tall it is one scrolling line; taller sizes wrap. Display only.
 - **A Z-Offset widget** - the live Z-offset on the home screen. It shows how far you have moved
   since the last save and turns the warning color while there is something to save. At 2x1 it
   gains a Save button, and at 2x2 up and down baby-step buttons with the same remembered step
@@ -182,6 +201,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   filament boxes, a chamber heater's drying cycle, and drying on the heated bed. Idle it shows
   a heated box's humidity, while drying the time left inside a progress ring, and on a 2x2 tile one row
   per dryer. A tap opens that dryer's own screen. It never starts or stops a cycle.
+- **A humidity droplet replaces the water icon** - the home Humidity tile, the AMS overview card,
+  the environment pill, the environment screen and each lane's readout draw a drop filled to the
+  humidity reading. The water line sits at the reading's share of the drop's height, with two
+  waves of different size in two tones taken from the theme's info colour. The surface drifts
+  gently when animations are on and holds still when they are off. A sensor with no reading shows
+  an empty outline.
 - **A Host Health widget** - CPU load and temperature, memory and the busiest controller board,
   with a trace of recent load. It turns amber or red at 70% and 90% load, at 70 and 80 C, on CPU
   throttling, on rising MCU retransmits and on under 500 MB free for G-code files. A tap opens
@@ -260,6 +285,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   buttons) take any value you type. Speeds are capped at the printer's own speed limit,
   including one the printer reports after you set them, and Reset Distances asks before
   wiping your values.
+- **Pick a Jog-tab layout (#865)** - Settings > Printing > Motion > Layout offers the jog
+  pad, Arrows (an XY cross, a Z pair, home buttons and one step selector, the Mainsail
+  arrangement), Arrows + Home (a home key in the centre of each cross, the Fluidd
+  arrangement) and Axis Rows (a row of minus and plus keys per axis at the jog mode's two
+  distances). The arrow layouts' step selector offers every distance you set, so changing
+  Turbo to 25 and 100 puts 25 and 100 on it. Home keys stay solid until their axis is homed.
 
 **Tool changers and multi-toolhead printers**
 
@@ -276,6 +307,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   tool keeps its own first-layer height, and the save button appears whenever any tool's
   offset is unsaved and writes it permanently. It used to vanish after the next Klipper
   restart.
+- **Tap a toolhead on the filament path to switch to it** - on the Snapmaker U1, tool
+  changers, and AFC or Happy Hare in toolchanger mode, tapping a head that is not mounted
+  offers to switch to it; a tube, a spool or the mounted head still opens the slot menu.
+  A new **Confirm tool changes** setting (Settings > Printing, on by default, shown only on
+  multi-tool printers) decides whether that tap, the home Tool Switcher and the Filament
+  screen's tool list ask first. A paused print always asks, and all three refuse the same
+  way while printing, with spools on the bed, or while the filament system needs attention.
 - **Snapmaker U1: load or unload several toolheads at once** - a picker lists every head
   with what it holds, pre-ticks loaded heads for an unload, and says which heads cannot take
   the operation and why. The printer's own batch command does the work, preheating the next
@@ -316,6 +354,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   boxes that can do different things are listed side by side. When the dryer can only heat
   some boxes at a time, the waiting ones say they are queued and which box is using the
   heater.
+- **Happy Hare 4: dry only the lanes you choose** (#1026, beta) - with beta features on, on a unit with a heater per lane,
+  the drying screen shows a chip per lane, all selected to start. Clear some to dry just the
+  rest, turn on Rotate to have an eSpooler turn the spools while they dry, and Stop with a
+  selection stops only those lanes. Each spool on the Filament panel shows a small badge while
+  it is part of a cycle: drying, waiting for a heater, finished or stopped.
 - **Favourite filaments** (#1100) - star any row in the filament catalog. Favourites lead the
   vendor list and float to the top of their vendor's view, on every printer.
 - **Load and Unload for the external spool** (#1486) - the bypass spool's menu on the
@@ -413,6 +456,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Printing**
 
+- **Pause a running print at a layer (beta)** (#1703) - tap the layer count on the print
+  screen to pause at the next layer or one you pick, see the scheduled layer beside the count
+  and as a tick on the progress bar, and cancel it. Uses the printer's own
+  `SET_PAUSE_NEXT_LAYER` / `SET_PAUSE_AT_LAYER` macros (Mainsail and Fluidd client macros,
+  Snapmaker U1 stock firmware) and needs a slicer that reports layers; hidden on printers
+  without the macros and while beta features are off.
 - **Heater duty on every heater** (#1290) - the Controls and print status screens show how
   hard each heater is working as a percentage beside its status, so a nozzle running flat
   out and falling behind looks different from one holding temperature easily.
@@ -488,6 +537,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **"Printed N times" sits under the file name** - the print count now reads as part of the
   file's identity beside the metadata, instead of being a line in the scrolling column
   below.
+- **The 2D preview shades creases** (#1314) - outer walls darken where the surface folds,
+  so overhang ledges, rims and steps read as edges while straight and evenly sloped walls
+  keep their colour. Sequential prints, objects at different layer heights and spiral vases
+  are left alone.
 
 **Calibration and tuning**
 
@@ -521,6 +574,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   Klipper's own recommendation regardless of what you selected.
 - **Baby-step size is remembered across launches** - the Z-offset step you last chose is the
   one you get next time.
+- **Save Z-Offset can be turned off per printer** (#1766) - **Save Z-Offset Buttons** in
+  Settings > Motion. Off removes the save from the header, Controls, the Z-Offset widget and
+  Z-offset calibration, and Print Tune calls an adjustment temporary; baby-stepping still
+  works. It starts off on tool changers, where one machine-wide save would shift every
+  tool's offset, and on everywhere else. Printers whose firmware keeps the offset itself
+  do not show it.
 
 **Printers**
 
@@ -986,6 +1045,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   marked busy until restart.
 - **AFC in toolchanger mode** draws its real toolheads (a Box Turtle as four heads, not one
   nozzle behind a hub).
+- **Selecting a parked hub-fed head swapped its filament** (#1811) - where a hub feeds
+  several lanes into one toolhead, tapping that head in the Tool Switcher, or preheating it,
+  picked the head's lowest lane instead of the one loaded in it. It now keeps the loaded lane.
 - **AFC re-announced a resolved error at every start** (#1589) - a message AFC had already
   cleared popped up as new each time HelixScreen connected.
 - **Tool changers: a tool change is no longer reported as a dock fault** - while a tool
@@ -1019,6 +1081,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Printing and preview**
 
+- **A heater wait names the heater it waits on** - during print preparation the label reads
+  the waiting command (M109, M190, M191 or TEMPERATURE_WAIT) instead of guessing from which
+  heater is short, so a nozzle settling at its target, a cool-down before probing, or the
+  tail of a bed wait no longer shows the wrong heater.
 - **Creality error codes are explained on every printer** (#1513) - pre-heat, MCU link and
   out-of-range errors showed as raw firmware codes on printers without a CFS.
 - **Print preparation shows what the printer is waiting for** - during a long heat-up after
@@ -1055,6 +1121,8 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   count and pause ticks.
 - **A file moved out of the G-code folder** (#1575) stayed listed until you left the screen.
 - **The budget preview on small boards** (#1555) keeps its tool colours and framing.
+- **A layer of a large file that failed to read** drew as a permanent gap in the 2D preview.
+  It is retried, and skipped with a log warning only if it keeps failing.
 - **.gcode.3mf files lost their thumbnail and layer height in the file details** (#1713) - and
   print history showed untranslated job states and missing thumbnails for files in subfolders.
 - **Deleting a print history record asks first** (#1373), and **View Timelapse** opens the
@@ -1134,6 +1202,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Display and touch**
 
+- **The touch that wakes the screen pressed whatever was under it** - from a dimmed screen
+  the waking tap went straight through (a tap meant to wake it could press Back), and from
+  sleep or a screensaver a slightly long touch could too. The waking touch now does nothing
+  until the finger lifts, in every mode.
 - **Rotated panels** (#1580) - touch no longer drifts from the picture on displays using
   hardware planes.
 - **Scroll Guard had no effect** - with the post-scroll click guard turned on, a tap right after
@@ -1162,6 +1234,16 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   coded faults showed raw console text. A spaghetti pause is no longer called a dirty bed.
 - **Per-filament temperatures and per-head end unload** did not work against the real
   firmware.
+- **A refused resume explains itself** - when a head has no filament type set, Resume shows
+  "Filament not set" with what to do, instead of a raw "Failed to resume" toast.
+- **Print Tune no longer says the Z-offset is auto-saved** - on the U1 a baby step lasts
+  until the next tool change or the end of the print, and Print Tune now says so.
+- **Pre-print steps read right** - the Z touch after each tool pick shows as Probing Z
+  instead of Bed mesh, and the firmware's bed soak and mesh steps get their own labels.
+- **A material set on the screen reaches the printer** - a head's material set in HelixScreen
+  is written to the U1's own filament record, and before resuming a pause (other than a
+  runout) a used head with a blank record is filled in from the material HelixScreen knows,
+  so Resume is no longer refused with "not edit filament".
 
 **Setup and installing**
 

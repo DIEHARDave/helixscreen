@@ -273,6 +273,10 @@ void set_source(lv_obj_t* icon, const char* icon_name) {
     spdlog::trace("[Icon] Changed icon source to '{}'", icon_name);
 }
 
+const lv_font_t* font_for_size(const char* size_str) {
+    return get_font_for_size(parse_size(size_str));
+}
+
 void set_size(lv_obj_t* icon, const char* size_str) {
     if (!icon || !size_str) {
         spdlog::error("[Icon] Invalid parameters to set_size");

@@ -155,7 +155,8 @@ class PanelWidgetManager {
     /// capability subjects, and that is not a reason to reshuffle the panel.
     /// Returns true when it rewrote the arrangement, so the caller rebuilds
     /// even if the visible widget list is unchanged. populate_widgets() runs
-    /// this first.
+    /// this first. A pending home default is a seed point too: a layout the
+    /// printer's own screen published replaces it here, before it is applied.
     bool refresh_live_default(const std::string& panel_id);
 
     /// Compute which widget IDs would be visible for a panel without creating

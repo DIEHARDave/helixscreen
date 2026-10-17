@@ -70,6 +70,7 @@ struct ToolInfo {
     DetectState detect_state = DetectState::UNAVAILABLE; // Physical presence detection
     int backend_index = -1;                           // AMS backend feeding this tool (-1 = direct drive)
     int backend_slot = -1;                            // Fixed slot in that backend (-1 = any/dynamic)
+    bool lane_seated = false;                         // This tool's lane is the one seated in its head
 };
 ```
 
@@ -200,7 +201,7 @@ Updates `active_tool_index_` and the `active_tool` subject.
 
 Whether `-1` is a real active-tool value depends on the topology. When an AMS
 backend owns the tool list, `build_ams_topology()`
-(`src/printer/ams_state_tool_mapping.cpp#build_ams_topology`) fills
+(`src/printer/ams_state_tool_mapping.cpp#"build_ams_topology(AmsBackend* backend, int backend_index,"`) fills
 `ToolTopology::allows_empty_carriage` from `AmsBackend::carriage_can_be_empty()`
 (`include/ams_backend.h#AmsBackend/carriage_can_be_empty`). By default that answers
 `load_mounts_tool()`: true where selecting a slot physically mounts a tool, so the
@@ -237,8 +238,9 @@ tool docked prints nothing. The refusal lives in the shared gate so any caller m
 and the tool switcher widget (`park_offered()` and `handle_park_requested()`) mirrors it
 with `job_holds_machine()` so the action greys out.
 
-A tool change is the opposite case: it is allowed while paused (behind the widget's
-confirmation) unless `filament_ops_self_home()` is true. While `T<n>` is in flight the
+A tool change is the opposite case: it is allowed while paused (behind a confirmation,
+see [Requesting a Tool Change from the UI](#requesting-a-tool-change-from-the-ui)) unless
+`filament_ops_self_home()` is true. While `T<n>` is in flight the
 U1 never reads an empty carriage: the old head docks before the new one reports, so the
 backend holds the previous `current_tool` while a `T<n>` it sent has not landed (bounded
 by `kToolChangeWindow`), a head is in its `activating_move`, or the action is `SELECTING`.
@@ -304,6 +306,8 @@ themselves are read through the `tool_offset_*()` accessors rather than subjects
 
 This allows a tool changer where T0 feeds from an AFC (backend 0) and T1 feeds from a Happy Hare (backend 1), each with independent slot tracking.
 
+`ToolInfo.lane_seated` comes from `ToolTopology::tool_seated`, which `build_ams_topology()` fills from each lane's `slot_is_actively_loaded()` on every push. Where a hub feeds several lanes into one head, it names the lane the head holds, mounted or parked, and `PhysicalHead::representative_tool()` sends that lane when the head is selected rather than the head's lowest (prestonbrown/helixscreen#1811).
+
 ---
 
 ## Subject Bindings
@@ -351,6 +355,44 @@ During a print, each tool's temperature is shown with its tool name prefix (e.g.
 
 The temperature control panel provides a dropdown to select which tool's temperature to control. On single-tool printers, the selector is hidden. The dropdown is rebuilt when `tools_version` changes.
 
+### Requesting a Tool Change from the UI
+
+Every surface that mounts another tool on a tap asks one function, so a tap refused on one
+is refused on all of them with the same words: the home tool switcher
+(`src/ui/panel_widgets/tool_switcher_widget.cpp#handle_tool_selected`), a toolhead on the
+AMS panel's PARALLEL path (`src/ui/ui_panel_ams.cpp#on_path_toolhead_clicked`) and the
+filament panel's extruder dropdown (`src/ui/ui_panel_filament.cpp#handle_extruder_changed`).
+
+- **The decision** is the pure `decide_tool_change()` (`include/tool_change_request.h`) over
+  `ToolChangeInputs`, which `tool_change_inputs()` reads from live state. In order: the
+  mounted tool is `AlreadyActive`; spools on the bed refuse (`spools_on_bed_refusal()`); a
+  print that blocks filament ops refuses with the backend's own copy
+  (`tool_change_print_refusal()` over `print_blocks_filament_op()`); a backend in
+  `AmsAction::PAUSED` refuses with "The filament system needs attention"; any other action
+  that holds the system (`ams_action_holds_system()`) is `Busy` and ignored silently; a
+  paused job is `ConfirmPaused` whatever the setting; then `ConfirmSetting` or `Immediate`
+  from the "Confirm tool changes" setting.
+- **The dispatch** is `offer_tool_change()`: refusals raise a warning toast, a confirm
+  verdict shows a `modal_confirm`, and the change goes through
+  `ToolState::request_tool_change()`. The dialog's primary button decides again from live
+  inputs, because a print can start or the filament system can pause while it is open: a
+  second verdict that does not dispatch reports itself as the tap would have (the refusal
+  toast, or nothing for Busy and AlreadyActive) and runs `on_declined`. A print paused since
+  the dialog opened turns `ConfirmSetting` into `ConfirmPaused`: the change is not sent but
+  offered again once the dialog has closed, so the user answers the paused warning. `ToolChangeHooks` reports back: `on_success`,
+  `on_failed` (after the shared "Tool change failed" toast, possibly off the main thread),
+  and `on_declined` for every path that requested nothing, a dialog dismissal included.
+  The filament panel uses `on_declined` to put its dropdown back on the mounted tool.
+  `owner_token` gates the dialog's callbacks, and `resolve_api` is asked when the change is
+  sent, so a dialog left open across a reconnect never holds a stale API.
+- **The setting** is `SafetySettingsManager::get_tool_change_require_confirmation()`
+  (`/safety/tool_change_require_confirmation`, global, default on, subject
+  `settings_tool_change_confirm`). Its Settings > Printing row is hidden while
+  `tool_count` is below 2.
+- **Labels.** The confirmation names the tool with `active_tool_label()`
+  (`include/display_numbering.h`), the same text the switcher and dropdown show
+  ("Toolhead 2 (T1)" on a U1).
+
 ---
 
 ## Key Files
@@ -361,6 +403,7 @@ The temperature control panel provides a dropdown to select which tool's tempera
 | `src/printer/tool_state.cpp` | Discovery, status parsing, subject management |
 | `include/printer_discovery.h` | Hardware detection: `tool_names()`, `has_tool_changer()` |
 | `include/ams_state.h` | Multi-backend filament system (linked via backend_index) |
+| `include/tool_change_request.h`, `src/ui/tool_change_request.cpp` | The one tool-change decision and dispatch every UI surface uses |
 
 ---
 

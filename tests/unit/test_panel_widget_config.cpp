@@ -7,6 +7,8 @@
 #include "../test_helpers/scoped_runtime_config.h"
 #include "config.h"
 #include "data_root_resolver.h"
+#include "home_layout_share.h"
+#include "layout_port.h"
 #include "panel_widget_config.h"
 #include "panel_widget_registry.h"
 #include "theme_manager.h"
@@ -3452,4 +3454,300 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     CHECK_FALSE(wc.has_pending_anchors());
     CHECK_FALSE(wc.is_unedited_default());
     CHECK_FALSE(get_saved_root().contains("default"));
+}
+
+TEST_CASE("PanelWidgetRegistry: screen-scoped widgets are exactly the six",
+          "[panel_widget][widget_scope]") {
+    std::set<std::string> screen;
+    for (const auto& def : get_all_widget_defs()) {
+        if (def.scope == WidgetScope::Screen) {
+            screen.insert(def.id);
+        }
+    }
+    const std::set<std::string> expected = {"network", "clock",         "lock",
+                                            "tips",    "notifications", "shutdown"};
+    REQUIRE(screen == expected);
+    REQUIRE(is_screen_scoped("clock"));
+    REQUIRE_FALSE(is_screen_scoped("host_health"));
+    REQUIRE_FALSE(is_screen_scoped("no_such_widget"));
+}
+
+// ============================================================================
+// import_layout: a layout authored for another grid
+// ============================================================================
+
+namespace {
+
+json import_widget(const char* id, int col, int row, int colspan, int rowspan,
+                   const json& config = json::object()) {
+    json w{{"id", id},   {"enabled", true},    {"col", col},
+           {"row", row}, {"colspan", colspan}, {"rowspan", rowspan}};
+    if (!config.empty()) {
+        w["config"] = config;
+    }
+    return w;
+}
+
+helix::home_layout::ParsedLayout make_import(int cols, int rows, const json& widgets,
+                                             int main_page_index = 0) {
+    json payload{{"pages", json::array({json{{"id", "main"}, {"widgets", widgets}}})},
+                 {"main_page_index", main_page_index}};
+    return {cols, rows, payload};
+}
+
+/// A 12x8 arrangement holding a widget with per-widget config.
+json source_widgets_12x8() {
+    return json::array({import_widget("printer_image", 0, 0, 4, 4),
+                        import_widget("print_status", 4, 0, 6, 4, json{{"style", "compact"}}),
+                        import_widget("temperature", 0, 4, 2, 2),
+                        import_widget("fan", 2, 4, 2, 2)});
+}
+
+std::vector<LegacyPlacement> placements_of(const json& widgets) {
+    std::vector<LegacyPlacement> out;
+    for (const auto& w : widgets) {
+        out.push_back({w["id"].get<std::string>(), w["col"].get<int>(), w["row"].get<int>(),
+                       w["colspan"].get<int>(), w["rowspan"].get<int>()});
+    }
+    return out;
+}
+
+const PanelWidgetEntry* find_entry(const PanelWidgetConfig& wc, const std::string& id) {
+    for (const auto& page : wc.pages()) {
+        for (const auto& e : page.widgets) {
+            if (e.id == id) {
+                return &e;
+            }
+        }
+    }
+    return nullptr;
+}
+
+/// Everything the pages hold, for an exact before/after comparison.
+json pages_json(const PanelWidgetConfig& wc) {
+    json out = json::array();
+    for (const auto& page : wc.pages()) {
+        json widgets = json::array();
+        for (const auto& e : page.widgets) {
+            widgets.push_back({e.id, e.enabled, e.config, e.col, e.row, e.colspan, e.rowspan});
+        }
+        out.push_back({page.id, widgets, page.retained});
+    }
+    return json{{"pages", out}, {"main", wc.main_page_index()}};
+}
+
+/// A client holding its own default on 16x10, now showing 12x8: one parked grid.
+void prepare_client_with_parked_grid(PanelWidgetConfig& wc) {
+    wc.load();
+    wc.apply_pending_anchors(16, 10);
+    wc.switch_to_grid(12, 8);
+}
+
+} // namespace
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture, "import_layout: same grid copies placements one-to-one",
+                 "[widget_config][import_layout]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    prepare_client_with_parked_grid(wc);
+
+    const json src = source_widgets_12x8();
+    REQUIRE(wc.import_layout(make_import(12, 8, src), 12, 8));
+    CHECK(wc.grid_signature() == "12x8");
+    for (const auto& w : src) {
+        const std::string id = w["id"].get<std::string>();
+        INFO("widget " << id);
+        const auto* e = find_entry(wc, id);
+        REQUIRE(e != nullptr);
+        CHECK(e->enabled);
+        CHECK(e->col == w["col"].get<int>());
+        CHECK(e->row == w["row"].get<int>());
+        CHECK(e->colspan == w["colspan"].get<int>());
+        CHECK(e->rowspan == w["rowspan"].get<int>());
+        CHECK(e->config == w.value("config", json::object()));
+    }
+    CHECK(get_saved_root().value("grid", "") == "12x8");
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "import_layout: 12x8 to 10x8 and to 16x10 port through layout_port",
+                 "[widget_config][import_layout]") {
+    const auto [cols, rows] = GENERATE(std::pair<int, int>{10, 8}, std::pair<int, int>{16, 10});
+    INFO("target " << cols << "x" << rows);
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    prepare_client_with_parked_grid(wc);
+
+    const json src = source_widgets_12x8();
+    REQUIRE(wc.import_layout(make_import(12, 8, src), cols, rows));
+    CHECK(wc.grid_signature() == std::to_string(cols) + "x" + std::to_string(rows));
+
+    const auto expected = port_legacy_layout(placements_of(src), 12, 8, cols, rows);
+    for (const auto& p : expected) {
+        INFO("widget " << p.id);
+        const auto* e = find_entry(wc, p.id);
+        REQUIRE(e != nullptr);
+        CHECK(e->col == (p.seated ? p.col : -1));
+        CHECK(e->row == (p.seated ? p.row : -1));
+        if (p.seated) {
+            CHECK(e->colspan == p.colspan);
+            CHECK(e->rowspan == p.rowspan);
+        }
+    }
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture, "import_layout: the import is the user's layout",
+                 "[widget_config][import_layout]") {
+    const auto [cols, rows] = GENERATE(std::pair<int, int>{12, 8}, std::pair<int, int>{10, 8});
+    INFO("target " << cols << "x" << rows);
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    REQUIRE(wc.has_pending_anchors());
+
+    REQUIRE(wc.import_layout(make_import(12, 8, source_widgets_12x8()), cols, rows));
+    CHECK_FALSE(wc.is_unedited_default());
+    CHECK_FALSE(wc.has_pending_anchors());
+    CHECK(wc.default_signature().empty());
+    CHECK_FALSE(wc.reresolve_default_if_changed(cols, rows));
+    CHECK_FALSE(get_saved_root().contains("default"));
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture, "import_layout: parked grids are cleared",
+                 "[widget_config][import_layout]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    prepare_client_with_parked_grid(wc);
+    REQUIRE(get_saved_root().contains("parked_grids"));
+
+    const json src = source_widgets_12x8();
+    REQUIRE(wc.import_layout(make_import(12, 8, src), 12, 8));
+    CHECK_FALSE(get_saved_root().contains("parked_grids"));
+
+    wc.switch_to_grid(16, 10);
+    const auto expected = port_legacy_layout(placements_of(src), 12, 8, 16, 10);
+    for (const auto& p : expected) {
+        INFO("widget " << p.id);
+        const auto* e = find_entry(wc, p.id);
+        REQUIRE(e != nullptr);
+        CHECK(e->enabled);
+        CHECK(e->col == (p.seated ? p.col : -1));
+        CHECK(e->row == (p.seated ? p.row : -1));
+    }
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "import_layout: client screen-scoped defaults are appended unplaced",
+                 "[widget_config][import_layout]") {
+    std::set<std::string> screen_defaults;
+    for (const auto& e : PanelWidgetConfig::build_default_grid()) {
+        if (e.enabled && is_screen_scoped(e.id)) {
+            screen_defaults.insert(e.id);
+        }
+    }
+    REQUIRE_FALSE(screen_defaults.empty());
+
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    prepare_client_with_parked_grid(wc);
+    REQUIRE(wc.import_layout(make_import(12, 8, source_widgets_12x8()), 10, 8));
+
+    const auto& main = wc.pages()[wc.main_page_index()].widgets;
+    for (const auto& id : screen_defaults) {
+        INFO("widget " << id);
+        const auto n = std::count_if(main.begin(), main.end(),
+                                     [&](const PanelWidgetEntry& e) { return e.id == id; });
+        CHECK(n == 1);
+        CHECK(wc.is_enabled(id));
+        CHECK_FALSE(wc.is_placed(id));
+    }
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "import_layout: an unusable import is rejected and changes nothing",
+                 "[widget_config][import_layout]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    prepare_client_with_parked_grid(wc);
+
+    const auto pages_before = pages_json(wc);
+    const std::string grid_before = wc.grid_signature();
+    const std::string signature_before = wc.default_signature();
+    const bool unedited_before = wc.is_unedited_default();
+    const json saved_before = get_saved_root();
+    REQUIRE(saved_before.contains("parked_grids"));
+
+    SECTION("import of only screen-scoped widgets is rejected") {
+        CHECK_FALSE(wc.import_layout(
+            make_import(12, 8, json::array({import_widget("clock", 0, 0, 4, 2)})), 12, 8));
+    }
+    SECTION("import whose pages are all empty is rejected") {
+        json payload{{"pages", json::array({json{{"id", "main"}, {"widgets", json::array()}},
+                                            json{{"id", "p2"}, {"widgets", json::array()}}})},
+                     {"main_page_index", 0}};
+        CHECK_FALSE(wc.import_layout({12, 8, payload}, 12, 8));
+    }
+    SECTION("import holding only unknown widgets is rejected") {
+        CHECK_FALSE(wc.import_layout(
+            make_import(12, 8, json::array({import_widget("no_such_widget", 0, 0, 2, 2)})), 12, 8));
+    }
+    SECTION("a non-positive grid is rejected") {
+        CHECK_FALSE(wc.import_layout(make_import(12, 8, source_widgets_12x8()), 0, 8));
+        CHECK_FALSE(wc.import_layout(make_import(12, 8, source_widgets_12x8()), 12, -1));
+        CHECK_FALSE(wc.import_layout(make_import(0, 8, source_widgets_12x8()), 12, 8));
+    }
+
+    CHECK(pages_json(wc) == pages_before);
+    CHECK(wc.grid_signature() == grid_before);
+    CHECK(wc.default_signature() == signature_before);
+    CHECK(wc.is_unedited_default() == unedited_before);
+    CHECK(get_saved_root() == saved_before);
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "import_layout: spans larger than the grid and negative origins are clamped, "
+                 "never off-grid",
+                 "[widget_config][import_layout]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    prepare_client_with_parked_grid(wc);
+
+    const json src =
+        json::array({import_widget("print_status", 0, 0, 999, 4),
+                     import_widget("temperature", -5, 4, 2, 2), import_widget("fan", 4, 4, 2, 2)});
+    REQUIRE(wc.import_layout(make_import(12, 8, src), 12, 8));
+    int placed = 0;
+    for (const auto& page : wc.pages()) {
+        for (const auto& e : page.widgets) {
+            if (!e.has_grid_position()) {
+                continue;
+            }
+            INFO("widget " << e.id << " at " << e.col << "," << e.row << " span " << e.colspan
+                           << "x" << e.rowspan);
+            CHECK(e.col >= 0);
+            CHECK(e.row >= 0);
+            CHECK(e.col + e.colspan <= 12);
+            CHECK(e.row + e.rowspan <= 8);
+            ++placed;
+        }
+    }
+    CHECK(placed > 0);
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "import_layout: unknown widget id lands in retained, not in widgets",
+                 "[widget_config][import_layout]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    prepare_client_with_parked_grid(wc);
+
+    json src = source_widgets_12x8();
+    src.push_back(import_widget("no_such_widget", 10, 0, 2, 2));
+    REQUIRE(wc.import_layout(make_import(12, 8, src), 12, 8));
+
+    CHECK(find_entry(wc, "no_such_widget") == nullptr);
+    const json& retained = wc.pages()[0].retained;
+    REQUIRE(retained.is_array());
+    REQUIRE(retained.size() == 1);
+    CHECK(retained[0]["id"] == "no_such_widget");
 }

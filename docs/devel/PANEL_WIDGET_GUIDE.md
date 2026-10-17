@@ -25,12 +25,20 @@ printer image's live callouts are a third instance
 
 | Piece | Where | Notes |
 |-------|-------|-------|
-| Registry def | `src/ui/panel_widget_registry.cpp` | id, display name, icon, category, default/enabled, colspan/rowspan and their min/max, whether it may span half cells |
+| Registry def | `src/ui/panel_widget_registry.cpp` | id, display name, icon, category, default/enabled, colspan/rowspan and their min/max, whether it may span half cells, `scope` |
 | Widget class | `src/ui/panel_widgets/<name>_widget.{h,cpp}` | extends `PanelWidget`; implements `attach()` / `detach()` / `on_size_changed()` |
 | XML component | `ui_xml/components/panel_widget_<name>.xml` | the entire appearance |
 | Row/child components | `ui_xml/components/<name>_*.xml` | repeated fragments the widget creates per item |
 | Registration | `register_<name>_widget()` | factory + `register_widget_subjects()` (see below) |
 | Placement | `assets/config/panel_widgets/<preset>/home.json` | per-printer-preset seeds; users rearrange at runtime |
+
+Choose `scope` (`include/panel_widget_registry.h#WidgetScope`) for every new def. The default,
+`Printer`, is right for anything that describes the printer or its host: temperatures, fans,
+macros, LEDs, cameras, Moonraker perf data. Use `Screen` only when the tile describes the
+device it is drawn on (its own network link, clock, lock, tips, notifications, host power).
+A screen-scoped widget is left out of the home layout the printer's own screen shares, and
+the receiving screen keeps its own default for it (see "Layouts shared by the printer's own
+screen" in `LAYOUT_SYSTEM.md`).
 
 Not every definition is compiled in. A Lua plugin registers its widgets at load
 time as runtime definitions (`register_runtime_widget_def`,

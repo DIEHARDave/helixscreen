@@ -220,7 +220,7 @@ You almost never need to reference font tokens directly. Use the semantic `<text
 | `#button_height_sm` | vertical | 40px | 40px | 40px | Small buttons (back, icon-only) |
 | `#button_height_lg` | vertical | 64px | 70px | 96px | Large buttons |
 | `#header_height` | vertical | 48px | 56px | 60px | Panel header height |
-| `#input_height` | vertical | 48px | 52px | 56px | Text input / dropdown height |
+| `#input_height` | cramped | 48px | 52px | 56px | Text input / dropdown height; micro is 32px. Follows the cramped axis like the body font it holds |
 | `#temp_card_height` | vertical | 64px | 72px | 80px | Temperature card in print status |
 | `#dialog_content_max` | vertical | 260px | 320px | 440px | Max height of a modal's scrollable body |
 | `#dialog_content_pinned_max` | vertical | 164px | 207px | 272px | Same, plus one pinned block below the scroll area (measured 85% cap − chrome, #1277) |
@@ -464,6 +464,46 @@ not link renders tofu). An
 inline `style_text_font` attribute still outranks a bound style (see
 `LVGL9_XML_GUIDE.md` § Conditional Style Bindings).
 
+### humidity_drop
+
+A water drop filled from the bottom to the level of a humidity reading, its surface a
+two-tone wave (a darker wave behind a lighter one) with a highlight on the bulb. Use it
+wherever a humidity reading sits beside a drop, never `<icon src="water">`:
+
+```xml
+<humidity_drop bind_value="chamber_humidity" size="sm"/>
+<humidity_drop name="lane_humidity_icon" size="sm"/>  <!-- filled from C++ -->
+```
+
+- `bind_value`: an int subject in **tenths of a percent** (455 = 45.5%RH), the unit
+  `HumiditySensorManager` publishes. Below zero means no reading: the drop draws as a faint
+  outline with no fill, so a missing sensor never reads as a dry box. 0% draws an empty,
+  faintly tinted drop; 100% a full one. The mean water line sits at the reading's share of
+  the drop's height, bottom to tip, so 50% reads as half; the swell flattens at the floor
+  and near the tip so a nearly full drop never shows a notch.
+- `size`: `xs`..`xl`, the same box an `icon` of that size takes, so it swaps in for one
+  without moving the layout. The box follows the widget's text font, so
+  `<bind_tile_rung ladder="icon">` re-faces it exactly as it does an icon. An explicit
+  `width`/`height` overrides the font and the drop fits that box.
+- Every colour derives from ONE theme colour, the `info` token as the water, plus the
+  screen background (`humidity_drop::water_colors()`): the front and back tones keep the
+  theme's hue, a washed-out colour is lifted to read as water (a true grey stays grey),
+  the outline is the light tone on a dark background and a dark tone on a light one, and
+  the highlight is the front tone toward white. They are read at every draw, so a theme,
+  preview or dark/light change re-tints live. No variant attribute.
+- A drop with no subject (a per-slot reading, say) is filled with
+  `helix::ui::humidity_drop_set_value()`.
+
+With the animations setting on, a partial fill's surface drifts. Every drop shares one
+100ms timer that advances a common phase and invalidates only drops that are visible
+(`lv_obj_is_visible`) with a partial fill; an empty, full or unknown drop never redraws for
+it, and with animations off nothing moves at all. Each drop rasterizes itself into a small
+ARGB8888 buffer it owns (re-rendered only when size, reading, phase or palette changes) and
+draws that as one image, so a frame costs one blit per drop. The pure geometry and the
+rasterizer live in `include/humidity_drop_geometry.h` (no LVGL; tested in
+`tests/unit/test_humidity_drop.cpp`, tag `[humidity_drop]`), the widget in
+`src/ui/ui_humidity_drop.cpp`.
+
 ### spinner
 
 Responsive loading spinner. Sizes adapt per breakpoint.
@@ -586,6 +626,56 @@ Almost everything uses flexbox. The three flows you'll see:
 <lv_obj flex_flow="column"/>     <!-- Vertical: children stacked -->
 <lv_obj flex_flow="row_wrap"/>   <!-- Horizontal, wraps to new rows when full -->
 ```
+
+### A wrapping grid of tiles that must fit its card
+
+A `row_wrap` grid of equal tiles with fixed percentage widths fixes its column
+count, so more visible tiles than it planned for spill into a row the card
+clips, and a portrait card gets the same shape as a landscape one. Let the
+shape follow the box instead: `fit_tile_grid()` (`include/tile_grid_fit.h`)
+takes the visible tile count, the grid's content size, the gap and the minimum
+tile that holds an icon over a one-line label, and returns columns, rows and
+whether labels fit. It scores every shape by how far its tile clears that
+minimum on the tighter axis, so a wide card gets 3x2 for six tiles, a tall one
+2x3, and a large one can go wider.
+
+The Controls panel's Calibration & Tools card is the reference wiring:
+
+- The grid carries `<event_cb trigger="layout_changed" .../>`. LVGL sends it after
+  every flex pass of the grid, which covers a tile hiding or showing and the card
+  resizing. The callback (`ControlsPanel::update_calib_grid`) counts the
+  children without `hidden`, measures the grid's content box and its
+  `pad_column` / `pad_row`, and sets every cell to the whole-pixel `tile_w` x
+  `tile_h` the fit returns. That is measured layout (a structural exception):
+  percentage widths cannot account for the gaps, so on a narrow grid with a wide
+  gap they wrap the last tile into a row the card clips. It writes a size only
+  when it changes, because each write lays the grid out again.
+- Each tile is a `calib_tile` cell around a `home_action_tile` that fills it, and
+  hides its label from `calib_grid_labels` (the fit's `fits`). Visibility
+  bindings go on the cell, so a hidden tile drops out of the count.
+- The minimum tile is a responsive token pair (`calib_tile_min_width` /
+  `calib_tile_min_height` in `globals.xml`), read with
+  `theme_manager_get_spacing()`.
+
+Do not compute the tile count from the subjects the tiles' visibility bindings
+read: that is a second copy of every tile's rule. And avoid a `<subject_expr>`
+over printer subjects for this: a printer switch deinitializes and re-creates
+them while the component stays registered, so the derived subject stops
+updating.
+
+### Jog keys on a grid (`fit_key_grid`)
+
+The Motion panel's alternate Jog layouts (`motion_jog_arrows`, `motion_jog_arrows_home`,
+`motion_jog_rows`) size their keys with `helix::ui::fit_key_grid()`
+(`include/tile_grid_fit.h`): columns, rows, the free box and a minimum key in, a near-square
+key out (at most 1.4 times as wide as tall). `jog_layout_fit()` in `include/ui_panel_motion.h`
+turns that into whole-key block sizes and `MotionPanel::fit_jog_layout()` applies them whenever
+the view resizes. Arrows is 3x2 keys beside a Z column, Arrows + Home 3x3, with the home block
+beside them in landscape and a row under them in portrait. Axis Rows is a 4x5 grid: X, Y and Z
+rows of minus, axis, plus keys, and a bottom row for the jog modes, Home All and leveling.
+The step selector draws from `jog_step_list()`, the distances set in Motion settings. At
+480x320 the header is 33px (`header_height_tiny`) and its cog button takes
+`action_button_2_icon_only="1"` to stay a padding-free circle.
 
 ### flex_grow
 
@@ -829,6 +919,8 @@ You're free to rearrange the visual hierarchy, change flex directions, adjust si
 ### One tree, restyled for portrait
 
 A panel usually needs no portrait override. The print file detail view is the pattern: one widget tree, with complementary `bind_style` pairs keyed on `ui_is_portrait` carrying every restyle that is a style property (row vs column, which side grows, the button tier). The inline attribute for a restyled property must come off the widget, because an inline attribute beats a bound style and freezes one orientation. What styles cannot express (a size measured from runtime pixels) is measured in C++: `src/ui/ui_print_select_detail_view.cpp#fit_portrait_preview` reads the options column's real content height and sets the preview card's height from `include/print_detail_layout.h#decide_detail_portrait_preview`. See `ui_xml/print_file_detail.xml` for the whole shape.
+
+The Controls panel's top row (`ui_xml/controls_panel.xml`) is the same pattern with a wrapping flow: three cards side by side in landscape, and in portrait the row wraps to Position beside Temperature with Cooling across the full width below. Two traps it shows: a style that sets `flex_flow` needs `layout="flex"` with it, because the inline attribute it replaces set both; and `ui_card` sets its own size locally when it is created, so no bound style can resize it. Put the card in a plain `lv_obj` cell that carries the bound sizes, and give the card `width="100%" height="100%"`.
 
 ### Priority panels to override
 

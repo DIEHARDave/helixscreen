@@ -98,6 +98,7 @@
 #include "ui_gcode_viewer.h"
 #include "ui_gradient_canvas.h"
 #include "ui_guided_device_flow.h"
+#include "ui_humidity_drop.h"
 #include "ui_icon.h"
 #include "ui_icon_loader.h"
 #include "ui_keyboard_manager.h"
@@ -1702,6 +1703,7 @@ bool Application::register_widgets() {
     ui_gcode_viewer_register();
     ui_gradient_canvas_register();
     helix::ui::register_helix_sparkline_widget();
+    helix::ui::register_humidity_drop_widget();
 
     // Initialize component systems
     ui_component_header_bar_init();

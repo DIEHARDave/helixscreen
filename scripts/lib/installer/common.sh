@@ -440,7 +440,25 @@ STEP_NUM=0
 STEP_OPEN=0
 STEP_TITLE=""
 STEP_DONE_TITLE=""
+STEP_PROGRESS_N=0
 _SPIN_I=0
+
+# Machine-readable progress for a driving program (--progress): one
+# tab-separated line per event on stdout, where the human output goes to
+# stderr. Tabs and newlines inside a field are flattened to single spaces so a
+# title can never split a record.
+PROGRESS=0
+# shellcheck disable=SC2034  # read and set by main.sh (_progress_result)
+PROGRESS_RESULT_SENT=0
+_progress_emit() { # kind field...
+    [ "$PROGRESS" = 1 ] || return 0
+    _pe_line="HELIX-PROGRESS"
+    for _pe_f in "$@"; do
+        _pe_f=$(printf '%s' "$_pe_f" | tr '\t\n\r' '   ')
+        _pe_line="$_pe_line$(printf '\t')$_pe_f"
+    done
+    printf '%s\n' "$_pe_line"
+}
 
 _ui_marks() {
     if [ "$UI_UTF8" = 1 ]; then
@@ -512,11 +530,13 @@ step() { # running-title [done-title]
     STEP_TITLE="$1"
     STEP_DONE_TITLE="${2:-$1}"
     STEP_OPEN=1
+    STEP_PROGRESS_N=$((STEP_NUM + 1))
+    _progress_emit step "$STEP_PROGRESS_N" "$STEP_TOTAL" start "$STEP_TITLE" ""
     _log_write "STEP $1"
     _step_redraw
 }
 
-_step_close() { # mark color word detail title
+_step_close() { # mark color word detail title status
     STEP_NUM=$((STEP_NUM + 1))
     if [ "$UI_TTY" = 1 ]; then
         if [ -n "$4" ]; then
@@ -533,6 +553,7 @@ _step_close() { # mark color word detail title
             printf '%s%s ... %s\n' "$_sc_prefix" "$5" "$3" >&2
         fi
     fi
+    _progress_emit step "$STEP_NUM" "$STEP_TOTAL" "$6" "$5" "$4"
     STEP_OPEN=0
 }
 
@@ -540,18 +561,19 @@ _step_close() { # mark color word detail title
 step_done() {
     [ "$STEP_OPEN" = 1 ] || return 0
     if [ -n "${1:-}" ]; then _log_write "DONE $STEP_DONE_TITLE ($1)"; else _log_write "DONE $STEP_DONE_TITLE"; fi
-    _step_close "$MARK_OK" "$GREEN" ok "${1:-}" "$STEP_DONE_TITLE"
+    _step_close "$MARK_OK" "$GREEN" ok "${1:-}" "$STEP_DONE_TITLE" ok
 }
 
 step_fail() {
     [ "$STEP_OPEN" = 1 ] || return 0
     _log_write "FAIL $STEP_TITLE${1:+ ($1)}"
-    _step_close "$MARK_FAIL" "$RED" FAILED "${1:-}" "$STEP_TITLE"
+    _step_close "$MARK_FAIL" "$RED" FAILED "${1:-}" "$STEP_TITLE" fail
 }
 
 step_skip() {
     [ "$STEP_OPEN" = 1 ] || return 0
     _log_write "SKIP $STEP_TITLE"
+    _progress_emit step "$STEP_PROGRESS_N" "$STEP_TOTAL" skip "$STEP_TITLE" ""
     [ "$UI_TTY" = 1 ] && printf '\r\033[K' >&2
     STEP_OPEN=0
 }

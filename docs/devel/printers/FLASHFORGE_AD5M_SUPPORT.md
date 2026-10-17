@@ -33,8 +33,9 @@ Writable state (config, cache) lives under `/data/.helixscreen/`. The dot keeps 
 print-file list, because the vendor firmware exposes all of `/data` as Moonraker's gcodes root.
 
 Hooks live in `assets/config/platform/`. Presets for each variant are in
-`assets/config/presets/ad5m*.json`. A ready-made Forge-X fork with HelixScreen preinstalled is
-published at [prestonbrown/ff5m](https://github.com/prestonbrown/ff5m).
+`assets/config/presets/ad5m*.json`. The user guide recommends upstream Forge-X, with ZMOD (HelixScreen
+switched on by `DISPLAY_OFF HELIX=1`) as the alternative. The `prestonbrown/ff5m` fork with
+HelixScreen preinstalled is unmaintained; installs from it are Forge-X installs.
 
 ZMOD stores the z-offset outside `gcode_move`; see [`../Z_OFFSET_PERSISTENCE.md`](../Z_OFFSET_PERSISTENCE.md).
 

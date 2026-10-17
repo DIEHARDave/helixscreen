@@ -52,6 +52,7 @@ src/api/moonraker_client_mock_gcode.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_gcode_calibration.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_files.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_history.cpp  # not in the v1 Core+AMS cut
+src/api/moonraker_client_mock_layer_pause.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_objects.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_print.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_queue.cpp  # not in the v1 Core+AMS cut
@@ -149,6 +150,7 @@ src/rendering/bed_mesh_rasterizer.cpp  # not in the v1 Core+AMS cut
 src/rendering/bed_mesh_render_thread.cpp  # not in the v1 Core+AMS cut
 src/rendering/bed_mesh_renderer.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_camera.cpp  # not in the v1 Core+AMS cut
+src/rendering/gcode_crease_shading.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_data_source.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_geometry_builder.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_gles_renderer.cpp  # not in the v1 Core+AMS cut
@@ -293,6 +295,7 @@ src/ui/ui_panel_belt_tension.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_pid.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_tool_offset.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_pa.cpp  # not in the v1 Core+AMS cut
+src/ui/ui_overlay_pa_tuning.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_zoffset.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_glyphs.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_input_shaper.cpp  # not in the v1 Core+AMS cut

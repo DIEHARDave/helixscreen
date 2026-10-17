@@ -14,6 +14,7 @@
 #include "ui_ams_slot.h"
 #include "ui_bypass_spool_widget.h"
 #include "ui_filament_path_canvas.h"
+#include "ui_humidity_drop.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_ams.h"
 #include "ui_panel_ams_overview.h"
@@ -314,6 +315,24 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: the panel opens on the overview",
     CHECK(page_count() == 0);
     CHECK(AmsPanelTestAccess::unit_cards(panel()).size() == 12);
     CHECK_FALSE(lv_obj_has_flag(named("unit_cards_row"), LV_OBJ_FLAG_HIDDEN));
+
+    // Each card's drop binds its own unit's humidity subject, not unit 0's.
+    const auto cards = AmsPanelTestAccess::unit_cards(panel());
+    const auto units = AmsPanelTestAccess::unit_card_units(panel());
+    REQUIRE(cards.size() == units.size());
+    for (size_t i = 0; i < cards.size(); ++i) {
+        if (units[i] >= AmsState::MAX_UNITS)
+            continue; // past the cap a card binds the always-off placeholders
+        lv_subject_set_int(AmsState::instance().get_env_ind_humidity_subject(units[i]),
+                           (30 + units[i]) * 10);
+    }
+    for (size_t i = 0; i < cards.size(); ++i) {
+        if (units[i] >= AmsState::MAX_UNITS)
+            continue;
+        lv_obj_t* drop = lv_obj_find_by_name(cards[i], "env_humidity_drop");
+        REQUIRE(drop != nullptr);
+        CHECK(helix::ui::humidity_drop_value(drop) == (30 + units[i]) * 10);
+    }
     CHECK_FALSE(lv_obj_has_flag(named("system_path_area"), LV_OBJ_FLAG_HIDDEN));
     CHECK(lv_obj_has_flag(named("unit_detail_container"), LV_OBJ_FLAG_HIDDEN));
     CHECK_FALSE(lv_obj_has_flag(named("header_title"), LV_OBJ_FLAG_HIDDEN));
@@ -700,6 +719,9 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: the env chip shows the unit on scree
     lv_subject_t* humidity = lv_xml_get_subject(nullptr, "ams_env_ind_detail_humidity_text");
     REQUIRE(humidity != nullptr);
     CHECK(std::string(lv_subject_get_string(humidity)) == "40%");
+    lv_obj_t* drop = lv_obj_find_by_name(view_chip(), "env_humidity_drop");
+    REQUIRE(drop != nullptr);
+    CHECK(helix::ui::humidity_drop_value(drop) == 400);
     // Tapping the chip opens the environment of this unit.
     CHECK(reinterpret_cast<intptr_t>(lv_obj_get_user_data(view_chip())) == kOwnNumberBase + 10);
 

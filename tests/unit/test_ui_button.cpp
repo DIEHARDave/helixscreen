@@ -21,6 +21,8 @@
 #include "../ui_test_utils.h"
 #include "theme_manager.h"
 
+#include <algorithm>
+#include <cstdlib>
 #include <cstring>
 
 #include "../catch_amalgamated.hpp"
@@ -697,6 +699,39 @@ TEST_CASE_METHOD(UiButtonTestFixture, "ui_button label follows label_hidden_subj
     lv_subject_deinit(&labels);
 }
 
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button label follows label_hidden_cond",
+                 "[ui_button][xml][label_hidden]") {
+    // Static: the XML scope keeps the names after the test, so the storage must outlive it.
+    static lv_subject_t portrait{};
+    static lv_subject_t tier{};
+    lv_subject_init_int(&portrait, 0);
+    lv_subject_init_int(&tier, 2);
+    lv_xml_register_subject(nullptr, "test_cond_portrait", &portrait);
+    lv_xml_register_subject(nullptr, "test_cond_tier", &tier);
+
+    const char* attrs[] = {"icon",
+                           "stop",
+                           "text",
+                           "Stop",
+                           "label_hidden_cond",
+                           "test_cond_portrait eq 1 and test_cond_tier lt 4",
+                           nullptr};
+    lv_obj_t* btn = create_button(attrs);
+    REQUIRE(btn != nullptr);
+    lv_obj_t* label = text_label(btn);
+    REQUIRE(label != nullptr);
+
+    CHECK_FALSE(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(&portrait, 1);
+    CHECK(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(&tier, 5);
+    CHECK_FALSE(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+
+    lv_obj_delete(btn);
+    lv_subject_deinit(&portrait);
+    lv_subject_deinit(&tier);
+}
+
 TEST_CASE_METHOD(UiButtonTestFixture, "ui_button label_hidden_if_bp_eq follows ui_breakpoint",
                  "[ui_button][xml][label_hidden]") {
     lv_subject_t* bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
@@ -1172,4 +1207,36 @@ TEST_CASE_METHOD(UiButtonTestFixture, "ui_button column holds a measured minimum
         lv_obj_remove_style(btn, &content_min, LV_PART_MAIN);
     }
     lv_obj_delete(row);
+}
+
+TEST_CASE_METHOD(UiButtonTestFixture,
+                 "ui_button centres XML children laid out by flex_flow on both axes",
+                 "[ui_button][layout]") {
+    const char* flow = GENERATE("row", "column");
+    CAPTURE(flow);
+    const char* attrs[] = {"width", "200", "height", "80", "flex_flow", flow, nullptr};
+    lv_obj_t* btn = create_button(attrs);
+    REQUIRE(btn != nullptr);
+    lv_obj_t* a = lv_obj_create(btn);
+    lv_obj_set_size(a, 20, 20);
+    lv_obj_t* b = lv_obj_create(btn);
+    lv_obj_set_size(b, 30, 20);
+    lv_obj_update_layout(test_screen());
+
+    lv_area_t box;
+    lv_obj_get_content_coords(btn, &box);
+    int32_t top = INT32_MAX, bottom = INT32_MIN, left = INT32_MAX, right = INT32_MIN;
+    for (lv_obj_t* child : {a, b}) {
+        lv_area_t c;
+        lv_obj_get_coords(child, &c);
+        top = std::min(top, c.y1);
+        bottom = std::max(bottom, c.y2);
+        left = std::min(left, c.x1);
+        right = std::max(right, c.x2);
+    }
+    // The children's bounding box sits in the middle of the content box, within
+    // a pixel of rounding, so a row of icon + caption lines up with a text button.
+    CHECK(std::abs((top - box.y1) - (box.y2 - bottom)) <= 1);
+    CHECK(std::abs((left - box.x1) - (box.x2 - right)) <= 1);
+    lv_obj_delete(btn);
 }

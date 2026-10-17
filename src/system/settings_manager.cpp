@@ -132,6 +132,9 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
     // Bed tab: mm below which a move lifts Z before travelling
     {"settings_bed_map_clearance", "motion/bed_map_clearance", Scope::PerPrinter, false, 5,
      BED_MAP_CLEARANCE_MIN_MM, BED_MAP_CLEARANCE_MAX_MM, "bed_map_clearance"},
+    // MotionLayout: 0=Pad, 1=Arrows, 2=ArrowsHome, 3=AxisRows
+    {"settings_motion_layout", "motion/layout", Scope::PerPrinter, false, 0, 0,
+     MOTION_LAYOUT_COUNT - 1, "motion_layout"},
     // QIDI Box eject distance magnitude in mm, negated when assembled into FORCE_MOVE
     {"settings_qidi_eject_distance", "ams/qidi_eject_distance", Scope::PerPrinter, false, 878, 100,
      2000, "qidi_eject_distance"},
@@ -178,6 +181,10 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
     // Per-printer: the detector only exists on the U1.
     {"detection_policy_u1", "detection/policy_u1", Scope::PerPrinter, false, 2, 0, 2,
      "detection_policy_u1"},
+    // helix::zoffset::SaveMode: 0=Auto (off when each tool keeps its own Z
+    // offset), 1=Show, 2=Hide. #1766
+    {"settings_z_offset_save_mode", "z_offset/save_mode", Scope::PerPrinter, false, 0, 0, 2,
+     "z_offset_save_mode"},
 };
 
 SettingsManager& SettingsManager::instance() {

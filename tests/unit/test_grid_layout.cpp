@@ -458,6 +458,7 @@ TEST_CASE("PanelWidgetDef: half-cell capability is classified per widget",
         {"tips", {true, true}},              // wrapping body text
         {"job_queue", {true, true}},         // list rows
         {"print_stats", {true, true}},       // stat rows
+        {"display_message", {true, true}},   // one scrolling line to wrapped text
         {"ams", {true, true}},               // lane slots side by side
         {"active_spool", {true, true}},      // measured compact/wide switch
         {"nozzle_temps", {true, true}},      // decide_nozzle_layout() is measured

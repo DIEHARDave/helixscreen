@@ -1132,6 +1132,8 @@ Semantic button with variant-based styling and auto-contrast text.
 
 **Built-in defaults:** Responsive `button_height` (48/52/72px), `border_radius`, auto-contrast text color
 
+**XML children:** A `ui_button` with no `icon`, no `text` and no layout of its own takes its children from XML and centres them on every axis, so a `flex_flow` row of icon plus caption lines up with a text button beside it. `style_flex_*` attributes on the button override the centring.
+
 **Reactive text with subject binding:**
 
 `ui_button` supports two ways to bind text to a subject:
@@ -1172,6 +1174,7 @@ button outgrows a small panel. Both need the button to carry an icon and a label
 | `stacked_subject="S"` + `stacked_if_eq="N"` | Stacks the button as above while int subject `S` equals `N`, and returns it to the row layout otherwise, following `S` live. The subject spelling of `stacked_if_bp_lte`, for a condition the breakpoint alone does not express: point it at a `<subject_expr>`. An empty `S` installs no binding. From ui_xml/components/ams_sidebar.xml, whose `ams_actions_stacked` stacks the action buttons in landscape and in narrow portrait cells and lays them icon-beside-label in a portrait 2x2 cell. |
 | `label_hidden_if_bp_eq="N"` | Hides the button's label while `ui_breakpoint == N`, collapsing it to icon-only; every other rung shows the label. The `ui_breakpoint` spelling of the pair below. |
 | `label_hidden_subject="S"` + `label_hidden_if_eq="N"` | Hides the label while int subject `S` equals `N`. An empty `S` installs no binding. From ui_xml/components/panel_widget_control_buttons.xml, where the widget folds the breakpoint rule into its own measured subject. |
+| `label_hidden_cond="EXPR"` | Hides the label while the expression is nonzero, e.g. `ui_is_portrait eq 1 and ui_breakpoint lt 4`. Names resolve in the button's own scope, so globals like `ui_breakpoint` work from inside a nested component. The header bar's secondary button forwards it as `action_button_2_label_hidden_cond`. Use one label-hiding form per button: each binding writes the same label flag, so with two the most recent change wins. |
 
 Give each label one writer: a widget that measures whether its label fits should fold the breakpoint rule into its own subject rather than set both attributes. The same holds for stacking: set `stacked_if_bp_lte` or `stacked_subject`, never both, or the two observers fight over the layout.
 
@@ -1290,7 +1293,7 @@ The widget is registered via `ui_markdown_init()` in `xml_registration.cpp`. Thi
 
 #### home_action_tile
 
-One centred icon over one label, filling its cell (`ui_xml/components/home_action_tile.xml`). The home action tiles and every cell of the Controls panel's Calibration & Tools card, plus Motors Off on its Position card, are built from it, so a row of them aligns by construction. Extend its props rather than hand-building a look-alike cell.
+One centred icon over one label, filling its cell (`ui_xml/components/home_action_tile.xml`). The home action tiles and every cell of the Controls panel's Calibration & Tools card (through `calib_tile.xml`, which sizes the cell), plus Motors Off on its Position card, are built from it, so a row of them aligns by construction. Extend its props rather than hand-building a look-alike cell.
 
 | Prop | Default | Purpose |
 |------|---------|---------|

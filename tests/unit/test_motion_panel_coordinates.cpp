@@ -223,7 +223,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "motion bounds follow the gcode origin, not 
 
     helix::TextLogCapture log;
     lv_obj_send_event(z_up_small, LV_EVENT_PRESSED, nullptr);
-    REQUIRE(panel.z_hold_timer().poll(helix::HoldRepeat::DELAY_MS));
+    REQUIRE(panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS));
     const std::string blob = log.get_captured();
     CHECK(blob.find("Z jog: +0.42mm") != std::string::npos);
 

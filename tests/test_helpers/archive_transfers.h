@@ -29,6 +29,10 @@ class ArchiveTransfers : public MoonrakerFileTransferAPIMock {
         files_[path] = std::move(bytes);
     }
 
+    bool supports_range_reads() const override {
+        return ranged;
+    }
+
     void download_file_range(const std::string& root, const std::string& path, uint64_t offset,
                              size_t len, StringCallback on_success, ErrorCallback on_error,
                              CancelFlag cancelled = nullptr) override {
@@ -101,6 +105,7 @@ class ArchiveTransfers : public MoonrakerFileTransferAPIMock {
         on_success(dest_path);
     }
 
+    bool ranged = true; ///< What supports_range_reads() answers
     int ranges = 0;
     int tails = 0;
     size_t range_bytes = 0;

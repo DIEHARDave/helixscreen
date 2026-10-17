@@ -4,10 +4,12 @@
 
 #include "ui_error_reporting.h"
 
+#include "config.h"
 #include "filament_database.h"
 #include "format_utils.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "pa_tuning.h"
 #include "spdlog/spdlog.h"
 
 #include <algorithm>
@@ -50,6 +52,39 @@ void set_flow_percent(IMoonrakerAPI* api, int pct) {
             spdlog::error("[TuneController] Failed to set flow: {}", err.message);
             helix::ui::notify_error_tr(TR_NOOP("Failed to set flow rate: {}"), err);
         });
+}
+
+bool pressure_advance_enabled() {
+    auto* config = Config::get_instance();
+    return config && config->is_beta_features_enabled();
+}
+
+void set_pressure_advance(IMoonrakerAPI* api, const std::string& extruder, float k) {
+    if (!api || extruder.empty()) {
+        return;
+    }
+    const float value = helix::pa::clamp_k(k);
+    api->execute_gcode(
+        helix::pa::set_pa_gcode(extruder, value),
+        [extruder, value]() {
+            spdlog::debug("[TuneController] Pressure advance on {} set to {:.4f}", extruder, value);
+        },
+        [](const MoonrakerError& err) {
+            spdlog::error("[TuneController] Failed to set pressure advance: {}", err.message);
+            helix::ui::notify_error_tr(TR_NOOP("Failed to set pressure advance: {}"), err);
+        });
+}
+
+std::optional<float> pressure_advance_from_subject(int value) {
+    if (value < 0) {
+        return std::nullopt;
+    }
+    return static_cast<float>(value) / 10000.0f;
+}
+
+std::string pressure_advance_text(int subject_value) {
+    const auto k = pressure_advance_from_subject(subject_value);
+    return k ? helix::pa::format_k(*k) : std::string("--");
 }
 
 double volumetric_flow_mm3_s(int extruder_velocity_centimm_s, float filament_diameter_mm) {

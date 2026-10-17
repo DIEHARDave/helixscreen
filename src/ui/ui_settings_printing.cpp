@@ -59,6 +59,11 @@ void PrintingSettingsOverlay::register_callbacks() {
                  PostOpCooldownManager::instance().cancel();
              }
          }},
+        {"on_tool_change_confirm_changed",
+         [](lv_event_t* e) {
+             SafetySettingsManager::instance().set_tool_change_require_confirmation(
+                 event_checked(e));
+         }},
         {"on_filament_auto_open_editor_changed",
          [](lv_event_t* e) {
              SettingsManager::instance().set_filament_auto_open_editor(event_checked(e));

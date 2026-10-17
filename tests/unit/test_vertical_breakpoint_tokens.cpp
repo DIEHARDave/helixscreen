@@ -52,8 +52,7 @@ constexpr HeightToken HEIGHT_TOKENS[] = {
     {"button_height", "32", "52", "72", "96"},
     {"button_height_sm", "28", "40", "40", "56"},
     {"button_height_lg", "40", "70", "96", "128"},
-    {"header_height", "32", "56", "60", "80"},
-    {"input_height", "48", "52", "56", "64"},
+    {"header_height", "33", "56", "60", "80"},
     {"temp_card_height", "48", "72", "80", "112"},
     {"dialog_content_max", "200", "320", "440", "800"},
     {"dialog_content_recovery_max", "179", "276", "352", "642"},
@@ -171,6 +170,22 @@ TEST_CASE_METHOD(XMLTestFixture, "A tall portrait panel gets full-height control
     CHECK(resolved(tokens, "field_w_num") == "76"); // no _tiny → falls back to _small
 
     lv_display_delete(d);
+}
+
+TEST_CASE_METHOD(XMLTestFixture,
+                 "A text field is sized for the font it holds, not the screen height",
+                 "[theme][breakpoints][input_height]") {
+    // Body text follows the cramped axis, so the field holding it does too: a
+    // narrow portrait panel keeps a one-line field instead of a tall empty box.
+    CHECK_FALSE(theme_manager_token_uses_vertical_axis("input_height"));
+
+    lv_display_t* narrow = make_test_display(272, 480);
+    CHECK(resolved(theme_manager_resolve_px_tokens(narrow), "input_height") == "32"); // _micro
+    lv_display_delete(narrow);
+
+    lv_display_t* tall = make_test_display(320, 1480);
+    CHECK(resolved(theme_manager_resolve_px_tokens(tall), "input_height") == "48"); // _tiny
+    lv_display_delete(tall);
 }
 
 TEST_CASE_METHOD(XMLTestFixture, "Landscape token resolution is byte-identical to before",

@@ -181,8 +181,8 @@ TEST_CASE("motion panel fills the header slot and carries the portrait strip", "
     for (const char* btn : {"z_up_large", "z_up_small", "z_down_small", "z_down_large"}) {
         CHECK(xml.find(std::string("name=\"") + btn + "\"") != std::string::npos);
     }
-    CHECK(xml.find(std::string("bind_text=\"motion_z_large_label\"")) != std::string::npos);
-    CHECK(xml.find(std::string("bind_text=\"motion_z_small_label\"")) != std::string::npos);
+    CHECK(xml.find(std::string("label=\"motion_jog_outer_label\"")) != std::string::npos);
+    CHECK(xml.find(std::string("label=\"motion_jog_inner_label\"")) != std::string::npos);
     // The full-width Z row and its unit label must not come back: portrait
     // stacks the Z controls beside the pad, not under it.
     CHECK(xml.find("name=\"z_row\"") == std::string::npos);

@@ -198,6 +198,20 @@ The mock answers `printer.objects.subscribe` itself, without the real discovery 
 union subscription; that path is covered by the real-sequence unit tests (the `[subscription]`
 tag).
 
+### `HELIX_MOCK_DISPLAY_MESSAGE`
+
+Start the mock printer with a `display_status.message` (M117) already set, as a printer whose macros left one before the screen connected. It counts as a sent M117: it shows until the next M117 replaces it or a bare `M117` clears it, and it takes precedence over the print-start chatter. Without it, an idle mock publishes no message, and a print's preheat publishes what a typical `PRINT_START` macro shows for each step ("Homing...", "Heating bed...", "Heating nozzle...", "Leveling Gantry...", "Calibrating bed mesh...", "Purging nozzle"; `MoonrakerClientMock::print_start_display_message`).
+
+| Property | Value |
+|----------|-------|
+| **Values** | any text; empty sets nothing |
+| **Default** | unset (no message while idle) |
+| **File** | `src/api/moonraker_client_mock.cpp` |
+
+```bash
+HELIX_MOCK_DISPLAY_MESSAGE="Nozzle wiped, ready" ./build/bin/helix-screen --test -vv
+```
+
 ### `HELIX_MOCK_AUTO_PRINT`
 
 Boot the mock printer straight into an active print so print-gated features can be exercised under `--test` without manually driving a print-start flow.
@@ -239,6 +253,22 @@ The mock client connects over loopback, which always reads as same-host — this
 
 ```bash
 HELIX_MOCK_REMOTE_PRINTER=1 ./build/bin/helix-screen --test -vv
+```
+
+### `HELIX_MOCK_HOME_LAYOUT`
+
+**Published home layout:** Pre-seeds the mock Moonraker database's `helix-screen` / `home_layout` record, the one a printer's own screen publishes its home layout to.
+
+| Property | Value |
+|----------|-------|
+| **Values** | Path to a JSON file holding the published payload (`schema`, `grid`, `main_page_index`, `pages`) |
+| **Default** | unset (no layout published) |
+| **File** | `src/api/moonraker_client_mock.cpp` (constructor); payload shape in `include/home_layout_share.h` |
+
+Pair it with `HELIX_MOCK_REMOTE_PRINTER=1` and a fresh `HELIX_CONFIG_DIR` to watch a new remote client seed its home layout; an unreadable file logs a warning and publishes nothing.
+
+```bash
+HELIX_MOCK_REMOTE_PRINTER=1 HELIX_MOCK_HOME_LAYOUT=/tmp/layout.json ./build/bin/helix-screen --test -vv
 ```
 
 #### Seeing the Adaptive Bed Mesh toggle
@@ -389,6 +419,28 @@ File: `src/api/moonraker_client_mock_skips.cpp`.
 
 ```bash
 HELIX_MOCK_SKIP_WRAPPERS=1 ./build/bin/helix-screen --test -vv   # default persona: Voron 2.4
+```
+
+### `HELIX_MOCK_LAYER_PAUSE`
+
+The client.cfg layer-pause macros (`SET_PAUSE_NEXT_LAYER`, `SET_PAUSE_AT_LAYER`
+and the `SET_PRINT_STATS_INFO` wrapper holding their state), so the Pause at
+Layer modal on the print status panel can be driven under `--test`
+(`include/layer_pause.h`, prestonbrown/helixscreen#1703).
+
+| Property | Value |
+|----------|-------|
+| Values | `0`/`false`/`no`/`off` = absent; anything else, or unset, = present |
+| Default | present |
+| Affects | the objects list, `gcode_macro SET_PRINT_STATS_INFO` status (`pause_next_layer`, `pause_at_layer`), the simulated print (pauses at the scheduled layer), `CANCEL_PRINT` (clears both) |
+
+The macros mirror the client.cfg bodies: `ENABLE` defaults to 1 for
+`SET_PAUSE_NEXT_LAYER`, and to "was `LAYER` given" for `SET_PAUSE_AT_LAYER`.
+Set it to `0` to see the print status panel of a printer without them, where the
+layer readout is not tappable. File: `src/api/moonraker_client_mock_layer_pause.cpp`.
+
+```bash
+HELIX_MOCK_AUTO_PRINT=1 ./build/bin/helix-screen --test --sim-speed 6 -vv   # tap the layer readout
 ```
 
 ### `HELIX_MOCK_MOONRAKER_VERSION`
@@ -1301,7 +1353,7 @@ Force the mock filament unit's environment-sensor mode, overriding the auto-dete
 
 | Property | Value |
 |----------|-------|
-| **Values** | `passive`, `dryer`, `slot`, `emu`, `mixed`, `capped` (lowercased before use). Any other value leaves the unit with **no** environment sensors. |
+| **Values** | `passive`, `dryer`, `slot`, `emu`, `emu_dryer`, `mixed`, `capped` (lowercased before use). Any other value leaves the unit with **no** environment sensors. |
 | **Default** | Unset — auto: `dryer` when `HELIX_MOCK_DRYER` is on, otherwise `passive` |
 | **File** | `src/printer/ams_backend.cpp` (applied via `AmsBackendMock::set_environment_mode`) |
 
@@ -1325,6 +1377,7 @@ presentation branch has something to exercise. They pair with `HELIX_MOCK_AMS=mu
 | `emu` | default single unit | 4 passive lanes | `Tabs` |
 | `mixed` | `HELIX_MOCK_AMS=multi` | 1 heated unit zone + 2 passive lane zones | `List` (capability split) |
 | `capped` | `HELIX_MOCK_AMS=multi` | 2 heated unit zones, one Active one Queued | `Tabs` |
+| `emu_dryer` | default single unit | 4 heated lanes; the dryer takes a lane selection and rotation, lane chips in the overlay and a drying badge on each slot. A cycle is running at start: lane 1 Active, lane 2 Queued, lane 3 Complete | `Tabs` |
 
 ```bash
 # 6-lane EMU rig, forced to the list presentation
@@ -1332,6 +1385,9 @@ HELIX_MOCK_AMS=multi HELIX_MOCK_AMS_ENV=emu ./build/bin/helix-screen --test -vv
 
 # Two heated boxes sharing one heater's worth of power: the second zone queues
 HELIX_MOCK_AMS=multi HELIX_MOCK_AMS_ENV=capped ./build/bin/helix-screen --test -vv
+
+# A heater per lane: pick lanes to dry, watch each slot's drying badge
+HELIX_MOCK_AMS_ENV=emu_dryer ./build/bin/helix-screen --test -vv
 ```
 
 ### `HELIX_MOCK_BUFFER_STATE`

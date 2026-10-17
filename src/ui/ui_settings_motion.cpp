@@ -13,6 +13,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "settings_manager.h"
 #include "static_panel_registry.h"
+#include "z_offset_utils.h"
 
 #include <spdlog/spdlog.h>
 
@@ -180,8 +181,17 @@ void MotionSettingsOverlay::register_callbacks() {
                  spdlog::warn("[MotionSettingsOverlay] Ignoring out-of-range field index {}", raw);
              }
          }},
+        {"on_motion_layout_changed",
+         [](lv_event_t* e) {
+             const int index = helix::ui::event_selected(e);
+             if (index >= 0 && index < MOTION_LAYOUT_COUNT) {
+                 SettingsManager::instance().set_motion_layout(static_cast<MotionLayout>(index));
+             }
+         }},
         {"on_reset_distances",
          [](lv_event_t*) { get_motion_settings_overlay().handle_reset_distances(); }},
+        {"on_z_offset_save_toggled",
+         [](lv_event_t* e) { helix::zoffset::set_save_enabled(ui::event_checked(e)); }},
     });
 }
 

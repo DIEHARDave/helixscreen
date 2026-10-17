@@ -86,7 +86,8 @@ class SpoolmanManager {
      *
      * A save the user just made is the one moment a lane's Spoolman record is
      * known stale, and the poll would leave it that way for up to its interval.
-     * This is one request per slot linked to @p spool_id, so it is not gated on
+     * This is one request per lane linked to @p spool_id, the external spool's
+     * bypass lane included, so it is not gated on
      * the poll timer, the debounce or the circuit breaker, and it does not
      * write the debounce clock: none of those pace a single deliberate read.
      *
@@ -123,6 +124,10 @@ class SpoolmanManager {
      * Called with mutex_ held, which is what makes api_ safe to read.
      */
     void fetch_linked_slot(int backend_index, int slot_index, int spoolman_id);
+
+    /// fetch_linked_slot() for the external spool: files the answer on the
+    /// bypass lane and the stored record. Called with mutex_ held.
+    void fetch_linked_external_spool(int ext_spoolman_id);
 
   public:
     // ========================================================================

@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "../tests/mocks/mock_printer_state.h"
+#include "gcode_parser.h"
 #include "moonraker_client_mock.h"
 #include "moonraker_client_mock_internal.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -721,6 +723,7 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_resume(const std::st
 // CANCEL_PRINT - Cancel current print
 MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_cancel_print(const std::string&) {
     cancel_print_internal();
+    reset_layer_pause();
     return std::nullopt;
 }
 
@@ -829,6 +832,39 @@ MoonrakerClientMock::gcode_set_fan_speed(const std::string& gcode) {
 }
 
 // LED control - SET_LED LED=<name> RED=<0-1> GREEN=<0-1> BLUE=<0-1> [WHITE=<0-1>]
+MoonrakerClientMock::PressureAdvance
+MoonrakerClientMock::pressure_advance_for(const std::string& extruder) const {
+    std::lock_guard<std::mutex> lock(pressure_advance_mutex_);
+    auto it = pressure_advance_.find(extruder);
+    return it == pressure_advance_.end() ? PressureAdvance{} : it->second;
+}
+
+MoonrakerClientMock::GcodeResult
+MoonrakerClientMock::gcode_set_pressure_advance(const std::string& gcode) {
+    // Klipper defaults EXTRUDER to the active one; the mock prints on "extruder".
+    const std::string extruder =
+        helix::gcode::gcode_param_value(gcode, "EXTRUDER").value_or("extruder");
+    PressureAdvance pa = pressure_advance_for(extruder);
+    if (auto v = helix::gcode::gcode_param_value(gcode, "ADVANCE")) {
+        pa.advance = std::max(0.0, std::strtod(v->c_str(), nullptr));
+    }
+    if (auto v = helix::gcode::gcode_param_value(gcode, "SMOOTH_TIME")) {
+        pa.smooth_time = std::max(0.0, std::strtod(v->c_str(), nullptr));
+    }
+    {
+        std::lock_guard<std::mutex> lock(pressure_advance_mutex_);
+        pressure_advance_[extruder] = pa;
+    }
+    spdlog::info("[MoonrakerClientMock] SET_PRESSURE_ADVANCE {} ADVANCE={:.4f} SMOOTH_TIME={:.4f}",
+                 extruder, pa.advance, pa.smooth_time);
+    dispatch_status_update(
+        {{extruder, {{"pressure_advance", pa.advance}, {"smooth_time", pa.smooth_time}}}});
+    // Klipper's own acknowledgement, so console consumers see the same text.
+    dispatch_gcode_response(fmt::format("pressure_advance: {:.6f}", pa.advance));
+    dispatch_gcode_response(fmt::format("pressure_advance_smooth_time: {:.6f}", pa.smooth_time));
+    return std::nullopt;
+}
+
 MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_set_led(const std::string& gcode) {
     // Parse LED name
     std::string led_name;
@@ -1146,6 +1182,7 @@ int MoonrakerClientMock::gcode_script(const std::string& raw_gcode) {
     GcodeResult r;
 
     gcode_skip_wrappers(g);
+    gcode_layer_pause(g);
     if (is_mock_ifs_module() && (r = gcode_ifs_module(g))) {
         return *r;
     }
@@ -1273,7 +1310,7 @@ int MoonrakerClientMock::gcode_script(const std::string& raw_gcode) {
         dispatch_measure_axes_noise_response();
     }
     if (has_token(g, "SET_PRESSURE_ADVANCE")) {
-        spdlog::warn("[MoonrakerClientMock] STUB: SET_PRESSURE_ADVANCE NOT IMPLEMENTED");
+        gcode_set_pressure_advance(g);
     }
     if (has_token(g, "SET_LED")) {
         gcode_set_led(g);
