@@ -794,16 +794,21 @@ TEST_CASE("A fresh dispatch does not inherit the previous swap's gripper latch",
 // Wording and refusals
 // ============================================================================
 
-TEST_CASE("A MedusaHC changer loads and unloads filament by hand", "[ams][toolchanger][labels]") {
-    // Until its feed command is known, MedusaHC is a no-feed changer: the
-    // sidebar offers Mount and Park, and Load/Unload explain themselves.
+TEST_CASE("Discovery makes a MedusaHC changer load and unload through the carriage",
+          "[ams][toolchanger][labels][mount_feed]") {
+    // One extruder drive serves every tool, so a load mounts the tool first;
+    // to the UI it is simply an automatic Load and Unload.
     ToolChangerHelper tc(2);
-    tc.set_tool_sensor(toolchanger_addon::resolve_tool_sensor(medusahc_discovery()));
+    tc.set_discovery(medusahc_discovery());
     const auto ops = tc.head_filament_ops(0);
-    CHECK(ops.load == FilamentOpSupport::Manual);
-    CHECK(ops.unload == FilamentOpSupport::Manual);
-    CHECK_FALSE(ops.load_reason.empty());
+    CHECK(ops.load == FilamentOpSupport::Automatic);
+    CHECK(ops.unload == FilamentOpSupport::Automatic);
     CHECK(tc.carriage_can_be_empty());
+    CHECK(tc.load_feeds_filament());
+
+    // A plain klipper-toolchanger keeps filament by hand.
+    ToolChangerHelper plain(2);
+    CHECK(plain.head_filament_ops(0).load == FilamentOpSupport::Manual);
 }
 
 TEST_CASE("A blocked unmount explains itself only when it can", "[ams][toolchanger][labels]") {

@@ -1852,7 +1852,8 @@ their head from the runout itself: `FilamentSensorManager::real_runout_lane()` t
 | Happy Hare, AFC (one extruder), ACE, CFS, QIDI, AD5X IFS, OpenAMS | 1 | Automatic |
 | Snapmaker U1, multiACE | 4 | Automatic, batch of 4; a multiACE bay maps to its routed head |
 | Creator 5 with the afclite feed | one per tool | Load Automatic (the feed), Unload Manual (cut at the head) |
-| klipper-toolchanger with no feed, MedusaHC | one per tool | Manual: the sidebar shows Mount and Park |
+| MedusaHC (one extruder drive) | one per tool | Automatic: the backend mounts the tool, heats, prompts the operator, purges and restores the carriage ([FILAMENT_BACKEND_MEDUSAHC.md](FILAMENT_BACKEND_MEDUSAHC.md#loading-and-unloading-filament)) |
+| klipper-toolchanger with no feed | one per tool | Manual: the sidebar shows Mount and Park |
 
 ### The dispatch ladder
 

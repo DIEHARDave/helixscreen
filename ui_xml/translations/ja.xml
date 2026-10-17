@@ -1245,6 +1245,7 @@
   <translation tag="Feed filament" ja="フィラメントを送る"/>
   <translation tag="Feed filament directly to extruder" ja="フィラメントをエクストルーダーに直接供給"/>
   <translation tag="Feed filament from current slot" ja="現在のスロットからフィラメントを送る"/>
+  <translation tag="Feed filament into {}&apos;s extruder, then tap Continue" ja="{}の押出機にフィラメントを差し込み、続行をタップしてください"/>
   <translation tag="Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload" ja="フィラメントを手でセンサー先まで挿入して「再開」を押してください。または印刷をキャンセルして「装填」「排出」を使用してください"/>
   <translation tag="Feeder" ja="フィーダー"/>
   <translation tag="Feeders" ja="フィーダー"/>
@@ -1921,6 +1922,7 @@
   <translation tag="Motors disabled" ja="モーターを無効化しました"/>
   <translation tag="Motors stay on while a print is active" ja="印刷中はモーターを停止できません"/>
   <translation tag="Mount" ja="装着"/>
+  <translation tag="Mount tool" ja="ツールを装着"/>
   <translation tag="Mount which tool?" ja="どのツールを装着しますか？"/>
   <translation tag="Mount..." ja="装着..."/>
   <translation tag="Move" ja="移動"/>
@@ -2682,6 +2684,7 @@
   <translation tag="Restarting with the new version..." ja="新しいバージョンで再起動中..."/>
   <translation tag="Restarting..." ja="再起動中..."/>
   <translation tag="Restore Defaults" ja="デフォルトに戻す"/>
+  <translation tag="Restore tool" ja="ツールを元に戻す"/>
   <translation tag="Restoring position" ja="位置を復元中"/>
   <translation tag="Resume" ja="再開"/>
   <translation tag="Resume Print" ja="印刷を再開"/>

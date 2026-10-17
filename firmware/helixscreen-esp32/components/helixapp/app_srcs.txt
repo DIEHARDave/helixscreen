@@ -202,6 +202,7 @@ src/printer/macro_executor.cpp
 src/printer/macro_param_cache.cpp
 src/printer/macro_param_defaults.cpp
 src/printer/macro_params.cpp
+src/printer/mount_feed_sequence.cpp
 src/printer/pause_cause.cpp
 src/printer/printer_discovery.cpp
 src/printer/printer_discovery_parse.cpp

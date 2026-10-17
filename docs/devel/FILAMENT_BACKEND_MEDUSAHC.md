@@ -80,7 +80,7 @@ them** - there is no macros-only deployment, so `[medusahc]` is always present.
 
 | | Source | Objects | Status schema | Feeder macros |
 |---|---|---|---|---|
-| **(a) Irbis3D Python controller** | [Irbis3D/MedusaHC-Python-Controller](https://github.com/Irbis3D/MedusaHC-Python-Controller) `klippy/extras/medusahc.py` | `[pin_watch io]`, `[toolchanger]`, `[tool T0..3]`, `[medusahc]` | `operation`, `current_tool`, `target_tool`, `last_error`, `feeder_open`, `layer`, `sensor_error`, `tool_count`, `sensors` | `MHC_OPEN` / `MHC_CLOSE`, plus legacy aliases |
+| **(a) Irbis3D Python controller** | [Irbis3D/MedusaHC-Python-Controller](https://github.com/Irbis3D/MedusaHC-Python-Controller) `klippy/extras/medusahc.py` | `[pin_watch io]`, `[toolchanger]`, `[tool T0..3]`, `[medusahc]` | `operation`, `current_tool`, `target_tool`, `last_error`, `feeder_open`, `layer`, `sensor_error`, `tool_count`, `sensors` | `MHC_OPEN` / `MHC_CLOSE`, plus the `OPEN` / `CLOSE` aliases HelixScreen sends |
 | **(b) topi314's fork** | [topi314/MedusaHC](https://github.com/topi314/MedusaHC) `scripts/medusahc.py` | `[medusahc]` **alone** - drops both `[pin_watch]` and `[toolchanger]` | `state`, `current_tool`, `target_tool`, `tool_count`, `feeder_open`, `error` (bool), `layer`, `head_loaded`, flat `toolN_docked`, plus calibration fields | `OPEN` / `CLOSE` |
 
 Object presence cannot separate the two - both register `[medusahc]` - so
@@ -123,10 +123,55 @@ the only thing in the way. `[pin_watch io]` is staying upstream, so a machine wi
 `[medusahc]` stays the exception - but it is an exception someone is running today, and the
 object alone is now enough to claim it.
 
-Feeder macro selection is capability-driven rather than hardcoded: `MHC_OPEN`/`MHC_CLOSE`
-when discovery sees those macros, else `OPEN`/`CLOSE`. Irbis3D ships legacy `OPEN`/`CLOSE`
-aliases forwarding to `MHC_*`, so either works there; preferring the native command is what
-keeps the fork - which registers only `OPEN`/`CLOSE` - working off the same rule.
+The feeder buttons send the plain `OPEN` / `CLOSE` on every configuration. Irbis3D's
+controller ships them as aliases forwarding to its `MHC_*` commands, the stock config and
+topi314's fork register only those names, and they work on a parked tool. Irbis3D's
+controller is the one HelixScreen builds against; the fork stays supported as a fallback.
+
+## Loading and unloading filament
+
+MedusaHC has one extruder drive serving every tool, so filament moves only through the tool
+on the carriage. `toolchanger_addon::feeds_through_mount()` (the provider row's
+`feeds_through_mount`) says so, `AmsBackendToolChanger::set_discovery()` sets
+`mounts_to_feed_`, and the backend answers `head_filament_ops()` Automatic in both
+directions with `needs_mount_to_feed()` true. To every surface it is a plain Load and
+Unload; the mounting happens inside the operation.
+
+`include/mount_feed_sequence.h` builds the stages; `AmsBackendToolChanger::start_mount_feed()`
+sends them one at a time, each on the previous one's ack, as ONE `LOADING` or `UNLOADING`
+operation whose step bar is the stage list:
+
+| Load | Gcode | Unload | Gcode |
+|------|-------|--------|-------|
+| Mount tool | `SELECT_TOOL T=<n>` (or the machine's own `T<n>`); skipped when already mounted | Mount tool | same |
+| Heat nozzle | `M109 S<material temp>` (the target slot's material, else 220) | Heat nozzle | same |
+| Feed filament | an action prompt: "Feed filament into Tool N's extruder, then tap Continue", with Continue and Cancel | Retract filament | `M83`, `G1 E-25 F1800`, `G1 E-150 F1200`, `M104 S0` |
+| Purge | `M83`, `G1 E5 F60`, `G1 E50 F300` twice, `G1 E-10 F1800`, `M104 S0` | Release filament | the feeder's open command (`OPEN`) |
+| Restore tool | remount the tool that was on the carriage, or park if none was | Restore tool | same |
+
+The prompt is Klipper's own action prompt, raised with `RESPOND TYPE=command` lines, so it
+shows on this screen and on Mainsail/Fluidd alike, and it needs `[respond]`. Its buttons
+answer with `RESPOND TYPE=command MSG=HELIX_MOUNT_FEED_CONTINUE` / `..._CANCEL`; the backend
+watches the console for that exact echo (`mount_feed::parse_reply()`). The sidebar's Cancel
+(`AmsBackendToolChanger::cancel()`) and the prompt's Cancel both turn the rest of the run
+into the cleanup: prompt closed, `M104 S0`, carriage restored. A stage that fails does the
+same; Klipper's own error line reports the failure.
+
+**Macro first.** When the printer defines `LOAD_FILAMENT` / `UNLOAD_FILAMENT` taking `T=`
+(read from the macro's template through `MacroParamCache`, `mount_feed::macro_takes_tool()`),
+the feed or retract stage calls `LOAD_FILAMENT T=<n> TEMP=<t>` / `UNLOAD_FILAMENT T=<n>`
+instead of the built-in moves. topi314's macros (github.com/topi314/klipper, branch
+`ducr10`, `macros/filament.cfg`) are that shape. Stock MedusaHC has none.
+
+While a run is active its stage owns the published action and step: the swap frames its
+Mount and Restore stages raise (`operation`, the gripper) do not end it. The backend claims
+`filament_ops_self_home`, so a load or unload is refused while a print is running or
+paused, and `supports_auto_heat_on_load/unload`, so the UI does not preheat the active tool
+before the backend mounts another.
+
+`HELIX_MOCK_AMS=medusahc` runs all of it against mock hardware: the mock client echoes
+`RESPOND` lines, so the prompt appears and its buttons drive the run. Tests:
+`tests/unit/test_toolchanger_mount_feed.cpp`. **Unverified on hardware.**
 
 ## Overriding the feeder macros
 
@@ -140,9 +185,8 @@ user-selectable, not hardcoded.
 plus anything containing `OPEN`, `CLOSE`, `FEEDER` or `GRIP`. A raw macro list runs to
 hundreds of entries and is unusable as a picker; a free-text field cannot be typo-checked.
 
-The first option is the `auto` sentinel, which restores whatever detection chose. That is
-what makes a later migration free: a user who picks `auto` today gets `OPEN` now and
-`MHC_OPEN` the moment the controller registers it, without revisiting the setting.
+The first option is the `auto` sentinel, which restores whatever detection chose (`OPEN` /
+`CLOSE`).
 
 `Feeder` carries all of it - `open_gcode` (what is actually sent), `detected_open` (what
 detection chose, kept so `auto` can be restored), `open_choice` (the stored pick) and

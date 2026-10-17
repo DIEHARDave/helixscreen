@@ -1288,6 +1288,7 @@ translations:
   Feed filament: フィラメントを送る
   Feed filament directly to extruder: フィラメントをエクストルーダーに直接供給
   Feed filament from current slot: '現在のスロットからフィラメントを送る'
+  Feed filament into {}'s extruder, then tap Continue: '{}の押出機にフィラメントを差し込み、続行をタップしてください'
   Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload: フィラメントを手でセンサー先まで挿入して「再開」を押してください。または印刷をキャンセルして「装填」「排出」を使用してください
   Feeder: フィーダー
   Feeders: フィーダー
@@ -1993,6 +1994,7 @@ translations:
   Motors disabled: モーターを無効化しました
   Motors stay on while a print is active: 印刷中はモーターを停止できません
   Mount: 装着
+  Mount tool: 'ツールを装着'
   Mount which tool?: 'どのツールを装着しますか？'
   Mount...: '装着...'
   Move: 移動
@@ -2784,6 +2786,7 @@ translations:
   Restarting with the new version...: 新しいバージョンで再起動中...
   Restarting...: 再起動中...
   Restore Defaults: デフォルトに戻す
+  Restore tool: 'ツールを元に戻す'
   Restoring position: 位置を復元中
   Resume: 再開
   Resume Print: 印刷を再開

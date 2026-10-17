@@ -53,6 +53,13 @@ class ToolChangerTestAccess {
         return b.pending_dispatch_action_.has_value();
     }
 
+    /// Deliver the operator's prompt reply to the mount-to-feed run, the
+    /// main-thread half its notify_gcode_response listener drives on a real
+    /// client.
+    static void feed_operator_reply(AmsBackendToolChanger& b, helix::mount_feed::Reply reply) {
+        b.on_feed_reply(reply);
+    }
+
     /// Deliver one gcode-response line to the Z-Mod marker handler, the
     /// main-thread half the notify_gcode_response listener drives on a real
     /// client. The listener itself needs a client, which the unit-test helper

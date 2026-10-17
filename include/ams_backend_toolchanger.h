@@ -5,6 +5,7 @@
 
 #include "ams_subscription_backend.h"
 #include "filament_slot_override_store.h"
+#include "mount_feed_sequence.h"
 #include "toolchanger_addon.h"
 
 #include <cstdint>
@@ -121,9 +122,34 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         t.supports_auto_heat_on_load = true;
         return t;
     }();
+    /// One extruder drive serving every tool (MedusaHC): a load or unload
+    /// mounts the tool, heats it and moves filament through it itself, so the
+    /// UI neither preheats nor treats a paused print as a time to do it, and a
+    /// head that reads loaded still accepts Load.
+    static constexpr BackendTraits kTraitsMountFeed = [] {
+        BackendTraits t = kTraits;
+        t.load_feeds_filament = true;
+        t.supports_auto_heat_on_load = true;
+        t.supports_auto_heat_on_unload = true;
+        t.filament_ops_self_home = true;
+        return t;
+    }();
     [[nodiscard]] BackendTraits traits() const override {
-        return tool_feed_.present ? kTraitsWithFeed : kTraits;
+        if (tool_feed_.present) {
+            return kTraitsWithFeed;
+        }
+        return mounts_to_feed_ ? kTraitsMountFeed : kTraits;
     }
+
+    /// Whether this machine moves filament only through the mounted tool
+    /// (toolchanger_addon::feeds_through_mount()). Set from discovery.
+    void set_mounts_to_feed(bool mounts) {
+        mounts_to_feed_ = mounts;
+    }
+
+    /// A load or unload running its mount-to-feed sequence can be cancelled:
+    /// the heater goes off and the carriage goes back.
+    [[nodiscard]] bool can_cancel_operation() const override;
 
     /// Every tool docks: the carriage can hold none.
     [[nodiscard]] bool carriage_can_be_empty() const override {
@@ -481,8 +507,35 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         return step_action_;
     }
     void on_stopping() override;
+    [[nodiscard]] bool needs_mount_to_feed(int head) const override;
 
   private:
+    // --- Mount-to-feed (mount_feed_sequence.h) ---------------------------------
+    /// Start a Load (@p load) or Unload of @p head's filament through the
+    /// mounted tool. Main thread.
+    AmsError start_mount_feed(int head, bool load);
+    /// Send the run's current stage, or end the run when none is left.
+    void send_feed_stage();
+    void on_feed_stage_acked(uint64_t generation);
+    void on_feed_stage_failed(uint64_t generation, const std::string& message);
+    void on_feed_reply(helix::mount_feed::Reply reply);
+    /// Mirror the run onto the published action and step. Caller holds mutex_.
+    void publish_feed_state_locked();
+    void register_mount_feed_listener();
+    void unregister_mount_feed_listener();
+    /// The command that mounts @p slot_index, and the one that parks.
+    [[nodiscard]] std::string mount_gcode(int slot_index) const;
+    [[nodiscard]] std::string park_gcode() const;
+
+    bool mounts_to_feed_ = false;
+    /// The run in progress. Main thread only; feed_active_ mirrors it under mutex_.
+    std::optional<helix::mount_feed::Run> feed_run_;
+    uint64_t feed_generation_ = 0;
+    bool feed_active_ = false;
+    AmsAction feed_action_ = AmsAction::IDLE;
+    int feed_phase_ = -1;
+    std::optional<AmsAction> feed_step_action_;
+
     /// Z-Mod's Creator 5 row narrates its swaps through gcode-response markers
     /// (toolchanger_addon::parse_zmod_marker) rather than a status object, so
     /// on_started() subscribes notify_gcode_response for that row alone and

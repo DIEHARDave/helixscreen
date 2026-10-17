@@ -2386,6 +2386,9 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     GcodeResult gcode_layer_pause(const std::string& gcode);
     GcodeResult gcode_ifs_module(const std::string& gcode);
     GcodeResult gcode_medusa(const std::string& gcode);
+    /// RESPOND: echoes MSG on the console the way Klipper's [respond] does, so
+    /// an action prompt a script raises reaches the screen.
+    GcodeResult gcode_respond(const std::string& gcode);
     GcodeResult gcode_zmod(const std::string& gcode);
     GcodeResult gcode_cfs(const std::string& gcode);
     GcodeResult gcode_openams(const std::string& script);

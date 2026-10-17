@@ -70,8 +70,10 @@ bool head_can_load(const HeadState& head) {
 }
 
 bool head_can_unload(const HeadState& head) {
+    // A head nothing senses filament in stays unloadable: the backend refuses
+    // an empty one itself.
     return automatic(head.ops.unload) && head.unload_slot.has_value() &&
-           head.has_filament.value_or(false);
+           head.has_filament.value_or(true);
 }
 
 FilamentActionSet decide_filament_actions(const FilamentHeadView& view) {

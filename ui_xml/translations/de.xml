@@ -1245,6 +1245,7 @@
   <translation tag="Feed filament" de="Filament zuführen"/>
   <translation tag="Feed filament directly to extruder" de="Filament direkt zum Extruder führen"/>
   <translation tag="Feed filament from current slot" de="Filament aus dem aktuellen Slot zuführen"/>
+  <translation tag="Feed filament into {}&apos;s extruder, then tap Continue" de="Filament in den Extruder von {} einführen, dann auf Fortfahren tippen"/>
   <translation tag="Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload" de="Führen Sie das Filament von Hand am Sensor vorbei und drücken Sie dann auf Fortsetzen — oder brechen Sie den Druck ab, um Laden/Entladen zu nutzen"/>
   <translation tag="Feeder" de="Zuführung"/>
   <translation tag="Feeders" de="Zuführungen"/>
@@ -1921,6 +1922,7 @@
   <translation tag="Motors disabled" de="Motoren deaktiviert"/>
   <translation tag="Motors stay on while a print is active" de="Motoren bleiben an, solange ein Druck läuft"/>
   <translation tag="Mount" de="Montieren"/>
+  <translation tag="Mount tool" de="Werkzeug montieren"/>
   <translation tag="Mount which tool?" de="Welches Werkzeug montieren?"/>
   <translation tag="Mount..." de="Montieren..."/>
   <translation tag="Move" de="Bewegen"/>
@@ -2682,6 +2684,7 @@
   <translation tag="Restarting with the new version..." de="Neustart mit der neuen Version..."/>
   <translation tag="Restarting..." de="Wird neu gestartet..."/>
   <translation tag="Restore Defaults" de="Standardeinstellungen wiederherstellen"/>
+  <translation tag="Restore tool" de="Werkzeug wiederherstellen"/>
   <translation tag="Restoring position" de="Position wiederherstellen"/>
   <translation tag="Resume" de="Fortsetzen"/>
   <translation tag="Resume Print" de="Druck fortsetzen"/>

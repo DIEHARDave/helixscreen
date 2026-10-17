@@ -45,6 +45,9 @@ struct Provider {
     /// command. Returns empty when this printer does not offer it for @p head
     /// (the shim that owns it is absent, or published no lane for the head).
     std::string (*feed_gcode)(const PrinterDiscovery& hw, int head);
+    /// One extruder drive serves every tool, so filament moves only through
+    /// the tool on the carriage: a load or unload mounts it first.
+    bool feeds_through_mount;
 };
 
 // --- MedusaHC ---------------------------------------------------------------
@@ -94,15 +97,15 @@ std::vector<std::string> medusa_status_objects(const PrinterDiscovery& hw) {
     return objects;
 }
 
-/// Prefer the controller's native command when the printer actually has it.
-/// The official build also ships OPEN/CLOSE aliases forwarding to MHC_*, so
-/// either works there; picking what is present keeps config (a) working too.
-std::string medusa_open_gcode(const PrinterDiscovery& hw) {
-    return hw.has_macro("MHC_OPEN") ? "MHC_OPEN" : "OPEN";
+/// The plain OPEN/CLOSE names: every configuration has them (the controller's
+/// own MHC_* commands are what its OPEN/CLOSE forward to), and they work on a
+/// parked tool.
+std::string medusa_open_gcode(const PrinterDiscovery& /*hw*/) {
+    return "OPEN";
 }
 
-std::string medusa_close_gcode(const PrinterDiscovery& hw) {
-    return hw.has_macro("MHC_CLOSE") ? "MHC_CLOSE" : "CLOSE";
+std::string medusa_close_gcode(const PrinterDiscovery& /*hw*/) {
+    return "CLOSE";
 }
 
 // --- Z-Mod on the FlashForge Creator 5 Pro -----------------------------------
@@ -174,9 +177,10 @@ const std::vector<Provider>& providers() {
         // the way the feeder macros are, and naming it here is the whole point of
         // this table.
         {"MedusaHC", medusa_detect, medusa_status_objects, medusa_open_gcode, medusa_close_gcode,
-         "T", "DROP_TOOL", nullptr, nullptr},
+         "T", "DROP_TOOL", nullptr, nullptr, /*feeds_through_mount=*/true},
         {kZmodC5ProviderName, zmod_c5_detect, zmod_c5_status_objects, nullptr, nullptr,
-         "_T_IN T=", "_T_OUT", zmod_c5_material_write, zmod_c5_feed_gcode},
+         "_T_IN T=", "_T_OUT", zmod_c5_material_write, zmod_c5_feed_gcode,
+         /*feeds_through_mount=*/false},
     };
     return table;
 }
@@ -600,6 +604,11 @@ ToolFeed resolve_tool_feed(const PrinterDiscovery& hw) {
     feed.present = std::any_of(feed.head_gcode.begin(), feed.head_gcode.end(),
                                [](const std::string& g) { return !g.empty(); });
     return feed;
+}
+
+bool feeds_through_mount(const PrinterDiscovery& hw) {
+    const Provider* p = match(hw);
+    return p && p->feeds_through_mount;
 }
 
 MaterialSource resolve_material_source(const PrinterDiscovery& hw) {

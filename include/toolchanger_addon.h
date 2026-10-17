@@ -183,6 +183,10 @@ struct ToolFeed {
 /// The feed this printer offers, or an absent capability.
 ToolFeed resolve_tool_feed(const PrinterDiscovery& hw);
 
+/// Whether this printer moves filament only through the mounted tool, so a load
+/// or unload has to mount the tool first (mount_feed_sequence.h).
+bool feeds_through_mount(const PrinterDiscovery& hw);
+
 /// The firmware material source this printer has, or an absent capability.
 MaterialSource resolve_material_source(const PrinterDiscovery& hw);
 

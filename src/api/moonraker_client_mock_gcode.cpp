@@ -110,6 +110,34 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_medusa(const std::st
     return std::nullopt;
 }
 
+MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_respond(const std::string& gcode) {
+    if (!is_command(gcode, "RESPOND")) {
+        return std::nullopt;
+    }
+    // Klipper's prefixes: TYPE=command is "//", error is "!!", echo (the
+    // default) is "echo:". MSG is quoted when it holds spaces.
+    std::string type = "echo";
+    if (const size_t t = gcode.find("TYPE="); t != std::string::npos) {
+        const size_t end = gcode.find_first_of(" \t", t + 5);
+        type = gcode.substr(t + 5, end == std::string::npos ? std::string::npos : end - t - 5);
+        std::transform(type.begin(), type.end(), type.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    }
+    std::string msg;
+    const size_t m = gcode.find("MSG=");
+    if (m != std::string::npos) {
+        if (m + 4 < gcode.size() && gcode[m + 4] == '"') {
+            const size_t close = gcode.rfind('"');
+            msg = close > m + 4 ? gcode.substr(m + 5, close - m - 5) : gcode.substr(m + 5);
+        } else {
+            msg = gcode.substr(m + 4);
+        }
+    }
+    const char* prefix = type == "command" ? "// " : (type == "error" ? "!! " : "echo: ");
+    dispatch_gcode_response(prefix + msg);
+    return 0;
+}
+
 // CFS commands (HELIX_MOCK_AMS=cfs). The calibration commands match on the
 // command token exactly. BOX_FIND_CUT_POS and BOX_CUSTOM_COMMAND are CFS-only vocabulary, and
 // the chute jog script (BOX_CUSTOM_COMMAND aside) falls through to the generic
@@ -1187,6 +1215,9 @@ int MoonrakerClientMock::gcode_script(const std::string& raw_gcode) {
         return *r;
     }
     if (is_mock_medusahc() && (r = gcode_medusa(g))) {
+        return *r;
+    }
+    if ((r = gcode_respond(raw_gcode))) {
         return *r;
     }
     if (printer_type_ == PrinterType::FLASHFORGE_CREATOR5_ZMOD && (r = gcode_zmod(g))) {

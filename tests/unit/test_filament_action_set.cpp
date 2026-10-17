@@ -120,10 +120,11 @@ TEST_CASE("filament actions: Unload needs filament in some head", "[filament][ac
     CHECK_FALSE(decide_filament_actions(view_of({ready_head(0), ready_head(1)})).unload.enabled);
     CHECK(decide_filament_actions(view_of({ready_head(0), loaded_head(1)})).unload.enabled);
 
-    // A head that cannot tell is not offered an unload.
+    // A head nothing senses filament in stays unloadable: the backend refuses
+    // an empty one itself.
     HeadState unknown = ready_head(0);
     unknown.has_filament.reset();
-    CHECK_FALSE(decide_filament_actions(view_of({unknown})).unload.enabled);
+    CHECK(decide_filament_actions(view_of({unknown})).unload.enabled);
 }
 
 TEST_CASE("filament actions: busy and print gating disable everything without a reason",

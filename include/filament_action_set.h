@@ -32,7 +32,7 @@ struct HeadState {
     std::optional<int> unload_slot;     ///< The slot an Unload of this head names
     std::optional<bool> source_present; ///< slot_presence() of the source; nullopt = cannot tell
     std::optional<bool> at_nozzle;      ///< The source is fed to the nozzle already
-    std::optional<bool> has_filament;   ///< AmsBackend::head_has_filament()
+    std::optional<bool> has_filament;   ///< AmsBackend::head_has_filament(); nullopt = cannot tell
 };
 
 struct FilamentHeadView {
@@ -76,8 +76,8 @@ struct HeadPickRow {
 /// is not known empty and not already at the nozzle.
 [[nodiscard]] bool head_can_load(const HeadState& head);
 
-/// Can @p head take an unload right now: automatic, with filament in it and a
-/// slot to name.
+/// Can @p head take an unload right now: automatic, with a slot to name, and
+/// not known to be empty.
 [[nodiscard]] bool head_can_unload(const HeadState& head);
 
 /// The sidebar's actions: Load and Unload, or on a docking machine with no

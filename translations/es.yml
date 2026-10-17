@@ -1374,6 +1374,7 @@ translations:
   Feed filament: Alimentar filamento
   Feed filament directly to extruder: Alimentar filamento directamente al extrusor
   Feed filament from current slot: 'Alimentar filamento desde la ranura actual'
+  Feed filament into {}'s extruder, then tap Continue: 'Introduce el filamento en el extrusor de {} y toca Continuar'
   Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload: Introduzca el filamento a mano hasta pasar el sensor y pulse Reanudar, o cancele la impresión para usar Cargar/Descargar
   Feeder: Alimentador
   Feeders: Alimentadores
@@ -2120,6 +2121,7 @@ translations:
   Motors disabled: Motores desactivados
   Motors stay on while a print is active: Los motores siguen activos durante una impresión
   Mount: Montar
+  Mount tool: 'Montar herramienta'
   Mount which tool?: '¿Qué herramienta montar?'
   Mount...: 'Montar...'
   Move: Mover
@@ -2947,6 +2949,7 @@ translations:
   Restarting with the new version...: Reiniciando con la nueva versión...
   Restarting...: Reiniciando...
   Restore Defaults: Restaurar valores predeterminados
+  Restore tool: 'Restaurar herramienta'
   Restoring position: Restaurando posición
   Resume: Reanudar
   Resume Print: Reanudar Impresión

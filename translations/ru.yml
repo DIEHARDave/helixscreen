@@ -1415,6 +1415,7 @@ translations:
   Feed filament: Подать филамент
   Feed filament directly to extruder: Подать филамент напрямую в экструдер
   Feed filament from current slot: 'Подать филамент из текущего слота'
+  Feed filament into {}'s extruder, then tap Continue: 'Вставьте филамент в экструдер {} и нажмите «Продолжить»'
   Feed filament past the sensor by hand, then press Resume — or cancel the print to use Load/Unload: Вставьте филамент вручную за датчик и нажмите «Продолжить» — либо отмените печать и воспользуйтесь «Загрузить»/«Выгрузить»
   Feeder: Фидер
   Feeders: Фидеры
@@ -2161,6 +2162,7 @@ translations:
   Motors disabled: Моторы отключены
   Motors stay on while a print is active: Моторы остаются включены во время печати
   Mount: Установить
+  Mount tool: 'Установить инструмент'
   Mount which tool?: 'Какой инструмент установить?'
   Mount...: 'Установить...'
   Move: Двигать
@@ -2993,6 +2995,7 @@ translations:
   Restarting with the new version...: Перезапуск с новой версией...
   Restarting...: Перезапуск...
   Restore Defaults: Восстановить по умолчанию
+  Restore tool: 'Вернуть инструмент'
   Restoring position: Восстановление позиции
   Resume: Продолжить
   Resume Print: Продолжить печать
