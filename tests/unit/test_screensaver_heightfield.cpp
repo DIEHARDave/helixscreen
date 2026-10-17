@@ -2,6 +2,7 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "screensaver_heightfield.h"
 #include "screensaver_pixel_writer.h"
 
@@ -26,6 +27,9 @@ using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
 using helix::ui::upscale_frame;
+
+using helix::test::near;
+using helix::test::TestFrame;
 
 namespace {
 
@@ -75,24 +79,6 @@ class RowScene : public HeightfieldScene {
     HeightfieldView view_;
     RowFn row_;
     ColorFn color_;
-};
-
-bool near_color(Rgb a, Rgb b, int tol) {
-    return std::abs(a.r - b.r) <= tol && std::abs(a.g - b.g) <= tol && std::abs(a.b - b.b) <= tol;
-}
-
-uint32_t bytes_per_pixel(PixelFormat format) {
-    return format == PixelFormat::RGB565 ? 2 : 4;
-}
-
-struct Canvas {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-    Canvas(uint32_t w, uint32_t h, PixelFormat format, uint32_t pad = 0, uint8_t fill = 0) {
-        const uint32_t stride = w * bytes_per_pixel(format) + pad;
-        bytes.assign(static_cast<size_t>(stride) * (h + 1), fill);
-        target = {bytes.data(), stride, w, h, format};
-    }
 };
 
 } // namespace
@@ -236,9 +222,9 @@ TEST_CASE("a span shades from this slice's colour at its top to the last slice's
         v, [](size_t s, int32_t) { return s == 0 ? 60.0f : 20.0f; },
         [&](size_t s, int32_t) { return s == 0 ? red : blue; });
     r.render(scene);
-    CHECK(near_color(r.color_at(10, 20), blue, 8));
-    CHECK(near_color(r.color_at(10, 59), red, 8));
-    CHECK(near_color(r.color_at(10, 40), Rgb{100, 0, 100}, 8));
+    CHECK(near(r.color_at(10, 20), blue, 8));
+    CHECK(near(r.color_at(10, 59), red, 8));
+    CHECK(near(r.color_at(10, 40), Rgb{100, 0, 100}, 8));
 }
 
 TEST_CASE("no gradient where the previous slice did not draw the column",
@@ -258,7 +244,7 @@ TEST_CASE("no gradient where the previous slice did not draw the column",
     r.render(scene);
     for (int32_t y = 31; y < 50; y++) {
         CAPTURE(y);
-        CHECK(near_color(r.color_at(10, y), colors[2], 2));
+        CHECK(near(r.color_at(10, y), colors[2], 2));
     }
 }
 
@@ -272,7 +258,7 @@ TEST_CASE("span_gradient off draws flat spans", "[screensaver][heightfield]") {
         [](size_t s, int32_t) { return s == 0 ? Rgb{200, 0, 0} : Rgb{0, 0, 200}; });
     r.render(scene);
     for (int32_t y = 21; y < 60; y++) {
-        CHECK(near_color(r.color_at(10, y), Rgb{0, 0, 200}, 1));
+        CHECK(near(r.color_at(10, y), Rgb{0, 0, 200}, 1));
     }
 }
 
@@ -444,7 +430,7 @@ TEST_CASE("a 2x upscale interpolates and a 4x one replicates, in either format",
     CAPTURE(static_cast<int>(format));
     const std::vector<Rgb> two{Rgb{0, 0, 0}, Rgb{255, 255, 255}};
     {
-        Canvas c(4, 2, format);
+        TestFrame c(4, 2, format);
         upscale_frame(two, 2, 1, 2, 0, 1, c.target);
         const PixelWriter w(c.target);
         CHECK(w.get(0, 0).g < 8);
@@ -458,7 +444,7 @@ TEST_CASE("a 2x upscale interpolates and a 4x one replicates, in either format",
     {
         // Full and empty channels, which RGB565 stores exactly whatever the dither.
         const std::vector<Rgb> four{Rgb{0, 255, 0}, Rgb{255, 0, 255}};
-        Canvas c(8, 4, format);
+        TestFrame c(8, 4, format);
         upscale_frame(four, 2, 1, 4, 0, 1, c.target);
         const PixelWriter w(c.target);
         for (int32_t y = 0; y < 4; y++) {
@@ -472,7 +458,7 @@ TEST_CASE("a 2x upscale interpolates and a 4x one replicates, in either format",
     if (format == PixelFormat::RGB565) {
         // Mid grey dithers to the right mean over a 4 x 4 tile.
         const std::vector<Rgb> grey(4, Rgb{128, 128, 128});
-        Canvas c(4, 4, format);
+        TestFrame c(4, 4, format);
         upscale_frame(grey, 2, 2, 2, 0, 2, c.target);
         const PixelWriter w(c.target);
         int sum = 0;
@@ -489,10 +475,10 @@ TEST_CASE("upscale writes only the rows asked for and returns that box",
           "[screensaver][heightfield]") {
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
     std::vector<Rgb> frame(10 * 6, Rgb{200, 200, 200});
-    Canvas c(20, 12, format, 0, 0x11);
+    TestFrame c(20, 12, format, 0, 0x11, 0x11);
     const DirtyRect box = upscale_frame(frame, 10, 6, 2, 2, 4, c.target);
     CHECK(box == DirtyRect{0, 4, 19, 7});
-    const uint32_t bpp = bytes_per_pixel(format);
+    const uint32_t bpp = helix::ui::pixel_bytes(format);
     for (uint32_t y = 0; y < 12; y++) {
         const bool inside = y >= 4 && y < 8;
         size_t touched = 0;
@@ -510,14 +496,14 @@ TEST_CASE("upscale writes only the columns asked for and returns that box",
     const int32_t scale = GENERATE(2, 4);
     CAPTURE(static_cast<int>(format), scale);
     std::vector<Rgb> frame(10 * 6, Rgb{200, 200, 200});
-    Canvas c(10 * scale, 6 * scale, format, 0, 0x11);
+    TestFrame c(10 * scale, 6 * scale, format, 0, 0x11, 0x11);
     const DirtyRect box = upscale_frame(frame, 10, 6, scale, 1, 4, c.target, 3, 7);
     CHECK(box == DirtyRect{3 * scale, scale, 7 * scale - 1, 4 * scale - 1});
     const PixelWriter w(c.target);
     for (int32_t y = 0; y < 6 * scale; y++) {
         for (int32_t x = 0; x < 10 * scale; x++) {
             const bool in = x >= box.x1 && x <= box.x2 && y >= box.y1 && y <= box.y2;
-            const uint32_t bpp = bytes_per_pixel(format);
+            const uint32_t bpp = helix::ui::pixel_bytes(format);
             const bool touched =
                 c.bytes[static_cast<size_t>(y) * c.target.stride + x * bpp] != 0x11;
             CAPTURE(x, y);
@@ -532,29 +518,20 @@ TEST_CASE("an odd-sized canvas never writes past a row", "[screensaver][heightfi
     CAPTURE(static_cast<int>(format), scale);
     constexpr uint32_t OW = 321;
     constexpr uint32_t OH = 203;
-    constexpr uint8_t SENTINEL = 0xA5;
     const int32_t w = (OW + scale - 1) / scale;
     const int32_t h = (OH + scale - 1) / scale;
     std::vector<Rgb> frame(static_cast<size_t>(w) * h, Rgb{90, 140, 200});
-    Canvas c(OW, OH, format, 7, SENTINEL);
+    TestFrame c(OW, OH, format, 7);
     const DirtyRect box = upscale_frame(frame, w, h, scale, 0, h, c.target);
     CHECK(box == DirtyRect{0, 0, static_cast<int32_t>(OW) - 1, static_cast<int32_t>(OH) - 1});
-    const uint32_t bpp = bytes_per_pixel(format);
-    size_t padding_changed = 0;
     size_t unwritten = 0;
-    for (uint32_t y = 0; y <= OH; y++) {
-        const uint32_t from = y < OH ? OW * bpp : 0;
-        for (uint32_t i = from; i < c.target.stride; i++) {
-            padding_changed += c.bytes[static_cast<size_t>(y) * c.target.stride + i] != SENTINEL;
-        }
-    }
     const PixelWriter wr(c.target);
     for (uint32_t y = 0; y < OH; y++) {
         for (uint32_t x = 0; x < OW; x++) {
             unwritten += wr.get(x, y).b < 150 ? 1 : 0;
         }
     }
-    CHECK(padding_changed == 0);
+    CHECK(c.padding_intact());
     CHECK(unwritten == 0);
 }
 

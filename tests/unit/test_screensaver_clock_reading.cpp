@@ -3,6 +3,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "display_settings_manager.h"
 #include "locale_formats.h"
 #include "screensaver_clock.h"
@@ -10,6 +11,7 @@
 #include "screensaver_stroke_digits.h"
 #include "system_settings_manager.h"
 
+#include <array>
 #include <cstdint>
 #include <ctime>
 #include <string>
@@ -29,11 +31,10 @@ using helix::ui::ClockState;
 using helix::ui::ClockTime;
 using helix::ui::StrokeDigitSet;
 
-namespace {
+using helix::test::hms;
+using helix::test::TestFrame;
 
-constexpr int32_t hms(int32_t h, int32_t m, int32_t s = 0) {
-    return h * 3600 + m * 60 + s;
-}
+namespace {
 
 uint64_t total_coverage(const StrokeDigitSet& set, int digit) {
     uint64_t sum = 0;
@@ -226,6 +227,54 @@ TEST_CASE("nine is six turned half a turn", "[screensaver][clock_reading]") {
     }
     CHECK(helix::ui::stroke_digit_distance(9, 0.5f, 0.5f) !=
           helix::ui::stroke_digit_distance(6, 0.5f, 0.5f));
+}
+
+TEST_CASE("two_digits splits a clock number into its tens and units",
+          "[screensaver][clock_reading]") {
+    CHECK(helix::ui::two_digits(0) == std::array<int, 2>{0, 0});
+    CHECK(helix::ui::two_digits(7) == std::array<int, 2>{0, 7});
+    CHECK(helix::ui::two_digits(42) == std::array<int, 2>{4, 2});
+    CHECK(helix::ui::two_digits(59) == std::array<int, 2>{5, 9});
+}
+
+TEST_CASE("a blitted stroke digit blends its coverage over the frame and clips at the edges",
+          "[screensaver][clock_reading]") {
+    StrokeDigitSet set;
+    helix::ui::build_stroke_digits(20, 0.2f, set);
+    const helix::ui::Rgb white{255, 255, 255};
+    TestFrame frame(static_cast<uint32_t>(set.w + 8), static_cast<uint32_t>(set.h + 8),
+                    helix::ui::PixelFormat::XRGB8888);
+    helix::ui::PixelWriter writer(frame.target);
+    helix::ui::blit_stroke_digit(writer, set, 4, 4, 4, white, 1.0f);
+    size_t full = 0;
+    for (int32_t gy = 0; gy < set.h; gy++) {
+        for (int32_t gx = 0; gx < set.w; gx++) {
+            const uint8_t cov = set.at(4, gx, gy);
+            const helix::ui::Rgb c = frame.at(gx + 4, gy + 4);
+            CAPTURE(gx, gy, static_cast<int>(cov));
+            CHECK(c.g == cov);
+            full += cov == 255 ? 1 : 0;
+        }
+    }
+    CHECK(full > 0);
+    CHECK(frame.at(1, 1) == helix::ui::Rgb{});
+
+    // Half opacity lands half way; a digit hanging off every edge writes only the frame.
+    TestFrame half(static_cast<uint32_t>(set.w), static_cast<uint32_t>(set.h),
+                   helix::ui::PixelFormat::XRGB8888);
+    helix::ui::PixelWriter half_writer(half.target);
+    helix::ui::blit_stroke_digit(half_writer, set, 8, 0, 0, white, 0.5f);
+    helix::ui::blit_stroke_digit(half_writer, set, 8, -set.w / 2, -set.h / 2, white, 1.0f);
+    helix::ui::blit_stroke_digit(half_writer, set, 8, set.w / 2, set.h / 2, white, 1.0f);
+    CHECK(half.padding_intact());
+    for (int32_t gy = 0; gy < set.h; gy++) {
+        for (int32_t gx = 0; gx < set.w; gx++) {
+            if (set.at(8, gx, gy) == 255 && set.at(8, gx + set.w / 2, gy + set.h / 2) == 0 &&
+                set.at(8, gx - set.w / 2, gy - set.h / 2) == 0) {
+                CHECK(half.at(gx, gy).g == 128);
+            }
+        }
+    }
 }
 
 TEST_CASE("a digit's halo spreads past its strokes and fades out", "[screensaver][clock_reading]") {
