@@ -15,7 +15,6 @@
 
 #include "grid_layout.h"
 #include "home_layout_sync.h"
-#include "layout_manager.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "panel_widget_config.h"
 #include "panel_widget_manager.h"
@@ -26,7 +25,6 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -39,17 +37,6 @@ namespace helix {
 // ============================================================================
 
 namespace {
-
-/// The width both catalog levels take on a portrait screen. Their 70% is in
-/// XML, where a width cannot follow orientation: the breakpoint tiers key on
-/// the cramped axis, which a rotated screen shares with its landscape twin.
-void apply_portrait_width(lv_obj_t* overlay, lv_obj_t* parent_screen) {
-    const auto width = WidgetCatalogOverlay::portrait_width_px(lv_obj_get_width(parent_screen),
-                                                               lv_obj_get_height(parent_screen));
-    if (width) {
-        lv_obj_set_width(overlay, *width); // DECLARATIVE_OK: orientation-dependent width
-    }
-}
 
 /// widget_catalog_view subject values: which list the catalog body shows.
 constexpr int kCatalogViewBrowse = 0; // category rows
@@ -765,15 +752,6 @@ void WidgetCatalogOverlay::close() {
     close_catalog();
 }
 
-std::optional<int32_t> WidgetCatalogOverlay::portrait_width_px(int32_t screen_w, int32_t screen_h) {
-    // The catalog panel on an 800x480 landscape screen: 70% of 800.
-    constexpr int32_t kMinPortraitWidth = 560;
-    if (!app_layout_is_portrait(screen_w, screen_h)) {
-        return std::nullopt;
-    }
-    return std::min(screen_w, std::max(screen_w * 70 / 100, kMinPortraitWidth));
-}
-
 void WidgetCatalogOverlay::show(lv_obj_t* parent_screen, const PanelWidgetConfig& config,
                                 WidgetSelectedCallback on_select, CatalogClosedCallback on_close,
                                 WidgetFitCallback fits) {
@@ -827,7 +805,6 @@ void WidgetCatalogOverlay::show(lv_obj_t* parent_screen, const PanelWidgetConfig
     // a widget out of it. Neither navigation width class applies, so opt out of
     // push-time width management (#1178).
     helix::nav::set_overlay_width_unmanaged(overlay);
-    apply_portrait_width(overlay, parent_screen);
 
     // Store state. on_select/on_close were parked above, before the first thing
     // that can fail — re-moving them here would assign the moved-from empties.
@@ -974,7 +951,6 @@ void WidgetCatalogOverlay::show_widget_page(const char* title, const char* title
     // Same 70% opt-out as the catalog beneath it: without this the push would
     // inherit the parent's destination class and go full width (#1178).
     helix::nav::set_overlay_width_unmanaged(page);
-    apply_portrait_width(page, g_catalog_state.parent_screen);
 
     lv_obj_t* scroll = helix::ui::find_required(page, "catalog_scroll", "WidgetCatalog");
     if (!scroll) {

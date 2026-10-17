@@ -646,6 +646,10 @@
     <px name="dialog_content_max_xxlarge" value="800"/>
 
 
+    <!-- The widget catalog's narrowest portrait width: the panel an 800x480
+         landscape screen gives it (70% of 800). -->
+    <px name="catalog_min_width" value="560"/>
+
     <!-- input_height: standard height for all input fields (textareas, dropdowns,
          icon toggles). A responsive ladder, so inputs scale up on bigger screens.
          Micro (480x272) matches its 12px body font and 26px buttons; tiny and small

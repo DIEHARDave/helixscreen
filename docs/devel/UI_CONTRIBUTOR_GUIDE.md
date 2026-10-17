@@ -220,7 +220,7 @@ You almost never need to reference font tokens directly. Use the semantic `<text
 | `#button_height_sm` | vertical | 40px | 40px | 40px | Small buttons (back, icon-only) |
 | `#button_height_lg` | vertical | 64px | 70px | 96px | Large buttons |
 | `#header_height` | vertical | 48px | 56px | 60px | Panel header height |
-| `#input_height` | vertical | 48px | 52px | 56px | Text input / dropdown height |
+| `#input_height` | cramped | 48px | 52px | 56px | Text input / dropdown height; micro is 32px. Follows the cramped axis like the body font it holds |
 | `#temp_card_height` | vertical | 64px | 72px | 80px | Temperature card in print status |
 | `#dialog_content_max` | vertical | 260px | 320px | 440px | Max height of a modal's scrollable body |
 | `#dialog_content_pinned_max` | vertical | 164px | 207px | 272px | Same, plus one pinned block below the scroll area (measured 85% cap − chrome, #1277) |
