@@ -65,10 +65,15 @@ TEST_CASE("fit_tile_grid widens in a large wide card", "[tile-grid-fit][calib-gr
 
 TEST_CASE("fit_tile_grid breaks a tie in score and waste toward more columns",
           "[tile-grid-fit][calib-grid]") {
-    // 1x4 and 2x2 both leave a 1.29x tile with no empty cell.
-    const TileGridFit f = fit(4, 200, 300);
+    // In a square box with a square minimum, 1x2 and 2x1 tie exactly.
+    const TileGridFit f = fit_tile_grid(2, 400, 400, 0, 50, 50);
     CHECK(f.cols == 2);
-    CHECK(f.rows == 2);
+    CHECK(f.rows == 1);
+
+    // 2x2 edges out 1x4 in a tall box: the tighter axis decides, not the shape.
+    const TileGridFit tall = fit(4, 200, 300);
+    CHECK(tall.cols == 2);
+    CHECK(tall.rows == 2);
 }
 
 TEST_CASE("fit_tile_grid reports when no shape leaves room for labels",
