@@ -138,6 +138,7 @@ src/printer/active_material_provider.cpp
 src/printer/afc_config_manager.cpp
 src/printer/afc_defaults.cpp
 src/printer/afc_fault_position.cpp
+src/printer/ace_slot_parse.cpp
 src/printer/ams_backend.cpp
 src/printer/ams_backend_registry.cpp
 src/printer/ams_backend_ace.cpp

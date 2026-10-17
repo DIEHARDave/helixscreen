@@ -454,9 +454,15 @@ PathSegment AmsBackendSnapmaker::slot_segment_locked(int i) const {
     return PathSegment::NONE;
 }
 
+bool AmsBackendSnapmaker::slot_has_prep_sensor(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return slot_index >= 0 && slot_index < NUM_TOOLS && !head_is_upstream_fed_locked(slot_index);
+}
+
 std::optional<bool> AmsBackendSnapmaker::slot_insert_presence(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (slot_index < 0 || slot_index >= NUM_TOOLS || !feed_presence_seen_[slot_index])
+    if (slot_index < 0 || slot_index >= NUM_TOOLS || !feed_presence_seen_[slot_index] ||
+        head_is_upstream_fed_locked(slot_index))
         return std::nullopt;
     return port_sensor_filament_present_[slot_index];
 }
@@ -1717,15 +1723,24 @@ void AmsBackendSnapmaker::apply_feed_channel_locked(const snapmaker::FeedChannel
         settled_outcome.has_value() || helix::snapmaker::observed_change(prev_state, state);
 
     const ChannelStateInfo info = classify_channel_state(state);
-    const std::string& op_state = settled_outcome ? *settled_outcome : state;
+    std::string op_state = settled_outcome ? *settled_outcome : state;
     ChannelStateInfo op_info = settled_outcome ? classify_channel_state(op_state) : info;
-    if (!settled_outcome && state == "preload_finish" && preload_in_flight_[i]) {
-        op_info.is_terminal = true;
+    if (!settled_outcome && state == "preload_finish") {
+        if (preload_in_flight_[i]) {
+            op_info.is_terminal = true;
+        } else if (unload_in_flight_[i] && preload_finish_ends_unload_locked(i)) {
+            // The unload's outcome, for the op lifecycle, the unloaded-lane
+            // grace and the batch cursor alike.
+            op_state = "unload_finish";
+            op_info = classify_channel_state(op_state);
+        }
     }
     if (helix::snapmaker::channel_state_in_progress(state)) {
         preload_in_flight_[i] = state.rfind("preload_", 0) == 0;
+        unload_in_flight_[i] = state.rfind("unload_", 0) == 0;
     } else if (!state.empty()) {
         preload_in_flight_[i] = false;
+        unload_in_flight_[i] = false;
     }
 
     apply_channel_progress_locked(i, state, info, fx);
@@ -1777,7 +1792,7 @@ void AmsBackendSnapmaker::apply_port_presence_locked(int i, bool detected, Frame
         const bool firmware_driven = batch_.active || helix::snapmaker::channel_state_in_progress(
                                                           channel_snapshots_[i].state);
         if (detected && feed_presence_seen_[i] && !port_sensor_filament_present_[i] &&
-            !firmware_driven) {
+            !firmware_driven && !head_is_upstream_fed_locked(i)) {
             pending_insert_passes_[i] = 1;
             insert_verdict_[i] = InsertIdentity::NotRead;
         } else if (!detected) {
@@ -2472,6 +2487,8 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
     { // Scope lock — emit_event MUST be called outside mutex_ to avoid deadlock
       // with sync_from_backend() which acquires mutex_ via get_system_info()
         std::lock_guard<std::mutex> lock(mutex_);
+
+        apply_extension_locked(status, fx.changed);
 
         apply_extruders_locked(delta, fx);
         apply_active_tool_locked(delta, fx);

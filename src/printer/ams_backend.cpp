@@ -840,7 +840,9 @@ const std::vector<std::string>& AmsBackend::filament_sensor_object_prefixes() {
 }
 
 std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, IMoonrakerAPI* api,
-                                               IMoonrakerClient* client) {
+                                               IMoonrakerClient* client,
+                                               const helix::PrinterDiscovery* hw) {
+    (void)hw; // only variant-bearing types read it, and those can be compiled out
 #ifdef HELIX_ENABLE_MOCKS
     if (auto mock = try_create_mock(client)) {
         return mock;
