@@ -146,9 +146,9 @@ TEST_CASE("every screensaver label the dropdown can show has an en.xml translati
     }
 }
 
-TEST_CASE("fresh installs default to flying toasters, a registered saver",
+TEST_CASE("fresh installs default to the flip clock, a registered saver",
           "[screensaver][screensaver_registry]") {
-    CHECK(helix::ui::DEFAULT_SCREENSAVER_TYPE == ScreensaverType::FLYING_TOASTERS);
+    CHECK(helix::ui::DEFAULT_SCREENSAVER_TYPE == ScreensaverType::FLIP_CLOCK);
     CHECK(helix::ui::find_screensaver(helix::ui::DEFAULT_SCREENSAVER_TYPE) != nullptr);
 }
 

@@ -98,7 +98,7 @@ inline constexpr const char* LEGACY_SCREENSAVER_TYPE_NAMES[] = {
 
 /// Type a fresh install prefers, when this build can draw it. The screensaver gate measures it
 /// and steps it down, or runs a lighter saver in its place, when it costs too much.
-inline constexpr ScreensaverType DEFAULT_SCREENSAVER_TYPE = ScreensaverType::FLYING_TOASTERS;
+inline constexpr ScreensaverType DEFAULT_SCREENSAVER_TYPE = ScreensaverType::FLIP_CLOCK;
 
 /// Highest valid type value.
 constexpr int screensaver_last_type() {

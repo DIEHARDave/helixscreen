@@ -73,7 +73,7 @@ An animation that plays while the screen is idle. It starts when the screen woul
 | Option | What you see |
 |--------|--------------|
 | **Off** | No screensaver. The screen just dims and sleeps |
-| **Flying Toasters** (default on most screens) | The classic flying toasters |
+| **Flying Toasters** | The classic flying toasters |
 | **Starfield** | Stars streaming past |
 | **3D Pipes** | The old Windows pipes: shiny shaded pipes in sixteen materials grow through the screen, turning at elbows and ball joints (and, once in a while, a teapot). When the screen fills it dissolves away in blocks and starts again from a slightly turned view |
 | **Bouncing Printer** | Your printer drifts around and bounces off the edges, changing color at every wall. Land a corner and it celebrates |
@@ -81,12 +81,12 @@ An animation that plays while the screen is idle. It starts when the screen woul
 | **Bouncing Logo** | The HelixScreen logo drifts around a black screen and bounces off the edges, in its own colors |
 | **3D Maze** | A walk through a brick maze, as in the old Windows screensaver, with its wide view, a few loops and small rooms, and halls that fade into the dark. Pictures of your own prints hang on the walls, taken from thumbnails your printer screen has already shown, along with your printer. Spinning HelixScreen icons, rocks that flip the view upside down, and a smiley at the exit |
 | **Hyperspace** | A flight through glowing rainbow space: star flares stream past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts ahead |
-| **Flip Clock** | A split-flap clock in the 12- or 24-hour format you chose under Time Format, one card per digit; only the digits that change flip. While a print runs it counts down the time left as hours, minutes and seconds, with the finish time and progress underneath. A paused print freezes the count under PAUSED; a finished one shows DONE for a minute, then the clock comes back |
+| **Flip Clock** (default) | A split-flap clock in the 12- or 24-hour format you chose under Time Format, one card per digit; only the digits that change flip. While a print runs it counts down the time left as hours, minutes and seconds, with the finish time and progress underneath. A paused print freezes the count under PAUSED; a finished one shows DONE for a minute, then the clock comes back |
 | **Fireflies** | Coloured swarms of glowing fireflies chase each other through the dark, trailing long tails that drift in the wind; now and then a swarm stops, circles, splits in two or joins another |
 | **Aqua Surface** | Dark, glassy water sloshing in slow motion, seen through the side of a tank, with crisp highlights, bubbles rising below the surface and the odd droplet flung from a crest. A clock of three rings sits in the water: the hour, the minute, and a small ring for the seconds, with the date underneath. While a print runs, the small ring shows its progress and the date line shows when it ends and how long is left |
 | **High Fly** | A flight just above sunlit clouds under a deep blue sky, with tall clouds drifting past and, every minute or two, a flight through a cloud. A large, thin clock sits at the cloud line with the seconds and AM/PM beside it and the date on the left. While a print runs, the date shows when it ends and how long is left |
 
-Each screensaver checks how much processor time it takes on your printer. If it would slow the printer down, it lowers its frame rate or detail. If that's still too much, your printer can't run it: it disappears from the list, and Flying Toasters (or the next screensaver your printer can run) plays in its place. The list then shows the one that plays. Your choice is still saved, so moving your settings to a faster printer brings it back. Only if no screensaver fits does the screen go black instead. The check runs again after an update.
+Each screensaver checks how much processor time it takes on your printer. If it would slow the printer down, it lowers its frame rate or detail. If that's still too much, your printer can't run it: it disappears from the list, and the Flip Clock (or the next screensaver your printer can run) plays in its place. The list then shows the one that plays. Your choice is still saved, so moving your settings to a faster printer brings it back. Only if no screensaver fits does the screen go black instead. The check runs again after an update.
 
 ### Test Screensaver
 

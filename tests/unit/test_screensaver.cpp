@@ -18,7 +18,7 @@ using namespace helix;
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 TEST_CASE_METHOD(LVGLTestFixture,
-                 "a fresh install defaults the screensaver to flying toasters on every tier",
+                 "a fresh install defaults the screensaver to the flip clock on every tier",
                  "[screensaver][display_settings]") {
     Config* config = Config::get_instance();
     const bool had_type = config->exists("/display/screensaver_type");
@@ -34,7 +34,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     DisplaySettingsManager::instance().init_subjects();
     CHECK(DisplaySettingsManager::instance().get_screensaver_type() ==
-          static_cast<int>(helix::ui::DEFAULT_SCREENSAVER_TYPE));
+          static_cast<int>(ScreensaverType::FLIP_CLOCK));
     DisplaySettingsManager::instance().deinit_subjects();
 
     if (had_type) {

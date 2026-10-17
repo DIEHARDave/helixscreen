@@ -240,7 +240,7 @@ is the depth-16 target list; `SCREENSAVER_32BPP_ONLY_SRCS` is the exclusion list
 cannot draw 16 bpp would land on, currently empty). The two lists and the registry's depth
 bits must agree.
 
-The fresh-install default is depth-aware (`default_screensaver_type`): Flying Toasters when the
+The fresh-install default is depth-aware (`default_screensaver_type`): Flip Clock when the
 build draws at its depth, otherwise the first registered saver that does, and Off when none do.
 
 ## Adding a saver

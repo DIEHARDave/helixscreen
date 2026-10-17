@@ -573,6 +573,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   fading from white through its shell's colour to an ember. It adjusts how many sparks and
   bursts it draws to what the board can afford. Select it under Settings > Display >
   Screensaver.
+- **The Flip Clock is the new default screensaver** - fresh installs show the split-flap clock, which costs almost nothing and counts down a running print. A screensaver you already chose stays as it is.
 - **3D Maze screensaver** - the old Windows walk through a brick maze, with wood floors, a
   tiled ceiling and the original's wide view. The maze has a few loops and small rooms, and
   the halls fade into the dark. Spinning HelixScreen logos float in the halls, gray rocks flip
