@@ -266,6 +266,7 @@ void AmsBackendSnapmaker::on_started() {
         task_vendor_.fill(std::nullopt);
         task_official_.fill(std::nullopt);
         task_type_.fill(std::nullopt);
+        task_color_.fill(std::nullopt);
         tag_has_card_.fill(std::nullopt);
     }
     if (!api_)
@@ -1567,9 +1568,17 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
         }
     }
 
-    // Skip entirely if RFID reader is disabled or no tag present
-    if (rfid.main_type == "NONE")
+    // The vendor cache mirrors the firmware's info, so an entry naming no tag
+    // leaves nothing cached: the record of an earlier tag would otherwise keep
+    // describing a spool the reader no longer reports.
+    if (rfid.main_type == "NONE") {
+        auto* slot = system_info_.units[0].get_slot(i);
+        if (slot && !*tag_names_identity_[static_cast<size_t>(i)] &&
+            retract_tag_reading_locked(i, *slot)) {
+            fx.changed = true;
+        }
         return;
+    }
 
     auto* slot = system_info_.units[0].get_slot(i);
     if (slot) {
@@ -2154,6 +2163,7 @@ void AmsBackendSnapmaker::apply_task_slot_identity_locked(
         }
         if (ptc.filament_color_rgba[i]) {
             if (const auto rgb = snapmaker::rgb_from_rgba_hex(*ptc.filament_color_rgba[i])) {
+                task_color_[static_cast<size_t>(i)] = *rgb;
                 slot->color_rgb = *rgb;
             }
             fx.changed = true;
@@ -2329,6 +2339,44 @@ void AmsBackendSnapmaker::converge_lanes_locked(FrameEffects& fx) {
         retract_unbacked_identity_locked(i, *slot);
         apply_resolved_lane(*slot, i);
     }
+}
+
+bool AmsBackendSnapmaker::retract_tag_reading_locked(int slot_index, SlotInfo& slot) {
+    const helix::ams::LaneId lane = lane_id(slot_index);
+    const std::optional<helix::ams::Observation> cache =
+        helix::ams::lane_sources(lane).vendor_cache;
+    if (!cache.has_value()) {
+        return false;
+    }
+    helix::ams::drop_lane_source(lane, helix::ams::ObservationSource::VendorCache);
+
+    // A SlotInfo field still holding the dropped record's value got it from
+    // the tag; print_task_config is the firmware's other word on the head, so
+    // it takes the field back, and a head it never spoke for goes blank. A
+    // field that moved since was written by something else and stays.
+    // A declaring source lays its values back over these at the tail.
+    const auto i = static_cast<size_t>(slot_index);
+    if (cache->material.has_value() && slot.material == *cache->material) {
+        slot.material = task_type_[i].value_or(std::string{});
+    }
+    if (cache->brand.has_value() && slot.brand == *cache->brand) {
+        const std::string vendor = task_vendor_[i].value_or(std::string{});
+        slot.brand = vendor == "NONE" ? std::string{} : vendor;
+    }
+    if (cache->color_rgb.has_value() && slot.color_rgb == *cache->color_rgb) {
+        slot.color_rgb = task_color_[i].value_or(AMS_DEFAULT_SLOT_COLOR);
+    }
+    if (cache->product_name.has_value()) {
+        if (slot.spool_name == *cache->product_name) {
+            slot.spool_name.clear();
+        }
+        if (slot.product_name == *cache->product_name) {
+            slot.product_name.clear();
+        }
+    }
+    spdlog::debug("{} Slot {} tag reader names no tag, dropped the cached tag reading",
+                  backend_log_tag(), slot_index);
+    return true;
 }
 
 void AmsBackendSnapmaker::retract_unbacked_identity_locked(int slot_index, SlotInfo& slot) {

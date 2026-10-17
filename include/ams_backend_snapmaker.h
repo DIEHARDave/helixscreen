@@ -793,6 +793,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// frame carrying it.
     std::array<std::optional<std::string>, NUM_TOOLS> task_type_{};
 
+    /// print_task_config.filament_color_rgba per head, decoded. Unset until the
+    /// first frame carrying a colour that decodes.
+    std::array<std::optional<uint32_t>, NUM_TOOLS> task_color_{};
+
     /// Whether filament_detect.info last showed a real card on each channel: a
     /// CARD_UID with a nonzero byte. Unset until the first entry for it.
     std::array<std::optional<bool>, NUM_TOOLS> tag_has_card_{};
@@ -831,6 +835,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// On a channel whose firmware states no identity at all, drop the brand
     /// and product line the lane only remembers. Caller holds mutex_.
     void retract_unbacked_identity_locked(int slot_index, SlotInfo& slot);
+
+    /// On a channel whose tag reader names no tag, drop the lane's vendor-cache
+    /// record and take what it stated off @p slot, falling back to what
+    /// print_task_config last said. Returns whether a record was dropped.
+    /// Caller holds mutex_.
+    bool retract_tag_reading_locked(int slot_index, SlotInfo& slot);
 
     /// Last filament_feed frame's raw per-channel fields (channel_state,
     /// channel_error, filament_detected, module_exist, disable_auto), written

@@ -120,7 +120,7 @@ The active tool is detected from extruder pin state or `toolhead.extruder`, and
 
 | Tag field | Maps to | Notes |
 |-----------|---------|-------|
-| `MAIN_TYPE` | `material` | e.g. "PLA", "PETG"; `"NONE"` skips the whole slot's RFID apply |
+| `MAIN_TYPE` | `material` | e.g. "PLA", "PETG"; `"NONE"` skips the whole slot's RFID apply, and with `SUB_TYPE` also absent or `NONE` drops the lane's vendor-cache record |
 | `SUB_TYPE` | `spool_name` | Snapmaker product line, e.g. "SnapSpeed" |
 | `MANUFACTURER` (fallback `VENDOR`) | `brand` | |
 | `ARGB_COLOR` | `color_rgb` | masked to the low 24 bits |
@@ -148,10 +148,18 @@ fields, any other remembered name or brand, a brand beside a catalog pick, and a
 bound to a Spoolman spool all stay
 (`src/printer/ams_backend_snapmaker.cpp#retract_unbacked_identity_locked`).
 
+The vendor-cache record mirrors `filament_detect.info`, so an entry that names no tag
+(`MAIN_TYPE` NONE, `SUB_TYPE` absent or NONE) drops it: a clear then cannot restate the
+product line, material, brand or colour of a tag the reader no longer reports. A slot
+field still holding the dropped record's value falls back to what `print_task_config`
+last said for that head, or blank/default where it never spoke; a field something else
+has written since stays. A repeat of the same silence finds nothing to drop and reports
+no change (`src/printer/ams_backend_snapmaker.cpp#retract_tag_reading_locked`).
+
 Every row above is code-verified against `parse_rfid_info()` and the apply loop
 (`src/printer/snapmaker_status_parse.cpp#parse_rfid_info`, `src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`): tag identity rides
 `filament_detect.info[ch].CARD_UID`, and a `MAIN_TYPE == "NONE"` tag skips the field
-apply while its UID is still captured for swap detection (`:1173-1182`). Physical reads
+apply (dropping the cached reading, above) while its UID is still captured for swap detection (`:1173-1182`). Physical reads
 from real RFID spools remain rig-pending; code-verified is not field-verified.
 
 ### Commands the Backend Emits
