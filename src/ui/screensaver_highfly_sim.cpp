@@ -16,6 +16,7 @@
 
 namespace helix::ui {
 
+using screensaver::random_below;
 using screensaver::random_between;
 using screensaver::random_normal;
 using screensaver::smoothstep01;
@@ -373,7 +374,7 @@ void make_tower(std::minstd_rand& rng, HighFlyTexture& out) {
         drift += random_between(rng, -8.0f, 8.0f);
         const float xo = cx + std::clamp(drift, -20.0f, 20.0f);
         add_blob(d, w, h, xo, y, rad * 0.75f, false, 1.2f);
-        const int lobes = 4 + static_cast<int>(unit_random(rng) * 3.0f);
+        const int lobes = 4 + random_below(rng, 3);
         for (int k = 0; k < lobes; k++) {
             const float a = random_between(rng, SAVER_PI * 1.0f, SAVER_PI * 2.0f);
             add_blob(d, w, h, xo + std::cos(a) * rad * 0.7f, y + std::sin(a) * rad * 0.5f,

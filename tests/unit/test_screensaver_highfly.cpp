@@ -483,6 +483,10 @@ TEST_CASE("a tower visibly moves from the moment it appears until it leaves",
         }
     }
     REQUIRE(slot >= 0);
+    // A tower fades in from nothing, so it is followed from the first frame it shows in.
+    for (int i = 0; i < 20 && sim.tower_box(static_cast<size_t>(slot)).empty(); i++) {
+        sim.step(50, frame.target, rng, r, dirty);
+    }
     const DirtyRect first = sim.tower_box(static_cast<size_t>(slot));
     REQUIRE_FALSE(first.empty());
     const auto centre = [](const DirtyRect& b) { return (b.x1 + b.x2) / 2; };
