@@ -75,3 +75,41 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the PIN pad covers the navbar while it is o
     process_lvgl(50);
     CHECK_FALSE(ui::chrome_covered());
 }
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a PIN pad opened from a PIN callback keeps the navbar covered",
+                 "[modal][pin_entry][modal_covers_navbar]") {
+    ui::PinEntryModal::show_pin_entry("Enter PIN", [](const std::string&) {
+        ui::PinEntryModal::show_pin_entry("Confirm PIN",
+                                          [](const std::string&) { return std::string(); });
+        return std::string();
+    });
+    REQUIRE(ui::chrome_covered());
+
+    ui::PinEntryModal::dismiss(); // fires the callback, which opens the second pad
+    process_lvgl(50);
+    CHECK(ui::chrome_covered());
+
+    ui::PinEntryModal::dismiss();
+    process_lvgl(50);
+    CHECK_FALSE(ui::chrome_covered());
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a stack modal closing over the PIN pad leaves the navbar covered",
+                 "[modal][pin_entry][modal_covers_navbar]") {
+    ui::PinEntryModal::show_pin_entry("Enter PIN",
+                                      [](const std::string&) { return std::string(); });
+    REQUIRE(ui::chrome_covered());
+
+    auto owned = std::make_unique<RunoutGuidanceModal>();
+    REQUIRE(Modal::show_owned(std::move(owned), test_screen()));
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    Modal::hide(dialog);
+    process_lvgl(50);
+    CHECK(ui::chrome_covered());
+
+    ui::PinEntryModal::dismiss();
+    process_lvgl(50);
+    CHECK_FALSE(ui::chrome_covered());
+}

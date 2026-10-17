@@ -96,14 +96,14 @@ void PinEntryModal::create() {
     lv_obj_set_style_radius(backdrop_, 0, 0);
     lv_obj_add_flag(backdrop_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_remove_flag(backdrop_, LV_OBJ_FLAG_SCROLLABLE);
-    // The PIN pad is modal: it holds the navbar, E-stop included, under its backdrop.
-    helix::ui::set_chrome_covered(true);
+    cover_chrome();
     helix::ui::bring_to_front(backdrop_);
 
     // Create the dialog from XML component
     dialog_ = static_cast<lv_obj_t*>(lv_xml_create(backdrop_, "pin_entry_modal", nullptr));
     if (!dialog_) {
         spdlog::error("[PinEntryModal] Failed to create pin_entry_modal from XML");
+        uncover_chrome();
         lv_obj_delete(backdrop_);
         backdrop_ = nullptr;
         return;
@@ -122,6 +122,7 @@ void PinEntryModal::create() {
 }
 
 void PinEntryModal::destroy() {
+    uncover_chrome();
     if (backdrop_) {
         lv_obj_delete(backdrop_);
         backdrop_ = nullptr;
@@ -131,11 +132,27 @@ void PinEntryModal::destroy() {
     spdlog::debug("[PinEntryModal] Destroyed");
 }
 
+// The PIN pad is modal: while it is open the navbar, E-stop included, stays
+// under its backdrop. Each instance holds at most one cover.
+void PinEntryModal::cover_chrome() {
+    if (!covering_chrome_) {
+        covering_chrome_ = true;
+        ModalStack::instance().add_external_cover();
+    }
+}
+
+void PinEntryModal::uncover_chrome() {
+    if (covering_chrome_) {
+        covering_chrome_ = false;
+        ModalStack::instance().remove_external_cover();
+    }
+}
+
 void PinEntryModal::destroy_async() {
     // Use lv_obj_delete_async for LVGL objects — auto-cancelled if parent is
     // deleted first, preventing use-after-free in lv_event_mark_deleted (#543).
+    uncover_chrome();
     if (backdrop_) {
-        helix::ui::set_chrome_covered(ModalStack::instance().covers_chrome());
         helix::ui::safe_delete_deferred(backdrop_);
         dialog_ = nullptr;
     }

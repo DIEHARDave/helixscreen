@@ -469,8 +469,15 @@ class ModalStack {
     // Check if any modals are visible (not counting those in exit animation)
     bool empty() const;
 
-    /// True while a visible (non-exiting) modal covers the navbar chrome.
+    /// True while a visible (non-exiting) modal, or an external cover, holds the
+    /// navbar chrome under a backdrop.
     bool covers_chrome() const;
+
+    /// A modal surface outside this stack (the PIN pad) holds the chrome covered
+    /// until it calls remove_external_cover(). Counted, so it composes with the
+    /// stack's own modals in either order.
+    void add_external_cover();
+    void remove_external_cover();
 
     /// Whether the entry for @p backdrop covers the chrome; no-op if untracked.
     void set_covers_chrome(lv_obj_t* backdrop, bool covers);
@@ -526,6 +533,7 @@ class ModalStack {
     };
 
     std::vector<ModalEntry> stack_;
+    int external_covers_ = 0;
 
     static void exit_animation_done(lv_anim_t* anim);
 
