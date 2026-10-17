@@ -48,6 +48,8 @@ void register_favorite_macro_widgets() {
                              FavoriteMacroConfigModal::tab_appearance_cb);
     lv_xml_register_event_cb(nullptr, "fav_macro_config_tab_options_cb",
                              FavoriteMacroConfigModal::tab_options_cb);
+    lv_xml_register_event_cb(nullptr, "fav_macro_config_color_cb",
+                             FavoriteMacroConfigModal::color_swatch_cb);
 }
 } // namespace helix
 

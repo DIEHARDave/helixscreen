@@ -5,6 +5,7 @@
 
 #include "ui_next_tick.h"
 #include "ui_overlay_temp_graph.h"
+#include "ui_swatch.h"
 
 #include "app_globals.h"
 #include "display_numbering.h"
@@ -20,6 +21,7 @@
 #include "temperature_sensor_manager.h"
 #include "theme_manager.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -616,6 +618,14 @@ void TempGraphWidget::TempGraphConfigModal::populate_follow_toggle() {
     follow_switch_ = sw;
 }
 
+namespace {
+/// Paint a config row's swatch with palette entry @p color_idx.
+void paint_series_swatch(lv_obj_t* swatch, int color_idx) {
+    const lv_color_t c = TEMP_GRAPH_SERIES_COLORS[color_idx % TEMP_GRAPH_PALETTE_SIZE];
+    helix::ui::apply_swatch_color(swatch, lv_color_to_u32(c) & 0xFFFFFF, "");
+}
+} // namespace
+
 void TempGraphWidget::TempGraphConfigModal::populate_sensor_list() {
     lv_obj_t* list = find_widget("sensor_list");
     if (!list) {
@@ -688,15 +698,16 @@ void TempGraphWidget::TempGraphConfigModal::populate_sensor_list() {
         lv_obj_set_style_pad_ver(row_obj, theme_manager_get_spacing("space_xs"), 0);
         lv_obj_set_style_pad_gap(row_obj, theme_manager_get_spacing("space_md"), 0);
 
-        // Color swatch — small colored square, clickable to cycle
+        // Series color: a swatch circle, tapped to cycle through the palette
         lv_obj_t* swatch = lv_obj_create(row_obj);
-        lv_obj_set_size(swatch, 24, 24);
-        lv_obj_set_style_radius(swatch, 4, 0);
-        lv_obj_set_style_bg_opa(swatch, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(
-            swatch, TEMP_GRAPH_SERIES_COLORS[row.color_idx % TEMP_GRAPH_PALETTE_SIZE], 0);
+        lv_obj_set_name(swatch, fmt::format("sensor_swatch_{}", rows_.size()).c_str());
+        const int32_t swatch_size = theme_manager_get_spacing("space_xl");
+        lv_obj_set_size(swatch, swatch_size, swatch_size);
+        lv_obj_set_style_radius(swatch, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_border_width(swatch, 0, 0);
+        lv_obj_remove_flag(swatch, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(swatch, LV_OBJ_FLAG_CLICKABLE);
+        paint_series_swatch(swatch, row.color_idx);
         row.swatch = swatch;
 
         // Store row index in user data for the click callback
@@ -731,8 +742,7 @@ void TempGraphWidget::TempGraphConfigModal::color_swatch_clicked(lv_event_t* e) 
 
     auto& row = modal->rows_[idx];
     row.color_idx = (row.color_idx + 1) % TEMP_GRAPH_PALETTE_SIZE;
-    lv_obj_set_style_bg_color(swatch,
-                              TEMP_GRAPH_SERIES_COLORS[row.color_idx % TEMP_GRAPH_PALETTE_SIZE], 0);
+    paint_series_swatch(swatch, row.color_idx);
 
     spdlog::debug("[TempGraphConfigModal] Cycled '{}' to color index {}", row.name, row.color_idx);
 }
