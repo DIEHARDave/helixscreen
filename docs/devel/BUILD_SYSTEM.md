@@ -1470,7 +1470,11 @@ checkout's first run copies the most recently used checkout (another tree's,
 or the shared one), `build/` included, and refreshes git's index before the
 reset, so only files that differ are rewritten and rebuilt. With every
 checkout busy it waits for the newest. `--commit` with any other job still
-runs in the shared checkout.
+runs in the shared checkout. The run passes `--workers auto`, so it mutates
+several hunks at once (one per 12 cores, at most 6), each in a reflink copy of
+the checkout beside it (`mutate/.<tree>.mutate-w<i>`) that the run removes when
+it ends; a run killed with SIGKILL leaves them for its tree's next run to
+replace. Its builds and test shards draw from the host's jobpool.
 
 **Cleanup.** `scripts/test-host-run.sh --prune [DAYS]` removes mirrors and
 mutate checkouts nobody has run for DAYS (14); a run that creates either one

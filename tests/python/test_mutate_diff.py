@@ -629,3 +629,313 @@ def _fake_catch2(tmp_path, footer):
 def test_case_count_is_read_from_the_catch2_listing(tmp_path, footer, expected):
     exe = _fake_catch2(tmp_path, footer)
     assert md.count_catch2_cases(tmp_path, exe, '[tag]') == expected
+
+
+# ---------------------------------------------------------------------------
+# The job budget: every make the run starts is handed the jobserver it joined,
+# and a slot beside the run's own is a token taken from it.
+# ---------------------------------------------------------------------------
+def test_a_child_is_handed_the_jobserver_descriptors(monkeypatch, tmp_path):
+    r, w = os.pipe()
+    os.set_inheritable(r, False)
+    os.set_inheritable(w, False)
+    env = {'MAKEFLAGS': f' -j --jobserver-auth={r},{w}'}
+    budget = md.JobBudget()
+    budget.join_inherited(env)
+    monkeypatch.setattr(md, 'JOBS', budget)
+    try:
+        rc, out = md.run_tracked(['sh', '-c', f'[ -e /proc/self/fd/{r} ] && '
+                                              f'[ -e /proc/self/fd/{w} ] && echo open'],
+                                 str(tmp_path))
+        assert out.strip() == 'open', 'a make started here would build at -j1'
+    finally:
+        os.close(r)
+        os.close(w)
+
+
+def test_a_jobserver_named_but_not_handed_down_is_dropped(tmp_path):
+    env = {'MAKEFLAGS': ' -j --jobserver-auth=97,98'}
+    budget = md.JobBudget()
+    budget.join_inherited(env)
+    assert '--jobserver-auth' not in env['MAKEFLAGS']
+    assert not budget.pooled
+    assert budget.pass_fds == ()
+
+
+def test_slots_beside_the_runs_own_are_tokens_and_go_back():
+    budget = md.JobBudget()
+    env = {}
+    assert budget.make_private(3, env)
+    assert '--jobserver-auth=' in env['MAKEFLAGS']
+    base = budget.take_base(lambda: False)
+    assert base is md.OWN_SLOT
+    toks = [budget.try_token() for _ in range(3)]
+    assert toks[2] is None and all(t is not None for t in toks[:2]), \
+        'a budget of 3 is the run\'s own slot and 2 tokens'
+    for t in toks[:2]:
+        budget.give(t)
+    assert budget.try_token() is not None
+
+
+def test_a_waiting_worker_gives_up_when_the_run_stops():
+    budget = md.JobBudget()
+    assert budget.make_private(1, {})
+    budget.take_base(lambda: False)           # the only slot
+    t0 = time.monotonic()
+    with pytest.raises(md.OutOfTime):
+        budget.take_base(lambda: time.monotonic() - t0 > 0.3)
+
+
+# ---------------------------------------------------------------------------
+# The C++ suite: small shards dispatched longest first, stopped at the first
+# detection, each timed against its own baseline.
+# ---------------------------------------------------------------------------
+def _shard_bin(tmp_path, body):
+    exe = tmp_path / 'helix-tests'
+    exe.write_text('#!/usr/bin/env bash\n'
+                   'i=0; while [ $# -gt 0 ]; do [ "$1" = --shard-index ] && i=$2; shift; done\n'
+                   + body)
+    exe.chmod(0o755)
+    return exe
+
+
+def test_a_detection_stops_the_shards_still_running(tmp_path):
+    exe = _shard_bin(tmp_path, 'if [ "$i" = 0 ]; then echo "t.cpp:1: FAILED:"; exit 1; fi\n'
+                               'sleep 30; echo "All tests passed (1 assertion in 1 test case)"\n')
+    plan = md.Catch2Plan(4, 4)
+    plan.limits = {i: 600.0 for i in range(4)}
+    t0 = time.monotonic()
+    state, why, _ = md.run_catch2(tmp_path, exe, '[x]', plan, open(os.devnull, 'w'))
+    assert state == md.DETECTED and why == ''
+    assert time.monotonic() - t0 < 10, 'the run waited on shards after a detection'
+
+
+def test_a_hung_shard_is_measured_against_its_own_baseline(tmp_path):
+    exe = _shard_bin(tmp_path, 'if [ "$i" = 2 ]; then sleep 30; fi\n'
+                               'echo "All tests passed (1 assertion in 1 test case)"\n')
+    plan = md.Catch2Plan(3, 3)
+    plan.limits = {0: 60.0, 1: 60.0, 2: 0.5}
+    state, why, who = md.run_catch2(tmp_path, exe, '[x]', plan, open(os.devnull, 'w'))
+    assert (state, why) == (md.DETECTED, md.TIMED_OUT)
+    assert 'catch2 shard 2' in who
+
+
+def test_the_baseline_records_each_shard_and_orders_the_next_run(tmp_path):
+    exe = _shard_bin(tmp_path, 'sleep "0.$((i * 3))"\n'
+                               'echo "All tests passed (1 assertion in 1 test case)"\n')
+    plan = md.Catch2Plan(3, 1)
+    state, _, _ = md.run_catch2(tmp_path, exe, '[x]', plan, open(os.devnull, 'w'))
+    assert state == md.GREEN
+    assert sorted(plan.secs) == [0, 1, 2]
+    assert plan.order() == [2, 1, 0], plan.secs
+
+
+def test_every_shard_runs_and_none_twice(tmp_path):
+    seen = tmp_path / 'seen'
+    exe = _shard_bin(tmp_path, f'echo "$i" >> {seen}\n'
+                               'echo "All tests passed (1 assertion in 1 test case)"\n')
+    plan = md.Catch2Plan(7, 3)
+    state, _, _ = md.run_catch2(tmp_path, exe, '[x]', plan, open(os.devnull, 'w'))
+    assert state == md.GREEN
+    assert sorted(seen.read_text().split()) == [str(i) for i in range(7)]
+
+
+# ---------------------------------------------------------------------------
+# Parallel workers
+# ---------------------------------------------------------------------------
+# Hunks f0..f5. The suite detects f0, f2 and f4 and ignores the others, and
+# records, for every run, its own directory and which files it found reverted
+# there: a worker's tree must hold exactly one mutant at a time, and the tree
+# the run started in none.
+PARALLEL_FILES = 6
+PARALLEL_SUITE = """#!/usr/bin/env bash
+reverted=""
+for f in src/f*.cpp; do grep -q NEW "$f" || reverted="$reverted $f"; done
+echo "$PWD$reverted" >> {seen}
+sleep 0.3
+for f in $reverted; do
+    case "$f" in src/f0.cpp|src/f2.cpp|src/f4.cpp)
+        echo "tests/unit/test_f.cpp:1: FAILED:"; echo "assertions: 1 | 1 failed"; exit 1 ;;
+    esac
+done
+exit 0
+"""
+
+
+def _parallel_fixture(tmp_path, makefile=FAST_MAKEFILE):
+    work = _fixture(tmp_path, makefile)
+    for i in range(PARALLEL_FILES):
+        (work / "src" / f"f{i}.cpp").write_text(f"int f{i}() {{ return 1; }}\n")
+    _git(work, "add", "src")
+    _git(work, "commit", "-qm", "files")
+    base = _git(work, "rev-parse", "HEAD").strip()
+    for i in range(PARALLEL_FILES):
+        (work / "src" / f"f{i}.cpp").write_text(f"int f{i}() {{ return 2; }}  // NEW\n")
+    seen = tmp_path / "seen.log"
+    suite = work / "build" / "bin" / "helix-tests"
+    suite.write_text(PARALLEL_SUITE.replace("{seen}", str(seen)))
+    return work, base, seen
+
+
+PARALLEL_ENV = {**ENV, "MUTATE_DIFF_PLAIN_COPY": "1"}
+
+# A mutant build (some f*.cpp without its marker) hangs, recording its pids.
+PARALLEL_SLOW_MAKEFILE = """test-build:
+\t@if grep -L NEW src/f*.cpp | grep -q .; then \\
+\t    echo $$$$ > .mutant-build-started; \\
+\t    sleep 60 & echo $$! > .mutant-build-child; wait; \\
+\tfi
+\t@[ -e build/bin/helix-tests ] && printf '\\n# relinked\\n' >> build/bin/helix-tests || true
+"""
+
+
+def _verdicts(out):
+    """The report's verdict lines, in report order."""
+    tail = out.split("=" * 68, 1)[1]
+    return [ln.split() for ln in tail.splitlines()
+            if ln.startswith("  ") and ":" in ln and "src/" in ln]
+
+
+def test_parallel_verdicts_match_serial(tmp_path):
+    work, base, seen = _parallel_fixture(tmp_path)
+    before = {p: p.read_bytes() for p in (work / "src").iterdir()}
+    serial = subprocess.run(
+        [sys.executable, "scripts/mutate_diff.py", "--base", base, "--shards", "1",
+         "--log", str(work / "serial.log"), "--only", "src/f"],
+        cwd=work, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        timeout=120, env=PARALLEL_ENV)
+    parallel = subprocess.run(
+        [sys.executable, "scripts/mutate_diff.py", "--base", base, "--shards", "1",
+         "--workers", "3", "--log", str(work / "parallel.log"), "--only", "src/f"],
+        cwd=work, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        timeout=120, env=PARALLEL_ENV)
+    assert "3 workers" in parallel.stdout, parallel.stdout
+    assert serial.returncode == parallel.returncode == 1, parallel.stdout
+    assert _verdicts(serial.stdout) == _verdicts(parallel.stdout)
+    assert [v[0] for v in _verdicts(parallel.stdout)].count("killed") == 3
+    for p, want in before.items():
+        assert p.read_bytes() == want, p
+    assert not list(tmp_path.glob(".repo.mutate-w*")), "a worker copy was left behind"
+
+
+def test_no_two_mutants_share_a_tree_and_the_original_holds_none(tmp_path):
+    work, base, seen = _parallel_fixture(tmp_path)
+    r = subprocess.run(
+        [sys.executable, "scripts/mutate_diff.py", "--base", base, "--shards", "1",
+         "--workers", "3", "--log", str(work / "mutate.log"), "--only", "src/f"],
+        cwd=work, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        timeout=120, env=PARALLEL_ENV)
+    assert r.returncode == 1, r.stdout
+    runs = [ln.split() for ln in seen.read_text().splitlines()]
+    mutant_runs = [ln for ln in runs if len(ln) > 1]
+    assert len(mutant_runs) == PARALLEL_FILES, runs
+    trees = {ln[0] for ln in mutant_runs}
+    assert str(work) not in trees, "a mutant ran in the tree the run started in"
+    assert len(trees) == 3, trees
+    for ln in mutant_runs:
+        assert len(ln) == 2, f"{ln[0]} held {len(ln) - 1} mutants at once"
+    # The baseline ran in the original, with nothing reverted.
+    assert [str(work)] in runs
+
+
+def test_a_stop_signal_mid_parallel_run_restores_every_tree(tmp_path):
+    work, base, seen = _parallel_fixture(tmp_path, PARALLEL_SLOW_MAKEFILE)
+    before = {p: p.read_bytes() for p in (work / "src").iterdir()}
+    proc = subprocess.Popen(
+        [sys.executable, "scripts/mutate_diff.py", "--base", base, "--shards", "1",
+         "--workers", "2", "--log", str(work / "mutate.log"), "--only", "src/f"],
+        cwd=work, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        start_new_session=True, env=PARALLEL_ENV)
+    try:
+        deadline = time.monotonic() + 60
+        started = []
+        while time.monotonic() < deadline and len(started) < 2:
+            started = list(tmp_path.glob(".repo.mutate-w*/.mutant-build-child"))
+            time.sleep(0.05)
+        assert len(started) == 2, "both workers should be mid-build"
+        children = [int(p.read_text().split()[0]) for p in started]
+        os.kill(proc.pid, signal.SIGTERM)
+        out, _ = proc.communicate(timeout=60)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+    assert proc.returncode == 128 + signal.SIGTERM, out
+    assert "STOPPED by SIGTERM" in out
+    for p, want in before.items():
+        assert p.read_bytes() == want, p
+    for tree in tmp_path.glob(".repo.mutate-w*"):
+        for p, want in before.items():
+            assert (tree / "src" / p.name).read_bytes() == want, tree / "src" / p.name
+    for child in children:
+        deadline = time.monotonic() + 5
+        while _alive(child) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert not _alive(child), "a worker's build outlived the run"
+
+
+def test_max_minutes_in_a_parallel_run_names_every_hunk_it_did_not_finish(tmp_path):
+    work, base, seen = _parallel_fixture(tmp_path, PARALLEL_SLOW_MAKEFILE)
+    before = {p: p.read_bytes() for p in (work / "src").iterdir()}
+    t0 = time.monotonic()
+    r = subprocess.run(
+        [sys.executable, "scripts/mutate_diff.py", "--base", base, "--shards", "1",
+         "--workers", "2", "--max-minutes", "0.1", "--log", str(work / "mutate.log"),
+         "--only", "src/f"],
+        cwd=work, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        timeout=120, env=PARALLEL_ENV)
+    assert r.returncode == 3, r.stdout
+    assert time.monotonic() - t0 < 60
+    for i in range(PARALLEL_FILES):
+        assert f"UNEXAMINED    src/f{i}.cpp:1" in r.stdout, r.stdout
+    assert "VERDICT: INCOMPLETE" in r.stdout
+    for p, want in before.items():
+        assert p.read_bytes() == want, p
+
+
+def test_without_reflink_a_parallel_request_runs_serial_and_says_why(tmp_path):
+    probe = tmp_path / "probe"
+    probe.write_text("x")
+    if subprocess.run(["cp", "--reflink=always", str(probe), str(tmp_path / "probe2")],
+                      capture_output=True).returncode == 0:
+        pytest.skip("this filesystem takes reflink copies")
+    work, base, seen = _parallel_fixture(tmp_path)
+    r = subprocess.run(
+        [sys.executable, "scripts/mutate_diff.py", "--base", base, "--shards", "1",
+         "--workers", "3", "--log", str(work / "mutate.log"), "--only", "src/f"],
+        cwd=work, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        timeout=120, env=ENV)
+    assert "workers: 1 (" in r.stdout and "reflink" in r.stdout, r.stdout
+    assert r.returncode == 1
+
+
+def test_a_worker_copy_points_its_build_files_at_itself(tmp_path):
+    src = tmp_path / "tree"
+    (src / "build" / "obj").mkdir(parents=True)
+    (src / "build" / "obj-asan").mkdir()
+    (src / ".git").mkdir()
+    dep = src / "build" / "obj" / "a.d"
+    dep.write_text(f"{src}/build/obj/a.o: {src}/src/a.cpp {src}-other/x.h\n")
+    os.utime(dep, (1_000_000, 1_000_000))
+    (src / "build" / "obj-asan" / "big.o").write_text("x")
+    (src / "compile_commands.json").write_text(f'[{{"directory": "{src}"}}]')
+    dst = tmp_path / ".tree.mutate-w1"
+    env_before = os.environ.get("MUTATE_DIFF_PLAIN_COPY")
+    os.environ["MUTATE_DIFF_PLAIN_COPY"] = "1"
+    try:
+        md._copy_tree(src, dst)
+    finally:
+        if env_before is None:
+            os.environ.pop("MUTATE_DIFF_PLAIN_COPY")
+    got = (dst / "build" / "obj" / "a.d").read_text()
+    assert got == f"{dst}/build/obj/a.o: {dst}/src/a.cpp {src}-other/x.h\n"
+    assert (dst / "build" / "obj" / "a.d").stat().st_mtime == 1_000_000, \
+        "a rewritten dependency file must keep its mtime or make rebuilds everything"
+    assert str(dst) in (dst / "compile_commands.json").read_text()
+    assert not (dst / "build" / "obj-asan").exists()
+    # A directory that is not a worker copy is never deleted to make room.
+    other = tmp_path / ".tree.mutate-w2"
+    other.mkdir()
+    (other / "precious").write_text("x")
+    with pytest.raises(RuntimeError, match="not a worker copy"):
+        md._copy_tree(src, other)
+    assert (other / "precious").exists()
