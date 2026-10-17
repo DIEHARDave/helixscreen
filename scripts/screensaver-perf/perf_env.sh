@@ -80,7 +80,7 @@ perf_run_remote() {
 perf_saver_name() {
     case $1 in
     idle | off | ui) echo off ;;
-    toasters | starfield | pipes | bounce | fireworks | logo | maze | hyperspace | flipclock)
+    toasters | starfield | pipes | bounce | fireworks | logo | maze | hyperspace | flipclock | fireflies)
         echo "$1"
         ;;
     *)

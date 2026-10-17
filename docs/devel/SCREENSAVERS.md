@@ -19,8 +19,9 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver_gate.h`, `include/screensaver_cpu_clock.h` | Budget, decision, idle baseline, windows, environment switches, the CPU clock seam |
 | `include/screensaver_level_store.h` | Board fingerprint and the stored level per saver |
 | `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the too-heavy fallback and the last-resort black screen |
-| `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h`, `include/screensaver_flip_clock.h` | The savers |
+| `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h`, `include/screensaver_flip_clock.h`, `include/screensaver_fireflies.h` | The savers |
 | `include/screensaver_maze_sim.h`, `include/screensaver_maze.h` | The 3D maze: maze generation, the wall-following walk, and the raycaster that draws it. No LVGL in the sim |
+| `include/screensaver_fireflies_sim.h` | Fireflies: the swarms, their modes and wind, and the additive drawing (`FirefliesSim`). No LVGL |
 | `include/screensaver_flip_clock_sim.h` | Flip clock: what it shows (`FlipClockState`), the card layout, and the drawing (`FlipClockSim`). No LVGL |
 | `scripts/screensaver-perf/` | Measuring a saver on a real board |
 
@@ -43,7 +44,9 @@ bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps t
 33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms; hyperspace per `HYPERSPACE_LEVELS`, which keeps 33 ms past level 0
 and then draws its tunnel and goo in 2x2 blocks, drops the goo, draws the tunnel in 4x4 blocks, and
 last drops the tunnel and flies 96 of its 160 stars; the flip clock per `FLIP_CLOCK_LEVELS`: the folding
-flip at 33 ms, then an instant digit swap checked every 250 ms. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
+flip at 33 ms, then an instant digit swap checked every 250 ms; fireflies per `FIREFLIES_LEVELS`:
+33 ms past level 0, then tails one pixel wide with no glow halo, then 120 flies with 1.5 s tails
+at 50 ms, and last 48 flies with 0.75 s tails at 100 ms. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).
 
@@ -162,6 +165,28 @@ build draws at its depth, otherwise the first registered saver that does, and Of
    `.rodata` are fine). Everything is allocated in `on_start()` and released, capacity included,
    in `on_stop()`; `clear()` on a vector keeps its capacity, so swap it with an empty one. Check
    with `size build/obj/ui/screensaver_<name>*.o`.
+
+## Fireflies
+
+A clean reimplementation of Matt Perry's Fireflies from its described behaviour and published
+numbers only: the original is GPL-2.0-only, so nothing of its source is used. On black, 2 to 5
+invisible baits wander a box 80 units tall, aspect-scaled wide and 50 deep, seen through a fixed
+perspective camera, and 100 to 175 flies chase them in coloured swarms. Seven modes break up the
+wandering every 8 to 15 s: stop, loop, glow, hyperspeed, split, merge and a wind gust.
+
+- **Fixed steps.** `FirefliesSim` advances the world in 10 ms steps and reads its random
+  sequence only inside a step, so the motion is the same at every frame period and level. A
+  level changes only what is drawn: the first `max_flies` of the whole population, tails cut at
+  the level's `tail_ms`.
+- **Tails.** Each fly records a point every 50 ms. A tail is drawn head to oldest as Bresenham
+  lines widened along the minor axis, brightest in the middle (`fireflies_tail_brightness`), with
+  each point blown downwind by its age.
+- **Dirty tiles.** The loops of one swarm span most of the screen, so a box per swarm would
+  redraw it all. The sim marks the 16 px tiles each frame draws in, blacks out the tiles the
+  last frame drew, and reports both frames' tiles joined into at most
+  `FIREFLIES_MAX_DIRTY_AREAS` boxes.
+- **RGB565.** Light adds through `add_light` with a `BAYER_4X4` threshold, so a faint tail end
+  shows as a sparse pattern instead of rounding to nothing.
 
 ## Flip clock
 
