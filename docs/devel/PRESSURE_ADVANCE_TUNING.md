@@ -88,20 +88,29 @@ for other extruders and filaments are kept on every write.
 
 What OrcaSlicer reads today (checked against `OrcaSlicer/OrcaSlicer` main, 2026-10):
 
-- No Spoolman integration in the slicer itself, so a Spoolman extra field does not reach
-  Orca on its own.
-- Its Moonraker printer agent (`MoonrakerPrinterAgent::fetch_moonraker_filament_data`)
-  reads the Moonraker database namespace `lane_data`, taking `color`, `material`,
-  `bed_temp` and `nozzle_temp` per lane. No pressure advance.
-- Filament settings `enable_pressure_advance` and `pressure_advance`; when enabled Orca
-  emits `SET_PRESSURE_ADVANCE ADVANCE=<k>` at the start and on tool changes.
-- Python plugins (`src/slic3r/plugin/`) can read and edit filament presets
-  (`current_filament_presets`, preset reload) and make HTTP requests.
+- No Spoolman integration in the slicer itself (the only implementation, PR #4771, is
+  still open and carries PA only inside its own serialized preset blob). A Spoolman extra
+  field does not reach Orca on its own.
+- The path that works today is [spoolman2slicer](https://github.com/bofh69/spoolman2slicer),
+  which turns Spoolman filaments into Orca filament presets. Its default templates already
+  read a filament-level extra field named `pressure_advance`, which is why HelixScreen
+  writes exactly that key.
+- Orca's Moonraker printer agent (`MoonrakerPrinterAgent::fetch_moonraker_filament_data`)
+  reads the Moonraker database namespace `lane_data` (`color`, `material`, `bed_temp`,
+  `nozzle_temp` per lane). No pressure advance.
+- Filament settings `enable_pressure_advance` (default off) and `pressure_advance`. When
+  enabled, Orca emits `SET_PRESSURE_ADVANCE ADVANCE=<k> EXTRUDER=...` at print start and
+  on tool changes, overriding whatever the printer had. HelixScreen's activation apply runs
+  before the print and never during one, so what the slicer sends wins for that print.
+- Python plugins (merged in PR #14530, 2.5.0-alpha) get **read-only** preset access
+  (`orca.host` `config_value` / `current_filament_presets`); writing presets is only
+  proposed (PR #16518). Network access goes through a per-plugin permission prompt.
 
-A plugin that wants HelixScreen's results needs: the printer's Moonraker URL (the
-physical printer preset already has it), one `GET` of the key above, a match from the
+So a plugin today can only read the Moonraker key above and show it next to the
+filament's `pressure_advance`. Once presets become writable it needs: the printer's
+Moonraker URL from the physical printer preset, one `GET` of the key, a match from the
 selected filament preset to `filaments[<id>]` (by Spoolman filament id if the preset
-records one) or `extruders[<name>]`/`last`, and to write `pressure_advance` with
+records one) or `extruders[<name>]` / `last`, and a write of `pressure_advance` with
 `enable_pressure_advance = true` into that preset.
 
 ## Mock
