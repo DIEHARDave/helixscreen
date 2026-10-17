@@ -3012,7 +3012,7 @@ AmsError AmsBackendHappyHare::apply_user_edit(int slot_index, const SlotInfo& in
 
     if (has_changes && pull_owns_gate_map) {
         return pull_mode_refusal("Couldn't save the printer's gate map",
-                                 "This printer fills its gates from Spoolman. Make colour, "
+                                 "This printer fills its gates from Spoolman. Make color, "
                                  "material and spool changes in Spoolman.");
     }
 

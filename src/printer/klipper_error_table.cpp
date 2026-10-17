@@ -162,7 +162,7 @@ static const std::unordered_map<std::string, KlipperErrorEntry> KlipperErrorTabl
       // re-seat remedy is conditional, not asserted: the firmware msg names
       // the actual cause.
       TR_NOOP(
-          "Set the filament type and colour by hand for this slot. If the tag should be readable, "
+          "Set the filament type and color by hand for this slot. If the tag should be readable, "
           "re-seat the spool with its label facing the reader once the box is idle"),
       AmsAlertLevel::SLOT, fmt_unit_slot, /*prefer_fw_msg=*/true}},
     {"key844",

@@ -272,6 +272,7 @@
   <translation tag="Ask for parameters" it="Chiedi i parametri"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" it="Assegna macro Klipper per controllare LED tramite on/off, alternanza o preset"/>
   <translation tag="Assign a role to enable sensor monitoring" it="Assegna un ruolo per abilitare il monitoraggio del sensore"/>
+  <translation tag="Assigned Tool" it="Strumento assegnato"/>
   <translation tag="Assisted Retract" it="Retrazione assistita"/>
   <translation tag="Assisting" it="Assistenza"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" it="Almeno {} righe di helixscreen.env sono state ignorate"/>
@@ -284,21 +285,19 @@
   <translation tag="Auto Fans" it="Ventilatori automatici"/>
   <translation tag="Auto-Detect" it="Rilevamento auto"/>
   <translation tag="Auto-Heat on Load" it="Riscaldamento automatico al caricamento"/>
+  <translation tag="Auto-Replenish" it="Rifornimento automatico"/>
   <translation tag="Auto-detect" it="Rilevamento auto"/>
   <translation tag="Auto-install only works on local Moonraker" it="L&apos;installazione automatica funziona solo su Moonraker locale"/>
   <translation tag="Auto-lock" it="Blocco automatico"/>
   <translation tag="Auto-poll for weight updates" it="Aggiornamento peso automatico"/>
   <translation tag="Auto-probe or manually check screw heights" it="Sondaggio automatico o controllo manuale dell&apos;altezza delle viti"/>
-  <translation tag="Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout" it="Il rifornimento automatico è attivo, ma nessuna coppia di slot ha filamento compatibile, quindi nulla cambierà all&apos;esaurimento"/>
   <translation tag="Auto-render video" it="Rendering video automatico"/>
-  <translation tag="Auto-replenish filament" it="Rifornisci filamento automaticamente"/>
   <translation tag="Auto-tuning Shapers..." it="Regolazione automatica degli shaper in corso..."/>
   <translation tag="Auto-uninstall only works on local Moonraker" it="La disinstallazione automatica funziona solo su Moonraker locale"/>
   <translation tag="Automatic" it="Automatico"/>
   <translation tag="Automatic Heater Control Calibration" it="Calibrazione controllo automatico riscaldatore"/>
   <translation tag="Automatic LED Control" it="Controllo LED automatico"/>
   <translation tag="Automatic calibration" it="Calibrazione automatica"/>
-  <translation tag="Automatic slot swap on runout" it="Cambio automatico di slot a fine filamento"/>
   <translation tag="Aux" it="Aux"/>
   <translation tag="Available" it="Disponibile"/>
   <translation tag="Available Networks" it="Reti disponibili"/>
@@ -318,8 +317,13 @@
   <translation tag="BLUETOOTH SCANNERS" it="SCANNER BLUETOOTH"/>
   <translation tag="Back" it="Indietro"/>
   <translation tag="Backtrace: {} frames" it="Backtrace: {} frame"/>
+  <translation tag="Backup Feeder" it="Alimentatore di riserva"/>
+  <translation tag="Backup Gate" it="Gate di riserva"/>
+  <translation tag="Backup Lane" it="Corsia di riserva"/>
+  <translation tag="Backup Slot" it="Slot di riserva"/>
+  <translation tag="Backup Tool" it="Strumento di riserva"/>
+  <translation tag="Backup Toolhead" it="Testina di riserva"/>
   <translation tag="Backup lane name contains invalid characters" it="Il nome della corsia di riserva contiene caratteri non validi"/>
-  <translation tag="Backup spool switching state unknown" it="Stato del cambio a bobina di riserva sconosciuto"/>
   <translation tag="Balanced" it="Bilanciato"/>
   <translation tag="Barcode Scanner" it="Scanner codici a barre"/>
   <translation tag="Base" it="Riferimento"/>
@@ -507,8 +511,6 @@
   <translation tag="Cannot open or close the feeder while a print is active" it="Impossibile aprire o chiudere l&apos;alimentatore durante una stampa in corso"/>
   <translation tag="Cannot park while a print is active" it="Impossibile parcheggiare durante una stampa in corso"/>
   <translation tag="Cannot perform this action now" it="Impossibile eseguire questa azione ora"/>
-  <translation tag="Cannot remap G-code: no temp directory available" it="Impossibile rimappare G-code: directory temporanea non disponibile"/>
-  <translation tag="Cannot remap: internal error" it="Impossibile rimappare: errore interno"/>
   <translation tag="Cannot reprint: not connected to printer" it="Impossibile ristampare: non connesso alla stampante"/>
   <translation tag="Cannot restart — no filename" it="Impossibile riavviare — nessun nome file"/>
   <translation tag="Cannot run filament operation while printing" it="Impossibile eseguire operazioni sul filamento durante la stampa"/>
@@ -621,7 +623,7 @@
   <translation tag="Clear All Events" it="Cancella tutti gli eventi"/>
   <translation tag="Clear Console?" it="Cancellare la console?"/>
   <translation tag="Clear Spool" it="Rimuovi bobina"/>
-  <translation tag="Clear all spool failover assignments" it="Cancella tutte le assegnazioni di bobina di riserva"/>
+  <translation tag="Clear every Endless Spool backup" it="Cancella tutte le riserve della bobina infinita"/>
   <translation tag="Clear failed" it="Cancellazione fallita"/>
   <translation tag="Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament&apos;s packaging) and close the door." it="Libera lo spazio sopra e sotto il piano. Appoggia le bobine sul piano, coprile con una scatola (un coperchio stampato o la confezione del filamento) e chiudi lo sportello."/>
   <translation tag="Clear the plate and load {}. The tower prints in the middle of the bed." it="Libera il piano e carica {}. La torre viene stampata al centro del piano."/>
@@ -690,7 +692,6 @@
   <translation tag="Configured aux fan not found" it="Ventola ausiliaria configurata non trovata"/>
   <translation tag="Configured filament sensor not found" it="Sensore filamento configurato non trovato"/>
   <translation tag="Configured hardware no longer present" it="L&apos;hardware configurato non è più presente"/>
-  <translation tag="Configured in the backup-spool package, not from here" it="Si configura nel plugin della bobina di riserva, non da qui"/>
   <translation tag="Configuring Moonraker..." it="Configurazione Moonraker..."/>
   <translation tag="Confirm PIN" it="Conferma PIN"/>
   <translation tag="Confirm before running macros" it="Conferma prima di eseguire le macro"/>
@@ -796,7 +797,10 @@
   <translation tag="Could not start Bluetooth discovery" it="Impossibile avviare la ricerca Bluetooth"/>
   <translation tag="Could not update filaments" it="Impossibile aggiornare i filamenti"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." it="Impossibile verificare lo stato di Spoolman. Moonraker potrebbe essere ancora in riavvio."/>
+  <translation tag="Couldn&apos;t assign the tool" it="Impossibile assegnare lo strumento"/>
   <translation tag="Couldn&apos;t clear the printer&apos;s gate map" it="Impossibile svuotare la mappa dei gate della stampante"/>
+  <translation tag="Couldn&apos;t map filament: internal error" it="Impossibile mappare il filamento: errore interno"/>
+  <translation tag="Couldn&apos;t map filament: no temp directory available" it="Impossibile mappare il filamento: directory temporanea non disponibile"/>
   <translation tag="Couldn&apos;t save the material name" it="Impossibile salvare il nome del materiale"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" it="Impossibile salvare la mappa dei gate della stampante"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." it="Impossibile salvare su Spoolman. Nulla è stato modificato su questa stampante."/>
@@ -1012,7 +1016,6 @@
   <translation tag="Enable or disable the hub cutter" it="Abilita o disabilita la taglierina dell&apos;hub"/>
   <translation tag="Enable plugin?" it="Abilitare il plugin?"/>
   <translation tag="Enable purging during tool changes" it="Abilita lo spurgo durante i cambi utensile"/>
-  <translation tag="Enable/disable automatic backup spool switching" it="Abilita/disabilita il passaggio automatico alla bobina di riserva"/>
   <translation tag="Enable/disable quiet operation mode" it="Abilita/disabilita la modalità di funzionamento silenziosa"/>
   <translation tag="Enabled" it="Abilitato"/>
   <translation tag="Enabled. Open its settings, or disable it?" it="Abilitato. Aprire le sue impostazioni o disabilitarlo?"/>
@@ -1025,7 +1028,10 @@
   <translation tag="End the test print?" it="Terminare la stampa di prova?"/>
   <translation tag="Ended" it="Terminato"/>
   <translation tag="Endless Spool" it="Bobina infinita"/>
-  <translation tag="Endless spool failover cleared for every slot" it="Bobina di riserva cancellata per tutti gli slot"/>
+  <translation tag="Endless Spool backups cleared" it="Riserve della bobina infinita cancellate"/>
+  <translation tag="Endless Spool is configured in its package, not from here" it="La bobina infinita si configura nel suo plugin, non da qui"/>
+  <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" it="La bobina infinita è attiva, ma nessuna coppia di slot ha filamento compatibile, quindi nulla cambierà all&apos;esaurimento"/>
+  <translation tag="Endless Spool state unknown" it="Stato della bobina infinita sconosciuto"/>
   <translation tag="Endless spool is turned off on this MMU" it="La bobina infinita è disattivata su questo MMU"/>
   <translation tag="Ensure Happy Hare or AFC is installed and configured" it="Assicurati che Happy Hare o AFC sia installato e configurato"/>
   <translation tag="Enter Current PIN" it="Inserisci il PIN attuale"/>
@@ -1141,8 +1147,8 @@
   <translation tag="Failed to delete spool" it="Eliminazione bobina fallita"/>
   <translation tag="Failed to disable WiFi: {}" it="Impossibile disattivare il WiFi: {}"/>
   <translation tag="Failed to discard recovery data: {}" it="Impossibile scartare i dati di recupero: {}"/>
+  <translation tag="Failed to download G-code for Filament Mapping: {}" it="Impossibile scaricare G-code per la mappatura filamento: {}"/>
   <translation tag="Failed to download G-code for modification: {}" it="Impossibile scaricare G-code per modifica: {}"/>
-  <translation tag="Failed to download G-code for remap: {}" it="Impossibile scaricare G-code per rimappatura: {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." it="Download helixscreen.conf fallito.&#10;Controllare la connessione della stampante."/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." it="Download moonraker.conf fallito.&#10;Controllare la connessione della stampante."/>
   <translation tag="Failed to download the .3mf for printing: {}" it="Impossibile scaricare il .3mf per la stampa: {}"/>
@@ -1173,13 +1179,12 @@
   <translation tag="Failed to open temperature graph" it="Impossibile aprire grafico temperature"/>
   <translation tag="Failed to pause print: {}" it="Impossibile mettere in pausa: {}"/>
   <translation tag="Failed to purge: {}" it="Impossibile spurgare: {}"/>
-  <translation tag="Failed to read G-code for remap" it="Lettura G-code per rimappatura fallita"/>
+  <translation tag="Failed to read G-code for Filament Mapping" it="Lettura G-code per la mappatura filamento fallita"/>
   <translation tag="Failed to read config." it="Lettura configurazione fallita."/>
   <translation tag="Failed to read config. Check connection." it="Lettura configurazione fallita. Controllare la connessione."/>
   <translation tag="Failed to read moonraker.conf." it="Lettura moonraker.conf fallita."/>
   <translation tag="Failed to read printer status" it="Impossibile leggere lo stato della stampante"/>
   <translation tag="Failed to refresh file list" it="Impossibile aggiornare elenco file"/>
-  <translation tag="Failed to remap G-code: {}" it="Rimappatura G-code fallita: {}"/>
   <translation tag="Failed to render label" it="Rendering dell&apos;etichetta non riuscito"/>
   <translation tag="Failed to reprint: {}" it="Impossibile ristampare: {}"/>
   <translation tag="Failed to reset theme" it="Ripristino tema fallito"/>
@@ -1187,6 +1192,7 @@
   <translation tag="Failed to restart Moonraker." it="Riavvio Moonraker fallito."/>
   <translation tag="Failed to restart: {}" it="Riavvio non riuscito: {}"/>
   <translation tag="Failed to resume: {}" it="Impossibile riprendere: {}"/>
+  <translation tag="Failed to rewrite G-code for Filament Mapping: {}" it="Riscrittura G-code per la mappatura filamento fallita: {}"/>
   <translation tag="Failed to save LED configuration" it="Impossibile salvare configurazione LED"/>
   <translation tag="Failed to save WiFi network" it="Impossibile salvare la rete WiFi"/>
   <translation tag="Failed to save config." it="Salvataggio configurazione fallito."/>
@@ -1222,8 +1228,8 @@
   <translation tag="Failed to update moonraker.conf." it="Aggiornamento moonraker.conf fallito."/>
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." it="Aggiornamento moonraker.conf fallito.&#10;Controllare la connessione della stampante."/>
   <translation tag="Failed to upload modified G-code: {}" it="Impossibile caricare G-code modificato: {}"/>
-  <translation tag="Failed to upload remapped G-code: {}" it="Caricamento G-code rimappato fallito: {}"/>
   <translation tag="Failed to upload the extracted G-code: {}" it="Impossibile caricare il G-code estratto: {}"/>
+  <translation tag="Failed to upload the rewritten G-code: {}" it="Caricamento del G-code riscritto fallito: {}"/>
   <translation tag="Fair match" it="Corrispondenza discreta"/>
   <translation tag="Fan" it="Ventola"/>
   <translation tag="Fan Calibration" it="Calibrazione ventola"/>
@@ -1257,6 +1263,8 @@
   <translation tag="Filament In The Toolhead" it="Filamento nella testina"/>
   <translation tag="Filament Jam" it="Blocco del filamento"/>
   <translation tag="Filament Mapping" it="Mappatura filamento"/>
+  <translation tag="Filament Mapping is not available on this device." it="La mappatura filamento non è disponibile su questo dispositivo."/>
+  <translation tag="Filament Mapping is unavailable" it="La mappatura filamento non è disponibile"/>
   <translation tag="Filament Runout" it="Esaurimento filamento"/>
   <translation tag="Filament Sensor" it="Sensore filamento"/>
   <translation tag="Filament System Error" it="Errore del sistema filamento"/>
@@ -1284,6 +1292,7 @@
   <translation tag="Filament is still present after the cut — the blade may be dull or misaligned" it="Dopo il taglio è ancora presente del filamento. La lama potrebbe essere consumata o disallineata"/>
   <translation tag="Filament jam detected" it="Blocco del filamento rilevato"/>
   <translation tag="Filament jammed at the extruder gear" it="Filamento inceppato nell&apos;ingranaggio dell&apos;estrusore"/>
+  <translation tag="Filament mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" it="Questa stampante non supporta la mappatura filamento, quindi la stampa usa gli strumenti assegnati sulla stampante"/>
   <translation tag="Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head." it="Il filamento deve essere caricato nell&apos;estrusore e il piano montato, con nulla che ostacoli la testina."/>
   <translation tag="Filament never reached the CFS hub sensor" it="Il filamento non ha mai raggiunto il sensore dell&apos;hub CFS"/>
   <translation tag="Filament not set" it="Filamento non impostato"/>
@@ -1296,8 +1305,6 @@
   <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." it="Filamento esaurito. Il rifornimento automatico è disattivato, quindi il CFS non cambierà bobina da solo. Carica il filamento e poi riprendi."/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." it="Filamento esaurito. Il CFS sa quali bobine sono compatibili, ma quegli slot sono vuoti. Caricane una, poi riprendi."/>
   <translation tag="Filament reload failed" it="Ricarica del filamento non riuscita"/>
-  <translation tag="Filament remap not supported on this printer — print will use the firmware&apos;s current tool mapping" it="Questa stampante non supporta la riassegnazione del filamento — la stampa userà la mappatura degli strumenti attuale del firmware"/>
-  <translation tag="Filament remapping is unavailable" it="La rimappatura del filamento non è disponibile"/>
   <translation tag="Filament runout" it="Esaurimento filamento"/>
   <translation tag="Filament runout and motion detection sensors" it="Sensori esaurimento filamento e rilevamento movimento"/>
   <translation tag="Filament saved" it="Filamento salvato"/>
@@ -1747,7 +1754,7 @@
   <translation tag="Load filament first" it="Prima carica il filamento"/>
   <translation tag="Load or unload filament." it="Carica o scarica il filamento."/>
   <translation tag="Load the required filaments or start anyway?" it="Caricare i filamenti richiesti o avviare comunque?"/>
-  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." it="Carica, scarica e sostituisci le bobine. Visualizza a colpo d&apos;occhio il tuo sistema multi-filamento, abbina i colori agli slot e monitora i sensori di esaurimento."/>
+  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." it="Carica, scarica e sostituisci le bobine. Visualizza a colpo d&apos;occhio il tuo sistema multi-filamento, abbina il filamento agli strumenti e monitora i sensori di esaurimento."/>
   <translation tag="Load..." it="Carica..."/>
   <translation tag="Loaded" it="Caricato"/>
   <translation tag="Loading" it="Caricamento"/>
@@ -1844,6 +1851,7 @@
   <translation tag="Manual: the ramp has stopped at your value" it="Manuale: la rampa si è fermata al tuo valore"/>
   <translation tag="Manually clear the jam and retry the operation" it="Rimuovi manualmente il blocco e riprova l&apos;operazione"/>
   <translation tag="Manually pull the filament back through the connector" it="Estrarre a mano il filamento attraverso il connettore"/>
+  <translation tag="Map Filament…" it="Mappa filamento…"/>
   <translation tag="Map to closest colors with matching material" it="Abbina ai colori più vicini con materiale compatibile"/>
   <translation tag="Mapping Error" it="Errore di mappatura"/>
   <translation tag="Marginal" it="Marginale"/>
@@ -1980,6 +1988,7 @@
   <translation tag="No Bluetooth printer selected — pick one in settings" it="Nessuna stampante Bluetooth selezionata — sceglierne una nelle impostazioni"/>
   <translation tag="No Bluetooth printers found" it="Nessuna stampante Bluetooth trovata"/>
   <translation tag="No Camera" it="Nessuna telecamera"/>
+  <translation tag="No Endless Spool package is installed" it="Nessun plugin per la bobina infinita installato"/>
   <translation tag="No Filament Detected" it="Nessun filamento rilevato"/>
   <translation tag="No Hardware Issues" it="Nessun problema hardware"/>
   <translation tag="No History" it="Nessuna cronologia"/>
@@ -1996,7 +2005,6 @@
   <translation tag="No USB printer detected" it="Nessuna stampante USB rilevata"/>
   <translation tag="No USB printers found" it="Nessuna stampante USB trovata"/>
   <translation tag="No active Spoolman spool." it="Nessuna bobina Spoolman attiva."/>
-  <translation tag="No automatic backup-spool package is installed" it="Nessun plugin per bobina di riserva automatica installato"/>
   <translation tag="No buffer data available" it="Nessun dato buffer disponibile"/>
   <translation tag="No camera — use USB barcode scanner" it="Nessuna telecamera — usa scanner USB per codici a barre"/>
   <translation tag="No chamber temperature sensor detected" it="Nessun sensore di temperatura della camera rilevato"/>
@@ -2582,11 +2590,6 @@
   <translation tag="Remaining" it="Rimanente"/>
   <translation tag="Remaining (g)" it="Rimanente (g)"/>
   <translation tag="Remaining Weight (g)" it="Peso rimanente (g)"/>
-  <translation tag="Remap Tool" it="Rimappa strumento"/>
-  <translation tag="Remapping G-code is not available on this device." it="La rimappatura del G-code non è disponibile su questo dispositivo."/>
-  <translation tag="Remapping rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally." it="La rimappatura riscrive il file di stampa prima di stamparlo. Il Moonraker di questa stampante è troppo vecchio perché il plugin HelixPrint ripristini in seguito il nome del file originale, quindi il lavoro completato viene elencato con il nome riscritto. La rimappatura stessa funziona normalmente."/>
-  <translation tag="Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." it="La rimappatura riscrive il file di stampa prima di stamparlo. Senza il plugin HelixPrint, la copia riscritta è quella che finisce nella cronologia di stampa, quindi i lavori completati vengono elencati con nomi come modified_1730824_benchy.gcode invece del file scelto.&#10;&#10;L&apos;installazione del plugin richiede un momento e non è necessario riavviare."/>
-  <translation tag="Remap…" it="Rimappa…"/>
   <translation tag="Remember slot spool details across an eject" it="Ricorda i dettagli della bobina dello slot dopo un&apos;espulsione"/>
   <translation tag="Remove" it="Rimuovi"/>
   <translation tag="Remove PIN" it="Rimuovi PIN"/>
@@ -2609,7 +2612,7 @@
   <translation tag="Replace" it="Sostituisci"/>
   <translation tag="Replace Profile?" it="Sostituire profilo?"/>
   <translation tag="Replay Welcome Tour" it="Rivedi il tour di benvenuto"/>
-  <translation tag="Replenish ignores colour" it="Il rifornimento ignora il colore"/>
+  <translation tag="Replenish ignores color" it="Il rifornimento ignora il colore"/>
   <translation tag="Replenishing filament..." it="Rifornimento filamento..."/>
   <translation tag="Report saved to crash_report.txt" it="Report salvato in crash_report.txt"/>
   <translation tag="Reprint" it="Ristampa"/>
@@ -2631,6 +2634,7 @@
   <translation tag="Reset Distances" it="Ripristina distanze"/>
   <translation tag="Reset Distances?" it="Ripristinare le distanze?"/>
   <translation tag="Reset Endless Spool" it="Ripristina la bobina infinita"/>
+  <translation tag="Reset Endless Spool failed" it="Ripristino della bobina infinita non riuscito"/>
   <translation tag="Reset Endless Spool?" it="Ripristinare la bobina infinita?"/>
   <translation tag="Reset Home Screen?" it="Ripristinare la schermata iniziale?"/>
   <translation tag="Reset Motor Timer" it="Ripristina il timer del motore"/>
@@ -2638,7 +2642,6 @@
   <translation tag="Reset Speed &amp; Flow to 100%" it="Ripristina velocità e flusso al 100%"/>
   <translation tag="Reset Tags" it="Ripristina contrassegni"/>
   <translation tag="Reset all settings and restart wizard" it="Ripristina tutte le impostazioni e riavvia procedura guidata"/>
-  <translation tag="Reset endless spool failed" it="Ripristino della bobina infinita non riuscito"/>
   <translation tag="Reset failed" it="Reset fallito"/>
   <translation tag="Reset motor run-time counter" it="Ripristina il contatore delle ore di funzionamento del motore"/>
   <translation tag="Reset tags" it="Ripristina contrassegni"/>
@@ -2896,7 +2899,7 @@
   <translation tag="Set local timezone for time display" it="Imposta fuso orario locale per l&apos;ora"/>
   <translation tag="Set logging verbosity for troubleshooting" it="Imposta il livello di dettaglio del log per la risoluzione dei problemi"/>
   <translation tag="Set temperature between {}°C and {}°C" it="Imposta una temperatura tra {}°C e {}°C"/>
-  <translation tag="Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle" it="Impostare a mano tipo e colore del filamento per questo slot. Se il tag dovrebbe essere leggibile, reinserire la bobina con l&apos;etichetta rivolta verso il lettore quando la box è inattiva"/>
+  <translation tag="Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle" it="Impostare a mano tipo e colore del filamento per questo slot. Se il tag dovrebbe essere leggibile, reinserire la bobina con l&apos;etichetta rivolta verso il lettore quando la box è inattiva"/>
   <translation tag="Set up" it="Configura"/>
   <translation tag="Set up your label printer in Settings" it="Configura la stampante etichette nelle Impostazioni"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." it="Imposta cosa è davvero selezionato e caricato. Nulla si muove."/>
@@ -3095,10 +3098,12 @@
   <translation tag="Switch a power device on or off" it="Accendi o spegni un dispositivo"/>
   <translation tag="Switch between light and dark themes" it="Passa tra tema chiaro e scuro"/>
   <translation tag="Switch the active tool or extruder" it="Cambia utensile o estrusore attivo"/>
+  <translation tag="Switch to a backup slot on runout" it="Passa a uno slot di riserva a filamento esaurito"/>
+  <translation tag="Switch to a matching slot on runout" it="Passa a uno slot corrispondente a filamento esaurito"/>
   <translation tag="Switch to v%s" it="Passa alla v%s"/>
   <translation tag="Switch to {}?" it="Passare a {}?"/>
   <translation tag="Switched to {}" it="Passato a {}"/>
-  <translation tag="Switches to a backup spool on runout" it="Passa a una bobina di riserva a filamento esaurito"/>
+  <translation tag="Switches to another spool on runout" it="Passa a un&apos;altra bobina a filamento esaurito"/>
   <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." it="Il ritorno al PID cambia come viene controllato questo riscaldatore, poi lo calibra. Richiede diversi minuti a temperatura."/>
   <translation tag="Switching back to PID requires a config change and Klipper restart." it="Il ritorno al PID richiede una modifica alla configurazione e il riavvio di Klipper."/>
   <translation tag="Switching heater control to MPC. Klipper will restart." it="Passaggio controllo riscaldatore a MPC. Klipper si riavvierà."/>
@@ -3251,7 +3256,7 @@
   <translation tag="The printer lost power while printing {}. Resume where it left off?" it="La stampante ha perso l&apos;alimentazione durante la stampa di {}. Riprendere da dove si è interrotta?"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." it="La stampante ha perso l&apos;alimentazione durante la stampa di {}. Il layer ripreso potrebbe non allinearsi perfettamente."/>
   <translation tag="The printer rejected the filament configuration. The print was not started." it="La stampante ha rifiutato la configurazione del filamento. La stampa non è stata avviata."/>
-  <translation tag="The printer&apos;s firmware chooses the backup spool itself" it="Il firmware della stampante sceglie la bobina di riserva"/>
+  <translation tag="The printer&apos;s firmware chooses where to switch on runout" it="Il firmware della stampante sceglie dove passare a filamento esaurito"/>
   <translation tag="The requested position is outside the printer&apos;s bounds" it="La posizione richiesta è fuori dai limiti della stampante"/>
   <translation tag="The right RFID reader in this CFS unit may need service" it="Il lettore RFID destro di questa unità CFS potrebbe richiedere assistenza"/>
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" it="Il sensore di esaurimento indica che nessun filamento è caricato. Avviare comunque la stampa?"/>
@@ -3290,7 +3295,7 @@
   <translation tag="This cannot be undone." it="Questa azione non può essere annullata."/>
   <translation tag="This channel offers v{}, older than the installed v{}. Anything added since then will be removed." it="Questo canale offre la v{}, precedente alla v{} installata. Tutto ciò che è stato aggiunto da allora verrà rimosso."/>
   <translation tag="This check runs Klipper&apos;s resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.&#10;&#10;Each sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs." it="Questo controllo esegue il test di risonanza di Klipper lungo ogni percorso della cinghia e confronta le due risposte. Cinghie bilanciate danno curve della stessa forma, con picchi alle stesse frequenze.&#10;&#10;Ogni scansione richiede qualche minuto e muove la testina; stai lontano dalla stampante mentre è in corso."/>
-  <translation tag="This clears every spool&apos;s failover assignment. The print will stop on runout until you set up failover again." it="Questo cancella l&apos;assegnazione della bobina di riserva di ogni bobina. La stampa si fermerà all&apos;esaurimento finché non la riconfiguri."/>
+  <translation tag="This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again." it="Questo cancella tutte le riserve della bobina infinita. La stampa si fermerà all&apos;esaurimento finché non riconfiguri la bobina infinita."/>
   <translation tag="This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen." it="Questo dispositivo non dispone di una connessione di rete cablata. Se disattivi il WiFi, potrà essere riattivato solo da questa schermata."/>
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" it="Questo dispositivo ha solo {} MB di RAM. La calibrazione della risonanza usa molta memoria e può causare un errore &quot;Timer Too Close&quot; nel firmware della stampante o un riavvio a metà test. Continuare comunque?"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" it="Questo dispositivo ha pochissima RAM. La calibrazione della risonanza usa molta memoria e può causare un errore &quot;Timer Too Close&quot;. Continuare comunque?"/>
@@ -3316,7 +3321,7 @@
   <translation tag="This print never reports layer {}." it="Questa stampa non riporta mai lo strato {}."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" it="Questa stampante non può calibrare automaticamente gli offset degli strumenti"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." it="Questa stampante riempie i suoi gate da Spoolman. HelixScreen ha svuotato la propria copia; rimuovi la bobina in Spoolman."/>
-  <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." it="Questa stampante riempie i suoi gate da Spoolman. Modifica colore, materiale e bobina in Spoolman."/>
+  <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." it="Questa stampante riempie i suoi gate da Spoolman. Modifica colore, materiale e bobina in Spoolman."/>
   <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." it="Questa stampante non ha lo scarico automatico. Taglia il filamento sulla testina ed estrailo a mano."/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." it="Questa stampante sembra una {} (affidabilità {}%), ma è configurata come {}. Un tipo errato applica opzioni pre-stampa e preset errati."/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" it="Il servizio di rete di questa stampante controlla la radio WiFi"/>
@@ -3370,6 +3375,8 @@
   <translation tag="Tips" it="Suggerimenti"/>
   <translation tag="Tips database format error" it="Errore nel formato del database dei suggerimenti"/>
   <translation tag="Tips database not found" it="Database dei suggerimenti non trovato"/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally." it="Per mappare il filamento, HelixScreen riscrive il file di stampa prima di stamparlo. Il Moonraker di questa stampante è troppo vecchio perché il plugin HelixPrint ripristini in seguito il nome del file originale, quindi il lavoro completato viene elencato con il nome riscritto. La mappatura filamento stessa funziona normalmente."/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." it="Per mappare il filamento, HelixScreen riscrive il file di stampa prima di stamparlo. Senza il plugin HelixPrint, la copia riscritta è quella che finisce nella cronologia di stampa, quindi i lavori completati vengono elencati con nomi come modified_1730824_benchy.gcode invece del file scelto.&#10;&#10;L&apos;installazione del plugin richiede un momento e non è necessario riavviare."/>
   <translation tag="Toggle" it="Alterna"/>
   <translation tag="Toggle (fire-and-forget)" it="Alterna (senza tracciamento)"/>
   <translation tag="Toggle AFC LED strip" it="Alterna la striscia LED AFC"/>
@@ -3386,7 +3393,6 @@
   <translation tag="Tool Switcher" it="Selettore utensile"/>
   <translation tag="Tool change failed: {}" it="Cambio utensile fallito: {}"/>
   <translation tag="Tool change to T{}" it="Cambio utensile su T{}"/>
-  <translation tag="Tool mapping failed" it="Mappatura utensile fallita"/>
   <translation tag="Tool offsets (mm)" it="Offset strumenti (mm)"/>
   <translation tag="Tool offsets saved" it="Offset strumenti salvati"/>
   <translation tag="Tool swap" it="Cambio utensile"/>
@@ -3667,7 +3673,7 @@
   <translation tag="Your printer at a glance" it="La tua stampante a colpo d&apos;occhio"/>
   <translation tag="Your printer has an automatic filament changer" it="La stampante ha un cambio filamento automatico"/>
   <translation tag="Your printer was offline during setup, so hardware options were skipped. Set them up now?" it="La stampante era offline durante la configurazione, quindi le opzioni hardware sono state saltate. Configurarle ora?"/>
-  <translation tag="Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide." it="La riga {} passa impostazioni per strumento che la rimappatura non modifica ({}). Uno strumento rimappato potrebbe non essere riscaldato. Vedi &quot;Tool Mapping&quot; nella guida utente."/>
+  <translation tag="Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide." it="La riga {} passa impostazioni per strumento che la mappatura filamento non modifica ({}). Uno strumento a cui assegni il filamento potrebbe non essere riscaldato. Vedi &quot;Filament Mapping&quot; nella guida utente."/>
   <translation tag="Z" it="Z"/>
   <translation tag="Z Calibration" it="Calibrazione Z"/>
   <translation tag="Z Movement" it="Movimento Z"/>
@@ -3823,8 +3829,8 @@
   <translation tag="{} is blocked — manual intervention required" it="{}: blocco — intervento manuale richiesto"/>
   <translation tag="{} is due: {} h reached" it="{} da sostituire: raggiunte {} h"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." it="{}: alimenta la stampa in corso. Rimuovi la bobina al termine della stampa."/>
-  <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." it="{} è installato ma il passaggio alla bobina di riserva è disattivato, quindi non avverrà alcun cambio automatico."/>
-  <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." it="{} è installato, ma non è stato possibile leggere la sua impostazione della bobina di riserva - non contare su un cambio automatico."/>
+  <translation tag="{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout." it="{} è installato ma la sua impostazione della bobina infinita è disattivata, quindi nulla cambierà a filamento esaurito."/>
+  <translation tag="{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool." it="{} è installato, ma non è stato possibile leggere la sua impostazione della bobina infinita - non contare sulla bobina infinita."/>
   <translation tag="{} is not available on this device. Printing original file." it="{} non è disponibile su questo dispositivo. Verrà stampato il file originale."/>
   <translation tag="{} is not set up on this printer" it="{} non è configurato su questa stampante"/>
   <translation tag="{} is still printing. The print keeps running after you switch." it="{} sta ancora stampando. La stampa continua dopo il cambio."/>
@@ -3858,7 +3864,7 @@
   <translation tag="{} target set to {}°C" it="Obiettivo {} impostato a {}°C"/>
   <translation tag="{} updated" it="Aggiornamento di {}"/>
   <translation tag="{} widgets" it="{} widget"/>
-  <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." it="{} passerà a uno slot il cui tipo di filamento E colore corrispondono entrambi alla bobina attiva e il cui sensore di porta rileva filamento presente."/>
+  <translation tag="{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present." it="{} passerà a uno slot il cui tipo di filamento E colore corrispondono entrambi alla bobina attiva e il cui sensore di porta rileva filamento presente."/>
   <translation tag="{} · {}" it="{} · {}"/>
   <translation tag="{} · {} · {}" it="{} · {} · {}"/>
   <translation tag="{} — response timed out" it="{} — tempo scaduto"/>

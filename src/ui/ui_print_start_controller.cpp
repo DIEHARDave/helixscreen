@@ -867,8 +867,8 @@ bool PrintStartController::apply_filament_remaps() {
                          "mapping — {} explicit remap(s) will be ignored",
                          backend_idx, mappings.size());
             NOTIFY_WARNING("{}",
-                           lv_tr("Filament remap not supported on this printer — print will use "
-                                 "the firmware's current tool mapping"));
+                           lv_tr("Filament mapping isn't supported on this printer, so the print "
+                                 "uses the tools assigned on the printer"));
         } else {
             spdlog::debug("[PrintStartController] Backend (idx={}) applies remap via its "
                           "pre-print path — skipping generic remap send (no warning)",

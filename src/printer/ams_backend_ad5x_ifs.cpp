@@ -6782,7 +6782,7 @@ std::string AmsBackendAd5xIfs::build_runout_detail_locked() const {
     // that -- German sends it to the end of the clause and Japanese reorders the
     // whole thing -- so the fragments sat untranslated in all eight locales.
     const auto append_switchover_rule = [&](const std::string& who) {
-        detail += fmt::format(lv_tr("{} will switch to a slot whose filament type AND colour "
+        detail += fmt::format(lv_tr("{} will switch to a slot whose filament type AND color "
                                     "both match the active spool and whose own port sensor "
                                     "reads filament present."),
                               who);
@@ -6804,14 +6804,14 @@ std::string AmsBackendAd5xIfs::build_runout_detail_locked() const {
     // i18n: do not translate — plugin names as their authors spell them.
     const std::string plugin_name = (var_prefix_ == "bambufy") ? "bambufy" : "lessWaste";
     if (!ifs_backup_variable_.has_value()) {
-        detail += fmt::format(lv_tr("{} is installed, but its backup-spool setting could not be "
-                                    "read - do not count on an automatic swap."),
+        detail += fmt::format(lv_tr("{} is installed, but its Endless Spool setting could not be "
+                                    "read - do not count on Endless Spool."),
                               plugin_name);
         return detail;
     }
     if (!*ifs_backup_variable_) {
-        detail += fmt::format(lv_tr("{} is installed but its backup-spool switching is turned "
-                                    "off, so no automatic swap will happen."),
+        detail += fmt::format(lv_tr("{} is installed but its Endless Spool setting is turned off, "
+                                    "so nothing will switch on runout."),
                               plugin_name);
         return detail;
     }

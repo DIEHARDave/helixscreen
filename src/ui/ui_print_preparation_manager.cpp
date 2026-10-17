@@ -1994,7 +1994,7 @@ void PrintPreparationManager::modify_and_print_with_remap(
     NavigateToStatusCallback on_navigate_to_status, PrintCompletionCallback on_completion) {
     if (!api_) {
         spdlog::error("[PrintPreparationManager] modify_and_print_with_remap: no API");
-        NOTIFY_ERROR(lv_tr("Cannot remap: internal error"));
+        NOTIFY_ERROR(lv_tr("Couldn't map filament: internal error"));
         abandon_start("remap_internal_error", on_completion);
         return;
     }
@@ -2002,7 +2002,7 @@ void PrintPreparationManager::modify_and_print_with_remap(
     // Printing the original instead would run the job on the tools the user just
     // remapped away from, so this refuses rather than falls back.
     if (!transport_keeps_local_copies()) {
-        NOTIFY_ERROR(lv_tr("Remapping G-code is not available on this device."));
+        NOTIFY_ERROR(lv_tr("Filament Mapping is not available on this device."));
         abandon_start("remap_no_local_copies", on_completion);
         return;
     }
@@ -2014,7 +2014,7 @@ void PrintPreparationManager::modify_and_print_with_remap(
     const std::string local_download_path = gcode::GCodeFileModifier::generate_temp_path(
         "remap_dl_" + gcode::get_filename_basename(file_path));
     if (local_download_path.empty()) {
-        NOTIFY_ERROR(lv_tr("Cannot remap G-code: no temp directory available"));
+        NOTIFY_ERROR(lv_tr("Couldn't map filament: no temp directory available"));
         abandon_start("remap_no_temp_dir", on_completion);
         return;
     }
@@ -2033,15 +2033,15 @@ void PrintPreparationManager::modify_and_print_with_remap(
     // it for the GcodeRewrite strategy).
     route.use_plugin = true;
     route.archive_plate = archive_plate_for(file_path);
-    route.download_error = TR_NOOP("Failed to download G-code for remap: {}");
-    route.upload_error = TR_NOOP("Failed to upload remapped G-code: {}");
+    route.download_error = TR_NOOP("Failed to download G-code for Filament Mapping: {}");
+    route.upload_error = TR_NOOP("Failed to upload the rewritten G-code: {}");
     route.rewrite = [file_path, remap](const std::string& download_path) {
         // A download that produced nothing is a failed download, not a file
         // whose every line happens to be unchanged, and the two must not
         // take the same exit.
         if (helix::text_io::file_size(download_path).value_or(0) == 0) {
             hfs::remove(download_path);
-            helix::ui::notify_error_tr(TR_NOOP("Failed to read G-code for remap"));
+            helix::ui::notify_error_tr(TR_NOOP("Failed to read G-code for Filament Mapping"));
             return RewriteResult{RewriteResult::Kind::Failed, {}};
         }
 
@@ -2060,7 +2060,7 @@ void PrintPreparationManager::modify_and_print_with_remap(
 
         if (!rewrite) {
             hfs::remove(modified_path);
-            helix::ui::notify_error_tr(TR_NOOP("Failed to remap G-code: {}"),
+            helix::ui::notify_error_tr(TR_NOOP("Failed to rewrite G-code for Filament Mapping: {}"),
                                        std::string("could not write ") + modified_path);
             return RewriteResult{RewriteResult::Kind::Failed, {}};
         }

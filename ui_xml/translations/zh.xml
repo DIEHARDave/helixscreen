@@ -272,6 +272,7 @@
   <translation tag="Ask for parameters" zh="询问参数"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" zh="分配 Klipper 宏通过开/关、切换或预设控制 LED"/>
   <translation tag="Assign a role to enable sensor monitoring" zh="分配角色以启用传感器监控"/>
+  <translation tag="Assigned Tool" zh="已分配工具"/>
   <translation tag="Assisted Retract" zh="辅助回抽"/>
   <translation tag="Assisting" zh="辅助中"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" zh="helixscreen.env 中至少有 {} 行被忽略"/>
@@ -284,21 +285,19 @@
   <translation tag="Auto Fans" zh="自动风扇"/>
   <translation tag="Auto-Detect" zh="自动检测"/>
   <translation tag="Auto-Heat on Load" zh="加载时自动加热"/>
+  <translation tag="Auto-Replenish" zh="自动补充"/>
   <translation tag="Auto-detect" zh="自动检测"/>
   <translation tag="Auto-install only works on local Moonraker" zh="自动安装仅适用于本地 Moonraker"/>
   <translation tag="Auto-lock" zh="自动锁定"/>
   <translation tag="Auto-poll for weight updates" zh="自动轮询重量更新"/>
   <translation tag="Auto-probe or manually check screw heights" zh="自动探测或手动检查螺丝高度"/>
-  <translation tag="Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout" zh="自动续料已开启，但没有两个槽位装有相同的耗材，因此耗材用尽时不会切换"/>
   <translation tag="Auto-render video" zh="自动渲染视频"/>
-  <translation tag="Auto-replenish filament" zh="自动补充耗材"/>
   <translation tag="Auto-tuning Shapers..." zh="正在自动校准整形器..."/>
   <translation tag="Auto-uninstall only works on local Moonraker" zh="自动卸载仅适用于本地 Moonraker"/>
   <translation tag="Automatic" zh="自动"/>
   <translation tag="Automatic Heater Control Calibration" zh="自动加热控制校准"/>
   <translation tag="Automatic LED Control" zh="自动 LED 控制"/>
   <translation tag="Automatic calibration" zh="自动校准"/>
-  <translation tag="Automatic slot swap on runout" zh="耗尽时自动切换槽位"/>
   <translation tag="Aux" zh="辅助"/>
   <translation tag="Available" zh="可用"/>
   <translation tag="Available Networks" zh="可用网络"/>
@@ -318,8 +317,13 @@
   <translation tag="BLUETOOTH SCANNERS" zh="蓝牙扫描器"/>
   <translation tag="Back" zh="返回"/>
   <translation tag="Backtrace: {} frames" zh="回溯: {} 帧"/>
+  <translation tag="Backup Feeder" zh="备用送料器"/>
+  <translation tag="Backup Gate" zh="备用通道"/>
+  <translation tag="Backup Lane" zh="备用耗材通道"/>
+  <translation tag="Backup Slot" zh="备用槽位"/>
+  <translation tag="Backup Tool" zh="备用工具"/>
+  <translation tag="Backup Toolhead" zh="备用工具头"/>
   <translation tag="Backup lane name contains invalid characters" zh="备用耗材通道名称包含无效字符"/>
-  <translation tag="Backup spool switching state unknown" zh="备用料盘切换状态未知"/>
   <translation tag="Balanced" zh="平衡"/>
   <translation tag="Barcode Scanner" zh="条码扫描器"/>
   <translation tag="Base" zh="基准"/>
@@ -507,8 +511,6 @@
   <translation tag="Cannot open or close the feeder while a print is active" zh="打印时无法打开或关闭送料器"/>
   <translation tag="Cannot park while a print is active" zh="打印时无法停放"/>
   <translation tag="Cannot perform this action now" zh="当前无法执行此操作"/>
-  <translation tag="Cannot remap G-code: no temp directory available" zh="无法重新映射 G-code：没有可用的临时目录"/>
-  <translation tag="Cannot remap: internal error" zh="无法重新映射：内部错误"/>
   <translation tag="Cannot reprint: not connected to printer" zh="无法重新打印: 未连接打印机"/>
   <translation tag="Cannot restart — no filename" zh="无法重启 — 没有文件名"/>
   <translation tag="Cannot run filament operation while printing" zh="打印期间无法执行耗材操作"/>
@@ -621,7 +623,7 @@
   <translation tag="Clear All Events" zh="清除所有事件"/>
   <translation tag="Clear Console?" zh="清空控制台？"/>
   <translation tag="Clear Spool" zh="移除料盘"/>
-  <translation tag="Clear all spool failover assignments" zh="清除所有备用料盘分配"/>
+  <translation tag="Clear every Endless Spool backup" zh="清除所有无限料盘备用设置"/>
   <translation tag="Clear failed" zh="清除失败"/>
   <translation tag="Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament&apos;s packaging) and close the door." zh="清空热床上方和下方的区域。把料盘放在热床上,用盒子(打印的盖子或耗材的包装盒)罩住,然后关好门。"/>
   <translation tag="Clear the plate and load {}. The tower prints in the middle of the bed." zh="请清空热床并装入{}。测试塔打印在热床中央。"/>
@@ -690,7 +692,6 @@
   <translation tag="Configured aux fan not found" zh="未找到已配置的辅助风扇"/>
   <translation tag="Configured filament sensor not found" zh="未找到已配置的耗材传感器"/>
   <translation tag="Configured hardware no longer present" zh="已配置的硬件已不存在"/>
-  <translation tag="Configured in the backup-spool package, not from here" zh="在备用料盘插件中配置，而非此处"/>
   <translation tag="Configuring Moonraker..." zh="正在配置 Moonraker..."/>
   <translation tag="Confirm PIN" zh="确认 PIN 码"/>
   <translation tag="Confirm before running macros" zh="运行宏前进行确认"/>
@@ -796,7 +797,10 @@
   <translation tag="Could not start Bluetooth discovery" zh="无法启动蓝牙发现"/>
   <translation tag="Could not update filaments" zh="无法更新耗材"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." zh="无法验证 Spoolman 状态。Moonraker 可能仍在重启中。"/>
+  <translation tag="Couldn&apos;t assign the tool" zh="无法分配工具"/>
   <translation tag="Couldn&apos;t clear the printer&apos;s gate map" zh="无法清空打印机的通道映射"/>
+  <translation tag="Couldn&apos;t map filament: internal error" zh="无法映射耗材：内部错误"/>
+  <translation tag="Couldn&apos;t map filament: no temp directory available" zh="无法映射耗材：没有可用的临时目录"/>
   <translation tag="Couldn&apos;t save the material name" zh="无法保存材料名称"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" zh="无法保存打印机的通道映射"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." zh="无法保存到 Spoolman。此打印机上未做任何更改。"/>
@@ -1012,7 +1016,6 @@
   <translation tag="Enable or disable the hub cutter" zh="启用或停用集线器切刀"/>
   <translation tag="Enable plugin?" zh="启用插件？"/>
   <translation tag="Enable purging during tool changes" zh="在换工具时启用排料"/>
-  <translation tag="Enable/disable automatic backup spool switching" zh="启用/停用自动切换备用料盘"/>
   <translation tag="Enable/disable quiet operation mode" zh="启用/停用静音运行模式"/>
   <translation tag="Enabled" zh="已启用"/>
   <translation tag="Enabled. Open its settings, or disable it?" zh="已启用。打开其设置，或禁用？"/>
@@ -1025,7 +1028,10 @@
   <translation tag="End the test print?" zh="结束测试打印?"/>
   <translation tag="Ended" zh="已结束"/>
   <translation tag="Endless Spool" zh="无限料盘"/>
-  <translation tag="Endless spool failover cleared for every slot" zh="已清除所有槽位的无限料盘设置"/>
+  <translation tag="Endless Spool backups cleared" zh="已清除无限料盘备用设置"/>
+  <translation tag="Endless Spool is configured in its package, not from here" zh="无限料盘在其插件中配置，而非此处"/>
+  <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" zh="无限料盘已开启，但没有两个槽位装有相同的耗材，因此耗材用尽时不会切换"/>
+  <translation tag="Endless Spool state unknown" zh="无限料盘状态未知"/>
   <translation tag="Endless spool is turned off on this MMU" zh="此 MMU 上的无限料盘已关闭"/>
   <translation tag="Ensure Happy Hare or AFC is installed and configured" zh="请确保已安装并配置 Happy Hare 或 AFC"/>
   <translation tag="Enter Current PIN" zh="输入当前 PIN 码"/>
@@ -1141,8 +1147,8 @@
   <translation tag="Failed to delete spool" zh="删除料盘失败"/>
   <translation tag="Failed to disable WiFi: {}" zh="无法关闭 WiFi: {}"/>
   <translation tag="Failed to discard recovery data: {}" zh="放弃恢复数据失败: {}"/>
+  <translation tag="Failed to download G-code for Filament Mapping: {}" zh="下载用于耗材映射的 G-code 失败：{}"/>
   <translation tag="Failed to download G-code for modification: {}" zh="下载 G-code 进行修改失败: {}"/>
-  <translation tag="Failed to download G-code for remap: {}" zh="下载用于重新映射的 G-code 失败：{}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." zh="下载 helixscreen.conf 失败。&#10;请检查打印机连接。"/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." zh="下载 moonraker.conf 失败。&#10;请检查打印机连接。"/>
   <translation tag="Failed to download the .3mf for printing: {}" zh="无法下载用于打印的 .3mf: {}"/>
@@ -1173,13 +1179,12 @@
   <translation tag="Failed to open temperature graph" zh="打开温度图表失败"/>
   <translation tag="Failed to pause print: {}" zh="暂停打印失败: {}"/>
   <translation tag="Failed to purge: {}" zh="清洗失败: {}"/>
-  <translation tag="Failed to read G-code for remap" zh="读取用于重新映射的 G-code 失败"/>
+  <translation tag="Failed to read G-code for Filament Mapping" zh="读取用于耗材映射的 G-code 失败"/>
   <translation tag="Failed to read config." zh="读取配置失败。"/>
   <translation tag="Failed to read config. Check connection." zh="读取配置失败。请检查连接。"/>
   <translation tag="Failed to read moonraker.conf." zh="读取 moonraker.conf 失败。"/>
   <translation tag="Failed to read printer status" zh="读取打印机状态失败"/>
   <translation tag="Failed to refresh file list" zh="刷新文件列表失败"/>
-  <translation tag="Failed to remap G-code: {}" zh="重新映射 G-code 失败：{}"/>
   <translation tag="Failed to render label" zh="渲染标签失败"/>
   <translation tag="Failed to reprint: {}" zh="重新打印失败: {}"/>
   <translation tag="Failed to reset theme" zh="重置主题失败"/>
@@ -1187,6 +1192,7 @@
   <translation tag="Failed to restart Moonraker." zh="重启 Moonraker 失败。"/>
   <translation tag="Failed to restart: {}" zh="重启失败：{}"/>
   <translation tag="Failed to resume: {}" zh="恢复失败: {}"/>
+  <translation tag="Failed to rewrite G-code for Filament Mapping: {}" zh="为耗材映射改写 G-code 失败：{}"/>
   <translation tag="Failed to save LED configuration" zh="保存 LED 配置失败"/>
   <translation tag="Failed to save WiFi network" zh="无法保存 WiFi 网络"/>
   <translation tag="Failed to save config." zh="保存配置失败。"/>
@@ -1222,8 +1228,8 @@
   <translation tag="Failed to update moonraker.conf." zh="更新 moonraker.conf 失败。"/>
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." zh="更新 moonraker.conf 失败。&#10;请检查打印机连接。"/>
   <translation tag="Failed to upload modified G-code: {}" zh="上传修改后的 G-code 失败: {}"/>
-  <translation tag="Failed to upload remapped G-code: {}" zh="上传重新映射的 G-code 失败：{}"/>
   <translation tag="Failed to upload the extracted G-code: {}" zh="无法上传提取的 G-code: {}"/>
+  <translation tag="Failed to upload the rewritten G-code: {}" zh="上传改写后的 G-code 失败：{}"/>
   <translation tag="Fair match" zh="匹配中等"/>
   <translation tag="Fan" zh="风扇"/>
   <translation tag="Fan Calibration" zh="风扇校准"/>
@@ -1257,6 +1263,8 @@
   <translation tag="Filament In The Toolhead" zh="工具头处有耗材"/>
   <translation tag="Filament Jam" zh="耗材堵塞"/>
   <translation tag="Filament Mapping" zh="耗材映射"/>
+  <translation tag="Filament Mapping is not available on this device." zh="此设备不支持耗材映射。"/>
+  <translation tag="Filament Mapping is unavailable" zh="耗材映射不可用"/>
   <translation tag="Filament Runout" zh="耗材用尽"/>
   <translation tag="Filament Sensor" zh="耗材传感器"/>
   <translation tag="Filament System Error" zh="耗材系统错误"/>
@@ -1284,6 +1292,7 @@
   <translation tag="Filament is still present after the cut — the blade may be dull or misaligned" zh="切断后仍有耗材残留。刀片可能已钝或未对准"/>
   <translation tag="Filament jam detected" zh="检测到耗材堵塞"/>
   <translation tag="Filament jammed at the extruder gear" zh="耗材卡在挤出机齿轮处"/>
+  <translation tag="Filament mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" zh="此打印机不支持耗材映射，因此打印将使用打印机上分配的工具"/>
   <translation tag="Filament must be loaded in the extruder, and the build plate on with nothing in the way of the head." zh="挤出机中必须已装入耗材，打印板已装好，且没有任何物体挡住工具头。"/>
   <translation tag="Filament never reached the CFS hub sensor" zh="耗材未到达 CFS 集线器传感器"/>
   <translation tag="Filament not set" zh="未设置耗材"/>
@@ -1296,8 +1305,6 @@
   <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." zh="耗材已用尽。自动续料已关闭，CFS 不会自行更换料盘。请装入耗材后恢复打印。"/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." zh="耗材已用尽。CFS 知道哪些料盘匹配，但这些槽位都是空的。请装载其中一个，然后恢复打印。"/>
   <translation tag="Filament reload failed" zh="耗材重新装载失败"/>
-  <translation tag="Filament remap not supported on this printer — print will use the firmware&apos;s current tool mapping" zh="此打印机不支持重新映射耗材 — 打印将使用固件当前的工具映射"/>
-  <translation tag="Filament remapping is unavailable" zh="耗材重新映射不可用"/>
   <translation tag="Filament runout" zh="耗材用尽"/>
   <translation tag="Filament runout and motion detection sensors" zh="耗材用尽和运动检测传感器"/>
   <translation tag="Filament saved" zh="耗材已保存"/>
@@ -1747,7 +1754,7 @@
   <translation tag="Load filament first" zh="请先装载耗材"/>
   <translation tag="Load or unload filament." zh="装载或卸载耗材。"/>
   <translation tag="Load the required filaments or start anyway?" zh="加载所需耗材还是直接开始？"/>
-  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." zh="加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将颜色映射到槽位，并监控耗材用尽传感器。"/>
+  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." zh="加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将耗材映射到工具，并监控耗材用尽传感器。"/>
   <translation tag="Load..." zh="加载..."/>
   <translation tag="Loaded" zh="已加载"/>
   <translation tag="Loading" zh="加载中"/>
@@ -1844,6 +1851,7 @@
   <translation tag="Manual: the ramp has stopped at your value" zh="手动: 自动步进已停在你的数值"/>
   <translation tag="Manually clear the jam and retry the operation" zh="请手动清除堵塞后重试操作"/>
   <translation tag="Manually pull the filament back through the connector" zh="请手动将耗材从接头处抽回"/>
+  <translation tag="Map Filament…" zh="映射耗材…"/>
   <translation tag="Map to closest colors with matching material" zh="按匹配材料映射最接近的颜色"/>
   <translation tag="Mapping Error" zh="映射错误"/>
   <translation tag="Marginal" zh="偏高"/>
@@ -1980,6 +1988,7 @@
   <translation tag="No Bluetooth printer selected — pick one in settings" zh="未选择蓝牙打印机 — 请在设置中选择"/>
   <translation tag="No Bluetooth printers found" zh="未找到蓝牙打印机"/>
   <translation tag="No Camera" zh="无摄像头"/>
+  <translation tag="No Endless Spool package is installed" zh="未安装无限料盘插件"/>
   <translation tag="No Filament Detected" zh="未检测到耗材"/>
   <translation tag="No Hardware Issues" zh="无硬件问题"/>
   <translation tag="No History" zh="无历史记录"/>
@@ -1996,7 +2005,6 @@
   <translation tag="No USB printer detected" zh="未检测到 USB 打印机"/>
   <translation tag="No USB printers found" zh="未找到 USB 打印机"/>
   <translation tag="No active Spoolman spool." zh="Spoolman中没有当前料盘。"/>
-  <translation tag="No automatic backup-spool package is installed" zh="未安装自动备用料盘插件"/>
   <translation tag="No buffer data available" zh="无可用缓冲区数据"/>
   <translation tag="No camera — use USB barcode scanner" zh="无摄像头 — 请使用 USB 条码扫描器"/>
   <translation tag="No chamber temperature sensor detected" zh="未检测到腔体温度传感器"/>
@@ -2582,11 +2590,6 @@
   <translation tag="Remaining" zh="剩余"/>
   <translation tag="Remaining (g)" zh="剩余 (g)"/>
   <translation tag="Remaining Weight (g)" zh="剩余重量（克）"/>
-  <translation tag="Remap Tool" zh="重映射工具"/>
-  <translation tag="Remapping G-code is not available on this device." zh="此设备不支持重新映射 G-code。"/>
-  <translation tag="Remapping rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally." zh="重新映射会在打印前改写任务文件。此打印机的 Moonraker 版本过旧，HelixPrint 插件无法在之后恢复原始文件名，因此完成的任务将以改写后的名称显示。重新映射本身可正常工作。"/>
-  <translation tag="Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." zh="重新映射会在打印前改写任务文件。如果没有 HelixPrint 插件，进入打印历史的就是改写后的副本，因此完成的任务会以类似 modified_1730824_benchy.gcode 的名称显示，而不是您选择的文件。&#10;&#10;安装插件很快，无需重启。"/>
-  <translation tag="Remap…" zh="重新映射……"/>
   <translation tag="Remember slot spool details across an eject" zh="弹出后记住槽位的料盘详情"/>
   <translation tag="Remove" zh="移除"/>
   <translation tag="Remove PIN" zh="移除 PIN"/>
@@ -2609,7 +2612,7 @@
   <translation tag="Replace" zh="替换"/>
   <translation tag="Replace Profile?" zh="替换配置？"/>
   <translation tag="Replay Welcome Tour" zh="重播欢迎漫游"/>
-  <translation tag="Replenish ignores colour" zh="补充时忽略颜色"/>
+  <translation tag="Replenish ignores color" zh="补充时忽略颜色"/>
   <translation tag="Replenishing filament..." zh="正在补充耗材..."/>
   <translation tag="Report saved to crash_report.txt" zh="报告已保存到 crash_report.txt"/>
   <translation tag="Reprint" zh="重新打印"/>
@@ -2631,6 +2634,7 @@
   <translation tag="Reset Distances" zh="重置距离"/>
   <translation tag="Reset Distances?" zh="重置距离？"/>
   <translation tag="Reset Endless Spool" zh="重置无限料盘"/>
+  <translation tag="Reset Endless Spool failed" zh="重置无限料盘失败"/>
   <translation tag="Reset Endless Spool?" zh="要重置无限料盘吗？"/>
   <translation tag="Reset Home Screen?" zh="重置主屏幕？"/>
   <translation tag="Reset Motor Timer" zh="重置电机计时器"/>
@@ -2638,7 +2642,6 @@
   <translation tag="Reset Speed &amp; Flow to 100%" zh="重置速度和流量为 100%"/>
   <translation tag="Reset Tags" zh="重置标记"/>
   <translation tag="Reset all settings and restart wizard" zh="重置所有设置并重新启动向导"/>
-  <translation tag="Reset endless spool failed" zh="重置无限料盘失败"/>
   <translation tag="Reset failed" zh="重置失败"/>
   <translation tag="Reset motor run-time counter" zh="重置电机运行时间计数器"/>
   <translation tag="Reset tags" zh="重置标记"/>
@@ -2896,7 +2899,7 @@
   <translation tag="Set local timezone for time display" zh="设置本地时区以显示时间"/>
   <translation tag="Set logging verbosity for troubleshooting" zh="设置日志详细级别以便故障排除"/>
   <translation tag="Set temperature between {}°C and {}°C" zh="请设置 {}°C 到 {}°C 之间的温度"/>
-  <translation tag="Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle" zh="请手动设置该槽位的耗材类型和颜色。若标签本应可读，请在料盒空闲时将料盘取出并使标签朝向读取器重新装入"/>
+  <translation tag="Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle" zh="请手动设置该槽位的耗材类型和颜色。若标签本应可读，请在料盒空闲时将料盘取出并使标签朝向读取器重新装入"/>
   <translation tag="Set up" zh="设置"/>
   <translation tag="Set up your label printer in Settings" zh="在设置中配置标签打印机"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." zh="设置实际选择和加载的状态。不会移动任何部件。"/>
@@ -3095,10 +3098,12 @@
   <translation tag="Switch a power device on or off" zh="开启或关闭电源设备"/>
   <translation tag="Switch between light and dark themes" zh="切换浅色和深色主题"/>
   <translation tag="Switch the active tool or extruder" zh="切换当前工具或挤出机"/>
+  <translation tag="Switch to a backup slot on runout" zh="耗材用尽时切换到备用槽位"/>
+  <translation tag="Switch to a matching slot on runout" zh="耗材用尽时切换到匹配的槽位"/>
   <translation tag="Switch to v%s" zh="切换到 v%s"/>
   <translation tag="Switch to {}?" zh="切换到 {}?"/>
   <translation tag="Switched to {}" zh="已切换到 {}"/>
-  <translation tag="Switches to a backup spool on runout" zh="耗材用尽时切换到备用料盘"/>
+  <translation tag="Switches to another spool on runout" zh="耗材用尽时切换到另一个料盘"/>
   <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." zh="切回 PID 会改变此加热器的控制方式，随后会进行校准。这需要在工作温度下耗时数分钟。"/>
   <translation tag="Switching back to PID requires a config change and Klipper restart." zh="切回 PID 需要修改配置并重启 Klipper。"/>
   <translation tag="Switching heater control to MPC. Klipper will restart." zh="正在将加热控制切换为 MPC。Klipper 将重启。"/>
@@ -3251,7 +3256,7 @@
   <translation tag="The printer lost power while printing {}. Resume where it left off?" zh="打印机在打印 {} 时断电。是否从中断处继续？"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." zh="打印机在打印 {} 时断电。恢复后的层可能无法完全对准。"/>
   <translation tag="The printer rejected the filament configuration. The print was not started." zh="打印机拒绝了该耗材配置。打印未启动。"/>
-  <translation tag="The printer&apos;s firmware chooses the backup spool itself" zh="备用料盘由打印机固件自行选择"/>
+  <translation tag="The printer&apos;s firmware chooses where to switch on runout" zh="耗材用尽时切换到哪里由打印机固件自行选择"/>
   <translation tag="The requested position is outside the printer&apos;s bounds" zh="请求的位置超出打印机范围"/>
   <translation tag="The right RFID reader in this CFS unit may need service" zh="此 CFS 单元的右侧 RFID 读取器可能需要维修"/>
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" zh="断料传感器显示未装载耗材。仍要开始打印吗？"/>
@@ -3290,7 +3295,7 @@
   <translation tag="This cannot be undone." zh="此操作无法撤销。"/>
   <translation tag="This channel offers v{}, older than the installed v{}. Anything added since then will be removed." zh="此通道提供 v{}，早于已安装的 v{}。此后新增的内容都将被移除。"/>
   <translation tag="This check runs Klipper&apos;s resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.&#10;&#10;Each sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs." zh="此检查会沿每条皮带路径运行 Klipper 的共振测试，并比较两个响应。平衡的皮带会给出形状相同、峰值位于相同频率的曲线。&#10;&#10;每次扫频需要几分钟并会移动工具头；运行期间请远离打印机。"/>
-  <translation tag="This clears every spool&apos;s failover assignment. The print will stop on runout until you set up failover again." zh="这会清除每个料盘的备用分配。在重新设置之前，耗材用尽时打印将停止。"/>
+  <translation tag="This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again." zh="这会清除所有无限料盘备用设置。在重新设置无限料盘之前，耗材用尽时打印将停止。"/>
   <translation tag="This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen." zh="此设备没有有线网络连接。关闭 WiFi 后，只能在此界面重新开启。"/>
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" zh="此设备仅有 {} MB 内存。共振校准会占用大量内存，可能导致打印机固件报告 &quot;Timer Too Close&quot; 错误或在测试中途重启。仍要继续吗？"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" zh="此设备内存极少。共振校准会占用大量内存，可能导致 &quot;Timer Too Close&quot; 错误。仍要继续吗？"/>
@@ -3316,7 +3321,7 @@
   <translation tag="This print never reports layer {}." zh="此打印从不报告第 {} 层。"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" zh="此打印机无法自动校准工具偏移"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." zh="此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。"/>
-  <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." zh="此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。"/>
+  <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." zh="此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。"/>
   <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." zh="此打印机没有自动退料功能。请在工具头处剪断耗材，然后用手拉出。"/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." zh="此打印机看起来是 {}（置信度 {}%），但当前设置为 {}。错误的类型会应用不正确的打印前选项和预设。"/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" zh="此打印机的网络服务控制 WiFi 无线模块"/>
@@ -3370,6 +3375,8 @@
   <translation tag="Tips" zh="提示"/>
   <translation tag="Tips database format error" zh="提示数据库格式错误"/>
   <translation tag="Tips database not found" zh="未找到提示数据库"/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally." zh="为了映射耗材，HelixScreen 会在打印前改写任务文件。此打印机的 Moonraker 版本过旧，HelixPrint 插件无法在之后恢复原始文件名，因此完成的任务将以改写后的名称显示。耗材映射本身可正常工作。"/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." zh="为了映射耗材，HelixScreen 会在打印前改写任务文件。如果没有 HelixPrint 插件，进入打印历史的就是改写后的副本，因此完成的任务会以类似 modified_1730824_benchy.gcode 的名称显示，而不是您选择的文件。&#10;&#10;安装插件很快，无需重启。"/>
   <translation tag="Toggle" zh="切换"/>
   <translation tag="Toggle (fire-and-forget)" zh="切换（无状态跟踪）"/>
   <translation tag="Toggle AFC LED strip" zh="切换 AFC LED 灯带"/>
@@ -3386,7 +3393,6 @@
   <translation tag="Tool Switcher" zh="工具切换器"/>
   <translation tag="Tool change failed: {}" zh="工具切换失败: {}"/>
   <translation tag="Tool change to T{}" zh="切换工具到 T{}"/>
-  <translation tag="Tool mapping failed" zh="工具映射失败"/>
   <translation tag="Tool offsets (mm)" zh="工具偏移 (mm)"/>
   <translation tag="Tool offsets saved" zh="工具偏移已保存"/>
   <translation tag="Tool swap" zh="工具切换"/>
@@ -3667,7 +3673,7 @@
   <translation tag="Your printer at a glance" zh="一览您的打印机"/>
   <translation tag="Your printer has an automatic filament changer" zh="您的打印机配有自动换色系统"/>
   <translation tag="Your printer was offline during setup, so hardware options were skipped. Set them up now?" zh="设置期间打印机离线，硬件选项已跳过。现在设置吗？"/>
-  <translation tag="Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide." zh="您的 {} 行包含重新映射不会更改的各工具设置 ({})。重新映射的工具可能不会被加热。请查看用户指南中的“Tool Mapping”。"/>
+  <translation tag="Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide." zh="您的 {} 行包含耗材映射不会更改的各工具设置 ({})。映射了耗材的工具可能不会被加热。请查看用户指南中的“Filament Mapping”。"/>
   <translation tag="Z" zh="Z"/>
   <translation tag="Z Calibration" zh="Z 轴校准"/>
   <translation tag="Z Movement" zh="Z 轴移动"/>
@@ -3823,8 +3829,8 @@
   <translation tag="{} is blocked — manual intervention required" zh="{} 被阻塞 — 需要手动干预"/>
   <translation tag="{} is due: {} h reached" zh="{}需要维护：已达 {} 小时"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." zh="{} 正在为当前打印供料。请在打印结束后清除。"/>
-  <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." zh="{} 已安装，但其备用料盘切换已关闭，因此不会自动切换。"/>
-  <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." zh="{} 已安装，但无法读取其备用料盘设置 - 请勿指望自动切换。"/>
+  <translation tag="{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout." zh="{} 已安装，但其无限料盘设置已关闭，因此耗材用尽时不会切换。"/>
+  <translation tag="{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool." zh="{} 已安装，但无法读取其无限料盘设置 - 请勿指望无限料盘。"/>
   <translation tag="{} is not available on this device. Printing original file." zh="此设备不支持{}。将打印原始文件。"/>
   <translation tag="{} is not set up on this printer" zh="{} 未在此打印机上设置"/>
   <translation tag="{} is still printing. The print keeps running after you switch." zh="{} 仍在打印。切换后打印会继续进行。"/>
@@ -3858,7 +3864,7 @@
   <translation tag="{} target set to {}°C" zh="{} 目标已设为 {}°C"/>
   <translation tag="{} updated" zh="{} 已更新"/>
   <translation tag="{} widgets" zh="{} 个小组件"/>
-  <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." zh="{} 将切换到耗材类型与颜色都与当前料盘一致、且其端口传感器检测到有耗材的槽位。"/>
+  <translation tag="{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present." zh="{} 将切换到耗材类型与颜色都与当前料盘一致、且其端口传感器检测到有耗材的槽位。"/>
   <translation tag="{} · {}" zh="{} · {}"/>
   <translation tag="{} · {} · {}" zh="{} · {} · {}"/>
   <translation tag="{} — response timed out" zh="{} — 响应超时"/>

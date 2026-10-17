@@ -4351,7 +4351,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() co
         DA::button("refresh_rfid", "Refresh RFID", "maintenance", "",
                    "Re-read spool RFID tags and remaining length"),
         DA::toggle("toggle_auto_refill", "Toggle Auto-Refill", "maintenance",
-                   std::move(auto_refill), "", "Enable/disable automatic backup spool switching"),
+                   std::move(auto_refill), "", "Switch to a matching slot on runout"),
         DA::button("nozzle_clean", "Clean Nozzle", "maintenance", "",
                    "Wipe nozzle on silicone cleaning strip"),
         DA::button("comm_test", "Communication Test", "maintenance", "",

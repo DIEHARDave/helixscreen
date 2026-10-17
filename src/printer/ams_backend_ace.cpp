@@ -1956,7 +1956,7 @@ std::vector<helix::printer::DeviceSection> AmsBackendAce::get_device_sections() 
     std::lock_guard<std::mutex> lock(mutex_);
     if (endless_spool_seen_) {
         sections.push_back(
-            DS{"endless_spool", "Endless Spool", 2, "Automatic slot swap on runout"});
+            DS{"endless_spool", "Endless Spool", 2, "Switch to a backup slot on runout"});
     }
     return sections;
 }
