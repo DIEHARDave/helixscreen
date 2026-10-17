@@ -16,6 +16,7 @@
 
 #include "ui_nav_manager.h"
 #include "ui_panel_motion.h"
+#include "ui_settings_motion.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
@@ -419,4 +420,35 @@ TEST_CASE_METHOD(LayoutFixture, "motion layout: a held arrow repeats through the
     REQUIRE(motion().moves.size() == 2);
     CHECK(motion().moves[0].dx == Catch::Approx(-1.0));
     CHECK(motion().moves[1].dx == Catch::Approx(-1.0));
+}
+
+TEST_CASE_METHOD(LayoutFixture, "motion layout: a new panel starts on the persisted step",
+                 "[motion-layout]") {
+    Config::get_instance()->set<float>("/motion/jog_step", 25.0f);
+    MotionPanel fresh;
+    CHECK(fresh.selected_jog_step() == Catch::Approx(25.0f));
+    Config::get_instance()->set<float>("/motion/jog_step", 1.0f);
+}
+
+TEST_CASE_METHOD(LayoutFixture, "motion layout: the settings dropdown picks the layout",
+                 "[motion-layout][xml]") {
+    helix::settings::show_motion_settings_overlay();
+    drain();
+    lv_obj_t* row = lv_obj_find_by_name(lv_screen_active(), "row_motion_layout");
+    if (!row)
+        row = lv_obj_find_by_name(lv_layer_top(), "row_motion_layout");
+    REQUIRE(row != nullptr);
+    lv_obj_t* dropdown = lv_obj_find_by_name(row, "dropdown");
+    REQUIRE(dropdown != nullptr);
+    CHECK(lv_dropdown_get_selected(dropdown) == 0);
+
+    lv_dropdown_set_selected(dropdown, 2);
+    lv_obj_send_event(dropdown, LV_EVENT_VALUE_CHANGED, nullptr);
+    drain();
+    CHECK(helix::SettingsManager::instance().get_motion_layout() == MotionLayout::ArrowsHome);
+
+    // The dropdown follows the setting when it changes elsewhere.
+    helix::SettingsManager::instance().set_motion_layout(MotionLayout::AxisRows);
+    drain();
+    CHECK(lv_dropdown_get_selected(dropdown) == 3);
 }
