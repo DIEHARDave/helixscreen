@@ -439,6 +439,9 @@ api->subscribe_notifications(cb);
 // Database — use typed wrappers
 api->database_get_item("helix", "spoolman_enabled", on_success, on_error);
 
+// The printer's own screen publishes its home layout under namespace "helix-screen",
+// key "home_layout" (include/home_layout_share.h); see LAYOUT_SYSTEM.md
+
 // G-code — use validated path
 api->execute_gcode("TURN_OFF_HEATERS", nullptr, nullptr);
 

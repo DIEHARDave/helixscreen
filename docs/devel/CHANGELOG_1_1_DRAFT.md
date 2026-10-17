@@ -129,6 +129,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Home screen widgets**
 
+- **A new screen starts with the printer's own home layout** - when a printer runs HelixScreen on
+  its own display, other screens that connect to it copy that home layout the first time (your
+  macro, LED, fan, sensor and camera picks included), and the Widget Catalog has a "Copy layout
+  from printer" button to do it again.
+
 - **The home screen's printer picture shows what the printer is doing (#1397)** - while the
   nozzle, bed or chamber heats, and until a heater that was turned off drops below 50°C, a
   temperature chip sits on the picture; the part fan shows its speed and the light shows

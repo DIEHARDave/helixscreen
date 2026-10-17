@@ -271,7 +271,14 @@ This is a full reset, so be sure before you confirm it:
 
 The default layout is made for your screen and your printer rather than being one arrangement stretched to fit, so what you get depends on both. On a typical 800x480 landscape screen: **Printer Image** in the top-left, a row of nozzle and bed temperatures, fans and **Notifications** (in the corner) to its right, your filament system or humidity readout below that, the **Temperature Graph** down the right side, and **Print Status** as a wide band across the bottom. Bigger screens get the same shape with more room, and add **Tips** as a footer band. Portrait and ultrawide screens have their own layouts, and so do the very small ones: the 320x240 panel on the Creality Hi drops the printer image to make room for a taller Print Status card. Widgets your printer has no hardware for are left out, and cells nothing fits are left empty. Anything the default layout does not place is still in the Widget Catalog.
 
-### Exiting Edit Mode
+### Copying the Layout From a Printer's Own Screen
+
+If a printer runs HelixScreen on its own display, that screen shares its home layout with the other screens that connect to it. When you add such a printer on another screen (a phone, a desktop, a second panel), its home screen starts as a copy of the printer's own layout instead of the default one, and a message tells you so. Your widget settings come along: macros, LED, fan, sensors and camera choices. Widgets that only make sense for one screen (Network, Clock, Lock Screen, Tips, Notifications and Shutdown/Reboot) are not copied, and the screen keeps its own. Screens differ in size, so tiles are fitted to your grid and may land a little differently.
+
+This only happens once, for a printer whose home screen you have never arranged on that screen. After that, the layout is yours: changes on either screen never carry over to the other, and **Reset** gives you the default layout, not the printer's.
+
+To copy it again later, open the Widget Catalog and tap **Copy layout from printer**, then confirm. This replaces the current home layout on that screen, whether or not you have changed it. The button does not appear on the printer's own screen.
+
 
 - Tap the **Done** button in the navigation bar
 - The other navigation buttons are disabled while you edit. If something else takes you off the Home panel, Edit Mode exits automatically and saves your changes
