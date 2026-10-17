@@ -845,6 +845,21 @@ TEST_CASE("each fireflies rung lights less than the one above", "[screensaver][f
     }
 }
 
+TEST_CASE("a fireflies level draws only its first flies", "[screensaver][fireflies_sim]") {
+    // Straight after init every tail is collapsed on its fly, so a frame shows bodies alone.
+    const auto bodies_lit = [](size_t level) {
+        Swarm s(54, level, PixelFormat::XRGB8888, 800, 480);
+        s.step(0);
+        return lit_pixels(s.frame);
+    };
+    const size_t all = bodies_lit(2);
+    const size_t few = bodies_lit(FIREFLIES_LEVEL_COUNT - 1);
+    REQUIRE(all > 0);
+    CAPTURE(all, few);
+    CHECK(few > 0);
+    CHECK(static_cast<double>(few) < 0.5 * static_cast<double>(all));
+}
+
 namespace {
 
 /// What a level's frames cost a board, per the K1C model, scaled to the level's frame period.
