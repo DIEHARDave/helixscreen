@@ -338,33 +338,58 @@ TEST_CASE("a starburst of flares bursts ahead within the first few seconds",
     REQUIRE(flight.run_until([&] { return flight.sim.burst_flares_alive() == 0; }, 15000));
 }
 
-TEST_CASE("a hyperspace level change applies at the next frame and frames allocate nothing",
+TEST_CASE("a hyperspace run sizes its tunnel for its start level",
+          "[screensaver][hyperspace_sim]") {
+    const auto tunnel_at_start = [](size_t level) {
+        Flight flight(41, level);
+        flight.step();
+        return flight.sim.tunnel_bytes();
+    };
+    const size_t full = tunnel_at_start(0);
+    const size_t half = tunnel_at_start(2);
+    const size_t quarter = tunnel_at_start(4);
+    CAPTURE(full, half, quarter);
+    CHECK(half < full);
+    CHECK(quarter < half);
+    CHECK(quarter > 0);
+    CHECK(tunnel_at_start(HYPERSPACE_LEVEL_COUNT - 1) == 0);
+}
+
+TEST_CASE("a hyperspace level change applies at the next frame, and neither frames nor step-downs "
+          "allocate",
           "[screensaver][hyperspace_sim]") {
     Flight flight(41, 0);
     flight.step();
     REQUIRE(flight.sim.heap_bytes() > 0);
-    std::vector<size_t> tunnel(HYPERSPACE_LEVEL_COUNT);
-    for (size_t level = 0; level < HYPERSPACE_LEVEL_COUNT + 1; level++) {
+    const size_t start_tunnel = flight.sim.tunnel_bytes();
+    REQUIRE(start_tunnel > 0);
+    size_t held = flight.sim.heap_bytes();
+    for (size_t level = 1; level < HYPERSPACE_LEVEL_COUNT + 1; level++) {
         CAPTURE(level);
         flight.sim.request_level(level);
         flight.step();
         const size_t at = std::min(level, HYPERSPACE_LEVEL_COUNT - 1);
         CHECK(flight.sim.level() == at);
         const size_t bytes = flight.sim.heap_bytes();
-        tunnel[at] = flight.sim.tunnel_bytes();
+        CHECK(bytes <= held);
+        if (HYPERSPACE_LEVELS[at].block != 0) {
+            // A coarser tunnel fits in the tables the run already holds.
+            CHECK(flight.sim.tunnel_bytes() == start_tunnel);
+        } else {
+            // A level without a tunnel lets its tables go.
+            CHECK(flight.sim.tunnel_bytes() == 0);
+        }
         for (int i = 0; i < 20; i++) {
             flight.step();
         }
         CHECK(flight.sim.heap_bytes() == bytes);
+        held = bytes;
     }
-    // The tunnel's tables shrink with its block size, and a level without it holds none.
-    CHECK(tunnel[2] < tunnel[0]);
-    CHECK(tunnel[4] < tunnel[2]);
-    CHECK(tunnel[4] > 0);
-    CHECK(tunnel[HYPERSPACE_LEVEL_COUNT - 1] == 0);
+    // A finer level than the run holds rebuilds the tables it needs.
     flight.sim.request_level(0);
     flight.step();
-    CHECK(flight.sim.tunnel_bytes() == tunnel[0]);
+    CHECK(flight.sim.level() == 0);
+    CHECK(flight.sim.tunnel_bytes() == start_tunnel);
 
     flight.sim.clear();
     CHECK(flight.sim.heap_bytes() == 0);
