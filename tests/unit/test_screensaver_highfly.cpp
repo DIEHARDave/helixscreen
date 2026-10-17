@@ -819,6 +819,34 @@ TEST_CASE_METHOD(LVGLTestFixture, "the high fly saver shows the print its source
     CHECK(day.compare(day.size() - 5, 5, " left") == 0);
 }
 
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "a changed high fly text line waits for a frame that repaints under it",
+                 "[screensaver][highfly]") {
+    HighFlyScreensaver ss;
+    ScreensaverStopOnExit<HighFlyScreensaver> stop_on_exit{ss};
+    ClockInput reported;
+    reported.seconds_of_day = 14 * 3600;
+    ss.set_input_source([&reported] { return reported; });
+    // The still rung repaints only when the clock face changes, so a frame with the same
+    // time repaints nothing.
+    ss.set_start_level(HIGHFLY_LEVEL_COUNT - 1);
+    ss.start();
+    REQUIRE(ss.is_active());
+    advance_saver(ss, 250);
+    const std::string date = HighFlyScreensaverTestAccess::date_line(ss).text();
+    REQUIRE_FALSE(date.empty());
+
+    reported.print.phase = ClockPrintPhase::PRINTING;
+    reported.print.remaining_s = 4320;
+    advance_saver(ss, 250);
+    REQUIRE(ss.clock().mode() == ClockMode::COUNTDOWN);
+    CHECK(HighFlyScreensaverTestAccess::date_line(ss).text() == date);
+
+    reported.seconds_of_day += 1;
+    advance_saver(ss, 250);
+    CHECK(HighFlyScreensaverTestAccess::date_line(ss).text().rfind("ETA ", 0) == 0);
+}
+
 TEST_CASE_METHOD(LVGLTestFixture, "a stopped high fly saver holds no buffers",
                  "[screensaver][highfly]") {
     HighFlyScreensaver ss;
