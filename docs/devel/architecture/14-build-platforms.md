@@ -115,7 +115,7 @@ font tiers, and `-DHELIX_HAS_*` / `-DHELIX_PLATFORM_*` gates that code checks at
 | `pi32` (+`-fbdev`/`-both`) | Pi armhf, **Sonic Pad** | DRM / fbdev | Same binary serves any armhf Debian-ish box |
 | `x86`, `x86-fbdev`, `x86-both` | x86_64 Debian SBCs | DRM / fbdev | Built in a Bullseye container for glibc 2.31 compat |
 | `x86-desktop` | x86_64 Linux desktops | SDL | A window beside the user's desktop, released and installed per user; same Bullseye container, static SDL2 from `lib/sdl2`, its own compile since `LV_USE_SDL` changes every LVGL object ([`../BUILD_SYSTEM.md`](../BUILD_SYSTEM.md#x86_64-linux-desktop-x86-desktop)) |
-| `ad5m`, `ad5m-br` | FlashForge AD5M (armv7) | fbdev | Fully static; ships as a ready-made firmware image (Forge-X fork); `-br` is the buildroot variant built inside AD5M Klipper Mod ([`printers/FLASHFORGE_AD5M_SUPPORT.md`](../printers/FLASHFORGE_AD5M_SUPPORT.md)) |
+| `ad5m`, `ad5m-br` | FlashForge AD5M (armv7) | fbdev | Fully static; release tarballs installed onto Forge-X, Klipper Mod or ZMOD; `-br` is the buildroot variant built inside AD5M Klipper Mod ([`printers/FLASHFORGE_AD5M_SUPPORT.md`](../printers/FLASHFORGE_AD5M_SUPPORT.md)) |
 | `cc1` | Elegoo Centauri Carbon (armv7) | fbdev | Static, tested; also the fallback binary for old-glibc armv7 boxes generally |
 | `mips` (also spelled `k1`, `ad5x`; `make creator5` builds it) | Creality K1 series, FlashForge AD5X, FlashForge Creator 5 Pro (Ingenic MIPS32) | fbdev | One static musl binary for all three boards, built at the shared `mips32r2` + `-mnan=2008 -mfp64` ABI; the board is told apart at runtime |
 | `k1-dynamic` | Creality K1 series (MIPS32) | fbdev | Mixed static/dynamic against the device's glibc and GCC 7 libstdc++ |
