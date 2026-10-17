@@ -112,11 +112,11 @@ TEST_CASE("start block: what a line runs decides its step", "[start_block]") {
 
 TEST_CASE("start block: the follower names each step the position reaches once", "[start_block]") {
     StartBlockFollower follower;
-    follower.set_steps({{100, Kind::HomeAxes, true},
-                        {200, Kind::CleanNozzle, false},
-                        {300, Kind::ProbeZ, true},
-                        {400, Kind::BedMesh, true},
-                        {500, Kind::Purge, false}});
+    follower.set_steps({{100, Kind::HomeAxes, true, ""},
+                        {200, Kind::CleanNozzle, false, ""},
+                        {300, Kind::ProbeZ, true, ""},
+                        {400, Kind::BedMesh, true, ""},
+                        {500, Kind::Purge, false, ""}});
 
     CHECK_FALSE(follower.advance(50));
     // A command that blocks shows while the position stands on its line.
@@ -144,10 +144,10 @@ TEST_CASE("start block: the follower names each step the position reaches once",
 
 TEST_CASE("start block: a position past several steps names the last", "[start_block]") {
     StartBlockFollower follower;
-    follower.set_steps({{100, Kind::HomeAxes, true},
-                        {200, Kind::CleanNozzle, false},
-                        {300, Kind::CleanNozzle, false},
-                        {400, Kind::Purge, false}});
+    follower.set_steps({{100, Kind::HomeAxes, true, ""},
+                        {200, Kind::CleanNozzle, false, ""},
+                        {300, Kind::CleanNozzle, false, ""},
+                        {400, Kind::Purge, false, ""}});
     const auto step = follower.advance(350);
     REQUIRE(step);
     CHECK(step->offset == 300);

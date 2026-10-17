@@ -113,6 +113,15 @@ class PrintStartCollectorTestAccess {
         c.update_eta_display();
     }
 
+    /// Fire the collector's periodic ETA timer once, as LVGL would.
+    static void fire_eta_timer(PrintStartCollector& c) {
+        if (!c.eta_timer_) {
+            return;
+        }
+        lv_timer_ready(c.eta_timer_);
+        lv_timer_handler();
+    }
+
     /// Drop all predictor history so compute_predicted_weights() takes the
     /// theoretical-durations path (matches a first print / empty bucket).
     /// start() reloads history from Config, so call this AFTER start().

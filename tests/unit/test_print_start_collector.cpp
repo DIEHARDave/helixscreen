@@ -4949,14 +4949,14 @@ TEST_CASE_METHOD(SnapmakerReplayFixture,
     collector().start();
     drain_async_updates();
     const uint64_t run = PrintStartCollectorTestAccess::run_generation(collector());
-    const helix::StartBlockStep clean{14002, helix::StartBlockStepKind::CleanNozzle, false};
+    const helix::StartBlockStep clean{14002, helix::StartBlockStepKind::CleanNozzle, false, ""};
 
     PrintStartCollectorTestAccess::apply_start_block_step(collector(), clean, run - 1);
     drain_async_updates();
     CHECK(get_current_phase() == PrintStartPhase::INITIALIZING);
     // The same step from this run shows, so the drop above is the run's doing.
     PrintStartCollectorTestAccess::apply_start_block_step(
-        collector(), {13756, helix::StartBlockStepKind::HomeAxes, true}, run);
+        collector(), {13756, helix::StartBlockStepKind::HomeAxes, true, ""}, run);
     drain_async_updates();
     REQUIRE(get_current_phase() == PrintStartPhase::HOMING);
 
@@ -5036,6 +5036,26 @@ TEST_CASE_METHOD(SnapmakerStartBlockFixture,
         at(14023);
         CHECK(get_current_message() == "Checking extruders...");
     }
+}
+
+TEST_CASE_METHOD(SnapmakerStartBlockFixture,
+                 "Snapmaker U1: a held step shows at the ETA tick when no position follows",
+                 "[print][collector][snapmaker][start_block]") {
+    at(13824);
+    at(13824);
+    clock.advance(std::chrono::seconds(10));
+    feed_gcode("// Success: Set action code DETECT_PLATE");
+    clock.advance(std::chrono::milliseconds(300));
+    at(14023); // past ROUGHLY_CLEAN_NOZZLE: held behind the plate detect's code
+    REQUIRE(get_current_message() == "Detecting plate...");
+
+    // The clean's moves keep the position on its line: no frame comes, and
+    // only the collector's periodic timer is left to show the step.
+    clock.advance(std::chrono::seconds(1));
+    PrintStartCollectorTestAccess::fire_eta_timer(collector());
+    drain_async_updates();
+    drain_async_updates();
+    CHECK(get_current_phase() == PrintStartPhase::CLEANING);
 }
 
 TEST_CASE_METHOD(SnapmakerStartBlockFixture,
