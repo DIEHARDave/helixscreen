@@ -16,6 +16,10 @@
 // Example: F02DC -> F3 B0 8B 9C
 //
 // Source: https://pictogrammers.com/library/mdi/
+//
+// Glyphs MDI lacks (brand marks) sit in the U+FE000 block, outside the formula
+// above; they come from assets/fonts/helix-custom-icons.ttf, merged into the
+// same faces by scripts/regen_mdi_fonts.sh (CUSTOM_ICONS).
 // =============================================================================
 
 namespace helix::ui::icon {
@@ -268,7 +272,7 @@ static const IconMapping ICON_MAP[] = {
     {"speed_down",         "\xF3\xB0\xBE\x86"},  // F0F86 speedometer-slow
     {"speed_up",           "\xF3\xB0\xBE\x85"},  // F0F85 speedometer-medium
     {"spirit_level",       "\xF3\xB1\x93\xB1"},  // F14F1 spirit-level (QGL/Z-Tilt)
-    {"spoolman",           "\xF3\xB0\x88\xAF"},  // F022F film (same as filament)
+    {"spoolman",           "\xF3\xBE\x80\x80"},  // FE000 Spoolman logo (custom glyph)
     {"star",               "\xF3\xB0\x93\x8E"},  // F04CE star (favorites/recent)
     {"stop",               "\xF3\xB0\x93\x9B"},  // F04DB stop
     {"swap_horizontal",    "\xF3\xB0\x93\xA1"},  // F04E1 swap-horizontal

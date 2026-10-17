@@ -87,7 +87,7 @@
         <!-- SPOOLMAN -->
         <!-- ================================================================== -->
         <setting_action_row name="row_spoolman_settings"
-                            label="Spoolman" icon="database" description="Filament tracking &amp; label printing"
+                            label="Spoolman" icon="spoolman" description="Filament tracking &amp; label printing"
                             callback="on_spoolman_settings_clicked"/>
       </setting_group>
     </lv_obj>

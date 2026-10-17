@@ -54,6 +54,7 @@ what each script is for; the script's own header carries the reasoning behind it
 ### Icon Pipeline
 | Script | Purpose |
 |--------|---------|
+| `build_custom_icon_font.py` | `assets/fonts/custom_icons/*.svg` → `assets/fonts/helix-custom-icons.ttf`, the glyphs MDI lacks (brand marks) that `regen_mdi_fonts.sh` merges into every icon face (`CUSTOM_ICONS`). Needs `fonttools` + `skia-pathops`; the TTF is checked in |
 | `gen_icon_consts.py` | `include/ui_icon_codepoints.h` → `ui_xml/globals.xml` icon string constants |
 | `generate_icon_header.py` | Embed PNG icon data into C headers |
 | `validate_icon_fonts.sh` | Bidirectional check: codepoints ↔ fonts ↔ XML usage |
