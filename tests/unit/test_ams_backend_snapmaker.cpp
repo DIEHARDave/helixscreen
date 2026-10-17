@@ -2086,6 +2086,47 @@ TEST_CASE_METHOD(SnapmakerFixture,
     CHECK(events == 0);
 }
 
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker print_task_config type NONE is no material",
+                 "[ams][snapmaker][print_task_config]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"print_task_config",
+                       json{{"filament_type", json::array({"PLA", "NONE", "PETG", ""})}}}});
+    CHECK(backend.get_slot_info(0).material == "PLA");
+    CHECK(backend.get_slot_info(1).material.empty());
+    CHECK(backend.get_slot_info(2).material == "PETG");
+    CHECK(backend.get_slot_info(3).material.empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker tag reader naming no tag takes back the tag's temps and weight",
+                 "[ams][snapmaker][rfid]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    // The helper's tag states 190-220 nozzle, 60 bed, 1000 g.
+    SnapmakerTestAccess::handle_status(
+        backend,
+        make_filament_detect_status(2, "PLA", 0xFF202020u, "Snapmaker", json::array({1, 2, 3, 4})));
+    REQUIRE(backend.get_slot_info(2).nozzle_temp_max == 220);
+    REQUIRE(backend.get_slot_info(2).total_weight_g == 1000.0f);
+
+    SnapmakerTestAccess::handle_status(
+        backend,
+        json{{"filament_detect",
+              json{{"info",
+                    json::array({json{{"MAIN_TYPE", "NONE"}}, json{{"MAIN_TYPE", "NONE"}},
+                                 json{{"MAIN_TYPE", "NONE"}}, json{{"MAIN_TYPE", "NONE"}}})}}}});
+    const SlotInfo blank;
+    auto info = backend.get_slot_info(2);
+    CHECK(info.nozzle_temp_min == blank.nozzle_temp_min);
+    CHECK(info.nozzle_temp_max == blank.nozzle_temp_max);
+    CHECK(info.bed_temp == blank.bed_temp);
+    CHECK(info.total_weight_g == blank.total_weight_g);
+}
+
 TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker apply_user_edit writes override and survives status update",
                  "[ams][snapmaker][filament_slot_override]") {
@@ -4278,49 +4319,49 @@ action=Idle phase=-1 detail='' working=-1 tool=1 slot=1 loaded=true
   batch_active=false port_present=1 events=1 gcodes= toasts=0 unloaded=1
 insert: reader answers NONE
 action=Idle phase=-1 detail='' working=-1 tool=1 slot=1 loaded=true
-  s0 Available PLA/Polymaker/PolyLite Orange #112233 n190-230 b60 w1000 latch=false pend=0 state=wait_insert detected=true
+  s0 Available PLA/Polymaker/PolyLite Orange #112233 n0-0 b0 w-1 latch=false pend=0 state=wait_insert detected=true
   s1 Available PETG/Generic/ #AA0000 n0-0 b0 w-1 latch=false pend=0 state=unload_finish detected=true
   s2 Available ABS/Generic/ #00BB00 n0-0 b0 w-1 latch=false pend=0 state=preload_finish detected=true
   s3 Empty // #FFFFFF n0-0 b0 w-1 latch=false pend=0 state=wait_insert detected=false
   batch_active=false port_present=1 events=1 gcodes= toasts=1 unloaded=1
 insert: head 3 rises
 action=Idle phase=-1 detail='' working=-1 tool=1 slot=1 loaded=true
-  s0 Available PLA/Polymaker/PolyLite Orange #112233 n190-230 b60 w1000 latch=false pend=0 state=wait_insert detected=true
+  s0 Available PLA/Polymaker/PolyLite Orange #112233 n0-0 b0 w-1 latch=false pend=0 state=wait_insert detected=true
   s1 Available PETG/Generic/ #AA0000 n0-0 b0 w-1 latch=false pend=0 state=unload_finish detected=true
   s2 Available ABS/Generic/ #00BB00 n0-0 b0 w-1 latch=false pend=0 state=preload_finish detected=true
   s3 Available // #FFFFFF n0-0 b0 w-1 latch=false pend=2 state=wait_insert detected=true
   batch_active=false port_present=1 events=1 gcodes= toasts=0 unloaded=1
 insert: head 3 tag read
 action=Idle phase=-1 detail='' working=-1 tool=1 slot=1 loaded=true
-  s0 Available PLA/Polymaker/PolyLite Orange #112233 n190-230 b60 w1000 latch=false pend=0 state=wait_insert detected=true
+  s0 Available PLA/Polymaker/PolyLite Orange #112233 n0-0 b0 w-1 latch=false pend=0 state=wait_insert detected=true
   s1 Available PETG/Generic/ #AA0000 n0-0 b0 w-1 latch=false pend=0 state=unload_finish detected=true
   s2 Available ABS/Generic/ #00BB00 n0-0 b0 w-1 latch=false pend=0 state=preload_finish detected=true
   s3 Available PETG/Snapmaker/Basic #445566 n0-0 b0 w500 latch=false pend=0 state=wait_insert detected=true
   batch_active=false port_present=1 events=1 gcodes= toasts=0 unloaded=1
 batch: head 0 mid-load
 action=Loading phase=2 detail='' working=0 tool=1 slot=1 loaded=true
-  s0 Available PLA/Polymaker/PolyLite Orange #112233 n190-230 b60 w1000 latch=false pend=0 state=load_feeding detected=true
+  s0 Available PLA/Polymaker/PolyLite Orange #112233 n0-0 b0 w-1 latch=false pend=0 state=load_feeding detected=true
   s1 Available PETG/Generic/ #AA0000 n0-0 b0 w-1 latch=false pend=0 state=unload_finish detected=true
   s2 Available ABS/Generic/ #00BB00 n0-0 b0 w-1 latch=false pend=0 state=preload_finish detected=true
   s3 Available PETG/Snapmaker/Basic #445566 n0-0 b0 w500 latch=false pend=0 state=wait_insert detected=true
   batch_active=true port_present=1 events=1 gcodes= toasts=0 unloaded=1
 batch: head 0 fails
 action=Error phase=-1 detail='Feeder 1: Load failed' working=-1 tool=1 slot=1 loaded=true
-  s0 Available PLA/Polymaker/PolyLite Orange #112233 n190-230 b60 w1000 latch=false pend=0 state=load_fail detected=true
+  s0 Available PLA/Polymaker/PolyLite Orange #112233 n0-0 b0 w-1 latch=false pend=0 state=load_fail detected=true
   s1 Available PETG/Generic/ #AA0000 n0-0 b0 w-1 latch=false pend=0 state=unload_finish detected=true
   s2 Available ABS/Generic/ #00BB00 n0-0 b0 w-1 latch=false pend=0 state=preload_finish detected=true
   s3 Available PETG/Snapmaker/Basic #445566 n0-0 b0 w500 latch=false pend=0 state=wait_insert detected=true
   batch_active=false port_present=1 events=1 gcodes=AUTO_FEEDING_BATCH ACTION=END toasts=0 unloaded=1
 extruder: temperature only
 action=Error phase=-1 detail='Feeder 1: Load failed' working=-1 tool=1 slot=1 loaded=true
-  s0 Available PLA/Polymaker/PolyLite Orange #112233 n190-230 b60 w1000 latch=false pend=0 state=load_fail detected=true
+  s0 Available PLA/Polymaker/PolyLite Orange #112233 n0-0 b0 w-1 latch=false pend=0 state=load_fail detected=true
   s1 Available PETG/Generic/ #AA0000 n0-0 b0 w-1 latch=false pend=0 state=unload_finish detected=true
   s2 Available ABS/Generic/ #00BB00 n0-0 b0 w-1 latch=false pend=0 state=preload_finish detected=true
   s3 Available PETG/Snapmaker/Basic #445566 n0-0 b0 w500 latch=false pend=0 state=wait_insert detected=true
   batch_active=false port_present=1 events=0 gcodes= toasts=0 unloaded=1
 extruder: idle frame
 action=Error phase=-1 detail='Feeder 1: Load failed' working=-1 tool=1 slot=1 loaded=true
-  s0 Available PLA/Polymaker/PolyLite Orange #112233 n190-230 b60 w1000 latch=false pend=0 state=load_fail detected=true
+  s0 Available PLA/Polymaker/PolyLite Orange #112233 n0-0 b0 w-1 latch=false pend=0 state=load_fail detected=true
   s1 Available PETG/Generic/ #AA0000 n0-0 b0 w-1 latch=false pend=0 state=unload_finish detected=true
   s2 Available ABS/Generic/ #00BB00 n0-0 b0 w-1 latch=false pend=0 state=preload_finish detected=true
   s3 Available PETG/Snapmaker/Basic #445566 n0-0 b0 w500 latch=false pend=0 state=wait_insert detected=true

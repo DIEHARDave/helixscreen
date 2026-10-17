@@ -155,8 +155,10 @@ The vendor-cache record mirrors `filament_detect.info`, so an entry that names n
 (`MAIN_TYPE` NONE, `SUB_TYPE` absent or NONE) drops it: a clear then cannot restate the
 product line, material, brand or colour of a tag the reader no longer reports. A slot
 field still holding the dropped record's value falls back to what `print_task_config`
-last said for that head, or blank/default where it never spoke; a field something else
-has written since stays. A repeat of the same silence finds nothing to drop and reports
+last said for that head, or blank/default where it never spoke; the tag's nozzle and
+bed temperatures and spool weight go back to SlotInfo's defaults. A field something else
+has written since stays. A `print_task_config` `filament_type` of `NONE` or empty is no
+material, never the literal. A repeat of the same silence finds nothing to drop and reports
 no change (`src/printer/ams_backend_snapmaker.cpp#retract_tag_reading_locked`).
 
 Every row above is code-verified against `parse_rfid_info()` and the apply loop

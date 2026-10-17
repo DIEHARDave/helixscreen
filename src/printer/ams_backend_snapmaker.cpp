@@ -278,6 +278,7 @@ void AmsBackendSnapmaker::on_started() {
         task_official_.fill(std::nullopt);
         task_type_.fill(std::nullopt);
         task_color_.fill(std::nullopt);
+        tag_slot_values_.fill(std::nullopt);
         tag_has_card_.fill(std::nullopt);
     }
     if (!api_)
@@ -1602,6 +1603,8 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
         slot->nozzle_temp_max = rfid.hotend_max_temp;
         slot->bed_temp = rfid.bed_temp;
         slot->total_weight_g = static_cast<float>(rfid.weight_g);
+        tag_slot_values_[static_cast<size_t>(i)] = TagSlotValues{
+            slot->nozzle_temp_min, slot->nozzle_temp_max, slot->bed_temp, slot->total_weight_g};
 
         // A tag read is a cache of what a vendor printed, not a
         // sensor of identity: it survives the spool leaving the
@@ -2158,8 +2161,10 @@ void AmsBackendSnapmaker::apply_task_slot_identity_locked(
         }
         if (ptc.filament_type[i]) {
             task_type_[static_cast<size_t>(i)] = *ptc.filament_type[i];
-            slot->material =
-                *ptc.filament_type[i]; // Base type only (e.g., "PLA") for compact display
+            // Base type only (e.g., "PLA") for compact display; firmware's
+            // spelling of no type is no material.
+            slot->material = is_unset_filament_type(*ptc.filament_type[i]) ? std::string{}
+                                                                           : *ptc.filament_type[i];
             fx.changed = true;
         }
         if (ptc.filament_vendor[i]) {
@@ -2368,7 +2373,8 @@ bool AmsBackendSnapmaker::retract_tag_reading_locked(int slot_index, SlotInfo& s
     // A declaring source lays its values back over these at the tail.
     const auto i = static_cast<size_t>(slot_index);
     if (cache->material.has_value() && slot.material == *cache->material) {
-        slot.material = task_type_[i].value_or(std::string{});
+        const std::string type = task_type_[i].value_or(std::string{});
+        slot.material = is_unset_filament_type(type) ? std::string{} : type;
     }
     if (cache->brand.has_value() && slot.brand == *cache->brand) {
         const std::string vendor = task_vendor_[i].value_or(std::string{});
@@ -2376,6 +2382,22 @@ bool AmsBackendSnapmaker::retract_tag_reading_locked(int slot_index, SlotInfo& s
     }
     if (cache->color_rgb.has_value() && slot.color_rgb == *cache->color_rgb) {
         slot.color_rgb = task_color_[i].value_or(AMS_DEFAULT_SLOT_COLOR);
+    }
+    if (const std::optional<TagSlotValues> tag = tag_slot_values_[i]) {
+        const SlotInfo blank;
+        if (slot.nozzle_temp_min == tag->nozzle_temp_min) {
+            slot.nozzle_temp_min = blank.nozzle_temp_min;
+        }
+        if (slot.nozzle_temp_max == tag->nozzle_temp_max) {
+            slot.nozzle_temp_max = blank.nozzle_temp_max;
+        }
+        if (slot.bed_temp == tag->bed_temp) {
+            slot.bed_temp = blank.bed_temp;
+        }
+        if (slot.total_weight_g == tag->total_weight_g) {
+            slot.total_weight_g = blank.total_weight_g;
+        }
+        tag_slot_values_[i].reset();
     }
     if (cache->product_name.has_value()) {
         if (slot.spool_name == *cache->product_name) {

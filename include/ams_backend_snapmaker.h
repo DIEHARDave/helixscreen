@@ -797,6 +797,17 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// first frame carrying a colour that decodes.
     std::array<std::optional<uint32_t>, NUM_TOOLS> task_color_{};
 
+    /// The temperatures and spool weight the last tag reading on each channel
+    /// wrote onto SlotInfo, which no lane record carries. Unset until a tag is
+    /// read, and again once retract_tag_reading_locked() takes them back.
+    struct TagSlotValues {
+        int nozzle_temp_min = 0;
+        int nozzle_temp_max = 0;
+        int bed_temp = 0;
+        float total_weight_g = 0;
+    };
+    std::array<std::optional<TagSlotValues>, NUM_TOOLS> tag_slot_values_{};
+
     /// Whether filament_detect.info last showed a real card on each channel: a
     /// CARD_UID with a nonzero byte. Unset until the first entry for it.
     std::array<std::optional<bool>, NUM_TOOLS> tag_has_card_{};
