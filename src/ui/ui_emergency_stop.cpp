@@ -408,8 +408,9 @@ void EmergencyStopOverlay::handle_click() {
     if (!require_confirmation_) {
         execute_emergency_stop();
     } else if (confirmation_dialog_) {
-        // The navbar E-Stop stays above modal backdrops, so it can be pressed
-        // again while its own confirmation is up. Pressing it twice means it.
+        // Its own confirmation is the one modal that leaves the navbar E-Stop
+        // in front of its backdrop (show_confirmation_dialog), so the button
+        // can be pressed again while the dialog is up. Pressing it twice means it.
         spdlog::info("[EmergencyStop] Second press while confirming - stopping");
         confirm_emergency_stop();
     } else {
@@ -480,6 +481,9 @@ void EmergencyStopOverlay::show_confirmation_dialog() {
         execute_emergency_stop();
         return;
     }
+    // Every other modal covers the navbar; this one must not, or the second
+    // press on the E-Stop lands on the backdrop and closes the dialog instead.
+    Modal::set_covers_chrome(confirmation_dialog_, false);
 
     spdlog::info("[EmergencyStop] Confirmation dialog shown");
 }

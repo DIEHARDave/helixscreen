@@ -164,6 +164,19 @@ class Modal {
     static void hide(lv_obj_t* dialog, ModalCloseReason reason = ModalCloseReason::Programmatic);
 
     /**
+     * @brief Let the navbar chrome stay in front of this modal's backdrop
+     *
+     * An open modal covers the navbar, E-stop included, so a tap meant for
+     * its backdrop cannot land on a navbar button. The E-stop's own
+     * confirmation opts out: a second press on the E-stop while it is open
+     * is deliberate and must reach the button. No other modal uses this.
+     *
+     * @param dialog Dialog returned by show(); untracked dialogs are ignored
+     * @param covers False to leave the chrome in front of the backdrop
+     */
+    static void set_covers_chrome(lv_obj_t* dialog, bool covers);
+
+    /**
      * @brief Get the topmost modal's dialog
      * @return Dialog object, or nullptr if no modals visible
      */
@@ -446,6 +459,15 @@ class ModalStack {
     // Check if any modals are visible (not counting those in exit animation)
     bool empty() const;
 
+    /// True while a visible (non-exiting) modal covers the navbar chrome.
+    bool covers_chrome() const;
+
+    /// Whether the entry for @p backdrop covers the chrome; no-op if untracked.
+    void set_covers_chrome(lv_obj_t* backdrop, bool covers);
+
+    /// The lowest backdrop of a visible modal that covers the chrome, or nullptr.
+    lv_obj_t* lowest_covering_backdrop() const;
+
     // Check if stack is completely empty (including exiting)
     bool stack_empty() const {
         return stack_.empty();
@@ -486,6 +508,7 @@ class ModalStack {
         std::string component_name;
         bool exiting; /**< true = exit animation in progress, ignore hide() calls */
         Modal* owner; /**< owning instance, or nullptr for static Modal::show() modals */
+        bool covers_chrome = true; /**< backdrop sits over the navbar chrome */
         /// Set when this entry owns the instance (Modal::show_owned). Erasing
         /// the entry frees it, so every path that empties the stack also frees
         /// the modals it owns.

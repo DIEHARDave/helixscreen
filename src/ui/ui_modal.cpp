@@ -126,12 +126,12 @@ ModalStack& ModalStack::instance() {
 // A visible modal blocks the navbar: its backdrop covers the always-on-top
 // chrome (E-stop included) until the last visible modal starts to close.
 static void sync_chrome_cover(const ModalStack& stack) {
-    helix::ui::set_chrome_covered(!stack.empty());
+    helix::ui::set_chrome_covered(stack.covers_chrome());
 }
 
 void ModalStack::push(lv_obj_t* backdrop, lv_obj_t* dialog, const std::string& component_name,
                       Modal* owner) {
-    stack_.push_back({backdrop, dialog, component_name, false /* exiting */, owner});
+    stack_.push_back({backdrop, dialog, component_name, false /* exiting */, owner, true, {}});
     sync_chrome_cover(*this);
     if (backdrop && lv_obj_is_valid(backdrop)) {
         lv_obj_move_foreground(backdrop);
@@ -318,6 +318,34 @@ bool ModalStack::empty() const {
         }
     }
     return true;
+}
+
+bool ModalStack::covers_chrome() const {
+    for (const auto& entry : stack_) {
+        if (!entry.exiting && entry.covers_chrome) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ModalStack::set_covers_chrome(lv_obj_t* backdrop, bool covers) {
+    for (auto& entry : stack_) {
+        if (entry.backdrop == backdrop) {
+            entry.covers_chrome = covers;
+            sync_chrome_cover(*this);
+            return;
+        }
+    }
+}
+
+lv_obj_t* ModalStack::lowest_covering_backdrop() const {
+    for (const auto& entry : stack_) {
+        if (!entry.exiting && entry.covers_chrome) {
+            return entry.backdrop;
+        }
+    }
+    return nullptr;
 }
 
 bool ModalStack::mark_exiting(lv_obj_t* backdrop) {
@@ -851,6 +879,13 @@ void Modal::hide(lv_obj_t* dialog, ModalCloseReason reason) {
     stack.animate_exit(backdrop, dialog);
 
     raise_top_modal_to_foreground(stack);
+}
+
+void Modal::set_covers_chrome(lv_obj_t* dialog, bool covers) {
+    auto& stack = ModalStack::instance();
+    if (lv_obj_t* backdrop = stack.backdrop_for(dialog)) {
+        stack.set_covers_chrome(backdrop, covers);
+    }
 }
 
 lv_obj_t* Modal::get_top() {

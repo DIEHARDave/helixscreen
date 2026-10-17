@@ -7,6 +7,7 @@
 
 #include "ui_emergency_stop.h"
 #include "ui_modal.h"
+#include "ui_nav_manager.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
@@ -113,4 +114,43 @@ TEST_CASE_METHOD(EstopConfirmFixture, "the lock screen E-Stop stops without a co
     press("lock_screen_estop_clicked");
     CHECK(stop_api_.stops == 1);
     CHECK(open_confirmation() == nullptr);
+}
+
+TEST_CASE_METHOD(EstopConfirmFixture,
+                 "a second tap on the navbar E-Stop over its own confirmation stops",
+                 "[estop][estop_confirm][modal_covers_navbar]") {
+    lv_subject_t* visible = lv_xml_get_subject(nullptr, "estop_visible");
+    REQUIRE(visible != nullptr);
+    const int saved = lv_subject_get_int(visible);
+    lv_obj_t* navbar =
+        static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "navigation_bar", nullptr));
+    REQUIRE(navbar != nullptr);
+    NavigationManager::instance().wire_events(navbar);
+    lv_obj_t* estop = NavigationManager::instance().navbar_estop();
+    REQUIRE(estop != nullptr);
+    lv_subject_set_int(visible, 1);
+    helix::ui::UpdateQueue::instance().drain();
+    lv_obj_update_layout(test_screen());
+
+    lv_area_t button;
+    lv_obj_get_coords(estop, &button);
+    lv_point_t spot{(button.x1 + button.x2) / 2, (button.y1 + button.y2) / 2};
+    // What a finger at the E-Stop's spot reaches, given whatever is on top.
+    auto tap = [&] {
+        lv_obj_t* hit = lv_indev_search_obj(test_screen(), &spot);
+        REQUIRE(hit != nullptr);
+        lv_obj_send_event(hit, LV_EVENT_CLICKED, nullptr);
+        helix::ui::UpdateQueue::instance().drain();
+        return hit;
+    };
+
+    CHECK(tap() == estop);
+    REQUIRE(open_confirmation() != nullptr);
+    REQUIRE(stop_api_.stops == 0);
+
+    CHECK(tap() == estop);
+    CHECK(stop_api_.stops == 1);
+
+    lv_subject_set_int(visible, saved);
+    helix::ui::UpdateQueue::instance().drain();
 }
