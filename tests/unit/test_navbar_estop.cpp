@@ -303,6 +303,73 @@ TEST_CASE_METHOD(NavbarFixture,
     KeyboardManager::instance().hide();
 }
 
+TEST_CASE_METHOD(NavbarFixture,
+                 "a modal closing over a portrait keyboard leaves the E-stop under it",
+                 "[estop_navbar][navigation][modal_covers_navbar]") {
+    lv_obj_set_size(navbar_, lv_obj_get_width(test_screen()), 70);
+    lv_obj_align(navbar_, LV_ALIGN_BOTTOM_MID, 0, 0);
+    struct KeyboardOwner {
+        explicit KeyboardOwner(lv_obj_t* parent) {
+            release();
+            KeyboardManager::instance().init(parent);
+        }
+        ~KeyboardOwner() {
+            release();
+        }
+        static void release() {
+            KeyboardManager::instance().reset();
+            helix::ui::UpdateQueue::instance().drain();
+        }
+    } keyboard(test_screen());
+
+    set_visible(1);
+    lv_obj_t* textarea = lv_textarea_create(test_screen());
+    KeyboardManager::instance().show(textarea);
+    lv_obj_t* kb = KeyboardManager::instance().get_instance();
+    REQUIRE(kb != nullptr);
+    REQUIRE(index_of(estop_) < index_of(kb));
+
+    lv_obj_t* dialog =
+        helix::ui::modal_confirm("Title", "Message", ModalSeverity::Info, "OK", [] {});
+    REQUIRE(dialog != nullptr);
+    Modal::hide(dialog);
+    process_lvgl(400);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE_FALSE(Modal::any_visible());
+
+    CHECK(index_of(estop_) < index_of(kb));
+    KeyboardManager::instance().hide();
+}
+
+TEST_CASE_METHOD(NavbarFixture, "a navbar E-stop built while a modal is open sits under it",
+                 "[estop_navbar][navigation][modal_covers_navbar]") {
+    set_visible(1);
+    lv_obj_t* dialog =
+        helix::ui::modal_confirm("Title", "Message", ModalSeverity::Info, "OK", [] {});
+    REQUIRE(dialog != nullptr);
+    lv_obj_t* backdrop = lv_obj_get_parent(dialog);
+
+    // A navbar rebuild with the modal still up builds a fresh E-stop.
+    lv_obj_t* rebuilt =
+        static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "navigation_bar", nullptr));
+    REQUIRE(rebuilt != nullptr);
+    NavigationManager::instance().wire_events(rebuilt);
+    helix::ui::UpdateQueue::instance().drain();
+    lv_obj_t* fresh = NavigationManager::instance().navbar_estop();
+    REQUIRE(fresh != nullptr);
+    REQUIRE(lv_obj_get_parent(fresh) == lv_obj_get_parent(backdrop));
+    CHECK(index_of(fresh) < index_of(backdrop));
+
+    Modal::hide(dialog);
+    process_lvgl(400);
+    helix::ui::UpdateQueue::instance().drain();
+    lv_obj_update_layout(test_screen());
+    lv_area_t button;
+    lv_obj_get_coords(fresh, &button);
+    lv_point_t tap{(button.x1 + button.x2) / 2, (button.y1 + button.y2) / 2};
+    CHECK(lv_indev_search_obj(test_screen(), &tap) == fresh);
+}
+
 TEST_CASE_METHOD(NavbarFixture, "a keypad over an overlay keeps the navbar E-stop on top",
                  "[estop_navbar][navigation][keypad]") {
     std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};

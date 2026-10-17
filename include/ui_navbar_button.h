@@ -50,6 +50,12 @@ class NavbarButton {
     }
 
   private:
+    /// Beside a side navbar with the keyboard open, a lifting button sits in
+    /// the navbar column above the keyboard rather than under it.
+    [[nodiscard]] bool rides_above_keyboard() const;
+    /// Bring the button to the front, but under an open keyboard it does not ride above.
+    void raise();
+
     static void button_deleted_cb(lv_event_t* e);
     static void navbar_layout_changed_cb(lv_event_t* e);
 
