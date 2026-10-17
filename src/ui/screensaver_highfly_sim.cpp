@@ -732,15 +732,11 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     fly_start_s_ = random_between(rng, HIGHFLY_FLY_MIN_S, HIGHFLY_FLY_MAX_S);
     next_fly_s_ = fly_start_s_;
 
-    // Size every buffer for each rung this run can reach, the start and every coarser one, so a
-    // step down allocates nothing.
+    level_ = 0;
     baked_w_ = 0;
     baked_h_ = 0;
-    const size_t start = std::min(level, HIGHFLY_LEVEL_COUNT - 1);
-    for (level_ = start; level_ < HIGHFLY_LEVEL_COUNT; level_++) {
-        apply_view(false);
-    }
-    level_ = start;
+    apply_view(false);
+    level_ = std::min(level, HIGHFLY_LEVEL_COUNT - 1);
     apply_view();
     update_clock_layout();
     drift_.set_range(clock_.bounds, w_, h_);

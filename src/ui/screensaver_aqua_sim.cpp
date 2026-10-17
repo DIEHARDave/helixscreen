@@ -768,13 +768,10 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
     edge_rows_.assign(static_cast<size_t>(w_), static_cast<float>(h_));
     rim_.assign(static_cast<size_t>(w_), AQUA_RIM_FLOOR);
 
-    // Size every buffer for each rung this run can reach, the start and every coarser one, so a
-    // step down allocates nothing.
-    const size_t start = std::min(level, AQUA_LEVEL_COUNT - 1);
-    for (level_ = start; level_ < AQUA_LEVEL_COUNT; level_++) {
-        apply_view();
-    }
-    level_ = start;
+    // Size every buffer for the finest rung first, so a later rung change allocates nothing.
+    level_ = 0;
+    apply_view();
+    level_ = std::min(level, AQUA_LEVEL_COUNT - 1);
     apply_view();
 
     update_clock_layout();
