@@ -11,6 +11,7 @@
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 #include "ui_subject_registry.h"
+#include "ui_tile_rung.h"
 
 #include "display_numbering.h"
 #include "display_settings_manager.h"
@@ -50,6 +51,7 @@ struct Flags {
     lv_subject_t rung{};
     lv_subject_t show_icon{};
     lv_subject_t show_drop{};
+    lv_subject_t drop_rung{};
     lv_subject_t rh_x10{};
     lv_subject_t show_ring{};
     lv_subject_t ring_pct{};
@@ -110,6 +112,7 @@ void dryer_init_subjects() {
         init_int(s_flags.rung, static_cast<int>(helix::SizeRung::Cell), "home_dryer_rung");
         init_int(s_flags.show_icon, 0, "home_dryer_show_icon");
         init_int(s_flags.show_drop, 1, "home_dryer_show_drop");
+        init_int(s_flags.drop_rung, 0, "home_dryer_drop_rung");
         init_int(s_flags.rh_x10, -1, "home_dryer_rh_x10");
         init_int(s_flags.show_ring, 0, "home_dryer_show_ring");
         init_int(s_flags.ring_pct, 0, "home_dryer_ring_pct");
@@ -284,6 +287,57 @@ RowMetrics measure_rows(const Fonts& f) {
             theme_manager_get_spacing("space_xs")};
 }
 
+/// The box the humidity drop takes at each icon-ladder rung, in the faces the Humidity
+/// tile draws it in.
+struct DropGlyphs {
+    int w[helix::kTileRungs]{};
+    int h[helix::kTileRungs]{};
+};
+
+DropGlyphs measure_drop_glyphs() {
+    DropGlyphs g;
+    for (int r = 0; r < helix::kTileRungs; ++r) {
+        const helix::ui::TileGlyphBox box =
+            helix::ui::tile_glyph_box(helix::ui::tile_rung_face(helix::ui::TileLadder::Icon, r));
+        g.w[r] = box.w;
+        g.h[r] = box.h;
+    }
+    return g;
+}
+
+/// The widest idle text a single-block rung draws beside or under the drop, in that rung's
+/// faces. Mirrors panel_widget_dryer.xml: a stack spaces its children by space_xxs, a row
+/// by space_xs.
+helix::DropTextBlock idle_text_block(helix::SizeRung rung, const Fonts& f) {
+    using helix::SizeRung;
+    const int row_gap = theme_manager_get_spacing("space_xxs");
+    const int col_gap = theme_manager_get_spacing("space_xs");
+    // Measured and rendered widths disagree by a few pixels; a text rung is never
+    // budgeted to the last one.
+    const int comfort = theme_manager_get_spacing("space_xs");
+    const int tight = std::max<int>(2, theme_manager_get_spacing("space_xxs") / 2);
+    const std::string rh_short = "100%";
+    const std::string rh_long = fmt::format("100% {}", lv_tr("RH"));
+    const std::string not_drying = lv_tr("Not drying");
+    const int xs_h = line_px(f.xs);
+
+    switch (rung) {
+    case SizeRung::Strip:
+        return {measure_text_px(rh_long, f.xs), xs_h, true, col_gap, tight};
+    case SizeRung::Column:
+        return {widest({measure_text_px(rh_short, f.xs), measure_text_px(lv_tr("RH"), f.xs)}),
+                2 * xs_h + row_gap, false, row_gap, tight};
+    case SizeRung::Cell:
+        return {widest({measure_text_px(rh_long, f.body), measure_text_px(not_drying, f.small)}),
+                line_px(f.body) + row_gap + line_px(f.small), false, row_gap, comfort};
+    case SizeRung::Wide:
+        return {widest({measure_text_px(rh_long, f.heading), measure_text_px(not_drying, f.body)}),
+                line_px(f.heading) + row_gap + line_px(f.body), true, col_gap, comfort};
+    default:
+        return {measure_text_px(rh_short, f.xs), xs_h, false, row_gap, tight};
+    }
+}
+
 /// The minimum content box each rung draws in for the state being decided. Mirrors
 /// panel_widget_dryer.xml: a stack spaces its children by space_xxs, a row by space_xs.
 helix::RungNeeds measure_needs(DState state) {
@@ -298,9 +352,8 @@ helix::RungNeeds measure_needs(DState state) {
     const int ring_sm = theme_manager_get_spacing("button_height_sm");
     const int ring_md = theme_manager_get_spacing("button_height");
 
-    // Idle draws the humidity drop, which takes the water glyph's box; drying the heater.
-    const int icon_w = measure_text_px(
-        helix::ui::icon::lookup_codepoint(state == DState::Idle ? "water" : "heat_wave"), f.icon);
+    const std::string icon = helix::ui::icon::lookup_codepoint("heat_wave");
+    const int icon_w = measure_text_px(icon, f.icon);
     const int icon_h = line_px(f.icon);
     const int xs_h = line_px(f.xs);
     const int small_h = line_px(f.small);
@@ -308,9 +361,7 @@ helix::RungNeeds measure_needs(DState state) {
     const int heading_h = line_px(f.heading);
 
     // The widest each string can draw.
-    const std::string rh_short = "100%";
     const std::string rh_long = fmt::format("100% {}", lv_tr("RH"));
-    const std::string not_drying = lv_tr("Not drying");
     const std::string time_w = "9:59";
     const std::string temps = "88/88°C";
     const std::string current = "88°C";
@@ -322,23 +373,16 @@ helix::RungNeeds measure_needs(DState state) {
     helix::RungNeeds needs;
     switch (state) {
     case DState::Idle: {
-        needs.glance = rung_box(std::max(icon_w, measure_text_px(rh_short, f.xs)) + tight,
-                                icon_h + row_gap + xs_h + 1);
-        needs.strip = rung_box(icon_w + col_gap + measure_text_px(rh_long, f.xs) + tight,
-                               std::max(icon_h, xs_h) + 1);
-        needs.column = rung_box(
-            widest({icon_w, measure_text_px(rh_short, f.xs), measure_text_px(lv_tr("RH"), f.xs)}) +
-                tight,
-            icon_h + 2 * row_gap + 2 * xs_h + 1);
-        needs.cell = rung_box(widest({icon_w, measure_text_px(rh_long, f.body),
-                                      measure_text_px(not_drying, f.small)}) +
-                                  comfort,
-                              icon_h + body_h + small_h + 2 * row_gap + 1);
-        needs.wide = rung_box(
-            icon_w + col_gap +
-                widest({measure_text_px(rh_long, f.heading), measure_text_px(not_drying, f.body)}) +
-                comfort,
-            heading_h + body_h + row_gap + 1);
+        // At the smallest drop; decide() grows it into whatever room the rung leaves.
+        const DropGlyphs drop = measure_drop_glyphs();
+        const auto idle = [&](helix::SizeRung rung) {
+            return helix::drop_block_box(drop.w[0], drop.h[0], idle_text_block(rung, f));
+        };
+        needs.glance = idle(helix::SizeRung::Glance);
+        needs.strip = idle(helix::SizeRung::Strip);
+        needs.column = idle(helix::SizeRung::Column);
+        needs.cell = idle(helix::SizeRung::Cell);
+        needs.wide = idle(helix::SizeRung::Wide);
         break;
     }
     case DState::Single:
@@ -440,7 +484,13 @@ DryerVerdict DryerWidget::decide(int width_px, int height_px, const SummaryState
                   width_px, height_px, chrome.w, chrome.h, n.glance.w, n.glance.h, n.strip.w,
                   n.strip.h, n.column.w, n.column.h, n.cell.w, n.cell.h, n.wide.w, n.wide.h,
                   n.full.w, n.full.h, state.drying, state.multi);
-    return decide_dryer_layout(in);
+    DryerVerdict verdict = decide_dryer_layout(in);
+    if (dstate == DState::Idle && verdict.rung != SizeRung::Full) {
+        const DropGlyphs drop = measure_drop_glyphs();
+        verdict.drop_rung = choose_drop_rung(in.content_w, in.content_h, drop.w, drop.h,
+                                             idle_text_block(verdict.rung, f));
+    }
+    return verdict;
 }
 
 DryerWidget::SummaryState DryerWidget::read_state() {
@@ -523,6 +573,7 @@ void DryerWidget::publish_verdict() {
     helix::ui::set_int_if_changed(&s_flags.rung, static_cast<int>(verdict_.rung));
     helix::ui::set_int_if_changed(&s_flags.show_ring, verdict_.show_ring ? 1 : 0);
     helix::ui::set_int_if_changed(&s_flags.row_count, verdict_.row_count);
+    helix::ui::set_int_if_changed(&s_flags.drop_rung, verdict_.drop_rung);
 }
 
 void DryerWidget::publish_texts() {

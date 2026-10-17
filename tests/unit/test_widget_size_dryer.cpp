@@ -34,7 +34,9 @@ using helix::printer::EnvironmentZone;
 using helix::printer::ZoneDryingState;
 using helix::test::Box;
 using helix::test::kCell;
+using helix::test::kColumn;
 using helix::test::kGlance;
+using helix::test::kStrip;
 using helix::test::kWide;
 using helix::ui::humidity_drop_value;
 
@@ -175,6 +177,44 @@ TEST_CASE_METHOD(DryerFixture, "dryer: idle shows the highest humidity, then the
     CHECK(shown(part(h, "dryer_status")));
     CHECK(shown(part(h, "dryer_drop")));
     CHECK_FALSE(shown(part(h, "dryer_icon")));
+}
+
+TEST_CASE_METHOD(DryerFixture, "dryer: the idle drop grows with the tile", "[widget_size][dryer]") {
+    publish(one_box_idle());
+    PanelWidgetHarness<DryerWidget> h(test_screen());
+
+    // Wide: the drop stands at least as tall as the two lines of text beside it.
+    h.resize(1, 1, kWide.w, kWide.h);
+    lv_obj_update_layout(test_screen());
+    const int wide_rung = subject_int("home_dryer_drop_rung");
+    const int text_h =
+        lv_obj_get_height(part(h, "dryer_rh")) + lv_obj_get_height(part(h, "dryer_status"));
+    CHECK(lv_obj_get_height(part(h, "dryer_drop")) >= text_h);
+
+    // A Cell stacks it over the text and still grows it past the smallest face.
+    h.resize(1, 1, kCell.w, kCell.h);
+    const int cell_rung = subject_int("home_dryer_drop_rung");
+    CHECK(cell_rung > 0);
+    CHECK(cell_rung <= wide_rung);
+
+    // A half cell draws it no larger than a full one.
+    h.resize(1, 1, kGlance.w, kGlance.h);
+    CHECK(subject_int("home_dryer_drop_rung") <= cell_rung);
+
+    // The drop never overflows the tile it grew into.
+    for (const auto& b : {kGlance, kStrip, kColumn, kCell, kWide}) {
+        INFO(b.w << "x" << b.h);
+        h.resize(1, 1, b.w, b.h);
+        lv_obj_update_layout(test_screen());
+        lv_area_t tile;
+        lv_area_t drop;
+        lv_obj_get_coords(h.root(), &tile);
+        lv_obj_get_coords(part(h, "dryer_drop"), &drop);
+        CHECK(drop.y1 >= tile.y1);
+        CHECK(drop.y2 <= tile.y2);
+        CHECK(drop.x1 >= tile.x1);
+        CHECK(drop.x2 <= tile.x2);
+    }
 }
 
 TEST_CASE_METHOD(DryerFixture, "dryer: no humidity source leaves Not drying alone",
