@@ -296,13 +296,11 @@ float AquaWater::rise_at(int32_t i, int32_t k) const {
 }
 
 size_t AquaWater::heap_bytes() const {
-    return buffer_bytes(impulses_) + buffer_bytes(h_) + buffer_bytes(prev_h_);
+    return buffer_bytes(impulses_, h_, prev_h_);
 }
 
 void AquaWater::clear() {
-    release_buffer(impulses_);
-    release_buffer(h_);
-    release_buffer(prev_h_);
+    release_buffers(impulses_, h_, prev_h_);
     gx_ = 0;
     gz_ = 0;
 }
@@ -1261,14 +1259,10 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
 
 size_t AquaSim::heap_bytes() const {
     return water_.heap_bytes() + splashes_.heap_bytes() + renderer_.heap_bytes() +
-           digits_.heap_bytes() + buffer_bytes(env_) + buffer_bytes(wrinkle_) +
-           buffer_bytes(tint_) + buffer_bytes(frame_) + buffer_bytes(rim_) + buffer_bytes(landed_) +
-           buffer_bytes(glints_) + buffer_bytes(bubbles_) + buffer_bytes(last_spray_) +
-           buffer_bytes(spray_) + buffer_bytes(grid_gx_) + buffer_bytes(grid_gz_) +
-           buffer_bytes(grid_thin_) + buffer_bytes(grid_mean_) + buffer_bytes(col_i_) +
-           buffer_bytes(col_f_) + buffer_bytes(el_) + buffer_bytes(prev_el_) +
-           buffer_bytes(front_shade_) + buffer_bytes(scratch_) + buffer_bytes(edge_rows_) +
-           buffer_bytes(clock_save_);
+           digits_.heap_bytes() +
+           buffer_bytes(env_, wrinkle_, tint_, frame_, rim_, landed_, glints_, bubbles_,
+                        last_spray_, spray_, grid_gx_, grid_gz_, grid_thin_, grid_mean_, col_i_,
+                        col_f_, el_, prev_el_, front_shade_, scratch_, edge_rows_, clock_save_);
 }
 
 void AquaSim::clear() {
@@ -1276,28 +1270,9 @@ void AquaSim::clear() {
     splashes_.clear();
     renderer_.clear();
     digits_.clear();
-    release_buffer(env_);
-    release_buffer(wrinkle_);
-    release_buffer(tint_);
-    release_buffer(frame_);
-    release_buffer(rim_);
-    release_buffer(landed_);
-    release_buffer(glints_);
-    release_buffer(bubbles_);
-    release_buffer(last_spray_);
-    release_buffer(spray_);
-    release_buffer(grid_gx_);
-    release_buffer(grid_gz_);
-    release_buffer(grid_thin_);
-    release_buffer(grid_mean_);
-    release_buffer(col_i_);
-    release_buffer(col_f_);
-    release_buffer(el_);
-    release_buffer(prev_el_);
-    release_buffer(front_shade_);
-    release_buffer(scratch_);
-    release_buffer(edge_rows_);
-    release_buffer(clock_save_);
+    release_buffers(env_, wrinkle_, tint_, frame_, rim_, landed_, glints_, bubbles_, last_spray_,
+                    spray_, grid_gx_, grid_gz_, grid_thin_, grid_mean_, col_i_, col_f_, el_,
+                    prev_el_, front_shade_, scratch_, edge_rows_, clock_save_);
     clock_saved_box_ = {};
     painted_ = false;
 }

@@ -414,7 +414,7 @@ void make_tower(std::minstd_rand& rng, HighFlyTexture& out) {
 } // namespace
 
 size_t HighFlyTexture::heap_bytes() const {
-    return rgba.capacity();
+    return buffer_bytes(rgba);
 }
 
 // ---------- Field ----------
@@ -1435,11 +1435,10 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
 }
 
 size_t HighFlySim::heap_bytes() const {
-    size_t n = buffer_bytes(field_.height) + buffer_bytes(field_.shade) + renderer_.heap_bytes() +
-               buffer_bytes(sky_) + buffer_bytes(frame_) + buffer_bytes(slice_lut_) +
-               band_.heap_bytes() + buffer_bytes(wisp_) + buffer_bytes(polar_) +
-               buffer_bytes(col_u0_) + buffer_bytes(col_fu_) + buffer_bytes(tower_entries_) +
-               buffer_bytes(fly_starts_) + buffer_bytes(boxes_) + buffer_bytes(last_boxes_) +
+    size_t n = buffer_bytes(field_.height, field_.shade) + renderer_.heap_bytes() +
+               buffer_bytes(sky_, frame_, slice_lut_) + band_.heap_bytes() +
+               buffer_bytes(wisp_, polar_, col_u0_, col_fu_, tower_entries_, fly_starts_, boxes_,
+                            last_boxes_) +
                digits_.heap_bytes() + second_digits_.heap_bytes() + digit_halo_.heap_bytes() +
                second_halo_.heap_bytes();
     for (const HighFlyTexture& t : layers_) {
@@ -1452,27 +1451,17 @@ size_t HighFlySim::heap_bytes() const {
 }
 
 void HighFlySim::clear() {
-    release_buffer(field_.height);
-    release_buffer(field_.shade);
+    release_buffers(field_.height, field_.shade);
     renderer_.clear();
-    release_buffer(sky_);
-    release_buffer(frame_);
-    release_buffer(slice_lut_);
-    release_buffer(band_.rgba);
+    release_buffers(sky_, frame_, slice_lut_, band_.rgba);
     for (HighFlyTexture& t : layers_) {
         release_buffer(t.rgba);
     }
     for (HighFlyTexture& t : towers_tex_) {
         release_buffer(t.rgba);
     }
-    release_buffer(wisp_);
-    release_buffer(polar_);
-    release_buffer(col_u0_);
-    release_buffer(col_fu_);
-    release_buffer(tower_entries_);
-    release_buffer(fly_starts_);
-    release_buffer(boxes_);
-    release_buffer(last_boxes_);
+    release_buffers(wisp_, polar_, col_u0_, col_fu_, tower_entries_, fly_starts_, boxes_,
+                    last_boxes_);
     digits_.clear();
     second_digits_.clear();
     digit_halo_.clear();

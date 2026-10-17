@@ -350,29 +350,15 @@ void HeightfieldRenderer::resolve(const Rgb* background, Rgb flat, int32_t y_fro
 }
 
 size_t HeightfieldRenderer::heap_bytes() const {
-    return buffer_bytes(slices_) + buffer_bytes(color_) + buffer_bytes(cover_) +
-           buffer_bytes(depth_) + buffer_bytes(top_) + buffer_bytes(silhouette_) +
-           buffer_bytes(silhouette_color_) + buffer_bytes(front_top_) + buffer_bytes(front_color_) +
-           buffer_bytes(last_color_) + buffer_bytes(last_drew_) + buffer_bytes(heights_) +
-           buffer_bytes(colors_) + buffer_bytes(edge_color_) + buffer_bytes(edge_cover_);
+    return buffer_bytes(slices_, color_, cover_, depth_, top_, silhouette_, silhouette_color_,
+                        front_top_, front_color_, last_color_, last_drew_, heights_, colors_,
+                        edge_color_, edge_cover_);
 }
 
 void HeightfieldRenderer::clear() {
-    release_buffer(slices_);
-    release_buffer(color_);
-    release_buffer(cover_);
-    release_buffer(depth_);
-    release_buffer(top_);
-    release_buffer(silhouette_);
-    release_buffer(silhouette_color_);
-    release_buffer(front_top_);
-    release_buffer(front_color_);
-    release_buffer(last_color_);
-    release_buffer(last_drew_);
-    release_buffer(heights_);
-    release_buffer(colors_);
-    release_buffer(edge_color_);
-    release_buffer(edge_cover_);
+    release_buffers(slices_, color_, cover_, depth_, top_, silhouette_, silhouette_color_,
+                    front_top_, front_color_, last_color_, last_drew_, heights_, colors_,
+                    edge_color_, edge_cover_);
     samples_ = 0;
     span_pixels_ = 0;
 }
