@@ -1265,7 +1265,7 @@ TEST_CASE("an RGB565 maze holds its frame and art at two bytes a pixel", "[scree
     CHECK(narrow.buffer_bytes() * 10 < wide.buffer_bytes() * 6);
 }
 
-TEST_CASE("RGB565 and XRGB8888 renders of one scene agree to 565 precision",
+TEST_CASE("RGB565 and XRGB8888 renders of one scene agree within two 565 steps",
           "[screensaver][maze]") {
     std::minstd_rand rng(5);
     MazeMap map;
@@ -1683,9 +1683,11 @@ TEST_CASE_METHOD(LVGLTestFixture, "the maze saver skips missing and oversized th
     sources.recent = {"A:/nonexistent.png", "A:assets/images/printers/snapmaker-u1.png",
                       "A:assets/images/folder.png"};
     CHECK(pictures_hung(sources) == 1);
-    // The printer picture may be any size.
+    // The printer picture is held to the same cap.
     sources.recent.clear();
     sources.printer = "A:assets/images/printers/snapmaker-u1.png";
+    CHECK(pictures_hung(sources) == 0);
+    sources.printer = "A:assets/images/printer_200.png";
     CHECK(pictures_hung(sources) == 1);
 }
 
@@ -1723,9 +1725,12 @@ TEST_CASE_METHOD(LVGLTestFixture, "the maze's cache lookup reads, never writes",
     CHECK(fs::last_write_time(path) == old);
     CHECK(helix::ui::maze_cached_thumbnail("maze-test/not-cached.png").empty());
     CHECK(helix::ui::maze_cached_thumbnail("").empty());
-    // A card image's own LVGL path stands for itself while its file is there.
-    CHECK(helix::ui::maze_cached_thumbnail("A:" + path) == "A:" + path);
-    CHECK(helix::ui::maze_cached_thumbnail("A:" + path + ".gone").empty());
+    // A listing that names local files caches under that source; the lookup finds those too.
+    const std::string local = get_thumbnail_cache().get_cache_path(
+        helix::thumbnail_cache_id(helix::ThumbnailSource::LocalFile, "maze-test/local.png"));
+    fs::copy_file("assets/images/helix-icon-64.png", local, fs::copy_options::overwrite_existing);
+    CHECK(helix::ui::maze_cached_thumbnail("maze-test/local.png") == "A:" + local);
+    fs::remove(local);
     fs::remove(path);
 }
 
@@ -1741,11 +1746,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "print select lists the printer files' thumbna
     files[3].filename = "dir";
     files[3].is_dir = true;
     files[3].original_thumbnail_url = "dir.png";
-    files[2].thumbnail_path = "A:/cache/c_164x164_ARGB8888.bin";
     PrintSelectPanelTestAccess::set_files(panel, std::move(files));
-    using Keys = std::vector<std::vector<std::string>>;
-    CHECK(panel.printer_thumbnail_keys() ==
-          Keys{{"a.png"}, {"A:/cache/c_164x164_ARGB8888.bin", "sub/b.png"}});
+    CHECK(panel.printer_thumbnail_keys() == std::vector<std::string>{"a.png", "sub/b.png"});
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

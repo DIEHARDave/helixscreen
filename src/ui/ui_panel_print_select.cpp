@@ -142,24 +142,14 @@ PrintSelectPanel& get_global_print_select_panel() {
     return *g_print_select_panel;
 }
 
-std::vector<std::vector<std::string>> PrintSelectPanel::printer_thumbnail_keys() const {
-    std::vector<std::vector<std::string>> keys;
+std::vector<std::string> PrintSelectPanel::printer_thumbnail_keys() const {
+    std::vector<std::string> keys;
     if (usb_source_ && usb_source_->is_usb_active()) {
         return keys;
     }
     for (const PrintFileData& file : file_list_) {
-        if (file.is_dir) {
-            continue;
-        }
-        std::vector<std::string> file_keys;
-        if (ThumbnailCache::is_lvgl_path(file.thumbnail_path)) {
-            file_keys.push_back(file.thumbnail_path);
-        }
-        if (!file.original_thumbnail_url.empty()) {
-            file_keys.push_back(file.original_thumbnail_url);
-        }
-        if (!file_keys.empty()) {
-            keys.push_back(std::move(file_keys));
+        if (!file.is_dir && !file.original_thumbnail_url.empty()) {
+            keys.push_back(file.original_thumbnail_url);
         }
     }
     return keys;

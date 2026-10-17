@@ -267,7 +267,10 @@ class MazeWalker {
     uint32_t recoveries() const {
         return recoveries_;
     }
-    /// Frees the circling memory; reset() and a walk size it again.
+    /// Sizes the circling memory for a map of `cells` x `cells`, so walking it never
+    /// allocates.
+    void reserve(int cells);
+    /// Frees the circling memory.
     void release();
 
   private:
@@ -302,7 +305,7 @@ class MazeWalker {
     uint32_t recoveries_ = 0;
 
     // Per state (cell * 4 + heading in): entered since the hand last changed, and the search's
-    // predecessor. Sized from the map on first use and kept, so a frame never allocates.
+    // predecessor. Sized by reserve() (MazeSim::init calls it), so a frame never allocates.
     std::vector<uint8_t> seen_;
     std::vector<int16_t> prev_;
     std::vector<int16_t> queue_;

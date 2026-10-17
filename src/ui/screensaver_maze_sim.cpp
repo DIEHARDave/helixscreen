@@ -6,6 +6,7 @@
 
 #include "screensaver_motion.h"
 #include "screensaver_pixel_writer.h"
+#include "thumbnail_downscale.h"
 
 #include <algorithm>
 #include <cmath>
@@ -434,10 +435,10 @@ MazeImage reduce_maze_image(const MazeImage& src, int max_side) {
     if (src.w <= max_side && src.h <= max_side) {
         return src;
     }
-    const float k = static_cast<float>(max_side) / static_cast<float>(std::max(src.w, src.h));
+    const ThumbnailDims fit = fit_thumbnail(src.w, src.h, max_side, max_side);
     MazeImage out;
-    out.w = std::max(1, static_cast<int>(std::lround(static_cast<float>(src.w) * k)));
-    out.h = std::max(1, static_cast<int>(std::lround(static_cast<float>(src.h) * k)));
+    out.w = fit.w;
+    out.h = fit.h;
     out.argb.resize(static_cast<size_t>(out.w) * static_cast<size_t>(out.h));
     const float sx = static_cast<float>(src.w) / static_cast<float>(out.w);
     const float sy = static_cast<float>(src.h) / static_cast<float>(out.h);
@@ -659,10 +660,7 @@ void MazeMap::open_up(int keep_a, int keep_b, std::minstd_rand& rng) {
             scratch_.push_back(c);
         }
     }
-    for (int i = static_cast<int>(scratch_.size()) - 1; i > 0; i--) {
-        std::swap(scratch_[static_cast<size_t>(i)],
-                  scratch_[static_cast<size_t>(random_below(rng, i + 1))]);
-    }
+    std::shuffle(scratch_.begin(), scratch_.end(), rng);
     const auto braids = static_cast<int>(std::lround(BRAID_SHARE * scratch_.size()));
     int braided = 0;
     for (size_t i = 0; i < scratch_.size() && braided < braids; i++) {
@@ -840,6 +838,14 @@ void MazeWalker::set_left_handed(bool left) {
     path_pos_ = 0;
 }
 
+void MazeWalker::reserve(int cells) {
+    const auto states = static_cast<size_t>(cells) * static_cast<size_t>(cells) * 4;
+    seen_.assign(states, 0);
+    prev_.assign(states, -1);
+    queue_.reserve(states);
+    path_.reserve(states);
+}
+
 void MazeWalker::release() {
     free_vector(seen_);
     free_vector(prev_);
@@ -856,10 +862,7 @@ int MazeWalker::track_state(const MazeMap& map) {
     const int n = map.cells();
     const auto states = static_cast<size_t>(n) * static_cast<size_t>(n) * 4;
     if (seen_.size() != states) {
-        seen_.assign(states, 0);
-        prev_.assign(states, -1);
-        queue_.reserve(states);
-        path_.reserve(states);
+        reserve(n);
     }
     if (path_pos_ < path_.size()) {
         return path_[path_pos_++];
@@ -1252,9 +1255,14 @@ template <typename Px> void MazeRenderer::build(const MazeArt& art) {
         const uint32_t m = MAZE_FOG_ONE - k;
         uint32_t* t = st.fog_tint.data() + 2 * static_cast<size_t>(k);
         if constexpr (sizeof(Px) == 2) {
-            t[0] = (static_cast<uint32_t>(MAZE_FOG_TINT.r >> 3) * m + 16) << 11 |
-                   (static_cast<uint32_t>(MAZE_FOG_TINT.g >> 2) * m + 16) << 21 |
-                   (static_cast<uint32_t>(MAZE_FOG_TINT.b >> 3) * m + 16);
+            // The tint rounded to 565 levels, not truncated, so far fog matches 8888's.
+            auto level = [](uint8_t c, int bits) {
+                const uint32_t top = (1u << bits) - 1;
+                return std::min<uint32_t>(top, (c * top + 127) / 255);
+            };
+            t[0] = (level(MAZE_FOG_TINT.r, 5) * m + 16) << 11 |
+                   (level(MAZE_FOG_TINT.g, 6) * m + 16) << 21 |
+                   (level(MAZE_FOG_TINT.b, 5) * m + 16);
         } else {
             t[0] = (MAZE_FOG_TINT.r * m + 16) << 16 | (MAZE_FOG_TINT.b * m + 16);
             t[1] = (MAZE_FOG_TINT.g * m + 16) << 8;
@@ -1645,6 +1653,7 @@ void MazeSim::init(const FrameTarget& frame, const MazeArt& art, std::minstd_ran
     dist_.reserve(cells);
     queue_.reserve(cells);
     elapsed_ms_ = 0;
+    walker_.reserve(CELLS);
     new_maze(rng);
     mazes_ = 0;
     exits_reached_ = 0;

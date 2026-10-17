@@ -85,7 +85,7 @@ cells; corridors are a tile wide and walls a tile tall, with the eye at mid-heig
   cell and so never tracks circling.
 - **Fog**: every surface darkens with distance toward a dark tint, keeping
   `k / 32` of its colour with `k = round(32 * (0.1 + 0.9 * exp(-(d - 0.5) / 5)))`
-  (`maze_fog_k`, `maze_fog`): a third darker 3 tiles off, about 60% at 6. The renderer reads `k` from a 128-slot table, four slots a tile, and
+  (`maze_fog_k`, `maze_fog`): a third darker 3 tiles off, about 60% darker at 6. The renderer reads `k` from a 128-slot table, four slots a tile, and
   blends in the format's own lanes (RGB565 spread as `0x07E0F81F`), so nothing divides per
   pixel. A wall slice taller than the texture shades its 64 texels once and copies them; a
   shorter one shades per pixel. The textured floor and ceiling read 16 pre-fogged copies of
@@ -95,14 +95,17 @@ cells; corridors are a tile wide and walls a tile tall, with the eye at mid-heig
 - **Wall art**: 16 picture walls per maze, each with its own index, show up to 12 pictures
   (index modulo the count; brick when there are none). `MazeScreensaver::on_start` gathers them
   from three pools and interleaves them: cached thumbnails of recent prints (print history, 5),
-  of other files in the print-select list (6, shuffled, the card image already loaded first),
-  and the printer picture. It only reads the local cache: `maze_cached_thumbnail` checks for the
-  pre-scaled card `.bin`, then the full PNG, and never calls `ThumbnailCache::get_if_cached`
-  (which deletes a stale entry and ages it) or `fetch`, so a saver start causes no network
-  traffic. A thumbnail over 512 px a side is skipped (the printer picture is exempt); each
-  decode is reduced to 64 px (`reduce_maze_image`) before the next starts, and no decode starts
-  after 120 ms. The pool-picking logic is pure (`history_art_candidates`, `cached_art_paths`,
-  `mix_maze_art`) and tested without the app.
+  of other files in the print-select list (6, shuffled; none before print select has been
+  opened), and the printer picture. It only reads the local cache through
+  `ThumbnailCache::peek` (the pre-scaled card `.bin`, then the full PNG), never
+  `get_if_cached` (which deletes a stale entry and ages it) or `fetch`, so a saver start causes
+  no network traffic. Cache ids carry the connected printer, so after a printer switch the
+  previous printer's thumbnails never match. Any picture over 512 px a side is skipped, the
+  printer picture included (its prerendered variants are 150 or 300 px); each decode is reduced
+  to 64 px (`reduce_maze_image`) before the next starts, and no decode starts after 120 ms, so
+  start-up is bounded by 120 ms plus one decode of at most 512 x 512. The pool-picking logic
+  is pure (`history_art_candidates`, `cached_art_paths`, `mix_maze_art`) and tested without the
+  app.
 - **Cost**: it repaints every pixel every frame, so it is the costliest saver per frame and the
   one the gate is likeliest to mark too heavy on a small board. `MAZE_LEVELS` pulls the
   internal resolution (each pixel replicated `scale x scale`), swaps textured floor and ceiling

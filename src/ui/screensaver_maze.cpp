@@ -220,19 +220,20 @@ std::string maze_cached_thumbnail(const std::string& key) {
     if (key.empty()) {
         return {};
     }
-    if (ThumbnailCache::is_lvgl_path(key)) {
-        return helix::fs::exists(key.substr(2)) ? key : std::string();
+    // peek(), never get_if_cached() (which deletes a stale entry and bumps its age) or fetch().
+    // The cache id carries the connected printer, so another printer's entries never match.
+    // A file's card image is cached under the source its listing came from: Moonraker, or a
+    // local file when the listing does (mock metadata).
+    const auto target = helix::ThumbnailProcessor::get_target_for_display();
+    for (const auto source :
+         {helix::ThumbnailSource::Moonraker, helix::ThumbnailSource::LocalFile}) {
+        std::string path =
+            get_thumbnail_cache().peek(helix::thumbnail_cache_id(source, key), target);
+        if (!path.empty()) {
+            return path;
+        }
     }
-    // Two existence checks and nothing else: ThumbnailCache::get_if_cached() would delete a
-    // stale entry and bump its age, and fetch() would download.
-    const std::string cache_id = helix::thumbnail_cache_id(helix::ThumbnailSource::Moonraker, key);
-    std::string bin = helix::ThumbnailProcessor::instance().get_if_processed(
-        cache_id, helix::ThumbnailProcessor::get_target_for_display());
-    if (!bin.empty()) {
-        return bin;
-    }
-    const std::string png = get_thumbnail_cache().get_cache_path(cache_id);
-    return helix::fs::exists(png) ? ThumbnailCache::to_lvgl_path(png) : std::string();
+    return {};
 }
 
 MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng) {
@@ -242,11 +243,11 @@ MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng) {
                                           maze_cached_thumbnail, MAZE_ART_RECENT, 20);
     }
     if (PrintSelectPanel* panel = find_print_select_panel()) {
-        std::vector<MazeArtCandidate> candidates = panel->printer_thumbnail_keys();
-        for (int i = static_cast<int>(candidates.size()) - 1; i > 0; i--) {
-            std::swap(candidates[static_cast<size_t>(i)],
-                      candidates[static_cast<size_t>(screensaver::random_below(rng, i + 1))]);
+        std::vector<MazeArtCandidate> candidates;
+        for (std::string& key : panel->printer_thumbnail_keys()) {
+            candidates.push_back({std::move(key)});
         }
+        std::shuffle(candidates.begin(), candidates.end(), rng);
         sources.files = cached_art_paths(candidates, maze_cached_thumbnail, MAZE_ART_FILES,
                                          MAZE_ART_FILE_PROBES, sources.recent);
     }
@@ -272,10 +273,11 @@ bool MazeScreensaver::on_start() {
         if (elapsed_ms() >= MAZE_ART_DECODE_BUDGET_MS) {
             break;
         }
-        const bool printer = path == sources.printer;
+        // The printer picture too: its prerendered variants are 150 or 300 px, and only a raw
+        // full-size asset (no variant for that printer) is left out.
         MazeImage picture;
-        load_image(path, picture, printer ? "printer picture" : "thumbnail",
-                   printer ? 0 : MAZE_ART_MAX_SOURCE_SIDE, MAZE_ART_PICTURE_SIDE);
+        load_image(path, picture, path == sources.printer ? "printer picture" : "thumbnail",
+                   MAZE_ART_MAX_SOURCE_SIDE, MAZE_ART_PICTURE_SIDE);
         if (!picture.empty()) {
             art.pictures.push_back(std::move(picture));
         }

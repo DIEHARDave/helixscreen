@@ -25,7 +25,8 @@ namespace helix::ui {
 inline constexpr size_t MAZE_ART_RECENT = 5;
 inline constexpr size_t MAZE_ART_FILES = 6;
 inline constexpr size_t MAZE_ART_FILE_PROBES = 48;
-/// A thumbnail larger than this a side is not decoded; the printer picture is exempt.
+/// A picture larger than this a side is not decoded, so start-up never holds a full-size
+/// image: at most one decode of this size runs past the time budget.
 inline constexpr int MAZE_ART_MAX_SOURCE_SIDE = 512;
 /// Each picture is kept at most this size a side until its texture is built.
 inline constexpr int MAZE_ART_PICTURE_SIDE = 64;
@@ -66,11 +67,11 @@ std::vector<std::string> cached_art_paths(const std::vector<MazeArtCandidate>& c
 std::vector<std::string> mix_maze_art(const MazeArtSources& sources, size_t max);
 
 /**
- * @brief The LVGL path of a thumbnail already in the local cache, or empty
+ * @brief The LVGL path of a thumbnail already in the local cache for the connected printer
  *
- * `key` is a thumbnail path from the gcodes root, for which it prefers the pre-scaled card
- * copy, then the full PNG; or an LVGL path to a file already cached, returned while the file
- * exists. Reads only: it never fetches, and never touches an entry's age or freshness.
+ * `key` is a thumbnail path as a listing gives it. Prefers the pre-scaled card copy, then the
+ * full PNG (ThumbnailCache::peek). Reads only: it never fetches, and never touches an entry's
+ * age or freshness.
  */
 std::string maze_cached_thumbnail(const std::string& key);
 
