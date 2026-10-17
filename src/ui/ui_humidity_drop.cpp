@@ -45,10 +45,12 @@ struct RenderKey {
     uint32_t outline = 0;
     uint32_t back = 0;
     uint32_t front = 0;
+    uint32_t highlight = 0;
 
     bool operator==(const RenderKey& o) const {
         return w == o.w && h == o.h && value == o.value && phase == o.phase &&
-               outline == o.outline && back == o.back && front == o.front;
+               outline == o.outline && back == o.back && front == o.front &&
+               highlight == o.highlight;
     }
 };
 
@@ -77,11 +79,10 @@ hd::Rgb to_rgb(lv_color_t c) {
 }
 
 hd::DropColors drop_colors() {
-    const lv_color_t water = ThemeManager::instance().current_palette().info;
-    // Two tones of one water colour: the front wave a step lighter than the
-    // outline, the back wave a step darker.
-    return {to_rgb(water), to_rgb(lv_color_darken(water, LV_OPA_30)),
-            to_rgb(lv_color_lighten(water, LV_OPA_30))};
+    // One theme colour is the water; every tone is derived from it and the
+    // background, so a theme (or a custom one) defines the drop with one token.
+    const ThemePalette& p = ThemeManager::instance().current_palette();
+    return hd::water_colors(to_rgb(p.info), to_rgb(p.screen_bg));
 }
 
 /// The timer can outlive its pointer: lv_deinit() frees every timer before the
@@ -168,7 +169,8 @@ void draw_cb(lv_event_t* e) {
                         wavy ? s_phase : 0.0f,
                         pack_rgb(colors.outline),
                         pack_rgb(colors.back),
-                        pack_rgb(colors.front)};
+                        pack_rgb(colors.front),
+                        pack_rgb(colors.highlight)};
     if (!d->rendered || !(key == d->key)) {
         hd::rasterize(d->buf->data, w, h, static_cast<int>(d->buf->header.stride), colors, d->value,
                       s_phase);
@@ -286,6 +288,10 @@ bool is_humidity_drop(const lv_obj_t* obj) {
 int humidity_drop_value(lv_obj_t* obj) {
     const HumidityDropData* d = data_of(obj);
     return d ? d->value : hd::kUnknown;
+}
+
+humidity_drop::DropColors humidity_drop_colors() {
+    return drop_colors();
 }
 
 float humidity_drop_phase() {

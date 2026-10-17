@@ -478,13 +478,19 @@ wherever a humidity reading sits beside a drop, never `<icon src="water">`:
 - `bind_value`: an int subject in **tenths of a percent** (455 = 45.5%RH), the unit
   `HumiditySensorManager` publishes. Below zero means no reading: the drop draws as a faint
   outline with no fill, so a missing sensor never reads as a dry box. 0% draws an empty,
-  faintly tinted drop; 100% a full one.
+  faintly tinted drop; 85% and above a full one (the level is linear in height up to
+  there, and the swell calms as it nears the tip so a nearly full drop never shows a
+  notch).
 - `size`: `xs`..`xl`, the same box an `icon` of that size takes, so it swaps in for one
   without moving the layout. The box follows the widget's text font, so
   `<bind_tile_rung ladder="icon">` re-faces it exactly as it does an icon. An explicit
   `width`/`height` overrides the font and the drop fits that box.
-- Colours come from the theme's `info` token (outline), a step darker (back wave) and a
-  step lighter (front wave). No variant: the drop is always water-coloured.
+- Every colour derives from ONE theme colour, the `info` token as the water, plus the
+  screen background (`humidity_drop::water_colors()`): the front and back tones keep the
+  theme's hue, a washed-out colour is lifted to read as water (a true grey stays grey),
+  the outline is the light tone on a dark background and a dark tone on a light one, and
+  the highlight is the front tone toward white. They are read at every draw, so a theme,
+  preview or dark/light change re-tints live. No variant attribute.
 - A drop with no subject (a per-slot reading, say) is filled with
   `helix::ui::humidity_drop_set_value()`.
 

@@ -38,23 +38,34 @@ float signed_distance(const DropShape& s, float x, float y);
 /// Outline stroke width for a drop, in pixels.
 float stroke_width(const DropShape& s);
 
-/// Wave amplitude for a drop, in pixels: visible at icon size, gentle when large.
+/// Full wave amplitude for a drop, in pixels: a lively swell when large, held
+/// down at icon size so the level still reads.
 float wave_amplitude(const DropShape& s);
+
+/// The fraction of the drop's height a reading fills, 0..1. A reading at 85% or
+/// more fills it to the tip.
+float fill_height(float fraction);
+
+/// The amplitude at @p fraction: the full swell, calming as the water rises into
+/// the narrow tip so a nearly full drop reads full rather than notched.
+float amplitude_at(const DropShape& s, float fraction);
 
 /// The fill fraction 0..1 a reading shows; below zero when there is no reading.
 /// Readings past 100% clamp to full.
 float fill_fraction(int humidity_x10);
 
 /// The still water line for @p fraction: at 0 every crest sits under the inside
-/// of the bottom, at 1 every trough sits over the inside of the tip, so 0% and
-/// 100% read as empty and full instead of a sliver or a gap.
+/// of the bottom, at a full fill_height() every trough sits over the inside of
+/// the tip, so 0% and 85%+ read as empty and full instead of a sliver or a gap.
 float surface_level(const DropShape& s, float fraction);
 
-/// The wave's y at column @p x: @p level displaced by a sine of one drop width.
+/// The wave's y at column @p x: @p level displaced by a sine two crests to the
+/// drop's width.
 float wave_y(const DropShape& s, float level, float amplitude, float phase, float x);
 
-/// Phase the back wave runs at for a given front phase: offset and drifting the
-/// other way, so the two tones cross instead of moving as one.
+/// Phase the back wave runs at for a given front phase: about half a wave out,
+/// so its crests rise between the front's, and drifting the other way, so the
+/// two tones read as depth instead of moving as one.
 float back_phase(float front_phase);
 
 /// Whether a drop needs animation ticks: only a partial fill shows a moving
@@ -69,9 +80,17 @@ struct Rgb {
 
 struct DropColors {
     Rgb outline;
-    Rgb back;  ///< the darker wave behind
-    Rgb front; ///< the lighter wave in front
+    Rgb back;      ///< the darker wave behind
+    Rgb front;     ///< the lighter wave in front, also the empty drop's faint tint
+    Rgb highlight; ///< the specular spot on the bulb
 };
+
+/// Every colour of the drop, derived from one theme colour (@p water, the
+/// theme's water token) and the background it sits on. The hue is the theme's;
+/// a washed-out colour is lifted to read as water, and the tones are placed in
+/// brightness for the background: on a dark one the outline is the light tone,
+/// on a light one the dark tone.
+DropColors water_colors(Rgb water, Rgb background);
 
 /// Paint the drop into @p px, a w x h buffer of LVGL ARGB8888 pixels (bytes
 /// B, G, R, A, straight alpha) with @p stride bytes per row. Every pixel is

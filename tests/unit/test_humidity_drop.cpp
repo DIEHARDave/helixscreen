@@ -10,7 +10,9 @@
 #include "humidity_drop_geometry.h"
 #include "humidity_sensor_manager.h"
 #include "settings_manager.h"
+#include "theme_manager.h"
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -35,7 +37,7 @@ struct Canvas {
 };
 
 // Distinct, saturated colours so a pixel's source is readable from its value.
-const DropColors kColors{{255, 0, 0}, {0, 0, 255}, {0, 255, 0}};
+const DropColors kColors{{255, 0, 0}, {0, 0, 255}, {0, 255, 0}, {255, 255, 255}};
 
 Canvas render(int w, int h, int humidity_x10, float phase = 0.0f) {
     Canvas c(w, h);
@@ -143,14 +145,14 @@ TEST_CASE("humidity_drop: fill fraction clamps and flags unknown", "[humidity_dr
 TEST_CASE("humidity_drop: 0% sits every crest below the floor, 100% every trough over the tip",
           "[humidity_drop]") {
     const DropShape s = fit_drop(64, 64);
-    const float a = wave_amplitude(s);
     const float sw = stroke_width(s);
     const float empty = surface_level(s, 0.0f);
     const float full = surface_level(s, 1.0f);
-    CHECK(empty - a >= s.bottom() - sw - 0.001f);
-    CHECK(full + a <= s.tip_y + sw + 0.001f);
-    // Linear in between, rising as the fraction grows (y grows downward).
-    CHECK(surface_level(s, 0.5f) == Catch::Approx((empty + full) / 2.0f));
+    CHECK(empty - amplitude_at(s, 0.0f) >= s.bottom() - sw - 0.001f);
+    CHECK(full + amplitude_at(s, 1.0f) <= s.tip_y + sw + 0.001f);
+    // Rising as the fraction grows (y grows downward), the tip reached at 85%.
+    CHECK(surface_level(s, 0.5f) < surface_level(s, 0.15f));
+    CHECK(surface_level(s, 0.85f) == Catch::Approx(full));
     CHECK(surface_level(s, 0.85f) < surface_level(s, 0.15f));
 }
 
@@ -163,12 +165,85 @@ TEST_CASE("humidity_drop: the wave stays within its amplitude and repeats each d
         const float y = wave_y(s, level, a, 0.3f, x);
         CHECK(y >= level - a - 1e-4f);
         CHECK(y <= level + a + 1e-4f);
-        CHECK(wave_y(s, level, a, 0.3f, x + 2.0f * s.r) == Catch::Approx(y).margin(1e-3));
+        CHECK(wave_y(s, level, a, 0.3f, x + s.r) == Catch::Approx(y).margin(1e-3));
     }
     // The phase moves it: some column reads differently a quarter turn later.
     CHECK(wave_y(s, level, a, 0.0f, s.cx) != Catch::Approx(wave_y(s, level, a, 1.57f, s.cx)));
     CHECK(back_phase(0.0f) != Catch::Approx(0.0f));
     CHECK(back_phase(1.0f) - back_phase(0.0f) < 0.0f);
+}
+
+TEST_CASE("humidity_drop: the fill reaches the tip at 85% and calms as it rises",
+          "[humidity_drop]") {
+    CHECK(fill_height(0.0f) == 0.0f);
+    CHECK(fill_height(0.425f) == Catch::Approx(0.5f));
+    CHECK(fill_height(0.85f) == 1.0f);
+    CHECK(fill_height(1.0f) == 1.0f);
+    const DropShape s = fit_drop(128, 128);
+    // A full swell through the middle, gone by the time the drop is full.
+    CHECK(amplitude_at(s, 0.5f) == Catch::Approx(wave_amplitude(s)));
+    CHECK(amplitude_at(s, 0.75f) < amplitude_at(s, 0.5f));
+    CHECK(amplitude_at(s, 0.75f) > 0.0f);
+    CHECK(amplitude_at(s, 0.85f) == 0.0f);
+}
+
+TEST_CASE("humidity_drop: a large drop swells; an icon keeps a readable level", "[humidity_drop]") {
+    const DropShape big = fit_drop(160, 160);
+    const DropShape icon = fit_drop(24, 24);
+    CHECK(wave_amplitude(big) / big.r > 0.15f);
+    CHECK(wave_amplitude(icon) / icon.r < 0.15f);
+    // Two crests across the drop's width.
+    int crests = 0;
+    for (float x = big.cx - big.r; x < big.cx + big.r; x += 0.5f) {
+        const float y0 = wave_y(big, 50.0f, 4.0f, 0.0f, x - 0.5f);
+        const float y1 = wave_y(big, 50.0f, 4.0f, 0.0f, x);
+        const float y2 = wave_y(big, 50.0f, 4.0f, 0.0f, x + 0.5f);
+        crests += (y1 < y0 && y1 <= y2) ? 1 : 0;
+    }
+    CHECK(crests == 2);
+}
+
+namespace {
+int brightness(Rgb c) {
+    return c.r * 299 + c.g * 587 + c.b * 114;
+}
+float hue_of(Rgb c) {
+    const float r = c.r, g = c.g, b = c.b;
+    return std::atan2(std::sqrt(3.0f) * (g - b), 2.0f * r - g - b);
+}
+} // namespace
+
+TEST_CASE("humidity_drop: every colour derives from the theme's water colour",
+          "[humidity_drop][theme]") {
+    const Rgb dark_bg{0x1e, 0x1e, 0x22};
+    const Rgb light_bg{0xf0, 0xf0, 0xf0};
+    for (Rgb water : {Rgb{0x3A, 0x7C, 0xC8}, Rgb{0x1B, 0x3A, 0x5C}, Rgb{0x31, 0x74, 0x8F},
+                      Rgb{0x83, 0xA5, 0x98}, Rgb{0x8B, 0xE9, 0xFD}}) {
+        for (Rgb bg : {dark_bg, light_bg}) {
+            CAPTURE(int(water.r), int(water.g), int(water.b), int(bg.r));
+            const DropColors c = water_colors(water, bg);
+            // The theme's hue survives.
+            CHECK(std::fabs(hue_of(c.front) - hue_of(water)) < 0.2f);
+            CHECK(std::fabs(hue_of(c.back) - hue_of(water)) < 0.2f);
+            // Lighter wave in front, darker behind, highlight lighter still.
+            CHECK(brightness(c.front) > brightness(c.back));
+            CHECK(brightness(c.highlight) > brightness(c.front));
+            // The outline stands off its background.
+            CHECK(std::abs(brightness(c.outline) - brightness(bg)) > 255 * 1000 / 4);
+        }
+    }
+    // A slate theme colour is lifted toward water, not left grey-blue.
+    const DropColors slate = water_colors({0x1B, 0x3A, 0x5C}, light_bg);
+    const int spread = std::max({slate.front.r, slate.front.g, slate.front.b}) -
+                       std::min({slate.front.r, slate.front.g, slate.front.b});
+    CHECK(spread > 110);
+    // A theme that chose no hue keeps a grey drop.
+    const DropColors grey = water_colors({0x80, 0x80, 0x80}, dark_bg);
+    CHECK(grey.front.r == grey.front.g);
+    CHECK(grey.front.g == grey.front.b);
+    // Background decides which tone outlines: light on dark, dark on light.
+    CHECK(brightness(water_colors({0x3A, 0x7C, 0xC8}, dark_bg).outline) >
+          brightness(water_colors({0x3A, 0x7C, 0xC8}, light_bg).outline));
 }
 
 TEST_CASE("humidity_drop: only a drawn, partial fill animates, and only with animations on",
@@ -243,7 +318,8 @@ TEST_CASE("humidity_drop: the fill grows with humidity", "[humidity_drop]") {
     CHECK(f15 > 0);
     CHECK(f15 < f50);
     CHECK(f50 < f85);
-    CHECK(f85 < f100);
+    // 85% and up read as full.
+    CHECK(f85 == f100);
 }
 
 TEST_CASE("humidity_drop: half full fills below the middle, not above it", "[humidity_drop]") {
@@ -252,8 +328,8 @@ TEST_CASE("humidity_drop: half full fills below the middle, not above it", "[hum
     const Canvas c = render(size, size, 500);
     const float mid = (s.tip_y + s.bottom()) / 2.0f;
     const int cx = static_cast<int>(s.cx);
-    CHECK(is_fill(c.at(cx, static_cast<int>(mid + 6))));
-    CHECK_FALSE(is_fill(c.at(cx, static_cast<int>(mid - 6))));
+    CHECK(is_fill(c.at(cx, static_cast<int>(mid + 8))));
+    CHECK_FALSE(is_fill(c.at(cx, static_cast<int>(mid - 14))));
 }
 
 TEST_CASE("humidity_drop: the front wave is the lighter tone on top, the back peeks above it",
@@ -433,4 +509,43 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_subject_set_int(chamber, -1);
     CHECK(helix::ui::humidity_drop_value(drop) == kUnknown);
     lv_obj_delete(tile);
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "humidity_drop: a theme change re-tints the drop",
+                 "[humidity_drop][widget][theme]") {
+    helix::ui::register_humidity_drop_widget();
+    auto& tm = ThemeManager::instance();
+    const char* attrs[] = {"size", "lg", nullptr};
+    auto* drop = static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "humidity_drop", attrs));
+    REQUIRE(drop != nullptr);
+    helix::ui::humidity_drop_set_value(drop, 1000);
+    lv_obj_update_layout(test_screen());
+    // The drop's centre pixel, as it draws: red minus blue.
+    auto centre_warmth = [drop]() {
+        lv_draw_buf_t* snap = lv_snapshot_take(drop, LV_COLOR_FORMAT_ARGB8888);
+        REQUIRE(snap != nullptr);
+        const uint32_t x = snap->header.w / 2;
+        const uint32_t y = snap->header.h * 2 / 3;
+        const uint8_t* p = snap->data + y * snap->header.stride + x * 4;
+        const int warmth = int(p[2]) - int(p[0]);
+        lv_draw_buf_destroy(snap);
+        return warmth;
+    };
+
+    const DropColors before = helix::ui::humidity_drop_colors();
+    const int cool = centre_warmth();
+    ThemePalette warm = tm.current_palette();
+    warm.info = lv_color_hex(0xC8503A);
+    tm.preview_palette(warm);
+    const DropColors during = helix::ui::humidity_drop_colors();
+    CHECK(during.front.r > during.front.b);
+    CHECK((during.front.r != before.front.r || during.front.b != before.front.b));
+    // The same drop, redrawn with no restart, now in the warm water.
+    CHECK(centre_warmth() > cool + 60);
+    tm.cancel_preview();
+    CHECK(centre_warmth() == cool);
+    lv_obj_delete(drop);
+    const DropColors after = helix::ui::humidity_drop_colors();
+    CHECK(after.front.r == before.front.r);
+    CHECK(after.front.b == before.front.b);
 }

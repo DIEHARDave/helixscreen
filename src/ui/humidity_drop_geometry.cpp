@@ -105,8 +105,6 @@ struct Acc {
     }
 };
 
-constexpr Rgb kWhite{255, 255, 255};
-
 // Translucent layers, as alpha.
 constexpr float kTintAlpha = 0.14f;
 constexpr float kHighlightAlpha = 0.45f;
@@ -145,7 +143,18 @@ float stroke_width(const DropShape& s) {
 }
 
 float wave_amplitude(const DropShape& s) {
-    return std::max(0.75f, s.r * 0.09f);
+    // 10% of the radius at icon size, rising to 17% from r = 20px up.
+    const float grow = std::clamp((s.r - 6.0f) / 14.0f, 0.0f, 1.0f);
+    return std::max(0.75f, s.r * (0.10f + 0.07f * grow));
+}
+
+float fill_height(float fraction) {
+    return std::min(1.0f, clamp01(fraction) / 0.85f);
+}
+
+float amplitude_at(const DropShape& s, float fraction) {
+    const float calm = clamp01((1.0f - fill_height(fraction)) / 0.25f);
+    return wave_amplitude(s) * calm;
 }
 
 float fill_fraction(int humidity_x10) {
@@ -155,22 +164,100 @@ float fill_fraction(int humidity_x10) {
 }
 
 float surface_level(const DropShape& s, float fraction) {
-    const float a = wave_amplitude(s);
+    const float a = amplitude_at(s, fraction);
     const float sw = stroke_width(s);
     const float empty = s.bottom() - sw + a;
     const float full = s.tip_y + sw - a;
-    return empty + (full - empty) * clamp01(fraction);
+    return empty + (full - empty) * fill_height(fraction);
 }
 
 float wave_y(const DropShape& s, float level, float amplitude, float phase, float x) {
-    const float wavelength = 2.0f * s.r;
+    const float wavelength = s.r;
     if (wavelength <= 0.0f)
         return level;
     return level + amplitude * std::sin(kTwoPi * (x - s.cx) / wavelength + phase);
 }
 
 float back_phase(float front_phase) {
-    return 2.2f - 0.8f * front_phase;
+    return 3.6f - 0.8f * front_phase;
+}
+
+namespace {
+
+struct Hsv {
+    float h, s, v; // h in 0..6 (sextants), s and v in 0..1
+};
+
+Hsv to_hsv(Rgb c) {
+    const float r = c.r / 255.0f, g = c.g / 255.0f, b = c.b / 255.0f;
+    const float mx = std::max({r, g, b});
+    const float mn = std::min({r, g, b});
+    const float d = mx - mn;
+    float h = 0.0f;
+    if (d > 0.0f) {
+        if (mx == r)
+            h = std::fmod((g - b) / d + 6.0f, 6.0f);
+        else if (mx == g)
+            h = (b - r) / d + 2.0f;
+        else
+            h = (r - g) / d + 4.0f;
+    }
+    return {h, mx > 0.0f ? d / mx : 0.0f, mx};
+}
+
+Rgb to_rgb(Hsv c) {
+    const float f = c.h - std::floor(c.h);
+    const float p = c.v * (1.0f - c.s);
+    const float q = c.v * (1.0f - c.s * f);
+    const float t = c.v * (1.0f - c.s * (1.0f - f));
+    float r, g, b;
+    switch (static_cast<int>(c.h) % 6) {
+    case 0:
+        r = c.v, g = t, b = p;
+        break;
+    case 1:
+        r = q, g = c.v, b = p;
+        break;
+    case 2:
+        r = p, g = c.v, b = t;
+        break;
+    case 3:
+        r = p, g = q, b = c.v;
+        break;
+    case 4:
+        r = t, g = p, b = c.v;
+        break;
+    default:
+        r = c.v, g = p, b = q;
+        break;
+    }
+    auto byte = [](float x) { return static_cast<uint8_t>(clamp01(x) * 255.0f + 0.5f); };
+    return {byte(r), byte(g), byte(b)};
+}
+
+Rgb mix(Rgb a, Rgb b, float t) {
+    auto m = [t](uint8_t x, uint8_t y) { return static_cast<uint8_t>(x + (y - x) * t + 0.5f); };
+    return {m(a.r, b.r), m(a.g, b.g), m(a.b, b.b)};
+}
+
+} // namespace
+
+DropColors water_colors(Rgb water, Rgb background) {
+    Hsv base = to_hsv(water);
+    // A tinted colour too grey to read as water is lifted; a true grey (a theme
+    // that chose no hue) stays grey.
+    if (base.s >= 0.12f)
+        base.s = std::clamp(base.s, 0.55f, 0.90f);
+    const bool dark_bg = to_hsv(background).v < 0.5f;
+
+    const Hsv front{base.h, base.s * 0.85f, std::clamp(base.v, 0.75f, 0.95f)};
+    const Hsv back{base.h, std::min(1.0f, base.s * 1.05f), front.v * 0.62f};
+    DropColors c;
+    c.front = to_rgb(front);
+    c.back = to_rgb(back);
+    c.outline = dark_bg ? c.front : to_rgb({base.h, base.s, back.v * 0.85f});
+    c.highlight = mix(c.front, {255, 255, 255}, 0.75f);
+    return c;
 }
 
 bool should_animate(bool animations_enabled, bool visible, int humidity_x10) {
@@ -188,10 +275,10 @@ void rasterize(uint8_t* px, int w, int h, int stride, const DropColors& colors, 
     const bool known = fraction >= 0.0f;
     const bool has_fill = known && fraction > 0.0f;
 
-    const float amp = wave_amplitude(s);
+    const float amp = amplitude_at(s, fraction);
     const float level = surface_level(s, fraction);
     // The back wave rides a little higher so its crests show between the front's.
-    const float back_level = level - amp;
+    const float back_level = level - 0.6f * amp;
     const float back_ph = back_phase(phase);
     // Rows wholly above both waves hold no water; rows wholly below are full.
     const float wave_top = back_level - amp - 1.0f;
@@ -241,7 +328,7 @@ void rasterize(uint8_t* px, int w, int h, int stride, const DropColors& colors, 
                     const float ey = (y - hl_cy) / hl_ry;
                     // Distance outside the ellipse, roughly in pixels, for a soft edge.
                     const float e = (std::sqrt(ex * ex + ey * ey) - 1.0f) * hl_rx;
-                    acc.over(kWhite, inner * kHighlightAlpha * clamp01(0.5f - e));
+                    acc.over(colors.highlight, inner * kHighlightAlpha * clamp01(0.5f - e));
                 }
             }
 

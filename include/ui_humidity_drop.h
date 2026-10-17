@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "humidity_drop_geometry.h"
 #include "lvgl/lvgl.h"
 
 /**
@@ -19,8 +20,9 @@
  *   widget's text font, so `<bind_tile_rung ladder="icon">` re-faces it as it
  *   does an icon. An explicit `width`/`height` overrides the font.
  *
- * Colours come from the theme's `info` token. With animations on, a partial fill's
- * surface drifts on one shared slow tick that redraws only drops on screen.
+ * Every colour derives from the theme's `info` token (the water) and its
+ * screen background, read at each draw, so a theme or mode change re-tints live. With animations
+ * on, a partial fill's surface drifts on one shared slow tick that redraws only drops on screen.
  * Geometry and rasterization: humidity_drop_geometry.h.
  */
 namespace helix::ui {
@@ -36,6 +38,9 @@ bool is_humidity_drop(const lv_obj_t* obj);
 
 /// The reading a drop shows; humidity_drop::kUnknown when it has none.
 int humidity_drop_value(lv_obj_t* obj);
+
+/// The colours drops draw in under the current theme.
+humidity_drop::DropColors humidity_drop_colors();
 
 /// The shared wave phase, in radians. Moves only while animations are on.
 float humidity_drop_phase();
