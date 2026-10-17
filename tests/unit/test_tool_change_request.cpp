@@ -323,3 +323,46 @@ TEST_CASE_METHOD(OfferFixture, "offer_tool_change: paused shows the one paused d
     // Exactly one dialog was raised: nothing is left stacked after the answer.
     CHECK(ModalStack::instance().stack_empty());
 }
+
+TEST_CASE_METHOD(OfferFixture,
+                 "offer_tool_change: a print started while the dialog is open refuses",
+                 "[tool_change][offer][recheck]") {
+    set_confirm(true);
+    REQUIRE(offer(1) == ToolChangeVerdict::ConfirmSetting);
+    test::set_wire_state(state(), PrintJobState::PRINTING);
+    test::answer_top_modal("btn_primary");
+    CHECK(rig.backend->change_tool_calls == 0);
+    CHECK(successes == 0);
+    CHECK(declines == 1);
+    REQUIRE(rig.warnings.size() == 1);
+    CHECK(rig.warnings[0].find("Cannot run filament operation while printing") !=
+          std::string::npos);
+}
+
+TEST_CASE_METHOD(OfferFixture,
+                 "offer_tool_change: a filament system paused while the dialog is open refuses",
+                 "[tool_change][offer][recheck]") {
+    set_confirm(true);
+    REQUIRE(offer(1) == ToolChangeVerdict::ConfirmSetting);
+    rig.backend->report_action = AmsAction::PAUSED;
+    test::answer_top_modal("btn_primary");
+    rig.backend->report_action = AmsAction::IDLE;
+    CHECK(rig.backend->change_tool_calls == 0);
+    CHECK(declines == 1);
+    REQUIRE(rig.warnings.size() == 1);
+    CHECK(rig.warnings[0].find("The filament system needs attention") != std::string::npos);
+}
+
+TEST_CASE_METHOD(OfferFixture,
+                 "offer_tool_change: a filament system gone busy while the dialog is open is "
+                 "silently declined",
+                 "[tool_change][offer][recheck]") {
+    set_confirm(true);
+    REQUIRE(offer(1) == ToolChangeVerdict::ConfirmSetting);
+    rig.backend->report_action = AmsAction::LOADING;
+    test::answer_top_modal("btn_primary");
+    rig.backend->report_action = AmsAction::IDLE;
+    CHECK(rig.backend->change_tool_calls == 0);
+    CHECK(declines == 1);
+    CHECK(rig.warnings.empty());
+}

@@ -101,6 +101,30 @@ void dispatch(int tool_index, const ToolChangeHooks& hooks) {
         });
 }
 
+/// Log and toast a verdict that dispatches nothing: refusals raise a warning,
+/// Busy and AlreadyActive raise nothing.
+void report_withheld(const ToolChangeDecision& decision, int tool_index) {
+    switch (decision.verdict) {
+    case ToolChangeVerdict::AlreadyActive:
+        spdlog::debug("[ToolChange] T{} already active, ignoring", tool_index);
+        break;
+    case ToolChangeVerdict::Busy:
+        spdlog::info("[ToolChange] T{} ignored: filament system busy", tool_index);
+        break;
+    case ToolChangeVerdict::RefuseNeedsAttention:
+    case ToolChangeVerdict::RefuseSpoolsOnBed:
+    case ToolChangeVerdict::RefusePrint:
+        spdlog::info("[ToolChange] Tool change to T{} refused: {}", tool_index,
+                     decision.refusal.technical_msg);
+        notify_ams_warning(decision.refusal);
+        break;
+    case ToolChangeVerdict::ConfirmPaused:
+    case ToolChangeVerdict::ConfirmSetting:
+    case ToolChangeVerdict::Immediate:
+        break;
+    }
+}
+
 std::string full_tool_label(int tool_index) {
     const auto& tools = ToolState::instance().tools();
     if (tool_index < 0 || tool_index >= static_cast<int>(tools.size())) {
@@ -111,13 +135,15 @@ std::string full_tool_label(int tool_index) {
 }
 
 /// What an open confirmation owes its caller: the change on the primary
-/// button, on_declined on every other way the dialog closes. A close that
+/// button, on_declined on every other way the dialog closes. The primary
+/// button decides again from live state, because a print can start or the
+/// filament system can stop while the dialog is open. A close that
 /// fires no dialog callback (a programmatic hide) still drops the dialog's
 /// callbacks, and with them the last reference to this.
 class PendingChange {
   public:
-    PendingChange(int tool_index, ToolChangeHooks hooks)
-        : tool_index_(tool_index), hooks_(std::move(hooks)) {}
+    PendingChange(const PrinterState& printer_state, int tool_index, ToolChangeHooks hooks)
+        : printer_state_(printer_state), tool_index_(tool_index), hooks_(std::move(hooks)) {}
     PendingChange(const PendingChange&) = delete;
     PendingChange& operator=(const PendingChange&) = delete;
 
@@ -130,6 +156,13 @@ class PendingChange {
 
     void confirm() {
         if (settled_) {
+            return;
+        }
+        const ToolChangeDecision decision =
+            decide_tool_change(tool_change_inputs(printer_state_, tool_index_));
+        if (!decision.dispatches()) {
+            report_withheld(decision, tool_index_);
+            decline();
             return;
         }
         settled_ = true;
@@ -147,6 +180,7 @@ class PendingChange {
     }
 
   private:
+    const PrinterState& printer_state_;
     int tool_index_;
     ToolChangeHooks hooks_;
     bool settled_ = false;
@@ -161,17 +195,11 @@ ToolChangeVerdict offer_tool_change(const PrinterState& printer_state, int tool_
 
     switch (decision.verdict) {
     case ToolChangeVerdict::AlreadyActive:
-        spdlog::debug("[ToolChange] T{} already active, ignoring", tool_index);
-        break;
     case ToolChangeVerdict::Busy:
-        spdlog::info("[ToolChange] T{} ignored: filament system busy", tool_index);
-        break;
     case ToolChangeVerdict::RefuseNeedsAttention:
     case ToolChangeVerdict::RefuseSpoolsOnBed:
     case ToolChangeVerdict::RefusePrint:
-        spdlog::info("[ToolChange] Tool change to T{} refused: {}", tool_index,
-                     decision.refusal.technical_msg);
-        notify_ams_warning(decision.refusal);
+        report_withheld(decision, tool_index);
         break;
     case ToolChangeVerdict::Immediate:
         dispatch(tool_index, hooks);
@@ -187,7 +215,7 @@ ToolChangeVerdict offer_tool_change(const PrinterState& printer_state, int tool_
                    : fmt::format(fmt::runtime(lv_tr("Switch to {}?")), full_tool_label(tool_index));
         ConfirmOptions options;
         options.owner_token = hooks.owner_token;
-        auto pending = std::make_shared<PendingChange>(tool_index, std::move(hooks));
+        auto pending = std::make_shared<PendingChange>(printer_state, tool_index, std::move(hooks));
         options.on_cancel = [pending] { pending->decline(); };
         options.on_dismiss = [pending] { pending->decline(); };
         modal_confirm(
