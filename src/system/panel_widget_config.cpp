@@ -212,6 +212,14 @@ void PanelWidgetConfig::load() {
     if (loaded_) {
         return;
     }
+    if (!saved_layout_known_) {
+        const json node = config_.get<json>(config_.df() + "panel_widgets/" + panel_id_, json());
+        const json legacy =
+            panel_id_ == "home" ? config_.get<json>("/home_widgets", json()) : json();
+        had_saved_layout_ = ((node.is_array() || node.is_object()) && !node.empty()) ||
+                            (legacy.is_array() && !legacy.empty());
+        saved_layout_known_ = true;
+    }
     pages_.clear();
     main_page_index_ = 0;
     next_page_id_ = 1;
@@ -530,6 +538,11 @@ void PanelWidgetConfig::mark_dirty() {
     loaded_ = false;
 }
 
+void PanelWidgetConfig::mark_printer_changed() {
+    mark_dirty();
+    saved_layout_known_ = false;
+}
+
 void PanelWidgetConfig::DeferredSave::cancel() {
     helix::ui::lv_timer_cancel_safe(timer);
     timer = nullptr;
@@ -694,6 +707,7 @@ void PanelWidgetConfig::reset_to_defaults() {
     main_page_index_ = 0;
     next_page_id_ = 1;
     stamp_default("");
+    had_saved_layout_ = true;
 }
 
 std::string PanelWidgetConfig::mint_instance_id(const std::string& base_id) {

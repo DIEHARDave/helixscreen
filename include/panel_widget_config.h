@@ -94,6 +94,12 @@ class PanelWidgetConfig {
     /// the path it was requested for, so the reload cannot discard it.
     void mark_dirty();
 
+    /// mark_dirty() for a new active printer: the next load() also re-derives
+    /// had_saved_layout() from that printer's settings. A plain mark_dirty()
+    /// keeps the answer, since this process's own saves would otherwise turn a
+    /// printer that never had a saved layout into one that does.
+    void mark_printer_changed();
+
     /// Save current order to config now. Replaces a save held by save_soon().
     void save();
 
@@ -334,6 +340,15 @@ class PanelWidgetConfig {
     /// own placement.
     bool is_unedited_default() const;
 
+    /// True when this printer's settings held a panel_widgets node for the
+    /// panel when load() first ran, or after reset_to_defaults() ran: someone
+    /// has had a say in this layout, so an unedited default here is a chosen
+    /// one and is never replaced by a layout copied from the printer's screen.
+    /// Derived at load, never persisted.
+    bool had_saved_layout() const {
+        return had_saved_layout_;
+    }
+
     /// Resolve the default layout again for a @p cols x @p rows grid and, when
     /// the result differs from what is stamped, install it on page 0, stamp it
     /// and save once (through save_soon()). Returns true when it rewrote the
@@ -511,6 +526,8 @@ class PanelWidgetConfig {
     size_t main_page_index_ = 0;
     int next_page_id_ = 1;
     bool loaded_ = false;
+    bool had_saved_layout_ = false;
+    bool saved_layout_known_ = false;
     /// The `default` block: present when the pages came from the defaults
     /// builder. An empty signature means the anchors still wait for a measured
     /// grid; the hash is arrangement_hash() of the pages as stamped.

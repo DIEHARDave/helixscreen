@@ -2176,7 +2176,7 @@ void PanelWidgetManager::clear_all_panel_configs() {
     // (the #804 load() guard otherwise serves the stale layout indefinitely).
     for (auto& [panel_id, config] : panel_configs_) {
         (void)panel_id;
-        config.mark_dirty();
+        config.mark_printer_changed();
     }
     // Drop the per-page widget-list cache wholesale — it keys on "panel:page" and
     // describes the old printer's resolved widget list. Grid descriptors stay

@@ -139,6 +139,10 @@ bool HomeLayoutSync::seed_pending_default(PanelWidgetConfig& config, int cols, i
     if (!seed) {
         return false;
     }
+    if (config.had_saved_layout()) {
+        spdlog::debug("[HomeLayoutSync] Home layout was saved before; not seeding it");
+        return false;
+    }
     return import_seed(config, *seed, cols, rows);
 }
 
@@ -161,7 +165,7 @@ void HomeLayoutSync::adopt_late_seed(const std::string& printer_id) {
                       "layout");
         return;
     }
-    if (!config.is_unedited_default()) {
+    if (config.had_saved_layout() || !config.is_unedited_default()) {
         spdlog::debug("[HomeLayoutSync] Home layout is the user's own; ignoring the printer's");
         return;
     }
@@ -241,12 +245,14 @@ void HomeLayoutSync::request(ReplyHandler on_reply, std::function<void()> on_sta
     api_->database_get_item(
         home_layout::kNamespace, home_layout::kKey,
         [tok, deliver](const nlohmann::json& value) mutable {
-            // Callback thread: parse into a local, then hand it to the main thread.
-            std::optional<Layout> layout = home_layout::parse_payload(value);
-            if (!layout) {
-                spdlog::debug("[HomeLayoutSync] Published home layout is unreadable; ignoring");
-            }
-            tok.defer("HomeLayoutSync::reply", [deliver, layout = std::move(layout)]() mutable {
+            // Callback thread: hand the raw json across. Parsing consults the
+            // widget registry, which only the main thread may touch.
+            tok.defer("HomeLayoutSync::reply", [deliver, value]() mutable {
+                std::optional<Layout> layout = home_layout::parse_payload(value);
+                if (!layout) {
+                    spdlog::debug("[HomeLayoutSync] Published home layout is "
+                                  "unreadable; ignoring");
+                }
                 deliver(std::move(layout));
             });
         },

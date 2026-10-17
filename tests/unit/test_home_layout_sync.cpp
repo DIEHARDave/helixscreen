@@ -272,6 +272,20 @@ TEST_CASE_METHOD(HomeLayoutSyncFixture,
 }
 
 TEST_CASE_METHOD(HomeLayoutSyncFixture,
+                 "home_layout_sync: a reply is parsed on the main thread, not in the callback",
+                 "[home_layout_sync]") {
+    publish_remote_layout(json{{"schema", "no-such-schema"}});
+    set_locality(true);
+
+    LogCapture capture;
+    HomeLayoutSync::instance().on_connected();
+    // The mock delivers on this thread: a parse in the callback would already have logged.
+    CHECK(capture.count_containing("Published home layout is unreadable") == 0);
+    drain();
+    CHECK(capture.count_containing("Published home layout is unreadable") == 1);
+}
+
+TEST_CASE_METHOD(HomeLayoutSyncFixture,
                  "home_layout_sync: a reply for a printer no longer active is dropped",
                  "[home_layout_sync]") {
     publish_remote_layout(valid_published_payload());
@@ -514,7 +528,7 @@ class SeedPopulateFixture : public HomeLayoutSyncFixture {
         auto& mgr = PanelWidgetManager::instance();
         PanelWidgetManager::clear_gate_observers("home");
         global_config_->set<json>(home_path(), saved_home_);
-        mgr.get_widget_config("home").mark_dirty();
+        mgr.clear_all_panel_configs();
         mgr.clear_panel_config("home");
         PrintStatusWidget::destroy_formatter_for_test();
         ToolState::instance().deinit_subjects();
@@ -534,7 +548,7 @@ class SeedPopulateFixture : public HomeLayoutSyncFixture {
     void fresh_home() {
         global_config_->set<json>(home_path(), json());
         auto& mgr = PanelWidgetManager::instance();
-        mgr.get_widget_config("home").mark_dirty();
+        mgr.clear_all_panel_configs();
         mgr.clear_panel_config("home");
     }
 
@@ -721,6 +735,50 @@ TEST_CASE_METHOD(SeedPopulateFixture, "late reply replaces an unedited default",
     // Saved, not only held in memory: a reload from Config reads the same.
     home().mark_dirty();
     check_seeded_seats();
+}
+
+TEST_CASE_METHOD(SeedPopulateFixture, "late reply never reseeds a layout that was reset",
+                 "[home_layout_sync][seed]") {
+    default_seats();
+    home().reset_to_defaults();
+    home().save();
+    REQUIRE(home().is_unedited_default());
+    REQUIRE(home().had_saved_layout());
+    const auto reset = seats();
+
+    connect_remote_with(valid_published_payload());
+
+    populate();
+
+    CHECK(seats() == reset);
+    CHECK(home().is_unedited_default());
+    CHECK(toasts.empty());
+    CHECK_FALSE(HomeLayoutSync::instance().take_seed("printer_a").has_value());
+}
+
+TEST_CASE_METHOD(SeedPopulateFixture, "a restart never reseeds a layout that was saved",
+                 "[home_layout_sync][seed]") {
+    default_seats();
+    home().reset_to_defaults();
+    home().save();
+    const auto reset = seats();
+    PanelWidgetManager::instance().clear_all_panel_configs();
+    PanelWidgetManager::instance().clear_panel_config("home");
+    REQUIRE(home().had_saved_layout());
+
+    connect_remote_with(valid_published_payload());
+    populate();
+
+    CHECK(toasts.empty());
+    CHECK(home().is_unedited_default());
+    CHECK(seats() == reset);
+}
+
+TEST_CASE_METHOD(SeedPopulateFixture, "a brand-new printer has no saved layout",
+                 "[home_layout_sync][seed]") {
+    CHECK_FALSE(home().had_saved_layout());
+    default_seats();
+    CHECK_FALSE(home().had_saved_layout());
 }
 
 TEST_CASE_METHOD(SeedPopulateFixture, "late reply leaves an edited layout alone",
