@@ -596,6 +596,7 @@ void GCodeLayerRenderer::invalidate_solid_cache() {
     selection_rim_stamped_ = false;
     exclusion_hatch_stamped_ = false;
     reset_crease_grids();
+    crease_deferred_layer_ = -1;
 }
 
 void GCodeLayerRenderer::reset_crease_grids() {
@@ -605,15 +606,47 @@ void GCodeLayerRenderer::reset_crease_grids() {
     }
 }
 
-float GCodeLayerRenderer::crease_shade(const ToolpathSegment& seg, int screen_len, int layer_idx,
-                                       CreaseCursor& cur) {
-    // The neighbours are fetched on the layer's first wall, so a layer with
-    // none never builds or loads them.
-    if (!cur.fetched) {
-        cur.below = crease_grid(layer_idx - 1, layer_idx);
-        cur.above = crease_grid(layer_idx + 1, layer_idx);
-        cur.fetched = true;
+float GCodeLayerRenderer::layer_z(int layer) const {
+    if (streaming_controller_) {
+        return streaming_controller_->get_layer_z(static_cast<size_t>(layer));
     }
+    return gcode_ ? gcode_->layers[static_cast<size_t>(layer)].z_height : 0.0f;
+}
+
+bool GCodeLayerRenderer::prepare_crease_layer(int layer_idx, CreaseCursor& cur, bool allow_load) {
+    // Distances come from the layer index, not from segment Z: a spiral-vase
+    // layer climbs through its whole height, so segment Z near the end of a
+    // revolution sits almost on the next layer.
+    const int count = get_layer_count();
+    const float z = layer_z(layer_idx);
+    for (const int dir : {-1, 1}) {
+        crease::NeighbourSide& side = dir < 0 ? cur.below : cur.above;
+        for (int k = 1; k <= crease::kNeighbourDepth; ++k) {
+            const int n = layer_idx + dir * k;
+            if (n < 0 || n >= count) {
+                break;
+            }
+            const float dz = (layer_z(n) - z) * static_cast<float>(dir);
+            if (!crease::plausible_neighbour_dz(dz)) {
+                break;
+            }
+            const crease::WallGrid* grid = nullptr;
+            const CreaseFetch fetch = crease_grid(n, layer_idx, allow_load, grid);
+            if (fetch == CreaseFetch::NotResident) {
+                return false;
+            }
+            if (fetch == CreaseFetch::LoadFailed) {
+                side.unreadable = true;
+                break;
+            }
+            side.add(grid, dz);
+        }
+    }
+    return true;
+}
+
+float GCodeLayerRenderer::crease_shade(const ToolpathSegment& seg, int screen_len,
+                                       CreaseCursor& cur) {
     if (!cur.spacer.needs_sample(seg)) {
         return cur.factor;
     }
@@ -624,21 +657,19 @@ float GCodeLayerRenderer::crease_shade(const ToolpathSegment& seg, int screen_le
         return cur.factor;
     }
     const glm::vec2 mid((seg.start.x + seg.end.x) * 0.5f, (seg.start.y + seg.end.y) * 0.5f);
-    const float bend =
-        crease::profile_bend(crease::find_neighbour(cur.below, mid, seg.start.z, &cur.hint_below),
-                             crease::find_neighbour(cur.above, mid, seg.start.z, &cur.hint_above));
-    cur.factor = crease::crease_brightness(bend);
+    cur.factor = crease::crease_brightness(
+        crease::profile_bend(cur.below.lookup(mid), cur.above.lookup(mid)));
     return cur.factor;
 }
 
-const helix::gcode::crease::WallGrid* GCodeLayerRenderer::crease_grid(int layer, int drawing) {
-    if (layer < 0 || layer >= get_layer_count()) {
-        return nullptr;
-    }
+GCodeLayerRenderer::CreaseFetch GCodeLayerRenderer::crease_grid(int layer, int drawing,
+                                                                bool allow_load,
+                                                                const crease::WallGrid*& out) {
     CreaseSlot* victim = &crease_slots_[0];
     for (auto& slot : crease_slots_) {
         if (slot.layer == layer) {
-            return &slot.grid;
+            out = &slot.grid;
+            return CreaseFetch::Ready;
         }
         // Evict whichever slot is furthest from the layer being drawn; an
         // empty slot is furthest of all.
@@ -654,17 +685,27 @@ const helix::gcode::crease::WallGrid* GCodeLayerRenderer::crease_grid(int layer,
     std::shared_ptr<const std::vector<ToolpathSegment>> holder;
     const std::vector<ToolpathSegment>* segments = nullptr;
     if (streaming_controller_) {
-        holder = streaming_controller_->get_layer_segments(static_cast<size_t>(layer));
+        const auto index = static_cast<size_t>(layer);
+        holder = allow_load ? streaming_controller_->get_layer_segments(index)
+                            : streaming_controller_->try_get_layer_segments(index);
+        if (!holder && !allow_load) {
+            streaming_controller_->request_layer(index);
+            return CreaseFetch::NotResident;
+        }
+        if (holder && holder->empty() && streaming_controller_->get_layer_line_count(index) > 0) {
+            return CreaseFetch::LoadFailed;
+        }
         segments = holder.get();
     } else if (gcode_) {
-        segments = &gcode_->layers[layer].segments;
+        segments = &gcode_->layers[static_cast<size_t>(layer)].segments;
     }
     if (!segments) {
-        return nullptr;
+        return CreaseFetch::LoadFailed;
     }
     victim->grid.build(*segments);
     victim->layer = layer;
-    return &victim->grid;
+    out = &victim->grid;
+    return CreaseFetch::Ready;
 }
 
 void GCodeLayerRenderer::invalidate_cache() {
@@ -959,7 +1000,16 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
             return last_rendered;
         }
 
+        // A layer waits a frame rather than loading a neighbour synchronously,
+        // which the batch budget could not cut short; on its retry it loads.
         CreaseCursor crease_cursor(crease_spacing);
+        if (crease_on && std::any_of(segments->begin(), segments->end(), crease::is_crease_wall)) {
+            const bool allow_load = !streaming_controller_ || crease_deferred_layer_ == layer_idx;
+            if (!prepare_crease_layer(layer_idx, crease_cursor, allow_load)) {
+                crease_deferred_layer_ = layer_idx;
+                break;
+            }
+        }
 
         for (const auto& seg : *segments) {
             if (!should_render_segment(seg))
@@ -1020,7 +1070,7 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
 
                 if (crease_on && crease::is_crease_wall(seg)) {
                     const int screen_len = std::max(std::abs(p2.x - p1.x), std::abs(p2.y - p1.y));
-                    brightness *= crease_shade(seg, screen_len, layer_idx, crease_cursor);
+                    brightness *= crease_shade(seg, screen_len, crease_cursor);
                 }
 
                 r = apply_shading(r, brightness);

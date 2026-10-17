@@ -5,8 +5,10 @@
 
 #include "gcode_parser.h"
 
+#include <array>
 #include <cstdint>
 #include <glm/glm.hpp>
+#include <limits>
 #include <vector>
 
 /**
@@ -72,6 +74,25 @@ constexpr float kBendFullRad = 1.5708f; // 90°
 /// Brightness multiplier at a full crease.
 constexpr float kCreaseFloor = 0.55f;
 
+/// A layer further than this from the one being shaded, in Z, is not its
+/// neighbour. Sequential printing puts a later object's first layer straight
+/// after an earlier object's top layer in file order, many millimetres away;
+/// reading that as "the layer below" would make every first layer a ledge.
+constexpr float kMaxNeighbourDzMm = 2.0f;
+
+/// How many layers each side are searched for a continuing wall. Objects
+/// sliced at different layer heights interleave in file order (0.2mm and
+/// 0.3mm objects give layers at 0.2, 0.3, 0.4, 0.6, ...), so the next layer
+/// down may hold only another object's walls; the one past it finds this
+/// object again.
+constexpr int kNeighbourDepth = 2;
+
+/// Is a layer `dz` away (positive in the direction being searched) close
+/// enough to count as a neighbour?
+inline bool plausible_neighbour_dz(float dz) {
+    return dz > 0.001f && dz <= kMaxNeighbourDzMm;
+}
+
 /// Does this segment take part in crease shading, as a query or a neighbour?
 inline bool is_crease_wall(const ToolpathSegment& seg) {
     return seg.is_extrusion && (seg.feature_type == FeatureType::OuterWall ||
@@ -81,9 +102,10 @@ inline bool is_crease_wall(const ToolpathSegment& seg) {
 /// What the profile found on one side of a segment.
 struct Neighbour {
     enum class Kind : uint8_t {
-        NoLayer, ///< No layer there at all (below the first layer)
+        NoLayer, ///< No plausible layer there (below the first layer, or too far in Z)
         Missing, ///< A layer, but no wall within kSearchRadiusMm
         Found,   ///< A wall; `offset` points from the segment to it
+        Unknown, ///< A layer that could not be read: no evidence either way
     };
     Kind kind = Kind::NoLayer;
     glm::vec2 offset{0.0f, 0.0f}; ///< Horizontal step to the nearest wall (mm)
@@ -102,7 +124,8 @@ struct Neighbour {
  * would stripe every gentle roof. Between the two, the found side's step eases
  * the bend down to zero as it nears the radius, so a slope stepping right
  * around the radius does not flicker between the two answers. No layer below
- * is the bed, which is not a crease.
+ * is the bed, which is not a crease, and an unreadable layer on either side
+ * is no crease rather than a guess.
  */
 float profile_bend(const Neighbour& below, const Neighbour& above);
 
@@ -113,15 +136,17 @@ float crease_brightness(float bend_rad);
 /**
  * @brief Spatial index of one layer's crease walls, for nearest-point lookups.
  *
- * Walls are split into pieces no longer than the search radius and bucketed by
- * each piece's midpoint in a fixed-size hashed grid, so memory is bounded by
- * the layer's wall length rather than by the bed size. Rebuilt in place per
- * layer; the vectors keep their capacity.
+ * Walls become pieces no longer than the search radius, bucketed by each
+ * piece's midpoint in a fixed-size hashed grid. A long segment is split; runs
+ * of short segments along one wall are merged into chords up to that length,
+ * so a high-poly or fuzzy-skin wall costs no more than a smooth one: under two
+ * pieces per radius of wall length, plus one per separate wall run. Memory is
+ * bounded by wall length, never by segment count or bed size. Rebuilt in
+ * place per layer; the vectors keep their capacity.
  */
 class WallGrid {
   public:
-    /// Index every crease wall in `segments`. The layer's height is taken from
-    /// its walls, the same coordinate the queries carry.
+    /// Index every crease wall in `segments`.
     void build(const std::vector<ToolpathSegment>& segments);
     /// Empty the index, keeping its buffers for the next build.
     void clear();
@@ -131,8 +156,8 @@ class WallGrid {
     bool empty() const {
         return pieces_.empty();
     }
-    float z() const {
-        return z_;
+    size_t piece_count() const {
+        return pieces_.size();
     }
 
     /// Nearest point on any indexed wall to `p` within kSearchRadiusMm.
@@ -155,7 +180,6 @@ class WallGrid {
     std::vector<glm::vec4> pieces_;      // x0, y0, x1, y1
     std::vector<uint32_t> bucket_start_; // kBuckets + 1 offsets into items_
     std::vector<uint32_t> items_;        // piece indices, grouped by bucket
-    float z_ = 0.0f;
 };
 
 /**
@@ -189,10 +213,44 @@ class SampleSpacer {
     float remaining_ = 0.0f;
 };
 
-/// Look up one side of a segment's profile against that layer's grid.
-/// A null grid means there is no layer on that side.
-/// `hint` is passed through to WallGrid::nearest(); keep one per grid.
-Neighbour find_neighbour(const WallGrid* grid, glm::vec2 p, float segment_z,
-                         uint32_t* hint = nullptr);
+/**
+ * @brief The layers searched on one side of a layer, nearest first.
+ *
+ * Holds up to kNeighbourDepth grids that passed plausible_neighbour_dz(), with
+ * each one's distance in Z and its own lookup hint.
+ */
+struct NeighbourSide {
+    std::array<const WallGrid*, kNeighbourDepth> grids{};
+    std::array<float, kNeighbourDepth> dz{};
+    std::array<uint32_t, kNeighbourDepth> hints = make_hints();
+    int count = 0;
+    /// A layer on this side could not be read, so the side proves nothing.
+    bool unreadable = false;
+
+    void add(const WallGrid* grid, float layer_dz) {
+        if (count < kNeighbourDepth) {
+            grids[count] = grid;
+            dz[count] = layer_dz;
+            ++count;
+        }
+    }
+
+    /// The nearest layer with a wall near `p`: Found from the first layer
+    /// that has one, Missing when none does, NoLayer when no layer was
+    /// plausible, Unknown when one was unreadable.
+    Neighbour lookup(glm::vec2 p);
+
+  private:
+    static std::array<uint32_t, kNeighbourDepth> make_hints() {
+        std::array<uint32_t, kNeighbourDepth> h{};
+        h.fill(std::numeric_limits<uint32_t>::max());
+        return h;
+    }
+};
+
+/// Look up a point against one neighbouring layer's grid, `dz` away in Z.
+/// A null grid means there is no layer there. `hint` is passed through to
+/// WallGrid::nearest(); keep one per grid.
+Neighbour find_neighbour(const WallGrid* grid, glm::vec2 p, float dz, uint32_t* hint = nullptr);
 
 } // namespace helix::gcode::crease

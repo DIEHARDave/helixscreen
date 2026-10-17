@@ -4,10 +4,17 @@
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/gcode_layer_renderer_test_access.h"
 #include "gcode_crease_shading.h"
+#include "gcode_data_source.h"
 #include "gcode_layer_renderer.h"
+#include "gcode_streaming_controller.h"
 
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
+#include <fstream>
+#include <memory>
+#include <string>
+#include <unistd.h>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -235,7 +242,7 @@ TEST_CASE("crease: WallGrid finds the nearest point on a wall within the radius"
 
     grid.build(square(10.0f, 30.0f, 0.4f));
     REQUIRE_FALSE(grid.empty());
-    REQUIRE(grid.z() == Approx(0.4f));
+    REQUIRE(grid.piece_count() == 80); // four 20mm edges in 1mm pieces
 
     SECTION("the middle of a long edge is found: walls are indexed along their length") {
         REQUIRE(grid.nearest({20.0f, 10.3f}, hit));
@@ -302,7 +309,7 @@ TEST_CASE("crease: WallGrid rebuilds in place for the next layer", "[gcode][crea
     glm::vec2 hit;
     REQUIRE_FALSE(grid.nearest({20.0f, 10.0f}, hit));
     REQUIRE(grid.nearest({60.0f, 50.2f}, hit));
-    REQUIRE(grid.z() == Approx(0.4f));
+    REQUIRE(grid.piece_count() == 80);
     REQUIRE(grid.memory_bytes() > 0);
 
     grid.release();
@@ -322,12 +329,12 @@ TEST_CASE("crease: find_neighbour classifies each side", "[gcode][crease]") {
     WallGrid grid;
     grid.build(square(10.0f, 30.0f, 0.4f));
 
-    REQUIRE(find_neighbour(nullptr, {20, 10}, 0.6f).kind == Neighbour::Kind::NoLayer);
+    REQUIRE(find_neighbour(nullptr, {20, 10}, 0.2f).kind == Neighbour::Kind::NoLayer);
 
-    const Neighbour far = find_neighbour(&grid, {20.0f, 5.0f}, 0.6f);
+    const Neighbour far = find_neighbour(&grid, {20.0f, 5.0f}, 0.2f);
     REQUIRE(far.kind == Neighbour::Kind::Missing);
 
-    const Neighbour near = find_neighbour(&grid, {20.0f, 9.5f}, 0.6f);
+    const Neighbour near = find_neighbour(&grid, {20.0f, 9.5f}, 0.2f);
     REQUIRE(near.kind == Neighbour::Kind::Found);
     REQUIRE(near.offset.x == Approx(0.0f).margin(1e-5));
     REQUIRE(near.offset.y == Approx(0.5f));
@@ -342,6 +349,113 @@ TEST_CASE("crease: find_neighbour classifies each side", "[gcode][crease]") {
     // An empty layer is a layer with no wall near.
     WallGrid empty;
     REQUIRE(find_neighbour(&empty, {20, 10}, 0.2f).kind == Neighbour::Kind::Missing);
+}
+
+TEST_CASE("crease: an unreadable neighbour is no evidence, not an edge", "[gcode][crease]") {
+    Neighbour unknown;
+    unknown.kind = Neighbour::Kind::Unknown;
+    REQUIRE(profile_bend(found({0.0f, 0.0f}), unknown) == 0.0f);
+    REQUIRE(profile_bend(unknown, found({0.0f, 0.0f})) == 0.0f);
+    REQUIRE(profile_bend(unknown, missing()) == 0.0f);
+}
+
+TEST_CASE("crease: only layers just beyond in Z count as neighbours", "[gcode][crease]") {
+    REQUIRE(plausible_neighbour_dz(0.2f));
+    REQUIRE(plausible_neighbour_dz(kMaxNeighbourDzMm));
+    // Wrong direction: a sequential print's next object starts back at the bed.
+    REQUIRE_FALSE(plausible_neighbour_dz(-18.0f));
+    REQUIRE_FALSE(plausible_neighbour_dz(0.0f));
+    // Too far: the top of another object many millimetres away.
+    REQUIRE_FALSE(plausible_neighbour_dz(kMaxNeighbourDzMm + 0.5f));
+}
+
+TEST_CASE("crease: a side searches past a layer holding only other walls", "[gcode][crease]") {
+    WallGrid other, own;
+    other.build(square(60.0f, 80.0f, 0.3f)); // another object's layer
+    own.build(square(10.0f, 30.0f, 0.2f));
+    const glm::vec2 p(20.0f, 10.0f);
+
+    SECTION("the nearer layer misses, the next one finds this object") {
+        NeighbourSide side;
+        side.add(&other, 0.1f);
+        side.add(&own, 0.2f);
+        const Neighbour n = side.lookup(p);
+        REQUIRE(n.kind == Neighbour::Kind::Found);
+        REQUIRE(n.dz == Approx(0.2f));
+    }
+    SECTION("no layer has a wall near: Missing") {
+        NeighbourSide side;
+        side.add(&other, 0.1f);
+        REQUIRE(side.lookup(p).kind == Neighbour::Kind::Missing);
+    }
+    SECTION("no plausible layer at all: NoLayer") {
+        NeighbourSide side;
+        REQUIRE(side.lookup(p).kind == Neighbour::Kind::NoLayer);
+    }
+    SECTION("an unreadable layer: Unknown, whatever else was found") {
+        NeighbourSide side;
+        side.add(&own, 0.2f);
+        side.unreadable = true;
+        REQUIRE(side.lookup(p).kind == Neighbour::Kind::Unknown);
+    }
+}
+
+TEST_CASE("crease: a high-poly wall indexes by length, not by segment count", "[gcode][crease]") {
+    constexpr float kR = 10.0f;
+    constexpr float kTwoPi = 6.2831853f;
+    // segments around the circle, and radial jitter (fuzzy-skin style)
+    struct Case {
+        int segs;
+        float jitter;
+    };
+    for (const Case c : {Case{2000, 0.0f}, Case{160, 0.3f}}) {
+        std::vector<ToolpathSegment> segs;
+        float path = 0.0f;
+        glm::vec2 prev(kR, 0.0f);
+        for (int i = 1; i <= c.segs; ++i) {
+            const float a = kTwoPi * static_cast<float>(i) / static_cast<float>(c.segs);
+            const float wobble =
+                i % c.segs == 0 ? 0.0f
+                                : c.jitter * (static_cast<float>((i * 7919) % 7) / 3.0f - 1.0f);
+            const glm::vec2 cur((kR + wobble) * std::cos(a), (kR + wobble) * std::sin(a));
+            segs.push_back(wall(prev, cur, 0.2f));
+            path += glm::length(cur - prev);
+            prev = cur;
+        }
+        WallGrid grid;
+        grid.build(segs);
+        // Under two pieces per radius of path, plus one for the run.
+        REQUIRE(grid.piece_count() > 0);
+        REQUIRE(grid.piece_count() <= static_cast<size_t>(2.0f * path / kSearchRadiusMm) + 1);
+        glm::vec2 hit;
+        const glm::vec2 q(kR + 0.5f, 0.3f);
+        REQUIRE(grid.nearest(q, hit));
+        REQUIRE(glm::length(hit - q) < 0.5f + c.jitter + 0.05f);
+    }
+
+    // The smooth 2000-segment circle collapses to about its length in pieces.
+    std::vector<ToolpathSegment> smooth;
+    glm::vec2 prev(kR, 0.0f);
+    for (int i = 1; i <= 2000; ++i) {
+        const float a = kTwoPi * static_cast<float>(i) / 2000.0f;
+        const glm::vec2 cur(kR * std::cos(a), kR * std::sin(a));
+        smooth.push_back(wall(prev, cur, 0.2f));
+        prev = cur;
+    }
+    WallGrid grid;
+    grid.build(smooth);
+    REQUIRE(grid.piece_count() < 2000 / 10);
+}
+
+TEST_CASE("crease: separate walls are not merged across a gap", "[gcode][crease]") {
+    std::vector<ToolpathSegment> segs = {wall({0.0f, 0.0f}, {0.3f, 0.0f}, 0.2f),
+                                         wall({5.0f, 0.0f}, {5.3f, 0.0f}, 0.2f)};
+    WallGrid grid;
+    grid.build(segs);
+    REQUIRE(grid.piece_count() == 2);
+    glm::vec2 hit;
+    // A merged chord from 0 to 5.3 would put a wall under x=2.5.
+    REQUIRE_FALSE(grid.nearest({2.5f, 0.0f}, hit));
 }
 
 // ---------------------------------------------------------------------------
@@ -378,33 +492,35 @@ struct WallProbe {
 };
 
 /// Render layers 0..top with crease shading off and on, and compare the pixel
-/// under each wall midpoint of layer `top`, which nothing later paints over.
-WallProbe probe_layer(const ParsedGCodeFile& gcode, int top) {
-    const float lo = top < 10 ? 20.0f : 15.0f;
-    const float hi = top < 10 ? 40.0f : 45.0f;
-    const float mid = (lo + hi) * 0.5f;
-    const float z = gcode.layers[top].z_height;
-    const glm::vec2 mids[4] = {{mid, lo}, {hi, mid}, {mid, hi}, {lo, mid}};
-
-    uint32_t px[2][4];
+/// under each of `mids` (points on layer `top`'s walls, which nothing later
+/// paints over). `attach` points a renderer at its data.
+template <typename Attach>
+WallProbe probe_walls(Attach&& attach, int top, const std::vector<glm::vec3>& mids) {
+    std::vector<uint32_t> px[2];
     for (int on = 0; on < 2; ++on) {
         GCodeLayerRenderer r;
-        r.set_gcode(&gcode);
+        attach(r);
         r.set_ghost_mode(false);
         r.set_crease_shading(on == 1);
         r.set_canvas_size(kCanvasPx, kCanvasPx);
         r.auto_fit();
         GCodeLayerRendererTestAccess::pin_layers_per_frame(r, 100);
-        REQUIRE(GCodeLayerRendererTestAccess::render_solid_batch(r, 0, top, kCanvasPx, kCanvasPx) ==
-                top);
-        for (int k = 0; k < 4; ++k) {
-            const glm::ivec2 s = r.project_to_screen(mids[k].x, mids[k].y, z);
-            px[on][k] = GCodeLayerRendererTestAccess::cache_pixel(r, s.x, s.y);
+        // A layer may wait one frame for a streamed neighbour; a few batches
+        // always reach the top.
+        int done = -1;
+        for (int i = 0; i < 8 && done < top; ++i) {
+            done = GCodeLayerRendererTestAccess::render_solid_batch(r, done + 1, top, kCanvasPx,
+                                                                    kCanvasPx);
+        }
+        REQUIRE(done == top);
+        for (const auto& m : mids) {
+            const glm::ivec2 sp = r.project_to_screen(m.x, m.y, m.z);
+            px[on].push_back(GCodeLayerRendererTestAccess::cache_pixel(r, sp.x, sp.y));
         }
     }
 
     WallProbe p;
-    for (int k = 0; k < 4; ++k) {
+    for (size_t k = 0; k < mids.size(); ++k) {
         if ((px[0][k] >> 24) == 0) {
             continue;
         }
@@ -416,6 +532,19 @@ WallProbe probe_layer(const ParsedGCodeFile& gcode, int top) {
         }
     }
     return p;
+}
+
+/// Midpoints of the four edges of the square [lo, hi] at height z.
+std::vector<glm::vec3> square_mids(float lo, float hi, float z) {
+    const float mid = (lo + hi) * 0.5f;
+    return {{mid, lo, z}, {hi, mid, z}, {mid, hi, z}, {lo, mid, z}};
+}
+
+WallProbe probe_layer(const ParsedGCodeFile& gcode, int top) {
+    const float lo = top < 10 ? 20.0f : 15.0f;
+    const float hi = top < 10 ? 40.0f : 45.0f;
+    return probe_walls([&](GCodeLayerRenderer& r) { r.set_gcode(&gcode); }, top,
+                       square_mids(lo, hi, gcode.layers[top].z_height));
 }
 
 } // namespace
@@ -490,4 +619,201 @@ TEST_CASE_METHOD(LVGLTestFixture, "crease: wall indexes live only while the cach
     REQUIRE(r.get_cached_up_to_layer() == 19);
     frame();
     REQUIRE(r.memory_report().bytes_for("crease_grids") == 0);
+}
+
+namespace {
+
+/// Writes `content` to a temp file for the streaming controller to index.
+class TempGCode {
+  public:
+    explicit TempGCode(const std::string& content)
+        : path_("/tmp/test_crease_" + std::to_string(::getpid()) + "_" +
+                std::to_string(counter_++) + ".gcode") {
+        std::ofstream(path_) << content;
+    }
+    ~TempGCode() {
+        std::remove(path_.c_str());
+    }
+    const std::string& path() const {
+        return path_;
+    }
+
+  private:
+    static inline int counter_ = 0;
+    std::string path_;
+};
+
+/// Reads at or past `fail_from` come back empty, as a read error does.
+class FailingSource : public FileDataSource {
+  public:
+    FailingSource(const std::string& path, uint64_t fail_from)
+        : FileDataSource(path), fail_from_(fail_from) {}
+    std::vector<char> read_range(uint64_t offset, uint32_t length) override {
+        if (offset >= fail_from_) {
+            return {};
+        }
+        return FileDataSource::read_range(offset, length);
+    }
+
+  private:
+    uint64_t fail_from_;
+};
+
+/// A straight 20mm outer-wall tower, 1mm layers; `layer_start[i]` is the byte
+/// offset where layer i begins.
+std::string make_tower_text(int layers, std::vector<size_t>& layer_start) {
+    std::string out = "; crease streaming fixture\nM82\nG28\n";
+    float e = 0.0f;
+    for (int i = 0; i < layers; ++i) {
+        layer_start.push_back(out.size());
+        out += "G1 Z" + std::to_string(1.0f + static_cast<float>(i)) + " F1000\n";
+        out += ";TYPE:Outer wall\nG1 X20 Y20 F3000\n";
+        const char* corners[] = {"X40 Y20", "X40 Y40", "X20 Y40", "X20 Y20"};
+        for (const char* c : corners) {
+            e += 1.0f;
+            out += std::string("G1 ") + c + " E" + std::to_string(e) + "\n";
+        }
+    }
+    return out;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture, "crease: a neighbour that fails to stream in darkens nothing",
+                 "[gcode][crease][layer_renderer][streaming]") {
+    std::vector<size_t> starts;
+    TempGCode file(make_tower_text(10, starts));
+    GCodeStreamingController controller;
+    REQUIRE(controller.open_source(std::make_unique<FailingSource>(file.path(), starts[6])));
+    REQUIRE(controller.get_layer_count() == 10);
+    // The layer drawn on top reads; the one above it comes back empty, which
+    // is how the controller reports a failed read.
+    const auto five = controller.get_layer_segments(5);
+    REQUIRE(five);
+    REQUIRE_FALSE(five->empty());
+    const auto six = controller.get_layer_segments(6);
+    REQUIRE((!six || six->empty()));
+    REQUIRE(controller.get_layer_line_count(6) > 0);
+
+    const WallProbe p =
+        probe_walls([&](GCodeLayerRenderer& r) { r.set_streaming_controller(&controller); }, 5,
+                    square_mids(20.0f, 40.0f, controller.get_layer_z(5)));
+    REQUIRE(p.visible >= 2);
+    REQUIRE(p.darker == 0);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "crease: a streamed neighbour that loads late still darkens",
+                 "[gcode][crease][layer_renderer][streaming]") {
+    // The top layer of a readable file is a rim: proves the streamed path
+    // reaches the crease at all, through the one-frame wait.
+    std::vector<size_t> starts;
+    TempGCode file(make_tower_text(10, starts));
+    GCodeStreamingController controller;
+    REQUIRE(controller.open_source(std::make_unique<FileDataSource>(file.path())));
+    const WallProbe p =
+        probe_walls([&](GCodeLayerRenderer& r) { r.set_streaming_controller(&controller); }, 9,
+                    square_mids(20.0f, 40.0f, controller.get_layer_z(9)));
+    REQUIRE(p.visible >= 2);
+    REQUIRE(p.darker == p.visible);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "crease: a sequential print's next object is not a ledge",
+                 "[gcode][crease][layer_renderer]") {
+    // Object A prints whole (layers 0-9, z 1-10), then object B starts back
+    // at the bed (layers 10-14, z 1-5), right after A's top in file order.
+    ParsedGCodeFile gcode;
+    for (int i = 0; i < 15; ++i) {
+        Layer layer;
+        const bool b = i >= 10;
+        layer.z_height = kLayerMm * static_cast<float>((b ? i - 10 : i) + 1);
+        layer.segments =
+            b ? square(60.0f, 80.0f, layer.z_height) : square(20.0f, 40.0f, layer.z_height);
+        gcode.layers.push_back(std::move(layer));
+    }
+    const WallProbe p = probe_walls([&](GCodeLayerRenderer& r) { r.set_gcode(&gcode); }, 11,
+                                    square_mids(60.0f, 80.0f, gcode.layers[11].z_height));
+    REQUIRE(p.visible >= 2);
+    REQUIRE(p.darker == 0);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "crease: objects at different layer heights do not crease",
+                 "[gcode][crease][layer_renderer]") {
+    // A at 1mm layers, B at 1.5mm: z order 1.0 A, 1.5 B, 2.0 A, 3.0 A+B, ...
+    // The layer under A's z=2.0 holds only B.
+    struct L {
+        float z;
+        bool a, b;
+    };
+    const L plan[] = {{1.0f, true, false}, {1.5f, false, true}, {2.0f, true, false},
+                      {3.0f, true, true},  {4.0f, true, false}, {4.5f, false, true},
+                      {5.0f, true, false}};
+    ParsedGCodeFile gcode;
+    for (const auto& l : plan) {
+        Layer layer;
+        layer.z_height = l.z;
+        if (l.a) {
+            layer.segments = square(20.0f, 40.0f, l.z);
+        }
+        if (l.b) {
+            const auto bs = square(60.0f, 80.0f, l.z);
+            layer.segments.insert(layer.segments.end(), bs.begin(), bs.end());
+        }
+        gcode.layers.push_back(std::move(layer));
+    }
+    const WallProbe p = probe_walls([&](GCodeLayerRenderer& r) { r.set_gcode(&gcode); }, 2,
+                                    square_mids(20.0f, 40.0f, 2.0f));
+    REQUIRE(p.visible >= 2);
+    REQUIRE(p.darker == 0);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "crease: an evenly flaring spiral vase does not crease",
+                 "[gcode][crease][layer_renderer]") {
+    // Each layer is one climbing revolution: segment Z rises through the
+    // layer's height, and the square grows 0.5mm per layer (a constant slope).
+    ParsedGCodeFile gcode;
+    std::vector<glm::vec3> top_mids;
+    constexpr int kTop = 5;
+    for (int i = 0; i < 10; ++i) {
+        Layer layer;
+        layer.z_height = kLayerMm * static_cast<float>(i + 1);
+        const float lo = 20.0f - 0.5f * static_cast<float>(i);
+        const float hi = 40.0f + 0.5f * static_cast<float>(i);
+        const glm::vec2 c[4] = {{lo, lo}, {hi, lo}, {hi, hi}, {lo, hi}};
+        for (int k = 0; k < 4; ++k) {
+            const float z0 = layer.z_height + kLayerMm * static_cast<float>(k) / 4.0f;
+            const float z1 = layer.z_height + kLayerMm * static_cast<float>(k + 1) / 4.0f;
+            ToolpathSegment s = wall(c[k], c[(k + 1) % 4], 0.0f);
+            s.start.z = z0;
+            s.end.z = z1;
+            layer.segments.push_back(s);
+            if (i == kTop) {
+                const glm::vec2 m = (c[k] + c[(k + 1) % 4]) * 0.5f;
+                top_mids.emplace_back(m.x, m.y, (z0 + z1) * 0.5f);
+            }
+        }
+        gcode.layers.push_back(std::move(layer));
+    }
+    const WallProbe p =
+        probe_walls([&](GCodeLayerRenderer& r) { r.set_gcode(&gcode); }, kTop, top_mids);
+    REQUIRE(p.visible >= 2);
+    REQUIRE(p.darker == 0);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "crease: toggling crease shading rebuilds the cache",
+                 "[gcode][crease][layer_renderer]") {
+    const auto gcode = make_stepped_tower(FeatureType::OuterWall);
+    GCodeLayerRenderer r;
+    r.set_gcode(&gcode);
+    r.set_ghost_mode(false);
+    r.set_canvas_size(kCanvasPx, kCanvasPx);
+    r.auto_fit();
+    GCodeLayerRendererTestAccess::pin_layers_per_frame(r, 100);
+    REQUIRE(GCodeLayerRendererTestAccess::render_solid_batch(r, 0, 5, kCanvasPx, kCanvasPx) == 5);
+    const glm::ivec2 sp = r.project_to_screen(30.0f, 20.0f, gcode.layers[5].z_height);
+    REQUIRE((GCodeLayerRendererTestAccess::cache_pixel(r, sp.x, sp.y) >> 24) != 0);
+
+    r.set_crease_shading(true); // unchanged: the cache stands
+    REQUIRE((GCodeLayerRendererTestAccess::cache_pixel(r, sp.x, sp.y) >> 24) != 0);
+    r.set_crease_shading(false);
+    REQUIRE(GCodeLayerRendererTestAccess::cache_pixel(r, sp.x, sp.y) == 0);
 }

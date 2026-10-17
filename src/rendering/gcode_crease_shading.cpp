@@ -3,6 +3,8 @@
 
 #include "gcode_crease_shading.h"
 
+#include "gcode_projection.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -28,20 +30,60 @@ int cell_of(float v) {
     return static_cast<int>(std::floor(v * kInvCell));
 }
 
-glm::vec2 closest_on_segment(glm::vec2 p, glm::vec2 a, glm::vec2 b) {
-    const glm::vec2 ab = b - a;
-    const float len2 = glm::dot(ab, ab);
-    if (len2 <= 0.0f) {
-        return a;
+/// Visit the pieces build() indexes, in wall order: long segments split into
+/// pieces of at most a cell, consecutive short segments of one wall merged into
+/// chords of at most a cell of path length. The chord is within half a cell of
+/// its midpoint, which is what the bucketing relies on.
+template <typename Emit>
+void for_each_piece(const std::vector<ToolpathSegment>& segments, Emit&& emit) {
+    bool open = false;
+    glm::vec2 run_start(0.0f), run_end(0.0f);
+    float run_len = 0.0f;
+    auto flush = [&]() {
+        if (open) {
+            emit(run_start, run_end);
+            open = false;
+        }
+    };
+    for (const auto& seg : segments) {
+        if (!is_crease_wall(seg)) {
+            flush();
+            continue;
+        }
+        const glm::vec2 a(seg.start.x, seg.start.y);
+        const glm::vec2 b(seg.end.x, seg.end.y);
+        const float len = glm::length(b - a);
+        if (len > kCell) {
+            flush();
+            const int pieces = static_cast<int>(std::ceil(len * kInvCell));
+            const glm::vec2 step = (b - a) / static_cast<float>(pieces);
+            glm::vec2 p0 = a;
+            for (int i = 0; i < pieces; ++i) {
+                const glm::vec2 p1 = a + step * static_cast<float>(i + 1);
+                emit(p0, p1);
+                p0 = p1;
+            }
+            continue;
+        }
+        if (open && a == run_end && run_len + len <= kCell) {
+            run_end = b;
+            run_len += len;
+            continue;
+        }
+        flush();
+        run_start = a;
+        run_end = b;
+        run_len = len;
+        open = true;
     }
-    const float t = std::clamp(glm::dot(p - a, ab) / len2, 0.0f, 1.0f);
-    return a + ab * t;
+    flush();
 }
 
 } // namespace
 
 float profile_bend(const Neighbour& below, const Neighbour& above) {
-    if (below.kind == Neighbour::Kind::NoLayer) {
+    if (below.kind == Neighbour::Kind::NoLayer || below.kind == Neighbour::Kind::Unknown ||
+        above.kind == Neighbour::Kind::Unknown) {
         return 0.0f;
     }
     const bool below_found = below.kind == Neighbour::Kind::Found;
@@ -88,7 +130,6 @@ void WallGrid::clear() {
     pieces_.clear();
     items_.clear();
     bucket_start_.clear();
-    z_ = 0.0f;
 }
 
 void WallGrid::release() {
@@ -101,39 +142,15 @@ void WallGrid::release() {
 void WallGrid::build(const std::vector<ToolpathSegment>& segments) {
     clear();
 
-    auto piece_count = [](const ToolpathSegment& seg) {
-        const float len = glm::length(glm::vec2(seg.end.x - seg.start.x, seg.end.y - seg.start.y));
-        return std::max(1, static_cast<int>(std::ceil(len * kInvCell)));
-    };
-
     // Sized up front: growing by doubling would hold up to twice the pieces
     // the largest layer needs for the rest of the build.
     size_t total = 0;
-    for (const auto& seg : segments) {
-        if (is_crease_wall(seg)) {
-            if (total == 0) {
-                z_ = seg.start.z;
-            }
-            total += static_cast<size_t>(piece_count(seg));
-        }
-    }
+    for_each_piece(segments, [&](glm::vec2, glm::vec2) { ++total; });
     pieces_.resize(total);
-
     size_t next = 0;
-    for (const auto& seg : segments) {
-        if (!is_crease_wall(seg)) {
-            continue;
-        }
-        const glm::vec2 a(seg.start.x, seg.start.y);
-        const int pieces = piece_count(seg);
-        const glm::vec2 step = (glm::vec2(seg.end.x, seg.end.y) - a) / static_cast<float>(pieces);
-        glm::vec2 p0 = a;
-        for (int i = 0; i < pieces; ++i) {
-            const glm::vec2 p1 = a + step * static_cast<float>(i + 1);
-            pieces_[next++] = glm::vec4(p0.x, p0.y, p1.x, p1.y);
-            p0 = p1;
-        }
-    }
+    for_each_piece(segments, [&](glm::vec2 p0, glm::vec2 p1) {
+        pieces_[next++] = glm::vec4(p0.x, p0.y, p1.x, p1.y);
+    });
     if (pieces_.empty()) {
         return;
     }
@@ -168,7 +185,7 @@ bool WallGrid::nearest(glm::vec2 p, glm::vec2& out, uint32_t* hint, float snap) 
     bool found = false;
     auto consider = [&](uint32_t piece) {
         const glm::vec4& pc = pieces_[piece];
-        const glm::vec2 c = closest_on_segment(p, {pc.x, pc.y}, {pc.z, pc.w});
+        const glm::vec2 c = closest_point_on_segment(p, {pc.x, pc.y}, {pc.z, pc.w});
         const glm::vec2 d = c - p;
         const float dist2 = glm::dot(d, d);
         if (dist2 <= best) {
@@ -255,12 +272,12 @@ bool SampleSpacer::needs_sample(const ToolpathSegment& seg) {
     return true;
 }
 
-Neighbour find_neighbour(const WallGrid* grid, glm::vec2 p, float segment_z, uint32_t* hint) {
+Neighbour find_neighbour(const WallGrid* grid, glm::vec2 p, float dz, uint32_t* hint) {
     Neighbour n;
     if (!grid) {
         return n;
     }
-    n.dz = std::fabs(segment_z - grid->z());
+    n.dz = dz;
     glm::vec2 hit;
     const float snap = snap_distance_mm(n.dz);
     if (!grid->nearest(p, hit, hint, snap)) {
@@ -273,6 +290,23 @@ Neighbour find_neighbour(const WallGrid* grid, glm::vec2 p, float segment_z, uin
         n.offset = glm::vec2(0.0f);
     }
     return n;
+}
+
+Neighbour NeighbourSide::lookup(glm::vec2 p) {
+    if (unreadable) {
+        Neighbour n;
+        n.kind = Neighbour::Kind::Unknown;
+        return n;
+    }
+    Neighbour result; // NoLayer when nothing was plausible
+    for (int k = 0; k < count; ++k) {
+        const Neighbour n = find_neighbour(grids[k], p, dz[k], &hints[k]);
+        if (n.kind == Neighbour::Kind::Found) {
+            return n;
+        }
+        result = n;
+    }
+    return result;
 }
 
 } // namespace helix::gcode::crease
