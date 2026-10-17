@@ -42,6 +42,7 @@
 #include "temperature_sensor_manager.h"
 #include "temperature_service.h"
 #include "theme_manager.h"
+#include "tile_grid_fit.h"
 #include "tool_state.h"
 #include "ui/ui_cleanup_helpers.h"
 #include "ui/ui_widget_helpers.h"
@@ -156,6 +157,8 @@ void ControlsPanel::init_subjects() {
     UI_MANAGED_SUBJECT_INT(more_sensors_count_, 0, "controls_more_sensors_count", subjects_);
 
     UI_MANAGED_SUBJECT_INT(calib_grid_columns_, 2, "calib_grid_columns", subjects_);
+    UI_MANAGED_SUBJECT_INT(calib_grid_rows_, 2, "calib_grid_rows", subjects_);
+    UI_MANAGED_SUBJECT_INT(calib_grid_labels_, 1, "calib_grid_labels", subjects_);
 
     // Fan speed display
     UI_MANAGED_SUBJECT_STRING(fan_speed_subject_, fan_speed_buf_, lv_tr("Off"),
@@ -260,7 +263,7 @@ void ControlsPanel::init_subjects() {
         {"on_calibration_motors",
          [](lv_event_t*) { get_global_controls_panel().handle_calibration_motors(); }},
         {"on_calib_grid_layout_changed",
-         [](lv_event_t* e) { update_calib_grid_columns(lv_event_get_current_target_obj(e)); }},
+         [](lv_event_t* e) { update_calib_grid(lv_event_get_current_target_obj(e)); }},
 
         {"on_controls_home_all",
          [](lv_event_t*) { get_global_controls_panel().handle_home_all(); }},
@@ -1141,23 +1144,16 @@ void ControlsPanel::handle_motors_clicked() {
     helix::ui::show_motors_off_confirm(api_, motors_confirmation_dialog_, object_lifetime_.token());
 }
 
-int helix::ui::calib_grid_columns(int visible_tiles) {
-    if (visible_tiles >= 7) {
-        return 4;
-    }
-    if (visible_tiles >= 5) {
-        return 3;
-    }
-    return 2;
-}
-
 // DECLARATIVE_OK: which tiles are visible is decided by each tile's own XML
 // binding, so the count is read off the laid-out grid rather than re-derived
-// from the subjects those bindings watch. Static and found by name because the
-// subject belongs to whichever panel instance built this grid.
-void ControlsPanel::update_calib_grid_columns(lv_obj_t* grid) {
+// from the subjects those bindings watch, and the grid's size is measured
+// layout. Static and found by name because the subjects belong to whichever
+// panel instance built this grid.
+void ControlsPanel::update_calib_grid(lv_obj_t* grid) {
     lv_subject_t* columns = lv_xml_get_subject(nullptr, "calib_grid_columns");
-    if (grid == nullptr || columns == nullptr) {
+    lv_subject_t* rows = lv_xml_get_subject(nullptr, "calib_grid_rows");
+    lv_subject_t* labels = lv_xml_get_subject(nullptr, "calib_grid_labels");
+    if (grid == nullptr || columns == nullptr || rows == nullptr || labels == nullptr) {
         return;
     }
     int visible = 0;
@@ -1167,7 +1163,14 @@ void ControlsPanel::update_calib_grid_columns(lv_obj_t* grid) {
             ++visible;
         }
     }
-    lv_subject_set_int(columns, helix::ui::calib_grid_columns(visible));
+    const helix::ui::TileGridFit fit = helix::ui::fit_tile_grid(
+        visible, lv_obj_get_content_width(grid), lv_obj_get_content_height(grid),
+        lv_obj_get_style_pad_column(grid, LV_PART_MAIN),
+        theme_manager_get_spacing("calib_tile_min_width"),
+        theme_manager_get_spacing("calib_tile_min_height"));
+    lv_subject_set_int(columns, fit.cols);
+    lv_subject_set_int(rows, fit.rows);
+    lv_subject_set_int(labels, fit.fits ? 1 : 0);
 }
 
 void ControlsPanel::handle_calibration_bed_mesh() {

@@ -33,10 +33,6 @@ namespace helix {
 class TemperatureController;
 namespace ui {
 struct ControlsPanelTestAccess; // test-only friend (tests/test_helpers/)
-
-/// Columns the Calibration & Tools grid needs so its visible tiles fit in two
-/// rows: up to 4 tiles -> 2, 5-6 -> 3, 7 or more -> 4.
-int calib_grid_columns(int visible_tiles);
 } // namespace ui
 } // namespace helix
 
@@ -205,9 +201,12 @@ class ControlsPanel : public PanelBase {
     lv_subject_t more_sensors_count_{};
     void update_more_sensors();
 
-    // Calibration & Tools grid: column count from the tiles visible after layout
+    // Calibration & Tools grid: columns, rows and label room for the tiles
+    // visible after layout, fitted to the grid's own size (fit_tile_grid)
     lv_subject_t calib_grid_columns_{};
-    static void update_calib_grid_columns(lv_obj_t* grid);
+    lv_subject_t calib_grid_rows_{};
+    lv_subject_t calib_grid_labels_{};
+    static void update_calib_grid(lv_obj_t* grid);
 
     // Fan speed display
     lv_subject_t fan_speed_subject_{};

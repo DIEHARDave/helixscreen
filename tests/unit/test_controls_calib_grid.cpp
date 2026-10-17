@@ -1,9 +1,9 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// The Controls "Calibration & Tools" grid always fits in two rows: its column
-// count follows how many tiles are visible (up to 4 -> 2 columns, 5-6 -> 3,
-// 7 -> 4), so no tile is pushed into a third row the card clips.
+// The Controls "Calibration & Tools" grid refits its visible tiles to its own
+// size, so no tile lands in a row the card clips. At the test display's
+// 800x480 the card is wide: up to 4 tiles lay out 2x2, 5-6 as 3x2, 7 as 4x2.
 
 #include "ui_panel_controls.h"
 #include "ui_update_queue.h"
@@ -105,21 +105,6 @@ class ControlsCalibGridFixture : public LVGLUITestFixture {
 
 } // namespace
 
-TEST_CASE("calib_grid_columns fits every tile count in two rows", "[controls][calib-grid]") {
-    using helix::ui::calib_grid_columns;
-    CHECK(calib_grid_columns(0) == 2);
-    CHECK(calib_grid_columns(1) == 2);
-    CHECK(calib_grid_columns(4) == 2);
-    CHECK(calib_grid_columns(5) == 3);
-    CHECK(calib_grid_columns(6) == 3);
-    CHECK(calib_grid_columns(7) == 4);
-    for (int n = 1; n <= 8; ++n) {
-        const int cols = calib_grid_columns(n);
-        CAPTURE(n, cols);
-        CHECK((n + cols - 1) / cols <= 2);
-    }
-}
-
 TEST_CASE_METHOD(ControlsCalibGridFixture,
                  "Controls calibration grid picks columns from the visible tile count",
                  "[controls][calib-grid]") {
@@ -147,6 +132,7 @@ TEST_CASE_METHOD(ControlsCalibGridFixture,
         CHECK(s.rows == 2);
         CHECK(s.max_columns == 3);
         CHECK(s.all_inside);
+        CHECK(lv_subject_get_int(lv_xml_get_subject(nullptr, "calib_grid_labels")) == 1);
     }
     SECTION("7 tiles lay out 4x2") {
         show(1, 1, 1, 1, 1);

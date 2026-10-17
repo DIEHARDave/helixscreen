@@ -1290,7 +1290,7 @@ The widget is registered via `ui_markdown_init()` in `xml_registration.cpp`. Thi
 
 #### home_action_tile
 
-One centred icon over one label, filling its cell (`ui_xml/components/home_action_tile.xml`). The home action tiles and every cell of the Controls panel's Calibration & Tools card, plus Motors Off on its Position card, are built from it, so a row of them aligns by construction. Extend its props rather than hand-building a look-alike cell.
+One centred icon over one label, filling its cell (`ui_xml/components/home_action_tile.xml`). The home action tiles and every cell of the Controls panel's Calibration & Tools card (through `calib_tile.xml`, which sizes the cell), plus Motors Off on its Position card, are built from it, so a row of them aligns by construction. Extend its props rather than hand-building a look-alike cell.
 
 | Prop | Default | Purpose |
 |------|---------|---------|

@@ -84,6 +84,11 @@ ALLOWED_OMISSIONS: dict[str, dict[str, dict[str, str]]] = {
             "macro_header_visible": "collapses the Quick Actions header to reclaim vertical "
             "space; micro's macro section is laid out to not need it.",
         },
+        "condition": {
+            # Only for the conds CONDITION_ALLOWANCE_SCOPE below names.
+            "calib_tile@disabled_cond": "only the QGL and Z-Tilt cells disable while a leveling "
+            "operation runs, and the micro Calibration & Tools card has neither cell.",
+        },
     },
     "ui_xml/portrait/print_status_panel.xml": {
         "subject": {
@@ -106,6 +111,9 @@ ALLOWED_OMISSIONS: dict[str, dict[str, dict[str, str]]] = {
 # condition of the same element in the base, binding anything else, still has to
 # reach the variant.
 CONDITION_ALLOWANCE_SCOPE: dict[str, dict[str, re.Pattern]] = {
+    "ui_xml/micro/controls_panel.xml": {
+        "calib_tile@disabled_cond": re.compile(r"^controls_operation_in_progress eq 1$"),
+    },
     "ui_xml/portrait/print_status_panel.xml": {
         "bind_style_if@cond": re.compile(r"^print_status_row\d_tall eq 1$"),
     },

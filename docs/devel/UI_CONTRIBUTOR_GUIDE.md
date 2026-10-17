@@ -587,6 +587,39 @@ Almost everything uses flexbox. The three flows you'll see:
 <lv_obj flex_flow="row_wrap"/>   <!-- Horizontal, wraps to new rows when full -->
 ```
 
+### A wrapping grid of tiles that must fit its card
+
+A `row_wrap` grid of equal tiles with fixed percentage widths fixes its column
+count, so more visible tiles than it planned for spill into a row the card
+clips, and a portrait card gets the same shape as a landscape one. Let the
+shape follow the box instead: `fit_tile_grid()` (`include/tile_grid_fit.h`)
+takes the visible tile count, the grid's content size, the gap and the minimum
+tile that holds an icon over a one-line label, and returns columns, rows and
+whether labels fit. It scores every shape by how far its tile clears that
+minimum on the tighter axis, so a wide card gets 3x2 for six tiles, a tall one
+2x3, and a large one can go wider.
+
+The Controls panel's Calibration & Tools card is the reference wiring:
+
+- The grid carries `<event_cb trigger="layout_changed" .../>`. LVGL sends it after
+  every flex pass of the grid, which covers a tile hiding or showing and the card
+  resizing. The callback (`ControlsPanel::update_calib_grid`) counts the
+  children without `hidden`, measures the grid and publishes `calib_grid_columns`,
+  `calib_grid_rows` and `calib_grid_labels`. Setting a subject to its current
+  value notifies nothing, so the pass the new widths trigger settles at once.
+- Each tile is a `calib_tile` cell that maps those subjects onto width and height
+  styles with `bind_style_if_eq`, and hides its label from `calib_grid_labels`.
+  Visibility bindings go on the cell, so a hidden tile drops out of the count.
+- The minimum tile is a responsive token pair (`calib_tile_min_width` /
+  `calib_tile_min_height` in `globals.xml`), read with
+  `theme_manager_get_spacing()`.
+
+Do not compute the tile count from the subjects the tiles' visibility bindings
+read: that is a second copy of every tile's rule. And avoid a `<subject_expr>`
+over printer subjects for this: a printer switch deinitializes and re-creates
+them while the component stays registered, so the derived subject stops
+updating.
+
 ### flex_grow
 
 Children with `flex_grow` expand to fill remaining space in their parent. The parent **must** have an explicit size (not `content`).

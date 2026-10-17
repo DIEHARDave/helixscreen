@@ -174,7 +174,7 @@ A status message confirms when homing begins and when it completes, the same way
 
 ## Leveling on the Controls Panel
 
-The Controls panel's **Calibration & Tools** card holds the calibration actions your printer supports, in a grid that keeps each label on one line:
+The Controls panel's **Calibration & Tools** card holds the calibration actions your printer supports. The grid rearranges itself to fit the card: on a landscape screen five or six buttons sit three across in two rows, on a portrait screen they stack two across, and every button keeps its label on one line. When the card is too small for labels at all, the buttons show their icons alone.
 
 - **Bed Mesh** and **Z Calibration**
 - **QGL** - Quad Gantry Level (shown only when `quad_gantry_level` is configured)

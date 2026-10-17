@@ -429,10 +429,21 @@
     <!-- accent_bar_width moved to home_panel.xml -->
     <!-- accent_bar_height moved to home_panel.xml -->
     <!-- accent_bar_gap moved to home_panel.xml -->
-    <!-- Controls > Calibration & Tools: a tile's share of its column. Two rows
-         fill the card; the column count follows the visible tiles
-         (calib_grid_columns in controls_panel.xml). -->
-    <percentage name="calib_cell_height" value="48%"/>
+    <!-- Controls > Calibration & Tools: the smallest tile that still holds its
+         icon over a one-line label. fit_tile_grid picks the grid shape whose
+         tiles clear this by the most, and drops labels when none can. -->
+    <px name="calib_tile_min_width_micro" value="64"/>
+    <px name="calib_tile_min_width_tiny" value="60"/>
+    <px name="calib_tile_min_width_small" value="64"/>
+    <px name="calib_tile_min_width_medium" value="76"/>
+    <px name="calib_tile_min_width_large" value="88"/>
+    <px name="calib_tile_min_width_xlarge" value="100"/>
+    <px name="calib_tile_min_height_micro" value="40"/>
+    <px name="calib_tile_min_height_tiny" value="40"/>
+    <px name="calib_tile_min_height_small" value="44"/>
+    <px name="calib_tile_min_height_medium" value="56"/>
+    <px name="calib_tile_min_height_large" value="64"/>
+    <px name="calib_tile_min_height_xlarge" value="72"/>
     <!-- Motors Off beside Motion on the Controls position card: at least 40px
          wide to tap, with the glyph sized to the one-button-tall row -->
     <string name="controls_toggle_icon_size_micro" value="xs"/>
