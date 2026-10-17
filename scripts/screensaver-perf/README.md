@@ -19,6 +19,12 @@ Every script sources `perf_env.sh`. Nothing about a device is written in the rep
 | `HELIX_PERF_BUILD_TREE` | Tree `arm_measure.sh` builds with `make pi-docker` |
 | `HELIX_PERF_PROBE` | Wake-up probe binary for `embedded_gate.sh` |
 
+The `pi3b_service.sh`, `pi3b_measure.sh`, `pi3b_loadgate.sh` and `embedded_loadgate.sh` steps
+run on the device. `perf_remote_script` sends each one as a single stream on ssh's stdin: its
+settings as `KEY=VALUE` lines, then `device_lib.sh`, then the step. `device_lib.sh` holds what
+every step shares (sudo, `ctl`, the app's PID, CPU ticks and percentages, the `GATE_RAW` line)
+and is POSIX sh, so it also runs under BusyBox ash.
+
 ## The load gate
 
 A run passes when the latency probe records **no wake-up of 20 ms or more and a p99 under

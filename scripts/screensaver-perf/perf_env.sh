@@ -59,20 +59,32 @@ perf_rsync_dir() {
     fi
 }
 
-# Runs a device-side script under bash. The password, install root, control socket and
-# every KEY=VALUE argument become the script's first lines, so none travels on a command line.
-perf_run_remote() {
+# Prints a device-side script ready for `bash -s` or `sh -s`: the password, install root,
+# control socket and every KEY=VALUE argument as its first lines, so none travels on a command
+# line, then device_lib.sh, then the script itself.
+perf_remote_script() {
     local script=$1
     shift
-    {
-        printf 'PW=%q\nINSTALL=%q\nCTL_SOCK=%q\n' "${HELIX_PERF_PASSWORD:-}" "$HELIX_PERF_INSTALL" \
-            "$HELIX_PERF_CTL_SOCK"
-        local kv
-        for kv in "$@"; do
-            printf '%s=%q\n' "${kv%%=*}" "${kv#*=}"
-        done
-        cat "$script"
-    } | perf_ssh "bash -s"
+    printf 'PW=%q\nINSTALL=%q\nCTL_SOCK=%q\n' "${HELIX_PERF_PASSWORD:-}" "$HELIX_PERF_INSTALL" \
+        "$HELIX_PERF_CTL_SOCK"
+    local kv
+    for kv in "$@"; do
+        printf '%s=%q\n' "${kv%%=*}" "${kv#*=}"
+    done
+    cat "$PERF_HERE/device_lib.sh" "$script"
+}
+
+# Runs a device-side script under bash on the device.
+perf_run_remote() {
+    perf_remote_script "$@" | perf_ssh "bash -s"
+}
+
+# Appends one gate RESULT line for <label> to $HELIX_PERF_SCRATCH/results/<arm>.txt, from the
+# histogram collected to <hist> and the GATE_RAW line the device printed (empty when none came).
+perf_record_gate() {
+    local arm=$1 run=$2 label=$3 hist=$4 raw=$5
+    python3 "$PERF_HERE/ctparse.py" "$hist" "$arm" "$label" "${raw:-GATE_RAW missing}" |
+        sed "s/^/$arm run=$run gate /" >> "$HELIX_PERF_SCRATCH/results/$arm.txt"
 }
 
 # Stable screensaver name a workload runs (include/screensaver_registry.h), or off for the
@@ -140,7 +152,11 @@ perf_pi3b_release() {
 # assumes where a platform's log hook writes; /var/log/messages when the app logs to syslog
 # there instead. Prints an empty line when neither is found.
 perf_app_log() {
-    perf_ssh 'log=$(for p in $(pidof helix-screen); do for f in /proc/$p/fd/*; do readlink "$f"; done; done 2>/dev/null | grep "\.log$" | head -n 1)
-if [ -z "$log" ] && grep -q helix-screen /var/log/messages 2>/dev/null; then log=/var/log/messages; fi
-echo "$log"' < /dev/null
+    {
+        cat "$PERF_HERE/device_lib.sh"
+        # shellcheck disable=SC2016 # expanded on the device
+        printf '%s\n' 'log=$(for f in /proc/$(helix_pid)/fd/*; do readlink "$f"; done 2>/dev/null | grep "\.log$" | head -n 1)' \
+            'if [ -z "$log" ] && grep -q helix-screen /var/log/messages 2>/dev/null; then log=/var/log/messages; fi' \
+            'echo "$log"'
+    } | perf_ssh "sh -s"
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Runs ON the Pi through perf_run_remote with SAVER=<stable saver name, or off> and optional
-# SETTLE_S=<seconds> with no ctl traffic before a saver starts, for a gate idle baseline
-# (the last 10 s before a saver runs) that sees the app quiet.
+# Runs ON the Pi through perf_run_remote, after device_lib.sh, with SAVER=<stable saver name,
+# or off> and optional SETTLE_S=<seconds> with no ctl traffic before a saver starts, for a gate
+# idle baseline (the last 10 s before a saver runs) that sees the app quiet.
 # SAVER=off measures CPU on the idle home panel. Any other name starts that saver through
 # `ctl screensaver <name>`, the Test Screensaver path (a saver too heavy for the board runs its
 # fallback), measures CPU for 20 s and traces ioctls for 10 s; the trace is left at
@@ -13,31 +13,16 @@ INSTALL=${INSTALL:?}
 CTL_SOCK=${CTL_SOCK:?}
 SAVER=${SAVER:-toasters}
 SETTLE_S=${SETTLE_S:-0}
-CTL_BIN="$INSTALL/bin/helix-screen-egl"
 
-ctl() {
-    "$CTL_BIN" ctl -s "$CTL_SOCK" "$@" < /dev/null > /dev/null 2>&1
-}
+PID=$(helix_pid)
+HZ=$(clk_tck)
 
-sudo_() {
-    if [ -n "$PW" ]; then
-        printf '%s\n' "$PW" | sudo -S -p '' "$@"
-    else
-        sudo -n "$@"
-    fi
-}
-
-PID=$(ps -eo pid,comm | awk '$2 ~ /^helix-screen/ {print $1; exit}')
-HZ=$(getconf CLK_TCK)
-
-# "<tid> <utime+stime>" for every thread of the app.
+# "<tid> <utime+stime>" for every thread of the app. A thread that exits mid-walk prints nothing.
 thread_ticks() {
-    local task tid
+    local task ticks
     for task in /proc/"$PID"/task/*; do
-        tid=${task##*/}
-        # shellcheck disable=SC2046 # the stat fields are meant to split into arguments
-        set -- $(sed 's/^.*) //' "$task/stat" 2>/dev/null)
-        [ $# -ge 13 ] && echo "$tid $((${12} + ${13}))"
+        ticks=$(stat_ticks "$task/stat" 2>/dev/null)
+        [ -n "$ticks" ] && echo "${task##*/} $ticks"
     done
 }
 
@@ -46,9 +31,11 @@ cpu_window() {
     thread_ticks | sort > /tmp/hm_s0
     sleep "$seconds"
     thread_ticks | sort > /tmp/hm_s1
-    join /tmp/hm_s0 /tmp/hm_s1 | awk -v hz="$HZ" -v w="$seconds" -v pid="$PID" '
+    # shellcheck disable=SC2046 # three tick counts, meant to split into arguments
+    set -- $(join /tmp/hm_s0 /tmp/hm_s1 | awk -v pid="$PID" '
         { d = $3 - $2; tot += d; if ($1 == pid) mainv = d; else if (d > other) other = d }
-        END { printf "CPU total=%.1f main=%.1f busiest_other=%.1f\n", (tot/hz)/w*100, (mainv/hz)/w*100, (other/hz)/w*100 }'
+        END { print tot + 0, mainv + 0, other + 0 }')
+    echo "CPU total=$(cpu_pct "$1" "$HZ" "$seconds") main=$(cpu_pct "$2" "$HZ" "$seconds") busiest_other=$(cpu_pct "$3" "$HZ" "$seconds")"
     rm -f /tmp/hm_s0 /tmp/hm_s1
 }
 

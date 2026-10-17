@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Runs ON the Pi through perf_run_remote.
+# Runs ON the Pi through perf_run_remote, after device_lib.sh.
 #   ACTION=stop     stops the service and waits for the app to exit
 #   ACTION=start    starts it, waits for the control socket, prints what runs
 #   ACTION=dropin   writes ENV_EXTRA ("KEY=VALUE ...") as a systemd drop-in; empty removes it
@@ -25,20 +25,8 @@ KEY=${KEY:-}
 DROPIN_DIR=/etc/systemd/system/helixscreen.service.d
 DROPIN=$DROPIN_DIR/helix-perf.conf
 
-sudo_() {
-    if [ -n "$PW" ]; then
-        printf '%s\n' "$PW" | sudo -S -p '' "$@"
-    else
-        sudo -n "$@"
-    fi
-}
-
 app_running() {
-    pidof helix-screen helix-screen-egl >/dev/null
-}
-
-ctl_answers() {
-    "$INSTALL/bin/helix-screen-egl" ctl -s "$CTL_SOCK" ping < /dev/null 2>/dev/null | grep -q pong
+    [ -n "$(helix_pid)" ]
 }
 
 case $ACTION in
@@ -108,8 +96,7 @@ unset_display)
     sudo_ systemctl start helixscreen
     ;;
 app_env)
-    pid=$(ps -eo pid,comm | awk '$2 ~ /^helix-screen/ {print $1; exit}')
-    sudo_ cat "/proc/$pid/environ" 2>/dev/null | tr '\0' '\n' | grep -E '^HELIX_'
+    sudo_ cat "/proc/$(helix_pid)/environ" 2>/dev/null | tr '\0' '\n' | grep -E '^HELIX_'
     ;;
 print_state)
     python3 -c 'import json, sys, urllib.error, urllib.request

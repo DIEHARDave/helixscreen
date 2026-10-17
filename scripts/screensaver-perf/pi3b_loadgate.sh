@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Runs ON the Pi through perf_run_remote with ARM=<label> LABEL=<workload> SAVER=<stable
-# saver name, or off for none> UI_LOOP=0|1 DUR=<seconds>.
+# Runs ON the Pi through perf_run_remote, after device_lib.sh, with ARM=<label>
+# LABEL=<workload> SAVER=<stable saver name, or off for none> UI_LOOP=0|1 DUR=<seconds>.
 # Starts the saver (`ctl screensaver <name>`) or cycles the base panels (UI_LOOP=1), loads
 # two cores with stress-ng, runs cyclictest for DUR seconds and prints one GATE_RAW line. The
 # histogram is left at /tmp/hm_cyclic_<arm>_<label>.txt for the host to collect.
@@ -17,28 +17,9 @@ LABEL=${LABEL:-off}
 SAVER=${SAVER:-off}
 UI_LOOP=${UI_LOOP:-0}
 DUR=${DUR:-60}
-CTL_BIN="$INSTALL/bin/helix-screen-egl"
 
-ctl() {
-    "$CTL_BIN" ctl -s "$CTL_SOCK" "$@" < /dev/null > /dev/null 2>&1
-}
-
-sudo_() {
-    if [ -n "$PW" ]; then
-        printf '%s\n' "$PW" | sudo -S -p '' "$@"
-    else
-        sudo -n "$@"
-    fi
-}
-
-PID=$(ps -eo pid,comm | awk '$2 ~ /^helix-screen/ {print $1; exit}')
-HZ=$(getconf CLK_TCK)
-
-cpu_ticks() {
-    # shellcheck disable=SC2046 # the stat fields are meant to split into arguments
-    set -- $(sed 's/^.*) //' /proc/"$PID"/stat)
-    echo $((${12} + ${13}))
-}
+PID=$(helix_pid)
+HZ=$(clk_tck)
 
 ctl navigate home
 sleep 1
@@ -66,10 +47,10 @@ STRESS=$!
 sleep 5
 
 HIST=/tmp/hm_cyclic_${ARM}_${LABEL}.txt
-T0=$(cpu_ticks)
+T0=$(cpu_ticks "$PID")
 sudo_ nice -n 0 cyclictest --laptop --policy=other -i 1000 -D "${DUR}s" -q -h 20000 > "$HIST" 2> "$HIST.err"
 CT_EXIT=$?
-T1=$(cpu_ticks)
+T1=$(cpu_ticks "$PID")
 
 kill "$STRESS" 2>/dev/null
 wait "$STRESS" 2>/dev/null
@@ -88,5 +69,4 @@ if [ "$SAVER" != off ]; then
 fi
 ctl navigate home
 
-CPU=$(awk -v d=$((T1 - T0)) -v hz="$HZ" -v w="$DUR" 'BEGIN { printf "%.1f", (d/hz)/w*100 }')
-echo "GATE_RAW hist=$HIST ct_exit=$CT_EXIT ct_err=${CT_ERR:-none} helix_cpu=$CPU saver_started=$STARTED saver_stopped_midrun=$STOPPED"
+gate_raw "$HIST" "$CT_EXIT" "$CT_ERR" "$(cpu_pct $((T1 - T0)) "$HZ" "$DUR")" "$STARTED" "$STOPPED"
