@@ -429,18 +429,30 @@
     <!-- accent_bar_width moved to home_panel.xml -->
     <!-- accent_bar_height moved to home_panel.xml -->
     <!-- accent_bar_gap moved to home_panel.xml -->
-    <!-- Controls > Calibration & Tools: a tile's share of its row. Two per row
-         up to large, so the usual four-tile set is a 2x2 grid with one-line
-         labels; three from xlarge up. Two rows fill the card. -->
-    <string name="calib_cell_width_micro" value="48%"/>
-    <string name="calib_cell_width_tiny" value="48%"/>
-    <string name="calib_cell_width_small" value="48%"/>
-    <string name="calib_cell_width_medium" value="48%"/>
-    <string name="calib_cell_width_large" value="48%"/>
-    <string name="calib_cell_width_xlarge" value="32%"/>
-    <percentage name="calib_cell_height" value="48%"/>
+    <!-- Controls > Calibration & Tools: the smallest tile that still holds its
+         icon over a one-line label. fit_tile_grid picks the grid shape whose
+         tiles clear this by the most, and drops labels when none can. -->
+    <px name="calib_tile_min_width_micro" value="64"/>
+    <px name="calib_tile_min_width_tiny" value="66"/>
+    <px name="calib_tile_min_width_small" value="64"/>
+    <px name="calib_tile_min_width_medium" value="76"/>
+    <px name="calib_tile_min_width_large" value="88"/>
+    <px name="calib_tile_min_width_xlarge" value="100"/>
+    <px name="calib_tile_min_height_micro" value="40"/>
+    <px name="calib_tile_min_height_tiny" value="40"/>
+    <px name="calib_tile_min_height_small" value="44"/>
+    <px name="calib_tile_min_height_medium" value="56"/>
+    <px name="calib_tile_min_height_large" value="76"/>
+    <px name="calib_tile_min_height_xlarge" value="88"/>
     <!-- Motors Off beside Motion on the Controls position card: at least 40px
          wide to tap, with the glyph sized to the one-button-tall row -->
+    <!-- Motion + Motors Off row on a portrait Controls panel: Motion is inline
+         there, so the row only has to hold the Motors Off icon over its label -->
+    <px name="controls_action_row_portrait_tiny" value="40"/>
+    <px name="controls_action_row_portrait_small" value="48"/>
+    <px name="controls_action_row_portrait_medium" value="48"/>
+    <px name="controls_action_row_portrait_large" value="60"/>
+    <px name="controls_action_row_portrait_xlarge" value="64"/>
     <string name="controls_toggle_icon_size_micro" value="xs"/>
     <string name="controls_toggle_icon_size_tiny" value="sm"/>
     <string name="controls_toggle_icon_size_small" value="sm"/>
