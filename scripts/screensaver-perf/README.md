@@ -31,7 +31,9 @@ A run passes when the latency probe records **no wake-up of 20 ms or more and a 
 5 ms**, under a CPU load that stands in for klippy and moonraker. An arm passes only when
 every run passes. On the Pi the probe is `cyclictest --laptop --policy=other -i 1000` beside
 `stress-ng --cpu 2`; on BusyBox boards it is `wakeup_probe` beside busy loops on half the cores.
-`summarize.py` prints the verdict.
+`summarize.py` prints the verdict. `perfstats.py` holds what the parsers share: the 20 ms
+histogram limit and one percentile rule, the smallest value at which the running count reaches
+the fraction, for latency histograms and frame gaps alike.
 
 ## Raspberry Pi 3B
 

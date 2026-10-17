@@ -7,7 +7,7 @@
 # histogram is left at /tmp/hm_cyclic_<arm>_<label>.txt for the host to collect.
 # cyclictest needs root even for SCHED_OTHER; --laptop keeps it from pinning
 # /dev/cpu_dma_latency to 0, which would hold the CPU out of idle states and distort the
-# latency being measured.
+# latency being measured. -h is perfstats.py HISTOGRAM_US, the histogram ctparse.py reads.
 set -u
 PW=${PW:-}
 INSTALL=${INSTALL:?}
