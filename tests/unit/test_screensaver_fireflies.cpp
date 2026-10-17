@@ -4,6 +4,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_cost_model.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_canvas.h"
 #include "screensaver_fireflies.h"
@@ -810,6 +811,63 @@ TEST_CASE("a fireflies frame dirties a fraction of the canvas", "[screensaver][f
         frames++;
     }
     CHECK(dirty_px / frames < 0.6 * 800.0 * 480.0);
+}
+
+TEST_CASE("a fireflies level change applies at the next frame and frames allocate nothing",
+          "[screensaver][fireflies_sim]") {
+    Swarm s(51);
+    const size_t at_init = s.sim.heap_bytes();
+    REQUIRE(at_init > 0);
+    for (size_t level = 0; level <= FIREFLIES_LEVEL_COUNT; level++) {
+        CAPTURE(level);
+        s.sim.request_level(level);
+        s.step();
+        CHECK(s.sim.level() == std::min(level, FIREFLIES_LEVEL_COUNT - 1));
+        for (int i = 0; i < 20; i++) {
+            s.step();
+            REQUIRE(s.sim.heap_bytes() == at_init);
+        }
+    }
+}
+
+TEST_CASE("each fireflies rung lights less than the one above", "[screensaver][fireflies_sim]") {
+    std::vector<size_t> lit;
+    for (size_t level = 0; level < FIREFLIES_LEVEL_COUNT; level++) {
+        Swarm s(52, level, PixelFormat::XRGB8888, 800, 480);
+        s.run_for(4000);
+        lit.push_back(lit_pixels(s.frame));
+    }
+    for (size_t level = 2; level < FIREFLIES_LEVEL_COUNT; level++) {
+        CAPTURE(level, lit[level - 1], lit[level]);
+        CHECK(lit[level] < lit[level - 1]);
+    }
+}
+
+namespace {
+
+/// What a level's frames cost a board, per the K1C model, scaled to the level's frame period.
+double fireflies_cost(size_t level) {
+    Swarm s(53, level, PixelFormat::RGB565, 800, 480);
+    const uint32_t period = FIREFLIES_LEVELS[level].period_ms;
+    helix::test::SaverLoad load;
+    constexpr int FRAMES = 240;
+    for (int i = 0; i < FRAMES; i++) {
+        s.step(period);
+        load.add_frame(s.dirty);
+    }
+    load.average_over(FRAMES);
+    return load.cost() * 33.0 / static_cast<double>(period);
+}
+
+} // namespace
+
+TEST_CASE("the fireflies bottom rung fits a 1-core board's 10% budget",
+          "[screensaver][fireflies_sim]") {
+    const double bottom = fireflies_cost(FIREFLIES_LEVEL_COUNT - 1);
+    const double top = fireflies_cost(0);
+    CAPTURE(bottom, top);
+    CHECK(bottom < 10.0);
+    CHECK(top > bottom);
 }
 
 // ============================================================================
