@@ -24,6 +24,22 @@
 
 namespace helix::ui {
 
+/// One rung of the pipes ladder.
+struct PipesLevel {
+    uint32_t period_ms;
+    /// Rasterizes at (canvas / scale); each internal pixel fills scale x scale canvas pixels.
+    uint8_t scale;
+};
+
+/// The ladder, most expensive level first. A frame between growth steps draws nothing, so the
+/// period mostly paces the dissolve; the last rung also quarters the raster work.
+inline constexpr PipesLevel PIPES_LEVELS[] = {
+    {SAVER_FAST_PERIOD, 1},
+    {33, 1},
+    {50, 2},
+};
+inline constexpr size_t PIPES_LEVEL_COUNT = std::size(PIPES_LEVELS);
+
 inline constexpr int PIPES_NODES_LONG = 15;     ///< nodes along the long screen axis (NUM_DIV - 1)
 inline constexpr float PIPES_PITCH = 7.0f;      ///< node spacing (divSize)
 inline constexpr float PIPES_RADIUS = 1.0f;     ///< pipe radius: 1/7 of the pitch
@@ -422,6 +438,100 @@ class PipesRenderer {
     PipeMesh teapot_;
     std::vector<ScreenVertex> screen_;
     std::vector<uint16_t> lut_; ///< per material: ambient + diffuse by n.L, specular by n.H
+};
+
+/// Clears the frame to black in random blocks over PIPES_DISSOLVE_MS of frame time.
+class PipesDissolve {
+  public:
+    /// Cuts a `w` x `h` frame into blocks of max(1, min(w, h) / PIPES_DISSOLVE_DIV) pixels.
+    void init(uint32_t w, uint32_t h);
+    void release();
+    /// Shuffles the block order and starts the clock.
+    void begin(std::minstd_rand& rng);
+    /// Clears the blocks due by now and dirties each.
+    void step(uint32_t dt_ms, const FrameTarget& frame, std::vector<DirtyRect>& dirty);
+    bool active() const {
+        return active_;
+    }
+    size_t cleared() const {
+        return cleared_;
+    }
+    size_t block_count() const {
+        return order_.size();
+    }
+    int block_px() const {
+        return block_px_;
+    }
+    size_t buffer_bytes() const {
+        return order_.capacity() * sizeof(uint32_t);
+    }
+
+  private:
+    uint32_t w_ = 0;
+    uint32_t h_ = 0;
+    int block_px_ = 1;
+    int cols_ = 0;
+    std::vector<uint32_t> order_;
+    size_t cleared_ = 0;
+    uint32_t elapsed_ms_ = 0;
+    bool active_ = false;
+};
+
+enum class PipesPhase : uint8_t { GROWING, DISSOLVING };
+
+/**
+ * @brief The whole saver: screens of pipes, each dissolved before the next
+ *
+ * Growth runs one step per PIPES_STEP_MS of frame time, at most PIPES_MAX_STEPS_PER_TICK per
+ * call. A finished screen drops the steps still due and dissolves; when the dissolve ends the
+ * view turns PIPES_YROT_STEP_DEG, a pending level's scale takes effect, and a new screen starts,
+ * its first growth step a full step later.
+ */
+class PipesSim {
+  public:
+    /// Fills the frame black and starts the first screen at yrot 0.
+    void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level);
+    void step(uint32_t dt_ms, const FrameTarget& frame, std::minstd_rand& rng,
+              std::vector<DirtyRect>& dirty);
+    /// The level's scale applies from the next screen.
+    void set_level(size_t level);
+    /// Releases every buffer.
+    void clear();
+
+    PipesPhase phase() const {
+        return phase_;
+    }
+    const PipesScreen& screen() const {
+        return screen_;
+    }
+    const PipesRenderer& renderer() const {
+        return renderer_;
+    }
+    const PipesDissolve& dissolve() const {
+        return dissolve_;
+    }
+    float yrot_deg() const {
+        return yrot_deg_;
+    }
+    uint32_t screens_started() const {
+        return screens_;
+    }
+    size_t buffer_bytes() const;
+
+  private:
+    void start_screen(const FrameTarget& frame, std::minstd_rand& rng,
+                      std::vector<DirtyRect>& dirty);
+    void draw_pieces(const FrameTarget& frame, std::vector<DirtyRect>& dirty);
+
+    PipesScreen screen_;
+    PipesRenderer renderer_;
+    PipesDissolve dissolve_;
+    PipesPhase phase_ = PipesPhase::GROWING;
+    float yrot_deg_ = 0.0f;
+    size_t level_ = 0;
+    uint32_t screens_ = 0;
+    screensaver::StepAccumulator steps_;
+    std::vector<PipePiece> pieces_;
 };
 
 } // namespace helix::ui

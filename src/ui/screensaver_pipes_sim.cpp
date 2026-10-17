@@ -878,6 +878,163 @@ void PipesRenderer::raster_triangle(const FrameTarget& frame, const ScreenVertex
     }
 }
 
+// ============================================================================
+// Dissolve
+// ============================================================================
+
+void PipesDissolve::init(uint32_t w, uint32_t h) {
+    w_ = w;
+    h_ = h;
+    block_px_ = std::max(1, static_cast<int>(std::min(w, h)) / PIPES_DISSOLVE_DIV);
+    const auto b = static_cast<uint32_t>(block_px_);
+    cols_ = static_cast<int>((w + b - 1) / b);
+    const uint32_t rows = (h + b - 1) / b;
+    order_.resize(static_cast<size_t>(cols_) * rows);
+    for (size_t i = 0; i < order_.size(); i++) {
+        order_[i] = static_cast<uint32_t>(i);
+    }
+    cleared_ = 0;
+    elapsed_ms_ = 0;
+    active_ = false;
+}
+
+void PipesDissolve::release() {
+    std::vector<uint32_t>().swap(order_);
+    cleared_ = 0;
+    active_ = false;
+}
+
+void PipesDissolve::begin(std::minstd_rand& rng) {
+    for (size_t i = order_.size(); i-- > 1;) {
+        const auto j = static_cast<size_t>(random_below(rng, static_cast<int>(i + 1)));
+        std::swap(order_[i], order_[j]);
+    }
+    cleared_ = 0;
+    elapsed_ms_ = 0;
+    active_ = !order_.empty();
+}
+
+void PipesDissolve::step(uint32_t dt_ms, const FrameTarget& frame, std::vector<DirtyRect>& dirty) {
+    if (!active_) {
+        return;
+    }
+    elapsed_ms_ += dt_ms;
+    const size_t n = order_.size();
+    const auto due = static_cast<size_t>(
+        std::min<uint64_t>(n, static_cast<uint64_t>(n) * elapsed_ms_ / PIPES_DISSOLVE_MS));
+    PixelWriter out(frame);
+    const auto w = static_cast<int32_t>(std::min(w_, frame.w));
+    const auto h = static_cast<int32_t>(std::min(h_, frame.h));
+    for (; cleared_ < due; cleared_++) {
+        const uint32_t block = order_[cleared_];
+        const int32_t x1 = static_cast<int32_t>(block % static_cast<uint32_t>(cols_)) * block_px_;
+        const int32_t y1 = static_cast<int32_t>(block / static_cast<uint32_t>(cols_)) * block_px_;
+        const int32_t x2 = std::min(w, x1 + block_px_) - 1;
+        const int32_t y2 = std::min(h, y1 + block_px_) - 1;
+        for (int32_t y = y1; y <= y2; y++) {
+            for (int32_t x = x1; x <= x2; x++) {
+                out.put(x, y, {0, 0, 0});
+            }
+        }
+        DirtyRect r;
+        r.add(x1, y1, x2, y2);
+        if (!r.empty()) {
+            dirty.push_back(r);
+        }
+    }
+    if (cleared_ >= n) {
+        active_ = false;
+    }
+}
+
+// ============================================================================
+// PipesSim
+// ============================================================================
+
+void PipesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level) {
+    level_ = std::min(level, PIPES_LEVEL_COUNT - 1);
+    PixelWriter(frame).fill({0, 0, 0});
+    renderer_.init(frame.w, frame.h, PIPES_LEVELS[level_].scale);
+    dissolve_.init(frame.w, frame.h);
+    pieces_.clear();
+    pieces_.reserve(4 * PIPES_MAX_ACTIVE * PIPES_MAX_STEPS_PER_TICK);
+    yrot_deg_ = 0.0f;
+    screens_ = 0;
+    std::vector<DirtyRect> unused;
+    start_screen(frame, rng, unused);
+}
+
+void PipesSim::start_screen(const FrameTarget& frame, std::minstd_rand& rng,
+                            std::vector<DirtyRect>& dirty) {
+    const uint8_t scale = PIPES_LEVELS[level_].scale;
+    if (renderer_.scale() != scale) {
+        renderer_.init(frame.w, frame.h, scale);
+    }
+    const PipeGridDims dims =
+        pipes_grid_dims(static_cast<int32_t>(frame.w), static_cast<int32_t>(frame.h));
+    renderer_.clear_depth();
+    renderer_.set_view(yrot_deg_, dims);
+    pieces_.clear();
+    screen_.begin(dims, rng, pieces_);
+    draw_pieces(frame, dirty);
+    steps_.reset();
+    phase_ = PipesPhase::GROWING;
+    screens_++;
+}
+
+void PipesSim::draw_pieces(const FrameTarget& frame, std::vector<DirtyRect>& dirty) {
+    for (const PipePiece& p : pieces_) {
+        const DirtyRect box = renderer_.draw(frame, p);
+        if (!box.empty()) {
+            dirty.push_back(box);
+        }
+    }
+    pieces_.clear();
+}
+
+void PipesSim::step(uint32_t dt_ms, const FrameTarget& frame, std::minstd_rand& rng,
+                    std::vector<DirtyRect>& dirty) {
+    if (phase_ == PipesPhase::GROWING) {
+        const uint32_t due = steps_.steps_due(dt_ms, PIPES_STEP_MS, PIPES_MAX_STEPS_PER_TICK);
+        for (uint32_t i = 0; i < due; i++) {
+            const bool more = screen_.step(rng, pieces_);
+            draw_pieces(frame, dirty);
+            if (!more) {
+                // The steps still due belong to the finished screen; the dissolve starts on
+                // the next frame's time.
+                dissolve_.begin(rng);
+                phase_ = PipesPhase::DISSOLVING;
+                return;
+            }
+        }
+        return;
+    }
+    dissolve_.step(dt_ms, frame, dirty);
+    if (dissolve_.active()) {
+        return;
+    }
+    yrot_deg_ = std::fmod(yrot_deg_ + PIPES_YROT_STEP_DEG, 360.0f);
+    start_screen(frame, rng, dirty);
+}
+
+void PipesSim::set_level(size_t level) {
+    level_ = std::min(level, PIPES_LEVEL_COUNT - 1);
+}
+
+void PipesSim::clear() {
+    screen_.release();
+    renderer_.release();
+    dissolve_.release();
+    std::vector<PipePiece>().swap(pieces_);
+    phase_ = PipesPhase::GROWING;
+    steps_.reset();
+}
+
+size_t PipesSim::buffer_bytes() const {
+    return screen_.grid().buffer_bytes() + renderer_.buffer_bytes() + dissolve_.buffer_bytes() +
+           pieces_.capacity() * sizeof(PipePiece);
+}
+
 } // namespace helix::ui
 
 #endif // HELIX_ENABLE_SCREENSAVER

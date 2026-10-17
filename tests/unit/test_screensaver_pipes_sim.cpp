@@ -723,7 +723,7 @@ struct Frame {
     }
 };
 
-uint64_t frame_hash(const FrameTarget& f) {
+uint64_t target_hash(const FrameTarget& f) {
     const uint32_t bpp = f.format == PixelFormat::RGB565 ? 2 : 4;
     uint64_t hash = 1469598103934665603ULL;
     for (uint32_t y = 0; y < f.h; y++) {
@@ -864,7 +864,7 @@ TEST_CASE("draw order never changes the picture", "[screensaver][pipes_sim]") {
         for (const PipePiece& p : pieces) {
             r.draw(f.target, p);
         }
-        hash = frame_hash(f.target);
+        hash = target_hash(f.target);
         centre = f.at(400, 240);
     };
     const PipePiece near_emerald = ball_at({0.5f, 0, 40}, 0);
@@ -1094,6 +1094,377 @@ TEST_CASE("a released renderer holds no buffers", "[screensaver][pipes_sim]") {
     CHECK(r.buffer_bytes() > 160u * 96u * 4u);
     r.release();
     CHECK(r.buffer_bytes() == 0);
+}
+
+// ============================================================================
+// Dissolve
+// ============================================================================
+
+namespace {
+
+void fill_white(Frame& f) {
+    PixelWriter(f.target).fill({255, 255, 255});
+}
+
+bool all_black(const Frame& f) {
+    return lit_pixels(f) == 0;
+}
+
+} // namespace
+
+TEST_CASE("the dissolve cuts the screen into 1/32 blocks", "[screensaver][pipes_sim]") {
+    PipesDissolve d;
+    d.init(800, 480);
+    CHECK(d.block_px() == 15);
+    CHECK(d.block_count() == 54u * 32u);
+    d.init(480, 272);
+    CHECK(d.block_px() == 8);
+    CHECK(d.block_count() == 60u * 34u);
+    d.init(10, 10);
+    CHECK(d.block_px() == 1);
+    CHECK(d.block_count() == 100u);
+}
+
+TEST_CASE("the dissolve clears by frame time", "[screensaver][pipes_sim]") {
+    Frame f(800, 480);
+    fill_white(f);
+    PipesDissolve d;
+    d.init(800, 480);
+    std::minstd_rand rng(3);
+    d.begin(rng);
+    std::vector<DirtyRect> dirty;
+    for (int i = 0; i < 25; i++) {
+        d.step(40, f.target, dirty);
+    }
+    CHECK(d.cleared() == 864u);
+    d.step(999, f.target, dirty);
+    CHECK(d.cleared() == 1727u);
+    CHECK(d.active());
+    CHECK_FALSE(all_black(f));
+    d.step(1, f.target, dirty);
+    CHECK(d.cleared() == 1728u);
+    CHECK_FALSE(d.active());
+    CHECK(all_black(f));
+
+    const auto run = [](uint32_t dt, int calls) {
+        Frame g(800, 480);
+        fill_white(g);
+        PipesDissolve dd;
+        dd.init(800, 480);
+        std::minstd_rand r(5);
+        dd.begin(r);
+        std::vector<DirtyRect> rects;
+        for (int i = 0; i < calls; i++) {
+            dd.step(dt, g.target, rects);
+        }
+        return target_hash(g.target);
+    };
+    CHECK(run(16, 50) == run(50, 16));
+}
+
+TEST_CASE("each dissolve block is cleared once and dirtied", "[screensaver][pipes_sim]") {
+    Frame f(161, 97);
+    fill_white(f);
+    PipesDissolve d;
+    d.init(161, 97);
+    std::minstd_rand rng(4);
+    d.begin(rng);
+    std::set<std::tuple<int32_t, int32_t, int32_t, int32_t>> seen;
+    size_t rects = 0;
+    while (d.active()) {
+        const std::vector<uint8_t> before = f.bytes;
+        std::vector<DirtyRect> dirty;
+        d.step(33, f.target, dirty);
+        DirtyRect all;
+        for (const DirtyRect& r : dirty) {
+            seen.insert({r.x1, r.y1, r.x2, r.y2});
+            rects++;
+            all.add(r);
+        }
+        // Every changed pixel lies in one of this frame's rects.
+        const uint32_t bpp = 4;
+        for (uint32_t y = 0; y < 97; y++) {
+            for (uint32_t x = 0; x < 161; x++) {
+                const size_t i = static_cast<size_t>(y) * f.target.stride + x * bpp;
+                if (std::memcmp(&before[i], f.target.data + i, bpp) == 0) {
+                    continue;
+                }
+                const auto px = static_cast<int32_t>(x);
+                const auto py = static_cast<int32_t>(y);
+                const bool covered =
+                    std::any_of(dirty.begin(), dirty.end(), [&](const DirtyRect& r) {
+                        return px >= r.x1 && px <= r.x2 && py >= r.y1 && py <= r.y2;
+                    });
+                REQUIRE(covered);
+            }
+        }
+    }
+    CHECK(rects == d.block_count());
+    CHECK(seen.size() == d.block_count());
+    CHECK(all_black(f));
+    CHECK(f.canaries_intact());
+}
+
+TEST_CASE("two dissolves from one seed clear in the same order", "[screensaver][pipes_sim]") {
+    const auto order = [](uint32_t seed) {
+        Frame f(160, 96);
+        PipesDissolve d;
+        d.init(160, 96);
+        std::minstd_rand rng(seed);
+        d.begin(rng);
+        std::vector<DirtyRect> dirty;
+        while (d.active()) {
+            d.step(16, f.target, dirty);
+        }
+        std::vector<int32_t> xs;
+        for (const DirtyRect& r : dirty) {
+            xs.push_back(r.y1 * 1000 + r.x1);
+        }
+        return xs;
+    };
+    CHECK(order(11) == order(11));
+    CHECK(order(11) != order(12));
+}
+
+// ============================================================================
+// PipesSim
+// ============================================================================
+
+namespace {
+
+bool no_segments(const PipesSim& sim) {
+    return std::all_of(sim.screen().pipes().begin(), sim.screen().pipes().end(),
+                       [](const PipeState& p) { return p.segment_count == 0; });
+}
+
+/// Steps of 100 ms until the screen finishes; the count, or -1 past the bound.
+int steps_to_dissolve(PipesSim& sim, Frame& f, std::minstd_rand& rng) {
+    std::vector<DirtyRect> dirty;
+    for (int k = 1; k <= 20000; k++) {
+        sim.step(100, f.target, rng, dirty);
+        if (sim.phase() == PipesPhase::DISSOLVING) {
+            return k;
+        }
+    }
+    return -1;
+}
+
+} // namespace
+
+TEST_CASE("the first screen starts at yrot 0 with its starting pipes drawn",
+          "[screensaver][pipes_sim]") {
+    Frame f(160, 96);
+    fill_white(f);
+    PipesSim sim;
+    std::minstd_rand rng(1);
+    sim.init(f.target, rng, 0);
+    CHECK(lit_pixels(f) > 0);
+    CHECK(lit_pixels(f) < 160u * 96u / 2u);
+    CHECK(sim.phase() == PipesPhase::GROWING);
+    CHECK(sim.screens_started() == 1);
+    CHECK(sim.yrot_deg() == 0.0f);
+}
+
+TEST_CASE("a finished screen dissolves for 2 s, then turns 9.73156 degrees",
+          "[screensaver][pipes_sim]") {
+    Frame f(160, 96);
+    PipesSim sim;
+    std::minstd_rand rng(8);
+    sim.init(f.target, rng, 0);
+    REQUIRE(steps_to_dissolve(sim, f, rng) > 0);
+    std::vector<DirtyRect> dirty;
+    for (int i = 0; i < 19; i++) {
+        sim.step(100, f.target, rng, dirty);
+        REQUIRE(sim.phase() == PipesPhase::DISSOLVING);
+    }
+    sim.step(100, f.target, rng, dirty);
+    CHECK(sim.phase() == PipesPhase::GROWING);
+    CHECK(sim.yrot_deg() == Catch::Approx(9.73156f));
+    CHECK(sim.screens_started() == 2);
+    CHECK(no_segments(sim));
+    sim.step(99, f.target, rng, dirty);
+    CHECK(no_segments(sim));
+    sim.step(1, f.target, rng, dirty);
+    CHECK_FALSE(no_segments(sim));
+}
+
+TEST_CASE("growth steps still due when a screen finishes are dropped", "[screensaver][pipes_sim]") {
+    Frame fa(160, 96);
+    PipesSim a;
+    std::minstd_rand rng_a(8);
+    a.init(fa.target, rng_a, 0);
+    const int k = steps_to_dissolve(a, fa, rng_a);
+    REQUIRE(k > 1);
+
+    Frame fb(160, 96);
+    PipesSim b;
+    std::minstd_rand rng_b(8);
+    b.init(fb.target, rng_b, 0);
+    std::vector<DirtyRect> dirty;
+    for (int i = 0; i < k - 1; i++) {
+        b.step(100, fb.target, rng_b, dirty);
+    }
+    REQUIRE(b.phase() == PipesPhase::GROWING);
+    b.step(300, fb.target, rng_b, dirty);
+    CHECK(b.phase() == PipesPhase::DISSOLVING);
+    CHECK(b.dissolve().cleared() == 0);
+    b.step(1000, fb.target, rng_b, dirty);
+    CHECK(b.dissolve().cleared() == b.dissolve().block_count() / 2);
+}
+
+TEST_CASE("pipes grow one step per 100 ms, at most three per call", "[screensaver][pipes_sim]") {
+    Frame fa(160, 96);
+    Frame fb(160, 96);
+    PipesSim a;
+    PipesSim b;
+    std::minstd_rand rng_a(14);
+    std::minstd_rand rng_b(14);
+    a.init(fa.target, rng_a, 0);
+    b.init(fb.target, rng_b, 0);
+    std::vector<DirtyRect> dirty;
+    a.step(300, fa.target, rng_a, dirty);
+    for (int i = 0; i < 3; i++) {
+        b.step(100, fb.target, rng_b, dirty);
+    }
+    CHECK(a.screen().pipes() == b.screen().pipes());
+    CHECK(target_hash(fa.target) == target_hash(fb.target));
+
+    const auto total_segments = [](const PipesSim& s) {
+        int n = 0;
+        for (const PipeState& p : s.screen().pipes()) {
+            n += p.segment_count;
+        }
+        return n;
+    };
+    const auto first_segments = [](const PipesSim& s) {
+        return s.screen().pipes()[0].segment_count;
+    };
+    // Slot 0 is alive after every start, and grows one node per step until it sticks.
+    Frame fc(160, 96);
+    PipesSim c;
+    std::minstd_rand rng_c(14);
+    c.init(fc.target, rng_c, 0);
+    c.step(450, fc.target, rng_c, dirty);
+    CHECK(first_segments(c) == 3);
+    c.step(0, fc.target, rng_c, dirty);
+    CHECK(first_segments(c) == 3);
+    c.step(50, fc.target, rng_c, dirty);
+    CHECK(first_segments(c) == 4);
+    CHECK(total_segments(c) > 4);
+}
+
+TEST_CASE("a level's scale waits for the next screen", "[screensaver][pipes_sim]") {
+    Frame f(160, 96);
+    PipesSim sim;
+    std::minstd_rand rng(5);
+    sim.init(f.target, rng, 0);
+    CHECK(sim.renderer().scale() == 1);
+    sim.set_level(2);
+    std::vector<DirtyRect> dirty;
+    while (sim.screens_started() < 2) {
+        REQUIRE(sim.renderer().scale() == 1);
+        sim.step(100, f.target, rng, dirty);
+    }
+    CHECK(sim.renderer().scale() == 2);
+    sim.set_level(0);
+    sim.step(100, f.target, rng, dirty);
+    CHECK(sim.renderer().scale() == 2);
+    while (sim.screens_started() < 3) {
+        REQUIRE(sim.renderer().scale() == 2);
+        sim.step(100, f.target, rng, dirty);
+    }
+    CHECK(sim.renderer().scale() == 1);
+}
+
+TEST_CASE("PipesSim dirties every pixel its step changes", "[screensaver][pipes_sim]") {
+    Frame f(160, 96);
+    PipesSim sim;
+    std::minstd_rand rng(12);
+    sim.init(f.target, rng, 2);
+    bool dissolved = false;
+    for (int i = 0; i < 3000; i++) {
+        const std::vector<uint8_t> before = f.bytes;
+        std::vector<DirtyRect> dirty;
+        sim.step(50, f.target, rng, dirty);
+        dissolved = dissolved || sim.phase() == PipesPhase::DISSOLVING;
+        for (uint32_t y = 0; y < 96; y++) {
+            for (uint32_t x = 0; x < 160; x++) {
+                const size_t idx = static_cast<size_t>(y) * f.target.stride + x * 4;
+                if (std::memcmp(&before[idx], f.target.data + idx, 4) == 0) {
+                    continue;
+                }
+                const auto px = static_cast<int32_t>(x);
+                const auto py = static_cast<int32_t>(y);
+                const bool covered =
+                    std::any_of(dirty.begin(), dirty.end(), [&](const DirtyRect& r) {
+                        return px >= r.x1 && px <= r.x2 && py >= r.y1 && py <= r.y2;
+                    });
+                REQUIRE(covered);
+            }
+        }
+    }
+    CHECK(dissolved);
+    CHECK(sim.screens_started() >= 2);
+}
+
+TEST_CASE("a pipes run replays exactly from a seed", "[screensaver][pipes_sim]") {
+    Frame fa(160, 96);
+    Frame fb(160, 96);
+    PipesSim a;
+    PipesSim b;
+    std::minstd_rand rng_a(21);
+    std::minstd_rand rng_b(21);
+    a.init(fa.target, rng_a, 0);
+    b.init(fb.target, rng_b, 0);
+    std::vector<DirtyRect> dirty;
+    for (int i = 1; i <= 1500; i++) {
+        a.step(33, fa.target, rng_a, dirty);
+        b.step(33, fb.target, rng_b, dirty);
+        dirty.clear();
+        if (i % 100 == 0) {
+            REQUIRE(target_hash(fa.target) == target_hash(fb.target));
+        }
+    }
+}
+
+TEST_CASE("both depths run the same scene", "[screensaver][pipes_sim]") {
+    Frame f32(160, 96, PixelFormat::XRGB8888);
+    Frame f16(160, 96, PixelFormat::RGB565);
+    PipesSim a;
+    PipesSim b;
+    std::minstd_rand rng_a(6);
+    std::minstd_rand rng_b(6);
+    a.init(f32.target, rng_a, 0);
+    b.init(f16.target, rng_b, 0);
+    std::vector<DirtyRect> dirty;
+    for (int i = 0; i < 400; i++) {
+        a.step(100, f32.target, rng_a, dirty);
+        b.step(100, f16.target, rng_b, dirty);
+        dirty.clear();
+        REQUIRE(a.screen().pipes() == b.screen().pipes());
+        REQUIRE(a.yrot_deg() == b.yrot_deg());
+    }
+    for (int32_t y = 0; y < 96; y++) {
+        for (int32_t x = 0; x < 160; x++) {
+            const Rgb p = f32.at(x, y);
+            const Rgb q = f16.at(x, y);
+            REQUIRE(std::abs(p.r - q.r) <= 8);
+            REQUIRE(std::abs(p.g - q.g) <= 4);
+            REQUIRE(std::abs(p.b - q.b) <= 8);
+        }
+    }
+}
+
+TEST_CASE("a cleared pipes sim holds no buffers", "[screensaver][pipes_sim]") {
+    Frame f(160, 96);
+    PipesSim sim;
+    std::minstd_rand rng(2);
+    sim.init(f.target, rng, 0);
+    CHECK(sim.buffer_bytes() > 0);
+    CHECK(sim.screen().grid().buffer_bytes() > 0);
+    sim.clear();
+    CHECK(sim.buffer_bytes() == 0);
+    CHECK(sim.screen().grid().buffer_bytes() == 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER
