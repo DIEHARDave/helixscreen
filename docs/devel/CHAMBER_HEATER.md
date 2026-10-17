@@ -253,16 +253,17 @@ follows with `TEMPERATURE_WAIT` on the chamber waits forever.
   (`wait_active`, `wait_target_c`; DragonBreath's `wait_active` / `wait_target`, set
   while its M191 waits and cleared on every exit). `PrinterTemperatureState` exposes them
   as `chamber_wait_active()` / `chamber_wait_target_c()`.
-- **Pre-print label.** While a heater wait keeps reporting with the nozzle and bed at
-  target, `PrintStartCollector` labels it "Waiting for chamber <cur> / <target>°C" when the
-  wait is the chamber's: the device reports its own wait (its target), the chamber heater
-  is heating toward a target, or, once the wait has outlasted `CHAMBER_WAIT_SETTLE` (M109
-  settling) with the chamber heater at 0 ("Waiting for chamber <cur>°C"), the heater refused
-  its target or the command at the print position is a `TEMPERATURE_WAIT` whose `SENSOR`
-  is the chamber heater itself (`wait_names_chamber_heater()`,
-  `include/chamber_wait_line.h`; read once per wait). Any other wait (a heat soak on a
-  chamber sensor, with or without a heater beside it, or a probe coil) keeps the announced
-  phase. It raises
+- **Pre-print label.** While a heater wait keeps reporting, `PrintStartCollector` labels it
+  "Waiting for chamber <cur> / <target>°C" when the wait is the chamber's. The command at
+  the print position settles it when it is one: with a chamber heater configured, `M191`
+  or a `TEMPERATURE_WAIT` whose `SENSOR` is the chamber heater itself (`wait_names_chamber_heater()`,
+  `include/chamber_wait_line.h`; read again whenever the position moves). With no chamber
+  heater, `M191` is some macro's wait and names nothing. Otherwise, with
+  the nozzle and bed at target: the device reports its own wait (its target), the chamber
+  heater is heating toward a target, or, once the wait has outlasted `CHAMBER_WAIT_SETTLE`
+  (M109 settling) with the chamber heater at 0 ("Waiting for chamber <cur>°C"), the heater
+  refused its target. Any other wait (a heat soak on a chamber sensor, with or without a
+  heater beside it, or a probe coil) keeps the announced phase. It raises
   `print_start_chamber_wait` on `PrinterPrintState` while this tick reads the wait as the
   chamber's.
 - **Prompt.** `ChamberStallPrompt` (`include/chamber_stall_prompt.h`) asks the pure
