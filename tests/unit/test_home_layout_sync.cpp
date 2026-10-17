@@ -930,9 +930,12 @@ TEST_CASE_METHOD(HomeLayoutSyncFixture,
 
     MoonrakerManager manager;
     REQUIRE(manager.init(runtime_config, nullptr));
+    REQUIRE(get_moonraker_api() != nullptr);
     HomeLayoutSync::instance().fetch_now(record);
     drain();
     manager.shutdown();
+    // The API it installed is gone, so nothing may still reach it through the global.
+    CHECK(get_moonraker_api() == nullptr);
     HomeLayoutSync::instance().fetch_now(record);
     drain();
 
