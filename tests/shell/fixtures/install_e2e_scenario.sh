@@ -135,6 +135,13 @@ for step in "$@"; do
         install)
             run_installer --local /mnt/release-1/helixscreen-x86-v1.0.0.tar.gz || rc=$?
             ;;
+        install-progress)
+            # stdout only: the HELIX-PROGRESS stream, with the human output dropped.
+            run_installer --progress --local /mnt/release-1/helixscreen-x86-v1.0.0.tar.gz 2>/dev/null || rc=$?
+            ;;
+        install-progress-fail)
+            run_installer --progress --local /mnt/no-such-archive.tar.gz 2>/dev/null || rc=$?
+            ;;
         seed-user)
             inst=$(sed -n 's/^WorkingDirectory=//p' /etc/systemd/system/helixscreen.service)
             printf '\nHELIX_E2E_USER_KEY=kept\n' >> "$inst/config/helixscreen.env"
