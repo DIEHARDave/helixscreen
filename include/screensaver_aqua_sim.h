@@ -300,6 +300,12 @@ class AquaSim {
 
     /// Sizes the renderer, the grid and the internal frame for `level_`.
     void apply_view();
+    /// Everything the moving water needs beyond the water grid's waves: lookup tables, splashes,
+    /// bubbles and the near edge. Draws the bubbles' places from `rng`.
+    void build_scene(std::minstd_rand& rng);
+    /// Frees all of the scene but the clock, once the still rung has painted it: from then on a
+    /// frame only redraws the clock over the saved water.
+    void release_scene();
     /// Height grid derivatives for the scene: slopes and crest thinness.
     void derive_grids();
     /// Renders the water at the current sim time and writes the band into `frame`.
@@ -365,6 +371,7 @@ class AquaSim {
     float horizon_ = 0.0f;
     int32_t band_top_ = 0;
     bool painted_ = false;
+    bool scene_released_ = false;
 };
 
 } // namespace helix::ui

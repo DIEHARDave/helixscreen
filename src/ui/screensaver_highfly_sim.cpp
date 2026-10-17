@@ -697,32 +697,9 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     t_ = 0.0;
     deck_texels_ = 0.0f;
     drift_.reset();
-    build_highfly_field(rng, field_);
-    make_band(rng, band_);
-    for (HighFlyTexture& layer : layers_) {
-        make_layer(rng, layer);
-    }
-    for (HighFlyTexture& tower : towers_tex_) {
-        make_tower(rng, tower);
-    }
-    std::vector<float> wisp;
-    fbm(rng, 64, 128, true, {{8, 1.0f}, {32, 0.6f}}, wisp);
-    for (float& v : wisp) {
-        v = std::clamp(v * 0.6f, 0.0f, 1.0f);
-    }
-    std::vector<float> tmp;
-    box_blur(wisp, 128, 64, 3, false, true, tmp);
-    wisp_ = wisp;
+    build_scene(rng);
 
     towers_ = {};
-    tower_entries_.clear();
-    tower_entries_.reserve(HISTORY_CAP);
-    fly_starts_.clear();
-    fly_starts_.reserve(HISTORY_CAP);
-    boxes_.clear();
-    boxes_.reserve(BOX_CAP);
-    last_boxes_.clear();
-    last_boxes_.reserve(BOX_CAP);
     next_variant_ = 0;
     next_left_ = unit_random(rng) < 0.5f;
     // One tower already up when the run starts, part way in.
@@ -747,7 +724,54 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
 
     FrameTarget out = frame;
     paint_all(out, reading);
+    if (HIGHFLY_LEVELS[level_].still) {
+        release_scene();
+    }
     shown_ = reading;
+}
+
+void HighFlySim::build_scene(std::minstd_rand& rng) {
+    build_highfly_field(rng, field_);
+    make_band(rng, band_);
+    for (HighFlyTexture& layer : layers_) {
+        make_layer(rng, layer);
+    }
+    for (HighFlyTexture& tower : towers_tex_) {
+        make_tower(rng, tower);
+    }
+    std::vector<float> wisp;
+    fbm(rng, 64, 128, true, {{8, 1.0f}, {32, 0.6f}}, wisp);
+    for (float& v : wisp) {
+        v = std::clamp(v * 0.6f, 0.0f, 1.0f);
+    }
+    std::vector<float> tmp;
+    box_blur(wisp, 128, 64, 3, false, true, tmp);
+    wisp_ = wisp;
+
+    tower_entries_.clear();
+    tower_entries_.reserve(HISTORY_CAP);
+    fly_starts_.clear();
+    fly_starts_.reserve(HISTORY_CAP);
+    boxes_.clear();
+    boxes_.reserve(BOX_CAP);
+    last_boxes_.clear();
+    last_boxes_.reserve(BOX_CAP);
+    scene_released_ = false;
+}
+
+void HighFlySim::release_scene() {
+    release_buffers(field_.height, field_.shade, sky_, slice_lut_, band_.rgba, wisp_, polar_,
+                    col_u0_, col_fu_, tower_entries_, fly_starts_, boxes_, last_boxes_);
+    renderer_.clear();
+    for (HighFlyTexture& t : layers_) {
+        release_buffer(t.rgba);
+    }
+    for (HighFlyTexture& t : towers_tex_) {
+        release_buffer(t.rgba);
+    }
+    baked_w_ = 0;
+    baked_h_ = 0;
+    scene_released_ = true;
 }
 
 void HighFlySim::apply_view(bool bake) {
@@ -1320,7 +1344,10 @@ void HighFlySim::request_level(size_t level) {
         return;
     }
     level_ = next;
-    apply_view();
+    if (!scene_released_) {
+        // A released scene is built again, at this rung, by the next step.
+        apply_view();
+    }
 }
 
 void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
@@ -1328,6 +1355,11 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     dirty.clear();
     const HighFlyLevel& lv = HIGHFLY_LEVELS[level_];
     const DirtyRect whole = DirtyRect::whole(w_, h_);
+    if (scene_released_ && (!lv.still || !painted_)) {
+        // A rung change after the still one: the sky comes back before it is drawn.
+        build_scene(rng);
+        apply_view();
+    }
 
     const DirtyRect old_clock = clock_box_internal();
     const bool moved = drift_.step(dt_ms);
@@ -1340,6 +1372,7 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
         if (!painted_) {
             paint_all(frame, reading);
             dirty.push_back(whole);
+            release_scene();
         } else if (moved || !clock_face_same(reading, shown_, false)) {
             DirtyRect box = clock_box_internal();
             box.add(old_clock);
@@ -1451,17 +1484,8 @@ size_t HighFlySim::heap_bytes() const {
 }
 
 void HighFlySim::clear() {
-    release_buffers(field_.height, field_.shade);
-    renderer_.clear();
-    release_buffers(sky_, frame_, slice_lut_, band_.rgba);
-    for (HighFlyTexture& t : layers_) {
-        release_buffer(t.rgba);
-    }
-    for (HighFlyTexture& t : towers_tex_) {
-        release_buffer(t.rgba);
-    }
-    release_buffers(wisp_, polar_, col_u0_, col_fu_, tower_entries_, fly_starts_, boxes_,
-                    last_boxes_);
+    release_scene();
+    release_buffer(frame_);
     digits_.clear();
     second_digits_.clear();
     digit_halo_.clear();

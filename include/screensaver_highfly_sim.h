@@ -217,6 +217,11 @@ class HighFlySim {
     /// Sizes the renderer and internal buffers for level_, and with `bake` builds the static
     /// sky and the fly-through's polar table when the internal size changed.
     void apply_view(bool bake = true);
+    /// The baked deck, textures, wisps and the tower and fly-through history. Draws from `rng`.
+    void build_scene(std::minstd_rand& rng);
+    /// Frees all of the scene but the composed frame and the numerals, once the still rung has
+    /// painted it: from then on a frame only redraws the clock over that frame.
+    void release_scene();
     void build_sky();
     void build_polar();
     void update_schedule(std::minstd_rand& rng);
@@ -270,6 +275,7 @@ class HighFlySim {
     bool next_left_ = true;
     bool painted_ = false;
     bool last_full_ = false;
+    bool scene_released_ = false;
     HighFlyField field_;
     HeightfieldRenderer renderer_;
     std::vector<Rgb> sky_;       ///< internal row-major, static
