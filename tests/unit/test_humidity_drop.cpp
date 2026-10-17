@@ -3,10 +3,12 @@
 
 #include "ui_humidity_drop.h"
 
+#include "../lvgl_ui_test_fixture.h"
 #include "../test_fixtures.h"
 #include "display_settings_manager.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "humidity_drop_geometry.h"
+#include "humidity_sensor_manager.h"
 #include "settings_manager.h"
 
 #include <cmath>
@@ -409,4 +411,26 @@ TEST_CASE_METHOD(XMLTestFixture, "humidity_drop: the wave ticks only while anima
 
     dsm.set_animations_enabled(was);
     lv_obj_delete(drop);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "humidity_drop: the home humidity tile's drop follows the chamber",
+                 "[humidity_drop][widget]") {
+    auto& sensors = helix::sensors::HumiditySensorManager::instance();
+    sensors.init_subjects();
+    lv_subject_t* chamber = sensors.get_chamber_humidity_subject();
+    REQUIRE(chamber != nullptr);
+    lv_subject_set_int(chamber, 612);
+
+    auto* tile =
+        static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "panel_widget_humidity", nullptr));
+    REQUIRE(tile != nullptr);
+    lv_obj_t* drop = lv_obj_find_by_name(tile, "humidity_icon");
+    REQUIRE(drop != nullptr);
+    REQUIRE(helix::ui::is_humidity_drop(drop));
+    CHECK(helix::ui::humidity_drop_value(drop) == 612);
+
+    lv_subject_set_int(chamber, -1);
+    CHECK(helix::ui::humidity_drop_value(drop) == kUnknown);
+    lv_obj_delete(tile);
 }
