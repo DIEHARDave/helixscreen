@@ -105,9 +105,9 @@
     <!-- Floor for the text-shaped slot; an icon-only consumer passes a smaller
          value so the button reads as a circle. -->
     <prop name="action_button_2_min_width" type="string" default="90"/>
-    <!-- "1" for an icon-only button narrower than the default padding allows
-         (a circle the width of button_height_sm): no horizontal padding, and
-         vertical padding that keeps the icon inside the header button height. -->
+    <!-- "1" for an icon-only button narrower than the default padding allows:
+         no padding, the icon centred. Pair it with action_button_height and
+         action_button_2_width set to one size for a circle. -->
     <prop name="action_button_2_icon_only" type="string" default="0"/>
     <prop name="action_button_2_callback" type="string" default=""/>
     <prop name="hide_action_button_2" type="string" default="true"/>
@@ -121,7 +121,7 @@
     <prop name="action_button_2_disabled_subject" type="string" default=""/>
   </api>
   <styles>
-    <style name="action_icon_only" pad_hor="0" pad_ver="#space_sm"/>
+    <style name="action_icon_only" pad_hor="0" pad_ver="0"/>
   </styles>
   <view extends="lv_obj"
         width="100%" height="#header_height" style_pad_left="0" style_pad_right="#space_lg" style_pad_top="0"
