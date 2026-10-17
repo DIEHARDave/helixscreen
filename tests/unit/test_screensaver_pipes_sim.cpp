@@ -1310,6 +1310,11 @@ TEST_CASE("growth steps still due when a screen finishes are dropped", "[screens
     CHECK(b.dissolve().cleared() == 0);
     b.step(1000, fb.target, rng_b, dirty);
     CHECK(b.dissolve().cleared() == b.dissolve().block_count() / 2);
+
+    // The dropped steps leave nothing behind: half way through, both dissolves have cleared
+    // the same blocks of the same picture.
+    a.step(1000, fa.target, rng_a, dirty);
+    CHECK(target_hash(fa.target) == target_hash(fb.target));
 }
 
 TEST_CASE("pipes grow one step per 100 ms, at most three per call", "[screensaver][pipes_sim]") {
