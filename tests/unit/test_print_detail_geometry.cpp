@@ -232,17 +232,18 @@ TEST_CASE_METHOD(LVGLUITestFixture,
             }
         }
 
-        // Labels wrap inside their tile; the check tab never covers one.
+        // Labels wrap inside their pill, beside the icon slot, never under it.
         for (uint32_t i = 0; i < tile_count; ++i) {
             INFO("tile " << i);
             lv_obj_t* const tile = lv_obj_get_child(container, i);
             const Rect tile_r = coords_of(tile);
             lv_obj_t* const label = lv_obj_find_by_name(tile, "label");
-            lv_obj_t* const tab = lv_obj_find_by_name(tile, "check_tab");
+            lv_obj_t* const slot = lv_obj_find_by_name(tile, "icon_slot");
             REQUIRE(label != nullptr);
-            REQUIRE(tab != nullptr);
+            REQUIRE(slot != nullptr);
             CHECK(rect_contains(tile_r, coords_of(label)));
-            CHECK_FALSE(rect_intersects(coords_of(tab), coords_of(label)));
+            CHECK(rect_contains(tile_r, coords_of(slot)));
+            CHECK_FALSE(rect_intersects(coords_of(slot), coords_of(label)));
         }
 
         // The cue reports the scroll area it belongs to, no more, no less.

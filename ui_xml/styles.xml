@@ -111,8 +111,12 @@
          (modal_button_row): an inset outline, which the inline border_width
          cannot override, and which the dialog's edge cannot clip. -->
     <style name="accent_outline" outline_width="2" outline_color="#card_bg" outline_opa="255" outline_pad="-4"/>
-    <style name="led_chip_idle" bg_color="#card_bg" bg_opa="255" border_width="#border_width" border_color="#border"/>
-    <style name="led_chip_active" bg_color="#primary" bg_opa="28%" border_color="#primary"/>
+    <!-- A chip you switch on or pick: an outlined card-colored chip while idle,
+         filled with the primary tint and outlined in primary while active. The
+         LEDs overlay's effects and levels and the pre-print option tiles share
+         it, so an "on" chip reads the same everywhere. -->
+    <style name="chip_idle" bg_color="#card_bg" bg_opa="255" border_width="#border_width" border_color="#border"/>
+    <style name="chip_active" bg_color="#primary" bg_opa="28%" border_color="#primary"/>
     <!-- A swatch is its whole touch target: a transparent circle whose padding
          is the ring's reach, holding the colored disc. The selection ring is its
          border, so it draws inside the swatch and no container can clip it. -->
