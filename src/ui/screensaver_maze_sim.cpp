@@ -533,9 +533,184 @@ void MazeMap::label_walls() {
     }
 }
 
+int MazeMap::cell_passages(int c) const {
+    const int n = cells();
+    int count = 0;
+    for (int d = 0; d < 4; d++) {
+        count += passage(c % n, c / n, d) ? 1 : 0;
+    }
+    return count;
+}
+
+bool MazeMap::walled_by_boundary(int c) const {
+    const int n = cells();
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            const int x = 2 * (c % n) + 1 + dx;
+            const int y = 2 * (c / n) + 1 + dy;
+            if (wall(x, y) && !boundary_wall(x, y)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool MazeMap::open_wall(int c, int heading, int keep_a, int keep_b) {
+    const int n = cells();
+    const int cx = c % n;
+    const int cy = c / n;
+    const int nx = cx + HEADING_DX[heading];
+    const int ny = cy + HEADING_DY[heading];
+    if (nx < 0 || ny < 0 || nx >= n || ny >= n) {
+        return false;
+    }
+    const int other = ny * n + nx;
+    if (c == keep_a || c == keep_b || other == keep_a || other == keep_b) {
+        return false;
+    }
+    const int x = 2 * cx + 1 + HEADING_DX[heading];
+    const int y = 2 * cy + 1 + HEADING_DY[heading];
+    if (!wall(x, y)) {
+        return false;
+    }
+    const MazeTile was = tiles_[index(x, y)];
+    const uint8_t picture = pictures_[index(x, y)];
+    tiles_[index(x, y)] = MazeTile::OPEN;
+    pictures_[index(x, y)] = 0;
+    label_walls();
+    if (walled_by_boundary(keep_a) && walled_by_boundary(keep_b)) {
+        return true;
+    }
+    tiles_[index(x, y)] = was;
+    pictures_[index(x, y)] = picture;
+    label_walls();
+    return false;
+}
+
+bool MazeMap::open_room(int cx0, int cy0, int cx1, int cy1, int keep_a, int keep_b) {
+    // Every tile from the first cell's to the last cell's, pillars included, so the room
+    // holds no one-tile island.
+    scratch_.clear();
+    for (int y = 2 * cy0 + 1; y <= 2 * cy1 + 1; y++) {
+        for (int x = 2 * cx0 + 1; x <= 2 * cx1 + 1; x++) {
+            const size_t i = index(x, y);
+            if (tiles_[i] != MazeTile::OPEN) {
+                // Tile, its old content and its picture, to put back.
+                scratch_.push_back(static_cast<int>(i));
+                scratch_.push_back(static_cast<int>(tiles_[i]));
+                scratch_.push_back(pictures_[i]);
+                tiles_[i] = MazeTile::OPEN;
+                pictures_[i] = 0;
+            }
+        }
+    }
+    label_walls();
+    if (walled_by_boundary(keep_a) && walled_by_boundary(keep_b)) {
+        return true;
+    }
+    for (size_t j = 0; j + 2 < scratch_.size(); j += 3) {
+        const auto i = static_cast<size_t>(scratch_[j]);
+        tiles_[i] = static_cast<MazeTile>(scratch_[j + 1]);
+        pictures_[i] = static_cast<uint8_t>(scratch_[j + 2]);
+    }
+    label_walls();
+    return false;
+}
+
+void MazeMap::open_up(int keep_a, int keep_b, std::minstd_rand& rng) {
+    const int n = cells();
+    if (n < 2) {
+        return;
+    }
+    auto kept = [keep_a, keep_b](int c) { return c == keep_a || c == keep_b; };
+
+    // Braid: shuffle the dead ends, then open a wall out of a share of them, toward another
+    // dead end where one is next door, so one opening can close two.
+    scratch_.clear();
+    for (int c = 0; c < n * n; c++) {
+        if (!kept(c) && cell_passages(c) == 1) {
+            scratch_.push_back(c);
+        }
+    }
+    for (int i = static_cast<int>(scratch_.size()) - 1; i > 0; i--) {
+        std::swap(scratch_[static_cast<size_t>(i)],
+                  scratch_[static_cast<size_t>(random_below(rng, i + 1))]);
+    }
+    const auto braids = static_cast<int>(std::lround(BRAID_SHARE * scratch_.size()));
+    int braided = 0;
+    for (size_t i = 0; i < scratch_.size() && braided < braids; i++) {
+        const int c = scratch_[i];
+        if (cell_passages(c) != 1) {
+            continue;
+        }
+        const int first = random_below(rng, 4);
+        bool opened = false;
+        // Two passes: toward a neighbouring dead end first, then toward anything.
+        for (int pass = 0; pass < 2 && !opened; pass++) {
+            for (int j = 0; j < 4 && !opened; j++) {
+                const int d = (first + j) & 3;
+                const int nx = c % n + HEADING_DX[d];
+                const int ny = c / n + HEADING_DY[d];
+                if (nx < 0 || ny < 0 || nx >= n || ny >= n) {
+                    continue;
+                }
+                if (pass == 0 && cell_passages(ny * n + nx) != 1) {
+                    continue;
+                }
+                opened = open_wall(c, d, keep_a, keep_b);
+            }
+        }
+        braided += opened ? 1 : 0;
+    }
+
+    int extra = 0;
+    for (int attempt = 0; attempt < 200 && extra < EXTRA_OPENINGS; attempt++) {
+        extra += open_wall(random_below(rng, n * n), random_below(rng, 4), keep_a, keep_b) ? 1 : 0;
+    }
+
+    // Rooms of 2x2, 2x3 or 3x2 cells, apart from each other and from the kept cells.
+    struct Room {
+        int x0, y0, x1, y1;
+    };
+    Room rooms[ROOMS_MIN + 1] = {};
+    int placed = 0;
+    const int wanted = ROOMS_MIN + random_below(rng, 2);
+    for (int r = 0; r < wanted; r++) {
+        for (int attempt = 0; attempt < 50; attempt++) {
+            const int shape = random_below(rng, 3);
+            const int w = shape == 2 ? 3 : 2;
+            const int h = shape == 1 ? 3 : 2;
+            if (w > n || h > n) {
+                break;
+            }
+            const Room room{random_below(rng, n - w + 1), random_below(rng, n - h + 1), 0, 0};
+            const Room box{room.x0, room.y0, room.x0 + w - 1, room.y0 + h - 1};
+            bool clear = true;
+            for (int c : {keep_a, keep_b}) {
+                if (c % n >= box.x0 && c % n <= box.x1 && c / n >= box.y0 && c / n <= box.y1) {
+                    clear = false;
+                }
+            }
+            for (int o = 0; o < placed; o++) {
+                if (box.x0 <= rooms[o].x1 && rooms[o].x0 <= box.x1 && box.y0 <= rooms[o].y1 &&
+                    rooms[o].y0 <= box.y1) {
+                    clear = false;
+                }
+            }
+            if (clear && open_room(box.x0, box.y0, box.x1, box.y1, keep_a, keep_b)) {
+                rooms[placed++] = box;
+                break;
+            }
+        }
+    }
+    hang_pictures(rng);
+}
+
 void MazeMap::release() {
     std::vector<MazeTile>().swap(tiles_);
     std::vector<int>().swap(stack_);
+    std::vector<int>().swap(scratch_);
     std::vector<uint8_t>().swap(pictures_);
     std::vector<uint8_t>().swap(boundary_);
     size_ = 0;
@@ -624,13 +799,105 @@ void MazeWalker::reset(int cx, int cy, int heading, bool left_handed, uint32_t m
     duration_ms_ = 1;
     arrive_ms_ = 0;
     moves_ = 0;
+    recoveries_ = 0;
     stop_x_ = -1;
     stop_y_ = -1;
+    std::fill(seen_.begin(), seen_.end(), 0);
+    path_.clear();
+    path_pos_ = 0;
+}
+
+void MazeWalker::set_left_handed(bool left) {
+    left_handed_ = left;
+    std::fill(seen_.begin(), seen_.end(), 0);
+    path_.clear();
+    path_pos_ = 0;
+}
+
+void MazeWalker::release() {
+    free_vector(seen_);
+    free_vector(prev_);
+    free_vector(queue_);
+    free_vector(path_);
+    path_pos_ = 0;
+}
+
+int MazeWalker::track_state(const MazeMap& map) {
+    // Without a stop cell the walk has nowhere to get to, and circling is fine.
+    if (stop_x_ < 0) {
+        return -1;
+    }
+    const int n = map.cells();
+    const auto states = static_cast<size_t>(n) * static_cast<size_t>(n) * 4;
+    if (seen_.size() != states) {
+        seen_.assign(states, 0);
+        prev_.assign(states, -1);
+        queue_.reserve(states);
+        path_.reserve(states);
+    }
+    if (path_pos_ < path_.size()) {
+        return path_[path_pos_++];
+    }
+    if (!path_.empty()) {
+        // The recovery walk has reached the boundary wall: follow it from here.
+        path_.clear();
+        path_pos_ = 0;
+        std::fill(seen_.begin(), seen_.end(), 0);
+    }
+    const int s = (cy_ * n + cx_) * 4 + d_in_;
+    if (seen_[static_cast<size_t>(s)] == 0) {
+        seen_[static_cast<size_t>(s)] = 1;
+        return -1;
+    }
+
+    // A state seen before: the hand is on an island. Search the states breadth first for the
+    // nearest one whose hand-side wall is joined to the outer ring.
+    const int hand = left_handed_ ? 3 : 1;
+    std::fill(prev_.begin(), prev_.end(), -1);
+    queue_.clear();
+    queue_.push_back(static_cast<int16_t>(s));
+    prev_[static_cast<size_t>(s)] = static_cast<int16_t>(s);
+    int goal = -1;
+    for (size_t qi = 0; qi < queue_.size() && goal < 0; qi++) {
+        const int u = queue_[qi];
+        const int c = u / 4;
+        for (int e = 0; e < 4 && goal < 0; e++) {
+            if (!map.passage(c % n, c / n, e)) {
+                continue;
+            }
+            const int nc = (c / n + HEADING_DY[e]) * n + c % n + HEADING_DX[e];
+            const int v = nc * 4 + e;
+            if (prev_[static_cast<size_t>(v)] >= 0) {
+                continue;
+            }
+            prev_[static_cast<size_t>(v)] = static_cast<int16_t>(u);
+            queue_.push_back(static_cast<int16_t>(v));
+            const int side = (e + hand) & 3;
+            if (map.boundary_wall(2 * (nc % n) + 1 + HEADING_DX[side],
+                                  2 * (nc / n) + 1 + HEADING_DY[side])) {
+                goal = v;
+            }
+        }
+    }
+    std::fill(seen_.begin(), seen_.end(), 0);
+    if (goal < 0) {
+        seen_[static_cast<size_t>(s)] = 1;
+        return -1;
+    }
+    path_.clear();
+    for (int v = goal; v != s; v = prev_[static_cast<size_t>(v)]) {
+        path_.push_back(static_cast<uint8_t>(v & 3));
+    }
+    std::reverse(path_.begin(), path_.end());
+    recoveries_++;
+    path_pos_ = 1;
+    return path_[0];
 }
 
 void MazeWalker::plan_start(const MazeMap& map) {
     // Turn on the spot to the way out, then speed up to walking pace by the doorway.
-    d_out_ = next_heading(map, cx_, cy_, d_in_, left_handed_);
+    const int tracked = track_state(map);
+    d_out_ = tracked >= 0 ? tracked : next_heading(map, cx_, cy_, d_in_, left_handed_);
     const int diff = (d_out_ - d_in_ + 4) & 3;
     spin_quarters_ = diff == 3 ? -1 : diff == 2 ? (left_handed_ ? 2 : -2) : diff;
     kind_ = Segment::START;
@@ -641,7 +908,8 @@ void MazeWalker::plan_start(const MazeMap& map) {
 }
 
 void MazeWalker::plan_segment(const MazeMap& map) {
-    d_out_ = next_heading(map, cx_, cy_, d_in_, left_handed_);
+    const int tracked = track_state(map);
+    d_out_ = tracked >= 0 ? tracked : next_heading(map, cx_, cy_, d_in_, left_handed_);
     const int diff = (d_out_ - d_in_ + 4) & 3;
     ease_out_ = cx_ + HEADING_DX[d_out_] == stop_x_ && cy_ + HEADING_DY[d_out_] == stop_y_;
     progress_ms_ = 0;
@@ -1339,11 +1607,15 @@ void MazeSim::init(const FrameTarget& frame, const MazeArt& art, std::minstd_ran
     elapsed_ms_ = 0;
     new_maze(rng);
     mazes_ = 0;
+    exits_reached_ = 0;
+    abandoned_ = 0;
 }
 
 void MazeSim::clear() {
     renderer_.release();
     map_.release();
+    walker_.release();
+    toolhead_.release();
     free_vector(items_);
     free_vector(taken_);
     free_vector(dist_);
@@ -1353,9 +1625,10 @@ void MazeSim::clear() {
 }
 
 uint32_t MazeSim::step_bound() const {
-    // A hand on the wall of a perfect maze crosses each passage at most twice; every rock
-    // swaps hands and may start that tour again.
-    return 4u * CELLS * CELLS * (ROCK_COUNT + 1);
+    // Each hand (the first, and one more per rock) may lap an island until a state repeats,
+    // walk the shortest way off it and lap the boundary to the exit: each of the three at
+    // most once through all 4 * cells^2 states.
+    return (ROCK_COUNT + 1) * 12u * CELLS * CELLS;
 }
 
 float MazeSim::flip() const {
@@ -1416,6 +1689,8 @@ void MazeSim::new_maze(std::minstd_rand& rng) {
         }
     }
 
+    map_.open_up(start, exit, rng);
+
     items_.clear();
     taken_[static_cast<size_t>(start)] = 1;
     taken_[static_cast<size_t>(exit)] = 1;
@@ -1468,6 +1743,7 @@ void MazeSim::on_arrival(std::minstd_rand& rng) {
         }
     }
     if (walker_.moves() > step_bound()) {
+        abandoned_++;
         new_maze(rng);
     }
 }
@@ -1511,6 +1787,7 @@ void MazeSim::advance(uint32_t dt_ms, std::minstd_rand& rng) {
         if (event == WalkEvent::ARRIVED) {
             on_arrival(rng);
         } else if (event == WalkEvent::ENTERED && walker_.stopped()) {
+            exits_reached_++;
             exit_left_ms_ = EXIT_HOLD_MS;
         } else if (used == 0) {
             break;

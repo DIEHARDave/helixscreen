@@ -103,10 +103,26 @@ class MazeMap {
   public:
     /// Interior walls of a maze that get a picture, each with its own index.
     static constexpr int PICTURE_WALLS = 16;
+    /// open_up() opens a wall out of this share of the perfect maze's dead ends...
+    static constexpr float BRAID_SHARE = 0.5f;
+    /// ...then this many more walls between two cells...
+    static constexpr int EXTRA_OPENINGS = 6;
+    /// ...and carves this many rooms, or one more on a coin flip.
+    static constexpr int ROOMS_MIN = 2;
 
     /// Carves a perfect maze (no loops, every cell reachable) of `cells` x `cells` with a
     /// recursive backtracker, and hangs PICTURE_WALLS pictures on interior walls.
     void generate(int cells, std::minstd_rand& rng);
+
+    /**
+     * @brief Turns the perfect maze into one with loops and a few small rooms
+     *
+     * Opens walls out of dead ends ("braids" it), opens a few more at random, and carves
+     * 2x2, 2x3 or 3x2 rooms with every tile inside open. Cells `keep_a` and `keep_b`
+     * (cy * cells + cx) keep their walls, and any opening that would cut one of their walls
+     * off from the outer ring is undone, so a wall follower still passes them.
+     */
+    void open_up(int keep_a, int keep_b, std::minstd_rand& rng);
 
     /// Frees the tiles; the map is empty until the next generate().
     void release();
@@ -145,11 +161,22 @@ class MazeMap {
     void label_walls();
     /// Hangs every picture index 0..PICTURE_WALLS-1 the map lacks on a wall facing open floor.
     void hang_pictures(std::minstd_rand& rng);
+    /// True when every wall tile round cell `c` is a boundary wall.
+    bool walled_by_boundary(int c) const;
+    /// Opens the wall from cell `c` toward `heading` unless it is kept or the opening would
+    /// cut a kept cell's walls off the boundary; true when it opened.
+    bool open_wall(int c, int heading, int keep_a, int keep_b);
+    /// Opens every tile of the room of cells [cx0, cx1] x [cy0, cy1] unless that would cut a
+    /// kept cell's walls off the boundary; true when it opened.
+    bool open_room(int cx0, int cy0, int cx1, int cy1, int keep_a, int keep_b);
+    int cell_passages(int c) const;
 
     int size_ = 0;
     std::vector<MazeTile> tiles_;
     std::vector<uint8_t> pictures_;
     std::vector<uint8_t> boundary_;
+    /// Scratch while opening up: dead ends to braid, then a room's tiles to put back.
+    std::vector<int> scratch_;
     /// Cells still to backtrack from while carving, kept to reuse its allocation.
     std::vector<int> stack_;
 };
@@ -179,10 +206,15 @@ enum class WalkEvent : uint8_t {
  * @brief Walks the maze by keeping one hand on the wall, without stopping in the cells
  *
  * The walk runs doorway to doorway at a constant speed: straight through a cell, a quarter
- * arc round the inner corner where it turns, and only in a dead end in to the middle, round
- * on the spot and back out, the one place it faces a wall. Where to leave a cell is decided at
- * the doorway in: toward its hand when that side is open, else on, else away. The pose is a
- * function of the time fed in.
+ * arc round the inner corner where it turns, and only in a dead end (or to turn back) in to
+ * the middle, round on the spot and back out, the one place it faces a wall. Where to leave a
+ * cell is decided at the doorway in: toward its hand when that side is open, else on, else
+ * away. The pose is a function of the time fed in.
+ *
+ * In a maze with loops a hand can rest on an island and circle it for ever. While a stop cell
+ * is set the walker remembers each (cell, heading) it has entered since its hand last
+ * changed; entering one again means it is circling, so it walks the shortest way to a cell
+ * whose wall on its hand side is joined to the outer ring, and follows that wall instead.
  */
 class MazeWalker {
   public:
@@ -221,10 +253,8 @@ class MazeWalker {
     bool left_handed() const {
         return left_handed_;
     }
-    /// Swaps hands from the next doorway on.
-    void set_left_handed(bool left) {
-        left_handed_ = left;
-    }
+    /// Swaps hands from the next doorway on, and forgets the states it has seen.
+    void set_left_handed(bool left);
     /// True once the walk has stopped at the stop cell's doorway.
     bool stopped() const {
         return stopped_;
@@ -233,6 +263,12 @@ class MazeWalker {
     uint32_t moves() const {
         return moves_;
     }
+    /// Times since reset() the walk found itself circling and walked off to the boundary.
+    uint32_t recoveries() const {
+        return recoveries_;
+    }
+    /// Frees the circling memory; reset() and a walk size it again.
+    void release();
 
   private:
     enum class Segment : uint8_t { START, STRAIGHT, TURN, DEAD_END };
@@ -240,6 +276,9 @@ class MazeWalker {
     /// Plans the way through the cell just entered: the way out and how long it takes.
     void plan_segment(const MazeMap& map);
     void plan_start(const MazeMap& map);
+    /// Records the state just entered; the heading a recovery walk takes out of it, or -1 to
+    /// follow the wall.
+    int track_state(const MazeMap& map);
 
     int cx_ = 0;
     int cy_ = 0;
@@ -260,6 +299,16 @@ class MazeWalker {
     uint32_t duration_ms_ = 1;
     uint32_t arrive_ms_ = 0;
     uint32_t moves_ = 0;
+    uint32_t recoveries_ = 0;
+
+    // Per state (cell * 4 + heading in): entered since the hand last changed, and the search's
+    // predecessor. Sized from the map on first use and kept, so a frame never allocates.
+    std::vector<uint8_t> seen_;
+    std::vector<int16_t> prev_;
+    std::vector<int16_t> queue_;
+    /// Headings of the recovery walk under way, and the next one to take.
+    std::vector<uint8_t> path_;
+    size_t path_pos_ = 0;
 };
 
 enum class MazeItemKind : uint8_t { START, EXIT, LOGO, ROCK, TOOLHEAD };
@@ -479,7 +528,15 @@ class MazeSim {
     uint32_t mazes() const {
         return mazes_;
     }
-    /// Most cells one maze's walk may enter before the maze is replaced.
+    /// Walks that reached their exit since init().
+    uint32_t exits_reached() const {
+        return exits_reached_;
+    }
+    /// Mazes replaced since init() for running past step_bound().
+    uint32_t abandoned() const {
+        return abandoned_;
+    }
+    /// Most cell middles one maze's walk may pass before the maze is replaced.
     uint32_t step_bound() const;
     const MazeRenderer& renderer() const {
         return renderer_;
@@ -506,6 +563,8 @@ class MazeSim {
     uint32_t exit_left_ms_ = 0;
     uint32_t elapsed_ms_ = 0;
     uint32_t mazes_ = 0;
+    uint32_t exits_reached_ = 0;
+    uint32_t abandoned_ = 0;
 };
 
 } // namespace helix::ui

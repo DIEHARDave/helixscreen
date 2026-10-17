@@ -150,6 +150,50 @@ std::pair<int, int> dead_end(const MazeMap& map, int& heading) {
     return {0, 0};
 }
 
+/// room(15) with a 7 x 7 brick island in its middle (tiles 4..10): cells 2..4 square are
+/// inside it, and the ring of cells round it circles it.
+MazeMap island_room() {
+    const int size = 15;
+    std::vector<MazeTile> tiles(static_cast<size_t>(size * size), MazeTile::BRICK);
+    for (int y = 1; y < size - 1; y++) {
+        for (int x = 1; x < size - 1; x++) {
+            const bool island = x >= 4 && x <= 10 && y >= 4 && y <= 10;
+            tiles[static_cast<size_t>(y * size + x)] = island ? MazeTile::BRICK : MazeTile::OPEN;
+        }
+    }
+    MazeMap map;
+    map.set_tiles(size, tiles);
+    return map;
+}
+
+/// Advances in 50 ms steps until the walker stops or passes `limit` moves.
+void walk_to_stop(MazeWalker& walker, const MazeMap& map, uint32_t limit) {
+    while (!walker.stopped() && walker.moves() <= limit) {
+        WalkEvent event = WalkEvent::NONE;
+        walker.advance(map, 50, event);
+    }
+}
+
+/// A started scene's map with its start and exit cells, as cy * cells + cx.
+struct OpenedMaze {
+    MazeSim sim;
+    int start = -1;
+    int exit = -1;
+
+    explicit OpenedMaze(uint32_t seed) {
+        std::minstd_rand rng(seed);
+        Frame frame(8, 8, PixelFormat::XRGB8888);
+        sim.init(frame.target, MazeArt{}, rng, 4);
+        const int n = sim.map().cells();
+        start = sim.walker().cell_y() * n + sim.walker().cell_x();
+        for (const MazeItem& item : sim.items()) {
+            if (item.kind == MazeItemKind::EXIT) {
+                exit = static_cast<int>(item.y) / 2 * n + static_cast<int>(item.x) / 2;
+            }
+        }
+    }
+};
+
 /// Frame size and padding for the canary test: rows padded past their pixels with a known
 /// byte, and a guard past the last row.
 constexpr uint8_t CANARY = 0xA5;
@@ -298,6 +342,106 @@ TEST_CASE("set_tiles carries picture indices", "[screensaver][maze]") {
     CHECK(bare.picture_index(4, 6) == 0);
 }
 
+TEST_CASE("an opened maze keeps every cell, closes its outside and has loops",
+          "[screensaver][maze]") {
+    const int cells = MazeSim::CELLS * MazeSim::CELLS;
+    int extra_total = 0;
+    for (uint32_t seed = 1; seed <= 200; seed++) {
+        INFO("seed " << seed);
+        OpenedMaze m(seed);
+        const MazeMap& map = m.sim.map();
+        CHECK(reachable_cells(map) == cells);
+        for (int i = 0; i < map.size(); i++) {
+            CHECK(map.wall(i, 0));
+            CHECK(map.wall(i, map.size() - 1));
+            CHECK(map.wall(0, i));
+            CHECK(map.wall(map.size() - 1, i));
+        }
+        const int extra = open_edges(map) - (cells - 1);
+        CHECK(extra >= MazeMap::EXTRA_OPENINGS);
+        extra_total += extra;
+    }
+    CHECK(extra_total >= 10 * 200);
+}
+
+TEST_CASE("an opened maze has 2 or 3 rooms", "[screensaver][maze]") {
+    for (uint32_t seed = 1; seed <= 200; seed++) {
+        INFO("seed " << seed);
+        OpenedMaze m(seed);
+        const MazeMap& map = m.sim.map();
+        // A 2x2 room opens the one pillar inside it, a 2x3 room two; nothing else opens one.
+        int pillars = 0;
+        for (int y = 2; y < map.size() - 1; y += 2) {
+            for (int x = 2; x < map.size() - 1; x += 2) {
+                pillars += map.wall(x, y) ? 0 : 1;
+            }
+        }
+        CHECK(pillars >= 2);
+        CHECK(pillars <= 6);
+        int open_blocks = 0;
+        for (int cy = 0; cy + 1 < map.cells(); cy++) {
+            for (int cx = 0; cx + 1 < map.cells(); cx++) {
+                open_blocks += map.passage(cx, cy, 0) && map.passage(cx, cy, 1) &&
+                                       map.passage(cx + 1, cy + 1, 2) &&
+                                       map.passage(cx + 1, cy + 1, 3)
+                                   ? 1
+                                   : 0;
+            }
+        }
+        CHECK(open_blocks >= 2);
+    }
+}
+
+TEST_CASE("start and exit stay dead ends walled by the boundary", "[screensaver][maze]") {
+    for (uint32_t seed = 1; seed <= 200; seed++) {
+        INFO("seed " << seed);
+        OpenedMaze m(seed);
+        const MazeMap& map = m.sim.map();
+        const int n = map.cells();
+        REQUIRE(m.exit >= 0);
+        REQUIRE(m.start != m.exit);
+        for (int c : {m.start, m.exit}) {
+            CHECK(passages(map, c % n, c / n) == 1);
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    const int x = 2 * (c % n) + 1 + dx;
+                    const int y = 2 * (c / n) + 1 + dy;
+                    if (map.wall(x, y)) {
+                        CHECK(map.boundary_wall(x, y));
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("items still stand in distinct open cells of an opened maze", "[screensaver][maze]") {
+    for (uint32_t seed = 1; seed <= 200; seed++) {
+        INFO("seed " << seed);
+        OpenedMaze m(seed);
+        const MazeMap& map = m.sim.map();
+        const int n = map.cells();
+        std::vector<int> used(static_cast<size_t>(n * n), 0);
+        int counts[5] = {};
+        for (const MazeItem& item : m.sim.items()) {
+            counts[static_cast<int>(item.kind)]++;
+            CHECK_FALSE(map.wall(static_cast<int>(item.x), static_cast<int>(item.y)));
+            if (item.kind != MazeItemKind::LOGO && item.kind != MazeItemKind::ROCK) {
+                continue;
+            }
+            const int c = static_cast<int>(item.y) / 2 * n + static_cast<int>(item.x) / 2;
+            CHECK(c != m.start);
+            CHECK(c != m.exit);
+            CHECK(used[static_cast<size_t>(c)]++ == 0);
+        }
+        CHECK(counts[static_cast<int>(MazeItemKind::START)] == 1);
+        CHECK(counts[static_cast<int>(MazeItemKind::EXIT)] == 1);
+        CHECK(counts[static_cast<int>(MazeItemKind::LOGO)] == MazeSim::LOGO_COUNT);
+        CHECK(counts[static_cast<int>(MazeItemKind::ROCK)] == MazeSim::ROCK_COUNT);
+        CHECK(counts[static_cast<int>(MazeItemKind::TOOLHEAD)] == 1);
+    }
+}
+
 TEST_CASE("the wall follower passes every cell of a perfect maze within the step bound",
           "[screensaver][maze]") {
     const uint32_t bound = 4u * MazeSim::CELLS * MazeSim::CELLS;
@@ -311,6 +455,110 @@ TEST_CASE("the wall follower passes every cell of a perfect maze within the step
             INFO("seed " << seed << (left ? " left" : " right"));
             CHECK(walk_all(walker, map, bound) > 0);
         }
+    }
+}
+
+TEST_CASE("a walker latched onto an island walks off it and reaches the exit",
+          "[screensaver][maze]") {
+    const MazeMap map = island_room();
+    MazeWalker w;
+    // Right hand on the island's west face, heading north.
+    w.reset(1, 3, 3, false);
+    w.set_stop_cell(0, 0);
+    walk_to_stop(w, map, 12 * 49);
+    CHECK(w.stopped());
+    CHECK(w.recoveries() == 1);
+}
+
+TEST_CASE("a hand swap forgets the states seen", "[screensaver][maze]") {
+    const MazeMap map = island_room();
+    MazeWalker w;
+    w.reset(1, 3, 3, false);
+    w.set_stop_cell(0, 0);
+    walk_to_stop(w, map, 5);
+    REQUIRE(w.recoveries() == 0);
+    w.set_left_handed(true);
+    walk_to_stop(w, map, 12 * 49);
+    CHECK(w.stopped());
+    CHECK(w.cell_x() == 0);
+    CHECK(w.cell_y() == 0);
+    CHECK(w.recoveries() <= 1);
+}
+
+TEST_CASE("a walker never recovers on a perfect maze", "[screensaver][maze]") {
+    for (uint32_t seed = 1; seed <= 50; seed++) {
+        std::minstd_rand rng(seed);
+        MazeMap map;
+        map.generate(MazeSim::CELLS, rng);
+        int heading = 0;
+        const auto [sx, sy] = dead_end(map, heading);
+        // The farthest cell from the start.
+        const int n = map.cells();
+        std::vector<int> dist(static_cast<size_t>(n * n), -1);
+        std::deque<int> todo{sy * n + sx};
+        dist[static_cast<size_t>(sy * n + sx)] = 0;
+        int far = sy * n + sx;
+        while (!todo.empty()) {
+            const int c = todo.front();
+            todo.pop_front();
+            far = dist[static_cast<size_t>(c)] > dist[static_cast<size_t>(far)] ? c : far;
+            for (int d = 0; d < 4; d++) {
+                const int next =
+                    (c / n + helix::ui::HEADING_DY[d]) * n + c % n + helix::ui::HEADING_DX[d];
+                if (map.passage(c % n, c / n, d) && dist[static_cast<size_t>(next)] < 0) {
+                    dist[static_cast<size_t>(next)] = dist[static_cast<size_t>(c)] + 1;
+                    todo.push_back(next);
+                }
+            }
+        }
+        for (bool left : {false, true}) {
+            INFO("seed " << seed << (left ? " left" : " right"));
+            MazeWalker w;
+            w.reset(sx, sy, heading, left);
+            w.set_stop_cell(far % n, far / n);
+            walk_to_stop(w, map, 4u * MazeSim::CELLS * MazeSim::CELLS);
+            CHECK(w.stopped());
+            CHECK(w.recoveries() == 0);
+        }
+    }
+}
+
+TEST_CASE("every opened maze reaches its exit, rocks and all", "[screensaver][maze]") {
+    for (uint32_t seed = 1; seed <= 100; seed++) {
+        INFO("seed " << seed);
+        std::minstd_rand rng(seed);
+        MazeSim sim;
+        Frame frame(16, 12, PixelFormat::XRGB8888);
+        sim.init(frame.target, MazeArt{}, rng, 4);
+        std::vector<DirtyRect> dirty;
+        for (int i = 0; i < 60000 && sim.exits_reached() == 0 && sim.abandoned() == 0; i++) {
+            sim.step(100, frame.target, rng, dirty);
+        }
+        CHECK(sim.exits_reached() == 1);
+        CHECK(sim.abandoned() == 0);
+        CHECK(sim.walker().moves() <= sim.step_bound());
+    }
+}
+
+TEST_CASE("extra hand swaps still reach the exit", "[screensaver][maze]") {
+    for (uint32_t seed = 1; seed <= 100; seed++) {
+        INFO("seed " << seed);
+        OpenedMaze m(seed);
+        const MazeMap& map = m.sim.map();
+        const int n = map.cells();
+        int heading = 0;
+        while (!map.passage(m.start % n, m.start / n, heading)) {
+            heading++;
+        }
+        MazeWalker w;
+        w.reset(m.start % n, m.start / n, heading, false);
+        w.set_stop_cell(m.exit % n, m.exit / n);
+        for (uint32_t swap : {17u, 34u, 51u}) {
+            walk_to_stop(w, map, swap - 1);
+            w.set_left_handed(!w.left_handed());
+        }
+        walk_to_stop(w, map, 4u * 12u * 144u);
+        CHECK(w.stopped());
     }
 }
 
