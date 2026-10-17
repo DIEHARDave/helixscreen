@@ -134,6 +134,13 @@ struct SwatchPaint {
 /// reads the live theme.
 void draw_swatch(lv_layer_t* layer, const lv_area_t& area, const SwatchPaint& paint);
 
+/// The surface texture of @p finish over @p area rounded by @p radius: the silk
+/// highlight, marble speckle or sparkle glints (matte and plain add none; matte
+/// is a colour, swatch_matte_color()). Nothing below SWATCH_FINISH_MIN_PX.
+/// Illustrations lay it over the filament they draw themselves.
+void draw_swatch_finish(lv_layer_t* layer, const lv_area_t& area, int32_t radius,
+                        SwatchFinish finish, lv_opa_t opa = LV_OPA_COVER);
+
 /// The paint for a spool colour: its multi-colour list when it has two or more
 /// parseable entries, else @p rgb.
 SwatchPaint swatch_paint_for(uint32_t rgb, const std::string& multi_color_hexes,

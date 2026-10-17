@@ -60,9 +60,26 @@ void ui_spool_canvas_invalidate_cache(void);
 #ifdef __cplusplus
 }
 
+#include "ui_swatch.h"
+
 #include "filament_tube_stroker.h"
 
+#include <string>
+
 namespace helix::ui {
+
+/**
+ * @brief Paint the spool's filament: @p rgb, split into @p multi_color_hexes'
+ *        colours when it lists two or more, in @p finish.
+ *
+ * The split, the matte colour and the silk, marble and sparkle textures are
+ * the swatch painter's (ui_swatch.h), so a spool and its swatch agree.
+ */
+void spool_canvas_set_filament(lv_obj_t* canvas, uint32_t rgb, const std::string& multi_color_hexes,
+                               SwatchFinish finish);
+
+/// spool_canvas_set_filament() from a slot's colour, multi-colour list and finish.
+void spool_canvas_set_filament(lv_obj_t* canvas, const SlotInfo& slot);
 
 /**
  * @brief Create a glow layer: an image the caller places behind a spool,

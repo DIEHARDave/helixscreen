@@ -7,6 +7,7 @@
 #include "ui_icon_codepoints.h"
 #include "ui_observer_guard.h"
 #include "ui_spool_canvas.h"
+#include "ui_swatch.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -258,16 +259,19 @@ static SpoolVisual create_spool_visual(lv_obj_t* container, int32_t spool_size) 
     return sv;
 }
 
-/// Update spool color (3D canvas or flat color_swatch + darkened outer flange)
-static void spool_visual_set_color(const SpoolVisual& sv, lv_color_t color) {
+/// Update the spool's filament (3D canvas, or the flat filament disc + darkened
+/// outer flange): its colour, multi-colour split and finish, as every swatch
+/// paints them.
+static void spool_visual_set_color(const SpoolVisual& sv, uint32_t rgb,
+                                   const std::string& multi_color_hexes,
+                                   helix::ui::SwatchFinish finish) {
     if (sv.use_3d) {
         if (sv.canvas)
-            ui_spool_canvas_set_color(sv.canvas, color);
+            helix::ui::spool_canvas_set_filament(sv.canvas, rgb, multi_color_hexes, finish);
     } else if (sv.color_swatch) {
-        lv_obj_set_style_bg_color(sv.color_swatch, color, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(sv.color_swatch, LV_OPA_COVER, LV_PART_MAIN);
+        helix::ui::apply_swatch_color(sv.color_swatch, rgb, multi_color_hexes, finish);
         if (sv.spool_outer)
-            lv_obj_set_style_bg_color(sv.spool_outer, ams_draw::darken_color(color, 50),
+            lv_obj_set_style_bg_color(sv.spool_outer, ams_draw::darken_color(lv_color_hex(rgb), 50),
                                       LV_PART_MAIN);
     }
 }
@@ -510,7 +514,16 @@ static void apply_color(LaneSpoolData* d, int color_int) {
     if (!d)
         return;
     d->color_int = static_cast<uint32_t>(color_int);
-    spool_visual_set_color(d->sv, lv_color_hex(d->color_int));
+    // The colour subject carries the primary colour; the split and finish ride
+    // on the slot it names.
+    std::string multi;
+    helix::ui::SwatchFinish finish = helix::ui::SwatchFinish::Plain;
+    if (AmsBackend* backend = AmsState::instance().get_backend(d->backend_index)) {
+        const SlotInfo slot = backend->get_slot_info(d->slot_index);
+        multi = slot.multi_color_hexes;
+        finish = helix::ui::swatch_finish_of(slot);
+    }
+    spool_visual_set_color(d->sv, d->color_int, multi, finish);
 }
 
 /**

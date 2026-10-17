@@ -691,25 +691,30 @@ void draw_swatch(lv_layer_t* layer, const lv_area_t& area, const SwatchPaint& pa
         }
     }
 
-    switch (finish) {
-    case SwatchFinish::Silk:
-        draw_silk(layer, area, paint.radius, paint.opa);
-        break;
-    case SwatchFinish::Marble:
-        draw_marble(layer, area, paint.radius, paint.opa);
-        break;
-    case SwatchFinish::Sparkle:
-        draw_sparkle(layer, area, paint.radius, paint.opa);
-        break;
-    case SwatchFinish::Matte:
-    case SwatchFinish::Plain:
-        break;
-    }
+    draw_swatch_finish(layer, area, paint.radius, finish, paint.opa);
 
     if (paint.edge && !paint.gradient &&
         swatch_colors_need_edge(colors, {rgb_of(theme_manager_get_color("screen_bg")),
                                          rgb_of(theme_manager_get_color("elevated_bg"))})) {
         draw_edge(layer, area, paint.radius, paint.opa);
+    }
+}
+
+void draw_swatch_finish(lv_layer_t* layer, const lv_area_t& area, int32_t radius,
+                        SwatchFinish finish, lv_opa_t opa) {
+    switch (swatch_effective_finish(finish, lv_area_get_width(&area), lv_area_get_height(&area))) {
+    case SwatchFinish::Silk:
+        draw_silk(layer, area, radius, opa);
+        break;
+    case SwatchFinish::Marble:
+        draw_marble(layer, area, radius, opa);
+        break;
+    case SwatchFinish::Sparkle:
+        draw_sparkle(layer, area, radius, opa);
+        break;
+    case SwatchFinish::Matte:
+    case SwatchFinish::Plain:
+        break;
     }
 }
 
