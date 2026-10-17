@@ -53,6 +53,29 @@ ClockDateText clock_date_text(const ClockDate& date);
 /// again every frame.
 bool clock_text_same(const ClockReading& a, const ClockReading& b);
 
+/// The two lines a clock face shows under its time, and its AM/PM: the print's ETA and time
+/// left while a print is on the readout, else the date and weekday.
+struct ClockLines {
+    std::string first;
+    std::string second;
+    std::string meridiem;
+};
+ClockLines clock_lines(const ClockReading& reading);
+
+/// clock_lines() for the last reading asked about, built again only when clock_text_same()
+/// says the text changed.
+class ClockTextCache {
+  public:
+    const ClockLines& get(const ClockReading& reading);
+    /// Forgets the text and frees its strings.
+    void reset();
+
+  private:
+    ClockLines lines_;
+    ClockReading built_for_;
+    bool built_ = false;
+};
+
 /// The C library's AM/PM for `meridiem`, empty for NONE.
 std::string clock_meridiem_text(ClockMeridiem meridiem);
 
@@ -86,6 +109,11 @@ class SaverLabel {
     void set_halo(const SaverLabelHalo& halo) {
         halo_ = halo;
     }
+
+    /// True when draw() would draw: the text or its box changed, or a box in `under` crosses
+    /// the box (with the halo's reach).
+    bool needs_draw(const std::string& text, const DirtyRect& box,
+                    const std::vector<DirtyRect>& under) const;
 
     /// Draws `text` into `box` if needed and adds `box` to `dirty` when it does. Returns true
     /// when it drew.

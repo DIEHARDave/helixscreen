@@ -5,16 +5,26 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/refresh_period_hold_test_access.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
+#include "lv_draw_buf_guard.h"
+#include "printer_image_manager.h"
 #include "refresh_period_hold.h"
 #include "screensaver_base.h"
 #include "screensaver_buffer.h"
 #include "screensaver_canvas.h"
+#include "screensaver_clock.h"
+#include "screensaver_clock_reading.h"
+#include "screensaver_clock_saver.h"
 #include "screensaver_fast_math.h"
+#include "screensaver_flip_clock_sim.h"
 #include "screensaver_frame.h"
 #include "screensaver_frame_timer.h"
+#include "screensaver_image.h"
 #include "screensaver_motion.h"
 #include "screensaver_overlay.h"
+#include "screensaver_pixel_writer.h"
+#include "screensaver_sim_saver.h"
 #include "screensaver_vec.h"
 
 #include <algorithm>
@@ -29,6 +39,7 @@
 #include "../catch_amalgamated.hpp"
 
 using helix::ui::DirtyRect;
+using helix::ui::PixelWriter;
 using helix::ui::SAVER_MAX_DIRTY_AREAS;
 using helix::ui::SaverCanvas;
 using helix::ui::SaverFrameTimer;
@@ -889,6 +900,487 @@ TEST_CASE("SAVER_PI and SAVER_TWO_PI are every saver's float pi and 2 pi",
     CHECK(screensaver_same_bits(helix::ui::SAVER_PI, static_cast<float>(M_PI)));
     CHECK(screensaver_same_bits(helix::ui::SAVER_TWO_PI, 6.28318530717958f));
     CHECK(screensaver_same_bits(helix::ui::SAVER_TWO_PI, 2.0f * 3.14159265f));
+}
+
+// ============================================================================
+// SimSaver, ClockSaver and the clock text decisions
+// ============================================================================
+
+namespace {
+
+struct ProbeLevel {
+    uint32_t period_ms;
+};
+constexpr ProbeLevel PROBE_SIM_LEVELS[] = {{helix::ui::SAVER_FAST_PERIOD}, {33}, {50}};
+
+/// What the probe sims were asked to do, in order.
+std::vector<std::string>& sim_calls() {
+    static std::vector<std::string> calls;
+    return calls;
+}
+
+/// A sim on the plain contract that records each call and holds a buffer while it runs.
+struct ProbeSim {
+    static constexpr const auto& LEVELS = PROBE_SIM_LEVELS;
+
+    void init(helix::ui::FrameTarget& frame, std::minstd_rand& rng, size_t level) {
+        sim_calls().push_back("init " + std::to_string(level));
+        width = frame.w;
+        first_random = rng();
+        held.resize(256);
+    }
+    void step(uint32_t dt_ms, helix::ui::FrameTarget& frame, std::minstd_rand& /*rng*/,
+              std::vector<DirtyRect>& dirty) {
+        sim_calls().push_back("step " + std::to_string(dt_ms));
+        helix::ui::PixelWriter(frame).put(2, 3, {200, 10, 10});
+        dirty.push_back({2, 3, 2, 3});
+    }
+    void request_level(size_t level) {
+        sim_calls().push_back("level " + std::to_string(level));
+    }
+    void clear() {
+        sim_calls().push_back("clear");
+        helix::ui::release_buffer(held);
+    }
+    size_t heap_bytes() const {
+        return helix::ui::buffer_bytes(held);
+    }
+
+    uint32_t width = 0;
+    uint32_t first_random = 0;
+    std::vector<uint8_t> held;
+};
+
+class ProbeSimSaver : public helix::ui::SimSaver<ProbeSim> {
+  public:
+    ScreensaverType type() const override {
+        return ScreensaverType::HYPERSPACE;
+    }
+
+  protected:
+    std::optional<lv_color_format_t> canvas_format() const override {
+        return helix::ui::SAVER_BUILD_CANVAS_FORMAT;
+    }
+};
+
+/// A clock sim: draws from the frame, the rng, the level and a clock reading.
+struct ProbeClockSim {
+    static constexpr const auto& LEVELS = PROBE_SIM_LEVELS;
+
+    void init(helix::ui::FrameTarget& /*frame*/, std::minstd_rand& /*rng*/, size_t level,
+              const helix::ui::ClockReading& reading) {
+        sim_calls().push_back("init " + std::to_string(level) + " at " +
+                              std::to_string(reading.time.minute));
+    }
+    void step(uint32_t dt_ms, helix::ui::FrameTarget& /*frame*/, std::minstd_rand& /*rng*/,
+              const helix::ui::ClockReading& reading, std::vector<DirtyRect>& dirty) {
+        sim_calls().push_back("step " + std::to_string(dt_ms) + " at " +
+                              std::to_string(reading.time.minute));
+        dirty.push_back({0, 0, 9, 9});
+        dirty.push_back({20, 20, 29, 29});
+    }
+    void request_level(size_t /*level*/) {}
+    void clear() {
+        sim_calls().push_back("clear");
+    }
+};
+
+class ProbeClockSaver : public helix::ui::ClockSaver<ProbeClockSim> {
+  public:
+    ScreensaverType type() const override {
+        return ScreensaverType::AQUA;
+    }
+    std::vector<std::vector<DirtyRect>> unders;
+    int resets = 0;
+    std::string first_line;
+
+  protected:
+    std::optional<lv_color_format_t> canvas_format() const override {
+        return helix::ui::LV_DRAW_CANVAS_FORMAT;
+    }
+    void draw_clock_text(const std::vector<DirtyRect>& under,
+                         std::vector<DirtyRect>& dirty) override {
+        unders.push_back(under);
+        first_line = clock_lines_now().first;
+        dirty.push_back({40, 40, 41, 41});
+    }
+    void reset_clock_text() override {
+        resets++;
+    }
+};
+
+/// A clock sim with no rng that draws a flip-clock face.
+struct ProbeFaceSim {
+    static constexpr const auto& LEVELS = PROBE_SIM_LEVELS;
+
+    void init(helix::ui::FrameTarget& /*frame*/, size_t /*level*/,
+              const helix::ui::FlipFace& face) {
+        shown = face;
+    }
+    void step(uint32_t /*dt_ms*/, helix::ui::FrameTarget& /*frame*/,
+              const helix::ui::FlipFace& face, std::vector<DirtyRect>& /*dirty*/) {
+        shown = face;
+    }
+    void request_level(size_t /*level*/) {}
+    void clear() {}
+
+    helix::ui::FlipFace shown;
+};
+
+class ProbeFaceSaver : public helix::ui::ClockSaver<ProbeFaceSim, helix::ui::FlipClockState> {
+  public:
+    ScreensaverType type() const override {
+        return ScreensaverType::FLIP_CLOCK;
+    }
+
+  protected:
+    std::optional<lv_color_format_t> canvas_format() const override {
+        return helix::ui::LV_DRAW_CANVAS_FORMAT;
+    }
+    void draw_clock_text(const std::vector<DirtyRect>& /*under*/,
+                         std::vector<DirtyRect>& /*dirty*/) override {}
+    void reset_clock_text() override {}
+};
+
+/// A sim without an rng that reads one extra value each call.
+struct ProbeNoRngSim {
+    void init(helix::ui::FrameTarget& /*frame*/, size_t level, int extra) {
+        got = static_cast<int>(level) * 100 + extra;
+    }
+    void step(uint32_t dt_ms, helix::ui::FrameTarget& /*frame*/, int extra,
+              std::vector<DirtyRect>& dirty) {
+        got = static_cast<int>(dt_ms) + extra;
+        dirty.push_back({0, 0, 0, 0});
+    }
+    int got = 0;
+};
+
+helix::ui::ClockInput input_at(int32_t seconds_of_day) {
+    helix::ui::ClockInput in;
+    in.seconds_of_day = seconds_of_day;
+    in.date = {2026, 10, 16, 5};
+    return in;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "a sim saver drives its sim through start, frames, levels and stop",
+                 "[screensaver][screensaver_parts]") {
+    ProbeSimSaver ss;
+    ScreensaverStopOnExit<ProbeSimSaver> stop_on_exit{ss};
+    CHECK(ss.level_count() == std::size(PROBE_SIM_LEVELS));
+    sim_calls().clear();
+    SaverTestAccess::set_fixed_seed(ss, 9);
+    ss.set_start_level(1);
+    ss.start();
+    REQUIRE(ss.is_active());
+    // Cleared before init, so a sim starts from nothing however the last run ended.
+    CHECK(sim_calls() == std::vector<std::string>{"clear", "init 1"});
+    CHECK(ss.sim().width ==
+          static_cast<uint32_t>(lv_display_get_horizontal_resolution(lv_display_get_default())));
+    std::minstd_rand seeded(9);
+    CHECK(ss.sim().first_random == seeded());
+    CHECK(SaverTestAccess::timer(ss)->period == 33);
+    CHECK(ss.sim().heap_bytes() > 0);
+
+    sim_calls().clear();
+    advance_saver(ss, 33);
+    CHECK(sim_calls() == std::vector<std::string>{"step 33"});
+    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
+    CHECK(PixelWriter(helix::test::frame_of(buf)).get(2, 3) == helix::ui::Rgb{200, 10, 10});
+
+    sim_calls().clear();
+    ss.request_level(7);
+    CHECK(ss.level() == 2);
+    CHECK(sim_calls() == std::vector<std::string>{"level 2"});
+    CHECK(SaverTestAccess::timer(ss)->period == 50);
+
+    sim_calls().clear();
+    ss.stop();
+    CHECK(sim_calls() == std::vector<std::string>{"clear"});
+    CHECK(ss.sim().heap_bytes() == 0);
+    CHECK(&SimSaverTestAccess::sim(ss) == &ss.sim());
+}
+
+TEST_CASE("ladder_period reads a table's rows and clamps to its last rung",
+          "[screensaver][screensaver_parts]") {
+    CHECK(helix::ui::ladder_period(PROBE_SIM_LEVELS, 0) == helix::ui::SAVER_FAST_PERIOD);
+    CHECK(helix::ui::ladder_period(PROBE_SIM_LEVELS, 1) == 33);
+    CHECK(helix::ui::ladder_period(PROBE_SIM_LEVELS, 2) == 50);
+    CHECK(helix::ui::ladder_period(PROBE_SIM_LEVELS, 99) == 50);
+}
+
+TEST_CASE("a sim that draws no random numbers is driven without an rng",
+          "[screensaver][screensaver_parts]") {
+    static_assert(helix::ui::sim_inits_with_v<ProbeNoRngSim, int>);
+    static_assert(helix::ui::sim_steps_with_v<ProbeNoRngSim, int>);
+    static_assert(!helix::ui::sim_inits_with_v<ProbeNoRngSim>);
+    static_assert(helix::ui::sim_inits_with_v<ProbeSim>);
+    static_assert(helix::ui::sim_has_heap_bytes_v<ProbeSim>);
+    static_assert(!helix::ui::sim_has_heap_bytes_v<ProbeNoRngSim>);
+    helix::test::SimRun<ProbeNoRngSim> run(1, 8, 8);
+    run.init(2, 7);
+    CHECK(run.sim.got == 207);
+    run.step(16, 5);
+    CHECK(run.sim.got == 21);
+    CHECK(run.dirty.size() == 1);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "a clock saver steps its clock from its source and redraws text over what changed",
+                 "[screensaver][screensaver_parts]") {
+    ProbeClockSaver ss;
+    ScreensaverStopOnExit<ProbeClockSaver> stop_on_exit{ss};
+    Screensaver& as_saver = ss;
+    CHECK(as_saver.clock_input_sink() == static_cast<helix::ui::ClockInputSink*>(&ss));
+    int32_t now = helix::test::hms(10, 8, 59);
+    ss.set_input_source([&now] { return input_at(now); });
+    sim_calls().clear();
+    ss.start();
+    REQUIRE(ss.is_active());
+    CHECK(sim_calls() == std::vector<std::string>{"clear", "init 0 at 8"});
+    CHECK(ss.resets == 1);
+    REQUIRE(ss.unders.size() == 1);
+    CHECK(ss.unders[0].empty());
+    CHECK_FALSE(ss.first_line.empty());
+    CHECK(ss.clock().reading().time.minute == 8);
+
+    now = helix::test::hms(10, 9, 0);
+    sim_calls().clear();
+    advance_saver(ss, 400);
+    CHECK(sim_calls() == std::vector<std::string>{"step 400 at 9"});
+    REQUIRE(ss.unders.size() == 2);
+    // The text sees exactly what the sim repainted, not its own boxes.
+    CHECK(ss.unders[1] == std::vector<DirtyRect>{{0, 0, 9, 9}, {20, 20, 29, 29}});
+
+    sim_calls().clear();
+    ss.stop();
+    CHECK(sim_calls() == std::vector<std::string>{"clear"});
+    CHECK(ss.resets == 2);
+}
+
+TEST_CASE("a saver with no clock has no clock input", "[screensaver][screensaver_parts]") {
+    ProbeSimSaver ss;
+    Screensaver& as_saver = ss;
+    CHECK(as_saver.clock_input_sink() == nullptr);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a clock saver hands a face-drawing sim its state's face",
+                 "[screensaver][screensaver_parts]") {
+    ProbeFaceSaver ss;
+    ScreensaverStopOnExit<ProbeFaceSaver> stop_on_exit{ss};
+    ss.set_input_source([] { return input_at(helix::test::hms(14, 25)); });
+    ss.start();
+    REQUIRE(ss.is_active());
+    advance_saver(ss, 16);
+    CHECK(SimSaverTestAccess::sim(ss).shown.cards == ss.clock().face().cards);
+}
+
+TEST_CASE("clock drift moves as clock_drift_at says and reports when it moved",
+          "[screensaver][screensaver_parts]") {
+    const DirtyRect bounds{200, 150, 599, 329};
+    helix::ui::ClockDrift drift;
+    drift.set_range(bounds, 800, 480);
+    int32_t max_dx = 0;
+    int32_t max_dy = 0;
+    helix::ui::clock_drift_range(bounds, 800, 480, max_dx, max_dy);
+    CHECK(drift.max_dx == max_dx);
+    CHECK(drift.max_dy == max_dy);
+    REQUIRE(max_dx > 0);
+
+    // The aqua and high fly blocks, run beside it.
+    uint32_t elapsed = 0;
+    int32_t drift_x = 0;
+    int32_t drift_y = 0;
+    int moves = 0;
+    for (int frame = 0; frame < 4000; frame++) {
+        const uint32_t dt = helix::test::UNEVEN_FRAME_MS[frame % 5] * 300;
+        elapsed += dt;
+        int32_t dx = 0;
+        int32_t dy = 0;
+        helix::ui::clock_drift_at(elapsed, max_dx, max_dy, dx, dy);
+        const bool moved = dx != drift_x || dy != drift_y;
+        drift_x = dx;
+        drift_y = dy;
+        REQUIRE(drift.step(dt) == moved);
+        REQUIRE(drift.dx == drift_x);
+        REQUIRE(drift.dy == drift_y);
+        REQUIRE(drift.elapsed_ms == elapsed);
+        moves += moved;
+    }
+    CHECK(moves > 10);
+    drift.reset();
+    CHECK(drift.elapsed_ms == 0);
+    CHECK(drift.dx == 0);
+    CHECK(drift.max_dx == 0);
+}
+
+TEST_CASE("clock faces are the same when time and format match, and progress when shown",
+          "[screensaver][screensaver_parts]") {
+    using helix::ui::ClockMode;
+    using helix::ui::ClockReading;
+    const ClockReading a = helix::test::reading_at(helix::test::hms(9, 41));
+    ClockReading b = a;
+    CHECK(helix::ui::clock_face_same(a, b, true));
+    b.progress_pct = 40;
+    CHECK(helix::ui::clock_face_same(a, b, false));
+    CHECK_FALSE(helix::ui::clock_face_same(a, b, true));
+    b = a;
+    b.mode = ClockMode::COUNTDOWN;
+    CHECK(helix::ui::clock_face_same(a, b, false));
+    CHECK_FALSE(helix::ui::clock_face_same(a, b, true));
+    b = helix::test::reading_at(helix::test::hms(9, 42));
+    CHECK_FALSE(helix::ui::clock_face_same(a, b, false));
+    b = helix::test::reading_at(helix::test::hms(9, 41), true);
+    CHECK_FALSE(helix::ui::clock_face_same(a, b, false));
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "clock lines read the print while one is on the readout and the date otherwise",
+                 "[screensaver][screensaver_parts]") {
+    using helix::ui::ClockMode;
+    using helix::ui::ClockReading;
+    ClockReading clock = helix::test::reading_at(helix::test::hms(21, 41));
+    clock.date = {2019, 10, 21, 1};
+    const helix::ui::ClockLines day = helix::ui::clock_lines(clock);
+    const helix::ui::ClockDateText date = helix::ui::clock_date_text(clock.date);
+    CHECK(day.first == date.date);
+    CHECK(day.second == date.weekday);
+    CHECK(day.meridiem == helix::ui::clock_meridiem_text(clock.time.meridiem));
+    CHECK_FALSE(day.meridiem.empty());
+
+    ClockReading print = clock;
+    print.mode = ClockMode::COUNTDOWN;
+    print.countdown_s = helix::test::hms(1, 12);
+    print.eta_minute_of_day = 22 * 60 + 53;
+    const helix::ui::ClockLines eta = helix::ui::clock_lines(print);
+    const helix::ui::ClockPrintText text = helix::ui::clock_print_text(print);
+    CHECK(eta.first == text.eta);
+    CHECK(eta.second == text.left);
+
+    helix::ui::ClockTextCache cache;
+    const helix::ui::ClockLines* first = &cache.get(clock);
+    CHECK(first->first == day.first);
+    // A second later the text is the same, so nothing is rebuilt.
+    ClockReading later = clock;
+    later.time.second = 7;
+    CHECK(cache.get(later).first == day.first);
+    CHECK(cache.get(print).first == text.eta);
+    cache.reset();
+    CHECK(cache.get(clock).second == day.second);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "a label needs drawing when its text or box changes or a repaint crosses it",
+                 "[screensaver][screensaver_parts]") {
+    SaverCanvas canvas;
+    REQUIRE(canvas.create(lv_screen_active(), 200, 80, helix::ui::LV_DRAW_CANVAS_FORMAT));
+    helix::ui::SaverLabel label;
+    const DirtyRect box{20, 20, 119, 49};
+    CHECK(label.needs_draw("12:34", box, {}));
+    std::vector<DirtyRect> dirty;
+    REQUIRE(label.draw(canvas, "12:34", box, {255, 255, 255}, LV_OPA_COVER, LV_TEXT_ALIGN_LEFT, {},
+                       dirty));
+    CHECK_FALSE(label.needs_draw("12:34", box, {}));
+    CHECK_FALSE(label.needs_draw("12:34", box, {{150, 0, 160, 10}}));
+    CHECK(label.needs_draw("12:34", box, {{100, 40, 130, 60}}));
+    CHECK(label.needs_draw("12:35", box, {}));
+    CHECK(label.needs_draw("12:34", {21, 20, 120, 49}, {}));
+    // A halo reaches past the box, so a repaint beside it counts.
+    label.set_halo({{0, 0, 0}, LV_OPA_50, 4});
+    CHECK(label.needs_draw("12:34", box, {{122, 30, 124, 32}}));
+    CHECK_FALSE(label.needs_draw("12:34", box, {{125, 30, 127, 32}}));
+    dirty.clear();
+    CHECK_FALSE(label.draw(canvas, "12:34", box, {255, 255, 255}, LV_OPA_COVER, LV_TEXT_ALIGN_LEFT,
+                           {{150, 0, 160, 10}}, dirty));
+    CHECK(dirty.empty());
+    canvas.release();
+}
+
+// ============================================================================
+// The sim test kit
+// ============================================================================
+
+TEST_CASE("a test frame's padding check sees one stray byte", "[screensaver][screensaver_parts]") {
+    for (const auto format : {helix::ui::PixelFormat::XRGB8888, helix::ui::PixelFormat::RGB565}) {
+        helix::test::TestFrame frame(9, 5, format);
+        CHECK(frame.padding_intact());
+        helix::ui::PixelWriter(frame.target).fill({255, 255, 255});
+        CHECK(frame.padding_intact());
+        const uint32_t row = 9 * helix::ui::pixel_bytes(format);
+        frame.bytes[static_cast<size_t>(2) * frame.target.stride + row + 3] ^= 1;
+        CHECK_FALSE(frame.padding_intact());
+        frame.bytes[static_cast<size_t>(2) * frame.target.stride + row + 3] ^= 1;
+        REQUIRE(frame.padding_intact());
+        frame.bytes[static_cast<size_t>(5) * frame.target.stride] ^= 1;
+        CHECK_FALSE(frame.padding_intact());
+    }
+}
+
+TEST_CASE("a frame diff finds a changed pixel outside the reported boxes",
+          "[screensaver][screensaver_parts]") {
+    helix::test::TestFrame frame(16, 8, helix::ui::PixelFormat::RGB565);
+    const std::vector<uint8_t> before = frame.snapshot();
+    helix::ui::PixelWriter writer(frame.target);
+    writer.put(3, 3, {255, 0, 0});
+    writer.put(10, 6, {0, 255, 0});
+    const helix::test::FrameDiff missed = helix::test::diff_against(before, frame, {{0, 0, 4, 4}});
+    CHECK(missed.changed == 2);
+    CHECK(missed.uncovered == 1);
+    CHECK(missed.changed_box == DirtyRect{3, 3, 10, 6});
+    const helix::test::FrameDiff covered =
+        helix::test::diff_against(before, frame, {{0, 0, 4, 4}, {10, 6, 10, 6}});
+    CHECK(covered.uncovered == 0);
+    CHECK(helix::test::lit_pixels(frame.target) == 2);
+    CHECK(helix::test::count_pixels(frame.target, [](helix::ui::Rgb c) { return c.g > 0; }) == 1);
+}
+
+TEST_CASE("a frame hash covers every pixel and no padding, and opacity counts the X byte",
+          "[screensaver][screensaver_parts]") {
+    helix::test::TestFrame frame(6, 4, helix::ui::PixelFormat::XRGB8888);
+    CHECK(helix::test::non_opaque_pixels(frame.target) == 24);
+    helix::ui::PixelWriter(frame.target).fill({1, 2, 3});
+    CHECK(helix::test::non_opaque_pixels(frame.target) == 0);
+    const uint64_t hash = helix::test::frame_fnv1a(frame.target);
+    frame.bytes[6 * 4 + 1] ^= 0xFF;
+    CHECK(helix::test::frame_fnv1a(frame.target) == hash);
+    frame.bytes[frame.target.stride + 5] ^= 0xFF;
+    CHECK(helix::test::frame_fnv1a(frame.target) != hash);
+    // FNV-1a's published offset and prime: "a" hashes to 0xaf63dc4c8601ec8c.
+    const uint8_t a = 'a';
+    CHECK(helix::test::fnv1a(helix::test::FNV1A_OFFSET, &a, 1) == 0xaf63dc4c8601ec8cULL);
+}
+
+// ============================================================================
+// Saver images
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLTestFixture, "a saver decodes an image once into a buffer it owns",
+                 "[screensaver][screensaver_parts]") {
+    constexpr const char* LOGO = "A:assets/images/helix-icon-128.png";
+    lv_image_header_t header{};
+    REQUIRE(helix::ui::saver_image_info(LOGO, header));
+    CHECK(header.w == 128);
+    lv_draw_buf_t* logo = helix::ui::saver_decode_image(LOGO, "logo");
+    REQUIRE(logo != nullptr);
+    CHECK(logo->header.w == 128);
+    helix::safe_draw_buf_destroy(logo, "test");
+    CHECK(logo == nullptr);
+
+    CHECK_FALSE(helix::ui::saver_image_info("A:assets/images/no-such-image.png", header));
+    CHECK(helix::ui::saver_decode_image("A:assets/images/no-such-image.png", "missing",
+                                        spdlog::level::debug) == nullptr);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "the saver printer picture is the displayed printer image, never empty",
+                 "[screensaver][screensaver_parts]") {
+    for (const int32_t w : {480, 800, 1280}) {
+        const std::string path = helix::ui::saver_printer_image_path(w);
+        CHECK_FALSE(path.empty());
+        CHECK(path == helix::PrinterImageManager::instance().get_displayed_image_path(w));
+    }
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

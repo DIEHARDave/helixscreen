@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <ctime>
+#include <utility>
 
 namespace helix::ui {
 
@@ -116,6 +117,38 @@ bool clock_text_same(const ClockReading& a, const ClockReading& b) {
            a.date.weekday == b.date.weekday;
 }
 
+ClockLines clock_lines(const ClockReading& reading) {
+    ClockLines lines;
+    if (reading.mode != ClockMode::CLOCK) {
+        ClockPrintText print = clock_print_text(reading);
+        lines.first = std::move(print.eta);
+        lines.second = std::move(print.left);
+    } else {
+        ClockDateText date = clock_date_text(reading.date);
+        lines.first = std::move(date.date);
+        lines.second = std::move(date.weekday);
+    }
+    lines.meridiem = clock_meridiem_text(reading.time.meridiem);
+    return lines;
+}
+
+const ClockLines& ClockTextCache::get(const ClockReading& reading) {
+    if (!built_ || !clock_text_same(reading, built_for_)) {
+        lines_ = clock_lines(reading);
+        built_for_ = reading;
+        built_ = true;
+    }
+    return lines_;
+}
+
+void ClockTextCache::reset() {
+    std::string().swap(lines_.first);
+    std::string().swap(lines_.second);
+    std::string().swap(lines_.meridiem);
+    built_for_ = ClockReading{};
+    built_ = false;
+}
+
 std::string clock_meridiem_text(ClockMeridiem meridiem) {
     if (meridiem == ClockMeridiem::NONE) {
         return {};
@@ -142,14 +175,19 @@ const lv_font_t* clock_font_fitting(int32_t height) {
     return chosen;
 }
 
-bool SaverLabel::draw(SaverCanvas& canvas, const std::string& text, const DirtyRect& box, Rgb color,
-                      lv_opa_t opa, lv_text_align_t align, const std::vector<DirtyRect>& under,
-                      std::vector<DirtyRect>& dirty) {
+bool SaverLabel::needs_draw(const std::string& text, const DirtyRect& box,
+                            const std::vector<DirtyRect>& under) const {
     const int32_t reach = std::max<int32_t>(0, halo_.radius);
     const DirtyRect outer{box.x1 - reach, box.y1 - reach, box.x2 + reach, box.y2 + reach};
     const bool covered = std::any_of(under.begin(), under.end(),
                                      [&outer](const DirtyRect& r) { return r.intersects(outer); });
-    if (text == text_ && box == box_ && !covered) {
+    return text != text_ || !(box == box_) || covered;
+}
+
+bool SaverLabel::draw(SaverCanvas& canvas, const std::string& text, const DirtyRect& box, Rgb color,
+                      lv_opa_t opa, lv_text_align_t align, const std::vector<DirtyRect>& under,
+                      std::vector<DirtyRect>& dirty) {
+    if (!needs_draw(text, box, under)) {
         return false;
     }
     text_ = text;

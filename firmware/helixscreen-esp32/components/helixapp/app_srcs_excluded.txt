@@ -265,6 +265,7 @@ src/ui/screensaver_gate.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_heightfield.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_highfly.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_highfly_sim.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_image.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_level_store.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_manager.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_maze.cpp  # not in the v1 Core+AMS cut

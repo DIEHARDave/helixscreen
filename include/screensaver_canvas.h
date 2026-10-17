@@ -13,9 +13,29 @@
 #include <vector>
 
 namespace helix::ui {
-/// Canvas format for a saver that writes every pixel itself: the display's own depth.
+/**
+ * @brief Canvas format for a saver that writes every pixel itself: the display's own depth
+ *
+ * Opaque, so the full-screen canvas draws as a straight copy instead of an alpha blend.
+ * Production 32 bpp displays run ARGB8888 and copy an XRGB8888 image byte for byte, so every
+ * canvas pixel's X byte must be 0xFF or that pixel draws transparent ("The alpha trap" in
+ * docs/devel/GPU_ACCELERATION.md). PixelWriter writes every pixel with that byte set.
+ */
 inline constexpr lv_color_format_t SAVER_BUILD_CANVAS_FORMAT =
     LV_COLOR_DEPTH == 16 ? LV_COLOR_FORMAT_RGB565 : LV_COLOR_FORMAT_XRGB8888;
+
+/**
+ * @brief Canvas format for a saver that also draws with lv_draw_* (text, say)
+ *
+ * On aarch64, LVGL's NEON blends into an XRGB8888 destination write 0 into each pixel's 4th
+ * byte, and an XRGB8888 canvas is copied byte for byte into the ARGB8888 display, so those
+ * pixels would draw transparent. An ARGB8888 canvas keeps real alpha, and it is filled opaque
+ * before anything is drawn on it, so it still covers every pixel under the transparent overlay;
+ * PixelWriter's XRGB8888 writes are opaque ARGB8888 pixels. RGB565 has no 4th byte for a blend
+ * to zero, so a 16 bpp build takes the display's own format.
+ */
+inline constexpr lv_color_format_t LV_DRAW_CANVAS_FORMAT =
+    LV_COLOR_DEPTH == 16 ? LV_COLOR_FORMAT_RGB565 : LV_COLOR_FORMAT_ARGB8888;
 
 /// The SaverDepth bit this build draws at, for registry queries such as
 /// default_screensaver_type(). A 16 bpp build compiles only the savers carrying SAVER_DEPTH_16.
@@ -25,9 +45,6 @@ inline constexpr uint8_t SAVER_BUILD_DEPTH = LV_COLOR_DEPTH == 16 ? SAVER_DEPTH_
 constexpr PixelFormat pixel_format_for(lv_color_format_t cf) {
     return cf == LV_COLOR_FORMAT_RGB565 ? PixelFormat::RGB565 : PixelFormat::XRGB8888;
 }
-
-/// SaverDepth bit of this build's display.
-inline constexpr uint8_t BUILD_SAVER_DEPTH = LV_COLOR_DEPTH == 16 ? SAVER_DEPTH_16 : SAVER_DEPTH_32;
 
 /**
  * @brief A full-screen canvas a screensaver draws on

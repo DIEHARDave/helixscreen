@@ -1093,23 +1093,6 @@ constexpr uint32_t GLOBAL_PERIOD_MS = 40;
 // Unlike the 16 ms default, so the checks see the configured period reach each saver.
 constexpr uint32_t SAVER_PERIOD_MS = 20;
 
-/// Sets the global and screensaver refresh periods through the environment and applies
-/// them as DisplayManager::init() does. Puts the environment and both timers back when the
-/// test ends.
-struct SaverRefreshEnv {
-    helix::ScopedTimerPeriods timers;
-    helix::ScopedEnv global{"HELIX_REFR_PERIOD_MS"};
-    helix::ScopedEnv scope{"HELIX_REFR_PERIOD_SCOPE"};
-    helix::ScopedEnv saver{"HELIX_SCREENSAVER_REFR_PERIOD_MS"};
-
-    SaverRefreshEnv() {
-        setenv("HELIX_REFR_PERIOD_MS", "40", 1);
-        unsetenv("HELIX_REFR_PERIOD_SCOPE");
-        setenv("HELIX_SCREENSAVER_REFR_PERIOD_MS", "20", 1);
-        helix::apply_refresh_timing(helix::refresh_timing_from_env());
-    }
-};
-
 /// Period of the timer the manager's running saver ticks on.
 uint32_t running_saver_timer_period(ScreensaverType type) {
     Screensaver* active =
@@ -1517,14 +1500,7 @@ TEST_CASE_METHOD(
     "without HELIX_SCREENSAVER_REFR_PERIOD_MS the display refreshes at the saver's level period",
     "[screensaver][refresh_period]") {
     auto& mgr = ScreensaverManager::instance();
-    helix::ScopedTimerPeriods timers;
-    helix::ScopedEnv global{"HELIX_REFR_PERIOD_MS"};
-    helix::ScopedEnv scope{"HELIX_REFR_PERIOD_SCOPE"};
-    helix::ScopedEnv saver_period{"HELIX_SCREENSAVER_REFR_PERIOD_MS"};
-    setenv("HELIX_REFR_PERIOD_MS", "40", 1);
-    unsetenv("HELIX_REFR_PERIOD_SCOPE");
-    unsetenv("HELIX_SCREENSAVER_REFR_PERIOD_MS");
-    helix::apply_refresh_timing(helix::refresh_timing_from_env());
+    SaverRefreshEnv env(std::nullopt);
     StopSaverOnExit stop_on_exit;
     REQUIRE_FALSE(helix::active_refresh_period_hold().is_held());
 

@@ -512,7 +512,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "every registered saver this build draws start
     size_t started = 0;
     for (const helix::ui::ScreensaverInfo& info : helix::ui::SCREENSAVERS) {
         CAPTURE(info.name);
-        if ((info.depths & helix::ui::BUILD_SAVER_DEPTH) == 0) {
+        if ((info.depths & helix::ui::SAVER_BUILD_DEPTH) == 0) {
             continue;
         }
         mgr.start(info.type);

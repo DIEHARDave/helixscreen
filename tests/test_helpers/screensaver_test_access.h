@@ -7,6 +7,7 @@
 #include "refresh_period_hold_test_access.h"
 #include "screensaver_base.h"
 #include "screensaver_pipes.h"
+#include "screensaver_sim_saver.h"
 #include "screensaver_starfield.h"
 
 #ifdef HELIX_ENABLE_SCREENSAVER
@@ -111,6 +112,17 @@ class SaverTestAccess {
     }
 };
 
+/// Reaches the simulation inside any SimSaver, to read it or move its clocks.
+class SimSaverTestAccess {
+  public:
+    template <typename Sim> static Sim& sim(SimSaver<Sim>& saver) {
+        return saver.sim_;
+    }
+    template <typename Sim> static const Sim& sim(const SimSaver<Sim>& saver) {
+        return saver.sim_;
+    }
+};
+
 /// Runs `timer`'s callback once, as lv_timer_handler() does when it comes due.
 inline void fire_timer(lv_timer_t* timer) {
     REQUIRE(timer != nullptr);
@@ -174,6 +186,7 @@ using helix::ui::level_zero_periods;
 using helix::ui::LevelZeroPeriods;
 using helix::ui::SaverTestAccess;
 using helix::ui::ScopedGlobalRefreshHold;
+using helix::ui::SimSaverTestAccess;
 
 class FlyingToasterScreensaverTestAccess {
   public:

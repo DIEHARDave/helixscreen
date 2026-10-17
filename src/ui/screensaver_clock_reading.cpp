@@ -110,6 +110,13 @@ void ClockState::step(uint32_t dt_ms, const ClockInput& in) {
     }
 }
 
+bool clock_face_same(const ClockReading& a, const ClockReading& b, bool shows_progress) {
+    if (!(a.time == b.time) || a.use_24h != b.use_24h) {
+        return false;
+    }
+    return !shows_progress || (a.mode == b.mode && a.progress_pct == b.progress_pct);
+}
+
 void clock_drift_range(const DirtyRect& bounds, int32_t w, int32_t h, int32_t& max_dx,
                        int32_t& max_dy) {
     const int32_t room_x = std::min(bounds.x1, w - 1 - bounds.x2) - 1;

@@ -4,6 +4,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_aqua.h"
 #include "screensaver_fireflies.h"
@@ -46,29 +47,16 @@ using helix::ui::MazeScreensaver;
 namespace {
 
 constexpr const char* FINGERPRINT_FILE = "tests/fixtures/screensaver/fingerprints.txt";
-constexpr uint64_t FNV_OFFSET = 14695981039346656037ULL;
-constexpr uint64_t FNV_PRIME = 1099511628211ULL;
-
-uint64_t fnv1a(uint64_t hash, const uint8_t* data, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        hash ^= data[i];
-        hash *= FNV_PRIME;
-    }
-    return hash;
-}
+using helix::test::fnv1a;
+using helix::test::FNV1A_OFFSET;
+using helix::test::frame_fnv1a;
+using helix::test::frame_of;
+using helix::test::UNEVEN_FRAME_MS;
 
 /// Hash of every pixel byte of the canvas, row by row, leaving out any stride padding.
 uint64_t canvas_hash(lv_obj_t* canvas) {
     REQUIRE(canvas != nullptr);
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(canvas);
-    REQUIRE(buf != nullptr);
-    const uint32_t row_bytes =
-        buf->header.w * lv_color_format_get_size(static_cast<lv_color_format_t>(buf->header.cf));
-    uint64_t hash = FNV_OFFSET;
-    for (uint32_t y = 0; y < buf->header.h; y++) {
-        hash = fnv1a(hash, buf->data + static_cast<size_t>(y) * buf->header.stride, row_bytes);
-    }
-    return hash;
+    return frame_fnv1a(frame_of(lv_canvas_get_draw_buf(canvas)));
 }
 
 /// Folds one frame's hash into the run's.
@@ -80,8 +68,6 @@ uint64_t fold(uint64_t run, uint64_t frame) {
     return fnv1a(run, bytes, sizeof(bytes));
 }
 
-/// Frame times a run cycles through: uneven, so motion that ignores dt shows.
-constexpr uint32_t UNEVEN_MS[] = {33, 16, 50, 7, 70};
 constexpr uint32_t STEADY_MS[] = {100};
 
 /// What a clock saver reads during a run: 10:08:30 when it starts, the clock moving with the
@@ -112,7 +98,7 @@ uint64_t saver_run(Saver& ss, uint32_t seed, int frames, int sample_every,
     SaverTestAccess::set_fixed_seed(ss, seed);
     ss.start();
     REQUIRE(ss.is_active());
-    uint64_t run = fold(FNV_OFFSET, canvas_hash(SaverTestAccess::canvas(ss)));
+    uint64_t run = fold(FNV1A_OFFSET, canvas_hash(SaverTestAccess::canvas(ss)));
     for (int frame = 1; frame <= frames; frame++) {
         const uint32_t ms = frame_ms[static_cast<size_t>(frame) % N];
         if (elapsed_ms != nullptr) {
@@ -133,29 +119,29 @@ uint64_t pipes_run(uint32_t seed) {
 
 uint64_t starfield_run(uint32_t seed) {
     StarfieldScreensaver ss;
-    return saver_run(ss, seed, 150, 25, UNEVEN_MS);
+    return saver_run(ss, seed, 150, 25, UNEVEN_FRAME_MS);
 }
 
 uint64_t fireworks_run(uint32_t seed) {
     FireworksScreensaver ss;
-    return saver_run(ss, seed, 150, 25, UNEVEN_MS);
+    return saver_run(ss, seed, 150, 25, UNEVEN_FRAME_MS);
 }
 
 uint64_t hyperspace_run(uint32_t seed) {
     HyperspaceScreensaver ss;
-    return saver_run(ss, seed, 120, 20, UNEVEN_MS);
+    return saver_run(ss, seed, 120, 20, UNEVEN_FRAME_MS);
 }
 
 uint64_t fireflies_run(uint32_t seed) {
     FirefliesScreensaver ss;
-    return saver_run(ss, seed, 150, 25, UNEVEN_MS);
+    return saver_run(ss, seed, 150, 25, UNEVEN_FRAME_MS);
 }
 
 uint64_t maze_run(uint32_t seed) {
     MazeScreensaver ss;
     // The logo only: app art depends on what the test process happens to hold.
     ss.set_art_source([] { return MazeArtSources{}; });
-    return saver_run(ss, seed, 120, 20, UNEVEN_MS);
+    return saver_run(ss, seed, 120, 20, UNEVEN_FRAME_MS);
 }
 
 /// The flip clock draws no random numbers, so a different start time stands in for a seed. A
@@ -171,14 +157,14 @@ uint64_t aqua_run(uint32_t seed, bool printing) {
     AquaScreensaver ss;
     uint32_t elapsed_ms = 0;
     ss.set_input_source([&elapsed_ms, printing] { return clock_input_at(elapsed_ms, printing); });
-    return saver_run(ss, seed, 90, 15, UNEVEN_MS, &elapsed_ms);
+    return saver_run(ss, seed, 90, 15, UNEVEN_FRAME_MS, &elapsed_ms);
 }
 
 uint64_t highfly_run(uint32_t seed, bool printing) {
     HighFlyScreensaver ss;
     uint32_t elapsed_ms = 0;
     ss.set_input_source([&elapsed_ms, printing] { return clock_input_at(elapsed_ms, printing); });
-    return saver_run(ss, seed, 90, 15, UNEVEN_MS, &elapsed_ms);
+    return saver_run(ss, seed, 90, 15, UNEVEN_FRAME_MS, &elapsed_ms);
 }
 
 std::string hex(uint64_t value) {

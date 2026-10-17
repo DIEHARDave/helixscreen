@@ -10,12 +10,16 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 |---|---|
 | `include/screensaver_registry.h` | `ScreensaverType`, the `SCREENSAVERS` rows (type, stable name, label key, color depths), clamp, the stable names and the frozen legacy type numbers, the fresh-install default, the too-heavy fallback order and the settings dropdown's choices. Always compiled |
 | `include/screensaver_setting.h` | Reading the persisted choice: a name in any case, or a legacy number |
-| `include/screensaver_base.h` | `SaverBase`: start, frame and stop sequence, levels, level requests |
+| `include/screensaver_base.h` | `SaverBase`: start, frame and stop sequence, levels, level requests; `ladder_period()` for a ladder table |
+| `include/screensaver_sim_contract.h`, `include/screensaver_sim_saver.h` | The calling shape of a sim (`init_sim`, `step_sim`, with or without an rng) and `SimSaver<Sim>`, which implements every `SaverBase` hook from it |
+| `include/screensaver_clock_saver.h` | `ClockSaver<Sim, State>`: a SimSaver whose sim draws a clock, with the input source (`ClockInputSink`, reached through `Screensaver::clock_input_sink()`), the clock state, the text cache and the redraw-over-what-changed step |
+| `include/screensaver_image.h` | Decoding a sprite or picture once into an owned draw buffer, reading an image header, and the printer picture a saver shows |
 | `include/screensaver_overlay.h` | `SaverOverlay`: the black touch-absorbing overlay on `lv_layer_top()` |
-| `include/screensaver_canvas.h` | `SaverCanvas`: stride-sized buffer, format per depth, hide-before-free, dirty areas merged to 32, the dirty-box layer session |
+| `include/screensaver_canvas.h` | `SaverCanvas`: stride-sized buffer, the two canvas formats (`SAVER_BUILD_CANVAS_FORMAT`, `LV_DRAW_CANVAS_FORMAT`), hide-before-free, dirty areas reduced to `SAVER_MAX_DIRTY_AREAS` or the whole canvas (`reduce_dirty`), the dirty-box layer session |
 | `include/screensaver_frame_timer.h` | `SaverFrameTimer`: frame timer with a `MotionClock`, period changes without a motion jump |
 | `include/refresh_period_hold.h` | The display refresh while a saver runs, at the saver's current period; `period()` holds `HELIX_SCREENSAVER_REFR_PERIOD_MS` |
-| `include/screensaver_frame.h`, `include/screensaver_pixel_writer.h` | `DirtyRect`, `FrameTarget`, `PixelWriter` (RGB565 and XRGB8888, ordered dither, max blend, lines). No LVGL |
+| `include/screensaver_frame.h`, `include/screensaver_pixel_writer.h` | `DirtyRect` (`whole`, `clipped`), `reduce_dirty`, `FrameTarget`, `frame_row`, `with_pixel_type`, `scaled_extent`, `round_px`; `PixelWriter` (RGB565 and XRGB8888, ordered dither, max blend, `blend_over`, `fill_rect`, lines) and the colour rules every saver shares (`mix_rgb`, `blend_cov`, `scale_rgb`, `to_u8`, `unit_to_u8`, `edge_coverage`). No LVGL |
+| `include/screensaver_motion.h`, `include/screensaver_vec.h`, `include/screensaver_buffer.h` | Frame-time motion and the portable rng draws (`random_int`, `random_between`, `random_normal`, `shuffle_in_place`), `wrap_index`/`wrap_period`; `SaverVec3`; `buffer_bytes`/`release_buffers` for the buffers a saver holds only while it runs |
 | `include/screensaver_gate.h`, `include/screensaver_cpu_clock.h` | Budget, decision, idle baseline, windows, environment switches, the CPU clock seam |
 | `include/screensaver_level_store.h` | Board fingerprint and the stored level per saver |
 | `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the too-heavy fallback and the last-resort black screen |
@@ -42,6 +46,13 @@ starts the frame timer at the level's period, and invalidates the dirty areas ea
 returns. A saver that writes pixels itself returns boxes; a saver drawing with `lv_draw_*`
 opens `SaverCanvas::begin_layer()`, marks what it draws with `mark_dirty()` and finishes with
 `finish_layer()`. Toasters use no canvas: their sprites are LVGL images.
+
+A saver whose scene is a simulation derives from `SimSaver<Sim>` instead, and writes only what is
+its own: the type and the canvas format. The sim follows the contract in
+`screensaver_sim_contract.h` (`init`, `step`, `request_level`, `clear`, `LEVELS`), and SimSaver
+clears it before every start, so a sim never depends on how the last run ended. A clock saver
+derives from `ClockSaver<Sim, State>`, which adds the time-and-print input and the text drawn over
+the scene (`draw_clock_text()`, `reset_clock_text()`).
 
 Every ladder starts at 16 ms (`SAVER_FAST_PERIOD`, one refresh of a 60 Hz panel), or at
 `HELIX_SCREENSAVER_REFR_PERIOD_MS` when that is set for manual testing
@@ -242,11 +253,15 @@ build draws at its depth, otherwise the first registered saver that does, and Of
    `translations/*.yml`, then `make translations` (and `make regen-text-fonts` for new CJK text).
 3. Derive from `SaverBase` in `include/screensaver_<name>.h` and `src/ui/screensaver_<name>.cpp`;
    keep the scene in a pure simulation class when it writes pixels, so it is testable without a
-   display. Register the factory in `ScreensaverManager::ScreensaverManager`.
+   display, and derive from `SimSaver<Sim>` (or `ClockSaver`) to run it. Register the factory in
+   `ScreensaverManager::ScreensaverManager`.
 4. Add the new sources to `firmware/helixscreen-esp32/components/helixapp/app_srcs_excluded.txt`
    (the Makefile screensaver filter picks up `src/ui/screensaver_*.cpp` by itself).
-5. Test determinism per seed, that dirty areas cover every changed pixel, and the ladder, then
-   measure the saver on a board with `scripts/screensaver-perf/`.
+5. Test determinism per seed, that dirty areas cover every changed pixel, and the ladder, with
+   the sim kit (`tests/test_helpers/screensaver_sim_kit.h`: `TestFrame`, `SimRun`, `diff_against`,
+   `check_replays`), and record the saver's pixel fingerprint in
+   `tests/unit/test_screensaver_fingerprint.cpp` (`HELIX_SCREENSAVER_FINGERPRINT_WRITE=1` records
+   it). Then measure the saver on a board with `scripts/screensaver-perf/`.
 6. A saver costs no RAM while it is not running. Nothing sizable goes in `.data` or `.bss`: no
    static or global textures, frames, sprite sheets or lookup tables (small `constexpr` tables in
    `.rodata` are fine). Everything is allocated in `on_start()` and released, capacity included,

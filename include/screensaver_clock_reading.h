@@ -118,6 +118,10 @@ class ClockState {
     ClockReading reading_;
 };
 
+/// True when `a` and `b` draw the same clock face: the same time in the same format and, for a
+/// face that shows the print (`shows_progress`), the same mode and progress.
+bool clock_face_same(const ClockReading& a, const ClockReading& b, bool shows_progress);
+
 /// Largest drift either way that keeps a clock whose undrifted box is `bounds` on a `w` x `h`
 /// screen with a pixel to spare, and never more than a 25th of the screen (4 px at least).
 void clock_drift_range(const DirtyRect& bounds, int32_t w, int32_t h, int32_t& max_dx,
@@ -126,5 +130,41 @@ void clock_drift_range(const DirtyRect& bounds, int32_t w, int32_t h, int32_t& m
 /// Drift offset `elapsed_ms` into a run, stepping every CLOCK_DRIFT_STEP_MS within
 /// +-`max_dx`, +-`max_dy`.
 void clock_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t& dx, int32_t& dy);
+
+/**
+ * @brief Where a clock sits as it drifts, so no pixel stays lit in one place
+ *
+ * set_range() takes the clock's undrifted box and the screen (clock_drift_range()); call it at
+ * init and whenever the face's size changes. step() moves the run's time on and the offset
+ * with it (clock_drift_at()).
+ */
+struct ClockDrift {
+    uint32_t elapsed_ms = 0;
+    int32_t dx = 0;
+    int32_t dy = 0;
+    int32_t max_dx = 0;
+    int32_t max_dy = 0;
+
+    void set_range(const DirtyRect& bounds, int32_t w, int32_t h) {
+        clock_drift_range(bounds, w, h, max_dx, max_dy);
+    }
+
+    /// Advances by `dt_ms`; true when the offset moved.
+    bool step(uint32_t dt_ms) {
+        elapsed_ms += dt_ms;
+        int32_t nx = 0;
+        int32_t ny = 0;
+        clock_drift_at(elapsed_ms, max_dx, max_dy, nx, ny);
+        const bool moved = nx != dx || ny != dy;
+        dx = nx;
+        dy = ny;
+        return moved;
+    }
+
+    /// Back to the start of a run: no time, no offset, no range.
+    void reset() {
+        *this = ClockDrift{};
+    }
+};
 
 } // namespace helix::ui
