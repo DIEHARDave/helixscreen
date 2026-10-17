@@ -69,7 +69,8 @@ class HyperspaceSim {
     /**
      * @brief Sizes every buffer for `frame` and starts the flight at `level`
      *
-     * The buffers hold what level 0 needs, and the coarser levels reuse them.
+     * The tunnel's tables are built for the level the run starts at, on its first frame, and a
+     * coarser level reuses them; a level without a tunnel frees them.
      */
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level);
 
@@ -113,8 +114,8 @@ class HyperspaceSim {
     /// tunnel's share once.
     size_t heap_bytes() const;
 
-    /// Heap bytes of the tunnel's lookup tables, texture and palette: sized for the level's block
-    /// size, and none at a level without a tunnel.
+    /// Heap bytes of the tunnel's lookup tables, texture and palette: sized for the finest block
+    /// size the run has drawn, and none at a level without a tunnel.
     size_t tunnel_bytes() const;
 
     /// Frees every buffer.

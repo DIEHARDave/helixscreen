@@ -362,10 +362,10 @@ void HyperspaceSim::build_tables() {
     quad_w_ = ((w_ + block - 1) / block + 1) / 2 + margin + 2;
     quad_h_ = ((h_ + block - 1) / block + 1) / 2 + margin + 2;
     const size_t quad = static_cast<size_t>(quad_w_) * static_cast<size_t>(quad_h_);
-    if (depth_.size() != quad) {
-        std::vector<uint16_t>(quad).swap(depth_);
-        std::vector<uint16_t>(quad).swap(angle_);
-    }
+    // A coarser block needs fewer entries than the run already holds, so a step down
+    // reallocates nothing; only a finer level than any before it grows the tables.
+    depth_.resize(quad);
+    angle_.resize(quad);
 
     // Each entry is the block centred (ax + 0.5, ay + 0.5) blocks from the vanishing point.
     const float half_h = static_cast<float>(h_) / 2.0f;
