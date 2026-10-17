@@ -17,7 +17,6 @@
  */
 
 #include "ui_resume_dispatch.h"
-#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "../../include/moonraker_api.h"
@@ -76,17 +75,16 @@ class ResumeRefusalFixture : public LVGLUITestFixture {
         AmsState::instance().set_backend(std::make_unique<AmsBackendSnapmaker>(nullptr, nullptr));
 
         ui::set_test_notification_error_hook([this](const std::string& m) { toasts.push_back(m); });
-        ToastManager::instance().set_observer([this](const ToastManager::Event& e) {
-            if (e.kind == ToastManager::Event::Kind::Show &&
-                e.message.rfind("Recovery failed", 0) == 0) {
-                recovery_toasts.push_back(e.message);
+        ui::set_test_toast_hook([this](ToastSeverity, const std::string& m, uint32_t) {
+            if (m.rfind("Recovery failed", 0) == 0) {
+                recovery_toasts.push_back(m);
             }
         });
     }
 
     ~ResumeRefusalFixture() override {
         ui::set_test_notification_error_hook(nullptr);
-        ToastManager::instance().set_observer({});
+        ui::set_test_toast_hook(nullptr);
         router.reset();
         presenter.reset();
         AmsState::instance().set_backend(nullptr);
