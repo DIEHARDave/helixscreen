@@ -77,6 +77,16 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 ### Added
 
+**Calibration**
+
+- **Pressure advance tuning on a live test print** (#982) - Advanced > Pressure Advance
+  Tuning (beta) prints a small test tower and raises pressure advance with height; tap - or
+  + at any moment to take over, then pick the height band that looked best from what the
+  printer reported. The result is applied, can be saved to the spool's Spoolman filament
+  (applied again whenever that filament becomes active, never mid-print), and is kept in
+  Moonraker's database for slicer plugins. The print Tune overlay also gains a live
+  pressure advance row.
+
 **Home screen**
 
 - **The home screen is one square-cell grid on every panel** (#1126, #1559) - both axes now

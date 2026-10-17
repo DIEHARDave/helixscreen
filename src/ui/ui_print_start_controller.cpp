@@ -474,6 +474,23 @@ void PrintStartController::initiate_reprint(const std::string& filename, const s
                                             const std::set<int>& tools_used,
                                             std::function<void()> on_started,
                                             std::function<void()> on_error, int archive_plate) {
+    reprint_impl(filename, path, tools_used, std::nullopt, std::move(on_started),
+                 std::move(on_error), archive_plate);
+}
+
+void PrintStartController::initiate_reprint_with_routing(const std::string& filename,
+                                                         const std::set<int>& tools_used,
+                                                         const std::map<int, int>& routing,
+                                                         std::function<void()> on_started,
+                                                         std::function<void()> on_error) {
+    reprint_impl(filename, "", tools_used, routing, std::move(on_started), std::move(on_error), 0);
+}
+
+void PrintStartController::reprint_impl(const std::string& filename, const std::string& path,
+                                        const std::set<int>& tools_used,
+                                        const std::optional<std::map<int, int>>& routing,
+                                        std::function<void()> on_started,
+                                        std::function<void()> on_error, int archive_plate) {
     // path is used for the preparing-job identity; the start RPC takes the bare name.
 
     if (!api_) {
@@ -575,8 +592,9 @@ void PrintStartController::initiate_reprint(const std::string& filename, const s
         // reprint wrote SET_PRINT_EXTRUDER_MAP CONFIG_EXTRUDER=n MAP_EXTRUDER=n
         // for every used tool and erased the crossover the original print ran
         // with — a remapped file could not be reprinted correctly at all.
-        const auto remap =
-            helix::FilamentMapper::reprint_remap(backend->last_print_tool_mapping(), tools_used);
+        const auto remap = routing ? routing
+                                   : helix::FilamentMapper::reprint_remap(
+                                         backend->last_print_tool_mapping(), tools_used);
         if (!remap) {
             // Not known (no configured task observed — e.g. the app started after
             // the print ended). Sending anything here means inventing a routing:

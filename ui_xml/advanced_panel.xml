@@ -205,6 +205,14 @@
           <bind_flag_if_eq subject="printer_has_pa_cal" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="on_calibration_pa"/>
         </setting_action_row>
+        <!-- Pressure advance tuned by eye on a live test print: any Klipper extruder -->
+        <beta_feature>
+          <setting_action_row name="row_pa_tuning"
+                              label="Pressure Advance Tuning" icon="gauge"
+                              description="Print a test tower and tune K by eye">
+            <event_cb trigger="clicked" callback="on_pa_tuning_clicked"/>
+          </setting_action_row>
+        </beta_feature>
         <!-- Tool Offsets (tool changers with the calibration macro only) -->
         <beta_feature>
           <setting_action_row name="row_tool_offsets"

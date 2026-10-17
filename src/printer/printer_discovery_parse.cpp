@@ -1016,6 +1016,7 @@ void PrinterDiscovery::clear() {
     chamber_cooling_fan_name_.clear();
     chamber_fan_resting_deci_ = 0;
     filament_diameter_mm_ = filament::DEFAULT_DIAMETER_MM;
+    nozzle_diameter_mm_ = DEFAULT_NOZZLE_DIAMETER_MM;
     leveling_probe_points_.clear();
     fan_max_power_.clear();
     has_led_ = false;

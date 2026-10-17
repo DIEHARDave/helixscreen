@@ -772,6 +772,18 @@ void MoonrakerFileTransferAPIMock::upload_file(const std::string& root, const st
     if (root == "config" && !config_files_.empty()) {
         config_files_[path] = content;
     }
+    // A gcode upload is kept on disk, so starting a print of it reads the
+    // file's own metadata (layer count, estimate) as Moonraker would.
+    if (root == "gcodes") {
+        const std::string& planted = helix::mock::planted_gcode_dir();
+        const std::filesystem::path dest =
+            std::filesystem::path(planted.empty() ? helix::mock::uploaded_gcode_dir() : planted) /
+            path;
+        std::error_code ec;
+        std::filesystem::create_directories(dest.parent_path(), ec);
+        std::ofstream out(dest, std::ios::binary);
+        out << content;
+    }
 
     // Mock always succeeds
     if (on_success) {

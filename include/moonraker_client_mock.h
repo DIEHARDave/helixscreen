@@ -1180,6 +1180,14 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// MoonrakerClientMock*, not members.
     bool led_effect_enabled(const std::string& object_name) const;
 
+    /// An extruder's pressure advance K and smooth time, as SET_PRESSURE_ADVANCE
+    /// last left them. An extruder never set reads the config default.
+    struct PressureAdvance {
+        double advance = 0.04;
+        double smooth_time = 0.04;
+    };
+    PressureAdvance pressure_advance_for(const std::string& extruder) const;
+
     /// Current mock offset for a tool on one axis, in mm. Seeded distinct per
     /// tool AND per axis and updated by SET_TOOL_PARAMETER, so a value set
     /// earlier in the session survives into a later status snapshot instead of
@@ -2066,6 +2074,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     struct LedColor {
         double r = 0.0, g = 0.0, b = 0.0, w = 0.0;
     };
+    /// Guarded by pressure_advance_mutex_.
+    std::map<std::string, PressureAdvance> pressure_advance_;
+    mutable std::mutex pressure_advance_mutex_;
+
     std::map<std::string, LedColor> led_states_; // LED name -> color
     mutable std::mutex led_mutex_;               // Protects led_states_
     /// Klipper object names of the enabled LED effects. SET_LED_EFFECT is
@@ -2413,6 +2425,7 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     GcodeResult gcode_shaper_calibrate(const std::string& gcode);
     GcodeResult gcode_test_resonances(const std::string& gcode);
     GcodeResult gcode_set_led(const std::string& gcode);
+    GcodeResult gcode_set_pressure_advance(const std::string& gcode);
     GcodeResult gcode_probe_calibrate(const std::string& gcode);
     GcodeResult gcode_testz(const std::string& gcode);
     GcodeResult gcode_accept(const std::string& gcode);

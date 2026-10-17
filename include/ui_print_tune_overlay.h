@@ -102,6 +102,15 @@ class PrintTuneOverlay : public OverlayBase {
      */
     void handle_flow_adjust(int delta);
 
+    /// Nudge the active extruder's pressure advance by @p steps of the PA step.
+    void handle_pa_adjust(int steps);
+
+    /// Open the pressure-advance tuner, when a tuning print is running.
+    void handle_open_pa_tuner();
+
+    /// Re-render the PA readout from the printer's reported value.
+    void update_pa_display();
+
     /**
      * @brief Update display from current speed/flow values
      *
@@ -205,6 +214,12 @@ class PrintTuneOverlay : public OverlayBase {
     lv_subject_t z_closer_icon_subject_{};  ///< Icon name for closer button (kinematic-aware)
     lv_subject_t z_farther_icon_subject_{}; ///< Icon name for farther button (kinematic-aware)
 
+    /// The active extruder's reported K ("0.0420"), and whether a tuning
+    /// print is running that the tuner could be reopened for.
+    lv_subject_t tune_pa_subject_{};
+    char tune_pa_buf_[16] = "--";
+    lv_subject_t tune_pa_session_subject_{};
+
     // Actual speed/flow display subjects
     lv_subject_t tune_actual_speed_subject_{};
     lv_subject_t tune_actual_flow_subject_{};
@@ -252,6 +267,7 @@ class PrintTuneOverlay : public OverlayBase {
     ObserverGuard max_velocity_observer_;
     ObserverGuard extruder_vel_observer_;
     ObserverGuard units_observer_;
+    ObserverGuard pa_observer_;
 };
 
 /// Lazy singleton; shared by the XML event callbacks and the panels that open it.

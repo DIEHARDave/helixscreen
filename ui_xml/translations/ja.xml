@@ -134,8 +134,10 @@
   <translation tag="A motor&apos;s parameters couldn&apos;t be written. Power-cycle the printer to retry" ja="モーターのパラメーターを書き込めませんでした。プリンターの電源を入れ直して再試行してください"/>
   <translation tag="A newer version of the helper macros is available" ja="ヘルパーマクロの新しいバージョンが利用可能です"/>
   <translation tag="A picture of your printer" ja="プリンターの画像"/>
+  <translation tag="A print is already running." ja="すでに印刷中です。"/>
   <translation tag="A print is in progress - restart still pending" ja="印刷中です - 再起動は保留中"/>
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." ja="このゲートで印刷中です。HelixScreen 側のコピーはクリアしました。印刷終了後に再度クリアしてください。"/>
+  <translation tag="A print is running. Apply the result after it ends." ja="印刷中です。終了後に結果を適用してください。"/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." ja="スプールがベッド上にあるとされている状態で印刷が開始されました。まだ置かれている場合は、今すぐ緊急停止でプリンターを止めてください。"/>
   <translation tag="A spool may be tangled or the drive gear is jammed" ja="スプールが絡まっているか、駆動ギアが詰まっている可能性があります"/>
   <translation tag="A · 1,-1" ja="A · 1,-1"/>
@@ -188,6 +190,7 @@
   <translation tag="Actions" ja="アクション"/>
   <translation tag="Active" ja="アクティブ"/>
   <translation tag="Active Spool" ja="アクティブスプール"/>
+  <translation tag="Active spool: {}" ja="使用中のスプール: {}"/>
   <translation tag="Actual" ja="現在"/>
   <translation tag="Adaptive Bed Mesh" ja="適応ベッドメッシュ"/>
   <translation tag="Add" ja="追加"/>
@@ -255,6 +258,7 @@
   <translation tag="App Background" ja="アプリ背景"/>
   <translation tag="App startup encountered an error. Some features may be unavailable." ja="アプリの起動中にエラーが発生しました。一部の機能が利用できない場合があります。"/>
   <translation tag="Appearance" ja="外観"/>
+  <translation tag="Applied to {}. Klipper forgets it on restart: enter {} as Pressure advance in your slicer&apos;s filament profile, or save it to the spool." ja="{}に適用しました。Klipperは再起動で忘れます: スライサーのフィラメントプロファイルでPressure Advanceに{}を入力するか、スプールに保存してください。"/>
   <translation tag="Applies to" ja="適用対象"/>
   <translation tag="Apply" ja="適用"/>
   <translation tag="Archive" ja="アーカイブ"/>
@@ -377,6 +381,7 @@
   <translation tag="Both" ja="両方"/>
   <translation tag="Bouncing Logo" ja="バウンドロゴ"/>
   <translation tag="Bouncing Printer" ja="バウンドプリンター"/>
+  <translation tag="Bowden" ja="ボーデン"/>
   <translation tag="Bowden Length" ja="ボーデン長"/>
   <translation tag="Bowden tube length from hub to toolhead" ja="ハブからツールヘッドまでのボーデンチューブ長"/>
   <translation tag="Box" ja="ボックス"/>
@@ -615,6 +620,7 @@
   <translation tag="Clear all spool failover assignments" ja="すべての予備スプール割り当てを消去"/>
   <translation tag="Clear failed" ja="クリアに失敗しました"/>
   <translation tag="Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament&apos;s packaging) and close the door." ja="ベッドの上と下を片付けてください。スプールをベッドに置き、箱(印刷したふたやフィラメントの梱包箱)でかぶせてドアを閉めてください。"/>
+  <translation tag="Clear the plate and load {}. The tower prints in the middle of the bed." ja="ベッドを片付けて{}をロードしてください。タワーはベッド中央に印刷されます。"/>
   <translation tag="Cleared from settings — system unpair failed, may need OS Bluetooth" ja="設定から削除しました。システムのペアリング解除に失敗、OS の Bluetooth 設定が必要な場合があります"/>
   <translation tag="Clipboard unavailable - use SSH" ja="クリップボード利用不可 - SSHを使用してください"/>
   <translation tag="Clog" ja="詰まり"/>
@@ -885,6 +891,7 @@
   <translation tag="Devices" ja="デバイス"/>
   <translation tag="Different filament?" ja="別のフィラメント？"/>
   <translation tag="Digital Clock" ja="デジタル時計"/>
+  <translation tag="Direct drive" ja="ダイレクトドライブ"/>
   <translation tag="Disable" ja="無効化"/>
   <translation tag="Disable Bypass" ja="バイパスを無効化"/>
   <translation tag="Disable Motors?" ja="モーターを無効にしますか？"/>
@@ -1003,6 +1010,9 @@
   <translation tag="Enclosure" ja="筐体"/>
   <translation tag="Encoder" ja="エンコーダー"/>
   <translation tag="Encoder Error" ja="エンコーダーエラー"/>
+  <translation tag="End K" ja="終了K"/>
+  <translation tag="End Test" ja="テスト終了"/>
+  <translation tag="End the test print?" ja="テスト印刷を終了しますか?"/>
   <translation tag="Ended" ja="終了"/>
   <translation tag="Endless Spool" ja="エンドレススプール"/>
   <translation tag="Endless spool failover cleared for every slot" ja="すべてのスロットのエンドレススプール設定を消去しました"/>
@@ -1177,12 +1187,14 @@
   <translation tag="Failed to save setup completion" ja="セットアップ完了の保存に失敗しました"/>
   <translation tag="Failed to save spool" ja="スプールの保存に失敗しました"/>
   <translation tag="Failed to save theme file" ja="テーマファイルの保存に失敗しました"/>
+  <translation tag="Failed to save to Spoolman: {}" ja="Spoolmanへの保存に失敗しました: {}"/>
   <translation tag="Failed to schedule the pause: {}" ja="一時停止を予約できませんでした: {}"/>
   <translation tag="Failed to send command: {}" ja="コマンドの送信に失敗しました: {}"/>
   <translation tag="Failed to send print data" ja="印刷データの送信に失敗しました"/>
   <translation tag="Failed to send status request" ja="ステータス要求の送信に失敗しました"/>
   <translation tag="Failed to set active spool" ja="アクティブスプールの設定に失敗しました"/>
   <translation tag="Failed to set flow rate: {}" ja="フロー率の設定に失敗しました: {}"/>
+  <translation tag="Failed to set pressure advance: {}" ja="Pressure Advanceの設定に失敗しました: {}"/>
   <translation tag="Failed to set print speed: {}" ja="印刷速度の設定に失敗しました: {}"/>
   <translation tag="Failed to set temperature: {}" ja="温度の設定に失敗しました: {}"/>
   <translation tag="Failed to set {} temp: {}" ja="{} 温度の設定に失敗しました: {}"/>
@@ -1423,6 +1435,7 @@
   <translation tag="Heating Bed..." ja="ベッド加熱中..."/>
   <translation tag="Heating Chamber..." ja="チャンバー加熱中..."/>
   <translation tag="Heating Nozzle..." ja="ノズル加熱中..."/>
+  <translation tag="Heating and homing" ja="加熱とホーミング中"/>
   <translation tag="Heating bed to $1°C..." ja="ベッドを$1°Cに加熱中..."/>
   <translation tag="Heating bed..." ja="ベッド加熱中..."/>
   <translation tag="Heating chamber..." ja="チャンバー加熱中..."/>
@@ -1588,7 +1601,9 @@
   <translation tag="Issue description" ja="問題の説明"/>
   <translation tag="It can be un-archived in Spoolman&apos;s web UI." ja="Spoolman の Web 画面でアーカイブを解除できます。"/>
   <translation tag="It has not reported its slots yet. Try again in a moment." ja="スロットがまだ報告されていません。しばらくしてからもう一度お試しください。"/>
+  <translation tag="It homes and heats on its own (no start macro found)." ja="ホーミングと加熱を自分で行います(開始マクロが見つかりません)。"/>
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" ja="ハブセンサーとハブギアの間で詰まっています。CFS を開けてハブを取り除いてから再試行してください"/>
+  <translation tag="It starts with your {} macro." ja="{}マクロで開始します。"/>
   <translation tag="It&apos;s a new spool" ja="新しいスプールです"/>
   <translation tag="Jammed at the Toolhead" ja="ツールヘッドで詰まり"/>
   <translation tag="Job Queue" ja="ジョブキュー"/>
@@ -1611,6 +1626,7 @@
   <translation tag="Keep Spool Info on Eject" ja="取り出し時にスプール情報を保持"/>
   <translation tag="Keep clear of the printer while the toolhead is moving" ja="ツールヘッドが動いている間はプリンターから離れてください"/>
   <translation tag="Keep current" ja="現状維持"/>
+  <translation tag="Keep current ({})" ja="現在の値を維持 ({})"/>
   <translation tag="Keep hands clear. The printer moves on its own." ja="手を近づけないでください。プリンターは自動で動きます。"/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." ja="この画面に独自のデータを保存します（最大256 KB）。"/>
   <translation tag="Keep the bypass spool visible when bypass is off" ja="バイパスオフ時もバイパススプールの表示を維持"/>
@@ -1672,6 +1688,7 @@
   <translation tag="Layer Height" ja="レイヤー高さ"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." ja="レイヤーマクロはレイヤーが変わるごとに 1 フレームを撮影します。ほとんどの印刷に最適です。"/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." ja="レイヤーモードはレイヤー変更ごとに1フレームをキャプチャします。ほとんどの印刷に最適です。"/>
+  <translation tag="Layer {} of {} · {:.2f} mm" ja="レイヤー {} / {} · {:.2f} mm"/>
   <translation tag="Layer {} of {}." ja="レイヤー {} / {}。"/>
   <translation tag="Layers" ja="レイヤー"/>
   <translation tag="Layout" ja="レイアウト"/>
@@ -1743,6 +1760,7 @@
   <translation tag="Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout." ja="タイルを長押しして編集モードに入ります — ウィジェットの並べ替え、サイズ変更、削除、追加や、好みのレイアウトに合わせたページの追加ができます。"/>
   <translation tag="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)" ja="ホーム画面のグリッドを長押しするとウィジェットを並べ替えできます（誤動作する場合はオフにしてください）"/>
   <translation tag="Longest Disconnect" ja="最長切断時間"/>
+  <translation tag="Looking for the active spool..." ja="使用中のスプールを検索中..."/>
   <translation tag="Lost connection during print — try again" ja="印刷中に接続が切断されました — もう一度お試しください"/>
   <translation tag="Lost connection to CFS unit" ja="CFS ユニットとの接続が切断されました"/>
   <translation tag="Lot # (optional)" ja="ロット番号（オプション）"/>
@@ -1806,6 +1824,7 @@
   <translation tag="Manual Feed" ja="手動送り"/>
   <translation tag="Manual Retract" ja="手動引き戻し"/>
   <translation tag="Manual feed and retract operations" ja="手動送り・引き戻し操作"/>
+  <translation tag="Manual: the ramp has stopped at your value" ja="手動: ランプはあなたの値で停止しました"/>
   <translation tag="Manually clear the jam and retry the operation" ja="詰まりを手動で取り除いてから、もう一度お試しください"/>
   <translation tag="Manually pull the filament back through the connector" ja="コネクターからフィラメントを手で引き戻してください"/>
   <translation tag="Map to closest colors with matching material" ja="一致する素材で最も近い色に割り当て"/>
@@ -1833,6 +1852,7 @@
   <translation tag="Measure" ja="測定"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" ja="各ツールの XYZ オフセットを自動で測定します"/>
   <translation tag="Measure pressure advance automatically" ja="Pressure Advance を自動で測定します"/>
+  <translation tag="Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed." ja="ベッドから高さを測ってください。膨らみもすき間もないきれいな角が正しいKです。各行は高さの範囲と、その印刷中にプリンターが報告したKです。"/>
   <translation tag="Measured (shaper off)" ja="測定値（シェーパーオフ時）"/>
   <translation tag="Measured filament diameter" ja="測定したフィラメント直径"/>
   <translation tag="Measured pressure advance" ja="測定された Pressure Advance"/>
@@ -1958,12 +1978,14 @@
   <translation tag="No Spools" ja="スプールなし"/>
   <translation tag="No USB printer detected" ja="USB プリンターが検出されません"/>
   <translation tag="No USB printers found" ja="USBプリンターが見つかりません"/>
+  <translation tag="No active Spoolman spool." ja="Spoolmanで使用中のスプールがありません。"/>
   <translation tag="No automatic backup-spool package is installed" ja="自動バックアップスプール用プラグインが未インストールです"/>
   <translation tag="No buffer data available" ja="バッファーデータがありません"/>
   <translation tag="No camera — use USB barcode scanner" ja="カメラなし — USB バーコードスキャナーを使用してください"/>
   <translation tag="No chamber temperature sensor detected" ja="チャンバー温度センサーが検出されません"/>
   <translation tag="No changes to revert" ja="元に戻す変更はありません"/>
   <translation tag="No color" ja="色なし"/>
+  <translation tag="No connection to the printer." ja="プリンターに接続されていません。"/>
   <translation tag="No dryer available. Store filament in a sealed dry box with desiccant for best results." ja="乾燥機がありません。最良の結果を得るには、乾燥剤入りの密封ドライボックスにフィラメントを保管してください。"/>
   <translation tag="No effects available" ja="利用可能なエフェクトがありません"/>
   <translation tag="No events queued" ja="キューにイベントはありません"/>
@@ -2217,6 +2239,7 @@
   <translation tag="Pick" ja="選択"/>
   <translation tag="Pick Color" ja="色を選択"/>
   <translation tag="Pick how HelixScreen behaves. You can change any of these later in Settings." ja="HelixScreen の動作を選択します。すべて後で「設定」から変更できます。"/>
+  <translation tag="Pick the best band" ja="最適な区間を選択"/>
   <translation tag="Pick up tool" ja="ツールを取得"/>
   <translation tag="Picking up tool" ja="ツールを取得中"/>
   <translation tag="Pill" ja="ピル"/>
@@ -2287,6 +2310,9 @@
   <translation tag="Pressure Adv." ja="Pressure Adv."/>
   <translation tag="Pressure Advance" ja="Pressure Advance"/>
   <translation tag="Pressure Advance Calibration" ja="プレッシャーアドバンスキャリブレーション"/>
+  <translation tag="Pressure Advance Tuning" ja="Pressure Advance調整"/>
+  <translation tag="Pressure advance" ja="Pressure Advance"/>
+  <translation tag="Pressure advance climbs as the tower grows. Watch the corners: tap - or + whenever you like and the ramp stops so you can judge your own value." ja="タワーが高くなるにつれてPressure Advanceが上がります。角を見てください: いつでも-か+をタップするとランプが止まり、自分の値を判断できます。"/>
   <translation tag="Pressure:" ja="圧力:"/>
   <translation tag="Preview Sounds" ja="サウンドをプレビュー"/>
   <translation tag="Previous" ja="前回"/>
@@ -2316,9 +2342,11 @@
   <translation tag="Print Start" ja="印刷開始"/>
   <translation tag="Print Stats" ja="印刷統計"/>
   <translation tag="Print Status" ja="印刷ステータス"/>
+  <translation tag="Print Test Tower" ja="テストタワーを印刷"/>
   <translation tag="Print Time" ja="印刷時間"/>
   <translation tag="Print Tuning" ja="印刷チューニング"/>
   <translation tag="Print Was Terminated" ja="印刷が中止されました"/>
+  <translation tag="Print a test tower and tune K by eye" ja="テストタワーを印刷して目視でKを調整"/>
   <translation tag="Print cancelled" ja="印刷がキャンセルされました"/>
   <translation tag="Print complete" ja="印刷完了"/>
   <translation tag="Print did not start" ja="印刷は開始されませんでした"/>
@@ -2338,6 +2366,7 @@
   <translation tag="Print setup failed" ja="印刷のセットアップに失敗しました"/>
   <translation tag="Print setup failed: internal error" ja="印刷のセットアップに失敗しました: 内部エラー"/>
   <translation tag="Print status" ja="印刷ステータス"/>
+  <translation tag="Print the test tower?" ja="テストタワーを印刷しますか?"/>
   <translation tag="Print timed out waiting for completion" ja="印刷の完了待ちでタイムアウトしました"/>
   <translation tag="Printed %d time" ja="%d 回印刷済み"/>
   <translation tag="Printed %d times" ja="%d 回印刷済み"/>
@@ -2477,6 +2506,8 @@
   <translation tag="RSS:" ja="RSS:"/>
   <translation tag="Rails" ja="レール"/>
   <translation tag="Ramming Volume" ja="ラミング量"/>
+  <translation tag="Ramp: band {} of {}" ja="ランプ: 区間 {} / {}"/>
+  <translation tag="Ramp: base layers" ja="ランプ: ベースレイヤー"/>
   <translation tag="Raspberry Pi" ja="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" ja="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" ja="再識別"/>
@@ -2723,10 +2754,12 @@
   <translation tag="Save changes to persist them across restarts?" ja="再起動後も変更を保持するために保存しますか？"/>
   <translation tag="Save failed: {}" ja="保存に失敗しました: {}"/>
   <translation tag="Save offsets?" ja="オフセットを保存しますか？"/>
+  <translation tag="Save to Spool" ja="スプールに保存"/>
   <translation tag="Save to Spoolman" ja="Spoolman に保存"/>
   <translation tag="Saved Z-Offset" ja="保存されたZ-Offset"/>
   <translation tag="Saved to crash_report.txt (QR not available)" ja="crash_report.txt に保存しました（QR 利用不可）"/>
   <translation tag="Saved to printer configuration." ja="プリンター設定に保存しました。"/>
+  <translation tag="Saved to {}. It applies whenever this filament becomes active." ja="{}に保存しました。このフィラメントが使用中になるたびに適用されます。"/>
   <translation tag="Saved values, and whether to ask before running" ja="保存した値と、実行前に確認するかどうか"/>
   <translation tag="Saves to Klipper config and restarts firmware." ja="Klipper 設定に保存してファームウェアを再起動します。"/>
   <translation tag="Saving Configuration..." ja="設定を保存中..."/>
@@ -2951,6 +2984,7 @@
   <translation tag="Spoolman connected!" ja="Spoolman に接続しました！"/>
   <translation tag="Spoolman found! Configuring..." ja="Spoolman を検出しました！設定中..."/>
   <translation tag="Spoolman has no spools configured" ja="Spoolman にスプールが設定されていません"/>
+  <translation tag="Spoolman is not available." ja="Spoolmanを利用できません。"/>
   <translation tag="Spoolman is not configured — nothing to remove." ja="Spoolman が設定されていません — 削除する項目はありません。"/>
   <translation tag="Spoolman is offline, so brand and material can&apos;t be saved." ja="Spoolman がオフラインのため、ブランドと素材を保存できません。"/>
   <translation tag="Spoolman is offline. Brand and material can change once it&apos;s back." ja="Spoolman がオフラインです。復帰後にブランドと素材を変更できます。"/>
@@ -2983,6 +3017,7 @@
   <translation tag="Start Calibration" ja="キャリブレーション開始"/>
   <translation tag="Start Check" ja="チェック開始"/>
   <translation tag="Start Drying" ja="乾燥開始"/>
+  <translation tag="Start K" ja="開始K"/>
   <translation tag="Start Print" ja="印刷を開始"/>
   <translation tag="Start Probing" ja="プローブ開始"/>
   <translation tag="Start a new {} h interval? The hours counted so far are discarded." ja="新しい {} 時間の間隔を開始しますか？これまでの時間は破棄されます。"/>
@@ -3130,6 +3165,7 @@
   <translation tag="Test Screensaver" ja="スクリーンセーバーをテスト"/>
   <translation tag="Test Tracker" ja="テストトラッカー"/>
   <translation tag="Test label printed" ja="テストラベル印刷完了"/>
+  <translation tag="Test tower {:.0f} mm wide and {:.0f} mm tall, about {} min plus heating: {} bands of {:.0f} mm at {}°C." ja="テストタワー 幅{:.0f} mm・高さ{:.0f} mm、約{}分+加熱: {}区間(各{:.0f} mm)、{}°C。"/>
   <translation tag="Testing rotation: %d° (%d/%d) - %ds remaining" ja="回転テスト: %d° (%d/%d) - %ds残り"/>
   <translation tag="Testing, servo, and motor operations" ja="テスト・サーボ・モーター操作"/>
   <translation tag="Thanks! Anonymous usage data helps improve HelixScreen." ja="ご協力ありがとうございます！匿名の使用データが HelixScreen の改善に役立ちます。"/>
@@ -3143,6 +3179,7 @@
   <translation tag="The Spoolman spool currently loaded" ja="現在装填中の Spoolman スプール"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." ja="アニメーション付きスクリーンセーバーが印刷に干渉しないよう、このデバイスではオフになっています。設定 &gt; ディスプレイで再度有効にできます。"/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." ja="ベッドが冷えました。スプールをベッドから取り出してから確認してください。"/>
+  <translation tag="The bed is too small for the test tower, or its size is unknown." ja="ベッドがテストタワーには小さすぎるか、サイズが不明です。"/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." ja="ベッドをオフにします。取り出したことを確認するまで、スプールはベッド上にあるものとして扱われます。"/>
   <translation tag="The bed was reported dirty, so this print cannot resume." ja="ベッドが汚れていると報告されたため、この印刷を再開できません。"/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" ja="バッファーが未接続、固着、または故障している可能性があります。再試行前に確認してください"/>
@@ -3173,6 +3210,8 @@
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." ja="ノズルは印刷領域から離れた隅で短いテスト移動を数回行い、結果が一致するまで繰り返します。"/>
   <translation tag="The plate and the spools are still hot. Use gloves." ja="ベッドとスプールはまだ熱いです。手袋を使ってください。"/>
   <translation tag="The plate finishes its current move, but drying will not start." ja="ベッドは現在の移動を完了しますが、乾燥は開始しません。"/>
+  <translation tag="The print ended before any layer was printed. Nothing was changed." ja="レイヤーが印刷される前に印刷が終了しました。何も変更されていません。"/>
+  <translation tag="The print is cancelled and you pick the best band from what has printed so far." ja="印刷をキャンセルし、ここまで印刷された中から最適な区間を選びます。"/>
   <translation tag="The print is on its last layer." ja="最後のレイヤーを印刷中です。"/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." ja="印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。"/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." ja="印刷はチャンバーが{}°Cに達するのを待っていますが、ヒーターが加熱していません。"/>
@@ -3364,6 +3403,7 @@
   <translation tag="Try the operation again. If it persists, check for mechanical issues." ja="もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。"/>
   <translation tag="Trying again..." ja="再試行中..."/>
   <translation tag="Tune" ja="チューニング"/>
+  <translation tag="Tuner" ja="調整"/>
   <translation tag="Tuning tower enabled - start a print to test" ja="チューニングタワー有効 - 印刷を開始してテストしてください"/>
   <translation tag="Turbo" ja="ターボ"/>
   <translation tag="Turbo Inner" ja="ターボ・内側"/>
@@ -3720,6 +3760,7 @@
   <translation tag="tall" ja="高さ"/>
   <translation tag="target {}%" ja="目標 {}%"/>
   <translation tag="target {}°" ja="目標 {}°"/>
+  <translation tag="the extruder" ja="エクストルーダー"/>
   <translation tag="this week" ja="今週"/>
   <translation tag="too slow" ja="遅すぎ"/>
   <translation tag="tool(s)" ja="ツール"/>

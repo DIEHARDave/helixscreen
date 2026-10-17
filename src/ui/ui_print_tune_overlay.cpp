@@ -4,6 +4,9 @@
 #include "ui_print_tune_overlay.h"
 
 #include "ui_callback_helpers.h"
+#if !defined(HELIX_PLATFORM_ESP32)
+#include "ui_overlay_pa_tuning.h"
+#endif
 #include "ui_z_offset_indicator.h"
 
 #include "display_numbering.h"
@@ -40,6 +43,7 @@ PrintTuneOverlay::~PrintTuneOverlay() {
     max_velocity_observer_.reset();
     extruder_vel_observer_.reset();
     units_observer_.reset();
+    pa_observer_.reset();
 
     // Clean up subjects
     if (subjects_initialized_) {
@@ -88,6 +92,9 @@ void PrintTuneOverlay::init_subjects() {
     UI_MANAGED_SUBJECT_STRING(tune_actual_flow_subject_, tune_actual_flow_buf_, "",
                               "tune_actual_flow_display", subjects_);
 
+    UI_MANAGED_SUBJECT_STRING(tune_pa_subject_, tune_pa_buf_, "--", "tune_pa_display", subjects_);
+    UI_MANAGED_SUBJECT_INT(tune_pa_session_subject_, 0, "tune_pa_session_active", subjects_);
+
     // Z-offset direction button icons (kinematic-aware, like motion panel)
     UI_MANAGED_SUBJECT_STRING(z_closer_icon_subject_, z_closer_icon_buf_, "arrow_down",
                               "tune_z_closer_icon", subjects_);
@@ -124,6 +131,13 @@ void PrintTuneOverlay::register_callbacks() {
                  get_print_tune_overlay().handle_flow_adjust(*delta);
          }},
         {"on_tune_reset_clicked", [](lv_event_t*) { get_print_tune_overlay().handle_reset(); }},
+        {"on_tune_pa_adjust",
+         [](lv_event_t* e) {
+             if (auto steps = helix::ui::event_user_int(e))
+                 get_print_tune_overlay().handle_pa_adjust(*steps);
+         }},
+        {"on_tune_open_pa_tuner",
+         [](lv_event_t*) { get_print_tune_overlay().handle_open_pa_tuner(); }},
         {"on_tune_units_toggle",
          [](lv_event_t*) {
              auto& settings = helix::DisplaySettingsManager::instance();
@@ -156,6 +170,10 @@ void PrintTuneOverlay::register_callbacks() {
 void PrintTuneOverlay::on_activate() {
     OverlayBase::on_activate();
     sync_to_state();
+#if !defined(HELIX_PLATFORM_ESP32)
+    lv_subject_set_int(&tune_pa_session_subject_,
+                       helix::ui::get_global_pa_tuning_overlay().session_active() ? 1 : 0);
+#endif
     spdlog::debug("[PrintTuneOverlay] Activated - synced to state");
 }
 
@@ -184,6 +202,10 @@ void PrintTuneOverlay::setup_panel() {
         extruder_vel_observer_ = helix::ui::observe<int>(
             printer_state_->motion_state().get_live_extruder_velocity_subject(), this,
             [](PrintTuneOverlay* self, int /*value*/) { self->update_display(); },
+            printer_state_->get_subjects_lifetime());
+        pa_observer_ = helix::ui::observe<int>(
+            printer_state_->temperature_state().get_active_extruder_pressure_advance_subject(),
+            this, [](PrintTuneOverlay* self, int /*value*/) { self->update_pa_display(); },
             printer_state_->get_subjects_lifetime());
     }
     auto& display_settings = DisplaySettingsManager::instance();
@@ -242,6 +264,8 @@ void PrintTuneOverlay::sync_to_state() {
             helix::ui::find_required(overlay_root_, "z_offset_indicator", get_name())) {
         ui_z_offset_indicator_set_value(indicator, z_offset_microns);
     }
+
+    update_pa_display();
 
     spdlog::debug("[PrintTuneOverlay] Synced to state: speed={}%, flow={}%", speed, flow);
 }
@@ -379,6 +403,49 @@ void PrintTuneOverlay::handle_flow_adjust(int delta) {
     flow_percent_ = helix::tune::clamp_flow_percent(flow_percent_ + delta);
     update_display();
     helix::tune::set_flow_percent(api_, flow_percent_);
+}
+
+void PrintTuneOverlay::update_pa_display() {
+    if (!subjects_initialized_ || !printer_state_) {
+        return;
+    }
+    const int value = lv_subject_get_int(
+        printer_state_->temperature_state().get_active_extruder_pressure_advance_subject());
+    lv_strlcpy(tune_pa_buf_, helix::tune::pressure_advance_text(value).c_str(),
+               sizeof(tune_pa_buf_));
+    lv_subject_copy_string(&tune_pa_subject_, tune_pa_buf_);
+}
+
+void PrintTuneOverlay::handle_pa_adjust(int steps) {
+    if (!printer_state_ || !helix::tune::pressure_advance_enabled()) {
+        return;
+    }
+#if !defined(HELIX_PLATFORM_ESP32)
+    // During a tuning run the nudge is the tuner's: it stops the ramp, which
+    // would otherwise overwrite this value at the next band.
+    if (helix::ui::get_global_pa_tuning_overlay().nudge_by(steps * helix::tune::kPaTuneStep)) {
+        return;
+    }
+#endif
+    auto& temps = printer_state_->temperature_state();
+    const auto current = helix::tune::pressure_advance_from_subject(
+        lv_subject_get_int(temps.get_active_extruder_pressure_advance_subject()));
+    if (!current) {
+        return; // nothing reported yet: a nudge would be relative to a guess
+    }
+    // The readout follows the printer's report, not this request.
+    helix::tune::set_pressure_advance(api_, temps.active_extruder_name(),
+                                      *current + steps * helix::tune::kPaTuneStep);
+}
+
+void PrintTuneOverlay::handle_open_pa_tuner() {
+#if !defined(HELIX_PLATFORM_ESP32)
+    auto& tuner = helix::ui::get_global_pa_tuning_overlay();
+    if (tuner.session_active()) {
+        tuner.set_api(api_);
+        tuner.show(parent_screen_);
+    }
+#endif
 }
 
 void PrintTuneOverlay::handle_reset() {

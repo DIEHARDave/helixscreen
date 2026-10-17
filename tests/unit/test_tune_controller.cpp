@@ -104,3 +104,36 @@ TEST_CASE("status_speed_flow_text shows override percentages or physical units",
         CHECK(text.flow == "0.0 mm\xC2\xB3/s");
     }
 }
+
+TEST_CASE_METHOD(TuneFixture, "set_pressure_advance sends a clamped SET_PRESSURE_ADVANCE",
+                 "[tune_controller][pa_tune][mock]") {
+    helix::tune::set_pressure_advance(api.get(), "extruder1", 0.0425f);
+    REQUIRE(last_sent() == "SET_PRESSURE_ADVANCE EXTRUDER=extruder1 ADVANCE=0.0425");
+    helix::tune::set_pressure_advance(api.get(), "extruder", 9.0f);
+    REQUIRE(last_sent() == "SET_PRESSURE_ADVANCE EXTRUDER=extruder ADVANCE=2.0000");
+}
+
+TEST_CASE_METHOD(TuneFixture, "the mock applies SET_PRESSURE_ADVANCE per extruder",
+                 "[tune_controller][pa_tune][mock]") {
+    helix::tune::set_pressure_advance(api.get(), "extruder", 0.031f);
+    CHECK(mock_client.pressure_advance_for("extruder").advance == Catch::Approx(0.031));
+    // Other extruders keep their own value.
+    CHECK(mock_client.pressure_advance_for("extruder1").advance == Catch::Approx(0.04));
+}
+
+TEST_CASE("pressure advance readback text comes from the subject", "[tune_controller][pa_tune]") {
+    CHECK(helix::tune::pressure_advance_text(-1) == "--");
+    CHECK(helix::tune::pressure_advance_text(420) == "0.0420");
+    CHECK(helix::tune::pressure_advance_text(0) == "0.0000");
+    CHECK_FALSE(helix::tune::pressure_advance_from_subject(-1));
+    CHECK(*helix::tune::pressure_advance_from_subject(1234) == Catch::Approx(0.1234f));
+}
+
+TEST_CASE_METHOD(TuneFixture, "an unnamed extruder sends no pressure advance",
+                 "[tune_controller][pa_tune][mock]") {
+    helix::tune::set_speed_percent(api.get(), 120);
+    helix::tune::set_pressure_advance(api.get(), "", 0.04f);
+    CHECK(last_sent() == "M220 S120");
+    helix::tune::set_pressure_advance(nullptr, "extruder", 0.04f);
+    CHECK(last_sent() == "M220 S120");
+}

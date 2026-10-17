@@ -141,8 +141,10 @@ translations:
   A motor's parameters couldn't be written. Power-cycle the printer to retry: Não foi possível gravar os parâmetros de um motor. Desligue e ligue a impressora para tentar novamente
   A newer version of the helper macros is available: 'Uma versão mais recente das macros de ajuda está disponível'
   A picture of your printer: Uma imagem da sua impressora
+  A print is already running.: Já há uma impressão em andamento.
   A print is in progress - restart still pending: 'Uma impressão está em andamento - reinício pendente'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: Uma impressão está em andamento neste gate. O HelixScreen limpou a própria cópia; limpe-o novamente quando a impressão terminar.
+  A print is running. Apply the result after it ends.: Há uma impressão em andamento. Aplique o resultado quando ela terminar.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "Uma impressão começou com carretéis marcados como na mesa. Se ainda estiverem lá, pare a impressora agora com a Parada de Emergência."
   A spool may be tangled or the drive gear is jammed: Um carretel pode estar embaraçado ou a engrenagem de tração travada
   A · 1,-1: "A · 1,-1"
@@ -197,6 +199,7 @@ translations:
   Actions: Ações
   Active: Ativo
   Active Spool: Bobina ativa
+  'Active spool: {}': 'Carretel ativo: {}'
   Actual: Atual
   Adaptive Bed Mesh: Malha da Mesa Adaptativa
   Add: Adicionar
@@ -276,6 +279,8 @@ translations:
   App startup encountered an error. Some features may be unavailable.: A inicialização
     do aplicativo encontrou um erro. Alguns recursos podem estar indisponíveis.
   Appearance: Aparência
+  ? "Applied to {}. Klipper forgets it on restart: enter {} as Pressure advance in your slicer's filament profile, or save it to the spool."
+  : 'Aplicado a {}. O Klipper esquece ao reiniciar: insira {} como Pressure Advance no perfil de filamento do seu fatiador, ou salve no carretel.'
   Applies to: Aplica-se a
   Apply: Aplicar
   Archive: Arquivar
@@ -408,6 +413,7 @@ translations:
   Both: Ambos
   Bouncing Logo: Logo Saltitante
   Bouncing Printer: Impressora Saltitante
+  Bowden: Bowden
   Bowden Length: 'Comprimento do bowden'
   Bowden tube length from hub to toolhead: 'Comprimento do tubo bowden do hub ao cabeçote'
   Box: Caixa
@@ -681,6 +687,7 @@ translations:
 
   : Libere a área acima e abaixo da mesa. Coloque os carretéis sobre a mesa, cubra-os com uma caixa (uma tampa impressa ou a embalagem do filamento) e feche a porta.
 
+  Clear the plate and load {}. The tower prints in the middle of the bed.: Limpe a mesa e carregue {}. A torre é impressa no centro da mesa.
   Cleared from settings — system unpair failed, may need OS Bluetooth: Removido das
     configurações; falha ao desemparelhar no sistema, pode ser necessário o Bluetooth
     do SO
@@ -981,6 +988,7 @@ translations:
   Devices: Dispositivos
   Different filament?: Filamento diferente?
   Digital Clock: 'Relógio digital'
+  Direct drive: Direto
   Disable: Desabilitar
   Disable Bypass: Desabilitar Bypass
   Disable Motors?: Desligar Motores?
@@ -1112,6 +1120,9 @@ translations:
 
   Encoder: Encoder
   Encoder Error: 'Erro do encoder'
+  End K: K final
+  End Test: Encerrar teste
+  End the test print?: Encerrar a impressão de teste?
   Ended: Finalizado
   Endless Spool: 'Carretel infinito'
   Endless spool failover cleared for every slot: 'Carretel reserva limpo para todos os slots'
@@ -1301,12 +1312,14 @@ translations:
   Failed to save setup completion: Falha ao salvar conclusão da configuração
   Failed to save spool: Falha ao salvar carretel
   Failed to save theme file: Falha ao salvar arquivo do tema
+  'Failed to save to Spoolman: {}': 'Falha ao salvar no Spoolman: {}'
   'Failed to schedule the pause: {}': 'Falha ao agendar a pausa: {}'
   'Failed to send command: {}': 'Falha ao enviar comando: {}'
   Failed to send print data: Falha ao enviar os dados de impressão
   Failed to send status request: Falha ao enviar a solicitação de status
   Failed to set active spool: Falha ao definir carretel ativo
   'Failed to set flow rate: {}': 'Falha ao definir fluxo: {}'
+  'Failed to set pressure advance: {}': 'Falha ao ajustar o Pressure Advance: {}'
   'Failed to set print speed: {}': 'Falha ao definir velocidade de impressão: {}'
   'Failed to set temperature: {}': 'Falha ao definir temperatura: {}'
   'Failed to set {} temp: {}': 'Falha ao definir temp. de {}: {}'
@@ -1569,6 +1582,7 @@ translations:
   Heating Bed...: Aquecendo mesa...
   Heating Chamber...: Aquecendo câmara...
   Heating Nozzle...: Aquecendo bocal...
+  Heating and homing: Aquecendo e fazendo homing
   Heating bed to $1°C...: Aquecendo mesa a $1°C...
   Heating bed...: Aquecendo mesa...
   Heating chamber...: Aquecendo câmara...
@@ -1760,7 +1774,9 @@ translations:
   Issue description: Descrição do problema
   It can be un-archived in Spoolman's web UI.: Pode ser desarquivado na interface web do Spoolman.
   It has not reported its slots yet. Try again in a moment.: Ainda não informou seus slots. Tente novamente em instantes.
+  It homes and heats on its own (no start macro found).: Ela faz o homing e aquece sozinha (nenhuma macro de início encontrada).
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Está preso entre o sensor do hub e a engrenagem do hub. Abra o CFS e desobstrua o hub antes de tentar novamente
+  It starts with your {} macro.: Ela começa com a sua macro {}.
   It's a new spool: É um carretel novo
   Jammed at the Toolhead: Atolado no cabeçote
   Job Queue: Fila de Trabalhos
@@ -1786,6 +1802,7 @@ translations:
   Keep Spool Info on Eject: Manter Informações do Carretel ao Ejetar
   Keep clear of the printer while the toolhead is moving: Afaste-se da impressora enquanto o cabeçote se move
   Keep current: Manter atual
+  Keep current ({}): Manter atual ({})
   Keep hands clear. The printer moves on its own.: Mantenha as mãos afastadas. A impressora se move sozinha.
 
   Keep its own data on this screen (up to 256 KB).: 'Guarda seus próprios dados nesta tela (até 256 KB).'
@@ -1862,6 +1879,7 @@ translations:
     de Camada captura um quadro por mudança de camada. Melhor para a maioria das impressões.
   Layer mode captures one frame per layer change. Best for most prints.: O modo por
     camada captura um quadro por mudança de camada. Melhor para a maioria das impressões.
+  Layer {} of {} · {:.2f} mm: Camada {} de {} · {:.2f} mm
   Layer {} of {}.: 'Camada {} de {}.'
   Layers: Camadas
   Layout: Disposição
@@ -1936,6 +1954,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Pressione e segure qualquer bloco para entrar no modo de edição — reorganize, redimensione, remova ou adicione widgets, e adicione páginas extras para o seu layout preferido.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Pressione longamente a grade inicial para reorganizar os widgets (desative se disparar por acidente)'
   Longest Disconnect: Maior Desconexão
+  Looking for the active spool...: Procurando o carretel ativo...
   Lost connection during print — try again: Conexão perdida durante a impressão —
     tente novamente
   Lost connection to CFS unit: Conexão perdida com a unidade CFS
@@ -2004,6 +2023,7 @@ translations:
   Manual Feed: 'Alimentação manual'
   Manual Retract: 'Retração manual'
   Manual feed and retract operations: Operações manuais de alimentação e retração
+  'Manual: the ramp has stopped at your value': 'Manual: a rampa parou no seu valor'
   Manually clear the jam and retry the operation: Remova o entupimento manualmente e tente a operação novamente
   Manually pull the filament back through the connector: Puxe o filamento manualmente de volta pelo conector
   Map to closest colors with matching material: Mapear para cores mais próximas com
@@ -2033,6 +2053,8 @@ translations:
   Measure: 'Medir'
   Measure every tool's XYZ offset automatically: Mede o offset XYZ de cada ferramenta automaticamente
   Measure pressure advance automatically: 'Mede o Pressure Advance automaticamente'
+  ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
+  : Meça a partir da mesa. Cantos nítidos, sem bojo e sem falhas, indicam o K certo. Cada linha é uma faixa de altura e o K que a impressora informou enquanto a imprimia.
   Measured (shaper off): Medido (shaper desligado)
   Measured filament diameter: Diâmetro medido do filamento
   Measured pressure advance: 'Pressure Advance medido'
@@ -2167,6 +2189,7 @@ translations:
   No Spools: Sem Carretéis
   No USB printer detected: Nenhuma impressora USB detectada
   No USB printers found: Nenhuma impressora USB encontrada
+  No active Spoolman spool.: Nenhum carretel ativo no Spoolman.
   No automatic backup-spool package is installed: Nenhum plugin de carretel de reserva automático instalado
   No buffer data available: Nenhum dado de buffer disponível
   No camera — use USB barcode scanner: Sem câmera — use leitor de código de barras
@@ -2174,6 +2197,7 @@ translations:
   No chamber temperature sensor detected: 'Nenhum sensor de temperatura da câmara detectado'
   No changes to revert: Nenhuma alteração para reverter
   No color: Sem cor
+  No connection to the printer.: Sem conexão com a impressora.
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: Nenhum
     secador disponível. Armazene o filamento em uma caixa seca selada com dessecante
     para melhores resultados.
@@ -2444,6 +2468,7 @@ translations:
   Pick: Escolher
   Pick Color: Escolher Cor
   Pick how HelixScreen behaves. You can change any of these later in Settings.: 'Escolha como o HelixScreen se comporta. Você pode mudar tudo depois em Configurações.'
+  Pick the best band: Escolha a melhor faixa
   Pick up tool: Pegar ferramenta
   Picking up tool: Pegando ferramenta
   Pill: Pílula
@@ -2520,6 +2545,10 @@ translations:
   Presets come from the WLED device. Edit them in the WLED app.: As predefinições vêm do dispositivo WLED. Edite-as no app WLED.
   Press Abort to stop: Pressione Abortar para parar
   Press Scan to search: Pressione Escanear para buscar
+  Pressure Advance Tuning: Ajuste de Pressure Advance
+  Pressure advance: Pressure Advance
+  ? 'Pressure advance climbs as the tower grows. Watch the corners: tap - or + whenever you like and the ramp stops so you can judge your own value.'
+  : 'O Pressure Advance sobe à medida que a torre cresce. Observe os cantos: toque em - ou + quando quiser e a rampa para, para você julgar seu próprio valor.'
   'Pressure:': 'Pressão:'
   Pressure Adv.: 'Pressure Adv.'
   Pressure Advance: 'Pressure Advance'
@@ -2552,9 +2581,11 @@ translations:
   Print Start: Início da Impressão
   Print Stats: 'Estatísticas de impressão'
   Print Status: Status da Impressão
+  Print Test Tower: Imprimir torre de teste
   Print Time: Tempo de Impressão
   Print Tuning: Ajuste de Impressão
   Print Was Terminated: A impressão foi terminada
+  Print a test tower and tune K by eye: Imprima uma torre de teste e ajuste K a olho
   Print cancelled: Impressão cancelada
   Print did not start: A impressão não iniciou
   Print complete: Impressão concluída
@@ -2574,6 +2605,7 @@ translations:
   'Print setup failed: internal error': 'Falha na configuração da impressão: erro
     interno'
   Print status: Status da impressão
+  Print the test tower?: Imprimir a torre de teste?
   Print timed out waiting for completion: A impressão — tempo esgotado aguardando
     a conclusão
   'Printed %d time': 'Impresso %d vez'
@@ -2726,6 +2758,8 @@ translations:
   'RSS:': 'RSS:'
   Rails: 'Trilhos'
   Ramming Volume: 'Volume de compactação'
+  'Ramp: band {} of {}': 'Rampa: faixa {} de {}'
+  'Ramp: base layers': 'Rampa: camadas de base'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Reidentificar
@@ -3001,11 +3035,13 @@ translations:
   'Save failed: {}': 'Falha ao salvar: {}'
   Save Offsets: Salvar offsets
   Save offsets?: Salvar offsets?
+  Save to Spool: Salvar no carretel
   Save to Spoolman: Salvar no Spoolman
   Saved Z-Offset: Z-Offset Salvo
   Saved to crash_report.txt (QR not available): Salvo em crash_report.txt (QR não
     disponível)
   Saved to printer configuration.: Salvo na configuração da impressora.
+  Saved to {}. It applies whenever this filament becomes active.: Salvo em {}. É aplicado sempre que este filamento ficar ativo.
   Saved values, and whether to ask before running: 'Valores salvos e se deve perguntar antes de executar'
   Saves to Klipper config and restarts firmware.: Salva na configuração do Klipper
     e reinicia o firmware.
@@ -3266,6 +3302,7 @@ translations:
   Spoolman connected!: Spoolman conectado!
   Spoolman found! Configuring...: Spoolman encontrado! Configurando...
   Spoolman has no spools configured: Spoolman não tem carretéis configurados
+  Spoolman is not available.: O Spoolman não está disponível.
   Spoolman is not configured — nothing to remove.: Spoolman não está configurado — nada
     a remover.
   Spoolman is offline, so brand and material can't be saved.: O Spoolman está offline, então marca e material não podem ser salvos.
@@ -3302,6 +3339,7 @@ translations:
   Start Anyway: Iniciar Mesmo Assim
   Start Calibration: Iniciar Calibração
   Start Drying: Iniciar secagem
+  Start K: K inicial
   Start Print: Iniciar Impressão
   Start Probing: Iniciar Sondagem
   Start a new {} h interval? The hours counted so far are discarded.: 'Iniciar um novo intervalo de {} h? As horas contadas até agora são descartadas.'
@@ -3466,6 +3504,7 @@ translations:
   Test Tracker: Rastreador de Testes
   Test Both: Testar ambos
   Test label printed: Etiqueta de teste impressa
+  'Test tower {:.0f} mm wide and {:.0f} mm tall, about {} min plus heating: {} bands of {:.0f} mm at {}°C.': 'Torre de teste com {:.0f} mm de largura e {:.0f} mm de altura, cerca de {} min mais o aquecimento: {} faixas de {:.0f} mm a {}°C.'
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Testando rotação: %d°
     (%d/%d) - %ds restantes'
   Testing, servo, and motor operations: 'Operações de teste, servo e motor'
@@ -3489,6 +3528,7 @@ translations:
     nas impressões. Você pode reativá-lo em Configurações > Tela.
   The bed has cooled. Take the spools off the plate, then confirm.: A mesa esfriou. Tire os carretéis da mesa e depois confirme.
 
+  The bed is too small for the test tower, or its size is unknown.: A mesa é pequena demais para a torre de teste, ou seu tamanho é desconhecido.
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: A mesa desliga. Os carretéis continuam registrados na mesa até você confirmar que foram retirados.
 
   The bed was reported dirty, so this print cannot resume.: 'A mesa foi reportada como suja, portanto esta impressão não pode ser retomada.'
@@ -3525,6 +3565,8 @@ translations:
   The plate and the spools are still hot. Use gloves.: A mesa e os carretéis ainda estão quentes. Use luvas.
 
   The plate finishes its current move, but drying will not start.: 'A mesa termina o movimento atual, mas a secagem não vai começar.'
+  The print ended before any layer was printed. Nothing was changed.: A impressão terminou antes de qualquer camada ser impressa. Nada foi alterado.
+  The print is cancelled and you pick the best band from what has printed so far.: A impressão é cancelada e você escolhe a melhor faixa do que foi impresso até agora.
   The print is on its last layer.: 'A impressão está na última camada.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : A impressão está pausada. Trocar a ferramenta agora move o cabeçote e troca o
@@ -3770,6 +3812,7 @@ translations:
   Try the operation again. If it persists, check for mechanical issues.: Tente a operação novamente. Se persistir, verifique problemas mecânicos.
   Trying again...: 'Tentando novamente...'
   Tune: Ajustar
+  Tuner: Ajuste
   Tuning tower enabled - start a print to test: Torre de ajuste habilitada - inicie
     uma impressão para testar
   Turbo: Turbo
@@ -4155,6 +4198,7 @@ translations:
   tall: de altura
   target {}%: 'alvo {}%'
   target {}°: 'alvo {}°'
+  the extruder: o extrusor
   this week: esta semana
   too slow: lento demais
   tool(s): ferramenta(s)

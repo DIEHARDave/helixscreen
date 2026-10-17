@@ -184,8 +184,10 @@ translations:
   A motor's parameters couldn't be written. Power-cycle the printer to retry: Не удалось записать параметры двигателя. Выключите и включите принтер и повторите попытку
   A newer version of the helper macros is available: 'Доступна более новая версия вспомогательных макросов'
   A picture of your printer: Изображение вашего принтера
+  A print is already running.: Печать уже идёт.
   A print is in progress - restart still pending: 'Идёт печать - перезапуск ещё отложен'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: На этом шлюзе идёт печать. HelixScreen очистил свою копию; после окончания печати очистите его снова.
+  A print is running. Apply the result after it ends.: Идёт печать. Примените результат после её завершения.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "Печать началась, когда катушки отмечены как лежащие на столе. Если они всё ещё там, немедленно остановите принтер аварийной остановкой."
   A spool may be tangled or the drive gear is jammed: Катушка может быть запутана или заклинило приводную шестерню
   A · 1,-1: "A · 1,-1"
@@ -238,6 +240,7 @@ translations:
   Actions: Действия
   Active: Активно
   Active Spool: Активная катушка
+  'Active spool: {}': 'Активная катушка: {}'
   Actual: Текущая
   Adaptive Bed Mesh: Адаптивная сетка стола
   Add: Добавить
@@ -316,6 +319,8 @@ translations:
   App startup encountered an error. Some features may be unavailable.: При запуске
     приложения произошла ошибка. Некоторые функции могут быть недоступны.
   Appearance: Внешний вид
+  ? "Applied to {}. Klipper forgets it on restart: enter {} as Pressure advance in your slicer's filament profile, or save it to the spool."
+  : 'Применено к {}. Klipper забудет значение после перезапуска: укажите {} как Pressure Advance в профиле филамента в слайсере или сохраните его на катушку.'
   Applies to: Применяется к
   Apply: Применить
   Archive: Архивировать
@@ -455,6 +460,7 @@ translations:
   Both: Оба
   Bouncing Logo: Прыгающий логотип
   Bouncing Printer: Прыгающий принтер
+  Bowden: Боуден
   Bowden Length: 'Длина боудена'
   Bowden tube length from hub to toolhead: 'Длина боуден-трубки от хаба до печатающей головки'
   Box: Бокс
@@ -726,6 +732,7 @@ translations:
 
   : Освободите место над столом и под ним. Положите катушки на стол, накройте их коробкой (напечатанной крышкой или упаковкой филамента) и закройте дверцу.
 
+  Clear the plate and load {}. The tower prints in the middle of the bed.: Освободите стол и загрузите {}. Башня печатается в центре стола.
   Cleared from settings — system unpair failed, may need OS Bluetooth: Удалено из
     настроек; не удалось отменить сопряжение в системе, возможно нужен Bluetooth ОС
   Clipboard unavailable - use SSH: Буфер обмена недоступен - используйте SSH
@@ -1024,6 +1031,7 @@ translations:
   Devices: Устройства
   Different filament?: Другой филамент?
   Digital Clock: 'Цифровые часы'
+  Direct drive: Директ
   Disable: Отключить
   Disable Bypass: Отключить байпас
   Disable Motors?: Отключить моторы?
@@ -1156,6 +1164,9 @@ translations:
 
   Encoder: Энкодер
   Encoder Error: 'Ошибка энкодера'
+  End K: Конечный K
+  End Test: Завершить тест
+  End the test print?: Завершить тестовую печать?
   Ended: Завершено
   Endless Spool: 'Бесконечная катушка'
   Endless spool failover cleared for every slot: 'Резервные катушки очищены для всех слотов'
@@ -1342,12 +1353,14 @@ translations:
   Failed to save setup completion: Не удалось сохранить завершение настройки
   Failed to save spool: Не удалось сохранить катушку
   Failed to save theme file: Не удалось сохранить файл темы
+  'Failed to save to Spoolman: {}': 'Не удалось сохранить в Spoolman: {}'
   'Failed to schedule the pause: {}': 'Не удалось запланировать паузу: {}'
   'Failed to send command: {}': 'Не удалось отправить команду: {}'
   Failed to send print data: Не удалось отправить данные печати
   Failed to send status request: Не удалось отправить запрос статуса
   Failed to set active spool: Не удалось установить активную катушку
   'Failed to set flow rate: {}': 'Не удалось задать поток: {}'
+  'Failed to set pressure advance: {}': 'Не удалось задать Pressure Advance: {}'
   'Failed to set print speed: {}': 'Не удалось задать скорость печати: {}'
   'Failed to set temperature: {}': 'Не удалось задать температуру: {}'
   'Failed to set {} temp: {}': 'Не удалось задать темп. {}: {}'
@@ -1612,6 +1625,7 @@ translations:
   Heating Bed...: Нагрев стола...
   Heating Chamber...: Нагрев камеры...
   Heating Nozzle...: Нагрев сопла...
+  Heating and homing: Нагрев и парковка
   Heating bed to $1°C...: Нагрев стола до $1°C...
   Heating bed...: Нагрев стола...
   Heating chamber...: Нагрев камеры...
@@ -1800,7 +1814,9 @@ translations:
   Issue description: Описание проблемы
   It can be un-archived in Spoolman's web UI.: Это можно восстановить из архива в веб-интерфейсе Spoolman.
   It has not reported its slots yet. Try again in a moment.: Она ещё не сообщила о своих слотах. Повторите попытку через минуту.
+  It homes and heats on its own (no start macro found).: Парковка и нагрев выполняются самостоятельно (стартовый макрос не найден).
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Он зажат между датчиком хаба и его шестернёй. Откройте CFS, освободите хаб и повторите
+  It starts with your {} macro.: Начинается с вашего макроса {}.
   It's a new spool: Это новая катушка
   Jammed at the Toolhead: Замятие в печатающей головке
   Job Queue: Очередь заданий
@@ -1826,6 +1842,7 @@ translations:
   Keep Spool Info on Eject: Сохранять данные катушки при извлечении
   Keep clear of the printer while the toolhead is moving: Не приближайтесь к принтеру, пока перемещается печатающая головка
   Keep current: Оставить текущую
+  Keep current ({}): Оставить текущее ({})
   Keep hands clear. The printer moves on its own.: Держите руки подальше. Принтер двигается сам.
 
   Keep its own data on this screen (up to 256 KB).: 'Хранит собственные данные на этом экране (до 256 КБ).'
@@ -1902,6 +1919,7 @@ translations:
   Layer mode captures one frame per layer change. Best for most prints.: Послойный
     режим захватывает один кадр на каждую смену слоя. Лучший выбор для большинства
     печатей.
+  Layer {} of {} · {:.2f} mm: Слой {} из {} · {:.2f} мм
   Layer {} of {}.: 'Слой {} из {}.'
   Layers: Слои
   Layout: Раскладка
@@ -1976,6 +1994,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Долгое нажатие на любую плитку переводит в режим редактирования — переставляйте, изменяйте размер, удаляйте или добавляйте виджеты, а также добавляйте дополнительные страницы под свой макет.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Долгое нажатие на сетку главного экрана переставляет виджеты (отключите, если срабатывает случайно)'
   Longest Disconnect: Самое долгое отключение
+  Looking for the active spool...: Поиск активной катушки...
   Lost connection during print — try again: Потеряно соединение во время печати —
     попробуйте снова
   Lost connection to CFS unit: Потеряна связь с блоком CFS
@@ -2044,6 +2063,7 @@ translations:
   Manual Feed: 'Ручная подача'
   Manual Retract: 'Ручная ретракция'
   Manual feed and retract operations: Операции ручной подачи и ретракции
+  'Manual: the ramp has stopped at your value': 'Вручную: рампа остановлена на вашем значении'
   Manually clear the jam and retry the operation: Устраните затор вручную и повторите операцию
   Manually pull the filament back through the connector: Вытяните филамент вручную через разъём
   Map to closest colors with matching material: Подобрать ближайшие цвета с подходящим
@@ -2073,6 +2093,8 @@ translations:
   Measure: 'Измерить'
   Measure every tool's XYZ offset automatically: Автоматически измеряет смещение XYZ каждого инструмента
   Measure pressure advance automatically: 'Автоматически измеряет Pressure Advance'
+  ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
+  : Отсчитывайте высоту от стола. Острые углы без наплывов и пропусков означают верный K. Каждая строка - диапазон высот и K, который принтер сообщал во время его печати.
   Measured (shaper off): Измерено (шейпер выключен)
   Measured filament diameter: Измеренный диаметр филамента
   Measured pressure advance: 'Измеренный Pressure Advance'
@@ -2206,12 +2228,14 @@ translations:
   No Spools: Нет катушек
   No USB printer detected: USB-принтер не обнаружен
   No USB printers found: USB-принтеры не найдены
+  No active Spoolman spool.: Нет активной катушки Spoolman.
   No automatic backup-spool package is installed: Плагин автоматической резервной катушки не установлен
   No buffer data available: Данные буфера недоступны
   No camera — use USB barcode scanner: Нет камеры — используйте USB сканер штрих-кодов
   No chamber temperature sensor detected: 'Датчик температуры камеры не обнаружен'
   No changes to revert: Нет изменений для отката
   No color: Без цвета
+  No connection to the printer.: Нет связи с принтером.
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: Сушилка
     недоступна. Храните филамент в герметичном контейнере с влагопоглотителем для
     лучших результатов.
@@ -2481,6 +2505,7 @@ translations:
   Pick: Выбрать
   Pick Color: Выбрать цвет
   Pick how HelixScreen behaves. You can change any of these later in Settings.: 'Выберите, как будет вести себя HelixScreen. Всё это можно изменить позже в Настройках.'
+  Pick the best band: Выберите лучшую полосу
   Pick up tool: Забрать инструмент
   Picking up tool: Захват инструмента
   Pill: Овал
@@ -2560,6 +2585,10 @@ translations:
   Presets come from the WLED device. Edit them in the WLED app.: Пресеты берутся с устройства WLED. Изменяйте их в приложении WLED.
   Press Abort to stop: Нажмите «Прервать», чтобы остановить
   Press Scan to search: Нажмите «Поиск» для сканирования
+  Pressure Advance Tuning: Настройка Pressure Advance
+  Pressure advance: Pressure Advance
+  ? 'Pressure advance climbs as the tower grows. Watch the corners: tap - or + whenever you like and the ramp stops so you can judge your own value.'
+  : 'Pressure Advance растёт вместе с башней. Следите за углами: нажмите - или + в любой момент, и рампа остановится, чтобы вы оценили своё значение.'
   'Pressure:': 'Давление:'
   Pressure Adv.: 'Pressure Adv.'
   Pressure Advance: 'Pressure Advance'
@@ -2592,9 +2621,11 @@ translations:
   Print Start: Начало печати
   Print Stats: 'Статистика печати'
   Print Status: Статус печати
+  Print Test Tower: Печать тестовой башни
   Print Time: Время печати
   Print Tuning: Настройка печати
   Print Was Terminated: Печать была прекращена
+  Print a test tower and tune K by eye: Напечатать тестовую башню и подобрать K на глаз
   Print cancelled: Печать отменена
   Print did not start: Печать не началась
   Print complete: Печать завершена
@@ -2614,6 +2645,7 @@ translations:
   'Print setup failed: internal error': 'Не удалось подготовить печать: внутренняя
     ошибка'
   Print status: Статус печати
+  Print the test tower?: Напечатать тестовую башню?
   Print timed out waiting for completion: Время ожидания завершения печати истекло
   'Printed %d time': 'Напечатано %d раз'
   'Printed %d times':
@@ -2773,6 +2805,8 @@ translations:
   'RSS:': 'RSS:'
   Rails: 'Направл.'
   Ramming Volume: 'Объём рэмминга'
+  'Ramp: band {} of {}': 'Рампа: полоса {} из {}'
+  'Ramp: base layers': 'Рампа: базовые слои'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Определить снова
@@ -3046,10 +3080,12 @@ translations:
   'Save failed: {}': 'Ошибка сохранения: {}'
   Save Offsets: Сохранить смещения
   Save offsets?: Сохранить смещения?
+  Save to Spool: Сохранить на катушку
   Save to Spoolman: Сохранить в Spoolman
   Saved Z-Offset: Сохранённый Z-Offset
   Saved to crash_report.txt (QR not available): Сохранено в crash_report.txt (QR недоступен)
   Saved to printer configuration.: Сохранено в конфигурацию принтера.
+  Saved to {}. It applies whenever this filament becomes active.: Сохранено в {}. Применяется каждый раз, когда этот филамент становится активным.
   Saved values, and whether to ask before running: 'Сохранённые значения и запрос перед запуском'
   Saves to Klipper config and restarts firmware.: Сохраняет в конфигурацию Klipper
     и перезапускает прошивку.
@@ -3306,6 +3342,7 @@ translations:
   Spoolman connected!: Spoolman подключен!
   Spoolman found! Configuring...: Spoolman найден! Настройка...
   Spoolman has no spools configured: В Spoolman нет настроенных катушек
+  Spoolman is not available.: Spoolman недоступен.
   Spoolman is not configured — nothing to remove.: Spoolman не настроен — удалять нечего.
   Spoolman is offline, so brand and material can't be saved.: Spoolman не в сети, поэтому бренд и материал не могут быть сохранены.
   Spoolman is offline. Brand and material can change once it's back.: Spoolman не в сети. Бренд и материал можно будет изменить после его восстановления.
@@ -3349,6 +3386,7 @@ translations:
   Start Anyway: Начать всё равно
   Start Calibration: Начать калибровку
   Start Drying: Начать сушку
+  Start K: Начальный K
   Start Print: Начать печать
   Start Probing: Начать зондирование
   Start a new {} h interval? The hours counted so far are discarded.: 'Начать новый интервал {} ч? Отсчитанные часы будут сброшены.'
@@ -3511,6 +3549,7 @@ translations:
   Test Tracker: Трекер тестов
   Test Both: Тест обоих
   Test label printed: Тестовая этикетка напечатана
+  'Test tower {:.0f} mm wide and {:.0f} mm tall, about {} min plus heating: {} bands of {:.0f} mm at {}°C.': 'Тестовая башня шириной {:.0f} мм и высотой {:.0f} мм, около {} мин плюс нагрев: {} полос по {:.0f} мм при {}°C.'
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Тест поворота: %d°
     (%d/%d) - осталось %ds'
   Testing, servo, and motor operations: 'Тестирование, сервопривод и работа моторов'
@@ -3534,6 +3573,7 @@ translations:
     печати. Вы можете снова включить её в Настройки > Дисплей.
   The bed has cooled. Take the spools off the plate, then confirm.: Стол остыл. Снимите катушки со стола, затем подтвердите.
 
+  The bed is too small for the test tower, or its size is unknown.: Стол слишком мал для тестовой башни, или его размер неизвестен.
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: Стол выключится. Катушки считаются лежащими на столе, пока вы не подтвердите, что сняли их.
 
   The bed was reported dirty, so this print cannot resume.: 'Стол помечен как загрязнённый, поэтому печать не может быть продолжена.'
@@ -3570,6 +3610,8 @@ translations:
   The plate and the spools are still hot. Use gloves.: Стол и катушки ещё горячие. Используйте перчатки.
 
   The plate finishes its current move, but drying will not start.: 'Стол завершит текущее перемещение, но сушка не начнётся.'
+  The print ended before any layer was printed. Nothing was changed.: Печать завершилась до первого слоя. Ничего не изменено.
+  The print is cancelled and you pick the best band from what has printed so far.: Печать будет отменена, и вы выберете лучшую полосу из уже напечатанного.
   The print is on its last layer.: 'Печатается последний слой.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены.
@@ -3807,6 +3849,7 @@ translations:
   Try the operation again. If it persists, check for mechanical issues.: Повторите операцию. Если проблема не исчезает, проверьте механические неисправности.
   Trying again...: 'Повторная попытка...'
   Tune: Настройка
+  Tuner: Настройка
   Tuning tower enabled - start a print to test: Башня настройки включена — начните
     печать для теста
   Turbo: Турбо
@@ -4193,6 +4236,7 @@ translations:
   tall: высотой
   target {}%: 'цель {}%'
   target {}°: 'цель {}°'
+  the extruder: экструдер
   this week: за неделю
   too slow: слишком медленно
   tool(s): инструмент(ы)

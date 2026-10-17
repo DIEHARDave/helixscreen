@@ -614,6 +614,14 @@ class ISpoolmanAPI {
                                                 SuccessCallback on_success,
                                                 ErrorCallback on_error) = 0;
 
+    /// Set a numeric extra field on a filament. Spoolman rejects an extra key
+    /// it has no field definition for, so the field is defined first (as a
+    /// float named @p display_name) when it does not exist yet.
+    virtual void set_spoolman_filament_extra_number(int filament_id, const std::string& key,
+                                                    const std::string& display_name, double value,
+                                                    SuccessCallback on_success,
+                                                    ErrorCallback on_error) = 0;
+
     virtual void get_spoolman_vendors(helix::VendorListCallback on_success,
                                       ErrorCallback on_error) = 0;
 
