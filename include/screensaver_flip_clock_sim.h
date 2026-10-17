@@ -202,6 +202,8 @@ class FlipClockSim {
 
     /// Frees the glyph cache.
     void clear();
+    /// Bytes the glyph cache holds.
+    size_t heap_bytes() const;
 
     /// Background, card, split-line and digit colours.
     static constexpr Rgb BACKGROUND{0, 0, 0};

@@ -330,6 +330,10 @@ float FlipClockSim::flip_progress(size_t i) const {
            static_cast<float>(FLIP_DURATION_MS);
 }
 
+size_t FlipClockSim::heap_bytes() const {
+    return glyphs_.heap_bytes();
+}
+
 void FlipClockSim::clear() {
     glyphs_.clear();
     layout_ = {};

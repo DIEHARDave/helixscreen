@@ -196,6 +196,10 @@ size_t FireworksSim::sparks_in_use() const {
     }));
 }
 
+size_t FireworksSim::heap_bytes() const {
+    return buffer_bytes(sparks_, sky_rows_, hill_top_, star_y_, star_level_);
+}
+
 void FireworksSim::clear() {
     release_buffers(sparks_, sky_rows_, hill_top_, star_y_, star_level_);
     for (Burst& b : bursts_) {

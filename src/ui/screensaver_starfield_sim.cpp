@@ -82,6 +82,10 @@ void StarfieldSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
     set_active_count(starfield_star_count(level));
 }
 
+size_t StarfieldSim::heap_bytes() const {
+    return buffer_bytes(stars_, star_dirty_);
+}
+
 void StarfieldSim::clear() {
     release_buffers(stars_, star_dirty_);
     active_count_ = NUM_STARS;

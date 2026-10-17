@@ -78,6 +78,8 @@ class StarfieldSim {
 
     /// Frees the population, capacity included.
     void clear();
+    /// Bytes the population holds.
+    size_t heap_bytes() const;
 
     /**
      * @brief Stars moved and drawn per frame: the first `count` of the population
