@@ -31,6 +31,7 @@
 #include "static_panel_registry.h"
 #include "subject_managed_panel.h"
 #include "theme_manager.h"
+#include "tile_grid_fit.h"
 #include "toolhead_homing.h"
 #include "ui/ui_widget_helpers.h"
 #include "unit_conversions.h"
@@ -170,6 +171,46 @@ std::optional<helix::JogButton> helix::parse_jog_button(const char* name) {
         return std::nullopt;
     }
     return button;
+}
+
+helix::JogLayoutFit helix::jog_layout_fit(MotionLayout layout, bool portrait, int box_w, int box_h,
+                                          int gap, int step_h, int step_count, int min_key) {
+    JogLayoutFit fit;
+    if (layout == MotionLayout::Pad) {
+        return fit;
+    }
+    if (layout == MotionLayout::AxisRows) {
+        // Four rows of five keys (the axis key in the middle), four gaps
+        // across, three down.
+        const auto key = ui::fit_key_grid(5, 4, box_w - 4 * gap, box_h - 3 * gap, min_key);
+        fit.key_w = key.key_w;
+        fit.key_h = key.key_h;
+        fit.row = {5 * key.key_w + 4 * gap, key.key_h};
+        return fit;
+    }
+
+    // The crosses: Arrows is 3 keys by 2 (X- and X+ sit between the Y rows),
+    // Arrows + Home 3 by 3; a Z column beside them either way. The home block
+    // is 2 keys wide beside them in landscape, one row under them in portrait.
+    const int cross_rows = layout == MotionLayout::Arrows ? 2 : 3;
+    const double cols = portrait ? 4 : 6;
+    const int rows = portrait ? cross_rows + 1 : cross_rows;
+    const int gaps_x = portrait ? 3 : 5;
+    const int gaps_y = rows; // between key rows, plus one above the step bar
+    const auto key =
+        ui::fit_key_grid(cols, rows, box_w - gaps_x * gap, box_h - gaps_y * gap - step_h, min_key);
+    fit.key_w = key.key_w;
+    fit.key_h = key.key_h;
+    const int cross_h = cross_rows * key.key_h + (cross_rows - 1) * gap;
+    fit.xy = {3 * key.key_w + 2 * gap, cross_h};
+    fit.z = {key.key_w, cross_h};
+    fit.home = portrait ? BlockSize{4 * key.key_w + 3 * gap, key.key_h}
+                        : BlockSize{2 * key.key_w + gap, cross_h};
+    const int body_w = portrait ? fit.home.w : fit.xy.w + gap + fit.z.w + gap + fit.home.w;
+    // Step keys are as tall as the bar; past 1.4x that they would read as bars.
+    const int widest = step_count > 0 ? step_count * (step_h * 7 / 5) + (step_count - 1) * gap : 0;
+    fit.steps_w = std::min(body_w, widest);
+    return fit;
 }
 
 std::optional<helix::AxisKeypadParams>
@@ -488,6 +529,10 @@ void MotionPanel::register_callbacks() {
              if (auto index = helix::ui::event_user_int(e))
                  get_global_motion_panel().select_jog_step(*index);
          }},
+        {"on_motion_jog_layout_resized",
+         [](lv_event_t* e) {
+             get_global_motion_panel().fit_jog_layout(lv_event_get_current_target_obj(e));
+         }},
         // Layout home buttons: user_data names the axes, "all" homes everything.
         {"on_motion_home",
          [](lv_event_t* e) {
@@ -691,6 +736,24 @@ void MotionPanel::fit_jog_pad() {
     if (portrait_pad_row) {
         lv_obj_set_width(jog_wrapper, jog_size);
         lv_obj_set_flex_grow(jog_wrapper, 0);
+    } else {
+        // Landscape: the Z column's keys take their height from the column, so
+        // its width stops at 1.4x that height rather than drawing wide bars.
+        lv_obj_t* right_column = lv_obj_find_by_name(overlay_root_, "right_column");
+        lv_obj_t* z_key = right_column ? lv_obj_find_by_name(right_column, "z_up_large") : nullptr;
+        if (z_key && lv_obj_get_height(z_key) > 0) {
+            const lv_coord_t max_w = lv_obj_get_style_max_width(right_column, LV_PART_MAIN);
+            const lv_coord_t near_square = lv_obj_get_height(z_key) * 7 / 5;
+            lv_obj_set_width(right_column, LV_MIN(max_w, near_square));
+            lv_obj_set_flex_grow(right_column, 0);
+            // A key too short to stack keeps its label beside the arrow, which
+            // a near-square key cannot hold: the column keeps its flex share.
+            lv_obj_update_layout(overlay_root_);
+            if (lv_obj_get_scroll_right(z_key) > 0) {
+                lv_obj_set_width(right_column, 0);
+                lv_obj_set_flex_grow(right_column, 1);
+            }
+        }
     }
     lv_obj_set_width(jog_pad_, jog_size);
     lv_obj_set_height(jog_pad_, jog_size);
@@ -1637,6 +1700,65 @@ void MotionPanel::layout_bed_map() {
     update_bed_marker();
 }
 
+void MotionPanel::fit_jog_layout(lv_obj_t* root) {
+    if (!root) {
+        return;
+    }
+    struct Named {
+        const char* view;
+        MotionLayout layout;
+        const char* prefix;
+    };
+    static constexpr Named LAYOUTS[] = {
+        {"motion_jog_arrows", MotionLayout::Arrows, "arrows"},
+        {"motion_jog_arrows_home", MotionLayout::ArrowsHome, "cross"},
+        {"motion_jog_rows", MotionLayout::AxisRows, "rows"},
+    };
+    const Named* named = nullptr;
+    for (const auto& n : LAYOUTS) {
+        if (lv_streq(lv_obj_get_name(root), n.view)) {
+            named = &n;
+        }
+    }
+    if (!named) {
+        return;
+    }
+
+    lv_subject_t* portrait_subject = lv_xml_get_subject(nullptr, "ui_is_portrait");
+    const bool portrait = portrait_subject && lv_subject_get_int(portrait_subject) != 0;
+    const int min_key = static_cast<int>(theme_manager_get_spacing("touch_target_min"));
+    const int step_h =
+        std::max(static_cast<int>(theme_manager_get_spacing("button_height")), min_key);
+    const auto fit = jog_layout_fit(named->layout, portrait, lv_obj_get_content_width(root),
+                                    lv_obj_get_content_height(root),
+                                    lv_obj_get_style_pad_row(root, LV_PART_MAIN), step_h,
+                                    static_cast<int>(steps_.size()), min_key);
+
+    auto set = [root, named](const char* suffix, const BlockSize& size) {
+        char name[32];
+        std::snprintf(name, sizeof(name), "%s_%s", named->prefix, suffix);
+        if (lv_obj_t* obj = lv_obj_find_by_name(root, name)) {
+            lv_obj_set_size(obj, size.w, size.h);
+        }
+    };
+    if (named->layout == MotionLayout::AxisRows) {
+        for (const char* row : {"x", "y", "z", "bottom"}) {
+            set(row, fit.row);
+        }
+    } else {
+        set("xy", fit.xy);
+        set("z", fit.z);
+        set("home", fit.home);
+        char steps[32];
+        std::snprintf(steps, sizeof(steps), "%s_steps", named->prefix);
+        if (lv_obj_t* bar = lv_obj_find_by_name(root, steps)) {
+            lv_obj_set_width(bar, fit.steps_w);
+        }
+    }
+    spdlog::trace("[{}] {} fit: key {}x{} ({})", get_name(), named->view, fit.key_w, fit.key_h,
+                  portrait ? "portrait" : "landscape");
+}
+
 void MotionPanel::draw_bed_grid(lv_event_t* e) const {
     lv_obj_t* plate_obj = lv_event_get_current_target_obj(e);
     lv_obj_t* area = plate_obj ? lv_obj_get_parent(plate_obj) : nullptr;
@@ -1929,6 +2051,12 @@ void MotionPanel::refresh_step_list() {
     // labels and flags already in place.
     if (lv_subject_get_int(&step_count_subject_) != count) {
         lv_subject_set_int(&step_count_subject_, count);
+        // The step bar's width follows the count; the layout keeps its size.
+        if (overlay_root_) {
+            for (const char* view : {"motion_jog_arrows", "motion_jog_arrows_home"}) {
+                fit_jog_layout(lv_obj_find_by_name(overlay_root_, view));
+            }
+        }
     }
 }
 

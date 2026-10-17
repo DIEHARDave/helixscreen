@@ -31,6 +31,12 @@
     <px name="bed_map_home_size_medium" value="72"/>
     <px name="bed_map_home_size_large" value="88"/>
   </consts>
+  <subjects>
+    <!-- From small up the landscape Z keys stack their arrow over the distance,
+         so a near-square key holds "10mm"; below that a key is too short to
+         stack, and the column widens to fit the label beside the arrow. -->
+    <subject_expr name="motion_z_keys_stacked" expr="ui_breakpoint ge 2"/>
+  </subjects>
   <!-- Motion Sub-Screen: XYZ Movement & Homing -->
   <!-- Coordinates live in the header slot on landscape screens and in a slim
        full-width strip under the header on portrait screens, where the header
@@ -331,7 +337,7 @@
         <lv_obj name="bottom_row"
                 width="100%" height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs"
                 scrollable="false">
-          <motion_jog_modes name="jog_modes" width="0" flex_grow="3" icon_position="top">
+          <motion_jog_modes name="jog_modes" width="0" flex_grow="3">
             <bind_flag_if_not_eq subject="motion_tab" flag="hidden" ref_value="0"/>
             <bind_flag_if_not_eq subject="settings_motion_layout" flag="hidden" ref_value="0"/>
           </motion_jog_modes>
@@ -445,7 +451,9 @@
               <motion_jog_layout/>
             </lv_obj>
             <!-- Fine/Coarse/Turbo jog mode toggle -->
-            <motion_jog_modes name="jog_modes">
+            <!-- Landscape keeps full-width mode buttons at button height: a taller
+                 near-square key would take its height from the pad above. -->
+            <motion_jog_modes name="jog_modes" button_height="#button_height" max_width="100%" icon_position="left">
               <bind_flag_if_not_eq subject="motion_tab" flag="hidden" ref_value="0"/>
               <bind_flag_if_not_eq subject="settings_motion_layout" flag="hidden" ref_value="0"/>
             </motion_jog_modes>
@@ -464,11 +472,13 @@
                   style_pad_gap="#space_sm">
             <motion_jog_button name="z_up_large"
                                width="100%" jog="z_up_large" flex_grow="1" style_max_height="#button_height_lg"
+                               stacked_subject="motion_z_keys_stacked" stacked_if_eq="1" style_pad_hor="#space_xxs"
                                icon="arrow_up" bind_icon="motion_z_up_icon" label="motion_jog_outer_label">
               <bind_state_if_eq subject="motion_z_up_blocked" state="disabled" ref_value="1"/>
             </motion_jog_button>
             <motion_jog_button name="z_up_small"
                                width="100%" jog="z_up_small" flex_grow="1" style_max_height="#button_height_lg"
+                               stacked_subject="motion_z_keys_stacked" stacked_if_eq="1" style_pad_hor="#space_xxs"
                                icon="arrow_up" bind_icon="motion_z_up_icon" label="motion_jog_inner_label">
               <bind_state_if_eq subject="motion_z_up_blocked" state="disabled" ref_value="1"/>
             </motion_jog_button>
@@ -476,11 +486,13 @@
             <text_body name="z_axis_label" width="100%" bind_text="motion_z_axis_label" style_text_align="center"/>
             <motion_jog_button name="z_down_small"
                                width="100%" jog="z_down_small" flex_grow="1" style_max_height="#button_height_lg"
+                               stacked_subject="motion_z_keys_stacked" stacked_if_eq="1" style_pad_hor="#space_xxs"
                                icon="arrow_down" bind_icon="motion_z_down_icon" label="motion_jog_inner_label">
               <bind_state_if_eq subject="motion_z_down_blocked" state="disabled" ref_value="1"/>
             </motion_jog_button>
             <motion_jog_button name="z_down_large"
                                width="100%" jog="z_down_large" flex_grow="1" style_max_height="#button_height_lg"
+                               stacked_subject="motion_z_keys_stacked" stacked_if_eq="1" style_pad_hor="#space_xxs"
                                icon="arrow_down" bind_icon="motion_z_down_icon" label="motion_jog_outer_label">
               <bind_state_if_eq subject="motion_z_down_blocked" state="disabled" ref_value="1"/>
             </motion_jog_button>
@@ -490,8 +502,8 @@
                   width="100%" height="content" style_pad_all="0" scrollable="false" flex_flow="row"
                   style_pad_gap="#space_xs">
             <ui_button name="btn_qgl"
-                       width="0" height="#button_height" flex_grow="1" style_pad_ver="0" text="QGL" variant="secondary"
-                       hidden="true" moves_machine="true">
+                       width="0" height="#button_height" flex_grow="1" style_pad_ver="0" style_pad_hor="#space_xxs"
+                       text="QGL" variant="secondary" hidden="true" moves_machine="true">
               <bind_flag_if_eq subject="printer_has_qgl" flag="hidden" ref_value="0"/>
               <bind_state_if_eq subject="controls_operation_in_progress" state="disabled" ref_value="1"/>
               <event_cb trigger="clicked" callback="on_motion_qgl"/>

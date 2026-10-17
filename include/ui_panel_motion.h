@@ -11,6 +11,7 @@
 #include "jog_coalescer.h"
 #include "motion_presets.h"
 #include "overlay_base.h"
+#include "settings_manager.h"
 #include "static_panel_registry.h"
 #include "subject_managed_panel.h"
 #include "ui/ui_modal_guard.h"
@@ -52,6 +53,39 @@ std::optional<AxisKeypadParams> keypad_params_for_axis(const AxisBounds& bounds,
 /// A partial move is possible anywhere else, so the button stays enabled.
 bool z_direction_blocked(bool z_homed, bool bounds_known, double z, double z_min, double z_max,
                          double direction_mm);
+
+/// A block's size in px.
+struct BlockSize {
+    int w = 0;
+    int h = 0;
+};
+
+/// Sizes for one of the alternative Jog-tab layouts: the key size and the
+/// blocks MotionPanel::fit_jog_layout() sets. Arrows layouts fill `xy`, `z`,
+/// `home` and `steps_w`; Axis Rows fills `row` (each of its four rows).
+struct JogLayoutFit {
+    int key_w = 0;
+    int key_h = 0;
+    BlockSize xy;
+    BlockSize z;
+    BlockSize home;
+    BlockSize row;
+    int steps_w = 0;
+};
+
+/**
+ * @brief Block sizes for a Jog-tab layout in a `box_w` x `box_h` view
+ *
+ * Keys come out near square (fit_key_grid()); every block is a whole number of
+ * keys plus the `gap` between them, so the keys inside fill it. Arrows and
+ * Arrows + Home put the home block beside the keys in landscape and under
+ * them in portrait, and leave `step_h` plus a gap under everything for the
+ * step selector, whose `step_count` keys stay at most 1.4 times as wide as tall.
+ * Axis Rows stacks four rows of two minus keys, the axis key and two plus
+ * keys. Empty for MotionLayout::Pad, which sizes its own pad.
+ */
+JogLayoutFit jog_layout_fit(MotionLayout layout, bool portrait, int box_w, int box_h, int gap,
+                            int step_h, int step_count, int min_key);
 
 /// One pointer event on the Bed tab's touch surface.
 enum class BedTouch { Pressed, Pressing, Released, Lost };
@@ -245,6 +279,11 @@ class MotionPanel : public OverlayBase {
     /// Bed tab: size the plate to the bed's aspect inside the touch surface
     /// and place the marker. No-op while another tab is showing.
     void layout_bed_map();
+
+    /// Size an alternative Jog-tab layout's blocks for its current size
+    /// (jog_layout_fit()). `root` is the layout component's view; its
+    /// SIZE_CHANGED event calls this, and so does a change in the step count.
+    void fit_jog_layout(lv_obj_t* root);
 
     /// Bed tab: draw the reference grid on the plate (its DRAW_MAIN hook).
     void draw_bed_grid(lv_event_t* e) const;

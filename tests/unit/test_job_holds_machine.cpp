@@ -420,6 +420,11 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/job_queue_row.xml",
     "ui_xml/components/lock_screen.xml",
     "ui_xml/components/material_temps_row.xml",
+    // The layouts' own markup carries only the resize hook; their keys are
+    // motion_jog_button / motion_home_button, classified above.
+    "ui_xml/components/motion_jog_arrows.xml",
+    "ui_xml/components/motion_jog_arrows_home.xml",
+    "ui_xml/components/motion_jog_rows.xml",
     "ui_xml/components/motion_jog_modes.xml",
     "ui_xml/components/motion_step_bar.xml",
     "ui_xml/components/navbar_drying.xml",

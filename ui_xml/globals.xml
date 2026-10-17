@@ -518,6 +518,25 @@
     <px name="button_height_sm_xlarge" value="48"/>
     <px name="button_height_sm_xxlarge" value="56"/>
 
+    <!-- jog_mode_h / jog_mode_w: a jog mode key in the pad layout (icon over
+         label). The height holds touch_target_min; the width cap keeps the key
+         within 1.4x its height, so a wide row centres its keys instead of
+         stretching them into bars. -->
+    <px name="jog_mode_h_micro" value="48"/>
+    <px name="jog_mode_h_tiny" value="48"/>
+    <px name="jog_mode_h_small" value="56"/>
+    <px name="jog_mode_h_medium" value="64"/>
+    <px name="jog_mode_h_large" value="80"/>
+    <px name="jog_mode_h_xlarge" value="88"/>
+    <px name="jog_mode_h_xxlarge" value="104"/>
+    <px name="jog_mode_w_micro" value="67"/>
+    <px name="jog_mode_w_tiny" value="67"/>
+    <px name="jog_mode_w_small" value="78"/>
+    <px name="jog_mode_w_medium" value="90"/>
+    <px name="jog_mode_w_large" value="112"/>
+    <px name="jog_mode_w_xlarge" value="123"/>
+    <px name="jog_mode_w_xxlarge" value="145"/>
+
     <!-- touch_target_min: the least height a tappable control may have, whatever
          the breakpoint; a compact layout trades width or rows, never this.
          One exception: an action prompt's swatch grid keeps every color visible,

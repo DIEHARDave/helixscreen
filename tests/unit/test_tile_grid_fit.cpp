@@ -138,3 +138,36 @@ TEST_CASE("fit_tile_grid uses the row gap for rows and the column gap for column
     CHECK(f.tile_w == 95);
     CHECK(f.tile_h == 40);
 }
+
+TEST_CASE("fit_key_grid keeps keys near square in a wide box", "[tile-grid-fit][motion-layout]") {
+    // Height-bound: 2 rows of 100 against 6 columns of 200. The keys take the
+    // row height and widen only to 1.4x it, not to the full column.
+    const auto fit = helix::ui::fit_key_grid(6, 2, 1200, 200, 48);
+    CHECK(fit.key_h == 100);
+    CHECK(fit.key_w == 140);
+}
+
+TEST_CASE("fit_key_grid keeps keys near square in a tall box", "[tile-grid-fit][motion-layout]") {
+    const auto fit = helix::ui::fit_key_grid(4, 3, 400, 900, 48);
+    CHECK(fit.key_w == 100);
+    CHECK(fit.key_h == 140);
+}
+
+TEST_CASE("fit_key_grid fills a box already near square", "[tile-grid-fit][motion-layout]") {
+    const auto fit = helix::ui::fit_key_grid(4.5, 4, 450, 480, 48);
+    CHECK(fit.key_w == 100);
+    CHECK(fit.key_h == 120);
+}
+
+TEST_CASE("fit_key_grid holds the touch minimum where its cell allows",
+          "[tile-grid-fit][motion-layout]") {
+    // Columns of 30 against rows of 60: square would be 30x30 and 42 tall at
+    // 1.4x; the minimum lifts the height to 48, still inside the 60 row.
+    const auto fit = helix::ui::fit_key_grid(3, 2, 90, 120, 48);
+    CHECK(fit.key_w == 30);
+    CHECK(fit.key_h == 48);
+    // A row shorter than the minimum keeps the row: a key never overflows its cell.
+    const auto tight = helix::ui::fit_key_grid(3, 2, 90, 60, 48);
+    CHECK(tight.key_h == 30);
+    CHECK(helix::ui::fit_key_grid(3, 2, 0, 60, 48).key_w == 0);
+}

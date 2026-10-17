@@ -29,6 +29,7 @@
 #include "settings_manager.h"
 #include "static_panel_registry.h"
 
+#include <algorithm>
 #include <array>
 #include <fstream>
 #include <sstream>
@@ -607,4 +608,69 @@ TEST_CASE_METHOD(LayoutFixture, "motion layout: the pad fits when it appears aft
     REQUIRE(pad);
     CHECK(lv_obj_get_width(pad) > 50);
     CHECK(lv_obj_get_width(pad) == lv_obj_get_height(pad));
+}
+
+TEST_CASE("jog layout fit: keys stay near square and the blocks fit the view", "[motion-layout]") {
+    // The layout slot measured at each target size, its gap, and the step bar
+    // height (button height, never under the touch minimum).
+    struct Box {
+        const char* label;
+        int w, h, gap, step_h;
+        bool portrait;
+    };
+    const Box boxes[] = {
+        {"480x272", 358, 216, 2, 48, false}, {"480x320", 346, 271, 2, 48, false},
+        {"800x480", 603, 400, 5, 52, false}, {"1024x600", 777, 512, 6, 72, false},
+        {"480x800", 466, 529, 5, 80, true},
+    };
+    constexpr int kMinKey = 48;
+    for (const auto& box : boxes) {
+        for (auto layout :
+             {MotionLayout::Arrows, MotionLayout::ArrowsHome, MotionLayout::AxisRows}) {
+            INFO(box.label << " layout " << static_cast<int>(layout));
+            const auto fit = helix::jog_layout_fit(layout, box.portrait, box.w, box.h, box.gap,
+                                                   box.step_h, 6, kMinKey);
+            REQUIRE(fit.key_w > 0);
+            REQUIRE(fit.key_h > 0);
+            const double aspect = static_cast<double>(std::max(fit.key_w, fit.key_h)) /
+                                  std::min(fit.key_w, fit.key_h);
+            CHECK(aspect <= 1.41);
+            CHECK(fit.key_h >= kMinKey);
+            if (layout == MotionLayout::AxisRows) {
+                CHECK(fit.row.w <= box.w);
+                CHECK(4 * fit.row.h + 3 * box.gap <= box.h);
+                continue;
+            }
+            const int body_w =
+                box.portrait ? fit.home.w : fit.xy.w + fit.z.w + fit.home.w + 2 * box.gap;
+            const int body_h = box.portrait ? fit.xy.h + box.gap + fit.home.h : fit.xy.h;
+            CHECK(body_w <= box.w);
+            CHECK(body_h + box.gap + box.step_h <= box.h);
+            CHECK(fit.steps_w <= body_w);
+            // Six step keys never come out wider than 1.4x their height.
+            CHECK(fit.steps_w <= 6 * box.step_h * 7 / 5 + 5 * box.gap);
+            // The keys use the view: one axis is within a key of filling it.
+            const bool fills_w = box.w - body_w < fit.key_w;
+            const bool fills_h = box.h - (body_h + box.gap + box.step_h) < fit.key_h;
+            CHECK((fills_w || fills_h));
+        }
+    }
+    CHECK(helix::jog_layout_fit(MotionLayout::Pad, false, 600, 400, 5, 52, 4, kMinKey).key_w == 0);
+}
+
+TEST_CASE_METHOD(LayoutFixture, "motion layout: the panel applies the fitted key blocks",
+                 "[motion-layout][xml]") {
+    show_with(MotionLayout::Arrows);
+    lv_obj_update_layout(lv_screen_active());
+    lv_obj_t* xy = find("arrows_xy");
+    lv_obj_t* y_plus = find("arrows_y_plus");
+    REQUIRE(xy);
+    REQUIRE(y_plus);
+    // The cross is sized from the key, and each key is near square.
+    CHECK(lv_obj_get_width(xy) > 0);
+    const int w = lv_obj_get_width(y_plus);
+    const int h = lv_obj_get_height(y_plus);
+    REQUIRE(w > 0);
+    REQUIRE(h > 0);
+    CHECK(static_cast<double>(std::max(w, h)) / std::min(w, h) <= 1.45);
 }
