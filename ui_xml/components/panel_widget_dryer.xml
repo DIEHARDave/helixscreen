@@ -9,8 +9,8 @@
     bed modal when no box has a dryer); at Full a tap on a row opens that row's source.
     Nothing here starts or stops a cycle.
 
-    Rungs: 0 glance (icon over RH, or a ring), 1 strip (one row: icon and RH, or time and
-    temperature), 2 column (a stack of the same), 3 cell (stack with a ring), 4 wide (ring beside its details, or icon beside
+    Rungs: 0 glance (drop over RH, or a ring), 1 strip (one row: drop and RH, or time and
+    temperature), 2 column (a stack of the same), 3 cell (stack with a ring), 4 wide (ring beside its details, or drop beside
     the humidity), 5 full (one row per source).
   -->
   <styles>
@@ -37,6 +37,11 @@
         <bind_flag_if_eq subject="home_dryer_rung" flag="hidden" ref_value="5"/>
         <bind_style_if name="df_stack" cond="home_dryer_rung eq 0 or home_dryer_rung eq 2 or home_dryer_rung eq 3"/>
         <bind_style_if name="df_beside" cond="home_dryer_rung eq 1 or home_dryer_rung eq 4"/>
+        <!-- Idle: a drop filled to the highest box humidity, an empty outline with no reading. -->
+        <humidity_drop name="dryer_drop" bind_value="home_dryer_rh_x10" size="xs" clickable="false" event_bubble="true">
+          <bind_flag_if_eq subject="home_dryer_show_drop" flag="hidden" ref_value="0"/>
+        </humidity_drop>
+        <!-- Drying, in a Column: the heater over the time and temperature. -->
         <icon name="dryer_icon" src="heat_wave" size="xs" variant="muted" clickable="false" event_bubble="true">
           <bind_flag_if_eq subject="home_dryer_show_icon" flag="hidden" ref_value="0"/>
         </icon>

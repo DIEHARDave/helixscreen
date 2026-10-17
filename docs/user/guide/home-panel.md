@@ -777,11 +777,13 @@ The Filament Dryer widget collects every way your printer can dry filament into 
 
 | Size | Idle | While drying |
 |------|------|--------------|
-| 0.5x0.5 | Humidity, or a dryer icon when no sensor reports it | Time left, with a progress ring when the progress is known |
+| 0.5x0.5 | Humidity, or an empty drop when no sensor reports it | Time left, with a progress ring when the progress is known |
 | 1x0.5, 0.5x1 | Humidity | Time left and temperature |
 | 1x1 | Humidity and "Not drying" | Time left and temperature, usually inside a progress ring |
 | 2x1 | Humidity and "Not drying" | The ring beside the dryer's name, time left, temperature, humidity and the clock time it finishes |
 | 2x2 and larger | One row per dryer, with its humidity and temperature | The same rows, each with time left and a progress bar |
+
+Below 2x2, the idle humidity sits beside a drop filled to the wettest box's reading, the same drop the Humidity widget uses; with no humidity sensor the drop is an empty outline. While drying, the 0.5x1 size shows a heater icon over the time instead.
 
 When two or more dryers run at once, the smaller sizes show how many are drying and the times left instead of a ring. A chamber heater's cycle only gets a ring if HelixScreen saw it start, because the heater reports minutes left but not how long the cycle was.
 

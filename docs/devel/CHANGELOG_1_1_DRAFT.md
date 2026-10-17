@@ -207,6 +207,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   waves of different size in two tones taken from the theme's info colour. The surface drifts
   gently when animations are on and holds still when they are off. A sensor with no reading shows
   an empty outline.
+  The Filament Dryer widget's idle humidity carries the same drop, filled to the wettest box.
 - **A Host Health widget** - CPU load and temperature, memory and the busiest controller board,
   with a trace of recent load. It turns amber or red at 70% and 90% load, at 70 and 80 C, on CPU
   throttling, on rising MCU retransmits and on under 500 MB free for G-code files. A tap opens

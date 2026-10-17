@@ -49,6 +49,8 @@ constexpr int kMaxTimes = 4;
 struct Flags {
     lv_subject_t rung{};
     lv_subject_t show_icon{};
+    lv_subject_t show_drop{};
+    lv_subject_t rh_x10{};
     lv_subject_t show_ring{};
     lv_subject_t ring_pct{};
     lv_subject_t show_info{};
@@ -106,7 +108,9 @@ void dryer_init_subjects() {
     helix::dryer_model::init_subjects();
     s_subjects.ensure_init([] {
         init_int(s_flags.rung, static_cast<int>(helix::SizeRung::Cell), "home_dryer_rung");
-        init_int(s_flags.show_icon, 1, "home_dryer_show_icon");
+        init_int(s_flags.show_icon, 0, "home_dryer_show_icon");
+        init_int(s_flags.show_drop, 1, "home_dryer_show_drop");
+        init_int(s_flags.rh_x10, -1, "home_dryer_rh_x10");
         init_int(s_flags.show_ring, 0, "home_dryer_show_ring");
         init_int(s_flags.ring_pct, 0, "home_dryer_ring_pct");
         init_int(s_flags.show_info, 1, "home_dryer_show_info");
@@ -294,8 +298,9 @@ helix::RungNeeds measure_needs(DState state) {
     const int ring_sm = theme_manager_get_spacing("button_height_sm");
     const int ring_md = theme_manager_get_spacing("button_height");
 
-    const std::string icon = helix::ui::icon::lookup_codepoint("heat_wave");
-    const int icon_w = measure_text_px(icon, f.icon);
+    // Idle draws the humidity drop, which takes the water glyph's box; drying the heater.
+    const int icon_w = measure_text_px(
+        helix::ui::icon::lookup_codepoint(state == DState::Idle ? "water" : "heat_wave"), f.icon);
     const int icon_h = line_px(f.icon);
     const int xs_h = line_px(f.xs);
     const int small_h = line_px(f.small);
@@ -546,8 +551,11 @@ void DryerWidget::publish_texts() {
     const bool single = rung != SizeRung::Full;
     const auto flag = [](const std::string& s) { return s.empty() ? 0 : 1; };
     const bool ring = verdict_.show_ring;
+    helix::ui::set_int_if_changed(&s_flags.show_drop, single && !drying ? 1 : 0);
     helix::ui::set_int_if_changed(&s_flags.show_icon,
-                                  single && (!drying || rung == SizeRung::Column) ? 1 : 0);
+                                  single && drying && rung == SizeRung::Column ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_flags.rh_x10,
+                                  summary.highest_rh_pct >= 0 ? summary.highest_rh_pct * 10 : -1);
     helix::ui::set_int_if_changed(&s_flags.show_time, flag(t.time) && !ring ? 1 : 0);
     helix::ui::set_int_if_changed(&s_flags.show_name, flag(t.name));
     helix::ui::set_int_if_changed(&s_flags.show_temp, flag(t.temp));

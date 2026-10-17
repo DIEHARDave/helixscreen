@@ -15,6 +15,8 @@
  * Run with: ./build/bin/helix-tests "[widget_size][dryer]"
  */
 
+#include "ui_humidity_drop.h"
+
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/tile_boxes.h"
@@ -34,6 +36,7 @@ using helix::test::Box;
 using helix::test::kCell;
 using helix::test::kGlance;
 using helix::test::kWide;
+using helix::ui::humidity_drop_value;
 
 namespace {
 
@@ -155,7 +158,9 @@ TEST_CASE_METHOD(DryerFixture, "dryer: idle shows the highest humidity, then the
 
     h.resize(1, 1, 55, 54);
     CHECK(subject_text("home_dryer_rh_text") == "52%");
-    CHECK(shown(part(h, "dryer_icon")));
+    CHECK(shown(part(h, "dryer_drop")));
+    CHECK(humidity_drop_value(part(h, "dryer_drop")) == 520);
+    CHECK_FALSE(shown(part(h, "dryer_icon")));
     CHECK(shown(part(h, "dryer_rh")));
     CHECK_FALSE(shown(part(h, "dryer_status")));
     CHECK_FALSE(shown(part(h, "dryer_ring_box")));
@@ -168,7 +173,8 @@ TEST_CASE_METHOD(DryerFixture, "dryer: idle shows the highest humidity, then the
     h.resize(1, 1, 234, 113);
     CHECK(subject_text("home_dryer_rh_text") == "52% RH");
     CHECK(shown(part(h, "dryer_status")));
-    CHECK(shown(part(h, "dryer_icon")));
+    CHECK(shown(part(h, "dryer_drop")));
+    CHECK_FALSE(shown(part(h, "dryer_icon")));
 }
 
 TEST_CASE_METHOD(DryerFixture, "dryer: no humidity source leaves Not drying alone",
@@ -185,7 +191,8 @@ TEST_CASE_METHOD(DryerFixture, "dryer: no humidity source leaves Not drying alon
 
     h.resize(1, 1, 55, 54);
     CHECK_FALSE(shown(part(h, "dryer_rh")));
-    CHECK(shown(part(h, "dryer_icon")));
+    CHECK(shown(part(h, "dryer_drop")));
+    CHECK(humidity_drop_value(part(h, "dryer_drop")) == helix::ui::humidity_drop::kUnknown);
 }
 
 TEST_CASE_METHOD(DryerFixture, "dryer: drying draws the ring at Glance, Cell and Wide",
@@ -198,6 +205,7 @@ TEST_CASE_METHOD(DryerFixture, "dryer: drying draws the ring at Glance, Cell and
     CHECK(subject_text("home_dryer_time_text") == "2:30");
     CHECK(subject_int("home_dryer_ring_pct") == 38);
     CHECK_FALSE(shown(part(h, "dryer_icon")));
+    CHECK_FALSE(shown(part(h, "dryer_drop")));
     CHECK_FALSE(shown(part(h, "dryer_time"))); // the ring carries it
 
     h.resize(1, 1, 114, 54);
@@ -209,6 +217,8 @@ TEST_CASE_METHOD(DryerFixture, "dryer: drying draws the ring at Glance, Cell and
 
     h.resize(1, 1, 55, 113);
     CHECK_FALSE(shown(part(h, "dryer_ring_box")));
+    CHECK(shown(part(h, "dryer_icon"))); // the heater, not the humidity
+    CHECK_FALSE(shown(part(h, "dryer_drop")));
     CHECK(subject_text("home_dryer_temp_text") == "47\xC2\xB0"
                                                   "C");
 
