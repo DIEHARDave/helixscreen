@@ -663,6 +663,20 @@ over printer subjects for this: a printer switch deinitializes and re-creates
 them while the component stays registered, so the derived subject stops
 updating.
 
+### Jog keys on a grid (`fit_key_grid`)
+
+The Motion panel's alternate Jog layouts (`motion_jog_arrows`, `motion_jog_arrows_home`,
+`motion_jog_rows`) size their keys with `helix::ui::fit_key_grid()`
+(`include/tile_grid_fit.h`): columns, rows, the free box and a minimum key in, a near-square
+key out (at most 1.4 times as wide as tall). `jog_layout_fit()` in `include/ui_panel_motion.h`
+turns that into whole-key block sizes and `MotionPanel::fit_jog_layout()` applies them whenever
+the view resizes. Arrows is 3x2 keys beside a Z column, Arrows + Home 3x3, with the home block
+beside them in landscape and a row under them in portrait. Axis Rows is a 4x5 grid: X, Y and Z
+rows of minus, axis, plus keys, and a bottom row for the jog modes, Home All and leveling.
+The step selector draws from `jog_step_list()`, the distances set in Motion settings. At
+480x320 the header is 33px (`header_height_tiny`) and its cog button takes
+`action_button_2_icon_only="1"` to stay a padding-free circle.
+
 ### flex_grow
 
 Children with `flex_grow` expand to fill remaining space in their parent. The parent **must** have an explicit size (not `content`).

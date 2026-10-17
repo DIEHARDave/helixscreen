@@ -46,7 +46,9 @@ The distance labels printed on the rings update to match the active jog mode.
 | **Jog Pad** (default) | The circular jog pad, the Z column and the Fine / Coarse / Turbo buttons described below. |
 | **Arrows** | An XY cross of arrow keys, an up/down Z pair, and Home All / X / Y / Z on the right, with a row of step sizes underneath. Every arrow moves the selected step. |
 | **Arrows + Home** | The same arrows with a home key in the middle of each cross: the XY one homes X and Y, the Z one homes Z. Home All, Home X and Home Y sit on the right. |
-| **Axis Rows** | One row per axis: two minus keys, the axis letter, two plus keys. The keys move the current jog mode's two distances, and the Fine / Coarse / Turbo buttons sit underneath. Tapping the axis letter homes that axis. |
+| **Axis Rows** | Four rows of five keys. The X, Y and Z rows each hold two minus keys, the axis key and two plus keys; the keys move the current jog mode's two distances, and tapping the axis key homes that axis. The fourth row holds the Fine / Coarse / Turbo buttons, Home All and the leveling buttons. |
+
+Keys stay close to square at every screen size, and each layout fills the room the tab has. In the two arrow layouts the home keys sit beside the arrows in landscape and in a row under them in portrait. On a 480x320 screen the header is 33 pixels tall and the cog button is left out; use the Settings path there.
 
 The step sizes in the two arrow layouts are every distance set in the Motion settings, smallest first, with repeats dropped: the defaults give 0.1, 1, 10 and 50. The selected step is remembered. In every layout a home key stays solid until its axis is homed, the leveling buttons (QGL, Z-Tilt) appear when the printer has them, and the Z keys use the same Bed / Print Head arrows and limit greying as the Z column.
 

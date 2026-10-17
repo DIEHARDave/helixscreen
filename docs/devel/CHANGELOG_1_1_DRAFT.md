@@ -196,6 +196,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   filament boxes, a chamber heater's drying cycle, and drying on the heated bed. Idle it shows
   a heated box's humidity, while drying the time left inside a progress ring, and on a 2x2 tile one row
   per dryer. A tap opens that dryer's own screen. It never starts or stops a cycle.
+- **A humidity droplet replaces the water icon** - the home Humidity tile, the AMS overview card,
+  the environment pill, the environment screen and each lane's readout draw a drop filled to the
+  humidity reading. The water line sits at the reading's share of the drop's height, with two
+  waves of different size in two tones taken from the theme's info colour. The surface drifts
+  gently when animations are on and holds still when they are off. A sensor with no reading shows
+  an empty outline.
 - **A Host Health widget** - CPU load and temperature, memory and the busiest controller board,
   with a trace of recent load. It turns amber or red at 70% and 90% load, at 70 and 80 C, on CPU
   throttling, on rising MCU retransmits and on under 500 MB free for G-code files. A tap opens
