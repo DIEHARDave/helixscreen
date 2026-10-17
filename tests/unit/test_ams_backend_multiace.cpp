@@ -11,6 +11,7 @@
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_multiace.h"
 #include "ams_backend_snapmaker.h"
+#include "ams_state.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "multiace_status.h"
@@ -170,6 +171,27 @@ TEST_CASE_METHOD(MultiAcePrintFixture, "factory builds MultiAce only for a multi
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
 
+TEST_CASE_METHOD(MultiAcePrintFixture, "AmsState builds the multiACE backend from discovery",
+                 "[multiace][ams]") {
+    auto with_ace = kU1Objects;
+    with_ace.push_back("ace");
+    const PrinterDiscovery modded = discover(with_ace);
+
+    AmsState& ams = AmsState::instance();
+    ams.deinit_subjects();
+    ams.init_subjects(false);
+    ams.init_backends_from_hardware(modded, api.get(), &client);
+    REQUIRE(ams.backend_count() == 1);
+
+    // Only the multiACE variant shows the ACE units.
+    auto& snap = static_cast<AmsBackendSnapmaker&>(*ams.get_backend(0));
+    SnapmakerTestAccess::handle_status(snap, ace_frame("head_mode_4ace.json"));
+    CHECK(snap.get_system_info().units.size() == 5);
+
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    ams.deinit_subjects();
+}
+
 TEST_CASE("multiACE subscribes the ace object only beside a U1", "[multiace]") {
     auto with_ace = kU1Objects;
     with_ace.push_back("ace");
@@ -285,6 +307,21 @@ TEST_CASE_METHOD(MultiAceFixture, "ACE gate is not head port presence", "[multia
     // Head 2 loads from its own side feeder.
     CHECK(b.slot_has_prep_sensor(2));
     CHECK(b.slot_insert_presence(2) == std::optional<bool>{true});
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "an ACE-fed head's gate edge is not a spool insert",
+                 "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_2ace_2feeder.json"));
+    for (int head : {0, 2}) {
+        b.frame(feed_frame(head, "wait_insert", false));
+        b.frame(feed_frame(head, "wait_insert", true));
+    }
+
+    // Head 0's gate rises when the ACE feeds it; no spool went into the head.
+    CHECK(b.slot_insert_identity(0) == InsertIdentity::NotRead);
+    // Head 2 loads from its own feeder, where the same edge is an insert.
+    CHECK(b.slot_insert_identity(2) == InsertIdentity::Pending);
 }
 
 TEST_CASE_METHOD(MultiAceFixture, "ACE head unload ends at preload_finish", "[multiace]") {
