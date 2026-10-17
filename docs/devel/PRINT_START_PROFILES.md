@@ -533,7 +533,7 @@ Run the app with `-vv`: `PrintStartProfile` logs every signal-format match (`Sig
 | **QIDI** | `qidi.json` | weighted | Q1 Pro, X-Max 3, Plus 4, Max 4, ... | 9 regex patterns |
 | **Anycubic Kobra** | `anycubic_kobra.json`, `anycubic_kobra_s1.json` | weighted | Kobra 2 Pro / 3 family, Kobra S1 (+ Max) | 6 regex patterns each |
 | **Artillery M1** | `artillery_m1.json` | sequential | Artillery M1 Pro | 1 signal format + 4 regex patterns |
-| **Snapmaker U1** | `snapmaker_u1.json` | weighted | Snapmaker U1 | 2 signal formats + `adaptive_meshing`; patterns captured live, none invented for silent steps |
+| **Snapmaker U1** | `snapmaker_u1.json` | weighted | Snapmaker U1 | 2 signal formats (action codes, including the bed soak and mesh codes) + 2 response patterns (homing, the per-tool Z touch) + `adaptive_meshing`; patterns captured live, none invented for silent steps |
 | **COSMOS** | `cosmos_cc1.json` | weighted | Elegoo Centauri Carbon on OpenCentauri COSMOS | 7 response patterns read on the console and through `phase_object` (display_status); the heat soak declares `hold_minutes_group`; the skew check completes the pre-print |
 
 ---

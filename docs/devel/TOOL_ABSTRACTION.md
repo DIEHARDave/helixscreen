@@ -237,8 +237,9 @@ tool docked prints nothing. The refusal lives in the shared gate so any caller m
 and the tool switcher widget (`park_offered()` and `handle_park_requested()`) mirrors it
 with `job_holds_machine()` so the action greys out.
 
-A tool change is the opposite case: it is allowed while paused (behind the widget's
-confirmation) unless `filament_ops_self_home()` is true. While `T<n>` is in flight the
+A tool change is the opposite case: it is allowed while paused (behind a confirmation,
+see [Requesting a Tool Change from the UI](#requesting-a-tool-change-from-the-ui)) unless
+`filament_ops_self_home()` is true. While `T<n>` is in flight the
 U1 never reads an empty carriage: the old head docks before the new one reports, so the
 backend holds the previous `current_tool` while a `T<n>` it sent has not landed (bounded
 by `kToolChangeWindow`), a head is in its `activating_move`, or the action is `SELECTING`.
@@ -351,6 +352,39 @@ During a print, each tool's temperature is shown with its tool name prefix (e.g.
 
 The temperature control panel provides a dropdown to select which tool's temperature to control. On single-tool printers, the selector is hidden. The dropdown is rebuilt when `tools_version` changes.
 
+### Requesting a Tool Change from the UI
+
+Every surface that mounts another tool on a tap asks one function, so a tap refused on one
+is refused on all of them with the same words: the home tool switcher
+(`src/ui/panel_widgets/tool_switcher_widget.cpp#handle_tool_selected`), a toolhead on the
+AMS panel's PARALLEL path (`src/ui/ui_panel_ams.cpp#on_path_toolhead_clicked`) and the
+filament panel's extruder dropdown (`src/ui/ui_panel_filament.cpp#handle_extruder_changed`).
+
+- **The decision** is the pure `decide_tool_change()` (`include/tool_change_request.h`) over
+  `ToolChangeInputs`, which `tool_change_inputs()` reads from live state. In order: the
+  mounted tool is `AlreadyActive`; spools on the bed refuse (`spools_on_bed_refusal()`); a
+  print that blocks filament ops refuses with the backend's own copy
+  (`tool_change_print_refusal()` over `print_blocks_filament_op()`); a backend in
+  `AmsAction::PAUSED` refuses with "The filament system needs attention"; any other action
+  that holds the system (`ams_action_holds_system()`) is `Busy` and ignored silently; a
+  paused job is `ConfirmPaused` whatever the setting; then `ConfirmSetting` or `Immediate`
+  from the "Confirm tool changes" setting.
+- **The dispatch** is `offer_tool_change()`: refusals raise a warning toast, a confirm
+  verdict shows a `modal_confirm`, and the change goes through
+  `ToolState::request_tool_change()`. `ToolChangeHooks` reports back: `on_success`,
+  `on_failed` (after the shared "Tool change failed" toast, possibly off the main thread),
+  and `on_declined` for every path that requested nothing, a dialog dismissal included.
+  The filament panel uses `on_declined` to put its dropdown back on the mounted tool.
+  `owner_token` gates the dialog's callbacks, and `resolve_api` is asked when the change is
+  sent, so a dialog left open across a reconnect never holds a stale API.
+- **The setting** is `SafetySettingsManager::get_tool_change_require_confirmation()`
+  (`/safety/tool_change_require_confirmation`, global, default on, subject
+  `settings_tool_change_confirm`). Its Settings > Printing row is hidden while
+  `tool_count` is below 2.
+- **Labels.** The confirmation names the tool with `active_tool_label()`
+  (`include/display_numbering.h`), the same text the switcher and dropdown show
+  ("Toolhead 2 (T1)" on a U1).
+
 ---
 
 ## Key Files
@@ -361,6 +395,7 @@ The temperature control panel provides a dropdown to select which tool's tempera
 | `src/printer/tool_state.cpp` | Discovery, status parsing, subject management |
 | `include/printer_discovery.h` | Hardware detection: `tool_names()`, `has_tool_changer()` |
 | `include/ams_state.h` | Multi-backend filament system (linked via backend_index) |
+| `include/tool_change_request.h`, `src/ui/tool_change_request.cpp` | The one tool-change decision and dispatch every UI surface uses |
 
 ---
 
