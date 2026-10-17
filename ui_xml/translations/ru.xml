@@ -2027,6 +2027,7 @@
   <translation tag="No media installed" ru="Носитель не установлен"/>
   <translation tag="No mesh data" ru="Нет данных сетки"/>
   <translation tag="No mesh loaded" ru="Сетка не загружена"/>
+  <translation tag="No message" ru="Нет сообщения"/>
   <translation tag="No multi-filament system detected" ru="Мультифиламентная система не обнаружена"/>
   <translation tag="No network. Scan QR code to report on your phone." ru="Нет сети. Отсканируйте QR-код, чтобы отправить отчёт с телефона."/>
   <translation tag="No networks found" ru="Сети не найдены"/>
@@ -2384,6 +2385,7 @@
   <translation tag="Printer Firmware Disconnected" ru="Прошивка принтера отключена"/>
   <translation tag="Printer Image" ru="Изображение принтера"/>
   <translation tag="Printer Manager" ru="Менеджер принтеров"/>
+  <translation tag="Printer Message" ru="Сообщение принтера"/>
   <translation tag="Printer Model" ru="Модель принтера"/>
   <translation tag="Printer Name" ru="Название принтера"/>
   <translation tag="Printer Setup: Connection" ru="Настройка принтера: Подключение"/>
@@ -3212,6 +3214,7 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." ru="Вспомогательные макросы установлены и активируются после перезапуска Klipper."/>
   <translation tag="The left RFID reader in this CFS unit may need service" ru="Левому RFID-считывателю этого блока CFS может требоваться обслуживание"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." ru="Загружена катушка {}, но файл нарезан для {}. Филамент с наполнителем печатается с меньшим потоком и требует закалённого сопла."/>
+  <translation tag="The message your printer&apos;s macros show (M117)" ru="Сообщение, которое показывают макросы принтера (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." ru="Сопло делает несколько коротких тестовых перемещений в углу, в стороне от зоны печати, и повторяет их до сходимости."/>
   <translation tag="The plate and the spools are still hot. Use gloves." ru="Стол и катушки ещё горячие. Используйте перчатки."/>
   <translation tag="The plate finishes its current move, but drying will not start." ru="Стол завершит текущее перемещение, но сушка не начнётся."/>

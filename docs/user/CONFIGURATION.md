@@ -1376,6 +1376,7 @@ For what each widget does and how big it can get, see the [Home Panel guide](gui
 | `print_status` | Print Status | Yes | No |
 | `control_buttons` | Print Controls | No | No |
 | `print_stats` | Print Stats | No | No |
+| `display_message` | Printer Message | No | No |
 | `speed_flow` | Speed / Flow | No | No |
 | `z_offset` | Z-Offset | No | No |
 | `exclude_map` | Exclude Objects | No | Klipper `[exclude_object]` |

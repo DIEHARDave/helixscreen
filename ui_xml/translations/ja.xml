@@ -1982,6 +1982,7 @@
   <translation tag="No media installed" ja="メディアが挿入されていません"/>
   <translation tag="No mesh data" ja="メッシュデータなし"/>
   <translation tag="No mesh loaded" ja="メッシュが読み込まれていません"/>
+  <translation tag="No message" ja="メッセージなし"/>
   <translation tag="No multi-filament system detected" ja="マルチフィラメントシステムが検出されません"/>
   <translation tag="No network. Scan QR code to report on your phone." ja="ネットワークなし。QR コードをスキャンしてスマホから報告してください。"/>
   <translation tag="No networks found" ja="ネットワークが見つかりません"/>
@@ -2333,6 +2334,7 @@
   <translation tag="Printer Firmware Disconnected" ja="プリンターファームウェア切断"/>
   <translation tag="Printer Image" ja="プリンター画像"/>
   <translation tag="Printer Manager" ja="プリンター管理"/>
+  <translation tag="Printer Message" ja="プリンターメッセージ"/>
   <translation tag="Printer Model" ja="プリンターモデル"/>
   <translation tag="Printer Name" ja="プリンター名"/>
   <translation tag="Printer Setup: Connection" ja="プリンター設定: 接続"/>
@@ -3152,6 +3154,7 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." ja="ヘルパーマクロはインストール済みで、Klipper の再起動後に有効になります。"/>
   <translation tag="The left RFID reader in this CFS unit may need service" ja="この CFS ユニットの左側 RFID リーダーは修理が必要な可能性があります"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." ja="装填中のスプールは {} ですが、このファイルは {} 用にスライスされています。充填材入りフィラメントはフローレートが低くなり、硬化ノズルが必要です。"/>
+  <translation tag="The message your printer&apos;s macros show (M117)" ja="プリンターのマクロが表示するメッセージ (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." ja="ノズルは印刷領域から離れた隅で短いテスト移動を数回行い、結果が一致するまで繰り返します。"/>
   <translation tag="The plate and the spools are still hot. Use gloves." ja="ベッドとスプールはまだ熱いです。手袋を使ってください。"/>
   <translation tag="The plate finishes its current move, but drying will not start." ja="ベッドは現在の移動を完了しますが、乾燥は開始しません。"/>
