@@ -30,6 +30,7 @@ using helix::ui::FirefliesSim;
 using helix::ui::FireflyVec;
 using helix::ui::FrameTarget;
 using helix::ui::PixelFormat;
+using helix::ui::Rgb;
 
 namespace helix::ui {
 
@@ -654,6 +655,161 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
         CHECK(length(s.sim.wind()) <= 6.0f + 1e-3f);
     }
+}
+
+namespace {
+
+/// Pixels of `frame` with any light in them.
+size_t lit_pixels(const SimFrame& frame) {
+    const helix::ui::PixelWriter writer(frame.target);
+    size_t lit = 0;
+    for (int32_t y = 0; y < static_cast<int32_t>(frame.target.h); y++) {
+        for (int32_t x = 0; x < static_cast<int32_t>(frame.target.w); x++) {
+            const Rgb c = writer.get(x, y);
+            lit += (c.r | c.g | c.b) != 0 ? 1 : 0;
+        }
+    }
+    return lit;
+}
+
+/// Sum of every channel of every pixel of `frame`.
+uint64_t light_sum(const SimFrame& frame) {
+    const helix::ui::PixelWriter writer(frame.target);
+    uint64_t sum = 0;
+    for (int32_t y = 0; y < static_cast<int32_t>(frame.target.h); y++) {
+        for (int32_t x = 0; x < static_cast<int32_t>(frame.target.w); x++) {
+            const Rgb c = writer.get(x, y);
+            sum += static_cast<uint64_t>(c.r) + c.g + c.b;
+        }
+    }
+    return sum;
+}
+
+bool in_some_box(const std::vector<DirtyRect>& boxes, int32_t x, int32_t y) {
+    return std::any_of(boxes.begin(), boxes.end(), [&](const DirtyRect& r) {
+        return x >= r.x1 && x <= r.x2 && y >= r.y1 && y <= r.y2;
+    });
+}
+
+} // namespace
+
+TEST_CASE("every changed fireflies pixel lies in a dirty box", "[screensaver][fireflies_sim]") {
+    for (const PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
+        for (const size_t level : {size_t{0}, helix::ui::FIREFLIES_LEVEL_COUNT - 1}) {
+            CAPTURE(static_cast<int>(format), level);
+            Swarm s(41, level, format);
+            const uint32_t bpp = bytes_per_pixel(format);
+            bool changed_any = false;
+            // Split first unless every slot is taken; the other change follows.
+            const bool split_first = s.sim.baits_alive() < FIREFLIES_MAX_BAITS;
+            bool split = false;
+            bool merged = false;
+            for (int frame = 0; frame < 300; frame++) {
+                if (frame == (split_first ? 100 : 200)) {
+                    split = s.sim.begin_mode(FirefliesMode::SPLIT, 0, s.rng);
+                }
+                if (frame == (split_first ? 200 : 100)) {
+                    merged = s.sim.begin_mode(FirefliesMode::MERGE, 0, s.rng);
+                }
+                const std::vector<uint8_t> before = s.frame.bytes;
+                s.step();
+                REQUIRE(s.dirty.size() <= helix::ui::FIREFLIES_MAX_DIRTY_AREAS);
+                for (size_t i = 0; i < before.size(); i++) {
+                    if (before[i] == s.frame.bytes[i]) {
+                        continue;
+                    }
+                    changed_any = true;
+                    const auto y = static_cast<int32_t>(i / s.frame.target.stride);
+                    const auto x = static_cast<int32_t>(i % s.frame.target.stride / bpp);
+                    CAPTURE(frame, x, y);
+                    REQUIRE(in_some_box(s.dirty, x, y));
+                }
+            }
+            CHECK(split);
+            CHECK(merged);
+            CHECK(changed_any);
+        }
+    }
+}
+
+TEST_CASE("fireflies draw only light on black, and never past a row",
+          "[screensaver][fireflies_sim]") {
+    constexpr uint8_t UNTOUCHED = 0xAA;
+    constexpr uint32_t OW = 321;
+    constexpr uint32_t OH = 203;
+    for (const PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
+        CAPTURE(static_cast<int>(format));
+        const uint32_t bpp = bytes_per_pixel(format);
+        const uint32_t stride = OW * bpp + 7;
+        // One sentinel row below the frame.
+        std::vector<uint8_t> bytes(static_cast<size_t>(stride) * (OH + 1), UNTOUCHED);
+        FrameTarget target{bytes.data(), stride, OW, OH, format};
+        std::minstd_rand rng(43);
+        FirefliesSim sim;
+        std::vector<DirtyRect> dirty;
+        sim.init(target, rng, 0);
+        for (int i = 0; i < 150; i++) {
+            sim.step(FRAME_MS, target, rng, dirty);
+        }
+        bool padding_kept = true;
+        bool opaque = true;
+        bool lit = false;
+        for (uint32_t y = 0; y <= OH; y++) {
+            for (uint32_t b = 0; b < stride; b++) {
+                const uint8_t v = bytes[static_cast<size_t>(y) * stride + b];
+                if (y == OH || b >= OW * bpp) {
+                    padding_kept = padding_kept && v == UNTOUCHED;
+                } else if (format == PixelFormat::XRGB8888 && b % 4 == 3) {
+                    opaque = opaque && v == 0xFF;
+                } else {
+                    lit = lit || v != 0;
+                }
+            }
+        }
+        CHECK(padding_kept);
+        CHECK(opaque);
+        CHECK(lit);
+    }
+}
+
+TEST_CASE("an RGB565 swarm shows at least 60% of the light an XRGB8888 one does",
+          "[screensaver][fireflies_sim]") {
+    Swarm wide(44, 0, PixelFormat::XRGB8888);
+    Swarm narrow(44, 0, PixelFormat::RGB565);
+    wide.run_for(3000);
+    narrow.run_for(3000);
+    const size_t wide_lit = lit_pixels(wide.frame);
+    REQUIRE(wide_lit > 500);
+    CHECK(static_cast<double>(lit_pixels(narrow.frame)) >= 0.6 * static_cast<double>(wide_lit));
+}
+
+TEST_CASE("glow brightens the swarm", "[screensaver][fireflies_sim]") {
+    Swarm plain(42);
+    Swarm glowing(42);
+    REQUIRE(glowing.sim.begin_mode(FirefliesMode::GLOW, 5000, glowing.rng));
+    plain.run_for(3000);
+    glowing.run_for(3000);
+    REQUIRE(glowing.sim.mode() == FirefliesMode::GLOW);
+    REQUIRE(same_positions(plain.sim, glowing.sim));
+    plain.step(0);
+    glowing.step(0);
+    const uint64_t plain_sum = light_sum(plain.frame);
+    REQUIRE(plain_sum > 0);
+    CHECK(static_cast<double>(light_sum(glowing.frame)) >= 1.3 * static_cast<double>(plain_sum));
+}
+
+TEST_CASE("a fireflies frame dirties a fraction of the canvas", "[screensaver][fireflies_sim]") {
+    Swarm s(45, 0, PixelFormat::XRGB8888, 800, 480);
+    double dirty_px = 0;
+    int frames = 0;
+    for (uint32_t t = 0; t < 10000; t += helix::ui::SAVER_FAST_PERIOD) {
+        s.step(helix::ui::SAVER_FAST_PERIOD);
+        for (const DirtyRect& r : s.dirty) {
+            dirty_px += static_cast<double>(r.area());
+        }
+        frames++;
+    }
+    CHECK(dirty_px / frames < 0.6 * 800.0 * 480.0);
 }
 
 // ============================================================================

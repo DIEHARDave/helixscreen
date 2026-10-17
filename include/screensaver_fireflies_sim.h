@@ -94,6 +94,12 @@ enum class FirefliesMode : uint8_t {
 };
 inline constexpr size_t FIREFLIES_MODE_COUNT = 8;
 
+/// Side, in px, of the tiles the sim tracks what it drew in.
+inline constexpr int32_t FIREFLIES_TILE_PX = 16;
+/// Most areas one frame reports dirty. An area costs a board about what 3600 of its pixels do,
+/// so the tiles are joined into a few boxes rather than reported one by one.
+inline constexpr size_t FIREFLIES_MAX_DIRTY_AREAS = 24;
+
 /**
  * @brief Brightness of a tail point `u` of the way along the drawn tail (0 head, 1 oldest)
  *
@@ -140,10 +146,11 @@ class FirefliesSim {
      * @brief Advances the world by `dt_ms` and redraws the swarms
      *
      * The world moves in whole FIREFLIES_STEP_MS steps; the remainder carries to the next call.
-     * Each bait slot's box from the previous frame is cleared to black, then every drawn fly
-     * adds its light. `dirty` is replaced with one box per bait slot that drew in either frame:
-     * the union of what it drew last frame (and this frame cleared) and what it drew now. A
-     * swarm is a clump, so these few boxes cover far less than the canvas.
+     * Every FIREFLIES_TILE_PX tile the previous frame drew in is cleared to black, then every
+     * drawn fly adds its light. `dirty` is replaced with at most FIREFLIES_MAX_DIRTY_AREAS boxes
+     * covering every tile drawn in either frame: what the last frame drew (and this frame
+     * cleared) and what this one drew. Tails are thin, so the tiles cover far less than the
+     * boxes round whole swarms would.
      */
     void step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
               std::vector<DirtyRect>& dirty);
@@ -218,6 +225,7 @@ class FirefliesSim {
     void update_wind();
     void schedule_next_mode(std::minstd_rand& rng);
     template <typename Px> void draw(FrameTarget& frame, std::vector<DirtyRect>& dirty);
+    void collect_dirty(std::vector<DirtyRect>& dirty);
 
     size_t level_ = 0;
     size_t pending_level_ = 0;
@@ -253,7 +261,11 @@ class FirefliesSim {
     size_t tail_head_ = 0;
     size_t tail_count_ = 0;
 
-    DirtyRect drawn_[FIREFLIES_MAX_BAITS]{}; ///< per bait slot, what the last frame drew
+    /// Per FIREFLIES_TILE_PX tile, nonzero where the last frame drew; the tiles this frame draws.
+    std::vector<uint8_t> drawn_tiles_;
+    std::vector<uint8_t> now_tiles_;
+    int32_t tiles_x_ = 0;
+    int32_t tiles_y_ = 0;
 };
 
 } // namespace helix::ui
