@@ -656,6 +656,29 @@ TEST_CASE_METHOD(SeedPopulateFixture, "seed held while Klipper is not READY wait
     CHECK(toasts == std::vector<std::string>{kSeededToast});
 }
 
+TEST_CASE_METHOD(SeedPopulateFixture, "seed used when home first showed while offline",
+                 "[home_layout_sync][seed]") {
+    const bool held_first = GENERATE(true, false);
+    INFO((held_first ? "seed held before" : "seed held after") << " the offline populate");
+    if (held_first) {
+        connect_remote_with(valid_published_payload());
+    }
+    {
+        helix::test::ScopedIntSubject offline("printer_connection_state",
+                                              static_cast<int>(ConnectionState::DISCONNECTED));
+        populate();
+        REQUIRE(home().has_pending_anchors());
+        REQUIRE(home().grid_signature() == "12x8");
+    }
+    if (!held_first) {
+        connect_remote_with(valid_published_payload());
+    }
+    clear_container();
+    populate();
+    check_seeded_seats();
+    CHECK(toasts == std::vector<std::string>{kSeededToast});
+}
+
 TEST_CASE_METHOD(SeedPopulateFixture, "no seed: default anchors applied as before",
                  "[home_layout_sync][seed]") {
     HomeLayoutSync::instance().shutdown();

@@ -671,8 +671,15 @@ bool PanelWidgetManager::refresh_live_default(const std::string& panel_id) {
     }
     auto& widget_config = get_widget_config(panel_id);
     const auto [cols, rows] = widget_config.stamped_grid();
-    return widget_config.reresolve_default_if_changed(cols, rows,
-                                                      readiness == LayoutReadiness::Ready);
+    const bool ready = readiness == LayoutReadiness::Ready;
+    // A pending default shown on a stamped grid resolves for good here, at the
+    // first READY populate, so this is a seed point too.
+    if (ready && widget_config.has_pending_anchors() && !widget_config.edit_session_open() &&
+        cols > 0 && rows > 0 &&
+        HomeLayoutSync::instance().seed_pending_default(widget_config, cols, rows)) {
+        return true;
+    }
+    return widget_config.reresolve_default_if_changed(cols, rows, ready);
 }
 
 std::vector<std::unique_ptr<PanelWidget>>
