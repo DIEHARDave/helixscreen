@@ -85,7 +85,24 @@ std::string subject_string(const char* name) {
     return lv_subject_get_string(subj);
 }
 
-RecordingLaneRig* show_overlay(bool per_lane) {
+/// show_beta_features, registered once: the XML subject registry is process-global and
+/// never forgets an entry, so the subject has to outlive every test.
+lv_subject_t* beta_subject() {
+    static lv_subject_t subject;
+    static bool registered = false;
+    if (!registered) {
+        if (lv_subject_t* existing = lv_xml_get_subject(nullptr, "show_beta_features")) {
+            return existing;
+        }
+        lv_subject_init_int(&subject, 1);
+        lv_xml_register_subject(nullptr, "show_beta_features", &subject);
+        registered = true;
+    }
+    return &subject;
+}
+
+RecordingLaneRig* show_overlay(bool per_lane, bool beta = true) {
+    lv_subject_set_int(beta_subject(), beta ? 1 : 0);
     auto backend = std::make_unique<RecordingLaneRig>(per_lane);
     auto* raw = backend.get();
     AmsState::instance().set_backend(std::move(backend));
@@ -249,4 +266,29 @@ TEST_CASE_METHOD(XMLTestFixture, "An overlay with no zone offers no lane chips",
 TEST_CASE("A Stop on some lanes names the lanes it stopped", "[ams][dryer][dry_gates]") {
     CHECK(stopped_lanes_text({1, 2}, LaneNoun::Gate) == "Stopped drying Gate 2, Gate 3");
     CHECK(stopped_lanes_text({0}, LaneNoun::Lane) == "Stopped drying Lane 1");
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "With beta features off a per-lane dryer starts the whole unit",
+                 "[ams][dryer][dry_gates][overlay][beta]") {
+    reset_overlay_singleton();
+    auto* backend = show_overlay(true, false);
+
+    CHECK(subject_int("env_dry_gate_count") == 0);
+    CHECK(subject_int("env_dry_rotate_visible") == 0);
+    CHECK(lv_obj_has_flag(find_widget("dry_gate_row"), LV_OBJ_FLAG_HIDDEN));
+    CHECK_FALSE(lv_obj_has_flag(find_widget("zone_slots_label"), LV_OBJ_FLAG_HIDDEN));
+
+    press_start_stop();
+    REQUIRE(backend->starts.size() == 1);
+    CHECK(backend->starts[0].gates.empty());
+    CHECK_FALSE(backend->starts[0].rotate);
+
+    backend->report_active = true;
+    get_ams_environment_overlay().refresh();
+    press_start_stop();
+    REQUIRE(backend->stops.size() == 1);
+    CHECK(backend->stops[0].empty());
+
+    lv_subject_set_int(beta_subject(), 1);
+    finish();
 }

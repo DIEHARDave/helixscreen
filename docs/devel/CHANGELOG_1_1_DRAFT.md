@@ -316,7 +316,7 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   boxes that can do different things are listed side by side. When the dryer can only heat
   some boxes at a time, the waiting ones say they are queued and which box is using the
   heater.
-- **Happy Hare 4: dry only the lanes you choose** (#1026) - on a unit with a heater per lane,
+- **Happy Hare 4: dry only the lanes you choose** (#1026, beta) - with beta features on, on a unit with a heater per lane,
   the drying screen shows a chip per lane, all selected to start. Clear some to dry just the
   rest, turn on Rotate to have an eSpooler turn the spools while they dry, and Stop with a
   selection stops only those lanes. Each spool on the Filament panel shows a small badge while

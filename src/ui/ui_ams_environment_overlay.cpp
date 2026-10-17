@@ -456,9 +456,12 @@ void AmsEnvironmentOverlay::publish_dry_gates() {
     const int unit = acting_unit_index();
     const DryerInfo dryer = (backend && unit >= 0) ? backend->get_dryer_info(unit) : DryerInfo{};
 
-    // One chip per heated gate on the unit.
+    // One chip per heated gate on the unit. Choosing gates is a beta feature: with beta
+    // off there are no chips, so Start and Stop send the whole-unit command.
+    lv_subject_t* beta = lv_xml_get_subject(nullptr, "show_beta_features");
+    const bool beta_on = beta && lv_subject_get_int(beta) != 0;
     dry_gates_.clear();
-    if (dryer.supported && dryer.supports_gate_selection) {
+    if (beta_on && dryer.supported && dryer.supports_gate_selection) {
         for (const auto& z : backend->get_environment_zones(unit)) {
             if (z.dryer.supported) {
                 dry_gates_.insert(dry_gates_.end(), z.gates.begin(), z.gates.end());
@@ -1179,7 +1182,8 @@ void AmsEnvironmentOverlay::handle_start_stop() {
                 request.humidity_pct = humidity_target;
                 request.unit = unit;
                 request.gates = selected_dry_gates();
-                request.rotate = dry_rotate_ && dryer.supports_rotation;
+                request.rotate =
+                    dry_rotate_ && lv_subject_get_int(&dry_rotate_visible_subject_) != 0;
                 AmsError result = backend->start_drying_request(request);
                 if (result.success()) {
                     // Remember the chosen values so the next open restores them.
