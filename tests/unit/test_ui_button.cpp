@@ -697,6 +697,39 @@ TEST_CASE_METHOD(UiButtonTestFixture, "ui_button label follows label_hidden_subj
     lv_subject_deinit(&labels);
 }
 
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button label follows label_hidden_cond",
+                 "[ui_button][xml][label_hidden]") {
+    // Static: the XML scope keeps the names after the test, so the storage must outlive it.
+    static lv_subject_t portrait{};
+    static lv_subject_t tier{};
+    lv_subject_init_int(&portrait, 0);
+    lv_subject_init_int(&tier, 2);
+    lv_xml_register_subject(nullptr, "test_cond_portrait", &portrait);
+    lv_xml_register_subject(nullptr, "test_cond_tier", &tier);
+
+    const char* attrs[] = {"icon",
+                           "stop",
+                           "text",
+                           "Stop",
+                           "label_hidden_cond",
+                           "test_cond_portrait eq 1 and test_cond_tier lt 4",
+                           nullptr};
+    lv_obj_t* btn = create_button(attrs);
+    REQUIRE(btn != nullptr);
+    lv_obj_t* label = text_label(btn);
+    REQUIRE(label != nullptr);
+
+    CHECK_FALSE(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(&portrait, 1);
+    CHECK(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(&tier, 5);
+    CHECK_FALSE(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+
+    lv_obj_delete(btn);
+    lv_subject_deinit(&portrait);
+    lv_subject_deinit(&tier);
+}
+
 TEST_CASE_METHOD(UiButtonTestFixture, "ui_button label_hidden_if_bp_eq follows ui_breakpoint",
                  "[ui_button][xml][label_hidden]") {
     lv_subject_t* bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
