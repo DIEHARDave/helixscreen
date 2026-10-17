@@ -3,6 +3,7 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "screensaver_pipes_sim.h"
 #include "screensaver_pixel_writer.h"
 
@@ -10,7 +11,6 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
-#include <cstring>
 #include <random>
 #include <set>
 #include <tuple>
@@ -20,6 +20,11 @@
 #include "../catch_amalgamated.hpp"
 
 using namespace helix::ui;
+using helix::test::diff_against;
+using helix::test::frame_fnv1a;
+using helix::test::lit_pixels;
+using helix::test::near;
+using helix::test::TestFrame;
 
 namespace {
 
@@ -47,10 +52,6 @@ PipePiece piece(PipePieceKind kind, PipeVec3 at, PipeDir dir = PipeDir::POS_X,
     p.length = length;
     p.material = material;
     return p;
-}
-
-bool rgb_near(Rgb a, Rgb b, int tol = 1) {
-    return std::abs(a.r - b.r) <= tol && std::abs(a.g - b.g) <= tol && std::abs(a.b - b.b) <= tol;
 }
 
 int channel_sum(Rgb c) {
@@ -415,23 +416,27 @@ TEST_CASE("over many turns a third of the joints are balls", "[screensaver][pipe
 }
 
 TEST_CASE("a screen replays exactly from a seed", "[screensaver][pipes_sim]") {
-    std::minstd_rand rng_a(77);
-    std::minstd_rand rng_b(77);
-    PipesScreen a;
-    PipesScreen b;
-    std::vector<PipePiece> out_a;
-    std::vector<PipePiece> out_b;
-    a.begin({15, 9, 15}, rng_a, out_a);
-    b.begin({15, 9, 15}, rng_b, out_b);
-    for (int s = 0; s < 300; s++) {
-        a.step(rng_a, out_a);
-        b.step(rng_b, out_b);
-        REQUIRE(a.pipes() == b.pipes());
-    }
-    REQUIRE(out_a.size() == out_b.size());
-    for (size_t i = 0; i < out_a.size(); i++) {
-        CHECK(same_piece(out_a[i], out_b[i]));
-    }
+    struct Run {
+        std::vector<std::array<PipeState, PIPES_MAX_ACTIVE>> pipes;
+        std::vector<PipePiece> pieces;
+
+        bool operator==(const Run& o) const {
+            return pipes == o.pipes && std::equal(pieces.begin(), pieces.end(), o.pieces.begin(),
+                                                  o.pieces.end(), same_piece);
+        }
+    };
+    const auto run = [](uint32_t seed) {
+        std::minstd_rand rng(seed);
+        PipesScreen screen;
+        Run out;
+        screen.begin({15, 9, 15}, rng, out.pieces);
+        for (int s = 0; s < 300; s++) {
+            screen.step(rng, out.pieces);
+            out.pipes.push_back(screen.pipes());
+        }
+        return out;
+    };
+    helix::test::check_replays(run, 77, 78);
 }
 
 // ============================================================================
@@ -461,14 +466,14 @@ TEST_CASE("pipes_shade is GL fixed-function lighting", "[screensaver][pipes_sim]
     const PipeMaterial& emerald = PIPE_MATERIALS[0];
     const PipeMaterial& ruby = PIPE_MATERIALS[3];
     const PipeMaterial& white_rubber = PIPE_MATERIALS[15];
-    CHECK(rgb_near(pipes_shade(emerald, pipes_light_dir()), {27, 207, 27}));
-    CHECK(rgb_near(pipes_shade(emerald, pipes_half_vector()), {186, 255, 186}));
-    CHECK(rgb_near(pipes_shade(emerald, {0, 0, -1}), {6, 49, 6}));
-    CHECK(rgb_near(pipes_shade(emerald, {0, 0, 1}), {22, 170, 22}));
-    CHECK(rgb_near(pipes_shade(ruby, pipes_light_dir()), {207, 15, 15}));
-    CHECK(rgb_near(pipes_shade(ruby, pipes_half_vector()), {255, 173, 173}));
-    CHECK(rgb_near(pipes_shade(white_rubber, {0, 0, 1}), {206, 206, 206}));
-    CHECK(rgb_near(pipes_shade(white_rubber, {0, 0, -1}), {14, 14, 14}));
+    CHECK(near(pipes_shade(emerald, pipes_light_dir()), {27, 207, 27}));
+    CHECK(near(pipes_shade(emerald, pipes_half_vector()), {186, 255, 186}));
+    CHECK(near(pipes_shade(emerald, {0, 0, -1}), {6, 49, 6}));
+    CHECK(near(pipes_shade(emerald, {0, 0, 1}), {22, 170, 22}));
+    CHECK(near(pipes_shade(ruby, pipes_light_dir()), {207, 15, 15}));
+    CHECK(near(pipes_shade(ruby, pipes_half_vector()), {255, 173, 173}));
+    CHECK(near(pipes_shade(white_rubber, {0, 0, 1}), {206, 206, 206}));
+    CHECK(near(pipes_shade(white_rubber, {0, 0, -1}), {14, 14, 14}));
 }
 
 TEST_CASE("the brightest point of a material faces the half vector", "[screensaver][pipes_sim]") {
@@ -672,65 +677,8 @@ TEST_CASE("an elbow's centreline bends round (0, r, -r)", "[screensaver][pipes_s
 
 namespace {
 
-constexpr uint32_t ROW_PAD = 12;
-constexpr uint8_t CANARY = 0xA5;
-
-/// A heap frame of `format`, painted black, rows padded with canary bytes past their pixels.
-struct Frame {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-
-    Frame(uint32_t w, uint32_t h, PixelFormat format = PixelFormat::XRGB8888) {
-        const uint32_t bpp = format == PixelFormat::RGB565 ? 2 : 4;
-        const uint32_t stride = w * bpp + ROW_PAD;
-        bytes.assign(static_cast<size_t>(stride) * h, CANARY);
-        target = {bytes.data(), stride, w, h, format};
-        PixelWriter(target).fill({0, 0, 0});
-    }
-    Frame(const Frame&) = delete;
-    Frame& operator=(const Frame&) = delete;
-
-    Rgb at(int32_t x, int32_t y) const {
-        return PixelWriter(target).get(x, y);
-    }
-    bool canaries_intact() const {
-        const uint32_t bpp = target.format == PixelFormat::RGB565 ? 2 : 4;
-        for (uint32_t y = 0; y < target.h; y++) {
-            const uint8_t* row = target.data + static_cast<size_t>(y) * target.stride;
-            for (uint32_t i = target.w * bpp; i < target.stride; i++) {
-                if (row[i] != CANARY) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-};
-
-uint64_t target_hash(const FrameTarget& f) {
-    const uint32_t bpp = f.format == PixelFormat::RGB565 ? 2 : 4;
-    uint64_t hash = 1469598103934665603ULL;
-    for (uint32_t y = 0; y < f.h; y++) {
-        const uint8_t* row = f.data + static_cast<size_t>(y) * f.stride;
-        for (uint32_t i = 0; i < f.w * bpp; i++) {
-            hash = (hash ^ row[i]) * 1099511628211ULL;
-        }
-    }
-    return hash;
-}
-
 bool lit(Rgb c) {
     return c.r != 0 || c.g != 0 || c.b != 0;
-}
-
-size_t lit_pixels(const Frame& f) {
-    size_t n = 0;
-    for (uint32_t y = 0; y < f.target.h; y++) {
-        for (uint32_t x = 0; x < f.target.w; x++) {
-            n += lit(f.at(static_cast<int32_t>(x), static_cast<int32_t>(y))) ? 1 : 0;
-        }
-    }
-    return n;
 }
 
 PipePiece ball_at(PipeVec3 at, uint8_t material) {
@@ -742,7 +690,7 @@ PipePiece cylinder_at(PipeVec3 at, PipeDir dir, float length, uint8_t material) 
 }
 
 /// The brightest pixel (by channel sum) and its position.
-Rgb brightest(const Frame& f, int32_t& bx, int32_t& by) {
+Rgb brightest(const TestFrame& f, int32_t& bx, int32_t& by) {
     Rgb best{};
     bx = by = -1;
     for (uint32_t y = 0; y < f.target.h; y++) {
@@ -777,28 +725,6 @@ std::vector<PipePiece> random_pieces(uint32_t seed, size_t count) {
         out.push_back(p);
     }
     return out;
-}
-
-/// Pixels that differ between `before` and the frame, outside `box`.
-size_t changed_outside(const std::vector<uint8_t>& before, const FrameTarget& f,
-                       const DirtyRect& box, size_t& changed) {
-    const uint32_t bpp = f.format == PixelFormat::RGB565 ? 2 : 4;
-    size_t outside = 0;
-    for (uint32_t y = 0; y < f.h; y++) {
-        for (uint32_t x = 0; x < f.w; x++) {
-            const size_t i = static_cast<size_t>(y) * f.stride + x * bpp;
-            if (std::memcmp(&before[i], f.data + i, bpp) == 0) {
-                continue;
-            }
-            changed++;
-            const auto px = static_cast<int32_t>(x);
-            const auto py = static_cast<int32_t>(y);
-            const bool inside =
-                !box.empty() && px >= box.x1 && px <= box.x2 && py >= box.y1 && py <= box.y2;
-            outside += inside ? 0 : 1;
-        }
-    }
-    return outside;
 }
 
 } // namespace
@@ -844,11 +770,11 @@ TEST_CASE("draw order never changes the picture", "[screensaver][pipes_sim]") {
         r.init(800, 480, 1);
         r.set_view(0.0f);
         r.clear_depth();
-        Frame f(800, 480);
+        TestFrame f(800, 480, PixelFormat::XRGB8888);
         for (const PipePiece& p : pieces) {
             r.draw(f.target, p);
         }
-        hash = target_hash(f.target);
+        hash = frame_fnv1a(f.target);
         centre = f.at(400, 240);
     };
     const PipePiece near_emerald = ball_at({0.5f, 0, 40}, 0);
@@ -875,7 +801,7 @@ TEST_CASE("a pipe is as fat as its radius over its depth", "[screensaver][pipes_
         PipesRenderer r;
         r.init(800, 480, 1);
         r.set_view(0.0f);
-        Frame f(800, 480);
+        TestFrame f(800, 480, PixelFormat::XRGB8888);
         r.draw(f.target, cylinder_at(at, PipeDir::POS_X, 7.0f, 15));
         int rows = 0;
         for (int32_t y = 0; y < 480; y++) {
@@ -900,7 +826,7 @@ TEST_CASE("the highlight sits up-right of centre on every ball", "[screensaver][
     int32_t bx = 0;
     int32_t by = 0;
 
-    Frame centred(800, 480);
+    TestFrame centred(800, 480, PixelFormat::XRGB8888);
     r.draw(centred.target, ball_at({0, 0, 40}, 0));
     const Rgb c1 = brightest(centred, bx, by);
     REQUIRE(r.project({0, 0, 40}, cx, cy));
@@ -912,25 +838,25 @@ TEST_CASE("the highlight sits up-right of centre on every ball", "[screensaver][
     CHECK(dy1 <= -1.0f);
 
     r.clear_depth();
-    Frame offset(800, 480);
+    TestFrame offset(800, 480, PixelFormat::XRGB8888);
     r.draw(offset.target, ball_at({8, 6, 40}, 0));
     const Rgb c2 = brightest(offset, bx, by);
     REQUIRE(r.project({8, 6, 40}, cx, cy));
     CHECK(static_cast<float>(bx) + 0.5f - cx > 0.0f);
     CHECK(static_cast<float>(by) + 0.5f - cy < 0.0f);
-    CHECK(rgb_near(c1, c2, 16));
-    CHECK(rgb_near(c1, pipes_shade(PIPE_MATERIALS[0], pipes_half_vector()), 16));
+    CHECK(near(c1, c2, 16));
+    CHECK(near(c1, pipes_shade(PIPE_MATERIALS[0], pipes_half_vector()), 16));
 
     // On a pipe the highlight runs along the side facing up-right.
     r.clear_depth();
-    Frame across(800, 480);
+    TestFrame across(800, 480, PixelFormat::XRGB8888);
     r.draw(across.target, cylinder_at({-3.5f, 0, 40}, PipeDir::POS_X, 7.0f, 0));
     brightest(across, bx, by);
     REQUIRE(r.project({0, 0, 40}, cx, cy));
     CHECK(static_cast<float>(by) + 0.5f < cy);
 
     r.clear_depth();
-    Frame upright(800, 480);
+    TestFrame upright(800, 480, PixelFormat::XRGB8888);
     r.draw(upright.target, cylinder_at({0, -3.5f, 40}, PipeDir::POS_Y, 7.0f, 0));
     brightest(upright, bx, by);
     CHECK(static_cast<float>(bx) + 0.5f > cx);
@@ -940,7 +866,7 @@ TEST_CASE("an elbow joins its two pipes with no gap", "[screensaver][pipes_sim]"
     PipesRenderer r;
     r.init(800, 480, 1);
     r.set_view(0.0f);
-    Frame f(800, 480);
+    TestFrame f(800, 480, PixelFormat::XRGB8888);
     const PipeGridDims dims{15, 9, 15};
     const PipeVec3 node = pipes_node_world({7, 4, 7}, dims);
     const PipeVec3 prev = pipes_node_world({6, 4, 7}, dims);
@@ -975,14 +901,14 @@ TEST_CASE("the renderer dirties every pixel a piece changes", "[screensaver][pip
         PipesRenderer r;
         r.init(320, 192, scale);
         r.set_view(23.0f);
-        Frame f(320, 192);
+        TestFrame f(320, 192, PixelFormat::XRGB8888);
         size_t total_changed = 0;
         for (const PipePiece& p : random_pieces(41, 50)) {
-            const std::vector<uint8_t> before = f.bytes;
-            size_t changed = 0;
+            const std::vector<uint8_t> before = f.snapshot();
             const DirtyRect box = r.draw(f.target, p);
-            CHECK(changed_outside(before, f.target, box, changed) == 0);
-            total_changed += changed;
+            const helix::test::FrameDiff diff = diff_against(before, f, {box});
+            CHECK(diff.uncovered == 0);
+            total_changed += diff.changed;
         }
         CHECK(total_changed > 0);
     }
@@ -996,13 +922,13 @@ TEST_CASE("RGB565 and XRGB8888 renders of one scene agree to 565 precision",
     r16.init(160, 96, 1);
     r32.set_view(41.0f);
     r16.set_view(41.0f);
-    Frame f32(160, 96, PixelFormat::XRGB8888);
-    Frame f16(160, 96, PixelFormat::RGB565);
+    TestFrame f32(160, 96, PixelFormat::XRGB8888);
+    TestFrame f16(160, 96, PixelFormat::RGB565);
     for (const PipePiece& p : random_pieces(7, 30)) {
         r32.draw(f32.target, p);
         r16.draw(f16.target, p);
     }
-    REQUIRE(lit_pixels(f32) > 0);
+    REQUIRE(lit_pixels(f32.target) > 0);
     int worst_r = 0;
     int worst_g = 0;
     int worst_b = 0;
@@ -1024,16 +950,14 @@ TEST_CASE("an XRGB8888 pipes frame keeps every X byte opaque", "[screensaver][pi
     PipesRenderer r;
     r.init(160, 96, 1);
     r.set_view(0.0f);
-    Frame f(160, 96);
+    TestFrame f(160, 96, PixelFormat::XRGB8888);
+    // Opaque black, as a saver canvas starts.
+    PixelWriter(f.target).fill({0, 0, 0});
     for (const PipePiece& p : random_pieces(3, 40)) {
         r.draw(f.target, p);
     }
-    REQUIRE(lit_pixels(f) > 0);
-    for (uint32_t y = 0; y < 96; y++) {
-        for (uint32_t x = 0; x < 160; x++) {
-            REQUIRE(f.target.data[static_cast<size_t>(y) * f.target.stride + x * 4 + 3] == 0xFF);
-        }
-    }
+    REQUIRE(lit_pixels(f.target) > 0);
+    CHECK(helix::test::non_opaque_pixels(f.target) == 0);
 }
 
 TEST_CASE("frames of every size and scale stay inside their rows", "[screensaver][pipes_sim]") {
@@ -1045,11 +969,11 @@ TEST_CASE("frames of every size and scale stay inside their rows", "[screensaver
                 PipesRenderer r;
                 r.init(w, h, scale);
                 r.set_view(0.0f);
-                Frame f(w, h, format);
+                TestFrame f(w, h, format);
                 for (const PipePiece& p : random_pieces(w * 31 + scale, 40)) {
                     r.draw(f.target, p);
                 }
-                CHECK(f.canaries_intact());
+                CHECK(f.padding_intact());
             }
         }
     }
@@ -1059,9 +983,9 @@ TEST_CASE("at scale 2 every 2x2 block is one colour", "[screensaver][pipes_sim]"
     PipesRenderer r;
     r.init(160, 96, 2);
     r.set_view(0.0f);
-    Frame f(160, 96);
+    TestFrame f(160, 96, PixelFormat::XRGB8888);
     r.draw(f.target, ball_at({0, 0, 40}, 8));
-    REQUIRE(lit_pixels(f) > 0);
+    REQUIRE(lit_pixels(f.target) > 0);
     for (int32_t y = 0; y < 96; y += 2) {
         for (int32_t x = 0; x < 160; x += 2) {
             const Rgb c = f.at(x, y);
@@ -1086,12 +1010,12 @@ TEST_CASE("a released renderer holds no buffers", "[screensaver][pipes_sim]") {
 
 namespace {
 
-void fill_white(Frame& f) {
+void fill_white(TestFrame& f) {
     PixelWriter(f.target).fill({255, 255, 255});
 }
 
-bool all_black(const Frame& f) {
-    return lit_pixels(f) == 0;
+bool all_black(const TestFrame& f) {
+    return lit_pixels(f.target) == 0;
 }
 
 } // namespace
@@ -1110,7 +1034,7 @@ TEST_CASE("the dissolve cuts the screen into 1/32 blocks", "[screensaver][pipes_
 }
 
 TEST_CASE("the dissolve clears by frame time", "[screensaver][pipes_sim]") {
-    Frame f(800, 480);
+    TestFrame f(800, 480, PixelFormat::XRGB8888);
     fill_white(f);
     PipesDissolve d;
     d.init(800, 480);
@@ -1131,7 +1055,7 @@ TEST_CASE("the dissolve clears by frame time", "[screensaver][pipes_sim]") {
     CHECK(all_black(f));
 
     const auto run = [](uint32_t dt, int calls) {
-        Frame g(800, 480);
+        TestFrame g(800, 480, PixelFormat::XRGB8888);
         fill_white(g);
         PipesDissolve dd;
         dd.init(800, 480);
@@ -1141,13 +1065,13 @@ TEST_CASE("the dissolve clears by frame time", "[screensaver][pipes_sim]") {
         for (int i = 0; i < calls; i++) {
             dd.step(dt, g.target, rects);
         }
-        return target_hash(g.target);
+        return frame_fnv1a(g.target);
     };
     CHECK(run(16, 50) == run(50, 16));
 }
 
 TEST_CASE("each dissolve block is cleared once and dirtied", "[screensaver][pipes_sim]") {
-    Frame f(161, 97);
+    TestFrame f(161, 97, PixelFormat::XRGB8888);
     fill_white(f);
     PipesDissolve d;
     d.init(161, 97);
@@ -1156,42 +1080,25 @@ TEST_CASE("each dissolve block is cleared once and dirtied", "[screensaver][pipe
     std::set<std::tuple<int32_t, int32_t, int32_t, int32_t>> seen;
     size_t rects = 0;
     while (d.active()) {
-        const std::vector<uint8_t> before = f.bytes;
+        const std::vector<uint8_t> before = f.snapshot();
         std::vector<DirtyRect> dirty;
         d.step(33, f.target, dirty);
-        DirtyRect all;
         for (const DirtyRect& r : dirty) {
             seen.insert({r.x1, r.y1, r.x2, r.y2});
             rects++;
-            all.add(r);
         }
         // Every changed pixel lies in one of this frame's rects.
-        const uint32_t bpp = 4;
-        for (uint32_t y = 0; y < 97; y++) {
-            for (uint32_t x = 0; x < 161; x++) {
-                const size_t i = static_cast<size_t>(y) * f.target.stride + x * bpp;
-                if (std::memcmp(&before[i], f.target.data + i, bpp) == 0) {
-                    continue;
-                }
-                const auto px = static_cast<int32_t>(x);
-                const auto py = static_cast<int32_t>(y);
-                const bool covered =
-                    std::any_of(dirty.begin(), dirty.end(), [&](const DirtyRect& r) {
-                        return px >= r.x1 && px <= r.x2 && py >= r.y1 && py <= r.y2;
-                    });
-                REQUIRE(covered);
-            }
-        }
+        REQUIRE(diff_against(before, f, dirty).uncovered == 0);
     }
     CHECK(rects == d.block_count());
     CHECK(seen.size() == d.block_count());
     CHECK(all_black(f));
-    CHECK(f.canaries_intact());
+    CHECK(f.padding_intact());
 }
 
 TEST_CASE("two dissolves from one seed clear in the same order", "[screensaver][pipes_sim]") {
     const auto order = [](uint32_t seed) {
-        Frame f(160, 96);
+        TestFrame f(160, 96, PixelFormat::XRGB8888);
         PipesDissolve d;
         d.init(160, 96);
         std::minstd_rand rng(seed);
@@ -1206,8 +1113,7 @@ TEST_CASE("two dissolves from one seed clear in the same order", "[screensaver][
         }
         return xs;
     };
-    CHECK(order(11) == order(11));
-    CHECK(order(11) != order(12));
+    helix::test::check_replays(order, 11, 12);
 }
 
 // ============================================================================
@@ -1222,7 +1128,7 @@ bool no_segments(const PipesSim& sim) {
 }
 
 /// Steps of 100 ms until the screen finishes; the count, or -1 past the bound.
-int steps_to_dissolve(PipesSim& sim, Frame& f, std::minstd_rand& rng) {
+int steps_to_dissolve(PipesSim& sim, TestFrame& f, std::minstd_rand& rng) {
     std::vector<DirtyRect> dirty;
     for (int k = 1; k <= 20000; k++) {
         sim.step(100, f.target, rng, dirty);
@@ -1237,12 +1143,12 @@ int steps_to_dissolve(PipesSim& sim, Frame& f, std::minstd_rand& rng) {
 
 TEST_CASE("the first screen starts at yrot 0 with its starting pipes drawn",
           "[screensaver][pipes_sim]") {
-    Frame f(160, 96);
+    TestFrame f(160, 96, PixelFormat::XRGB8888);
     PipesSim sim;
     std::minstd_rand rng(1);
     sim.init(f.target, rng, 0);
-    CHECK(lit_pixels(f) > 0);
-    CHECK(lit_pixels(f) < 160u * 96u / 2u);
+    CHECK(lit_pixels(f.target) > 0);
+    CHECK(lit_pixels(f.target) < 160u * 96u / 2u);
     CHECK(sim.phase() == PipesPhase::GROWING);
     CHECK(sim.screens_started() == 1);
     CHECK(sim.yrot_deg() == 0.0f);
@@ -1250,7 +1156,7 @@ TEST_CASE("the first screen starts at yrot 0 with its starting pipes drawn",
 
 TEST_CASE("a finished screen dissolves for 2 s, then turns 9.73156 degrees",
           "[screensaver][pipes_sim]") {
-    Frame f(160, 96);
+    TestFrame f(160, 96, PixelFormat::XRGB8888);
     PipesSim sim;
     std::minstd_rand rng(8);
     sim.init(f.target, rng, 0);
@@ -1272,14 +1178,14 @@ TEST_CASE("a finished screen dissolves for 2 s, then turns 9.73156 degrees",
 }
 
 TEST_CASE("growth steps still due when a screen finishes are dropped", "[screensaver][pipes_sim]") {
-    Frame fa(160, 96);
+    TestFrame fa(160, 96, PixelFormat::XRGB8888);
     PipesSim a;
     std::minstd_rand rng_a(8);
     a.init(fa.target, rng_a, 0);
     const int k = steps_to_dissolve(a, fa, rng_a);
     REQUIRE(k > 1);
 
-    Frame fb(160, 96);
+    TestFrame fb(160, 96, PixelFormat::XRGB8888);
     PipesSim b;
     std::minstd_rand rng_b(8);
     b.init(fb.target, rng_b, 0);
@@ -1297,12 +1203,12 @@ TEST_CASE("growth steps still due when a screen finishes are dropped", "[screens
     // The dropped steps leave nothing behind: half way through, both dissolves have cleared
     // the same blocks of the same picture.
     a.step(1000, fa.target, rng_a, dirty);
-    CHECK(target_hash(fa.target) == target_hash(fb.target));
+    CHECK(frame_fnv1a(fa.target) == frame_fnv1a(fb.target));
 }
 
 TEST_CASE("pipes grow one step per 100 ms, at most three per call", "[screensaver][pipes_sim]") {
-    Frame fa(160, 96);
-    Frame fb(160, 96);
+    TestFrame fa(160, 96, PixelFormat::XRGB8888);
+    TestFrame fb(160, 96, PixelFormat::XRGB8888);
     PipesSim a;
     PipesSim b;
     std::minstd_rand rng_a(14);
@@ -1315,7 +1221,7 @@ TEST_CASE("pipes grow one step per 100 ms, at most three per call", "[screensave
         b.step(100, fb.target, rng_b, dirty);
     }
     CHECK(a.screen().pipes() == b.screen().pipes());
-    CHECK(target_hash(fa.target) == target_hash(fb.target));
+    CHECK(frame_fnv1a(fa.target) == frame_fnv1a(fb.target));
 
     const auto total_segments = [](const PipesSim& s) {
         int n = 0;
@@ -1328,7 +1234,7 @@ TEST_CASE("pipes grow one step per 100 ms, at most three per call", "[screensave
         return s.screen().pipes()[0].segment_count;
     };
     // Slot 0 is alive after every start, and grows one node per step until it sticks.
-    Frame fc(160, 96);
+    TestFrame fc(160, 96, PixelFormat::XRGB8888);
     PipesSim c;
     std::minstd_rand rng_c(14);
     c.init(fc.target, rng_c, 0);
@@ -1342,7 +1248,7 @@ TEST_CASE("pipes grow one step per 100 ms, at most three per call", "[screensave
 }
 
 TEST_CASE("a level's scale waits for the next screen", "[screensaver][pipes_sim]") {
-    Frame f(160, 96);
+    TestFrame f(160, 96, PixelFormat::XRGB8888);
     PipesSim sim;
     std::minstd_rand rng(5);
     sim.init(f.target, rng, 0);
@@ -1365,59 +1271,42 @@ TEST_CASE("a level's scale waits for the next screen", "[screensaver][pipes_sim]
 }
 
 TEST_CASE("PipesSim dirties every pixel its step changes", "[screensaver][pipes_sim]") {
-    Frame f(160, 96);
+    TestFrame f(160, 96, PixelFormat::XRGB8888);
     PipesSim sim;
     std::minstd_rand rng(12);
     sim.init(f.target, rng, 2);
     bool dissolved = false;
     for (int i = 0; i < 3000; i++) {
-        const std::vector<uint8_t> before = f.bytes;
+        const std::vector<uint8_t> before = f.snapshot();
         std::vector<DirtyRect> dirty;
         sim.step(50, f.target, rng, dirty);
         dissolved = dissolved || sim.phase() == PipesPhase::DISSOLVING;
-        for (uint32_t y = 0; y < 96; y++) {
-            for (uint32_t x = 0; x < 160; x++) {
-                const size_t idx = static_cast<size_t>(y) * f.target.stride + x * 4;
-                if (std::memcmp(&before[idx], f.target.data + idx, 4) == 0) {
-                    continue;
-                }
-                const auto px = static_cast<int32_t>(x);
-                const auto py = static_cast<int32_t>(y);
-                const bool covered =
-                    std::any_of(dirty.begin(), dirty.end(), [&](const DirtyRect& r) {
-                        return px >= r.x1 && px <= r.x2 && py >= r.y1 && py <= r.y2;
-                    });
-                REQUIRE(covered);
-            }
-        }
+        REQUIRE(diff_against(before, f, dirty).uncovered == 0);
     }
     CHECK(dissolved);
     CHECK(sim.screens_started() >= 2);
 }
 
 TEST_CASE("a pipes run replays exactly from a seed", "[screensaver][pipes_sim]") {
-    Frame fa(160, 96);
-    Frame fb(160, 96);
-    PipesSim a;
-    PipesSim b;
-    std::minstd_rand rng_a(21);
-    std::minstd_rand rng_b(21);
-    a.init(fa.target, rng_a, 0);
-    b.init(fb.target, rng_b, 0);
-    std::vector<DirtyRect> dirty;
-    for (int i = 1; i <= 1500; i++) {
-        a.step(33, fa.target, rng_a, dirty);
-        b.step(33, fb.target, rng_b, dirty);
-        dirty.clear();
-        if (i % 100 == 0) {
-            REQUIRE(target_hash(fa.target) == target_hash(fb.target));
+    const auto run = [](uint32_t seed) {
+        helix::test::SimRun<PipesSim> r(seed, 160, 96);
+        r.init(0);
+        std::vector<uint64_t> hashes;
+        for (int i = 1; i <= 1500; i++) {
+            r.step(33);
+            r.dirty.clear();
+            if (i % 100 == 0) {
+                hashes.push_back(frame_fnv1a(r.frame.target));
+            }
         }
-    }
+        return hashes;
+    };
+    helix::test::check_replays(run, 21, 22);
 }
 
 TEST_CASE("both depths run the same scene", "[screensaver][pipes_sim]") {
-    Frame f32(160, 96, PixelFormat::XRGB8888);
-    Frame f16(160, 96, PixelFormat::RGB565);
+    TestFrame f32(160, 96, PixelFormat::XRGB8888);
+    TestFrame f16(160, 96, PixelFormat::RGB565);
     PipesSim a;
     PipesSim b;
     std::minstd_rand rng_a(6);
@@ -1444,7 +1333,7 @@ TEST_CASE("both depths run the same scene", "[screensaver][pipes_sim]") {
 }
 
 TEST_CASE("a cleared pipes sim holds no buffers", "[screensaver][pipes_sim]") {
-    Frame f(160, 96);
+    TestFrame f(160, 96, PixelFormat::XRGB8888);
     PipesSim sim;
     std::minstd_rand rng(2);
     sim.init(f.target, rng, 0);
