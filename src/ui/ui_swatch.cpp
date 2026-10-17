@@ -316,6 +316,12 @@ void draw_object_paint(lv_event_t* e) {
     draw_swatch(lv_event_get_layer(e), coords, paint);
 }
 
+// The edge is judged against the live theme at draw time, so a theme change
+// only needs the swatch redrawn.
+void theme_changed_cb(lv_observer_t* observer, lv_subject_t* /*subject*/) {
+    lv_obj_invalidate(static_cast<lv_obj_t*>(lv_observer_get_target(observer)));
+}
+
 void on_paint_deleted(lv_event_t* e) {
     paint_registry().erase(static_cast<lv_obj_t*>(lv_event_get_current_target(e)));
 }
@@ -333,6 +339,9 @@ ObjectPaint& ensure_paint(lv_obj_t* obj) {
     lv_obj_add_event_cb(obj, on_paint_deleted, LV_EVENT_DELETE, nullptr);
     // The painter draws the fill; the style's own background would cover it.
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
+    if (lv_subject_t* theme = theme_manager_get_changed_subject()) {
+        lv_subject_add_observer_obj(theme, theme_changed_cb, obj, nullptr);
+    }
     return registry[obj];
 }
 
@@ -355,6 +364,15 @@ void finish_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
     const char* name = lv_subject_get_string(subject);
     ensure_paint(obj).finish = swatch_finish_from_variant(name ? name : "");
     lv_obj_invalidate(obj);
+}
+
+// A <color_swatch> holder paints through its disc; anything else paints itself.
+lv_obj_t* paint_target(lv_obj_t* obj) {
+    if (paint_registry().count(obj) > 0) {
+        return obj;
+    }
+    lv_obj_t* disc = lv_obj_find_by_name(obj, "color_swatch_disc");
+    return disc ? disc : obj;
 }
 
 bool non_empty(const char* v) {
@@ -716,6 +734,7 @@ void apply_swatch_color(lv_obj_t* swatch, uint32_t primary_rgb,
     if (!swatch) {
         return;
     }
+    swatch = paint_target(swatch);
     ObjectPaint& p = ensure_paint(swatch);
     std::vector<lv_color_t> colors = parse_multi_colors(multi_color_hexes);
     p.colors =
@@ -750,6 +769,18 @@ SwatchFinish swatch_paint_finish(const lv_obj_t* obj) {
     auto& registry = paint_registry();
     auto it = registry.find(obj);
     return it == registry.end() ? SwatchFinish::Plain : it->second.finish;
+}
+
+lv_color_t swatch_color_of(lv_obj_t* obj) {
+    if (!obj) {
+        return lv_color_black();
+    }
+    lv_obj_t* target = paint_target(obj);
+    const std::vector<lv_color_t> colors = swatch_paint_colors(target);
+    if (colors.size() == 1) {
+        return colors[0];
+    }
+    return lv_obj_get_style_bg_color(target, LV_PART_MAIN);
 }
 
 void register_swatch_paint_widget() {

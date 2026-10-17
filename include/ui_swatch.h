@@ -144,8 +144,8 @@ SwatchPaint swatch_paint_for(const helix::SlotInfo& slot);
 // ---------------------------------------------------------------------------
 
 /**
- * Paint an object as a swatch of @p primary_rgb, or of @p multi_color_hexes
- * when that lists two or more colours, with @p finish.
+ * Paint an object (or a <color_swatch>'s disc) as a swatch of @p primary_rgb, or of @p
+ * multi_color_hexes when that lists two or more colours, with @p finish.
  *
  * The object keeps its own size and radius; its background and border are
  * drawn by the swatch painter instead of the style. Safe to call repeatedly
@@ -172,6 +172,10 @@ std::vector<lv_color_t> swatch_paint_colors(const lv_obj_t* obj);
 
 /// The finish an object's swatch paint holds.
 SwatchFinish swatch_paint_finish(const lv_obj_t* obj);
+
+/// The colour a swatch shows: @p obj's own paint, or the disc of a
+/// <color_swatch> holder. Click handlers read a tapped swatch's colour here.
+lv_color_t swatch_color_of(lv_obj_t* obj);
 
 /// Register the <swatch_paint> XML widget. Attributes, all optional and
 /// ignored when empty: color, bind_color (color subject), colors and

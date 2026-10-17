@@ -192,10 +192,7 @@ class ColorPicker : public Modal {
 /// columns. XML renders them through the general_/theme_swatch_color_<i> pools.
 const std::vector<uint32_t>& swatch_palette(ColorPicker::Palette palette);
 
-/// Recomputes the grids' edge pools for the current theme.
-void refresh_swatch_edges();
-
-/// Registers the grids' color and edge pools and color_picker_selected_swatch.
+/// Registers the grids' color pools and color_picker_selected_swatch.
 /// Idempotent; call before any swatch grid is created.
 void ensure_swatch_grid_subjects();
 

@@ -81,20 +81,13 @@ lv_subject_t s_selected_swatch_subject{};
 bool s_swatch_subjects_ready = false;
 helix::xml::IndexedSubjectPool s_general_colors{"general_swatch_color",
                                                 helix::xml::IndexedSubjectPool::Type::Color};
-helix::xml::IndexedSubjectPool s_general_edges{"general_swatch_edge",
-                                               helix::xml::IndexedSubjectPool::Type::Int};
 helix::xml::IndexedSubjectPool s_theme_colors{"theme_swatch_color",
                                               helix::xml::IndexedSubjectPool::Type::Color};
-helix::xml::IndexedSubjectPool s_theme_edges{"theme_swatch_edge",
-                                             helix::xml::IndexedSubjectPool::Type::Int};
 
-void fill_palette(helix::xml::IndexedSubjectPool& colors, helix::xml::IndexedSubjectPool& edges,
-                  const std::vector<uint32_t>& palette) {
+void fill_palette(helix::xml::IndexedSubjectPool& colors, const std::vector<uint32_t>& palette) {
     colors.ensure_size(palette.size());
-    edges.ensure_size(palette.size());
     for (size_t i = 0; i < palette.size(); ++i) {
         colors.set_color(i, palette[i]);
-        edges.set_int(i, swatch_needs_edge_here(palette[i]) ? 1 : 0);
     }
 }
 
@@ -126,22 +119,14 @@ const std::vector<uint32_t>& swatch_palette(ColorPicker::Palette palette) {
     return palette == ColorPicker::Palette::Theme ? theme : general;
 }
 
-void refresh_swatch_edges() {
-    if (!s_swatch_subjects_ready) {
-        return;
-    }
-    fill_palette(s_general_colors, s_general_edges, swatch_palette(ColorPicker::Palette::General));
-    fill_palette(s_theme_colors, s_theme_edges, swatch_palette(ColorPicker::Palette::Theme));
-}
-
 void ensure_swatch_grid_subjects() {
     if (s_swatch_subjects_ready) {
         return;
     }
     lv_subject_init_int(&s_selected_swatch_subject, -1);
     lv_xml_register_subject(nullptr, "color_picker_selected_swatch", &s_selected_swatch_subject);
-    fill_palette(s_general_colors, s_general_edges, swatch_palette(ColorPicker::Palette::General));
-    fill_palette(s_theme_colors, s_theme_edges, swatch_palette(ColorPicker::Palette::Theme));
+    fill_palette(s_general_colors, swatch_palette(ColorPicker::Palette::General));
+    fill_palette(s_theme_colors, swatch_palette(ColorPicker::Palette::Theme));
     s_swatch_subjects_ready = true;
 
     // Torn down before lv_deinit(), like the palette subject.
@@ -150,9 +135,7 @@ void ensure_swatch_grid_subjects() {
             lv_xml_unregister_subject(nullptr, "color_picker_selected_swatch");
             lv_subject_deinit(&s_selected_swatch_subject);
             s_general_colors.reclaim();
-            s_general_edges.reclaim();
             s_theme_colors.reclaim();
-            s_theme_edges.reclaim();
             s_swatch_subjects_ready = false;
         }
     });
@@ -202,7 +185,6 @@ bool ColorPicker::show_with_color(lv_obj_t* parent, uint32_t initial_color) {
     // in color_picker.xml reads this subject as it constructs the view.
     ensure_palette_subject();
     ensure_swatch_grid_subjects();
-    refresh_swatch_edges();
     lv_subject_set_int(&s_palette_subject, static_cast<int>(palette_));
 
     // Show the modal via Modal
@@ -432,9 +414,7 @@ void ColorPicker::handle_swatch_clicked(lv_obj_t* swatch) {
         return;
     }
 
-    // Get the background color from the clicked swatch
-    lv_color_t color = lv_obj_get_style_bg_color(swatch, LV_PART_MAIN);
-    uint32_t rgb = lv_color_to_u32(color) & 0xFFFFFF;
+    const uint32_t rgb = lv_color_to_u32(helix::ui::swatch_color_of(swatch)) & 0xFFFFFF;
 
     highlight_preset(rgb);
     update_preview(rgb);

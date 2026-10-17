@@ -8,18 +8,6 @@
      LedControlOverlay publishes which through the led_page_* subjects, whose
      values are the DevicePage enums (include/led/led_device_page.h). -->
 <component>
-  <gradients>
-    <conical name="led_rainbow" center="50% 50%" angle="0 360">
-      <stop color="#FF4D4D" offset="0"/>
-      <stop color="#FFB347" offset="36"/>
-      <stop color="#FFF35C" offset="72"/>
-      <stop color="#4CD787" offset="109"/>
-      <stop color="#3DD6F5" offset="145"/>
-      <stop color="#4D7CFF" offset="182"/>
-      <stop color="#A66BFF" offset="218"/>
-      <stop color="#FF4D4D" offset="255"/>
-    </conical>
-  </gradients>
   <styles>
     <!-- Power: filled with the light's color when on, an outline otherwise. -->
     <style name="power_on" bg_opa="255" border_width="0"/>
@@ -180,27 +168,19 @@
                       style_pad_gap="#led_swatch_gap">
                 <repeat count="led_swatch_count">
                   <color_swatch name="led_swatch_${i}"
-                                index="${i}" color_subject="led_swatch_color_${i}" edge_subject="led_swatch_edge_${i}"
+                                index="${i}" color_subject="led_swatch_color_${i}"
                                 selected_subject="led_selected_swatch" callback="led_swatch_cb"/>
                 </repeat>
               </lv_obj>
-              <lv_obj name="led_custom_swatch"
-                      width="#led_swatch_size" height="#led_swatch_size" clickable="true" scrollable="false"
-                      ext_click_area="#led_swatch_gap_half">
-                <style name="styles.led_ring_holder"/>
-                <bind_style_if_eq name="styles.led_swatch_ring" subject="led_selected_swatch" ref_value="-2"/>
-                <lv_obj name="disc"
-                        width="100%" height="100%" style_radius="9999" style_bg_opa="255" style_bg_grad="led_rainbow"
-                        style_border_width="0" style_pad_all="0" clickable="false" event_bubble="true"
-                        scrollable="false">
-                  <lv_obj width="50%"
-                          height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
-                          style_border_width="0" clickable="false" event_bubble="true" scrollable="false">
-                    <icon src="plus" size="xs" align="center" clickable="false" event_bubble="true"/>
-                  </lv_obj>
+              <color_swatch name="led_custom_swatch"
+                            index="-2" fill="disc_rainbow" selected_subject="led_selected_swatch"
+                            callback="led_custom_color_cb">
+                <lv_obj width="50%"
+                        height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
+                        style_border_width="0" clickable="false" event_bubble="true" scrollable="false">
+                  <icon src="plus" size="xs" align="center" clickable="false" event_bubble="true"/>
                 </lv_obj>
-                <event_cb trigger="clicked" callback="led_custom_color_cb"/>
-              </lv_obj>
+              </color_swatch>
             </lv_obj>
           </lv_obj>
 

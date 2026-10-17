@@ -17,7 +17,6 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../lvgl_ui_test_fixture.h"
-#include "../test_helpers/scoped_theme_mode.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "config.h"
@@ -883,39 +882,25 @@ TEST_CASE_METHOD(OverlayXmlFixture, "overlay XML: the slider fill takes the page
           lv_color_to_u32(lv_color_hex(0xFF4444)));
 }
 
-TEST_CASE_METHOD(OverlayXmlFixture, "overlay XML: swatch edges follow a theme toggle while open",
+TEST_CASE_METHOD(OverlayXmlFixture,
+                 "overlay XML: preset and Custom swatches paint through the swatch painter",
                  "[led][overlay][xml]") {
     const auto& presets = LedController::instance().color_presets();
     REQUIRE_FALSE(presets.empty());
-    auto published = [&presets] {
-        std::vector<int> v;
-        for (size_t i = 0; i < presets.size(); ++i) {
-            const std::string name = "led_swatch_edge_" + std::to_string(i);
-            lv_subject_t* subject = lv_xml_get_subject(nullptr, name.c_str());
-            REQUIRE(subject != nullptr);
-            v.push_back(lv_subject_get_int(subject));
-        }
-        return v;
-    };
-    auto rule = [&presets] {
-        std::vector<int> v;
-        for (uint32_t rgb : presets) {
-            v.push_back(helix::ui::swatch_needs_edge_here(rgb) ? 1 : 0);
-        }
-        return v;
-    };
+    lv_obj_t* swatch = need("led_swatch_0");
+    REQUIRE(swatch != nullptr);
+    lv_obj_t* disc = lv_obj_find_by_name(swatch, "color_swatch_disc");
+    REQUIRE(disc != nullptr);
+    CHECK(helix::ui::has_swatch_paint(disc));
+    CHECK((lv_color_to_u32(helix::ui::swatch_color_of(swatch)) & 0xFFFFFF) == presets[0]);
 
-    ScopedThemeMode mode;
-    mode.set(false);
-    drain();
-    const auto light = rule();
-    REQUIRE(published() == light);
-
-    mode.set(true);
-    drain();
-    const auto dark = rule();
-    REQUIRE(dark != light); // the toggle changes at least one swatch's edge
-    CHECK(published() == dark);
+    // Custom's disc carries the hue wheel the painter draws.
+    lv_obj_t* custom_disc = lv_obj_find_by_name(need("led_custom_swatch"), "color_swatch_disc");
+    REQUIRE(custom_disc != nullptr);
+    CHECK(helix::ui::has_swatch_paint(custom_disc));
+    const lv_grad_dsc_t* grad = lv_obj_get_style_bg_grad(custom_disc, LV_PART_MAIN);
+    REQUIRE(grad != nullptr);
+    CHECK(grad->stops_count > 2);
 }
 
 TEST_CASE_METHOD(OverlayXmlFixture, "overlay XML: a tab click focuses that tab's device",
@@ -1231,6 +1216,7 @@ TEST_CASE_METHOD(OverlayXmlFixture,
         CHECK(std::string(lv_obj_get_name(disc)) == "color_swatch_disc");
         CHECK(lv_obj_get_style_bg_opa(swatch, LV_PART_MAIN) == LV_OPA_TRANSP);
         CHECK(lv_obj_get_style_pad_top(swatch, LV_PART_MAIN) > 0);
-        CHECK(lv_obj_get_style_radius(disc, LV_PART_MAIN) == 9999); // round, not a rounded square
+        CHECK(lv_obj_get_style_radius(disc, LV_PART_MAIN) == LV_RADIUS_CIRCLE); // round
+        CHECK(helix::ui::has_swatch_paint(disc));
     }
 }

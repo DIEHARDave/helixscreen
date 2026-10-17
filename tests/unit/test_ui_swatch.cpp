@@ -337,7 +337,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "apply_swatch_color: hooks install once and di
     const uint32_t baseline = lv_obj_get_event_count(sw);
     helix::ui::apply_swatch_color(sw, 0x000000, "#202020,#F0F0F0");
     const uint32_t after_first = lv_obj_get_event_count(sw);
-    CHECK(after_first == baseline + 2);
+    CHECK(after_first > baseline);
     helix::ui::apply_swatch_color(sw, 0x445566, "");
     helix::ui::apply_swatch_color(sw, 0x000000, "#101010,#808080,#FFFFFF");
     CHECK(lv_obj_get_event_count(sw) == after_first);

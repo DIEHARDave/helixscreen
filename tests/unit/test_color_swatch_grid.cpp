@@ -20,7 +20,7 @@ std::vector<uint32_t> g_tapped;
 /// Reads the color the way every grid consumer does: off the event target.
 void record_tap(lv_event_t* e) {
     auto* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
-    g_tapped.push_back(lv_color_to_u32(lv_obj_get_style_bg_color(target, LV_PART_MAIN)) & 0xFFFFFF);
+    g_tapped.push_back(lv_color_to_u32(helix::ui::swatch_color_of(target)) & 0xFFFFFF);
 }
 
 } // namespace
