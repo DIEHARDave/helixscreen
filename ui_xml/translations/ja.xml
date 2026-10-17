@@ -1295,6 +1295,7 @@
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" ja="フィラメントの装填・排出・交換の前に、印刷を完了またはキャンセルしてください"/>
   <translation tag="Finishing clean..." ja="清掃の仕上げ中..."/>
   <translation tag="Finishing up..." ja="完了中..."/>
+  <translation tag="Fireflies" ja="ホタル"/>
   <translation tag="Fireworks" ja="花火"/>
   <translation tag="Firmware Restart" ja="ファームウェア再起動"/>
   <translation tag="Firmware reports no bypass. Enable if you feed filament straight to the extruder" ja="ファームウェアはバイパスがないと報告しています。フィラメントをエクストルーダーに直接送っている場合は有効にしてください"/>

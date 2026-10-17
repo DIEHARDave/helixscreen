@@ -31,6 +31,52 @@ constexpr uint8_t dither_channel(uint8_t c, uint8_t max_level, uint8_t threshold
     return static_cast<uint8_t>(std::min<uint32_t>(max_level, scaled / (255u * 32u)));
 }
 
+/// Fully saturated colour `h` of 256 round the wheel.
+constexpr Rgb hue_color(uint32_t h) {
+    h &= 255;
+    const uint32_t sector = h * 6 / 256;
+    const auto ramp = static_cast<uint8_t>(h * 6 - sector * 256);
+    const auto fall = static_cast<uint8_t>(255 - ramp);
+    switch (sector) {
+    case 0:
+        return {255, ramp, 0};
+    case 1:
+        return {fall, 255, 0};
+    case 2:
+        return {0, 255, ramp};
+    case 3:
+        return {0, fall, 255};
+    case 4:
+        return {ramp, 0, 255};
+    default:
+        return {255, 0, fall};
+    }
+}
+
+/// Adds light (r, g, b) to the XRGB8888 pixel at `p`, each channel saturating at 255.
+inline void add_light(uint32_t* p, uint32_t r, uint32_t g, uint32_t b) {
+    const uint32_t v = *p;
+    const uint32_t nr = std::min<uint32_t>(255, (v >> 16 & 0xFF) + r);
+    const uint32_t ng = std::min<uint32_t>(255, (v >> 8 & 0xFF) + g);
+    const uint32_t nb = std::min<uint32_t>(255, (v & 0xFF) + b);
+    *p = 0xFF000000u | nr << 16 | ng << 8 | nb;
+}
+
+/**
+ * @brief Adds light (r, g, b), 8 bits a channel, to the RGB565 pixel at `p`
+ *
+ * Each channel saturates at its top level. `threshold` (0-15, BAYER_4X4 at the pixel) rounds
+ * the 8-bit amount to the channel's levels, so light fainter than one RGB565 level still shows
+ * as a sparse pattern; 0 truncates.
+ */
+inline void add_light(uint16_t* p, uint32_t r, uint32_t g, uint32_t b, uint8_t threshold = 0) {
+    const uint32_t v = *p;
+    const uint32_t nr = std::min<uint32_t>(31, (v >> 11) + ((r + (threshold >> 1)) >> 3));
+    const uint32_t ng = std::min<uint32_t>(63, (v >> 5 & 0x3F) + ((g + (threshold >> 2)) >> 2));
+    const uint32_t nb = std::min<uint32_t>(31, (v & 0x1F) + ((b + (threshold >> 1)) >> 3));
+    *p = static_cast<uint16_t>(nr << 11 | ng << 5 | nb);
+}
+
 /**
  * @brief Writes colours into a FrameTarget
  *

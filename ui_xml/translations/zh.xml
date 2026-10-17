@@ -1295,6 +1295,7 @@
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" zh="在装载、卸载或更换耗材之前，请先完成或取消打印"/>
   <translation tag="Finishing clean..." zh="即将完成清洁..."/>
   <translation tag="Finishing up..." zh="即将完成..."/>
+  <translation tag="Fireflies" zh="萤火虫"/>
   <translation tag="Fireworks" zh="烟花"/>
   <translation tag="Firmware Restart" zh="固件重启"/>
   <translation tag="Firmware reports no bypass. Enable if you feed filament straight to the extruder" zh="固件报告未配置旁路。如果您将耗材直接送入挤出机，请启用此选项"/>

@@ -1337,6 +1337,7 @@ translations:
   Finish or cancel the print before loading, unloading, or changing filament: 在装载、卸载或更换耗材之前，请先完成或取消打印
   Finishing clean...: 即将完成清洁...
   Finishing up...: 即将完成...
+  Fireflies: 萤火虫
   Fireworks: 烟花
   Firmware Restart: 固件重启
   Firmware reports no bypass. Enable if you feed filament straight to the extruder: 固件报告未配置旁路。如果您将耗材直接送入挤出机，请启用此选项

@@ -1295,6 +1295,7 @@
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" fr="Terminez ou annulez l&apos;impression avant de charger, décharger ou changer le filament"/>
   <translation tag="Finishing clean..." fr="Finalisation du nettoyage..."/>
   <translation tag="Finishing up..." fr="Finalisation..."/>
+  <translation tag="Fireflies" fr="Lucioles"/>
   <translation tag="Fireworks" fr="Feux d&apos;artifice"/>
   <translation tag="Firmware Restart" fr="Redémarrage firmware"/>
   <translation tag="Firmware reports no bypass. Enable if you feed filament straight to the extruder" fr="Le firmware ne signale aucun bypass. Activez cette option si vous alimentez l&apos;extrudeur directement en filament"/>
