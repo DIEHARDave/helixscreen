@@ -5827,6 +5827,50 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker drops a held save with the head's 
     CHECK(h.config_writes().empty());
 }
 
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker a product-line change alone rewrites the identity",
+                 "[ams][snapmaker][filament_record]") {
+    // The record's vendor already matches, so only print_task_config's
+    // filament_sub_type can tell this save from a re-save.
+    lv_init_safe();
+    FilamentRecordHarness h("record_subtype_only");
+    json ptc = make_task_filament({"NONE", "PLA", "NONE", "NONE"});
+    ptc["print_task_config"]["filament_vendor"] =
+        json::array({"NONE", "Snapmaker", "NONE", "NONE"});
+    ptc["print_task_config"]["filament_sub_type"] = json::array({"NONE", "Basic", "NONE", "NONE"});
+    ptc["print_task_config"]["filament_color_rgba"] =
+        json::array({"FFFFFFFF", "FF5500FF", "FFFFFFFF", "FFFFFFFF"});
+    h.frame(ptc);
+    h.printer.client.clear_gcode_script_history();
+
+    SlotInfo edit = inland_pla();
+    edit.brand = "Snapmaker";
+    edit.spool_name = "Matte";
+    REQUIRE(helix::test::apply_edit(h.backend, 1, edit).success());
+    FilamentRecordHarness::drain();
+    const auto writes = h.config_writes();
+    REQUIRE(writes.size() == 1);
+    CHECK(writes[0] == "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1 VENDOR=Snapmaker "
+                       "FILAMENT_TYPE=PLA FILAMENT_SUBTYPE=Matte");
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker drops a held save when the spool is swapped",
+                 "[ams][snapmaker][filament_record]") {
+    lv_init_safe();
+    FilamentRecordHarness h("record_held_swap", "printing");
+    h.frame(make_written_entry(1, "PLA", json::array({1, 2, 3, 4})));
+    h.frame(make_task_filament({"NONE", "NONE", "NONE", "NONE"}));
+    REQUIRE(helix::test::apply_edit(h.backend, 1, inland_pla()).success());
+    FilamentRecordHarness::drain();
+    REQUIRE(SnapmakerTestAccess::get_override(h.backend, 1).has_value());
+
+    // A different card with a different material: a new spool.
+    h.frame(make_written_entry(1, "PETG", json::array({9, 9, 9, 9})));
+    REQUIRE_FALSE(SnapmakerTestAccess::get_override(h.backend, 1).has_value());
+    h.printer.client.clear_gcode_script_history();
+    h.print("complete");
+    CHECK(h.config_writes().empty());
+}
+
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker an edit never POSTs to filament_detect/set",
                  "[ams][snapmaker][filament_record]") {
     lv_init_safe();

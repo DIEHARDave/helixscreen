@@ -23,6 +23,7 @@
 #include "test_helpers/ace_test_access.h"
 #include "test_helpers/backend_user_edit.h"
 #include "test_helpers/registered_backend.h"
+#include "test_helpers/seeded_override.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -2031,6 +2032,51 @@ TEST_CASE("ACE clear_slot_override erases in-memory override and MR DB entry",
     // override-exclusive fields for ACE.
     CHECK(info.color_rgb == 0xFF5500u);
     CHECK(info.material == "PLA");
+}
+
+TEST_CASE("ACE hands the temperatures back to the hub with the override",
+          "[ams][ace][tag_reading]") {
+    AceTmpCacheDir tmp("ace_user_temps_forgotten");
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    helix::test::RegisteredBackend<AmsBackendAce> backend_reg(&api, nullptr);
+    AmsBackendAce& backend = *backend_reg;
+    auto store = std::make_unique<helix::ams::FilamentSlotOverrideStore>(&api, "ace");
+    FilamentSlotOverrideStoreTestAccess::set_cache_directory(*store, tmp.path);
+    AceTestAccess::inject_override_store(backend, std::move(store));
+
+    const auto rest = [](int temp_min, int temp_max) {
+        return json{{"slots", json::array({json{{"status", "ready"},
+                                                {"color", "#FF5500"},
+                                                {"material", "PLA"},
+                                                {"temp_min", temp_min},
+                                                {"temp_max", temp_max}}})}};
+    };
+    AceTestAccess::parse_ace(backend, make_ace_slot_payload("available", 0xFF5500, "PLA", true));
+    AceTestAccess::parse_slots(backend, rest(200, 220));
+
+    auto edit = backend.get_slot_info(0);
+    edit.nozzle_temp_min = 240;
+    edit.nozzle_temp_max = 260;
+    helix::test::edit_slot_as_user(backend, 0, edit);
+    AceTestAccess::parse_slots(backend, rest(200, 220));
+    REQUIRE(backend.get_slot_info(0).nozzle_temp_max == 260);
+
+    SECTION("a Clear Spool") {
+        backend.clear_slot_override(0);
+    }
+    SECTION("a different spool going in") {
+        AceTestAccess::parse_ace(backend, make_ace_slot_payload("empty", 0x000000, ""));
+        AceTestAccess::parse_ace(backend,
+                                 make_ace_slot_payload("available", 0x0055FF, "PETG", true));
+        REQUIRE_FALSE(AceTestAccess::get_override(backend, 0).has_value());
+    }
+    SECTION("a restart") {
+        AceTestAccess::start_load(backend);
+    }
+    AceTestAccess::parse_slots(backend, rest(205, 225));
+    CHECK(backend.get_slot_info(0).nozzle_temp_min == 205);
+    CHECK(backend.get_slot_info(0).nozzle_temp_max == 225);
 }
 
 TEST_CASE("ACE clear_slot_override is a no-op when no override is present",

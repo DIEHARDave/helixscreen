@@ -298,6 +298,11 @@ void AmsBackendQidi::on_started() {
     // fingerprint baseline and a staged clear agree about what the user had.
     // Call with NO lock held: the DB round-trip blocks, and the parse path
     // takes this mutex.
+    {
+        // A start is a new session: the tag readings described the last one.
+        std::lock_guard<std::mutex> lock(mutex_);
+        tag_readings_.clear();
+    }
     if (api_) {
         auto loaded =
             helix::ams::make_loaded_override_store(api_, "qidi", get_type(), backend_log_tag());
@@ -309,7 +314,6 @@ void AmsBackendQidi::on_started() {
             std::lock_guard<std::mutex> lock(mutex_);
             override_store_ = std::move(loaded.store);
             overrides_ = std::move(loaded.overrides);
-            tag_readings_.clear();
             // A persisted fingerprint from a build whose composite counted the
             // vendor id seeds a baseline the current composite never matches,
             // which would read as a swap at the first poll and clear every

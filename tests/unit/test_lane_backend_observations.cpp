@@ -5228,6 +5228,59 @@ TEST_CASE_METHOD(LVGLTestFixture, "ACE's REST bridge keeps the hub's temps under
     }
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "a restart forgets the box's tag readings",
+                 "[lane][cfs][qidi][tag_reading]") {
+    SECTION("CFS") {
+        CfsHarness harness(nullptr, nullptr);
+        feed_cfs_box(
+            *harness,
+            flat_box(nlohmann::json::array({nlohmann::json{
+                {"index", 0}, {"material", "PETG"}, {"color", "#ED2C2C"}, {"present", true}}})));
+        REQUIRE(harness->tag_reading(0).has_value());
+        CfsTestAccess::call_on_started(*harness);
+        CHECK_FALSE(harness->tag_reading(0).has_value());
+    }
+    SECTION("QIDI") {
+        QidiHarness harness(nullptr, nullptr);
+        QidiBoxTestAccess::apply_filas_list(*harness, qidi_tables());
+        QidiBoxTestAccess::parse_vars(*harness, nlohmann::json{{"box_count", 1},
+                                                               {"filament_slot0", 40},
+                                                               {"color_slot0", 9},
+                                                               {"vendor_slot0", 8}});
+        REQUIRE(harness->tag_reading(0).has_value());
+        QidiBoxTestAccess::start_load(*harness);
+        CHECK_FALSE(harness->tag_reading(0).has_value());
+    }
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a Snapmaker tag leaving takes its multi-colour with it",
+                 "[lane][snapmaker][tag_reading]") {
+    SnapmakerHarness harness(nullptr, nullptr);
+    feed_filament_detect(*harness,
+                         nlohmann::json{
+                             {"state", nlohmann::json::array({1})},
+                             {"info", nlohmann::json::array({nlohmann::json{
+                                          {"MAIN_TYPE", "PLA"},
+                                          {"ARGB_COLOR", 0xFFED2C2C},
+                                          {"COLOR_NUMS", 2},
+                                          {"RGB_1", 0xED2C2C},
+                                          {"RGB_2", 0x00FF00},
+                                          {"CARD_UID", nlohmann::json::array({1, 2, 3, 4})},
+                                      }})},
+                         });
+    REQUIRE(harness->get_slot_info(0).multi_color_hexes == "#ED2C2C,#00FF00");
+
+    feed_filament_detect(*harness, nlohmann::json{
+                                       {"state", nlohmann::json::array({1})},
+                                       {"info", nlohmann::json::array({nlohmann::json{
+                                                    {"MAIN_TYPE", "NONE"},
+                                                    {"CARD_UID", 0},
+                                                }})},
+                                   });
+    CHECK(harness->get_slot_info(0).multi_color_hexes.empty());
+    CHECK_FALSE(harness->tag_reading(0).has_value());
+}
+
 TEST_CASE_METHOD(LVGLTestFixture, "AFC's colour scan is the lane's tag reading",
                  "[lane][afc][tag_reading]") {
     AfcHarness harness(nullptr, nullptr);
