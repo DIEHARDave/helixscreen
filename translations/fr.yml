@@ -2328,6 +2328,7 @@ translations:
   'Off': Éteint
   'Off:': 'Arrêt :'
   'Off: runs with these values without asking': 'Désactivé : exécute avec ces valeurs sans demander'
+  Offer to save Z-offset changes to the printer config: 'Proposer d''enregistrer les modifications du Z-Offset dans la configuration de l''imprimante'
   Offsets saved: Offsets enregistrés
   "Old setting on today's data: {} residual - now: {}": 'Ancien réglage sur les données du jour : {} résiduel - maintenant : {}'
   'On': Allumé
@@ -2999,6 +3000,7 @@ translations:
   Save Printer Configuration: Enregistrer la configuration de l'imprimante
   Save Theme As: Enregistrer le thème sous
   Save Z-Offset: Enregistrer le Z-Offset
+  Save Z-Offset Buttons: 'Boutons d''enregistrement du Z-Offset'
   Save Z-Offset?: Enregistrer le Z-Offset ?
   Save changes to persist them across restarts?: Enregistrer les modifications pour
     les conserver après redémarrage ?
@@ -4080,6 +4082,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z-offset enregistré ({:+.3f}mm).
     Redémarrage de Klipper...
   Z-offset saved - Klipper restarting...: Z-offset enregistré - Redémarrage de Klipper...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'L''enregistrement du Z-Offset est désactivé : HelixScreen ne l''a pas enregistré. Klipper le conserve jusqu''au prochain enregistrement de la configuration.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'déjà chargé'

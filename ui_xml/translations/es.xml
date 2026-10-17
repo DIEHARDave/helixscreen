@@ -2096,6 +2096,7 @@
   <translation tag="Off" es="Apagado"/>
   <translation tag="Off:" es="Apagado:"/>
   <translation tag="Off: runs with these values without asking" es="Desactivado: ejecuta con estos valores sin preguntar"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" es="Ofrecer guardar los cambios de Z-Offset en la configuración de la impresora"/>
   <translation tag="Offsets saved" es="Offsets guardados"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" es="Ajuste anterior en los datos de hoy: {} de vibración residual - ahora: {}"/>
   <translation tag="On" es="Encendido"/>
@@ -2707,6 +2708,7 @@
   <translation tag="Save Printer Configuration" es="Guardar Configuración de Impresora"/>
   <translation tag="Save Theme As" es="Guardar Tema Como"/>
   <translation tag="Save Z-Offset" es="Guardar Z-Offset"/>
+  <translation tag="Save Z-Offset Buttons" es="Botones de guardar Z-Offset"/>
   <translation tag="Save Z-Offset?" es="¿Guardar Z-Offset?"/>
   <translation tag="Save changes to persist them across restarts?" es="¿Guardar cambios para mantenerlos entre reinicios?"/>
   <translation tag="Save failed: {}" es="Error al guardar: {}"/>
@@ -3621,6 +3623,7 @@
   <translation tag="Z-offset saved" es="Z-offset guardado"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." es="Z-offset guardado ({:+.3f}mm). Klipper reiniciando..."/>
   <translation tag="Z-offset saved - Klipper restarting..." es="Z-offset guardado - Klipper reiniciando..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." es="Guardar Z-Offset está desactivado, así que HelixScreen no lo guardó. Klipper lo conserva hasta el próximo guardado de la configuración."/>
   <translation tag="Z:" es="Z:"/>
   <translation tag="Z: 0.000" es="Z: 0.000"/>
   <translation tag="already loaded" es="ya cargado"/>

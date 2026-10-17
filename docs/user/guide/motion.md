@@ -68,6 +68,7 @@ Besides the distances, the jog pad's own speed is adjustable. There are two plac
 | **Jog Speed Z** | Same, for the Z axis. |
 | **Fine / Coarse / Turbo distances** | The inner- and outer-ring distance for each of the three jog modes. Each distance is tapped in on a keypad; the inner and outer values of a mode cannot cross. |
 | **Bed Map Clearance** | How high the nozzle must be before a [Bed tab](#bed-tab) move travels, 1 to 50 mm (default 5 mm). Below it, the nozzle lifts to this height first. |
+| **Save Z-Offset Buttons** | Whether HelixScreen offers to save Z-offset changes to your printer config for this printer. Off removes the Save Z-Offset button from the header, the Controls screen and the Z-offset home widget, and Z-offset calibration stops saving its result; baby-stepping still adjusts the current session. It starts off on toolchangers, where each tool keeps its own Z offset and one stray save would change all of them, and on everywhere else. Not shown on printers whose firmware saves the Z offset itself. |
 | **Reset Distances** | Puts every distance back to the defaults shown in the table above. Asks for confirmation first. |
 
 ---

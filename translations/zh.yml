@@ -2170,6 +2170,7 @@ translations:
   'Off': 关
   'Off:': '关:'
   'Off: runs with these values without asking': '关: 不询问,直接以这些值运行'
+  Offer to save Z-offset changes to the printer config: '提供将 Z 偏移更改保存到打印机配置的选项'
   Offsets saved: 偏移已保存
   "Old setting on today's data: {} residual - now: {}": 旧设置（今日数据）：残余 {} — 当前：{}
   'On': 开
@@ -2802,6 +2803,7 @@ translations:
   Save Printer Configuration: 保存打印机配置
   Save Theme As: 主题另存为
   Save Z-Offset: 保存 Z 偏移
+  Save Z-Offset Buttons: '保存 Z 偏移按钮'
   Save Z-Offset?: 保存 Z 偏移？
   Save changes to persist them across restarts?: 保存更改以便在重启后保留？
   'Save failed: {}': '保存失败: {}'
@@ -3779,6 +3781,7 @@ translations:
   Z-offset saved: Z 偏移已保存
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z 偏移已保存 ({:+.3f}mm)。Klipper 正在重启...
   Z-offset saved - Klipper restarting...: Z 偏移已保存 - Klipper 重启中...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Z 偏移保存已关闭，因此 HelixScreen 未保存此值。Klipper 会保留它，直到下次保存配置。'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: '已加载'

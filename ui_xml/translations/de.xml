@@ -2096,6 +2096,7 @@
   <translation tag="Off" de="Aus"/>
   <translation tag="Off:" de="Aus:"/>
   <translation tag="Off: runs with these values without asking" de="Aus: führt diese Werte aus, ohne zu fragen"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" de="Anbieten, Z-Offset-Änderungen in der Druckerkonfiguration zu speichern"/>
   <translation tag="Offsets saved" de="Offsets gespeichert"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" de="Alte Einstellung auf heutigen Daten: {} Restvibration - jetzt: {}"/>
   <translation tag="On" de="Ein"/>
@@ -2707,6 +2708,7 @@
   <translation tag="Save Printer Configuration" de="Druckerkonfiguration speichern"/>
   <translation tag="Save Theme As" de="Thema speichern als"/>
   <translation tag="Save Z-Offset" de="Z-Offset speichern"/>
+  <translation tag="Save Z-Offset Buttons" de="Z-Offset-Speichern-Tasten"/>
   <translation tag="Save Z-Offset?" de="Z-Offset speichern?"/>
   <translation tag="Save changes to persist them across restarts?" de="Änderungen speichern, um sie über Neustarts hinweg zu erhalten?"/>
   <translation tag="Save failed: {}" de="Speichern fehlgeschlagen: {}"/>
@@ -3621,6 +3623,7 @@
   <translation tag="Z-offset saved" de="Z-Offset gespeichert"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." de="Z-Offset gespeichert ({:+.3f}mm). Klipper startet neu..."/>
   <translation tag="Z-offset saved - Klipper restarting..." de="Z-Offset gespeichert - Klipper wird neu gestartet..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." de="Z-Offset-Speichern ist aus, daher hat HelixScreen dies nicht gespeichert. Klipper behält es bis zum nächsten Speichern der Konfiguration."/>
   <translation tag="Z:" de="Z:"/>
   <translation tag="Z: 0.000" de="Z: 0.000"/>
   <translation tag="already loaded" de="bereits geladen"/>

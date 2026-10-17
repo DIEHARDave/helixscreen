@@ -2096,6 +2096,7 @@
   <translation tag="Off" ja="オフ"/>
   <translation tag="Off:" ja="オフ:"/>
   <translation tag="Off: runs with these values without asking" ja="オフ: これらの値で確認なしに実行"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" ja="Z-Offset の変更をプリンター設定に保存する操作を表示します"/>
   <translation tag="Offsets saved" ja="オフセットを保存しました"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" ja="旧設定を今日のデータに適用: 残留 {} - 現在: {}"/>
   <translation tag="On" ja="オン"/>
@@ -2707,6 +2708,7 @@
   <translation tag="Save Printer Configuration" ja="プリンター設定を保存"/>
   <translation tag="Save Theme As" ja="テーマを名前を付けて保存"/>
   <translation tag="Save Z-Offset" ja="Z-Offset を保存"/>
+  <translation tag="Save Z-Offset Buttons" ja="Z-Offset 保存ボタン"/>
   <translation tag="Save Z-Offset?" ja="Z-Offset を保存しますか？"/>
   <translation tag="Save changes to persist them across restarts?" ja="再起動後も変更を保持するために保存しますか？"/>
   <translation tag="Save failed: {}" ja="保存に失敗しました: {}"/>
@@ -3621,6 +3623,7 @@
   <translation tag="Z-offset saved" ja="Z-offset を保存しました"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." ja="Zオフセットを保存しました ({:+.3f}mm)。Klipper を再起動中..."/>
   <translation tag="Z-offset saved - Klipper restarting..." ja="Z-offset を保存しました - Klipper を再起動中..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." ja="Z-Offset の保存がオフのため、HelixScreen は保存していません。次に設定が保存されるまで Klipper が保持します。"/>
   <translation tag="Z:" ja="Z:"/>
   <translation tag="Z: 0.000" ja="Z: 0.000"/>
   <translation tag="already loaded" ja="装填済み"/>

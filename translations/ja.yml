@@ -2177,6 +2177,7 @@ translations:
   'Off': オフ
   'Off:': 'オフ:'
   'Off: runs with these values without asking': 'オフ: これらの値で確認なしに実行'
+  Offer to save Z-offset changes to the printer config: 'Z-Offset の変更をプリンター設定に保存する操作を表示します'
   Offsets saved: オフセットを保存しました
   "Old setting on today's data: {} residual - now: {}": '旧設定を今日のデータに適用: 残留 {} - 現在: {}'
   'On': オン
@@ -2811,6 +2812,7 @@ translations:
   Save Printer Configuration: プリンター設定を保存
   Save Theme As: テーマを名前を付けて保存
   Save Z-Offset: Z-Offset を保存
+  Save Z-Offset Buttons: 'Z-Offset 保存ボタン'
   Save Z-Offset?: Z-Offset を保存しますか？
   Save changes to persist them across restarts?: 再起動後も変更を保持するために保存しますか？
   'Save failed: {}': '保存に失敗しました: {}'
@@ -3789,6 +3791,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Zオフセットを保存しました ({:+.3f}mm)。Klipper
     を再起動中...
   Z-offset saved - Klipper restarting...: Z-offset を保存しました - Klipper を再起動中...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Z-Offset の保存がオフのため、HelixScreen は保存していません。次に設定が保存されるまで Klipper が保持します。'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: '装填済み'

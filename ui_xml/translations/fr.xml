@@ -2096,6 +2096,7 @@
   <translation tag="Off" fr="Éteint"/>
   <translation tag="Off:" fr="Arrêt :"/>
   <translation tag="Off: runs with these values without asking" fr="Désactivé : exécute avec ces valeurs sans demander"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" fr="Proposer d&apos;enregistrer les modifications du Z-Offset dans la configuration de l&apos;imprimante"/>
   <translation tag="Offsets saved" fr="Offsets enregistrés"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" fr="Ancien réglage sur les données du jour : {} résiduel - maintenant : {}"/>
   <translation tag="On" fr="Allumé"/>
@@ -2707,6 +2708,7 @@
   <translation tag="Save Printer Configuration" fr="Enregistrer la configuration de l&apos;imprimante"/>
   <translation tag="Save Theme As" fr="Enregistrer le thème sous"/>
   <translation tag="Save Z-Offset" fr="Enregistrer le Z-Offset"/>
+  <translation tag="Save Z-Offset Buttons" fr="Boutons d&apos;enregistrement du Z-Offset"/>
   <translation tag="Save Z-Offset?" fr="Enregistrer le Z-Offset ?"/>
   <translation tag="Save changes to persist them across restarts?" fr="Enregistrer les modifications pour les conserver après redémarrage ?"/>
   <translation tag="Save failed: {}" fr="Échec de l&apos;enregistrement : {}"/>
@@ -3621,6 +3623,7 @@
   <translation tag="Z-offset saved" fr="Z-offset enregistré"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." fr="Z-offset enregistré ({:+.3f}mm). Redémarrage de Klipper..."/>
   <translation tag="Z-offset saved - Klipper restarting..." fr="Z-offset enregistré - Redémarrage de Klipper..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." fr="L&apos;enregistrement du Z-Offset est désactivé : HelixScreen ne l&apos;a pas enregistré. Klipper le conserve jusqu&apos;au prochain enregistrement de la configuration."/>
   <translation tag="Z:" fr="Z:"/>
   <translation tag="Z: 0.000" fr="Z: 0.000"/>
   <translation tag="already loaded" fr="déjà chargé"/>

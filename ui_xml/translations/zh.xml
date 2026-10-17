@@ -2096,6 +2096,7 @@
   <translation tag="Off" zh="关"/>
   <translation tag="Off:" zh="关:"/>
   <translation tag="Off: runs with these values without asking" zh="关: 不询问,直接以这些值运行"/>
+  <translation tag="Offer to save Z-offset changes to the printer config" zh="提供将 Z 偏移更改保存到打印机配置的选项"/>
   <translation tag="Offsets saved" zh="偏移已保存"/>
   <translation tag="Old setting on today&apos;s data: {} residual - now: {}" zh="旧设置（今日数据）：残余 {} — 当前：{}"/>
   <translation tag="On" zh="开"/>
@@ -2707,6 +2708,7 @@
   <translation tag="Save Printer Configuration" zh="保存打印机配置"/>
   <translation tag="Save Theme As" zh="主题另存为"/>
   <translation tag="Save Z-Offset" zh="保存 Z 偏移"/>
+  <translation tag="Save Z-Offset Buttons" zh="保存 Z 偏移按钮"/>
   <translation tag="Save Z-Offset?" zh="保存 Z 偏移？"/>
   <translation tag="Save changes to persist them across restarts?" zh="保存更改以便在重启后保留？"/>
   <translation tag="Save failed: {}" zh="保存失败: {}"/>
@@ -3621,6 +3623,7 @@
   <translation tag="Z-offset saved" zh="Z 偏移已保存"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." zh="Z 偏移已保存 ({:+.3f}mm)。Klipper 正在重启..."/>
   <translation tag="Z-offset saved - Klipper restarting..." zh="Z 偏移已保存 - Klipper 重启中..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." zh="Z 偏移保存已关闭，因此 HelixScreen 未保存此值。Klipper 会保留它，直到下次保存配置。"/>
   <translation tag="Z:" zh="Z:"/>
   <translation tag="Z: 0.000" zh="Z: 0.000"/>
   <translation tag="already loaded" zh="已加载"/>
