@@ -183,10 +183,8 @@ static SpoolVisual create_spool_visual(lv_obj_t* container, int32_t spool_size) 
         lv_obj_set_size(filament_ring, filament_ring_size, filament_ring_size);
         lv_obj_align(filament_ring, LV_ALIGN_CENTER, 0, 0);
         lv_obj_set_style_radius(filament_ring, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(filament_ring, lv_color_hex(helix::AMS_DEFAULT_SLOT_COLOR),
-                                  LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(filament_ring, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_border_width(filament_ring, 0, LV_PART_MAIN);
+        helix::ui::apply_swatch_color(filament_ring, helix::AMS_DEFAULT_SLOT_COLOR, "");
         lv_obj_remove_flag(filament_ring, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(filament_ring, LV_OBJ_FLAG_EVENT_BUBBLE);
         sv.color_swatch = filament_ring;

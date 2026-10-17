@@ -1346,6 +1346,20 @@ class AmsState {
         return &current_finish_;
     }
 
+    /// The loaded filament as a swatch paints it, read from the three subjects
+    /// above. Main thread only.
+    struct LoadedPaint {
+        uint32_t rgb = 0;
+        std::string multi_color_hexes;
+        FilamentFinish finish = FilamentFinish::None;
+    };
+    [[nodiscard]] LoadedPaint current_paint() {
+        const char* colors = lv_subject_get_string(&current_colors_);
+        const char* finish = lv_subject_get_string(&current_finish_);
+        return {static_cast<uint32_t>(lv_subject_get_int(&current_color_)) & 0xFFFFFF,
+                colors ? colors : "", filament_finish_of(finish ? finish : "")};
+    }
+
     /**
      * @brief Get current fill percent subject
      * @return Subject holding the loaded spool's fill in the

@@ -47,13 +47,9 @@ static void repaint(lv_obj_t* widget) {
     auto it = s_registry.find(widget);
     if (it == s_registry.end() || !it->second || !it->second->color_swatch)
         return;
-    auto& ams = helix::AmsState::instance();
-    const char* colors = lv_subject_get_string(ams.get_current_colors_subject());
-    const char* finish = lv_subject_get_string(ams.get_current_finish_subject());
-    helix::ui::apply_swatch_color(
-        it->second->color_swatch,
-        static_cast<uint32_t>(lv_subject_get_int(ams.get_current_color_subject())) & 0xFFFFFF,
-        colors ? colors : "", helix::ui::swatch_finish_from_variant(finish ? finish : ""));
+    const auto paint = helix::AmsState::instance().current_paint();
+    helix::ui::apply_swatch_color(it->second->color_swatch, paint.rgb, paint.multi_color_hexes,
+                                  helix::ui::swatch_finish(paint.finish));
 }
 
 // Cleanup callback when widget is deleted
