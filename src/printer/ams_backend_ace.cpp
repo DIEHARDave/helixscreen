@@ -76,17 +76,7 @@ AmsBackendAce::AmsBackendAce(IMoonrakerAPI* api, IMoonrakerClient* client)
     system_info_.type_name = "ACE";
     system_info_.supports_bypass = false;
 
-    // Initialize dryer info with ACE Pro capabilities
-    dryer_info_.supported = true;
-    dryer_info_.active = false;
-    dryer_info_.allows_during_print = false;
-    dryer_info_.min_temp_c = 35.0f;
-    dryer_info_.max_temp_c = 55.0f;
-    dryer_info_.max_duration_min = 720; // 12 hours
-    dryer_info_.supports_fan_control = false;
-    // Both live-adjust flags keep their conservative defaults: ACE_START_DRYING and
-    // ACE_STOP_DRYING are the whole surface, with no set-temperature-while-running
-    // command, so every adjustment stops and restarts the cycle.
+    dryer_info_ = helix::ace::ace_pro_dryer_info();
 }
 
 AmsBackendAce::~AmsBackendAce() {
@@ -752,28 +742,13 @@ AmsError AmsBackendAce::start_drying(float temp_c, int duration_min, int fan_pct
         return err;
     }
 
-    float min_temp, max_temp;
-    int max_duration;
+    DryerInfo dryer;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        min_temp = dryer_info_.min_temp_c;
-        max_temp = dryer_info_.max_temp_c;
-        max_duration = dryer_info_.max_duration_min;
+        dryer = dryer_info_;
     }
-
-    if (temp_c < min_temp || temp_c > max_temp) {
-        return AmsError(AmsResult::COMMAND_FAILED,
-                        "Temperature out of range: " + std::to_string(temp_c),
-                        lv_tr("Invalid temperature"),
-                        fmt::format(lv_tr("Set temperature between {}°C and {}°C"),
-                                    static_cast<int>(min_temp), static_cast<int>(max_temp)));
-    }
-
-    if (duration_min <= 0 || duration_min > max_duration) {
-        return AmsError(AmsResult::COMMAND_FAILED,
-                        "Duration out of range: " + std::to_string(duration_min),
-                        lv_tr("Invalid duration"),
-                        fmt::format(lv_tr("Set duration between 1 and {} minutes"), max_duration));
+    if (auto refusal = helix::ace::check_dryer_request(dryer, temp_c, duration_min)) {
+        return *refusal;
     }
 
     spdlog::info("[ACE] Starting drying: {}°C for {} minutes", temp_c, duration_min);
@@ -796,19 +771,13 @@ AmsError AmsBackendAce::update_drying(float temp_c, int duration_min, int fan_pc
     if (!err.success()) {
         return err;
     }
-    float target_temp = temp_c;
-    int target_duration = duration_min;
+    DryerInfo dryer;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (temp_c < 0)
-            target_temp = dryer_info_.target_temp_c;
-        if (duration_min < 0) {
-            // A temperature change restarts the cycle, so it must restart on what is
-            // left. Reusing the session length would silently hand back time served.
-            target_duration = dryer_info_.remaining_min > 0 ? dryer_info_.remaining_min
-                                                            : dryer_info_.duration_min;
-        }
+        dryer = dryer_info_;
     }
+    const auto [target_temp, target_duration] =
+        helix::ace::restart_request(dryer, temp_c, duration_min);
     return start_drying(target_temp, target_duration, fan_pct, unit);
 }
 
@@ -895,63 +864,6 @@ void AmsBackendAce::apply_path_sensors_locked(const json& data) {
         unit.has_hub_sensor = true;
         unit.hub_sensor_triggered = rdm_sensor_;
         unit.has_toolhead_sensor = true;
-    }
-}
-
-void AmsBackendAce::apply_dryer_state_locked(const json& data) {
-    // Caller holds mutex_. One rule for both producers: the WebSocket object
-    // path and the REST /status path parse the same hub, so a dryer spelling
-    // one accepts and the other drops is a silent fork in the model.
-    //
-    // ACE states its temperature top-level (`temp`, the hub's ambient reading
-    // near the dryer) — the only reading the Klipper-object spellings carry —
-    // so it applies even on a frame with no dryer object. A bridge that ALSO
-    // states a current temp inside the dryer object is the more specific
-    // reading and wins.
-    if (data.contains("temp") && data["temp"].is_number()) {
-        dryer_info_.current_temp_c = data["temp"].get<float>();
-    }
-
-    const json* dryer = nullptr;
-    if (data.contains("dryer") && data["dryer"].is_object()) {
-        dryer = &data["dryer"];
-    } else if (data.contains("dryer_status") && data["dryer_status"].is_object()) {
-        dryer = &data["dryer_status"];
-    }
-
-    if (dryer != nullptr) {
-        // Klipper-object spelling (ValgACE, native, Kobra S1 fork):
-        // {status, target_temp, duration, remain_time}
-        if (dryer->contains("status") && (*dryer)["status"].is_string()) {
-            const std::string ds = (*dryer)["status"].get<std::string>();
-            dryer_info_.active = (ds != "stop" && ds != "idle" && !ds.empty());
-        }
-        if (dryer->contains("target_temp") && (*dryer)["target_temp"].is_number()) {
-            dryer_info_.target_temp_c = (*dryer)["target_temp"].get<float>();
-        }
-        if (dryer->contains("duration") && (*dryer)["duration"].is_number()) {
-            dryer_info_.duration_min = (*dryer)["duration"].get<int>();
-        }
-        if (dryer->contains("remain_time") && (*dryer)["remain_time"].is_number()) {
-            dryer_info_.remaining_min = (*dryer)["remain_time"].get<int>();
-        }
-
-        // REST-bridge spelling: {active, current_temp, remaining_minutes,
-        // duration_minutes}
-        if (dryer->contains("active") && (*dryer)["active"].is_boolean()) {
-            dryer_info_.active = (*dryer)["active"].get<bool>();
-        }
-        if (dryer->contains("current_temp") && (*dryer)["current_temp"].is_number()) {
-            dryer_info_.current_temp_c = (*dryer)["current_temp"].get<float>();
-        }
-        if (dryer->contains("remaining_minutes") &&
-            (*dryer)["remaining_minutes"].is_number_integer()) {
-            dryer_info_.remaining_min = (*dryer)["remaining_minutes"].get<int>();
-        }
-        if (dryer->contains("duration_minutes") &&
-            (*dryer)["duration_minutes"].is_number_integer()) {
-            dryer_info_.duration_min = (*dryer)["duration_minutes"].get<int>();
-        }
     }
 }
 
@@ -1120,7 +1032,7 @@ void AmsBackendAce::parse_ace_object(const json& data) {
                 std::optional<bool> observed_present;
                 if (frame_states_status) {
                     const SlotStatus status =
-                        slot_status_from_string(slot_json["status"].get<std::string>());
+                        helix::ace::slot_status_from_string(slot_json["status"].get<std::string>());
                     observed_present = slot_status_reports_filament(status);
                     slot.status = status;
                     note_driver_ready_locked(slot.global_index,
@@ -1130,7 +1042,7 @@ void AmsBackendAce::parse_ace_object(const json& data) {
                 // Parse color: ValgACE returns [r, g, b] array
                 std::optional<uint32_t> observed_color;
                 if (slot_json.contains("color")) {
-                    observed_color = parse_slot_color(slot_json["color"]);
+                    observed_color = helix::ace::parse_slot_color(slot_json["color"]);
                     // A value that carries no colour leaves the bay showing the
                     // last one the hub did state, rather than flipping it to
                     // black - which is a colour ACE really does report.
@@ -1140,7 +1052,8 @@ void AmsBackendAce::parse_ace_object(const json& data) {
                 }
 
                 // Parse material (e.g., "PLA", "PETG") - see read_slot_material.
-                std::optional<std::string> observed_material = read_slot_material(slot_json);
+                std::optional<std::string> observed_material =
+                    helix::ace::read_slot_material(slot_json);
                 if (observed_material) {
                     slot.material = *observed_material;
                 }
@@ -1255,8 +1168,8 @@ void AmsBackendAce::parse_ace_object(const json& data) {
 
     // Parse dryer state — either outer-key spelling (`dryer` or
     // `dryer_status`), either nested key set, plus the top-level ambient
-    // `temp`. See apply_dryer_state_locked.
-    apply_dryer_state_locked(data);
+    // `temp`. See helix::ace::apply_dryer_state.
+    helix::ace::apply_dryer_state(data, dryer_info_);
 
     // Populate per-unit environment data for the environment overlay.
     // ACE reports ambient temperature; humidity is not available (left at 0).
@@ -1428,76 +1341,6 @@ const json* AmsBackendAce::manager_ace_object(const json& status) {
         return nullptr; // slot-bearing ValgACE `ace` — the primary, not a manager
     }
     return &ace;
-}
-
-SlotStatus AmsBackendAce::slot_status_from_string(const std::string& status_str) {
-    // Native Anycubic GoKlipper uses empty/ready/preload/running/runout;
-    // community ValgACE uses available/loaded/ready. "runout" means the slot
-    // ran dry mid-print — present-but-empty; map to EMPTY since SlotStatus has
-    // no dedicated RUNOUT value. Anything unrecognized (incl. "unknown") maps
-    // to UNKNOWN.
-    if (status_str == "empty" || status_str == "runout") {
-        return SlotStatus::EMPTY;
-    }
-    if (status_str == "available" || status_str == "loaded" || status_str == "ready" ||
-        status_str == "preload" || status_str == "running") {
-        return SlotStatus::AVAILABLE;
-    }
-    return SlotStatus::UNKNOWN;
-}
-
-std::optional<std::string> AmsBackendAce::read_slot_material(const json& slot_json) {
-    auto get_str = [&slot_json](const char* key) -> std::optional<std::string> {
-        if (slot_json.contains(key) && slot_json[key].is_string()) {
-            auto value = slot_json[key].get<std::string>();
-            if (!value.empty()) {
-                return value;
-            }
-        }
-        return std::nullopt;
-    };
-    if (auto material = get_str("material")) {
-        return material;
-    }
-    return get_str("type");
-}
-
-std::optional<uint32_t> AmsBackendAce::parse_slot_color(const json& color_val) {
-    // ValgACE format: [r, g, b] array. A triplet is the hub's own numeric
-    // spelling, not a colour string, so the shared text grammar has nothing to
-    // say about it.
-    if (color_val.is_array() && color_val.size() >= 3) {
-        // nlohmann's get<int>() reads any number (and a boolean); anything
-        // else in the triplet makes the whole colour unreadable.
-        const auto& r_val = color_val[0];
-        const auto& g_val = color_val[1];
-        const auto& b_val = color_val[2];
-        const auto readable = [](const json& v) { return v.is_number() || v.is_boolean(); };
-        if (!readable(r_val) || !readable(g_val) || !readable(b_val)) {
-            spdlog::debug("[ACE] Failed to parse color array");
-            return std::nullopt;
-        }
-        uint8_t r = static_cast<uint8_t>(r_val.get<int>());
-        uint8_t g = static_cast<uint8_t>(g_val.get<int>());
-        uint8_t b = static_cast<uint8_t>(b_val.get<int>());
-        return (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) |
-               static_cast<uint32_t>(b);
-    }
-
-    // REST bridge format: hex string "#RRGGBB" or "0xRRGGBB", read by the same
-    // grammar as every other lane-shaped producer. Both of the helper's
-    // non-colour answers are "no reading" here: the bridge states an absent
-    // colour by omitting the key, so an empty string is a malformed value
-    // rather than a bay the hub is clearing.
-    if (color_val.is_string()) {
-        const auto reading = helix::ams::read_lane_color(color_val.get<std::string>());
-        if (reading.kind == helix::ams::ColorReadingKind::Observed) {
-            return reading.rgb;
-        }
-        spdlog::debug("[ACE] Slot color '{}' carries no colour", color_val.get<std::string>());
-    }
-
-    return std::nullopt;
 }
 
 // ============================================================================
@@ -1817,7 +1660,7 @@ bool AmsBackendAce::parse_status_response(const json& data) {
         changed |= apply_target_index_locked(data["ace_manager"]);
     }
 
-    apply_dryer_state_locked(data);
+    helix::ace::apply_dryer_state(data, dryer_info_);
 
     // /status owns loaded_slot but never touches the slot vector; /slots owns
     // the slot vector but carries no seated field. Both ends re-derive the
@@ -1883,7 +1726,8 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
             // Mirror the object path exactly via the shared vocabulary map —
             // this fork emits `ready` (and can emit `unknown`), which the old
             // empty/available/loaded-only mapping misclassified (#1069).
-            SlotStatus status = slot_status_from_string(slot_json["status"].get<std::string>());
+            SlotStatus status =
+                helix::ace::slot_status_from_string(slot_json["status"].get<std::string>());
             observed_present = slot_status_reports_filament(status);
             note_driver_ready_locked(slot.global_index, slot_json["status"].get<std::string>());
 
@@ -1896,7 +1740,7 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
         // Parse color: handle both hex string and RGB array formats
         std::optional<uint32_t> observed_color;
         if (slot_json.contains("color")) {
-            observed_color = parse_slot_color(slot_json["color"]);
+            observed_color = helix::ace::parse_slot_color(slot_json["color"]);
             if (observed_color && *observed_color != slot.color_rgb) {
                 slot.color_rgb = *observed_color;
                 changed = true;
@@ -1904,7 +1748,7 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
         }
 
         // Material — see read_slot_material (one reader for both producers).
-        const std::optional<std::string> material = read_slot_material(slot_json);
+        const std::optional<std::string> material = helix::ace::read_slot_material(slot_json);
         if (material && *material != slot.material) {
             slot.material = *material;
             changed = true;

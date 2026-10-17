@@ -25,6 +25,7 @@
 #include "ams_backend_qidi.h"
 #endif
 #if HELIX_HAS_SNAPMAKER
+#include "ams_backend_multiace.h"
 #include "ams_backend_snapmaker.h"
 #endif
 #include "ams_backend_toolchanger.h"
@@ -840,7 +841,9 @@ const std::vector<std::string>& AmsBackend::filament_sensor_object_prefixes() {
 }
 
 std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, IMoonrakerAPI* api,
-                                               IMoonrakerClient* client) {
+                                               IMoonrakerClient* client,
+                                               const helix::PrinterDiscovery* hw) {
+    (void)hw; // only variant-bearing types read it, and those can be compiled out
 #ifdef HELIX_ENABLE_MOCKS
     if (auto mock = try_create_mock(client)) {
         return mock;
@@ -925,6 +928,10 @@ std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, IMoonraker
         if (!api || !client) {
             spdlog::error("[AMS Backend] Snapmaker requires IMoonrakerAPI and MoonrakerClient");
             return nullptr;
+        }
+        if (hw && multiace::present(*hw)) {
+            spdlog::debug("[AMS Backend] Creating Snapmaker SnapSwap backend with multiACE");
+            return std::make_unique<AmsBackendMultiAce>(api, client);
         }
         spdlog::debug("[AMS Backend] Creating Snapmaker SnapSwap backend");
         return std::make_unique<AmsBackendSnapmaker>(api, client);

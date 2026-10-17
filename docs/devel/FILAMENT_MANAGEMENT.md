@@ -2084,6 +2084,7 @@ Each backend has its own leaf doc covering the protocol, data sources, G-code co
 | CFS | Creality Filament System (K2 built-in; K1/K1C/K1 Max upgrade) | [FILAMENT_BACKEND_CFS.md](FILAMENT_BACKEND_CFS.md) |
 | QIDI Box | QIDI PLUS4 / Q2 / MAX4 RFID hub, chainable to 4 boxes | [FILAMENT_BACKEND_QIDI_BOX.md](FILAMENT_BACKEND_QIDI_BOX.md) |
 | Snapmaker U1 | SnapSwap 4-toolhead parallel toolchanger with per-channel RFID | [FILAMENT_BACKEND_SNAPMAKER_U1.md](FILAMENT_BACKEND_SNAPMAKER_U1.md) |
+| multiACE | Snapmaker U1 with 1-4 ACE Pro units upstream of its heads; the U1 backend plus ACE units, chosen in the factory from the discovered hardware | [FILAMENT_BACKEND_MULTIACE.md](FILAMENT_BACKEND_MULTIACE.md) |
 
 ### AmsType Enum
 
