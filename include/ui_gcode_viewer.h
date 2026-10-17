@@ -536,24 +536,22 @@ const helix::gcode::ParsedGCodeFile* ui_gcode_viewer_get_parsed_file(lv_obj_t* o
 std::set<int> ui_gcode_viewer_get_tools_used(lv_obj_t* obj);
 
 /**
- * @brief The scheduled pauses of the loaded file, with its progress axis.
+ * @brief The scheduled pauses and layer marks of the loaded file, with its
+ *        progress axis.
  *
  * Mode-independent like the tool queries: the streaming layer-index scan and
- * the full-load parse loop both collect the pauses on the pass they already
- * make over the file (see gcode_pause_scan.h). @p out_axis reports which
- * function of the file its progress bar fills on, so the caller can place each
- * pause on the axis the bar actually uses.
+ * the full-load parse loop both collect them on the pass they already make
+ * over the file (see gcode_pause_scan.h). The axis says which function of the
+ * file its progress bar fills on, so the caller can place each marker on the
+ * axis the bar actually uses.
  *
- * @param obj        Viewer widget
- * @param out_pauses Receives the pauses (cleared when none/not loaded)
- * @param out_axis   Receives the file's progress axis
- * @return true when a scan result exists (empty pauses = pause-free file);
+ * @param obj Viewer widget
+ * @param out Receives the scan (empty when nothing is loaded)
+ * @return true when a scan result exists (empty lists = pause-free file);
  *         false when nothing is loaded, so callers degrade to no markers.
  */
 namespace helix {
-bool ui_gcode_viewer_get_scheduled_pauses(lv_obj_t* obj,
-                                          std::vector<helix::gcode::ScheduledPause>& out_pauses,
-                                          helix::gcode::ProgressAxis& out_axis);
+bool ui_gcode_viewer_get_pause_scan(lv_obj_t* obj, helix::gcode::PauseScanResult& out);
 } // namespace helix
 
 /**

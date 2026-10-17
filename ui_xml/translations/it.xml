@@ -483,6 +483,7 @@
   <translation tag="Cancel" it="Annulla"/>
   <translation tag="Cancel Escalation" it="Annulla escalation"/>
   <translation tag="Cancel Print" it="Annulla stampa"/>
+  <translation tag="Cancel Scheduled Pause" it="Annulla pausa programmata"/>
   <translation tag="Cancel macro not configured" it="Macro annullamento non configurata"/>
   <translation tag="Cancel print" it="Annulla stampa"/>
   <translation tag="Cancelled" it="Annullato"/>
@@ -502,6 +503,7 @@
   <translation tag="Cannot restart — no filename" it="Impossibile riavviare — nessun nome file"/>
   <translation tag="Cannot run filament operation while printing" it="Impossibile eseguire operazioni sul filamento durante la stampa"/>
   <translation tag="Cannot save offsets while printing" it="Impossibile salvare gli offset durante la stampa"/>
+  <translation tag="Cannot schedule a pause: printer not connected" it="Impossibile programmare una pausa: stampante non connessa"/>
   <translation tag="Cannot start print: internal error" it="Impossibile avviare stampa: errore interno"/>
   <translation tag="Cannot start print: no temp directory available" it="Impossibile avviare la stampa: directory temporanea non disponibile"/>
   <translation tag="Cannot start print: not connected to printer" it="Impossibile avviare stampa: non connesso alla stampante"/>
@@ -587,6 +589,7 @@
   <translation tag="Checking…" it="Verifica in corso…"/>
   <translation tag="Choose 12-hour or 24-hour time display" it="Scegli formato orario 12 ore o 24 ore"/>
   <translation tag="Choose Filament" it="Scegli filamento"/>
+  <translation tag="Choose Layer" it="Scegli strato"/>
   <translation tag="Choose Model" it="Scegli modello"/>
   <translation tag="Choose an existing filament, or tap + New to create one." it="Scegli un filamento esistente, o tocca + Nuovo per crearne uno."/>
   <translation tag="Choose display language" it="Scegli lingua di visualizzazione"/>
@@ -1171,6 +1174,7 @@
   <translation tag="Failed to save setup completion" it="Impossibile salvare completamento configurazione"/>
   <translation tag="Failed to save spool" it="Salvataggio bobina fallito"/>
   <translation tag="Failed to save theme file" it="Salvataggio file tema fallito"/>
+  <translation tag="Failed to schedule the pause: {}" it="Impossibile programmare la pausa: {}"/>
   <translation tag="Failed to send command: {}" it="Impossibile inviare comando: {}"/>
   <translation tag="Failed to send print data" it="Impossibile inviare i dati di stampa"/>
   <translation tag="Failed to send status request" it="Impossibile inviare la richiesta di stato"/>
@@ -1665,6 +1669,7 @@
   <translation tag="Layer Height" it="Altezza layer"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." it="Layer Macro cattura un fotogramma per ogni cambio di strato. Ideale per la maggior parte delle stampe."/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." it="La modalità layer cattura un fotogramma per cambio layer. Ideale per la maggior parte delle stampe."/>
+  <translation tag="Layer {} of {}." it="Strato {} di {}."/>
   <translation tag="Layers" it="Layer"/>
   <translation tag="Layout" it="Layout"/>
   <translation tag="Layout changes are off in safe mode. Restart to edit." it="Le modifiche al layout sono disattivate in modalità provvisoria. Riavvia per modificare."/>
@@ -1926,6 +1931,7 @@
   <translation tag="New printer successfully added" it="Nuova stampante aggiunta con successo"/>
   <translation tag="New profile name" it="Nome nuovo profilo"/>
   <translation tag="Next" it="Avanti"/>
+  <translation tag="Next Layer" it="Strato successivo"/>
   <translation tag="Next: {}" it="Prossimo: {}"/>
   <translation tag="Niimbot (Bluetooth)" it="Niimbot (Bluetooth)"/>
   <translation tag="No" it="No"/>
@@ -1988,6 +1994,7 @@
   <translation tag="No objects" it="Nessun oggetto"/>
   <translation tag="No objects defined for this print" it="Nessun oggetto definito per questa stampa"/>
   <translation tag="No output yet" it="Nessun output"/>
+  <translation tag="No pause scheduled." it="Nessuna pausa programmata."/>
   <translation tag="No presets configured" it="Nessun preset configurato"/>
   <translation tag="No preview" it="Nessuna anteprima"/>
   <translation tag="No print history found" it="Nessuno storico stampe trovato"/>
@@ -2181,6 +2188,8 @@
   <translation tag="Path {}" it="Percorso {}"/>
   <translation tag="Path {} before" it="Percorso {} prima"/>
   <translation tag="Pause" it="Pausa"/>
+  <translation tag="Pause Layer" it="Strato di pausa"/>
+  <translation tag="Pause at Layer" it="Pausa allo strato"/>
   <translation tag="Pause macro not configured" it="Macro pausa non configurata"/>
   <translation tag="Pause on Detection" it="Pausa al rilevamento"/>
   <translation tag="Pause the print first, then load, unload, or change filament" it="Metti prima in pausa la stampa, poi carica, scarica o cambia il filamento"/>
@@ -2188,6 +2197,7 @@
   <translation tag="Pause, resume, or stop the print" it="Pausa, riprendi o ferma la stampa"/>
   <translation tag="Paused" it="In pausa"/>
   <translation tag="Paused (attention needed)" it="In pausa (attenzione richiesta)"/>
+  <translation tag="Pausing at layer {}." it="Pausa allo strato {}."/>
   <translation tag="Pausing..." it="Sospensione..."/>
   <translation tag="Peak Freq" it="Freq. picco"/>
   <translation tag="Peak:" it="Picco:"/>
@@ -3148,6 +3158,7 @@
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." it="L&apos;ugello fa alcuni brevi movimenti di prova in un angolo, lontano dall&apos;area di stampa, e ripete finché i valori convergono."/>
   <translation tag="The plate and the spools are still hot. Use gloves." it="Il piano e le bobine sono ancora caldi. Usa i guanti."/>
   <translation tag="The plate finishes its current move, but drying will not start." it="Il piano termina lo spostamento in corso, ma l&apos;essiccazione non partirà."/>
+  <translation tag="The print is on its last layer." it="La stampa è all&apos;ultimo strato."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." it="La stampa è in pausa. Cambiare utensile ora muove la testina e sostituisce il filamento all&apos;ugello. Riprendi la stampa al termine del cambio."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." it="La stampa attende che la camera raggiunga {}°C, ma il riscaldatore non sta scaldando."/>
   <translation tag="The print is waiting for the chamber, but the heater is not heating." it="La stampa attende la camera, ma il riscaldatore non sta scaldando."/>
@@ -3229,6 +3240,7 @@
   <translation tag="This plugin asks for no special permissions." it="Questo plugin non richiede permessi speciali."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." it="Questo plugin permette a HelixScreen di controllare opzioni avvio stampa come mesh piano e QGL."/>
   <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." it="Questa stampa non può essere ripresa. Riavviala, oppure disattiva il controllo del piano se continua a succedere."/>
+  <translation tag="This print does not report layers, so no layer pause can be scheduled." it="Questa stampa non riporta gli strati, quindi non è possibile programmare una pausa a uno strato."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" it="Questa stampa richiede circa %.0fg ma la bobina ne ha circa %.0fg rimanenti. Avviare comunque?"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" it="Questa stampante non può calibrare automaticamente gli offset degli strumenti"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." it="Questa stampante riempie i suoi gate da Spoolman. HelixScreen ha svuotato la propria copia; rimuovi la bobina in Spoolman."/>

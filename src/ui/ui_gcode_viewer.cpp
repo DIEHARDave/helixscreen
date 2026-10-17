@@ -1519,17 +1519,13 @@ bool ui_gcode_viewer_adopt_palette_if_empty(lv_obj_t* obj, std::vector<std::stri
 }
 
 namespace helix {
-bool ui_gcode_viewer_get_scheduled_pauses(lv_obj_t* obj,
-                                          std::vector<helix::gcode::ScheduledPause>& out_pauses,
-                                          helix::gcode::ProgressAxis& out_axis) {
-    out_pauses.clear();
-    out_axis = helix::gcode::ProgressAxis::BytePosition;
+bool ui_gcode_viewer_get_pause_scan(lv_obj_t* obj, helix::gcode::PauseScanResult& out) {
+    out = {};
     gcode_viewer_state_t* st = get_state(obj);
     if (!st || !st->has_pause_scan) {
         return false;
     }
-    out_pauses = st->scheduled_pauses;
-    out_axis = st->scheduled_pauses_axis;
+    out = st->pause_scan;
     return true;
 }
 } // namespace helix
@@ -1947,11 +1943,8 @@ bool ui_gcode_viewer_adopt_palette_if_empty(lv_obj_t*, std::vector<std::string>&
 }
 
 namespace helix {
-bool ui_gcode_viewer_get_scheduled_pauses(lv_obj_t*,
-                                          std::vector<helix::gcode::ScheduledPause>& out_pauses,
-                                          helix::gcode::ProgressAxis& out_axis) {
-    out_pauses.clear();
-    out_axis = helix::gcode::ProgressAxis::BytePosition;
+bool ui_gcode_viewer_get_pause_scan(lv_obj_t*, helix::gcode::PauseScanResult& out) {
+    out = {};
     return false;
 }
 } // namespace helix

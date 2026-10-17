@@ -532,6 +532,7 @@ translations:
   Cancel: Annuler
   Cancel Escalation: Annuler l'escalade
   Cancel Print: Annuler l'impression
+  Cancel Scheduled Pause: 'Annuler la pause prévue'
   Cancel macro not configured: Macro d'annulation non configurée
   Cancel print: 'Annuler l''impression'
   Cancelled: Annulé
@@ -556,6 +557,7 @@ translations:
     à l''imprimante'
   Cannot restart — no filename: Impossible de redémarrer — pas de nom de fichier
   Cannot run filament operation while printing: Impossible d'effectuer une opération de filament pendant l'impression
+  'Cannot schedule a pause: printer not connected': 'Impossible de prévoir une pause : imprimante non connectée'
   'Cannot start print: internal error': 'Impossible de démarrer l''impression : erreur
     interne'
   'Cannot start print: no temp directory available': 'Impossible de lancer l''impression : aucun répertoire temporaire disponible'
@@ -652,6 +654,7 @@ translations:
   Checking…: Vérification…
   Choose 12-hour or 24-hour time display: Choisir l'affichage 12 heures ou 24 heures
   Choose Filament: Choisir le filament
+  Choose Layer: 'Choisir la couche'
   Choose Model: Choisir le modèle
   Choose an existing filament, or tap + New to create one.: Choisissez un filament
     existant, ou appuyez sur + Nouveau pour en créer un.
@@ -1311,6 +1314,7 @@ translations:
   Failed to save setup completion: Échec de l'enregistrement de la fin de configuration
   Failed to save spool: Échec de l'enregistrement de la bobine
   Failed to save theme file: Échec de l'enregistrement du fichier de thème
+  'Failed to schedule the pause: {}': 'Échec de la programmation de la pause : {}'
   'Failed to send command: {}': 'Échec de l''envoi de la commande : {}'
   Failed to send print data: Échec de l'envoi des données d'impression
   Failed to send status request: Échec de l'envoi de la demande d'état
@@ -1867,6 +1871,7 @@ translations:
     des impressions.
   Layer mode captures one frame per layer change. Best for most prints.: Le mode couche
     capture une image par changement de couche. Idéal pour la plupart des impressions.
+  Layer {} of {}.: 'Couche {} sur {}.'
   Layers: Couches
   Layout: Disposition
   Layout changes are off in safe mode. Restart to edit.: 'Les modifications de disposition sont désactivées en mode sans échec. Redémarrez pour modifier.'
@@ -2145,6 +2150,7 @@ translations:
   New printer successfully added: Nouvelle imprimante ajoutée avec succès
   New profile name: Nouveau nom de profil
   Next: Suivant
+  Next Layer: 'Couche suivante'
   'Next: {}': 'À suivre : {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Non
@@ -2214,6 +2220,7 @@ translations:
   No objects: 'Aucun objet'
   No objects defined for this print: Aucun objet défini pour cette impression
   No output yet: Aucune sortie
+  No pause scheduled.: 'Aucune pause prévue.'
   No presets configured: Aucun préréglage configuré
   No preview: Pas d'aperçu
   No print history found: Aucun historique d'impression
@@ -2422,6 +2429,8 @@ translations:
   Path {}: Chemin {}
   Path {} before: Chemin {} avant
   Pause: Pause
+  Pause Layer: 'Couche de pause'
+  Pause at Layer: 'Pause à la couche'
   Pause macro not configured: Macro de pause non configurée
   Pause on Detection: Pause à la détection
   Pause the print first, then load, unload, or change filament: Mettez d'abord l'impression en pause, puis chargez, déchargez ou changez le filament
@@ -2429,6 +2438,7 @@ translations:
   Pause, resume, or stop the print: Mettre en pause, reprendre ou arrêter
   Paused: En pause
   Paused (attention needed): En pause (attention requise)
+  Pausing at layer {}.: 'Pause à la couche {}.'
   Pausing...: Pause en cours...
   Peak Freq: Fréq. pic
   'Peak:': 'Pic :'
@@ -3520,6 +3530,7 @@ translations:
   The plate and the spools are still hot. Use gloves.: Le plateau et les bobines sont encore chauds. Portez des gants.
 
   The plate finishes its current move, but drying will not start.: 'Le plateau termine son déplacement en cours, mais le séchage ne démarrera pas.'
+  The print is on its last layer.: 'L''impression en est à sa dernière couche.'
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : L'impression est en pause. Changer d'outil maintenant déplace la tête d'impression et remplace le filament au niveau de la buse. Reprenez l'impression une fois le changement terminé.
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: 'L''impression attend que la chambre atteigne {}°C, mais le chauffage ne chauffe pas.'
@@ -3634,6 +3645,7 @@ translations:
   This plugin asks for no special permissions.: 'Ce plugin ne demande aucune autorisation particulière.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Ce plugin permet à HelixScreen de contrôler les options de démarrage d''impression comme le maillage du plateau et QGL.'
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'Cette impression ne peut pas reprendre. Relancez-la, ou désactivez la vérification du plateau si cela se reproduit.'
+  This print does not report layers, so no layer pause can be scheduled.: 'Cette impression ne signale pas ses couches, aucune pause par couche ne peut donc être prévue.'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Cette
     impression nécessite environ %.0fg mais il reste environ %.0fg sur la bobine.
     Démarrer quand même ?

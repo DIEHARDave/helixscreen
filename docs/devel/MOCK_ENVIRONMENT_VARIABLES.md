@@ -391,6 +391,28 @@ File: `src/api/moonraker_client_mock_skips.cpp`.
 HELIX_MOCK_SKIP_WRAPPERS=1 ./build/bin/helix-screen --test -vv   # default persona: Voron 2.4
 ```
 
+### `HELIX_MOCK_LAYER_PAUSE`
+
+The client.cfg layer-pause macros (`SET_PAUSE_NEXT_LAYER`, `SET_PAUSE_AT_LAYER`
+and the `SET_PRINT_STATS_INFO` wrapper holding their state), so the Pause at
+Layer modal on the print status panel can be driven under `--test`
+(`include/layer_pause.h`, prestonbrown/helixscreen#1703).
+
+| Property | Value |
+|----------|-------|
+| Values | `0`/`false`/`no`/`off` = absent; anything else, or unset, = present |
+| Default | present |
+| Affects | the objects list, `gcode_macro SET_PRINT_STATS_INFO` status (`pause_next_layer`, `pause_at_layer`), the simulated print (pauses at the scheduled layer), `CANCEL_PRINT` (clears both) |
+
+The macros mirror the client.cfg bodies: `ENABLE` defaults to 1 for
+`SET_PAUSE_NEXT_LAYER`, and to "was `LAYER` given" for `SET_PAUSE_AT_LAYER`.
+Set it to `0` to see the print status panel of a printer without them, where the
+layer readout is not tappable. File: `src/api/moonraker_client_mock_layer_pause.cpp`.
+
+```bash
+HELIX_MOCK_AUTO_PRINT=1 ./build/bin/helix-screen --test --sim-speed 6 -vv   # tap the layer readout
+```
+
 ### `HELIX_MOCK_MOONRAKER_VERSION`
 
 Override the Moonraker version the mock reports in `server.info`.

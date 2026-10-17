@@ -1232,6 +1232,7 @@ void MoonrakerClientMock::populate_capabilities() {
     mock_objects.push_back("gcode_macro G28");           // Home all
     mock_objects.push_back("gcode_macro M600");          // Filament change
     mock_objects.push_back("gcode_macro _SYSTEM_MACRO"); // System macro (hidden by default)
+    append_layer_pause_objects(mock_objects);
     for (const auto& name : helix::sim::mock_padded_macro_names()) {
         mock_objects.push_back("gcode_macro " + name);
     }
@@ -4315,6 +4316,7 @@ void MoonrakerClientMock::dispatch_initial_state() {
     // The discovery subscription is built before configfile is read here, so
     // the leveling-skip objects it never asked for are announced with the rest.
     initial_status.update(skip_wrapper_status());
+    initial_status.update(layer_pause_status());
 
     // Use the base class dispatch method (same as real client)
     dispatch_status_update(initial_status);
@@ -5048,6 +5050,10 @@ void MoonrakerClientMock::temperature_simulation_loop() {
 
         // A console line per layer while printing, so the console has live
         // output to show in --test.
+        if (print_state_str == "printing") {
+            layer_pause_on_layer(layer_pause_last_layer_, current_layer);
+        }
+        layer_pause_last_layer_ = current_layer;
         if (print_state_str == "printing" && current_layer > 0 &&
             current_layer != last_console_layer_) {
             last_console_layer_ = current_layer;

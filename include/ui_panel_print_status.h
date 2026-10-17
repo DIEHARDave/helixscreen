@@ -9,6 +9,7 @@
 #include "ui_modal.h"
 #include "ui_observer_guard.h"
 #include "ui_print_exclude_object_manager.h"
+#include "ui_print_layer_pause.h"
 #include "ui_print_light_timelapse.h"
 #include "ui_print_tune_overlay.h"
 #include "ui_temperature_utils.h" // HEATER_STATUS_BUF_BYTES
@@ -539,6 +540,7 @@ class PrintStatusPanel : public OverlayBase {
 
     // Light/timelapse controls (extracted Phase 2 functionality)
     PrintLightTimelapseControls light_timelapse_controls_;
+    helix::ui::PrintLayerPauseControls layer_pause_controls_;
 
     // Resize callback registration flag
     bool resize_registered_ = false;
