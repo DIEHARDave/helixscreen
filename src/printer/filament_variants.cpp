@@ -554,3 +554,45 @@ std::string orca_match_type(std::string_view display_type) {
 }
 
 } // namespace filament
+
+namespace helix {
+
+FilamentFinish filament_finish_of(std::string_view name) {
+    struct FinishWord {
+        const char* word;
+        FilamentFinish finish;
+    };
+    static constexpr FinishWord WORDS[] = {
+        {"Silk", FilamentFinish::Silk},         {"Silky", FilamentFinish::Silk},
+        {"Satin", FilamentFinish::Silk},        {"Matte", FilamentFinish::Matte},
+        {"Matt", FilamentFinish::Matte},        {"Marble", FilamentFinish::Marble},
+        {"Granite", FilamentFinish::Marble},    {"Stone", FilamentFinish::Marble},
+        {"Sparkle", FilamentFinish::Sparkle},   {"Glitter", FilamentFinish::Sparkle},
+        {"Galaxy", FilamentFinish::Sparkle},    {"Shimmer", FilamentFinish::Sparkle},
+        {"Starlight", FilamentFinish::Sparkle},
+    };
+    auto is_boundary = [](char c) {
+        return filament::is_separator(c) || c == '+' || c == '/' || c == '(' || c == ')' ||
+               c == ',';
+    };
+    size_t i = 0;
+    while (i < name.size()) {
+        while (i < name.size() && is_boundary(name[i])) {
+            ++i;
+        }
+        size_t end = i;
+        while (end < name.size() && !is_boundary(name[end])) {
+            ++end;
+        }
+        const std::string_view token = name.substr(i, end - i);
+        for (const auto& w : WORDS) {
+            if (filament::iequals(token, w.word)) {
+                return w.finish;
+            }
+        }
+        i = end;
+    }
+    return FilamentFinish::None;
+}
+
+} // namespace helix

@@ -11,6 +11,7 @@
 
 #include "ui_color_picker.h"
 #include "ui_nav_manager.h"
+#include "ui_swatch.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 

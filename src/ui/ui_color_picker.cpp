@@ -6,6 +6,7 @@
 #include "ui_callback_helpers.h"
 #include "ui_hsv_picker.h"
 #include "ui_modal.h"
+#include "ui_swatch.h"
 
 #include "color_utils.h"
 #include "helix/xml/indexed_subject_pool.h"
@@ -87,14 +88,6 @@ helix::xml::IndexedSubjectPool s_theme_colors{"theme_swatch_color",
 helix::xml::IndexedSubjectPool s_theme_edges{"theme_swatch_edge",
                                              helix::xml::IndexedSubjectPool::Type::Int};
 
-/// Below this WCAG contrast ratio a swatch blends into its surface: black on a
-/// dark navy panel sits near 1.6, a mid gray on a dark dialog near 1.9.
-constexpr double EDGE_CONTRAST_RATIO = 1.75;
-
-uint32_t rgb_of(lv_color_t c) {
-    return lv_color_to_u32(c) & 0xFFFFFF;
-}
-
 void fill_palette(helix::xml::IndexedSubjectPool& colors, helix::xml::IndexedSubjectPool& edges,
                   const std::vector<uint32_t>& palette) {
     colors.ensure_size(palette.size());
@@ -131,16 +124,6 @@ const std::vector<uint32_t>& swatch_palette(ColorPicker::Palette palette) {
         0xA02030, 0x8F6A0A, 0x40A02B, 0x0F7B78, 0x1E4FA8, 0x5B3FBF,
     };
     return palette == ColorPicker::Palette::Theme ? theme : general;
-}
-
-bool swatch_needs_edge(uint32_t rgb, uint32_t surface) {
-    return helix::contrast_ratio(lv_color_hex(rgb), lv_color_hex(surface)) < EDGE_CONTRAST_RATIO;
-}
-
-bool swatch_needs_edge_here(uint32_t rgb) {
-    // Swatches sit on panels (screen_bg) and in dialogs (elevated_bg).
-    return swatch_needs_edge(rgb, rgb_of(theme_manager_get_color("screen_bg"))) ||
-           swatch_needs_edge(rgb, rgb_of(theme_manager_get_color("elevated_bg")));
 }
 
 void refresh_swatch_edges() {

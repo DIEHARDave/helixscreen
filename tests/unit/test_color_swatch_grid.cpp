@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_color_picker.h"
+#include "ui_swatch.h"
 
 #include "../lvgl_ui_test_fixture.h"
 
