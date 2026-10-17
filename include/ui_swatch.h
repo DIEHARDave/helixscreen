@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "filament_variants.h"
 #include "lvgl/lvgl.h"
 
 #include <cstddef>
@@ -72,8 +73,10 @@ std::vector<lv_color_t> parse_multi_colors(const std::string& csv);
 /// The finish a filament name announces ("PLA Silk", "Galaxy Black").
 SwatchFinish swatch_finish_from_variant(std::string_view name);
 
-/// The finish of a slot's filament: the first of its material, product name,
-/// colour name and spool name that announces one.
+/// The swatch finish for a filament finish.
+SwatchFinish swatch_finish(helix::FilamentFinish finish);
+
+/// The finish of a slot's filament (SlotInfo::finish()).
 SwatchFinish swatch_finish_of(const helix::SlotInfo& slot);
 
 /// @p finish, or Plain when a @p w x @p h swatch is too small to show it.
@@ -162,6 +165,10 @@ void apply_swatch_color(lv_obj_t* swatch, const helix::SlotInfo& slot);
 /// object's own bg_color (or bg_grad), so a subject-bound colour style keeps
 /// working. Idempotent.
 void attach_swatch_paint(lv_obj_t* obj);
+
+/// Paint nothing on @p swatch (or a <color_swatch>'s disc) until it is given a
+/// colour again: an empty slot. Its style border, if any, still draws.
+void clear_swatch_color(lv_obj_t* swatch);
 
 /// Whether @p obj currently paints through the swatch painter.
 bool has_swatch_paint(const lv_obj_t* obj);

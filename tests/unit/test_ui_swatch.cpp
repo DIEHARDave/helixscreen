@@ -359,3 +359,28 @@ TEST_CASE_METHOD(LVGLTestFixture, "apply_swatch_color: a slot paints its colours
     CHECK(helix::ui::swatch_paint_colors(sw).size() == 3);
     CHECK(helix::ui::swatch_paint_finish(sw) == SwatchFinish::Silk);
 }
+
+TEST_CASE_METHOD(LVGLTestFixture, "clear_swatch_color: an emptied swatch paints nothing",
+                 "[swatch]") {
+    lv_obj_t* sw = lv_obj_create(test_screen());
+    lv_obj_remove_style_all(sw);
+    lv_obj_set_size(sw, 40, 40);
+    lv_obj_set_style_radius(sw, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_update_layout(sw);
+
+    auto center_alpha = [sw]() {
+        lv_draw_buf_t* snap = lv_snapshot_take(sw, LV_COLOR_FORMAT_ARGB8888);
+        REQUIRE(snap != nullptr);
+        const uint8_t* px = snap->data + 20 * snap->header.stride + 20 * 4;
+        const int alpha = px[3];
+        lv_draw_buf_destroy(snap);
+        return alpha;
+    };
+
+    helix::ui::apply_swatch_color(sw, 0xFF0000, "");
+    CHECK(center_alpha() == 255);
+    helix::ui::clear_swatch_color(sw);
+    CHECK(center_alpha() == 0);
+    helix::ui::apply_swatch_color(sw, 0x00FF00, "");
+    CHECK(center_alpha() == 255);
+}

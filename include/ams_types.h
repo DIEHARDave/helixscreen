@@ -4,6 +4,7 @@
 #pragma once
 
 #include "filament_database.h"
+#include "filament_variants.h"
 #include "klipper_extruder_naming.h"
 #include "translation_loader.h"
 
@@ -1148,6 +1149,22 @@ struct SlotInfo {
      */
     [[nodiscard]] bool is_multi_color() const {
         return !multi_color_hexes.empty();
+    }
+
+    /**
+     * @brief The surface finish the filament's names announce (silk, matte, ...)
+     *
+     * The first of material, product name, colour name and spool name that
+     * names one wins. Swatches paint it; see helix::filament_finish_of().
+     */
+    [[nodiscard]] FilamentFinish finish() const {
+        for (const std::string* name : {&material, &product_name, &color_name, &spool_name}) {
+            const FilamentFinish f = filament_finish_of(*name);
+            if (f != FilamentFinish::None) {
+                return f;
+            }
+        }
+        return FilamentFinish::None;
     }
 
     /**

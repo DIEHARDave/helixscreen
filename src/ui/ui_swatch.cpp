@@ -276,6 +276,7 @@ void draw_edge(lv_layer_t* layer, const lv_area_t& area, int32_t radius, lv_opa_
 // setters, the draw hook and the DELETE hook all run there.
 struct ObjectPaint {
     std::vector<lv_color_t> colors; ///< empty: paint the object's bg_color / bg_grad
+    bool style_color = false;       ///< a colour style was given, so bg_color is meant
     SwatchFinish finish = SwatchFinish::Plain;
     bool edge = true;
 };
@@ -309,8 +310,10 @@ void draw_object_paint(lv_event_t* e) {
         const lv_grad_dsc_t* grad = lv_obj_get_style_bg_grad(obj, LV_PART_MAIN);
         if (grad && grad->stops_count > 0) {
             paint.gradient = grad;
-        } else {
+        } else if (it->second.style_color) {
             paint.colors = {lv_obj_get_style_bg_color(obj, LV_PART_MAIN)};
+        } else {
+            return; // no colour yet: an empty slot, or one C++ has not painted
         }
     }
     draw_swatch(lv_event_get_layer(e), coords, paint);
@@ -416,10 +419,12 @@ void swatch_paint_xml_apply(lv_xml_parser_state_t* state, const char** attrs) {
         }
         if (std::strcmp(name, "color") == 0) {
             lv_obj_set_style_bg_color(obj, lv_xml_to_color(value), LV_PART_MAIN);
+            p.style_color = true;
         } else if (std::strcmp(name, "bind_color") == 0) {
             lv_subject_t* subject = lv_xml_get_subject(&state->scope, value);
             if (subject) {
                 lv_obj_bind_style_prop(obj, LV_STYLE_BG_COLOR, LV_PART_MAIN, subject);
+                p.style_color = true;
             } else {
                 spdlog::warn("[Swatch] bind_color subject '{}' does not exist", value);
             }
@@ -429,6 +434,7 @@ void swatch_paint_xml_apply(lv_xml_parser_state_t* state, const char** attrs) {
                 p.colors = std::move(colors);
             } else if (colors.size() == 1) {
                 lv_obj_set_style_bg_color(obj, colors[0], LV_PART_MAIN);
+                p.style_color = true;
             }
         } else if (std::strcmp(name, "bind_colors") == 0) {
             bind_string_subject(state, obj, value, colors_observer_cb, "bind_colors");
@@ -493,8 +499,8 @@ std::vector<lv_color_t> parse_multi_colors(const std::string& csv) {
     return colors;
 }
 
-SwatchFinish swatch_finish_from_variant(std::string_view name) {
-    switch (helix::filament_finish_of(name)) {
+SwatchFinish swatch_finish(helix::FilamentFinish finish) {
+    switch (finish) {
     case helix::FilamentFinish::Silk:
         return SwatchFinish::Silk;
     case helix::FilamentFinish::Matte:
@@ -509,15 +515,12 @@ SwatchFinish swatch_finish_from_variant(std::string_view name) {
     return SwatchFinish::Plain;
 }
 
+SwatchFinish swatch_finish_from_variant(std::string_view name) {
+    return swatch_finish(helix::filament_finish_of(name));
+}
+
 SwatchFinish swatch_finish_of(const helix::SlotInfo& slot) {
-    for (const std::string* name :
-         {&slot.material, &slot.product_name, &slot.color_name, &slot.spool_name}) {
-        const SwatchFinish f = swatch_finish_from_variant(*name);
-        if (f != SwatchFinish::Plain) {
-            return f;
-        }
-    }
-    return SwatchFinish::Plain;
+    return swatch_finish(slot.finish());
 }
 
 SwatchFinish swatch_effective_finish(SwatchFinish finish, int32_t w, int32_t h) {
@@ -751,8 +754,19 @@ void apply_swatch_color(lv_obj_t* swatch, const helix::SlotInfo& slot) {
 
 void attach_swatch_paint(lv_obj_t* obj) {
     if (obj) {
-        ensure_paint(obj);
+        ensure_paint(obj).style_color = true;
     }
+}
+
+void clear_swatch_color(lv_obj_t* swatch) {
+    if (!swatch) {
+        return;
+    }
+    swatch = paint_target(swatch);
+    ObjectPaint& p = ensure_paint(swatch);
+    p.colors.clear();
+    p.style_color = false;
+    lv_obj_invalidate(swatch);
 }
 
 bool has_swatch_paint(const lv_obj_t* obj) {

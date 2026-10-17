@@ -168,6 +168,12 @@ struct SpoolInfo {
         std::string name = helix::compose_filament_label(vendor, filament_name, material);
         return name.empty() ? "Unknown Spool" : name;
     }
+
+    /// The surface finish the material or filament name announces (silk, ...).
+    [[nodiscard]] helix::FilamentFinish finish() const {
+        const helix::FilamentFinish f = helix::filament_finish_of(material);
+        return f != helix::FilamentFinish::None ? f : helix::filament_finish_of(filament_name);
+    }
 };
 
 /**

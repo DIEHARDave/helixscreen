@@ -2,6 +2,7 @@
 #pragma once
 
 #include "display_numbering.h"
+#include "filament_variants.h"
 #include "firmware_routing.h"
 #include "tool_mapping_origin.h"
 
@@ -71,6 +72,10 @@ struct AvailableSlot {
     /// Kept last for the same reason multi_color_hexes is - positional
     /// aggregate initializers in the tests stay valid.
     float remaining_weight_g = -1.0f;
+
+    /// The loaded filament's surface finish, from its names (SlotInfo::finish()).
+    /// Kept late for the same reason multi_color_hexes is.
+    helix::FilamentFinish finish = helix::FilamentFinish::None;
 
     /// The word this slot's backend uses for one position. Defaulted so the
     /// ~200 aggregate initializers in the mapper tests stay valid.
