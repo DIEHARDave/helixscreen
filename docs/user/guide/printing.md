@@ -162,6 +162,29 @@ The Print Status panel shows:
 
 **Pause ticks on the progress bar.** Scheduled stops in the file - filament changes (`M600`), `PAUSE`/`M601` commands, and slicer pause-at-layer markers - each draw a small tick on the progress bar where they fall, on both the print screen and the home print card. On a file sliced with `M73` progress markers, the ticks sit at the slicer's own percentages.
 
+### Pausing at a Layer (Beta)
+
+> **Beta feature.** This only appears with [beta features](beta-features.md) turned on.
+
+You can tell a running print to pause at a layer you pick - to drop in a magnet or nut, or swap filament for a color band - even when the file has no pause in it.
+
+**What it needs:**
+
+- **The pause macros in your printer config.** Your config must include `SET_PAUSE_NEXT_LAYER` and `SET_PAUSE_AT_LAYER`. Mainsail's and Fluidd's standard client macros (`mainsail.cfg` / `fluidd.cfg`) have both, and so does the Snapmaker U1's stock firmware. Without them, this option does not appear.
+- **Layer info from your slicer.** The pause fires when the file tells Klipper a new layer has started (`SET_PRINT_STATS_INFO CURRENT_LAYER=...`). Many slicer profiles do not add this; [Troubleshooting → Layer count is wrong, stuck at 0, or total layers missing](../TROUBLESHOOTING.md#layer-count-is-wrong-stuck-at-0-or-total-layers-missing) shows the two lines to add. Without it the option is shown but disabled, with a note saying the print does not report layers.
+
+**Scheduling a pause:**
+
+1. During a print, tap the **layer count** on the print screen (the row with the layers icon). A small pause symbol next to it shows it can be tapped.
+2. Choose **Next Layer** to pause when the next layer starts, or **Choose Layer** and enter a layer number. Only layers still ahead of the print are accepted.
+3. The layer count now shows an orange pause symbol with the layer it will stop at, and a tick appears on the progress bar.
+
+When the print reaches that layer, it pauses the way your **Pause** button does (your printer's `PAUSE` macro, or `M600` if your config sets that). Tap **Resume** to continue.
+
+**Cancelling:** tap the layer count again and choose **Cancel Scheduled Pause**. Cancelling a print also clears any scheduled pause.
+
+> **Note:** A pause scheduled from Mainsail or Fluidd shows here too, since they use the same macros.
+
 ### View Toggle (Progress / Complete)
 
 When the G-code viewer is active during a print, a small floating button appears in the top-left corner. Tap it to switch between:
