@@ -257,7 +257,6 @@ src/ui/screensaver_fireworks.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_fireworks_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_flip_clock.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_flip_clock_sim.cpp  # not in the v1 Core+AMS cut
-src/ui/screensaver_hyperspace.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_hyperspace_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_frame.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_frame_timer.cpp  # not in the v1 Core+AMS cut
@@ -274,7 +273,6 @@ src/ui/screensaver_overlay.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_pipes.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_pipes_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_pipes_teapot.cpp  # not in the v1 Core+AMS cut
-src/ui/screensaver_starfield.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_starfield_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_stroke_digits.cpp  # not in the v1 Core+AMS cut
 src/system/splash_asset_choice.cpp  # not in the v1 Core+AMS cut

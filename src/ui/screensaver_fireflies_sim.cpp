@@ -103,14 +103,12 @@ float FirefliesSim::speed_mult() const {
 }
 
 void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level) {
-    clear();
     w_ = static_cast<int32_t>(frame.w);
     h_ = static_cast<int32_t>(frame.h);
     world_w_ = FIREFLIES_WORLD_H * static_cast<float>(w_) / static_cast<float>(std::max(h_, 1));
     focal_ = static_cast<float>(h_) / 2.0f * 100.0f / (FIREFLIES_WORLD_H / 2.0f);
     level_ = std::min(level, FIREFLIES_LEVEL_COUNT - 1);
     pending_level_ = level_;
-    PixelWriter(frame).fill({0, 0, 0});
     tiles_x_ = (w_ + FIREFLIES_TILE_PX - 1) / FIREFLIES_TILE_PX;
     tiles_y_ = (h_ + FIREFLIES_TILE_PX - 1) / FIREFLIES_TILE_PX;
     drawn_tiles_.assign(static_cast<size_t>(tiles_x_) * static_cast<size_t>(tiles_y_), 0);

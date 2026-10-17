@@ -38,7 +38,7 @@ SaverLoad measure(int stars, int frames) {
     FrameTarget target{bytes.data(), PANEL_W * 2, PANEL_W, PANEL_H, helix::ui::PixelFormat::RGB565};
     std::minstd_rand rng(20260916);
     StarfieldSim sim;
-    sim.init(PANEL_W, PANEL_H, rng);
+    sim.init(target, rng, 0);
     sim.set_active_count(stars);
 
     std::vector<DirtyRect> dirty;

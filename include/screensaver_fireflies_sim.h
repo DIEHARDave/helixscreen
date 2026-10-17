@@ -117,6 +117,8 @@ int32_t fireflies_tail_width(float u, float max_px);
 /// camera.
 class FirefliesSim {
   public:
+    static constexpr const auto& LEVELS = FIREFLIES_LEVELS;
+
     struct Bait {
         SaverVec3 pos;
         SaverVec3 vel;

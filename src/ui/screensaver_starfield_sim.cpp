@@ -4,6 +4,7 @@
 
 #include "screensaver_starfield_sim.h"
 
+#include "screensaver_buffer.h"
 #include "screensaver_fast_math.h"
 #include "screensaver_motion.h"
 #include "screensaver_pixel_writer.h"
@@ -59,14 +60,13 @@ DirtyRect fill_square(PixelWriter& writer, const FrameTarget& target, int sx, in
 
 } // namespace
 
-void StarfieldSim::init(uint32_t w, uint32_t h, std::minstd_rand& rng) {
-    cx_ = static_cast<float>(w) / 2.0f;
-    cy_ = static_cast<float>(h) / 2.0f;
-    focal_ = static_cast<float>(w) / 3.0f;
+void StarfieldSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level) {
+    cx_ = static_cast<float>(frame.w) / 2.0f;
+    cy_ = static_cast<float>(frame.h) / 2.0f;
+    focal_ = static_cast<float>(frame.w) / 3.0f;
 
     stars_.resize(NUM_STARS);
     star_dirty_.resize(NUM_STARS);
-    active_count_ = NUM_STARS;
     for (auto& star : stars_) {
         float angle = unit_random(rng) * 2.0f * SAVER_PI;
         float radius = 0.1f + unit_random(rng) * 0.9f;
@@ -79,6 +79,12 @@ void StarfieldSim::init(uint32_t w, uint32_t h, std::minstd_rand& rng) {
         star.prev_sy = 0;
         star.prev_size = 0;
     }
+    set_active_count(starfield_star_count(level));
+}
+
+void StarfieldSim::clear() {
+    release_buffers(stars_, star_dirty_);
+    active_count_ = NUM_STARS;
 }
 
 void StarfieldSim::recycle(Star& star, std::minstd_rand& rng) {

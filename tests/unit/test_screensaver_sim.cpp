@@ -113,8 +113,8 @@ void run_timer(lv_timer_t* timer) {
 TEST_CASE("StarfieldSim dirties every pixel its step changes", "[screensaver][starfield_sim]") {
     std::minstd_rand rng(7);
     StarfieldSim sim;
-    sim.init(FRAME_W, FRAME_H, rng);
     Frame frame;
+    sim.init(frame.target, rng, 0);
 
     size_t changed = 0;
     for (int step = 0; step < 90; step++) {
@@ -133,13 +133,13 @@ TEST_CASE("StarfieldSim dirties only around stars near the centre",
           "[screensaver][starfield_sim]") {
     std::minstd_rand rng(11);
     StarfieldSim sim;
-    sim.init(FRAME_W, FRAME_H, rng);
+    Frame frame;
+    sim.init(frame.target, rng, 0);
     for (auto& star : sim.stars()) {
         star.x = 0.02f;
         star.y = -0.02f;
         star.z = 0.9f;
     }
-    Frame frame;
     std::vector<DirtyRect> dirty;
     sim.step(33, frame.target, rng, dirty);
     REQUIRE_FALSE(dirty.empty());
@@ -160,8 +160,8 @@ TEST_CASE("StarfieldSim replays exactly from a seed", "[screensaver][starfield_s
     const auto run = [](uint32_t seed) {
         std::minstd_rand rng(seed);
         StarfieldSim sim;
-        sim.init(FRAME_W, FRAME_H, rng);
         Frame frame;
+        sim.init(frame.target, rng, 0);
         std::vector<DirtyRect> dirty;
         std::vector<DirtyRect> step_dirty;
         for (int i = 0; i < 60; i++) {
@@ -184,8 +184,8 @@ TEST_CASE("every X byte of a StarfieldSim frame stays 0xFF as stars move and rec
           "[screensaver][starfield_sim]") {
     std::minstd_rand rng(5);
     StarfieldSim sim;
-    sim.init(FRAME_W, FRAME_H, rng);
     Frame frame;
+    sim.init(frame.target, rng, 0);
     REQUIRE(non_opaque_pixels(frame.target) == 0);
 
     size_t most_lit = 0;
@@ -204,16 +204,16 @@ TEST_CASE("init places a full population whatever count the last run flew",
           "[screensaver][starfield_sim]") {
     std::minstd_rand rng(11);
     StarfieldSim sim;
-    sim.init(FRAME_W, FRAME_H, rng);
+    Frame frame;
+    sim.init(frame.target, rng, 0);
     sim.set_active_count(32);
     REQUIRE(sim.active_count() == 32);
 
     // A saver re-initialises on every start, and the level it last ran at must not
     // survive into the new run.
-    sim.init(FRAME_W, FRAME_H, rng);
+    sim.init(frame.target, rng, 0);
     CHECK(sim.active_count() == StarfieldSim::NUM_STARS);
 
-    Frame frame;
     std::vector<DirtyRect> dirty;
     sim.step(33, frame.target, rng, dirty);
     CHECK(dirty.size() > 32);
@@ -222,8 +222,8 @@ TEST_CASE("init places a full population whatever count the last run flew",
 TEST_CASE("a scattered sky reports one small rect per star", "[screensaver][starfield_sim]") {
     std::minstd_rand rng(23);
     StarfieldSim sim;
-    sim.init(FRAME_W, FRAME_H, rng);
     Frame frame;
+    sim.init(frame.target, rng, 0);
     std::vector<DirtyRect> dirty;
     for (int step = 0; step < 60; step++) {
         sim.step(33, frame.target, rng, dirty);
@@ -249,7 +249,8 @@ TEST_CASE("a star's size spans the full 1..3 pixels of its depth range",
           "[screensaver][starfield_sim]") {
     std::minstd_rand rng(3);
     StarfieldSim sim;
-    sim.init(FRAME_W, FRAME_H, rng);
+    Frame frame;
+    sim.init(frame.target, rng, 0);
     // Parked dead centre and moving nowhere, so each one draws every step.
     for (auto& star : sim.stars()) {
         star.x = 0.0f;
@@ -259,7 +260,6 @@ TEST_CASE("a star's size spans the full 1..3 pixels of its depth range",
     sim.stars()[0].z = 0.02f; // just above the recycle bound: the closest a star draws
     sim.stars()[1].z = 0.5f;
     sim.stars()[2].z = 0.9f; // far away
-    Frame frame;
     std::vector<DirtyRect> dirty;
 
     sim.step(33, frame.target, rng, dirty);
@@ -275,7 +275,8 @@ TEST_CASE("the active star count sets how many rects a frame pushes",
           "[screensaver][starfield_sim]") {
     std::minstd_rand rng(31);
     StarfieldSim sim;
-    sim.init(FRAME_W, FRAME_H, rng);
+    Frame frame;
+    sim.init(frame.target, rng, 0);
     // Parked dead centre and moving nowhere, so every active star draws every step.
     for (auto& star : sim.stars()) {
         star.x = 0.0f;
@@ -283,7 +284,6 @@ TEST_CASE("the active star count sets how many rects a frame pushes",
         star.z = 0.5f;
         star.speed = 0.0f;
     }
-    Frame frame;
     std::vector<DirtyRect> dirty;
 
     for (const int count : {StarfieldSim::NUM_STARS, 96, 64, 32}) {

@@ -35,20 +35,6 @@ using helix::ui::PixelFormat;
 using helix::ui::Rgb;
 using helix::ui::SaverVec3;
 
-namespace helix::ui {
-
-/// Reads the sim a FirefliesScreensaver owns.
-class FirefliesScreensaverTestAccess {
-  public:
-    static const FirefliesSim& sim(const FirefliesScreensaver& saver) {
-        return saver.sim_;
-    }
-};
-
-} // namespace helix::ui
-
-using helix::ui::FirefliesScreensaverTestAccess;
-
 namespace {
 
 constexpr uint32_t W = 320;
@@ -748,6 +734,8 @@ TEST_CASE("fireflies draw only light on black, and never past a row",
         // One sentinel row below the frame.
         std::vector<uint8_t> bytes(static_cast<size_t>(stride) * (OH + 1), UNTOUCHED);
         FrameTarget target{bytes.data(), stride, OW, OH, format};
+        // The canvas hands a saver a black frame.
+        helix::ui::PixelWriter(target).fill({0, 0, 0});
         std::minstd_rand rng(43);
         FirefliesSim sim;
         std::vector<DirtyRect> dirty;
@@ -975,23 +963,23 @@ TEST_CASE_METHOD(LVGLTestFixture,
     lv_tick_inc(100);
     fire(SaverTestAccess::timer(ss));
     CHECK(ss.is_active());
-    CHECK(FirefliesScreensaverTestAccess::sim(ss).level() == last);
+    CHECK(ss.sim().level() == last);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "a stopped fireflies saver holds no buffers",
                  "[screensaver][screensaver_fireflies]") {
     FirefliesScreensaver ss;
-    CHECK(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    CHECK(ss.sim().heap_bytes() == 0);
     {
         ScreensaverStopOnExit<FirefliesScreensaver> stop_on_exit{ss};
         ss.start();
         REQUIRE(ss.is_active());
         lv_tick_inc(16);
         fire(SaverTestAccess::timer(ss));
-        REQUIRE(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() > 0);
+        REQUIRE(ss.sim().heap_bytes() > 0);
     }
     CHECK_FALSE(ss.is_active());
-    CHECK(FirefliesScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    CHECK(ss.sim().heap_bytes() == 0);
 }
 
 TEST_CASE("fireflies is registered by name at both depths",

@@ -93,7 +93,6 @@ uint8_t wave85(float phase) {
 } // namespace
 
 void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level) {
-    clear();
     w_ = static_cast<int32_t>(frame.w);
     h_ = static_cast<int32_t>(frame.h);
     format_ = frame.format;

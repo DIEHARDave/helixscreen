@@ -9,15 +9,12 @@
 
 #include "lv_draw_buf_guard.h"
 #include "platform_capabilities.h"
-#include "printer_image_manager.h"
-#include "printer_images.h"
 #include "screensaver_fast_math.h"
-#include "wizard_config_paths.h"
+#include "screensaver_image.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <draw/lv_image_decoder_private.h>
 #include <string>
 
 using helix::screensaver_bounce::fit_sprite;
@@ -81,13 +78,7 @@ constexpr const char* LOGO_SPRITE_PATH = "A:assets/images/helixscreen-logo-bounc
 namespace helix {
 
 std::string BouncingPrinterScreensaver::sprite_path(int screen_w) const {
-    // An image the user picked by hand outranks whatever auto-detection settled
-    // on, the same precedence the home screen widget applies.
-    std::string path = helix::PrinterImageManager::instance().get_active_image_path(screen_w);
-    if (!path.empty()) {
-        return path;
-    }
-    return helix::printer_images::get_best_printer_image(helix::get_saved_printer_type());
+    return helix::ui::saver_printer_image_path(screen_w);
 }
 
 std::string BouncingLogoScreensaver::sprite_path(int /*screen_w*/) const {
@@ -144,33 +135,16 @@ void BouncingPrinterScreensaver::on_stop() {
 bool BouncingPrinterScreensaver::decode_sprite() {
     const std::string path = sprite_path(screen_w_);
 
-    // LV_CACHE_DEF_SIZE is 0, so an image handed to LVGL as a path is decoded
-    // again on every redraw. Decoding once into a draw buffer makes each frame a
-    // scaled blit over the sprite's own footprint and nothing more.
-    lv_image_decoder_dsc_t dsc;
-    lv_result_t res = lv_image_decoder_open(&dsc, path.c_str(), nullptr);
-    if (res != LV_RESULT_OK || !dsc.decoded) {
-        spdlog::warn("[Screensaver] Failed to decode {} image '{}'", subject_name(), path);
-        if (res == LV_RESULT_OK) {
-            lv_image_decoder_close(&dsc);
-        }
-        return false;
-    }
-
-    decoded_ = lv_draw_buf_dup(dsc.decoded);
-    src_w_ = static_cast<int32_t>(dsc.decoded->header.w);
-    src_h_ = static_cast<int32_t>(dsc.decoded->header.h);
-    lv_image_decoder_close(&dsc);
-
-    if (!decoded_) {
-        spdlog::warn("[Screensaver] Failed to copy decoded {} image '{}'", subject_name(), path);
-        return false;
-    }
-
-    // A device reads the pre-rendered variant here; a source tree without
+    // Decoded once, each frame is a scaled blit over the sprite's own footprint and nothing
+    // more. A device reads the pre-rendered variant here; a source tree without
     // `make gen-images` behind it holds the full-size art instead.
-    spdlog::debug("[Screensaver] Bouncing {} sprite '{}' decoded at {}x{}", subject_name(), path,
-                  src_w_, src_h_);
+    const std::string what = std::string(subject_name()) + " image";
+    decoded_ = helix::ui::saver_decode_image(path.c_str(), what.c_str());
+    if (!decoded_) {
+        return false;
+    }
+    src_w_ = static_cast<int32_t>(decoded_->header.w);
+    src_h_ = static_cast<int32_t>(decoded_->header.h);
     return true;
 }
 
@@ -259,7 +233,7 @@ void BouncingPrinterScreensaver::apply_tint() {
 }
 
 int BouncingPrinterScreensaver::confetti_count(size_t level) const {
-    return level < FLASH_ONLY_LEVEL ? CORNER_CONFETTI_PARTICLES : 0;
+    return LEVELS[std::min(level, std::size(LEVELS) - 1)].confetti ? CORNER_CONFETTI_PARTICLES : 0;
 }
 
 // The sprite is an LVGL image, which invalidates its own old and new areas when

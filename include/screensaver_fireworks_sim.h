@@ -54,6 +54,8 @@ struct FireworksPacing {
 
 class FireworksSim {
   public:
+    static constexpr const auto& LEVELS = FIREWORKS_LEVELS;
+
     /// Most shells in flight plus bursts burning, at any level.
     static constexpr size_t MAX_BURSTS = 6;
     /// Faint fixed stars in the sky.
