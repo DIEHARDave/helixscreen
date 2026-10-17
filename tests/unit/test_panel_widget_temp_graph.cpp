@@ -1,9 +1,14 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_modal.h"
+#include "ui_swatch.h"
+#include "ui_update_queue.h"
+
 #include "../../include/ui_overlay_temp_graph.h"
 #include "../../include/ui_temp_graph.h"
 #include "../../src/ui/panel_widgets/temp_graph_widget.h"
+#include "../lvgl_ui_test_fixture.h"
 #include "../ui_test_utils.h"
 #include "grid_layout.h"
 #include "lvgl/lvgl.h"
@@ -1043,4 +1048,35 @@ TEST_CASE("TempGraphWidget: default config lists aux heaters but not the chamber
     CHECK_FALSE(has("temperature_sensor chamber"));
 
     tsm.discover({});
+}
+
+// ============================================================================
+// Config modal: series colour swatches
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "TempGraphWidget config: series colours are painter circles that cycle",
+                 "[temp_graph][panel_widget][config][swatch]") {
+    TempGraphWidget widget("test_swatch");
+    nlohmann::json config = {
+        {"sensors",
+         {
+             {{"name", "extruder"},
+              {"enabled", true},
+              {"color", lv_color_to_u32(TEMP_GRAPH_SERIES_COLORS[2]) & 0xFFFFFF}},
+         }}};
+    widget.set_config(config);
+    REQUIRE(widget.on_edit_configure());
+    helix::ui::UpdateQueue::instance().drain();
+
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_t* swatch = lv_obj_find_by_name(dialog, "sensor_swatch_0");
+    REQUIRE(swatch != nullptr);
+    CHECK(helix::ui::has_swatch_paint(swatch));
+    CHECK(lv_obj_get_style_radius(swatch, LV_PART_MAIN) == LV_RADIUS_CIRCLE);
+    CHECK(lv_color_eq(helix::ui::swatch_color_of(swatch), TEMP_GRAPH_SERIES_COLORS[2]));
+
+    lv_obj_send_event(swatch, LV_EVENT_CLICKED, nullptr);
+    CHECK(lv_color_eq(helix::ui::swatch_color_of(swatch), TEMP_GRAPH_SERIES_COLORS[3]));
 }
