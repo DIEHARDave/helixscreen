@@ -10,8 +10,11 @@
 #include "ui_swatch.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../lvgl_ui_test_fixture.h"
 #include "ams_types.h"
 #include "filament_variants.h"
+#include "helix-xml/src/xml/lv_xml.h"
+#include "lvgl/src/draw/lv_draw_private.h"
 
 #include <cmath>
 
@@ -31,6 +34,8 @@ struct SwatchCanvas {
     static constexpr int32_t SIZE = 40;
     lv_draw_buf_t* buf = nullptr;
     lv_obj_t* canvas = nullptr;
+    helix::ui::SwatchCache cache;
+    int last_tasks = 0; ///< draw tasks the last paint() queued
 
     explicit SwatchCanvas(lv_obj_t* parent) {
         buf = lv_draw_buf_create(SIZE, SIZE, LV_COLOR_FORMAT_ARGB8888, 0);
@@ -41,12 +46,19 @@ struct SwatchCanvas {
         lv_obj_delete(canvas);
         lv_draw_buf_destroy(buf);
     }
-    void paint(const helix::ui::SwatchPaint& p) {
+    void paint(helix::ui::SwatchPaint p) {
+        if (!p.cache) {
+            p.cache = &cache;
+        }
         lv_canvas_fill_bg(canvas, lv_color_hex(0x0000FF), LV_OPA_COVER);
         lv_layer_t layer;
         lv_canvas_init_layer(canvas, &layer);
         const lv_area_t area = {0, 0, SIZE - 1, SIZE - 1};
         helix::ui::draw_swatch(&layer, area, p);
+        last_tasks = 0;
+        for (lv_draw_task_t* t = layer.draw_task_head; t; t = t->next) {
+            ++last_tasks;
+        }
         lv_canvas_finish_layer(canvas, &layer);
     }
     lv_color32_t px(int32_t x, int32_t y) const {
@@ -295,6 +307,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "draw_swatch: marble and sparkle texture a lar
     const lv_area_t dot = {0, 0, helix::ui::SWATCH_FINISH_MIN_PX - 2,
                            helix::ui::SWATCH_FINISH_MIN_PX - 2};
     p.radius = 0;
+    p.cache = &c.cache;
     helix::ui::draw_swatch(&layer, dot, p);
     lv_canvas_finish_layer(c.canvas, &layer);
     for (int32_t y = 0; y < helix::ui::SWATCH_FINISH_MIN_PX - 1; ++y) {
@@ -302,6 +315,109 @@ TEST_CASE_METHOD(LVGLTestFixture, "draw_swatch: marble and sparkle texture a lar
             CHECK(brightness(c.px(x, y)) == 3 * 0x80);
         }
     }
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "draw_swatch: a textured swatch is a few draw tasks, its texture rendered once",
+                 "[swatch]") {
+    SwatchCanvas c(test_screen());
+    helix::ui::SwatchPaint p;
+    p.colors = {lv_color_hex(0x808080)};
+    for (const SwatchFinish finish : {SwatchFinish::Marble, SwatchFinish::Sparkle}) {
+        CAPTURE(static_cast<int>(finish));
+        helix::ui::SwatchCache cache;
+        p.finish = finish;
+        p.cache = &cache;
+        c.paint(p);
+        CHECK(cache.texture_builds() == 1);
+        c.paint(p); // the second redraw reuses the texture
+        CHECK(cache.texture_builds() == 1);
+        // A fill, one texture blit and at most an edge.
+        CHECK(c.last_tasks <= 3);
+        p.radius = 6; // a new shape renders it again
+        c.paint(p);
+        CHECK(cache.texture_builds() == 2);
+        p.radius = LV_RADIUS_CIRCLE;
+    }
+}
+
+TEST_CASE("swatch_shape_coverage: whole inside, none outside, partial on the rim", "[swatch]") {
+    const lv_area_t a = {0, 0, 39, 39};
+    CHECK(helix::ui::swatch_shape_coverage(a, LV_RADIUS_CIRCLE, 20.0f, 20.0f) == 1.0f);
+    CHECK(helix::ui::swatch_shape_coverage(a, LV_RADIUS_CIRCLE, 1.5f, 1.5f) == 0.0f);
+    const float rim = helix::ui::swatch_shape_coverage(a, LV_RADIUS_CIRCLE, 20.0f, 0.0f);
+    CHECK(rim > 0.0f);
+    CHECK(rim < 1.0f);
+    // A square keeps its corners.
+    CHECK(helix::ui::swatch_shape_coverage(a, 0, 0.5f, 0.5f) == 1.0f);
+}
+
+TEST_CASE("swatch_edge_surfaces: the actual backdrop when known", "[swatch]") {
+    const auto on_white = helix::ui::swatch_edge_surfaces(0xFFFFFF);
+    REQUIRE(on_white.size() == 1);
+    CHECK(helix::ui::swatch_colors_need_edge({lv_color_hex(0xF8F8F8)}, on_white));
+    CHECK_FALSE(helix::ui::swatch_colors_need_edge({lv_color_hex(0xF8F8F8)},
+                                                   helix::ui::swatch_edge_surfaces(0x101010)));
+    CHECK(helix::ui::swatch_edge_surfaces().size() == 2); // no backdrop: the theme surfaces
+}
+
+TEST_CASE("SlotInfo::finish: never from the colour name", "[swatch]") {
+    helix::SlotInfo slot;
+    slot.material = "PLA";
+    slot.color_name = "Stone Grey";
+    CHECK(helix::ui::swatch_finish_of(slot) == SwatchFinish::Plain);
+    slot.product_name = "PLA Marble";
+    CHECK(helix::ui::swatch_finish_of(slot) == SwatchFinish::Marble);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "swatch_paint: a cleared or uncoloured swatch is never left blank by a binding",
+                 "[swatch]") {
+    static lv_subject_t colors_subject;
+    static char colors_buf[64];
+    static lv_subject_t color_subject;
+    lv_subject_init_string(&colors_subject, colors_buf, nullptr, sizeof(colors_buf),
+                           "#FF0000,#0000FF");
+    lv_subject_init_color(&color_subject, lv_color_hex(0x00FF00));
+    lv_xml_register_subject(nullptr, "test_swatch_colors", &colors_subject);
+    lv_xml_register_subject(nullptr, "test_swatch_color", &color_subject);
+
+    // A colours binding falling below two colours keeps the colour C++ set.
+    const char* multi_attrs[] = {"bind_colors", "test_swatch_colors", "width", "40", "height", "40",
+                                 nullptr};
+    auto* multi = static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "swatch_paint", multi_attrs));
+    REQUIRE(multi != nullptr);
+    helix::ui::apply_swatch_color(multi, 0xAA5500, "");
+    lv_subject_copy_string(&colors_subject, "");
+    auto colors = helix::ui::swatch_paint_colors(multi);
+    REQUIRE(colors.size() == 1);
+    CHECK(lv_color_eq(colors[0], lv_color_hex(0xAA5500)));
+
+    // A colour binding after a clear paints again.
+    const char* bound_attrs[] = {"bind_color", "test_swatch_color", "width", "40", "height", "40",
+                                 nullptr};
+    auto* bound = static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "swatch_paint", bound_attrs));
+    REQUIRE(bound != nullptr);
+    lv_obj_update_layout(bound);
+    auto center_alpha = [bound]() {
+        lv_draw_buf_t* snap = lv_snapshot_take(bound, LV_COLOR_FORMAT_ARGB8888);
+        REQUIRE(snap != nullptr);
+        const int alpha = (snap->data + 20 * snap->header.stride + 20 * 4)[3];
+        lv_draw_buf_destroy(snap);
+        return alpha;
+    };
+    CHECK(center_alpha() == 255);
+    helix::ui::clear_swatch_color(bound);
+    CHECK(center_alpha() == 0);
+    lv_subject_set_color(&color_subject, lv_color_hex(0x0000FF));
+    CHECK(center_alpha() == 255);
+
+    lv_obj_delete(multi);
+    lv_obj_delete(bound);
+    lv_xml_unregister_subject(nullptr, "test_swatch_colors");
+    lv_xml_unregister_subject(nullptr, "test_swatch_color");
+    lv_subject_deinit(&colors_subject);
+    lv_subject_deinit(&color_subject);
 }
 
 // ---------------------------------------------------------------------------

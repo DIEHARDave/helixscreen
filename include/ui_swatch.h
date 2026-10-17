@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -26,8 +27,11 @@ struct SlotInfo;
  *    multi-colour list, the equal-area diagonal split clipped to the shape,
  *    the finish a filament name announces and the size below which a finish
  *    is too small to read.
- *  - draw_swatch(): paints one swatch into a layer. Canvas and draw-task code
- *    (path dots, the temp-graph legend, illustrations) call it directly.
+ *  - draw_swatch(): paints one swatch into a layer: the temp-graph legend
+ *    calls it directly, the object paint below for everything else. Its finish
+ *    texture is rendered once into a SwatchCache image and blitted.
+ *  - swatch_paint_finish_pixels(): the same texture written straight into a
+ *    pixel buffer, for illustrations that draw their own pixels (spool_canvas).
  *  - Object paint: apply_swatch_color() and the <swatch_paint> XML widget hang
  *    a DRAW_MAIN hook on an lv_obj so it paints through draw_swatch() with the
  *    object's own radius and size.
@@ -59,7 +63,12 @@ inline constexpr double SWATCH_EDGE_CONTRAST_RATIO = 1.75;
 /// luminance contrast, dark-on-dark or light-on-light) and needs an edge.
 bool swatch_needs_edge(uint32_t rgb, uint32_t surface);
 
-/// swatch_needs_edge() against the current theme's panel and dialog surfaces.
+/// The surfaces a swatch's edge is judged against: its actual @p backdrop when
+/// known, else the current theme's panel and dialog surfaces. Theme colours are
+/// cached and re-read only when the theme changes.
+std::vector<uint32_t> swatch_edge_surfaces(std::optional<uint32_t> backdrop = std::nullopt);
+
+/// swatch_needs_edge() against swatch_edge_surfaces() with no known backdrop.
 bool swatch_needs_edge_here(uint32_t rgb);
 
 /// Whether any of @p colors needs an edge against any of @p surfaces.
@@ -99,6 +108,10 @@ SwatchPolygon swatch_shape_polygon(const lv_area_t& area, int32_t radius);
 /// Whether (@p x, @p y) lies inside @p area rounded by @p radius.
 bool swatch_shape_contains(const lv_area_t& area, int32_t radius, float x, float y);
 
+/// How much of the pixel centred on (@p x, @p y) the rounded shape covers, 0..1:
+/// the anti-aliased rim the texture pixels follow.
+float swatch_shape_coverage(const lv_area_t& area, int32_t radius, float x, float y);
+
 /// Where the @p n colour bands of a multi-colour swatch meet: n - 1 values in
 /// 0..1 along the top-left to bottom-right diagonal (0 at the top-left corner,
 /// 1 at the bottom-right), chosen so every band covers an equal share of the
@@ -122,25 +135,64 @@ std::vector<SwatchPoint> swatch_texture_points(const lv_area_t& area, int32_t ra
 // Drawing
 // ---------------------------------------------------------------------------
 
+/**
+ * What a swatch keeps between redraws: its finish texture, rendered once into
+ * an image, and its split thresholds. Each is rebuilt only when its key (size,
+ * radius, finish; size, radius, colour count) changes. Owned by the object the
+ * swatch paints (or by a draw_swatch() caller); freed with it. Main thread only.
+ */
+class SwatchCache {
+  public:
+    SwatchCache() = default;
+    ~SwatchCache();
+    SwatchCache(const SwatchCache&) = delete;
+    SwatchCache& operator=(const SwatchCache&) = delete;
+
+    /// The finish texture for a @p w x @p h shape, rendered on a key change.
+    const lv_draw_buf_t* texture(int32_t w, int32_t h, int32_t radius, SwatchFinish finish);
+    /// The split thresholds for @p area, recomputed on a key change.
+    const std::vector<float>& thresholds(const lv_area_t& area, int32_t radius, size_t n);
+    /// How many times a texture has been rendered (tests).
+    int texture_builds() const {
+        return texture_builds_;
+    }
+
+  private:
+    void drop_texture();
+    lv_draw_buf_t* texture_ = nullptr;
+    int32_t tex_w_ = 0, tex_h_ = 0, tex_radius_ = 0;
+    SwatchFinish tex_finish_ = SwatchFinish::Plain;
+    int texture_builds_ = 0;
+    std::vector<float> thresholds_;
+    int32_t thr_w_ = -1, thr_h_ = -1, thr_radius_ = 0;
+    size_t thr_n_ = 0;
+};
+
 struct SwatchPaint {
     std::vector<lv_color_t> colors;          ///< 1..N; N >= 2 draws the diagonal split
     const lv_grad_dsc_t* gradient = nullptr; ///< fills the shape instead of colors
     int32_t radius = LV_RADIUS_CIRCLE;
-    bool edge = true; ///< apply the contrast edge rule against the theme
+    bool edge = true; ///< apply the contrast edge rule
+    /// The colour the swatch sits on, when known; else the theme surfaces.
+    std::optional<uint32_t> backdrop;
     SwatchFinish finish = SwatchFinish::Plain;
     lv_opa_t opa = LV_OPA_COVER;
+    /// Holds the finish texture between redraws. Without one a silk, marble or
+    /// sparkle finish is not drawn (the colour and split still are).
+    SwatchCache* cache = nullptr;
 };
 
-/// Paint @p paint over @p area into @p layer. Main (UI) thread only: the edge
-/// reads the live theme.
+/// Paint @p paint over @p area into @p layer: one fill (or split), one blit of
+/// the cached finish texture, one edge. Main (UI) thread only.
 void draw_swatch(lv_layer_t* layer, const lv_area_t& area, const SwatchPaint& paint);
 
-/// The surface texture of @p finish over @p area rounded by @p radius: the silk
-/// highlight, marble speckle or sparkle glints (matte and plain add none; matte
-/// is a colour, swatch_matte_color()). Nothing below the SWATCH_FINISH_MIN_PX area.
-/// Illustrations lay it over the filament they draw themselves.
-void draw_swatch_finish(lv_layer_t* layer, const lv_area_t& area, int32_t radius,
-                        SwatchFinish finish, lv_opa_t opa = LV_OPA_COVER);
+/// Blend @p finish's texture (silk highlight, marble flecks, sparkle glints)
+/// over the pixels of @p area, rounded by @p radius, in the ARGB8888 @p buf,
+/// with plain pixel writes. Nothing for matte or plain, or below the
+/// SWATCH_FINISH_MIN_PX area. The texture SwatchCache renders, and the one
+/// spool_canvas lays over the filament it draws.
+void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area, int32_t radius,
+                                SwatchFinish finish);
 
 /// The paint for a spool colour: its multi-colour list when it has two or more
 /// parseable entries, else @p rgb.

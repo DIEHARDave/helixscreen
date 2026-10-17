@@ -11,6 +11,8 @@
 #include "helix-xml/src/xml/lv_xml_utils.h"
 #include "helix-xml/src/xml/lv_xml_widget.h"
 #include "helix-xml/src/xml/parsers/lv_xml_obj_parser.h"
+#include "lv_draw_buf_guard.h"
+#include "lvgl/src/misc/cache/instance/lv_image_cache.h" // not in the lvgl.h umbrella
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -18,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <unordered_map>
 
 namespace helix::ui {
@@ -118,10 +121,6 @@ struct Lcg {
 // Drawing helpers
 // ---------------------------------------------------------------------------
 
-lv_opa_t scale_opa(lv_opa_t a, lv_opa_t b) {
-    return static_cast<lv_opa_t>((static_cast<uint32_t>(a) * b) / 255);
-}
-
 void fill_shape(lv_layer_t* layer, const lv_area_t& area, int32_t radius, lv_color_t color,
                 lv_opa_t opa) {
     lv_draw_rect_dsc_t dsc;
@@ -138,9 +137,8 @@ void fill_shape(lv_layer_t* layer, const lv_area_t& area, int32_t radius, lv_col
 // LV_GRADIENT_MAX_STOPS holds two stops per colour for up to four colours;
 // past that each colour gets one stop at its band's centre and they blend.
 void fill_split(lv_layer_t* layer, const lv_area_t& area, int32_t radius,
-                const std::vector<lv_color_t>& colors, lv_opa_t opa) {
+                const std::vector<lv_color_t>& colors, const std::vector<float>& t, lv_opa_t opa) {
     const size_t n = colors.size();
-    const std::vector<float> t = swatch_split_thresholds(area, radius, n);
     auto frac = [](float v) {
         return static_cast<uint8_t>(std::clamp(std::lround(v * 255.0f), 0L, 255L));
     };
@@ -178,38 +176,6 @@ void fill_split(lv_layer_t* layer, const lv_area_t& area, int32_t radius,
     lv_draw_rect(layer, &dsc, &area);
 }
 
-// Silk: a diagonal specular band across the shape, brightest just above the
-// centre line, fading to nothing at both sides.
-void draw_silk(lv_layer_t* layer, const lv_area_t& area, int32_t radius, lv_opa_t opa) {
-    lv_draw_rect_dsc_t dsc;
-    lv_draw_rect_dsc_init(&dsc);
-    dsc.radius = radius;
-    dsc.bg_opa = opa;
-    dsc.border_width = 0;
-    const lv_color_t white = lv_color_white();
-    const lv_color_t colors[5] = {white, white, white, white, white};
-    const lv_opa_t opas[5] = {0, 70, 170, 50, 0};
-    const uint8_t fracs[5] = {60, 100, 120, 145, 190};
-    lv_grad_init_stops(&dsc.bg_grad, colors, opas, fracs, 5);
-    lv_grad_linear_init(&dsc.bg_grad, lv_pct(0), lv_pct(0), lv_pct(100), lv_pct(100),
-                        LV_GRAD_EXTEND_PAD);
-    lv_draw_rect(layer, &dsc, &area);
-}
-
-void draw_dot(lv_layer_t* layer, float x, float y, int32_t size, lv_color_t color, lv_opa_t opa) {
-    lv_draw_rect_dsc_t dsc;
-    lv_draw_rect_dsc_init(&dsc);
-    dsc.bg_color = color;
-    dsc.bg_opa = opa;
-    dsc.radius = size > 1 ? LV_RADIUS_CIRCLE : 0;
-    lv_area_t a;
-    a.x1 = static_cast<int32_t>(std::lround(x)) - size / 2;
-    a.y1 = static_cast<int32_t>(std::lround(y)) - size / 2;
-    a.x2 = a.x1 + size - 1;
-    a.y2 = a.y1 + size - 1;
-    lv_draw_rect(layer, &dsc, &a);
-}
-
 int32_t short_side(const lv_area_t& a) {
     return std::min(lv_area_get_width(&a), lv_area_get_height(&a));
 }
@@ -219,53 +185,160 @@ uint32_t area_seed(const lv_area_t& a) {
            static_cast<uint32_t>(lv_area_get_height(&a)) * 104729u;
 }
 
-// Marble: a fine speckle of darker and lighter flecks.
-void draw_marble(lv_layer_t* layer, const lv_area_t& area, int32_t radius, lv_opa_t opa) {
-    const int32_t s = short_side(area);
-    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 28, 8, 220));
-    const int32_t fleck = s >= 48 ? 2 : 1;
-    const auto points = swatch_texture_points(area, radius, count, area_seed(area));
-    for (size_t i = 0; i < points.size(); ++i) {
-        const bool dark = (i % 3) != 0;
-        draw_dot(layer, points[i].x, points[i].y, fleck, dark ? lv_color_black() : lv_color_white(),
-                 scale_opa(dark ? 90 : 120, opa));
+// The theme colours the edge reads, re-read only when the theme generation
+// moves, so a redraw does no token lookups.
+struct ThemeRgbs {
+    int generation = -1;
+    uint32_t screen_bg = 0;
+    uint32_t elevated_bg = 0;
+    lv_color_t border{};
+    int32_t border_width = 1;
+};
+
+const ThemeRgbs& theme_rgbs() {
+    static ThemeRgbs t;
+    lv_subject_t* changed = theme_manager_get_changed_subject();
+    const int generation =
+        (changed && changed->type == LV_SUBJECT_TYPE_INT) ? lv_subject_get_int(changed) : 0;
+    if (generation != t.generation) {
+        t.generation = generation;
+        t.screen_bg = rgb_of(theme_manager_get_color("screen_bg"));
+        t.elevated_bg = rgb_of(theme_manager_get_color("elevated_bg"));
+        t.border = theme_manager_get_color("border");
+        t.border_width = std::max<int32_t>(1, theme_manager_get_spacing("border_width"));
     }
+    return t;
 }
 
-// Sparkle: a few small four-pointed glints.
-void draw_sparkle(lv_layer_t* layer, const lv_area_t& area, int32_t radius, lv_opa_t opa) {
-    const int32_t s = short_side(area);
-    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 160, 3, 24));
-    const int32_t arm = std::max<int32_t>(1, s / 14);
-    const auto points = swatch_texture_points(area, radius, count, area_seed(area) ^ 0x5A5Au);
-    const lv_color_t white = lv_color_white();
-    for (size_t i = 0; i < points.size(); ++i) {
-        const float x = points[i].x;
-        const float y = points[i].y;
-        const bool big = (i % 3) == 0;
-        draw_dot(layer, x, y, big ? 2 : 1, white, scale_opa(240, opa));
-        if (big) {
-            for (int32_t d = 1; d <= arm; ++d) {
-                const lv_opa_t o = scale_opa(static_cast<lv_opa_t>(170 / d), opa);
-                const float fd = static_cast<float>(d);
-                draw_dot(layer, x + fd, y, 1, white, o);
-                draw_dot(layer, x - fd, y, 1, white, o);
-                draw_dot(layer, x, y + fd, 1, white, o);
-                draw_dot(layer, x, y - fd, 1, white, o);
+void draw_edge(lv_layer_t* layer, const lv_area_t& area, int32_t radius, lv_opa_t opa) {
+    const ThemeRgbs& t = theme_rgbs();
+    lv_draw_rect_dsc_t dsc;
+    lv_draw_rect_dsc_init(&dsc);
+    dsc.radius = radius;
+    dsc.bg_opa = LV_OPA_TRANSP;
+    dsc.border_color = t.border;
+    dsc.border_width = t.border_width;
+    dsc.border_opa = opa;
+    lv_draw_rect(layer, &dsc, &area);
+}
+
+// ---------------------------------------------------------------------------
+// Finish pixels
+// ---------------------------------------------------------------------------
+
+// Straight-alpha "over": @p src at coverage @p a onto @p dst.
+void blend_over(lv_color32_t& dst, lv_color_t src, uint8_t a) {
+    if (a == 0) {
+        return;
+    }
+    const uint32_t da = dst.alpha;
+    const uint32_t out_a = a + da * (255 - a) / 255;
+    if (out_a == 0) {
+        return;
+    }
+    auto mix = [&](uint8_t s_ch, uint8_t d_ch) {
+        return static_cast<uint8_t>((s_ch * a + d_ch * da * (255 - a) / 255) / out_a);
+    };
+    dst.red = mix(src.red, dst.red);
+    dst.green = mix(src.green, dst.green);
+    dst.blue = mix(src.blue, dst.blue);
+    dst.alpha = static_cast<uint8_t>(out_a);
+}
+
+struct PixelTarget {
+    lv_draw_buf_t* buf;
+    lv_area_t area;
+    int32_t radius;
+
+    lv_color32_t* at(int32_t x, int32_t y) const {
+        if (x < 0 || y < 0 || x >= static_cast<int32_t>(buf->header.w) ||
+            y >= static_cast<int32_t>(buf->header.h)) {
+            return nullptr;
+        }
+        return reinterpret_cast<lv_color32_t*>(buf->data + y * buf->header.stride) + x;
+    }
+
+    // A @p size square of @p color at alpha @p a centred on (x, y), clipped to the shape.
+    void dot(float x, float y, int32_t size, lv_color_t color, uint8_t a) const {
+        const int32_t x1 = static_cast<int32_t>(std::lround(x)) - size / 2;
+        const int32_t y1 = static_cast<int32_t>(std::lround(y)) - size / 2;
+        for (int32_t py = y1; py < y1 + size; ++py) {
+            for (int32_t px = x1; px < x1 + size; ++px) {
+                lv_color32_t* p = at(px, py);
+                const float cov = swatch_shape_coverage(area, radius, px + 0.5f, py + 0.5f);
+                if (p && cov > 0.0f) {
+                    blend_over(*p, color, static_cast<uint8_t>(a * cov));
+                }
+            }
+        }
+    }
+};
+
+// Silk: a diagonal specular band, brightest just above the centre line, fading
+// to nothing at both sides. Stops along the top-left to bottom-right diagonal.
+void silk_pixels(const PixelTarget& t) {
+    static constexpr float FRACS[] = {60, 100, 120, 145, 190};
+    static constexpr float OPAS[] = {0, 70, 170, 50, 0};
+    const lv_area_t& a = t.area;
+    const float w = static_cast<float>(lv_area_get_width(&a));
+    const float h = static_cast<float>(lv_area_get_height(&a));
+    const float inv = 255.0f / (w * w + h * h);
+    for (int32_t y = a.y1; y <= a.y2; ++y) {
+        for (int32_t x = a.x1; x <= a.x2; ++x) {
+            const float f = ((x + 0.5f - a.x1) * w + (y + 0.5f - a.y1) * h) * inv;
+            if (f <= FRACS[0] || f >= FRACS[4]) {
+                continue;
+            }
+            size_t k = 0;
+            while (f > FRACS[k + 1]) {
+                ++k;
+            }
+            const float u = (f - FRACS[k]) / (FRACS[k + 1] - FRACS[k]);
+            const float op = OPAS[k] + u * (OPAS[k + 1] - OPAS[k]);
+            const float cov = swatch_shape_coverage(a, t.radius, x + 0.5f, y + 0.5f);
+            if (lv_color32_t* p = t.at(x, y); p && cov > 0.0f) {
+                blend_over(*p, lv_color_white(), static_cast<uint8_t>(op * cov));
             }
         }
     }
 }
 
-void draw_edge(lv_layer_t* layer, const lv_area_t& area, int32_t radius, lv_opa_t opa) {
-    lv_draw_rect_dsc_t dsc;
-    lv_draw_rect_dsc_init(&dsc);
-    dsc.radius = radius;
-    dsc.bg_opa = LV_OPA_TRANSP;
-    dsc.border_color = theme_manager_get_color("border");
-    dsc.border_width = std::max<int32_t>(1, theme_manager_get_spacing("border_width"));
-    dsc.border_opa = opa;
-    lv_draw_rect(layer, &dsc, &area);
+// Marble: a fine speckle of darker and lighter flecks.
+void marble_pixels(const PixelTarget& t) {
+    const int32_t s = short_side(t.area);
+    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 28, 8, 220));
+    const int32_t fleck = s >= 48 ? 2 : 1;
+    const auto points = swatch_texture_points(t.area, t.radius, count, area_seed(t.area));
+    for (size_t i = 0; i < points.size(); ++i) {
+        const bool dark = (i % 3) != 0;
+        t.dot(points[i].x, points[i].y, fleck, dark ? lv_color_black() : lv_color_white(),
+              dark ? 90 : 120);
+    }
+}
+
+// Sparkle: a few small four-pointed glints.
+void sparkle_pixels(const PixelTarget& t) {
+    const int32_t s = short_side(t.area);
+    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 160, 3, 24));
+    const int32_t arm = std::max<int32_t>(1, s / 14);
+    const auto points = swatch_texture_points(t.area, t.radius, count, area_seed(t.area) ^ 0x5A5Au);
+    const lv_color_t white = lv_color_white();
+    for (size_t i = 0; i < points.size(); ++i) {
+        const float x = points[i].x;
+        const float y = points[i].y;
+        const bool big = (i % 3) == 0;
+        t.dot(x, y, big ? 2 : 1, white, 240);
+        if (big) {
+            for (int32_t d = 1; d <= arm; ++d) {
+                const auto o = static_cast<uint8_t>(170 / d);
+                const float fd = static_cast<float>(d);
+                t.dot(x + fd, y, 1, white, o);
+                t.dot(x - fd, y, 1, white, o);
+                t.dot(x, y + fd, 1, white, o);
+                t.dot(x, y - fd, 1, white, o);
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -279,11 +352,22 @@ struct ObjectPaint {
     bool style_color = false;       ///< a colour style was given, so bg_color is meant
     SwatchFinish finish = SwatchFinish::Plain;
     bool edge = true;
+    std::unique_ptr<SwatchCache> cache = std::make_unique<SwatchCache>();
 };
 
 std::unordered_map<const lv_obj_t*, ObjectPaint>& paint_registry() {
     static std::unordered_map<const lv_obj_t*, ObjectPaint> registry;
     return registry;
+}
+
+// The colour behind @p obj: its nearest ancestor with an opaque background.
+std::optional<uint32_t> backdrop_of(const lv_obj_t* obj) {
+    for (const lv_obj_t* p = lv_obj_get_parent(obj); p; p = lv_obj_get_parent(p)) {
+        if (lv_obj_get_style_bg_opa(p, LV_PART_MAIN) >= LV_OPA_MAX) {
+            return rgb_of(lv_obj_get_style_bg_color(p, LV_PART_MAIN));
+        }
+    }
+    return std::nullopt;
 }
 
 void draw_object_paint(lv_event_t* e) {
@@ -304,6 +388,8 @@ void draw_object_paint(lv_event_t* e) {
     paint.finish = it->second.finish;
     paint.edge = it->second.edge;
     paint.opa = lv_obj_get_style_opa_recursive(obj, LV_PART_MAIN);
+    paint.cache = it->second.cache.get();
+    paint.backdrop = backdrop_of(obj);
     if (!it->second.colors.empty()) {
         paint.colors = it->second.colors;
     } else {
@@ -357,8 +443,26 @@ void colors_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
     const char* csv = lv_subject_get_string(subject);
     std::vector<lv_color_t> colors = parse_multi_colors(csv ? csv : "");
     ObjectPaint& p = ensure_paint(obj);
-    // One colour is the bg_color the color binding already paints.
-    p.colors = colors.size() >= 2 ? std::move(colors) : std::vector<lv_color_t>{};
+    if (colors.size() >= 2) {
+        p.colors = std::move(colors);
+    } else if (p.style_color) {
+        p.colors.clear(); // the colour binding's bg_color paints
+    } else {
+        // No colour binding: keep painting the one colour already set.
+        p.colors = {lv_obj_get_style_bg_color(obj, LV_PART_MAIN)};
+    }
+    lv_obj_invalidate(obj);
+}
+
+void color_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
+    auto* obj = static_cast<lv_obj_t*>(lv_observer_get_target(observer));
+    lv_obj_set_style_bg_color(obj, lv_subject_get_color(subject), LV_PART_MAIN);
+    ObjectPaint& p = ensure_paint(obj);
+    // A bound colour always paints, a clear_swatch_color() before it included.
+    p.style_color = true;
+    if (p.colors.size() < 2) {
+        p.colors.clear();
+    }
     lv_obj_invalidate(obj);
 }
 
@@ -421,13 +525,8 @@ void swatch_paint_xml_apply(lv_xml_parser_state_t* state, const char** attrs) {
             lv_obj_set_style_bg_color(obj, lv_xml_to_color(value), LV_PART_MAIN);
             p.style_color = true;
         } else if (std::strcmp(name, "bind_color") == 0) {
-            lv_subject_t* subject = lv_xml_get_subject(&state->scope, value);
-            if (subject) {
-                lv_obj_bind_style_prop(obj, LV_STYLE_BG_COLOR, LV_PART_MAIN, subject);
-                p.style_color = true;
-            } else {
-                spdlog::warn("[Swatch] bind_color subject '{}' does not exist", value);
-            }
+            p.style_color = true;
+            bind_string_subject(state, obj, value, color_observer_cb, "bind_color");
         } else if (std::strcmp(name, "colors") == 0) {
             std::vector<lv_color_t> colors = parse_multi_colors(value);
             if (colors.size() >= 2) {
@@ -459,10 +558,17 @@ bool swatch_needs_edge(uint32_t rgb, uint32_t surface) {
            SWATCH_EDGE_CONTRAST_RATIO;
 }
 
-bool swatch_needs_edge_here(uint32_t rgb) {
+std::vector<uint32_t> swatch_edge_surfaces(std::optional<uint32_t> backdrop) {
+    if (backdrop) {
+        return {*backdrop};
+    }
     // Swatches sit on panels (screen_bg) and in dialogs (elevated_bg).
-    return swatch_needs_edge(rgb, rgb_of(theme_manager_get_color("screen_bg"))) ||
-           swatch_needs_edge(rgb, rgb_of(theme_manager_get_color("elevated_bg")));
+    const ThemeRgbs& t = theme_rgbs();
+    return {t.screen_bg, t.elevated_bg};
+}
+
+bool swatch_needs_edge_here(uint32_t rgb) {
+    return swatch_colors_need_edge({lv_color_hex(rgb)}, swatch_edge_surfaces());
 }
 
 bool swatch_colors_need_edge(const std::vector<lv_color_t>& colors,
@@ -567,6 +673,21 @@ SwatchPolygon swatch_shape_polygon(const lv_area_t& area, int32_t radius) {
     return poly;
 }
 
+float swatch_shape_coverage(const lv_area_t& area, int32_t radius, float x, float y) {
+    const float x0 = static_cast<float>(area.x1);
+    const float y0 = static_cast<float>(area.y1);
+    const float x1 = static_cast<float>(area.x2 + 1);
+    const float y1 = static_cast<float>(area.y2 + 1);
+    const float r = clamped_radius(area, radius);
+    // Signed distance to the rounded rect's outline, negative inside.
+    const float qx = std::fabs(x - 0.5f * (x0 + x1)) - (0.5f * (x1 - x0) - r);
+    const float qy = std::fabs(y - 0.5f * (y0 + y1)) - (0.5f * (y1 - y0) - r);
+    const float ox = std::max(qx, 0.0f);
+    const float oy = std::max(qy, 0.0f);
+    const float d = std::sqrt(ox * ox + oy * oy) + std::min(std::max(qx, qy), 0.0f) - r;
+    return std::clamp(0.5f - d, 0.0f, 1.0f);
+}
+
 bool swatch_shape_contains(const lv_area_t& area, int32_t radius, float x, float y) {
     const float x0 = static_cast<float>(area.x1);
     const float y0 = static_cast<float>(area.y1);
@@ -660,16 +781,88 @@ std::vector<SwatchPoint> swatch_texture_points(const lv_area_t& area, int32_t ra
 // Drawing
 // ---------------------------------------------------------------------------
 
+SwatchCache::~SwatchCache() {
+    drop_texture();
+}
+
+void SwatchCache::drop_texture() {
+    if (texture_) {
+        if (lv_is_initialized()) {
+            lv_image_cache_drop(texture_);
+        }
+        helix::safe_draw_buf_destroy(texture_, "swatch");
+    }
+}
+
+const lv_draw_buf_t* SwatchCache::texture(int32_t w, int32_t h, int32_t radius,
+                                          SwatchFinish finish) {
+    if (texture_ && w == tex_w_ && h == tex_h_ && radius == tex_radius_ && finish == tex_finish_) {
+        return texture_;
+    }
+    drop_texture();
+    tex_w_ = w;
+    tex_h_ = h;
+    tex_radius_ = radius;
+    tex_finish_ = finish;
+    // LVGL's heap: on the ESP32 a buffer this size comes from PSRAM.
+    texture_ = lv_draw_buf_create(static_cast<uint32_t>(w), static_cast<uint32_t>(h),
+                                  LV_COLOR_FORMAT_ARGB8888, 0);
+    if (!texture_) {
+        spdlog::warn("[Swatch] no memory for a {}x{} finish texture", w, h);
+        return nullptr;
+    }
+    lv_draw_buf_clear(texture_, nullptr);
+    swatch_paint_finish_pixels(texture_, {0, 0, w - 1, h - 1}, radius, finish);
+    ++texture_builds_;
+    return texture_;
+}
+
+const std::vector<float>& SwatchCache::thresholds(const lv_area_t& area, int32_t radius, size_t n) {
+    const int32_t w = lv_area_get_width(&area);
+    const int32_t h = lv_area_get_height(&area);
+    if (w != thr_w_ || h != thr_h_ || radius != thr_radius_ || n != thr_n_) {
+        // The thresholds are fractions of the shape, so its position does not matter.
+        thresholds_ = swatch_split_thresholds({0, 0, w - 1, h - 1}, radius, n);
+        thr_w_ = w;
+        thr_h_ = h;
+        thr_radius_ = radius;
+        thr_n_ = n;
+    }
+    return thresholds_;
+}
+
+void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area, int32_t radius,
+                                SwatchFinish finish) {
+    if (!buf || buf->header.cf != LV_COLOR_FORMAT_ARGB8888) {
+        return;
+    }
+    const PixelTarget t{buf, area, radius};
+    switch (swatch_effective_finish(finish, lv_area_get_width(&area), lv_area_get_height(&area))) {
+    case SwatchFinish::Silk:
+        silk_pixels(t);
+        break;
+    case SwatchFinish::Marble:
+        marble_pixels(t);
+        break;
+    case SwatchFinish::Sparkle:
+        sparkle_pixels(t);
+        break;
+    case SwatchFinish::Matte:
+    case SwatchFinish::Plain:
+        break;
+    }
+}
+
 void draw_swatch(lv_layer_t* layer, const lv_area_t& area, const SwatchPaint& paint) {
-    if (!layer || paint.opa <= LV_OPA_MIN || lv_area_get_width(&area) <= 0 ||
-        lv_area_get_height(&area) <= 0) {
+    const int32_t w = lv_area_get_width(&area);
+    const int32_t h = lv_area_get_height(&area);
+    if (!layer || paint.opa <= LV_OPA_MIN || w <= 0 || h <= 0) {
         return;
     }
     if (!paint.gradient && paint.colors.empty()) {
         return;
     }
-    const SwatchFinish finish =
-        swatch_effective_finish(paint.finish, lv_area_get_width(&area), lv_area_get_height(&area));
+    const SwatchFinish finish = swatch_effective_finish(paint.finish, w, h);
     std::vector<lv_color_t> colors = paint.colors;
     if (finish == SwatchFinish::Matte) {
         for (auto& c : colors) {
@@ -685,38 +878,29 @@ void draw_swatch(lv_layer_t* layer, const lv_area_t& area, const SwatchPaint& pa
         dsc.bg_grad = *paint.gradient;
         dsc.bg_color = paint.gradient->stops[0].color;
         lv_draw_rect(layer, &dsc, &area);
+    } else if (colors.size() < 2) {
+        fill_shape(layer, area, paint.radius, colors[0], paint.opa);
+    } else if (paint.cache) {
+        fill_split(layer, area, paint.radius, colors,
+                   paint.cache->thresholds(area, paint.radius, colors.size()), paint.opa);
     } else {
-        if (colors.size() < 2) {
-            fill_shape(layer, area, paint.radius, colors[0], paint.opa);
-        } else {
-            fill_split(layer, area, paint.radius, colors, paint.opa);
+        fill_split(layer, area, paint.radius, colors,
+                   swatch_split_thresholds(area, paint.radius, colors.size()), paint.opa);
+    }
+
+    if (paint.cache && finish != SwatchFinish::Plain && finish != SwatchFinish::Matte) {
+        if (const lv_draw_buf_t* tex = paint.cache->texture(w, h, paint.radius, finish)) {
+            lv_draw_image_dsc_t dsc;
+            lv_draw_image_dsc_init(&dsc);
+            dsc.src = tex;
+            dsc.opa = paint.opa;
+            lv_draw_image(layer, &dsc, &area);
         }
     }
 
-    draw_swatch_finish(layer, area, paint.radius, finish, paint.opa);
-
     if (paint.edge && !paint.gradient &&
-        swatch_colors_need_edge(colors, {rgb_of(theme_manager_get_color("screen_bg")),
-                                         rgb_of(theme_manager_get_color("elevated_bg"))})) {
+        swatch_colors_need_edge(colors, swatch_edge_surfaces(paint.backdrop))) {
         draw_edge(layer, area, paint.radius, paint.opa);
-    }
-}
-
-void draw_swatch_finish(lv_layer_t* layer, const lv_area_t& area, int32_t radius,
-                        SwatchFinish finish, lv_opa_t opa) {
-    switch (swatch_effective_finish(finish, lv_area_get_width(&area), lv_area_get_height(&area))) {
-    case SwatchFinish::Silk:
-        draw_silk(layer, area, radius, opa);
-        break;
-    case SwatchFinish::Marble:
-        draw_marble(layer, area, radius, opa);
-        break;
-    case SwatchFinish::Sparkle:
-        draw_sparkle(layer, area, radius, opa);
-        break;
-    case SwatchFinish::Matte:
-    case SwatchFinish::Plain:
-        break;
     }
 }
 

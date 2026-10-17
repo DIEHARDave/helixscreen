@@ -11,9 +11,9 @@ draws its own.
 | Rule | What it means |
 |------|---------------|
 | Shape | A pure colour is a **circle**. A labelled chip (colour with text on it, the mapping row's `T0`) is a **rounded rect**. Colour preview **areas** (the colour pickers' previews) and the AMS sidebar's tall loaded bar stay rounded rects: they are areas, not swatches. Bands that are part of a larger chip (`filament_swatch`, `tool_switcher_band`) keep their own geometry. |
-| Edge | One rule: a swatch gets a `#border` edge when any of its colours has a WCAG contrast ratio under `SWATCH_EDGE_CONTRAST_RATIO` (1.75) against the theme's `screen_bg` or `elevated_bg`. It is judged at draw time from the live theme, so nothing republishes on a theme switch. No swatch carries a border of its own and no rule keys on dark mode. |
+| Edge | One rule: a swatch gets a `#border` edge when any of its colours has a WCAG contrast ratio under `SWATCH_EDGE_CONTRAST_RATIO` (1.75) against what it sits on: its nearest ancestor with an opaque background, judged at draw time, else the theme's `screen_bg` and `elevated_bg` (`swatch_edge_surfaces()`). Nothing republishes on a theme switch; the theme colours are cached per theme generation. No swatch carries a border of its own and no rule keys on dark mode. |
 | Selection | One mark: `color_swatch`'s inside ring (`selected_subject` + `index`). |
-| Multi-colour | A filament with two or more colours (`SlotInfo::multi_color_hexes`, Spoolman's `multi_color_hexes`) shows them everywhere its colour shows, as equal-area bands across the top-left to bottom-right diagonal, clipped to the shape. |
+| Multi-colour | A filament with two or more colours (`SlotInfo::multi_color_hexes`, Spoolman's `multi_color_hexes`) shows them everywhere its colour shows, as equal-area bands across the top-left to bottom-right diagonal, clipped to the shape. A lane spool repaints on `AmsState::get_slot_paint_subject()` (`SlotInfo::paint_key()`) as well as its colour, so a new split or finish under the same colour shows. |
 | Finish | Silk, matte, marble and sparkle come from the filament's names, never from a widget. A swatch with less area than a `SWATCH_FINISH_MIN_PX` (16 px) square cannot show a finish and paints plain; a long thin band or a spool body of the same short side keeps it. |
 
 ## Finishes
@@ -28,8 +28,8 @@ becomes a finish. It reads whole words, case-insensitively:
 | Marble | Marble, Granite, Stone | a fine speckle of dark and light flecks |
 | Sparkle | Sparkle, Glitter, Galaxy, Shimmer, Starlight | small four-pointed glints |
 
-A slot's finish is `SlotInfo::finish()`: the first of its material, product name, colour
-name and spool name that names one. `AvailableSlot::finish` carries it to the mapping
+A slot's finish is `SlotInfo::finish()`: the first of its material, product name and
+spool name that names one, never its colour name ("Stone Grey" is a plain grey). `AvailableSlot::finish` carries it to the mapping
 rows; `SpoolInfo::finish()` reads a Spoolman spool's material and filament name. Where a
 finish travels through a subject it is the finish's name (`filament_finish_name()`), read
 back by `filament_finish_of()`.
@@ -52,13 +52,19 @@ A click handler reads the tapped colour with `helix::ui::swatch_color_of(target)
 |------|------|
 | `apply_swatch_color(obj, rgb, multi_csv, finish)`, `apply_swatch_color(obj, slot)` | Paint an object (or a `color_swatch`/`color_dot` holder's disc) from data. The object keeps its size and radius. |
 | `clear_swatch_color(obj)` | An empty slot: paint nothing, keep the object's own (warning) border. |
-| `draw_swatch(layer, area, paint)` with `swatch_paint_for(...)` | Canvas and draw-task code: legend dots, anything drawn in a DRAW_MAIN callback. |
-| `draw_swatch_finish(layer, area, radius, finish)` | An illustration laying the finish over filament it draws itself. |
+| `draw_swatch(layer, area, paint)` with `swatch_paint_for(...)` | Draw-task code: the temp-graph legend dot. A finish needs `paint.cache`, a `SwatchCache` the caller keeps. |
+| `swatch_paint_finish_pixels(buf, area, radius, finish)` | An illustration writing the finish over filament it draws into its own ARGB8888 buffer. |
 | `spool_canvas_set_filament(canvas, slot)` | The 3D spool: the body splits into the same bands, matte mutes it, the other finishes texture it. The flat lane spool's filament disc paints through `apply_swatch_color`. |
 
 The painter hangs a `LV_EVENT_DRAW_MAIN_BEGIN` hook on the object, so a style border (a
 warning ring, the selection ring) draws over the fill. It forces the style background
 transparent and applies the object's `opa`.
+
+A redraw is at most three draw tasks: the fill (one rounded rect, a gradient for a split),
+one blit of the finish texture and the edge. The texture (silk highlight, marble flecks,
+sparkle glints) is rendered with plain pixel writes into an image the object's
+`SwatchCache` owns, once per size, radius and finish, and freed with the object; the split
+thresholds are cached the same way.
 
 ### The pure decisions
 
