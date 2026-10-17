@@ -171,14 +171,18 @@ float surface_level(const DropShape& s, float fraction) {
 }
 
 float wave_y(const DropShape& s, float level, float amplitude, float phase, float x) {
-    const float wavelength = s.r;
-    if (wavelength <= 0.0f)
+    if (s.r <= 0.0f)
         return level;
-    return level + amplitude * std::sin(kTwoPi * (x - s.cx) / wavelength + phase);
+    // Two crests a drop's width, under a swell one drop's width long that lifts
+    // one and lowers the other, so they never stand level like a sine.
+    // Whole-number multiples of the phase keep the shape seamless as it wraps.
+    const float t = kTwoPi * (x - s.cx) / (2.0f * s.r);
+    return level + amplitude * (0.65f * std::sin(2.0f * t + 2.0f * phase) +
+                                0.35f * std::sin(t + phase - 0.785f));
 }
 
 float back_phase(float front_phase) {
-    return 3.6f - 0.8f * front_phase;
+    return 3.6f - front_phase;
 }
 
 namespace {

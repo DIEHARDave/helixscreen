@@ -59,8 +59,9 @@ float fill_fraction(int humidity_x10);
 /// drop's bottom to its tip.
 float surface_level(const DropShape& s, float fraction);
 
-/// The wave's y at column @p x: @p level displaced by a sine two crests to the
-/// drop's width.
+/// The wave's y at column @p x: @p level displaced by two crests to the drop's
+/// width, one higher than the other, repeating every drop width and staying
+/// within @p amplitude of the level.
 float wave_y(const DropShape& s, float level, float amplitude, float phase, float x);
 
 /// Phase the back wave runs at for a given front phase: about half a wave out,

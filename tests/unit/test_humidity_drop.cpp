@@ -165,12 +165,17 @@ TEST_CASE("humidity_drop: the wave stays within its amplitude and repeats each d
         const float y = wave_y(s, level, a, 0.3f, x);
         CHECK(y >= level - a - 1e-4f);
         CHECK(y <= level + a + 1e-4f);
-        CHECK(wave_y(s, level, a, 0.3f, x + s.r) == Catch::Approx(y).margin(1e-3));
+        CHECK(wave_y(s, level, a, 0.3f, x + 2.0f * s.r) == Catch::Approx(y).margin(1e-3));
+        // Seamless as the phase wraps.
+        CHECK(wave_y(s, level, a, 0.3f + 6.2831853f, x) == Catch::Approx(y).margin(1e-3));
     }
     // The phase moves it: some column reads differently a quarter turn later.
     CHECK(wave_y(s, level, a, 0.0f, s.cx) != Catch::Approx(wave_y(s, level, a, 1.57f, s.cx)));
     CHECK(back_phase(0.0f) != Catch::Approx(0.0f));
     CHECK(back_phase(1.0f) - back_phase(0.0f) < 0.0f);
+    // The back wave wraps with the front, with no jump.
+    CHECK(wave_y(s, level, a, back_phase(6.2831853f), s.cx) ==
+          Catch::Approx(wave_y(s, level, a, back_phase(0.0f), s.cx)).margin(1e-3));
 }
 
 TEST_CASE("humidity_drop: the swell is full mid-drop and calms at both ends", "[humidity_drop]") {
@@ -191,15 +196,21 @@ TEST_CASE("humidity_drop: a large drop swells; an icon keeps a readable level", 
     const DropShape icon = fit_drop(24, 24);
     CHECK(wave_amplitude(big) / big.r > 0.15f);
     CHECK(wave_amplitude(icon) / icon.r < 0.15f);
-    // Two crests across the drop's width.
+    // Two crests across the drop's width, one clearly higher than the other.
+    std::vector<float> crest_y;
     int crests = 0;
     for (float x = big.cx - big.r; x < big.cx + big.r; x += 0.5f) {
         const float y0 = wave_y(big, 50.0f, 4.0f, 0.0f, x - 0.5f);
         const float y1 = wave_y(big, 50.0f, 4.0f, 0.0f, x);
         const float y2 = wave_y(big, 50.0f, 4.0f, 0.0f, x + 0.5f);
-        crests += (y1 < y0 && y1 <= y2) ? 1 : 0;
+        if (y1 < y0 && y1 <= y2) {
+            ++crests;
+            crest_y.push_back(y1);
+        }
     }
     CHECK(crests == 2);
+    REQUIRE(crest_y.size() == 2);
+    CHECK(std::fabs(crest_y[0] - crest_y[1]) > 0.25f * 4.0f);
 }
 
 namespace {
