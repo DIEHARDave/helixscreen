@@ -1654,6 +1654,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "the maze's cache lookup reads, never writes",
     CHECK(fs::last_write_time(path) == old);
     CHECK(helix::ui::maze_cached_thumbnail("maze-test/not-cached.png").empty());
     CHECK(helix::ui::maze_cached_thumbnail("").empty());
+    // A card image's own LVGL path stands for itself while its file is there.
+    CHECK(helix::ui::maze_cached_thumbnail("A:" + path) == "A:" + path);
+    CHECK(helix::ui::maze_cached_thumbnail("A:" + path + ".gone").empty());
     fs::remove(path);
 }
 
@@ -1669,8 +1672,11 @@ TEST_CASE_METHOD(LVGLTestFixture, "print select lists the printer files' thumbna
     files[3].filename = "dir";
     files[3].is_dir = true;
     files[3].original_thumbnail_url = "dir.png";
+    files[2].thumbnail_path = "A:/cache/c_164x164_ARGB8888.bin";
     PrintSelectPanelTestAccess::set_files(panel, std::move(files));
-    CHECK(panel.printer_thumbnail_keys() == std::vector<std::string>{"a.png", "sub/b.png"});
+    using Keys = std::vector<std::vector<std::string>>;
+    CHECK(panel.printer_thumbnail_keys() ==
+          Keys{{"a.png"}, {"A:/cache/c_164x164_ARGB8888.bin", "sub/b.png"}});
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

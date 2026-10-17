@@ -68,8 +68,9 @@ std::vector<std::string> mix_maze_art(const MazeArtSources& sources, size_t max)
 /**
  * @brief The LVGL path of a thumbnail already in the local cache, or empty
  *
- * `key` is a thumbnail path from the gcodes root. Prefers the pre-scaled card copy, then the
- * full PNG. Reads only: it never fetches, and never touches an entry's age or freshness.
+ * `key` is a thumbnail path from the gcodes root, for which it prefers the pre-scaled card
+ * copy, then the full PNG; or an LVGL path to a file already cached, returned while the file
+ * exists. Reads only: it never fetches, and never touches an entry's age or freshness.
  */
 std::string maze_cached_thumbnail(const std::string& key);
 

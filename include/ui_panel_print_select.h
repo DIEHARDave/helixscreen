@@ -321,9 +321,10 @@ class PrintSelectPanel : public PanelBase {
      */
     void toggle_view();
 
-    /// The thumbnail path from the gcodes root of each listed printer file that has one, in
-    /// list order; empty while the list shows a USB stick.
-    [[nodiscard]] std::vector<std::string> printer_thumbnail_keys() const;
+    /// Each listed printer file's thumbnail, in list order, best first: the card image already
+    /// loaded for it (an LVGL path), then its path from the gcodes root. Files with neither are
+    /// left out, and so is everything while the list shows a USB stick.
+    [[nodiscard]] std::vector<std::vector<std::string>> printer_thumbnail_keys() const;
 
     /**
      * @brief Handle Printer source button click

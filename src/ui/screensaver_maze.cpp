@@ -220,6 +220,9 @@ std::string maze_cached_thumbnail(const std::string& key) {
     if (key.empty()) {
         return {};
     }
+    if (ThumbnailCache::is_lvgl_path(key)) {
+        return helix::fs::exists(key.substr(2)) ? key : std::string();
+    }
     // Two existence checks and nothing else: ThumbnailCache::get_if_cached() would delete a
     // stale entry and bump its age, and fetch() would download.
     const std::string cache_id = helix::thumbnail_cache_id(helix::ThumbnailSource::Moonraker, key);
@@ -239,15 +242,10 @@ MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng) {
                                           maze_cached_thumbnail, MAZE_ART_RECENT, 20);
     }
     if (PrintSelectPanel* panel = find_print_select_panel()) {
-        std::vector<std::string> keys = panel->printer_thumbnail_keys();
-        for (int i = static_cast<int>(keys.size()) - 1; i > 0; i--) {
-            std::swap(keys[static_cast<size_t>(i)],
-                      keys[static_cast<size_t>(screensaver::random_below(rng, i + 1))]);
-        }
-        std::vector<MazeArtCandidate> candidates;
-        candidates.reserve(keys.size());
-        for (std::string& key : keys) {
-            candidates.push_back({std::move(key)});
+        std::vector<MazeArtCandidate> candidates = panel->printer_thumbnail_keys();
+        for (int i = static_cast<int>(candidates.size()) - 1; i > 0; i--) {
+            std::swap(candidates[static_cast<size_t>(i)],
+                      candidates[static_cast<size_t>(screensaver::random_below(rng, i + 1))]);
         }
         sources.files = cached_art_paths(candidates, maze_cached_thumbnail, MAZE_ART_FILES,
                                          MAZE_ART_FILE_PROBES, sources.recent);
