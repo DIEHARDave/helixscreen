@@ -2401,6 +2401,16 @@ AMS panel env badges          AmsEnvironmentOverlay (Tabs / Single)
 > `EnvironmentZone` pairs one `EnvironmentData` with one `DryerInfo`, which is what lets a box
 > report humidity with no heater behind it.
 
+> **Per-slot drying state.** A dryer that heats gates one by one (`supports_gate_selection`)
+> also reports each gate's part in the cycle as `SlotInfo::drying_state`, a
+> `helix::printer::ZoneDryingState` (Idle / Queued / Active / Complete / Cancelled; the enum
+> lives in `include/ams_types.h`). It is Idle on every other dryer. `AmsState` publishes it per
+> slot as `ams_slot_<n>_drying` (primary backend only), the slot's drying badge binds to it,
+> and the generic zone walk (`AmsBackend::get_environment_zones`) uses it as a per-slot zone's
+> state instead of the unit's. Happy Hare fills it from the per-gate `drying_state` list; a
+> list shorter than the gate count leaves the remaining slots Idle. The capability flags are
+> per unit: ask `get_dryer_info(unit)`, never assume one unit's answer holds for another.
+
 `AmsEnvironmentOverlay` shows a **set of zones** with one selected, not a unit. It owns its own
 `ams_env_overlay_humidity_visible` subject rather than binding the unit cards'
 `ams_env_ind_<i>_humidity_visible`: both the humidity readout and the Material Comfort strip gate
