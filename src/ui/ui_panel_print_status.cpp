@@ -2771,29 +2771,6 @@ void PrintStatusPanel::on_preprint_elapsed_changed(int seconds) {
     progress_text_.show_elapsed(lifecycle_.preprint_elapsed_seconds());
 }
 
-void PrintStatusPanel::update_view_toggle_position(bool objects_visible) {
-    if (!overlay_root_)
-        return;
-    // Resolve the card by name, not by walking up from the viewer: the previews
-    // live one level down inside preview_clear_area, while both corner buttons
-    // are direct children of thumbnail_section.
-    lv_obj_t* card = helix::ui::find_required(overlay_root_, "thumbnail_section", get_name());
-    if (!card)
-        return;
-    lv_obj_t* btn = helix::ui::find_required(card, "btn_view_toggle", get_name());
-    if (!btn)
-        return;
-
-    int32_t space_md = theme_manager_get_spacing("space_md");
-    if (objects_visible) {
-        lv_obj_t* btn_objects = helix::ui::find_required(card, "btn_objects", get_name());
-        int32_t obj_w = btn_objects ? lv_obj_get_width(btn_objects) : 36;
-        lv_obj_set_style_translate_x(btn, space_md + obj_w + space_md, LV_PART_MAIN);
-    } else {
-        lv_obj_set_style_translate_x(btn, space_md, LV_PART_MAIN);
-    }
-}
-
 void PrintStatusPanel::refresh_exclude_objects_available() {
     // Klipper reports defined objects only from the G-code file it is
     // printing, so a print is never a 3MF.
@@ -2804,7 +2781,6 @@ void PrintStatusPanel::refresh_exclude_objects_available() {
                               : 0;
     lv_subject_set_int(&exclude_objects_available_subject_, available);
     update_objects_text();
-    update_view_toggle_position(available != 0);
 }
 
 void PrintStatusPanel::update_objects_text() {
