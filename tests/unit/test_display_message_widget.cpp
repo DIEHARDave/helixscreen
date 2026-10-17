@@ -14,6 +14,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/scoped_breakpoint.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "panel_widget_manager.h"
 #include "panel_widget_registry.h"
@@ -120,6 +121,8 @@ TEST_CASE("display_message widget is registered as an opt-in home widget",
     REQUIRE(def != nullptr);
     CHECK(def->factory != nullptr);
     CHECK_FALSE(def->default_enabled);
+    // The verdict subjects and the live-tile owner are module-level: one tile at a time.
+    CHECK_FALSE(def->multi_instance);
     // A half row is a legal status-line height.
     CHECK(def->supports_half_row);
     CHECK(def->min_rowspan == 1);
@@ -135,6 +138,30 @@ TEST_CASE_METHOD(DisplayMessageFixture, "display_message: no message shows the p
 
     set_message("");
     CHECK_FALSE(hidden(h.child("display_message_empty")));
+    CHECK(hidden(h.child("display_message_empty_line")));
+
+    set_message("Homing...");
+    CHECK(hidden(h.child("display_message_empty")));
+    CHECK(hidden(h.child("display_message_empty_line")));
+}
+
+TEST_CASE_METHOD(DisplayMessageFixture,
+                 "display_message: the placeholder on a one-line tile at 480x272 is one line",
+                 "[display_message][widget_size]") {
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Micro);
+    PanelWidgetHarness<DisplayMessageWidget> h(test_screen());
+    // One cell by half a row at 480x272.
+    h.resize(2, 1, 70, 32);
+    REQUIRE(subject_int("display_message_widget_multiline") == 0);
+
+    lv_obj_t* placeholder = h.child("display_message_empty_line");
+    REQUIRE(placeholder != nullptr);
+    CHECK_FALSE(hidden(placeholder));
+    CHECK(hidden(h.child("display_message_empty")));
+    CHECK(label_text(placeholder) == "No message");
+    // Scrolls, or clips where the animations setting is off; never cut to "No mess...".
+    const lv_label_long_mode_t mode = lv_label_get_long_mode(placeholder);
+    CHECK((mode == LV_LABEL_LONG_MODE_SCROLL_CIRCULAR || mode == LV_LABEL_LONG_MODE_CLIP));
 }
 
 TEST_CASE_METHOD(DisplayMessageFixture, "display_message: a half-row tile shows one scrolling line",

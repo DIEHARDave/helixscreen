@@ -19,15 +19,21 @@
                  width="100%" bind_text="display_message" long_mode="scroll_circular" hidden="true">
         <bind_flag_if cond="display_message_visible eq 0 or display_message_widget_multiline ne 0" flag="hidden"/>
       </text_body>
-      <!-- A declared max height is what keeps a dots label multi-line, here and on the
-           placeholder. -->
+      <!-- A declared max height is what keeps a dots label multi-line. -->
       <text_body name="display_message_wrapped"
                  width="100%" bind_text="display_message" long_mode="dots" style_max_height="100%" hidden="true">
         <bind_flag_if cond="display_message_visible eq 0 or display_message_widget_multiline eq 0" flag="hidden"/>
       </text_body>
+      <!-- The placeholder follows the same verdict as the message: one scrolling line,
+           or wrapped text. -->
+      <text_body name="display_message_empty_line"
+                 width="100%" text="No message" long_mode="scroll_circular" style_text_color="#text_muted" hidden="true">
+        <bind_flag_if cond="display_message_visible ne 0 or display_message_widget_multiline ne 0" flag="hidden"/>
+      </text_body>
       <text_body name="display_message_empty"
-                 width="100%" text="No message" long_mode="dots" style_max_height="100%" style_text_color="#text_muted">
-        <bind_flag_if_not_eq subject="display_message_visible" flag="hidden" ref_value="0"/>
+                 width="100%" text="No message" long_mode="dots" style_max_height="100%" style_text_color="#text_muted"
+                 hidden="true">
+        <bind_flag_if cond="display_message_visible ne 0 or display_message_widget_multiline eq 0" flag="hidden"/>
       </text_body>
     </lv_obj>
   </view>
