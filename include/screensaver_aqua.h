@@ -13,6 +13,7 @@
 #include <functional>
 #include <lvgl.h>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace helix::ui {
@@ -58,11 +59,18 @@ class AquaScreensaver : public SaverBase {
     friend class AquaScreensaverTestAccess;
 
     ClockInput read_input() const;
+    /// The date or print line for the current reading.
+    const std::string& current_text();
 
     InputSource source_;
     ClockState clock_;
     AquaSim sim_;
     SaverLabel line_;
+    /// The line's text and the reading it was built for, rebuilt only when that changes.
+    std::string text_;
+    ClockReading text_for_;
+    bool text_built_ = false;
+    std::vector<DirtyRect> under_;
 };
 
 } // namespace helix::ui

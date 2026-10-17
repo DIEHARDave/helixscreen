@@ -4,6 +4,7 @@
 
 #include "screensaver_highfly_sim.h"
 
+#include "screensaver_buffer.h"
 #include "screensaver_fast_math.h"
 #include "screensaver_motion.h"
 #include "screensaver_pixel_writer.h"
@@ -14,6 +15,9 @@
 
 namespace helix::ui {
 
+using screensaver::random_between;
+using screensaver::random_normal;
+using screensaver::smoothstep01;
 using screensaver::unit_random;
 
 namespace {
@@ -79,44 +83,17 @@ constexpr float FLY_FACE = 10.0f;
 constexpr size_t HISTORY_CAP = 64;
 /// Rows the deck may rise in a frame: the band repaints this far above last frame's top.
 constexpr int32_t DECK_RISE = 3;
-constexpr size_t BOX_CAP = 8;
-
-float smooth01(float x) {
-    x = std::clamp(x, 0.0f, 1.0f);
-    return x * x * (3.0f - 2.0f * x);
-}
-
-float uniform(std::minstd_rand& rng, float lo, float hi) {
-    return lo + (hi - lo) * unit_random(rng);
-}
-
-float normal(std::minstd_rand& rng) {
-    const float u1 = std::max(unit_random(rng), 1e-7f);
-    const float u2 = unit_random(rng);
-    return std::sqrt(-2.0f * std::log(u1)) * std::cos(TWO_PI * u2);
-}
-
-template <typename T> void free_vector(std::vector<T>& v) {
-    std::vector<T>().swap(v);
-}
-
-template <typename T> size_t bytes_of(const std::vector<T>& v) {
-    return v.capacity() * sizeof(T);
-}
-
-Rgb lerp(Rgb a, Rgb b, float t) {
-    return {static_cast<uint8_t>(std::clamp(a.r + (b.r - a.r) * t, 0.0f, 255.0f) + 0.5f),
-            static_cast<uint8_t>(std::clamp(a.g + (b.g - a.g) * t, 0.0f, 255.0f) + 0.5f),
-            static_cast<uint8_t>(std::clamp(a.b + (b.b - a.b) * t, 0.0f, 255.0f) + 0.5f)};
-}
+/// Boxes above the band a frame repaints: the clock where it is and was, two towers and the
+/// cloud ahead, this frame and last, with room to spare. Past it boxes merge, never drop.
+constexpr size_t BOX_CAP = 12;
 
 /// Cloud shade 0-1 to colour: shadow blue to midtone, then midtone to sunlit white.
 Rgb shade_to_rgb(float s) {
     s = std::clamp(s, 0.0f, 1.0f);
     if (s < 0.55f) {
-        return lerp(C_SHADOW, C_MIDTONE, s / 0.55f);
+        return mix_rgb(C_SHADOW, C_MIDTONE, s / 0.55f);
     }
-    return lerp(C_MIDTONE, C_LIT, (s - 0.55f) / 0.45f);
+    return mix_rgb(C_MIDTONE, C_LIT, (s - 0.55f) / 0.45f);
 }
 
 // ---------- Grid helpers ----------
@@ -185,7 +162,7 @@ void fbm(std::minstd_rand& rng, int32_t h, int32_t w, bool wrap_x,
         const int32_t gh = std::max(2, cells * h / w + 2);
         g.resize(static_cast<size_t>(gh) * (gw + 1));
         for (float& v : g) {
-            v = normal(rng);
+            v = random_normal(rng);
         }
         if (wrap_x) {
             for (int32_t y = 0; y < gh; y++) {
@@ -196,13 +173,13 @@ void fbm(std::minstd_rand& rng, int32_t h, int32_t w, bool wrap_x,
             const float fy = static_cast<float>(gh - 1.001) * static_cast<float>(y) /
                              static_cast<float>(std::max(1, h - 1));
             const auto y0 = static_cast<int32_t>(fy);
-            const float ty = smooth01(fy - static_cast<float>(y0));
+            const float ty = smoothstep01(fy - static_cast<float>(y0));
             for (int32_t x = 0; x < w; x++) {
                 const float fx = wrap_x ? static_cast<float>(gw) * static_cast<float>(x) / w
                                         : static_cast<float>(gw) * static_cast<float>(x) /
                                               static_cast<float>(std::max(1, w - 1));
                 const auto x0 = std::min(static_cast<int32_t>(fx), gw - 1);
-                const float tx = smooth01(fx - static_cast<float>(x0));
+                const float tx = smoothstep01(fx - static_cast<float>(x0));
                 const size_t r0 = static_cast<size_t>(y0) * (gw + 1);
                 const size_t r1 = r0 + static_cast<size_t>(gw + 1);
                 const float a = g[r0 + x0] + (g[r0 + x0 + 1] - g[r0 + x0]) * tx;
@@ -302,15 +279,15 @@ void make_band(std::minstd_rand& rng, HighFlyTexture& out) {
     std::vector<float> d(static_cast<size_t>(w) * h, 0.0f);
     float x = 0.0f;
     while (x < static_cast<float>(w)) {
-        const float r = uniform(rng, 14.0f, 30.0f);
-        const float top = uniform(rng, 10.0f, 50.0f);
+        const float r = random_between(rng, 14.0f, 30.0f);
+        const float top = random_between(rng, 10.0f, 50.0f);
         add_blob(d, w, h, x, top + r, r, true, 1.0f);
         for (int i = 0; i < 4; i++) {
-            const float sx = x + uniform(rng, -r, r);
-            const float sy = top + uniform(rng, 0.0f, r);
-            add_blob(d, w, h, sx, sy, r * uniform(rng, 0.3f, 0.55f), true, 0.8f);
+            const float sx = x + random_between(rng, -r, r);
+            const float sy = top + random_between(rng, 0.0f, r);
+            add_blob(d, w, h, sx, sy, r * random_between(rng, 0.3f, 0.55f), true, 0.8f);
         }
-        x += uniform(rng, 18.0f, 40.0f);
+        x += random_between(rng, 18.0f, 40.0f);
     }
     for (int32_t y = 55; y < h; y++) {
         const float add = 2.5f * static_cast<float>(y - 55) / static_cast<float>(h - 56);
@@ -328,10 +305,10 @@ void make_layer(std::minstd_rand& rng, HighFlyTexture& out) {
     const int32_t h = 128;
     std::vector<float> d(static_cast<size_t>(w) * h, 0.0f);
     for (int i = 0; i < 70; i++) {
-        const float r = uniform(rng, 8.0f, 26.0f);
-        const float cx = uniform(rng, 0.0f, static_cast<float>(w));
-        const float cy = uniform(rng, 30.0f, 115.0f);
-        add_blob(d, w, h, cx, cy, r, true, uniform(rng, 0.5f, 1.0f));
+        const float r = random_between(rng, 8.0f, 26.0f);
+        const float cx = random_between(rng, 0.0f, static_cast<float>(w));
+        const float cy = random_between(rng, 30.0f, 115.0f);
+        add_blob(d, w, h, cx, cy, r, true, random_between(rng, 0.5f, 1.0f));
     }
     for (int32_t y = 80; y < h; y++) {
         const float add = 2.0f * static_cast<float>(y - 80) / static_cast<float>(h - 81);
@@ -353,9 +330,9 @@ Rgb tower_rgb(float s) {
     constexpr Rgb MID{196, 218, 236};
     s = std::clamp(s, 0.0f, 1.0f);
     if (s < 0.5f) {
-        return lerp(SHADE, MID, s / 0.5f);
+        return mix_rgb(SHADE, MID, s / 0.5f);
     }
-    return lerp(MID, C_LIT, (s - 0.5f) / 0.5f);
+    return mix_rgb(MID, C_LIT, (s - 0.5f) / 0.5f);
 }
 
 /// A towering cumulus lit from above and a little in front: each lobe takes Lambert light on a
@@ -429,24 +406,24 @@ void make_tower(std::minstd_rand& rng, HighFlyTexture& out) {
     for (int i = 0; i < 12; i++) {
         const float t = static_cast<float>(i) / 11.0f; // 0 base .. 1 crown
         const float y = static_cast<float>(h) - 45.0f - t * static_cast<float>(h - 110);
-        const float rad = 60.0f * (1.0f - 0.35f * t) * uniform(rng, 0.85f, 1.1f);
-        drift += uniform(rng, -8.0f, 8.0f);
+        const float rad = 60.0f * (1.0f - 0.35f * t) * random_between(rng, 0.85f, 1.1f);
+        drift += random_between(rng, -8.0f, 8.0f);
         const float xo = cx + std::clamp(drift, -20.0f, 20.0f);
         add_blob(d, w, h, xo, y, rad * 0.75f, false, 1.2f);
         const int lobes = 4 + static_cast<int>(unit_random(rng) * 3.0f);
         for (int k = 0; k < lobes; k++) {
-            const float a = uniform(rng, PI * 1.0f, PI * 2.0f);
+            const float a = random_between(rng, PI * 1.0f, PI * 2.0f);
             add_blob(d, w, h, xo + std::cos(a) * rad * 0.7f, y + std::sin(a) * rad * 0.5f,
-                     rad * uniform(rng, 0.30f, 0.45f), false, 0.9f);
+                     rad * random_between(rng, 0.30f, 0.45f), false, 0.9f);
         }
     }
     // The crown: a dome with a few lobes of its own.
     const float crown_y = 70.0f;
     add_blob(d, w, h, cx + drift * 0.5f, crown_y, 34.0f, false, 1.1f);
     for (int k = 0; k < 5; k++) {
-        const float a = uniform(rng, PI * 1.05f, PI * 1.95f);
+        const float a = random_between(rng, PI * 1.05f, PI * 1.95f);
         add_blob(d, w, h, cx + drift * 0.5f + std::cos(a) * 30.0f, crown_y + std::sin(a) * 18.0f,
-                 uniform(rng, 12.0f, 18.0f), false, 0.9f);
+                 random_between(rng, 12.0f, 18.0f), false, 0.9f);
     }
     for (int32_t y = h - 50; y < h; y++) {
         const float add = 2.0f * static_cast<float>(y - (h - 50)) / 49.0f;
@@ -510,24 +487,24 @@ void build_highfly_field(std::minstd_rand& rng, HighFlyField& out) {
     const auto fN = static_cast<float>(N);
     // Big billows: sphere centres below the floor, so the caps are wide domes.
     for (int i = 0; i < 30; i++) {
-        const float cx = uniform(rng, 0.0f, fN);
-        const float cy = uniform(rng, 0.0f, fN);
-        const float r = uniform(rng, 18.0f, 34.0f);
-        splat(cx, cy, r, uniform(rng, -16.0f, 8.0f));
+        const float cx = random_between(rng, 0.0f, fN);
+        const float cy = random_between(rng, 0.0f, fN);
+        const float r = random_between(rng, 18.0f, 34.0f);
+        splat(cx, cy, r, random_between(rng, -16.0f, 8.0f));
     }
     // Lumps riding on the billows.
     for (int i = 0; i < 170; i++) {
-        const float cx = uniform(rng, 0.0f, fN);
-        const float cy = uniform(rng, 0.0f, fN);
-        const float r = uniform(rng, 8.0f, 16.0f);
-        splat(cx, cy, r, height_at(cx, cy) - r * uniform(rng, 0.55f, 0.85f));
+        const float cx = random_between(rng, 0.0f, fN);
+        const float cy = random_between(rng, 0.0f, fN);
+        const float r = random_between(rng, 8.0f, 16.0f);
+        splat(cx, cy, r, height_at(cx, cy) - r * random_between(rng, 0.55f, 0.85f));
     }
     // Cauliflower.
     for (int i = 0; i < 1500; i++) {
-        const float cx = uniform(rng, 0.0f, fN);
-        const float cy = uniform(rng, 0.0f, fN);
-        const float r = uniform(rng, 2.5f, 5.5f);
-        splat(cx, cy, r, height_at(cx, cy) - r * uniform(rng, 0.5f, 0.8f));
+        const float cx = random_between(rng, 0.0f, fN);
+        const float cy = random_between(rng, 0.0f, fN);
+        const float r = random_between(rng, 2.5f, 5.5f);
+        splat(cx, cy, r, height_at(cx, cy) - r * random_between(rng, 0.5f, 0.8f));
     }
     // Noise, stronger where the cloud is thicker.
     std::vector<float> fb(hf.size(), 0.0f);
@@ -536,7 +513,7 @@ void build_highfly_field(std::minstd_rand& rng, HighFlyField& out) {
          {std::pair<int32_t, float>{16, 1.0f}, {32, 0.5f}, {64, 0.25f}}) {
         std::vector<float> coarse(static_cast<size_t>(cells) * cells);
         for (float& v : coarse) {
-            v = normal(rng);
+            v = random_normal(rng);
         }
         const int32_t block = N / cells;
         for (int32_t y = 0; y < N; y++) {
@@ -582,7 +559,7 @@ void build_highfly_field(std::minstd_rand& rng, HighFlyField& out) {
     box_blur(blur2, N, N, 2, true, true, tmp);
     std::vector<float> noise(hf.size());
     for (float& v : noise) {
-        v = normal(rng);
+        v = random_normal(rng);
     }
     box_blur(noise, N, N, 1, true, true, tmp);
     const float noise_sd = stddev(noise);
@@ -622,17 +599,21 @@ float highfly_whiteout(float since_start_s) {
         return 0.0f;
     }
     if (since_start_s < HIGHFLY_FLY_IN_S) {
-        return smooth01(since_start_s / HIGHFLY_FLY_IN_S);
+        return smoothstep01(since_start_s / HIGHFLY_FLY_IN_S);
     }
     const float hold_end = HIGHFLY_FLY_IN_S + HIGHFLY_FLY_HOLD_S;
     if (since_start_s < hold_end) {
         return 1.0f;
     }
-    return 1.0f - smooth01((since_start_s - hold_end) / HIGHFLY_FLY_OUT_S);
+    return 1.0f - smoothstep01((since_start_s - hold_end) / HIGHFLY_FLY_OUT_S);
 }
 
-Rgb highfly_inside(Rgb scene, float amt) {
-    return lerp(scene, INSIDE, std::clamp(amt, 0.0f, 1.0f) * HIGHFLY_WHITEOUT_MAX);
+Rgb highfly_inside(Rgb scene, float amt, float wisp, float most) {
+    const float k = std::clamp(amt, 0.0f, 1.0f) * HIGHFLY_WHITEOUT_MAX;
+    // What shows of the scene after both: (1 - k)(1 - wisp), held at 1 - most or more.
+    const float wisp_most = std::max(0.0f, 1.0f - (1.0f - most) / (1.0f - k));
+    const float a = std::clamp(wisp, 0.0f, std::min(1.0f, wisp_most));
+    return mix_rgb(mix_rgb(scene, INSIDE, k), C_LIT, a);
 }
 
 float highfly_layer_visibility(float deck_z, float layer_z) {
@@ -698,11 +679,7 @@ HighFlyClockLayout layout_highfly_clock(int32_t w, int32_t h, int32_t dx, int32_
 namespace {
 
 void highfly_drift_range(int32_t w, int32_t h, int32_t& max_dx, int32_t& max_dy) {
-    const HighFlyClockLayout l = layout_highfly_clock(w, h, 0, 0);
-    const int32_t room_x = std::min(l.bounds.x1, w - 1 - l.bounds.x2);
-    const int32_t room_y = std::min(l.bounds.y1, h - 1 - l.bounds.y2);
-    max_dx = std::max(0, std::min(room_x, std::max(4, w / 25)));
-    max_dy = std::max(0, std::min(room_y, std::max(4, h / 25)));
+    clock_drift_range(layout_highfly_clock(w, h, 0, 0).bounds, w, h, max_dx, max_dy);
 }
 
 bool same_face(const ClockReading& a, const ClockReading& b) {
@@ -724,7 +701,7 @@ class HighFlySim::Scene : public HeightfieldScene {
         const float* hf = s.field_.height.data();
         const float* sh = s.field_.shade.data();
         const Rgb* lut = &s.slice_lut_[index * 256];
-        const float wy = (-s.t_ * HIGHFLY_SPEED - slice.z) * HIGHFLY_TEXELS_PER_UNIT;
+        const float wy = -s.deck_texels_ - slice.z * HIGHFLY_TEXELS_PER_UNIT;
         const float wy_floor = std::floor(wy);
         const float fv = wy - wy_floor;
         const int32_t v0 = static_cast<int32_t>(static_cast<int64_t>(wy_floor) & (N - 1));
@@ -759,7 +736,8 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
                       const ClockReading& reading) {
     w_ = static_cast<int32_t>(frame.w);
     h_ = static_cast<int32_t>(frame.h);
-    t_ = 0.0f;
+    t_ = 0.0;
+    deck_texels_ = 0.0f;
     elapsed_ms_ = 0;
     build_highfly_field(rng, field_);
     make_band(rng, band_);
@@ -790,14 +768,16 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     next_variant_ = 0;
     next_left_ = unit_random(rng) < 0.5f;
     // One tower already up when the run starts, part way in.
-    spawn_tower(towers_[0], -uniform(rng, 7.0f, 17.0f), rng);
-    next_tower_at_ = uniform(rng, 5.0f, 9.0f);
+    spawn_tower(towers_[0], -random_between(rng, 7.0f, 17.0f), rng);
+    next_tower_at_ = random_between(rng, 5.0f, 9.0f);
     next_tower_s_ = next_tower_at_;
-    fly_start_s_ = uniform(rng, HIGHFLY_FLY_MIN_S, HIGHFLY_FLY_MAX_S);
+    fly_start_s_ = random_between(rng, HIGHFLY_FLY_MIN_S, HIGHFLY_FLY_MAX_S);
     next_fly_s_ = fly_start_s_;
 
     level_ = 0;
-    apply_view();
+    baked_w_ = 0;
+    baked_h_ = 0;
+    apply_view(false);
     level_ = std::min(level, HIGHFLY_LEVEL_COUNT - 1);
     apply_view();
     drift_x_ = 0;
@@ -811,7 +791,7 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     shown_ = reading;
 }
 
-void HighFlySim::apply_view() {
+void HighFlySim::apply_view(bool bake) {
     const HighFlyLevel& lv = HIGHFLY_LEVELS[level_];
     scale_ = std::max<int32_t>(1, lv.scale);
     iw_ = (w_ + scale_ - 1) / scale_;
@@ -846,8 +826,8 @@ void HighFlySim::apply_view() {
         const float near = NEAR_K * std::clamp(1.0f - slice.z / NEAR_WHITE, 0.0f, 1.0f);
         for (int32_t i = 0; i < 256; i++) {
             Rgb c = shade_to_rgb(static_cast<float>(i) / 255.0f);
-            c = lerp(c, C_LIT, near);
-            c = lerp(c, C_FOG, slice.fog);
+            c = mix_rgb(c, C_LIT, near);
+            c = mix_rgb(c, C_FOG, slice.fog);
             slice_lut_[s * 256 + i] = c;
         }
     }
@@ -856,8 +836,12 @@ void HighFlySim::apply_view() {
     polar_.resize(static_cast<size_t>(iw_) * ih_ * 3);
     col_u0_.resize(static_cast<size_t>(iw_));
     col_fu_.resize(static_cast<size_t>(iw_));
-    build_sky();
-    build_polar();
+    if (bake && (baked_w_ != iw_ || baked_h_ != ih_)) {
+        build_sky();
+        build_polar();
+        baked_w_ = iw_;
+        baked_h_ = ih_;
+    }
 
     // The far band's top: the first row any of its texels reaches with real cover.
     Billboard band;
@@ -901,7 +885,7 @@ void HighFlySim::build_sky() {
     for (int32_t y = 0; y < ih_; y++) {
         const float fy = static_cast<float>(y);
         const float t = std::pow(std::clamp(fy / (H * HORIZON), 0.0f, 1.0f), 0.8f);
-        const Rgb base = lerp(TOP, BOTTOM, t);
+        const Rgb base = mix_rgb(TOP, BOTTOM, t);
         const float fall = std::pow(std::clamp(1.0f - (fy - cy) / (H * 0.8f), 0.0f, 1.0f), 1.6f);
         for (int32_t x = 0; x < iw_; x++) {
             const float fx = static_cast<float>(x);
@@ -910,14 +894,14 @@ void HighFlySim::build_sky() {
             const float d = std::sqrt(dx * dx + 1.6f * dy * dy);
             const float glow = 0.8f * std::exp(-(d / 0.22f) * (d / 0.22f)) +
                                0.3f * std::exp(-(d / 0.55f) * (d / 0.55f));
-            Rgb c = lerp(base, GLOW, std::min(glow, 1.0f));
+            Rgb c = mix_rgb(base, GLOW, std::min(glow, 1.0f));
             const float ang = std::atan2(fx - cx, fy - cy);
             float shafts = 0.0f;
             for (const Shaft& sh : SHAFTS) {
                 const float q = (ang - sh.a0) / sh.width;
                 shafts += sh.strength * std::exp(-q * q);
             }
-            c = lerp(c, GLOW, std::min(shafts * fall, 1.0f));
+            c = mix_rgb(c, GLOW, std::min(shafts * fall, 1.0f));
             sky_[static_cast<size_t>(y) * iw_ + x] = c;
         }
     }
@@ -947,7 +931,8 @@ HighFlySim::Billboard HighFlySim::tower_billboard(const Tower& t) const {
     b.tex = &tex;
     b.z = t.z;
     b.q = TOWER_Q * t.size;
-    b.xw0 = t.x + t.drift * (t_ - t.entered_s) - static_cast<float>(tex.w) * b.q / 2.0f;
+    b.xw0 = t.x + t.drift * static_cast<float>(t_ - t.entered_s) -
+            static_cast<float>(tex.w) * b.q / 2.0f;
     b.hb = TOWER_HB;
     b.alpha = std::clamp((TOWER_Z_ENTER - t.z) / 50.0f, 0.0f, 1.0f) *
               std::clamp((t.z - TOWER_Z_LEAVE) / (TOWER_FADE_FROM - TOWER_Z_LEAVE), 0.0f, 1.0f);
@@ -970,7 +955,7 @@ int HighFlySim::tower_variant(size_t i) const {
 }
 
 float HighFlySim::fly_since_s() const {
-    const float since = t_ - fly_start_s_;
+    const auto since = static_cast<float>(t_ - fly_start_s_);
     if (since < 0.0f || since > HIGHFLY_FLY_IN_S + HIGHFLY_FLY_HOLD_S + HIGHFLY_FLY_OUT_S) {
         return -1.0f;
     }
@@ -985,13 +970,13 @@ size_t HighFlySim::towers_visible() const {
     return n;
 }
 
-void HighFlySim::spawn_tower(Tower& slot, float entered_s, std::minstd_rand& rng) {
+void HighFlySim::spawn_tower(Tower& slot, double entered_s, std::minstd_rand& rng) {
     const float side = next_left_ ? -1.0f : 1.0f;
     slot.entered_s = entered_s;
-    slot.z = TOWER_Z_ENTER - (t_ - entered_s) * HIGHFLY_SPEED;
-    slot.x = side * uniform(rng, TOWER_SIDE_MIN, TOWER_SIDE_MAX) * TOWER_Z_ENTER * FOV;
-    slot.drift = side * uniform(rng, TOWER_WIND_MIN, TOWER_WIND_MAX);
-    slot.size = uniform(rng, 0.95f, 1.2f);
+    slot.z = TOWER_Z_ENTER - static_cast<float>(t_ - entered_s) * HIGHFLY_SPEED;
+    slot.x = side * random_between(rng, TOWER_SIDE_MIN, TOWER_SIDE_MAX) * TOWER_Z_ENTER * FOV;
+    slot.drift = side * random_between(rng, TOWER_WIND_MIN, TOWER_WIND_MAX);
+    slot.size = random_between(rng, 0.95f, 1.2f);
     slot.variant = next_variant_;
     slot.live = true;
     next_variant_ = static_cast<uint8_t>((next_variant_ + 1) % HIGHFLY_TOWER_VARIANTS);
@@ -1005,7 +990,7 @@ void HighFlySim::update_schedule(std::minstd_rand& rng) {
         if (!t.live) {
             continue;
         }
-        t.z = TOWER_Z_ENTER - (t_ - t.entered_s) * HIGHFLY_SPEED;
+        t.z = TOWER_Z_ENTER - static_cast<float>(t_ - t.entered_s) * HIGHFLY_SPEED;
         Billboard b = tower_billboard(t);
         b.alpha = 1.0f; // off screen is a matter of where it is, not how faded
         if (t.z < TOWER_Z_LEAVE || billboard_box(b).empty()) {
@@ -1028,18 +1013,18 @@ void HighFlySim::update_schedule(std::minstd_rand& rng) {
         if (tower_entries_.size() < tower_entries_.capacity()) {
             tower_entries_.push_back(next_tower_at_);
         }
-        next_tower_at_ += uniform(rng, HIGHFLY_TOWER_MIN_S, HIGHFLY_TOWER_MAX_S);
+        next_tower_at_ += random_between(rng, HIGHFLY_TOWER_MIN_S, HIGHFLY_TOWER_MAX_S);
     }
-    next_tower_s_ = next_tower_at_ - t_;
+    next_tower_s_ = static_cast<float>(next_tower_at_ - t_);
 
     const float fly_end = HIGHFLY_FLY_IN_S + HIGHFLY_FLY_HOLD_S + HIGHFLY_FLY_OUT_S;
     if (t_ - fly_start_s_ > fly_end) {
         if (fly_starts_.size() < fly_starts_.capacity()) {
             fly_starts_.push_back(fly_start_s_);
         }
-        fly_start_s_ += uniform(rng, HIGHFLY_FLY_MIN_S, HIGHFLY_FLY_MAX_S);
+        fly_start_s_ += random_between(rng, HIGHFLY_FLY_MIN_S, HIGHFLY_FLY_MAX_S);
     }
-    next_fly_s_ = fly_start_s_ - t_;
+    next_fly_s_ = static_cast<float>(fly_start_s_ - t_);
 }
 
 size_t HighFlySim::collect_billboards(Billboard* out, size_t cap) const {
@@ -1048,9 +1033,10 @@ size_t HighFlySim::collect_billboards(Billboard* out, size_t cap) const {
     const float span = LAYER_ZFAR - LAYER_ZNEAR;
     const size_t layers = std::min<size_t>(lv.layers, HIGHFLY_LAYER_COUNT);
     for (size_t i = 0; i < layers && n < cap; i++) {
-        const float travel =
-            t_ * HIGHFLY_SPEED + static_cast<float>(i) * span / HIGHFLY_LAYER_COUNT;
-        const float z = LAYER_ZFAR - std::fmod(travel, span);
+        const double travel =
+            t_ * HIGHFLY_SPEED + static_cast<double>(i) * span / HIGHFLY_LAYER_COUNT;
+        const auto z =
+            static_cast<float>(LAYER_ZFAR - std::fmod(travel, static_cast<double>(span)));
         const auto cycle = static_cast<int64_t>(travel / span);
         const float fin = std::clamp((LAYER_ZFAR - z) / 30.0f, 0.0f, 1.0f);
         const float fout = std::clamp((z - LAYER_ZNEAR) / 22.0f, 0.0f, 1.0f);
@@ -1073,7 +1059,7 @@ size_t HighFlySim::collect_billboards(Billboard* out, size_t cap) const {
         }
     }
     // The cloud the camera is about to fly into.
-    const float since = t_ - fly_start_s_;
+    const auto since = static_cast<float>(t_ - fly_start_s_);
     const float body_z = FLY_FACE - since * HIGHFLY_SPEED;
     if (body_z > 0.8f && body_z < 330.0f && n < cap) {
         const HighFlyTexture& tex = towers_tex_[0];
@@ -1231,7 +1217,9 @@ void HighFlySim::compose(int32_t from) {
     band.q = BAND_Q;
     band.hb = BAND_HB;
     band.wrap = true;
-    band.xw0 = -BAND_DRIFT * t_;
+    // The band repeats every texture width, so its drift is reduced to one width.
+    const double band_period = static_cast<double>(band_.w) * BAND_Q / BAND_DRIFT;
+    band.xw0 = -BAND_DRIFT * static_cast<float>(std::fmod(t_, band_period));
     band.depth_test = false;
     draw_billboard(band);
 
@@ -1252,25 +1240,33 @@ void HighFlySim::compose(int32_t from) {
             std::clamp((static_cast<float>(y) - H * (1.0f - HAZE)) / (H * HAZE), 0.0f, 1.0f), 1.5f);
         Rgb* row = &frame_[static_cast<size_t>(y) * iw_];
         for (int32_t x = 0; x < iw_; x++) {
-            row[x] = lerp(row[x], C_LIT, t);
+            row[x] = mix_rgb(row[x], C_LIT, t);
         }
     }
 
-    const float since = t_ - fly_start_s_;
+    const auto since = static_cast<float>(t_ - fly_start_s_);
     const float amt = highfly_whiteout(since);
     if (amt > 0.0f) {
-        const float shift = t_ * 120.0f;
+        // The wisp table repeats every 64 rows.
+        const auto shift = static_cast<float>(std::fmod(t_ * 120.0, 64.0));
+        // Over the clock the interior and the wisps together stay translucent enough to read
+        // the numerals through, easing to no limit a few pixels outside it.
+        const DirtyRect clock = clock_box_internal();
+        const float feather = 6.0f;
         for (int32_t y = 0; y < ih_; y++) {
             Rgb* row = &frame_[static_cast<size_t>(y) * iw_];
             for (int32_t x = 0; x < iw_; x++) {
-                const Rgb c = highfly_inside(row[x], amt);
                 const size_t pi = (static_cast<size_t>(y) * iw_ + x) * 3;
                 const float lr = static_cast<float>(polar_[pi]) / 64.0f - 300.0f - shift;
                 const float ang = static_cast<float>(polar_[pi + 1]) / 256.0f;
                 const float rf = static_cast<float>(polar_[pi + 2]) / 65535.0f;
                 const float n_wisp = bilinear_sample(wisp_.data(), 128, 64, ang, lr, true);
                 const float a = std::clamp(1.5f * n_wisp, 0.0f, 1.0f) * rf * amt * 0.7f;
-                row[x] = lerp(c, C_LIT, a);
+                const float out_x = static_cast<float>(std::max({clock.x1 - x, x - clock.x2, 0}));
+                const float out_y = static_cast<float>(std::max({clock.y1 - y, y - clock.y2, 0}));
+                const float near = std::clamp(1.0f - std::max(out_x, out_y) / feather, 0.0f, 1.0f);
+                const float most = 1.0f - near * (1.0f - HIGHFLY_CLOCK_COVER_MAX);
+                row[x] = highfly_inside(row[x], amt, a, most);
             }
         }
     }
@@ -1288,7 +1284,7 @@ void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) 
                     continue;
                 }
                 const float a = NUMERAL_OPACITY * static_cast<float>(cov) / 255.0f;
-                writer.put_dithered(x, y, lerp(writer.get(x, y), NUMERAL, a));
+                writer.put_dithered(x, y, mix_rgb(writer.get(x, y), NUMERAL, a));
             }
         }
     };
@@ -1320,7 +1316,7 @@ void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) 
                 const float cov = std::clamp(r - d + 0.5f, 0.0f, 1.0f);
                 if (cov > 0.0f) {
                     writer.put_dithered(x, y,
-                                        lerp(writer.get(x, y), NUMERAL, NUMERAL_OPACITY * cov));
+                                        mix_rgb(writer.get(x, y), NUMERAL, NUMERAL_OPACITY * cov));
                 }
             }
         }
@@ -1390,9 +1386,12 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
         return;
     }
 
-    t_ += static_cast<float>(dt_ms) / 1000.0f;
+    t_ += static_cast<double>(dt_ms) / 1000.0;
+    // The field repeats every HIGHFLY_FIELD texels, so the deck's scroll is reduced to one tile.
+    deck_texels_ = static_cast<float>(
+        std::fmod(t_ * HIGHFLY_SPEED * HIGHFLY_TEXELS_PER_UNIT, static_cast<double>(N)));
     update_schedule(rng);
-    const float since = t_ - fly_start_s_;
+    const auto since = static_cast<float>(t_ - fly_start_s_);
     const bool whiteout = highfly_whiteout(since) > 0.0f;
     const bool full = !painted_ || whiteout || last_full_;
 
@@ -1400,25 +1399,30 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     // approaching cloud, this frame and last.
     last_boxes_.swap(boxes_);
     boxes_.clear();
-    boxes_.push_back(clock_box_internal());
+    const auto add_box = [this](const DirtyRect& b) {
+        if (boxes_.size() < BOX_CAP) {
+            boxes_.push_back(b);
+        } else {
+            boxes_.back().add(b);
+        }
+    };
+    add_box(clock_box_internal());
     if (moved) {
-        boxes_.push_back(old_clock);
+        add_box(old_clock);
     }
     Billboard boards[HIGHFLY_LAYER_COUNT + 3];
     const size_t n = collect_billboards(boards, std::size(boards));
-    for (size_t i = 0; i < n && boxes_.size() < BOX_CAP; i++) {
+    for (size_t i = 0; i < n; i++) {
         if (!boards[i].wrap) {
             const DirtyRect b = billboard_box(boards[i]);
             if (!b.empty()) {
-                boxes_.push_back(b);
+                add_box(b);
             }
         }
     }
     const size_t mine = boxes_.size();
     for (const DirtyRect& b : last_boxes_) {
-        if (boxes_.size() < BOX_CAP) {
-            boxes_.push_back(b);
-        }
+        add_box(b);
     }
 
     // The band: from the far billows' top or the deck's highest point last frame, less a few
@@ -1470,11 +1474,12 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
 }
 
 size_t HighFlySim::heap_bytes() const {
-    size_t n = bytes_of(field_.height) + bytes_of(field_.shade) + renderer_.heap_bytes() +
-               bytes_of(sky_) + bytes_of(frame_) + bytes_of(slice_lut_) + band_.heap_bytes() +
-               bytes_of(wisp_) + bytes_of(polar_) + bytes_of(col_u0_) + bytes_of(col_fu_) +
-               bytes_of(tower_entries_) + bytes_of(fly_starts_) + bytes_of(boxes_) +
-               bytes_of(last_boxes_) + digits_.heap_bytes() + second_digits_.heap_bytes();
+    size_t n = buffer_bytes(field_.height) + buffer_bytes(field_.shade) + renderer_.heap_bytes() +
+               buffer_bytes(sky_) + buffer_bytes(frame_) + buffer_bytes(slice_lut_) +
+               band_.heap_bytes() + buffer_bytes(wisp_) + buffer_bytes(polar_) +
+               buffer_bytes(col_u0_) + buffer_bytes(col_fu_) + buffer_bytes(tower_entries_) +
+               buffer_bytes(fly_starts_) + buffer_bytes(boxes_) + buffer_bytes(last_boxes_) +
+               digits_.heap_bytes() + second_digits_.heap_bytes();
     for (const HighFlyTexture& t : layers_) {
         n += t.heap_bytes();
     }
@@ -1485,27 +1490,27 @@ size_t HighFlySim::heap_bytes() const {
 }
 
 void HighFlySim::clear() {
-    free_vector(field_.height);
-    free_vector(field_.shade);
+    release_buffer(field_.height);
+    release_buffer(field_.shade);
     renderer_.clear();
-    free_vector(sky_);
-    free_vector(frame_);
-    free_vector(slice_lut_);
-    free_vector(band_.rgba);
+    release_buffer(sky_);
+    release_buffer(frame_);
+    release_buffer(slice_lut_);
+    release_buffer(band_.rgba);
     for (HighFlyTexture& t : layers_) {
-        free_vector(t.rgba);
+        release_buffer(t.rgba);
     }
     for (HighFlyTexture& t : towers_tex_) {
-        free_vector(t.rgba);
+        release_buffer(t.rgba);
     }
-    free_vector(wisp_);
-    free_vector(polar_);
-    free_vector(col_u0_);
-    free_vector(col_fu_);
-    free_vector(tower_entries_);
-    free_vector(fly_starts_);
-    free_vector(boxes_);
-    free_vector(last_boxes_);
+    release_buffer(wisp_);
+    release_buffer(polar_);
+    release_buffer(col_u0_);
+    release_buffer(col_fu_);
+    release_buffer(tower_entries_);
+    release_buffer(fly_starts_);
+    release_buffer(boxes_);
+    release_buffer(last_boxes_);
     digits_.clear();
     second_digits_.clear();
     towers_ = {};

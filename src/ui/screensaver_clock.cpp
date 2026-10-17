@@ -108,6 +108,14 @@ ClockDateText clock_date_text(const ClockDate& date) {
     return {format_localized_long_date(&tm_info), format_localized_weekday(&tm_info)};
 }
 
+bool clock_text_same(const ClockReading& a, const ClockReading& b) {
+    return a.mode == b.mode && a.countdown_s == b.countdown_s &&
+           a.eta_minute_of_day == b.eta_minute_of_day && a.use_24h == b.use_24h &&
+           a.time.meridiem == b.time.meridiem && a.date.year == b.date.year &&
+           a.date.month == b.date.month && a.date.day == b.date.day &&
+           a.date.weekday == b.date.weekday;
+}
+
 std::string clock_meridiem_text(ClockMeridiem meridiem) {
     if (meridiem == ClockMeridiem::NONE) {
         return {};

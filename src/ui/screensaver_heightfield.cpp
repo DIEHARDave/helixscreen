@@ -4,6 +4,8 @@
 
 #include "screensaver_heightfield.h"
 
+#include "screensaver_buffer.h"
+#include "screensaver_motion.h"
 #include "screensaver_pixel_writer.h"
 
 #include <algorithm>
@@ -14,23 +16,10 @@ namespace helix::ui {
 
 namespace {
 
-float smoothstep01(float t) {
-    t = std::clamp(t, 0.0f, 1.0f);
-    return t * t * (3.0f - 2.0f * t);
-}
-
 template <typename T> void resize_to(std::vector<T>& v, size_t n) {
     if (v.size() != n) {
         v.resize(n);
     }
-}
-
-template <typename T> void free_vector(std::vector<T>& v) {
-    std::vector<T>().swap(v);
-}
-
-template <typename T> size_t bytes_of(const std::vector<T>& v) {
-    return v.capacity() * sizeof(T);
 }
 
 uint8_t to_u8(float v) {
@@ -73,8 +62,9 @@ void build_heightfield_slices(const HeightfieldView& view, std::vector<Heightfie
         s.z = static_cast<float>(z);
         s.inv_z = 1.0f / s.z;
         s.dz = static_cast<float>(dz);
-        s.sink =
-            view.sink_depth > 0.0f ? smoothstep01((s.z - view.z_near) / view.sink_depth) : 1.0f;
+        s.sink = view.sink_depth > 0.0f
+                     ? screensaver::smoothstep01((s.z - view.z_near) / view.sink_depth)
+                     : 1.0f;
         s.fog = view.fog.at(s.z);
         s.x_step = s.z / focal_x;
         s.x_left = (0.5f - half_w) * s.x_step;
@@ -174,7 +164,9 @@ void HeightfieldRenderer::render(HeightfieldScene& scene) {
         const float k = view_.focal_y * slice.inv_z;
         const auto depth_mark = static_cast<uint16_t>(std::min<size_t>(s, NO_DEPTH - 1));
         for (int32_t x = 0; x < W; x++) {
-            const float row = view_.horizon_row + (view_.cam_h - heights_[x] * slice.sink) * k;
+            // Kept within a few screens so the row casts below stay defined.
+            const float row = std::clamp(
+                view_.horizon_row + (view_.cam_h - heights_[x] * slice.sink) * k, -Hf, 2.0f * Hf);
             const Rgb c = colors_[x];
             if (s == 0) {
                 front_top_[x] = row;
@@ -371,29 +363,29 @@ void HeightfieldRenderer::resolve(const Rgb* background, Rgb flat, int32_t y_fro
 }
 
 size_t HeightfieldRenderer::heap_bytes() const {
-    return bytes_of(slices_) + bytes_of(color_) + bytes_of(cover_) + bytes_of(depth_) +
-           bytes_of(top_) + bytes_of(silhouette_) + bytes_of(silhouette_color_) +
-           bytes_of(front_top_) + bytes_of(front_color_) + bytes_of(last_color_) +
-           bytes_of(last_drew_) + bytes_of(heights_) + bytes_of(colors_) + bytes_of(edge_color_) +
-           bytes_of(edge_cover_);
+    return buffer_bytes(slices_) + buffer_bytes(color_) + buffer_bytes(cover_) +
+           buffer_bytes(depth_) + buffer_bytes(top_) + buffer_bytes(silhouette_) +
+           buffer_bytes(silhouette_color_) + buffer_bytes(front_top_) + buffer_bytes(front_color_) +
+           buffer_bytes(last_color_) + buffer_bytes(last_drew_) + buffer_bytes(heights_) +
+           buffer_bytes(colors_) + buffer_bytes(edge_color_) + buffer_bytes(edge_cover_);
 }
 
 void HeightfieldRenderer::clear() {
-    free_vector(slices_);
-    free_vector(color_);
-    free_vector(cover_);
-    free_vector(depth_);
-    free_vector(top_);
-    free_vector(silhouette_);
-    free_vector(silhouette_color_);
-    free_vector(front_top_);
-    free_vector(front_color_);
-    free_vector(last_color_);
-    free_vector(last_drew_);
-    free_vector(heights_);
-    free_vector(colors_);
-    free_vector(edge_color_);
-    free_vector(edge_cover_);
+    release_buffer(slices_);
+    release_buffer(color_);
+    release_buffer(cover_);
+    release_buffer(depth_);
+    release_buffer(top_);
+    release_buffer(silhouette_);
+    release_buffer(silhouette_color_);
+    release_buffer(front_top_);
+    release_buffer(front_color_);
+    release_buffer(last_color_);
+    release_buffer(last_drew_);
+    release_buffer(heights_);
+    release_buffer(colors_);
+    release_buffer(edge_color_);
+    release_buffer(edge_cover_);
     samples_ = 0;
     span_pixels_ = 0;
 }

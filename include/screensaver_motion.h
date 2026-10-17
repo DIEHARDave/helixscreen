@@ -115,6 +115,24 @@ inline int random_below(std::minstd_rand& rng, int n) {
     return static_cast<int>(rng() % static_cast<std::minstd_rand::result_type>(n));
 }
 
+/// Uniform in [lo, hi], from unit_random().
+inline float random_between(std::minstd_rand& rng, float lo, float hi) {
+    return lo + (hi - lo) * unit_random(rng);
+}
+
+/// Standard normal, by Box-Muller from two unit_random() draws.
+inline float random_normal(std::minstd_rand& rng) {
+    const float u1 = std::max(unit_random(rng), 1e-7f);
+    const float u2 = unit_random(rng);
+    return std::sqrt(-2.0f * std::log(u1)) * std::cos(6.28318530717958f * u2);
+}
+
+/// Smoothstep of `t` clamped to [0, 1]: 3t^2 - 2t^3.
+inline float smoothstep01(float t) {
+    t = std::clamp(t, 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+
 /**
  * @brief Reflect an unbounded coordinate into [0, range]
  *

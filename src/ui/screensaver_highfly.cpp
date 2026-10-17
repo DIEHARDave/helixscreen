@@ -32,6 +32,8 @@ bool HighFlyScreensaver::on_start() {
     date_line_.reset();
     day_line_.reset();
     meridiem_.reset();
+    texts_built_ = false;
+    under_.reserve(SAVER_MAX_DIRTY_AREAS);
     std::vector<DirtyRect> dirty;
     draw_texts(dirty, dirty);
     return true;
@@ -46,36 +48,44 @@ void HighFlyScreensaver::on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty)
         // that repaints the clock rather than drawing over the old one.
         return;
     }
-    const std::vector<DirtyRect> under = dirty;
-    draw_texts(under, dirty);
+    under_.assign(dirty.begin(), dirty.end());
+    draw_texts(under_, dirty);
 }
 
 void HighFlyScreensaver::draw_texts(const std::vector<DirtyRect>& under,
                                     std::vector<DirtyRect>& dirty) {
     const ClockReading& reading = clock_.reading();
     const HighFlyClockLayout& layout = sim_.clock_layout();
-    std::string first;
-    std::string second;
-    if (reading.mode != ClockMode::CLOCK) {
-        const ClockPrintText print = clock_print_text(reading);
-        first = print.eta;
-        second = print.left;
-    } else {
-        const ClockDateText date = clock_date_text(reading.date);
-        first = date.date;
-        second = date.weekday;
+    if (!texts_built_ || !clock_text_same(reading, texts_for_)) {
+        if (reading.mode != ClockMode::CLOCK) {
+            ClockPrintText print = clock_print_text(reading);
+            first_ = std::move(print.eta);
+            second_ = std::move(print.left);
+        } else {
+            ClockDateText date = clock_date_text(reading.date);
+            first_ = std::move(date.date);
+            second_ = std::move(date.weekday);
+        }
+        meridiem_text_ = clock_meridiem_text(reading.time.meridiem);
+        texts_for_ = reading;
+        texts_built_ = true;
     }
     // Every box sits inside the clock bounds, which the sim repaints before the text changes.
-    date_line_.draw(canvas(), first, layout.date_line, TEXT_COLOR, LV_OPA_80, LV_TEXT_ALIGN_LEFT,
+    date_line_.draw(canvas(), first_, layout.date_line, TEXT_COLOR, LV_OPA_80, LV_TEXT_ALIGN_LEFT,
                     under, dirty);
-    day_line_.draw(canvas(), second, layout.day_line, TEXT_COLOR, LV_OPA_80, LV_TEXT_ALIGN_LEFT,
+    day_line_.draw(canvas(), second_, layout.day_line, TEXT_COLOR, LV_OPA_80, LV_TEXT_ALIGN_LEFT,
                    under, dirty);
-    meridiem_.draw(canvas(), clock_meridiem_text(reading.time.meridiem), layout.meridiem,
-                   TEXT_COLOR, LV_OPA_80, LV_TEXT_ALIGN_LEFT, under, dirty);
+    meridiem_.draw(canvas(), meridiem_text_, layout.meridiem, TEXT_COLOR, LV_OPA_80,
+                   LV_TEXT_ALIGN_LEFT, under, dirty);
 }
 
 void HighFlyScreensaver::on_stop() {
     sim_.clear();
+    std::string().swap(first_);
+    std::string().swap(second_);
+    std::string().swap(meridiem_text_);
+    std::vector<DirtyRect>().swap(under_);
+    texts_built_ = false;
     date_line_.reset();
     day_line_.reset();
     meridiem_.reset();

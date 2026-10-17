@@ -20,6 +20,20 @@
 
 namespace helix::ui {
 
+/// Moves a HighFlySim's clocks, for runs far longer than a test can step through.
+class HighFlySimTestAccess {
+  public:
+    static void skip_to(HighFlySim& sim, double t) {
+        const double delta = t - sim.t_;
+        sim.t_ = t;
+        sim.fly_start_s_ += delta;
+        sim.next_tower_at_ += delta;
+        for (auto& tower : sim.towers_) {
+            tower.entered_s += delta;
+        }
+    }
+};
+
 /// Reads the sim and the text lines a HighFlyScreensaver owns.
 class HighFlyScreensaverTestAccess {
   public:
@@ -57,6 +71,7 @@ using helix::ui::HighFlyField;
 using helix::ui::HighFlyScreensaver;
 using helix::ui::HighFlyScreensaverTestAccess;
 using helix::ui::HighFlySim;
+using helix::ui::HighFlySimTestAccess;
 using helix::ui::layout_highfly_clock;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
@@ -457,6 +472,73 @@ TEST_CASE("a tower visibly moves from the moment it appears until it leaves",
     CHECK(left);
 }
 
+TEST_CASE("over the clock the interior and the wisps together leave the numerals readable",
+          "[screensaver][highfly]") {
+    const float most = helix::ui::HIGHFLY_CLOCK_COVER_MAX;
+    for (const float wisp : {0.0f, 0.3f, 0.7f, 1.0f}) {
+        for (const float amt : {0.3f, 1.0f}) {
+            CAPTURE(wisp, amt);
+            // What shows of the scene: the gap between a black and a white scene's results.
+            const Rgb dark = helix::ui::highfly_inside(Rgb{0, 0, 0}, amt, wisp, most);
+            const Rgb light = helix::ui::highfly_inside(Rgb{255, 255, 255}, amt, wisp, most);
+            const float shows = static_cast<float>(light.g - dark.g) / 255.0f;
+            CHECK(shows >= 1.0f - most - 0.01f);
+            // Away from the clock the wisp is not held back.
+            const Rgb free_dark = helix::ui::highfly_inside(Rgb{0, 0, 0}, amt, wisp);
+            const Rgb free_light = helix::ui::highfly_inside(Rgb{255, 255, 255}, amt, wisp);
+            const float k = amt * helix::ui::HIGHFLY_WHITEOUT_MAX;
+            CHECK(static_cast<float>(free_light.g - free_dark.g) / 255.0f ==
+                  Catch::Approx((1.0f - k) * (1.0f - wisp)).margin(0.01f));
+        }
+    }
+}
+
+TEST_CASE("high fly still moves smoothly thirty days into a run", "[screensaver][highfly]") {
+    // Per-frame change at a rung with no layers, so the deck's scroll is most of it: it must
+    // keep coming every frame, not in occasional jumps between still frames.
+    const auto changes = [](HighFlySim& sim, SimFrame& frame, std::minstd_rand& rng,
+                            const ClockReading& r, int frames) {
+        std::vector<DirtyRect> dirty;
+        std::vector<double> out;
+        for (int i = 0; i < frames; i++) {
+            const std::vector<uint8_t> before = frame.bytes;
+            sim.step(50, frame.target, rng, r, dirty);
+            double sum = 0.0;
+            for (size_t b = 0; b < before.size(); b++) {
+                sum += std::abs(static_cast<int>(before[b]) - static_cast<int>(frame.bytes[b]));
+            }
+            out.push_back(sum / static_cast<double>(frame.bytes.size()));
+        }
+        return out;
+    };
+    const auto mean = [](const std::vector<double>& v) {
+        double sum = 0.0;
+        for (const double x : v) {
+            sum += x;
+        }
+        return sum / static_cast<double>(v.size());
+    };
+    REQUIRE(HIGHFLY_LEVELS[2].layers == 0);
+    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    std::minstd_rand rng(3);
+    HighFlySim sim;
+    const ClockReading r = reading_at(10 * 3600);
+    sim.init(frame.target, rng, 2, r);
+    changes(sim, frame, rng, r, 20);
+    const std::vector<double> early = changes(sim, frame, rng, r, 40);
+    HighFlySimTestAccess::skip_to(sim, 30.0 * 86400.0);
+    changes(sim, frame, rng, r, 20);
+    const std::vector<double> late = changes(sim, frame, rng, r, 40);
+    const double early_mean = mean(early);
+    const double late_mean = mean(late);
+    CAPTURE(early_mean, late_mean);
+    REQUIRE(early_mean > 0.05);
+    CHECK(late_mean > 0.5 * early_mean);
+    CHECK(late_mean < 2.0 * early_mean);
+    CHECK(*std::min_element(early.begin(), early.end()) > 0.4 * early_mean);
+    CHECK(*std::min_element(late.begin(), late.end()) > 0.4 * late_mean);
+}
+
 TEST_CASE("the fly-through interior stops at 62% of the way to blue-grey",
           "[screensaver][highfly]") {
     const Rgb inside{200, 216, 230};
@@ -494,7 +576,7 @@ TEST_CASE("a fly-through comes every one to two minutes", "[screensaver][highfly
     CHECK(starts[0] >= 60.0f);
     CHECK(starts[0] <= 120.0f);
     for (size_t i = 1; i < starts.size(); i++) {
-        const float gap = starts[i] - starts[i - 1];
+        const auto gap = static_cast<float>(starts[i] - starts[i - 1]);
         CHECK(gap >= 60.0f - 1e-3f);
         CHECK(gap <= 120.0f + 1e-3f);
     }

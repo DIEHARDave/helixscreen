@@ -100,9 +100,15 @@ float highfly_whiteout(float since_start_s);
 /// deck is there (deck_z infinite).
 float highfly_layer_visibility(float deck_z, float layer_z);
 
+/// Most the fly-through interior and its wisps together may cover the scene over the clock,
+/// so the pale numerals stay readable.
+inline constexpr float HIGHFLY_CLOCK_COVER_MAX = 0.70f;
+
 /// `scene` seen from inside the fly-through cloud `amt` (0 to 1) of the way in: eased toward
-/// the blue-grey interior, never more than HIGHFLY_WHITEOUT_MAX of the way.
-Rgb highfly_inside(Rgb scene, float amt);
+/// the blue-grey interior, never more than HIGHFLY_WHITEOUT_MAX of the way, then lit toward
+/// white by a wisp of strength `wisp`, held so the two together cover at most `most` of the
+/// scene (where the interior alone already covers more, the wisp adds nothing).
+Rgb highfly_inside(Rgb scene, float amt, float wisp = 0.0f, float most = 1.0f);
 
 /// Where the clock sits on a w x h canvas, moved by the drift (dx, dy).
 struct HighFlyClockLayout {
@@ -119,6 +125,7 @@ HighFlyClockLayout layout_highfly_clock(int32_t w, int32_t h, int32_t dx, int32_
 
 class HighFlySim {
   public:
+    friend class HighFlySimTestAccess;
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level,
               const ClockReading& reading);
     /// Advances by `dt_ms` and draws the cloud band (the whole frame during a fly-through)
@@ -138,7 +145,7 @@ class HighFlySim {
     }
     /// Seconds since init(), and since the current fly-through's whiteout began (negative when
     /// none runs; the cloud it flies into shows for a while before, see next_fly_s()).
-    float elapsed_s() const {
+    double elapsed_s() const {
         return t_;
     }
     float fly_since_s() const;
@@ -165,11 +172,11 @@ class HighFlySim {
     /// Internal-frame box tower slot `i` covers, empty when the slot is empty or off screen.
     DirtyRect tower_box(size_t i) const;
     /// Seconds into the run each tower so far entered.
-    const std::vector<float>& tower_entries() const {
+    const std::vector<double>& tower_entries() const {
         return tower_entries_;
     }
     /// Seconds into the run each fly-through so far began.
-    const std::vector<float>& fly_starts() const {
+    const std::vector<double>& fly_starts() const {
         return fly_starts_;
     }
     const HighFlyTexture& tower_texture(size_t i) const {
@@ -181,7 +188,7 @@ class HighFlySim {
   private:
     struct Tower {
         float z = 0.0f;
-        float entered_s = 0.0f; ///< run time it entered at TOWER_Z_ENTER
+        double entered_s = 0.0; ///< run time it entered at TOWER_Z_ENTER
         float x = 0.0f;         ///< world x of its centre when it entered
         float drift = 0.0f;     ///< wind, world units per second sideways
         float size = 1.0f;
@@ -202,13 +209,14 @@ class HighFlySim {
     };
     class Scene;
 
-    /// Sizes the renderer and internal buffers for level_.
-    void apply_view();
+    /// Sizes the renderer and internal buffers for level_, and with `bake` builds the static
+    /// sky and the fly-through's polar table when the internal size changed.
+    void apply_view(bool bake = true);
     void build_sky();
     void build_polar();
     void update_schedule(std::minstd_rand& rng);
     /// Starts a tower in `slot` that entered at run time `entered_s`.
-    void spawn_tower(Tower& slot, float entered_s, std::minstd_rand& rng);
+    void spawn_tower(Tower& slot, double entered_s, std::minstd_rand& rng);
     /// The billboard tower `t` draws as.
     Billboard tower_billboard(const Tower& t) const;
     /// Composes the internal frame: rows from `from` down, plus the boxes in `boxes_`.
@@ -233,12 +241,15 @@ class HighFlySim {
     float horizon_ = 0.0f;
     float focal_x_ = 1.0f;
     float focal_y_ = 1.0f;
-    float t_ = 0.0f;
+    double t_ = 0.0;           ///< seconds since init(); phases are reduced from it in double
+    float deck_texels_ = 0.0f; ///< the deck's scroll, reduced to one field tile
+    int32_t baked_w_ = 0;      ///< internal size the sky and polar table were built for
+    int32_t baked_h_ = 0;
     uint32_t elapsed_ms_ = 0;
-    float fly_start_s_ = -1.0f; ///< when the scheduled fly-through's whiteout begins
+    double fly_start_s_ = -1.0; ///< when the scheduled fly-through's whiteout begins
     float next_fly_s_ = 0.0f;
     float next_tower_s_ = 0.0f;
-    float next_tower_at_ = 0.0f;
+    double next_tower_at_ = 0.0;
     int32_t band_top_ = 0;
     int32_t band_tex_top_ = 0; ///< the far band's top row, fixed for the view
     uint8_t next_variant_ = 0;
@@ -260,8 +271,8 @@ class HighFlySim {
     std::vector<int32_t> col_u0_; ///< billboard sampling, per internal column
     std::vector<float> col_fu_;
     std::array<Tower, 2> towers_{};
-    std::vector<float> tower_entries_;
-    std::vector<float> fly_starts_;
+    std::vector<double> tower_entries_;
+    std::vector<double> fly_starts_;
     std::vector<DirtyRect> boxes_;      ///< internal boxes above the band repainted this frame
     std::vector<DirtyRect> last_boxes_; ///< and last frame
     HighFlyClockLayout clock_;

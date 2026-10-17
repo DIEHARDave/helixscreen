@@ -285,8 +285,9 @@ FlipLayout layout_flip_cards(int32_t w, int32_t h, const FlipShape& shape, int32
 void flip_drift_range(int32_t w, int32_t h, const FlipShape& shape, int32_t& max_dx,
                       int32_t& max_dy) {
     const Arrangement a = arrange(w, h, shape);
-    max_dx = std::max(0, std::min((w - a.content_w) / 2 - 1, std::max(4, w / 25)));
-    max_dy = std::max(0, std::min((h - a.content_h) / 2 - 1, std::max(4, h / 25)));
+    const int32_t x1 = (w - a.content_w) / 2;
+    const int32_t y1 = (h - a.content_h) / 2;
+    clock_drift_range({x1, y1, x1 + a.content_w - 1, y1 + a.content_h - 1}, w, h, max_dx, max_dy);
 }
 
 // ---------- FlipClockSim ----------

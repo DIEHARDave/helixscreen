@@ -171,72 +171,42 @@ static ModifiedDatePatternGroup get_modified_date_pattern(const std::string& lan
 // Helpers to get day/month name (system locale or fallback)
 // ---------------------------------------------------------------------------
 
-static std::string get_day_name(const struct tm* tm_info) {
+/// A localized name: the system locale's strftime `format` when it is active, else the
+/// active language's fallback table (English when it has none), `index` clamped to the table.
+template <size_t N>
+static std::string
+localized_name(const struct tm* tm_info, const char* format,
+               const std::unordered_map<std::string, std::array<const char*, N>>& table,
+               int index) {
     if (s_use_system_locale) {
-        char buf[32];
-        strftime(buf, sizeof(buf), "%a", tm_info);
+        char buf[64];
+        strftime(buf, sizeof(buf), format, tm_info);
         return buf;
     }
-
-    auto it = k_day_abbr.find(s_current_lang);
-    if (it == k_day_abbr.end()) {
-        it = k_day_abbr.find("en");
+    auto it = table.find(s_current_lang);
+    if (it == table.end()) {
+        it = table.find("en");
     }
-    int wday = tm_info->tm_wday;
-    if (wday < 0 || wday > 6)
-        wday = 0;
-    return it->second[static_cast<size_t>(wday)];
+    if (index < 0 || index >= static_cast<int>(N)) {
+        index = 0;
+    }
+    return it->second[static_cast<size_t>(index)];
+}
+
+static std::string get_day_name(const struct tm* tm_info) {
+    return localized_name(tm_info, "%a", k_day_abbr, tm_info->tm_wday);
 }
 
 static std::string get_month_name(const struct tm* tm_info) {
-    if (s_use_system_locale) {
-        char buf[32];
-        strftime(buf, sizeof(buf), "%b", tm_info);
-        return buf;
-    }
-
-    auto it = k_month_abbr.find(s_current_lang);
-    if (it == k_month_abbr.end()) {
-        it = k_month_abbr.find("en");
-    }
-    int mon = tm_info->tm_mon;
-    if (mon < 0 || mon > 11)
-        mon = 0;
-    return it->second[static_cast<size_t>(mon)];
+    return localized_name(tm_info, "%b", k_month_abbr, tm_info->tm_mon);
 }
 
 static std::string get_month_full_name(const struct tm* tm_info) {
-    if (s_use_system_locale) {
-        char buf[64];
-        strftime(buf, sizeof(buf), "%B", tm_info);
-        return buf;
-    }
-
-    auto it = k_month_full.find(s_current_lang);
-    if (it == k_month_full.end()) {
-        it = k_month_full.find("en");
-    }
-    int mon = tm_info->tm_mon;
-    if (mon < 0 || mon > 11)
-        mon = 0;
-    return it->second[static_cast<size_t>(mon)];
+    return localized_name(tm_info, "%B", k_month_full, tm_info->tm_mon);
 }
 
 static std::string get_day_full_name(const struct tm* tm_info) {
-    if (s_use_system_locale) {
-        char buf[64];
-        strftime(buf, sizeof(buf), "%A", tm_info);
-        return buf;
-    }
-
-    auto it = k_day_full.find(s_current_lang);
-    if (it == k_day_full.end()) {
-        it = k_day_full.find("en");
-    }
-    int wday = tm_info->tm_wday;
-    if (wday < 0 || wday > 6)
-        wday = 0;
-    return it->second[static_cast<size_t>(wday)];
+    return localized_name(tm_info, "%A", k_day_full, tm_info->tm_wday);
 }
 
 // ---------------------------------------------------------------------------

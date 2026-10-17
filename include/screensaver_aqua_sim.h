@@ -79,12 +79,14 @@ struct AquaWave {
     float amp, k, omega, dir_x, dir_z, steep, phase;
 };
 struct AquaImpulse {
-    float t0, x, z, amp;
+    double t0; ///< sim seconds it began
+    float x, z, amp;
 };
 
 /// Height of one Gerstner wave at (x, z, t): one fixed-point pass maps (x, z) back to the
-/// point p0 whose displaced position it is, then A sin(k (d . p0) - w t + phi).
-float aqua_gerstner_height(const AquaWave& wave, float x, float z, float t);
+/// point p0 whose displaced position it is, then A sin(k (d . p0) - w t + phi). Time is a
+/// double, reduced to the wave's phase, so the surface stays exact on a run of any length.
+float aqua_gerstner_height(const AquaWave& wave, float x, float z, double t);
 
 /**
  * @brief The water surface: its height over a grid in (u = x / z, z), evaluated per frame
@@ -95,6 +97,7 @@ float aqua_gerstner_height(const AquaWave& wave, float x, float z, float t);
  */
 class AquaWater {
   public:
+    friend class AquaSimTestAccess;
     /// Seeds the modes, waves and the first impulse from `rng`; grid is gx x gz cells over
     /// u in +-u_max and z from AQUA_Z_NEAR to AQUA_Z_NEAR + AQUA_DEPTH.
     void init(std::minstd_rand& rng, int32_t gx, int32_t gz, float u_max);
@@ -102,12 +105,12 @@ class AquaWater {
     void set_grid(int32_t gx, int32_t gz);
     /// Advances the impulse schedule to sim time `t` and evaluates the grid there, keeping the
     /// previous grid for the rate of rise.
-    void evaluate(float t, std::minstd_rand& rng);
+    void evaluate(double t, std::minstd_rand& rng);
 
     /// Height at world (x, z), bilinear over the grid, clamped to it.
     float height_at(float x, float z) const;
     /// Height of the analytic surface at (x, z, t), no grid: the reference the grid samples.
-    float exact_height(float x, float z, float t) const;
+    float exact_height(float x, float z, double t) const;
     /// Rate of rise at grid cell (i, k) over the last evaluate(), world units per sim second.
     float rise_at(int32_t i, int32_t k) const;
     /// Height at grid cell (i, k), and the cell's world position.
@@ -140,14 +143,14 @@ class AquaWater {
 
   private:
     /// The analytic height at (x, z) for sim time t_.
-    float height(float x, float z, float t) const;
+    float height(float x, float z, double t) const;
 
     int32_t gx_ = 0;
     int32_t gz_ = 0;
     float u_max_ = 0.0f;
-    float t_ = 0.0f;
+    double t_ = 0.0;
     float dt_ = 0.0f;
-    float next_impulse_ = 0.0f;
+    double next_impulse_ = 0.0;
     bool fresh_ = true; ///< no grid evaluated yet, so no rate of rise
     std::array<AquaMode, 3> modes_{};
     std::array<AquaWave, 4> waves_{};
@@ -243,6 +246,7 @@ AquaClockLayout layout_aqua_clock(int32_t w, int32_t h, int32_t dx, int32_t dy);
 
 class AquaSim {
   public:
+    friend class AquaSimTestAccess;
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level,
               const ClockReading& reading);
     /**
@@ -271,7 +275,7 @@ class AquaSim {
         return clock_;
     }
     /// Sim seconds since init().
-    float sim_time() const {
+    double sim_time() const {
         return t_sim_;
     }
     /// Rim brightness, 0 to 1, over output column `x` in the last frame.
@@ -311,7 +315,7 @@ class AquaSim {
     size_t level_ = 0;
     int32_t w_ = 0;
     int32_t h_ = 0;
-    float t_sim_ = 0.0f;
+    double t_sim_ = 0.0;
     uint32_t elapsed_ms_ = 0;
     screensaver::StepAccumulator emit_steps_;
     AquaWater water_;

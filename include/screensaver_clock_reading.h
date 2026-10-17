@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "screensaver_frame.h"
+
 #include <cstdint>
 
 /**
@@ -115,6 +117,11 @@ class ClockState {
     uint32_t done_ms_ = 0;
     ClockReading reading_;
 };
+
+/// Largest drift either way that keeps a clock whose undrifted box is `bounds` on a `w` x `h`
+/// screen with a pixel to spare, and never more than a 25th of the screen (4 px at least).
+void clock_drift_range(const DirtyRect& bounds, int32_t w, int32_t h, int32_t& max_dx,
+                       int32_t& max_dy);
 
 /// Drift offset `elapsed_ms` into a run, stepping every CLOCK_DRIFT_STEP_MS within
 /// +-`max_dx`, +-`max_dy`.

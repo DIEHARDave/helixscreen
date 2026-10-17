@@ -116,7 +116,8 @@ class HeightfieldRenderer {
 
     /// Sizes every buffer for `view` and builds its slices.
     void init(const HeightfieldView& view);
-    /// Changes the view; buffers are resized only when w, h or slices grow.
+    /// Changes the view. Buffers are resized to fit it; shrinking keeps their capacity, so
+    /// returning to a larger view allocates nothing.
     void set_view(const HeightfieldView& view);
     const HeightfieldView& view() const {
         return view_;

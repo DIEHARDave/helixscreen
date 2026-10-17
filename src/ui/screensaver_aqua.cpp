@@ -46,9 +46,11 @@ bool AquaScreensaver::on_start() {
     spdlog::debug("[Screensaver] Aqua surface holds {} KB at {}x{}", sim_.heap_bytes() / 1024,
                   frame.w, frame.h);
     line_.reset();
+    text_built_ = false;
+    under_.reserve(SAVER_MAX_DIRTY_AREAS);
     std::vector<DirtyRect> dirty;
-    line_.draw(canvas(), line_text(clock_.reading()), sim_.clock_layout().text, LINE_COLOR,
-               LV_OPA_90, LV_TEXT_ALIGN_CENTER, dirty, dirty);
+    line_.draw(canvas(), current_text(), sim_.clock_layout().text, LINE_COLOR, LV_OPA_90,
+               LV_TEXT_ALIGN_CENTER, dirty, dirty);
     return true;
 }
 
@@ -56,18 +58,30 @@ void AquaScreensaver::on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty) {
     clock_.step(dt_ms, read_input());
     FrameTarget frame = canvas().frame();
     sim_.step(dt_ms, frame, rng(), clock_.reading(), dirty);
-    const std::string text = line_text(clock_.reading());
+    const std::string& text = current_text();
     const DirtyRect& box = sim_.clock_layout().text;
     if (text != line_.text() || !(box == line_.box())) {
         sim_.restore(frame, line_.box(), dirty);
     }
-    const std::vector<DirtyRect> under = dirty;
-    line_.draw(canvas(), text, box, LINE_COLOR, LV_OPA_90, LV_TEXT_ALIGN_CENTER, under, dirty);
+    under_.assign(dirty.begin(), dirty.end());
+    line_.draw(canvas(), text, box, LINE_COLOR, LV_OPA_90, LV_TEXT_ALIGN_CENTER, under_, dirty);
+}
+
+const std::string& AquaScreensaver::current_text() {
+    if (!text_built_ || !clock_text_same(clock_.reading(), text_for_)) {
+        text_ = line_text(clock_.reading());
+        text_for_ = clock_.reading();
+        text_built_ = true;
+    }
+    return text_;
 }
 
 void AquaScreensaver::on_stop() {
     sim_.clear();
     line_.reset();
+    std::string().swap(text_);
+    std::vector<DirtyRect>().swap(under_);
+    text_built_ = false;
 }
 
 void AquaScreensaver::on_level_request(size_t level) {

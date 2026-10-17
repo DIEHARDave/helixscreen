@@ -161,6 +161,23 @@ TEST_CASE("paused freezes, done holds then returns to the clock, cancelled clear
     CHECK(state.reading().progress_pct == 0);
 }
 
+TEST_CASE("the drift range keeps a spare pixel and at most a 25th of the screen",
+          "[screensaver][clock_reading]") {
+    int32_t dx = 0;
+    int32_t dy = 0;
+    // A small box in a big screen: capped at a 25th.
+    helix::ui::clock_drift_range({300, 200, 499, 279}, 800, 480, dx, dy);
+    CHECK(dx == 32);
+    CHECK(dy == 19);
+    // A box near the edges: the room less a pixel.
+    helix::ui::clock_drift_range({10, 6, 789, 470}, 800, 480, dx, dy);
+    CHECK(dx == 9);
+    CHECK(dy == 5);
+    helix::ui::clock_drift_range({0, 0, 799, 479}, 800, 480, dx, dy);
+    CHECK(dx == 0);
+    CHECK(dy == 0);
+}
+
 // ============================================================================
 // Stroke digits
 // ============================================================================

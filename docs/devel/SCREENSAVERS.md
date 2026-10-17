@@ -204,6 +204,13 @@ layout whole. The caption and AM/PM marker are `lv_draw_label` text on the canva
 (`SaverLabel`), which is why its canvas uses the pipes format.
 
 
+## Long runs
+
+A saver can run for days. The sims keep time as a double and reduce every periodic phase from
+it before it reaches float maths: High Fly's deck scroll to one field tile, the band drift to
+one texture width and the wisp scroll to one table turn; Aqua's wave and mode phases to one
+turn and the wrinkle scroll to one table turn. Tests start both sims thirty days in.
+
 ## The shared clock face
 
 `ClockState::step` takes the time, the date and the print each frame and keeps one reading:
@@ -268,7 +275,8 @@ and one octave of wrinkle; then a near-neutral cool tint.
   The date or print line under the rings is a `SaverLabel`.
 - A frame repaints the water band (from the highest silhouette down, the clock included) and
   the boxes of droplets above it. The last rung keeps the scene still and redraws only the
-  clock, from a copy of the pixels under it.
+  clock, from a copy of the pixels under it; a drift step puts back the old place and copies
+  the new one, without rendering the water again.
 
 ## High Fly
 
@@ -282,10 +290,12 @@ and towering cumulus billboards, each depth-tested per pixel against the deck; a
 white haze over the bottom rows.
 
 - Towers: three shapes baked at start, lit from above with sunlit crowns; one enters every
-  13 to 14 s on alternating sides and fades out as it nears, so no more than two are up.
+  13 to 14 s on alternating sides, comes on at the deck's speed, keeps its world x so it
+  slides out to the side as it nears (with a little wind drift), and leaves once off screen.
 - A fly-through every one to two minutes: the cloud ahead grows from the centre, the screen
-  eases toward a blue-grey interior capped at `HIGHFLY_WHITEOUT_MAX` so the clock stays
-  readable, wisps stream outward from a polar lookup sampled bilinearly, and it clears.
+  eases toward a blue-grey interior capped at `HIGHFLY_WHITEOUT_MAX`, wisps stream outward
+  from a polar lookup sampled bilinearly, and it clears. Over the clock the two together cover
+  at most `HIGHFLY_CLOCK_COVER_MAX` of the scene, so the numerals stay readable.
 - The clock: thin stroke numerals at the cloud line with superscript seconds, AM/PM under
   them and a two-line date (or the print's ETA and time left) on the left.
 - A frame repaints the band of rows from the far billows or the deck down, plus boxes above it

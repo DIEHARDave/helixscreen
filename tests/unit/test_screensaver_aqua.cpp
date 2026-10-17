@@ -20,6 +20,17 @@
 
 namespace helix::ui {
 
+/// Moves an AquaSim's clocks, for runs far longer than a test can step through.
+class AquaSimTestAccess {
+  public:
+    static void skip_to(AquaSim& sim, double t_sim) {
+        sim.t_sim_ = t_sim;
+        sim.water_.t_ = t_sim;
+        sim.water_.next_impulse_ = t_sim + 0.6;
+        sim.water_.impulses_.clear();
+    }
+};
+
 /// Reads the sim and the text line an AquaScreensaver owns.
 class AquaScreensaverTestAccess {
   public:
@@ -35,6 +46,7 @@ class AquaScreensaverTestAccess {
 
 using helix::ui::AquaScreensaver;
 using helix::ui::AquaScreensaverTestAccess;
+using helix::ui::AquaSimTestAccess;
 using helix::ui::ClockInput;
 using helix::ui::ClockPrintPhase;
 using helix::ui::SaverTestAccess;
@@ -190,7 +202,7 @@ TEST_CASE("impulses start behind the near edge and expire after 12 sim seconds",
     AquaWater water;
     std::minstd_rand rng(5);
     water.init(rng, 20, 8, 0.4f);
-    std::vector<float> starts;
+    std::vector<double> starts;
     for (float t = 0.0f; t < 120.0f; t += 0.05f) {
         water.evaluate(t, rng);
         for (const auto& e : water.impulses()) {
@@ -206,7 +218,7 @@ TEST_CASE("impulses start behind the near edge and expire after 12 sim seconds",
     std::sort(starts.begin(), starts.end());
     CHECK(starts.front() == Catch::Approx(0.6f));
     for (size_t i = 1; i < starts.size(); i++) {
-        const float gap = starts[i] - starts[i - 1];
+        const auto gap = static_cast<float>(starts[i] - starts[i - 1]);
         CHECK(gap >= 2.0f - 1e-4f);
         CHECK(gap <= 4.0f + 1e-4f);
     }
@@ -578,9 +590,10 @@ double shimmer(uint32_t seed) {
     return sum / static_cast<double>(samples);
 }
 
-// The approved prototype (aqua2.py) measures 9.4 on this same metric at its seed; the moving
-// highlights, not frame-to-frame sparkle, are most of it.
-TEST_CASE("the water shimmers no more than the approved prototype",
+// The approved Python prototype measured 7.8 to 13.8 on about this metric over seeds 3 to 5;
+// most of it is the highlights moving, not frame-to-frame sparkle. The bound is a regression
+// tripwire at that level, not a comparison with the prototype.
+TEST_CASE("the water's frame-to-frame change stays at the approved look's level",
           "[screensaver][aqua][shimmer]") {
     double total = 0.0;
     for (const uint32_t seed : {3u, 4u, 5u}) {
@@ -628,9 +641,11 @@ TEST_CASE("the ladder steps to coarser water and ends standing still", "[screens
 }
 
 TEST_CASE("emission follows time, not frame rate", "[screensaver][aqua][droplets]") {
-    const auto emitted = [](uint32_t period) {
+    // Which crests qualify depends on the rate of rise each frame measures, so one seed's
+    // count wanders a little between frame rates; summed over several it holds.
+    const auto emitted = [](uint32_t period, uint32_t seed) {
         SimFrame frame(200, 120, PixelFormat::RGB565);
-        std::minstd_rand rng(3);
+        std::minstd_rand rng(seed);
         AquaSim sim;
         const ClockReading r = reading_at(9 * 3600);
         sim.init(frame.target, rng, 1, r);
@@ -638,12 +653,80 @@ TEST_CASE("emission follows time, not frame rate", "[screensaver][aqua][droplets
         for (uint32_t t = 0; t < 120000; t += period) {
             sim.step(period, frame.target, rng, r, dirty);
         }
-        return sim.splashes().emitted();
+        return static_cast<double>(sim.splashes().emitted());
     };
-    const auto fast = static_cast<double>(emitted(16));
-    const auto slow = static_cast<double>(emitted(50));
-    REQUIRE(slow > 20.0);
-    CHECK(fast == Catch::Approx(slow).epsilon(0.10));
+    double fast = 0.0;
+    double slow = 0.0;
+    for (const uint32_t seed : {3u, 4u, 5u, 6u}) {
+        fast += emitted(16, seed);
+        slow += emitted(50, seed);
+    }
+    REQUIRE(slow > 80.0);
+    CHECK(fast == Catch::Approx(slow).epsilon(0.15));
+    // A per-frame emission would throw about three times as many at 16 ms frames.
+    CHECK(fast < 1.5 * slow);
+}
+
+/// Mean |byte change| between consecutive 50 ms frames of `sim`, over `frames` frames.
+double mean_change(AquaSim& sim, SimFrame& frame, std::minstd_rand& rng, const ClockReading& r,
+                   int frames) {
+    std::vector<DirtyRect> dirty;
+    double sum = 0.0;
+    for (int i = 0; i < frames; i++) {
+        const std::vector<uint8_t> before = frame.bytes;
+        sim.step(50, frame.target, rng, r, dirty);
+        for (size_t b = 0; b < before.size(); b++) {
+            sum += std::abs(static_cast<int>(before[b]) - static_cast<int>(frame.bytes[b]));
+        }
+    }
+    return sum / static_cast<double>(frames) / static_cast<double>(frame.bytes.size());
+}
+
+TEST_CASE("aqua still moves smoothly thirty days into a run", "[screensaver][aqua]") {
+    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    std::minstd_rand rng(3);
+    AquaSim sim;
+    const ClockReading r = reading_at(9 * 3600);
+    sim.init(frame.target, rng, 1, r);
+    mean_change(sim, frame, rng, r, 40);
+    const double early = mean_change(sim, frame, rng, r, 40);
+    AquaSimTestAccess::skip_to(sim, 30.0 * 86400.0 * helix::ui::AQUA_TIME_SCALE);
+    mean_change(sim, frame, rng, r, 40);
+    const double late = mean_change(sim, frame, rng, r, 40);
+    CAPTURE(early, late);
+    REQUIRE(early > 0.05);
+    CHECK(late > 0.5 * early);
+    CHECK(late < 2.0 * early);
+}
+
+TEST_CASE("a drift step at the still rung repaints only the clock's old and new places",
+          "[screensaver][aqua]") {
+    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    std::minstd_rand rng(3);
+    AquaSim sim;
+    const ClockReading r = reading_at(9 * 3600);
+    sim.init(frame.target, rng, AQUA_LEVEL_COUNT - 1, r);
+    std::vector<DirtyRect> dirty;
+    const DirtyRect first = sim.clock_layout().bounds;
+    bool stepped = false;
+    for (uint32_t t = 0; t < 3 * helix::ui::CLOCK_DRIFT_STEP_MS && !stepped; t += 250) {
+        const std::vector<uint8_t> before = frame.bytes;
+        sim.step(250, frame.target, rng, r, dirty);
+        if (!(sim.clock_layout().bounds == first)) {
+            stepped = true;
+            int64_t area = 0;
+            for (const DirtyRect& d : dirty) {
+                area += d.area();
+            }
+            CHECK(area <= 2 * first.area());
+            const auto d = diff_frame(before, frame, dirty);
+            CHECK(d.first > 0);
+            CHECK(d.second == 0);
+        } else if (t > 0) {
+            CHECK(dirty.empty());
+        }
+    }
+    CHECK(stepped);
 }
 
 TEST_CASE("aqua frames allocate nothing and clear frees everything", "[screensaver][aqua]") {

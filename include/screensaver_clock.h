@@ -48,6 +48,11 @@ struct ClockDateText {
 };
 ClockDateText clock_date_text(const ClockDate& date);
 
+/// True when `a` and `b` give the same clock_print_text, clock_date_text and
+/// clock_meridiem_text, so a saver can keep the strings it built instead of building them
+/// again every frame.
+bool clock_text_same(const ClockReading& a, const ClockReading& b);
+
 /// The C library's AM/PM for `meridiem`, empty for NONE.
 std::string clock_meridiem_text(ClockMeridiem meridiem);
 

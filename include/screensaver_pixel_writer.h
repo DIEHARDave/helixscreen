@@ -31,6 +31,20 @@ constexpr uint8_t dither_channel(uint8_t c, uint8_t max_level, uint8_t threshold
     return static_cast<uint8_t>(std::min<uint32_t>(max_level, scaled / (255u * 32u)));
 }
 
+/// Bytes one pixel takes in `format`.
+constexpr uint32_t pixel_bytes(PixelFormat format) {
+    return format == PixelFormat::RGB565 ? 2 : 4;
+}
+
+/// `a` moved `t` (0 to 1) of the way to `b`, rounded and clamped per channel.
+constexpr Rgb mix_rgb(Rgb a, Rgb b, float t) {
+    const auto ch = [t](uint8_t x, uint8_t y) {
+        const float v = static_cast<float>(x) + (static_cast<float>(y) - static_cast<float>(x)) * t;
+        return static_cast<uint8_t>(v <= 0.0f ? 0.0f : (v >= 255.0f ? 255.0f : v + 0.5f));
+    };
+    return {ch(a.r, b.r), ch(a.g, b.g), ch(a.b, b.b)};
+}
+
 /// Fully saturated colour `h` of 256 round the wheel.
 constexpr Rgb hue_color(uint32_t h) {
     h &= 255;

@@ -13,6 +13,7 @@
 #include <functional>
 #include <lvgl.h>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace helix::ui {
@@ -67,6 +68,13 @@ class HighFlyScreensaver : public SaverBase {
     SaverLabel date_line_;
     SaverLabel day_line_;
     SaverLabel meridiem_;
+    /// The texts and the reading they were built for, rebuilt only when that changes.
+    std::string first_;
+    std::string second_;
+    std::string meridiem_text_;
+    ClockReading texts_for_;
+    bool texts_built_ = false;
+    std::vector<DirtyRect> under_;
 };
 
 } // namespace helix::ui

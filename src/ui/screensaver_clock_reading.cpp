@@ -110,6 +110,14 @@ void ClockState::step(uint32_t dt_ms, const ClockInput& in) {
     }
 }
 
+void clock_drift_range(const DirtyRect& bounds, int32_t w, int32_t h, int32_t& max_dx,
+                       int32_t& max_dy) {
+    const int32_t room_x = std::min(bounds.x1, w - 1 - bounds.x2) - 1;
+    const int32_t room_y = std::min(bounds.y1, h - 1 - bounds.y2) - 1;
+    max_dx = std::max(0, std::min(room_x, std::max(4, w / 25)));
+    max_dy = std::max(0, std::min(room_y, std::max(4, h / 25)));
+}
+
 void clock_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t& dx, int32_t& dy) {
     const auto step = static_cast<float>(elapsed_ms / CLOCK_DRIFT_STEP_MS);
     // Two incommensurate rates, so the path does not retrace itself for hours.
