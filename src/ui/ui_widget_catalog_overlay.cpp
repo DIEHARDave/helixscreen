@@ -9,10 +9,12 @@
 #include "ui_row_text.h"
 #include "ui_selector_model.h"
 #include "ui_subject_registry.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
 #include "grid_layout.h"
+#include "home_layout_sync.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "panel_widget_config.h"
 #include "panel_widget_manager.h"
@@ -230,6 +232,43 @@ void on_catalog_reset(lv_event_t* /*e*/) {
             close_catalog();
             PanelWidgetManager::instance().notify_config_changed("home");
         });
+}
+
+/// Replaces this screen's home layout with the one the printer's own screen
+/// published, after the user confirms. The replacement ignores edits: the
+/// user asked for the printer's layout by name.
+void apply_printer_layout(const home_layout::ParsedLayout& layout) {
+    auto& config = PanelWidgetManager::instance().get_widget_config("home");
+    const auto [cols, rows] = config.stamped_grid();
+    if (!config.import_layout(layout, cols, rows)) {
+        spdlog::warn("[WidgetCatalog] The printer's home layout did not import onto {}x{}", cols,
+                     rows);
+        ToastManager::instance().show(ToastSeverity::ERROR,
+                                      lv_tr("Could not copy the printer's layout"), 3000);
+        return;
+    }
+    spdlog::info("[WidgetCatalog] Copied the printer's home layout ({}x{} onto {}x{})", layout.cols,
+                 layout.rows, cols, rows);
+    close_catalog();
+    PanelWidgetManager::instance().notify_config_changed("home");
+}
+
+void on_catalog_copy_layout(lv_event_t* /*e*/) {
+    spdlog::info("[WidgetCatalog] Copy layout from printer requested");
+
+    HomeLayoutSync::instance().fetch_now([](std::optional<home_layout::ParsedLayout> layout) {
+        if (!layout) {
+            ToastManager::instance().show(
+                ToastSeverity::INFO, lv_tr("This printer's screen has not shared a layout"), 3000);
+            return;
+        }
+        ui::modal_confirm(
+            lv_tr("Copy Layout From Printer?"),
+            lv_tr("This replaces this screen's home layout for this printer with the one "
+                  "on the printer's own screen."),
+            ModalSeverity::Warning, lv_tr("Copy"),
+            [layout = std::move(*layout)] { apply_printer_layout(layout); });
+    });
 }
 
 /// Renders a registry span for the size badge.
@@ -701,6 +740,7 @@ void WidgetCatalogOverlay::show(lv_obj_t* parent_screen, const PanelWidgetConfig
         return;
     }
     lv_xml_register_event_cb(nullptr, "on_catalog_reset", on_catalog_reset);
+    lv_xml_register_event_cb(nullptr, "on_catalog_copy_layout", on_catalog_copy_layout);
     lv_xml_register_event_cb(nullptr, "on_catalog_category_clicked", on_category_row_clicked);
     lv_xml_register_event_cb(nullptr, "on_catalog_unavailable_clicked", on_unavailable_row_clicked);
     lv_xml_register_event_cb(nullptr, "on_catalog_search_changed", on_search_changed);

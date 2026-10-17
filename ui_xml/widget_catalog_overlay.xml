@@ -18,6 +18,17 @@
         <event_cb trigger="value_changed" callback="on_catalog_search_changed"/>
       </text_input>
     </lv_obj>
+    <!-- Remote screens only (moonraker_locality 2): replace this screen's home
+         layout with the one the printer's own screen published. Browse view only. -->
+    <lv_obj name="copy_layout_group"
+            width="100%" height="content" scrollable="false" style_pad_all="0" style_pad_left="#space_md"
+            style_pad_right="#space_md" style_pad_top="#space_sm">
+      <bind_flag_if cond="moonraker_locality ne 2 or widget_catalog_view ne 0" flag="hidden"/>
+      <setting_action_row name="row_copy_layout"
+                          label="Copy layout from printer" icon="content_copy"
+                          description="Use the home layout set on the printer's own screen"
+                          callback="on_catalog_copy_layout"/>
+    </lv_obj>
     <!-- Browse level: category rows populated dynamically by C++. The group
          supplies the card shell and the hairline dividers between rows.
          widget_catalog_view: 0 = categories, 1 = search results. -->

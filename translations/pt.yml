@@ -825,9 +825,12 @@ translations:
   Cooling Tube Retraction: 'Retração do tubo de resfriamento'
   Cooling for probing...: Resfriando para sondagem...
   Copied to clipboard!: Copiado para a área de transferência!
+  Copy: "Copiar"
   Copy Command: Copiar Comando
+  Copy Layout From Printer?: "Copiar o layout da impressora?"
   Copy failed - use SSH manually: Falha ao copiar - use SSH manualmente
   Copy it into this filament's slicer profile. The printer keeps nothing.: 'Copie-o para o perfil do fatiador deste filamento. A impressora não guarda nada.'
+  Copy layout from printer: "Copiar layout da impressora"
   Copying from USB: 'Copiando do USB'
   Copying from USB stopped responding: 'A cópia do USB parou de responder'
   Copying from USB...: 'Copiando do USB...'
@@ -847,6 +850,7 @@ translations:
   ? "Could not check webcam status.\nCheck printer connection."
   : "Não foi possível verificar status da webcam.\nVerifique a conexão da impressora."
   Could not confirm cancel: Não foi possível confirmar o cancelamento
+  Could not copy the printer's layout: "Não foi possível copiar o layout da impressora"
   'Could not copy {} from USB: {}': 'Não foi possível copiar {} do USB: {}'
   Could not disconnect from WiFi: Não foi possível desconectar do WiFi
   'Could not extract plate {} of {}: {}': 'Não foi possível extrair a placa {} de {}: {}'
@@ -3629,11 +3633,13 @@ translations:
   : Esta impressora parece ser uma {} ({}% de confiança), mas está configurada como {}. Um tipo errado aplica opções de pré-impressão e predefinições incorretas.
   This printer's network service controls the WiFi radio: O serviço de rede desta impressora controla o rádio WiFi
   This printer's network service manages saved WiFi networks: O serviço de rede desta impressora gerencia as redes WiFi salvas
+  This printer's screen has not shared a layout: "A tela desta impressora não compartilhou um layout"
   ? This removes the plugin's Moonraker component and restarts Moonraker. The printer will briefly disconnect. If old phase-tracking lines are still in PRINT_START, they are removed too, with backups kept. A Klipper restart applies that.
   : Isso remove o componente do Moonraker do plugin e reinicia o Moonraker. A impressora será brevemente desconectada. Se ainda houver linhas antigas de rastreamento de fase no PRINT_START, elas também são removidas, mantendo os backups. Um reinício do Klipper aplica isso.
   This replaces the printer's helper macros with the current version and restarts Klipper.: 'Isto substitui as macros de ajuda da impressora pela versão atual e reinicia o Klipper.'
   ? This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   : 'Isto substitui as macros de ajuda da impressora pela versão atual. Uma impressão está em andamento, então o Klipper será reiniciado ao término.'
+  This replaces this screen's home layout for this printer with the one on the printer's own screen.: "Isso substitui o layout da tela inicial desta tela para esta impressora pelo layout da tela da própria impressora."
   This system does not support bypass mode: 'Este sistema não oferece suporte ao modo bypass'
   This tool probes each bed screw and tells you how much to adjust.: Esta ferramenta
     sonda cada parafuso da mesa e informa quanto ajustar.
@@ -3864,6 +3870,7 @@ translations:
   Use first HID scanner found: 'Usar o primeiro leitor HID encontrado'
   Use printer type to select image: Usar tipo de impressora para selecionar imagem
   Use Scan: Usar leitura
+  Use the home layout set on the printer's own screen: "Usar o layout inicial definido na tela da impressora"
   User intervention required: 'Intervenção manual necessária'
   VM Peak: Pico de VM
   VM Size: Tamanho de VM

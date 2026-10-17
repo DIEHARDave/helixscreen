@@ -742,9 +742,12 @@
   <translation tag="Cooling Tube Retraction" it="Retrazione del tubo di raffreddamento"/>
   <translation tag="Cooling for probing..." it="Raffreddamento per il sondaggio..."/>
   <translation tag="Copied to clipboard!" it="Copiato negli appunti!"/>
+  <translation tag="Copy" it="Copia"/>
   <translation tag="Copy Command" it="Copia comando"/>
+  <translation tag="Copy Layout From Printer?" it="Copiare il layout dalla stampante?"/>
   <translation tag="Copy failed - use SSH manually" it="Copia fallita - usa SSH manualmente"/>
   <translation tag="Copy it into this filament&apos;s slicer profile. The printer keeps nothing." it="Copialo nel profilo slicer di questo filamento. La stampante non conserva nulla."/>
+  <translation tag="Copy layout from printer" it="Copia layout dalla stampante"/>
   <translation tag="Copying from USB" it="Copia da USB"/>
   <translation tag="Copying from USB stopped responding" it="La copia da USB non risponde più"/>
   <translation tag="Copying from USB..." it="Copia da USB..."/>
@@ -756,6 +759,7 @@
   <translation tag="Could not check webcam status.&#10;Check printer connection." it="Impossibile verificare stato webcam.&#10;Controllare la connessione della stampante."/>
   <translation tag="Could not check {} - it stays in the queue" it="Impossibile verificare {} – resta in coda"/>
   <translation tag="Could not confirm cancel" it="Impossibile confermare l&apos;annullamento"/>
+  <translation tag="Could not copy the printer&apos;s layout" it="Impossibile copiare il layout della stampante"/>
   <translation tag="Could not copy {} from USB: {}" it="Impossibile copiare {} da USB: {}"/>
   <translation tag="Could not disconnect from WiFi" it="Impossibile disconnettersi dal WiFi"/>
   <translation tag="Could not extract plate {} of {}: {}" it="Impossibile estrarre il piatto {} da {}: {}"/>
@@ -3245,9 +3249,11 @@
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." it="Questa stampante sembra una {} (affidabilità {}%), ma è configurata come {}. Un tipo errato applica opzioni pre-stampa e preset errati."/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" it="Il servizio di rete di questa stampante controlla la radio WiFi"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" it="Il servizio di rete di questa stampante gestisce le reti WiFi salvate"/>
+  <translation tag="This printer&apos;s screen has not shared a layout" it="Lo schermo di questa stampante non ha condiviso un layout"/>
   <translation tag="This removes the plugin&apos;s Moonraker component and restarts Moonraker. The printer will briefly disconnect. If old phase-tracking lines are still in PRINT_START, they are removed too, with backups kept. A Klipper restart applies that." it="Questo rimuove il componente Moonraker del plugin e riavvia Moonraker. La stampante si disconnetterà brevemente. Se sono ancora presenti vecchie righe di tracciamento delle fasi in PRINT_START, vengono rimosse anch&apos;esse, mantenendo i backup. Un riavvio di Klipper applica ciò."/>
   <translation tag="This replaces the printer&apos;s helper macros with the current version and restarts Klipper." it="Sostituisce le macro di ausilio della stampante con la versione attuale e riavvia Klipper."/>
   <translation tag="This replaces the printer&apos;s helper macros with the current version. A print is running, so Klipper restarts after it finishes." it="Sostituisce le macro di ausilio della stampante con la versione attuale. Una stampa è in corso, quindi Klipper verrà riavviato al termine."/>
+  <translation tag="This replaces this screen&apos;s home layout for this printer with the one on the printer&apos;s own screen." it="Questo sostituisce il layout della schermata iniziale di questo schermo per questa stampante con quello dello schermo della stampante."/>
   <translation tag="This system does not support bypass mode" it="Questo sistema non supporta la modalità bypass"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." it="Questo strumento sonda ogni vite del piano e indica quanto regolare."/>
   <translation tag="This update asks for new permissions:" it="Questo aggiornamento richiede nuovi permessi:"/>
@@ -3451,6 +3457,7 @@
   <translation tag="Use Unload before Eject" it="Usa Scarica prima di Espelli"/>
   <translation tag="Use first HID scanner found" it="Usa il primo scanner HID trovato"/>
   <translation tag="Use printer type to select image" it="Usa il tipo di stampante per selezionare l&apos;immagine"/>
+  <translation tag="Use the home layout set on the printer&apos;s own screen" it="Usa il layout iniziale impostato sullo schermo della stampante"/>
   <translation tag="User intervention required" it="Intervento manuale richiesto"/>
   <translation tag="VM Peak" it="Picco VM"/>
   <translation tag="VM Size" it="Dimensione VM"/>
