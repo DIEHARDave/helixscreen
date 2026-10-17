@@ -4,6 +4,8 @@
 
 #include "screensaver_blur.h"
 
+#include "screensaver_motion.h"
+
 #include <algorithm>
 #include <cstring>
 
@@ -22,7 +24,7 @@ void box_blur(float* a, int32_t w, int32_t h, int32_t r, bool wrap_x, bool wrap_
         for (int32_t l = 0; l < lines; l++) {
             const auto at = [&](int32_t i) -> float {
                 if (wrap) {
-                    i = ((i % len) + len) % len;
+                    i = screensaver::wrap_index(i, len);
                 } else {
                     i = std::clamp(i, 0, len - 1);
                 }
