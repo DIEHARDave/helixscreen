@@ -12,6 +12,7 @@
 #include "ui_toast_manager.h"
 
 #include "app_globals.h"
+#include "display_numbering.h"
 #include "filament_database.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -312,7 +313,8 @@ void PaTuningOverlay::refresh_tools() {
         lv_subject_set_int(&tool_selected_[i], i == selected_head_ ? 1 : 0);
         std::string label;
         if (i < static_cast<int>(heads.size())) {
-            label = fmt::format("T{}", heads[static_cast<size_t>(i)].representative_tool(active));
+            label =
+                helix::ui::tool_label(heads[static_cast<size_t>(i)].representative_tool(active));
         }
         lv_subject_copy_string(&tool_label_[i], label.c_str());
     }
