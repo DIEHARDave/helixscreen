@@ -90,6 +90,7 @@ class SwitchFlowFixture : public XMLTestFixture {
                      events_.push_back("teardown");
                      active_at_teardown_ = cfg_->get_active_printer_id();
                      card_at_teardown_ = switch_card();
+                     locality_at_teardown_ = get_printer_state().moonraker_locality();
                      flushes_at_teardown_ = s_flushes;
                  },
                  [this] {
@@ -163,6 +164,7 @@ class SwitchFlowFixture : public XMLTestFixture {
     std::vector<std::string> events_;
     std::string active_at_teardown_;
     std::string card_at_teardown_;
+    helix::MoonrakerLocality locality_at_teardown_ = helix::MoonrakerLocality::Remote;
     int flushes_at_teardown_ = 0;
     static inline int s_flushes = 0;
     std::string card_at_rebuild_;
@@ -752,5 +754,6 @@ TEST_CASE_METHOD(SwitchFlowFixture,
         flow_.cancel_add_printer_wizard();
     }
 
-    CHECK(get_printer_state().moonraker_locality() == helix::MoonrakerLocality::Unknown);
+    // Read at the teardown: the rebuild after it can reconnect and settle a new verdict.
+    CHECK(locality_at_teardown_ == helix::MoonrakerLocality::Unknown);
 }
