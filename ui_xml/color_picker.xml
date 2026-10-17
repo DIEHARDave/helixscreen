@@ -57,11 +57,10 @@
       <lv_obj width="190"
               height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
               style_flex_cross_place="start" style_pad_gap="#space_md" scrollable="false">
-        <!-- Selected color preview swatch -->
-        <lv_obj name="selected_color_preview"
-                width="#color_preview_size" height="#color_preview_size_small" style_radius="#border_radius"
-                style_bg_color="#card_bg" style_bg_opa="255" style_border_width="2" style_border_color="#text_muted"
-                style_border_opa="80" scrollable="false"/>
+        <!-- Selected colour preview: a colour area, so a rounded rect -->
+        <swatch_paint name="selected_color_preview"
+                      width="#color_preview_size" height="#color_preview_size_small" style_radius="#border_radius"
+                      color="#card_bg"/>
         <!-- HSV picker: SV square + horizontal hue bar below -->
         <ui_hsv_picker name="hsv_picker" sv_size="#sv_size" hue_height="#hue_height" gap="#space_sm"/>
       </lv_obj>
@@ -138,11 +137,10 @@
         <lv_obj width="content"
                 height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
                 style_flex_cross_place="start" style_pad_gap="#space_sm" scrollable="false">
-          <!-- Selected color preview swatch -->
-          <lv_obj name="selected_color_preview_tiny"
-                  width="#color_preview_size" height="#color_preview_size_small" style_radius="#border_radius"
-                  style_bg_color="#card_bg" style_bg_opa="255" style_border_width="2" style_border_color="#text_muted"
-                  style_border_opa="80" scrollable="false"/>
+          <!-- Selected colour preview: a colour area, so a rounded rect -->
+          <swatch_paint name="selected_color_preview_tiny"
+                        width="#color_preview_size" height="#color_preview_size_small" style_radius="#border_radius"
+                        color="#card_bg"/>
           <!-- Hex input -->
           <text_input name="hex_input_tiny"
                       width="100" height="content" max_length="9" text="#808080" placeholder_text="#hex_placeholder"

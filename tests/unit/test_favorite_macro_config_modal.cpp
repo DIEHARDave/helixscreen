@@ -6,6 +6,7 @@
 //                 ../test_fixtures.h pulls in include/printer_state.h,
 //                 include/moonraker_api.h and include/theme_manager.h.
 #include "ui_modal.h"
+#include "ui_swatch.h"
 #include "ui_update_queue.h"
 
 #include "../test_fixtures.h"
@@ -272,4 +273,39 @@ TEST_CASE_METHOD(ConfigModalDefaultsFixture,
         helix::MacroParamDefaults::instance().get("MY_MACRO");
     CHECK(saved.values == std::map<std::string, std::string>{{"TEMP", "215"}});
     CHECK_FALSE(saved.ask_for_params);
+}
+
+TEST_CASE_METHOD(ConfigModalDefaultsFixture,
+                 "Appearance colours are painter swatches; a tap rings and saves one",
+                 "[macro][favorite_config][swatch]") {
+    auto& modal = show_config_for("PLAIN_MACRO");
+    lv_obj_t* dlg = modal.dialog();
+
+    lv_obj_t* red = lv_obj_find_by_name(dlg, "fav_macro_swatch_0");
+    lv_obj_t* theme_default = lv_obj_find_by_name(dlg, "fav_macro_swatch_15");
+    REQUIRE(red != nullptr);
+    REQUIRE(theme_default != nullptr);
+    CHECK(lv_obj_find_by_name(dlg, "fav_macro_swatch_16") == nullptr);
+    for (lv_obj_t* swatch : {red, theme_default}) {
+        lv_obj_t* disc = lv_obj_find_by_name(swatch, "color_swatch_disc");
+        REQUIRE(disc != nullptr);
+        CHECK(helix::ui::has_swatch_paint(disc));
+        CHECK(lv_obj_get_style_radius(disc, LV_PART_MAIN) == LV_RADIUS_CIRCLE);
+    }
+    CHECK((lv_color_to_u32(helix::ui::swatch_color_of(red)) & 0xFFFFFF) == 0xE53935);
+    CHECK(lv_color_eq(helix::ui::swatch_color_of(theme_default),
+                      theme_manager_get_color("secondary")));
+
+    // The saved colour 0 is the theme default, the last swatch.
+    lv_subject_t* selected = lv_xml_get_subject(nullptr, "fav_macro_selected_color");
+    REQUIRE(selected != nullptr);
+    CHECK(lv_subject_get_int(selected) == 15);
+
+    lv_obj_t* amber = lv_obj_find_by_name(dlg, "fav_macro_swatch_3");
+    REQUIRE(amber != nullptr);
+    lv_obj_send_event(amber, LV_EVENT_CLICKED, nullptr);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(lv_subject_get_int(selected) == 3);
+    auto& wc = helix::PanelWidgetManager::instance().get_widget_config("defaults_test_panel");
+    CHECK(wc.get_widget_config("favorite_macro:1").value("color", 0u) == 0xFFC107u);
 }

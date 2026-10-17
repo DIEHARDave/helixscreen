@@ -22,6 +22,7 @@
 #include "helix_thread.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
+#include "json_utils.h"
 #include "lane_apply.h"
 #include "lane_legacy_migration.h"
 #include "lane_source_store.h"
@@ -97,6 +98,7 @@ void AmsBackendAce::on_started() {
     // spools that never shared a bay.
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        user_temps_.clear();
         prev_slot_status_.clear();
         park_states_.clear();
         last_spool_evidence_.clear();
@@ -559,15 +561,84 @@ namespace {
 /// bay when the spool went in.
 constexpr int kAcePendingReadParsePasses = 8;
 
-/// Put @p info's resolver-owned filament fields on @p slot so get_slot_info
-/// returns them at once. The catalog product identity rides along: a sync that
-/// dropped it would make the editor snap back to a different variant on the
-/// next get_slot_info().
+/// Put @p info's filament fields on @p slot so get_slot_info returns them at
+/// once: identity (the catalog product included, or the editor snaps back to a
+/// different variant), multi-colour and temperatures.
 void write_filament_fields(SlotInfo& slot, const SlotInfo& info) {
-    helix::ams::copy_resolver_owned_identity(slot, info);
+    slot.assign_filament_fields(info);
 }
 
 } // namespace
+
+void AmsBackendAce::forget_user_temps_locked(int slot_index) {
+    if (slot_index >= 0 && static_cast<size_t>(slot_index) < user_temps_.size()) {
+        user_temps_[static_cast<size_t>(slot_index)] = false;
+    }
+}
+
+void AmsBackendAce::apply_hub_temps_locked(int slot_index, SlotInfo& slot,
+                                           const nlohmann::json& slot_json) const {
+    // No lane record carries temperatures and the stored record keeps one for
+    // every edit, the hub's own included, so only an edit that moved them this
+    // session marks them the user's.
+    if (slot_index >= 0 && static_cast<size_t>(slot_index) < user_temps_.size() &&
+        user_temps_[static_cast<size_t>(slot_index)]) {
+        return;
+    }
+    slot.nozzle_temp_min = helix::json_util::safe_int(slot_json, "temp_min", slot.nozzle_temp_min);
+    slot.nozzle_temp_max = helix::json_util::safe_int(slot_json, "temp_max", slot.nozzle_temp_max);
+}
+
+void AmsBackendAce::note_tag_frame_locked(int slot_index, helix::ace::TagRead tag_read,
+                                          const nlohmann::json& slot_json,
+                                          const std::optional<std::string>& material,
+                                          const std::optional<uint32_t>& color,
+                                          std::optional<bool> present) {
+    if (slot_index < 0) {
+        return;
+    }
+    const auto idx = static_cast<size_t>(slot_index);
+    if (tag_readings_.size() <= idx) {
+        tag_readings_.resize(idx + 1);
+    }
+    // An emptied bay holds no spool to have a tag, and a finished read that
+    // found none, or a frame stating the hub's memory instead of a read, ends
+    // the last one. A read not finished yet leaves it standing.
+    if ((present.has_value() && !*present) || tag_read == helix::ace::TagRead::NoTag ||
+        tag_read == helix::ace::TagRead::Memory) {
+        tag_readings_[idx].reset();
+        return;
+    }
+    if (tag_read != helix::ace::TagRead::Identified) {
+        return;
+    }
+    helix::ams::TagReading reading;
+    reading.material = material;
+    if (color && helix::ams::is_declarable_color(*color)) {
+        reading.color_rgb = color;
+    }
+    const int temp_min = helix::json_util::safe_int(slot_json, "temp_min", 0);
+    const int temp_max = helix::json_util::safe_int(slot_json, "temp_max", 0);
+    if (temp_min > 0) {
+        reading.nozzle_temp_min = temp_min;
+    }
+    if (temp_max > 0) {
+        reading.nozzle_temp_max = temp_max;
+    }
+    if (reading.empty()) {
+        tag_readings_[idx].reset();
+    } else {
+        tag_readings_[idx] = std::move(reading);
+    }
+}
+
+std::optional<helix::ams::TagReading> AmsBackendAce::tag_reading(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (slot_index < 0 || static_cast<size_t>(slot_index) >= tag_readings_.size()) {
+        return std::nullopt;
+    }
+    return tag_readings_[static_cast<size_t>(slot_index)];
+}
 
 AmsError AmsBackendAce::apply_user_edit(int slot_index, const SlotInfo& info,
                                         const helix::ams::Observation& declared) {
@@ -577,6 +648,15 @@ AmsError AmsBackendAce::apply_user_edit(int slot_index, const SlotInfo& info,
         SlotInfo* slot = mutable_slot_locked(slot_index);
         if (!slot) {
             return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, 0);
+        }
+        const bool temps_moved = info.nozzle_temp_min != slot->nozzle_temp_min ||
+                                 info.nozzle_temp_max != slot->nozzle_temp_max;
+        if (temps_moved) {
+            const auto idx = static_cast<size_t>(slot_index);
+            if (user_temps_.size() <= idx) {
+                user_temps_.resize(idx + 1, false);
+            }
+            user_temps_[idx] = true;
         }
         write_filament_fields(*slot, info);
 
@@ -1063,38 +1143,19 @@ void AmsBackendAce::parse_ace_object(const json& data) {
                     // SKU is available but not mapped to SlotInfo currently
                 }
 
-                // The rfid field is the bay's tag reader: true means the
-                // material and colour in this frame came off the spool's tag;
-                // false or absent means the hub is stating its own memory of
-                // the bay, which is not a reading of what is in it now
-                // (prestonbrown/helixscreen#1710). ValgACE's bridge and the
-                // multiACE lineage send the same flag as integers with
-                // ACEResearch's PROTOCOL.md states: 0 information not found,
-                // 1 failed to identify, 2 identified, 3 identifying. Only 2
-                // carries a reading and only 1 is a finished read with no
-                // tag. 0 is the reader's idle state, what an empty bay and a
-                // just-inserted spool report before the read starts, so like
-                // 3 it leaves the evidence incomplete and the insert edge
+                // The rfid field is the bay's tag reader: only an identified
+                // read states what is in the bay; without one the hub states its
+                // own memory of it (prestonbrown/helixscreen#1710). A read in
+                // progress leaves the evidence incomplete, so the insert edge
                 // holds its verdict for a later frame.
+                const helix::ace::TagRead tag_read = helix::ace::read_tag_state(slot_json);
                 helix::ams::SpoolEvidence evidence;
-                if (slot_json.contains("rfid")) {
-                    const auto& rfid = slot_json["rfid"];
-                    if (rfid.is_boolean()) {
-                        if (rfid.get<bool>()) {
-                            evidence.material = observed_material.value_or(std::string{});
-                            evidence.color_rgb = observed_color;
-                            evidence.tag_read_complete = true;
-                        }
-                    } else if (rfid.is_number_integer()) {
-                        const auto state = rfid.get<std::int64_t>();
-                        if (state == 2) {
-                            evidence.material = observed_material.value_or(std::string{});
-                            evidence.color_rgb = observed_color;
-                            evidence.tag_read_complete = true;
-                        } else if (state == 1) {
-                            evidence.tag_read_complete = true;
-                        }
-                    }
+                if (tag_read == helix::ace::TagRead::Identified) {
+                    evidence.material = observed_material.value_or(std::string{});
+                    evidence.color_rgb = observed_color;
+                    evidence.tag_read_complete = true;
+                } else if (tag_read == helix::ace::TagRead::NoTag) {
+                    evidence.tag_read_complete = true;
                 }
 
                 // Insert-edge verdict. Must run BEFORE apply_resolved_lane so
@@ -1153,6 +1214,8 @@ void AmsBackendAce::parse_ace_object(const json& data) {
                 cache.color_rgb = observed_color;
                 cache.material = observed_material;
                 helix::ams::ingest(lane_id(idx), cache);
+                note_tag_frame_locked(idx, tag_read, slot_json, observed_material, observed_color,
+                                      observed_present);
 
                 // Layer user-configured overrides on top of firmware-reported
                 // data. Override wins for any non-default field - for ACE
@@ -1737,21 +1800,24 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
             }
         }
 
+        // What the slot showed before this poll, so a user declaration painted
+        // back over the hub's values below is not a change every poll.
+        const uint32_t shown_color = slot.color_rgb;
+        const std::string shown_material = slot.material;
+
         // Parse color: handle both hex string and RGB array formats
         std::optional<uint32_t> observed_color;
         if (slot_json.contains("color")) {
             observed_color = helix::ace::parse_slot_color(slot_json["color"]);
-            if (observed_color && *observed_color != slot.color_rgb) {
+            if (observed_color) {
                 slot.color_rgb = *observed_color;
-                changed = true;
             }
         }
 
         // Material — see read_slot_material (one reader for both producers).
         const std::optional<std::string> material = helix::ace::read_slot_material(slot_json);
-        if (material && *material != slot.material) {
+        if (material) {
             slot.material = *material;
-            changed = true;
         }
 
         // The bridge polls the same hub the subscription reads, so it files the
@@ -1771,11 +1837,14 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
         cache.material = material;
         helix::ams::ingest(lane_id(idx), cache);
 
-        if (slot_json.contains("temp_min") && slot_json["temp_min"].is_number_integer()) {
-            slot.nozzle_temp_min = slot_json["temp_min"].get<int>();
-        }
-        if (slot_json.contains("temp_max") && slot_json["temp_max"].is_number_integer()) {
-            slot.nozzle_temp_max = slot_json["temp_max"].get<int>();
+        apply_hub_temps_locked(idx, slot, slot_json);
+        note_tag_frame_locked(idx, helix::ace::read_tag_state(slot_json), slot_json, material,
+                              observed_color, observed_present);
+
+        // A user's declaration outranks the hub's memory on this path too.
+        apply_resolved_lane(slot, idx);
+        if (slot.color_rgb != shown_color || slot.material != shown_material) {
+            changed = true;
         }
     }
 
@@ -2066,6 +2135,7 @@ void AmsBackendAce::judge_insert_locked(SlotInfo& slot, int slot_index,
     // policy. Caller already holds mutex_.
     (void)ovr_it;
     clear_override_locked(slot_index, &slot);
+    forget_user_temps_locked(slot_index);
 }
 
 void AmsBackendAce::clear_slot_override(int slot_index) {
@@ -2080,6 +2150,7 @@ void AmsBackendAce::clear_slot_override(int slot_index) {
         }
         spdlog::info("{} Slot {} override cleared by user request", backend_log_tag(), slot_index);
         clear_override_locked(slot_index, slot);
+        forget_user_temps_locked(slot_index);
     }
 
     emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));

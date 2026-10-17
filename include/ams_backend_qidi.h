@@ -192,6 +192,10 @@ class AmsBackendQidi : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// The Box's saved RFID ids, resolved, kept while our own write-back holds
+    /// the saved ids (helix::ams::fold_tag_frame).
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void update_slot_weight_impl(int slot_index, float remaining_weight_g, float total_weight_g,
                                  bool persist) override;
     [[nodiscard]] AmsError can_set_tool_mapping(int tool_number, int slot_index) const override;
@@ -294,6 +298,10 @@ class AmsBackendQidi : public AmsSubscriptionBackend {
         int vendor_id = 0;   ///< Always 1 in the wild so far
     };
     std::vector<QidiSlotRfid> slot_rfid_;
+
+    /// Each slot's tag reading, folded frame by frame from the resolved ids so
+    /// a field our own write replaced keeps the tag's value. Under mutex_.
+    std::unordered_map<int, helix::ams::TagReading> tag_readings_;
 
     // Dryer state for the box PTC heater (issue #1019).
     std::vector<DryerInfo> dryer_info_;      ///< Per-unit (per-box) dryer state, index = unit

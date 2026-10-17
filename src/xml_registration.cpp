@@ -37,6 +37,7 @@
 #include "ui_spinner.h"
 #include "ui_split_button.h"
 #include "ui_spool_canvas.h"
+#include "ui_swatch.h"
 #include "ui_switch.h"
 #include "ui_text.h"
 #include "ui_text_input.h"
@@ -382,15 +383,16 @@ void register_xml_components() {
 
     // Register semantic text widgets (AFTER theme init, BEFORE components that use them)
     ui_text_init();
-    ui_text_input_init();                     // <text_input> with bind_text support
-    ui_spinner_init();                        // <spinner> with responsive sizing
-    ui_button_init();                         // <ui_button> with variant styles and auto-contrast
-    ui_split_button_init();                   // <ui_split_button> with primary action + dropdown
-    ui_markdown_init();                       // <ui_markdown> with theme-aware markdown rendering
-    ui_notification_badge_init();             // <notification_badge> with auto-contrast text
-    helix::ui::register_leader_line_widget(); // <leader_line>, a bare lv_line for callouts
-    ui_carousel_init();                       // <ui_carousel> horizontal scroll-snap carousel
-    ui_confetti_init();                       // <ui_confetti> celebration animation canvas
+    ui_text_input_init();                      // <text_input> with bind_text support
+    ui_spinner_init();                         // <spinner> with responsive sizing
+    ui_button_init();                          // <ui_button> with variant styles and auto-contrast
+    ui_split_button_init();                    // <ui_split_button> with primary action + dropdown
+    ui_markdown_init();                        // <ui_markdown> with theme-aware markdown rendering
+    ui_notification_badge_init();              // <notification_badge> with auto-contrast text
+    helix::ui::register_leader_line_widget();  // <leader_line>, a bare lv_line for callouts
+    helix::ui::register_swatch_paint_widget(); // <swatch_paint>, the one colour-swatch painter
+    ui_carousel_init();                        // <ui_carousel> horizontal scroll-snap carousel
+    ui_confetti_init();                        // <ui_confetti> celebration animation canvas
 
     // Register no-op callback and subject for optional handlers in XML components
     // This silences warnings when components use callback/subject props with default=""

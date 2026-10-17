@@ -30,6 +30,7 @@
 #include "lvgl/src/misc/lv_area_private.h" // lv_area_is_in
 #include "theme_manager.h"
 
+#include <algorithm>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -354,37 +355,41 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
     modal_.hide();
 }
 
-// A Z-Mod swatch tile carries no text, so it needs an outline to stay visible
-// when its color matches the card behind it.
+// A Z-Mod swatch tile carries no text: it shows a circle of its color painted
+// by the swatch painter, which owns the contrast edge, and the tile itself
+// draws nothing.
 TEST_CASE_METHOD(ActionPromptLayoutFixture,
                  "ActionPromptModal: a label-less hex button is a swatch",
-                 "[action_prompt][layout][ui_integration][hex_color][1806]") {
+                 "[action_prompt][layout][ui_integration][hex_color][1806][swatch]") {
     using helix::ActionPromptManager;
     helix::PromptData data;
     data.title = "Select color";
     data.buttons = {
-        ActionPromptManager::parse_button_spec("_ |CHANGE_ZCOLOR SLOT=1 HEX=ffffff|ffffff"),
+        ActionPromptManager::parse_button_spec("_ |CHANGE_ZCOLOR SLOT=1 HEX=f72224|f72224"),
         ActionPromptManager::parse_button_spec("Named|GCODE|e0e0e0"),
     };
 
     REQUIRE(modal_.show_prompt(test_screen(), data));
+    lv_obj_update_layout(test_screen());
     const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
     REQUIRE(btns.size() == 2);
 
-    CHECK(lv_obj_get_style_border_width(btns[0], LV_PART_MAIN) > 0);
-    CHECK(lv_obj_get_style_border_width(btns[1], LV_PART_MAIN) == 0);
+    lv_obj_t* disc = lv_obj_find_by_name(btns[0], "color_swatch_disc");
+    REQUIRE(disc != nullptr);
+    CHECK(helix::ui::has_swatch_paint(disc));
+    const auto colors = helix::ui::swatch_paint_colors(disc);
+    REQUIRE(colors.size() == 1);
+    CHECK(lv_color_eq(colors[0], lv_color_hex(0xf72224)));
+    CHECK(lv_color_eq(helix::ui::swatch_color_of(btns[0]), lv_color_hex(0xf72224)));
+    CHECK(lv_obj_get_style_radius(disc, LV_PART_MAIN) == LV_RADIUS_CIRCLE);
+    CHECK(lv_obj_get_width(disc) == lv_obj_get_height(disc));
+    CHECK(lv_obj_get_width(disc) > 0);
+    CHECK(lv_obj_get_style_bg_opa(btns[0], LV_PART_MAIN) == LV_OPA_TRANSP);
+    CHECK(lv_obj_get_style_border_width(btns[0], LV_PART_MAIN) == 0);
 
-    // The tile is painted by the filament swatch painter: same fill and edge as
-    // a swatch it paints directly.
-    lv_obj_t* reference = lv_obj_create(test_screen());
-    helix::ui::apply_swatch_color(reference, 0xffffff, "");
-    CHECK(lv_color_eq(lv_obj_get_style_bg_color(btns[0], LV_PART_MAIN), lv_color_hex(0xffffff)));
-    CHECK(lv_obj_get_style_bg_opa(btns[0], LV_PART_MAIN) == LV_OPA_COVER);
-    CHECK(lv_color_eq(lv_obj_get_style_border_color(btns[0], LV_PART_MAIN),
-                      lv_obj_get_style_border_color(reference, LV_PART_MAIN)));
-    CHECK(lv_obj_get_style_border_opa(btns[0], LV_PART_MAIN) ==
-          lv_obj_get_style_border_opa(reference, LV_PART_MAIN));
-    lv_obj_delete(reference);
+    // A labelled hex button is an ordinary filled button.
+    CHECK(lv_obj_find_by_name(btns[1], "color_swatch_disc") == nullptr);
+    CHECK(lv_obj_get_style_bg_opa(btns[1], LV_PART_MAIN) == LV_OPA_COVER);
 
     modal_.hide();
 }
@@ -394,7 +399,7 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
 // into the free height under the card cap, with nothing pushed off the card.
 TEST_CASE_METHOD(ActionPromptLayoutFixture,
                  "ActionPromptModal: swatch grid uses the room a 480x272 screen has",
-                 "[action_prompt][layout][ui_integration][hex_color][1806]") {
+                 "[action_prompt][layout][ui_integration][hex_color][1806][swatch]") {
     helix::test::ScopedGeometry micro(480, 272);
     REQUIRE(modal_.show_prompt(test_screen(), make_zmod_color_prompt()));
     lv_obj_t* dialog = modal_.dialog();
@@ -423,6 +428,11 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
         CHECK(lv_area_get_width(&a) >= touch_min);
         CHECK(lv_area_get_height(&a) > button_h);
         CHECK(lv_area_is_in(&a, &card, 0));
+        // The circle fills the tile's shorter side.
+        lv_obj_t* disc = lv_obj_find_by_name(btns[i], "color_swatch_disc");
+        REQUIRE(disc != nullptr);
+        CHECK(lv_obj_get_width(disc) == std::min(lv_area_get_width(&a), lv_area_get_height(&a)));
+        CHECK(lv_obj_get_height(disc) == lv_obj_get_width(disc));
     }
     lv_area_t footer;
     lv_obj_get_coords(btns[24], &footer);

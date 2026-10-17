@@ -144,9 +144,10 @@ either a named style or a hex fill color (`RRGGBB`, `#RRGGBB` or `#RGB`, anythin
 `helix::parse_hex_color` accepts), the form Fluidd, Mainsail and Z-Mod send (#1806). The fourth
 field is the older spelling of the same fill; when it parses as a color it wins, and when it does
 not it is ignored. A hex-filled button with a label made only of `_`, `-` and spaces has the label
-cleared, and the modal draws it as a swatch with the filament swatch edge
-(`helix::ui::apply_swatch_color`). Text on a hex fill takes the same contrast-adjusted text color
-as every other button.
+cleared, and the modal draws it as a swatch: the tile stays the touch target and shows a circle of
+the color, sized to the tile's shorter side and painted by the swatch painter
+(`helix::ui::apply_swatch_color`), which adds the contrast edge when the color blends into the card.
+Text on a hex fill takes the same contrast-adjusted text color as every other button.
 
 ### State machine
 

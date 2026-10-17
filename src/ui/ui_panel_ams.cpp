@@ -22,7 +22,6 @@
 #include "ui_overlay_qr_scanner.h"
 #include "ui_panel_common.h"
 #include "ui_spool_canvas.h"
-#include "ui_swatch.h"
 #include "ui_utils.h"
 
 #include "ams_backend.h"
@@ -1107,8 +1106,6 @@ void AmsPanel::refresh_slots() {
 
 void AmsPanel::update_slot_colors() {
     int slot_count = lv_subject_get_int(AmsState::instance().get_slot_count_subject());
-    int backend_idx = AmsState::instance().active_backend_index();
-    AmsBackend* backend = AmsState::instance().get_backend(backend_idx);
 
     for (int i = 0; i < MAX_VISIBLE_SLOTS; ++i) {
         if (!slot_widgets_[i]) {
@@ -1122,21 +1119,6 @@ void AmsPanel::update_slot_colors() {
         }
 
         lv_obj_remove_flag(slot_widgets_[i], LV_OBJ_FLAG_HIDDEN);
-
-        // Get slot color from AmsState subject (using active backend)
-        lv_subject_t* color_subject = AmsState::instance().get_slot_color_subject(backend_idx, i);
-        if (color_subject) {
-            uint32_t rgb = static_cast<uint32_t>(lv_subject_get_int(color_subject));
-
-            // Find color swatch within slot. Multi-color spools render as
-            // diagonal chunks; single-color falls back to a solid fill.
-            lv_obj_t* swatch = lv_obj_find_by_name(slot_widgets_[i], "color_swatch");
-            if (swatch) {
-                std::string multi =
-                    backend ? backend->get_slot_info(i).multi_color_hexes : std::string();
-                helix::ui::apply_swatch_color(swatch, rgb, multi);
-            }
-        }
 
         // Material and fill are no longer pushed here: the ams_slot widget
         // observes its own per-slot subjects (AmsState::get_slot_material_subject

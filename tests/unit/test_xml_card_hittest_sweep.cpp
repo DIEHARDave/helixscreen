@@ -9,6 +9,7 @@
 // Companion to test_print_file_card_hittest.cpp. Regression: prestonbrown/helixscreen#1101
 
 #include "ui_severity_card.h"
+#include "ui_swatch.h"
 
 #include "../test_fixtures.h"
 
@@ -117,6 +118,9 @@ TEST_CASE_METHOD(XMLTestFixture, "nozzle_temp_bed_row: value area routes clicks 
 // small indicator's tap target.
 TEST_CASE_METHOD(XMLTestFixture, "ams_current_tool: colour swatch routes clicks to root",
                  "[xml][hittest][sweep]") {
+    helix::ui::register_swatch_paint_widget();
+    REQUIRE(register_component("components/color_swatch"));
+    REQUIRE(register_component("components/color_dot"));
     REQUIRE(register_component("ams_current_tool"));
     lv_obj_t* root = create_component("ams_current_tool");
     REQUIRE(root != nullptr);

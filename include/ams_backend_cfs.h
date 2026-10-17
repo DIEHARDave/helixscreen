@@ -236,6 +236,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// The box's record of the bay's tag, kept while our own write-back holds
+    /// the box record (helix::ams::fold_tag_frame).
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
     void persist_external_identity_impl(int slot_index,
@@ -995,6 +999,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     // last read there. All access under mutex_.
     std::unordered_map<int, bool> bay_present_;
     std::unordered_map<int, helix::ams::SpoolEvidence> bay_evidence_;
+
+    /// Each bay's tag reading, folded frame by frame from the box record so a
+    /// field our own write replaced keeps the tag's value. All access under
+    /// mutex_.
+    std::unordered_map<int, helix::ams::TagReading> tag_readings_;
 
     // A stock-schema insert whose RFID probe has not answered yet. The stock
     // arrays latch the pulled spool's colour and material, so the edge frame

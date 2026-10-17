@@ -272,6 +272,20 @@ These belong to ValgACE's Moonraker component (`ace_status.py`) and are used **o
 - **Native path (`filament_hub`):** WebSocket query + subscription. State is held under `mutex_`; updates arriving on the WebSocket background thread are deferred to the main thread via `token.defer(...)` (L081-safe — never mutate UI state directly from the WS callback).
 - **Community fallback path (`ace`):** a background polling thread runs at ~500ms intervals when the backend is active, caching state under mutex protection.
 
+### Tag reading
+
+`tag_reading()` keeps a bay's last frame whose `rfid` says identified (`true`, or `2` in
+the integer form): material, colour, and `temp_min`/`temp_max` when the frame carries them.
+A finished read that found no tag (`false`, or `1`) or an emptied bay drops it; `0` and
+`3` are a read not finished yet and leave it standing. Both parse paths, the subscription
+and the REST bridge, record it and lay the lane's resolved identity over the hub's memory,
+so a user's edit survives either path's next poll
+(`src/printer/ams_backend_ace.cpp#note_tag_frame_locked`). The REST bridge also reports `temp_min`/`temp_max`;
+they stand unless a user edit moved the slot's temperatures this session. The stored
+record keeps a nozzle temperature for every edit, the hub's own included, so it cannot
+say which were the user's: after a restart the hub's temperatures apply again
+(`src/printer/ams_backend_ace.cpp#apply_hub_temps_locked`).
+
 ### Capabilities
 
 | Feature | Supported | Editable |

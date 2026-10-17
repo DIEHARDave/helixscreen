@@ -1544,8 +1544,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A name the printer cannot be sent is refuse
     d.view.toggle_exclude_pick("Plain");
     helix::ui::set_test_notification_warning_hook(nullptr);
 
-    CHECK(d.view.exclude_picks() == std::vector<std::string>{"Plain"});
-    REQUIRE(warnings.size() == 2);
+    CHECK(d.view.exclude_picks() == std::vector<std::string>{"Pi\xc3\xa8"
+                                                             "ce",
+                                                             "Plain"});
+    REQUIRE(warnings.size() == 1);
     CHECK(warnings[0].find("Part 1") != std::string::npos);
 }
 

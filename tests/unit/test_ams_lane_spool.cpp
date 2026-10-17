@@ -10,8 +10,10 @@
 #include "ui_ams_lane_spool.h"
 #include "ui_ams_slot.h"
 #include "ui_spool_canvas.h"
+#include "ui_swatch.h"
 
 #include "../test_fixtures.h"
+#include "../test_helpers/backend_user_edit.h"
 #include "../ui_test_utils.h"
 #include "ams_backend_mock.h"
 #include "ams_lane_state.h"
@@ -439,4 +441,54 @@ TEST_CASE_METHOD(XMLTestFixture, "ams_lane_spool: a running pulse is never resta
     CHECK(lv_anim_get(glow, nullptr) == nullptr);
     CHECK(lv_obj_get_style_opa(glow, LV_PART_MAIN) == LV_OPA_COVER);
     lv_obj_delete(spool);
+}
+
+TEST_CASE_METHOD(XMLTestFixture,
+                 "ams_lane_spool: a finish or multi-colour change under the same colour repaints",
+                 "[ams][lane_spool][swatch]") {
+    helix::Config::get_instance()->set<std::string>("/ams/spool_style", "flat");
+    ui_ams_lane_spool_register();
+    auto& ams = AmsState::instance();
+    ams.init_subjects(true);
+    auto mock = std::make_unique<AmsBackendMock>();
+    auto* backend = mock.get();
+    backend->set_operation_delay(0);
+    ams.set_backend(std::move(mock));
+    backend->start();
+
+    SlotInfo slot = backend->get_slot_info(0);
+    slot.color_rgb = 0xFF0000;
+    slot.material = "PLA";
+    slot.product_name.clear();
+    slot.spool_name.clear();
+    slot.multi_color_hexes.clear();
+    helix::test::apply_edit(*backend, 0, slot);
+    ams.sync_from_backend();
+    lv_subject_set_int(ams.get_slot_lane_state_subject(0),
+                       static_cast<int>(helix::ui::LaneState::Present));
+
+    lv_obj_t* spool = make_spool(test_screen(), 0);
+    REQUIRE(spool != nullptr);
+    process_lvgl(20);
+    lv_obj_t* ring = part(spool, "spool_graphic");
+    REQUIRE(helix::ui::swatch_paint_finish(ring) == helix::ui::SwatchFinish::Plain);
+
+    // Only the finish changes; the colour subject does not.
+    slot.material = "PLA Silk";
+    helix::test::apply_edit(*backend, 0, slot);
+    ams.sync_from_backend();
+    process_lvgl(20);
+    CHECK(helix::ui::swatch_paint_finish(ring) == helix::ui::SwatchFinish::Silk);
+
+    // Only the multi-colour list changes.
+    slot.multi_color_hexes = "#FF0000,#0000FF";
+    helix::test::apply_edit(*backend, 0, slot);
+    ams.sync_from_backend();
+    process_lvgl(20);
+    CHECK(helix::ui::swatch_paint_colors(ring).size() == 2);
+
+    lv_obj_delete(spool);
+    backend->stop();
+    ams.clear_backends();
+    helix::Config::get_instance()->set<std::string>("/ams/spool_style", "3d");
 }

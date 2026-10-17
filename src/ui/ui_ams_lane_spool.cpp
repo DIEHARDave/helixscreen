@@ -7,6 +7,7 @@
 #include "ui_icon_codepoints.h"
 #include "ui_observer_guard.h"
 #include "ui_spool_canvas.h"
+#include "ui_swatch.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -182,10 +183,8 @@ static SpoolVisual create_spool_visual(lv_obj_t* container, int32_t spool_size) 
         lv_obj_set_size(filament_ring, filament_ring_size, filament_ring_size);
         lv_obj_align(filament_ring, LV_ALIGN_CENTER, 0, 0);
         lv_obj_set_style_radius(filament_ring, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(filament_ring, lv_color_hex(helix::AMS_DEFAULT_SLOT_COLOR),
-                                  LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(filament_ring, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_border_width(filament_ring, 0, LV_PART_MAIN);
+        helix::ui::apply_swatch_color(filament_ring, helix::AMS_DEFAULT_SLOT_COLOR, "");
         lv_obj_remove_flag(filament_ring, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(filament_ring, LV_OBJ_FLAG_EVENT_BUBBLE);
         sv.color_swatch = filament_ring;
@@ -258,16 +257,19 @@ static SpoolVisual create_spool_visual(lv_obj_t* container, int32_t spool_size) 
     return sv;
 }
 
-/// Update spool color (3D canvas or flat color_swatch + darkened outer flange)
-static void spool_visual_set_color(const SpoolVisual& sv, lv_color_t color) {
+/// Update the spool's filament (3D canvas, or the flat filament disc + darkened
+/// outer flange): its colour, multi-colour split and finish, as every swatch
+/// paints them.
+static void spool_visual_set_color(const SpoolVisual& sv, uint32_t rgb,
+                                   const std::string& multi_color_hexes,
+                                   helix::ui::SwatchFinish finish) {
     if (sv.use_3d) {
         if (sv.canvas)
-            ui_spool_canvas_set_color(sv.canvas, color);
+            helix::ui::spool_canvas_set_filament(sv.canvas, rgb, multi_color_hexes, finish);
     } else if (sv.color_swatch) {
-        lv_obj_set_style_bg_color(sv.color_swatch, color, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(sv.color_swatch, LV_OPA_COVER, LV_PART_MAIN);
+        helix::ui::apply_swatch_color(sv.color_swatch, rgb, multi_color_hexes, finish);
         if (sv.spool_outer)
-            lv_obj_set_style_bg_color(sv.spool_outer, ams_draw::darken_color(color, 50),
+            lv_obj_set_style_bg_color(sv.spool_outer, ams_draw::darken_color(lv_color_hex(rgb), 50),
                                       LV_PART_MAIN);
     }
 }
@@ -344,6 +346,7 @@ struct LaneSpoolData {
     // RAII observer handles - automatically removed when this struct is destroyed.
     ObserverGuard lane_state_observer;
     ObserverGuard color_observer;
+    ObserverGuard paint_observer; ///< the slot's multi-colour list and finish
     ObserverGuard fill_observer;
     ObserverGuard has_error_observer;
     ObserverGuard severity_observer;
@@ -376,6 +379,7 @@ static void unregister_lane_spool_data(lv_obj_t* obj) {
             data->lifetime.reset();
             data->lane_state_observer.reset();
             data->color_observer.reset();
+            data->paint_observer.reset();
             data->fill_observer.reset();
             data->has_error_observer.reset();
             data->severity_observer.reset();
@@ -398,6 +402,7 @@ static void cleanup_all_lane_spool_data() {
         data->lifetime.reset();
         data->lane_state_observer.release();
         data->color_observer.release();
+        data->paint_observer.release();
         data->fill_observer.release();
         data->has_error_observer.release();
         data->severity_observer.release();
@@ -510,7 +515,16 @@ static void apply_color(LaneSpoolData* d, int color_int) {
     if (!d)
         return;
     d->color_int = static_cast<uint32_t>(color_int);
-    spool_visual_set_color(d->sv, lv_color_hex(d->color_int));
+    // The colour subject carries the primary colour; the split and finish ride
+    // on the slot it names.
+    std::string multi;
+    helix::ui::SwatchFinish finish = helix::ui::SwatchFinish::Plain;
+    if (AmsBackend* backend = AmsState::instance().get_backend(d->backend_index)) {
+        const SlotInfo slot = backend->get_slot_info(d->slot_index);
+        multi = slot.multi_color_hexes;
+        finish = helix::ui::swatch_finish_of(slot);
+    }
+    spool_visual_set_color(d->sv, d->color_int, multi, finish);
 }
 
 /**
@@ -588,6 +602,7 @@ static void setup_lane_spool_observers(LaneSpoolData* data) {
     data->lifetime.reset();
     lv_subject_t* lane_state_subject = state.get_slot_lane_state_subject(b, slot, data->lifetime);
     lv_subject_t* color_subject = state.get_slot_color_subject(b, slot, data->lifetime);
+    lv_subject_t* paint_subject = state.get_slot_paint_subject(b, slot, data->lifetime);
     lv_subject_t* fill_subject = state.get_slot_fill_subject(b, slot, data->lifetime);
     lv_subject_t* has_error_subject = state.get_slot_has_error_subject(b, slot, data->lifetime);
     lv_subject_t* severity_subject = state.get_slot_error_severity_subject(b, slot, data->lifetime);
@@ -615,6 +630,17 @@ static void setup_lane_spool_observers(LaneSpoolData* data) {
                 auto* d = get_lane_spool_data(o);
                 if (d)
                     apply_color(d, color_int);
+            },
+            lifetime);
+    }
+    if (paint_subject) {
+        // The split and finish can change under an unchanged colour.
+        data->paint_observer = observe<int>(
+            paint_subject, obj,
+            [](lv_obj_t* o, int /*paint_key*/) {
+                auto* d = get_lane_spool_data(o);
+                if (d)
+                    apply_color(d, static_cast<int>(d->color_int));
             },
             lifetime);
     }
@@ -756,6 +782,7 @@ static void ams_lane_spool_xml_apply(lv_xml_parser_state_t* state, const char** 
             if (new_index != data->slot_index) {
                 data->lane_state_observer.reset();
                 data->color_observer.reset();
+                data->paint_observer.reset();
                 data->fill_observer.reset();
                 data->has_error_observer.reset();
                 data->severity_observer.reset();
@@ -784,6 +811,7 @@ void ams_lane_spool_set_index(lv_obj_t* spool, int slot_index, int backend_index
     data->lifetime.reset();
     data->lane_state_observer.reset();
     data->color_observer.reset();
+    data->paint_observer.reset();
     data->fill_observer.reset();
     data->has_error_observer.reset();
     data->severity_observer.reset();

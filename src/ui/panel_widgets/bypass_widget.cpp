@@ -5,6 +5,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_external_spool_menu.h"
+#include "ui_swatch.h"
 
 #include "ams_state.h"
 #include "observer_factory.h"
@@ -35,11 +36,11 @@ void BypassWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         return;
     }
 
-    // External-spool color dot: styles cannot bind a dynamic color, so the
-    // dot's bg color follows the color subject through the sanctioned
-    // observer path. Runs from attach() too — instances are recycled across
-    // rebuilds. The dot is resolved by name inside the callback (not captured)
-    // so a recycled instance never writes through a stale pointer.
+    // The external spool's colour dot, painted from the whole spool record
+    // (its colours and finish), which the colour subject announces changes to.
+    // Runs from attach() too: instances are recycled across rebuilds. The dot
+    // is resolved by name inside the callback (not captured) so a recycled
+    // instance never writes through a stale pointer.
     spool_color_observer_ = helix::ui::observe<int>(
         AmsState::instance().get_external_spool_color_subject(), this,
         [](BypassWidget* self, int color) {
@@ -50,11 +51,11 @@ void BypassWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
             if (!dot) {
                 return;
             }
-            // XML styles cannot bind non-constant colors (same exception
-            // class as the spool canvas in active_spool_widget).
-            // DECLARATIVE_OK: dynamic color from a subject
-            lv_obj_set_style_bg_color(dot, lv_color_hex(static_cast<uint32_t>(color) & 0xFFFFFF),
-                                      0);
+            if (const auto spool = AmsState::instance().get_external_spool_info()) {
+                helix::ui::apply_swatch_color(dot, *spool);
+            } else {
+                helix::ui::apply_swatch_color(dot, static_cast<uint32_t>(color) & 0xFFFFFF, "");
+            }
         },
         AmsState::instance().get_subjects_lifetime());
 

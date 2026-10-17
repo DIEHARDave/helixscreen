@@ -1244,6 +1244,7 @@ translations:
   Exclude Object?: 'Исключить объект?'
   Exclude Objects: 'Исключение объектов'
   Excluded: Исключён
+  Excluding "{}"...: 'Исключение «{}»...'
   Exclusion cancelled: Исключение отменено
   Execute printer macros: Выполнить макросы принтера
   Exhaust Fan: Вытяжной вентилятор
@@ -2400,8 +2401,10 @@ translations:
   'ON: {} | OFF: {}': 'ВКЛ: {} | ВЫКЛ: {}'
   OS: OS
   'OS: ': 'ОС: '
+  Object: 'Объект'
   Object picks apply only to prints started now: 'Выбор объектов применяется только к печати, запущенной сейчас'
   Object positions unavailable: Позиции объектов недоступны
+  Object {}: 'Объект {}'
   Objects: Объекты
   Objects in the print, with a tap to open the skip map: 'Объекты печати, касание открывает карту пропуска'
   'Off': Выкл

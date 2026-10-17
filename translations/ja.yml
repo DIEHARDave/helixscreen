@@ -1127,6 +1127,7 @@ translations:
   Exclude Object?: 'オブジェクトを除外しますか？'
   Exclude Objects: 'オブジェクトの除外'
   Excluded: 除外
+  Excluding "{}"...: '「{}」を除外中...'
   Exclusion cancelled: 除外がキャンセルされました
   Execute printer macros: プリンターマクロを実行
   Exhaust Fan: 排気ファン
@@ -2227,8 +2228,10 @@ translations:
   'ON: {} | OFF: {}': 'オン: {} | オフ: {}'
   OS: OS
   'OS: ': 'OS: '
+  Object: 'オブジェクト'
   Object picks apply only to prints started now: 'オブジェクトの選択は今すぐ開始する印刷にのみ適用されます'
   Object positions unavailable: オブジェクト位置が利用できません
+  Object {}: 'オブジェクト {}'
   Objects: オブジェクト
   Objects in the print, with a tap to open the skip map: '印刷中のオブジェクト。タップでスキップマップを開きます'
   'Off': オフ

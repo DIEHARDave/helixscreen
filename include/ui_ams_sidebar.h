@@ -153,6 +153,8 @@ class AmsOperationSidebar {
      * @brief Update the loaded card swatch color and info
      */
     void update_current_loaded_display();
+    /// Paint the loaded filament on the card's bar and spool.
+    void paint_loaded_filament();
 
     /**
      * @brief Hide settings button if backend has no device sections
@@ -215,6 +217,8 @@ class AmsOperationSidebar {
     ObserverGuard extruder_temp_observer_;
     ObserverGuard extruder_target_observer_;
     ObserverGuard color_observer_;
+    ObserverGuard colors_observer_;
+    ObserverGuard finish_observer_;
     ObserverGuard fill_observer_;
     // Watches AmsState's ams_operation_indeterminate subject (#1065 row 14). When
     // 1 the live "Heat 225/230" readout is frozen by a starved status feed, so

@@ -8,6 +8,8 @@
 #include "lane_translation.h"
 #include "text_io.h"
 
+#include <spdlog/fmt/fmt.h>
+
 #include <algorithm>
 #include <cctype>
 #include <optional>
@@ -111,6 +113,26 @@ SnapmakerRfidInfo parse_rfid_info(const nlohmann::json& json) {
     }
     if (json.contains("WEIGHT") && json["WEIGHT"].is_number()) {
         info.weight_g = json["WEIGHT"].get<int>();
+    }
+    // COLOR_NUMS counts the RGB_n fields the tag carries; one is the plain
+    // colour ARGB_COLOR already states.
+    const int color_nums = json_util::safe_int(json, "COLOR_NUMS", 1);
+    if (color_nums >= 2) {
+        std::string joined;
+        for (int n = 1; n <= std::min(color_nums, 5); ++n) {
+            const std::string key = "RGB_" + std::to_string(n);
+            const nlohmann::json* rgb = json_util::find_member(json, key.c_str());
+            if (!rgb || !rgb->is_number()) {
+                joined.clear();
+                break;
+            }
+            if (!joined.empty()) {
+                joined += ',';
+            }
+            joined += fmt::format("#{:06X}",
+                                  static_cast<uint32_t>(json_util::as_int64(*rgb)) & 0xFFFFFFu);
+        }
+        info.multi_color_hexes = std::move(joined);
     }
     // CARD_UID is a 4-byte array like [144, 32, 196, 2]. Canonicalize to a
     // comma-joined string so the override system's baseline comparison is a
@@ -249,6 +271,7 @@ PrintTaskConfigDelta parse_print_task_config(const nlohmann::json& status) {
     d.filament_exist = ams::read_indexed<bool, kToolCount>(ptc, "filament_exist");
     d.filament_type = ams::read_indexed<std::string, kToolCount>(ptc, "filament_type");
     d.filament_vendor = ams::read_indexed<std::string, kToolCount>(ptc, "filament_vendor");
+    d.filament_sub_type = ams::read_indexed<std::string, kToolCount>(ptc, "filament_sub_type");
     d.filament_official = ams::read_indexed<bool, kToolCount>(ptc, "filament_official");
     d.filament_color_rgba = ams::read_indexed<std::string, kToolCount>(ptc, "filament_color_rgba");
     return d;

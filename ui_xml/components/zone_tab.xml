@@ -43,7 +43,7 @@
     <prop name="min_height" type="string" default="0"/>
     <prop name="min_width" type="string" default="0"/>
     <!-- Optional light dot (the LEDs overlay): light_subject holds 1 on, 0 off,
-         2 unknown; light_color_subject fills the lit dot. Collapsed when empty. -->
+         2 unknown; light_color_subject fills the lit dot, a color_dot. Collapsed when empty. -->
     <prop name="light_subject" type="string" default=""/>
     <prop name="light_color_subject" type="string" default=""/>
   </api>
@@ -68,8 +68,6 @@
     <style name="zone_tab_underline_idle" bg_opa="0" border_width="0"/>
     <style name="zone_tab_label_plain"/>
     <style name="zone_tab_label_muted" text_color="#text_muted"/>
-    <!-- The lit dot's own border reset, a style so the light-theme edge can outrank it. -->
-    <style name="zone_tab_dot_plain" border_width="0"/>
   </styles>
   <view name="zone_tab"
         extends="lv_button" width="content" height="content" style_radius="$radius" style_pad_hor="#space_md"
@@ -109,14 +107,9 @@
       </lv_obj>
       <lv_obj name="light_dot"
               width="content" height="content" scrollable="false" clickable="false" hidden_if_empty="$light_subject">
-        <lv_obj width="#tab_dot_size"
-                height="#tab_dot_size" style_radius="9999" style_bg_opa="255" scrollable="false" clickable="false"
-                hidden="true">
-          <style name="zone_tab_dot_plain"/>
-          <bind_style_prop prop="bg_color" subject="$light_color_subject"/>
-          <bind_style_if name="styles.contrast_edge" cond="settings_dark_mode eq 0"/>
+        <color_dot name="light_dot_lit" color_subject="$light_color_subject" size="#tab_dot_size" hidden="true">
           <bind_flag_if_not_eq subject="$light_subject" flag="hidden" ref_value="1"/>
-        </lv_obj>
+        </color_dot>
         <lv_obj width="#tab_dot_size"
                 height="#tab_dot_size" style_radius="9999" style_bg_opa="0" style_border_width="#tab_dot_ring_width"
                 style_border_color="#text_muted" scrollable="false" clickable="false" hidden="true">
