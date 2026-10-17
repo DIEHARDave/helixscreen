@@ -36,7 +36,12 @@ struct ToolSwitcherLayout {
     int rows = 1;
     int cell_w = 0; ///< px; >= min_target in every mode
     int cell_h = 0;
-    int rail_h = 0;              ///< px of the content box the rail or face occupies
+    int rail_h = 0; ///< px of the content box the rail or face occupies
+    /// px the rail's columns span: whole cells and the gaps between them, so
+    /// the rail's rounded corners land on its outer cells, not on the
+    /// remainder equal cells leave of the box. The box's width outside the
+    /// rail modes.
+    int rail_w = 0;
     bool detail = false;         ///< a detail block fits under the rail
     bool pair_horizontal = true; ///< Pair: face and Park side by side (else stacked)
 };
@@ -95,6 +100,7 @@ decide_tool_switcher_layout(int tool_count, int content_w, int content_h, int mi
     out.cell_w = content_w;
     out.cell_h = content_h;
     out.rail_h = content_h;
+    out.rail_w = content_w;
     if (tool_count < 1)
         return out;
 
@@ -111,6 +117,7 @@ decide_tool_switcher_layout(int tool_count, int content_w, int content_h, int mi
         out.rows = g.rows;
         out.cell_w = g.cell_w;
         out.cell_h = g.cell_h;
+        out.rail_w = g.cols * g.cell_w + gap * (g.cols - 1);
 
         // A tall box (two touch rows or more) sizes the rail's rows to their
         // content, up to half the box, and gives what is left to a detail
