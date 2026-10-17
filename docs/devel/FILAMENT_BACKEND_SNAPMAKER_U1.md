@@ -185,11 +185,14 @@ frame has arrived, when the edit declared a material), since every send runs
 `Basic` (`src/printer/ams_backend_snapmaker.cpp#write_task_filament_record`).
 
 `filament_official` therefore does not mean an RFID tag. The backend decides that from
-`filament_detect.info[ch].CARD_UID`: a UID with a nonzero byte is a real card, while an
-absent or all-zero UID (an untagged channel, an endpoint write) is none. A head with a real
-card is never written. A head that is official with no card is written with `FORCE=1`, which
-the firmware requires there. A head that is official before any card reading has arrived is
-left alone (`src/printer/ams_backend_snapmaker.cpp#record_write_needs_force_locked`).
+`filament_detect.info[ch].CARD_UID`: the firmware reports it either as a plain integer
+(`0` for no card, on every head of a rig with its reader off) or as a byte array. A nonzero
+integer or a nonzero byte is a real card; `0` or an all-zero array is known to be none (an
+untagged channel, an endpoint write, a reader that is off); an entry with no `CARD_UID` is
+unknown (`include/snapmaker_status_parse.h#SnapmakerRfidInfo`). A head with a real card is
+never written. A head that is official with no card is written with `FORCE=1`, which the
+firmware requires there; with the reader off a real Snapmaker spool also reads `0`, so its
+record is overwritten too. A head that is official with no card reading is left alone (`src/printer/ams_backend_snapmaker.cpp#record_write_needs_force_locked`).
 
 A record filled once can still be blank by the time a print pauses (a later firmware
 filament operation can clear it), so `prepare_for_resume` writes the same record, under the
@@ -316,7 +319,10 @@ conservative prefix/suffix fallback for unknown future states
   `print_task_config` is empty or `NONE` (a tagless third-party spool), with
   `!! e<N> not edit filament`. `classify_error()` turns it, while paused or printing, into a
   "Filament not set" modal naming the 1-based slot, with a lone OK: no single gcode fixes it,
-  and offering Resume would loop. The event sets `command_refusal`, so the resume caller's raw
+  and offering Resume would loop. It reaches the user only for a head whose material
+  HelixScreen does not know either: `prepare_for_resume` first writes the record of every used
+  head the slot can answer for (see "Commands the Backend Emits"). The event sets
+  `command_refusal`, so the resume caller's raw
   "Failed to resume:" toast stands down for it and runs only if the explanation never
   arrives (`RPC_ERROR_OWNERSHIP.md` § "A refusal the classifier explains";
   `src/printer/ams_backend_snapmaker.cpp#classify_error`).
