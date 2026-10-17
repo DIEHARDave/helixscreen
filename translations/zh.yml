@@ -276,6 +276,7 @@ translations:
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: 分配 Klipper
     宏通过开/关、切换或预设控制 LED
   Assign a role to enable sensor monitoring: 分配角色以启用传感器监控
+  Assigned Tool: 已分配工具
   Assisted Retract: '辅助回抽'
   Assisting: 辅助中
   At least {} lines in helixscreen.env were ignored: 'helixscreen.env 中至少有 {} 行被忽略'
@@ -288,21 +289,19 @@ translations:
   Auto Fans: 自动风扇
   Auto-Detect: 自动检测
   Auto-Heat on Load: 加载时自动加热
+  Auto-Replenish: 自动补充
   Auto-detect: 自动检测
   Auto-install only works on local Moonraker: 自动安装仅适用于本地 Moonraker
   Auto-lock: 自动锁定
   Auto-poll for weight updates: 自动轮询重量更新
   Auto-probe or manually check screw heights: 自动探测或手动检查螺丝高度
-  Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout: 自动续料已开启，但没有两个槽位装有相同的耗材，因此耗材用尽时不会切换
   Auto-render video: 自动渲染视频
-  'Auto-replenish filament': '自动补充耗材'
   Auto-tuning Shapers...: 正在自动校准整形器...
   Auto-uninstall only works on local Moonraker: 自动卸载仅适用于本地 Moonraker
   Automatic: 自动
   Automatic Heater Control Calibration: 自动加热控制校准
   Automatic LED Control: 自动 LED 控制
   Automatic calibration: '自动校准'
-  Automatic slot swap on runout: '耗尽时自动切换槽位'
   Aux: 辅助
   Available: 可用
   Available Networks: 可用网络
@@ -322,8 +321,13 @@ translations:
   BLUETOOTH SCANNERS: 蓝牙扫描器
   Back: 返回
   'Backtrace: {} frames': '回溯: {} 帧'
+  Backup Feeder: 备用送料器
+  Backup Gate: 备用通道
+  Backup Lane: 备用耗材通道
+  Backup Slot: 备用槽位
+  Backup Tool: 备用工具
+  Backup Toolhead: 备用工具头
   Backup lane name contains invalid characters: '备用耗材通道名称包含无效字符'
-  Backup spool switching state unknown: 备用料盘切换状态未知
   Balanced: 平衡
   Barcode Scanner: 条码扫描器
   Base: 基准
@@ -514,8 +518,6 @@ translations:
   Cannot open or close the feeder while a print is active: '打印时无法打开或关闭送料器'
   Cannot park while a print is active: '打印时无法停放'
   Cannot perform this action now: 当前无法执行此操作
-  'Cannot remap G-code: no temp directory available': 无法重新映射 G-code：没有可用的临时目录
-  'Cannot remap: internal error': 无法重新映射：内部错误
   'Cannot reprint: not connected to printer': '无法重新打印: 未连接打印机'
   Cannot restart — no filename: 无法重启 — 没有文件名
   Cannot run filament operation while printing: 打印期间无法执行耗材操作
@@ -631,7 +633,7 @@ translations:
   Clear All Events: 清除所有事件
   Clear Console?: 清空控制台？
   Clear Spool: 移除料盘
-  Clear all spool failover assignments: '清除所有备用料盘分配'
+  Clear every Endless Spool backup: 清除所有无限料盘备用设置
   Clear failed: 清除失败
   ? Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament's packaging) and close the door.
 
@@ -703,7 +705,6 @@ translations:
   Configured aux fan not found: '未找到已配置的辅助风扇'
   Configured filament sensor not found: '未找到已配置的耗材传感器'
   Configured hardware no longer present: '已配置的硬件已不存在'
-  Configured in the backup-spool package, not from here: 在备用料盘插件中配置，而非此处
   Configuring Moonraker...: 正在配置 Moonraker...
   Confirm PIN: 确认 PIN 码
   Confirm before running macros: 运行宏前进行确认
@@ -822,7 +823,10 @@ translations:
   Could not update filaments: 无法更新耗材
   Could not verify Spoolman status. Moonraker may still be restarting.: 无法验证 Spoolman
     状态。Moonraker 可能仍在重启中。
+  Couldn't assign the tool: 无法分配工具
   Couldn't clear the printer's gate map: 无法清空打印机的通道映射
+  "Couldn't map filament: internal error": 无法映射耗材：内部错误
+  "Couldn't map filament: no temp directory available": 无法映射耗材：没有可用的临时目录
   Couldn't save the material name: '无法保存材料名称'
   Couldn't save the printer's gate map: 无法保存打印机的通道映射
   Couldn't save to Spoolman. Nothing changed on this printer.: 无法保存到 Spoolman。此打印机上未做任何更改。
@@ -1045,7 +1049,6 @@ translations:
   Enable or disable the hub cutter: '启用或停用集线器切刀'
   Enable plugin?: '启用插件？'
   Enable purging during tool changes: '在换工具时启用排料'
-  Enable/disable automatic backup spool switching: '启用/停用自动切换备用料盘'
   Enable/disable quiet operation mode: '启用/停用静音运行模式'
   Enabled: 已启用
   Enabled. Open its settings, or disable it?: '已启用。打开其设置，或禁用？'
@@ -1060,8 +1063,11 @@ translations:
   End the test print?: 结束测试打印?
   Ended: 已结束
   Endless Spool: '无限料盘'
-  Endless spool failover cleared for every slot: '已清除所有槽位的无限料盘设置'
-  Endless spool is turned off on this MMU: '此 MMU 上的无限料盘已关闭'
+  Endless Spool backups cleared: 已清除无限料盘备用设置
+  Endless Spool is configured in its package, not from here: 无限料盘在其插件中配置，而非此处
+  Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: 无限料盘已开启，但没有两个槽位装有相同的耗材，因此耗材用尽时不会切换
+  Endless Spool is turned off on this MMU: '此 MMU 上的无限料盘已关闭'
+  Endless Spool state unknown: 无限料盘状态未知
   Ensure Happy Hare or AFC is installed and configured: 请确保已安装并配置 Happy Hare 或 AFC
   Enter Current PIN: 输入当前 PIN 码
   Enter G-code command...: 输入 G-code 命令...
@@ -1176,8 +1182,8 @@ translations:
   Failed to delete spool: 删除料盘失败
   'Failed to disable WiFi: {}': '无法关闭 WiFi: {}'
   'Failed to discard recovery data: {}': '放弃恢复数据失败: {}'
+  'Failed to download G-code for Filament Mapping: {}': 下载用于耗材映射的 G-code 失败：{}
   'Failed to download G-code for modification: {}': '下载 G-code 进行修改失败: {}'
-  'Failed to download G-code for remap: {}': 下载用于重新映射的 G-code 失败：{}
   ? "Failed to download helixscreen.conf.\nCheck printer connection."
   : "下载 helixscreen.conf 失败。\n请检查打印机连接。"
   ? "Failed to download moonraker.conf.\nCheck printer connection."
@@ -1210,13 +1216,12 @@ translations:
   Failed to open temperature graph: 打开温度图表失败
   'Failed to pause print: {}': '暂停打印失败: {}'
   'Failed to purge: {}': '清洗失败: {}'
-  Failed to read G-code for remap: 读取用于重新映射的 G-code 失败
+  Failed to read G-code for Filament Mapping: 读取用于耗材映射的 G-code 失败
   Failed to read config.: 读取配置失败。
   Failed to read config. Check connection.: 读取配置失败。请检查连接。
   Failed to read moonraker.conf.: 读取 moonraker.conf 失败。
   Failed to read printer status: 读取打印机状态失败
   Failed to refresh file list: 刷新文件列表失败
-  'Failed to remap G-code: {}': 重新映射 G-code 失败：{}
   Failed to render label: 渲染标签失败
   'Failed to reprint: {}': '重新打印失败: {}'
   Failed to reset theme: 重置主题失败
@@ -1224,6 +1229,7 @@ translations:
   Failed to restart Moonraker.: 重启 Moonraker 失败。
   'Failed to restart: {}': 重启失败：{}
   'Failed to resume: {}': '恢复失败: {}'
+  'Failed to rewrite G-code for Filament Mapping: {}': 为耗材映射改写 G-code 失败：{}
   Failed to save LED configuration: 保存 LED 配置失败
   Failed to save WiFi network: 无法保存 WiFi 网络
   Failed to save config.: 保存配置失败。
@@ -1261,8 +1267,8 @@ translations:
   ? "Failed to update moonraker.conf.\nCheck printer connection."
   : "更新 moonraker.conf 失败。\n请检查打印机连接。"
   'Failed to upload modified G-code: {}': '上传修改后的 G-code 失败: {}'
-  'Failed to upload remapped G-code: {}': 上传重新映射的 G-code 失败：{}
   'Failed to upload the extracted G-code: {}': '无法上传提取的 G-code: {}'
+  'Failed to upload the rewritten G-code: {}': 上传改写后的 G-code 失败：{}
   Fair match: "匹配中等"
   Fan: 风扇
   Fan Calibration: 风扇校准
@@ -1296,6 +1302,9 @@ translations:
   Filament In The Toolhead: 工具头处有耗材
   Filament Jam: '耗材堵塞'
   Filament Mapping: 耗材映射
+  Filament Mapping is not available on this device.: 此设备不支持耗材映射。
+  Filament Mapping is unavailable: 耗材映射不可用
+  Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: 此打印机不支持耗材映射，因此打印将使用打印机上分配的工具
   Filament Runout: 耗材用尽
   Filament Sensor: 耗材传感器
   Filament System Error: 耗材系统错误
@@ -1336,11 +1345,9 @@ translations:
   ? Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   : '耗材已用尽，且 CFS 未找到可切换的匹配料盘。请装入相同材料和颜色的料盘后恢复打印。'
   Filament ran out at the toolhead: '工具头处耗材已用尽'
-  Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: '耗材已用尽。自动续料已关闭，CFS 不会自行更换料盘。请装入耗材后恢复打印。'
+  Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: '耗材已用尽。自动续料已关闭，CFS 不会自行更换料盘。请装入耗材后恢复打印。'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: 耗材已用尽。CFS 知道哪些料盘匹配，但这些槽位都是空的。请装载其中一个，然后恢复打印。
   Filament reload failed: 耗材重新装载失败
-  Filament remap not supported on this printer — print will use the firmware's current tool mapping: 此打印机不支持重新映射耗材 — 打印将使用固件当前的工具映射
-  Filament remapping is unavailable: 耗材重新映射不可用
   Filament runout: 耗材用尽
   Filament runout and motion detection sensors: 耗材用尽和运动检测传感器
   Filament saved: 耗材已保存
@@ -1803,7 +1810,7 @@ translations:
   Load Failed: '装载失败'
   Load Filament: 加载耗材
   Load a filament first before trying to unload: 请先装载耗材，再尝试卸载
-  Load a new spool in this slot, or turn on auto-refill to switch to a matching one: 请在此槽位装入新料盘，或开启自动续料以切换到匹配的料盘
+  Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: 请在此槽位装入新料盘，或开启自动续料以切换到匹配的料盘
   'Load cancelled: nozzle target dropped': '加载已取消：喷嘴目标温度已降低'
   Load complete: '装载完成'
   Load failed: 装载失败
@@ -1812,7 +1819,8 @@ translations:
   Load or unload filament.: 装载或卸载耗材。
   Load Profile: '加载配置'
   Load the required filaments or start anyway?: 加载所需耗材还是直接开始？
-  'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将颜色映射到槽位，并监控耗材用尽传感器。
+  ? Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors.
+  : 加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将耗材映射到工具，并监控耗材用尽传感器。
   Load...: 加载...
   Loaded: 已加载
   Loading: 加载中
@@ -1910,6 +1918,7 @@ translations:
   'Manual: the ramp has stopped at your value': '手动: 自动步进已停在你的数值'
   Manually clear the jam and retry the operation: 请手动清除堵塞后重试操作
   Manually pull the filament back through the connector: 请手动将耗材从接头处抽回
+  Map Filament…: 映射耗材…
   Map to closest colors with matching material: 按匹配材料映射最接近的颜色
   Mapping Error: '映射错误'
   Marginal: 偏高
@@ -2050,6 +2059,7 @@ translations:
   No Bluetooth printer selected — pick one in settings: 未选择蓝牙打印机 — 请在设置中选择
   No Bluetooth printers found: 未找到蓝牙打印机
   No Camera: 无摄像头
+  No Endless Spool package is installed: 未安装无限料盘插件
   No Filament Detected: 未检测到耗材
   No Hardware Issues: '无硬件问题'
   No History: 无历史记录
@@ -2067,7 +2077,6 @@ translations:
   No USB printer detected: 未检测到 USB 打印机
   No USB printers found: 未找到 USB 打印机
   No active Spoolman spool.: Spoolman中没有当前料盘。
-  No automatic backup-spool package is installed: 未安装自动备用料盘插件
   No buffer data available: 无可用缓冲区数据
   No camera — use USB barcode scanner: 无摄像头 — 请使用 USB 条码扫描器
   No chamber temperature sensor detected: '未检测到腔体温度传感器'
@@ -2604,7 +2613,7 @@ translations:
   'RFCOMM connect failed: ': 'RFCOMM 连接失败: '
   RFID reader malfunction (left): RFID 读取器故障（左）
   RFID reader malfunction (right): RFID 读取器故障（右）
-  RFID, auto-refill, nozzle and link care: RFID、自动续料、喷嘴与链路维护
+  RFID, Auto-Refill, nozzle and link care: RFID、自动续料、喷嘴与链路维护
   RH: RH
   RSS: RSS
   'RSS:': RSS：
@@ -2670,13 +2679,6 @@ translations:
   Remaining: '剩余'
   Remaining (g): 剩余 (g)
   Remaining Weight (g): 剩余重量（克）
-  Remap Tool: 重映射工具
-  Remapping G-code is not available on this device.: '此设备不支持重新映射 G-code。'
-  ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : 重新映射会在打印前改写任务文件。此打印机的 Moonraker 版本过旧，HelixPrint 插件无法在之后恢复原始文件名，因此完成的任务将以改写后的名称显示。重新映射本身可正常工作。
-  ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : "重新映射会在打印前改写任务文件。如果没有 HelixPrint 插件，进入打印历史的就是改写后的副本，因此完成的任务会以类似 modified_1730824_benchy.gcode 的名称显示，而不是您选择的文件。\n\n安装插件很快，无需重启。"
-  Remap…: 重新映射……
   Remember slot spool details across an eject: 弹出后记住槽位的料盘详情
   Remove: 移除
   Remove PIN: 移除 PIN
@@ -2702,7 +2704,7 @@ translations:
   Replace: "替换"
   Replace Profile?: "替换配置？"
   Replay Welcome Tour: 重播欢迎漫游
-  'Replenish ignores colour': '补充时忽略颜色'
+  Replenish ignores color: '补充时忽略颜色'
   Replenishing filament...: 正在补充耗材...
   Report saved to crash_report.txt: 报告已保存到 crash_report.txt
   Reprint: 重新打印
@@ -2724,13 +2726,13 @@ translations:
   Reset Distances: 重置距离
   Reset Distances?: 重置距离？
   Reset Endless Spool: '重置无限料盘'
+  Reset Endless Spool failed: '重置无限料盘失败'
   Reset Endless Spool?: '要重置无限料盘吗？'
   Reset Home Screen?: 重置主屏幕？
   Reset Motor Timer: '重置电机计时器'
   Reset Servo Counter: '重置舵机计数器'
   Reset Speed & Flow to 100%: 重置速度和流量为 100%
   Reset all settings and restart wizard: 重置所有设置并重新启动向导
-  Reset endless spool failed: '重置无限料盘失败'
   Reset failed: 重置失败
   Reset motor run-time counter: '重置电机运行时间计数器'
   Reset tags: 重置标记
@@ -3000,7 +3002,7 @@ translations:
   Set local timezone for time display: 设置本地时区以显示时间
   Set logging verbosity for troubleshooting: 设置日志详细级别以便故障排除
   Set temperature between {}°C and {}°C: '请设置 {}°C 到 {}°C 之间的温度'
-  ? Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
+  ? Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
   : 请手动设置该槽位的耗材类型和颜色。若标签本应可读，请在料盒空闲时将料盘取出并使标签朝向读取器重新装入
   Set up: 设置
   Set up your label printer in Settings: 在设置中配置标签打印机
@@ -3209,10 +3211,12 @@ translations:
   Switch Sensors: 开关传感器
   Switch between light and dark themes: 切换浅色和深色主题
   Switch the active tool or extruder: 切换当前工具或挤出机
+  Switch to a backup slot on runout: 耗材用尽时切换到备用槽位
+  Switch to a matching slot on runout: 耗材用尽时切换到匹配的槽位
   Switch to v%s: '切换到 v%s'
   Switch to {}?: '切换到 {}?'
   Switched to {}: '已切换到 {}'
-  Switches to a backup spool on runout: 耗材用尽时切换到备用料盘
+  Switches to another spool on runout: 耗材用尽时切换到另一个料盘
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
   : 切回 PID 会改变此加热器的控制方式，随后会进行校准。这需要在工作温度下耗时数分钟。
   Switching back to PID requires a config change and Klipper restart.: 切回 PID 需要修改配置并重启 Klipper。
@@ -3387,7 +3391,7 @@ translations:
   The printer lost power while printing {}. Resume where it left off?: 打印机在打印 {} 时断电。是否从中断处继续？
   The printer lost power while printing {}. The resumed layer may not line up exactly.: 打印机在打印 {} 时断电。恢复后的层可能无法完全对准。
   The printer rejected the filament configuration. The print was not started.: 打印机拒绝了该耗材配置。打印未启动。
-  The printer's firmware chooses the backup spool itself: 备用料盘由打印机固件自行选择
+  The printer's firmware chooses where to switch on runout: 耗材用尽时切换到哪里由打印机固件自行选择
   The requested position is outside the printer's bounds: '请求的位置超出打印机范围'
   The right RFID reader in this CFS unit may need service: 此 CFS 单元的右侧 RFID 读取器可能需要维修
   The runout sensor indicates no filament is loaded. Start print anyway?: 断料传感器显示未装载耗材。仍要开始打印吗？
@@ -3430,7 +3434,7 @@ translations:
   This channel offers v{}, older than the installed v{}. Anything added since then will be removed.: '此通道提供 v{}，早于已安装的 v{}。此后新增的内容都将被移除。'
   ? "This check runs Klipper's resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.\n\nEach sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs."
   : "此检查会沿每条皮带路径运行 Klipper 的共振测试，并比较两个响应。平衡的皮带会给出形状相同、峰值位于相同频率的曲线。\n\n每次扫频需要几分钟并会移动工具头；运行期间请远离打印机。"
-  This clears every spool's failover assignment. The print will stop on runout until you set up failover again.: '这会清除每个料盘的备用分配。在重新设置之前，耗材用尽时打印将停止。'
+  This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again.: 这会清除所有无限料盘备用设置。在重新设置无限料盘之前，耗材用尽时打印将停止。
   This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen.: 此设备没有有线网络连接。关闭 WiFi 后，只能在此界面重新开启。
   ? This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a "Timer Too Close" error or restart mid-test. Continue anyway?
   : 此设备仅有 {} MB 内存。共振校准会占用大量内存，可能导致打印机固件报告 "Timer Too Close" 错误或在测试中途重启。仍要继续吗？
@@ -3460,7 +3464,7 @@ translations:
   This print never reports layer {}.: '此打印从不报告第 {} 层。'
   This printer cannot calibrate tool offsets automatically: 此打印机无法自动校准工具偏移
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: 此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。
-  This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: 此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。
+  This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: 此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。
   This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: 此打印机没有自动退料功能。请在工具头处剪断耗材，然后用手拉出。
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : 此打印机看起来是 {}（置信度 {}%），但当前设置为 {}。错误的类型会应用不正确的打印前选项和预设。
@@ -3525,6 +3529,10 @@ translations:
   Tips: '提示'
   Tips database format error: 提示数据库格式错误
   Tips database not found: 未找到提示数据库
+  ? To map filament, HelixScreen rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally.
+  : 为了映射耗材，HelixScreen 会在打印前改写任务文件。此打印机的 Moonraker 版本过旧，HelixPrint 插件无法在之后恢复原始文件名，因此完成的任务将以改写后的名称显示。耗材映射本身可正常工作。
+  ? "To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
+  : "为了映射耗材，HelixScreen 会在打印前改写任务文件。如果没有 HelixPrint 插件，进入打印历史的就是改写后的副本，因此完成的任务会以类似 modified_1730824_benchy.gcode 的名称显示，而不是您选择的文件。\n\n安装插件很快，无需重启。"
   Toggle: 切换
   Toggle (fire-and-forget): 切换（无状态跟踪）
   Toggle AFC LED strip: '切换 AFC LED 灯带'
@@ -3541,7 +3549,6 @@ translations:
   Tool Switcher: '工具切换器'
   'Tool change failed: {}': '工具切换失败: {}'
   Tool change to T{}: '切换工具到 T{}'
-  Tool mapping failed: 工具映射失败
   Tool offsets (mm): 工具偏移 (mm)
   Tool offsets saved: 工具偏移已保存
   Tool swap: 工具切换
@@ -3583,12 +3590,12 @@ translations:
   Turbo: 极速
   Turbo Inner: 极速内圈
   Turbo Outer: 极速外圈
+  Turn Endless Spool on, then set the Backup Gate: '请先开启无限料盘，再设置备用通道'
   'Turn LED off when the print ends': '打印结束时关闭 LED'
   Turn Off: 关闭
   Turn Off WiFi?: 关闭 WiFi？
   Turn On: 开启
   Turn On LEDs: '打开 LED'
-  Turn endless spool on, then set the backup gate: '请先开启无限料盘，再设置备用通道'
   Turn off bed check: '关闭热床检查'
   Turn off detection: 关闭检测
   Turn on the lights your light buttons control: 开启灯光按钮所控制的灯光
@@ -3827,8 +3834,8 @@ translations:
   Your printer at a glance: 一览您的打印机
   Your printer has an automatic filament changer: 您的打印机配有自动换色系统
   Your printer was offline during setup, so hardware options were skipped. Set them up now?: 设置期间打印机离线，硬件选项已跳过。现在设置吗？
-  ? Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide.
-  : "您的 {} 行包含重新映射不会更改的各工具设置 ({})。重新映射的工具可能不会被加热。请查看用户指南中的“Tool Mapping”。"
+  ? Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide.
+  : 您的 {} 行包含耗材映射不会更改的各工具设置 ({})。映射了耗材的工具可能不会被加热。请查看用户指南中的“Filament Mapping”。
   Z: Z
   Z Calibration: Z 轴校准
   Z Movement: Z 轴移动
@@ -3989,8 +3996,8 @@ translations:
   '{} is blocked — manual intervention required': '{} 被阻塞 — 需要手动干预'
   '{} is due: {} h reached': '{}需要维护：已达 {} 小时'
   '{} is feeding the current print. Clear it after the print ends.': '{} 正在为当前打印供料。请在打印结束后清除。'
-  '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} 已安装，但其备用料盘切换已关闭，因此不会自动切换。'
-  '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} 已安装，但无法读取其备用料盘设置 - 请勿指望自动切换。'
+  '{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout.': '{} 已安装，但其无限料盘设置已关闭，因此耗材用尽时不会切换。'
+  '{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool.': '{} 已安装，但无法读取其无限料盘设置 - 请勿指望无限料盘。'
   '{} is still printing. The print keeps running after you switch.': '{} 仍在打印。切换后打印会继续进行。'
   '{} is not available on this device. Printing original file.': '此设备不支持{}。将打印原始文件。'
   '{} is not set up on this printer': '{} 未在此打印机上设置'
@@ -4024,7 +4031,7 @@ translations:
   '{} target set to {}°C': '{} 目标已设为 {}°C'
   '{} updated': '{} 已更新'
   '{} widgets': '{} 个小组件'
-  ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
+  ? '{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present.'
   : '{} 将切换到耗材类型与颜色都与当前料盘一致、且其端口传感器检测到有耗材的槽位。'
   '{} · {}': '{} · {}'
   '{} · {} · {}': '{} · {} · {}'

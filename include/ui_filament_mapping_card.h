@@ -228,7 +228,7 @@ class FilamentMappingCard {
      * @brief Open the tool→slot filament mapping modal.
      *
      * Also invoked internally when the card itself is tapped. Exposed so the
-     * pre-flight gate's "Remap…" button can reuse the exact same modal wiring
+     * pre-flight gate's "Map Filament…" button can reuse the exact same modal wiring
      * (data population + on_mappings_updated → on_mappings_changed_) for
      * native-routing backends rather than duplicating it.
      */

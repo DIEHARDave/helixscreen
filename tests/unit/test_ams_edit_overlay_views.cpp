@@ -7,6 +7,7 @@
 // AmsEditOverlayViewTestAccess friend shim.
 
 #include "ui_ams_edit_overlay.h"
+#include "ui_icon_codepoints.h"
 #include "ui_modal.h"
 #include "ui_nav_manager.h"
 #include "ui_update_queue.h"
@@ -393,6 +394,15 @@ TEST_CASE_METHOD(LVGLUITestFixture, "spool card shows spool name + mark for trac
     lv_obj_t* mark = access.widget("chip_spoolman_mark");
     REQUIRE(mark != nullptr);
     CHECK_FALSE(lv_obj_has_flag(mark, LV_OBJ_FLAG_HIDDEN));
+
+    // Both marks draw the Spoolman glyph; a misspelled or empty icon name
+    // would fall back to image_broken_variant and still render.
+    const char* spoolman_glyph = helix::ui::icon::lookup_codepoint("spoolman");
+    REQUIRE(spoolman_glyph != nullptr);
+    CHECK(std::string(lv_label_get_text(mark)) == spoolman_glyph);
+    lv_obj_t* header_mark = access.widget("header_title_badge_icon");
+    REQUIRE(header_mark != nullptr);
+    CHECK(std::string(lv_label_get_text(header_mark)) == spoolman_glyph);
 
     CHECK(access.widget("spool_details_row") == nullptr);
 

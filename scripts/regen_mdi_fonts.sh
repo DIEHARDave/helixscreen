@@ -22,6 +22,9 @@ cd "$(dirname "$0")/.."
 export PATH="$PWD/node_modules/.bin:$PATH"
 
 FONT=assets/fonts/materialdesignicons-webfont.ttf
+# Glyphs MDI does not have (brand marks), merged into every face below. Built
+# from assets/fonts/custom_icons/*.svg by scripts/build_custom_icon_font.py.
+FONT_CUSTOM=assets/fonts/helix-custom-icons.ttf
 
 # Check font exists
 if [ ! -f "$FONT" ]; then
@@ -332,6 +335,9 @@ MDI_ICONS+=",0xF0311"    # keyboard-return (enter key)
 MDI_ICONS+=",0xF0632"    # apple-keyboard-caps (caps lock indicator)
 MDI_ICONS+=",0xF0636"    # apple-keyboard-shift (shift key outline)
 
+# Custom icon codepoints (0xFE000 block), served from FONT_CUSTOM.
+CUSTOM_ICONS="0xFE000"   # spoolman (Spoolman logo)
+
 # Sizes to generate - matching text font sizes for consistent UI
 SIZES="14 16 24 32 48 64 80 96 128"
 
@@ -346,6 +352,7 @@ for SIZE in $SIZES; do
     lv_font_conv \
         --font "$FONT" --size "$SIZE" --bpp 4 --format lvgl \
         --range "$MDI_ICONS" \
+        --font "$FONT_CUSTOM" --range "$CUSTOM_ICONS" \
         --no-compress \
         -o "$OUTPUT"
 

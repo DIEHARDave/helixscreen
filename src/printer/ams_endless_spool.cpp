@@ -27,13 +27,13 @@ std::string endless_spool_restriction_text(EndlessSpoolRestriction restriction) 
     case EndlessSpoolRestriction::MultiUnit:
         return lv_tr("Cannot be changed from here on a multi-unit MMU");
     case EndlessSpoolRestriction::FirmwareManaged:
-        return lv_tr("The printer's firmware chooses the backup spool itself");
+        return lv_tr("The printer's firmware chooses where to switch on runout");
     case EndlessSpoolRestriction::NotReady:
         return lv_tr("Waiting for the filament system to report its state");
     case EndlessSpoolRestriction::PluginMissing:
-        return lv_tr("No automatic backup-spool package is installed");
+        return lv_tr("No Endless Spool package is installed");
     case EndlessSpoolRestriction::PluginReadOnly:
-        return lv_tr("Configured in the backup-spool package, not from here");
+        return lv_tr("Endless Spool is configured in its package, not from here");
     }
     return {};
 }
@@ -63,7 +63,7 @@ EndlessSpoolStatus endless_spool_status(const EndlessSpoolCapabilities& caps) {
             // restriction text is what actually renders.
             out.text = endless_spool_restriction_text(caps.restriction);
             if (out.text.empty()) {
-                out.text = lv_tr("No automatic backup-spool package is installed");
+                out.text = lv_tr("No Endless Spool package is installed");
             }
         }
         return out;
@@ -72,7 +72,7 @@ EndlessSpoolStatus endless_spool_status(const EndlessSpoolCapabilities& caps) {
     switch (caps.enabled) {
     case EndlessSpoolEnabled::On:
         out.kind = EndlessSpoolStatusKind::On;
-        out.text = lv_tr("Switches to a backup spool on runout");
+        out.text = lv_tr("Switches to another spool on runout");
         break;
     case EndlessSpoolEnabled::Off:
         out.kind = EndlessSpoolStatusKind::Off;
@@ -80,16 +80,15 @@ EndlessSpoolStatus endless_spool_status(const EndlessSpoolCapabilities& caps) {
         break;
     case EndlessSpoolEnabled::Unknown:
         out.kind = EndlessSpoolStatusKind::Unknown;
-        out.text = lv_tr("Backup spool switching state unknown");
+        out.text = lv_tr("Endless Spool state unknown");
         break;
     case EndlessSpoolEnabled::OnWithoutBackup:
         // The setting is on, so this is not Off - but as loaded right now the
         // runout would still stop the print, and saying "it will switch"
         // (the On sentence) is the false promise this state exists to retract.
         out.kind = EndlessSpoolStatusKind::OnWithoutBackup;
-        out.text =
-            lv_tr("Auto-refill is on but no two slots hold matching filament, so nothing will "
-                  "switch on runout");
+        out.text = lv_tr("Endless Spool is on but no two slots hold matching filament, so nothing "
+                         "will switch on runout");
         break;
     }
 

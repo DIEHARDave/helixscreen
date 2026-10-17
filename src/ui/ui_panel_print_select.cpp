@@ -2825,7 +2825,7 @@ void PrintSelectPanel::create_detail_view() {
     // The detail view's tappable cards (the visible color-requirements swatch
     // card on U1, AND the embedded editable FilamentMappingCard on AFC/CFS) all
     // route their tap here so there is ONE opener and ONE modal instance for
-    // every backend — the same entry the preflight "Remap…" button uses.
+    // every backend — the same entry the preflight "Map Filament…" button uses.
     detail_view_->set_on_remap_requested([this]() { open_remap_modal(); });
     // The card's Set up tap. Same modal the boot-time prompt uses, so a user who
     // dismissed that one still has a way in from the place the refusal is shown.
@@ -3588,9 +3588,10 @@ PrintSelectPanel::start_macro_remap_note(AmsBackend::RemapStrategy strategy,
     for (const auto& key : keys) {
         key_list += (key_list.empty() ? "" : ", ") + key;
     }
-    return fmt::format(fmt::runtime(lv_tr("Your {} line passes per-tool settings that remapping "
-                                          "does not change ({}). A remapped tool may not be "
-                                          "heated. See Tool Mapping in the user guide.")),
+    return fmt::format(fmt::runtime(lv_tr("Your {} line passes per-tool settings that Filament "
+                                          "Mapping does not change ({}). A tool you map filament "
+                                          "to may not be heated. See Filament Mapping in the "
+                                          "user guide.")),
                        start->macro_name, key_list);
 }
 
@@ -3614,7 +3615,7 @@ void PrintSelectPanel::apply_remap(const std::vector<helix::ToolMapping>& update
         auto* prep = detail_view_ ? detail_view_->get_prep_manager() : nullptr;
         if (!prep) {
             spdlog::warn("[{}] Gcode remap: no prep manager", get_name());
-            NOTIFY_ERROR(lv_tr("Cannot remap: internal error"));
+            NOTIFY_ERROR(lv_tr("Couldn't map filament: internal error"));
             return;
         }
 

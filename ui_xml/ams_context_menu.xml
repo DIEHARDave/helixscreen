@@ -179,12 +179,13 @@
           <event_cb trigger="value_changed" callback="ams_context_tool_changed_cb"/>
         </lv_dropdown>
       </lv_obj>
-      <!-- Backup Slot Dropdown (Endless Spool) -->
+      <!-- Endless Spool: the backup position, labelled in the backend's noun -->
       <lv_obj name="backup_dropdown_row"
               width="100%" height="content" style_pad_all="0" style_pad_left="#space_sm" style_pad_right="#space_sm"
-              flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false"
-              hidden="true">
+              flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_xs"
+              scrollable="false" hidden="true">
         <lv_label name="backup_icon" text="#icon_infinity" style_text_font="mdi_icons_16" style_text_color="#text_muted"/>
+        <text_small name="backup_label" flex_grow="1" bind_text="ams_slot_backup_label" long_mode="wrap"/>
         <lv_dropdown name="backup_dropdown"
                      width="#ams_context_dropdown_w" height="#button_height_sm" style_radius="#border_radius">
           <event_cb trigger="value_changed" callback="ams_context_backup_changed_cb"/>

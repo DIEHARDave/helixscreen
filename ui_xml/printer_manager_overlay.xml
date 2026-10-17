@@ -276,7 +276,7 @@
               <style name="styles.press_wash" selector="pressed"/>
               <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
               <event_cb trigger="clicked" callback="pm_chip_spoolman_clicked"/>
-              <icon src="database" size="xs" variant="success"/>
+              <icon src="spoolman" size="xs" variant="success"/>
               <text_small text="Spoolman"/>
             </lv_obj>
 

@@ -11116,7 +11116,7 @@ TEST_CASE_METHOD(Ad5xRunoutFixture, "AD5X IFS runout: detail text names the plug
         CHECK(detail.find("No auto-switchover plugin") == std::string::npos);
         // The same type+colour+present rule the plugin path promises.
         CHECK(detail.find("type") != std::string::npos);
-        CHECK(detail.find("colour") != std::string::npos);
+        CHECK(detail.find("color") != std::string::npos);
         CHECK(detail.find("port sensor") != std::string::npos);
     }
 
@@ -11141,7 +11141,7 @@ TEST_CASE_METHOD(Ad5xRunoutFixture, "AD5X IFS runout: detail text names the plug
         CHECK(detail.find("bambufy") != std::string::npos);
         // Both criteria promised, never one.
         CHECK(detail.find("type") != std::string::npos);
-        CHECK(detail.find("colour") != std::string::npos);
+        CHECK(detail.find("color") != std::string::npos);
         CHECK(detail.find("port sensor") != std::string::npos);
     }
 }
@@ -11427,7 +11427,7 @@ TEST_CASE("AD5X IFS runout detail reads as whole sentences", "[ams][ad5x_ifs][ru
         Ad5xIfsTestAccess::set_runout_state(backend, 0, /*has_ifs_vars=*/true, std::nullopt);
 
         REQUIRE(contains(Ad5xIfsTestAccess::runout_detail(backend),
-                         "bambufy is installed, but its backup-spool setting could not be read"));
+                         "bambufy is installed, but its Endless Spool setting could not be read"));
     }
 
     SECTION("backup switching turned off names the plugin as the subject") {
@@ -11435,7 +11435,7 @@ TEST_CASE("AD5X IFS runout detail reads as whole sentences", "[ams][ad5x_ifs][ru
         Ad5xIfsTestAccess::set_runout_state(backend, 0, /*has_ifs_vars=*/true, false);
 
         REQUIRE(contains(Ad5xIfsTestAccess::runout_detail(backend),
-                         "lessWaste is installed but its backup-spool switching is turned off"));
+                         "lessWaste is installed but its Endless Spool setting is turned off"));
     }
 }
 

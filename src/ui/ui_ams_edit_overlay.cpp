@@ -1524,7 +1524,7 @@ void AmsEditOverlay::update_ui() {
     // Temperature display based on material/spool data
     update_temp_display();
 
-    // Tool remap dropdown (backends that support it)
+    // Assigned Tool dropdown (backends with a writable tool table)
     lv_obj_t* tool_remap_row =
         helix::ui::find_required(overlay_root_, "tool_remap_row", get_name());
     lv_obj_t* tool_dropdown = helix::ui::find_required(overlay_root_, "tool_dropdown", get_name());
@@ -1533,12 +1533,9 @@ void AmsEditOverlay::update_ui() {
     // question is whether such a write lands — not the broader "can the user's
     // pick be honored somehow", which the U1 answers yes to via its pre-print
     // send while refusing set_tool_mapping outright. Same rule the print-start
-    // generic apply path gates on, called rather than restated.
-    //
-    // Was AmsSystemInfo::supports_tool_mapping, a second copy of the answer that
-    // AD5X IFS set true unconditionally: before `_IFS_VARS` discovery the
-    // dropdown was offered and its write went into local state the firmware
-    // replays nothing from.
+    // generic apply path gates on, called rather than restated. It also asks
+    // whether the table is usable right now: an AD5X IFS before `_IFS_VARS`
+    // discovery would take the write into local state the firmware never reads.
     const bool can_edit_mapping = backend && helix::printer::can_write_mapping_table(*backend);
 
     if (tool_remap_row) {

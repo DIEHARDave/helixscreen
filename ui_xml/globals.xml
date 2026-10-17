@@ -1095,6 +1095,7 @@
     <str name="icon_code_tags" value="󰅴"/>
     <str name="icon_cog" value="󰒓"/>
     <str name="icon_cog_outline" value="󰢻"/>
+    <str name="icon_cog_refresh" value="󱑞"/>
     <str name="icon_console" value="󰆍"/>
     <str name="icon_content_copy" value="󰆏"/>
     <str name="icon_coolant_temperature" value="󰏈"/>
@@ -1243,7 +1244,7 @@
     <str name="icon_speed_down" value="󰾆"/>
     <str name="icon_speed_up" value="󰾅"/>
     <str name="icon_spirit_level" value="󱓱"/>
-    <str name="icon_spoolman" value="󰈯"/>
+    <str name="icon_spoolman" value="󾀀"/>
     <str name="icon_star" value="󰓎"/>
     <str name="icon_stop" value="󰓛"/>
     <str name="icon_swap_horizontal" value="󰓡"/>

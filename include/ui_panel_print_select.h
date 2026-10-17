@@ -681,14 +681,14 @@ class PrintSelectPanel : public PanelBase {
      * @brief Show the enriched pre-flight filament check modal.
      *
      * Replaces the simple confirmation dialog. Renders a per-tool breakdown of
-     * intended vs seated filament and offers Remap… / Cancel / Print Anyway.
-     * Print Anyway re-enters start_print(true); Remap… routes by backend
+     * intended vs seated filament and offers Map Filament… / Cancel / Print Anyway.
+     * Print Anyway re-enters start_print(true); Map Filament… routes by backend
      * strategy via on_preflight_remap().
      */
     void show_preflight_modal(const helix::PreflightResult& pf);
 
     /**
-     * @brief Route a Remap… request to the single unified remap UI.
+     * @brief Route a Map Filament… request to the single unified remap UI.
      *
      * Thin wrapper around open_remap_modal(). The per-backend difference lives
      * at the apply layer (apply_remap) and at print-start (already strategy-

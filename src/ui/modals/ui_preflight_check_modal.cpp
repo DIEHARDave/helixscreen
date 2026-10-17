@@ -71,7 +71,7 @@ void PreflightCheckModal::on_show() {
     // no double-wiring.
     //   btn_primary   → on_ok()       → Print Anyway
     //   btn_secondary → on_cancel()   → Cancel
-    //   btn_tertiary  → on_tertiary() → Remap…
+    //   btn_tertiary  → on_tertiary() → Map Filament…
     wire_ok_button("btn_primary");
     wire_cancel_button("btn_secondary");
     wire_tertiary_button("btn_tertiary");

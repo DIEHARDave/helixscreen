@@ -1052,6 +1052,11 @@ An inline `style_text_font` attribute still outranks both.
 3. Add to `scripts/regen_mdi_fonts.sh`
 4. Run `make regen-fonts`
 
+A mark MDI does not have (a brand logo such as Spoolman's) is drawn as a single-path
+24x24 SVG in `assets/fonts/custom_icons/`, compiled into `assets/fonts/helix-custom-icons.ttf`
+by `scripts/build_custom_icon_font.py`, and listed in `CUSTOM_ICONS` instead of `MDI_ICONS`.
+It then lands in the same faces and is used like any other `<icon src="...">`.
+
 ### Semantic Typography
 
 **ALWAYS use semantic text components instead of `<lv_label>` with hardcoded fonts.**

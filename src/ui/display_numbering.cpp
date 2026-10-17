@@ -116,6 +116,24 @@ std::string noun_text(LaneNoun noun) {
     return lv_tr("Slot");
 }
 
+std::string backup_lane_text(LaneNoun noun) {
+    switch (noun) {
+    case LaneNoun::Lane:
+        return lv_tr("Backup Lane");
+    case LaneNoun::Gate:
+        return lv_tr("Backup Gate");
+    case LaneNoun::Tool:
+        return lv_tr("Backup Tool");
+    case LaneNoun::Feeder:
+        return lv_tr("Backup Feeder");
+    case LaneNoun::Toolhead:
+        return lv_tr("Backup Toolhead");
+    case LaneNoun::Slot:
+        break;
+    }
+    return lv_tr("Backup Slot");
+}
+
 std::string lane_label(LaneNoun noun, int index) {
     const int n = lane_number(index);
     if (n < 0)

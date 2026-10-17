@@ -289,6 +289,7 @@ translations:
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Assign Klipper
     macros to control LEDs via on/off, toggle, or presets
   Assign a role to enable sensor monitoring: Assign a role to enable sensor monitoring
+  Assigned Tool: Assigned Tool
   Assisted Retract: Assisted Retract
   Assisting: Assisting
   At least {} lines in helixscreen.env were ignored: At least {} lines in helixscreen.env were ignored
@@ -301,14 +302,13 @@ translations:
   Auto Fans: Auto Fans
   Auto-Detect: Auto-Detect
   Auto-Heat on Load: Auto-Heat on Load
+  Auto-Replenish: Auto-Replenish
   Auto-detect: Auto-detect
   Auto-install only works on local Moonraker: Auto-install only works on local Moonraker
   Auto-lock: Auto-lock
   Auto-poll for weight updates: Auto-poll for weight updates
   Auto-probe or manually check screw heights: Auto-probe or manually check screw heights
-  Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout: Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout
   Auto-render video: Auto-render video
-  'Auto-replenish filament': 'Auto-replenish filament'
   'Auto-tuning Shapers...': 'Auto-tuning Shapers...'
   Auto-uninstall only works on local Moonraker: Auto-uninstall only works on local
     Moonraker
@@ -316,7 +316,6 @@ translations:
   Automatic Heater Control Calibration: Automatic Heater Control Calibration
   Automatic LED Control: Automatic LED Control
   Automatic calibration: Automatic calibration
-  Automatic slot swap on runout: Automatic slot swap on runout
   Aux: Aux
   Available: Available
   Available Networks: Available Networks
@@ -336,8 +335,13 @@ translations:
   BLUETOOTH SCANNERS: BLUETOOTH SCANNERS
   Back: Back
   'Backtrace: {} frames': 'Backtrace: {} frames'
+  Backup Feeder: Backup Feeder
+  Backup Gate: Backup Gate
+  Backup Lane: Backup Lane
+  Backup Slot: Backup Slot
+  Backup Tool: Backup Tool
+  Backup Toolhead: Backup Toolhead
   Backup lane name contains invalid characters: Backup lane name contains invalid characters
-  Backup spool switching state unknown: Backup spool switching state unknown
   Balanced: Balanced
   Barcode Scanner: Barcode Scanner
   Base: Base
@@ -539,9 +543,6 @@ translations:
   Cannot open or close the feeder while a print is active: Cannot open or close the feeder while a print is active
   Cannot park while a print is active: Cannot park while a print is active
   Cannot perform this action now: Cannot perform this action now
-  'Cannot remap G-code: no temp directory available': 'Cannot remap G-code: no temp
-    directory available'
-  'Cannot remap: internal error': 'Cannot remap: internal error'
   'Cannot reprint: not connected to printer': 'Cannot reprint: not connected to printer'
   Cannot restart — no filename: Cannot restart — no filename
   Cannot run filament operation while printing: Cannot run filament operation while printing
@@ -665,7 +666,7 @@ translations:
   Clear All Events: Clear All Events
   Clear Console?: Clear Console?
   Clear Spool: Clear Spool
-  Clear all spool failover assignments: Clear all spool failover assignments
+  Clear every Endless Spool backup: Clear every Endless Spool backup
   Clear failed: Clear failed
   ? Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament's packaging) and close the door.
   : Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament's packaging) and close the door.
@@ -740,7 +741,6 @@ translations:
   Configured aux fan not found: Configured aux fan not found
   Configured filament sensor not found: Configured filament sensor not found
   Configured hardware no longer present: Configured hardware no longer present
-  Configured in the backup-spool package, not from here: Configured in the backup-spool package, not from here
   Configuring Moonraker...: Configuring Moonraker...
   Confirm PIN: Confirm PIN
   Confirm before running macros: Confirm before running macros
@@ -860,7 +860,10 @@ translations:
   Could not update filaments: Could not update filaments
   Could not verify Spoolman status. Moonraker may still be restarting.: Could not
     verify Spoolman status. Moonraker may still be restarting.
+  Couldn't assign the tool: Couldn't assign the tool
   Couldn't clear the printer's gate map: Couldn't clear the printer's gate map
+  "Couldn't map filament: internal error": "Couldn't map filament: internal error"
+  "Couldn't map filament: no temp directory available": "Couldn't map filament: no temp directory available"
   Couldn't save the material name: Couldn't save the material name
   Couldn't save the printer's gate map: Couldn't save the printer's gate map
   Couldn't save to Spoolman. Nothing changed on this printer.: Couldn't save to Spoolman. Nothing changed on this printer.
@@ -1082,7 +1085,6 @@ translations:
   Enable or disable the hub cutter: Enable or disable the hub cutter
   Enable plugin?: Enable plugin?
   Enable purging during tool changes: Enable purging during tool changes
-  Enable/disable automatic backup spool switching: Enable/disable automatic backup spool switching
   Enable/disable quiet operation mode: Enable/disable quiet operation mode
   Enabled: Enabled
   Enabled. Open its settings, or disable it?: Enabled. Open its settings, or disable it?
@@ -1095,8 +1097,11 @@ translations:
   End the test print?: End the test print?
   Ended: Ended
   Endless Spool: Endless Spool
-  Endless spool failover cleared for every slot: Endless spool failover cleared for every slot
-  Endless spool is turned off on this MMU: Endless spool is turned off on this MMU
+  Endless Spool backups cleared: Endless Spool backups cleared
+  Endless Spool is configured in its package, not from here: Endless Spool is configured in its package, not from here
+  Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout
+  Endless Spool is turned off on this MMU: Endless Spool is turned off on this MMU
+  Endless Spool state unknown: Endless Spool state unknown
   Ensure Happy Hare or AFC is installed and configured: Ensure Happy Hare or AFC is installed and configured
   Enter Current PIN: Enter Current PIN
   Enter G-code command...: Enter G-code command...
@@ -1217,10 +1222,9 @@ translations:
   Failed to delete spool: Failed to delete spool
   'Failed to disable WiFi: {}': 'Failed to disable WiFi: {}'
   'Failed to discard recovery data: {}': 'Failed to discard recovery data: {}'
+  'Failed to download G-code for Filament Mapping: {}': 'Failed to download G-code for Filament Mapping: {}'
   'Failed to download G-code for modification: {}': 'Failed to download G-code for
     modification: {}'
-  'Failed to download G-code for remap: {}': 'Failed to download G-code for remap:
-    {}'
   ? "Failed to download helixscreen.conf.\nCheck printer connection."
   : "Failed to download helixscreen.conf.\nCheck printer connection."
   ? "Failed to download moonraker.conf.\nCheck printer connection."
@@ -1254,13 +1258,12 @@ translations:
   Failed to open temperature graph: Failed to open temperature graph
   'Failed to pause print: {}': 'Failed to pause print: {}'
   'Failed to purge: {}': 'Failed to purge: {}'
-  Failed to read G-code for remap: Failed to read G-code for remap
+  Failed to read G-code for Filament Mapping: Failed to read G-code for Filament Mapping
   Failed to read config.: Failed to read config.
   Failed to read config. Check connection.: Failed to read config. Check connection.
   Failed to read moonraker.conf.: Failed to read moonraker.conf.
   Failed to read printer status: Failed to read printer status
   Failed to refresh file list: Failed to refresh file list
-  'Failed to remap G-code: {}': 'Failed to remap G-code: {}'
   Failed to render label: Failed to render label
   'Failed to reprint: {}': 'Failed to reprint: {}'
   Failed to reset theme: Failed to reset theme
@@ -1268,6 +1271,7 @@ translations:
   Failed to restart Moonraker.: Failed to restart Moonraker.
   'Failed to restart: {}': 'Failed to restart: {}'
   'Failed to resume: {}': 'Failed to resume: {}'
+  'Failed to rewrite G-code for Filament Mapping: {}': 'Failed to rewrite G-code for Filament Mapping: {}'
   Failed to save LED configuration: Failed to save LED configuration
   Failed to save WiFi network: Failed to save WiFi network
   Failed to save config.: Failed to save config.
@@ -1305,8 +1309,8 @@ translations:
   ? "Failed to update moonraker.conf.\nCheck printer connection."
   : "Failed to update moonraker.conf.\nCheck printer connection."
   'Failed to upload modified G-code: {}': 'Failed to upload modified G-code: {}'
-  'Failed to upload remapped G-code: {}': 'Failed to upload remapped G-code: {}'
   'Failed to upload the extracted G-code: {}': 'Failed to upload the extracted G-code: {}'
+  'Failed to upload the rewritten G-code: {}': 'Failed to upload the rewritten G-code: {}'
   Fair match: Fair match
   Fan: Fan
   Fan Calibration: Fan Calibration
@@ -1340,6 +1344,9 @@ translations:
   Filament In The Toolhead: Filament In The Toolhead
   Filament Jam: Filament Jam
   Filament Mapping: Filament Mapping
+  Filament Mapping is not available on this device.: Filament Mapping is not available on this device.
+  Filament Mapping is unavailable: Filament Mapping is unavailable
+  Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer
   Filament Runout: Filament Runout
   Filament Sensor: Filament Sensor
   Filament System Error: Filament System Error
@@ -1380,11 +1387,9 @@ translations:
   ? Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   : Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   Filament ran out at the toolhead: Filament ran out at the toolhead
-  Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.
+  Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.
   Filament reload failed: Filament reload failed
-  Filament remap not supported on this printer — print will use the firmware's current tool mapping: Filament remap not supported on this printer — print will use the firmware's current tool mapping
-  Filament remapping is unavailable: Filament remapping is unavailable
   Filament runout: Filament runout
   Filament runout and motion detection sensors: Filament runout and motion detection
     sensors
@@ -1870,7 +1875,7 @@ translations:
   Load Failed: Load Failed
   Load Filament: Load Filament
   Load a filament first before trying to unload: Load a filament first before trying to unload
-  Load a new spool in this slot, or turn on auto-refill to switch to a matching one: Load a new spool in this slot, or turn on auto-refill to switch to a matching one
+  Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one
   'Load cancelled: nozzle target dropped': 'Load cancelled: nozzle target dropped'
   Load complete: Load complete
   Load failed: Load failed
@@ -1880,7 +1885,8 @@ translations:
   Load Profile: Load Profile
   Load the required filaments or start anyway?: Load the required filaments or start
     anyway?
-  'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.'
+  ? Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors.
+  : Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors.
   Load...: Load...
   Loaded: Loaded
   Loading: Loading
@@ -1979,6 +1985,7 @@ translations:
   'Manual: the ramp has stopped at your value': 'Manual: the ramp has stopped at your value'
   Manually clear the jam and retry the operation: Manually clear the jam and retry the operation
   Manually pull the filament back through the connector: Manually pull the filament back through the connector
+  Map Filament…: Map Filament…
   Map to closest colors with matching material: Map to closest colors with matching
     material
   Mapping Error: Mapping Error
@@ -2127,6 +2134,7 @@ translations:
     — pick one in settings
   No Bluetooth printers found: No Bluetooth printers found
   No Camera: No Camera
+  No Endless Spool package is installed: No Endless Spool package is installed
   No Filament Detected: No Filament Detected
   No Hardware Issues: No Hardware Issues
   No History: No History
@@ -2144,7 +2152,6 @@ translations:
   No USB printer detected: No USB printer detected
   No USB printers found: No USB printers found
   No active Spoolman spool.: No active Spoolman spool.
-  No automatic backup-spool package is installed: No automatic backup-spool package is installed
   No buffer data available: No buffer data available
   No camera — use USB barcode scanner: No camera — use USB barcode scanner
   No chamber temperature sensor detected: No chamber temperature sensor detected
@@ -2693,7 +2700,7 @@ translations:
   'RFCOMM connect failed: ': 'RFCOMM connect failed: '
   RFID reader malfunction (left): RFID reader malfunction (left)
   RFID reader malfunction (right): RFID reader malfunction (right)
-  RFID, auto-refill, nozzle and link care: RFID, auto-refill, nozzle and link care
+  RFID, Auto-Refill, nozzle and link care: RFID, Auto-Refill, nozzle and link care
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
@@ -2764,13 +2771,6 @@ translations:
   Remaining: Remaining
   Remaining (g): Remaining (g)
   Remaining Weight (g): Remaining Weight (g)
-  Remap Tool: Remap Tool
-  Remapping G-code is not available on this device.: Remapping G-code is not available on this device.
-  ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  Remap…: Remap…
   Remember slot spool details across an eject: Remember slot spool details across an eject
   Remove: Remove
   Remove PIN: Remove PIN
@@ -2793,7 +2793,7 @@ translations:
   Replace: Replace
   Replace Profile?: Replace Profile?
   Replay Welcome Tour: Replay Welcome Tour
-  'Replenish ignores colour': 'Replenish ignores colour'
+  Replenish ignores color: Replenish ignores color
   'Replenishing filament...': 'Replenishing filament...'
   Report saved to crash_report.txt: Report saved to crash_report.txt
   Reprint: Reprint
@@ -2816,13 +2816,13 @@ translations:
   Reset Distances: Reset Distances
   Reset Distances?: Reset Distances?
   Reset Endless Spool: Reset Endless Spool
+  Reset Endless Spool failed: Reset Endless Spool failed
   Reset Endless Spool?: Reset Endless Spool?
   Reset Home Screen?: Reset Home Screen?
   Reset Motor Timer: Reset Motor Timer
   Reset Servo Counter: Reset Servo Counter
   Reset Speed & Flow to 100%: Reset Speed & Flow to 100%
   Reset all settings and restart wizard: Reset all settings and restart wizard
-  Reset endless spool failed: Reset endless spool failed
   Reset failed: Reset failed
   Reset motor run-time counter: Reset motor run-time counter
   Reset tags: Reset tags
@@ -3109,8 +3109,8 @@ translations:
   Set local timezone for time display: Set local timezone for time display
   Set logging verbosity for troubleshooting: Set logging verbosity for troubleshooting
   Set temperature between {}°C and {}°C: Set temperature between {}°C and {}°C
-  ? Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
-  : Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
+  ? Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
+  : Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
   Set up: Set up
   Set up your label printer in Settings: Set up your label printer in Settings
   Set what is really selected and loaded. Nothing moves.: Set what is really selected and loaded. Nothing moves.
@@ -3327,10 +3327,12 @@ translations:
   Switch Sensors: Switch Sensors
   Switch between light and dark themes: Switch between light and dark themes
   Switch the active tool or extruder: Switch the active tool or extruder
+  Switch to a backup slot on runout: Switch to a backup slot on runout
+  Switch to a matching slot on runout: Switch to a matching slot on runout
   Switch to v%s: Switch to v%s
   Switch to {}?: Switch to {}?
   Switched to {}: Switched to {}
-  Switches to a backup spool on runout: Switches to a backup spool on runout
+  Switches to another spool on runout: Switches to another spool on runout
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
   : Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
   Switching back to PID requires a config change and Klipper restart.: Switching back to PID requires a config change and Klipper restart.
@@ -3509,7 +3511,7 @@ translations:
   The printer lost power while printing {}. The resumed layer may not line up exactly.: The printer lost power while printing {}. The resumed layer may not line up exactly.
   The printer rejected the filament configuration. The print was not started.: The
     printer rejected the filament configuration. The print was not started.
-  The printer's firmware chooses the backup spool itself: The printer's firmware chooses the backup spool itself
+  The printer's firmware chooses where to switch on runout: The printer's firmware chooses where to switch on runout
   The requested position is outside the printer's bounds: The requested position is outside the printer's bounds
   The right RFID reader in this CFS unit may need service: The right RFID reader in this CFS unit may need service
   The runout sensor indicates no filament is loaded. Start print anyway?: The runout
@@ -3557,7 +3559,7 @@ translations:
   This channel offers v{}, older than the installed v{}. Anything added since then will be removed.: This channel offers v{}, older than the installed v{}. Anything added since then will be removed.
   ? "This check runs Klipper's resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.\n\nEach sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs."
   : "This check runs Klipper's resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.\n\nEach sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs."
-  This clears every spool's failover assignment. The print will stop on runout until you set up failover again.: This clears every spool's failover assignment. The print will stop on runout until you set up failover again.
+  This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again.: This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again.
   This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen.: This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen.
   ? This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a "Timer Too Close" error or restart mid-test. Continue anyway?
   : This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a "Timer Too Close" error or restart mid-test. Continue anyway?
@@ -3589,7 +3591,7 @@ translations:
   This print never reports layer {}.: This print never reports layer {}.
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.
-  This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.
+  This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.
   This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: This printer has no automatic unload. Cut the filament at the head and pull it out by hand.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
@@ -3665,6 +3667,10 @@ translations:
   Tips: Tips
   Tips database format error: Tips database format error
   Tips database not found: Tips database not found
+  ? To map filament, HelixScreen rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally.
+  : To map filament, HelixScreen rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally.
+  ? "To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
+  : "To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
   Toggle: Toggle
   Toggle (fire-and-forget): Toggle (fire-and-forget)
   Toggle AFC LED strip: Toggle AFC LED strip
@@ -3681,7 +3687,6 @@ translations:
   Tool Switcher: Tool Switcher
   'Tool change failed: {}': 'Tool change failed: {}'
   Tool change to T{}: Tool change to T{}
-  Tool mapping failed: Tool mapping failed
   Tool offsets (mm): Tool offsets (mm)
   Tool offsets saved: Tool offsets saved
   Tool swap: Tool swap
@@ -3724,12 +3729,12 @@ translations:
   Turbo: Turbo
   Turbo Inner: Turbo Inner
   Turbo Outer: Turbo Outer
+  Turn Endless Spool on, then set the Backup Gate: Turn Endless Spool on, then set the Backup Gate
   'Turn LED off when the print ends': 'Turn LED off when the print ends'
   Turn Off: Turn Off
   Turn Off WiFi?: Turn Off WiFi?
   Turn On: Turn On
   Turn On LEDs: Turn On LEDs
-  Turn endless spool on, then set the backup gate: Turn endless spool on, then set the backup gate
   Turn off bed check: Turn off bed check
   Turn off detection: Turn off detection
   Turn on the lights your light buttons control: Turn on the lights your light buttons control
@@ -3978,8 +3983,8 @@ translations:
   Your printer has an automatic filament changer: Your printer has an automatic filament
     changer
   Your printer was offline during setup, so hardware options were skipped. Set them up now?: Your printer was offline during setup, so hardware options were skipped. Set them up now?
-  ? Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide.
-  : Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide.
+  ? Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide.
+  : Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide.
   Z: Z
   Z Calibration: Z Calibration
   Z Movement: Z Movement
@@ -4137,8 +4142,8 @@ translations:
   '{} is blocked — manual intervention required': '{} is blocked — manual intervention required'
   '{} is due: {} h reached': '{} is due: {} h reached'
   '{} is feeding the current print. Clear it after the print ends.': '{} is feeding the current print. Clear it after the print ends.'
-  '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.'
-  '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.'
+  '{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout.': '{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout.'
+  '{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool.': '{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool.'
   '{} is still printing. The print keeps running after you switch.': '{} is still printing. The print keeps running after you switch.'
   '{} is not available on this device. Printing original file.': '{} is not available on this device. Printing original file.'
   '{} is not set up on this printer': '{} is not set up on this printer'
@@ -4173,8 +4178,8 @@ translations:
   '{} target set to {}°C': '{} target set to {}°C'
   '{} updated': '{} updated'
   '{} widgets': '{} widgets'
-  ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
-  : '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
+  ? '{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present.'
+  : '{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present.'
   '{} · {}': '{} · {}'
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — response timed out'

@@ -305,6 +305,7 @@
   <translation tag="Ask for parameters" ru="Спрашивать параметры"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" ru="Назначьте макросы Klipper для управления LED через вкл/выкл, переключение или пресеты"/>
   <translation tag="Assign a role to enable sensor monitoring" ru="Назначьте роль для мониторинга датчика"/>
+  <translation tag="Assigned Tool" ru="Назначенный инструмент"/>
   <translation tag="Assisted Retract" ru="Ретракция с поддержкой"/>
   <translation tag="Assisting" ru="Помощь"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" ru="В helixscreen.env проигнорировано не менее {} строк"/>
@@ -320,21 +321,19 @@
   <translation tag="Auto Fans" ru="Автоматические вентиляторы"/>
   <translation tag="Auto-Detect" ru="Автоопределение"/>
   <translation tag="Auto-Heat on Load" ru="Автонагрев при загрузке"/>
+  <translation tag="Auto-Replenish" ru="Автопополнение"/>
   <translation tag="Auto-detect" ru="Автоопределение"/>
   <translation tag="Auto-install only works on local Moonraker" ru="Автоустановка работает только с локальным Moonraker"/>
   <translation tag="Auto-lock" ru="Автоблокировка"/>
   <translation tag="Auto-poll for weight updates" ru="Автоопрос обновлений веса"/>
   <translation tag="Auto-probe or manually check screw heights" ru="Автозондирование или ручная проверка высоты винтов"/>
-  <translation tag="Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout" ru="Автопополнение включено, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает"/>
   <translation tag="Auto-render video" ru="Автоматический рендер видео"/>
-  <translation tag="Auto-replenish filament" ru="Автопополнение филамента"/>
   <translation tag="Auto-tuning Shapers..." ru="Автонастройка Input Shaper..."/>
   <translation tag="Auto-uninstall only works on local Moonraker" ru="Автоудаление работает только с локальным Moonraker"/>
   <translation tag="Automatic" ru="Автоматический"/>
   <translation tag="Automatic Heater Control Calibration" ru="Автоматическая калибровка нагревателя"/>
   <translation tag="Automatic LED Control" ru="Автоматическое управление LED"/>
   <translation tag="Automatic calibration" ru="Автоматическая калибровка"/>
-  <translation tag="Automatic slot swap on runout" ru="Автоматическая смена слота при окончании"/>
   <translation tag="Aux" ru="Доп"/>
   <translation tag="Available" ru="Доступен"/>
   <translation tag="Available Networks" ru="Доступные сети"/>
@@ -357,8 +356,13 @@
   <translation tag="Backtrace: {} frames_few" ru="Трассировка: {} кадра"/>
   <translation tag="Backtrace: {} frames_many" ru="Трассировка: {} кадров"/>
   <translation tag="Backtrace: {} frames_one" ru="Трассировка: {} кадр"/>
+  <translation tag="Backup Feeder" ru="Резервный фидер"/>
+  <translation tag="Backup Gate" ru="Резервный шлюз"/>
+  <translation tag="Backup Lane" ru="Резервный канал"/>
+  <translation tag="Backup Slot" ru="Резервный слот"/>
+  <translation tag="Backup Tool" ru="Резервный инструмент"/>
+  <translation tag="Backup Toolhead" ru="Резервная печатающая головка"/>
   <translation tag="Backup lane name contains invalid characters" ru="Имя резервного канала содержит недопустимые символы"/>
-  <translation tag="Backup spool switching state unknown" ru="Резервная катушка: состояние неизвестно"/>
   <translation tag="Balanced" ru="Сбалансирован"/>
   <translation tag="Barcode Scanner" ru="Сканер штрих-кодов"/>
   <translation tag="Base" ru="Опорный"/>
@@ -546,8 +550,6 @@
   <translation tag="Cannot open or close the feeder while a print is active" ru="Нельзя открыть или закрыть фидер во время печати"/>
   <translation tag="Cannot park while a print is active" ru="Нельзя припарковать во время печати"/>
   <translation tag="Cannot perform this action now" ru="Сейчас это действие выполнить нельзя"/>
-  <translation tag="Cannot remap G-code: no temp directory available" ru="Не удалось переназначить G-code: нет доступной временной директории"/>
-  <translation tag="Cannot remap: internal error" ru="Не удалось переназначить: внутренняя ошибка"/>
   <translation tag="Cannot reprint: not connected to printer" ru="Невозможно перепечатать: не подключено к принтеру"/>
   <translation tag="Cannot restart — no filename" ru="Не удалось перезапустить — нет имени файла"/>
   <translation tag="Cannot run filament operation while printing" ru="Во время печати нельзя выполнять операции с филаментом"/>
@@ -660,7 +662,7 @@
   <translation tag="Clear All Events" ru="Очистить все события"/>
   <translation tag="Clear Console?" ru="Очистить консоль?"/>
   <translation tag="Clear Spool" ru="Убрать катушку"/>
-  <translation tag="Clear all spool failover assignments" ru="Очистить все назначения резервных катушек"/>
+  <translation tag="Clear every Endless Spool backup" ru="Очистить все резервы бесконечной катушки"/>
   <translation tag="Clear failed" ru="Ошибка очистки"/>
   <translation tag="Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament&apos;s packaging) and close the door." ru="Освободите место над столом и под ним. Положите катушки на стол, накройте их коробкой (напечатанной крышкой или упаковкой филамента) и закройте дверцу."/>
   <translation tag="Clear the plate and load {}. The tower prints in the middle of the bed." ru="Освободите стол и загрузите {}. Башня печатается в центре стола."/>
@@ -732,7 +734,6 @@
   <translation tag="Configured aux fan not found" ru="Настроенный дополнительный вентилятор не найден"/>
   <translation tag="Configured filament sensor not found" ru="Настроенный датчик филамента не найден"/>
   <translation tag="Configured hardware no longer present" ru="Настроенное оборудование больше не обнаруживается"/>
-  <translation tag="Configured in the backup-spool package, not from here" ru="Настраивается в плагине резервной катушки, не здесь"/>
   <translation tag="Configuring Moonraker..." ru="Настройка Moonraker..."/>
   <translation tag="Confirm PIN" ru="Подтвердите PIN"/>
   <translation tag="Confirm before running macros" ru="Подтверждать перед запуском макросов"/>
@@ -838,7 +839,10 @@
   <translation tag="Could not start Bluetooth discovery" ru="Не удалось запустить поиск Bluetooth"/>
   <translation tag="Could not update filaments" ru="Не удалось обновить филаменты"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." ru="Не удалось проверить статус Spoolman. Moonraker может ещё перезапускаться."/>
+  <translation tag="Couldn&apos;t assign the tool" ru="Не удалось назначить инструмент"/>
   <translation tag="Couldn&apos;t clear the printer&apos;s gate map" ru="Не удалось очистить карту шлюзов принтера"/>
+  <translation tag="Couldn&apos;t map filament: internal error" ru="Не удалось сопоставить филамент: внутренняя ошибка"/>
+  <translation tag="Couldn&apos;t map filament: no temp directory available" ru="Не удалось сопоставить филамент: нет доступной временной директории"/>
   <translation tag="Couldn&apos;t save the material name" ru="Не удалось сохранить название материала"/>
   <translation tag="Couldn&apos;t save the printer&apos;s gate map" ru="Не удалось сохранить карту шлюзов принтера"/>
   <translation tag="Couldn&apos;t save to Spoolman. Nothing changed on this printer." ru="Не удалось сохранить в Spoolman. На этом принтере ничего не изменено."/>
@@ -1054,7 +1058,6 @@
   <translation tag="Enable or disable the hub cutter" ru="Включить или выключить резак хаба"/>
   <translation tag="Enable plugin?" ru="Включить плагин?"/>
   <translation tag="Enable purging during tool changes" ru="Включить продувку при смене инструмента"/>
-  <translation tag="Enable/disable automatic backup spool switching" ru="Включить/выключить автопереключение на резервную катушку"/>
   <translation tag="Enable/disable quiet operation mode" ru="Включить/выключить тихий режим работы"/>
   <translation tag="Enabled" ru="Включено"/>
   <translation tag="Enabled. Open its settings, or disable it?" ru="Включено. Открыть его настройки или отключить?"/>
@@ -1067,8 +1070,11 @@
   <translation tag="End the test print?" ru="Завершить тестовую печать?"/>
   <translation tag="Ended" ru="Завершено"/>
   <translation tag="Endless Spool" ru="Бесконечная катушка"/>
-  <translation tag="Endless spool failover cleared for every slot" ru="Резервные катушки очищены для всех слотов"/>
-  <translation tag="Endless spool is turned off on this MMU" ru="Бесконечная катушка отключена на этом MMU"/>
+  <translation tag="Endless Spool backups cleared" ru="Резервы бесконечной катушки очищены"/>
+  <translation tag="Endless Spool is configured in its package, not from here" ru="Бесконечная катушка настраивается в своём плагине, не здесь"/>
+  <translation tag="Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout" ru="Бесконечная катушка включена, но нет двух слотов с совпадающим филаментом, поэтому переключение при обрыве не сработает"/>
+  <translation tag="Endless Spool is turned off on this MMU" ru="Бесконечная катушка отключена на этом MMU"/>
+  <translation tag="Endless Spool state unknown" ru="Бесконечная катушка: состояние неизвестно"/>
   <translation tag="Ensure Happy Hare or AFC is installed and configured" ru="Убедитесь, что Happy Hare или AFC установлен и настроен"/>
   <translation tag="Enter Current PIN" ru="Введите текущий PIN"/>
   <translation tag="Enter G-code command..." ru="Введите команду G-code..."/>
@@ -1183,8 +1189,8 @@
   <translation tag="Failed to delete spool" ru="Не удалось удалить катушку"/>
   <translation tag="Failed to disable WiFi: {}" ru="Не удалось выключить WiFi: {}"/>
   <translation tag="Failed to discard recovery data: {}" ru="Не удалось удалить данные восстановления: {}"/>
+  <translation tag="Failed to download G-code for Filament Mapping: {}" ru="Не удалось скачать G-code для сопоставления филамента: {}"/>
   <translation tag="Failed to download G-code for modification: {}" ru="Не удалось скачать G-code для изменения: {}"/>
-  <translation tag="Failed to download G-code for remap: {}" ru="Не удалось скачать G-code для переназначения: {}"/>
   <translation tag="Failed to download helixscreen.conf.&#10;Check printer connection." ru="Не удалось скачать helixscreen.conf.&#10;Проверьте подключение принтера."/>
   <translation tag="Failed to download moonraker.conf.&#10;Check printer connection." ru="Не удалось скачать moonraker.conf.&#10;Проверьте подключение принтера."/>
   <translation tag="Failed to download the .3mf for printing: {}" ru="Не удалось загрузить .3mf для печати: {}"/>
@@ -1215,13 +1221,12 @@
   <translation tag="Failed to open temperature graph" ru="Не удалось открыть график температуры"/>
   <translation tag="Failed to pause print: {}" ru="Не удалось приостановить печать: {}"/>
   <translation tag="Failed to purge: {}" ru="Не удалось прочистить: {}"/>
-  <translation tag="Failed to read G-code for remap" ru="Не удалось прочитать G-code для переназначения"/>
+  <translation tag="Failed to read G-code for Filament Mapping" ru="Не удалось прочитать G-code для сопоставления филамента"/>
   <translation tag="Failed to read config." ru="Не удалось прочитать конфигурацию."/>
   <translation tag="Failed to read config. Check connection." ru="Не удалось прочитать конфигурацию. Проверьте подключение."/>
   <translation tag="Failed to read moonraker.conf." ru="Не удалось прочитать moonraker.conf."/>
   <translation tag="Failed to read printer status" ru="Не удалось прочитать статус принтера"/>
   <translation tag="Failed to refresh file list" ru="Не удалось обновить список файлов"/>
-  <translation tag="Failed to remap G-code: {}" ru="Не удалось переназначить G-code: {}"/>
   <translation tag="Failed to render label" ru="Не удалось отрендерить этикетку"/>
   <translation tag="Failed to reprint: {}" ru="Не удалось перепечатать: {}"/>
   <translation tag="Failed to reset theme" ru="Не удалось сбросить тему"/>
@@ -1229,6 +1234,7 @@
   <translation tag="Failed to restart Moonraker." ru="Не удалось перезапустить Moonraker."/>
   <translation tag="Failed to restart: {}" ru="Не удалось перезапустить: {}"/>
   <translation tag="Failed to resume: {}" ru="Не удалось возобновить: {}"/>
+  <translation tag="Failed to rewrite G-code for Filament Mapping: {}" ru="Не удалось переписать G-code для сопоставления филамента: {}"/>
   <translation tag="Failed to save LED configuration" ru="Не удалось сохранить настройки LED"/>
   <translation tag="Failed to save WiFi network" ru="Не удалось сохранить сеть WiFi"/>
   <translation tag="Failed to save config." ru="Не удалось сохранить конфигурацию."/>
@@ -1264,8 +1270,8 @@
   <translation tag="Failed to update moonraker.conf." ru="Не удалось обновить moonraker.conf."/>
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." ru="Не удалось обновить moonraker.conf.&#10;Проверьте подключение принтера."/>
   <translation tag="Failed to upload modified G-code: {}" ru="Не удалось загрузить изменённый G-code: {}"/>
-  <translation tag="Failed to upload remapped G-code: {}" ru="Не удалось загрузить переназначенный G-code: {}"/>
   <translation tag="Failed to upload the extracted G-code: {}" ru="Не удалось загрузить извлечённый G-code: {}"/>
+  <translation tag="Failed to upload the rewritten G-code: {}" ru="Не удалось загрузить переписанный G-code: {}"/>
   <translation tag="Fair match" ru="Среднее совпадение"/>
   <translation tag="Fan" ru="Вентилятор"/>
   <translation tag="Fan Calibration" ru="Калибровка вентилятора"/>
@@ -1298,7 +1304,10 @@
   <translation tag="Filament Humidity" ru="Влажность филамента"/>
   <translation tag="Filament In The Toolhead" ru="Филамент в печатающей головке"/>
   <translation tag="Filament Jam" ru="Затор филамента"/>
-  <translation tag="Filament Mapping" ru="Назначение филамента"/>
+  <translation tag="Filament Mapping" ru="Сопоставление филамента"/>
+  <translation tag="Filament Mapping is not available on this device." ru="Сопоставление филамента недоступно на этом устройстве."/>
+  <translation tag="Filament Mapping is unavailable" ru="Сопоставление филамента недоступно"/>
+  <translation tag="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" ru="Этот принтер не поддерживает сопоставление филамента, поэтому печать использует инструменты, назначенные на принтере"/>
   <translation tag="Filament Runout" ru="Окончание филамента"/>
   <translation tag="Filament Sensor" ru="Датчик филамента"/>
   <translation tag="Filament System Error" ru="Ошибка системы филамента"/>
@@ -1335,11 +1344,9 @@
   <translation tag="Filament ran out - nothing at the toolhead and the print is paused." ru="Филамент закончился - у печатающей головки ничего нет, печать приостановлена."/>
   <translation tag="Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume." ru="Филамент закончился, и CFS не нашла подходящей катушки для замены. Загрузите катушку того же материала и цвета и продолжите печать."/>
   <translation tag="Filament ran out at the toolhead" ru="Филамент закончился у печатающей головки"/>
-  <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." ru="Филамент закончился. Автопополнение выключено, поэтому CFS не сменит катушку сам. Загрузите филамент и продолжите печать."/>
+  <translation tag="Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume." ru="Филамент закончился. Автопополнение выключено, поэтому CFS не сменит катушку сам. Загрузите филамент и продолжите печать."/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." ru="Филамент закончился. CFS знает, какие катушки подходят, но эти слоты пусты. Загрузите одну из них, затем продолжите печать."/>
   <translation tag="Filament reload failed" ru="Не удалось повторно подать филамент"/>
-  <translation tag="Filament remap not supported on this printer — print will use the firmware&apos;s current tool mapping" ru="Этот принтер не поддерживает переназначение филамента — печать будет использовать текущее назначение инструментов в прошивке"/>
-  <translation tag="Filament remapping is unavailable" ru="Переназначение филамента недоступно"/>
   <translation tag="Filament runout" ru="Окончание филамента"/>
   <translation tag="Filament runout and motion detection sensors" ru="Датчики окончания и движения филамента"/>
   <translation tag="Filament saved" ru="Филамент сохранён"/>
@@ -1784,7 +1791,7 @@
   <translation tag="Load Filament" ru="Загрузить филамент"/>
   <translation tag="Load Profile" ru="Загрузить профиль"/>
   <translation tag="Load a filament first before trying to unload" ru="Сначала загрузите филамент, прежде чем пытаться его выгрузить"/>
-  <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" ru="Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую"/>
+  <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" ru="Установите новую катушку в этот слот или включите автопополнение для переключения на подходящую"/>
   <translation tag="Load cancelled: nozzle target dropped" ru="Загрузка отменена: цель сопла снижена"/>
   <translation tag="Load complete" ru="Загрузка завершена"/>
   <translation tag="Load failed" ru="Ошибка загрузки"/>
@@ -1792,7 +1799,7 @@
   <translation tag="Load filament first" ru="Сначала загрузите филамент"/>
   <translation tag="Load or unload filament." ru="Загружайте или выгружайте филамент."/>
   <translation tag="Load the required filaments or start anyway?" ru="Загрузить нужные филаменты или начать без них?"/>
-  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." ru="Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте цвета со слотами и отслеживайте датчики окончания филамента."/>
+  <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." ru="Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте филамент с инструментами и отслеживайте датчики окончания филамента."/>
   <translation tag="Load..." ru="Загрузить..."/>
   <translation tag="Loaded" ru="Загружен"/>
   <translation tag="Loading" ru="Загрузка"/>
@@ -1889,6 +1896,7 @@
   <translation tag="Manual: the ramp has stopped at your value" ru="Вручную: рампа остановлена на вашем значении"/>
   <translation tag="Manually clear the jam and retry the operation" ru="Устраните затор вручную и повторите операцию"/>
   <translation tag="Manually pull the filament back through the connector" ru="Вытяните филамент вручную через разъём"/>
+  <translation tag="Map Filament…" ru="Сопоставить филамент…"/>
   <translation tag="Map to closest colors with matching material" ru="Подобрать ближайшие цвета с подходящим материалом"/>
   <translation tag="Mapping Error" ru="Ошибка привязки"/>
   <translation tag="Marginal" ru="Допустимо"/>
@@ -2025,6 +2033,7 @@
   <translation tag="No Bluetooth printer selected — pick one in settings" ru="Bluetooth-принтер не выбран — выберите его в настройках"/>
   <translation tag="No Bluetooth printers found" ru="Bluetooth-принтеры не найдены"/>
   <translation tag="No Camera" ru="Нет камеры"/>
+  <translation tag="No Endless Spool package is installed" ru="Плагин бесконечной катушки не установлен"/>
   <translation tag="No Filament Detected" ru="Филамент не обнаружен"/>
   <translation tag="No Hardware Issues" ru="Проблем с оборудованием нет"/>
   <translation tag="No History" ru="Нет истории"/>
@@ -2041,7 +2050,6 @@
   <translation tag="No USB printer detected" ru="USB-принтер не обнаружен"/>
   <translation tag="No USB printers found" ru="USB-принтеры не найдены"/>
   <translation tag="No active Spoolman spool." ru="Нет активной катушки Spoolman."/>
-  <translation tag="No automatic backup-spool package is installed" ru="Плагин автоматической резервной катушки не установлен"/>
   <translation tag="No buffer data available" ru="Данные буфера недоступны"/>
   <translation tag="No camera — use USB barcode scanner" ru="Нет камеры — используйте USB сканер штрих-кодов"/>
   <translation tag="No chamber temperature sensor detected" ru="Датчик температуры камеры не обнаружен"/>
@@ -2571,7 +2579,7 @@
   <translation tag="RFCOMM connect failed: " ru="Не удалось подключиться по RFCOMM: "/>
   <translation tag="RFID reader malfunction (left)" ru="Неисправность RFID-считывателя (левый)"/>
   <translation tag="RFID reader malfunction (right)" ru="Неисправность RFID-считывателя (правый)"/>
-  <translation tag="RFID, auto-refill, nozzle and link care" ru="RFID, автопополнение, уход за соплом и связью"/>
+  <translation tag="RFID, Auto-Refill, nozzle and link care" ru="RFID, автопополнение, уход за соплом и связью"/>
   <translation tag="RH" ru="RH"/>
   <translation tag="RSS" ru="RSS"/>
   <translation tag="RSS:" ru="RSS:"/>
@@ -2636,11 +2644,6 @@
   <translation tag="Remaining" ru="Осталось"/>
   <translation tag="Remaining (g)" ru="Осталось (г)"/>
   <translation tag="Remaining Weight (g)" ru="Оставшийся вес (г)"/>
-  <translation tag="Remap Tool" ru="Переназначить инструмент"/>
-  <translation tag="Remapping G-code is not available on this device." ru="Переназначение G-code недоступно на этом устройстве."/>
-  <translation tag="Remapping rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally." ru="Переназначение переписывает файл задания перед печатью. Moonraker этого принтера слишком старый, чтобы плагин HelixPrint потом восстановил исходное имя файла, поэтому выполненное задание отображается под изменённым именем. Само переназначение работает нормально."/>
-  <translation tag="Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." ru="Переназначение переписывает файл задания перед печатью. Без плагина HelixPrint в историю печати попадает изменённая копия, поэтому выполненные задания отображаются под именами вроде modified_1730824_benchy.gcode вместо выбранного файла.&#10;&#10;Установка плагина занимает немного времени и не требует перезапуска."/>
-  <translation tag="Remap…" ru="Переназначить…"/>
   <translation tag="Remember slot spool details across an eject" ru="Запоминать данные катушки слота после извлечения"/>
   <translation tag="Remove" ru="Удалить"/>
   <translation tag="Remove PIN" ru="Удалить PIN"/>
@@ -2663,7 +2666,7 @@
   <translation tag="Replace" ru="Заменить"/>
   <translation tag="Replace Profile?" ru="Заменить профиль?"/>
   <translation tag="Replay Welcome Tour" ru="Повторить приветственный тур"/>
-  <translation tag="Replenish ignores colour" ru="Пополнение игнорирует цвет"/>
+  <translation tag="Replenish ignores color" ru="Пополнение игнорирует цвет"/>
   <translation tag="Replenishing filament..." ru="Пополнение филамента..."/>
   <translation tag="Report saved to crash_report.txt" ru="Отчёт сохранён в crash_report.txt"/>
   <translation tag="Reprint" ru="Повторить печать"/>
@@ -2685,6 +2688,7 @@
   <translation tag="Reset Distances" ru="Сброс расстояний"/>
   <translation tag="Reset Distances?" ru="Сбросить расстояния?"/>
   <translation tag="Reset Endless Spool" ru="Сбросить бесконечную катушку"/>
+  <translation tag="Reset Endless Spool failed" ru="Не удалось сбросить бесконечную катушку"/>
   <translation tag="Reset Endless Spool?" ru="Сбросить бесконечную катушку?"/>
   <translation tag="Reset Home Screen?" ru="Сбросить главный экран?"/>
   <translation tag="Reset Motor Timer" ru="Сбросить таймер мотора"/>
@@ -2692,7 +2696,6 @@
   <translation tag="Reset Speed &amp; Flow to 100%" ru="Сбросить скорость и поток на 100%"/>
   <translation tag="Reset Tags" ru="Сбросить отметки"/>
   <translation tag="Reset all settings and restart wizard" ru="Сбросить все настройки и перезапустить мастер"/>
-  <translation tag="Reset endless spool failed" ru="Не удалось сбросить бесконечную катушку"/>
   <translation tag="Reset failed" ru="Ошибка сброса"/>
   <translation tag="Reset motor run-time counter" ru="Сбросить счётчик наработки мотора"/>
   <translation tag="Reset tags" ru="Сбросить отметки"/>
@@ -2950,7 +2953,7 @@
   <translation tag="Set local timezone for time display" ru="Установить часовой пояс для отображения времени"/>
   <translation tag="Set logging verbosity for troubleshooting" ru="Установить уровень детализации журнала для устранения неполадок"/>
   <translation tag="Set temperature between {}°C and {}°C" ru="Установите температуру от {}°C до {}°C"/>
-  <translation tag="Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle" ru="Задайте тип и цвет филамента для этого слота вручную. Если метка должна читаться, переустановите катушку этикеткой к считывателю, когда блок простаивает"/>
+  <translation tag="Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle" ru="Задайте тип и цвет филамента для этого слота вручную. Если метка должна читаться, переустановите катушку этикеткой к считывателю, когда блок простаивает"/>
   <translation tag="Set up" ru="Настроить"/>
   <translation tag="Set up your label printer in Settings" ru="Настройте принтер этикеток в Настройках"/>
   <translation tag="Set what is really selected and loaded. Nothing moves." ru="Укажите, что на самом деле выбрано и загружено. Ничего не двигается."/>
@@ -3016,7 +3019,7 @@
   <translation tag="Soft" ru="Мягкий"/>
   <translation tag="Software Updates" ru="Обновления ПО"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." ru="Некоторые филаменты не соответствуют замыслу слайсера."/>
-  <translation tag="Some mapped slots are short on filament:" ru="В некоторых назначенных слотах мало филамента:"/>
+  <translation tag="Some mapped slots are short on filament:" ru="В некоторых сопоставленных слотах мало филамента:"/>
   <translation tag="Some settings will take effect after restart." ru="Некоторые настройки вступят в силу после перезапуска."/>
   <translation tag="Something on the bed?" ru="Что-то на столе?"/>
   <translation tag="Sound" ru="Звук"/>
@@ -3155,10 +3158,12 @@
   <translation tag="Switch a power device on or off" ru="Включить или выключить питание"/>
   <translation tag="Switch between light and dark themes" ru="Переключение между светлой и тёмной темами"/>
   <translation tag="Switch the active tool or extruder" ru="Смена активного инструмента"/>
+  <translation tag="Switch to a backup slot on runout" ru="Переключаться на резервный слот при окончании филамента"/>
+  <translation tag="Switch to a matching slot on runout" ru="Переключаться на подходящий слот при окончании филамента"/>
   <translation tag="Switch to v%s" ru="Перейти на v%s"/>
   <translation tag="Switch to {}?" ru="Переключиться на {}?"/>
   <translation tag="Switched to {}" ru="Переключено на {}"/>
-  <translation tag="Switches to a backup spool on runout" ru="При обрыве переключится на резервную катушку"/>
+  <translation tag="Switches to another spool on runout" ru="При обрыве переключится на другую катушку"/>
   <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." ru="Возврат к PID меняет способ управления этим нагревателем, а затем калибрует его. Это занимает несколько минут при рабочей температуре."/>
   <translation tag="Switching back to PID requires a config change and Klipper restart." ru="Возврат к PID требует изменения конфига и перезапуска Klipper."/>
   <translation tag="Switching heater control to MPC. Klipper will restart." ru="Переключение управления нагревом на MPC. Klipper перезапустится."/>
@@ -3311,7 +3316,7 @@
   <translation tag="The printer lost power while printing {}. Resume where it left off?" ru="Принтер потерял питание при печати {}. Продолжить с места остановки?"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." ru="Принтер потерял питание при печати {}. Возобновлённый слой может не совпасть точно."/>
   <translation tag="The printer rejected the filament configuration. The print was not started." ru="Принтер отклонил конфигурацию филамента. Печать не была запущена."/>
-  <translation tag="The printer&apos;s firmware chooses the backup spool itself" ru="Прошивка принтера сама выбирает резервную катушку"/>
+  <translation tag="The printer&apos;s firmware chooses where to switch on runout" ru="Прошивка принтера сама выбирает, на что переключиться при обрыве"/>
   <translation tag="The requested position is outside the printer&apos;s bounds" ru="Запрошенная позиция находится за пределами рабочей области принтера"/>
   <translation tag="The right RFID reader in this CFS unit may need service" ru="Правому RFID-считывателю этого блока CFS может требоваться обслуживание"/>
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" ru="Датчик окончания филамента показывает, что филамент не загружен. Всё равно начать печать?"/>
@@ -3350,7 +3355,7 @@
   <translation tag="This cannot be undone." ru="Это действие нельзя отменить."/>
   <translation tag="This channel offers v{}, older than the installed v{}. Anything added since then will be removed." ru="Этот канал предлагает v{}, старее установленной v{}. Всё добавленное с тех пор будет удалено."/>
   <translation tag="This check runs Klipper&apos;s resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.&#10;&#10;Each sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs." ru="Эта проверка запускает резонансный тест Klipper по каждому пути ремня и сравнивает два отклика. Сбалансированные ремни дают кривые одинаковой формы с пиками на одних и тех же частотах.&#10;&#10;Каждый свип занимает несколько минут и перемещает печатающую головку; держитесь подальше от принтера во время работы."/>
-  <translation tag="This clears every spool&apos;s failover assignment. The print will stop on runout until you set up failover again." ru="Это очистит назначение резервной катушки для всех катушек. Печать будет останавливаться при окончании филамента, пока вы не настроите их заново."/>
+  <translation tag="This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again." ru="Это очистит все резервы бесконечной катушки. Печать будет останавливаться при окончании филамента, пока вы снова не настроите бесконечную катушку."/>
   <translation tag="This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen." ru="У этого устройства нет проводного подключения к сети. Если выключить WiFi, включить его обратно можно будет только с этого экрана."/>
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" ru="На этом устройстве всего {} МБ ОЗУ. Калибровка резонансов требует много памяти и может привести к тому, что прошивка принтера сообщит об ошибке &quot;Timer Too Close&quot; или перезапустится во время теста. Всё равно продолжить?"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" ru="На этом устройстве очень мало ОЗУ. Калибровка резонансов требует много памяти и может вызвать ошибку &quot;Timer Too Close&quot;. Всё равно продолжить?"/>
@@ -3376,7 +3381,7 @@
   <translation tag="This print never reports layer {}." ru="Эта печать никогда не сообщает слой {}."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" ru="Этот принтер не может калибровать смещения инструментов автоматически"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman."/>
-  <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman."/>
+  <translation tag="This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman."/>
   <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." ru="У этого принтера нет автоматической выгрузки. Отрежьте филамент у головки и вытащите его вручную."/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." ru="Этот принтер похож на {} (уверенность {}%), но настроен как {}. Неверный тип применяет неправильные параметры перед печатью и пресеты."/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" ru="WiFi-модулем управляет сетевая служба этого принтера"/>
@@ -3430,6 +3435,8 @@
   <translation tag="Tips" ru="Советы"/>
   <translation tag="Tips database format error" ru="Ошибка формата базы данных советов"/>
   <translation tag="Tips database not found" ru="База данных советов не найдена"/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally." ru="Чтобы сопоставить филамент, HelixScreen переписывает файл задания перед печатью. Moonraker этого принтера слишком старый, чтобы плагин HelixPrint потом восстановил исходное имя файла, поэтому выполненное задание отображается под изменённым именем. Само сопоставление филамента работает нормально."/>
+  <translation tag="To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." ru="Чтобы сопоставить филамент, HelixScreen переписывает файл задания перед печатью. Без плагина HelixPrint в историю печати попадает изменённая копия, поэтому выполненные задания отображаются под именами вроде modified_1730824_benchy.gcode вместо выбранного файла.&#10;&#10;Установка плагина занимает немного времени и не требует перезапуска."/>
   <translation tag="Toggle" ru="Переключить"/>
   <translation tag="Toggle (fire-and-forget)" ru="Переключение (без отслеживания)"/>
   <translation tag="Toggle AFC LED strip" ru="Переключить LED-ленту AFC"/>
@@ -3446,7 +3453,6 @@
   <translation tag="Tool Switcher" ru="Переключатель инструментов"/>
   <translation tag="Tool change failed: {}" ru="Ошибка смены инструмента: {}"/>
   <translation tag="Tool change to T{}" ru="Смена инструмента на T{}"/>
-  <translation tag="Tool mapping failed" ru="Ошибка сопоставления инструмента"/>
   <translation tag="Tool offsets (mm)" ru="Смещения инструментов (мм)"/>
   <translation tag="Tool offsets saved" ru="Смещения инструментов сохранены"/>
   <translation tag="Tool swap" ru="Смена инструмента"/>
@@ -3487,12 +3493,12 @@
   <translation tag="Turbo" ru="Турбо"/>
   <translation tag="Turbo Inner" ru="Турбо (внутренний)"/>
   <translation tag="Turbo Outer" ru="Турбо (внешний)"/>
+  <translation tag="Turn Endless Spool on, then set the Backup Gate" ru="Включите бесконечную катушку, затем задайте резервный шлюз"/>
   <translation tag="Turn LED off when the print ends" ru="Выключать светодиод по окончании печати"/>
   <translation tag="Turn Off" ru="Выключить"/>
   <translation tag="Turn Off WiFi?" ru="Выключить WiFi?"/>
   <translation tag="Turn On" ru="Включить"/>
   <translation tag="Turn On LEDs" ru="Включить LED"/>
-  <translation tag="Turn endless spool on, then set the backup gate" ru="Включите бесконечную катушку, затем задайте резервный шлюз"/>
   <translation tag="Turn off bed check" ru="Отключить проверку стола"/>
   <translation tag="Turn off detection" ru="Отключить обнаружение"/>
   <translation tag="Turn on the lights your light buttons control" ru="Включает свет, которым управляют кнопки света"/>
@@ -3555,7 +3561,7 @@
   <translation tag="Unloading filament..." ru="Выгрузка филамента..."/>
   <translation tag="Unloads After Print" ru="Выгрузка после печати"/>
   <translation tag="Unlock" ru="Разблокировать"/>
-  <translation tag="Unmapped" ru="Не назначен"/>
+  <translation tag="Unmapped" ru="Не сопоставлен"/>
   <translation tag="Unmount" ru="Снять"/>
   <translation tag="Unretract Extra" ru="Дополнительная подача"/>
   <translation tag="Unretract Speed" ru="Скорость возврата"/>
@@ -3727,7 +3733,7 @@
   <translation tag="Your printer at a glance" ru="Ваш принтер одним взглядом"/>
   <translation tag="Your printer has an automatic filament changer" ru="Ваш принтер оснащён автоматическим сменщиком филамента"/>
   <translation tag="Your printer was offline during setup, so hardware options were skipped. Set them up now?" ru="Принтер был не в сети во время настройки, поэтому параметры оборудования пропущены. Настроить их сейчас?"/>
-  <translation tag="Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide." ru="Строка {} передаёт настройки для отдельных инструментов, которые переназначение не меняет ({}). Переназначенный инструмент может не нагреться. См. раздел «Tool Mapping» в руководстве пользователя."/>
+  <translation tag="Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide." ru="Строка {} передаёт настройки для отдельных инструментов, которые сопоставление филамента не меняет ({}). Инструмент, с которым вы сопоставите филамент, может не нагреться. См. раздел «Filament Mapping» в руководстве пользователя."/>
   <translation tag="Z" ru="Z"/>
   <translation tag="Z Calibration" ru="Калибровка Z"/>
   <translation tag="Z Movement" ru="Движение Z"/>
@@ -3892,8 +3898,8 @@
   <translation tag="{} is blocked — manual intervention required" ru="{}: блокировка — требуется ручное вмешательство"/>
   <translation tag="{} is due: {} h reached" ru="{}: пора обслуживать, {} ч достигнуто"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." ru="{}: подаёт филамент для текущей печати. Удалите катушку после завершения печати."/>
-  <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." ru="{} установлен, но переключение на резервную катушку выключено, поэтому автоматической замены не будет."/>
-  <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." ru="{} установлен, но прочитать его настройку резервной катушки не удалось - не рассчитывайте на автоматическую замену."/>
+  <translation tag="{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout." ru="{} установлен, но его настройка бесконечной катушки выключена, поэтому при обрыве ничего не переключится."/>
+  <translation tag="{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool." ru="{} установлен, но прочитать его настройку бесконечной катушки не удалось - не рассчитывайте на бесконечную катушку."/>
   <translation tag="{} is not available on this device. Printing original file." ru="{} недоступно на этом устройстве. Будет напечатан исходный файл."/>
   <translation tag="{} is not set up on this printer" ru="{} не настроен на этом принтере"/>
   <translation tag="{} is still printing. The print keeps running after you switch." ru="{} ещё печатает. Печать продолжится после переключения."/>
@@ -3939,7 +3945,7 @@
   <translation tag="{} target set to {}°C" ru="Целевая температура {} — {}°C"/>
   <translation tag="{} updated" ru="{}: обновлено"/>
   <translation tag="{} widgets" ru="Виджетов: {}"/>
-  <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." ru="{} переключится на слот, у которого тип филамента И цвет совпадают с активной катушкой, а собственный датчик порта видит филамент."/>
+  <translation tag="{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present." ru="{} переключится на слот, у которого тип филамента И цвет совпадают с активной катушкой, а собственный датчик порта видит филамент."/>
   <translation tag="{} · {}" ru="{} · {}"/>
   <translation tag="{} · {} · {}" ru="{} · {} · {}"/>
   <translation tag="{} — response timed out" ru="{} — время ожидания ответа истекло"/>

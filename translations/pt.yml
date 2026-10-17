@@ -298,6 +298,7 @@ translations:
     Klipper para controlar LEDs via ligar/desligar, alternar ou predefinições
   Assign a role to enable sensor monitoring: Atribua uma função para habilitar o monitoramento
     do sensor
+  Assigned Tool: Ferramenta atribuída
   Assisted Retract: 'Retração assistida'
   Assisting: Assistindo
   At least {} lines in helixscreen.env were ignored: 'Pelo menos {} linhas do helixscreen.env foram ignoradas'
@@ -310,6 +311,7 @@ translations:
   Auto Fans: Ventiladores automáticos
   Auto-Detect: Auto-Detectar
   Auto-Heat on Load: Aquecer Automaticamente ao Carregar
+  Auto-Replenish: Reabastecimento automático
   Auto-detect: Auto-detectar
   Auto-install only works on local Moonraker: A instalação automática só funciona
     no Moonraker local
@@ -317,9 +319,7 @@ translations:
   Auto-poll for weight updates: Consultar peso automaticamente
   Auto-probe or manually check screw heights: Sondagem automática ou verificação manual
     da altura dos parafusos
-  Auto-refill is on but no two slots hold matching filament, so nothing will switch on runout: O reabastecimento automático está ligado, mas nenhum par de slots tem filamento compatível, então nada trocará ao acabar o filamento
   Auto-render video: Renderizar vídeo automaticamente
-  'Auto-replenish filament': 'Reabastecer filamento automaticamente'
   Auto-tuning Shapers...: Ajuste automático de Shapers...
   Auto-uninstall only works on local Moonraker: A desinstalação automática só funciona
     no Moonraker local
@@ -327,7 +327,6 @@ translations:
   Automatic Heater Control Calibration: Calibração Automática de Controle de Aquecedor
   Automatic LED Control: Controle Automático de LED
   Automatic calibration: 'Calibração automática'
-  Automatic slot swap on runout: 'Troca automática de slot no fim do filamento'
   Aux: Aux
   Available: Disponível
   Available Networks: Redes Disponíveis
@@ -347,8 +346,13 @@ translations:
   BLUETOOTH SCANNERS: LEITORES BLUETOOTH
   Back: Voltar
   'Backtrace: {} frames': 'Backtrace: {} quadros'
+  Backup Feeder: Alimentador de reserva
+  Backup Gate: Gate de reserva
+  Backup Lane: Lane de reserva
+  Backup Slot: Slot de reserva
+  Backup Tool: Ferramenta de reserva
+  Backup Toolhead: Cabeçote de reserva
   Backup lane name contains invalid characters: 'O nome do lane de reserva contém caracteres inválidos'
-  Backup spool switching state unknown: Estado da troca para carretel de reserva desconhecido
   Balanced: Equilibrado
   Barcode Scanner: Leitor de Código de Barras
   Base: Referência
@@ -555,9 +559,6 @@ translations:
   Cannot open or close the feeder while a print is active: 'Não é possível abrir ou fechar o alimentador enquanto uma impressão está ativa'
   Cannot park while a print is active: 'Não é possível estacionar enquanto uma impressão está ativa'
   Cannot perform this action now: Não é possível executar esta ação agora
-  'Cannot remap G-code: no temp directory available': 'Não é possível remapear o G-code:
-    nenhum diretório temporário disponível'
-  'Cannot remap: internal error': 'Não é possível remapear: erro interno'
   'Cannot reprint: not connected to printer': 'Não é possível reimprimir: não conectado
     à impressora'
   Cannot restart — no filename: Não é possível reiniciar — sem nome de ficheiro
@@ -685,7 +686,7 @@ translations:
   Clear All Events: Limpar Todos os Eventos
   Clear Console?: Limpar Console?
   Clear Spool: Remover bobina
-  Clear all spool failover assignments: 'Limpar todas as atribuições de carretel reserva'
+  Clear every Endless Spool backup: Limpar todas as reservas do carretel infinito
   Clear failed: Falha ao limpar
   ? Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament's packaging) and close the door.
 
@@ -766,7 +767,6 @@ translations:
   Configured aux fan not found: 'Ventoinha auxiliar configurada não encontrada'
   Configured filament sensor not found: 'Sensor de filamento configurado não encontrado'
   Configured hardware no longer present: 'O hardware configurado não está mais presente'
-  Configured in the backup-spool package, not from here: Configurado no plugin de carretel de reserva, não aqui
   Configuring Moonraker...: Configurando Moonraker...
   Confirm PIN: Confirmar PIN
   Confirm before running macros: Confirmar antes de executar macros
@@ -893,7 +893,10 @@ translations:
   Could not update filaments: Não foi possível atualizar os filamentos
   Could not verify Spoolman status. Moonraker may still be restarting.: Não foi possível
     verificar o status do Spoolman. O Moonraker pode ainda estar reiniciando.
+  Couldn't assign the tool: Não foi possível atribuir a ferramenta
   Couldn't clear the printer's gate map: Não foi possível limpar o mapa de gates da impressora
+  "Couldn't map filament: internal error": 'Não foi possível mapear o filamento: erro interno'
+  "Couldn't map filament: no temp directory available": 'Não foi possível mapear o filamento: nenhum diretório temporário disponível'
   Couldn't save the material name: 'Não foi possível salvar o nome do material'
   Couldn't save the printer's gate map: Não foi possível salvar o mapa de gates da impressora
   Couldn't save to Spoolman. Nothing changed on this printer.: Não foi possível salvar no Spoolman. Nada foi alterado nesta impressora.
@@ -1120,7 +1123,6 @@ translations:
   Enable or disable the hub cutter: 'Habilitar ou desabilitar o cortador do hub'
   Enable plugin?: 'Habilitar plugin?'
   Enable purging during tool changes: 'Habilitar a purga durante trocas de ferramenta'
-  Enable/disable automatic backup spool switching: 'Habilitar/desabilitar a troca automática para o carretel reserva'
   Enable/disable quiet operation mode: 'Habilitar/desabilitar o modo de operação silencioso'
   Enabled: Habilitado
   Enabled. Open its settings, or disable it?: 'Habilitado. Abrir as configurações ou desabilitar?'
@@ -1135,8 +1137,11 @@ translations:
   End the test print?: Encerrar a impressão de teste?
   Ended: Finalizado
   Endless Spool: 'Carretel infinito'
-  Endless spool failover cleared for every slot: 'Carretel reserva limpo para todos os slots'
-  Endless spool is turned off on this MMU: 'O carretel infinito está desativado neste MMU'
+  Endless Spool backups cleared: Reservas do carretel infinito limpas
+  Endless Spool is configured in its package, not from here: O carretel infinito é configurado no seu plugin, não aqui
+  Endless Spool is on but no two slots hold matching filament, so nothing will switch on runout: O carretel infinito está ligado, mas nenhum par de slots tem filamento compatível, então nada trocará ao acabar o filamento
+  Endless Spool is turned off on this MMU: 'O carretel infinito está desativado neste MMU'
+  Endless Spool state unknown: Estado do carretel infinito desconhecido
   Ensure Happy Hare or AFC is installed and configured: Certifique-se de que o Happy Hare ou o AFC esteja instalado e configurado
   Enter Current PIN: Digite o PIN Atual
   Enter G-code command...: Digite o comando G-code...
@@ -1259,9 +1264,8 @@ translations:
   Failed to delete spool: Falha ao excluir carretel
   'Failed to disable WiFi: {}': 'Falha ao desativar o WiFi: {}'
   'Failed to discard recovery data: {}': 'Falha ao descartar dados de recuperação: {}'
+  'Failed to download G-code for Filament Mapping: {}': 'Falha ao baixar G-code para o mapeamento de filamento: {}'
   'Failed to download G-code for modification: {}': 'Falha ao baixar G-code para modificação:
-    {}'
-  'Failed to download G-code for remap: {}': 'Falha ao baixar G-code para remapeamento:
     {}'
   ? "Failed to download helixscreen.conf.\nCheck printer connection."
   : "Falha ao baixar helixscreen.conf.\nVerifique a conexão da impressora."
@@ -1297,14 +1301,13 @@ translations:
   Failed to open temperature graph: Falha ao abrir gráfico de temperatura
   'Failed to pause print: {}': 'Falha ao pausar impressão: {}'
   'Failed to purge: {}': 'Falha ao purgar: {}'
-  Failed to read G-code for remap: Falha ao ler G-code para remapeamento
+  Failed to read G-code for Filament Mapping: Falha ao ler G-code para o mapeamento de filamento
   Failed to read config.: Falha ao ler configuração.
   Failed to read config. Check connection.: Falha ao ler configuração. Verifique a
     conexão.
   Failed to read moonraker.conf.: Falha ao ler moonraker.conf.
   Failed to read printer status: Falha ao ler o status da impressora
   Failed to refresh file list: Falha ao atualizar lista de arquivos
-  'Failed to remap G-code: {}': 'Falha ao remapear G-code: {}'
   Failed to render label: Falha ao renderizar a etiqueta
   'Failed to reprint: {}': 'Falha ao reimprimir: {}'
   Failed to reset theme: Falha ao redefinir o tema
@@ -1312,6 +1315,7 @@ translations:
   Failed to restart Moonraker.: Falha ao reiniciar Moonraker.
   'Failed to restart: {}': 'Falha ao reiniciar: {}'
   'Failed to resume: {}': 'Falha ao retomar: {}'
+  'Failed to rewrite G-code for Filament Mapping: {}': 'Falha ao reescrever G-code para o mapeamento de filamento: {}'
   Failed to save LED configuration: Falha ao salvar configuração de LED
   Failed to save WiFi network: Falha ao salvar a rede WiFi
   Failed to save config.: Falha ao salvar configuração.
@@ -1349,8 +1353,8 @@ translations:
   ? "Failed to update moonraker.conf.\nCheck printer connection."
   : "Falha ao atualizar moonraker.conf.\nVerifique a conexão da impressora."
   'Failed to upload modified G-code: {}': 'Falha ao enviar G-code modificado: {}'
-  'Failed to upload remapped G-code: {}': 'Falha ao enviar G-code remapeado: {}'
   'Failed to upload the extracted G-code: {}': 'Falha ao enviar o G-code extraído: {}'
+  'Failed to upload the rewritten G-code: {}': 'Falha ao enviar o G-code reescrito: {}'
   Fair match: "Correspondência razoável"
   Fan: Ventoinha
   Fan Calibration: Calibração da Ventoinha
@@ -1384,6 +1388,9 @@ translations:
   Filament In The Toolhead: Filamento no cabeçote
   Filament Jam: 'Entupimento de filamento'
   Filament Mapping: Mapeamento de Filamento
+  Filament Mapping is not available on this device.: O mapeamento de filamento não está disponível neste dispositivo.
+  Filament Mapping is unavailable: O mapeamento de filamento está indisponível
+  Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Esta impressora não suporta o mapeamento de filamento, então a impressão usa as ferramentas atribuídas na impressora
   Filament Runout: Fim de Filamento
   Filament Sensor: Sensor de Filamento
   Filament System Error: Erro do sistema de filamento
@@ -1425,11 +1432,9 @@ translations:
   ? Filament ran out and the CFS found no matching spool to switch to. Load a spool of the same material and color, then resume.
   : 'O filamento acabou e o CFS não encontrou um carretel compatível para trocar. Carregue um carretel do mesmo material e cor e retome.'
   Filament ran out at the toolhead: 'O filamento acabou no cabeçote'
-  Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'O filamento acabou. O reabastecimento automático está desligado, então o CFS não trocará de carretel sozinho. Carregue filamento e retome.'
+  Filament ran out. Auto-Refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'O filamento acabou. O reabastecimento automático está desligado, então o CFS não trocará de carretel sozinho. Carregue filamento e retome.'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: O filamento acabou. O CFS sabe quais carretéis correspondem, mas esses slots estão vazios. Carregue um deles e depois retome.
   Filament reload failed: Falha ao recarregar o filamento
-  Filament remap not supported on this printer — print will use the firmware's current tool mapping: Esta impressora não suporta remapear o filamento — a impressão usará o mapeamento de ferramentas atual do firmware
-  Filament remapping is unavailable: O remapeamento de filamento está indisponível
   Filament runout: Fim de filamento
   Filament runout and motion detection sensors: Sensores de detecção de fim de filamento
     e movimento
@@ -1931,7 +1936,7 @@ translations:
   Load Failed: 'Falha ao carregar'
   Load Filament: Carregar Filamento
   Load a filament first before trying to unload: Carregue primeiro filamento antes de tentar descarregar
-  Load a new spool in this slot, or turn on auto-refill to switch to a matching one: Carregue um novo carretel neste slot, ou ative o reabastecimento automático para mudar para um equivalente
+  Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one: Carregue um novo carretel neste slot, ou ative o reabastecimento automático para mudar para um equivalente
   'Load cancelled: nozzle target dropped': 'Carregamento cancelado: o alvo do bico caiu'
   Load complete: 'Carregamento concluído'
   Load failed: Falha ao carregar
@@ -1941,7 +1946,8 @@ translations:
   Load Profile: 'Carregar perfil'
   Load the required filaments or start anyway?: Carregar os filamentos necessários
     ou iniciar mesmo assim?
-  'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carregue, descarregue e troque carretéis. Visualize seu sistema de múltiplos filamentos rapidamente, mapeie cores para slots e monitore sensores de fim de filamento.'
+  ? Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors.
+  : Carregue, descarregue e troque carretéis. Visualize seu sistema de múltiplos filamentos rapidamente, mapeie filamento para ferramentas e monitore sensores de fim de filamento.
   Load...: Carregar...
   Loaded: Carregado
   Loading: Carregando
@@ -2043,6 +2049,7 @@ translations:
   'Manual: the ramp has stopped at your value': 'Manual: a rampa parou no seu valor'
   Manually clear the jam and retry the operation: Remova o entupimento manualmente e tente a operação novamente
   Manually pull the filament back through the connector: Puxe o filamento manualmente de volta pelo conector
+  Map Filament…: Mapear filamento…
   Map to closest colors with matching material: Mapear para cores mais próximas com
     material compatível
   Mapping Error: 'Erro de mapeamento'
@@ -2189,6 +2196,7 @@ translations:
     selecionada — escolha uma nas configurações
   No Bluetooth printers found: Nenhuma impressora Bluetooth encontrada
   No Camera: Sem câmera
+  No Endless Spool package is installed: Nenhum plugin de carretel infinito instalado
   No Filament Detected: Filamento Não Detectado
   No Hardware Issues: 'Nenhum problema de hardware'
   No History: Sem Histórico
@@ -2207,7 +2215,6 @@ translations:
   No USB printer detected: Nenhuma impressora USB detectada
   No USB printers found: Nenhuma impressora USB encontrada
   No active Spoolman spool.: Nenhum carretel ativo no Spoolman.
-  No automatic backup-spool package is installed: Nenhum plugin de carretel de reserva automático instalado
   No buffer data available: Nenhum dado de buffer disponível
   No camera — use USB barcode scanner: Sem câmera — use leitor de código de barras
     USB
@@ -2769,7 +2776,7 @@ translations:
   'RFCOMM connect failed: ': 'Falha ao conectar RFCOMM: '
   RFID reader malfunction (left): Falha do leitor RFID (esquerdo)
   RFID reader malfunction (right): Falha do leitor RFID (direito)
-  RFID, auto-refill, nozzle and link care: RFID, reabastecimento automático, cuidados com bico e enlace
+  RFID, Auto-Refill, nozzle and link care: RFID, reabastecimento automático, cuidados com bico e enlace
   RH: UR
   RSS: RSS
   'RSS:': 'RSS:'
@@ -2841,13 +2848,6 @@ translations:
   Remaining: 'Restante'
   Remaining (g): Restante (g)
   Remaining Weight (g): Peso Restante (g)
-  Remap Tool: Remapear Ferramenta
-  Remapping G-code is not available on this device.: 'Remapear G-code não está disponível neste dispositivo.'
-  ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : O remapeamento reescreve o arquivo de trabalho antes de imprimi-lo. O Moonraker desta impressora é antigo demais para o plugin HelixPrint restaurar o nome do arquivo original depois, então o trabalho concluído aparece com o nome reescrito. O remapeamento em si funciona normalmente.
-  ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : "O remapeamento reescreve o arquivo de trabalho antes de imprimi-lo. Sem o plugin HelixPrint, a cópia reescrita é o que entra no seu histórico de impressões, então os trabalhos concluídos aparecem com nomes como modified_1730824_benchy.gcode em vez do arquivo escolhido.\n\nInstalar o plugin leva um momento e não exige reinicialização."
-  Remap…: Remapear…
   Remember slot spool details across an eject: Lembrar os detalhes do carretel do slot ao ejetar
   Remove: Remover
   Remove PIN: Remover PIN
@@ -2873,7 +2873,7 @@ translations:
   Replace: "Substituir"
   Replace Profile?: "Substituir Perfil?"
   Replay Welcome Tour: Repetir Tour de Boas-Vindas
-  'Replenish ignores colour': 'O reabastecimento ignora a cor'
+  Replenish ignores color: 'O reabastecimento ignora a cor'
   Replenishing filament...: Reabastecendo filamento...
   Report saved to crash_report.txt: Relatório salvo em crash_report.txt
   Reprint: Reimprimir
@@ -2896,6 +2896,7 @@ translations:
   Reset Distances: Resetar Distâncias
   Reset Distances?: Resetar distâncias?
   Reset Endless Spool: 'Resetar o carretel infinito'
+  Reset Endless Spool failed: 'Falha ao resetar o carretel infinito'
   Reset Endless Spool?: 'Resetar o carretel infinito?'
   Reset Home Screen?: Redefinir tela inicial?
   Reset Motor Timer: 'Resetar o temporizador do motor'
@@ -2903,7 +2904,6 @@ translations:
   Reset Speed & Flow to 100%: Resetar Velocidade & Fluxo para 100%
   Reset all settings and restart wizard: Resetar todas as configurações e reiniciar
     assistente
-  Reset endless spool failed: 'Falha ao resetar o carretel infinito'
   Reset failed: Falha ao redefinir
   Reset motor run-time counter: 'Resetar o contador de horas de funcionamento do motor'
   Reset tags: Resetar marcações
@@ -3197,7 +3197,7 @@ translations:
   Set logging verbosity for troubleshooting: Definir nível de detalhe do log para
     solução de problemas
   Set temperature between {}°C and {}°C: 'Defina uma temperatura entre {}°C e {}°C'
-  ? Set the filament type and colour by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
+  ? Set the filament type and color by hand for this slot. If the tag should be readable, re-seat the spool with its label facing the reader once the box is idle
   : Defina manualmente o tipo e a cor do filamento deste slot. Se a etiqueta deveria ser legível, reencaixe o carretel com o rótulo voltado para o leitor quando a caixa estiver ociosa
   Set up: Configurar
   Set up your label printer in Settings: Configure sua impressora de etiquetas em
@@ -3427,10 +3427,12 @@ translations:
   Switch Sensors: Sensores de interruptor
   Switch between light and dark themes: Alternar entre temas claro e escuro
   Switch the active tool or extruder: Trocar a ferramenta ou extrusor ativo
+  Switch to a backup slot on runout: Trocar para um slot de reserva ao acabar o filamento
+  Switch to a matching slot on runout: Trocar para um slot compatível ao acabar o filamento
   Switch to v%s: 'Mudar para a v%s'
   Switch to {}?: 'Trocar para {}?'
   Switched to {}: 'Alterado para {}'
-  Switches to a backup spool on runout: Troca para um carretel de reserva ao acabar
+  Switches to another spool on runout: Troca para outro carretel ao acabar
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
   : Voltar para PID altera como este aquecedor é controlado e depois o calibra. Isso leva vários minutos em temperatura.
   Switching back to PID requires a config change and Klipper restart.: Voltar para PID requer alteração de configuração e reinicialização do Klipper.
@@ -3617,7 +3619,7 @@ translations:
   The printer lost power while printing {}. The resumed layer may not line up exactly.: A impressora perdeu energia ao imprimir {}. A camada retomada pode não se alinhar exatamente.
   The printer rejected the filament configuration. The print was not started.: A impressora
     rejeitou a configuração do filamento. A impressão não foi iniciada.
-  The printer's firmware chooses the backup spool itself: O firmware da impressora escolhe o carretel de reserva
+  The printer's firmware chooses where to switch on runout: O firmware da impressora escolhe para onde trocar ao acabar
   The requested position is outside the printer's bounds: 'A posição solicitada está fora dos limites da impressora'
   The right RFID reader in this CFS unit may need service: O leitor RFID direito desta unidade CFS pode precisar de manutenção
   The runout sensor indicates no filament is loaded. Start print anyway?: O sensor
@@ -3668,7 +3670,7 @@ translations:
   This channel offers v{}, older than the installed v{}. Anything added since then will be removed.: 'Este canal oferece a v{}, anterior à v{} instalada. Tudo o que foi adicionado desde então será removido.'
   ? "This check runs Klipper's resonance test along each belt path and compares the two responses. Balanced belts give curves of the same shape, with peaks at the same frequencies.\n\nEach sweep takes a few minutes and moves the toolhead; keep clear of the printer while it runs."
   : "Esta verificação executa o teste de ressonância do Klipper ao longo de cada caminho da correia e compara as duas respostas. Correias equilibradas produzem curvas com a mesma forma, com picos nas mesmas frequências.\n\nCada varredura leva alguns minutos e move o cabeçote; mantenha distância da impressora enquanto ela executa."
-  This clears every spool's failover assignment. The print will stop on runout until you set up failover again.: 'Isso limpa a atribuição de carretel reserva de cada carretel. A impressão parará ao acabar o filamento até você configurar novamente.'
+  This clears every Endless Spool backup. The print will stop on runout until you set up Endless Spool again.: Isso limpa todas as reservas do carretel infinito. A impressão parará ao acabar o filamento até você configurar o carretel infinito novamente.
   This device has no wired network connection. If you turn WiFi off, it can only be turned back on from this screen.: Este dispositivo não tem conexão de rede com fio. Se você desligar o WiFi, só será possível ligá-lo novamente nesta tela.
   ? This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a "Timer Too Close" error or restart mid-test. Continue anyway?
   : Este dispositivo tem apenas {} MB de RAM. A calibração de ressonância consome muita memória e pode fazer o firmware da impressora reportar um erro "Timer Too Close" ou reiniciar durante o teste. Continuar mesmo assim?
@@ -3702,7 +3704,7 @@ translations:
   This print never reports layer {}.: 'Esta impressão nunca informa a camada {}.'
   This printer cannot calibrate tool offsets automatically: Esta impressora não consegue calibrar os offsets de ferramenta automaticamente
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. O HelixScreen limpou a própria cópia; remova a bobina no Spoolman.
-  This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. Faça alterações de cor, material e bobina no Spoolman.
+  This printer fills its gates from Spoolman. Make color, material and spool changes in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. Faça alterações de cor, material e bobina no Spoolman.
   This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: Esta impressora não tem descarga automática. Corte o filamento no cabeçote e retire-o à mão.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : Esta impressora parece ser uma {} ({}% de confiança), mas está configurada como {}. Um tipo errado aplica opções de pré-impressão e predefinições incorretas.
@@ -3778,6 +3780,10 @@ translations:
   Tips: 'Dicas'
   Tips database format error: Erro de formato do banco de dados de dicas
   Tips database not found: Banco de dados de dicas não encontrado
+  ? To map filament, HelixScreen rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Filament Mapping itself works normally.
+  : Para mapear o filamento, o HelixScreen reescreve o arquivo de trabalho antes de imprimi-lo. O Moonraker desta impressora é antigo demais para o plugin HelixPrint restaurar o nome do arquivo original depois, então o trabalho concluído aparece com o nome reescrito. O mapeamento de filamento em si funciona normalmente.
+  ? "To map filament, HelixScreen rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
+  : "Para mapear o filamento, o HelixScreen reescreve o arquivo de trabalho antes de imprimi-lo. Sem o plugin HelixPrint, a cópia reescrita é o que entra no seu histórico de impressões, então os trabalhos concluídos aparecem com nomes como modified_1730824_benchy.gcode em vez do arquivo escolhido.\n\nInstalar o plugin leva um momento e não exige reinicialização."
   Toggle: Alternar
   Toggle (fire-and-forget): Alternar (sem rastreamento)
   Toggle AFC LED strip: 'Alternar a fita LED do AFC'
@@ -3794,7 +3800,6 @@ translations:
   Tool Switcher: 'Seletor de ferramentas'
   'Tool change failed: {}': 'Falha ao trocar ferramenta: {}'
   Tool change to T{}: 'Troca de ferramenta para T{}'
-  Tool mapping failed: Falha no mapeamento de ferramenta
   Tool offsets (mm): Offsets de ferramenta (mm)
   Tool offsets saved: Offsets de ferramenta salvos
   Tool swap: Troca de ferramenta
@@ -3837,12 +3842,12 @@ translations:
   Turbo: Turbo
   Turbo Inner: Turbo Interno
   Turbo Outer: Turbo Externo
+  Turn Endless Spool on, then set the Backup Gate: 'Ative o carretel infinito e depois defina o Gate de reserva'
   'Turn LED off when the print ends': 'Desligar o LED ao terminar a impressão'
   Turn Off: Desligar
   Turn Off WiFi?: Desligar WiFi?
   Turn On: Ligar
   Turn On LEDs: 'Ligar os LEDs'
-  Turn endless spool on, then set the backup gate: 'Ative o carretel infinito e depois defina o Gate de reserva'
   Turn off bed check: 'Desligar verificação da mesa'
   Turn off detection: Desligar detecção
   Turn on the lights your light buttons control: Liga as luzes que os botões de luz controlam
@@ -4094,8 +4099,8 @@ translations:
   Your printer has an automatic filament changer: Sua impressora possui um trocador
     automático de filamento
   Your printer was offline during setup, so hardware options were skipped. Set them up now?: Sua impressora estava offline durante a configuração, então as opções de hardware foram puladas. Configurar agora?
-  ? Your {} line passes per-tool settings that remapping does not change ({}). A remapped tool may not be heated. See Tool Mapping in the user guide.
-  : "Sua linha {} passa configurações por ferramenta que o remapeamento não altera ({}). Uma ferramenta remapeada pode não ser aquecida. Consulte \"Tool Mapping\" no guia do usuário."
+  ? Your {} line passes per-tool settings that Filament Mapping does not change ({}). A tool you map filament to may not be heated. See Filament Mapping in the user guide.
+  : Sua linha {} passa configurações por ferramenta que o mapeamento de filamento não altera ({}). Uma ferramenta para a qual você mapear filamento pode não ser aquecida. Consulte "Filament Mapping" no guia do usuário.
   Z: Z
   Z Calibration: Calibração Z
   Z Movement: Movimento Z
@@ -4260,8 +4265,8 @@ translations:
   '{} is blocked — manual intervention required': '{}: bloqueio — intervenção manual necessária'
   '{} is due: {} h reached': '{} precisa de manutenção: {} h atingidas'
   '{} is feeding the current print. Clear it after the print ends.': '{}: alimenta a impressão atual. Remova a bobina após o fim da impressão.'
-  '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} está instalado mas sua troca para carretel reserva está desligada, então não haverá troca automática.'
-  '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} está instalado, mas não foi possível ler sua configuração de carretel reserva - não conte com uma troca automática.'
+  '{} is installed but its Endless Spool setting is turned off, so nothing will switch on runout.': '{} está instalado mas sua configuração de carretel infinito está desligada, então nada trocará ao acabar o filamento.'
+  '{} is installed, but its Endless Spool setting could not be read - do not count on Endless Spool.': '{} está instalado, mas não foi possível ler sua configuração de carretel infinito - não conte com o carretel infinito.'
   '{} is still printing. The print keeps running after you switch.': '{} ainda está imprimindo. A impressão continua depois da troca.'
   '{} is not available on this device. Printing original file.': '{} não está disponível neste dispositivo. O arquivo original será impresso.'
   '{} is not set up on this printer': '{} não está configurado nesta impressora'
@@ -4296,7 +4301,7 @@ translations:
   '{} target set to {}°C': '{} configurado para {}°C'
   '{} updated': 'Atualização de {}'
   '{} widgets': '{} widgets'
-  ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
+  ? '{} will switch to a slot whose filament type AND color both match the active spool and whose own port sensor reads filament present.'
   : '{} mudará para um slot cujo tipo de filamento E cor correspondam ao carretel ativo e cujo próprio sensor de porta detecte filamento presente.'
   '{} · {}': '{} · {}'
   '{} · {} · {}': '{} · {} · {}'

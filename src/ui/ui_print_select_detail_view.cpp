@@ -425,7 +425,7 @@ lv_obj_t* PrintSelectDetailView::create(lv_obj_t* parent_screen) {
     filament_mapping_card_.create(mapping_card, mapping_rows, mapping_warning);
     // Route the card tap to the panel's single remap opener instead of the
     // card's own internal modal, so there is ONE opener and ONE modal instance
-    // for every backend (AFC/CFS card tap, U1 chip tap, preflight "Remap…" all
+    // for every backend (AFC/CFS card tap, U1 chip tap, preflight "Map Filament…" all
     // reach PrintSelectPanel::open_remap_modal()).
     filament_mapping_card_.set_on_tap([this]() { on_color_card_clicked(); });
     filament_mapping_card_.set_on_mappings_changed([this]() {
@@ -1823,9 +1823,10 @@ void PrintSelectDetailView::show_remap_help_modal() {
         opts.cancel_text = lv_tr("Not now");
         opts.owner_token = object_lifetime_.token();
         helix::ui::modal_confirm(
-            lv_tr("Filament remapping is unavailable"),
-            lv_tr("Remapping rewrites the job file before printing it. Without the HelixPrint "
-                  "plugin the rewritten copy is what lands in your print history, so finished "
+            lv_tr("Filament Mapping is unavailable"),
+            lv_tr("To map filament, HelixScreen rewrites the job file before printing it. "
+                  "Without the HelixPrint plugin the rewritten copy is what lands in your print "
+                  "history, so finished "
                   "jobs are listed under names like modified_1730824_benchy.gcode instead of the "
                   "file you picked.\n\nInstalling the plugin takes a moment and needs no "
                   "restart."),
@@ -1845,10 +1846,10 @@ void PrintSelectDetailView::show_remap_help_modal() {
     alert_opts.owner_token = object_lifetime_.token();
     helix::ui::modal_alert(
         lv_tr("Print history will show the rewritten name"),
-        lv_tr("Remapping rewrites the job file before printing it. This printer's Moonraker is "
-              "too old for the HelixPrint plugin to restore the original filename afterwards, so "
-              "the finished job is listed under the rewritten name. Remapping itself works "
-              "normally."),
+        lv_tr("To map filament, HelixScreen rewrites the job file before printing it. This "
+              "printer's Moonraker is too old for the HelixPrint plugin to restore the original "
+              "filename afterwards, so the finished job is listed under the rewritten name. "
+              "Filament Mapping itself works normally."),
         ModalSeverity::Info, lv_tr("OK"), nullptr, alert_opts);
 }
 

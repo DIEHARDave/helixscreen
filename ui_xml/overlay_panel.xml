@@ -49,7 +49,7 @@
     <prop name="back_button_callback" type="string" default="on_header_back_clicked"/>
     <!-- Optional header badge, forwarded to header_bar. Hidden unless
          title_badge_subject is supplied and resolves to 1. -->
-    <prop name="title_badge_image" type="string" default=""/>
+    <prop name="title_badge_icon" type="string" default=""/>
     <prop name="title_badge_subject" type="string" default=""/>
     <prop name="bg_color" type="string" default="#card_bg"/>
   </api>
@@ -106,7 +106,7 @@
                 action_button_2_hidden_cond="$action_button_2_hidden_cond"
                 action_button_2_label_hidden_cond="$action_button_2_label_hidden_cond"
                 action_button_2_disabled_subject="$action_button_2_disabled_subject"
-                title_badge_image="$title_badge_image" title_badge_subject="$title_badge_subject"
+                title_badge_icon="$title_badge_icon" title_badge_subject="$title_badge_subject"
                 back_button_callback="$back_button_callback"/>
     <!-- Panel-specific overlay_content and children go here -->
   </view>

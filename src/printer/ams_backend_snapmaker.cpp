@@ -3199,10 +3199,10 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
     // Only settings the firmware has reported become actions: a toggle whose
     // state is unknown renders off and invites "changing" it to its own value.
     if (p.auto_replenish) {
-        add_toggle("snapmaker_auto_replenish", "Auto-replenish filament", *p.auto_replenish);
+        add_toggle("snapmaker_auto_replenish", "Auto-Replenish", *p.auto_replenish);
     }
     if (p.replenish_ignore_color) {
-        add_toggle("snapmaker_replenish_ignore_color", "Replenish ignores colour",
+        add_toggle("snapmaker_replenish_ignore_color", "Replenish ignores color",
                    *p.replenish_ignore_color);
     }
     if (p.filament_entangle_detect) {
