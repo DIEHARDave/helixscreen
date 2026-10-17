@@ -645,18 +645,6 @@ HighFlyClockLayout layout_highfly_clock(int32_t w, int32_t h, int32_t dx, int32_
     return l;
 }
 
-namespace {
-
-void highfly_drift_range(int32_t w, int32_t h, int32_t& max_dx, int32_t& max_dy) {
-    clock_drift_range(layout_highfly_clock(w, h, 0, 0).bounds, w, h, max_dx, max_dy);
-}
-
-bool same_face(const ClockReading& a, const ClockReading& b) {
-    return a.time == b.time && a.use_24h == b.use_24h;
-}
-
-} // namespace
-
 // ---------- HighFlySim ----------
 
 /// The deck: the baked field scrolling toward the camera, shaded through per-slice tables.
@@ -707,7 +695,7 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     h_ = static_cast<int32_t>(frame.h);
     t_ = 0.0;
     deck_texels_ = 0.0f;
-    elapsed_ms_ = 0;
+    drift_.reset();
     build_highfly_field(rng, field_);
     make_band(rng, band_);
     for (HighFlyTexture& layer : layers_) {
@@ -749,9 +737,8 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     apply_view(false);
     level_ = std::min(level, HIGHFLY_LEVEL_COUNT - 1);
     apply_view();
-    drift_x_ = 0;
-    drift_y_ = 0;
     update_clock_layout();
+    drift_.set_range(clock_.bounds, w_, h_);
     build_stroke_digits(clock_.digit_unit, DIGIT_STROKE, digits_);
     build_stroke_digits(clock_.second_unit, DIGIT_STROKE, second_digits_);
     build_stroke_halo(digits_, clock_.halo, digit_halo_);
@@ -1246,24 +1233,9 @@ void HighFlySim::compose(int32_t from) {
 
 void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) const {
     PixelWriter writer(frame);
-    const auto glyph = [&](const StrokeDigitSet& set, int32_t ox, int32_t oy, int digit, Rgb color,
-                           float opacity) {
-        for (int32_t gy = 0; gy < set.h; gy++) {
-            for (int32_t gx = 0; gx < set.w; gx++) {
-                const uint8_t cov = set.at(digit, gx, gy);
-                const int32_t x = ox + gx;
-                const int32_t y = oy + gy;
-                if (cov == 0 || !writer.contains(x, y)) {
-                    continue;
-                }
-                const float a = opacity * static_cast<float>(cov) / 255.0f;
-                writer.put_dithered(x, y, mix_rgb(writer.get(x, y), color, a));
-            }
-        }
-    };
-    const int32_t hour = reading.time.hour;
-    const int32_t minute = reading.time.minute;
-    const int32_t second = reading.time.second;
+    const std::array<int, 2> hour = two_digits(reading.time.hour);
+    const std::array<int, 2> minute = two_digits(reading.time.minute);
+    const std::array<int, 2> second = two_digits(reading.time.second);
     struct Place {
         const StrokeDigitSet& set;
         const StrokeDigitSet& halo;
@@ -1272,16 +1244,17 @@ void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) 
         int digit;
     };
     const Place places[] = {
-        {digits_, digit_halo_, clock_.halo, clock_.digits[0], hour / 10 % 10},
-        {digits_, digit_halo_, clock_.halo, clock_.digits[1], hour % 10},
-        {digits_, digit_halo_, clock_.halo, clock_.digits[3], minute / 10},
-        {digits_, digit_halo_, clock_.halo, clock_.digits[4], minute % 10},
-        {second_digits_, second_halo_, clock_.second_halo, clock_.seconds[0], second / 10},
-        {second_digits_, second_halo_, clock_.second_halo, clock_.seconds[1], second % 10},
+        {digits_, digit_halo_, clock_.halo, clock_.digits[0], hour[0]},
+        {digits_, digit_halo_, clock_.halo, clock_.digits[1], hour[1]},
+        {digits_, digit_halo_, clock_.halo, clock_.digits[3], minute[0]},
+        {digits_, digit_halo_, clock_.halo, clock_.digits[4], minute[1]},
+        {second_digits_, second_halo_, clock_.second_halo, clock_.seconds[0], second[0]},
+        {second_digits_, second_halo_, clock_.second_halo, clock_.seconds[1], second[1]},
     };
     // Every shadow first, so none falls across a neighbour's strokes.
     for (const Place& p : places) {
-        glyph(p.halo, p.box.x1 - p.pad, p.box.y1 - p.pad, p.digit, HALO, HALO_OPACITY);
+        blit_stroke_digit(writer, p.halo, p.digit, p.box.x1 - p.pad, p.box.y1 - p.pad, HALO,
+                          HALO_OPACITY);
     }
 
     // The colon: two round dots, each with a soft shadow of its own.
@@ -1292,7 +1265,8 @@ void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) 
     for (const bool shadow : {true, false}) {
         if (!shadow) {
             for (const Place& p : places) {
-                glyph(p.set, p.box.x1, p.box.y1, p.digit, NUMERAL, NUMERAL_OPACITY);
+                blit_stroke_digit(writer, p.set, p.digit, p.box.x1, p.box.y1, NUMERAL,
+                                  NUMERAL_OPACITY);
             }
         }
         const float reach = shadow ? r + halo : r;
@@ -1326,7 +1300,7 @@ void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) 
 }
 
 void HighFlySim::update_clock_layout() {
-    clock_ = layout_highfly_clock(w_, h_, drift_x_, drift_y_);
+    clock_ = layout_highfly_clock(w_, h_, drift_.dx, drift_.dy);
 }
 
 void HighFlySim::paint_all(FrameTarget& frame, const ClockReading& reading) {
@@ -1351,21 +1325,12 @@ void HighFlySim::request_level(size_t level) {
 void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
                       const ClockReading& reading, std::vector<DirtyRect>& dirty) {
     dirty.clear();
-    elapsed_ms_ += dt_ms;
     const HighFlyLevel& lv = HIGHFLY_LEVELS[level_];
     const DirtyRect whole = DirtyRect::whole(w_, h_);
 
-    int32_t max_dx = 0;
-    int32_t max_dy = 0;
-    highfly_drift_range(w_, h_, max_dx, max_dy);
-    int32_t dx = 0;
-    int32_t dy = 0;
-    clock_drift_at(elapsed_ms_, max_dx, max_dy, dx, dy);
-    const bool moved = dx != drift_x_ || dy != drift_y_;
     const DirtyRect old_clock = clock_box_internal();
+    const bool moved = drift_.step(dt_ms);
     if (moved) {
-        drift_x_ = dx;
-        drift_y_ = dy;
         update_clock_layout();
     }
 
@@ -1374,7 +1339,7 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
         if (!painted_) {
             paint_all(frame, reading);
             dirty.push_back(whole);
-        } else if (moved || !same_face(reading, shown_)) {
+        } else if (moved || !clock_face_same(reading, shown_, false)) {
             DirtyRect box = clock_box_internal();
             box.add(old_clock);
             const DirtyRect out = upscale_frame(frame_, iw_, ih_, scale_, box.y1, box.y2 + 1, frame,

@@ -118,6 +118,10 @@ class FlipClockState {
     FlipFace face() const {
         return face_;
     }
+    /// The clock reading the cards show.
+    const ClockReading& reading() const {
+        return state_.reading();
+    }
     void reset();
 
   private:
@@ -149,9 +153,9 @@ struct FlipLayout {
 /// row; centred, then moved by (`dx`, `dy`).
 FlipLayout layout_flip_cards(int32_t w, int32_t h, const FlipShape& shape, int32_t dx, int32_t dy);
 
-/// Largest drift either way that keeps the layout of `shape` on a `w` x `h` screen.
-void flip_drift_range(int32_t w, int32_t h, const FlipShape& shape, int32_t& max_dx,
-                      int32_t& max_dy);
+/// Box round the layout of `shape` centred on a `w` x `h` screen, undrifted: what the clock's
+/// drift range is measured from (ClockDrift::set_range()).
+DirtyRect flip_centred_bounds(int32_t w, int32_t h, const FlipShape& shape);
 
 /**
  * @brief Draws the clock into a frame, redrawing only the cards that change
@@ -163,6 +167,8 @@ void flip_drift_range(int32_t w, int32_t h, const FlipShape& shape, int32_t& max
  */
 class FlipClockSim {
   public:
+    static constexpr const auto& LEVELS = FLIP_CLOCK_LEVELS;
+
     /// Lays out `face` for `frame`, paints the screen and draws the cards.
     void init(FrameTarget& frame, size_t level, const FlipFace& face);
 
@@ -220,11 +226,11 @@ class FlipClockSim {
     uint8_t corner_coverage(int32_t x, int32_t y) const;
 
     size_t level_ = 0;
-    uint32_t elapsed_ms_ = 0;
     int32_t frame_w_ = 0;
     int32_t frame_h_ = 0;
-    int32_t drift_x_ = 0;
-    int32_t drift_y_ = 0;
+    ClockDrift drift_;
+    /// The shape drift_'s range was set for.
+    FlipShape drift_shape_;
     FlipLayout layout_;
     std::array<CardAnim, FLIP_MAX_CARDS> anims_{};
     /// Coverage of digits 0-9 at the layout's unit.

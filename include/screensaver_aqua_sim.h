@@ -247,6 +247,8 @@ AquaClockLayout layout_aqua_clock(int32_t w, int32_t h, int32_t dx, int32_t dy);
 class AquaSim {
   public:
     friend class AquaSimTestAccess;
+    static constexpr const auto& LEVELS = AQUA_LEVELS;
+
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level,
               const ClockReading& reading);
     /**
@@ -316,7 +318,7 @@ class AquaSim {
     int32_t w_ = 0;
     int32_t h_ = 0;
     double t_sim_ = 0.0;
-    uint32_t elapsed_ms_ = 0;
+    ClockDrift drift_;
     screensaver::StepAccumulator emit_steps_;
     AquaWater water_;
     AquaSplashes splashes_;
@@ -361,8 +363,6 @@ class AquaSim {
     float focal_ = 0.0f;
     float horizon_ = 0.0f;
     int32_t band_top_ = 0;
-    int32_t drift_x_ = 0;
-    int32_t drift_y_ = 0;
     bool painted_ = false;
 };
 

@@ -2,12 +2,17 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "ui_screensaver.h"
+
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_manager_test_access.h"
 #include "../test_helpers/screensaver_test_access.h"
+#include "screensaver_aqua.h"
 #include "screensaver_canvas.h"
 #include "screensaver_clock_reading.h"
 #include "screensaver_flip_clock.h"
 #include "screensaver_flip_clock_sim.h"
+#include "screensaver_highfly.h"
 #include "screensaver_pixel_writer.h"
 
 #include <algorithm>
@@ -160,6 +165,15 @@ std::vector<uint8_t> card_bytes(const SimFrame& frame, const DirtyRect& box) {
 bool inside(const DirtyRect& inner, const DirtyRect& outer) {
     return inner.x1 >= outer.x1 && inner.y1 >= outer.y1 && inner.x2 <= outer.x2 &&
            inner.y2 <= outer.y2;
+}
+
+/// The clock mode of the saver the manager runs, which must be a `Saver` of `type`.
+template <typename Saver> ClockMode active_clock_mode(ScreensaverType type) {
+    helix::ui::SaverBase* saver =
+        helix::ScreensaverManagerTestAccess::active(ScreensaverManager::instance());
+    REQUIRE(saver != nullptr);
+    REQUIRE(saver->type() == type);
+    return static_cast<Saver*>(saver)->clock().mode();
 }
 
 void fire(lv_timer_t* timer) {
@@ -406,9 +420,10 @@ TEST_CASE("one card per digit fits every screen shape at the widest drift, in ro
     const uint8_t count = shape.card_count();
     CAPTURE(screen.w, screen.h, count, shape.groups[0]);
 
-    int32_t max_dx = 0;
-    int32_t max_dy = 0;
-    helix::ui::flip_drift_range(screen.w, screen.h, shape, max_dx, max_dy);
+    helix::ui::ClockDrift drift;
+    drift.set_range(helix::ui::flip_centred_bounds(screen.w, screen.h, shape), screen.w, screen.h);
+    const int32_t max_dx = drift.max_dx;
+    const int32_t max_dy = drift.max_dy;
     CHECK(max_dx > 0);
     CHECK(max_dy > 0);
     const DirtyRect whole{0, 0, screen.w - 1, screen.h - 1};
@@ -779,7 +794,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     REQUIRE(ss.is_active());
     const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
     REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::FLIP_CLOCK_CANVAS_FORMAT);
+    CHECK(buf->header.cf == helix::ui::LV_DRAW_CANVAS_FORMAT);
     CHECK(ss.level_count() == FLIP_CLOCK_LEVEL_COUNT);
     CHECK(FLIP_CLOCK_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
 
@@ -796,13 +811,35 @@ TEST_CASE_METHOD(LVGLTestFixture, "the flip clock saver counts down the print it
     ss.set_input_source([&reported] { return reported; });
     ss.start();
     REQUIRE(ss.is_active());
-    CHECK(ss.state().mode() == ClockMode::COUNTDOWN);
-    CHECK(cards_text(ss.state().face()) == "1:00:00");
+    CHECK(ss.clock().mode() == ClockMode::COUNTDOWN);
+    CHECK(cards_text(ss.clock().face()) == "1:00:00");
 
     reported.print.phase = ClockPrintPhase::PAUSED;
     lv_tick_inc(33);
     fire(SaverTestAccess::timer(ss));
-    CHECK(ss.state().mode() == ClockMode::PAUSED);
+    CHECK(ss.clock().mode() == ClockMode::PAUSED);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "the manager feeds every clock saver the print its host reports",
+                 "[screensaver][screensaver_flip_clock]") {
+    helix::ScopedGateEnv gate_env;
+    auto& mgr = ScreensaverManager::instance();
+    helix::ui::SaverHost host;
+    host.print_status = [] {
+        return helix::ui::ClockPrint{ClockPrintPhase::PRINTING, hms(1, 0, 0), 50};
+    };
+    mgr.set_host(host);
+    mgr.start(ScreensaverType::FLIP_CLOCK);
+    CHECK(active_clock_mode<FlipClockScreensaver>(ScreensaverType::FLIP_CLOCK) ==
+          ClockMode::COUNTDOWN);
+    mgr.start(ScreensaverType::AQUA);
+    CHECK(active_clock_mode<helix::ui::AquaScreensaver>(ScreensaverType::AQUA) ==
+          ClockMode::COUNTDOWN);
+    mgr.start(ScreensaverType::HIGHFLY);
+    CHECK(active_clock_mode<helix::ui::HighFlyScreensaver>(ScreensaverType::HIGHFLY) ==
+          ClockMode::COUNTDOWN);
+    mgr.stop();
+    mgr.set_host({});
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

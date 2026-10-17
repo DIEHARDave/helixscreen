@@ -35,7 +35,7 @@ class AquaSimTestAccess {
 class AquaScreensaverTestAccess {
   public:
     static const AquaSim& sim(const AquaScreensaver& saver) {
-        return saver.sim_;
+        return saver.sim();
     }
     static const SaverLabel& line(const AquaScreensaver& saver) {
         return saver.line_;

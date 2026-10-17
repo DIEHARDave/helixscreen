@@ -129,6 +129,8 @@ HighFlyClockLayout layout_highfly_clock(int32_t w, int32_t h, int32_t dx, int32_
 class HighFlySim {
   public:
     friend class HighFlySimTestAccess;
+    static constexpr const auto& LEVELS = HIGHFLY_LEVELS;
+
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level,
               const ClockReading& reading);
     /// Advances by `dt_ms` and draws the cloud band (the whole frame during a fly-through)
@@ -257,7 +259,7 @@ class HighFlySim {
     float deck_texels_ = 0.0f; ///< the deck's scroll, reduced to one field tile
     int32_t baked_w_ = 0;      ///< internal size the sky and polar table were built for
     int32_t baked_h_ = 0;
-    uint32_t elapsed_ms_ = 0;
+    ClockDrift drift_;
     double fly_start_s_ = -1.0; ///< when the scheduled fly-through's whiteout begins
     float next_fly_s_ = 0.0f;
     float next_tower_s_ = 0.0f;
@@ -268,8 +270,6 @@ class HighFlySim {
     bool next_left_ = true;
     bool painted_ = false;
     bool last_full_ = false;
-    int32_t drift_x_ = 0;
-    int32_t drift_y_ = 0;
     HighFlyField field_;
     HeightfieldRenderer renderer_;
     std::vector<Rgb> sky_;       ///< internal row-major, static

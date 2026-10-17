@@ -114,11 +114,6 @@ float rim_profile(float d) {
     return YS[i] + (YS[i + 1] - YS[i]) * f;
 }
 
-bool same_face(const ClockReading& a, const ClockReading& b) {
-    return a.time == b.time && a.mode == b.mode && a.progress_pct == b.progress_pct &&
-           a.use_24h == b.use_24h;
-}
-
 } // namespace
 
 // ---------- AquaWater ----------
@@ -505,15 +500,6 @@ AquaClockLayout layout_aqua_clock(int32_t w, int32_t h, int32_t dx, int32_t dy) 
     return l;
 }
 
-namespace {
-
-/// Largest drift either way that keeps the clock on a w x h canvas.
-void aqua_drift_range(int32_t w, int32_t h, int32_t& max_dx, int32_t& max_dy) {
-    clock_drift_range(layout_aqua_clock(w, h, 0, 0).bounds, w, h, max_dx, max_dy);
-}
-
-} // namespace
-
 // ---------- AquaSim ----------
 
 /// Shades one slice of water for the renderer: fresnel reflection of the softbox bands, a sun
@@ -756,7 +742,7 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
     w_ = static_cast<int32_t>(frame.w);
     h_ = static_cast<int32_t>(frame.h);
     t_sim_ = 0.0f;
-    elapsed_ms_ = 0;
+    drift_.reset();
     emit_steps_.reset();
     build_env(env_);
     build_wrinkle(wrinkle_);
@@ -790,9 +776,8 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
     level_ = std::min(level, AQUA_LEVEL_COUNT - 1);
     apply_view();
 
-    drift_x_ = 0;
-    drift_y_ = 0;
     update_clock_layout();
+    drift_.set_range(clock_.bounds, w_, h_);
     build_stroke_digits(clock_.digit_unit, DIGIT_STROKE, digits_);
     const DirtyRect& b = clock_.bounds;
     clock_save_.assign(
@@ -866,7 +851,7 @@ void AquaSim::apply_view() {
 }
 
 void AquaSim::update_clock_layout() {
-    clock_ = layout_aqua_clock(w_, h_, drift_x_, drift_y_);
+    clock_ = layout_aqua_clock(w_, h_, drift_.dx, drift_.dy);
 }
 
 void AquaSim::derive_grids() {
@@ -1071,32 +1056,20 @@ void AquaSim::draw_clock(FrameTarget& frame, const ClockReading& reading) const 
     ring(clock_.minute_cx, clock_.minute_cy, clock_.ring_r, rings.minute);
     ring(clock_.top_cx, clock_.top_cy, clock_.top_r, rings.top);
 
-    const auto two_digits = [&](int32_t cx, int32_t cy, int32_t value) {
+    const auto number = [&](int32_t cx, int32_t cy, int32_t value) {
         const int32_t gap =
             std::max(1, static_cast<int32_t>(std::lround(0.15f * clock_.digit_unit)));
         const int32_t total = 2 * digits_.w + gap;
         const int32_t x0 = cx - total / 2;
         const int32_t y0 = cy - digits_.h / 2;
-        const int digit[2] = {value / 10 % 10, value % 10};
+        const std::array<int, 2> digit = two_digits(value);
         for (int n = 0; n < 2; n++) {
-            const int32_t ox = x0 + n * (digits_.w + gap);
-            for (int32_t gy = 0; gy < digits_.h; gy++) {
-                for (int32_t gx = 0; gx < digits_.w; gx++) {
-                    const uint8_t cov = digits_.at(digit[n], gx, gy);
-                    const int32_t x = ox + gx;
-                    const int32_t y = y0 + gy;
-                    if (cov == 0 || !writer.contains(x, y)) {
-                        continue;
-                    }
-                    writer.put_dithered(x, y,
-                                        mix_rgb(writer.get(x, y), DIGIT_COLOR,
-                                                DIGIT_OPACITY * static_cast<float>(cov) / 255.0f));
-                }
-            }
+            blit_stroke_digit(writer, digits_, digit[n], x0 + n * (digits_.w + gap), y0,
+                              DIGIT_COLOR, DIGIT_OPACITY);
         }
     };
-    two_digits(clock_.hour_cx, clock_.hour_cy, reading.time.hour);
-    two_digits(clock_.minute_cx, clock_.minute_cy, reading.time.minute);
+    number(clock_.hour_cx, clock_.hour_cy, reading.time.hour);
+    number(clock_.minute_cx, clock_.minute_cy, reading.time.minute);
 }
 
 void AquaSim::save_clock_region(const FrameTarget& frame) {
@@ -1174,19 +1147,10 @@ float AquaSim::rim_row(int32_t x) const {
 void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
                    const ClockReading& reading, std::vector<DirtyRect>& dirty) {
     dirty.clear();
-    elapsed_ms_ += dt_ms;
     const AquaLevel& lv = AQUA_LEVELS[level_];
 
-    int32_t max_dx = 0;
-    int32_t max_dy = 0;
-    aqua_drift_range(w_, h_, max_dx, max_dy);
-    int32_t dx = 0;
-    int32_t dy = 0;
-    clock_drift_at(elapsed_ms_, max_dx, max_dy, dx, dy);
-    const bool moved = dx != drift_x_ || dy != drift_y_;
+    const bool moved = drift_.step(dt_ms);
     if (moved) {
-        drift_x_ = dx;
-        drift_y_ = dy;
         update_clock_layout();
     }
     const DirtyRect whole = DirtyRect::whole(w_, h_);
@@ -1205,7 +1169,7 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
             save_clock_region(frame);
             draw_clock(frame, reading);
             dirty.push_back(clock_saved_box_);
-        } else if (!same_face(reading, shown_)) {
+        } else if (!clock_face_same(reading, shown_, true)) {
             restore(frame, clock_.bounds, dirty);
             draw_clock(frame, reading);
             dirty.clear();

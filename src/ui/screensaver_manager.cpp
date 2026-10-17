@@ -14,6 +14,7 @@
 #include "screensaver_aqua.h"
 #include "screensaver_base.h"
 #include "screensaver_bounce.h"
+#include "screensaver_clock_saver.h"
 #include "screensaver_fireflies.h"
 #include "screensaver_fireworks.h"
 #include "screensaver_flip_clock.h"
@@ -54,16 +55,15 @@ ScreensaverManager::ScreensaverManager() : cpu_clock_(helix::ui::read_process_cp
     screensavers_.push_back(std::make_unique<helix::ui::FireworksScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::MazeScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::HyperspaceScreensaver>());
-    auto flip_clock = std::make_unique<helix::ui::FlipClockScreensaver>();
-    flip_clock->set_input_source([this] { return clock_input(); });
-    screensavers_.push_back(std::move(flip_clock));
+    screensavers_.push_back(std::make_unique<helix::ui::FlipClockScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::FirefliesScreensaver>());
-    auto aqua = std::make_unique<helix::ui::AquaScreensaver>();
-    aqua->set_input_source([this] { return clock_input(); });
-    screensavers_.push_back(std::move(aqua));
-    auto highfly = std::make_unique<helix::ui::HighFlyScreensaver>();
-    highfly->set_input_source([this] { return clock_input(); });
-    screensavers_.push_back(std::move(highfly));
+    screensavers_.push_back(std::make_unique<helix::ui::AquaScreensaver>());
+    screensavers_.push_back(std::make_unique<helix::ui::HighFlyScreensaver>());
+    for (auto& saver : screensavers_) {
+        if (helix::ui::ClockInputSink* sink = saver->clock_input_sink()) {
+            sink->set_input_source([this] { return clock_input(); });
+        }
+    }
 
     for (const char* name : savers_missing_for_build_depth()) {
         spdlog::error("[ScreensaverManager] {} is listed as drawing at this colour depth but no "

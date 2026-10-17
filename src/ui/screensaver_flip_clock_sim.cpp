@@ -142,13 +142,20 @@ uint8_t FlipShape::card_count() const {
     return count;
 }
 
-FlipFace clock_face(int32_t seconds_of_day, bool use_24h) {
-    const ClockTime t = clock_time(seconds_of_day, use_24h);
+namespace {
+
+FlipFace clock_face(const ClockTime& t, bool use_24h) {
     FlipFace face;
     add_group(face, t.hour, 2, use_24h);
     face.meridiem = t.meridiem;
     add_group(face, t.minute, 2, true);
     return face;
+}
+
+} // namespace
+
+FlipFace clock_face(int32_t seconds_of_day, bool use_24h) {
+    return clock_face(clock_time(seconds_of_day, use_24h), use_24h);
 }
 
 FlipFace countdown_face(int32_t seconds) {
@@ -185,8 +192,7 @@ FlipFace flip_face(const ClockReading& reading) {
         return face;
     }
     }
-    const ClockTime& t = reading.time;
-    return clock_face(t.hour_of_day * 3600 + t.minute * 60 + t.second, reading.use_24h);
+    return clock_face(reading.time, reading.use_24h);
 }
 
 void FlipClockState::reset() {
@@ -267,23 +273,22 @@ FlipLayout layout_flip_cards(int32_t w, int32_t h, const FlipShape& shape, int32
     return layout;
 }
 
-void flip_drift_range(int32_t w, int32_t h, const FlipShape& shape, int32_t& max_dx,
-                      int32_t& max_dy) {
+DirtyRect flip_centred_bounds(int32_t w, int32_t h, const FlipShape& shape) {
     const Arrangement a = arrange(w, h, shape);
     const int32_t x1 = (w - a.content_w) / 2;
     const int32_t y1 = (h - a.content_h) / 2;
-    clock_drift_range({x1, y1, x1 + a.content_w - 1, y1 + a.content_h - 1}, w, h, max_dx, max_dy);
+    return {x1, y1, x1 + a.content_w - 1, y1 + a.content_h - 1};
 }
 
 // ---------- FlipClockSim ----------
 
 void FlipClockSim::init(FrameTarget& frame, size_t level, const FlipFace& face) {
     level_ = std::min(level, FLIP_CLOCK_LEVEL_COUNT - 1);
-    elapsed_ms_ = 0;
     frame_w_ = static_cast<int32_t>(frame.w);
     frame_h_ = static_cast<int32_t>(frame.h);
-    drift_x_ = 0;
-    drift_y_ = 0;
+    drift_.reset();
+    drift_shape_ = face.shape;
+    drift_.set_range(flip_centred_bounds(frame_w_, frame_h_, drift_shape_), frame_w_, frame_h_);
     PixelWriter(frame).fill(BACKGROUND);
     layout_ = layout_flip_cards(frame_w_, frame_h_, face.shape, 0, 0);
     build_glyphs();
@@ -333,19 +338,16 @@ void FlipClockSim::clear() {
 void FlipClockSim::step(uint32_t dt_ms, FrameTarget& frame, const FlipFace& face,
                         std::vector<DirtyRect>& dirty) {
     dirty.clear();
-    elapsed_ms_ += dt_ms;
     const bool animate = FLIP_CLOCK_LEVELS[level_].animate;
 
-    int32_t max_dx = 0;
-    int32_t max_dy = 0;
-    flip_drift_range(frame_w_, frame_h_, face.shape, max_dx, max_dy);
-    int32_t dx = 0;
-    int32_t dy = 0;
-    clock_drift_at(elapsed_ms_, max_dx, max_dy, dx, dy);
+    // The drift's range follows the shape being drawn.
+    if (face.shape != drift_shape_) {
+        drift_shape_ = face.shape;
+        drift_.set_range(flip_centred_bounds(frame_w_, frame_h_, drift_shape_), frame_w_, frame_h_);
+    }
+    const bool moved = drift_.step(dt_ms);
 
-    if (face.shape != layout_.shape || dx != drift_x_ || dy != drift_y_) {
-        drift_x_ = dx;
-        drift_y_ = dy;
+    if (face.shape != layout_.shape || moved) {
         for (size_t i = 0; i < FLIP_MAX_CARDS; i++) {
             const bool same =
                 face.shape == layout_.shape && animate && anims_[i].to == face.cards[i];
@@ -384,7 +386,7 @@ void FlipClockSim::relayout(FrameTarget& frame, const FlipShape& shape,
     DirtyRect area = layout_.bounds();
     PixelWriter(frame).fill_rect(area, BACKGROUND);
     const int32_t old_unit = layout_.unit;
-    layout_ = layout_flip_cards(frame_w_, frame_h_, shape, drift_x_, drift_y_);
+    layout_ = layout_flip_cards(frame_w_, frame_h_, shape, drift_.dx, drift_.dy);
     if (layout_.unit != old_unit || glyphs_.coverage.empty()) {
         build_glyphs();
     }

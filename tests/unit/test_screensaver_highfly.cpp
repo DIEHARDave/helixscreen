@@ -50,7 +50,7 @@ class HighFlySimTestAccess {
 class HighFlyScreensaverTestAccess {
   public:
     static const HighFlySim& sim(const HighFlyScreensaver& saver) {
-        return saver.sim_;
+        return saver.sim();
     }
     static const SaverLabel& date_line(const HighFlyScreensaver& saver) {
         return saver.date_line_;
