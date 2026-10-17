@@ -156,8 +156,7 @@ TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: no state object means no read-
     CHECK(pending() == 0);
 }
 
-TEST_CASE_METHOD(LayerPauseFixture,
-                 "Layer pause: a current_layer report alone proves slicer layers",
+TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: either layer report alone proves slicer layers",
                  "[layer_pause][print_state]") {
     printing(3, 10);
     state_.print_state().reset_for_new_print();
@@ -168,6 +167,11 @@ TEST_CASE_METHOD(LayerPauseFixture,
           {{"filename", "a.gcode"}, {"state", "printing"}, {"info", {{"current_layer", 4}}}}}});
     CHECK(state_.print_state().slicer_reports_layers());
     CHECK(availability() == A::Ready);
+
+    // So does a total_layer report alone, the first one a print sends.
+    state_.print_state().reset_for_new_print();
+    state_.update_from_status({{"print_stats", {{"info", {{"total_layer", 12}}}}}});
+    CHECK(state_.print_state().slicer_reports_layers());
 }
 
 TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: discovery publishes the capability and read-back",
