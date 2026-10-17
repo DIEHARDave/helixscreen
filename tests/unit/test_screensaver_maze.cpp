@@ -771,13 +771,14 @@ TEST_CASE("the fog curve and blend", "[screensaver][maze]") {
     using helix::ui::maze_fog;
     using helix::ui::maze_fog_k;
     using helix::ui::maze_fog_slot_depth;
+    // Clearly darker with distance: a third gone by 3 tiles, about 60% by 6.
+    CHECK(maze_fog_k(0.25f) == 32);
     CHECK(maze_fog_k(0.5f) == 32);
-    CHECK(maze_fog_k(1.0f) == 32);
-    CHECK(maze_fog_k(2.0f) == 28);
-    CHECK(maze_fog_k(4.0f) == 21);
-    CHECK(maze_fog_k(7.0f) == 15);
-    CHECK(maze_fog_k(13.0f) == 8);
-    CHECK(maze_fog_k(100.0f) == 5);
+    CHECK(maze_fog_k(1.0f) == 29);
+    CHECK(maze_fog_k(3.0f) == 21);
+    CHECK(maze_fog_k(6.0f) == 13);
+    CHECK(maze_fog_k(12.0f) == 6);
+    CHECK(maze_fog_k(100.0f) == 3);
     for (float d = 0.0f; d < 40.0f; d += 0.25f) {
         INFO("depth " << d);
         CHECK(maze_fog_k(d + 0.25f) <= maze_fog_k(d));
@@ -891,13 +892,14 @@ TEST_CASE("flat levels bake the fog into each row", "[screensaver][maze]") {
     // Focal 24: row 30 sees the floor 24 / 13 tiles away, row 17 the ceiling as far, row 47
     // the floor half a tile away.
     const uint32_t k = maze_fog_k(maze_fog_slot_depth(24.0f / 13.0f));
-    REQUIRE(k < 32);
+    const uint32_t near_k = maze_fog_k(maze_fog_slot_depth(24.0f / 47.0f));
+    REQUIRE(k < near_k);
     const auto fmt = PixelFormat::XRGB8888;
     for (uint32_t x = 0; x < r.internal_w(); x++) {
         INFO("column " << x);
         CHECK(r.internal_pixel(x, 30) == PixelWriter::pack(maze_fog(MAZE_FLAT_FLOOR, k), fmt));
         CHECK(r.internal_pixel(x, 17) == PixelWriter::pack(maze_fog(MAZE_FLAT_CEILING, k), fmt));
-        CHECK(r.internal_pixel(x, 47) == PixelWriter::pack(MAZE_FLAT_FLOOR, fmt));
+        CHECK(r.internal_pixel(x, 47) == PixelWriter::pack(maze_fog(MAZE_FLAT_FLOOR, near_k), fmt));
     }
 }
 

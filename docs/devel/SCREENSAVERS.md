@@ -84,8 +84,8 @@ cells; corridors are a tile wide and walls a tile tall, with the eye at mid-heig
   the walk to the other hand, and a toolhead that wanders on its own walk, which has no stop
   cell and so never tracks circling.
 - **Fog**: every surface darkens with distance toward a dark tint, keeping
-  `k / 32` of its colour with `k = round(32 * (0.15 + 0.85 * exp(-(d - 1) / 6)))`
-  (`maze_fog_k`, `maze_fog`). The renderer reads `k` from a 128-slot table, four slots a tile, and
+  `k / 32` of its colour with `k = round(32 * (0.1 + 0.9 * exp(-(d - 0.5) / 5)))`
+  (`maze_fog_k`, `maze_fog`): a third darker 3 tiles off, about 60% at 6. The renderer reads `k` from a 128-slot table, four slots a tile, and
   blends in the format's own lanes (RGB565 spread as `0x07E0F81F`), so nothing divides per
   pixel. A wall slice taller than the texture shades its 64 texels once and copies them; a
   shorter one shades per pixel. The textured floor and ceiling read 16 pre-fogged copies of

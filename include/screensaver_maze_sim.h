@@ -55,9 +55,9 @@ inline float maze_focal(uint32_t w, uint32_t h) {
 /// Distance fog: a surface d tiles away keeps k / MAZE_FOG_ONE of its colour and takes the
 /// rest from MAZE_FOG_TINT, with k = round(32 * (FLOOR + (1 - FLOOR) * exp(-(d - START) / SCALE))).
 inline constexpr uint32_t MAZE_FOG_ONE = 32;
-inline constexpr float MAZE_FOG_START = 1.0f;
-inline constexpr float MAZE_FOG_SCALE = 6.0f;
-inline constexpr float MAZE_FOG_FLOOR = 0.15f;
+inline constexpr float MAZE_FOG_START = 0.5f;
+inline constexpr float MAZE_FOG_SCALE = 5.0f;
+inline constexpr float MAZE_FOG_FLOOR = 0.1f;
 inline constexpr Rgb MAZE_FOG_TINT{6, 6, 10};
 /// The renderer reads k from a table of MAZE_FOG_SLOTS depths, MAZE_FOG_STEPS_PER_TILE a tile;
 /// the textured floor and ceiling from MAZE_FOG_BANDS pre-fogged copies of their textures.
