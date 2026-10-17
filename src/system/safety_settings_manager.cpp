@@ -27,6 +27,8 @@ static constexpr settings::PersistedSetting SAFETY_SETTINGS[] = {
      "macro_confirm"},
     {"settings_allow_cold_extrude", "/safety/allow_cold_extrude", Scope::Global, true, 0, 0, 1,
      "allow_cold_extrude"},
+    {"settings_tool_change_confirm", "/safety/tool_change_require_confirmation", Scope::Global,
+     true, 1, 0, 1, "tool_change_confirm"},
 };
 
 SafetySettingsManager& SafetySettingsManager::instance() {

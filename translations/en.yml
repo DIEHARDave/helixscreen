@@ -276,6 +276,7 @@ translations:
     sure you want to cancel this print? All progress will be lost.
   Are you sure? This will power off or restart this device.: Are you sure? This will
     power off or restart this device.
+  Ask before switching to another tool: Ask before switching to another tool
   Ask for parameters: Ask for parameters
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Assign Klipper
     macros to control LEDs via on/off, toggle, or presets
@@ -729,6 +730,7 @@ translations:
   Configuring Moonraker...: Configuring Moonraker...
   Confirm PIN: Confirm PIN
   Confirm before running macros: Confirm before running macros
+  Confirm tool changes: Confirm tool changes
   Connect: Connect
   Connect a USB label printer first: Connect a USB label printer first
   Connect an ADXL345 accelerometer to calibrate: Connect an ADXL345 accelerometer
@@ -2767,6 +2769,7 @@ translations:
   Resetting: Resetting
   Resetting system: Resetting system
   Resetting...: Resetting...
+  Resolve it on the filament system screen, then try again: Resolve it on the filament system screen, then try again
   Response (Kp): Response (Kp)
   Restart: Restart
   Restart Firmware?: Restart Firmware?
@@ -3253,6 +3256,7 @@ translations:
   Switch between light and dark themes: Switch between light and dark themes
   Switch the active tool or extruder: Switch the active tool or extruder
   Switch to v%s: Switch to v%s
+  Switch to {}?: Switch to {}?
   Switched to {}: Switched to {}
   Switches to a backup spool on runout: Switches to a backup spool on runout
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
@@ -3328,8 +3332,10 @@ translations:
   Temperatures plotted over time: Temperatures plotted over time
   Temperatures saved: Temperatures saved
   Template: Template
+  Temporary adjustment for this print: Temporary adjustment for this print
   Temporary adjustment for this print, unless saved on Controls panel: Temporary adjustment
     for this print, unless saved on Controls panel
+  Temporary for this print; a tool change resets it: Temporary for this print; a tool change resets it
   Tertiary: Tertiary
   Test All Lanes: Test All Lanes
   Test Connection: Test Connection
@@ -3378,6 +3384,7 @@ translations:
   ? The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   : The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   The filament may not have fully retracted — try again or manually pull: The filament may not have fully retracted — try again or manually pull
+  The filament system needs attention: The filament system needs attention
   The filament system reported an error: The filament system reported an error
   The heater can't be changed while the printer is waiting.: The heater can't be changed while the printer is waiting.
   The heater did not accept the printer's credentials.: The heater did not accept the printer's credentials.

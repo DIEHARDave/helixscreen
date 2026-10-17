@@ -317,6 +317,16 @@ enum class AmsAction {
 };
 
 /**
+ * @brief Does @p action keep the system from taking a new operation?
+ *
+ * Everything but IDLE and ERROR: an operation in flight, a sensor check, or a
+ * pause waiting on the user.
+ */
+inline bool ams_action_holds_system(AmsAction action) {
+    return action != AmsAction::IDLE && action != AmsAction::ERROR;
+}
+
+/**
  * @brief Is the system doing anything at all right now?
  *
  * The "something is happening to this slot" question - the slot pulse asks it,
@@ -1763,7 +1773,7 @@ struct AmsSystemInfo {
      * @return true if actively loading, unloading, etc.
      */
     [[nodiscard]] bool is_busy() const {
-        return action != AmsAction::IDLE && action != AmsAction::ERROR;
+        return ams_action_holds_system(action);
     }
 
     // === Multi-unit helpers ===

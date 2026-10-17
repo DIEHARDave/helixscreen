@@ -295,6 +295,17 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
         return predictor_;
     }
 
+    /**
+     * @brief The heater a blocking wait command waits on
+     *
+     * M109 is the nozzle whichever way its temperature moves, M190 the bed,
+     * and M191 or a TEMPERATURE_WAIT on @p chamber_heater itself the chamber
+     * (SOAKING), but only with a chamber heater configured. A TEMPERATURE_WAIT on heater_bed or an
+     * extruder is that heater. Anything else names no heater: nullopt.
+     */
+    [[nodiscard]] static std::optional<helix::PrintStartPhase>
+    heater_waited_on(const helix::WaitLine& line, const std::string& chamber_heater);
+
   private:
     /**
      * @brief Handle incoming G-code response
@@ -501,12 +512,13 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// temperature against its target, or alone when the heater has none.
     static std::string chamber_wait_message(int temp_deci, int target_deci);
 
-    /// Read the command at the print position for wait @p gen. Main thread.
-    void request_chamber_wait_line(uint64_t gen);
-    /// Store a read's answer if it is for the current wait. Any thread.
-    void apply_chamber_wait_line(uint64_t gen, const helix::WaitLine& line);
+    /// Ask where the print is, and read the command there if the position
+    /// moved since the last read. Main thread.
+    void request_wait_line();
+    /// Store read @p gen's answer if no later position superseded it. Any thread.
+    void apply_wait_line(uint64_t gen, const helix::WaitLine& line);
     /// Drop the current wait's line. Caller holds state_mutex_.
-    void forget_chamber_wait_line_locked();
+    void forget_wait_line_locked();
 
     /// Give the phase a heater wait displaced back, if the wait's label is
     /// still the one showing. Main thread only; takes state_mutex_ itself.
@@ -765,11 +777,17 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// unheated chamber is read as what it waits on.
     static constexpr auto CHAMBER_WAIT_SETTLE = std::chrono::seconds(5);
 
-    /// The command an unheated chamber-heater wait is running, read once per
-    /// wait from the file at the print position. Guarded by state_mutex_.
-    helix::WaitLine chamber_line_;
-    bool chamber_line_requested_ = false;
-    uint64_t chamber_line_gen_ = 0;
+    /// The command a heater wait is running: the line at
+    /// virtual_sdcard.file_position, read again whenever the position moves,
+    /// since one wait can hand straight to the next with no gap in the
+    /// reports. wait_line_read_ is false until the read for
+    /// wait_line_position_ answers; wait_line_unreadable_ stops the queries
+    /// for the rest of a wait whose read failed. Guarded by state_mutex_.
+    helix::WaitLine wait_line_;
+    bool wait_line_read_ = false;
+    bool wait_line_unreadable_ = false;
+    std::optional<uint64_t> wait_line_position_;
+    uint64_t wait_line_gen_ = 0;
 
     /// Nozzle target (°C) when BED_MESH was entered. A higher target while the
     /// mesh is idle is the print-temperature heat that follows it. Guarded by

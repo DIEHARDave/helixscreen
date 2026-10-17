@@ -1053,10 +1053,10 @@ const json* printer_member(const std::string& printer_name, const char* field) {
     return printer ? helix::json_util::find_member(*printer, field) : nullptr;
 }
 
-/// A boolean field of the entry named `printer_name`, false when either is absent.
-bool printer_flag(const std::string& printer_name, const char* field) {
+/// A boolean field of the entry named `printer_name`, @p fallback when either is absent.
+bool printer_flag(const std::string& printer_name, const char* field, bool fallback = false) {
     const json* printer = find_printer_entry(printer_name);
-    return printer != nullptr && helix::json_util::safe_bool(*printer, field, false);
+    return printer ? helix::json_util::safe_bool(*printer, field, fallback) : fallback;
 }
 
 /// One string field of the entry named `printer_name`, or "" when either is absent.
@@ -1581,6 +1581,14 @@ std::string PrinterDetector::get_z_offset_calibration_strategy(const std::string
 
 bool PrinterDetector::hide_manual_z_calibration(const std::string& printer_name) {
     return printer_flag(printer_name, "hide_manual_z_calibration");
+}
+
+bool PrinterDetector::z_offset_persists(const std::string& printer_name) {
+    return printer_flag(printer_name, "z_offset_persists", true);
+}
+
+bool PrinterDetector::tool_change_resets_z_offset(const std::string& printer_name) {
+    return printer_flag(printer_name, "tool_change_resets_z_offset");
 }
 
 // ============================================================================

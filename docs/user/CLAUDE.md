@@ -46,7 +46,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/settings/appearance.md` | Dark mode, themes and the theme editor, animations, widget labels, printer visuals (toolhead style, G-code preview, Z movement, bed mesh render) |
 | `guide/settings/touch-input.md` | Touch calibration, debug viz, scroll engage distance, long press, home screen editing, scroll guard, scroll buttons, Android keyboard and navigation bar |
 | `guide/settings/sound.md` | Sounds, volume, UI sounds, sound themes, output device, custom themes, supported hardware, troubleshooting |
-| `guide/settings/printing.md` | Machine limits, motion, retraction, enclosure, material temperatures, cold load/unload, post-filament cooldown, timelapse, macro buttons |
+| `guide/settings/printing.md` | Machine limits, motion, retraction, enclosure, material temperatures, cold load/unload, post-filament cooldown, tool-change confirmation, timelapse, macro buttons |
 | `guide/settings/devices.md` | Hardware health, camera, multi-filament systems, fans, sensors, LEDs, power devices, Spoolman |
 | `guide/settings/led-settings.md` | LED strip selection, auto-state, macro devices, setup guides |
 | `guide/settings/safety.md` | Safety & Alerts: E-Stop confirmation, cancel escalation, macro confirmation, spaghetti detection, print completion alert, on-screen alerts |

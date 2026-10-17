@@ -200,10 +200,6 @@ class ToolSwitcherWidget : public PanelWidget {
     /// state change.
     void refresh_print_gating();
 
-    /// Issue the change and report any refusal. Static so the confirmation
-    /// modal's stateless event callback shares the one on_error path.
-    static void dispatch_tool_change(int tool_index);
-
     /// Whether spools lying on the bed refuse every move, telling the user so
     /// when they do. The tile is disabled then too; this catches the tap that
     /// lands first.
