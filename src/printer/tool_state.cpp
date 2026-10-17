@@ -357,6 +357,10 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
             t.backend_index = topo.backend_index;
             t.backend_slot =
                 (i < static_cast<int>(topo.tool_to_slot.size())) ? topo.tool_to_slot[i] : -1;
+            // Seated before the version bump below, so nothing that reads the
+            // tools from that notification sees a rebuilt list with no seat.
+            t.lane_seated = i < static_cast<int>(topo.tool_seated.size()) &&
+                            topo.tool_seated[static_cast<size_t>(i)];
             // Carry over the hardware mappings init_tools set up, from the
             // tool that printed through the same extruder where the backend
             // names it. A hub feeds several lanes, and so several tools, into

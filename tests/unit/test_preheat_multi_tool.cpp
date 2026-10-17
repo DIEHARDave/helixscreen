@@ -550,8 +550,9 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(PreheatWidgetTestAccess::tool_target_caption(widget, label) ==
           ts.tools()[12].display_label);
 
-    // The mounted head names the lane it prints through.
-    ts.set_ams_topology(helix::test::make_hub_topology(9, {9}));
+    // The mounted head names the lane it prints through, over a seat the
+    // backend reports for another of its lanes.
+    ts.set_ams_topology(helix::test::make_hub_topology(9, {10}));
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     PreheatWidgetTestAccess::set_tool_target(widget, 5);
     CHECK(PreheatWidgetTestAccess::tool_target_caption(widget, label) ==
