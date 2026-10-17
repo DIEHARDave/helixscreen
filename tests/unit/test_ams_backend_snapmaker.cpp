@@ -1339,13 +1339,11 @@ TEST_CASE_METHOD(SnapmakerFixture,
     // The single-slot executors resolve the unload target through this.
     CHECK(helix::ui::read_unload_target_loaded(&backend, backend.get_system_info(), 3));
 
-    // Batch picker: both directions offer head 3.
-    using helix::ui::BatchFilamentModal;
-    const auto rows = BatchFilamentModal::collect_rows(backend);
-    CHECK(BatchFilamentModal::head_can_act(rows.heads_for(false)[3], rows.lane_presence[3],
-                                           /*for_load=*/false));
-    CHECK(BatchFilamentModal::head_can_act(rows.heads_for(true)[3], rows.lane_presence[3],
-                                           /*for_load=*/true));
+    // Head picker: both directions offer head 3.
+    const auto view = helix::ui::read_filament_head_view(&backend, get_printer_state());
+    REQUIRE(view.heads.size() == 4);
+    CHECK(helix::ui::head_can_unload(view.heads[3]));
+    CHECK(helix::ui::head_can_load(view.heads[3]));
 }
 
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker loaded answers do not depend on frame order",
@@ -1442,12 +1440,10 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker unloaded head with a clear switch 
         merged({t3_picked(), make_feed_status(3, "unload_finish", true), t3_switch(false)}));
 
     CHECK(answers(backend, 3) == LoadAnswers{false, SlotStatus::AVAILABLE, false, false, false});
-    using helix::ui::BatchFilamentModal;
-    const auto rows = BatchFilamentModal::collect_rows(backend);
-    CHECK_FALSE(BatchFilamentModal::head_can_act(rows.heads_for(false)[3], rows.lane_presence[3],
-                                                 /*for_load=*/false));
-    CHECK(BatchFilamentModal::head_can_act(rows.heads_for(true)[3], rows.lane_presence[3],
-                                           /*for_load=*/true));
+    const auto view = helix::ui::read_filament_head_view(&backend, get_printer_state());
+    REQUIRE(view.heads.size() == 4);
+    CHECK_FALSE(helix::ui::head_can_unload(view.heads[3]));
+    CHECK(helix::ui::head_can_load(view.heads[3]));
 }
 
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker preload_finish is present-but-not-loaded",

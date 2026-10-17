@@ -1234,16 +1234,6 @@ class AmsBackend {
     // Batch Filament Operations (parallel-toolhead printers)
     // ========================================================================
 
-    /**
-     * @brief Whether this backend can load/unload several slots as one operation
-     *
-     * Gates the UI affordance only. A backend that answers true must implement
-     * load_filament_batch() / unload_filament_batch().
-     */
-    [[nodiscard]] bool supports_batch_filament_ops() const {
-        return max_heads_per_filament_op() > 1;
-    }
-
     // ========================================================================
     // Heads (backend-neutral filament questions)
     //
@@ -1257,10 +1247,11 @@ class AmsBackend {
         return 1;
     }
 
-    /// The head @p slot feeds, or nullopt when it feeds none (an invalid slot,
-    /// or a source not routed to any head).
+    /// The head @p slot feeds, or nullopt when it feeds none (a negative slot,
+    /// or a source not routed to any head). @p slot is one the caller read
+    /// from this backend; the one-head default does not re-read the slot count.
     [[nodiscard]] virtual std::optional<int> head_for_slot(int slot) const {
-        if (slot < 0 || slot >= get_system_info().total_slots) {
+        if (slot < 0) {
             return std::nullopt;
         }
         return 0;
@@ -1279,16 +1270,19 @@ class AmsBackend {
         return is_filament_loaded();
     }
 
-    /// How many heads one load or unload may name. More than one means
-    /// load_filament_batch() / unload_filament_batch() run them together.
+    /// How many heads one load or unload may name. A backend that answers more
+    /// than one implements load_filament_batch() / unload_filament_batch(),
+    /// which run them together.
     [[nodiscard]] virtual int max_heads_per_filament_op() const {
         return 1;
     }
 
     /// The slot @p head is fed from: its Assigned Tool slot, the lane whose
     /// mapped tool is @p head and which feeds that head. nullopt when no slot
-    /// is assigned to it.
-    [[nodiscard]] virtual std::optional<int> head_source_slot(int head) const;
+    /// is assigned to it. @p info is the caller's get_system_info() reading, so
+    /// a caller that already holds one costs the backend no second read.
+    [[nodiscard]] virtual std::optional<int> head_source_slot(int head,
+                                                              const AmsSystemInfo& info) const;
 
     /**
      * @brief Whether a batch this process dispatched is still unverified

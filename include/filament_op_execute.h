@@ -25,6 +25,7 @@
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 
 namespace helix {
@@ -63,9 +64,26 @@ namespace helix::ui {
  *
  * selected_head stays -1: a surface with a selection sets it itself.
  *
- * @param backend May be null; the view then reports no backend.
+ * @param backend  May be null; the view then reports no backend.
+ * @param snapshot A get_system_info() reading of @p backend already in hand
+ *                 (AmsState's shared one); null reads the backend.
  */
-[[nodiscard]] FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& state);
+[[nodiscard]] FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& state,
+                                                       const AmsSystemInfo* snapshot = nullptr);
+
+/**
+ * @brief The slot a runout's Load or Unload names.
+ *
+ * The runout's own lane decides the head. An Unload takes that lane, which is
+ * what sits in the head; a Load takes the head's Assigned Tool slot, falling
+ * back to the lane. A runout that names no lane uses the active slot.
+ *
+ * @param backend      May be null; the answer is then -1.
+ * @param runout_lane  FilamentSensorManager::real_runout_lane(): nullopt or -1
+ *                     when the runout names no lane.
+ */
+[[nodiscard]] int runout_target_slot(AmsBackend* backend, std::optional<int> runout_lane,
+                                     bool load);
 
 /// The extruder a filament op heats, and the numbers a nozzle prefill holds to.
 struct OpNozzle {

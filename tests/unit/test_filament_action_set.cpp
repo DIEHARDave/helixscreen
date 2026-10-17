@@ -7,8 +7,10 @@
  *        it is built from.
  */
 
+#include "ams_backend_mock.h"
 #include "ams_backend_snapmaker.h"
 #include "filament_action_set.h"
+#include "filament_op_execute.h"
 
 #include <optional>
 #include <vector>
@@ -322,14 +324,38 @@ TEST_CASE("backend filament ops: Snapmaker answers four heads, batch of four",
     FourHeadBackend backend;
     CHECK(backend.filament_head_count() == 4);
     CHECK(backend.max_heads_per_filament_op() == 4);
-    CHECK(backend.supports_batch_filament_ops());
     CHECK(backend.head_for_slot(3) == 3);
     CHECK_FALSE(backend.head_for_slot(4).has_value());
-    CHECK(backend.head_source_slot(2) == 2);
+    CHECK(backend.head_source_slot(2, backend.get_system_info()) == 2);
     CHECK_FALSE(backend.supports_reset());
     // Loaded to the nozzle and parked short of it both hold filament.
     CHECK(backend.head_has_filament(0) == false);
     CHECK(backend.head_has_filament(1) == true);
     CHECK(backend.head_has_filament(2) == true);
     CHECK_FALSE(backend.head_has_filament(4).has_value());
+}
+
+TEST_CASE("runout target: the runout's lane names the head and its source",
+          "[filament][actions][runout]") {
+    // Bays 4..7 feed head lane-4; head 1's Assigned Tool slot is bay 5.
+    class BayBackend : public helix::AmsBackendMock {
+      public:
+        BayBackend() : helix::AmsBackendMock(8) {}
+        std::optional<int> head_for_slot(int slot) const override {
+            return slot >= 4 ? std::optional<int>(slot - 4) : std::optional<int>(slot);
+        }
+        std::optional<int> head_source_slot(int head, const helix::AmsSystemInfo&) const override {
+            return head == 1 ? std::optional<int>(5) : std::nullopt;
+        }
+    } backend;
+
+    // Load feeds the head's source; Unload names what ran out.
+    CHECK(runout_target_slot(&backend, 1, /*load=*/true) == 5);
+    CHECK(runout_target_slot(&backend, 1, /*load=*/false) == 1);
+    // No source assigned: the lane itself.
+    CHECK(runout_target_slot(&backend, 2, /*load=*/true) == 2);
+    // A runout naming no lane falls back to the active slot.
+    CHECK(runout_target_slot(&backend, -1, /*load=*/true) == backend.get_current_slot());
+    CHECK(runout_target_slot(&backend, std::nullopt, /*load=*/false) == backend.get_current_slot());
+    CHECK(runout_target_slot(nullptr, 1, /*load=*/true) == -1);
 }

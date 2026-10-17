@@ -317,7 +317,7 @@ std::optional<int> AmsBackendMultiAce::head_for_slot(int slot) const {
     return head_for_global_locked(slot);
 }
 
-std::optional<int> AmsBackendMultiAce::head_source_slot(int head) const {
+std::optional<int> AmsBackendMultiAce::head_source_slot(int head, const AmsSystemInfo&) const {
     if (head < 0 || head >= kHeads) {
         return std::nullopt;
     }

@@ -1747,6 +1747,7 @@
   <translation tag="Load failed" de="Laden fehlgeschlagen"/>
   <translation tag="Load filament" de="Filament laden"/>
   <translation tag="Load filament first" de="Laden Sie zuerst Filament"/>
+  <translation tag="Load into which tool?" de="In welches Werkzeug laden?"/>
   <translation tag="Load or unload filament." de="Filament laden oder entladen."/>
   <translation tag="Load the required filaments or start anyway?" de="Benötigte Filamente laden oder trotzdem starten?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." de="Spulen laden, entladen und wechseln. Ihr Multi-Filament-System auf einen Blick sehen, Farben den Slots zuordnen und Filamentsensoren überwachen."/>
@@ -1919,6 +1920,7 @@
   <translation tag="Motors disabled" de="Motoren deaktiviert"/>
   <translation tag="Motors stay on while a print is active" de="Motoren bleiben an, solange ein Druck läuft"/>
   <translation tag="Mount" de="Montieren"/>
+  <translation tag="Mount which tool?" de="Welches Werkzeug montieren?"/>
   <translation tag="Move" de="Bewegen"/>
   <translation tag="Move out of range" de="Bewegung außerhalb des Bereichs"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." de="Bewegen Sie das Papier während der Einstellung hin und her. Stoppen Sie, wenn das Papier leicht greift, aber noch gleitet."/>
@@ -3488,6 +3490,7 @@
   <translation tag="Unload macro not configured" de="Entlade-Makro nicht konfiguriert"/>
   <translation tag="Unload the CFS filament before enabling bypass" de="Entladen Sie das CFS-Filament, bevor Sie den Bypass aktivieren"/>
   <translation tag="Unload this unit first" de="Entladen Sie zuerst diese Einheit"/>
+  <translation tag="Unload which tool?" de="Welches Werkzeug entladen?"/>
   <translation tag="Unload..." de="Entladen..."/>
   <translation tag="Unloaded" de="Entladen"/>
   <translation tag="Unloading" de="Entladen"/>

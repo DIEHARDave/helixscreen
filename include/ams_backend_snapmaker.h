@@ -191,7 +191,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         }
         return slot;
     }
-    [[nodiscard]] std::optional<int> head_source_slot(int head) const override {
+    [[nodiscard]] std::optional<int> head_source_slot(int head,
+                                                      const AmsSystemInfo&) const override {
         return head_for_slot(head);
     }
     /// Loaded to the nozzle, or parked in the toolhead short of it: either way

@@ -1747,6 +1747,7 @@
   <translation tag="Load failed" es="Error al cargar"/>
   <translation tag="Load filament" es="Cargar filamento"/>
   <translation tag="Load filament first" es="Cargue filamento primero"/>
+  <translation tag="Load into which tool?" es="¿En qué herramienta cargar?"/>
   <translation tag="Load or unload filament." es="Carga o descarga filamento."/>
   <translation tag="Load the required filaments or start anyway?" es="¿Cargar los filamentos requeridos o iniciar de todos modos?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." es="Carga, descarga e intercambia bobinas. Ve tu sistema multi-filamento de un vistazo, asigna colores a los slots y monitoriza los sensores de agotamiento."/>
@@ -1919,6 +1920,7 @@
   <translation tag="Motors disabled" es="Motores desactivados"/>
   <translation tag="Motors stay on while a print is active" es="Los motores siguen activos durante una impresión"/>
   <translation tag="Mount" es="Montar"/>
+  <translation tag="Mount which tool?" es="¿Qué herramienta montar?"/>
   <translation tag="Move" es="Mover"/>
   <translation tag="Move out of range" es="Movimiento fuera de rango"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." es="Mueva el papel hacia adelante y atrás mientras ajusta. Deténgase cuando el papel se enganche ligeramente pero aún se deslice."/>
@@ -3488,6 +3490,7 @@
   <translation tag="Unload macro not configured" es="Macro de descarga no configurado"/>
   <translation tag="Unload the CFS filament before enabling bypass" es="Descargue el filamento del CFS antes de activar el bypass"/>
   <translation tag="Unload this unit first" es="Descargue primero esta unidad"/>
+  <translation tag="Unload which tool?" es="¿Qué herramienta descargar?"/>
   <translation tag="Unload..." es="Descargar..."/>
   <translation tag="Unloaded" es="Descargado"/>
   <translation tag="Unloading" es="Descargando"/>

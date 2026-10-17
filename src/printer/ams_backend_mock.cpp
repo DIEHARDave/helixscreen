@@ -4112,7 +4112,7 @@ std::optional<int> AmsBackendMock::head_for_slot(int slot) const {
     return is_tool_changer(system_info_.type) ? slot : 0;
 }
 
-std::optional<int> AmsBackendMock::head_source_slot(int head) const {
+std::optional<int> AmsBackendMock::head_source_slot(int head, const AmsSystemInfo& info) const {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (is_tool_changer(system_info_.type)) {
@@ -4122,7 +4122,7 @@ std::optional<int> AmsBackendMock::head_source_slot(int head) const {
             return head;
         }
     }
-    return AmsBackend::head_source_slot(head);
+    return AmsBackend::head_source_slot(head, info);
 }
 
 std::optional<bool> AmsBackendMock::head_has_filament(int head) const {

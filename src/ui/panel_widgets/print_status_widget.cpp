@@ -1356,10 +1356,10 @@ void PrintStatusWidget::show_idle_runout_modal() {
 
 void PrintStatusWidget::dispatch_load() {
     AmsBackend* backend = AmsState::instance().get_backend();
-    // Nothing is printing, so there is no "currently feeding" lane to infer from
-    // a print job — the backend's own active slot is the only target available,
-    // and this dialog has no slot picker.
-    const int slot = backend ? backend->get_current_slot() : -1;
+    // This dialog has no slot picker: an idle runout names its head, and with
+    // no lane named the backend's active slot is the target.
+    const int slot = helix::ui::runout_target_slot(
+        backend, helix::FilamentSensorManager::instance().real_runout_lane(), /*load=*/true);
     helix::ui::execute_filament_load(backend, slot, "[PrintStatusWidget]");
 }
 

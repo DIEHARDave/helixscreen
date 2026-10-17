@@ -366,17 +366,10 @@ class AmsOperationSidebar {
     // compute_machine_op_gating().
     void refresh_button_gating();
 
-    // Live inputs for refresh_button_gating(), also consulted by handle_unload()
-    // so the dispatch cannot run when the button should have been greyed.
-    // Availability is per-backend: on batch-capable backends it is "some head
-    // can unload" (the same per-head answer the picker's rows read); elsewhere
-    // it is the aggregate ams_filament_loaded flag.
-    [[nodiscard]] helix::ui::OpButtonState read_unload_gating_state() const;
-
-    // The batch Load button's inputs. Load availability is expressed through
-    // the resolver's slot_has_filament semantics: nullopt when some head is
-    // worth feeding (nothing_to_feed stays clear), false when none is.
-    [[nodiscard]] helix::ui::OpButtonState read_batch_load_gating_state() const;
+    // What the Load and Unload cells offer, decided by decide_filament_actions()
+    // over the live backend: the one answer refresh_button_gating() publishes
+    // and handle_unload() re-reads.
+    [[nodiscard]] helix::ui::FilamentActionSet read_filament_actions() const;
 
     /// The backend and print reads every filament op's gating starts from.
     struct OpInputs {
@@ -397,7 +390,13 @@ class AmsOperationSidebar {
     ObserverGuard print_state_observer_;
 
     // Action handlers
+    void handle_load();
     void handle_unload();
+
+    /// Open the head picker for @p op; its choice comes back to run_picked().
+    void open_head_picker(helix::ui::HeadPickOp op);
+    /// One chosen head runs the per-slot path; several run as one batch.
+    void run_picked(helix::ui::HeadPickOp op, const std::vector<helix::ui::HeadPickRow>& chosen);
 
     /// The busy/print refusal every filament-op entry shares. The buttons are
     /// bound to the gating subjects, but a tap can land in the window between
@@ -417,7 +416,6 @@ class AmsOperationSidebar {
 
     // Static XML callbacks
     static void on_settings_clicked_cb(lv_event_t* e);
-    static void on_batch_load_clicked_cb(lv_event_t* e);
 };
 
 } // namespace helix::ui

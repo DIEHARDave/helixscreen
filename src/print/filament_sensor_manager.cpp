@@ -641,6 +641,10 @@ bool FilamentSensorManager::has_any_runout() const {
 }
 
 bool FilamentSensorManager::has_real_runout() const {
+    return real_runout_lane().has_value();
+}
+
+std::optional<int> FilamentSensorManager::real_runout_lane() const {
     // Snapshot the sensors that report no filament, then release mutex_ before
     // asking AmsState anything. AmsState calls into this class from under its own
     // recursive lock, so taking its lock from inside ours closes an ABBA cycle
@@ -657,7 +661,7 @@ bool FilamentSensorManager::has_real_runout() const {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
 
         if (!master_enabled_) {
-            return false;
+            return std::nullopt;
         }
 
         for (const auto& sensor : sensors_) {
@@ -740,10 +744,10 @@ bool FilamentSensorManager::has_real_runout() const {
 
         spdlog::debug("[FilamentSensorManager] has_real_runout: TRUE - {} ({}) lost filament",
                       sensor.sensor_name, role_to_config_string(sensor.role));
-        return true;
+        return lane;
     }
 
-    return false;
+    return std::nullopt;
 }
 
 namespace {

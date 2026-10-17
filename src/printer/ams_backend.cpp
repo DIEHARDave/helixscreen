@@ -305,8 +305,7 @@ HeadFilamentOps AmsBackend::head_filament_ops(int /*head*/) const {
     return ops;
 }
 
-std::optional<int> AmsBackend::head_source_slot(int head) const {
-    const AmsSystemInfo info = get_system_info();
+std::optional<int> AmsBackend::head_source_slot(int head, const AmsSystemInfo& info) const {
     for (int slot = 0; slot < info.total_slots; ++slot) {
         const SlotInfo* lane = info.get_slot_global(slot);
         if (lane && lane->mapped_tool == head && head_for_slot(slot) == head) {

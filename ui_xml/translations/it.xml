@@ -1747,6 +1747,7 @@
   <translation tag="Load failed" it="Caricamento non riuscito"/>
   <translation tag="Load filament" it="Carica il filamento"/>
   <translation tag="Load filament first" it="Prima carica il filamento"/>
+  <translation tag="Load into which tool?" it="In quale strumento caricare?"/>
   <translation tag="Load or unload filament." it="Carica o scarica il filamento."/>
   <translation tag="Load the required filaments or start anyway?" it="Caricare i filamenti richiesti o avviare comunque?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." it="Carica, scarica e sostituisci le bobine. Visualizza a colpo d&apos;occhio il tuo sistema multi-filamento, abbina i colori agli slot e monitora i sensori di esaurimento."/>
@@ -1919,6 +1920,7 @@
   <translation tag="Motors disabled" it="Motori disabilitati"/>
   <translation tag="Motors stay on while a print is active" it="I motori restano attivi durante una stampa"/>
   <translation tag="Mount" it="Monta"/>
+  <translation tag="Mount which tool?" it="Quale strumento montare?"/>
   <translation tag="Move" it="Sposta"/>
   <translation tag="Move out of range" it="Movimento fuori intervallo"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." it="Muovere la carta avanti e indietro durante la regolazione. Fermarsi quando la carta si blocca leggermente ma ancora scorre."/>
@@ -3488,6 +3490,7 @@
   <translation tag="Unload macro not configured" it="Macro scaricamento non configurata"/>
   <translation tag="Unload the CFS filament before enabling bypass" it="Scarica il filamento del CFS prima di attivare il bypass"/>
   <translation tag="Unload this unit first" it="Scarica prima questa unità"/>
+  <translation tag="Unload which tool?" it="Quale strumento scaricare?"/>
   <translation tag="Unload..." it="Scarica..."/>
   <translation tag="Unloaded" it="Scaricato"/>
   <translation tag="Unloading" it="Scaricamento"/>

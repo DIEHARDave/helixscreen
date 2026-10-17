@@ -1878,6 +1878,7 @@ translations:
   Load failed: Load failed
   Load filament: Load filament
   Load filament first: Load filament first
+  Load into which tool?: Load into which tool?
   Load or unload filament.: Load or unload filament.
   Load Profile: Load Profile
   Load the required filaments or start anyway?: Load the required filaments or start
@@ -2059,6 +2060,7 @@ translations:
   Motors disabled: Motors disabled
   Motors stay on while a print is active: Motors stay on while a print is active
   Mount: Mount
+  Mount which tool?: Mount which tool?
   Move: Move
   Move out of range: Move out of range
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: Move
@@ -3788,6 +3790,7 @@ translations:
   Unload macro not configured: Unload macro not configured
   Unload the CFS filament before enabling bypass: Unload the CFS filament before enabling bypass
   Unload this unit first: Unload this unit first
+  Unload which tool?: Unload which tool?
   Unload...: Unload...
   Unloaded: Unloaded
   Unloading: Unloading

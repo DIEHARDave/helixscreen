@@ -1792,6 +1792,7 @@
   <translation tag="Load failed" ru="Ошибка загрузки"/>
   <translation tag="Load filament" ru="Загрузка филамента"/>
   <translation tag="Load filament first" ru="Сначала загрузите филамент"/>
+  <translation tag="Load into which tool?" ru="В какой инструмент загрузить?"/>
   <translation tag="Load or unload filament." ru="Загружайте или выгружайте филамент."/>
   <translation tag="Load the required filaments or start anyway?" ru="Загрузить нужные филаменты или начать без них?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." ru="Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте цвета со слотами и отслеживайте датчики окончания филамента."/>
@@ -1964,6 +1965,7 @@
   <translation tag="Motors disabled" ru="Моторы отключены"/>
   <translation tag="Motors stay on while a print is active" ru="Моторы остаются включены во время печати"/>
   <translation tag="Mount" ru="Установить"/>
+  <translation tag="Mount which tool?" ru="Какой инструмент установить?"/>
   <translation tag="Move" ru="Двигать"/>
   <translation tag="Move out of range" ru="Движение за пределами диапазона"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." ru="Перемещайте бумагу вперёд-назад во время регулировки. Остановитесь, когда бумага слегка цепляется, но ещё скользит."/>
@@ -3548,6 +3550,7 @@
   <translation tag="Unload macro not configured" ru="Макрос выгрузки не настроен"/>
   <translation tag="Unload the CFS filament before enabling bypass" ru="Выгрузите филамент CFS перед включением обхода"/>
   <translation tag="Unload this unit first" ru="Сначала выгрузите этот узел"/>
+  <translation tag="Unload which tool?" ru="Из какого инструмента выгрузить?"/>
   <translation tag="Unload..." ru="Выгрузить..."/>
   <translation tag="Unloaded" ru="Выгружен"/>
   <translation tag="Unloading" ru="Выгрузка"/>

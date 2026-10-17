@@ -721,8 +721,8 @@ TEST_CASE("The manual-unload notice is raised once per tap and sends nothing",
     tc.feed(json{{"zmod_color", {{"active_tool_id", 2}}}});
     const size_t sent_before = tc.sent().size();
 
-    CHECK(helix::ui::notify_if_unload_is_manual(&tc));
-    CHECK(helix::ui::notify_if_unload_is_manual(&tc));
+    CHECK(helix::ui::notify_if_filament_op_unavailable(&tc, -1, /*load=*/false));
+    CHECK(helix::ui::notify_if_filament_op_unavailable(&tc, -1, /*load=*/false));
 
     REQUIRE(toasts.seen.size() == 2);
     CHECK(toasts.seen[0] == toasts.seen[1]); // identical text, which the toast stack folds
@@ -734,8 +734,8 @@ TEST_CASE("A tool changer with an automatic unload gets no notice",
           "[toolchanger][zmod][manual_unload]") {
     InfoToasts toasts;
     ToolChangerHelper tc(4);
-    CHECK_FALSE(helix::ui::notify_if_unload_is_manual(&tc));
-    CHECK_FALSE(helix::ui::notify_if_unload_is_manual(nullptr));
+    CHECK_FALSE(helix::ui::notify_if_filament_op_unavailable(&tc, -1, /*load=*/false));
+    CHECK_FALSE(helix::ui::notify_if_filament_op_unavailable(nullptr, -1, /*load=*/false));
     CHECK(toasts.seen.empty());
 }
 

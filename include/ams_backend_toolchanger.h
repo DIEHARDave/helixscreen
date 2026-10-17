@@ -148,7 +148,8 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         }
         return slot;
     }
-    [[nodiscard]] std::optional<int> head_source_slot(int head) const override {
+    [[nodiscard]] std::optional<int> head_source_slot(int head,
+                                                      const AmsSystemInfo&) const override {
         return head_for_slot(head);
     }
     [[nodiscard]] std::optional<bool> head_has_filament(int head) const override {

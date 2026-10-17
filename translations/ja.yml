@@ -1817,6 +1817,7 @@ translations:
   Load failed: 装填に失敗しました
   Load filament: 'フィラメントをロード'
   Load filament first: 先にフィラメントを装填してください
+  Load into which tool?: 'どのツールにロードしますか？'
   Load or unload filament.: フィラメントを装填または排出します。
   Load Profile: 'プロファイルを読み込む'
   Load the required filaments or start anyway?: 必要なフィラメントを装填しますか？それともこのまま開始しますか？
@@ -1991,6 +1992,7 @@ translations:
   Motors disabled: モーターを無効化しました
   Motors stay on while a print is active: 印刷中はモーターを停止できません
   Mount: 装着
+  Mount which tool?: 'どのツールを装着しますか？'
   Move: 移動
   Move out of range: '移動範囲外です'
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: 調整中は紙を前後に動かしてください。紙がわずかに引っかかりながらも滑る状態で止めてください。
@@ -3654,6 +3656,7 @@ translations:
   Unload macro not configured: アンロードマクロが未設定です
   Unload the CFS filament before enabling bypass: 'バイパスを有効にする前に CFS のフィラメントを取り出してください'
   Unload this unit first: '先にこのユニットを排出してください'
+  Unload which tool?: 'どのツールをアンロードしますか？'
   Unload...: 排出...
   Unloaded: '排出済み'
   Unloading: アンロード中

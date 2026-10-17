@@ -64,6 +64,7 @@ void FilamentRunoutHandler::on_print_state_changed(::PrintState old_state, ::Pri
         new_state == ::PrintState::Complete || new_state == ::PrintState::Cancelled ||
         new_state == ::PrintState::Error) {
         runout_modal_shown_for_pause_ = false;
+        runout_lane_ = -1;
         user_took_manual_action_ = false;
         hide_runout_guidance_modal();
     }
@@ -98,7 +99,10 @@ void FilamentRunoutHandler::check_and_show_runout_guidance() {
     // unloaded for a multi-color print) doesn't pop guidance when the print is
     // paused for an unrelated reason. A loaded lane that lost filament still
     // counts.
-    if (sensor_mgr.has_real_runout()) {
+    if (const auto lane = sensor_mgr.real_runout_lane()) {
+        // The lane the runout came from names the head Load and Unload act on,
+        // even after the user's new spool clears the sensor.
+        runout_lane_ = *lane;
         // A runout during pause always asks the user; nothing recovers on its
         // own. A lane sensor reporting filament does not prove it reached the
         // extruder gear (the Snapmaker assist motor stops a few inches short
@@ -316,9 +320,8 @@ void FilamentRunoutHandler::dispatch_load() {
     // needs it. It dispatches in place: navigating would tear this dialog out
     // from under the user mid-runout.
     AmsBackend* backend = AmsState::instance().get_backend();
-    // The runout is on whatever lane is currently feeding, so that lane is the
-    // target — there is no slot picker under a runout dialog.
-    const int slot = backend ? backend->get_current_slot() : -1;
+    // The runout names its head; there is no slot picker under a runout dialog.
+    const int slot = helix::ui::runout_target_slot(backend, runout_lane_, /*load=*/true);
     helix::ui::execute_filament_load(backend, slot, "[FilamentRunoutHandler]");
 }
 
@@ -331,9 +334,8 @@ void FilamentRunoutHandler::dispatch_unload() {
 
     AmsBackend* backend = AmsState::instance().get_backend();
 
-    // The runout is on whatever lane is currently feeding, so that lane is the
-    // target — there is no slot picker under a runout dialog.
-    const int slot = backend ? backend->get_current_slot() : -1;
+    // The runout names its head; there is no slot picker under a runout dialog.
+    const int slot = helix::ui::runout_target_slot(backend, runout_lane_, /*load=*/false);
 
     // unload_target_is_loaded()'s is_current_slot arm is the whole reason this
     // button works at all here: a runout clears the lane's own sensor while

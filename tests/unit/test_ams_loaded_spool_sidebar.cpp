@@ -234,9 +234,12 @@ void check_action_labels(XMLTestFixture& fx, std::initializer_list<const char*> 
             int checked = 0;
             const std::string reset_key = AmsState::instance().get_backend()->reset_button_label();
             const std::pair<const char*, std::string> buttons[] = {
-                {"btn_unload", "Unload"},           {"btn_batch_unload", "Unload..."},
-                {"btn_batch_load", "Load..."},      {"btn_reset", reset_key},
-                {"btn_check_gates", "Check Slots"}, {"btn_settings", "Settings"},
+                {"btn_unload", "Unload"},
+                {"btn_batch_unload", "Unload..."},
+                {"btn_load", "Load..."},
+                {"btn_reset", reset_key},
+                {"btn_check_gates", "Check Slots"},
+                {"btn_settings", "Settings"},
             };
             for (const auto& [name, key] : buttons) {
                 CAPTURE(name);

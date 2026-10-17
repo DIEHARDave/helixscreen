@@ -287,7 +287,8 @@ class AmsBackendMock : public AmsBackend {
     /// all of them, as AmsBackendSnapmaker does.
     [[nodiscard]] int filament_head_count() const override;
     [[nodiscard]] std::optional<int> head_for_slot(int slot) const override;
-    [[nodiscard]] std::optional<int> head_source_slot(int head) const override;
+    [[nodiscard]] std::optional<int> head_source_slot(int head,
+                                                      const AmsSystemInfo& info) const override;
     [[nodiscard]] std::optional<bool> head_has_filament(int head) const override;
     [[nodiscard]] int max_heads_per_filament_op() const override;
 

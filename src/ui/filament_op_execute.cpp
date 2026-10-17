@@ -80,13 +80,19 @@ BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out, int 
     return caps;
 }
 
-FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& state) {
+FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& state,
+                                         const AmsSystemInfo* snapshot) {
     FilamentHeadView view;
     if (!backend) {
         return view;
     }
     view.backend_present = true;
-    const AmsSystemInfo sys = backend->get_system_info();
+    AmsSystemInfo read;
+    if (!snapshot) {
+        read = backend->get_system_info();
+        snapshot = &read;
+    }
+    const AmsSystemInfo& sys = *snapshot;
     view.max_heads_per_op = backend->max_heads_per_filament_op();
     view.heads_dock = backend->carriage_can_be_empty();
     view.supports_park = backend->supports_tool_park();
@@ -106,7 +112,7 @@ FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& stat
     for (int head = 0; head < count; ++head) {
         HeadState hs;
         hs.ops = backend->head_filament_ops(head);
-        hs.source_slot = backend->head_source_slot(head);
+        hs.source_slot = backend->head_source_slot(head, sys);
         if (hs.source_slot) {
             hs.source_present = slot_presence(backend->get_slot_info(*hs.source_slot));
             if (can_tell_fed) {
@@ -123,6 +129,23 @@ FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& stat
         view.heads.push_back(std::move(hs));
     }
     return view;
+}
+
+int runout_target_slot(AmsBackend* backend, std::optional<int> runout_lane, bool load) {
+    if (!backend) {
+        return -1;
+    }
+    const int lane = runout_lane.value_or(-1);
+    if (lane < 0) {
+        return backend->get_current_slot();
+    }
+    if (!load) {
+        return lane;
+    }
+    if (const auto head = backend->head_for_slot(lane)) {
+        return backend->head_source_slot(*head, backend->get_system_info()).value_or(lane);
+    }
+    return lane;
 }
 
 FilamentOpPlan plan_live_load(const AmsSystemInfo& info, const BackendCaps& caps, int target_slot) {
@@ -624,6 +647,10 @@ void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surfa
 } // namespace
 
 void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurface& surface) {
+    // Where this head's load is the user's job, saying so is the whole op.
+    if (helix::ui::notify_if_filament_op_unavailable(backend, slot, /*load=*/true)) {
+        return;
+    }
     AmsSystemInfo sys;
     const BackendCaps caps = read_backend_caps(backend, sys, slot);
     const FilamentOpPlan plan = plan_live_load(sys, caps, slot);
@@ -786,7 +813,7 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
                              const FilamentOpSurface& surface) {
     // Every caller here means "take the filament out". Where that is manual,
     // saying so is the whole operation: no plan, no heat, nothing sent.
-    if (helix::ui::notify_if_unload_is_manual(backend)) {
+    if (helix::ui::notify_if_filament_op_unavailable(backend, slot, /*load=*/false)) {
         return;
     }
     const FilamentOpPlan plan = plan_unload_on(backend, slot, target_is_loaded);

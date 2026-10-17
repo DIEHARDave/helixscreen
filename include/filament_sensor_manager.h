@@ -355,6 +355,14 @@ class FilamentSensorManager {
     [[nodiscard]] bool has_real_runout() const;
 
     /**
+     * @brief The lane of the runout has_real_runout() finds, or nullopt for none.
+     *
+     * -1 when the runout is real but its sensor maps to no lane (a plain
+     * toolhead or extruder sensor).
+     */
+    [[nodiscard]] std::optional<int> real_runout_lane() const;
+
+    /**
      * @brief Find required tools whose mapped AMS lane is genuinely empty.
      *
      * Scoped, lane-truth pre-print/in-print emptiness check. For each tool in

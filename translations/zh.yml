@@ -1811,6 +1811,7 @@ translations:
   Load failed: 装载失败
   Load filament: '装载耗材'
   Load filament first: 请先装载耗材
+  Load into which tool?: '装入哪个工具？'
   Load or unload filament.: 装载或卸载耗材。
   Load Profile: '加载配置'
   Load the required filaments or start anyway?: 加载所需耗材还是直接开始？
@@ -1985,6 +1986,7 @@ translations:
   Motors disabled: 电机已禁用
   Motors stay on while a print is active: 打印期间电机保持开启
   Mount: 装上
+  Mount which tool?: '装上哪个工具？'
   Move: 移动
   Move out of range: '移动超出范围'
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: 调整时前后移动纸张。当纸张有轻微阻力但仍能滑动时停止。
@@ -3645,6 +3647,7 @@ translations:
   Unload macro not configured: 卸载宏未配置
   Unload the CFS filament before enabling bypass: '启用旁通前请先卸载 CFS 耗材'
   Unload this unit first: '请先卸载此单元'
+  Unload which tool?: '卸载哪个工具？'
   Unload...: 卸载...
   Unloaded: '已卸载'
   Unloading: 卸载中

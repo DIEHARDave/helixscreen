@@ -1747,6 +1747,7 @@
   <translation tag="Load failed" zh="装载失败"/>
   <translation tag="Load filament" zh="装载耗材"/>
   <translation tag="Load filament first" zh="请先装载耗材"/>
+  <translation tag="Load into which tool?" zh="装入哪个工具？"/>
   <translation tag="Load or unload filament." zh="装载或卸载耗材。"/>
   <translation tag="Load the required filaments or start anyway?" zh="加载所需耗材还是直接开始？"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." zh="加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将颜色映射到槽位，并监控耗材用尽传感器。"/>
@@ -1919,6 +1920,7 @@
   <translation tag="Motors disabled" zh="电机已禁用"/>
   <translation tag="Motors stay on while a print is active" zh="打印期间电机保持开启"/>
   <translation tag="Mount" zh="装上"/>
+  <translation tag="Mount which tool?" zh="装上哪个工具？"/>
   <translation tag="Move" zh="移动"/>
   <translation tag="Move out of range" zh="移动超出范围"/>
   <translation tag="Move paper back and forth while adjusting. Stop when paper catches slightly but still slides." zh="调整时前后移动纸张。当纸张有轻微阻力但仍能滑动时停止。"/>
@@ -3488,6 +3490,7 @@
   <translation tag="Unload macro not configured" zh="卸载宏未配置"/>
   <translation tag="Unload the CFS filament before enabling bypass" zh="启用旁通前请先卸载 CFS 耗材"/>
   <translation tag="Unload this unit first" zh="请先卸载此单元"/>
+  <translation tag="Unload which tool?" zh="卸载哪个工具？"/>
   <translation tag="Unload..." zh="卸载..."/>
   <translation tag="Unloaded" zh="已卸载"/>
   <translation tag="Unloading" zh="卸载中"/>

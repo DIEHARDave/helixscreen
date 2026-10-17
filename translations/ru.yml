@@ -1979,6 +1979,7 @@ translations:
   Load failed: Ошибка загрузки
   Load filament: 'Загрузка филамента'
   Load filament first: Сначала загрузите филамент
+  Load into which tool?: 'В какой инструмент загрузить?'
   Load or unload filament.: Загружайте или выгружайте филамент.
   Load Profile: 'Загрузить профиль'
   Load the required filaments or start anyway?: Загрузить нужные филаменты или начать
@@ -2159,6 +2160,7 @@ translations:
   Motors disabled: Моторы отключены
   Motors stay on while a print is active: Моторы остаются включены во время печати
   Mount: Установить
+  Mount which tool?: 'Какой инструмент установить?'
   Move: Двигать
   Move out of range: 'Движение за пределами диапазона'
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: Перемещайте
@@ -3939,6 +3941,7 @@ translations:
   Unload macro not configured: Макрос выгрузки не настроен
   Unload the CFS filament before enabling bypass: 'Выгрузите филамент CFS перед включением обхода'
   Unload this unit first: 'Сначала выгрузите этот узел'
+  Unload which tool?: 'Из какого инструмента выгрузить?'
   Unload...: Выгрузить...
   Unloaded: 'Выгружен'
   Unloading: Выгрузка

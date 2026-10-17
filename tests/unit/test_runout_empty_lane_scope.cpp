@@ -244,6 +244,24 @@ TEST_CASE("has_real_runout: mixed heads 0,2 loaded + head 1 empty", "[runout][sc
     CHECK(fsm.has_real_runout());
 }
 
+TEST_CASE("real_runout_lane: the runout names the lane it came from", "[runout][scope]") {
+    HelixTestFixture fx;
+    ScopedSnapmakerBackend backend;
+    auto& fsm = FilamentSensorManager::instance();
+    setup_four_lane_sensors(fsm);
+    backend.set_lane_presence({true, true, true, false});
+
+    CHECK_FALSE(fsm.real_runout_lane().has_value());
+    fsm.update_from_status(make_sensor_status(2, false));
+    drain();
+    REQUIRE(fsm.real_runout_lane().has_value());
+    CHECK(*fsm.real_runout_lane() == 2);
+    // The empty lane's idle sensor never names itself.
+    fsm.update_from_status(make_sensor_status(3, false));
+    drain();
+    CHECK(*fsm.real_runout_lane() == 2);
+}
+
 namespace {
 
 // The Snapmaker U1 mid-print: heads 0-2 fed through to their toolheads

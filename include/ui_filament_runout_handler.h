@@ -143,6 +143,10 @@ class FilamentRunoutHandler {
     /// Reset when print resumes or ends, prevents repeated modal popups
     bool runout_modal_shown_for_pause_{false};
 
+    /// The lane the shown runout came from (FilamentSensorManager::real_runout_lane()),
+    /// -1 when it named none. Load and Unload act on its head.
+    int runout_lane_{-1};
+
     /// Set when the user triggers Load/Unload/Purge from within the modal. While
     /// true, the sensor-driven auto-close is suppressed so a user-initiated load
     /// (which itself makes the sensor read present) keeps the dialog open for a

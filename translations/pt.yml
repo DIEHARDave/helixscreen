@@ -1939,6 +1939,7 @@ translations:
   Load failed: Falha ao carregar
   Load filament: 'Carregar filamento'
   Load filament first: Carregue filamento primeiro
+  Load into which tool?: 'Carregar em qual ferramenta?'
   Load or unload filament.: Carregue ou descarregue o filamento.
   Load Profile: 'Carregar perfil'
   Load the required filaments or start anyway?: Carregar os filamentos necessários
@@ -2120,6 +2121,7 @@ translations:
   Motors disabled: Motores desativados
   Motors stay on while a print is active: Os motores permanecem ativos durante uma impressão
   Mount: Montar
+  Mount which tool?: 'Montar qual ferramenta?'
   Move: Mover
   Move out of range: 'Movimento fora do alcance'
   Move paper back and forth while adjusting. Stop when paper catches slightly but still slides.: Mova
@@ -3902,6 +3904,7 @@ translations:
   Unload macro not configured: Macro de descarga não configurado
   Unload the CFS filament before enabling bypass: 'Descarregue o filamento do CFS antes de ativar o bypass'
   Unload this unit first: 'Descarregue primeiro esta unidade'
+  Unload which tool?: 'Descarregar qual ferramenta?'
   Unload...: Descarregar...
   Unloaded: 'Descarregado'
   Unloading: Descarregando

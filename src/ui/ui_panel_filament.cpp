@@ -1560,7 +1560,8 @@ void FilamentPanel::handle_unload_button(std::optional<int> chosen_lane) {
 
     // Before any preheat: a machine with no automatic unload must not warm up
     // for an operation that will not happen.
-    if (helix::ui::notify_if_unload_is_manual(AmsState::instance().get_backend())) {
+    if (helix::ui::notify_if_filament_op_unavailable(AmsState::instance().get_backend(),
+                                                     selected_op_slot(), /*load=*/false)) {
         return;
     }
 
