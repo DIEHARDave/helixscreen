@@ -302,9 +302,8 @@ HelixPluginInstaller::SyncInstallResult HelixPluginInstaller::install_local_sync
     spdlog::info("[PluginInstaller] Starting local installation: {} --no-restart --auto",
                  script_path);
 
-    constexpr int INSTALL_TIMEOUT_SECONDS = 60;
     WaitResult result =
-        run_install_script(script_path, "--auto", INSTALL_TIMEOUT_SECONDS, "Installation");
+        run_install_script(script_path, "--auto", script_timeout_seconds_, "Installation");
 
     if (result.spawn_failed) {
         state_.store(PluginInstallState::FAILED);
@@ -362,9 +361,8 @@ void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
         "[PluginInstaller] Starting local uninstallation: {} --no-restart --uninstall-auto",
         script_path);
 
-    constexpr int UNINSTALL_TIMEOUT_SECONDS = 60;
-    WaitResult result = run_install_script(script_path, "--uninstall-auto",
-                                           UNINSTALL_TIMEOUT_SECONDS, "Uninstallation");
+    WaitResult result = run_install_script(script_path, "--uninstall-auto", script_timeout_seconds_,
+                                           "Uninstallation");
 
     if (result.spawn_failed) {
         state_.store(PluginInstallState::FAILED);
@@ -424,38 +422,40 @@ std::string HelixPluginInstaller::get_remote_install_command() const {
 }
 
 std::string HelixPluginInstaller::get_install_script_path() const {
-    // Try to find install.sh relative to the executable
-
-    // Get executable path
+    std::vector<std::string> search_paths;
     std::string exe_dir;
 
+    if (!script_search_root_.empty()) {
+        exe_dir = script_search_root_;
+        search_paths = {script_search_root_ + "/moonraker-plugin/install.sh"};
+    } else {
 #ifdef __APPLE__
-    char path[1024];
-    uint32_t size = sizeof(path);
-    if (_NSGetExecutablePath(path, &size) == 0) {
-        exe_dir = std::string(hfs::parent_path(path));
-    }
+        char path[1024];
+        uint32_t size = sizeof(path);
+        if (_NSGetExecutablePath(path, &size) == 0) {
+            exe_dir = std::string(hfs::parent_path(path));
+        }
 #else
-    // Linux: read /proc/self/exe
-    char path[1024];
-    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    if (len != -1) {
-        path[len] = '\0';
-        exe_dir = std::string(hfs::parent_path(path));
-    }
+        // Linux: read /proc/self/exe
+        char path[1024];
+        ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+        if (len != -1) {
+            path[len] = '\0';
+            exe_dir = std::string(hfs::parent_path(path));
+        }
 #endif
 
-    if (exe_dir.empty()) {
-        return "";
-    }
+        if (exe_dir.empty()) {
+            return "";
+        }
 
-    // Try common locations relative to executable
-    std::vector<std::string> search_paths = {
-        exe_dir + "/moonraker-plugin/install.sh",    // Deployed alongside binary
-        exe_dir + "/../moonraker-plugin/install.sh", // Development build
-        exe_dir + "/../../moonraker-plugin/install.sh",
-        exe_dir + "/../share/helix/moonraker-plugin/install.sh", // Installed
-        "/usr/share/helix/moonraker-plugin/install.sh"};
+        // Try common locations relative to executable
+        search_paths = {exe_dir + "/moonraker-plugin/install.sh",    // Deployed alongside binary
+                        exe_dir + "/../moonraker-plugin/install.sh", // Development build
+                        exe_dir + "/../../moonraker-plugin/install.sh",
+                        exe_dir + "/../share/helix/moonraker-plugin/install.sh", // Installed
+                        "/usr/share/helix/moonraker-plugin/install.sh"};
+    }
 
     for (const auto& candidate : search_paths) {
         if (!hfs::exists(candidate)) {
