@@ -32,6 +32,11 @@ struct PrintSelectPanelTestAccess {
         return panel.file_list_.size();
     }
 
+    /// Replace the listed files outright, as a finished listing would.
+    static void set_files(PrintSelectPanel& panel, std::vector<PrintFileData> files) {
+        panel.file_list_ = std::move(files);
+    }
+
     /// The listed file named @p filename, or null.
     static const PrintFileData* find_file(const PrintSelectPanel& panel,
                                           const std::string& filename) {

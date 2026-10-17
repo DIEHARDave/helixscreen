@@ -21,7 +21,7 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the too-heavy fallback and the last-resort black screen |
 | `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h`, `include/screensaver_flip_clock.h`, `include/screensaver_fireflies.h`, `include/screensaver_aqua.h`, `include/screensaver_highfly.h` | The savers |
 | `include/screensaver_pipes_sim.h` | 3D Pipes: the node grid and growth rules, one screen of pipes, the meshes, the z-buffered rasterizer and the dissolve. No LVGL |
-| `include/screensaver_maze_sim.h`, `include/screensaver_maze.h` | The 3D maze: maze generation, the wall-following walk, and the raycaster that draws it. No LVGL in the sim |
+| `include/screensaver_maze_sim.h`, `include/screensaver_maze.h` | The 3D maze: maze generation and opening up, the wall-following walk, the raycaster and its fog (the sim, no LVGL), and picking wall art from the thumbnail cache (the saver) |
 | `include/screensaver_fireflies_sim.h` | Fireflies: the swarms, their modes and wind, and the additive drawing (`FirefliesSim`). No LVGL |
 | `include/screensaver_flip_clock_sim.h` | Flip clock: the cards a reading shows (`flip_face`, `FlipClockState`), the card layout, and the drawing (`FlipClockSim`). No LVGL |
 | `include/screensaver_clock_reading.h` | What every clock saver reads: `ClockState` (the countdown, pause and done-hold machine), `ClockReading`, `clock_time`, `clock_drift_at`. No LVGL |
@@ -50,7 +50,7 @@ then runs at 33 ms; pipes per `PIPES_LEVELS`: 16 ms, 33 ms, then 100 ms at half 
 scale changes at the next screen); toasters at 33 ms with every sprite, then 33 ms with ten; the
 bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps the sprite and drops the tint and corner celebration) at 33 ms, then 33 ms with the corner flash but no confetti; fireworks per
 `FIREWORKS_LEVELS`; the 3D maze per `MAZE_LEVELS`: full resolution at 16 ms, then half resolution at
-33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms; hyperspace per `HYPERSPACE_LEVELS`, which keeps 33 ms past level 0
+33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms and at 66 ms; hyperspace per `HYPERSPACE_LEVELS`, which keeps 33 ms past level 0
 and then draws its tunnel and goo in 2x2 blocks, drops the goo, draws the tunnel in 4x4 blocks, and
 last drops the tunnel and flies 96 of its 160 stars; the flip clock per `FLIP_CLOCK_LEVELS`: the folding
 flip at 33 ms, then an instant digit swap checked every 250 ms; fireflies per `FIREFLIES_LEVELS`:
@@ -67,26 +67,71 @@ main-loop floor, which every device run sets explicitly (`scripts/screensaver-pe
 ## The 3D maze
 
 A port of the Windows 95 OpenGL "3D Maze", drawn Wolfenstein-style: one ray per column through
-a tile grid, no polygons. Each run is a 12 x 12 perfect maze (no loops) from a recursive
-backtracker. The walk starts in a dead end facing out past the start sign, and the exit, a
-translucent smiley, is the cell furthest from the start, which in a tree is always a dead end.
+a tile grid, no polygons. A maze of 12 x 12 cells is a 25 x 25 tile map whose odd tiles are the
+cells; corridors are a tile wide and walls a tile tall, with the eye at mid-height.
 
+- **The view** sees 90 degrees vertically, as the original did, and at most 120 degrees across:
+  `maze_focal()` takes the larger of `h / 2` and `w / 2 / tan 60`, so 800x480 sees 90 x 118
+  degrees and a frame wider than 120 degrees narrows its vertical view instead. Walls, floor
+  rows and sprites share that one focal length and camera plane (`MazeRenderer::set_level`).
+  `MAZE_HFOV_MAX_HALF_TAN` is the knob if the edges bend too far.
+- **The maze** starts as a perfect maze from a recursive backtracker. The walk starts in one of
+  its dead ends facing out past the start sign, and the exit, a translucent smiley, is the cell
+  furthest from the start in that tree. `MazeMap::open_up` then opens it: a wall out of half the
+  other dead ends (toward a neighbouring dead end where there is one), six more walls at random,
+  and 2 or 3 rooms of 2x2, 2x3 or 3x2 cells with every tile inside open, pillars included. Start
+  and exit keep their walls, and any opening that would cut one of their walls off from the
+  outer ring is undone, so both stay dead ends on the wall a hand can follow to them.
+- **Boundary walls**: `MazeMap::boundary_wall` marks the walls joined to the outer ring
+  (4-connected, a flood fill run whenever the tiles change). A wall that is not is an island,
+  which a hand on the wall would circle for ever.
 - **The walk** (`MazeWalker`) keeps a hand on the wall and never stops in a cell: doorway to
   doorway at a constant speed, straight through or round a quarter arc about the inner corner,
-  so the wall ahead stays at least about three quarters of a tile away. Only a dead end walks in
-  to the middle, spins round and walks out, the one place the view faces a wall. It eases to a
-  stop in the exit's doorway and holds there with the smiley a tile ahead, then a new maze
-  starts. A walk past `MazeSim::step_bound()` cells starts a new maze instead of walking on.
+  so the wall ahead stays at least about three quarters of a tile away. Only a dead end (or a
+  turn back) walks in to the middle, spins round and walks out, the one place the view faces a
+  wall. While a stop cell is set it remembers each (cell, heading) it entered since its hand
+  last changed; entering one again means it is circling an island, so it walks the shortest
+  way (a breadth-first search over those states) to a cell whose hand-side wall is a boundary
+  wall, and follows that. It eases to a stop in the exit's doorway and holds there with the
+  smiley a tile ahead, then a new maze starts. `MazeSim::step_bound()` allows each hand (the
+  first and one per rock) an island lap, a way off and a boundary lap; a walk past it starts a
+  new maze instead (`abandoned()` counts those, and the tests require none).
 - **Items**: spinning Helix icons where the original had OpenGL logos, a start sign carrying the
   icon, gray icosahedron rocks that flip the view upside down (a squash through zero) and swap
-  the walk to the other hand, a toolhead that wanders on its own walk, and the active printer's
-  image hung on a few walls, plain brick when there is none.
+  the walk to the other hand, and a toolhead that wanders on its own walk, which has no stop
+  cell and so never tracks circling.
+- **Fog**: every surface darkens with distance toward a dark tint, keeping
+  `k / 32` of its colour with `k = round(32 * (0.1 + 0.9 * exp(-(d - 0.5) / 5)))`
+  (`maze_fog_k`, `maze_fog`): a third darker 3 tiles off, about 60% darker at 6. The renderer reads `k` from a 128-slot table, four slots a tile, and
+  blends in the format's own lanes (RGB565 spread as `0x07E0F81F`), so nothing divides per
+  pixel. A wall slice taller than the texture shades its 64 texels once and copies them; a
+  shorter one shades per pixel. The textured floor and ceiling read 16 pre-fogged copies of
+  their textures, one per row's band, built when a textured level is applied and freed at a
+  flat one; flat levels bake the fog into each row's colour. Sprites take the fog of their
+  depth. East-west faces keep 21/32 of that on top, as Wolfenstein drew them.
+- **Wall art**: 16 picture walls per maze, each with its own index, show up to 12 pictures
+  (index modulo the count; brick when there are none). `MazeScreensaver::on_start` gathers them
+  from three pools and interleaves them: cached thumbnails of recent prints (print history, 5),
+  of other files in the print-select list (6, shuffled; none before print select has been
+  opened), and the printer picture. It only reads the local cache through
+  `ThumbnailCache::peek` (the pre-scaled card `.bin`, then the full PNG), never
+  `get_if_cached` (which deletes a stale entry and ages it) or `fetch`, so a saver start causes
+  no network traffic. Cache ids carry the connected printer, so after a printer switch the
+  previous printer's thumbnails never match. Any picture over 512 px a side is skipped, the
+  printer picture included (its prerendered variants are 150 or 300 px); each decode is reduced
+  to 64 px (`reduce_maze_image`) before the next starts, and no decode starts after 120 ms, so
+  start-up is bounded by 120 ms plus one decode of at most 512 x 512. The pool-picking logic
+  is pure (`history_art_candidates`, `cached_art_paths`, `mix_maze_art`) and tested without the
+  app.
 - **Cost**: it repaints every pixel every frame, so it is the costliest saver per frame and the
   one the gate is likeliest to mark too heavy on a small board. `MAZE_LEVELS` pulls the
-  internal resolution (each pixel replicated `scale x scale`) and swaps textured floor and
-  ceiling for flat gradients. It renders into its own column-major frame, then copies that into
-  the canvas row by row. Frame, textures and sprites are packed at the display's own pixel width
-  (2 bytes on RGB565), so the inner loops copy pixels and never convert colour.
+  internal resolution (each pixel replicated `scale x scale`), swaps textured floor and ceiling
+  for flat fogged rows, and slows to 66 ms at the bottom. The wide view puts more of each frame
+  on the dearer floor and ceiling, which the 66 ms rung pays for. It renders into its own
+  column-major frame, then copies that into the canvas row by row. Frame, textures and sprites
+  are packed at the display's own pixel width (2 bytes on RGB565), so the inner loops copy
+  pixels and never convert colour. Resident art is `(3 + pictures) x 64 x 64` texture pixels
+  plus the fog bands (`2 x 16 x 64 x 64` pixels) on textured levels.
 
 Motion is a function of elapsed time (`include/screensaver_motion.h`), so a level that changes
 the frame period changes nothing on screen but the frame rate, and at the toasters' lowest rung
