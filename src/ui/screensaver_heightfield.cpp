@@ -22,13 +22,6 @@ template <typename T> void resize_to(std::vector<T>& v, size_t n) {
     }
 }
 
-/// `c` scaled by `cov` / 255, rounded.
-Rgb premultiply(Rgb c, uint32_t cov) {
-    return {static_cast<uint8_t>((c.r * cov + 127u) / 255u),
-            static_cast<uint8_t>((c.g * cov + 127u) / 255u),
-            static_cast<uint8_t>((c.b * cov + 127u) / 255u)};
-}
-
 } // namespace
 
 float HeightfieldFog::at(float z) const {
@@ -84,10 +77,8 @@ float bilinear_sample(const float* grid, int32_t w, int32_t h, float u, float v,
         const float v0 = std::floor(v);
         fu = u - u0;
         fv = v - v0;
-        i0 = static_cast<int32_t>(u0) % w;
-        j0 = static_cast<int32_t>(v0) % h;
-        i0 += i0 < 0 ? w : 0;
-        j0 += j0 < 0 ? h : 0;
+        i0 = screensaver::wrap_index(static_cast<int32_t>(u0), w);
+        j0 = screensaver::wrap_index(static_cast<int32_t>(v0), h);
         i1 = i0 + 1 == w ? 0 : i0 + 1;
         j1 = j0 + 1 == h ? 0 : j0 + 1;
     } else {
@@ -197,8 +188,7 @@ void HeightfieldRenderer::render(HeightfieldScene& scene) {
                 if (grad) {
                     const float g =
                         std::clamp((static_cast<float>(r) - row) * inv_span, 0.0f, 1.0f);
-                    pix = {to_u8(c.r + (last.r - c.r) * g), to_u8(c.g + (last.g - c.g) * g),
-                           to_u8(c.b + (last.b - c.b) * g)};
+                    pix = mix_rgb(c, last, g);
                 }
                 if (!soft) {
                     col[r] = pix;
@@ -255,11 +245,11 @@ void HeightfieldRenderer::feather_silhouette() {
         }
         const auto r0 = static_cast<int32_t>(std::floor(sil));
         const float frac = static_cast<float>(r0 + 1) - sil;
-        const auto cov = static_cast<uint32_t>(frac * 255.0f + 0.5f);
+        const uint32_t cov = unit_to_u8(frac);
         const size_t i = static_cast<size_t>(x) * H + r0;
         if (cov > cover_[i]) {
             cover_[i] = static_cast<uint8_t>(cov);
-            color_[i] = premultiply(silhouette_color_[x], cov);
+            color_[i] = blend_cov({}, silhouette_color_[x], cov);
         }
     }
     // [1 2 1] / 4 across columns over the three rows around each silhouette, read from the
@@ -350,66 +340,30 @@ void HeightfieldRenderer::resolve(const Rgb* background, Rgb flat, int32_t y_fro
                 continue;
             }
             const Rgb bg = background != nullptr ? background[o] : flat;
-            const uint32_t rest = 255u - a;
-            frame[o] = {static_cast<uint8_t>(std::min(255u, c.r + (bg.r * rest + 127u) / 255u)),
-                        static_cast<uint8_t>(std::min(255u, c.g + (bg.g * rest + 127u) / 255u)),
-                        static_cast<uint8_t>(std::min(255u, c.b + (bg.b * rest + 127u) / 255u))};
+            // Premultiplied over: the colour plus what of the background its coverage leaves.
+            const Rgb under = blend_cov({}, bg, 255u - a);
+            frame[o] = {static_cast<uint8_t>(std::min(255, c.r + under.r)),
+                        static_cast<uint8_t>(std::min(255, c.g + under.g)),
+                        static_cast<uint8_t>(std::min(255, c.b + under.b))};
         }
     }
 }
 
 size_t HeightfieldRenderer::heap_bytes() const {
-    return buffer_bytes(slices_) + buffer_bytes(color_) + buffer_bytes(cover_) +
-           buffer_bytes(depth_) + buffer_bytes(top_) + buffer_bytes(silhouette_) +
-           buffer_bytes(silhouette_color_) + buffer_bytes(front_top_) + buffer_bytes(front_color_) +
-           buffer_bytes(last_color_) + buffer_bytes(last_drew_) + buffer_bytes(heights_) +
-           buffer_bytes(colors_) + buffer_bytes(edge_color_) + buffer_bytes(edge_cover_);
+    return buffer_bytes(slices_, color_, cover_, depth_, top_, silhouette_, silhouette_color_,
+                        front_top_, front_color_, last_color_, last_drew_, heights_, colors_,
+                        edge_color_, edge_cover_);
 }
 
 void HeightfieldRenderer::clear() {
-    release_buffer(slices_);
-    release_buffer(color_);
-    release_buffer(cover_);
-    release_buffer(depth_);
-    release_buffer(top_);
-    release_buffer(silhouette_);
-    release_buffer(silhouette_color_);
-    release_buffer(front_top_);
-    release_buffer(front_color_);
-    release_buffer(last_color_);
-    release_buffer(last_drew_);
-    release_buffer(heights_);
-    release_buffer(colors_);
-    release_buffer(edge_color_);
-    release_buffer(edge_cover_);
+    release_buffers(slices_, color_, cover_, depth_, top_, silhouette_, silhouette_color_,
+                    front_top_, front_color_, last_color_, last_drew_, heights_, colors_,
+                    edge_color_, edge_cover_);
     samples_ = 0;
     span_pixels_ = 0;
 }
 
 // ---------- upscale ----------
-
-namespace {
-
-/// Writes one pixel, dithered at 16 bpp.
-inline void write_pixel(uint8_t* row, int32_t x, int32_t y, PixelFormat format, uint32_t r,
-                        uint32_t g, uint32_t b) {
-    if (format == PixelFormat::RGB565) {
-        const uint8_t t = BAYER_4X4[y & 3][x & 3];
-        const auto v = static_cast<uint16_t>(dither_channel(static_cast<uint8_t>(r), 31, t) << 11 |
-                                             dither_channel(static_cast<uint8_t>(g), 63, t) << 5 |
-                                             dither_channel(static_cast<uint8_t>(b), 31, t));
-        row[x * 2] = static_cast<uint8_t>(v & 0xFF);
-        row[x * 2 + 1] = static_cast<uint8_t>(v >> 8);
-        return;
-    }
-    uint8_t* p = row + static_cast<size_t>(x) * 4;
-    p[0] = static_cast<uint8_t>(b);
-    p[1] = static_cast<uint8_t>(g);
-    p[2] = static_cast<uint8_t>(r);
-    p[3] = 0xFF;
-}
-
-} // namespace
 
 DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int32_t scale,
                         int32_t y_from, int32_t y_to, FrameTarget& out, int32_t x_from,
@@ -429,14 +383,18 @@ DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int
         return {};
     }
 
+    // A column sum (3/4 own row, 1/4 neighbour, x4) leaning 1/4 toward the neighbour column.
+    const auto quarter_lean = [](uint32_t own, uint32_t side) {
+        return static_cast<uint8_t>((3u * own + side + 8u) / 16u);
+    };
+    PixelWriter writer(out);
     for (int32_t oy = oy0; oy < oy1; oy++) {
-        uint8_t* row = out.data + static_cast<size_t>(oy) * out.stride;
         const int32_t sy = oy / scale;
         const Rgb* a = &frame[static_cast<size_t>(sy) * w];
         if (scale != 2) {
             for (int32_t ox = ox0; ox < cols; ox++) {
                 const Rgb c = a[ox / scale];
-                write_pixel(row, ox, oy, out.format, c.r, c.g, c.b);
+                writer.put_dithered(ox, oy, c);
             }
             continue;
         }
@@ -464,12 +422,12 @@ DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int
             }
             const int32_t ox = sx * 2;
             if (ox < cols) {
-                write_pixel(row, ox, oy, out.format, (3u * cr + pr + 8u) / 16u,
-                            (3u * cg + pg + 8u) / 16u, (3u * cb + pb + 8u) / 16u);
+                writer.put_dithered(
+                    ox, oy, {quarter_lean(cr, pr), quarter_lean(cg, pg), quarter_lean(cb, pb)});
             }
             if (ox + 1 < cols) {
-                write_pixel(row, ox + 1, oy, out.format, (3u * cr + nr + 8u) / 16u,
-                            (3u * cg + ng + 8u) / 16u, (3u * cb + nb + 8u) / 16u);
+                writer.put_dithered(
+                    ox + 1, oy, {quarter_lean(cr, nr), quarter_lean(cg, ng), quarter_lean(cb, nb)});
             }
             pr = cr;
             pg = cg;

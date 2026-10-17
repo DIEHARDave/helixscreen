@@ -3,6 +3,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_highfly.h"
 #include "screensaver_highfly_sim.h"
@@ -46,12 +47,9 @@ class HighFlySimTestAccess {
     }
 };
 
-/// Reads the sim and the text lines a HighFlyScreensaver owns.
+/// Reads the text lines a HighFlyScreensaver owns.
 class HighFlyScreensaverTestAccess {
   public:
-    static const HighFlySim& sim(const HighFlyScreensaver& saver) {
-        return saver.sim_;
-    }
     static const SaverLabel& date_line(const HighFlyScreensaver& saver) {
         return saver.date_line_;
     }
@@ -88,61 +86,19 @@ using helix::ui::layout_highfly_clock;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
+
+using helix::test::check_replays;
+using helix::test::covers;
+using helix::test::diff_against;
+using helix::test::reading_at;
+using helix::test::TestFrame;
 using helix::ui::SaverTestAccess;
 
 namespace {
 
-uint32_t bytes_per_pixel(PixelFormat format) {
-    return format == PixelFormat::RGB565 ? 2 : 4;
-}
-
-struct SimFrame {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-    SimFrame(uint32_t w, uint32_t h, PixelFormat format) {
-        const uint32_t bpp = bytes_per_pixel(format);
-        const uint32_t stride = w * bpp + 3 * bpp;
-        bytes.assign(static_cast<size_t>(stride) * h, 0);
-        target = {bytes.data(), stride, w, h, format};
-    }
-    SimFrame(const SimFrame&) = delete;
-    SimFrame& operator=(const SimFrame&) = delete;
-};
-
-bool box_covers(const std::vector<DirtyRect>& boxes, int32_t x, int32_t y) {
-    return std::any_of(boxes.begin(), boxes.end(), [&](const DirtyRect& b) {
-        return x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2;
-    });
-}
-
 bool inside(const DirtyRect& inner, const DirtyRect& outer) {
     return inner.x1 >= outer.x1 && inner.y1 >= outer.y1 && inner.x2 <= outer.x2 &&
            inner.y2 <= outer.y2;
-}
-
-std::pair<size_t, size_t> diff_frame(const std::vector<uint8_t>& before, const SimFrame& frame,
-                                     const std::vector<DirtyRect>& boxes) {
-    size_t changed = 0;
-    size_t uncovered = 0;
-    const uint32_t bpp = bytes_per_pixel(frame.target.format);
-    for (uint32_t y = 0; y < frame.target.h; y++) {
-        for (uint32_t x = 0; x < frame.target.w; x++) {
-            const size_t i = static_cast<size_t>(y) * frame.target.stride + x * bpp;
-            if (std::memcmp(&before[i], &frame.bytes[i], bpp) == 0) {
-                continue;
-            }
-            changed++;
-            uncovered +=
-                box_covers(boxes, static_cast<int32_t>(x), static_cast<int32_t>(y)) ? 0 : 1;
-        }
-    }
-    return {changed, uncovered};
-}
-
-ClockReading reading_at(int32_t seconds_of_day) {
-    ClockReading r;
-    r.time = clock_time(seconds_of_day, false);
-    return r;
 }
 
 float luminance(Rgb c) {
@@ -312,7 +268,7 @@ TEST_CASE("the clock sits at the cloud line", "[screensaver][highfly][clock]") {
 TEST_CASE("a high fly run replays exactly from a seed, and another seed differs",
           "[screensaver][highfly]") {
     const auto run = [](uint32_t seed) {
-        SimFrame frame(320, 192, PixelFormat::RGB565);
+        TestFrame frame(320, 192, PixelFormat::RGB565);
         std::minstd_rand rng(seed);
         HighFlySim sim;
         const ClockReading r = reading_at(10 * 3600);
@@ -323,15 +279,13 @@ TEST_CASE("a high fly run replays exactly from a seed, and another seed differs"
         }
         return frame.bytes;
     };
-    const auto a = run(3);
-    CHECK(a == run(3));
-    CHECK(a != run(4));
+    check_replays(run, 3, 4);
 }
 
 TEST_CASE("the sky above the cloud band repaints only for the clock without towers",
           "[screensaver][highfly]") {
     REQUIRE_FALSE(HIGHFLY_LEVELS[3].towers);
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
@@ -365,7 +319,7 @@ TEST_CASE("every pixel a high fly frame changes lies in one of its dirty boxes",
           "[screensaver][highfly]") {
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
     CAPTURE(static_cast<int>(format));
-    SimFrame frame(240, 144, format);
+    TestFrame frame(240, 144, format);
     std::minstd_rand rng(3);
     HighFlySim sim;
     int32_t sod = 10 * 3600 + 59 * 60;
@@ -380,13 +334,14 @@ TEST_CASE("every pixel a high fly frame changes lies in one of its dirty boxes",
         const std::vector<uint8_t> before = frame.bytes;
         sim.step(100, frame.target, rng, reading_at(sod), dirty);
         flew = flew || sim.fly_since_s() > 0.0f;
-        const auto d = diff_frame(before, frame, dirty);
-        changed += d.first;
-        uncovered += d.second;
+        const auto d = diff_against(before, frame, dirty);
+        changed += d.changed;
+        uncovered += d.uncovered;
     }
     CHECK(flew);
     REQUIRE(changed > 0);
     CHECK(uncovered == 0);
+    CHECK(frame.padding_intact());
 }
 
 TEST_CASE("each frame repaints where the towers and the clock just were, through a busy drift",
@@ -396,7 +351,7 @@ TEST_CASE("each frame repaints where the towers and the clock just were, through
     // fly-through comes, so a probe run with none finds it.
     double drift_at = -1.0;
     {
-        SimFrame probe_frame(400, 240, PixelFormat::RGB565);
+        TestFrame probe_frame(400, 240, PixelFormat::RGB565);
         std::minstd_rand rng(3);
         HighFlySim probe;
         probe.init(probe_frame.target, rng, 0, r);
@@ -415,7 +370,7 @@ TEST_CASE("each frame repaints where the towers and the clock just were, through
     }
     REQUIRE(drift_at > 0.0);
 
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
     sim.init(frame.target, rng, 0, r);
@@ -444,7 +399,7 @@ TEST_CASE("each frame repaints where the towers and the clock just were, through
         for (const DirtyRect& w : was) {
             for (int32_t y = std::max(0, w.y1); y <= std::min(239, w.y2); y++) {
                 for (int32_t x = std::max(0, w.x1); x <= std::min(399, w.x2); x++) {
-                    missed += box_covers(dirty, x, y) ? 0 : 1;
+                    missed += covers(dirty, x, y) ? 0 : 1;
                 }
             }
         }
@@ -457,7 +412,7 @@ TEST_CASE("each frame repaints where the towers and the clock just were, through
 }
 
 TEST_CASE("the sun glows at the top centre", "[screensaver][highfly]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
     sim.init(frame.target, rng, 1, reading_at(10 * 3600));
@@ -467,7 +422,7 @@ TEST_CASE("the sun glows at the top centre", "[screensaver][highfly]") {
 
 TEST_CASE("towers come every 13 to 14 seconds, at most two at once, in more than one shape",
           "[screensaver][highfly]") {
-    SimFrame frame(200, 120, PixelFormat::RGB565);
+    TestFrame frame(200, 120, PixelFormat::RGB565);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
@@ -510,7 +465,7 @@ TEST_CASE("towers come every 13 to 14 seconds, at most two at once, in more than
 
 TEST_CASE("a tower visibly moves from the moment it appears until it leaves",
           "[screensaver][highfly]") {
-    SimFrame frame(400, 240, PixelFormat::RGB565);
+    TestFrame frame(400, 240, PixelFormat::RGB565);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
@@ -528,6 +483,10 @@ TEST_CASE("a tower visibly moves from the moment it appears until it leaves",
         }
     }
     REQUIRE(slot >= 0);
+    // A tower fades in from nothing, so it is followed from the first frame it shows in.
+    for (int i = 0; i < 20 && sim.tower_box(static_cast<size_t>(slot)).empty(); i++) {
+        sim.step(50, frame.target, rng, r, dirty);
+    }
     const DirtyRect first = sim.tower_box(static_cast<size_t>(slot));
     REQUIRE_FALSE(first.empty());
     const auto centre = [](const DirtyRect& b) { return (b.x1 + b.x2) / 2; };
@@ -580,7 +539,7 @@ TEST_CASE("over the clock the interior and the wisps together leave the numerals
 TEST_CASE("high fly still moves smoothly thirty days into a run", "[screensaver][highfly]") {
     // Per-frame change at a rung with no layers, so the deck's scroll is most of it: it must
     // keep coming every frame, not in occasional jumps between still frames.
-    const auto changes = [](HighFlySim& sim, SimFrame& frame, std::minstd_rand& rng,
+    const auto changes = [](HighFlySim& sim, TestFrame& frame, std::minstd_rand& rng,
                             const ClockReading& r, int frames) {
         std::vector<DirtyRect> dirty;
         std::vector<double> out;
@@ -603,7 +562,7 @@ TEST_CASE("high fly still moves smoothly thirty days into a run", "[screensaver]
         return sum / static_cast<double>(v.size());
     };
     REQUIRE(HIGHFLY_LEVELS[2].layers == 0);
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
@@ -639,8 +598,8 @@ TEST_CASE("a fly-through renders its interior 62% of the way over the scene",
           "[screensaver][highfly]") {
     // Two runs from one seed, the second with its fly-through pushed past the end: at the
     // hold, the first frame is the second's scene taken 62% of the way to the interior.
-    SimFrame with(400, 240, PixelFormat::XRGB8888);
-    SimFrame without(400, 240, PixelFormat::XRGB8888);
+    TestFrame with(400, 240, PixelFormat::XRGB8888);
+    TestFrame without(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng_a(3);
     std::minstd_rand rng_b(3);
     HighFlySim a;
@@ -689,7 +648,7 @@ TEST_CASE("a fly-through renders its interior 62% of the way over the scene",
 }
 
 TEST_CASE("a fly-through comes every one to two minutes", "[screensaver][highfly]") {
-    SimFrame frame(200, 120, PixelFormat::RGB565);
+    TestFrame frame(200, 120, PixelFormat::RGB565);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
@@ -720,7 +679,7 @@ TEST_CASE("a fly-through comes every one to two minutes", "[screensaver][highfly
 }
 
 TEST_CASE("wisps sample smoothly, without radial seams", "[screensaver][highfly]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
@@ -771,7 +730,7 @@ TEST_CASE("the ladder drops layers before coarsening the deck and ends standing 
     CHECK(first_no_layers < first_coarse);
     CHECK(HIGHFLY_LEVELS[HIGHFLY_LEVEL_COUNT - 1].still);
 
-    SimFrame frame(400, 240, PixelFormat::RGB565);
+    TestFrame frame(400, 240, PixelFormat::RGB565);
     std::minstd_rand rng(3);
     HighFlySim sim;
     int32_t sod = 10 * 3600 + 15 * 60;
@@ -792,13 +751,13 @@ TEST_CASE("the ladder drops layers before coarsening the deck and ends standing 
     for (const DirtyRect& d : dirty) {
         CHECK(inside(d, padded));
     }
-    const auto d = diff_frame(before, frame, dirty);
-    CHECK(d.first > 0);
-    CHECK(d.second == 0);
+    const auto d = diff_against(before, frame, dirty);
+    CHECK(d.changed > 0);
+    CHECK(d.uncovered == 0);
 }
 
 TEST_CASE("high fly frames allocate nothing and clear frees everything", "[screensaver][highfly]") {
-    SimFrame frame(800, 480, PixelFormat::XRGB8888);
+    TestFrame frame(800, 480, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     HighFlySim sim;
     const ClockReading r = reading_at(10 * 3600);
@@ -823,16 +782,6 @@ TEST_CASE("high fly frames allocate nothing and clear frees everything", "[scree
 // HighFlyScreensaver
 // ============================================================================
 
-namespace {
-
-void fire(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
-
-} // namespace
-
 TEST_CASE_METHOD(LVGLTestFixture,
                  "the high fly saver draws on a pipes-format canvas with its ladder",
                  "[screensaver][highfly]") {
@@ -844,12 +793,10 @@ TEST_CASE_METHOD(LVGLTestFixture,
     REQUIRE(buf != nullptr);
     CHECK(buf->header.cf == helix::ui::LV_DRAW_CANVAS_FORMAT);
     CHECK(ss.level_count() == HIGHFLY_LEVEL_COUNT);
-    lv_tick_inc(33);
-    fire(SaverTestAccess::timer(ss));
+    advance_saver(ss, 33);
     CHECK(ss.is_active());
     ss.request_level(HIGHFLY_LEVEL_COUNT - 1);
-    lv_tick_inc(250);
-    fire(SaverTestAccess::timer(ss));
+    advance_saver(ss, 250);
     CHECK(ss.is_active());
 }
 
@@ -875,17 +822,16 @@ TEST_CASE_METHOD(LVGLTestFixture, "the high fly saver shows the print its source
 TEST_CASE_METHOD(LVGLTestFixture, "a stopped high fly saver holds no buffers",
                  "[screensaver][highfly]") {
     HighFlyScreensaver ss;
-    CHECK(HighFlyScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    CHECK(ss.sim().heap_bytes() == 0);
     {
         ScreensaverStopOnExit<HighFlyScreensaver> stop_on_exit{ss};
         ss.start();
         REQUIRE(ss.is_active());
-        lv_tick_inc(16);
-        fire(SaverTestAccess::timer(ss));
-        REQUIRE(HighFlyScreensaverTestAccess::sim(ss).heap_bytes() > 0);
+        advance_saver(ss, 16);
+        REQUIRE(ss.sim().heap_bytes() > 0);
     }
     CHECK_FALSE(ss.is_active());
-    CHECK(HighFlyScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    CHECK(ss.sim().heap_bytes() == 0);
 }
 
 TEST_CASE("high fly is registered by name at both depths", "[screensaver][highfly]") {

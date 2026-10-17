@@ -3,9 +3,11 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver_aqua.h"
 #include "screensaver_aqua_sim.h"
+#include "screensaver_fast_math.h"
 #include "screensaver_pixel_writer.h"
 #include "screensaver_registry.h"
 
@@ -31,12 +33,9 @@ class AquaSimTestAccess {
     }
 };
 
-/// Reads the sim and the text line an AquaScreensaver owns.
+/// Reads the text line an AquaScreensaver owns.
 class AquaScreensaverTestAccess {
   public:
-    static const AquaSim& sim(const AquaScreensaver& saver) {
-        return saver.sim_;
-    }
     static const SaverLabel& line(const AquaScreensaver& saver) {
         return saver.line_;
     }
@@ -77,59 +76,12 @@ using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
 
+using helix::test::check_replays;
+using helix::test::diff_against;
+using helix::test::reading_at;
+using helix::test::TestFrame;
+
 namespace {
-
-constexpr float PI = 3.14159265358979f;
-
-uint32_t bytes_per_pixel(PixelFormat format) {
-    return format == PixelFormat::RGB565 ? 2 : 4;
-}
-
-struct SimFrame {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-    SimFrame(uint32_t w, uint32_t h, PixelFormat format) {
-        const uint32_t bpp = bytes_per_pixel(format);
-        const uint32_t stride = w * bpp + 3 * bpp;
-        bytes.assign(static_cast<size_t>(stride) * h, 0);
-        target = {bytes.data(), stride, w, h, format};
-    }
-    SimFrame(const SimFrame&) = delete;
-    SimFrame& operator=(const SimFrame&) = delete;
-};
-
-bool box_covers(const std::vector<DirtyRect>& boxes, int32_t x, int32_t y) {
-    return std::any_of(boxes.begin(), boxes.end(), [&](const DirtyRect& b) {
-        return x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2;
-    });
-}
-
-/// Pixels that changed between `before` and the frame, and how many no box covers.
-std::pair<size_t, size_t> diff_frame(const std::vector<uint8_t>& before, const SimFrame& frame,
-                                     const std::vector<DirtyRect>& boxes) {
-    size_t changed = 0;
-    size_t uncovered = 0;
-    const uint32_t bpp = bytes_per_pixel(frame.target.format);
-    for (uint32_t y = 0; y < frame.target.h; y++) {
-        for (uint32_t x = 0; x < frame.target.w; x++) {
-            const size_t i = static_cast<size_t>(y) * frame.target.stride + x * bpp;
-            if (std::memcmp(&before[i], &frame.bytes[i], bpp) == 0) {
-                continue;
-            }
-            changed++;
-            uncovered +=
-                box_covers(boxes, static_cast<int32_t>(x), static_cast<int32_t>(y)) ? 0 : 1;
-        }
-    }
-    return {changed, uncovered};
-}
-
-ClockReading reading_at(int32_t seconds_of_day, bool use_24h = false) {
-    ClockReading r;
-    r.time = clock_time(seconds_of_day, use_24h);
-    r.use_24h = use_24h;
-    return r;
-}
 
 /// A calm tank: a grid that was never evaluated is flat at height 0.
 AquaWater calm_water() {
@@ -151,14 +103,14 @@ TEST_CASE("the tank modes keep the dispersion relation", "[screensaver][aqua]") 
     water.init(rng, 20, 8, 0.4f);
     for (size_t n = 0; n < water.modes().size(); n++) {
         const auto& m = water.modes()[n];
-        const float k = static_cast<float>(n + 1) * PI / 7.0f;
+        const float k = static_cast<float>(n + 1) * helix::ui::SAVER_PI / 7.0f;
         CHECK(m.k == Catch::Approx(k));
         CHECK(m.omega * m.omega == Catch::Approx(9.81f * k * std::tanh(1.2f * k)).margin(1e-4));
     }
 }
 
 TEST_CASE("Gerstner crests stay peaked", "[screensaver][aqua]") {
-    const float k = 2.0f * PI / 2.6f;
+    const float k = 2.0f * helix::ui::SAVER_PI / 2.6f;
     const float omega = std::sqrt(9.81f * k * std::tanh(1.2f * k));
     const auto widths = [&](float steep) {
         const AquaWave wave{0.13f, k, omega, 1.0f, 0.0f, steep, 0.0f};
@@ -433,7 +385,7 @@ TEST_CASE("an aqua run replays exactly from a seed, and another seed differs",
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
     CAPTURE(static_cast<int>(format));
     const auto run = [format](uint32_t seed) {
-        SimFrame frame(320, 192, format);
+        TestFrame frame(320, 192, format);
         std::minstd_rand rng(seed);
         AquaSim sim;
         const ClockReading r = reading_at(9 * 3600);
@@ -444,16 +396,14 @@ TEST_CASE("an aqua run replays exactly from a seed, and another seed differs",
         }
         return frame.bytes;
     };
-    const auto a = run(3);
-    CHECK(a == run(3));
-    CHECK(a != run(4));
+    check_replays(run, 3, 4);
 }
 
 TEST_CASE("every pixel an aqua frame changes lies in one of its dirty boxes",
           "[screensaver][aqua]") {
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
     CAPTURE(static_cast<int>(format));
-    SimFrame frame(400, 240, format);
+    TestFrame frame(400, 240, format);
     std::minstd_rand rng(3);
     AquaSim sim;
     int32_t sod = 9 * 3600 + 59 * 60 + 50;
@@ -465,16 +415,17 @@ TEST_CASE("every pixel an aqua frame changes lies in one of its dirty boxes",
         sod += i % 30 == 0 ? 1 : 0;
         const std::vector<uint8_t> before = frame.bytes;
         sim.step(33, frame.target, rng, reading_at(sod), dirty);
-        const auto d = diff_frame(before, frame, dirty);
-        changed += d.first;
-        uncovered += d.second;
+        const auto d = diff_against(before, frame, dirty);
+        changed += d.changed;
+        uncovered += d.uncovered;
     }
     REQUIRE(changed > 0);
     CHECK(uncovered == 0);
+    CHECK(frame.padding_intact());
 }
 
 TEST_CASE("the near-edge rim is always lit", "[screensaver][aqua]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     AquaSim sim;
     const ClockReading r = reading_at(9 * 3600);
@@ -506,7 +457,7 @@ TEST_CASE("the near-edge rim is always lit", "[screensaver][aqua]") {
 }
 
 TEST_CASE("nothing draws above the water when the splashes are off", "[screensaver][aqua]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     AquaSim sim;
     const ClockReading r = reading_at(9 * 3600);
@@ -540,7 +491,7 @@ TEST_CASE("nothing draws above the water when the splashes are off", "[screensav
 /// Mean |grey change| between consecutive 50 ms frames over the water's body: pixels the
 /// surface covers in both frames, clear of its silhouette, the near edge and the clock.
 double shimmer(uint32_t seed) {
-    SimFrame frame(800, 480, PixelFormat::XRGB8888);
+    TestFrame frame(800, 480, PixelFormat::XRGB8888);
     std::minstd_rand rng(seed);
     AquaSim sim;
     const ClockReading r = reading_at(9 * 3600);
@@ -612,7 +563,7 @@ TEST_CASE("the ladder steps to coarser water and ends standing still", "[screens
     }
     CHECK(AQUA_LEVELS[AQUA_LEVEL_COUNT - 1].still);
 
-    SimFrame frame(400, 240, PixelFormat::RGB565);
+    TestFrame frame(400, 240, PixelFormat::RGB565);
     std::minstd_rand rng(3);
     AquaSim sim;
     int32_t sod = 9 * 3600 + 15 * 60;
@@ -635,16 +586,16 @@ TEST_CASE("the ladder steps to coarser water and ends standing still", "[screens
         CHECK(d.x2 <= clock.x2);
         CHECK(d.y2 <= clock.y2);
     }
-    const auto d = diff_frame(before, frame, dirty);
-    CHECK(d.first > 0);
-    CHECK(d.second == 0);
+    const auto d = diff_against(before, frame, dirty);
+    CHECK(d.changed > 0);
+    CHECK(d.uncovered == 0);
 }
 
 TEST_CASE("emission follows time, not frame rate", "[screensaver][aqua][droplets]") {
     // Which crests qualify depends on the rate of rise each frame measures, so one seed's
     // count wanders a little between frame rates; summed over several it holds.
     const auto emitted = [](uint32_t period, uint32_t seed) {
-        SimFrame frame(200, 120, PixelFormat::RGB565);
+        TestFrame frame(200, 120, PixelFormat::RGB565);
         std::minstd_rand rng(seed);
         AquaSim sim;
         const ClockReading r = reading_at(9 * 3600);
@@ -668,7 +619,7 @@ TEST_CASE("emission follows time, not frame rate", "[screensaver][aqua][droplets
 }
 
 /// Mean |byte change| between consecutive 50 ms frames of `sim`, over `frames` frames.
-double mean_change(AquaSim& sim, SimFrame& frame, std::minstd_rand& rng, const ClockReading& r,
+double mean_change(AquaSim& sim, TestFrame& frame, std::minstd_rand& rng, const ClockReading& r,
                    int frames) {
     std::vector<DirtyRect> dirty;
     double sum = 0.0;
@@ -683,7 +634,7 @@ double mean_change(AquaSim& sim, SimFrame& frame, std::minstd_rand& rng, const C
 }
 
 TEST_CASE("aqua still moves smoothly thirty days into a run", "[screensaver][aqua]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     AquaSim sim;
     const ClockReading r = reading_at(9 * 3600);
@@ -701,7 +652,7 @@ TEST_CASE("aqua still moves smoothly thirty days into a run", "[screensaver][aqu
 
 TEST_CASE("a drift step at the still rung repaints only the clock's old and new places",
           "[screensaver][aqua]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     AquaSim sim;
     const ClockReading r = reading_at(9 * 3600);
@@ -719,9 +670,9 @@ TEST_CASE("a drift step at the still rung repaints only the clock's old and new 
                 area += d.area();
             }
             CHECK(area <= 2 * first.area());
-            const auto d = diff_frame(before, frame, dirty);
-            CHECK(d.first > 0);
-            CHECK(d.second == 0);
+            const auto d = diff_against(before, frame, dirty);
+            CHECK(d.changed > 0);
+            CHECK(d.uncovered == 0);
         } else if (t > 0) {
             CHECK(dirty.empty());
         }
@@ -730,7 +681,7 @@ TEST_CASE("a drift step at the still rung repaints only the clock's old and new 
 }
 
 TEST_CASE("aqua frames allocate nothing and clear frees everything", "[screensaver][aqua]") {
-    SimFrame frame(800, 480, PixelFormat::XRGB8888);
+    TestFrame frame(800, 480, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
     AquaSim sim;
     const ClockReading r = reading_at(9 * 3600);
@@ -755,16 +706,6 @@ TEST_CASE("aqua frames allocate nothing and clear frees everything", "[screensav
 // AquaScreensaver
 // ============================================================================
 
-namespace {
-
-void fire(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
-
-} // namespace
-
 TEST_CASE_METHOD(LVGLTestFixture,
                  "the aqua saver draws on a pipes-format canvas with the aqua ladder",
                  "[screensaver][aqua]") {
@@ -778,12 +719,10 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(ss.level_count() == AQUA_LEVEL_COUNT);
     CHECK(AQUA_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
 
-    lv_tick_inc(33);
-    fire(SaverTestAccess::timer(ss));
+    advance_saver(ss, 33);
     CHECK(ss.is_active());
     ss.request_level(AQUA_LEVEL_COUNT - 1);
-    lv_tick_inc(250);
-    fire(SaverTestAccess::timer(ss));
+    advance_saver(ss, 250);
     CHECK(ss.is_active());
 }
 
@@ -804,25 +743,23 @@ TEST_CASE_METHOD(LVGLTestFixture, "the aqua saver shows the print its source rep
 
     reported.print.phase = ClockPrintPhase::NONE;
     reported.print.remaining_s = -1;
-    lv_tick_inc(33);
-    fire(SaverTestAccess::timer(ss));
+    advance_saver(ss, 33);
     CHECK(ss.clock().mode() == ClockMode::CLOCK);
     CHECK(AquaScreensaverTestAccess::line(ss).text().rfind("ETA ", 0) == std::string::npos);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "a stopped aqua saver holds no buffers", "[screensaver][aqua]") {
     AquaScreensaver ss;
-    CHECK(AquaScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    CHECK(ss.sim().heap_bytes() == 0);
     {
         ScreensaverStopOnExit<AquaScreensaver> stop_on_exit{ss};
         ss.start();
         REQUIRE(ss.is_active());
-        lv_tick_inc(16);
-        fire(SaverTestAccess::timer(ss));
-        REQUIRE(AquaScreensaverTestAccess::sim(ss).heap_bytes() > 0);
+        advance_saver(ss, 16);
+        REQUIRE(ss.sim().heap_bytes() > 0);
     }
     CHECK_FALSE(ss.is_active());
-    CHECK(AquaScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    CHECK(ss.sim().heap_bytes() == 0);
 }
 
 TEST_CASE("aqua is registered by name at both depths", "[screensaver][aqua]") {

@@ -2,12 +2,18 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "ui_screensaver.h"
+
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_manager_test_access.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
+#include "screensaver_aqua.h"
 #include "screensaver_canvas.h"
 #include "screensaver_clock_reading.h"
 #include "screensaver_flip_clock.h"
 #include "screensaver_flip_clock_sim.h"
+#include "screensaver_highfly.h"
 #include "screensaver_pixel_writer.h"
 
 #include <algorithm>
@@ -18,6 +24,11 @@
 
 #include "../catch_amalgamated.hpp"
 
+using helix::test::check_replays;
+using helix::test::diff_against;
+using helix::test::FrameDiff;
+using helix::test::hms;
+using helix::test::TestFrame;
 using helix::ui::CLOCK_COUNTDOWN_RESYNC_S;
 using helix::ui::CLOCK_DONE_HOLD_MS;
 using helix::ui::CLOCK_DRIFT_STEP_MS;
@@ -70,10 +81,6 @@ FlipShape shape_of(std::initializer_list<uint8_t> groups) {
     return shape;
 }
 
-constexpr int32_t hms(int32_t h, int32_t m, int32_t s = 0) {
-    return h * 3600 + m * 60 + s;
-}
-
 ClockInput printing(int32_t remaining_s, int32_t progress = 40) {
     ClockInput in;
     in.seconds_of_day = hms(14, 0);
@@ -83,59 +90,8 @@ ClockInput printing(int32_t remaining_s, int32_t progress = 40) {
     return in;
 }
 
-uint32_t bytes_per_pixel(PixelFormat format) {
-    return format == PixelFormat::RGB565 ? 2 : 4;
-}
-
-/// A heap frame whose rows are wider than w * bytes per pixel, as LVGL's aligned strides can be.
-struct SimFrame {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-
-    SimFrame(uint32_t w, uint32_t h, PixelFormat format) {
-        const uint32_t bpp = bytes_per_pixel(format);
-        const uint32_t stride = w * bpp + 3 * bpp;
-        bytes.assign(static_cast<size_t>(stride) * h, 0);
-        target = {bytes.data(), stride, w, h, format};
-    }
-    SimFrame(const SimFrame&) = delete;
-    SimFrame& operator=(const SimFrame&) = delete;
-};
-
-bool box_covers(const std::vector<DirtyRect>& boxes, int32_t x, int32_t y) {
-    return std::any_of(boxes.begin(), boxes.end(), [&](const DirtyRect& b) {
-        return x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2;
-    });
-}
-
-struct Diff {
-    size_t changed = 0;
-    size_t uncovered = 0;
-    DirtyRect changed_box;
-};
-
-Diff diff_frame(const std::vector<uint8_t>& before, const SimFrame& frame,
-                const std::vector<DirtyRect>& boxes) {
-    Diff diff;
-    const uint32_t bpp = bytes_per_pixel(frame.target.format);
-    for (uint32_t y = 0; y < frame.target.h; y++) {
-        for (uint32_t x = 0; x < frame.target.w; x++) {
-            const size_t i = static_cast<size_t>(y) * frame.target.stride + x * bpp;
-            if (std::memcmp(&before[i], &frame.bytes[i], bpp) == 0) {
-                continue;
-            }
-            diff.changed++;
-            const auto px = static_cast<int32_t>(x);
-            const auto py = static_cast<int32_t>(y);
-            diff.changed_box.add(px, py, px, py);
-            diff.uncovered += box_covers(boxes, px, py) ? 0 : 1;
-        }
-    }
-    return diff;
-}
-
 /// Pixels inside `box` at least as bright as half the digit colour.
-size_t lit_in(const SimFrame& frame, const DirtyRect& box) {
+size_t lit_in(const TestFrame& frame, const DirtyRect& box) {
     const PixelWriter writer(frame.target);
     size_t lit = 0;
     for (int32_t y = box.y1; y <= box.y2; y++) {
@@ -146,9 +102,9 @@ size_t lit_in(const SimFrame& frame, const DirtyRect& box) {
     return lit;
 }
 
-std::vector<uint8_t> card_bytes(const SimFrame& frame, const DirtyRect& box) {
+std::vector<uint8_t> card_bytes(const TestFrame& frame, const DirtyRect& box) {
     std::vector<uint8_t> out;
-    const uint32_t bpp = bytes_per_pixel(frame.target.format);
+    const uint32_t bpp = helix::ui::pixel_bytes(frame.target.format);
     for (int32_t y = box.y1; y <= box.y2; y++) {
         const size_t row = static_cast<size_t>(y) * frame.target.stride;
         out.insert(out.end(), frame.bytes.begin() + static_cast<ptrdiff_t>(row + box.x1 * bpp),
@@ -162,10 +118,13 @@ bool inside(const DirtyRect& inner, const DirtyRect& outer) {
            inner.y2 <= outer.y2;
 }
 
-void fire(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
+/// The clock mode of the saver the manager runs, which must be a `Saver` of `type`.
+template <typename Saver> ClockMode active_clock_mode(ScreensaverType type) {
+    helix::ui::SaverBase* saver =
+        helix::ScreensaverManagerTestAccess::active(ScreensaverManager::instance());
+    REQUIRE(saver != nullptr);
+    REQUIRE(saver->type() == type);
+    return static_cast<Saver*>(saver)->clock().mode();
 }
 
 } // namespace
@@ -406,9 +365,10 @@ TEST_CASE("one card per digit fits every screen shape at the widest drift, in ro
     const uint8_t count = shape.card_count();
     CAPTURE(screen.w, screen.h, count, shape.groups[0]);
 
-    int32_t max_dx = 0;
-    int32_t max_dy = 0;
-    helix::ui::flip_drift_range(screen.w, screen.h, shape, max_dx, max_dy);
+    helix::ui::ClockDrift drift;
+    drift.set_range(helix::ui::flip_centred_bounds(screen.w, screen.h, shape), screen.w, screen.h);
+    const int32_t max_dx = drift.max_dx;
+    const int32_t max_dy = drift.max_dy;
     CHECK(max_dx > 0);
     CHECK(max_dy > 0);
     const DirtyRect whole{0, 0, screen.w - 1, screen.h - 1};
@@ -496,7 +456,7 @@ TEST_CASE("the flip clock draws light digits on dark cards over black, in either
           "[screensaver][screensaver_flip_clock]") {
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
     CAPTURE(static_cast<int>(format));
-    SimFrame frame(400, 240, format);
+    TestFrame frame(400, 240, format);
     FlipClockSim sim;
     sim.init(frame.target, 0, clock_face(hms(10, 8), true));
     const FlipLayout& layout = sim.layout();
@@ -527,7 +487,7 @@ TEST_CASE("the flip clock draws light digits on dark cards over black, in either
 }
 
 TEST_CASE("a blank card draws no digit", "[screensaver][screensaver_flip_clock]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     FlipClockSim sim;
     sim.init(frame.target, 0, clock_face(hms(9, 41), false));
     CHECK(lit_in(frame, sim.layout().cards[0]) == 0);
@@ -535,7 +495,7 @@ TEST_CASE("a blank card draws no digit", "[screensaver][screensaver_flip_clock]"
 }
 
 TEST_CASE("different digits draw different cards", "[screensaver][screensaver_flip_clock]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     FlipClockSim sim;
     std::vector<std::vector<uint8_t>> seen;
     for (int d = 0; d < 10; d++) {
@@ -551,7 +511,7 @@ TEST_CASE("different digits draw different cards", "[screensaver][screensaver_fl
 
 TEST_CASE("a changed card folds over the flip duration while the others stay still",
           "[screensaver][screensaver_flip_clock]") {
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     FlipClockSim sim;
     sim.init(frame.target, 0, clock_face(hms(10, 8), true));
     const DirtyRect minutes = sim.layout().cards[3];
@@ -582,7 +542,7 @@ TEST_CASE("a changed card folds over the flip duration while the others stay sti
     CHECK(end != three_quarters);
 
     // The finished flip draws exactly what a still card of the new digits draws.
-    SimFrame still(400, 240, PixelFormat::XRGB8888);
+    TestFrame still(400, 240, PixelFormat::XRGB8888);
     FlipClockSim fresh;
     fresh.init(still.target, 0, next);
     CHECK(end == card_bytes(still, minutes));
@@ -632,7 +592,7 @@ TEST_CASE("only the digits that change flip, each on its own card and all at onc
         return std::find(change.flips.begin(), change.flips.end(), i) != change.flips.end();
     };
 
-    SimFrame frame(800, 480, PixelFormat::XRGB8888);
+    TestFrame frame(800, 480, PixelFormat::XRGB8888);
     FlipClockSim sim;
     sim.init(frame.target, 0, change.from);
     const FlipLayout layout = sim.layout();
@@ -667,7 +627,7 @@ TEST_CASE("only the digits that change flip, each on its own card and all at onc
 }
 
 TEST_CASE("between changes a frame writes nothing", "[screensaver][screensaver_flip_clock]") {
-    SimFrame frame(400, 240, PixelFormat::RGB565);
+    TestFrame frame(400, 240, PixelFormat::RGB565);
     FlipClockSim sim;
     const FlipFace face = clock_face(hms(7, 30), false);
     sim.init(frame.target, 0, face);
@@ -683,7 +643,7 @@ TEST_CASE("between changes a frame writes nothing", "[screensaver][screensaver_f
 TEST_CASE("a level that does not animate swaps the digits at once",
           "[screensaver][screensaver_flip_clock]") {
     REQUIRE_FALSE(FLIP_CLOCK_LEVELS[FLIP_CLOCK_LEVEL_COUNT - 1].animate);
-    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    TestFrame frame(400, 240, PixelFormat::XRGB8888);
     FlipClockSim sim;
     sim.init(frame.target, FLIP_CLOCK_LEVEL_COUNT - 1, clock_face(hms(10, 8), true));
     std::vector<DirtyRect> dirty;
@@ -706,7 +666,7 @@ TEST_CASE("every pixel a flip clock frame changes lies in one of its dirty boxes
           "[screensaver][screensaver_flip_clock]") {
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
     CAPTURE(static_cast<int>(format));
-    SimFrame frame(480, 272, format);
+    TestFrame frame(480, 272, format);
     FlipClockSim sim;
     FlipClockState state;
     ClockInput in;
@@ -739,20 +699,23 @@ TEST_CASE("every pixel a flip clock frame changes lies in one of its dirty boxes
         state.step(dt, in);
         const std::vector<uint8_t> before = frame.bytes;
         sim.step(dt, frame.target, state.face(), dirty);
-        const Diff diff = diff_frame(before, frame, dirty);
+        const FrameDiff diff = diff_against(before, frame, dirty);
         changed += diff.changed;
         uncovered += diff.uncovered;
     }
     REQUIRE(changed > 0);
     CHECK(uncovered == 0);
+    CHECK(frame.padding_intact());
 }
 
-TEST_CASE("a flip clock run replays exactly", "[screensaver][screensaver_flip_clock]") {
-    auto run = [] {
-        SimFrame frame(320, 200, PixelFormat::RGB565);
+TEST_CASE("a flip clock run replays exactly and a different print draws differently",
+          "[screensaver][screensaver_flip_clock]") {
+    // The clock draws no random numbers: what tells two runs apart is the print they count.
+    auto run = [](uint32_t remaining_s) {
+        TestFrame frame(320, 200, PixelFormat::RGB565);
         FlipClockSim sim;
         FlipClockState state;
-        ClockInput in = printing(hms(2, 0, 0));
+        ClockInput in = printing(static_cast<int32_t>(remaining_s));
         state.step(0, in);
         sim.init(frame.target, 0, state.face());
         std::vector<DirtyRect> dirty;
@@ -763,7 +726,7 @@ TEST_CASE("a flip clock run replays exactly", "[screensaver][screensaver_flip_cl
         }
         return frame.bytes;
     };
-    CHECK(run() == run());
+    check_replays(run, hms(2, 0, 0), hms(3, 0, 0));
 }
 
 // ============================================================================
@@ -779,12 +742,11 @@ TEST_CASE_METHOD(LVGLTestFixture,
     REQUIRE(ss.is_active());
     const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss));
     REQUIRE(buf != nullptr);
-    CHECK(buf->header.cf == helix::ui::FLIP_CLOCK_CANVAS_FORMAT);
+    CHECK(buf->header.cf == helix::ui::LV_DRAW_CANVAS_FORMAT);
     CHECK(ss.level_count() == FLIP_CLOCK_LEVEL_COUNT);
     CHECK(FLIP_CLOCK_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
 
-    lv_tick_inc(33);
-    fire(SaverTestAccess::timer(ss));
+    advance_saver(ss, 33);
     CHECK(ss.is_active());
 }
 
@@ -796,13 +758,75 @@ TEST_CASE_METHOD(LVGLTestFixture, "the flip clock saver counts down the print it
     ss.set_input_source([&reported] { return reported; });
     ss.start();
     REQUIRE(ss.is_active());
-    CHECK(ss.state().mode() == ClockMode::COUNTDOWN);
-    CHECK(cards_text(ss.state().face()) == "1:00:00");
+    CHECK(ss.clock().mode() == ClockMode::COUNTDOWN);
+    CHECK(cards_text(ss.clock().face()) == "1:00:00");
 
     reported.print.phase = ClockPrintPhase::PAUSED;
-    lv_tick_inc(33);
-    fire(SaverTestAccess::timer(ss));
-    CHECK(ss.state().mode() == ClockMode::PAUSED);
+    advance_saver(ss, 33);
+    CHECK(ss.clock().mode() == ClockMode::PAUSED);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "the clock that follows a finished print shows whole cards where the caption was",
+                 "[screensaver][screensaver_flip_clock]") {
+    FlipClockScreensaver ss;
+    ScreensaverStopOnExit<FlipClockScreensaver> stop_on_exit{ss};
+    ClockInput reported = printing(30, 90);
+    ss.set_input_source([&reported] { return reported; });
+    ss.start();
+    REQUIRE(ss.is_active());
+    REQUIRE(!ss.sim().layout().caption.empty());
+    advance_saver(ss, 33);
+    reported.print.phase = ClockPrintPhase::COMPLETE;
+    for (uint32_t ms = 0; ms <= CLOCK_DONE_HOLD_MS + 1000; ms += 500) {
+        advance_saver(ss, 500);
+    }
+    REQUIRE(ss.clock().mode() == ClockMode::CLOCK);
+
+    // Every card pixel off the split line and clear of the rounded corners is card or digit,
+    // never the black background.
+    const FrameTarget frame =
+        helix::test::frame_of(lv_canvas_get_draw_buf(SaverTestAccess::canvas(ss)));
+    const PixelWriter writer(frame);
+    const FlipLayout& layout = ss.sim().layout();
+    REQUIRE(layout.caption.empty());
+    size_t black = 0;
+    for (size_t i = 0; i < layout.card_count; i++) {
+        const DirtyRect& card = layout.cards[i];
+        for (int32_t y = card.y1 + layout.corner; y <= card.y2 - layout.corner; y++) {
+            const int32_t row = y - card.y1;
+            if (row >= layout.split_top && row < layout.split_bottom) {
+                continue;
+            }
+            for (int32_t x = card.x1 + layout.corner; x <= card.x2 - layout.corner; x++) {
+                const Rgb c = writer.get(x, y);
+                black += c.r == 0 && c.g == 0 && c.b == 0 ? 1 : 0;
+            }
+        }
+    }
+    CHECK(black == 0);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "the manager feeds every clock saver the print its host reports",
+                 "[screensaver][screensaver_flip_clock]") {
+    helix::ScopedGateEnv gate_env;
+    auto& mgr = ScreensaverManager::instance();
+    helix::ui::SaverHost host;
+    host.print_status = [] {
+        return helix::ui::ClockPrint{ClockPrintPhase::PRINTING, hms(1, 0, 0), 50};
+    };
+    mgr.set_host(host);
+    mgr.start(ScreensaverType::FLIP_CLOCK);
+    CHECK(active_clock_mode<FlipClockScreensaver>(ScreensaverType::FLIP_CLOCK) ==
+          ClockMode::COUNTDOWN);
+    mgr.start(ScreensaverType::AQUA);
+    CHECK(active_clock_mode<helix::ui::AquaScreensaver>(ScreensaverType::AQUA) ==
+          ClockMode::COUNTDOWN);
+    mgr.start(ScreensaverType::HIGHFLY);
+    CHECK(active_clock_mode<helix::ui::HighFlyScreensaver>(ScreensaverType::HIGHFLY) ==
+          ClockMode::COUNTDOWN);
+    mgr.stop();
+    mgr.set_host({});
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

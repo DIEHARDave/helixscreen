@@ -4,6 +4,8 @@
 
 #include "screensaver_clock_reading.h"
 
+#include "screensaver_motion.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -11,7 +13,7 @@
 namespace helix::ui {
 
 ClockTime clock_time(int32_t seconds_of_day, bool use_24h) {
-    const int32_t sod = ((seconds_of_day % 86400) + 86400) % 86400;
+    const int32_t sod = screensaver::wrap_index(seconds_of_day, 86400);
     ClockTime t;
     t.hour_of_day = sod / 3600;
     t.minute = sod / 60 % 60;
@@ -94,7 +96,7 @@ void ClockState::step(uint32_t dt_ms, const ClockInput& in) {
         break;
     case ClockMode::COUNTDOWN: {
         reading_.countdown_s = countdown_s();
-        const int32_t sod = ((in.seconds_of_day % 86400) + 86400) % 86400;
+        const int32_t sod = screensaver::wrap_index(in.seconds_of_day, 86400);
         reading_.eta_minute_of_day =
             static_cast<int32_t>((static_cast<int64_t>(sod) + countdown_s()) / 60 % 1440);
         reading_.progress_pct = std::clamp(print.progress_pct, 0, 100);

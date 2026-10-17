@@ -5,6 +5,9 @@
 #include "screensaver_stroke_digits.h"
 
 #include "screensaver_blur.h"
+#include "screensaver_buffer.h"
+#include "screensaver_fast_math.h"
+#include "screensaver_pixel_writer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,8 +15,6 @@
 namespace helix::ui {
 
 namespace {
-
-constexpr float PI = 3.14159265358979f;
 
 // Digits are strokes along lines and circular arcs, in a box one unit wide and
 // STROKE_DIGIT_PATH_H tall (y down). Angles are degrees, 0 pointing right and growing
@@ -79,13 +80,13 @@ float dist_to_arc(const Stroke& s, float px, float py) {
     if (s.e >= 360.0f) {
         return std::fabs(dist - s.c);
     }
-    const float angle = std::atan2(dy, dx) * 180.0f / PI;
+    const float angle = std::atan2(dy, dx) * 180.0f / SAVER_PI;
     const float rel = std::fmod(angle - s.d + 720.0f, 360.0f);
     if (rel <= s.e) {
         return std::fabs(dist - s.c);
     }
-    const float a0 = s.d * PI / 180.0f;
-    const float a1 = (s.d + s.e) * PI / 180.0f;
+    const float a0 = s.d * SAVER_PI / 180.0f;
+    const float a1 = (s.d + s.e) * SAVER_PI / 180.0f;
     return std::min(std::hypot(px - (s.a + s.c * std::cos(a0)), py - (s.b + s.c * std::sin(a0))),
                     std::hypot(px - (s.a + s.c * std::cos(a1)), py - (s.b + s.c * std::sin(a1))));
 }
@@ -117,11 +118,11 @@ uint8_t StrokeDigitSet::at(int digit, int32_t gx, int32_t gy) const {
 }
 
 size_t StrokeDigitSet::heap_bytes() const {
-    return coverage.capacity();
+    return buffer_bytes(coverage);
 }
 
 void StrokeDigitSet::clear() {
-    std::vector<uint8_t>().swap(coverage);
+    release_buffer(coverage);
     w = 0;
     h = 0;
 }
@@ -138,10 +139,23 @@ void build_stroke_digits(int32_t unit, float stroke, StrokeDigitSet& out) {
             const float py = (static_cast<float>(y) + 0.5f) / u - half;
             for (int32_t x = 0; x < out.w; x++) {
                 const float px = (static_cast<float>(x) + 0.5f) / u - half;
-                const float edge = (half - stroke_digit_distance(digit, px, py)) * u + 0.5f;
+                const float edge = edge_coverage((half - stroke_digit_distance(digit, px, py)) * u);
                 cov[static_cast<size_t>(y) * out.w + x] =
-                    static_cast<uint8_t>(std::lround(std::clamp(edge, 0.0f, 1.0f) * 255.0f));
+                    static_cast<uint8_t>(std::lround(edge * 255.0f));
             }
+        }
+    }
+}
+
+void blit_stroke_digit(PixelWriter& writer, const StrokeDigitSet& set, int digit, int32_t x,
+                       int32_t y, Rgb colour, float opacity) {
+    for (int32_t gy = 0; gy < set.h; gy++) {
+        for (int32_t gx = 0; gx < set.w; gx++) {
+            const uint8_t cov = set.at(digit, gx, gy);
+            if (cov == 0 || !writer.contains(x + gx, y + gy)) {
+                continue;
+            }
+            writer.blend_over(x + gx, y + gy, colour, opacity * static_cast<float>(cov) / 255.0f);
         }
     }
 }
