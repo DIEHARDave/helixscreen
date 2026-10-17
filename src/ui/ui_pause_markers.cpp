@@ -5,6 +5,7 @@
 
 #include "ui_print_layer_pause.h"
 
+#include "app_globals.h"
 #include "gcode_pause_scan.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -25,6 +26,7 @@ struct PauseMarkerCtx {
     helix::PrinterState* ps{nullptr};
     lv_obj_t* owner{nullptr};
     ObserverGuard version_guard;
+    ObserverGuard beta_guard;
 };
 
 void pause_markers_invalidate(PauseMarkerCtx* ctx, int /*version*/) {
@@ -171,6 +173,7 @@ void pause_marker_delete_cb(lv_event_t* e) {
     // Drop the observer before freeing the ctx it hands to its handler.
     // The subject itself outlives the widget (owned by PrinterPrintState).
     ctx->version_guard.reset();
+    ctx->beta_guard.reset();
     delete ctx;
 }
 
@@ -188,6 +191,14 @@ void attach_pause_markers(lv_obj_t* widget, helix::PrinterState& printer_state,
         printer_state.print_state().get_pause_markers_version_subject(), ctx,
         [](PauseMarkerCtx* self, int version) { pause_markers_invalidate(self, version); },
         printer_state.get_subjects_lifetime(), Dispatch::Immediate);
+    // The runtime layer-pause tick is a beta feature; toggling beta must
+    // redraw it in or out.
+    if (lv_subject_t* beta = lv_xml_get_subject(nullptr, "show_beta_features")) {
+        ctx->beta_guard = observe<int>(
+            beta, ctx,
+            [](PauseMarkerCtx* self, int version) { pause_markers_invalidate(self, version); },
+            get_app_globals_subjects_lifetime(), Dispatch::Immediate);
+    }
     lv_obj_add_event_cb(widget, draw_cb, LV_EVENT_DRAW_POST, ctx);
     lv_obj_add_event_cb(widget, pause_marker_delete_cb, LV_EVENT_DELETE, ctx);
     lv_obj_invalidate(widget);

@@ -218,3 +218,29 @@ TEST_CASE("layer_pause: picker bounds are (current, total]", "[layer_pause]") {
     CHECK(b.min_layer == 101);
     CHECK(b.max_layer == 101);
 }
+
+TEST_CASE("layer_pause: the pause that just happened expires what was sent", "[layer_pause]") {
+    lp::Tracker t;
+    SECTION("next layer") {
+        t.note_next_layer(true, 4);
+        CHECK(t.on_paused(4));
+        CHECK_FALSE(t.effective().any());
+    }
+    SECTION("the layer after the one still reported") {
+        t.note_at_layer(5);
+        CHECK(t.on_paused(4));
+        CHECK(t.effective().at_layer == 0);
+    }
+    SECTION("a pause well before the chosen layer keeps it") {
+        t.note_at_layer(9);
+        CHECK_FALSE(t.on_paused(4));
+        CHECK(t.effective().at_layer == 9);
+    }
+    SECTION("reset forgets read-back too") {
+        t.apply_status({{"pause_at_layer", {{"enable", true}, {"layer", 9}}}});
+        REQUIRE(t.has_readback());
+        t.reset();
+        CHECK_FALSE(t.has_readback());
+        CHECK_FALSE(t.effective().any());
+    }
+}

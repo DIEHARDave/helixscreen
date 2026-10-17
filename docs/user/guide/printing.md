@@ -176,12 +176,12 @@ You can tell a running print to pause at a layer you pick - to drop in a magnet 
 **Scheduling a pause:**
 
 1. During a print, tap the **layer count** on the print screen (the row with the layers icon). A small pause symbol next to it shows it can be tapped.
-2. Choose **Next Layer** to pause when the next layer starts, or **Choose Layer** and enter a layer number. Only layers still ahead of the print are accepted.
+2. Choose **Next Layer** to pause when the next layer starts, or **Choose Layer** and enter a layer number. Only layers still ahead of the print are accepted, and only ones the file actually reports: the pause fires on an exact layer number, so a layer the file skips would never trigger it.
 3. The layer count now shows an orange pause symbol with the layer it will stop at, and a tick appears on the progress bar.
 
 When the print reaches that layer, it pauses the way your **Pause** button does (your printer's `PAUSE` macro, or `M600` if your config sets that). Tap **Resume** to continue.
 
-**Cancelling:** tap the layer count again and choose **Cancel Scheduled Pause**. Cancelling a print also clears any scheduled pause.
+**Cancelling:** tap the layer count again and choose **Cancel Scheduled Pause**. A pause you scheduled here that the print never reached is cleared when the print finishes, is cancelled or fails, so it cannot catch the next print by surprise.
 
 > **Note:** A pause scheduled from Mainsail or Fluidd shows here too, since they use the same macros.
 

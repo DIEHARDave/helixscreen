@@ -706,7 +706,7 @@ bool GCodeLayerIndex::build_from_file(const std::string& filepath,
 
     stats_.total_layers = entries_.size();
     uses_layer_markers_ = use_layer_markers;
-    stats_.pause_scan = pause_scan.result();
+    stats_.pause_scan = pause_scan.take_shared();
 
     // Release the slack left by the reserve(100) growth doubling. A 1200-layer
     // print reserves 1600 entries; handing 400 × 40 bytes back matters on a

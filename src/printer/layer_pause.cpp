@@ -133,6 +133,15 @@ bool Tracker::on_layer(int current_layer) {
     return effective() != before;
 }
 
+bool Tracker::on_paused(int current_layer) {
+    const Schedule before = effective();
+    sent_.next_layer = false;
+    if (sent_.at_layer == current_layer + 1) {
+        sent_.at_layer = 0;
+    }
+    return effective() != before;
+}
+
 Availability classify(bool print_active, bool slicer_reports_layers, int current_layer,
                       int total_layers) {
     if (!print_active) {

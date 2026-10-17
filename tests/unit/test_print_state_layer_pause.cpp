@@ -9,11 +9,16 @@
  * two subjects the UI binds to say.
  */
 
+#include "ui_update_queue.h"
+
 #include "../lvgl_test_fixture.h"
+#include "gcode_pause_scan.h"
 #include "layer_pause.h"
 #include "printer_capabilities_state.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
+
+#include <memory>
 
 #include "../catch_amalgamated.hpp"
 #include "hv/json.hpp"
@@ -166,7 +171,7 @@ TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: either layer report alone prov
         {{"print_stats",
           {{"filename", "a.gcode"}, {"state", "printing"}, {"info", {{"current_layer", 4}}}}}});
     CHECK(state_.print_state().slicer_reports_layers());
-    CHECK(availability() == A::Ready);
+    CHECK(state_.print_state().slicer_current_layer() == 4);
 
     // So does a total_layer report alone, the first one a print sends.
     state_.print_state().reset_for_new_print();
@@ -196,4 +201,75 @@ TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: discovery publishes the capabi
     plain.parse_objects(json::array({"print_stats", "gcode_macro PAUSE"}));
     state_.set_hardware(plain);
     CHECK(capability() == 0);
+}
+
+TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: only print_stats.info layers count",
+                 "[layer_pause][print_state]") {
+    printing(3, 10);
+    // Another source in its own numbering (the gcode echo here; virtual_sdcard
+    // is the other) moves the displayed layer; the layer the macros compare
+    // against does not move.
+    state_.print_state().set_print_layer_current(50);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(lv_subject_get_int(state_.print_state().get_print_layer_current_subject()) == 50);
+    CHECK(state_.print_state().slicer_current_layer() == 3);
+    CHECK(state_.print_state().slicer_total_layers() == 10);
+    CHECK(availability() == A::Ready);
+    state_.print_state().note_layer_pause_next_layer(true);
+    CHECK(pending() == 4);
+}
+
+TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: a new state object forgets the schedule",
+                 "[layer_pause][print_state]") {
+    state_.print_state().set_layer_pause_state_object(kStateObject);
+    printing(3, 10);
+    state_.update_from_status(
+        {{kStateObject, {{"pause_at_layer", {{"enable", true}, {"layer", 7}}}}}});
+    REQUIRE(pending() == 7);
+
+    SECTION("the same name again (a reconnect or printer switch)") {
+        state_.print_state().set_layer_pause_state_object(kStateObject);
+        CHECK(pending() == 0);
+        CHECK_FALSE(state_.print_state().get_layer_pause_schedule().any());
+    }
+    SECTION("a different name") {
+        state_.print_state().set_layer_pause_state_object("gcode_macro Set_Print_Stats_Info");
+        CHECK(pending() == 0);
+    }
+    SECTION("what was sent is forgotten too") {
+        state_.print_state().set_layer_pause_state_object("");
+        state_.print_state().note_layer_pause_at_layer(9);
+        REQUIRE(pending() == 9);
+        state_.print_state().set_layer_pause_state_object("");
+        CHECK(pending() == 0);
+    }
+}
+
+TEST_CASE_METHOD(LayerPauseFixture, "Layer pause: pausing at the sent layer clears it",
+                 "[layer_pause][print_state]") {
+    printing(4, 10);
+    state_.print_state().note_layer_pause_at_layer(5);
+    REQUIRE(pending() == 5);
+    // The macro pauses before the layer-5 report goes through.
+    state_.update_from_status({{"print_stats", {{"state", "paused"}}}});
+    CHECK(pending() == 0);
+
+    // A schedule made while already paused survives the rest of the pause.
+    state_.print_state().note_layer_pause_at_layer(5);
+    state_.update_from_status({{"print_stats", {{"state", "paused"}}}});
+    CHECK(pending() == 5);
+}
+
+TEST_CASE_METHOD(LayerPauseFixture,
+                 "Layer pause: file_may_report_layer judges by this print's scan",
+                 "[layer_pause][print_state]") {
+    printing(3, 10);
+    CHECK(state_.print_state().file_may_report_layer(42)); // no scan: nothing to judge by
+    auto scan = std::make_shared<const helix::gcode::PauseScanResult>(
+        helix::gcode::PauseScanResult{{}, {{4, 0.4f, 0.4f}, {6, 0.6f, 0.6f}}, {}});
+    state_.print_state().set_pause_scan(scan, "a.gcode");
+    CHECK(state_.print_state().file_may_report_layer(6));
+    CHECK_FALSE(state_.print_state().file_may_report_layer(5));
+    state_.print_state().set_pause_scan(scan, "other.gcode");
+    CHECK(state_.print_state().file_may_report_layer(5)); // not this print's scan
 }

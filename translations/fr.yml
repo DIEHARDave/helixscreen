@@ -3649,6 +3649,7 @@ translations:
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Cette
     impression nécessite environ %.0fg mais il reste environ %.0fg sur la bobine.
     Démarrer quand même ?
+  This print never reports layer {}.: 'Cette impression ne signale jamais la couche {}.'
   This printer cannot calibrate tool offsets automatically: Cette imprimante ne peut pas calibrer les offsets d'outil automatiquement
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Cette imprimante remplit ses gates depuis Spoolman. HelixScreen a effacé sa propre copie ; retirez la bobine dans Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Cette imprimante remplit ses gates depuis Spoolman. Effectuez les changements de couleur, matériau et bobine dans Spoolman.

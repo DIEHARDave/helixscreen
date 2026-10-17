@@ -330,8 +330,7 @@ class GCodeViewerState {
     /// layer-index scan or full-load parse loop). The panel's load callback
     /// publishes them into PrinterPrintState, which knows which print the file
     /// belongs to.
-    helix::gcode::PauseScanResult pause_scan;
-    bool has_pause_scan{false};
+    helix::gcode::PauseScanPtr pause_scan; ///< null until a scan ran
 
     /// Print progress layer (set via ui_gcode_viewer_set_print_progress)
     /// -1 means "show all layers" (preview mode), >= 0 means "show up to this layer"

@@ -284,15 +284,17 @@ void PrinterPrintState::bump_pause_markers_version() {
     lv_subject_set_int(&pause_markers_version_, lv_subject_get_int(&pause_markers_version_) + 1);
 }
 
-void PrinterPrintState::set_pause_scan(helix::gcode::PauseScanResult scan,
+void PrinterPrintState::set_pause_scan(helix::gcode::PauseScanPtr scan,
                                        const std::string& source_filename) {
+    if (!scan) {
+        return;
+    }
     pause_scan_ = std::move(scan);
-    has_pause_scan_ = true;
     pause_source_filename_ = source_filename;
     bump_pause_markers_version();
     spdlog::debug("[PrinterPrintState] Pause scan published: {} pauses, {} layer marks (axis={})",
-                  pause_scan_.pauses.size(), pause_scan_.layer_marks.size(),
-                  pause_scan_.axis == helix::gcode::ProgressAxis::SlicerTime ? "slicer" : "bytes");
+                  pause_scan_->pauses.size(), pause_scan_->layer_marks.size(),
+                  pause_scan_->axis == helix::gcode::ProgressAxis::SlicerTime ? "slicer" : "bytes");
 }
 
 std::optional<float> PrinterPrintState::layer_pause_marker_fraction() const {
@@ -300,19 +302,28 @@ std::optional<float> PrinterPrintState::layer_pause_marker_fraction() const {
     if (layer <= 0 || !pause_scan_matches_current_file()) {
         return std::nullopt;
     }
-    const auto* mark = helix::gcode::find_layer_mark(pause_scan_, layer);
+    const auto* mark = helix::gcode::find_layer_mark(*pause_scan_, layer);
     if (!mark) {
         return std::nullopt;
     }
-    return helix::gcode::display_fraction(*mark, pause_scan_.axis);
+    return helix::gcode::display_fraction(*mark, pause_scan_->axis);
 }
 
 void PrinterPrintState::set_layer_pause_state_object(std::string object) {
     layer_pause_state_object_ = std::move(object);
+    layer_pause_.reset();
+    refresh_layer_pause();
+}
+
+bool PrinterPrintState::file_may_report_layer(int layer) const {
+    if (!pause_scan_matches_current_file()) {
+        return true;
+    }
+    return helix::gcode::find_layer_mark(*pause_scan_, layer) != nullptr;
 }
 
 void PrinterPrintState::note_layer_pause_next_layer(bool enable) {
-    layer_pause_.note_next_layer(enable, lv_subject_get_int(&print_layer_current_));
+    layer_pause_.note_next_layer(enable, slicer_current_layer_);
     refresh_layer_pause();
 }
 
@@ -325,9 +336,17 @@ void PrinterPrintState::refresh_layer_pause() {
     if (!subjects_initialized_) {
         return;
     }
-    const int current = lv_subject_get_int(&print_layer_current_);
-    const int total = lv_subject_get_int(&print_layer_total_);
+    // The macros compare against print_stats.info only, so every layer here is
+    // that numbering, never print_layer_current_'s other sources.
+    const int current = slicer_current_layer_;
+    const int total = slicer_total_layers_;
     layer_pause_.on_layer(current);
+    // RAW_PRINT_STATE_OK: the pause the macro caused is the printer's own.
+    const bool paused = get_print_job_state() == PrintJobState::PAUSED;
+    if (paused && !layer_pause_seen_paused_) {
+        layer_pause_.on_paused(current);
+    }
+    layer_pause_seen_paused_ = paused;
 
     const auto availability = helix::layer_pause::classify(lv_subject_get_int(&print_active_) != 0,
                                                            slicer_layers_reported_, current, total);
@@ -363,15 +382,16 @@ void PrinterPrintState::reset_for_new_print() {
     // The pause scan belongs to the previous job's file. A scan for the new
     // file may still be in flight; the publish-side filename guard keeps its
     // late result off the new print if the file differs.
-    if (has_pause_scan_) {
-        pause_scan_ = {};
-        has_pause_scan_ = false;
+    if (pause_scan_) {
+        pause_scan_.reset();
         pause_source_filename_.clear();
         bump_pause_markers_version();
     }
     lv_subject_set_int(&print_layer_current_, 0);
     has_real_layer_data_ = false;
     slicer_layers_reported_ = false;
+    slicer_current_layer_ = 0;
+    slicer_total_layers_ = 0;
     layer_pause_.reset_for_new_print();
     layer_source_ = LayerSource::Estimate;
     // Commanded Z belongs to the print run, not the file — clear it. Do NOT
@@ -723,6 +743,7 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                 apply_layer_current(current_layer, LayerSource::Reported, "print_stats.info");
                 current_layer_from_info = true;
                 slicer_layers_reported_ = true;
+                slicer_current_layer_ = current_layer;
             }
 
             if (info.contains("total_layer") && info["total_layer"].is_number()) {
@@ -736,6 +757,7 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                 }
                 total_layer_from_info = true;
                 slicer_layers_reported_ = true;
+                slicer_total_layers_ = total_layer;
             }
         } else if (stats.contains("info")) {
             spdlog::debug("[LayerTracker] print_stats.info is null/missing - slicer may not emit "

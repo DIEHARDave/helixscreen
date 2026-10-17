@@ -22,6 +22,7 @@
 #include "utils/decimal_parse.h"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <system_error>
@@ -126,6 +127,10 @@ struct PauseScanResult {
     std::vector<LayerMark> layer_marks;
     ProgressAxis axis{ProgressAxis::BytePosition};
 };
+
+/// One scan, shared read-only by everyone who holds it (the layer index, the
+/// viewer, print state): a long print's marks are not worth three copies.
+using PauseScanPtr = std::shared_ptr<const PauseScanResult>;
 
 /// The first mark for @p layer, or null when the file never reports it.
 inline const LayerMark* find_layer_mark(const PauseScanResult& scan, int32_t layer) {
@@ -318,6 +323,13 @@ class PauseScan {
     /// The whole collection, in the form the progress surfaces consume.
     PauseScanResult result() const {
         return {pauses_, layer_marks_, axis()};
+    }
+
+    /// result() moved into a shared, immutable copy; the scan is spent after.
+    PauseScanPtr take_shared() {
+        const ProgressAxis a = axis();
+        return std::make_shared<const PauseScanResult>(
+            PauseScanResult{std::move(pauses_), std::move(layer_marks_), a});
     }
 
     /// True when the file carries at least one M73 P line — the bar for this

@@ -1519,14 +1519,9 @@ bool ui_gcode_viewer_adopt_palette_if_empty(lv_obj_t* obj, std::vector<std::stri
 }
 
 namespace helix {
-bool ui_gcode_viewer_get_pause_scan(lv_obj_t* obj, helix::gcode::PauseScanResult& out) {
-    out = {};
+helix::gcode::PauseScanPtr ui_gcode_viewer_get_pause_scan(lv_obj_t* obj) {
     gcode_viewer_state_t* st = get_state(obj);
-    if (!st || !st->has_pause_scan) {
-        return false;
-    }
-    out = st->pause_scan;
-    return true;
+    return st ? st->pause_scan : nullptr;
 }
 } // namespace helix
 
@@ -1943,9 +1938,8 @@ bool ui_gcode_viewer_adopt_palette_if_empty(lv_obj_t*, std::vector<std::string>&
 }
 
 namespace helix {
-bool ui_gcode_viewer_get_pause_scan(lv_obj_t*, helix::gcode::PauseScanResult& out) {
-    out = {};
-    return false;
+helix::gcode::PauseScanPtr ui_gcode_viewer_get_pause_scan(lv_obj_t*) {
+    return nullptr;
 }
 } // namespace helix
 bool ui_gcode_viewer_pump_offscreen_2d(lv_obj_t*) {

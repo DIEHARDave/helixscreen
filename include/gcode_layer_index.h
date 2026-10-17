@@ -146,7 +146,7 @@ struct LayerIndexStats {
     /// position on both progress axes, plus the axis the progress bar fills
     /// on, from the same single pass (see gcode_pause_scan.h). Empty lists for
     /// a pause-free file are the correct "no markers" answer.
-    PauseScanResult pause_scan;
+    PauseScanPtr pause_scan;
 };
 
 /**

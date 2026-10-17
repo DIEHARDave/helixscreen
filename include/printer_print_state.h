@@ -136,29 +136,30 @@ class PrinterPrintState {
     /// (get_effective_print_filename()) still equals @p source_filename, so a
     /// scan that finishes after a print switch can never paint the new print
     /// with the old file's pauses.
-    void set_pause_scan(helix::gcode::PauseScanResult scan, const std::string& source_filename);
+    void set_pause_scan(helix::gcode::PauseScanPtr scan, const std::string& source_filename);
 
     /// The collected pauses of the scanned file; empty when none were found.
     const std::vector<helix::gcode::ScheduledPause>& get_scheduled_pauses() const {
-        return pause_scan_.pauses;
+        static const std::vector<helix::gcode::ScheduledPause> kNone;
+        return pause_scan_ ? pause_scan_->pauses : kNone;
     }
 
     /// Which axis the progress bar fills on for the scanned file; marker
     /// placement must use helix::gcode::display_fraction() with this axis.
     helix::gcode::ProgressAxis get_pause_marker_axis() const {
-        return pause_scan_.axis;
+        return pause_scan_ ? pause_scan_->axis : helix::gcode::ProgressAxis::BytePosition;
     }
 
     /// True when the published scan belongs to the print now identified by
     /// get_effective_print_filename(). Every marker is gated on it.
     bool pause_scan_matches_current_file() const {
-        return has_pause_scan_ && pause_source_filename_ == effective_print_filename_;
+        return pause_scan_ && pause_source_filename_ == effective_print_filename_;
     }
 
     /// True when the scan carries pauses for the current print: the gate for
     /// the scanned-pause ticks.
     bool pause_markers_match_current_file() const {
-        return !pause_scan_.pauses.empty() && pause_scan_matches_current_file();
+        return pause_scan_ && !pause_scan_->pauses.empty() && pause_scan_matches_current_file();
     }
 
     /// Where the pause scheduled at runtime (see "Layer pause" below) sits on
@@ -184,8 +185,17 @@ class PrinterPrintState {
     // ========================================================================
 
     /// The status object the schedule reads back from (layer_pause::
-    /// state_object()); empty when the printer publishes none.
+    /// state_object()); empty when the printer publishes none. Called on every
+    /// discovery, so it also forgets the schedule: after a printer switch or a
+    /// reconnect nothing known still applies, and the subscription's first
+    /// frame reads the macro state back again.
     void set_layer_pause_state_object(std::string object);
+
+    /// False when the current print's scanned file never reports @p layer, so
+    /// a pause armed for it could not fire this print (the macros fire on an
+    /// exact CURRENT_LAYER match) and would linger into the next. True when no
+    /// scan belongs to this print: nothing to judge by.
+    bool file_may_report_layer(int layer) const;
 
     /// Record a command this screen sent, so the schedule shows at once and
     /// stands in for read-back on printers that publish none.
@@ -201,6 +211,16 @@ class PrinterPrintState {
     /// print_stats.info: the only reports the macros fire on.
     bool slicer_reports_layers() const {
         return slicer_layers_reported_;
+    }
+
+    /// The last print_stats.info current/total layer, the numbers the macros
+    /// compare against. Unlike print_layer_current, never a virtual_sdcard,
+    /// gcode-echo or estimated value, whose numbering can differ.
+    int slicer_current_layer() const {
+        return slicer_current_layer_;
+    }
+    int slicer_total_layers() const {
+        return slicer_total_layers_;
     }
 
     /// Integer helix::layer_pause::Availability for the scheduling UI.
@@ -1062,8 +1082,7 @@ class PrinterPrintState {
     // active print's gcode by whichever path parsed the file. All writes happen
     // on the main thread (publish from the viewer load callback, clear from
     // reset_for_new_print()), so the vectors need no lock.
-    helix::gcode::PauseScanResult pause_scan_;
-    bool has_pause_scan_{false};
+    helix::gcode::PauseScanPtr pause_scan_; // shared with the viewer; null = no scan
     std::string pause_source_filename_;
     lv_subject_t pause_markers_version_{}; // Integer: bumped on publish/clear/move
 
@@ -1071,6 +1090,9 @@ class PrinterPrintState {
     helix::layer_pause::Tracker layer_pause_;
     std::string layer_pause_state_object_;
     bool slicer_layers_reported_{false};      // per-print
+    int slicer_current_layer_{0};             // per-print, print_stats.info only
+    int slicer_total_layers_{0};              // per-print, print_stats.info only
+    bool layer_pause_seen_paused_{false};     // edge detector for Tracker::on_paused
     lv_subject_t layer_pause_availability_{}; // Integer: layer_pause::Availability
     lv_subject_t layer_pause_layer_{};        // Integer: pending layer, 0 = none
     void refresh_layer_pause();

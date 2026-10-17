@@ -57,7 +57,9 @@ struct PauseMarkerFixture : public LVGLTestFixture {
 
     void publish(const std::vector<helix::gcode::ScheduledPause>& pauses,
                  helix::gcode::ProgressAxis axis, const std::string& filename) {
-        state_.print_state().set_pause_scan({pauses, {}, axis}, filename);
+        state_.print_state().set_pause_scan(std::make_shared<const helix::gcode::PauseScanResult>(
+                                                helix::gcode::PauseScanResult{pauses, {}, axis}),
+                                            filename);
     }
 
     static helix::gcode::ScheduledPause pause_at(float byte_fraction, float slicer_fraction) {
@@ -290,9 +292,8 @@ TEST_CASE_METHOD(PauseMarkerFixture,
     REQUIRE(baseline);
 
     // Layer 6's report sits at 0.25 on the byte axis and 0.75 on slicer time.
-    helix::gcode::PauseScanResult scan;
-    scan.layer_marks = {{3, 0.1f, 0.3f}, {6, 0.25f, 0.75f}};
-    scan.axis = helix::gcode::ProgressAxis::BytePosition;
+    auto scan = std::make_shared<const helix::gcode::PauseScanResult>(helix::gcode::PauseScanResult{
+        {}, {{3, 0.1f, 0.3f}, {6, 0.25f, 0.75f}}, helix::gcode::ProgressAxis::BytePosition});
     state_.print_state().set_pause_scan(scan, "layers.gcode");
 
     lv_draw_buf_t* unmarked = take_snapshot(bar);

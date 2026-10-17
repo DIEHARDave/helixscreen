@@ -13,11 +13,13 @@
 #include "ui_update_queue.h"
 
 #include "config.h"
+#include "gcode_pause_scan.h"
 #include "lvgl_test_fixture.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -131,4 +133,49 @@ TEST_CASE_METHOD(LayerPauseControlsFixture, "Layer pause controls: beta on sends
     CHECK(api.sent[0] == "SET_PAUSE_NEXT_LAYER ENABLE=1");
     CHECK(api.sent[1] == "SET_PAUSE_AT_LAYER ENABLE=1 LAYER=8");
     CHECK(api.sent[2] == "SET_PAUSE_AT_LAYER ENABLE=0");
+}
+
+TEST_CASE_METHOD(LayerPauseControlsFixture,
+                 "Layer pause controls: a layer the file never reports is refused",
+                 "[layer_pause][ui]") {
+    ScopedBeta beta(true);
+    state.print_state().set_pause_scan(
+        std::make_shared<const helix::gcode::PauseScanResult>(
+            helix::gcode::PauseScanResult{{}, {{4, 0.4f, 0.4f}, {6, 0.6f, 0.6f}}, {}}),
+        "a.gcode");
+    controls.schedule_at_layer(5);
+    CHECK(api.sent.empty());
+    controls.schedule_at_layer(6);
+    REQUIRE(api.sent.size() == 1);
+    CHECK(api.sent[0] == "SET_PAUSE_AT_LAYER ENABLE=1 LAYER=6");
+}
+
+TEST_CASE_METHOD(LayerPauseControlsFixture,
+                 "Layer pause controls: a pause never reached is disarmed at print end",
+                 "[layer_pause][ui]") {
+    ScopedBeta beta(true);
+    const char* end_state = GENERATE("complete", "cancelled", "error");
+    CAPTURE(end_state);
+    controls.schedule_at_layer(9);
+    REQUIRE(api.sent.size() == 1);
+    state.update_from_status({{"print_stats", {{"state", end_state}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(api.sent.size() == 3);
+    CHECK(api.sent[1] == "SET_PAUSE_NEXT_LAYER ENABLE=0");
+    CHECK(api.sent[2] == "SET_PAUSE_AT_LAYER ENABLE=0");
+
+    // Only once, and only for a print this screen armed.
+    state.update_from_status({{"print_stats", {{"state", "standby"}}}});
+    state.update_from_status({{"print_stats", {{"state", end_state}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(api.sent.size() == 3);
+}
+
+TEST_CASE_METHOD(LayerPauseControlsFixture,
+                 "Layer pause controls: a print nobody armed sends nothing at its end",
+                 "[layer_pause][ui]") {
+    ScopedBeta beta(true);
+    state.update_from_status({{"print_stats", {{"state", "complete"}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(api.sent.empty());
 }

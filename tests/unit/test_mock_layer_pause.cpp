@@ -64,6 +64,18 @@ TEST_CASE_METHOD(MockLayerPauseFixture, "Mock layer pause: commands follow clien
     }
 }
 
+TEST_CASE_METHOD(MockLayerPauseFixture, "Mock layer pause: AT_LAYER fires only on its exact layer",
+                 "[layer_pause][mock]") {
+    client.gcode_script("SET_PAUSE_AT_LAYER LAYER=5");
+    client.layer_pause_on_layer(3, 4);
+    CHECK(schedule()["pause_at_layer"]["enable"] == true);
+    // Skipping past it never fires, and it stays armed, as client.cfg does.
+    client.layer_pause_on_layer(4, 6);
+    CHECK(schedule()["pause_at_layer"]["enable"] == true);
+    client.layer_pause_on_layer(4, 5);
+    CHECK(schedule()["pause_at_layer"]["enable"] == false);
+}
+
 TEST_CASE("Mock layer pause: HELIX_MOCK_LAYER_PAUSE=0 removes the macros", "[layer_pause][mock]") {
     helix::ScopedEnv env("HELIX_MOCK_LAYER_PAUSE", "0");
     CHECK_FALSE(MoonrakerClientMock::layer_pause_macros_loaded());

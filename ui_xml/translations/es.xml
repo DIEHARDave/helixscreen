@@ -3242,6 +3242,7 @@
   <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." es="Esta impresión no se puede reanudar. Reiníciala o desactiva la comprobación de cama si sigue ocurriendo."/>
   <translation tag="This print does not report layers, so no layer pause can be scheduled." es="Esta impresión no informa capas, así que no se puede programar una pausa en una capa."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" es="Esta impresión necesita aproximadamente %.0fg pero la bobina tiene aproximadamente %.0fg restantes. ¿Iniciar de todos modos?"/>
+  <translation tag="This print never reports layer {}." es="Esta impresión nunca informa la capa {}."/>
   <translation tag="This printer cannot calibrate tool offsets automatically" es="Esta impresora no puede calibrar los offsets de herramienta automáticamente"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." es="Esta impresora llena sus gates desde Spoolman. HelixScreen borró su propia copia; quita la bobina en Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." es="Esta impresora llena sus gates desde Spoolman. Haz los cambios de color, material y bobina en Spoolman."/>

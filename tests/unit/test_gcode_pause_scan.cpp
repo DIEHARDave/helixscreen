@@ -251,17 +251,17 @@ G1 X30 Y30 E3
     REQUIRE(index.build_from_file(file.path()));
 
     const auto& stats = index.get_stats();
-    REQUIRE(stats.pause_scan.pauses.size() == 2);
-    REQUIRE(stats.pause_scan.axis == ProgressAxis::SlicerTime);
+    REQUIRE(stats.pause_scan->pauses.size() == 2);
+    REQUIRE(stats.pause_scan->axis == ProgressAxis::SlicerTime);
 
-    const ScheduledPause& first = stats.pause_scan.pauses[0];
+    const ScheduledPause& first = stats.pause_scan->pauses[0];
     REQUIRE(first.kind == PauseKind::FilamentChange);
     REQUIRE(first.slicer_fraction == Approx(0.10f));
     REQUIRE(first.byte_fraction ==
             Approx(static_cast<float>(first.file_offset) / static_cast<float>(stats.total_bytes)));
     REQUIRE(first.file_offset > 0);
 
-    const ScheduledPause& second = stats.pause_scan.pauses[1];
+    const ScheduledPause& second = stats.pause_scan->pauses[1];
     REQUIRE(second.kind == PauseKind::Macro);
     REQUIRE(second.slicer_fraction == Approx(0.60f));
     REQUIRE(second.layer_index > first.layer_index);
@@ -278,8 +278,8 @@ G1 X20 Y20 E2
     GCodeLayerIndex index;
     REQUIRE(index.build_from_file(file.path()));
 
-    REQUIRE(index.get_stats().pause_scan.pauses.empty());
-    REQUIRE(index.get_stats().pause_scan.axis == ProgressAxis::BytePosition);
+    REQUIRE(index.get_stats().pause_scan->pauses.empty());
+    REQUIRE(index.get_stats().pause_scan->axis == ProgressAxis::BytePosition);
 }
 
 TEST_CASE("GCodeLayerIndex - a pause before the first layer has layer -1",
@@ -293,8 +293,8 @@ G1 X10 Y10 E1
     GCodeLayerIndex index;
     REQUIRE(index.build_from_file(file.path()));
 
-    REQUIRE(index.get_stats().pause_scan.pauses.size() == 1);
-    REQUIRE(index.get_stats().pause_scan.pauses[0].layer_index == -1);
+    REQUIRE(index.get_stats().pause_scan->pauses.size() == 1);
+    REQUIRE(index.get_stats().pause_scan->pauses[0].layer_index == -1);
 }
 
 TEST_CASE("PauseScan - reported layer extraction", "[gcode][pause_scan][layer_pause]") {
@@ -360,7 +360,8 @@ G1 X20 Y20 E2
     TempPauseScanGCode file(gcode);
     GCodeLayerIndex index;
     REQUIRE(index.build_from_file(file.path()));
-    const auto& scan = index.get_stats().pause_scan;
+    REQUIRE(index.get_stats().pause_scan != nullptr);
+    const auto& scan = *index.get_stats().pause_scan;
     REQUIRE(scan.layer_marks.size() == 2);
     CHECK(scan.layer_marks[0].layer == 1);
     CHECK(scan.layer_marks[1].layer == 2);

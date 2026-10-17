@@ -3242,6 +3242,7 @@
   <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." zh="此打印无法继续。请重新开始打印；如果反复出现，可关闭热床检查。"/>
   <translation tag="This print does not report layers, so no layer pause can be scheduled." zh="此打印未报告层信息，因此无法设置按层暂停。"/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" zh="本次打印需要约 %.0fg，但料盘仅剩约 %.0fg。仍要开始吗？"/>
+  <translation tag="This print never reports layer {}." zh="此打印从不报告第 {} 层。"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" zh="此打印机无法自动校准工具偏移"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." zh="此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。"/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." zh="此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。"/>

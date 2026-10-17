@@ -109,8 +109,9 @@ void MoonrakerClientMock::layer_pause_on_layer(int previous_layer, int current_l
     if (layer_pause_next_.load() && current_layer > layer_pause_next_armed_at_.load()) {
         layer_pause_next_ = false;
         fire = true;
-    } else if (layer_pause_at_enable_.load() && previous_layer < layer_pause_at_layer_.load() &&
-               current_layer >= layer_pause_at_layer_.load()) {
+    } else if (layer_pause_at_enable_.load() && current_layer == layer_pause_at_layer_.load()) {
+        // client.cfg compares CURRENT_LAYER for equality: a layer the print
+        // skips past never fires and stays armed, as on a real printer.
         layer_pause_at_enable_ = false;
         fire = true;
     }

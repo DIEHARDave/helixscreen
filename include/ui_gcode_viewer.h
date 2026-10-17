@@ -546,12 +546,11 @@ std::set<int> ui_gcode_viewer_get_tools_used(lv_obj_t* obj);
  * axis the bar actually uses.
  *
  * @param obj Viewer widget
- * @param out Receives the scan (empty when nothing is loaded)
- * @return true when a scan result exists (empty lists = pause-free file);
- *         false when nothing is loaded, so callers degrade to no markers.
+ * @return The shared scan (empty lists = pause-free file), or null when
+ *         nothing is loaded, so callers degrade to no markers.
  */
 namespace helix {
-bool ui_gcode_viewer_get_pause_scan(lv_obj_t* obj, helix::gcode::PauseScanResult& out);
+helix::gcode::PauseScanPtr ui_gcode_viewer_get_pause_scan(lv_obj_t* obj);
 } // namespace helix
 
 /**

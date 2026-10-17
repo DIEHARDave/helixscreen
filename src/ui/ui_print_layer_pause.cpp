@@ -40,10 +40,6 @@ void close_layer_pause_modal() {
     }
 }
 
-bool beta_enabled() {
-    return layer_pause_beta_enabled();
-}
-
 } // namespace
 
 bool layer_pause_beta_enabled() {
@@ -98,6 +94,16 @@ void PrintLayerPauseControls::init_subjects(helix::PrinterState& printer_state) 
         helix::ui::observe<int>(print.get_print_layer_current_subject(), this, refresh, lifetime);
     total_observer_ =
         helix::ui::observe<int>(print.get_print_layer_total_subject(), this, refresh, lifetime);
+    // RAW_PRINT_STATE_OK: the macros stay armed until the printer's own job
+    // ends, so the wire's end states are the question, not the app lifecycle.
+    job_state_observer_ = helix::ui::observe_print_state(
+        print.get_print_state_enum_subject(), this,
+        [](PrintLayerPauseControls* self, PrintJobState state) {
+            if (job_has_ended(state)) {
+                self->on_print_ended();
+            }
+        },
+        lifetime);
     language_observer_ = helix::ui::observe_language_change(
         this, [](PrintLayerPauseControls* self) { self->refresh_status_text(); });
 
@@ -138,6 +144,7 @@ void PrintLayerPauseControls::deinit_subjects() {
     layer_observer_.reset();
     total_observer_.reset();
     language_observer_.reset();
+    job_state_observer_.reset();
     lifetime_.invalidate();
     subjects_.deinit_all();
     subjects_initialized_ = false;
@@ -151,30 +158,29 @@ void PrintLayerPauseControls::refresh_status_text() {
     const std::string text =
         layer_pause_status_text(static_cast<lp::Availability>(lv_subject_get_int(
                                     print.get_layer_pause_availability_subject())),
-                                lv_subject_get_int(print.get_print_layer_current_subject()),
-                                lv_subject_get_int(print.get_print_layer_total_subject()),
+                                print.slicer_current_layer(), print.slicer_total_layers(),
                                 lv_subject_get_int(print.get_layer_pause_layer_subject()));
     std::snprintf(status_text_buf_, sizeof(status_text_buf_), "%s", text.c_str());
     lv_subject_copy_string(&status_text_subject_, status_text_buf_);
 }
 
 void PrintLayerPauseControls::open_modal() {
-    if (!beta_enabled()) {
+    if (!layer_pause_beta_enabled()) {
         return;
     }
     refresh_status_text();
     Modal::show("layer_pause_modal");
 }
 
-void PrintLayerPauseControls::send(const std::string& gcode, const char* what,
+bool PrintLayerPauseControls::send(const std::string& gcode, const char* what,
                                    std::function<void()> on_sent) {
-    if (!beta_enabled()) {
+    if (!layer_pause_beta_enabled()) {
         spdlog::debug("[LayerPause] Beta features off; not sending: {}", gcode);
-        return;
+        return false;
     }
     if (!api_) {
         NOTIFY_ERROR(lv_tr("Cannot schedule a pause: printer not connected"));
-        return;
+        return false;
     }
     spdlog::info("[LayerPause] {}: {}", what, gcode);
     api_->execute_gcode(gcode, lifetime_.bg_cb("PrintLayerPauseControls::send", std::move(on_sent)),
@@ -183,10 +189,11 @@ void PrintLayerPauseControls::send(const std::string& gcode, const char* what,
                             helix::ui::notify_error_tr(TR_NOOP("Failed to schedule the pause: {}"),
                                                        err);
                         });
+    return true;
 }
 
 void PrintLayerPauseControls::schedule_next_layer() {
-    send(lp::schedule_next_layer_command(), "Pause at next layer", [this]() {
+    armed_this_print_ |= send(lp::schedule_next_layer_command(), "Pause at next layer", [this]() {
         if (printer_state_) {
             printer_state_->print_state().note_layer_pause_next_layer(true);
         }
@@ -194,24 +201,52 @@ void PrintLayerPauseControls::schedule_next_layer() {
 }
 
 void PrintLayerPauseControls::schedule_at_layer(int layer) {
-    send(lp::schedule_at_layer_command(layer), "Pause at layer", [this, layer]() {
+    if (printer_state_ && !printer_state_->print_state().file_may_report_layer(layer)) {
+        // The macro fires only on an exact CURRENT_LAYER match; a layer the
+        // file never reports would stay armed into the next print.
+        spdlog::info("[LayerPause] Refusing layer {}: the file never reports it", layer);
+        NOTIFY_WARNING(
+            "{}", fmt::format(fmt::runtime(lv_tr("This print never reports layer {}.")), layer));
+        return;
+    }
+    armed_this_print_ |=
+        send(lp::schedule_at_layer_command(layer), "Pause at layer", [this, layer]() {
+            if (printer_state_) {
+                printer_state_->print_state().note_layer_pause_at_layer(layer);
+            }
+        });
+}
+
+void PrintLayerPauseControls::on_print_ended() {
+    if (!armed_this_print_) {
+        return;
+    }
+    armed_this_print_ = false;
+    // Disarming an idle macro is harmless, so both go out whatever read-back
+    // says: a printer without read-back cannot tell us what is still armed.
+    send(lp::cancel_next_layer_command(), "Disarm next-layer pause at print end", [this]() {
         if (printer_state_) {
-            printer_state_->print_state().note_layer_pause_at_layer(layer);
+            printer_state_->print_state().note_layer_pause_next_layer(false);
+        }
+    });
+    send(lp::cancel_at_layer_command(), "Disarm layer pause at print end", [this]() {
+        if (printer_state_) {
+            printer_state_->print_state().note_layer_pause_at_layer(0);
         }
     });
 }
 
 void PrintLayerPauseControls::choose_layer() {
-    if (!printer_state_ || !beta_enabled()) {
+    if (!printer_state_ || !layer_pause_beta_enabled()) {
         return;
     }
     auto& print = printer_state_->print_state();
-    const int current = lv_subject_get_int(print.get_print_layer_current_subject());
-    const int total = lv_subject_get_int(print.get_print_layer_total_subject());
-    if (lp::classify(lv_subject_get_int(print.get_print_active_subject()) != 0,
-                     print.slicer_reports_layers(), current, total) != lp::Availability::Ready) {
+    if (lv_subject_get_int(print.get_layer_pause_availability_subject()) !=
+        static_cast<int>(lp::Availability::Ready)) {
         return;
     }
+    const int current = print.slicer_current_layer();
+    const int total = print.slicer_total_layers();
     const auto bounds = lp::layer_bounds(current, total);
     const auto pending = print.get_layer_pause_schedule();
 

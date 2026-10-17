@@ -100,6 +100,11 @@ class Tracker {
     /// kept, since the macros keep their state across prints too.
     void reset_for_new_print();
 
+    /// A different printer or state object: nothing known still applies.
+    void reset() {
+        *this = Tracker{};
+    }
+
     /// Record a command as sent. Read-back, when present, is updated at once
     /// so the UI does not flicker back until the next status frame.
     void note_next_layer(bool enable, int current_layer);
@@ -112,6 +117,12 @@ class Tracker {
     /// Feed the reported layer, which expires sent-only entries the print has
     /// passed. True when the effective schedule changed.
     bool on_layer(int current_layer);
+
+    /// The print just paused at @p current_layer. The macros pause BEFORE the
+    /// layer report goes through, so the layer still reads one short: a sent
+    /// next-layer pause, or one for the layer after this, is the pause that
+    /// just happened. True when the effective schedule changed.
+    bool on_paused(int current_layer);
 
     Schedule effective() const {
         return readback_ ? *readback_ : sent_;

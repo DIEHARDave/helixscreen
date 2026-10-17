@@ -58,8 +58,14 @@ class PrintLayerPauseControls {
     /// Recompute the modal's status line from print state.
     void refresh_status_text();
 
+    /// The print reached complete, cancelled or error. The macros arm on an
+    /// exact layer match and only CANCEL_PRINT clears them, so a pause this
+    /// screen armed that never fired would pause the next print: disarm both.
+    void on_print_ended();
+
   private:
-    void send(const std::string& gcode, const char* what, std::function<void()> on_sent);
+    /// False when nothing was sent (beta off, no API).
+    bool send(const std::string& gcode, const char* what, std::function<void()> on_sent);
 
     helix::IMoonrakerAPI* api_ = nullptr;
     helix::PrinterState* printer_state_ = nullptr;
@@ -74,6 +80,10 @@ class PrintLayerPauseControls {
     ObserverGuard layer_observer_;
     ObserverGuard total_observer_;
     ObserverGuard language_observer_;
+    ObserverGuard job_state_observer_;
+
+    /// This screen armed a pause during the current print.
+    bool armed_this_print_ = false;
 
     helix::AsyncLifetimeGuard lifetime_;
 };
