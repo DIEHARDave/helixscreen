@@ -151,7 +151,7 @@ same record, so the reading is folded frame by frame (`helix::ams::fold_tag_fram
 field the own-write echo guard withholds keeps the tag's value. After a restart the box
 holds the user's values and they become the reading, and a value set on the printer's
 screen cannot be told from a tag read
-(`src/printer/ams_backend_cfs.cpp#fold_tag_reading_locked`).
+(`src/printer/ams_backend_cfs.cpp#file_box_readings`, `src/printer/ams_tag_reading.cpp#fold_tag_frame_into`).
 
 ### Endless spool (auto-refill)
 

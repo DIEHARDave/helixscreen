@@ -5163,22 +5163,30 @@ TEST_CASE_METHOD(LVGLTestFixture, "ACE's REST bridge leaves a user's edit standi
                  "[lane][ace][tag_reading]") {
     AceHarness harness(nullptr, nullptr);
     const nlohmann::json slots{
-        {"slots",
-         nlohmann::json::array({nlohmann::json{
-             {"status", "ready"}, {"color", "#ED2C2C"}, {"material", "PETG"}, {"rfid", 2}}})},
+        {"slots", nlohmann::json::array({nlohmann::json{{"status", "ready"},
+                                                        {"color", "#ED2C2C"},
+                                                        {"material", "PETG"},
+                                                        {"temp_min", 230},
+                                                        {"temp_max", 250},
+                                                        {"rfid", 2}}})},
     };
     AceTestAccess::parse_slots(*harness, slots);
     REQUIRE(harness->get_slot_info(0).color_rgb == 0xED2C2Cu);
+    REQUIRE(harness->get_slot_info(0).nozzle_temp_max == 250);
 
     auto edit = harness->get_slot_info(0);
     edit.color_rgb = 0x00FF00u;
     edit.material = "ABS";
+    edit.nozzle_temp_min = 240;
+    edit.nozzle_temp_max = 260;
     helix::test::edit_slot_as_user(*harness, 0, edit);
     AceTestAccess::parse_slots(*harness, slots);
 
     const auto shown = harness->get_slot_info(0);
     CHECK(shown.color_rgb == 0x00FF00u);
     CHECK(shown.material == "ABS");
+    CHECK(shown.nozzle_temp_min == 240);
+    CHECK(shown.nozzle_temp_max == 260);
     REQUIRE(harness->tag_reading(0).has_value());
     CHECK(harness->tag_reading(0)->material == "PETG");
 }

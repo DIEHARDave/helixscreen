@@ -674,11 +674,6 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// Files firmware's own account of every bay the frame described as lane
     /// readings; takes mutex_ itself.
     void file_box_readings(const AmsSystemInfo& new_info);
-    /// Fold one bay's box record into tag_readings_: @p stated is what the box
-    /// said, @p filed what the own-write echo guard let through. Caller holds
-    /// mutex_.
-    void fold_tag_reading_locked(const SlotInfo& slot, const helix::ams::Observation& stated,
-                                 const helix::ams::Observation& filed);
     void apply_box_frame_locked(BoxFrame& frame);
     /// Applies the endless-spool enable bit, then replaces the unit list, tool
     /// map and grouping with the parse.

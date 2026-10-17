@@ -213,12 +213,26 @@ nothing on the machine but the endpoint itself and spoollink (which looks only a
 `print_task_config`, and OrcaSlicer takes only `BED_TEMP` and `FIRST_LAYER_TEMP` from
 `filament_detect`. Temperatures from an edit live in `lane_data`.
 
+Every record write runs `FLOW_RESET_K` on its head, so none lands under a running print.
+A save made while the backend's own `print_stats.state` reads `printing` is kept and
+written by the first frame that reads otherwise (a pause included, which is also where
+the resume path writes); before the backend's frames name a state, the app's print job
+state decides (`src/printer/ams_backend_snapmaker.cpp#record_writes_held_locked`). A save
+the record already agrees with sends nothing, forced head or not; FORCE=1 only decides
+the flag and that both lines go.
+
 A head an earlier endpoint write left official is repaired once per session: official,
-`CARD_UID` known to be no card, and a record whose type (and colour, when both are known)
-matches the stored edit gets a `FORCE=1` rewrite of that edit, sent from the main thread
-outside a print. A real card, an unread channel, a record naming anything else, or a head
-with no stored edit is never touched
+its `filament_detect` entry filled with `CARD_UID` known to be no card, no card seen on
+the channel this session, and a record whose type (and colour, when both are known)
+matches the stored edit gets a `FORCE=1` rewrite of that edit. It waits for a
+`print_stats.state` the backend has read itself that is neither `printing` nor `paused`.
+An empty entry (what a reader that is off reports for a real spool), a real card, a
+record naming anything else, or a head with no stored edit is never touched
 (`src/printer/ams_backend_snapmaker.cpp#official_flag_repairs_locked`).
+
+A filled entry with no card behind it was written over the API, not read off a spool, so
+it files no vendor-cache reading and retracts one an earlier tag left
+(`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`).
 
 `filament_official` therefore does not mean an RFID tag. The backend decides that from
 `filament_detect.info[ch].CARD_UID`: the firmware reports it either as a plain integer

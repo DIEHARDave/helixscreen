@@ -344,8 +344,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
 
-    /// The channel's last reading of a real card (CARD_UID nonzero): an entry
-    /// with no card behind it was written over the API, not read off a spool.
+    /// The channel's last tag reading. An entry whose CARD_UID names no card
+    /// was written over the API, not read off a spool, and is none.
     [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
@@ -582,6 +582,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// What one status frame decides, collected under mutex_ and acted on by
     /// dispatch_effects() after it is released, plus the frame-local values the
     /// parse sections hand to each other.
+    /// A user edit's record write held by record_writes_held_locked().
+    struct PendingRecordWrite {
+        SlotInfo info;
+        bool material_declared = false;
+    };
+
     struct FrameEffects {
         bool changed = false;
         /// The active-tool port-present flag changed (#991): published to
@@ -606,8 +612,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         int in_progress_head = -1;
         /// The batch macro reported doing=false and retired the active plan.
         bool batch_retired = false;
-        /// official_flag_repairs_locked() output, sent from the main thread.
+        /// official_flag_repairs_locked() output, sent outside mutex_.
         std::vector<std::pair<int, std::string>> official_repairs;
+        /// Held record writes this frame released.
+        std::vector<std::pair<int, PendingRecordWrite>> record_flushes;
     };
 
     void dispatch_effects(const FrameEffects& fx);
@@ -619,9 +627,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     void apply_active_tool_locked(const snapmaker::StatusDelta& delta, FrameEffects& fx);
     void apply_filament_detect_locked(const snapmaker::StatusDelta& delta, FrameEffects& fx);
     void apply_rfid_entry_locked(int slot_index, const SnapmakerRfidInfo& rfid, FrameEffects& fx);
-    /// Keep this entry as the channel's tag reading when a real card is behind
-    /// it (the vendor-cache @p cache plus the temperatures and multi-colour the
-    /// lane model has no field for), and lay the tag's multi-colour onto
+    /// Keep this entry as the channel's tag reading (the vendor-cache @p cache
+    /// plus the temperatures and multi-colour the lane model has no field
+    /// for), and lay the tag's multi-colour onto
     /// @p slot unless the lane declares a colour.
     void record_tag_reading_locked(int slot_index, const SnapmakerRfidInfo& rfid,
                                    const helix::ams::Observation& cache, SlotInfo& slot);
@@ -852,10 +860,20 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// Unset until the first frame carrying it.
     std::array<std::optional<std::string>, NUM_TOOLS> task_subtype_{};
 
-    /// Per head: an official-flag repair is queued for the main thread, or one
-    /// has been sent this session. Under mutex_.
-    std::array<bool, NUM_TOOLS> official_repair_pending_{};
+    /// Per head: an official-flag repair has been sent this session. Under
+    /// mutex_.
     std::array<bool, NUM_TOOLS> official_repair_sent_{};
+
+    /// Per channel: the tag reader has shown a real card this session. Under
+    /// mutex_.
+    std::array<bool, NUM_TOOLS> card_seen_{};
+
+    /// print_stats.state from this backend's own status frames; unset until a
+    /// frame carries it. Under mutex_.
+    std::optional<std::string> print_state_;
+
+    /// Per head, the latest held record write. Under mutex_.
+    std::array<std::optional<PendingRecordWrite>, NUM_TOOLS> pending_record_writes_{};
 
     /// The temperatures and spool weight the last tag reading on each channel
     /// wrote onto SlotInfo, which no lane record carries. Unset until a tag is
@@ -868,9 +886,10 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     };
     std::array<std::optional<TagSlotValues>, NUM_TOOLS> tag_slot_values_{};
 
-    /// The last reading of a real card on each channel, as tag_reading()
-    /// reports it. Unset when the channel's entry names no card or no tag.
-    /// Written only from handle_status; read under mutex_.
+    /// The last tag reading on each channel, as tag_reading() reports it. Unset
+    /// when the channel's entry names no tag, or a CARD_UID naming no card.
+    /// Written by handle_status, retract_tag_reading_locked() and
+    /// on_started(); all access under mutex_.
     std::array<std::optional<helix::ams::TagReading>, NUM_TOOLS> tag_readings_{};
 
     /// Whether filament_detect.info last showed a real card on each channel: a
@@ -887,23 +906,31 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// firmware's RESUME gate, the stock screen and slicers read: the identity
     /// line when the record names a different type, vendor or subtype, the
     /// colour line when it names a different colour, nothing when it already
-    /// agrees (every line runs FLOW_RESET_K on the head). A record not seen yet
-    /// is written only for a declared material, @p material_declared. Main
-    /// thread.
+    /// agrees (every line runs FLOW_RESET_K on the head), both lines with
+    /// FORCE=1 on an official head with no card. A record not seen yet is
+    /// written only for a declared material, @p material_declared. While
+    /// record_writes_held_locked() the edit is kept in pending_record_writes_
+    /// and written by the first frame that releases it. Main thread.
     void write_task_filament_record(int head, const SlotInfo& info, bool material_declared);
 
-    /// FORCE=1 rewrites for heads whose record is flagged official with no card
-    /// behind it while holding exactly what this backend's stored edit says. A
-    /// filament_detect/set write (Extended Firmware) leaves that flag, and the
-    /// firmware then refuses plain writes from us and from the stock screen.
-    /// A head with a real card, or a record that differs from the stored edit,
-    /// is never touched. Marks each head returned pending. Caller holds mutex_.
+    /// Whether a user edit's record write must wait: this backend's own
+    /// print_stats.state reads printing, or, before its frames have named one,
+    /// the app's print job state reads PRINTING or is not initialized. Caller
+    /// holds mutex_.
+    [[nodiscard]] bool record_writes_held_locked() const;
+
+    /// FORCE=1 rewrites for heads whose record is flagged official while the
+    /// tag entry is filled with no card behind it, the channel has shown no
+    /// card this session, and the record holds exactly what this backend's
+    /// stored edit says. A filament_detect/set write (Extended Firmware) leaves
+    /// that flag, and the firmware then refuses plain writes from us and from
+    /// the stock screen. Nothing is returned until this backend has read a
+    /// print_stats.state that is neither printing nor paused. Marks each head
+    /// returned sent. Caller holds mutex_.
     [[nodiscard]] std::vector<std::pair<int, std::string>> official_flag_repairs_locked();
 
-    /// Send official_flag_repairs_locked() output from the main thread, outside
-    /// a print: a write runs FLOW_RESET_K on the head. A repair that cannot run
-    /// yet is dropped from pending and recomputed on a later frame.
-    void dispatch_official_flag_repairs(std::vector<std::pair<int, std::string>> repairs);
+    /// Send official_flag_repairs_locked() output. Main thread, outside mutex_.
+    void dispatch_official_flag_repairs(const std::vector<std::pair<int, std::string>>& repairs);
 
     /// One SET_PRINT_FILAMENT_CONFIG script per head the paused task uses whose
     /// firmware record names no type while the slot knows its material: the

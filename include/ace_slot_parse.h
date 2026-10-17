@@ -46,6 +46,20 @@ inline constexpr int kDryerMaxDurationMin = 720;
 /// `type` (ValgACE) when both are stated. Empty or absent states no reading.
 [[nodiscard]] std::optional<std::string> read_slot_material(const nlohmann::json& slot_json);
 
+/// What a slot entry's `rfid` field says about the bay's tag reader.
+enum class TagRead {
+    Silent,     ///< no `rfid` field: the frame says nothing about the reader
+    Memory,     ///< false: the hub states its own memory of the bay, not a read
+    InProgress, ///< 0 (idle, before a read starts) or 3 (identifying)
+    NoTag,      ///< 1: a finished read that found no tag
+    Identified, ///< true, or 2: this frame's material and colour came off the tag
+};
+
+/// Decode `rfid`: ValgACE sends a bool, the multiACE lineage the integers of
+/// ACEResearch's PROTOCOL.md (0 not found, 1 failed to identify, 2 identified,
+/// 3 identifying).
+[[nodiscard]] TagRead read_tag_state(const nlohmann::json& slot_json);
+
 /// empty/runout -> EMPTY; available/loaded/ready/preload/running -> AVAILABLE;
 /// anything else (including "unknown") -> UNKNOWN.
 [[nodiscard]] SlotStatus slot_status_from_string(const std::string& status_str);

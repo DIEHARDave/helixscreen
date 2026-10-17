@@ -86,7 +86,7 @@ constexpr std::string_view PRODUCT_LINE_VENDOR = "Snapmaker";
 }
 
 [[nodiscard]] bool is_product_line_vendor(const std::string& brand) {
-    return helix::text_io::to_lower(brand) == helix::text_io::to_lower(PRODUCT_LINE_VENDOR);
+    return helix::text_io::equals_ignore_case(brand, PRODUCT_LINE_VENDOR);
 }
 
 /// True when @p spool_name is a product line that @p brand cannot carry: the
@@ -294,6 +294,8 @@ void AmsBackendSnapmaker::on_started() {
         tag_slot_values_.fill(std::nullopt);
         tag_readings_.fill(std::nullopt);
         tag_has_card_.fill(std::nullopt);
+        card_seen_.fill(false);
+        print_state_.reset();
     }
     if (!api_)
         return;
@@ -1435,6 +1437,9 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
     tag_names_identity_[static_cast<size_t>(i)] =
         rfid.main_type != "NONE" || (!rfid.sub_type.empty() && rfid.sub_type != "NONE");
     tag_has_card_[static_cast<size_t>(i)] = rfid.has_card;
+    if (rfid.has_card.value_or(false)) {
+        card_seen_[static_cast<size_t>(i)] = true;
+    }
     helix::ams::SpoolEvidence& evidence = fx.observed_evidence[i];
     evidence.tag_uid = rfid.uid;
     if (!rfid.uid.empty()) {
@@ -1471,6 +1476,17 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
         auto* slot = system_info_.units[0].get_slot(i);
         if (slot && !*tag_names_identity_[static_cast<size_t>(i)] &&
             retract_tag_reading_locked(i, *slot)) {
+            fx.changed = true;
+        }
+        return;
+    }
+    // A filled entry whose CARD_UID names no card was written over the API (the
+    // Extended Firmware's filament_detect/set), not read off a spool, so it is
+    // no vendor reading: what an earlier tag left cached goes with it. An entry
+    // with no readable CARD_UID says nothing about a card either way.
+    if (rfid.has_card == std::optional<bool>(false)) {
+        auto* slot = system_info_.units[0].get_slot(i);
+        if (slot && retract_tag_reading_locked(i, *slot)) {
             fx.changed = true;
         }
         return;
@@ -2232,9 +2248,7 @@ void AmsBackendSnapmaker::record_tag_reading_locked(int slot_index, const Snapma
     const auto i = static_cast<size_t>(slot_index);
     std::optional<helix::ams::TagReading>& kept = tag_readings_[i];
     const std::string previous_multi = kept ? kept->multi_color_hexes : std::string{};
-    if (!rfid.has_card.value_or(false)) {
-        kept.reset();
-    } else {
+    {
         helix::ams::TagReading reading = helix::ams::tag_reading_from(cache);
         // Zero is the firmware's spelling of a temperature the tag left out.
         if (rfid.hotend_min_temp > 0) {
@@ -2475,6 +2489,13 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
       // with sync_from_backend() which acquires mutex_ via get_system_info()
         std::lock_guard<std::mutex> lock(mutex_);
 
+        if (const nlohmann::json* ps = helix::json_util::find_member(status, "print_stats")) {
+            if (const nlohmann::json* state = helix::json_util::find_member(*ps, "state");
+                state && state->is_string()) {
+                print_state_ = state->get<std::string>();
+            }
+        }
+
         apply_extension_locked(status, fx.changed);
 
         apply_extruders_locked(delta, fx);
@@ -2494,6 +2515,15 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         converge_locked(fx);
 
         fx.official_repairs = official_flag_repairs_locked();
+        if (!record_writes_held_locked()) {
+            for (int head = 0; head < NUM_TOOLS; ++head) {
+                auto& pending = pending_record_writes_[static_cast<size_t>(head)];
+                if (pending) {
+                    fx.record_flushes.emplace_back(head, std::move(*pending));
+                    pending.reset();
+                }
+            }
+        }
     } // Release mutex_ before emitting event
 
     dispatch_effects(fx);
@@ -2532,6 +2562,9 @@ void AmsBackendSnapmaker::dispatch_effects(const FrameEffects& fx) {
 
     if (!fx.official_repairs.empty()) {
         dispatch_official_flag_repairs(fx.official_repairs);
+    }
+    for (const auto& [head, pending] : fx.record_flushes) {
+        write_task_filament_record(head, pending.info, pending.material_declared);
     }
 
     if (fx.changed) {
@@ -2769,10 +2802,6 @@ std::pair<std::string, std::string> record_vendor_subtype(const SlotInfo& slot) 
     return {std::move(vendor), std::move(subtype)};
 }
 
-bool same_record_word(const std::string& a, const std::string& b) {
-    return helix::text_io::to_lower(a) == helix::text_io::to_lower(b);
-}
-
 } // namespace
 
 std::string AmsBackendSnapmaker::build_filament_config_gcode(int head, const SlotInfo& slot,
@@ -2819,6 +2848,22 @@ std::optional<bool> AmsBackendSnapmaker::record_write_needs_force_locked(int hea
     return true;
 }
 
+bool AmsBackendSnapmaker::record_writes_held_locked() const {
+    // Every record write runs FLOW_RESET_K on its head, which must not land
+    // under a running print.
+    if (print_state_) {
+        return *print_state_ == "printing";
+    }
+    // Before this backend's own frames have named a state, the app's print
+    // state answers for a user's save, and a state nobody has read holds it.
+    // RAW_PRINT_STATE_OK: the write is gated on what the job is doing to the
+    // heads, not on the lifecycle the UI shows.
+    if (!get_printer_state().are_subjects_initialized()) {
+        return true;
+    }
+    return get_printer_state().print_state().get_print_job_state() == PrintJobState::PRINTING;
+}
+
 void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& info,
                                                      bool material_declared) {
     if (head < 0 || head >= NUM_TOOLS || !api_) {
@@ -2829,20 +2874,25 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
     RecordLines lines = RecordLines::Both;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        if (record_writes_held_locked()) {
+            spdlog::info("{} head {} filament record held until the print stops running",
+                         backend_log_tag(), head);
+            pending_record_writes_[idx] = PendingRecordWrite{info, material_declared};
+            return;
+        }
         const std::optional<bool> needs_force = record_write_needs_force_locked(head);
         if (!needs_force) {
             spdlog::debug("{} head {} holds an RFID tag's record; leaving it to the tag",
                           backend_log_tag(), head);
             return;
         }
-        force = *needs_force;
-        // Every line runs FLOW_RESET_K on the head, so a save that leaves the
-        // firmware's record standing must not send one.
         if (!IMoonrakerAPI::is_safe_material_param(info.material)) {
             spdlog::warn("{} head {} material '{}' cannot be sent as a gcode parameter",
                          backend_log_tag(), head, info.material);
             return;
         }
+        // Every line runs FLOW_RESET_K on the head, so a save that leaves the
+        // firmware's record standing sends nothing, forced head or not.
         if (!task_type_[idx].has_value()) {
             if (!material_declared) {
                 return;
@@ -2851,16 +2901,17 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
             const auto [vendor, subtype] = record_vendor_subtype(info);
             const bool identity_differs =
                 is_unset_task_field(*task_type_[idx]) ||
-                !same_record_word(*task_type_[idx], info.material) ||
-                (task_vendor_[idx] && !same_record_word(*task_vendor_[idx], vendor)) ||
-                (task_subtype_[idx] && !same_record_word(*task_subtype_[idx], subtype));
+                !helix::text_io::equals_ignore_case(*task_type_[idx], info.material) ||
+                (task_vendor_[idx] &&
+                 !helix::text_io::equals_ignore_case(*task_vendor_[idx], vendor)) ||
+                (task_subtype_[idx] &&
+                 !helix::text_io::equals_ignore_case(*task_subtype_[idx], subtype));
             // A colour not seen yet goes out beside an identity change, and
             // never alone.
             const bool colour_known = task_color_[idx].has_value();
             const bool colour_differs =
                 colour_known && *task_color_[idx] != (info.color_rgb & 0xFFFFFFu);
-            // An official head is rewritten whole, so no line leaves the flag.
-            if (force || (identity_differs && (colour_differs || !colour_known))) {
+            if (identity_differs && (colour_differs || !colour_known)) {
                 lines = RecordLines::Both;
             } else if (identity_differs) {
                 lines = RecordLines::Identity;
@@ -2869,6 +2920,11 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
             } else {
                 return;
             }
+        }
+        // An official head is rewritten whole, so no line leaves the flag.
+        force = *needs_force;
+        if (force) {
+            lines = RecordLines::Both;
         }
     }
     const std::string gcode = build_filament_config_gcode(head, info, force, lines);
@@ -2888,18 +2944,22 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
 
 std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::official_flag_repairs_locked() {
     std::vector<std::pair<int, std::string>> out;
-    if (system_info_.units.empty()) {
+    // A forced rewrite runs FLOW_RESET_K, so it waits for a print state this
+    // backend has read itself and that holds no head: not printing, not paused.
+    if (system_info_.units.empty() || !print_state_ || *print_state_ == "printing" ||
+        *print_state_ == "paused") {
         return out;
     }
     for (int head = 0; head < NUM_TOOLS; ++head) {
         const auto idx = static_cast<size_t>(head);
-        if (official_repair_sent_[idx] || official_repair_pending_[idx]) {
+        if (official_repair_sent_[idx]) {
             continue;
         }
-        // A card reading has to have been seen and named no card: an unread
-        // channel may yet turn out to hold a real tag.
-        if (!task_official_[idx].value_or(false) || !tag_has_card_[idx].has_value() ||
-            *tag_has_card_[idx]) {
+        // Only a filled entry with no card behind it, on a channel that has
+        // shown no card this session, is an API write's record: an empty entry
+        // is also what a reader that is off reports for a real spool.
+        if (!task_official_[idx].value_or(false) || !tag_names_identity_[idx].value_or(false) ||
+            !tag_has_card_[idx].has_value() || *tag_has_card_[idx] || card_seen_[idx]) {
             continue;
         }
         // The record has to be the one this backend's stored edit wrote. A
@@ -2907,7 +2967,8 @@ std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::official_flag_repa
         // choice a forced rewrite would discard.
         const auto ovr = overrides_.find(head);
         if (ovr == overrides_.end() || is_unset_task_field(ovr->second.material) ||
-            !task_type_[idx] || !same_record_word(*task_type_[idx], ovr->second.material)) {
+            !task_type_[idx] ||
+            !helix::text_io::equals_ignore_case(*task_type_[idx], ovr->second.material)) {
             continue;
         }
         if (ovr->second.color_set && task_color_[idx] &&
@@ -2922,55 +2983,30 @@ std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::official_flag_repa
         if (gcode.empty()) {
             continue;
         }
-        official_repair_pending_[idx] = true;
+        official_repair_sent_[idx] = true;
         out.emplace_back(head, std::move(gcode));
     }
     return out;
 }
 
 void AmsBackendSnapmaker::dispatch_official_flag_repairs(
-    std::vector<std::pair<int, std::string>> repairs) {
-    auto tok = lifetime_.token();
-    tok.defer("AmsBackendSnapmaker::dispatch_official_flag_repairs", [this, repairs = std::move(
-                                                                                repairs)]() {
-        // RAW_PRINT_STATE_OK: a record write runs FLOW_RESET_K on the
-        // head, which must not land while the job holds the head,
-        // pre-print included.
-        bool in_job = false;
-        if (get_printer_state().are_subjects_initialized()) {
-            const auto& print = get_printer_state().print_state();
-            const PrintJobState job = print.get_print_job_state();
-            in_job = job == PrintJobState::PRINTING || job == PrintJobState::PAUSED ||
-                     print.is_print_in_progress();
-        }
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            for (const auto& [head, gcode] : repairs) {
-                const auto idx = static_cast<size_t>(head);
-                official_repair_pending_[idx] = false;
-                if (!in_job) {
-                    official_repair_sent_[idx] = true;
-                }
-            }
-        }
-        if (in_job || !api_) {
-            return;
-        }
-        const char* tag = backend_log_tag();
-        for (const auto& [head, gcode] : repairs) {
-            spdlog::info("{} head {} is flagged official with no card behind it; "
-                         "rewriting the record HelixScreen wrote to clear the flag",
-                         tag, head);
-            api_->execute_gcode(
-                gcode,
-                [tag, h = head]() { spdlog::debug("{} head {} official flag cleared", tag, h); },
-                [tag, h = head](const MoonrakerError& err) {
-                    spdlog::warn("{} head {} official flag repair failed: {}", tag, h, err.message);
-                },
-                /*timeout_ms=*/0, /*silent=*/false, /*on_queued=*/nullptr,
-                /*caller_surfaces_errors=*/false);
-        }
-    });
+    const std::vector<std::pair<int, std::string>>& repairs) {
+    if (!api_) {
+        return;
+    }
+    const char* tag = backend_log_tag();
+    for (const auto& [head, gcode] : repairs) {
+        spdlog::info("{} head {} is flagged official with no card behind it; "
+                     "rewriting the record HelixScreen wrote to clear the flag",
+                     tag, head);
+        api_->execute_gcode(
+            gcode, [tag, h = head]() { spdlog::debug("{} head {} official flag cleared", tag, h); },
+            [tag, h = head](const MoonrakerError& err) {
+                spdlog::warn("{} head {} official flag repair failed: {}", tag, h, err.message);
+            },
+            /*timeout_ms=*/0, /*silent=*/false, /*on_queued=*/nullptr,
+            /*caller_surfaces_errors=*/false);
+    }
 }
 
 std::vector<std::pair<int, std::string>>

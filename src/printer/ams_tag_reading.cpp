@@ -11,10 +11,6 @@ namespace helix::ams {
 
 namespace {
 
-bool same_text(const std::string& a, const std::string& b) {
-    return helix::text_io::to_lower(a) == helix::text_io::to_lower(b);
-}
-
 bool same_weight(float a, float b) {
     return std::fabs(a - b) < 0.5F;
 }
@@ -78,18 +74,19 @@ TagReading tag_reading_from(const Observation& cache) {
 
 TagProvenance tag_provenance(const TagReading& tag, const SlotInfo& shown) {
     TagProvenance out;
-    if (tag.material && same_text(shown.material, *tag.material)) {
+    if (tag.material && helix::text_io::equals_ignore_case(shown.material, *tag.material)) {
         out.set(TagField::Material);
     }
-    if (tag.brand && same_text(shown.brand, *tag.brand)) {
+    if (tag.brand && helix::text_io::equals_ignore_case(shown.brand, *tag.brand)) {
         out.set(TagField::Brand);
     }
-    if (tag.product_name && same_text(shown.product_name, *tag.product_name)) {
+    if (tag.product_name &&
+        helix::text_io::equals_ignore_case(shown.product_name, *tag.product_name)) {
         out.set(TagField::Product);
     }
     if (tag.states(TagField::Color) &&
         (!tag.color_rgb || shown.color_rgb == (*tag.color_rgb & 0xFFFFFFu)) &&
-        same_text(shown.multi_color_hexes, tag.multi_color_hexes)) {
+        helix::text_io::equals_ignore_case(shown.multi_color_hexes, tag.multi_color_hexes)) {
         out.set(TagField::Color);
     }
     if (tag.states(TagField::NozzleTemp) &&
@@ -168,6 +165,29 @@ std::optional<TagReading> fold_tag_frame(const std::optional<TagReading>& kept,
         return std::nullopt;
     }
     return out;
+}
+
+void fold_tag_frame_into(std::unordered_map<int, TagReading>& kept, int slot_index,
+                         const Observation& stated, const Observation& filed,
+                         std::optional<int> nozzle_min, std::optional<int> nozzle_max) {
+    const auto with_temps = [&](TagReading reading) {
+        if (reading.material) {
+            reading.nozzle_temp_min = nozzle_min;
+            reading.nozzle_temp_max = nozzle_max;
+        }
+        return reading;
+    };
+    std::optional<TagReading> before;
+    if (auto it = kept.find(slot_index); it != kept.end()) {
+        before = it->second;
+    }
+    std::optional<TagReading> folded = fold_tag_frame(before, with_temps(tag_reading_from(stated)),
+                                                      with_temps(tag_reading_from(filed)));
+    if (folded) {
+        kept[slot_index] = std::move(*folded);
+    } else {
+        kept.erase(slot_index);
+    }
 }
 
 } // namespace helix::ams

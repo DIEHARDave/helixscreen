@@ -284,9 +284,10 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     friend class AceTestAccess;
 
     /// Keep or drop bay @p slot_index's tag reading from one frame's slot entry:
-    /// its rfid state, the frame's @p material and @p color, its temp_min /
-    /// temp_max, and @p present. Caller holds mutex_.
-    void note_tag_frame_locked(int slot_index, const nlohmann::json& slot_json,
+    /// its decoded @p tag_read, the frame's @p material and @p color, its
+    /// temp_min / temp_max, and @p present. Caller holds mutex_.
+    void note_tag_frame_locked(int slot_index, helix::ace::TagRead tag_read,
+                               const nlohmann::json& slot_json,
                                const std::optional<std::string>& material,
                                const std::optional<uint32_t>& color, std::optional<bool> present);
 

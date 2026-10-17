@@ -94,7 +94,7 @@ writes the same variables, so the reading is folded frame by frame
 (`helix::ams::fold_tag_frame`): fields the own-write echo guard withholds keep the tag's
 value. After a restart the saved ids are the user's and become the reading, and an id set
 from the printer's own screen cannot be told from a tag read
-(`src/printer/ams_backend_qidi.cpp#fold_tag_reading_locked`).
+(`src/printer/ams_backend_qidi.cpp#parse_save_variables`, `src/printer/ams_tag_reading.cpp#fold_tag_frame_into`).
 
 ### Slot Metadata, Swap Detection and the Metadata Clear
 

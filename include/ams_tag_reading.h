@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 namespace helix::ams {
 
@@ -96,5 +97,15 @@ class TagProvenance {
 [[nodiscard]] std::optional<TagReading> fold_tag_frame(const std::optional<TagReading>& kept,
                                                        const TagReading& raw,
                                                        const TagReading& filed);
+
+/// fold_tag_frame() over one slot of a backend's per-slot readings, for a box
+/// whose record states the tag through a vendor-cache observation: @p stated is
+/// what the frame said, @p filed what the own-write echo guard let through.
+/// @p nozzle_min / @p nozzle_max are the range the backend's tables give the
+/// record's material, so they stand or fall with it. The slot is erased when
+/// nothing is left.
+void fold_tag_frame_into(std::unordered_map<int, TagReading>& kept, int slot_index,
+                         const Observation& stated, const Observation& filed,
+                         std::optional<int> nozzle_min, std::optional<int> nozzle_max);
 
 } // namespace helix::ams
