@@ -453,30 +453,26 @@
     <px name="controls_toggle_width_medium" value="80"/>
     <px name="controls_toggle_width_large" value="96"/>
     <px name="controls_toggle_width_xlarge" value="112"/>
-    <!-- Pre-print option tiles (option_tile.xml): fixed-height cells of the
-         2-column grid on the print file detail view. The tile height itself
-         bounds the label (style_max_height="100%"), so long_mode="dots"
-         ellipsizes instead of wrapping past the cell. option_tile_tab is the
-         corner check tab, holding an xs check glyph. -->
+    <!-- Pre-print option tiles (option_tile.xml): fixed-height pills of the
+         2-column grid on the print file detail view, tall enough for a
+         two-line font_small label. -->
     <px name="option_tile_height_micro" value="40"/>
     <px name="option_tile_height_tiny" value="40"/>
     <px name="option_tile_height_small" value="48"/>
     <px name="option_tile_height_medium" value="48"/>
     <px name="option_tile_height_large" value="56"/>
     <px name="option_tile_height_xlarge" value="64"/>
-    <px name="option_tile_tab_micro" value="14"/>
-    <px name="option_tile_tab_tiny" value="14"/>
-    <px name="option_tile_tab_small" value="16"/>
-    <px name="option_tile_tab_medium" value="16"/>
-    <px name="option_tile_tab_large" value="18"/>
-    <px name="option_tile_tab_xlarge" value="20"/>
-    <!-- The tab's lift off the tile's bottom border: -space_xs per tier. -->
-    <px name="option_tile_tab_lift_micro" value="-2"/>
-    <px name="option_tile_tab_lift_tiny" value="-2"/>
-    <px name="option_tile_tab_lift_small" value="-4"/>
-    <px name="option_tile_tab_lift_medium" value="-5"/>
-    <px name="option_tile_tab_lift_large" value="-6"/>
-    <px name="option_tile_tab_lift_xlarge" value="-8"/>
+    <!-- Filament chip row on the print file detail view (filament_swatch is
+         height="100%" of it). Its two bands each need ~0.78x font_small's line
+         box to show a whole glyph: 32px holds it at tiny and 34 at micro (26
+         clips both labels there), 40 holds through Large, and XLarge's 27px
+         line box needs 48. -->
+    <px name="filament_chip_row_height_micro" value="34"/>
+    <px name="filament_chip_row_height_tiny" value="32"/>
+    <px name="filament_chip_row_height_small" value="40"/>
+    <px name="filament_chip_row_height_medium" value="40"/>
+    <px name="filament_chip_row_height_large" value="40"/>
+    <px name="filament_chip_row_height_xlarge" value="48"/>
     <!-- Calibration tiles: the glyph a tile's share of the card holds above a
          one-line label -->
     <string name="calib_icon_size_micro" value="sm"/>
@@ -646,12 +642,15 @@
     <px name="dialog_content_max_xxlarge" value="800"/>
 
 
+    <!-- The widget catalog's narrowest portrait width: the panel an 800x480
+         landscape screen gives it (70% of 800). -->
+    <px name="catalog_min_width" value="560"/>
+
     <!-- input_height: standard height for all input fields (textareas, dropdowns,
-         icon toggles). Static 48px historically — now a responsive ladder so inputs
-         scale up on bigger screens instead of looking cramped (history panel search
-         box, spoolman search, modal text inputs, wifi password row, etc.). Small
-         breakpoints keep 48 (no regression on cramped Snapmaker U1 / 480x320). -->
-    <px name="input_height_micro" value="48"/>
+         icon toggles). A responsive ladder, so inputs scale up on bigger screens.
+         Micro (480x272) matches its 12px body font and 26px buttons; tiny and small
+         keep 48 for the cramped 480x320 panels. -->
+    <px name="input_height_micro" value="32"/>
     <px name="input_height_tiny" value="48"/>
     <px name="input_height_small" value="48"/>
     <px name="input_height_medium" value="52"/>

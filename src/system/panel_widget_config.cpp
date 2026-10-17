@@ -11,6 +11,7 @@
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "helix_fs.h"
+#include "helix_psram_attr.h"
 #include "home_layout_share.h"
 #include "json_utils.h"
 #include "layout_manager.h"
@@ -584,7 +585,7 @@ void PanelWidgetConfig::flush_pending_save() {
 namespace {
 
 std::function<void(const PanelWidgetConfig&)>& save_listener() {
-    static std::function<void(const PanelWidgetConfig&)> listener;
+    static HELIX_PSRAM_BSS std::function<void(const PanelWidgetConfig&)> listener;
     return listener;
 }
 

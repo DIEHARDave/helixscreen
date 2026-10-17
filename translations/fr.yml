@@ -1489,6 +1489,7 @@ translations:
   Found {} at {}.: '{} trouvée à {}.'
   Framerate: Fréquence d'images
   From Buffer: Depuis tampon
+  From Printer: 'Depuis l''imprimante'
   From SpoolmanDB: 'Depuis SpoolmanDB'
   From Version: Depuis la version
   Front: 'Avant'

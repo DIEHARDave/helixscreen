@@ -64,6 +64,7 @@ Once connected, OrcaSlicer's **Print** button uploads the sliced file and (optio
 Tap a file to see the preview panel:
 
 - **3D G-code preview**: Rotatable with touch, showing the toolpath. On slower boards, the preview shows a simplified model while you drag and sharpens a moment after you let go.
+- **Sliced colors button**: The round palette button in the preview's top-left corner switches the 3D preview between the colors of the filament actually loaded and the colors the file was sliced with. It lights up while the sliced colors are showing, and appears once the 3D preview has drawn.
 - **Metadata**: Estimated time, filament weight, layer count, material, and layer height
 - **Pre-print steps**: Shows which calibration steps will run before printing (e.g., bed mesh)
 - **Timelapse toggle**: Enable recording if you have the timelapse plugin installed
@@ -72,7 +73,7 @@ Tap a file to see the preview panel:
 
 ## Pre-Print Options
 
-Before starting, you can enable or disable:
+Before starting, you can enable or disable the steps below. Each option is a tile: tap it to switch it on or off. A tile that is on is filled with the accent color and shows a check in place of its icon.
 
 | Option | What It Does |
 |--------|--------------|
@@ -94,6 +95,8 @@ These options modify the G-code on-the-fly — if you disable "Auto Bed Mesh" bu
 1. Select your file
 2. Review and set pre-print options
 3. Tap **Start Print**
+
+On larger screens, a line above the Print button estimates how long the pre-print steps you have switched on will take. Small screens (480x320 and below) leave it out to make room for the options.
 
 The UI switches to the Print Status panel automatically.
 

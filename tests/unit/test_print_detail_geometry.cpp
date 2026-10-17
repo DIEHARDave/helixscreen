@@ -232,17 +232,55 @@ TEST_CASE_METHOD(LVGLUITestFixture,
             }
         }
 
-        // Labels wrap inside their tile; the check tab never covers one.
+        // Labels wrap inside their pill, beside the icon slot, never under it.
         for (uint32_t i = 0; i < tile_count; ++i) {
             INFO("tile " << i);
             lv_obj_t* const tile = lv_obj_get_child(container, i);
             const Rect tile_r = coords_of(tile);
             lv_obj_t* const label = lv_obj_find_by_name(tile, "label");
-            lv_obj_t* const tab = lv_obj_find_by_name(tile, "check_tab");
+            lv_obj_t* const slot = lv_obj_find_by_name(tile, "icon_slot");
             REQUIRE(label != nullptr);
-            REQUIRE(tab != nullptr);
+            REQUIRE(slot != nullptr);
             CHECK(rect_contains(tile_r, coords_of(label)));
-            CHECK_FALSE(rect_intersects(coords_of(tab), coords_of(label)));
+            CHECK(rect_contains(tile_r, coords_of(slot)));
+            CHECK_FALSE(rect_intersects(coords_of(slot), coords_of(label)));
+        }
+
+        // Small portrait folds the filament chips onto the FILAMENTS header's
+        // line and shrinks the preview to fit the whole options column, down
+        // to its width/3 floor; everywhere else the chips sit on a row of
+        // their own under the header.
+        {
+            lv_subject_t* const bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
+            lv_subject_t* const portrait_sub = lv_xml_get_subject(nullptr, "ui_is_portrait");
+            const bool small_portrait =
+                lv_subject_get_int(portrait_sub) == 1 && lv_subject_get_int(bp) < 2;
+            INFO("small_portrait " << small_portrait);
+            lv_obj_t* const header = lv_obj_find_by_name(root, "color_card_header");
+            lv_obj_t* const chips = lv_obj_find_by_name(root, "filament_mapping_rows");
+            lv_obj_t* const cue = lv_obj_find_by_name(root, "color_card_header_end");
+            REQUIRE(header != nullptr);
+            REQUIRE(chips != nullptr);
+            REQUIRE(cue != nullptr);
+            const Rect h = coords_of(header);
+            const Rect ch = coords_of(chips);
+            const Rect cu = coords_of(cue);
+            if (small_portrait) {
+                CHECK(ch.y1 < h.y2);
+                CHECK(ch.x1 >= h.x2);
+                CHECK(cu.x1 >= ch.x2);
+                lv_obj_t* const sc = lv_obj_find_by_name(root, "detail_options_scroll");
+                lv_obj_t* const preview = lv_obj_find_by_name(root, "detail_card");
+                REQUIRE(sc != nullptr);
+                REQUIRE(preview != nullptr);
+                const int floor_h = lv_obj_get_width(preview) / 3;
+                INFO("scroll_bottom " << lv_obj_get_scroll_bottom(sc) << " preview "
+                                      << lv_obj_get_height(preview) << " floor " << floor_h);
+                CHECK((lv_obj_get_scroll_bottom(sc) <= 0 || lv_obj_get_height(preview) <= floor_h));
+            } else {
+                CHECK(ch.y1 >= h.y2);
+                CHECK(cu.y1 < h.y2); // the cue stays on the header's line
+            }
         }
 
         // The cue reports the scroll area it belongs to, no more, no less.

@@ -1564,6 +1564,9 @@
         "label_hidden_if_eq": {
           "type": "int"
         },
+        "label_hidden_cond": {
+          "type": "string"
+        },
         "icon_hidden_subject": {
           "type": "string"
         },
@@ -3276,6 +3279,7 @@
     "card_max_width",
     "card_min_width",
     "card_width",
+    "catalog_min_width",
     "chamber_header_gap",
     "chamber_header_gap_large",
     "chamber_header_gap_medium",
@@ -3408,6 +3412,13 @@
     "filament_ams_row_h_micro",
     "filament_ams_row_h_small",
     "filament_ams_row_h_tiny",
+    "filament_chip_row_height",
+    "filament_chip_row_height_large",
+    "filament_chip_row_height_medium",
+    "filament_chip_row_height_micro",
+    "filament_chip_row_height_small",
+    "filament_chip_row_height_tiny",
+    "filament_chip_row_height_xlarge",
     "filament_error",
     "filament_hub_bg_dark",
     "filament_hub_bg_light",
@@ -3800,20 +3811,6 @@
     "option_tile_height_small",
     "option_tile_height_tiny",
     "option_tile_height_xlarge",
-    "option_tile_tab",
-    "option_tile_tab_large",
-    "option_tile_tab_lift",
-    "option_tile_tab_lift_large",
-    "option_tile_tab_lift_medium",
-    "option_tile_tab_lift_micro",
-    "option_tile_tab_lift_small",
-    "option_tile_tab_lift_tiny",
-    "option_tile_tab_lift_xlarge",
-    "option_tile_tab_medium",
-    "option_tile_tab_micro",
-    "option_tile_tab_small",
-    "option_tile_tab_tiny",
-    "option_tile_tab_xlarge",
     "overlay_bg",
     "overlay_bg_dark",
     "overlay_bg_light",

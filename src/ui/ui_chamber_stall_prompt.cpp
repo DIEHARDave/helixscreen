@@ -5,6 +5,7 @@
 #include "abort_manager.h"
 #include "app_globals.h"
 #include "chamber_stall_prompt.h"
+#include "helix_psram_attr.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
@@ -148,7 +149,7 @@ class ChamberStallModal : public Modal {
 
   private:
     static inline lv_subject_t message_subject_{};
-    static inline char message_buf_[384] = {};
+    static inline HELIX_PSRAM_BSS char message_buf_[384] = {};
     static inline lv_subject_t hint_subject_{};
     static inline char hint_buf_[192] = {};
     static inline lv_subject_t no_retry_subject_{};

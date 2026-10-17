@@ -505,28 +505,32 @@ lv_obj_t* make_detail_root(lv_obj_t* parent) {
 }
 } // namespace
 
-TEST_CASE_METHOD(LVGLUITestFixture, "Sliced colors toggle sits outside the filament card",
+TEST_CASE_METHOD(LVGLUITestFixture, "Sliced colors toggle sits on the preview it recolors",
                  "[print_select][detail][xml]") {
-    // The toggle recolors the 3D preview, not the chips. Task 4 merges the two
-    // cards and the header cannot carry the toggle, the chevron and two icons
-    // at 480x272 — so the toggle must already live outside the card.
+    // The toggle recolors the 3D preview, not the chips, so it lives on the
+    // preview card and the options column carries no row for it.
     lv_obj_t* const root = make_detail_root(test_screen());
     REQUIRE(root != nullptr);
 
     lv_obj_t* const toggle = lv_obj_find_by_name(root, "sliced_colors_toggle");
     REQUIRE(toggle != nullptr);
+    CHECK(lv_obj_has_flag(toggle, LV_OBJ_FLAG_CHECKABLE));
 
-    lv_obj_t* const card = lv_obj_find_by_name(root, "filament_mapping_card");
-    REQUIRE(card != nullptr);
+    lv_obj_t* const preview = lv_obj_find_by_name(root, "detail_card");
+    lv_obj_t* const column = lv_obj_find_by_name(root, "options_section");
+    REQUIRE(preview != nullptr);
+    REQUIRE(column != nullptr);
 
-    // Walk up from the toggle: the filament card must not be an ancestor.
+    bool on_preview = false;
     for (lv_obj_t* p = lv_obj_get_parent(toggle); p != nullptr; p = lv_obj_get_parent(p)) {
-        CHECK(p != card);
+        on_preview = on_preview || p == preview;
+        CHECK(p != column);
     }
+    CHECK(on_preview);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,
-                 "Sliced colors row is shown only while the live viewer is on screen",
+                 "Sliced colors toggle is shown only while the live viewer is on screen",
                  "[print_select][detail][xml]") {
     // The toggle sets detail_prefer_sliced_colors, which apply_preview_colors()
     // uses to choose which mappings feed the 3D gcode viewer. It reaches nothing
@@ -539,7 +543,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     //
     // Built through the real view rather than make_detail_root(): the two
     // subjects below are registered by PrintSelectDetailView::init_subjects(),
-    // so a bare lv_xml_create() finds the row but not the subjects driving it.
+    // so a bare lv_xml_create() finds the toggle but not the subjects driving it.
     register_xml_callbacks({
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
@@ -554,7 +558,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* const root = view.create(test_screen());
     REQUIRE(root != nullptr);
 
-    lv_obj_t* const row = lv_obj_find_by_name(root, "sliced_colors_row");
+    lv_obj_t* const row = lv_obj_find_by_name(root, "sliced_colors_toggle");
     REQUIRE(row != nullptr);
 
     lv_subject_t* const mode = lv_xml_get_subject(nullptr, "detail_gcode_viewer_mode");
@@ -579,9 +583,20 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
 
     // Both: the live viewer is what is on screen, the toggle recolours something
-    // visible, so the row is offered.
+    // visible, so the toggle is offered.
     set_state(1, 1);
     CHECK_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+
+    // Its checked state follows the preference both ways, so a reopened view
+    // (which resets the preference) never shows a stale "on".
+    lv_subject_t* const prefer = lv_xml_get_subject(nullptr, "detail_prefer_sliced_colors");
+    REQUIRE(prefer != nullptr);
+    lv_subject_set_int(prefer, 1);
+    process_lvgl(20);
+    CHECK(lv_obj_has_state(row, LV_STATE_CHECKED));
+    lv_subject_set_int(prefer, 0);
+    process_lvgl(20);
+    CHECK_FALSE(lv_obj_has_state(row, LV_STATE_CHECKED));
 
     // And it goes away again when the viewer does - the binding is reactive, not
     // a one-shot evaluated when the tree was built.
@@ -641,6 +656,24 @@ TEST_CASE_METHOD(LVGLUITestFixture, "prep time estimate line appears on the firs
     lv_subject_set_int(visible, 0);
     process_lvgl(20);
     CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+
+    // Micro and tiny give the line's row to the options column, estimate or
+    // not; small and up keep it.
+    lv_subject_set_int(visible, 1);
+    lv_subject_t* const bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
+    REQUIRE(bp != nullptr);
+    const int32_t real_bp = lv_subject_get_int(bp);
+    for (int32_t tier : {0, 1}) {
+        INFO("breakpoint " << tier);
+        lv_subject_set_int(bp, tier);
+        process_lvgl(20);
+        CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+    }
+    lv_subject_set_int(bp, 2);
+    process_lvgl(20);
+    CHECK_FALSE(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(bp, real_bp);
+    process_lvgl(20);
 
     view.hide();
     helix::ui::UpdateQueue::instance().drain();

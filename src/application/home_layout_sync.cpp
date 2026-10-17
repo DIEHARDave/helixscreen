@@ -7,6 +7,7 @@
 
 #include "app_globals.h"
 #include "config.h"
+#include "helix_psram_attr.h"
 #include "helix_version.h"
 #include "i_moonraker_api.h"
 #include "json_utils.h"
@@ -45,7 +46,8 @@ void show_seeded_toast() {
 } // namespace
 
 HomeLayoutSync& HomeLayoutSync::instance() {
-    static HomeLayoutSync sync;
+    // PSRAM: internal DRAM statics shrink the heap the ESP32 WiFi driver starts in.
+    static HELIX_PSRAM_BSS HomeLayoutSync sync;
     return sync;
 }
 
