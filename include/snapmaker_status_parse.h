@@ -110,6 +110,8 @@ struct PrintTaskConfigDelta {
     std::array<std::optional<bool>, kToolCount> filament_exist;
     std::array<std::optional<std::string>, kToolCount> filament_type;
     std::array<std::optional<std::string>, kToolCount> filament_vendor;
+    /// The product line inside the type ("Basic", "SnapSpeed").
+    std::array<std::optional<std::string>, kToolCount> filament_sub_type;
     /// Whether the head's entry came from a Snapmaker RFID spool.
     std::array<std::optional<bool>, kToolCount> filament_official;
     /// Hex RGBA, as the firmware spells it; see rgb_from_rgba_hex.

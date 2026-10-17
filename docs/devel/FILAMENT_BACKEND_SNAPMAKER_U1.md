@@ -133,12 +133,9 @@ user-editable only. `SUB_TYPE` is recognized as a product line only when it matc
 of eight known literals ("Basic", "Matte", "SnapSpeed", "Silk", "Support", "HF", "95A",
 "95A HF"), and those lines name Snapmaker spools: a free-form user `spool_name` is never
 round-tripped to firmware as a SUB_TYPE, and neither is a product line beside another
-vendor's brand (`src/printer/ams_backend_snapmaker.cpp#apply_user_edit`). Paxx firmware
-marks any `filament_detect/set` with fields as OFFICIAL and builds the entry fresh from
-the body, so a SUB_TYPE the POST omits is stored as `NONE`, and one it sends comes back
-through `filament_detect.info` looking like a tag read. `spool_name` follows the tag
-record after the own-write echo guard, so a `NONE` SUB_TYPE blanks it and our echo is
-never learned as the spool's name
+vendor's brand: `build_filament_config_gcode` writes `Basic` instead
+(`src/printer/ams_backend_snapmaker.cpp#build_filament_config_gcode`). Nothing this backend
+sends reaches `filament_detect.info`, so whatever the reader reports there is the tag's
 (`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`). Every path that names
 the spool from the tag (the read itself, a user clear, a swap-detected clear) goes
 through `tag_spool_name`, which blanks a known product line beside a non-Snapmaker brand:
@@ -159,8 +156,7 @@ product line, material, brand or colour of a tag the reader no longer reports. A
 field still holding the dropped record's value falls back to what `print_task_config`
 last said for that head, or blank/default where it never spoke; the tag's nozzle and
 bed temperatures and spool weight go back to SlotInfo's defaults, unless the lane holds a
-user's declaration or a bound Spoolman spool, and are never recorded as the tag's while a
-write of ours may still be echoing. A field something else has written since stays. A `print_task_config` `filament_type` of `NONE` or empty is no
+user's declaration or a bound Spoolman spool. A field something else has written since stays. A `print_task_config` `filament_type` of `NONE` or empty is no
 material, never the literal. A repeat of the same silence finds nothing to drop and reports
 no change (`src/printer/ams_backend_snapmaker.cpp#retract_tag_reading_locked`).
 
@@ -186,24 +182,35 @@ temperatures and weight, and material, brand and colour fall back to
 | `SET_PRINT_EXTRUDER_MAP CONFIG_EXTRUDER=<l> MAP_EXTRUDER=<p>` | Pre-print logical->physical remap (`build_preprint_gcode`, `:1887-1889`) |
 | `SET_PRINT_USED_EXTRUDERS EXTRUDERS=<csv>` | Pre-print feed gating — always sent, remap or not (`src/printer/ams_backend_snapmaker.cpp#build_preprint_gcode`) |
 | `AUTO_FEEDING_BATCH ACTION=START / DOING EXTRUDER=<n> / END` | Batch load/unload when the firmware macro is present (see Batch Load/Unload) |
-| `POST /printer/filament_detect/set` | Slot-metadata writeback (paxx12 Extended Firmware REST, `:854-924`) |
 | `SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=<head> VENDOR=… FILAMENT_TYPE=… FILAMENT_SUBTYPE=…` + `FILAMENT_COLOR_RGBA=…` | The head's `print_task_config` record, which RESUME requires (below) |
 
 The firmware refuses RESUME with `e<N> not edit filament` while a head the task uses has
-no `print_task_config.filament_type`. An RFID spool, `SET_PRINT_FILAMENT_CONFIG`, and on
-the Extended Firmware an accepted `filament_detect/set` POST fill it.
+no `print_task_config.filament_type`. An RFID spool or `SET_PRINT_FILAMENT_CONFIG` fills it.
 
-Every material edit POSTs `filament_detect/set` first. On the Extended Firmware an accepted
-POST fills the record itself: measured on a rig, head 1's
-`filament_type`/`filament_vendor`/`filament_sub_type` went `NONE` -> `PLA`/`Generic`/`Basic`
-within 2 s of an HTTP 200 and survived `FIRMWARE_RESTART`. The same POST sets
-`filament_official` True for that head, and nothing the endpoint accepts clears it: a POST of
-`NONE` values blanks the type and leaves the head official. Stock firmware 404s the
-endpoint. So the edit sends `SET_PRINT_FILAMENT_CONFIG` only when the POST was not accepted,
-and only when the record names a different type or none (or, before any `print_task_config`
-frame has arrived, when the edit declared a material), since every send runs
-`FLOW_RESET_K`. VENDOR is `Snapmaker` or `Generic`, FILAMENT_SUBTYPE a known product line or
+A user edit writes the head's record with `SET_PRINT_FILAMENT_CONFIG`, the command the stock
+screen sends, which leaves `filament_official` False. Only the lines that differ go out:
+the identity line when the record names a different type, vendor or subtype, the colour
+line when it names a different colour, both when the record has not been seen and the edit
+declared a material, nothing when it already agrees, since every send runs `FLOW_RESET_K`
+on the head. VENDOR is `Snapmaker` or `Generic`, FILAMENT_SUBTYPE a known product line or
 `Basic` (`src/printer/ams_backend_snapmaker.cpp#write_task_filament_record`).
+
+The Extended Firmware's `POST /printer/filament_detect/set` is not used. It fills the same
+record, but it also sets `filament_official` True for the head (measured on a rig: the flag
+rises within a second of the HTTP 200, a plain `SET_PRINT_FILAMENT_CONFIG` is then refused
+with `official filament, not configurable!`, and `FORCE=1` clears it), and nothing the
+endpoint accepts clears the flag. The `filament_detect.info` entry it also writes is read by
+nothing on the machine but the endpoint itself and spoollink (which looks only at
+`CARD_UID` and `CARD_EVENT_TIME`); the stock screen and OrcaSlicer read identity from
+`print_task_config`, and OrcaSlicer takes only `BED_TEMP` and `FIRST_LAYER_TEMP` from
+`filament_detect`. Temperatures from an edit live in `lane_data`.
+
+A head an earlier endpoint write left official is repaired once per session: official,
+`CARD_UID` known to be no card, and a record whose type (and colour, when both are known)
+matches the stored edit gets a `FORCE=1` rewrite of that edit, sent from the main thread
+outside a print. A real card, an unread channel, a record naming anything else, or a head
+with no stored edit is never touched
+(`src/printer/ams_backend_snapmaker.cpp#official_flag_repairs_locked`).
 
 `filament_official` therefore does not mean an RFID tag. The backend decides that from
 `filament_detect.info[ch].CARD_UID`: the firmware reports it either as a plain integer
@@ -457,10 +464,8 @@ firmware-populated fields (`brand`, `total_weight_g`) and reset override-exclusi
 (`src/printer/ams_backend_snapmaker.cpp#clear_override_fields`); `spool_name` is reset to
 the product line the tag itself states, or blank.
 
-User edits round-trip to firmware through `POST /printer/filament_detect/set`
-(`channel` + `info` with `VENDOR`/`MAIN_TYPE`/`SUB_TYPE`/`RGB_1`/`ALPHA`/temps) — an
-Extended Firmware endpoint that 404s on stock firmware; the override still persists to
-`lane_data`, so HelixScreen's UI is correct either way
+User edits round-trip to firmware through `SET_PRINT_FILAMENT_CONFIG` (see "Commands the
+Backend Emits"); the override persists to `lane_data` whatever the firmware takes
 (`src/printer/ams_backend_snapmaker.cpp#apply_user_edit`).
 
 ### Capabilities
