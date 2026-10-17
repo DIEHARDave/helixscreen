@@ -121,7 +121,7 @@ struct DirtyRect {
         if (empty()) {
             return {};
         }
-        const DirtyRect c{std::max(x1, 0), std::max(y1, 0), std::min(x2, w - 1),
+        const DirtyRect c{std::max<int32_t>(x1, 0), std::max<int32_t>(y1, 0), std::min(x2, w - 1),
                           std::min(y2, h - 1)};
         return c.empty() ? DirtyRect{} : c;
     }
