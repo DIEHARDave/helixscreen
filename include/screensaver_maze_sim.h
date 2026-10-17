@@ -33,10 +33,7 @@ struct MazeLevel {
 
 /// The ladder, most expensive level first.
 inline constexpr MazeLevel MAZE_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 1, true},
-    {33, 2, true},
-    {33, 2, false},
-    {50, 4, false},
+    {SAVER_FAST_PERIOD, 1, true}, {33, 2, true}, {33, 2, false}, {50, 4, false}, {66, 4, false},
 };
 
 inline constexpr size_t MAZE_LEVEL_COUNT = std::size(MAZE_LEVELS);

@@ -818,13 +818,16 @@ TEST_CASE("mid-flip the view squashes to black at the horizon", "[screensaver][m
     }
 }
 
-TEST_CASE("the maze ladder runs 16, 33, 33, 50 ms and shrinks the internal frame",
+TEST_CASE("the maze ladder runs 16, 33, 33, 50, 66 ms and shrinks the internal frame",
           "[screensaver][maze]") {
-    REQUIRE(helix::ui::MAZE_LEVEL_COUNT == 4);
+    REQUIRE(helix::ui::MAZE_LEVEL_COUNT == 5);
     CHECK(MAZE_LEVELS[0].period_ms == 16);
     CHECK(MAZE_LEVELS[1].period_ms == 33);
     CHECK(MAZE_LEVELS[2].period_ms == 33);
     CHECK(MAZE_LEVELS[3].period_ms == 50);
+    CHECK(MAZE_LEVELS[4].period_ms == 66);
+    CHECK(MAZE_LEVELS[4].scale == 4);
+    CHECK_FALSE(MAZE_LEVELS[4].textured_floor);
     CHECK(MAZE_LEVELS[1].textured_floor);
     CHECK_FALSE(MAZE_LEVELS[2].textured_floor);
 
@@ -836,7 +839,11 @@ TEST_CASE("the maze ladder runs 16, 33, 33, 50 ms and shrinks the internal frame
     r.set_level(3);
     CHECK(r.internal_w() == 200);
     CHECK(r.internal_h() == 120);
+    r.set_level(4);
+    CHECK(r.internal_w() == 200);
+    CHECK(r.internal_h() == 120);
     r.set_level(99);
+    CHECK(r.level() == 4);
     CHECK(r.level() == helix::ui::MAZE_LEVEL_COUNT - 1);
 
     // A run that starts low holds only the frame that level draws.
