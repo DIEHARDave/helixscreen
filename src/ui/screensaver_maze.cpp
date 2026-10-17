@@ -5,13 +5,22 @@
 #include "screensaver_maze.h"
 
 #include "ui_filename_utils.h"
+#include "ui_panel_print_select.h"
 
+#include "app_globals.h"
+#include "helix_fs.h"
 #include "moonraker_types.h"
+#include "print_history_manager.h"
 #include "printer_image_manager.h"
+#include "screensaver_motion.h"
+#include "thumbnail_cache.h"
+#include "thumbnail_processor.h"
+#include "thumbnail_rules.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <chrono>
 #include <draw/lv_image_decoder_private.h>
 #include <string>
 #include <unordered_set>
@@ -162,11 +171,28 @@ bool to_argb(const lv_draw_buf_t* buf, MazeImage& out) {
     return true;
 }
 
-/// Decodes `path` into `out`; leaves it empty when the image cannot be read.
-void load_image(const std::string& path, MazeImage& out, const char* what) {
+/// Decodes `path` into `out`, reduced to fit a `reduce_to` square when that is above 0;
+/// leaves it empty when the image cannot be read or is larger than `max_side` a side (0 for
+/// any size).
+void load_image(const std::string& path, MazeImage& out, const char* what, int max_side = 0,
+                int reduce_to = 0) {
     out = MazeImage{};
     if (path.empty()) {
         return;
+    }
+    if (max_side > 0) {
+        lv_image_header_t header{};
+        if (lv_image_decoder_get_info(path.c_str(), &header) != LV_RESULT_OK) {
+            spdlog::debug("[Screensaver] Maze {} '{}' did not decode", what, path);
+            return;
+        }
+        const auto w = static_cast<int>(header.w);
+        const auto h = static_cast<int>(header.h);
+        if (w > max_side || h > max_side) {
+            spdlog::debug("[Screensaver] Maze {} '{}' is {}x{}, over {} a side, not used", what,
+                          path, w, h, max_side);
+            return;
+        }
     }
     lv_image_decoder_dsc_t dsc;
     const lv_result_t res = lv_image_decoder_open(&dsc, path.c_str(), nullptr);
@@ -183,26 +209,88 @@ void load_image(const std::string& path, MazeImage& out, const char* what) {
         out = MazeImage{};
     }
     lv_image_decoder_close(&dsc);
+    if (reduce_to > 0 && !out.empty()) {
+        out = reduce_maze_image(out, reduce_to);
+    }
 }
 
 } // namespace
 
+std::string maze_cached_thumbnail(const std::string& key) {
+    if (key.empty()) {
+        return {};
+    }
+    // Two existence checks and nothing else: ThumbnailCache::get_if_cached() would delete a
+    // stale entry and bump its age, and fetch() would download.
+    const std::string cache_id = helix::thumbnail_cache_id(helix::ThumbnailSource::Moonraker, key);
+    std::string bin = helix::ThumbnailProcessor::instance().get_if_processed(
+        cache_id, helix::ThumbnailProcessor::get_target_for_display());
+    if (!bin.empty()) {
+        return bin;
+    }
+    const std::string png = get_thumbnail_cache().get_cache_path(cache_id);
+    return helix::fs::exists(png) ? ThumbnailCache::to_lvgl_path(png) : std::string();
+}
+
+MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng) {
+    MazeArtSources sources;
+    if (PrintHistoryManager* history = get_print_history_manager()) {
+        sources.recent = cached_art_paths(history_art_candidates(history->get_jobs(), 20),
+                                          maze_cached_thumbnail, MAZE_ART_RECENT, 20);
+    }
+    if (PrintSelectPanel* panel = find_print_select_panel()) {
+        std::vector<std::string> keys = panel->printer_thumbnail_keys();
+        for (int i = static_cast<int>(keys.size()) - 1; i > 0; i--) {
+            std::swap(keys[static_cast<size_t>(i)],
+                      keys[static_cast<size_t>(screensaver::random_below(rng, i + 1))]);
+        }
+        std::vector<MazeArtCandidate> candidates;
+        candidates.reserve(keys.size());
+        for (std::string& key : keys) {
+            candidates.push_back({std::move(key)});
+        }
+        sources.files = cached_art_paths(candidates, maze_cached_thumbnail, MAZE_ART_FILES,
+                                         MAZE_ART_FILE_PROBES, sources.recent);
+    }
+    sources.printer = helix::PrinterImageManager::instance().get_displayed_image_path(screen_w);
+    return sources;
+}
+
 bool MazeScreensaver::on_start() {
     spdlog::info("[Screensaver] Starting 3D maze");
+    const auto started = std::chrono::steady_clock::now();
+    auto elapsed_ms = [&started]() {
+        return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                         std::chrono::steady_clock::now() - started)
+                                         .count());
+    };
     MazeArt art;
-    load_image(LOGO_PATH, art.logo, "logo");
-    MazeImage picture;
-    load_image(helix::PrinterImageManager::instance().get_displayed_image_path(screen_w()), picture,
-               "picture");
-    const bool has_picture = !picture.empty();
-    if (has_picture) {
-        art.pictures.push_back(std::move(picture));
+    load_image(LOGO_PATH, art.logo, "logo", 0, MAZE_ART_PICTURE_SIDE);
+
+    const MazeArtSources sources =
+        art_source_ ? art_source_() : maze_art_sources_from_app(screen_w(), rng());
+    // Each decode is reduced before the next starts, so at most one full-size image is held.
+    for (const std::string& path : mix_maze_art(sources, MAZE_MAX_PICTURES)) {
+        if (elapsed_ms() >= MAZE_ART_DECODE_BUDGET_MS) {
+            break;
+        }
+        const bool printer = path == sources.printer;
+        MazeImage picture;
+        load_image(path, picture, printer ? "printer picture" : "thumbnail",
+                   printer ? 0 : MAZE_ART_MAX_SOURCE_SIDE, MAZE_ART_PICTURE_SIDE);
+        if (!picture.empty()) {
+            art.pictures.push_back(std::move(picture));
+        }
     }
+    spdlog::debug("[Screensaver] Maze art: {} recent, {} files, printer {}, {} decoded in {} ms",
+                  sources.recent.size(), sources.files.size(),
+                  sources.printer.empty() ? "none" : "yes", art.pictures.size(), elapsed_ms());
+
     FrameTarget frame = canvas().frame();
     sim_.init(frame, art, rng(), level());
-    spdlog::debug("[Screensaver] Maze started ({}x{}, level {}, logo {}, picture {})", screen_w(),
+    spdlog::debug("[Screensaver] Maze started ({}x{}, level {}, logo {}, {} pictures)", screen_w(),
                   screen_h(), level(), art.logo.empty() ? "drawn" : "decoded",
-                  has_picture ? "decoded" : "none");
+                  sim_.renderer().picture_count());
     return true;
 }
 

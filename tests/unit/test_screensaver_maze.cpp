@@ -4,14 +4,21 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/print_select_panel_test_access.h"
+#include "app_globals.h"
 #include "print_history_data.h"
+#include "printer_state.h"
 #include "screensaver_maze.h"
 #include "screensaver_maze_sim.h"
 #include "screensaver_pixel_writer.h"
+#include "thumbnail_cache.h"
+#include "thumbnail_rules.h"
 
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <deque>
+#include <filesystem>
 #include <map>
 #include <random>
 #include <string>
@@ -1573,6 +1580,97 @@ TEST_CASE_METHOD(LVGLTestFixture, "the maze saver starts, runs and stops", "[scr
     REQUIRE(saver.is_active());
     saver.stop();
     CHECK_FALSE(saver.is_active());
+}
+
+namespace {
+
+/// Starts a maze saver whose art comes from `sources`; returns the pictures it hung.
+size_t pictures_hung(const helix::ui::MazeArtSources& sources) {
+    MazeScreensaver saver;
+    saver.set_art_source([sources]() { return sources; });
+    saver.start();
+    REQUIRE(saver.is_active());
+    const size_t count = saver.sim().renderer().picture_count();
+    saver.stop();
+    return count;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture, "the maze saver hangs the art its source gives",
+                 "[screensaver][maze]") {
+    helix::ui::MazeArtSources sources;
+    sources.recent = {"A:assets/images/helix-icon-64.png",
+                      "A:assets/images/benchy_thumbnail_white.png"};
+    sources.files = {"A:assets/images/folder.png"};
+    sources.printer = "A:assets/images/printer_200.png";
+    CHECK(pictures_hung(sources) == 4);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "the maze saver skips missing and oversized thumbnails",
+                 "[screensaver][maze]") {
+    helix::ui::MazeArtSources sources;
+    // 1929 x 1869: over the side cap for a thumbnail.
+    sources.recent = {"A:/nonexistent.png", "A:assets/images/printers/snapmaker-u1.png",
+                      "A:assets/images/folder.png"};
+    CHECK(pictures_hung(sources) == 1);
+    // The printer picture may be any size.
+    sources.recent.clear();
+    sources.printer = "A:assets/images/printers/snapmaker-u1.png";
+    CHECK(pictures_hung(sources) == 1);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "the maze saver keeps twelve pictures at most",
+                 "[screensaver][maze]") {
+    helix::ui::MazeArtSources sources;
+    for (const char* lang : {"de", "en", "es", "fr", "it", "ja", "pt", "ru", "zh"}) {
+        sources.files.push_back(std::string("A:assets/images/flags/flag_") + lang + ".png");
+    }
+    sources.files.push_back("A:assets/images/helix-icon-64.png");
+    sources.files.push_back("A:assets/images/benchy_thumbnail_white.png");
+    sources.files.push_back("A:assets/images/folder.png");
+    sources.printer = "A:assets/images/printer_200.png";
+    CHECK(pictures_hung(sources) == helix::ui::MAZE_MAX_PICTURES);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "no wall art means brick", "[screensaver][maze]") {
+    CHECK(pictures_hung(helix::ui::MazeArtSources{}) == 0);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "the maze's cache lookup reads, never writes",
+                 "[screensaver][maze]") {
+    namespace fs = std::filesystem;
+    const std::string key = "maze-test/x.png";
+    const std::string path = get_thumbnail_cache().get_cache_path(
+        helix::thumbnail_cache_id(helix::ThumbnailSource::Moonraker, key));
+    fs::create_directories(fs::path(path).parent_path());
+    fs::copy_file("assets/images/helix-icon-64.png", path, fs::copy_options::overwrite_existing);
+    // Long stale, so a freshness check would throw it away.
+    const auto old = fs::file_time_type::clock::now() - std::chrono::hours(24 * 365 * 25);
+    fs::last_write_time(path, old);
+
+    CHECK(helix::ui::maze_cached_thumbnail(key) == "A:" + path);
+    REQUIRE(fs::exists(path));
+    CHECK(fs::last_write_time(path) == old);
+    CHECK(helix::ui::maze_cached_thumbnail("maze-test/not-cached.png").empty());
+    CHECK(helix::ui::maze_cached_thumbnail("").empty());
+    fs::remove(path);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "print select lists the printer files' thumbnail keys",
+                 "[screensaver][maze]") {
+    PrintSelectPanel panel(get_printer_state(), nullptr);
+    std::vector<PrintFileData> files(4);
+    files[0].filename = "a.gcode";
+    files[0].original_thumbnail_url = "a.png";
+    files[1].filename = "b.gcode";
+    files[2].filename = "sub/c.gcode";
+    files[2].original_thumbnail_url = "sub/b.png";
+    files[3].filename = "dir";
+    files[3].is_dir = true;
+    files[3].original_thumbnail_url = "dir.png";
+    PrintSelectPanelTestAccess::set_files(panel, std::move(files));
+    CHECK(panel.printer_thumbnail_keys() == std::vector<std::string>{"a.png", "sub/b.png"});
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

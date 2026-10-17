@@ -13,6 +13,7 @@
 #include <functional>
 #include <lvgl.h>
 #include <optional>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -65,6 +66,18 @@ std::vector<std::string> cached_art_paths(const std::vector<MazeArtCandidate>& c
 std::vector<std::string> mix_maze_art(const MazeArtSources& sources, size_t max);
 
 /**
+ * @brief The LVGL path of a thumbnail already in the local cache, or empty
+ *
+ * `key` is a thumbnail path from the gcodes root. Prefers the pre-scaled card copy, then the
+ * full PNG. Reads only: it never fetches, and never touches an entry's age or freshness.
+ */
+std::string maze_cached_thumbnail(const std::string& key);
+
+/// Wall art the app already holds: cached thumbnails of recent prints and of other files in
+/// the print-select list (shuffled with `rng`), and the printer picture for `screen_w`.
+MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng);
+
+/**
  * @brief Windows 95-style 3D Maze screensaver
  *
  * MazeSim walks a random maze and raycasts it Wolfenstein-style straight into the
@@ -92,8 +105,18 @@ class MazeScreensaver : public SaverBase {
     }
     void on_level_request(size_t level) override;
 
+  public:
+    /// Replaces where on_start() finds its art; for tests.
+    void set_art_source(std::function<MazeArtSources()> source) {
+        art_source_ = std::move(source);
+    }
+    const MazeSim& sim() const {
+        return sim_;
+    }
+
   private:
     MazeSim sim_;
+    std::function<MazeArtSources()> art_source_;
 };
 
 } // namespace helix::ui
