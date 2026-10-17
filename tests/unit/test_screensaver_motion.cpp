@@ -9,8 +9,11 @@
 #endif
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <random>
+#include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -212,6 +215,137 @@ TEST_CASE("random_below stays within [0, n) and reaches every value", "[screensa
     for (int count : seen) {
         CHECK(count > 0);
     }
+}
+
+// ============================================================================
+// Shared rng and wrap helpers, each proven equal to the spellings the savers write by hand
+// ============================================================================
+
+namespace {
+
+bool same_bits(float a, float b) {
+    return std::memcmp(&a, &b, sizeof(float)) == 0;
+}
+
+int32_t fireflies_random_ms(std::minstd_rand& rng, int32_t lo, int32_t hi) {
+    return lo + random_below(rng, hi - lo + 1);
+}
+
+float fireflies_uniform(std::minstd_rand& rng, float lo, float hi) {
+    return lo + (hi - lo) * unit_random(rng);
+}
+
+float fireflies_wrap360(float deg) {
+    float d = std::fmod(deg, 360.0f);
+    if (d < 0.0f) {
+        d += 360.0f;
+    }
+    return d >= 360.0f ? 0.0f : d;
+}
+
+void pipes_dissolve_shuffle(std::minstd_rand& rng, std::vector<uint32_t>& order) {
+    for (size_t i = order.size(); i-- > 1;) {
+        const auto j = static_cast<size_t>(random_below(rng, static_cast<int>(i + 1)));
+        std::swap(order[i], order[j]);
+    }
+}
+
+} // namespace
+
+TEST_CASE("random_int draws the same integers as lo + random_below(span)", "[screensaver_motion]") {
+    for (const auto& [lo, hi] :
+         {std::pair{0, 0}, std::pair{-5, 5}, std::pair{8000, 15000}, std::pair{3, 4}}) {
+        std::minstd_rand a(99);
+        std::minstd_rand b(99);
+        bool saw_lo = false;
+        bool saw_hi = false;
+        for (int i = 0; i < 5000; i++) {
+            const int got = random_int(a, lo, hi);
+            REQUIRE(got == fireflies_random_ms(b, lo, hi));
+            REQUIRE(got >= lo);
+            REQUIRE(got <= hi);
+            saw_lo = saw_lo || got == lo;
+            saw_hi = saw_hi || got == hi;
+        }
+        if (hi - lo < 100) {
+            CHECK(saw_lo);
+            CHECK(saw_hi);
+        }
+    }
+}
+
+TEST_CASE("random_between is fireflies' uniform and random_normal(mean, sd) its spelled-out "
+          "form",
+          "[screensaver_motion]") {
+    std::minstd_rand a(7);
+    std::minstd_rand b(7);
+    for (int i = 0; i < 2000; i++) {
+        REQUIRE(same_bits(random_between(a, -3.5f, 12.25f), fireflies_uniform(b, -3.5f, 12.25f)));
+    }
+    for (int i = 0; i < 2000; i++) {
+        const float got = random_normal(a, -0.1f, 0.3f);
+        const float expect = -0.1f + 0.3f * random_normal(b);
+        REQUIRE(same_bits(got, expect));
+    }
+}
+
+TEST_CASE("shuffle_in_place gives the pipes dissolve's permutation for every seed",
+          "[screensaver_motion]") {
+    for (uint32_t seed = 1; seed <= 10; seed++) {
+        for (const size_t n : {size_t{0}, size_t{1}, size_t{2}, size_t{7}, size_t{4800}}) {
+            std::vector<uint32_t> got(n);
+            std::vector<uint32_t> expect(n);
+            for (size_t i = 0; i < n; i++) {
+                got[i] = expect[i] = static_cast<uint32_t>(i);
+            }
+            std::minstd_rand a(seed);
+            std::minstd_rand b(seed);
+            shuffle_in_place(a, got.begin(), got.end());
+            pipes_dissolve_shuffle(b, expect);
+            REQUIRE(got == expect);
+            // Both drew the same number of values.
+            REQUIRE(a() == b());
+        }
+    }
+    std::vector<uint32_t> order(64);
+    for (size_t i = 0; i < order.size(); i++) {
+        order[i] = static_cast<uint32_t>(i);
+    }
+    std::vector<uint32_t> shuffled = order;
+    std::minstd_rand rng(3);
+    shuffle_in_place(rng, shuffled.begin(), shuffled.end());
+    CHECK(shuffled != order);
+    std::sort(shuffled.begin(), shuffled.end());
+    CHECK(shuffled == order);
+}
+
+TEST_CASE("wrap_index folds any integer into [0, n)", "[screensaver_motion]") {
+    for (const int32_t n : {1, 7, 60, 86400}) {
+        for (int64_t x = -3 * static_cast<int64_t>(n) - 5; x <= 3 * static_cast<int64_t>(n) + 5;
+             x += (n > 100 ? 37 : 1)) {
+            const auto expect = static_cast<int32_t>(((x % n) + n) % n);
+            REQUIRE(wrap_index(x, n) == expect);
+            REQUIRE(wrap_index(x, n) >= 0);
+            REQUIRE(wrap_index(x, n) < n);
+        }
+    }
+    CHECK(wrap_index(-1, 86400) == 86399);
+    CHECK(wrap_index(86400, 86400) == 0);
+}
+
+TEST_CASE("wrap_period is fireflies' wrap360 and never returns the period",
+          "[screensaver_motion]") {
+    size_t mismatches = 0;
+    for (int i = -400000; i <= 400000; i++) {
+        const float deg = static_cast<float>(i) * 0.0037f;
+        mismatches += !same_bits(wrap_period(deg, 360.0f), fireflies_wrap360(deg));
+    }
+    for (const float edge : {-360.0f, 360.0f, -720.0f, std::nextafter(0.0f, -1.0f), -1e-7f}) {
+        mismatches += !same_bits(wrap_period(edge, 360.0f), fireflies_wrap360(edge));
+        CHECK(wrap_period(edge, 360.0f) < 360.0f);
+        CHECK(wrap_period(edge, 360.0f) >= 0.0f);
+    }
+    CHECK(mismatches == 0);
 }
 
 #ifdef HELIX_ENABLE_SCREENSAVER

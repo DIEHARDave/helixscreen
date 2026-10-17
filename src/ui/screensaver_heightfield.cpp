@@ -22,10 +22,6 @@ template <typename T> void resize_to(std::vector<T>& v, size_t n) {
     }
 }
 
-uint8_t to_u8(float v) {
-    return static_cast<uint8_t>(std::clamp(v, 0.0f, 255.0f) + 0.5f);
-}
-
 /// `c` scaled by `cov` / 255, rounded.
 Rgb premultiply(Rgb c, uint32_t cov) {
     return {static_cast<uint8_t>((c.r * cov + 127u) / 255u),

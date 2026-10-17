@@ -16,14 +16,19 @@
 
 namespace helix::ui {
 
-/// Bytes `v` holds, capacity included.
-template <typename T> size_t buffer_bytes(const std::vector<T>& v) {
-    return v.capacity() * sizeof(T);
+/// Bytes the vectors hold together, capacity included.
+template <typename... T> size_t buffer_bytes(const std::vector<T>&... v) {
+    return (size_t{0} + ... + (v.capacity() * sizeof(T)));
 }
 
 /// Frees `v`, capacity included.
 template <typename T> void release_buffer(std::vector<T>& v) {
     std::vector<T>().swap(v);
+}
+
+/// Frees every vector, capacity included.
+template <typename... T> void release_buffers(std::vector<T>&... v) {
+    (release_buffer(v), ...);
 }
 
 } // namespace helix::ui

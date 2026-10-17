@@ -8,12 +8,17 @@
 #include "../test_helpers/screensaver_test_access.h"
 #include "refresh_period_hold.h"
 #include "screensaver_base.h"
+#include "screensaver_buffer.h"
 #include "screensaver_canvas.h"
+#include "screensaver_fast_math.h"
 #include "screensaver_frame.h"
 #include "screensaver_frame_timer.h"
+#include "screensaver_motion.h"
 #include "screensaver_overlay.h"
+#include "screensaver_vec.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <optional>
 #include <random>
@@ -688,6 +693,202 @@ TEST_CASE_METHOD(LVGLTestFixture,
     }
     canvas.release();
     overlay.destroy();
+}
+
+// ============================================================================
+// Shared frame, buffer, vector and constant helpers, each proven equal to the spellings the
+// savers write by hand
+// ============================================================================
+
+namespace {
+
+/// The dirty reduction aqua and high fly spell out after a step.
+void aqua_reduce(std::vector<DirtyRect>& dirty, int32_t w, int32_t h) {
+    const DirtyRect whole{0, 0, w - 1, h - 1};
+    helix::ui::merge_dirty_areas(dirty, SAVER_MAX_DIRTY_AREAS);
+    int64_t covered = 0;
+    for (const DirtyRect& b : dirty) {
+        covered += b.area();
+    }
+    if (helix::ui::covers_whole_canvas(covered, w, h)) {
+        dirty.assign(1, whole);
+    }
+}
+
+struct HandVec {
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+};
+
+HandVec pipes_cross(HandVec a, HandVec b) {
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+float pipes_length(HandVec v) {
+    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+HandVec pipes_normalized(HandVec v) {
+    const float len = pipes_length(v);
+    if (len <= 0.0f) {
+        return {};
+    }
+    return {v.x / len, v.y / len, v.z / len};
+}
+
+HandVec pipes_add_scaled(HandVec a, HandVec d, float s) {
+    return {a.x + d.x * s, a.y + d.y * s, a.z + d.z * s};
+}
+
+float fireflies_length_sq(HandVec v) {
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+HandVec fireflies_clamp_length(HandVec v, float max_len) {
+    const float sq = fireflies_length_sq(v);
+    if (sq <= max_len * max_len || sq == 0.0f) {
+        return v;
+    }
+    const float k = max_len / std::sqrt(sq);
+    return {v.x * k, v.y * k, v.z * k};
+}
+
+bool same(helix::ui::SaverVec3 a, HandVec b) {
+    return screensaver_same_bits(a.x, b.x) && screensaver_same_bits(a.y, b.y) &&
+           screensaver_same_bits(a.z, b.z);
+}
+
+} // namespace
+
+TEST_CASE("a whole rect spans the frame and clipping keeps only what lies inside",
+          "[screensaver][screensaver_parts]") {
+    CHECK(DirtyRect::whole(800, 480) == DirtyRect{0, 0, 799, 479});
+    CHECK(DirtyRect::whole(800, 480).area() == 800 * 480);
+    CHECK(DirtyRect{-5, -3, 10, 4}.clipped(8, 6) == DirtyRect{0, 0, 7, 4});
+    CHECK(DirtyRect{2, 1, 3, 2}.clipped(8, 6) == DirtyRect{2, 1, 3, 2});
+    CHECK(DirtyRect{9, 0, 12, 3}.clipped(8, 6).empty());
+    CHECK(DirtyRect{0, -9, 3, -1}.clipped(8, 6).empty());
+    CHECK(DirtyRect{}.clipped(8, 6).empty());
+}
+
+TEST_CASE("reduce_dirty reaches aqua's and high fly's reduction on any dirty list",
+          "[screensaver][screensaver_parts]") {
+    std::minstd_rand rng(5);
+    for (int trial = 0; trial < 400; trial++) {
+        const int32_t w = 64 + static_cast<int32_t>(rng() % 200);
+        const int32_t h = 48 + static_cast<int32_t>(rng() % 120);
+        std::vector<DirtyRect> areas;
+        const int n = static_cast<int>(rng() % 220);
+        const int32_t big = trial % 3 == 0 ? w : 12;
+        for (int i = 0; i < n; i++) {
+            const auto x = static_cast<int32_t>(rng() % w);
+            const auto y = static_cast<int32_t>(rng() % h);
+            areas.push_back({x, y, x + static_cast<int32_t>(rng() % big),
+                             y + static_cast<int32_t>(rng() % big)});
+        }
+        if (trial % 7 == 0) {
+            areas.push_back({});
+        }
+        std::vector<DirtyRect> expect = areas;
+        aqua_reduce(expect, w, h);
+        helix::ui::reduce_dirty(areas, SAVER_MAX_DIRTY_AREAS, w, h);
+        REQUIRE(areas == expect);
+    }
+    std::vector<DirtyRect> nearly_all{{0, 0, 99, 94}};
+    helix::ui::reduce_dirty(nearly_all, SAVER_MAX_DIRTY_AREAS, 100, 100);
+    CHECK(nearly_all == std::vector<DirtyRect>{DirtyRect::whole(100, 100)});
+    std::vector<DirtyRect> little{{0, 0, 9, 9}};
+    helix::ui::reduce_dirty(little, SAVER_MAX_DIRTY_AREAS, 100, 100);
+    CHECK(little == std::vector<DirtyRect>{{0, 0, 9, 9}});
+}
+
+TEST_CASE("scaled_extent rounds an extent up to whole blocks", "[screensaver][screensaver_parts]") {
+    for (int32_t px = 0; px <= 1024; px++) {
+        for (int32_t s = 1; s <= 8; s++) {
+            REQUIRE(helix::ui::scaled_extent(px, s) == (px + s - 1) / s);
+            REQUIRE(helix::ui::scaled_extent(px, s) * s >= px);
+        }
+    }
+}
+
+TEST_CASE("round_px rounds halves away from zero", "[screensaver][screensaver_parts]") {
+    CHECK(helix::ui::round_px(2.5f) == 3);
+    CHECK(helix::ui::round_px(-2.5f) == -3);
+    CHECK(helix::ui::round_px(2.49f) == 2);
+    for (int i = -20000; i <= 20000; i++) {
+        const float v = static_cast<float>(i) * 0.013f;
+        REQUIRE(helix::ui::round_px(v) == static_cast<int32_t>(std::lround(v)));
+    }
+}
+
+TEST_CASE("frame_row and with_pixel_type address a frame's rows in its own pixel type",
+          "[screensaver][screensaver_parts]") {
+    std::vector<uint8_t> bytes(4 * 40, 0);
+    for (const auto format : {helix::ui::PixelFormat::RGB565, helix::ui::PixelFormat::XRGB8888}) {
+        helix::ui::FrameTarget frame{bytes.data(), 40, 8, 4, format};
+        const size_t size = helix::ui::with_pixel_type(format, [&](auto px) {
+            using Px = decltype(px);
+            Px* row = helix::ui::frame_row<Px>(frame, 2);
+            CHECK(reinterpret_cast<uint8_t*>(row) == bytes.data() + 80);
+            return sizeof(Px);
+        });
+        CHECK(size == (format == helix::ui::PixelFormat::RGB565 ? 2u : 4u));
+    }
+}
+
+TEST_CASE("buffer_bytes counts and release_buffers frees every vector given",
+          "[screensaver][screensaver_parts]") {
+    std::vector<uint32_t> a(10);
+    std::vector<uint8_t> b(7);
+    std::vector<DirtyRect> c;
+    c.reserve(3);
+    CHECK(helix::ui::buffer_bytes(a) == a.capacity() * 4);
+    CHECK(helix::ui::buffer_bytes(a, b, c) ==
+          a.capacity() * 4 + b.capacity() + c.capacity() * sizeof(DirtyRect));
+    CHECK(helix::ui::buffer_bytes() == 0);
+    helix::ui::release_buffers(a, b, c);
+    CHECK(a.capacity() == 0);
+    CHECK(b.capacity() == 0);
+    CHECK(c.capacity() == 0);
+    CHECK(helix::ui::buffer_bytes(a, b, c) == 0);
+}
+
+TEST_CASE("SaverVec3 computes what the pipes and fireflies vector code computes",
+          "[screensaver][screensaver_parts]") {
+    using helix::ui::SaverVec3;
+    std::minstd_rand rng(17);
+    auto any = [&rng] { return helix::ui::screensaver::random_between(rng, -50.0f, 50.0f); };
+    for (int i = 0; i < 20000; i++) {
+        const HandVec ha{any(), any(), any()};
+        const HandVec hb{any(), any(), any()};
+        const SaverVec3 a{ha.x, ha.y, ha.z};
+        const SaverVec3 b{hb.x, hb.y, hb.z};
+        const float s = any();
+        REQUIRE(same(a + b, {ha.x + hb.x, ha.y + hb.y, ha.z + hb.z}));
+        REQUIRE(same(a - b, {ha.x - hb.x, ha.y - hb.y, ha.z - hb.z}));
+        REQUIRE(same(a * s, {ha.x * s, ha.y * s, ha.z * s}));
+        REQUIRE(same(a + b * s, pipes_add_scaled(ha, hb, s)));
+        REQUIRE(same(helix::ui::cross(a, b), pipes_cross(ha, hb)));
+        REQUIRE(
+            screensaver_same_bits(helix::ui::dot(a, b), ha.x * hb.x + ha.y * hb.y + ha.z * hb.z));
+        REQUIRE(screensaver_same_bits(helix::ui::length(a), pipes_length(ha)));
+        REQUIRE(screensaver_same_bits(helix::ui::length_sq(a), fireflies_length_sq(ha)));
+        REQUIRE(same(helix::ui::normalized_or(a, {}), pipes_normalized(ha)));
+        const float cap = std::fabs(s);
+        REQUIRE(same(helix::ui::clamp_length(a, cap), fireflies_clamp_length(ha, cap)));
+    }
+    CHECK(same(helix::ui::normalized_or({}, {0, 0, 1}), {0, 0, 1}));
+    CHECK(same(helix::ui::clamp_length({}, 3.0f), {}));
+}
+
+TEST_CASE("SAVER_PI and SAVER_TWO_PI are every saver's float pi and 2 pi",
+          "[screensaver][screensaver_parts]") {
+    CHECK(screensaver_same_bits(helix::ui::SAVER_PI, 3.14159265f));
+    CHECK(screensaver_same_bits(helix::ui::SAVER_PI, 3.14159265358979f));
+    CHECK(screensaver_same_bits(helix::ui::SAVER_PI, static_cast<float>(M_PI)));
+    CHECK(screensaver_same_bits(helix::ui::SAVER_TWO_PI, 6.28318530717958f));
+    CHECK(screensaver_same_bits(helix::ui::SAVER_TWO_PI, 2.0f * 3.14159265f));
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

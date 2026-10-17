@@ -598,10 +598,6 @@ uint32_t scaled(uint8_t channel, float light) {
     return static_cast<uint32_t>(static_cast<float>(channel) * light / 255.0f);
 }
 
-int32_t round_px(float v) {
-    return static_cast<int32_t>(std::lround(v));
-}
-
 } // namespace
 
 template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<DirtyRect>& dirty) {

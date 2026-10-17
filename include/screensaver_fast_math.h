@@ -15,6 +15,10 @@
 
 namespace helix::ui {
 
+/// pi and 2 pi as floats, for every saver's angles.
+inline constexpr float SAVER_PI = 3.14159265358979f;
+inline constexpr float SAVER_TWO_PI = 2.0f * SAVER_PI;
+
 inline constexpr int FAST_SIN_N = 1024;
 inline constexpr int FAST_EXP_N = 512;
 /// e^-s reads as 0 past this.

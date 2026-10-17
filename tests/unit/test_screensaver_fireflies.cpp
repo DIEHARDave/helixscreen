@@ -228,7 +228,7 @@ float distance(const FireflyVec& a, const FireflyVec& b) {
     return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-float length(const FireflyVec& v) {
+float magnitude(const FireflyVec& v) {
     return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
@@ -267,13 +267,13 @@ TEST_CASE("baits and flies keep to their top speeds", "[screensaver][fireflies_s
             if (!b.alive) {
                 continue;
             }
-            REQUIRE(length(b.vel) <= FIREFLIES_BAIT_SPEED * mult + 1e-3f);
+            REQUIRE(magnitude(b.vel) <= FIREFLIES_BAIT_SPEED * mult + 1e-3f);
             REQUIRE(std::fabs(b.pos.x) <= half_w + 1.0f);
             REQUIRE(std::fabs(b.pos.y) <= 40.0f + 1.0f);
             REQUIRE(std::fabs(b.pos.z) <= 25.0f + 1.0f);
         }
         for (const FirefliesSim::Fly& f : s.sim.flies()) {
-            const float speed = length(f.vel);
+            const float speed = magnitude(f.vel);
             REQUIRE(speed <= FIREFLIES_FLY_SPEED * f.pace * mult + 1e-3f);
             fastest_fly = std::max(fastest_fly, speed);
         }
@@ -331,7 +331,7 @@ TEST_CASE("a fly's hue swings 20 degrees either way with its speed",
         const FirefliesSim::Fly& f = s.sim.flies()[i];
         const float offset = wrap180(s.sim.fly_hue_deg(i) - s.sim.baits()[f.bait].hue_deg);
         const float expected =
-            -20.0f + 40.0f * std::min(1.0f, length(f.vel) / helix::ui::FIREFLIES_FLY_SPEED);
+            -20.0f + 40.0f * std::min(1.0f, magnitude(f.vel) / helix::ui::FIREFLIES_FLY_SPEED);
         CAPTURE(i, offset, expected);
         REQUIRE(s.sim.fly_hue_deg(i) >= 0.0f);
         REQUIRE(s.sim.fly_hue_deg(i) < 360.0f);
@@ -397,9 +397,9 @@ TEST_CASE("the wind takes a new heading every 4 to 8 tail lengths",
             changes.push_back(s.sim.last_wind_change_ms());
         }
         if (s.sim.mode() != helix::ui::FirefliesMode::WIND_GUST) {
-            strongest_calm = std::max(strongest_calm, length(s.sim.wind()));
+            strongest_calm = std::max(strongest_calm, magnitude(s.sim.wind()));
         }
-        total += length(s.sim.wind());
+        total += magnitude(s.sim.wind());
         samples++;
     }
     REQUIRE(s.sim.wind_changes() >= 10);
@@ -591,7 +591,7 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         s.run_for(1000);
         REQUIRE(s.sim.mode() == FirefliesMode::STOP);
         for (const size_t i : alive_baits(s.sim)) {
-            CHECK(length(s.sim.baits()[i].vel) < 0.5f);
+            CHECK(magnitude(s.sim.baits()[i].vel) < 0.5f);
         }
     }
 
@@ -628,7 +628,7 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         for (int i = 0; i < 100; i++) {
             s.step(10);
             for (const FirefliesSim::Fly& f : s.sim.flies()) {
-                fastest = std::max(fastest, length(f.vel));
+                fastest = std::max(fastest, magnitude(f.vel));
             }
         }
         CHECK(fastest > 1.5f * FIREFLIES_FLY_SPEED);
@@ -636,21 +636,21 @@ TEST_CASE("stop halts the baits, loop circles them, hyperspeed triples them, a g
         REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
         s.run_for(2000, 10);
         for (const FirefliesSim::Fly& f : s.sim.flies()) {
-            CHECK(length(f.vel) <= FIREFLIES_FLY_SPEED + 1e-3f);
+            CHECK(magnitude(f.vel) <= FIREFLIES_FLY_SPEED + 1e-3f);
         }
     }
 
     SECTION("wind gust") {
         Swarm s(38);
         s.run_for(1000);
-        const float calm = length(s.sim.wind());
+        const float calm = magnitude(s.sim.wind());
         REQUIRE(calm > 0.0f);
         REQUIRE(s.sim.begin_mode(FirefliesMode::WIND_GUST, 4000, s.rng));
         s.run_for(1000, 10);
-        CHECK(length(s.sim.wind()) >= 3.0f * calm);
+        CHECK(magnitude(s.sim.wind()) >= 3.0f * calm);
         s.run_for(3500, 10);
         REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
-        CHECK(length(s.sim.wind()) <= 6.0f + 1e-3f);
+        CHECK(magnitude(s.sim.wind()) <= 6.0f + 1e-3f);
     }
 }
 
@@ -927,7 +927,7 @@ TEST_CASE("a new wind heading during a gust never compounds the gust",
                 REQUIRE(s.sim.begin_mode(FirefliesMode::WIND_GUST, 4000, s.rng));
             }
             s.step(100);
-            strongest = std::max(strongest, length(s.sim.wind()));
+            strongest = std::max(strongest, magnitude(s.sim.wind()));
         }
         REQUIRE(s.sim.wind_changes() >= changes_before + 3);
         CHECK(strongest <= GUST_MAX + 1e-3f);
@@ -936,7 +936,7 @@ TEST_CASE("a new wind heading during a gust never compounds the gust",
         for (uint32_t t = 0; t < 3000; t += 100) {
             s.step(100);
             REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
-            CHECK(length(s.sim.wind()) <= WIND_MAX + 1e-3f);
+            CHECK(magnitude(s.sim.wind()) <= WIND_MAX + 1e-3f);
         }
     }
 }

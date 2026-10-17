@@ -83,7 +83,8 @@ class SaverCanvas {
     /// Paints the whole canvas opaque black and invalidates all of it.
     void fill_black();
 
-    /// Invalidates `areas`, in canvas pixels, after merging them to at most SAVER_MAX_DIRTY_AREAS.
+    /// Invalidates `areas`, in canvas pixels, after reduce_dirty() to SAVER_MAX_DIRTY_AREAS: the
+    /// whole canvas when they reduce to it.
     void invalidate(std::vector<DirtyRect>& areas);
 
     /// Opens a layer session for lv_draw_* calls on the canvas.

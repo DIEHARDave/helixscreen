@@ -4,6 +4,7 @@
 #include "screensaver_pixel_writer.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <utility>
@@ -265,4 +266,280 @@ TEST_CASE("an RGB565 add finer than one level shows as an ordered pattern",
     uint16_t white = 0xFFFF;
     helix::ui::add_light(&white, 255, 255, 255, 15);
     CHECK(white == 0xFFFF);
+}
+
+// ============================================================================
+// Shared colour and pixel helpers, each proven bit-for-bit equal to the spellings of the same
+// rule the savers write by hand. The oracles are those spellings, verbatim.
+// ============================================================================
+
+namespace oracle {
+
+uint8_t heightfield_to_u8(float v) {
+    return static_cast<uint8_t>(std::clamp(v, 0.0f, 255.0f) + 0.5f);
+}
+
+uint8_t fireworks_mix_channel(uint8_t a, uint8_t b, float t) {
+    const float v = static_cast<float>(a) + (static_cast<float>(b) - static_cast<float>(a)) * t;
+    return static_cast<uint8_t>(std::clamp(v + 0.5f, 0.0f, 255.0f));
+}
+
+size_t aqua_lut_index(float v) {
+    return static_cast<size_t>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f);
+}
+
+uint8_t pipes_unit_byte(float v) {
+    return static_cast<uint8_t>(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f));
+}
+
+uint8_t flip_blend_channel(uint8_t from, uint8_t to, uint32_t cov) {
+    return static_cast<uint8_t>((from * (255u - cov) + to * cov + 127u) / 255u);
+}
+
+uint8_t heightfield_premultiply_channel(uint8_t c, uint32_t cov) {
+    return static_cast<uint8_t>((c * cov + 127u) / 255u);
+}
+
+uint8_t fireworks_dimmed_channel(uint8_t c, uint32_t amount) {
+    return static_cast<uint8_t>(c * amount / 255);
+}
+
+uint8_t hyperspace_scale8(uint32_t v, uint32_t amount) {
+    return static_cast<uint8_t>(std::min<uint32_t>(255, v * amount / 255));
+}
+
+float flip_corner_coverage(float r, float dist) {
+    return std::clamp(r - dist + 0.5f, 0.0f, 1.0f);
+}
+
+Rgb pixel_writer_get_565(uint16_t v) {
+    const auto r5 = static_cast<uint8_t>(v >> 11 & 0x1F);
+    const auto g6 = static_cast<uint8_t>(v >> 5 & 0x3F);
+    const auto b5 = static_cast<uint8_t>(v & 0x1F);
+    return {static_cast<uint8_t>(r5 << 3 | r5 >> 2), static_cast<uint8_t>(g6 << 2 | g6 >> 4),
+            static_cast<uint8_t>(b5 << 3 | b5 >> 2)};
+}
+
+} // namespace oracle
+
+namespace {
+
+/// Every float from `lo` up to `hi`, both included, in order of their bit patterns (lo >= 0).
+template <typename F> void each_float(float lo, float hi, F&& f) {
+    for (float v = lo; v <= hi; v = std::nextafter(v, 2.0f * hi + 1.0f)) {
+        f(v);
+    }
+}
+
+/// `n` evenly spaced values over [lo, hi], plus every integer and half in it.
+std::vector<float> dense_sweep(float lo, float hi, int n) {
+    std::vector<float> out;
+    for (int i = 0; i <= n; i++) {
+        out.push_back(lo + (hi - lo) * static_cast<float>(i) / static_cast<float>(n));
+    }
+    for (float v = std::ceil(lo * 2.0f) / 2.0f; v <= hi; v += 0.5f) {
+        out.push_back(v);
+        out.push_back(std::nextafter(v, lo - 1.0f));
+        out.push_back(std::nextafter(v, hi + 1.0f));
+    }
+    return out;
+}
+
+} // namespace
+
+TEST_CASE("to_u8 rounds and clamps a float to a byte exactly as the heightfield does",
+          "[screensaver][pixel_writer]") {
+    size_t mismatches = 0;
+    for (const float v : dense_sweep(-20.0f, 280.0f, 600000)) {
+        mismatches += helix::ui::to_u8(v) != oracle::heightfield_to_u8(v);
+    }
+    CHECK(mismatches == 0);
+    CHECK(helix::ui::to_u8(254.5f) == 255);
+    CHECK(helix::ui::to_u8(-3.0f) == 0);
+    CHECK(helix::ui::to_u8(300.0f) == 255);
+    CHECK(helix::ui::to_u8(127.49f) == 127);
+}
+
+TEST_CASE("unit_to_u8 is aqua's table index everywhere and pipes' rounded byte wherever they "
+          "agree",
+          "[screensaver][pixel_writer]") {
+    size_t aqua_mismatches = 0;
+    for (const float v : dense_sweep(-1.0f, 2.0f, 3000000)) {
+        aqua_mismatches += helix::ui::unit_to_u8(v) != oracle::aqua_lut_index(v);
+    }
+    CHECK(aqua_mismatches == 0);
+
+    // v * 255 + 0.5f rounds up past lround only where v * 255 lands just under one half, in
+    // [0.25, 0.5): the one binade where adding 0.5 crosses into a coarser one. Every float v
+    // there is checked; above it the two are equal by construction, which the sweep samples.
+    std::vector<float> disagree;
+    each_float(0.25f / 255.0f, 0.5f / 255.0f, [&](float v) {
+        if (helix::ui::unit_to_u8(v) != oracle::pipes_unit_byte(v)) {
+            disagree.push_back(v);
+        }
+    });
+    size_t sampled = 0;
+    for (const float v : dense_sweep(0.0f, 1.0f, 3000000)) {
+        if (v * 255.0f >= 0.5f) {
+            sampled += helix::ui::unit_to_u8(v) != oracle::pipes_unit_byte(v);
+        }
+    }
+    CHECK(sampled == 0);
+    INFO("first disagreeing v: " << (disagree.empty() ? 0.0f : disagree.front()));
+    CHECK(disagree.size() <= 1);
+    for (const float v : disagree) {
+        // The only difference: v * 255 is the float just under 0.5.
+        CHECK(v * 255.0f == std::nextafter(0.5f, 0.0f));
+        CHECK(helix::ui::unit_to_u8(v) == 1);
+        CHECK(oracle::pipes_unit_byte(v) == 0);
+    }
+}
+
+TEST_CASE("blend_cov is the flip clock's integer blend and the heightfield's premultiply",
+          "[screensaver][pixel_writer]") {
+    size_t blend_mismatches = 0;
+    size_t premultiply_mismatches = 0;
+    for (uint32_t from = 0; from < 256; from++) {
+        for (uint32_t to = 0; to < 256; to++) {
+            for (uint32_t cov = 0; cov < 256; cov++) {
+                const auto f = static_cast<uint8_t>(from);
+                const auto t = static_cast<uint8_t>(to);
+                const Rgb got = helix::ui::blend_cov({f, t, f}, {t, f, t}, cov);
+                blend_mismatches += got.r != oracle::flip_blend_channel(f, t, cov) ||
+                                    got.g != oracle::flip_blend_channel(t, f, cov) ||
+                                    got.b != oracle::flip_blend_channel(f, t, cov);
+            }
+            const Rgb pre = helix::ui::blend_cov({}, {static_cast<uint8_t>(from), 0, 0}, to);
+            premultiply_mismatches +=
+                pre.r != oracle::heightfield_premultiply_channel(static_cast<uint8_t>(from), to);
+        }
+    }
+    CHECK(blend_mismatches == 0);
+    CHECK(premultiply_mismatches == 0);
+}
+
+TEST_CASE("scale_rgb is fireworks' dimmed, the flip clock's shade and hyperspace's scale8",
+          "[screensaver][pixel_writer]") {
+    size_t mismatches = 0;
+    for (uint32_t c = 0; c < 256; c++) {
+        for (uint32_t amount = 0; amount < 256; amount++) {
+            const auto ch = static_cast<uint8_t>(c);
+            const Rgb got = helix::ui::scale_rgb({ch, ch, ch}, amount);
+            mismatches += got.r != oracle::fireworks_dimmed_channel(ch, amount);
+            mismatches += got.g != oracle::hyperspace_scale8(c, amount);
+        }
+    }
+    CHECK(mismatches == 0);
+}
+
+TEST_CASE("scale_rgb_by rounds and clamps each channel", "[screensaver][pixel_writer]") {
+    CHECK(helix::ui::scale_rgb_by({200, 100, 3}, 1.0f) == Rgb{200, 100, 3});
+    CHECK(helix::ui::scale_rgb_by({200, 100, 3}, 0.0f) == Rgb{0, 0, 0});
+    CHECK(helix::ui::scale_rgb_by({201, 101, 3}, 0.5f) == Rgb{101, 51, 2});
+    CHECK(helix::ui::scale_rgb_by({200, 100, 3}, 2.0f) == Rgb{255, 200, 6});
+}
+
+TEST_CASE("mix_rgb is fireworks' channel mix at every pair of bytes",
+          "[screensaver][pixel_writer]") {
+    std::vector<float> ts;
+    for (int i = -16; i <= 80; i++) {
+        ts.push_back(static_cast<float>(i) / 64.0f);
+    }
+    ts.push_back(0.3f);
+    ts.push_back(0.7f);
+    ts.push_back(1.0f / 3.0f);
+    size_t mismatches = 0;
+    for (uint32_t a = 0; a < 256; a++) {
+        for (uint32_t b = 0; b < 256; b++) {
+            const auto ca = static_cast<uint8_t>(a);
+            const auto cb = static_cast<uint8_t>(b);
+            for (const float t : ts) {
+                mismatches += helix::ui::mix_rgb({ca, 0, 0}, {cb, 0, 0}, t).r !=
+                              oracle::fireworks_mix_channel(ca, cb, t);
+            }
+        }
+    }
+    CHECK(mismatches == 0);
+}
+
+TEST_CASE("edge_coverage is the flip clock's corner coverage", "[screensaver][pixel_writer]") {
+    size_t mismatches = 0;
+    for (const float r : {0.0f, 1.0f, 3.5f, 7.0f, 12.25f}) {
+        for (const float dist : dense_sweep(-2.0f, 16.0f, 20000)) {
+            mismatches +=
+                helix::ui::edge_coverage(r - dist) != oracle::flip_corner_coverage(r, dist);
+        }
+    }
+    CHECK(mismatches == 0);
+    CHECK(helix::ui::edge_coverage(0.0f) == 0.5f);
+    CHECK(helix::ui::edge_coverage(-0.5f) == 0.0f);
+    CHECK(helix::ui::edge_coverage(0.5f) == 1.0f);
+}
+
+TEST_CASE("unpack565 expands every RGB565 word as PixelWriter reads it",
+          "[screensaver][pixel_writer]") {
+    TestFrame frame(1, 1, 2, PixelFormat::RGB565);
+    PixelWriter writer(frame.target);
+    size_t mismatches = 0;
+    for (uint32_t v = 0; v < 65536; v++) {
+        const Rgb expect = oracle::pixel_writer_get_565(static_cast<uint16_t>(v));
+        frame.bytes[0] = static_cast<uint8_t>(v & 0xFF);
+        frame.bytes[1] = static_cast<uint8_t>(v >> 8);
+        mismatches += !(PixelWriter::unpack565(static_cast<uint16_t>(v)) == expect);
+        mismatches += !(writer.get(0, 0) == expect);
+    }
+    CHECK(mismatches == 0);
+    CHECK(PixelWriter::unpack565(0xFFFF) == Rgb{255, 255, 255});
+}
+
+TEST_CASE("blend_over writes the dithered mix of the pixel and the colour",
+          "[screensaver][pixel_writer]") {
+    for (const PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
+        TestFrame a(8, 8, 8 * 4, format);
+        TestFrame b(8, 8, 8 * 4, format);
+        PixelWriter wa(a.target);
+        PixelWriter wb(b.target);
+        for (int32_t y = 0; y < 8; y++) {
+            for (int32_t x = 0; x < 8; x++) {
+                const Rgb base{static_cast<uint8_t>(x * 30), static_cast<uint8_t>(y * 30), 90};
+                wa.put(x, y, base);
+                wb.put(x, y, base);
+                const Rgb c{250, 40, static_cast<uint8_t>(x * y)};
+                const float alpha = static_cast<float>(x + y) / 14.0f;
+                wa.blend_over(x, y, c, alpha);
+                wb.put_dithered(x, y, helix::ui::mix_rgb(wb.get(x, y), c, alpha));
+            }
+        }
+        CHECK(a.bytes == b.bytes);
+    }
+}
+
+TEST_CASE("fill_rect fills the part of a box inside the frame and nothing else",
+          "[screensaver][pixel_writer]") {
+    using helix::ui::DirtyRect;
+    for (const PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
+        for (const DirtyRect box :
+             {DirtyRect{2, 1, 5, 3}, DirtyRect{-3, -2, 1, 9}, DirtyRect{6, 5, 12, 12},
+              DirtyRect{9, 9, 12, 12}, DirtyRect{}}) {
+            TestFrame got(8, 7, 8 * 4 + 4, format);
+            TestFrame hand(8, 7, 8 * 4 + 4, format);
+            TestFrame dithered(8, 7, 8 * 4 + 4, format);
+            TestFrame hand_dithered(8, 7, 8 * 4 + 4, format);
+            const Rgb c{123, 45, 210};
+            PixelWriter(got.target).fill_rect(box, c);
+            PixelWriter(dithered.target).fill_rect_dithered(box, c);
+            PixelWriter wh(hand.target);
+            PixelWriter whd(hand_dithered.target);
+            for (int32_t y = box.y1; y <= box.y2; y++) {
+                for (int32_t x = box.x1; x <= box.x2; x++) {
+                    if (wh.contains(x, y)) {
+                        wh.put(x, y, c);
+                        whd.put_dithered(x, y, c);
+                    }
+                }
+            }
+            CHECK(got.bytes == hand.bytes);
+            CHECK(dithered.bytes == hand_dithered.bytes);
+        }
+    }
 }
