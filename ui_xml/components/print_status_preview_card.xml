@@ -180,7 +180,7 @@
             <event_cb trigger="clicked" callback="on_layer_pause_open"/>
             <icon name="layer_icon" src="layers" size="xs" variant="secondary" clickable="false" event_bubble="true"/>
             <text_small name="layer_progress_label"
-                        text="0 / 0" bind_text="print_layer_text" style_text_align="left" long_mode="dots"
+                        text="0 / 0" bind_text="print_layer_text" style_text_align="left" flex_grow="1" long_mode="dots"
                         event_bubble="true"/>
             <icon name="layer_pause_hint"
                   src="pause" size="xs" variant="muted" clickable="false" event_bubble="true" hidden="true">
@@ -195,9 +195,6 @@
               <text_small name="layer_pause_chip_label"
                           bind_text="layer_pause_layer" style_text_color="#warning" event_bubble="true"/>
             </lv_obj>
-            <!-- Takes the cluster's spare width so the glyph stays beside the
-                 count, not against the next cluster. -->
-            <lv_obj height="1" flex_grow="1" style_pad_all="0" clickable="false" event_bubble="true"/>
           </lv_obj>
           <lv_obj name="objects_cluster"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
