@@ -128,6 +128,24 @@ TEST_CASE("Tool switcher layout: 2x1 at 800x480 holds four 48 px segments but no
     CHECK(five.mode == ToolSwitcherMode::Pair);
 }
 
+TEST_CASE("Tool switcher layout: the rail spans exactly its columns, never the box's remainder",
+          "[tool_switcher]") {
+    // A 213 px box less three gaps does not divide by four, so the cells
+    // leave a remainder that a full-width rail would round its corners into.
+    constexpr int kOddW = 213;
+    REQUIRE((kOddW - 3 * kGap) % 4 != 0);
+
+    const ToolSwitcherLayout four = layout_with(4, kOddW, k800_2x1.h, kPark);
+    REQUIRE(four.mode == ToolSwitcherMode::Rail);
+    CHECK(four.rail_w == 4 * four.cell_w + 3 * kGap);
+    CHECK(four.rail_w < kOddW);
+
+    // Outside the rail modes the box is the rail.
+    const ToolSwitcherLayout pair = layout_for(5, k800_2x1);
+    REQUIRE(pair.mode == ToolSwitcherMode::Pair);
+    CHECK(pair.rail_w == k800_2x1.w);
+}
+
 TEST_CASE("Tool switcher layout: with no Park to offer, no mode draws a Park cell",
           "[tool_switcher][1784]") {
     // 2x1 at 800x480: two heads would take three cells with Park; four fill

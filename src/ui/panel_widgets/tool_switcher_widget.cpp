@@ -47,6 +47,7 @@ lv_subject_t s_rows_subject{};
 lv_subject_t s_cell_w_subject{};
 lv_subject_t s_cell_h_subject{};
 lv_subject_t s_rail_h_subject{};
+lv_subject_t s_rail_w_subject{};
 lv_subject_t s_detail_subject{};
 lv_subject_t s_detail_rows_subject{};
 lv_subject_t s_label_form_subject{};
@@ -151,6 +152,9 @@ void tool_switcher_widget_init_subjects() {
             lv_subject_init_int(&s_rail_h_subject, 0);
             s_subjects.publish("tool_switcher_rail_h",
                                &s_rail_h_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_rail_w_subject, 0);
+            s_subjects.publish("tool_switcher_rail_w",
+                               &s_rail_w_subject); // SUBJECT_OK: published for the rail XML (#1784)
             lv_subject_init_int(&s_detail_subject, 0);
             s_subjects.publish("tool_switcher_detail",
                                &s_detail_subject); // SUBJECT_OK: published for the rail XML (#1784)
@@ -597,6 +601,7 @@ void ToolSwitcherWidget::publish_layout() {
     set_int_if_changed(&s_cell_w_subject, layout_.cell_w);
     set_int_if_changed(&s_cell_h_subject, layout_.cell_h);
     set_int_if_changed(&s_rail_h_subject, layout_.rail_h);
+    set_int_if_changed(&s_rail_w_subject, layout_.rail_w);
     set_int_if_changed(&s_detail_subject, layout_.detail ? 1 : 0);
     const ToolSwitcherBand band =
         tool_switcher_band(layout_.cell_h, small_px, resolve_px_token("space_xxs", 2));
