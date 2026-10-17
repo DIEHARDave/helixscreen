@@ -556,7 +556,17 @@ TEST_CASE("every opened maze reaches its exit, rocks and all", "[screensaver][ma
         CHECK(sim.exits_reached() == 1);
         CHECK(sim.abandoned() == 0);
         CHECK(sim.walker().moves() <= sim.step_bound());
+        if (seed == 1) {
+            // A new run counts from zero.
+            sim.init(frame.target, MazeArt{}, rng, 4);
+            CHECK(sim.exits_reached() == 0);
+        }
     }
+    // Per hand (the first and one per rock): an island lap, the way off and a boundary lap,
+    // each at most every (cell, heading) state once.
+    MazeSim sim;
+    CHECK(sim.step_bound() ==
+          (MazeSim::ROCK_COUNT + 1) * 3u * 4u * MazeSim::CELLS * MazeSim::CELLS);
 }
 
 TEST_CASE("extra hand swaps still reach the exit", "[screensaver][maze]") {
@@ -765,6 +775,63 @@ TEST_CASE("a sprite stands the height its distance gives", "[screensaver][maze]"
     const float focal = helix::ui::maze_focal(r.internal_w(), r.internal_h());
     // The logo fills 60 of its 64 texels, 0.55 tiles tall, 4 tiles away.
     CHECK(std::abs((last - first + 1) - 0.55f * focal / 4.0f) <= 1.0f);
+}
+
+namespace {
+
+/// Mean column and row of the internal pixels a single item changes, 160x100, from (1.5, 5.5)
+/// facing east in an open room.
+std::pair<float, float> item_centre(const MazeItem& item) {
+    MazeMap map = room(15);
+    MazeArt art;
+    art.logo.w = 8;
+    art.logo.h = 8;
+    art.logo.argb.assign(64, 0xFFFFFFFFu);
+    MazeRenderer r;
+    Frame frame(160, 100, PixelFormat::XRGB8888);
+    r.init(160, 100, PixelFormat::XRGB8888, art);
+    const MazePose pose{1.5f, 7.5f, 0.0f};
+    r.render(map, {}, pose, 0.0f, 0, frame.target);
+    std::vector<uint32_t> bare(r.internal_w() * r.internal_h());
+    for (uint32_t x = 0; x < r.internal_w(); x++) {
+        for (uint32_t y = 0; y < r.internal_h(); y++) {
+            bare[x * r.internal_h() + y] = r.internal_pixel(x, y);
+        }
+    }
+    r.render(map, {item}, pose, 0.0f, 0, frame.target);
+    double sx = 0.0;
+    double sy = 0.0;
+    size_t n = 0;
+    for (uint32_t x = 0; x < r.internal_w(); x++) {
+        for (uint32_t y = 0; y < r.internal_h(); y++) {
+            if (r.internal_pixel(x, y) != bare[x * r.internal_h() + y]) {
+                sx += x + 0.5;
+                sy += y + 0.5;
+                n++;
+            }
+        }
+    }
+    REQUIRE(n > 0);
+    return {static_cast<float>(sx / n), static_cast<float>(sy / n)};
+}
+
+} // namespace
+
+TEST_CASE("a sprite off to one side stands where the focal length puts it", "[screensaver][maze]") {
+    // 4 tiles ahead and 1 to the right: focal * 1 / 4 right of centre.
+    const float focal = helix::ui::maze_focal(160, 100);
+    const auto [x, y] = item_centre({MazeItemKind::LOGO, 5.5f, 8.5f, true});
+    CHECK(x == Catch::Approx(80.0f + focal / 4.0f).margin(1.0f));
+    CHECK(y == Catch::Approx(50.0f).margin(1.0f));
+}
+
+TEST_CASE("a low sprite sits below the horizon by what the focal length gives",
+          "[screensaver][maze]") {
+    // The toolhead's centre is 0.175 tiles up, 0.325 below the eye, 4 tiles ahead.
+    const float focal = helix::ui::maze_focal(160, 100);
+    const auto [x, y] = item_centre({MazeItemKind::TOOLHEAD, 5.5f, 7.5f, true});
+    CHECK(x == Catch::Approx(80.0f).margin(1.0f));
+    CHECK(y == Catch::Approx(50.0f + 0.325f * focal / 4.0f).margin(1.0f));
 }
 
 TEST_CASE("the fog curve and blend", "[screensaver][maze]") {
