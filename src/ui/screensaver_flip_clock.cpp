@@ -103,16 +103,8 @@ void FlipClockScreensaver::draw_text(SaverLabel& label, const std::string& text,
         if (on_card) {
             sim_.redraw_card(frame, 0, dirty);
         } else {
-            const DirtyRect& old = label.box();
-            PixelWriter writer(frame);
-            for (int32_t y = old.y1; y <= old.y2; y++) {
-                for (int32_t x = old.x1; x <= old.x2; x++) {
-                    if (writer.contains(x, y)) {
-                        writer.put(x, y, FlipClockSim::BACKGROUND);
-                    }
-                }
-            }
-            dirty.push_back(old);
+            PixelWriter(frame).fill_rect(label.box(), FlipClockSim::BACKGROUND);
+            dirty.push_back(label.box());
         }
     }
     label.draw(canvas(), text, box, TEXT_COLOR, LV_OPA_COVER,

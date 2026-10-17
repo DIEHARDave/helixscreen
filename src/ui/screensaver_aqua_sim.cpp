@@ -20,11 +20,10 @@ using screensaver::random_between;
 using screensaver::random_normal;
 using screensaver::smoothstep01;
 using screensaver::unit_random;
+using screensaver::wrap_index;
 
 namespace {
 
-constexpr float PI = 3.14159265358979f;
-constexpr float TWO_PI = 2.0f * PI;
 constexpr float GRAVITY = 9.81f;
 /// Tank depth and length, for the dispersion relation and the sloshing modes.
 constexpr float TANK_DEPTH = 1.2f;
@@ -98,7 +97,7 @@ void splat_max(PixelWriter& w, const std::vector<Rgb>& tint, float fx, float fy,
         if (v < 0.004f || !w.contains(x, y)) {
             continue;
         }
-        w.blend_max(x, y, tint[static_cast<size_t>(std::min(255.0f, v * 255.0f + 0.5f))]);
+        w.blend_max(x, y, tint[unit_to_u8(v)]);
     }
 }
 
@@ -152,19 +151,19 @@ void AquaWater::init(std::minstd_rand& rng, int32_t gx, int32_t gz, float u_max)
     next_impulse_ = 0.6;
     fresh_ = true;
     for (size_t n = 0; n < modes_.size(); n++) {
-        const float k = static_cast<float>(n + 1) * PI / TANK_L;
-        modes_[n] = {MODE_AMPS[n], k, omega_for(k), random_between(rng, 0.0f, TWO_PI)};
+        const float k = static_cast<float>(n + 1) * SAVER_PI / TANK_L;
+        modes_[n] = {MODE_AMPS[n], k, omega_for(k), random_between(rng, 0.0f, SAVER_TWO_PI)};
     }
     for (size_t i = 0; i < waves_.size(); i++) {
         const WaveShape& s = WAVE_SHAPES[i];
-        const float k = TWO_PI / s.lambda;
+        const float k = SAVER_TWO_PI / s.lambda;
         waves_[i] = {s.amp,
                      k,
                      omega_for(k),
                      std::cos(s.angle),
                      std::sin(s.angle),
                      s.steep,
-                     random_between(rng, 0.0f, TWO_PI)};
+                     random_between(rng, 0.0f, SAVER_TWO_PI)};
     }
     impulses_.clear();
     impulses_.reserve(IMPULSE_CAP);
@@ -387,9 +386,9 @@ void AquaSplashes::emit_crests(const AquaWater& water, std::minstd_rand& rng) {
             d.x = u * z;
             d.y = h + 0.02f;
             d.z = z;
-            d.vx = 1.5f * lean + (0.0f + 0.3f * random_normal(rng));
+            d.vx = 1.5f * lean + random_normal(rng, 0.0f, 0.3f);
             d.vy = 0.6f * rise + random_between(rng, 0.8f, 1.5f);
-            d.vz = (-0.1f + 0.1f * random_normal(rng));
+            d.vz = random_normal(rng, -0.1f, 0.1f);
             if (!emit(d)) {
                 return;
             }
@@ -638,7 +637,7 @@ class AquaSim::Scene : public HeightfieldScene {
             if (index == 0) {
                 s.front_shade_[c] = shade;
             }
-            colors[c] = s.tint_[static_cast<size_t>(std::clamp(shade, 0.0f, 1.0f) * 255.0f + 0.5f)];
+            colors[c] = s.tint_[unit_to_u8(shade)];
         }
         s.prev_el_.swap(s.el_);
     }
@@ -706,15 +705,15 @@ void build_wrinkle(std::vector<float>& out) {
             if (!(k > 0.03f && k < 0.3f)) {
                 continue;
             }
-            const float re = (0.0f + 1.0f * random_normal(rng));
-            const float im = (0.0f + 1.0f * random_normal(rng));
+            const float re = random_normal(rng, 0.0f, 1.0f);
+            const float im = random_normal(rng, 0.0f, 1.0f);
             const float amp = std::sqrt(re * re + im * im) / (k * k);
             const float phase = std::atan2(im, re);
             const float cp = std::cos(phase);
             const float spp = std::sin(phase);
             for (int32_t z = 0; z < N; z++) {
                 for (int32_t x = 0; x < N; x++) {
-                    const int32_t idx = ((fx * x + fz * z) % N + N) % N;
+                    const int32_t idx = wrap_index(fx * x + fz * z, N);
                     const float ca =
                         FAST_SIN_TABLE
                             .v[(idx * (FAST_SIN_N / N) + FAST_SIN_N / 4) & (FAST_SIN_N - 1)];
@@ -780,7 +779,7 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
         b.x = random_between(rng, 0.0f, static_cast<float>(w_));
         b.y = random_between(rng, 0.0f, static_cast<float>(h_));
         b.speed = random_between(rng, 0.15f, 0.6f);
-        b.phase = random_between(rng, 0.0f, TWO_PI);
+        b.phase = random_between(rng, 0.0f, SAVER_TWO_PI);
     }
     edge_rows_.assign(static_cast<size_t>(w_), static_cast<float>(h_));
     rim_.assign(static_cast<size_t>(w_), AQUA_RIM_FLOOR);
@@ -811,8 +810,8 @@ void AquaSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level
 void AquaSim::apply_view() {
     const AquaLevel& lv = AQUA_LEVELS[level_];
     scale_ = std::max<int32_t>(1, lv.scale);
-    iw_ = (w_ + scale_ - 1) / scale_;
-    ih_ = (h_ + scale_ - 1) / scale_;
+    iw_ = scaled_extent(w_, scale_);
+    ih_ = scaled_extent(h_, scale_);
     focal_ = FOCAL_AT_400 * static_cast<float>(iw_) / 400.0f;
     horizon_ = static_cast<float>(ih_) / 2.0f + PITCH_AT_240 * static_cast<float>(ih_) / 240.0f;
 
@@ -932,7 +931,7 @@ DirtyRect AquaSim::paint_water(FrameTarget& frame) {
             Rgb c{};
             if (d >= 0.0f) {
                 const float v = base * std::exp(-d / 18.0f) + 0.008f;
-                c = tint_[static_cast<size_t>(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f)];
+                c = tint_[unit_to_u8(v)];
             }
             frame_[static_cast<size_t>(y) * iw_ + x] = c;
         }
@@ -969,8 +968,7 @@ void AquaSim::draw_rim(FrameTarget& frame) const {
             if (p <= 0.0f) {
                 continue;
             }
-            writer.blend_max(ox, y,
-                             tint_[static_cast<size_t>(std::min(255.0f, b * p * 255.0f + 0.5f))]);
+            writer.blend_max(ox, y, tint_[unit_to_u8(b * p)]);
         }
     }
 }
@@ -999,13 +997,11 @@ void AquaSim::draw_spray(FrameTarget& frame, std::vector<DirtyRect>& boxes) cons
     const float hz = horizon_ * sc;
     const float cx = static_cast<float>(w_) / 2.0f;
     const auto add_box = [&](float x1, float y1, float x2, float y2) {
-        DirtyRect box{
-            static_cast<int32_t>(std::floor(x1)) - 2, static_cast<int32_t>(std::floor(y1)) - 2,
-            static_cast<int32_t>(std::ceil(x2)) + 2, static_cast<int32_t>(std::ceil(y2)) + 2};
-        box.x1 = std::max(box.x1, 0);
-        box.y1 = std::max(box.y1, 0);
-        box.x2 = std::min(box.x2, w_ - 1);
-        box.y2 = std::min(box.y2, h_ - 1);
+        const DirtyRect box = DirtyRect{static_cast<int32_t>(std::floor(x1)) - 2,
+                                        static_cast<int32_t>(std::floor(y1)) - 2,
+                                        static_cast<int32_t>(std::ceil(x2)) + 2,
+                                        static_cast<int32_t>(std::ceil(y2)) + 2}
+                                  .clipped(w_, h_);
         if (!box.empty()) {
             boxes.push_back(box);
         }
@@ -1042,7 +1038,7 @@ void AquaSim::draw_clock(FrameTarget& frame, const ClockReading& reading) const 
     const auto ring = [&](int32_t cx, int32_t cy, int32_t r, float fill) {
         const float half = static_cast<float>(clock_.ring_width) / 2.0f;
         const auto rf = static_cast<float>(r);
-        const float end = std::clamp(fill, 0.0f, 1.0f) * TWO_PI;
+        const float end = std::clamp(fill, 0.0f, 1.0f) * SAVER_TWO_PI;
         const int32_t reach = r + clock_.ring_width + 1;
         for (int32_t y = cy - reach; y <= cy + reach; y++) {
             for (int32_t x = cx - reach; x <= cx + reach; x++) {
@@ -1058,17 +1054,16 @@ void AquaSim::draw_clock(FrameTarget& frame, const ClockReading& reading) const 
                 }
                 // Clockwise from twelve o'clock, with soft ends.
                 float a = std::atan2(dx, -dy);
-                a += a < 0.0f ? TWO_PI : 0.0f;
+                a += a < 0.0f ? SAVER_TWO_PI : 0.0f;
                 float filled = 0.0f;
                 if (end > 0.0f) {
-                    filled = std::clamp((end - a) * rf + 0.5f, 0.0f, 1.0f) *
-                             std::clamp(a * rf + 0.5f, 0.0f, 1.0f);
-                    if (end >= TWO_PI - 1e-4f) {
+                    filled = edge_coverage((end - a) * rf) * edge_coverage(a * rf);
+                    if (end >= SAVER_TWO_PI - 1e-4f) {
                         filled = 1.0f;
                     }
                 }
                 const Rgb color = mix_rgb(RING_TRACK, RING_FILL, filled);
-                writer.put_dithered(x, y, mix_rgb(writer.get(x, y), color, cov));
+                writer.blend_over(x, y, color, cov);
             }
         }
     };
@@ -1106,8 +1101,7 @@ void AquaSim::draw_clock(FrameTarget& frame, const ClockReading& reading) const 
 
 void AquaSim::save_clock_region(const FrameTarget& frame) {
     const DirtyRect& b = clock_.bounds;
-    DirtyRect clip{std::max(b.x1, 0), std::max(b.y1, 0), std::min(b.x2, w_ - 1),
-                   std::min(b.y2, h_ - 1)};
+    const DirtyRect clip = b.clipped(w_, h_);
     clock_saved_box_ = clip;
     if (clip.empty()) {
         return;
@@ -1195,7 +1189,7 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
         drift_y_ = dy;
         update_clock_layout();
     }
-    const DirtyRect whole{0, 0, w_ - 1, h_ - 1};
+    const DirtyRect whole = DirtyRect::whole(w_, h_);
 
     if (lv.still) {
         // The water stands still: draw it once, then only the clock when what it shows changes.
@@ -1249,8 +1243,8 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     for (Bubble& b : bubbles_) {
         b.y -= b.speed * rise * dt_s;
         b.phase += 2.0f * dt_s;
-        if (b.phase > TWO_PI) {
-            b.phase -= TWO_PI;
+        if (b.phase > SAVER_TWO_PI) {
+            b.phase -= SAVER_TWO_PI;
         }
         if (b.y < 0.0f) {
             b.y = static_cast<float>(h_) + random_between(rng, 0.0f, 40.0f);
@@ -1297,14 +1291,7 @@ void AquaSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     }
     last_spray_.swap(spray_);
     spray_.clear();
-    merge_dirty_areas(dirty, SAVER_MAX_DIRTY_AREAS);
-    int64_t covered = 0;
-    for (const DirtyRect& b : dirty) {
-        covered += b.area();
-    }
-    if (covers_whole_canvas(covered, w_, h_)) {
-        dirty.assign(1, whole);
-    }
+    reduce_dirty(dirty, SAVER_MAX_DIRTY_AREAS, w_, h_);
     shown_ = reading;
 }
 

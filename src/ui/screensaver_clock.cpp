@@ -10,6 +10,7 @@
 #include "format_utils.h"
 #include "locale_formats.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "screensaver_motion.h"
 #include "theme_manager.h"
 
 #include <spdlog/fmt/fmt.h>
@@ -71,7 +72,7 @@ ClockPrintPhase clock_print_phase(PrintState state) {
 }
 
 std::string clock_minute_text(int32_t minute_of_day) {
-    const struct tm tm_info = tm_at_minute(((minute_of_day % 1440) + 1440) % 1440);
+    const struct tm tm_info = tm_at_minute(screensaver::wrap_index(minute_of_day, 1440));
     return format_time(&tm_info);
 }
 

@@ -227,6 +227,15 @@ class HighFlySim {
     void draw_billboard(const Billboard& b);
     /// Internal box a billboard covers, empty when off screen.
     DirtyRect billboard_box(const Billboard& b) const;
+    /// Where a billboard lands at the internal size: texel scale across and down, top row and
+    /// left column.
+    struct BillboardScreen {
+        float sx = 0.0f;
+        float sy = 0.0f;
+        float top = 0.0f;
+        float xl = 0.0f;
+    };
+    BillboardScreen billboard_screen(const Billboard& b) const;
     size_t collect_billboards(Billboard* out, size_t cap) const;
     void draw_numerals(FrameTarget& frame, const ClockReading& reading) const;
     void update_clock_layout();

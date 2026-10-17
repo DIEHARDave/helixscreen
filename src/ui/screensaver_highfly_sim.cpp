@@ -20,11 +20,10 @@ using screensaver::random_between;
 using screensaver::random_normal;
 using screensaver::smoothstep01;
 using screensaver::unit_random;
+using screensaver::wrap_index;
 
 namespace {
 
-constexpr float PI = 3.14159265358979f;
-constexpr float TWO_PI = 2.0f * PI;
 constexpr int32_t N = HIGHFLY_FIELD;
 
 // Camera and deck, as tuned at a 400 x 240 internal frame.
@@ -173,7 +172,7 @@ void add_blob(std::vector<float>& d, int32_t w, int32_t h, float cx, float cy, f
         for (int32_t xx = x0; xx <= x1; xx++) {
             int32_t x = xx;
             if (wrap_x) {
-                x = ((x % w) + w) % w;
+                x = wrap_index(x, w);
             } else if (x < 0 || x >= w) {
                 continue;
             }
@@ -181,6 +180,14 @@ void add_blob(std::vector<float>& d, int32_t w, int32_t h, float cx, float cy, f
             d[static_cast<size_t>(y) * w + x] += amp * fast_exp_neg(dx * dx + dy * dy);
         }
     }
+}
+
+/// `c` at coverage `alpha` (0 to 1) as premultiplied RGBA bytes at `out`.
+void premultiplied_rgba(Rgb c, float alpha, uint8_t* out) {
+    out[0] = static_cast<uint8_t>(c.r * alpha + 0.5f);
+    out[1] = static_cast<uint8_t>(c.g * alpha + 0.5f);
+    out[2] = static_cast<uint8_t>(c.b * alpha + 0.5f);
+    out[3] = static_cast<uint8_t>(alpha * 255.0f + 0.5f);
 }
 
 /// Density to premultiplied RGBA, lit from above by the light the cloud lets through.
@@ -228,11 +235,7 @@ void shade_cloud(std::vector<float>& d, const std::vector<float>& wisp, float wi
                 s += 0.25f * std::clamp(1.0f - od[i] / 2.0f, 0.0f, 1.0f);
             }
             const Rgb c = shade_to_rgb(s);
-            uint8_t* p = &out.rgba[i * 4];
-            p[0] = static_cast<uint8_t>(c.r * alpha + 0.5f);
-            p[1] = static_cast<uint8_t>(c.g * alpha + 0.5f);
-            p[2] = static_cast<uint8_t>(c.b * alpha + 0.5f);
-            p[3] = static_cast<uint8_t>(alpha * 255.0f + 0.5f);
+            premultiplied_rgba(c, alpha, &out.rgba[i * 4]);
         }
     }
 }
@@ -350,11 +353,7 @@ void shade_tower(std::vector<float>& d, int32_t w, int32_t h, HighFlyTexture& ou
             const float s = 0.30f + 0.50f * diffuse + 0.30f * lit - 0.25f * base * base +
                             0.25f * std::clamp(1.0f - od[i] / 2.0f, 0.0f, 1.0f);
             const Rgb c = tower_rgb(s);
-            uint8_t* p = &out.rgba[i * 4];
-            p[0] = static_cast<uint8_t>(c.r * alpha + 0.5f);
-            p[1] = static_cast<uint8_t>(c.g * alpha + 0.5f);
-            p[2] = static_cast<uint8_t>(c.b * alpha + 0.5f);
-            p[3] = static_cast<uint8_t>(alpha * 255.0f + 0.5f);
+            premultiplied_rgba(c, alpha, &out.rgba[i * 4]);
         }
     }
 }
@@ -376,7 +375,7 @@ void make_tower(std::minstd_rand& rng, HighFlyTexture& out) {
         add_blob(d, w, h, xo, y, rad * 0.75f, false, 1.2f);
         const int lobes = 4 + static_cast<int>(unit_random(rng) * 3.0f);
         for (int k = 0; k < lobes; k++) {
-            const float a = random_between(rng, PI * 1.0f, PI * 2.0f);
+            const float a = random_between(rng, SAVER_PI * 1.0f, SAVER_PI * 2.0f);
             add_blob(d, w, h, xo + std::cos(a) * rad * 0.7f, y + std::sin(a) * rad * 0.5f,
                      rad * random_between(rng, 0.30f, 0.45f), false, 0.9f);
         }
@@ -385,7 +384,7 @@ void make_tower(std::minstd_rand& rng, HighFlyTexture& out) {
     const float crown_y = 70.0f;
     add_blob(d, w, h, cx + drift * 0.5f, crown_y, 34.0f, false, 1.1f);
     for (int k = 0; k < 5; k++) {
-        const float a = random_between(rng, PI * 1.05f, PI * 1.95f);
+        const float a = random_between(rng, SAVER_PI * 1.05f, SAVER_PI * 1.95f);
         add_blob(d, w, h, cx + drift * 0.5f + std::cos(a) * 30.0f, crown_y + std::sin(a) * 18.0f,
                  random_between(rng, 12.0f, 18.0f), false, 0.9f);
     }
@@ -430,14 +429,14 @@ void build_highfly_field(std::minstd_rand& rng, HighFlyField& out) {
         const float r2 = r * r;
         for (int32_t yy = y0; yy <= y1; yy++) {
             const float dy = static_cast<float>(yy) - cy;
-            const int32_t y = ((yy % N) + N) % N;
+            const int32_t y = wrap_index(yy, N);
             for (int32_t xx = x0; xx <= x1; xx++) {
                 const float dx = static_cast<float>(xx) - cx;
                 const float d2 = dx * dx + dy * dy;
                 if (d2 >= r2) {
                     continue;
                 }
-                const int32_t x = ((xx % N) + N) % N;
+                const int32_t x = wrap_index(xx, N);
                 float& h = hf[static_cast<size_t>(y) * N + x];
                 h = std::max(h, base + std::sqrt(r2 - d2));
             }
@@ -694,7 +693,7 @@ class HighFlySim::Scene : public HeightfieldScene {
             const float s0 = row0s[u0] + (row0s[u1] - row0s[u0]) * fu;
             const float s1 = row1s[u0] + (row1s[u1] - row1s[u0]) * fu;
             const float shade = s0 + (s1 - s0) * fv;
-            colors[c] = lut[static_cast<size_t>(std::clamp(shade, 0.0f, 1.0f) * 255.0f + 0.5f)];
+            colors[c] = lut[unit_to_u8(shade)];
         }
     }
 
@@ -766,8 +765,8 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
 void HighFlySim::apply_view(bool bake) {
     const HighFlyLevel& lv = HIGHFLY_LEVELS[level_];
     scale_ = std::max<int32_t>(1, lv.scale);
-    iw_ = (w_ + scale_ - 1) / scale_;
-    ih_ = (h_ + scale_ - 1) / scale_;
+    iw_ = scaled_extent(w_, scale_);
+    ih_ = scaled_extent(h_, scale_);
     horizon_ = HORIZON * static_cast<float>(ih_);
     focal_x_ = (static_cast<float>(iw_) / 2.0f) / FOV;
     focal_y_ = FOCAL_Y_AT_240 * static_cast<float>(ih_) / 240.0f;
@@ -887,8 +886,8 @@ void HighFlySim::build_polar() {
             const float dx = (static_cast<float>(x) - W / 2.0f) / (W / 2.0f);
             const float dy = (static_cast<float>(y) - H * 0.5f) / (H / 2.0f);
             const float r = std::sqrt(dx * dx + dy * dy) + 1e-3f;
-            const float lr = std::log(r) * 40.0f;                            // about -276 to 14
-            const float ang = (std::atan2(dy, dx) / TWO_PI + 0.5f) * 128.0f; // 0 to 128
+            const float lr = std::log(r) * 40.0f; // about -276 to 14
+            const float ang = (std::atan2(dy, dx) / SAVER_TWO_PI + 0.5f) * 128.0f; // 0 to 128
             const size_t i = (static_cast<size_t>(y) * iw_ + x) * 3;
             polar_[i] = static_cast<uint16_t>(std::clamp((lr + 300.0f) * 64.0f, 0.0f, 65535.0f));
             polar_[i + 1] = static_cast<uint16_t>(std::clamp(ang * 256.0f, 0.0f, 65535.0f));
@@ -1048,15 +1047,20 @@ size_t HighFlySim::collect_billboards(Billboard* out, size_t cap) const {
     return n;
 }
 
+HighFlySim::BillboardScreen HighFlySim::billboard_screen(const Billboard& b) const {
+    BillboardScreen s;
+    s.sx = b.q * focal_x_ / b.z;
+    s.sy = b.q * focal_y_ / b.z;
+    s.top = horizon_ + (CAM_H - (b.hb + static_cast<float>(b.tex->h) * b.q)) * focal_y_ / b.z;
+    s.xl = static_cast<float>(iw_) / 2.0f + b.xw0 * focal_x_ / b.z;
+    return s;
+}
+
 DirtyRect HighFlySim::billboard_box(const Billboard& b) const {
     if (b.tex == nullptr || b.z <= 0.5f || b.alpha <= 0.003f) {
         return {};
     }
-    const float sx = b.q * focal_x_ / b.z;
-    const float sy = b.q * focal_y_ / b.z;
-    const float top =
-        horizon_ + (CAM_H - (b.hb + static_cast<float>(b.tex->h) * b.q)) * focal_y_ / b.z;
-    const float xl = static_cast<float>(iw_) / 2.0f + b.xw0 * focal_x_ / b.z;
+    const auto [sx, sy, top, xl] = billboard_screen(b);
     DirtyRect box;
     box.y1 = std::max(0, static_cast<int32_t>(std::floor(top)));
     box.y2 =
@@ -1079,11 +1083,7 @@ void HighFlySim::draw_billboard(const Billboard& b) {
         return;
     }
     const HighFlyTexture& tex = *b.tex;
-    const float sx = b.q * focal_x_ / b.z;
-    const float sy = b.q * focal_y_ / b.z;
-    const float top =
-        horizon_ + (CAM_H - (b.hb + static_cast<float>(tex.h) * b.q)) * focal_y_ / b.z;
-    const float xl = static_cast<float>(iw_) / 2.0f + b.xw0 * focal_x_ / b.z;
+    const auto [sx, sy, top, xl] = billboard_screen(b);
     const float nw = NEAR_K * std::clamp(1.0f - b.z / NEAR_WHITE, 0.0f, 1.0f);
     const float f = FOG.at(b.z) * b.fogmul;
     // Columns: texel and weight, or -1 outside the texture.
@@ -1091,7 +1091,7 @@ void HighFlySim::draw_billboard(const Billboard& b) {
         const float xs = (static_cast<float>(x) + 0.5f - xl) / sx - 0.5f;
         if (b.wrap) {
             const float fl = std::floor(xs);
-            col_u0_[x] = static_cast<int32_t>(((static_cast<int64_t>(fl) % tex.w) + tex.w) % tex.w);
+            col_u0_[x] = wrap_index(static_cast<int64_t>(fl), tex.w);
             col_fu_[x] = xs - fl;
         } else if (xs < -0.5f || xs > static_cast<float>(tex.w) - 0.5f) {
             col_u0_[x] = -1;
@@ -1164,9 +1164,8 @@ void HighFlySim::draw_billboard(const Billboard& b) {
 
 DirtyRect HighFlySim::clock_box_internal() const {
     const DirtyRect& b = clock_.bounds;
-    DirtyRect box{std::max(0, b.x1 / scale_ - 1), std::max(0, b.y1 / scale_ - 1),
-                  std::min(iw_ - 1, b.x2 / scale_ + 1), std::min(ih_ - 1, b.y2 / scale_ + 1)};
-    return box;
+    return DirtyRect{b.x1 / scale_ - 1, b.y1 / scale_ - 1, b.x2 / scale_ + 1, b.y2 / scale_ + 1}
+        .clipped(iw_, ih_);
 }
 
 void HighFlySim::compose(int32_t from) {
@@ -1312,15 +1311,13 @@ void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) 
                         const float fall =
                             std::clamp((reach - d) / std::max(halo, 1.0f), 0.0f, 1.0f);
                         if (fall > 0.0f) {
-                            writer.put_dithered(
-                                x, y, mix_rgb(writer.get(x, y), HALO, HALO_OPACITY * fall * fall));
+                            writer.blend_over(x, y, HALO, HALO_OPACITY * fall * fall);
                         }
                         continue;
                     }
-                    const float cov = std::clamp(r - d + 0.5f, 0.0f, 1.0f);
+                    const float cov = edge_coverage(r - d);
                     if (cov > 0.0f) {
-                        writer.put_dithered(
-                            x, y, mix_rgb(writer.get(x, y), NUMERAL, NUMERAL_OPACITY * cov));
+                        writer.blend_over(x, y, NUMERAL, NUMERAL_OPACITY * cov);
                     }
                 }
             }
@@ -1356,7 +1353,7 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     dirty.clear();
     elapsed_ms_ += dt_ms;
     const HighFlyLevel& lv = HIGHFLY_LEVELS[level_];
-    const DirtyRect whole{0, 0, w_ - 1, h_ - 1};
+    const DirtyRect whole = DirtyRect::whole(w_, h_);
 
     int32_t max_dx = 0;
     int32_t max_dy = 0;
@@ -1466,14 +1463,7 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     if (full) {
         dirty.assign(1, whole);
     } else {
-        merge_dirty_areas(dirty, SAVER_MAX_DIRTY_AREAS);
-        int64_t covered = 0;
-        for (const DirtyRect& b : dirty) {
-            covered += b.area();
-        }
-        if (covers_whole_canvas(covered, w_, h_)) {
-            dirty.assign(1, whole);
-        }
+        reduce_dirty(dirty, SAVER_MAX_DIRTY_AREAS, w_, h_);
     }
     shown_ = reading;
 }
