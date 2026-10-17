@@ -204,7 +204,12 @@ class FirefliesSim {
     void clear();
 
   private:
+    /// Most steps one frame advances: a stall moves the swarms half a second, never more.
+    static constexpr uint32_t MAX_STEPS_PER_FRAME = 50;
+
     void advance_one(std::minstd_rand& rng);
+    FireflyVec random_waypoint(std::minstd_rand& rng) const;
+    float speed_mult() const;
     void schedule_next_mode(std::minstd_rand& rng);
     template <typename Px> void draw(FrameTarget& frame, std::vector<DirtyRect>& dirty);
 
@@ -220,6 +225,7 @@ class FirefliesSim {
 
     FirefliesMode mode_ = FirefliesMode::NORMAL;
     int32_t mode_left_ms_ = 0;
+    int32_t mode_total_ms_ = 0;
     int32_t next_mode_ms_ = 0;
     uint32_t modes_begun_[FIREFLIES_MODE_COUNT]{};
 

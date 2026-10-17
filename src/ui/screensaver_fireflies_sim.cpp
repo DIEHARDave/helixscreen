@@ -38,7 +38,67 @@ template <typename T> void free_buffer(std::vector<T>& v) {
     std::vector<T>().swap(v);
 }
 
+constexpr float STEP_S = static_cast<float>(FIREFLIES_STEP_MS) / 1000.0f;
+
+// A bait takes a new waypoint once this near it, or when its timer runs out.
+constexpr float WAYPOINT_REACHED = 5.0f;
+constexpr int32_t RETARGET_MIN_MS = 2000;
+constexpr int32_t RETARGET_MAX_MS = 5000;
+
+FireflyVec operator+(FireflyVec a, FireflyVec b) {
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
+}
+FireflyVec operator-(FireflyVec a, FireflyVec b) {
+    return {a.x - b.x, a.y - b.y, a.z - b.z};
+}
+FireflyVec operator*(FireflyVec a, float k) {
+    return {a.x * k, a.y * k, a.z * k};
+}
+float length_sq(FireflyVec v) {
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
+/// `v` shortened to at most `max_len`.
+FireflyVec clamp_length(FireflyVec v, float max_len) {
+    const float sq = length_sq(v);
+    if (sq <= max_len * max_len || sq == 0.0f) {
+        return v;
+    }
+    return v * (max_len / std::sqrt(sq));
+}
+
+/**
+ * @brief Steers `vel` toward `desired` for one step
+ *
+ * The change is capped at `accel` per second and the result at `speed`. There is no slow-down
+ * on arrival, so a chaser swings through its target instead of settling on it.
+ */
+void steer(FireflyVec& vel, FireflyVec desired, float speed, float accel) {
+    vel = clamp_length(vel + clamp_length(desired - vel, accel) * STEP_S, speed);
+}
+
+/// Velocity of top speed `speed` from `from` toward `to`; zero when they coincide.
+FireflyVec seek(FireflyVec from, FireflyVec to, float speed) {
+    const FireflyVec d = to - from;
+    const float sq = length_sq(d);
+    return sq == 0.0f ? FireflyVec{} : d * (speed / std::sqrt(sq));
+}
+
+int32_t random_ms(std::minstd_rand& rng, int32_t lo, int32_t hi) {
+    return lo + random_below(rng, hi - lo + 1);
+}
+
 } // namespace
+
+FireflyVec FirefliesSim::random_waypoint(std::minstd_rand& rng) const {
+    return {uniform(rng, -0.5f, 0.5f) * world_w_ * WAYPOINT_INSET,
+            uniform(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_H * WAYPOINT_INSET,
+            uniform(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_D * WAYPOINT_INSET};
+}
+
+float FirefliesSim::speed_mult() const {
+    return mode_ == FirefliesMode::HYPERSPEED ? 3.0f : 1.0f;
+}
 
 void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level) {
     clear();
@@ -48,12 +108,6 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
     level_ = std::min(level, FIREFLIES_LEVEL_COUNT - 1);
     pending_level_ = level_;
 
-    const auto inside_box = [&]() {
-        return FireflyVec{uniform(rng, -0.5f, 0.5f) * world_w_ * WAYPOINT_INSET,
-                          uniform(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_H * WAYPOINT_INSET,
-                          uniform(rng, -0.5f, 0.5f) * FIREFLIES_WORLD_D * WAYPOINT_INSET};
-    };
-
     baits_.assign(FIREFLIES_MAX_BAITS, Bait{});
     const size_t n =
         FIREFLIES_MIN_BAITS +
@@ -61,8 +115,9 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
     for (size_t i = 0; i < n; i++) {
         Bait& b = baits_[i];
         b.alive = true;
-        b.pos = inside_box();
-        b.target = inside_box();
+        b.pos = random_waypoint(rng);
+        b.target = random_waypoint(rng);
+        b.retarget_ms = random_ms(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
         b.hue_deg = 360.0f * static_cast<float>(i) / static_cast<float>(n) +
                     uniform(rng, 0.0f, SWARM_HUE_JITTER_DEG);
     }
@@ -93,6 +148,10 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
     }
     tail_head_ = 0;
     tail_count_ = 1;
+    mode_ = FirefliesMode::NORMAL;
+    mode_left_ms_ = 0;
+    mode_total_ms_ = 0;
+    std::fill(std::begin(modes_begun_), std::end(modes_begun_), 0u);
 }
 
 void FirefliesSim::clear() {
@@ -121,12 +180,86 @@ size_t FirefliesSim::baits_alive() const {
         std::count_if(baits_.begin(), baits_.end(), [](const Bait& b) { return b.alive; }));
 }
 
+uint32_t FirefliesSim::modes_begun(FirefliesMode mode) const {
+    return modes_begun_[static_cast<size_t>(mode)];
+}
+
+bool FirefliesSim::begin_mode(FirefliesMode mode, uint32_t duration_ms, std::minstd_rand& rng) {
+    (void)rng;
+    switch (mode) {
+    case FirefliesMode::STOP:
+        for (Bait& b : baits_) {
+            b.target = b.pos;
+        }
+        break;
+    default:
+        break;
+    }
+    mode_ = mode;
+    mode_total_ms_ = static_cast<int32_t>(duration_ms);
+    mode_left_ms_ = mode_total_ms_;
+    modes_begun_[static_cast<size_t>(mode)]++;
+    return true;
+}
+
+void FirefliesSim::advance_one(std::minstd_rand& rng) {
+    if (mode_ != FirefliesMode::NORMAL) {
+        mode_left_ms_ -= static_cast<int32_t>(FIREFLIES_STEP_MS);
+        if (mode_left_ms_ <= 0) {
+            mode_ = FirefliesMode::NORMAL;
+        }
+    }
+
+    const float mult = speed_mult();
+    const float bait_speed = FIREFLIES_BAIT_SPEED * mult;
+    const float bait_accel = FIREFLIES_BAIT_ACCEL * mult;
+    const FireflyVec half{world_w_ / 2.0f, FIREFLIES_WORLD_H / 2.0f, FIREFLIES_WORLD_D / 2.0f};
+    for (Bait& b : baits_) {
+        if (!b.alive) {
+            continue;
+        }
+        FireflyVec desired{};
+        if (mode_ != FirefliesMode::STOP) {
+            b.retarget_ms -= static_cast<int32_t>(FIREFLIES_STEP_MS);
+            if (b.retarget_ms <= 0 ||
+                length_sq(b.target - b.pos) < WAYPOINT_REACHED * WAYPOINT_REACHED) {
+                b.target = random_waypoint(rng);
+                b.retarget_ms = random_ms(rng, RETARGET_MIN_MS, RETARGET_MAX_MS);
+            }
+            desired = seek(b.pos, b.target, bait_speed);
+        }
+        steer(b.vel, desired, bait_speed, bait_accel);
+        b.pos = b.pos + b.vel * STEP_S;
+        // The walls of the box stop a bait that overshoots its waypoint.
+        float* p[3] = {&b.pos.x, &b.pos.y, &b.pos.z};
+        float* v[3] = {&b.vel.x, &b.vel.y, &b.vel.z};
+        const float lim[3] = {half.x, half.y, half.z};
+        for (int a = 0; a < 3; a++) {
+            if (std::fabs(*p[a]) > lim[a]) {
+                *p[a] = std::copysign(lim[a], *p[a]);
+                *v[a] = 0.0f;
+            }
+        }
+    }
+
+    for (Fly& f : flies_) {
+        const float speed = FIREFLIES_FLY_SPEED * f.pace * mult;
+        steer(f.vel, seek(f.pos, baits_[f.bait].pos, speed), speed,
+              FIREFLIES_FLY_ACCEL * f.pace * mult);
+        f.pos = f.pos + f.vel * STEP_S;
+    }
+
+    elapsed_ms_ += FIREFLIES_STEP_MS;
+}
+
 void FirefliesSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
                         std::vector<DirtyRect>& dirty) {
     (void)frame;
-    (void)rng;
     level_ = pending_level_;
-    elapsed_ms_ += steps_.steps_due(dt_ms, FIREFLIES_STEP_MS, 50) * FIREFLIES_STEP_MS;
+    const uint32_t steps = steps_.steps_due(dt_ms, FIREFLIES_STEP_MS, MAX_STEPS_PER_FRAME);
+    for (uint32_t i = 0; i < steps; i++) {
+        advance_one(rng);
+    }
     dirty.clear();
 }
 

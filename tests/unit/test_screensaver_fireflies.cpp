@@ -185,6 +185,105 @@ TEST_CASE("a cleared fireflies sim holds nothing", "[screensaver][fireflies_sim]
     CHECK(s.sim.heap_bytes() == 0);
 }
 
+TEST_CASE("fireflies move identically at 16 ms and 48 ms frames", "[screensaver][fireflies_sim]") {
+    Swarm a(11);
+    Swarm b(11);
+    for (int i = 0; i < 300; i++) {
+        a.step(16);
+    }
+    for (int i = 0; i < 100; i++) {
+        b.step(48);
+    }
+    REQUIRE(a.sim.elapsed_ms() == 4800);
+    REQUIRE(b.sim.elapsed_ms() == 4800);
+    CHECK(same_positions(a.sim, b.sim));
+    // The flies did move, so matching positions mean matching motion.
+    Swarm still(11);
+    CHECK_FALSE(same_positions(a.sim, still.sim));
+}
+
+TEST_CASE("a fireflies level change leaves the motion untouched", "[screensaver][fireflies_sim]") {
+    Swarm a(12);
+    Swarm b(12);
+    a.run_for(2000);
+    b.run_for(2000);
+    b.sim.request_level(helix::ui::FIREFLIES_LEVEL_COUNT - 1);
+    a.run_for(4000);
+    b.run_for(4000);
+    REQUIRE(b.sim.level() == helix::ui::FIREFLIES_LEVEL_COUNT - 1);
+    CHECK(a.sim.elapsed_ms() == b.sim.elapsed_ms());
+    CHECK(same_positions(a.sim, b.sim));
+}
+
+namespace {
+
+float distance(const FireflyVec& a, const FireflyVec& b) {
+    const float dx = a.x - b.x;
+    const float dy = a.y - b.y;
+    const float dz = a.z - b.z;
+    return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+float length(const FireflyVec& v) {
+    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+float mean_distance_to_bait(const FirefliesSim& sim) {
+    double sum = 0;
+    for (const FirefliesSim::Fly& f : sim.flies()) {
+        sum += distance(f.pos, sim.baits()[f.bait].pos);
+    }
+    return static_cast<float>(sum / static_cast<double>(sim.flies().size()));
+}
+
+} // namespace
+
+TEST_CASE("flies close in on a stopped bait", "[screensaver][fireflies_sim]") {
+    Swarm s(13);
+    REQUIRE(s.sim.begin_mode(helix::ui::FirefliesMode::STOP, 10000, s.rng));
+    const float start_mean = mean_distance_to_bait(s.sim);
+    REQUIRE(start_mean > 30.0f);
+    s.run_for(8000);
+    REQUIRE(s.sim.mode() == helix::ui::FirefliesMode::STOP);
+    const float end_mean = mean_distance_to_bait(s.sim);
+    CHECK(end_mean <= 25.0f);
+    CHECK(end_mean <= 0.5f * start_mean);
+}
+
+TEST_CASE("baits and flies keep to their top speeds", "[screensaver][fireflies_sim]") {
+    using helix::ui::FIREFLIES_BAIT_SPEED;
+    using helix::ui::FIREFLIES_FLY_SPEED;
+    Swarm s(14);
+    const float half_w = 40.0f * static_cast<float>(W) / static_cast<float>(H);
+    float fastest_fly = 0.0f;
+    for (int i = 0; i < 6000; i++) {
+        s.step(helix::ui::FIREFLIES_STEP_MS);
+        const float mult = s.sim.mode() == helix::ui::FirefliesMode::HYPERSPEED ? 3.0f : 1.0f;
+        for (const FirefliesSim::Bait& b : s.sim.baits()) {
+            if (!b.alive) {
+                continue;
+            }
+            REQUIRE(length(b.vel) <= FIREFLIES_BAIT_SPEED * mult + 1e-3f);
+            REQUIRE(std::fabs(b.pos.x) <= half_w + 1.0f);
+            REQUIRE(std::fabs(b.pos.y) <= 40.0f + 1.0f);
+            REQUIRE(std::fabs(b.pos.z) <= 25.0f + 1.0f);
+        }
+        for (const FirefliesSim::Fly& f : s.sim.flies()) {
+            const float speed = length(f.vel);
+            REQUIRE(speed <= FIREFLIES_FLY_SPEED * f.pace * mult + 1e-3f);
+            fastest_fly = std::max(fastest_fly, speed);
+        }
+    }
+    // The flies reached their top speeds, so the cap is what held them.
+    CHECK(fastest_fly > 0.7f * FIREFLIES_FLY_SPEED);
+}
+
+TEST_CASE("a stall advances the swarm a capped step", "[screensaver][fireflies_sim]") {
+    Swarm s(15);
+    s.step(5000);
+    CHECK(s.sim.elapsed_ms() == 500);
+}
+
 // ============================================================================
 // FirefliesScreensaver
 // ============================================================================
