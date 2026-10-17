@@ -20,6 +20,7 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver_level_store.h` | Board fingerprint and the stored level per saver |
 | `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the too-heavy fallback and the last-resort black screen |
 | `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h`, `include/screensaver_flip_clock.h` | The savers |
+| `include/screensaver_pipes_sim.h` | 3D Pipes: the node grid and growth rules, one screen of pipes, the meshes, the z-buffered rasterizer and the dissolve. No LVGL |
 | `include/screensaver_maze_sim.h`, `include/screensaver_maze.h` | The 3D maze: maze generation, the wall-following walk, and the raycaster that draws it. No LVGL in the sim |
 | `include/screensaver_flip_clock_sim.h` | Flip clock: what it shows (`FlipClockState`), the card layout, and the drawing (`FlipClockSim`). No LVGL |
 | `scripts/screensaver-perf/` | Measuring a saver on a real board |
@@ -37,7 +38,8 @@ opens `SaverCanvas::begin_layer()`, marks what it draws with `mark_dirty()` and 
 Every ladder starts at 16 ms (`SAVER_FAST_PERIOD`, one refresh of a 60 Hz panel), or at
 `HELIX_SCREENSAVER_REFR_PERIOD_MS` when that is set for manual testing
 (`SaverBase::level_period_ms`); levels 1 and up keep their declared periods either way. Starfield
-and pipes then run at 33 ms; toasters at 33 ms with every sprite, then 33 ms with ten; the
+then runs at 33 ms; pipes per `PIPES_LEVELS`: 16 ms, 33 ms, then 50 ms at half resolution (the
+scale changes at the next screen); toasters at 33 ms with every sprite, then 33 ms with ten; the
 bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps the sprite and drops the tint and corner celebration) at 33 ms, then 33 ms with the corner flash but no confetti; fireworks per
 `FIREWORKS_LEVELS`; the 3D maze per `MAZE_LEVELS`: full resolution at 16 ms, then half resolution at
 33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms; hyperspace per `HYPERSPACE_LEVELS`, which keeps 33 ms past level 0
@@ -74,6 +76,33 @@ translucent smiley, is the cell furthest from the start, which in a tree is alwa
 Motion is a function of elapsed time (`include/screensaver_motion.h`), so a level that changes
 the frame period changes nothing on screen but the frame rate, and at the toasters' lowest rung
 the sprite count.
+
+## 3D Pipes
+
+A port of the Windows NT OpenGL "3D Pipes", with the original's numbers. The grid has 15
+nodes along the long screen axis, the short axis by aspect, and 15 deep (15 x 9 x 15 at
+800x480), nodes 7 apart, pipes of radius 1, seen from 75 back with a 90 degree vertical field
+of view. A screen starts 2 to 4 pipes at once and 7 in all; a pipe that gets stuck ends with a
+ball cap and a new one starts at a random empty node until the 7 are used, or the nodes run
+out. Each step goes straight with the pipe's own weight (1-4, now and then 25-100) against one
+per empty turn; a turn takes the direction with the longest empty run, looking two nodes
+ahead. A turn's joint is a ball a third of the time, otherwise an elbow, and a teapot one
+time in a thousand.
+
+- **Drawing** (`PipesRenderer`): triangle meshes (16-sided cylinders, quarter-torus elbows,
+  balls, freeglut's Newell teapot data) rasterized straight into the canvas through
+  `PixelWriter` with a float inverse-depth z-buffer, so a near piece always covers a far one
+  whatever order they were drawn in. Each pixel interpolates the eye-space normal and reads
+  per-material lookup tables for one fixed directional light: GL fixed-function ambient,
+  diffuse and specular with the 16 SGI materials of the original (emerald to white rubber),
+  so the highlight sits up-right on every piece.
+- **Pacing**: one growth step per 100 ms of frame time, at most three per frame; a frame with
+  no step due draws nothing. A finished screen clears in a blocky dissolve (blocks of 1/32 of
+  the short side, in random order) over 2 s of frame time, then the next screen starts with
+  the view turned a further 9.73156 degrees about the vertical.
+- **Cost**: only the pieces of each step and the dissolve's blocks are written and dirtied.
+  The bottom rung rasterizes at half resolution; the z-buffer is sized for it, so a level's
+  scale waits for the next screen.
 
 ## The gate
 
@@ -188,5 +217,5 @@ fold and dirty box, all at once when several change (09:59 to 10:00 flips four, 
 11:00 three); nothing is written between changes. A new shape (the clock becoming a
 countdown, the hours gaining a digit) and the drift every `FLIP_DRIFT_STEP_MS` repaint the
 layout whole. The caption and AM/PM marker are `lv_draw_label` text on the canvas,
-which is why its canvas uses the pipes format.
+which is why its canvas uses `LV_DRAW_CANVAS_FORMAT`.
 

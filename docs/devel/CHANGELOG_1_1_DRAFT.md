@@ -577,6 +577,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   a tiled ceiling. Spinning HelixScreen logos float in the halls, gray rocks flip the view
   upside down, a tiny toolhead scurries past, and your printer hangs framed on the walls.
   Select it under Settings > Display > Screensaver.
+- **3D Pipes looks like the Windows original** - fat, shiny pipes in the sixteen classic
+  materials (emerald, ruby, brass, silver, plastics and rubbers) grow through the
+  screen with elbows, ball joints and the occasional teapot. Near pipes now always pass in front
+  of far ones, the screen fills up, then dissolves away in blocks and starts over from a
+  slightly turned view.
 - **Hyperspace screensaver** - a flight through glowing rainbow space: star flares stream
   past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts
   ahead. Select it under Settings > Display > Screensaver.

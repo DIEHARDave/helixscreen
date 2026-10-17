@@ -75,7 +75,7 @@ An animation that plays while the screen is idle. It starts when the screen woul
 | **Off** | No screensaver. The screen just dims and sleeps |
 | **Flying Toasters** (default on most screens) | The classic flying toasters |
 | **Starfield** | Stars streaming past |
-| **3D Pipes** | Pipes growing across the screen |
+| **3D Pipes** | The old Windows pipes: shiny shaded pipes in sixteen materials grow through the screen, turning at elbows and ball joints (and, once in a while, a teapot). When the screen fills it dissolves away in blocks and starts again from a slightly turned view |
 | **Bouncing Printer** | Your printer drifts around and bounces off the edges, changing color at every wall. Land a corner and it celebrates |
 | **Fireworks** | Fireworks over hills at night |
 | **Bouncing Logo** | The HelixScreen logo drifts around a black screen and bounces off the edges, in its own colors |
