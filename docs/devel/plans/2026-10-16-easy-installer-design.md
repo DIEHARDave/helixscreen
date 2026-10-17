@@ -107,6 +107,8 @@ Anything more complicated becomes two recipes.
 
 ## Step types
 
+Thirteen, and every recipe is built from them.
+
 | Step | Does | Fails with |
 |------|------|------------|
 | `info` | Text and screenshot, Next | - |
@@ -120,7 +122,8 @@ Anything more complicated becomes two recipes.
 | `ssh_login` | Try the recipe's default logins in order, else ask; record whether sudo is needed | auth failed |
 | `ssh_run` | Run a command from the signed recipe, detached, streaming its log | non-zero exit |
 | `moonraker_gcode` | Send a macro through `/printer/gcode/script` | Moonraker error |
-| `helix_install` | Upload the release, run `install.sh --platform X --progress` (optionally in a chroot, or `--update`), confirm the service is up | installer step failed |
+| `moonraker_update` | Ask Moonraker's update manager to upgrade a named entry (ZMOD-managed HelixScreen) | Moonraker error |
+| `helix_install` | Upload the release and `install.sh` to a recipe-chosen directory, run `install.sh --local <zip> --progress` (`--update` for upgrades), check the installer reports the expected platform and success | installer step failed |
 
 `ssh_run` takes commands only from the signed manifest, never from the network or user input;
 the trust boundary is the signing key.
