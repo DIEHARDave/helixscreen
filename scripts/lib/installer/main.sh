@@ -844,8 +844,8 @@ main() {
     # install is platform x86-desktop from here on, with its own download.
     platform=$(detect_platform)
     print_platform_banner "$platform"
-    _progress_emit platform "$platform"
     resolve_x86_flavour
+    _progress_emit platform "$platform"
     # For platforms that share a binary with pi/pi32 (e.g. m1), the download
     # URL uses the donor platform key while $platform stays put so hooks,
     # banner, and competing-UI shutdown still target the real device.

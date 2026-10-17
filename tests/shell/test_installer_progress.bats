@@ -64,7 +64,7 @@ line two" 2>/dev/null)
     need_sandbox
     run_progress install-progress
     [ "$(lines_of platform "$stream" | wc -l)" -eq 1 ]
-    [ "$(lines_of platform "$stream" | cut -f3)" = "x86" ] || [ -n "$(lines_of platform "$stream" | cut -f3)" ]
+    [ "$(lines_of platform "$stream" | cut -f3)" = "x86" ]
     # Each start is followed, before the next start, by one terminal status for the same n.
     lines_of step "$stream" | awk -F'\t' '
         $5 == "start" { if (open) bad = 1; open = 1; n = $3; nstarts++; next }
@@ -81,6 +81,25 @@ line two" 2>/dev/null)
     [ "$(printf '%s' "$last" | cut -f1-3)" = "$(printf 'HELIX-PROGRESS\tresult\tfail')" ]
     [ -n "$(printf '%s' "$last" | cut -f4)" ]
     [ "$(printf '%s\n' "$stream" | grep -c "${TAB}result${TAB}")" -eq 1 ]
+}
+
+@test "a --desktop run reports the platform it installs as" {
+    need_sandbox
+    run_progress progress-desktop-dry-run
+    [ "$(lines_of platform "$stream" | cut -f3)" = "x86-desktop" ]
+}
+
+@test "a --dry-run run ends with result ok" {
+    need_sandbox
+    run_progress progress-dry-run
+    [ "$(printf '%s\n' "$stream" | tail -1)" = "$(printf 'HELIX-PROGRESS\tresult\tok')" ]
+}
+
+@test "a bad argument ends with result fail and emits no step or platform line" {
+    need_sandbox
+    run_progress progress-bad-arg
+    [ "$(printf '%s\n' "$stream" | grep -c "^HELIX-PROGRESS${TAB}")" -eq 1 ]
+    [ "$(printf '%s\n' "$stream" | tail -1 | cut -f1-3)" = "$(printf 'HELIX-PROGRESS\tresult\tfail')" ]
 }
 
 @test "without --progress a whole run prints no HELIX-PROGRESS line" {
@@ -129,6 +148,6 @@ run_scenario_raw() {
 run_progress() { # step
     run_scenario_raw "$1"
     stream=$(printf '%s\n' "$output" | sed -n "/^=== STEP 1: /,/^=== STEP 1: .* exit=/p" | sed '1d;$d')
-    [ "${1}" = install-progress-fail ] && return 0
+    case "$1" in install-progress-fail | progress-bad-arg | progress-desktop-dry-run) return 0 ;; esac
     [ "$status" -eq 0 ] || fail "scenario failed: $output"
 }

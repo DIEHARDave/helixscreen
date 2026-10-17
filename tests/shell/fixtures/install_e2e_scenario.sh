@@ -142,6 +142,15 @@ for step in "$@"; do
         install-progress-fail)
             run_installer --progress --local /mnt/no-such-archive.tar.gz 2>/dev/null || rc=$?
             ;;
+        progress-dry-run)
+            run_installer --progress --dry-run --local /mnt/release-1/helixscreen-x86-v1.0.0.tar.gz 2>/dev/null || rc=$?
+            ;;
+        progress-desktop-dry-run)
+            run_installer --progress --desktop --dry-run --local /mnt/release-1/helixscreen-x86-v1.0.0.tar.gz 2>/dev/null || rc=$?
+            ;;
+        progress-bad-arg)
+            run_installer --progress --no-such-option 2>/dev/null || rc=$?
+            ;;
         seed-user)
             inst=$(sed -n 's/^WorkingDirectory=//p' /etc/systemd/system/helixscreen.service)
             printf '\nHELIX_E2E_USER_KEY=kept\n' >> "$inst/config/helixscreen.env"

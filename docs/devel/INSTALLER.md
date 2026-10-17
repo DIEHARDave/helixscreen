@@ -404,6 +404,8 @@ The output layer is in `scripts/lib/installer/common.sh` (steps, logging), `plan
 | `step<TAB><n><TAB><total><TAB><status><TAB><title><TAB><detail>` | `status` is `start`, then exactly one of `ok`, `fail`, `skip` for the same `n`. `detail` is empty on `start` and `skip`. A skipped step's number is reused by the next step, matching the `[n/N]` the human output shows. |
 | `result<TAB>ok` / `result<TAB>fail<TAB><reason>` | Last line of every run, sent from the exit handler. `reason` is the failing step's reason, else `exit <status>`. |
 
+A run that fails before platform detection (a bad argument, for one) sends `result` with no `platform` line. When no step named a reason, the `fail` reason is `exit <status>`. The `platform` value is the final one the install uses, so a desktop x86 run reports `x86-desktop`.
+
 Tabs, newlines and carriage returns inside a title or detail become single spaces, so a record never splits. All emission goes through `_progress_emit` in `scripts/lib/installer/common.sh`; without `--progress` it prints nothing.
 
 ## Mod-Managed Hosts: the Payload Contract (Forge-X)
