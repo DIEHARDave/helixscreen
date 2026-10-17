@@ -272,7 +272,7 @@ the last is an oracle:
 | `make test-vacuous` | seconds | assertions that cannot fail, from a real run |
 | `make cov-diff` | minutes | changed lines the suite never executes |
 | `make test-order-dependence` | minutes | tests that pass only because of what ran before them |
-| `make mutate-diff` | ~2-4 min per hunk | **changed lines no test detects** |
+| `make mutate-diff` | a build plus the scoped suite's slowest shard, per hunk | **changed lines no test detects** |
 
 `make mutate-diff` reverts each changed hunk in turn, refreshes whatever the
 suite reads, and runs it. A hunk that survives reversion is a change no test
@@ -304,6 +304,21 @@ notice, and the run stops and says so rather than spending the builds
 (`--max-hunks`, default 25; exit 4). Settle it with
 `MUTATE_ARGS="--base origin/release/1.0"`, which is taken as given and never
 second-guessed.
+
+**Where a hunk's time goes, and how a run spends less of it.** A compiled hunk costs
+one translation unit and a relink of `helix-tests` (seconds), then the scoped suite,
+which is as slow as its slowest shard: a single heavy case decides it. So the filter
+is cut into 4 Catch2 shards per process `--shards` allows at once (default 8),
+started longest first by their baseline time as slots free up, and a detection in
+any shard stops the rest. `--workers N` mutates N hunks at once, each in a reflink
+copy of the tree beside it (`.<tree>.mutate-w<i>`, removed at the end) with its own
+`build/` and binary, so no two mutants share a file and the tree you ran it in is
+never mutated. It needs a standalone clone on btrfs, XFS or ZFS and says why when
+it falls back to serial; `scripts/test-host-run.sh mutate` passes `--workers auto`.
+Every make the run starts, and every shard or worker beside the first, draws from
+the jobserver it inherits (the jobpool on the test host), so the workers never run
+on top of the machine's budget. Verdicts are the same either way; only the order
+they arrive in changes.
 
 **A run is bounded, and any stop leaves the tree as it found it.**
 
@@ -350,7 +365,7 @@ The verdicts are not interchangeable:
 | Verdict | Means |
 |---------|-------|
 | `killed` | a test detects the change — the outcome you want |
-| `killed (timeout)` | the mutant hung the suite at a limit derived from the baseline (`max(60s, 5x baseline)`, or `--timeout`) AND hung again when re-run at twice that limit. One stall alone is a machine under load, not a detection. The whole process group dies with each timeout |
+| `killed (timeout)` | the mutant hung the suite at a limit derived from the baseline (`max(60s, 5x baseline)` of the same Catch2 shard, or `--timeout`) AND hung again when re-run at twice that limit. One stall alone is a machine under load, not a detection. The whole process group dies with each timeout |
 | `SURVIVED` | the mutant ran and the suite stayed green: NO test detects it |
 | `uncompilable` / `unreversible` | a mutant was attempted but no test ever judged it. Never a kill: a compiler error proves the code is load-bearing for the build, not that anything tests its behaviour |
 | `skipped (declaration-only)` | every changed line of a C/C++ hunk is one of: a forward declaration (`class X;`, `enum class E : int;`), an access specifier or `friend class`, a `static_assert`, `#pragma once`, a class head with no `alignas` or base that is not changed between `class` and `struct`, or a member function or destructor declaration that is not `virtual` or `explicit` (changes to its signature, `const`, `noexcept` or `= delete` included, as long as `static`/`constexpr`/`inline` match the other side). Its revert can only fail to compile, so it is not built and never counts as a kill. Everything else is mutated: every `#include`, every data member, namespace-scope prototypes, aliases and externs, friend functions and operators, explicit specialisations and instantiations, initialisers, default arguments, inline bodies, enumerators, `#define`. `--no-skip-declarations` mutates them all |

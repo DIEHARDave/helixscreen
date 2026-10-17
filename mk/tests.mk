@@ -1655,5 +1655,7 @@ cov-diff: cov-build cov-run
 # Bounded by --max-minutes (default 45), and by default it mutates only what
 # changed since the last commit a run proved (--whole-branch for all of it).
 .PHONY: mutate-diff
+# `+` hands the jobserver's descriptors down, so the builds the gate runs join
+# this make's job budget instead of falling back to -j1.
 mutate-diff:
-	$(Q)python3 scripts/mutate_diff.py $(MUTATE_ARGS)
+	+$(Q)python3 scripts/mutate_diff.py $(MUTATE_ARGS)

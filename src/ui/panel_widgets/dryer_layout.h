@@ -9,6 +9,7 @@
 // header picks the rung and the flags the XML binds.
 
 #include "src/ui/panel_widgets/size_rung.h"
+#include "src/ui/panel_widgets/tile_layout.h"
 
 #include <algorithm>
 
@@ -36,7 +37,42 @@ struct DryerVerdict {
     /// A progress ring around the time left. Never a ring at 0 for an unknown progress.
     bool show_ring = false;
     int row_count = 0; ///< Full: source rows that fit
+    /// Idle: the icon-ladder rung (ui_tile_rung.h) the humidity drop draws at.
+    int drop_rung = 0;
 };
+
+/// The idle text a humidity drop sits over (a stack) or beside, with the gap between them.
+/// `slack` is the width a text rung is budgeted past its measure.
+struct DropTextBlock {
+    int text_w = 0;
+    int text_h = 0;
+    bool beside = false;
+    int gap = 0;
+    int slack = 0;
+};
+
+/// The box a @p glyph_w x @p glyph_h drop and @p text draw in together.
+[[nodiscard]] constexpr RungBox drop_block_box(int glyph_w, int glyph_h,
+                                               const DropTextBlock& text) {
+    if (text.beside)
+        return rung_box(glyph_w + text.gap + text.text_w + text.slack,
+                        std::max(glyph_h, text.text_h) + 1);
+    return rung_box(std::max(glyph_w, text.text_w) + text.slack,
+                    glyph_h + text.gap + text.text_h + 1);
+}
+
+/// The largest icon-ladder rung whose drop still fits with @p text in the content box,
+/// down to 0: the rung the idle needs are measured at, so a chosen rung always draws.
+[[nodiscard]] constexpr int choose_drop_rung(int content_w, int content_h,
+                                             const int glyph_w[kTileRungs],
+                                             const int glyph_h[kTileRungs],
+                                             const DropTextBlock& text) {
+    for (int r = kTileRungs - 1; r > 0; --r) {
+        if (rung_box_fits(content_w, content_h, drop_block_box(glyph_w[r], glyph_h[r], text)))
+            return r;
+    }
+    return 0;
+}
 
 [[nodiscard]] constexpr DryerVerdict decide_dryer_layout(const DryerInput& in) {
     DryerVerdict v;

@@ -320,7 +320,22 @@ bool ModalStack::empty() const {
     return true;
 }
 
+void ModalStack::add_external_cover() {
+    ++external_covers_;
+    sync_chrome_cover(*this);
+}
+
+void ModalStack::remove_external_cover() {
+    if (external_covers_ > 0) {
+        --external_covers_;
+    }
+    sync_chrome_cover(*this);
+}
+
 bool ModalStack::covers_chrome() const {
+    if (external_covers_ > 0) {
+        return true;
+    }
     for (const auto& entry : stack_) {
         if (!entry.exiting && entry.covers_chrome) {
             return true;
@@ -1219,9 +1234,8 @@ void Modal::esc_key_cb(lv_event_t* e) {
 
     auto* self = static_cast<Modal*>(lv_event_get_user_data(e));
     if (self) {
-        // Instance modal - call on_cancel to allow override
         spdlog::debug("[{}] ESC key pressed - closing", self->get_name());
-        self->on_cancel();
+        self->on_escape();
     } else {
         // Static modal - hide topmost
         lv_obj_t* top = ModalStack::instance().top_dialog();
@@ -1387,7 +1401,7 @@ class ConfirmationModal : public Modal {
     }
 
     void on_cancel() override {
-        // esc_key_cb() is the ONLY caller - the cancel button goes to
+        // on_escape()'s default is the ONLY caller - the cancel button goes to
         // secondary_clicked() instead. So this is unambiguously "closed with no
         // button pressed": hide and let on_hide() report the dismissal. That is
         // what makes the documented on_dismiss contract true for ESC as well as

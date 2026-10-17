@@ -15,10 +15,13 @@ constexpr float kTwoPi = 6.28318530718f;
 
 // The MDI "water" glyph in its 24-unit box: a half circle of radius 6 under a
 // cubic from the equator's left end (6,14), control (6,10), to the tip
-// (12,3.25) with its second control on the tip. In radii from the circle's
-// centre the tip sits 10.75/6 above it.
+// (12,3.25). In radii from the circle's centre the tip sits 10.75/6 above it.
+// The second control sits just below and outside the tip, so the sides pinch
+// in slightly on the way up, a classic teardrop, and still meet in a point.
 constexpr float kTipAbove = 10.75f / 6.0f;
 constexpr float kCtrlAbove = 4.0f / 6.0f;
+constexpr float kTipCtrlOut = 0.08f;
+constexpr float kTipCtrlBelow = 0.35f;
 
 // The drop's share of its box's height, the rest left as air.
 constexpr float kHeightShare = 0.84f;
@@ -28,8 +31,9 @@ constexpr float kWidthShare = 0.92f;
 /// both in radii. t=0 is the equator, t=1 the tip; v falls monotonically.
 void upper_curve(float t, float& u, float& v) {
     const float s = 1.0f - t;
-    u = s * s * (1.0f + 2.0f * t);
-    v = 3.0f * s * s * t * kCtrlAbove + kTipAbove * t * t * (3.0f - 2.0f * t);
+    u = s * s * (1.0f + 2.0f * t) + 3.0f * s * t * t * kTipCtrlOut;
+    v = 3.0f * s * s * t * kCtrlAbove + 3.0f * s * t * t * (kTipAbove - kTipCtrlBelow) +
+        t * t * t * kTipAbove;
 }
 
 /// Half width in radii at height @p above (radii above the centre), 0..kTipAbove.

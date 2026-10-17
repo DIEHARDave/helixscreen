@@ -638,7 +638,9 @@ fi
 # make leaves an inherited jobserver when its command line has any -j.
 # shellcheck disable=SC2016  # $HELIX_J must reach the host unexpanded
 case "$WHAT" in
-    mutate) CMD='python3 scripts/mutate_diff.py --jobs $HELIX_J '"$*" ;;
+    # The mutate checkout is a standalone clone on a reflink filesystem, which
+    # is what --workers needs; a later --workers in the caller's arguments wins.
+    mutate) CMD='python3 scripts/mutate_diff.py --jobs $HELIX_J --workers auto '"$*" ;;
     asan)   _tag="${1:-}"; [ $# -gt 0 ] && shift
             # Trailing args become make overrides, so ASAN_RUN_OPTIONS can be
             # tuned per run (quarantine_size_mb keeps freed blocks poisoned, which

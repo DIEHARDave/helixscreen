@@ -36,12 +36,13 @@
 #                A mutant can also HANG a suite (a reverted lock ordering can
 #                self-deadlock the binary) instead of failing it, and that is
 #                a detection too: the whole process group is killed at a
-#                per-suite limit and reported as `killed (timeout)`. The limit
-#                is the max of 60s and 5x the suite's own baseline run, or
-#                --timeout. The baseline itself is untimed: it is the
-#                measurement the limit is derived from. A suite that merely
-#                outruns the limit is not a detection on its own -- a machine
-#                under load can stall with nothing hung -- so the mutant is
+#                limit and reported as `killed (timeout)`. The limit is the max
+#                of 60s and 5x the baseline run of the same suite -- of the same
+#                Catch2 shard, for the C++ suite -- or --timeout. The baseline
+#                itself is untimed: it is the measurement the limit is derived
+#                from. A suite that merely outruns the limit is not a
+#                detection on its own -- a machine under load can stall with
+#                nothing hung -- so the mutant is
 #                re-run once at twice the limit and only a second hang
 #                confirms the kill; the CLEAN line names how many kills
 #                were confirmed that way.
@@ -161,6 +162,17 @@
 # is reparented, and it stops before its next hunk instead of mutating a tree
 # nobody is watching. --allow-orphan keeps it going for a deliberate detach.
 #
+# WHERE THE TIME GOES
+#
+# A compiled hunk costs a build (one translation unit and a relink, seconds)
+# and a run of the scoped suite, which is as slow as its slowest shard. So the
+# filter is cut into SHARDS_PER_SLOT shards per process allowed at once,
+# started longest-first by their baseline time as slots free up, and a
+# detection in any shard stops the others. --workers N mutates N hunks at once,
+# each in its own reflink copy of the tree (PARALLEL WORKERS below). Every
+# make and every extra process draws from the jobserver the run inherits, so
+# none of this runs on top of the machine's job budget (THE JOB BUDGET).
+#
 # BOUNDS
 #
 # --max-minutes (default 45, 0 for none) caps the whole run, baseline included.
@@ -196,12 +208,18 @@
 #   make mutate-diff
 
 import argparse
+import copy
+import io
 import os
 import re
+import select
 import shutil
 import signal
+import stat
 import subprocess
 import sys
+import tempfile
+import threading
 import time
 from fnmatch import fnmatch
 from pathlib import Path
@@ -1107,17 +1125,166 @@ def make_bin():
     return shutil.which('gmake') or 'make'
 
 
-def build(root, jobs, log, make=None):
+def build(root, jobs, log, make=None, mutant=False):
     t = time.time()
     # Under an inherited jobserver (a jobpool) make leaves the pool when its
     # command line carries any -j, so the pool bounds the build instead.
     jflag = [] if '--jobserver-auth=' in os.environ.get('MAKEFLAGS', '') else [f'-j{jobs}']
+    # A mutant build skips the compile_commands.json merge: it costs seconds a
+    # build, and the database a mutant would write differs from the baseline's
+    # in nothing (scripts/syntax_check.py reads the baseline's).
+    extra = ['SKIP_COMPILE_COMMANDS=1'] if mutant else []
     # `make` is injectable because the bats tests drive this through a PATH
     # mock named `make`; make_bin()'s own probe would sidestep the mock on any
     # host that also has a gmake.
-    rc, out = run_tracked([make or make_bin(), *jflag, 'test-build'], root)
+    rc, out = run_tracked([make or make_bin(), *jflag, 'test-build', *extra], root)
     log.write(out)
     return rc == 0, time.time() - t
+
+
+# ---------------------------------------------------------------------------
+# THE JOB BUDGET
+#
+# A run is one consumer of the machine's job budget however many hunks it has
+# in flight. Under a GNU make jobserver (the test host's jobpool, or a make
+# recipe that hands its descriptors down) every make the run starts joins it,
+# and every other process it runs at once -- a test shard beside another, a
+# second worker's build -- holds a token while it runs. One slot is the run's
+# own, as one is any make's; the rest come from the jobserver, so neither the
+# workers nor their shards run on top of it.
+#
+# A token is taken without blocking, except the one slot a worker needs before
+# it starts a hunk, and that worker holds nothing while it waits: no two waiters
+# can each hold what the other needs.
+#
+# With no jobserver, a serial run sizes itself as it always has (--jobs for the
+# build, --shards for the suite). A parallel run makes its own jobserver of
+# --jobs slots, so its workers share that budget instead of each taking it.
+# ---------------------------------------------------------------------------
+JOBSERVER_AUTH = re.compile(r'\s*--jobserver-(?:auth|fds)=(?:(\d+),(\d+)|fifo:(\S+))')
+
+OWN_SLOT = object()        # the run's implicit slot, not a token
+UNPOOLED = object()        # a slot with no jobserver behind it
+
+
+class JobBudget:
+    def __init__(self):
+        self.pass_fds = ()
+        self._rfd = self._wfd = None
+        self._own = threading.Semaphore(1)
+        self._held = []
+        # Reentrant: a stop handler gives tokens back from the main thread,
+        # which may be inside try_token() when the signal lands.
+        self._lock = threading.RLock()
+
+    @property
+    def pooled(self):
+        """Whether tokens can be taken here; otherwise slots are unbounded."""
+        return self._rfd is not None
+
+    def join_inherited(self, env):
+        """Join the jobserver MAKEFLAGS names, if this process can reach it."""
+        flags = env.get('MAKEFLAGS', '')
+        found = list(JOBSERVER_AUTH.finditer(flags))
+        if not found:
+            return
+        m = found[-1]                       # make obeys the last one
+        if m.group(3):
+            try:
+                self._rfd = os.open(m.group(3), os.O_RDONLY | os.O_NONBLOCK)
+                self._wfd = os.open(m.group(3), os.O_WRONLY)
+            except OSError:
+                self._rfd = self._wfd = None
+            return
+        r, w = int(m.group(1)), int(m.group(2))
+        try:
+            if not all(stat.S_ISFIFO(os.fstat(fd).st_mode) for fd in (r, w)):
+                raise OSError('not a pipe')
+        except OSError:
+            # Named but not handed down (make passes its descriptors only to a
+            # recipe it runs as recursive). A child make would warn and build
+            # at -j1, so the stale word goes and the build takes --jobs.
+            env['MAKEFLAGS'] = JOBSERVER_AUTH.sub('', flags)
+            return
+        self.pass_fds = (r, w)
+        self._wfd = w
+        # A descriptor of our own, so non-blocking reads leave the one make
+        # shares untouched.
+        try:
+            self._rfd = os.open(f'/proc/self/fd/{r}', os.O_RDONLY | os.O_NONBLOCK)
+        except OSError:
+            self._rfd = None
+
+    def make_private(self, slots, env):
+        """A jobserver of `slots` slots for this run alone; False if impossible."""
+        r, w = os.pipe()
+        try:
+            rfd = os.open(f'/proc/self/fd/{r}', os.O_RDONLY | os.O_NONBLOCK)
+        except OSError:
+            os.close(r)
+            os.close(w)
+            return False
+        os.write(w, b'+' * max(0, slots - 1))
+        self.pass_fds, self._rfd, self._wfd = (r, w), rfd, w
+        env['MAKEFLAGS'] = (JOBSERVER_AUTH.sub('', env.get('MAKEFLAGS', ''))
+                            + f' -j --jobserver-auth={r},{w}')
+        return True
+
+    def try_token(self):
+        """A token if one is free right now, else None. UNPOOLED when unbounded."""
+        if not self.pooled:
+            return UNPOOLED
+        try:
+            b = os.read(self._rfd, 1)
+        except OSError:
+            return None
+        if not b:
+            return None
+        with self._lock:
+            self._held.append(b)
+        return b
+
+    def take_base(self, abort):
+        """The slot a worker needs to start a hunk: the run's own when free,
+        else a token. Blocks; raises OutOfTime when `abort()` turns true."""
+        while True:
+            if self._own.acquire(blocking=False):
+                return OWN_SLOT
+            if not self.pooled:
+                return UNPOOLED
+            tok = self.try_token()
+            if tok is not None:
+                return tok
+            if abort():
+                raise OutOfTime()
+            try:
+                select.select([self._rfd], [], [], 0.2)
+            except OSError:
+                time.sleep(0.2)
+
+    def give(self, tok):
+        if tok is OWN_SLOT:
+            self._own.release()
+        elif tok is not UNPOOLED and tok is not None:
+            with self._lock:
+                try:
+                    self._held.remove(tok)
+                except ValueError:
+                    return
+            os.write(self._wfd, tok)
+
+    def give_back_all(self):
+        """Every token still held, for a run that is exiting. Never raises."""
+        with self._lock:
+            held, self._held = self._held, []
+        for b in held:
+            try:
+                os.write(self._wfd, b)
+            except OSError:
+                pass
+
+
+JOBS = JobBudget()
 
 
 def syntax_rejects(root, path, log):
@@ -1144,7 +1311,37 @@ def syntax_rejects(root, path, log):
 # session, so one killpg reaches everything under it: helix-tests runs shards as
 # children, bats farms files out to workers, make runs compilers, and reaping
 # only the leader leaves orphans holding the tree.
+#
+# Each thread that mutates (the main thread, or one worker per tree copy) keeps
+# its own list, so a suite that hangs in one worker is killed without taking
+# down a build in another. A stop or the deadline reaches every list.
+# _spawn_lock spans Popen and the append in a worker thread, where blocking the
+# stop signals cannot keep the main thread's handler from running in between;
+# the handler takes it before signalling, so no child it cannot see is ever
+# alive behind it. Reentrant, because in a serial run the handler can interrupt
+# the main thread while that thread holds it.
+_spawn_lock = threading.RLock()
 _live_procs = []
+_proc_lists = [_live_procs]
+_thread_state = threading.local()
+
+
+def _current_procs():
+    return getattr(_thread_state, 'procs', _live_procs)
+
+
+def _in_worker_thread():
+    return hasattr(_thread_state, 'procs')
+
+
+def note(text):
+    """An aside on the current hunk's progress line: printed now in a serial
+    run, kept for the line a worker prints when its hunk is done."""
+    notes = getattr(_thread_state, 'notes', None)
+    if notes is None:
+        print(text, end='', flush=True)
+    else:
+        notes.append(text)
 
 
 class OutOfTime(RuntimeError):
@@ -1153,27 +1350,41 @@ class OutOfTime(RuntimeError):
 
 class _RunState:
     out_of_time = False
+    # A stop signal is being handled: nothing new may start.
+    stopping = False
 
 
 RUN_STATE = _RunState()
 
 
-def tracked_proc(cmd, cwd, stdin=False):
+def tracked_proc(cmd, cwd, stdin=False, stdout=None):
     """Start one child as its own process-group leader, and remember it.
 
     Refuses once the run is out of time, so nothing new starts between the
-    deadline and the loop noticing it.
+    deadline and the loop noticing it. `stdout` is a file to write to instead
+    of a pipe the caller must drain.
     """
-    if RUN_STATE.out_of_time:
-        raise OutOfTime()
+    procs = _current_procs()
+    if _in_worker_thread():
+        # A worker thread never blocks the stop signals, so its children
+        # inherit an empty mask and need no preexec_fn, which is unsafe in a
+        # threaded process. The lock closes the same window the mask closes
+        # for the main thread.
+        with _spawn_lock:
+            if RUN_STATE.out_of_time or RUN_STATE.stopping:
+                raise OutOfTime()
+            p = _popen_tracked(cmd, cwd, stdin, stdout, preexec=None)
+            procs.append(p)
+        return p
     # A stop signal between Popen returning and the append would leave a child
     # the handler cannot see, still writing after the restore. The signals are
     # held across both; the child unblocks them before exec, or it would start
     # deaf to the SIGTERM a stop sends it.
     old_mask = signal.pthread_sigmask(signal.SIG_BLOCK, STOP_SIGNALS)
     try:
-        p = _popen_tracked(cmd, cwd, stdin)
-        _live_procs.append(p)
+        with _spawn_lock:
+            p = _popen_tracked(cmd, cwd, stdin, stdout, preexec=_unblock_stop_signals)
+            procs.append(p)
     finally:
         signal.pthread_sigmask(signal.SIG_SETMASK, old_mask)
     return p
@@ -1183,22 +1394,26 @@ def _unblock_stop_signals():
     signal.pthread_sigmask(signal.SIG_UNBLOCK, STOP_SIGNALS)
 
 
-def _popen_tracked(cmd, cwd, stdin):
+def _popen_tracked(cmd, cwd, stdin, stdout, preexec):
     return subprocess.Popen(
         cmd,
         # errors='replace': a mutant can make the code under test dump raw
         # bytes into a Catch2 failure message, and a strict decode turns that
         # into a crash that loses the verdict for the one hunk most likely
         # to be killed. A compiler quoting a source line can do the same.
-        cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        cwd=cwd, stdout=stdout if stdout is not None else subprocess.PIPE,
+        stderr=subprocess.STDOUT, text=True,
         stdin=subprocess.PIPE if stdin else subprocess.DEVNULL,
-        errors='replace', start_new_session=True, preexec_fn=_unblock_stop_signals)
+        # The jobserver's descriptors, when make handed them down: without
+        # them every make this run starts falls back to -j1.
+        pass_fds=JOBS.pass_fds,
+        errors='replace', start_new_session=True, preexec_fn=preexec)
 
 
 def untrack_proc(p):
     """Forget a finished child, so a later kill cannot hit a reused pid."""
     try:
-        _live_procs.remove(p)
+        _current_procs().remove(p)
     except ValueError:
         pass
 
@@ -1214,19 +1429,32 @@ def run_tracked(cmd, cwd, stdin=None):
     return p.returncode, out or ''
 
 
-def signal_live_procs(sig):
-    """Send `sig` to every live child's whole group."""
-    for p in list(_live_procs):
+def _all_live_procs():
+    return [p for procs in list(_proc_lists) for p in list(procs)]
+
+
+def _signal_procs(procs, sig):
+    for p in procs:
         try:
             os.killpg(p.pid, sig)
         except (ProcessLookupError, PermissionError):
             pass          # already gone; the signal is for the ones that are not
 
 
+def signal_live_procs(sig):
+    """Send `sig` to every live child's whole group, in every thread."""
+    _signal_procs(_all_live_procs(), sig)
+
+
 def kill_live_procs():
-    """SIGKILL every child still alive, group and children together."""
-    signal_live_procs(signal.SIGKILL)
-    _live_procs.clear()
+    """SIGKILL every child this thread started, group and children together.
+
+    Only this thread's: a hung suite in one worker says nothing about another
+    worker's build.
+    """
+    procs = _current_procs()
+    _signal_procs(list(procs), signal.SIGKILL)
+    procs.clear()
 
 
 def terminate_live_procs(grace=5.0):
@@ -1239,7 +1467,7 @@ def terminate_live_procs(grace=5.0):
     that may have interrupted Popen.communicate() on the same object, and
     Popen's own wait would block on the lock that call holds.
     """
-    leaders = [p.pid for p in _live_procs]
+    leaders = [p.pid for p in _all_live_procs()]
     signal_live_procs(signal.SIGTERM)
     deadline = time.monotonic() + grace
     pending = set(leaders)
@@ -1263,7 +1491,8 @@ def terminate_live_procs(grace=5.0):
             os.waitpid(pid, 0)
         except ChildProcessError:
             pass
-    _live_procs.clear()
+    for procs in list(_proc_lists):
+        procs.clear()
 
 
 def count_catch2_cases(root, test_bin, filt):
@@ -1287,49 +1516,118 @@ def fit_shards(requested, matched):
     return max(1, min(requested, matched))
 
 
-def run_catch2(root, test_bin, filt, shards, log, timeout=None):
-    """(state, reason) for the C++ suite. Stops at the first failing case.
+# A filter is cut into this many Catch2 shards per test process allowed at
+# once. A mutant's suite is as slow as its slowest shard, and a few heavy cases
+# decide that: small shards, dispatched longest first as slots free up, keep
+# one heavy shard from leaving the rest of the slots idle behind it.
+SHARDS_PER_SLOT = 4
+
+
+class Catch2Plan:
+    """How the C++ suite is split, and what the baseline measured of each part.
+
+    The split is fixed for the whole run, so every mutant runs the same shards,
+    with the same cases side by side, as the baseline that was green.
+    """
+
+    def __init__(self, shards, width):
+        self.shards = max(1, shards)       # Catch2 --shard-count
+        self.width = max(1, width)         # shards run at once, at most
+        self.secs = {}                     # shard -> baseline wall seconds
+        self.limits = None                 # shard -> mutant timeout seconds
+
+    def order(self):
+        """Shard indices, longest baseline first; index order before one."""
+        return sorted(range(self.shards), key=lambda i: (-self.secs.get(i, 0.0), i))
+
+
+def run_catch2(root, test_bin, filt, plan, log, scale=1.0):
+    """(state, reason, who) for the C++ suite. Stops at the first failing case.
 
     Every shard is read for a failing assertion of its own. One that names one
-    has detected the mutant whatever the others did; one that exits non-zero and
-    names none has judged nothing, and the run says so rather than inferring a
-    detection from its exit code. A shard still running at `timeout` has
-    deadlocked rather than failed, which is a detection of its own.
+    has detected the mutant whatever the others did, so the shards still
+    running are stopped then; one that exits non-zero and names none has
+    judged nothing, and the run says so rather than inferring a detection from
+    its exit code. A shard still running at its limit (`plan.limits`, times
+    `scale`) has deadlocked rather than failed, which is a detection of its own.
+    `who` names that shard. Each shard's wall time goes to `plan.secs` when the
+    plan has no limits yet: that run is the baseline.
+
+    The first shard runs on the slot the caller already holds; each one beside
+    it takes a jobserver token, without waiting, and gives it back when no
+    shard is left to start.
     """
     argv = [str(test_bin), filt, '-x', '1']
-    planned = [('the catch2 suite', argv)] if shards <= 1 else [
-        (f'catch2 shard {i}',
-         argv + ['--shard-count', str(shards), '--shard-index', str(i)])
-        for i in range(shards)]
-    procs = [(who, tracked_proc(cmd, root)) for who, cmd in planned]
-    deadline = None if timeout is None else time.monotonic() + timeout
-    detected, unexplained = False, ''
-    for who, p in procs:
-        # Shards share one deadline: they run in parallel, so a per-shard
-        # limit would multiply the wall clock by the shard count.
-        try:
-            out, _ = p.communicate(
-                timeout=None if deadline is None
-                else max(0.1, deadline - time.monotonic()))
-        except subprocess.TimeoutExpired:
-            # Every runner dies with the hung one; a survivor would hold the
-            # tree for a run that has already recorded its verdict.
-            kill_live_procs()
-            out, _ = p.communicate()
-            log.write(out or '')
-            return DETECTED, TIMED_OUT
-        finally:
-            untrack_proc(p)
-        out = out or ''
+    pending = [(i, 'the catch2 suite' if plan.shards <= 1 else f'catch2 shard {i}',
+                argv if plan.shards <= 1
+                else argv + ['--shard-count', str(plan.shards), '--shard-index', str(i)])
+               for i in plan.order()]
+    measuring = plan.limits is None
+    running, tokens = [], []
+    detected, unexplained, hung = False, '', ''
+
+    def reap(entry, kill=False):
+        i, who, p, out_f, t0, _ = entry
+        if kill:
+            _signal_procs([p], signal.SIGKILL)
+        p.wait()
+        untrack_proc(p)
+        out_f.seek(0)
+        out = out_f.read()
+        out_f.close()
         log.write(out)
-        state, why = suite_outcome('catch2', p.returncode, out, who)
-        if state == DETECTED:
-            detected = True
-        elif state == INCONCLUSIVE and not unexplained:
-            unexplained = why
+        if measuring and not kill:
+            plan.secs[i] = time.monotonic() - t0
+        return out
+
+    try:
+        while (pending or running) and not RUN_STATE.out_of_time:
+            while pending and len(running) < plan.width:
+                if len(running) >= 1 + len(tokens):
+                    tok = JOBS.try_token()
+                    if tok is None:
+                        break
+                    tokens.append(tok)
+                i, who, cmd = pending.pop(0)
+                # A file, not a pipe: a shard nobody is reading yet must never
+                # stall on a full pipe and read as a hang.
+                out_f = tempfile.TemporaryFile(mode='w+', encoding='utf-8',
+                                               errors='replace')
+                p = tracked_proc(cmd, root, stdout=out_f)
+                limit = None if measuring else plan.limits[i] * scale
+                running.append((i, who, p, out_f, time.monotonic(), limit))
+            finished = [e for e in running if e[2].poll() is not None]
+            for entry in finished:
+                running.remove(entry)
+                out = reap(entry)
+                state, why = suite_outcome('catch2', entry[2].returncode, out, entry[1])
+                if state == DETECTED:
+                    detected = True
+                elif state == INCONCLUSIVE and not unexplained:
+                    unexplained = why
+            if detected:
+                break
+            now = time.monotonic()
+            late = [e for e in running if e[5] is not None and now - e[4] > e[5]]
+            if late:
+                hung = f'{late[0][1]} ({late[0][5]:.0f}s)'
+                break
+            while tokens and len(tokens) > max(0, len(running) - 1) and not pending:
+                JOBS.give(tokens.pop())
+            if not finished:
+                time.sleep(0.05)
+    finally:
+        # A detection or a hang settles the suite, and a deadline or a stop
+        # ends it: whatever is still running is about nothing now.
+        for entry in running:
+            reap(entry, kill=True)
+        for tok in tokens:
+            JOBS.give(tok)
+    if hung:
+        return DETECTED, TIMED_OUT, hung
     if detected:
-        return DETECTED, ''
-    return (INCONCLUSIVE, unexplained) if unexplained else (GREEN, '')
+        return DETECTED, '', ''
+    return (INCONCLUSIVE, unexplained, '') if unexplained else (GREEN, '', '')
 
 
 def run_confirmed(suites, name):
@@ -1344,7 +1642,7 @@ def run_confirmed(suites, name):
     state, why = suites.run(name)
     if state != INCONCLUSIVE:
         return state, why
-    print(f'[{why}; confirming] ', end='', flush=True)
+    note(f'[{why}; confirming] ')
     again, why_again = suites.run(name)
     if again != INCONCLUSIVE:
         return again, why_again
@@ -1377,22 +1675,35 @@ class Suites:
     """
 
     def __init__(self, root, args, log):
-        self.root, self.args, self.log = root, args, log
-        self.catch2_bin = root / 'build' / 'bin' / 'helix-tests'
+        self.args, self.log = args, log
+        self._set_root(root)
         self.jobs = max(1, args.jobs)
+        self._pytest_gap = None
+        # suite name -> seconds one suite run may take. Empty until the
+        # baseline has run that suite, so the baseline itself is untimed: it
+        # is the measurement the limit is derived from. The C++ suite's limits
+        # are per shard, in its plan.
+        self.timeouts = {}
+        self.catch2 = Catch2Plan(args.shards, args.shards)
+        # Wall seconds of the last suite run, excluding any binary-recovery
+        # build before it: what adopt_baseline() measures.
+        self.last_secs = None
+
+    def _set_root(self, root):
+        self.root = root
+        self.catch2_bin = root / 'build' / 'bin' / 'helix-tests'
         # The python gates are run from the repo venv, which is where their
         # dependencies are installed; a bare python3 misses them and reports the
         # import failure as a red baseline.
         venv = root / '.venv' / 'bin' / 'python3'
         self.python = str(venv) if venv.is_file() else 'python3'
-        self._pytest_gap = None
-        # suite name -> seconds one suite run may take. Empty until the
-        # baseline has run that suite, so the baseline itself is untimed: it
-        # is the measurement the limit is derived from.
-        self.timeouts = {}
-        # Wall seconds of the last suite run, excluding any binary-recovery
-        # build before it: what adopt_baseline() measures.
-        self.last_secs = None
+
+    def for_tree(self, root, log):
+        """The same suites, limits and plan, run in another copy of the tree."""
+        other = copy.copy(self)
+        other.log = log
+        other._set_root(root)
+        return other
 
     def missing(self, name):
         """Why this suite cannot run here, or '' when it can.
@@ -1468,18 +1779,27 @@ class Suites:
                 f'it says how.')
         # Named where it happens: a hunk whose strategy is meant to cost no build
         # paying for one is a fact about the tree, not about the hunk.
-        print(f'[test binary rebuilt, {secs:.0f}s] ', end='', flush=True)
+        note(f'[test binary rebuilt, {secs:.0f}s] ')
         return secs
 
     def adopt_baseline(self, name, secs):
-        """Set a suite's mutant timeout from its measured baseline run.
+        """Set a suite's mutant timeout from its measured baseline run; returns
+        (shortest, longest) limit.
 
         Five times a green baseline absorbs the confirming re-run and shard
         scheduling noise while staying far from hang territory; the 60s floor
-        keeps a fast baseline from making every mutant twitchy.
+        keeps a fast baseline from making every mutant twitchy. The C++ suite
+        is timed shard by shard, so a hang is measured against its own shard
+        however many slots the mutant's run happens to get.
         """
-        self.timeouts[name] = self.args.timeout or max(60.0, 5.0 * secs)
-        return self.timeouts[name]
+        def limit(t):
+            return self.args.timeout or max(60.0, 5.0 * t)
+        if name == 'catch2':
+            plan = self.catch2
+            plan.limits = {i: limit(plan.secs.get(i, secs)) for i in range(plan.shards)}
+            return min(plan.limits.values()), max(plan.limits.values())
+        self.timeouts[name] = limit(secs)
+        return self.timeouts[name], self.timeouts[name]
 
     def _run_group(self, cmd, name, who, timeout):
         """(state, reason) for one runner process, a hang included.
@@ -1501,33 +1821,47 @@ class Suites:
         self.log.write(out)
         return suite_outcome(name, p.returncode, out, who)
 
-    def _dispatch(self, name, timeout):
-        """(state, reason) for one runner invocation, no recovery around it."""
+    def _dispatch(self, name, scale):
+        """(state, reason, who) for one runner invocation, no recovery around it.
+
+        `who` names what hung when the reason is a timeout."""
         if name == 'catch2':
             return run_catch2(self.root, self.catch2_bin, self.args.tests,
-                              self.args.shards, self.log, timeout=timeout)
+                              self.catch2, self.log, scale=scale)
+        limit = self.timeouts.get(name)
+        timeout = None if limit is None else limit * scale
         if name == 'bats':
             cmd = ['bats']
+            extra = []
             if shutil.which('parallel'):
-                cmd += ['--jobs', str(self.jobs), '--no-parallelize-within-files']
+                # Slots beyond the one this run holds are jobserver tokens.
+                extra = [t for t in (JOBS.try_token() for _ in range(self.jobs - 1))
+                         if t is not None]
+                cmd += ['--jobs', str(1 + len(extra)), '--no-parallelize-within-files']
             cmd.append(self.args.shell_tests)
-            return self._run_group(cmd, name, 'the bats suite', timeout)
+            try:
+                state, why = self._run_group(cmd, name, 'the bats suite', timeout)
+            finally:
+                for t in extra:
+                    JOBS.give(t)
+            return state, why, f'{name} ({timeout:.0f}s)' if why == TIMED_OUT else ''
         if name == 'pytest':
-            return self._run_group(
+            state, why = self._run_group(
                 [self.python, '-m', 'pytest', self.args.python_tests, '-q', '-x'],
                 name, 'pytest', timeout)
+            return state, why, f'{name} ({timeout:.0f}s)' if why == TIMED_OUT else ''
         raise AssertionError(name)
 
-    def _run_once(self, name, timeout):
+    def _run_once(self, name, scale):
         """One suite run, timed. The binary-recovery build sits outside the
         clock, so a relink does not read as suite time and inflate the limit
         derived from it."""
         if name == 'catch2':
             self.ensure_catch2_binary()
         t0 = time.monotonic()
-        state, why = self._dispatch(name, timeout)
+        state, why, who = self._dispatch(name, scale)
         self.last_secs = time.monotonic() - t0
-        return state, why
+        return state, why, who
 
     def run(self, name):
         """(state, reason): what one run of this suite establishes.
@@ -1537,13 +1871,12 @@ class Suites:
         stall is not a detection. Only a second hang confirms the kill, and
         a re-run that completes is judged by what it actually reported.
         """
-        limit = self.timeouts.get(name)
-        state, why = self._run_once(name, limit)
+        state, why, who = self._run_once(name, 1.0)
         if why != TIMED_OUT:
             return state, why
-        print(f'[{name} hit its {limit:.0f}s limit; re-running at 2x] ',
-              end='', flush=True)
-        return self._run_once(name, 2 * limit)
+        note(f'[{who} hit its limit; re-running at 2x] ')
+        state, why, _ = self._run_once(name, 2.0)
+        return state, why
 
 
 # ---------------------------------------------------------------------------
@@ -1767,7 +2100,7 @@ STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 STOP_GRACE_SECS = 10.0
 
 
-def install_stop_handlers(guard, log_holder):
+def install_stop_handlers(guards, log_holder):
     """SIGINT, SIGTERM and SIGHUP: stop children, restore the tree, exit.
 
     Installed before anything is built, so no window exists in which a signal
@@ -1780,8 +2113,14 @@ def install_stop_handlers(guard, log_holder):
         for sig in STOP_SIGNALS:
             signal.signal(sig, signal.SIG_IGN)       # a second Ctrl-C cannot cut this short
         signal.setitimer(signal.ITIMER_REAL, 0)
-        terminate_live_procs()
-        restored = guard.restore_all()
+        RUN_STATE.stopping = True
+        # Held while signalling: a worker thread between Popen and its append
+        # finishes first, and every one after it refuses to start a child.
+        with _spawn_lock:
+            terminate_live_procs()
+        restored = [str(g.root / rel) if g.root != guards[0].root else rel
+                    for g in list(guards) for rel in g.restore_all()]
+        JOBS.give_back_all()
         name = signal.Signals(signum).name
         where = ', '.join(restored) if restored else 'nothing was mutated at the time'
         try:
@@ -1900,6 +2239,299 @@ def resolve_run_base(root, args):
                    True, carried=proof_uncovered(root, proven))
 
 
+# ---------------------------------------------------------------------------
+# ONE HUNK
+# ---------------------------------------------------------------------------
+def mutate_hunk(root, guard, suites, h, plan, args, log):
+    """(verdict, note, built) for one hunk reverted in `root`, then restored.
+
+    `verdict` is '' when the deadline cut the hunk off, and `built` says whether
+    a mutant build ran, so the binary in `root` may hold a mutant.
+    """
+    verdict, note_, built_any = '', '', False
+    try:
+        # A pristine entry of None means the change deletes the file: reverting
+        # recreates it, and restoring means removing it again (TreeGuard).
+        guard.mark(h['file'])
+        applied, why = apply_reverse(root, h['patch'])
+        if not applied:
+            verdict, note_ = 'unreversible', why.strip().splitlines()[:1]
+        else:
+            # Only a mutant whose strategy builds, judged by the suite that
+            # binary IS, can be measured against the wrong one.
+            fingerprinted = plan['build'] and 'catch2' in plan['suites']
+            rebuilt = True
+            if plan['build'] and syntax_rejects(root, h['file'], log):
+                verdict, note_ = 'uncompilable', 'syntax'
+            elif plan['build']:
+                built_any = True
+                was = binary_fingerprint(suites.catch2_bin)
+                built, secs = build(root, args.jobs, log, mutant=True)
+                if not built:
+                    verdict, note_ = 'uncompilable', f'{secs:.0f}s'
+                elif fingerprinted:
+                    rebuilt = binary_fingerprint(suites.catch2_bin) != was
+            if not verdict and not RUN_STATE.out_of_time:
+                state, unexplained = judge(suites, plan['suites'])
+                if state == DETECTED and not rebuilt:
+                    state, unexplained = INCONCLUSIVE, UNBUILT_MUTANT
+                verdict = {DETECTED: 'killed', GREEN: 'survived',
+                           INCONCLUSIVE: 'inconclusive'}[state]
+                if verdict == 'killed' and unexplained == TIMED_OUT:
+                    verdict = 'killed (timeout)'
+                note_ = unexplained
+    except OutOfTime:
+        pass
+    finally:
+        guard.restore(h['file'])
+    return verdict, note_, built_any
+
+
+# ---------------------------------------------------------------------------
+# PARALLEL WORKERS
+#
+# --workers N mutates N hunks at once, each worker in its own copy of the tree:
+# its own sources, its own build/ and its own test binary, so no two mutants
+# ever share a file and none touches the tree the run was started in. A copy
+# is taken after the baseline is green, so each starts from the very build that
+# was judged, and only a reflink copy is cheap enough to take: a copy that
+# duplicates the bytes of a multi-gigabyte build/ per worker costs more than
+# it saves, so without reflink the run stays serial and says why.
+#
+# The build/ a copy carries names the original tree's absolute path in its
+# dependency and compile-command files; those are rewritten to the copy's own
+# path, or a copy's make would read the original tree's headers. The
+# sanitizer object trees (build/obj-*) are left out: test-build never reads
+# them.
+#
+# What stays the same is everything a verdict rests on: the same captured
+# bytes restore every file, a copy that drifts from them stops the run, the
+# same suites judge each mutant, and the deadline, a stop signal or the
+# parent exiting reach every worker. Only the order in which verdicts arrive
+# changes; the report lists them in hunk order.
+# ---------------------------------------------------------------------------
+WORKER_MARK = '.mutate-diff-worker'
+# Left out of a copy: other worktrees, and object trees test-build never reads.
+WORKER_SKIP_TOP = ('.worktrees', 'build')
+WORKER_SKIP_BUILD = re.compile(r'^obj-')
+WORKER_REWRITE_MAX = 4 << 20
+
+
+def plan_workers(root, args):
+    """(workers, why) for this run: why is '' unless parallel was asked for and
+    cannot be had here."""
+    if args.workers == 'auto':
+        want = max(1, min(6, (os.cpu_count() or 1) // 12))
+    else:
+        try:
+            want = int(args.workers)
+        except ValueError:
+            sys.exit(f'--workers must be a number or auto, not {args.workers!r}')
+    if want <= 1 or args.list_only:
+        return 1, ''
+    if not (root / '.git').is_dir():
+        return 1, (f'{root} is a linked worktree; a copy would share its git '
+                   f'directory, so --workers needs a standalone clone')
+    probe_dir = worker_parent(root, args)
+    try:
+        probe_dir.mkdir(parents=True, exist_ok=True)
+        probe = probe_dir / f'.{root.name}.mutate-reflink-probe'
+        r = subprocess.run(['cp', f'--reflink={copy_mode()}', str(root / '.git' / 'HEAD'),
+                            str(probe)], capture_output=True, text=True)
+        probe.unlink(missing_ok=True)
+    except OSError as e:
+        return 1, f'{probe_dir} is not writable ({e})'
+    if r.returncode != 0:
+        return 1, (f'{probe_dir} cannot take a reflink copy, and copying build/ '
+                   f'per worker costs more than parallel saves')
+    return want, ''
+
+
+def copy_mode():
+    # The tests' tmp directories rarely reflink; a fixture tree is small enough
+    # to copy outright.
+    return 'auto' if os.environ.get('MUTATE_DIFF_PLAIN_COPY') == '1' else 'always'
+
+
+def worker_parent(root, args):
+    return Path(args.worker_dir).resolve() if args.worker_dir else root.parent
+
+
+class WorkerTree:
+    def __init__(self, root, guard, suites):
+        self.root, self.guard, self.suites = root, guard, suites
+
+
+def _copy_tree(src, dst):
+    """Reflink-copy `src` into a fresh `dst`, minus WORKER_SKIP_*."""
+    if dst.exists():
+        mark = dst / WORKER_MARK
+        if not mark.is_file() or mark.read_text().strip() != str(src):
+            raise RuntimeError(f'{dst} exists and is not a worker copy of {src}: '
+                               f'move it, or pass --worker-dir')
+        shutil.rmtree(dst)
+    dst.mkdir(parents=True)
+    (dst / WORKER_MARK).write_text(f'{src}\n')
+    mode = f'--reflink={copy_mode()}'
+    top = sorted(e for e in os.listdir(src) if e not in WORKER_SKIP_TOP)
+    if top:
+        r = subprocess.run(['cp', '-a', mode, *[str(src / e) for e in top], str(dst)],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError(f'copying {src} to {dst}: {r.stderr.strip()}')
+    if (src / 'build').is_dir():
+        (dst / 'build').mkdir()
+        inner = sorted(e for e in os.listdir(src / 'build') if not WORKER_SKIP_BUILD.match(e))
+        if inner:
+            r = subprocess.run(['cp', '-a', mode, *[str(src / 'build' / e) for e in inner],
+                                str(dst / 'build')], capture_output=True, text=True)
+            if r.returncode != 0:
+                raise RuntimeError(f'copying {src}/build to {dst}: {r.stderr.strip()}')
+        shutil.copystat(src / 'build', dst / 'build')
+    if (dst / 'build' / 'bin' / 'helix-tests').is_symlink():
+        # A worker's link would write through it into a binary it does not own.
+        raise RuntimeError(f'{src}/build/bin/helix-tests is a symlink')
+    rewrite_tree_paths(src, dst)
+
+
+def rewrite_tree_paths(src, dst):
+    """Point every text file under dst/build, and its compile_commands.json, at
+    `dst` instead of `src`, keeping each file's mtime so make sees no change."""
+    old = str(src).encode()
+    rx = re.compile(re.escape(old) + rb'(?=[^A-Za-z0-9._+-]|$)')
+    new = str(dst).encode()
+    paths = [dst / 'compile_commands.json']
+    for dirpath, _dirs, names in os.walk(dst / 'build'):
+        paths.extend(Path(dirpath) / n for n in names)
+    for path in paths:
+        try:
+            st = path.lstat()
+        except OSError:
+            continue
+        if not path.is_file() or path.is_symlink():
+            continue
+        if path.name != 'compile_commands.json' and st.st_size > WORKER_REWRITE_MAX:
+            continue
+        data = path.read_bytes()
+        if old not in data or b'\0' in data:
+            continue
+        path.write_bytes(rx.sub(new, data))
+        os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns))
+
+
+def make_worker_trees(root, args, n, guard, suites):
+    """n copies of `root`, each checked against the bytes the run captured."""
+    parent = worker_parent(root, args)
+    dsts = [parent / f'.{root.name}.mutate-w{i}' for i in range(1, n + 1)]
+    errors = []
+
+    def one(dst):
+        try:
+            _copy_tree(root, dst)
+        except (OSError, RuntimeError) as e:
+            errors.append(str(e))
+
+    threads = [threading.Thread(target=one, args=(d,), daemon=True) for d in dsts]
+    for t in threads:
+        t.start()
+    for t in threads:
+        while t.is_alive():
+            t.join(0.5)
+    if errors:
+        raise TreeDrift(f'could not make the worker copies: {errors[0]}')
+    trees = []
+    for dst in dsts:
+        verify_pristine(dst, guard.pristine, f'in the worker copy {dst}')
+        g = TreeGuard(dst)
+        g.pristine = dict(guard.pristine)
+        trees.append(WorkerTree(dst, g, suites.for_tree(dst, io.StringIO())))
+    return trees
+
+
+def remove_worker_trees(trees):
+    for t in trees:
+        if (t.root / WORKER_MARK).is_file():
+            shutil.rmtree(t.root, ignore_errors=True)
+
+
+def run_parallel(trees, mutable, verdict_of, args, log, pristine, stop_why, progress):
+    """(results, unexamined, stop_reason, judged_by), one worker per tree."""
+    lock = threading.Lock()
+    queue = list(enumerate(mutable))
+    in_flight, done, failures = {}, {}, []
+    state = {'stop': '', 'n': 0}
+
+    def halted():
+        return bool(RUN_STATE.out_of_time or RUN_STATE.stopping or failures)
+
+    def work(tree):
+        procs = []
+        with _spawn_lock:
+            _proc_lists.append(procs)
+        _thread_state.procs = procs
+        try:
+            while True:
+                with lock:
+                    if not queue or state['stop'] or halted():
+                        return
+                    idx, h = queue.pop(0)
+                    in_flight[idx] = h
+                plan = STRATEGIES[verdict_of[h['file']][1]]
+                label = f'{h["file"]}:{h["line"]}'
+                tok = None
+                buf = io.StringIO()
+                _thread_state.notes = []
+                try:
+                    tok = JOBS.take_base(halted)
+                    tree.suites.log = buf
+                    verdict, note_, _built = mutate_hunk(
+                        tree.root, tree.guard, tree.suites, h, plan, args, buf)
+                    if RUN_STATE.out_of_time or not verdict:
+                        return
+                    verify_pristine(tree.root, pristine,
+                                    f'after restoring {label} in {tree.root.name}')
+                except OutOfTime:
+                    return
+                except (TreeDrift, BuildUnavailable) as e:
+                    with lock:
+                        failures.append(e)
+                    return
+                finally:
+                    JOBS.give(tok)
+                with lock:
+                    del in_flight[idx]
+                    done[idx] = (label, verdict, note_, plan['suites'])
+                    state['n'] += 1
+                    log.write(f'\n===== {label} ({tree.root.name}) =====\n')
+                    log.write(buf.getvalue())
+                    log.flush()
+                    print(f'[{state["n"]}/{len(mutable)}] {label} ... '
+                          + progress(state['n'], label, verdict, note_,
+                                     ''.join(_thread_state.notes), f'  ({tree.root.name})'),
+                          flush=True)
+        finally:
+            tree.guard.restore_all()
+
+    threads = [threading.Thread(target=work, args=(t,), daemon=True) for t in trees]
+    for t in threads:
+        t.start()
+    while any(t.is_alive() for t in threads):
+        for t in threads:
+            t.join(0.5)
+        if not state['stop'] and not RUN_STATE.out_of_time:
+            why = stop_why()
+            if why:
+                with lock:
+                    state['stop'] = why
+    if failures:
+        raise failures[0]
+    stop_reason = state['stop'] or (stop_why() if RUN_STATE.out_of_time else '')
+    unexamined = [mutable[i] for i in sorted(set(in_flight) | {i for i, _ in queue})]
+    results = [done[i][:3] for i in sorted(done)]
+    judged_by = {s for i in done for s in done[i][3]}
+    return results, unexamined, stop_reason, judged_by
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     scope = ap.add_mutually_exclusive_group()
@@ -1928,10 +2560,18 @@ def main():
                          'the next hunk)')
     ap.add_argument('--tests', default='~[.]~[slow]', help='Catch2 filter for the scoped suite')
     ap.add_argument('--jobs', type=int, default=6, help='make -j (link is memory-gated; 6 is safe here)')
-    ap.add_argument('--shards', type=int, default=8, help='parallel test shards per mutant')
+    ap.add_argument('--shards', type=int, default=8,
+                    help='test processes run at once per mutant (the filter is cut into '
+                         f'{SHARDS_PER_SLOT}x as many Catch2 shards)')
+    ap.add_argument('--workers', default='1',
+                    help="hunks mutated at once, each in its own copy of the tree ('auto': "
+                         'from the core count). Needs reflink copies (btrfs, XFS, ZFS)')
+    ap.add_argument('--worker-dir', default=None,
+                    help='where the worker copies go (default: beside the tree)')
     ap.add_argument('--timeout', type=float, default=0,
-                    help='seconds one suite may run for a mutant before it counts as '
-                         'killed by timeout (0: the max of 60s and 5x the baseline run)')
+                    help='seconds one suite (one Catch2 shard) may run for a mutant before '
+                         'it counts as killed by timeout (0: the max of 60s and 5x its '
+                         'baseline run)')
     ap.add_argument('--limit', type=int, default=None, help='stop after N hunks')
     # A mutant costs a compile plus a whole-program link, so a 52-hunk range is
     # hours. Scoping to the files worth confirming is how this stays usable.
@@ -1956,9 +2596,12 @@ def main():
 
     root = repo_root()
     guard = TreeGuard(root)
+    guards = [guard]      # and one per worker copy, once they exist
     log_holder = []
     # Before anything can be mutated or built: see SAFETY.
-    install_stop_handlers(guard, log_holder)
+    install_stop_handlers(guards, log_holder)
+    # Before any child starts, so every make is handed the jobserver.
+    JOBS.join_inherited(os.environ)
     parent = os.getppid()
     started = time.monotonic()
 
@@ -2157,14 +2800,27 @@ def main():
 
     needs_build = any(STRATEGIES[verdict_of[h['file']][1]]['build'] for h in mutable)
     cap_note = f' (cap {args.max_minutes:g}m)' if args.max_minutes > 0 else ''
+
+    # Workers are settled before anything is built: a parallel run with no
+    # jobserver makes one, and the baseline build already draws from it.
+    workers, why_serial = plan_workers(root, args)
+    if why_serial:
+        print(f'workers: 1 ({why_serial})')
+    if workers > 1 and not JOBS.pooled and not JOBS.make_private(args.jobs, os.environ):
+        workers, why_serial = 1, 'no jobserver to share the job budget through'
+        print(f'workers: 1 ({why_serial})')
+
     if args.max_minutes > 0:
         arm_deadline(args.max_minutes * 60 - (time.monotonic() - started))
+
+    trees = []            # worker copies, when the run is parallel
 
     def out_of_time_report(left):
         """Name what a run the deadline cut short never reached."""
         disarm_deadline()
         terminate_live_procs()
-        guard.restore_all()
+        for g in guards:
+            g.restore_all()
         # The cut is done; what follows (the baseline rebuild) must be able to run.
         RUN_STATE.out_of_time = False
         print(f'\n\n--max-minutes {args.max_minutes:g} reached; '
@@ -2189,13 +2845,15 @@ def main():
             if matched is not None:
                 try:
                     args.shards = fit_shards(args.shards, matched)
+                    suites.catch2 = Catch2Plan(
+                        fit_shards(args.shards * SHARDS_PER_SLOT, matched), args.shards)
                 except ValueError as e:
                     print(f'FAIL: --tests {args.tests!r} {e}. Check the tag spelling '
                           f'with: build/bin/helix-tests {args.tests!r} --list-tests',
                           file=sys.stderr)
                     return 2
                 print(f'  catch2: {matched} case(s) match {args.tests!r}, '
-                      f'{args.shards} shard(s)')
+                      f'{suites.catch2.shards} shard(s), up to {args.shards} at once')
         for suite in sorted(needed):
             state, why = suites.run(suite)
             if RUN_STATE.out_of_time:
@@ -2212,99 +2870,92 @@ def main():
                       f'mutant would be measured by a suite that cannot report. '
                       f'See {args.log}', file=sys.stderr)
                 return 2
-            limit = suites.adopt_baseline(suite, suites.last_secs)
-            print(f'  {suite} green (mutant timeout {limit:.0f}s)')
+            lo, hi = suites.adopt_baseline(suite, suites.last_secs)
+            span = f'{lo:.0f}s' if round(lo) == round(hi) else f'{lo:.0f}-{hi:.0f}s'
+            per = ' per shard' if suite == 'catch2' and suites.catch2.shards > 1 else ''
+            print(f'  {suite} green ({suites.last_secs:.0f}s; mutant timeout {span}{per})')
+
+        # Read once, before the first mutation: see SAFETY.
+        for h in mutable:
+            guard.capture(h['file'])
+        pristine = guard.pristine
+        if workers > 1:
+            t0 = time.monotonic()
+            trees = make_worker_trees(root, args, workers, guard, suites)
+            for t in trees:
+                guards.append(t.guard)
+            print(f'  {workers} workers, each in a copy of the tree '
+                  f'({trees[0].root.parent}, {time.monotonic() - t0:.0f}s)')
     except OutOfTime:
         out_of_time_report(mutable)
         print(report_incomplete(uncovered, deferred, unexamined=len(mutable),
                                 stop_reason=f'--max-minutes {args.max_minutes:g} reached '
                                             f'during the baseline'))
+        remove_worker_trees(trees)
         return 0 if args.allow_incomplete else 3
-
-    # Read once, before the first mutation: see SAFETY.
-    for h in mutable:
-        guard.capture(h['file'])
-    pristine = guard.pristine
     print(f'  baseline established{cap_note}\n')
 
-    results, judged_by = [], set()
-    unexamined, stop_reason, mutated_build = [], '', False
-    for n, h in enumerate(mutable, 1):
+    def stop_why():
+        """Why no further hunk may start, or ''."""
         if RUN_STATE.out_of_time:
-            unexamined, stop_reason = mutable[n - 1:], f'--max-minutes {args.max_minutes:g} reached'
-            break
+            return f'--max-minutes {args.max_minutes:g} reached'
         if not args.allow_orphan and os.getppid() != parent:
             # Nobody is reading this run any more; mutating on would leave a
             # tree in flux under whoever picks the worktree up next.
-            unexamined, stop_reason = mutable[n - 1:], 'the parent process exited'
             print(f'\nparent process {parent} exited; stopping before the next hunk '
                   f'(--allow-orphan to keep going)')
-            break
-        strategy = verdict_of[h['file']][1]
-        plan = STRATEGIES[strategy]
-        # A pristine entry of None means the change deletes the file: reverting
-        # recreates it, and restoring means removing it again (TreeGuard).
-        label = f'{h["file"]}:{h["line"]}'
-        print(f'[{n}/{len(mutable)}] reverting {label} ... ', end='', flush=True)
-        verdict, note = '', ''
-        try:
-            guard.mark(h['file'])
-            applied, why = apply_reverse(root, h['patch'])
-            if not applied:
-                verdict, note = 'unreversible', why.strip().splitlines()[:1]
-            else:
-                # Only a mutant whose strategy builds, judged by the suite that
-                # binary IS, can be measured against the wrong one.
-                fingerprinted = plan['build'] and 'catch2' in plan['suites']
-                rebuilt = True
-                if plan['build'] and syntax_rejects(root, h['file'], log):
-                    verdict, note = 'uncompilable', 'syntax'
-                elif plan['build']:
-                    mutated_build = True
-                    was = binary_fingerprint(suites.catch2_bin)
-                    built, secs = build(root, args.jobs, log)
-                    if not built:
-                        verdict, note = 'uncompilable', f'{secs:.0f}s'
-                    elif fingerprinted:
-                        rebuilt = binary_fingerprint(suites.catch2_bin) != was
-                if not verdict and not RUN_STATE.out_of_time:
-                    state, unexplained = judge(suites, plan['suites'])
-                    if state == DETECTED and not rebuilt:
-                        state, unexplained = INCONCLUSIVE, UNBUILT_MUTANT
-                    verdict = {DETECTED: 'killed', GREEN: 'survived',
-                               INCONCLUSIVE: 'inconclusive'}[state]
-                    if verdict == 'killed' and unexplained == TIMED_OUT:
-                        verdict = 'killed (timeout)'
-                    note = unexplained
-        except OutOfTime:
-            pass
-        finally:
-            guard.restore(h['file'])
-        if RUN_STATE.out_of_time:
-            # Whatever this hunk reached was cut off by the deadline, so it is
-            # not a verdict: the hunk goes back on the unexamined list.
-            print('stopped (--max-minutes)')
-            unexamined, stop_reason = mutable[n - 1:], f'--max-minutes {args.max_minutes:g} reached'
-            break
-        judged_by.update(plan['suites'])
-        verify_pristine(root, pristine, f'after restoring {label}')
-        spent = time.monotonic() - started
-        left = (spent / n) * (len(mutable) - n)
-        eta = f', ~{left / 60:.0f}m left' if n < len(mutable) and left >= 60 else ''
-        print(f'{verdict_line(verdict, note)}  [{spent / 60:.0f}m elapsed{eta}{cap_note}]')
-        results.append((label, verdict, note))
+            return 'the parent process exited'
+        return ''
 
-    disarm_deadline()
-    if unexamined and RUN_STATE.out_of_time:
-        out_of_time_report(unexamined)
-    elif unexamined:
-        print(f'\n{len(unexamined)} hunk(s) not examined:')
-        for h in unexamined:
-            print(f'  UNEXAMINED    {h["file"]}:{h["line"]}')
+    def progress(done, label, verdict, note_, notes='', where=''):
+        spent = time.monotonic() - started
+        left = (spent / done) * (len(mutable) - done)
+        eta = f', ~{left / 60:.0f}m left' if done < len(mutable) and left >= 60 else ''
+        return (f'{notes}{verdict_line(verdict, note_)}{where}  '
+                f'[{spent / 60:.0f}m elapsed{eta}{cap_note}]')
+
+    results, judged_by = [], set()
+    unexamined, stop_reason, mutated_build = [], '', False
+    try:
+        if workers > 1:
+            results, unexamined, stop_reason, judged_by = run_parallel(
+                trees, mutable, verdict_of, args, log, pristine, stop_why, progress)
+        else:
+            for n, h in enumerate(mutable, 1):
+                stop_reason = stop_why()
+                if stop_reason:
+                    unexamined = mutable[n - 1:]
+                    break
+                plan = STRATEGIES[verdict_of[h['file']][1]]
+                label = f'{h["file"]}:{h["line"]}'
+                print(f'[{n}/{len(mutable)}] reverting {label} ... ', end='', flush=True)
+                verdict, note_, built = mutate_hunk(root, guard, suites, h, plan, args, log)
+                mutated_build = mutated_build or built
+                if RUN_STATE.out_of_time:
+                    # Whatever this hunk reached was cut off by the deadline, so it
+                    # is not a verdict: the hunk goes back on the unexamined list.
+                    print('stopped (--max-minutes)')
+                    unexamined, stop_reason = mutable[n - 1:], stop_why()
+                    break
+                judged_by.update(plan['suites'])
+                verify_pristine(root, pristine, f'after restoring {label}')
+                print(progress(n, label, verdict, note_))
+                results.append((label, verdict, note_))
+
+        disarm_deadline()
+        if unexamined and RUN_STATE.out_of_time:
+            out_of_time_report(unexamined)
+        elif unexamined:
+            print(f'\n{len(unexamined)} hunk(s) not examined:')
+            for h in unexamined:
+                print(f'  UNEXAMINED    {h["file"]}:{h["line"]}')
+    finally:
+        remove_worker_trees(trees)
 
     # Leave the tree as found, with a rebuilt baseline binary so the next
     # `make full-test-run` is not testing the last mutant. An orphaned run has
-    # nobody to wait for that build, so it only says so.
+    # nobody to wait for that build, so it only says so. A parallel run mutated
+    # only its copies, so this tree's binary is still the baseline's.
     if needs_build and mutated_build:
         if stop_reason == 'the parent process exited':
             print('the test binary may hold a mutant: run `make test-build`')
