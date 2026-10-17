@@ -22,6 +22,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "connection_state.h"
+#include "filament_sensor_manager.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "home_layout_share.h"
 #include "home_layout_sync.h"
@@ -33,6 +34,7 @@
 #include "printer_network_state.h"
 #include "printer_state.h"
 #include "runtime_config.h"
+#include "spoolman_manager.h"
 #include "src/ui/panel_widgets/print_status_widget.h"
 #include "theme_manager.h"
 #include "tool_state.h"
@@ -928,6 +930,17 @@ TEST_CASE_METHOD(HomeLayoutSyncFixture,
         results.push_back(layout.has_value());
     };
 
+    // init() hands its API to these globals and the app's session takes it back;
+    // here nothing would, and the next test to reach one would use a freed API.
+    struct ApiGlobalsRestore {
+        helix::IMoonrakerAPI* saved = get_moonraker_api();
+        ~ApiGlobalsRestore() {
+            set_moonraker_api(saved);
+            helix::AmsState::instance().set_moonraker_api(nullptr);
+            helix::FilamentSensorManager::instance().set_moonraker_api(nullptr);
+            SpoolmanManager::instance().set_api(nullptr);
+        }
+    } restore_api_globals;
     MoonrakerManager manager;
     REQUIRE(manager.init(runtime_config, nullptr));
     HomeLayoutSync::instance().fetch_now(record);
