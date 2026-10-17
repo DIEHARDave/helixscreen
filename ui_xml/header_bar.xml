@@ -105,6 +105,10 @@
     <!-- Floor for the text-shaped slot; an icon-only consumer passes a smaller
          value so the button reads as a circle. -->
     <prop name="action_button_2_min_width" type="string" default="90"/>
+    <!-- "1" for an icon-only button narrower than the default padding allows
+         (a circle the width of button_height_sm): no horizontal padding, and
+         vertical padding that keeps the icon inside the header button height. -->
+    <prop name="action_button_2_icon_only" type="string" default="0"/>
     <prop name="action_button_2_callback" type="string" default=""/>
     <prop name="hide_action_button_2" type="string" default="true"/>
     <prop name="action_button_2_hidden_subject" type="string" default=""/>
@@ -116,6 +120,9 @@
     <prop name="action_button_2_hidden_cond" type="string" default=""/>
     <prop name="action_button_2_disabled_subject" type="string" default=""/>
   </api>
+  <styles>
+    <style name="action_icon_only" pad_hor="0" pad_ver="#space_sm"/>
+  </styles>
   <view extends="lv_obj"
         width="100%" height="#header_height" style_pad_left="0" style_pad_right="#space_lg" style_pad_top="0"
         style_pad_bottom="0" flex_flow="row" style_flex_main_place="space_between" style_flex_track_place="center"
@@ -170,6 +177,7 @@
                style_radius="$action_button_2_radius" style_bg_color="$action_button_2_bg_color"
                hidden="$hide_action_button_2" icon="$action_button_2_icon" icon_size="$action_button_2_icon_size"
                text="$action_button_2_text" translation_tag="$action_button_2_text_tag">
+      <bind_style_if name="action_icon_only" cond="$action_button_2_icon_only"/>
       <bind_state_if_eq subject="$action_button_2_disabled_subject" state="disabled" ref_value="1"/>
       <!-- Both bindings drive the same hidden flag, so order settles only the
            value at bind time, where the subject form lands last. After that

@@ -16,21 +16,21 @@
         scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
     <ui_button name="jog_mode_fine"
                width="0" height="$button_height" flex_grow="1" style_min_width="0" style_pad_hor="#space_xxs"
-               text="Fine" icon="tortoise" icon_position="$icon_position" style_text_font="$text_font">
+               style_pad_ver="0" text="Fine" icon="tortoise" icon_position="$icon_position" style_text_font="$text_font">
       <bind_style name="styles.choice_selected" subject="motion_jog_mode_fine_active" ref_value="1"/>
       <bind_style name="styles.choice_idle" subject="motion_jog_mode_fine_active" ref_value="0"/>
       <event_cb trigger="clicked" callback="on_jog_mode_fine"/>
     </ui_button>
     <ui_button name="jog_mode_coarse"
                width="0" height="$button_height" flex_grow="1" style_min_width="0" style_pad_hor="#space_xxs"
-               text="Coarse" icon="rabbit" icon_position="$icon_position" style_text_font="$text_font">
+               style_pad_ver="0" text="Coarse" icon="rabbit" icon_position="$icon_position" style_text_font="$text_font">
       <bind_style name="styles.choice_selected" subject="motion_jog_mode_coarse_active" ref_value="1"/>
       <bind_style name="styles.choice_idle" subject="motion_jog_mode_coarse_active" ref_value="0"/>
       <event_cb trigger="clicked" callback="on_jog_mode_coarse"/>
     </ui_button>
     <ui_button name="jog_mode_turbo"
                width="0" height="$button_height" flex_grow="1" style_min_width="0" style_pad_hor="#space_xxs"
-               text="Turbo" icon="flash" icon_position="$icon_position" style_text_font="$text_font">
+               style_pad_ver="0" text="Turbo" icon="flash" icon_position="$icon_position" style_text_font="$text_font">
       <bind_style name="styles.choice_selected" subject="motion_jog_mode_turbo_active" ref_value="1"/>
       <bind_style name="styles.choice_idle" subject="motion_jog_mode_turbo_active" ref_value="0"/>
       <event_cb trigger="clicked" callback="on_jog_mode_turbo"/>

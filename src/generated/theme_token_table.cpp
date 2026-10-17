@@ -581,7 +581,7 @@ const TokenEntry k_token_table[] = {
     {"px", "button_height_lg_xlarge", "112"},
     {"px", "button_height_lg_xxlarge", "128"},
     {"px", "header_height_micro", "28"},
-    {"px", "header_height_tiny", "32"},
+    {"px", "header_height_tiny", "33"},
     {"px", "header_height_small", "48"},
     {"px", "header_height_medium", "56"},
     {"px", "header_height_large", "60"},

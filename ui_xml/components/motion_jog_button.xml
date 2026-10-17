@@ -17,7 +17,8 @@
     <prop name="icon_size" type="string" default="sm"/>
   </api>
   <view extends="ui_button"
-        icon="$icon" icon_position="$icon_position" variant="$variant" bind_text="$label" icon_size="$icon_size">
+        style_pad_ver="0" icon="$icon" icon_position="$icon_position" variant="$variant" bind_text="$label"
+        icon_size="$icon_size">
     <event_cb trigger="clicked" callback="on_motion_jog_button" user_data="$jog"/>
     <event_cb trigger="pressed" callback="on_motion_jog_button_pressed" user_data="$jog"/>
     <event_cb trigger="released" callback="on_motion_jog_button_released"/>
