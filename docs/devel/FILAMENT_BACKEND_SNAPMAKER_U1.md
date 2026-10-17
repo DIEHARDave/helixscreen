@@ -234,6 +234,15 @@ A filled entry with no card behind it was written over the API, not read off a s
 it files no vendor-cache reading and retracts one an earlier tag left
 (`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`).
 
+**hw-verify:** what a `filament_detect/set` written by a 1.0.x build leaves on a head
+holding a real Snapmaker RFID spool is unmeasured. The endpoint builds the entry fresh
+from the POST body, which carried no `CARD_UID`, so the entry may read as filled with no
+card until the reader next reads the spool: a vendor-cache retraction, and an
+official-flag repair if the record matches the stored edit and no card was seen this
+session. Needs a real RFID spool to check. A `SET_PRINT_FILAMENT_CONFIG` was measured on
+the rig to change `print_task_config` only, leaving `filament_detect.info` and
+`filament_official` untouched.
+
 `filament_official` therefore does not mean an RFID tag. The backend decides that from
 `filament_detect.info[ch].CARD_UID`: the firmware reports it either as a plain integer
 (`0` for no card, on every head of a rig with its reader off) or as a byte array. A nonzero
