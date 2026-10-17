@@ -5765,8 +5765,7 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker an unchanged save on a forced head
     CHECK(writes[0].find("FORCE=1") != std::string::npos);
 }
 
-TEST_CASE_METHOD(SnapmakerFixture,
-                 "Snapmaker holds a save made mid-print until the print stops running",
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker holds a save made mid-print until the heads are free",
                  "[ams][snapmaker][filament_record]") {
     lv_init_safe();
     FilamentRecordHarness h("record_mid_print", "printing");
@@ -5777,11 +5776,14 @@ TEST_CASE_METHOD(SnapmakerFixture,
     FilamentRecordHarness::drain();
     CHECK(h.config_writes().empty());
 
-    // Another frame mid-print still holds it.
     h.print("printing");
     CHECK(h.config_writes().empty());
 
+    // A pause the print raised (a runout, an M600) is no moment for it.
     h.print("paused");
+    CHECK(h.config_writes().empty());
+
+    h.print("complete");
     const auto writes = h.config_writes();
     REQUIRE(writes.size() == 2);
     CHECK(writes[0].rfind("SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=1 VENDOR=Generic "
@@ -5791,6 +5793,37 @@ TEST_CASE_METHOD(SnapmakerFixture,
     // Sent once.
     h.printer.client.clear_gcode_script_history();
     h.print("standby");
+    CHECK(h.config_writes().empty());
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker a save made while paused goes straight out",
+                 "[ams][snapmaker][filament_record]") {
+    lv_init_safe();
+    FilamentRecordHarness h("record_while_paused", "paused");
+    h.frame(make_task_filament({"NONE", "NONE", "NONE", "NONE"}));
+    h.printer.client.clear_gcode_script_history();
+
+    REQUIRE(helix::test::apply_edit(h.backend, 1, inland_pla()).success());
+    FilamentRecordHarness::drain();
+    CHECK(h.config_writes().size() == 2);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker drops a held save with the head's override",
+                 "[ams][snapmaker][filament_record]") {
+    lv_init_safe();
+    FilamentRecordHarness h("record_held_dropped", "printing");
+    h.frame(make_task_filament({"NONE", "NONE", "NONE", "NONE"}));
+    REQUIRE(helix::test::apply_edit(h.backend, 1, inland_pla()).success());
+    FilamentRecordHarness::drain();
+    h.printer.client.clear_gcode_script_history();
+
+    SECTION("a Clear Spool") {
+        h.backend.clear_slot_override(1);
+    }
+    SECTION("a restart") {
+        SnapmakerTestAccess::call_on_started(h.backend);
+    }
+    h.print("complete");
     CHECK(h.config_writes().empty());
 }
 

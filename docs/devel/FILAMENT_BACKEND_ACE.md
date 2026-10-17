@@ -280,7 +280,11 @@ A finished read that found no tag (`false`, or `1`) or an emptied bay drops it; 
 `3` are a read not finished yet and leave it standing. Both parse paths, the subscription
 and the REST bridge, record it and lay the lane's resolved identity over the hub's memory,
 so a user's edit survives either path's next poll
-(`src/printer/ams_backend_ace.cpp#note_tag_frame_locked`).
+(`src/printer/ams_backend_ace.cpp#note_tag_frame_locked`). The REST bridge also reports `temp_min`/`temp_max`;
+they stand unless a user edit moved the slot's temperatures this session. The stored
+record keeps a nozzle temperature for every edit, the hub's own included, so it cannot
+say which were the user's: after a restart the hub's temperatures apply again
+(`src/printer/ams_backend_ace.cpp#apply_hub_temps_locked`).
 
 ### Capabilities
 

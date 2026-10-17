@@ -98,6 +98,7 @@ void AmsBackendAce::on_started() {
     // spools that never shared a bay.
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        user_temps_.clear();
         prev_slot_status_.clear();
         park_states_.clear();
         last_spool_evidence_.clear();
@@ -569,6 +570,25 @@ void write_filament_fields(SlotInfo& slot, const SlotInfo& info) {
 
 } // namespace
 
+void AmsBackendAce::forget_user_temps_locked(int slot_index) {
+    if (slot_index >= 0 && static_cast<size_t>(slot_index) < user_temps_.size()) {
+        user_temps_[static_cast<size_t>(slot_index)] = false;
+    }
+}
+
+void AmsBackendAce::apply_hub_temps_locked(int slot_index, SlotInfo& slot,
+                                           const nlohmann::json& slot_json) const {
+    // No lane record carries temperatures and the stored record keeps one for
+    // every edit, the hub's own included, so only an edit that moved them this
+    // session marks them the user's.
+    if (slot_index >= 0 && static_cast<size_t>(slot_index) < user_temps_.size() &&
+        user_temps_[static_cast<size_t>(slot_index)]) {
+        return;
+    }
+    slot.nozzle_temp_min = helix::json_util::safe_int(slot_json, "temp_min", slot.nozzle_temp_min);
+    slot.nozzle_temp_max = helix::json_util::safe_int(slot_json, "temp_max", slot.nozzle_temp_max);
+}
+
 void AmsBackendAce::note_tag_frame_locked(int slot_index, helix::ace::TagRead tag_read,
                                           const nlohmann::json& slot_json,
                                           const std::optional<std::string>& material,
@@ -628,6 +648,15 @@ AmsError AmsBackendAce::apply_user_edit(int slot_index, const SlotInfo& info,
         SlotInfo* slot = mutable_slot_locked(slot_index);
         if (!slot) {
             return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, 0);
+        }
+        const bool temps_moved = info.nozzle_temp_min != slot->nozzle_temp_min ||
+                                 info.nozzle_temp_max != slot->nozzle_temp_max;
+        if (temps_moved) {
+            const auto idx = static_cast<size_t>(slot_index);
+            if (user_temps_.size() <= idx) {
+                user_temps_.resize(idx + 1, false);
+            }
+            user_temps_[idx] = true;
         }
         write_filament_fields(*slot, info);
 
@@ -1808,17 +1837,7 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
         cache.material = material;
         helix::ams::ingest(lane_id(idx), cache);
 
-        // No lane record carries temperatures, so a lane holding a user's
-        // declaration or a bound spool keeps the temperatures its edit set.
-        const helix::ams::LaneSources sources = helix::ams::lane_sources(lane_id(idx));
-        if (!sources.local_user && !sources.spoolman) {
-            if (slot_json.contains("temp_min") && slot_json["temp_min"].is_number_integer()) {
-                slot.nozzle_temp_min = slot_json["temp_min"].get<int>();
-            }
-            if (slot_json.contains("temp_max") && slot_json["temp_max"].is_number_integer()) {
-                slot.nozzle_temp_max = slot_json["temp_max"].get<int>();
-            }
-        }
+        apply_hub_temps_locked(idx, slot, slot_json);
         note_tag_frame_locked(idx, helix::ace::read_tag_state(slot_json), slot_json, material,
                               observed_color, observed_present);
 
@@ -2116,6 +2135,7 @@ void AmsBackendAce::judge_insert_locked(SlotInfo& slot, int slot_index,
     // policy. Caller already holds mutex_.
     (void)ovr_it;
     clear_override_locked(slot_index, &slot);
+    forget_user_temps_locked(slot_index);
 }
 
 void AmsBackendAce::clear_slot_override(int slot_index) {
@@ -2130,6 +2150,7 @@ void AmsBackendAce::clear_slot_override(int slot_index) {
         }
         spdlog::info("{} Slot {} override cleared by user request", backend_log_tag(), slot_index);
         clear_override_locked(slot_index, slot);
+        forget_user_temps_locked(slot_index);
     }
 
     emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));

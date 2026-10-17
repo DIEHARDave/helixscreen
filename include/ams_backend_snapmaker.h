@@ -872,7 +872,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// frame carries it. Under mutex_.
     std::optional<std::string> print_state_;
 
-    /// Per head, the latest held record write. Under mutex_.
+    /// Per head, the latest held record write; dropped with the head's
+    /// override and at on_started(). Under mutex_.
     std::array<std::optional<PendingRecordWrite>, NUM_TOOLS> pending_record_writes_{};
 
     /// The temperatures and spool weight the last tag reading on each channel
@@ -910,7 +911,8 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// FORCE=1 on an official head with no card. A record not seen yet is
     /// written only for a declared material, @p material_declared. While
     /// record_writes_held_locked() the edit is kept in pending_record_writes_
-    /// and written by the first frame that releases it. Main thread.
+    /// and written by the first frame for which heads_free_locked(). Main
+    /// thread.
     void write_task_filament_record(int head, const SlotInfo& info, bool material_declared);
 
     /// Whether a user edit's record write must wait: this backend's own
@@ -928,6 +930,13 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// print_stats.state that is neither printing nor paused. Marks each head
     /// returned sent. Caller holds mutex_.
     [[nodiscard]] std::vector<std::pair<int, std::string>> official_flag_repairs_locked();
+
+    /// Forget @p head's held record write, if it has one. Caller holds mutex_.
+    void drop_pending_record_write_locked(int head);
+
+    /// Whether this backend's own print_stats.state is known and holds no head:
+    /// neither printing nor paused. Caller holds mutex_.
+    [[nodiscard]] bool heads_free_locked() const;
 
     /// Send official_flag_repairs_locked() output. Main thread, outside mutex_.
     void dispatch_official_flag_repairs(const std::vector<std::pair<int, std::string>>& repairs);

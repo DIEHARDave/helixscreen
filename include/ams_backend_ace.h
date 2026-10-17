@@ -291,6 +291,18 @@ class AmsBackendAce : public AmsSubscriptionBackend {
                                const std::optional<std::string>& material,
                                const std::optional<uint32_t>& color, std::optional<bool> present);
 
+    /// Lay the REST bridge's temp_min / temp_max onto @p slot, unless a user
+    /// edit moved the slot's temperatures this session. Caller holds mutex_.
+    void apply_hub_temps_locked(int slot_index, SlotInfo& slot,
+                                const nlohmann::json& slot_json) const;
+
+    /// Clear user_temps_ for @p slot_index. Caller holds mutex_.
+    void forget_user_temps_locked(int slot_index);
+
+    /// Per bay, whether a user edit this session set the temperatures; cleared
+    /// with the override and at on_started(). Under mutex_.
+    std::vector<bool> user_temps_;
+
     /// Per bay, the last identified tag read. Under mutex_.
     std::vector<std::optional<helix::ams::TagReading>> tag_readings_;
 

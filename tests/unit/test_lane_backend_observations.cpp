@@ -5191,6 +5191,43 @@ TEST_CASE_METHOD(LVGLTestFixture, "ACE's REST bridge leaves a user's edit standi
     CHECK(harness->tag_reading(0)->material == "PETG");
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "ACE's REST bridge keeps the hub's temps under a colour edit",
+                 "[lane][ace][tag_reading]") {
+    AceHarness harness(nullptr, nullptr);
+    const auto slots = [](int temp_min, int temp_max) {
+        return nlohmann::json{
+            {"slots", nlohmann::json::array({nlohmann::json{{"status", "ready"},
+                                                            {"color", "#ED2C2C"},
+                                                            {"material", "PETG"},
+                                                            {"temp_min", temp_min},
+                                                            {"temp_max", temp_max}}})},
+        };
+    };
+
+    SECTION("a colour-only edit leaves the temperatures the hub's") {
+        AceTestAccess::parse_slots(*harness, slots(230, 250));
+        auto edit = harness->get_slot_info(0);
+        edit.color_rgb = 0x00FF00u;
+        helix::test::edit_slot_as_user(*harness, 0, edit);
+        AceTestAccess::parse_slots(*harness, slots(235, 255));
+        CHECK(harness->get_slot_info(0).nozzle_temp_min == 235);
+        CHECK(harness->get_slot_info(0).nozzle_temp_max == 255);
+    }
+    SECTION("a record loaded at a restart leaves the temperatures the hub's") {
+        // The stored record keeps a nozzle temperature for every edit, so it
+        // is no declaration of one.
+        helix::ams::FilamentSlotOverride ovr;
+        ovr.material = "PETG";
+        ovr.color_rgb = 0x00FF00u;
+        ovr.color_set = true;
+        ovr.nozzle_temp = 240;
+        AceTestAccess::seed_override(*harness, 0, ovr);
+        AceTestAccess::parse_slots(*harness, slots(235, 255));
+        CHECK(harness->get_slot_info(0).nozzle_temp_min == 235);
+        CHECK(harness->get_slot_info(0).nozzle_temp_max == 255);
+    }
+}
+
 TEST_CASE_METHOD(LVGLTestFixture, "AFC's colour scan is the lane's tag reading",
                  "[lane][afc][tag_reading]") {
     AfcHarness harness(nullptr, nullptr);

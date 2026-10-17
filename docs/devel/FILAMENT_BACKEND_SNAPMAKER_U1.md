@@ -215,8 +215,11 @@ nothing on the machine but the endpoint itself and spoollink (which looks only a
 
 Every record write runs `FLOW_RESET_K` on its head, so none lands under a running print.
 A save made while the backend's own `print_stats.state` reads `printing` is kept and
-written by the first frame that reads otherwise (a pause included, which is also where
-the resume path writes); before the backend's frames name a state, the app's print job
+written by the first frame that reads neither `printing` nor `paused`, since a pause the
+print raised (a runout, an M600) is no moment to reset a head's flow calibration. A save
+made while already paused goes straight out, as the resume path writes then too, and a
+held save is dropped with the head's override (a Clear Spool, a swap) and at a restart;
+before the backend's frames name a state, the app's print job
 state decides (`src/printer/ams_backend_snapmaker.cpp#record_writes_held_locked`). A save
 the record already agrees with sends nothing, forced head or not; FORCE=1 only decides
 the flag and that both lines go.
@@ -540,6 +543,11 @@ Backend Emits"); the override persists to `lane_data` whatever the firmware take
    (#991, firmware 20260608) cover the `AUTO_FEEDING` load/unload commands and pause
    classification, not the RFID read path, the resume-after-runout chain, or the
    pre-print send timing.
+   Open checks for the filament record: does the official-flag repair's log line
+   ("flagged official with no card behind it") appear at an idle start? It depends on
+   the backend seeing `print_stats` in the initial status frame; without it the repair
+   waits for the next print-state change. And a save held across a print should
+   write once at `complete`/`standby`, not at a runout pause.
 2. `is_stuck_motion_sensor_runout()` has no caller — revive when a verifiable
    "filament at the gear" signal exists (`src/printer/ams_backend_snapmaker.cpp`). Checked
    2026-08-21: the status model carries **no dedicated feeder/gear-presence field** -

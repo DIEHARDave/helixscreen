@@ -296,6 +296,9 @@ void AmsBackendSnapmaker::on_started() {
         tag_has_card_.fill(std::nullopt);
         card_seen_.fill(false);
         print_state_.reset();
+        // The overrides reload below; a held save belongs to the session that
+        // made it.
+        pending_record_writes_.fill(std::nullopt);
     }
     if (!api_)
         return;
@@ -2515,7 +2518,10 @@ void AmsBackendSnapmaker::handle_status(const nlohmann::json& status) {
         converge_locked(fx);
 
         fx.official_repairs = official_flag_repairs_locked();
-        if (!record_writes_held_locked()) {
+        // A save held across a print waits for the heads to be free: a pause
+        // the print raised (a runout, an M600) is no moment to reset a head's
+        // flow calibration behind the user's back.
+        if (heads_free_locked()) {
             for (int head = 0; head < NUM_TOOLS; ++head) {
                 auto& pending = pending_record_writes_[static_cast<size_t>(head)];
                 if (pending) {
@@ -2629,6 +2635,8 @@ void AmsBackendSnapmaker::check_hardware_event_clear(SlotInfo& slot, int slot_in
     // policy. Caller already holds mutex_.
     (void)ovr_it; // erased inside clear_override_locked
     clear_override_locked(slot_index, &slot);
+    // A held save described the spool that left.
+    drop_pending_record_write_locked(slot_index);
     slot.spool_name = tag_product_line(lane_id(slot_index));
 }
 
@@ -2663,6 +2671,7 @@ void AmsBackendSnapmaker::clear_slot_override(int slot_index) {
         }
         spdlog::info("{} Slot {} override cleared by user request", backend_log_tag(), slot_index);
         clear_override_locked(slot_index, slot);
+        drop_pending_record_write_locked(slot_index);
         slot->spool_name = tag_product_line(lane_id(slot_index));
     }
 
@@ -2841,7 +2850,8 @@ std::optional<bool> AmsBackendSnapmaker::record_write_needs_force_locked(int hea
     // filament_official alone does not mean a tag: the Extended Firmware's
     // filament_detect/set marks every write carrying fields official, and a
     // later clear leaves the flag set. Only a card the reader saw is the
-    // tag's record to keep.
+    // tag's record to keep. A reader reporting no card for a head the user is
+    // editing yields to the edit: asking for it is the user's intent.
     if (tag_has_card_[idx].value_or(true)) {
         return std::nullopt;
     }
@@ -2942,12 +2952,21 @@ void AmsBackendSnapmaker::write_task_filament_record(int head, const SlotInfo& i
         /*caller_surfaces_errors=*/false);
 }
 
+void AmsBackendSnapmaker::drop_pending_record_write_locked(int head) {
+    if (head >= 0 && head < NUM_TOOLS) {
+        pending_record_writes_[static_cast<size_t>(head)].reset();
+    }
+}
+
+bool AmsBackendSnapmaker::heads_free_locked() const {
+    return print_state_ && *print_state_ != "printing" && *print_state_ != "paused";
+}
+
 std::vector<std::pair<int, std::string>> AmsBackendSnapmaker::official_flag_repairs_locked() {
     std::vector<std::pair<int, std::string>> out;
     // A forced rewrite runs FLOW_RESET_K, so it waits for a print state this
-    // backend has read itself and that holds no head: not printing, not paused.
-    if (system_info_.units.empty() || !print_state_ || *print_state_ == "printing" ||
-        *print_state_ == "paused") {
+    // backend has read itself and that holds no head.
+    if (system_info_.units.empty() || !heads_free_locked()) {
         return out;
     }
     for (int head = 0; head < NUM_TOOLS; ++head) {
