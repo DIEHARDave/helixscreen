@@ -1433,15 +1433,23 @@ void AmsEditOverlay::update_ui() {
     // "Brand \xC2\xB7 Material": what the untracked chip shows, and what the
     // offline read-only row states a linked slot as. Built once, so the two
     // cannot drift into different spellings of the same slot.
-    snprintf(identity_text_buf_, sizeof(identity_text_buf_), "%s \xC2\xB7 %s",
-             working_info_.brand.empty() ? "Generic" : working_info_.brand.c_str(),
-             working_info_.material.empty() ? "\xE2\x80\x94" : working_info_.material.c_str());
+    const char* identity_brand =
+        working_info_.brand.empty() ? "Generic" : working_info_.brand.c_str();
+    const char* identity_material =
+        working_info_.material.empty() ? "\xE2\x80\x94" : working_info_.material.c_str();
+    snprintf(identity_text_buf_, sizeof(identity_text_buf_), "%s \xC2\xB7 %s", identity_brand,
+             identity_material);
     lv_subject_copy_string(&identity_text_subject_, identity_text_buf_);
 
     if (managed && !chip_name.empty()) {
         const std::string chip =
             helix::compose_filament_label(chip_brand, chip_name, working_info_.material);
         snprintf(chip_text_buf_, sizeof(chip_text_buf_), "%s", chip.c_str());
+    } else if (!working_info_.spool_name.empty()) {
+        // An untracked slot that names its spool's line puts it between the
+        // two: "Snapmaker · SnapSpeed · PLA".
+        snprintf(chip_text_buf_, sizeof(chip_text_buf_), "%s \xC2\xB7 %s \xC2\xB7 %s",
+                 identity_brand, working_info_.spool_name.c_str(), identity_material);
     } else {
         snprintf(chip_text_buf_, sizeof(chip_text_buf_), "%s", identity_text_buf_);
     }

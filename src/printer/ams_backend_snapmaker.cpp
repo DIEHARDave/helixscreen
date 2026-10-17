@@ -101,13 +101,24 @@ constexpr std::string_view PRODUCT_LINE_VENDOR = "Snapmaker";
     return type.empty() || type == "NONE";
 }
 
-/// The product line the lane's tag states, or empty. The vendor-cache record
+/// The spool name a tag record states: its product line, or empty when the
+/// record's brand cannot carry one. Firmware stores a placeholder SUB_TYPE
+/// beside any other vendor's spool, so "Generic" + "Basic" names no line.
+[[nodiscard]] std::string tag_spool_name(const helix::ams::Observation& record) {
+    std::string line = record.product_name.value_or(std::string{});
+    if (names_foreign_product_line(line, record.brand.value_or(std::string{}))) {
+        line.clear();
+    }
+    return line;
+}
+
+/// The spool name the lane's tag states, or empty. The vendor-cache record
 /// holds the last tag reading with our own write-back already withheld, so this
 /// is the machine's word on the spool and never an echo of an edit.
 [[nodiscard]] std::string tag_product_line(helix::ams::LaneId lane) {
     const std::optional<helix::ams::Observation> cache =
         helix::ams::lane_sources(lane).vendor_cache;
-    return cache.has_value() ? cache->product_name.value_or(std::string{}) : std::string{};
+    return cache.has_value() ? tag_spool_name(*cache) : std::string{};
 }
 
 // Map a raw firmware channel_error token to a user-facing message. The firmware
@@ -1653,10 +1664,10 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
         // the spool name; the tag carries no colour name. Taken from
         // the record after the echo guard, so firmware repeating our
         // own write is never learned as the spool's name, and blank
-        // when the tag names no line: firmware stores NONE for a
-        // write that sent none, and a kept name would outlive the
-        // spool it described.
-        slot->spool_name = cache.product_name.value_or(std::string{});
+        // when the tag names no line or names it beside a brand that
+        // cannot carry it: firmware stores NONE for a write that sent
+        // none, and a kept name would outlive the spool it described.
+        slot->spool_name = tag_spool_name(cache);
         helix::ams::ingest(lane_id(i), cache);
     }
     fx.changed = true;

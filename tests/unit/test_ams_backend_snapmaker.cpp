@@ -1999,7 +1999,7 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker clear_slot_override drops the Spoo
     // A filament_detect parse populates the units a clear walks.
     SnapmakerTestAccess::handle_status(
         backend,
-        make_filament_detect_status(0, "PLA", 0xFFFF5500u, "Polymaker", json::array({1, 2, 3, 4})));
+        make_filament_detect_status(0, "PLA", 0xFFFF5500u, "Snapmaker", json::array({1, 2, 3, 4})));
     REQUIRE(SnapmakerTestAccess::seed_live_spoolman_link(backend, 0, 42, 77, 3));
     REQUIRE(backend.get_slot_info(0).spoolman_filament_id == 77);
 
@@ -2017,6 +2017,29 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker clear_slot_override drops the Spoo
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker product line beside another vendor's brand names no spool",
+                 "[ams][snapmaker][filament_slot_override][rfid]") {
+    SnapmakerTmpCacheDir tmp("foreign_product_line");
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(&api, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    // "Basic" is the placeholder SUB_TYPE firmware keeps beside any vendor.
+    SnapmakerTestAccess::handle_status(
+        backend,
+        make_filament_detect_status(0, "PLA", 0xFF202020u, "Generic", json::array({1, 2, 3, 4})));
+    CHECK(backend.get_slot_info(0).spool_name.empty());
+
+    backend.clear_slot_override(0);
+    auto info = backend.get_slot_info(0);
+    CHECK(info.spool_name.empty());
+    CHECK(info.material == "PLA");
+    CHECK(info.brand == "Generic");
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
                  "Snapmaker tag reader naming no tag leaves nothing of the old tag after a clear",
                  "[ams][snapmaker][filament_slot_override][rfid]") {
     SnapmakerTmpCacheDir tmp("clear_after_untagged_reading");
@@ -2028,7 +2051,7 @@ TEST_CASE_METHOD(SnapmakerFixture,
 
     SnapmakerTestAccess::handle_status(
         backend,
-        make_filament_detect_status(1, "PLA", 0xFF202020u, "Generic", json::array({1, 2, 3, 4})));
+        make_filament_detect_status(1, "PLA", 0xFF202020u, "Snapmaker", json::array({1, 2, 3, 4})));
     REQUIRE(backend.get_slot_info(1).material == "PLA");
     REQUIRE(backend.get_slot_info(1).spool_name == "Basic");
 
@@ -2204,13 +2227,12 @@ TEST_CASE_METHOD(SnapmakerFixture,
     // Baseline advanced to the new UID.
     CHECK(SnapmakerTestAccess::last_rfid_uid(backend, 0) == "5,6,7,8");
 
-    // Override-exclusive fields reset on the live slot. spool_name is NOT
-    // override-exclusive for Snapmaker — RFID's SUB_TYPE populates it (the
-    // helper hard-codes "Basic"), and the clear preserves firmware writes
-    // the same way it preserves brand / total_weight_g.
+    // Override-exclusive fields reset on the live slot; firmware's new
+    // reading flows through. Its SUB_TYPE (the helper hard-codes "Basic")
+    // names no spool beside a Generic brand, so the spool name is blank.
     auto info = backend.get_slot_info(0);
-    CHECK(info.brand == "Generic");    // firmware's new brand flows through
-    CHECK(info.spool_name == "Basic"); // firmware's SUB_TYPE flows through
+    CHECK(info.brand == "Generic");
+    CHECK(info.spool_name.empty());
     CHECK(info.spoolman_id == 0);
     CHECK(info.material == "PETG"); // firmware's new material
 }

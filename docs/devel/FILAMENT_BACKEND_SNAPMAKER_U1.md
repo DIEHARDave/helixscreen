@@ -121,7 +121,7 @@ The active tool is detected from extruder pin state or `toolhead.extruder`, and
 | Tag field | Maps to | Notes |
 |-----------|---------|-------|
 | `MAIN_TYPE` | `material` | e.g. "PLA", "PETG"; `"NONE"` skips the whole slot's RFID apply, and with `SUB_TYPE` also absent or `NONE` drops the lane's vendor-cache record |
-| `SUB_TYPE` | `spool_name` | Snapmaker product line, e.g. "SnapSpeed" |
+| `SUB_TYPE` | `spool_name` | Snapmaker product line, e.g. "SnapSpeed"; blank beside a brand other than Snapmaker or empty, where it is firmware's placeholder |
 | `MANUFACTURER` (fallback `VENDOR`) | `brand` | |
 | `ARGB_COLOR` | `color_rgb` | masked to the low 24 bits |
 | `HOTEND_MIN_TEMP` / `HOTEND_MAX_TEMP` / `BED_TEMP` | `nozzle_temp_min` / `nozzle_temp_max` / `bed_temp` | |
@@ -138,7 +138,10 @@ marks any `filament_detect/set` with fields as OFFICIAL and builds the entry fre
 the body, so a SUB_TYPE the POST omits is stored as `NONE`, and one it sends comes back
 through `filament_detect.info` looking like a tag read. `spool_name` follows the tag
 record after the own-write echo guard, so a `NONE` SUB_TYPE blanks it and our echo is
-never learned as the spool's name (`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`).
+never learned as the spool's name (`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`). Every path that names the spool from the tag (the read itself, a user clear, a
+swap-detected clear) goes through `tag_spool_name`, which blanks a known product line
+beside a non-Snapmaker brand: `build_filament_config_gcode` writes `Basic` for any slot
+that names no product line, so "Generic" + "Basic" names no line.
 On load, a stored product line the record does not declare, beside a non-Snapmaker
 brand, is dropped and the record saved back (`src/printer/ams_backend_snapmaker.cpp#on_started`). A channel whose firmware states no
 identity at all (tag `MAIN_TYPE`/`SUB_TYPE` NONE, `print_task_config` vendor NONE and not
