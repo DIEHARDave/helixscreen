@@ -1565,10 +1565,7 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
     // at all and the fingerprint comes out empty (no signal).
     tag_names_identity_[static_cast<size_t>(i)] =
         rfid.main_type != "NONE" || (!rfid.sub_type.empty() && rfid.sub_type != "NONE");
-    // An all-zero or absent CARD_UID is no card: what an untagged channel and a
-    // filament_detect/set write report.
-    tag_has_card_[static_cast<size_t>(i)] =
-        rfid.uid.find_first_of("123456789") != std::string::npos;
+    tag_has_card_[static_cast<size_t>(i)] = rfid.has_card;
     helix::ams::SpoolEvidence& evidence = fx.observed_evidence[i];
     evidence.tag_uid = rfid.uid;
     if (!rfid.uid.empty()) {

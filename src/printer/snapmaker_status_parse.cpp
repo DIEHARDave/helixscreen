@@ -130,7 +130,12 @@ SnapmakerRfidInfo parse_rfid_info(const nlohmann::json& json) {
                 uid.push_back(',');
             uid += std::to_string(arr[i].get<int>());
         }
+        info.has_card = std::any_of(arr.begin(), arr.end(), [](const nlohmann::json& b) {
+            return b.is_number() && b.get<double>() != 0.0;
+        });
         info.uid = std::move(uid);
+    } else if (json.contains("CARD_UID") && json["CARD_UID"].is_number()) {
+        info.has_card = json["CARD_UID"].get<double>() != 0.0;
     }
 
     return info;

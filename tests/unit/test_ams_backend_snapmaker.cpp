@@ -5166,29 +5166,80 @@ TEST_CASE_METHOD(SnapmakerFixture,
     CHECK(h.config_writes().empty());
 }
 
-TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker record writes against a live U1 print_task_config",
+namespace {
+/// filament_detect as a U1 with its reader off reports it: every head a scalar
+/// CARD_UID, no identity, OFFICIAL as the endpoint last left it.
+json make_rig_detect(const std::array<json, 4>& card_uids,
+                     const std::array<bool, 4>& official = {false, false, false, false}) {
+    json info = json::array();
+    for (int i = 0; i < 4; ++i) {
+        info.push_back(json{{"MAIN_TYPE", "NONE"},
+                            {"CARD_UID", card_uids[i]},
+                            {"OFFICIAL", official[i]},
+                            {"SKU", 0}});
+    }
+    return json{{"filament_detect", json{{"info", info}}}};
+}
+} // namespace
+
+TEST_CASE("Snapmaker CARD_UID shapes decide whether a real card is present",
+          "[ams][snapmaker][filament_record]") {
+    const auto card = [](const json& uid) {
+        return helix::snapmaker::parse_rfid_info(json{{"MAIN_TYPE", "NONE"}, {"CARD_UID", uid}})
+            .has_card;
+    };
+    CHECK(card(0) == std::optional<bool>(false));
+    CHECK(card(2953842434LL) == std::optional<bool>(true));
+    CHECK(card(json::array({0, 0, 0, 0})) == std::optional<bool>(false));
+    CHECK(card(json::array({144, 32, 196, 2})) == std::optional<bool>(true));
+    CHECK_FALSE(helix::snapmaker::parse_rfid_info(json{{"MAIN_TYPE", "NONE"}}).has_card);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker record writes against a live U1 rig",
                  "[ams][snapmaker][filament_record]") {
-    // A rig's idle record: two blank heads, two ASA heads, head 3 an RFID spool.
+    // The rig's frames: reader off, every CARD_UID a scalar 0. Head 1 is
+    // official from an endpoint write; head 3 is official in print_task_config
+    // with no card behind it.
     lv_init_safe();
     FilamentRecordHarness h("record_write_live_frame");
-    h.frame(make_task_filament({"NONE", "NONE", "ASA", "ASA"}, {false, false, false, true},
+    h.frame(make_rig_detect({0, 0, 0, 0}, {false, true, false, false}));
+    h.frame(make_task_filament({"NONE", "NONE", "ASA", "ASA"}, {false, true, false, true},
                                std::vector<bool>{false, false, false, false}));
     h.stock_firmware();
     h.printer.client.clear_gcode_script_history();
 
     SlotInfo asa = inland_pla();
     asa.material = "ASA";
+    // Head 2 already records ASA: nothing to write.
     REQUIRE(helix::test::apply_edit(h.backend, 2, asa).success());
-    REQUIRE(helix::test::apply_edit(h.backend, 3, inland_pla()).success());
     FilamentRecordHarness::drain();
     CHECK(h.config_writes().empty());
 
+    // Head 0, not official: a plain write.
     REQUIRE(helix::test::apply_edit(h.backend, 0, asa).success());
     FilamentRecordHarness::drain();
-    const auto writes = h.config_writes();
+    auto writes = h.config_writes();
     REQUIRE(writes.size() == 2);
     CHECK(writes[0] == "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=0 VENDOR=Generic "
                        "FILAMENT_TYPE=ASA FILAMENT_SUBTYPE=Basic");
+
+    // Head 3, official with CARD_UID 0: forced.
+    h.printer.client.clear_gcode_script_history();
+    REQUIRE(helix::test::apply_edit(h.backend, 3, inland_pla()).success());
+    FilamentRecordHarness::drain();
+    writes = h.config_writes();
+    REQUIRE(writes.size() == 2);
+    CHECK(writes[0] == "SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=3 VENDOR=Generic "
+                       "FILAMENT_TYPE=PLA FILAMENT_SUBTYPE=Basic FORCE=1");
+
+    // A real card on head 3 (a nonzero scalar UID) is the tag's to keep.
+    h.frame(make_rig_detect({0, 0, 0, 2953842434LL}, {false, true, false, true}));
+    h.printer.client.clear_gcode_script_history();
+    SlotInfo petg = inland_pla();
+    petg.material = "PETG";
+    REQUIRE(helix::test::apply_edit(h.backend, 3, petg).success());
+    FilamentRecordHarness::drain();
+    CHECK(h.config_writes().empty());
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,
@@ -5372,7 +5423,7 @@ TEST_CASE_METHOD(SnapmakerFixture,
     pause_on_runout();
     FilamentRecordHarness h("resume_repair_forced");
     helix::test::edit_slot_as_user(h.backend, 1, inland_pla());
-    h.frame(make_detect_card(1, json::array({0, 0, 0, 0})));
+    h.frame(make_detect_card(1, 0));
     h.frame(make_task_filament({"NONE", "NONE", "ASA", "ASA"}, {false, true, false, true},
                                std::vector<bool>{false, true, false, false}));
     SnapmakerTestAccess::set_current_slot(h.backend, 1);
