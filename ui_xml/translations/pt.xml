@@ -923,6 +923,7 @@
   <translation tag="Draw a ripple at each touch — helps diagnose offsets" pt="Desenha uma onda em cada toque — ajuda a diagnosticar deslocamentos"/>
   <translation tag="Drive Cal" pt="Cal de Drive"/>
   <translation tag="Drop shadow strength (0 = disabled)" pt="Intensidade da sombra (0 = desabilitado)"/>
+  <translation tag="Dry" pt="Secar"/>
   <translation tag="Dry Filament" pt="Secar filamento"/>
   <translation tag="Dry Filament on the Bed" pt="Secar filamento na mesa"/>
   <translation tag="Dry spools on the heated bed" pt="Secar carretéis na mesa aquecida"/>
@@ -2652,6 +2653,7 @@
   <translation tag="Rewinding" pt="Rebobinando"/>
   <translation tag="Right" pt="Direita"/>
   <translation tag="Role:" pt="Função:"/>
+  <translation tag="Rotate" pt="Girar"/>
   <translation tag="Rotating tips for using your printer" pt="Dicas rotativas para sua impressora"/>
   <translation tag="Rotation" pt="Rotação"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" pt="Rotação: %d° - %ds restantes (ou aguarde para repetir)"/>
@@ -3010,6 +3012,7 @@
   <translation tag="Stopped between Hub and Toolhead" pt="Parado entre o Hub e o cabeçote"/>
   <translation tag="Stopped between Lane and Hub" pt="Parado entre a Lane e o Hub"/>
   <translation tag="Stopped between Spool and Lane" pt="Parado entre o carretel e a Lane"/>
+  <translation tag="Stopped drying %s" pt="Secagem parada: %s"/>
   <translation tag="Stops all motion. Requires firmware restart." pt="Para todo movimento. Requer reinício do firmware."/>
   <translation tag="Stow" pt="Guardar"/>
   <translation tag="Subtle" pt="Sutil"/>

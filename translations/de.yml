@@ -1028,6 +1028,7 @@ translations:
     Effekt zeichnen — hilft beim Diagnostizieren von Versätzen
   Drive Cal: Antriebs-Kal.
   Drop shadow strength (0 = disabled): Schattenstärke (0 = deaktiviert)
+  Dry: Trocknen
   Dry Filament: Filament trocknen
 
   Dry Filament on the Bed: Filament auf dem Heizbett trocknen
@@ -2924,6 +2925,7 @@ translations:
   Rewinding: Zurückspulen
   Right: 'Rechts'
   'Role:': 'Rolle:'
+  Rotate: Drehen
   Rotating tips for using your printer: Wechselnde Tipps zu Ihrem Drucker
   Rotation: Drehung
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Drehung: %d°
@@ -3338,6 +3340,7 @@ translations:
   Stopped between Hub and Toolhead: Zwischen Hub und Werkzeugkopf gestoppt
   Stopped between Lane and Hub: Zwischen Spur und Hub gestoppt
   Stopped between Spool and Lane: Zwischen Spule und Spur gestoppt
+  Stopped drying %s: 'Trocknen gestoppt: %s'
   Stops all motion. Requires firmware restart.: Stoppt alle Bewegung. Erfordert Firmware-Neustart.
   Stow: Einfahren
   Subtle: Dezent

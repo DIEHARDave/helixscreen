@@ -965,6 +965,7 @@
   <translation tag="Draw a ripple at each touch — helps diagnose offsets" ru="Рисовать круг при каждом касании — помогает диагностировать смещения"/>
   <translation tag="Drive Cal" ru="Кал. привода"/>
   <translation tag="Drop shadow strength (0 = disabled)" ru="Интенсивность тени (0 = отключено)"/>
+  <translation tag="Dry" ru="Сушка"/>
   <translation tag="Dry Filament" ru="Сушка филамента"/>
   <translation tag="Dry Filament on the Bed" ru="Сушка филамента на столе"/>
   <translation tag="Dry spools on the heated bed" ru="Сушка катушек на нагреваемом столе"/>
@@ -2706,6 +2707,7 @@
   <translation tag="Rewinding" ru="Перемотка"/>
   <translation tag="Right" ru="Справа"/>
   <translation tag="Role:" ru="Тип:"/>
+  <translation tag="Rotate" ru="Вращать"/>
   <translation tag="Rotating tips for using your printer" ru="Сменяющиеся советы по печати"/>
   <translation tag="Rotation" ru="Поворот"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" ru="Поворот: %d° - осталось %ds (или подождите для повтора)"/>
@@ -3070,6 +3072,7 @@
   <translation tag="Stopped between Hub and Toolhead" ru="Остановка между хабом и печатающей головкой"/>
   <translation tag="Stopped between Lane and Hub" ru="Остановка между каналом и хабом"/>
   <translation tag="Stopped between Spool and Lane" ru="Остановка между катушкой и каналом"/>
+  <translation tag="Stopped drying %s" ru="Сушка остановлена: %s"/>
   <translation tag="Stops all motion. Requires firmware restart." ru="Останавливает всё движение. Требуется перезапуск прошивки."/>
   <translation tag="Stow" ru="Убрать"/>
   <translation tag="Subtle" ru="Сдержанный"/>

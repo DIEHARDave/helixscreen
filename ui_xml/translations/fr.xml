@@ -923,6 +923,7 @@
   <translation tag="Draw a ripple at each touch — helps diagnose offsets" fr="Dessine une ondulation à chaque contact — aide à diagnostiquer les décalages"/>
   <translation tag="Drive Cal" fr="Cal entraîn."/>
   <translation tag="Drop shadow strength (0 = disabled)" fr="Intensité de l&apos;ombre portée (0 = désactivé)"/>
+  <translation tag="Dry" fr="Sécher"/>
   <translation tag="Dry Filament" fr="Sécher le filament"/>
   <translation tag="Dry Filament on the Bed" fr="Sécher le filament sur le plateau"/>
   <translation tag="Dry spools on the heated bed" fr="Sécher les bobines sur le plateau chauffant"/>
@@ -2652,6 +2653,7 @@
   <translation tag="Rewinding" fr="Rembobinage"/>
   <translation tag="Right" fr="Droite"/>
   <translation tag="Role:" fr="Rôle :"/>
+  <translation tag="Rotate" fr="Tourner"/>
   <translation tag="Rotating tips for using your printer" fr="Conseils variés pour votre imprimante"/>
   <translation tag="Rotation" fr="Rotation"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" fr="Rotation : %d° - %ds restantes (ou attendre pour réessayer)"/>
@@ -3010,6 +3012,7 @@
   <translation tag="Stopped between Hub and Toolhead" fr="Arrêté entre le Hub et la tête d&apos;outil"/>
   <translation tag="Stopped between Lane and Hub" fr="Arrêté entre la voie et le Hub"/>
   <translation tag="Stopped between Spool and Lane" fr="Arrêté entre la bobine et la voie"/>
+  <translation tag="Stopped drying %s" fr="Séchage arrêté : %s"/>
   <translation tag="Stops all motion. Requires firmware restart." fr="Arrête tout mouvement. Nécessite un redémarrage du firmware."/>
   <translation tag="Stow" fr="Ranger"/>
   <translation tag="Subtle" fr="Subtil"/>

@@ -7105,3 +7105,255 @@ TEST_CASE("Happy Hare v4 takes a drying humidity target, v3 does not",
                   "MMU_HEATER DRY=1 TEMP=50 TIMER=60 HUMIDITY=15 UNIT=1 GATES=6,7,8,9"});
     }
 }
+
+TEST_CASE("Happy Hare v4 drives a chosen set of gates on per-gate heaters",
+          "[ams][happy_hare][hh_v4][dry_gates]") {
+    QueryCapturingClient client;
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg(nullptr, &client);
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    // Unit 0 (ERCF) shares one heater across its gates; unit 1 (Box Turtle) has one per
+    // gate and an eSpooler.
+    auto fx = helix::test::load_happy_hare_fixture("happy_hare_v4_two_unit.json");
+    fx["mmu_machine"]["unit_0"]["filament_heater"] = "heater_generic ercf_heater";
+    helper.test_parse_mmu_state(fx["mmu_status"]);
+    connect_with_fixture(helper, client, fx);
+    HappyHareTestAccess::dryer_info(helper).supported = true;
+
+    SECTION("only the per-gate unit offers a selection, and rotation where spools turn") {
+        CHECK(helper.get_dryer_info(1).supports_gate_selection);
+        CHECK(helper.get_dryer_info(1).supports_rotation);
+        CHECK_FALSE(helper.get_dryer_info(0).supports_gate_selection);
+        CHECK_FALSE(helper.get_dryer_info(0).supports_rotation);
+    }
+    SECTION("no eSpooler, no rotation") {
+        helper.test_parse_mmu_state(
+            {{"espooler", nlohmann::json::array({"", "", "", "", "", "", "", "", "", ""})}});
+        CHECK(helper.get_dryer_info(1).supports_gate_selection);
+        CHECK_FALSE(helper.get_dryer_info(1).supports_rotation);
+        DryingRequest req{.temp_c = 50.0f, .duration_min = 60, .unit = 1, .gates = {7}};
+        req.rotate = true;
+        helper.clear_captured_gcodes();
+        CHECK(helper.start_drying_request(req).result == AmsResult::NOT_SUPPORTED);
+        CHECK(helper.captured_gcodes.empty());
+    }
+    SECTION("a selection names its gates") {
+        helper.clear_captured_gcodes();
+        CHECK(helper
+                  .start_drying_request(
+                      {.temp_c = 50.0f, .duration_min = 60, .unit = 1, .gates = {8, 7, 8}})
+                  .success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER DRY=1 TEMP=50 TIMER=60 UNIT=1 GATES=7,8"});
+    }
+    SECTION("humidity and rotation ride the same command") {
+        DryingRequest req{
+            .temp_c = 50.0f, .duration_min = 60, .humidity_pct = 15.0f, .unit = 1, .gates = {6, 9}};
+        req.rotate = true;
+        helper.clear_captured_gcodes();
+        CHECK(helper.start_drying_request(req).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{
+                  "MMU_HEATER DRY=1 TEMP=50 TIMER=60 HUMIDITY=15 ROTATE=1 UNIT=1 GATES=6,9"});
+    }
+    SECTION("rotation with no selection names every gate on the unit") {
+        DryingRequest req{.temp_c = 50.0f, .duration_min = 60, .unit = 1};
+        req.rotate = true;
+        helper.clear_captured_gcodes();
+        CHECK(helper.start_drying_request(req).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{
+                  "MMU_HEATER DRY=1 TEMP=50 TIMER=60 ROTATE=1 UNIT=1 GATES=6,7,8,9"});
+    }
+    SECTION("no selection sends exactly the whole-unit start") {
+        helper.clear_captured_gcodes();
+        CHECK(helper.start_drying_request({.temp_c = 50.0f, .duration_min = 60, .unit = 1})
+                  .success());
+        CHECK(helper
+                  .start_drying_request(
+                      {.temp_c = 50.0f, .duration_min = 60, .humidity_pct = 15.0f, .unit = 1})
+                  .success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{
+                  "MMU_HEATER DRY=1 TEMP=50 TIMER=60 UNIT=1 GATES=6,7,8,9",
+                  "MMU_HEATER DRY=1 TEMP=50 TIMER=60 HUMIDITY=15 UNIT=1 GATES=6,7,8,9"});
+    }
+    SECTION("a shared-heater unit refuses a selection") {
+        helper.clear_captured_gcodes();
+        CHECK(helper
+                  .start_drying_request(
+                      {.temp_c = 50.0f, .duration_min = 60, .unit = 0, .gates = {1}})
+                  .result == AmsResult::NOT_SUPPORTED);
+        CHECK(helper.stop_drying_gates(0, {1}).result == AmsResult::NOT_SUPPORTED);
+        CHECK(helper.captured_gcodes.empty());
+    }
+    SECTION("gates on no unit are dropped, and none left sends nothing") {
+        helper.clear_captured_gcodes();
+        CHECK_FALSE(helper
+                        .start_drying_request(
+                            {.temp_c = 50.0f, .duration_min = 60, .unit = 1, .gates = {42, -1}})
+                        .success());
+        CHECK(helper.captured_gcodes.empty());
+        CHECK(helper
+                  .start_drying_request(
+                      {.temp_c = 50.0f, .duration_min = 60, .unit = 1, .gates = {42, 9}})
+                  .success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER DRY=1 TEMP=50 TIMER=60 UNIT=1 GATES=9"});
+    }
+    SECTION("stopping a selection cancels only those gates") {
+        helper.clear_captured_gcodes();
+        CHECK(helper.stop_drying_gates(1, {8}).success());
+        CHECK(helper.stop_drying_gates(1, {}).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER STOP=1 UNIT=1 GATES=8",
+                                       "MMU_HEATER STOP=1 UNIT=1 GATES=6,7,8,9"});
+    }
+    SECTION("a stopped gate leaves the selection a temperature change reaches") {
+        CHECK(helper
+                  .start_drying_request(
+                      {.temp_c = 50.0f, .duration_min = 60, .unit = 1, .gates = {7, 8}})
+                  .success());
+        REQUIRE(helper.stop_drying_gates(1, {8}).success());
+        helper.clear_captured_gcodes();
+        CHECK(helper.update_drying(55.0f, -1, -1, 1).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER TEMP=55 UNIT=1 GATES=7"});
+        HappyHareTestAccess::dryer_info(helper).target_temp_c = 55.0f;
+        helper.clear_captured_gcodes();
+        CHECK(helper.update_drying(-1.0f, 90, -1, 1).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER STOP=1 UNIT=1 GATES=6,7,8,9",
+                                       "MMU_HEATER DRY=1 TEMP=55 TIMER=90 UNIT=1 GATES=7"});
+    }
+    SECTION("a cycle the printer finishes forgets its gates") {
+        CHECK(helper
+                  .start_drying_request(
+                      {.temp_c = 50.0f, .duration_min = 60, .unit = 1, .gates = {7, 8}})
+                  .success());
+        // A frame from before the start is not the end of the cycle.
+        helper.test_parse_mmu_state(
+            {{"drying_state", nlohmann::json::array({"", "", "", "", "", "", "", "", "", ""})}});
+        helper.clear_captured_gcodes();
+        CHECK(helper.update_drying(55.0f, -1, -1, 1).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER TEMP=55 UNIT=1 GATES=7,8"});
+
+        helper.test_parse_mmu_state(
+            {{"drying_state",
+              nlohmann::json::array({"", "", "", "", "", "", "", "active", "queued", ""})}});
+        helper.test_parse_mmu_state(
+            {{"drying_state",
+              nlohmann::json::array({"", "", "", "", "", "", "", "complete", "cancelled", ""})}});
+        helper.clear_captured_gcodes();
+        CHECK(helper.update_drying(55.0f, -1, -1, 1).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER TEMP=55 UNIT=1 GATES=6,7,8,9"});
+    }
+    SECTION("a restart and a retarget keep the selected gates") {
+        DryingRequest req{.temp_c = 50.0f, .duration_min = 60, .unit = 1, .gates = {7, 8}};
+        req.rotate = true;
+        CHECK(helper.start_drying_request(req).success());
+        HappyHareTestAccess::dryer_info(helper).target_temp_c = 50.0f;
+
+        helper.clear_captured_gcodes();
+        CHECK(helper.update_drying(55.0f, -1, -1, 1).success());
+        CHECK(helper.update_drying(-1.0f, 90, -1, 1).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{
+                  "MMU_HEATER TEMP=55 UNIT=1 GATES=7,8", "MMU_HEATER STOP=1 UNIT=1 GATES=6,7,8,9",
+                  "MMU_HEATER DRY=1 TEMP=50 TIMER=90 ROTATE=1 UNIT=1 GATES=7,8"});
+
+        // A stop ends the selection with the cycle, and a whole-unit cycle carries none.
+        CHECK(helper.stop_drying(1).success());
+        helper.clear_captured_gcodes();
+        CHECK(helper.update_drying(55.0f, -1, -1, 1).success());
+        CHECK(helper.start_drying(50.0f, 60, -1, 1).success());
+        CHECK(helper.update_drying(55.0f, -1, -1, 1).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER TEMP=55 UNIT=1 GATES=6,7,8,9",
+                                       "MMU_HEATER DRY=1 TEMP=50 TIMER=60 UNIT=1 GATES=6,7,8,9",
+                                       "MMU_HEATER TEMP=55 UNIT=1 GATES=6,7,8,9"});
+    }
+}
+
+TEST_CASE("Happy Hare v3 never offers a gate selection", "[ams][happy_hare][dry_gates]") {
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(2);
+    helper.test_apply_heater_config(
+        {{"mmu_machine",
+          {{"filament_heaters", "heater_generic Lane_0_heater, heater_generic Lane_1_heater"},
+           {"environment_sensors", "temperature_sensor Lane_0, temperature_sensor Lane_1"}}}});
+    HappyHareTestAccess::dryer_info(helper).supported = true;
+
+    CHECK_FALSE(helper.get_dryer_info(0).supports_gate_selection);
+    helper.clear_captured_gcodes();
+    CHECK(helper.start_drying_request({.temp_c = 50.0f, .duration_min = 60, .gates = {1}}).result ==
+          AmsResult::NOT_SUPPORTED);
+    CHECK(helper.captured_gcodes.empty());
+}
+
+TEST_CASE("Each slot carries its gate's drying state", "[ams][happy_hare][dry_gates]") {
+    using helix::printer::ZoneDryingState;
+    QueryCapturingClient client;
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg(nullptr, &client);
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    const auto fx = helix::test::load_happy_hare_fixture("happy_hare_v4_two_unit.json");
+    helper.test_parse_mmu_state(fx["mmu_status"]);
+    connect_with_fixture(helper, client, fx);
+
+    auto state_of = [&helper](int gate) {
+        const auto info = helper.get_system_info();
+        const SlotInfo* slot = info.get_slot_global(gate);
+        REQUIRE(slot != nullptr);
+        return slot->drying_state;
+    };
+
+    // A short list: gates past its end read Idle rather than shifting or throwing.
+    helper.test_parse_mmu_state(
+        {{"drying_state",
+          nlohmann::json::array({"", "", "", "", "", "", "active", "queued", "complete"})}});
+    CHECK(state_of(0) == ZoneDryingState::Idle);
+    CHECK(state_of(6) == ZoneDryingState::Active);
+    CHECK(state_of(7) == ZoneDryingState::Queued);
+    CHECK(state_of(8) == ZoneDryingState::Complete);
+    CHECK(state_of(9) == ZoneDryingState::Idle);
+
+    helper.test_parse_mmu_state({{"drying_state", nlohmann::json::array({"", "", "", "", "", "", "",
+                                                                         "", "", "cancelled"})}});
+    CHECK(state_of(6) == ZoneDryingState::Idle);
+    CHECK(state_of(9) == ZoneDryingState::Cancelled);
+}
+
+TEST_CASE("A drying_state-only frame reaches the UI", "[ams][happy_hare][dry_gates]") {
+    using helix::printer::ZoneDryingState;
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(4);
+    int state_events = 0;
+    helper.set_event_callback([&](const std::string& name, const std::string&) {
+        state_events += name == helix::AmsBackend::EVENT_STATE_CHANGED ? 1 : 0;
+    });
+
+    helper.feed_mmu_status({{"drying_state", nlohmann::json::array({"", "active", "", ""})}});
+
+    // EVENT_STATE_CHANGED is what makes AmsState resync every slot's subjects.
+    CHECK(state_events == 1);
+    CHECK(helper.get_system_info().get_slot_global(1)->drying_state == ZoneDryingState::Active);
+}
+
+TEST_CASE("Per-gate zones each carry their own unit's dryer", "[ams][happy_hare][dry_gates]") {
+    QueryCapturingClient client;
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg(nullptr, &client);
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    const auto fx = helix::test::load_happy_hare_fixture("happy_hare_v4_two_unit.json");
+    helper.test_parse_mmu_state(fx["mmu_status"]);
+    connect_with_fixture(helper, client, fx);
+    HappyHareTestAccess::dryer_info(helper).supported = true;
+
+    const auto zones = helper.get_environment_zones(1);
+    REQUIRE_FALSE(zones.empty());
+    for (const auto& z : zones) {
+        CHECK(z.dryer.supports_gate_selection);
+    }
+}

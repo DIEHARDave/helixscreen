@@ -695,6 +695,31 @@ Three things about the fields are worth knowing:
 
 Left alone, HelixScreen picks the preset that suits the filament in that box - the most conservative one, meaning the lowest drying temperature among the materials loaded there, so a mixed box isn't dried at the temperature its most tolerant spool would take. Type a value yourself and that stops for the rest of the visit; pick a preset by hand and it starts again.
 
+### Choosing Lanes to Dry (Happy Hare 4, beta)
+
+> **Beta feature.** The lane chips and Rotate appear only with [beta features](beta-features.md) turned on. With beta off, Start and Stop dry the whole unit, exactly as they always have. The drying badges on the spools show either way.
+
+On a Happy Hare 4 unit that has its own heater on every lane (an EMU-style build), the box's screen shows a **Dry** row of lane chips where the lane line would be, one chip per heated lane on that unit. Every chip starts selected each time you open the screen, which dries the whole unit exactly as before.
+
+- **Tap a chip to leave that lane out** of the next dry, and tap it again to put it back. The last selected chip can't be cleared: a dry needs at least one lane.
+- **Rotate** appears when the unit has an eSpooler. Turn it on and the selected spools are turned while they dry. Happy Hare only rotates a spool whose filament end has been pulled back out of the gate and fixed to the spool, and it warns in the console about any lane that isn't.
+- **Stop Drying with some chips cleared** stops only the selected lanes, and the notice names them ("Stopped drying Gate 2, Gate 3"); the others keep drying. With every chip selected it stops the whole cycle.
+
+To make room for the chips, the Material Comfort list wraps into two columns while they show, and on the smallest screens (480x272) it is hidden; the humidity reading above it stays.
+
+Happy Hare runs one drying cycle per unit, so pick your lanes before you tap **Start Drying**. A lane can't be added to a cycle that is already running: stop it and start again with the new selection. On these units the button and the time left follow the unit's cycle, so a lane that isn't drying still shows **Stop Drying** while its neighbours are.
+
+Each lane's part in the cycle shows on its spool on the **Filament** panel, as a small badge on the spool face:
+
+| Badge | Meaning |
+|-------|---------|
+| Heat waves | Drying now |
+| Clock | Waiting for a heater (Happy Hare limits how many lane heaters run at once) |
+| Check mark | Finished |
+| Cross | Stopped before it finished |
+
+A lane that isn't part of a cycle has no badge. Shared-heater units, Happy Hare 3 and every other filament system don't show the chips or the badges, and dry exactly as they always have.
+
 ### Material Comfort
 
 Where a box has a humidity sensor, a **Material Comfort** strip sits below the readouts. It lists the materials loaded in that box, each with a verdict - **OK**, **Marginal** or **Too humid** - and the humidity ceiling that material is judged against, written as "PLA: OK (< 50%)". Materials differ enormously in what they tolerate: nylon and the high-temperature engineering plastics want a far drier box than PLA does, so the same reading can be comfortable for one spool and too wet for the one beside it. If none of the box's slots report a material, the strip falls back to the materials on your [temperature presets](temperature.md#reassigning-a-presets-filament-type).

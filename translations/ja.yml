@@ -953,6 +953,7 @@ translations:
   Draw a ripple at each touch — helps diagnose offsets: タッチごとに波紋を描画 — ズレの診断に役立ちます
   Drive Cal: ドライブキャリブレーション
   Drop shadow strength (0 = disabled): 影の強さ (0 = 無効)
+  Dry: 乾燥
   Dry Filament: フィラメントを乾燥
 
   Dry Filament on the Bed: ベッドでフィラメントを乾燥
@@ -2751,6 +2752,7 @@ translations:
   Rewinding: 巻き戻し中
   Right: '右'
   'Role:': '役割:'
+  Rotate: 回転
   Rotating tips for using your printer: プリンターの使い方のヒントを順に表示
   Rotation: 回転
   'Rotation: %d° - %ds remaining (or wait to retry)': '回転: %d° - %ds残り
@@ -3130,6 +3132,7 @@ translations:
   Stopped between Hub and Toolhead: ハブとツールヘッドの間で停止
   Stopped between Lane and Hub: レーンとハブの間で停止
   Stopped between Spool and Lane: スプールとレーンの間で停止
+  Stopped drying %s: '乾燥を停止しました: %s'
   Stops all motion. Requires firmware restart.: すべての動作を停止します。ファームウェアの再起動が必要です。
   Stow: 格納
   Subtle: サトル

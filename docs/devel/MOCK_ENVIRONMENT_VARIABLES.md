@@ -1315,7 +1315,7 @@ Force the mock filament unit's environment-sensor mode, overriding the auto-dete
 
 | Property | Value |
 |----------|-------|
-| **Values** | `passive`, `dryer`, `slot`, `emu`, `mixed`, `capped` (lowercased before use). Any other value leaves the unit with **no** environment sensors. |
+| **Values** | `passive`, `dryer`, `slot`, `emu`, `emu_dryer`, `mixed`, `capped` (lowercased before use). Any other value leaves the unit with **no** environment sensors. |
 | **Default** | Unset — auto: `dryer` when `HELIX_MOCK_DRYER` is on, otherwise `passive` |
 | **File** | `src/printer/ams_backend.cpp` (applied via `AmsBackendMock::set_environment_mode`) |
 
@@ -1339,6 +1339,7 @@ presentation branch has something to exercise. They pair with `HELIX_MOCK_AMS=mu
 | `emu` | default single unit | 4 passive lanes | `Tabs` |
 | `mixed` | `HELIX_MOCK_AMS=multi` | 1 heated unit zone + 2 passive lane zones | `List` (capability split) |
 | `capped` | `HELIX_MOCK_AMS=multi` | 2 heated unit zones, one Active one Queued | `Tabs` |
+| `emu_dryer` | default single unit | 4 heated lanes; the dryer takes a lane selection and rotation, lane chips in the overlay and a drying badge on each slot. A cycle is running at start: lane 1 Active, lane 2 Queued, lane 3 Complete | `Tabs` |
 
 ```bash
 # 6-lane EMU rig, forced to the list presentation
@@ -1346,6 +1347,9 @@ HELIX_MOCK_AMS=multi HELIX_MOCK_AMS_ENV=emu ./build/bin/helix-screen --test -vv
 
 # Two heated boxes sharing one heater's worth of power: the second zone queues
 HELIX_MOCK_AMS=multi HELIX_MOCK_AMS_ENV=capped ./build/bin/helix-screen --test -vv
+
+# A heater per lane: pick lanes to dry, watch each slot's drying badge
+HELIX_MOCK_AMS_ENV=emu_dryer ./build/bin/helix-screen --test -vv
 ```
 
 ### `HELIX_MOCK_BUFFER_STATE`

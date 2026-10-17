@@ -1066,6 +1066,7 @@ translations:
     — помогает диагностировать смещения
   Drive Cal: Кал. привода
   Drop shadow strength (0 = disabled): Интенсивность тени (0 = отключено)
+  Dry: Сушка
   Dry Filament: Сушка филамента
 
   Dry Filament on the Bed: Сушка филамента на столе
@@ -2963,6 +2964,7 @@ translations:
   Rewinding: Перемотка
   Right: 'Справа'
   'Role:': 'Тип:'
+  Rotate: Вращать
   Rotating tips for using your printer: Сменяющиеся советы по печати
   Rotation: Поворот
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Поворот: %d°
@@ -3380,6 +3382,7 @@ translations:
   Stopped between Hub and Toolhead: Остановка между хабом и печатающей головкой
   Stopped between Lane and Hub: Остановка между каналом и хабом
   Stopped between Spool and Lane: Остановка между катушкой и каналом
+  Stopped drying %s: 'Сушка остановлена: %s'
   Stops all motion. Requires firmware restart.: Останавливает всё движение. Требуется
     перезапуск прошивки.
   Stow: Убрать

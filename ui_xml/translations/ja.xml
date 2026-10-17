@@ -923,6 +923,7 @@
   <translation tag="Draw a ripple at each touch — helps diagnose offsets" ja="タッチごとに波紋を描画 — ズレの診断に役立ちます"/>
   <translation tag="Drive Cal" ja="ドライブキャリブレーション"/>
   <translation tag="Drop shadow strength (0 = disabled)" ja="影の強さ (0 = 無効)"/>
+  <translation tag="Dry" ja="乾燥"/>
   <translation tag="Dry Filament" ja="フィラメントを乾燥"/>
   <translation tag="Dry Filament on the Bed" ja="ベッドでフィラメントを乾燥"/>
   <translation tag="Dry spools on the heated bed" ja="加熱ベッドでスプールを乾燥"/>
@@ -2652,6 +2653,7 @@
   <translation tag="Rewinding" ja="巻き戻し中"/>
   <translation tag="Right" ja="右"/>
   <translation tag="Role:" ja="役割:"/>
+  <translation tag="Rotate" ja="回転"/>
   <translation tag="Rotating tips for using your printer" ja="プリンターの使い方のヒントを順に表示"/>
   <translation tag="Rotation" ja="回転"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" ja="回転: %d° - %ds残り (待つと再試行)"/>
@@ -3010,6 +3012,7 @@
   <translation tag="Stopped between Hub and Toolhead" ja="ハブとツールヘッドの間で停止"/>
   <translation tag="Stopped between Lane and Hub" ja="レーンとハブの間で停止"/>
   <translation tag="Stopped between Spool and Lane" ja="スプールとレーンの間で停止"/>
+  <translation tag="Stopped drying %s" ja="乾燥を停止しました: %s"/>
   <translation tag="Stops all motion. Requires firmware restart." ja="すべての動作を停止します。ファームウェアの再起動が必要です。"/>
   <translation tag="Stow" ja="格納"/>
   <translation tag="Subtle" ja="サトル"/>
