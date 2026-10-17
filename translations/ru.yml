@@ -187,6 +187,7 @@ translations:
   A print is already running.: Печать уже идёт.
   A print is in progress - restart still pending: 'Идёт печать - перезапуск ещё отложен'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: На этом шлюзе идёт печать. HelixScreen очистил свою копию; после окончания печати очистите его снова.
+  A print is running. Apply the result after it ends.: Идёт печать. Примените результат после её завершения.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "Печать началась, когда катушки отмечены как лежащие на столе. Если они всё ещё там, немедленно остановите принтер аварийной остановкой."
   A spool may be tangled or the drive gear is jammed: Катушка может быть запутана или заклинило приводную шестерню
   A · 1,-1: "A · 1,-1"
@@ -3622,6 +3623,7 @@ translations:
     филамента показывает, что филамент не загружен. Всё равно начать печать?
   The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service: Не удаётся считать датчик этого блока CFS. Проверьте подключение, иначе блоку требуется обслуживание
   The speed of one fan you choose: Скорость выбранного вентилятора
+  The test print could not start.: Не удалось запустить тестовую печать.
   The time, date, and system uptime: Время, дата и время работы системы
   The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?: В печатающей головке есть филамент, но ни один слот AMS не сообщает о его загрузке. Извлеките его вручную перед печатью. Всё равно начать?
   ? The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?

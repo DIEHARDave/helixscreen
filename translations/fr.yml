@@ -146,6 +146,7 @@ translations:
   A print is already running.: Une impression est déjà en cours.
   A print is in progress - restart still pending: 'Une impression est en cours - redémarrage en attente'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: Une impression est en cours sur ce gate. HelixScreen a effacé sa propre copie ; effacez-le à nouveau une fois l'impression terminée.
+  A print is running. Apply the result after it ends.: Une impression est en cours. Appliquez le résultat quand elle sera terminée.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "Une impression a démarré alors que des bobines sont signalées sur le plateau. Si elles y sont encore, arrêtez l'imprimante maintenant avec l'arrêt d'urgence."
   A spool may be tangled or the drive gear is jammed: Une bobine est peut-être emmêlée ou l'engrenage d'entraînement est bloqué
   A · 1,-1: "A · 1,-1"
@@ -3603,6 +3604,7 @@ translations:
     quand même ?
   The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service: Le capteur de cette unité CFS ne peut pas être lu. Vérifiez son raccordement, sinon l'unité nécessite une intervention
   The speed of one fan you choose: La vitesse d'un ventilateur choisi
+  The test print could not start.: L'impression de test n'a pas pu démarrer.
   The time, date, and system uptime: Heure, date et temps de fonctionnement
   The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?: La tête d'outil contient du filament mais aucun slot de l'AMS ne le signale comme chargé. Retirez-le manuellement avant d'imprimer. Démarrer quand même ?
   ? The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?

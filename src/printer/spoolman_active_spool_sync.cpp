@@ -109,6 +109,9 @@ void sync_external_spool(const SpoolInfo& spool, std::string log_context) {
 }
 
 void apply_saved_pressure_advance(const SpoolInfo& spool) {
+    if (!helix::tune::pressure_advance_enabled()) {
+        return; // a beta feature: off means no send at all
+    }
     auto& state = get_printer_state();
     const bool printing = job_holds_machine(state.print_state().get_print_lifecycle());
     if (!helix::pa::should_auto_apply_on_activation(printing, spool.pressure_advance)) {
@@ -118,7 +121,15 @@ void apply_saved_pressure_advance(const SpoolInfo& spool) {
         }
         return;
     }
-    const std::string& extruder = state.temperature_state().active_extruder_name();
+    std::vector<helix::pa::SpoolOnExtruder> mounted;
+    auto& tools = ToolState::instance();
+    for (const auto& tool : tools.tools()) {
+        if (tool.spoolman_id > 0) {
+            mounted.push_back({tool.spoolman_id, tool.effective_heater()});
+        }
+    }
+    const std::string extruder = helix::pa::extruder_for_spool(
+        spool.id, mounted, state.temperature_state().active_extruder_name());
     spdlog::info("[Application] Applying spool {}'s saved pressure advance {:.4f} to {}", spool.id,
                  *spool.pressure_advance, extruder);
     helix::tune::set_pressure_advance(get_moonraker_api(), extruder, *spool.pressure_advance);

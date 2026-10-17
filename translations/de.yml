@@ -146,6 +146,7 @@ translations:
   A print is already running.: Ein Druck läuft bereits.
   A print is in progress - restart still pending: 'Ein Druck läuft - Neustart noch ausstehend'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: Auf diesem Gate läuft ein Druck. HelixScreen hat seine eigene Kopie gelöscht; leere ihn nach Druckende erneut.
+  A print is running. Apply the result after it ends.: Ein Druck läuft. Übernimm das Ergebnis, wenn er fertig ist.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "Ein Druck wurde gestartet, während Spulen als auf dem Heizbett liegend markiert sind. Falls sie noch dort liegen, stoppe den Drucker sofort mit dem Notaus."
   A spool may be tangled or the drive gear is jammed: Eine Spule ist möglicherweise verheddert oder das Antriebsrad blockiert
   A · 1,-1: "A · 1,-1"
@@ -3585,6 +3586,7 @@ translations:
     zeigt an, dass kein Filament geladen ist. Druck trotzdem starten?
   The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service: Der Sensor dieser CFS-Einheit lässt sich nicht auslesen. Anschluss prüfen, andernfalls muss die Einheit gewartet werden
   The speed of one fan you choose: Drehzahl eines gewählten Lüfters
+  The test print could not start.: Der Testdruck konnte nicht starten.
   The time, date, and system uptime: Uhrzeit, Datum und Betriebszeit
   The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?: Im Werkzeugkopf befindet sich Filament, aber kein AMS-Slot meldet es als geladen. Ziehen Sie es vor dem Drucken manuell heraus. Trotzdem starten?
   ? The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?

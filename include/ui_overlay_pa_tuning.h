@@ -12,6 +12,7 @@
 #include "spoolman_types.h"
 #include "static_panel_registry.h"
 #include "subject_managed_panel.h"
+#include "tool_state.h"
 
 #include <lvgl.h>
 #include <optional>
@@ -62,10 +63,12 @@ namespace helix::ui {
 
 class PaTuningOverlay : public OverlayBase {
   public:
-    static constexpr int MAX_TOOLS = 4;
+    /// Physical extruders offered as chips; a changer with more shows the first.
+    static constexpr int MAX_HEADS = 8;
     static constexpr int PRESET_SLOTS = 4;
     /// Band rows in the picker. The default ramp yields 11 (base + 10 bands);
-    /// a nudge-heavy run can yield more, and the extra are merged into the last.
+    /// a nudge-heavy run can yield more, and the closest neighbours are merged
+    /// (helix::pa::fit_bands).
     static constexpr int MAX_BANDS = 16;
 
     /// Generated file name in the gcodes root. One fixed name: a re-run
@@ -114,6 +117,15 @@ class PaTuningOverlay : public OverlayBase {
         return stage_;
     }
 
+    /// Which extruder and tool a head choice means. Pure, for tests.
+    struct HeadChoice {
+        int tool;
+        std::string extruder;
+    };
+    static HeadChoice choose_head(const std::vector<PhysicalHead>& heads, bool multi_extruder,
+                                  int selected, int active_tool,
+                                  const std::string& active_extruder);
+
     //
     // === Test seams ===
     //
@@ -133,6 +145,10 @@ class PaTuningOverlay : public OverlayBase {
     void apply_pick_for_test() {
         apply_pick();
     }
+    /// Nudge K by @p delta when a run is printing; false (nothing sent)
+    /// otherwise. The Tune overlay's PA row goes through here during a run.
+    bool nudge_by(float delta);
+
     void set_extruder_for_test(const std::string& extruder) {
         extruder_ = extruder;
     }
@@ -156,8 +172,13 @@ class PaTuningOverlay : public OverlayBase {
     helix::pa::TestPrintParams build_params() const;
     /// The printer's own start and end macros, from the discovered macro set.
     static helix::pa::MachineMacros machine_macros();
-    /// Klipper extruder the selected tool prints with.
-    std::string extruder_for_tool(int tool) const;
+    /// The extruder heater and the tool to select for the chosen head.
+    using ChosenHead = HeadChoice;
+    ChosenHead chosen_head() const;
+    /// The bed area the tower may use, from the printer's axes, plate and
+    /// kinematics. nullopt when the axes are unknown.
+    static std::optional<helix::pa::PrintArea> printable_area();
+    void start_uploaded_print();
 
     // --- run ---
     void begin_observing();
@@ -180,6 +201,12 @@ class PaTuningOverlay : public OverlayBase {
     void apply_pick();
     void show_result();
     void save_to_spool();
+    /// Show @p spool_id as the spool Save to Spool writes to.
+    void fetch_result_spool(int spool_id);
+    /// Whether sending K now is ours to do: always during our print, otherwise
+    /// only while no job holds the machine.
+    bool may_send() const;
+    void send_k(float k);
     /// What the user calls the tuned extruder ("Tool 2", or "the extruder").
     std::string extruder_label() const;
     void publish_to_moonraker(float k);
@@ -191,7 +218,9 @@ class PaTuningOverlay : public OverlayBase {
     Stage stage_ = SETUP;
     helix::pa::TuningSession session_;
 
-    int selected_tool_ = 0;
+    int selected_head_ = 0;
+    /// Tool the run selected, -1 for none; its spool is the one saved to.
+    int tuned_tool_ = -1;
     int selected_preset_ = 0;
     int nozzle_temp_ = 210;
     int bed_temp_ = 60;
@@ -213,7 +242,9 @@ class PaTuningOverlay : public OverlayBase {
     lv_subject_t stage_subject_{};
     lv_subject_t multi_tool_{};
     lv_subject_t tool_count_{};
-    lv_subject_t tool_selected_[MAX_TOOLS]{};
+    lv_subject_t tool_selected_[MAX_HEADS]{};
+    lv_subject_t tool_label_[MAX_HEADS]{};
+    char tool_label_buf_[MAX_HEADS][8] = {};
     lv_subject_t preset_selected_[PRESET_SLOTS]{};
     lv_subject_t preset_temp_[PRESET_SLOTS]{};
     char preset_temp_buf_[PRESET_SLOTS][24] = {};

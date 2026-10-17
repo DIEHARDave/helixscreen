@@ -5,6 +5,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "app_globals.h"
+#include "config.h"
 #include "moonraker_api.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
@@ -147,14 +148,19 @@ namespace {
 struct ApplyFixture : LVGLTestFixture {
     MoonrakerClientMock client;
     MoonrakerAPI api;
+    bool prev_beta = false;
 
     ApplyFixture() : api(client, get_printer_state()) {
+        // A beta feature: on for these cases unless one turns it off.
+        prev_beta = Config::get_instance()->get<bool>("/beta_features", false);
+        Config::get_instance()->set<bool>("/beta_features", true);
         get_printer_state().init_subjects(false);
         get_printer_state().set_klippy_state_sync(KlippyState::READY);
         client.connect("ws://mock/websocket", []() {}, []() {});
         set_moonraker_api(&api);
     }
     ~ApplyFixture() override {
+        Config::get_instance()->set<bool>("/beta_features", prev_beta);
         set_moonraker_api(nullptr);
         client.stop_temperature_simulation();
         client.disconnect();
@@ -188,4 +194,41 @@ TEST_CASE_METHOD(ApplyFixture, "a spool with no saved K or a running print sends
     CHECK(client.last_send_script() == "M220 S110");
     get_printer_state().update_from_status({{"print_stats", {{"state", "standby"}}}});
     helix::ui::UpdateQueue::instance().drain();
+}
+
+TEST_CASE("saving a K keeps the filament's other extra fields", "[spoolman][pa_tune]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    auto& server = client.spoolman_mock();
+    const int filament_id = first_filament_id(client);
+    json result;
+    MoonrakerError err;
+    REQUIRE(server.proxy({{"request_method", "POST"},
+                          {"path", "/v1/field/filament/drying_note"},
+                          {"body", {{"name", "Drying"}, {"field_type", "text"}}}},
+                         result, err));
+    REQUIRE(server.proxy({{"request_method", "PATCH"},
+                          {"path", "/v1/filament/" + std::to_string(filament_id)},
+                          {"body", {{"extra", {{"drying_note", "\"4h at 55\""}}}}}},
+                         result, err));
+
+    bool ok = false;
+    api.spoolman().set_spoolman_filament_extra_number(
+        filament_id, SPOOLMAN_PA_EXTRA_KEY, "Pressure advance", 0.042, [&]() { ok = true; },
+        [](const MoonrakerError&) {});
+    REQUIRE(ok);
+    const json& extra = server.filament_updates.back().data["extra"];
+    CHECK(extra["drying_note"] == "\"4h at 55\"");
+    CHECK(extra["pressure_advance"] == "0.0420");
+}
+
+TEST_CASE_METHOD(ApplyFixture, "with beta features off, activation never sends K",
+                 "[spoolman][pa_tune]") {
+    auto* config = Config::get_instance();
+    config->set<bool>("/beta_features", false);
+    helix::tune::set_speed_percent(&api, 120);
+    helix::spoolman_sync::apply_saved_pressure_advance(spool_with_k(0.04f));
+    CHECK(client.last_send_script() == "M220 S120");
+    CHECK_FALSE(helix::tune::pressure_advance_enabled());
 }

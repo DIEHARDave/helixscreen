@@ -137,6 +137,7 @@
   <translation tag="A print is already running." zh="已有打印正在进行。"/>
   <translation tag="A print is in progress - restart still pending" zh="打印进行中 - 重启待执行"/>
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." zh="此通道正在打印中。HelixScreen 已清除本地副本；打印结束后请再次清空。"/>
+  <translation tag="A print is running. Apply the result after it ends." zh="正在打印。请在打印结束后应用结果。"/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." zh="在料盘仍标记为放在热床上时开始了打印。如果料盘还在，请立即用紧急停止停下打印机。"/>
   <translation tag="A spool may be tangled or the drive gear is jammed" zh="料盘可能缠绕，或驱动齿轮卡住"/>
   <translation tag="A · 1,-1" zh="A · 1,-1"/>
@@ -3213,6 +3214,7 @@
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" zh="断料传感器显示未装载耗材。仍要开始打印吗？"/>
   <translation tag="The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service" zh="无法读取此 CFS 单元的传感器。请检查其连接，否则该单元可能需要维修"/>
   <translation tag="The speed of one fan you choose" zh="所选风扇的转速"/>
+  <translation tag="The test print could not start." zh="无法开始测试打印。"/>
   <translation tag="The time, date, and system uptime" zh="时间、日期和系统运行时长"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?" zh="工具头内有耗材，但没有 AMS 槽位报告已装载。请在打印前手动取出耗材。仍要开始打印吗？"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?" zh="工具头内有耗材，但没有 AMS 槽位报告已装载。在清空之前，打印机可能拒绝装载槽位。仍要开始打印吗？"/>

@@ -673,6 +673,22 @@ bool MockSpoolmanServer::proxy(const json& params, json& result, MoonrakerError&
         return true;
     }
     if (auto id = id_after(path, "/v1/filament/")) {
+        if (method == "GET") {
+            for (const auto& f : filament_list()) {
+                if (f.id == *id) {
+                    result = with_extra(filament_json(f), f.id);
+                    return true;
+                }
+            }
+            const bool on_a_spool =
+                std::any_of(spools_.begin(), spools_.end(),
+                            [&id](const SpoolInfo& sp) { return sp.filament_id == *id; });
+            if (on_a_spool || filament_extra_.count(*id) > 0) {
+                result = {{"id", *id}, {"extra", filament_extra(*id)}};
+                return true;
+            }
+            return not_found("filament", *id);
+        }
         if (method == "PATCH") {
             filament_updates.push_back({*id, body});
             if (!temps_valid(body, err)) {
@@ -687,9 +703,9 @@ bool MockSpoolmanServer::proxy(const json& params, json& result, MoonrakerError&
                         return false;
                     }
                 }
-                for (auto it = body["extra"].begin(); it != body["extra"].end(); ++it) {
-                    filament_extra_[*id][it.key()] = it.value();
-                }
+                // Older Spoolman replaces the whole dict, the stricter of the two
+                // behaviours a writer has to survive.
+                filament_extra_[*id] = body["extra"];
             }
             result = {{"id", *id}};
             for (auto& f : filaments_) {

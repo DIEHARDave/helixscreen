@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace helix::pa {
 
@@ -189,6 +190,32 @@ std::string start_macro_call(const MachineMacros& m, int bed_temp, int nozzle_te
     return call;
 }
 
+std::optional<PrintArea> printable_area(const AreaSources& src) {
+    if (!src.has_axes) {
+        return std::nullopt;
+    }
+    PrintArea a{src.axis_x_min, src.axis_x_max, src.axis_y_min, src.axis_y_max};
+    if (src.round_bed) {
+        // The axes bound the reachable circle; the square inscribed in it is
+        // reachable everywhere, corners included.
+        const float cx = (a.x_min + a.x_max) / 2.0f;
+        const float cy = (a.y_min + a.y_max) / 2.0f;
+        const float r = std::min(a.x_max - a.x_min, a.y_max - a.y_min) / 2.0f;
+        const float half = r / std::sqrt(2.0f);
+        return PrintArea{cx - half, cx + half, cy - half, cy + half};
+    }
+    if (src.has_plate) {
+        a.x_min = std::max(a.x_min, src.plate_x_min);
+        a.x_max = std::min(a.x_max, src.plate_x_max);
+        a.y_min = std::max(a.y_min, src.plate_y_min);
+        a.y_max = std::min(a.y_max, src.plate_y_max);
+    }
+    if (a.x_max <= a.x_min || a.y_max <= a.y_min) {
+        return std::nullopt;
+    }
+    return a;
+}
+
 int estimate_print_seconds(const TestPrintParams& p) {
     const int layers = layer_count(p.geometry, p.bands);
     double seconds = 0.0;
@@ -211,8 +238,6 @@ std::string generate_test_gcode(const TestPrintParams& p) {
     const double w = line_width(p);
     const double cx = (p.bed_x_min + p.bed_x_max) / 2.0;
     const double cy = (p.bed_y_min + p.bed_y_max) / 2.0;
-    const std::string tool_arg = p.tool >= 0 ? fmt::format(" T{}", p.tool) : std::string{};
-
     // Filament total, for the header: the metadata parsers read it.
     double filament_mm = 0.0;
     for (int layer = 1; layer <= layers; ++layer) {
@@ -246,13 +271,18 @@ std::string generate_test_gcode(const TestPrintParams& p) {
     const std::string start_call = start_macro_call(p.macros, p.bed_temp, p.nozzle_temp);
     const bool macro_heats =
         !p.macros.start_bed_param.empty() && !p.macros.start_nozzle_param.empty();
+    // The tower's extruder is heated by name: a T parameter on M104/M109 is
+    // an error where tools are lanes, and on a changer it targets a tool, not
+    // a heater.
+    const std::string heat_nozzle =
+        fmt::format("SET_HEATER_TEMPERATURE HEATER={} TARGET={}", p.heater, p.nozzle_temp);
     line("G90");
     if (start_call.empty() || !macro_heats) {
         // Nothing will heat the machine for us, or the macro takes no
         // temperatures: start heating now. A macro that does take them is left
         // to its own order, which often probes with a cool nozzle.
         line(fmt::format("M140 S{}", p.bed_temp));
-        line(fmt::format("M104{} S{}", tool_arg, p.nozzle_temp));
+        line(heat_nozzle);
     }
     if (start_call.empty()) {
         line("G28");
@@ -262,10 +292,13 @@ std::string generate_test_gcode(const TestPrintParams& p) {
     }
     line("M83");
     line(fmt::format("M190 S{}", p.bed_temp));
+    line(heat_nozzle);
+    // Hot before any tool change: a toolchange purges or wipes.
+    line(fmt::format("TEMPERATURE_WAIT SENSOR={} MINIMUM={}", p.heater, p.nozzle_temp - 2));
     if (p.tool >= 0) {
         line(fmt::format("T{}", p.tool));
+        line(fmt::format("TEMPERATURE_WAIT SENSOR={} MINIMUM={}", p.heater, p.nozzle_temp - 2));
     }
-    line(fmt::format("M109{} S{}", tool_arg, p.nozzle_temp));
     line("M107");
     line(fmt::format("SET_PRINT_STATS_INFO TOTAL_LAYER={}", layers));
 
@@ -322,14 +355,21 @@ std::string generate_test_gcode(const TestPrintParams& p) {
     }
 
     line("G1 E-1 F2100");
+    // A layer past the last tells the tuner the tower is done, so the restore
+    // below is not logged against the top band.
+    line(fmt::format("SET_PRINT_STATS_INFO CURRENT_LAYER={}", layers + 1));
+    if (p.restore_k) {
+        line(set_pa_gcode(p.heater, *p.restore_k));
+    }
     if (!p.macros.end.empty()) {
         line(p.macros.end);
-        return out;
+    } else {
+        line("G91");
+        line("G1 Z10 F600");
+        line("G90");
     }
-    line("G91");
-    line("G1 Z10 F600");
-    line("G90");
-    line(fmt::format("M104{} S0", tool_arg));
+    // Cool down even after an end macro: not every one turns everything off.
+    line(fmt::format("SET_HEATER_TEMPERATURE HEATER={} TARGET=0", p.heater));
     line("M140 S0");
     line("M107");
     line("M84");
@@ -370,21 +410,57 @@ std::vector<Band> BandLog::bands() const {
     return out;
 }
 
+std::optional<float> BandLog::last_k() const {
+    if (layers_.empty()) {
+        return std::nullopt;
+    }
+    return layers_.back().k;
+}
+
+std::vector<Band> fit_bands(std::vector<Band> bands, size_t max) {
+    if (max == 0) {
+        return {};
+    }
+    while (bands.size() > max) {
+        size_t best = 0;
+        float best_diff = std::numeric_limits<float>::max();
+        for (size_t i = 0; i + 1 < bands.size(); ++i) {
+            const float diff = std::fabs(bands[i].k - bands[i + 1].k);
+            if (diff < best_diff) {
+                best_diff = diff;
+                best = i;
+            }
+        }
+        Band& lo = bands[best];
+        const Band& hi = bands[best + 1];
+        const int lo_layers = lo.last_layer - lo.first_layer + 1;
+        const int hi_layers = hi.last_layer - hi.first_layer + 1;
+        if (hi_layers > lo_layers) {
+            lo.k = hi.k;
+        }
+        lo.last_layer = hi.last_layer;
+        lo.z_high = hi.z_high;
+        bands.erase(bands.begin() + static_cast<std::ptrdiff_t>(best) + 1);
+    }
+    return bands;
+}
+
 // ============================================================================
 // TuningSession
 // ============================================================================
 
-void TuningSession::start(const TowerGeometry& g, const Ramp& r, float original_k) {
+void TuningSession::start(const TowerGeometry& g, const Ramp& r, std::optional<float> original_k) {
     geometry_ = g;
     ramp_ = r;
     log_.clear();
     state_ = State::Starting;
     mode_ = Mode::Ramp;
     layer_ = 0;
-    current_k_ = original_k;
+    current_k_ = original_k.value_or(0.0f);
     original_k_ = original_k;
     last_sent_.reset();
     changed_k_ = false;
+    tower_done_ = false;
     result_.reset();
 }
 
@@ -414,6 +490,11 @@ void TuningSession::on_layer(int layer) {
     if (state_ != State::Printing || layer <= 0 || layer == layer_) {
         return;
     }
+    if (layer > layer_count(geometry_, ramp_.bands)) {
+        // The end gcode: the tower is done, and what it sets is not a band.
+        tower_done_ = true;
+        return;
+    }
     layer_ = layer;
     if (mode_ == Mode::Ramp) {
         const float want = ramp_k_for_layer(geometry_, ramp_, layer);
@@ -426,6 +507,9 @@ void TuningSession::on_layer(int layer) {
 }
 
 void TuningSession::on_k_reported(float k) {
+    if (tower_done_) {
+        return;
+    }
     current_k_ = k;
     if (state_ == State::Printing && layer_ > 0) {
         const float bottom = layer_ <= 1 ? 0.0f : layer_z(geometry_, layer_ - 1);
@@ -444,7 +528,7 @@ void TuningSession::on_print_ended() {
 }
 
 void TuningSession::nudge(float delta) {
-    if (state_ != State::Printing) {
+    if (state_ != State::Printing || tower_done_) {
         return;
     }
     // The base is what was last asked for, so taps faster than the printer's
@@ -454,11 +538,11 @@ void TuningSession::nudge(float delta) {
     send(base + delta);
 }
 
-bool TuningSession::pick_band(int index) {
+bool TuningSession::pick_band(int index, size_t max) {
     if (state_ != State::Picking) {
         return false;
     }
-    const auto all = log_.bands();
+    const auto all = bands(max);
     if (index < 0 || index >= static_cast<int>(all.size())) {
         return false;
     }
@@ -468,17 +552,22 @@ bool TuningSession::pick_band(int index) {
     return true;
 }
 
+float TuningSession::ending_k() const {
+    return log_.last_k().value_or(current_k_);
+}
+
 void TuningSession::keep_current() {
     if (state_ != State::Picking) {
         return;
     }
-    result_ = current_k_;
+    result_ = ending_k();
+    send(*result_);
     state_ = State::Done;
 }
 
 void TuningSession::abandon() {
-    if (changed_k_ && !result_ && state_ != State::Done) {
-        send(original_k_);
+    if (changed_k_ && !result_ && state_ != State::Done && original_k_) {
+        send(*original_k_);
     }
     state_ = State::Idle;
 }
@@ -508,6 +597,16 @@ nlohmann::json merge_moonraker_record(const nlohmann::json& existing, const Save
         out["filaments"][std::to_string(saved.filament_id)] = entry;
     }
     return out;
+}
+
+std::string extruder_for_spool(int spool_id, const std::vector<SpoolOnExtruder>& mounted,
+                               const std::string& active_extruder) {
+    for (const auto& m : mounted) {
+        if (spool_id > 0 && m.spool_id == spool_id && !m.extruder.empty()) {
+            return m.extruder;
+        }
+    }
+    return active_extruder;
 }
 
 bool should_auto_apply_on_activation(bool printing, std::optional<float> saved_k) {

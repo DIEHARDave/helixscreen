@@ -15,6 +15,7 @@
 // Everything here is pure: no LVGL, no network. The overlay feeds it events
 // and sends the commands it asks for.
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -106,6 +107,31 @@ MachineMacros pick_machine_macros(const std::vector<std::string>& start_candidat
 /// "PRINT_START BED_TEMP=60 EXTRUDER_TEMP=210". Empty without a start macro.
 std::string start_macro_call(const MachineMacros& m, int bed_temp, int nozzle_temp);
 
+/// Where on the bed the tower and its prime line may go, gcode space.
+struct PrintArea {
+    float x_min = 0.0f;
+    float x_max = 0.0f;
+    float y_min = 0.0f;
+    float y_max = 0.0f;
+};
+
+/// What the printer says about its printable area.
+struct AreaSources {
+    /// toolhead axis_minimum/maximum, gcode space. Required.
+    bool has_axes = false;
+    float axis_x_min = 0.0f, axis_x_max = 0.0f, axis_y_min = 0.0f, axis_y_max = 0.0f;
+    /// [bed_mesh] mesh_min/mesh_max, gcode space: the plate itself, where a
+    /// negative position_min reaches a purge bucket or brush beyond it.
+    bool has_plate = false;
+    float plate_x_min = 0.0f, plate_x_max = 0.0f, plate_y_min = 0.0f, plate_y_max = 0.0f;
+    /// A round bed (delta): the axes are the circumscribed square.
+    bool round_bed = false;
+};
+
+/// The rectangle the test print may use: the plate within the axes; on a round
+/// bed the square inscribed in the axes' circle. nullopt without axes.
+std::optional<PrintArea> printable_area(const AreaSources& src);
+
 /// Everything the gcode generator needs. Coordinates are gcode space.
 struct TestPrintParams {
     TowerGeometry geometry;
@@ -116,8 +142,17 @@ struct TestPrintParams {
     float bed_y_max = 220.0f;
     int nozzle_temp = 210;
     int bed_temp = 60;
-    /// Tool to print with; -1 prints with whatever is mounted.
+    /// Tool to select before printing; -1 prints with whatever is mounted.
+    /// Only a printer with several physical extruders gets one: an AMS lane
+    /// is not a tool to mount here.
     int tool = -1;
+    /// Klipper heater of the extruder the tower prints with, and the one K is
+    /// tuned on.
+    std::string heater = "extruder";
+    /// K to put back when the tower ends, so a crash, an abandoned run or a
+    /// reprint from history never leaves the last band's K behind. nullopt
+    /// when the original was never reported: nothing to restore.
+    std::optional<float> restore_k;
     float nozzle_diameter_mm = 0.4f;
     float filament_diameter_mm = 1.75f;
     /// Wall speed. Fast enough that the corners show the artefact.
@@ -158,6 +193,8 @@ class BandLog {
     }
     /// Consecutive layers with the same K merged, lowest first.
     std::vector<Band> bands() const;
+    /// K reported for the highest recorded layer.
+    std::optional<float> last_k() const;
 
   private:
     struct Entry {
@@ -168,6 +205,11 @@ class BandLog {
     };
     std::vector<Entry> layers_;
 };
+
+/// @p bands reduced to at most @p max rows by repeatedly merging the
+/// neighbouring pair whose K differ least; the merged row keeps the K of the
+/// taller part. Late nudges stay pickable, where truncating would drop them.
+std::vector<Band> fit_bands(std::vector<Band> bands, size_t max);
 
 /// The tuning run, as a state machine. The caller owns the printer; this owns
 /// what K should be and what was observed.
@@ -190,10 +232,13 @@ class TuningSession {
 
     explicit TuningSession(SendK send) : send_(std::move(send)) {}
 
-    void start(const TowerGeometry& g, const Ramp& r, float original_k);
+    /// @p original_k is nullopt when the printer never reported one: the run
+    /// then has nothing to restore.
+    void start(const TowerGeometry& g, const Ramp& r, std::optional<float> original_k);
     /// The print reached "printing".
     void on_print_started();
-    /// 1-based layer now printing. 0 means not started yet.
+    /// 1-based layer now printing. 0 means not started yet; a layer past the
+    /// tower's last is the end gcode, and records nothing.
     void on_layer(int layer);
     /// The printer reported K for the extruder being tuned.
     void on_k_reported(float k);
@@ -201,10 +246,13 @@ class TuningSession {
     void on_print_ended();
     /// Nudge K by `delta`. Stops the ramp for the rest of the print.
     void nudge(float delta);
-    /// Pick one of bands(). Returns false for an index out of range.
-    bool pick_band(int index);
-    /// Keep whatever K is in effect now.
+    /// Pick one of bands(max). Returns false for an index out of range.
+    bool pick_band(int index, size_t max = SIZE_MAX);
+    /// Keep the K the tower ended on (the end gcode restores the original, so
+    /// it is sent again).
     void keep_current();
+    /// The K keep_current() would apply.
+    float ending_k() const;
     /// Abandon the run. Asks for the original K back when the run changed it
     /// and produced no result.
     void abandon();
@@ -222,7 +270,7 @@ class TuningSession {
     float current_k() const {
         return current_k_;
     }
-    float original_k() const {
+    std::optional<float> original_k() const {
         return original_k_;
     }
     std::optional<float> result() const {
@@ -234,8 +282,8 @@ class TuningSession {
     const Ramp& ramp() const {
         return ramp_;
     }
-    std::vector<Band> bands() const {
-        return log_.bands();
+    std::vector<Band> bands(size_t max = SIZE_MAX) const {
+        return fit_bands(log_.bands(), max);
     }
 
   private:
@@ -249,9 +297,11 @@ class TuningSession {
     BandLog log_;
     int layer_ = 0;
     float current_k_ = 0.0f;
-    float original_k_ = 0.0f;
+    std::optional<float> original_k_;
     std::optional<float> last_sent_;
     bool changed_k_ = false;
+    /// The end gcode has started: nothing more is a band, and nudges are moot.
+    bool tower_done_ = false;
     std::optional<float> result_;
 };
 
@@ -278,6 +328,17 @@ struct SavedK {
 /// latest result, as the extruder's latest, and as its filament's when it has
 /// one. Other entries are kept.
 nlohmann::json merge_moonraker_record(const nlohmann::json& existing, const SavedK& saved);
+
+/// A spool mounted on a specific extruder (a tool changer's per-tool assignment).
+struct SpoolOnExtruder {
+    int spool_id = 0;
+    std::string extruder;
+};
+
+/// The extruder a newly active spool feeds: the one whose tool holds it, else
+/// the active extruder (a single hotend, or lanes into one).
+std::string extruder_for_spool(int spool_id, const std::vector<SpoolOnExtruder>& mounted,
+                               const std::string& active_extruder);
 
 /// Whether a spool activation should apply its saved K. Never mid-print: a
 /// slicer that sets PA in its start gcode has already spoken, and an AMS swap

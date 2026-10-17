@@ -137,6 +137,7 @@
   <translation tag="A print is already running." en="A print is already running."/>
   <translation tag="A print is in progress - restart still pending" en="A print is in progress - restart still pending"/>
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." en="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes."/>
+  <translation tag="A print is running. Apply the result after it ends." en="A print is running. Apply the result after it ends."/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." en="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" en="A spool may be tangled or the drive gear is jammed"/>
   <translation tag="A · 1,-1" en="A · 1,-1"/>
@@ -3213,6 +3214,7 @@
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" en="The runout sensor indicates no filament is loaded. Start print anyway?"/>
   <translation tag="The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service" en="The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service"/>
   <translation tag="The speed of one fan you choose" en="The speed of one fan you choose"/>
+  <translation tag="The test print could not start." en="The test print could not start."/>
   <translation tag="The time, date, and system uptime" en="The time, date, and system uptime"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?" en="The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?" en="The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?"/>

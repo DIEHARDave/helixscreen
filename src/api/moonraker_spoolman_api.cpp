@@ -419,11 +419,31 @@ void MoonrakerSpoolmanAPI::set_spoolman_filament_extra_number(
     SuccessCallback on_success, ErrorCallback on_error) {
     spdlog::info("[SpoolmanAPI] Setting filament {} extra '{}' to {}", filament_id, key, value);
 
+    // Older Spoolman (0.22 among them) replaces a filament's whole extra dict on
+    // PATCH, so the write carries every key the filament already has.
     auto patch = [this, filament_id, key, value, on_success,
                   on_error](const std::string& field_type) {
-        nlohmann::json body;
-        body["extra"][key] = spoolman_detail::encode_extra_number(field_type, value);
-        update_spoolman_filament(filament_id, body, on_success, on_error);
+        json get_params;
+        get_params["request_method"] = "GET";
+        get_params["path"] = "/v1/filament/" + std::to_string(filament_id);
+        client_.send_jsonrpc(
+            "server.spoolman.proxy", get_params,
+            [this, filament_id, key, value, field_type, on_success,
+             on_error](const json& response) {
+                nlohmann::json extra = nlohmann::json::object();
+                if (response.contains("result") && response["result"].is_object()) {
+                    const auto& filament = response["result"];
+                    const auto it = filament.find("extra");
+                    if (it != filament.end() && it->is_object()) {
+                        extra = *it;
+                    }
+                }
+                extra[key] = spoolman_detail::encode_extra_number(field_type, value);
+                nlohmann::json body;
+                body["extra"] = extra;
+                update_spoolman_filament(filament_id, body, on_success, on_error);
+            },
+            on_error);
     };
 
     json list_params;

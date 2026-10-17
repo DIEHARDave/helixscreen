@@ -182,9 +182,8 @@ TEST_CASE("Subscription: heaters narrow to {temperature, target, power}, extrude
         const bool extruder = std::string(heater).rfind("extruder", 0) == 0;
         if (extruder) {
             REQUIRE(has_field(subs, heater, "pressure_advance"));
-            REQUIRE(has_field(subs, heater, "smooth_time"));
         }
-        REQUIRE(subs[heater].size() == (extruder ? 5u : 3u));
+        REQUIRE(subs[heater].size() == (extruder ? 4u : 3u));
     }
 }
 

@@ -7,6 +7,8 @@
 #include "ui_error_reporting.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
+#include "ui_panel_print_select.h"
+#include "ui_print_start_controller.h"
 #include "ui_toast_manager.h"
 
 #include "app_globals.h"
@@ -28,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <ctime>
+#include <set>
 #include <string>
 
 namespace helix::ui {
@@ -58,8 +61,31 @@ int user_int(lv_event_t* e) {
 
 } // namespace
 
-PaTuningOverlay::PaTuningOverlay()
-    : session_([this](float k) { helix::tune::set_pressure_advance(api_, extruder_, k); }) {}
+PaTuningOverlay::PaTuningOverlay() : session_([this](float k) { send_k(k); }) {}
+
+bool PaTuningOverlay::may_send() const {
+    // Outside our own print, a job on the machine is someone else's: K sent
+    // now would land in their print.
+    return session_.state() == helix::pa::TuningSession::State::Printing ||
+           !job_holds_machine(get_printer_state().print_state().get_print_lifecycle());
+}
+
+void PaTuningOverlay::send_k(float k) {
+    if (!may_send()) {
+        spdlog::warn("[{}] Not sending K={:.4f}: another print holds the machine", get_name(), k);
+        return;
+    }
+    helix::tune::set_pressure_advance(api_, extruder_, k);
+}
+
+bool PaTuningOverlay::nudge_by(float delta) {
+    if (stage_ != RUNNING) {
+        return false;
+    }
+    session_.nudge(delta);
+    refresh_running();
+    return true;
+}
 
 PaTuningOverlay::~PaTuningOverlay() {
     print_state_observer_.reset();
@@ -80,9 +106,11 @@ void PaTuningOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(stage_subject_, SETUP, "pa_tune_stage", subjects_);
         UI_MANAGED_SUBJECT_INT(multi_tool_, 0, "pa_tune_multi_tool", subjects_);
         UI_MANAGED_SUBJECT_INT(tool_count_, 1, "pa_tune_tool_count", subjects_);
-        for (int i = 0; i < MAX_TOOLS; ++i) {
+        for (int i = 0; i < MAX_HEADS; ++i) {
             UI_MANAGED_SUBJECT_INT(tool_selected_[i], i == 0 ? 1 : 0,
                                    fmt::format("pa_tune_tool_selected_{}", i).c_str(), subjects_);
+            UI_MANAGED_SUBJECT_STRING(tool_label_[i], tool_label_buf_[i], "",
+                                      fmt::format("pa_tune_tool_label_{}", i).c_str(), subjects_);
         }
         for (int i = 0; i < PRESET_SLOTS; ++i) {
             UI_MANAGED_SUBJECT_INT(preset_selected_[i], i == 0 ? 1 : 0,
@@ -137,7 +165,7 @@ void PaTuningOverlay::register_callbacks() {
          [](lv_event_t* e) {
              auto& self = get_global_pa_tuning_overlay();
              if (self.stage_ == SETUP) {
-                 self.selected_tool_ = std::clamp(user_int(e), 0, MAX_TOOLS - 1);
+                 self.selected_head_ = std::clamp(user_int(e), 0, MAX_HEADS - 1);
                  self.refresh_tools();
              }
          }},
@@ -188,6 +216,8 @@ void PaTuningOverlay::register_callbacks() {
         {"on_pa_tune_discard",
          [](lv_event_t*) {
              auto& self = get_global_pa_tuning_overlay();
+             // abandon() restores the original K through send_k(), which
+             // stays silent while a foreign print holds the machine.
              self.session_.abandon();
              self.close_session();
          }},
@@ -241,17 +271,52 @@ void PaTuningOverlay::set_stage(Stage s) {
 // SETUP
 // ============================================================================
 
+PaTuningOverlay::ChosenHead PaTuningOverlay::choose_head(const std::vector<PhysicalHead>& heads,
+                                                         bool multi_extruder, int selected,
+                                                         int active_tool,
+                                                         const std::string& active_extruder) {
+    ChosenHead out{-1, active_extruder};
+    if (heads.empty()) {
+        return out;
+    }
+    const auto& head =
+        heads[static_cast<size_t>(std::clamp(selected, 0, static_cast<int>(heads.size()) - 1))];
+    if (head.extruder_name) {
+        out.extruder = *head.extruder_name;
+    }
+    // Only several physical extruders make a tool worth selecting: lanes into
+    // one hotend are a filament choice, and selecting one is a lane change.
+    if (multi_extruder) {
+        out.tool = head.representative_tool(active_tool);
+    }
+    return out;
+}
+
+PaTuningOverlay::ChosenHead PaTuningOverlay::chosen_head() const {
+    auto& tools = helix::ToolState::instance();
+    return choose_head(tools.heated_heads(), tools.has_multiple_extruders(), selected_head_,
+                       tools.active_tool_index(),
+                       get_printer_state().temperature_state().active_extruder_name());
+}
+
 void PaTuningOverlay::refresh_tools() {
     auto& tools = helix::ToolState::instance();
-    const int count = std::clamp(tools.tool_count(), 1, MAX_TOOLS);
-    lv_subject_set_int(&multi_tool_, tools.is_multi_tool() ? 1 : 0);
+    const auto heads = tools.heated_heads();
+    const int count = std::clamp(static_cast<int>(heads.size()), 1, MAX_HEADS);
+    lv_subject_set_int(&multi_tool_, tools.has_multiple_extruders() ? 1 : 0);
+    if (selected_head_ >= count) {
+        selected_head_ = 0;
+    }
+    const int active = tools.active_tool_index();
+    for (int i = 0; i < MAX_HEADS; ++i) {
+        lv_subject_set_int(&tool_selected_[i], i == selected_head_ ? 1 : 0);
+        std::string label;
+        if (i < static_cast<int>(heads.size())) {
+            label = fmt::format("T{}", heads[static_cast<size_t>(i)].representative_tool(active));
+        }
+        lv_subject_copy_string(&tool_label_[i], label.c_str());
+    }
     lv_subject_set_int(&tool_count_, count);
-    if (selected_tool_ >= count) {
-        selected_tool_ = 0;
-    }
-    for (int i = 0; i < MAX_TOOLS; ++i) {
-        lv_subject_set_int(&tool_selected_[i], i == selected_tool_ ? 1 : 0);
-    }
 }
 
 void PaTuningOverlay::refresh_presets() {
@@ -295,16 +360,18 @@ helix::pa::TestPrintParams PaTuningOverlay::build_params() const {
     p.filament_diameter_mm = state.get_discovery().filament_diameter_mm();
     p.nozzle_diameter_mm = state.get_discovery().nozzle_diameter_mm();
     p.macros = machine_macros();
-    const AxisBounds b = state.motion_state().get_gcode_axis_bounds();
-    if (b.has_x && b.has_y) {
-        p.bed_x_min = b.x_min;
-        p.bed_x_max = b.x_max;
-        p.bed_y_min = b.y_min;
-        p.bed_y_max = b.y_max;
+    if (const auto area = printable_area()) {
+        p.bed_x_min = area->x_min;
+        p.bed_x_max = area->x_max;
+        p.bed_y_min = area->y_min;
+        p.bed_y_max = area->y_max;
+    } else {
+        p.bed_x_min = p.bed_x_max = p.bed_y_min = p.bed_y_max = 0.0f;
     }
-    if (helix::ToolState::instance().is_multi_tool()) {
-        p.tool = selected_tool_;
-    }
+    const ChosenHead head = chosen_head();
+    p.tool = head.tool;
+    p.heater = head.extruder;
+    p.restore_k = state.temperature_state().extruder_pressure_advance(head.extruder);
     return p;
 }
 
@@ -327,15 +394,31 @@ helix::pa::MachineMacros PaTuningOverlay::machine_macros() {
         });
 }
 
-std::string PaTuningOverlay::extruder_for_tool(int tool) const {
-    auto& tools = helix::ToolState::instance();
-    if (tools.is_multi_tool()) {
-        const std::string name = tools.extruder_name_for_tool(tool);
-        if (!name.empty()) {
-            return name;
-        }
+std::optional<helix::pa::PrintArea> PaTuningOverlay::printable_area() {
+    auto& state = get_printer_state();
+    const AxisBounds machine = state.motion_state().get_axis_bounds();
+    const AxisBounds gcode = state.motion_state().get_gcode_axis_bounds();
+    helix::pa::AreaSources src;
+    src.has_axes = gcode.has_x && gcode.has_y;
+    src.axis_x_min = gcode.x_min;
+    src.axis_x_max = gcode.x_max;
+    src.axis_y_min = gcode.y_min;
+    src.axis_y_max = gcode.y_max;
+    const auto& discovery = state.get_discovery();
+    src.round_bed = circular_bed_kinematics(discovery.kinematics());
+    const BuildVolume& volume = discovery.build_volume();
+    if (volume.plate_x_max > volume.plate_x_min && volume.plate_y_max > volume.plate_y_min) {
+        // The plate is declared in machine space; shift it by the same offset
+        // that turns the machine axes into gcode ones.
+        const float dx = gcode.x_min - machine.x_min;
+        const float dy = gcode.y_min - machine.y_min;
+        src.has_plate = true;
+        src.plate_x_min = volume.plate_x_min + dx;
+        src.plate_x_max = volume.plate_x_max + dx;
+        src.plate_y_min = volume.plate_y_min + dy;
+        src.plate_y_max = volume.plate_y_max + dy;
     }
-    return get_printer_state().temperature_state().active_extruder_name();
+    return helix::pa::printable_area(src);
 }
 
 void PaTuningOverlay::refresh_setup() {
@@ -369,7 +452,7 @@ ConfirmOptions PaTuningOverlay::owned_confirm() {
 }
 
 void PaTuningOverlay::confirm_and_start() {
-    if (stage_ != SETUP) {
+    if (stage_ != SETUP || !helix::tune::pressure_advance_enabled()) {
         return;
     }
     if (job_holds_machine(get_printer_state().print_state().get_print_lifecycle())) {
@@ -409,10 +492,9 @@ void PaTuningOverlay::begin_upload() {
         return;
     }
 
-    extruder_ = extruder_for_tool(selected_tool_);
-    const float original =
-        get_printer_state().temperature_state().extruder_pressure_advance(extruder_).value_or(0.0f);
-    session_.start(params.geometry, ramp_, original);
+    extruder_ = params.heater;
+    tuned_tool_ = params.tool;
+    session_.start(params.geometry, ramp_, params.restore_k);
     saw_printing_ = false;
     picked_ = -1;
     lv_subject_copy_string(&error_, "");
@@ -430,19 +512,35 @@ void PaTuningOverlay::begin_upload() {
                                    // Observe before starting, so the first
                                    // "printing" report cannot slip past.
                                    begin_observing();
-                                   api_->job().start_print(
-                                       TEST_FILENAME, []() {},
-                                       object_lifetime_.bg_cb("PaTuningOverlay::start_failed",
-                                                              [this](const MoonrakerError& err) {
-                                                                  stop_observing();
-                                                                  session_.abandon();
-                                                                  fail_start(err.message);
-                                                              }));
+                                   start_uploaded_print();
                                }),
         object_lifetime_.bg_cb("PaTuningOverlay::upload_failed", [this](const MoonrakerError& err) {
             session_.abandon();
             fail_start(err.message);
         }));
+}
+
+void PaTuningOverlay::start_uploaded_print() {
+    auto on_failed = [this]() {
+        stop_observing();
+        session_.abandon();
+        fail_start(lv_tr("The test print could not start."));
+    };
+    // The reprint path: a file already on the printer gets the same pre-start
+    // send (a toolchanger's used-extruder map) as any other start.
+    auto* select_panel = get_print_select_panel(get_printer_state(), api_);
+    if (auto* controller = select_panel ? select_panel->get_print_start_controller() : nullptr) {
+        std::set<int> tools_used{std::max(0, tuned_tool_)};
+        auto tok = object_lifetime_.token();
+        controller->initiate_reprint(
+            TEST_FILENAME, "", tools_used, []() {},
+            [tok, on_failed]() { tok.defer("PaTuningOverlay::start_failed", on_failed); });
+        return;
+    }
+    api_->job().start_print(
+        TEST_FILENAME, []() {},
+        object_lifetime_.bg_cb("PaTuningOverlay::start_failed",
+                               [on_failed](const MoonrakerError&) { on_failed(); }));
 }
 
 // ============================================================================
@@ -549,12 +647,11 @@ void PaTuningOverlay::on_pa_reported(int subject_value) {
 }
 
 void PaTuningOverlay::nudge(int direction) {
-    if (stage_ != RUNNING || direction == 0) {
+    if (direction == 0) {
         return;
     }
     const float step = helix::pa::kStepSizes[std::clamp(step_idx_, 0, helix::pa::kStepCount - 1)];
-    session_.nudge(direction > 0 ? step : -step);
-    refresh_running();
+    nudge_by(direction > 0 ? step : -step);
 }
 
 void PaTuningOverlay::end_test() {
@@ -617,15 +714,11 @@ void PaTuningOverlay::refresh_running() {
 // ============================================================================
 
 void PaTuningOverlay::refresh_bands(bool newest_first) {
-    auto bands = session_.bands();
+    auto bands = session_.bands(MAX_BANDS);
     if (newest_first) {
         std::reverse(bands.begin(), bands.end());
     }
     const int n = std::min(static_cast<int>(bands.size()), MAX_BANDS);
-    if (static_cast<int>(bands.size()) > MAX_BANDS) {
-        spdlog::warn("[{}] {} bands logged; the picker shows the first {}", get_name(),
-                     bands.size(), MAX_BANDS);
-    }
     for (int i = 0; i < MAX_BANDS; ++i) {
         if (i < n) {
             const auto& b = bands[static_cast<size_t>(i)];
@@ -663,9 +756,13 @@ void PaTuningOverlay::apply_pick() {
     if (stage_ != PICK || picked_ < 0) {
         return;
     }
+    if (!may_send()) {
+        NOTIFY_WARNING(lv_tr("A print is running. Apply the result after it ends."));
+        return;
+    }
     if (picked_ == MAX_BANDS) {
         session_.keep_current();
-    } else if (!session_.pick_band(picked_)) {
+    } else if (!session_.pick_band(picked_, MAX_BANDS)) {
         return;
     }
     show_result();
@@ -694,44 +791,54 @@ void PaTuningOverlay::show_result() {
         publish_to_moonraker(*k);
         return;
     }
+    // The tuned tool's own spool when the printer assigns spools per tool;
+    // Spoolman's single active spool otherwise.
+    const auto& tools = helix::ToolState::instance().tools();
+    if (tuned_tool_ >= 0 && tuned_tool_ < static_cast<int>(tools.size()) &&
+        tools[static_cast<size_t>(tuned_tool_)].spoolman_id > 0) {
+        fetch_result_spool(tools[static_cast<size_t>(tuned_tool_)].spoolman_id);
+        return;
+    }
     api_->spoolman().get_spoolman_status(
-        object_lifetime_.bg_cb(
-            "PaTuningOverlay::spoolman_status",
-            [this](bool connected, int spool_id) {
-                if (!connected || spool_id <= 0) {
-                    lv_subject_copy_string(&spoolman_text_, lv_tr("No active Spoolman spool."));
-                    publish_to_moonraker(session_.result().value_or(0.0f));
-                    return;
-                }
-                api_->spoolman().get_spoolman_spool(
-                    spool_id,
-                    object_lifetime_.bg_cb(
-                        "PaTuningOverlay::active_spool",
-                        [this](const std::optional<SpoolInfo>& spool) {
-                            active_spool_ = spool;
-                            if (spool && spool->filament_id > 0) {
-                                lv_subject_copy_string(
-                                    &spoolman_text_,
-                                    fmt::format(fmt::runtime(lv_tr("Active spool: {}")),
-                                                spool->display_name())
-                                        .c_str());
-                                lv_subject_set_int(&can_save_spool_, 1);
-                            } else {
-                                lv_subject_copy_string(&spoolman_text_,
-                                                       lv_tr("No active Spoolman spool."));
-                            }
-                            publish_to_moonraker(session_.result().value_or(0.0f));
-                        }),
-                    object_lifetime_.bg_cb(
-                        "PaTuningOverlay::active_spool_failed", [this](const MoonrakerError&) {
-                            lv_subject_copy_string(&spoolman_text_,
-                                                   lv_tr("No active Spoolman spool."));
-                            publish_to_moonraker(session_.result().value_or(0.0f));
-                        }));
-            }),
+        object_lifetime_.bg_cb("PaTuningOverlay::spoolman_status",
+                               [this](bool connected, int spool_id) {
+                                   if (!connected || spool_id <= 0) {
+                                       lv_subject_copy_string(&spoolman_text_,
+                                                              lv_tr("No active Spoolman spool."));
+                                       publish_to_moonraker(session_.result().value_or(0.0f));
+                                       return;
+                                   }
+                                   fetch_result_spool(spool_id);
+                               }),
         object_lifetime_.bg_cb(
             "PaTuningOverlay::spoolman_status_failed", [this](const MoonrakerError&) {
                 lv_subject_copy_string(&spoolman_text_, lv_tr("Spoolman is not available."));
+                publish_to_moonraker(session_.result().value_or(0.0f));
+            }));
+}
+
+void PaTuningOverlay::fetch_result_spool(int spool_id) {
+    api_->spoolman().get_spoolman_spool(
+        spool_id,
+        object_lifetime_.bg_cb(
+            "PaTuningOverlay::result_spool",
+            [this](const std::optional<SpoolInfo>& spool) {
+                active_spool_ = spool;
+                if (spool && spool->filament_id > 0) {
+                    lv_subject_copy_string(
+                        &spoolman_text_,
+                        fmt::format(fmt::runtime(lv_tr("Active spool: {}")), spool->display_name())
+                            .c_str());
+                    lv_subject_set_int(&can_save_spool_,
+                                       helix::tune::pressure_advance_enabled() ? 1 : 0);
+                } else {
+                    lv_subject_copy_string(&spoolman_text_, lv_tr("No active Spoolman spool."));
+                }
+                publish_to_moonraker(session_.result().value_or(0.0f));
+            }),
+        object_lifetime_.bg_cb(
+            "PaTuningOverlay::result_spool_failed", [this](const MoonrakerError&) {
+                lv_subject_copy_string(&spoolman_text_, lv_tr("No active Spoolman spool."));
                 publish_to_moonraker(session_.result().value_or(0.0f));
             }));
 }
@@ -743,7 +850,8 @@ std::string PaTuningOverlay::extruder_label() const {
 
 void PaTuningOverlay::save_to_spool() {
     const auto k = session_.result();
-    if (stage_ != RESULT || !k || !api_ || !active_spool_ || active_spool_->filament_id <= 0) {
+    if (stage_ != RESULT || !k || !api_ || !active_spool_ || active_spool_->filament_id <= 0 ||
+        !helix::tune::pressure_advance_enabled()) {
         return;
     }
     lv_subject_set_int(&can_save_spool_, 0);

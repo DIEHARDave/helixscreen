@@ -43,7 +43,8 @@ firmware-measured calibration is a separate screen (`include/ui_panel_calibratio
    so far (newest first) under the K readout. A -/+ tap (step 0.001,
    0.005, 0.01 or 0.05) stops the ramp for the rest of the print, so the value the user
    is judging is not moved away under them.
-5. Each layer records the K the printer **reported** (`extruder*.pressure_advance`),
+5. Each layer records the K the printer **reported** (`extruder*.pressure_advance`, the one
+field added to the extruder subscription),
    whoever changed it, so the log is the truth even when a console command or a macro
    interfered.
 6. When the print ends by any route (completion, End Test, error) the picker shows the
@@ -56,6 +57,31 @@ firmware-measured calibration is a separate screen (`include/ui_panel_calibratio
 The run belongs to the overlay object, not its widget tree: backing out to Print Status
 keeps the ramp going, and the Tune overlay shows a Tuner button while a run is active.
 
+## Rules the run keeps
+
+- **Beta gate.** `tune::pressure_advance_enabled()` (beta features) is checked by every
+  send outside the tuner's own run: the Tune row, Save to Spool and spool activation.
+  The widgets hide on `show_beta_features` as well, but the C++ check is what stops a send.
+- **Heads, not tools.** The tool chips are `ToolState::heated_heads()`; lanes feeding one
+  hotend are one head. A tool is selected (`T<n>`, the head's representative tool, so
+  sparse numbering works) only with `has_multiple_extruders()`. The nozzle is heated by
+  heater name (`SET_HEATER_TEMPERATURE` / `TEMPERATURE_WAIT`) and is hot before any
+  `T<n>`.
+- **Original K.** The run records the extruder's reported K at start (unknown stays
+  unknown: no restore). The end gcode reports a layer past the last, which the session
+  treats as the end of logging, then sets the original K back before the end macro;
+  Keep current re-sends the K the tower ended on.
+- **Foreign prints.** Outside the run's own print, nothing sends K while
+  `job_holds_machine()`: a pick, a discard or a restore never lands in another job.
+- **Printable area.** `pa::printable_area()`: the `[bed_mesh]` plate within the axes, so
+  a negative `position_min` for a purge bucket never carries the prime line off the plate;
+  on a delta the square inscribed in the reachable circle.
+- **Start.** The uploaded file starts through `PrintStartController::initiate_reprint()`,
+  the path any file already on the printer takes, so a toolchanger's used-extruder send
+  happens; a cooldown follows the end macro.
+- **Bands.** More bands than rows are merged pairwise where K differs least
+  (`pa::fit_bands()`), so late nudges stay pickable.
+
 ## Persistence
 
 ### Spoolman
@@ -64,11 +90,16 @@ Filament extra field `pressure_advance` (`SPOOLMAN_PA_EXTRA_KEY`), one per filam
 belongs to the material and the extruder, not to a single spool. Spoolman refuses an
 extra key with no field definition, so the first save defines it as a `float` field
 named "Pressure advance" (`POST /v1/field/filament/pressure_advance`). A field the user
-already defined is written in its own type (a `text` field gets a quoted string).
+already defined is written in its own type (a `text` field gets a quoted string). Older
+Spoolman (0.22 among them) replaces a filament's whole `extra` dict on `PATCH`, newer
+releases merge per key; the write reads the filament first and sends the merged dict, so
+both keep the user's other extra fields. The mock replaces, the stricter behaviour.
 
 When a spool becomes active (`notify_active_spool_set`, never the startup sync) and its
-filament carries a K, HelixScreen applies it to the active extruder, **unless a print is
-running**. A slicer that sets PA in its start gcode (OrcaSlicer does when the filament
+filament carries a K, HelixScreen applies it to the extruder whose tool holds that spool
+(`pa::extruder_for_spool()`; the active extruder otherwise), **unless a print is running**.
+Save to Spool writes to the tuned tool's spool when tools carry spools, else Spoolman's
+active spool. A slicer that sets PA in its start gcode (OrcaSlicer does when the filament
 profile enables pressure advance) runs after the activation and wins, and an AMS swap
 mid-print never overrides the slicer.
 

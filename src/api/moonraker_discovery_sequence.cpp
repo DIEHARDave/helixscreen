@@ -1254,7 +1254,7 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     // back as the truth of what is in effect.
     static const json heater_fields = json::array({"temperature", "target", "power"});
     static const json extruder_fields =
-        json::array({"temperature", "target", "power", "pressure_advance", "smooth_time"});
+        json::array({"temperature", "target", "power", "pressure_advance"});
     for (const auto& heater : heaters) {
         subscription_objects[heater] = is_extruder_name(heater) ? extruder_fields : heater_fields;
     }

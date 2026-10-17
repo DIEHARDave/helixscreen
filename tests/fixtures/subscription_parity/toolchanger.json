@@ -20,15 +20,13 @@
     "temperature",
     "target",
     "power",
-    "pressure_advance",
-    "smooth_time"
+    "pressure_advance"
   ],
   "extruder1": [
     "temperature",
     "target",
     "power",
-    "pressure_advance",
-    "smooth_time"
+    "pressure_advance"
   ],
   "fan": [
     "speed"

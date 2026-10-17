@@ -170,6 +170,7 @@
   <translation tag="A print is already running." ru="Печать уже идёт."/>
   <translation tag="A print is in progress - restart still pending" ru="Идёт печать - перезапуск ещё отложен"/>
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." ru="На этом шлюзе идёт печать. HelixScreen очистил свою копию; после окончания печати очистите его снова."/>
+  <translation tag="A print is running. Apply the result after it ends." ru="Идёт печать. Примените результат после её завершения."/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." ru="Печать началась, когда катушки отмечены как лежащие на столе. Если они всё ещё там, немедленно остановите принтер аварийной остановкой."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" ru="Катушка может быть запутана или заклинило приводную шестерню"/>
   <translation tag="A · 1,-1" ru="A · 1,-1"/>
@@ -3273,6 +3274,7 @@
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" ru="Датчик окончания филамента показывает, что филамент не загружен. Всё равно начать печать?"/>
   <translation tag="The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service" ru="Не удаётся считать датчик этого блока CFS. Проверьте подключение, иначе блоку требуется обслуживание"/>
   <translation tag="The speed of one fan you choose" ru="Скорость выбранного вентилятора"/>
+  <translation tag="The test print could not start." ru="Не удалось запустить тестовую печать."/>
   <translation tag="The time, date, and system uptime" ru="Время, дата и время работы системы"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?" ru="В печатающей головке есть филамент, но ни один слот AMS не сообщает о его загрузке. Извлеките его вручную перед печатью. Всё равно начать?"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?" ru="В печатающей головке есть филамент, но ни один слот AMS не сообщает о его загрузке. Принтер может отказаться загружать слот, пока она не будет очищена. Всё равно начать?"/>

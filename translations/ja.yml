@@ -140,6 +140,7 @@ translations:
   A print is already running.: すでに印刷中です。
   A print is in progress - restart still pending: '印刷中です - 再起動は保留中'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: このゲートで印刷中です。HelixScreen 側のコピーはクリアしました。印刷終了後に再度クリアしてください。
+  A print is running. Apply the result after it ends.: 印刷中です。終了後に結果を適用してください。
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "スプールがベッド上にあるとされている状態で印刷が開始されました。まだ置かれている場合は、今すぐ緊急停止でプリンターを止めてください。"
   A spool may be tangled or the drive gear is jammed: スプールが絡まっているか、駆動ギアが詰まっている可能性があります
   A · 1,-1: "A · 1,-1"
@@ -3358,6 +3359,7 @@ translations:
   The runout sensor indicates no filament is loaded. Start print anyway?: フィラメント切れセンサーがフィラメント未装填を検出しました。それでも印刷を開始しますか？
   The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service: この CFS ユニットのセンサーを読み取れません。接続を確認してください。改善しない場合は修理が必要です
   The speed of one fan you choose: 選んだファン1つの速度
+  The test print could not start.: テスト印刷を開始できませんでした。
   The time, date, and system uptime: 時間、日付、稼働時間
   The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?: ツールヘッドにフィラメントがありますが、装填済みと報告しているAMSスロットはありません。印刷前に手動で引き抜いてください。それでも印刷を開始しますか？
   ? The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?

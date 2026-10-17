@@ -92,28 +92,42 @@ TEST_CASE("generated gcode reports layers, heats, and never sets K", "[pa_tuning
 
     CHECK(gcode.find("SET_PRESSURE_ADVANCE") == std::string::npos);
     CHECK(gcode.find("SET_PRINT_STATS_INFO TOTAL_LAYER=156") != std::string::npos);
-    CHECK(count_occurrences(gcode, "SET_PRINT_STATS_INFO CURRENT_LAYER=") == layers);
+    // Every layer, plus the one past the last that marks the end gcode.
+    CHECK(count_occurrences(gcode, "SET_PRINT_STATS_INFO CURRENT_LAYER=") == layers + 1);
+    CHECK(gcode.find("SET_PRINT_STATS_INFO CURRENT_LAYER=157\n") != std::string::npos);
     CHECK(gcode.find("SET_PRINT_STATS_INFO CURRENT_LAYER=1\n") != std::string::npos);
     CHECK(gcode.find("SET_PRINT_STATS_INFO CURRENT_LAYER=156\n") != std::string::npos);
     CHECK(gcode.find("M190 S65") != std::string::npos);
-    CHECK(gcode.find("M109 S215") != std::string::npos);
+    CHECK(gcode.find("SET_HEATER_TEMPERATURE HEATER=extruder TARGET=215") != std::string::npos);
+    CHECK(gcode.find("TEMPERATURE_WAIT SENSOR=extruder MINIMUM=213") != std::string::npos);
+    // No T parameter on a heater command: on lanes it is an error.
+    CHECK(gcode.find("M104") == std::string::npos);
+    CHECK(gcode.find("M109") == std::string::npos);
     CHECK(gcode.find("G28") != std::string::npos);
     CHECK(gcode.find("; total layer number: 156") != std::string::npos);
     CHECK(gcode.find("; filament_type = PETG") != std::string::npos);
     // Heat goes off at the end.
-    CHECK(gcode.rfind("M104 S0") > gcode.rfind("CURRENT_LAYER="));
+    CHECK(gcode.rfind("SET_HEATER_TEMPERATURE HEATER=extruder TARGET=0") >
+          gcode.rfind("CURRENT_LAYER="));
 }
 
-TEST_CASE("generated gcode selects and heats the chosen tool", "[pa_tuning]") {
+TEST_CASE("generated gcode heats the chosen extruder by name before selecting its tool",
+          "[pa_tuning]") {
     TestPrintParams p;
-    p.tool = 1;
+    p.tool = 3;
+    p.heater = "extruder2";
     const std::string gcode = generate_test_gcode(p);
-    CHECK(gcode.find("\nT1\n") != std::string::npos);
-    CHECK(gcode.find("M109 T1 S") != std::string::npos);
+    const size_t wait = gcode.find("TEMPERATURE_WAIT SENSOR=extruder2");
+    const size_t select = gcode.find("\nT3\n");
+    REQUIRE(wait != std::string::npos);
+    REQUIRE(select != std::string::npos);
+    CHECK(wait < select);
+    CHECK(gcode.find("SET_HEATER_TEMPERATURE HEATER=extruder2 TARGET=0") != std::string::npos);
 
     p.tool = -1;
     const std::string none = generate_test_gcode(p);
-    CHECK(none.find("\nT") == std::string::npos);
+    CHECK(none.find("\nT0") == std::string::npos);
+    CHECK(none.find("\nT3") == std::string::npos);
 }
 
 TEST_CASE("the tower is centred on the bed and stays inside it", "[pa_tuning]") {
@@ -293,8 +307,7 @@ TEST_CASE("picking a band applies its K as the result", "[pa_tuning][pa_session]
     CHECK(rig.sent.size() == n);
 }
 
-TEST_CASE("keep current makes the K in effect the result without sending",
-          "[pa_tuning][pa_session]") {
+TEST_CASE("keep current re-sends the K the tower ended on", "[pa_tuning][pa_session]") {
     SessionRig rig;
     rig.session.start(rig.g, rig.r, 0.04f);
     rig.session.on_print_started();
@@ -302,11 +315,16 @@ TEST_CASE("keep current makes the K in effect the result without sending",
     rig.session.nudge(0.033f);
     rig.session.on_k_reported(0.033f);
     rig.session.on_print_ended();
+    // The end gcode put the original back; the printer reports it, but the
+    // layer past the last means it is not logged.
+    rig.session.on_layer(layer_count(rig.g, rig.r.bands) + 1);
+    rig.session.on_k_reported(0.04f);
     const size_t n = rig.sent.size();
     rig.session.keep_current();
     CHECK(rig.session.state() == TuningSession::State::Done);
     CHECK(*rig.session.result() == Catch::Approx(0.033f));
-    CHECK(rig.sent.size() == n);
+    REQUIRE(rig.sent.size() == n + 1);
+    CHECK(rig.sent.back() == Catch::Approx(0.033f));
 }
 
 TEST_CASE("abandoning a run without a result restores the original K", "[pa_tuning][pa_session]") {
@@ -318,6 +336,14 @@ TEST_CASE("abandoning a run without a result restores the original K", "[pa_tuni
     CHECK(rig.session.state() == TuningSession::State::Idle);
     CHECK(rig.sent.back() == Catch::Approx(0.04f));
 
+    SECTION("an original the printer never reported is not invented") {
+        SessionRig unknown;
+        unknown.session.start(unknown.g, unknown.r, std::nullopt);
+        unknown.session.on_print_started();
+        const size_t n = unknown.sent.size();
+        unknown.session.abandon();
+        CHECK(unknown.sent.size() == n);
+    }
     SECTION("a run that never sent anything restores nothing") {
         SessionRig quiet;
         quiet.session.start(quiet.g, quiet.r, 0.04f);
@@ -351,6 +377,7 @@ TEST_CASE("a saved K applies on spool activation only while idle", "[pa_tuning]"
     CHECK(should_auto_apply_on_activation(false, 0.04f));
     CHECK_FALSE(should_auto_apply_on_activation(true, 0.04f));
     CHECK_FALSE(should_auto_apply_on_activation(false, std::nullopt));
+    CHECK_FALSE(should_auto_apply_on_activation(true, std::nullopt));
 }
 
 TEST_CASE("the Moonraker record keeps every filament and extruder it has seen", "[pa_tuning]") {
@@ -434,16 +461,17 @@ TEST_CASE("the tower starts through the start macro and ends through the end mac
     CHECK(gcode.find("\nPRINT_START BED_TEMP=60 EXTRUDER_TEMP=215\n") != std::string::npos);
     CHECK(gcode.find("\nG28\n") == std::string::npos);
     // The macro heats in its own order: nothing heats before it.
-    CHECK(gcode.find("M104") == std::string::npos);
-    CHECK(gcode.find("M109 S215") > gcode.find("PRINT_START"));
+    CHECK(gcode.find("SET_HEATER_TEMPERATURE") > gcode.find("PRINT_START"));
+    CHECK(gcode.find("M140 S60") > gcode.find("PRINT_START"));
     CHECK(gcode.find("\nPRINT_END\n") != std::string::npos);
-    CHECK(gcode.find("M104 S0") == std::string::npos);
+    // The cooldown still follows the end macro.
+    CHECK(gcode.rfind("TARGET=0") > gcode.find("\nPRINT_END\n"));
 
     SECTION("a macro that takes no temperatures gets the heaters started first") {
         p.macros = MachineMacros{"PRINT_START", "", "", ""};
         const std::string bare = generate_test_gcode(p);
-        CHECK(bare.find("M104 S215") < bare.find("\nPRINT_START\n"));
-        CHECK(bare.find("M104 S0") != std::string::npos);
+        CHECK(bare.find("SET_HEATER_TEMPERATURE HEATER=extruder TARGET=215") <
+              bare.find("\nPRINT_START\n"));
     }
     SECTION("no start macro homes and heats itself") {
         p.macros = MachineMacros{};
@@ -451,4 +479,100 @@ TEST_CASE("the tower starts through the start macro and ends through the end mac
         CHECK(plain.find("\nG28\n") != std::string::npos);
         CHECK(plain.find("M140 S60") < plain.find("\nG28\n"));
     }
+}
+
+TEST_CASE("the end gcode restores the original K before the end macro", "[pa_tuning]") {
+    TestPrintParams p;
+    p.heater = "extruder1";
+    p.restore_k = 0.045f;
+    p.macros.end = "PRINT_END";
+    const std::string gcode = generate_test_gcode(p);
+    const size_t restore = gcode.find("SET_PRESSURE_ADVANCE EXTRUDER=extruder1 ADVANCE=0.0450");
+    REQUIRE(restore != std::string::npos);
+    CHECK(restore > gcode.find("CURRENT_LAYER=157"));
+    CHECK(restore < gcode.find("\nPRINT_END\n"));
+
+    p.restore_k.reset();
+    CHECK(generate_test_gcode(p).find("SET_PRESSURE_ADVANCE") == std::string::npos);
+}
+
+TEST_CASE("the printable area keeps the tower on the plate", "[pa_tuning][pa_area]") {
+    SECTION("a negative position_min reaching a purge bucket is cut to the plate") {
+        AreaSources src;
+        src.has_axes = true;
+        src.axis_x_min = 0;
+        src.axis_x_max = 300;
+        src.axis_y_min = -15;
+        src.axis_y_max = 305;
+        src.has_plate = true;
+        src.plate_x_min = 5;
+        src.plate_x_max = 295;
+        src.plate_y_min = 5;
+        src.plate_y_max = 295;
+        const auto a = printable_area(src);
+        REQUIRE(a);
+        CHECK(a->y_min == Catch::Approx(5.0f));
+        CHECK(a->x_max == Catch::Approx(295.0f));
+    }
+    SECTION("a delta uses the square inside its round bed") {
+        AreaSources src;
+        src.has_axes = true;
+        src.axis_x_min = -100;
+        src.axis_x_max = 100;
+        src.axis_y_min = -100;
+        src.axis_y_max = 100;
+        src.round_bed = true;
+        const auto a = printable_area(src);
+        REQUIRE(a);
+        CHECK(a->x_max == Catch::Approx(70.71f).epsilon(0.001));
+        CHECK(a->y_min == Catch::Approx(-70.71f).epsilon(0.001));
+        // The prime line lands inside the circle too.
+        TestPrintParams p;
+        p.bed_x_min = a->x_min;
+        p.bed_x_max = a->x_max;
+        p.bed_y_min = a->y_min;
+        p.bed_y_max = a->y_max;
+        CHECK(generate_test_gcode(p).find("Y-65.711") != std::string::npos);
+    }
+    SECTION("no axes, no area") {
+        CHECK_FALSE(printable_area(AreaSources{}));
+    }
+}
+
+TEST_CASE("fit_bands merges the closest neighbours and keeps late nudges", "[pa_tuning]") {
+    std::vector<Band> bands;
+    for (int i = 0; i < 6; ++i) {
+        bands.push_back(Band{i * 10 + 1, i * 10 + 10, i * 2.0f, i * 2.0f + 2.0f, 0.01f * i});
+    }
+    bands.push_back(Band{61, 62, 12.0f, 12.4f, 0.051f}); // a late nudge, close to its neighbour
+    bands.push_back(Band{63, 70, 12.4f, 14.0f, 0.090f});
+    const auto fitted = fit_bands(bands, 7);
+    REQUIRE(fitted.size() == 7);
+    // 0.050 and 0.051 merged, taking the taller band's K; the last stays.
+    CHECK(fitted[5].k == Catch::Approx(0.05f));
+    CHECK(fitted[5].last_layer == 62);
+    CHECK(fitted.back().k == Catch::Approx(0.09f));
+    CHECK(fit_bands(bands, 100).size() == bands.size());
+    CHECK(fit_bands(bands, 0).empty());
+}
+
+TEST_CASE("a newly active spool targets the extruder its tool holds", "[pa_tuning]") {
+    const std::vector<SpoolOnExtruder> mounted = {{7, "extruder"}, {9, "extruder2"}};
+    CHECK(extruder_for_spool(9, mounted, "extruder") == "extruder2");
+    CHECK(extruder_for_spool(4, mounted, "extruder1") == "extruder1");
+    CHECK(extruder_for_spool(0, {{0, "extruder3"}}, "extruder") == "extruder");
+}
+
+TEST_CASE("nothing logs or nudges once the tower is done", "[pa_tuning][pa_session]") {
+    SessionRig rig;
+    rig.session.start(rig.g, rig.r, 0.04f);
+    rig.session.on_print_started();
+    rig.layer_and_echo(156);
+    rig.session.on_layer(157);
+    rig.session.on_k_reported(0.04f);
+    const size_t n = rig.sent.size();
+    rig.session.nudge(0.01f);
+    CHECK(rig.sent.size() == n);
+    rig.session.on_print_ended();
+    CHECK(rig.session.bands().back().k == Catch::Approx(0.09f));
 }

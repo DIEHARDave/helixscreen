@@ -50,10 +50,9 @@ struct ExtruderInfo {
     /// so a filament swap can still heat the nozzle enough to purge the previous
     /// material. Reset on unload (via clear_load_latch); in-memory only.
     float last_nonzero_target = 0.0f;
-    /// Klipper's reported pressure advance K and smooth time, negative until
-    /// the extruder reports them.
+    /// Klipper's reported pressure advance K, negative until the extruder
+    /// reports one.
     float pressure_advance = -1.0f;
-    float smooth_time = -1.0f;
     std::unique_ptr<lv_subject_t> temp_subject;   ///< Decidegrees (value * 10)
     std::unique_ptr<lv_subject_t> target_subject; ///< Decidegrees
     std::unique_ptr<lv_subject_t> power_subject;  ///< Duty in whole percent, -1 until reported

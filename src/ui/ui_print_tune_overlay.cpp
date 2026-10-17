@@ -417,9 +417,16 @@ void PrintTuneOverlay::update_pa_display() {
 }
 
 void PrintTuneOverlay::handle_pa_adjust(int steps) {
-    if (!printer_state_) {
+    if (!printer_state_ || !helix::tune::pressure_advance_enabled()) {
         return;
     }
+#if !defined(HELIX_PLATFORM_ESP32)
+    // During a tuning run the nudge is the tuner's: it stops the ramp, which
+    // would otherwise overwrite this value at the next band.
+    if (helix::ui::get_global_pa_tuning_overlay().nudge_by(steps * helix::tune::kPaTuneStep)) {
+        return;
+    }
+#endif
     auto& temps = printer_state_->temperature_state();
     const auto current = helix::tune::pressure_advance_from_subject(
         lv_subject_get_int(temps.get_active_extruder_pressure_advance_subject()));

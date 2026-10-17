@@ -90,12 +90,18 @@
           </lv_obj>
         </lv_obj>
       </lv_obj>
-      <!-- Reset Speed & Flow Button -->
-      <!-- Pressure advance, live -->
-      <tune_pa_row name="tune_pa_row"/>
-      <ui_button name="btn_reset" width="100%" icon="refresh" text="Reset Speed &amp; Flow to 100%">
-        <event_cb trigger="clicked" callback="on_tune_reset_clicked"/>
-      </ui_button>
+      <!-- Reset Speed & Flow, with live pressure advance beside it; the PA group
+           wraps under the button where the row is too narrow for both. -->
+      <lv_obj name="reset_pa_row"
+              width="100%" height="content" style_pad_all="0" flex_flow="row_wrap" style_pad_gap="#space_xs"
+              style_flex_cross_place="center" scrollable="false">
+        <ui_button name="btn_reset"
+                   height="#button_height_sm" flex_grow="1" style_min_width="40%" icon="refresh"
+                   text="Reset Speed &amp; Flow to 100%">
+          <event_cb trigger="clicked" callback="on_tune_reset_clicked"/>
+        </ui_button>
+        <tune_pa_row name="tune_pa_row"/>
+      </lv_obj>
       <!-- Z-Offset Baby Stepping Section (flex_grow claims remaining space, content aligned to bottom) -->
       <lv_obj name="z_offset_section"
               width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs"

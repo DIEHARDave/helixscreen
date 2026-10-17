@@ -144,6 +144,7 @@ translations:
   A print is already running.: Una stampa è già in corso.
   A print is in progress - restart still pending: 'Stampa in corso - riavvio in attesa'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: Una stampa è in corso su questo gate. HelixScreen ha svuotato la propria copia; svuotalo di nuovo a stampa terminata.
+  A print is running. Apply the result after it ends.: È in corso una stampa. Applica il risultato quando finisce.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "È partita una stampa mentre le bobine risultano sul piano. Se sono ancora lì, ferma subito la stampante con l'arresto emergenza."
   A spool may be tangled or the drive gear is jammed: Una bobina potrebbe essere aggrovigliata o l'ingranaggio di trascinamento è bloccato
   A · 1,-1: "A · 1,-1"
@@ -3575,6 +3576,7 @@ translations:
     di esaurimento indica che nessun filamento è caricato. Avviare comunque la stampa?
   The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service: Il sensore di questa unità CFS non può essere letto. Controllare il collegamento, altrimenti l'unità richiede assistenza
   The speed of one fan you choose: La velocità di una ventola a scelta
+  The test print could not start.: Impossibile avviare la stampa di prova.
   The time, date, and system uptime: Ora, data e tempo di attività
   The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?: La testina contiene filamento ma nessuno slot AMS lo riporta come caricato. Estrailo manualmente prima di stampare. Avviare comunque?
   ? The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?

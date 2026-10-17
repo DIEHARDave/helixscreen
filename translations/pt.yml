@@ -144,6 +144,7 @@ translations:
   A print is already running.: Já há uma impressão em andamento.
   A print is in progress - restart still pending: 'Uma impressão está em andamento - reinício pendente'
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: Uma impressão está em andamento neste gate. O HelixScreen limpou a própria cópia; limpe-o novamente quando a impressão terminar.
+  A print is running. Apply the result after it ends.: Há uma impressão em andamento. Aplique o resultado quando ela terminar.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "Uma impressão começou com carretéis marcados como na mesa. Se ainda estiverem lá, pare a impressora agora com a Parada de Emergência."
   A spool may be tangled or the drive gear is jammed: Um carretel pode estar embaraçado ou a engrenagem de tração travada
   A · 1,-1: "A · 1,-1"
@@ -3581,6 +3582,7 @@ translations:
     mesmo assim?
   The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service: Não é possível ler o sensor desta unidade CFS. Verifique a conexão, ou a unidade pode precisar de manutenção
   The speed of one fan you choose: A velocidade de uma ventoinha escolhida
+  The test print could not start.: Não foi possível iniciar a impressão de teste.
   The time, date, and system uptime: Hora, data e tempo ativo
   The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?: O cabeçote tem filamento, mas nenhum slot AMS o reporta como carregado. Retire-o manualmente antes de imprimir. Iniciar mesmo assim?
   ? The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?

@@ -560,9 +560,6 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
         if (data.contains("pressure_advance") && data["pressure_advance"].is_number()) {
             info.pressure_advance = data["pressure_advance"].get<float>();
         }
-        if (data.contains("smooth_time") && data["smooth_time"].is_number()) {
-            info.smooth_time = data["smooth_time"].get<float>();
-        }
 
         publish_power(name, info.power_subject.get());
     }

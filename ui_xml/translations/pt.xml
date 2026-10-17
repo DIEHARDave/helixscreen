@@ -137,6 +137,7 @@
   <translation tag="A print is already running." pt="Já há uma impressão em andamento."/>
   <translation tag="A print is in progress - restart still pending" pt="Uma impressão está em andamento - reinício pendente"/>
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." pt="Uma impressão está em andamento neste gate. O HelixScreen limpou a própria cópia; limpe-o novamente quando a impressão terminar."/>
+  <translation tag="A print is running. Apply the result after it ends." pt="Há uma impressão em andamento. Aplique o resultado quando ela terminar."/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." pt="Uma impressão começou com carretéis marcados como na mesa. Se ainda estiverem lá, pare a impressora agora com a Parada de Emergência."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" pt="Um carretel pode estar embaraçado ou a engrenagem de tração travada"/>
   <translation tag="A · 1,-1" pt="A · 1,-1"/>
@@ -3213,6 +3214,7 @@
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" pt="O sensor de fim de filamento indica que não há filamento carregado. Iniciar a impressão mesmo assim?"/>
   <translation tag="The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service" pt="Não é possível ler o sensor desta unidade CFS. Verifique a conexão, ou a unidade pode precisar de manutenção"/>
   <translation tag="The speed of one fan you choose" pt="A velocidade de uma ventoinha escolhida"/>
+  <translation tag="The test print could not start." pt="Não foi possível iniciar a impressão de teste."/>
   <translation tag="The time, date, and system uptime" pt="Hora, data e tempo ativo"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?" pt="O cabeçote tem filamento, mas nenhum slot AMS o reporta como carregado. Retire-o manualmente antes de imprimir. Iniciar mesmo assim?"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?" pt="O cabeçote tem filamento, mas nenhum slot AMS o reporta como carregado. A impressora pode não conseguir carregar um slot até que ele seja esvaziado. Iniciar mesmo assim?"/>

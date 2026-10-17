@@ -137,6 +137,7 @@
   <translation tag="A print is already running." ja="すでに印刷中です。"/>
   <translation tag="A print is in progress - restart still pending" ja="印刷中です - 再起動は保留中"/>
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." ja="このゲートで印刷中です。HelixScreen 側のコピーはクリアしました。印刷終了後に再度クリアしてください。"/>
+  <translation tag="A print is running. Apply the result after it ends." ja="印刷中です。終了後に結果を適用してください。"/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." ja="スプールがベッド上にあるとされている状態で印刷が開始されました。まだ置かれている場合は、今すぐ緊急停止でプリンターを止めてください。"/>
   <translation tag="A spool may be tangled or the drive gear is jammed" ja="スプールが絡まっているか、駆動ギアが詰まっている可能性があります"/>
   <translation tag="A · 1,-1" ja="A · 1,-1"/>
@@ -3213,6 +3214,7 @@
   <translation tag="The runout sensor indicates no filament is loaded. Start print anyway?" ja="フィラメント切れセンサーがフィラメント未装填を検出しました。それでも印刷を開始しますか？"/>
   <translation tag="The sensor in this CFS unit cannot be read. Check its connection, or the unit may need service" ja="この CFS ユニットのセンサーを読み取れません。接続を確認してください。改善しない場合は修理が必要です"/>
   <translation tag="The speed of one fan you choose" ja="選んだファン1つの速度"/>
+  <translation tag="The test print could not start." ja="テスト印刷を開始できませんでした。"/>
   <translation tag="The time, date, and system uptime" ja="時間、日付、稼働時間"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. Pull it out manually before printing. Start anyway?" ja="ツールヘッドにフィラメントがありますが、装填済みと報告しているAMSスロットはありません。印刷前に手動で引き抜いてください。それでも印刷を開始しますか？"/>
   <translation tag="The toolhead has filament but no AMS slot reports it loaded. The printer may refuse to load a slot until it is cleared. Start anyway?" ja="ツールヘッドにフィラメントがありますが、装填済みと報告しているAMSスロットはありません。取り除くまで、プリンターがスロットの装填を拒否する場合があります。それでも印刷を開始しますか？"/>

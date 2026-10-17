@@ -30,7 +30,8 @@
                   scrollable="false">
             <bind_flag_if_eq subject="pa_tune_multi_tool" flag="hidden" ref_value="0"/>
             <repeat count="pa_tune_tool_count">
-              <ui_button name="pa_tool_${i}" width="1" height="#button_height_sm" flex_grow="1" text="T${i}">
+              <ui_button name="pa_tool_${i}"
+                         width="1" height="#button_height_sm" flex_grow="1" bind_text="pa_tune_tool_label_${i}">
                 <bind_style_if_eq name="styles.led_chip_active" subject="pa_tune_tool_selected_${i}" ref_value="1"/>
                 <bind_style_if_eq name="styles.led_chip_idle" subject="pa_tune_tool_selected_${i}" ref_value="0"/>
                 <event_cb trigger="clicked" callback="on_pa_tune_tool" user_data="$i"/>
@@ -267,6 +268,7 @@
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_sm" scrollable="false">
           <ui_button name="pa_btn_save_spool" width="1" flex_grow="1" icon="spoolman" text="Save to Spool">
+            <bind_flag_if_eq subject="show_beta_features" flag="hidden" ref_value="0"/>
             <bind_state_if_eq subject="pa_tune_can_save_spool" state="disabled" ref_value="0"/>
             <event_cb trigger="clicked" callback="on_pa_tune_save_spool"/>
           </ui_button>
