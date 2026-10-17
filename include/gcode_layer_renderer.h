@@ -755,6 +755,14 @@ class GCodeLayerRenderer {
     /// by one frame at most and never stalls the build.
     int crease_deferred_layer_ = -1;
 
+    /// A streamed layer whose read failed, and how many frames it has been
+    /// retried. A read error can be transient (a busy SD card, a network
+    /// mount), so the layer is retried a few frames before it is skipped; a
+    /// truly unreadable layer must not stall the build.
+    int unreadable_layer_ = -1;
+    int unreadable_retries_ = 0;
+    static constexpr int MAX_UNREADABLE_RETRIES = 3;
+
     /// Wall time the current progressive cache build started, and whether its
     /// completion has been reported yet.
     ///
@@ -869,6 +877,9 @@ class GCodeLayerRenderer {
     CreaseFetch crease_grid(int layer, int drawing, bool allow_load, const crease::WallGrid*& out);
     /// Z of a layer, from the parsed file or the streaming index.
     float layer_z(int layer) const;
+    /// True when a streamed load of `layer` returned no segments although the
+    /// index counted lines in it: the controller's form of a failed read.
+    bool streamed_read_failed(int layer, const std::vector<ToolpathSegment>* segments) const;
     /// Forget every wall index: the layers they describe may have changed.
     void reset_crease_grids();
 

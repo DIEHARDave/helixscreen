@@ -661,6 +661,10 @@ uint32_t GCodeStreamingController::get_layer_line_count(size_t layer_index) cons
     return index_.get_entry(layer_index).line_count;
 }
 
+bool GCodeStreamingController::evict_layer(size_t layer_index) {
+    return cache_.evict(layer_index);
+}
+
 int GCodeStreamingController::find_layer_at_z(float z) const {
     return index_.find_layer_at_z(z);
 }

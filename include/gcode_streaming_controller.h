@@ -389,6 +389,18 @@ class GCodeStreamingController {
     uint32_t get_layer_line_count(size_t layer_index) const;
 
     /**
+     * @brief Drop a layer from the cache so the next access reads it again
+     *
+     * A failed read is cached as an empty layer like any other result; a
+     * caller that recognises one (see get_layer_line_count()) evicts it to
+     * retry the read.
+     *
+     * @param layer_index Zero-based layer index
+     * @return true if the layer was cached
+     */
+    bool evict_layer(size_t layer_index);
+
+    /**
      * @brief Find layer closest to Z height
      * @param z Z coordinate
      * @return Layer index, or -1 if no layers

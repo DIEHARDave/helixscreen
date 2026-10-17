@@ -3,6 +3,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/gcode_layer_renderer_test_access.h"
+#include "../test_helpers/streaming_test_sources.h"
 #include "gcode_crease_shading.h"
 #include "gcode_data_source.h"
 #include "gcode_layer_renderer.h"
@@ -21,6 +22,7 @@
 
 using namespace helix::gcode;
 using namespace helix::gcode::crease;
+using namespace helix::gcode::test;
 using Catch::Approx;
 
 namespace {
@@ -621,70 +623,12 @@ TEST_CASE_METHOD(LVGLTestFixture, "crease: wall indexes live only while the cach
     REQUIRE(r.memory_report().bytes_for("crease_grids") == 0);
 }
 
-namespace {
-
-/// Writes `content` to a temp file for the streaming controller to index.
-class TempGCode {
-  public:
-    explicit TempGCode(const std::string& content)
-        : path_("/tmp/test_crease_" + std::to_string(::getpid()) + "_" +
-                std::to_string(counter_++) + ".gcode") {
-        std::ofstream(path_) << content;
-    }
-    ~TempGCode() {
-        std::remove(path_.c_str());
-    }
-    const std::string& path() const {
-        return path_;
-    }
-
-  private:
-    static inline int counter_ = 0;
-    std::string path_;
-};
-
-/// Reads at or past `fail_from` come back empty, as a read error does.
-class FailingSource : public FileDataSource {
-  public:
-    FailingSource(const std::string& path, uint64_t fail_from)
-        : FileDataSource(path), fail_from_(fail_from) {}
-    std::vector<char> read_range(uint64_t offset, uint32_t length) override {
-        if (offset >= fail_from_) {
-            return {};
-        }
-        return FileDataSource::read_range(offset, length);
-    }
-
-  private:
-    uint64_t fail_from_;
-};
-
-/// A straight 20mm outer-wall tower, 1mm layers; `layer_start[i]` is the byte
-/// offset where layer i begins.
-std::string make_tower_text(int layers, std::vector<size_t>& layer_start) {
-    std::string out = "; crease streaming fixture\nM82\nG28\n";
-    float e = 0.0f;
-    for (int i = 0; i < layers; ++i) {
-        layer_start.push_back(out.size());
-        out += "G1 Z" + std::to_string(1.0f + static_cast<float>(i)) + " F1000\n";
-        out += ";TYPE:Outer wall\nG1 X20 Y20 F3000\n";
-        const char* corners[] = {"X40 Y20", "X40 Y40", "X20 Y40", "X20 Y20"};
-        for (const char* c : corners) {
-            e += 1.0f;
-            out += std::string("G1 ") + c + " E" + std::to_string(e) + "\n";
-        }
-    }
-    return out;
-}
-
-} // namespace
-
 TEST_CASE_METHOD(LVGLTestFixture, "crease: a neighbour that fails to stream in darkens nothing",
                  "[gcode][crease][layer_renderer][streaming]") {
     std::vector<size_t> starts;
     TempGCode file(make_tower_text(10, starts));
     GCodeStreamingController controller;
-    REQUIRE(controller.open_source(std::make_unique<FailingSource>(file.path(), starts[6])));
+    REQUIRE(controller.open_source(std::make_unique<FailingSource>(file.path(), starts[6], -1)));
     REQUIRE(controller.get_layer_count() == 10);
     // The layer drawn on top reads; the one above it comes back empty, which
     // is how the controller reports a failed read.

@@ -597,6 +597,8 @@ void GCodeLayerRenderer::invalidate_solid_cache() {
     exclusion_hatch_stamped_ = false;
     reset_crease_grids();
     crease_deferred_layer_ = -1;
+    unreadable_layer_ = -1;
+    unreadable_retries_ = 0;
 }
 
 void GCodeLayerRenderer::reset_crease_grids() {
@@ -611,6 +613,12 @@ float GCodeLayerRenderer::layer_z(int layer) const {
         return streaming_controller_->get_layer_z(static_cast<size_t>(layer));
     }
     return gcode_ ? gcode_->layers[static_cast<size_t>(layer)].z_height : 0.0f;
+}
+
+bool GCodeLayerRenderer::streamed_read_failed(int layer,
+                                              const std::vector<ToolpathSegment>* segments) const {
+    return streaming_controller_ && segments && segments->empty() &&
+           streaming_controller_->get_layer_line_count(static_cast<size_t>(layer)) > 0;
 }
 
 bool GCodeLayerRenderer::prepare_crease_layer(int layer_idx, CreaseCursor& cur, bool allow_load) {
@@ -692,7 +700,7 @@ GCodeLayerRenderer::CreaseFetch GCodeLayerRenderer::crease_grid(int layer, int d
             streaming_controller_->request_layer(index);
             return CreaseFetch::NotResident;
         }
-        if (holder && holder->empty() && streaming_controller_->get_layer_line_count(index) > 0) {
+        if (streamed_read_failed(layer, holder.get())) {
             return CreaseFetch::LoadFailed;
         }
         segments = holder.get();
@@ -998,6 +1006,27 @@ int GCodeLayerRenderer::render_layers_to_cache(int from_layer, int to_layer) {
                 exclusion_hatch_stamped_ = false;
             }
             return last_rendered;
+        }
+
+        if (streamed_read_failed(layer_idx, segments)) {
+            if (unreadable_layer_ != layer_idx) {
+                unreadable_layer_ = layer_idx;
+                unreadable_retries_ = 0;
+            }
+            if (unreadable_retries_ < MAX_UNREADABLE_RETRIES) {
+                // Drop the cached empty result and stop here, exactly as for a
+                // null load: the next frame reads the layer again.
+                ++unreadable_retries_;
+                streaming_controller_->evict_layer(static_cast<size_t>(layer_idx));
+                spdlog::debug(
+                    "[GCodeLayerRenderer] Read of layer {} failed, retry {}/{} next frame",
+                    layer_idx, unreadable_retries_, MAX_UNREADABLE_RETRIES);
+                break;
+            }
+            spdlog::warn("[GCodeLayerRenderer] Layer {} unreadable after {} retries, skipping it",
+                         layer_idx, MAX_UNREADABLE_RETRIES);
+            last_rendered = layer_idx;
+            continue;
         }
 
         // A layer waits a frame rather than loading a neighbour synchronously,
