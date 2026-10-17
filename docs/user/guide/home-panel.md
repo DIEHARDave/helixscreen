@@ -706,6 +706,8 @@ Tap a tool that is not mounted to switch to it. Tapping the tool that is already
 - **While printing or preparing to print**, and while spools are [drying on the bed](temperature.md#drying-filament-on-the-bed), switching is unavailable: the tools are greyed out, and a tap shows a warning instead of changing tools.
 - **While your filament system needs attention** (it has stopped and is waiting for you), a tap shows a warning instead. While it is busy loading or unloading, a tap does nothing.
 
+Where a hub feeds several lanes into one toolhead, tapping that head picks up the lane already loaded in it, so its filament stays where it is (#1811). With no lane loaded, or more than one claiming the head, the head's lowest lane is used.
+
 A toolhead on your [filament system's screen](filament.md#switching-toolheads-from-the-filament-path) and the tool list on the Filament screen switch tools the same way.
 
 ### Parking the Tool
@@ -754,6 +756,7 @@ The Z-Offset widget shows the live Z-offset, the same number as the Z-Offset row
 - The caption reads "mm Z-offset" until you change it. After that it shows how far you have moved since the last save, for example "+0.020 unsaved", and the number turns the warning color.
 - **Save** writes the offset to your printer's config. Klipper restarts when it does, and you are asked to confirm first. It is greyed out while a print is running.
 - On a tool changer the number is the active tool's own offset. Printers whose firmware keeps the offset itself, such as the FlashForge AD5M and AD5X on ZMOD, have nothing to save, so **Save** never appears.
+- **Save** also stays hidden when **Save Z-Offset Buttons** is off in [Settings > Motion](motion.md#motion-settings), which it is by default on tool changers.
 
 **Tap** anywhere except the buttons to open the Print Tune overlay.
 

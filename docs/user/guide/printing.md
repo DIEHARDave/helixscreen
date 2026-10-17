@@ -169,6 +169,8 @@ When the G-code viewer is active during a print, a small floating button appears
 - **Progress view** (default): Shows layers printed so far in solid color with a faded "ghost" preview of unprinted layers above.
 - **Complete view**: Shows the entire finished object with all layers solid — useful for seeing what the final print will look like.
 
+In the 2D view, outer walls darken where the surface folds, so overhang ledges, rims and steps read as edges while straight and evenly sloped walls keep the filament color (#1314).
+
 The icon shows a cube (tap to see the complete model) or stacked layers (tap to return to progress view). The toggle resets automatically when a new print starts.
 
 If the print contains multiple objects, an **objects button** (a skip-objects icon) also appears in that corner. Tap it to open the Objects list — one of the two ways to exclude an object, see [Exclude Object](#exclude-object) below. The view toggle shifts to the right to make room.
@@ -277,6 +279,8 @@ Choose a step size (0.05 / 0.025 / 0.01 / 0.005 mm), then tap up/down to raise o
 
 An adjustment made from the Tune overlay is temporary - it lasts for this print unless you save it from Controls.
 
+The Save Z-Offset buttons can be turned off for a printer with **Save Z-Offset Buttons** in [Settings > Motion](motion.md#motion-settings). They start off on tool changers.
+
 **If there is no Save Z-Offset button**, the Tune overlay's hint under the
 Z-offset row says which case you are in:
 
@@ -284,6 +288,9 @@ Z-offset row says which case you are in:
   offset itself and there is nothing to save - what you dialed in is already kept
   and is re-applied at the start of the next print. This is the case on the
   FlashForge AD5M / AD5X running ZMOD.
+- **"Temporary adjustment for this print"**: nothing saves the adjustment,
+  usually because **Save Z-Offset Buttons** is off for this printer. Turn it
+  back on in Settings > Motion to save from Controls.
 - **"Temporary for this print; a tool change resets it"**: nothing saves the
   adjustment. On the Snapmaker U1 each head keeps its own stored offset, which the
   firmware re-applies whenever that head is picked up, so a baby step lasts only
