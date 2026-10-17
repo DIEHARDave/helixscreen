@@ -2296,7 +2296,6 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место.
   Not in your spools? Set it up: Нет в ваших катушках? Настроить
   Not now: Не сейчас
-  'Not saved to the printer config: Z-offset saving is off for this printer': 'Не сохранено в конфигурации: сохранение Z-Offset для этого принтера выключено'
   Not yet available on this display: 'Пока недоступно на этом дисплее'
   Not yet calibrated: Ещё не откалибровано
   Notes: Заметки
@@ -4075,6 +4074,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z-offset сохранён ({:+.3f}мм).
     Перезапуск Klipper...
   Z-offset saved - Klipper restarting...: Z-смещение сохранено — Klipper перезапускается...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Сохранение Z-Offset выключено, поэтому HelixScreen не сохранил это. Klipper хранит значение до следующего сохранения конфигурации.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'уже загружен'

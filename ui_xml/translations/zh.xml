@@ -2041,7 +2041,6 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." zh="没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。"/>
   <translation tag="Not in your spools? Set it up" zh="不在您的料盘中？立即设置"/>
   <translation tag="Not now" zh="暂不"/>
-  <translation tag="Not saved to the printer config: Z-offset saving is off for this printer" zh="未保存到打印机配置：此打印机已关闭 Z 偏移保存"/>
   <translation tag="Not yet available on this display" zh="此屏幕暂不支持"/>
   <translation tag="Not yet calibrated" zh="尚未校准"/>
   <translation tag="Notes" zh="备注"/>
@@ -3612,6 +3611,7 @@
   <translation tag="Z-offset saved" zh="Z 偏移已保存"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." zh="Z 偏移已保存 ({:+.3f}mm)。Klipper 正在重启..."/>
   <translation tag="Z-offset saved - Klipper restarting..." zh="Z 偏移已保存 - Klipper 重启中..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." zh="Z 偏移保存已关闭，因此 HelixScreen 未保存此值。Klipper 会保留它，直到下次保存配置。"/>
   <translation tag="Z:" zh="Z:"/>
   <translation tag="Z: 0.000" zh="Z: 0.000"/>
   <translation tag="already loaded" zh="已加载"/>

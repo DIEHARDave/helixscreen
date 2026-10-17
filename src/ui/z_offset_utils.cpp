@@ -407,8 +407,8 @@ struct SaveAvailabilityPublisher {
                 ts.get_subjects_lifetime());
         observe(per_tool_z_obs, ts.get_per_tool_axis_supported_subject(Axis::Z),
                 ts.get_subjects_lifetime());
-        // A printer switch reloads the per-printer row behind this subject, so
-        // observing it covers the switch as well as the settings toggle.
+        // The settings toggle writes this subject. A printer switch needs nothing
+        // here: its soft restart re-initialises these subjects for the new printer.
         auto& settings = SettingsManager::instance();
         if (settings.are_subjects_initialized()) {
             observe(save_mode_obs, settings.subject_z_offset_save_mode(),
@@ -564,7 +564,7 @@ void run_shared_save() {
     NOTIFY_INFO(lv_tr("Saving Z-offset..."));
     save_dirty_offsets(
         api, shared_save_watch(), ps.profile_state().z_offset_calibration_strategy(),
-        ps.get_discovery(), current_save_availability().global_dirty,
+        ps.get_discovery(), saves_global(current_save_availability()),
         []() {
             end_shared_save();
             NOTIFY_SUCCESS("{}", lv_tr("Z-offset saved"));
@@ -694,8 +694,23 @@ void save_dirty_offsets(IMoonrakerAPI* api, helix::ui::SaveConfigWatch& save_wat
         // success before the command had reached the printer — the same shape
         // as prestonbrown/helixscreen#1359. begin() arms the suppression, sends
         // the save itself, and reports success only once Klipper is back READY.
+        //
+        // The restart also resets the live machine-wide offset. One the caller
+        // chose not to save (Z-offset saving off) is put back once Klipper is
+        // READY: SET_GCODE_OFFSET is live-only, so this persists nothing.
+        const int live_microns =
+            ps ? lv_subject_get_int(ps->motion_state().get_gcode_z_offset_subject()) : 0;
+        auto on_restarted = [api, live_microns, saved = std::move(on_saved)]() {
+            if (live_microns != 0) {
+                const std::string restore = fmt::format("SET_GCODE_OFFSET Z={:.3f}",
+                                                        static_cast<double>(live_microns) / 1000.0);
+                spdlog::info("[ZOffsetUtils] Restoring the unsaved live offset: {}", restore);
+                api->execute_gcode(restore, nullptr, nullptr);
+            }
+            saved();
+        };
         save_watch.begin(
-            api, "Saving tool offsets... Klipper will restart.", std::move(on_saved),
+            api, "Saving tool offsets... Klipper will restart.", std::move(on_restarted),
             [on_error](const std::string& err) {
                 spdlog::error("[ZOffsetUtils] SAVE_CONFIG (tool offsets) failed: {}", err);
                 if (on_error) {

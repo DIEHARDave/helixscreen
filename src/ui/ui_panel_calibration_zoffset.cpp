@@ -674,6 +674,8 @@ void ZOffsetCalibrationPanel::send_accept() {
     final_offset_ = current_z_;
     on_calibration_result(true, "");
 
+    // FIRMWARE_MANAGED ignores the Z-offset save setting on purpose: the
+    // firmware persists the offset itself, so there is no save to withhold.
     if (strategy == ZOffsetCalibrationStrategy::FIRMWARE_MANAGED) {
         // Apply cumulative delta as gcode Z offset
         set_state(State::SAVING);

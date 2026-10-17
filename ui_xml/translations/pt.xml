@@ -2041,7 +2041,6 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." pt="Não há espaço suficiente para este widget. Reorganize ou remova widgets para criar espaço."/>
   <translation tag="Not in your spools? Set it up" pt="Não está nos seus carretéis? Configure aqui"/>
   <translation tag="Not now" pt="Agora não"/>
-  <translation tag="Not saved to the printer config: Z-offset saving is off for this printer" pt="Não salvo na configuração: salvar Z-Offset está desativado para esta impressora"/>
   <translation tag="Not yet available on this display" pt="Ainda não disponível neste display"/>
   <translation tag="Not yet calibrated" pt="Ainda não calibrado"/>
   <translation tag="Notes" pt="Notas"/>
@@ -3612,6 +3611,7 @@
   <translation tag="Z-offset saved" pt="Z-offset salvo"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." pt="Z-offset salvo ({:+.3f}mm). Klipper reiniciando..."/>
   <translation tag="Z-offset saved - Klipper restarting..." pt="Z-offset salvo - Klipper reiniciando..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." pt="Salvar Z-Offset está desativado, então o HelixScreen não salvou isto. O Klipper mantém até o próximo salvamento da configuração."/>
   <translation tag="Z:" pt="Z:"/>
   <translation tag="Z: 0.000" pt="Z: 0.000"/>
   <translation tag="already loaded" pt="já carregado"/>

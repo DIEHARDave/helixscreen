@@ -302,6 +302,25 @@ TEST_CASE_METHOD(ToolCalPanelFixture,
         CHECK(script.find("Z_OFFSET_APPLY") == std::string::npos);
     }
 
+    // klipper-toolchanger commits the tool parameters with SAVE_CONFIG, whose
+    // restart resets the live offset; the unsaved babystep comes back after it.
+    auto saved = [&] {
+        const auto& h = client->gcode_script_history();
+        return std::find(h.begin(), h.end(), "SAVE_CONFIG") != h.end();
+    };
+    REQUIRE(pump_until(saved, 50));
+    ps.set_klippy_state_sync(helix::KlippyState::STARTUP);
+    ps.set_klippy_state_sync(helix::KlippyState::READY);
+    auto restored = [&] {
+        const auto& h = client->gcode_script_history();
+        return std::find(h.begin(), h.end(), "SET_GCODE_OFFSET Z=0.050") != h.end();
+    };
+    REQUIRE(pump_until(restored, 50));
+    const auto& after = client->gcode_script_history();
+    const auto save_at = std::find(after.begin(), after.end(), "SAVE_CONFIG");
+    REQUIRE(save_at != after.end());
+    CHECK(std::find(save_at, after.end(), "SET_GCODE_OFFSET Z=0.050") != after.end());
+
     panel.on_deactivate(DeactivateReason::NavigateAway);
     panel.cleanup();
 }

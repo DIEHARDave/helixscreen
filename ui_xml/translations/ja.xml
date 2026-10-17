@@ -2041,7 +2041,6 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ja="このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。"/>
   <translation tag="Not in your spools? Set it up" ja="スプールにない？登録する"/>
   <translation tag="Not now" ja="後で"/>
-  <translation tag="Not saved to the printer config: Z-offset saving is off for this printer" ja="プリンター設定に保存されていません：このプリンターでは Z-Offset の保存がオフです"/>
   <translation tag="Not yet available on this display" ja="このディスプレイではまだ利用できません"/>
   <translation tag="Not yet calibrated" ja="未キャリブレーション"/>
   <translation tag="Notes" ja="メモ"/>
@@ -3612,6 +3611,7 @@
   <translation tag="Z-offset saved" ja="Z-offset を保存しました"/>
   <translation tag="Z-offset saved ({:+.3f}mm). Klipper restarting..." ja="Zオフセットを保存しました ({:+.3f}mm)。Klipper を再起動中..."/>
   <translation tag="Z-offset saved - Klipper restarting..." ja="Z-offset を保存しました - Klipper を再起動中..."/>
+  <translation tag="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save." ja="Z-Offset の保存がオフのため、HelixScreen は保存していません。次に設定が保存されるまで Klipper が保持します。"/>
   <translation tag="Z:" ja="Z:"/>
   <translation tag="Z: 0.000" ja="Z: 0.000"/>
   <translation tag="already loaded" ja="装填済み"/>

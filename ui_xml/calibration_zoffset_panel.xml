@@ -213,7 +213,7 @@
         <text_body name="final_offset_label" text="Accepted Z Position: 0.000"/>
         <text_small name="not_saved_note"
                     width="80%" style_text_align="center" long_mode="wrap"
-                    text="Not saved to the printer config: Z-offset saving is off for this printer">
+                    text="Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.">
           <bind_flag_if cond="z_offset_save_enabled eq 1 or z_offset_can_save eq 0" flag="hidden"/>
         </text_small>
         <ui_button name="btn_done" width="40%" text="Done">

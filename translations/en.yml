@@ -2191,7 +2191,6 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Not enough room for this widget. Rearrange or remove widgets to make space.
   Not in your spools? Set it up: Not in your spools? Set it up
   Not now: Not now
-  'Not saved to the printer config: Z-offset saving is off for this printer': 'Not saved to the printer config: Z-offset saving is off for this printer'
   Not yet available on this display: Not yet available on this display
   Not yet calibrated: Not yet calibrated
   Notes: Notes
@@ -3924,6 +3923,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z-offset saved ({:+.3f}mm). Klipper
     restarting...
   Z-offset saved - Klipper restarting...: Z-offset saved - Klipper restarting...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: already loaded

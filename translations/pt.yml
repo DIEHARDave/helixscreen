@@ -2258,7 +2258,6 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Não há espaço suficiente para este widget. Reorganize ou remova widgets para criar espaço.
   Not in your spools? Set it up: Não está nos seus carretéis? Configure aqui
   Not now: Agora não
-  'Not saved to the printer config: Z-offset saving is off for this printer': 'Não salvo na configuração: salvar Z-Offset está desativado para esta impressora'
   Not yet available on this display: 'Ainda não disponível neste display'
   Not yet calibrated: Ainda não calibrado
   Notes: Notas
@@ -4040,6 +4039,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z-offset salvo ({:+.3f}mm). Klipper
     reiniciando...
   Z-offset saved - Klipper restarting...: Z-offset salvo - Klipper reiniciando...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Salvar Z-Offset está desativado, então o HelixScreen não salvou isto. O Klipper mantém até o próximo salvamento da configuração.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'já carregado'
