@@ -14,6 +14,7 @@
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/moonraker_manager_test_access.h"
+#include "../test_helpers/scoped_env.h"
 #include "../test_helpers/scoped_int_subject.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
@@ -37,8 +38,11 @@
 #include "tool_state.h"
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -860,4 +864,92 @@ TEST_CASE_METHOD(SeedPopulateFixture, "populate while home is being edited does 
     CHECK(toasts.empty());
     CHECK(home().is_unedited_default());
     CHECK(HomeLayoutSync::instance().take_seed("printer_a").has_value());
+}
+
+namespace {
+
+/// A file holding @p content, removed with the guard.
+class TempJsonFile {
+  public:
+    explicit TempJsonFile(const std::string& content)
+        : path_(std::filesystem::temp_directory_path() /
+                ("helix_mock_home_layout_" + std::to_string(::getpid()) + ".json")) {
+        std::ofstream(path_) << content;
+    }
+    ~TempJsonFile() {
+        std::error_code ec;
+        std::filesystem::remove(path_, ec);
+    }
+    std::string path() const {
+        return path_.string();
+    }
+
+  private:
+    std::filesystem::path path_;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(HomeLayoutSyncFixture,
+                 "home_layout_sync: HELIX_MOCK_HOME_LAYOUT pre-seeds the published record",
+                 "[home_layout_sync]") {
+    const json payload = valid_published_payload();
+    TempJsonFile file(payload.dump());
+    ScopedEnv env("HELIX_MOCK_HOME_LAYOUT", file.path().c_str());
+
+    MoonrakerClientMock seeded(MoonrakerClientMock::PrinterType::VORON_24);
+
+    CHECK(seeded.mock_db_get(kNamespace, kKey) == payload);
+}
+
+TEST_CASE_METHOD(HomeLayoutSyncFixture,
+                 "home_layout_sync: HELIX_MOCK_HOME_LAYOUT naming no JSON object seeds nothing",
+                 "[home_layout_sync]") {
+    TempJsonFile file("[1, 2]");
+    ScopedEnv env("HELIX_MOCK_HOME_LAYOUT", file.path().c_str());
+
+    MoonrakerClientMock seeded(MoonrakerClientMock::PrinterType::VORON_24);
+
+    CHECK_FALSE(seeded.mock_db().contains(kNamespace));
+}
+
+TEST_CASE_METHOD(HomeLayoutSyncFixture,
+                 "home_layout_sync: the manager wires the sync to its API and unwires it on "
+                 "shutdown",
+                 "[home_layout_sync]") {
+    TempJsonFile file(valid_published_payload().dump());
+    ScopedEnv env("HELIX_MOCK_HOME_LAYOUT", file.path().c_str());
+    RuntimeConfig runtime_config;
+    runtime_config.test_mode = true;
+    set_locality(true);
+
+    std::vector<bool> results;
+    auto record = [&results](std::optional<home_layout::ParsedLayout> layout) {
+        results.push_back(layout.has_value());
+    };
+
+    MoonrakerManager manager;
+    REQUIRE(manager.init(runtime_config, nullptr));
+    HomeLayoutSync::instance().fetch_now(record);
+    drain();
+    manager.shutdown();
+    HomeLayoutSync::instance().fetch_now(record);
+    drain();
+
+    CHECK(results == std::vector<bool>{true, false});
+}
+
+TEST_CASE_METHOD(HomeLayoutSyncFixture,
+                 "home_layout_sync: init_subjects starts the locality verdict Unknown and the "
+                 "subject follows a verdict",
+                 "[home_layout_sync]") {
+    set_locality(true);
+    REQUIRE(get_printer_state().moonraker_locality() == MoonrakerLocality::Remote);
+    lv_subject_t* subject = get_printer_state().network_state().get_moonraker_locality_subject();
+    CHECK(lv_subject_get_int(subject) == static_cast<int>(MoonrakerLocality::Remote));
+
+    get_printer_state().deinit_subjects();
+    get_printer_state().init_subjects(true);
+
+    CHECK(get_printer_state().moonraker_locality() == MoonrakerLocality::Unknown);
 }

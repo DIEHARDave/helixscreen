@@ -726,3 +726,31 @@ TEST_CASE_METHOD(SwitchFlowFixture,
     CHECK(switch_card() == "none");
     CHECK(helix::PrinterSwitchFlowTestAccess::connect_timeout(flow_) == nullptr);
 }
+
+TEST_CASE_METHOD(SwitchFlowFixture,
+                 "Switch flow: leaving a printer drops the connection's locality verdict",
+                 "[multi-printer][switch_flow]") {
+    auto remote_verdict = [] {
+        get_printer_state().set_moonraker_is_remote(true);
+        UpdateQueue::instance().drain();
+        REQUIRE(get_printer_state().moonraker_locality() == helix::MoonrakerLocality::Remote);
+    };
+
+    SECTION("switching") {
+        remote_verdict();
+        flow_.request_switch("beta");
+    }
+    SECTION("adding through the wizard") {
+        remote_verdict();
+        flow_.add_printer_via_wizard();
+        set_wizard_cancel_callback(nullptr);
+    }
+    SECTION("cancelling the wizard") {
+        flow_.add_printer_via_wizard();
+        set_wizard_cancel_callback(nullptr);
+        remote_verdict();
+        flow_.cancel_add_printer_wizard();
+    }
+
+    CHECK(get_printer_state().moonraker_locality() == helix::MoonrakerLocality::Unknown);
+}
