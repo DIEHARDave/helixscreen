@@ -73,12 +73,25 @@ lv_obj_t* create_fullscreen_backdrop(lv_obj_t* parent, lv_opa_t opacity = 180);
  * @brief Register a screen object that stays in front of every backdrop
  *
  * The navbar's buttons (the E-stop, the spools-on-the-bed button):
- * they have to stay tappable above any overlay, modal or keypad backdrop.
+ * they have to stay tappable above any overlay or keypad backdrop. A modal
+ * covers them (set_chrome_covered()).
  */
 void add_always_on_top(lv_obj_t* obj);
 
 /// Unregister @p obj; unknown objects are ignored.
 void remove_always_on_top(lv_obj_t* obj);
+
+/**
+ * @brief While covered, always-on-top objects stay under whatever is raised
+ *
+ * ModalStack covers the chrome while any modal is open: a modal blocks the
+ * navbar, E-stop included, so a tap meant for the backdrop cannot land on it.
+ * Uncovering raises the chrome back to the front.
+ */
+void set_chrome_covered(bool covered);
+
+/// True while a modal holds the chrome under its backdrop.
+bool chrome_covered();
 
 /**
  * @brief Hides every always-on-top object while a screen snapshot is taken,

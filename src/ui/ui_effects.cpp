@@ -183,7 +183,31 @@ void flash_object(lv_obj_t* obj, int32_t duration_ms, bool force) {
 
 namespace {
 std::vector<lv_obj_t*> s_always_on_top;
+bool s_chrome_covered = false;
+
+void raise_chrome_on(lv_obj_t* parent, const lv_obj_t* except) {
+    for (lv_obj_t* top : s_always_on_top) {
+        if (top != except && lv_obj_is_valid(top) &&
+            (!parent || lv_obj_get_parent(top) == parent)) {
+            lv_obj_move_foreground(top);
+        }
+    }
+}
 } // namespace
+
+void set_chrome_covered(bool covered) {
+    if (s_chrome_covered == covered) {
+        return;
+    }
+    s_chrome_covered = covered;
+    if (!covered) {
+        raise_chrome_on(nullptr, nullptr);
+    }
+}
+
+bool chrome_covered() {
+    return s_chrome_covered;
+}
 
 void add_always_on_top(lv_obj_t* obj) {
     if (obj &&
@@ -219,11 +243,8 @@ void bring_to_front(lv_obj_t* obj) {
         return;
     }
     lv_obj_move_foreground(obj);
-    for (lv_obj_t* top : s_always_on_top) {
-        if (top != obj && lv_obj_is_valid(top) &&
-            lv_obj_get_parent(top) == lv_obj_get_parent(obj)) {
-            lv_obj_move_foreground(top);
-        }
+    if (!s_chrome_covered) {
+        raise_chrome_on(lv_obj_get_parent(obj), obj);
     }
 }
 

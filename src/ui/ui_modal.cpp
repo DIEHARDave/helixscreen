@@ -123,9 +123,19 @@ ModalStack& ModalStack::instance() {
     return instance;
 }
 
+// A visible modal blocks the navbar: its backdrop covers the always-on-top
+// chrome (E-stop included) until the last visible modal starts to close.
+static void sync_chrome_cover(const ModalStack& stack) {
+    helix::ui::set_chrome_covered(!stack.empty());
+}
+
 void ModalStack::push(lv_obj_t* backdrop, lv_obj_t* dialog, const std::string& component_name,
                       Modal* owner) {
     stack_.push_back({backdrop, dialog, component_name, false /* exiting */, owner});
+    sync_chrome_cover(*this);
+    if (backdrop && lv_obj_is_valid(backdrop)) {
+        lv_obj_move_foreground(backdrop);
+    }
     spdlog::debug("[ModalStack] Pushed modal '{}' (stack depth: {})", component_name,
                   stack_.size());
     crash_handler::breadcrumb::note("modal+", component_name.c_str(),
@@ -157,6 +167,7 @@ void ModalStack::remove(lv_obj_t* backdrop, bool free_owned_now) {
                                         static_cast<long>(stack_.size() - 1));
         std::unique_ptr<Modal> owned = std::move(it->owned_instance);
         stack_.erase(it);
+        sync_chrome_cover(*this);
         if (owned) {
             // An owned instance must die BEFORE its widget tree: subclass
             // destructors may touch widgets they created in on_show()
@@ -224,6 +235,7 @@ void ModalStack::clear() {
         }
         lv_obj_delete(entry.backdrop);
     }
+    sync_chrome_cover(*this);
 }
 
 lv_obj_t* ModalStack::top_dialog() const {
@@ -318,6 +330,7 @@ bool ModalStack::mark_exiting(lv_obj_t* backdrop) {
             }
             entry.exiting = true;
             spdlog::debug("[ModalStack] Marked modal '{}' as exiting", entry.component_name);
+            sync_chrome_cover(*this);
             return true;
         }
     }

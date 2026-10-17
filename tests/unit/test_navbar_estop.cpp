@@ -6,9 +6,10 @@
  * @brief The navbar carries the one E-stop while a job holds the machine.
  *
  * The navbar keeps a slot; the button itself lives on the screen over that slot,
- * so it stays bright and tappable above overlay and modal backdrops, which dim
- * the rest of the navbar. Every panel and overlay sits beside the navbar. Screens
- * that cover the navbar (lock screen, fullscreen camera) carry their own.
+ * so it stays bright and tappable above overlay and keypad backdrops, which dim
+ * the rest of the navbar. An open modal covers it, like the rest of the navbar. Every panel and
+ * overlay sits beside the navbar. Screens that cover the navbar (lock screen, fullscreen camera)
+ * carry their own.
  *
  * Run with: ./build/bin/helix-tests "[estop_navbar]"
  */
@@ -181,18 +182,46 @@ TEST_CASE_METHOD(NavbarFixture, "navbar E-stop stays bright above an overlay bac
     CHECK(index_of(estop_) > index_of(fresh));
 }
 
-TEST_CASE_METHOD(NavbarFixture, "navbar E-stop stays reachable above a modal",
-                 "[estop_navbar][navigation]") {
+TEST_CASE_METHOD(NavbarFixture, "an open modal covers the navbar E-stop",
+                 "[estop_navbar][navigation][modal_covers_navbar]") {
     set_visible(1);
+    lv_obj_update_layout(test_screen());
+    lv_area_t button;
+    lv_obj_get_coords(estop_, &button);
+    lv_point_t tap{(button.x1 + button.x2) / 2, (button.y1 + button.y2) / 2};
+    REQUIRE(lv_indev_search_obj(test_screen(), &tap) == estop_);
+
+    bool dismissed = false;
+    helix::ui::ConfirmOptions opts;
+    opts.on_dismiss = [&dismissed] { dismissed = true; };
     lv_obj_t* dialog =
-        helix::ui::modal_confirm("Title", "Message", ModalSeverity::Info, "OK", [] {});
+        helix::ui::modal_confirm("Title", "Message", ModalSeverity::Info, "OK", [] {}, opts);
     REQUIRE(dialog != nullptr);
     lv_obj_t* backdrop = lv_obj_get_parent(dialog);
     REQUIRE(backdrop != nullptr);
     REQUIRE(lv_obj_get_parent(backdrop) == lv_obj_get_parent(estop_));
-    CHECK(index_of(estop_) > index_of(backdrop));
-    Modal::hide(dialog);
+    CHECK(index_of(backdrop) > index_of(estop_));
+
+    // A tap on the E-stop's spot reaches the backdrop, never the button.
+    lv_obj_t* hit = lv_indev_search_obj(test_screen(), &tap);
+    CHECK(hit == backdrop);
+
+    // A keypad or overlay raised while the modal is open leaves it covered.
+    lv_obj_t* other = lv_obj_create(test_screen());
+    helix::ui::bring_to_front(other);
+    CHECK(index_of(estop_) < index_of(backdrop));
+    helix::ui::safe_delete(other);
+
+    // The backdrop takes the tap and, for a dismissible modal, closes it.
+    REQUIRE(hit != nullptr);
+    lv_obj_send_event(hit, LV_EVENT_CLICKED, nullptr);
+    process_lvgl(400);
     helix::ui::UpdateQueue::instance().drain();
+    CHECK(dismissed);
+    CHECK_FALSE(Modal::any_visible());
+
+    // Closed, the navbar is live again.
+    CHECK(lv_indev_search_obj(test_screen(), &tap) == estop_);
 }
 
 TEST_CASE_METHOD(NavbarFixture, "navbar E-stop stays reachable above the keyboard",
