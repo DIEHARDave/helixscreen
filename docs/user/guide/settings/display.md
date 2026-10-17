@@ -56,6 +56,8 @@ How long the screen waits with nobody touching it before it dims: **Never**, **3
 
 How long the screen waits before it turns off completely: **Never**, **1 minute**, **5 minutes**, **10 minutes**, **20 minutes** (the default) or **30 minutes**. Touch the screen to wake it.
 
+The touch that wakes the screen, from sleep, a dimmed screen or a screensaver, only wakes it. Nothing under your finger is pressed, even if you hold it there or drag, until you lift it. Then tap what you want.
+
 Sleeping turns the backlight off. On the rare screen with no adjustable backlight, HelixScreen powers the panel down instead. If your screen stays faintly lit while asleep, or doesn't come back when you touch it, you can force the behavior in `settings.json`:
 
 ```json

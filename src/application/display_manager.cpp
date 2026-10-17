@@ -105,7 +105,7 @@ static int sdl_event_filter(void* /*userdata*/, SDL_Event* event) {
 
 DisplayManager::DisplayManager()
     : m_sleep(DisplaySleepHost{m_backend, m_backlight, m_display, m_shutting_down,
-                               [this] { disable_input_briefly(); },
+                               [] { cancel_pointer_presses(); },
                                [this](lv_display_flush_cb_t cb) { restore_flush_cb(cb); }}) {}
 
 DisplayManager::~DisplayManager() {
@@ -976,54 +976,25 @@ void DisplayManager::enable_affine_calibration() {
 }
 
 // ============================================================================
-// Input Gating (Wake-Only First Touch)
+// Wake-touch press cancel
 // ============================================================================
 
-void DisplayManager::disable_input_briefly() {
-    // Disable all pointer input devices, and cancel whatever press is already
-    // in flight on each.
-    //
-    // lv_indev_enable(false) is a pure flag write: pr_timestamp, long_pr_sent
-    // and pointer.act_obj all survive the blackout, so a finger still on the
-    // glass when input comes back keeps counting toward LV_EVENT_LONG_PRESSED
-    // from the ORIGINAL touch-down. On the wake touch that means a long-press
-    // gesture the user never made — home-grid edit mode opening behind the lock
-    // screen (#1245). lv_indev_reset() is what actually discards that state, and
-    // it lands even while the device is disabled: lv_indev_read() runs the reset
-    // query handler before it checks the enabled flag.
+void DisplayManager::cancel_pointer_presses() {
+    // A pointer whose read callback is not wrapped (SDL's mouse, which Android's touch also
+    // arrives through) has already handed the wake touch to LVGL. lv_indev_reset() drops
+    // that press's target, long-press clock and scroll, and lv_indev_wait_release() keeps
+    // LVGL from re-pressing, scrolling or clicking anything until the finger lifts.
+    // A wrapped pointer reports the wake touch as released, so only the reset applies.
     lv_indev_t* indev = lv_indev_get_next(nullptr);
     while (indev) {
         if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER) {
-            lv_indev_enable(indev, false);
+            if (lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
+                lv_indev_wait_release(indev);
+            }
             lv_indev_reset(indev, nullptr);
         }
         indev = lv_indev_get_next(indev);
     }
-
-    // Schedule re-enable after 200ms via LVGL timer
-    lv_timer_create(reenable_input_cb, 200, nullptr);
-
-    // info-level so the wake-gate window is captured in debug bundles by
-    // default — diagnoses "tapped Resume but nothing happened" reports
-    // (#22) by letting us correlate user-reported tap times with the
-    // 200ms blackout window.
-    spdlog::info("[DisplayManager] Wake-gate engaged: input disabled for 200ms");
-}
-
-void DisplayManager::reenable_input_cb(lv_timer_t* timer) {
-    // Re-enable all pointer input devices
-    lv_indev_t* indev = lv_indev_get_next(nullptr);
-    while (indev) {
-        if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER) {
-            lv_indev_enable(indev, true);
-        }
-        indev = lv_indev_get_next(indev);
-    }
-
-    // Delete the one-shot timer
-    lv_timer_delete(timer);
-
-    spdlog::info("[DisplayManager] Wake-gate released: input re-enabled");
 }
 
 // ============================================================================
@@ -1041,12 +1012,17 @@ void DisplayManager::sleep_aware_read_cb(lv_indev_t* indev, lv_indev_data_t* dat
         dm->m_original_pointer_read_cb(indev, data);
     }
 
-    // A press while asleep is absorbed so LVGL sees no press; while dimmed it passes
-    // through but still requests the wake. Decided on the raw press, because LVGL only
-    // updates its activity time on PRESSED and evdev can drain press+release in one read.
-    if (data->state == LV_INDEV_STATE_PRESSED &&
-        dm->m_sleep.note_press(data->point.x, data->point.y)) {
-        data->state = LV_INDEV_STATE_RELEASED;
+    // A press while asleep, dimmed or under a screensaver wakes the display, and LVGL sees
+    // that touch as released until the finger lifts.
+    const bool was_swallowing = dm->m_wake_latch.swallowing();
+    const helix::WakeTouchLatch::Sample out = dm->m_wake_latch.filter(
+        {data->state == LV_INDEV_STATE_PRESSED, data->point.x, data->point.y},
+        [dm](int32_t x, int32_t y) { return dm->m_sleep.note_press(x, y); });
+    data->state = out.pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+    data->point.x = out.x;
+    data->point.y = out.y;
+    if (was_swallowing && !dm->m_wake_latch.swallowing()) {
+        spdlog::info("[DisplayManager] Wake touch released; input resumes");
     }
 
     // After the wake handling, so a suppressed press can never cost a wake request.
