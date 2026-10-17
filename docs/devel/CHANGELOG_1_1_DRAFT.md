@@ -573,10 +573,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   fading from white through its shell's colour to an ember. It adjusts how many sparks and
   bursts it draws to what the board can afford. Select it under Settings > Display >
   Screensaver.
-- **3D Maze screensaver** - the old Windows walk through a brick maze, with wood floors and
-  a tiled ceiling. Spinning HelixScreen logos float in the halls, gray rocks flip the view
-  upside down, a tiny toolhead scurries past, and your printer hangs framed on the walls.
-  Select it under Settings > Display > Screensaver.
+- **3D Maze screensaver** - the old Windows walk through a brick maze, with wood floors, a
+  tiled ceiling and the original's wide view. The maze has a few loops and small rooms, and
+  the halls fade into the dark. Spinning HelixScreen logos float in the halls, gray rocks flip
+  the view upside down, a tiny toolhead scurries past, and the walls are hung with framed
+  thumbnails of your recent prints and other files, and your printer. The pictures come from
+  thumbnails the screen already has, so the saver never downloads anything. Select it under
+  Settings > Display > Screensaver.
 - **Hyperspace screensaver** - a flight through glowing rainbow space: star flares stream
   past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts
   ahead. Select it under Settings > Display > Screensaver.
