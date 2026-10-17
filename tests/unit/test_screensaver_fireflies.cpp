@@ -346,14 +346,8 @@ TEST_CASE("a fly's hue swings 20 degrees either way with its speed",
 TEST_CASE("a fly's tail grows to 2.25 s of history and stops there",
           "[screensaver][fireflies_sim]") {
     Swarm s(24);
-    const size_t n = s.sim.flies().size();
     const auto all_ages_in = [&](uint32_t lo, uint32_t hi) {
-        for (size_t i = 0; i < n; i++) {
-            if (s.sim.tail_age_ms(i) < lo || s.sim.tail_age_ms(i) >= hi) {
-                return false;
-            }
-        }
-        return true;
+        return s.sim.tail_age_ms() >= lo && s.sim.tail_age_ms() < hi;
     };
     CHECK(all_ages_in(0, 1));
     s.run_for(1000, 10);
@@ -363,7 +357,7 @@ TEST_CASE("a fly's tail grows to 2.25 s of history and stops there",
     CHECK(all_ages_in(2250, 2300));
     s.run_for(40, 10);
     CHECK(all_ages_in(2250, 2300));
-    CHECK(s.sim.tail_age_ms(0) == 2290);
+    CHECK(s.sim.tail_age_ms() == 2290);
     s.run_for(24960, 10);
     REQUIRE(s.sim.elapsed_ms() == 30000);
     CHECK(all_ages_in(2250, 2300));
@@ -714,6 +708,13 @@ TEST_CASE("every changed fireflies pixel lies in a dirty box", "[screensaver][fi
                 if (frame == (split_first ? 200 : 100)) {
                     merged = s.sim.begin_mode(FirefliesMode::MERGE, 0, s.rng);
                 }
+                // GLOW draws halos; a level change drops flies whose last tiles must clear.
+                if (frame == 50) {
+                    REQUIRE(s.sim.begin_mode(FirefliesMode::GLOW, 3000, s.rng));
+                }
+                if (frame == 150) {
+                    s.sim.request_level(level == 0 ? helix::ui::FIREFLIES_LEVEL_COUNT - 1 : 0);
+                }
                 const std::vector<uint8_t> before = s.frame.bytes;
                 s.step();
                 REQUIRE(s.dirty.size() <= helix::ui::FIREFLIES_MAX_DIRTY_AREAS);
@@ -801,6 +802,8 @@ TEST_CASE("glow brightens the swarm", "[screensaver][fireflies_sim]") {
     CHECK(static_cast<double>(light_sum(glowing.frame)) >= 1.3 * static_cast<double>(plain_sum));
 }
 
+// 60% is the design limit, not a measurement with headroom: level 0 runs close to it, and a
+// change that pushes past it should be a deliberate retuning of the tiles or the ladder.
 TEST_CASE("a fireflies frame dirties a fraction of the canvas", "[screensaver][fireflies_sim]") {
     Swarm s(45, 0, PixelFormat::XRGB8888, 800, 480);
     double dirty_px = 0;
@@ -878,7 +881,9 @@ double fireflies_cost(size_t level) {
 
 } // namespace
 
-TEST_CASE("the fireflies bottom rung fits a 1-core board's 10% budget",
+// The model prices only the redraw LVGL does for the dirty areas, not the sim's own drawing into
+// the canvas, so it understates fireflies; the device gate is the real measure.
+TEST_CASE("the fireflies bottom rung's redraw fits a 1-core board's 10% budget",
           "[screensaver][fireflies_sim]") {
     const double bottom = fireflies_cost(FIREFLIES_LEVEL_COUNT - 1);
     const double top = fireflies_cost(0);
@@ -905,6 +910,35 @@ TEST_CASE("fireflies frame cost per level", "[.][fireflies_bench]") {
         report << "L" << level << " " << ms << " ms/frame\n";
     }
     WARN(report.str());
+}
+
+TEST_CASE("a new wind heading during a gust never compounds the gust",
+          "[screensaver][fireflies_sim]") {
+    constexpr float WIND_MAX = 6.0f;
+    constexpr float GUST_MAX = 4.0f * WIND_MAX;
+    for (uint32_t seed = 1; seed <= 40; seed++) {
+        CAPTURE(seed);
+        Swarm s(seed, helix::ui::FIREFLIES_LEVEL_COUNT - 1, PixelFormat::XRGB8888, 160, 96);
+        // Gust back to back, so every heading change lands inside a gust.
+        const uint32_t changes_before = s.sim.wind_changes();
+        float strongest = 0.0f;
+        for (uint32_t t = 0; t < 60000; t += 100) {
+            if (s.sim.mode() == FirefliesMode::NORMAL) {
+                REQUIRE(s.sim.begin_mode(FirefliesMode::WIND_GUST, 4000, s.rng));
+            }
+            s.step(100);
+            strongest = std::max(strongest, length(s.sim.wind()));
+        }
+        REQUIRE(s.sim.wind_changes() >= changes_before + 3);
+        CHECK(strongest <= GUST_MAX + 1e-3f);
+        // The last gust ends; the calm wind is back within its bounds at once and stays there.
+        s.run_for(4000, 100);
+        for (uint32_t t = 0; t < 3000; t += 100) {
+            s.step(100);
+            REQUIRE(s.sim.mode() == FirefliesMode::NORMAL);
+            CHECK(length(s.sim.wind()) <= WIND_MAX + 1e-3f);
+        }
+    }
 }
 
 // ============================================================================

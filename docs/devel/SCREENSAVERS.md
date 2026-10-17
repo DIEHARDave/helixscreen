@@ -185,6 +185,10 @@ wandering every 8 to 15 s: stop, loop, glow, hyperspeed, split, merge and a wind
   redraw it all. The sim marks the 16 px tiles each frame draws in, blacks out the tiles the
   last frame drew, and reports both frames' tiles joined into at most
   `FIREFLIES_MAX_DIRTY_AREAS` boxes.
+- **Cost.** The ladder test holds the bottom rung to a 1-core board's 10% with the K1C
+  redraw model (`tests/test_helpers/screensaver_cost_model.h`), which does not count the sim's
+  own drawing (about 1 ms a frame on a desktop at level 0). Only a device run of
+  `scripts/screensaver-perf/` measures the whole cost.
 - **RGB565.** Light adds through `add_light` with a `BAYER_4X4` threshold, so a faint tail end
   shows as a sparse pattern instead of rounding to nothing.
 

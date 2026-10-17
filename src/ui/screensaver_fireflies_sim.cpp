@@ -209,6 +209,7 @@ void FirefliesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t 
     std::fill(std::begin(modes_begun_), std::end(modes_begun_), 0u);
     next_mode_ms_ = random_ms(rng, NORMAL_MIN_MS, NORMAL_MAX_MS);
 
+    base_wind_ = {};
     new_wind_heading(rng);
     wind_from_ = wind_to_;
     wind_changes_ = 0;
@@ -221,7 +222,7 @@ void FirefliesSim::new_wind_heading(std::minstd_rand& rng) {
     const float rise = uniform(rng, -1.0f, 1.0f) * WIND_RISE;
     const float strength = uniform(rng, WIND_MIN, WIND_MAX);
     const FireflyVec dir{std::cos(heading), rise, std::sin(heading)};
-    wind_from_ = wind_;
+    wind_from_ = base_wind_;
     wind_to_ = dir * (strength / std::sqrt(length_sq(dir)));
     wind_left_ms_ = random_ms(rng, static_cast<int32_t>(FIREFLIES_WIND_MIN_MS),
                               static_cast<int32_t>(FIREFLIES_WIND_MAX_MS));
@@ -232,11 +233,13 @@ void FirefliesSim::new_wind_heading(std::minstd_rand& rng) {
 void FirefliesSim::update_wind() {
     const float eased =
         std::min(1.0f, static_cast<float>(elapsed_ms_ - last_wind_change_ms_) / WIND_EASE_MS);
-    wind_ = wind_from_ + (wind_to_ - wind_from_) * eased;
+    base_wind_ = wind_from_ + (wind_to_ - wind_from_) * eased;
+    wind_ = base_wind_;
     if (mode_ == FirefliesMode::WIND_GUST) {
         const float in = static_cast<float>(mode_total_ms_ - mode_left_ms_) / GUST_EASE_MS;
         const float out = static_cast<float>(mode_left_ms_) / GUST_EASE_MS;
-        wind_ = wind_ * (1.0f + (GUST_MULT - 1.0f) * std::clamp(std::min(in, out), 0.0f, 1.0f));
+        wind_ =
+            base_wind_ * (1.0f + (GUST_MULT - 1.0f) * std::clamp(std::min(in, out), 0.0f, 1.0f));
     }
 }
 
@@ -248,8 +251,7 @@ float FirefliesSim::fly_hue_deg(size_t i) const {
     return wrap360(baits_[f.bait].hue_deg + swing);
 }
 
-uint32_t FirefliesSim::tail_age_ms(size_t i) const {
-    (void)i;
+uint32_t FirefliesSim::tail_age_ms() const {
     if (tail_count_ == 0) {
         return 0;
     }
@@ -308,9 +310,9 @@ bool FirefliesSim::begin_mode(FirefliesMode mode, uint32_t duration_ms, std::min
         break;
     case FirefliesMode::LOOP: {
         // The circle stays inside the box the waypoints keep to.
-        const float lim_x = world_w_ / 2.0f * WAYPOINT_INSET - LOOP_RADIUS;
+        const float lim_x = std::max(0.0f, world_w_ / 2.0f * WAYPOINT_INSET - LOOP_RADIUS);
         const float lim_y = FIREFLIES_WORLD_H / 2.0f * WAYPOINT_INSET;
-        const float lim_z = FIREFLIES_WORLD_D / 2.0f * WAYPOINT_INSET - LOOP_RADIUS;
+        const float lim_z = std::max(0.0f, FIREFLIES_WORLD_D / 2.0f * WAYPOINT_INSET - LOOP_RADIUS);
         for (size_t i = 0; i < baits_.size(); i++) {
             Bait& b = baits_[i];
             b.loop_centre = {std::clamp(b.pos.x, -lim_x, lim_x), std::clamp(b.pos.y, -lim_y, lim_y),
@@ -522,7 +524,8 @@ namespace {
 // The camera sits CAM_DIST units in front of the box's centre, its focal length set so the box's
 // middle depth plane fills the frame's height.
 constexpr float CAM_DIST = 100.0f;
-constexpr float NEAREST = 1.0f;
+// Nothing nearer than this is drawn: a nearer point magnifies past 4x into long, wide spans.
+constexpr float NEAREST = CAM_DIST / 4.0f;
 
 // Sizes are for a 480 px tall frame and scale with the frame's height.
 constexpr float REFERENCE_HEIGHT = 480.0f;
@@ -657,7 +660,8 @@ template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<D
         }
         const Projected head = a;
         float age_a = 0.0f;
-        bool first = true;
+        // Whether the previous segment drew its last point, which this one then skips.
+        bool joined = false;
         const int16_t* tail = &tail_[i * FIREFLIES_TAIL_POINTS * 3];
         for (size_t k = 0; k < tail_count_; k++) {
             const size_t slot = (tail_head_ + k) % FIREFLIES_TAIL_POINTS;
@@ -696,7 +700,7 @@ template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<D
                 int32_t t = 0;
                 PixelWriter::line(x0, y0, x1, y1, [&](int32_t x, int32_t y) {
                     // A segment's first point is the previous segment's last.
-                    if (t++ == 0 && !first) {
+                    if (t++ == 0 && joined) {
                         return;
                     }
                     const float f = n == 0 ? 0.0f : static_cast<float>(t - 1) / n;
@@ -712,8 +716,10 @@ template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<D
                         }
                     }
                 });
+                joined = true;
+            } else {
+                joined = false;
             }
-            first = false;
             a = b;
             age_a = age_b;
         }
@@ -758,8 +764,8 @@ template <typename Px> void FirefliesSim::draw(FrameTarget& frame, std::vector<D
             };
             const float area = edge(0, vx[2], vy[2]);
             bool any = false;
-            for (int32_t y = ty1; y <= ty2; y++) {
-                for (int32_t x = tx1; x <= tx2; x++) {
+            for (int32_t y = std::max(ty1, 0); y <= std::min(ty2, h_ - 1); y++) {
+                for (int32_t x = std::max(tx1, 0); x <= std::min(tx2, w_ - 1); x++) {
                     const float px = static_cast<float>(x) + 0.5f;
                     const float py = static_cast<float>(y) + 0.5f;
                     const float e0 = edge(0, px, py);

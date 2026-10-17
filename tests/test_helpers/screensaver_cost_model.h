@@ -15,7 +15,9 @@ namespace helix::test {
  * frame's cost is dominated by the NUMBER of areas it invalidates: an area costs about
  * 3600x what one of its pixels costs, because each is a separate draw task and flush.
  * Rough by construction: it catches a saver that grows an order of magnitude, and predicts
- * no percentage.
+ * no percentage. It prices only the redraw of the areas a saver reports, not the saver's own
+ * drawing into its canvas, which is small for the starfield and not for a saver that draws
+ * most of its frame.
  */
 inline constexpr double SAVER_COST_FIXED = 10.1;
 inline constexpr double SAVER_COST_PER_AREA = 0.244;

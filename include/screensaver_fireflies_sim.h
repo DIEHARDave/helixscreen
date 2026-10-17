@@ -183,9 +183,9 @@ class FirefliesSim {
     /// -FIREFLIES_HUE_SWING_DEG at rest to +FIREFLIES_HUE_SWING_DEG at FIREFLIES_FLY_SPEED.
     float fly_hue_deg(size_t i) const;
 
-    /// Age, in ms, of fly `i`'s oldest recorded tail point: grows to FIREFLIES_TAIL_MS (within
-    /// one FIREFLIES_TAIL_SAMPLE_MS) and stays there.
-    uint32_t tail_age_ms(size_t i) const;
+    /// Age, in ms, of the oldest recorded tail point, the same for every fly: they are sampled
+    /// together. Grows to FIREFLIES_TAIL_MS (within one FIREFLIES_TAIL_SAMPLE_MS) and stays there.
+    uint32_t tail_age_ms() const;
 
     /// Wind now, world units per second; a tail point of age a is drawn displaced by wind * a.
     const FireflyVec& wind() const {
@@ -244,6 +244,8 @@ class FirefliesSim {
     uint32_t modes_begun_[FIREFLIES_MODE_COUNT]{};
 
     FireflyVec wind_{};
+    /// The wind before any gust: a new heading eases from this, never from the gusted wind_.
+    FireflyVec base_wind_{};
     FireflyVec wind_from_{};
     FireflyVec wind_to_{};
     int32_t wind_left_ms_ = 0;
