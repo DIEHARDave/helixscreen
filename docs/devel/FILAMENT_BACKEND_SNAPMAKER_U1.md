@@ -166,6 +166,19 @@ from real RFID spools remain rig-pending; code-verified is not field-verified.
 | `SET_PRINT_USED_EXTRUDERS EXTRUDERS=<csv>` | Pre-print feed gating — always sent, remap or not (`src/printer/ams_backend_snapmaker.cpp#build_preprint_gcode`) |
 | `AUTO_FEEDING_BATCH ACTION=START / DOING EXTRUDER=<n> / END` | Batch load/unload when the firmware macro is present (see Batch Load/Unload) |
 | `POST /printer/filament_detect/set` | Slot-metadata writeback (paxx12 Extended Firmware REST, `:854-924`) |
+| `SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=<head> VENDOR=… FILAMENT_TYPE=… FILAMENT_SUBTYPE=…` + `FILAMENT_COLOR_RGBA=…` | The head's `print_task_config` record, which RESUME requires (below) |
+
+The firmware refuses RESUME with `e<N> not edit filament` while a head the task uses has
+no `print_task_config.filament_type`, and only an RFID spool or `SET_PRINT_FILAMENT_CONFIG`
+fills it. A user edit sends that command when `filament_detect/set` was not accepted
+(stock firmware 404s it; an accepted POST is mirrored into the record by the extension and
+marks the head official) and the record names a different type or none, since every send
+runs `FLOW_RESET_K`. VENDOR is `Snapmaker` or `Generic`, FILAMENT_SUBTYPE a known product
+line or `Basic`, and FORCE is never sent, so an official head is left alone
+(`src/printer/ams_backend_snapmaker.cpp#write_task_filament_record`). `prepare_for_resume`
+writes the same record first for any used head whose record is blank while the slot knows
+its material, before the runout refeed
+(`src/printer/ams_backend_snapmaker.cpp#resume_record_repair_locked`).
 
 Why `AUTO_FEEDING ... LOAD=1` and not the obvious alternatives — the source records the
 trail (`src/printer/ams_backend_snapmaker.cpp#do_load_filament`): bare `T{n}` is a no-op when the target tool
