@@ -176,4 +176,10 @@ TEST_CASE("PrinterDiscovery: the probe XY offset comes from the probe's config s
         hw.parse_probe_xy_offset(json::object());
         CHECK_FALSE(hw.probe_xy_offset().has_value());
     }
+    SECTION("clear() forgets the offset, so a different printer starts unknown") {
+        hw.parse_probe_xy_offset(json{{"probe", {{"x_offset", -40.0}}}});
+        REQUIRE(hw.probe_xy_offset().has_value());
+        hw.clear();
+        CHECK_FALSE(hw.probe_xy_offset().has_value());
+    }
 }
