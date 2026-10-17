@@ -126,6 +126,7 @@ class MazeMap {
 
     /// Frees the tiles; the map is empty until the next generate().
     void release();
+    size_t heap_bytes() const;
 
     /// A hand-built map of `size` x `size` tiles in row order, with each tile's picture index
     /// (none: all 0); for tests.
@@ -272,6 +273,7 @@ class MazeWalker {
     void reserve(int cells);
     /// Frees the circling memory.
     void release();
+    size_t heap_bytes() const;
 
   private:
     enum class Segment : uint8_t { START, STRAIGHT, TURN, DEAD_END };
@@ -373,7 +375,7 @@ class MazeRenderer {
     /// Frees every buffer init() allocated; render() draws nothing until the next init().
     void release();
     /// Heap bytes the renderer holds.
-    size_t buffer_bytes() const;
+    size_t heap_bytes() const;
     uint32_t internal_w() const {
         return iw_;
     }
@@ -503,8 +505,10 @@ class MazeSim {
     static constexpr uint32_t FLIP_MS = 600;
     static constexpr uint32_t EXIT_HOLD_MS = 1200;
 
-    void init(const FrameTarget& frame, const MazeArt& art, std::minstd_rand& rng, size_t level);
-    void set_level(size_t level) {
+    static constexpr const auto& LEVELS = MAZE_LEVELS;
+
+    void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level, const MazeArt& art);
+    void request_level(size_t level) {
         renderer_.set_level(level);
     }
     size_t level() const {
@@ -515,6 +519,8 @@ class MazeSim {
               std::vector<DirtyRect>& dirty);
     /// Frees the maze, the items and every render buffer.
     void clear();
+    /// Heap bytes the maze, the walks, the items and the renderer hold.
+    size_t heap_bytes() const;
 
     const MazeMap& map() const {
         return map_;

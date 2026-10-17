@@ -5,6 +5,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/print_select_panel_test_access.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "app_globals.h"
 #include "print_history_data.h"
 #include "printer_state.h"
@@ -47,30 +48,8 @@ using helix::ui::WalkEvent;
 
 namespace {
 
-/// A heap frame of `format`, rows padded past their pixels the way LVGL's strides can be.
-struct Frame {
-    std::vector<uint8_t> bytes;
-    FrameTarget target;
-
-    Frame(uint32_t w, uint32_t h, PixelFormat format) {
-        const uint32_t bpp = format == PixelFormat::RGB565 ? 2 : 4;
-        const uint32_t stride = w * bpp + 12;
-        bytes.assign(static_cast<size_t>(stride) * h, 0);
-        target = {bytes.data(), stride, w, h, format};
-    }
-};
-
-uint64_t frame_hash(const FrameTarget& f) {
-    const uint32_t bpp = f.format == PixelFormat::RGB565 ? 2 : 4;
-    uint64_t hash = 1469598103934665603ULL;
-    for (uint32_t y = 0; y < f.h; y++) {
-        const uint8_t* row = f.data + static_cast<size_t>(y) * f.stride;
-        for (uint32_t i = 0; i < f.w * bpp; i++) {
-            hash = (hash ^ row[i]) * 1099511628211ULL;
-        }
-    }
-    return hash;
-}
+using helix::test::frame_fnv1a;
+using helix::test::TestFrame;
 
 /// Cells reachable from cell (0, 0) through open passages.
 int reachable_cells(const MazeMap& map) {
@@ -201,8 +180,8 @@ struct OpenedMaze {
 
     explicit OpenedMaze(uint32_t seed) {
         std::minstd_rand rng(seed);
-        Frame frame(8, 8, PixelFormat::XRGB8888);
-        sim.init(frame.target, MazeArt{}, rng, 4);
+        TestFrame frame(8, 8, PixelFormat::XRGB8888);
+        sim.init(frame.target, rng, 4, MazeArt{});
         const int n = sim.map().cells();
         start = sim.walker().cell_y() * n + sim.walker().cell_x();
         for (const MazeItem& item : sim.items()) {
@@ -212,12 +191,6 @@ struct OpenedMaze {
         }
     }
 };
-
-/// Frame size and padding for the canary test: rows padded past their pixels with a known
-/// byte, and a guard past the last row.
-constexpr uint8_t CANARY = 0xA5;
-constexpr uint32_t ROW_PAD = 12;
-constexpr size_t GUARD = 64;
 
 /// A corridor running east: open tiles (1..size-2, mid), brick elsewhere.
 MazeMap corridor(int size) {
@@ -547,8 +520,8 @@ TEST_CASE("every opened maze reaches its exit, rocks and all", "[screensaver][ma
         INFO("seed " << seed);
         std::minstd_rand rng(seed);
         MazeSim sim;
-        Frame frame(16, 12, PixelFormat::XRGB8888);
-        sim.init(frame.target, MazeArt{}, rng, 4);
+        TestFrame frame(16, 12, PixelFormat::XRGB8888);
+        sim.init(frame.target, rng, 4, MazeArt{});
         std::vector<DirtyRect> dirty;
         for (int i = 0; i < 60000 && sim.exits_reached() == 0 && sim.abandoned() == 0; i++) {
             sim.step(100, frame.target, rng, dirty);
@@ -558,7 +531,7 @@ TEST_CASE("every opened maze reaches its exit, rocks and all", "[screensaver][ma
         CHECK(sim.walker().moves() <= sim.step_bound());
         if (seed == 1) {
             // A new run counts from zero.
-            sim.init(frame.target, MazeArt{}, rng, 4);
+            sim.init(frame.target, rng, 4, MazeArt{});
             CHECK(sim.exits_reached() == 0);
         }
     }
@@ -671,7 +644,7 @@ TEST_CASE("the walk keeps its distance from the wall ahead outside dead ends",
         MazeWalker walker;
         walker.reset(sx, sy, heading, (seed & 1) != 0);
         MazeRenderer r;
-        Frame frame(32, 20, PixelFormat::XRGB8888);
+        TestFrame frame(32, 20, PixelFormat::XRGB8888);
         r.init(32, 20, PixelFormat::XRGB8888, MazeArt{});
         size_t checked = 0;
         while (walker.moves() < 2u * MazeSim::CELLS * MazeSim::CELLS) {
@@ -698,7 +671,7 @@ TEST_CASE("a wall straight ahead has the slice height its distance gives, with n
     const int size = 15;
     MazeMap map = room(size);
     MazeRenderer r;
-    Frame frame(160, 100, PixelFormat::XRGB8888);
+    TestFrame frame(160, 100, PixelFormat::XRGB8888);
     r.init(frame.target.w, frame.target.h, PixelFormat::XRGB8888, MazeArt{});
     r.set_level(0);
     MazePose pose;
@@ -735,7 +708,7 @@ TEST_CASE("the wall top is where the focal length puts it", "[screensaver][maze]
     const int size = 15;
     MazeMap map = room(size);
     MazeRenderer r;
-    Frame frame(160, 100, PixelFormat::XRGB8888);
+    TestFrame frame(160, 100, PixelFormat::XRGB8888);
     r.init(160, 100, PixelFormat::XRGB8888, MazeArt{});
     const MazePose pose{static_cast<float>(size - 1) - 3.5f, size * 0.5f, 0.0f};
     r.render(map, {}, pose, 0.0f, 0, frame.target);
@@ -752,7 +725,7 @@ TEST_CASE("a sprite stands the height its distance gives", "[screensaver][maze]"
     art.logo.h = 8;
     art.logo.argb.assign(64, 0xFFFFFFFFu);
     MazeRenderer r;
-    Frame frame(160, 100, PixelFormat::XRGB8888);
+    TestFrame frame(160, 100, PixelFormat::XRGB8888);
     r.init(160, 100, PixelFormat::XRGB8888, art);
     const MazePose pose{1.5f, 5.5f, 0.0f};
     r.render(map, {}, pose, 0.0f, 0, frame.target);
@@ -788,7 +761,7 @@ std::pair<float, float> item_centre(const MazeItem& item) {
     art.logo.h = 8;
     art.logo.argb.assign(64, 0xFFFFFFFFu);
     MazeRenderer r;
-    Frame frame(160, 100, PixelFormat::XRGB8888);
+    TestFrame frame(160, 100, PixelFormat::XRGB8888);
     r.init(160, 100, PixelFormat::XRGB8888, art);
     const MazePose pose{1.5f, 7.5f, 0.0f};
     r.render(map, {}, pose, 0.0f, 0, frame.target);
@@ -864,7 +837,7 @@ TEST_CASE("a wall's fog follows its distance, darker on the y side", "[screensav
     const int size = 15;
     MazeMap map = room(size);
     MazeRenderer r;
-    Frame frame(160, 100, PixelFormat::XRGB8888);
+    TestFrame frame(160, 100, PixelFormat::XRGB8888);
     r.init(160, 100, PixelFormat::XRGB8888, MazeArt{});
     const uint32_t k = maze_fog_k(maze_fog_slot_depth(3.5f));
     REQUIRE(k < 32);
@@ -895,7 +868,7 @@ TEST_CASE("a picture wall is drawn at its fogged colour", "[screensaver][maze]")
     MazeMap map;
     map.set_tiles(size, tiles);
     MazeRenderer r;
-    Frame frame(160, 100, PixelFormat::XRGB8888);
+    TestFrame frame(160, 100, PixelFormat::XRGB8888);
     r.init(160, 100, PixelFormat::XRGB8888, art, 0);
     r.render(map, {}, MazePose{static_cast<float>(size - 1) - 3.5f, size * 0.5f, 0.0f}, 0.0f, 0,
              frame.target);
@@ -915,7 +888,7 @@ TEST_CASE("a sprite takes the fog of its distance", "[screensaver][maze]") {
     art.logo.h = 8;
     art.logo.argb.assign(64, 0xFFFFFFFFu);
     MazeRenderer r;
-    Frame frame(160, 100, PixelFormat::XRGB8888);
+    TestFrame frame(160, 100, PixelFormat::XRGB8888);
     r.init(160, 100, PixelFormat::XRGB8888, art);
     const MazePose pose{1.5f, 5.5f, 0.0f};
     r.render(map, {}, pose, 0.0f, 0, frame.target);
@@ -951,7 +924,7 @@ TEST_CASE("flat levels bake the fog into each row", "[screensaver][maze]") {
     using helix::ui::maze_fog_slot_depth;
     MazeMap map = room(15);
     MazeRenderer r;
-    Frame frame(128, 96, PixelFormat::XRGB8888);
+    TestFrame frame(128, 96, PixelFormat::XRGB8888);
     r.init(128, 96, PixelFormat::XRGB8888, MazeArt{}, 2);
     REQUIRE(r.internal_w() == 64);
     REQUIRE(r.internal_h() == 48);
@@ -973,7 +946,7 @@ TEST_CASE("flat levels bake the fog into each row", "[screensaver][maze]") {
 TEST_CASE("a textured floor darkens with distance", "[screensaver][maze]") {
     MazeMap map = room(31);
     MazeRenderer r;
-    Frame frame(128, 96, PixelFormat::XRGB8888);
+    TestFrame frame(128, 96, PixelFormat::XRGB8888);
     r.init(128, 96, PixelFormat::XRGB8888, MazeArt{}, 1);
     r.render(map, {}, MazePose{1.5f, 15.5f, 0.0f}, 0.0f, 0, frame.target);
     auto luminance = [&](uint32_t y) {
@@ -993,18 +966,18 @@ TEST_CASE("a flat level gives the fog bands back", "[screensaver][maze]") {
         2u * helix::ui::MAZE_FOG_BANDS * MazeRenderer::TEX * MazeRenderer::TEX * 2u;
     MazeRenderer r;
     r.init(800, 480, PixelFormat::RGB565, MazeArt{}, 1);
-    const size_t textured = r.buffer_bytes();
+    const size_t textured = r.heap_bytes();
     r.set_level(2);
-    CHECK(textured - r.buffer_bytes() >= bands);
+    CHECK(textured - r.heap_bytes() >= bands);
     MazeRenderer flat;
     flat.init(800, 480, PixelFormat::RGB565, MazeArt{}, 2);
-    CHECK(flat.buffer_bytes() == r.buffer_bytes());
+    CHECK(flat.heap_bytes() == r.heap_bytes());
 }
 
 TEST_CASE("a symmetric scene renders symmetric wall slices", "[screensaver][maze]") {
     MazeMap map = corridor(11);
     MazeRenderer r;
-    Frame frame(120, 80, PixelFormat::XRGB8888);
+    TestFrame frame(120, 80, PixelFormat::XRGB8888);
     r.init(frame.target.w, frame.target.h, PixelFormat::XRGB8888, MazeArt{});
     r.set_level(0);
     MazePose pose{2.5f, 5.5f, 0.0f};
@@ -1020,7 +993,7 @@ TEST_CASE("a sprite behind a wall draws nothing; in front of it, it draws", "[sc
     // Corridor east along row 5; the camera looks down it at a logo.
     MazeMap map = corridor(11);
     MazeRenderer r;
-    Frame frame(120, 80, PixelFormat::XRGB8888);
+    TestFrame frame(120, 80, PixelFormat::XRGB8888);
     r.init(frame.target.w, frame.target.h, PixelFormat::XRGB8888, MazeArt{});
     r.set_level(0);
     const MazePose pose{1.5f, 5.5f, 0.0f};
@@ -1076,7 +1049,7 @@ TEST_CASE("picture walls read the right way round from all four sides", "[screen
     MazeMap map;
     map.set_tiles(size, tiles);
     MazeRenderer r;
-    Frame frame(320, 200, PixelFormat::XRGB8888);
+    TestFrame frame(320, 200, PixelFormat::XRGB8888);
     r.init(320, 200, PixelFormat::XRGB8888, art);
     REQUIRE(r.picture_count() == 1);
     for (int heading = 0; heading < 4; heading++) {
@@ -1161,7 +1134,7 @@ MazeMap two_picture_room(uint8_t east, uint8_t north) {
 
 /// The centre pixel facing east (heading 0) or north (heading 3) at the room's wall centres.
 uint32_t centre_facing(MazeRenderer& r, const MazeMap& map, int heading) {
-    Frame frame(160, 100, PixelFormat::XRGB8888);
+    TestFrame frame(160, 100, PixelFormat::XRGB8888);
     const MazePose pose = heading == 0 ? MazePose{14.0f - 3.0f, 7.5f, 0.0f}
                                        : MazePose{7.5f, 1.0f + 3.0f, -3.14159265f * 0.5f};
     r.render(map, {}, pose, 0.0f, 0, frame.target);
@@ -1222,35 +1195,24 @@ TEST_CASE("frames of every size, level and depth stay inside their rows", "[scre
                                                    {5, 2},     {3, 3},     {1, 1}};
     const uint32_t dts[] = {16, 700, 33, 16, 50, 1, 16, 400};
     for (PixelFormat fmt : {PixelFormat::RGB565, PixelFormat::XRGB8888}) {
-        const uint32_t bpp = fmt == PixelFormat::RGB565 ? 2 : 4;
         for (const auto& [w, h] : sizes) {
             for (size_t level = 0; level < helix::ui::MAZE_LEVEL_COUNT; level++) {
-                INFO(w << "x" << h << " level " << level << " bpp " << bpp);
-                const uint32_t stride = w * bpp + ROW_PAD;
-                std::vector<uint8_t> bytes(static_cast<size_t>(stride) * h + GUARD, CANARY);
-                FrameTarget target{bytes.data(), stride, w, h, fmt};
+                INFO(w << "x" << h << " level " << level << " bpp " << helix::ui::pixel_bytes(fmt));
+                TestFrame frame(w, h, fmt);
+                FrameTarget& target = frame.target;
                 std::minstd_rand rng(w * 31 + h + static_cast<uint32_t>(level));
                 MazeSim sim;
-                sim.init(target, MazeArt{}, rng, level);
+                sim.init(target, rng, level, MazeArt{});
                 std::vector<DirtyRect> dirty;
                 for (int i = 0; i < 24; i++) {
                     if (i == 8) {
-                        sim.set_level(helix::ui::MAZE_LEVEL_COUNT - 1);
+                        sim.request_level(helix::ui::MAZE_LEVEL_COUNT - 1);
                     } else if (i == 16) {
-                        sim.set_level(0);
+                        sim.request_level(0);
                     }
                     sim.step(dts[i % 8], target, rng, dirty);
                 }
-                size_t touched = 0;
-                for (uint32_t y = 0; y < h; y++) {
-                    for (uint32_t i = w * bpp; i < stride; i++) {
-                        touched += bytes[static_cast<size_t>(y) * stride + i] != CANARY ? 1 : 0;
-                    }
-                }
-                for (size_t i = static_cast<size_t>(stride) * h; i < bytes.size(); i++) {
-                    touched += bytes[i] != CANARY ? 1 : 0;
-                }
-                REQUIRE(touched == 0);
+                REQUIRE(frame.padding_intact());
             }
         }
     }
@@ -1262,7 +1224,7 @@ TEST_CASE("an RGB565 maze holds its frame and art at two bytes a pixel", "[scree
     wide.init(800, 480, PixelFormat::XRGB8888, MazeArt{});
     narrow.init(800, 480, PixelFormat::RGB565, MazeArt{});
     // Everything per pixel halves; only the per-row and per-column tables stay the same size.
-    CHECK(narrow.buffer_bytes() * 10 < wide.buffer_bytes() * 6);
+    CHECK(narrow.heap_bytes() * 10 < wide.heap_bytes() * 6);
 }
 
 TEST_CASE("RGB565 and XRGB8888 renders of one scene agree within two 565 steps",
@@ -1271,8 +1233,8 @@ TEST_CASE("RGB565 and XRGB8888 renders of one scene agree within two 565 steps",
     MazeMap map;
     map.generate(MazeSim::CELLS, rng);
     const MazePose pose{1.5f, 1.5f, 0.3f};
-    Frame f32(96, 64, PixelFormat::XRGB8888);
-    Frame f16(96, 64, PixelFormat::RGB565);
+    TestFrame f32(96, 64, PixelFormat::XRGB8888);
+    TestFrame f16(96, 64, PixelFormat::RGB565);
     MazeRenderer r32;
     MazeRenderer r16;
     r32.init(96, 64, PixelFormat::XRGB8888, MazeArt{});
@@ -1299,17 +1261,13 @@ TEST_CASE("RGB565 and XRGB8888 renders of one scene agree within two 565 steps",
 TEST_CASE("an XRGB8888 maze frame keeps every X byte opaque", "[screensaver][maze]") {
     std::minstd_rand rng(9);
     MazeSim sim;
-    Frame frame(128, 80, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 0);
+    TestFrame frame(128, 80, PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 0, MazeArt{});
     std::vector<DirtyRect> dirty;
     for (int i = 0; i < 20; i++) {
         sim.step(33, frame.target, rng, dirty);
     }
-    for (uint32_t y = 0; y < frame.target.h; y++) {
-        for (uint32_t x = 0; x < frame.target.w; x++) {
-            REQUIRE(frame.bytes[y * frame.target.stride + x * 4 + 3] == 0xFF);
-        }
-    }
+    CHECK(helix::test::non_opaque_pixels(frame.target) == 0);
 }
 
 TEST_CASE("upside down is the vertical mirror of upright", "[screensaver][maze]") {
@@ -1319,8 +1277,8 @@ TEST_CASE("upside down is the vertical mirror of upright", "[screensaver][maze]"
     const MazePose pose{1.5f, 1.5f, 0.0f};
     for (size_t level = 0; level < helix::ui::MAZE_LEVEL_COUNT; level++) {
         INFO("level " << level);
-        Frame up(64, 48, PixelFormat::XRGB8888);
-        Frame down(64, 48, PixelFormat::XRGB8888);
+        TestFrame up(64, 48, PixelFormat::XRGB8888);
+        TestFrame down(64, 48, PixelFormat::XRGB8888);
         MazeRenderer r;
         r.init(64, 48, PixelFormat::XRGB8888, MazeArt{});
         r.set_level(level);
@@ -1337,7 +1295,7 @@ TEST_CASE("mid-flip the view squashes to black at the horizon", "[screensaver][m
     std::minstd_rand rng(13);
     MazeMap map;
     map.generate(MazeSim::CELLS, rng);
-    Frame frame(64, 48, PixelFormat::XRGB8888);
+    TestFrame frame(64, 48, PixelFormat::XRGB8888);
     MazeRenderer r;
     r.init(64, 48, PixelFormat::XRGB8888, MazeArt{});
     r.render(map, {}, MazePose{1.5f, 1.5f, 0.0f}, 0.5f, 0, frame.target);
@@ -1380,13 +1338,13 @@ TEST_CASE("the maze ladder runs 16, 33, 33, 50, 66 ms and shrinks the internal f
     MazeRenderer low;
     low.init(800, 480, PixelFormat::RGB565, MazeArt{}, 3);
     CHECK(low.internal_w() == 200);
-    CHECK(r.buffer_bytes() - low.buffer_bytes() >= (800u * 480u - 200u * 120u) * 2u);
+    CHECK(r.heap_bytes() - low.heap_bytes() >= (800u * 480u - 200u * 120u) * 2u);
 }
 
 TEST_CASE("the flat-floor level draws the floor as one colour per row", "[screensaver][maze]") {
     MazeMap map = room(15);
     MazeRenderer r;
-    Frame frame(128, 96, PixelFormat::XRGB8888);
+    TestFrame frame(128, 96, PixelFormat::XRGB8888);
     r.init(128, 96, PixelFormat::XRGB8888, MazeArt{});
     const MazePose pose{7.5f, 7.5f, 0.0f};
     auto row_is_flat = [&](uint32_t y) {
@@ -1409,37 +1367,55 @@ TEST_CASE("a maze run replays exactly from a seed", "[screensaver][maze]") {
     auto run = [](uint32_t seed) {
         std::minstd_rand rng(seed);
         MazeSim sim;
-        Frame frame(96, 64, PixelFormat::RGB565);
-        sim.init(frame.target, MazeArt{}, rng, 1);
+        TestFrame frame(96, 64, PixelFormat::RGB565);
+        sim.init(frame.target, rng, 1, MazeArt{});
         std::vector<DirtyRect> dirty;
         for (int i = 0; i < 120; i++) {
             sim.step(33, frame.target, rng, dirty);
         }
-        return frame_hash(frame.target);
+        return frame_fnv1a(frame.target);
     };
-    CHECK(run(42) == run(42));
-    CHECK(run(42) != run(43));
+    helix::test::check_replays(run, 42, 43);
 }
 
 TEST_CASE("every maze frame dirties the whole canvas", "[screensaver][maze]") {
     std::minstd_rand rng(2);
     MazeSim sim;
-    Frame frame(96, 64, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 0);
+    TestFrame frame(96, 64, PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 0, MazeArt{});
     std::vector<DirtyRect> dirty;
     sim.step(16, frame.target, rng, dirty);
     REQUIRE(dirty.size() == 1);
     CHECK(dirty[0] == DirtyRect{0, 0, 95, 63});
 }
 
+TEST_CASE("maze frames and step-downs never grow the heap from any starting rung",
+          "[screensaver][maze]") {
+    for (PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
+        for (size_t start = 0; start < helix::ui::MAZE_LEVEL_COUNT; start++) {
+            INFO("start " << start << " format " << static_cast<int>(format));
+            helix::test::SimRun<MazeSim> run(6, 96, 64, format);
+            run.init(start, MazeArt{});
+            const size_t heap = run.sim.heap_bytes();
+            for (size_t level = start; level < helix::ui::MAZE_LEVEL_COUNT; level++) {
+                run.sim.request_level(level);
+                for (int i = 0; i < 4; i++) {
+                    run.step(33);
+                    REQUIRE(run.sim.heap_bytes() <= heap);
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("a cleared maze holds no render buffers", "[screensaver][maze]") {
     std::minstd_rand rng(4);
     MazeSim sim;
-    Frame frame(160, 96, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 0);
-    REQUIRE(sim.renderer().buffer_bytes() > 160u * 96u * 4u);
+    TestFrame frame(160, 96, PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 0, MazeArt{});
+    REQUIRE(sim.renderer().heap_bytes() > 160u * 96u * 4u);
     sim.clear();
-    CHECK(sim.renderer().buffer_bytes() == 0);
+    CHECK(sim.renderer().heap_bytes() == 0);
     CHECK(sim.items().capacity() == 0);
     CHECK(sim.map().size() == 0);
 }
@@ -1447,8 +1423,8 @@ TEST_CASE("a cleared maze holds no render buffers", "[screensaver][maze]") {
 TEST_CASE("a scene places start, exit, logos, rocks and a toolhead", "[screensaver][maze]") {
     std::minstd_rand rng(21);
     MazeSim sim;
-    Frame frame(64, 48, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 3);
+    TestFrame frame(64, 48, PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 3, MazeArt{});
     int counts[5] = {};
     for (const MazeItem& item : sim.items()) {
         counts[static_cast<int>(item.kind)]++;
@@ -1466,8 +1442,8 @@ TEST_CASE("the walk waits in the exit's doorway with the smiley in view", "[scre
         INFO("seed " << seed);
         std::minstd_rand rng(seed);
         MazeSim sim;
-        Frame frame(160, 96, PixelFormat::XRGB8888);
-        sim.init(frame.target, MazeArt{}, rng, 0);
+        TestFrame frame(160, 96, PixelFormat::XRGB8888);
+        sim.init(frame.target, rng, 0, MazeArt{});
         std::vector<DirtyRect> dirty;
         for (int i = 0; i < 40000 && !sim.holding_exit(); i++) {
             sim.step(50, frame.target, rng, dirty);
@@ -1493,8 +1469,8 @@ TEST_CASE("touching a rock flips the view and swaps hands; reaching the exit sta
           "[screensaver][maze]") {
     std::minstd_rand rng(17);
     MazeSim sim;
-    Frame frame(48, 32, PixelFormat::XRGB8888);
-    sim.init(frame.target, MazeArt{}, rng, 3);
+    TestFrame frame(48, 32, PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 3, MazeArt{});
     std::vector<DirtyRect> dirty;
     bool saw_flip = false;
     bool saw_left = false;
@@ -1521,11 +1497,11 @@ TEST_CASE("a helix logo from outside replaces the drawn mark", "[screensaver][ma
     std::vector<MazeItem> logo{{MazeItemKind::LOGO, 4.5f, 5.5f, true}};
 
     auto render_with = [&](const MazeArt& art) {
-        Frame frame(96, 64, PixelFormat::XRGB8888);
+        TestFrame frame(96, 64, PixelFormat::XRGB8888);
         MazeRenderer r;
         r.init(96, 64, PixelFormat::XRGB8888, art);
         r.render(map, logo, pose, 0.0f, 0, frame.target);
-        return frame_hash(frame.target);
+        return frame_fnv1a(frame.target);
     };
     MazeArt red;
     red.logo.w = 8;
@@ -1547,7 +1523,7 @@ TEST_CASE("picture walls show the picture only when there is one", "[screensaver
 
 TEST_CASE("PixelWriter::pack writes what put() writes", "[screensaver][maze]") {
     for (PixelFormat fmt : {PixelFormat::RGB565, PixelFormat::XRGB8888}) {
-        Frame frame(2, 1, fmt);
+        TestFrame frame(2, 1, fmt);
         PixelWriter w(frame.target);
         const Rgb c{200, 100, 50};
         w.put(0, 0, c);

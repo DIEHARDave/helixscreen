@@ -4,12 +4,15 @@
 
 #include "screensaver_pipes_sim.h"
 
+#include "screensaver_fast_math.h"
 #include "screensaver_pixel_writer.h"
 
 #include <algorithm>
 #include <cmath>
 
 using helix::ui::screensaver::random_below;
+using helix::ui::screensaver::random_int;
+using helix::ui::screensaver::shuffle_in_place;
 
 namespace helix::ui {
 
@@ -73,7 +76,7 @@ void PipesGrid::reset(PipeGridDims dims) {
 }
 
 void PipesGrid::release() {
-    std::vector<uint8_t>().swap(taken_);
+    release_buffer(taken_);
     dims_ = {};
     empty_count_ = 0;
 }
@@ -142,9 +145,9 @@ bool PipesGrid::random_empty(std::minstd_rand& rng, PipeNode& out) const {
 
 int pipes_choose_weight_straight(std::minstd_rand& rng) {
     if (random_below(rng, 20) == 0) {
-        return 25 + random_below(rng, PIPES_MAX_WEIGHT_STRAIGHT - 25 + 1);
+        return random_int(rng, 25, PIPES_MAX_WEIGHT_STRAIGHT);
     }
-    return 1 + random_below(rng, 4);
+    return random_int(rng, 1, 4);
 }
 
 PipeJoint pipes_choose_joint(std::minstd_rand& rng) {
@@ -191,30 +194,15 @@ PipeDir pipes_choose_direction(const PipesGrid& grid, PipeNode pos, PipeDir last
     return ties[static_cast<size_t>(random_below(rng, tie_count))];
 }
 
-PipeVec3 pipes_cross(PipeVec3 a, PipeVec3 b) {
-    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
-}
-
-float pipes_length(PipeVec3 v) {
-    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-}
-
 // ============================================================================
 // Materials and lighting
 // ============================================================================
 
 namespace {
 
+/// A degenerate direction lights and turns as no direction at all.
 PipeVec3 normalized(PipeVec3 v) {
-    const float len = pipes_length(v);
-    if (len <= 0.0f) {
-        return {};
-    }
-    return {v.x / len, v.y / len, v.z / len};
-}
-
-float dot(PipeVec3 a, PipeVec3 b) {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
+    return normalized_or(v, {});
 }
 
 /// Light-model ambient (1.0) plus the light's own ambient (0.1).
@@ -239,7 +227,7 @@ Rgb pipes_shade(const PipeMaterial& m, PipeVec3 n) {
     std::array<uint8_t, 3> c{};
     for (size_t i = 0; i < 3; i++) {
         const float v = AMBIENT_SCALE * m.ka[i] + m.kd[i] * diffuse + m.ks[i] * spec;
-        c[i] = static_cast<uint8_t>(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f));
+        c[i] = unit_to_u8(v);
     }
     return {c[0], c[1], c[2]};
 }
@@ -249,10 +237,6 @@ Rgb pipes_shade(const PipeMaterial& m, PipeVec3 n) {
 // ============================================================================
 
 namespace {
-
-PipeVec3 add_scaled(PipeVec3 a, PipeVec3 d, float s) {
-    return {a.x + d.x * s, a.y + d.y * s, a.z + d.z * s};
-}
 
 PipePiece joint_piece(PipePieceKind kind, PipeVec3 at, uint8_t material) {
     PipePiece p;
@@ -307,8 +291,8 @@ void pipes_emit_start(PipeNode node, PipeDir first, PipeGridDims dims, uint8_t m
                       std::vector<PipePiece>& out) {
     const PipeVec3 c = pipes_node_world(node, dims);
     out.push_back(joint_piece(PipePieceKind::BALL, c, material));
-    out.push_back(cylinder_piece(add_scaled(c, pipes_dir_vec(first), PIPES_RADIUS), first,
-                                 SHORT_PIPE, material));
+    out.push_back(
+        cylinder_piece(c + pipes_dir_vec(first) * PIPES_RADIUS, first, SHORT_PIPE, material));
 }
 
 void pipes_emit_move(PipeNode node, PipeDir last, PipeDir next, PipeJoint joint, PipeGridDims dims,
@@ -316,7 +300,7 @@ void pipes_emit_move(PipeNode node, PipeDir last, PipeDir next, PipeJoint joint,
     const PipeVec3 c = pipes_node_world(node, dims);
     const PipeVec3 d = pipes_dir_vec(next);
     if (next == last) {
-        out.push_back(cylinder_piece(add_scaled(c, d, -PIPES_RADIUS), next, PIPES_PITCH, material));
+        out.push_back(cylinder_piece(c + d * -PIPES_RADIUS, next, PIPES_PITCH, material));
         return;
     }
     switch (joint) {
@@ -334,7 +318,7 @@ void pipes_emit_move(PipeNode node, PipeDir last, PipeDir next, PipeJoint joint,
         out.push_back(joint_piece(PipePieceKind::TEAPOT, c, material));
         break;
     }
-    out.push_back(cylinder_piece(add_scaled(c, d, PIPES_RADIUS), next, SHORT_PIPE, material));
+    out.push_back(cylinder_piece(c + d * PIPES_RADIUS, next, SHORT_PIPE, material));
 }
 
 void pipes_emit_end(PipeNode node, PipeGridDims dims, uint8_t material,
@@ -349,9 +333,7 @@ void PipesScreen::begin(PipeGridDims dims, std::minstd_rand& rng, std::vector<Pi
     straight_ = 0;
     started_ = 0;
     max_pipes_ = PIPES_PER_SCREEN;
-    const int n =
-        std::min(PIPES_PER_SCREEN,
-                 PIPES_MIN_ACTIVE + random_below(rng, PIPES_MAX_ACTIVE - PIPES_MIN_ACTIVE + 1));
+    const int n = std::min(PIPES_PER_SCREEN, random_int(rng, PIPES_MIN_ACTIVE, PIPES_MAX_ACTIVE));
     counted_ = n;
     for (size_t i = 0; i < static_cast<size_t>(n); i++) {
         if (!start_pipe(i, rng, out)) {
@@ -450,8 +432,6 @@ void PipesScreen::release() {
 
 namespace {
 
-constexpr float PI_F = 3.14159265358979f;
-
 /// Bend segments of an elbow.
 constexpr int ELBOW_SEGMENTS = 6;
 /// Latitude bands of a ball.
@@ -471,13 +451,13 @@ void join_rings(uint16_t a, uint16_t b, std::vector<uint16_t>& tris) {
 }
 
 float slice_angle(int k) {
-    return static_cast<float>(k) * 2.0f * PI_F / static_cast<float>(PIPES_SLICES);
+    return static_cast<float>(k) * 2.0f * SAVER_PI / static_cast<float>(PIPES_SLICES);
 }
 
 } // namespace
 
 float pipes_ball_radius() {
-    return std::sqrt(2.0f) * PIPES_RADIUS / std::cos(PI_F / static_cast<float>(PIPES_SLICES));
+    return std::sqrt(2.0f) * PIPES_RADIUS / std::cos(SAVER_PI / static_cast<float>(PIPES_SLICES));
 }
 
 void pipes_build_cylinder(PipeMesh& out) {
@@ -501,7 +481,7 @@ void pipes_build_ball(PipeMesh& out) {
     // Poles on the z axis, rings of PIPES_SLICES between them.
     out.verts.push_back({{0, 0, -radius}, {0, 0, -1}});
     for (int stack = 1; stack < BALL_STACKS; stack++) {
-        const float polar = PI_F * static_cast<float>(stack) / static_cast<float>(BALL_STACKS);
+        const float polar = SAVER_PI * static_cast<float>(stack) / static_cast<float>(BALL_STACKS);
         const float z = -std::cos(polar);
         const float rr = std::sin(polar);
         for (int k = 0; k < PIPES_SLICES; k++) {
@@ -531,7 +511,7 @@ void pipes_build_elbow(PipeMesh& out) {
     out.tris.clear();
     const float r = PIPES_RADIUS;
     for (int seg = 0; seg <= ELBOW_SEGMENTS; seg++) {
-        const float phi = 0.5f * PI_F * static_cast<float>(seg) / ELBOW_SEGMENTS;
+        const float phi = 0.5f * SAVER_PI * static_cast<float>(seg) / ELBOW_SEGMENTS;
         // Centreline round (0, r, -r); the ring's frame is x and e2, with x cross e2 the
         // direction of travel.
         const PipeVec3 centre{0.0f, r - r * std::cos(phi), -r + r * std::sin(phi)};
@@ -597,7 +577,7 @@ PipeXform pipes_piece_xform(const PipePiece& piece) {
     case PipePieceKind::ELBOW:
         xf.z = pipes_dir_vec(piece.from);
         xf.y = pipes_dir_vec(piece.dir);
-        xf.x = pipes_cross(xf.y, xf.z);
+        xf.x = cross(xf.y, xf.z);
         break;
     case PipePieceKind::BALL:
     case PipePieceKind::TEAPOT:
@@ -637,12 +617,7 @@ uint16_t lut_value(float v) {
 void PipesRenderer::init(uint32_t w, uint32_t h, uint8_t scale) {
     w_ = w;
     h_ = h;
-    scale_ = std::max<uint8_t>(1, scale);
-    iw_ = (w + scale_ - 1) / scale_;
-    ih_ = (h + scale_ - 1) / scale_;
-    focal_ = static_cast<float>(ih_) * 0.5f;
-    // A fresh vector, so a smaller scale gives the larger buffer back.
-    std::vector<float>(static_cast<size_t>(iw_) * ih_, 0.0f).swap(inv_depth_);
+    set_scale(scale);
     pipes_build_cylinder(cylinder_);
     pipes_build_ball(ball_);
     pipes_build_elbow(elbow_);
@@ -670,24 +645,28 @@ void PipesRenderer::init(uint32_t w, uint32_t h, uint8_t scale) {
 }
 
 void PipesRenderer::release() {
-    std::vector<float>().swap(inv_depth_);
     for (PipeMesh* m : {&cylinder_, &ball_, &elbow_, &teapot_}) {
-        std::vector<PipeVertex>().swap(m->verts);
-        std::vector<uint16_t>().swap(m->tris);
+        release_buffers(m->verts, m->tris);
     }
-    std::vector<ScreenVertex>().swap(screen_);
-    std::vector<uint16_t>().swap(lut_);
+    release_buffers(inv_depth_, screen_, lut_);
     w_ = h_ = iw_ = ih_ = 0;
 }
 
-size_t PipesRenderer::buffer_bytes() const {
-    return inv_depth_.capacity() * sizeof(float) + cylinder_.buffer_bytes() + ball_.buffer_bytes() +
-           elbow_.buffer_bytes() + teapot_.buffer_bytes() +
-           screen_.capacity() * sizeof(ScreenVertex) + lut_.capacity() * sizeof(uint16_t);
+size_t PipesRenderer::heap_bytes() const {
+    return buffer_bytes(inv_depth_, screen_, lut_) + cylinder_.heap_bytes() + ball_.heap_bytes() +
+           elbow_.heap_bytes() + teapot_.heap_bytes();
+}
+
+void PipesRenderer::set_scale(uint8_t scale) {
+    scale_ = std::max<uint8_t>(1, scale);
+    iw_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(w_), scale_));
+    ih_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(h_), scale_));
+    focal_ = static_cast<float>(ih_) * 0.5f;
+    inv_depth_.assign(static_cast<size_t>(iw_) * ih_, 0.0f);
 }
 
 void PipesRenderer::set_view(float yrot_deg) {
-    const float rad = yrot_deg * PI_F / 180.0f;
+    const float rad = yrot_deg * SAVER_PI / 180.0f;
     cos_y_ = std::cos(rad);
     sin_y_ = std::sin(rad);
 }
@@ -862,7 +841,7 @@ void PipesRenderer::raster_triangle(const FrameTarget& frame, const ScreenVertex
                        l0 * a.n.z + l1 * b.n.z + l2 * c.n.z};
             n = normalized(n);
             const float nl = dot(n, light);
-            const auto il = static_cast<size_t>(std::lround(std::clamp(nl, 0.0f, 1.0f) * 255.0f));
+            const size_t il = unit_to_u8(nl);
             const auto ih = static_cast<size_t>(
                 std::lround(std::clamp(dot(n, half), 0.0f, 1.0f) * (LUT_SPEC - 1)));
             uint8_t rgb[3];
@@ -871,13 +850,7 @@ void PipesRenderer::raster_triangle(const FrameTarget& frame, const ScreenVertex
                 rgb[ch] = static_cast<uint8_t>(std::min(255, v));
             }
             const Rgb colour{rgb[0], rgb[1], rgb[2]};
-            const int32_t cx2 = std::min(static_cast<int32_t>(frame.w), (px + 1) * s);
-            const int32_t cy2 = std::min(static_cast<int32_t>(frame.h), (py + 1) * s);
-            for (int32_t cy = py * s; cy < cy2; cy++) {
-                for (int32_t cx = px * s; cx < cx2; cx++) {
-                    out.put_dithered(cx, cy, colour);
-                }
-            }
+            out.fill_rect_dithered({px * s, py * s, (px + 1) * s - 1, (py + 1) * s - 1}, colour);
         }
     }
 }
@@ -903,16 +876,13 @@ void PipesDissolve::init(uint32_t w, uint32_t h) {
 }
 
 void PipesDissolve::release() {
-    std::vector<uint32_t>().swap(order_);
+    release_buffer(order_);
     cleared_ = 0;
     active_ = false;
 }
 
 void PipesDissolve::begin(std::minstd_rand& rng) {
-    for (size_t i = order_.size(); i-- > 1;) {
-        const auto j = static_cast<size_t>(random_below(rng, static_cast<int>(i + 1)));
-        std::swap(order_[i], order_[j]);
-    }
+    shuffle_in_place(rng, order_.begin(), order_.end());
     cleared_ = 0;
     elapsed_ms_ = 0;
     active_ = !order_.empty();
@@ -935,13 +905,8 @@ void PipesDissolve::step(uint32_t dt_ms, const FrameTarget& frame, std::vector<D
         const int32_t y1 = static_cast<int32_t>(block / static_cast<uint32_t>(cols_)) * block_px_;
         const int32_t x2 = std::min(w, x1 + block_px_) - 1;
         const int32_t y2 = std::min(h, y1 + block_px_) - 1;
-        for (int32_t y = y1; y <= y2; y++) {
-            for (int32_t x = x1; x <= x2; x++) {
-                out.put(x, y, {0, 0, 0});
-            }
-        }
-        DirtyRect r;
-        r.add(x1, y1, x2, y2);
+        const DirtyRect r{x1, y1, x2, y2};
+        out.fill_rect(r, {0, 0, 0});
         if (!r.empty()) {
             dirty.push_back(r);
         }
@@ -957,7 +922,6 @@ void PipesDissolve::step(uint32_t dt_ms, const FrameTarget& frame, std::vector<D
 
 void PipesSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level) {
     level_ = std::min(level, PIPES_LEVEL_COUNT - 1);
-    PixelWriter(frame).fill({0, 0, 0});
     renderer_.init(frame.w, frame.h, PIPES_LEVELS[level_].scale);
     dissolve_.init(frame.w, frame.h);
     pieces_.clear();
@@ -972,7 +936,7 @@ void PipesSim::start_screen(const FrameTarget& frame, std::minstd_rand& rng,
                             std::vector<DirtyRect>& dirty) {
     const uint8_t scale = PIPES_LEVELS[level_].scale;
     if (renderer_.scale() != scale) {
-        renderer_.init(frame.w, frame.h, scale);
+        renderer_.set_scale(scale);
     }
     const PipeGridDims dims =
         pipes_grid_dims(static_cast<int32_t>(frame.w), static_cast<int32_t>(frame.h));
@@ -1021,7 +985,7 @@ void PipesSim::step(uint32_t dt_ms, const FrameTarget& frame, std::minstd_rand& 
     start_screen(frame, rng, dirty);
 }
 
-void PipesSim::set_level(size_t level) {
+void PipesSim::request_level(size_t level) {
     level_ = std::min(level, PIPES_LEVEL_COUNT - 1);
 }
 
@@ -1029,14 +993,14 @@ void PipesSim::clear() {
     screen_.release();
     renderer_.release();
     dissolve_.release();
-    std::vector<PipePiece>().swap(pieces_);
+    release_buffer(pieces_);
     phase_ = PipesPhase::GROWING;
     steps_.reset();
 }
 
-size_t PipesSim::buffer_bytes() const {
-    return screen_.grid().buffer_bytes() + renderer_.buffer_bytes() + dissolve_.buffer_bytes() +
-           pieces_.capacity() * sizeof(PipePiece);
+size_t PipesSim::heap_bytes() const {
+    return screen_.grid().heap_bytes() + renderer_.heap_bytes() + dissolve_.heap_bytes() +
+           buffer_bytes(pieces_);
 }
 
 } // namespace helix::ui

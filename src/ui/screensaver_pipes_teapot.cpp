@@ -175,7 +175,7 @@ void evaluate(const Patch& p, float u, float v, PipeVec3& pos, PipeVec3& normal)
             dv = {dv.x + wv * c.x, dv.y + wv * c.y, dv.z + wv * c.z};
         }
     }
-    normal = pipes_cross(du, dv);
+    normal = cross(du, dv);
 }
 
 /// Data-space (z up) to model space (y up), scaled and dropped.
@@ -203,18 +203,16 @@ void add_patch(const Patch& p, PipeMesh& out) {
             PipeVec3 point;
             PipeVec3 n;
             evaluate(p, u, v, point, n);
-            if (pipes_length(n) < 1e-5f) {
+            if (length(n) < 1e-5f) {
                 PipeVec3 unused;
                 evaluate(p, std::clamp(u, INSET, 1.0f - INSET), std::clamp(v, INSET, 1.0f - INSET),
                          unused, n);
             }
-            const float len = pipes_length(n);
-            n = len > 0.0f ? PipeVec3{n.x / len, n.y / len, n.z / len} : PipeVec3{0, 0, 1};
-            const PipeVec3 away{point.x - TEAPOT_INSIDE.x, point.y - TEAPOT_INSIDE.y,
-                                point.z - TEAPOT_INSIDE.z};
-            const float away_len = pipes_length(away);
+            n = normalized_or(n, {0, 0, 1});
+            const PipeVec3 away = point - TEAPOT_INSIDE;
+            const float away_len = length(away);
             if (away_len > 0.0f) {
-                outward += (n.x * away.x + n.y * away.y + n.z * away.z) / away_len;
+                outward += dot(n, away) / away_len;
             }
             pos[static_cast<size_t>(i * N + j)] = point;
             nrm[static_cast<size_t>(i * N + j)] = n;

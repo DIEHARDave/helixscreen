@@ -5,9 +5,9 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "print_history_data.h"
-#include "screensaver_base.h"
 #include "screensaver_canvas.h"
 #include "screensaver_maze_sim.h"
+#include "screensaver_sim_saver.h"
 
 #include <cstdint>
 #include <functional>
@@ -86,38 +86,24 @@ MazeArtSources maze_art_sources_from_app(int screen_w, std::minstd_rand& rng);
  * canvas at the display's own depth; every frame repaints the whole canvas. The Helix icon
  * stands where the original placed OpenGL logos, and picture walls show the printer's image.
  */
-class MazeScreensaver : public SaverBase {
+class MazeScreensaver : public SimSaver<MazeSim> {
   public:
     ScreensaverType type() const override {
         return ScreensaverType::MAZE_3D;
+    }
+    /// Replaces where on_start() finds its art; for tests.
+    void set_art_source(std::function<MazeArtSources()> source) {
+        art_source_ = std::move(source);
     }
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
         return SAVER_BUILD_CANVAS_FORMAT;
     }
+    /// Decodes the art, then starts the sim with it.
     bool on_start() override;
-    void on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty) override;
-    void on_stop() override;
-    size_t ladder_size() const override {
-        return MAZE_LEVEL_COUNT;
-    }
-    uint32_t ladder_period_ms(size_t level) const override {
-        return MAZE_LEVELS[level].period_ms;
-    }
-    void on_level_request(size_t level) override;
-
-  public:
-    /// Replaces where on_start() finds its art; for tests.
-    void set_art_source(std::function<MazeArtSources()> source) {
-        art_source_ = std::move(source);
-    }
-    const MazeSim& sim() const {
-        return sim_;
-    }
 
   private:
-    MazeSim sim_;
     std::function<MazeArtSources()> art_source_;
 };
 

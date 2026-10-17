@@ -4,6 +4,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/screensaver_sim_kit.h"
 #include "../test_helpers/screensaver_test_access.h"
 #include "screensaver.h"
 
@@ -98,48 +99,10 @@ TEST_CASE("screensaver_canvas_stride_bytes matches lv_canvas_set_buffer's stride
 
 namespace {
 
-void run_timer(lv_timer_t* timer) {
-    REQUIRE(timer != nullptr);
-    REQUIRE(timer->timer_cb != nullptr);
-    timer->timer_cb(timer);
-}
-
-const lv_draw_buf_t* four_byte_canvas_buf(lv_obj_t* canvas) {
+/// The canvas's pixels; the starfield canvas is XRGB8888, which non_opaque_pixels() requires.
+helix::ui::FrameTarget canvas_frame(lv_obj_t* canvas) {
     REQUIRE(canvas != nullptr);
-    const lv_draw_buf_t* buf = lv_canvas_get_draw_buf(canvas);
-    REQUIRE(buf != nullptr);
-    REQUIRE(lv_color_format_get_size(static_cast<lv_color_format_t>(buf->header.cf)) == 4);
-    return buf;
-}
-
-/// Pixels of the canvas whose fourth byte is not 0xFF.
-size_t pixels_not_opaque(lv_obj_t* canvas) {
-    const lv_draw_buf_t* buf = four_byte_canvas_buf(canvas);
-    size_t count = 0;
-    for (uint32_t y = 0; y < buf->header.h; y++) {
-        const uint8_t* row = buf->data + y * buf->header.stride;
-        for (uint32_t x = 0; x < buf->header.w; x++) {
-            if (row[x * 4 + 3] != 0xFF) {
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-/// Pixels of the canvas with any colour, so a check over the buffer covers drawn pixels too.
-size_t lit_pixels(lv_obj_t* canvas) {
-    const lv_draw_buf_t* buf = four_byte_canvas_buf(canvas);
-    size_t count = 0;
-    for (uint32_t y = 0; y < buf->header.h; y++) {
-        const uint8_t* row = buf->data + y * buf->header.stride;
-        for (uint32_t x = 0; x < buf->header.w; x++) {
-            if (row[x * 4] != 0 || row[x * 4 + 1] != 0 || row[x * 4 + 2] != 0) {
-                count++;
-            }
-        }
-    }
-    return count;
+    return helix::test::frame_of(lv_canvas_get_draw_buf(canvas));
 }
 
 } // namespace
@@ -162,15 +125,14 @@ TEST_CASE_METHOD(LVGLTestFixture, "every starfield canvas pixel stays opaque as 
     SaverTestAccess::set_fixed_seed(ss, 3);
     ss.start();
     REQUIRE(ss.is_active());
-    lv_obj_t* canvas = SaverTestAccess::canvas(ss);
-    CHECK(pixels_not_opaque(canvas) == 0);
+    const helix::ui::FrameTarget frame = canvas_frame(SaverTestAccess::canvas(ss));
+    CHECK(helix::test::non_opaque_pixels(frame) == 0);
 
-    for (int frame = 0; frame < 30; frame++) {
-        lv_tick_inc(33);
-        run_timer(SaverTestAccess::timer(ss));
+    for (int i = 0; i < 30; i++) {
+        advance_saver(ss, 33);
     }
-    REQUIRE(lit_pixels(canvas) > 0);
-    CHECK(pixels_not_opaque(canvas) == 0);
+    REQUIRE(helix::test::lit_pixels(frame) > 0);
+    CHECK(helix::test::non_opaque_pixels(frame) == 0);
 }
 
 #endif // HELIX_ENABLE_SCREENSAVER

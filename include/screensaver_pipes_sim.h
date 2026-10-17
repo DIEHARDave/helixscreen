@@ -4,8 +4,10 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "screensaver_buffer.h"
 #include "screensaver_frame.h"
 #include "screensaver_motion.h"
+#include "screensaver_vec.h"
 
 #include <array>
 #include <cstddef>
@@ -104,8 +106,8 @@ class PipesGrid {
     int empty_run(PipeNode from, PipeDir d, int limit) const;
     /// A random empty node, or false when none is left (random tries, then a scan).
     bool random_empty(std::minstd_rand& rng, PipeNode& out) const;
-    size_t buffer_bytes() const {
-        return taken_.capacity();
+    size_t heap_bytes() const {
+        return buffer_bytes(taken_);
     }
 
   private:
@@ -132,11 +134,7 @@ PipeJoint pipes_choose_joint(std::minstd_rand& rng);
 PipeDir pipes_choose_direction(const PipesGrid& grid, PipeNode pos, PipeDir last,
                                int weight_straight, std::minstd_rand& rng);
 
-struct PipeVec3 {
-    float x = 0.0f;
-    float y = 0.0f;
-    float z = 0.0f;
-};
+using PipeVec3 = SaverVec3;
 
 /// An OpenGL fixed-function material: ambient, diffuse, specular reflectance and the GL
 /// shininess exponent (the sample's specExp x 128).
@@ -345,8 +343,8 @@ struct PipeMesh {
     std::vector<PipeVertex> verts;
     std::vector<uint16_t> tris; ///< three indices per triangle, counter-clockwise from outside
 
-    size_t buffer_bytes() const {
-        return verts.capacity() * sizeof(PipeVertex) + tris.capacity() * sizeof(uint16_t);
+    size_t heap_bytes() const {
+        return buffer_bytes(verts, tris);
     }
 };
 
@@ -360,11 +358,6 @@ void pipes_build_elbow(PipeMesh& out);
 /// The Newell teapot (freeglut's patch data), scaled 0.5 x 2.5 r, z-up data turned y-up and
 /// dropped 1.5 data units: x in [-3.75, 4.41], y in [-1.875, 2.0625].
 void pipes_build_teapot(PipeMesh& out);
-
-/// a x b.
-PipeVec3 pipes_cross(PipeVec3 a, PipeVec3 b);
-/// |v|.
-float pipes_length(PipeVec3 v);
 
 /// Radius of a ball joint or cap.
 float pipes_ball_radius();
@@ -399,6 +392,9 @@ class PipesRenderer {
     /// Sizes the depth buffer for a `w` x `h` canvas drawn in `scale` x `scale` blocks, and
     /// builds the meshes and lighting tables.
     void init(uint32_t w, uint32_t h, uint8_t scale);
+    /// Draws in `scale` x `scale` blocks from now on, with an empty depth buffer. A coarser
+    /// scale fits in the buffer already held; only a finer one allocates.
+    void set_scale(uint8_t scale);
     void release();
     void set_view(float yrot_deg);
     /// Empties the depth buffer; the frame itself is the dissolve's to clear.
@@ -410,7 +406,7 @@ class PipesRenderer {
     uint8_t scale() const {
         return scale_;
     }
-    size_t buffer_bytes() const;
+    size_t heap_bytes() const;
 
   private:
     /// A mesh vertex carried to the screen: internal pixels, inverse depth, eye normal.
@@ -466,8 +462,8 @@ class PipesDissolve {
     int block_px() const {
         return block_px_;
     }
-    size_t buffer_bytes() const {
-        return order_.capacity() * sizeof(uint32_t);
+    size_t heap_bytes() const {
+        return buffer_bytes(order_);
     }
 
   private:
@@ -493,12 +489,14 @@ enum class PipesPhase : uint8_t { GROWING, DISSOLVING };
  */
 class PipesSim {
   public:
-    /// Fills the frame black and starts the first screen at yrot 0.
+    static constexpr const auto& LEVELS = PIPES_LEVELS;
+
+    /// Starts the first screen at yrot 0 on a frame that is already black.
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level);
     void step(uint32_t dt_ms, const FrameTarget& frame, std::minstd_rand& rng,
               std::vector<DirtyRect>& dirty);
     /// The level's scale applies from the next screen.
-    void set_level(size_t level);
+    void request_level(size_t level);
     /// Releases every buffer.
     void clear();
 
@@ -520,7 +518,7 @@ class PipesSim {
     uint32_t screens_started() const {
         return screens_;
     }
-    size_t buffer_bytes() const;
+    size_t heap_bytes() const;
 
   private:
     void start_screen(const FrameTarget& frame, std::minstd_rand& rng,
