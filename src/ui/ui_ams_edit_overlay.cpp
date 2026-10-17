@@ -1402,8 +1402,9 @@ void AmsEditOverlay::update_ui() {
     }
     lv_subject_copy_string(&slot_indicator_subject_, slot_indicator_buf_);
 
-    // Identity chip: tracked = spool name (+ mark via binding);
-    // untracked = "Brand · Material" (spec §3.8 locked format).
+    // Identity chip: tracked = spool name (+ mark via binding); untracked =
+    // "Brand · Material", or "Brand · Name · Material" when the slot names its
+    // spool.
     //
     // spool_name carries the filament name alone ("Ambrosia Pink"), so printing
     // it verbatim would drop the vendor and the material and say less than the
@@ -1430,9 +1431,10 @@ void AmsEditOverlay::update_ui() {
         }
     }
 
-    // "Brand \xC2\xB7 Material": what the untracked chip shows, and what the
-    // offline read-only row states a linked slot as. Built once, so the two
-    // cannot drift into different spellings of the same slot.
+    // "Brand \xC2\xB7 Material": the untracked chip for a slot naming no
+    // spool, and what the offline read-only row states a linked slot as. Its
+    // fallbacks also feed the named chip below, so the two spell brand and
+    // material alike.
     const char* identity_brand =
         working_info_.brand.empty() ? "Generic" : working_info_.brand.c_str();
     const char* identity_material =
@@ -1446,10 +1448,12 @@ void AmsEditOverlay::update_ui() {
             helix::compose_filament_label(chip_brand, chip_name, working_info_.material);
         snprintf(chip_text_buf_, sizeof(chip_text_buf_), "%s", chip.c_str());
     } else if (!working_info_.spool_name.empty()) {
-        // An untracked slot that names its spool's line puts it between the
-        // two: "Snapmaker · SnapSpeed · PLA".
-        snprintf(chip_text_buf_, sizeof(chip_text_buf_), "%s \xC2\xB7 %s \xC2\xB7 %s",
-                 identity_brand, working_info_.spool_name.c_str(), identity_material);
+        // An untracked slot that names its spool puts the name between the
+        // two ("Snapmaker · SnapSpeed · PLA"), deduplicated the way the
+        // tracked chip is, so "eSUN PLA+" stays "eSUN PLA+".
+        const std::string chip = helix::compose_filament_label(
+            identity_brand, working_info_.spool_name, identity_material, " \xC2\xB7 ");
+        snprintf(chip_text_buf_, sizeof(chip_text_buf_), "%s", chip.c_str());
     } else {
         snprintf(chip_text_buf_, sizeof(chip_text_buf_), "%s", identity_text_buf_);
     }

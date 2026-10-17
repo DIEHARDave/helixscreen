@@ -330,6 +330,18 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     REQUIRE(label != nullptr);
     CHECK(std::string(lv_label_get_text(label)) == "Generic \xC2\xB7 SnapSpeed \xC2\xB7 PLA");
     close_editor_overlay();
+
+    // A name that already states the brand and the material prints once.
+    info.brand = "eSUN";
+    info.material = "PLA+";
+    info.spool_name = "eSUN PLA+";
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    label = access.widget("card_identity_label");
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "eSUN PLA+");
+    close_editor_overlay();
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "spool card shows Brand · Material for untracked slots",

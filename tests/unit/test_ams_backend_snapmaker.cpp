@@ -95,10 +95,12 @@ struct SnapmakerTmpCacheDir {
 };
 
 // Build a filament_detect status notification for a single slot with
-// configurable material, color, brand, and CARD_UID. Slot index is 0-based;
-// the notification's info array is padded to NUM_TOOLS=4 with "NONE" entries.
+// configurable material, color, brand, and CARD_UID. Slot index is 0-based.
+// The other channels carry no entry, so the frame says nothing about them;
+// @p others_none reports them as readers naming no tag instead.
 json make_filament_detect_status(int slot_index, const std::string& main_type, uint32_t argb_color,
-                                 const std::string& manufacturer, const json& card_uid) {
+                                 const std::string& manufacturer, const json& card_uid,
+                                 bool others_none = false) {
     json info_arr = json::array();
     for (int i = 0; i < 4; ++i) {
         if (i == slot_index) {
@@ -112,8 +114,10 @@ json make_filament_detect_status(int slot_index, const std::string& main_type, u
                                     {"BED_TEMP", 60},
                                     {"WEIGHT", 1000},
                                     {"CARD_UID", card_uid}});
-        } else {
+        } else if (others_none) {
             info_arr.push_back(json{{"MAIN_TYPE", "NONE"}});
+        } else {
+            info_arr.push_back(nullptr);
         }
     }
     return json{{"filament_detect", json{{"info", info_arr}}}};
@@ -2125,6 +2129,137 @@ TEST_CASE_METHOD(SnapmakerFixture,
     CHECK(info.nozzle_temp_max == blank.nozzle_temp_max);
     CHECK(info.bed_temp == blank.bed_temp);
     CHECK(info.total_weight_g == blank.total_weight_g);
+}
+
+namespace {
+json untagged_frame() {
+    return json{
+        {"filament_detect",
+         json{{"info", json::array({json{{"MAIN_TYPE", "NONE"}}, json{{"MAIN_TYPE", "NONE"}},
+                                    json{{"MAIN_TYPE", "NONE"}}, json{{"MAIN_TYPE", "NONE"}}})}}}};
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker user's edit stands over a reader naming no tag",
+                 "[ams][snapmaker][filament_slot_override][rfid]") {
+    SnapmakerTmpCacheDir tmp("edit_over_untagged");
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(&api, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    // The helper's tag: PLA, Snapmaker, 190-220 nozzle, 60 bed.
+    const json tag =
+        make_filament_detect_status(0, "PLA", 0xFF202020u, "Snapmaker", json::array({1, 2, 3, 4}));
+    SnapmakerTestAccess::handle_status(backend, untagged_frame());
+    SlotInfo edit = backend.get_slot_info(0);
+    SECTION("an edit the tag then repeats") {
+        // An edit only declares what it changes, so it is made before the
+        // tag states the same values.
+        edit.material = "PLA";
+        edit.brand = "Snapmaker";
+        edit.nozzle_temp_min = 190;
+        edit.nozzle_temp_max = 220;
+        edit.bed_temp = 60;
+        helix::test::edit_slot_as_user(backend, 0, edit);
+        SnapmakerTestAccess::handle_status(backend, tag);
+    }
+    SECTION("an edit differing from the tag") {
+        SnapmakerTestAccess::handle_status(backend, tag);
+        edit = backend.get_slot_info(0);
+        edit.material = "PETG";
+        edit.brand = "eSUN";
+        edit.nozzle_temp_min = 230;
+        edit.nozzle_temp_max = 250;
+        edit.bed_temp = 80;
+        helix::test::edit_slot_as_user(backend, 0, edit);
+    }
+    REQUIRE(backend.get_slot_info(0).material == edit.material);
+
+    SnapmakerTestAccess::handle_status(backend, untagged_frame());
+    auto info = backend.get_slot_info(0);
+    CHECK(info.material == edit.material);
+    CHECK(info.brand == edit.brand);
+    CHECK(info.nozzle_temp_min == edit.nozzle_temp_min);
+    CHECK(info.nozzle_temp_max == edit.nozzle_temp_max);
+    CHECK(info.bed_temp == edit.bed_temp);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker bound spool stands over a reader naming no tag",
+                 "[ams][snapmaker][filament_slot_override][rfid]") {
+    SnapmakerTmpCacheDir tmp("spool_over_untagged");
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(&api, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(
+        backend,
+        make_filament_detect_status(0, "PLA", 0xFF202020u, "Snapmaker", json::array({1, 2, 3, 4})));
+
+    SpoolInfo spool;
+    spool.id = 42;
+    SECTION("a spool equal to the tag") {
+        spool.vendor = "Snapmaker";
+        spool.material = "PLA";
+    }
+    SECTION("a spool differing from the tag") {
+        spool.vendor = "Polymaker";
+        spool.material = "PETG";
+    }
+    spool.filament_name = "Bound";
+    SlotInfo edit = backend.get_slot_info(0);
+    edit.spoolman_id = 42;
+    helix::test::edit_slot_as_user(backend, 0, edit);
+    helix::test::spool_states(backend, 0, spool);
+
+    SnapmakerTestAccess::handle_status(backend, untagged_frame());
+    auto info = backend.get_slot_info(0);
+    CHECK(info.spoolman_id == 42);
+    CHECK(info.material == spool.material);
+    CHECK(info.brand == spool.vendor);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker temps echoing our own write are not taken back as the tag's",
+                 "[ams][snapmaker][rfid][firmware_writeback]") {
+    SnapmakerTmpCacheDir tmp("echoed_temps_untagged");
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(&api, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+    auto store = std::make_unique<helix::ams::FilamentSlotOverrideStore>(
+        &api, "snapmaker", helix::ams::LaneKeyStyle::Tool);
+    FilamentSlotOverrideStoreTestAccess::set_cache_directory(*store, tmp.path);
+    SnapmakerTestAccess::inject_override_store(backend, std::move(store));
+
+    SnapmakerTestAccess::handle_status(
+        backend,
+        make_filament_detect_status(0, "PLA", 0xFF202020u, "Snapmaker", json::array({1, 2, 3, 4})));
+
+    // Our write goes out without a lane declaration, so only the echo guard
+    // knows the temperatures firmware reports next are ours.
+    SlotInfo edit = backend.get_slot_info(0);
+    edit.brand = "eSUN";
+    edit.material = "PETG";
+    edit.nozzle_temp_min = 230;
+    edit.nozzle_temp_max = 250;
+    edit.bed_temp = 80;
+    REQUIRE(helix::test::apply_edit(backend, 0, edit).success());
+
+    json echo =
+        make_filament_detect_status(0, "PETG", 0xFF202020u, "eSUN", json::array({1, 2, 3, 4}));
+    echo["filament_detect"]["info"][0]["HOTEND_MIN_TEMP"] = 230;
+    echo["filament_detect"]["info"][0]["HOTEND_MAX_TEMP"] = 250;
+    echo["filament_detect"]["info"][0]["BED_TEMP"] = 80;
+    SnapmakerTestAccess::handle_status(backend, echo);
+    REQUIRE(backend.get_slot_info(0).nozzle_temp_max == 250);
+
+    SnapmakerTestAccess::handle_status(backend, untagged_frame());
+    auto info = backend.get_slot_info(0);
+    CHECK(info.nozzle_temp_min == 230);
+    CHECK(info.nozzle_temp_max == 250);
+    CHECK(info.bed_temp == 80);
 }
 
 TEST_CASE_METHOD(SnapmakerFixture,
