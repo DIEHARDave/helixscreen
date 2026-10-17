@@ -18,6 +18,7 @@
 #include "ui_observer_guard.h"
 
 #include "ams_environment_zone.h"
+#include "display_numbering.h"
 #include "helix/xml/indexed_subject_pool.h"
 #include "overlay_base.h"
 #include "static_panel_registry.h"
@@ -106,6 +107,12 @@ class AmsEnvironmentOverlay : public OverlayBase {
     /// Zones the selector offers; 0 when no selector is shown.
     [[nodiscard]] size_t zone_count() const;
 
+    /// Toggle the gate chip at @p index in or out of the drying selection. The last
+    /// selected chip stays selected: a cycle needs at least one gate.
+    void toggle_dry_gate(size_t index);
+    /// Toggle spool rotation for the next start.
+    void toggle_dry_rotate();
+
     /**
      * @brief Refresh overlay data from backend
      */
@@ -164,6 +171,12 @@ class AmsEnvironmentOverlay : public OverlayBase {
 
     /// Push the selected zone's values into the detail subjects.
     void publish_selected_zone();
+    /// Offer a chip per heated gate on the acting unit when its dryer takes a gate
+    /// selection, and the rotate chip when it can turn spools; none otherwise.
+    void publish_dry_gates();
+    /// The gates a start or stop names: empty while every offered gate is selected, so
+    /// the dryer gets exactly the command it gets with no selection at all.
+    [[nodiscard]] std::vector<int> selected_dry_gates() const;
     /// Fill the tab pools and publish the count, populate-before-count.
     void rebuild_tabs();
     /// Restore the dryer temp/duration inputs from the last remembered values.
@@ -224,6 +237,7 @@ class AmsEnvironmentOverlay : public OverlayBase {
     /// and the Material Comfort strip, both of which need a real reading to say
     /// anything true. Per-overlay rather than the shown unit's
     /// ams_env_ind_<i>_humidity_visible so it cannot answer for the wrong unit.
+    lv_subject_t humidity_subject_{}; ///< tenths of %RH for the drop; -1 = no reading
     lv_subject_t humidity_visible_subject_{};
 
     lv_subject_t title_text_subject_{};
@@ -283,7 +297,27 @@ class AmsEnvironmentOverlay : public OverlayBase {
                                                    helix::xml::IndexedSubjectPool::Type::Int};
     helix::xml::IndexedSubjectPool tab_active_pool_{"env_zone_tab_active",
                                                     helix::xml::IndexedSubjectPool::Type::Int};
+
+    /// Gate chips: the acting unit's heated gates on a dryer that takes a gate
+    /// selection. Every chip starts selected each time the overlay is shown, which
+    /// is the whole unit, the start the dryer gets with no selection.
+    std::vector<int> dry_gates_;
+    std::vector<int> deselected_dry_gates_;
+    bool dry_rotate_ = false;
+    lv_subject_t dry_gate_count_subject_{};
+    lv_subject_t dry_rotate_visible_subject_{};
+    lv_subject_t dry_rotate_on_subject_{};
+    lv_subject_t dry_rotate_label_subject_{};
+    char dry_rotate_label_buf_[32] = {};
+    helix::xml::IndexedSubjectPool dry_gate_label_pool_{
+        "env_dry_gate_label", helix::xml::IndexedSubjectPool::Type::String};
+    helix::xml::IndexedSubjectPool dry_gate_selected_pool_{
+        "env_dry_gate_selected", helix::xml::IndexedSubjectPool::Type::Int};
 };
+
+/// The notice for a Stop that applied to some of a dryer's lanes only: "Stopped drying
+/// Gate 2, Gate 3", in the system's own lane noun.
+[[nodiscard]] std::string stopped_lanes_text(const std::vector<int>& gates, LaneNoun noun);
 
 inline AmsEnvironmentOverlay& get_ams_environment_overlay() {
     return lazy_global<AmsEnvironmentOverlay>("AmsEnvironmentOverlay");

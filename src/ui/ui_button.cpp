@@ -832,8 +832,14 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
                                   LV_FLEX_ALIGN_CENTER);
             lv_obj_set_style_pad_column(btn, theme_manager_get_spacing("space_xs"), LV_PART_MAIN);
         }
+    } else {
+        // No icon, no text, no layout: XML children fill the button. Centre them
+        // on every axis like the built-in layouts, so a flex_flow row of icon +
+        // caption lines up with a text button beside it; LVGL's default track
+        // place would pin it to the top. XML style_flex_* attributes still win.
+        lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER);
     }
-    // else: No icon, no text, no layout - leave button empty for XML children
 
     if (data->label) {
         // DECLARATIVE_OK: the widget's own label relays its size to the row (see part_resized_cb)

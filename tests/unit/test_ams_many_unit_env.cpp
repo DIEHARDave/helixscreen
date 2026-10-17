@@ -116,6 +116,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "The detail env chip shows a unit past the p
     FleetMock* mock = install();
     auto& ams = AmsState::instance();
 
+    // The per-unit drop's reading, in tenths of a percent.
+    CHECK(subject_int("ams_env_ind_0_humidity") == 300);
+    CHECK(subject_int("ams_env_ind_1_humidity") == 310);
+
     ams.set_detail_env_unit(kPast);
     helix::ui::UpdateQueue::instance().drain();
 
@@ -124,12 +128,14 @@ TEST_CASE_METHOD(LVGLUITestFixture, "The detail env chip shows a unit past the p
     CHECK(subject_str("ams_env_ind_detail_humidity_text") == std::to_string(30 + kPast) + "%");
     CHECK(subject_int("ams_env_ind_detail_visible") == 1);
     CHECK(subject_int("ams_env_ind_detail_humidity_visible") == 1);
+    CHECK(subject_int("ams_env_ind_detail_humidity") == (30 + kPast) * 10);
     CHECK(subject_int("ams_env_ind_detail_drying_active") == 1);
     CHECK(subject_str("ams_env_ind_detail_drying_text") == "2:15");
 
     SECTION("the humidity row hides for a unit without a humidity reading") {
         ams.set_detail_env_unit(kLast);
         CHECK(subject_int("ams_env_ind_detail_humidity_visible") == 0);
+        CHECK(subject_int("ams_env_ind_detail_humidity") < 0);
         CHECK(subject_int("ams_env_ind_detail_drying_active") == 0);
         CHECK(subject_str("ams_env_ind_detail_temp_text") == std::to_string(20 + kLast) + "\xC2\xB0"
                                                                                           "C");

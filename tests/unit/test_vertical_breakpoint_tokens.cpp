@@ -52,7 +52,7 @@ constexpr HeightToken HEIGHT_TOKENS[] = {
     {"button_height", "32", "52", "72", "96"},
     {"button_height_sm", "28", "40", "40", "56"},
     {"button_height_lg", "40", "70", "96", "128"},
-    {"header_height", "32", "56", "60", "80"},
+    {"header_height", "33", "56", "60", "80"},
     {"temp_card_height", "48", "72", "80", "112"},
     {"dialog_content_max", "200", "320", "440", "800"},
     {"dialog_content_recovery_max", "179", "276", "352", "642"},

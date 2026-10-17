@@ -174,6 +174,15 @@ AFC's opt-in rests on `AFC_stepper.<lane>.tool_loaded`, which upstream's `set_lo
 hub*, not to the toolhead — only `tool_loaded` answers the toolhead question, which is why
 `parse_afc_stepper` maps `"Loaded"` to `AVAILABLE`.
 
+**Which lane a parked head holds.** `build_ams_topology()` asks `slot_is_actively_loaded()`
+of every tool's lane and hands the answers to ToolState as `ToolTopology::tool_seated`.
+Where a hub feeds several lanes into one head, `PhysicalHead::seated_tool` is the lane that
+head holds, and `PhysicalHead::representative_tool()` prefers it over the head's lowest
+lane. The home tool switcher's head tap and the preheat widget's head target both resolve
+through it, so selecting a parked head keeps its filament instead of swapping lanes on the
+way (prestonbrown/helixscreen#1811). Two lanes claiming one head decide nothing, and the
+lowest lane stands.
+
 AD5X IFS derives its stamp from the same two inputs `system_info_.filament_loaded` is
 assigned from, so the two cannot disagree — but only after dropping the lane's own port
 sensor from the condition. A runout clears `port_presence_` while the filament that lane
@@ -2390,7 +2399,7 @@ AMS panel env badges          AmsEnvironmentOverlay (Tabs / Single)
                                 duration, start/stop, queued banner
                                              │
                                              ▼
-                              start_drying / stop_drying (unit = shown zone's unit_index)
+                              start_drying_request / stop_drying_gates (unit = shown zone's unit_index)
 ```
 
 `DryerInfo` (declared in `include/ams_types.h`) carries:
@@ -2409,12 +2418,24 @@ AMS panel env badges          AmsEnvironmentOverlay (Tabs / Single)
 | `supports_live_temp` / `supports_live_duration` | bool | Whether a running cycle can be retargeted without stopping. Both default false, so an unchecked backend takes the visible stop-and-restart path rather than silently dropping an adjustment |
 | `supports_humidity_target` | bool | Whether a cycle can also end early once the box reads at or below a target %RH. The overlay shows its optional target field only when this is true. Blank sends no target, so the dryer's own default applies; `humidity_target(pct)` turns a field value into the target to send, or none |
 | `default_humidity_target` | optional float | The target, %RH, a start with none applies, when the backend knows it. The blank field's placeholder shows it as `NN%`, or the short `auto` key when unset. Reported only alongside `supports_humidity_target` |
+| `supports_gate_selection` | bool | Whether a cycle can start and stop on a chosen subset of the dryer's gates, true only where each gate has its own heater. The overlay offers its lane chips only then |
+| `supports_rotation` | bool | Whether a cycle can turn the selected spools while it dries (`DryingRequest::rotate`). Needs `supports_gate_selection` |
 
 > **Humidity is not on `DryerInfo`.** It lives on `EnvironmentData`, carried either per unit
 > (`AmsUnit::environment`) or per slot (`SlotInfo::environment`), because humidity is a
 > per-enclosure reading from an environment sensor and not a property of a drying session.
 > `EnvironmentZone` pairs one `EnvironmentData` with one `DryerInfo`, which is what lets a box
 > report humidity with no heater behind it.
+
+> **Per-slot drying state.** A dryer that heats gates one by one (`supports_gate_selection`)
+> also reports each gate's part in the cycle as `SlotInfo::drying_state`, a
+> `helix::printer::ZoneDryingState` (Idle / Queued / Active / Complete / Cancelled; the enum
+> lives in `include/ams_types.h`). It is Idle on every other dryer. `AmsState` publishes it per
+> slot as `ams_slot_<n>_drying` (primary backend only), the slot's drying badge binds to it,
+> and the generic zone walk (`AmsBackend::get_environment_zones`) uses it as a per-slot zone's
+> state instead of the unit's. Happy Hare fills it from the per-gate `drying_state` list; a
+> list shorter than the gate count leaves the remaining slots Idle. The capability flags are
+> per unit: ask `get_dryer_info(unit)`, never assume one unit's answer holds for another.
 
 `AmsEnvironmentOverlay` shows a **set of zones** with one selected, not a unit. It owns its own
 `ams_env_overlay_humidity_visible` subject rather than binding the unit cards'
@@ -2437,6 +2458,8 @@ Declared in `include/ams_backend.h`. The command virtuals default to `supported=
 | `start_drying(temp, minutes, fan, unit)` | NOT_SUPPORTED | Begin a drying session |
 | `start_drying_to_humidity(temp, minutes, humidity_pct, fan, unit)` | NOT_SUPPORTED | Begin a session that also ends at a humidity target. Only for a dryer reporting `supports_humidity_target`; with no target the overlay calls `start_drying()` |
 | `stop_drying(unit)` | NOT_SUPPORTED | End the active session |
+| `start_drying_request(request)` | `start_drying()`, or `start_drying_to_humidity()` with a target; NOT_SUPPORTED with gates or rotation | The overlay's one start call. `DryingRequest` carries temp, minutes, optional humidity target, unit, and optionally `gates` and `rotate`. Override only to take a selection |
+| `stop_drying_gates(unit, gates)` | `stop_drying()` with no gates; NOT_SUPPORTED with some | Stop just those gates; the rest of the cycle keeps running |
 | `update_drying(temp, minutes, fan, unit)` | NOT_SUPPORTED | Change temp/time mid-session |
 | `get_drying_presets()` | `get_default_drying_presets()` | Return material-preset list |
 
@@ -2476,7 +2499,7 @@ Happy Hare's filament dryer is driven by the `MMU_HEATER` command and configured
 
 **What is NOT yet supported (boundary):**
 
-- **Drying is commanded per unit, not per box.** `GATES=` lists every gate on the target unit, empty gates included. On an EMU rig, whose boxes are per-lane, a Start on one box commands the whole unit. Drying a chosen subset of gates, per-gate countdowns (Happy Hare tracks one setpoint and one end-of-cycle clock, so `target_temp_c` / `duration_min` / `remaining_min` are the same on every zone), are open in **#1026**.
+- **Per-gate countdowns.** Happy Hare tracks one setpoint and one end-of-cycle clock, so `target_temp_c` / `duration_min` / `remaining_min` are the same on every zone. A chosen subset of gates can be dried on Happy Hare 4 per-gate heaters (`GATES=`, `ROTATE=1`; see [FILAMENT_ENVIRONMENT_ZONES.md](FILAMENT_ENVIRONMENT_ZONES.md) § Happy Hare specifics), but with every lane chip selected, the default, the start is the whole-unit command above. Verified against [mmu_heater.py](https://github.com/moggieuk/Happy-Hare/blob/ee30acdd/extras/mmu/commands/mmu_heater.py) at Happy-Hare `main` @ ee30acdd; untested on hardware.
 
 > Note: the per-gate paths are unit-tested against synthetic status frames (scalar + 2-unit per-gate) and unverified on real hardware - we own no EMU rig. The QIDI Box (the common Happy-Hare-on-a-box case) is a single shared sensor.
 

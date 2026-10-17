@@ -40,7 +40,7 @@ Under the sliders, a **Config-defined** section shows your **Max Z Velocity** an
 
 ## Motion
 
-Jog speeds, how far each jog pad button moves, and the Bed tab's Z clearance. See [Motion](../motion.md#motion-settings) for what each one does.
+Jog speeds, how far each jog pad button moves, the Bed tab's Z clearance, and whether Save Z-Offset buttons appear. See [Motion](../motion.md#motion-settings) for what each one does.
 
 ---
 
@@ -163,7 +163,7 @@ The setting is per printer, so an AFC printer can turn it off while your other p
 
 > Only shown on printers with more than one tool.
 
-On a printer with more than one toolhead, three places switch tools with a tap: the tool switcher on the home screen, a toolhead on your filament system's screen, and the tool list on the Filament screen. This setting decides whether those taps ask first.
+On a printer with more than one toolhead, three places switch tools with a tap: the tool switcher on the home screen, a toolhead on your filament system's screen, and the tool list on the Filament screen. This setting decides whether those taps ask first. Where a hub feeds several lanes into one toolhead, selecting that toolhead keeps the lane already loaded in it.
 
 Some things happen whatever the switch says:
 

@@ -76,6 +76,7 @@ Welcome to the HelixScreen documentation. Choose your path:
 | [**Creality CFS Internals (K2)**](devel/printer-research/CREALITY_CFS_K2_INTERNALS.md) | K2 CFS module RE reference: `box` schema variants, command surface, error codes, runout, the community Kalico port |
 | [**Filament Slots Spec (public)**](specs/filament_slots.md) | Wire-format convention for the `lane_data` Moonraker DB namespace — readable by any third party |
 | [**Input Shaper & PID**](devel/INPUT_SHAPER.md) | Calibration, frequency response charts, CSV parser |
+| [**Pressure Advance Tuning**](devel/PRESSURE_ADVANCE_TUNING.md) | Tune K by eye on a live test print; Spoolman and Moonraker persistence |
 | [**Belt Tension**](devel/BELT_TENSION.md) | Resonance-sweep belt path comparison: gate, collector, provisional verdicts, mock knobs |
 | [**Preprint Prediction**](devel/PREPRINT_PREDICTION.md) | ETA prediction engine, phase timing, history |
 | [**Exclude Objects**](devel/EXCLUDE_OBJECTS.md) | Object exclusion, thumbnails, slicer setup |

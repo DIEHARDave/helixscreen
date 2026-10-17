@@ -4,8 +4,11 @@
 
 #include "screensaver_maze_sim.h"
 
+#include "screensaver_buffer.h"
+#include "screensaver_fast_math.h"
 #include "screensaver_motion.h"
 #include "screensaver_pixel_writer.h"
+#include "thumbnail_downscale.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,21 +16,20 @@
 #include <memory>
 
 using helix::ui::screensaver::random_below;
+using helix::ui::screensaver::random_int;
+using helix::ui::screensaver::shuffle_in_place;
+using helix::ui::screensaver::smoothstep01;
 
 namespace helix::ui {
 
 namespace {
 
-constexpr float PI_F = 3.14159265f;
-
 // Texture and sprite slots.
 constexpr size_t TEX_BRICK = 0;
-constexpr size_t TEX_BRICK_DARK = 1;
-constexpr size_t TEX_PICTURE = 2;
-constexpr size_t TEX_PICTURE_DARK = 3;
-constexpr size_t TEX_FLOOR = 4;
-constexpr size_t TEX_CEIL = 5;
-constexpr size_t TEX_COUNT = 6;
+constexpr size_t TEX_FLOOR = 1;
+constexpr size_t TEX_CEIL = 2;
+/// The first picture; each picture after it takes the next slot.
+constexpr size_t TEX_PICTURE0 = 3;
 
 constexpr size_t SPR_LOGO = 0;
 constexpr size_t SPR_START = 1;
@@ -38,15 +40,9 @@ constexpr size_t SPR_COUNT = SPR_ROCK0 + MazeRenderer::ROCK_FRAMES;
 
 constexpr int TEX = MazeRenderer::TEX;
 
-/// Interior walls of a maze that get a picture.
-constexpr int PICTURE_WALLS = 6;
-
 /// Logos turn once every this many ms; rocks show a new rotation frame this often.
 constexpr uint32_t SPIN_PERIOD_MS = 3000;
 constexpr uint32_t ROCK_FRAME_MS = 90;
-
-/// Wall-darkening of faces that run east-west, as Wolfenstein drew them.
-constexpr float DARK_SIDE = 0.65f;
 
 struct SpriteStyle {
     float size;     ///< height, tiles
@@ -72,23 +68,6 @@ SpriteStyle style_of(MazeItemKind kind) {
         return {0.35f, 0.175f, false, false, 0.15f};
     }
     return {0.5f, 0.5f, false, false, 0.15f};
-}
-
-float smoothstep(float t) {
-    return t * t * (3.0f - 2.0f * t);
-}
-
-uint8_t clamp_u8(float v) {
-    return static_cast<uint8_t>(std::clamp(v, 0.0f, 255.0f));
-}
-
-Rgb scaled(Rgb c, float k) {
-    return {clamp_u8(c.r * k), clamp_u8(c.g * k), clamp_u8(c.b * k)};
-}
-
-Rgb mix(Rgb a, Rgb b, float t) {
-    return {clamp_u8(a.r + (b.r - a.r) * t), clamp_u8(a.g + (b.g - a.g) * t),
-            clamp_u8(a.b + (b.b - a.b) * t)};
 }
 
 /// Average colour and coverage of the image over the box [x0, x1) x [y0, y1), in image pixels.
@@ -117,7 +96,7 @@ Rgba sample_box(const MazeImage& img, float x0, float y0, float x1, float y1) {
     }
     Rgba out;
     if (a > 0.0f) {
-        out.c = {clamp_u8(r / a), clamp_u8(g / a), clamp_u8(b / a)};
+        out.c = {to_u8(r / a), to_u8(g / a), to_u8(b / a)};
     }
     out.a = n > 0 ? a / static_cast<float>(n) : 0.0f;
     return out;
@@ -157,7 +136,7 @@ void fit_image(Canvas64& dst, const MazeImage& img, int bx, int by, int bw, int 
             }
             const Rgba s = sample_box(img, sx, sy, sx + 1.0f / k, sy + 1.0f / k);
             if (matte != nullptr) {
-                dst.set(u, v, mix(*matte, s.c, s.a));
+                dst.set(u, v, mix_rgb(*matte, s.c, s.a));
             } else if (s.a >= 0.5f) {
                 dst.set(u, v, s.c);
             }
@@ -168,13 +147,13 @@ void fit_image(Canvas64& dst, const MazeImage& img, int bx, int by, int bw, int 
 /// A Helix-like mark for when the icon cannot be decoded: two strands winding round an axis.
 void draw_fallback_mark(Canvas64& dst) {
     for (int v = 4; v < 60; v++) {
-        const float phase = (v - 4) / 56.0f * 3.0f * PI_F;
+        const float phase = (v - 4) / 56.0f * 3.0f * SAVER_PI;
         const float s = std::sin(phase);
         const float depth = std::cos(phase);
         const int ua = static_cast<int>(32.0f + 18.0f * s);
         const int ub = static_cast<int>(32.0f - 18.0f * s);
-        const Rgb a = scaled({0, 170, 255}, 0.7f + 0.3f * depth);
-        const Rgb b = scaled({235, 240, 255}, 0.7f - 0.3f * depth);
+        const Rgb a = scale_rgb_by({0, 170, 255}, 0.7f + 0.3f * depth);
+        const Rgb b = scale_rgb_by({235, 240, 255}, 0.7f - 0.3f * depth);
         // The strand in front draws last.
         for (int pass = 0; pass < 2; pass++) {
             const bool a_front = depth >= 0.0f;
@@ -198,7 +177,7 @@ void draw_rock(Canvas64& dst, int frame) {
         {11, 10, 2}, {10, 7, 6}, {7, 1, 8},  {3, 9, 4},  {3, 4, 2},   {3, 2, 6}, {3, 6, 8},
         {3, 8, 9},   {4, 9, 5},  {2, 4, 11}, {6, 2, 10}, {8, 6, 7},   {9, 8, 1},
     };
-    const float theta = 2.0f * PI_F * static_cast<float>(frame) / MazeRenderer::ROCK_FRAMES;
+    const float theta = 2.0f * SAVER_PI * static_cast<float>(frame) / MazeRenderer::ROCK_FRAMES;
     const float tilt = 0.5f;
     float p[12][3];
     for (int i = 0; i < 12; i++) {
@@ -232,7 +211,7 @@ void draw_rock(Canvas64& dst, int frame) {
         const float len = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
         const float lambert =
             std::max(0.0f, (n[0] * light[0] + n[1] * light[1] + n[2] * light[2]) / len);
-        const Rgb shade = scaled({150, 150, 156}, 0.35f + 0.75f * lambert);
+        const Rgb shade = scale_rgb_by({150, 150, 156}, 0.35f + 0.75f * lambert);
         const float ax = 32 + a[0] * radius, ay = 32 - a[1] * radius;
         const float bx = 32 + b[0] * radius, by = 32 - b[1] * radius;
         const float cx = 32 + c[0] * radius, cy = 32 - c[1] * radius;
@@ -297,7 +276,7 @@ void draw_toolhead(Canvas64& dst) {
             const float dy = v + 0.5f - 22.0f;
             const float d = std::sqrt(dx * dx + dy * dy);
             if (d <= 12.0f) {
-                const bool blade = std::fmod(std::atan2(dy, dx) + PI_F, PI_F / 3.0f) < 0.5f;
+                const bool blade = std::fmod(std::atan2(dy, dx) + SAVER_PI, SAVER_PI / 3.0f) < 0.5f;
                 dst.set(u, v,
                         d <= 3.0f ? Rgb{30, 30, 34}
                         : blade   ? Rgb{40, 90, 160}
@@ -334,11 +313,11 @@ Rgb brick_texel(int u, int v) {
     const int shifted = u + (row % 2) * 16;
     const int col = shifted / 32;
     if (v % 16 < 2 || shifted % 32 < 2) {
-        return scaled({170, 165, 155}, 0.9f + 0.2f * hash_unit(u, v));
+        return scale_rgb_by({170, 165, 155}, 0.9f + 0.2f * hash_unit(u, v));
     }
     const float brick = 0.8f + 0.35f * hash_unit(col, row);
     const float grit = 0.9f + 0.2f * hash_unit(u * 7, v * 3);
-    return scaled({150, 58, 40}, brick * grit);
+    return scale_rgb_by({150, 58, 40}, brick * grit);
 }
 
 Rgb floor_texel(int x, int y) {
@@ -348,7 +327,7 @@ Rgb floor_texel(int x, int y) {
     }
     const float grain = std::sin((x + plank * 13) * 0.35f + std::sin(y * 0.9f) * 1.5f);
     const float tone = 0.85f + 0.25f * hash_unit(plank, 2) + 0.08f * grain;
-    return scaled({135, 88, 48}, tone * (0.94f + 0.12f * hash_unit(x, y)));
+    return scale_rgb_by({135, 88, 48}, tone * (0.94f + 0.12f * hash_unit(x, y)));
 }
 
 Rgb ceiling_texel(int x, int y) {
@@ -356,7 +335,8 @@ Rgb ceiling_texel(int x, int y) {
         return {140, 140, 134};
     }
     const float speck = hash_unit(x * 5, y * 11);
-    return speck > 0.93f ? Rgb{150, 148, 140} : scaled({205, 202, 192}, 0.95f + 0.05f * speck);
+    return speck > 0.93f ? Rgb{150, 148, 140}
+                         : scale_rgb_by({205, 202, 192}, 0.95f + 0.05f * speck);
 }
 
 template <typename Px>
@@ -403,16 +383,68 @@ template <typename Px> Px pack_sprite(Rgb c, PixelFormat format) {
     return v == sprite_key<Px>() ? static_cast<Px>(v ^ 1u) : v;
 }
 
-/// Gives a vector's heap back; clear() keeps the capacity.
-template <typename T> void free_vector(std::vector<T>& v) {
-    std::vector<T>().swap(v);
+/// Fog brightness of band `b`: MAZE_FOG_ONE down to the farthest fog in even steps.
+uint32_t band_k(int b) {
+    const auto far_k = static_cast<float>(maze_fog_k(1e9f));
+    const float step = (static_cast<float>(MAZE_FOG_ONE) - far_k) / (MAZE_FOG_BANDS - 1);
+    return MAZE_FOG_ONE - static_cast<uint32_t>(std::lround(static_cast<float>(b) * step));
 }
 
-template <typename T> size_t held_bytes(const std::vector<T>& v) {
-    return v.capacity() * sizeof(T);
+/// The band whose brightness is nearest `k`.
+uint8_t nearest_band(uint32_t k) {
+    int best = 0;
+    for (int b = 1; b < MAZE_FOG_BANDS; b++) {
+        const auto dk = [k](int band) {
+            return std::abs(static_cast<int>(band_k(band)) - static_cast<int>(k));
+        };
+        if (dk(b) < dk(best)) {
+            best = b;
+        }
+    }
+    return static_cast<uint8_t>(best);
 }
 
 } // namespace
+
+MazeImage reduce_maze_image(const MazeImage& src, int max_side) {
+    if (src.empty() || max_side <= 0) {
+        return {};
+    }
+    if (src.w <= max_side && src.h <= max_side) {
+        return src;
+    }
+    const ThumbnailDims fit = fit_thumbnail(src.w, src.h, max_side, max_side);
+    MazeImage out;
+    out.w = fit.w;
+    out.h = fit.h;
+    out.argb.resize(static_cast<size_t>(out.w) * static_cast<size_t>(out.h));
+    const float sx = static_cast<float>(src.w) / static_cast<float>(out.w);
+    const float sy = static_cast<float>(src.h) / static_cast<float>(out.h);
+    for (int y = 0; y < out.h; y++) {
+        for (int x = 0; x < out.w; x++) {
+            const Rgba s = sample_box(src, x * sx, y * sy, (x + 1) * sx, (y + 1) * sy);
+            const auto a = static_cast<uint32_t>(std::lround(s.a * 255.0f));
+            out.argb[static_cast<size_t>(y) * out.w + x] =
+                a << 24 | static_cast<uint32_t>(s.c.r) << 16 | static_cast<uint32_t>(s.c.g) << 8 |
+                s.c.b;
+        }
+    }
+    return out;
+}
+
+uint32_t maze_fog_k(float depth) {
+    const float fall = std::exp(-std::max(0.0f, depth - MAZE_FOG_START) / MAZE_FOG_SCALE);
+    return static_cast<uint32_t>(std::lround(static_cast<float>(MAZE_FOG_ONE) *
+                                             (MAZE_FOG_FLOOR + (1.0f - MAZE_FOG_FLOOR) * fall)));
+}
+
+Rgb maze_fog(Rgb c, uint32_t k) {
+    const uint32_t m = MAZE_FOG_ONE - k;
+    auto ch = [k, m](uint8_t v, uint8_t t) {
+        return static_cast<uint8_t>((v * k + t * m + 16) >> 5);
+    };
+    return {ch(c.r, MAZE_FOG_TINT.r), ch(c.g, MAZE_FOG_TINT.g), ch(c.b, MAZE_FOG_TINT.b)};
+}
 
 void MazeMap::generate(int cells, std::minstd_rand& rng) {
     size_ = 2 * cells + 1;
@@ -449,38 +481,270 @@ void MazeMap::generate(int cells, std::minstd_rand& rng) {
         stack_.push_back(ny * cells + nx);
     }
 
-    int hung = 0;
-    for (int attempt = 0; attempt < 400 && hung < PICTURE_WALLS; attempt++) {
-        const int x = 1 + random_below(rng, size_ - 2);
-        const int y = 1 + random_below(rng, size_ - 2);
-        if (tile(x, y) != MazeTile::BRICK) {
-            continue;
+    pictures_.assign(tiles_.size(), 0);
+    hang_pictures(rng);
+    label_walls();
+}
+
+void MazeMap::hang_pictures(std::minstd_rand& rng) {
+    bool hung[PICTURE_WALLS] = {};
+    for (size_t i = 0; i < tiles_.size(); i++) {
+        if (tiles_[i] == MazeTile::PICTURE && pictures_[i] < PICTURE_WALLS) {
+            hung[pictures_[i]] = true;
         }
-        const bool faces_open =
-            !wall(x - 1, y) || !wall(x + 1, y) || !wall(x, y - 1) || !wall(x, y + 1);
-        if (faces_open) {
-            tiles_[static_cast<size_t>(y) * size_ + x] = MazeTile::PICTURE;
-            hung++;
+    }
+    for (int p = 0; p < PICTURE_WALLS; p++) {
+        for (int attempt = 0; attempt < 2000 && !hung[p]; attempt++) {
+            const int x = random_int(rng, 1, size_ - 2);
+            const int y = random_int(rng, 1, size_ - 2);
+            if (tile(x, y) != MazeTile::BRICK) {
+                continue;
+            }
+            const bool faces_open =
+                !wall(x - 1, y) || !wall(x + 1, y) || !wall(x, y - 1) || !wall(x, y + 1);
+            if (faces_open) {
+                tiles_[index(x, y)] = MazeTile::PICTURE;
+                pictures_[index(x, y)] = static_cast<uint8_t>(p);
+                hung[p] = true;
+            }
         }
     }
 }
 
+void MazeMap::label_walls() {
+    boundary_.assign(tiles_.size(), 0);
+    stack_.clear();
+    auto push = [this](int x, int y) {
+        if (x >= 0 && y >= 0 && x < size_ && y < size_ && wall(x, y) &&
+            boundary_[index(x, y)] == 0) {
+            boundary_[index(x, y)] = 1;
+            stack_.push_back(static_cast<int>(index(x, y)));
+        }
+    };
+    for (int i = 0; i < size_; i++) {
+        push(i, 0);
+        push(i, size_ - 1);
+        push(0, i);
+        push(size_ - 1, i);
+    }
+    while (!stack_.empty()) {
+        const int t = stack_.back();
+        stack_.pop_back();
+        const int x = t % size_;
+        const int y = t / size_;
+        for (int d = 0; d < 4; d++) {
+            push(x + HEADING_DX[d], y + HEADING_DY[d]);
+        }
+    }
+}
+
+int MazeMap::cell_passages(int c) const {
+    const int n = cells();
+    int count = 0;
+    for (int d = 0; d < 4; d++) {
+        count += passage(c % n, c / n, d) ? 1 : 0;
+    }
+    return count;
+}
+
+bool MazeMap::walled_by_boundary(int c) const {
+    const int n = cells();
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            const int x = 2 * (c % n) + 1 + dx;
+            const int y = 2 * (c / n) + 1 + dy;
+            if (wall(x, y) && !boundary_wall(x, y)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool MazeMap::open_wall(int c, int heading, int keep_a, int keep_b) {
+    const int n = cells();
+    const int cx = c % n;
+    const int cy = c / n;
+    const int nx = cx + HEADING_DX[heading];
+    const int ny = cy + HEADING_DY[heading];
+    if (nx < 0 || ny < 0 || nx >= n || ny >= n) {
+        return false;
+    }
+    const int other = ny * n + nx;
+    if (c == keep_a || c == keep_b || other == keep_a || other == keep_b) {
+        return false;
+    }
+    const int x = 2 * cx + 1 + HEADING_DX[heading];
+    const int y = 2 * cy + 1 + HEADING_DY[heading];
+    if (!wall(x, y)) {
+        return false;
+    }
+    const MazeTile was = tiles_[index(x, y)];
+    const uint8_t picture = pictures_[index(x, y)];
+    tiles_[index(x, y)] = MazeTile::OPEN;
+    pictures_[index(x, y)] = 0;
+    label_walls();
+    if (walled_by_boundary(keep_a) && walled_by_boundary(keep_b)) {
+        return true;
+    }
+    tiles_[index(x, y)] = was;
+    pictures_[index(x, y)] = picture;
+    label_walls();
+    return false;
+}
+
+bool MazeMap::open_room(int cx0, int cy0, int cx1, int cy1, int keep_a, int keep_b) {
+    // Every tile from the first cell's to the last cell's, pillars included, so the room
+    // holds no one-tile island.
+    scratch_.clear();
+    for (int y = 2 * cy0 + 1; y <= 2 * cy1 + 1; y++) {
+        for (int x = 2 * cx0 + 1; x <= 2 * cx1 + 1; x++) {
+            const size_t i = index(x, y);
+            if (tiles_[i] != MazeTile::OPEN) {
+                // Tile, its old content and its picture, to put back.
+                scratch_.push_back(static_cast<int>(i));
+                scratch_.push_back(static_cast<int>(tiles_[i]));
+                scratch_.push_back(pictures_[i]);
+                tiles_[i] = MazeTile::OPEN;
+                pictures_[i] = 0;
+            }
+        }
+    }
+    label_walls();
+    if (walled_by_boundary(keep_a) && walled_by_boundary(keep_b)) {
+        return true;
+    }
+    for (size_t j = 0; j + 2 < scratch_.size(); j += 3) {
+        const auto i = static_cast<size_t>(scratch_[j]);
+        tiles_[i] = static_cast<MazeTile>(scratch_[j + 1]);
+        pictures_[i] = static_cast<uint8_t>(scratch_[j + 2]);
+    }
+    label_walls();
+    return false;
+}
+
+void MazeMap::open_up(int keep_a, int keep_b, std::minstd_rand& rng) {
+    const int n = cells();
+    if (n < 2) {
+        return;
+    }
+    auto kept = [keep_a, keep_b](int c) { return c == keep_a || c == keep_b; };
+
+    // Braid: shuffle the dead ends, then open a wall out of a share of them, toward another
+    // dead end where one is next door, so one opening can close two.
+    scratch_.clear();
+    for (int c = 0; c < n * n; c++) {
+        if (!kept(c) && cell_passages(c) == 1) {
+            scratch_.push_back(c);
+        }
+    }
+    shuffle_in_place(rng, scratch_.begin(), scratch_.end());
+    const auto braids = static_cast<int>(std::lround(BRAID_SHARE * scratch_.size()));
+    int braided = 0;
+    for (size_t i = 0; i < scratch_.size() && braided < braids; i++) {
+        const int c = scratch_[i];
+        if (cell_passages(c) != 1) {
+            continue;
+        }
+        const int first = random_below(rng, 4);
+        bool opened = false;
+        // Two passes: toward a neighbouring dead end first, then toward anything.
+        for (int pass = 0; pass < 2 && !opened; pass++) {
+            for (int j = 0; j < 4 && !opened; j++) {
+                const int d = (first + j) & 3;
+                const int nx = c % n + HEADING_DX[d];
+                const int ny = c / n + HEADING_DY[d];
+                if (nx < 0 || ny < 0 || nx >= n || ny >= n) {
+                    continue;
+                }
+                if (pass == 0 && cell_passages(ny * n + nx) != 1) {
+                    continue;
+                }
+                opened = open_wall(c, d, keep_a, keep_b);
+            }
+        }
+        braided += opened ? 1 : 0;
+    }
+
+    int extra = 0;
+    for (int attempt = 0; attempt < 200 && extra < EXTRA_OPENINGS; attempt++) {
+        extra += open_wall(random_below(rng, n * n), random_below(rng, 4), keep_a, keep_b) ? 1 : 0;
+    }
+
+    // Rooms of 2x2, 2x3 or 3x2 cells, apart from each other and from the kept cells.
+    struct Room {
+        int x0, y0, x1, y1;
+    };
+    Room rooms[ROOMS_MIN + 1] = {};
+    int placed = 0;
+    const int wanted = random_int(rng, ROOMS_MIN, ROOMS_MIN + 1);
+    for (int r = 0; r < wanted; r++) {
+        for (int attempt = 0; attempt < 50; attempt++) {
+            const int shape = random_below(rng, 3);
+            const int w = shape == 2 ? 3 : 2;
+            const int h = shape == 1 ? 3 : 2;
+            if (w > n || h > n) {
+                break;
+            }
+            const Room room{random_below(rng, n - w + 1), random_below(rng, n - h + 1), 0, 0};
+            const Room box{room.x0, room.y0, room.x0 + w - 1, room.y0 + h - 1};
+            bool clear = true;
+            for (int c : {keep_a, keep_b}) {
+                if (c % n >= box.x0 && c % n <= box.x1 && c / n >= box.y0 && c / n <= box.y1) {
+                    clear = false;
+                }
+            }
+            for (int o = 0; o < placed; o++) {
+                if (box.x0 <= rooms[o].x1 && rooms[o].x0 <= box.x1 && box.y0 <= rooms[o].y1 &&
+                    rooms[o].y0 <= box.y1) {
+                    clear = false;
+                }
+            }
+            if (clear && open_room(box.x0, box.y0, box.x1, box.y1, keep_a, keep_b)) {
+                rooms[placed++] = box;
+                break;
+            }
+        }
+    }
+    hang_pictures(rng);
+}
+
 void MazeMap::release() {
-    std::vector<MazeTile>().swap(tiles_);
-    std::vector<int>().swap(stack_);
+    release_buffers(tiles_, stack_, scratch_, pictures_, boundary_);
     size_ = 0;
 }
 
-void MazeMap::set_tiles(int size, std::vector<MazeTile> tiles) {
+size_t MazeMap::heap_bytes() const {
+    return buffer_bytes(tiles_, stack_, scratch_, pictures_, boundary_);
+}
+
+void MazeMap::set_tiles(int size, std::vector<MazeTile> tiles, std::vector<uint8_t> pictures) {
     size_ = size;
     tiles_ = std::move(tiles);
+    pictures_ = std::move(pictures);
+    pictures_.resize(tiles_.size(), 0);
+    label_walls();
 }
 
 MazeTile MazeMap::tile(int x, int y) const {
     if (x < 0 || y < 0 || x >= size_ || y >= size_) {
         return MazeTile::BRICK;
     }
-    return tiles_[static_cast<size_t>(y) * size_ + x];
+    return tiles_[index(x, y)];
+}
+
+uint8_t MazeMap::picture_index(int x, int y) const {
+    if (tile(x, y) != MazeTile::PICTURE || x < 0 || y < 0 || x >= size_ || y >= size_) {
+        return 0;
+    }
+    return pictures_[index(x, y)];
+}
+
+bool MazeMap::boundary_wall(int x, int y) const {
+    if (x < 0 || y < 0 || x >= size_ || y >= size_) {
+        return true;
+    }
+    return boundary_[index(x, y)] != 0;
 }
 
 bool MazeMap::passage(int cx, int cy, int heading) const {
@@ -502,10 +766,15 @@ int next_heading(const MazeMap& map, int cx, int cy, int d_in, bool left_handed)
     return (d_in + 2) & 3;
 }
 
-/// Fraction of a segment covered at time fraction `u`: linear, or slowing to rest at the end
-/// from the same starting speed.
-float covered(float u, bool ease_out) {
-    return ease_out ? u * (2.0f - u) : u;
+/// Fraction of a move covered at time fraction `u` while slowing to rest at the end, from the
+/// speed a linear move has.
+float ease_out(float u) {
+    return u * (2.0f - u);
+}
+
+/// Fraction of a segment covered at time fraction `u`: linear, or eased out.
+float covered(float u, bool eases_out) {
+    return eases_out ? ease_out(u) : u;
 }
 
 float cell_centre(int c) {
@@ -513,7 +782,7 @@ float cell_centre(int c) {
 }
 
 float heading_angle(float quarters) {
-    return quarters * (PI_F * 0.5f);
+    return quarters * (SAVER_PI * 0.5f);
 }
 
 } // namespace
@@ -537,13 +806,111 @@ void MazeWalker::reset(int cx, int cy, int heading, bool left_handed, uint32_t m
     duration_ms_ = 1;
     arrive_ms_ = 0;
     moves_ = 0;
+    recoveries_ = 0;
     stop_x_ = -1;
     stop_y_ = -1;
+    std::fill(seen_.begin(), seen_.end(), 0);
+    path_.clear();
+    path_pos_ = 0;
+}
+
+void MazeWalker::set_left_handed(bool left) {
+    left_handed_ = left;
+    std::fill(seen_.begin(), seen_.end(), 0);
+    path_.clear();
+    path_pos_ = 0;
+}
+
+void MazeWalker::reserve(int cells) {
+    const auto states = static_cast<size_t>(cells) * static_cast<size_t>(cells) * 4;
+    seen_.assign(states, 0);
+    prev_.assign(states, -1);
+    queue_.reserve(states);
+    path_.reserve(states);
+}
+
+void MazeWalker::release() {
+    release_buffers(seen_, prev_, queue_, path_);
+    path_pos_ = 0;
+}
+
+size_t MazeWalker::heap_bytes() const {
+    return buffer_bytes(seen_, prev_, queue_, path_);
+}
+
+int MazeWalker::track_state(const MazeMap& map) {
+    // Without a stop cell the walk has nowhere to get to, and circling is fine.
+    if (stop_x_ < 0) {
+        return -1;
+    }
+    const int n = map.cells();
+    const auto states = static_cast<size_t>(n) * static_cast<size_t>(n) * 4;
+    if (seen_.size() != states) {
+        reserve(n);
+    }
+    if (path_pos_ < path_.size()) {
+        return path_[path_pos_++];
+    }
+    if (!path_.empty()) {
+        // The recovery walk has reached the boundary wall: follow it from here.
+        path_.clear();
+        path_pos_ = 0;
+        std::fill(seen_.begin(), seen_.end(), 0);
+    }
+    const int s = (cy_ * n + cx_) * 4 + d_in_;
+    if (seen_[static_cast<size_t>(s)] == 0) {
+        seen_[static_cast<size_t>(s)] = 1;
+        return -1;
+    }
+
+    // A state seen before: the hand is on an island. Search the states breadth first for the
+    // nearest one whose hand-side wall is joined to the outer ring.
+    const int hand = left_handed_ ? 3 : 1;
+    std::fill(prev_.begin(), prev_.end(), -1);
+    queue_.clear();
+    queue_.push_back(static_cast<int16_t>(s));
+    prev_[static_cast<size_t>(s)] = static_cast<int16_t>(s);
+    int goal = -1;
+    for (size_t qi = 0; qi < queue_.size() && goal < 0; qi++) {
+        const int u = queue_[qi];
+        const int c = u / 4;
+        for (int e = 0; e < 4 && goal < 0; e++) {
+            if (!map.passage(c % n, c / n, e)) {
+                continue;
+            }
+            const int nc = (c / n + HEADING_DY[e]) * n + c % n + HEADING_DX[e];
+            const int v = nc * 4 + e;
+            if (prev_[static_cast<size_t>(v)] >= 0) {
+                continue;
+            }
+            prev_[static_cast<size_t>(v)] = static_cast<int16_t>(u);
+            queue_.push_back(static_cast<int16_t>(v));
+            const int side = (e + hand) & 3;
+            if (map.boundary_wall(2 * (nc % n) + 1 + HEADING_DX[side],
+                                  2 * (nc / n) + 1 + HEADING_DY[side])) {
+                goal = v;
+            }
+        }
+    }
+    std::fill(seen_.begin(), seen_.end(), 0);
+    if (goal < 0) {
+        seen_[static_cast<size_t>(s)] = 1;
+        return -1;
+    }
+    path_.clear();
+    for (int v = goal; v != s; v = prev_[static_cast<size_t>(v)]) {
+        path_.push_back(static_cast<uint8_t>(v & 3));
+    }
+    std::reverse(path_.begin(), path_.end());
+    recoveries_++;
+    path_pos_ = 1;
+    return path_[0];
 }
 
 void MazeWalker::plan_start(const MazeMap& map) {
     // Turn on the spot to the way out, then speed up to walking pace by the doorway.
-    d_out_ = next_heading(map, cx_, cy_, d_in_, left_handed_);
+    const int tracked = track_state(map);
+    d_out_ = tracked >= 0 ? tracked : next_heading(map, cx_, cy_, d_in_, left_handed_);
     const int diff = (d_out_ - d_in_ + 4) & 3;
     spin_quarters_ = diff == 3 ? -1 : diff == 2 ? (left_handed_ ? 2 : -2) : diff;
     kind_ = Segment::START;
@@ -554,7 +921,8 @@ void MazeWalker::plan_start(const MazeMap& map) {
 }
 
 void MazeWalker::plan_segment(const MazeMap& map) {
-    d_out_ = next_heading(map, cx_, cy_, d_in_, left_handed_);
+    const int tracked = track_state(map);
+    d_out_ = tracked >= 0 ? tracked : next_heading(map, cx_, cy_, d_in_, left_handed_);
     const int diff = (d_out_ - d_in_ + 4) & 3;
     ease_out_ = cx_ + HEADING_DX[d_out_] == stop_x_ && cy_ + HEADING_DY[d_out_] == stop_y_;
     progress_ms_ = 0;
@@ -569,7 +937,7 @@ void MazeWalker::plan_segment(const MazeMap& map) {
     }
     kind_ = diff == 0 ? Segment::STRAIGHT : Segment::TURN;
     // Two tiles straight, or a quarter arc of radius one tile, at the same speed.
-    const float length = diff == 0 ? 2.0f : PI_F * 0.5f;
+    const float length = diff == 0 ? 2.0f : SAVER_PI * 0.5f;
     const float base = static_cast<float>(move_ms_) * length * 0.5f;
     duration_ms_ =
         std::max<uint32_t>(1, static_cast<uint32_t>(std::lround(base * (ease_out_ ? 2.0f : 1.0f))));
@@ -645,7 +1013,7 @@ MazePose MazeWalker::pose() const {
         p.x = cx;
         p.y = cy;
         if (!planned_ || t < spin_ms) {
-            const float f = spin_ms > 0.0f ? smoothstep(t / spin_ms) : 0.0f;
+            const float f = spin_ms > 0.0f ? smoothstep01(t / spin_ms) : 0.0f;
             p.angle = heading_angle(static_cast<float>(d_in_) + f * spin_quarters_);
             return p;
         }
@@ -669,7 +1037,7 @@ MazePose MazeWalker::pose() const {
         const float sign = d_out_ == ((d_in_ + 1) & 3) ? 1.0f : -1.0f;
         const float pillar_x = cx - in_x + out_x;
         const float pillar_y = cy - in_y + out_y;
-        const float phi = std::atan2(-out_y, -out_x) + sign * f * (PI_F * 0.5f);
+        const float phi = std::atan2(-out_y, -out_x) + sign * f * (SAVER_PI * 0.5f);
         p.x = pillar_x + std::cos(phi);
         p.y = pillar_y + std::sin(phi);
         p.angle = heading_angle(static_cast<float>(d_in_) + sign * f);
@@ -680,7 +1048,7 @@ MazePose MazeWalker::pose() const {
         const float spin_ms = 2.0f * static_cast<float>(turn_ms_);
         if (t < in_ms) {
             const float u = t / in_ms;
-            const float d = u * (2.0f - u);
+            const float d = ease_out(u);
             p.x = cx - in_x + in_x * d;
             p.y = cy - in_y + in_y * d;
             p.angle = heading_angle(static_cast<float>(d_in_));
@@ -688,7 +1056,7 @@ MazePose MazeWalker::pose() const {
             p.x = cx;
             p.y = cy;
             p.angle = heading_angle(static_cast<float>(d_in_) +
-                                    smoothstep((t - in_ms) / spin_ms) * spin_quarters_);
+                                    smoothstep01((t - in_ms) / spin_ms) * spin_quarters_);
         } else {
             const float u = (t - in_ms - spin_ms) / in_ms;
             p.x = cx + out_x * u * u;
@@ -712,43 +1080,38 @@ void MazeRenderer::init(uint32_t w, uint32_t h, PixelFormat format, const MazeAr
     wall_bottom_.assign(w, 0);
     row_dist_q16_.assign(h, 0);
     src_rows_.assign(h, -1);
-    sprite_order_.reserve(32);
-    if (format == PixelFormat::RGB565) {
-        build<uint16_t>(art);
-    } else {
-        build<uint32_t>(art);
+    row_band_.assign(h, 0);
+    wall_k_.assign(w, static_cast<uint8_t>(MAZE_FOG_ONE));
+    fog_k_.resize(MAZE_FOG_SLOTS);
+    for (int i = 0; i < MAZE_FOG_SLOTS; i++) {
+        fog_k_[static_cast<size_t>(i)] = static_cast<uint8_t>(maze_fog_k(
+            (static_cast<float>(i) + 0.5f) / static_cast<float>(MAZE_FOG_STEPS_PER_TILE)));
     }
+    sprite_order_.reserve(32);
+    with_pixel_type(format, [&](auto px) { build<decltype(px)>(art); });
     set_level(level);
 }
 
 void MazeRenderer::release() {
     auto free_store = [](auto& st) {
-        free_vector(st.frame);
-        free_vector(st.textures);
-        free_vector(st.sprites);
-        free_vector(st.ceil_rows);
-        free_vector(st.floor_rows);
-        free_vector(st.row);
+        release_buffers(st.frame, st.textures, st.sprites, st.ceil_rows, st.floor_rows, st.row,
+                        st.fog_bands, st.fog_tint);
     };
     free_store(s16_);
     free_store(s32_);
-    free_vector(zbuf_);
-    free_vector(wall_top_);
-    free_vector(wall_bottom_);
-    free_vector(row_dist_q16_);
-    free_vector(src_rows_);
-    free_vector(sprite_order_);
+    release_buffers(zbuf_, wall_top_, wall_bottom_, row_dist_q16_, src_rows_, sprite_order_, fog_k_,
+                    row_band_, wall_k_);
     w_ = h_ = iw_ = ih_ = 0;
 }
 
-size_t MazeRenderer::buffer_bytes() const {
+size_t MazeRenderer::heap_bytes() const {
     auto store_bytes = [](const auto& s) {
-        return held_bytes(s.frame) + held_bytes(s.textures) + held_bytes(s.sprites) +
-               held_bytes(s.ceil_rows) + held_bytes(s.floor_rows) + held_bytes(s.row);
+        return buffer_bytes(s.frame, s.textures, s.sprites, s.ceil_rows, s.floor_rows, s.row,
+                            s.fog_bands, s.fog_tint);
     };
-    return store_bytes(s16_) + store_bytes(s32_) + held_bytes(zbuf_) + held_bytes(wall_top_) +
-           held_bytes(wall_bottom_) + held_bytes(row_dist_q16_) + held_bytes(src_rows_) +
-           held_bytes(sprite_order_);
+    return store_bytes(s16_) + store_bytes(s32_) +
+           buffer_bytes(zbuf_, wall_top_, wall_bottom_, row_dist_q16_, src_rows_, sprite_order_,
+                        fog_k_, row_band_, wall_k_);
 }
 
 uint32_t MazeRenderer::internal_pixel(uint32_t x, uint32_t y) const {
@@ -761,19 +1124,53 @@ void MazeRenderer::set_level(size_t level) {
     if (w_ == 0 || h_ == 0) {
         return;
     }
-    const uint32_t s = MAZE_LEVELS[level_].scale;
-    iw_ = (w_ + s - 1) / s;
-    ih_ = (h_ + s - 1) / s;
+    const int32_t s = MAZE_LEVELS[level_].scale;
+    iw_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(w_), s));
+    ih_ = static_cast<uint32_t>(scaled_extent(static_cast<int32_t>(h_), s));
+    focal_ = maze_focal(iw_, ih_);
+    plane_len_ = 0.5f * static_cast<float>(iw_) / focal_;
     for (uint32_t y = 0; y < ih_; y++) {
-        // Distance to the floor (or ceiling) point the centre of row y sees.
-        const float denom = std::fabs(2.0f * y + 1.0f - static_cast<float>(ih_));
-        const float dist = std::min(static_cast<float>(ih_) / std::max(denom, 1.0f), 1000.0f);
+        const float dist = row_distance(y);
         row_dist_q16_[y] = static_cast<int32_t>(dist * 65536.0f);
+        row_band_[y] = nearest_band(fog_k_at(dist));
     }
-    if (format_ == PixelFormat::RGB565) {
-        apply_level<uint16_t>();
+    with_pixel_type(format_, [this](auto px) { apply_level<decltype(px)>(); });
+}
+
+float MazeRenderer::row_distance(uint32_t y) const {
+    // The eye is half a tile above the floor and below the ceiling.
+    const float denom = std::fabs(2.0f * static_cast<float>(y) + 1.0f - static_cast<float>(ih_));
+    return std::min(focal_ / std::max(denom, 1.0f), 1000.0f);
+}
+
+template <typename Px> Px MazeRenderer::shade(Px p, uint32_t k) const {
+    const uint32_t* t = store<Px>().fog_tint.data() + 2 * static_cast<size_t>(k);
+    if constexpr (sizeof(Px) == 2) {
+        // 0x07E0F81F spreads the three fields apart so one multiply scales them all.
+        uint32_t x = (p | static_cast<uint32_t>(p) << 16) & 0x07E0F81Fu;
+        x = (x * k + t[0]) >> 5 & 0x07E0F81Fu;
+        return static_cast<Px>(x | x >> 16);
     } else {
-        apply_level<uint32_t>();
+        const uint32_t rb = ((p & 0xFF00FFu) * k + t[0]) >> 5 & 0xFF00FFu;
+        const uint32_t g = ((p & 0xFF00u) * k + t[1]) >> 5 & 0xFF00u;
+        return 0xFF000000u | rb | g;
+    }
+}
+
+template <typename Px> void MazeRenderer::build_fog_bands() {
+    Store<Px>& st = store<Px>();
+    constexpr size_t TEXELS = static_cast<size_t>(TEX) * TEX;
+    st.fog_bands.resize(2 * MAZE_FOG_BANDS * TEXELS);
+    const Px* floor_tex = st.textures.data() + TEX_FLOOR * TEXELS;
+    const Px* ceil_tex = st.textures.data() + TEX_CEIL * TEXELS;
+    for (int b = 0; b < MAZE_FOG_BANDS; b++) {
+        const uint32_t k = band_k(b);
+        Px* floor_band = st.fog_bands.data() + static_cast<size_t>(b) * TEXELS;
+        Px* ceil_band = floor_band + MAZE_FOG_BANDS * TEXELS;
+        for (size_t i = 0; i < TEXELS; i++) {
+            floor_band[i] = shade<Px>(floor_tex[i], k);
+            ceil_band[i] = shade<Px>(ceil_tex[i], k);
+        }
     }
 }
 
@@ -784,13 +1181,19 @@ template <typename Px> void MazeRenderer::apply_level() {
     if (st.frame.size() < static_cast<size_t>(iw_) * ih_) {
         st.frame.resize(static_cast<size_t>(iw_) * ih_);
     }
-    const float half = static_cast<float>(ih_) * 0.5f;
+    if (MAZE_LEVELS[level_].textured_floor) {
+        if (st.fog_bands.empty()) {
+            build_fog_bands<Px>();
+        }
+        return;
+    }
+    release_buffer(st.fog_bands);
     for (uint32_t y = 0; y < ih_; y++) {
-        const float t = std::fabs(static_cast<float>(y) + 0.5f - half) / half; // 0 at horizon
+        const uint32_t k = fog_k_at(row_distance(y));
         st.ceil_rows[y] =
-            static_cast<Px>(PixelWriter::pack(mix({35, 35, 38}, {175, 172, 165}, t), format_));
+            static_cast<Px>(PixelWriter::pack(maze_fog(MAZE_FLAT_CEILING, k), format_));
         st.floor_rows[y] =
-            static_cast<Px>(PixelWriter::pack(mix({35, 23, 14}, {130, 86, 48}, t), format_));
+            static_cast<Px>(PixelWriter::pack(maze_fog(MAZE_FLAT_FLOOR, k), format_));
     }
 }
 
@@ -799,16 +1202,55 @@ template <typename Px> void MazeRenderer::build(const MazeArt& art) {
     st.ceil_rows.assign(h_, 0);
     st.floor_rows.assign(h_, 0);
     st.row.assign(w_, 0);
-    st.textures.assign(TEX_COUNT * TEX * TEX, 0);
+    picture_count_ = 0;
+    for (const MazeImage& img : art.pictures) {
+        picture_count_ += !img.empty() && picture_count_ < MAZE_MAX_PICTURES ? 1 : 0;
+    }
+    st.textures.assign((TEX_PICTURE0 + picture_count_) * TEX * TEX, 0);
     st.sprites.assign(SPR_COUNT * TEX * TEX, 0);
     auto pack = [this](Rgb c) { return static_cast<Px>(PixelWriter::pack(c, format_)); };
+
+    st.fog_tint.assign(2 * (MAZE_FOG_ONE + 1), 0);
+    for (uint32_t k = 0; k <= MAZE_FOG_ONE; k++) {
+        // The tint's share plus the rounding half, in the lanes shade() multiplies in.
+        const uint32_t m = MAZE_FOG_ONE - k;
+        uint32_t* t = st.fog_tint.data() + 2 * static_cast<size_t>(k);
+        if constexpr (sizeof(Px) == 2) {
+            // The tint rounded to 565 levels, not truncated, so far fog matches 8888's.
+            auto level = [](uint8_t c, int bits) {
+                const uint32_t top = (1u << bits) - 1;
+                return std::min<uint32_t>(top, (c * top + 127) / 255);
+            };
+            t[0] = (level(MAZE_FOG_TINT.r, 5) * m + 16) << 11 |
+                   (level(MAZE_FOG_TINT.g, 6) * m + 16) << 21 |
+                   (level(MAZE_FOG_TINT.b, 5) * m + 16);
+        } else {
+            t[0] = (MAZE_FOG_TINT.r * m + 16) << 16 | (MAZE_FOG_TINT.b * m + 16);
+            t[1] = (MAZE_FOG_TINT.g * m + 16) << 8;
+        }
+    }
+
+    auto tex = [&st](size_t slot, int u, int v) -> Px& {
+        return st.textures[(slot * TEX + static_cast<size_t>(u)) * TEX + static_cast<size_t>(v)];
+    };
+    for (int u = 0; u < TEX; u++) {
+        for (int v = 0; v < TEX; v++) {
+            tex(TEX_BRICK, u, v) = pack(brick_texel(u, v));
+            tex(TEX_FLOOR, u, v) = pack(floor_texel(u, v));
+            tex(TEX_CEIL, u, v) = pack(ceiling_texel(u, v));
+        }
+    }
 
     // Heap, not static: the saver holds no memory while it is not running.
     auto pic_owner = std::make_unique<Canvas64>();
     Canvas64& pic = *pic_owner;
-    pic.clear();
-    has_picture_ = !art.picture.empty();
-    if (has_picture_) {
+    size_t slot = TEX_PICTURE0;
+    for (const MazeImage& img : art.pictures) {
+        if (img.empty() || slot >= TEX_PICTURE0 + picture_count_) {
+            continue;
+        }
+        // A wooden frame round a matte, the image fitted inside, on the brick.
+        pic.clear();
         const Rgb matte{225, 215, 190};
         for (int v = 8; v < 56; v++) {
             for (int u = 10; u < 54; u++) {
@@ -816,22 +1258,13 @@ template <typename Px> void MazeRenderer::build(const MazeArt& art) {
                 pic.set(u, v, frame ? Rgb{70, 45, 25} : matte);
             }
         }
-        fit_image(pic, art.picture, 15, 13, 34, 38, &matte);
-    }
-    auto tex = [&st](size_t slot, int u, int v) -> Px& {
-        return st.textures[(slot * TEX + static_cast<size_t>(u)) * TEX + static_cast<size_t>(v)];
-    };
-    for (int u = 0; u < TEX; u++) {
-        for (int v = 0; v < TEX; v++) {
-            const Rgb brick = brick_texel(u, v);
-            const Rgb picture = pic.on[u][v] ? pic.c[u][v] : brick;
-            tex(TEX_BRICK, u, v) = pack(brick);
-            tex(TEX_BRICK_DARK, u, v) = pack(scaled(brick, DARK_SIDE));
-            tex(TEX_PICTURE, u, v) = pack(picture);
-            tex(TEX_PICTURE_DARK, u, v) = pack(scaled(picture, DARK_SIDE));
-            tex(TEX_FLOOR, u, v) = pack(floor_texel(u, v));
-            tex(TEX_CEIL, u, v) = pack(ceiling_texel(u, v));
+        fit_image(pic, img, 15, 13, 34, 38, &matte);
+        for (int u = 0; u < TEX; u++) {
+            for (int v = 0; v < TEX; v++) {
+                tex(slot, u, v) = pic.on[u][v] ? pack(pic.c[u][v]) : tex(TEX_BRICK, u, v);
+            }
         }
+        slot++;
     }
     pic_owner.reset();
 
@@ -894,14 +1327,14 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
     Store<Px>& st = store<Px>();
     const float dir_x = std::cos(pose.angle);
     const float dir_y = std::sin(pose.angle);
-    const float plane_len = 0.5f * static_cast<float>(iw_) / static_cast<float>(ih_);
-    const float plane_x = -dir_y * plane_len;
-    const float plane_y = dir_x * plane_len;
+    const float plane_x = -dir_y * plane_len_;
+    const float plane_y = dir_x * plane_len_;
     const bool textured = MAZE_LEVELS[level_].textured_floor;
     const auto pos_xq = static_cast<int32_t>(pose.x * 65536.0f);
     const auto pos_yq = static_cast<int32_t>(pose.y * 65536.0f);
-    const Px* floor_tex = st.textures.data() + TEX_FLOOR * TEX * TEX;
-    const Px* ceil_tex = st.textures.data() + TEX_CEIL * TEX * TEX;
+    // Textured levels hold the floor and ceiling bands; flat ones read neither.
+    const Px* floor_bands = st.fog_bands.data();
+    const Px* ceil_bands = textured ? floor_bands + MAZE_FOG_BANDS * TEX * TEX : nullptr;
     const int ih = static_cast<int>(ih_);
     const int max_steps = 4 * std::max(map.size(), 1);
 
@@ -941,10 +1374,17 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
         if ((side == 0 && rdx < 0.0f) || (side == 1 && rdy > 0.0f)) {
             tex_u = TEX - 1 - tex_u;
         }
-        const bool picture = has_picture_ && map.tile(mx, my) == MazeTile::PICTURE;
-        const size_t tex = (picture ? TEX_PICTURE : TEX_BRICK) + (side == 1 ? 1 : 0);
+        size_t tex = TEX_BRICK;
+        if (picture_count_ > 0 && map.tile(mx, my) == MazeTile::PICTURE) {
+            tex = TEX_PICTURE0 + map.picture_index(mx, my) % picture_count_;
+        }
+        uint32_t k = fog_k_at(perp);
+        if (side == 1) {
+            k = (k * MAZE_SIDE_K + MAZE_FOG_ONE / 2) >> 5;
+        }
+        wall_k_[x] = static_cast<uint8_t>(k);
 
-        const float line_h = static_cast<float>(ih) / perp;
+        const float line_h = focal_ / perp;
         const float top_f = (static_cast<float>(ih) - line_h) * 0.5f;
         const int top = static_cast<int>(std::floor(top_f));
         const int bottom = static_cast<int>(std::floor(top_f + line_h));
@@ -961,9 +1401,21 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
         const auto step = static_cast<uint32_t>(static_cast<int64_t>(TEX * 65536.0 / line_h));
         auto tp = static_cast<uint32_t>(
             static_cast<int64_t>((static_cast<double>(y0) + 0.5 - top_f) * TEX * 65536.0 / line_h));
-        for (int y = y0; y < y1; y++) {
-            col[y] = texcol[(tp >> 16) & (TEX - 1)];
-            tp += step;
+        if (y1 - y0 > TEX) {
+            // Taller than the texture: shade each texel once, not each pixel it covers.
+            Px shaded[TEX];
+            for (int v = 0; v < TEX; v++) {
+                shaded[v] = shade<Px>(texcol[v], k);
+            }
+            for (int y = y0; y < y1; y++) {
+                col[y] = shaded[(tp >> 16) & (TEX - 1)];
+                tp += step;
+            }
+        } else {
+            for (int y = y0; y < y1; y++) {
+                col[y] = shade<Px>(texcol[(tp >> 16) & (TEX - 1)], k);
+                tp += step;
+            }
         }
 
         if (!textured) {
@@ -977,18 +1429,20 @@ template <typename Px> void MazeRenderer::cast_walls(const MazeMap& map, const M
         }
         const auto rdxq = static_cast<int32_t>(rdx * 65536.0f);
         const auto rdyq = static_cast<int32_t>(rdy * 65536.0f);
+        // Each row reads its own fog band: the band's offset plus the texel.
         auto texel = [&](int y) {
             const int64_t d = row_dist_q16_[static_cast<size_t>(y)];
             const auto fx = static_cast<int32_t>(pos_xq + ((d * rdxq) >> 16));
             const auto fy = static_cast<int32_t>(pos_yq + ((d * rdyq) >> 16));
-            return static_cast<size_t>((fx >> 10) & (TEX - 1)) * TEX +
+            return static_cast<size_t>(row_band_[static_cast<size_t>(y)]) * TEX * TEX +
+                   static_cast<size_t>((fx >> 10) & (TEX - 1)) * TEX +
                    static_cast<size_t>((fy >> 10) & (TEX - 1));
         };
         for (int y = 0; y < y0; y++) {
-            col[y] = ceil_tex[texel(y)];
+            col[y] = ceil_bands[texel(y)];
         }
         for (int y = y1; y < ih; y++) {
-            col[y] = floor_tex[texel(y)];
+            col[y] = floor_bands[texel(y)];
         }
     }
 }
@@ -1011,15 +1465,14 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
 
     const float dir_x = std::cos(pose.angle);
     const float dir_y = std::sin(pose.angle);
-    const float plane_len = 0.5f * static_cast<float>(iw_) / static_cast<float>(ih_);
-    const float plane_x = -dir_y * plane_len;
-    const float plane_y = dir_x * plane_len;
+    const float plane_x = -dir_y * plane_len_;
+    const float plane_y = dir_x * plane_len_;
     const float inv_det = 1.0f / (plane_x * dir_y - dir_x * plane_y);
     const float fw = static_cast<float>(iw_);
     const float fh = static_cast<float>(ih_);
     const Px key = sprite_key<Px>();
     // Phase within one turn, from an integer that wraps instead of a float that loses precision.
-    const float spin_phase = 2.0f * PI_F * static_cast<float>(elapsed_ms % SPIN_PERIOD_MS) /
+    const float spin_phase = 2.0f * SAVER_PI * static_cast<float>(elapsed_ms % SPIN_PERIOD_MS) /
                              static_cast<float>(SPIN_PERIOD_MS);
 
     for (const SpriteDraw& s : sprite_order_) {
@@ -1033,7 +1486,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
             continue;
         }
         const float screen_x = fw * 0.5f * (1.0f + tx / ty);
-        const float h = style.size * fh / ty;
+        const float h = style.size * focal_ / ty;
         float width_k = 1.0f;
         bool mirror = false;
         size_t slot = SPR_LOGO;
@@ -1063,7 +1516,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
         if (w < 1.0f) {
             continue;
         }
-        const float centre_y = fh * 0.5f + (0.5f - style.center_z) * fh / ty;
+        const float centre_y = fh * 0.5f + (0.5f - style.center_z) * focal_ / ty;
         const float x0 = screen_x - w * 0.5f;
         const float y0 = centre_y - h * 0.5f;
         const int xs = std::max(0, static_cast<int>(std::ceil(x0 - 0.5f)));
@@ -1077,6 +1530,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
         const auto vstart =
             static_cast<uint32_t>((static_cast<float>(ys) + 0.5f - y0) * TEX * 65536.0f / h);
         const Px* spr = st.sprites.data() + slot * TEX * TEX;
+        const uint32_t k = fog_k_at(ty);
         for (int x = xs; x < xe; x++) {
             if (ty >= zbuf_[static_cast<size_t>(x)]) {
                 continue;
@@ -1094,7 +1548,7 @@ void MazeRenderer::draw_sprites(const std::vector<MazeItem>& items, const MazePo
                 if (px == key || (style.screen_door && ((x + y) & 1) != 0)) {
                     continue;
                 }
-                col[y] = px;
+                col[y] = shade<Px>(px, k);
             }
         }
     }
@@ -1113,7 +1567,7 @@ template <typename Px> void MazeRenderer::blit(float flip, FrameTarget& out) {
         }
     } else {
         // Rows squash toward the horizon, through zero, and open out mirrored.
-        const float s = std::cos(flip * PI_F);
+        const float s = std::cos(flip * SAVER_PI);
         const float c = static_cast<float>(ih) * 0.5f;
         for (int y = 0; y < ih; y++) {
             int src = -1;
@@ -1143,15 +1597,13 @@ void MazeRenderer::render(const MazeMap& map, const std::vector<MazeItem>& items
     if (iw_ == 0 || ih_ == 0 || out.w != w_ || out.h != h_ || out.format != format_) {
         return;
     }
-    if (format_ == PixelFormat::RGB565) {
-        render_as<uint16_t>(map, items, pose, flip, elapsed_ms, out);
-    } else {
-        render_as<uint32_t>(map, items, pose, flip, elapsed_ms, out);
-    }
+    with_pixel_type(format_, [&](auto px) {
+        render_as<decltype(px)>(map, items, pose, flip, elapsed_ms, out);
+    });
 }
 
-void MazeSim::init(const FrameTarget& frame, const MazeArt& art, std::minstd_rand& rng,
-                   size_t level) {
+void MazeSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t level,
+                   const MazeArt& art) {
     renderer_.init(frame.w, frame.h, frame.format, art, level);
     items_.clear();
     items_.reserve(4 + LOGO_COUNT + ROCK_COUNT);
@@ -1160,25 +1612,33 @@ void MazeSim::init(const FrameTarget& frame, const MazeArt& art, std::minstd_ran
     dist_.reserve(cells);
     queue_.reserve(cells);
     elapsed_ms_ = 0;
+    walker_.reserve(CELLS);
     new_maze(rng);
     mazes_ = 0;
+    exits_reached_ = 0;
+    abandoned_ = 0;
 }
 
 void MazeSim::clear() {
     renderer_.release();
     map_.release();
-    free_vector(items_);
-    free_vector(taken_);
-    free_vector(dist_);
-    free_vector(queue_);
+    walker_.release();
+    toolhead_.release();
+    release_buffers(items_, taken_, dist_, queue_);
     flip_left_ms_ = 0;
     exit_left_ms_ = 0;
 }
 
+size_t MazeSim::heap_bytes() const {
+    return renderer_.heap_bytes() + map_.heap_bytes() + walker_.heap_bytes() +
+           toolhead_.heap_bytes() + buffer_bytes(items_, taken_, dist_, queue_);
+}
+
 uint32_t MazeSim::step_bound() const {
-    // A hand on the wall of a perfect maze crosses each passage at most twice; every rock
-    // swaps hands and may start that tour again.
-    return 4u * CELLS * CELLS * (ROCK_COUNT + 1);
+    // Each hand (the first, and one more per rock) may lap an island until a state repeats,
+    // walk the shortest way off it and lap the boundary to the exit: each of the three at
+    // most once through all 4 * cells^2 states.
+    return (ROCK_COUNT + 1) * 12u * CELLS * CELLS;
 }
 
 float MazeSim::flip() const {
@@ -1239,6 +1699,8 @@ void MazeSim::new_maze(std::minstd_rand& rng) {
         }
     }
 
+    map_.open_up(start, exit, rng);
+
     items_.clear();
     taken_[static_cast<size_t>(start)] = 1;
     taken_[static_cast<size_t>(exit)] = 1;
@@ -1291,6 +1753,7 @@ void MazeSim::on_arrival(std::minstd_rand& rng) {
         }
     }
     if (walker_.moves() > step_bound()) {
+        abandoned_++;
         new_maze(rng);
     }
 }
@@ -1334,6 +1797,7 @@ void MazeSim::advance(uint32_t dt_ms, std::minstd_rand& rng) {
         if (event == WalkEvent::ARRIVED) {
             on_arrival(rng);
         } else if (event == WalkEvent::ENTERED && walker_.stopped()) {
+            exits_reached_++;
             exit_left_ms_ = EXIT_HOLD_MS;
         } else if (used == 0) {
             break;
@@ -1346,7 +1810,7 @@ void MazeSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
     advance(dt_ms, rng);
     renderer_.render(map_, items_, walker_.pose(), flip(), elapsed_ms_, frame);
     dirty.clear();
-    dirty.push_back({0, 0, static_cast<int32_t>(frame.w) - 1, static_cast<int32_t>(frame.h) - 1});
+    dirty.push_back(DirtyRect::whole(static_cast<int32_t>(frame.w), static_cast<int32_t>(frame.h)));
 }
 
 } // namespace helix::ui

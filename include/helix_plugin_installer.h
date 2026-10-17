@@ -24,6 +24,7 @@
 
 namespace helix {
 class IMoonrakerAPI;
+struct HelixPluginInstallerTestAccess; // test-only friend (tests/test_helpers/)
 
 // ============================================================================
 // Plugin Install State
@@ -197,9 +198,17 @@ class HelixPluginInstaller {
     [[nodiscard]] bool is_installing() const;
 
   private:
+    friend struct HelixPluginInstallerTestAccess;
+
     IMoonrakerAPI* api_ = nullptr;
     std::string websocket_url_;
     std::atomic<PluginInstallState> state_{PluginInstallState::IDLE};
+
+    // Where install.sh is looked for. Empty means beside the executable, plus the
+    // system share dir; a set root is searched alone, so nothing outside it runs.
+    std::string script_search_root_;
+    // How long install.sh may run before it is killed.
+    int script_timeout_seconds_ = 60;
 
     // Config key for "don't ask again" preference
     static constexpr const char* PREF_INSTALL_DECLINED = "/plugin_install_declined";

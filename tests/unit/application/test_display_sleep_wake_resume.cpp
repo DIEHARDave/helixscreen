@@ -34,6 +34,8 @@
 
 #include <array>
 #include <chrono>
+#include <map>
+#include <string>
 #include <thread>
 
 #include "../../catch_amalgamated.hpp"
@@ -246,6 +248,46 @@ TEST_CASE_METHOD(SleepWakeFixture,
     lv_display_trigger_activity(nullptr);
     mgr.check_display_sleep();
     REQUIRE_FALSE(mgr.is_display_dimmed());
+}
+
+TEST_CASE_METHOD(SleepWakeFixture,
+                 "screensaver usage records a touch wake, an app wake and no preview",
+                 "[application][display][screensaver][screensaver_usage]") {
+    configure_idle(/*screensaver_type=*/1, /*dim_sec=*/30, /*sleep_sec=*/60);
+    const std::string name = helix::ui::screensaver_name(ScreensaverType::FLYING_TOASTERS);
+    helix::SaverUsage& usage = ScreensaverManager::instance().usage();
+    ScreensaverManager::instance().stop();
+    usage.reset_window(std::chrono::steady_clock::now());
+    auto window = [&usage] { return usage.window(std::chrono::steady_clock::now()); };
+
+    DisplayManager mgr;
+    mgr.set_dim_timeout(1);
+
+    // Idle starts the saver; activity wakes it.
+    lv_display_trigger_activity(nullptr);
+    process_lvgl(1300);
+    mgr.check_display_sleep();
+    REQUIRE(mgr.is_display_dimmed());
+    lv_display_trigger_activity(nullptr);
+    mgr.check_display_sleep();
+    REQUIRE_FALSE(mgr.is_display_dimmed());
+    CHECK(window().woke_by_touch == std::map<std::string, int>{{name, 1}});
+    CHECK(window().stopped_other.empty());
+
+    // A wake the app asks for (print done, remote control) is not a touch.
+    process_lvgl(1300);
+    mgr.check_display_sleep();
+    REQUIRE(mgr.is_display_dimmed());
+    mgr.wake_display();
+    REQUIRE_FALSE(mgr.is_display_dimmed());
+    CHECK(window().stopped_other == std::map<std::string, int>{{name, 1}});
+    CHECK(window().starts == std::map<std::string, int>{{name, 2}});
+
+    // The settings preview is not a real run.
+    mgr.preview_screensaver(1);
+    REQUIRE(mgr.is_display_dimmed());
+    mgr.wake_display();
+    CHECK(window().starts == std::map<std::string, int>{{name, 2}});
 }
 
 TEST_CASE_METHOD(SleepWakeFixture, "waking does not resume a lifecycle Application suspended",

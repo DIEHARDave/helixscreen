@@ -222,6 +222,9 @@ class PrintStartAnalyzer {
     static constexpr const char* MACRO_NAMES[] = {"PRINT_START", "START_PRINT", "_PRINT_START",
                                                   "_START_PRINT"};
     static constexpr size_t MACRO_NAMES_COUNT = 4;
+    /// The end-of-print counterparts, searched in the same order.
+    static constexpr const char* END_MACRO_NAMES[] = {"PRINT_END", "END_PRINT", "_PRINT_END",
+                                                      "_END_PRINT"};
 
   private:
     // === Parsing Helpers ===

@@ -241,6 +241,7 @@ src/printer/snapmaker_status_parse.cpp
 src/printer/status_dispatch.cpp
 src/printer/preprint_skip_wrappers.cpp
 src/printer/z_offset_persistence.cpp
+src/printer/layer_pause.cpp
 src/printer/fixed_tool_topology.cpp
 src/printer/plr_backend.cpp
 src/printer/plr_offer.cpp
@@ -250,6 +251,7 @@ src/printer/zmod_color_status.cpp
 src/printer/toolhead_homing.cpp
 src/printer/tool_offset_calibration.cpp
 src/printer/pa_calibration.cpp
+src/printer/pa_tuning.cpp
 src/printer/tool_offsets.cpp
 src/printer/tool_state.cpp
 src/printer/tool_offsets.cpp
@@ -367,6 +369,7 @@ src/ui/panel_widget_manager.cpp
 src/ui/buffer_slider_geometry.cpp
 src/ui/clog_meter_geometry.cpp
 src/ui/clog_meter_model.cpp
+src/ui/humidity_drop_geometry.cpp
 src/ui/panel_widget_registry.cpp
 src/ui/panel_widgets/active_spool_widget.cpp
 src/ui/panel_widgets/bed_mesh_tile_widget.cpp
@@ -375,6 +378,7 @@ src/ui/panel_widgets/camera_widget.cpp
 src/ui/panel_widgets/clock_widget.cpp
 src/ui/panel_widgets/clog_detection_widget.cpp
 src/ui/panel_widgets/control_buttons_widget.cpp
+src/ui/panel_widgets/display_message_widget.cpp
 src/ui/panel_widgets/fan_stack_widget.cpp
 src/ui/panel_widgets/fan_widget.cpp
 src/ui/panel_widgets/exclude_map_widget.cpp
@@ -513,6 +517,7 @@ src/ui/ui_gradient_canvas.cpp
 src/ui/ui_heater_icon_binder.cpp
 src/ui/ui_heating_animator.cpp
 src/ui/ui_history_list_view.cpp
+src/ui/ui_humidity_drop.cpp
 src/ui/ui_icon.cpp
 src/ui/ui_icon_picker.cpp
 src/ui/ui_info_qr_modal.cpp
@@ -580,6 +585,7 @@ src/ui/ui_position_utils.cpp
 src/ui/ui_pre_print_options_renderer.cpp
 src/ui/ui_print_exclude_object_manager.cpp
 src/ui/ui_print_light_timelapse.cpp
+src/ui/ui_print_layer_pause.cpp
 src/ui/ui_print_preparation_manager.cpp
 src/ui/ui_print_select_card_view.cpp
 src/ui/ui_print_select_archive.cpp
@@ -820,6 +826,7 @@ src/calibration/shaper_csv_parser.cpp
 # MOCK: src/api/moonraker_client_mock_queue.cpp
 # MOCK: src/api/moonraker_client_mock_server.cpp
 # MOCK: src/api/moonraker_client_mock_skips.cpp
+# MOCK: src/api/moonraker_client_mock_layer_pause.cpp
 # MOCK: src/printer/ams_backend_mock.cpp
 src/system/host_identity.cpp
 src/system/env_refusal_notice.cpp

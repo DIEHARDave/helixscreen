@@ -568,21 +568,30 @@ class PrinterDiscovery {
     }
 
     /**
-     * @brief Read the filament diameter from [extruder] filament_diameter
+     * @brief Read [extruder] filament_diameter and nozzle_diameter
      *
-     * A missing, null or non-positive value leaves the current diameter.
+     * A missing, null or non-positive value leaves the current one.
      *
      * @param settings JSON object from a configfile.settings response
      */
-    void parse_filament_diameter(const nlohmann::json& settings) {
+    void parse_extruder_dimensions(const nlohmann::json& settings) {
         const auto extruder = settings.find("extruder");
         if (extruder == settings.end() || !extruder->is_object()) {
             return;
         }
-        const auto d = extruder->find("filament_diameter");
-        if (d != extruder->end() && d->is_number() && d->get<float>() > 0.0f) {
-            filament_diameter_mm_ = d->get<float>();
-        }
+        auto read_positive = [&extruder](const char* key, float& out) {
+            const auto v = extruder->find(key);
+            if (v != extruder->end() && v->is_number() && v->get<float>() > 0.0f) {
+                out = v->get<float>();
+            }
+        };
+        read_positive("filament_diameter", filament_diameter_mm_);
+        read_positive("nozzle_diameter", nozzle_diameter_mm_);
+    }
+
+    /// Nozzle diameter in mm, [extruder] nozzle_diameter.
+    [[nodiscard]] float nozzle_diameter_mm() const {
+        return nozzle_diameter_mm_;
     }
 
     /// Filament diameter in mm the extruder is configured for.
@@ -996,6 +1005,8 @@ class PrinterDiscovery {
                                              ///< the K2 M141 macro parks the setpoint on this fan's
                                              ///< target, not the heater's.
     float filament_diameter_mm_ = filament::DEFAULT_DIAMETER_MM; ///< [extruder] filament_diameter
+    static constexpr float DEFAULT_NOZZLE_DIAMETER_MM = 0.4f;
+    float nozzle_diameter_mm_ = DEFAULT_NOZZLE_DIAMETER_MM; ///< [extruder] nozzle_diameter
     std::vector<LevelingProbePoint> leveling_probe_points_; ///< [quad_gantry_level]/[z_tilt] points
     int chamber_fan_resting_deci_ = 0; ///< Cooling fan's configured resting/off target
                                        ///< (decidegrees), from configfile.settings

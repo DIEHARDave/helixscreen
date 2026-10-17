@@ -46,6 +46,12 @@ void on_active_spool_set(ISpoolmanAPI& spoolman, const nlohmann::json& msg);
 /// recorded. Main thread only.
 void try_assign_active_spool_to_tool(const SpoolInfo& spool);
 
+/// Apply the pressure advance saved on @p spool's filament to the active
+/// extruder. Skipped while a print runs: a slicer that sets K in its start
+/// gcode has already spoken, and an AMS swap mid-print must not override it.
+/// Main thread only.
+void apply_saved_pressure_advance(const SpoolInfo& spool);
+
 /// Queue @p spool onto the UI thread: tool auto-assign first, then the external
 /// slot when the bypass owns the active spool. @p log_context ends the log line.
 void sync_external_spool(const SpoolInfo& spool, std::string log_context);

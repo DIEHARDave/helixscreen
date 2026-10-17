@@ -654,6 +654,17 @@ float GCodeStreamingController::get_layer_z(size_t layer_index) const {
     return index_.get_layer_z(layer_index);
 }
 
+uint32_t GCodeStreamingController::get_layer_line_count(size_t layer_index) const {
+    if (!index_.is_valid() || layer_index >= index_.get_layer_count()) {
+        return 0;
+    }
+    return index_.get_entry(layer_index).line_count;
+}
+
+bool GCodeStreamingController::evict_layer(size_t layer_index) {
+    return cache_.evict(layer_index);
+}
+
 int GCodeStreamingController::find_layer_at_z(float z) const {
     return index_.find_layer_at_z(z);
 }

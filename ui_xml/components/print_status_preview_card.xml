@@ -33,24 +33,29 @@
                    thumbnail_hidden="gcode_viewer_mode gt 0 or exclude_map_active eq 1"
                    hint_hidden="gcode_viewer_mode ne 1"/>
 
-    <!-- Skip-objects button: top-left corner, visible only for a multi-object print -->
-    <exclude_objects_button name="btn_objects"
-                            ignore_layout="true" align="top_left" style_translate_x="#space_md"
-                            style_translate_y="#space_md" callback="on_print_status_objects"
-                            hidden_when="exclude_objects_available eq 0"/>
+    <!-- Corner controls over the art: the skip-objects button (multi-object
+         prints only) and the view-mode toggle. The row lays them out, so a
+         hidden objects button gives its slot back to the toggle. The row
+         itself takes no taps; drags on bare art reach the viewer below. -->
+    <lv_obj name="preview_corner_buttons"
+            width="content" height="content" ignore_layout="true" align="top_left" style_translate_x="#space_md"
+            style_translate_y="#space_md" flex_flow="row" style_pad_all="0" style_pad_gap="#space_md" style_bg_opa="0"
+            style_border_width="0" clickable="false" scrollable="false">
+      <!-- Skip-objects button, visible only for a multi-object print -->
+      <exclude_objects_button name="btn_objects"
+                              callback="on_print_status_objects" hidden_when="exclude_objects_available eq 0"/>
 
-    <!-- View mode toggle: switches between progress (ghost layers) and complete view -->
-    <!-- Position shifts right when objects button is visible (managed in C++) -->
-    <lv_obj name="btn_view_toggle"
-            width="#icon_button_size_lg" height="#icon_button_size_lg" ignore_layout="true" align="top_left"
-            style_translate_x="#space_md" style_translate_y="#space_md" style_bg_color="#card_bg" style_bg_opa="180"
-            style_radius="#icon_button_radius_lg" clickable="true" style_pad_all="0" scrollable="false">
-      <style name="styles.press_wash" selector="pressed"/>
-      <bind_flag_if_eq subject="gcode_viewer_mode" flag="hidden" ref_value="0"/>
-      <lv_label name="btn_view_toggle_icon"
-                bind_text="view_toggle_icon" style_text_font="mdi_icons_24" style_text_color="#text_muted"
-                align="center"/>
-      <event_cb trigger="clicked" callback="on_view_toggle"/>
+      <!-- View mode toggle: switches between progress (ghost layers) and complete view -->
+      <lv_obj name="btn_view_toggle"
+              width="#icon_button_size_lg" height="#icon_button_size_lg" style_bg_color="#card_bg" style_bg_opa="180"
+              style_radius="#icon_button_radius_lg" clickable="true" style_pad_all="0" scrollable="false">
+        <style name="styles.press_wash" selector="pressed"/>
+        <bind_flag_if_eq subject="gcode_viewer_mode" flag="hidden" ref_value="0"/>
+        <lv_label name="btn_view_toggle_icon"
+                  bind_text="view_toggle_icon" style_text_font="mdi_icons_24" style_text_color="#text_muted"
+                  align="center"/>
+        <event_cb trigger="clicked" callback="on_view_toggle"/>
+      </lv_obj>
     </lv_obj>
 
     <!-- PRINT COMPLETE OVERLAY: Shown when print finishes successfully -->
@@ -168,12 +173,35 @@
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="start"
                 style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false">
+          <!-- Beta feature. On printers with the layer-pause macros, a tap during a print
+               opens the Pause at Layer modal (layer_pause_modal.xml): a muted
+               pause glyph marks it as tappable, and turns into the pending
+               layer number while a pause is scheduled. -->
           <lv_obj name="layer_cluster"
                   height="content" flex_grow="1" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
-                  style_pad_gap="#space_xs" scrollable="false">
-            <icon name="layer_icon" src="layers" size="xs" variant="secondary" clickable="false"/>
+                  style_pad_gap="#space_xs" scrollable="false" clickable="false" style_radius="#border_radius">
+            <style name="styles.press_wash" selector="pressed"/>
+            <bind_flag_if cond="show_beta_features eq 1 and printer_has_layer_pause and layer_pause_availability gt 0"
+                          flag="clickable"/>
+            <event_cb trigger="clicked" callback="on_layer_pause_open"/>
+            <icon name="layer_icon" src="layers" size="xs" variant="secondary" clickable="false" event_bubble="true"/>
             <text_small name="layer_progress_label"
-                        text="0 / 0" bind_text="print_layer_text" style_text_align="left" flex_grow="1" long_mode="dots"/>
+                        text="0 / 0" bind_text="print_layer_text" style_text_align="left" flex_grow="1" long_mode="dots"
+                        event_bubble="true"/>
+            <icon name="layer_pause_hint"
+                  src="pause" size="xs" variant="muted" clickable="false" event_bubble="true" hidden="true">
+              <bind_flag_if cond="show_beta_features eq 1 and printer_has_layer_pause and layer_pause_availability gt 0 and layer_pause_layer eq 0"
+                            flag="hidden" invert="true"/>
+            </icon>
+            <lv_obj name="layer_pause_chip"
+                    width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+                    style_pad_gap="#space_xxs" scrollable="false" clickable="false" event_bubble="true" hidden="true">
+              <bind_flag_if cond="show_beta_features eq 1 and printer_has_layer_pause and layer_pause_layer gt 0"
+                            flag="hidden" invert="true"/>
+              <icon src="pause" size="xs" variant="warning" clickable="false" event_bubble="true"/>
+              <text_small name="layer_pause_chip_label"
+                          bind_text="layer_pause_layer" style_text_color="#warning" event_bubble="true"/>
+            </lv_obj>
           </lv_obj>
           <lv_obj name="objects_cluster"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"

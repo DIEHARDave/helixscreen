@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <unistd.h>
 #include <utility>
 
 namespace helix::mock {
@@ -30,13 +31,28 @@ inline void set_planted_gcode_dir(std::string dir) {
     planted_gcode_dir() = std::move(dir);
 }
 
+/// Where files uploaded to the mock's gcodes root land when no directory is
+/// planted: one directory per process, so the uploads of parallel runs and
+/// tests never meet, and the shipped directory is never written.
+inline std::string uploaded_gcode_dir() {
+    static const std::string dir =
+        (std::filesystem::temp_directory_path() /
+         ("helix-mock-uploads-" + std::to_string(static_cast<long>(::getpid()))))
+            .string();
+    return dir;
+}
+
 /// Where a gcodes-root-relative file lives on disk: the planted copy when one
-/// exists, else the shipped directory.
+/// exists, else an uploaded one, else the shipped directory.
 inline std::string gcode_disk_path(const std::string& relative) {
     const std::string& planted = planted_gcode_dir();
-    if (!planted.empty()) {
-        std::string path = planted + "/" + relative;
-        if (std::filesystem::exists(path)) {
+    for (const std::string& dir : {planted, uploaded_gcode_dir()}) {
+        if (dir.empty()) {
+            continue;
+        }
+        std::string path = dir + "/" + relative;
+        std::error_code ec;
+        if (std::filesystem::exists(path, ec)) {
             return path;
         }
     }

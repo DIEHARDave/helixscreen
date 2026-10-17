@@ -6,10 +6,11 @@
 
 #ifdef HELIX_ENABLE_SCREENSAVER
 
+#include "screensaver_clock_reading.h"
 #include "screensaver_cpu_clock.h"
-#include "screensaver_flip_clock_sim.h"
 #include "screensaver_gate.h"
 #include "screensaver_overlay.h"
+#include "screensaver_usage.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -21,32 +22,6 @@
 #include <vector>
 
 namespace helix::ui {
-
-/**
- * @brief Color format of the starfield canvas
- *
- * Opaque, so the full-screen canvas draws as a straight copy instead of an alpha blend.
- * Production 32 bpp displays run ARGB8888 and copy an XRGB8888 image byte for byte, so
- * every canvas pixel's X byte must be 0xFF or that pixel draws transparent ("The alpha
- * trap" in docs/devel/GPU_ACCELERATION.md). The starfield writes every pixel itself with
- * that byte set. A canvas drawn with lv_draw_* cannot rely on it: see PIPES_CANVAS_FORMAT.
- */
-
-/**
- * @brief Color format of the pipes canvas
- *
- * Pipes draws antialiased segments and joints with lv_draw_*. On aarch64, LVGL's NEON
- * blends into an XRGB8888 destination write 0 into each pixel's 4th byte, and an XRGB8888
- * canvas is copied byte for byte into the ARGB8888 display, so those pixels would draw
- * transparent. An ARGB8888 canvas keeps real alpha, and it is filled opaque before anything
- * is drawn on it, so it still covers every pixel under the transparent overlay.
- *
- * RGB565 has no 4th byte for a blend to zero, so a 16 bpp build takes the display's own
- * format and the trap above does not arise. This is why pipes does not use
- * SAVER_BUILD_CANVAS_FORMAT: at 32 bpp it needs ARGB8888 specifically, not XRGB8888.
- */
-inline constexpr lv_color_format_t PIPES_CANVAS_FORMAT =
-    LV_COLOR_DEPTH == 16 ? LV_COLOR_FORMAT_RGB565 : LV_COLOR_FORMAT_ARGB8888;
 
 /**
  * @brief Row pitch in bytes lv_canvas_set_buffer() uses for a w-wide canvas in format cf
@@ -64,6 +39,7 @@ inline uint32_t screensaver_canvas_stride_bytes(int32_t w, lv_color_format_t cf)
 }
 
 class SaverBase;
+class ClockInputSink;
 struct BoardFacts;
 
 } // namespace helix::ui
@@ -91,6 +67,11 @@ class Screensaver {
 
     /** @brief Return the type identifier for this screensaver */
     virtual ScreensaverType type() const = 0;
+
+    /** @brief Where a clock saver reads the time and the print; nullptr for one without a clock */
+    virtual helix::ui::ClockInputSink* clock_input_sink() {
+        return nullptr;
+    }
 };
 
 namespace helix::ui {
@@ -102,7 +83,7 @@ struct SaverHost {
     /// Running display path for the board fingerprint: "sdl", "fbdev", "drm" or "egl".
     std::string display_backend;
     /// The print's phase, time left and progress; unset reads as no print.
-    std::function<FlipClockPrint()> print_status;
+    std::function<ClockPrint()> print_status;
 };
 
 } // namespace helix::ui
@@ -151,8 +132,10 @@ class ScreensaverManager {
      * configured (helix::RefreshPeriodHold). The black screen does not take that hold.
      * A saver that fails to start leaves the manager inactive, and the screen and
      * refresh period as they were before any saver ran.
+     *
+     * A run counts in usage() unless `preview` says it is the settings Test button's.
      */
-    void start(ScreensaverType type);
+    void start(ScreensaverType type, bool preview = false);
 
     /**
      * @brief Registry savers this build can draw but has no instance for
@@ -196,8 +179,13 @@ class ScreensaverManager {
     };
     static SettingsDropdown settings_dropdown(ScreensaverType configured);
 
-    /** @brief Stop whatever screensaver or black screen is active */
-    void stop();
+    /** @brief Stop whatever screensaver or black screen is active; `how` is what usage() records */
+    void stop(helix::SaverRunEnd how = helix::SaverRunEnd::OTHER);
+
+    /// Seconds shown, starts and run endings per saver for telemetry; previews are left out.
+    helix::SaverUsage& usage() {
+        return usage_;
+    }
 
     /** @brief True while a screensaver or its black screen is up */
     bool is_active() const;
@@ -257,7 +245,13 @@ class ScreensaverManager {
     void begin_gate(const StartPlan& plan);
 
     /// Stops the running saver or black screen without giving back the holds.
-    void end_current();
+    void end_current(helix::SaverRunEnd how);
+
+    /// Records in usage_ that a run of `name` started, unless this one is a preview.
+    void count_run_start(const char* name);
+
+    /// Records in usage_ that the counted run ended, at `level` (none for the black screen).
+    void count_run_end(helix::SaverRunEnd how, std::optional<size_t> level);
 
     /// Shows the static black overlay in place of `type`.
     void show_black_screen(ScreensaverType type);
@@ -276,6 +270,9 @@ class ScreensaverManager {
 
     /** @brief Give back the hold taken by hold_refresh_period(), if one is out */
     void release_refresh_period();
+
+    /// The local time, date and the host's print, for the clock savers.
+    helix::ui::ClockInput clock_input() const;
 
     std::vector<std::unique_ptr<helix::ui::SaverBase>> screensavers_;
     helix::ui::SaverBase* active_ = nullptr;
@@ -298,6 +295,10 @@ class ScreensaverManager {
     bool sampled_ = false;
     std::string version_;
     std::string board_;
+
+    helix::SaverUsage usage_;
+    /// False while the running saver is a preview, which usage_ leaves out.
+    bool counting_ = false;
 };
 
 #endif // HELIX_ENABLE_SCREENSAVER

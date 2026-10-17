@@ -207,6 +207,10 @@ const std::vector<Row>& rows() {
         {"settings_bed_map_clearance", Mgr::Settings, true, "motion/bed_map_clearance", false, 5,
          BED_MAP_CLEARANCE_MIN_MM, BED_MAP_CLEARANCE_MAX_MM, "bed_map_clearance", true,
          SETI(sm().set_bed_map_clearance_mm), GET(sm().get_bed_map_clearance_mm), NOSUBJ},
+        {"settings_motion_layout", Mgr::Settings, true, "motion/layout", false, 0, 0,
+         MOTION_LAYOUT_COUNT - 1, "motion_layout", true,
+         [](int v) { sm().set_motion_layout(static_cast<MotionLayout>(v)); },
+         GET(sm().get_motion_layout), SUBJ(sm().subject_motion_layout)},
         {"settings_qidi_eject_distance", Mgr::Settings, true, "ams/qidi_eject_distance", false, 878,
          100, 2000, "qidi_eject_distance", true, SETI(sm().set_qidi_eject_distance),
          GET(sm().get_qidi_eject_distance), SUBJ(sm().subject_qidi_eject_distance)},
@@ -262,6 +266,9 @@ const std::vector<Row>& rows() {
         {"detection_policy_u1", Mgr::Settings, true, "detection/policy_u1", false, 2, 0, 2,
          "detection_policy_u1", true, SETI(sm().set_detection_policy_u1),
          GET(sm().get_detection_policy_u1), NOSUBJ},
+        {"settings_z_offset_save_mode", Mgr::Settings, true, "z_offset/save_mode", false, 0, 0, 2,
+         "z_offset_save_mode", true, SETI(sm().set_z_offset_save_mode),
+         GET(sm().get_z_offset_save_mode), SUBJ(sm().subject_z_offset_save_mode)},
     };
     return r;
 }

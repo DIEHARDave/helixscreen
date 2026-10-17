@@ -7,11 +7,41 @@
 #include "screensaver_frame.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <random>
 #include <vector>
 
 namespace helix::ui {
+
+/// Stars in the starfield's population.
+inline constexpr int STARFIELD_NUM_STARS = 150;
+
+/// One level of the starfield ladder.
+struct StarfieldLevel {
+    uint32_t period_ms; ///< frame period in ms
+    int stars;          ///< stars flown, the first of the population
+};
+
+/**
+ * @brief The ladder, most expensive level first. A requested level applies at once.
+ *
+ * Past full rate the rungs thin the star population instead of slowing further, because a
+ * slower frame that still flies every star saves little of a scattered sky's redraw.
+ */
+inline constexpr StarfieldLevel STARFIELD_LEVELS[] = {
+    {SAVER_FAST_PERIOD, STARFIELD_NUM_STARS},
+    {33, 96},
+    {33, 64},
+    {33, 32},
+};
+
+/// Stars flown at `level`, clamped to the ladder.
+constexpr int starfield_star_count(size_t level) {
+    const size_t last = std::size(STARFIELD_LEVELS) - 1;
+    return STARFIELD_LEVELS[level < last ? level : last].stars;
+}
 
 /**
  * @brief The starfield's stars, and how one frame of them is drawn
@@ -21,7 +51,8 @@ namespace helix::ui {
  */
 class StarfieldSim {
   public:
-    static constexpr int NUM_STARS = 150;
+    static constexpr int NUM_STARS = STARFIELD_NUM_STARS;
+    static constexpr const auto& LEVELS = STARFIELD_LEVELS;
 
     struct Star {
         float x;        // normalized position (-1..1)
@@ -37,8 +68,18 @@ class StarfieldSim {
         uint8_t prev_size; // 0 = not drawn
     };
 
-    /// Places NUM_STARS stars for a w x h frame, drawing from `rng`.
-    void init(uint32_t w, uint32_t h, std::minstd_rand& rng);
+    /// Places NUM_STARS stars for `frame`, drawing from `rng`, and flies the count of `level`.
+    void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level);
+
+    /// Flies the star count of `level` from the next step on.
+    void request_level(size_t level) {
+        set_active_count(starfield_star_count(level));
+    }
+
+    /// Frees the population, capacity included.
+    void clear();
+    /// Bytes the population holds.
+    size_t heap_bytes() const;
 
     /**
      * @brief Stars moved and drawn per frame: the first `count` of the population

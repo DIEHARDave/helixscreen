@@ -5,6 +5,7 @@
 
 #include "async_lifetime_guard.h"
 #include "gcode_pause_scan.h"
+#include "layer_pause.h"
 #include "print_eta_estimator.h"
 #include "print_job_ref.h"
 #include "print_lifecycle_state.h"
@@ -18,6 +19,7 @@
 #include <lvgl.h>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -130,36 +132,105 @@ class PrinterPrintState {
     // wrong one.
     // ========================================================================
 
-    /// Publish a scan result. The list stays hidden unless the print's
-    /// identity (get_effective_print_filename()) still equals @p
-    /// source_filename, so a scan that finishes after a print switch can
-    /// never paint the new print with the old file's pauses.
-    void set_scheduled_pauses(std::vector<helix::gcode::ScheduledPause> pauses,
-                              helix::gcode::ProgressAxis axis, const std::string& source_filename);
+    /// Publish a scan result. It stays hidden unless the print's identity
+    /// (get_effective_print_filename()) still equals @p source_filename, so a
+    /// scan that finishes after a print switch can never paint the new print
+    /// with the old file's pauses.
+    void set_pause_scan(helix::gcode::PauseScanPtr scan, const std::string& source_filename);
 
     /// The collected pauses of the scanned file; empty when none were found.
     const std::vector<helix::gcode::ScheduledPause>& get_scheduled_pauses() const {
-        return scheduled_pauses_;
+        static const std::vector<helix::gcode::ScheduledPause> kNone;
+        return pause_scan_ ? pause_scan_->pauses : kNone;
     }
 
     /// Which axis the progress bar fills on for the scanned file; marker
     /// placement must use helix::gcode::display_fraction() with this axis.
     helix::gcode::ProgressAxis get_pause_marker_axis() const {
-        return pause_marker_axis_;
+        return pause_scan_ ? pause_scan_->axis : helix::gcode::ProgressAxis::BytePosition;
     }
 
-    /// True when the collected list belongs to the print now identified by
-    /// get_effective_print_filename(). This is the draw-side gate: markers
-    /// render only while it holds.
+    /// True when the published scan belongs to the print now identified by
+    /// get_effective_print_filename(). Every marker is gated on it.
+    bool pause_scan_matches_current_file() const {
+        return pause_scan_ && pause_source_filename_ == effective_print_filename_;
+    }
+
+    /// True when the scan carries pauses for the current print: the gate for
+    /// the scanned-pause ticks.
     bool pause_markers_match_current_file() const {
-        return !scheduled_pauses_.empty() && pause_source_filename_ == effective_print_filename_;
+        return pause_scan_ && !pause_scan_->pauses.empty() && pause_scan_matches_current_file();
     }
 
-    /// Bumped whenever the pause list is published or cleared so marker
-    /// renderers can invalidate. The list itself is read via
-    /// get_scheduled_pauses(); the subject only signals change.
+    /// Where the pause scheduled at runtime (see "Layer pause" below) sits on
+    /// the progress bar: the fraction of the file's report of that layer, on
+    /// get_pause_marker_axis(). nullopt when nothing is pending, the scan does
+    /// not belong to this print, or the file never reports that layer: no
+    /// tick, never a guessed one.
+    std::optional<float> layer_pause_marker_fraction() const;
+
+    /// Bumped whenever the pause list is published or cleared, or the runtime
+    /// pause moves, so marker renderers can invalidate. The data itself is read
+    /// via the accessors above; the subject only signals change.
     lv_subject_t* get_pause_markers_version_subject() {
         return &pause_markers_version_;
+    }
+
+    // ========================================================================
+    // Layer pause (prestonbrown/helixscreen#1703)
+    //
+    // A pause the user schedules into the running print through the printer's
+    // own macros. helix::layer_pause owns the macros, their state and the
+    // rules; this holds the per-print state and publishes it to the UI.
+    // ========================================================================
+
+    /// The status object the schedule reads back from (layer_pause::
+    /// state_object()); empty when the printer publishes none. Called on every
+    /// discovery, so it also forgets the schedule: after a printer switch or a
+    /// reconnect nothing known still applies, and the subscription's first
+    /// frame reads the macro state back again.
+    void set_layer_pause_state_object(std::string object);
+
+    /// False when the current print's scanned file never reports @p layer, so
+    /// a pause armed for it could not fire this print (the macros fire on an
+    /// exact CURRENT_LAYER match) and would linger into the next. True when no
+    /// scan belongs to this print: nothing to judge by.
+    bool file_may_report_layer(int layer) const;
+
+    /// Record a command this screen sent, so the schedule shows at once and
+    /// stands in for read-back on printers that publish none.
+    void note_layer_pause_next_layer(bool enable);
+    void note_layer_pause_at_layer(int layer); ///< 0 = cancel
+
+    /// The effective schedule, from read-back or from what was sent.
+    helix::layer_pause::Schedule get_layer_pause_schedule() const {
+        return layer_pause_.effective();
+    }
+
+    /// True once this print's slicer has reported a layer through
+    /// print_stats.info: the only reports the macros fire on.
+    bool slicer_reports_layers() const {
+        return slicer_layers_reported_;
+    }
+
+    /// The last print_stats.info current/total layer, the numbers the macros
+    /// compare against. Unlike print_layer_current, never a virtual_sdcard,
+    /// gcode-echo or estimated value, whose numbering can differ.
+    int slicer_current_layer() const {
+        return slicer_current_layer_;
+    }
+    int slicer_total_layers() const {
+        return slicer_total_layers_;
+    }
+
+    /// Integer helix::layer_pause::Availability for the scheduling UI.
+    lv_subject_t* get_layer_pause_availability_subject() {
+        return &layer_pause_availability_;
+    }
+
+    /// Integer: the layer the next scheduled pause lands on, 0 = none.
+    lv_subject_t* get_layer_pause_layer_subject() {
+        return &layer_pause_layer_;
     }
 
     /// Raw filename from Moonraker
@@ -1007,14 +1078,25 @@ class PrinterPrintState {
     lv_subject_t print_progress_display_{}; // Integer 0-100, frozen after completion
     lv_subject_t print_progress_text_{};    // String: print_progress_display_ as "N%"
 
-    // Scheduled-pause markers: pauses collected from the active print's gcode
-    // by whichever path parsed the file. All writes happen on the main thread
-    // (publish from the viewer load callback, clear from
-    // reset_for_new_print()), so the vector needs no lock.
-    std::vector<helix::gcode::ScheduledPause> scheduled_pauses_;
+    // Scheduled-pause markers: pauses and layer marks collected from the
+    // active print's gcode by whichever path parsed the file. All writes happen
+    // on the main thread (publish from the viewer load callback, clear from
+    // reset_for_new_print()), so the vectors need no lock.
+    helix::gcode::PauseScanPtr pause_scan_; // shared with the viewer; null = no scan
     std::string pause_source_filename_;
-    helix::gcode::ProgressAxis pause_marker_axis_{helix::gcode::ProgressAxis::BytePosition};
-    lv_subject_t pause_markers_version_{};  // Integer: bumped on publish/clear
+    lv_subject_t pause_markers_version_{}; // Integer: bumped on publish/clear/move
+
+    // Layer pause: main thread only, like the status frames that feed it.
+    helix::layer_pause::Tracker layer_pause_;
+    std::string layer_pause_state_object_;
+    bool slicer_layers_reported_{false};      // per-print
+    int slicer_current_layer_{0};             // per-print, print_stats.info only
+    int slicer_total_layers_{0};              // per-print, print_stats.info only
+    bool layer_pause_seen_paused_{false};     // edge detector for Tracker::on_paused
+    lv_subject_t layer_pause_availability_{}; // Integer: layer_pause::Availability
+    lv_subject_t layer_pause_layer_{};        // Integer: pending layer, 0 = none
+    void refresh_layer_pause();
+    void bump_pause_markers_version();
     lv_subject_t print_filename_{};         // String buffer
     lv_subject_t print_state_{};            // String buffer (for UI display)
     lv_subject_t print_state_enum_{};       // Integer: PrintJobState enum

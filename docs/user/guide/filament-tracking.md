@@ -101,6 +101,16 @@ Tap **+ Add** in the Spoolman panel to create a new spool in three steps:
 
 HelixScreen creates the vendor, filament, and spool records together in Spoolman, so the new spool is ready to assign right away.
 
+### Pressure advance per filament
+
+> Added in 1.1. A [beta feature](beta-features.md): with beta features off, nothing is saved and nothing is applied.
+
+When you finish a [pressure advance test tower](calibration.md#pressure-advance-tuning-test-tower), **Save to Spool** stores the value on that spool's **filament** in Spoolman, in an extra field named `pressure_advance` (HelixScreen creates the field the first time). Every spool of that filament shares it.
+
+From then on, when a spool of that filament becomes active (set active from the Spoolman panel, Spoolman's web page, or an AMS slot change), HelixScreen sets that pressure advance on the extruder the spool feeds (on a tool changer, the tool the spool is assigned to). It does this only when nothing is printing: if your slicer sets pressure advance at the start of a print, the slicer's value wins for that print.
+
+**Getting it into OrcaSlicer.** OrcaSlicer does not read Spoolman directly. [spoolman2slicer](https://github.com/bofh69/spoolman2slicer) turns your Spoolman filaments into OrcaSlicer filament profiles, and its templates already read the `pressure_advance` field, so the value you tuned ends up in the profile. HelixScreen also keeps the latest results in Moonraker's database for a future OrcaSlicer plugin; plugins can read it today but cannot yet change a profile.
+
 ---
 
 ## Seeing How Much Is Left

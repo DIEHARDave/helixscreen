@@ -188,6 +188,10 @@ void MoonrakerManager::shutdown() {
     // Safe now — no callbacks can fire after client destruction.
     // Note: m_api holds a MoonrakerClient& that is now dangling, but
     // ~MoonrakerAPI() only joins HTTP threads and deinits subjects.
+    // As with the client, the global stops naming the API this manager installed.
+    if (get_moonraker_api() == m_api.get()) {
+        set_moonraker_api(nullptr);
+    }
     m_api.reset();
 
     // Clear notification queue

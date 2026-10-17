@@ -5,6 +5,9 @@
 
 #include "ui_callback_helpers.h"
 #include "ui_modal.h"
+#if !defined(HELIX_PLATFORM_ESP32)
+#include "ui_overlay_pa_tuning.h"
+#endif
 #include "ui_overlay_timelapse_install.h"
 #include "ui_overlay_timelapse_videos.h"
 #include "ui_panel_calibration_pid.h"
@@ -74,6 +77,8 @@ void AdvancedPanel::init_subjects() {
         {"on_helix_macros_install_clicked", on_helix_macros_install_clicked},
         {"on_helix_macros_update_clicked", on_helix_macros_update_clicked},
         {"on_pid_tuning_clicked", on_pid_tuning_clicked},
+        {"on_pa_tuning_clicked",
+         [](lv_event_t*) { get_global_advanced_panel().handle_pa_tuning_clicked(); }},
         {"on_timelapse_videos_clicked", on_timelapse_videos_clicked},
         {"on_timelapse_setup_clicked", on_timelapse_setup_clicked},
         {"on_advanced_power_clicked", on_advanced_power_clicked},
@@ -159,6 +164,17 @@ void AdvancedPanel::handle_pid_tuning_clicked() {
     auto& overlay = get_global_pid_cal_panel();
     overlay.set_api(get_moonraker_api());
     overlay.show(parent_screen_);
+}
+
+void AdvancedPanel::handle_pa_tuning_clicked() {
+#if defined(HELIX_PLATFORM_ESP32)
+    // The tuner is not in the v1 Core+AMS cut, and a reference here would link it.
+    helix::ui::show_feature_unavailable_toast();
+#else
+    auto& overlay = helix::ui::get_global_pa_tuning_overlay();
+    overlay.set_api(get_moonraker_api());
+    overlay.show(parent_screen_);
+#endif
 }
 
 // ============================================================================

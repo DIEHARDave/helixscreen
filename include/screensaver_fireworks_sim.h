@@ -54,6 +54,8 @@ struct FireworksPacing {
 
 class FireworksSim {
   public:
+    static constexpr const auto& LEVELS = FIREWORKS_LEVELS;
+
     /// Most shells in flight plus bursts burning, at any level.
     static constexpr size_t MAX_BURSTS = 6;
     /// Faint fixed stars in the sky.
@@ -115,6 +117,8 @@ class FireworksSim {
 
     /// Frees the spark pool and the sky layout.
     void clear();
+    /// Bytes the spark pool and the sky layout hold.
+    size_t heap_bytes() const;
 
     /// Background at (x, y) inside the frame: the hills, a star, or the sky gradient.
     Rgb sky_at(int32_t x, int32_t y) const;

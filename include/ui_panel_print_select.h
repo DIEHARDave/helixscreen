@@ -321,6 +321,10 @@ class PrintSelectPanel : public PanelBase {
      */
     void toggle_view();
 
+    /// The thumbnail key (the path its listing gave) of each listed printer file that has one,
+    /// in list order; empty while the list shows a USB stick.
+    [[nodiscard]] std::vector<std::string> printer_thumbnail_keys() const;
+
     /**
      * @brief Handle Printer source button click
      *
@@ -1272,3 +1276,7 @@ PrintSelectPanel* get_print_select_panel(helix::PrinterState& printer_state,
  * @return Reference to the global instance
  */
 PrintSelectPanel& get_global_print_select_panel();
+
+/// The global PrintSelectPanel, or nullptr before it is created.
+// NAMESPACE_OK: beside get_global_print_select_panel, the global accessor it complements
+PrintSelectPanel* find_print_select_panel();

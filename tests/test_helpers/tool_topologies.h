@@ -5,6 +5,7 @@
 #include "printer_discovery.h"
 #include "tool_state.h"
 
+#include <initializer_list>
 #include <string>
 
 #include "hv/json.hpp"
@@ -40,8 +41,10 @@ inline ToolTopology make_head_topology(int heads, int active_tool = 0) {
 
 /// A seven-head changer whose AFC units publish eighteen lanes, each its own
 /// tool: four heads fed directly, then hubs of four, four and six lanes into
-/// extruder4, extruder5 and extruder6. Lane i is slot i.
-inline ToolTopology make_hub_topology(int active_tool = 0) {
+/// extruder4, extruder5 and extruder6. Lane i is slot i. Each tool in
+/// @p seated_tools has its lane seated in its head.
+inline ToolTopology make_hub_topology(int active_tool = 0,
+                                      std::initializer_list<int> seated_tools = {}) {
     const char* extruders[] = {"extruder",  "extruder1", "extruder2", "extruder3", "extruder4",
                                "extruder4", "extruder4", "extruder4", "extruder5", "extruder5",
                                "extruder5", "extruder5", "extruder6", "extruder6", "extruder6",
@@ -52,6 +55,12 @@ inline ToolTopology make_hub_topology(int active_tool = 0) {
     for (int i = 0; i < 18; ++i) {
         topo.tool_to_slot.push_back(i);
         topo.tool_extruder.emplace_back(extruders[i]);
+    }
+    if (seated_tools.size() > 0) {
+        topo.tool_seated.assign(18, false);
+        for (const int t : seated_tools) {
+            topo.tool_seated[static_cast<size_t>(t)] = true;
+        }
     }
     return topo;
 }

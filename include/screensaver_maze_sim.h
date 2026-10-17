@@ -33,34 +33,104 @@ struct MazeLevel {
 
 /// The ladder, most expensive level first.
 inline constexpr MazeLevel MAZE_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 1, true},
-    {33, 2, true},
-    {33, 2, false},
-    {50, 4, false},
+    {SAVER_FAST_PERIOD, 1, true}, {33, 2, true}, {33, 2, false}, {50, 4, false}, {66, 4, false},
 };
 
 inline constexpr size_t MAZE_LEVEL_COUNT = std::size(MAZE_LEVELS);
+
+/// Half the vertical field of view as a tangent: 1 is 90 degrees, the original's.
+inline constexpr float MAZE_VFOV_HALF_TAN = 1.0f;
+/// Half the widest horizontal field of view as a tangent: tan 60 degrees, 120 across. A frame
+/// wider than that ratio narrows its vertical view instead of bending further at the edges.
+inline constexpr float MAZE_HFOV_MAX_HALF_TAN = 1.7320508f;
+
+/// Focal length in pixels of a w x h view: square pixels, 90 degrees vertically unless that
+/// would see more than 120 degrees across.
+inline float maze_focal(uint32_t w, uint32_t h) {
+    const float vertical = static_cast<float>(h) * 0.5f / MAZE_VFOV_HALF_TAN;
+    const float horizontal = static_cast<float>(w) * 0.5f / MAZE_HFOV_MAX_HALF_TAN;
+    return vertical > horizontal ? vertical : horizontal;
+}
+
+/// Distance fog: a surface d tiles away keeps k / MAZE_FOG_ONE of its colour and takes the
+/// rest from MAZE_FOG_TINT, with k = round(32 * (FLOOR + (1 - FLOOR) * exp(-(d - START) / SCALE))).
+inline constexpr uint32_t MAZE_FOG_ONE = 32;
+inline constexpr float MAZE_FOG_START = 0.5f;
+inline constexpr float MAZE_FOG_SCALE = 5.0f;
+inline constexpr float MAZE_FOG_FLOOR = 0.1f;
+inline constexpr Rgb MAZE_FOG_TINT{6, 6, 10};
+/// The renderer reads k from a table of MAZE_FOG_SLOTS depths, MAZE_FOG_STEPS_PER_TILE a tile;
+/// the textured floor and ceiling from MAZE_FOG_BANDS pre-fogged copies of their textures.
+inline constexpr int MAZE_FOG_STEPS_PER_TILE = 4;
+inline constexpr int MAZE_FOG_SLOTS = 128;
+inline constexpr int MAZE_FOG_BANDS = 16;
+/// Faces that run east-west keep this much of their light, out of MAZE_FOG_ONE, as
+/// Wolfenstein drew them.
+inline constexpr uint32_t MAZE_SIDE_K = 21;
+/// The floor and ceiling of the flat levels, before fog.
+inline constexpr Rgb MAZE_FLAT_FLOOR{130, 86, 48};
+inline constexpr Rgb MAZE_FLAT_CEILING{175, 172, 165};
+
+/// Fog brightness, out of MAZE_FOG_ONE, of a surface `depth` tiles away.
+uint32_t maze_fog_k(float depth);
+/// The fog table slot holding `depth`, clamped to the table.
+inline int maze_fog_slot(float depth) {
+    const float s = depth * static_cast<float>(MAZE_FOG_STEPS_PER_TILE);
+    if (!(s > 0.0f)) {
+        return 0;
+    }
+    return s >= static_cast<float>(MAZE_FOG_SLOTS - 1) ? MAZE_FOG_SLOTS - 1 : static_cast<int>(s);
+}
+/// The depth at the centre of `depth`'s table slot: the depth the renderer fogs it as.
+inline float maze_fog_slot_depth(float depth) {
+    return (static_cast<float>(maze_fog_slot(depth)) + 0.5f) /
+           static_cast<float>(MAZE_FOG_STEPS_PER_TILE);
+}
+/// `c` at fog brightness `k`: (c * k + tint * (32 - k) + 16) >> 5 per channel.
+Rgb maze_fog(Rgb c, uint32_t k);
 
 /// What a map tile holds.
 enum class MazeTile : uint8_t {
     OPEN = 0,
     BRICK = 1,
-    /// Brick with the printer picture hung on it, or plain brick when there is no picture.
+    /// Brick with a picture hung on it (MazeMap::picture_index says which), or plain brick
+    /// when there are no pictures.
     PICTURE = 2,
 };
 
 /// The tile map.
 class MazeMap {
   public:
+    /// Interior walls of a maze that get a picture, each with its own index.
+    static constexpr int PICTURE_WALLS = 16;
+    /// open_up() opens a wall out of this share of the perfect maze's dead ends...
+    static constexpr float BRAID_SHARE = 0.5f;
+    /// ...then this many more walls between two cells...
+    static constexpr int EXTRA_OPENINGS = 6;
+    /// ...and carves this many rooms, or one more on a coin flip.
+    static constexpr int ROOMS_MIN = 2;
+
     /// Carves a perfect maze (no loops, every cell reachable) of `cells` x `cells` with a
-    /// recursive backtracker, and hangs pictures on a few interior walls.
+    /// recursive backtracker, and hangs PICTURE_WALLS pictures on interior walls.
     void generate(int cells, std::minstd_rand& rng);
+
+    /**
+     * @brief Turns the perfect maze into one with loops and a few small rooms
+     *
+     * Opens walls out of dead ends ("braids" it), opens a few more at random, and carves
+     * 2x2, 2x3 or 3x2 rooms with every tile inside open. Cells `keep_a` and `keep_b`
+     * (cy * cells + cx) keep their walls, and any opening that would cut one of their walls
+     * off from the outer ring is undone, so a wall follower still passes them.
+     */
+    void open_up(int keep_a, int keep_b, std::minstd_rand& rng);
 
     /// Frees the tiles; the map is empty until the next generate().
     void release();
+    size_t heap_bytes() const;
 
-    /// A hand-built map of `size` x `size` tiles in row order; for tests.
-    void set_tiles(int size, std::vector<MazeTile> tiles);
+    /// A hand-built map of `size` x `size` tiles in row order, with each tile's picture index
+    /// (none: all 0); for tests.
+    void set_tiles(int size, std::vector<MazeTile> tiles, std::vector<uint8_t> pictures = {});
 
     /// Tiles per side.
     int size() const {
@@ -77,10 +147,37 @@ class MazeMap {
     }
     /// True when the wall between cell (cx, cy) and its neighbour in `heading` is open.
     bool passage(int cx, int cy, int heading) const;
+    /// Which picture hangs on tile (x, y); 0 outside the map and on tiles without one.
+    uint8_t picture_index(int x, int y) const;
+    /// True for a wall joined to the outer ring through walls (4-connected), and outside the
+    /// map. A hand on such a wall follows it round to every cell along it; a wall that is not
+    /// is an island a wall follower can circle for ever.
+    bool boundary_wall(int x, int y) const;
 
   private:
+    size_t index(int x, int y) const {
+        return static_cast<size_t>(y) * static_cast<size_t>(size_) + static_cast<size_t>(x);
+    }
+    /// Marks the walls joined to the outer ring.
+    void label_walls();
+    /// Hangs every picture index 0..PICTURE_WALLS-1 the map lacks on a wall facing open floor.
+    void hang_pictures(std::minstd_rand& rng);
+    /// True when every wall tile round cell `c` is a boundary wall.
+    bool walled_by_boundary(int c) const;
+    /// Opens the wall from cell `c` toward `heading` unless it is kept or the opening would
+    /// cut a kept cell's walls off the boundary; true when it opened.
+    bool open_wall(int c, int heading, int keep_a, int keep_b);
+    /// Opens every tile of the room of cells [cx0, cx1] x [cy0, cy1] unless that would cut a
+    /// kept cell's walls off the boundary; true when it opened.
+    bool open_room(int cx0, int cy0, int cx1, int cy1, int keep_a, int keep_b);
+    int cell_passages(int c) const;
+
     int size_ = 0;
     std::vector<MazeTile> tiles_;
+    std::vector<uint8_t> pictures_;
+    std::vector<uint8_t> boundary_;
+    /// Scratch while opening up: dead ends to braid, then a room's tiles to put back.
+    std::vector<int> scratch_;
     /// Cells still to backtrack from while carving, kept to reuse its allocation.
     std::vector<int> stack_;
 };
@@ -110,10 +207,15 @@ enum class WalkEvent : uint8_t {
  * @brief Walks the maze by keeping one hand on the wall, without stopping in the cells
  *
  * The walk runs doorway to doorway at a constant speed: straight through a cell, a quarter
- * arc round the inner corner where it turns, and only in a dead end in to the middle, round
- * on the spot and back out, the one place it faces a wall. Where to leave a cell is decided at
- * the doorway in: toward its hand when that side is open, else on, else away. The pose is a
- * function of the time fed in.
+ * arc round the inner corner where it turns, and only in a dead end (or to turn back) in to
+ * the middle, round on the spot and back out, the one place it faces a wall. Where to leave a
+ * cell is decided at the doorway in: toward its hand when that side is open, else on, else
+ * away. The pose is a function of the time fed in.
+ *
+ * In a maze with loops a hand can rest on an island and circle it for ever. While a stop cell
+ * is set the walker remembers each (cell, heading) it has entered since its hand last
+ * changed; entering one again means it is circling, so it walks the shortest way to a cell
+ * whose wall on its hand side is joined to the outer ring, and follows that wall instead.
  */
 class MazeWalker {
   public:
@@ -152,10 +254,8 @@ class MazeWalker {
     bool left_handed() const {
         return left_handed_;
     }
-    /// Swaps hands from the next doorway on.
-    void set_left_handed(bool left) {
-        left_handed_ = left;
-    }
+    /// Swaps hands from the next doorway on, and forgets the states it has seen.
+    void set_left_handed(bool left);
     /// True once the walk has stopped at the stop cell's doorway.
     bool stopped() const {
         return stopped_;
@@ -164,6 +264,16 @@ class MazeWalker {
     uint32_t moves() const {
         return moves_;
     }
+    /// Times since reset() the walk found itself circling and walked off to the boundary.
+    uint32_t recoveries() const {
+        return recoveries_;
+    }
+    /// Sizes the circling memory for a map of `cells` x `cells`, so walking it never
+    /// allocates.
+    void reserve(int cells);
+    /// Frees the circling memory.
+    void release();
+    size_t heap_bytes() const;
 
   private:
     enum class Segment : uint8_t { START, STRAIGHT, TURN, DEAD_END };
@@ -171,6 +281,9 @@ class MazeWalker {
     /// Plans the way through the cell just entered: the way out and how long it takes.
     void plan_segment(const MazeMap& map);
     void plan_start(const MazeMap& map);
+    /// Records the state just entered; the heading a recovery walk takes out of it, or -1 to
+    /// follow the wall.
+    int track_state(const MazeMap& map);
 
     int cx_ = 0;
     int cy_ = 0;
@@ -191,6 +304,16 @@ class MazeWalker {
     uint32_t duration_ms_ = 1;
     uint32_t arrive_ms_ = 0;
     uint32_t moves_ = 0;
+    uint32_t recoveries_ = 0;
+
+    // Per state (cell * 4 + heading in): entered since the hand last changed, and the search's
+    // predecessor. Sized by reserve() (MazeSim::init calls it), so a frame never allocates.
+    std::vector<uint8_t> seen_;
+    std::vector<int16_t> prev_;
+    std::vector<int16_t> queue_;
+    /// Headings of the recovery walk under way, and the next one to take.
+    std::vector<uint8_t> path_;
+    size_t path_pos_ = 0;
 };
 
 enum class MazeItemKind : uint8_t { START, EXIT, LOGO, ROCK, TOOLHEAD };
@@ -214,12 +337,20 @@ struct MazeImage {
     }
 };
 
-/// Artwork from outside the simulation. Either may be empty: the logo then falls back to a
-/// drawn mark and picture walls show plain brick.
+/// Most pictures a maze hangs; picture walls beyond that repeat them.
+inline constexpr size_t MAZE_MAX_PICTURES = 12;
+
+/// Artwork from outside the simulation. Any of it may be empty: the logo then falls back to a
+/// drawn mark, and with no pictures the picture walls show plain brick.
 struct MazeArt {
     MazeImage logo;
-    MazeImage picture;
+    /// Hung in order on picture indices modulo their count; empty images are skipped.
+    std::vector<MazeImage> pictures;
 };
+
+/// `src` scaled down to fit a `max_side` square, aspect kept, each pixel the alpha-weighted
+/// average of the box it covers; an image that already fits comes back as it is.
+MazeImage reduce_maze_image(const MazeImage& src, int max_side);
 
 /**
  * @brief Draws the maze from a pose with one ray per column
@@ -244,7 +375,7 @@ class MazeRenderer {
     /// Frees every buffer init() allocated; render() draws nothing until the next init().
     void release();
     /// Heap bytes the renderer holds.
-    size_t buffer_bytes() const;
+    size_t heap_bytes() const;
     uint32_t internal_w() const {
         return iw_;
     }
@@ -273,9 +404,14 @@ class MazeRenderer {
     }
     /// Packed pixel at internal (x, y) of the last render, before the flip.
     uint32_t internal_pixel(uint32_t x, uint32_t y) const;
-    /// Whether picture walls show a picture.
-    bool has_picture() const {
-        return has_picture_;
+    /// Fog brightness, out of MAZE_FOG_ONE, of the wall in internal column `x` in the last
+    /// render, the darker east-west side included.
+    uint32_t wall_fog_k(uint32_t x) const {
+        return wall_k_[x];
+    }
+    /// Distinct pictures the picture walls show; 0 means they show brick.
+    size_t picture_count() const {
+        return picture_count_;
     }
 
   private:
@@ -285,9 +421,13 @@ class MazeRenderer {
         std::vector<Px> frame;      ///< column-major internal frame
         std::vector<Px> textures;   ///< each TEX x TEX, column-major: [u * TEX + v]
         std::vector<Px> sprites;    ///< laid out the same; sprite_key<Px>() draws nothing
-        std::vector<Px> ceil_rows;  ///< flat ceiling colour per internal row
-        std::vector<Px> floor_rows; ///< flat floor colour per internal row
+        std::vector<Px> ceil_rows;  ///< flat ceiling colour per internal row, fogged
+        std::vector<Px> floor_rows; ///< flat floor colour per internal row, fogged
         std::vector<Px> row;        ///< one output row, built once per internal row
+        /// MAZE_FOG_BANDS fogged floor textures, then as many ceilings; textured levels only.
+        std::vector<Px> fog_bands;
+        /// Per k, the tint's share in the format's working form: two words, see shade().
+        std::vector<uint32_t> fog_tint;
     };
     struct SpriteDraw {
         float depth; ///< squared distance, for drawing far to near
@@ -318,14 +458,25 @@ class MazeRenderer {
     void draw_sprites(const std::vector<MazeItem>& items, const MazePose& pose,
                       uint32_t elapsed_ms);
     template <typename Px> void blit(float flip, FrameTarget& out);
+    template <typename Px> void build_fog_bands();
+    /// `p` at fog brightness `k`, as maze_fog() computes it, in the store's format.
+    template <typename Px> Px shade(Px p, uint32_t k) const;
+    /// Distance to the floor (or ceiling) point the centre of internal row `y` sees.
+    float row_distance(uint32_t y) const;
+    uint32_t fog_k_at(float depth) const {
+        return fog_k_[static_cast<size_t>(maze_fog_slot(depth))];
+    }
 
     PixelFormat format_ = PixelFormat::XRGB8888;
     uint32_t w_ = 0;
     uint32_t h_ = 0;
     uint32_t iw_ = 0;
     uint32_t ih_ = 0;
+    /// Focal length in internal pixels, and the camera plane's half width it gives.
+    float focal_ = 1.0f;
+    float plane_len_ = 0.0f;
     size_t level_ = 0;
-    bool has_picture_ = false;
+    size_t picture_count_ = 0;
 
     Store<uint16_t> s16_;
     Store<uint32_t> s32_;
@@ -333,6 +484,9 @@ class MazeRenderer {
     std::vector<int> wall_top_;
     std::vector<int> wall_bottom_;
     std::vector<int32_t> row_dist_q16_; ///< floor distance of each internal row, 16.16
+    std::vector<uint8_t> fog_k_;        ///< fog brightness of each depth slot
+    std::vector<uint8_t> row_band_;     ///< fog band of each internal row
+    std::vector<uint8_t> wall_k_;       ///< fog brightness of each internal column's wall
     std::vector<int> src_rows_;         ///< internal row each output row reads, -1 for black
     std::vector<SpriteDraw> sprite_order_;
 };
@@ -351,8 +505,10 @@ class MazeSim {
     static constexpr uint32_t FLIP_MS = 600;
     static constexpr uint32_t EXIT_HOLD_MS = 1200;
 
-    void init(const FrameTarget& frame, const MazeArt& art, std::minstd_rand& rng, size_t level);
-    void set_level(size_t level) {
+    static constexpr const auto& LEVELS = MAZE_LEVELS;
+
+    void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level, const MazeArt& art);
+    void request_level(size_t level) {
         renderer_.set_level(level);
     }
     size_t level() const {
@@ -363,6 +519,8 @@ class MazeSim {
               std::vector<DirtyRect>& dirty);
     /// Frees the maze, the items and every render buffer.
     void clear();
+    /// Heap bytes the maze, the walks, the items and the renderer hold.
+    size_t heap_bytes() const;
 
     const MazeMap& map() const {
         return map_;
@@ -387,7 +545,15 @@ class MazeSim {
     uint32_t mazes() const {
         return mazes_;
     }
-    /// Most cells one maze's walk may enter before the maze is replaced.
+    /// Walks that reached their exit since init().
+    uint32_t exits_reached() const {
+        return exits_reached_;
+    }
+    /// Mazes replaced since init() for running past step_bound().
+    uint32_t abandoned() const {
+        return abandoned_;
+    }
+    /// Most cell middles one maze's walk may pass before the maze is replaced.
     uint32_t step_bound() const;
     const MazeRenderer& renderer() const {
         return renderer_;
@@ -414,6 +580,8 @@ class MazeSim {
     uint32_t exit_left_ms_ = 0;
     uint32_t elapsed_ms_ = 0;
     uint32_t mazes_ = 0;
+    uint32_t exits_reached_ = 0;
+    uint32_t abandoned_ = 0;
 };
 
 } // namespace helix::ui

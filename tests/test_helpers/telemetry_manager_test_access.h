@@ -102,6 +102,11 @@ class TelemetryManagerTestAccess {
         *t.manual_clock_ += by;
     }
 
+    /// The session trackers' clock, which every delta window is measured on.
+    static std::chrono::steady_clock::time_point now(const TelemetryManager& t) {
+        return t.tracker_now();
+    }
+
     /// Run the hourly auto-send timer's body once.
     static void fire_auto_send_tick(TelemetryManager& t) {
         t.on_auto_send_tick();

@@ -176,13 +176,13 @@ TEST_CASE_METHOD(MoveTabFixture, "motion tab switching toggles the tab container
     auto& ps = get_printer_state();
     // Jog is the panel's landing tab: the jog row is up, the Move tab is not.
     CHECK_FALSE(lv_obj_has_flag(panel_widget("jog_row"), LV_OBJ_FLAG_HIDDEN));
-    CHECK_FALSE(lv_obj_has_flag(panel_widget("jog_mode_fine"), LV_OBJ_FLAG_HIDDEN));
+    CHECK_FALSE(lv_obj_has_flag(panel_widget("jog_modes"), LV_OBJ_FLAG_HIDDEN));
     CHECK(lv_obj_has_flag(panel_widget("move_tab"), LV_OBJ_FLAG_HIDDEN));
 
     get_global_motion_panel().set_motion_tab(1);
     drain();
     CHECK(lv_obj_has_flag(panel_widget("jog_row"), LV_OBJ_FLAG_HIDDEN));
-    CHECK(lv_obj_has_flag(panel_widget("jog_mode_fine"), LV_OBJ_FLAG_HIDDEN));
+    CHECK(lv_obj_has_flag(panel_widget("jog_modes"), LV_OBJ_FLAG_HIDDEN));
     CHECK_FALSE(lv_obj_has_flag(panel_widget("move_tab"), LV_OBJ_FLAG_HIDDEN));
     // The Z column stays on every tab.
     CHECK_FALSE(lv_obj_has_flag(panel_widget("z_controls"), LV_OBJ_FLAG_HIDDEN));
@@ -901,7 +901,7 @@ TEST_CASE_METHOD(MoveTabFixture, "motion: a Z frame landing before its ack is no
 
     // Z down 10. Klipper can report the new position before acking the G0
     // (a move that waits on a full lookahead buffer), so the frame comes first.
-    REQUIRE(panel.handle_z_button("z_down_large"));
+    REQUIRE(panel.handle_jog_button("z_down_large"));
     REQUIRE(motion.held_relative.size() == 1);
     REQUIRE(motion.held_relative[0].dz == Catch::Approx(-10.0));
     get_printer_state().update_from_status(

@@ -2,7 +2,9 @@
 
 #pragma once
 
+#include "screensaver_clock_reading.h"
 #include "screensaver_frame.h"
+#include "screensaver_stroke_digits.h"
 
 #include <array>
 #include <cstddef>
@@ -39,40 +41,9 @@ inline constexpr size_t FLIP_CLOCK_LEVEL_COUNT = std::size(FLIP_CLOCK_LEVELS);
 
 /// How long one card takes to flip.
 inline constexpr uint32_t FLIP_DURATION_MS = 300;
-/// How long a finished print shows 0:00:00 before the clock returns.
-inline constexpr uint32_t FLIP_DONE_HOLD_MS = 60000;
-/// A remaining-time estimate this far from the running countdown resets it; nearer ones are
-/// ignored, so estimator jitter never flips the seconds backwards.
-inline constexpr int32_t FLIP_COUNTDOWN_RESYNC_S = 10;
-/// Longest countdown the cards show: 999:59:59.
-inline constexpr int32_t FLIP_MAX_COUNTDOWN_S = 999 * 3600 + 59 * 60 + 59;
-/// How often the cards drift to a new position, so no pixel stays lit in one place.
-inline constexpr uint32_t FLIP_DRIFT_STEP_MS = 60000;
-
-/// What the print is doing, as far as the clock cares.
-enum class FlipPrintPhase : uint8_t { NONE, PREPARING, PRINTING, PAUSED, COMPLETE };
-
-/// The print, as the clock reads it.
-struct FlipClockPrint {
-    FlipPrintPhase phase = FlipPrintPhase::NONE;
-    int32_t remaining_s = -1; ///< print time left, negative when unknown
-    int32_t progress_pct = 0;
-};
-
-/// One frame's worth of outside state.
-struct FlipClockInput {
-    int32_t seconds_of_day = 0; ///< local wall clock, 0 to 86399
-    bool use_24h = false;
-    FlipClockPrint print;
-};
-
-enum class FlipMode : uint8_t { CLOCK, COUNTDOWN, PAUSED, DONE };
 
 /// The line under the cards.
 enum class FlipCaption : uint8_t { NONE, DONE_AT, PAUSED, DONE };
-
-/// The 12-hour marker shown on the hour card.
-enum class FlipMeridiem : uint8_t { NONE, AM, PM };
 
 /// One card: a single digit, or blank.
 struct FlipCard {
@@ -113,7 +84,7 @@ struct FlipShape {
 struct FlipFace {
     FlipShape shape;
     std::array<FlipCard, FLIP_MAX_CARDS> cards{}; ///< shape.card_count() of them, left to right
-    FlipMeridiem meridiem = FlipMeridiem::NONE;
+    ClockMeridiem meridiem = ClockMeridiem::NONE;
     FlipCaption caption = FlipCaption::NONE;
     int32_t eta_minute_of_day = 0; ///< DONE_AT: local minute the print ends, 0 to 1439
     int32_t progress_pct = 0;      ///< DONE_AT: percent done
@@ -124,41 +95,37 @@ struct FlipFace {
 FlipFace clock_face(int32_t seconds_of_day, bool use_24h);
 
 /// One card per digit of the hours (no leading zero, as many as needed), minutes and seconds
-/// for `seconds`, clamped to 0 and FLIP_MAX_COUNTDOWN_S.
+/// for `seconds`, clamped to 0 and CLOCK_MAX_COUNTDOWN_S.
 FlipFace countdown_face(int32_t seconds);
 
-/**
- * @brief Decides what the clock shows from the print's state over time
- *
- * Idle, preparing without an estimate, cancelled and failed prints show the time of day. A
- * print with an estimate counts down at wall-clock rate, frozen while paused. A print seen
- * finishing shows 0:00:00 and DONE for FLIP_DONE_HOLD_MS, then the time of day again.
- */
+/// The cards and caption for `reading`: the time of day, or the countdown with DONE_AT,
+/// PAUSED or DONE under it.
+FlipFace flip_face(const ClockReading& reading);
+
+/// ClockState read as cards: every decision is ClockState's, the cards are flip_face()'s.
 class FlipClockState {
   public:
     /// Advances by `dt_ms` with the outside state now `in`.
-    void step(uint32_t dt_ms, const FlipClockInput& in);
-
-    FlipMode mode() const {
-        return mode_;
+    void step(uint32_t dt_ms, const ClockInput& in);
+    ClockMode mode() const {
+        return state_.mode();
     }
     /// Seconds the countdown shows.
-    int32_t countdown_s() const;
+    int32_t countdown_s() const {
+        return state_.countdown_s();
+    }
     /// What the screen shows for the last step's input.
     FlipFace face() const {
         return face_;
     }
+    /// The clock reading the cards show.
+    const ClockReading& reading() const {
+        return state_.reading();
+    }
     void reset();
 
   private:
-    FlipFace build_face(const FlipClockInput& in) const;
-
-    FlipMode mode_ = FlipMode::CLOCK;
-    bool anchored_ = false;
-    int32_t anchor_s_ = 0;
-    uint32_t since_anchor_ms_ = 0;
-    uint32_t done_ms_ = 0;
-    bool done_shown_ = false;
+    ClockState state_;
     FlipFace face_;
 };
 
@@ -186,12 +153,9 @@ struct FlipLayout {
 /// row; centred, then moved by (`dx`, `dy`).
 FlipLayout layout_flip_cards(int32_t w, int32_t h, const FlipShape& shape, int32_t dx, int32_t dy);
 
-/// Largest drift either way that keeps the layout of `shape` on a `w` x `h` screen.
-void flip_drift_range(int32_t w, int32_t h, const FlipShape& shape, int32_t& max_dx,
-                      int32_t& max_dy);
-
-/// Drift offset `elapsed_ms` into a run, stepping every FLIP_DRIFT_STEP_MS within the range.
-void flip_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t& dx, int32_t& dy);
+/// Box round the layout of `shape` centred on a `w` x `h` screen, undrifted: what the clock's
+/// drift range is measured from (ClockDrift::set_range()).
+DirtyRect flip_centred_bounds(int32_t w, int32_t h, const FlipShape& shape);
 
 /**
  * @brief Draws the clock into a frame, redrawing only the cards that change
@@ -203,6 +167,8 @@ void flip_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t&
  */
 class FlipClockSim {
   public:
+    static constexpr const auto& LEVELS = FLIP_CLOCK_LEVELS;
+
     /// Lays out `face` for `frame`, paints the screen and draws the cards.
     void init(FrameTarget& frame, size_t level, const FlipFace& face);
 
@@ -236,6 +202,8 @@ class FlipClockSim {
 
     /// Frees the glyph cache.
     void clear();
+    /// Bytes the glyph cache holds.
+    size_t heap_bytes() const;
 
     /// Background, card, split-line and digit colours.
     static constexpr Rgb BACKGROUND{0, 0, 0};
@@ -257,21 +225,18 @@ class FlipClockSim {
     void draw_colons(FrameTarget& frame) const;
     /// Card face pixel at card-local (x, y) for `card`, before the corner mask.
     Rgb face_pixel(const FlipCard& card, int32_t x, int32_t y) const;
-    uint8_t glyph_coverage(int digit, int32_t gx, int32_t gy) const;
     uint8_t corner_coverage(int32_t x, int32_t y) const;
 
     size_t level_ = 0;
-    uint32_t elapsed_ms_ = 0;
     int32_t frame_w_ = 0;
     int32_t frame_h_ = 0;
-    int32_t drift_x_ = 0;
-    int32_t drift_y_ = 0;
+    ClockDrift drift_;
+    /// The shape drift_'s range was set for.
+    FlipShape drift_shape_;
     FlipLayout layout_;
     std::array<CardAnim, FLIP_MAX_CARDS> anims_{};
-    int32_t glyph_w_ = 0;
-    int32_t glyph_h_ = 0;
-    /// Coverage of digits 0-9, glyph_w_ x glyph_h_ each, 0-255.
-    std::vector<uint8_t> glyphs_;
+    /// Coverage of digits 0-9 at the layout's unit.
+    StrokeDigitSet glyphs_;
 };
 
 } // namespace helix::ui

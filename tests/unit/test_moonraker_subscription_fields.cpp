@@ -159,7 +159,8 @@ TEST_CASE("Subscription: virtual_sdcard fields cover printer_print_state reads",
     REQUIRE(has_field(subs, "virtual_sdcard", "is_active"));
 }
 
-TEST_CASE("Subscription: heaters narrow to {temperature, target, power}",
+TEST_CASE("Subscription: heaters narrow to {temperature, target, power}, extruders add "
+          "pressure advance",
           "[moonraker][subscription]") {
     DiscoveryFixture fx;
     fx.add("extruder", {"heater"});
@@ -176,8 +177,13 @@ TEST_CASE("Subscription: heaters narrow to {temperature, target, power}",
         // Duty distinguishes an element working flat out from one ticking over
         // at the same temperature, which is what the power readouts render.
         REQUIRE(has_field(subs, heater, "power"));
-        // Should NOT contain extra fields — narrowing contract
-        REQUIRE(subs[heater].size() == 3);
+        // An extruder also carries its pressure advance, the readback the PA
+        // tuning screens display; nothing else is subscribed.
+        const bool extruder = std::string(heater).rfind("extruder", 0) == 0;
+        if (extruder) {
+            REQUIRE(has_field(subs, heater, "pressure_advance"));
+        }
+        REQUIRE(subs[heater].size() == (extruder ? 4u : 3u));
     }
 }
 
@@ -921,5 +927,25 @@ TEST_CASE("Subscription: loaded leveling-skip wrappers subscribe their gates and
         const json subs = fx.build(hw);
         CHECK_FALSE(subs.contains("gcode_macro _HELIX_PREP"));
         CHECK_FALSE(subs.contains("quad_gantry_level"));
+    }
+}
+
+TEST_CASE("Subscription: layer-pause state macro subscribed only with the macros",
+          "[moonraker][subscription][layer_pause]") {
+    SECTION("absent without the scheduling macros") {
+        DiscoveryFixture fx;
+        fx.add("gcode_macro SET_PRINT_STATS_INFO", {});
+        REQUIRE_FALSE(fx.build().contains("gcode_macro SET_PRINT_STATS_INFO"));
+    }
+
+    SECTION("narrowed to the two schedule variables when offered") {
+        DiscoveryFixture fx;
+        fx.add("gcode_macro SET_PAUSE_NEXT_LAYER", {});
+        fx.add("gcode_macro SET_PAUSE_AT_LAYER", {});
+        fx.add("gcode_macro SET_PRINT_STATS_INFO", {});
+        json subs = fx.build();
+        REQUIRE(has_field(subs, "gcode_macro SET_PRINT_STATS_INFO", "pause_next_layer"));
+        REQUIRE(has_field(subs, "gcode_macro SET_PRINT_STATS_INFO", "pause_at_layer"));
+        REQUIRE(subs["gcode_macro SET_PRINT_STATS_INFO"].size() == 2);
     }
 }

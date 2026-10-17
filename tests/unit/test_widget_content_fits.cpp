@@ -47,6 +47,7 @@
 #include "../test_helpers/job_queue_tile_seed.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/print_history_seed.h"
+#include "../test_helpers/scoped_animations_enabled.h"
 #include "../test_helpers/scoped_widget_labels.h"
 #include "../test_helpers/tips_manager_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
@@ -642,6 +643,12 @@ TEST_CASE_METHOD(ContentFitsFixture,
     REQUIRE(disp != nullptr);
 
     TestModeGuard test_mode_guard(get_runtime_config());
+    // A scroll_circular label held still by the Animations preference turns CLIP
+    // and draws a middle ellipsis at draw time (ui_text.cpp#middle_ellipsis_draw_cb),
+    // which the detector cannot see and would read as a silent cut. With the
+    // preference on, the label reports the long mode its XML declared.
+    helix::ui::ScopedAnimationsEnabled animations(true);
+    REQUIRE(animations.available());
 
     PanelWidgetManager::instance().init_widget_subjects();
     // The bed mesh tile binds BedMeshState's subjects, which the app registers before any

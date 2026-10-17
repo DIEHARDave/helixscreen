@@ -9,6 +9,7 @@
 #include "ui_modal.h"
 #include "ui_observer_guard.h"
 #include "ui_print_exclude_object_manager.h"
+#include "ui_print_layer_pause.h"
 #include "ui_print_light_timelapse.h"
 #include "ui_print_tune_overlay.h"
 #include "ui_temperature_utils.h" // HEATER_STATUS_BUF_BYTES
@@ -539,6 +540,7 @@ class PrintStatusPanel : public OverlayBase {
 
     // Light/timelapse controls (extracted Phase 2 functionality)
     PrintLightTimelapseControls light_timelapse_controls_;
+    helix::ui::PrintLayerPauseControls layer_pause_controls_;
 
     // Resize callback registration flag
     bool resize_registered_ = false;
@@ -570,8 +572,6 @@ class PrintStatusPanel : public OverlayBase {
     void update_objects_text(); ///< Update "X of Y obj" display from exclude state
     /// Publish whether the objects button shows: [exclude_object] and 2+ defined objects.
     void refresh_exclude_objects_available();
-    void
-    update_view_toggle_position(bool objects_visible); ///< Shift view toggle when objects btn shown
     void animate_badge_pop_in(lv_obj_t* badge, const char* label); ///< Pop-in animation for badges
     void animate_print_complete();  ///< Celebratory animation when print finishes
     void animate_print_cancelled(); ///< Warning animation when print is cancelled

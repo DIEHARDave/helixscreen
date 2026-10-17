@@ -135,8 +135,10 @@ translations:
   A motor's parameters couldn't be written. Power-cycle the printer to retry: A motor's parameters couldn't be written. Power-cycle the printer to retry
   A newer version of the helper macros is available: A newer version of the helper macros is available
   A picture of your printer: A picture of your printer
+  A print is already running.: A print is already running.
   A print is in progress - restart still pending: A print is in progress - restart still pending
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.
+  A print is running. Apply the result after it ends.: A print is running. Apply the result after it ends.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.
   A spool may be tangled or the drive gear is jammed: A spool may be tangled or the drive gear is jammed
   A · 1,-1: A · 1,-1
@@ -191,6 +193,7 @@ translations:
   Actions: Actions
   Active: Active
   Active Spool: Active Spool
+  'Active spool: {}': 'Active spool: {}'
   Actual: Actual
   Adaptive Bed Mesh: Adaptive Bed Mesh
   Add: Add
@@ -268,14 +271,19 @@ translations:
   App startup encountered an error. Some features may be unavailable.: App startup
     encountered an error. Some features may be unavailable.
   Appearance: Appearance
+  ? "Applied to {}. Klipper forgets it on restart: enter {} as Pressure advance in your slicer's filament profile, or save it to the spool."
+  : "Applied to {}. Klipper forgets it on restart: enter {} as Pressure advance in your slicer's filament profile, or save it to the spool."
   Applies to: Applies to
   Apply: Apply
+  Aqua Surface: Aqua Surface
   Archive: Archive
   Archive Spool?: Archive Spool?
   Are you sure you want to cancel this print? All progress will be lost.: Are you
     sure you want to cancel this print? All progress will be lost.
   Are you sure? This will power off or restart this device.: Are you sure? This will
     power off or restart this device.
+  Arrows + Home: Arrows + Home
+  Arrows: Arrows
   Ask before switching to another tool: Ask before switching to another tool
   Ask for parameters: Ask for parameters
   Assign Klipper macros to control LEDs via on/off, toggle, or presets: Assign Klipper
@@ -314,6 +322,7 @@ translations:
   Available Networks: Available Networks
   Available networks: Available networks
   Average: Average
+  Axis Rows: Axis Rows
   Axis limits unknown: Axis limits unknown
   B · 1,1: B · 1,1
   BACK: BACK
@@ -396,6 +405,7 @@ translations:
   Both: Both
   Bouncing Logo: Bouncing Logo
   Bouncing Printer: Bouncing Printer
+  Bowden: Bowden
   Bowden Length: Bowden Length
   Bowden tube length from hub to toolhead: Bowden tube length from hub to toolhead
   Box: Box
@@ -512,6 +522,7 @@ translations:
   Cancel: Cancel
   Cancel Escalation: Cancel Escalation
   Cancel Print: Cancel Print
+  Cancel Scheduled Pause: Cancel Scheduled Pause
   Cancel macro not configured: Cancel macro not configured
   Cancel print: Cancel print
   Cancelled: Cancelled
@@ -534,6 +545,7 @@ translations:
   'Cannot reprint: not connected to printer': 'Cannot reprint: not connected to printer'
   Cannot restart — no filename: Cannot restart — no filename
   Cannot run filament operation while printing: Cannot run filament operation while printing
+  'Cannot schedule a pause: printer not connected': 'Cannot schedule a pause: printer not connected'
   'Cannot start print: internal error': 'Cannot start print: internal error'
   'Cannot start print: no temp directory available': 'Cannot start print: no temp directory available'
   'Cannot start print: not connected to printer': 'Cannot start print: not connected
@@ -627,6 +639,7 @@ translations:
   Checking…: Checking…
   Choose 12-hour or 24-hour time display: Choose 12-hour or 24-hour time display
   Choose Filament: Choose Filament
+  Choose Layer: Choose Layer
   Choose Model: Choose Model
   Choose an existing filament, or tap + New to create one.: Choose an existing filament,
     or tap + New to create one.
@@ -656,6 +669,7 @@ translations:
   Clear failed: Clear failed
   ? Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament's packaging) and close the door.
   : Clear the area above and below the plate. Lay the spools on the plate, cover them with a box (a printed lid or the filament's packaging) and close the door.
+  Clear the plate and load {}. The tower prints in the middle of the bed.: Clear the plate and load {}. The tower prints in the middle of the bed.
   Cleared from settings — system unpair failed, may need OS Bluetooth: Cleared from
     settings — system unpair failed, may need OS Bluetooth
   Clipboard unavailable - use SSH: Clipboard unavailable - use SSH
@@ -949,6 +963,7 @@ translations:
   Devices: Devices
   Different filament?: Different filament?
   Digital Clock: Digital Clock
+  Direct drive: Direct drive
   Disable: Disable
   Disable Bypass: Disable Bypass
   Disable Motors?: Disable Motors?
@@ -975,6 +990,7 @@ translations:
   Distance from lane extruder to hub: Distance from lane extruder to hub
   Distance from toolhead sensor to nozzle tip: Distance from toolhead sensor to nozzle tip
   Distance moved per jog button tap: Distance moved per jog button tap
+  Distance moved per jog button tap. The arrow layouts offer every distance as a step.: Distance moved per jog button tap. The arrow layouts offer every distance as a step.
   Do not power off your printer.: Do not power off your printer.
   Do not touch the printer during calibration: Do not touch the printer during calibration
   Dock: Dock
@@ -994,6 +1010,7 @@ translations:
     — helps diagnose offsets
   Drive Cal: Drive Cal
   Drop shadow strength (0 = disabled): Drop shadow strength (0 = disabled)
+  Dry: Dry
   Dry Filament: Dry Filament
   Dry Filament on the Bed: Dry Filament on the Bed
   Dry spools on the heated bed: Dry spools on the heated bed
@@ -1014,6 +1031,7 @@ translations:
   EEPROM error on CFS unit: EEPROM error on CFS unit
   EMERGENCY STOP: EMERGENCY STOP
   EMPTY: EMPTY
+  ETA {}: ETA {}
   EXTRAS: EXTRAS
   Each fan can only be selected once: Each fan can only be selected once
   Edit: Edit
@@ -1072,6 +1090,9 @@ translations:
   Enclosure: Enclosure
   Encoder: Encoder
   Encoder Error: Encoder Error
+  End K: End K
+  End Test: End Test
+  End the test print?: End the test print?
   Ended: Ended
   Endless Spool: Endless Spool
   Endless spool failover cleared for every slot: Endless spool failover cleared for every slot
@@ -1257,11 +1278,14 @@ translations:
   Failed to save setup completion: Failed to save setup completion
   Failed to save spool: Failed to save spool
   Failed to save theme file: Failed to save theme file
+  'Failed to save to Spoolman: {}': 'Failed to save to Spoolman: {}'
+  'Failed to schedule the pause: {}': 'Failed to schedule the pause: {}'
   'Failed to send command: {}': 'Failed to send command: {}'
   Failed to send print data: Failed to send print data
   Failed to send status request: Failed to send status request
   Failed to set active spool: Failed to set active spool
   'Failed to set flow rate: {}': 'Failed to set flow rate: {}'
+  'Failed to set pressure advance: {}': 'Failed to set pressure advance: {}'
   'Failed to set print speed: {}': 'Failed to set print speed: {}'
   'Failed to set temperature: {}': 'Failed to set temperature: {}'
   'Failed to set {} temp: {}': 'Failed to set {} temp: {}'
@@ -1388,6 +1412,7 @@ translations:
   Finish or cancel the print before loading, unloading, or changing filament: Finish or cancel the print before loading, unloading, or changing filament
   'Finishing clean...': 'Finishing clean...'
   Finishing up...: Finishing up...
+  Fireflies: Fireflies
   Fireworks: Fireworks
   Firmware Restart: Firmware Restart
   Firmware reports no bypass. Enable if you feed filament straight to the extruder: Firmware reports no bypass. Enable if you feed filament straight to the extruder
@@ -1519,6 +1544,7 @@ translations:
   Heating Bed...: Heating Bed...
   'Heating Chamber...': 'Heating Chamber...'
   Heating Nozzle...: Heating Nozzle...
+  Heating and homing: Heating and homing
   'Heating bed to $1°C...': 'Heating bed to $1°C...'
   'Heating bed...': 'Heating bed...'
   'Heating chamber...': 'Heating chamber...'
@@ -1550,6 +1576,7 @@ translations:
   Hide Firmware Noise: Hide Firmware Noise
   Hide Temperature Reports: Hide Temperature Reports
   Hide the on-screen keyboard while a USB keyboard is attached: Hide the on-screen keyboard while a USB keyboard is attached
+  High Fly: High Fly
   High Water Mark: High Water Mark
   Hold anywhere to cancel: Hold anywhere to cancel
   Holding nozzle at {}°C to purge previous filament.: Holding nozzle at {}°C to purge previous filament.
@@ -1597,6 +1624,7 @@ translations:
   ? How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   : How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   How many labels to print: How many labels to print
+  How the Jog tab arranges its buttons: How the Jog tab arranges its buttons
   How the toolhead icon appears: How the toolhead icon appears
   Hub: Hub
   Hub & Cutter: Hub & Cutter
@@ -1706,16 +1734,20 @@ translations:
   Issue description: Issue description
   It can be un-archived in Spoolman's web UI.: It can be un-archived in Spoolman's web UI.
   It has not reported its slots yet. Try again in a moment.: It has not reported its slots yet. Try again in a moment.
+  It homes and heats on its own (no start macro found).: It homes and heats on its own (no start macro found).
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying
+  It starts with your {} macro.: It starts with your {} macro.
   It's a new spool: It's a new spool
   Jammed at the Toolhead: Jammed at the Toolhead
   Job Queue: Job Queue
   Job queue not enabled in Moonraker: Job queue not enabled in Moonraker
   Jog: Jog
+  Jog Pad: Jog Pad
   Jog Speed XY: Jog Speed XY
   Jog Speed Z: Jog Speed Z
   Jog Y until the nozzle is centered over the chute opening, then tap Save.: Jog Y until the nozzle is centered over the chute opening, then tap Save.
   'Jog failed: {}': 'Jog failed: {}'
+  Jog layout, speeds and step distances: Jog layout, speeds and step distances
   Jog speeds and step distances: Jog speeds and step distances
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: Join
     the HelixScreen community on Discord for discussion, tips, troubleshooting help,
@@ -1731,6 +1763,7 @@ translations:
   Keep Spool Info on Eject: Keep Spool Info on Eject
   Keep clear of the printer while the toolhead is moving: Keep clear of the printer while the toolhead is moving
   Keep current: Keep current
+  Keep current ({}): Keep current ({})
   Keep hands clear. The printer moves on its own.: Keep hands clear. The printer moves on its own.
   Keep its own data on this screen (up to 256 KB).: Keep its own data on this screen (up to 256 KB).
   Keep the bypass spool visible when bypass is off: Keep the bypass spool visible when bypass is off
@@ -1803,6 +1836,8 @@ translations:
     captures one frame per layer change. Best for most prints.
   Layer mode captures one frame per layer change. Best for most prints.: Layer mode
     captures one frame per layer change. Best for most prints.
+  Layer {} of {} · {:.2f} mm: Layer {} of {} · {:.2f} mm
+  Layer {} of {}.: Layer {} of {}.
   Layers: Layers
   Layout: Layout
   Layout changes are off in safe mode. Restart to edit.: Layout changes are off in safe mode. Restart to edit.
@@ -1875,6 +1910,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): Long-press the home grid to rearrange widgets (turn off if it triggers by accident)
   Longest Disconnect: Longest Disconnect
+  Looking for the active spool...: Looking for the active spool...
   Lost connection during print — try again: Lost connection during print — try again
   Lost connection to CFS unit: Lost connection to CFS unit
   'Lot # (optional)': 'Lot # (optional)'
@@ -1940,6 +1976,7 @@ translations:
   Manual Feed: Manual Feed
   Manual Retract: Manual Retract
   Manual feed and retract operations: Manual feed and retract operations
+  'Manual: the ramp has stopped at your value': 'Manual: the ramp has stopped at your value'
   Manually clear the jam and retry the operation: Manually clear the jam and retry the operation
   Manually pull the filament back through the connector: Manually pull the filament back through the connector
   Map to closest colors with matching material: Map to closest colors with matching
@@ -1968,6 +2005,8 @@ translations:
   Measure: Measure
   Measure every tool's XYZ offset automatically: Measure every tool's XYZ offset automatically
   Measure pressure advance automatically: Measure pressure advance automatically
+  ? Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
+  : Measure up from the plate. Sharp corners with no bulge and no gap mark the right K. Each row is a height range and the K the printer reported while it printed.
   Measured (shaper off): Measured (shaper off)
   Measured filament diameter: Measured filament diameter
   Measured pressure advance: Measured pressure advance
@@ -2078,6 +2117,7 @@ translations:
   New printer successfully added: New printer successfully added
   New profile name: New profile name
   Next: Next
+  Next Layer: Next Layer
   'Next: {}': 'Next: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
@@ -2103,12 +2143,14 @@ translations:
   No Spools: No Spools
   No USB printer detected: No USB printer detected
   No USB printers found: No USB printers found
+  No active Spoolman spool.: No active Spoolman spool.
   No automatic backup-spool package is installed: No automatic backup-spool package is installed
   No buffer data available: No buffer data available
   No camera — use USB barcode scanner: No camera — use USB barcode scanner
   No chamber temperature sensor detected: No chamber temperature sensor detected
   No changes to revert: No changes to revert
   No color: No color
+  No connection to the printer.: No connection to the printer.
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: No
     dryer available. Store filament in a sealed dry box with desiccant for best results.
   No effects available: No effects available
@@ -2135,6 +2177,7 @@ translations:
   No media installed: No media installed
   No mesh data: No mesh data
   No mesh loaded: No mesh loaded
+  No message: No message
   No multi-filament system detected: No multi-filament system detected
   No network. Scan QR code to report on your phone.: No network. Scan QR code to report
     on your phone.
@@ -2144,6 +2187,7 @@ translations:
   No objects: No objects
   No objects defined for this print: No objects defined for this print
   No output yet: No output yet
+  No pause scheduled.: No pause scheduled.
   No presets configured: No presets configured
   No preview: No preview
   No print history found: No print history found
@@ -2252,6 +2296,7 @@ translations:
   'Off': 'Off'
   'Off:': 'Off:'
   'Off: runs with these values without asking': 'Off: runs with these values without asking'
+  Offer to save Z-offset changes to the printer config: Offer to save Z-offset changes to the printer config
   Offsets saved: Offsets saved
   "Old setting on today's data: {} residual - now: {}": "Old setting on today's data: {} residual - now: {}"
   'On': 'On'
@@ -2347,6 +2392,8 @@ translations:
   Path {}: Path {}
   Path {} before: Path {} before
   Pause: Pause
+  Pause Layer: Pause Layer
+  Pause at Layer: Pause at Layer
   Pause macro not configured: Pause macro not configured
   Pause on Detection: Pause on Detection
   Pause the print first, then load, unload, or change filament: Pause the print first,
@@ -2355,6 +2402,7 @@ translations:
   Pause, resume, or stop the print: Pause, resume, or stop the print
   Paused: Paused
   Paused (attention needed): Paused (attention needed)
+  Pausing at layer {}.: Pausing at layer {}.
   Pausing...: Pausing...
   Peak Freq: Peak Freq
   'Peak:': 'Peak:'
@@ -2369,6 +2417,7 @@ translations:
   Pick: Pick
   Pick Color: Pick Color
   Pick how HelixScreen behaves. You can change any of these later in Settings.: Pick how HelixScreen behaves. You can change any of these later in Settings.
+  Pick the best band: Pick the best band
   Pick up tool: Pick up tool
   Picking up tool: Picking up tool
   Pill: Pill
@@ -2443,6 +2492,10 @@ translations:
   Presets come from the WLED device. Edit them in the WLED app.: Presets come from the WLED device. Edit them in the WLED app.
   Press Abort to stop: Press Abort to stop
   Press Scan to search: Press Scan to search
+  Pressure Advance Tuning: Pressure Advance Tuning
+  Pressure advance: Pressure advance
+  ? 'Pressure advance climbs as the tower grows. Watch the corners: tap - or + whenever you like and the ramp stops so you can judge your own value.'
+  : 'Pressure advance climbs as the tower grows. Watch the corners: tap - or + whenever you like and the ramp stops so you can judge your own value.'
   'Pressure:': 'Pressure:'
   Pressure Adv.: Pressure Adv.
   Pressure Advance: Pressure Advance
@@ -2475,9 +2528,11 @@ translations:
   Print Start: Print Start
   Print Stats: Print Stats
   Print Status: Print Status
+  Print Test Tower: Print Test Tower
   Print Time: Print Time
   Print Tuning: Print Tuning
   Print Was Terminated: Print Was Terminated
+  Print a test tower and tune K by eye: Print a test tower and tune K by eye
   Print cancelled: Print cancelled
   'Print complete': 'Print complete'
   Print did not start: Print did not start
@@ -2495,6 +2550,7 @@ translations:
   Print setup failed: Print setup failed
   'Print setup failed: internal error': 'Print setup failed: internal error'
   Print status: Print status
+  Print the test tower?: Print the test tower?
   Print timed out waiting for completion: Print timed out waiting for completion
   Printed %d time: Printed %d time
   Printed %d times: Printed %d times
@@ -2503,6 +2559,7 @@ translations:
   Printer Firmware Disconnected: Printer Firmware Disconnected
   Printer Image: Printer Image
   Printer Manager: Printer Manager
+  Printer Message: Printer Message
   Printer Model: Printer Model
   Printer Name: Printer Name
   'Printer Setup: Connection': 'Printer Setup: Connection'
@@ -2642,6 +2699,8 @@ translations:
   'RSS:': 'RSS:'
   Rails: Rails
   Ramming Volume: Ramming Volume
+  'Ramp: band {} of {}': 'Ramp: band {} of {}'
+  'Ramp: base layers': 'Ramp: base layers'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Re-identify
@@ -2841,6 +2900,7 @@ translations:
   Rewinding: Rewinding
   Right: Right
   'Role:': 'Role:'
+  Rotate: Rotate
   Rotating tips for using your printer: Rotating tips for using your printer
   Rotation: Rotation
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Rotation: %d°
@@ -2902,17 +2962,20 @@ translations:
   Save Printer Configuration: Save Printer Configuration
   Save Theme As: Save Theme As
   Save Z-Offset: Save Z-Offset
+  Save Z-Offset Buttons: Save Z-Offset Buttons
   Save Z-Offset?: Save Z-Offset?
   Save changes to persist them across restarts?: Save changes to persist them across
     restarts?
   'Save failed: {}': 'Save failed: {}'
   Save Offsets: Save Offsets
   Save offsets?: Save offsets?
+  Save to Spool: Save to Spool
   Save to Spoolman: Save to Spoolman
   Saved Z-Offset: Saved Z-Offset
   Saved to crash_report.txt (QR not available): Saved to crash_report.txt (QR not
     available)
   Saved to printer configuration.: Saved to printer configuration.
+  Saved to {}. It applies whenever this filament becomes active.: Saved to {}. It applies whenever this filament becomes active.
   Saved values, and whether to ask before running: Saved values, and whether to ask before running
   Saves to Klipper config and restarts firmware.: Saves to Klipper config and restarts
     firmware.
@@ -3164,6 +3227,7 @@ translations:
   Spoolman connected!: Spoolman connected!
   Spoolman found! Configuring...: Spoolman found! Configuring...
   Spoolman has no spools configured: Spoolman has no spools configured
+  Spoolman is not available.: Spoolman is not available.
   Spoolman is not configured — nothing to remove.: Spoolman is not configured — nothing to remove.
   Spoolman is offline, so brand and material can't be saved.: Spoolman is offline, so brand and material can't be saved.
   Spoolman is offline. Brand and material can change once it's back.: Spoolman is offline. Brand and material can change once it's back.
@@ -3196,6 +3260,7 @@ translations:
   Start Anyway: Start Anyway
   Start Calibration: Start Calibration
   Start Drying: Start Drying
+  Start K: Start K
   Start Print: Start Print
   Start Probing: Start Probing
   Start a new {} h interval? The hours counted so far are discarded.: Start a new {} h interval? The hours counted so far are discarded.
@@ -3239,6 +3304,7 @@ translations:
   Stopped between Hub and Toolhead: Stopped between Hub and Toolhead
   Stopped between Lane and Hub: Stopped between Lane and Hub
   Stopped between Spool and Lane: Stopped between Spool and Lane
+  Stopped drying %s: Stopped drying %s
   Stops all motion. Requires firmware restart.: Stops all motion. Requires firmware
     restart.
   Stow: Stow
@@ -3355,6 +3421,7 @@ translations:
   Test Tracker: Test Tracker
   Test Both: Test Both
   Test label printed: Test label printed
+  'Test tower {:.0f} mm wide and {:.0f} mm tall, about {} min plus heating: {} bands of {:.0f} mm at {}°C.': 'Test tower {:.0f} mm wide and {:.0f} mm tall, about {} min plus heating: {} bands of {:.0f} mm at {}°C.'
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Testing rotation: %d°
     (%d/%d) - %ds remaining'
   Testing, servo, and motor operations: Testing, servo, and motor operations
@@ -3377,6 +3444,7 @@ translations:
   : The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
   The bed has cooled. Take the spools off the plate, then confirm.: The bed has cooled. Take the spools off the plate, then confirm.
+  The bed is too small for the test tower, or its size is unknown.: The bed is too small for the test tower, or its size is unknown.
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: The bed turns off. The spools stay latched on the bed until you confirm they are off.
   The bed was reported dirty, so this print cannot resume.: The bed was reported dirty, so this print cannot resume.
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: The buffer may be disconnected, stuck, or faulty. Check it before retrying
@@ -3407,9 +3475,13 @@ translations:
   The left RFID reader in this CFS unit may need service: The left RFID reader in this CFS unit may need service
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
+  The message your printer's macros show (M117): The message your printer's macros show (M117)
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.
   The plate and the spools are still hot. Use gloves.: The plate and the spools are still hot. Use gloves.
   The plate finishes its current move, but drying will not start.: The plate finishes its current move, but drying will not start.
+  The print ended before any layer was printed. Nothing was changed.: The print ended before any layer was printed. Nothing was changed.
+  The print is cancelled and you pick the best band from what has printed so far.: The print is cancelled and you pick the best band from what has printed so far.
+  The print is on its last layer.: The print is on its last layer.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: The print is waiting for the chamber to reach {}°C, but the heater is not heating.
@@ -3511,8 +3583,10 @@ translations:
   This plugin asks for no special permissions.: This plugin asks for no special permissions.
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: This plugin lets HelixScreen control print start options like bed mesh and QGL.
   This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.
+  This print does not report layers, so no layer pause can be scheduled.: This print does not report layers, so no layer pause can be scheduled.
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: This
     print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?
+  This print never reports layer {}.: This print never reports layer {}.
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.
@@ -3644,6 +3718,7 @@ translations:
   Try the operation again. If it persists, check for mechanical issues.: Try the operation again. If it persists, check for mechanical issues.
   Trying again...: Trying again...
   Tune: Tune
+  Tuner: Tuner
   Tuning tower enabled - start a print to test: Tuning tower enabled - start a print
     to test
   Turbo: Turbo
@@ -3936,6 +4011,7 @@ translations:
   Z-offset saved ({:+.3f}mm). Klipper restarting...: Z-offset saved ({:+.3f}mm). Klipper
     restarting...
   Z-offset saved - Klipper restarting...: Z-offset saved - Klipper restarting...
+  'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.': 'Z-offset saving is off, so HelixScreen did not save this. Klipper holds it until the next config save.'
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   already loaded: already loaded
@@ -4019,6 +4095,7 @@ translations:
   tall: tall
   target {}%: target {}%
   target {}°: target {}°
+  the extruder: the extruder
   this week: this week
   too slow: too slow
   tool(s): tool(s)
@@ -4036,6 +4113,7 @@ translations:
   '{} LED strips available': '{} LED strips available'
   '{} and {} are both mapped here': '{} and {} are both mapped here'
   '{} available': '{} available'
+  '{} axes homed': '{} axes homed'
   '{} axis homed': '{} axis homed'
   '{} cannot be skipped: its name has characters the printer cannot be sent': '{} cannot be skipped: its name has characters the printer cannot be sent'
   '{} changed': '{} changed'
@@ -4064,6 +4142,7 @@ translations:
   '{} is still printing. The print keeps running after you switch.': '{} is still printing. The print keeps running after you switch.'
   '{} is not available on this device. Printing original file.': '{} is not available on this device. Printing original file.'
   '{} is not set up on this printer': '{} is not set up on this printer'
+  '{} left': '{} left'
   '{} lines in helixscreen.env were ignored': '{} lines in helixscreen.env were ignored'
   '{} kept crashing the panel; switched back to {}': '{} kept crashing the panel; switched back to {}'
   '{} kept crashing the panel; pick a printer to connect': '{} kept crashing the panel; pick a printer to connect'

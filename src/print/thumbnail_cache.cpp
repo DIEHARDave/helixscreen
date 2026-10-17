@@ -180,6 +180,16 @@ std::string ThumbnailCache::get_cache_path(const std::string& cache_id) const {
     return cache_dir_ + "/" + thumbnail_file_name(thumbnail_hash(cache_id), nullptr);
 }
 
+std::string ThumbnailCache::peek(const std::string& cache_id,
+                                 const helix::ThumbnailTarget& target) const {
+    std::string bin = helix::ThumbnailProcessor::instance().get_if_processed(cache_id, target);
+    if (!bin.empty()) {
+        return bin;
+    }
+    const std::string png = get_cache_path(cache_id);
+    return helix::fs::exists(png) ? to_lvgl_path(png) : std::string();
+}
+
 bool ThumbnailCache::is_lvgl_path(const std::string& path) {
     return path.size() >= 2 && path[0] == 'A' && path[1] == ':';
 }

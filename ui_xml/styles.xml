@@ -122,6 +122,23 @@
          border, so it draws inside the swatch and no container can clip it. -->
     <style name="led_ring_holder" radius="9999" bg_opa="0" border_width="0" pad_all="#led_ring_reach"/>
     <style name="led_swatch_ring" border_width="#led_ring_width" border_color="#text" border_opa="255"/>
+    <!-- Motion jog layouts: a key block that runs across in landscape and
+         down in portrait (or the reverse), its keys centred, and the weight a
+         run of several keys takes beside single ones (bind one per
+         orientation: an inline flex_grow would outrank the bound style). -->
+    <style name="jog_flow_row"
+           layout="flex" flex_flow="row" flex_main_place="center" flex_cross_place="center" flex_track_place="center"/>
+    <style name="jog_flow_column"
+           layout="flex" flex_flow="column" flex_main_place="center" flex_cross_place="center" flex_track_place="center"/>
+    <style name="jog_grow_1" flex_grow="1"/>
+    <style name="jog_grow_2" flex_grow="2"/>
+    <style name="jog_grow_3" flex_grow="3"/>
+    <!-- A button in a row of mutually exclusive choices (jog modes, jog
+         steps): the chosen one solid, the rest a muted wash of the same
+         colour. Bind exactly one per state. Home buttons use the solid one
+         for an axis that still needs homing. -->
+    <style name="choice_selected" bg_color="#primary" bg_opa="255"/>
+    <style name="choice_idle" bg_color="#primary" bg_opa="40"/>
     <!-- A row of a single-choice picker list, and the chosen one. -->
     <style name="picker_row" bg_opa="0" border_width="0" radius="#border_radius" pad_hor="#space_sm" pad_ver="0"/>
     <style name="selected_row" bg_color="#primary" bg_opa="40"/>

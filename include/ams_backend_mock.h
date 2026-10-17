@@ -224,6 +224,11 @@ class AmsBackendMock : public AmsBackend {
     AmsError start_drying_to_humidity(float temp_c, int duration_min, float humidity_pct,
                                       int fan_pct = -1, int unit = 0) override;
     AmsError stop_drying(int unit = 0) override;
+    /// The "emu_dryer" rig marks the started gates Active (the first) and Queued (the
+    /// rest), then runs the ordinary simulated cycle. Every other rig answers as the base.
+    AmsError start_drying_request(const DryingRequest& request) override;
+    /// The "emu_dryer" rig cancels just those gates and ends the cycle once none is left.
+    AmsError stop_drying_gates(int unit, const std::vector<int>& gates) override;
 
     /**
      * @brief Report the capped rig's non-running heated zones as Queued.
@@ -452,6 +457,8 @@ class AmsBackendMock : public AmsBackend {
      * - "passive": Per-unit temp/humidity, no dryer capability
      * - "dryer": Per-unit temp/humidity + dryer supported (default when dryer enabled)
      * - "slot": Per-slot temp/humidity (different values per slot)
+     * - "emu_dryer": A sealed box, a sensor and a heater per lane; the dryer takes a gate
+     *   selection and rotation, and a cycle is already running on lanes 1-3
      * - "" or unset: auto-detect from dryer state (dryer enabled → "dryer", else "passive")
      *
      * Can also be set via HELIX_MOCK_AMS_ENV environment variable.
@@ -1073,6 +1080,11 @@ class AmsBackendMock : public AmsBackend {
     float pending_drying_temp_c_ = 0.0f;
     int pending_drying_duration_min_ = 0;
     int pending_drying_elapsed_min_ = 0;
+    /// Per-gate drying state of the "emu_dryer" rig, indexed by global gate.
+    std::vector<helix::printer::ZoneDryingState> gate_drying_;
+    /// Mark @p gates' part in a new cycle: the first Active, the rest Queued, every
+    /// other gate Idle. Caller holds mutex_.
+    void begin_gate_cycle_locked(const std::vector<int>& gates);
 
     // Tool changer mode (alternative to filament system simulation)
     bool tool_changer_mode_ = false; ///< Simulate tool changer instead of filament system
