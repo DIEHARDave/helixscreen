@@ -706,7 +706,7 @@ TEST_CASE("wisps sample smoothly, without radial seams", "[screensaver][highfly]
     CHECK(checked);
 }
 
-TEST_CASE("the ladder drops layers before coarsening the deck and ends standing still",
+TEST_CASE("the ladder drops layers before coarsening the deck, slows, and ends standing still",
           "[screensaver][highfly]") {
     CHECK(HIGHFLY_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
     size_t first_no_layers = HIGHFLY_LEVEL_COUNT;
@@ -724,6 +724,12 @@ TEST_CASE("the ladder drops layers before coarsening the deck and ends standing 
     }
     CHECK(first_no_layers < first_coarse);
     CHECK(HIGHFLY_LEVELS[HIGHFLY_LEVEL_COUNT - 1].still);
+    // Before it stands still the coarse deck still drifts, at 5 to 10 frames a second.
+    const helix::ui::HighFlyLevel& slow = HIGHFLY_LEVELS[HIGHFLY_LEVEL_COUNT - 2];
+    CHECK_FALSE(slow.still);
+    CHECK(slow.scale == 4);
+    CHECK(slow.period_ms >= 100);
+    CHECK(slow.period_ms <= 200);
 
     TestFrame frame(400, 240, PixelFormat::RGB565);
     std::minstd_rand rng(3);

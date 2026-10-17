@@ -134,6 +134,10 @@ class HeightfieldRenderer {
     uint8_t coverage_at(int32_t x, int32_t y) const;
     /// Slice index where coverage at (x, y) first reached 128, or NO_DEPTH.
     uint16_t depth_slice_at(int32_t x, int32_t y) const;
+    /// depth_slice_at() for every pixel, column-major: (x, y) is at x * h + y.
+    const uint16_t* depth_data() const {
+        return depth_.data();
+    }
     /// Final silhouette of column `x` as a fractional row; h when nothing drew there.
     float top_at(int32_t x) const;
     /// The first slice's projected row and colour in column `x`.

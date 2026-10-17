@@ -147,19 +147,6 @@ void build_stroke_digits(int32_t unit, float stroke, StrokeDigitSet& out) {
     }
 }
 
-void blit_stroke_digit(PixelWriter& writer, const StrokeDigitSet& set, int digit, int32_t x,
-                       int32_t y, Rgb colour, float opacity) {
-    for (int32_t gy = 0; gy < set.h; gy++) {
-        for (int32_t gx = 0; gx < set.w; gx++) {
-            const uint8_t cov = set.at(digit, gx, gy);
-            if (cov == 0 || !writer.contains(x + gx, y + gy)) {
-                continue;
-            }
-            writer.blend_over(x + gx, y + gy, colour, opacity * static_cast<float>(cov) / 255.0f);
-        }
-    }
-}
-
 void build_stroke_halo(const StrokeDigitSet& digits, int32_t radius, StrokeDigitSet& out) {
     radius = std::max<int32_t>(1, radius);
     out.w = digits.w + 2 * radius;

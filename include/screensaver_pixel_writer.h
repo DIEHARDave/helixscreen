@@ -175,15 +175,37 @@ class PixelWriter {
     /// Like put(), but RGB565 dithers each channel with BAYER_4X4 at (x, y), so a smooth fade
     /// shows as a fine pattern instead of bands. XRGB8888 is written exactly.
     void put_dithered(int32_t x, int32_t y, Rgb c) {
-        if (frame_.format != PixelFormat::RGB565) {
-            put(x, y, c);
-            return;
+        if (frame_.format == PixelFormat::RGB565) {
+            put_dithered_in_row<PixelFormat::RGB565>(row(y), x, y, c);
+        } else {
+            put_dithered_in_row<PixelFormat::XRGB8888>(row(y), x, y, c);
         }
-        const uint8_t t = BAYER_4X4[y & 3][x & 3];
-        write_565(x, y,
-                  static_cast<uint16_t>(dither_channel(c.r, 31, t) << 11 |
-                                        dither_channel(c.g, 63, t) << 5 |
-                                        dither_channel(c.b, 31, t)));
+    }
+
+    /// put_dithered() at column `x` of row `y`, whose first byte is `row`, in format `F`: for
+    /// loops over a run of pixels, which decide the format once instead of at every pixel.
+    template <PixelFormat F>
+    static void put_dithered_in_row(uint8_t* row, int32_t x, int32_t y, Rgb c) {
+        if constexpr (F == PixelFormat::RGB565) {
+            const uint8_t t = BAYER_4X4[y & 3][x & 3];
+            const auto v =
+                static_cast<uint16_t>(dither_channel(c.r, 31, t) << 11 |
+                                      dither_channel(c.g, 63, t) << 5 | dither_channel(c.b, 31, t));
+            uint8_t* p = row + static_cast<size_t>(x) * 2;
+            p[0] = static_cast<uint8_t>(v & 0xFF);
+            p[1] = static_cast<uint8_t>(v >> 8);
+        } else {
+            uint8_t* p = row + static_cast<size_t>(x) * 4;
+            p[0] = c.b;
+            p[1] = c.g;
+            p[2] = c.r;
+            p[3] = 0xFF;
+        }
+    }
+
+    /// First byte of row `y`.
+    uint8_t* row(int32_t y) const {
+        return frame_.data + static_cast<size_t>(y) * frame_.stride;
     }
 
     /// An RGB565 word as 8-bit channels, each level expanded by repeating its top bits, so

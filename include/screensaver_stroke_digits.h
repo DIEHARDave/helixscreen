@@ -65,8 +65,20 @@ constexpr std::array<int, 2> two_digits(int32_t value) {
 }
 
 /// Blends `digit` from `set` over the frame with its box's top left at (x, y), `colour` at
-/// `opacity` times each pixel's coverage, dithered; pixels off the frame are skipped.
-void blit_stroke_digit(PixelWriter& writer, const StrokeDigitSet& set, int digit, int32_t x,
-                       int32_t y, Rgb colour, float opacity);
+/// `opacity` times each pixel's coverage, dithered; pixels off the frame are skipped. `Writer`
+/// is a PixelWriter, or anything with its contains() and blend_over().
+template <typename Writer>
+void blit_stroke_digit(Writer& writer, const StrokeDigitSet& set, int digit, int32_t x, int32_t y,
+                       Rgb colour, float opacity) {
+    for (int32_t gy = 0; gy < set.h; gy++) {
+        for (int32_t gx = 0; gx < set.w; gx++) {
+            const uint8_t cov = set.at(digit, gx, gy);
+            if (cov == 0 || !writer.contains(x + gx, y + gy)) {
+                continue;
+            }
+            writer.blend_over(x + gx, y + gy, colour, opacity * static_cast<float>(cov) / 255.0f);
+        }
+    }
+}
 
 } // namespace helix::ui
