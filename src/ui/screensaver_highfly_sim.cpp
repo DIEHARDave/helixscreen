@@ -664,14 +664,14 @@ HighFlyClockLayout layout_highfly_clock(int32_t w, int32_t h, int32_t dx, int32_
     l.seconds[1] = {sx + sgw + sgap, y1, sx + 2 * sgw + sgap - 1, y1 + sgh - 1};
     const int32_t my = l.seconds[0].y2 + 1 + px(0.1f * u);
     l.meridiem = {sx, my, std::max(l.seconds[1].x2, sx + px(1.2f * u)), my + px(0.3f * gh) - 1};
-    const int32_t line_h = std::max(10, px(0.05f * static_cast<float>(h)));
+    // The date block sits in the sky beside the numerals' upper half, clear of the clouds.
+    const int32_t line_h = std::max(10, px(0.055f * static_cast<float>(h)));
     const int32_t lx1 = px(0.05f * static_cast<float>(w)) + dx;
     const int32_t lx2 =
         std::min(px(0.30f * static_cast<float>(w)) + dx, l.digits[0].x1 - px(0.1f * u));
-    l.date_line = {lx1, px(0.47f * static_cast<float>(h)) + dy, lx2,
-                   px(0.47f * static_cast<float>(h)) + dy + line_h - 1};
-    l.day_line = {lx1, px(0.53f * static_cast<float>(h)) + dy, lx2,
-                  px(0.53f * static_cast<float>(h)) + dy + line_h - 1};
+    const int32_t date_y = y1 + px(0.10f * static_cast<float>(gh));
+    l.date_line = {lx1, date_y, lx2, date_y + line_h - 1};
+    l.day_line = {lx1, date_y + line_h, lx2, date_y + 2 * line_h - 1};
     l.bounds = {};
     for (const DirtyRect& d : l.digits) {
         l.bounds.add(d);
