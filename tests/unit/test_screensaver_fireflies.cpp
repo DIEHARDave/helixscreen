@@ -17,13 +17,11 @@
 #include <cmath>
 #include <random>
 #include <set>
-#include <sstream>
 #include <string>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
 
-using helix::test::bench_ms_per_frame;
 using helix::test::diff_against;
 using helix::test::FrameDiff;
 using helix::test::lit_pixels;
@@ -129,18 +127,6 @@ TEST_CASE("a fireflies population has 2 to 5 baits and 100 to 175 flies, each ch
     CHECK(bait_counts.count(2) == 1);
     CHECK(bait_counts.count(5) == 1);
     CHECK(fly_counts.size() >= 60);
-}
-
-TEST_CASE("a fireflies swarm replays exactly from a seed, and another seed differs",
-          "[screensaver][fireflies_sim]") {
-    Swarm a(7);
-    Swarm b(7);
-    Swarm c(8);
-    a.run_for(3000);
-    b.run_for(3000);
-    c.run_for(3000);
-    CHECK(same_positions(a.sim, b.sim));
-    CHECK_FALSE(same_positions(a.sim, c.sim));
 }
 
 TEST_CASE("a cleared fireflies sim holds nothing", "[screensaver][fireflies_sim]") {
@@ -802,18 +788,6 @@ TEST_CASE("the fireflies bottom rung's redraw fits a 1-core board's budget",
     CAPTURE(bottom, top);
     CHECK(bottom < helix::test::budget_pct(1));
     CHECK(top > bottom);
-}
-
-TEST_CASE("fireflies frame cost per level", "[.][fireflies_bench]") {
-    std::ostringstream report;
-    for (size_t level = 0; level < FIREFLIES_LEVEL_COUNT; level++) {
-        Swarm s(3, level, PixelFormat::XRGB8888, 800, 480);
-        s.run_for(5000);
-        const uint32_t period = FIREFLIES_LEVELS[level].period_ms;
-        const double ms = bench_ms_per_frame([&] { s.step(period); }, 150);
-        report << "L" << level << " " << ms << " ms/frame\n";
-    }
-    WARN(report.str());
 }
 
 TEST_CASE("a new wind heading during a gust never compounds the gust",

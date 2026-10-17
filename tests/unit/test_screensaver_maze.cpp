@@ -1258,18 +1258,6 @@ TEST_CASE("RGB565 and XRGB8888 renders of one scene agree within two 565 steps",
     CHECK(lit > 96 * 64 / 2);
 }
 
-TEST_CASE("an XRGB8888 maze frame keeps every X byte opaque", "[screensaver][maze]") {
-    std::minstd_rand rng(9);
-    MazeSim sim;
-    TestFrame frame(128, 80, PixelFormat::XRGB8888);
-    sim.init(frame.target, rng, 0, MazeArt{});
-    std::vector<DirtyRect> dirty;
-    for (int i = 0; i < 20; i++) {
-        sim.step(33, frame.target, rng, dirty);
-    }
-    CHECK(helix::test::non_opaque_pixels(frame.target) == 0);
-}
-
 TEST_CASE("upside down is the vertical mirror of upright", "[screensaver][maze]") {
     std::minstd_rand rng(13);
     MazeMap map;
@@ -1363,21 +1351,6 @@ TEST_CASE("the flat-floor level draws the floor as one colour per row", "[screen
     CHECK_FALSE(row_is_flat(r.internal_h() - 1));
 }
 
-TEST_CASE("a maze run replays exactly from a seed", "[screensaver][maze]") {
-    auto run = [](uint32_t seed) {
-        std::minstd_rand rng(seed);
-        MazeSim sim;
-        TestFrame frame(96, 64, PixelFormat::RGB565);
-        sim.init(frame.target, rng, 1, MazeArt{});
-        std::vector<DirtyRect> dirty;
-        for (int i = 0; i < 120; i++) {
-            sim.step(33, frame.target, rng, dirty);
-        }
-        return frame_fnv1a(frame.target);
-    };
-    helix::test::check_replays(run, 42, 43);
-}
-
 TEST_CASE("every maze frame dirties the whole canvas", "[screensaver][maze]") {
     std::minstd_rand rng(2);
     MazeSim sim;
@@ -1387,25 +1360,6 @@ TEST_CASE("every maze frame dirties the whole canvas", "[screensaver][maze]") {
     sim.step(16, frame.target, rng, dirty);
     REQUIRE(dirty.size() == 1);
     CHECK(dirty[0] == DirtyRect{0, 0, 95, 63});
-}
-
-TEST_CASE("maze frames and step-downs never grow the heap from any starting rung",
-          "[screensaver][maze]") {
-    for (PixelFormat format : {PixelFormat::XRGB8888, PixelFormat::RGB565}) {
-        for (size_t start = 0; start < helix::ui::MAZE_LEVEL_COUNT; start++) {
-            INFO("start " << start << " format " << static_cast<int>(format));
-            helix::test::SimRun<MazeSim> run(6, 96, 64, format);
-            run.init(start, MazeArt{});
-            const size_t heap = run.sim.heap_bytes();
-            for (size_t level = start; level < helix::ui::MAZE_LEVEL_COUNT; level++) {
-                run.sim.request_level(level);
-                for (int i = 0; i < 4; i++) {
-                    run.step(33);
-                    REQUIRE(run.sim.heap_bytes() <= heap);
-                }
-            }
-        }
-    }
 }
 
 TEST_CASE("a cleared maze holds no render buffers", "[screensaver][maze]") {

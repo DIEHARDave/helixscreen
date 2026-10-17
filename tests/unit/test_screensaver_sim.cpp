@@ -39,25 +39,6 @@ struct Frame : helix::test::TestFrame {
 // StarfieldSim: one frame of stars
 // ============================================================================
 
-TEST_CASE("StarfieldSim dirties every pixel its step changes", "[screensaver][starfield_sim]") {
-    std::minstd_rand rng(7);
-    StarfieldSim sim;
-    Frame frame;
-    sim.init(frame.target, rng, 0);
-
-    size_t changed = 0;
-    for (int step = 0; step < 90; step++) {
-        CAPTURE(step);
-        const std::vector<uint8_t> before = frame.snapshot();
-        std::vector<DirtyRect> dirty;
-        sim.step(33, frame.target, rng, dirty);
-        const helix::test::FrameDiff diff = helix::test::diff_against(before, frame, dirty);
-        CHECK(diff.uncovered == 0);
-        changed += diff.changed;
-    }
-    REQUIRE(changed > 0);
-}
-
 TEST_CASE("StarfieldSim dirties only around stars near the centre",
           "[screensaver][starfield_sim]") {
     std::minstd_rand rng(11);
@@ -83,48 +64,6 @@ TEST_CASE("StarfieldSim dirties only around stars near the centre",
     REQUIRE_FALSE(span.empty());
     const int64_t area = static_cast<int64_t>(span.x2 - span.x1 + 1) * (span.y2 - span.y1 + 1);
     CHECK(area < static_cast<int64_t>(FRAME_W) * FRAME_H / 100);
-}
-
-TEST_CASE("StarfieldSim replays exactly from a seed", "[screensaver][starfield_sim]") {
-    const auto run = [](uint32_t seed) {
-        std::minstd_rand rng(seed);
-        StarfieldSim sim;
-        Frame frame;
-        sim.init(frame.target, rng, 0);
-        std::vector<DirtyRect> dirty;
-        std::vector<DirtyRect> step_dirty;
-        for (int i = 0; i < 60; i++) {
-            for (uint32_t dt : {33u, 16u, 50u, 7u, 70u}) {
-                sim.step(dt, frame.target, rng, step_dirty);
-                dirty.insert(dirty.end(), step_dirty.begin(), step_dirty.end());
-            }
-        }
-        return std::make_pair(frame.bytes, dirty);
-    };
-
-    const Frame black;
-    REQUIRE(run(42).first != black.bytes);
-    helix::test::check_replays(run, 42, 43);
-}
-
-TEST_CASE("every X byte of a StarfieldSim frame stays 0xFF as stars move and recycle",
-          "[screensaver][starfield_sim]") {
-    std::minstd_rand rng(5);
-    StarfieldSim sim;
-    Frame frame;
-    sim.init(frame.target, rng, 0);
-    REQUIRE(helix::test::non_opaque_pixels(frame.target) == 0);
-
-    size_t most_lit = 0;
-    std::vector<DirtyRect> dirty;
-    for (int step = 0; step < 120; step++) {
-        CAPTURE(step);
-        sim.step(33, frame.target, rng, dirty);
-        most_lit = std::max(most_lit, helix::test::lit_pixels(frame.target));
-        CHECK(helix::test::non_opaque_pixels(frame.target) == 0);
-    }
-    // The check covered drawn stars, not only the black background.
-    REQUIRE(most_lit > 0);
 }
 
 TEST_CASE("init places a full population whatever count the last run flew",

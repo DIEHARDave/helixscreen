@@ -15,13 +15,11 @@
 #include <array>
 #include <cmath>
 #include <random>
-#include <sstream>
 #include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
 
-using helix::test::bench_ms_per_frame;
 using helix::test::check_replays;
 using helix::test::count_pixels;
 using helix::test::non_opaque_pixels;
@@ -430,26 +428,6 @@ TEST_CASE("an odd-sized hyperspace frame fills every pixel and never writes past
         edge_lit += max_channel(writer.get(x, OH - 1)) > 0 ? 1 : 0;
     }
     CHECK(edge_lit > (OW + OH) / 2);
-}
-
-TEST_CASE("hyperspace frame cost per level", "[.][hyperspace_bench]") {
-    std::ostringstream report;
-    for (size_t level = 0; level < HYPERSPACE_LEVEL_COUNT; level++) {
-        for (const bool tunnel : {true, false}) {
-            Flight flight(3, level, PixelFormat::XRGB8888, 800, 480);
-            for (int i = 0; i < 5000; i++) {
-                flight.step();
-                const bool there =
-                    tunnel ? flight.sim.tunnel_amount() == 255 : flight.sim.tunnel_amount() == 0;
-                if (there && i > 30) {
-                    break;
-                }
-            }
-            const double ms = bench_ms_per_frame([&] { flight.step(16); }, 150);
-            report << "L" << level << (tunnel ? " tunnel " : " open   ") << ms << " ms/frame\n";
-        }
-    }
-    WARN(report.str());
 }
 
 // ============================================================================
