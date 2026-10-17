@@ -1052,6 +1052,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   marked busy until restart.
 - **AFC in toolchanger mode** draws its real toolheads (a Box Turtle as four heads, not one
   nozzle behind a hub).
+- **Reprint from Print History could crash** (#1815) - pressing Reprint on a job's details
+  read the job's filename after the history list had already let go of it, which crashed
+  some printers and silently picked the wrong text on others. It now keeps its own copy.
 - **Selecting a parked hub-fed head swapped its filament** (#1811) - where a hub feeds
   several lanes into one toolhead, tapping that head in the Tool Switcher, or preheating it,
   picked the head's lowest lane instead of the one loaded in it. It now keeps the loaded lane.
