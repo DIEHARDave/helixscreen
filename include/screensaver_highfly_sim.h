@@ -39,12 +39,14 @@ struct HighFlyLevel {
     bool still; ///< draw the scene once, then only the clock
 };
 
-/// Most expensive first: layers go before the deck coarsens; the last rung stands still.
+/// Most expensive first: layers go before the deck coarsens, the coarse deck slows to a slow
+/// drift before it stops, and the last rung stands still.
 inline constexpr HighFlyLevel HIGHFLY_LEVELS[] = {
     {SAVER_FAST_PERIOD, 2, 117, 3, true, false},
     {33, 2, 117, 3, true, false},
     {33, 2, 117, 0, true, false},
     {50, 4, 70, 0, false, false},
+    {125, 4, 70, 0, false, false},
     {250, 2, 117, 3, true, true},
 };
 inline constexpr size_t HIGHFLY_LEVEL_COUNT = std::size(HIGHFLY_LEVELS);
@@ -244,7 +246,28 @@ class HighFlySim {
     };
     BillboardScreen billboard_screen(const Billboard& b) const;
     size_t collect_billboards(Billboard* out, size_t cap) const;
-    void draw_numerals(FrameTarget& frame, const ClockReading& reading) const;
+    /// The numerals, drawn in two groups so the seconds ticking redraw only their own.
+    enum class NumeralGroup : uint8_t { HOURS_MINUTES, SECONDS };
+    /// One group's numerals and shadows over the scene, baked once per digit change: per pixel
+    /// of `box` (the canvas box at no drift, halos included), what of the scene still shows
+    /// (top byte, 0 to 255) and their colour over black (low 24 bits, R G B).
+    struct NumeralLayer {
+        DirtyRect box;
+        std::vector<uint32_t> over;
+        std::array<int, 4> digits{-1, -1, -1, -1}; ///< what `over` shows, -1 before a bake
+    };
+    class LayerWriter;
+    /// Draws group `g` of `reading` at layout `l` into `writer`.
+    void draw_numeral_group(LayerWriter& writer, const ClockReading& reading, NumeralGroup g,
+                            const HighFlyClockLayout& l) const;
+    /// Sizes the two layers for the current clock size.
+    void size_numerals();
+    /// Bakes `layer` for group `g` showing `digits` from `reading`.
+    void bake_numerals(NumeralLayer& layer, NumeralGroup g, const ClockReading& reading,
+                       const std::array<int, 4>& digits);
+    /// Composes the numerals over `frame` where the clock is now, baking a group first when
+    /// its digits changed.
+    void draw_numerals(FrameTarget& frame, const ClockReading& reading);
     void update_clock_layout();
     /// The clock bounds as an internal box.
     DirtyRect clock_box_internal() const;
@@ -276,7 +299,8 @@ class HighFlySim {
     bool painted_ = false;
     bool last_full_ = false;
     bool scene_released_ = false;
-    HighFlyField field_;
+    std::vector<int16_t> deck_height_; ///< the baked deck, texels x 128, HIGHFLY_FIELD^2
+    std::vector<uint8_t> deck_shade_;  ///< and its shade, 0 to 255
     HeightfieldRenderer renderer_;
     std::vector<Rgb> sky_;       ///< internal row-major, static
     std::vector<Rgb> frame_;     ///< internal row-major
@@ -284,10 +308,11 @@ class HighFlySim {
     HighFlyTexture band_;
     std::array<HighFlyTexture, HIGHFLY_LAYER_COUNT> layers_{};
     std::array<HighFlyTexture, HIGHFLY_TOWER_VARIANTS> towers_tex_{};
-    std::vector<float> wisp_;     ///< polar wisp noise, 64 log-radius rows x 128 angles
-    std::vector<uint16_t> polar_; ///< per internal pixel: log-radius, angle, radial weight
-    std::vector<int32_t> col_u0_; ///< billboard sampling, per internal column
-    std::vector<float> col_fu_;
+    std::vector<float> wisp_;         ///< polar wisp noise, 64 log-radius rows x 128 angles
+    std::vector<uint16_t> polar_;     ///< per internal pixel: log-radius, angle, radial weight
+    std::vector<int32_t> col_u0_;     ///< billboard sampling, per internal column
+    std::vector<uint16_t> col_fu_;    ///< and its weight toward the next texel, 0 to 256
+    std::vector<uint16_t> slice_vis_; ///< per deck slice: how much of a billboard shows, 0 to 256
     std::array<Tower, 2> towers_{};
     std::vector<double> tower_entries_;
     std::vector<double> fly_starts_;
@@ -298,6 +323,7 @@ class HighFlySim {
     StrokeDigitSet second_digits_;
     StrokeDigitSet digit_halo_; ///< digits_ widened and blurred, drawn under them
     StrokeDigitSet second_halo_;
+    std::array<NumeralLayer, 2> numerals_{}; ///< by NumeralGroup
     ClockReading shown_;
 };
 

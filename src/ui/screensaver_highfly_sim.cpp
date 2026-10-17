@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 
 namespace helix::ui {
@@ -84,6 +85,9 @@ constexpr float TOWER_FOGMUL = 0.25f;
 constexpr float BODY_Q = 0.09f;
 /// The fly-through cloud is this far ahead when its whiteout begins.
 constexpr float FLY_FACE = 10.0f;
+
+/// The deck's stored heights are texels times this, rounded.
+constexpr float DECK_HEIGHT_STEPS = 128.0f;
 
 constexpr size_t HISTORY_CAP = 64;
 /// Rows the deck may rise in a frame: the band repaints this far above last frame's top.
@@ -189,6 +193,22 @@ void premultiplied_rgba(Rgb c, float alpha, uint8_t* out) {
     out[1] = static_cast<uint8_t>(c.g * alpha + 0.5f);
     out[2] = static_cast<uint8_t>(c.b * alpha + 0.5f);
     out[3] = static_cast<uint8_t>(alpha * 255.0f + 0.5f);
+}
+
+/// The premultiplied RGBA texel at column `u` of `row`, as one little-endian word.
+inline uint32_t texel_at(const uint8_t* row, int32_t u) {
+    uint32_t v = 0;
+    std::memcpy(&v, row + static_cast<size_t>(u) * 4, sizeof(v));
+    return v;
+}
+
+/// `p` moved `f` (0 to 256) 256ths of the way to `q`, each byte truncated, two at a time.
+inline uint32_t lerp_rgba(uint32_t p, uint32_t q, int32_t f) {
+    const auto t = static_cast<uint32_t>(f);
+    const uint32_t keep = 256u - t;
+    const uint32_t even = ((p & 0x00FF00FFu) * keep + (q & 0x00FF00FFu) * t) >> 8 & 0x00FF00FFu;
+    const uint32_t odd = ((p >> 8 & 0x00FF00FFu) * keep + (q >> 8 & 0x00FF00FFu) * t) & 0xFF00FF00u;
+    return even | odd;
 }
 
 /// Density to premultiplied RGBA, lit from above by the light the cloud lets through.
@@ -656,19 +676,19 @@ class HighFlySim::Scene : public HeightfieldScene {
     void sample_slice(size_t index, const HeightfieldSlice& slice, float* heights,
                       Rgb* colors) override {
         const HighFlySim& s = sim_;
-        const float* hf = s.field_.height.data();
-        const float* sh = s.field_.shade.data();
+        const int16_t* hf = s.deck_height_.data();
+        const uint8_t* sh = s.deck_shade_.data();
         const Rgb* lut = &s.slice_lut_[index * 256];
         const float wy = -s.deck_texels_ - slice.z * HIGHFLY_TEXELS_PER_UNIT;
         const float wy_floor = std::floor(wy);
         const float fv = wy - wy_floor;
         const int32_t v0 = static_cast<int32_t>(static_cast<int64_t>(wy_floor) & (N - 1));
         const int32_t v1 = (v0 + 1) & (N - 1);
-        const float* row0h = hf + static_cast<size_t>(v0) * N;
-        const float* row1h = hf + static_cast<size_t>(v1) * N;
-        const float* row0s = sh + static_cast<size_t>(v0) * N;
-        const float* row1s = sh + static_cast<size_t>(v1) * N;
-        const float inv_xs = 1.0f / HIGHFLY_TEXELS_PER_UNIT;
+        const int16_t* row0h = hf + static_cast<size_t>(v0) * N;
+        const int16_t* row1h = hf + static_cast<size_t>(v1) * N;
+        const uint8_t* row0s = sh + static_cast<size_t>(v0) * N;
+        const uint8_t* row1s = sh + static_cast<size_t>(v1) * N;
+        const float to_world = 1.0f / (HIGHFLY_TEXELS_PER_UNIT * DECK_HEIGHT_STEPS);
         for (int32_t c = 0; c < s.iw_; c++) {
             const float wx = (FIELD_X0 + slice.x_left + static_cast<float>(c) * slice.x_step) *
                              HIGHFLY_TEXELS_PER_UNIT;
@@ -676,13 +696,16 @@ class HighFlySim::Scene : public HeightfieldScene {
             const float fu = wx - wx_floor;
             const int32_t u0 = static_cast<int32_t>(static_cast<int64_t>(wx_floor) & (N - 1));
             const int32_t u1 = (u0 + 1) & (N - 1);
-            const float h0 = row0h[u0] + (row0h[u1] - row0h[u0]) * fu;
-            const float h1 = row1h[u0] + (row1h[u1] - row1h[u0]) * fu;
-            heights[c] = (h0 + (h1 - h0) * fv) * inv_xs;
-            const float s0 = row0s[u0] + (row0s[u1] - row0s[u0]) * fu;
-            const float s1 = row1s[u0] + (row1s[u1] - row1s[u0]) * fu;
-            const float shade = s0 + (s1 - s0) * fv;
-            colors[c] = lut[unit_to_u8(shade)];
+            const float h0 =
+                static_cast<float>(row0h[u0]) + static_cast<float>(row0h[u1] - row0h[u0]) * fu;
+            const float h1 =
+                static_cast<float>(row1h[u0]) + static_cast<float>(row1h[u1] - row1h[u0]) * fu;
+            heights[c] = (h0 + (h1 - h0) * fv) * to_world;
+            const float s0 =
+                static_cast<float>(row0s[u0]) + static_cast<float>(row0s[u1] - row0s[u0]) * fu;
+            const float s1 =
+                static_cast<float>(row1s[u0]) + static_cast<float>(row1s[u1] - row1s[u0]) * fu;
+            colors[c] = lut[static_cast<uint8_t>(s0 + (s1 - s0) * fv + 0.5f)];
         }
     }
 
@@ -721,6 +744,7 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
     build_stroke_digits(clock_.second_unit, DIGIT_STROKE, second_digits_);
     build_stroke_halo(digits_, clock_.halo, digit_halo_);
     build_stroke_halo(second_digits_, clock_.second_halo, second_halo_);
+    size_numerals();
 
     FrameTarget out = frame;
     paint_all(out, reading);
@@ -731,7 +755,17 @@ void HighFlySim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t le
 }
 
 void HighFlySim::build_scene(std::minstd_rand& rng) {
-    build_highfly_field(rng, field_);
+    {
+        HighFlyField field;
+        build_highfly_field(rng, field);
+        deck_height_.resize(field.height.size());
+        deck_shade_.resize(field.shade.size());
+        for (size_t i = 0; i < field.height.size(); i++) {
+            deck_height_[i] = static_cast<int16_t>(
+                std::clamp(std::lround(field.height[i] * DECK_HEIGHT_STEPS), -32767L, 32767L));
+            deck_shade_[i] = unit_to_u8(field.shade[i]);
+        }
+    }
     make_band(rng, band_);
     for (HighFlyTexture& layer : layers_) {
         make_layer(rng, layer);
@@ -760,8 +794,8 @@ void HighFlySim::build_scene(std::minstd_rand& rng) {
 }
 
 void HighFlySim::release_scene() {
-    release_buffers(field_.height, field_.shade, sky_, slice_lut_, band_.rgba, wisp_, polar_,
-                    col_u0_, col_fu_, tower_entries_, fly_starts_, boxes_, last_boxes_);
+    release_buffers(deck_height_, deck_shade_, sky_, slice_lut_, band_.rgba, wisp_, polar_, col_u0_,
+                    col_fu_, slice_vis_, tower_entries_, fly_starts_, boxes_, last_boxes_);
     renderer_.clear();
     for (HighFlyTexture& t : layers_) {
         release_buffer(t.rgba);
@@ -819,6 +853,7 @@ void HighFlySim::apply_view(bool bake) {
     polar_.resize(static_cast<size_t>(iw_) * ih_ * 3);
     col_u0_.resize(static_cast<size_t>(iw_));
     col_fu_.resize(static_cast<size_t>(iw_));
+    slice_vis_.resize(renderer_.slices().size());
     if (bake && (baked_w_ != iw_ || baked_h_ != ih_)) {
         build_sky();
         build_polar();
@@ -1104,18 +1139,35 @@ void HighFlySim::draw_billboard(const Billboard& b) {
         if (b.wrap) {
             const float fl = std::floor(xs);
             col_u0_[x] = wrap_index(static_cast<int64_t>(fl), tex.w);
-            col_fu_[x] = xs - fl;
+            col_fu_[x] = static_cast<uint16_t>((xs - fl) * 256.0f + 0.5f);
         } else if (xs < -0.5f || xs > static_cast<float>(tex.w) - 0.5f) {
             col_u0_[x] = -1;
         } else {
             const float ux = std::clamp(xs, 0.0f, static_cast<float>(tex.w) - 1.001f);
             col_u0_[x] = static_cast<int32_t>(ux);
-            col_fu_[x] = ux - static_cast<float>(col_u0_[x]);
+            col_fu_[x] =
+                static_cast<uint16_t>((ux - static_cast<float>(col_u0_[x])) * 256.0f + 0.5f);
         }
     }
-    const std::vector<HeightfieldSlice>& slices = renderer_.slices();
+    // Fixed point from here: weights and coverage in 1/256ths. The near white and the fog are
+    // both linear in the premultiplied texel, so together they are a scale of its colour plus
+    // a colour times its coverage.
+    const auto u8_of = [](float v) { return static_cast<int32_t>(v * 256.0f + 0.5f); };
+    const int32_t keep_own = u8_of((1.0f - nw) * (1.0f - f));
+    const int32_t add_r = u8_of(C_LIT.r * nw * (1.0f - f) + C_FOG.r * f);
+    const int32_t add_g = u8_of(C_LIT.g * nw * (1.0f - f) + C_FOG.g * f);
+    const int32_t add_b = u8_of(C_LIT.b * nw * (1.0f - f) + C_FOG.b * f);
+    const int32_t alpha = u8_of(b.alpha);
+    if (b.depth_test) {
+        const std::vector<HeightfieldSlice>& slices = renderer_.slices();
+        for (size_t i = 0; i < slices.size(); i++) {
+            slice_vis_[i] =
+                static_cast<uint16_t>(u8_of(highfly_layer_visibility(slices[i].z, b.z)));
+        }
+    }
+    const uint16_t* depth = renderer_.depth_data();
+    const auto ih = static_cast<size_t>(ih_);
     const uint8_t* rgba = tex.rgba.data();
-    const auto alpha8 = b.alpha;
     for (int32_t y = box.y1; y <= box.y2; y++) {
         const float ys = (static_cast<float>(y) + 0.5f - top) / sy - 0.5f;
         if (!b.wrap && (ys < -0.5f || ys > static_cast<float>(tex.h) - 0.5f)) {
@@ -1123,7 +1175,7 @@ void HighFlySim::draw_billboard(const Billboard& b) {
         }
         const float vy = std::clamp(ys, 0.0f, static_cast<float>(tex.h) - 1.001f);
         const auto v0 = static_cast<int32_t>(vy);
-        const float fv = vy - static_cast<float>(v0);
+        const int32_t fv = u8_of(vy - static_cast<float>(v0));
         const uint8_t* r0 = rgba + static_cast<size_t>(v0) * tex.w * 4;
         const uint8_t* r1 = r0 + static_cast<size_t>(tex.w) * 4;
         Rgb* out = &frame_[static_cast<size_t>(y) * iw_];
@@ -1132,44 +1184,40 @@ void HighFlySim::draw_billboard(const Billboard& b) {
             if (u0 < 0) {
                 continue;
             }
-            const int32_t u1 = b.wrap ? (u0 + 1 == tex.w ? 0 : u0 + 1) : u0 + 1;
-            const float fu = col_fu_[x];
-            float s[4];
-            for (int ch = 0; ch < 4; ch++) {
-                const float top_v = r0[u0 * 4 + ch] + (r0[u1 * 4 + ch] - r0[u0 * 4 + ch]) * fu;
-                const float bot_v = r1[u0 * 4 + ch] + (r1[u1 * 4 + ch] - r1[u0 * 4 + ch]) * fu;
-                s[ch] = (top_v + (bot_v - top_v) * fv) * alpha8;
+            int32_t vis = 256;
+            if (b.depth_test) {
+                const uint16_t d = depth[static_cast<size_t>(x) * ih + y];
+                if (d != HeightfieldRenderer::NO_DEPTH) {
+                    vis = slice_vis_[d];
+                    if (vis == 0) {
+                        continue;
+                    }
+                }
             }
-            float a = s[3] / 255.0f;
-            if (a <= 0.002f) {
+            const int32_t u1 = b.wrap ? (u0 + 1 == tex.w ? 0 : u0 + 1) : u0 + 1;
+            const int32_t fu = col_fu_[x];
+            const uint32_t texel = lerp_rgba(lerp_rgba(texel_at(r0, u0), texel_at(r0, u1), fu),
+                                             lerp_rgba(texel_at(r1, u0), texel_at(r1, u1), fu), fv);
+            // Coverage x 256, after the billboard's alpha and the deck in front.
+            const int32_t a = ((static_cast<int32_t>(texel >> 24) * alpha + 127) / 255) * vis >> 8;
+            if (a == 0) {
                 continue;
             }
-            float rr = s[0];
-            float gg = s[1];
-            float bb = s[2];
-            // Near clouds glow white; fog is premultiplied like the colour.
-            rr += (C_LIT.r * a - rr) * nw;
-            gg += (C_LIT.g * a - gg) * nw;
-            bb += (C_LIT.b * a - bb) * nw;
-            rr = rr * (1.0f - f) + C_FOG.r * a * f;
-            gg = gg * (1.0f - f) + C_FOG.g * a * f;
-            bb = bb * (1.0f - f) + C_FOG.b * a * f;
-            if (b.depth_test) {
-                const uint16_t depth = renderer_.depth_slice_at(x, y);
-                const float deck_z = depth == HeightfieldRenderer::NO_DEPTH
-                                         ? std::numeric_limits<float>::infinity()
-                                         : slices[depth].z;
-                const float vis = highfly_layer_visibility(deck_z, b.z);
-                a *= vis;
-                rr *= vis;
-                gg *= vis;
-                bb *= vis;
-            }
+            // Each channel x 256: the texel's colour at the billboard's alpha, kept by the near
+            // white and the fog, plus what they add at its coverage.
+            const int32_t scale = alpha * vis >> 8;
+            const int32_t rr =
+                ((static_cast<int32_t>(texel & 0xFF) * scale * keep_own) >> 8) + (a * add_r >> 8);
+            const int32_t gg = ((static_cast<int32_t>(texel >> 8 & 0xFF) * scale * keep_own) >> 8) +
+                               (a * add_g >> 8);
+            const int32_t bb =
+                ((static_cast<int32_t>(texel >> 16 & 0xFF) * scale * keep_own) >> 8) +
+                (a * add_b >> 8);
             Rgb& o = out[x];
-            const float keep = 1.0f - a;
-            o = {static_cast<uint8_t>(std::clamp(rr + o.r * keep, 0.0f, 255.0f)),
-                 static_cast<uint8_t>(std::clamp(gg + o.g * keep, 0.0f, 255.0f)),
-                 static_cast<uint8_t>(std::clamp(bb + o.b * keep, 0.0f, 255.0f))};
+            const int32_t keep = 256 - a;
+            o = {static_cast<uint8_t>(std::clamp((rr + o.r * keep) >> 8, 0, 255)),
+                 static_cast<uint8_t>(std::clamp((gg + o.g * keep) >> 8, 0, 255)),
+                 static_cast<uint8_t>(std::clamp((bb + o.b * keep) >> 8, 0, 255))};
         }
     }
 }
@@ -1256,8 +1304,36 @@ void HighFlySim::compose(int32_t from) {
     }
 }
 
-void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) const {
-    PixelWriter writer(frame);
+/// Blends layers over a scene not yet known, into NumeralLayer::over: per pixel the colour they
+/// leave over black and what of the scene still shows through them. A PixelWriter's contains()
+/// and blend_over(), so blit_stroke_digit() draws into it.
+class HighFlySim::LayerWriter {
+  public:
+    LayerWriter(std::vector<uint32_t>& over, int32_t w, int32_t h) : over_(over), w_(w), h_(h) {
+        std::fill(over_.begin(), over_.end(), 0xFF000000u);
+    }
+    bool contains(int32_t x, int32_t y) const {
+        return x >= 0 && y >= 0 && x < w_ && y < h_;
+    }
+    void blend_over(int32_t x, int32_t y, Rgb c, float alpha) {
+        uint32_t& v = over_[static_cast<size_t>(y) * w_ + x];
+        const Rgb own =
+            mix_rgb({static_cast<uint8_t>(v >> 16 & 0xFF), static_cast<uint8_t>(v >> 8 & 0xFF),
+                     static_cast<uint8_t>(v & 0xFF)},
+                    c, alpha);
+        const uint32_t shows = to_u8(static_cast<float>(v >> 24) * (1.0f - alpha));
+        v = shows << 24 | static_cast<uint32_t>(own.r) << 16 | static_cast<uint32_t>(own.g) << 8 |
+            own.b;
+    }
+
+  private:
+    std::vector<uint32_t>& over_;
+    int32_t w_;
+    int32_t h_;
+};
+
+void HighFlySim::draw_numeral_group(LayerWriter& writer, const ClockReading& reading,
+                                    NumeralGroup g, const HighFlyClockLayout& l) const {
     const std::array<int, 2> hour = two_digits(reading.time.hour);
     const std::array<int, 2> minute = two_digits(reading.time.minute);
     const std::array<int, 2> second = two_digits(reading.time.second);
@@ -1268,31 +1344,44 @@ void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) 
         const DirtyRect& box;
         int digit;
     };
-    const Place places[] = {
-        {digits_, digit_halo_, clock_.halo, clock_.digits[0], hour[0]},
-        {digits_, digit_halo_, clock_.halo, clock_.digits[1], hour[1]},
-        {digits_, digit_halo_, clock_.halo, clock_.digits[3], minute[0]},
-        {digits_, digit_halo_, clock_.halo, clock_.digits[4], minute[1]},
-        {second_digits_, second_halo_, clock_.second_halo, clock_.seconds[0], second[0]},
-        {second_digits_, second_halo_, clock_.second_halo, clock_.seconds[1], second[1]},
+    const bool seconds = g == NumeralGroup::SECONDS;
+    const Place big[] = {
+        {digits_, digit_halo_, l.halo, l.digits[0], hour[0]},
+        {digits_, digit_halo_, l.halo, l.digits[1], hour[1]},
+        {digits_, digit_halo_, l.halo, l.digits[3], minute[0]},
+        {digits_, digit_halo_, l.halo, l.digits[4], minute[1]},
     };
+    const Place small[] = {
+        {second_digits_, second_halo_, l.second_halo, l.seconds[0], second[0]},
+        {second_digits_, second_halo_, l.second_halo, l.seconds[1], second[1]},
+    };
+    const Place* places = seconds ? small : big;
+    const size_t count = seconds ? std::size(small) : std::size(big);
     // Every shadow first, so none falls across a neighbour's strokes.
-    for (const Place& p : places) {
+    for (size_t i = 0; i < count; i++) {
+        const Place& p = places[i];
         blit_stroke_digit(writer, p.halo, p.digit, p.box.x1 - p.pad, p.box.y1 - p.pad, HALO,
                           HALO_OPACITY);
     }
+    const auto strokes = [&] {
+        for (size_t i = 0; i < count; i++) {
+            const Place& p = places[i];
+            blit_stroke_digit(writer, p.set, p.digit, p.box.x1, p.box.y1, NUMERAL, NUMERAL_OPACITY);
+        }
+    };
+    if (seconds) {
+        strokes();
+        return;
+    }
 
     // The colon: two round dots, each with a soft shadow of its own.
-    const DirtyRect& c = clock_.digits[2];
-    const float r = std::max(1.0f, 0.05f * static_cast<float>(clock_.digit_unit));
-    const auto halo = static_cast<float>(clock_.halo);
+    const DirtyRect& c = l.digits[2];
+    const float r = std::max(1.0f, 0.05f * static_cast<float>(l.digit_unit));
+    const auto halo = static_cast<float>(l.halo);
     const float cx = static_cast<float>(c.x1 + c.x2 + 1) / 2.0f;
     for (const bool shadow : {true, false}) {
         if (!shadow) {
-            for (const Place& p : places) {
-                blit_stroke_digit(writer, p.set, p.digit, p.box.x1, p.box.y1, NUMERAL,
-                                  NUMERAL_OPACITY);
-            }
+            strokes();
         }
         const float reach = shadow ? r + halo : r;
         for (const float share : {0.35f, 0.75f}) {
@@ -1320,6 +1409,97 @@ void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) 
                     }
                 }
             }
+        }
+    }
+}
+
+void HighFlySim::size_numerals() {
+    const HighFlyClockLayout l = layout_highfly_clock(w_, h_, 0, 0);
+    DirtyRect big;
+    for (const DirtyRect& d : l.digits) {
+        big.add(d.x1 - l.halo, d.y1 - l.halo, d.x2 + l.halo, d.y2 + l.halo);
+    }
+    DirtyRect small;
+    for (const DirtyRect& d : l.seconds) {
+        small.add(d.x1 - l.second_halo, d.y1 - l.second_halo, d.x2 + l.second_halo,
+                  d.y2 + l.second_halo);
+    }
+    numerals_[0].box = big;
+    numerals_[1].box = small;
+    for (NumeralLayer& layer : numerals_) {
+        layer.over.assign(static_cast<size_t>(layer.box.area()), 0);
+        layer.digits = {-1, -1, -1, -1};
+    }
+}
+
+void HighFlySim::bake_numerals(NumeralLayer& layer, NumeralGroup g, const ClockReading& reading,
+                               const std::array<int, 4>& digits) {
+    LayerWriter writer(layer.over, layer.box.x2 - layer.box.x1 + 1,
+                       layer.box.y2 - layer.box.y1 + 1);
+    // The layout moved so the box's corner is the layer's.
+    draw_numeral_group(writer, reading, g,
+                       layout_highfly_clock(w_, h_, -layer.box.x1, -layer.box.y1));
+    layer.digits = digits;
+}
+
+namespace {
+
+/// `layer` composed over `frame` with its box moved by (dx, dy), in output format `F`.
+template <PixelFormat F>
+void compose_numeral_layer(const std::vector<uint32_t>& over, const DirtyRect& box, int32_t dx,
+                           int32_t dy, FrameTarget& frame) {
+    const int32_t bw = box.x2 - box.x1 + 1;
+    const DirtyRect at = DirtyRect{box.x1 + dx, box.y1 + dy, box.x2 + dx, box.y2 + dy}.clipped(
+        static_cast<int32_t>(frame.w), static_cast<int32_t>(frame.h));
+    const PixelWriter writer(frame);
+    for (int32_t y = at.y1; y <= at.y2; y++) {
+        uint8_t* row = writer.row(y);
+        const uint32_t* src = over.data() + static_cast<size_t>(y - dy - box.y1) * bw;
+        for (int32_t x = at.x1; x <= at.x2; x++) {
+            const uint32_t v = src[x - dx - box.x1];
+            const uint32_t shows = v >> 24;
+            if (shows == 255) {
+                continue;
+            }
+            Rgb bg;
+            if constexpr (F == PixelFormat::RGB565) {
+                const uint8_t* p = row + static_cast<size_t>(x) * 2;
+                bg = PixelWriter::unpack565(static_cast<uint16_t>(p[0] | p[1] << 8));
+            } else {
+                const uint8_t* p = row + static_cast<size_t>(x) * 4;
+                bg = {p[2], p[1], p[0]};
+            }
+            const auto ch = [shows](uint32_t own, uint32_t under) {
+                return static_cast<uint8_t>(std::min(255u, own + (under * shows + 127u) / 255u));
+            };
+            PixelWriter::put_dithered_in_row<F>(
+                row, x, y, {ch(v >> 16 & 0xFF, bg.r), ch(v >> 8 & 0xFF, bg.g), ch(v & 0xFF, bg.b)});
+        }
+    }
+}
+
+} // namespace
+
+void HighFlySim::draw_numerals(FrameTarget& frame, const ClockReading& reading) {
+    const std::array<int, 2> hour = two_digits(reading.time.hour);
+    const std::array<int, 2> minute = two_digits(reading.time.minute);
+    const std::array<int, 2> second = two_digits(reading.time.second);
+    const std::array<int, 4> wants[] = {{hour[0], hour[1], minute[0], minute[1]},
+                                        {second[0], second[1], -1, -1}};
+    for (size_t i = 0; i < numerals_.size(); i++) {
+        NumeralLayer& layer = numerals_[i];
+        if (layer.over.empty()) {
+            continue;
+        }
+        if (layer.digits != wants[i]) {
+            bake_numerals(layer, static_cast<NumeralGroup>(i), reading, wants[i]);
+        }
+        if (frame.format == PixelFormat::RGB565) {
+            compose_numeral_layer<PixelFormat::RGB565>(layer.over, layer.box, drift_.dx, drift_.dy,
+                                                       frame);
+        } else {
+            compose_numeral_layer<PixelFormat::XRGB8888>(layer.over, layer.box, drift_.dx,
+                                                         drift_.dy, frame);
         }
     }
 }
@@ -1468,12 +1648,15 @@ void HighFlySim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& rng,
 }
 
 size_t HighFlySim::heap_bytes() const {
-    size_t n = buffer_bytes(field_.height, field_.shade) + renderer_.heap_bytes() +
+    size_t n = buffer_bytes(deck_height_, deck_shade_) + renderer_.heap_bytes() +
                buffer_bytes(sky_, frame_, slice_lut_) + band_.heap_bytes() +
-               buffer_bytes(wisp_, polar_, col_u0_, col_fu_, tower_entries_, fly_starts_, boxes_,
-                            last_boxes_) +
+               buffer_bytes(wisp_, polar_, col_u0_, col_fu_, slice_vis_, tower_entries_,
+                            fly_starts_, boxes_, last_boxes_) +
                digits_.heap_bytes() + second_digits_.heap_bytes() + digit_halo_.heap_bytes() +
                second_halo_.heap_bytes();
+    for (const NumeralLayer& layer : numerals_) {
+        n += buffer_bytes(layer.over);
+    }
     for (const HighFlyTexture& t : layers_) {
         n += t.heap_bytes();
     }
@@ -1490,6 +1673,10 @@ void HighFlySim::clear() {
     second_digits_.clear();
     digit_halo_.clear();
     second_halo_.clear();
+    for (NumeralLayer& layer : numerals_) {
+        release_buffer(layer.over);
+        layer.digits = {-1, -1, -1, -1};
+    }
     towers_ = {};
     painted_ = false;
 }

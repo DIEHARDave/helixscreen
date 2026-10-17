@@ -183,12 +183,23 @@ void HeightfieldRenderer::render(HeightfieldScene& scene) {
             Rgb* col = &color_[static_cast<size_t>(x) * H];
             uint8_t* cov = &cover_[static_cast<size_t>(x) * H];
             uint16_t* dep = &depth_[static_cast<size_t>(x) * H];
-            for (int32_t r = r_from; r < r_to; r++) {
+            // The gradient's share of `last` in 16.16 and the feather's coverage x 255, both
+            // stepped down the span: (r - row) / span and (r + 0.5 - row) / feather at row r.
+            const float lead = static_cast<float>(r_from) - row;
+            int32_t g16 = grad ? static_cast<int32_t>(lead * inv_span * 65536.0f) : 0;
+            const int32_t g16_step = grad ? static_cast<int32_t>(inv_span * 65536.0f) : 0;
+            const int32_t dr = last.r - c.r;
+            const int32_t dg = last.g - c.g;
+            const int32_t db = last.b - c.b;
+            float a255 = (lead + 0.5f) * inv_feather * 255.0f;
+            const float a255_step = inv_feather * 255.0f;
+            for (int32_t r = r_from; r < r_to; r++, g16 += g16_step, a255 += a255_step) {
                 Rgb pix = c;
                 if (grad) {
-                    const float g =
-                        std::clamp((static_cast<float>(r) - row) * inv_span, 0.0f, 1.0f);
-                    pix = mix_rgb(c, last, g);
+                    const int32_t g = std::min(g16, 65536);
+                    pix = {static_cast<uint8_t>(c.r + ((dr * g + 0x8000) >> 16)),
+                           static_cast<uint8_t>(c.g + ((dg * g + 0x8000) >> 16)),
+                           static_cast<uint8_t>(c.b + ((db * g + 0x8000) >> 16))};
                 }
                 if (!soft) {
                     col[r] = pix;
@@ -202,9 +213,14 @@ void HeightfieldRenderer::render(HeightfieldScene& scene) {
                 if (have >= 255) {
                     continue;
                 }
-                const float a =
-                    std::clamp((static_cast<float>(r) + 0.5f - row) * inv_feather, 0.0f, 1.0f);
-                const auto a8 = static_cast<uint32_t>(a * 255.0f + 0.5f);
+                const uint32_t a8 = a255 >= 254.5f ? 255u : static_cast<uint32_t>(a255 + 0.5f);
+                if (have == 0 && a8 == 255) {
+                    // Fully covering an empty pixel: the colour itself.
+                    cov[r] = 255;
+                    col[r] = pix;
+                    dep[r] = depth_mark;
+                    continue;
+                }
                 const uint32_t wcov = (255u - have) * a8; // 0 to 65025
                 if (wcov == 0) {
                     continue;
@@ -365,6 +381,83 @@ void HeightfieldRenderer::clear() {
 
 // ---------- upscale ----------
 
+namespace {
+
+/// upscale_frame()'s rows and columns in output format `F`; the box is already clipped.
+template <PixelFormat F>
+void upscale_rows(const std::vector<Rgb>& frame, int32_t w, int32_t scale, int32_t y_from,
+                  int32_t y_to, int32_t x_from, int32_t x_to, int32_t ox0, int32_t cols,
+                  int32_t oy0, int32_t oy1, const PixelWriter& writer) {
+    constexpr size_t BYTES = pixel_bytes(F);
+    const auto put = [](uint8_t* row, int32_t x, int32_t y, Rgb c) {
+        PixelWriter::put_dithered_in_row<F>(row, x, y, c);
+    };
+    for (int32_t oy = oy0; oy < oy1; oy++) {
+        const int32_t sy = oy / scale;
+        uint8_t* row = writer.row(oy);
+        const Rgb* a = &frame[static_cast<size_t>(sy) * w];
+        if (scale != 2) {
+            if (F == PixelFormat::XRGB8888 && oy > oy0 && (oy - 1) / scale == sy) {
+                // Undithered, a replicated row is the row above it.
+                std::memcpy(row + ox0 * BYTES, writer.row(oy - 1) + ox0 * BYTES,
+                            static_cast<size_t>(cols - ox0) * BYTES);
+                continue;
+            }
+            int32_t ox = ox0;
+            for (int32_t sx = ox0 / scale; ox < cols; sx++) {
+                const Rgb c = a[sx];
+                for (const int32_t end = std::min(cols, (sx + 1) * scale); ox < end; ox++) {
+                    put(row, ox, oy, c);
+                }
+            }
+            continue;
+        }
+        // Bilinear at weights 3/4 and 1/4: each output pixel leans to the neighbour on its
+        // own side, rows clamped to the band being written. Blue, green and red ride in 16-bit
+        // lanes of one word, so each sum is one add for all three.
+        const int32_t sy2 = std::clamp((oy & 1) == 0 ? sy - 1 : sy + 1, y_from, y_to - 1);
+        const Rgb* b = &frame[static_cast<size_t>(sy2) * w];
+        const auto lanes = [](Rgb c) {
+            return static_cast<uint64_t>(c.b) | static_cast<uint64_t>(c.g) << 16 |
+                   static_cast<uint64_t>(c.r) << 32;
+        };
+        // A column sum: 3/4 own row, 1/4 neighbour, x4.
+        const auto vert = [a, b, &lanes](int32_t sx) { return 3 * lanes(a[sx]) + lanes(b[sx]); };
+        // Leaning 1/4 toward the neighbour column, rounded: each lane back to 0-255.
+        const auto lean = [](uint64_t own, uint64_t side) {
+            constexpr uint64_t ROUND = 8 | 8ull << 16 | 8ull << 32;
+            return (3 * own + side + ROUND) >> 4 & 0x000000FF00FF00FFull;
+        };
+        const auto emit = [&](int32_t ox, uint64_t v) {
+            if constexpr (F == PixelFormat::XRGB8888) {
+                const auto word = static_cast<uint32_t>(0xFF000000u | (v & 0xFF) |
+                                                        (v >> 8 & 0xFF00) | (v >> 16 & 0xFF0000));
+                std::memcpy(row + static_cast<size_t>(ox) * 4, &word, sizeof(word));
+            } else {
+                put(row, ox, oy,
+                    {static_cast<uint8_t>(v >> 32), static_cast<uint8_t>(v >> 16 & 0xFF),
+                     static_cast<uint8_t>(v & 0xFF)});
+            }
+        };
+        uint64_t prev = vert(std::max(0, x_from - 1));
+        uint64_t cur = vert(x_from);
+        for (int32_t sx = x_from; sx < x_to; sx++) {
+            const uint64_t next = sx + 1 < w ? vert(sx + 1) : cur;
+            const int32_t ox = sx * 2;
+            if (ox < cols) {
+                emit(ox, lean(cur, prev));
+            }
+            if (ox + 1 < cols) {
+                emit(ox + 1, lean(cur, next));
+            }
+            prev = cur;
+            cur = next;
+        }
+    }
+}
+
+} // namespace
+
 DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int32_t scale,
                         int32_t y_from, int32_t y_to, FrameTarget& out, int32_t x_from,
                         int32_t x_to) {
@@ -382,60 +475,13 @@ DirtyRect upscale_frame(const std::vector<Rgb>& frame, int32_t w, int32_t h, int
     if (cols <= ox0 || oy1 <= oy0) {
         return {};
     }
-
-    // A column sum (3/4 own row, 1/4 neighbour, x4) leaning 1/4 toward the neighbour column.
-    const auto quarter_lean = [](uint32_t own, uint32_t side) {
-        return static_cast<uint8_t>((3u * own + side + 8u) / 16u);
-    };
-    PixelWriter writer(out);
-    for (int32_t oy = oy0; oy < oy1; oy++) {
-        const int32_t sy = oy / scale;
-        const Rgb* a = &frame[static_cast<size_t>(sy) * w];
-        if (scale != 2) {
-            for (int32_t ox = ox0; ox < cols; ox++) {
-                const Rgb c = a[ox / scale];
-                writer.put_dithered(ox, oy, c);
-            }
-            continue;
-        }
-        // Bilinear at weights 3/4 and 1/4: each output pixel leans to the neighbour on its
-        // own side, rows clamped to the band being written.
-        const int32_t sy2 = std::clamp((oy & 1) == 0 ? sy - 1 : sy + 1, y_from, y_to - 1);
-        const Rgb* b = &frame[static_cast<size_t>(sy2) * w];
-        const auto vert = [a, b](int32_t sx, uint32_t& r, uint32_t& g, uint32_t& bl) {
-            r = 3u * a[sx].r + b[sx].r;
-            g = 3u * a[sx].g + b[sx].g;
-            bl = 3u * a[sx].b + b[sx].b;
-        };
-        uint32_t pr = 0, pg = 0, pb = 0;
-        uint32_t cr = 0, cg = 0, cb = 0;
-        uint32_t nr = 0, ng = 0, nb = 0;
-        vert(x_from, cr, cg, cb);
-        vert(std::max(0, x_from - 1), pr, pg, pb);
-        for (int32_t sx = x_from; sx < x_to; sx++) {
-            if (sx + 1 < w) {
-                vert(sx + 1, nr, ng, nb);
-            } else {
-                nr = cr;
-                ng = cg;
-                nb = cb;
-            }
-            const int32_t ox = sx * 2;
-            if (ox < cols) {
-                writer.put_dithered(
-                    ox, oy, {quarter_lean(cr, pr), quarter_lean(cg, pg), quarter_lean(cb, pb)});
-            }
-            if (ox + 1 < cols) {
-                writer.put_dithered(
-                    ox + 1, oy, {quarter_lean(cr, nr), quarter_lean(cg, ng), quarter_lean(cb, nb)});
-            }
-            pr = cr;
-            pg = cg;
-            pb = cb;
-            cr = nr;
-            cg = ng;
-            cb = nb;
-        }
+    const PixelWriter writer(out);
+    if (out.format == PixelFormat::RGB565) {
+        upscale_rows<PixelFormat::RGB565>(frame, w, scale, y_from, y_to, x_from, x_to, ox0, cols,
+                                          oy0, oy1, writer);
+    } else {
+        upscale_rows<PixelFormat::XRGB8888>(frame, w, scale, y_from, y_to, x_from, x_to, ox0, cols,
+                                            oy0, oy1, writer);
     }
     return {ox0, oy0, cols - 1, oy1 - 1};
 }

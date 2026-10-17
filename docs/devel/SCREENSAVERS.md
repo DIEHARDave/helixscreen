@@ -70,8 +70,8 @@ at 50 ms, and last 48 flies with 0.75 s tails at 100 ms; Aqua Surface per `AQUA_
 water at half resolution at 33 ms, then quarter resolution with fewer slices at 50 ms and
 100 ms (no new splashes at 100 ms), and last a still frame that redraws only the clock every
 250 ms; High Fly per `HIGHFLY_LEVELS`: half resolution at 33 ms, the same without the
-translucent layers, quarter resolution with fewer slices and no towers at 50 ms, and last a
-still frame that redraws only the clock. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
+translucent layers, quarter resolution with fewer slices and no towers at 50 ms and at 125 ms,
+and last a still frame that redraws only the clock. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).
 
@@ -387,8 +387,9 @@ are tables built once per view, so the inner loop has no divide.
 `render()` leaves premultiplied colour, coverage and the slice where coverage reached half
 (for depth-testing billboards); `resolve()` composes that over a background into a row-major
 frame; `upscale_frame()` writes rows and columns of it to the canvas at 2x (bilinear) or any
-other scale (replicated), dithered at 16 bpp. Both savers render at half the canvas and
-upscale.
+other scale (replicated), dithered at 16 bpp. It decides the output format once per call, sums
+the three channels in 16-bit lanes of one word, and at 32 bpp copies a replicated row from the
+row above. Both savers render at half the canvas and upscale.
 
 ## Aqua Surface
 
@@ -436,6 +437,14 @@ white haze over the bottom rows.
   them and a two-line date (or the print's ETA and time left) on the left. Every part has a
   soft deep-blue shadow so it reads over white cloud: under the numerals a halo baked once per
   glyph size (`build_stroke_halo`), under the text lines a `SaverLabelHalo`.
+- The numerals and their shadows are baked once per digit change into a layer per group
+  (hours and minutes, seconds): per pixel, the colour they leave over black and how much of the
+  scene shows through. A frame composes those layers over whatever it repainted, so the
+  stroke and halo blends run only when a digit changes, and the drift only moves the layers.
 - A frame repaints the band of rows from the far billows or the deck down, plus boxes above it
   for the clock, towers and the approaching cloud; a fly-through repaints the whole screen. The
   last rung keeps the scene still and redraws only the clock.
+- Its per-pixel work is fixed point: the deck is stored as 16-bit heights and byte shades (half
+  the floats' cache footprint), billboards sample with two channels per multiply and depth-test
+  through a per-slice visibility table, and the renderer's span gradient and feather step in
+  16.16 and 1/255ths.
