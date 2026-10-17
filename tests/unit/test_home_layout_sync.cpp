@@ -23,6 +23,7 @@
 #include "moonraker_client_mock.h"
 #include "moonraker_manager.h"
 #include "panel_widget_config.h"
+#include "panel_widget_manager.h"
 #include "printer_network_state.h"
 #include "printer_state.h"
 
@@ -395,4 +396,54 @@ TEST_CASE_METHOD(HomeLayoutSyncFixture,
     CHECK(get_printer_state().moonraker_locality() == MoonrakerLocality::Unknown);
     CHECK(lv_subject_get_int(lv_xml_get_subject(nullptr, "moonraker_locality")) == 0);
     CHECK_FALSE(HomeLayoutSync::instance().take_seed("printer_a").has_value());
+}
+
+TEST_CASE_METHOD(HomeLayoutSyncFixture,
+                 "home_layout_sync: an unedited default is not published until someone edits it",
+                 "[home_layout_sync]") {
+    set_locality(false);
+    ConfigTestAccess::data(local_config_) = json::object();
+    ConfigTestAccess::active_printer_id(local_config_) = "default";
+    PanelWidgetConfig wc("home", local_config_);
+    wc.load();
+    REQUIRE(wc.has_pending_anchors());
+
+    // Resolving the default for a known grid saves it.
+    wc.apply_pending_anchors(12, 8);
+    drain();
+    REQUIRE(wc.grid_signature() == "12x8");
+    REQUIRE(wc.is_unedited_default());
+    CHECK_FALSE(published());
+    wc.save();
+    drain();
+    CHECK_FALSE(published());
+
+    const PanelWidgetEntry& first = wc.entries().front();
+    REQUIRE(wc.set_enabled_by_id(first.id, !first.enabled));
+    REQUIRE_FALSE(wc.is_unedited_default());
+    wc.save();
+    drain();
+    CHECK(published());
+}
+
+TEST_CASE_METHOD(HomeLayoutSyncFixture,
+                 "home_layout_sync: on_connected as Local publishes the saved home layout",
+                 "[home_layout_sync]") {
+    json& data = ConfigTestAccess::data(*global_config_);
+    const json saved_data = data;
+    data["printers"]["printer_a"]["panel_widgets"]["home"] = saved_home_12x8();
+    PanelWidgetManager::instance().clear_all_panel_configs();
+
+    set_locality(false);
+    HomeLayoutSync::instance().on_connected();
+    drain();
+
+    const bool posted = published();
+    const json value = posted ? published_value() : json();
+    PanelWidgetManager::instance().clear_all_panel_configs();
+    data = saved_data;
+
+    REQUIRE(posted);
+    CHECK(value["grid"] == "12x8");
+    CHECK(home_layout::parse_payload(value).has_value());
 }

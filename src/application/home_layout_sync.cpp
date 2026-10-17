@@ -122,6 +122,12 @@ void HomeLayoutSync::publish(const PanelWidgetConfig& config) {
         spdlog::debug("[HomeLayoutSync] Home layout has no grid yet; not publishing");
         return;
     }
+    // A default nobody arranged is not the printer's layout: a client seeded
+    // from it would announce a copy of something no one chose.
+    if (config.is_unedited_default() || config.has_pending_anchors()) {
+        spdlog::debug("[HomeLayoutSync] Home layout is an unedited default; not publishing");
+        return;
+    }
 
     nlohmann::json payload =
         home_layout::build_payload(config.published_pages(), config.grid_signature(),

@@ -69,8 +69,9 @@ class HomeLayoutSync {
     void set_seed_listener(std::function<void(const std::string& printer_id)> fn);
 
     /// Post @p config's layout when this connection is Local, it is the home
-    /// panel, its grid is known, and the payload (saved_at aside) differs
-    /// from the last one posted on this connection. The save listener's body.
+    /// panel, its grid is known, it is not an unedited default, and the
+    /// payload (saved_at aside) differs from the last one posted on this
+    /// connection. The save listener's body.
     void publish(const PanelWidgetConfig& config);
 
   private:
