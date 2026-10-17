@@ -19,6 +19,8 @@
 #include <iterator>
 #include <vector>
 
+#include "../catch_amalgamated.hpp"
+
 // Test-only seam (prestonbrown/helixscreen#1591). The screensavers keep their
 // draw buffers, timers and simulation state private, and what the tests pin (the
 // stride contract, frame-time-driven motion, seeded replay) is only observable
@@ -109,6 +111,19 @@ class SaverTestAccess {
     }
 };
 
+/// Runs `timer`'s callback once, as lv_timer_handler() does when it comes due.
+inline void fire_timer(lv_timer_t* timer) {
+    REQUIRE(timer != nullptr);
+    REQUIRE(timer->timer_cb != nullptr);
+    timer->timer_cb(timer);
+}
+
+/// Moves LVGL's clock on `ms` and runs one frame of `saver`.
+inline void advance_saver(const SaverBase& saver, uint32_t ms) {
+    lv_tick_inc(ms);
+    fire_timer(SaverTestAccess::timer(saver));
+}
+
 /// Leaves the global refresh hold released with no configured period, on entry and however
 /// the test exits: the configured period is level 0's frame period for every saver started.
 struct ScopedGlobalRefreshHold {
@@ -153,6 +168,8 @@ template <typename Saver> LevelZeroPeriods level_zero_periods(uint32_t configure
 
 } // namespace helix::ui
 
+using helix::ui::advance_saver;
+using helix::ui::fire_timer;
 using helix::ui::level_zero_periods;
 using helix::ui::LevelZeroPeriods;
 using helix::ui::SaverTestAccess;
