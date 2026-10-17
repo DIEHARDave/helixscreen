@@ -156,8 +156,6 @@ void ControlsPanel::init_subjects() {
                               subjects_);
     UI_MANAGED_SUBJECT_INT(more_sensors_count_, 0, "controls_more_sensors_count", subjects_);
 
-    UI_MANAGED_SUBJECT_INT(calib_grid_columns_, 2, "calib_grid_columns", subjects_);
-    UI_MANAGED_SUBJECT_INT(calib_grid_rows_, 2, "calib_grid_rows", subjects_);
     UI_MANAGED_SUBJECT_INT(calib_grid_labels_, 1, "calib_grid_labels", subjects_);
 
     // Fan speed display
@@ -1144,16 +1142,15 @@ void ControlsPanel::handle_motors_clicked() {
     helix::ui::show_motors_off_confirm(api_, motors_confirmation_dialog_, object_lifetime_.token());
 }
 
-// DECLARATIVE_OK: which tiles are visible is decided by each tile's own XML
-// binding, so the count is read off the laid-out grid rather than re-derived
-// from the subjects those bindings watch, and the grid's size is measured
-// layout. Static and found by name because the subjects belong to whichever
-// panel instance built this grid.
+// DECLARATIVE_OK: measured layout. Which tiles are visible is decided by each
+// tile's own XML binding, so the count is read off the laid-out grid rather than
+// re-derived from the subjects those bindings watch; the cell size is computed
+// from the grid's measured box, gaps included, so the cells can never wrap into
+// a row the card clips. Static and found by name because the subject belongs to
+// whichever panel instance built this grid.
 void ControlsPanel::update_calib_grid(lv_obj_t* grid) {
-    lv_subject_t* columns = lv_xml_get_subject(nullptr, "calib_grid_columns");
-    lv_subject_t* rows = lv_xml_get_subject(nullptr, "calib_grid_rows");
     lv_subject_t* labels = lv_xml_get_subject(nullptr, "calib_grid_labels");
-    if (grid == nullptr || columns == nullptr || rows == nullptr || labels == nullptr) {
+    if (grid == nullptr || labels == nullptr) {
         return;
     }
     int visible = 0;
@@ -1166,10 +1163,23 @@ void ControlsPanel::update_calib_grid(lv_obj_t* grid) {
     const helix::ui::TileGridFit fit = helix::ui::fit_tile_grid(
         visible, lv_obj_get_content_width(grid), lv_obj_get_content_height(grid),
         lv_obj_get_style_pad_column(grid, LV_PART_MAIN),
+        lv_obj_get_style_pad_row(grid, LV_PART_MAIN),
         theme_manager_get_spacing("calib_tile_min_width"),
         theme_manager_get_spacing("calib_tile_min_height"));
-    lv_subject_set_int(columns, fit.cols);
-    lv_subject_set_int(rows, fit.rows);
+    if (fit.tile_w <= 0 || fit.tile_h <= 0) {
+        return;
+    }
+    // This runs from the grid's own LAYOUT_CHANGED: setting an unchanged size
+    // would dirty the layout again, so only a real change is written.
+    for (uint32_t i = 0; i < count; ++i) {
+        lv_obj_t* cell = lv_obj_get_child(grid, static_cast<int32_t>(i));
+        if (lv_obj_get_style_width(cell, LV_PART_MAIN) != fit.tile_w) {
+            lv_obj_set_width(cell, fit.tile_w);
+        }
+        if (lv_obj_get_style_height(cell, LV_PART_MAIN) != fit.tile_h) {
+            lv_obj_set_height(cell, fit.tile_h);
+        }
+    }
     lv_subject_set_int(labels, fit.fits ? 1 : 0);
 }
 

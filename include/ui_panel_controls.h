@@ -201,10 +201,8 @@ class ControlsPanel : public PanelBase {
     lv_subject_t more_sensors_count_{};
     void update_more_sensors();
 
-    // Calibration & Tools grid: columns, rows and label room for the tiles
-    // visible after layout, fitted to the grid's own size (fit_tile_grid)
-    lv_subject_t calib_grid_columns_{};
-    lv_subject_t calib_grid_rows_{};
+    // Calibration & Tools grid: cells sized for the tiles visible after layout,
+    // fitted to the grid's own box (fit_tile_grid); labels only where they fit
     lv_subject_t calib_grid_labels_{};
     static void update_calib_grid(lv_obj_t* grid);
 

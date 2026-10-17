@@ -8,6 +8,10 @@ namespace helix::ui {
 struct TileGridFit {
     int cols = 1;
     int rows = 1;
+    /// Whole-pixel tile size: `cols` tiles and their gaps never exceed the
+    /// box width, nor `rows` tiles and their gaps its height.
+    int tile_w = 0;
+    int tile_h = 0;
     /// Every tile meets the minimum size, so it has room for its label.
     bool fits = false;
 };
@@ -26,10 +30,12 @@ struct TileGridFit {
  * `fits` is false when even the best arrangement leaves its tile below the
  * minimum; callers drop the labels then rather than clip them.
  *
- * @param gap Space between tiles in px, the same on both axes.
+ * @param gap_x Space between columns in px.
+ * @param gap_y Space between rows in px.
  */
-inline TileGridFit fit_tile_grid(int count, int content_w, int content_h, int gap, int min_tile_w,
-                                 int min_tile_h, int max_cols = 4, int max_rows = 4) {
+inline TileGridFit fit_tile_grid(int count, int content_w, int content_h, int gap_x, int gap_y,
+                                 int min_tile_w, int min_tile_h, int max_cols = 4,
+                                 int max_rows = 4) {
     TileGridFit best;
     if (count <= 0 || content_w <= 0 || content_h <= 0 || min_tile_w <= 0 || min_tile_h <= 0) {
         return best;
@@ -42,8 +48,8 @@ inline TileGridFit fit_tile_grid(int count, int content_w, int content_h, int ga
         if (rows > max_rows) {
             continue;
         }
-        const double tile_w = static_cast<double>(content_w - (cols - 1) * gap) / cols;
-        const double tile_h = static_cast<double>(content_h - (rows - 1) * gap) / rows;
+        const double tile_w = static_cast<double>(content_w - (cols - 1) * gap_x) / cols;
+        const double tile_h = static_cast<double>(content_h - (rows - 1) * gap_y) / rows;
         const double score_w = tile_w / min_tile_w;
         const double score_h = tile_h / min_tile_h;
         const double score = score_w < score_h ? score_w : score_h;
@@ -66,6 +72,11 @@ inline TileGridFit fit_tile_grid(int count, int content_w, int content_h, int ga
         best.cols = max_cols;
         best.rows = (count + max_cols - 1) / max_cols;
     }
+    // Integer division floors, so the tiles plus their gaps fit the box exactly.
+    const int free_w = content_w - (best.cols - 1) * gap_x;
+    const int free_h = content_h - (best.rows - 1) * gap_y;
+    best.tile_w = free_w > 0 ? free_w / best.cols : 0;
+    best.tile_h = free_h > 0 ? free_h / best.rows : 0;
     return best;
 }
 

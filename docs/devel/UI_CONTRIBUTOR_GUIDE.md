@@ -604,12 +604,15 @@ The Controls panel's Calibration & Tools card is the reference wiring:
 - The grid carries `<event_cb trigger="layout_changed" .../>`. LVGL sends it after
   every flex pass of the grid, which covers a tile hiding or showing and the card
   resizing. The callback (`ControlsPanel::update_calib_grid`) counts the
-  children without `hidden`, measures the grid and publishes `calib_grid_columns`,
-  `calib_grid_rows` and `calib_grid_labels`. Setting a subject to its current
-  value notifies nothing, so the pass the new widths trigger settles at once.
-- Each tile is a `calib_tile` cell that maps those subjects onto width and height
-  styles with `bind_style_if_eq`, and hides its label from `calib_grid_labels`.
-  Visibility bindings go on the cell, so a hidden tile drops out of the count.
+  children without `hidden`, measures the grid's content box and its
+  `pad_column` / `pad_row`, and sets every cell to the whole-pixel `tile_w` x
+  `tile_h` the fit returns. That is measured layout (a structural exception):
+  percentage widths cannot account for the gaps, so on a narrow grid with a wide
+  gap they wrap the last tile into a row the card clips. It writes a size only
+  when it changes, because each write lays the grid out again.
+- Each tile is a `calib_tile` cell around a `home_action_tile` that fills it, and
+  hides its label from `calib_grid_labels` (the fit's `fits`). Visibility
+  bindings go on the cell, so a hidden tile drops out of the count.
 - The minimum tile is a responsive token pair (`calib_tile_min_width` /
   `calib_tile_min_height` in `globals.xml`), read with
   `theme_manager_get_spacing()`.

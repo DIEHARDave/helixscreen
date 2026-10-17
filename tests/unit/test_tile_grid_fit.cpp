@@ -19,7 +19,7 @@ constexpr int kMinH = 56;
 constexpr int kGap = 4;
 
 TileGridFit fit(int count, int w, int h, int gap = kGap) {
-    return fit_tile_grid(count, w, h, gap, kMinW, kMinH);
+    return fit_tile_grid(count, w, h, gap, gap, kMinW, kMinH);
 }
 
 } // namespace
@@ -66,7 +66,7 @@ TEST_CASE("fit_tile_grid widens in a large wide card", "[tile-grid-fit][calib-gr
 TEST_CASE("fit_tile_grid breaks a tie in score and waste toward more columns",
           "[tile-grid-fit][calib-grid]") {
     // In a square box with a square minimum, 1x2 and 2x1 tie exactly.
-    const TileGridFit f = fit_tile_grid(2, 400, 400, 0, 50, 50);
+    const TileGridFit f = fit_tile_grid(2, 400, 400, 0, 0, 50, 50);
     CHECK(f.cols == 2);
     CHECK(f.rows == 1);
 
@@ -106,4 +106,35 @@ TEST_CASE("fit_tile_grid degenerate inputs", "[tile-grid-fit][calib-grid]") {
     CHECK(crowded.cols == 4);
     CHECK(crowded.rows == 5);
     CHECK_FALSE(crowded.fits);
+}
+
+TEST_CASE("fit_tile_grid tile size plus gaps never exceeds the box",
+          "[tile-grid-fit][calib-grid]") {
+    // A narrow box with a large gap is where percentage widths overflow.
+    for (int count = 1; count <= 7; ++count) {
+        for (int w : {150, 211, 266, 333}) {
+            for (int h : {99, 153, 183, 300}) {
+                for (int gap : {2, 6, 12}) {
+                    const TileGridFit f = fit_tile_grid(count, w, h, gap, gap + 1, kMinW, kMinH);
+                    CAPTURE(count, w, h, gap, f.cols, f.rows, f.tile_w, f.tile_h);
+                    CHECK(f.cols * f.rows >= count);
+                    CHECK(f.cols * f.tile_w + (f.cols - 1) * gap <= w);
+                    CHECK(f.rows * f.tile_h + (f.rows - 1) * (gap + 1) <= h);
+                    // Floored, not shrunk: one more pixel each would no longer fit.
+                    CHECK(f.cols * (f.tile_w + 1) + (f.cols - 1) * gap > w);
+                    CHECK(f.rows * (f.tile_h + 1) + (f.rows - 1) * (gap + 1) > h);
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("fit_tile_grid uses the row gap for rows and the column gap for columns",
+          "[tile-grid-fit][calib-grid]") {
+    // 2x2 in 200x100: tile_w loses one column gap, tile_h one row gap.
+    const TileGridFit f = fit_tile_grid(4, 200, 100, 10, 20, 50, 30);
+    REQUIRE(f.cols == 2);
+    REQUIRE(f.rows == 2);
+    CHECK(f.tile_w == 95);
+    CHECK(f.tile_h == 40);
 }
