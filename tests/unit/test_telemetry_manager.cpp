@@ -3009,6 +3009,25 @@ class ScopedSaverUsage {
 
 } // namespace
 
+TEST_CASE_METHOD(TelemetryTestFixture, "shutdown sends the screensaver window it holds",
+                 "[telemetry][screensaver_usage]") {
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+    ScopedSaverUsage source(tm);
+    const auto t0 = TelemetryManagerTestAccess::now(tm);
+    source.usage.begin("aqua", t0);
+    source.usage.end(helix::SaverRunEnd::TOUCH, 3, t0 + 45s);
+    TelemetryManagerTestAccess::advance_clock(tm, 60s);
+
+    tm.shutdown();
+
+    auto events = queued_events(tm, "screensaver_usage");
+    REQUIRE(events.size() == 1);
+    CHECK(events[0]["is_shutdown"] == true);
+    CHECK(events[0]["saver_shown_sec"] == json{{"aqua", 45}});
+    tm.init(temp_dir().string());
+}
+
 TEST_CASE_METHOD(TelemetryTestFixture,
                  "record_screensaver_usage sends the window's runs per saver and starts a new one",
                  "[telemetry][screensaver_usage]") {
