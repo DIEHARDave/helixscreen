@@ -142,12 +142,24 @@ class AmsEditOverlayViewTestAccess {
     void call_handle_add_to_spoolman() {
         overlay_.handle_add_to_spoolman();
     }
+    /// Type into a More field: lv_textarea_set_text sends value_changed, so
+    /// the XML-registered callback does the rest.
     void set_detail_field(const char* name, const char* text) {
         lv_obj_t* w = overlay_.find_widget(name);
         REQUIRE(w != nullptr);
         lv_textarea_set_text(w, text);
-        overlay_.read_detail_fields();
-        overlay_.update_sync_button_state();
+    }
+    /// Shown on screen: the widget and every ancestor up to the overlay root
+    /// are free of the hidden flag.
+    bool shown(const char* name) {
+        lv_obj_t* w = overlay_.find_widget(name);
+        REQUIRE(w != nullptr);
+        for (lv_obj_t* o = w; o && o != overlay_.overlay_root_; o = lv_obj_get_parent(o)) {
+            if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) {
+                return false;
+            }
+        }
+        return true;
     }
     std::string detail_comment() const {
         return overlay_.detail_working_.comment;
@@ -2030,10 +2042,13 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a More-section edit lights Save and stages 
     process_lvgl(10);
     REQUIRE_FALSE(access.is_dirty());
 
-    // A Notes-only edit is a real edit: dirty, and survives Save's staging.
+    // A Notes-only edit is a real edit: dirty, Save lit, and it survives
+    // Save's staging.
+    REQUIRE(access.save_disabled() == 1);
     access.set_detail_field("detail_field_comment", "keep dry");
     UpdateQueue::instance().drain();
     CHECK(access.is_dirty());
+    CHECK(access.save_disabled() == 0);
 
     access.call_handle_save();
     UpdateQueue::instance().drain();
@@ -2481,4 +2496,58 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a Spoolman save completes even if the edito
         close_editor_overlay();
     }
     set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "an untracked slot on a Spoolman printer shows the Add link",
+                 "[ams_edit_overlay][more][add_link]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    set_spoolman_available(true);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.shown("add_to_spoolman_link"));
+    CHECK_FALSE(access.shown("more_row")); // the logistics fields are Spoolman's
+    close_editor_overlay();
+
+    // Linked: the toggle shows and the link does not.
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK_FALSE(access.shown("add_to_spoolman_link"));
+    CHECK(access.shown("more_row"));
+    close_editor_overlay();
+
+    // No Spoolman: neither.
+    set_spoolman_available(false);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK_FALSE(access.shown("add_to_spoolman_link"));
+    CHECK_FALSE(access.shown("more_bar"));
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a price the field rounds does not make the editor dirty",
+                 "[ams_edit_overlay][more][price]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    SpoolInfo fetched;
+    fetched.id = 7;
+    fetched.price = 19.995; // shown as 20.00 (or 19.99)
+    fetched.location = "Shelf A";
+    access.seed_detail_fetch(fetched);
+    UpdateQueue::instance().drain();
+    CHECK_FALSE(access.is_dirty());
+    CHECK(access.save_disabled() == 1);
+
+    // A real edit of the price still counts.
+    access.set_detail_field("detail_field_price", "21.50");
+    CHECK(access.is_dirty());
+    close_editor_overlay();
 }

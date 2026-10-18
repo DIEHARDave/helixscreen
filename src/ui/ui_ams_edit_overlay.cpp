@@ -104,6 +104,16 @@ std::vector<std::string> hoist_recents(const std::vector<std::string>& base,
     return out;
 }
 
+/// The price field's text for a stored price; blank for none.
+std::string format_price(double price) {
+    if (price <= 0) {
+        return {};
+    }
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.2f", price);
+    return buf;
+}
+
 /// The option a dropdown's value_changed event picked. The dropdowns' event_cb
 /// carries no user_data: the widget's own selection is the index.
 int dropdown_index(lv_event_t* e) {
@@ -1435,15 +1445,10 @@ void AmsEditOverlay::apply_weight(float grams) {
 }
 
 void AmsEditOverlay::populate_detail_fields() {
-    char buf[16];
     // Negative values are the "unknown" sentinel — render blank rather than a
     // literal "-1" (and a blank field can't trip the negative-value Save
     // validation on an untouched, weight-unknown untracked slot).
-    std::string price;
-    if (detail_working_.price > 0) {
-        snprintf(buf, sizeof(buf), "%.2f", detail_working_.price);
-        price = buf;
-    }
+    const std::string price = format_price(detail_working_.price);
     const struct {
         const char* widget;
         std::string value;
@@ -1467,8 +1472,14 @@ void AmsEditOverlay::read_detail_fields() {
         const char* t = w ? lv_textarea_get_text(w) : nullptr;
         return t ? t : "";
     };
+    // The field shows the price at two decimals; text that still reads as the
+    // stored price keeps it exactly, so an untouched open is not an edit.
     std::string s = text_of("detail_field_price");
-    detail_working_.price = s.empty() ? 0 : std::atof(s.c_str());
+    if (s == format_price(detail_original_.price)) {
+        detail_working_.price = detail_original_.price;
+    } else {
+        detail_working_.price = s.empty() ? 0 : std::atof(s.c_str());
+    }
     detail_working_.location = text_of("detail_field_location");
     detail_working_.lot_nr = text_of("detail_field_lot_nr");
     detail_working_.comment = text_of("detail_field_comment");
@@ -1963,6 +1974,12 @@ void AmsEditOverlay::do_spoolman_save(helix::SpoolmanSlotSaver::LinkIntent inten
                     if (result.created_new_spool) {
                         ToastManager::instance().show(ToastSeverity::INFO,
                                                       lv_tr("Added to Spoolman"), 2500);
+#if HELIX_HAS_LABEL_PRINTER
+                        // "Add to Spoolman + label": the new spool's label.
+                        if (helix::LabelPrinterSettingsManager::instance().is_configured()) {
+                            handle_print_label();
+                        }
+#endif
                     }
                 }
                 const int saved_spool_id = working_info_.spoolman_id;
@@ -2095,7 +2112,11 @@ void AmsEditOverlay::register_callbacks() {
         {"ams_edit_color_hex_changed_cb",
          [](lv_event_t*) { get_ams_edit_overlay().handle_color_hex_changed(); }},
         {"ams_edit_detail_field_changed_cb",
-         [](lv_event_t*) { get_ams_edit_overlay().read_detail_fields(); }},
+         [](lv_event_t*) {
+             auto& editor = get_ams_edit_overlay();
+             editor.read_detail_fields();
+             editor.update_sync_button_state();
+         }},
         {"ams_edit_save_cb", [](lv_event_t*) { get_ams_edit_overlay().handle_save(); }},
         {"ams_edit_more_toggle_cb",
          [](lv_event_t*) { get_ams_edit_overlay().handle_more_toggle(); }},
