@@ -171,7 +171,17 @@ printer_images::HardwareFacts detected_hardware_facts() {
     printer_images::HardwareFacts facts;
     AmsState& ams = AmsState::instance();
     for (int i = 0; i < ams.backend_count(); ++i) {
-        if (const AmsBackend* backend = ams.get_backend(i)) {
+        const AmsBackend* backend = ams.get_backend(i);
+        if (!backend) {
+            continue;
+        }
+        // A backend can register from the firmware's object alone, before any
+        // unit reports in; only a unit that is there counts as a system present.
+        const AmsSystemInfo info = backend->get_system_info();
+        const bool has_unit =
+            std::any_of(info.units.begin(), info.units.end(),
+                        [](const AmsUnit& u) { return u.connected && !u.absent; });
+        if (has_unit) {
             facts.filament_systems.push_back(backend->get_type());
         }
     }

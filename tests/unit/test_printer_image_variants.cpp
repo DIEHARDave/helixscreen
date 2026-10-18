@@ -84,6 +84,10 @@ TEST_CASE("variant_matches: malformed conditions never match", "[printer_image_v
     CHECK_FALSE(variant_matches({{"filament_system", "not-a-system"}}, kNoHardware));
     // "none" names no filament system, so it cannot be used to match a bare printer.
     CHECK_FALSE(variant_matches({{"filament_system", "none"}}, kNoHardware));
+    // A tool changer is a kind of toolhead, not a filament system.
+    CHECK_FALSE(variant_matches({{"filament_system", "tool_changer"}},
+                                HardwareFacts{{AmsType::TOOL_CHANGER}}));
+    CHECK_FALSE(is_valid_variant_condition_value("filament_system", "tool_changer"));
 }
 
 TEST_CASE("variant_matches: an empty condition set matches", "[printer_image_variants]") {

@@ -661,6 +661,7 @@ struct DetectedK2Fixture : LVGLTestFixture {
     DetectedK2Fixture() {
         AmsState::instance().clear_backends();
         AmsState::instance().init_subjects(false);
+        PrinterImageManager::instance().set_active_image("");
         Config* config = Config::get_instance();
         config->set<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "Creality K2");
     }
@@ -692,8 +693,16 @@ TEST_CASE_METHOD(DetectedK2Fixture, "PrinterImageManager detected image follows 
 
 TEST_CASE_METHOD(DetectedK2Fixture, "PrinterImageManager custom image wins over an image variant",
                  "[printer_image_manager][printer_image_variants]") {
-    const ConfigDirGuard cfg("pim_custom_beats_variant");
     auto& pim = PrinterImageManager::instance();
+    // Declared after cfg so it unwinds first, while the directory still exists.
+    struct ClearActive {
+        PrinterImageManager& pim;
+        ~ClearActive() {
+            pim.set_active_image("");
+        }
+    };
+    const ConfigDirGuard cfg("pim_custom_beats_variant");
+    const ClearActive clear_active{pim};
     pim.init(cfg.dir.string());
     AmsState::instance().add_backend(std::make_unique<test::TypedMockBackend>(AmsType::CFS));
     REQUIRE(pim.get_displayed_image_path(800).find("creality-k2-cfs") != std::string::npos);
@@ -707,4 +716,26 @@ TEST_CASE_METHOD(DetectedK2Fixture, "PrinterImageManager custom image wins over 
     const std::string displayed = pim.get_displayed_image_path(800);
     CHECK(displayed.find("my-k2") != std::string::npos);
     CHECK(displayed.find("creality-k2") == std::string::npos);
+}
+
+TEST_CASE_METHOD(DetectedK2Fixture,
+                 "PrinterImageManager a filament system with no unit shows the plain image",
+                 "[printer_image_manager][printer_image_variants]") {
+    auto& pim = PrinterImageManager::instance();
+    const std::string plain = pim.get_detected_image_path(800);
+    AmsState::instance().add_backend(
+        std::make_unique<test::TypedMockBackend>(AmsType::CFS, /*with_units=*/false));
+    CHECK(pim.get_detected_image_path(800) == plain);
+    CHECK(plain.find("creality-k2-cfs") == std::string::npos);
+}
+
+TEST_CASE_METHOD(
+    DetectedK2Fixture,
+    "PrinterImageManager a filament system whose units are all offline shows the plain image",
+    "[printer_image_manager][printer_image_variants]") {
+    auto& pim = PrinterImageManager::instance();
+    const std::string plain = pim.get_detected_image_path(800);
+    AmsState::instance().add_backend(std::make_unique<test::TypedMockBackend>(
+        AmsType::CFS, /*with_units=*/true, /*units_connected=*/false));
+    CHECK(pim.get_detected_image_path(800) == plain);
 }

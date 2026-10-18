@@ -131,41 +131,6 @@ inline std::string get_prerendered_path(const std::string& image_filename,
 }
 
 /**
- * @brief Get image path for a printer name (from database)
- *
- * Looks up the image in the printer database JSON and constructs the full
- * LVGL path. Prefers pre-rendered .bin files for performance on embedded
- * devices, falls back to PNG if not available.
- *
- * @param printer_name Printer name (e.g., "Voron 2.4", "FlashForge Adventurer 5M")
- * @return Full LVGL path to printer image
- */
-inline std::string get_image_path_for_name(const std::string& printer_name,
-                                           int screen_width = current_screen_width()) {
-    // Look up image filename from database
-    std::string image_filename = PrinterDetector::get_image_for_printer(printer_name);
-
-    if (!image_filename.empty()) {
-        // Try pre-rendered binary first (much faster on embedded)
-        std::string prerendered = get_prerendered_path(image_filename, screen_width);
-        if (!prerendered.empty()) {
-            return prerendered;
-        }
-
-        // Fall back to original PNG (routed through the asset root so the
-        // /assets mount is applied on ESP32; identity on desktop).
-        std::string full_path =
-            helix::asset_component_uri("assets/images/printers/" + image_filename);
-        if (image_file_exists(full_path)) {
-            return full_path;
-        }
-    }
-
-    // Fall back to default
-    return default_printer_image_path();
-}
-
-/**
  * @brief The best available render of one database image file
  *
  * Strips the .png extension and resolves the screen-sized prerendered .bin,
@@ -188,20 +153,19 @@ inline std::string get_best_image_for_file(const std::string& image_filename,
 }
 
 /**
- * @brief Get the best available printer image for a printer type name
+ * @brief Get image path for a printer name (from database)
  *
- * The type's plain database `image`, through get_best_image_for_file(). It
+ * The name's plain database `image`, through get_best_image_for_file(). It
  * ignores `image_variants`: what the connected printer shows, variants
  * included, is PrinterImageManager::get_detected_image_path().
  *
- * @param printer_type Printer type name from config (e.g., "Voron 2.4", "FlashForge Adventurer 5M")
- * @return Full LVGL path to the best available image
+ * @param printer_name Printer name (e.g., "Voron 2.4", "FlashForge Adventurer 5M")
+ * @return Full LVGL path to printer image; the generic image for an unknown name
  */
-inline std::string get_best_printer_image(const std::string& printer_type) {
-    if (printer_type.empty()) {
-        return default_printer_image_path();
-    }
-    return get_best_image_for_file(PrinterDetector::get_image_for_printer(printer_type));
+inline std::string get_image_path_for_name(const std::string& printer_name,
+                                           int screen_width = current_screen_width()) {
+    return get_best_image_for_file(PrinterDetector::get_image_for_printer(printer_name),
+                                   screen_width);
 }
 
 /**

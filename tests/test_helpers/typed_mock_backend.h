@@ -10,7 +10,23 @@ namespace helix::test {
 /// on which kind of filament system is registered rather than on its behaviour.
 class TypedMockBackend : public AmsBackendMock {
   public:
-    explicit TypedMockBackend(AmsType type) : AmsBackendMock(4), type_(type) {}
+    explicit TypedMockBackend(AmsType type, bool with_units = true, bool units_connected = true)
+        : AmsBackendMock(4), type_(type), with_units_(with_units),
+          units_connected_(units_connected) {}
+
+    /// With @p with_units false the backend reads like one registered from a
+    /// firmware object before any unit has reported.
+    [[nodiscard]] AmsSystemInfo get_system_info() const override {
+        AmsSystemInfo info = AmsBackendMock::get_system_info();
+        if (!with_units_) {
+            info.units.clear();
+            info.total_slots = 0;
+        }
+        for (auto& unit : info.units) {
+            unit.connected = units_connected_;
+        }
+        return info;
+    }
 
     [[nodiscard]] AmsType get_type() const override {
         return type_;
@@ -18,6 +34,8 @@ class TypedMockBackend : public AmsBackendMock {
 
   private:
     AmsType type_;
+    bool with_units_;
+    bool units_connected_;
 };
 
 } // namespace helix::test
