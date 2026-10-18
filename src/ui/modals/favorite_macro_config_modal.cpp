@@ -103,11 +103,15 @@ void register_favorite_macro_config_subjects() {
     s_subjects.publish("fav_macro_require_confirm", &s_require_confirm_subject);
     s_subjects.publish("fav_macro_has_param_defaults", &s_has_param_defaults_subject);
     s_subjects.publish("fav_macro_selected_color", &s_selected_color_subject);
-    StaticSubjectRegistry::instance().register_deinit("FavoriteMacroConfigSubjects", []() {
-        s_color_pool.reset();
-        s_subjects.deinit_all();
-        s_subjects_registered = false;
-    });
+    // Registered once with the widget factories, so it outlives a printer switch.
+    StaticSubjectRegistry::instance().register_deinit(
+        "FavoriteMacroConfigSubjects",
+        []() {
+            s_color_pool.reset();
+            s_subjects.deinit_all();
+            s_subjects_registered = false;
+        },
+        StaticSubjectRegistry::Lifetime::Process);
     s_subjects_registered = true;
 }
 

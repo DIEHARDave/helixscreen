@@ -879,8 +879,9 @@ void ui_ams_lane_spool_register(void) {
     // Self-register cleanup - ensures spool data is released before lv_deinit()
     // so that lv_subject_deinit() can safely remove observers from live
     // widgets (mirrors ui_ams_slot_register()).
-    StaticSubjectRegistry::instance().register_deinit("AmsLaneSpoolWidgets",
-                                                      cleanup_all_lane_spool_data);
+    StaticSubjectRegistry::instance().register_deinit(
+        "AmsLaneSpoolWidgets", cleanup_all_lane_spool_data,
+        StaticSubjectRegistry::Lifetime::ProcessRunOnSwitch);
 
     spdlog::info("[AmsLaneSpool] Registered ams_lane_spool widget with XML system");
 }
