@@ -12,6 +12,8 @@
 #include "ui_update_queue.h"
 
 #include "active_print_media_manager.h"
+#include "ams_backend.h"
+#include "ams_state.h"
 #include "app_globals.h"
 #include "gcode_tool_remapper.h"
 #include "helix_fs.h"
@@ -1604,6 +1606,18 @@ PrintPreparationManager::PreStartBlock PrintPreparationManager::pre_start_block(
     PreStartBlock block;
     const auto& db_options = get_cached_options();
     block.lines = collect_pre_start_gcode_lines(filename, true, job_start);
+    // Per-print options the filament system's firmware forgets between prints.
+    auto& ams = AmsState::instance();
+    for (int i = 0; i < ams.backend_count(); ++i) {
+        if (const auto* backend = ams.get_backend(i)) {
+            for (auto& line : backend->print_start_gcode_lines()) {
+                spdlog::debug("[PrintPreparationManager] Pre-start gcode from filament backend {}: "
+                              "{}",
+                              i, line);
+                block.lines.push_back(std::move(line));
+            }
+        }
+    }
     // A skip an earlier print left unconsumed must not ride into this one,
     // including for a step whose toggle is hidden now.
     if (printer_state_ && !printer_state_->get_discovery().skip_active().empty()) {

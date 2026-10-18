@@ -3301,6 +3301,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Instantané seulement
   Soft: Doux
+  Soft filament is never unloaded: "Le filament souple n'est jamais déchargé"
   Software Updates: Mises à jour logicielles
   Some filaments don't match the slicer's intent.: Certains filaments ne correspondent
     pas à l'intention du trancheur.

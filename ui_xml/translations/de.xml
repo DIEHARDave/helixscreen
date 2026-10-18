@@ -2971,6 +2971,7 @@
   <translation tag="Snapmaker U1" de="Snapmaker U1"/>
   <translation tag="Snapshot only" de="Nur Momentaufnahme"/>
   <translation tag="Soft" de="Weich"/>
+  <translation tag="Soft filament is never unloaded" de="Weiches Filament wird nie entladen"/>
   <translation tag="Software Updates" de="Software-Updates"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." de="Einige Filamente stimmen nicht mit der Vorgabe des Slicers überein."/>
   <translation tag="Some mapped slots are short on filament:" de="Einige zugeordnete Slots haben zu wenig Filament:"/>

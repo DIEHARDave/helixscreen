@@ -3366,6 +3366,20 @@ class AmsBackend {
     }
 
     /**
+     * @brief Gcode lines to send ahead of every print this app starts
+     *
+     * For per-print options the firmware clears when each print ends, so a
+     * choice the user made once has to be re-sent before each print to hold.
+     * The print-start path sends them in its pre-start block, before the job.
+     * Main thread only.
+     *
+     * @return one command per line; empty when the backend has none (default)
+     */
+    [[nodiscard]] virtual std::vector<std::string> print_start_gcode_lines() const {
+        return {};
+    }
+
+    /**
      * @brief Whether this backend feeds filament to the nozzle as part of resume
      *
      * True when this backend feeds filament to the nozzle as part of resume (e.g.

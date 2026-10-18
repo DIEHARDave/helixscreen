@@ -154,6 +154,9 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
      "auto_color_map"},
     {"afc_unload_after_print", "ams/afc_unload_after_print", Scope::PerPrinter, true, 0, 0, 1,
      "afc_unload_after_print"},
+    // Bit N = tool N unloads when a print ends.
+    {"end_of_print_unload_tools", "ams/end_of_print_unload_tools", Scope::PerPrinter, false, 0, 0,
+     255, "end_of_print_unload_tools"},
     // #1229
     {"ams_always_show_bypass_spool", "ams/always_show_bypass_spool", Scope::PerPrinter, true, 0, 0,
      1, "ams_always_show_bypass_spool"},

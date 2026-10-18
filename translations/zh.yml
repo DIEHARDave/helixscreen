@@ -3077,6 +3077,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: 仅快照
   Soft: 柔和
+  Soft filament is never unloaded: "软性耗材不会卸载"
   Software Updates: 软件更新
   Some filaments don't match the slicer's intent.: 部分耗材与切片软件的意图不符。
   'Some mapped slots are short on filament:': '部分已映射槽位耗材不足：'
