@@ -6326,6 +6326,73 @@ TEST_CASE("CFS fork: commands name the firmware slot, not the bay position",
     }
 }
 
+// Firmware with print mapping registers BOX_SELECT_SLOT, which always names a
+// slot. T<n> names the file's tool during a mapped print, so a manual load sent
+// as T<n> mid-print would feed whatever slot that tool maps to.
+TEST_CASE("CFS fork: manual loads select the slot when the firmware has print mapping",
+          "[ams][cfs][fork][select_slot]") {
+    CfsRemapHelper backend;
+    backend.mark_running();
+    json box = make_gapped_fork_box();
+
+    SECTION("revision 2") {
+        box["api_revision"] = 2;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+
+        SECTION("load") {
+            REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+        }
+        SECTION("swap") {
+            REQUIRE(backend.change_tool(8).result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=8"});
+        }
+        SECTION("external spool") {
+            box["loaded_slot"] = -1;
+            box["runout"] = nullptr;
+            CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+            REQUIRE(backend.enable_bypass().result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=12"});
+        }
+    }
+
+    SECTION("revision 1 with print_mapping_version 1") {
+        box["print_mapping_version"] = 1;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+    }
+
+    SECTION("revision 1 without print mapping keeps T<n>") {
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"T7"});
+    }
+
+    SECTION("revision 1 without print mapping keeps T<external>") {
+        box["loaded_slot"] = -1;
+        box["runout"] = nullptr;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.enable_bypass().result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"T12"});
+    }
+
+    SECTION("a delta without the version fields keeps the capability") {
+        box["api_revision"] = 2;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CfsTestAccess::handle_status(backend, make_cfs_notification(json{{"temp_c", 25}}));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+    }
+
+    SECTION("stock dialect is unchanged") {
+        CHECK(AmsBackendCfs::load_gcode(7, CfsMacroVariant::K2).find("BOX_SELECT_SLOT") ==
+              std::string::npos);
+        CHECK(AmsBackendCfs::swap_gcode(7, CfsMacroVariant::K1).find("BOX_SELECT_SLOT") ==
+              std::string::npos);
+    }
+}
+
 // A bay in a box missing from the chain is refused, not sent: box.py registers
 // no T<n> for a slot it has not found.
 TEST_CASE("CFS fork: a bay no box reported is refused", "[ams][cfs][fork][1464]") {

@@ -1638,6 +1638,7 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
         if (macro_variant_ == CfsMacroVariant::Fork) {
             macro_variant_ = model_macro_variant_;
         }
+        fork_select_slot_ = false;
         spdlog::info("[AMS CFS] Stock box schema reported, flat state dropped");
     }
     const bool is_flat =
@@ -1688,6 +1689,16 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
             spdlog::warn("[AMS CFS] Flat box schema without a supported API version — "
                          "slot display active, control paths disabled (no verified "
                          "command dialect)");
+        }
+    }
+
+    if (is_flat && macro_variant_ == CfsMacroVariant::Fork) {
+        const bool select_slot = fork_has_print_mapping(state);
+        if (fork_select_slot_.exchange(select_slot) != select_slot) {
+            spdlog::info("[AMS CFS] Fork print mapping {} (API revision {}): manual loads "
+                         "send {}",
+                         select_slot ? "present" : "absent", fork_api_revision(state),
+                         select_slot ? "BOX_SELECT_SLOT" : "T<n>");
         }
     }
 
@@ -2439,7 +2450,7 @@ AmsError AmsBackendCfs::do_load_filament(int slot_index) {
         spdlog::info("[AMS CFS] Bypass load — external spool, via {}",
                      has_load_material ? "LOAD_MATERIAL" : "fallback feed");
     } else {
-        gcode = load_gcode(firmware_slot, macro_variant_);
+        gcode = load_gcode(firmware_slot, macro_variant_, fork_select_slot_);
     }
 
     if (gcode.empty()) {
@@ -2555,8 +2566,8 @@ AmsError AmsBackendCfs::do_change_tool(int tool) {
     // sit high while fewer units are attached. The 1:1 slot identity (CFS bays
     // map 1:1 to tools) is what lets the builders below encode it as a bay
     // TNN; encodability is the only bound a key needs.
-    std::string gcode = needs_unload ? swap_gcode(firmware_slot, macro_variant_)
-                                     : load_gcode(firmware_slot, macro_variant_);
+    std::string gcode = needs_unload ? swap_gcode(firmware_slot, macro_variant_, fork_select_slot_)
+                                     : load_gcode(firmware_slot, macro_variant_, fork_select_slot_);
     if (gcode.empty()) {
         if (firmware_slot < 0) {
             return firmware_slot_unknown(tool);
@@ -3195,8 +3206,8 @@ AmsError AmsBackendCfs::enable_bypass() {
     }
 
     if (schema_ == CfsSchema::Flat) {
-        // Fork dialect: the firmware owns the whole attended flow. T<external>
-        // heats, moves to the wastebin, then waits (EXTERNAL_WAIT = 30 s in
+        // Fork dialect: the firmware owns the whole attended flow. Selecting
+        // the external slot heats, moves to the wastebin, then waits (EXTERNAL_WAIT = 30 s in
         // box.py) for the user to insert filament before feeding — a gcode
         // that legitimately blocks, so it goes through dispatch_action_script
         // for the homing/verification plumbing like every other CFS action.
@@ -3204,14 +3215,13 @@ AmsError AmsBackendCfs::enable_bypass() {
             return AmsError(AmsResult::NOT_SUPPORTED, "Bypass not supported",
                             lv_tr("This CFS firmware exposes no external spool slot"), "");
         }
-        std::string gcode = "T" + std::to_string(external_slot_index_);
+        std::string gcode = fork_slot_gcode(external_slot_index_, fork_select_slot_);
         {
             std::lock_guard<std::mutex> lock(mutex_);
             system_info_.action = AmsAction::LOADING;
             begin_phase_tracking();
         }
-        spdlog::info("[AMS CFS] Enabling bypass via fork T{} (attended load)",
-                     external_slot_index_);
+        spdlog::info("[AMS CFS] Enabling bypass via fork {} (attended load)", gcode);
         return dispatch_action_script(std::move(gcode));
     }
 
@@ -3439,15 +3449,29 @@ std::string AmsBackendCfs::slot_set_gcode(int global_slot_index, const std::stri
            " SPOOLMAN_ID=" + std::to_string(spoolman_id > 0 ? spoolman_id : -1);
 }
 
-std::string AmsBackendCfs::load_gcode(int idx, CfsMacroVariant variant) {
+std::string AmsBackendCfs::fork_slot_gcode(int slot, bool select_slot) {
+    return select_slot ? "BOX_SELECT_SLOT SLOT=" + std::to_string(slot)
+                       : "T" + std::to_string(slot);
+}
+
+bool AmsBackendCfs::fork_has_print_mapping(const nlohmann::json& box_json) {
+    return fork_api_revision(box_json) >= 2 ||
+           helix::json_util::safe_int(box_json, "print_mapping_version", 0) == 1;
+}
+
+int AmsBackendCfs::fork_api_revision(const nlohmann::json& box_json) {
+    return std::max(1, helix::json_util::safe_int(box_json, "api_revision", 1));
+}
+
+std::string AmsBackendCfs::load_gcode(int idx, CfsMacroVariant variant, bool fork_select_slot) {
     if (variant == CfsMacroVariant::Fork) {
-        // The Box T command owns the complete load or change operation.
+        // The Box command owns the complete load or change operation.
         constexpr int CFS_MAX_SLOTS = 16;
         if (idx < 0 || idx >= CFS_MAX_SLOTS) {
             spdlog::error("[AMS CFS] Invalid slot index for load: {}", idx);
             return "";
         }
-        return "T" + std::to_string(idx);
+        return fork_slot_gcode(idx, fork_select_slot);
     }
     std::string tnn = CfsMaterialDb::slot_to_tnn(idx);
     if (tnn.empty()) {
@@ -3657,20 +3681,19 @@ std::string AmsBackendCfs::bypass_unload_gcode(CfsMacroVariant variant, bool has
            "RESTORE_GCODE_STATE NAME=helix_cfs_bypass";
 }
 
-std::string AmsBackendCfs::swap_gcode(int idx, CfsMacroVariant variant) {
+std::string AmsBackendCfs::swap_gcode(int idx, CfsMacroVariant variant, bool fork_select_slot) {
     if (variant == CfsMacroVariant::Fork) {
-        // T<n> — box.py registers one per physical slot plus the external bay
-        // (_register_t_commands) and routes it through its change engine, which
-        // cuts, retracts, loads and flushes as one operation. There is no
-        // BOX_CHANGE; that name appears only in a user-written alias macro that
-        // this firmware does not define.
-        //
+        // BOX_SELECT_SLOT, or T<n> on firmware without print mapping: box.py
+        // routes either through its change engine, which cuts, retracts, loads
+        // and flushes as one operation. There is no BOX_CHANGE; that name
+        // appears only in a user-written alias macro that this firmware does
+        // not define.
         constexpr int CFS_MAX_SLOTS = 16;
         if (idx < 0 || idx >= CFS_MAX_SLOTS) {
             spdlog::error("[AMS CFS] Invalid slot index for swap: {}", idx);
             return "";
         }
-        return "T" + std::to_string(idx);
+        return fork_slot_gcode(idx, fork_select_slot);
     }
     std::string tnn = CfsMaterialDb::slot_to_tnn(idx);
     if (tnn.empty()) {

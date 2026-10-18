@@ -476,9 +476,29 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
                                       uint32_t color_rgb, const std::string& brand,
                                       const std::string& name, int spoolman_id);
 
+    /// The Fork command that loads firmware slot @p slot as one operation.
+    ///
+    /// `BOX_SELECT_SLOT SLOT=<n>` when @p select_slot, else `T<n>`. Firmware
+    /// with print mapping reads `T<n>` as the file's tool during a mapped
+    /// print, so a manual load sent as `T<n>` would feed the slot that tool is
+    /// mapped to; BOX_SELECT_SLOT always names the slot. Firmware without print
+    /// mapping registers no BOX_SELECT_SLOT, and there `T<n>` is the slot.
+    static std::string fork_slot_gcode(int slot, bool select_slot);
+
+    /// The payload's `api_revision`, 1 when absent (the revision that predates
+    /// the field).
+    [[nodiscard]] static int fork_api_revision(const nlohmann::json& box_json);
+
+    /// The firmware registers BOX_SELECT_SLOT and the rest of print mapping:
+    /// always from revision 2, and on revision 1 when `print_mapping_version`
+    /// is 1.
+    [[nodiscard]] static bool fork_has_print_mapping(const nlohmann::json& box_json);
+
     // GCode helpers (public for testing)
+    /// @param fork_select_slot Fork only: see fork_slot_gcode().
     static std::string load_gcode(int global_slot_index,
-                                  CfsMacroVariant variant = CfsMacroVariant::K2);
+                                  CfsMacroVariant variant = CfsMacroVariant::K2,
+                                  bool fork_select_slot = false);
     static std::string unload_gcode(CfsMacroVariant variant = CfsMacroVariant::K2);
 
     /// Unload the external / bypass spool on the stock (K1/K2) dialect.
@@ -523,7 +543,8 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// @param has_load_material `LOAD_MATERIAL` is defined on this printer.
     static std::string bypass_load_gcode(CfsMacroVariant variant, bool has_load_material);
     static std::string swap_gcode(int global_slot_index,
-                                  CfsMacroVariant variant = CfsMacroVariant::K2);
+                                  CfsMacroVariant variant = CfsMacroVariant::K2,
+                                  bool fork_select_slot = false);
     static std::string reset_gcode();
 
     /// Resume the box after an error. Dialect-dependent: K1's box extension
@@ -749,6 +770,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// configured box_count) — this records what the payload actually said
     /// rather than recomputing the arithmetic.
     int external_slot_index_ = -1;
+
+    /// Fork firmware registers BOX_SELECT_SLOT (fork_has_print_mapping() of the
+    /// merged flat state), so manual loads name the slot rather than T<n>.
+    /// Written by handle_status on the main thread; read by command builders.
+    std::atomic<bool> fork_select_slot_{false};
 
     /// Stock dialect only: the user has declared bypass intent (sidebar toggle
     /// ON after the chained unload). Paired with BOX_ENABLE_CFS_PRINT ENABLE=0
