@@ -15,6 +15,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/scoped_breakpoint.h"
+#include "../ui_test_utils.h"
 #include "ams_backend_mock.h"
 #include "ams_error.h"
 #include "ams_state.h"
@@ -232,6 +233,11 @@ class AmsEditOverlayViewTestAccess {
         lv_area_t a;
         lv_obj_get_click_area(w, &a);
         return a;
+    }
+    /// What NavigationManager's close callback runs when something other than
+    /// the editor closes it (a navbar tap).
+    void call_fire_completion(bool saved) {
+        overlay_.fire_completion(saved);
     }
     bool has_tag() const {
         return overlay_.tag_.has_value();
@@ -2771,4 +2777,146 @@ TEST_CASE("format_spool_price shows two decimals and blanks no price",
     CHECK(format_spool_price(19.995) == "20.00"); // the editor keeps 19.995 behind it
     CHECK(format_spool_price(0).empty());
     CHECK(format_spool_price(-1).empty());
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a Spoolman save commits the slot even if the editor closed first",
+                 "[ams_edit_overlay][save][session]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    SpoolInfo& a = mock_spool(client, 7);
+    a.filament_id = 3;
+    a.vendor = "Bambu Lab";
+    a.material = "ASA";
+    a.color_hex = "8A949E";
+    set_spoolman_available(true);
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    std::vector<AmsEditOverlay::EditResult> results;
+    REQUIRE(
+        overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api,
+                              [&](const AmsEditOverlay::EditResult& r) { results.push_back(r); }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    SlotInfo edited = access.working_info();
+    edited.material = "PETG";
+    access.set_working_info(edited);
+    access.call_do_spoolman_save(SpoolmanSlotSaver::LinkIntent::UpdateLinked);
+    access.call_fire_completion(false); // a navbar tap closes it mid-save
+    for (int i = 0; i < 4; ++i) {
+        UpdateQueue::instance().drain();
+        process_lvgl(20);
+    }
+
+    bool committed = false;
+    for (const auto& r : results) {
+        if (r.saved && r.slot_info.material == "PETG") {
+            committed = true;
+        }
+    }
+    CHECK(committed);
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "Save keeps More edits whose spool record never loaded",
+                 "[ams_edit_overlay][more][save]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    set_spoolman_available(true);
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    SlotInfo info = tracked_slot();
+    info.spoolman_id = 98765; // Spoolman has no such record
+    bool fired = false;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, &api,
+                                  [&](const AmsEditOverlay::EditResult&) { fired = true; }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    std::vector<std::string> toasts;
+    helix::ui::set_test_toast_hook(
+        [&](ToastSeverity, const std::string& msg, uint32_t) { toasts.push_back(msg); });
+    access.set_detail_field("detail_field_comment", "keep me");
+    REQUIRE(access.save_disabled() == 0);
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    helix::ui::set_test_toast_hook(nullptr);
+
+    CHECK_FALSE(fired);                          // still open
+    CHECK(access.detail_comment() == "keep me"); // edits kept
+    REQUIRE(toasts.size() == 1);                 // and the user is told
+    CHECK(toasts[0].find("haven't loaded") != std::string::npos);
+    access.set_detail_field("detail_field_comment", "");
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a spool record landing after Reset to tag keeps the reset",
+                 "[ams_edit_overlay][tag][relink]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    SpoolInfo& a = mock_spool(client, 7);
+    a.vendor = "Bambu Lab";
+    a.material = "ASA";
+    a.color_hex = "8A949E";
+    set_spoolman_available(true);
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api, nullptr));
+    // The record is queued; the user resets to the tag before it lands.
+    helix::ams::TagReading tag;
+    tag.material = "PETG";
+    tag.brand = "Polymaker";
+    tag.color_rgb = 0x112233;
+    access.set_tag(tag);
+    access.call_handle_reset_to_tag();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    CHECK(access.working_info().material == "PETG");
+    CHECK(access.working_info().brand == "Polymaker");
+    CHECK(access.working_info().color_rgb == 0x112233);
+    CHECK(access.sel().family == "PETG");
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
+
+TEST_CASE("color_ring_index rings custom only for a set colour no visible preset holds",
+          "[ams_edit_overlay][color]") {
+    const std::vector<uint32_t> palette = {0x111111, 0x222222, 0x333333};
+    CHECK(AmsEditOverlay::color_ring_index(0x222222, true, 3, palette) == 1);
+    CHECK(AmsEditOverlay::color_ring_index(0x333333, true, 2, palette) == -2); // not shown
+    CHECK(AmsEditOverlay::color_ring_index(0xABCDEF, true, 3, palette) == -2);
+    CHECK(AmsEditOverlay::color_ring_index(0xABCDEF, false, 3, palette) == -1);
+
+    SlotInfo unset;
+    CHECK_FALSE(AmsEditOverlay::slot_has_colour(unset)); // the grey default
+    SlotInfo bare_black;
+    bare_black.color_rgb = 0x000000;
+    CHECK_FALSE(AmsEditOverlay::slot_has_colour(bare_black));
+    bare_black.material = "PLA";
+    CHECK(AmsEditOverlay::slot_has_colour(bare_black)); // black PLA is a colour
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "an unset slot rings no colour tile",
+                 "[ams_edit_overlay][color]") {
+    auto& overlay = get_ams_edit_overlay();
+    SlotInfo info = untracked_slot();
+    info.material.clear();
+    info.color_name.clear();
+    info.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(subject_int("ams_edit_color_selected") == -1);
+    close_editor_overlay();
 }

@@ -167,6 +167,16 @@ class AmsEditOverlay : public OverlayBase {
     /// the palette.
     static int grid_preset_count(int grid_width, int tile, int gap, int rows, int palette_size);
 
+    /// Whether @p info carries a colour someone chose: not the unset grey,
+    /// and not the bare black some firmware reports for an empty slot.
+    static bool slot_has_colour(const SlotInfo& info);
+
+    /// The ams_edit_color_selected value for @p rgb: the index of the first of
+    /// @p visible_presets palette entries it matches, kCustomColorIndex for a
+    /// set colour none of them holds, -1 when no colour is set.
+    static int color_ring_index(uint32_t rgb, bool colour_set, int visible_presets,
+                                const std::vector<uint32_t>& palette);
+
   private:
     // === State ===
     int slot_index_ = -1;
@@ -179,6 +189,9 @@ class AmsEditOverlay : public OverlayBase {
     /// colour: Save rewrites identity only then, so an untouched open+save
     /// changes nothing.
     bool selection_moved_ = false;
+    /// True once Reset to tag restored the identity this session: a spool
+    /// record landing later must not overwrite it.
+    bool identity_reset_ = false;
     uint32_t details_color_ = 0;     ///< pending colour
     bool details_color_set_ = false; ///< true once the user picked a colour
     /// The slot's tag reading, refreshed on open; drives the from-tag badge
@@ -201,7 +214,10 @@ class AmsEditOverlay : public OverlayBase {
     bool save_in_flight_ = false;
     /// Bumped by every show_for_slot(). Save completions run on
     /// object_lifetime_ (they are owed to Spoolman and the slot, not to the
-    /// screen), so each one checks it still belongs to the session it began in.
+    /// screen). A Spoolman save commits the slot it captured at the start
+    /// through the callback it began with, editor open or not; only the
+    /// editor-side follow-ups (closing it, failure toasts that keep it open)
+    /// check they still belong to the session showing.
     uint32_t session_ = 0;
     /// True once the editor view has been populated this session. A picker-entry
     /// session reaches the editor first through enter_editor(); later returns
@@ -342,6 +358,8 @@ class AmsEditOverlay : public OverlayBase {
     void populate_editor_view();
     /// Set both colour grids' preset counts from their measured width.
     void size_color_grids();
+    /// Presets the showing colour grid displays.
+    int visible_preset_count();
     void stage_selection_into_working();
     void handle_quick_swatch(lv_obj_t* swatch);
     void handle_picker_search(const char* text);
