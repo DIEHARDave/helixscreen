@@ -59,3 +59,12 @@ CMAKE="android/app/jni/CMakeLists.txt"
   [ -n "$make_excl" ]
   [ "$make_excl" = "$cmake_excl" ]
 }
+
+@test "the APK leaves out the same mock-only asset trees as the Linux packages" {
+  # Two hand-kept lists of one rule: mk/cross.mk RELEASE_ASSETS_EXCLUDE and
+  # build.gradle mockOnlyAssets (which both copyAssets and MANIFEST.txt honour).
+  make_excl=$(sed -nE 's/^RELEASE_ASSETS_EXCLUDE := //p' mk/cross.mk | tr ' ' '\n' | sed 's|^assets/||' | sort)
+  gradle_excl=$(sed -nE "s/^def mockOnlyAssets = \[(.*)\]$/\1/p" android/app/build.gradle | tr -d "' " | tr ',' '\n' | sort)
+  [ -n "$make_excl" ]
+  [ "$make_excl" = "$gradle_excl" ]
+}

@@ -413,6 +413,12 @@ void android_extract_assets_if_needed() {
              {"presets", "print_start_profiles", "platform", "sounds", "themes/defaults"}) {
             fs::remove_all(cfg + "/" + stale_dir, ec);
         }
+        // Mock-printer fixtures the APK does not ship (mockOnlyAssets in
+        // android/app/build.gradle). Nothing else removes an extracted tree, so
+        // an install that once received them would keep ~180 MB forever.
+        for (const char* mock_dir : {"test_gcodes", "test_timelapse"}) {
+            fs::remove_all(target_dir + "/assets/" + mock_dir, ec);
+        }
     }
 
     // Walk MANIFEST.txt — every directory in the APK, one per line, in a stable

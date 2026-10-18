@@ -219,6 +219,12 @@ def hostOnlyConfig = [
     'helixscreen-ustreamer-k2.sh'       // Creality K2 camera
 ]
 
+// Fixture trees only the mock printer reads (moonraker_*_mock.cpp). A release APK
+// compiles no mock, and a debug one runs it only when launched with
+// `--ez test true`, where an empty file list is enough. The Linux packages leave
+// the same two out (RELEASE_ASSETS_EXCLUDE in mk/cross.mk).
+def mockOnlyAssets = ['test_gcodes', 'test_timelapse']
+
 // Same globs as regexes, for the post-copy audit below. Only '*' appears in
 // these patterns; everything around it is quoted literally.
 def nonShippableConfigPatterns = nonShippableConfig.collect {
@@ -244,7 +250,10 @@ task copyAssets(type: Copy) {
         stagedAssetDirs.each { it.deleteDir() }
     }
     from('../../ui_xml') { into 'ui_xml' }
-    from('../../assets') { into 'assets' }
+    from('../../assets') {
+        into 'assets'
+        exclude mockOnlyAssets + mockOnlyAssets.collect { "${it}/**" }
+    }
     from('../../config') {
         into 'config'
         exclude nonShippableConfig
@@ -300,14 +309,21 @@ task genPackagingManifest(dependsOn: purgeStagedLocalState) {
     inputs.dir(file('../../assets'))
     inputs.dir(file('../../config'))
     outputs.file(manifestOut)
+    inputs.property('mockOnlyAssets', mockOnlyAssets)
     doLast {
         manifestOut.parentFile.mkdirs()
-        manifestOut.withOutputStream { os ->
-            exec {
-                commandLine 'bash', script.absolutePath, projectRoot.absolutePath
-                standardOutput = os
-            }
+        def listing = new ByteArrayOutputStream()
+        exec {
+            commandLine 'bash', script.absolutePath, projectRoot.absolutePath
+            standardOutput = listing
         }
+        // The extractor counts a manifest directory it cannot open as a failed
+        // extraction, so every tree copyAssets leaves out must leave here too.
+        def dropped = mockOnlyAssets.collect { "assets/${it}" }
+        def kept = listing.toString('UTF-8').readLines().findAll { line ->
+            !dropped.any { d -> line == d || line.startsWith(d + '/') }
+        }
+        manifestOut.text = kept.join('\n') + '\n'
     }
 }
 
