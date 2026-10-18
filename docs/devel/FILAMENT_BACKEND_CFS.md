@@ -61,14 +61,19 @@ to show its `title` and `message`.
 **Tool remap.** `BOX_PRINT_MAP MAP=<tool>:<slot>,...` sets the map for the next print
 only, so a revision 3 box declares `RemapStrategy::PrePrintSend` and
 `requires_preprint_send()`, and `build_preprint_gcode()` emits the line before the print
-starts (`AmsBackendCfs::print_map_gcode`). It names every tool the file uses, an
-unmapped one at its own slot, so the map states the whole print; with nothing remapped
-it sends nothing, since the firmware's default is that map and the command has no
-clearing form. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a unit reading disconnected (a `boxes[]` entry with `online: false`, or the chain-wide `driver_ready: false`), is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
+starts (`AmsBackendCfs::print_map_gcode`). The firmware keeps the map for the next print
+file loaded within 10 minutes, uses it once, and has no clearing form, so a remapped
+start whose print never loads leaves a map that a later start would pick up. When the
+file's tools are known the map therefore goes out on every start, remapped or not: it
+names every tool the file uses, an unmapped one at its own slot (the firmware's default
+`T<n>` = slot `n`), and nothing else, since the firmware refuses a start whose map lists
+a tool the file does not use. With the file's tools unknown it carries only the remap's
+entries, and nothing goes out when none moves a tool. A remap whose target slot a manual load would refuse (`firmware_slot_locked()`), or that sits in a unit reading disconnected (a `boxes[]` entry with `online: false`, or the chain-wide `driver_ready: false`), is refused by `check_preprint_remap()`: nothing is sent and the print does not start, with the reason in the same "Print setup failed" dialog a printer-side refusal gets. `can_set_tool_mapping()` refuses on this route: `BOX_MODIFY_TN` is a
 stock command. The revision is the only evidence the command exists: it is registered
 in Python, and the app has no registered-command lookup. Below revision 3 Fork has no
 remap route (`RemapStrategy::None`). A reprint sends no map, because the backend does
-not record the last print's routing (`last_print_tool_mapping()` is empty).
+not record the last print's routing (`last_print_tool_mapping()` is empty), so the
+controller passes no tool set.
 
 A `Flat` box whose module we cannot identify still has its control paths refused by `reject_if_flat_schema()`. Full field mapping, command signatures and remaining gaps: `printer-research/CREALITY_CFS_K2_INTERNALS.md` § "Community Kalico port".
 

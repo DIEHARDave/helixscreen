@@ -3546,11 +3546,11 @@ std::string AmsBackendCfs::build_preprint_gcode(const std::set<int>& tools_used,
     return print_map_gcode(tools_used, remap);
 }
 
-AmsError AmsBackendCfs::check_preprint_remap(const std::set<int>& /*tools_used*/,
+AmsError AmsBackendCfs::check_preprint_remap(const std::set<int>& tools_used,
                                              const std::map<int, int>& remap) const {
     std::lock_guard<std::mutex> lock(mutex_);
     for (const auto& [tool, slot] : remap) {
-        if (tool < 0 || slot < 0 || slot == tool) {
+        if (tool < 0 || slot < 0 || slot == tool || !print_map_names_tool(tools_used, tool)) {
             continue;
         }
         if (firmware_slot_locked(slot) < 0) {
@@ -3564,6 +3564,10 @@ AmsError AmsBackendCfs::check_preprint_remap(const std::set<int>& /*tools_used*/
     return AmsErrorHelper::success();
 }
 
+bool AmsBackendCfs::print_map_names_tool(const std::set<int>& tools_used, int tool) {
+    return tools_used.empty() || tools_used.count(tool) > 0;
+}
+
 std::string AmsBackendCfs::print_map_gcode(const std::set<int>& tools_used,
                                            const std::map<int, int>& remap) {
     std::map<int, int> resolved;
@@ -3574,13 +3578,13 @@ std::string AmsBackendCfs::print_map_gcode(const std::set<int>& tools_used,
     }
     bool remapped = false;
     for (const auto& [tool, slot] : remap) {
-        if (tool < 0 || slot < 0) {
+        if (tool < 0 || slot < 0 || !print_map_names_tool(tools_used, tool)) {
             continue;
         }
         resolved[tool] = slot;
         remapped = remapped || slot != tool;
     }
-    if (!remapped) {
+    if (resolved.empty() || (tools_used.empty() && !remapped)) {
         return "";
     }
     std::string map;
