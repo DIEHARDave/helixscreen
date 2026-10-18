@@ -292,4 +292,28 @@ TEST_CASE_METHOD(LVGLTestFixture, "a check result with a metatable is refused un
     CHECK(logs.count_containing("from __index") == 0);
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "a check result is refused for its metatable alone",
+                 "[plugin][menu]") {
+    // Valid fields read raw, and a metatable with no metamethods: only the metatable
+    // rule hides it. A reason that is a table is refused by type, never converted.
+    TempDir tmp;
+    write_menu_plugin(tmp.path, "a-plug", "Ay",
+                      spool_item("bare", R"(,"check":"bare")") + "," +
+                          spool_item("why", R"(,"check":"why")") + "," + spool_item("fine"),
+                      R"(
+        helix.ui.on("run", function() end)
+        helix.ui.on("bare", function()
+            return setmetatable({visible = true, enabled = true}, {})
+        end)
+        helix.ui.on("why", function()
+            return {visible = true, enabled = false,
+                    reason = setmetatable({}, {__tostring = function() return "x" end})}
+        end)
+    )");
+    HostRig rig(enabled("a-plug", {}));
+    rig.host->load_from(tmp.path.string());
+    CHECK(item_ids(pm::resolve(pm::MenuKind::Spool, json::object())) ==
+          std::vector<std::string>{"a-plug/fine"});
+}
+
 #endif // HELIX_HAS_PLUGINS
