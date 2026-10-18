@@ -219,7 +219,7 @@
                     height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs"
                     style_flex_cross_place="center" scrollable="false">
               <text_small text="Color" flex_grow="1"/>
-              <ui_button width="28" height="28" icon="pencil" variant="ghost">
+              <ui_button name="btn_custom_color_split" width="28" height="28" icon="pencil" variant="ghost">
                 <event_cb trigger="clicked" callback="ams_edit_custom_color_cb"/>
               </ui_button>
             </lv_obj>
@@ -286,7 +286,7 @@
                   height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs"
                   style_flex_cross_place="center" scrollable="false">
             <text_small text="Color" flex_grow="1"/>
-            <ui_button width="28" height="28" icon="pencil" variant="ghost">
+            <ui_button name="btn_custom_color" width="28" height="28" icon="pencil" variant="ghost">
               <event_cb trigger="clicked" callback="ams_edit_custom_color_cb"/>
             </ui_button>
             <ui_button height="24" text="Reset to tag" variant="ghost" style_pad_hor="#space_sm" hidden="true">
