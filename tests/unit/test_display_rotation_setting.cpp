@@ -196,3 +196,39 @@ TEST_CASE_METHOD(LVGLUITestFixture, "DisplayRotation: the dropdown callback is r
     helix::settings::get_display_settings_overlay().register_callbacks();
     REQUIRE(lv_xml_get_event_cb(nullptr, "on_display_rotation_changed") != nullptr);
 }
+
+// ============================================================================
+// The dim-timeout row: Screen Dim, Screensaver after, or neither
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLUITestFixture, "DimRow: settings_dim_row_kind shows at most one row",
+                 "[display_settings][dim_row][ui]") {
+    lv_subject_t* kind = lv_xml_get_subject(nullptr, "settings_dim_row_kind");
+    REQUIRE(kind != nullptr);
+
+    lv_obj_t* overlay = static_cast<lv_obj_t*>(
+        lv_xml_create(lv_screen_active(), "settings_display_overlay", nullptr));
+    REQUIRE(overlay != nullptr);
+    lv_obj_t* dim = lv_obj_find_by_name(overlay, "row_display_dim");
+    lv_obj_t* saver_after = lv_obj_find_by_name(overlay, "row_screensaver_after");
+    REQUIRE(dim != nullptr);
+    REQUIRE(saver_after != nullptr);
+
+    using Kind = DisplaySettingsManager::DimRowKind;
+    const int before = lv_subject_get_int(kind);
+    struct Case {
+        Kind kind;
+        bool dim_visible;
+        bool saver_after_visible;
+    };
+    for (const Case& c : {Case{Kind::Hidden, false, false}, Case{Kind::ScreenDim, true, false},
+                          Case{Kind::ScreensaverAfter, false, true}}) {
+        lv_subject_set_int(kind, static_cast<int>(c.kind));
+        CAPTURE(static_cast<int>(c.kind));
+        CHECK(!lv_obj_has_flag(dim, LV_OBJ_FLAG_HIDDEN) == c.dim_visible);
+        CHECK(!lv_obj_has_flag(saver_after, LV_OBJ_FLAG_HIDDEN) == c.saver_after_visible);
+    }
+    lv_subject_set_int(kind, before);
+
+    lv_obj_delete(overlay);
+}

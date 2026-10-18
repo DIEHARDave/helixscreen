@@ -2940,7 +2940,9 @@ translations:
   Screen shutdown failed: 屏幕关机失败
   Screen sleeps after the selected period of inactivity: 在选定的不活动时间后屏幕将变暗
   Screensaver: 屏保
+  Screensaver after: 屏保启动时间
   Screensaver disabled: 屏保已禁用
+  Screensaver starts after this period of inactivity: 不活动达到此时长后启动屏保
   Screws Tilt: 螺丝倾斜
   Scroll Buttons: 滚动按钮
   Scroll Engage Distance: 滚动触发距离

@@ -371,6 +371,12 @@ class DisplaySettingsManager {
     /** @brief Convert dropdown index to dim seconds */
     static int index_to_dim_seconds(int index);
 
+    /// The form the dim-timeout row takes in Display settings. Without a dimmable
+    /// backlight the same timeout starts the screensaver, so the row is offered
+    /// under that name when one can run, and hidden when nothing would happen.
+    enum class DimRowKind { Hidden = 0, ScreenDim = 1, ScreensaverAfter = 2 };
+    static DimRowKind dim_row_kind(bool has_dimming, bool screensaver_available);
+
     // =========================================================================
     // DISPLAY SLEEP OPTIONS (for dropdown population)
     // =========================================================================
@@ -562,6 +568,7 @@ class DisplaySettingsManager {
     lv_subject_t display_sleep_subject_{};
     lv_subject_t has_backlight_subject_{};
     lv_subject_t has_dimming_subject_{};
+    lv_subject_t dim_row_kind_subject_{};
     lv_subject_t animations_enabled_subject_{};
     lv_subject_t hardware_keyboard_present_subject_{};
     lv_subject_t is_android_subject_{};

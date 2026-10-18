@@ -2847,7 +2847,9 @@
   <translation tag="Screen shutdown failed" ja="画面のシャットダウンに失敗しました"/>
   <translation tag="Screen sleeps after the selected period of inactivity" ja="選択した時間操作がないと画面が減光します"/>
   <translation tag="Screensaver" ja="スクリーンセーバー"/>
+  <translation tag="Screensaver after" ja="スクリーンセーバー開始"/>
   <translation tag="Screensaver disabled" ja="スクリーンセーバーを無効化しました"/>
+  <translation tag="Screensaver starts after this period of inactivity" ja="この時間操作がないとスクリーンセーバーが始まります"/>
   <translation tag="Screws Tilt" ja="ネジ傾き"/>
   <translation tag="Scroll Buttons" ja="スクロールボタン"/>
   <translation tag="Scroll Engage Distance" ja="スクロール開始距離"/>

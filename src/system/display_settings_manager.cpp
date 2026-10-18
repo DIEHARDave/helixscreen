@@ -288,6 +288,14 @@ void DisplaySettingsManager::init_subjects() {
     }
     UI_MANAGED_SUBJECT_INT(has_dimming_subject_, has_dimming ? 1 : 0, "settings_has_dimming",
                            subjects_);
+#if HELIX_ENABLE_SCREENSAVER
+    constexpr bool screensaver_available = true;
+#else
+    constexpr bool screensaver_available = false;
+#endif
+    UI_MANAGED_SUBJECT_INT(dim_row_kind_subject_,
+                           static_cast<int>(dim_row_kind(has_dimming, screensaver_available)),
+                           "settings_dim_row_kind", subjects_);
 
     // NOTE: the sleep >= dim cross-validation is deferred until after the
     // screensaver_type subject is initialized below — on no-backlight devices an
@@ -927,6 +935,14 @@ bool DisplaySettingsManager::get_bed_mesh_show_zero_plane() const {
 // =============================================================================
 // DISPLAY DIM OPTIONS
 // =============================================================================
+
+DisplaySettingsManager::DimRowKind
+DisplaySettingsManager::dim_row_kind(bool has_dimming, bool screensaver_available) {
+    if (has_dimming) {
+        return DimRowKind::ScreenDim;
+    }
+    return screensaver_available ? DimRowKind::ScreensaverAfter : DimRowKind::Hidden;
+}
 
 int DisplaySettingsManager::dim_seconds_to_index(int seconds) {
     for (int i = 0; i < DIM_OPTIONS_COUNT; i++) {

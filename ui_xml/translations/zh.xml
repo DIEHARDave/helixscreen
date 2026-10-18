@@ -2847,7 +2847,9 @@
   <translation tag="Screen shutdown failed" zh="屏幕关机失败"/>
   <translation tag="Screen sleeps after the selected period of inactivity" zh="在选定的不活动时间后屏幕将变暗"/>
   <translation tag="Screensaver" zh="屏保"/>
+  <translation tag="Screensaver after" zh="屏保启动时间"/>
   <translation tag="Screensaver disabled" zh="屏保已禁用"/>
+  <translation tag="Screensaver starts after this period of inactivity" zh="不活动达到此时长后启动屏保"/>
   <translation tag="Screws Tilt" zh="螺丝倾斜"/>
   <translation tag="Scroll Buttons" zh="滚动按钮"/>
   <translation tag="Scroll Engage Distance" zh="滚动触发距离"/>
