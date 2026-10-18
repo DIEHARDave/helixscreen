@@ -41,6 +41,16 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
 
     [[nodiscard]] PathSegment get_slot_filament_segment(int slot_index) const override;
 
+    /// The bay routed to an ACE-fed head is that head lane's spool: the head
+    /// shows the bay's filament, not a spool of its own. nullopt everywhere
+    /// else, bays included (a bay is where its spool lives).
+    [[nodiscard]] std::optional<int> upstream_slot(int slot_index) const override;
+
+    /// Bays number the spools 1-based in global order; a routed head wears
+    /// its bay's number so the two lanes count one spool, and the numbers on
+    /// the lanes that hold their own spools stay consecutive.
+    [[nodiscard]] int spool_display_number(int slot_index) const override;
+
     /// A bay into a head holding another bay is not a swap for the screen to
     /// sequence: do_load_filament() sends the head's unload ahead of the load.
     [[nodiscard]] bool needs_unload_before_load(const AmsSystemInfo& info,

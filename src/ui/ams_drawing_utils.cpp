@@ -340,16 +340,32 @@ SystemToolLayout compute_system_tool_layout(const helix::AmsSystemInfo& info,
     // never recorded here stay unknown (empty) — see physical_to_extruder_name.
     std::map<int, std::string> physical_extruder_names;
 
+    // The reverse: extruder name -> the nozzle it already owns. Written as
+    // nozzles are placed, so a later unit naming the same extruder - including a
+    // unit whose topology differs from the one that placed it - shares that
+    // physical nozzle instead of adding another. One physical head fed through
+    // two paths is one nozzle on the canvas no matter which path draws it.
+    std::map<std::string, int> extruder_to_phys;
+
     // Record the extruder that owns a physical nozzle, ignoring empty names and
     // refusing to overwrite a differing earlier answer (shared HUB nozzles).
-    auto record_extruder = [&physical_extruder_names](int phys, const std::string& name) {
+    // A conflicting answer also drops the reverse entry: a nozzle two extruders
+    // claim is not identifiable, so nothing may share on it.
+    auto record_extruder = [&physical_extruder_names, &extruder_to_phys](int phys,
+                                                                         const std::string& name) {
         if (name.empty()) {
             return;
         }
         auto [it, inserted] = physical_extruder_names.emplace(phys, name);
-        if (!inserted && it->second != name) {
-            it->second.clear(); // conflicting claims -> unknown, never a guess
+        if (inserted) {
+            extruder_to_phys.emplace(name, phys);
+            return;
         }
+        if (it->second == name) {
+            return;
+        }
+        extruder_to_phys.erase(it->second);
+        it->second.clear(); // conflicting claims -> unknown, never a guess
     };
 
     for (int i = 0; i < static_cast<int>(info.units.size()); ++i) {
@@ -464,16 +480,23 @@ SystemToolLayout compute_system_tool_layout(const helix::AmsSystemInfo& info,
             utl.extruder_identity = unit_extruder;
 
             int shared_phys = -1;
+            // Extruder NAME identity first: it reaches nozzles any topology
+            // placed, including a PARALLEL unit's per-lane nozzles. The scan
+            // below covers backends that publish a label or hub id but no
+            // per-lane extruder names.
+            if (!unit_extruder.empty()) {
+                if (auto it = extruder_to_phys.find(unit_extruder); it != extruder_to_phys.end()) {
+                    shared_phys = it->second;
+                }
+            }
             for (const auto& prev : result.units) {
-                if (prev.tool_count != 1) {
+                if (shared_phys >= 0 || prev.tool_count != 1) {
                     continue;
                 }
-                const bool same_extruder =
-                    !unit_extruder.empty() && prev.extruder_identity == unit_extruder;
                 const bool same_label =
                     unit.hub_tool_label >= 0 && prev.hub_tool_label == unit.hub_tool_label;
                 const bool same_hub = !unit.hub_id.empty() && prev.hub_id == unit.hub_id;
-                if (same_extruder || same_label || same_hub) {
+                if (same_label || same_hub) {
                     shared_phys = prev.first_physical_tool;
                     break;
                 }
@@ -543,28 +566,48 @@ SystemToolLayout compute_system_tool_layout(const helix::AmsSystemInfo& info,
                 }
 
                 int lane_count = static_cast<int>(extruder_tools.size());
-                utl.first_physical_tool = physical_first;
-                utl.tool_count = lane_count;
-
-                // Assign each extruder group a physical position and record
-                // the correct label (min tool in group) for each physical slot
-                int idx = 0;
+                // A group naming an extruder a placed nozzle already belongs to
+                // shares that nozzle; the rest take new positions after it. New
+                // positions are always the highest yet, so a unit's nozzles stay
+                // contiguous from first_physical_tool whenever its shared ones
+                // are - which every current system feeding one extruder from
+                // several units is (a full share, or a run of heads).
+                int next_phys = total_physical;
+                int new_nozzles = 0;
+                int first_phys = -1;
                 for (auto& [ext_name, tools] : extruder_tools) {
                     int min_in_group = *std::min_element(tools.begin(), tools.end());
-                    for (int t : tools) {
-                        result.virtual_to_physical[t] = physical_first + idx;
+                    int phys = -1;
+                    const bool named_extruder =
+                        !ext_name.empty() && ext_name.rfind("__tool_", 0) != 0;
+                    if (named_extruder) {
+                        if (auto it = extruder_to_phys.find(ext_name);
+                            it != extruder_to_phys.end()) {
+                            phys = it->second;
+                        }
                     }
-                    physical_label_overrides[physical_first + idx] = min_in_group;
+                    if (phys < 0) {
+                        phys = next_phys++;
+                        ++new_nozzles;
+                    }
+                    for (int t : tools) {
+                        result.virtual_to_physical[t] = phys;
+                    }
+                    physical_label_overrides[phys] = min_in_group;
                     // The group key IS the extruder identity for this nozzle. The
                     // synthetic "__tool_N" key used for nameless lanes is not an
                     // extruder name and is deliberately not recorded.
-                    if (ext_name.rfind("__tool_", 0) != 0) {
-                        record_extruder(physical_first + idx, ext_name);
+                    if (named_extruder) {
+                        record_extruder(phys, ext_name);
                     }
-                    ++idx;
+                    if (first_phys < 0 || phys < first_phys) {
+                        first_phys = phys;
+                    }
                 }
 
-                total_physical += lane_count;
+                utl.first_physical_tool = (first_phys >= 0) ? first_phys : physical_first;
+                utl.tool_count = lane_count;
+                total_physical += new_nozzles;
             } else {
                 // Original logic: group by unique mapped_tool
                 std::vector<int> mapped_tools;
@@ -776,6 +819,24 @@ std::vector<int> hub_groups_of_tool(const ams_draw::SystemToolLayout& layout, in
         }
     }
     return groups;
+}
+
+std::string upstream_lane_caption(const helix::AmsSystemInfo& info,
+                                  const helix::AmsBackend& backend, int slot) {
+    const auto upstream = backend.upstream_slot(slot);
+    if (!upstream) {
+        return {};
+    }
+    for (size_t u = 0; u < info.units.size(); ++u) {
+        const helix::AmsUnit& unit = info.units[u];
+        if (*upstream >= unit.first_slot_global_index &&
+            *upstream < unit.first_slot_global_index + unit.slot_count) {
+            const int local = *upstream - unit.first_slot_global_index;
+            return ams_draw::get_unit_display_name(unit, static_cast<int>(u)) + std::string(" ") +
+                   kUnitSeparator + " " + std::to_string(lane_number(local));
+        }
+    }
+    return {};
 }
 
 } // namespace helix::ui

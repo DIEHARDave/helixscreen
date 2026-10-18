@@ -17,9 +17,11 @@
 #include "multiace_status.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
+#include "ui/ams_drawing_utils.h"
 
 #include <fstream>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -741,4 +743,67 @@ TEST_CASE_METHOD(MultiAceFixture, "a loaded head with no recorded source refuses
     CHECK_FALSE(refused.success());
     CHECK(refused.user_msg == "Toolhead 2: Unload from toolhead first");
     CHECK(b.sent.empty());
+}
+
+// ============================================================================
+// Spool identity: upstream bays, numbering, captions
+// ============================================================================
+
+TEST_CASE_METHOD(MultiAceFixture, "a routed head's spool lives in its bay", "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+
+    // Head 0 is routed from ACE 1 bay 1, head 2 from ACE 3 bay 4; heads 1 and
+    // 3 and every bay hold a spool of their own (or none).
+    CHECK(b.upstream_slot(0) == std::optional<int>{multiace::bay_global(0, 0)});
+    CHECK(b.upstream_slot(2) == std::optional<int>{multiace::bay_global(2, 3)});
+    CHECK_FALSE(b.upstream_slot(1).has_value());
+    CHECK_FALSE(b.upstream_slot(3).has_value());
+    CHECK_FALSE(b.upstream_slot(multiace::bay_global(0, 0)).has_value());
+    CHECK_FALSE(b.upstream_slot(-1).has_value());
+
+    // Without the engine contract there are no bays to be upstream.
+    CapturingMultiAce plain;
+    CHECK_FALSE(plain.upstream_slot(0).has_value());
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "spool numbering counts a routed bay once", "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+
+    // A routed head wears its bay's number.
+    CHECK(b.spool_display_number(0) == b.spool_display_number(multiace::bay_global(0, 0)));
+    CHECK(b.spool_display_number(2) == b.spool_display_number(multiace::bay_global(2, 3)));
+
+    // Lanes that hold their own spool number 1..N with no gaps or repeats.
+    std::set<int> numbers;
+    for (int gi = 0; gi < b.get_system_info().total_slots; ++gi) {
+        if (b.upstream_slot(gi).has_value()) {
+            continue;
+        }
+        INFO("slot " << gi);
+        CHECK(numbers.insert(b.spool_display_number(gi)).second);
+    }
+    CHECK(numbers == std::set<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18});
+
+    // A backend with no shared spools keeps the plain 1-based lane numbers.
+    CapturingMultiAce plain;
+    for (int gi = 0; gi < plain.get_system_info().total_slots; ++gi) {
+        CHECK(plain.spool_display_number(gi) == gi + 1);
+    }
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "an ACE-fed head's upstream caption names its unit and bay",
+                 "[multiace]") {
+    CapturingMultiAce b;
+    b.frame(ace_frame("head_mode_4ace.json"));
+    const AmsSystemInfo info = b.get_system_info();
+
+    CHECK(helix::ui::upstream_lane_caption(info, b, 0) ==
+          std::string("ACE 1 ") + helix::ui::kUnitSeparator + " 1");
+    CHECK(helix::ui::upstream_lane_caption(info, b, 2) ==
+          std::string("ACE 3 ") + helix::ui::kUnitSeparator + " 4");
+    // An unrouted head and a bay have no upstream to name.
+    CHECK(helix::ui::upstream_lane_caption(info, b, 1).empty());
+    CHECK(helix::ui::upstream_lane_caption(info, b, multiace::bay_global(0, 0)).empty());
 }

@@ -1187,3 +1187,89 @@ TEST_CASE("Toolhead badges: several toolheads are named by extruder, never by a 
         CHECK(badges.numbers[0] == info.get_slot_global(2)->mapped_tool);
     }
 }
+
+// ============================================================================
+// A lane naming an already-placed nozzle's extruder shares that nozzle
+// ============================================================================
+
+namespace {
+
+/// The U1 shape: a PARALLEL unit of four head lanes, each naming its own
+/// Klipper extruder ("extruder", "extruder1".."extruder3").
+AmsSystemInfo head_unit_system() {
+    AmsSystemInfo info;
+    info.type = AmsType::SNAPMAKER;
+    AmsUnit& heads = info.units.emplace_back();
+    heads.unit_index = 0;
+    heads.slot_count = 4;
+    heads.first_slot_global_index = 0;
+    heads.topology = PathTopology::PARALLEL;
+    for (int s = 0; s < 4; ++s) {
+        SlotInfo slot;
+        slot.slot_index = s;
+        slot.global_index = s;
+        slot.mapped_tool = s;
+        slot.extruder_name = (s == 0) ? "extruder" : "extruder" + std::to_string(s);
+        heads.slots.push_back(slot);
+    }
+    return info;
+}
+
+/// One storage unit of four bays feeding @p topology routes: head mode passes
+/// HUB with every bay naming one head's extruder, multi mode passes PARALLEL
+/// with bay s naming head s's.
+AmsUnit storage_unit(int index, PathTopology topo) {
+    AmsUnit unit;
+    unit.unit_index = index;
+    unit.slot_count = 4;
+    unit.first_slot_global_index = index * 4;
+    unit.topology = topo;
+    for (int s = 0; s < 4; ++s) {
+        SlotInfo slot;
+        slot.slot_index = s;
+        slot.global_index = index * 4 + s;
+        slot.mapped_tool = (topo == PathTopology::HUB) ? 1 : s;
+        slot.extruder_name = (topo == PathTopology::HUB)
+                                 ? "extruder1"
+                                 : ((s == 0) ? "extruder" : "extruder" + std::to_string(s));
+        unit.slots.push_back(slot);
+    }
+    return unit;
+}
+
+} // namespace
+
+TEST_CASE("SystemToolLayout: a HUB unit shares a PARALLEL lane's nozzle by extruder name",
+          "[ams][tool_layout]") {
+    AmsSystemInfo info = head_unit_system();
+    info.units.push_back(storage_unit(1, PathTopology::HUB));
+    info.total_slots = 8;
+
+    const auto layout = compute_system_tool_layout(info, nullptr);
+
+    // Four heads, four nozzles: the HUB unit's bays converge on head 1's
+    // existing nozzle instead of adding a fifth.
+    CHECK(layout.total_physical_tools == 4);
+    REQUIRE(layout.units.size() == 2);
+    CHECK(layout.units[1].tool_count == 1);
+    CHECK(layout.units[1].first_physical_tool == 1);
+}
+
+TEST_CASE("SystemToolLayout: a PARALLEL unit shares every placed nozzle it names",
+          "[ams][tool_layout]") {
+    AmsSystemInfo info = head_unit_system();
+    for (int u = 1; u <= 4; ++u) {
+        info.units.push_back(storage_unit(u, PathTopology::PARALLEL));
+    }
+    info.total_slots = 20;
+
+    const auto layout = compute_system_tool_layout(info, nullptr);
+
+    // Four storage units, each naming all four extruders: still four nozzles.
+    CHECK(layout.total_physical_tools == 4);
+    REQUIRE(layout.units.size() == 5);
+    for (int u = 1; u <= 4; ++u) {
+        CHECK(layout.units[static_cast<size_t>(u)].tool_count == 4);
+        CHECK(layout.units[static_cast<size_t>(u)].first_physical_tool == 0);
+    }
+}

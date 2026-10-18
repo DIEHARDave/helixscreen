@@ -10,6 +10,10 @@
 
 namespace helix::ui {
 
+/// U+00B7 MIDDLE DOT, the separator between a unit name and a position inside
+/// it. Shared so every "Unit · N" label spells it the same way.
+inline constexpr const char* kUnitSeparator = "\xc2\xb7";
+
 /**
  * @brief The word a backend uses for one physical filament position.
  *

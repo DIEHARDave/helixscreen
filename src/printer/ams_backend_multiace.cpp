@@ -317,6 +317,48 @@ bool AmsBackendMultiAce::needs_unload_before_load(const AmsSystemInfo& info,
     return AmsBackendSnapmaker::needs_unload_before_load(info, target_slot);
 }
 
+std::optional<int> AmsBackendMultiAce::upstream_slot(int slot_index) const {
+    if (slot_index < 0 || slot_index >= kHeads) {
+        return std::nullopt;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!ace_fed_locked(slot_index)) {
+        return std::nullopt;
+    }
+    const auto bay = routed_bay_locked(slot_index);
+    if (!bay) {
+        return std::nullopt;
+    }
+    return multiace::bay_global(bay->first, bay->second);
+}
+
+int AmsBackendMultiAce::spool_display_number(int slot_index) const {
+    if (slot_index < 0) {
+        return slot_index + 1;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    // A routed head aliases its bay; every other lane (bays, unrouted heads)
+    // numbers in global order, so the numbers on spool-owning lanes run 1..N.
+    const auto aliased = [this](int head) {
+        return head < kHeads && ace_fed_locked(head) && routed_bay_locked(head).has_value();
+    };
+    int target = slot_index;
+    if (aliased(slot_index)) {
+        const auto bay = *routed_bay_locked(slot_index);
+        target = multiace::bay_global(bay.first, bay.second);
+    }
+    int n = 0;
+    for (int gi = 0; gi < system_info_.total_slots; ++gi) {
+        if (!aliased(gi)) {
+            ++n;
+        }
+        if (gi == target) {
+            break;
+        }
+    }
+    return n;
+}
+
 bool AmsBackendMultiAce::can_unload_from_toolhead(int slot_index) const {
     int head = slot_index;
     {

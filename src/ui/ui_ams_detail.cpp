@@ -996,6 +996,9 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
             color = backend->get_slot_info(global_idx).color_rgb;
         }
         ui_filament_path_canvas_set_slot_filament(canvas, i, static_cast<int>(slot_seg), color);
+        const std::string caption = helix::ui::upstream_lane_caption(info, *backend, global_idx);
+        ui_filament_path_canvas_set_slot_upstream(canvas, i,
+                                                  caption.empty() ? nullptr : caption.c_str());
     }
 
     // The buffer box: AFC buffer health, Happy Hare sync feedback, or a

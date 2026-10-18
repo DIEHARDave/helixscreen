@@ -503,6 +503,29 @@ bool ui_filament_path_canvas_get_bypass_merge_pos(lv_obj_t* obj, int32_t* cx_out
 void ui_filament_path_canvas_set_slot_mapped_tool(lv_obj_t* obj, int slot, int tool);
 
 /**
+ * @brief Set the caption naming the lane whose spool feeds this one
+ *
+ * A lane fed from storage upstream of it ("ACE 2 · 3") draws that caption on
+ * its column, so the path names where its filament comes from. NULL or an
+ * empty string clears it; the text is copied. PARALLEL topology draws it.
+ *
+ * @param obj The filament_path_canvas widget
+ * @param slot Slot index (0-15)
+ * @param caption Caption text, or NULL for none
+ */
+void ui_filament_path_canvas_set_slot_upstream(lv_obj_t* obj, int slot, const char* caption);
+
+/**
+ * @brief Read back a slot's upstream caption ("" when it has none)
+ *
+ * @param obj The filament_path_canvas widget
+ * @param slot Slot index (0-15)
+ * @param out Buffer receiving the caption
+ * @param out_size Size of @p out
+ */
+void ui_filament_path_canvas_get_slot_upstream(lv_obj_t* obj, int slot, char* out, size_t out_size);
+
+/**
  * @brief Set per-lane Klipper extruder identity for toolhead badges
  *
  * Each entry is the tool number implied by that lane's extruder name

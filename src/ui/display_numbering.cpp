@@ -14,8 +14,6 @@
 namespace helix::ui {
 
 namespace {
-/// U+00B7 MIDDLE DOT, the separator between a unit name and its position.
-constexpr const char* kUnitSeparator = "\xc2\xb7";
 
 /**
  * @brief The translated plural for @p noun, as a range header spells it.
