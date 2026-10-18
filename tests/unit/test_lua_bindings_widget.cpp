@@ -4,6 +4,7 @@
 #if HELIX_HAS_PLUGINS
 
 #include "../test_fixtures.h"
+#include "../test_helpers/log_capture.h"
 #include "../test_helpers/plugin_host_test_support.h"
 #include "../test_helpers/plugin_test_support.h"
 #include "lua_bindings.h"
@@ -52,6 +53,24 @@ TEST_CASE("helix.widget refuses an undeclared widget", "[plugin][lua_bindings_wi
     REQUIRE(b.t.run(R"(ok, err = pcall(helix.widget, "nope", {}))"));
     CHECK(b.t.global("ok") == "false");
     CHECK(b.t.global("err").find("widgets") != std::string::npos);
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "a menu check cannot re-register a widget",
+                 "[plugin][lua_bindings_widget][check]") {
+    BoundRuntime b({&install_ui_bindings, &install_widget_bindings});
+    WidgetDecl d;
+    d.id = "test-plugin__tile";
+    b.manifest.widgets.push_back(d);
+    REQUIRE(b.t.run(R"(
+        helix.widget("tile", { on_attach = function() end })
+        helix.ui.on("check", function() helix.widget("tile", {}); return true end)
+    )"));
+    helix::LogCapture logs;
+    CHECK_FALSE(call_ui_handler_sync(*b.t.rt, "check", {}, {}));
+    CHECK(logs.count_containing("helix.widget is not allowed in a menu check") == 1);
+    // The handler set registered outside the check is still the live one.
+    CHECK(dispatch_widget_hook(*b.t.rt, "test-plugin__tile", WidgetHook::Attach));
+    CHECK_FALSE(b.t.rt->faulted());
 }
 
 TEST_CASE("helix.widget refuses a hook key holding a non-function",

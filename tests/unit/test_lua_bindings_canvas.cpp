@@ -581,25 +581,43 @@ TEST_CASE_METHOD(DemoRig, "two instances of one canvas name share the slot",
     lv_refr_now(nullptr);
 }
 
-TEST_CASE_METHOD(XMLTestFixture, "a menu check cannot draw or clear a canvas",
+TEST_CASE_METHOD(XMLTestFixture, "a menu check cannot draw, commit or create a canvas",
                  "[plugin][lua][canvas][check]") {
-    BoundRuntime b({&install_ui_bindings, &install_canvas_bindings});
-    REQUIRE(b.t.run(R"(
-        c = helix.canvas("chk")
-        c:line(0, 0, 1, 1)
-        helix.ui.on("draw", function() c:line(0, 0, 2, 2); return true end)
-        helix.ui.on("wipe", function() c:clear(); return true end)
-    )"));
-    helix::LogCapture logs;
-    CHECK_FALSE(call_ui_handler_sync(*b.t.rt, "draw", {}, {}));
-    CHECK_FALSE(call_ui_handler_sync(*b.t.rt, "wipe", {}, {}));
-    CHECK(logs.count_containing("canvas:line is not allowed in a menu check") == 1);
-    CHECK(logs.count_containing("canvas:clear is not allowed in a menu check") == 1);
-    REQUIRE(b.t.run("c:commit()"));
-    const DisplayList* list = canvas_committed("test-plugin__chk");
-    REQUIRE(list);
-    CHECK(list->prims.size() == 1); // the line drawn outside the check, and nothing else
-    CHECK_FALSE(b.t.rt->faulted());
+    struct Case {
+        const char* call;
+        const char* lua;
+    };
+    const Case cases[] = {
+        {"canvas:line", "c:line(0, 0, 2, 2)"},
+        {"canvas:polyline", "c:polyline({0, 0, 5, 5})"},
+        {"canvas:rect", "c:rect(0, 0, 2, 2)"},
+        {"canvas:circle", "c:circle(5, 5, 2)"},
+        {"canvas:arc", "c:arc(5, 5, 2, 0, 90)"},
+        {"canvas:text", "c:text(0, 0, 'x')"},
+        {"canvas:clear", "c:clear()"},
+        {"canvas:commit", "c:commit()"},
+        {"canvas:on_size", "c:on_size(function() end)"},
+        {"helix.canvas", "helix.canvas('fresh')"},
+    };
+    for (const auto& c : cases) {
+        INFO(c.lua);
+        BoundRuntime b({&install_ui_bindings, &install_canvas_bindings});
+        REQUIRE(b.t.run(std::string(R"(
+            c = helix.canvas("chk")
+            c:line(0, 0, 1, 1)
+            helix.ui.on("check", function() )") +
+                        c.lua + R"( return true end)
+        )"));
+        helix::LogCapture logs;
+        CHECK_FALSE(call_ui_handler_sync(*b.t.rt, "check", {}, {}));
+        CHECK(logs.has_line_with({c.call, "is not allowed in a menu check"}));
+        CHECK(canvas_committed("test-plugin__chk") == nullptr);
+        REQUIRE(b.t.run("c:commit()"));
+        const DisplayList* list = canvas_committed("test-plugin__chk");
+        REQUIRE(list);
+        CHECK(list->prims.size() == 1); // the line drawn outside the check, and nothing else
+        CHECK_FALSE(b.t.rt->faulted());
+    }
 }
 
 #endif // HELIX_HAS_PLUGINS

@@ -6,6 +6,7 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/log_capture.h"
 #include "../test_helpers/plugin_test_support.h"
 #include "lua_bindings.h"
 #include "plugin_backend.h"
@@ -131,6 +132,21 @@ TEST_CASE_METHOD(LVGLTestFixture, "a cancelled subscription stops delivering",
         r.reply(RpcResult{true, json{{"status", {{"extruder", {{"temperature", 30.0}}}}}}, {}});
     drain();
     CHECK(b.t.global("n") == "0");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a menu check cannot cancel a subscription",
+                 "[plugin][lua][subscribe][check]") {
+    BoundRuntime b({&install_ui_bindings, &install_moonraker_bindings});
+    REQUIRE(b.t.run(R"(
+        h = helix.moonraker.subscribe({ extruder = true }, function(s) end)
+        helix.ui.on("check", function() h:cancel(); return true end)
+    )"));
+    const size_t sets = b.fake.object_sets.size();
+    helix::LogCapture logs;
+    CHECK_FALSE(call_ui_handler_sync(*b.t.rt, "check", {}, {}));
+    CHECK(logs.count_containing("subscription:cancel is not allowed in a menu check") == 1);
+    CHECK(b.fake.object_sets.size() == sets); // the plugin's object set is unchanged
+    CHECK_FALSE(b.t.rt->faulted());
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "subscribe enforces its limits", "[plugin][lua][subscribe]") {
