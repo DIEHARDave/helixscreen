@@ -21,6 +21,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+
 namespace helix {
 
 namespace {
@@ -70,6 +72,10 @@ constexpr CapabilityDef CAPABILITY_DEFS[] = {
     {Capability::HasExtraFans, "printer_has_extra_fans", 0},
     {Capability::PowerDeviceCount, "power_device_count", 0},
     {Capability::SensorCount, "sensor_count", 0},
+    {Capability::HasShakeTune, "printer_has_shaketune", 0},
+    {Capability::HasHeatSoak, "printer_has_heat_soak", 0},
+    {Capability::HasFanFeedback, "printer_has_fan_feedback", 0},
+    {Capability::HasLedEffects, "printer_has_led_effects", 0},
 };
 static_assert(std::size(CAPABILITY_DEFS) == CAPABILITY_COUNT);
 
@@ -166,6 +172,7 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     set_capability(Capability::HasZTilt, overrides.has_z_tilt() ? 1 : 0);
     set_capability(Capability::HasBedMesh, overrides.has_bed_mesh() ? 1 : 0);
     set_capability(Capability::HasNozzleClean, overrides.has_nozzle_clean() ? 1 : 0);
+    set_capability(Capability::HasHeatSoak, overrides.has_heat_soak() ? 1 : 0);
 
     // Hardware capabilities (no user override support yet - set directly from detection)
     spdlog::debug("[PrinterCapabilitiesState] has_probe={} has_led={} has_accel={}",
@@ -174,6 +181,15 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     set_capability(Capability::HasHeaterBed, hardware.has_heater_bed() ? 1 : 0);
     set_capability(Capability::HasLed, hardware.has_led() ? 1 : 0);
     set_capability(Capability::HasAccelerometer, hardware.has_accelerometer() ? 1 : 0);
+    set_capability(Capability::HasShakeTune, hardware.has_klippain_shaketune() ? 1 : 0);
+    set_capability(Capability::HasFanFeedback, hardware.has_fan_feedback() ? 1 : 0);
+    set_capability(Capability::HasLedEffects, hardware.has_led_effects() ? 1 : 0);
+
+    // "fan" is the part cooling fan; any other fan object is an extra one.
+    const auto& fans = hardware.fans();
+    const bool extra_fans =
+        std::any_of(fans.begin(), fans.end(), [](const std::string& f) { return f != "fan"; });
+    set_capability(Capability::HasExtraFans, extra_fans ? 1 : 0);
 
     // Install M300 (Klipper gcode beeper) backend now that we know whether
     // the printer answers M300 — a beeper output_pin or an M300 macro in the

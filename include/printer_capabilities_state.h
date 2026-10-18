@@ -57,6 +57,10 @@ enum class Capability : uint8_t {
     HasExtraFans,                ///< controllable fans beyond part cooling
     PowerDeviceCount,            ///< power devices (0 = none)
     SensorCount,                 ///< Moonraker sensors (0 = none)
+    HasShakeTune,                ///< Klippain Shake&Tune macros
+    HasHeatSoak,                 ///< heat soak macro, after the user override
+    HasFanFeedback,              ///< fan tachometer feedback (fan_feedback)
+    HasLedEffects,               ///< [led_effect] sections
     Count
 };
 
