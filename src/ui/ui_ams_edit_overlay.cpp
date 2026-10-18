@@ -825,7 +825,10 @@ void AmsEditOverlay::handle_spool_selected(int spool_id) {
         return;
     }
 
-    // Two-step flow: return to the editor with the picked spool loaded.
+    // Two-step flow: return to the editor with the picked spool loaded. The
+    // More section now describes the NEW spool, not the one the editor opened
+    // on - re-seed, or Save would PATCH the previous spool's record (2a).
+    reseed_details_for_spool();
     sel_ = selection_from_slot(working_info_);
     selection_moved_ = false;
     details_color_ = working_info_.color_rgb;
@@ -887,6 +890,24 @@ void AmsEditOverlay::refresh_tag_state() {
     lv_subject_set_int(&tag_badge_visible_subject_, from_tag ? 1 : 0);
 }
 
+void AmsEditOverlay::reseed_details_for_spool() {
+    // Seed the logistics fields from what we know about the spool
+    // working_info_ names (meaningful for managed slots; the section hides
+    // otherwise, but seeding is harmless). A managed slot's open path then
+    // refreshes these from the server record.
+    detail_original_ = SpoolInfo{};
+    detail_original_.id = working_info_.spoolman_id;
+    detail_original_.filament_id = working_info_.spoolman_filament_id;
+    detail_original_.vendor = working_info_.brand;
+    detail_original_.material = working_info_.material;
+    detail_original_.filament_name = working_info_.spool_name;
+    detail_original_.remaining_weight_g = working_info_.remaining_weight_g;
+    detail_original_.initial_weight_g = working_info_.total_weight_g;
+    detail_original_.spool_weight_g = working_info_.total_weight_g;
+    detail_working_ = detail_original_;
+    logistics_pending_ = false;
+}
+
 void AmsEditOverlay::enter_editor() {
     catalog_ = printer::FilamentCatalog::load_full();
     // The colour areas are subject-counted (a literal <repeat> inside <if> is
@@ -906,18 +927,7 @@ void AmsEditOverlay::enter_editor() {
         api_ = get_moonraker_api();
     }
 
-    // Seed the logistics fields from what we know (meaningful for managed
-    // slots; the section hides otherwise, but seeding is harmless).
-    detail_original_ = SpoolInfo{};
-    detail_original_.id = working_info_.spoolman_id;
-    detail_original_.filament_id = working_info_.spoolman_filament_id;
-    detail_original_.vendor = working_info_.brand;
-    detail_original_.material = working_info_.material;
-    detail_original_.filament_name = working_info_.spool_name;
-    detail_original_.remaining_weight_g = working_info_.remaining_weight_g;
-    detail_original_.initial_weight_g = working_info_.total_weight_g;
-    detail_original_.spool_weight_g = working_info_.total_weight_g;
-    detail_working_ = detail_original_;
+    reseed_details_for_spool();
 
     set_view(VIEW_EDITOR);
     populate_editor_view();
@@ -1062,7 +1072,11 @@ void AmsEditOverlay::update_temp_display() {
             from_catalog = true;
         }
     }
-    if (!from_catalog && nozzle_min == 0 && nozzle_max == 0 && bed_temp == 0 && !type.empty()) {
+    // A moved selection names a material the stored temps may not describe
+    // (a linked slot carries ITS spool's range), so the database answer wins
+    // once the user has picked a family with no product attached.
+    if (!from_catalog && !type.empty() &&
+        (selection_moved_ || (nozzle_min == 0 && nozzle_max == 0 && bed_temp == 0))) {
         if (auto mat = filament::find_material(type)) {
             nozzle_min = mat->nozzle_min;
             nozzle_max = mat->nozzle_max;
@@ -1414,6 +1428,7 @@ void AmsEditOverlay::handle_scan_qr() {
                     editor.working_info_ = scanned;
                     editor.working_info_.slot_index = keep_slot;
                     editor.working_info_.global_index = keep_global;
+                    editor.reseed_details_for_spool();
                     editor.sel_ = editor.selection_from_slot(editor.working_info_);
                     editor.selection_moved_ = false;
                     editor.set_view(VIEW_EDITOR);
@@ -1644,9 +1659,23 @@ void AmsEditOverlay::handle_save() {
 
     // The More section's Spoolman-owned fields (price/location/lot/notes):
     // PATCH the spool record's diff before committing, the way the identity
-    // outcomes write theirs. Withheld when the identity prompt is about to
-    // own this save - Cancel must still be a true abort.
-    if (working_info_.spoolman_id > 0 && api_ &&
+    // outcomes write theirs. When the identity prompt owns this save, the
+    // PATCH instead rides the Update arm inside do_spoolman_save (2b) - so a
+    // material change and a Notes edit in one Save lose nothing - while
+    // Cancel stays a true abort and the Unlink arm drops logistics by design
+    // (the spool leaves our record).
+    const bool has_logistics_diff = [this]() {
+        nlohmann::json a;
+        nlohmann::json b;
+        SpoolmanSlotSaver::build_spool_patches(detail_original_, detail_working_, a, b);
+        return !a.empty() || !b.empty();
+    }();
+    logistics_pending_ = has_logistics_diff && working_info_.spoolman_id > 0 &&
+                         !may_write_spoolman_now(original_info_, working_info_);
+    // Belt-and-braces for 2a: the PATCH only ever touches the spool the slot
+    // now names, so a stale seed cannot write the previous spool's record.
+    if (working_info_.spoolman_id > 0 && api_ && !logistics_pending_ &&
+        detail_working_.id == working_info_.spoolman_id &&
         may_write_spoolman_now(original_info_, working_info_)) {
         nlohmann::json spool_patch;
         nlohmann::json filament_patch;
@@ -1847,6 +1876,49 @@ void AmsEditOverlay::do_spoolman_save(helix::SpoolmanSlotSaver::LinkIntent inten
                     }
                 }
                 const int saved_spool_id = working_info_.spoolman_id;
+                if (logistics_pending_ && detail_working_.id == saved_spool_id && api_) {
+                    // The identity prompt owned this save; the More fields
+                    // ride the Update arm so a combined material+Notes Save
+                    // loses nothing (2b).
+                    nlohmann::json spool_patch;
+                    nlohmann::json filament_patch;
+                    SpoolmanSlotSaver::build_spool_patches(detail_original_, detail_working_,
+                                                           spool_patch, filament_patch);
+                    const int filament_id = detail_working_.filament_id;
+                    // Spoolman callbacks arrive on a background thread; the
+                    // close itself goes through the queue (L01).
+                    auto token2 = lifetime_.token();
+                    auto finish = [this, token2, saved_spool_id]() {
+                        token2.defer("AmsEditOverlay::chained_logistics_done",
+                                     [this, saved_spool_id]() {
+                                         close_editor(true);
+                                         SpoolmanManager::refresh_spool(saved_spool_id);
+                                     });
+                    };
+                    // The chained PATCH is best-effort: the identity save
+                    // already succeeded, so a failure here logs and finishes
+                    // the close rather than stranding the editor.
+                    if (!spool_patch.empty()) {
+                        api_->spoolman().update_spoolman_spool(
+                            saved_spool_id, spool_patch, finish,
+                            [finish](const MoonrakerError& err) {
+                                spdlog::error("[AmsEditOverlay] chained logistics PATCH failed: {}",
+                                              err.message);
+                                finish();
+                            });
+                        return;
+                    }
+                    if (!filament_patch.empty() && filament_id > 0) {
+                        api_->spoolman().update_spoolman_filament(
+                            filament_id, filament_patch, finish,
+                            [finish](const MoonrakerError& err) {
+                                spdlog::error("[AmsEditOverlay] chained filament PATCH failed: {}",
+                                              err.message);
+                                finish();
+                            });
+                        return;
+                    }
+                }
                 close_editor(true);
                 SpoolmanManager::refresh_spool(saved_spool_id);
             });

@@ -198,6 +198,14 @@ class AmsEditOverlay : public OverlayBase {
 
     void populate_detail_fields();
     void read_detail_fields();
+    /// Re-seed detail_original_/detail_working_ from working_info_ for the
+    /// spool it currently names - on open, and after a picker relink or a QR
+    /// scan swaps the spool underneath the editor.
+    void reseed_details_for_spool();
+    /// The logistics PATCH rides an Update-in-Spoolman save when the identity
+    /// prompt owns this save (2b): set by handle_save, consumed by
+    /// do_spoolman_save's success path.
+    bool logistics_pending_ = false;
 
     // === Colour view (VIEW_COLOR): presets + custom HSV ===
     uint32_t custom_color_ = 0x808080;

@@ -132,6 +132,9 @@ class AmsEditOverlayViewTestAccess {
     std::string detail_comment() const {
         return overlay_.detail_working_.comment;
     }
+    int detail_id() const {
+        return overlay_.detail_working_.id;
+    }
     std::string dropdown_options(const char* name) {
         lv_obj_t* dd = overlay_.find_widget(name);
         return dd ? lv_dropdown_get_options(dd) : std::string();
@@ -1948,4 +1951,210 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a More-section edit lights Save and stages 
     CHECK(access.detail_comment() == "keep dry");
 
     close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a picker relink reseeds the More section to the new spool",
+                 "[ams_edit_overlay][more][relink]") {
+    // 2a: the More fields must describe the spool the slot NOW names, and the
+    // Save PATCH must target that spool's record, never the one the editor
+    // opened on.
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SpoolInfo spool_b;
+    spool_b.id = 22;
+    spool_b.filament_id = 9;
+    spool_b.vendor = "eSUN";
+    spool_b.material = "PETG";
+    spool_b.color_hex = "FF6600";
+    spool_b.location = "Shelf B";
+    client.spoolman_mock().get_mock_spools().push_back(spool_b);
+
+    auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
+    REQUIRE(spoolman_subj != nullptr);
+    lv_subject_set_int(spoolman_subj, 1);
+    get_printer_state().capabilities_state().set_spoolman_available(true);
+    UpdateQueue::instance().drain();
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    // Relink to spool B through the picker path.
+    access.set_cached_spools({spool_b});
+    access.call_handle_spool_selected(22);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    // The More section now carries B's identity, not A's.
+    CHECK(access.detail_id() == 22);
+    CHECK(access.working_info().spoolman_id == 22);
+
+    // A Notes edit on B saves against B's record.
+    access.set_detail_field("detail_field_comment", "on B");
+    UpdateQueue::instance().drain();
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(20);
+    UpdateQueue::instance().drain();
+    process_lvgl(20);
+
+    bool patched_b = false;
+    for (const auto& upd : client.spoolman_mock().spool_updates) {
+        if (upd.spool_id == 22) {
+            patched_b = true;
+        }
+    }
+    CHECK(patched_b);
+
+    close_editor_overlay();
+    get_printer_state().capabilities_state().set_spoolman_available(false);
+    UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a combined material+notes save loses neither",
+                 "[ams_edit_overlay][more][combined]") {
+    // 2b: the identity prompt owns the save, and the Notes edit rides the
+    // Update arm instead of being dropped.
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SpoolInfo linked;
+    linked.id = 7;
+    linked.filament_id = 3;
+    linked.vendor = "Bambu Lab";
+    linked.material = "ASA";
+    linked.color_hex = "8A949E";
+    client.spoolman_mock().get_mock_spools().push_back(linked);
+
+    auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
+    REQUIRE(spoolman_subj != nullptr);
+    lv_subject_set_int(spoolman_subj, 1);
+    get_printer_state().capabilities_state().set_spoolman_available(true);
+    UpdateQueue::instance().drain();
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    bool fired = false;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api,
+                                  [&](const AmsEditOverlay::EditResult& r) { fired = r.saved; }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    // Move the material AND edit the notes in one save.
+    SlotInfo edited = access.working_info();
+    edited.material = "PETG";
+    access.set_working_info(edited);
+    access.set_detail_field("detail_field_comment", "combined edit");
+    UpdateQueue::instance().drain();
+
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    REQUIRE_FALSE(ModalStack::instance().stack_empty()); // Update / Unlink prompt
+
+    // "Update in Spoolman" is the primary button.
+    lv_obj_t* dlg = ModalStack::instance().top_dialog();
+    REQUIRE(dlg != nullptr);
+    lv_obj_t* confirm = lv_obj_find_by_name(dlg, "btn_primary");
+    REQUIRE(confirm != nullptr);
+    lv_obj_send_event(confirm, LV_EVENT_CLICKED, nullptr);
+    UpdateQueue::instance().drain();
+    process_lvgl(30);
+    UpdateQueue::instance().drain();
+    process_lvgl(30);
+
+    CHECK(fired);
+    // The notes reached the spool record alongside the identity move.
+    bool notes_reached_spool = false;
+    for (const auto& upd : client.spoolman_mock().spool_updates) {
+        if (upd.patch.dump().find("combined edit") != std::string::npos) {
+            notes_reached_spool = true;
+        }
+    }
+    CHECK(notes_reached_spool);
+
+    if (!fired) {
+        close_editor_overlay();
+    }
+    get_printer_state().capabilities_state().set_spoolman_available(false);
+    UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a linked slot's family change refreshes the temps line",
+                 "[ams_edit_overlay][r10][linked]") {
+    // 3: a linked slot carries its spool's stored range; a family pick must
+    // show the picked family's range, not the stored one.
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SpoolInfo linked;
+    linked.id = 7;
+    linked.filament_id = 3;
+    linked.vendor = "Bambu Lab";
+    linked.material = "ASA"; // ASA prints far hotter than PLA
+    linked.color_hex = "8A949E";
+    client.spoolman_mock().get_mock_spools().push_back(linked);
+
+    auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
+    REQUIRE(spoolman_subj != nullptr);
+    lv_subject_set_int(spoolman_subj, 1);
+    get_printer_state().capabilities_state().set_spoolman_available(true);
+    UpdateQueue::instance().drain();
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    // The linked spool's OWN range, as a fetched record leaves it: hot ASA
+    // numbers that a PLA pick must not keep showing.
+    SlotInfo info = tracked_slot();
+    info.material = "ASA";
+    info.nozzle_temp_min = 260;
+    info.nozzle_temp_max = 290;
+    info.bed_temp = 100;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, &api, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    auto* temps = lv_xml_get_subject(nullptr, "ams_edit_temp_text");
+    REQUIRE(temps != nullptr);
+    const std::string asa_range = lv_subject_get_string(temps); // ASA's DB range
+    REQUIRE_FALSE(asa_range.empty());
+
+    // Move the family to PLA through the dropdown; PLA's cooler range must
+    // replace ASA's immediately.
+    const std::string materials = access.dropdown_options("dropdown_material");
+    int pla_index = -1;
+    int index = 0;
+    for (size_t at = 0; at <= materials.size();) {
+        const size_t nl = materials.find('\n', at);
+        const std::string option = materials.substr(at, nl == std::string::npos ? nl : nl - at);
+        if (option == "PLA") {
+            pla_index = index;
+            break;
+        }
+        if (nl == std::string::npos) {
+            break;
+        }
+        at = nl + 1;
+        ++index;
+    }
+    REQUIRE(pla_index >= 0);
+    access.call_handle_option_selected(0, pla_index);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    const std::string pla_range = lv_subject_get_string(temps);
+    CHECK_FALSE(pla_range.empty()); // a range, not a blanked line
+    CHECK(pla_range != asa_range);
+
+    close_editor_overlay();
+    get_printer_state().capabilities_state().set_spoolman_available(false);
+    UpdateQueue::instance().drain();
 }
