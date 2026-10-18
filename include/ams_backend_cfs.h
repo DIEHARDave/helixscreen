@@ -98,7 +98,8 @@ class CfsErrorDecoder {
 /// K1-series printer. Issue #968.
 ///
 /// Fork — community Kalico ports of the K2 whose reimplemented `box` module
-/// replaces Creality's closed one. `T<n>` and `BOX_UNLOAD` are high-level and
+/// replaces Creality's closed one. `BOX_SELECT_SLOT` (`T<n>` on firmware
+/// without print mapping) and `BOX_UNLOAD` are high-level and
 /// self-contained: box.py owns the whole feed/purge/park sequence, so
 /// HelixScreen sends no stock envelope. Detected by `api_version` in the box
 /// payload. See docs/devel/printer-research/CREALITY_CFS_K2_INTERNALS.md §
@@ -266,9 +267,9 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// firmware involvement.
     void publish_external_spool_lane(const SlotInfo* spool) override;
 
-    // Bypass / external spool. Fork firmware owns the flow (`T<external>` to
-    // feed, BOX_UNLOAD to eject — box.py registers T for the external slot
-    // alongside the bays); stock K1/K2 firmware has no command for the holder,
+    // Bypass / external spool. Fork firmware owns the flow (selecting the
+    // external slot to feed, BOX_UNLOAD to eject — box.py numbers the external
+    // slot alongside the bays); stock K1/K2 firmware has no command for the holder,
     // so enabling is a declaration backed by toolhead-sensor confirmation and
     // the state is derived from the sensor + active-lane pair.
     AmsError enable_bypass() override;
