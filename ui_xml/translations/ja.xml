@@ -2809,10 +2809,12 @@
   <translation tag="Save to Spool" ja="スプールに保存"/>
   <translation tag="Save to Spoolman" ja="Spoolman に保存"/>
   <translation tag="Saved Z-Offset" ja="保存されたZ-Offset"/>
+  <translation tag="Saved to Spoolman, but the spool&apos;s price, location, lot and notes didn&apos;t save." ja="Spoolmanに保存しましたが、スプールの価格、場所、ロット、メモは保存されませんでした。"/>
   <translation tag="Saved to crash_report.txt (QR not available)" ja="crash_report.txt に保存しました（QR 利用不可）"/>
   <translation tag="Saved to printer configuration." ja="プリンター設定に保存しました。"/>
   <translation tag="Saved to {}. It applies whenever this filament becomes active." ja="{}に保存しました。このフィラメントが使用中になるたびに適用されます。"/>
   <translation tag="Saved values, and whether to ask before running" ja="保存した値と、実行前に確認するかどうか"/>
+  <translation tag="Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved." ja="保存しました。Spoolmanがオフラインのため、価格、場所、ロット、メモは未保存のままここに残ります。"/>
   <translation tag="Saves to Klipper config and restarts firmware." ja="Klipper 設定に保存してファームウェアを再起動します。"/>
   <translation tag="Saving Configuration..." ja="設定を保存中..."/>
   <translation tag="Saving Z-offset..." ja="Zオフセットを保存中..."/>
@@ -3045,6 +3047,7 @@
   <translation tag="Spoolman needs a color for this filament." ja="Spoolman にはこのフィラメントの色が必要です。"/>
   <translation tag="Spoolman needs a material for this filament." ja="Spoolman にはこのフィラメントの素材が必要です。"/>
   <translation tag="Spoolman removed." ja="Spoolman を削除しました。"/>
+  <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." ja="Spoolmanに価格、場所、ロット、メモは保存されましたが、それ以外は保存されませんでした。このプリンターではほかに何も変更されていません。"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" ja="Spoolmanが利用できません — フィラメント重量が古い可能性があります"/>
   <translation tag="Spoolman was not configured." ja="Spoolman は設定されていませんでした。"/>
   <translation tag="Spoolman: %zu Spool" ja="Spoolman: %zu 個のスプール"/>
@@ -3098,6 +3101,7 @@
   <translation tag="Std Deviation" ja="標準偏差"/>
   <translation tag="Step" ja="ステップ"/>
   <translation tag="Step 1 of 3" ja="ステップ 1/3"/>
+  <translation tag="Still saving this spool…" ja="このスプールはまだ保存中です…"/>
   <translation tag="Still working... taking longer than usual" ja="まだ処理中です... 通常より時間がかかっています"/>
   <translation tag="Stop" ja="停止"/>
   <translation tag="Stop Drying" ja="乾燥を停止"/>

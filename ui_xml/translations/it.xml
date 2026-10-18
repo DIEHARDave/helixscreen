@@ -2809,10 +2809,12 @@
   <translation tag="Save to Spool" it="Salva sulla bobina"/>
   <translation tag="Save to Spoolman" it="Salva su Spoolman"/>
   <translation tag="Saved Z-Offset" it="Z-Offset Salvato"/>
+  <translation tag="Saved to Spoolman, but the spool&apos;s price, location, lot and notes didn&apos;t save." it="Salvato in Spoolman, ma prezzo, posizione, lotto e note della bobina non sono stati salvati."/>
   <translation tag="Saved to crash_report.txt (QR not available)" it="Salvato in crash_report.txt (QR non disponibile)"/>
   <translation tag="Saved to printer configuration." it="Salvato nella configurazione stampante."/>
   <translation tag="Saved to {}. It applies whenever this filament becomes active." it="Salvato su {}. Viene applicato ogni volta che questo filamento diventa attivo."/>
   <translation tag="Saved values, and whether to ask before running" it="Valori salvati e se chiedere prima di eseguire"/>
+  <translation tag="Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved." it="Salvato. Spoolman è offline, quindi prezzo, posizione, lotto e note restano qui non salvati."/>
   <translation tag="Saves to Klipper config and restarts firmware." it="Salva nella configurazione Klipper e riavvia il firmware."/>
   <translation tag="Saving Configuration..." it="Salvataggio configurazione..."/>
   <translation tag="Saving Z-offset..." it="Salvataggio Z-offset..."/>
@@ -3045,6 +3047,7 @@
   <translation tag="Spoolman needs a color for this filament." it="Spoolman richiede un colore per questo filamento."/>
   <translation tag="Spoolman needs a material for this filament." it="Spoolman richiede un materiale per questo filamento."/>
   <translation tag="Spoolman removed." it="Spoolman rimosso."/>
+  <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." it="Spoolman ha salvato prezzo, posizione, lotto e note, ma non il resto. Nient&apos;altro è cambiato su questa stampante."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" it="Spoolman non disponibile — i pesi del filamento potrebbero non essere aggiornati"/>
   <translation tag="Spoolman was not configured." it="Spoolman non era configurato."/>
   <translation tag="Spoolman: %zu Spool" it="Spoolman: %zu bobina"/>
@@ -3098,6 +3101,7 @@
   <translation tag="Std Deviation" it="Dev. standard"/>
   <translation tag="Step" it="Passaggio"/>
   <translation tag="Step 1 of 3" it="Passaggio 1 di 3"/>
+  <translation tag="Still saving this spool…" it="Salvataggio di questa bobina in corso…"/>
   <translation tag="Still working... taking longer than usual" it="Ancora in corso... ci vuole più tempo del solito"/>
   <translation tag="Stop" it="Ferma"/>
   <translation tag="Stop Drying" it="Ferma essiccazione"/>

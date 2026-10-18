@@ -169,6 +169,12 @@ std::string AmsEditOverlay::selected_type(const SpoolEditSelection& sel,
 bool AmsEditOverlay::show_for_slot(lv_obj_t* parent, int slot_index, const SlotInfo& initial_info,
                                    IMoonrakerAPI* api, CompletionCallback on_complete,
                                    bool open_on_picker) {
+    // A save for this slot that outlived its editor has not committed yet;
+    // an editor opened now would show, and could save, the pre-save slot.
+    if (save_pending_for(slot_index)) {
+        ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Still saving this spool…"), 2500);
+        return false;
+    }
     // Every piece of per-session state starts from THIS slot. A picker-entry
     // session never runs enter_editor() up front, so nothing may be left for
     // it to inherit from the previous slot.
@@ -1878,6 +1884,15 @@ void AmsEditOverlay::handle_save() {
         SpoolmanSlotSaver::build_spool_patches(detail_original_, detail_working_, a, b);
         return !a.empty() || !b.empty();
     }();
+    if (working_info_.spoolman_id > 0 && !details_loaded && has_logistics_diff &&
+        (!api_ || !get_printer_state().is_spoolman_available())) {
+        // Spoolman is unreachable, so the record never will arrive. The
+        // slot's own edits commit now; the More edits stay in the editor.
+        SaveCapture cap = capture_save();
+        cap.stay_open = true;
+        commit_capture(cap);
+        return;
+    }
     if (working_info_.spoolman_id > 0 && !details_loaded && has_logistics_diff) {
         // The record those fields edit has not arrived, so there is nothing to
         // diff them against. Keep them, ask for the record again, and say so
@@ -1898,15 +1913,18 @@ void AmsEditOverlay::handle_save() {
         nlohmann::json filament_patch;
         SpoolmanSlotSaver::build_spool_patches(detail_original_, detail_working_, spool_patch,
                                                filament_patch);
-        if (!spool_patch.empty() || !filament_patch.empty()) {
+        // The More fields are all spool-level (build_spool_patches files only
+        // colour under the filament, and these fields never carry one), so the
+        // shared filament record is never written from here.
+        if (!spool_patch.empty()) {
             const int spool_id = detail_working_.id;
-            const int filament_id = detail_working_.filament_id;
             save_in_flight_ = true;
             update_sync_button_state();
             // Owed to Spoolman and the slot, not to the screen: the rest of the
             // save runs from what this Save captured, editor open or not.
             auto token = object_lifetime_.token();
             const SaveCapture cap = capture_save();
+            begin_slot_save(cap.slot_index);
             auto on_saved = [this, token, cap]() {
                 token.defer("AmsEditOverlay::logistics_saved", [this, cap]() {
                     if (cap.session == session_) {
@@ -1914,7 +1932,10 @@ void AmsEditOverlay::handle_save() {
                         detail_original_ = detail_working_;
                         update_sync_button_state();
                     }
-                    commit_capture(cap);
+                    SaveCapture next = cap;
+                    next.more_saved = true;
+                    commit_capture(next);
+                    end_slot_save(cap.slot_index);
                 });
             };
             auto on_error = [this, token, cap, spool_id](const MoonrakerError& err) {
@@ -1927,34 +1948,31 @@ void AmsEditOverlay::handle_save() {
                         save_in_flight_ = false;
                         update_sync_button_state();
                     }
+                    end_slot_save(cap.slot_index);
                 });
             };
-            if (!spool_patch.empty()) {
-                api_->spoolman().update_spoolman_spool(
-                    spool_id, spool_patch,
-                    [this, token, filament_id, filament_patch, on_saved, on_error]() {
-                        token.defer("AmsEditOverlay::after_logistics_spool_patch",
-                                    [this, filament_id, filament_patch, on_saved, on_error]() {
-                                        if (!filament_patch.empty() && filament_id > 0) {
-                                            api_->spoolman().update_spoolman_filament(
-                                                filament_id, filament_patch, on_saved, on_error);
-                                        } else {
-                                            on_saved();
-                                        }
-                                    });
-                    },
-                    on_error);
-                return; // commit continues from the callback
-            }
-            if (!filament_patch.empty() && filament_id > 0) {
-                api_->spoolman().update_spoolman_filament(filament_id, filament_patch, on_saved,
-                                                          on_error);
-                return;
-            }
+            api_->spoolman().update_spoolman_spool(spool_id, spool_patch, on_saved, on_error);
+            return; // commit continues from the callback
         }
     }
 
     commit_and_close();
+}
+
+bool AmsEditOverlay::save_pending_for(int slot_index) const {
+    const auto it = pending_saves_.find(slot_index);
+    return it != pending_saves_.end() && it->second > 0;
+}
+
+void AmsEditOverlay::begin_slot_save(int slot_index) {
+    ++pending_saves_[slot_index];
+}
+
+void AmsEditOverlay::end_slot_save(int slot_index) {
+    auto it = pending_saves_.find(slot_index);
+    if (it != pending_saves_.end() && --it->second <= 0) {
+        pending_saves_.erase(it);
+    }
 }
 
 AmsEditOverlay::SaveCapture AmsEditOverlay::capture_save() const {
@@ -1965,12 +1983,13 @@ AmsEditOverlay::SaveCapture AmsEditOverlay::capture_save() const {
     cap.saving = working_info_;
     cap.owed = completion_callback_;
     cap.chained_spool_id = detail_working_.id;
-    cap.chained_filament_id = detail_working_.filament_id;
     // The More fields ride the Update arm when the identity prompt owns this
-    // save, so a combined material+Notes Save loses nothing.
+    // save, so a combined material+Notes Save loses nothing. They are all
+    // spool-level; the filament half of the diff is always empty here.
     if (logistics_pending_) {
+        nlohmann::json filament_patch;
         SpoolmanSlotSaver::build_spool_patches(detail_original_, detail_working_,
-                                               cap.chained_spool_patch, cap.chained_filament_patch);
+                                               cap.chained_spool_patch, filament_patch);
     }
     return cap;
 }
@@ -1980,6 +1999,31 @@ bool AmsEditOverlay::save_is_live(const SaveCapture& cap) const {
 }
 
 void AmsEditOverlay::deliver_commit(const SaveCapture& cap, const SlotInfo& committed) {
+    if (cap.stay_open && save_is_live(cap)) {
+        // Commit the slot and keep the editor, holding the edits that could
+        // not be saved.
+        if (cap.owed) {
+            EditResult result;
+            result.saved = true;
+            result.slot_index = cap.slot_index;
+            result.slot_info = committed;
+            cap.owed(result);
+        }
+        original_info_ = committed;
+        working_info_ = committed;
+        sel_ = selection_from_slot(working_info_);
+        selection_moved_ = false;
+        details_color_ = working_info_.color_rgb;
+        details_color_set_ = false;
+        update_summary();
+        update_sync_button_state();
+        ToastManager::instance().show(
+            ToastSeverity::WARNING,
+            lv_tr("Saved. Spoolman is offline, so price, location, lot and notes stay here "
+                  "unsaved."),
+            4000);
+        return;
+    }
     if (save_is_live(cap)) {
         working_info_ = committed;
         close_editor(true);
@@ -2087,6 +2131,7 @@ void AmsEditOverlay::run_spoolman_save(const SaveCapture& cap,
         save_in_flight_ = true;
         update_sync_button_state();
     }
+    begin_slot_save(cap.slot_index);
     saver->save(
         cap.original, cap.saving, intent,
         [this, token, cap, saver](const helix::SaveResult& result) {
@@ -2104,18 +2149,24 @@ void AmsEditOverlay::run_spoolman_save(const SaveCapture& cap,
                     if (live) {
                         stay_open_after_failed_save();
                     }
+                    end_slot_save(cap.slot_index);
                     return;
                 }
                 if (!result.success) {
                     spdlog::error("[AmsEditOverlay] Spoolman save failed; nothing written");
+                    // A More PATCH that ran ahead of this save did land.
                     ToastManager::instance().show(
                         ToastSeverity::ERROR,
-                        lv_tr("Couldn't save to Spoolman. Nothing changed on this "
-                              "printer."),
-                        3000);
+                        cap.more_saved
+                            ? lv_tr("Spoolman saved the price, location, lot and notes, but "
+                                    "not the rest. Nothing else changed on this printer.")
+                            : lv_tr("Couldn't save to Spoolman. Nothing changed on this "
+                                    "printer."),
+                        4000);
                     if (live) {
                         stay_open_after_failed_save();
                     }
+                    end_slot_save(cap.slot_index);
                     return;
                 }
                 SlotInfo committed = cap.saving;
@@ -2179,12 +2230,12 @@ void AmsEditOverlay::run_spoolman_save(const SaveCapture& cap,
                 const int saved_spool_id = committed.spoolman_id;
                 auto deliver = [this, cap, committed, saved_spool_id]() {
                     deliver_commit(cap, committed);
+                    end_slot_save(cap.slot_index);
                     SpoolmanManager::refresh_spool(saved_spool_id);
                 };
 
-                const bool chain =
-                    (!cap.chained_spool_patch.empty() || !cap.chained_filament_patch.empty()) &&
-                    cap.chained_spool_id == saved_spool_id && api_;
+                const bool chain = !cap.chained_spool_patch.empty() &&
+                                   cap.chained_spool_id == saved_spool_id && api_;
                 if (!chain) {
                     deliver();
                     return;
@@ -2192,32 +2243,27 @@ void AmsEditOverlay::run_spoolman_save(const SaveCapture& cap,
                 // Spoolman callbacks arrive on a background thread; the commit
                 // itself goes through the queue (L01). The chained PATCH is
                 // best-effort: the identity save already succeeded, so a
-                // failure logs and commits anyway.
+                // failure says what did not save and commits anyway.
                 auto token2 = object_lifetime_.token();
-                auto finish = [token2, deliver]() {
-                    token2.defer("AmsEditOverlay::chained_logistics_done", deliver);
+                auto finish = [token2, deliver](bool more_saved) {
+                    token2.defer("AmsEditOverlay::chained_logistics_done", [deliver, more_saved]() {
+                        if (!more_saved) {
+                            ToastManager::instance().show(
+                                ToastSeverity::WARNING,
+                                lv_tr("Saved to Spoolman, but the spool's price, location, lot "
+                                      "and notes didn't save."),
+                                4000);
+                        }
+                        deliver();
+                    });
                 };
-                if (!cap.chained_spool_patch.empty()) {
-                    api_->spoolman().update_spoolman_spool(
-                        saved_spool_id, cap.chained_spool_patch, finish,
-                        [finish](const MoonrakerError& err) {
-                            spdlog::error("[AmsEditOverlay] chained logistics PATCH failed: {}",
-                                          err.message);
-                            finish();
-                        });
-                    return;
-                }
-                if (cap.chained_filament_id > 0) {
-                    api_->spoolman().update_spoolman_filament(
-                        cap.chained_filament_id, cap.chained_filament_patch, finish,
-                        [finish](const MoonrakerError& err) {
-                            spdlog::error("[AmsEditOverlay] chained filament PATCH failed: {}",
-                                          err.message);
-                            finish();
-                        });
-                    return;
-                }
-                deliver();
+                api_->spoolman().update_spoolman_spool(
+                    saved_spool_id, cap.chained_spool_patch, [finish]() { finish(true); },
+                    [finish](const MoonrakerError& err) {
+                        spdlog::error("[AmsEditOverlay] chained logistics PATCH failed: {}",
+                                      err.message);
+                        finish(false);
+                    });
             });
         });
 }

@@ -2968,3 +2968,188 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     close_editor_overlay();
     set_spoolman_available(false);
 }
+
+namespace {
+/// A linked slot 0 on spool 7, Spoolman reachable, the record landed.
+void open_linked_editor(LVGLUITestFixture& fixture, MoonrakerClientMock& client,
+                        MoonrakerAPIMock& api, AmsEditOverlay::CompletionCallback cb) {
+    SpoolInfo& a = mock_spool(client, 7);
+    a.filament_id = 3;
+    a.vendor = "Bambu Lab";
+    a.material = "ASA";
+    a.color_hex = "8A949E";
+    a.comment = "";
+    set_spoolman_available(true);
+    REQUIRE(get_ams_edit_overlay().show_for_slot(fixture.test_screen(), 0, tracked_slot(), &api,
+                                                 std::move(cb)));
+    UpdateQueue::instance().drain();
+    fixture.process_lvgl(10);
+}
+
+void settle(LVGLUITestFixture& fixture) {
+    for (int i = 0; i < 4; ++i) {
+        UpdateQueue::instance().drain();
+        fixture.process_lvgl(20);
+    }
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a slot with a save still running does not reopen until it lands",
+                 "[ams_edit_overlay][save][session]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    std::vector<AmsEditOverlay::EditResult> results;
+    open_linked_editor(*this, client, api,
+                       [&](const AmsEditOverlay::EditResult& r) { results.push_back(r); });
+
+    SlotInfo edited = access.working_info();
+    edited.material = "PETG";
+    access.set_working_info(edited);
+    access.call_do_spoolman_save(SpoolmanSlotSaver::LinkIntent::UpdateLinked);
+    access.call_fire_completion(false); // closed mid-save
+
+    std::vector<std::string> toasts;
+    helix::ui::set_test_toast_hook(
+        [&](ToastSeverity, const std::string& msg, uint32_t) { toasts.push_back(msg); });
+    CHECK_FALSE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api, nullptr));
+    helix::ui::set_test_toast_hook(nullptr);
+    REQUIRE(toasts.size() == 1);
+    CHECK(toasts[0].find("Still saving") != std::string::npos);
+
+    settle(*this);
+    close_editor_overlay();
+    REQUIRE_FALSE(results.empty());
+    REQUIRE(results.back().saved);
+    // Delivered: the slot reopens, on what the save committed.
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, results.back().slot_info, &api, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.working_info().material == "PETG");
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a chained More PATCH that fails says so and still commits",
+                 "[ams_edit_overlay][save][more]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    bool saved = false;
+    open_linked_editor(*this, client, api,
+                       [&](const AmsEditOverlay::EditResult& r) { saved = saved || r.saved; });
+
+    SlotInfo edited = access.working_info();
+    edited.material = "PETG";
+    access.set_working_info(edited);
+    access.set_detail_field("detail_field_comment", "lost");
+    client.spoolman_mock().refuse_spool_patch_key = "comment";
+    std::vector<std::string> toasts;
+    helix::ui::set_test_toast_hook(
+        [&](ToastSeverity, const std::string& msg, uint32_t) { toasts.push_back(msg); });
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    lv_obj_t* dlg = ModalStack::instance().top_dialog();
+    REQUIRE(dlg != nullptr);
+    lv_obj_send_event(lv_obj_find_by_name(dlg, "btn_primary"), LV_EVENT_CLICKED, nullptr);
+    settle(*this);
+    helix::ui::set_test_toast_hook(nullptr);
+
+    CHECK(saved);
+    bool told = false;
+    for (const auto& t : toasts) {
+        told = told || t.find("notes didn't save") != std::string::npos;
+    }
+    CHECK(told);
+    if (!saved) {
+        close_editor_overlay();
+    }
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a save that fails after its More PATCH landed says what did save",
+                 "[ams_edit_overlay][save][more]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    open_linked_editor(*this, client, api, nullptr);
+
+    access.call_apply_weight(321);
+    access.set_detail_field("detail_field_comment", "kept");
+    client.spoolman_mock().refuse_spool_patch_key = "remaining_weight";
+    std::vector<std::string> toasts;
+    helix::ui::set_test_toast_hook(
+        [&](ToastSeverity, const std::string& msg, uint32_t) { toasts.push_back(msg); });
+    access.call_handle_save();
+    settle(*this);
+    helix::ui::set_test_toast_hook(nullptr);
+
+    bool notes_patched = false;
+    for (const auto& upd : client.spoolman_mock().spool_updates) {
+        notes_patched = notes_patched || upd.patch.dump().find("kept") != std::string::npos;
+    }
+    REQUIRE(notes_patched);
+    bool honest = false;
+    bool false_claim = false;
+    for (const auto& t : toasts) {
+        honest = honest || t.find("saved the price, location, lot and notes") != std::string::npos;
+        false_claim = false_claim || t.find("Nothing changed on this printer") != std::string::npos;
+    }
+    CHECK(honest);
+    CHECK_FALSE(false_claim);
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "with Spoolman offline Save commits the slot and keeps the More edits",
+                 "[ams_edit_overlay][save][more]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    // A linked printer whose Spoolman is unreachable: the record never loads.
+    auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
+    REQUIRE(spoolman_subj != nullptr);
+    lv_subject_set_int(spoolman_subj, 1);
+    get_printer_state().capabilities_state().set_spoolman_available(false);
+    UpdateQueue::instance().drain();
+    std::vector<AmsEditOverlay::EditResult> results;
+    SlotInfo info = tracked_slot();
+    info.spoolman_id = 98765;
+    REQUIRE(
+        overlay.show_for_slot(test_screen(), 0, info, &api,
+                              [&](const AmsEditOverlay::EditResult& r) { results.push_back(r); }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    access.call_apply_weight(321);
+    access.set_detail_field("detail_field_comment", "later");
+    std::vector<std::string> toasts;
+    helix::ui::set_test_toast_hook(
+        [&](ToastSeverity, const std::string& msg, uint32_t) { toasts.push_back(msg); });
+    access.call_handle_save();
+    settle(*this);
+    helix::ui::set_test_toast_hook(nullptr);
+
+    REQUIRE(results.size() == 1);
+    CHECK(results[0].saved);
+    CHECK(results[0].slot_info.remaining_weight_g == 321);
+    CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR); // still open
+    CHECK(access.detail_comment() == "later");
+    REQUIRE(toasts.size() == 1);
+    CHECK(toasts[0].find("offline") != std::string::npos);
+    access.set_detail_field("detail_field_comment", "");
+    close_editor_overlay();
+    set_spoolman_available(false);
+}

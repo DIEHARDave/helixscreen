@@ -1542,8 +1542,14 @@ captures the slot it commits and the callback it began with, so it commits even
 when the editor closed before Spoolman answered; only closing the editor checks
 that the session is still the one showing. Back, the weight keypad and the
 scanner stay shut while a save is in flight, so its completion never pops
-something pushed on top. A record landing after Reset to tag leaves the reset
-alone, and Save with More edits whose record never loaded keeps them and says so.
+something pushed on top. While a save for a slot is still running, that slot's
+editor does not reopen ("Still saving this spool…"), so a newer session never
+edits the pre-save slot or races the late commit. A record landing after Reset
+to tag leaves the reset alone. Save with More edits whose record never loaded
+keeps them and says so; with Spoolman offline it commits the slot's own edits
+and keeps the More edits in the editor. A More PATCH that fails, or lands ahead
+of a Spoolman save that fails, is named in the toast. The More fields are all
+spool-level, so the editor never writes the shared filament record.
 
 ### Error State Visualization
 

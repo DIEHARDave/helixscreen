@@ -19,6 +19,7 @@
 #include "subject_managed_panel.h"
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -384,11 +385,18 @@ class AmsEditOverlay : public OverlayBase {
         SlotInfo saving;   ///< the slot this save commits
         CompletionCallback owed;
         nlohmann::json chained_spool_patch; ///< More fields riding the Update arm
-        nlohmann::json chained_filament_patch;
         int chained_spool_id = 0;
-        int chained_filament_id = 0;
+        bool more_saved = false; ///< a More PATCH ran ahead of this commit and landed
+        bool stay_open = false;  ///< commit the slot but keep the editor (unsaved More edits)
     };
     SaveCapture capture_save() const;
+    /// Saves still running per slot, editor open or not. show_for_slot()
+    /// refuses a slot with one pending: its editor would show, and could save,
+    /// the slot as it was before that save commits.
+    std::map<int, int> pending_saves_;
+    bool save_pending_for(int slot_index) const;
+    void begin_slot_save(int slot_index);
+    void end_slot_save(int slot_index);
     /// The editor that began @p cap is still showing it.
     bool save_is_live(const SaveCapture& cap) const;
     /// Close that editor with @p committed, or hand it to @p cap's callback.

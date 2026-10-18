@@ -93,6 +93,9 @@ class MockSpoolmanServer {
     };
     /// PATCH /v1/spool/{id} bodies, except weight-only ones
     std::vector<SpoolUpdateRecord> spool_updates;
+    /// When set, a PATCH /v1/spool/{id} whose body carries this key answers
+    /// 500 and changes nothing, for a test of a save that fails part-way.
+    std::optional<std::string> refuse_spool_patch_key;
 
     struct WeightUpdateRecord {
         int spool_id = 0;

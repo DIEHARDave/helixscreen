@@ -3083,11 +3083,13 @@ translations:
   Save to Spool: Auf Spule speichern
   Save to Spoolman: In Spoolman speichern
   Saved Z-Offset: Gespeicherter Z-Offset
+  Saved to Spoolman, but the spool's price, location, lot and notes didn't save.: 'In Spoolman gespeichert, aber Preis, Standort, Los und Notizen der Spule wurden nicht gespeichert.'
   Saved to crash_report.txt (QR not available): In crash_report.txt gespeichert (QR
     nicht verfügbar)
   Saved to printer configuration.: In Druckerkonfiguration gespeichert.
   Saved to {}. It applies whenever this filament becomes active.: Auf {} gespeichert. Der Wert wird angewendet, sobald dieses Filament aktiv wird.
   Saved values, and whether to ask before running: 'Gespeicherte Werte und ob vor dem Ausführen gefragt wird'
+  Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.: 'Gespeichert. Spoolman ist offline, daher bleiben Preis, Standort, Los und Notizen hier ungespeichert.'
   Saves to Klipper config and restarts firmware.: Speichert in Klipper-Konfiguration
     und startet Firmware neu.
   Saving Configuration...: Konfiguration wird gespeichert...
@@ -3356,6 +3358,7 @@ translations:
   Spoolman needs a color for this filament.: Spoolman benötigt eine Farbe für dieses Filament.
   Spoolman needs a material for this filament.: Spoolman benötigt ein Material für dieses Filament.
   Spoolman removed.: Spoolman entfernt.
+  Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman hat Preis, Standort, Los und Notizen gespeichert, aber nicht den Rest. Sonst hat sich an diesem Drucker nichts geändert.'
   Spoolman unavailable — filament weights may be stale: Spoolman nicht verfügbar —
     Filamentgewichte können veraltet sein
   Spoolman was not configured.: Spoolman war nicht konfiguriert.
@@ -3414,6 +3417,7 @@ translations:
   Std Deviation: Std.-Abweichung
   Step: Schritt
   Step 1 of 3: Schritt 1 von 3
+  Still saving this spool…: 'Diese Spule wird noch gespeichert…'
   Still working... taking longer than usual: Arbeitet noch... dauert länger als gewöhnlich
   Stop: Stoppen
   Stop Drying: Trocknen stoppen

@@ -3094,11 +3094,13 @@ translations:
   Save to Spool: Enregistrer sur la bobine
   Save to Spoolman: Enregistrer dans Spoolman
   Saved Z-Offset: Z-Offset enregistré
+  Saved to Spoolman, but the spool's price, location, lot and notes didn't save.: 'Enregistré dans Spoolman, mais le prix, l''emplacement, le lot et les notes de la bobine n''ont pas été enregistrés.'
   Saved to crash_report.txt (QR not available): Enregistré dans crash_report.txt (QR
     non disponible)
   Saved to printer configuration.: Enregistré dans la configuration de l'imprimante.
   Saved to {}. It applies whenever this filament becomes active.: Enregistré sur {}. Appliqué chaque fois que ce filament devient actif.
   Saved values, and whether to ask before running: 'Valeurs enregistrées et demande de confirmation avant exécution ou non'
+  Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.: 'Enregistré. Spoolman est hors ligne, donc le prix, l''emplacement, le lot et les notes restent ici sans être enregistrés.'
   Saves to Klipper config and restarts firmware.: Enregistre dans la config Klipper
     et redémarre le firmware.
   Saving Configuration...: Enregistrement de la configuration...
@@ -3371,6 +3373,7 @@ translations:
   Spoolman needs a color for this filament.: Spoolman a besoin d'une couleur pour ce filament.
   Spoolman needs a material for this filament.: Spoolman a besoin d'un matériau pour ce filament.
   Spoolman removed.: Spoolman supprimé.
+  Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman a enregistré le prix, l''emplacement, le lot et les notes, mais pas le reste. Rien d''autre n''a changé sur cette imprimante.'
   Spoolman unavailable — filament weights may be stale: Spoolman indisponible — les
     poids de filament peuvent être obsolètes
   Spoolman was not configured.: 'Spoolman n''était pas configuré.'
@@ -3430,6 +3433,7 @@ translations:
   Std Deviation: Écart type
   Step: Étape
   Step 1 of 3: Étape 1 sur 3
+  Still saving this spool…: 'Enregistrement de cette bobine en cours…'
   Still working... taking longer than usual: Toujours en cours... cela prend plus
     de temps que d'habitude
   Stop: Arrêter

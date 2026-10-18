@@ -2898,10 +2898,12 @@ translations:
   Save to Spool: 保存到料盘
   Save to Spoolman: 保存到 Spoolman
   Saved Z-Offset: 已保存 Z 偏移
+  Saved to Spoolman, but the spool's price, location, lot and notes didn't save.: '已保存到 Spoolman，但料盘的价格、位置、批次和备注未保存。'
   Saved to crash_report.txt (QR not available): 已保存到 crash_report.txt（二维码不可用）
   Saved to printer configuration.: 已保存到打印机配置。
   Saved to {}. It applies whenever this filament becomes active.: 已保存到{}。每当该耗材启用时都会应用。
   Saved values, and whether to ask before running: '保存的值,以及运行前是否询问'
+  Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.: '已保存。Spoolman 离线，因此价格、位置、批次和备注暂留在此处，尚未保存。'
   Saves to Klipper config and restarts firmware.: 保存到 Klipper 配置并重启固件。
   Saving Configuration...: 正在保存配置...
   Saving Z-offset...: 正在保存 Z 偏移...
@@ -3143,6 +3145,7 @@ translations:
   Spoolman needs a color for this filament.: Spoolman 需要该耗材的颜色。
   Spoolman needs a material for this filament.: Spoolman 需要该耗材的材料。
   Spoolman removed.: Spoolman 已移除。
+  Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman 已保存价格、位置、批次和备注，但其余内容未保存。此打印机上没有其他更改。'
   Spoolman unavailable — filament weights may be stale: Spoolman不可用 — 耗材重量可能已过期
   Spoolman was not configured.: Spoolman 未配置。
   'Spoolman: %zu Spool': 'Spoolman: %zu 个线轴'
@@ -3200,6 +3203,7 @@ translations:
   Std Deviation: 标准差
   Step: 步骤
   Step 1 of 3: 第 1 步，共 3 步
+  Still saving this spool…: '此料盘仍在保存中…'
   Still working... taking longer than usual: 仍在处理……耗时比平常更长
   Stop: 停止
   Stop Drying: 停止干燥

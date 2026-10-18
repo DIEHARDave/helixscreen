@@ -3074,11 +3074,13 @@ translations:
   Save to Spool: Salva sulla bobina
   Save to Spoolman: Salva su Spoolman
   Saved Z-Offset: Z-Offset Salvato
+  Saved to Spoolman, but the spool's price, location, lot and notes didn't save.: 'Salvato in Spoolman, ma prezzo, posizione, lotto e note della bobina non sono stati salvati.'
   Saved to crash_report.txt (QR not available): Salvato in crash_report.txt (QR non
     disponibile)
   Saved to printer configuration.: Salvato nella configurazione stampante.
   Saved to {}. It applies whenever this filament becomes active.: Salvato su {}. Viene applicato ogni volta che questo filamento diventa attivo.
   Saved values, and whether to ask before running: 'Valori salvati e se chiedere prima di eseguire'
+  Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.: 'Salvato. Spoolman è offline, quindi prezzo, posizione, lotto e note restano qui non salvati.'
   Saves to Klipper config and restarts firmware.: Salva nella configurazione Klipper
     e riavvia il firmware.
   Saving Configuration...: Salvataggio configurazione...
@@ -3347,6 +3349,7 @@ translations:
   Spoolman needs a color for this filament.: Spoolman richiede un colore per questo filamento.
   Spoolman needs a material for this filament.: Spoolman richiede un materiale per questo filamento.
   Spoolman removed.: Spoolman rimosso.
+  Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman ha salvato prezzo, posizione, lotto e note, ma non il resto. Nient''altro è cambiato su questa stampante.'
   Spoolman unavailable — filament weights may be stale: Spoolman non disponibile —
     i pesi del filamento potrebbero non essere aggiornati
   Spoolman was not configured.: Spoolman non era configurato.
@@ -3406,6 +3409,7 @@ translations:
   Std Deviation: Dev. standard
   Step: Passaggio
   Step 1 of 3: Passaggio 1 di 3
+  Still saving this spool…: 'Salvataggio di questa bobina in corso…'
   Still working... taking longer than usual: Ancora in corso... ci vuole più tempo
     del solito
   Stop: Ferma
