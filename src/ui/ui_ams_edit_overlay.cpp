@@ -73,15 +73,6 @@ static void sync_active_spool(IMoonrakerAPI* api, int spool_id) {
 
 namespace {
 
-bool iequals_str(const std::string& a, const std::string& b) {
-    if (a.size() != b.size()) {
-        return false;
-    }
-    return std::equal(a.begin(), a.end(), b.begin(), [](unsigned char x, unsigned char y) {
-        return std::tolower(x) == std::tolower(y);
-    });
-}
-
 /// Move every element of @p recents that appears in @p base (case-insensitive)
 /// to the front, keeping both lists' own orders otherwise.
 std::vector<std::string> hoist_recents(const std::vector<std::string>& base,
@@ -91,7 +82,8 @@ std::vector<std::string> hoist_recents(const std::vector<std::string>& base,
     std::set<std::string> taken;
     for (const auto& recent : recents) {
         for (const auto& item : base) {
-            if (iequals_str(item, recent) && taken.insert(helix::text_io::to_lower(item)).second) {
+            if (helix::text_io::equals_ignore_case(item, recent) &&
+                taken.insert(helix::text_io::to_lower(item)).second) {
                 out.push_back(item);
             }
         }
@@ -164,9 +156,9 @@ AmsEditOverlay::apply_family_change(const SpoolEditSelection& sel, const std::st
     out.variant = "Basic";
     // Keep the brand when it makes the new material, else Generic.
     const auto makers = catalog.brands_in_family(new_family);
-    bool maker = iequals_str(sel.brand, "Generic");
+    bool maker = helix::text_io::equals_ignore_case(sel.brand, "Generic");
     for (const auto& brand : makers) {
-        if (iequals_str(brand, sel.brand)) {
+        if (helix::text_io::equals_ignore_case(brand, sel.brand)) {
             maker = true;
             break;
         }
@@ -180,7 +172,7 @@ AmsEditOverlay::apply_family_change(const SpoolEditSelection& sel, const std::st
 std::string AmsEditOverlay::selected_type(const SpoolEditSelection& sel,
                                           const printer::FilamentCatalog& catalog) {
     for (const auto& variant : catalog.variants_in_family(sel.family)) {
-        if (iequals_str(variant.label, sel.variant)) {
+        if (helix::text_io::equals_ignore_case(variant.label, sel.variant)) {
             return variant.sample_type;
         }
     }
@@ -352,7 +344,7 @@ void AmsEditOverlay::apply_linked_spool(int spool_id, const SpoolInfo& spool) {
     details_spool_id_ = spool_id;
 
     if (editor_entered_) {
-        rebuild_chip_rows();
+        rebuild_option_lists();
         update_summary();
         update_temp_display();
         populate_detail_fields();
@@ -382,7 +374,7 @@ void AmsEditOverlay::load_swapped_spool() {
     }
     set_view(VIEW_EDITOR);
     update_ui();
-    rebuild_chip_rows();
+    rebuild_option_lists();
     update_summary();
     populate_detail_fields();
     refresh_tag_state();
@@ -494,7 +486,7 @@ void AmsEditOverlay::init_subjects() {
         // Row visibility for the Generic-gated product dropdown.
         UI_MANAGED_SUBJECT_INT(product_hidden_subject_, 1, "ams_edit_product_hidden", subjects_);
         UI_MANAGED_SUBJECT_INT(color_selected_subject_, -1, "ams_edit_color_selected", subjects_);
-        UI_MANAGED_SUBJECT_INT(color_col_count_subject_, 15, "ams_edit_color_col_count", subjects_);
+        UI_MANAGED_SUBJECT_INT(color_col_count_subject_, 9, "ams_edit_color_col_count", subjects_);
         UI_MANAGED_SUBJECT_INT(color_row_count_subject_, 30, "ams_edit_color_row_count", subjects_);
 
         // Summary line, temperatures, weight pill, badges, disclosure.
@@ -535,26 +527,27 @@ void AmsEditOverlay::deinit_subjects() {
 }
 
 // ============================================================================
-// Chip rows
+// Identity dropdowns
 // ============================================================================
 
 void AmsEditOverlay::fill_dropdown(const char* stacked_name, const char* split_name,
-                                   const std::vector<Chip>& chips,
+                                   const std::vector<Option>& options_list,
                                    const std::string& selected_payload) {
     std::string options;
     int selected = -1;
-    for (size_t i = 0; i < chips.size(); ++i) {
+    for (size_t i = 0; i < options_list.size(); ++i) {
         if (!options.empty()) {
             options += '\n';
         }
-        options += chips[i].label;
-        if (!chips[i].more && selected < 0 && iequals_str(chips[i].payload, selected_payload)) {
+        options += options_list[i].label;
+        if (!options_list[i].more && selected < 0 &&
+            helix::text_io::equals_ignore_case(options_list[i].payload, selected_payload)) {
             selected = static_cast<int>(i);
         }
     }
     for (const char* name : {stacked_name, split_name}) {
         if (lv_obj_t* dd = name && name[0] ? find_widget(name) : nullptr) {
-            if (chips.empty()) {
+            if (options_list.empty()) {
                 // No lines for this brand: an empty list, and no phantom
                 // first-item selection.
                 lv_dropdown_set_options(dd, "");
@@ -567,18 +560,18 @@ void AmsEditOverlay::fill_dropdown(const char* stacked_name, const char* split_n
 }
 
 void AmsEditOverlay::refresh_dropdowns() {
-    fill_dropdown("dropdown_material", "dropdown_material_split", material_chips_, sel_.family);
-    fill_dropdown("dropdown_variant", "dropdown_variant_split", variant_chips_, sel_.variant);
-    fill_dropdown("dropdown_brand", "dropdown_brand_split", brand_chips_, sel_.brand);
-    fill_dropdown("dropdown_product", "dropdown_product_split", product_chips_, sel_.product_id);
+    fill_dropdown("dropdown_material", "dropdown_material_split", material_options_, sel_.family);
+    fill_dropdown("dropdown_variant", "dropdown_variant_split", variant_options_, sel_.variant);
+    fill_dropdown("dropdown_brand", "dropdown_brand_split", brand_options_, sel_.brand);
+    fill_dropdown("dropdown_product", "dropdown_product_split", product_options_, sel_.product_id);
 }
 
-void AmsEditOverlay::rebuild_chip_rows() {
+void AmsEditOverlay::rebuild_option_lists() {
     if (!catalog_) {
         return;
     }
-    // MATERIAL: recents hoisted over all families, then "More...".
-    std::vector<Chip> material;
+    // MATERIAL: recents hoisted over all families, then "Browse catalog...".
+    std::vector<Option> material;
     std::vector<std::string> families = hoist_recents(catalog_->all_families(), recent_families_);
     if (recent_families_.empty()) {
         // No recents yet: the common families lead so the row opens useful.
@@ -586,7 +579,7 @@ void AmsEditOverlay::rebuild_chip_rows() {
         std::vector<std::string> lead;
         for (const char* fam : common) {
             for (const auto& f : families) {
-                if (iequals_str(f, fam)) {
+                if (helix::text_io::equals_ignore_case(f, fam)) {
                     lead.push_back(f);
                 }
             }
@@ -605,7 +598,7 @@ void AmsEditOverlay::rebuild_chip_rows() {
     bool family_known = false;
     for (const auto& fam : families) {
         material.push_back({fam, fam, false});
-        if (iequals_str(fam, sel_.family)) {
+        if (helix::text_io::equals_ignore_case(fam, sel_.family)) {
             family_known = true;
         }
     }
@@ -613,33 +606,33 @@ void AmsEditOverlay::rebuild_chip_rows() {
         material.insert(material.begin(), {sel_.family, sel_.family, false});
     }
     material.push_back({lv_tr("Browse catalog..."), {}, true});
-    material_chips_ = std::move(material);
+    material_options_ = std::move(material);
 
     // VARIANT: the catalog's variants for the family; a variant the catalog
     // lacks leads, selected, like an unknown family.
-    std::vector<Chip> variants;
+    std::vector<Option> variants;
     bool variant_known = false;
     for (const auto& v : catalog_->variants_in_family(sel_.family)) {
         variants.push_back({v.label, v.label, false});
-        variant_known = variant_known || iequals_str(v.label, sel_.variant);
+        variant_known = variant_known || helix::text_io::equals_ignore_case(v.label, sel_.variant);
     }
     if (!variant_known && !sel_.variant.empty()) {
         variants.insert(variants.begin(), {sel_.variant, sel_.variant, false});
     }
-    variant_chips_ = std::move(variants);
+    variant_options_ = std::move(variants);
 
-    // BRAND: Generic, then recents, then the rest, then "All...".
-    std::vector<Chip> brands;
+    // BRAND: Generic, then recents, then the rest, then "Browse catalog...".
+    std::vector<Option> brands;
     brands.push_back({"Generic", "Generic", false});
     std::vector<std::string> makers = catalog_->brands_in_family(sel_.family);
     std::vector<std::string> ordered = hoist_recents(makers, recent_brands_);
-    bool brand_known = iequals_str(sel_.brand, "Generic");
+    bool brand_known = helix::text_io::equals_ignore_case(sel_.brand, "Generic");
     for (const auto& brand : ordered) {
-        if (iequals_str(brand, "Generic")) {
+        if (helix::text_io::equals_ignore_case(brand, "Generic")) {
             continue; // already leads the list
         }
         brands.push_back({brand, brand, false});
-        if (iequals_str(brand, sel_.brand)) {
+        if (helix::text_io::equals_ignore_case(brand, sel_.brand)) {
             brand_known = true;
         }
     }
@@ -647,19 +640,19 @@ void AmsEditOverlay::rebuild_chip_rows() {
         brands.insert(brands.begin() + 1, {sel_.brand, sel_.brand, false});
     }
     brands.push_back({lv_tr("Browse catalog..."), {}, true});
-    brand_chips_ = std::move(brands);
+    brand_options_ = std::move(brands);
 
     // PRODUCT: that brand's lines for the material. Hidden under Generic.
-    std::vector<Chip> products;
-    if (!iequals_str(sel_.brand, "Generic")) {
+    std::vector<Option> products;
+    if (!helix::text_io::equals_ignore_case(sel_.brand, "Generic")) {
         for (const auto* ef : catalog_->products_in_family(sel_.brand, sel_.family)) {
             products.push_back({ef->name, ef->id, false});
         }
         // An unresolved saved product still shows (selected) so an untouched
         // open+save keeps it.
         bool product_known = sel_.product_id.empty();
-        for (const auto& chip : products) {
-            if (chip.payload == sel_.product_id) {
+        for (const auto& option : products) {
+            if (option.payload == sel_.product_id) {
                 product_known = true;
                 break;
             }
@@ -670,36 +663,37 @@ void AmsEditOverlay::rebuild_chip_rows() {
             products.insert(products.begin(), {label, sel_.product_id, false});
         }
     }
-    product_chips_ = std::move(products);
-    lv_subject_set_int(&product_hidden_subject_, iequals_str(sel_.brand, "Generic") ? 1 : 0);
+    product_options_ = std::move(products);
+    lv_subject_set_int(&product_hidden_subject_,
+                       helix::text_io::equals_ignore_case(sel_.brand, "Generic") ? 1 : 0);
 
     refresh_dropdowns();
 }
 
 void AmsEditOverlay::handle_option_selected(int row, int index) {
-    const std::vector<Chip>* chips = nullptr;
+    const std::vector<Option>* options_list = nullptr;
     switch (row) {
     case 0:
-        chips = &material_chips_;
+        options_list = &material_options_;
         break;
     case 1:
-        chips = &variant_chips_;
+        options_list = &variant_options_;
         break;
     case 2:
-        chips = &brand_chips_;
+        options_list = &brand_options_;
         break;
     case 3:
-        chips = &product_chips_;
+        options_list = &product_options_;
         break;
     default:
         return;
     }
-    if (index < 0 || static_cast<size_t>(index) >= chips->size()) {
+    if (index < 0 || static_cast<size_t>(index) >= options_list->size()) {
         return;
     }
-    const Chip& chip = (*chips)[index];
-    if (chip.more) {
-        // "Browse catalog...": the full catalog picker, with search. A pick
+    const Option& option = (*options_list)[index];
+    if (option.more) {
+        // "Browse catalog...": the full catalog picker. A pick
         // there seeds family, variant, brand and product in one step.
         if (!catalog_sheet_) {
             catalog_sheet_ = std::make_unique<FilamentCatalogPickerModal>();
@@ -720,7 +714,7 @@ void AmsEditOverlay::handle_option_selected(int row, int index) {
                 editor.sel_.brand = ef.brand;
                 editor.sel_.product_id = ef.id;
                 editor.selection_moved_ = true;
-                editor.rebuild_chip_rows();
+                editor.rebuild_option_lists();
                 editor.update_summary();
                 editor.update_temp_display();
                 editor.update_sync_button_state();
@@ -732,36 +726,36 @@ void AmsEditOverlay::handle_option_selected(int row, int index) {
     }
     switch (row) {
     case 0:
-        if (iequals_str(chip.payload, sel_.family)) {
+        if (helix::text_io::equals_ignore_case(option.payload, sel_.family)) {
             return;
         }
-        sel_ = apply_family_change(sel_, chip.payload, *catalog_);
+        sel_ = apply_family_change(sel_, option.payload, *catalog_);
         break;
     case 1:
-        if (iequals_str(chip.payload, sel_.variant)) {
+        if (helix::text_io::equals_ignore_case(option.payload, sel_.variant)) {
             return;
         }
-        sel_.variant = chip.payload;
+        sel_.variant = option.payload;
         sel_.product_id.clear(); // the product described the old variant
         break;
     case 2:
-        if (iequals_str(chip.payload, sel_.brand)) {
+        if (helix::text_io::equals_ignore_case(option.payload, sel_.brand)) {
             return;
         }
-        sel_.brand = chip.payload;
+        sel_.brand = option.payload;
         sel_.product_id.clear(); // lines are per-brand
         break;
     case 3:
-        if (chip.payload == sel_.product_id) {
+        if (option.payload == sel_.product_id) {
             return;
         }
-        sel_.product_id = chip.payload;
+        sel_.product_id = option.payload;
         break;
     default:
         return;
     }
     selection_moved_ = true;
-    rebuild_chip_rows();
+    rebuild_option_lists();
     update_summary();
     update_temp_display();
     update_sync_button_state();
@@ -983,7 +977,7 @@ void AmsEditOverlay::fetch_recents() {
                 // cached_spools_ doubles as the picker's warm cache; a later
                 // populate_picker() refetches anyway.
                 if (lv_subject_get_int(&view_mode_subject_) == VIEW_EDITOR) {
-                    rebuild_chip_rows();
+                    rebuild_option_lists();
                 }
             });
         },
@@ -1062,7 +1056,7 @@ void AmsEditOverlay::populate_editor_view() {
     if (!catalog_) {
         catalog_ = printer::FilamentCatalog::load_full();
     }
-    rebuild_chip_rows();
+    rebuild_option_lists();
     update_summary();
     update_temp_display();
     populate_detail_fields();
@@ -1245,8 +1239,8 @@ bool AmsEditOverlay::selection_dirty() const {
 }
 
 bool AmsEditOverlay::is_dirty() const {
-    // The same field set the old editor compared, minus the tool mapping
-    // (Assigned Tool moved to the context menu).
+    // The tool mapping is not compared: Assigned Tool lives in the context
+    // menu, not here.
     const bool identity_dirty = working_info_.color_rgb != original_info_.color_rgb ||
                                 working_info_.material != original_info_.material ||
                                 working_info_.brand != original_info_.brand ||
@@ -1360,7 +1354,7 @@ void AmsEditOverlay::handle_reset_to_tag() {
     selection_moved_ = false;
     details_color_ = working_info_.color_rgb;
     details_color_set_ = false;
-    rebuild_chip_rows();
+    rebuild_option_lists();
     update_summary();
     update_temp_display();
     refresh_tag_state();
@@ -1596,7 +1590,9 @@ void AmsEditOverlay::stage_selection_into_working() {
     }
     const std::string type = selected_type(sel_, *catalog_);
     working_info_.material = type;
-    working_info_.brand = iequals_str(sel_.brand, "Generic") ? std::string("Generic") : sel_.brand;
+    working_info_.brand = helix::text_io::equals_ignore_case(sel_.brand, "Generic")
+                              ? std::string("Generic")
+                              : sel_.brand;
     if (!sel_.product_id.empty()) {
         if (const auto* ef = catalog_->resolve_id(sel_.product_id)) {
             working_info_.nozzle_temp_min = ef->nozzle_min;
@@ -1713,7 +1709,7 @@ bool AmsEditOverlay::needs_identity_confirmation(const SlotInfo& original, const
 void AmsEditOverlay::handle_add_to_spoolman() {
     // The quiet link: create a Spoolman spool from what the slot holds (then
     // print its label). Stages the selection first so the created spool
-    // carries the chips' identity, not the pre-edit one.
+    // carries the dropdowns' identity, not the pre-edit one.
     stage_selection_into_working();
     if (details_color_set_) {
         working_info_.color_rgb = details_color_;
@@ -1999,7 +1995,7 @@ void AmsEditOverlay::do_spoolman_save(helix::SpoolmanSlotSaver::LinkIntent inten
                 if (logistics_pending_ && detail_working_.id == saved_spool_id && api_) {
                     // The identity prompt owned this save; the More fields
                     // ride the Update arm so a combined material+Notes Save
-                    // loses nothing (2b).
+                    // loses nothing.
                     nlohmann::json spool_patch;
                     nlohmann::json filament_patch;
                     SpoolmanSlotSaver::build_spool_patches(detail_original_, detail_working_,
@@ -2059,7 +2055,7 @@ bool AmsEditOverlay::is_material_identity_change(const SlotInfo& original, const
     // A brand-only move changes which filament the spool should point at,
     // exactly like a material move; Spoolman's detect_changes includes it.
 
-    if (!iequals_str(original.brand, edited.brand)) {
+    if (!helix::text_io::equals_ignore_case(original.brand, edited.brand)) {
         return true;
     }
     return !helix::FilamentMapper::colors_match(original.color_rgb, edited.color_rgb);

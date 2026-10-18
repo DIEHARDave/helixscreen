@@ -310,7 +310,7 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
         }
 
         // Show Clear Spool button when external spool has an assignment.
-        // btn_edit ("Spool Info") is always shown so users can reopen the edit modal.
+        // btn_edit ("Edit Spool") is always shown so users can reopen the editor.
         auto ext_info = AmsState::instance().get_external_spool_info();
         bool has_assignment =
             ext_info.has_value() && (ext_info->spoolman_id > 0 || !ext_info->material.empty());

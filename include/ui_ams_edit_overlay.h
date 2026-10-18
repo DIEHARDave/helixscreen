@@ -38,12 +38,12 @@ namespace helix::ui {
  * @brief NavigationManager overlay for editing AMS filament slot properties
  *
  * Single overlay hosting internal views selected by the ams_edit_view int
- * subject: 0=editor (chip rows; the entry view), 1=Spoolman spool picker,
+ * subject: 0=editor (the identity form; the entry view), 1=Spoolman spool picker,
  * 2=color. Header back button routes per-view; header Save action is
  * dirty-gated via the ams_edit_save_disabled subject.
  *
- * The editor view is a chip-row state machine: Material family, Variant,
- * Brand, Product as a cascading dropdown form (each list ends in a
+ * The editor view is a cascading dropdown form: Material family, Variant,
+ * Brand, Product (each list ends in a
  * browse-the-catalog entry), plus a colour
  * grid, a weight pill (numeric keypad) and a collapsed More section.
  * Selection state lives in SpoolEditSelection; Save stages it into the
@@ -83,9 +83,9 @@ class AmsEditOverlay : public OverlayBase {
     static constexpr int VIEW_COLOR = 2;
 
     /**
-     * @brief The chip-row selection the editor is staging
+     * @brief The identity selection the editor is staging
      *
-     * family/variant/brand are chip labels; product_id is a catalog id (""
+     * family/variant/brand are option labels; product_id is a catalog id (""
      * = no product pick). An unknown value (a firmware/Spoolman material the
      * catalog lacks) is kept verbatim in family/brand so an untouched
      * open+Save round-trips it.
@@ -122,7 +122,7 @@ class AmsEditOverlay : public OverlayBase {
     void on_activate() override;
     void on_deactivating(DeactivateReason reason) override;
     void on_ui_destroyed() override;
-    /// The chip labels, the colour selection ring and the logistics field
+    /// The dropdown options, the colour selection ring and the logistics field
     /// text are populated on view entry, not by the XML — re-apply them for
     /// the view that is showing when a hot-reload rebuilds the tree.
     void repopulate() override;
@@ -143,8 +143,8 @@ class AmsEditOverlay : public OverlayBase {
 
     // === Pure selection decisions (exposed for tests) ===
 
-    /// Split a slot's material/brand/product into the chip selection. Unknown
-    /// values pass through verbatim (they render as their own selected chip).
+    /// Split a slot's material/brand/product into the selection. Unknown
+    /// values pass through verbatim (they show as their own selected option).
     static SpoolEditSelection selection_from_slot(const SlotInfo& info);
 
     /// Rule: changing the family keeps the brand when it makes the new
@@ -166,9 +166,9 @@ class AmsEditOverlay : public OverlayBase {
     SlotInfo original_info_; ///< Original info for dirty comparison
     SlotInfo working_info_;  ///< Working copy being edited
 
-    /// Chip selection state; staged into working_info_ by handle_save().
+    /// Dropdown selection state; staged into working_info_ by handle_save().
     SpoolEditSelection sel_;
-    /// True once the user moved a chip (family/variant/brand/product) or the
+    /// True once the user moved a dropdown (family/variant/brand/product) or the
     /// colour: Save rewrites identity only then, so an untouched open+save
     /// changes nothing.
     bool selection_moved_ = false;
@@ -209,7 +209,7 @@ class AmsEditOverlay : public OverlayBase {
     // Spool logistics fields (More section) for the linked spool record.
     SpoolInfo detail_original_; ///< as fetched on entry
     SpoolInfo detail_working_;  ///< live field edits
-    /// The catalog the chip rows read; loaded per open.
+    /// The catalog the dropdowns read; loaded per open.
     std::optional<printer::FilamentCatalog> catalog_;
 
     void populate_detail_fields();
@@ -245,22 +245,23 @@ class AmsEditOverlay : public OverlayBase {
     void handle_color_hex_changed();
     void handle_color_apply();
 
-    // === Chip row publishing ===
-    /// One chip's label and the value a tap stages.
-    struct Chip {
+    // === Identity dropdowns ===
+    /// One option's label and the value picking it stages.
+    struct Option {
         std::string label;
         std::string payload; ///< family / variant / brand / catalog id
-        bool more = false;   ///< the trailing More... / All... chip
+        bool more = false;   ///< the trailing "Browse catalog..." entry
     };
-    std::vector<Chip> material_chips_;
-    std::vector<Chip> variant_chips_;
-    std::vector<Chip> brand_chips_;
-    std::vector<Chip> product_chips_;
+    std::vector<Option> material_options_;
+    std::vector<Option> variant_options_;
+    std::vector<Option> brand_options_;
+    std::vector<Option> product_options_;
     /// Fill both layouts' dropdown widgets from the option vectors.
     void refresh_dropdowns();
     void fill_dropdown(const char* stacked_name, const char* split_name,
-                       const std::vector<Chip>& chips, const std::string& selected_payload);
-    void rebuild_chip_rows();
+                       const std::vector<Option>& options_list,
+                       const std::string& selected_payload);
+    void rebuild_option_lists();
     void handle_option_selected(int row, int index);
 
     // === Subjects for XML binding ===
@@ -275,7 +276,7 @@ class AmsEditOverlay : public OverlayBase {
     lv_subject_t scan_enabled_subject_{};    ///< 1=QR button may show ("ams_edit_scan_enabled")
     lv_subject_t product_hidden_subject_{};  ///< 1 while Generic selected
     lv_subject_t color_selected_subject_{};  ///< ringed preset index (-1 none)
-    lv_subject_t color_col_count_subject_{}; ///< split-column presets (15)
+    lv_subject_t color_col_count_subject_{}; ///< split-column presets (9)
     lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (18 short, 30 tall)
     lv_subject_t summary_text_subject_{};
     lv_subject_t tag_badge_visible_subject_{};
@@ -300,7 +301,7 @@ class AmsEditOverlay : public OverlayBase {
     std::vector<std::string> cached_searchables_;
     /// Debounce for the picker's search input.
     helix::ui::SearchDebounce picker_search_debounce_;
-    /// The More... / All... full-catalog sheet (created lazily, reused).
+    /// The "Browse catalog..." sheet (created lazily, reused).
     std::unique_ptr<FilamentCatalogPickerModal> catalog_sheet_;
 
     // === Internal Methods ===
@@ -320,7 +321,7 @@ class AmsEditOverlay : public OverlayBase {
     void render_spool_list(const std::string& filter);
     void handle_spool_selected(int spool_id);
     void enter_editor();
-    /// Apply the editor view's non-XML content (chip labels, colour ring,
+    /// Apply the editor view's non-XML content (dropdown options, colour ring,
     /// summary, logistics fields) from state this object already holds.
     void populate_editor_view();
     void stage_selection_into_working();

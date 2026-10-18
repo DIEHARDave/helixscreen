@@ -128,7 +128,7 @@ class AmsEditOverlayViewTestAccess {
     }
     void set_sel(const AmsEditOverlay::SpoolEditSelection& sel) {
         overlay_.sel_ = sel;
-        overlay_.rebuild_chip_rows();
+        overlay_.rebuild_option_lists();
     }
     void call_apply_weight(float grams) {
         overlay_.apply_weight(grams);
@@ -1234,12 +1234,11 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a linked slot still saves a color while Spo
     CHECK(captured.slot_info.brand == tracked_slot().brand);
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture,
-                 "Change-Filament picker selection returns to overview without closing",
+TEST_CASE_METHOD(LVGLUITestFixture, "header-picker selection returns to the editor without closing",
                  "[ams_edit_overlay][picker]") {
-    // Contrast with the picker-entry shortcut: reaching the picker via Change
-    // Filament (switch_to_picker clears opened_on_picker_) keeps the two-step
-    // flow — a selection returns to the overview for review, no completion.
+    // Contrast with the picker-entry shortcut: reaching the picker via the header
+    // Spoolman button (switch_to_picker clears opened_on_picker_) keeps the two-step
+    // flow — a selection returns to the editor for review, no completion.
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayViewTestAccess access(overlay);
 
@@ -1268,7 +1267,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     process_lvgl(10);
 
     CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR);
-    CHECK_FALSE(fired); // no commit — the overview header Save commits later
+    CHECK_FALSE(fired); // no commit — the editor's header Save commits later
     CHECK(access.working_info().spoolman_id == 22); // staged, awaiting review
 
     close_editor_overlay();
@@ -1319,8 +1318,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "picker pre-selects the current spool when l
     close_editor_overlay();
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture,
-                 "header Save shows on overview + spool-edit, hides on picker/color",
+TEST_CASE_METHOD(LVGLUITestFixture, "header Save shows on the editor, hides on picker/color",
                  "[ams_edit_overlay][views]") {
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayViewTestAccess access(overlay);
@@ -1333,13 +1331,13 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     REQUIRE(hide_subj != nullptr);
     auto* save_dis = lv_xml_get_subject(nullptr, "ams_edit_save_disabled");
     REQUIRE(save_dis != nullptr);
-    REQUIRE(lv_subject_get_int(hide_subj) == 0); // overview: visible
+    REQUIRE(lv_subject_get_int(hide_subj) == 0); // editor: visible
 
     access.call_set_view(AmsEditOverlay::VIEW_SPOOL_PICKER);
     REQUIRE(lv_subject_get_int(hide_subj) == 1); // picker: hidden
 
     // Editor: Save stays VISIBLE and is disabled while nothing is dirty —
-    // the chips stage into working_info_ only through Save.
+    // the dropdowns stage into working_info_ only through Save.
     access.call_set_view(AmsEditOverlay::VIEW_EDITOR);
     REQUIRE(lv_subject_get_int(hide_subj) == 0);
     REQUIRE_FALSE(access.is_dirty());
@@ -1721,7 +1719,7 @@ TEST_CASE("AmsEditOverlay::save_is_disabled holds Save shut while a save is in f
 }
 
 // ============================================================================
-// Chip-row editor (redesign): pure selection rules + row publishing
+// Identity dropdown form: pure selection rules + option publishing
 // ============================================================================
 
 TEST_CASE("selection_from_slot splits family/variant/brand", "[ams_edit_overlay][dropdown]") {
@@ -1736,7 +1734,7 @@ TEST_CASE("selection_from_slot splits family/variant/brand", "[ams_edit_overlay]
     CHECK(sel.product_id == "esun-pla-cf-1kg");
 
     // Unknown values pass through verbatim so an untouched open+save
-    // round-trips them (the extra selected chip).
+    // round-trips them (the extra selected option).
     info.material = "MysteryBlend";
     info.brand = "NoName Co";
     const auto unknown = AmsEditOverlay::selection_from_slot(info);
@@ -1881,7 +1879,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "every identity dropdown stages its pick thr
     close_editor_overlay();
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture, "unknown material shows as its own selected family chip",
+TEST_CASE_METHOD(LVGLUITestFixture, "unknown material shows as its own selected family option",
                  "[ams_edit_overlay][dropdown]") {
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayViewTestAccess access(overlay);
@@ -2060,7 +2058,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a More-section edit lights Save and stages 
 
 TEST_CASE_METHOD(LVGLUITestFixture, "a picker relink reseeds the More section to the new spool",
                  "[ams_edit_overlay][more][relink]") {
-    // 2a: the More fields must describe the spool the slot NOW names, and the
+    // The More fields must describe the spool the slot NOW names, and the
     // Save PATCH must target that spool's record, never the one the editor
     // opened on.
     PrinterState state;
@@ -2123,7 +2121,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a picker relink reseeds the More section to
 
 TEST_CASE_METHOD(LVGLUITestFixture, "a combined material+notes save loses neither",
                  "[ams_edit_overlay][more][combined]") {
-    // 2b: the identity prompt owns the save, and the Notes edit rides the
+    // The identity prompt owns the save, and the Notes edit rides the
     // Update arm instead of being dropped.
     PrinterState state;
     MoonrakerClientMock client;
@@ -2194,7 +2192,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a combined material+notes save loses neithe
 
 TEST_CASE_METHOD(LVGLUITestFixture, "a linked slot's family change refreshes the temps line",
                  "[ams_edit_overlay][r10][linked]") {
-    // 3: a linked slot carries its spool's stored range; a family pick must
+    // A linked slot carries its spool's stored range; a family pick must
     // show the picked family's range, not the stored one.
     PrinterState state;
     MoonrakerClientMock client;
