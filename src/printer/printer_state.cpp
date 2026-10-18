@@ -298,6 +298,14 @@ std::optional<StatusFrame> helix::parse_status_notification(const json& notifica
     return frame;
 }
 
+void PrinterState::apply_klippy_status(const json& webhooks, double eventtime,
+                                       bool from_cached_snapshot,
+                                       std::optional<uint64_t> frame_epoch) {
+    if (network_state_.apply_webhooks(webhooks, eventtime, from_cached_snapshot, frame_epoch)) {
+        calibration_state_.reset_klippy_volatile();
+    }
+}
+
 void PrinterState::update_from_status(const json& state, double eventtime,
                                       bool from_cached_snapshot,
                                       std::optional<uint64_t> frame_epoch, bool whole_objects) {
@@ -367,9 +375,7 @@ void PrinterState::update_from_status(const json& state, double eventtime,
 
     // Klippy state from webhooks (shutdown/error detection), gated on freshness.
     if (auto it = state.find("webhooks"); it != state.end()) {
-        if (network_state_.apply_webhooks(*it, eventtime, from_cached_snapshot, frame_epoch)) {
-            calibration_state_.reset_klippy_volatile();
-        }
+        apply_klippy_status(*it, eventtime, from_cached_snapshot, frame_epoch);
     }
 
     // Track Klipper pause_resume.is_paused (PAUSE/RESUME gcode state)

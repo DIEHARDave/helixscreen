@@ -862,6 +862,25 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
     std::atomic<bool> initial_failure_notified_{false};
     uint32_t initial_connect_failure_ms_{60000};
 
+    /// Klippy's state is polled from printer.info after notify_klippy_disconnected,
+    /// because Moonraker announces a successful start (notify_klippy_ready) but never
+    /// a failed one: without the poll a startup error reads as SHUTDOWN forever. The
+    /// health timer drives it; it ends on a ready/shutdown/error answer, on
+    /// notify_klippy_ready, on a socket close, or after KLIPPY_STATE_POLL_MAX_MS.
+    /// Shared with the poll's response callbacks so they never capture `this`.
+    struct KlippyStatePoll {
+        std::atomic<SteadyTicks> started_at{0}; ///< 0 = not polling
+        std::atomic<uint64_t> generation{0};    ///< Bumped on every start and stop
+        std::atomic<bool> in_flight{false};
+    };
+    std::shared_ptr<KlippyStatePoll> klippy_state_poll_ = std::make_shared<KlippyStatePoll>();
+    static constexpr int KLIPPY_STATE_POLL_MAX_MS = 120000;
+
+    void start_klippy_state_poll();
+    void stop_klippy_state_poll(const char* why);
+    /// One poll step: sends printer.info when a poll is active and none is in flight.
+    void poll_klippy_state();
+
     // Object-destruction guard, and the only liveness guard this client has. Reset
     // ONLY in the destructor. The install-once WS trampolines capture a weak_ptr to
     // it and check it before touching `this`; lifetime_weak() exposes it to

@@ -8,6 +8,7 @@
 #include "async_lifetime_guard.h"
 #include "lvgl/lvgl.h"
 #include "moonraker_job_api.h"
+#include "printer_recovery_service.h"
 #include "printer_state.h"
 #include "subject_managed_panel.h"
 
@@ -349,7 +350,7 @@ class AbortManager {
     void on_cancel_success();
     void on_cancel_timeout();
     void on_estop_sent();
-    void on_restart_sent();
+    void on_restart_sent(RecoveryOutcome outcome);
     void on_klippy_state_changed(KlippyState klippy_state);
 
     // ========================================================================

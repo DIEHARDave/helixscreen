@@ -77,8 +77,9 @@ class AbortManagerTestAccess {
         m.on_estop_sent();
     }
 
-    static void on_restart_sent(AbortManager& m) {
-        m.on_restart_sent();
+    static void on_restart_sent(AbortManager& m,
+                                RecoveryOutcome outcome = RecoveryOutcome::RESTART_ISSUED) {
+        m.on_restart_sent(outcome);
     }
 
     static void on_klippy_ready(AbortManager& m) {

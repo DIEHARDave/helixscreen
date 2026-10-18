@@ -408,13 +408,15 @@ void AbortManager::send_firmware_restart() {
     // through to printer.firmware_restart and behave exactly as before.
     PrinterRecoveryService recovery(api_);
     recovery.recover(
-        lifetime_.bg_cb("AbortManager::restart_ok", [this]() { on_restart_sent(); }),
+        lifetime_.bg_cb("AbortManager::restart_ok",
+                        [this](RecoveryOutcome outcome) { on_restart_sent(outcome); }),
         // Even on error, proceed to wait for reconnect — Klipper may
         // still come back via natural recovery, and if it doesn't the
         // reconnect timer surfaces the recovery dialog so the user has
         // a path forward.
-        lifetime_.bg_cb("AbortManager::restart_err",
-                        [this](const MoonrakerError& /* err */) { on_restart_sent(); }));
+        lifetime_.bg_cb("AbortManager::restart_err", [this](const MoonrakerError& /* err */) {
+            on_restart_sent(RecoveryOutcome::RESTART_ISSUED);
+        }));
 }
 
 void AbortManager::wait_for_reconnect() {
@@ -623,9 +625,18 @@ void AbortManager::on_estop_sent() {
     send_firmware_restart();
 }
 
-void AbortManager::on_restart_sent() {
+void AbortManager::on_restart_sent(RecoveryOutcome outcome) {
     if (abort_state_ != State::SENT_RESTART) {
         return; // Stale callback
+    }
+
+    // A verified READY may already have reached the klippy subject, so
+    // wait_for_reconnect()'s SHUTDOWN-then-READY edge would never come.
+    if (outcome == RecoveryOutcome::KLIPPY_READY) {
+        shutdown_recovery_in_progress_.store(false);
+        spdlog::info("[AbortManager] Recovery verified Klippy ready, abort complete");
+        complete_abort("Print aborted. Home before resuming.");
+        return;
     }
 
     spdlog::info("[AbortManager] FIRMWARE_RESTART sent, waiting for reconnect");

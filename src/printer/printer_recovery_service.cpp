@@ -14,6 +14,7 @@
 #include <spdlog/spdlog.h>
 
 #include <cstdlib>
+#include <memory>
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -36,7 +37,83 @@ bool firmware_restart_unrecoverable(const MoonrakerError& err) {
     return false;
 }
 
+/// Run @p fn on the main thread once @p delay_ms has passed. Captures nothing
+/// of a caller's object, so it outlives whatever started it.
+void run_after_ms(uint32_t delay_ms, std::function<void()> fn) {
+    auto* holder = new std::function<void()>(std::move(fn));
+    lv_timer_t* timer = lv_timer_create(
+        [](lv_timer_t* t) {
+            std::unique_ptr<std::function<void()>> owned(
+                static_cast<std::function<void()>*>(lv_timer_get_user_data(t)));
+            (*owned)();
+        },
+        delay_ms, holder);
+    lv_timer_set_repeat_count(timer, 1);
+}
+
 } // namespace
+
+/// One accepted firmware_restart being watched until Klippy settles. Main
+/// thread only; shared by the poll's continuations, never by `this`.
+struct PrinterRecoveryService::RestartVerification {
+    IMoonrakerAPI* api;
+    RecoveryTiming timing;
+    uint32_t started_at;
+    SuccessCallback on_success;
+    ErrorCallback on_error;
+
+    void schedule_poll(const std::shared_ptr<RestartVerification>& self) {
+        run_after_ms(timing.poll_interval_ms, [self]() { self->poll(self); });
+    }
+
+    void poll(const std::shared_ptr<RestartVerification>& self) {
+        api->get_klippy_status(
+            [self](const KlippyStatus& status) {
+                ui::queue_update("PrinterRecoveryService::verify(status)",
+                                 [self, status]() { self->on_status(self, status); });
+            },
+            [self](const MoonrakerError& err) {
+                ui::queue_update("PrinterRecoveryService::verify(error)", [self, err]() {
+                    self->on_status(self, KlippyStatus{"unreachable", err.message});
+                });
+            });
+    }
+
+    void on_status(const std::shared_ptr<RestartVerification>& self, const KlippyStatus& status) {
+        const auto state = parse_klippy_state(status.state);
+        if (state == KlippyState::READY) {
+            spdlog::info("[Recovery] Klippy ready after firmware_restart");
+            on_success(RecoveryOutcome::KLIPPY_READY);
+            return;
+        }
+        if (state == KlippyState::ERROR) {
+            spdlog::warn("[Recovery] Klippy failed to start after firmware_restart: {}",
+                         status.state_message);
+            escalate();
+            return;
+        }
+        const uint32_t elapsed = lv_tick_elaps(started_at);
+        if (elapsed >= timing.verify_window_ms) {
+            spdlog::warn("[Recovery] Klippy not ready {}ms after firmware_restart (state '{}')",
+                         elapsed, status.state);
+            escalate();
+            return;
+        }
+        spdlog::debug("[Recovery] Waiting for Klippy after firmware_restart: state '{}' at {}ms",
+                      status.state, elapsed);
+        schedule_poll(self);
+    }
+
+    void escalate() {
+        if (!local_recovery_available()) {
+            spdlog::info("[Recovery] No local helix-recover.sh — leaving Klippy's state to the "
+                         "printer status");
+            on_success(RecoveryOutcome::RESTART_ISSUED);
+            return;
+        }
+        run_local_recovery(on_success, on_error);
+    }
+};
 
 bool PrinterRecoveryService::local_recovery_available() {
     const auto path = local_recovery_script_path();
@@ -46,6 +123,9 @@ bool PrinterRecoveryService::local_recovery_available() {
 }
 
 std::string PrinterRecoveryService::local_recovery_script_path() {
+    if (const std::string& override_path = detail::local_recovery_script_override_ref();
+        !override_path.empty())
+        return override_path;
     const std::string root = app_get_install_root();
     if (root.empty())
         return "";
@@ -118,7 +198,7 @@ void PrinterRecoveryService::run_local_recovery(SuccessCallback on_success,
         ui::queue_update(
             "PrinterRecoveryService::run_local_recovery(done)", [ok, rc, on_success, on_error]() {
                 if (ok) {
-                    on_success();
+                    on_success(RecoveryOutcome::RESTART_ISSUED);
                 } else {
                     on_error(MoonrakerError{
                         MoonrakerErrorType::UNKNOWN,
@@ -157,11 +237,13 @@ void PrinterRecoveryService::recover(SuccessCallback on_success, ErrorCallback o
 
     auto run_services_restart = [api, on_success, on_error]() {
         spdlog::info("[Recovery] Falling back to machine.services.restart klipper");
-        api->restart_service("klipper", on_success, [on_error](const MoonrakerError& err) {
-            spdlog::warn("[Recovery] services.restart klipper failed: {} (code={})", err.message,
-                         err.code);
-            on_error(err);
-        });
+        api->restart_service(
+            "klipper", [on_success]() { on_success(RecoveryOutcome::RESTART_ISSUED); },
+            [on_error](const MoonrakerError& err) {
+                spdlog::warn("[Recovery] services.restart klipper failed: {} (code={})",
+                             err.message, err.code);
+                on_error(err);
+            });
     };
 
     auto run_local_then_services = [on_success, run_services_restart]() {
@@ -177,6 +259,18 @@ void PrinterRecoveryService::recover(SuccessCallback on_success, ErrorCallback o
         });
     };
 
+    auto verify_restart = [api, timing = timing_, on_success, on_error]() {
+        spdlog::info("[Recovery] firmware_restart accepted — verifying Klippy comes back ready");
+        // The first poll waits one interval: until Klippy actually drops,
+        // printer.info can still report the state from before the restart.
+        ui::queue_update(
+            "PrinterRecoveryService::verify(start)", [api, timing, on_success, on_error]() {
+                auto verification = std::make_shared<RestartVerification>(
+                    RestartVerification{api, timing, lv_tick_get(), on_success, on_error});
+                verification->schedule_poll(verification);
+            });
+    };
+
     // Step 1: printer.firmware_restart. This is what users see in the
     // "Restarting firmware..." toast — try it first because on a healthy
     // klippy it's the fastest path. If klippy is dead, the 503 short-circuits
@@ -184,7 +278,7 @@ void PrinterRecoveryService::recover(SuccessCallback on_success, ErrorCallback o
     // -32601) and unexpected failures, but escalate identically — the user
     // clicked "restart" and we should exhaust the chain before giving up.
     spdlog::info("[Recovery] Trying printer.firmware_restart");
-    api_->restart_firmware(on_success, [run_local_then_services](const MoonrakerError& err) {
+    api_->restart_firmware(verify_restart, [run_local_then_services](const MoonrakerError& err) {
         if (firmware_restart_unrecoverable(err)) {
             spdlog::info("[Recovery] firmware_restart not viable "
                          "(code={} msg='{}') — escalating",

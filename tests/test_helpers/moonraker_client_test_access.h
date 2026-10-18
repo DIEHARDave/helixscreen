@@ -54,6 +54,15 @@ class MoonrakerClientTestAccess {
     // is what disconnect()'s bounded drain is waiting on. Acquire it from a thread
     // other than the one that will call disconnect(): std::shared_mutex is neither
     // recursive nor upgradeable.
+    /// One health-timer tick's worth of the post-disconnect Klippy state poll.
+    static void poll_klippy_state(MoonrakerClient& c) {
+        c.poll_klippy_state();
+    }
+
+    static bool klippy_state_polling(const MoonrakerClient& c) {
+        return c.klippy_state_poll_->started_at.load() != 0;
+    }
+
     static std::shared_lock<std::shared_mutex> hold_callback_lock(MoonrakerClient& c) {
         return std::shared_lock<std::shared_mutex>(c.callback_lifecycle_mutex_);
     }

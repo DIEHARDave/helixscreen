@@ -637,6 +637,41 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
 }
 
 TEST_CASE_METHOD(AbortManagerTestFixture,
+                 "AbortManager: recovery that verified Klippy ready completes the abort at once",
+                 "[abort][shutdown_recovery]") {
+    AbortManager::instance().start_abort();
+    simulate_kalico_not_present();
+    simulate_queue_blocked();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_RESTART);
+
+    // The READY the recovery service saw has already reached the klippy
+    // subject, so no SHUTDOWN-then-READY edge follows: waiting for one would
+    // end in the reconnect timeout instead.
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance(),
+                                            RecoveryOutcome::KLIPPY_READY);
+
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
+    REQUIRE(AbortManager::instance().last_result_message() ==
+            "Print aborted. Home before resuming.");
+    REQUIRE(AbortManager::instance().is_handling_shutdown() == false);
+}
+
+TEST_CASE_METHOD(AbortManagerTestFixture,
+                 "AbortManager: a restart only issued still waits for Klippy to reconnect",
+                 "[abort][shutdown_recovery]") {
+    AbortManager::instance().start_abort();
+    simulate_kalico_not_present();
+    simulate_queue_blocked();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance(),
+                                            RecoveryOutcome::RESTART_ISSUED);
+
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::WAITING_RECONNECT);
+    REQUIRE(AbortManager::instance().is_handling_shutdown() == true);
+}
+
+TEST_CASE_METHOD(AbortManagerTestFixture,
                  "AbortManager: Cancel-success path leaves shutdown-recovery flag false",
                  "[abort][shutdown_recovery]") {
     // No escalation — soft cancel succeeds. Flag should never have been set,

@@ -20,17 +20,16 @@ using namespace moonraker_internal;
 // Query Operations
 // ============================================================================
 
-void MoonrakerAPI::is_printer_ready(BoolCallback on_result, ErrorCallback on_error) {
+void MoonrakerAPI::get_klippy_status(KlippyStatusCallback on_result, ErrorCallback on_error) {
     client_.send_jsonrpc(
         "printer.info", json::object(),
         [on_result](const json& response) {
-            bool ready = false;
-            if (response.contains("result") && response["result"].contains("state") &&
-                response["result"]["state"].is_string()) {
-                std::string state = response["result"]["state"].get<std::string>();
-                ready = (state == "ready");
+            helix::KlippyStatus status;
+            if (auto it = response.find("result"); it != response.end() && it->is_object()) {
+                status.state = helix::json_util::safe_string(*it, "state", "");
+                status.state_message = helix::json_util::safe_string(*it, "state_message", "");
             }
-            on_result(ready);
+            on_result(status);
         },
         on_error);
 }

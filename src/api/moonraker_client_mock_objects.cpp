@@ -285,7 +285,7 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
         if (params.contains("objects")) {
             auto& objects = params["objects"];
 
-            // webhooks state (for is_printer_ready)
+            // webhooks state (for get_klippy_status)
             if (objects.contains("webhooks")) {
                 auto klippy = self->get_klippy_state();
                 std::string state_str = "ready";
