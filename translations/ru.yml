@@ -178,8 +178,15 @@ translations:
   = Loosen: = Ослабить
   = Tighten: = Затянуть
   A: A
+  A buzzer or speaker for alerts and sounds. Set what plays in the sound settings.: 'Зуммер или динамик для оповещений и звуков. Что воспроизводится, настраивается в настройках звука.'
+  A camera Moonraker streams. Add the camera widget to the home screen to watch it, and see it during a print.: 'Камера, которую транслирует Moonraker. Добавьте виджет камеры на главный экран, чтобы смотреть ее, в том числе во время печати.'
+  A fan that pulls the enclosure air through a filter. Control it on the chamber temperature screen.: 'Вентилятор, который прогоняет воздух камеры через фильтр. Управляйте им на экране температуры камеры.'
   A few minutes, nearly all of it heating. You judge nothing by eye.: 'Несколько минут, почти всё время нагрев. Ничего не нужно оценивать на глаз.'
+  A heat soak macro is set up on the printer. HelixScreen detects it but does not run it.: 'На принтере настроен макрос прогрева (heat soak). HelixScreen обнаруживает его, но не запускает.'
+  A heater that warms the air inside the enclosure. Set its temperature on the chamber temperature screen.: 'Нагреватель, который греет воздух внутри камеры. Температура задается на экране температуры камеры.'
+  A height map of the bed that Klipper uses to make up for an uneven surface. View and calibrate it on the Bed Mesh screen.: 'Карта высот стола, по которой Klipper компенсирует неровности поверхности. Просмотр и калибровка на экране «Сетка стола».'
   "A macro printed stray template text '{}': check its Jinja tags": 'Макрос вывел лишний текст шаблона «{}»: проверьте его теги Jinja'
+  A macro that wipes the nozzle. HelixScreen can run it before a print from the pre-print options.: 'Макрос для очистки сопла. HelixScreen может запускать его перед печатью из параметров подготовки к печати.'
   A motor IO pin couldn't be restored. Power-cycle the printer to recover: Не удалось восстановить вывод ввода-вывода двигателя. Выключите и включите принтер
   A motor's parameters couldn't be written. Power-cycle the printer to retry: Не удалось записать параметры двигателя. Выключите и включите принтер и повторите попытку
   A newer version of the helper macros is available: 'Доступна более новая версия вспомогательных макросов'
@@ -189,13 +196,19 @@ translations:
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: На этом шлюзе идёт печать. HelixScreen очистил свою копию; после окончания печати очистите его снова.
   A print is running. Apply the result after it ends.: Идёт печать. Примените результат после её завершения.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "Печать началась, когда катушки отмечены как лежащие на столе. Если они всё ещё там, немедленно остановите принтер аварийной остановкой."
+  ? A sensor that measures the distance to the bed. HelixScreen uses it for Z offset calibration and probe tests on the Probe screen.
+  : 'Датчик, измеряющий расстояние до стола. HelixScreen использует его для калибровки Z Offset и тестов зонда на экране «Зонд».'
+  A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen.: 'Датчик, измеряющий температуру воздуха внутри камеры. Следите за ней на экране температуры камеры.'
   A spool may be tangled or the drive gear is jammed: Катушка может быть запутана или заклинило приводную шестерню
+  ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
+  : 'Система, подающая несколько филаментов на печатающую головку, отображается с числом слотов. Слотами можно управлять на экране системы филамента.'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: АКСЕЛЕРОМЕТРЫ
   'ACCEPT failed: {}': 'Ошибка ACCEPT: {}'
   ACE Moonraker bridge not found. Install ace_status.py for full support.: Мост ACE Moonraker не найден. Установите ace_status.py для полной поддержки.
   ACTIONS: ДЕЙСТВИЯ
+  ADD-ONS: 'ДОПОЛНЕНИЯ'
   ADXL: ADXL
   AFC: AFC
   AFC Update Available: Доступно обновление AFC
@@ -310,6 +323,7 @@ translations:
   Analyzing data...: Анализ данных...
   Analyzing data... {}s: Анализ данных... {} с
   Android logcat: Android logcat
+  Animated light effects configured on the printer. Turn them on and off from the LED controls.: 'Анимированные световые эффекты, настроенные на принтере. Включаются и выключаются в управлении LED.'
   Animations: Анимации
   Anonymous data to help improve HelixScreen: Анонимные данные для улучшения HelixScreen
   Anonymous stats — no personal data, ever.: Анонимная статистика — никаких личных
@@ -492,6 +506,7 @@ translations:
   Brush nozzle: 'Очистка сопла щёткой'
   Buffer Status: Статус буфера
   Buffer tube problem: Проблема с буферной трубкой
+  Build Volume: 'Область печати'
   'Build Volume: ': 'Область печати: '
   'Building preview: %d%%': 'Создание предпросмотра: %d%%'
   Bundle Uploaded: Пакет отправлен
@@ -778,6 +793,8 @@ translations:
   Compact: Компактный
   Compare belt paths with a resonance sweep: "Сравнение путей ремней резонансным свипом"
   Compare your belt paths: Сравните пути ремней
+  ? Compares the two belt paths of a CoreXY printer with the accelerometer, so you can even out their tension. Run it on the Belt Tension screen.
+  : 'Сравнивает два контура ремней принтера CoreXY с помощью акселерометра, чтобы выровнять их натяжение. Запускается на экране «Натяжение ремня».'
   Complete: Завершено
   Complete!: Готово!
   Completed: Завершено
@@ -1124,6 +1141,7 @@ translations:
   E-Stop Confirmation: Подтверждение аварийной остановки
   EDDY CURRENT: EDDY CURRENT
   EEPROM error on CFS unit: Ошибка EEPROM в блоке CFS
+  ELECTRONICS & ACCESSORIES: 'ЭЛЕКТРОНИКА И АКСЕССУАРЫ'
   EMERGENCY STOP: АВАРИЙНАЯ ОСТАНОВКА
   EMPTY: ПУСТО
   ETA {}: 'Окончание {}'
@@ -1253,6 +1271,7 @@ translations:
   'Exception: {}': 'Исключение: {}'
   Exclude: Исключить
   Exclude Object: 'Исключение объектов'
+  Exclude Object lets you skip a failed part mid-print from the print status screen.: 'Исключение объектов позволяет пропустить неудавшуюся деталь прямо во время печати на экране состояния печати.'
   Exclude Object?: 'Исключить объект?'
   Exclude Objects: 'Исключение объектов'
   Excluded: Исключён
@@ -1295,6 +1314,7 @@ translations:
   Extruding prime line...: Экструзия линии подготовки...
   FAILED: ОШИБКА
   FILAMENT: ФИЛАМЕНТ
+  FILAMENT & TOOLHEAD: 'ФИЛАМЕНТ И ГОЛОВКА'
   FILAMENTS: ФИЛАМЕНТЫ
   FILTERS: ФИЛЬТРЫ
   Factory Reset: Сброс к заводским настройкам
@@ -1424,6 +1444,7 @@ translations:
   'Fan control failed: {}': 'Ошибка управления вентилятором: {}'
   FanSelect: Выбрать вентилятор
   Fans: Вентиляторы
+  Fans besides the part cooling fan. Control them on the Fans screen.: 'Вентиляторы, кроме обдува модели. Управляются на экране «Вентиляторы».'
   Farther: Дальше
   Favorites: 'Избранное'
   Feature not available: Функция недоступна
@@ -1453,6 +1474,7 @@ translations:
   Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Этот принтер не поддерживает сопоставление филамента, поэтому печать использует инструменты, назначенные на принтере
   Filament Runout: Окончание филамента
   Filament Sensor: Датчик филамента
+  Filament Sensors: 'Датчики филамента'
   Filament System Error: Ошибка системы филамента
   Filament Used: Использовано филамента
   Filament already exists: Такой филамент уже существует
@@ -1685,6 +1707,8 @@ translations:
     интегрируется с вашим сменщиком филамента для многокатушечной/многоцветной печати.
   HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreen записывает это в printer.cfg и перезапускает Klipper. Принтер ненадолго отключится.
   HelixScreen {} is available — tap Update: Доступен HelixScreen {} — нажмите «Обновить»
+  HelixScreen's Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen.: 'Плагин Moonraker для HelixScreen установлен; он нужен для параметров перед печатью. Управляйте им на экране «Дополнительно».'
+  HelixScreen's helper macros are installed in the printer's config. Update or remove them on the Advanced screen.: 'Вспомогательные макросы HelixScreen установлены в конфигурации принтера. Обновите или удалите их на экране «Дополнительно».'
   Help & About: Помощь и о программе
   Help Improve HelixScreen: Помогите улучшить HelixScreen
   Help improve HelixScreen?: Помочь улучшить HelixScreen?
@@ -1743,6 +1767,8 @@ translations:
   : 'Сколько удерживать, чтобы нажатие считалось долгим, в мс (увеличьте, если режим редактирования срабатывает случайно)'
   How many labels to print: Сколько этикеток напечатать
   How the Jog tab arranges its buttons: 'Как вкладка «Джог» располагает кнопки'
+  ? How the printer's axes are driven, as its Klipper config declares it. HelixScreen uses it to decide how homing works and which belt and motion tools apply.
+  : 'Как приводятся в движение оси принтера, согласно конфигурации Klipper. HelixScreen использует это, чтобы определить, как работает хоуминг и какие инструменты для ремней и движения применимы.'
   How the toolhead icon appears: Как отображается значок печатающей головки
   Hub: Хаб
   Hub & Cutter: 'Хаб и резак'
@@ -1880,6 +1906,7 @@ translations:
   K so far: 'Текущее K'
   KEYBOARD LAYOUT: РАСКЛАДКА КЛАВИАТУРЫ
   KLICKY CONTROLS: УПРАВЛЕНИЕ KLICKY
+  Kalico: 'Kalico'
   Keep Navigation Bar: Сохранить панель навигации
   Keep Printing: Продолжить печать
   Keep Spool Info on Eject: Сохранять данные катушки при извлечении
@@ -1893,6 +1920,8 @@ translations:
   Keep waiting: 'Продолжить ожидание'
   Kick away: 'Сброс остатка'
   Kinematics: Кинематика
+  ? Klippain Shake&Tune macros are installed on the printer. HelixScreen detects them but does not use them; run them from Mainsail or Fluidd.
+  : 'На принтере установлены макросы Klippain Shake&Tune. HelixScreen обнаруживает их, но не использует; запускайте их из Mainsail или Fluidd.'
   Klipper: Klipper
   Klipper Error: Ошибка Klipper
   Klipper failed to start with the skip macros, so they were removed: 'Klipper не запустился с макросами пропуска, поэтому они удалены'
@@ -1900,6 +1929,7 @@ translations:
   Klipper firmware has disconnected from the host. Try restarting Klipper or performing a firmware restart.: Прошивка
     Klipper отключилась от хоста. Попробуйте перезапустить Klipper или выполнить перезапуск
     прошивки.
+  Klipper handles retraction itself (G10/G11). Adjust the lengths and speeds in the retraction settings.: 'Klipper сам управляет ретрактом (G10/G11). Длину и скорость можно изменить в настройках ретракта.'
   Klipper has disconnected from Moonraker. Check for errors in your printer interface.: Klipper отключился от Moonraker. Проверьте ошибки в интерфейсе принтера.
   ? Klipper has entered an error state. This is typically caused by an MCU connection
     failure or configuration error. Try a firmware restart.
@@ -1922,6 +1952,7 @@ translations:
   Klippy Errors: Ошибки Klippy
   Klippy Shutdowns: Отключения Klippy
   LED Controls: 'Управление LED'
+  LED Effects: 'Эффекты LED'
   LED Light: 'LED-подсветка'
   LED Mode: 'Режим LED'
   LED Settings: Настройки LED
@@ -1983,6 +2014,7 @@ translations:
   Light will switch when the current operation finishes: Подсветка переключится после
     завершения текущей операции
   Lights that follow the printer's state: Подсветка, которая меняется в зависимости от состояния принтера
+  Lights the printer can control. Choose which ones HelixScreen uses in the LED settings.: 'Освещение, которым может управлять принтер. Какие из них использует HelixScreen, выбирается в настройках LED.'
   Line the nozzle up with the purge chute so purged filament drops straight in.: Выровняйте сопло над жёлобом продувки, чтобы продутый филамент падал прямо внутрь.
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: 'Строка {} вызывает {}, что этот принтер считает аварийной остановкой. Нарежьте файл заново с профилем для этого принтера.'
@@ -2061,9 +2093,11 @@ translations:
   MCU, host, and auxiliary temperature monitoring: Мониторинг температуры MCU, хоста
     и вспомогательных датчиков
   'MCU: ': 'MCU: '
+  MCUs: 'MCUs'
   MDI Icons: Иконки MDI
   MISSING CONFIGURED: ОТСУТСТВУЕТ НАСТРОЕННОЕ
   MMU command failed: Ошибка команды MMU
+  MOTION & LEVELING: 'ДВИЖЕНИЕ И КАЛИБРОВКА'
   MPC: MPC
   MPC thermal model calibrated for {} at {}°C.: 'Тепловая модель MPC откалибрована для {} при {}°C.'
   Machine Limits: Ограничения принтера
@@ -2147,6 +2181,8 @@ translations:
   Measured filament diameter: Измеренный диаметр филамента
   Measured pressure advance: 'Измеренный Pressure Advance'
   Measurement incomplete. Try again.: Измерение не завершено. Повторите попытку.
+  Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: 'Измеряет стол у каждого регулировочного винта и показывает, насколько его повернуть. Запускается на экране «Наклон винтов».'
+  Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: 'Измеряет вибрацию для input shaping. Тесты резонанса запускаются на экране Input Shaper.'
   Measuring: 'Измерение'
   Measuring Path {}: Измерение Пути {}
   Measuring accelerometer noise...: 'Измерение шума акселерометра...'
@@ -2168,7 +2204,10 @@ translations:
   Monitoring: Мониторинг
   Month: Месяц
   Moonraker: Moonraker
+  ? Moonraker is connected to Spoolman, which tracks your spools and how much filament is left. Browse them on the Spoolman screen.
+  : 'Moonraker подключен к Spoolman, который учитывает ваши катушки и остаток филамента. Просматривайте их на экране Spoolman.'
   Moonraker is not responding at {}. It runs on this printer, so check that the Klipper and Moonraker services started.: Moonraker не отвечает по адресу {}. Он работает на этом принтере, поэтому проверьте, запущены ли службы Klipper и Moonraker.
+  Moonraker keeps a queue of prints to run one after another. View it in the job queue.: 'Moonraker ведет очередь печатей, которые выполняются одна за другой. Смотрите ее в очереди заданий.'
   Moonraker restarted but Spoolman not connected. Check server.: Moonraker перезапущен,
     но Spoolman не подключен. Проверьте сервер.
   ? "Moonraker restarting...\nWaiting for reconnection..."
@@ -2488,6 +2527,7 @@ translations:
     автоопределение, если датчик или нагреватель камеры не называется 'chamber'.
   P: Д
   PA: PA
+  PA Calibration: 'Калибровка PA'
   PATH A · 1,-1: "ПУТЬ A · 1,-1"
   PATH B · 1,1: "ПУТЬ B · 1,1"
   PAUSED: ПАУЗА
@@ -2504,6 +2544,7 @@ translations:
   PRINTER: ПРИНТЕР
   PRINTER VISUALS: ВНЕШНИЙ ВИД ПРИНТЕРА
   PRINTERS: ПРИНТЕРЫ
+  PRINTING: 'ПЕЧАТЬ'
   PROBE SENSORS: ДАТЧИКИ ЗОНДА
   PTFE tube connection loose: Соединение трубки PTFE ослабло
   Pair: Сопряжение
@@ -2605,6 +2646,7 @@ translations:
   Post-Sensor Clear: 'Догон после датчика'
   Power: Питание
   Power Devices: Устройства питания
+  Power devices Moonraker can switch. Turn them on and off on the Power screen.: 'Устройства питания, которые может переключать Moonraker. Включаются и выключаются на экране «Питание».'
   Power off the printer or screen: Выключить принтер или экран
   'Power was lost during the print; the printer stopped and saved its progress': 'Во время печати пропало питание; принтер остановился и сохранил прогресс'
   Pre-heat the extruder first: Сначала прогрейте экструдер
@@ -2834,6 +2876,8 @@ translations:
   QUICK BUTTONS: БЫСТРЫЕ КНОПКИ
   Quad Gantry Level: Выравнивание портала
   Quad Gantry Level complete: QGL завершён
+  ? Quad Gantry Level squares a gantry driven by four Z motors to the bed. HelixScreen offers it on the Controls and Motion screens.
+  : 'Выравнивание портала выставляет портал с четырьмя Z-моторами параллельно столу. HelixScreen предлагает его на экранах «Управление» и «Движение».'
   Quad Gantry Level started...: QGL запущен...
   Queue empty: 'Очередь пуста'
   'Queue: Paused': 'Очередь: Пауза'
@@ -3249,6 +3293,8 @@ translations:
   Sensor mismatch — check extruder and CFS sensors: Расхождение датчиков. Проверьте датчики экструдера и CFS
   Sensor to Nozzle: 'Датчик до сопла'
   Sensors: Датчики
+  Sensors that detect filament running out or jamming. Set what each one does in the sensor settings.: 'Датчики, которые определяют окончание или застревание филамента. Действие каждого задается в настройках датчиков.'
+  Sensors that measure the filament diameter as it feeds. Configure them in the sensor settings.: 'Датчики, измеряющие диаметр филамента при подаче. Настраиваются в настройках датчиков.'
   Separate on/off macros. HelixScreen tracks the state.: Отдельные макросы вкл/выкл.
     HelixScreen отслеживает состояние.
   Server Setup: Настройка сервера
@@ -3535,6 +3581,7 @@ translations:
   TD-1 filament color detection: Определение цвета филамента TD-1
   TEMPERATURE SENSORS: ДАТЧИКИ ТЕМПЕРАТУРЫ
   THEME COLORS: ЦВЕТА ТЕМЫ
+  THERMAL & AIR: 'ТЕПЛО И ВОЗДУХ'
   'TOGGLE: {}': 'ПЕРЕКЛЮЧИТЬ: {}'
   TOOLS: ИНСТРУМЕНТЫ
   TPU: TPU
@@ -3618,6 +3665,7 @@ translations:
     skipping bed mesh for quick reprints.
   : Плагин HelixPrint позволяет быстро модифицировать G-code прямо на принтере — например,
     пропускать сетку стола для быстрых перепечаток.
+  The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: 'Плагин таймлапса Moonraker установлен. Способ записи задается в настройках таймлапса.'
   The Spoolman spool currently loaded: Текущая катушка Spoolman
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3625,6 +3673,7 @@ translations:
     печати. Вы можете снова включить её в Настройки > Дисплей.
   The bed has cooled. Take the spools off the plate, then confirm.: Стол остыл. Снимите катушки со стола, затем подтвердите.
 
+  The bed heater. Set its temperature and watch its graph on the bed temperature screen.: 'Нагреватель стола. Температура задается, а график виден на экране температуры стола.'
   The bed is too small for the test tower, or its size is unknown.: Стол слишком мал для тестовой башни, или его размер неизвестен.
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: Стол выключится. Катушки считаются лежащими на столе, пока вы не подтвердите, что сняли их.
 
@@ -3633,7 +3682,9 @@ translations:
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: Буфер не фиксировал движение 16 секунд. Проверьте засор между CFS и экструдером или заклинивший буфер
   ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
   : 'Камере показалось, что на столе что-то есть, поэтому принтер остановился до начала печати. Если стол чист, это ложная тревога.'
+  The chamber heater can run a filament drying cycle. Start one from the drying dialog.: 'Нагреватель камеры может запускать цикл сушки филамента. Запустите его из диалога сушки.'
   The chamber wait already ended; nothing was stopped.: 'Ожидание камеры уже закончилось; ничего не остановлено.'
+  The controller boards Klipper runs on. See their load in the system settings.: 'Платы контроллеров, на которых работает Klipper. Их загрузку можно посмотреть в системных настройках.'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: Лезвие не вернулось. Проверьте, не намотался ли филамент на режущий механизм
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: Резак смещён. Выполните повторную калибровку командой CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: Экструдер не может тянуть равномерно. Проверьте катушку на запутывание или узел, а трубку PTFE на резкий изгиб
@@ -3642,6 +3693,7 @@ translations:
   The filament may not have fully retracted — try again or manually pull: Возможно, филамент втянут не полностью. Повторите или вытяните вручную
   The filament system needs attention: 'Системе подачи филамента требуется внимание'
   The filament system reported an error: Система филамента сообщила об ошибке
+  The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog.: 'Подогреваемый стол и корпус могут сушить катушки, лежащие на столе. Запустите цикл из диалога сушки на столе.'
   The heater can't be changed while the printer is waiting.: 'Нагреватель нельзя изменить, пока принтер ожидает.'
   The heater did not accept the printer's credentials.: 'Нагреватель не принял учётные данные принтера.'
   The heater didn't accept the command.: 'Нагреватель не принял команду.'
@@ -3669,7 +3721,12 @@ translations:
   : Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены.
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: 'Печать ждёт, пока камера нагреется до {}°C, но нагреватель не греет.'
   The print is waiting for the chamber, but the heater is not heating.: 'Печать ждёт камеру, но нагреватель не греет.'
+  The printable size in millimeters (X × Y × Z), from the axis limits in the printer's Klipper config.: 'Размер области печати в миллиметрах (X × Y × Z) по пределам осей в конфигурации Klipper принтера.'
   The printer applied this value and keeps it for this tool.: 'Принтер применил это значение и сохранил его для этого инструмента.'
+  The printer can draw a priming line before a print. HelixScreen offers it in the pre-print options.: 'Принтер может нарисовать линию прочистки перед печатью. HelixScreen предлагает ее в параметрах подготовки к печати.'
+  The printer can measure each tool's offset automatically. Run it on the tool offset calibration screen.: 'Принтер может автоматически измерить смещение каждого инструмента. Запустите это на экране калибровки смещений инструментов.'
+  The printer can measure pressure advance on its own. Run it on the PA calibration screen.: 'Принтер может сам измерить pressure advance. Запускается на экране «Калибровка PA».'
+  The printer can pause at a chosen layer, for a filament swap or an insert. Set the layer from the print preview.: 'Принтер может встать на паузу на выбранном слое, для смены филамента или вставки детали. Слой задается в предпросмотре печати.'
   The printer did not change its bed check: 'Принтер не изменил проверку стола'
   'The printer did not change its bed check: {}': 'Принтер не изменил проверку стола: {}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'Принтер выдавливает пластик в углу и повторяет, пока показания не сойдутся. Ничего не нужно оценивать на глаз.'
@@ -3694,6 +3751,8 @@ translations:
   The printer lost power while printing {}. The resumed layer may not line up exactly.: Принтер потерял питание при печати {}. Возобновлённый слой может не совпасть точно.
   The printer rejected the filament configuration. The print was not started.: Принтер
     отклонил конфигурацию филамента. Печать не была запущена.
+  The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: 'Принтер сообщает измеренные скорости вентиляторов. HelixScreen показывает их на экране «Вентиляторы».'
+  The printer swaps between several toolheads. Manage the tools on the filament system screen.: 'Принтер переключается между несколькими печатающими головками. Инструментами можно управлять на экране системы филамента.'
   The printer's firmware chooses where to switch on runout: Прошивка принтера сама выбирает, на что переключиться при обрыве
   The requested position is outside the printer's bounds: 'Запрошенная позиция находится за пределами рабочей области принтера'
   The right RFID reader in this CFS unit may need service: Правому RFID-считывателю этого блока CFS может требоваться обслуживание
@@ -4193,6 +4252,7 @@ translations:
   Z-Tilt Adjust complete: Z-Tilt завершён
   Z-Tilt Adjust started...: Z-Tilt запущен...
   'Z-Tilt failed: {}': 'Ошибка Z-Tilt: {}'
+  Z-Tilt levels the gantry or bed using its separate Z motors. HelixScreen offers it on the Controls and Motion screens.: 'Z-наклон выравнивает портал или стол с помощью отдельных Z-моторов. HelixScreen предлагает его на экранах «Управление» и «Движение».'
   Z-Tilt may still be running — response timed out: Z-Tilt может ещё выполняться —
     время ожидания истекло
   Z-Tilt timed out: Z-Tilt — время ожидания истекло

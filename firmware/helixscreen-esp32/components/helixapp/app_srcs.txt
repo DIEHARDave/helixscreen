@@ -604,6 +604,7 @@ src/ui/ui_print_start_controller.cpp
 src/ui/ui_print_tune_overlay.cpp
 src/ui/ui_printer_list_overlay.cpp
 src/ui/ui_printer_manager_overlay.cpp
+src/ui/printer_manager_chips.cpp
 src/ui/ui_printer_status_icon.cpp
 src/ui/ui_printer_switch_menu.cpp
 src/ui/ui_probe_overlay.cpp

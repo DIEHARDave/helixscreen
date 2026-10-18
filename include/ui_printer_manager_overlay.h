@@ -16,12 +16,17 @@
 
 #pragma once
 
+#include "ui_observer_guard.h"
+
+#include "capability_chip_text.h"
 #include "lvgl/lvgl.h"
 #include "overlay_base.h"
 #include "static_panel_registry.h"
 #include "subject_managed_panel.h"
 
+#include <array>
 #include <string>
+#include <vector>
 
 /**
  * @class PrinterManagerOverlay
@@ -124,6 +129,19 @@ class PrinterManagerOverlay : public OverlayBase {
      */
     void refresh_printer_info();
 
+    /**
+     * @brief Recompute every capability chip's text and the overlay-owned
+     *        visibility subjects from the current printer
+     *
+     * Runs on every activation, so a printer switched while the overlay was
+     * closed never shows the previous printer's details, and again whenever a
+     * count a chip shows changes while it is open.
+     */
+    void refresh_capability_chips();
+
+    /// Observe the counts the chip texts show; replaces any earlier observers.
+    void observe_chip_counts();
+
     //
     // === Subject State ===
     //
@@ -133,6 +151,21 @@ class PrinterManagerOverlay : public OverlayBase {
     lv_subject_t printer_manager_name_{};
     lv_subject_t printer_manager_model_{};
     lv_subject_t helix_version_{};
+
+    /// One string subject per capability chip, in CapChip order.
+    static constexpr size_t CHIP_TEXT_LEN = 96;
+    std::array<lv_subject_t, helix::CAP_CHIP_COUNT> chip_text_{};
+    std::array<std::array<char, CHIP_TEXT_LEN>, helix::CAP_CHIP_COUNT> chip_text_bufs_{};
+
+    /// Visibility for chips whose fact has no app-wide subject.
+    lv_subject_t has_kinematics_{};
+    lv_subject_t has_build_volume_{};
+    lv_subject_t has_filament_system_{};
+    lv_subject_t has_mcus_{};
+    /// 1 when the firmware is Kalico, which names the SOFTWARE group's firmware row.
+    lv_subject_t is_kalico_{};
+
+    std::vector<ObserverGuard> chip_count_observers_;
 
     char name_buf_[128] = {};
     char model_buf_[128] = {};

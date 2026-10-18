@@ -131,8 +131,15 @@ translations:
   = Loosen: = 緩める
   = Tighten: = 締める
   A: A
+  A buzzer or speaker for alerts and sounds. Set what plays in the sound settings.: 'アラートやサウンド用のブザーまたはスピーカー。再生内容はサウンド設定で選べます。'
+  A camera Moonraker streams. Add the camera widget to the home screen to watch it, and see it during a print.: 'Moonrakerが配信するカメラ。ホーム画面にカメラウィジェットを追加すると、印刷中も映像を確認できます。'
+  A fan that pulls the enclosure air through a filter. Control it on the chamber temperature screen.: 'チャンバー内の空気をフィルターに通すファン。チャンバー温度画面で操作できます。'
   A few minutes, nearly all of it heating. You judge nothing by eye.: '数分かかりますが、そのほとんどは加熱です。目視での判断は不要です。'
+  A heat soak macro is set up on the printer. HelixScreen detects it but does not run it.: 'プリンターにヒートソークのマクロが設定されています。HelixScreenは検出しますが実行はしません。'
+  A heater that warms the air inside the enclosure. Set its temperature on the chamber temperature screen.: 'チャンバー内の空気を温めるヒーター。温度はチャンバー温度画面で設定します。'
+  A height map of the bed that Klipper uses to make up for an uneven surface. View and calibrate it on the Bed Mesh screen.: 'Klipperが凹凸を補正するために使うベッドの高さマップ。ベッドメッシュ画面で確認とキャリブレーションができます。'
   "A macro printed stray template text '{}': check its Jinja tags": "マクロが不要なテンプレート文字列 '{}' を出力しました: Jinja タグを確認してください"
+  A macro that wipes the nozzle. HelixScreen can run it before a print from the pre-print options.: 'ノズルを拭き取るマクロ。HelixScreenは印刷前オプションから印刷前に実行できます。'
   A motor IO pin couldn't be restored. Power-cycle the printer to recover: モーターのIOピンを復元できませんでした。プリンターの電源を入れ直してください
   A motor's parameters couldn't be written. Power-cycle the printer to retry: モーターのパラメーターを書き込めませんでした。プリンターの電源を入れ直して再試行してください
   A newer version of the helper macros is available: 'ヘルパーマクロの新しいバージョンが利用可能です'
@@ -142,13 +149,19 @@ translations:
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: このゲートで印刷中です。HelixScreen 側のコピーはクリアしました。印刷終了後に再度クリアしてください。
   A print is running. Apply the result after it ends.: 印刷中です。終了後に結果を適用してください。
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: "スプールがベッド上にあるとされている状態で印刷が開始されました。まだ置かれている場合は、今すぐ緊急停止でプリンターを止めてください。"
+  ? A sensor that measures the distance to the bed. HelixScreen uses it for Z offset calibration and probe tests on the Probe screen.
+  : 'ベッドまでの距離を測るセンサー。HelixScreenはZオフセットのキャリブレーションと、プローブ画面でのプローブテストに使います。'
+  A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen.: 'チャンバー内の空気温度を測るセンサー。チャンバー温度画面で確認できます。'
   A spool may be tangled or the drive gear is jammed: スプールが絡まっているか、駆動ギアが詰まっている可能性があります
+  ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
+  : '複数のフィラメントをツールヘッドに送るシステムで、スロット数を表示します。スロットはフィラメントシステム画面で管理できます。'
   A · 1,-1: "A · 1,-1"
   ABS: ABS
   ACCELEROMETERS: 加速度センサー
   'ACCEPT failed: {}': 'ACCEPT に失敗しました: {}'
   ACE Moonraker bridge not found. Install ace_status.py for full support.: ACE Moonraker ブリッジが見つかりません。完全なサポートには ace_status.py をインストールしてください。
   ACTIONS: アクション
+  ADD-ONS: 'アドオン'
   ADXL: ADXL
   AFC: AFC
   AFC Update Available: AFC更新あり
@@ -254,6 +267,7 @@ translations:
   Analyzing data...: データを解析中...
   Analyzing data... {}s: データを解析中... {}s
   Android logcat: Android logcat
+  Animated light effects configured on the printer. Turn them on and off from the LED controls.: 'プリンターに設定されたアニメーション照明エフェクト。LEDコントロールからオン/オフできます。'
   Animations: アニメーション
   Anonymous data to help improve HelixScreen: HelixScreen改善のための匿名データ
   Anonymous stats — no personal data, ever.: 匿名の統計情報 — 個人データは一切収集しません。
@@ -418,6 +432,7 @@ translations:
   Brush nozzle: 'ノズルをブラシ清掃'
   Buffer Status: バッファーステータス
   Buffer tube problem: バッファーチューブの問題
+  Build Volume: '造形ボリューム'
   'Build Volume: ': '造形サイズ: '
   'Building preview: %d%%': 'プレビューを作成中: %d%%'
   Bundle Uploaded: バンドルをアップロードしました
@@ -679,6 +694,8 @@ translations:
   Compact: コンパクト
   Compare belt paths with a resonance sweep: "共振スイープでベルトパスを比較"
   Compare your belt paths: ベルト経路を比較
+  ? Compares the two belt paths of a CoreXY printer with the accelerometer, so you can even out their tension. Run it on the Belt Tension screen.
+  : 'CoreXYプリンターの2本のベルト経路を加速度センサーで比較し、張力を揃えられるようにします。ベルトテンション画面で実行できます。'
   Complete: 完了
   Complete!: 完了！
   Completed: 完了
@@ -1012,6 +1029,7 @@ translations:
   E-Stop Confirmation: 緊急停止の確認
   EDDY CURRENT: EDDY CURRENT
   EEPROM error on CFS unit: CFS ユニットの EEPROM エラー
+  ELECTRONICS & ACCESSORIES: '電子機器とアクセサリー'
   EMERGENCY STOP: 緊急停止
   EMPTY: 空
   ETA {}: '終了予定 {}'
@@ -1136,6 +1154,7 @@ translations:
   'Exception: {}': '例外: {}'
   Exclude: 除外
   Exclude Object: 'オブジェクト除外'
+  Exclude Object lets you skip a failed part mid-print from the print status screen.: 'オブジェクト除外を使うと、印刷中に失敗したパーツを印刷状況画面からスキップできます。'
   Exclude Object?: 'オブジェクトを除外しますか？'
   Exclude Objects: 'オブジェクトの除外'
   Excluded: 除外
@@ -1175,6 +1194,7 @@ translations:
   Extruding prime line...: プライムラインを押し出し中...
   FAILED: 失敗
   FILAMENT: フィラメント
+  FILAMENT & TOOLHEAD: 'フィラメントとツールヘッド'
   FILAMENTS: フィラメント
   FILTERS: フィルター
   Factory Reset: 工場出荷時リセット
@@ -1300,6 +1320,7 @@ translations:
   'Fan control failed: {}': 'ファン制御に失敗しました: {}'
   FanSelect: ファンを選択
   Fans: ファン
+  Fans besides the part cooling fan. Control them on the Fans screen.: 'パーツ冷却ファン以外のファン。ファン画面で操作できます。'
   Farther: 遠く
   Favorites: 'お気に入り'
   Feature not available: この機能は利用できません
@@ -1329,6 +1350,7 @@ translations:
   Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: このプリンターはフィラメントマッピングに対応していないため、プリンターで割り当てられたツールで印刷します
   Filament Runout: フィラメント切れ
   Filament Sensor: フィラメントセンサー
+  Filament Sensors: 'フィラメントセンサー'
   Filament System Error: フィラメントシステムエラー
   Filament Used: 使用済みフィラメント
   Filament already exists: フィラメントはすでに存在します
@@ -1550,6 +1572,8 @@ translations:
     はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。
   HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreenがこれをprinter.cfgに書き込み、Klipperを再起動します。プリンターは一時的に切断されます。
   HelixScreen {} is available — tap Update: HelixScreen {} が利用可能です — 「更新」をタップ
+  HelixScreen's Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen.: 'HelixScreenのMoonrakerプラグインがインストールされており、印刷前オプションの実行に使われます。詳細設定画面で管理できます。'
+  HelixScreen's helper macros are installed in the printer's config. Update or remove them on the Advanced screen.: 'HelixScreenの補助マクロがプリンター設定にインストールされています。詳細設定画面で更新または削除できます。'
   Help & About: ヘルプと情報
   Help Improve HelixScreen: HelixScreen の改善にご協力ください
   Help improve HelixScreen?: HelixScreenの改善に協力しますか？
@@ -1606,6 +1630,8 @@ translations:
   : '長押しと判定されるまでの保持時間（ミリ秒）。編集モードなどが誤動作する場合は大きくしてください'
   How many labels to print: 印刷するラベル枚数
   How the Jog tab arranges its buttons: 'ジョグタブのボタン配置'
+  ? How the printer's axes are driven, as its Klipper config declares it. HelixScreen uses it to decide how homing works and which belt and motion tools apply.
+  : 'Klipper設定で宣言されている、プリンターの軸の駆動方式。HelixScreenはこれを使って、ホーミングの動作と、適用するベルトや動作のツールを決めます。'
   How the toolhead icon appears: ツールヘッドアイコンの表示スタイル
   Hub: ハブ
   Hub & Cutter: 'ハブとカッター'
@@ -1729,6 +1755,7 @@ translations:
   K so far: '現在の K'
   KEYBOARD LAYOUT: キーボードレイアウト
   KLICKY CONTROLS: Klickyコントロール
+  Kalico: 'Kalico'
   Keep Navigation Bar: ナビゲーションバーを維持
   Keep Printing: 印刷を続行
   Keep Spool Info on Eject: 取り出し時にスプール情報を保持
@@ -1742,12 +1769,15 @@ translations:
   Keep waiting: '待ち続ける'
   Kick away: 'かき出し'
   Kinematics: キネマティクス
+  ? Klippain Shake&Tune macros are installed on the printer. HelixScreen detects them but does not use them; run them from Mainsail or Fluidd.
+  : 'Klippain Shake&Tuneのマクロがプリンターにインストールされています。HelixScreenは検出しますが使用しません。MainsailまたはFluiddから実行してください。'
   Klipper: Klipper
   Klipper Error: Klipper エラー
   Klipper failed to start with the skip macros, so they were removed: 'スキップ用マクロでは Klipper が起動しなかったため、削除しました'
   Klipper failed to start. Remove the helix_skips.cfg include from printer.cfg.: 'Klipper を起動できませんでした。printer.cfg から helix_skips.cfg の include を削除してください。'
   Klipper firmware has disconnected from the host. Try restarting Klipper or performing a firmware restart.: Klipper
     ファームウェアがホストから切断されました。Klipper を再起動するか、ファームウェア再起動を実行してみてください。
+  Klipper handles retraction itself (G10/G11). Adjust the lengths and speeds in the retraction settings.: 'Klipperがリトラクションを自分で処理します(G10/G11)。長さと速度はリトラクション設定で調整できます。'
   Klipper has disconnected from Moonraker. Check for errors in your printer interface.: Klipper が Moonraker から切断されました。プリンターのインターフェースでエラーを確認してください。
   ? Klipper has entered an error state. This is typically caused by an MCU connection
     failure or configuration error. Try a firmware restart.
@@ -1767,6 +1797,7 @@ translations:
   Klippy Errors: Klippy エラー
   Klippy Shutdowns: Klippy シャットダウン
   LED Controls: 'LEDコントロール'
+  LED Effects: 'LEDエフェクト'
   LED Light: 'LEDライト'
   LED Mode: 'LEDモード'
   LED Settings: LED設定
@@ -1824,6 +1855,7 @@ translations:
   Light Mode: ライトモード
   Light will switch when the current operation finishes: 現在の操作が完了したらライトを切り替えます
   Lights that follow the printer's state: プリンターの状態に応じて変わるライト
+  Lights the printer can control. Choose which ones HelixScreen uses in the LED settings.: 'プリンターが制御できるライト。HelixScreenが使うものはLED設定で選べます。'
   Line the nozzle up with the purge chute so purged filament drops straight in.: パージシュートにノズルを合わせ、パージされたフィラメントがまっすぐ落ちるようにします。
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: '{} 行目で {} を実行します。このプリンターでは緊急停止とみなされます。このプリンター用のプロファイルでファイルを再スライスしてください。'
@@ -1899,9 +1931,11 @@ translations:
   MCU bridge daemon is shut down: MCU ブリッジのデーモンが停止しています
   MCU, host, and auxiliary temperature monitoring: MCU、ホスト、補助温度の監視
   'MCU: ': 'MCU: '
+  MCUs: 'MCUs'
   MDI Icons: MDI アイコン
   MISSING CONFIGURED: 設定済みが見つかりません
   MMU command failed: MMU コマンドに失敗しました
+  MOTION & LEVELING: '動作とレベリング'
   MPC: MPC
   MPC thermal model calibrated for {} at {}°C.: '{} のMPC熱モデルを {}°C で校正しました。'
   Machine Limits: 機械制限
@@ -1982,6 +2016,8 @@ translations:
   Measured filament diameter: 測定したフィラメント直径
   Measured pressure advance: '測定された Pressure Advance'
   Measurement incomplete. Try again.: 測定が不完全です。再試行してください。
+  Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: '各調整ネジの位置でベッドを測定し、どれだけ回すかを示します。ネジ傾き画面で実行できます。'
+  Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: 'インプットシェーピング用に振動を測定します。共振テストはインプットシェーパー画面で実行できます。'
   Measuring: '測定中'
   Measuring Path {}: パス{}を測定中
   Measuring accelerometer noise...: '加速度センサーのノイズを測定中...'
@@ -2003,7 +2039,10 @@ translations:
   Monitoring: モニタリング
   Month: 月
   Moonraker: Moonraker
+  ? Moonraker is connected to Spoolman, which tracks your spools and how much filament is left. Browse them on the Spoolman screen.
+  : 'MoonrakerはSpoolmanに接続されており、スプールとフィラメントの残量を管理します。Spoolman画面で一覧を確認できます。'
   Moonraker is not responding at {}. It runs on this printer, so check that the Klipper and Moonraker services started.: '{} の Moonraker が応答しません。Moonraker はこのプリンター上で動作しているため、Klipper と Moonraker のサービスが起動しているか確認してください。'
+  Moonraker keeps a queue of prints to run one after another. View it in the job queue.: 'Moonrakerは印刷を順番に実行するキューを保持します。ジョブキューで確認できます。'
   Moonraker restarted but Spoolman not connected. Check server.: Moonraker は再起動しましたが
     Spoolman に未接続です。サーバーを確認してください。
   ? "Moonraker restarting...\nWaiting for reconnection..."
@@ -2314,6 +2353,7 @@ translations:
     'chamber' でない場合、自動検出を上書きできます。
   P: P
   PA: PA
+  PA Calibration: 'PAキャリブレーション'
   PATH A · 1,-1: "パス A · 1,-1"
   PATH B · 1,1: "パス B · 1,1"
   PAUSED: 一時停止
@@ -2330,6 +2370,7 @@ translations:
   PRINTER: プリンター
   PRINTER VISUALS: プリンター表示
   PRINTERS: プリンター
+  PRINTING: '印刷'
   PROBE SENSORS: プローブセンサー
   PTFE tube connection loose: PTFE チューブの接続が緩んでいます
   Pair: ペアリング
@@ -2427,6 +2468,7 @@ translations:
   Post-Sensor Clear: 'センサー通過後の追加移動'
   Power: 電源
   Power Devices: 電源デバイス
+  Power devices Moonraker can switch. Turn them on and off on the Power screen.: 'Moonrakerが切り替えられる電源デバイス。電源画面でオン/オフできます。'
   Power off the printer or screen: プリンターまたは画面の電源をオフにします
   'Power was lost during the print; the printer stopped and saved its progress': '印刷中に電源が失われました。プリンターは停止し、進行状況を保存しました'
   Pre-heat the extruder first: 先にエクストルーダーを予熱してください
@@ -2634,6 +2676,8 @@ translations:
   QUICK BUTTONS: クイックボタン
   Quad Gantry Level: クアッドガントリーレベル
   Quad Gantry Level complete: QGL 完了
+  ? Quad Gantry Level squares a gantry driven by four Z motors to the bed. HelixScreen offers it on the Controls and Motion screens.
+  : 'クアッドガントリーレベルは、4つのZモーターで駆動するガントリーをベッドに対して水平に整えます。HelixScreenではコントロール画面と動作画面から使えます。'
   Quad Gantry Level started...: QGL を開始しました...
   Queue empty: 'キューは空です'
   'Queue: Paused': 'キュー: 一時停止'
@@ -3024,6 +3068,8 @@ translations:
   Sensor mismatch — check extruder and CFS sensors: センサーの不一致です。エクストルーダーと CFS のセンサーを確認してください
   Sensor to Nozzle: 'センサーからノズルまで'
   Sensors: センサー
+  Sensors that detect filament running out or jamming. Set what each one does in the sensor settings.: 'フィラメントの切れや詰まりを検知するセンサー。各センサーの動作はセンサー設定で決められます。'
+  Sensors that measure the filament diameter as it feeds. Configure them in the sensor settings.: '送り出し中のフィラメント径を測るセンサー。センサー設定で構成できます。'
   Separate on/off macros. HelixScreen tracks the state.: 個別のオン/オフマクロ。HelixScreenが状態を追跡します。
   Server Setup: サーバー設定
   Service hours for the filter, nozzle, and rails: 'フィルター、ノズル、レールの稼働時間'
@@ -3282,6 +3328,7 @@ translations:
   TD-1 filament color detection: TD-1 フィラメント色検出
   TEMPERATURE SENSORS: 温度センサー
   THEME COLORS: テーマカラー
+  THERMAL & AIR: '温度とエア'
   'TOGGLE: {}': '切り替え: {}'
   TOOLS: ツール
   TPU: TPU
@@ -3362,12 +3409,14 @@ translations:
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
   : HelixPrint プラグインは、クイック再印刷のためのベッドメッシュスキップなど、プリンター上で直接高速 G-code 修正を可能にします。
+  The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: 'Moonrakerのタイムラプスプラグインがインストールされています。録画方法はタイムラプス設定で決められます。'
   The Spoolman spool currently loaded: 現在装填中の Spoolman スプール
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
   : アニメーション付きスクリーンセーバーが印刷に干渉しないよう、このデバイスではオフになっています。設定 > ディスプレイで再度有効にできます。
   The bed has cooled. Take the spools off the plate, then confirm.: ベッドが冷えました。スプールをベッドから取り出してから確認してください。
 
+  The bed heater. Set its temperature and watch its graph on the bed temperature screen.: 'ベッドヒーター。温度の設定とグラフの確認はベッド温度画面で行えます。'
   The bed is too small for the test tower, or its size is unknown.: ベッドがテストタワーには小さすぎるか、サイズが不明です。
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: ベッドをオフにします。取り出したことを確認するまで、スプールはベッド上にあるものとして扱われます。
 
@@ -3376,7 +3425,9 @@ translations:
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: バッファーが 16 秒間動きを検出しませんでした。CFS とエクストルーダーの間の詰まり、またはバッファーの固着を確認してください
   ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
   : 'カメラがベッド上に何かを検出したため、プリンターは印刷前に停止しました。ベッドに何もなければ誤検出です。'
+  The chamber heater can run a filament drying cycle. Start one from the drying dialog.: 'チャンバーヒーターでフィラメントの乾燥サイクルを実行できます。乾燥ダイアログから開始してください。'
   The chamber wait already ended; nothing was stopped.: 'チャンバーの待機はすでに終了しました。何も停止していません。'
+  The controller boards Klipper runs on. See their load in the system settings.: 'Klipperが動作するコントローラーボード。負荷はシステム設定で確認できます。'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: カッターの刃が戻りませんでした。切断機構にフィラメントが巻き付いていないか確認してください
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: カッターの位置がずれています。CALIBRATE_CUT_POS で再校正してください
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: エクストルーダーがスムーズに引き込めません。スプールの絡まりや結び目、PTFE チューブの急な曲がりを確認してください
@@ -3385,6 +3436,7 @@ translations:
   The filament may not have fully retracted — try again or manually pull: フィラメントが完全に戻っていない可能性があります。再試行するか手で引き抜いてください
   The filament system needs attention: 'フィラメントシステムの対応が必要です'
   The filament system reported an error: フィラメントシステムがエラーを報告しました
+  The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog.: 'ヒートベッドとエンクロージャーで、ベッドに置いたスプールを乾燥できます。ベッド乾燥ダイアログからサイクルを開始してください。'
   The heater can't be changed while the printer is waiting.: 'プリンターの待機中はヒーターを変更できません。'
   The heater did not accept the printer's credentials.: 'ヒーターがプリンターの認証情報を受け付けませんでした。'
   The heater didn't accept the command.: 'ヒーターがコマンドを受け付けませんでした。'
@@ -3411,7 +3463,12 @@ translations:
   : 印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: '印刷はチャンバーが{}°Cに達するのを待っていますが、ヒーターが加熱していません。'
   The print is waiting for the chamber, but the heater is not heating.: '印刷はチャンバーを待っていますが、ヒーターが加熱していません。'
+  The printable size in millimeters (X × Y × Z), from the axis limits in the printer's Klipper config.: '印刷可能なサイズ（mm、X × Y × Z）。プリンターのKlipper設定の軸リミットから取得します。'
   The printer applied this value and keeps it for this tool.: 'プリンターはこの値を適用し、このツールに保存しました。'
+  The printer can draw a priming line before a print. HelixScreen offers it in the pre-print options.: 'プリンターは印刷前にプライミングラインを描けます。HelixScreenは印刷前オプションで選べます。'
+  The printer can measure each tool's offset automatically. Run it on the tool offset calibration screen.: 'プリンターは各ツールのオフセットを自動で測定できます。ツールオフセット校正画面で実行します。'
+  The printer can measure pressure advance on its own. Run it on the PA calibration screen.: 'プリンターはプレッシャーアドバンスを自分で測定できます。PAキャリブレーション画面で実行できます。'
+  The printer can pause at a chosen layer, for a filament swap or an insert. Set the layer from the print preview.: 'プリンターは、フィラメント交換やインサート挿入のために、選んだレイヤーで一時停止できます。レイヤーは印刷プレビューで設定します。'
   The printer did not change its bed check: 'プリンターはベッドチェックを変更しませんでした'
   'The printer did not change its bed check: {}': 'プリンターはベッドチェックを変更しませんでした：{}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'プリンターは隅で押出しを行い、測定値が一致するまで繰り返します。目視での判断は不要です。'
@@ -3434,6 +3491,8 @@ translations:
   The printer lost power while printing {}. Resume where it left off?: '{} の印刷中にプリンターの電源が失われました。中断した箇所から再開しますか？'
   The printer lost power while printing {}. The resumed layer may not line up exactly.: '{} の印刷中にプリンターの電源が失われました。再開したレイヤーがわずかにずれる可能性があります。'
   The printer rejected the filament configuration. The print was not started.: プリンターがフィラメント設定を拒否しました。印刷は開始されませんでした。
+  The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: 'プリンターはファンの実測回転数を報告します。HelixScreenはファン画面に表示します。'
+  The printer swaps between several toolheads. Manage the tools on the filament system screen.: 'プリンターは複数のツールヘッドを切り替えます。ツールはフィラメントシステム画面で管理できます。'
   The printer's firmware chooses where to switch on runout: フィラメント切れ時の切り替え先はプリンターのファームウェアが選びます
   The requested position is outside the printer's bounds: '指定された位置はプリンターの可動範囲外です'
   The right RFID reader in this CFS unit may need service: この CFS ユニットの右側 RFID リーダーは修理が必要な可能性があります
@@ -3902,6 +3961,7 @@ translations:
   Z-Tilt Adjust complete: Z-Tilt 調整完了
   Z-Tilt Adjust started...: Z-Tilt 調整を開始しました...
   'Z-Tilt failed: {}': 'Z-Tilt に失敗しました: {}'
+  Z-Tilt levels the gantry or bed using its separate Z motors. HelixScreen offers it on the Controls and Motion screens.: 'Z-Tiltは、独立したZモーターでガントリーまたはベッドを水平にします。HelixScreenではコントロール画面と動作画面から使えます。'
   Z-Tilt may still be running — response timed out: Z-Tilt がまだ実行中の可能性があります — 応答タイムアウト
   Z-Tilt timed out: Z-Tilt がタイムアウトしました
   Z-offset calibration timed out: Zオフセットキャリブレーションがタイムアウトしました

@@ -129,8 +129,15 @@ translations:
   = Loosen: = Loosen
   = Tighten: = Tighten
   A: A
+  A buzzer or speaker for alerts and sounds. Set what plays in the sound settings.: A buzzer or speaker for alerts and sounds. Set what plays in the sound settings.
+  A camera Moonraker streams. Add the camera widget to the home screen to watch it, and see it during a print.: A camera Moonraker streams. Add the camera widget to the home screen to watch it, and see it during a print.
+  A fan that pulls the enclosure air through a filter. Control it on the chamber temperature screen.: A fan that pulls the enclosure air through a filter. Control it on the chamber temperature screen.
   A few minutes, nearly all of it heating. You judge nothing by eye.: 'A few minutes, nearly all of it heating. You judge nothing by eye.'
+  A heat soak macro is set up on the printer. HelixScreen detects it but does not run it.: A heat soak macro is set up on the printer. HelixScreen detects it but does not run it.
+  A heater that warms the air inside the enclosure. Set its temperature on the chamber temperature screen.: A heater that warms the air inside the enclosure. Set its temperature on the chamber temperature screen.
+  A height map of the bed that Klipper uses to make up for an uneven surface. View and calibrate it on the Bed Mesh screen.: A height map of the bed that Klipper uses to make up for an uneven surface. View and calibrate it on the Bed Mesh screen.
   "A macro printed stray template text '{}': check its Jinja tags": "A macro printed stray template text '{}': check its Jinja tags"
+  A macro that wipes the nozzle. HelixScreen can run it before a print from the pre-print options.: A macro that wipes the nozzle. HelixScreen can run it before a print from the pre-print options.
   A motor IO pin couldn't be restored. Power-cycle the printer to recover: A motor IO pin couldn't be restored. Power-cycle the printer to recover
   A motor's parameters couldn't be written. Power-cycle the printer to retry: A motor's parameters couldn't be written. Power-cycle the printer to retry
   A newer version of the helper macros is available: A newer version of the helper macros is available
@@ -140,13 +147,19 @@ translations:
   A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.: A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes.
   A print is running. Apply the result after it ends.: A print is running. Apply the result after it ends.
   A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.: A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop.
+  ? A sensor that measures the distance to the bed. HelixScreen uses it for Z offset calibration and probe tests on the Probe screen.
+  : A sensor that measures the distance to the bed. HelixScreen uses it for Z offset calibration and probe tests on the Probe screen.
+  A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen.: A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen.
   A spool may be tangled or the drive gear is jammed: A spool may be tangled or the drive gear is jammed
+  ? A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
+  : A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen.
   A · 1,-1: A · 1,-1
   ABS: ABS
   ACCELEROMETERS: ACCELEROMETERS
   'ACCEPT failed: {}': 'ACCEPT failed: {}'
   ACE Moonraker bridge not found. Install ace_status.py for full support.: ACE Moonraker bridge not found. Install ace_status.py for full support.
   ACTIONS: ACTIONS
+  ADD-ONS: ADD-ONS
   ADXL: ADXL
   AFC: AFC
   AFC Update Available: AFC Update Available
@@ -264,6 +277,7 @@ translations:
   Analyzing data...: Analyzing data...
   Analyzing data... {}s: Analyzing data... {}s
   Android logcat: Android logcat
+  Animated light effects configured on the printer. Turn them on and off from the LED controls.: Animated light effects configured on the printer. Turn them on and off from the LED controls.
   Animations: Animations
   Anonymous data to help improve HelixScreen: Anonymous data to help improve HelixScreen
   Anonymous stats — no personal data, ever.: Anonymous stats — no personal data, ever.
@@ -435,6 +449,7 @@ translations:
   Brush nozzle: Brush nozzle
   Buffer Status: Buffer Status
   Buffer tube problem: Buffer tube problem
+  Build Volume: Build Volume
   'Build Volume: ': 'Build Volume: '
   'Building preview: %d%%': 'Building preview: %d%%'
   Bundle Uploaded: Bundle Uploaded
@@ -712,6 +727,8 @@ translations:
   Compact: Compact
   Compare belt paths with a resonance sweep: Compare belt paths with a resonance sweep
   Compare your belt paths: Compare your belt paths
+  ? Compares the two belt paths of a CoreXY printer with the accelerometer, so you can even out their tension. Run it on the Belt Tension screen.
+  : Compares the two belt paths of a CoreXY printer with the accelerometer, so you can even out their tension. Run it on the Belt Tension screen.
   Complete: Complete
   Complete!: Complete!
   Completed: Completed
@@ -1045,6 +1062,7 @@ translations:
   E-Stop Confirmation: E-Stop Confirmation
   EDDY CURRENT: EDDY CURRENT
   EEPROM error on CFS unit: EEPROM error on CFS unit
+  ELECTRONICS & ACCESSORIES: ELECTRONICS & ACCESSORIES
   EMERGENCY STOP: EMERGENCY STOP
   EMPTY: EMPTY
   ETA {}: ETA {}
@@ -1171,6 +1189,7 @@ translations:
   'Exception: {}': 'Exception: {}'
   Exclude: Exclude
   Exclude Object: Exclude Object
+  Exclude Object lets you skip a failed part mid-print from the print status screen.: Exclude Object lets you skip a failed part mid-print from the print status screen.
   Exclude Object?: Exclude Object?
   Exclude Objects: Exclude Objects
   Excluded: Excluded
@@ -1213,6 +1232,7 @@ translations:
   'Extruding prime line...': 'Extruding prime line...'
   FAILED: FAILED
   FILAMENT: FILAMENT
+  FILAMENT & TOOLHEAD: FILAMENT & TOOLHEAD
   FILAMENTS: FILAMENTS
   FILTERS: FILTERS
   Factory Reset: Factory Reset
@@ -1340,6 +1360,7 @@ translations:
   'Fan control failed: {}': 'Fan control failed: {}'
   FanSelect: FanSelect
   Fans: Fans
+  Fans besides the part cooling fan. Control them on the Fans screen.: Fans besides the part cooling fan. Control them on the Fans screen.
   Farther: Farther
   Favorites: Favorites
   Feature not available: Feature not available
@@ -1369,6 +1390,7 @@ translations:
   Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer: Filament Mapping isn't supported on this printer, so the print uses the tools assigned on the printer
   Filament Runout: Filament Runout
   Filament Sensor: Filament Sensor
+  Filament Sensors: Filament Sensors
   Filament System Error: Filament System Error
   Filament Used: Filament Used
   Filament already exists: Filament already exists
@@ -1595,6 +1617,8 @@ translations:
     will integrate with your filament changer for multi-spool/color print operations.
   HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.
   HelixScreen {} is available — tap Update: HelixScreen {} is available — tap Update
+  HelixScreen's Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen.: HelixScreen's Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen.
+  HelixScreen's helper macros are installed in the printer's config. Update or remove them on the Advanced screen.: HelixScreen's helper macros are installed in the printer's config. Update or remove them on the Advanced screen.
   Help & About: Help & About
   Help Improve HelixScreen: Help Improve HelixScreen
   Help improve HelixScreen?: Help improve HelixScreen?
@@ -1653,6 +1677,8 @@ translations:
   : How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)
   How many labels to print: How many labels to print
   How the Jog tab arranges its buttons: How the Jog tab arranges its buttons
+  ? How the printer's axes are driven, as its Klipper config declares it. HelixScreen uses it to decide how homing works and which belt and motion tools apply.
+  : How the printer's axes are driven, as its Klipper config declares it. HelixScreen uses it to decide how homing works and which belt and motion tools apply.
   How the toolhead icon appears: How the toolhead icon appears
   Hub: Hub
   Hub & Cutter: Hub & Cutter
@@ -1787,6 +1813,7 @@ translations:
   K so far: K so far
   KEYBOARD LAYOUT: KEYBOARD LAYOUT
   KLICKY CONTROLS: KLICKY CONTROLS
+  Kalico: Kalico
   Keep Navigation Bar: Keep Navigation Bar
   Keep Printing: Keep Printing
   Keep Spool Info on Eject: Keep Spool Info on Eject
@@ -1799,6 +1826,8 @@ translations:
   Keep waiting: Keep waiting
   Kick away: Kick away
   Kinematics: Kinematics
+  ? Klippain Shake&Tune macros are installed on the printer. HelixScreen detects them but does not use them; run them from Mainsail or Fluidd.
+  : Klippain Shake&Tune macros are installed on the printer. HelixScreen detects them but does not use them; run them from Mainsail or Fluidd.
   Klipper: Klipper
   Klipper Error: Klipper Error
   Klipper failed to start with the skip macros, so they were removed: Klipper failed to start with the skip macros, so they were removed
@@ -1806,6 +1835,7 @@ translations:
   Klipper firmware has disconnected from the host. Try restarting Klipper or performing a firmware restart.: Klipper
     firmware has disconnected from the host. Try restarting Klipper or performing
     a firmware restart.
+  Klipper handles retraction itself (G10/G11). Adjust the lengths and speeds in the retraction settings.: Klipper handles retraction itself (G10/G11). Adjust the lengths and speeds in the retraction settings.
   Klipper has disconnected from Moonraker. Check for errors in your printer interface.: Klipper has disconnected from Moonraker. Check for errors in your printer interface.
   ? Klipper has entered an error state. This is typically caused by an MCU connection
     failure or configuration error. Try a firmware restart.
@@ -1827,6 +1857,7 @@ translations:
   Klippy Errors: Klippy Errors
   Klippy Shutdowns: Klippy Shutdowns
   LED Controls: LED Controls
+  LED Effects: LED Effects
   LED Light: LED Light
   LED Mode: LED Mode
   LED Settings: LED Settings
@@ -1886,6 +1917,7 @@ translations:
   Light will switch when the current operation finishes: Light will switch when the
     current operation finishes
   Lights that follow the printer's state: Lights that follow the printer's state
+  Lights the printer can control. Choose which ones HelixScreen uses in the LED settings.: Lights the printer can control. Choose which ones HelixScreen uses in the LED settings.
   Line the nozzle up with the purge chute so purged filament drops straight in.: Line the nozzle up with the purge chute so purged filament drops straight in.
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.
   Linear rails: Linear rails
@@ -1962,9 +1994,11 @@ translations:
   MCU, host, and auxiliary temperature monitoring: MCU, host, and auxiliary temperature
     monitoring
   'MCU: ': 'MCU: '
+  MCUs: MCUs
   MDI Icons: MDI Icons
   MISSING CONFIGURED: MISSING CONFIGURED
   MMU command failed: MMU command failed
+  MOTION & LEVELING: MOTION & LEVELING
   MPC: MPC
   MPC thermal model calibrated for {} at {}°C.: MPC thermal model calibrated for {} at {}°C.
   Machine Limits: Machine Limits
@@ -2045,6 +2079,8 @@ translations:
   Measured filament diameter: Measured filament diameter
   Measured pressure advance: Measured pressure advance
   Measurement incomplete. Try again.: Measurement incomplete. Try again.
+  Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.: Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen.
+  Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.: Measures vibration for input shaping. Run resonance tests on the Input Shaper screen.
   Measuring: Measuring
   Measuring Path {}: Measuring Path {}
   Measuring accelerometer noise...: Measuring accelerometer noise...
@@ -2070,7 +2106,10 @@ translations:
   Monitoring: Monitoring
   Month: Month
   Moonraker: Moonraker
+  ? Moonraker is connected to Spoolman, which tracks your spools and how much filament is left. Browse them on the Spoolman screen.
+  : Moonraker is connected to Spoolman, which tracks your spools and how much filament is left. Browse them on the Spoolman screen.
   Moonraker is not responding at {}. It runs on this printer, so check that the Klipper and Moonraker services started.: Moonraker is not responding at {}. It runs on this printer, so check that the Klipper and Moonraker services started.
+  Moonraker keeps a queue of prints to run one after another. View it in the job queue.: Moonraker keeps a queue of prints to run one after another. View it in the job queue.
   Moonraker restarted but Spoolman not connected. Check server.: Moonraker restarted
     but Spoolman not connected. Check server.
   ? "Moonraker restarting...\nWaiting for reconnection..."
@@ -2386,6 +2425,7 @@ translations:
     auto-detection if your chamber sensor or heater isn't named 'chamber'.
   P: P
   PA: PA
+  PA Calibration: PA Calibration
   PATH A · 1,-1: PATH A · 1,-1
   PATH B · 1,1: PATH B · 1,1
   PAUSED: PAUSED
@@ -2402,6 +2442,7 @@ translations:
   PRINTER: PRINTER
   PRINTER VISUALS: PRINTER VISUALS
   PRINTERS: PRINTERS
+  PRINTING: PRINTING
   PROBE SENSORS: PROBE SENSORS
   PTFE tube connection loose: PTFE tube connection loose
   Pair: Pair
@@ -2503,6 +2544,7 @@ translations:
   Post-Sensor Clear: Post-Sensor Clear
   Power: Power
   Power Devices: Power Devices
+  Power devices Moonraker can switch. Turn them on and off on the Power screen.: Power devices Moonraker can switch. Turn them on and off on the Power screen.
   Power off the printer or screen: Power off the printer or screen
   'Power was lost during the print; the printer stopped and saved its progress': 'Power was lost during the print; the printer stopped and saved its progress'
   Pre-heat the extruder first: Pre-heat the extruder first
@@ -2717,6 +2759,8 @@ translations:
   QUICK BUTTONS: QUICK BUTTONS
   Quad Gantry Level: Quad Gantry Level
   Quad Gantry Level complete: Quad Gantry Level complete
+  ? Quad Gantry Level squares a gantry driven by four Z motors to the bed. HelixScreen offers it on the Controls and Motion screens.
+  : Quad Gantry Level squares a gantry driven by four Z motors to the bed. HelixScreen offers it on the Controls and Motion screens.
   Quad Gantry Level started...: Quad Gantry Level started...
   Queue empty: Queue empty
   'Queue: Paused': 'Queue: Paused'
@@ -3129,6 +3173,8 @@ translations:
   Sensor mismatch — check extruder and CFS sensors: Sensor mismatch — check extruder and CFS sensors
   Sensor to Nozzle: Sensor to Nozzle
   Sensors: Sensors
+  Sensors that detect filament running out or jamming. Set what each one does in the sensor settings.: Sensors that detect filament running out or jamming. Set what each one does in the sensor settings.
+  Sensors that measure the filament diameter as it feeds. Configure them in the sensor settings.: Sensors that measure the filament diameter as it feeds. Configure them in the sensor settings.
   Separate on/off macros. HelixScreen tracks the state.: Separate on/off macros. HelixScreen
     tracks the state.
   Server Setup: Server Setup
@@ -3399,6 +3445,7 @@ translations:
   TD-1 filament color detection: TD-1 filament color detection
   TEMPERATURE SENSORS: TEMPERATURE SENSORS
   THEME COLORS: THEME COLORS
+  THERMAL & AIR: THERMAL & AIR
   'TOGGLE: {}': 'TOGGLE: {}'
   TOOLS: TOOLS
   TPU: TPU
@@ -3482,12 +3529,14 @@ translations:
     skipping bed mesh for quick reprints.
   : The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
+  The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.: The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings.
   The Spoolman spool currently loaded: The Spoolman spool currently loaded
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
   : The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
   The bed has cooled. Take the spools off the plate, then confirm.: The bed has cooled. Take the spools off the plate, then confirm.
+  The bed heater. Set its temperature and watch its graph on the bed temperature screen.: The bed heater. Set its temperature and watch its graph on the bed temperature screen.
   The bed is too small for the test tower, or its size is unknown.: The bed is too small for the test tower, or its size is unknown.
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: The bed turns off. The spools stay latched on the bed until you confirm they are off.
   The bed was reported dirty, so this print cannot resume.: The bed was reported dirty, so this print cannot resume.
@@ -3495,7 +3544,9 @@ translations:
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer
   ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
   : The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
+  The chamber heater can run a filament drying cycle. Start one from the drying dialog.: The chamber heater can run a filament drying cycle. Start one from the drying dialog.
   The chamber wait already ended; nothing was stopped.: The chamber wait already ended; nothing was stopped.
+  The controller boards Klipper runs on. See their load in the system settings.: The controller boards Klipper runs on. See their load in the system settings.
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: The cutter blade didn't return — check for filament wrapped around the cutting mechanism
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend
@@ -3504,6 +3555,7 @@ translations:
   The filament may not have fully retracted — try again or manually pull: The filament may not have fully retracted — try again or manually pull
   The filament system needs attention: The filament system needs attention
   The filament system reported an error: The filament system reported an error
+  The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog.: The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog.
   The heater can't be changed while the printer is waiting.: The heater can't be changed while the printer is waiting.
   The heater did not accept the printer's credentials.: The heater did not accept the printer's credentials.
   The heater didn't accept the command.: The heater didn't accept the command.
@@ -3530,7 +3582,12 @@ translations:
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   The print is waiting for the chamber to reach {}°C, but the heater is not heating.: The print is waiting for the chamber to reach {}°C, but the heater is not heating.
   The print is waiting for the chamber, but the heater is not heating.: The print is waiting for the chamber, but the heater is not heating.
+  The printable size in millimeters (X × Y × Z), from the axis limits in the printer's Klipper config.: The printable size in millimeters (X × Y × Z), from the axis limits in the printer's Klipper config.
   The printer applied this value and keeps it for this tool.: 'The printer applied this value and keeps it for this tool.'
+  The printer can draw a priming line before a print. HelixScreen offers it in the pre-print options.: The printer can draw a priming line before a print. HelixScreen offers it in the pre-print options.
+  The printer can measure each tool's offset automatically. Run it on the tool offset calibration screen.: The printer can measure each tool's offset automatically. Run it on the tool offset calibration screen.
+  The printer can measure pressure advance on its own. Run it on the PA calibration screen.: The printer can measure pressure advance on its own. Run it on the PA calibration screen.
+  The printer can pause at a chosen layer, for a filament swap or an insert. Set the layer from the print preview.: The printer can pause at a chosen layer, for a filament swap or an insert. Set the layer from the print preview.
   The printer did not change its bed check: The printer did not change its bed check
   'The printer did not change its bed check: {}': 'The printer did not change its bed check: {}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.
@@ -3553,6 +3610,8 @@ translations:
   The printer lost power while printing {}. The resumed layer may not line up exactly.: The printer lost power while printing {}. The resumed layer may not line up exactly.
   The printer rejected the filament configuration. The print was not started.: The
     printer rejected the filament configuration. The print was not started.
+  The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.: The printer reports measured fan speeds. HelixScreen shows them on the Fans screen.
+  The printer swaps between several toolheads. Manage the tools on the filament system screen.: The printer swaps between several toolheads. Manage the tools on the filament system screen.
   The printer's firmware chooses where to switch on runout: The printer's firmware chooses where to switch on runout
   The requested position is outside the printer's bounds: The requested position is outside the printer's bounds
   The right RFID reader in this CFS unit may need service: The right RFID reader in this CFS unit may need service
@@ -4056,6 +4115,7 @@ translations:
   Z-Tilt Adjust complete: Z-Tilt Adjust complete
   Z-Tilt Adjust started...: Z-Tilt Adjust started...
   'Z-Tilt failed: {}': 'Z-Tilt failed: {}'
+  Z-Tilt levels the gantry or bed using its separate Z motors. HelixScreen offers it on the Controls and Motion screens.: Z-Tilt levels the gantry or bed using its separate Z motors. HelixScreen offers it on the Controls and Motion screens.
   Z-Tilt may still be running — response timed out: Z-Tilt may still be running —
     response timed out
   Z-Tilt timed out: Z-Tilt timed out

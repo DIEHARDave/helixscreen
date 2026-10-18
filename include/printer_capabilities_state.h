@@ -282,6 +282,11 @@ class PrinterCapabilitiesState {
     // Subject accessors
     // ========================================================================
 
+    /// Death signal for every capability subject; pass it to observe<V>().
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
     /// The subject for one capability. Valid once init_subjects() has run.
     lv_subject_t* subject(Capability cap) const {
         return const_cast<lv_subject_t*>(&capability_subjects_[static_cast<size_t>(cap)]);

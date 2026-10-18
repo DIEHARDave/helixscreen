@@ -3,6 +3,7 @@
 #include "capability_chip_text.h"
 
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "translation_loader.h"
 
 #include <spdlog/fmt/fmt.h>
 
@@ -62,7 +63,7 @@ std::string base_text(CapChip chip, const CapabilityChipFacts& f) {
     case CapChip::BuildVolume:
         return build_volume_text(f.build_volume);
     case CapChip::Probe:
-        return with_detail("Probe", f.probe_type);
+        return with_detail(TR_NOOP("Probe"), f.probe_type);
     case CapChip::BedMesh:
         return lv_tr("Bed Mesh");
     case CapChip::Qgl:
@@ -72,7 +73,7 @@ std::string base_text(CapChip chip, const CapabilityChipFacts& f) {
     case CapChip::ScrewsTilt:
         return lv_tr("Screws Tilt");
     case CapChip::Accelerometer:
-        return with_detail("Accelerometer", count_detail(f.accel_count, 2));
+        return with_detail(TR_NOOP("Accelerometer"), count_detail(f.accel_count, 2));
     case CapChip::BeltTension:
         return lv_tr("Belt Tension");
     case CapChip::ShakeTune:
@@ -90,24 +91,24 @@ std::string base_text(CapChip chip, const CapabilityChipFacts& f) {
     case CapChip::BedDrying:
         return lv_tr("Bed Drying");
     case CapChip::Fans:
-        return with_detail("Fans", count_detail(f.fan_count, 1));
+        return with_detail(TR_NOOP("Fans"), count_detail(f.fan_count, 1));
     case CapChip::FanTach:
         return lv_tr("Fan Tach");
     case CapChip::FilamentSystem:
         return filament_system_text(f.filament_systems);
     case CapChip::ToolChanger:
-        return with_detail("Tool Changer",
+        return with_detail(TR_NOOP("Tool Changer"),
                            f.tool_count > 0
                                ? fmt::format(fmt::runtime(lv_tr("{} Tools")), f.tool_count)
                                : std::string());
     case CapChip::FilamentSensors:
-        return with_detail("Filament Sensors", count_detail(f.filament_sensor_count, 1));
+        return with_detail(TR_NOOP("Filament Sensors"), count_detail(f.filament_sensor_count, 1));
     case CapChip::WidthSensors:
-        return with_detail("Width Sensors", count_detail(f.width_sensor_count, 1));
+        return with_detail(TR_NOOP("Width Sensors"), count_detail(f.width_sensor_count, 1));
     case CapChip::Retraction:
         return lv_tr("Retraction");
     case CapChip::PaCal:
-        return with_detail("PA Calibration", f.pa_provider);
+        return with_detail(TR_NOOP("PA Calibration"), f.pa_provider);
     case CapChip::ToolOffsets:
         return lv_tr("Tool Offsets");
     case CapChip::NozzleClean:
@@ -129,15 +130,15 @@ std::string base_text(CapChip chip, const CapabilityChipFacts& f) {
         return f.mcus.empty() ? std::string()
                               : fmt::format(fmt::runtime(lv_tr("{} MCUs")), f.mcus.size());
     case CapChip::Power:
-        return with_detail("Power", count_detail(f.power_device_count, 1));
+        return with_detail(TR_NOOP("Power"), count_detail(f.power_device_count, 1));
     case CapChip::Leds:
-        return with_detail("LEDs", count_detail(f.led_count, 1));
+        return with_detail(TR_NOOP("LEDs"), count_detail(f.led_count, 1));
     case CapChip::LedEffects:
-        return with_detail("LED Effects", count_detail(f.led_effect_count, 1));
+        return with_detail(TR_NOOP("LED Effects"), count_detail(f.led_effect_count, 1));
     case CapChip::Speaker:
         return lv_tr("Speaker");
     case CapChip::Webcam:
-        return with_detail("Webcam", count_detail(f.webcam_count, 2));
+        return with_detail(TR_NOOP("Webcam"), count_detail(f.webcam_count, 2));
     case CapChip::Spoolman:
         return lv_tr("Spoolman");
     case CapChip::Timelapse:

@@ -165,6 +165,11 @@ class AccelSensorManager {
      */
     [[nodiscard]] lv_subject_t* get_sensor_count_subject();
 
+    /// Death signal for the subjects above; pass it to observe<V>().
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
     friend class AccelSensorManagerTestAccess;
 
   private:

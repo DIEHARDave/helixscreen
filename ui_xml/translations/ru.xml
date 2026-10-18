@@ -161,8 +161,15 @@
   <translation tag="= Loosen" ru="= Ослабить"/>
   <translation tag="= Tighten" ru="= Затянуть"/>
   <translation tag="A" ru="A"/>
+  <translation tag="A buzzer or speaker for alerts and sounds. Set what plays in the sound settings." ru="Зуммер или динамик для оповещений и звуков. Что воспроизводится, настраивается в настройках звука."/>
+  <translation tag="A camera Moonraker streams. Add the camera widget to the home screen to watch it, and see it during a print." ru="Камера, которую транслирует Moonraker. Добавьте виджет камеры на главный экран, чтобы смотреть ее, в том числе во время печати."/>
+  <translation tag="A fan that pulls the enclosure air through a filter. Control it on the chamber temperature screen." ru="Вентилятор, который прогоняет воздух камеры через фильтр. Управляйте им на экране температуры камеры."/>
   <translation tag="A few minutes, nearly all of it heating. You judge nothing by eye." ru="Несколько минут, почти всё время нагрев. Ничего не нужно оценивать на глаз."/>
+  <translation tag="A heat soak macro is set up on the printer. HelixScreen detects it but does not run it." ru="На принтере настроен макрос прогрева (heat soak). HelixScreen обнаруживает его, но не запускает."/>
+  <translation tag="A heater that warms the air inside the enclosure. Set its temperature on the chamber temperature screen." ru="Нагреватель, который греет воздух внутри камеры. Температура задается на экране температуры камеры."/>
+  <translation tag="A height map of the bed that Klipper uses to make up for an uneven surface. View and calibrate it on the Bed Mesh screen." ru="Карта высот стола, по которой Klipper компенсирует неровности поверхности. Просмотр и калибровка на экране «Сетка стола»."/>
   <translation tag="A macro printed stray template text &apos;{}&apos;: check its Jinja tags" ru="Макрос вывел лишний текст шаблона «{}»: проверьте его теги Jinja"/>
+  <translation tag="A macro that wipes the nozzle. HelixScreen can run it before a print from the pre-print options." ru="Макрос для очистки сопла. HelixScreen может запускать его перед печатью из параметров подготовки к печати."/>
   <translation tag="A motor IO pin couldn&apos;t be restored. Power-cycle the printer to recover" ru="Не удалось восстановить вывод ввода-вывода двигателя. Выключите и включите принтер"/>
   <translation tag="A motor&apos;s parameters couldn&apos;t be written. Power-cycle the printer to retry" ru="Не удалось записать параметры двигателя. Выключите и включите принтер и повторите попытку"/>
   <translation tag="A newer version of the helper macros is available" ru="Доступна более новая версия вспомогательных макросов"/>
@@ -172,13 +179,17 @@
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." ru="На этом шлюзе идёт печать. HelixScreen очистил свою копию; после окончания печати очистите его снова."/>
   <translation tag="A print is running. Apply the result after it ends." ru="Идёт печать. Примените результат после её завершения."/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." ru="Печать началась, когда катушки отмечены как лежащие на столе. Если они всё ещё там, немедленно остановите принтер аварийной остановкой."/>
+  <translation tag="A sensor that measures the distance to the bed. HelixScreen uses it for Z offset calibration and probe tests on the Probe screen." ru="Датчик, измеряющий расстояние до стола. HelixScreen использует его для калибровки Z Offset и тестов зонда на экране «Зонд»."/>
+  <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." ru="Датчик, измеряющий температуру воздуха внутри камеры. Следите за ней на экране температуры камеры."/>
   <translation tag="A spool may be tangled or the drive gear is jammed" ru="Катушка может быть запутана или заклинило приводную шестерню"/>
+  <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." ru="Система, подающая несколько филаментов на печатающую головку, отображается с числом слотов. Слотами можно управлять на экране системы филамента."/>
   <translation tag="A · 1,-1" ru="A · 1,-1"/>
   <translation tag="ABS" ru="ABS"/>
   <translation tag="ACCELEROMETERS" ru="АКСЕЛЕРОМЕТРЫ"/>
   <translation tag="ACCEPT failed: {}" ru="Ошибка ACCEPT: {}"/>
   <translation tag="ACE Moonraker bridge not found. Install ace_status.py for full support." ru="Мост ACE Moonraker не найден. Установите ace_status.py для полной поддержки."/>
   <translation tag="ACTIONS" ru="ДЕЙСТВИЯ"/>
+  <translation tag="ADD-ONS" ru="ДОПОЛНЕНИЯ"/>
   <translation tag="ADXL" ru="ADXL"/>
   <translation tag="AFC" ru="AFC"/>
   <translation tag="AFC Update Available" ru="Доступно обновление AFC"/>
@@ -285,6 +296,7 @@
   <translation tag="Analyzing data..." ru="Анализ данных..."/>
   <translation tag="Analyzing data... {}s" ru="Анализ данных... {} с"/>
   <translation tag="Android logcat" ru="Android logcat"/>
+  <translation tag="Animated light effects configured on the printer. Turn them on and off from the LED controls." ru="Анимированные световые эффекты, настроенные на принтере. Включаются и выключаются в управлении LED."/>
   <translation tag="Animations" ru="Анимации"/>
   <translation tag="Anonymous data to help improve HelixScreen" ru="Анонимные данные для улучшения HelixScreen"/>
   <translation tag="Anonymous stats — no personal data, ever." ru="Анонимная статистика — никаких личных данных."/>
@@ -453,6 +465,7 @@
   <translation tag="Brush nozzle" ru="Очистка сопла щёткой"/>
   <translation tag="Buffer Status" ru="Статус буфера"/>
   <translation tag="Buffer tube problem" ru="Проблема с буферной трубкой"/>
+  <translation tag="Build Volume" ru="Область печати"/>
   <translation tag="Build Volume: " ru="Область печати: "/>
   <translation tag="Building preview: %d%%" ru="Создание предпросмотра: %d%%"/>
   <translation tag="Bundle Uploaded" ru="Пакет отправлен"/>
@@ -704,6 +717,7 @@
   <translation tag="Compact" ru="Компактный"/>
   <translation tag="Compare belt paths with a resonance sweep" ru="Сравнение путей ремней резонансным свипом"/>
   <translation tag="Compare your belt paths" ru="Сравните пути ремней"/>
+  <translation tag="Compares the two belt paths of a CoreXY printer with the accelerometer, so you can even out their tension. Run it on the Belt Tension screen." ru="Сравнивает два контура ремней принтера CoreXY с помощью акселерометра, чтобы выровнять их натяжение. Запускается на экране «Натяжение ремня»."/>
   <translation tag="Complete" ru="Завершено"/>
   <translation tag="Complete!" ru="Готово!"/>
   <translation tag="Completed" ru="Завершено"/>
@@ -1017,6 +1031,7 @@
   <translation tag="E-Stop Confirmation" ru="Подтверждение аварийной остановки"/>
   <translation tag="EDDY CURRENT" ru="EDDY CURRENT"/>
   <translation tag="EEPROM error on CFS unit" ru="Ошибка EEPROM в блоке CFS"/>
+  <translation tag="ELECTRONICS &amp; ACCESSORIES" ru="ЭЛЕКТРОНИКА И АКСЕССУАРЫ"/>
   <translation tag="EMERGENCY STOP" ru="АВАРИЙНАЯ ОСТАНОВКА"/>
   <translation tag="EMPTY" ru="ПУСТО"/>
   <translation tag="ETA {}" ru="Окончание {}"/>
@@ -1138,6 +1153,7 @@
   <translation tag="Exception: {}" ru="Исключение: {}"/>
   <translation tag="Exclude" ru="Исключить"/>
   <translation tag="Exclude Object" ru="Исключение объектов"/>
+  <translation tag="Exclude Object lets you skip a failed part mid-print from the print status screen." ru="Исключение объектов позволяет пропустить неудавшуюся деталь прямо во время печати на экране состояния печати."/>
   <translation tag="Exclude Object?" ru="Исключить объект?"/>
   <translation tag="Exclude Objects" ru="Исключение объектов"/>
   <translation tag="Excluded" ru="Исключён"/>
@@ -1177,6 +1193,7 @@
   <translation tag="Extruding prime line..." ru="Экструзия линии подготовки..."/>
   <translation tag="FAILED" ru="ОШИБКА"/>
   <translation tag="FILAMENT" ru="ФИЛАМЕНТ"/>
+  <translation tag="FILAMENT &amp; TOOLHEAD" ru="ФИЛАМЕНТ И ГОЛОВКА"/>
   <translation tag="FILAMENTS" ru="ФИЛАМЕНТЫ"/>
   <translation tag="FILTERS" ru="ФИЛЬТРЫ"/>
   <translation tag="Factory Reset" ru="Сброс к заводским настройкам"/>
@@ -1298,6 +1315,7 @@
   <translation tag="Fan control failed: {}" ru="Ошибка управления вентилятором: {}"/>
   <translation tag="FanSelect" ru="Выбрать вентилятор"/>
   <translation tag="Fans" ru="Вентиляторы"/>
+  <translation tag="Fans besides the part cooling fan. Control them on the Fans screen." ru="Вентиляторы, кроме обдува модели. Управляются на экране «Вентиляторы»."/>
   <translation tag="Farther" ru="Дальше"/>
   <translation tag="Favorites" ru="Избранное"/>
   <translation tag="Feature not available" ru="Функция недоступна"/>
@@ -1327,6 +1345,7 @@
   <translation tag="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" ru="Этот принтер не поддерживает сопоставление филамента, поэтому печать использует инструменты, назначенные на принтере"/>
   <translation tag="Filament Runout" ru="Окончание филамента"/>
   <translation tag="Filament Sensor" ru="Датчик филамента"/>
+  <translation tag="Filament Sensors" ru="Датчики филамента"/>
   <translation tag="Filament System Error" ru="Ошибка системы филамента"/>
   <translation tag="Filament Used" ru="Использовано филамента"/>
   <translation tag="Filament already exists" ru="Такой филамент уже существует"/>
@@ -1540,6 +1559,8 @@
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." ru="HelixScreen интегрируется с вашим сменщиком филамента для многокатушечной/многоцветной печати."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." ru="HelixScreen записывает это в printer.cfg и перезапускает Klipper. Принтер ненадолго отключится."/>
   <translation tag="HelixScreen {} is available — tap Update" ru="Доступен HelixScreen {} — нажмите «Обновить»"/>
+  <translation tag="HelixScreen&apos;s Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen." ru="Плагин Moonraker для HelixScreen установлен; он нужен для параметров перед печатью. Управляйте им на экране «Дополнительно»."/>
+  <translation tag="HelixScreen&apos;s helper macros are installed in the printer&apos;s config. Update or remove them on the Advanced screen." ru="Вспомогательные макросы HelixScreen установлены в конфигурации принтера. Обновите или удалите их на экране «Дополнительно»."/>
   <translation tag="Help &amp; About" ru="Помощь и о программе"/>
   <translation tag="Help Improve HelixScreen" ru="Помогите улучшить HelixScreen"/>
   <translation tag="Help improve HelixScreen?" ru="Помочь улучшить HelixScreen?"/>
@@ -1594,6 +1615,7 @@
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" ru="Сколько удерживать, чтобы нажатие считалось долгим, в мс (увеличьте, если режим редактирования срабатывает случайно)"/>
   <translation tag="How many labels to print" ru="Сколько этикеток напечатать"/>
   <translation tag="How the Jog tab arranges its buttons" ru="Как вкладка «Джог» располагает кнопки"/>
+  <translation tag="How the printer&apos;s axes are driven, as its Klipper config declares it. HelixScreen uses it to decide how homing works and which belt and motion tools apply." ru="Как приводятся в движение оси принтера, согласно конфигурации Klipper. HelixScreen использует это, чтобы определить, как работает хоуминг и какие инструменты для ремней и движения применимы."/>
   <translation tag="How the toolhead icon appears" ru="Как отображается значок печатающей головки"/>
   <translation tag="Hub" ru="Хаб"/>
   <translation tag="Hub &amp; Cutter" ru="Хаб и резак"/>
@@ -1711,6 +1733,7 @@
   <translation tag="K so far" ru="Текущее K"/>
   <translation tag="KEYBOARD LAYOUT" ru="РАСКЛАДКА КЛАВИАТУРЫ"/>
   <translation tag="KLICKY CONTROLS" ru="УПРАВЛЕНИЕ KLICKY"/>
+  <translation tag="Kalico" ru="Kalico"/>
   <translation tag="Keep Navigation Bar" ru="Сохранить панель навигации"/>
   <translation tag="Keep Printing" ru="Продолжить печать"/>
   <translation tag="Keep Spool Info on Eject" ru="Сохранять данные катушки при извлечении"/>
@@ -1723,11 +1746,13 @@
   <translation tag="Keep waiting" ru="Продолжить ожидание"/>
   <translation tag="Kick away" ru="Сброс остатка"/>
   <translation tag="Kinematics" ru="Кинематика"/>
+  <translation tag="Klippain Shake&amp;Tune macros are installed on the printer. HelixScreen detects them but does not use them; run them from Mainsail or Fluidd." ru="На принтере установлены макросы Klippain Shake&amp;Tune. HelixScreen обнаруживает их, но не использует; запускайте их из Mainsail или Fluidd."/>
   <translation tag="Klipper" ru="Klipper"/>
   <translation tag="Klipper Error" ru="Ошибка Klipper"/>
   <translation tag="Klipper failed to start with the skip macros, so they were removed" ru="Klipper не запустился с макросами пропуска, поэтому они удалены"/>
   <translation tag="Klipper failed to start. Remove the helix_skips.cfg include from printer.cfg." ru="Klipper не запустился. Удалите include helix_skips.cfg из printer.cfg."/>
   <translation tag="Klipper firmware has disconnected from the host. Try restarting Klipper or performing a firmware restart." ru="Прошивка Klipper отключилась от хоста. Попробуйте перезапустить Klipper или выполнить перезапуск прошивки."/>
+  <translation tag="Klipper handles retraction itself (G10/G11). Adjust the lengths and speeds in the retraction settings." ru="Klipper сам управляет ретрактом (G10/G11). Длину и скорость можно изменить в настройках ретракта."/>
   <translation tag="Klipper has disconnected from Moonraker. Check for errors in your printer interface." ru="Klipper отключился от Moonraker. Проверьте ошибки в интерфейсе принтера."/>
   <translation tag="Klipper has entered an error state. This is typically caused by an MCU connection failure or configuration error. Try a firmware restart." ru="Klipper перешёл в состояние ошибки. Обычно это вызвано сбоем соединения MCU или ошибкой конфигурации. Попробуйте перезапустить прошивку."/>
   <translation tag="Klipper has entered shutdown state." ru="Klipper перешёл в состояние остановки."/>
@@ -1743,6 +1768,7 @@
   <translation tag="Klippy Errors" ru="Ошибки Klippy"/>
   <translation tag="Klippy Shutdowns" ru="Отключения Klippy"/>
   <translation tag="LED Controls" ru="Управление LED"/>
+  <translation tag="LED Effects" ru="Эффекты LED"/>
   <translation tag="LED Light" ru="LED-подсветка"/>
   <translation tag="LED Mode" ru="Режим LED"/>
   <translation tag="LED Settings" ru="Настройки LED"/>
@@ -1798,6 +1824,7 @@
   <translation tag="Light Mode" ru="Светлый режим"/>
   <translation tag="Light will switch when the current operation finishes" ru="Подсветка переключится после завершения текущей операции"/>
   <translation tag="Lights that follow the printer&apos;s state" ru="Подсветка, которая меняется в зависимости от состояния принтера"/>
+  <translation tag="Lights the printer can control. Choose which ones HelixScreen uses in the LED settings." ru="Освещение, которым может управлять принтер. Какие из них использует HelixScreen, выбирается в настройках LED."/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." ru="Выровняйте сопло над жёлобом продувки, чтобы продутый филамент падал прямо внутрь."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." ru="Строка {} вызывает {}, что этот принтер считает аварийной остановкой. Нарежьте файл заново с профилем для этого принтера."/>
   <translation tag="Linear rails" ru="Линейные направляющие"/>
@@ -1873,9 +1900,11 @@
   <translation tag="MCU bridge daemon is shut down" ru="Служба моста MCU остановлена"/>
   <translation tag="MCU, host, and auxiliary temperature monitoring" ru="Мониторинг температуры MCU, хоста и вспомогательных датчиков"/>
   <translation tag="MCU: " ru="MCU: "/>
+  <translation tag="MCUs" ru="MCUs"/>
   <translation tag="MDI Icons" ru="Иконки MDI"/>
   <translation tag="MISSING CONFIGURED" ru="ОТСУТСТВУЕТ НАСТРОЕННОЕ"/>
   <translation tag="MMU command failed" ru="Ошибка команды MMU"/>
+  <translation tag="MOTION &amp; LEVELING" ru="ДВИЖЕНИЕ И КАЛИБРОВКА"/>
   <translation tag="MPC" ru="MPC"/>
   <translation tag="MPC thermal model calibrated for {} at {}°C." ru="Тепловая модель MPC откалибрована для {} при {}°C."/>
   <translation tag="Machine Limits" ru="Ограничения принтера"/>
@@ -1953,6 +1982,8 @@
   <translation tag="Measured filament diameter" ru="Измеренный диаметр филамента"/>
   <translation tag="Measured pressure advance" ru="Измеренный Pressure Advance"/>
   <translation tag="Measurement incomplete. Try again." ru="Измерение не завершено. Повторите попытку."/>
+  <translation tag="Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen." ru="Измеряет стол у каждого регулировочного винта и показывает, насколько его повернуть. Запускается на экране «Наклон винтов»."/>
+  <translation tag="Measures vibration for input shaping. Run resonance tests on the Input Shaper screen." ru="Измеряет вибрацию для input shaping. Тесты резонанса запускаются на экране Input Shaper."/>
   <translation tag="Measuring" ru="Измерение"/>
   <translation tag="Measuring Path {}" ru="Измерение Пути {}"/>
   <translation tag="Measuring accelerometer noise..." ru="Измерение шума акселерометра..."/>
@@ -1978,7 +2009,9 @@
   <translation tag="Monitoring" ru="Мониторинг"/>
   <translation tag="Month" ru="Месяц"/>
   <translation tag="Moonraker" ru="Moonraker"/>
+  <translation tag="Moonraker is connected to Spoolman, which tracks your spools and how much filament is left. Browse them on the Spoolman screen." ru="Moonraker подключен к Spoolman, который учитывает ваши катушки и остаток филамента. Просматривайте их на экране Spoolman."/>
   <translation tag="Moonraker is not responding at {}. It runs on this printer, so check that the Klipper and Moonraker services started." ru="Moonraker не отвечает по адресу {}. Он работает на этом принтере, поэтому проверьте, запущены ли службы Klipper и Moonraker."/>
+  <translation tag="Moonraker keeps a queue of prints to run one after another. View it in the job queue." ru="Moonraker ведет очередь печатей, которые выполняются одна за другой. Смотрите ее в очереди заданий."/>
   <translation tag="Moonraker restarted but Spoolman not connected. Check server." ru="Moonraker перезапущен, но Spoolman не подключен. Проверьте сервер."/>
   <translation tag="Moonraker restarting...&#10;Waiting for reconnection..." ru="Moonraker перезапускается...&#10;Ожидание переподключения..."/>
   <translation tag="Moonraker: " ru="Moonraker: "/>
@@ -2274,6 +2307,7 @@
   <translation tag="Override auto-detection if your chamber sensor or heater isn&apos;t named &apos;chamber&apos;." ru="Переопределите автоопределение, если датчик или нагреватель камеры не называется &apos;chamber&apos;."/>
   <translation tag="P" ru="Д"/>
   <translation tag="PA" ru="PA"/>
+  <translation tag="PA Calibration" ru="Калибровка PA"/>
   <translation tag="PATH A · 1,-1" ru="ПУТЬ A · 1,-1"/>
   <translation tag="PATH B · 1,1" ru="ПУТЬ B · 1,1"/>
   <translation tag="PAUSED" ru="ПАУЗА"/>
@@ -2290,6 +2324,7 @@
   <translation tag="PRINTER" ru="ПРИНТЕР"/>
   <translation tag="PRINTER VISUALS" ru="ВНЕШНИЙ ВИД ПРИНТЕРА"/>
   <translation tag="PRINTERS" ru="ПРИНТЕРЫ"/>
+  <translation tag="PRINTING" ru="ПЕЧАТЬ"/>
   <translation tag="PROBE SENSORS" ru="ДАТЧИКИ ЗОНДА"/>
   <translation tag="PTFE tube connection loose" ru="Соединение трубки PTFE ослабло"/>
   <translation tag="Pair" ru="Сопряжение"/>
@@ -2381,6 +2416,7 @@
   <translation tag="Post-Sensor Clear" ru="Догон после датчика"/>
   <translation tag="Power" ru="Питание"/>
   <translation tag="Power Devices" ru="Устройства питания"/>
+  <translation tag="Power devices Moonraker can switch. Turn them on and off on the Power screen." ru="Устройства питания, которые может переключать Moonraker. Включаются и выключаются на экране «Питание»."/>
   <translation tag="Power off the printer or screen" ru="Выключить принтер или экран"/>
   <translation tag="Power was lost during the print; the printer stopped and saved its progress" ru="Во время печати пропало питание; принтер остановился и сохранил прогресс"/>
   <translation tag="Pre-heat the extruder first" ru="Сначала прогрейте экструдер"/>
@@ -2596,6 +2632,7 @@
   <translation tag="QUICK BUTTONS" ru="БЫСТРЫЕ КНОПКИ"/>
   <translation tag="Quad Gantry Level" ru="Выравнивание портала"/>
   <translation tag="Quad Gantry Level complete" ru="QGL завершён"/>
+  <translation tag="Quad Gantry Level squares a gantry driven by four Z motors to the bed. HelixScreen offers it on the Controls and Motion screens." ru="Выравнивание портала выставляет портал с четырьмя Z-моторами параллельно столу. HelixScreen предлагает его на экранах «Управление» и «Движение»."/>
   <translation tag="Quad Gantry Level started..." ru="QGL запущен..."/>
   <translation tag="Queue empty" ru="Очередь пуста"/>
   <translation tag="Queue: Paused" ru="Очередь: Пауза"/>
@@ -2975,6 +3012,8 @@
   <translation tag="Sensor mismatch — check extruder and CFS sensors" ru="Расхождение датчиков. Проверьте датчики экструдера и CFS"/>
   <translation tag="Sensor to Nozzle" ru="Датчик до сопла"/>
   <translation tag="Sensors" ru="Датчики"/>
+  <translation tag="Sensors that detect filament running out or jamming. Set what each one does in the sensor settings." ru="Датчики, которые определяют окончание или застревание филамента. Действие каждого задается в настройках датчиков."/>
+  <translation tag="Sensors that measure the filament diameter as it feeds. Configure them in the sensor settings." ru="Датчики, измеряющие диаметр филамента при подаче. Настраиваются в настройках датчиков."/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." ru="Отдельные макросы вкл/выкл. HelixScreen отслеживает состояние."/>
   <translation tag="Server Setup" ru="Настройка сервера"/>
   <translation tag="Service hours for the filter, nozzle, and rails" ru="Моточасы фильтра, сопла и направляющих"/>
@@ -3228,6 +3267,7 @@
   <translation tag="TD-1 filament color detection" ru="Определение цвета филамента TD-1"/>
   <translation tag="TEMPERATURE SENSORS" ru="ДАТЧИКИ ТЕМПЕРАТУРЫ"/>
   <translation tag="THEME COLORS" ru="ЦВЕТА ТЕМЫ"/>
+  <translation tag="THERMAL &amp; AIR" ru="ТЕПЛО И ВОЗДУХ"/>
   <translation tag="TOGGLE: {}" ru="ПЕРЕКЛЮЧИТЬ: {}"/>
   <translation tag="TOOLS" ru="ИНСТРУМЕНТЫ"/>
   <translation tag="TPU" ru="TPU"/>
@@ -3301,16 +3341,20 @@
   <translation tag="That tool is already loaded" ru="Этот инструмент уже загружен"/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" ru="Оборудование одометра CFS неисправно и требует ремонта или замены"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." ru="Плагин HelixPrint позволяет быстро модифицировать G-code прямо на принтере — например, пропускать сетку стола для быстрых перепечаток."/>
+  <translation tag="The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings." ru="Плагин таймлапса Moonraker установлен. Способ записи задается в настройках таймлапса."/>
   <translation tag="The Spoolman spool currently loaded" ru="Текущая катушка Spoolman"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." ru="Анимированная заставка была отключена на данном устройстве, чтобы она не мешала печати. Вы можете снова включить её в Настройки &gt; Дисплей."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." ru="Стол остыл. Снимите катушки со стола, затем подтвердите."/>
+  <translation tag="The bed heater. Set its temperature and watch its graph on the bed temperature screen." ru="Нагреватель стола. Температура задается, а график виден на экране температуры стола."/>
   <translation tag="The bed is too small for the test tower, or its size is unknown." ru="Стол слишком мал для тестовой башни, или его размер неизвестен."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." ru="Стол выключится. Катушки считаются лежащими на столе, пока вы не подтвердите, что сняли их."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." ru="Стол помечен как загрязнённый, поэтому печать не может быть продолжена."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" ru="Буфер может быть отключён, заклинен или неисправен. Проверьте его перед повтором"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" ru="Буфер не фиксировал движение 16 секунд. Проверьте засор между CFS и экструдером или заклинивший буфер"/>
   <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." ru="Камере показалось, что на столе что-то есть, поэтому принтер остановился до начала печати. Если стол чист, это ложная тревога."/>
+  <translation tag="The chamber heater can run a filament drying cycle. Start one from the drying dialog." ru="Нагреватель камеры может запускать цикл сушки филамента. Запустите его из диалога сушки."/>
   <translation tag="The chamber wait already ended; nothing was stopped." ru="Ожидание камеры уже закончилось; ничего не остановлено."/>
+  <translation tag="The controller boards Klipper runs on. See their load in the system settings." ru="Платы контроллеров, на которых работает Klipper. Их загрузку можно посмотреть в системных настройках."/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" ru="Лезвие не вернулось. Проверьте, не намотался ли филамент на режущий механизм"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" ru="Резак смещён. Выполните повторную калибровку командой CALIBRATE_CUT_POS"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" ru="Экструдер не может тянуть равномерно. Проверьте катушку на запутывание или узел, а трубку PTFE на резкий изгиб"/>
@@ -3318,6 +3362,7 @@
   <translation tag="The filament may not have fully retracted — try again or manually pull" ru="Возможно, филамент втянут не полностью. Повторите или вытяните вручную"/>
   <translation tag="The filament system needs attention" ru="Системе подачи филамента требуется внимание"/>
   <translation tag="The filament system reported an error" ru="Система филамента сообщила об ошибке"/>
+  <translation tag="The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog." ru="Подогреваемый стол и корпус могут сушить катушки, лежащие на столе. Запустите цикл из диалога сушки на столе."/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." ru="Нагреватель нельзя изменить, пока принтер ожидает."/>
   <translation tag="The heater did not accept the printer&apos;s credentials." ru="Нагреватель не принял учётные данные принтера."/>
   <translation tag="The heater didn&apos;t accept the command." ru="Нагреватель не принял команду."/>
@@ -3341,7 +3386,12 @@
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." ru="Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены."/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." ru="Печать ждёт, пока камера нагреется до {}°C, но нагреватель не греет."/>
   <translation tag="The print is waiting for the chamber, but the heater is not heating." ru="Печать ждёт камеру, но нагреватель не греет."/>
+  <translation tag="The printable size in millimeters (X × Y × Z), from the axis limits in the printer&apos;s Klipper config." ru="Размер области печати в миллиметрах (X × Y × Z) по пределам осей в конфигурации Klipper принтера."/>
   <translation tag="The printer applied this value and keeps it for this tool." ru="Принтер применил это значение и сохранил его для этого инструмента."/>
+  <translation tag="The printer can draw a priming line before a print. HelixScreen offers it in the pre-print options." ru="Принтер может нарисовать линию прочистки перед печатью. HelixScreen предлагает ее в параметрах подготовки к печати."/>
+  <translation tag="The printer can measure each tool&apos;s offset automatically. Run it on the tool offset calibration screen." ru="Принтер может автоматически измерить смещение каждого инструмента. Запустите это на экране калибровки смещений инструментов."/>
+  <translation tag="The printer can measure pressure advance on its own. Run it on the PA calibration screen." ru="Принтер может сам измерить pressure advance. Запускается на экране «Калибровка PA»."/>
+  <translation tag="The printer can pause at a chosen layer, for a filament swap or an insert. Set the layer from the print preview." ru="Принтер может встать на паузу на выбранном слое, для смены филамента или вставки детали. Слой задается в предпросмотре печати."/>
   <translation tag="The printer did not change its bed check" ru="Принтер не изменил проверку стола"/>
   <translation tag="The printer did not change its bed check: {}" ru="Принтер не изменил проверку стола: {}"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." ru="Принтер выдавливает пластик в углу и повторяет, пока показания не сойдутся. Ничего не нужно оценивать на глаз."/>
@@ -3359,6 +3409,8 @@
   <translation tag="The printer lost power while printing {}. Resume where it left off?" ru="Принтер потерял питание при печати {}. Продолжить с места остановки?"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." ru="Принтер потерял питание при печати {}. Возобновлённый слой может не совпасть точно."/>
   <translation tag="The printer rejected the filament configuration. The print was not started." ru="Принтер отклонил конфигурацию филамента. Печать не была запущена."/>
+  <translation tag="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen." ru="Принтер сообщает измеренные скорости вентиляторов. HelixScreen показывает их на экране «Вентиляторы»."/>
+  <translation tag="The printer swaps between several toolheads. Manage the tools on the filament system screen." ru="Принтер переключается между несколькими печатающими головками. Инструментами можно управлять на экране системы филамента."/>
   <translation tag="The printer&apos;s firmware chooses where to switch on runout" ru="Прошивка принтера сама выбирает, на что переключиться при обрыве"/>
   <translation tag="The requested position is outside the printer&apos;s bounds" ru="Запрошенная позиция находится за пределами рабочей области принтера"/>
   <translation tag="The right RFID reader in this CFS unit may need service" ru="Правому RFID-считывателю этого блока CFS может требоваться обслуживание"/>
@@ -3806,6 +3858,7 @@
   <translation tag="Z-Tilt Adjust complete" ru="Z-Tilt завершён"/>
   <translation tag="Z-Tilt Adjust started..." ru="Z-Tilt запущен..."/>
   <translation tag="Z-Tilt failed: {}" ru="Ошибка Z-Tilt: {}"/>
+  <translation tag="Z-Tilt levels the gantry or bed using its separate Z motors. HelixScreen offers it on the Controls and Motion screens." ru="Z-наклон выравнивает портал или стол с помощью отдельных Z-моторов. HelixScreen предлагает его на экранах «Управление» и «Движение»."/>
   <translation tag="Z-Tilt may still be running — response timed out" ru="Z-Tilt может ещё выполняться — время ожидания истекло"/>
   <translation tag="Z-Tilt timed out" ru="Z-Tilt — время ожидания истекло"/>
   <translation tag="Z-offset calibration timed out" ru="Калибровка Z-offset — время ожидания истекло"/>

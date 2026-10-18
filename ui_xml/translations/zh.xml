@@ -128,8 +128,15 @@
   <translation tag="= Loosen" zh="= 松开"/>
   <translation tag="= Tighten" zh="= 拧紧"/>
   <translation tag="A" zh="辅"/>
+  <translation tag="A buzzer or speaker for alerts and sounds. Set what plays in the sound settings." zh="用于提示和声音的蜂鸣器或扬声器。在声音设置中选择播放内容。"/>
+  <translation tag="A camera Moonraker streams. Add the camera widget to the home screen to watch it, and see it during a print." zh="Moonraker 推流的摄像头。将摄像头小组件添加到主屏幕即可查看,打印时也能看到。"/>
+  <translation tag="A fan that pulls the enclosure air through a filter. Control it on the chamber temperature screen." zh="让腔体内空气经过滤网循环的风扇。在腔体温度界面控制。"/>
   <translation tag="A few minutes, nearly all of it heating. You judge nothing by eye." zh="需要几分钟，几乎全是加热时间。你无需用肉眼判断任何东西。"/>
+  <translation tag="A heat soak macro is set up on the printer. HelixScreen detects it but does not run it." zh="打印机上已设置热浸(heat soak)宏。HelixScreen 会检测到它,但不会运行。"/>
+  <translation tag="A heater that warms the air inside the enclosure. Set its temperature on the chamber temperature screen." zh="为腔体内空气加热的加热器。在腔体温度界面设置温度。"/>
+  <translation tag="A height map of the bed that Klipper uses to make up for an uneven surface. View and calibrate it on the Bed Mesh screen." zh="Klipper 用来补偿热床不平整的高度图。在热床网格界面查看和校准。"/>
   <translation tag="A macro printed stray template text &apos;{}&apos;: check its Jinja tags" zh="宏输出了多余的模板文本 &apos;{}&apos;：请检查其 Jinja 标签"/>
+  <translation tag="A macro that wipes the nozzle. HelixScreen can run it before a print from the pre-print options." zh="用于擦拭喷嘴的宏。HelixScreen 可在打印前通过打印前选项运行它。"/>
   <translation tag="A motor IO pin couldn&apos;t be restored. Power-cycle the printer to recover" zh="无法恢复电机 IO 引脚。请重新为打印机上电以恢复"/>
   <translation tag="A motor&apos;s parameters couldn&apos;t be written. Power-cycle the printer to retry" zh="无法写入电机参数。请重新为打印机上电后重试"/>
   <translation tag="A newer version of the helper macros is available" zh="有更新版本的帮助宏可用"/>
@@ -139,13 +146,17 @@
   <translation tag="A print is running on this gate. HelixScreen cleared its own copy; clear it again once the print finishes." zh="此通道正在打印中。HelixScreen 已清除本地副本；打印结束后请再次清空。"/>
   <translation tag="A print is running. Apply the result after it ends." zh="正在打印。请在打印结束后应用结果。"/>
   <translation tag="A print started while spools are marked as on the bed. If they are still there, stop the printer now with the E-stop." zh="在料盘仍标记为放在热床上时开始了打印。如果料盘还在，请立即用紧急停止停下打印机。"/>
+  <translation tag="A sensor that measures the distance to the bed. HelixScreen uses it for Z offset calibration and probe tests on the Probe screen." zh="测量到热床距离的传感器。HelixScreen 用它进行 Z 偏移校准,并在探针界面进行探针测试。"/>
+  <translation tag="A sensor that reads the air temperature inside the enclosure. Watch it on the chamber temperature screen." zh="读取腔体内空气温度的传感器。在腔体温度界面查看。"/>
   <translation tag="A spool may be tangled or the drive gear is jammed" zh="料盘可能缠绕，或驱动齿轮卡住"/>
+  <translation tag="A system that feeds several filaments to the toolhead, shown with its slot count. Manage the slots on the filament system screen." zh="向工具头供应多种耗材的系统,显示槽位数量。在耗材系统界面管理槽位。"/>
   <translation tag="A · 1,-1" zh="A · 1,-1"/>
   <translation tag="ABS" zh="ABS"/>
   <translation tag="ACCELEROMETERS" zh="加速度计"/>
   <translation tag="ACCEPT failed: {}" zh="ACCEPT 失败: {}"/>
   <translation tag="ACE Moonraker bridge not found. Install ace_status.py for full support." zh="未找到 ACE Moonraker 桥接。请安装 ace_status.py 以获得完整支持。"/>
   <translation tag="ACTIONS" zh="操作"/>
+  <translation tag="ADD-ONS" zh="附加功能"/>
   <translation tag="ADXL" zh="ADXL"/>
   <translation tag="AFC" zh="AFC"/>
   <translation tag="AFC Update Available" zh="AFC 有可用更新"/>
@@ -252,6 +263,7 @@
   <translation tag="Analyzing data..." zh="正在分析数据..."/>
   <translation tag="Analyzing data... {}s" zh="正在分析数据... {} 秒"/>
   <translation tag="Android logcat" zh="Android logcat"/>
+  <translation tag="Animated light effects configured on the printer. Turn them on and off from the LED controls." zh="打印机上配置的动态灯光效果。可在 LED 控制中开关。"/>
   <translation tag="Animations" zh="动画"/>
   <translation tag="Anonymous data to help improve HelixScreen" zh="匿名数据以帮助改进 HelixScreen"/>
   <translation tag="Anonymous stats — no personal data, ever." zh="匿名统计 — 绝不收集个人数据。"/>
@@ -414,6 +426,7 @@
   <translation tag="Brush nozzle" zh="刷洗喷嘴"/>
   <translation tag="Buffer Status" zh="缓冲区状态"/>
   <translation tag="Buffer tube problem" zh="缓冲管故障"/>
+  <translation tag="Build Volume" zh="打印尺寸"/>
   <translation tag="Build Volume: " zh="构建尺寸: "/>
   <translation tag="Building preview: %d%%" zh="正在生成预览：%d%%"/>
   <translation tag="Bundle Uploaded" zh="捆绑包已上传"/>
@@ -665,6 +678,7 @@
   <translation tag="Compact" zh="紧凑"/>
   <translation tag="Compare belt paths with a resonance sweep" zh="用共振扫频比较皮带路径"/>
   <translation tag="Compare your belt paths" zh="比较皮带路径"/>
+  <translation tag="Compares the two belt paths of a CoreXY printer with the accelerometer, so you can even out their tension. Run it on the Belt Tension screen." zh="用加速度计比较 CoreXY 打印机两条皮带的路径,帮助你调平它们的张力。在皮带张力界面运行。"/>
   <translation tag="Complete" zh="完成"/>
   <translation tag="Complete!" zh="完成！"/>
   <translation tag="Completed" zh="已完成"/>
@@ -975,6 +989,7 @@
   <translation tag="E-Stop Confirmation" zh="急停确认"/>
   <translation tag="EDDY CURRENT" zh="EDDY CURRENT"/>
   <translation tag="EEPROM error on CFS unit" zh="CFS 单元 EEPROM 错误"/>
+  <translation tag="ELECTRONICS &amp; ACCESSORIES" zh="电子设备与配件"/>
   <translation tag="EMERGENCY STOP" zh="紧急停止"/>
   <translation tag="EMPTY" zh="空"/>
   <translation tag="ETA {}" zh="预计 {}"/>
@@ -1096,6 +1111,7 @@
   <translation tag="Exception: {}" zh="异常: {}"/>
   <translation tag="Exclude" zh="排除"/>
   <translation tag="Exclude Object" zh="排除对象"/>
+  <translation tag="Exclude Object lets you skip a failed part mid-print from the print status screen." zh="排除对象可让你在打印过程中从打印状态界面跳过失败的零件。"/>
   <translation tag="Exclude Object?" zh="排除对象？"/>
   <translation tag="Exclude Objects" zh="排除对象"/>
   <translation tag="Excluded" zh="已排除"/>
@@ -1135,6 +1151,7 @@
   <translation tag="Extruding prime line..." zh="正在挤出引导线..."/>
   <translation tag="FAILED" zh="失败"/>
   <translation tag="FILAMENT" zh="耗材"/>
+  <translation tag="FILAMENT &amp; TOOLHEAD" zh="耗材与工具头"/>
   <translation tag="FILAMENTS" zh="耗材"/>
   <translation tag="FILTERS" zh="筛选"/>
   <translation tag="Factory Reset" zh="恢复出厂设置"/>
@@ -1256,6 +1273,7 @@
   <translation tag="Fan control failed: {}" zh="风扇控制失败: {}"/>
   <translation tag="FanSelect" zh="选择风扇"/>
   <translation tag="Fans" zh="风扇"/>
+  <translation tag="Fans besides the part cooling fan. Control them on the Fans screen." zh="除模型冷却风扇外的其他风扇。在风扇界面控制。"/>
   <translation tag="Farther" zh="更远"/>
   <translation tag="Favorites" zh="收藏"/>
   <translation tag="Feature not available" zh="功能不可用"/>
@@ -1285,6 +1303,7 @@
   <translation tag="Filament Mapping isn&apos;t supported on this printer, so the print uses the tools assigned on the printer" zh="此打印机不支持耗材映射，因此打印将使用打印机上分配的工具"/>
   <translation tag="Filament Runout" zh="耗材用尽"/>
   <translation tag="Filament Sensor" zh="耗材传感器"/>
+  <translation tag="Filament Sensors" zh="耗材传感器"/>
   <translation tag="Filament System Error" zh="耗材系统错误"/>
   <translation tag="Filament Used" zh="已用耗材"/>
   <translation tag="Filament already exists" zh="耗材已存在"/>
@@ -1495,6 +1514,8 @@
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." zh="HelixScreen 将与您的耗材更换器集成，用于多料盘/多色打印操作。"/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." zh="HelixScreen 会将此写入 printer.cfg 并重启 Klipper。打印机将短暂断开连接。"/>
   <translation tag="HelixScreen {} is available — tap Update" zh="HelixScreen {} 已发布 — 点击更新"/>
+  <translation tag="HelixScreen&apos;s Moonraker plugin is installed, which it uses to run pre-print options. Manage it on the Advanced screen." zh="已安装 HelixScreen 的 Moonraker 插件，用于执行打印前选项。可在高级页面管理。"/>
+  <translation tag="HelixScreen&apos;s helper macros are installed in the printer&apos;s config. Update or remove them on the Advanced screen." zh="HelixScreen 辅助宏已安装在打印机配置中。可在高级页面更新或移除。"/>
   <translation tag="Help &amp; About" zh="帮助与关于"/>
   <translation tag="Help Improve HelixScreen" zh="帮助改进 HelixScreen"/>
   <translation tag="Help improve HelixScreen?" zh="帮助改进 HelixScreen？"/>
@@ -1549,6 +1570,7 @@
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" zh="按住多久才算长按（毫秒）。若编辑模式等误触发，请调大"/>
   <translation tag="How many labels to print" zh="打印多少张标签"/>
   <translation tag="How the Jog tab arranges its buttons" zh="点动页按钮的排列方式"/>
+  <translation tag="How the printer&apos;s axes are driven, as its Klipper config declares it. HelixScreen uses it to decide how homing works and which belt and motion tools apply." zh="打印机各轴的驱动方式,取自其 Klipper 配置。HelixScreen 据此决定归零方式,以及适用哪些皮带和运动工具。"/>
   <translation tag="How the toolhead icon appears" zh="工具头图标的显示方式"/>
   <translation tag="Hub" zh="集线器"/>
   <translation tag="Hub &amp; Cutter" zh="集线器与切刀"/>
@@ -1666,6 +1688,7 @@
   <translation tag="K so far" zh="当前 K 值"/>
   <translation tag="KEYBOARD LAYOUT" zh="键盘布局"/>
   <translation tag="KLICKY CONTROLS" zh="KLICKY 控制"/>
+  <translation tag="Kalico" zh="Kalico"/>
   <translation tag="Keep Navigation Bar" zh="保留导航栏"/>
   <translation tag="Keep Printing" zh="继续打印"/>
   <translation tag="Keep Spool Info on Eject" zh="弹出时保留料盘信息"/>
@@ -1678,11 +1701,13 @@
   <translation tag="Keep waiting" zh="继续等待"/>
   <translation tag="Kick away" zh="拨除废料"/>
   <translation tag="Kinematics" zh="运动学"/>
+  <translation tag="Klippain Shake&amp;Tune macros are installed on the printer. HelixScreen detects them but does not use them; run them from Mainsail or Fluidd." zh="打印机上已安装 Klippain Shake&amp;Tune 宏。HelixScreen 会检测到它们但不使用;请在 Mainsail 或 Fluidd 中运行。"/>
   <translation tag="Klipper" zh="Klipper"/>
   <translation tag="Klipper Error" zh="Klipper 错误"/>
   <translation tag="Klipper failed to start with the skip macros, so they were removed" zh="Klipper 无法在加载跳过宏后启动，已将其移除"/>
   <translation tag="Klipper failed to start. Remove the helix_skips.cfg include from printer.cfg." zh="Klipper 无法启动。请从 printer.cfg 中删除 helix_skips.cfg 的 include。"/>
   <translation tag="Klipper firmware has disconnected from the host. Try restarting Klipper or performing a firmware restart." zh="Klipper 固件已与主机断开连接。请尝试重启 Klipper 或执行固件重启。"/>
+  <translation tag="Klipper handles retraction itself (G10/G11). Adjust the lengths and speeds in the retraction settings." zh="Klipper 自行处理回抽(G10/G11)。在回抽设置中调整长度和速度。"/>
   <translation tag="Klipper has disconnected from Moonraker. Check for errors in your printer interface." zh="Klipper 已与 Moonraker 断开连接。请在打印机界面中检查错误。"/>
   <translation tag="Klipper has entered an error state. This is typically caused by an MCU connection failure or configuration error. Try a firmware restart." zh="Klipper 已进入错误状态。这通常是由 MCU 连接失败或配置错误引起的。请尝试固件重启。"/>
   <translation tag="Klipper has entered shutdown state." zh="Klipper 已进入关闭状态。"/>
@@ -1698,6 +1723,7 @@
   <translation tag="Klippy Errors" zh="Klippy 错误"/>
   <translation tag="Klippy Shutdowns" zh="Klippy 关闭次数"/>
   <translation tag="LED Controls" zh="LED 控制"/>
+  <translation tag="LED Effects" zh="LED 灯效"/>
   <translation tag="LED Light" zh="LED 灯"/>
   <translation tag="LED Mode" zh="LED 模式"/>
   <translation tag="LED Settings" zh="LED 设置"/>
@@ -1753,6 +1779,7 @@
   <translation tag="Light Mode" zh="浅色模式"/>
   <translation tag="Light will switch when the current operation finishes" zh="灯光将在当前操作完成后切换"/>
   <translation tag="Lights that follow the printer&apos;s state" zh="跟随打印机状态变化的灯光"/>
+  <translation tag="Lights the printer can control. Choose which ones HelixScreen uses in the LED settings." zh="打印机可控制的灯。在 LED 设置中选择 HelixScreen 使用哪些。"/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." zh="将喷嘴对准排料口上方，使排出的料丝垂直落入。"/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." zh="第 {} 行调用 {}，此打印机将其视为紧急停止。请使用为此打印机制作的配置重新切片该文件。"/>
   <translation tag="Linear rails" zh="直线导轨"/>
@@ -1828,9 +1855,11 @@
   <translation tag="MCU bridge daemon is shut down" zh="MCU 桥接守护进程已关闭"/>
   <translation tag="MCU, host, and auxiliary temperature monitoring" zh="MCU、主机及辅助温度监控"/>
   <translation tag="MCU: " zh="MCU: "/>
+  <translation tag="MCUs" zh="MCUs"/>
   <translation tag="MDI Icons" zh="MDI 图标"/>
   <translation tag="MISSING CONFIGURED" zh="缺少配置"/>
   <translation tag="MMU command failed" zh="MMU 命令失败"/>
+  <translation tag="MOTION &amp; LEVELING" zh="运动与调平"/>
   <translation tag="MPC" zh="MPC"/>
   <translation tag="MPC thermal model calibrated for {} at {}°C." zh="已针对 {} 在 {}°C 下校准 MPC 热模型。"/>
   <translation tag="Machine Limits" zh="机器限制"/>
@@ -1908,6 +1937,8 @@
   <translation tag="Measured filament diameter" zh="测量的耗材直径"/>
   <translation tag="Measured pressure advance" zh="测得的压力提前"/>
   <translation tag="Measurement incomplete. Try again." zh="测量未完成。请重试。"/>
+  <translation tag="Measures the bed at each adjustment screw and says how far to turn it. Run it on the Screws Tilt screen." zh="在每个调节螺丝处测量热床,并告诉你该拧多少。在螺丝倾斜界面运行。"/>
+  <translation tag="Measures vibration for input shaping. Run resonance tests on the Input Shaper screen." zh="测量振动以进行输入整形。在输入整形器界面运行共振测试。"/>
   <translation tag="Measuring" zh="测量中"/>
   <translation tag="Measuring Path {}" zh="正在测量路径 {}"/>
   <translation tag="Measuring accelerometer noise..." zh="正在测量加速度计噪声..."/>
@@ -1933,7 +1964,9 @@
   <translation tag="Monitoring" zh="监控中"/>
   <translation tag="Month" zh="月"/>
   <translation tag="Moonraker" zh="Moonraker"/>
+  <translation tag="Moonraker is connected to Spoolman, which tracks your spools and how much filament is left. Browse them on the Spoolman screen." zh="Moonraker 已连接 Spoolman,它会记录你的料盘和剩余耗材量。在 Spoolman 界面浏览。"/>
   <translation tag="Moonraker is not responding at {}. It runs on this printer, so check that the Klipper and Moonraker services started." zh="Moonraker 在 {} 无响应。它运行在这台打印机上，请检查 Klipper 和 Moonraker 服务是否已启动。"/>
+  <translation tag="Moonraker keeps a queue of prints to run one after another. View it in the job queue." zh="Moonraker 维护一个依次执行的打印队列。在任务队列中查看。"/>
   <translation tag="Moonraker restarted but Spoolman not connected. Check server." zh="Moonraker 已重启但 Spoolman 未连接。请检查服务器。"/>
   <translation tag="Moonraker restarting...&#10;Waiting for reconnection..." zh="Moonraker 重启中...&#10;等待重新连接..."/>
   <translation tag="Moonraker: " zh="Moonraker: "/>
@@ -2229,6 +2262,7 @@
   <translation tag="Override auto-detection if your chamber sensor or heater isn&apos;t named &apos;chamber&apos;." zh="如果仓室传感器或加热器名称不是 &apos;chamber&apos;，可覆盖自动检测。"/>
   <translation tag="P" zh="件"/>
   <translation tag="PA" zh="PA"/>
+  <translation tag="PA Calibration" zh="PA 校准"/>
   <translation tag="PATH A · 1,-1" zh="路径 A · 1,-1"/>
   <translation tag="PATH B · 1,1" zh="路径 B · 1,1"/>
   <translation tag="PAUSED" zh="已暂停"/>
@@ -2245,6 +2279,7 @@
   <translation tag="PRINTER" zh="打印机"/>
   <translation tag="PRINTER VISUALS" zh="打印机外观"/>
   <translation tag="PRINTERS" zh="打印机"/>
+  <translation tag="PRINTING" zh="打印"/>
   <translation tag="PROBE SENSORS" zh="探针传感器"/>
   <translation tag="PTFE tube connection loose" zh="PTFE 管接头松动"/>
   <translation tag="Pair" zh="配对"/>
@@ -2336,6 +2371,7 @@
   <translation tag="Post-Sensor Clear" zh="传感器触发后额外移动"/>
   <translation tag="Power" zh="电源"/>
   <translation tag="Power Devices" zh="电源设备"/>
+  <translation tag="Power devices Moonraker can switch. Turn them on and off on the Power screen." zh="Moonraker 可开关的电源设备。在电源界面开关。"/>
   <translation tag="Power off the printer or screen" zh="关闭打印机或屏幕电源"/>
   <translation tag="Power was lost during the print; the printer stopped and saved its progress" zh="打印过程中断电，打印机已停止并保存了进度"/>
   <translation tag="Pre-heat the extruder first" zh="请先预热挤出机"/>
@@ -2542,6 +2578,7 @@
   <translation tag="QUICK BUTTONS" zh="快捷按钮"/>
   <translation tag="Quad Gantry Level" zh="四角龙门调平"/>
   <translation tag="Quad Gantry Level complete" zh="QGL 完成"/>
+  <translation tag="Quad Gantry Level squares a gantry driven by four Z motors to the bed. HelixScreen offers it on the Controls and Motion screens." zh="四角龙门调平可将由四个 Z 电机驱动的龙门与热床调平。HelixScreen 在控制和运动界面提供该功能。"/>
   <translation tag="Quad Gantry Level started..." zh="QGL 已开始..."/>
   <translation tag="Queue empty" zh="队列为空"/>
   <translation tag="Queue: Paused" zh="队列：已暂停"/>
@@ -2921,6 +2958,8 @@
   <translation tag="Sensor mismatch — check extruder and CFS sensors" zh="传感器不一致。请检查挤出机与 CFS 传感器"/>
   <translation tag="Sensor to Nozzle" zh="传感器至喷嘴"/>
   <translation tag="Sensors" zh="传感器"/>
+  <translation tag="Sensors that detect filament running out or jamming. Set what each one does in the sensor settings." zh="检测耗材用尽或卡住的传感器。在传感器设置中设定各自的动作。"/>
+  <translation tag="Sensors that measure the filament diameter as it feeds. Configure them in the sensor settings." zh="测量送料时耗材直径的传感器。在传感器设置中配置。"/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." zh="独立的开/关宏。HelixScreen 跟踪状态。"/>
   <translation tag="Server Setup" zh="服务器设置"/>
   <translation tag="Service hours for the filter, nozzle, and rails" zh="过滤器、喷嘴和导轨的使用小时数"/>
@@ -3168,6 +3207,7 @@
   <translation tag="TD-1 filament color detection" zh="TD-1 耗材颜色检测"/>
   <translation tag="TEMPERATURE SENSORS" zh="温度传感器"/>
   <translation tag="THEME COLORS" zh="主题颜色"/>
+  <translation tag="THERMAL &amp; AIR" zh="温控与空气"/>
   <translation tag="TOGGLE: {}" zh="切换: {}"/>
   <translation tag="TOOLS" zh="工具"/>
   <translation tag="TPU" zh="TPU"/>
@@ -3241,16 +3281,20 @@
   <translation tag="That tool is already loaded" zh="该工具已加载耗材"/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" zh="CFS 计量硬件故障，需维修或更换"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." zh="HelixPrint 插件可在打印机上直接进行快速 G-code 修改——例如跳过热床网格以快速重新打印。"/>
+  <translation tag="The Moonraker timelapse plugin is installed. Set how it records in the timelapse settings." zh="已安装 Moonraker 延时摄影插件。在延时摄影设置中设定录制方式。"/>
   <translation tag="The Spoolman spool currently loaded" zh="当前装载的 Spoolman 料盘"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." zh="为防止动画屏保干扰打印，已在此设备上将其关闭。您可以在设置 &gt; 显示中重新启用。"/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." zh="热床已冷却。请从热床上取下料盘,然后确认。"/>
+  <translation tag="The bed heater. Set its temperature and watch its graph on the bed temperature screen." zh="热床加热器。在热床温度界面设置温度并查看曲线。"/>
   <translation tag="The bed is too small for the test tower, or its size is unknown." zh="热床太小放不下测试塔,或尺寸未知。"/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." zh="热床将关闭。在你确认取下之前,料盘仍视为在热床上。"/>
   <translation tag="The bed was reported dirty, so this print cannot resume." zh="热床被报告为脏污，因此无法恢复此次打印。"/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" zh="缓冲器可能未连接、卡住或损坏。请检查后重试"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" zh="缓冲器已 16 秒未检测到运动。请检查 CFS 与挤出机之间是否堵塞，或缓冲器是否卡住"/>
   <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." zh="摄像头认为热床上有东西，因此打印机在打印前停止了。如果热床是空的，这是误报。"/>
+  <translation tag="The chamber heater can run a filament drying cycle. Start one from the drying dialog." zh="腔体加热器可以运行耗材烘干周期。在烘干对话框中启动。"/>
   <translation tag="The chamber wait already ended; nothing was stopped." zh="腔体等待已经结束，未停止任何操作。"/>
+  <translation tag="The controller boards Klipper runs on. See their load in the system settings." zh="运行 Klipper 的控制板。在系统设置中查看其负载。"/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" zh="切刀未复位。请检查切刀机构上是否缠绕耗材"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" zh="切刀未对准。请使用 CALIBRATE_CUT_POS 重新校准"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" zh="挤出机无法顺畅拉动。请检查料盘是否缠绕或打结，以及 PTFE 管是否严重弯折"/>
@@ -3258,6 +3302,7 @@
   <translation tag="The filament may not have fully retracted — try again or manually pull" zh="耗材可能未完全回抽。请重试或手动抽出"/>
   <translation tag="The filament system needs attention" zh="耗材系统需要处理"/>
   <translation tag="The filament system reported an error" zh="耗材系统报告错误"/>
+  <translation tag="The heated bed and enclosure can dry spools placed on the bed. Start a cycle from the bed drying dialog." zh="热床和机箱可以烘干放在热床上的料盘。在热床烘干对话框中启动周期。"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." zh="打印机等待期间无法更改加热器。"/>
   <translation tag="The heater did not accept the printer&apos;s credentials." zh="加热器不接受打印机的凭据。"/>
   <translation tag="The heater didn&apos;t accept the command." zh="加热器未接受该命令。"/>
@@ -3281,7 +3326,12 @@
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." zh="打印已暂停。现在切换工具会移动工具头并更换喷嘴处的耗材。切换完成后请恢复打印。"/>
   <translation tag="The print is waiting for the chamber to reach {}°C, but the heater is not heating." zh="打印正在等待腔体达到 {}°C，但加热器没有加热。"/>
   <translation tag="The print is waiting for the chamber, but the heater is not heating." zh="打印正在等待腔体，但加热器没有加热。"/>
+  <translation tag="The printable size in millimeters (X × Y × Z), from the axis limits in the printer&apos;s Klipper config." zh="可打印尺寸（毫米，X × Y × Z），取自打印机 Klipper 配置中的轴限位。"/>
   <translation tag="The printer applied this value and keeps it for this tool." zh="打印机已应用此值，并为该工具保存。"/>
+  <translation tag="The printer can draw a priming line before a print. HelixScreen offers it in the pre-print options." zh="打印机可在打印前画一条预挤出线。HelixScreen 在打印前选项中提供该功能。"/>
+  <translation tag="The printer can measure each tool&apos;s offset automatically. Run it on the tool offset calibration screen." zh="打印机可自动测量每个工具的偏移。可在工具偏移校准页面运行。"/>
+  <translation tag="The printer can measure pressure advance on its own. Run it on the PA calibration screen." zh="打印机可以自行测量压力提前量(pressure advance)。在 PA 校准界面运行。"/>
+  <translation tag="The printer can pause at a chosen layer, for a filament swap or an insert. Set the layer from the print preview." zh="打印机可在选定的层暂停,用于换料或嵌入零件。在打印预览中设置层。"/>
   <translation tag="The printer did not change its bed check" zh="打印机未更改热床检查"/>
   <translation tag="The printer did not change its bed check: {}" zh="打印机未更改热床检查：{}"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." zh="打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。"/>
@@ -3299,6 +3349,8 @@
   <translation tag="The printer lost power while printing {}. Resume where it left off?" zh="打印机在打印 {} 时断电。是否从中断处继续？"/>
   <translation tag="The printer lost power while printing {}. The resumed layer may not line up exactly." zh="打印机在打印 {} 时断电。恢复后的层可能无法完全对准。"/>
   <translation tag="The printer rejected the filament configuration. The print was not started." zh="打印机拒绝了该耗材配置。打印未启动。"/>
+  <translation tag="The printer reports measured fan speeds. HelixScreen shows them on the Fans screen." zh="打印机会报告测得的风扇转速。HelixScreen 在风扇界面显示。"/>
+  <translation tag="The printer swaps between several toolheads. Manage the tools on the filament system screen." zh="打印机在多个工具头之间切换。在耗材系统界面管理工具。"/>
   <translation tag="The printer&apos;s firmware chooses where to switch on runout" zh="耗材用尽时切换到哪里由打印机固件自行选择"/>
   <translation tag="The requested position is outside the printer&apos;s bounds" zh="请求的位置超出打印机范围"/>
   <translation tag="The right RFID reader in this CFS unit may need service" zh="此 CFS 单元的右侧 RFID 读取器可能需要维修"/>
@@ -3746,6 +3798,7 @@
   <translation tag="Z-Tilt Adjust complete" zh="Z-Tilt 调整完成"/>
   <translation tag="Z-Tilt Adjust started..." zh="Z-Tilt 调整已开始..."/>
   <translation tag="Z-Tilt failed: {}" zh="Z-Tilt 失败: {}"/>
+  <translation tag="Z-Tilt levels the gantry or bed using its separate Z motors. HelixScreen offers it on the Controls and Motion screens." zh="Z-Tilt 使用各自独立的 Z 电机来调平龙门或热床。HelixScreen 在控制和运动界面提供该功能。"/>
   <translation tag="Z-Tilt may still be running — response timed out" zh="Z-Tilt 可能仍在运行 — 响应超时"/>
   <translation tag="Z-Tilt timed out" zh="Z-Tilt 超时"/>
   <translation tag="Z-offset calibration timed out" zh="Z 偏移校准超时"/>
