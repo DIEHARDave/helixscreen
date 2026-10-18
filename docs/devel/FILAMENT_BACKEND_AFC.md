@@ -541,9 +541,10 @@ Every caller must go through `afc_fault_path_apply()` even when the message is n
 previous fault's marker stays on screen. `ActionPromptModal` also re-publishes from its own text
 (`afc_fault_path_publish()`) before it builds, so any action:prompt, including a firmware one such
 as `AFC_CALIBRATION`'s unit picker, shows the strip only for the fault its text names. The subject
-is torn down with every other static subject on a printer switch and comes back on its next
-publish; a modal built while it is unregistered binds nothing and shows the strip with every
-caption at once.
+backs a component registered once at boot, so it is a `Lifetime::Process` registry entry: it stays
+registered and live across a printer switch and is torn down only at exit. A modal built while it
+is unregistered would bind nothing and show the strip with every caption at once, so publishing
+also creates it if it does not exist yet.
 
 #### Maintaining the contract across AFC versions
 
