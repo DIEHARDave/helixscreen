@@ -493,48 +493,61 @@ bool LuaRuntime::enter(lua_State* co, int nargs) {
     ++depth_;
     int nres = 0;
     int status = lua_resume(co, L_, nargs, &nres);
-    --depth_;
     bool yielded_for_async = yielded_for_async_;
     yielded_for_async_ = outer_yielded;
+
+    // A coroutine kept for its async reply stays as it is. Any other is closed here,
+    // still inside the entry: its pending <close> handlers run with the memory cap and
+    // the time budget applying, and a kill inside one faults below like any other.
+    const bool keep = status == LUA_YIELD && yielded_for_async && !(depth_ == 1 && killed_);
+    std::string text;
+    std::string close_error;
+    if (!keep) {
+        if (status != LUA_OK && status != LUA_YIELD) {
+            HostWorkGuard host_work(host_work_);
+            const char* msg = lua_tostring(co, -1);
+            luaL_traceback(L_, co, msg ? msg : "(error object is not a string)", 0);
+            if (const char* t = lua_tostring(L_, -1))
+                text = t;
+            lua_pop(L_, 1);
+        }
+        if (lua_closethread(co, L_) != LUA_OK) {
+            const char* msg = lua_tostring(co, -1);
+            close_error = std::string("<close> handler failed: ") +
+                          (msg ? msg : "(error object is not a string)");
+        }
+    }
+    --depth_;
 
     // The count hook's error can come back as a plain value from coroutine.resume or end
     // as a bare yield, so the overrun is checked on every exit of the outermost entry.
     // A killed plugin must never be resumed later, so a suspended coroutine is dropped too.
     if (depth_ == 0 && killed_) {
-        lua_pop(co, nres);
         drop(co);
         fault(budget_reason(limits_));
         return false;
     }
-    if (status == LUA_OK) {
+    if (keep) {
         lua_pop(co, nres);
-        drop(co);
-        return true;
-    }
-    if (status == LUA_YIELD) {
-        lua_pop(co, nres);
-        if (yielded_for_async)
-            return true; // stays in threads_ until its Pending resolves
-        report_error("coroutine.yield() outside an async call");
-        drop(co);
-        return false;
-    }
-    std::string text;
-    {
-        HostWorkGuard host_work(host_work_);
-        const char* msg = lua_tostring(co, -1);
-        luaL_traceback(L_, co, msg ? msg : "(error object is not a string)", 0);
-        if (const char* s = lua_tostring(L_, -1))
-            text = s;
-        lua_pop(L_, 1);
+        return true; // stays in threads_ until its Pending resolves
     }
     drop(co);
+    if (status == LUA_OK) {
+        if (close_error.empty())
+            return true;
+        report_error(close_error);
+        return false;
+    }
+    if (status == LUA_YIELD) {
+        report_error("coroutine.yield() outside an async call");
+        return false;
+    }
     if (killed_)
         fault(budget_reason(limits_));
     else if (status == LUA_ERRMEM)
         fault(memory_cap_reason(limits_.memory_bytes));
     else
-        report_error(text);
+        report_error(close_error.empty() ? text : text + "; " + close_error);
     return false;
 }
 

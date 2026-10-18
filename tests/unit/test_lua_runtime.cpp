@@ -770,4 +770,31 @@ TEST_CASE("a __gc added after setmetatable never runs", "[plugin][lua_runtime]")
     CHECK(t.global("ran") == "nil");
 }
 
+TEST_CASE("a dropped entry's <close> handlers run inside the entry",
+          "[plugin][lua_runtime][lua_budget]") {
+    SECTION("a loop in one, on the stray-yield path, faults") {
+        TestRuntime t;
+        auto start = std::chrono::steady_clock::now();
+        CHECK_FALSE(t.run(R"(
+            local g <close> = setmetatable({}, {__close = function() while true do end end})
+            coroutine.yield()
+        )"));
+        CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds(2));
+        CHECK(t.rt->faulted());
+        CHECK(t.fault.find("time budget") != std::string::npos);
+    }
+    SECTION("the memory cap applies to one") {
+        TestRuntime t;
+        helix::LogCapture logs;
+        CHECK_FALSE(t.run(R"(
+            local g <close> = setmetatable({}, {__close = function()
+                big = string.rep("x", 8 * 1024 * 1024)
+            end})
+            coroutine.yield()
+        )"));
+        CHECK(t.global("big") == "nil");
+        CHECK(t.rt->memory_used() <= t.rt->memory_cap());
+    }
+}
+
 #endif // HELIX_HAS_PLUGINS
