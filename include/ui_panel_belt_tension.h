@@ -170,7 +170,8 @@ class BeltTensionPanel : public OverlayBase {
     /// One path's measurement history. `previous` holds the curve the
     /// re-test is measuring against, so RESULTS can ghost it.
     struct PathRun {
-        helix::calibration::BeltCurve curve;
+        helix::calibration::BeltCurve curve;    ///< psd_xyz
+        helix::calibration::BeltCurve in_plane; ///< psd_x + psd_y; empty when the CSV had neither
         helix::calibration::BeltCurve previous;
         bool has = false;
         bool has_previous = false;
@@ -204,7 +205,8 @@ class BeltTensionPanel : public OverlayBase {
     /// Seconds the laps take on this printer; 0 when they cannot be planned.
     [[nodiscard]] float settle_seconds() const;
     void on_sweep_progress(int percent, float freq_hz);
-    void on_sweep_complete(helix::calibration::BeltPath path, helix::calibration::BeltCurve curve);
+    void on_sweep_complete(helix::calibration::BeltPath path,
+                           helix::calibration::BeltResponse response);
     void on_sweep_error(const std::string& message);
     /// The stall guard fired: no progress line for STALL_TIMEOUT_MS.
     void on_stall();

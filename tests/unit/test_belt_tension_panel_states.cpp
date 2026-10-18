@@ -187,6 +187,9 @@ class BeltPanelFixture : public XMLTestFixture {
         return static_cast<int>(
             std::lround(*t->advice().turns / helix::calibration::belt_tune::TURN_STEP));
     }
+    const auto& panel_run(int path_index) {
+        return panel_->runs_[path_index];
+    }
     /// The tallest in-band bin of a path's current curve.
     float panel_run_peak(int path_index) {
         float tallest = 0.0f;
@@ -428,6 +431,23 @@ TEST_CASE("Start settles, then runs A then B and lands on RESULTS", "[belt][pane
     CHECK(marks_a.front().freq_hz == Catch::Approx(104.0f).margin(1.0f));
     CHECK(marks_b.front().number == 1);
     CHECK(marks_b.front().freq_hz == Catch::Approx(98.0f).margin(1.0f));
+}
+
+TEST_CASE("a full sweep keeps both curves", "[belt][panel]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(static_cast<int>(BeltTensionPanel::ViewState::RESULTS)));
+
+    for (int i = 0; i < 2; ++i) {
+        const auto& run = fx.panel_run(i);
+        REQUIRE_FALSE(run.curve.empty());
+        REQUIRE(run.in_plane.size() == run.curve.size());
+        for (size_t k = 0; k < run.curve.size(); ++k) {
+            CHECK(run.in_plane[k].first == run.curve[k].first);
+        }
+    }
 }
 
 TEST_CASE("Re-test A keeps B and ghosts the old A", "[belt][panel][chart]") {

@@ -1986,7 +1986,7 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
   public:
     BeltResonanceCollector(IMoonrakerClient& client,
                            MoonrakerAdvancedAPI::BeltSweepProgressCallback on_progress,
-                           MoonrakerAdvancedAPI::BeltCurveCallback on_success,
+                           MoonrakerAdvancedAPI::BeltResponseCallback on_success,
                            MoonrakerAdvancedAPI::ErrorCallback on_error,
                            std::optional<calibration::BeltSweepWindow> window = std::nullopt)
         : core_(client, "belt_resonance_collector_"), on_progress_(std::move(on_progress)),
@@ -2075,7 +2075,7 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
         const calibration::ResonanceCsvData data = calibration::parse_resonance_csv(path);
         switch (data.error) {
         case calibration::ResonanceCsvError::NONE:
-            complete_success(data.curve);
+            complete_success(calibration::BeltResponse{data.curve, data.in_plane});
             return;
         case calibration::ResonanceCsvError::MISSING:
             complete_error(fmt::format(
@@ -2093,7 +2093,7 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
         }
     }
 
-    void complete_success(const calibration::BeltCurve& curve) {
+    void complete_success(const calibration::BeltResponse& response) {
         // unregister() below drops the client handler map's reference, which is
         // the collector's only strong owner. Pin the object for the rest of the
         // callback chain (prestonbrown/helixscreen#1543).
@@ -2101,16 +2101,17 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
         if (!core_.try_complete()) {
             return;
         }
-        spdlog::info("[BeltResonanceCollector] Complete with {} curve points", curve.size());
+        spdlog::info("[BeltResonanceCollector] Complete with {} curve points ({} in-plane)",
+                     response.xyz.size(), response.in_plane.size());
         core_.unregister();
         if (on_success_) {
-            on_success_(curve);
+            on_success_(response);
         }
     }
 
     CalibrationCollectorCore core_;
     MoonrakerAdvancedAPI::BeltSweepProgressCallback on_progress_;
-    MoonrakerAdvancedAPI::BeltCurveCallback on_success_;
+    MoonrakerAdvancedAPI::BeltResponseCallback on_success_;
     MoonrakerAdvancedAPI::ErrorCallback on_error_;
     /// Progress scales against this instead of the printer's range when set.
     std::optional<calibration::BeltSweepWindow> window_;
@@ -3279,7 +3280,7 @@ void MoonrakerAdvancedAPI::detect_belt_hardware(BeltHardwareCallback on_complete
 
 MoonrakerAdvancedAPI::BeltRunCancel MoonrakerAdvancedAPI::test_belt_resonance(
     const std::string& axis_param, const std::string& output_name,
-    BeltSweepProgressCallback on_progress, BeltCurveCallback on_complete, ErrorCallback on_error,
+    BeltSweepProgressCallback on_progress, BeltResponseCallback on_complete, ErrorCallback on_error,
     std::optional<calibration::BeltSweepWindow> window) {
     spdlog::info("[MoonrakerAPI] Starting belt resonance test: axis={}, name={}", axis_param,
                  output_name);

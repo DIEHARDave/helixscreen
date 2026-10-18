@@ -7,7 +7,7 @@
  *
  * Drives TEST_RESONANCES OUTPUT=resonances through the mock client and checks
  * the collector's contract: progress from the printer's configured range, the
- * parsed curve on Klipper's "Resonances data written to" line, error lines and
+ * parsed curves on Klipper's "Resonances data written to" line, error lines and
  * unreadable result files failing the run, and the cancel handle silencing
  * every later callback.
  */
@@ -91,22 +91,30 @@ class BeltApiFixture {
     std::unique_ptr<MoonrakerAPI> api_;
 };
 
-TEST_CASE_METHOD(BeltApiFixture, "test_belt_resonance delivers the parsed curve", "[belt][api]") {
+TEST_CASE_METHOD(BeltApiFixture, "test_belt_resonance delivers both curves", "[belt][api]") {
     std::atomic<bool> done{false};
-    calibration::BeltCurve got;
+    calibration::BeltResponse got;
     int last_percent = -1;
     auto cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", [&](int pct, float) { last_percent = pct; },
-        [&](const calibration::BeltCurve& c) {
-            got = c;
+        [&](const calibration::BeltResponse& r) {
+            got = r;
             done = true;
         },
         [&](const MoonrakerError& e) { FAIL(e.message); });
     pump_until(done);
     REQUIRE(done);
     CHECK(last_percent == 100);
-    auto peak = calibration::find_peak_frequency(got, 20.0f, got.back().first);
+    REQUIRE_FALSE(got.xyz.empty());
+    auto peak = calibration::find_peak_frequency(got.xyz, 20.0f, got.xyz.back().first);
     CHECK(peak.frequency == Catch::Approx(mock_client_.belt_peak_hz('A')).margin(1.0f));
+
+    // The mock writes psd_x = psd_y = 0.45 x psd_xyz, each rounded to %.3e.
+    REQUIRE(got.in_plane.size() == got.xyz.size());
+    for (size_t i = 0; i < got.xyz.size(); ++i) {
+        CHECK(got.in_plane[i].first == got.xyz[i].first);
+        CHECK(got.in_plane[i].second == Catch::Approx(0.9f * got.xyz[i].second).epsilon(1e-3));
+    }
 }
 
 TEST_CASE_METHOD(BeltApiFixture, "the sweep is sent pulse-only", "[belt][api]") {
@@ -115,7 +123,7 @@ TEST_CASE_METHOD(BeltApiFixture, "the sweep is sent pulse-only", "[belt][api]") 
     mock_client_.clear_gcode_script_history();
     std::atomic<bool> done{false};
     auto cancel = api_->advanced().test_belt_resonance(
-        "1,-1", "helix_belt_a", nullptr, [&](const calibration::BeltCurve&) { done = true; },
+        "1,-1", "helix_belt_a", nullptr, [&](const calibration::BeltResponse&) { done = true; },
         [&](const MoonrakerError& e) { FAIL(e.message); });
     pump_until(done);
     const auto history = mock_client_.gcode_script_history();
@@ -128,7 +136,7 @@ TEST_CASE_METHOD(BeltApiFixture, "a windowed sweep sends FREQ_START and FREQ_END
     mock_client_.clear_gcode_script_history();
     std::atomic<bool> done{false};
     auto cancel = api_->advanced().test_belt_resonance(
-        "1,-1", "helix_belt_a", nullptr, [&](const calibration::BeltCurve&) { done = true; },
+        "1,-1", "helix_belt_a", nullptr, [&](const calibration::BeltResponse&) { done = true; },
         [&](const MoonrakerError& e) { FAIL(e.message); },
         calibration::BeltSweepWindow{88.4f, 119.6f});
     pump_until(done);
@@ -142,7 +150,7 @@ TEST_CASE_METHOD(BeltApiFixture, "a sweep without a window sends today's G-code"
     mock_client_.clear_gcode_script_history();
     std::atomic<bool> done{false};
     auto cancel = api_->advanced().test_belt_resonance(
-        "1,1", "helix_belt_b", nullptr, [&](const calibration::BeltCurve&) { done = true; },
+        "1,1", "helix_belt_b", nullptr, [&](const calibration::BeltResponse&) { done = true; },
         [&](const MoonrakerError& e) { FAIL(e.message); });
     pump_until(done);
     const auto history = mock_client_.gcode_script_history();
@@ -161,7 +169,7 @@ TEST_CASE_METHOD(BeltApiFixture, "windowed progress scales against the window", 
     std::atomic<bool> done{false};
     auto cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", [&](int pct, float f) { seen.emplace_back(f, pct); },
-        [&](const calibration::BeltCurve&) { done = true; },
+        [&](const calibration::BeltResponse&) { done = true; },
         [&](const MoonrakerError& e) { FAIL(e.message); },
         calibration::BeltSweepWindow{88.0f, 120.0f});
     pump_until(done);
@@ -188,7 +196,7 @@ TEST_CASE_METHOD(BeltApiFixture, "progress stays clamped when firmware ignores t
     std::atomic<bool> done{false};
     auto cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", [&](int pct, float) { percents.push_back(pct); },
-        [&](const calibration::BeltCurve&) { done = true; },
+        [&](const calibration::BeltResponse&) { done = true; },
         [&](const MoonrakerError& e) { FAIL(e.message); },
         calibration::BeltSweepWindow{88.0f, 120.0f});
     pump_until(done);
@@ -203,7 +211,7 @@ TEST_CASE_METHOD(BeltApiFixture, "an error line fails the run", "[belt][api]") {
     std::atomic<bool> failed{false};
     auto cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", nullptr,
-        [&](const calibration::BeltCurve&) { FAIL("no curve expected"); },
+        [&](const calibration::BeltResponse&) { FAIL("no curve expected"); },
         [&](const MoonrakerError& e) {
             CHECK(e.message.find("adxl345") != std::string::npos);
             failed = true;
@@ -221,7 +229,7 @@ TEST_CASE_METHOD(BeltApiFixture, "a stale file from an earlier run is never read
     std::atomic<bool> failed{false};
     auto cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", nullptr,
-        [&](const calibration::BeltCurve&) { FAIL("stale file read"); },
+        [&](const calibration::BeltResponse&) { FAIL("stale file read"); },
         [&](const MoonrakerError&) { failed = true; });
     pump_until(failed);
     CHECK(failed);
@@ -233,7 +241,7 @@ TEST_CASE_METHOD(BeltApiFixture, "missing and multi-chip files become errors", "
         std::atomic<bool> failed{false};
         auto cancel = api_->advanced().test_belt_resonance(
             "1,-1", "helix_belt_a", nullptr,
-            [&](const calibration::BeltCurve&) { FAIL("no curve"); },
+            [&](const calibration::BeltResponse&) { FAIL("no curve"); },
             [&](const MoonrakerError& e) {
                 CHECK(e.message.find(needle) != std::string::npos);
                 failed = true;
@@ -249,7 +257,7 @@ TEST_CASE_METHOD(BeltApiFixture, "cancel suppresses every later callback", "[bel
     bool called = false;
     auto cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", [&](int, float) { called = true; },
-        [&](const calibration::BeltCurve&) { called = true; },
+        [&](const calibration::BeltResponse&) { called = true; },
         [&](const MoonrakerError&) { called = true; });
     cancel();
     cancel(); // idempotent
@@ -280,7 +288,7 @@ TEST_CASE_METHOD(BeltApiFixture, "cancel holds against a line already being disp
         });
     cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", [](int, float) {},
-        [&](const calibration::BeltCurve&) { called = true; },
+        [&](const calibration::BeltResponse&) { called = true; },
         [&](const MoonrakerError&) { called = true; });
     for (int i = 0; i < 2000; ++i) {
         lv_tick_inc(2);
@@ -302,7 +310,7 @@ TEST_CASE_METHOD(BeltApiFixture, "progress follows the printer's configured rang
                 CHECK(pct == 0);
             freqs.push_back(f);
         },
-        [&](const calibration::BeltCurve&) { done = true; },
+        [&](const calibration::BeltResponse&) { done = true; },
         [&](const MoonrakerError& e) { FAIL(e.message); });
     pump_until(done);
     REQUIRE_FALSE(freqs.empty());
@@ -316,7 +324,7 @@ TEST_CASE_METHOD(BeltApiFixture, "a non-transport RPC error fails the run", "[be
     std::atomic<bool> failed{false};
     auto cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", nullptr,
-        [&](const calibration::BeltCurve&) { FAIL("no curve expected"); },
+        [&](const calibration::BeltResponse&) { FAIL("no curve expected"); },
         [&](const MoonrakerError& e) {
             CHECK(e.message.find("Klipper rejected the script") != std::string::npos);
             failed = true;
@@ -333,7 +341,7 @@ TEST_CASE_METHOD(BeltApiFixture,
     std::atomic<bool> done{false};
     std::atomic<bool> failed{false};
     auto cancel = api_->advanced().test_belt_resonance(
-        "1,-1", "helix_belt_a", nullptr, [&](const calibration::BeltCurve&) { done = true; },
+        "1,-1", "helix_belt_a", nullptr, [&](const calibration::BeltResponse&) { done = true; },
         [&](const MoonrakerError&) { failed = true; });
     pump_until(done);
     REQUIRE(done);

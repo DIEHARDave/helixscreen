@@ -689,6 +689,7 @@ void BeltTensionPanel::handle_retest_clicked(helix::calibration::BeltPath path) 
         // and the similarity the last comparison showed becomes bt_similarity_was.
         run.previous = std::move(run.curve);
         run.curve.clear();
+        run.in_plane.clear();
         run.has_previous = run.has;
         run.has = false;
         was_similarity_percent_ = similarity_percent_;
@@ -978,8 +979,8 @@ void BeltTensionPanel::start_next_measurement() {
 
     calibrator_->measure_path(
         path, [this](int percent, float freq_hz) { on_sweep_progress(percent, freq_hz); },
-        [this, path](helix::calibration::BeltCurve curve) {
-            on_sweep_complete(path, std::move(curve));
+        [this, path](helix::calibration::BeltResponse response) {
+            on_sweep_complete(path, std::move(response));
         },
         [this](const std::string& message) { on_sweep_error(message); }, run_window_);
 }
@@ -999,7 +1000,7 @@ void BeltTensionPanel::on_sweep_progress(int /*percent*/, float freq_hz) {
 }
 
 void BeltTensionPanel::on_sweep_complete(helix::calibration::BeltPath path,
-                                         helix::calibration::BeltCurve curve) {
+                                         helix::calibration::BeltResponse response) {
     if (!run_active_) {
         return; // a cancelled run's transcript is stale the moment it lands
     }
@@ -1007,10 +1008,11 @@ void BeltTensionPanel::on_sweep_complete(helix::calibration::BeltPath path,
 
     const int idx = path_index(path);
     if (run_window_) {
-        tune_curves_[idx] = std::move(curve);
+        tune_curves_[idx] = std::move(response.xyz);
     } else {
         auto& run = runs_[idx];
-        run.curve = std::move(curve);
+        run.curve = std::move(response.xyz);
+        run.in_plane = std::move(response.in_plane);
         run.has = true;
         run.measured_at_ms = lv_tick_get();
     }
