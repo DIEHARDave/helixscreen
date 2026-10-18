@@ -52,7 +52,7 @@ print mapping registers no `BOX_SELECT_SLOT`, and there `T<n>` is slot `n`.
 `humidity_pct` for its box, joined on `address` (never array position) into that unit's
 `AmsUnit::environment`, the per-unit path every backend's environment zones read. An
 entry with `online: false` or null readings, or a box `boxes[]` does not list, has no
-reading. `boxes[]` is a top-level field, so the flat merge keeps the last one across
+reading. An entry with `online: false` also sets that unit's `AmsUnit::connected` to false, so its unit card shows the Disconnected chip until the box answers again. `boxes[]` is a top-level field, so the flat merge keeps the last one across
 frames that omit it. Revision 1 payloads, and revision 2 ones with no `boxes[]`, carry
 one top-level pair, which goes to the box `load_path.box_addr` names, else the lowest
 box. The per-box `fault` object is not read: no per-unit status or error surface exists
