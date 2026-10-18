@@ -21,7 +21,7 @@
          on the navbar. -->
     <header_bar name="overlay_header"
                 title="Print Status" hide_action_icon="false" action_icon="folder"
-                action_button_height="#button_height_sm" action_icon_callback="on_print_status_files"/>
+                action_icon_callback="on_print_status_files"/>
     <!-- Content Area (portrait: stacked column, viewer on top, controls below) -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="0"
