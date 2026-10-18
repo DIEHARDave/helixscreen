@@ -21,9 +21,10 @@
              flex_grow="1" style_radius="#border_radius" style_pad_all="#space_lg" style_pad_gap="#space_md"
              flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center">
 
-      <!-- Info section; on tiny screens the live chart takes its room -->
+      <!-- Info section; hidden while calibrating and while the chart holds a
+           curve, so the chart gets the card's height -->
       <lv_obj width="100%" flex_flow="column" style_pad_all="0" style_pad_gap="#space_sm">
-        <bind_flag_if cond="wizard_input_shaper_has_chart eq 1 and ui_breakpoint_v eq 1" flag="hidden"/>
+        <bind_flag_if cond="wizard_input_shaper_active eq 1 or wizard_input_shaper_has_chart eq 1" flag="hidden"/>
         <text_body width="100%"
                    text="Input shaping reduces vibration artifacts (ringing) in your prints." style_text_align="center"/>
         <text_small width="100%"
@@ -31,24 +32,33 @@
                     style_text_color="#text_muted"/>
       </lv_obj>
 
-      <!-- Status display -->
+      <!-- Status display: one status line with Cancel beside it, then a thin bar -->
       <lv_obj width="100%"
-              flex_flow="column" style_pad_all="0" style_pad_gap="#space_sm" style_flex_cross_place="center">
-        <text_body width="100%" bind_text="wizard_input_shaper_status" style_text_align="center"/>
+              flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs" style_flex_cross_place="center">
+        <lv_obj width="100%"
+                height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+                style_pad_gap="#space_sm" scrollable="false">
+          <text_body name="wizard_input_shaper_status_label"
+                     flex_grow="1" bind_text="wizard_input_shaper_status" long_mode="dots"/>
+          <!-- Spinner during the indeterminate analysis phase -->
+          <spinner size="sm">
+            <bind_flag_if_eq subject="wizard_input_shaper_indeterminate" flag="hidden" ref_value="0"/>
+          </spinner>
+          <!-- Cancel (visible only while calibration is running) sends M112 +
+               firmware_restart: the gcode queue is blocked during the sweep, so
+               that is the only reliable abort. -->
+          <ui_button name="cancel_calibration_btn" height="#button_height_sm" text="Cancel" variant="warning">
+            <event_cb trigger="clicked" callback="on_cancel_is_calibration"/>
+            <bind_flag_if_eq subject="wizard_input_shaper_active" flag="hidden" ref_value="0"/>
+          </ui_button>
+        </lv_obj>
 
-        <!-- Progress bar (visible during the determinate sweep phases, centered).
-             Hidden during the offline analysis phase, which reports no percent:
-             the spinner below takes over and the status label counts elapsed
-             seconds so the step keeps moving for the analysis' multi-minute
-             window. -->
-        <progress_bar name="calibration_progress_bar" width="80%" bind_value="wizard_input_shaper_progress">
+        <!-- Progress bar during the determinate sweep phases. Hidden during the
+             offline analysis phase, which reports no percent: the spinner takes
+             over and the status label counts elapsed seconds. -->
+        <progress_bar name="calibration_progress_bar" width="100%" bind_value="wizard_input_shaper_progress">
           <bind_flag_if cond="wizard_input_shaper_progress eq 0 or wizard_input_shaper_indeterminate eq 1" flag="hidden"/>
         </progress_bar>
-
-        <!-- Spinner during the indeterminate analysis phase -->
-        <spinner size="lg">
-          <bind_flag_if_eq subject="wizard_input_shaper_indeterminate" flag="hidden" ref_value="0"/>
-        </spinner>
 
         <!-- Completion help text (shown only when calibration finishes, progress==100) -->
         <text_small width="100%"
@@ -76,18 +86,6 @@
                  width="#wizard_button_width" height="#button_height" text="Start Calibration">
         <event_cb trigger="clicked" callback="on_start_is_calibration"/>
         <bind_flag_if_eq subject="wizard_input_shaper_started" flag="hidden" ref_value="1"/>
-      </ui_button>
-
-      <!-- Cancel button (visible only while calibration is running). Triggers
-           M112 + firmware_restart so Klipper actually stops the SHAPER_CALIBRATE
-           macro — the gcode queue is blocked during the sweep, so M112 is the
-           only reliable abort. Visibility is driven by a single
-           wizard_input_shaper_active subject so we don't get two bind_flag_if_eq
-           rules fighting over the hidden flag. -->
-      <ui_button name="cancel_calibration_btn"
-                 width="#wizard_button_width" height="#button_height" text="Cancel" variant="warning">
-        <event_cb trigger="clicked" callback="on_cancel_is_calibration"/>
-        <bind_flag_if_eq subject="wizard_input_shaper_active" flag="hidden" ref_value="0"/>
       </ui_button>
 
       <!-- Help text (hidden once calibration starts) -->
