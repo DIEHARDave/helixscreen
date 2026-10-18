@@ -38,13 +38,23 @@
          a 272px-tall landscape panel. -->
     <!-- The stacked colour grid's swatch size: the cramped classes take the
          micro size so the folded grid leaves room for the product row. -->
-    <px name="ams_edit_grid_gap_micro" value="#swatch_grid_gap"/>
-    <px name="ams_edit_grid_gap_tiny" value="6"/>
-    <px name="ams_edit_grid_gap_small" value="6"/>
-    <px name="ams_edit_grid_gap_medium" value="#swatch_grid_gap"/>
-    <px name="ams_edit_grid_gap_large" value="#swatch_grid_gap"/>
-    <px name="ams_edit_grid_gap_xlarge" value="#swatch_grid_gap"/>
-    <px name="ams_edit_grid_gap_xxlarge" value="#swatch_grid_gap"/>
+    <!-- Touch floor: every swatch's hit box is >= 44px, and the gap is
+         44 - disc so adjacent targets tile at exactly 44px pitch without
+         overlapping (overlaps make LVGL give the tap to the topmost). -->
+    <px name="ams_edit_grid_hit_micro" value="9"/>
+    <px name="ams_edit_grid_hit_tiny" value="9"/>
+    <px name="ams_edit_grid_hit_small" value="9"/>
+    <px name="ams_edit_grid_hit_medium" value="6"/>
+    <px name="ams_edit_grid_hit_large" value="6"/>
+    <px name="ams_edit_grid_hit_xlarge" value="6"/>
+    <px name="ams_edit_grid_hit_xxlarge" value="6"/>
+    <px name="ams_edit_grid_gap_micro" value="18"/>
+    <px name="ams_edit_grid_gap_tiny" value="18"/>
+    <px name="ams_edit_grid_gap_small" value="18"/>
+    <px name="ams_edit_grid_gap_medium" value="12"/>
+    <px name="ams_edit_grid_gap_large" value="12"/>
+    <px name="ams_edit_grid_gap_xlarge" value="12"/>
+    <px name="ams_edit_grid_gap_xxlarge" value="12"/>
     <px name="ams_edit_grid_swatch_micro" value="#swatch_grid_size_micro"/>
     <px name="ams_edit_grid_swatch_tiny" value="#swatch_grid_size_micro"/>
     <px name="ams_edit_grid_swatch_small" value="#swatch_grid_size_micro"/>
@@ -229,7 +239,7 @@
               <repeat count="ams_edit_color_col_count">
                 <color_swatch index="${i}"
                               color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"
-                              callback="ams_edit_quick_swatch_cb" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
+                              callback="ams_edit_quick_swatch_cb" size="#swatch_grid_size" hit="#ams_edit_grid_hit"
                               reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring"/>
               </repeat>
             </lv_obj>
@@ -300,7 +310,7 @@
             <repeat count="ams_edit_color_row_count">
               <color_swatch index="${i}"
                             color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"
-                            callback="ams_edit_quick_swatch_cb" size="#ams_edit_grid_swatch" hit="#swatch_grid_gap_half"
+                            callback="ams_edit_quick_swatch_cb" size="#ams_edit_grid_swatch" hit="#ams_edit_grid_hit"
                             reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring"/>
             </repeat>
           </lv_obj>

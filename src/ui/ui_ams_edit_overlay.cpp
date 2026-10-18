@@ -878,7 +878,7 @@ void AmsEditOverlay::enter_editor() {
     // The colour areas are subject-counted (a literal <repeat> inside <if> is
     // refused by the engine): the narrow split column always shows 15, the
     // stacked grid 18 where height is scarce and 30 where it is not.
-    lv_subject_set_int(&color_col_count_subject_, 15);
+    lv_subject_set_int(&color_col_count_subject_, 9);
     lv_subject_t* bp = theme_manager_get_breakpoint_subject();
     const int row_count =
         (bp && lv_subject_get_int(bp) <= static_cast<int>(UiBreakpoint::Small)) ? 18 : 30;

@@ -9,6 +9,7 @@
 #include "helix_test_fixture.h"
 #include "spoolman_types.h"
 
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -185,4 +186,39 @@ TEST_CASE("recent_brands keeps first-seen order", "[catalog][edit-spool]") {
     REQUIRE(brands.size() == 2);
     CHECK(brands[0] == "eSUN");
     CHECK(brands[1] == "Polymaker");
+}
+
+TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
+          "[catalog][edit-spool]") {
+    // The touch box is disc + 2*hit (color_swatch's ext_click_area), and the
+    // grid gap must be >= 2*hit so adjacent targets tile at their pitch
+    // without overlapping. Read the ladders straight out of the XML so a
+    // regression in the consts fails here, not on a device.
+    std::ifstream in("ui_xml/ams_edit_overlay.xml");
+    REQUIRE(in.is_open());
+    std::string xml((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    auto read_px = [&](const std::string& name) -> int {
+        const std::string needle = "name=\"" + name + "\" value=\"";
+        auto at = xml.find(needle);
+        REQUIRE(at != std::string::npos);
+        return std::atoi(xml.c_str() + at + needle.size());
+    };
+    // The disc ladder resolves through #tokens; assert on the literal
+    // micro/small/medium grid consts the ladders reference.
+    const int disc_micro = 26;
+    const int disc_medium = 32;
+    for (const char* cls : {"micro", "tiny", "small"}) {
+        const std::string p = std::string("ams_edit_grid_");
+        const int hit = read_px(p + "hit_" + cls);
+        const int gap = read_px(p + "gap_" + cls);
+        CHECK(disc_micro + 2 * hit >= 44);
+        CHECK(gap >= 2 * hit);
+    }
+    for (const char* cls : {"medium", "large", "xlarge", "xxlarge"}) {
+        const std::string p = std::string("ams_edit_grid_");
+        const int hit = read_px(p + "hit_" + cls);
+        const int gap = read_px(p + "gap_" + cls);
+        CHECK(disc_medium + 2 * hit >= 44);
+        CHECK(gap >= 2 * hit);
+    }
 }
