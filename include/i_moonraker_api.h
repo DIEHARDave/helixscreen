@@ -23,6 +23,18 @@ class IMoonrakerClient; // returned by get_client()
 class PrinterState;     // returned by printer_state()
 class PrinterDiscovery; // returned by hardware()
 
+/// Klippy's state as Moonraker's printer.info reports it. `state` is the raw
+/// string: Klipper's ready/startup/shutdown/error (parse_klippy_state() maps
+/// those), or Moonraker's own "disconnected" while it has no Klippy connection.
+struct KlippyStatus {
+    std::string state;
+    std::string state_message;
+};
+
+/// Read state and state_message from a printer.info `result` object; either is
+/// empty when absent or not a string.
+KlippyStatus parse_klippy_status(const nlohmann::json& info);
+
 /**
  * @brief Abstract interface for the high-level Moonraker API façade.
  *
@@ -41,14 +53,6 @@ class PrinterDiscovery; // returned by hardware()
  * (test_interface_drift_moonraker_api.cpp) fails the build if the mock ever
  * stops implementing every pure virtual declared here.
  */
-/// Klippy's state as Moonraker's printer.info reports it. `state` is the raw
-/// string: Klipper's ready/startup/shutdown/error (parse_klippy_state() maps
-/// those), or Moonraker's own "disconnected" while it has no Klippy connection.
-struct KlippyStatus {
-    std::string state;
-    std::string state_message;
-};
-
 class IMoonrakerAPI {
   public:
     using SuccessCallback = std::function<void()>;

@@ -82,6 +82,14 @@ class AbortManagerTestAccess {
         m.on_restart_sent(outcome);
     }
 
+    static void send_firmware_restart(AbortManager& m) {
+        m.send_firmware_restart();
+    }
+
+    static lv_timer_t* restart_timer(AbortManager& m) {
+        return m.restart_timer_.get();
+    }
+
     static void on_klippy_ready(AbortManager& m) {
         m.on_klippy_state_changed(KlippyState::READY);
     }

@@ -404,6 +404,22 @@ TEST_CASE_METHOD(KlippyFreshnessFixture, "Klippy freshness: printer.info seeds b
         helix::ui::UpdateQueue::instance().drain();
         CHECK(klippy() == KlippyState::SHUTDOWN);
     }
+
+    SECTION("a seed carries its reason") {
+        state.set_klippy_state_if_unseeded(KlippyState::ERROR, "key298: rpi MCU is shutdown");
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(klippy() == KlippyState::ERROR);
+        CHECK(state.network_state().get_klippy_fault_message() == "key298: rpi MCU is shutdown");
+    }
+
+    SECTION("a refused seed leaves the live reason alone") {
+        live("shutdown", 100.0);
+        const std::string live_reason = state.network_state().get_klippy_state_message();
+
+        state.set_klippy_state_if_unseeded(KlippyState::ERROR, "stale reason");
+        helix::ui::UpdateQueue::instance().drain();
+        CHECK(state.network_state().get_klippy_state_message() == live_reason);
+    }
 }
 
 // ============================================================================

@@ -13,6 +13,7 @@
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
 
+#include <chrono>
 #include <string>
 
 #include "../catch_amalgamated.hpp"
@@ -39,14 +40,26 @@ class PrinterInfoClient : public MoonrakerClientMock {
                                                      intent);
         }
         ++info_requests;
-        if (success_cb) {
+        if (hold) {
+            held = std::move(success_cb);
+        } else if (success_cb) {
             success_cb(json{{"jsonrpc", "2.0"}, {"result", info}});
         }
         return 1;
     }
 
+    /// Answer the held request now, with whatever `info` says by then.
+    void answer_held() {
+        auto cb = std::move(held);
+        held = nullptr;
+        cb(json{{"jsonrpc", "2.0"}, {"result", info}});
+    }
+
     json info = {{"state", "startup"}, {"state_message", "Printer is starting up"}};
     int info_requests = 0;
+    /// Keep the next printer.info's callback in `held` instead of answering it.
+    bool hold = false;
+    std::function<void(const json&)> held;
 };
 
 std::string klippy_notification(const char* method) {
@@ -155,4 +168,58 @@ TEST_CASE_METHOD(KlippyPollFixture, "Klippy poll: nothing polls while Klippy is 
     REQUIRE_FALSE(MoonrakerClientTestAccess::klippy_state_polling(client_));
     tick();
     REQUIRE(client_.info_requests == 0);
+}
+
+TEST_CASE_METHOD(KlippyPollFixture,
+                 "Klippy poll: an answer landing after notify_klippy_ready is dropped",
+                 "[klippy][klippy_poll]") {
+    disconnect_klippy();
+    client_.hold = true;
+    tick();
+    REQUIRE(client_.held);
+
+    client_.on_ws_message(klippy_notification("notify_klippy_ready"));
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(klippy_state() == KlippyState::READY);
+
+    // Asked before Klippy came up; its stale error must not override READY.
+    client_.info = {{"state", "error"}, {"state_message", kKey298}};
+    client_.answer_held();
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(klippy_state() == KlippyState::READY);
+}
+
+TEST_CASE_METHOD(KlippyPollFixture,
+                 "Klippy poll: an answer landing after a socket close is dropped",
+                 "[klippy][klippy_poll]") {
+    disconnect_klippy();
+    client_.hold = true;
+    tick();
+    REQUIRE(client_.held);
+
+    MoonrakerClientTestAccess::fire_ws_close(client_);
+    helix::ui::UpdateQueue::instance().drain();
+    const KlippyState after_close = klippy_state();
+
+    client_.info = {{"state", "error"}, {"state_message", kKey298}};
+    client_.answer_held();
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(klippy_state() == after_close);
+    REQUIRE(after_close != KlippyState::ERROR);
+}
+
+TEST_CASE_METHOD(KlippyPollFixture, "Klippy poll: it gives up after its bound",
+                 "[klippy][klippy_poll]") {
+    disconnect_klippy();
+    tick();
+    REQUIRE(client_.info_requests == 1);
+    REQUIRE(MoonrakerClientTestAccess::klippy_state_polling(client_));
+
+    MoonrakerClientTestAccess::age_klippy_state_poll(client_, std::chrono::seconds(121));
+    tick();
+
+    REQUIRE_FALSE(MoonrakerClientTestAccess::klippy_state_polling(client_));
+    REQUIRE(client_.info_requests == 1);
+    tick();
+    REQUIRE(client_.info_requests == 1);
 }

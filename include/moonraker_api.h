@@ -350,9 +350,9 @@ class MoonrakerAPI : public helix::IMoonrakerAPI {
     // ========================================================================
 
     /**
-     * @brief Query if printer is ready for commands
+     * @brief Query Klippy's state and state message (printer.info)
      *
-     * @param on_result Callback with ready state
+     * @param on_result Callback with the reported state and message
      * @param on_error Error callback
      */
     void get_klippy_status(KlippyStatusCallback on_result, ErrorCallback on_error) override;

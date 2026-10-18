@@ -238,6 +238,10 @@ class AbortManager {
     /// slow MCU re-enumeration (CFS rediscovery, RS-485 bus settle) enough
     /// headroom without leaving the user staring at "Restarting..." forever.
     static constexpr uint32_t RECONNECT_TIMEOUT_MS = 30000; ///< 30 seconds
+    /// Backstop for the recovery service itself: its restart check, the local
+    /// script and its re-check together finish well inside this, so it fires
+    /// only when the chain never reports back.
+    static constexpr uint32_t RESTART_TIMEOUT_MS = 150000; ///< 2.5 minutes
 
   private:
     friend class AbortManagerTestAccess;
@@ -294,6 +298,7 @@ class AbortManager {
     helix::ui::LvglTimerGuard probe_timer_;
     helix::ui::LvglTimerGuard cancel_timer_;
     helix::ui::LvglTimerGuard reconnect_timer_;
+    helix::ui::LvglTimerGuard restart_timer_;
 
     // Invalidated by start_abort(), so replies from an earlier sequence are dropped
     helix::AsyncLifetimeGuard lifetime_;
@@ -397,6 +402,7 @@ class AbortManager {
     static void probe_timer_cb(lv_timer_t* timer);
     static void cancel_timer_cb(lv_timer_t* timer);
     static void reconnect_timer_cb(lv_timer_t* timer);
+    static void restart_timer_cb(lv_timer_t* timer);
 };
 
 } // namespace helix

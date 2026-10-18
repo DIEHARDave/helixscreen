@@ -534,8 +534,10 @@ class PrinterState {
      * notify_klippy_* message) has set the state.
      *
      * @param state KlippyState enum value
+     * @param state_message The reason reported with it (printer.info's
+     *        state_message), applied with the state; empty leaves the message alone
      */
-    void set_klippy_state_if_unseeded(KlippyState state);
+    void set_klippy_state_if_unseeded(KlippyState state, const std::string& state_message = "");
 
     /**
      * @brief Update printer capability subjects from PrinterDiscovery
@@ -972,7 +974,7 @@ class PrinterState {
 
     /// Main-thread half of set_klippy_state_if_unseeded(): re-checks the guard in
     /// the same serialized order as the webhooks parse, then applies.
-    void set_klippy_state_if_unseeded_internal(KlippyState state);
+    void set_klippy_state_if_unseeded_internal(KlippyState state, const std::string& state_message);
 
     /**
      * @brief Synthesize runtime-dependent options (timelapse, etc.) into the

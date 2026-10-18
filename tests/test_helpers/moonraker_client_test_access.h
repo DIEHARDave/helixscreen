@@ -4,6 +4,7 @@
 
 #include "moonraker_client.h"
 
+#include <chrono>
 #include <shared_mutex>
 
 namespace helix {
@@ -49,12 +50,7 @@ class MoonrakerClientTestAccess {
         c.on_ws_close();
     }
 
-    // Take the shared lock a WebSocket trampoline holds for as long as its callback
-    // runs. A test holding it stands in for a callback that has not returned, which
-    // is what disconnect()'s bounded drain is waiting on. Acquire it from a thread
-    // other than the one that will call disconnect(): std::shared_mutex is neither
-    // recursive nor upgradeable.
-    /// One health-timer tick's worth of the post-disconnect Klippy state poll.
+    // One health-timer tick's worth of the post-disconnect Klippy state poll.
     static void poll_klippy_state(MoonrakerClient& c) {
         c.poll_klippy_state();
     }
@@ -63,6 +59,17 @@ class MoonrakerClientTestAccess {
         return c.klippy_state_poll_->started_at.load() != 0;
     }
 
+    // Move the running poll's start @p ms into the past, as that much time passing would.
+    static void age_klippy_state_poll(MoonrakerClient& c, std::chrono::milliseconds ms) {
+        c.klippy_state_poll_->started_at -=
+            std::chrono::duration_cast<std::chrono::steady_clock::duration>(ms).count();
+    }
+
+    // Take the shared lock a WebSocket trampoline holds for as long as its callback
+    // runs. A test holding it stands in for a callback that has not returned, which
+    // is what disconnect()'s bounded drain is waiting on. Acquire it from a thread
+    // other than the one that will call disconnect(): std::shared_mutex is neither
+    // recursive nor upgradeable.
     static std::shared_lock<std::shared_mutex> hold_callback_lock(MoonrakerClient& c) {
         return std::shared_lock<std::shared_mutex>(c.callback_lifecycle_mutex_);
     }

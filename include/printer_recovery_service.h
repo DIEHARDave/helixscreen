@@ -12,6 +12,20 @@
 namespace helix {
 class IMoonrakerAPI;
 
+/// What a successful recovery established.
+enum class RecoveryOutcome {
+    KLIPPY_READY,   ///< printer.info reported `ready` after the restart.
+    RESTART_ISSUED, ///< A restart was started; Klippy's state comes from its notifications.
+};
+
+/// Cadence and bound of the post-restart `printer.info` poll.
+struct RecoveryTiming {
+    uint32_t poll_interval_ms = 2000;
+    uint32_t verify_window_ms = 45000;
+    /// How long a Klippy still answering `startup` is waited for.
+    uint32_t startup_cap_ms = 120000;
+};
+
 /// Platform-blind printer recovery orchestrator.
 ///
 /// "Recovery" means: bring a Klipper instance back to a usable state when
@@ -30,9 +44,14 @@ class IMoonrakerAPI;
 ///      that the restart began, so the chain then polls `printer.info` for a
 ///      bounded window: `ready` completes, while `error` (a startup failure
 ///      such as key298) or no `ready` before the window ends runs step 2 once.
-///      Without a local script that ends the chain: a startup error on a
-///      host with no platform knowledge is a config fault no service restart
-///      clears, and the app's klippy state already shows it.
+///      While Klippy keeps reporting `startup` the window stretches to a hard
+///      cap instead, since a slow boot is not a failure; the cap ends the
+///      chain with no script. After the script exits 0 the same poll runs
+///      once more, without escalating again, so a recovery that brings
+///      Klippy back reports it ready. Without a local script the chain ends
+///      at the first escalation: a startup error on a host with no platform
+///      knowledge is a config fault no service restart clears, and the
+///      app's klippy state already shows it.
 ///   2. **Local exec** of `$INSTALL_DIR/bin/helix-recover.sh` (this class
 ///      `fork()` + `execvp()`s it). The per-platform installer
 ///      (`scripts/lib/installer/recovery.sh`) writes the script with the
@@ -47,19 +66,12 @@ class IMoonrakerAPI;
 /// All platform knowledge lives in the shipped helix-recover.sh.
 ///
 /// Lifetime: stateless free-standing helper, owned wherever it's invoked from
-/// (typically the EmergencyStopOverlay or a toast action callback).
-/// What a successful recovery established.
-enum class RecoveryOutcome {
-    KLIPPY_READY,   ///< printer.info reported `ready` after the restart.
-    RESTART_ISSUED, ///< A restart was started; Klippy's state comes from its notifications.
-};
-
-/// Cadence and bound of the post-restart `printer.info` poll.
-struct RecoveryTiming {
-    uint32_t poll_interval_ms = 2000;
-    uint32_t verify_window_ms = 45000;
-};
-
+/// (typically the EmergencyStopOverlay or a toast action callback). The
+/// chain outlives it; a chain whose Moonraker client is destroyed (printer
+/// switch, soft restart) stops without calling either callback.
+///
+/// Single-flight: one chain runs at a time, process-wide. recover() while one
+/// is running refuses through on_error.
 class PrinterRecoveryService {
   public:
     using SuccessCallback = std::function<void(RecoveryOutcome)>;
@@ -69,7 +81,8 @@ class PrinterRecoveryService {
         : api_(api), timing_(timing) {}
 
     /// Run the full recovery chain (see class doc). Either callback may run
-    /// on the WebSocket thread or the main thread.
+    /// on the WebSocket thread or the main thread, and exactly one runs unless
+    /// the Moonraker client is destroyed mid-chain.
     void recover(SuccessCallback on_success, ErrorCallback on_error);
 
     /// True iff `$INSTALL_DIR/bin/helix-recover.sh` exists and is executable.

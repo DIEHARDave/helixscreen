@@ -391,6 +391,10 @@ void AbortManager::send_firmware_restart() {
     set_state(State::SENT_RESTART);
     set_progress_message("Restarting...");
 
+    auto* rt = lv_timer_create(restart_timer_cb, RESTART_TIMEOUT_MS, this);
+    lv_timer_set_repeat_count(rt, 1);
+    restart_timer_.reset(rt);
+
     // If no API, just stay in SENT_RESTART state
     // Tests will call on_restart_sent() via AbortManagerTestAccess to progress
     if (!api_) {
@@ -629,6 +633,7 @@ void AbortManager::on_restart_sent(RecoveryOutcome outcome) {
     if (abort_state_ != State::SENT_RESTART) {
         return; // Stale callback
     }
+    restart_timer_.reset();
 
     // A verified READY may already have reached the klippy subject, so
     // wait_for_reconnect()'s SHUTDOWN-then-READY edge would never come.
@@ -740,6 +745,7 @@ void AbortManager::cancel_all_timers() {
     probe_timer_.reset();
     cancel_timer_.reset();
     reconnect_timer_.reset();
+    restart_timer_.reset();
 
     // Also clean up cancel state observer (may be active during SENT_CANCEL)
     cancel_state_observer_.reset();
@@ -833,6 +839,15 @@ void AbortManager::cancel_timer_cb(lv_timer_t* timer) {
     if (self) {
         self->cancel_timer_.release(); // One-shot auto-deleted by LVGL
         self->on_cancel_timeout();
+    }
+}
+
+void AbortManager::restart_timer_cb(lv_timer_t* timer) {
+    auto* self = static_cast<AbortManager*>(lv_timer_get_user_data(timer));
+    if (self) {
+        self->restart_timer_.release(); // One-shot auto-deleted by LVGL
+        spdlog::warn("[AbortManager] Recovery never reported back after {}ms", RESTART_TIMEOUT_MS);
+        self->complete_abort("Abort complete (restart timeout). Check printer status.");
     }
 }
 

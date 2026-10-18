@@ -21,6 +21,7 @@
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/abort_manager_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/scripted_recovery_api.h"
 #include "../ui_test_utils.h"
 #include "abort_manager.h"
 #include "app_globals.h"
@@ -655,6 +656,63 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
     REQUIRE(AbortManager::instance().last_result_message() ==
             "Print aborted. Home before resuming.");
     REQUIRE(AbortManager::instance().is_handling_shutdown() == false);
+}
+
+TEST_CASE_METHOD(AbortManagerTestFixture,
+                 "AbortManager: the recovery service's verified ready reaches the abort",
+                 "[abort][shutdown_recovery]") {
+    get_printer_state().init_subjects(false);
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
+    ScriptedRecoveryApi api(client, get_printer_state());
+    api.statuses = {{"ready", "Printer is ready"}};
+    AbortManager::instance().init(&api, nullptr);
+
+    AbortManagerTestAccess::send_firmware_restart(AbortManager::instance());
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_RESTART);
+
+    REQUIRE(wait_until(
+        []() { return AbortManager::instance().get_state() != AbortManager::State::SENT_RESTART; },
+        10000, 20));
+    REQUIRE(api.firmware_restarts == 1);
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
+    REQUIRE(AbortManager::instance().last_result_message() ==
+            "Print aborted. Home before resuming.");
+}
+
+TEST_CASE_METHOD(AbortManagerTestFixture,
+                 "AbortManager: a recovery that never reports back ends the abort",
+                 "[abort][shutdown_recovery][timeout]") {
+    AbortManager::instance().start_abort();
+    simulate_kalico_not_present();
+    simulate_queue_blocked();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_RESTART);
+
+    lv_timer_t* backstop = AbortManagerTestAccess::restart_timer(AbortManager::instance());
+    REQUIRE(backstop != nullptr);
+    lv_timer_set_period(backstop, 10);
+    process_lvgl(50);
+
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
+    REQUIRE(AbortManager::instance().last_result_message().find("Check printer status") !=
+            std::string::npos);
+    REQUIRE(AbortManager::instance().is_handling_shutdown() == false);
+}
+
+TEST_CASE_METHOD(AbortManagerTestFixture,
+                 "AbortManager: the recovery reporting back disarms the "
+                 "restart backstop",
+                 "[abort][shutdown_recovery][timeout]") {
+    AbortManager::instance().start_abort();
+    simulate_kalico_not_present();
+    simulate_queue_blocked();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    REQUIRE(AbortManagerTestAccess::restart_timer(AbortManager::instance()) != nullptr);
+
+    AbortManagerTestAccess::on_restart_sent(AbortManager::instance(),
+                                            RecoveryOutcome::RESTART_ISSUED);
+
+    REQUIRE(AbortManagerTestAccess::restart_timer(AbortManager::instance()) == nullptr);
 }
 
 TEST_CASE_METHOD(AbortManagerTestFixture,

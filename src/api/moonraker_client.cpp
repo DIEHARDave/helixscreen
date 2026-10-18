@@ -23,6 +23,7 @@
 #include "helix_thread.h"
 #include "helix_version.h"
 #include "host_identity.h"
+#include "i_moonraker_api.h"
 #include "json_utils.h"
 #include "printer_state.h"
 #include "system/telemetry_manager.h"
@@ -185,11 +186,9 @@ void MoonrakerClient::poll_klippy_state() {
         [poll, generation](const json& response) {
             poll->in_flight.store(false);
             const json* result = helix::json_util::find_member(response, "result");
-            const std::string state =
-                result ? helix::json_util::safe_string(*result, "state", "") : std::string();
-            const std::string message =
-                result ? helix::json_util::safe_string(*result, "state_message", "")
-                       : std::string();
+            const KlippyStatus status = result ? parse_klippy_status(*result) : KlippyStatus{};
+            const std::string& state = status.state;
+            const std::string& message = status.state_message;
 
             // "disconnected" (Moonraker's own) and "startup" are Klippy still on its way.
             const std::optional<KlippyState> parsed = parse_klippy_state(state);

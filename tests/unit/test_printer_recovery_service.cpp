@@ -6,6 +6,7 @@
 // helix-recover.sh runs at most once when Klippy fails to come back.
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/scripted_recovery_api.h"
 #include "app_globals.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
@@ -26,42 +27,8 @@ using namespace helix;
 
 namespace {
 
-/// Answers the three calls the chain makes from scripted values, on the
-/// calling thread, and counts them.
-class ScriptedRecoveryApi : public MoonrakerAPIMock {
-  public:
-    using MoonrakerAPIMock::MoonrakerAPIMock;
-
-    void restart_firmware(SuccessCallback on_success, ErrorCallback on_error) override {
-        ++firmware_restarts;
-        if (firmware_error) {
-            on_error(*firmware_error);
-        } else {
-            on_success();
-        }
-    }
-
-    void restart_service(const std::string& /*service_name*/, SuccessCallback on_success,
-                         ErrorCallback /*on_error*/) override {
-        ++service_restarts;
-        on_success();
-    }
-
-    void get_klippy_status(KlippyStatusCallback on_result, ErrorCallback /*on_error*/) override {
-        const size_t i = std::min(status_queries, statuses.size() - 1);
-        ++status_queries;
-        on_result(statuses[i]);
-    }
-
-    /// printer.info answers in order; the last one repeats.
-    std::vector<KlippyStatus> statuses{{"startup", ""}};
-    std::optional<MoonrakerError> firmware_error;
-    int firmware_restarts = 0;
-    int service_restarts = 0;
-    size_t status_queries = 0;
-};
-
-constexpr RecoveryTiming kFastTiming{/*poll_interval_ms=*/100, /*verify_window_ms=*/1000};
+constexpr RecoveryTiming kFastTiming{/*poll_interval_ms=*/100, /*verify_window_ms=*/1000,
+                                     /*startup_cap_ms=*/3000};
 
 const KlippyStatus kKey298{"error",
                            "Internal error during connect: !{\"code\": \"key298\", "
@@ -70,11 +37,12 @@ const KlippyStatus kKey298{"error",
 class RecoveryFixture : public LVGLTestFixture {
   public:
     RecoveryFixture()
-        : client_(MoonrakerClientMock::PrinterType::VORON_24),
+        : client_(
+              std::make_unique<MoonrakerClientMock>(MoonrakerClientMock::PrinterType::VORON_24)),
           dir_(std::filesystem::temp_directory_path() /
                ("helix_recovery_" + std::to_string(::getpid()))) {
         get_printer_state().init_subjects(false);
-        api_ = std::make_unique<ScriptedRecoveryApi>(client_, get_printer_state());
+        api_ = std::make_unique<ScriptedRecoveryApi>(*client_, get_printer_state());
         std::filesystem::create_directories(dir_);
         detail::local_recovery_script_override_ref() = (dir_ / "absent.sh").string();
     }
@@ -118,7 +86,11 @@ class RecoveryFixture : public LVGLTestFixture {
         REQUIRE(wait_until([this]() { return finished(); }, 10000, 20));
     }
 
-    MoonrakerClientMock client_;
+    int status_queries() const {
+        return *api_->status_queries;
+    }
+
+    std::unique_ptr<MoonrakerClientMock> client_;
     std::unique_ptr<ScriptedRecoveryApi> api_;
     std::optional<RecoveryOutcome> outcome_;
     std::optional<MoonrakerError> error_;
@@ -142,15 +114,16 @@ TEST_CASE_METHOD(RecoveryFixture,
     recover();
     run_to_end();
 
+    // The script ran, then the re-check saw the same error: no second run.
     REQUIRE(script_runs() == 1);
     REQUIRE(outcome_ == RecoveryOutcome::RESTART_ISSUED);
     REQUIRE_FALSE(error_.has_value());
-    REQUIRE(api_->status_queries == 3);
+    REQUIRE(status_queries() == 4);
     REQUIRE(api_->service_restarts == 0);
 
-    // Nothing polls on after the script: the chain is over.
+    // Nothing polls on after that: the chain is over.
     process_lvgl(2000);
-    REQUIRE(api_->status_queries == 3);
+    REQUIRE(status_queries() == 4);
     REQUIRE(script_runs() == 1);
 }
 
@@ -192,16 +165,17 @@ TEST_CASE_METHOD(RecoveryFixture,
                  "Recovery: accepted restart never ready within the window runs the script",
                  "[recovery]") {
     install_script(0);
-    api_->statuses = {{"startup", ""}};
+    api_->statuses = {{"disconnected", ""}};
 
     recover();
     run_to_end();
 
     REQUIRE(script_runs() == 1);
     REQUIRE(outcome_ == RecoveryOutcome::RESTART_ISSUED);
-    // One poll per interval across the 1000ms window, not a tight loop.
-    REQUIRE(api_->status_queries >= 8);
-    REQUIRE(api_->status_queries <= 11);
+    // One poll per interval across the 1000ms window and again across the
+    // re-check after the script, not a tight loop.
+    REQUIRE(status_queries() >= 16);
+    REQUIRE(status_queries() <= 22);
 }
 
 TEST_CASE_METHOD(RecoveryFixture,
@@ -232,7 +206,7 @@ TEST_CASE_METHOD(RecoveryFixture, "Recovery: 503 from firmware_restart goes stra
 
     REQUIRE(script_runs() == 1);
     REQUIRE(outcome_ == RecoveryOutcome::RESTART_ISSUED);
-    REQUIRE(api_->status_queries == 0);
+    REQUIRE(status_queries() == 0);
     REQUIRE(api_->service_restarts == 0);
 }
 
@@ -250,4 +224,130 @@ TEST_CASE_METHOD(RecoveryFixture,
 
     REQUIRE(api_->service_restarts == 1);
     REQUIRE(outcome_ == RecoveryOutcome::RESTART_ISSUED);
+}
+
+TEST_CASE_METHOD(RecoveryFixture,
+                 "Recovery: a Klippy still starting up is waited for, never scripted",
+                 "[recovery]") {
+    install_script(0);
+    api_->statuses = {{"startup", "Printer is starting up"}};
+
+    recover();
+
+    // Past the window and still `startup`: a slow boot, so no script.
+    process_lvgl(1500);
+    REQUIRE_FALSE(finished());
+    REQUIRE(script_runs() == 0);
+
+    run_to_end();
+
+    REQUIRE(outcome_ == RecoveryOutcome::RESTART_ISSUED);
+    REQUIRE(script_runs() == 0);
+    REQUIRE(api_->service_restarts == 0);
+    REQUIRE(status_queries() >= 25);
+}
+
+TEST_CASE_METHOD(RecoveryFixture, "Recovery: a slow boot that comes up ready is verified",
+                 "[recovery]") {
+    install_script(0);
+    std::vector<KlippyStatus> boot(20, KlippyStatus{"startup", ""});
+    boot.push_back({"ready", "Printer is ready"});
+    api_->statuses = boot;
+
+    recover();
+    run_to_end();
+
+    REQUIRE(outcome_ == RecoveryOutcome::KLIPPY_READY);
+    REQUIRE(script_runs() == 0);
+}
+
+TEST_CASE_METHOD(RecoveryFixture,
+                 "Recovery: after the script Klippy coming back ready reports KLIPPY_READY",
+                 "[recovery]") {
+    install_script(0);
+    api_->statuses = {kKey298, {"startup", ""}, {"ready", "Printer is ready"}};
+
+    recover();
+    run_to_end();
+
+    REQUIRE(script_runs() == 1);
+    REQUIRE(outcome_ == RecoveryOutcome::KLIPPY_READY);
+    REQUIRE(status_queries() == 3);
+}
+
+TEST_CASE_METHOD(RecoveryFixture, "Recovery: a failed printer.info is retried, not escalated",
+                 "[recovery]") {
+    install_script(0);
+    api_->status_errors = 2;
+    api_->statuses = {{"ready", "Printer is ready"}};
+
+    recover();
+    run_to_end();
+
+    REQUIRE(outcome_ == RecoveryOutcome::KLIPPY_READY);
+    REQUIRE(status_queries() == 3);
+    REQUIRE(script_runs() == 0);
+}
+
+TEST_CASE_METHOD(RecoveryFixture,
+                 "Recovery: a destroyed client ends the check without a call or a callback",
+                 "[recovery]") {
+    install_script(0);
+    api_->statuses = {{"startup", ""}};
+    const std::shared_ptr<int> queries = api_->status_queries;
+
+    recover();
+    process_lvgl(250);
+    const int before = *queries;
+    REQUIRE(before >= 1);
+
+    // A printer switch: the API and its client go while a poll is pending.
+    api_.reset();
+    client_.reset();
+    process_lvgl(2000);
+
+    REQUIRE(*queries == before);
+    REQUIRE_FALSE(finished());
+    REQUIRE(script_runs() == 0);
+
+    // The abandoned chain no longer holds the single-flight slot.
+    client_ = std::make_unique<MoonrakerClientMock>(MoonrakerClientMock::PrinterType::VORON_24);
+    api_ = std::make_unique<ScriptedRecoveryApi>(*client_, get_printer_state());
+    api_->statuses = {{"ready", ""}};
+    recover();
+    run_to_end();
+    REQUIRE(outcome_ == RecoveryOutcome::KLIPPY_READY);
+}
+
+TEST_CASE_METHOD(RecoveryFixture, "Recovery: one chain at a time, and the slot frees when it ends",
+                 "[recovery]") {
+    install_script(3);
+    api_->statuses = {kKey298};
+    api_->hold_firmware_restart = true;
+
+    recover();
+    REQUIRE(api_->firmware_restarts == 1);
+
+    std::optional<MoonrakerError> refused;
+    PrinterRecoveryService(api_.get(), kFastTiming)
+        .recover([](RecoveryOutcome) { FAIL("a second chain must not run"); },
+                 [&refused](const MoonrakerError& e) { refused = e; });
+    REQUIRE(refused.has_value());
+    REQUIRE(refused->type == MoonrakerErrorType::NOT_READY);
+    REQUIRE(api_->firmware_restarts == 1);
+
+    // The first chain ends on its error path (script exits 3)...
+    api_->hold_firmware_restart = false;
+    api_->held_firmware_ok();
+    run_to_end();
+    REQUIRE(error_.has_value());
+
+    // ...and the next recovery is accepted.
+    error_.reset();
+    api_->statuses = {{"ready", ""}};
+    *api_->status_queries = 0;
+    recover();
+    run_to_end();
+    REQUIRE(outcome_ == RecoveryOutcome::KLIPPY_READY);
+    REQUIRE(api_->firmware_restarts == 2);
 }
