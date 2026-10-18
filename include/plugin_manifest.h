@@ -20,7 +20,7 @@ using json = nlohmann::json;
 enum class SettingType { Bool, Int, Float, Enum, String, Action, Info };
 
 constexpr int kMaxWidgetCells = 8;
-constexpr size_t kMaxWidgetsPerPlugin = 8;
+constexpr size_t kMaxWidgetsPerPlugin = 32;
 
 /// One entry of the manifest's `settings` array.
 struct SettingDecl {

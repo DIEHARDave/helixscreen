@@ -301,11 +301,19 @@ TEST_CASE("manifest widgets reject bad names and spans", "[plugin][manifest]") {
     CHECK(has_error_containing(with_widgets(R"({"id":"ab__l","name":"L","component":"ab__w"},
                                                {"id":"ab__l","name":"M","component":"ab__w"})"),
                                "duplicate widget id"));
-    std::string nine;
-    for (int i = 0; i < 9; ++i)
-        nine += std::string(i ? "," : "") + R"({"id":"ab__w)" + std::to_string(i) +
-                R"(","name":"W","component":"ab__c"})";
-    CHECK(has_error_containing(with_widgets(nine), "at most 8"));
+    auto widgets = [](int n) {
+        std::string out;
+        for (int i = 0; i < n; ++i)
+            out += std::string(i ? "," : "") + R"({"id":"ab__w)" + std::to_string(i) +
+                   R"(","name":"W","component":"ab__c"})";
+        return out;
+    };
+    auto most = with_widgets(widgets(32));
+    REQUIRE(most.manifest);
+    CHECK(most.manifest->widgets.size() == 32);
+    auto over = with_widgets(widgets(33));
+    CHECK_FALSE(over.manifest);
+    CHECK(has_error_containing(over, "'widgets' may list at most 32"));
 }
 
 TEST_CASE("menu_items parse", "[plugin][manifest]") {
