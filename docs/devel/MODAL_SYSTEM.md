@@ -524,6 +524,24 @@ class ControlsPanel {
 
 You should not interact with `ModalStack` directly. Use the `Modal` class API instead.
 
+### Modals stay above overlays
+
+Modals and overlays are both children of the active screen, so their order on screen is
+the order they were created. `NavigationManager::push_overlay` therefore raises every
+visible modal back above the overlay it just brought forward
+(`ModalStack::raise_visible_to_foreground`), and closing a modal raises the ones still
+visible. An overlay pushed while a dialog is up appears beneath it.
+
+### Tags: app modals and plugin dialogs
+
+Each stack entry may carry a tag: empty for the app's own modals, the plugin id for a
+plugin dialog or confirm (`ModalStack::set_tag`). `has_visible_untagged()` answers "is an
+app dialog up", and `top_visible_tag()` names the plugin whose dialog is on top. Plugin
+surfaces wait while any app cover is up, which `include/ui_presentation_gate.h#app_blocked`
+decides (untagged modals, the PIN pad's external cover, the lock screen, the abort and
+busy screens). App code never waits: an app modal always opens on top. The plugin side is
+`PLUGIN_DEVELOPMENT.md` §8, Presentation order.
+
 ### Why the stack records an owner
 
 The two `hide` overloads do different amounts of work. Instance `Modal::hide()` runs the
