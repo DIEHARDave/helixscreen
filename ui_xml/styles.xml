@@ -117,6 +117,10 @@
          it, so an "on" chip reads the same everywhere. -->
     <style name="chip_idle" bg_color="#card_bg" bg_opa="255" border_width="#border_width" border_color="#border"/>
     <style name="chip_active" bg_color="#primary" bg_opa="28%" border_color="#primary"/>
+    <!-- An icon-only action in a screen's header: an elevated circle, the
+         glyph centred with no padding. The size stays on the ui_button
+         (width = height = #button_height_sm), which sets its own height. -->
+    <style name="header_icon_button" radius="9999" bg_color="#elevated_bg" pad_hor="0" pad_ver="0"/>
     <!-- A swatch is its whole touch target: a transparent circle whose padding
          is the ring's reach, holding the colored disc. The selection ring is its
          border, so it draws inside the swatch and no container can clip it. -->

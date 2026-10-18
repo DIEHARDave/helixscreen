@@ -44,24 +44,29 @@
     <!-- The 6-column, 30-swatch preset grids (color_swatch_grid, theme_swatch_grid):
          swatch, gap, half the gap (each swatch's hit reach), and the grid width,
          six swatches and five gaps, so the 30 always form 5 even rows. Every
-         class keeps each swatch's whole touch target at the swatch floor the
-         AMS edit overlay's grid landed: swatch + 2*half >= 44, and
-         gap >= 2*half so neighbouring targets abut without overlapping (LVGL
-         gives an overlap to the topmost widget, which makes taps
-         unpredictable). -->
+         class keeps each swatch's whole touch target at least 7mm on its
+         panel: swatch + 2*half is the pitch, 44px at 160 dpi or less, 46px on
+         the tiny class's 3.5" 480x320 at 165 dpi. gap == 2*half so
+         neighbouring targets abut without overlapping (LVGL gives an overlap
+         to the topmost widget, which makes taps unpredictable). Every grid
+         that uses them, the AMS editor's included, takes them from here. -->
     <px name="swatch_grid_size_micro" value="26"/>
+    <px name="swatch_grid_size_tiny" value="28"/>
     <px name="swatch_grid_size_small" value="28"/>
     <px name="swatch_grid_size_medium" value="32"/>
     <px name="swatch_grid_size_large" value="32"/>
     <px name="swatch_grid_gap_micro" value="18"/>
+    <px name="swatch_grid_gap_tiny" value="18"/>
     <px name="swatch_grid_gap_small" value="16"/>
     <px name="swatch_grid_gap_medium" value="12"/>
     <px name="swatch_grid_gap_large" value="12"/>
     <px name="swatch_grid_gap_half_micro" value="9"/>
+    <px name="swatch_grid_gap_half_tiny" value="9"/>
     <px name="swatch_grid_gap_half_small" value="8"/>
     <px name="swatch_grid_gap_half_medium" value="6"/>
     <px name="swatch_grid_gap_half_large" value="6"/>
     <px name="swatch_grid_width_micro" value="246"/>
+    <px name="swatch_grid_width_tiny" value="258"/>
     <px name="swatch_grid_width_small" value="248"/>
     <px name="swatch_grid_width_medium" value="252"/>
     <px name="swatch_grid_width_large" value="252"/>

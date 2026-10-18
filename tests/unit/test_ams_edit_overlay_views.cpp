@@ -2894,14 +2894,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "colour swatches keep a 7mm pitch on every c
     // 7" 800x480, 3.5" 480x320 (and its portrait), 4.3" 480x272.
     const Panel panels[] = {{800, 480, 7.0}, {480, 320, 3.5}, {320, 480, 3.5}, {480, 272, 4.3}};
     lv_display_t* disp = lv_display_get_default();
+    // The shared swatch-grid tokens every preset grid sizes from.
     const auto token = [](const char* name) {
-        const char* v = lv_xml_get_const(lv_xml_component_get_scope("ams_edit_overlay"), name);
+        const char* v = lv_xml_get_const(nullptr, name);
         REQUIRE(v != nullptr);
-        // A value naming a global token ("#swatch_grid_size") resolves through it.
-        if (v[0] == '#') {
-            v = lv_xml_get_const(nullptr, v + 1);
-            REQUIRE(v != nullptr);
-        }
         return std::atoi(v);
     };
     for (const Panel& p : panels) {
@@ -2909,22 +2905,20 @@ TEST_CASE_METHOD(LVGLUITestFixture, "colour swatches keep a 7mm pitch on every c
         {
             ScopedResolution res(disp, p.w, p.h);
             theme_manager_refresh_layout_constants(disp);
-            REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_edit_overlay.xml") ==
-                    LV_RESULT_OK);
-            const int disc = token("ams_edit_grid_swatch");
-            const int gap = token("ams_edit_grid_gap");
-            const int hit = token("ams_edit_grid_hit");
+            const int disc = token("swatch_grid_size");
+            const int gap = token("swatch_grid_gap");
+            const int hit = token("swatch_grid_gap_half");
             const double dpi = std::hypot(p.w, p.h) / p.inches;
             const double floor_px = 7.0 / 25.4 * dpi;
             CAPTURE(disc, gap, hit, dpi, floor_px);
             CHECK(disc + gap >= floor_px);
             // The reach tiles the gap exactly: adjacent targets meet, never overlap.
             CHECK(2 * hit == gap);
+            // The six-column grids are exactly six swatches and five gaps wide.
+            CHECK(token("swatch_grid_width") == 6 * disc + 5 * gap);
         }
     }
-    // Put the component back at the suite's size for the cases that follow.
     theme_manager_refresh_layout_constants(disp);
-    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_edit_overlay.xml") == LV_RESULT_OK);
 }
 
 TEST_CASE("grid_preset_count fills whole rows less the custom tile",

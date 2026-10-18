@@ -34,36 +34,6 @@
     <px name="field_w_text_small" value="120"/>
     <px name="field_w_text_medium" value="150"/>
     <px name="field_w_text_large" value="180"/>
-    <!-- Both colour grids' swatch size: the cramped classes take the micro
-         size so the folded grid leaves room for the product row. -->
-    <!-- Touch floor: a swatch's pitch (disc + gap) is at least 7mm on the
-         class's panel, and hit = gap / 2 so adjacent targets tile at that
-         pitch without overlapping (overlaps make LVGL give the tap to the
-         topmost). 44px clears 7mm up to 160 dpi; the tiny class is the
-         3.5" 480x320 panel at 165 dpi, where 7mm is 46px. -->
-    <!-- Each grid is padded by the reach, so the outer swatches' reach
-         lies inside the grid's box, where LVGL hit-tests it. -->
-    <px name="ams_edit_grid_hit_micro" value="7"/>
-    <px name="ams_edit_grid_hit_tiny" value="8"/>
-    <px name="ams_edit_grid_hit_small" value="7"/>
-    <px name="ams_edit_grid_hit_medium" value="6"/>
-    <px name="ams_edit_grid_hit_large" value="6"/>
-    <px name="ams_edit_grid_hit_xlarge" value="6"/>
-    <px name="ams_edit_grid_hit_xxlarge" value="6"/>
-    <px name="ams_edit_grid_gap_micro" value="14"/>
-    <px name="ams_edit_grid_gap_tiny" value="16"/>
-    <px name="ams_edit_grid_gap_small" value="14"/>
-    <px name="ams_edit_grid_gap_medium" value="12"/>
-    <px name="ams_edit_grid_gap_large" value="12"/>
-    <px name="ams_edit_grid_gap_xlarge" value="12"/>
-    <px name="ams_edit_grid_gap_xxlarge" value="12"/>
-    <px name="ams_edit_grid_swatch_micro" value="30"/>
-    <px name="ams_edit_grid_swatch_tiny" value="30"/>
-    <px name="ams_edit_grid_swatch_small" value="30"/>
-    <px name="ams_edit_grid_swatch_medium" value="#swatch_grid_size"/>
-    <px name="ams_edit_grid_swatch_large" value="#swatch_grid_size"/>
-    <px name="ams_edit_grid_swatch_xlarge" value="#swatch_grid_size"/>
-    <px name="ams_edit_grid_swatch_xxlarge" value="#swatch_grid_size"/>
     <!-- Vertical gap between the editor's rows: the theme's space_xs (4)
          everywhere except the cramped small class, where the stack needs two
          pixels back to fit the fold. -->
@@ -130,8 +100,7 @@
         action_button_disabled_subject="ams_edit_save_disabled" action_button_hidden_subject="ams_edit_save_hidden"
         title_badge_icon="spoolman" title_badge_subject="ams_edit_is_managed" back_button_callback="ams_edit_back_cb">
     <!-- Header icon buttons, left of Save: Choose from Spoolman and Scan QR,
-         the app's round icon-only header button (elevated circle, as Motion
-         and Print Status use). Injected into header_bar's content slot;
+         drawn by styles.header_icon_button. Injected into header_bar's content slot;
          gated on Spoolman availability (ams_edit_scan_enabled also carries
          the no-camera build gate). The row is the header's full height and
          padded by the reach, so each button's ext_click_area lies inside it:
@@ -144,16 +113,16 @@
               hidden="true">
         <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
         <ui_button name="btn_hdr_spoolman"
-                   width="#button_height_sm" height="#button_height_sm" style_radius="9999"
-                   style_bg_color="#elevated_bg" style_pad_hor="0" style_pad_ver="0" icon="spoolman" icon_size="sm"
+                   width="#button_height_sm" height="#button_height_sm" icon="spoolman" icon_size="sm"
                    ext_click_area="#ams_edit_hdr_hit" hidden="true">
+          <style name="styles.header_icon_button"/>
           <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="ams_edit_choose_spoolman_cb"/>
         </ui_button>
         <ui_button name="btn_hdr_scan_qr"
-                   width="#button_height_sm" height="#button_height_sm" style_radius="9999"
-                   style_bg_color="#elevated_bg" style_pad_hor="0" style_pad_ver="0" icon="qrcode_scan" icon_size="sm"
+                   width="#button_height_sm" height="#button_height_sm" icon="qrcode_scan" icon_size="sm"
                    ext_click_area="#ams_edit_hdr_hit" hidden="true">
+          <style name="styles.header_icon_button"/>
           <bind_flag_if_eq subject="ams_edit_scan_enabled" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="ams_edit_scan_qr_cb"/>
         </ui_button>
@@ -278,14 +247,14 @@
               <tag_badge subject="ams_edit_tag_color"/>
             </lv_obj>
             <lv_obj name="color_grid_split"
-                    width="100%" height="content" style_pad_all="#ams_edit_grid_hit" flex_flow="row_wrap"
-                    style_pad_gap="#ams_edit_grid_gap" scrollable="false">
+                    width="100%" height="content" style_pad_all="#swatch_grid_gap_half" flex_flow="row_wrap"
+                    style_pad_gap="#swatch_grid_gap" scrollable="false">
               <!-- The custom colour: the app's rainbow custom swatch, the grid's
                    first tile so it shares the 44px hit pitch. It leads because
                    a count change rebuilds the repeat at the end of the row. -->
               <color_swatch name="btn_custom_color_split"
                             index="-2" fill="disc_rainbow" selected_subject="ams_edit_color_selected"
-                            callback="ams_edit_custom_color_cb" size="#ams_edit_grid_swatch" hit="#ams_edit_grid_hit"
+                            callback="ams_edit_custom_color_cb" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
                             reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring">
                 <lv_obj width="50%"
                         height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
@@ -296,7 +265,7 @@
               <repeat count="ams_edit_color_col_count">
                 <color_swatch index="${i}"
                               color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"
-                              callback="ams_edit_quick_swatch_cb" size="#ams_edit_grid_swatch" hit="#ams_edit_grid_hit"
+                              callback="ams_edit_quick_swatch_cb" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
                               reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring"/>
               </repeat>
             </lv_obj>
@@ -355,14 +324,14 @@
             <tag_badge subject="ams_edit_tag_color"/>
           </lv_obj>
           <lv_obj name="color_grid"
-                  width="100%" height="content" style_pad_all="#ams_edit_grid_hit" flex_flow="row_wrap"
-                  style_pad_gap="#ams_edit_grid_gap" scrollable="false">
+                  width="100%" height="content" style_pad_all="#swatch_grid_gap_half" flex_flow="row_wrap"
+                  style_pad_gap="#swatch_grid_gap" scrollable="false">
             <!-- The custom colour: the app's rainbow custom swatch, the grid's
                  first tile so it shares the 44px hit pitch. It leads because
                  a count change rebuilds the repeat at the end of the row. -->
             <color_swatch name="btn_custom_color"
                           index="-2" fill="disc_rainbow" selected_subject="ams_edit_color_selected"
-                          callback="ams_edit_custom_color_cb" size="#ams_edit_grid_swatch" hit="#ams_edit_grid_hit"
+                          callback="ams_edit_custom_color_cb" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
                           reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring">
               <lv_obj width="50%"
                       height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
@@ -373,7 +342,7 @@
             <repeat count="ams_edit_color_row_count">
               <color_swatch index="${i}"
                             color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"
-                            callback="ams_edit_quick_swatch_cb" size="#ams_edit_grid_swatch" hit="#ams_edit_grid_hit"
+                            callback="ams_edit_quick_swatch_cb" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
                             reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring"/>
             </repeat>
           </lv_obj>
