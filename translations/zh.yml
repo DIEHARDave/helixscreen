@@ -378,6 +378,7 @@ translations:
   Belt Tension: 皮带张力
   Belt Tension Check: 皮带张力检查
   Belt Tension needs a CoreXY printer. This one is {}.: '皮带张力需要 CoreXY 打印机。此打印机为{}。'
+  Belts already match: "皮带已经匹配"
   Beta: 测试版
   'Beta features: OFF': '测试版功能: 关'
   'Beta features: ON': '测试版功能: 开'
@@ -463,6 +464,7 @@ translations:
   Calculator: 计算器
   Calibrate: 校准
   Calibrate All: 全部校准
+  Calibrate Anyway: "仍然校准"
   Calibrate Bowden: '校准波顿管'
   Calibrate Cutter: 校准切刀
   Calibrate Encoder: '校准编码器'
@@ -870,7 +872,7 @@ translations:
   'Current: %d°C | Target: %d°C': '当前: %d°C | 目标: %d°C'
   Currently Loaded: 当前已装载
   Currently printing: 正在打印
-  Curves differ in shape. Steering by each path's tallest peak.: "曲线形状不同。按各路径的最高峰调整。"
+  Curves differ in shape. Check the mechanics before chasing a perfect match.: "曲线形状不同。在追求完美匹配之前请先检查机械部分。"
   Custom: 自定义
   Custom...: 自定义...
   Customize Macro Button: 自定义宏按钮
@@ -1957,8 +1959,8 @@ translations:
   Match Mode: '匹配模式'
   Match your typical print fan speed: 匹配您常用的打印风扇速度
   Matched at {:.1f} Hz: "在 {:.1f} Hz 处匹配"
-  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
-  : "张力一致的皮带会得到形状相同的曲线。当一条路径的最高峰在另一条路径上没有对应峰时,说明除张力外还有其他因素在影响响应:\n\n- 皮带磨损、起毛或跑偏\n- 同步轮顶丝松动或打滑\n- 惰轮或轴承卡滞\n- 齿间有杂物,或皮带摩擦挡边\n- 加速度计安装松动\n\n调整仍以各路径的最高峰为准,但在追求完美匹配之前请先检查这些。"
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still follows the zone that moved with the turn, but check these before chasing a perfect match."
+  : "张力一致的皮带会得到形状相同的曲线。当一条路径的最高峰在另一条路径上没有对应峰时,说明除张力外还有其他因素在影响响应:\n\n- 皮带磨损、起毛或跑偏\n- 同步轮顶丝松动或打滑\n- 惰轮或轴承卡滞\n- 齿间有杂物,或皮带摩擦挡边\n- 加速度计安装松动\n\n调整仍跟随随转动而移动的区间,但在追求完美匹配之前请先检查这些。"
   Matching printers: 匹配的打印机
   Material: 材料
   'Material Comfort:': 材料适配度：
@@ -1975,6 +1977,7 @@ translations:
   Maximum acceleration (mm/s²): 最大加速度 (mm/s²)
   Maximum toolhead speed (mm/s): 打印头最大速度 (mm/s)
   Measure: '测量'
+  Measure (~{} min): "测量 (约 {} 分钟)"
   Measure every tool's XYZ offset automatically: 自动测量每个工具的 XYZ 偏移
   Measure pressure advance automatically: '自动测量压力提前'
   Measure this zone first: "请先测量此区间"
@@ -2219,10 +2222,12 @@ translations:
   Not yet calibrated: 尚未校准
   Notes: 备注
   Notes (optional): 备注（可选）
-  Nothing left to tune: "没有需要调整的了"
+  Nothing followed the turns on {0}. Undo them, then check the mechanics.: "{0} 的转动没有带来变化。请撤回这些转动,然后检查机械部分。"
+  Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics.: "{0} 转了 {1} 圈没有带来变化。请将 {0} 反向转回 {1} 圈,然后检查机械部分。"
   Nothing loaded: 未装载耗材
   Nothing starred yet. Tap the star on a filament to add it here.: '还没有收藏。点击耗材行的星标即可收藏到这里。'
   Nothing to remap: 没有可重新映射的内容
+  Nothing to tune here: "这里没有需要调整的"
   'Nothing to unload: no filament at the nozzle': '没有可卸载的耗材: 喷嘴处没有耗材'
   'Which lane is in the toolhead?': '哪个料道在打印头里？'
   'Choose which lane is in the toolhead to unload it': '请选择打印头里的料道以卸载'
@@ -2365,6 +2370,8 @@ translations:
   Password is required for secured networks: 加密网络需要密码
   Path A tensioner: "路径 A 张紧器"
   Path B tensioner: "路径 B 张紧器"
+  ? Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension.
+  : "路径 {0} 在 {2:.0f} Hz 处的共振远强于 {1}。这说明是机械差异(同步轮顶丝、惰轮轴承、皮带走向),而不是张力。"
   Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: "路径 {0} 的峰离开了区间。请确认只转动了路径 {1} 的张紧器。"
   Path {}: 路径 {}
   Path {} before: 路径 {}（之前）
@@ -2682,6 +2689,7 @@ translations:
   Re-test: 重新测试
   Re-test A: 重新测试 A
   Re-test B: 重新测试 B
+  Readings don't repeat: "读数无法重复"
   Readings from extra temperature sensors: 额外温度传感器的读数
   Ready: 就绪
   Ready for filament operations: 可进行耗材操作
@@ -3367,9 +3375,12 @@ translations:
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: 感谢！完全匿名的使用数据有助于改进
     HelixScreen。
   That print is no longer paused: '该打印已不再暂停'
+  That reading jumped too far to trust. Re-measure without turning.: "这次读数跳动过大,不可信。请不转动再测量一次。"
   'That setting cannot be changed while a print is running': '打印进行中无法更改该设置'
   That slot cannot stand in for this one: 该槽位无法替代当前槽位
   That tool is already loaded: 该工具已加载耗材
+  That turn didn't register yet. Tighten {0} a little more.: "这次转动还没有体现出来。请将 {0} 再拉紧一点。"
+  That turn didn't register yet. Tighten {0} one more full turn.: "这次转动还没有体现出来。请将 {0} 再拉紧一整圈。"
   The CFS odometer hardware is faulty and needs repair or replacement: CFS 计量硬件故障，需维修或更换
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
@@ -3434,6 +3445,7 @@ translations:
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: '打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。'
   The printer finishes this measurement on its own.: '打印机会自行完成这次测量。'
   The printer halted this print and cannot resume it. Restart from the beginning?: 打印机已停止此打印且无法恢复。从头重新开始？
+  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "打印机尚未报告其 [resonance_tester] 范围,因此无法把小范围扫频限制在其内。"
   The printer has not reported its axis limits yet.: '打印机尚未报告其轴限位。'
   The printer has not reported its maximum velocity yet.: '打印机尚未报告其最大速度。'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
@@ -3479,6 +3491,7 @@ translations:
   There is no cycle to stop: '没有可停止的周期'
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : "可用内存不足，无法运行此测试。Klipper 的分析会耗尽内存，使打印机卡住，直到断电重启。"
+  These readings aren't repeatable, so tuning can't be steered. Check the mechanics first.: "这些读数无法重复,因此无法引导调整。请先检查机械部分。"
   'These tools have a different filament grade loaded:': 以下工具装载的耗材等级不同：
   'These tools have incompatible materials loaded:': 这些工具加载了不兼容的材料：
   'These tools have no filament loaded:': '以下工具未加载耗材:'
@@ -3568,6 +3581,8 @@ translations:
   Thorough: 全面
   Thumbnail Only: 仅缩略图
   'Thumbnail: ': '缩略图: '
+  Tighten {0} noticeably: "明显拉紧 {0}"
+  Tighten {0} one full turn: "将 {0} 拉紧一整圈"
   Tighten {0} {1}: '拉紧 {0} {1}'
   Tighten {}: "拉紧 {}"
   Time: 时间
@@ -3873,6 +3888,7 @@ translations:
   Wifi: Wi-Fi
   Will not switch spools on runout: 耗材用尽时不会切换料盘
   Wipe nozzle on silicone cleaning strip: '在硅胶清洁条上擦拭喷嘴'
+  Within {0:.1f} Hz of each other at {1:.0f} Hz: "在 {1:.0f} Hz 处相差 {0:.1f} Hz 以内"
   Wizard Error: 向导错误
   Working...: 处理中...
   Write failed at chunk {}: 区块 {} 写入失败
@@ -4121,7 +4137,6 @@ translations:
   '{} → {}: no filament loaded.': '{} → {}: 未加载耗材。'
   "{}'s peak moved out of the zone. Widening it.": "{} 的峰移出了区间。正在扩大区间。"
   '{}:{:02} elapsed': 已用时 {}:{:02}
-  ~{:.0f} Hz / turn: "约 {:.0f} Hz / 圈"
   '{}% left': '剩余 {}%'
   'Basic': '标准'
   'Recycled': '再生'
@@ -4139,3 +4154,4 @@ translations:
   'Variant': '变体'
   'from tag': '来自标签'
   'Browse catalog...': '浏览目录...'
+  ~{:.1f} Hz / turn: "约 {:.1f} Hz / 圈"

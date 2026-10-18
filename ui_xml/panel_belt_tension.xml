@@ -363,17 +363,17 @@
             <icon src="rotate_right" size="xs" clickable="false" event_bubble="true">
               <bind_style name="path_a_text" subject="bt_tune_path" ref_value="0"/>
               <bind_style name="path_b_text" subject="bt_tune_path" ref_value="1"/>
-              <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_dir eq 1 or bt_tune_phase eq 2 or bt_tune_baseline eq 1"
+              <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_dir eq 1 or bt_tune_phase eq 2 or bt_tune_phase eq 4 or bt_tune_baseline eq 1 or bt_tune_unrepeatable eq 1"
                             flag="hidden"/>
             </icon>
             <icon src="rotate_left" size="xs" clickable="false" event_bubble="true">
               <bind_style name="path_a_text" subject="bt_tune_path" ref_value="0"/>
               <bind_style name="path_b_text" subject="bt_tune_path" ref_value="1"/>
-              <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_dir eq 0 or bt_tune_phase eq 2 or bt_tune_baseline eq 1"
+              <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_dir eq 0 or bt_tune_phase eq 2 or bt_tune_phase eq 4 or bt_tune_baseline eq 1 or bt_tune_unrepeatable eq 1"
                             flag="hidden"/>
             </icon>
             <icon src="check_circle" size="xs" variant="success" clickable="false" event_bubble="true">
-              <bind_flag_if_not_eq subject="bt_tune_phase" flag="hidden" ref_value="2"/>
+              <bind_flag_if cond="bt_tune_phase ne 2 and bt_tune_phase ne 4" flag="hidden"/>
             </icon>
             <text_body name="bt_tune_line_instruction"
                        width="0" flex_grow="1" bind_text="bt_tune_instruction" style_text_font="#font_body_bold"
@@ -381,6 +381,7 @@
               <bind_style name="path_a_text" subject="bt_tune_path" ref_value="0"/>
               <bind_style name="path_b_text" subject="bt_tune_path" ref_value="1"/>
               <bind_style name="gap_matched" subject="bt_tune_phase" ref_value="2"/>
+              <bind_style name="gap_matched" subject="bt_tune_phase" ref_value="4"/>
             </text_body>
             <text_body name="bt_tune_line_gap"
                        bind_text="bt_tune_gap" style_text_font="#font_body_bold" clickable="false" event_bubble="true">
@@ -398,11 +399,11 @@
               <bind_flag_if_not_eq subject="bt_tune_kind" flag="hidden" ref_value="1"/>
             </text_small>
             <icon src="swap_horizontal" size="xs" variant="secondary" clickable="false" event_bubble="true">
-              <bind_flag_if_not_eq subject="bt_tune_phase" flag="hidden" ref_value="0"/>
+              <bind_flag_if cond="bt_tune_phase ne 0 and bt_tune_phase ne 3" flag="hidden"/>
             </icon>
           </lv_obj>
           <belt_gap_gauge name="bt_tune_line_gauge" width="100%" height="#space_xl">
-            <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or ui_is_portrait eq 1 and ui_breakpoint gt 0 or bt_tune_baseline eq 1 or bt_tune_has_zone eq 0"
+            <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or ui_is_portrait eq 1 and ui_breakpoint gt 0 or bt_tune_baseline eq 1 or bt_tune_has_gap eq 0"
                           flag="hidden"/>
           </belt_gap_gauge>
           <lv_obj name="bt_tune_hero"
@@ -423,17 +424,17 @@
                 <icon name="bt_tune_icon_cw" src="rotate_right" size="sm">
                   <bind_style name="path_a_text" subject="bt_tune_path" ref_value="0"/>
                   <bind_style name="path_b_text" subject="bt_tune_path" ref_value="1"/>
-                  <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_dir eq 1 or bt_tune_phase eq 2 or bt_tune_baseline eq 1"
+                  <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_dir eq 1 or bt_tune_phase eq 2 or bt_tune_phase eq 4 or bt_tune_baseline eq 1 or bt_tune_unrepeatable eq 1"
                                 flag="hidden"/>
                 </icon>
                 <icon name="bt_tune_icon_ccw" src="rotate_left" size="sm">
                   <bind_style name="path_a_text" subject="bt_tune_path" ref_value="0"/>
                   <bind_style name="path_b_text" subject="bt_tune_path" ref_value="1"/>
-                  <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_dir eq 0 or bt_tune_phase eq 2 or bt_tune_baseline eq 1"
+                  <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_dir eq 0 or bt_tune_phase eq 2 or bt_tune_phase eq 4 or bt_tune_baseline eq 1 or bt_tune_unrepeatable eq 1"
                                 flag="hidden"/>
                 </icon>
                 <icon name="bt_tune_icon_matched" src="check_circle" size="sm" variant="success">
-                  <bind_flag_if_not_eq subject="bt_tune_phase" flag="hidden" ref_value="2"/>
+                  <bind_flag_if cond="bt_tune_phase ne 2 and bt_tune_phase ne 4" flag="hidden"/>
                 </icon>
                 <text_body name="bt_tune_instruction"
                            flex_grow="1" bind_text="bt_tune_instruction" style_text_font="#font_body_bold"
@@ -441,10 +442,12 @@
                   <bind_style name="path_a_text" subject="bt_tune_path" ref_value="0"/>
                   <bind_style name="path_b_text" subject="bt_tune_path" ref_value="1"/>
                   <bind_style name="gap_matched" subject="bt_tune_phase" ref_value="2"/>
+                  <bind_style name="gap_matched" subject="bt_tune_phase" ref_value="4"/>
                 </text_body>
               </lv_obj>
               <lv_obj width="100%" height="content" style_pad_all="0" flex_flow="column" scrollable="false">
-                <bind_flag_if cond="bt_tune_phase eq 2 or bt_tune_kind eq 2" flag="hidden"/>
+                <bind_flag_if cond="bt_tune_phase eq 2 or bt_tune_phase eq 4 or bt_tune_kind eq 2 or bt_tune_unrepeatable eq 1"
+                              flag="hidden"/>
                 <text_xs text="Path A tensioner" style_text_color="#text_muted">
                   <bind_flag_if_not_eq subject="bt_tune_path" flag="hidden" ref_value="0"/>
                 </text_xs>
@@ -452,11 +455,12 @@
                   <bind_flag_if_not_eq subject="bt_tune_path" flag="hidden" ref_value="1"/>
                 </text_xs>
               </lv_obj>
-              <!-- SCREW only: what you turned, an eighth at a time -->
+              <!-- SCREW only, while tuning: what you turned, a quarter at a time -->
               <lv_obj name="bt_tune_stepper"
                       width="100%" height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="center"
                       style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false">
-                <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_phase eq 2 or bt_tune_baseline eq 1" flag="hidden"/>
+                <bind_flag_if cond="bt_tune_kind ne 1 or bt_tune_phase ge 2 or bt_tune_baseline eq 1 or bt_tune_unrepeatable eq 1"
+                              flag="hidden"/>
                 <ui_button name="btn_tune_less"
                            width="#button_height_sm" height="#button_height_sm" icon="minus" variant="secondary">
                   <bind_state_if_eq subject="bt_tune_phase" state="disabled" ref_value="1"/>
@@ -490,7 +494,7 @@
                           bind_text="bt_tune_gap_caption" style_text_align="center" style_text_color="#text_muted"
                           long_mode="dots"/>
               <belt_gap_gauge name="bt_tune_gauge" width="100%" height="#space_xl">
-                <bind_flag_if cond="bt_tune_baseline eq 1 or bt_tune_has_zone eq 0" flag="hidden"/>
+                <bind_flag_if cond="bt_tune_baseline eq 1 or bt_tune_has_gap eq 0" flag="hidden"/>
               </belt_gap_gauge>
             </lv_obj>
             <!-- Right: where the loop stands -->
@@ -542,21 +546,43 @@
               <text_small name="bt_tune_hint"
                           width="0" height="#text_small_line_h" flex_grow="1" bind_text="bt_tune_hint"
                           style_text_color="#warning" long_mode="dots" clickable="false" event_bubble="true">
-                <bind_flag_if_eq subject="ui_is_portrait" flag="hidden" ref_value="1"/>
+                <bind_flag_if cond="ui_is_portrait eq 1 or bt_tune_unrepeatable eq 1" flag="hidden"/>
               </text_small>
-              <!-- Portrait has the height for the whole warning -->
+              <!-- Portrait has the height for the whole warning, and an unrepeatable -->
+              <!-- reading frees the hero's advice lines for it -->
               <text_small name="bt_tune_hint_wrap"
                           width="0" flex_grow="1" bind_text="bt_tune_hint" style_text_color="#warning" long_mode="wrap"
                           clickable="false" event_bubble="true">
+                <bind_flag_if cond="ui_is_portrait eq 0 and bt_tune_unrepeatable eq 0" flag="hidden"/>
+              </text_small>
+              <text_small text="Why?" style_text_color="#warning" clickable="false" event_bubble="true"/>
+              <icon src="chevron_right" size="xs" variant="warning" clickable="false" event_bubble="true"/>
+            </lv_obj>
+            <!-- One path resonating far harder than the other: the same causes -->
+            <lv_obj name="bt_tune_power_row"
+                    width="100%" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+                    style_pad_gap="#space_xs" clickable="true" scrollable="false">
+              <bind_flag_if_eq subject="bt_tune_has_power_hint" flag="hidden" ref_value="0"/>
+              <event_cb trigger="clicked" callback="belt_tension_tune_why_cb"/>
+              <icon src="alert" size="xs" variant="warning" clickable="false" event_bubble="true"/>
+              <text_small name="bt_tune_power_hint"
+                          width="0" height="#text_small_line_h" flex_grow="1" bind_text="bt_tune_power_hint"
+                          style_text_color="#warning" long_mode="dots" clickable="false" event_bubble="true">
+                <bind_flag_if_eq subject="ui_is_portrait" flag="hidden" ref_value="1"/>
+              </text_small>
+              <text_small name="bt_tune_power_hint_wrap"
+                          width="0" flex_grow="1" bind_text="bt_tune_power_hint" style_text_color="#warning"
+                          long_mode="wrap" clickable="false" event_bubble="true">
                 <bind_flag_if_eq subject="ui_is_portrait" flag="hidden" ref_value="0"/>
               </text_small>
               <text_small text="Why?" style_text_color="#warning" clickable="false" event_bubble="true"/>
               <icon src="chevron_right" size="xs" variant="warning" clickable="false" event_bubble="true"/>
             </lv_obj>
           </lv_obj>
-          <!-- ADJUST -->
-          <lv_obj width="100%" height="content" style_pad_all="0" style_pad_gap="#space_sm" scrollable="false">
-            <bind_flag_if_not_eq subject="bt_tune_phase" flag="hidden" ref_value="0"/>
+          <!-- ADJUST, CALIBRATE and ALREADY_MATCHED -->
+          <lv_obj name="bt_tune_actions"
+                  width="100%" height="content" style_pad_all="0" style_pad_gap="#space_sm" scrollable="false">
+            <bind_flag_if cond="bt_tune_phase eq 1 or bt_tune_phase eq 2" flag="hidden"/>
             <bind_style_if name="bt_flow_row" cond="ui_is_portrait eq 0"/>
             <bind_style_if name="bt_flow_row_wrap" cond="ui_is_portrait eq 1"/>
             <!-- Compact layouts: the turn stepper moves down here, on a line of its own in portrait -->
@@ -565,7 +591,7 @@
                     style_pad_gap="#space_xs" scrollable="false">
               <bind_style_if name="bt_content_w" cond="ui_is_portrait eq 0"/>
               <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1"/>
-              <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or ui_is_portrait eq 1 and ui_breakpoint gt 0 or bt_tune_kind ne 1 or bt_tune_baseline eq 1"
+              <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or ui_is_portrait eq 1 and ui_breakpoint gt 0 or bt_tune_kind ne 1 or bt_tune_baseline eq 1 or bt_tune_unrepeatable eq 1 or bt_tune_phase ne 0"
                             flag="hidden"/>
               <ui_button name="btn_tune_row_less"
                          width="#button_height_sm" height="#button_height" icon="minus" variant="secondary">
@@ -586,26 +612,35 @@
             <ui_button name="btn_tune_swap"
                        width="0" height="#button_height" flex_grow="1" bind_text="bt_tune_swap_label"
                        variant="secondary" long_mode="dots">
-              <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0 and (ui_is_portrait eq 0 or ui_breakpoint eq 0)"
+              <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0 and (ui_is_portrait eq 0 or ui_breakpoint eq 0) or bt_tune_phase eq 4"
                             flag="hidden"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_swap_cb"/>
             </ui_button>
             <ui_button name="btn_tune_measure"
                        width="content" height="#button_height" icon="waveform" bind_text="bt_tune_measure_label"
                        variant="primary">
-              <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0" flag="hidden"/>
+              <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0 or bt_tune_phase eq 4"
+                            flag="hidden"/>
               <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_measure_cb"/>
             </ui_button>
             <ui_button name="btn_tune_measure_short"
-                       height="#button_height" icon="waveform" text="Re-measure" variant="primary"
+                       height="#button_height" icon="waveform" bind_text="bt_tune_measure_short_label" variant="primary"
                        icon_hidden_subject="bt_narrow" icon_hidden_if_eq="1">
               <bind_style_if name="bt_content_w" cond="ui_is_portrait eq 0"/>
               <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 1 and ui_breakpoint eq 0"/>
               <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1 and ui_breakpoint gt 0"/>
-              <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
+              <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or bt_tune_phase eq 4"
+                            flag="hidden"/>
               <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_measure_cb"/>
+            </ui_button>
+            <!-- ALREADY_MATCHED: Good Enough, or go on to the calibration turn -->
+            <ui_button name="btn_tune_calibrate_anyway"
+                       width="content" height="#button_height" icon="rotate_right" text="Calibrate Anyway"
+                       variant="primary">
+              <bind_flag_if_not_eq subject="bt_tune_phase" flag="hidden" ref_value="4"/>
+              <event_cb trigger="clicked" callback="belt_tension_tune_calibrate_anyway_cb"/>
             </ui_button>
           </lv_obj>
           <!-- SWEEPING -->

@@ -392,6 +392,7 @@ translations:
   Belt Tension: Belt Tension
   Belt Tension Check: Belt Tension Check
   Belt Tension needs a CoreXY printer. This one is {}.: Belt Tension needs a CoreXY printer. This one is {}.
+  Belts already match: Belts already match
   Beta: Beta
   'Beta features: OFF': 'Beta features: OFF'
   'Beta features: ON': 'Beta features: ON'
@@ -481,6 +482,7 @@ translations:
   Calculator: Calculator
   Calibrate: Calibrate
   Calibrate All: Calibrate All
+  Calibrate Anyway: Calibrate Anyway
   Calibrate Bowden: Calibrate Bowden
   Calibrate Cutter: Calibrate Cutter
   Calibrate Encoder: Calibrate Encoder
@@ -909,7 +911,7 @@ translations:
   'Current: %d°C | Target: %d°C': 'Current: %d°C | Target: %d°C'
   Currently Loaded: Currently Loaded
   Currently printing: Currently printing
-  Curves differ in shape. Steering by each path's tallest peak.: Curves differ in shape. Steering by each path's tallest peak.
+  Curves differ in shape. Check the mechanics before chasing a perfect match.: Curves differ in shape. Check the mechanics before chasing a perfect match.
   Custom: Custom
   Custom...: Custom...
   Customize Macro Button: Customize Macro Button
@@ -2026,8 +2028,8 @@ translations:
   Match Mode: Match Mode
   Match your typical print fan speed: Match your typical print fan speed
   Matched at {:.1f} Hz: Matched at {:.1f} Hz
-  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
-  : "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still follows the zone that moved with the turn, but check these before chasing a perfect match."
+  : "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still follows the zone that moved with the turn, but check these before chasing a perfect match."
   Matching printers: Matching printers
   Material: Material
   'Material Comfort:': 'Material Comfort:'
@@ -2044,6 +2046,7 @@ translations:
   Maximum acceleration (mm/s²): Maximum acceleration (mm/s²)
   Maximum toolhead speed (mm/s): Maximum toolhead speed (mm/s)
   Measure: Measure
+  Measure (~{} min): Measure (~{} min)
   Measure every tool's XYZ offset automatically: Measure every tool's XYZ offset automatically
   Measure pressure advance automatically: Measure pressure advance automatically
   Measure this zone first: Measure this zone first
@@ -2298,10 +2301,12 @@ translations:
   Not yet calibrated: Not yet calibrated
   Notes: Notes
   Notes (optional): Notes (optional)
-  Nothing left to tune: Nothing left to tune
+  Nothing followed the turns on {0}. Undo them, then check the mechanics.: Nothing followed the turns on {0}. Undo them, then check the mechanics.
+  Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics.: Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics.
   Nothing loaded: Nothing loaded
   Nothing starred yet. Tap the star on a filament to add it here.: Nothing starred yet. Tap the star on a filament to add it here.
   Nothing to remap: Nothing to remap
+  Nothing to tune here: Nothing to tune here
   'Nothing to unload: no filament at the nozzle': 'Nothing to unload: no filament at the nozzle'
   'Which lane is in the toolhead?': 'Which lane is in the toolhead?'
   'Choose which lane is in the toolhead to unload it': 'Choose which lane is in the toolhead to unload it'
@@ -2445,6 +2450,8 @@ translations:
   Password is required for secured networks: Password is required for secured networks
   Path A tensioner: Path A tensioner
   Path B tensioner: Path B tensioner
+  ? Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension.
+  : Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension.
   Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.
   Path {}: Path {}
   Path {} before: Path {} before
@@ -2775,6 +2782,7 @@ translations:
   Re-test: Re-test
   Re-test A: Re-test A
   Re-test B: Re-test B
+  Readings don't repeat: Readings don't repeat
   Readings from extra temperature sensors: Readings from extra temperature sensors
   Ready: Ready
   Ready for filament operations: Ready for filament operations
@@ -3495,9 +3503,12 @@ translations:
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: Thanks! TOTALLY
     anonymous usage data helps improve HelixScreen.
   That print is no longer paused: That print is no longer paused
+  That reading jumped too far to trust. Re-measure without turning.: That reading jumped too far to trust. Re-measure without turning.
   'That setting cannot be changed while a print is running': 'That setting cannot be changed while a print is running'
   That slot cannot stand in for this one: That slot cannot stand in for this one
   That tool is already loaded: That tool is already loaded
+  That turn didn't register yet. Tighten {0} a little more.: That turn didn't register yet. Tighten {0} a little more.
+  That turn didn't register yet. Tighten {0} one more full turn.: That turn didn't register yet. Tighten {0} one more full turn.
   The CFS odometer hardware is faulty and needs repair or replacement: The CFS odometer hardware is faulty and needs repair or replacement
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
@@ -3563,6 +3574,7 @@ translations:
   The printer finishes this measurement on its own.: 'The printer finishes this measurement on its own.'
   The printer halted this print and cannot resume it. Restart from the beginning?: The
     printer halted this print and cannot resume it. Restart from the beginning?
+  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.
   The printer has not reported its axis limits yet.: The printer has not reported its axis limits yet.
   The printer has not reported its maximum velocity yet.: The printer has not reported its maximum velocity yet.
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
@@ -3610,6 +3622,7 @@ translations:
   There is no cycle to stop: There is no cycle to stop
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
+  These readings aren't repeatable, so tuning can't be steered. Check the mechanics first.: These readings aren't repeatable, so tuning can't be steered. Check the mechanics first.
   'These tools have a different filament grade loaded:': 'These tools have a different filament grade loaded:'
   'These tools have incompatible materials loaded:': 'These tools have incompatible
     materials loaded:'
@@ -3714,6 +3727,8 @@ translations:
   Thorough: Thorough
   Thumbnail Only: Thumbnail Only
   'Thumbnail: ': 'Thumbnail: '
+  Tighten {0} noticeably: Tighten {0} noticeably
+  Tighten {0} one full turn: Tighten {0} one full turn
   Tighten {0} {1}: Tighten {0} {1}
   Tighten {}: Tighten {}
   Time: Time
@@ -4033,6 +4048,7 @@ translations:
   Wifi: Wifi
   Will not switch spools on runout: Will not switch spools on runout
   Wipe nozzle on silicone cleaning strip: Wipe nozzle on silicone cleaning strip
+  Within {0:.1f} Hz of each other at {1:.0f} Hz: Within {0:.1f} Hz of each other at {1:.0f} Hz
   Wizard Error: Wizard Error
   Working...: Working...
   Write failed at chunk {}: Write failed at chunk {}
@@ -4282,7 +4298,7 @@ translations:
   '{} → {}: no filament loaded.': '{} → {}: no filament loaded.'
   "{}'s peak moved out of the zone. Widening it.": "{}'s peak moved out of the zone. Widening it."
   '{}:{:02} elapsed': '{}:{:02} elapsed'
-  ~{:.0f} Hz / turn: ~{:.0f} Hz / turn
   '{}% left': '{}% left'
   'Basic': 'Basic'
   'Recycled': 'Recycled'
+  ~{:.1f} Hz / turn: ~{:.1f} Hz / turn

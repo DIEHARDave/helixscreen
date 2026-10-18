@@ -375,6 +375,7 @@
   <translation tag="Belt Tension" zh="皮带张力"/>
   <translation tag="Belt Tension Check" zh="皮带张力检查"/>
   <translation tag="Belt Tension needs a CoreXY printer. This one is {}." zh="皮带张力需要 CoreXY 打印机。此打印机为{}。"/>
+  <translation tag="Belts already match" zh="皮带已经匹配"/>
   <translation tag="Beta" zh="测试版"/>
   <translation tag="Beta features: OFF" zh="测试版功能: 关"/>
   <translation tag="Beta features: ON" zh="测试版功能: 开"/>
@@ -458,6 +459,7 @@
   <translation tag="Calibrate" zh="校准"/>
   <translation tag="Calibrate All" zh="全部校准"/>
   <translation tag="Calibrate All Tools" zh="校准所有工具"/>
+  <translation tag="Calibrate Anyway" zh="仍然校准"/>
   <translation tag="Calibrate Bowden" zh="校准波顿管"/>
   <translation tag="Calibrate Cutter" zh="校准切刀"/>
   <translation tag="Calibrate Encoder" zh="校准编码器"/>
@@ -843,7 +845,7 @@
   <translation tag="Current: %d°C | Target: %d°C" zh="当前: %d°C | 目标: %d°C"/>
   <translation tag="Currently Loaded" zh="当前已装载"/>
   <translation tag="Currently printing" zh="正在打印"/>
-  <translation tag="Curves differ in shape. Steering by each path&apos;s tallest peak." zh="曲线形状不同。按各路径的最高峰调整。"/>
+  <translation tag="Curves differ in shape. Check the mechanics before chasing a perfect match." zh="曲线形状不同。在追求完美匹配之前请先检查机械部分。"/>
   <translation tag="Custom" zh="自定义"/>
   <translation tag="Custom..." zh="自定义..."/>
   <translation tag="Customize Macro Button" zh="自定义宏按钮"/>
@@ -1890,7 +1892,7 @@
   <translation tag="Match Mode" zh="匹配模式"/>
   <translation tag="Match your typical print fan speed" zh="匹配您常用的打印风扇速度"/>
   <translation tag="Matched at {:.1f} Hz" zh="在 {:.1f} Hz 处匹配"/>
-  <translation tag="Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:&#10;&#10;- a worn, frayed or mis-tracking belt&#10;- a loose or slipping pulley grub screw&#10;- an idler or bearing that binds&#10;- debris in the teeth, or a belt rubbing a flange&#10;- a loose accelerometer mount&#10;&#10;Tuning still steers by each path&apos;s tallest peak, but check these before chasing a perfect match." zh="张力一致的皮带会得到形状相同的曲线。当一条路径的最高峰在另一条路径上没有对应峰时,说明除张力外还有其他因素在影响响应:&#10;&#10;- 皮带磨损、起毛或跑偏&#10;- 同步轮顶丝松动或打滑&#10;- 惰轮或轴承卡滞&#10;- 齿间有杂物,或皮带摩擦挡边&#10;- 加速度计安装松动&#10;&#10;调整仍以各路径的最高峰为准,但在追求完美匹配之前请先检查这些。"/>
+  <translation tag="Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:&#10;&#10;- a worn, frayed or mis-tracking belt&#10;- a loose or slipping pulley grub screw&#10;- an idler or bearing that binds&#10;- debris in the teeth, or a belt rubbing a flange&#10;- a loose accelerometer mount&#10;&#10;Tuning still follows the zone that moved with the turn, but check these before chasing a perfect match." zh="张力一致的皮带会得到形状相同的曲线。当一条路径的最高峰在另一条路径上没有对应峰时,说明除张力外还有其他因素在影响响应:&#10;&#10;- 皮带磨损、起毛或跑偏&#10;- 同步轮顶丝松动或打滑&#10;- 惰轮或轴承卡滞&#10;- 齿间有杂物,或皮带摩擦挡边&#10;- 加速度计安装松动&#10;&#10;调整仍跟随随转动而移动的区间,但在追求完美匹配之前请先检查这些。"/>
   <translation tag="Matching printers" zh="匹配的打印机"/>
   <translation tag="Material" zh="材料"/>
   <translation tag="Material Comfort:" zh="材料适配度："/>
@@ -1907,6 +1909,7 @@
   <translation tag="Maximum acceleration (mm/s²)" zh="最大加速度 (mm/s²)"/>
   <translation tag="Maximum toolhead speed (mm/s)" zh="打印头最大速度 (mm/s)"/>
   <translation tag="Measure" zh="测量"/>
+  <translation tag="Measure (~{} min)" zh="测量 (约 {} 分钟)"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" zh="自动测量每个工具的 XYZ 偏移"/>
   <translation tag="Measure pressure advance automatically" zh="自动测量压力提前"/>
   <translation tag="Measure this zone first" zh="请先测量此区间"/>
@@ -2146,10 +2149,12 @@
   <translation tag="Not yet calibrated" zh="尚未校准"/>
   <translation tag="Notes" zh="备注"/>
   <translation tag="Notes (optional)" zh="备注（可选）"/>
-  <translation tag="Nothing left to tune" zh="没有需要调整的了"/>
+  <translation tag="Nothing followed the turns on {0}. Undo them, then check the mechanics." zh="{0} 的转动没有带来变化。请撤回这些转动,然后检查机械部分。"/>
+  <translation tag="Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics." zh="{0} 转了 {1} 圈没有带来变化。请将 {0} 反向转回 {1} 圈,然后检查机械部分。"/>
   <translation tag="Nothing loaded" zh="未装载耗材"/>
   <translation tag="Nothing starred yet. Tap the star on a filament to add it here." zh="还没有收藏。点击耗材行的星标即可收藏到这里。"/>
   <translation tag="Nothing to remap" zh="没有可重新映射的内容"/>
+  <translation tag="Nothing to tune here" zh="这里没有需要调整的"/>
   <translation tag="Nothing to unload: no filament at the nozzle" zh="没有可卸载的耗材: 喷嘴处没有耗材"/>
   <translation tag="Nothing was changed. Temperature and material are kept, so a retry is one tap." zh="没有更改任何内容。温度和材料保持不变，重试只需轻点一下。"/>
   <translation tag="Notification" zh="通知"/>
@@ -2285,6 +2290,7 @@
   <translation tag="Password is required for secured networks" zh="加密网络需要密码"/>
   <translation tag="Path A tensioner" zh="路径 A 张紧器"/>
   <translation tag="Path B tensioner" zh="路径 B 张紧器"/>
+  <translation tag="Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension." zh="路径 {0} 在 {2:.0f} Hz 处的共振远强于 {1}。这说明是机械差异(同步轮顶丝、惰轮轴承、皮带走向),而不是张力。"/>
   <translation tag="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned." zh="路径 {0} 的峰离开了区间。请确认只转动了路径 {1} 的张紧器。"/>
   <translation tag="Path {}" zh="路径 {}"/>
   <translation tag="Path {} before" zh="路径 {}（之前）"/>
@@ -2598,6 +2604,7 @@
   <translation tag="Re-test" zh="重新测试"/>
   <translation tag="Re-test A" zh="重新测试 A"/>
   <translation tag="Re-test B" zh="重新测试 B"/>
+  <translation tag="Readings don&apos;t repeat" zh="读数无法重复"/>
   <translation tag="Readings from extra temperature sensors" zh="额外温度传感器的读数"/>
   <translation tag="Ready" zh="就绪"/>
   <translation tag="Ready for filament operations" zh="可进行耗材操作"/>
@@ -3256,9 +3263,12 @@
   <translation tag="Thanks! Anonymous usage data helps improve HelixScreen." zh="感谢！匿名使用数据有助于改进 HelixScreen。"/>
   <translation tag="Thanks! TOTALLY anonymous usage data helps improve HelixScreen." zh="感谢！完全匿名的使用数据有助于改进 HelixScreen。"/>
   <translation tag="That print is no longer paused" zh="该打印已不再暂停"/>
+  <translation tag="That reading jumped too far to trust. Re-measure without turning." zh="这次读数跳动过大,不可信。请不转动再测量一次。"/>
   <translation tag="That setting cannot be changed while a print is running" zh="打印进行中无法更改该设置"/>
   <translation tag="That slot cannot stand in for this one" zh="该槽位无法替代当前槽位"/>
   <translation tag="That tool is already loaded" zh="该工具已加载耗材"/>
+  <translation tag="That turn didn&apos;t register yet. Tighten {0} a little more." zh="这次转动还没有体现出来。请将 {0} 再拉紧一点。"/>
+  <translation tag="That turn didn&apos;t register yet. Tighten {0} one more full turn." zh="这次转动还没有体现出来。请将 {0} 再拉紧一整圈。"/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" zh="CFS 计量硬件故障，需维修或更换"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." zh="HelixPrint 插件可在打印机上直接进行快速 G-code 修改——例如跳过热床网格以快速重新打印。"/>
   <translation tag="The Spoolman spool currently loaded" zh="当前装载的 Spoolman 料盘"/>
@@ -3312,6 +3322,7 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." zh="打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。"/>
   <translation tag="The printer finishes this measurement on its own." zh="打印机会自行完成这次测量。"/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" zh="打印机已停止此打印且无法恢复。从头重新开始？"/>
+  <translation tag="The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it." zh="打印机尚未报告其 [resonance_tester] 范围,因此无法把小范围扫频限制在其内。"/>
   <translation tag="The printer has not reported its axis limits yet." zh="打印机尚未报告其轴限位。"/>
   <translation tag="The printer has not reported its maximum velocity yet." zh="打印机尚未报告其最大速度。"/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." zh="打印机会加热喷嘴，在打印板角落进行几次短促的测试挤出并自行测量。它会重复直到读数一致，然后给出一个数值。"/>
@@ -3350,6 +3361,7 @@
   <translation tag="Theme: " zh="主题: "/>
   <translation tag="There is no cycle to stop" zh="没有可停止的周期"/>
   <translation tag="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled." zh="可用内存不足，无法运行此测试。Klipper 的分析会耗尽内存，使打印机卡住，直到断电重启。"/>
+  <translation tag="These readings aren&apos;t repeatable, so tuning can&apos;t be steered. Check the mechanics first." zh="这些读数无法重复,因此无法引导调整。请先检查机械部分。"/>
   <translation tag="These tools have a different filament grade loaded:" zh="以下工具装载的耗材等级不同："/>
   <translation tag="These tools have incompatible materials loaded:" zh="这些工具加载了不兼容的材料："/>
   <translation tag="These tools have no filament loaded:" zh="以下工具未加载耗材:"/>
@@ -3423,6 +3435,8 @@
   <translation tag="Thorough" zh="全面"/>
   <translation tag="Thumbnail Only" zh="仅缩略图"/>
   <translation tag="Thumbnail: " zh="缩略图: "/>
+  <translation tag="Tighten {0} noticeably" zh="明显拉紧 {0}"/>
+  <translation tag="Tighten {0} one full turn" zh="将 {0} 拉紧一整圈"/>
   <translation tag="Tighten {0} {1}" zh="拉紧 {0} {1}"/>
   <translation tag="Tighten {}" zh="拉紧 {}"/>
   <translation tag="Time" zh="时间"/>
@@ -3727,6 +3741,7 @@
   <translation tag="Wifi" zh="Wi-Fi"/>
   <translation tag="Will not switch spools on runout" zh="耗材用尽时不会切换料盘"/>
   <translation tag="Wipe nozzle on silicone cleaning strip" zh="在硅胶清洁条上擦拭喷嘴"/>
+  <translation tag="Within {0:.1f} Hz of each other at {1:.0f} Hz" zh="在 {1:.0f} Hz 处相差 {0:.1f} Hz 以内"/>
   <translation tag="Wizard Error" zh="向导错误"/>
   <translation tag="Working..." zh="处理中..."/>
   <translation tag="Write failed at chunk {}" zh="区块 {} 写入失败"/>
@@ -3969,5 +3984,5 @@
   <translation tag="{}% left" zh="剩余 {}%"/>
   <translation tag="{}&apos;s peak moved out of the zone. Widening it." zh="{} 的峰移出了区间。正在扩大区间。"/>
   <translation tag="{}:{:02} elapsed" zh="已用时 {}:{:02}"/>
-  <translation tag="~{:.0f} Hz / turn" zh="约 {:.0f} Hz / 圈"/>
+  <translation tag="~{:.1f} Hz / turn" zh="约 {:.1f} Hz / 圈"/>
 </translations>

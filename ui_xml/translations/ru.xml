@@ -414,6 +414,7 @@
   <translation tag="Belt Tension" ru="Натяжение ремня"/>
   <translation tag="Belt Tension Check" ru="Проверка натяжения ремня"/>
   <translation tag="Belt Tension needs a CoreXY printer. This one is {}." ru="Для натяжения ремня нужен принтер CoreXY. Этот принтер: {}."/>
+  <translation tag="Belts already match" ru="Ремни уже совпадают"/>
   <translation tag="Beta" ru="Бета"/>
   <translation tag="Beta features: OFF" ru="Beta-функции: ВЫКЛ"/>
   <translation tag="Beta features: ON" ru="Beta-функции: ВКЛ"/>
@@ -497,6 +498,7 @@
   <translation tag="Calibrate" ru="Калибровать"/>
   <translation tag="Calibrate All" ru="Калибровать всё"/>
   <translation tag="Calibrate All Tools" ru="Калибровать все инструменты"/>
+  <translation tag="Calibrate Anyway" ru="Всё равно откалибровать"/>
   <translation tag="Calibrate Bowden" ru="Калибровать боуден"/>
   <translation tag="Calibrate Cutter" ru="Калибровать резак"/>
   <translation tag="Calibrate Encoder" ru="Калибровать энкодер"/>
@@ -885,7 +887,7 @@
   <translation tag="Current: %d°C | Target: %d°C" ru="Текущая: %d°C | Целевая: %d°C"/>
   <translation tag="Currently Loaded" ru="Загружено"/>
   <translation tag="Currently printing" ru="Сейчас печатается"/>
-  <translation tag="Curves differ in shape. Steering by each path&apos;s tallest peak." ru="Формы кривых различаются. Ориентир — самый высокий пик каждого пути."/>
+  <translation tag="Curves differ in shape. Check the mechanics before chasing a perfect match." ru="Формы кривых различаются. Проверьте механику, прежде чем добиваться идеального совпадения."/>
   <translation tag="Custom" ru="Свой"/>
   <translation tag="Custom..." ru="Настроить..."/>
   <translation tag="Customize Macro Button" ru="Настроить кнопку макроса"/>
@@ -1935,7 +1937,7 @@
   <translation tag="Match Mode" ru="Режим сопоставления"/>
   <translation tag="Match your typical print fan speed" ru="Настройте типичную скорость вентилятора печати"/>
   <translation tag="Matched at {:.1f} Hz" ru="Совпадает на {:.1f} Гц"/>
-  <translation tag="Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:&#10;&#10;- a worn, frayed or mis-tracking belt&#10;- a loose or slipping pulley grub screw&#10;- an idler or bearing that binds&#10;- debris in the teeth, or a belt rubbing a flange&#10;- a loose accelerometer mount&#10;&#10;Tuning still steers by each path&apos;s tallest peak, but check these before chasing a perfect match." ru="Одинаково натянутые ремни дают кривые одной формы. Если у самого высокого пика одного пути нет пары на другом, ответ формирует что-то помимо натяжения:&#10;&#10;- изношенный, разлохмаченный или уходящий в сторону ремень&#10;- ослабленный или проскальзывающий винт шкива&#10;- заедающий ролик или подшипник&#10;- мусор в зубьях или ремень, трущийся о буртик&#10;- ослабленное крепление акселерометра&#10;&#10;Настройка по-прежнему ориентируется на самый высокий пик каждого пути, но проверьте это, прежде чем добиваться идеального совпадения."/>
+  <translation tag="Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:&#10;&#10;- a worn, frayed or mis-tracking belt&#10;- a loose or slipping pulley grub screw&#10;- an idler or bearing that binds&#10;- debris in the teeth, or a belt rubbing a flange&#10;- a loose accelerometer mount&#10;&#10;Tuning still follows the zone that moved with the turn, but check these before chasing a perfect match." ru="Одинаково натянутые ремни дают кривые одной формы. Если у самого высокого пика одного пути нет пары на другом, ответ формирует что-то помимо натяжения:&#10;&#10;- изношенный, разлохмаченный или уходящий в сторону ремень&#10;- ослабленный или проскальзывающий винт шкива&#10;- заедающий ролик или подшипник&#10;- мусор в зубьях или ремень, трущийся о буртик&#10;- ослабленное крепление акселерометра&#10;&#10;Настройка следует за зоной, которая сдвинулась от поворота, но проверьте это, прежде чем добиваться идеального совпадения."/>
   <translation tag="Matching printers" ru="Подходящие принтеры"/>
   <translation tag="Material" ru="Материал"/>
   <translation tag="Material Comfort:" ru="Комфорт материала:"/>
@@ -1952,6 +1954,7 @@
   <translation tag="Maximum acceleration (mm/s²)" ru="Максимальное ускорение (мм/с²)"/>
   <translation tag="Maximum toolhead speed (mm/s)" ru="Максимальная скорость печатающей головки (мм/с)"/>
   <translation tag="Measure" ru="Измерить"/>
+  <translation tag="Measure (~{} min)" ru="Измерить (~{} мин)"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" ru="Автоматически измеряет смещение XYZ каждого инструмента"/>
   <translation tag="Measure pressure advance automatically" ru="Автоматически измеряет Pressure Advance"/>
   <translation tag="Measure this zone first" ru="Сначала измерьте эту зону"/>
@@ -2191,10 +2194,12 @@
   <translation tag="Not yet calibrated" ru="Ещё не откалибровано"/>
   <translation tag="Notes" ru="Заметки"/>
   <translation tag="Notes (optional)" ru="Заметки (необязательно)"/>
-  <translation tag="Nothing left to tune" ru="Настраивать больше нечего"/>
+  <translation tag="Nothing followed the turns on {0}. Undo them, then check the mechanics." ru="Повороты {0} ничего не изменили. Верните их и проверьте механику."/>
+  <translation tag="Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics." ru="{1} оборота {0} ничего не изменили. Поверните {0} на {1} оборота назад и проверьте механику."/>
   <translation tag="Nothing loaded" ru="Ничего не загружено"/>
   <translation tag="Nothing starred yet. Tap the star on a filament to add it here." ru="Пока ничего не отмечено. Нажмите звезду у филамента, чтобы добавить его сюда."/>
   <translation tag="Nothing to remap" ru="Нечего переназначать"/>
+  <translation tag="Nothing to tune here" ru="Здесь нечего настраивать"/>
   <translation tag="Nothing to unload: no filament at the nozzle" ru="Выгружать нечего: в сопле нет филамента"/>
   <translation tag="Nothing was changed. Temperature and material are kept, so a retry is one tap." ru="Ничего не изменилось. Температура и материал сохранены, повторить можно одним нажатием."/>
   <translation tag="Notification" ru="Уведомление"/>
@@ -2330,6 +2335,7 @@
   <translation tag="Password is required for secured networks" ru="Для защищённых сетей требуется пароль"/>
   <translation tag="Path A tensioner" ru="Натяжитель Пути A"/>
   <translation tag="Path B tensioner" ru="Натяжитель Пути B"/>
+  <translation tag="Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension." ru="Путь {0} резонирует на {2:.0f} Гц намного сильнее, чем {1}. Это указывает на механическое различие (установочные винты шкивов, подшипники роликов, ход ремня), а не на натяжение."/>
   <translation tag="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned." ru="Пик Пути {0} вышел из зоны. Проверьте, что крутили только натяжитель Пути {1}."/>
   <translation tag="Path {}" ru="Путь {}"/>
   <translation tag="Path {} before" ru="Путь {} раньше"/>
@@ -2652,6 +2658,7 @@
   <translation tag="Re-test" ru="Повторить тест"/>
   <translation tag="Re-test A" ru="Тест A"/>
   <translation tag="Re-test B" ru="Тест B"/>
+  <translation tag="Readings don&apos;t repeat" ru="Показания не повторяются"/>
   <translation tag="Readings from extra temperature sensors" ru="Показания доп. датчиков температуры"/>
   <translation tag="Ready" ru="Готов"/>
   <translation tag="Ready for filament operations" ru="Готово к операциям с филаментом"/>
@@ -3316,9 +3323,12 @@
   <translation tag="Thanks! Anonymous usage data helps improve HelixScreen." ru="Спасибо! Анонимные данные использования помогают улучшить HelixScreen."/>
   <translation tag="Thanks! TOTALLY anonymous usage data helps improve HelixScreen." ru="Спасибо! ПОЛНОСТЬЮ анонимные данные использования помогают улучшить HelixScreen."/>
   <translation tag="That print is no longer paused" ru="Эта печать больше не приостановлена"/>
+  <translation tag="That reading jumped too far to trust. Re-measure without turning." ru="Это показание скакнуло слишком сильно, чтобы ему доверять. Измерьте снова, не вращая."/>
   <translation tag="That setting cannot be changed while a print is running" ru="Этот параметр нельзя изменить во время печати"/>
   <translation tag="That slot cannot stand in for this one" ru="Этот слот не может заменить текущий"/>
   <translation tag="That tool is already loaded" ru="Этот инструмент уже загружен"/>
+  <translation tag="That turn didn&apos;t register yet. Tighten {0} a little more." ru="Этот поворот ещё не отразился. Натяните {0} ещё немного."/>
+  <translation tag="That turn didn&apos;t register yet. Tighten {0} one more full turn." ru="Этот поворот ещё не отразился. Натяните {0} ещё на один полный оборот."/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" ru="Оборудование одометра CFS неисправно и требует ремонта или замены"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." ru="Плагин HelixPrint позволяет быстро модифицировать G-code прямо на принтере — например, пропускать сетку стола для быстрых перепечаток."/>
   <translation tag="The Spoolman spool currently loaded" ru="Текущая катушка Spoolman"/>
@@ -3372,6 +3382,7 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." ru="Принтер выдавливает пластик в углу и повторяет, пока показания не сойдутся. Ничего не нужно оценивать на глаз."/>
   <translation tag="The printer finishes this measurement on its own." ru="Принтер завершит это измерение сам."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" ru="Принтер остановил эту печать и не может её возобновить. Начать с начала?"/>
+  <translation tag="The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it." ru="Принтер не сообщил свой диапазон [resonance_tester], поэтому узкую развёртку нельзя удержать внутри него."/>
   <translation tag="The printer has not reported its axis limits yet." ru="Принтер ещё не сообщил пределы осей."/>
   <translation tag="The printer has not reported its maximum velocity yet." ru="Принтер ещё не сообщил максимальную скорость."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." ru="Принтер нагревает сопло, делает несколько коротких тестовых перемещений в углу стола и сам их измеряет. Он повторяет, пока показания не сойдутся, и затем сообщает одно число."/>
@@ -3410,6 +3421,7 @@
   <translation tag="Theme: " ru="Тема: "/>
   <translation tag="There is no cycle to stop" ru="Нет цикла для остановки"/>
   <translation tag="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled." ru="Для этого теста недостаточно свободной памяти. Анализу Klipper не хватит памяти, и принтер зависнет, пока его не выключат и снова не включат."/>
+  <translation tag="These readings aren&apos;t repeatable, so tuning can&apos;t be steered. Check the mechanics first." ru="Эти показания не повторяются, поэтому настройкой нельзя управлять. Сначала проверьте механику."/>
   <translation tag="These tools have a different filament grade loaded:" ru="В этих инструментах загружен филамент другой марки:"/>
   <translation tag="These tools have incompatible materials loaded:" ru="В этих инструментах загружены несовместимые материалы:"/>
   <translation tag="These tools have no filament loaded:" ru="В эти инструменты не загружен филамент:"/>
@@ -3483,6 +3495,8 @@
   <translation tag="Thorough" ru="Тщательно"/>
   <translation tag="Thumbnail Only" ru="Только миниатюра"/>
   <translation tag="Thumbnail: " ru="Миниатюра: "/>
+  <translation tag="Tighten {0} noticeably" ru="Заметно натянуть {0}"/>
+  <translation tag="Tighten {0} one full turn" ru="Натянуть {0} на полный оборот"/>
   <translation tag="Tighten {0} {1}" ru="Натянуть {0} на {1}"/>
   <translation tag="Tighten {}" ru="Натянуть {}"/>
   <translation tag="Time" ru="Время"/>
@@ -3787,6 +3801,7 @@
   <translation tag="Wifi" ru="Wi-Fi"/>
   <translation tag="Will not switch spools on runout" ru="При обрыве катушка не переключится"/>
   <translation tag="Wipe nozzle on silicone cleaning strip" ru="Очистить сопло о силиконовую полоску"/>
+  <translation tag="Within {0:.1f} Hz of each other at {1:.0f} Hz" ru="В пределах {0:.1f} Гц друг от друга на {1:.0f} Гц"/>
   <translation tag="Wizard Error" ru="Ошибка мастера"/>
   <translation tag="Working..." ru="Выполнение..."/>
   <translation tag="Write failed at chunk {}" ru="Не удалось записать в блоке {}"/>
@@ -4050,5 +4065,5 @@
   <translation tag="{}% left" ru="Осталось {}%"/>
   <translation tag="{}&apos;s peak moved out of the zone. Widening it." ru="Пик {} вышел из зоны. Расширяем её."/>
   <translation tag="{}:{:02} elapsed" ru="прошло {}:{:02}"/>
-  <translation tag="~{:.0f} Hz / turn" ru="~{:.0f} Гц / оборот"/>
+  <translation tag="~{:.1f} Hz / turn" ru="~{:.1f} Гц / оборот"/>
 </translations>

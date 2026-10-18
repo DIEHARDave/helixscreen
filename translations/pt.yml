@@ -403,6 +403,7 @@ translations:
   Belt Tension: Tensão da correia
   Belt Tension Check: Verificação de tensão da correia
   Belt Tension needs a CoreXY printer. This one is {}.: 'A tensão da correia precisa de uma impressora CoreXY. Esta é {}.'
+  Belts already match: "As correias já coincidem"
   Beta: Beta
   'Beta features: OFF': 'Recursos Beta: OFF'
   'Beta features: ON': 'Recursos Beta: ON'
@@ -491,6 +492,7 @@ translations:
   Calculator: Calculadora
   Calibrate: Calibrar
   Calibrate All: Calibrar Tudo
+  Calibrate Anyway: "Calibrar mesmo assim"
   Calibrate Bowden: 'Calibrar o bowden'
   Calibrate Cutter: Calibrar cortador
   Calibrate Encoder: 'Calibrar o encoder'
@@ -940,7 +942,7 @@ translations:
   'Current: %d°C | Target: %d°C': 'Atual: %d°C | Alvo: %d°C'
   Currently Loaded: Atualmente carregado
   Currently printing: Imprimindo atualmente
-  Curves differ in shape. Steering by each path's tallest peak.: "As curvas diferem na forma. Guiando pelo pico mais alto de cada caminho."
+  Curves differ in shape. Check the mechanics before chasing a perfect match.: "As curvas diferem na forma. Verifique a mecânica antes de buscar uma igualdade perfeita."
   Custom: Personalizado
   Custom...: Personalizado...
   Customize Macro Button: Personalizar Botão de Macro
@@ -2089,8 +2091,8 @@ translations:
   Match Mode: 'Modo de correspondência'
   Match your typical print fan speed: Ajuste a velocidade típica da ventoinha de impressão
   Matched at {:.1f} Hz: "Igualadas em {:.1f} Hz"
-  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
-  : "Correias iguais dão curvas da mesma forma. Quando o pico mais alto de um caminho não tem par no outro, algo além da tensão está moldando a resposta:\n\n- uma correia gasta, desfiada ou desalinhada\n- um parafuso da polia solto ou patinando\n- uma polia livre ou rolamento que trava\n- sujeira nos dentes, ou uma correia raspando uma flange\n- um suporte do acelerômetro solto\n\nO ajuste continua guiado pelo pico mais alto de cada caminho, mas verifique isso antes de buscar uma igualdade perfeita."
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still follows the zone that moved with the turn, but check these before chasing a perfect match."
+  : "Correias iguais dão curvas da mesma forma. Quando o pico mais alto de um caminho não tem par no outro, algo além da tensão está moldando a resposta:\n\n- uma correia gasta, desfiada ou desalinhada\n- um parafuso da polia solto ou patinando\n- uma polia livre ou rolamento que trava\n- sujeira nos dentes, ou uma correia raspando uma flange\n- um suporte do acelerômetro solto\n\nO ajuste segue a zona que se moveu com o giro, mas verifique isso antes de buscar uma igualdade perfeita."
   Matching printers: Impressoras correspondentes
   Material: Material
   'Material Comfort:': 'Conforto do Material:'
@@ -2107,6 +2109,7 @@ translations:
   Maximum acceleration (mm/s²): Aceleração máxima (mm/s²)
   Maximum toolhead speed (mm/s): Velocidade máxima do cabeçote (mm/s)
   Measure: 'Medir'
+  Measure (~{} min): "Medir (~{} min)"
   Measure every tool's XYZ offset automatically: Mede o offset XYZ de cada ferramenta automaticamente
   Measure pressure advance automatically: 'Mede o Pressure Advance automaticamente'
   Measure this zone first: "Meça esta zona primeiro"
@@ -2362,10 +2365,12 @@ translations:
   Not yet calibrated: Ainda não calibrado
   Notes: Notas
   Notes (optional): Notas (opcional)
-  Nothing left to tune: "Nada mais a ajustar"
+  Nothing followed the turns on {0}. Undo them, then check the mechanics.: "Nada respondeu às voltas em {0}. Desfaça-as e depois verifique a mecânica."
+  Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics.: "Nada respondeu a {1} voltas de {0}. Volte {0} {1} voltas e depois verifique a mecânica."
   Nothing loaded: Nada carregado
   Nothing starred yet. Tap the star on a filament to add it here.: 'Nada marcado ainda. Toque na estrela de um filamento para o adicionar aqui.'
   Nothing to remap: Nada para remapear
+  Nothing to tune here: "Nada a ajustar aqui"
   'Nothing to unload: no filament at the nozzle': 'Nada para descarregar: sem filamento no bico'
   'Which lane is in the toolhead?': 'Qual via está na cabeça?'
   'Choose which lane is in the toolhead to unload it': 'Escolha qual via está na cabeça para descarregá-la'
@@ -2511,6 +2516,8 @@ translations:
   Password is required for secured networks: Senha é necessária para redes protegidas
   Path A tensioner: "Tensor do Caminho A"
   Path B tensioner: "Tensor do Caminho B"
+  ? Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension.
+  : "O caminho {0} ressoa muito mais que {1} a {2:.0f} Hz. Isso indica uma diferença mecânica (parafusos da polia, rolamentos das polias livres, alinhamento da correia), não a tensão."
   Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: "O pico do Caminho {0} saiu da zona. Confira se girou apenas o tensor do Caminho {1}."
   Path {}: Caminho {}
   Path {} before: Caminho {} antes
@@ -2846,6 +2853,7 @@ translations:
   Re-test: Testar novamente
   Re-test A: "Repetir A"
   Re-test B: "Repetir B"
+  Readings don't repeat: "As leituras não se repetem"
   Readings from extra temperature sensors: Leituras de sensores adicionais
   Ready: Pronto
   Ready for filament operations: Pronto para operações de filamento
@@ -3587,9 +3595,12 @@ translations:
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: Obrigado! Dados
     de uso TOTALMENTE anônimos ajudam a melhorar o HelixScreen.
   That print is no longer paused: 'Essa impressão não está mais pausada'
+  That reading jumped too far to trust. Re-measure without turning.: "Essa leitura saltou demais para ser confiável. Meça novamente sem girar."
   'That setting cannot be changed while a print is running': 'Essa configuração não pode ser alterada durante uma impressão'
   That slot cannot stand in for this one: Esse slot não pode substituir este
   That tool is already loaded: Essa ferramenta já está carregada
+  That turn didn't register yet. Tighten {0} a little more.: "Esse giro ainda não apareceu. Aperte {0} um pouco mais."
+  That turn didn't register yet. Tighten {0} one more full turn.: "Esse giro ainda não apareceu. Aperte {0} mais uma volta completa."
   The CFS odometer hardware is faulty and needs repair or replacement: O hardware do odômetro do CFS está com defeito e precisa de reparo ou substituição
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
@@ -3659,6 +3670,7 @@ translations:
   The printer finishes this measurement on its own.: 'A impressora conclui esta medição por conta própria.'
   The printer halted this print and cannot resume it. Restart from the beginning?: A
     impressora parou esta impressão e não pode retomá-la. Reiniciar do início?
+  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "A impressora não informou sua faixa de [resonance_tester], então uma varredura estreita não pode ser mantida dentro dela."
   The printer has not reported its axis limits yet.: 'A impressora ainda não informou os limites dos eixos.'
   The printer has not reported its maximum velocity yet.: 'A impressora ainda não informou a velocidade máxima.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
@@ -3713,6 +3725,7 @@ translations:
   There is no cycle to stop: 'Não há ciclo para parar'
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : "Não há memória livre suficiente para este teste. A análise do Klipper ficaria sem memória e deixaria a impressora travada até ser desligada e ligada."
+  These readings aren't repeatable, so tuning can't be steered. Check the mechanics first.: "Essas leituras não se repetem, então o ajuste não pode ser guiado. Verifique a mecânica primeiro."
   'These tools have a different filament grade loaded:': 'Estas ferramentas têm um grau de filamento diferente carregado:'
   'These tools have incompatible materials loaded:': 'Estas ferramentas têm materiais
     incompatíveis carregados:'
@@ -3818,6 +3831,8 @@ translations:
   Thorough: Completo
   Thumbnail Only: Apenas miniatura
   'Thumbnail: ': 'Miniatura: '
+  Tighten {0} noticeably: "Apertar {0} visivelmente"
+  Tighten {0} one full turn: "Apertar {0} uma volta completa"
   Tighten {0} {1}: 'Apertar {0} {1}'
   Tighten {}: "Apertar {}"
   Time: Tempo
@@ -4136,6 +4151,7 @@ translations:
   Wifi: Wi-Fi
   Will not switch spools on runout: Não trocará de carretel ao acabar
   Wipe nozzle on silicone cleaning strip: 'Limpar o bico na tira de limpeza de silicone'
+  Within {0:.1f} Hz of each other at {1:.0f} Hz: "A {0:.1f} Hz uma da outra em {1:.0f} Hz"
   Wizard Error: Erro do assistente
   Working...: Processando...
   Write failed at chunk {}: Falha na escrita no fragmento {}
@@ -4391,7 +4407,6 @@ translations:
   '{} → {}: no filament loaded.': '{} → {}: nenhum filamento carregado.'
   "{}'s peak moved out of the zone. Widening it.": "O pico de {} saiu da zona. Ampliando."
   '{}:{:02} elapsed': '{}:{:02} decorrido'
-  ~{:.0f} Hz / turn: "~{:.0f} Hz / volta"
   '{}% left': '{}% restante'
   'Basic': 'Básico'
   'Recycled': 'Reciclado'
@@ -4409,3 +4424,4 @@ translations:
   'Variant': 'Variante'
   'from tag': 'do tag'
   'Browse catalog...': 'Procurar no catálogo...'
+  ~{:.1f} Hz / turn: "~{:.1f} Hz / volta"

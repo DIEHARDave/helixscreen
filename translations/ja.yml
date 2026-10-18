@@ -379,6 +379,7 @@ translations:
   Belt Tension: ベルトテンション
   Belt Tension Check: ベルトテンション確認
   Belt Tension needs a CoreXY printer. This one is {}.: 'ベルトテンションには CoreXY プリンターが必要です。このプリンターは{}です。'
+  Belts already match: "ベルトはすでに一致しています"
   Beta: ベータ
   'Beta features: OFF': 'ベータ機能: OFF'
   'Beta features: ON': 'ベータ機能: ON'
@@ -464,6 +465,7 @@ translations:
   Calculator: 計算機
   Calibrate: キャリブレート
   Calibrate All: すべてキャリブレート
+  Calibrate Anyway: "それでもキャリブレート"
   Calibrate Bowden: 'ボーデンをキャリブレート'
   Calibrate Cutter: カッターをキャリブレート
   Calibrate Encoder: 'エンコーダーをキャリブレート'
@@ -872,7 +874,7 @@ translations:
   'Current: %d°C | Target: %d°C': '現在: %d°C | 目標: %d°C'
   Currently Loaded: 現在ロード中
   Currently printing: 印刷中
-  Curves differ in shape. Steering by each path's tallest peak.: "カーブの形が異なります。各パスの最も高いピークで調整します。"
+  Curves differ in shape. Check the mechanics before chasing a perfect match.: "カーブの形が異なります。完全な一致を目指す前に機構を確認してください。"
   Custom: カスタム
   Custom...: カスタム...
   Customize Macro Button: マクロボタンをカスタマイズ
@@ -1963,8 +1965,8 @@ translations:
   Match Mode: '一致モード'
   Match your typical print fan speed: 通常の印刷ファン速度に合わせてください
   Matched at {:.1f} Hz: "{:.1f} Hzで一致"
-  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
-  : "張力のそろったベルトは同じ形のカーブになります。一方のパスの最も高いピークに、もう一方で対になるピークがない場合、張力以外の何かが応答に影響しています:\n\n- 摩耗、ほつれ、または片寄って走るベルト\n- プーリーのイモネジの緩みや滑り\n- 引っかかるアイドラーやベアリング\n- 歯の中のごみ、またはフランジに擦れるベルト\n- 加速度センサーの取り付けの緩み\n\n調整は引き続き各パスの最も高いピークを基準にしますが、完全な一致を目指す前にこれらを確認してください。"
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still follows the zone that moved with the turn, but check these before chasing a perfect match."
+  : "張力のそろったベルトは同じ形のカーブになります。一方のパスの最も高いピークに、もう一方で対になるピークがない場合、張力以外の何かが応答に影響しています:\n\n- 摩耗、ほつれ、または片寄って走るベルト\n- プーリーのイモネジの緩みや滑り\n- 引っかかるアイドラーやベアリング\n- 歯の中のごみ、またはフランジに擦れるベルト\n- 加速度センサーの取り付けの緩み\n\n調整は回転に応じて動いたゾーンに従いますが、完全な一致を目指す前にこれらを確認してください。"
   Matching printers: 一致するプリンター
   Material: 素材
   'Material Comfort:': '素材の適合度:'
@@ -1981,6 +1983,7 @@ translations:
   Maximum acceleration (mm/s²): 最大加速度 (mm/s²)
   Maximum toolhead speed (mm/s): ツールヘッドの最大速度 (mm/s)
   Measure: '測定'
+  Measure (~{} min): "測定 (約{}分)"
   Measure every tool's XYZ offset automatically: 各ツールの XYZ オフセットを自動で測定します
   Measure pressure advance automatically: 'Pressure Advance を自動で測定します'
   Measure this zone first: "まずこのゾーンを測定"
@@ -2226,10 +2229,12 @@ translations:
   Not yet calibrated: 未キャリブレーション
   Notes: メモ
   Notes (optional): メモ（オプション）
-  Nothing left to tune: "調整する項目はありません"
+  Nothing followed the turns on {0}. Undo them, then check the mechanics.: "{0}を回しても変化がありませんでした。元に戻してから機構を確認してください。"
+  Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics.: "{0}を{1}回転しても変化がありませんでした。{0}を{1}回転戻してから機構を確認してください。"
   Nothing loaded: 装填されていません
   Nothing starred yet. Tap the star on a filament to add it here.: 'まだ何も登録されていません。フィラメントの星をタップしてここに追加してください。'
   Nothing to remap: リマップするものがありません
+  Nothing to tune here: "ここで調整するものはありません"
   'Nothing to unload: no filament at the nozzle': '取り出すものがありません: ノズルにフィラメントがありません'
   'Which lane is in the toolhead?': 'ツールヘッドに入っているのはどのレーンですか？'
   'Choose which lane is in the toolhead to unload it': '取り出すには、ツールヘッドに入っているレーンを選んでください'
@@ -2372,6 +2377,8 @@ translations:
   Password is required for secured networks: セキュリティ保護されたネットワークにはパスワードが必要です
   Path A tensioner: "パスAのテンショナー"
   Path B tensioner: "パスBのテンショナー"
+  ? Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension.
+  : "パス{0}は{2:.0f} Hzで{1}よりはるかに強く共振しています。張力ではなく機械的な違い(プーリーのイモネジ、アイドラーのベアリング、ベルトの走行)を示しています。"
   Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: "パス{0}のピークがゾーンから外れました。パス{1}のテンショナーだけを回したか確認してください。"
   Path {}: パス {}
   Path {} before: パス{}（以前）
@@ -2691,6 +2698,7 @@ translations:
   Re-test: 再テスト
   Re-test A: Aを再テスト
   Re-test B: Bを再テスト
+  Readings don't repeat: "測定値が再現しません"
   Readings from extra temperature sensors: 追加の温度センサーの値
   Ready: 準備完了
   Ready for filament operations: フィラメント操作の準備ができています
@@ -3376,9 +3384,12 @@ translations:
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: ご協力ありがとうございます！完全匿名の使用データが
     HelixScreen の改善に役立ちます。
   That print is no longer paused: 'その印刷はもう一時停止中ではありません'
+  That reading jumped too far to trust. Re-measure without turning.: "この測定値は大きく跳びすぎて信頼できません。回さずに再測定してください。"
   'That setting cannot be changed while a print is running': '印刷中はこの設定を変更できません'
   That slot cannot stand in for this one: そのスロットはこのスロットの代わりになりません
   That tool is already loaded: そのツールはすでに装填されています
+  That turn didn't register yet. Tighten {0} a little more.: "その回転はまだ反映されていません。{0}をもう少し締めてください。"
+  That turn didn't register yet. Tighten {0} one more full turn.: "その回転はまだ反映されていません。{0}をもう1回転締めてください。"
   The CFS odometer hardware is faulty and needs repair or replacement: CFS の走行距離計ハードウェアが故障しています。修理または交換が必要です
   ? The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
@@ -3443,6 +3454,7 @@ translations:
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'プリンターは隅で押出しを行い、測定値が一致するまで繰り返します。目視での判断は不要です。'
   The printer finishes this measurement on its own.: 'この測定はプリンターが最後まで行います。'
   The printer halted this print and cannot resume it. Restart from the beginning?: プリンターはこの印刷を停止し、再開できません。最初からやり直しますか？
+  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "プリンターが[resonance_tester]の範囲を報告していないため、部分スイープをその範囲内に収められません。"
   The printer has not reported its axis limits yet.: 'プリンターがまだ軸の範囲を報告していません。'
   The printer has not reported its maximum velocity yet.: 'プリンターがまだ最大速度を報告していません。'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
@@ -3488,6 +3500,7 @@ translations:
   There is no cycle to stop: '停止するサイクルがありません'
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : "このテストを実行するための空きメモリが足りません。Klipperの解析でメモリが不足し、電源を入れ直すまでプリンターが停止したままになります。"
+  These readings aren't repeatable, so tuning can't be steered. Check the mechanics first.: "測定値が再現しないため、調整を導けません。まず機構を確認してください。"
   'These tools have a different filament grade loaded:': '次のツールには異なるフィラメントグレードが装填されています:'
   'These tools have incompatible materials loaded:': 'これらのツールには互換性のない素材がロードされています:'
   'These tools have no filament loaded:': 'これらのツールにフィラメントが装填されていません:'
@@ -3577,6 +3590,8 @@ translations:
   Thorough: 徹底的
   Thumbnail Only: サムネイルのみ
   'Thumbnail: ': 'サムネイル: '
+  Tighten {0} noticeably: "{0}をはっきり締める"
+  Tighten {0} one full turn: "{0}を1回転締める"
   Tighten {0} {1}: '{0}を{1}締める'
   Tighten {}: "{}を締める"
   Time: 時間
@@ -3882,6 +3897,7 @@ translations:
   Wifi: Wi-Fi
   Will not switch spools on runout: フィラメント切れ時にスプールを切り替えません
   Wipe nozzle on silicone cleaning strip: 'シリコン清掃ストリップでノズルを拭く'
+  Within {0:.1f} Hz of each other at {1:.0f} Hz: "{1:.0f} Hzで差は{0:.1f} Hz以内"
   Wizard Error: ウィザードエラー
   Working...: 処理中...
   Write failed at chunk {}: チャンク {} で書き込みに失敗しました
@@ -4131,7 +4147,6 @@ translations:
   '{} → {}: no filament loaded.': '{} → {}: フィラメントが装填されていません。'
   "{}'s peak moved out of the zone. Widening it.": "{}のピークがゾーン外に出ました。ゾーンを広げます。"
   '{}:{:02} elapsed': 経過 {}:{:02}
-  ~{:.0f} Hz / turn: "約{:.0f} Hz / 回転"
   '{}% left': '残り {}%'
   'Basic': '標準'
   'Recycled': 'リサイクル'
@@ -4149,3 +4164,4 @@ translations:
   'Variant': 'バリアント'
   'from tag': 'タグから'
   'Browse catalog...': 'カタログを見る...'
+  ~{:.1f} Hz / turn: "約{:.1f} Hz / 回転"

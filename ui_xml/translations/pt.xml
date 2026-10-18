@@ -375,6 +375,7 @@
   <translation tag="Belt Tension" pt="Tensão da correia"/>
   <translation tag="Belt Tension Check" pt="Verificação de tensão da correia"/>
   <translation tag="Belt Tension needs a CoreXY printer. This one is {}." pt="A tensão da correia precisa de uma impressora CoreXY. Esta é {}."/>
+  <translation tag="Belts already match" pt="As correias já coincidem"/>
   <translation tag="Beta" pt="Beta"/>
   <translation tag="Beta features: OFF" pt="Recursos Beta: OFF"/>
   <translation tag="Beta features: ON" pt="Recursos Beta: ON"/>
@@ -458,6 +459,7 @@
   <translation tag="Calibrate" pt="Calibrar"/>
   <translation tag="Calibrate All" pt="Calibrar Tudo"/>
   <translation tag="Calibrate All Tools" pt="Calibrar todas as ferramentas"/>
+  <translation tag="Calibrate Anyway" pt="Calibrar mesmo assim"/>
   <translation tag="Calibrate Bowden" pt="Calibrar o bowden"/>
   <translation tag="Calibrate Cutter" pt="Calibrar cortador"/>
   <translation tag="Calibrate Encoder" pt="Calibrar o encoder"/>
@@ -843,7 +845,7 @@
   <translation tag="Current: %d°C | Target: %d°C" pt="Atual: %d°C | Alvo: %d°C"/>
   <translation tag="Currently Loaded" pt="Atualmente carregado"/>
   <translation tag="Currently printing" pt="Imprimindo atualmente"/>
-  <translation tag="Curves differ in shape. Steering by each path&apos;s tallest peak." pt="As curvas diferem na forma. Guiando pelo pico mais alto de cada caminho."/>
+  <translation tag="Curves differ in shape. Check the mechanics before chasing a perfect match." pt="As curvas diferem na forma. Verifique a mecânica antes de buscar uma igualdade perfeita."/>
   <translation tag="Custom" pt="Personalizado"/>
   <translation tag="Custom..." pt="Personalizado..."/>
   <translation tag="Customize Macro Button" pt="Personalizar Botão de Macro"/>
@@ -1890,7 +1892,7 @@
   <translation tag="Match Mode" pt="Modo de correspondência"/>
   <translation tag="Match your typical print fan speed" pt="Ajuste a velocidade típica da ventoinha de impressão"/>
   <translation tag="Matched at {:.1f} Hz" pt="Igualadas em {:.1f} Hz"/>
-  <translation tag="Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:&#10;&#10;- a worn, frayed or mis-tracking belt&#10;- a loose or slipping pulley grub screw&#10;- an idler or bearing that binds&#10;- debris in the teeth, or a belt rubbing a flange&#10;- a loose accelerometer mount&#10;&#10;Tuning still steers by each path&apos;s tallest peak, but check these before chasing a perfect match." pt="Correias iguais dão curvas da mesma forma. Quando o pico mais alto de um caminho não tem par no outro, algo além da tensão está moldando a resposta:&#10;&#10;- uma correia gasta, desfiada ou desalinhada&#10;- um parafuso da polia solto ou patinando&#10;- uma polia livre ou rolamento que trava&#10;- sujeira nos dentes, ou uma correia raspando uma flange&#10;- um suporte do acelerômetro solto&#10;&#10;O ajuste continua guiado pelo pico mais alto de cada caminho, mas verifique isso antes de buscar uma igualdade perfeita."/>
+  <translation tag="Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:&#10;&#10;- a worn, frayed or mis-tracking belt&#10;- a loose or slipping pulley grub screw&#10;- an idler or bearing that binds&#10;- debris in the teeth, or a belt rubbing a flange&#10;- a loose accelerometer mount&#10;&#10;Tuning still follows the zone that moved with the turn, but check these before chasing a perfect match." pt="Correias iguais dão curvas da mesma forma. Quando o pico mais alto de um caminho não tem par no outro, algo além da tensão está moldando a resposta:&#10;&#10;- uma correia gasta, desfiada ou desalinhada&#10;- um parafuso da polia solto ou patinando&#10;- uma polia livre ou rolamento que trava&#10;- sujeira nos dentes, ou uma correia raspando uma flange&#10;- um suporte do acelerômetro solto&#10;&#10;O ajuste segue a zona que se moveu com o giro, mas verifique isso antes de buscar uma igualdade perfeita."/>
   <translation tag="Matching printers" pt="Impressoras correspondentes"/>
   <translation tag="Material" pt="Material"/>
   <translation tag="Material Comfort:" pt="Conforto do Material:"/>
@@ -1907,6 +1909,7 @@
   <translation tag="Maximum acceleration (mm/s²)" pt="Aceleração máxima (mm/s²)"/>
   <translation tag="Maximum toolhead speed (mm/s)" pt="Velocidade máxima do cabeçote (mm/s)"/>
   <translation tag="Measure" pt="Medir"/>
+  <translation tag="Measure (~{} min)" pt="Medir (~{} min)"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" pt="Mede o offset XYZ de cada ferramenta automaticamente"/>
   <translation tag="Measure pressure advance automatically" pt="Mede o Pressure Advance automaticamente"/>
   <translation tag="Measure this zone first" pt="Meça esta zona primeiro"/>
@@ -2146,10 +2149,12 @@
   <translation tag="Not yet calibrated" pt="Ainda não calibrado"/>
   <translation tag="Notes" pt="Notas"/>
   <translation tag="Notes (optional)" pt="Notas (opcional)"/>
-  <translation tag="Nothing left to tune" pt="Nada mais a ajustar"/>
+  <translation tag="Nothing followed the turns on {0}. Undo them, then check the mechanics." pt="Nada respondeu às voltas em {0}. Desfaça-as e depois verifique a mecânica."/>
+  <translation tag="Nothing followed {1} turns of {0}. Turn {0} back {1} turns, then check the mechanics." pt="Nada respondeu a {1} voltas de {0}. Volte {0} {1} voltas e depois verifique a mecânica."/>
   <translation tag="Nothing loaded" pt="Nada carregado"/>
   <translation tag="Nothing starred yet. Tap the star on a filament to add it here." pt="Nada marcado ainda. Toque na estrela de um filamento para o adicionar aqui."/>
   <translation tag="Nothing to remap" pt="Nada para remapear"/>
+  <translation tag="Nothing to tune here" pt="Nada a ajustar aqui"/>
   <translation tag="Nothing to unload: no filament at the nozzle" pt="Nada para descarregar: sem filamento no bico"/>
   <translation tag="Nothing was changed. Temperature and material are kept, so a retry is one tap." pt="Nada foi alterado. A temperatura e o material são mantidos, repetir é um toque."/>
   <translation tag="Notification" pt="Notificação"/>
@@ -2285,6 +2290,7 @@
   <translation tag="Password is required for secured networks" pt="Senha é necessária para redes protegidas"/>
   <translation tag="Path A tensioner" pt="Tensor do Caminho A"/>
   <translation tag="Path B tensioner" pt="Tensor do Caminho B"/>
+  <translation tag="Path {0} resonates much more than {1} at {2:.0f} Hz. That points at a mechanical difference (pulley grub screws, idler bearings, belt tracking), not tension." pt="O caminho {0} ressoa muito mais que {1} a {2:.0f} Hz. Isso indica uma diferença mecânica (parafusos da polia, rolamentos das polias livres, alinhamento da correia), não a tensão."/>
   <translation tag="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned." pt="O pico do Caminho {0} saiu da zona. Confira se girou apenas o tensor do Caminho {1}."/>
   <translation tag="Path {}" pt="Caminho {}"/>
   <translation tag="Path {} before" pt="Caminho {} antes"/>
@@ -2598,6 +2604,7 @@
   <translation tag="Re-test" pt="Testar novamente"/>
   <translation tag="Re-test A" pt="Repetir A"/>
   <translation tag="Re-test B" pt="Repetir B"/>
+  <translation tag="Readings don&apos;t repeat" pt="As leituras não se repetem"/>
   <translation tag="Readings from extra temperature sensors" pt="Leituras de sensores adicionais"/>
   <translation tag="Ready" pt="Pronto"/>
   <translation tag="Ready for filament operations" pt="Pronto para operações de filamento"/>
@@ -3256,9 +3263,12 @@
   <translation tag="Thanks! Anonymous usage data helps improve HelixScreen." pt="Obrigado! Dados de uso anônimos ajudam a melhorar o HelixScreen."/>
   <translation tag="Thanks! TOTALLY anonymous usage data helps improve HelixScreen." pt="Obrigado! Dados de uso TOTALMENTE anônimos ajudam a melhorar o HelixScreen."/>
   <translation tag="That print is no longer paused" pt="Essa impressão não está mais pausada"/>
+  <translation tag="That reading jumped too far to trust. Re-measure without turning." pt="Essa leitura saltou demais para ser confiável. Meça novamente sem girar."/>
   <translation tag="That setting cannot be changed while a print is running" pt="Essa configuração não pode ser alterada durante uma impressão"/>
   <translation tag="That slot cannot stand in for this one" pt="Esse slot não pode substituir este"/>
   <translation tag="That tool is already loaded" pt="Essa ferramenta já está carregada"/>
+  <translation tag="That turn didn&apos;t register yet. Tighten {0} a little more." pt="Esse giro ainda não apareceu. Aperte {0} um pouco mais."/>
+  <translation tag="That turn didn&apos;t register yet. Tighten {0} one more full turn." pt="Esse giro ainda não apareceu. Aperte {0} mais uma volta completa."/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" pt="O hardware do odômetro do CFS está com defeito e precisa de reparo ou substituição"/>
   <translation tag="The HelixPrint plugin enables fast G-code modifications directly on your printer—like skipping bed mesh for quick reprints." pt="O plugin HelixPrint permite modificações rápidas de G-code diretamente na sua impressora—como pular malha da mesa para reimpressões rápidas."/>
   <translation tag="The Spoolman spool currently loaded" pt="O carretel do Spoolman em uso"/>
@@ -3312,6 +3322,7 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." pt="A impressora extruda num canto e repete até as leituras coincidirem. Você não julga nada a olho."/>
   <translation tag="The printer finishes this measurement on its own." pt="A impressora conclui esta medição por conta própria."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" pt="A impressora parou esta impressão e não pode retomá-la. Reiniciar do início?"/>
+  <translation tag="The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it." pt="A impressora não informou sua faixa de [resonance_tester], então uma varredura estreita não pode ser mantida dentro dela."/>
   <translation tag="The printer has not reported its axis limits yet." pt="A impressora ainda não informou os limites dos eixos."/>
   <translation tag="The printer has not reported its maximum velocity yet." pt="A impressora ainda não informou a velocidade máxima."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." pt="A impressora aquece o bico, faz alguns movimentos curtos de teste num canto da placa e os mede sozinha. Repete até as leituras coincidirem e então informa um único número."/>
@@ -3350,6 +3361,7 @@
   <translation tag="Theme: " pt="Tema: "/>
   <translation tag="There is no cycle to stop" pt="Não há ciclo para parar"/>
   <translation tag="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled." pt="Não há memória livre suficiente para este teste. A análise do Klipper ficaria sem memória e deixaria a impressora travada até ser desligada e ligada."/>
+  <translation tag="These readings aren&apos;t repeatable, so tuning can&apos;t be steered. Check the mechanics first." pt="Essas leituras não se repetem, então o ajuste não pode ser guiado. Verifique a mecânica primeiro."/>
   <translation tag="These tools have a different filament grade loaded:" pt="Estas ferramentas têm um grau de filamento diferente carregado:"/>
   <translation tag="These tools have incompatible materials loaded:" pt="Estas ferramentas têm materiais incompatíveis carregados:"/>
   <translation tag="These tools have no filament loaded:" pt="Estas ferramentas não têm filamento carregado:"/>
@@ -3423,6 +3435,8 @@
   <translation tag="Thorough" pt="Completo"/>
   <translation tag="Thumbnail Only" pt="Apenas miniatura"/>
   <translation tag="Thumbnail: " pt="Miniatura: "/>
+  <translation tag="Tighten {0} noticeably" pt="Apertar {0} visivelmente"/>
+  <translation tag="Tighten {0} one full turn" pt="Apertar {0} uma volta completa"/>
   <translation tag="Tighten {0} {1}" pt="Apertar {0} {1}"/>
   <translation tag="Tighten {}" pt="Apertar {}"/>
   <translation tag="Time" pt="Tempo"/>
@@ -3727,6 +3741,7 @@
   <translation tag="Wifi" pt="Wi-Fi"/>
   <translation tag="Will not switch spools on runout" pt="Não trocará de carretel ao acabar"/>
   <translation tag="Wipe nozzle on silicone cleaning strip" pt="Limpar o bico na tira de limpeza de silicone"/>
+  <translation tag="Within {0:.1f} Hz of each other at {1:.0f} Hz" pt="A {0:.1f} Hz uma da outra em {1:.0f} Hz"/>
   <translation tag="Wizard Error" pt="Erro do assistente"/>
   <translation tag="Working..." pt="Processando..."/>
   <translation tag="Write failed at chunk {}" pt="Falha na escrita no fragmento {}"/>
@@ -3969,5 +3984,5 @@
   <translation tag="{}% left" pt="{}% restante"/>
   <translation tag="{}&apos;s peak moved out of the zone. Widening it." pt="O pico de {} saiu da zona. Ampliando."/>
   <translation tag="{}:{:02} elapsed" pt="{}:{:02} decorrido"/>
-  <translation tag="~{:.0f} Hz / turn" pt="~{:.0f} Hz / volta"/>
+  <translation tag="~{:.1f} Hz / turn" pt="~{:.1f} Hz / volta"/>
 </translations>
