@@ -297,68 +297,73 @@ lv_subject_t* PrintPreparationManager::get_preprint_estimate_subject() {
     return &preprint_estimate_subject_;
 }
 
-void PrintPreparationManager::recalculate_estimate() {
+void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_metadata) {
     // Callers reach this before any getter fetch (the detail view computes
     // the estimate on open), so the subject is initialised here.
     ensure_estimate_subject_initialized();
 
-    if (!printer_state_)
+    // The heat-up runs to the file's own temperatures. Until its metadata is
+    // in, any number would leave them out, so there is no estimate.
+    if (!printer_state_ || !file_metadata) {
+        lv_subject_set_int(&preprint_estimate_subject_, 0);
         return;
+    }
 
-    auto& mgr = ThermalRateManager::instance();
+    auto& temps = printer_state_->temperature_state();
+    const float ext_temp = helix::ui::temperature::deci_to_degrees_f(
+        lv_subject_get_int(temps.get_active_extruder_temp_subject()));
+    const float bed_temp =
+        helix::ui::temperature::deci_to_degrees_f(lv_subject_get_int(temps.get_bed_temp_subject()));
+    const auto nozzle_target = static_cast<float>(file_metadata->first_layer_extr_temp);
+    const auto bed_target = static_cast<float>(file_metadata->first_layer_bed_temp);
 
-    // Current temps (decidegrees -> degrees)
-    float ext_temp = helix::ui::temperature::deci_to_degrees_f(
-        lv_subject_get_int(printer_state_->temperature_state().get_active_extruder_temp_subject()));
-    float ext_target = helix::ui::temperature::deci_to_degrees_f(lv_subject_get_int(
-        printer_state_->temperature_state().get_active_extruder_target_subject()));
-    float bed_temp = helix::ui::temperature::deci_to_degrees_f(
-        lv_subject_get_int(printer_state_->temperature_state().get_bed_temp_subject()));
-    float bed_target = helix::ui::temperature::deci_to_degrees_f(
-        lv_subject_get_int(printer_state_->temperature_state().get_bed_target_subject()));
+    auto& rates = ThermalRateManager::instance();
+    helix::PreprintHeating heating;
+    heating.nozzle_seconds = rates.estimate_heating_seconds("extruder", ext_temp, nozzle_target);
+    heating.bed_seconds = rates.estimate_heating_seconds("heater_bed", bed_temp, bed_target);
+    heating.nozzle_target_known = nozzle_target > 0.0f;
 
-    float total = 0.0f;
-
-    // Heating estimates
-    total += mgr.estimate_heating_seconds("extruder", ext_temp, ext_target);
-    total += mgr.estimate_heating_seconds("heater_bed", bed_temp, bed_target);
-
-    // Non-heating ops from predictor (cached to avoid reparsing config JSON on every toggle)
-    if (!predictor_cached_) {
-        auto entries = helix::PreprintPredictor::load_entries_from_config();
-        bool is_warm = bed_temp >= 40.0f;
+    // The history this start will be measured against: its temp bucket and
+    // whether a host-side block runs ahead of the job (the collector's window).
+    const int temp_bucket = bed_temp >= 40.0f ? 2 : 1;
+    const helix::PreprintWindow window =
+        pre_start_block(collect_macro_skip_params(), {}, nullptr).gcode.empty()
+            ? helix::PreprintWindow::PrinterEdge
+            : helix::PreprintWindow::HostPreStart;
+    if (!predictor_cached_ || cached_temp_bucket_ != temp_bucket || cached_window_ != window) {
         cached_predictor_ = helix::PreprintPredictor{};
-        cached_predictor_.load_entries(entries,
-                                       is_warm ? StartCondition::WARM : StartCondition::COLD);
+        cached_predictor_.load_entries(helix::PreprintPredictor::load_entries_from_config(),
+                                       temp_bucket, window);
+        cached_temp_bucket_ = temp_bucket;
+        cached_window_ = window;
         predictor_cached_ = true;
     }
 
-    // Homing always happens, and takes the collector's estimate for it
-    total += static_cast<float>(cached_predictor_.predicted_homing_seconds());
-    auto phases = cached_predictor_.predicted_phases();
-
-    // Add phase estimate if the option is currently enabled. State is read
-    // through the new framework (get_option_state(id) — provider-driven from
-    // the active panel's renderer; falls back to default_enabled if no panel
-    // is attached).
-    auto add_if_enabled = [&](const std::string& id, int phase_int, float default_s) {
-        if (get_option_state(id) != PrePrintOptionState::ENABLED) {
-            return;
-        }
-        auto it = phases.find(phase_int);
-        total += (it != phases.end()) ? static_cast<float>(it->second) : default_s;
+    // A shown toggle the user turned off skips its phase; one left on runs it.
+    // A phase with no toggle runs as the start macro does.
+    static const std::pair<const char*, helix::PrintStartPhase> kTogglePhases[] = {
+        {"bed_mesh", helix::PrintStartPhase::BED_MESH},
+        {"qgl", helix::PrintStartPhase::QGL},
+        {"z_tilt", helix::PrintStartPhase::Z_TILT},
+        {"nozzle_clean", helix::PrintStartPhase::CLEANING},
+        {"purge_line", helix::PrintStartPhase::PURGING},
     };
+    helix::PreprintPhaseOverrides overrides;
+    for (const auto& [id, phase] : kTogglePhases) {
+        const PrePrintOptionState state = get_option_state(id);
+        if (state != PrePrintOptionState::NOT_APPLICABLE) {
+            overrides[static_cast<int>(phase)] = state == PrePrintOptionState::ENABLED;
+        }
+    }
 
-    add_if_enabled("bed_mesh", static_cast<int>(helix::PrintStartPhase::BED_MESH), 90.0f);
-    add_if_enabled("qgl", static_cast<int>(helix::PrintStartPhase::QGL), 60.0f);
-    add_if_enabled("z_tilt", static_cast<int>(helix::PrintStartPhase::Z_TILT), 45.0f);
-    add_if_enabled("nozzle_clean", static_cast<int>(helix::PrintStartPhase::CLEANING), 15.0f);
-    add_if_enabled("purge_line", static_cast<int>(helix::PrintStartPhase::PURGING), 10.0f);
-
-    int estimate_s = static_cast<int>(total);
+    const int estimate_s =
+        static_cast<int>(cached_predictor_.estimate(heating, overrides).total_seconds);
     lv_subject_set_int(&preprint_estimate_subject_, estimate_s);
 
-    spdlog::debug("[PrintPreparationManager] Pre-print estimate: {}s", estimate_s);
+    spdlog::debug("[PrintPreparationManager] Pre-print estimate: {}s (nozzle {:.0f}->{:.0f}C, "
+                  "bed {:.0f}->{:.0f}C, {} history entries)",
+                  estimate_s, ext_temp, nozzle_target, bed_temp, bed_target,
+                  cached_predictor_.get_entries().size());
 }
 
 void PrintPreparationManager::invalidate_predictor_cache() {

@@ -50,6 +50,37 @@ struct PreprintEntry {
 };
 
 /**
+ * @brief Heating time the thermal model prices for one start
+ *
+ * The predictor never records heating; `ThermalRateManager` estimates it from
+ * the start temperatures and the targets.
+ */
+struct PreprintHeating {
+    float nozzle_seconds = 0.0f;
+    float bed_seconds = 0.0f;
+    /// False while the nozzle's target is unknown (a bed-first macro issues
+    /// its M109 late), so the estimate holds a placeholder for that climb.
+    bool nozzle_target_known = false;
+};
+
+/**
+ * @brief One pre-print estimate: the phase shape and the absolute total
+ */
+struct PreprintEstimate {
+    std::map<int, float> durations; ///< phase_enum -> seconds, heating included
+    float total_seconds = 0.0f;
+};
+
+/**
+ * @brief What this start does about a phase the predictor may expect
+ *
+ * phase_enum -> true when the start runs the phase (added if the expected
+ * phases lack it), false when it skips it (removed if they have it). A phase
+ * left out keeps whatever the history or defaults say.
+ */
+using PreprintPhaseOverrides = std::map<int, bool>;
+
+/**
  * @brief Predicts pre-print duration from historical per-phase timing
  *
  * Tracks up to 10 entries and computes exponential time-decay weighted averages
@@ -142,6 +173,26 @@ class PreprintPredictor {
      * typical printer behavior.
      */
     static std::map<int, int> default_phase_durations();
+
+    /// Generic per-phase durations, used when the printer database has no
+    /// `print_start_default_phases` for the printer and for a phase a start
+    /// adds that the expected phases lack.
+    static std::map<int, int> generic_phase_durations();
+
+    /// Nozzle-heating placeholder while the nozzle target is unknown.
+    static constexpr float UNKNOWN_NOZZLE_HEAT_SECONDS = 60.0f;
+
+    /**
+     * @brief The pre-print estimate the live countdown and the print details share
+     *
+     * Durations: the heating seconds, the predicted phases (history, else the
+     * defaults) with homing at predicted_homing_seconds(), then @p overrides
+     * applied. Total: with history, the recorded wall clock (which already
+     * holds heating) less every removed phase and plus every added one;
+     * without history, the sum of the durations.
+     */
+    [[nodiscard]] PreprintEstimate estimate(const PreprintHeating& heating,
+                                            const PreprintPhaseOverrides& overrides = {}) const;
 
     /**
      * @brief Load entries from Config's print_start_history

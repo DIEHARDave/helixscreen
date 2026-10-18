@@ -149,8 +149,12 @@ std::map<int, int> PreprintPredictor::default_phase_durations() {
         }
     }
 
-    // Generic ceiling used when the DB has no override — tuned so a printer
-    // that actually runs all six phases still gets a ballpark first-print ETA.
+    return generic_phase_durations();
+}
+
+std::map<int, int> PreprintPredictor::generic_phase_durations() {
+    // Tuned so a printer that actually runs all six phases still gets a
+    // ballpark first-print ETA.
     return {
         {static_cast<int>(PrintStartPhase::HOMING), 30},
         {static_cast<int>(PrintStartPhase::BED_MESH), 90},
@@ -247,6 +251,69 @@ int PreprintPredictor::predicted_homing_seconds() const {
     const auto it = phases.find(static_cast<int>(PrintStartPhase::HOMING));
     const int predicted = it != phases.end() ? it->second : 0;
     return std::max(predicted, MIN_HOMING_SECONDS);
+}
+
+PreprintEstimate PreprintPredictor::estimate(const PreprintHeating& heating,
+                                             const PreprintPhaseOverrides& overrides) const {
+    const int nozzle_phase = static_cast<int>(PrintStartPhase::HEATING_NOZZLE);
+    const int bed_phase = static_cast<int>(PrintStartPhase::HEATING_BED);
+
+    PreprintEstimate result;
+    auto& durations = result.durations;
+    if (heating.nozzle_seconds > 0.0f)
+        durations[nozzle_phase] = heating.nozzle_seconds;
+    if (heating.bed_seconds > 0.0f)
+        durations[bed_phase] = heating.bed_seconds;
+
+    for (const auto& [phase, secs] : predicted_phases()) {
+        if (phase != nozzle_phase && phase != bed_phase) {
+            durations[phase] = static_cast<float>(secs);
+        }
+    }
+    durations[static_cast<int>(PrintStartPhase::HOMING)] =
+        static_cast<float>(predicted_homing_seconds());
+
+    // A skipped phase leaves the recorded wall clock along with its own
+    // entry; a phase this start adds joins both.
+    float wall_clock_delta = 0.0f;
+    std::map<int, int> generic;
+    for (const auto& [phase, runs] : overrides) {
+        const auto it = durations.find(phase);
+        if (!runs) {
+            if (it != durations.end()) {
+                wall_clock_delta -= it->second;
+                durations.erase(it);
+            }
+        } else if (it == durations.end()) {
+            if (generic.empty())
+                generic = generic_phase_durations();
+            const auto g = generic.find(phase);
+            if (g != generic.end()) {
+                durations[phase] = static_cast<float>(g->second);
+                wall_clock_delta += static_cast<float>(g->second);
+            }
+        }
+    }
+
+    // A bed-first macro issues its M109 after homing and leveling; without a
+    // placeholder the known phases would carry all the weight.
+    if (!heating.nozzle_target_known && durations.find(nozzle_phase) == durations.end()) {
+        durations[nozzle_phase] = UNKNOWN_NOZZLE_HEAT_SECONDS;
+    }
+
+    float durations_sum = 0.0f;
+    for (const auto& [_, dur] : durations) {
+        durations_sum += dur;
+    }
+
+    // The recorded wall clock is the honest total whenever history exists: it
+    // holds heating and any macro time the phase matcher never mapped. The
+    // durations sum swings both ways - short when phases go undetected, long
+    // when the thermal model overshoots - so it supplies only the shape.
+    result.total_seconds =
+        has_predictions() ? std::max(0.0f, static_cast<float>(predicted_total()) + wall_clock_delta)
+                          : durations_sum;
+    return result;
 }
 
 int PreprintPredictor::predicted_total() const {

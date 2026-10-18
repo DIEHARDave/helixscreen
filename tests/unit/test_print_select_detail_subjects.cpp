@@ -608,78 +608,6 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_timer_handler(); // the close callback runs on the next tick
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture, "prep time estimate line appears on the first open",
-                 "[print_select][detail][xml]") {
-    // The line hides itself through preprint_estimate_visible, the int twin
-    // update_prep_time_label() writes beside the estimate string. The writer
-    // runs from on_activate(), so a real show() must publish a visible
-    // estimate with no option toggled and no direct subject write.
-    CacheDirGuard guard;
-
-    register_xml_callbacks({
-        {"on_print_select_detail_backdrop", detail_noop_cb},
-        {"on_print_select_print_button", detail_noop_cb},
-        {"on_print_select_delete_button", detail_noop_cb},
-        {"on_print_detail_back_clicked", detail_noop_cb},
-        {"on_toggle_sliced_colors", detail_noop_cb},
-        {"on_print_select_detail_objects", detail_noop_cb},
-    });
-
-    helix::ui::PrintSelectDetailView view;
-    view.init_subjects();
-    lv_obj_t* const root = view.create(test_screen());
-    REQUIRE(root != nullptr);
-    // After create(): set_dependencies() forwards the printer state to the
-    // prep manager, which create() has just constructed.
-    view.set_dependencies(nullptr, &get_printer_state());
-
-    lv_obj_t* const line = lv_obj_find_by_name(root, "prep_time_estimate");
-    REQUIRE(line != nullptr);
-    lv_subject_t* const visible = lv_xml_get_subject(nullptr, "preprint_estimate_visible");
-    REQUIRE(visible != nullptr);
-
-    // Before the view is shown there is no estimate: 0 and hidden.
-    CHECK(lv_subject_get_int(visible) == 0);
-    CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
-
-    // First open. show() defers the push; the drain runs on_activate()
-    // -> update_prep_time_label() -> recalculate_estimate().
-    view.show("prep.gcode", "", "PLA");
-    helix::ui::UpdateQueue::instance().drain();
-    process_lvgl(20);
-
-    CHECK(lv_subject_get_int(visible) == 1);
-    CHECK_FALSE(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
-    CHECK(std::string(lv_label_get_text(line)).find("prep time") != std::string::npos);
-
-    // The binding is reactive in both directions, not a one-shot at build.
-    lv_subject_set_int(visible, 0);
-    process_lvgl(20);
-    CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
-
-    // Micro and tiny give the line's row to the options column, estimate or
-    // not; small and up keep it.
-    lv_subject_set_int(visible, 1);
-    lv_subject_t* const bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
-    REQUIRE(bp != nullptr);
-    const int32_t real_bp = lv_subject_get_int(bp);
-    for (int32_t tier : {0, 1}) {
-        INFO("breakpoint " << tier);
-        lv_subject_set_int(bp, tier);
-        process_lvgl(20);
-        CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
-    }
-    lv_subject_set_int(bp, 2);
-    process_lvgl(20);
-    CHECK_FALSE(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
-    lv_subject_set_int(bp, real_bp);
-    process_lvgl(20);
-
-    view.hide();
-    helix::ui::UpdateQueue::instance().drain();
-    lv_timer_handler(); // the close callback runs on the next tick
-}
-
 TEST_CASE_METHOD(LVGLUITestFixture, "History row lives in the metadata strip",
                  "[print_select][detail][xml]") {
     lv_obj_t* const root = make_detail_root(test_screen());
@@ -1409,7 +1337,94 @@ class PrintSelectDetailViewTestAccess {
     static lv_obj_t* gcode_viewer(const helix::ui::PrintSelectDetailView& view) {
         return view.gcode_viewer_;
     }
+    static void apply_file_metadata(helix::ui::PrintSelectDetailView& view,
+                                    const FileMetadata& metadata) {
+        view.apply_file_metadata(metadata);
+    }
 };
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "prep time estimate line appears once the file's metadata is in",
+                 "[print_select][detail][xml]") {
+    // The line hides itself through preprint_estimate_visible, the int twin
+    // update_prep_time_label() writes beside the estimate string. The heat-up
+    // runs to the file's first-layer temperatures, so the open shows nothing
+    // until the metadata fetch lands, then shows the estimate with no option
+    // toggled and no direct subject write.
+    CacheDirGuard guard;
+
+    register_xml_callbacks({
+        {"on_print_select_detail_backdrop", detail_noop_cb},
+        {"on_print_select_print_button", detail_noop_cb},
+        {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_detail_back_clicked", detail_noop_cb},
+        {"on_toggle_sliced_colors", detail_noop_cb},
+        {"on_print_select_detail_objects", detail_noop_cb},
+    });
+
+    helix::ui::PrintSelectDetailView view;
+    view.init_subjects();
+    lv_obj_t* const root = view.create(test_screen());
+    REQUIRE(root != nullptr);
+    // After create(): set_dependencies() forwards the printer state to the
+    // prep manager, which create() has just constructed.
+    view.set_dependencies(nullptr, &get_printer_state());
+
+    lv_obj_t* const line = lv_obj_find_by_name(root, "prep_time_estimate");
+    REQUIRE(line != nullptr);
+    lv_subject_t* const visible = lv_xml_get_subject(nullptr, "preprint_estimate_visible");
+    REQUIRE(visible != nullptr);
+
+    // Before the view is shown there is no estimate: 0 and hidden.
+    CHECK(lv_subject_get_int(visible) == 0);
+    CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+
+    // First open. show() defers the push; the drain runs on_activate()
+    // -> update_prep_time_label() -> recalculate_estimate(), with no metadata.
+    view.show("prep.gcode", "", "PLA");
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(20);
+    CHECK(lv_subject_get_int(visible) == 0);
+    CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+
+    FileMetadata metadata;
+    metadata.filename = "prep.gcode";
+    metadata.first_layer_bed_temp = 60.0;
+    metadata.first_layer_extr_temp = 220.0;
+    PrintSelectDetailViewTestAccess::apply_file_metadata(view, metadata);
+    process_lvgl(20);
+
+    CHECK(lv_subject_get_int(visible) == 1);
+    CHECK_FALSE(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+    CHECK(std::string(lv_label_get_text(line)).find("prep time") != std::string::npos);
+
+    // The binding is reactive in both directions, not a one-shot at build.
+    lv_subject_set_int(visible, 0);
+    process_lvgl(20);
+    CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+
+    // Micro and tiny give the line's row to the options column, estimate or
+    // not; small and up keep it.
+    lv_subject_set_int(visible, 1);
+    lv_subject_t* const bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
+    REQUIRE(bp != nullptr);
+    const int32_t real_bp = lv_subject_get_int(bp);
+    for (int32_t tier : {0, 1}) {
+        INFO("breakpoint " << tier);
+        lv_subject_set_int(bp, tier);
+        process_lvgl(20);
+        CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+    }
+    lv_subject_set_int(bp, 2);
+    process_lvgl(20);
+    CHECK_FALSE(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(bp, real_bp);
+    process_lvgl(20);
+
+    view.hide();
+    helix::ui::UpdateQueue::instance().drain();
+    lv_timer_handler(); // the close callback runs on the next tick
+}
 
 namespace {
 

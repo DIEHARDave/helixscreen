@@ -613,18 +613,20 @@ class PrintPreparationManager {
      * @brief Get the pre-print time estimate subject (seconds)
      *
      * Updated by recalculate_estimate() on open and whenever checkbox toggles
-     * change. Value is total estimated seconds for all enabled pre-print
-     * operations.
+     * change. Value is the estimated pre-print seconds, 0 for no estimate.
      */
     lv_subject_t* get_preprint_estimate_subject();
 
     /**
      * @brief Recalculate the pre-print time estimate
      *
-     * Reads current temperatures, checkbox states, and historical timing data
-     * to produce an estimated prep time in seconds. Updates preprint_estimate_subject_.
+     * PreprintPredictor::estimate(), the countdown's own model, fed the heat-up
+     * from the current temperatures to the file's first-layer targets, the
+     * history (or default phases) for this temp bucket and window, and the
+     * phases the option toggles skip or add. Updates preprint_estimate_subject_;
+     * 0 when @p file_metadata is null (not loaded yet, or a USB file).
      */
-    void recalculate_estimate();
+    void recalculate_estimate(const FileMetadata* file_metadata);
 
     /**
      * @brief Invalidate the cached PreprintPredictor
@@ -664,6 +666,8 @@ class PrintPreparationManager {
     // Avoids reparsing config JSON on every checkbox toggle; invalidated after print completes
     helix::PreprintPredictor cached_predictor_;
     bool predictor_cached_ = false;
+    int cached_temp_bucket_ = 0;
+    helix::PreprintWindow cached_window_ = helix::PreprintWindow::Unknown;
 
     // === Scan Cache ===
     /// One file's scan: its operations (absent when the read failed) and its
