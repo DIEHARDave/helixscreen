@@ -22,6 +22,7 @@
  * viewer-parse readiness the print-start gate waits on.
  */
 
+#include "ui_button.h"
 #include "ui_callback_helpers.h"
 #include "ui_gcode_viewer.h"
 #include "ui_pre_print_options_renderer.h"
@@ -32,6 +33,9 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/mock_bypass.h"
 #include "../test_helpers/mock_printer.h"
+#if HELIX_HAS_PLUGINS
+#include "../test_helpers/plugin_host_test_support.h"
+#endif
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_cache_dir.h"
 #include "../test_helpers/scoped_portrait_layout.h"
@@ -148,6 +152,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -206,6 +211,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "rows come from the macro analysis when the 
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -258,6 +264,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -320,6 +327,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "an open detail view rebuilds its rows when 
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -382,6 +390,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -548,6 +557,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -620,6 +630,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "prep time estimate line appears on the firs
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -772,6 +783,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -943,6 +955,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A bypassed single-lane print renders no fil
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -1037,6 +1050,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "The tap chevron tracks the card, and the ba
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -1246,6 +1260,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A tap on the filament card opens the remap 
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -1354,6 +1369,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "More-below subject tracks the options scrol
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -1441,6 +1457,7 @@ struct OpenDetail {
             {"on_print_select_detail_backdrop", detail_noop_cb},
             {"on_print_select_print_button", detail_noop_cb},
             {"on_print_select_delete_button", detail_noop_cb},
+            {"on_print_select_more_button", detail_noop_cb},
             {"on_print_detail_back_clicked", detail_noop_cb},
             {"on_toggle_sliced_colors", detail_noop_cb},
             {"on_print_select_detail_objects", detail_noop_cb},
@@ -1990,6 +2007,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "cleanup after the tree is deleted forgets t
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
         {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_select_more_button", detail_noop_cb},
         {"on_print_detail_back_clicked", detail_noop_cb},
         {"on_toggle_sliced_colors", detail_noop_cb},
         {"on_print_select_detail_objects", detail_noop_cb},
@@ -2033,3 +2051,133 @@ TEST_CASE_METHOD(LVGLUITestFixture, "show after the tree is deleted externally r
     CHECK(lv_obj_find_by_name(root, "print_button") != nullptr);
     CHECK(PrintSelectDetailViewTestAccess::gcode_viewer(d.view) != nullptr);
 }
+
+// ============================================================================
+// Plugin actions (the more button)
+// ============================================================================
+
+#if HELIX_HAS_PLUGINS
+namespace {
+
+/// A host with one enabled plugin; `items` is its menu_items array body.
+struct PluginMenuHost {
+    helix::plugin::test::TempDir tmp;
+    std::unique_ptr<helix::plugin::test::HostRig> rig;
+
+    explicit PluginMenuHost(const std::string& items) {
+        std::filesystem::create_directories(tmp.path / "file-plug");
+        std::ofstream(tmp.path / "file-plug" / "manifest.json")
+            << R"({"id":"file-plug","name":"File Plug","version":"1.0.0","menu_items":[)" << items
+            << "]}";
+        std::ofstream(tmp.path / "file-plug" / "main.lua") << R"(
+            helix.ui.on("go", function(ctx)
+                seen_source = ctx.source
+                seen_path = tostring(ctx.path)
+                seen_local = tostring(ctx.local_path)
+                seen_time = tostring(ctx.estimated_time_s)
+            end)
+        )";
+        rig = std::make_unique<helix::plugin::test::HostRig>(
+            helix::plugin::test::enabled("file-plug", {}));
+        rig->host->load_from(tmp.path.string());
+    }
+
+    std::string global(const char* name) {
+        lua_State* L = rig->host->runtime("file-plug")->state();
+        lua_getglobal(L, name);
+        std::string s = lua_isnil(L, -1) ? "nil" : lua_tostring(L, -1);
+        lua_pop(L, 1);
+        return s;
+    }
+};
+
+constexpr const char* kFileItem =
+    R"({"id":"go","menu":"print_file","label":"Do the thing","handler":"go"})";
+
+struct ShownDetail {
+    CacheDirGuard cache;
+    helix::ui::PrintSelectDetailView view;
+
+    ShownDetail(lv_obj_t* screen, const std::string& local_path = "") {
+        register_xml_callbacks({
+            {"on_print_select_detail_backdrop", detail_noop_cb},
+            {"on_print_select_print_button", detail_noop_cb},
+            {"on_print_select_delete_button", detail_noop_cb},
+            {"on_print_select_more_button", detail_noop_cb},
+            {"on_print_detail_back_clicked", detail_noop_cb},
+            {"on_toggle_sliced_colors", detail_noop_cb},
+            {"on_print_select_detail_objects", detail_noop_cb},
+        });
+        view.set_dependencies(nullptr, &get_printer_state());
+        view.init_subjects();
+        REQUIRE(view.create(screen) != nullptr);
+        view.show("benchy.gcode", "boats", "PLA", {}, {}, 0, 0, 0, local_path);
+        helix::ui::UpdateQueue::instance().drain();
+    }
+    ~ShownDetail() {
+        view.hide();
+        helix::ui::UpdateQueue::instance().drain();
+        lv_timer_handler();
+    }
+    lv_obj_t* find(const char* name) {
+        return lv_obj_find_by_name(lv_obj_get_screen(view.get_widget()), name);
+    }
+};
+
+bool hidden(lv_obj_t* obj) {
+    return obj == nullptr || lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN);
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "No plugin item leaves the print row unchanged",
+                 "[print_select][detail_view][plugin_menu]") {
+    ShownDetail d(test_screen());
+    process_lvgl(20);
+    CHECK(hidden(d.find("more_button")));
+    CHECK_FALSE(hidden(ui_button_get_label(d.find("print_button"))));
+    CHECK(lv_subject_get_int(lv_xml_get_subject(nullptr, "print_detail_has_plugin_items")) == 0);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "A plugin print_file item adds the more button",
+                 "[print_select][detail_view][plugin_menu]") {
+    PluginMenuHost host(kFileItem);
+    ShownDetail d(test_screen());
+    process_lvgl(20);
+    CHECK_FALSE(hidden(d.find("more_button")));
+    CHECK(hidden(ui_button_get_label(d.find("print_button"))));
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "The more button on a USB file passes no path",
+                 "[print_select][detail_view][plugin_menu]") {
+    PluginMenuHost host(kFileItem);
+    ShownDetail d(test_screen(), "/media/usb0/benchy.gcode");
+    process_lvgl(20);
+    d.view.show_plugin_actions();
+    lv_obj_t* label = d.find("item_label");
+    REQUIRE(label);
+    CHECK(std::string(lv_label_get_text(label)) == "Do the thing");
+    lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
+    CHECK(host.global("seen_source") == "usb");
+    CHECK(host.global("seen_path") == "nil");
+    CHECK(host.global("seen_local") == "/media/usb0/benchy.gcode");
+    // Metadata had not arrived: absent, never 0.
+    CHECK(host.global("seen_time") == "nil");
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "The more button on a printer file passes its path",
+                 "[print_select][detail_view][plugin_menu]") {
+    PluginMenuHost host(kFileItem);
+    ShownDetail d(test_screen());
+    process_lvgl(20);
+    d.view.show_plugin_actions();
+    lv_obj_t* label = d.find("item_label");
+    REQUIRE(label);
+    lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
+    CHECK(host.global("seen_source") == "printer");
+    CHECK(host.global("seen_path") == "boats/benchy.gcode");
+    CHECK(host.global("seen_local") == "nil");
+    process_lvgl(20);
+}
+#endif // HELIX_HAS_PLUGINS

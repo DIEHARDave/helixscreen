@@ -6,6 +6,7 @@
 #include "ui_exclude_mode_controller.h"
 #include "ui_filament_mapping_card.h"
 #include "ui_observer_guard.h"
+#include "ui_plugin_items_menu.h"
 #include "ui_pre_print_options_renderer.h"
 #include "ui_print_preparation_manager.h"
 
@@ -258,6 +259,10 @@ class PrintSelectDetailView : public OverlayBase {
      * that is still enabled.
      */
     void show_remap_help_modal();
+
+    /// Opens the plugin items menu for the file shown, below the more button, with
+    /// the print_file context as it stands now (metadata not yet loaded is left out).
+    void show_plugin_actions();
 
     /**
      * @brief Set the visible subject for XML binding
@@ -928,6 +933,10 @@ class PrintSelectDetailView : public OverlayBase {
     // the copy is chosen when the icon is tapped, not when it is published.
     lv_subject_t color_card_remap_help_visible_{};
     lv_subject_t empty_tools_warning_{}; // 1 = at least one used tool's slot is empty
+    /// 1 while an enabled plugin declares a print_file menu item: the button row
+    /// becomes Delete, more, Print as square icon buttons. Set on every show().
+    lv_subject_t print_detail_has_plugin_items_{};
+    helix::ui::PluginItemsMenu plugin_items_menu_;
     // Whether a job rewrite can run, in the tri-state the pre-print option rows
     // that need one bind their visibility to: 1 yes, 0 no, -1 not known yet.
     // Published by publish_rewrite_availability().

@@ -343,6 +343,8 @@ void PrintSelectPanel::init_subjects() {
          [](lv_event_t*) { get_global_print_select_panel().start_print(); }},
         {"on_print_select_delete_button",
          [](lv_event_t*) { get_global_print_select_panel().show_delete_confirmation(); }},
+        {"on_print_select_more_button",
+         [](lv_event_t*) { get_global_print_select_panel().show_plugin_actions(); }},
         {"on_print_select_plate_prev",
          [](lv_event_t*) { get_global_print_select_panel().step_archive_plate(-1); }},
         {"on_print_select_plate_next",
@@ -3503,6 +3505,12 @@ void PrintSelectPanel::on_preflight_remap() {
 // apply_remap(), dispatched on RemapStrategy. Print-start is likewise already
 // strategy-dispatched (PrintStartController), so Native and PrePrintSend both
 // read the same shared card store and need no special opener.
+void PrintSelectPanel::show_plugin_actions() {
+    if (detail_view_) {
+        detail_view_->show_plugin_actions();
+    }
+}
+
 void PrintSelectPanel::show_remap_help() {
     if (detail_view_) {
         detail_view_->show_remap_help_modal();

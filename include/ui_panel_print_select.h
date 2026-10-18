@@ -589,6 +589,8 @@ class PrintSelectPanel : public PanelBase {
     /// icon, whose XML event_cb routes here so the icon keeps working while the
     /// card itself is disabled.
     void show_remap_help();
+    /// The detail view's more button: plugin actions for the file shown.
+    void show_plugin_actions();
 
     /**
      * @brief Set reference to print status panel

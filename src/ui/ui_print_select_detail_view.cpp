@@ -39,6 +39,7 @@
 #include "moonraker_types.h"
 #include "moonraker_validation.h"
 #include "observer_factory.h"
+#include "plugin_menu_context.h"
 #include "pre_start_exclude.h"
 #include "print_detail_layout.h"
 #include "print_status_preview_decision.h"
@@ -238,6 +239,8 @@ void PrintSelectDetailView::init_subjects() {
     UI_MANAGED_SUBJECT_STRING(prep_time_estimate_subject_, prep_time_estimate_buf_, "",
                               "preprint_estimate_text", subjects_);
     UI_MANAGED_SUBJECT_INT(preprint_estimate_visible_, 0, "preprint_estimate_visible", subjects_);
+    UI_MANAGED_SUBJECT_INT(print_detail_has_plugin_items_, 0, "print_detail_has_plugin_items",
+                           subjects_);
 
     // Re-color the preview live when a slot's loaded color/presence changes
     // (filament reloaded). Static singleton subject -> plain ObserverGuard, no
@@ -553,6 +556,12 @@ void PrintSelectDetailView::show(const std::string& filename, const std::string&
 
     // Clear cached metadata when file selection changes — the new async fetch will repopulate it
     cached_file_metadata_.reset();
+
+    // Decided from declarations, not checks: the checks run when the more button is
+    // tapped, against the metadata as it stands then.
+    lv_subject_set_int(
+        &print_detail_has_plugin_items_,
+        helix::plugin_menu::any_declared(helix::plugin_menu::MenuKind::PrintFile) ? 1 : 0);
 
     // Clear any used-tools filter carried over from the previously-selected
     // file BEFORE the pre-parse update() below. The card is repopulated from
@@ -1816,6 +1825,24 @@ void PrintSelectDetailView::publish_card_visibility() {
 
     spdlog::debug("[DetailView] filament card: visible={} remap={} setup={} degraded={}",
                   card_visible, helix::printer::remap_block_name(block), needs_setup, degraded);
+}
+
+void PrintSelectDetailView::show_plugin_actions() {
+    lv_obj_t* anchor = overlay_root_ ? lv_obj_find_by_name(overlay_root_, "more_button") : nullptr;
+    if (!anchor)
+        return;
+    helix::plugin_menu::PrintFileFacts facts;
+    facts.name = current_filename_;
+    facts.dir = current_path_;
+    facts.local_path = current_local_path_;
+    facts.meta = cached_file_metadata_;
+    facts.materials = current_filament_materials_;
+    facts.colors = current_filament_colors_;
+    facts.tool_grams = get_tool_grams();
+    facts.tools_used = get_tools_used();
+    plugin_items_menu_.show_for(lv_obj_get_screen(anchor), anchor,
+                                helix::plugin_menu::MenuKind::PrintFile,
+                                helix::plugin_menu::print_file_context(facts));
 }
 
 void PrintSelectDetailView::show_remap_help_modal() {

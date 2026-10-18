@@ -44,6 +44,13 @@
     <style name="btn_row_portrait" height="#button_height"/>
     <style name="delete_btn_landscape" width="#button_height_lg"/>
     <style name="delete_btn_portrait" width="#button_height"/>
+    <!-- With a plugin declaring a print_file item the row is three square icon
+         buttons (Delete, more, Print), centred; without one Print takes the rest
+         of the row with its label. -->
+    <style name="btn_row_icons" flex_main_place="center"/>
+    <style name="print_btn_wide" flex_grow="1"/>
+    <style name="print_btn_square_landscape" width="#button_height_lg" flex_grow="0"/>
+    <style name="print_btn_square_portrait" width="#button_height" flex_grow="0"/>
   </styles>
   <view name="detail_view_root"
         extends="lv_obj" width="#overlay_width_transient" height="100%" align="right_mid" style_bg_opa="255"
@@ -490,6 +497,7 @@
         <lv_obj name="button_row" width="100%" style_pad_all="0" style_pad_gap="#button_padding" flex_flow="row">
           <bind_style_if_eq name="btn_row_landscape" subject="ui_is_portrait" ref_value="0"/>
           <bind_style_if_eq name="btn_row_portrait" subject="ui_is_portrait" ref_value="1"/>
+          <bind_style_if_eq name="btn_row_icons" subject="print_detail_has_plugin_items" ref_value="1"/>
           <!-- Delete button (icon-only). Hidden for a USB stick file: delete
                targets Moonraker's storage, and sticks are often mounted read-only. -->
           <ui_button name="delete_button" height="100%" variant="danger" icon="trash_can_outline">
@@ -498,14 +506,27 @@
             <bind_flag_if_eq subject="print_source_is_usb" flag="hidden" ref_value="1"/>
             <event_cb trigger="clicked" callback="on_print_select_delete_button"/>
           </ui_button>
+          <!-- Plugin actions for this file, shown while an enabled plugin declares
+               a print_file menu item. -->
+          <ui_button name="more_button" height="100%" variant="secondary" icon="dots_vertical">
+            <bind_style_if_eq name="delete_btn_landscape" subject="ui_is_portrait" ref_value="0"/>
+            <bind_style_if_eq name="delete_btn_portrait" subject="ui_is_portrait" ref_value="1"/>
+            <bind_flag_if_eq subject="print_detail_has_plugin_items" flag="hidden" ref_value="0"/>
+            <event_cb trigger="clicked" callback="on_print_select_more_button"/>
+          </ui_button>
           <!-- Print button - primary action styling (disabled when print in progress).
                Label and icon follow the mode subjects: "Print" + printer icon idle,
                "Add to Queue" + the queue's clock icon while another print holds the
                machine and Moonraker has the job_queue component (the same tap then
                routes to the queue path). -->
           <ui_button name="print_button"
-                     height="100%" bind_text="print_select_button_label" flex_grow="1" icon="print"
-                     bind_icon="print_select_button_icon">
+                     height="100%" bind_text="print_select_button_label" icon="print"
+                     bind_icon="print_select_button_icon" label_hidden_cond="print_detail_has_plugin_items eq 1">
+            <bind_style_if_eq name="print_btn_wide" subject="print_detail_has_plugin_items" ref_value="0"/>
+            <bind_style_if name="print_btn_square_landscape"
+                           cond="print_detail_has_plugin_items eq 1 and ui_is_portrait eq 0"/>
+            <bind_style_if name="print_btn_square_portrait"
+                           cond="print_detail_has_plugin_items eq 1 and ui_is_portrait eq 1"/>
             <event_cb trigger="clicked" callback="on_print_select_print_button"/>
             <bind_state_if_eq subject="print_select_can_print" state="disabled" ref_value="0"/>
           </ui_button>
