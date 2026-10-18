@@ -2125,7 +2125,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a linked slot's family change refreshes the
 
     auto* temps = lv_xml_get_subject(nullptr, "ams_edit_temp_text");
     REQUIRE(temps != nullptr);
-    const std::string asa_range = lv_subject_get_string(temps); // ASA's DB range
+    const std::string asa_range = lv_subject_get_string(temps); // ASA's stored range
     REQUIRE_FALSE(asa_range.empty());
 
     // Move the family to PLA through the dropdown; PLA's cooler range must
