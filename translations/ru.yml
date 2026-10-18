@@ -1893,6 +1893,7 @@ translations:
   It starts with your {} macro.: Начинается с вашего макроса {}.
   It's a new spool: Это новая катушка
   Its home tile: 'Его плитка на главном экране'
+  Jammed: Замятие
   Jammed at the Toolhead: Замятие в печатающей головке
   Job Queue: Очередь заданий
   Job queue not enabled in Moonraker: 'Очередь заданий не включена в Moonraker'

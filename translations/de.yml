@@ -1860,6 +1860,7 @@ translations:
   It starts with your {} macro.: Er startet mit deinem Makro {}.
   It's a new spool: Es ist eine neue Spule
   Its home tile: 'Seine Startseiten-Kachel'
+  Jammed: Stau
   Jammed at the Toolhead: Stau am Werkzeugkopf
   Job Queue: Auftragswarteschlange
   Job queue not enabled in Moonraker: 'Auftragswarteschlange in Moonraker nicht aktiviert'

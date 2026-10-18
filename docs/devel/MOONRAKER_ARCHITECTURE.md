@@ -198,6 +198,26 @@ struct MoonrakerEvent {
 
 Recovery events (`KLIPPY_DISCONNECTED`, `KLIPPY_SHUTDOWN`) return before all of this and are suppressible by nothing — a shut-down Klippy needs its dialog whatever is on screen. `KLIPPY_READY` routes to `Ignore` unconditionally: klippy becoming ready is an internal lifecycle event, not a notification; the user-facing completion signal is the `klippy_state` READY observer (the "Printer ready" toast that dismisses the emergency-stop recovery dialog), not this event.
 
+**Moonraker announces a Klippy that started, never one that failed to.** `notify_klippy_ready`
+arrives on success; a startup error (a `printer.cfg` mistake, an MCU that will not answer, K2's
+`key298`) produces no notification at all, and without help the app would read `SHUTDOWN` forever.
+So after `notify_klippy_disconnected` the client polls `printer.info` from its health tick until
+Klippy answers `ready`, `shutdown` or `error`, `notify_klippy_ready` arrives, the socket closes, or
+two minutes pass (`include/moonraker_client.h#KlippyStatePoll`). `startup` and Moonraker's own
+`disconnected` keep it polling. The answer goes through the same webhooks mapping as a status frame
+(`PrinterState::apply_klippy_status()`), so `KlippyState::ERROR` and Klipper's message reach the
+recovery dialog like any other state change, and an answer from before the socket last closed is
+dropped by the Klippy epoch.
+
+`PrinterRecoveryService` (`include/printer_recovery_service.h`) uses the same
+`printer.info` answer to verify a restart instead of trusting that Moonraker accepted it:
+`firmware_restart`, then a poll for `ready`, escalating once to the platform's
+`<install_dir>/bin/helix-recover.sh` (written by `scripts/lib/installer/recovery.sh`) on an `error` or no `ready`, then one more poll after the script. The class
+comment has the whole chain; its bounds are `RecoveryTiming` (one 120 s deadline from `recover()`,
+the script killed at 90 s), and `AbortManager`'s restart backstop is held above that worst case by
+a `static_assert` in `src/abort/abort_manager.cpp`. One chain runs at a time, and a chain whose
+client is destroyed (printer switch, soft restart) ends without calling back.
+
 **`RPC_ERROR` is a fallback, not a report of every failure.** `MoonrakerRequestTracker::route_response()` emits it only when `helix::rpc_error_policy::decide()` finds that nothing else will speak — and for `printer.gcode.script` that is never, because Klipper mirrors the rejection as a `!!` line that `GcodeErrorRouter` reports instead. See `RPC_ERROR_OWNERSHIP.md`.
 
 **Usage:**

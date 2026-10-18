@@ -1677,6 +1677,7 @@
   <translation tag="It starts with your {} macro." zh="使用你的{}宏开始。"/>
   <translation tag="It&apos;s a new spool" zh="这是新料盘"/>
   <translation tag="Its home tile" zh="其主页磁贴"/>
+  <translation tag="Jammed" zh="堵塞"/>
   <translation tag="Jammed at the Toolhead" zh="工具头处堵塞"/>
   <translation tag="Job Queue" zh="任务队列"/>
   <translation tag="Job queue not enabled in Moonraker" zh="Moonraker 未启用任务队列"/>

@@ -46,7 +46,7 @@ static constexpr int32_t BASE_HEIGHT_OFFSET = 10;
 static constexpr int32_t HEIGHT_STEP = 8; // Separation between overlapping lines
 
 // Maximum backup connections supported
-static constexpr int MAX_SLOTS = 16;
+static constexpr int MAX_SLOTS = helix::AMS_MAX_SLOTS;
 
 // ============================================================================
 // Widget State

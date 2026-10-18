@@ -1738,6 +1738,7 @@ translations:
   It starts with your {} macro.: 使用你的{}宏开始。
   It's a new spool: 这是新料盘
   Its home tile: '其主页磁贴'
+  Jammed: 堵塞
   Jammed at the Toolhead: 工具头处堵塞
   Job Queue: 任务队列
   Job queue not enabled in Moonraker: 'Moonraker 未启用任务队列'

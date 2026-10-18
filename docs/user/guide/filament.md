@@ -246,7 +246,7 @@ Tapping the mounted toolhead, or any slot's filament tube or spool, opens the sl
 | **Eject** | Push filament fully out of the lane to release the spool, when the slot has filament in its lane but **not** loaded into the toolhead. Replaces the Unload button in that state. Only on backends that support per-lane eject (AFC and Happy Hare). |
 | **Recover** | Pull filament that is stranded partway down the tube back toward its slot, without heating the nozzle. Takes the place of **Unload** when the system can tell that this slot's filament is stuck past the hub. |
 | **Preload** | Happy Hare only. Feed filament from the spool into its gate, ready for a later load. Greyed out during a print, while any filament is loaded, or while the MMU is busy. |
-| **Edit Spool** | Open the spool editor to view or change material, brand, color, and remaining weight. See [Editing Filament Properties](#editing-filament-properties). |
+| **Edit Spool** | Open the spool editor to view or change the material, brand, color and remaining weight. See [Editing Filament Properties](#editing-filament-properties). |
 | **Select Spool** | Open the spool editor on your list of Spoolman spools, to assign one to this slot. Only shown when Spoolman is configured. |
 | **Scan QR Code** | Scan a filament QR code to auto-fill spool data. Only shown when Spoolman is configured. |
 | **Clear Spool** | Erase everything HelixScreen and the printer's firmware remember about this slot: your saved edits, the slot's spool details, and the Spoolman link, plus the printer's own record where the firmware lets it be wiped (Happy Hare's whole gate map entry, the QIDI Box's stored slot values). What is left afterwards is only what the hardware can physically read - on the ACE, the Snapmaker U1 and a stock CFS the firmware's record cannot be wiped (read-only, or the RFID tag is simply re-read), so the slot repopulates from it. Shown whenever the slot carries an assignment, loaded or not. Refused on the lane feeding an active, paused or preparing print - the button greys out and says why. |
@@ -274,8 +274,8 @@ Tap a slot and choose **Edit Spool** to open the spool editor. This tells HelixS
 - **Summary line** - a color dot and the filament in words, for example **eSUN Silk PETG, Blue**. It follows your changes as you make them.
 - **Remaining weight** - the pill on the summary line, for example **750 g of 1000 g**. Tap it and type the grams left on the spool.
 - **Temperatures** - the nozzle range and bed temperature for what you've picked: a product's own range when you pick one, otherwise the material's usual range.
-- **Material, Variant, Brand, Product** - four dropdowns that narrow each other down. Pick the material first (PLA, PETG, ABS and so on); **Variant** offers that material's kinds (Basic, Silk, CF and so on); **Brand** lists the makers of it, with **Generic** first; **Product** lists that brand's lines and is hidden while the brand is Generic. Changing the material keeps the brand when it makes the new material and resets the variant to Basic. The Material and Brand lists end in **Browse catalog...**, which opens the full filament catalog; a pick there fills in all four.
-- **Color** - a row of colour swatches. Tap one to use it. The rainbow swatch at the start of the row opens the full colour view (so does tapping the colour dot on the summary line). A ring marks the current colour, on the rainbow swatch when the colour is one the row doesn't show.
+- **Material, Variant, Brand, Product** - four dropdowns that narrow each other down. Pick the material first (PLA, PETG, ABS, ASA, PA, TPU, PC and the rest); **Variant** offers that material's kinds (Basic, +, CF, GF, HS, Silk, Matte, Wood, Marble, Recycled and so on); **Brand** lists the makers of it, with **Generic** first; **Product** lists that brand's lines and is hidden while the brand is Generic. With Spoolman, the materials and brands of your recent spools come first in their lists. Changing the material resets the variant to Basic, and keeps the brand when it makes the new material, otherwise it goes back to Generic. The Material and Brand lists end in **Browse catalog...**, which opens the full filament catalog: search it, or type a filament it doesn't list, and the pick fills in all four.
+- **Color** - a grid of colour swatches, beside the dropdowns or below them depending on the screen. Tap one to use it. The rainbow swatch at the start of the row opens the full colour view (so does tapping the colour dot on the summary line). A ring marks the current colour, on the rainbow swatch when the colour is one the row doesn't show.
 
 **The colour view** has the full set of preset colours and a custom colour picker (a hue and shade picker, a hex field and **Select**). Tap a preset to use it, or mix a colour and tap **Select**; either takes you back to the editor. On larger screens the presets and the picker show side by side. On small screens (480x320, 480x272 and portrait 320x480) they take turns: tap the rainbow swatch at the start of the presets to switch to the picker, and **Presets** to switch back. Back returns to the editor without changing the colour.
 
@@ -291,7 +291,7 @@ Tap a slot and choose **Edit Spool** to open the spool editor. This tells HelixS
 **Saving:**
 
 1. **Save** in the header lights up once something has changed, including a field under **More**.
-2. If the slot is linked to a Spoolman spool and you changed its material, brand or colour, HelixScreen asks **Different filament?**: **Update in Spoolman** points the spool at the matching filament in Spoolman (creating it if needed), and **Unlink, keep on this slot** keeps your changes on the slot only and removes the Spoolman link.
+2. If the slot is linked to a Spoolman spool and you changed its material, brand or colour, HelixScreen asks **Different filament?**: **Update in Spoolman** points the spool at the matching filament in Spoolman (creating it if needed; a filament record other spools share is never edited), and **Unlink, keep on this slot** keeps your changes on the slot only and removes the Spoolman link.
 3. The editor closes once the save is done. A save that is still talking to Spoolman finishes even if you leave the screen. Opening the same slot again before it finishes shows **Still saving this spool…**; try again in a moment.
 
 Tapping Back with unsaved changes asks whether to **Save** or **Discard** them.
@@ -429,7 +429,7 @@ Below the top-level controls, **device-specific settings appear as expandable se
 |---------|---------------|
 | **Setup** | Run Calibration Wizard, Bowden Length, LED toggles (system + per-toolhead), Quiet Mode |
 | **Speed Settings** | Forward and reverse move-speed multipliers |
-| **Toolhead** | Sensor-to-nozzle, unload, and post-sensor clear distances (per tool) |
+| **Toolhead** | Calibrate Toolhead, then the sensor-to-nozzle, unload, and post-sensor clear distances (per tool). **Calibrate Toolhead** walks you through measuring the sensor-to-nozzle and unload distances and the cutter retract, with AFC asking each question on screen. It appears only when your AFC version has that calibration |
 | **Maintenance** | Test All Lanes, Change Blade, Park, Clean Brush, Reset Motor Timer |
 | **Hub & Cutter** | Cutter enable, cut distance, hub bowden length, assisted retract |
 | **Tip Forming** | Ramming volume, unloading start speed, cooling-tube length and retraction |

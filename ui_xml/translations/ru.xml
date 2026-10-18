@@ -1722,6 +1722,7 @@
   <translation tag="It starts with your {} macro." ru="Начинается с вашего макроса {}."/>
   <translation tag="It&apos;s a new spool" ru="Это новая катушка"/>
   <translation tag="Its home tile" ru="Его плитка на главном экране"/>
+  <translation tag="Jammed" ru="Замятие"/>
   <translation tag="Jammed at the Toolhead" ru="Замятие в печатающей головке"/>
   <translation tag="Job Queue" ru="Очередь заданий"/>
   <translation tag="Job queue not enabled in Moonraker" ru="Очередь заданий не включена в Moonraker"/>

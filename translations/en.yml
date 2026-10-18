@@ -1801,6 +1801,7 @@ translations:
   It starts with your {} macro.: It starts with your {} macro.
   It's a new spool: It's a new spool
   Its home tile: Its home tile
+  Jammed: Jammed
   Jammed at the Toolhead: Jammed at the Toolhead
   Job Queue: Job Queue
   Job queue not enabled in Moonraker: Job queue not enabled in Moonraker

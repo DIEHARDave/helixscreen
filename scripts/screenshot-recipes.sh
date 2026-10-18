@@ -153,6 +153,7 @@ runout-modal       demo runout-modal
 leds               demo leds
 camera             demo camera
 action-prompt-zmod demo action-prompt-zmod
+action-prompt-afc-cal demo action-prompt-afc-cal
 "
 
 # Resolve a token to its recipe. Falls back to `navigate <token>` for anything

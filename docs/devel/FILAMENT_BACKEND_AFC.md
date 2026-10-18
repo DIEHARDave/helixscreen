@@ -130,6 +130,15 @@ Fields present in production `AFC_lane` data but not in `AFC_stepper`:
 
 Klipper object `AFC` in `printer.objects.list` sets `AmsType::AFC`. Lane names come from `AFC_stepper lane*` and `AFC_lane lane*` objects, hub names from `AFC_hub *` objects. Unit-type objects (`AFC_BoxTurtle`, `AFC_OpenAMS`) provide the lane/extruder/hub/buffer membership that determines per-unit topology.
 
+**The sensors AFC owns.** `AmsBackendAfc::owns_filament_sensor()` claims every filament sensor AFC
+registers, so none of them is offered as a standalone runout switch in sensor settings or the
+setup wizard: the bare `tool_start` / `tool_end`, each lane's `<lane>_prep`, `<lane>_load` and
+`<lane>_selector`, and each `[AFC_extruder <name>]`'s `<name>_tool_start` / `<name>_tool_end`.
+The per-extruder names are matched against `PrinterDiscovery::afc_extruder_names()`, collected
+from the `AFC_extruder <name>` objects. Claiming them is a safety matter, not tidiness: AFC DEV's
+`pin_tool_start: virtual` sensor is a software switch whose `ENABLE` sets AFC's toolhead load
+state, so toggling it from our sensor UI would mark a tool loaded or unloaded.
+
 ### Data Sources
 
 AFC state comes from multiple Klipper objects:
@@ -350,6 +359,7 @@ given machine. `BT_*` macros are BoxTurtle-specific and do not exist on other un
 | `SET_RUNOUT LANE={name} RUNOUT={backup_lane}` | Python | Set endless spool backup |
 | `RESET_AFC_MAPPING RUNOUT=no` | Python | Reset tool mappings only. **Renamed `AFC_RESET_MAPPING` by the virtual-tools firmware (Klipper-Add-On #832), which deregistered the old name**; HelixScreen picks per firmware via the `multiple_tool_mapping` status flag |
 | `AFC_CALIBRATION` | Python | Run calibration wizard |
+| `AFC_TOOLHEAD_CALIBRATION` | Python | Guided calibration of `tool_stn`, `tool_stn_unload` and the cutter retract, run through AFC's own action prompts. **AFC DEV only**, and `AFC_VERSION` did not change with it, so the backend asks `printer.gcode.help` once at start (`AmsBackendAfc::detect_afc_commands`) and adds the **Calibrate Toolhead** button at the head of the Toolhead section only when the command is registered. Older AFC answers it with `Unknown command` |
 | `AFC_RESET_MOTOR_TIME LANE={name}` | Python | Reset motor run-time counter |
 | `AFC_QUIET_MODE` | Python | Toggle quiet mode |
 | `TURN_ON_AFC_LED` / `TURN_OFF_AFC_LED` | Python | Toggle LED strip |
@@ -532,13 +542,19 @@ filament cleared the sensor and jammed in the extruder gears — so `TOOLHEAD` m
 
 Position alone is not enough on its own, though: it says which element differs from its
 neighbours, not that the difference means failure, and red-against-green is precisely the pair a
-colourblind user cannot separate (#1196). So the component also renders one of four captions —
-*Stopped between Hub and Toolhead*, and so on — bound to the same subject and mutually exclusive
-on it. The caption is also the only thing that can express `TOOLHEAD`, which fails at a node
-rather than in a gap.
+colourblind user cannot separate (#1196). So the label row names the failure in words: *Stopped*
+sits under the failing gap, between the two checkpoint names that bound it, and for `TOOLHEAD`
+*Jammed* takes the toolhead's own label, since that fault happens at a node rather than in a gap.
+Each word is bound to one segment value, so exactly one shows and the strip stays two rows tall.
 
 Every caller must go through `afc_fault_path_apply()` even when the message is not AFC's, or a
-previous fault's marker stays on screen.
+previous fault's marker stays on screen. `ActionPromptModal` also re-publishes from its own text
+(`afc_fault_path_publish()`) before it builds, so any action:prompt, including a firmware one such
+as `AFC_CALIBRATION`'s unit picker, shows the strip only for the fault its text names. The subject
+backs a component registered once at boot, so it is a `Lifetime::Process` registry entry: it stays
+registered and live across a printer switch and is torn down only at exit. A modal built while it
+is unregistered would bind nothing and show the strip with every caption at once, so publishing
+also creates it if it does not exist yet.
 
 #### Maintaining the contract across AFC versions
 
@@ -548,11 +564,19 @@ loudly when it does: the step bar simply stops advancing, or a lane fault render
 This subsection is the maintenance half of #1153 — what we depend on, where it lives on our side,
 and what to do on an AFC version bump.
 
-**What the narration actually drives.** A matched phase id is looked up in the *active operation's*
-phase template (`AmsBackendAfc::toolchange_phase_template()`), and the step bar advances to that
-index. A phase id the running operation's template does not contain is matched and then dropped —
-`GcodeNarrationRouter::process_line()` leaves the step subject untouched — so a needle is only ever
-as useful as the template it feeds:
+**What the narration actually drives.** A matched phase id goes to
+`AmsState::apply_narration_phase_id()`, which looks it up in the *active operation's* phase template
+(`AmsBackendAfc::toolchange_phase_template()`) and advances the step bar to that index. A phase id
+the active template does not contain moves nothing, but it is held: when the operation changes,
+`set_active_step_operation()` re-resolves the held id against the new template. That matters for
+an operation started outside HelixScreen (a macro, the console, another client), which narrates
+before its action reaches us, so its first phases arrive while no template or the wrong one is
+active. The sidebar keeps a phase narrated that way when it builds the step bar, and seeds step 0
+only when there is none. The narration ends with the operation: every write of the action goes
+through `AmsState::publish_action()`, which clears the label, the phase index and the high-water
+latch when the action reaches IDLE, so an operation a backend sync ends leaves nothing behind to
+swallow the next one's early phases. An operation the UI starts clears the narration before it
+begins. A needle is still only as useful as the template it feeds:
 
 | Operation | Phase ids, in order (opt = optional: stays Pending when never narrated) |
 |---|---|

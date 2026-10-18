@@ -440,6 +440,17 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   answering, stops the print from starting and says why. A unit that stops answering is
   marked Disconnected until it comes back.
 
+- **AFC: Calibrate Toolhead** - on an AFC version that has the guided toolhead calibration,
+  the Toolhead section of the filament system's settings starts with a Calibrate Toolhead
+  button. AFC then walks you through measuring the sensor-to-nozzle and unload distances and
+  the cutter retract, asking each question on screen.
+- **The spool editor is now Edit Spool** - a slot's Spool Info is renamed Edit Spool and
+  opens straight into the editor. Material, variant, brand and product are dropdowns that
+  narrow each other, with Browse catalog... at the end for searching or typing your own, and
+  the colour grid sits beside or below them depending on the screen. Tap the weight to type
+  the grams left. Price, location, lot and notes sit under More. Save is in the header, and
+  Back with unsaved changes asks whether to save or discard them.
+
 **Drying filament**
 
 - **Dry filament on the heated bed (#1730)** - on an enclosed printer, Dry Filament on the
@@ -1052,6 +1063,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Joining Wi-Fi while Ethernet is connected** (#1542) says so immediately, instead of timing
   out after 45 seconds.
 
+- **A Klipper that failed to start looked shut down forever** - Moonraker never says when
+  Klipper's startup fails, so after a restart the screen kept showing the old shutdown. It now
+  asks until Klipper is ready or reports its startup error, and the recovery dialog shows
+  Klipper's own message. A Firmware Restart from the recovery dialog is checked the same way,
+  and where HelixScreen installed a recovery script for the platform (such as the Creality K2
+  and the Snapmaker U1) it runs once if the restart does not bring Klipper back, with a time
+  limit so it can never hang.
+
 **Filament systems**
 
 - **Filament stuck in the toolhead with no slot claiming it could not be unloaded** (#1324) - on
@@ -1148,6 +1167,25 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   content-sized meter column grew to fit longer source strings. The reading moved out of the
   36px arc that was drawing it clipped, and the material name wraps instead of marquee-ing
   forever.
+
+- **AFC toolhead sensors showed up as runout switches** - the toolhead sensors of each AFC
+  extruder were listed in sensor settings and the setup wizard as standalone runout sensors.
+  On AFC builds where the toolhead sensor is a virtual switch, turning it off there would
+  have told AFC the tool was unloaded. They are now left to AFC, like its other sensors.
+- **Filament systems with more than 16 lanes greyed out the extra lanes** - a large AFC or
+  Happy Hare setup now shows every lane up to 64, and a lane past that still counts for the
+  loaded spool and tool tracking.
+- **The load step list skipped its first steps after an outside operation** - when a tool
+  change started from a macro or the console ended, the next load could start with its
+  heating and early steps already passed, or keep showing the last operation's "Load
+  complete". A tool change started from a macro also no longer jumps back to its first step
+  when the step list appears.
+- **Long printer prompts pushed their buttons off the screen** - a prompt with many buttons,
+  such as AFC's calibration asking which of six units to calibrate, now scrolls its text and
+  buttons while the bottom row (Cancel, Back) stays on screen. Five or more buttons line up
+  in a grid of two or three columns instead of one long wrapped list. The AFC fault diagram
+  in a prompt no longer showed every stop point at once after switching printers, and names
+  the fault in one line (Stopped, or Jammed at the toolhead).
 
 **Printing and preview**
 
@@ -1296,6 +1334,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   decimal point would be. The unit (°C, mm) now sits inside the value field, which spans the
   keys. Prefer 7 8 9 on top? Settings > Touch & Input > Number Pad Layout > Calculator.
 
+- **Colour swatches were small targets** - every colour you can pick (the filament colour
+  grids, the colour picker, the LED colour rows, the theme editor) now has a full fingertip-sized
+  touch area, and neighbouring swatches no longer steal each other's taps. The LED preset row
+  wraps to a second line in portrait instead of running off the edge.
+
 **Printer identification**
 
 - **Fans in the Printer Manager** - the Fans capability chip never appeared on any printer.
@@ -1347,6 +1390,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   it can't be installed here. Pick a channel with a newer release." and never offers Install.
   On every printer the same message replaces the old "No update available" failure for a
   release that has no download for it.
+
+- **`HELIX_SCREEN_SIZE` left no trace in the log** - the line saying which size was applied,
+  and the warning for a value it could not read, were written before logging started, so the
+  `journalctl` check in Troubleshooting found nothing. Both are logged now.
 
 **Translations**
 

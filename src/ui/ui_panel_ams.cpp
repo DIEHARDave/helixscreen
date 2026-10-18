@@ -1026,9 +1026,8 @@ void AmsPanel::update_endless_arrows_from_backend() {
 
     // The widget receives the whole group relation and decides per group
     // whether it is a bracket (unordered) or arrows (ordered).
-    static constexpr int MAX_ARROW_SLOTS = 16;
     const auto config = backend->get_endless_spool_config();
-    int slot_count = std::min(backend->get_system_info().total_slots, MAX_ARROW_SLOTS);
+    int slot_count = std::min(backend->get_system_info().total_slots, helix::AMS_MAX_SLOTS);
     if (config.empty() || slot_count <= 0 ||
         helix::ui::endless_spool_marks(config, slot_count).empty()) {
         spdlog::trace("[{}] No endless spool backups configured - hiding arrows", get_name());

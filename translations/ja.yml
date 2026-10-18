@@ -1743,6 +1743,7 @@ translations:
   It starts with your {} macro.: '{}マクロで開始します。'
   It's a new spool: 新しいスプールです
   Its home tile: 'ホームのタイル'
+  Jammed: 詰まり
   Jammed at the Toolhead: ツールヘッドで詰まり
   Job Queue: ジョブキュー
   Job queue not enabled in Moonraker: 'Moonraker でジョブキューが有効になっていません'

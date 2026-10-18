@@ -132,9 +132,8 @@ class AmsState {
      *
      * Per-slot subjects (color, status) are allocated statically.
      * Systems with more slots will only have subjects for the first MAX_SLOTS.
-     * 20 covers a U1 with four ACE Pro units: 4 heads + 4x4 bays.
      */
-    static constexpr int MAX_SLOTS = 20;
+    static constexpr int MAX_SLOTS = AMS_MAX_SLOTS;
     /// Bytes held per slot-name subject, NUL included. Names longer than a
     /// card can show are cut on a codepoint boundary; the label ellipsizes.
     static constexpr size_t SLOT_NAME_BUF_SIZE = 64;
@@ -1951,8 +1950,16 @@ class AmsState {
     ///
     /// Out-of-line because a change of operation also has to drop the narration
     /// high-water mark: phase indices are template-relative, and each
-    /// StepOperationType has its own template.
+    /// StepOperationType has its own template. The last narrated phase id is
+    /// re-resolved against the new template; an index with no id to re-resolve
+    /// is dropped.
     void set_active_step_operation(StepOperationType op);
+
+    /// Publish the narration phase @p id names in the active operation's
+    /// template (MAIN THREAD ONLY). An id the template does not contain is held
+    /// and resolved again when the operation changes, so a phase narrated
+    /// before the step bar knows its operation still reaches it.
+    void apply_narration_phase_id(const std::string& id);
 
     /// Set the current toolchange narration phase index (MAIN THREAD ONLY).
     /// Also mirrors the human label into ams_action_detail for the status line.
@@ -2127,6 +2134,8 @@ class AmsState {
     /// Reset the slot subjects past @p total_slots.
     /// @return true when a slot subject changed
     bool clear_unused_slot_subjects(int total_slots);
+    /// Warn once per slot count when the backend has more slots than subjects.
+    void warn_if_slots_exceed_subjects(int total_slots);
     /// @}
 
     /**
@@ -2337,6 +2346,19 @@ class AmsState {
 
     std::string last_narration_label_; ///< live toolchange narration phase label; top priority in
                                        ///< recompute_action_detail; cleared on IDLE
+    /// Template id of the last phase apply_narration_phase_id() published or
+    /// held; empty when the index came from set_narration_phase(). Cleared with
+    /// the label.
+    std::string narration_phase_id_;
+
+    /// Write the action subject and its mirror. Reaching IDLE ends the
+    /// operation, which drops the narration latch, label and phase index; every
+    /// writer of the action goes through here so no path skips that.
+    void publish_action(AmsAction action);
+
+    /// The latched write behind set_narration_phase(); false when the latch
+    /// swallowed @p index.
+    bool publish_narration_phase(int index, const std::string& label);
 
     /// Observer that re-runs compute_action_detail() when PrinterState's
     /// print_state_enum subject changes, so the sidebar flips between
@@ -2519,6 +2541,7 @@ class AmsState {
     lv_subject_t slot_lane_states_[MAX_SLOTS]{};      // int: helix::ui::LaneState (classify_lane)
     lv_subject_t slot_has_error_[MAX_SLOTS]{};        // int: 0/1 BLOCKED or carries a SlotError
     lv_subject_t slot_error_severity_[MAX_SLOTS]{};   // int: SlotError::Severity (INFO when none)
+    int slot_overflow_warned_total_ = 0;              // slot count the overflow warning last named
 
     // Per-unit environment subjects (CFS temp/humidity)
     lv_subject_t unit_temp_[MAX_UNITS]{};         // int: tenths of C (270 = 27.0C), 0 = no data

@@ -390,23 +390,24 @@ static void unregister_lane_spool_data(lv_obj_t* obj) {
 }
 
 /**
- * @brief Pre-deinit cleanup: release all spool data while widgets are still alive.
+ * @brief Teardown cleanup: drop all spool data while widgets are still alive.
  *
- * Called via StaticSubjectRegistry BEFORE lv_deinit(), mirroring
- * cleanup_all_slot_data() in ui_ams_slot.cpp.
+ * Runs at every printer switch and before lv_deinit(); same rule as
+ * cleanup_all_slot_data() in ui_ams_slot.cpp. The theme subject outlives a
+ * switch, so an observer left on it would stay attached for the rest of the process.
  */
 static void cleanup_all_lane_spool_data() {
     for (auto& [obj, data] : s_lane_spool_registry) {
         if (!data)
             continue;
         data->lifetime.reset();
-        data->lane_state_observer.release();
-        data->color_observer.release();
-        data->paint_observer.release();
-        data->fill_observer.release();
-        data->has_error_observer.release();
-        data->severity_observer.release();
-        data->theme_observer.release();
+        data->lane_state_observer.reset();
+        data->color_observer.reset();
+        data->paint_observer.reset();
+        data->fill_observer.reset();
+        data->has_error_observer.reset();
+        data->severity_observer.reset();
+        data->theme_observer.reset();
         delete data;
     }
     s_lane_spool_registry.clear();
@@ -586,8 +587,14 @@ static void ams_lane_spool_event_cb(lv_event_t* e) {
  * observe<int>.
  */
 static void setup_lane_spool_observers(LaneSpoolData* data) {
-    if (data->slot_index < 0 || data->slot_index >= AmsState::MAX_SLOTS) {
+    if (data->slot_index < 0) {
         spdlog::warn("[AmsLaneSpool] Invalid slot index {}, skipping observers", data->slot_index);
+        return;
+    }
+    if (data->slot_index >= AmsState::MAX_SLOTS) {
+        // AmsState warns once for the whole overflow; this slot stays unbound.
+        spdlog::debug("[AmsLaneSpool] Slot {} is past the subject ceiling, left unbound",
+                      data->slot_index);
         return;
     }
 
@@ -879,8 +886,9 @@ void ui_ams_lane_spool_register(void) {
     // Self-register cleanup - ensures spool data is released before lv_deinit()
     // so that lv_subject_deinit() can safely remove observers from live
     // widgets (mirrors ui_ams_slot_register()).
-    StaticSubjectRegistry::instance().register_deinit("AmsLaneSpoolWidgets",
-                                                      cleanup_all_lane_spool_data);
+    StaticSubjectRegistry::instance().register_deinit(
+        "AmsLaneSpoolWidgets", cleanup_all_lane_spool_data,
+        StaticSubjectRegistry::Lifetime::ProcessRunOnSwitch);
 
     spdlog::info("[AmsLaneSpool] Registered ams_lane_spool widget with XML system");
 }

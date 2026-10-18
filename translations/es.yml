@@ -1852,6 +1852,7 @@ translations:
   It starts with your {} macro.: Empieza con tu macro {}.
   It's a new spool: Es una bobina nueva
   Its home tile: 'Su mosaico de inicio'
+  Jammed: Atascado
   Jammed at the Toolhead: Atascado en el cabezal
   Job Queue: Cola de trabajos
   Job queue not enabled in Moonraker: 'Cola de trabajos no habilitada en Moonraker'

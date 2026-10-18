@@ -189,6 +189,7 @@ picks survives the next read (`src/printer/ams_backend_snapmaker.cpp#record_tag_
 | `T<n>` | Tool change / slot select (`do_change_tool`, `:532-538`) |
 | `SET_PRINT_EXTRUDER_MAP CONFIG_EXTRUDER=<l> MAP_EXTRUDER=<p>` | Pre-print logical->physical remap (`build_preprint_gcode`, `:1887-1889`) |
 | `SET_PRINT_USED_EXTRUDERS EXTRUDERS=<csv>` | Pre-print feed gating — always sent, remap or not (`src/printer/ams_backend_snapmaker.cpp#build_preprint_gcode`) |
+| `SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[...]` | The saved unload-at-end choice, ahead of every print start (`src/printer/ams_backend_snapmaker.cpp#end_unload_gcode`; see [`SET_PRINT_PREFERENCES`](#set_print_preferences)) |
 | `AUTO_FEEDING_BATCH ACTION=START / DOING EXTRUDER=<n> / END` | Batch load/unload when the firmware macro is present (see Batch Load/Unload) |
 | `SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER=<head> VENDOR=… FILAMENT_TYPE=… FILAMENT_SUBTYPE=…` + `FILAMENT_COLOR_RGBA=…` | The head's `print_task_config` record, which RESUME requires (below) |
 
@@ -460,11 +461,18 @@ firmware-side: whether the ack means `print_task_config` is already mutated - an
 mutated - by the time the baked `PRINT_START` block executes. That stays in the config
 doc's "Still UNCERTAIN" list.
 
-`build_preprint_gcode(tools_used, remap)` is pure (no API access; unit-tested directly):
-one `SET_PRINT_EXTRUDER_MAP` per user remap entry, then one
+The routing half is the static `preprint_gcode(tools_used, remap)`, which is pure (no API
+access; unit-tested directly): one `SET_PRINT_EXTRUDER_MAP` per user remap entry, then one
 `SET_PRINT_USED_EXTRUDERS` with the deduplicated, ascending physical-head CSV resolved
 through the remap. Logical tools 4-31 without an explicit remap fall to head 0, matching
-the firmware's default map (`src/printer/ams_backend_snapmaker.cpp#build_preprint_gcode`). Full command
+the firmware's default map (`src/printer/ams_backend_snapmaker.cpp#preprint_gcode`).
+`build_preprint_gcode(tools_used, remap)` appends the per-print preferences to it, today
+the unload-at-end list (`end_unload_gcode()`), which needs no routing. So an empty
+`tools_used` still sends the preferences, and the two callers that have no routing use
+exactly that: a reprint with no recorded task map
+(`src/ui/ui_print_start_controller.cpp#reprint_impl`) and a restart from the beginning,
+which appends them after its `CANCEL_PRINT_BASE`
+(`src/ui/ui_resume_dispatch.cpp#restart_print_from_beginning`). Full command
 semantics — logical (0-31) vs physical (0-3) index rules, persistence behavior, the
 `filament_official` FORCE gate — live in
 [Firmware API: `print_task_config`](#firmware-api-print_task_config) below.
@@ -528,7 +536,7 @@ Backend Emits"); the override persists to `lane_data` whatever the firmware take
 | `include/printer_discovery.h` | `filament_detect` detection + registration order (MMU wins over stock U1) |
 | `include/snapmaker_resume.h` + `src/printer/snapmaker_resume.cpp` | Terminal-pause matchers (dirty bed vs runout) and coded-error `msg` extraction |
 | `include/batch_feed_reconcile.h` | Connect-time cleanup of a firmware batch left in the `doing` state |
-| `include/snapmaker_print_preferences.h` | `PrintPreferences` read/write model for the firmware prefs surfaced as device actions |
+| `include/snapmaker_print_preferences.h` | `PrintPreferences` read/write model for the firmware prefs surfaced as device actions, plus each head's `filament_soft` |
 | `include/filament_temperature_source.h` + `src/printer/filament_temperature_source.cpp` | Per-filament load/unload temperature capture (see above) |
 | [Firmware API: `print_task_config`](#firmware-api-print_task_config) | The firmware-native remap/feed-gate API this backend's pre-print path emits, in this file |
 | `tests/unit/test_ams_backend_snapmaker.cpp` | 54 cases: parsers, status handling, latch, overrides |
@@ -742,11 +750,28 @@ settings: `get_device_sections()` publishes one "Print Behaviour" section and
 `get_device_actions()` one row per pref the firmware has actually reported
 (`src/printer/ams_backend_snapmaker.cpp#get_device_actions`) - auto-replenish, replenish-ignores-colour,
 tangle detect, tangle sensitivity (dropdown low/medium/high), end-of-print LED, and one
-"Unload at end" toggle per tool. A pref with no reported value renders no row at all: a toggle
-whose state is unknown would render off and invite "changing" it to its own value. Toggles are
-written back through `build_preference_gcode()`, which emits `SET_PRINT_PREFERENCES` with only the
-changed parameter (omitted parameters keep their firmware value); the per-tool unload toggles are
-always written as the whole `END_UNLOAD_FILAMENT` list.
+"Unload at end" toggle per toolhead ("Unload at end - Toolhead 1 (T0)"). A pref with no reported value
+renders no row at all: a toggle whose state is unknown would render off and invite "changing" it
+to its own value. Toggles are written back through `build_preference_gcode()`, which emits
+`SET_PRINT_PREFERENCES` with only the changed parameter (omitted parameters keep their firmware
+value).
+
+**Unload at end is HelixScreen's setting, not the firmware's.** The firmware clears
+`end_unload_filament` when every print ends, and its echo of the list lags a tap behind, so
+neither can be the record of the user's choice. The record is the per-printer setting
+`ams/end_of_print_unload_tools`, a bitmask with bit N for tool N
+(`include/settings_manager.h#get_end_of_print_unload_tools`). The toggles read it, and a toggle
+writes it first and then sends the whole `END_UNLOAD_FILAMENT` list built from it
+(`src/printer/ams_backend_snapmaker.cpp#execute_device_action`). While printing or paused the
+firmware refuses that list without `FORCE=1`, which we never pass, so the send is skipped and the
+saved choice goes out with the next start. Every print start carries the list through
+`build_preprint_gcode()` (above).
+
+A head whose `filament_soft` is set (TPU and the like) is never unloaded: the firmware's
+`SM_PRINT_END_AUTO_UNLOAD_FILAMENT` skips it, as the stock screen does. Its toggle is disabled
+with "Soft filament is never unloaded", reads off whatever is saved, and refuses to be turned on.
+The list still carries the saved bit for that head and leaves the skip to the firmware, so the
+choice reads on again once the head holds rigid filament.
 
 #### `SET_PRINT_TASK_PARAMETERS` — the bulk one-shot
 The "do everything" command. Accepts a superset:
@@ -805,11 +830,11 @@ pause uses `id=523, code=39`. These ids match the U1 exception-object scheme doc
 | `filament_color_rgba` | `str[4]` | 8-char `"RRGGBBAA"` |
 | `filament_color_multi` | `dict[4]` | `{nums, alpha, mode, colors:[…]}` for multicolor spools |
 | `filament_official` | `bool[4]` | true = Snapmaker RFID spool, or any Extended Firmware `filament_detect/set` write (locks `SET_PRINT_FILAMENT_CONFIG` w/o FORCE) |
-| `filament_sku`, `filament_soft`, `filament_edit` | per-head | SKU id; "soft" flag; UI-editable flag |
+| `filament_sku`, `filament_soft`, `filament_edit` | per-head | SKU id; "soft" flag (the end-of-print unload skips that head); UI-editable flag |
 | `flow_calibrate`, `flow_calib_extruders[4]`, `auto_bed_leveling`, `time_lapse_camera`, `shaper_calibrate` | prefs | task prefs |
 | `auto_replenish_filament`, `replenish_ignore_color` | prefs | runout auto-replenish behaviour |
 | `filament_entangle_detect`, `filament_entangle_sen` | prefs | tangle detection |
-| `end_led_turn_off`, `end_unload_filament[4]` | prefs | end-of-print actions |
+| `end_led_turn_off`, `end_unload_filament[4]` | prefs | end-of-print actions. `end_unload_filament` is reset when each print ends |
 | `reprint_info` | dict | snapshot of `{extruder_map_table, extruders_used, flow_*, time_lapse, bed_level, end_unload}` for re-print |
 
 A second file print_task_2.json (`DEFAULT_PRINT_TASK_CONFIG_2`) holds **per-logical-tool gcode params**

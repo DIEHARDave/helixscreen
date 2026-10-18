@@ -1677,6 +1677,7 @@
   <translation tag="It starts with your {} macro." it="Inizia con la tua macro {}."/>
   <translation tag="It&apos;s a new spool" it="È una nuova bobina"/>
   <translation tag="Its home tile" it="Il suo riquadro della home"/>
+  <translation tag="Jammed" it="Inceppato"/>
   <translation tag="Jammed at the Toolhead" it="Inceppato nella testina"/>
   <translation tag="Job Queue" it="Coda lavori"/>
   <translation tag="Job queue not enabled in Moonraker" it="Coda lavori non abilitata in Moonraker"/>

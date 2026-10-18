@@ -20,6 +20,7 @@
 #include "macro_param_modal.h"
 #include "moonraker_client_mock.h"
 #include "panel_widget_manager.h"
+#include "static_subject_registry.h"
 
 #include <map>
 #include <memory>
@@ -308,4 +309,30 @@ TEST_CASE_METHOD(ConfigModalDefaultsFixture,
     CHECK(lv_subject_get_int(selected) == 3);
     auto& wc = helix::PanelWidgetManager::instance().get_widget_config("defaults_test_panel");
     CHECK(wc.get_widget_config("favorite_macro:1").value("color", 0u) == 0xFFC107u);
+}
+
+TEST_CASE_METHOD(ConfigModalDefaultsFixture,
+                 "the config modal opens and binds after a printer switch",
+                 "[macro][favorite_config][subjects]") {
+    // Its subjects are registered once, with the widget factories, and nothing on a
+    // printer switch's rebuild path registers them again.
+    helix::register_favorite_macro_config_subjects();
+    cache_macros({{"PLAIN_MACRO", "G28"}});
+    REQUIRE(StaticSubjectRegistry::instance().deinit_one(
+        "FavoriteMacroConfigSubjects", StaticSubjectRegistry::Scope::PrinterSwitch));
+
+    REQUIRE(lv_xml_get_subject(nullptr, "fav_macro_swatch_color_0") != nullptr);
+    lv_subject_t* tab = lv_xml_get_subject(nullptr, "fav_macro_config_tab");
+    REQUIRE(tab != nullptr);
+
+    auto& modal = show_config_for("PLAIN_MACRO");
+    lv_obj_t* sec_macro = lv_obj_find_by_name(modal.dialog(), "section_macro");
+    lv_obj_t* sec_options = lv_obj_find_by_name(modal.dialog(), "section_options");
+    REQUIRE(sec_macro != nullptr);
+    REQUIRE(sec_options != nullptr);
+
+    lv_subject_set_int(tab, 2);
+    lv_obj_update_layout(modal.dialog());
+    CHECK(lv_obj_has_flag(sec_macro, LV_OBJ_FLAG_HIDDEN));
+    CHECK_FALSE(lv_obj_has_flag(sec_options, LV_OBJ_FLAG_HIDDEN));
 }

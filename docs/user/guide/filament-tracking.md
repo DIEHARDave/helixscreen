@@ -121,12 +121,12 @@ However it's tracked, remaining filament shows up in the same places:
 |---|---|
 | **Active Spool widget** (Home panel) | Current spool's material, color, and remaining vs. total weight |
 | **AMS sidebar** | Remaining weight of the loaded slot |
-| **Edit Spool** editor | The slot's remaining weight out of the spool's total, for example 750 g of 1000 g |
+| **Edit Spool** editor | The slot's remaining weight, plus the spool's full weight when it is known, for example 750 g of 1000 g |
 | **Spoolman inventory panel** | Weight and remaining percentage for every spool, with a warning icon on any spool that's running low (under 100 g) |
 
 **Runout** — actually running out of filament mid-print — is handled by your filament sensors and multi-filament hardware, not by the weight number. The printer's firmware pauses the print; HelixScreen then guides you through reloading. On **AFC (Box Turtle)** and **Happy Hare**, a backup slot you configured can take over automatically (Endless Spool). On the **Creality CFS**, **Auto-Refill** is run by the box itself and always pauses first: it switches only when Auto-Refill is on and another slot holds the exact same material and colour, and otherwise leaves the print paused for you. See [Reading Error States](filament.md#reading-error-states) and the Endless Spool notes in [Filament Management](filament.md#slot-context-menu).
 
-> **Tip:** The remaining weight is only as good as the starting number. Whenever you load a fresh spool, set its weight, either by entering the remaining grams in the Edit Spool editor or by assigning a fresh Spoolman spool, so the estimate has an accurate starting point.
+> **Tip:** The remaining weight is only as good as the starting number. Whenever you load a fresh spool, set its weight, either by entering the grams on it in the Edit Spool editor (on a spool weighed for the first time, that number also becomes its full weight) or by assigning a fresh Spoolman spool, so the estimate has an accurate starting point.
 
 ---
 

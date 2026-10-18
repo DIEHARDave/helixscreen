@@ -57,10 +57,14 @@ the theme editor's ramp and hue families (`tests/unit/test_theme_swatch_grid.cpp
 order). The colour picker shows one or the other; the spool editor's colour view shows
 `general`.
 
-A grid swatch's touch target is the swatch plus `hit` (half the gap) on each side, so the
-pitch `swatch_grid_size + swatch_grid_gap` is the target, and `gap == 2 * gap_half` makes
-neighbouring targets meet without overlapping. Every tier keeps that pitch at 7 mm or more on
-its panel:
+**Every pickable swatch is at least a 44px touch target**, however small its disc. That
+swatch floor sits below the 48px `#touch_target_min` that buttons and other tappable controls
+use, so a grid never outranks the controls around it. A swatch's target is the disc plus `hit`
+on each side, so in a grid `size + 2 * hit >= 44`, and the gap between swatches is at least
+`2 * hit`, so neighbouring targets abut instead of overlapping (LVGL gives an overlapped tap to
+the topmost widget, which makes taps land unpredictably). In `color_swatch_grid`, `hit` is
+`swatch_grid_gap_half`, so the pitch `swatch_grid_size + swatch_grid_gap` is the target, and
+every tier keeps that pitch at 7 mm or more on its panel:
 
 | Tier | Swatch | Gap | Pitch | Grid width |
 |------|--------|-----|-------|------------|
@@ -74,6 +78,12 @@ The tabbed picker (micro and tiny) gives its presets a whole tab and passes the 
 (the spool editor's inline grids) uses the same `swatch_grid_*` tokens and pads its container
 by `swatch_grid_gap_half`, so the outer row and column are hit-testable: LVGL only hit-tests
 a child inside its parent's box.
+
+The shared token ladders (`swatch_grid_*`, `picker_tab_swatch_*` and the LED preset rows'
+`led_swatch_*`) hold the 44px floor and the abutting gap at every size class, and
+`tests/unit/test_color_swatch_grid.cpp` checks them per class. A grid that needs more room
+widens its container (the colour picker modal's `color_picker_modal_width`), never shrinks the
+target.
 
 `custom_color_swatch` defaults to those tokens too, so it tiles as one more grid cell where
 it leads a row; the LED colour row passes its own sizes.
