@@ -597,18 +597,16 @@ void PrintStartController::reprint_impl(const std::string& filename, const std::
                                          backend->last_print_tool_mapping(), tools_used);
         if (!remap) {
             // Not known (no configured task observed — e.g. the app started after
-            // the print ended). Sending anything here means inventing a routing:
-            // the identity map this used to emit is a confident wrong answer for
-            // exactly the files that need one. Start with the firmware holding
-            // whatever the last job left, and say so.
+            // the print ended). Sending a map here means inventing a routing: an
+            // identity map is a confident wrong answer for exactly the files that
+            // need one. The firmware keeps whatever map the last job left; only
+            // the routing-free per-print preferences go out, and the log says so.
             //
             // The cost is the SET_PRINT_USED_EXTRUDERS spurious-feed suppression,
             // which cannot be computed either — the used-head set is derived from
             // the same routing.
-            spdlog::warn("[PrintStartController] Reprint: no recorded print routing — skipping the "
-                         "pre-print config rather than writing a default map over it");
-            start();
-            return;
+            spdlog::warn("[PrintStartController] Reprint: no recorded print routing — sending "
+                         "no extruder map rather than writing a default one over it");
         }
 
         // The abort path has to retire the job this function armed above.
@@ -624,7 +622,10 @@ void PrintStartController::reprint_impl(const std::string& filename, const std::
                 on_error();
             }
         };
-        send_backend_preprint_then(tools_used, *remap, start, abort);
+        // With the routing unknown only the routing-free part goes out (an
+        // empty tool set): the backend's per-print preferences.
+        send_backend_preprint_then(remap ? tools_used : std::set<int>{},
+                                   remap ? *remap : std::map<int, int>{}, start, abort);
         return; // start fires from the send continuation — do NOT also start here
     }
 

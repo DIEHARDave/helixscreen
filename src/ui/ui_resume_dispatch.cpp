@@ -8,6 +8,7 @@
 #include "ui_modal.h"
 #include "ui_update_queue.h"
 
+#include "ams_backend.h"
 #include "ams_state.h"
 #include "app_globals.h"
 #include "i_moonraker_api.h"
@@ -72,8 +73,17 @@ void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filenam
     // Multi-line gcode is accepted by Klipper's gcode.script. Both lines
     // run synchronously before "ok" returns, so on_success only fires
     // after CANCEL_PRINT_BASE has dropped the print_stats.state to standby.
+    // A filament system whose firmware forgets per-print preferences between
+    // prints gets them again here, once the cancel has left the printer idle;
+    // the restart carries no routing, so nothing else is sent.
+    std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
+    if (AmsBackend* backend = AmsState::instance().get_backend();
+        backend && backend->requires_preprint_send()) {
+        if (const std::string prefs = backend->build_preprint_gcode({}, {}); !prefs.empty())
+            prep += "\n" + prefs;
+    }
     api->execute_gcode(
-        "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE",
+        prep,
         [api, filename, log_prefix, on_failure]() {
             queue_update("ui_resume_dispatch::restart_start_print", [api, filename, log_prefix,
                                                                      on_failure]() {

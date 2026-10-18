@@ -529,9 +529,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
                                    const std::any& value = {}) override;
 
     /// The saved unload-at-end list (SettingsManager's end-of-print unload
-    /// tools), sized to the toolheads the firmware reports. The firmware
-    /// clears its list when every print ends, so each print start re-sends it.
-    [[nodiscard]] std::vector<std::string> print_start_gcode_lines() const override;
+    /// tools) as one SET_PRINT_PREFERENCES line, sized to the toolheads the
+    /// firmware reports; empty until it has reported them. The firmware clears
+    /// its list when every print ends, so build_preprint_gcode() carries it on
+    /// every start.
+    [[nodiscard]] std::string end_unload_gcode() const;
 
     /// The command one action produces, or empty when the id is not ours.
     /// Separated from execute_device_action so the mapping is testable without

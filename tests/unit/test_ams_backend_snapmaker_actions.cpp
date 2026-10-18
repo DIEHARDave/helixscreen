@@ -142,22 +142,33 @@ TEST_CASE_METHOD(EndUnloadFixture, "every print start carries the saved end-unlo
 
     SECTION("nothing before the firmware reports how many heads it has") {
         SettingsManager::instance().set_end_of_print_unload_tools(0b0101);
-        REQUIRE(backend.print_start_gcode_lines().empty());
+        REQUIRE(backend.build_preprint_gcode({}, {}).empty());
     }
 
     SECTION("the list comes from the setting, not the cleared echo") {
         SnapmakerTestAccess::handle_status(
             backend, frame({{"end_unload_filament", {false, false, false, false}}}));
         SettingsManager::instance().set_end_of_print_unload_tools(0b0101);
-        REQUIRE(backend.print_start_gcode_lines() ==
-                std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,1,0]"});
+        REQUIRE(backend.build_preprint_gcode({}, {}) ==
+                "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,1,0]");
     }
 
     SECTION("all off is sent too, so a stale firmware list cannot ride into the print") {
         SnapmakerTestAccess::handle_status(
             backend, frame({{"end_unload_filament", {true, true, true, true}}}));
-        REQUIRE(backend.print_start_gcode_lines() ==
-                std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[0,0,0,0]"});
+        REQUIRE(backend.build_preprint_gcode({}, {}) ==
+                "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[0,0,0,0]");
+    }
+
+    SECTION("it rides after the extruder map of a print with known tools") {
+        SnapmakerTestAccess::handle_status(
+            backend, frame({{"end_unload_filament", {false, false, false, false}}}));
+        SettingsManager::instance().set_end_of_print_unload_tools(0b0001);
+        const std::string gcode = backend.build_preprint_gcode({0}, {});
+        REQUIRE(gcode.find("SET_PRINT_EXTRUDER_MAP") != std::string::npos);
+        const std::string tail = "\nSET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,0,0]";
+        REQUIRE(gcode.size() > tail.size());
+        REQUIRE(gcode.compare(gcode.size() - tail.size(), tail.size(), tail) == 0);
     }
 }
 
@@ -188,8 +199,8 @@ TEST_CASE_METHOD(
     REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b0011);
 
     // The saved list goes out as saved; the firmware skips the soft head itself.
-    REQUIRE(backend.print_start_gcode_lines() ==
-            std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,0,0]"});
+    REQUIRE(backend.build_preprint_gcode({}, {}) ==
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,0,0]");
     REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t2", std::any(true)) ==
             "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,1,0]");
 

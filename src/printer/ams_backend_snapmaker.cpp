@@ -2715,7 +2715,14 @@ std::vector<int> AmsBackendSnapmaker::last_print_tool_mapping() const {
 
 std::string AmsBackendSnapmaker::build_preprint_gcode(const std::set<int>& tools_used,
                                                       const std::map<int, int>& remap) const {
-    return preprint_gcode(tools_used, remap);
+    // The unload choice travels with every start, including one whose routing
+    // is unknown (empty tools_used): it needs no routing and the firmware
+    // forgets it when each print ends.
+    std::string gcode = preprint_gcode(tools_used, remap);
+    const std::string unload = end_unload_gcode();
+    if (!unload.empty())
+        gcode += (gcode.empty() ? "" : "\n") + unload;
+    return gcode;
 }
 
 std::string AmsBackendSnapmaker::preprint_gcode(const std::set<int>& tools_used,
@@ -3375,7 +3382,7 @@ AmsError AmsBackendSnapmaker::execute_device_action(const std::string& action_id
     return execute_gcode(gcode);
 }
 
-std::vector<std::string> AmsBackendSnapmaker::print_start_gcode_lines() const {
+std::string AmsBackendSnapmaker::end_unload_gcode() const {
     // The firmware resets end_unload_filament when every print ends, so the
     // saved choice is re-sent ahead of each one. Before it has reported its
     // list, the head count and support for the command are both unknown.
@@ -3385,7 +3392,7 @@ std::vector<std::string> AmsBackendSnapmaker::print_start_gcode_lines() const {
     }
     snapmaker::PrintPreferences changes;
     changes.end_unload_filament = end_unload_list(prefs);
-    return {snapmaker::write_print_preferences_gcode(changes)};
+    return snapmaker::write_print_preferences_gcode(changes);
 }
 
 } // namespace helix
