@@ -41,24 +41,42 @@ TEST_CASE_METHOD(LVGLUITestFixture, "spool_canvas: a multi-colour filament split
 
     helix::ui::spool_canvas_set_filament(canvas, 0xFF0000, "#FF0000,#0000FF",
                                          helix::ui::SwatchFinish::Plain);
-    // Wound bands run vertically: colour 0 owns the left of the filament,
-    // colour 1 the right. Find each band's column and the blend between them.
-    int32_t red_x = -1, blue_x = -1;
-    for (int32_t x = 6; x < SPOOL - 6 && (red_x < 0 || blue_x < 0); ++x) {
-        const lv_color32_t c = px(canvas, x, 32);
-        if (red_x < 0 && c.red > c.blue + 40)
-            red_x = x;
-        if (blue_x < 0 && c.blue > c.red + 40)
-            blue_x = x;
+    // A dual-colour strand winds as thin stripes that alternate along the axis.
+    // 0 = neither, 1 = red, 2 = blue.
+    auto strand_of = [&](int32_t x, int32_t y) {
+        const lv_color32_t c = px(canvas, x, y);
+        return c.red > c.blue + 40 ? 1 : (c.blue > c.red + 40 ? 2 : 0);
+    };
+    int switches = 0;
+    int last = 0;
+    for (int32_t x = 6; x < SPOOL - 6; ++x) {
+        const int s = strand_of(x, 32);
+        if (s != 0 && last != 0 && s != last)
+            ++switches;
+        if (s != 0)
+            last = s;
     }
-    REQUIRE(red_x >= 0);
-    REQUIRE(blue_x >= 0);
-    CHECK(red_x < blue_x);
-    bool blended = false; // some column between the bands carries both colours
+    CHECK(switches >= 6);
+
+    // The stripes are wrap circles in perspective, not straight lines: rows
+    // away from mid-height carry the pattern at a different x.
+    int moved = 0;
+    for (int32_t x = 6; x < SPOOL - 6; ++x) {
+        const int mid = strand_of(x, 32);
+        const int high = strand_of(x, 16);
+        if (mid != 0 && high != 0 && mid != high)
+            ++moved;
+    }
+    CHECK(moved >= 3);
+
+    // A silk strand's colours shade into each other where they meet.
+    helix::ui::spool_canvas_set_filament(canvas, 0xFF0000, "#FF0000,#0000FF",
+                                         helix::ui::SwatchFinish::Silk);
+    bool blended = false;
     for (int32_t y = 18; y < 46 && !blended; y += 4) {
-        for (int32_t x = red_x + 1; x < blue_x && !blended; ++x) {
+        for (int32_t x = 6; x < SPOOL - 6 && !blended; ++x) {
             const lv_color32_t c = px(canvas, x, y);
-            blended = c.red > 60 && c.blue > 60;
+            blended = c.red > 60 && c.blue > 60 && c.green < c.red && c.green < c.blue;
         }
     }
     CHECK(blended);
@@ -86,4 +104,41 @@ TEST_CASE_METHOD(LVGLUITestFixture, "spool_canvas: silk lights the body, matte m
     helix::ui::spool_canvas_set_filament(canvas, 0x2060C0, "", helix::ui::SwatchFinish::Matte);
     const lv_color32_t matte = px(canvas, 26, 33);
     CHECK(matte.blue - matte.red < plain.blue - plain.red);
+}
+
+namespace {
+
+// Share of a patch of the wound body that is a dark fleck: a pixel well below
+// both horizontal neighbours.
+float fleck_share(lv_obj_t* canvas, int32_t size) {
+    int flecks = 0;
+    int total = 0;
+    for (int32_t y = size * 3 / 10; y < size * 7 / 10; ++y) {
+        for (int32_t x = size / 5; x < size * 9 / 20; ++x) {
+            const int b = brightness(px(canvas, x, y));
+            if (b < brightness(px(canvas, x - 2, y)) - 40 &&
+                b < brightness(px(canvas, x + 2, y)) - 40)
+                ++flecks;
+            ++total;
+        }
+    }
+    return total > 0 ? static_cast<float>(flecks) / static_cast<float>(total) : 0.0f;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "spool_canvas: marble keeps one fleck density at every size",
+                 "[spool_canvas][swatch]") {
+    lv_obj_t* small = ui_spool_canvas_create(test_screen(), 120);
+    lv_obj_t* large = ui_spool_canvas_create(test_screen(), 240);
+    REQUIRE(small != nullptr);
+    REQUIRE(large != nullptr);
+    helix::ui::spool_canvas_set_filament(small, 0xE8E4DC, "", helix::ui::SwatchFinish::Marble);
+    helix::ui::spool_canvas_set_filament(large, 0xE8E4DC, "", helix::ui::SwatchFinish::Marble);
+
+    const float a = fleck_share(small, 120);
+    const float b = fleck_share(large, 240);
+    REQUIRE(a > 0.01f);
+    CHECK(b > a * 0.6f);
+    CHECK(b < a * 1.6f);
 }

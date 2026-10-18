@@ -248,7 +248,8 @@ void blend_over(lv_color32_t& dst, lv_color_t src, uint8_t a) {
 struct PixelTarget {
     lv_draw_buf_t* buf;
     lv_area_t area;
-    int32_t radius;
+    const SwatchCoverage& cover;
+    bool density_by_area; ///< speckle count follows the area, uncapped
 
     lv_color32_t* at(int32_t x, int32_t y) const {
         if (x < 0 || y < 0 || x >= static_cast<int32_t>(buf->header.w) ||
@@ -265,7 +266,7 @@ struct PixelTarget {
         for (int32_t py = y1; py < y1 + size; ++py) {
             for (int32_t px = x1; px < x1 + size; ++px) {
                 lv_color32_t* p = at(px, py);
-                const float cov = swatch_shape_coverage(area, radius, px + 0.5f, py + 0.5f);
+                const float cov = cover(px + 0.5f, py + 0.5f);
                 if (p && cov > 0.0f) {
                     blend_over(*p, color, static_cast<uint8_t>(a * cov));
                 }
@@ -297,7 +298,7 @@ void silk_pixels(const PixelTarget& t) {
             }
             const float u = (f - FRACS[k]) / (FRACS[k + 1] - FRACS[k]);
             const float op = OPAS[k] + u * (OPAS[k + 1] - OPAS[k]);
-            const float cov = swatch_shape_coverage(a, t.radius, x + 0.5f, y + 0.5f);
+            const float cov = t.cover(x + 0.5f, y + 0.5f);
             if (lv_color32_t* p = t.at(x, y); p && cov > 0.0f) {
                 blend_over(*p, lv_color_white(), static_cast<uint8_t>(op * cov));
             }
@@ -305,12 +306,53 @@ void silk_pixels(const PixelTarget& t) {
     }
 }
 
+// Points of @p area where @p cover is whole, spread on a jittered grid.
+std::vector<SwatchPoint> texture_points(const lv_area_t& area, const SwatchCoverage& cover,
+                                        size_t count, uint32_t seed) {
+    std::vector<SwatchPoint> points;
+    points.reserve(count);
+    const float x0 = static_cast<float>(area.x1);
+    const float y0 = static_cast<float>(area.y1);
+    const float w = static_cast<float>(lv_area_get_width(&area));
+    const float h = static_cast<float>(lv_area_get_height(&area));
+    if (w <= 0.0f || h <= 0.0f) {
+        return points;
+    }
+    // A jittered grid with offset rows spreads the texture evenly; plain
+    // random sampling clumps, which reads as bare patches at small sizes.
+    Lcg rng{seed ? seed : 1u};
+    const float step = std::sqrt((w * h) / static_cast<float>(count));
+    bool offset = false;
+    for (float gy = y0 + step / 2.0f; gy < y0 + h; gy += step) {
+        const float dx = offset ? step / 2.0f : 0.0f;
+        offset = !offset;
+        for (float gx = x0 + step / 2.0f + dx; gx < x0 + w; gx += step) {
+            const float x = gx + (rng.next() - 0.5f) * step * 0.7f;
+            const float y = gy + (rng.next() - 0.5f) * step * 0.7f;
+            if (cover(x, y) >= 1.0f) {
+                points.push_back({x, y});
+            }
+        }
+    }
+    // Top up anywhere the shape clipped the grid, so a requested count holds.
+    for (size_t tries = 0; points.size() < count && tries < count * 8; ++tries) {
+        const float x = x0 + rng.next() * w;
+        const float y = y0 + rng.next() * h;
+        if (cover(x, y) >= 1.0f) {
+            points.push_back({x, y});
+        }
+    }
+    return points;
+}
+
 // Marble: a fine speckle of darker and lighter flecks.
 void marble_pixels(const PixelTarget& t) {
     const int32_t s = short_side(t.area);
-    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 14, 12, 340));
+    const int32_t dense = t.density_by_area ? std::max<int32_t>(12, lv_area_get_size(&t.area) / 14)
+                                            : std::clamp<int32_t>(s * s / 14, 12, 340);
+    const size_t count = static_cast<size_t>(dense);
     const int32_t fleck = s >= 48 ? 2 : 1;
-    const auto points = swatch_texture_points(t.area, t.radius, count, area_seed(t.area));
+    const auto points = texture_points(t.area, t.cover, count, area_seed(t.area));
     for (size_t i = 0; i < points.size(); ++i) {
         const bool dark = (i % 3) != 0;
         t.dot(points[i].x, points[i].y, fleck, dark ? lv_color_black() : lv_color_white(),
@@ -323,7 +365,7 @@ void sparkle_pixels(const PixelTarget& t) {
     const int32_t s = short_side(t.area);
     const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 70, 6, 44));
     const int32_t arm = std::max<int32_t>(1, s / 14);
-    const auto points = swatch_texture_points(t.area, t.radius, count, area_seed(t.area) ^ 0x5A5Au);
+    const auto points = texture_points(t.area, t.cover, count, area_seed(t.area) ^ 0x5A5Au);
     const lv_color_t white = lv_color_white();
     for (size_t i = 0; i < points.size(); ++i) {
         const float x = points[i].x;
@@ -756,43 +798,13 @@ std::vector<SwatchPolygon> swatch_split_polygons(const lv_area_t& area, int32_t 
 
 std::vector<SwatchPoint> swatch_texture_points(const lv_area_t& area, int32_t radius, size_t count,
                                                uint32_t seed) {
-    std::vector<SwatchPoint> points;
-    points.reserve(count);
-    const float x0 = static_cast<float>(area.x1);
-    const float y0 = static_cast<float>(area.y1);
-    const float w = static_cast<float>(lv_area_get_width(&area));
-    const float h = static_cast<float>(lv_area_get_height(&area));
-    if (w <= 0.0f || h <= 0.0f) {
-        return points;
-    }
     // Keep texture a pixel inside the rim, where the edge would cover it.
     lv_area_t inner = area;
     lv_area_increase(&inner, -1, -1);
-    // A jittered grid with offset rows spreads the texture evenly; plain
-    // random sampling clumps, which reads as bare patches at small sizes.
-    Lcg rng{seed ? seed : 1u};
-    const float step = std::sqrt((w * h) / static_cast<float>(count));
-    bool offset = false;
-    for (float gy = y0 + step / 2.0f; gy < y0 + h; gy += step) {
-        const float dx = offset ? step / 2.0f : 0.0f;
-        offset = !offset;
-        for (float gx = x0 + step / 2.0f + dx; gx < x0 + w; gx += step) {
-            const float x = gx + (rng.next() - 0.5f) * step * 0.7f;
-            const float y = gy + (rng.next() - 0.5f) * step * 0.7f;
-            if (swatch_shape_contains(inner, radius, x, y)) {
-                points.push_back({x, y});
-            }
-        }
-    }
-    // Top up anywhere the shape clipped the grid, so a requested count holds.
-    for (size_t tries = 0; points.size() < count && tries < count * 8; ++tries) {
-        const float x = x0 + rng.next() * w;
-        const float y = y0 + rng.next() * h;
-        if (swatch_shape_contains(inner, radius, x, y)) {
-            points.push_back({x, y});
-        }
-    }
-    return points;
+    const SwatchCoverage inside = [&inner, radius](float x, float y) {
+        return swatch_shape_contains(inner, radius, x, y) ? 1.0f : 0.0f;
+    };
+    return texture_points(area, inside, count, seed);
 }
 
 // ---------------------------------------------------------------------------
@@ -849,12 +861,13 @@ const std::vector<float>& SwatchCache::thresholds(const lv_area_t& area, int32_t
     return thresholds_;
 }
 
-void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area, int32_t radius,
-                                SwatchFinish finish) {
+namespace {
+void paint_finish(lv_draw_buf_t* buf, const lv_area_t& area, const SwatchCoverage& cover,
+                  bool density_by_area, SwatchFinish finish) {
     if (!buf || buf->header.cf != LV_COLOR_FORMAT_ARGB8888) {
         return;
     }
-    const PixelTarget t{buf, area, radius};
+    const PixelTarget t{buf, area, cover, density_by_area};
     switch (swatch_effective_finish(finish, lv_area_get_width(&area), lv_area_get_height(&area))) {
     case SwatchFinish::Silk:
         silk_pixels(t);
@@ -869,6 +882,20 @@ void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area, int32
     case SwatchFinish::Plain:
         break;
     }
+}
+} // namespace
+
+void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area, int32_t radius,
+                                SwatchFinish finish) {
+    const SwatchCoverage shape = [&area, radius](float x, float y) {
+        return swatch_shape_coverage(area, radius, x, y);
+    };
+    paint_finish(buf, area, shape, false, finish);
+}
+
+void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area,
+                                const SwatchCoverage& cover, SwatchFinish finish) {
+    paint_finish(buf, area, cover, true, finish);
 }
 
 void draw_swatch(lv_layer_t* layer, const lv_area_t& area, const SwatchPaint& paint) {
