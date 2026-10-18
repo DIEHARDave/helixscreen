@@ -9,6 +9,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/wifi_manager_test_access.h"
+#include "../ui_test_utils.h"
 #include "async_lifetime_guard.h"
 #include "http_executor.h"
 #include "wifi_backend_mock.h"
@@ -420,7 +421,13 @@ TEST_CASE_METHOD(ControlLaneFixture,
 TEST_CASE_METHOD(ControlLaneFixture, "user actions fail at once while WiFi control is stalled",
                  "[wifi][wifi_control_lane][wifi_breaker]") {
     WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    // An open WiFi link would hide the radio's toast; this case is about the wording.
+    WiFiManagerTestAccess::set_os_link_probe([] { return false; });
     stall_lane_on_status_read(50);
+    // Held by the hook, so a REQUIRE that gives up leaves nothing dangling.
+    auto toasts = std::make_shared<std::vector<std::string>>();
+    helix::ui::set_test_notification_event_hook(
+        [toasts](const helix::ui::NotificationEvent& e) { toasts->push_back(e.message); });
 
     std::optional<WiFiResult> connect_result;
     std::optional<std::string> forget_error;
@@ -436,6 +443,15 @@ TEST_CASE_METHOD(ControlLaneFixture, "user actions fail at once while WiFi contr
     CHECK(*connect_result == WiFiResult::TIMEOUT);
     CHECK(*forget_error == "WiFi isn't responding");
     CHECK_FALSE(*radio_ok);
+
+    // One plain message per action, not each action's failure toast with the
+    // reason glued on.
+    helix::ui::set_test_notification_event_hook(nullptr);
+    WiFiManagerTestAccess::reset_os_link_probe();
+    CHECK(toasts->size() == 4);
+    for (const auto& t : *toasts) {
+        CHECK(t == "WiFi isn't responding");
+    }
 
     backend->release();
     REQUIRE(WiFiManagerTestAccess::settle(*wm));

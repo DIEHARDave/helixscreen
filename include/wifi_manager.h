@@ -645,8 +645,12 @@ class WiFiManager {
     void submit_user_op(const char* tag, uint32_t deadline_ms,
                         std::function<std::function<void()>()> work,
                         std::function<void()> on_unanswered);
-    // The answer a user op gets when WiFi control is not answering.
+    // The answer a user op gets when WiFi control is not answering, how to
+    // recognise it, and the one toast every action shows for it, in place of
+    // that action's own failure toast. LVGL thread for the toast.
     static WiFiError unresponsive_error();
+    static bool is_unresponsive_error(const WiFiError& error);
+    static void notify_unresponsive();
     // Runs `fn` on the LVGL thread after `ms`, unless the manager is gone by
     // then. The timer frees itself, so nothing is left for the destructor.
     void after_ms(uint32_t ms, std::function<void()> fn);

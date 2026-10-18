@@ -356,7 +356,10 @@ WiFiManager::~WiFiManager() {
 
     // A lane worker may be inside a backend call. Nothing below (least of all
     // backend_.reset()) may run while it is, and what is still queued behind
-    // it is dropped rather than run against a manager on its way out.
+    // it is dropped rather than run against a manager on its way out. The wait
+    // is unbounded: the worker uses this object until its call returns. Only
+    // tests destroy a WiFiManager; the app's one instance is never freed
+    // (get_wifi_manager(), and the owner gate in tests/shell/test_code_lint.bats).
     {
         std::lock_guard<std::mutex> lock(control_mutex_);
         control_shutdown_ = true;
@@ -742,8 +745,12 @@ void WiFiManager::apply_connect_result(uint64_t generation, const std::string& s
         const std::string reason = result.user_msg.empty() ? result.technical_msg : result.user_msg;
         // The reason belongs in the toast too: "Failed to connect" alone
         // leaves the user with nothing to act on.
-        NOTIFY_ERROR(lv_tr("Failed to connect to WiFi network '{}': {}"), helix::redact::ssid(ssid),
-                     reason);
+        if (is_unresponsive_error(result)) {
+            notify_unresponsive();
+        } else {
+            NOTIFY_ERROR(lv_tr("Failed to connect to WiFi network '{}': {}"),
+                         helix::redact::ssid(ssid), reason);
+        }
         // Clear in-progress + take the callback under the lock, then invoke the
         // local copy OUTSIDE the lock (the callback may re-enter WiFiManager).
         ConnectCallback cb;
@@ -805,7 +812,7 @@ void WiFiManager::disconnect() {
             }
             return []() { NOTIFY_WARNING("{}", lv_tr("Could not disconnect from WiFi")); };
         },
-        []() { NOTIFY_WARNING("{}", lv_tr("WiFi isn't responding")); });
+        []() { notify_unresponsive(); });
 }
 
 void WiFiManager::forget(const std::string& ssid,
@@ -847,7 +854,9 @@ void WiFiManager::report_forget_result(
         //   HelixScreen persists to remove). The user did tap a button and is
         //   owed an answer, so this one speaks — but as "not here", not as a
         //   failure. Saying nothing would leave a silent dead control.
-        if (result.result == WiFiResult::NOT_SUPPORTED) {
+        if (is_unresponsive_error(result)) {
+            notify_unresponsive();
+        } else if (result.result == WiFiResult::NOT_SUPPORTED) {
             NOTIFY_INFO("{}", lv_tr("This printer's network service manages saved WiFi networks"));
         } else if (result.result != WiFiResult::NETWORK_NOT_FOUND) {
             // NOTIFY_ERROR ultimately reaches spdlog::error, which is persisted
@@ -968,6 +977,12 @@ void WiFiManager::report_radio_result(bool enabled, const WiFiError& result,
                                       bool has_wired_fallback) {
     if (result.success()) {
         spdlog::debug("[WiFiManager] WiFi radio {}", enabled ? "enabled" : "disabled");
+        return;
+    }
+
+    // The user tapped the switch and is owed this even over a live link.
+    if (is_unresponsive_error(result)) {
+        notify_unresponsive();
         return;
     }
 
@@ -1353,9 +1368,21 @@ bool WiFiManager::control_unresponsive() {
     return control_stalled() || breaker_open();
 }
 
+namespace {
+constexpr const char* UNRESPONSIVE_TECHNICAL_MSG = "WiFi control call did not return in time";
+} // namespace
+
 WiFiError WiFiManager::unresponsive_error() {
-    return WiFiError(WiFiResult::TIMEOUT, "WiFi control call did not return in time",
+    return WiFiError(WiFiResult::TIMEOUT, UNRESPONSIVE_TECHNICAL_MSG,
                      lv_tr("WiFi isn't responding"));
+}
+
+bool WiFiManager::is_unresponsive_error(const WiFiError& error) {
+    return error.result == WiFiResult::TIMEOUT && error.technical_msg == UNRESPONSIVE_TECHNICAL_MSG;
+}
+
+void WiFiManager::notify_unresponsive() {
+    NOTIFY_WARNING("{}", lv_tr("WiFi isn't responding"));
 }
 
 void WiFiManager::submit_user_op(const char* tag, uint32_t deadline_ms,
@@ -1990,7 +2017,8 @@ std::shared_ptr<WiFiManager> get_wifi_manager() {
         // Use silent=true for global instance since it's used for passive status monitoring
         // (e.g., home panel WiFi icon). Avoids modal popup when WiFi hardware is unavailable
         // on development machines or when WiFi is simply turned off.
-        instance = std::make_shared<WiFiManager>(/*silent=*/true);
+        // The one owner, never freed, so ~WiFiManager never waits in the app.
+        instance = std::make_shared<WiFiManager>(/*silent=*/true); // WIFI_MANAGER_OWNER_OK
         instance->init_self_reference(instance);
     }
 
