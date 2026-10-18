@@ -527,7 +527,6 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/layer_pause_modal.xml",
     "ui_xml/led_auto_color_swatches.xml",
     "ui_xml/led_control_overlay.xml",
-    "ui_xml/components/ams_edit_chip.xml",
     "ui_xml/led_list_chip.xml",
     "ui_xml/led_picker.xml",
     "ui_xml/led_settings_overlay.xml",

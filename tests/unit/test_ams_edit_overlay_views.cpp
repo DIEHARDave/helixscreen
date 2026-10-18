@@ -100,8 +100,8 @@ class AmsEditOverlayViewTestAccess {
     void call_switch_to_editor() {
         overlay_.set_view(AmsEditOverlay::VIEW_EDITOR);
     }
-    void call_handle_chip_tap(int row, int index) {
-        overlay_.handle_chip_tap(row, index);
+    void call_handle_option_selected(int row, int index) {
+        overlay_.handle_option_selected(row, index);
     }
     AmsEditOverlay::SpoolEditSelection sel() {
         return overlay_.sel_;
@@ -122,21 +122,18 @@ class AmsEditOverlayViewTestAccess {
     void call_handle_add_to_spoolman() {
         overlay_.handle_add_to_spoolman();
     }
-    int material_chip_count() {
-        return lv_subject_get_int(&overlay_.material_count_subject_);
+    std::string dropdown_options(const char* name) {
+        lv_obj_t* dd = overlay_.find_widget(name);
+        return dd ? lv_dropdown_get_options(dd) : std::string();
     }
-    int brand_chip_count() {
-        return lv_subject_get_int(&overlay_.brand_count_subject_);
-    }
-    std::string chip_label(xml::IndexedSubjectPool& pool, int i) {
-        auto* subj = pool.at(i);
-        return subj ? lv_subject_get_string(subj) : std::string();
-    }
-    xml::IndexedSubjectPool& material_labels() {
-        return overlay_.material_labels_;
-    }
-    xml::IndexedSubjectPool& brand_labels() {
-        return overlay_.brand_labels_;
+    std::string dropdown_selected(const char* name) {
+        lv_obj_t* dd = overlay_.find_widget(name);
+        if (!dd) {
+            return {};
+        }
+        char buf[64] = {0};
+        lv_dropdown_get_selected_str(dd, buf, sizeof(buf) - 1);
+        return buf;
     }
     void set_details_color(uint32_t rgb) {
         overlay_.details_color_ = rgb;
@@ -1675,7 +1672,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "apply_family_change pins the brand/variant 
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,
-                 "editor rows publish families, variants and Generic-first brands",
+                 "editor dropdowns publish families, variants, Generic-first brands",
                  "[ams_edit_overlay][chips]") {
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayViewTestAccess access(overlay);
@@ -1685,22 +1682,19 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    // Material row: the slot's family is selected; the trailing chip is More...
-    REQUIRE(access.material_chip_count() >= 2);
-    bool petg_selected = false;
-    for (int i = 0; i < access.material_chip_count(); ++i) {
-        if (access.chip_label(access.material_labels(), i) == "PETG") {
-            petg_selected = true;
-        }
-    }
-    CHECK(petg_selected);
-    CHECK(access.chip_label(access.material_labels(), access.material_chip_count() - 1) ==
-          "More...");
+    // Material dropdown: the slot's family is selected, the list carries the
+    // families and ends in the browse entry.
+    const std::string materials = access.dropdown_options("dropdown_material");
+    CHECK(materials.find("PETG") != std::string::npos);
+    CHECK(access.dropdown_selected("dropdown_material") == "PETG");
+    const std::string browse = "Browse catalog...";
+    CHECK(materials.size() > browse.size() + 1);
+    CHECK(materials.compare(materials.size() - browse.size(), browse.size(), browse) == 0);
 
-    // Brand row: Generic leads and All... trails.
-    REQUIRE(access.brand_chip_count() >= 2);
-    CHECK(access.chip_label(access.brand_labels(), 0) == "Generic");
-    CHECK(access.chip_label(access.brand_labels(), access.brand_chip_count() - 1) == "All...");
+    // Brand dropdown: Generic leads and the browse entry trails.
+    const std::string brands = access.dropdown_options("dropdown_brand");
+    CHECK(brands.find("Generic\n") == 0);
+    CHECK(access.dropdown_selected("dropdown_brand") == "Generic");
 
     close_editor_overlay();
 }
@@ -1717,9 +1711,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "unknown material shows as its own selected 
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    // The catalog does not know the family, so it leads the row selected and
+    // The catalog does not know the family, so it is the dropdown's selected
+    // entry and
     // an untouched open+save changes nothing (selection not moved).
-    CHECK(access.chip_label(access.material_labels(), 0) == "MysteryBlend");
+    CHECK(access.dropdown_selected("dropdown_material") == "MysteryBlend");
     CHECK(access.sel().family == "MysteryBlend");
     CHECK(access.sel().brand == "NoName Co");
     CHECK_FALSE(access.is_dirty());

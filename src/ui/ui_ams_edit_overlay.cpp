@@ -296,14 +296,6 @@ bool AmsEditOverlay::show_for_slot(lv_obj_t* parent, int slot_index, const SlotI
 // ============================================================================
 
 lv_obj_t* AmsEditOverlay::create(lv_obj_t* parent) {
-    // Every <repeat> starts empty: on_ui_destroyed() reclaimed the pools a
-    // stale count would bind new rows to. enter_editor()/repopulate() publish
-    // the real counts.
-    lv_subject_set_int(&material_count_subject_, 0);
-    lv_subject_set_int(&variant_count_subject_, 0);
-    lv_subject_set_int(&brand_count_subject_, 0);
-    lv_subject_set_int(&product_count_subject_, 0);
-
     if (!OverlayBase::create(parent)) {
         return nullptr;
     }
@@ -340,12 +332,7 @@ lv_obj_t* AmsEditOverlay::create(lv_obj_t* parent) {
     return overlay_root_;
 }
 
-void AmsEditOverlay::on_ui_destroyed() {
-    material_labels_.reclaim();
-    variant_labels_.reclaim();
-    brand_labels_.reclaim();
-    product_labels_.reclaim();
-}
+void AmsEditOverlay::on_ui_destroyed() {}
 
 void AmsEditOverlay::on_activate() {
     OverlayBase::on_activate();
@@ -393,19 +380,8 @@ void AmsEditOverlay::init_subjects() {
         // build. The header button binds its hidden flag to this.
         UI_MANAGED_SUBJECT_INT(scan_enabled_subject_, 0, "ams_edit_scan_enabled", subjects_);
 
-        // Chip row plumbing: counts, selection indices, row visibility.
-        UI_MANAGED_SUBJECT_INT(material_count_subject_, 0, "ams_edit_material_count", subjects_);
-        UI_MANAGED_SUBJECT_INT(variant_count_subject_, 0, "ams_edit_variant_count", subjects_);
-        UI_MANAGED_SUBJECT_INT(brand_count_subject_, 0, "ams_edit_brand_count", subjects_);
-        UI_MANAGED_SUBJECT_INT(product_count_subject_, 0, "ams_edit_product_count", subjects_);
+        // Row visibility for the Generic-gated product dropdown.
         UI_MANAGED_SUBJECT_INT(product_hidden_subject_, 1, "ams_edit_product_hidden", subjects_);
-        UI_MANAGED_SUBJECT_INT(material_selected_subject_, -1, "ams_edit_material_selected",
-                               subjects_);
-        UI_MANAGED_SUBJECT_INT(variant_selected_subject_, -1, "ams_edit_variant_selected",
-                               subjects_);
-        UI_MANAGED_SUBJECT_INT(brand_selected_subject_, -1, "ams_edit_brand_selected", subjects_);
-        UI_MANAGED_SUBJECT_INT(product_selected_subject_, -1, "ams_edit_product_selected",
-                               subjects_);
         UI_MANAGED_SUBJECT_INT(color_selected_subject_, -1, "ams_edit_color_selected", subjects_);
         UI_MANAGED_SUBJECT_INT(color_col_count_subject_, 15, "ams_edit_color_col_count", subjects_);
         UI_MANAGED_SUBJECT_INT(color_row_count_subject_, 30, "ams_edit_color_row_count", subjects_);
@@ -451,33 +427,33 @@ void AmsEditOverlay::deinit_subjects() {
 // Chip rows
 // ============================================================================
 
-void AmsEditOverlay::publish_row(xml::IndexedSubjectPool& pool, lv_subject_t& count_subj,
-                                 lv_subject_t& selected_subj, const std::vector<Chip>& chips,
-                                 const std::string& selected_payload) {
-    pool.ensure_size(chips.size());
+void AmsEditOverlay::fill_dropdown(const char* stacked_name, const char* split_name,
+                                   const std::vector<Chip>& chips,
+                                   const std::string& selected_payload) {
+    std::string options;
     int selected = -1;
     for (size_t i = 0; i < chips.size(); ++i) {
-        pool.set_string(i, chips[i].label);
-        if (!chips[i].more && selected >= 0 && iequals_str(chips[i].payload, selected_payload)) {
+        if (!options.empty()) {
+            options += '\n';
+        }
+        options += chips[i].label;
+        if (!chips[i].more && selected < 0 && iequals_str(chips[i].payload, selected_payload)) {
             selected = static_cast<int>(i);
         }
-        if (chips[i].more) {
-            selected = -1; // placeholder, fixed below
+    }
+    for (const char* name : {stacked_name, split_name}) {
+        if (lv_obj_t* dd = name && name[0] ? find_widget(name) : nullptr) {
+            lv_dropdown_set_options(dd, options.c_str());
+            lv_dropdown_set_selected(dd, selected < 0 ? 0 : selected);
         }
     }
-    // Selection: first non-more chip whose payload matches.
-    selected = -1;
-    for (size_t i = 0; i < chips.size(); ++i) {
-        if (!chips[i].more && iequals_str(chips[i].payload, selected_payload)) {
-            selected = static_cast<int>(i);
-            break;
-        }
-    }
-    for (size_t i = chips.size(); i < pool.size(); ++i) {
-        pool.set_string(i, "");
-    }
-    lv_subject_set_int(&count_subj, static_cast<int>(chips.size()));
-    lv_subject_set_int(&selected_subj, selected);
+}
+
+void AmsEditOverlay::refresh_dropdowns() {
+    fill_dropdown("dropdown_material", "dropdown_material_split", material_chips_, sel_.family);
+    fill_dropdown("dropdown_variant", "dropdown_variant_split", variant_chips_, sel_.variant);
+    fill_dropdown("dropdown_brand", "dropdown_brand_split", brand_chips_, sel_.brand);
+    fill_dropdown("dropdown_product", "dropdown_product_split", product_chips_, sel_.product_id);
 }
 
 void AmsEditOverlay::rebuild_chip_rows() {
@@ -519,7 +495,7 @@ void AmsEditOverlay::rebuild_chip_rows() {
     if (!family_known) {
         material.insert(material.begin(), {sel_.family, sel_.family, false});
     }
-    material.push_back({lv_tr("More..."), {}, true});
+    material.push_back({lv_tr("Browse catalog..."), {}, true});
     material_chips_ = std::move(material);
 
     // VARIANT: the catalog's variants for the family.
@@ -544,7 +520,7 @@ void AmsEditOverlay::rebuild_chip_rows() {
     if (!brand_known) {
         brands.insert(brands.begin() + 1, {sel_.brand, sel_.brand, false});
     }
-    brands.push_back({lv_tr("All..."), {}, true});
+    brands.push_back({lv_tr("Browse catalog..."), {}, true});
     brand_chips_ = std::move(brands);
 
     // PRODUCT: that brand's lines for the material. Hidden under Generic.
@@ -571,18 +547,10 @@ void AmsEditOverlay::rebuild_chip_rows() {
     product_chips_ = std::move(products);
     lv_subject_set_int(&product_hidden_subject_, iequals_str(sel_.brand, "Generic") ? 1 : 0);
 
-    publish_row(material_labels_, material_count_subject_, material_selected_subject_,
-                material_chips_, sel_.family);
-    publish_row(variant_labels_, variant_count_subject_, variant_selected_subject_, variant_chips_,
-                sel_.variant);
-    publish_row(brand_labels_, brand_count_subject_, brand_selected_subject_, brand_chips_,
-                sel_.brand);
-    std::string product_selected = product_chips_.empty() ? std::string() : sel_.product_id;
-    publish_row(product_labels_, product_count_subject_, product_selected_subject_, product_chips_,
-                product_selected);
+    refresh_dropdowns();
 }
 
-void AmsEditOverlay::handle_chip_tap(int row, int index) {
+void AmsEditOverlay::handle_option_selected(int row, int index) {
     const std::vector<Chip>* chips = nullptr;
     switch (row) {
     case 0:
@@ -605,8 +573,8 @@ void AmsEditOverlay::handle_chip_tap(int row, int index) {
     }
     const Chip& chip = (*chips)[index];
     if (chip.more) {
-        // More... / All...: the full catalog picker, with search. A pick there
-        // seeds family, variant, brand and product in one step.
+        // "Browse catalog...": the full catalog picker, with search. A pick
+        // there seeds family, variant, brand and product in one step.
         if (!catalog_sheet_) {
             catalog_sheet_ = std::make_unique<FilamentCatalogPickerModal>();
         }
@@ -1867,21 +1835,25 @@ void AmsEditOverlay::register_callbacks() {
         {"ams_edit_weight_cb", [](lv_event_t*) { get_ams_edit_overlay().handle_weight_tap(); }},
         {"ams_edit_add_to_spoolman_cb",
          [](lv_event_t*) { get_ams_edit_overlay().handle_add_to_spoolman(); }},
-        {"ams_edit_material_chip_cb",
+        {"ams_edit_material_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_chip_tap(0, helix::ui::event_user_int(e).value_or(-1));
+             get_ams_edit_overlay().handle_option_selected(
+                 0, helix::ui::event_user_int(e).value_or(-1));
          }},
-        {"ams_edit_variant_chip_cb",
+        {"ams_edit_variant_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_chip_tap(1, helix::ui::event_user_int(e).value_or(-1));
+             get_ams_edit_overlay().handle_option_selected(
+                 1, helix::ui::event_user_int(e).value_or(-1));
          }},
-        {"ams_edit_brand_chip_cb",
+        {"ams_edit_brand_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_chip_tap(2, helix::ui::event_user_int(e).value_or(-1));
+             get_ams_edit_overlay().handle_option_selected(
+                 2, helix::ui::event_user_int(e).value_or(-1));
          }},
-        {"ams_edit_product_chip_cb",
+        {"ams_edit_product_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_chip_tap(3, helix::ui::event_user_int(e).value_or(-1));
+             get_ams_edit_overlay().handle_option_selected(
+                 3, helix::ui::event_user_int(e).value_or(-1));
          }},
         {"ams_edit_print_label_cb",
          [](lv_event_t*) {

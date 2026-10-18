@@ -43,7 +43,8 @@ namespace helix::ui {
  * dirty-gated via the ams_edit_save_disabled subject.
  *
  * The editor view is a chip-row state machine: Material family, Variant,
- * Brand, Product rows published through IndexedSubjectPools, plus a colour
+ * Brand, Product as a cascading dropdown form (each list ends in a
+ * browse-the-catalog entry), plus a colour
  * grid, a weight pill (numeric keypad) and a collapsed More section.
  * Selection state lives in SpoolEditSelection; Save stages it into the
  * working SlotInfo. Tag-sourced fields show a badge and reset through
@@ -219,19 +220,12 @@ class AmsEditOverlay : public OverlayBase {
     std::vector<Chip> variant_chips_;
     std::vector<Chip> brand_chips_;
     std::vector<Chip> product_chips_;
-    xml::IndexedSubjectPool material_labels_{"ams_edit_material_label",
-                                             xml::IndexedSubjectPool::Type::String, 48};
-    xml::IndexedSubjectPool variant_labels_{"ams_edit_variant_label",
-                                            xml::IndexedSubjectPool::Type::String, 48};
-    xml::IndexedSubjectPool brand_labels_{"ams_edit_brand_label",
-                                          xml::IndexedSubjectPool::Type::String, 48};
-    xml::IndexedSubjectPool product_labels_{"ams_edit_product_label",
-                                            xml::IndexedSubjectPool::Type::String, 48};
+    /// Fill both layouts' dropdown widgets from the option vectors.
+    void refresh_dropdowns();
+    void fill_dropdown(const char* stacked_name, const char* split_name,
+                       const std::vector<Chip>& chips, const std::string& selected_payload);
     void rebuild_chip_rows();
-    void publish_row(xml::IndexedSubjectPool& pool, lv_subject_t& count_subj,
-                     lv_subject_t& selected_subj, const std::vector<Chip>& chips,
-                     const std::string& selected_payload);
-    void handle_chip_tap(int row, int index);
+    void handle_option_selected(int row, int index);
 
     // === Subjects for XML binding ===
     SubjectManager subjects_;
@@ -239,19 +233,11 @@ class AmsEditOverlay : public OverlayBase {
     lv_subject_t view_mode_subject_{}; ///< kView* ("ams_edit_view")
     lv_subject_t
         picker_state_subject_{}; ///< 0=loading, 1=fetch error (retry), 2=content, 3=no match
-    lv_subject_t save_disabled_subject_{}; ///< 1=Save disabled ("ams_edit_save_disabled")
-    lv_subject_t save_hidden_subject_{};   ///< 1=header Save hidden ("ams_edit_save_hidden")
-    lv_subject_t is_managed_subject_{};    ///< 1=linked Spoolman spool ("ams_edit_is_managed")
-    lv_subject_t scan_enabled_subject_{};  ///< 1=QR button may show ("ams_edit_scan_enabled")
-    lv_subject_t material_count_subject_{};
-    lv_subject_t variant_count_subject_{};
-    lv_subject_t brand_count_subject_{};
-    lv_subject_t product_count_subject_{};
-    lv_subject_t product_hidden_subject_{}; ///< 1 while Generic selected
-    lv_subject_t material_selected_subject_{};
-    lv_subject_t variant_selected_subject_{};
-    lv_subject_t brand_selected_subject_{};
-    lv_subject_t product_selected_subject_{};
+    lv_subject_t save_disabled_subject_{};   ///< 1=Save disabled ("ams_edit_save_disabled")
+    lv_subject_t save_hidden_subject_{};     ///< 1=header Save hidden ("ams_edit_save_hidden")
+    lv_subject_t is_managed_subject_{};      ///< 1=linked Spoolman spool ("ams_edit_is_managed")
+    lv_subject_t scan_enabled_subject_{};    ///< 1=QR button may show ("ams_edit_scan_enabled")
+    lv_subject_t product_hidden_subject_{};  ///< 1 while Generic selected
     lv_subject_t color_selected_subject_{};  ///< ringed preset index (-1 none)
     lv_subject_t color_col_count_subject_{}; ///< split-column presets (15)
     lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (18 short, 30 tall)
