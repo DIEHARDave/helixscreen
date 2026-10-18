@@ -272,6 +272,25 @@ int64_t spool_recency_key(const SpoolInfo& spool);
  */
 void sort_spools_by_recency(std::vector<SpoolInfo>& spools);
 
+/**
+ * @brief The material families of @p spools, in the list's own order
+ *
+ * The recents source for the spool editor's Material row. The input is the
+ * recency-sorted spool list the Spoolman API returns (sort_spools_by_recency()
+ * applied in the API layer), so first appearance IS most-recent-first; families
+ * dedupe case-insensitively keeping the first spelling. Empty materials are
+ * skipped. Pure: no fetch, no clock.
+ */
+// NAMESPACE_OK: sits beside sort_spools_by_recency at file scope
+std::vector<std::string> recent_material_families(const std::vector<SpoolInfo>& spools);
+
+/**
+ * @brief The brands of @p spools, in the list's own order — see
+ * recent_material_families().
+ */
+// NAMESPACE_OK: sits beside sort_spools_by_recency at file scope
+std::vector<std::string> recent_brands(const std::vector<SpoolInfo>& spools);
+
 // ============================================================================
 // SpoolInfo → SlotInfo Conversion
 // ============================================================================

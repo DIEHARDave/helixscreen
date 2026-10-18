@@ -235,6 +235,7 @@
   <translation tag="Add custom filament" ru="Добавить свой филамент"/>
   <translation tag="Add page" ru="Добавить страницу"/>
   <translation tag="Add to Queue" ru="Добавить в очередь"/>
+  <translation tag="Add to Spoolman + label" ru="Добавить в Spoolman + этикетка"/>
   <translation tag="Added to Spoolman" ru="Добавлено в Spoolman"/>
   <translation tag="Added to queue (position {})" ru="Добавлено в очередь (позиция {})"/>
   <translation tag="Added to queue (position {}) - queue is paused" ru="Добавлено в очередь (позиция {}) – очередь на паузе"/>
@@ -369,6 +370,7 @@
   <translation tag="Barcode Scanner" ru="Сканер штрих-кодов"/>
   <translation tag="Base" ru="Опорный"/>
   <translation tag="Based on the newest {} prints" ru="По последним печатям ({})"/>
+  <translation tag="Basic" ru="Базовый"/>
   <translation tag="Batch load failed" ru="Ошибка пакетной загрузки"/>
   <translation tag="Batch unload failed" ru="Ошибка пакетной выгрузки"/>
   <translation tag="Beacon auto-calibrate sent" ru="Beacon автокалибровка отправлена"/>
@@ -445,6 +447,7 @@
   <translation tag="Brother QL (Bluetooth)" ru="Brother QL (Bluetooth)"/>
   <translation tag="Browse and play recorded timelapses" ru="Просмотр и воспроизведение записанных таймлапсов"/>
   <translation tag="Browse and run your Klipper macros" ru="Просмотр и запуск макросов Klipper"/>
+  <translation tag="Browse catalog..." ru="Обзор каталога..."/>
   <translation tag="Browse guides, configuration references, and troubleshooting resources for HelixScreen." ru="Руководства, справочники по настройке и ресурсы по устранению неполадок для HelixScreen."/>
   <translation tag="Brush nozzle" ru="Очистка сопла щёткой"/>
   <translation tag="Buffer Status" ru="Статус буфера"/>
@@ -1971,6 +1974,7 @@
   <translation tag="Moonraker restarted but Spoolman not connected. Check server." ru="Moonraker перезапущен, но Spoolman не подключен. Проверьте сервер."/>
   <translation tag="Moonraker restarting...&#10;Waiting for reconnection..." ru="Moonraker перезапускается...&#10;Ожидание переподключения..."/>
   <translation tag="Moonraker: " ru="Moonraker: "/>
+  <translation tag="More" ru="Ещё"/>
   <translation tag="More points = more accurate, but takes longer." ru="Больше точек — точнее, но дольше."/>
   <translation tag="Motion" ru="Движение"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." ru="Датчик движения застрял: филамент всё ещё в фидере. Продолжите, чтобы подать его."/>
@@ -2411,6 +2415,7 @@
   <translation tag="Preview Sounds" ru="Предпросмотр звуков"/>
   <translation tag="Previous" ru="Прежняя"/>
   <translation tag="Price" ru="Цена"/>
+  <translation tag="Price, location, lot, notes" ru="Цена, место, партия, заметки"/>
   <translation tag="Primary" ru="Основной"/>
   <translation tag="Priming nozzle..." ru="Подготовка сопла..."/>
   <translation tag="Priming..." ru="Грунтование..."/>
@@ -2544,6 +2549,7 @@
   <translation tag="Problem found" ru="Обнаружена проблема"/>
   <translation tag="Proceed" ru="Продолжить"/>
   <translation tag="Processing..." ru="Обработка..."/>
+  <translation tag="Product" ru="Продукт"/>
   <translation tag="Profile deleted" ru="Профиль удалён"/>
   <translation tag="Profile name (e.g., default)" ru="Имя профиля (например, default)"/>
   <translation tag="Profile names cannot contain &apos;;&apos;" ru="Имена профилей не могут содержать &apos;;&apos;"/>
@@ -2647,6 +2653,7 @@
   <translation tag="Recovering..." ru="Восстановление..."/>
   <translation tag="Recovery failed" ru="Восстановление не удалось"/>
   <translation tag="Recovery failed: {}" ru="Восстановление не удалось: {}"/>
+  <translation tag="Recycled" ru="Переработанный"/>
   <translation tag="Reduce Sensitivity" ru="Снизить чувствительность"/>
   <translation tag="Reduce ringing and ghosting artifacts" ru="Уменьшить артефакты звона и двоения"/>
   <translation tag="Reduce vibration artifacts like ringing and ghosting" ru="Уменьшить артефакты вибрации, такие как звон и двоение"/>
@@ -2665,6 +2672,7 @@
   <translation tag="Remaining" ru="Осталось"/>
   <translation tag="Remaining (g)" ru="Осталось (г)"/>
   <translation tag="Remaining Weight (g)" ru="Оставшийся вес (г)"/>
+  <translation tag="Remaining weight" ru="Остаток веса"/>
   <translation tag="Remember slot spool details across an eject" ru="Запоминать данные катушки слота после извлечения"/>
   <translation tag="Remove" ru="Удалить"/>
   <translation tag="Remove PIN" ru="Удалить PIN"/>
@@ -2723,6 +2731,7 @@
   <translation tag="Reset to Default" ru="Сбросить до умолчания"/>
   <translation tag="Reset to defaults" ru="Сбросить по умолчанию"/>
   <translation tag="Reset to original values" ru="Сбросить к исходным значениям"/>
+  <translation tag="Reset to tag" ru="Восстановить по метке"/>
   <translation tag="Reset {}?" ru="Сбросить {}?"/>
   <translation tag="Resetting" ru="Сброс"/>
   <translation tag="Resetting system" ru="Сброс системы"/>
@@ -2850,6 +2859,7 @@
   <translation tag="Save changes to persist them across restarts?" ru="Сохранить изменения, чтобы они сохранились после перезапуска?"/>
   <translation tag="Save failed: {}" ru="Ошибка сохранения: {}"/>
   <translation tag="Save offsets?" ru="Сохранить смещения?"/>
+  <translation tag="Save the changes to this spool?" ru="Сохранить изменения этой катушки?"/>
   <translation tag="Save to Spool" ru="Сохранить на катушку"/>
   <translation tag="Save to Spoolman" ru="Сохранить в Spoolman"/>
   <translation tag="Saved Z-Offset" ru="Сохранённый Z-Offset"/>
@@ -3383,6 +3393,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" ru="На этом устройстве всего {} МБ ОЗУ. Калибровка резонансов требует много памяти и может привести к тому, что прошивка принтера сообщит об ошибке &quot;Timer Too Close&quot; или перезапустится во время теста. Всё равно продолжить?"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" ru="На этом устройстве очень мало ОЗУ. Калибровка резонансов требует много памяти и может вызвать ошибку &quot;Timer Too Close&quot;. Всё равно продолжить?"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" ru="Это не совпадает с привязанной катушкой Spoolman. Добавить как новую катушку или обновить привязанную?"/>
+  <translation tag="This doesn&apos;t match the linked Spoolman spool. Update it in Spoolman, or unlink and keep it on this slot?" ru="Не совпадает со связанной катушкой Spoolman. Обновить в Spoolman или отвязать и оставить на этом слоте?"/>
   <translation tag="This dryer cannot run while filament from the unit is loaded" ru="Сушилка не может работать, пока загружен филамент из этого узла"/>
   <translation tag="This feature requires different hardware or configuration" ru="Для этой функции требуется другое оборудование или конфигурация"/>
   <translation tag="This filament system does not report buffer or flow data." ru="Эта система филамента не сообщает данные буфера и потока."/>
@@ -3562,6 +3573,7 @@
   <translation tag="Unknown Spool" ru="Неизвестная катушка"/>
   <translation tag="Unknown Step" ru="Неизвестный шаг"/>
   <translation tag="Unknown error" ru="Неизвестная ошибка"/>
+  <translation tag="Unlink, keep on this slot" ru="Отвязать, оставить на этом слоте"/>
   <translation tag="Unload" ru="Выгрузить"/>
   <translation tag="Unload Distance" ru="Расстояние выгрузки"/>
   <translation tag="Unload Extruder" ru="Выгрузить экструдер"/>
@@ -3592,6 +3604,7 @@
   <translation tag="Unmount" ru="Снять"/>
   <translation tag="Unretract Extra" ru="Дополнительная подача"/>
   <translation tag="Unretract Speed" ru="Скорость возврата"/>
+  <translation tag="Unsaved changes" ru="Несохранённые изменения"/>
   <translation tag="Unsupported tape width" ru="Неподдерживаемая ширина ленты"/>
   <translation tag="Unsupported tape width: " ru="Неподдерживаемая ширина ленты: "/>
   <translation tag="Up next: {}" ru="Далее: {}"/>
@@ -3605,6 +3618,7 @@
   <translation tag="Update Helper Macros?" ru="Обновить вспомогательные макросы?"/>
   <translation tag="Update Success" ru="Обновление успешно"/>
   <translation tag="Update from a Terminal" ru="Обновление через терминал"/>
+  <translation tag="Update in Spoolman" ru="Обновить в Spoolman"/>
   <translation tag="Update installed!" ru="Обновление установлено!"/>
   <translation tag="Update your security PIN" ru="Обновите ваш PIN-код"/>
   <translation tag="Updates" ru="Обновления"/>
@@ -3630,6 +3644,7 @@
   <translation tag="Validating bed mesh..." ru="Валидация сетки стола..."/>
   <translation tag="Value must be between {} and {}" ru="Значение должно быть от {} до {}"/>
   <translation tag="Values must not be negative" ru="Значения не должны быть отрицательными"/>
+  <translation tag="Variant" ru="Вариант"/>
   <translation tag="Velocity and acceleration limits" ru="Ограничения скорости и ускорения"/>
   <translation tag="Vendor" ru="Производитель"/>
   <translation tag="Vendor Name" ru="Название производителя"/>
@@ -3829,6 +3844,7 @@
   <translation tag="feeder error" ru="ошибка фидера"/>
   <translation tag="feeder not in automatic mode" ru="фидер не в автоматическом режиме"/>
   <translation tag="filament sensor disabled" ru="датчик филамента отключён"/>
+  <translation tag="from tag" ru="с метки"/>
   <translation tag="heated bed" ru="подогреваемый стол"/>
   <translation tag="helixscreen.env ignored: owned by uid {}" ru="helixscreen.env проигнорирован: принадлежит uid {}"/>
   <translation tag="helixscreen.env ignored: untrusted symlink chain" ru="helixscreen.env проигнорирован: недоверенная цепочка символических ссылок"/>

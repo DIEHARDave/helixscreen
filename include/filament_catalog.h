@@ -158,6 +158,34 @@ class FilamentCatalog {
     const EffectiveFilament* resolve_code(const std::string& scheme, const std::string& code) const;
     const EffectiveFilament* resolve_id(const std::string& id) const;
     std::vector<const EffectiveFilament*> products_for_type(const std::string& type) const;
+
+    /// One chip of the spool editor's variant row: the label shown and a real
+    /// catalog type that carries it (the exact spelling an identity emits when
+    /// this variant is chosen — never re-composed by hand).
+    struct FamilyVariant {
+        std::string label;       ///< "Basic", "CF", "Silk", "Recycled", ...
+        std::string sample_type; ///< "PLA", "PLA-CF", "Silk PLA", "rPLA", ...
+    };
+
+    /// Every material family in the catalog (the distinct display_family()
+    /// headings), case-insensitively deduped, alphabetical.
+    std::vector<std::string> all_families() const;
+
+    /// The variant labels the catalog carries for @p family, deduped
+    /// case-insensitively. "Basic" first when the family has a bare type, then
+    /// alphabetical. A family the catalog does not know answers one entry:
+    /// the family itself as "Basic".
+    std::vector<FamilyVariant> variants_in_family(const std::string& family) const;
+
+    /// Every brand with at least one product in @p family (case-insensitive
+    /// family match on display_family()), deduped case-insensitively and
+    /// alphabetical. "Generic" appears only when a Generic product exists.
+    std::vector<std::string> brands_in_family(const std::string& family) const;
+
+    /// The products @p brand sells in @p family — that brand's lines for that
+    /// material, catalog order. Case-insensitive on both arguments.
+    std::vector<const EffectiveFilament*> products_in_family(const std::string& brand,
+                                                             const std::string& family) const;
     std::vector<const EffectiveFilament*> products_for_brand(const std::string& brand) const;
     std::vector<std::string> all_brands() const;
     std::vector<const EffectiveFilament*> all_products() const;

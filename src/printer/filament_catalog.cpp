@@ -3,6 +3,7 @@
 
 #include "data_root_resolver.h"
 #include "filament_database.h"
+#include "filament_variants.h"
 #include "helix_fs.h"
 #include "json_utils.h"
 #include "system/helix_paths.h"
@@ -548,6 +549,95 @@ std::vector<const EffectiveFilament*> FilamentCatalog::products_for(const std::s
     std::vector<const EffectiveFilament*> out;
     for (const auto& p : products_) {
         if (p.brand == brand && p.type == type) {
+            out.push_back(&p);
+        }
+    }
+    return out;
+}
+
+namespace {
+
+bool iequals_str(const std::string& a, const std::string& b) {
+    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char x, char y) {
+               return std::tolower(static_cast<unsigned char>(x)) ==
+                      std::tolower(static_cast<unsigned char>(y));
+           });
+}
+
+/// insert-if-absent over a case-insensitive key, preserving the first spelling.
+template <typename T>
+bool insert_ci(std::set<std::string>& keys, std::vector<T>& out, const std::string& key, T value) {
+    const std::string lower = tio::to_lower(key);
+    if (!keys.insert(lower).second) {
+        return false;
+    }
+    out.push_back(std::move(value));
+    return true;
+}
+
+} // namespace
+
+std::vector<std::string> FilamentCatalog::all_families() const {
+    std::set<std::string> keys;
+    std::vector<std::string> out;
+    for (const auto& p : products_) {
+        insert_ci(keys, out, filament::display_family(p.type), filament::display_family(p.type));
+    }
+    std::sort(out.begin(), out.end(), [](const std::string& a, const std::string& b) {
+        return tio::to_lower(a) < tio::to_lower(b);
+    });
+    return out;
+}
+
+std::vector<FilamentCatalog::FamilyVariant>
+FilamentCatalog::variants_in_family(const std::string& family) const {
+    std::set<std::string> keys;
+    std::vector<FamilyVariant> out;
+    for (const auto& p : products_) {
+        const std::string fam = filament::display_family(p.type);
+        if (!iequals_str(fam, family)) {
+            continue;
+        }
+        FamilyVariant fv{filament::variant_label(p.type, fam), p.type};
+        // Copy the key BEFORE the move: argument evaluation order is
+        // unspecified, and a key bound to fv.label after std::move(fv) emptied
+        // it reads back empty, collapsing every variant onto one entry.
+        const std::string key = fv.label;
+        insert_ci(keys, out, key, std::move(fv));
+    }
+    std::sort(out.begin(), out.end(), [](const FamilyVariant& a, const FamilyVariant& b) {
+        if (a.label == "Basic" || b.label == "Basic") {
+            return a.label == "Basic" && b.label != "Basic";
+        }
+        return tio::to_lower(a.label) < tio::to_lower(b.label);
+    });
+    if (out.empty()) {
+        // A family the catalog does not know still gets one chip: the family
+        // itself, unvarianted, so an unknown material round-trips.
+        out.push_back({"Basic", family});
+    }
+    return out;
+}
+
+std::vector<std::string> FilamentCatalog::brands_in_family(const std::string& family) const {
+    std::set<std::string> keys;
+    std::vector<std::string> out;
+    for (const auto& p : products_) {
+        if (iequals_str(filament::display_family(p.type), family)) {
+            insert_ci(keys, out, p.brand, p.brand);
+        }
+    }
+    std::sort(out.begin(), out.end(), [](const std::string& a, const std::string& b) {
+        return tio::to_lower(a) < tio::to_lower(b);
+    });
+    return out;
+}
+
+std::vector<const EffectiveFilament*>
+FilamentCatalog::products_in_family(const std::string& brand, const std::string& family) const {
+    std::vector<const EffectiveFilament*> out;
+    for (const auto& p : products_) {
+        if (iequals_str(p.brand, brand) && iequals_str(filament::display_family(p.type), family)) {
             out.push_back(&p);
         }
     }

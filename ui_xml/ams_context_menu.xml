@@ -159,9 +159,9 @@
                      style_flex_main_place="start" hidden="true">
             <event_cb trigger="clicked" callback="ams_context_scan_qr_cb"/>
           </ui_button>
-          <!-- Spool Info Button — always opens edit modal -->
+          <!-- Edit Spool Button — always opens the spool editor -->
           <ui_button name="btn_edit"
-                     height="#button_height_sm" icon="tune" text="Spool Info" variant="ghost" clickable="true"
+                     height="#button_height_sm" icon="tune" text="Edit Spool" variant="ghost" clickable="true"
                      style_flex_main_place="start">
             <event_cb trigger="clicked" callback="ams_context_edit_cb"/>
           </ui_button>

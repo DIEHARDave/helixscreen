@@ -202,6 +202,7 @@
   <translation tag="Add custom filament" zh="添加自定义耗材"/>
   <translation tag="Add page" zh="添加页面"/>
   <translation tag="Add to Queue" zh="添加到队列"/>
+  <translation tag="Add to Spoolman + label" zh="添加到 Spoolman + 标签"/>
   <translation tag="Added to Spoolman" zh="已添加到 Spoolman"/>
   <translation tag="Added to queue (position {})" zh="已添加到队列（第 {} 位）"/>
   <translation tag="Added to queue (position {}) - queue is paused" zh="已添加到队列（第 {} 位）– 队列已暂停"/>
@@ -330,6 +331,7 @@
   <translation tag="Barcode Scanner" zh="条码扫描器"/>
   <translation tag="Base" zh="基准"/>
   <translation tag="Based on the newest {} prints" zh="基于最近 {} 次打印"/>
+  <translation tag="Basic" zh="标准"/>
   <translation tag="Batch load failed" zh="批量加载失败"/>
   <translation tag="Batch unload failed" zh="批量卸载失败"/>
   <translation tag="Beacon auto-calibrate sent" zh="Beacon自动校准已发送"/>
@@ -406,6 +408,7 @@
   <translation tag="Brother QL (Bluetooth)" zh="Brother QL（蓝牙）"/>
   <translation tag="Browse and play recorded timelapses" zh="浏览和播放录制的延时摄影"/>
   <translation tag="Browse and run your Klipper macros" zh="浏览并运行 Klipper 宏"/>
+  <translation tag="Browse catalog..." zh="浏览目录..."/>
   <translation tag="Browse guides, configuration references, and troubleshooting resources for HelixScreen." zh="浏览 HelixScreen 的指南、配置参考和故障排除资源。"/>
   <translation tag="Brush nozzle" zh="刷洗喷嘴"/>
   <translation tag="Buffer Status" zh="缓冲区状态"/>
@@ -1926,6 +1929,7 @@
   <translation tag="Moonraker restarted but Spoolman not connected. Check server." zh="Moonraker 已重启但 Spoolman 未连接。请检查服务器。"/>
   <translation tag="Moonraker restarting...&#10;Waiting for reconnection..." zh="Moonraker 重启中...&#10;等待重新连接..."/>
   <translation tag="Moonraker: " zh="Moonraker: "/>
+  <translation tag="More" zh="更多"/>
   <translation tag="More points = more accurate, but takes longer." zh="点数越多越精确，但耗时更长。"/>
   <translation tag="Motion" zh="运动"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." zh="运动传感器卡住：耗材仍在送料器中。继续即可送入。"/>
@@ -2363,6 +2367,7 @@
   <translation tag="Preview Sounds" zh="预览声音"/>
   <translation tag="Previous" zh="上一步"/>
   <translation tag="Price" zh="价格"/>
+  <translation tag="Price, location, lot, notes" zh="价格、位置、批次、备注"/>
   <translation tag="Primary" zh="主要"/>
   <translation tag="Priming nozzle..." zh="正在预挤喷嘴..."/>
   <translation tag="Priming..." zh="正在预挤..."/>
@@ -2490,6 +2495,7 @@
   <translation tag="Problem found" zh="发现问题"/>
   <translation tag="Proceed" zh="继续"/>
   <translation tag="Processing..." zh="处理中..."/>
+  <translation tag="Product" zh="产品"/>
   <translation tag="Profile deleted" zh="配置文件已删除"/>
   <translation tag="Profile name (e.g., default)" zh="配置名称（例如：default）"/>
   <translation tag="Profile names cannot contain &apos;;&apos;" zh="配置名称不能包含 &apos;;&apos;"/>
@@ -2593,6 +2599,7 @@
   <translation tag="Recovering..." zh="恢复中..."/>
   <translation tag="Recovery failed" zh="恢复失败"/>
   <translation tag="Recovery failed: {}" zh="恢复失败: {}"/>
+  <translation tag="Recycled" zh="再生"/>
   <translation tag="Reduce Sensitivity" zh="降低灵敏度"/>
   <translation tag="Reduce ringing and ghosting artifacts" zh="减少振纹和残影"/>
   <translation tag="Reduce vibration artifacts like ringing and ghosting" zh="减少振纹和残影等振动伪影"/>
@@ -2611,6 +2618,7 @@
   <translation tag="Remaining" zh="剩余"/>
   <translation tag="Remaining (g)" zh="剩余 (g)"/>
   <translation tag="Remaining Weight (g)" zh="剩余重量（克）"/>
+  <translation tag="Remaining weight" zh="剩余重量"/>
   <translation tag="Remember slot spool details across an eject" zh="弹出后记住槽位的料盘详情"/>
   <translation tag="Remove" zh="移除"/>
   <translation tag="Remove PIN" zh="移除 PIN"/>
@@ -2669,6 +2677,7 @@
   <translation tag="Reset to Default" zh="重置为默认"/>
   <translation tag="Reset to defaults" zh="重置为默认值"/>
   <translation tag="Reset to original values" zh="重置为原始值"/>
+  <translation tag="Reset to tag" zh="恢复标签值"/>
   <translation tag="Reset {}?" zh="重置{}？"/>
   <translation tag="Resetting" zh="重置中"/>
   <translation tag="Resetting system" zh="正在重置系统"/>
@@ -2796,6 +2805,7 @@
   <translation tag="Save changes to persist them across restarts?" zh="保存更改以便在重启后保留？"/>
   <translation tag="Save failed: {}" zh="保存失败: {}"/>
   <translation tag="Save offsets?" zh="保存偏移？"/>
+  <translation tag="Save the changes to this spool?" zh="保存此料盘的更改？"/>
   <translation tag="Save to Spool" zh="保存到料盘"/>
   <translation tag="Save to Spoolman" zh="保存到 Spoolman"/>
   <translation tag="Saved Z-Offset" zh="已保存 Z 偏移"/>
@@ -3323,6 +3333,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" zh="此设备仅有 {} MB 内存。共振校准会占用大量内存，可能导致打印机固件报告 &quot;Timer Too Close&quot; 错误或在测试中途重启。仍要继续吗？"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" zh="此设备内存极少。共振校准会占用大量内存，可能导致 &quot;Timer Too Close&quot; 错误。仍要继续吗？"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" zh="这与关联的 Spoolman 料盘不匹配。是否添加为新料盘，或更新关联料盘以匹配？"/>
+  <translation tag="This doesn&apos;t match the linked Spoolman spool. Update it in Spoolman, or unlink and keep it on this slot?" zh="与关联的 Spoolman 料盘不匹配。在 Spoolman 中更新，还是取消关联并保留在此料位？"/>
   <translation tag="This dryer cannot run while filament from the unit is loaded" zh="此单元的耗材处于装载状态时，烘干机无法运行"/>
   <translation tag="This feature requires different hardware or configuration" zh="此功能需要不同的硬件或配置"/>
   <translation tag="This filament system does not report buffer or flow data." zh="此耗材系统不报告缓冲区或流量数据。"/>
@@ -3502,6 +3513,7 @@
   <translation tag="Unknown Spool" zh="未知料盘"/>
   <translation tag="Unknown Step" zh="未知步骤"/>
   <translation tag="Unknown error" zh="未知错误"/>
+  <translation tag="Unlink, keep on this slot" zh="取消关联，保留在此料位"/>
   <translation tag="Unload" zh="卸载"/>
   <translation tag="Unload Distance" zh="卸载距离"/>
   <translation tag="Unload Extruder" zh="卸载挤出机"/>
@@ -3532,6 +3544,7 @@
   <translation tag="Unmount" zh="卸下"/>
   <translation tag="Unretract Extra" zh="回抽恢复额外量"/>
   <translation tag="Unretract Speed" zh="回抽恢复速度"/>
+  <translation tag="Unsaved changes" zh="未保存的更改"/>
   <translation tag="Unsupported tape width" zh="不支持的标签带宽度"/>
   <translation tag="Unsupported tape width: " zh="不支持的标签带宽度: "/>
   <translation tag="Up next: {}" zh="下一个：{}"/>
@@ -3545,6 +3558,7 @@
   <translation tag="Update Helper Macros?" zh="更新帮助宏？"/>
   <translation tag="Update Success" zh="更新成功"/>
   <translation tag="Update from a Terminal" zh="通过终端更新"/>
+  <translation tag="Update in Spoolman" zh="在 Spoolman 中更新"/>
   <translation tag="Update installed!" zh="更新已安装！"/>
   <translation tag="Update your security PIN" zh="更新您的安全 PIN"/>
   <translation tag="Updates" zh="更新"/>
@@ -3570,6 +3584,7 @@
   <translation tag="Validating bed mesh..." zh="正在验证热床网格..."/>
   <translation tag="Value must be between {} and {}" zh="值必须在 {} 到 {} 之间"/>
   <translation tag="Values must not be negative" zh="值不能为负数"/>
+  <translation tag="Variant" zh="变体"/>
   <translation tag="Velocity and acceleration limits" zh="速度和加速度限制"/>
   <translation tag="Vendor" zh="供应商"/>
   <translation tag="Vendor Name" zh="供应商名称"/>
@@ -3766,6 +3781,7 @@
   <translation tag="feeder error" zh="送料器错误"/>
   <translation tag="feeder not in automatic mode" zh="送料器未处于自动模式"/>
   <translation tag="filament sensor disabled" zh="耗材传感器已禁用"/>
+  <translation tag="from tag" zh="来自标签"/>
   <translation tag="heated bed" zh="热床"/>
   <translation tag="helixscreen.env ignored: owned by uid {}" zh="已忽略 helixscreen.env：属主为 uid {}"/>
   <translation tag="helixscreen.env ignored: untrusted symlink chain" zh="已忽略 helixscreen.env：符号链接链不受信任"/>
