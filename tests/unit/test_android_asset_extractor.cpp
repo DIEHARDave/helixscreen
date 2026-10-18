@@ -15,7 +15,9 @@
 
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
+#include <utility>
 
 #include "../catch_amalgamated.hpp"
 
@@ -33,6 +35,7 @@ std::string resolve_asset_build_stamp(const std::string& apk_stamp,
 bool asset_extraction_can_skip(const std::string& resolved_stamp, const std::string& disk_stamp);
 bool asset_extraction_succeeded(int dirs_requested, int dirs_extracted, int file_failures);
 bool is_non_shippable_config_file(const std::string& filename);
+bool asset_dir_is_user_layer(const std::string& asset_path);
 } // namespace helix
 
 // ============================================================================
@@ -338,4 +341,129 @@ TEST_CASE("Shipped config seeds still extract", "[android][asset][config]") {
     CHECK_FALSE(is_non_shippable_config_file("printer_database.json"));
     CHECK_FALSE(is_non_shippable_config_file("printing_tips.json"));
     CHECK_FALSE(is_non_shippable_config_file("default_layout.json"));
+}
+
+// ============================================================================
+// User config layer: an update may seed it, never rewrite it
+// ============================================================================
+
+TEST_CASE("config/ and everything under it is the user layer", "[android][asset][config]") {
+    CHECK(asset_dir_is_user_layer("config"));
+    CHECK(asset_dir_is_user_layer("config/themes"));
+    CHECK(asset_dir_is_user_layer("config/printer_database.d"));
+}
+
+TEST_CASE("Shipped trees outside config/ are rewritten on update", "[android][asset][config]") {
+    // The read-only seeds find_readable() falls back to live under assets/config/,
+    // so a new release's copies must replace the old ones.
+    CHECK_FALSE(asset_dir_is_user_layer("assets/config"));
+    CHECK_FALSE(asset_dir_is_user_layer("assets/config/themes/defaults"));
+    CHECK_FALSE(asset_dir_is_user_layer("ui_xml"));
+    CHECK_FALSE(asset_dir_is_user_layer("configs"));
+    CHECK_FALSE(asset_dir_is_user_layer(""));
+}
+
+// ============================================================================
+// App-private storage layout
+// ============================================================================
+
+static bool is_under(const std::string& path, const std::string& dir) {
+    return path == dir || path.rfind(dir + "/", 0) == 0;
+}
+
+TEST_CASE("Assets extract into data/ under the app's files dir", "[android][asset][backup]") {
+    const AndroidStorageLayout layout =
+        android_storage_layout("/data/user/0/org.helixscreen.app/files");
+    CHECK(layout.data_dir == "/data/user/0/org.helixscreen.app/files/data");
+}
+
+TEST_CASE("Settings backups live in app storage outside the extracted tree",
+          "[android][asset][backup]") {
+    const std::string files = "/data/user/0/org.helixscreen.app/files";
+    const AndroidStorageLayout layout = android_storage_layout(files);
+
+    // Writable without root, and kept across an app update.
+    CHECK(is_under(layout.backup_dir, files));
+    CHECK(is_under(layout.backup_fallback_dir, files));
+    // An extraction rewrites and prunes under data_dir; a backup there would not
+    // survive the update it exists for.
+    CHECK_FALSE(is_under(layout.backup_dir, layout.data_dir));
+    CHECK_FALSE(is_under(layout.backup_fallback_dir, layout.data_dir));
+    CHECK(layout.backup_dir != layout.backup_fallback_dir);
+}
+
+TEST_CASE("A trailing slash on the files dir does not leak into the layout",
+          "[android][asset][backup]") {
+    const AndroidStorageLayout layout =
+        android_storage_layout("/data/data/org.helixscreen.app/files/");
+    CHECK(layout.data_dir == "/data/data/org.helixscreen.app/files/data");
+    CHECK(layout.backup_dir == "/data/data/org.helixscreen.app/files/state");
+    CHECK(layout.backup_fallback_dir == "/data/data/org.helixscreen.app/files/.helixscreen");
+}
+
+// ============================================================================
+// Auto Backup rules cover exactly the user's state in that layout
+// ============================================================================
+
+namespace {
+using Rule = std::pair<std::string, std::string>; // {"include"|"exclude", path}
+
+/// Every <include>/<exclude> under @p section (the whole file when empty).
+std::set<Rule> backup_rules(const std::string& xml_path, const std::string& section = "") {
+    const std::string xml = helix::text_io::read_file(xml_path).value_or("");
+    REQUIRE_FALSE(xml.empty());
+    size_t begin = 0;
+    size_t end = xml.size();
+    if (!section.empty()) {
+        begin = xml.find("<" + section + ">");
+        REQUIRE(begin != std::string::npos);
+        end = xml.find("</" + section + ">", begin);
+        REQUIRE(end != std::string::npos);
+    }
+    std::set<Rule> rules;
+    for (const char* kind : {"include", "exclude"}) {
+        const std::string open = std::string("<") + kind + " domain=\"file\" path=\"";
+        for (size_t at = xml.find(open, begin); at != std::string::npos && at < end;
+             at = xml.find(open, at + 1)) {
+            const size_t path_start = at + open.size();
+            rules.insert({kind, xml.substr(path_start, xml.find('"', path_start) - path_start)});
+        }
+    }
+    return rules;
+}
+
+std::set<std::string> paths_of(const std::set<Rule>& rules, const std::string& kind) {
+    std::set<std::string> out;
+    for (const Rule& r : rules) {
+        if (r.first == kind)
+            out.insert(r.second);
+    }
+    return out;
+}
+} // namespace
+
+TEST_CASE("Auto Backup includes the config layer and the settings backups",
+          "[android][asset][backup]") {
+    const std::string files = "/files";
+    const AndroidStorageLayout layout = android_storage_layout(files);
+    const auto relative = [&](const std::string& p) { return p.substr(files.size() + 1) + "/"; };
+    const std::set<std::string> expected = {relative(layout.data_dir + "/config"),
+                                            relative(layout.backup_dir)};
+
+    const std::string res = "android/app/src/main/res/xml/";
+    const std::set<Rule> legacy = backup_rules(res + "backup_rules.xml");
+    CHECK(paths_of(legacy, "include") == expected);
+    // Every exclusion narrows an include; one outside them would exclude nothing.
+    for (const std::string& ex : paths_of(legacy, "exclude")) {
+        CAPTURE(ex);
+        CHECK(ex.rfind(relative(layout.data_dir + "/config"), 0) == 0);
+    }
+    CHECK(paths_of(legacy, "exclude").count("data/config/telemetry_device.json") == 1);
+    CHECK(paths_of(legacy, "exclude").count("data/config/.helix-screen.lock") == 1);
+
+    // Android 12+ reads the other file; both of its sections must say the same.
+    for (const char* section : {"cloud-backup", "device-transfer"}) {
+        CAPTURE(section);
+        CHECK(backup_rules(res + "data_extraction_rules.xml", section) == legacy);
+    }
 }

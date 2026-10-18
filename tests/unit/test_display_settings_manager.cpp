@@ -36,6 +36,20 @@ TEST_CASE("DisplaySettingsManager::animations_default policy", "[display_setting
     REQUIRE(DisplaySettingsManager::animations_default(false, false) == false);
 }
 
+// Without a dimmable backlight the dim timeout is what starts the screensaver, so
+// the row stays reachable under that name; with neither, it would set nothing.
+TEST_CASE("DisplaySettingsManager::dim_row_kind policy", "[display_settings]") {
+    using Kind = DisplaySettingsManager::DimRowKind;
+    CHECK(DisplaySettingsManager::dim_row_kind(true, true) == Kind::ScreenDim);
+    CHECK(DisplaySettingsManager::dim_row_kind(true, false) == Kind::ScreenDim);
+    CHECK(DisplaySettingsManager::dim_row_kind(false, true) == Kind::ScreensaverAfter);
+    CHECK(DisplaySettingsManager::dim_row_kind(false, false) == Kind::Hidden);
+    // settings_display_overlay.xml binds the two rows to these values.
+    CHECK(static_cast<int>(Kind::Hidden) == 0);
+    CHECK(static_cast<int>(Kind::ScreenDim) == 1);
+    CHECK(static_cast<int>(Kind::ScreensaverAfter) == 2);
+}
+
 TEST_CASE_METHOD(LVGLTestFixture, "DisplaySettingsManager default values after init",
                  "[display_settings]") {
     // Reset config to defaults so prior tests' set_*() calls don't pollute

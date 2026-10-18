@@ -2847,7 +2847,9 @@
   <translation tag="Screen shutdown failed" fr="Échec de l&apos;extinction de l&apos;écran"/>
   <translation tag="Screen sleeps after the selected period of inactivity" fr="L&apos;écran s&apos;atténuera après la période d&apos;inactivité sélectionnée"/>
   <translation tag="Screensaver" fr="Économiseur d&apos;écran"/>
+  <translation tag="Screensaver after" fr="Économiseur d&apos;écran après"/>
   <translation tag="Screensaver disabled" fr="Économiseur d&apos;écran désactivé"/>
+  <translation tag="Screensaver starts after this period of inactivity" fr="L&apos;économiseur d&apos;écran démarre après cette période d&apos;inactivité"/>
   <translation tag="Screws Tilt" fr="Inclinaison des vis"/>
   <translation tag="Scroll Buttons" fr="Boutons de défilement"/>
   <translation tag="Scroll Engage Distance" fr="Distance d&apos;activation du défilement"/>

@@ -78,7 +78,16 @@
                               options="Never&#10;30 seconds&#10;1 minute&#10;2 minutes&#10;5 minutes&#10;10 minutes"
                               options_tag="Never&#10;30 seconds&#10;1 minute&#10;2 minutes&#10;5 minutes&#10;10 minutes"
                               callback="on_dim_changed">
-          <bind_flag_if_eq subject="settings_has_dimming" flag="hidden" ref_value="0"/>
+          <bind_flag_if_not_eq subject="settings_dim_row_kind" flag="hidden" ref_value="1"/>
+        </setting_dropdown_row>
+        <!-- No dimmable backlight: the same dim timeout starts the screensaver -->
+        <setting_dropdown_row name="row_screensaver_after"
+                              label="Screensaver after" icon="television_classic"
+                              description="Screensaver starts after this period of inactivity"
+                              options="Never&#10;30 seconds&#10;1 minute&#10;2 minutes&#10;5 minutes&#10;10 minutes"
+                              options_tag="Never&#10;30 seconds&#10;1 minute&#10;2 minutes&#10;5 minutes&#10;10 minutes"
+                              callback="on_dim_changed">
+          <bind_flag_if_not_eq subject="settings_dim_row_kind" flag="hidden" ref_value="2"/>
         </setting_dropdown_row>
         <!-- Display Sleep -->
         <setting_dropdown_row name="row_display_sleep"

@@ -2847,7 +2847,9 @@
   <translation tag="Screen shutdown failed" de="Herunterfahren des Bildschirms fehlgeschlagen"/>
   <translation tag="Screen sleeps after the selected period of inactivity" de="Bildschirm dimmt nach dem gewählten Inaktivitätszeitraum"/>
   <translation tag="Screensaver" de="Bildschirmschoner"/>
+  <translation tag="Screensaver after" de="Bildschirmschoner nach"/>
   <translation tag="Screensaver disabled" de="Bildschirmschoner deaktiviert"/>
+  <translation tag="Screensaver starts after this period of inactivity" de="Bildschirmschoner startet nach diesem Inaktivitätszeitraum"/>
   <translation tag="Screws Tilt" de="Schraubenneigung"/>
   <translation tag="Scroll Buttons" de="Bildlauf-Schaltflächen"/>
   <translation tag="Scroll Engage Distance" de="Scroll-Auslöseabstand"/>

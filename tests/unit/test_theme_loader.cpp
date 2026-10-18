@@ -17,9 +17,8 @@ using namespace helix;
 namespace {
 // Redirects the writable config dir (get_themes_directory() resolves through
 // HELIX_CONFIG_DIR) to an isolated temp directory, so theme tests that create,
-// overwrite, or delete user theme files never touch the repo's real
-// config/themes/. Previously these tests ran against config/themes/ and could
-// wipe the tracked nord.json out of a developer's working tree.
+// overwrite, or delete user theme files never touch a developer's own
+// config/themes/.
 struct ThemeDirFixture {
     ThemeDirFixture() {
         if (const char* prev = std::getenv("HELIX_CONFIG_DIR")) {

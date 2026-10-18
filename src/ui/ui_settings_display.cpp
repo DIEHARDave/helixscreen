@@ -143,8 +143,10 @@ void DisplaySettingsOverlay::on_activate() {
 #if HELIX_ENABLE_SCREENSAVER
     init_screensaver_dropdown();
 #else
-    if (lv_obj_t* ss_row = helix::ui::find_required(overlay_root_, "row_screensaver", get_name())) {
-        lv_obj_add_flag(ss_row, LV_OBJ_FLAG_HIDDEN);
+    for (const char* name : {"row_screensaver", "container_test_screensaver"}) {
+        if (lv_obj_t* obj = helix::ui::find_required(overlay_root_, name, get_name())) {
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 #endif
 }
@@ -179,16 +181,18 @@ void DisplaySettingsOverlay::init_brightness_controls() {
     }
 }
 
+// Both rows edit the dim timeout; settings_dim_row_kind shows at most one of them.
 void DisplaySettingsOverlay::init_dim_dropdown() {
-    lv_obj_t* dim_row = helix::ui::find_required(overlay_root_, "row_display_dim", get_name());
-    if (lv_obj_t* dim_dropdown = helix::ui::find_required(dim_row, "dropdown", get_name())) {
-        int current_sec = DisplaySettingsManager::instance().get_display_dim_sec();
-        int index = DisplaySettingsManager::dim_seconds_to_index(current_sec);
-        lv_dropdown_set_selected(dim_dropdown, index);
-
-        spdlog::debug("[{}] Dim dropdown initialized to index {} ({}s)", get_name(), index,
-                      current_sec);
+    int current_sec = DisplaySettingsManager::instance().get_display_dim_sec();
+    int index = DisplaySettingsManager::dim_seconds_to_index(current_sec);
+    for (const char* row_name : {"row_display_dim", "row_screensaver_after"}) {
+        lv_obj_t* row = helix::ui::find_required(overlay_root_, row_name, get_name());
+        if (lv_obj_t* dropdown = helix::ui::find_required(row, "dropdown", get_name())) {
+            lv_dropdown_set_selected(dropdown, index);
+        }
     }
+    spdlog::debug("[{}] Dim dropdowns initialized to index {} ({}s)", get_name(), index,
+                  current_sec);
 }
 
 void DisplaySettingsOverlay::init_sleep_dropdown() {
