@@ -676,8 +676,8 @@ the view resizes. Arrows is 3x2 keys beside a Z column, Arrows + Home 3x3, with 
 beside them in landscape and a row under them in portrait. Axis Rows is a 4x5 grid: X, Y and Z
 rows of minus, axis, plus keys, and a bottom row for the jog modes, Home All and leveling.
 The step selector draws from `jog_step_list()`, the distances set in Motion settings. At
-480x320 the header is 33px (`header_height_tiny`) and its cog button takes
-`action_button_2_icon_only="1"` to stay a padding-free circle.
+480x320 the header is 33px (`header_height_tiny`) and its cog is the header's
+icon-only action (`action_icon`), a padding-free circle drawn by `styles.header_icon_button`.
 
 ### flex_grow
 

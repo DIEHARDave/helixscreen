@@ -70,16 +70,9 @@
     <prop name="action_button_2_icon" type="string" default=""/>
     <prop name="action_button_2_icon_size" type="string" default="sm"/>
     <prop name="action_button_2_bg_color" type="string" default="#secondary"/>
-    <prop name="action_button_2_radius" type="string" default="#border_radius"/>
-    <prop name="action_button_2_width" type="string" default="content"/>
-    <!-- Floor for the text-shaped slot; an icon-only consumer passes a smaller
-         value so the button reads as a circle. 72, not the base 90: this tier's
-         header is 40px tall and every slot-2 px comes out of the title. -->
+    <!-- Floor for the labelled slot. 72, not the base 90: this tier's header
+         is 40px tall and every slot-2 px comes out of the title. -->
     <prop name="action_button_2_min_width" type="string" default="72"/>
-    <!-- "1" for an icon-only button narrower than the default padding allows:
-         no padding, the icon centred. Pair it with action_button_height and
-         action_button_2_width set to one size for a circle. -->
-    <prop name="action_button_2_icon_only" type="string" default="0"/>
     <prop name="action_button_2_callback" type="string" default=""/>
     <prop name="hide_action_button_2" type="string" default="true"/>
     <prop name="action_button_2_hidden_subject" type="string" default=""/>
@@ -88,10 +81,16 @@
     <prop name="action_button_2_hidden_cond" type="string" default=""/>
     <prop name="action_button_2_label_hidden_cond" type="string" default=""/>
     <prop name="action_button_2_disabled_subject" type="string" default=""/>
+    <!-- Icon-only action, left of the secondary button: a round button drawn
+         by styles.header_icon_button. A screen with a labelled second action
+         uses action_button_2; one with only a glyph uses this. -->
+    <prop name="action_icon" type="string" default=""/>
+    <prop name="action_icon_callback" type="string" default=""/>
+    <prop name="hide_action_icon" type="string" default="true"/>
+    <!-- Expression hiding it (e.g. "ui_breakpoint lt 2"); empty leaves the flag
+         alone, as action_button_2_hidden_cond does. -->
+    <prop name="action_icon_hidden_cond" type="string" default=""/>
   </api>
-  <styles>
-    <style name="action_icon_only" pad_hor="0" pad_ver="0"/>
-  </styles>
   <view extends="lv_obj"
         width="100%" height="40" style_pad_left="0" style_pad_right="#space_xl" style_pad_top="0" style_pad_bottom="0"
         flex_flow="row" style_flex_main_place="space_between" style_flex_track_place="center"
@@ -133,17 +132,23 @@
             width="content" height="100%" style_pad_all="0" style_pad_left="0" style_pad_right="0" style_bg_opa="0"
             style_border_width="0" scrollable="false" clickable="false" flex_flow="row" style_pad_gap="#space_xs"
             style_flex_cross_place="center" style_flex_track_place="center"/>
+    <!-- Icon-only action (left of the secondary button, hidden by default). -->
+    <ui_button name="action_icon_button"
+               width="#button_height_sm" height="#button_height_sm" hidden="$hide_action_icon" icon="$action_icon"
+               icon_size="sm">
+      <style name="styles.header_icon_button"/>
+      <bind_flag_if cond="$action_icon_hidden_cond" flag="hidden"/>
+      <event_cb trigger="clicked" callback="$action_icon_callback"/>
+    </ui_button>
     <!-- Secondary action button (left of primary, hidden by default). -->
     <!-- No style_max_height, as on the primary action button above:
          #header_button_height is a const of the base file, which this
          override does not carry. -->
     <ui_button name="action_button_2"
-               width="$action_button_2_width" height="$action_button_height"
-               style_min_width="$action_button_2_min_width" style_radius="$action_button_2_radius"
-               style_bg_color="$action_button_2_bg_color" hidden="$hide_action_button_2" icon="$action_button_2_icon"
-               icon_size="$action_button_2_icon_size" text="$action_button_2_text"
+               width="content" height="$action_button_height" style_min_width="$action_button_2_min_width"
+               style_radius="#border_radius" style_bg_color="$action_button_2_bg_color" hidden="$hide_action_button_2"
+               icon="$action_button_2_icon" icon_size="$action_button_2_icon_size" text="$action_button_2_text"
                translation_tag="$action_button_2_text_tag" label_hidden_cond="$action_button_2_label_hidden_cond">
-      <bind_style_if name="action_icon_only" cond="$action_button_2_icon_only"/>
       <bind_state_if_eq subject="$action_button_2_disabled_subject" state="disabled" ref_value="1"/>
       <bind_flag_if cond="$action_button_2_hidden_cond" flag="hidden"/>
       <bind_flag_if_eq subject="$action_button_2_hidden_subject" flag="hidden" ref_value="1"/>

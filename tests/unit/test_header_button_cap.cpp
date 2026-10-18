@@ -114,4 +114,5 @@ TEST_CASE("header_bar.xml actually applies the cap to both action buttons",
     // element because the quote immediately follows the name.
     CHECK(element_has_cap("action_button"));
     CHECK(element_has_cap("action_button_2"));
+    CHECK(element_has_cap("action_icon_button"));
 }
