@@ -1537,9 +1537,13 @@ and a late record for a spool the slot no longer names is dropped.
 picker-entry session reaches the editor without `enter_editor()`. One fetch of
 the linked spool feeds identity and More; a cover (keypad, QR scanner) drops it
 with `lifetime_`, and `on_activate()` re-arms it. Save completions are owed to
-Spoolman and the slot, so they run on `object_lifetime_` and check the session
-they began in; Back, the weight keypad and the scanner stay shut while a save
-is in flight, so its completion never pops something pushed on top.
+Spoolman and the slot, so they run on `object_lifetime_`. A Spoolman save
+captures the slot it commits and the callback it began with, so it commits even
+when the editor closed before Spoolman answered; only closing the editor checks
+that the session is still the one showing. Back, the weight keypad and the
+scanner stay shut while a save is in flight, so its completion never pops
+something pushed on top. A record landing after Reset to tag leaves the reset
+alone, and Save with More edits whose record never loaded keeps them and says so.
 
 ### Error State Visualization
 
