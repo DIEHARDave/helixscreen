@@ -2071,6 +2071,7 @@
   <translation tag="No Spools" ru="Нет катушек"/>
   <translation tag="No USB printer detected" ru="USB-принтер не обнаружен"/>
   <translation tag="No USB printers found" ru="USB-принтеры не найдены"/>
+  <translation tag="No actions right now" ru="Сейчас нет действий"/>
   <translation tag="No active Spoolman spool." ru="Нет активной катушки Spoolman."/>
   <translation tag="No buffer data available" ru="Данные буфера недоступны"/>
   <translation tag="No camera — use USB barcode scanner" ru="Нет камеры — используйте USB сканер штрих-кодов"/>
@@ -2114,6 +2115,7 @@
   <translation tag="No objects defined for this print" ru="Для этой печати не определены объекты"/>
   <translation tag="No output yet" ru="Нет вывода"/>
   <translation tag="No pause scheduled." ru="Пауза не запланирована."/>
+  <translation tag="No plugin actions for this file" ru="Нет действий плагинов для этого файла"/>
   <translation tag="No presets configured" ru="Пресеты не настроены"/>
   <translation tag="No preview" ru="Нет предпросмотра"/>
   <translation tag="No print history found" ru="История печати не найдена"/>
@@ -2354,6 +2356,7 @@
   <translation tag="Please wait while the printer homes and moves to the start position." ru="Подождите: принтер ищет ноль и перемещается в стартовую позицию."/>
   <translation tag="Please wait while the printer homes and probes." ru="Пожалуйста, подождите, пока принтер паркуется и зондирует."/>
   <translation tag="Please wait while the printer probes each screw position." ru="Пожалуйста, подождите, пока принтер возьмет пробу на позиции каждого винта."/>
+  <translation tag="Plugin actions" ru="Действия плагина"/>
   <translation tag="Plugin already installed" ru="Плагин уже установлен"/>
   <translation tag="Plugin disabled" ru="Плагин отключен"/>
   <translation tag="Plugin installed successfully" ru="Плагин успешно установлен"/>

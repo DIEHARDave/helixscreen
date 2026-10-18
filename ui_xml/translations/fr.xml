@@ -2026,6 +2026,7 @@
   <translation tag="No Spools" fr="Aucune bobine"/>
   <translation tag="No USB printer detected" fr="Aucune imprimante USB détectée"/>
   <translation tag="No USB printers found" fr="Aucune imprimante USB trouvée"/>
+  <translation tag="No actions right now" fr="Aucune action pour le moment"/>
   <translation tag="No active Spoolman spool." fr="Aucune bobine Spoolman active."/>
   <translation tag="No buffer data available" fr="Aucune donnée de tampon disponible"/>
   <translation tag="No camera — use USB barcode scanner" fr="Aucune caméra — utilisez un scanner de code-barres USB"/>
@@ -2069,6 +2070,7 @@
   <translation tag="No objects defined for this print" fr="Aucun objet défini pour cette impression"/>
   <translation tag="No output yet" fr="Aucune sortie"/>
   <translation tag="No pause scheduled." fr="Aucune pause prévue."/>
+  <translation tag="No plugin actions for this file" fr="Aucune action de plugin pour ce fichier"/>
   <translation tag="No presets configured" fr="Aucun préréglage configuré"/>
   <translation tag="No preview" fr="Pas d&apos;aperçu"/>
   <translation tag="No print history found" fr="Aucun historique d&apos;impression"/>
@@ -2309,6 +2311,7 @@
   <translation tag="Please wait while the printer homes and moves to the start position." fr="Veuillez patienter pendant la prise d&apos;origine et le déplacement vers la position de départ."/>
   <translation tag="Please wait while the printer homes and probes." fr="Veuillez patienter pendant que l&apos;imprimante fait l&apos;origine et palpe."/>
   <translation tag="Please wait while the printer probes each screw position." fr="Veuillez patienter pendant que l&apos;imprimante palpe chaque position de vis."/>
+  <translation tag="Plugin actions" fr="Actions du plugin"/>
   <translation tag="Plugin already installed" fr="Plugin déjà installé"/>
   <translation tag="Plugin disabled" fr="Plugin désactivé"/>
   <translation tag="Plugin installed successfully" fr="Plugin installé avec succès"/>

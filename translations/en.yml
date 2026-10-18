@@ -2174,6 +2174,7 @@ translations:
   No Spools: No Spools
   No USB printer detected: No USB printer detected
   No USB printers found: No USB printers found
+  No actions right now: No actions right now
   No active Spoolman spool.: No active Spoolman spool.
   No buffer data available: No buffer data available
   No camera — use USB barcode scanner: No camera — use USB barcode scanner
@@ -2218,6 +2219,7 @@ translations:
   No objects defined for this print: No objects defined for this print
   No output yet: No output yet
   No pause scheduled.: No pause scheduled.
+  No plugin actions for this file: No plugin actions for this file
   No presets configured: No presets configured
   No preview: No preview
   No print history found: No print history found
@@ -2474,6 +2476,7 @@ translations:
     and probes.
   Please wait while the printer probes each screw position.: Please wait while the
     printer probes each screw position.
+  Plugin actions: Plugin actions
   Plugin already installed: Plugin already installed
   Plugin disabled: Plugin disabled
   Plugin installed successfully: Plugin installed successfully

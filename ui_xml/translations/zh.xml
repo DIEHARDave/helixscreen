@@ -2026,6 +2026,7 @@
   <translation tag="No Spools" zh="无料盘"/>
   <translation tag="No USB printer detected" zh="未检测到 USB 打印机"/>
   <translation tag="No USB printers found" zh="未找到 USB 打印机"/>
+  <translation tag="No actions right now" zh="当前没有可用操作"/>
   <translation tag="No active Spoolman spool." zh="Spoolman中没有当前料盘。"/>
   <translation tag="No buffer data available" zh="无可用缓冲区数据"/>
   <translation tag="No camera — use USB barcode scanner" zh="无摄像头 — 请使用 USB 条码扫描器"/>
@@ -2069,6 +2070,7 @@
   <translation tag="No objects defined for this print" zh="此次打印未定义对象"/>
   <translation tag="No output yet" zh="暂无输出"/>
   <translation tag="No pause scheduled." zh="未设置暂停。"/>
+  <translation tag="No plugin actions for this file" zh="此文件没有插件操作"/>
   <translation tag="No presets configured" zh="未配置预设"/>
   <translation tag="No preview" zh="无预览"/>
   <translation tag="No print history found" zh="未找到打印历史"/>
@@ -2309,6 +2311,7 @@
   <translation tag="Please wait while the printer homes and moves to the start position." zh="请等待打印机归零并移动到起始位置。"/>
   <translation tag="Please wait while the printer homes and probes." zh="请等待打印机归位和探测。"/>
   <translation tag="Please wait while the printer probes each screw position." zh="请等待打印机探测每个螺丝位置。"/>
+  <translation tag="Plugin actions" zh="插件操作"/>
   <translation tag="Plugin already installed" zh="插件已安装"/>
   <translation tag="Plugin disabled" zh="插件已禁用"/>
   <translation tag="Plugin installed successfully" zh="插件安装成功"/>

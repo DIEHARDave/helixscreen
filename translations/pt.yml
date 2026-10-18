@@ -2234,6 +2234,7 @@ translations:
   No Spools: Sem Carretéis
   No USB printer detected: Nenhuma impressora USB detectada
   No USB printers found: Nenhuma impressora USB encontrada
+  No actions right now: 'Nenhuma ação no momento'
   No active Spoolman spool.: Nenhum carretel ativo no Spoolman.
   No buffer data available: Nenhum dado de buffer disponível
   No camera — use USB barcode scanner: Sem câmera — use leitor de código de barras
@@ -2280,6 +2281,7 @@ translations:
   No objects defined for this print: Nenhum objeto definido para esta impressão
   No output yet: Sem saída ainda
   No pause scheduled.: 'Nenhuma pausa agendada.'
+  No plugin actions for this file: 'Nenhuma ação de plugin para este arquivo'
   No presets configured: Nenhuma predefinição configurada
   No preview: Sem visualização
   No print history found: Nenhum histórico de impressão
@@ -2540,6 +2542,7 @@ translations:
     faz home e sonda.
   Please wait while the printer probes each screw position.: Por favor, aguarde enquanto
     a impressora sonda cada posição de parafuso.
+  Plugin actions: 'Ações do plugin'
   Plugin already installed: Plugin já instalado
   Plugin disabled: Plugin desabilitado
   Plugin installed successfully: Plugin instalado com sucesso

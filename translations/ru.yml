@@ -2272,6 +2272,7 @@ translations:
   No Spools: Нет катушек
   No USB printer detected: USB-принтер не обнаружен
   No USB printers found: USB-принтеры не найдены
+  No actions right now: 'Сейчас нет действий'
   No active Spoolman spool.: Нет активной катушки Spoolman.
   No buffer data available: Данные буфера недоступны
   No camera — use USB barcode scanner: Нет камеры — используйте USB сканер штрих-кодов
@@ -2317,6 +2318,7 @@ translations:
   No objects defined for this print: Для этой печати не определены объекты
   No output yet: Нет вывода
   No pause scheduled.: 'Пауза не запланирована.'
+  No plugin actions for this file: 'Нет действий плагинов для этого файла'
   No presets configured: Пресеты не настроены
   No preview: Нет предпросмотра
   No print history found: История печати не найдена
@@ -2576,6 +2578,7 @@ translations:
     паркуется и зондирует.
   Please wait while the printer probes each screw position.: Пожалуйста, подождите,
     пока принтер возьмет пробу на позиции каждого винта.
+  Plugin actions: 'Действия плагина'
   Plugin already installed: Плагин уже установлен
   Plugin disabled: Плагин отключен
   Plugin installed successfully: Плагин успешно установлен

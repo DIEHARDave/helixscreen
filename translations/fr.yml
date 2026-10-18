@@ -2247,6 +2247,7 @@ translations:
   No Spools: Aucune bobine
   No USB printer detected: Aucune imprimante USB détectée
   No USB printers found: Aucune imprimante USB trouvée
+  No actions right now: 'Aucune action pour le moment'
   No active Spoolman spool.: Aucune bobine Spoolman active.
   No buffer data available: Aucune donnée de tampon disponible
   No camera — use USB barcode scanner: Aucune caméra — utilisez un scanner de code-barres
@@ -2293,6 +2294,7 @@ translations:
   No objects defined for this print: Aucun objet défini pour cette impression
   No output yet: Aucune sortie
   No pause scheduled.: 'Aucune pause prévue.'
+  No plugin actions for this file: 'Aucune action de plugin pour ce fichier'
   No presets configured: Aucun préréglage configuré
   No preview: Pas d'aperçu
   No print history found: Aucun historique d'impression
@@ -2555,6 +2557,7 @@ translations:
     l'imprimante fait l'origine et palpe.
   Please wait while the printer probes each screw position.: Veuillez patienter pendant
     que l'imprimante palpe chaque position de vis.
+  Plugin actions: 'Actions du plugin'
   Plugin already installed: Plugin déjà installé
   Plugin disabled: Plugin désactivé
   Plugin installed successfully: Plugin installé avec succès

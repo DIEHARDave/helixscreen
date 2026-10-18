@@ -2096,6 +2096,7 @@ translations:
   No Spools: 无料盘
   No USB printer detected: 未检测到 USB 打印机
   No USB printers found: 未找到 USB 打印机
+  No actions right now: '当前没有可用操作'
   No active Spoolman spool.: Spoolman中没有当前料盘。
   No buffer data available: 无可用缓冲区数据
   No camera — use USB barcode scanner: 无摄像头 — 请使用 USB 条码扫描器
@@ -2138,6 +2139,7 @@ translations:
   No objects defined for this print: 此次打印未定义对象
   No output yet: 暂无输出
   No pause scheduled.: '未设置暂停。'
+  No plugin actions for this file: '此文件没有插件操作'
   No presets configured: 未配置预设
   No preview: 无预览
   No print history found: 未找到打印历史
@@ -2391,6 +2393,7 @@ translations:
   Please wait while the printer homes and moves to the start position.: 请等待打印机归零并移动到起始位置。
   Please wait while the printer homes and probes.: 请等待打印机归位和探测。
   Please wait while the printer probes each screw position.: 请等待打印机探测每个螺丝位置。
+  Plugin actions: '插件操作'
   Plugin already installed: 插件已安装
   Plugin disabled: 插件已禁用
   Plugin installed successfully: 插件安装成功

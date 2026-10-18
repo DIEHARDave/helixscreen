@@ -2026,6 +2026,7 @@
   <translation tag="No Spools" en="No Spools"/>
   <translation tag="No USB printer detected" en="No USB printer detected"/>
   <translation tag="No USB printers found" en="No USB printers found"/>
+  <translation tag="No actions right now" en="No actions right now"/>
   <translation tag="No active Spoolman spool." en="No active Spoolman spool."/>
   <translation tag="No buffer data available" en="No buffer data available"/>
   <translation tag="No camera — use USB barcode scanner" en="No camera — use USB barcode scanner"/>
@@ -2069,6 +2070,7 @@
   <translation tag="No objects defined for this print" en="No objects defined for this print"/>
   <translation tag="No output yet" en="No output yet"/>
   <translation tag="No pause scheduled." en="No pause scheduled."/>
+  <translation tag="No plugin actions for this file" en="No plugin actions for this file"/>
   <translation tag="No presets configured" en="No presets configured"/>
   <translation tag="No preview" en="No preview"/>
   <translation tag="No print history found" en="No print history found"/>
@@ -2309,6 +2311,7 @@
   <translation tag="Please wait while the printer homes and moves to the start position." en="Please wait while the printer homes and moves to the start position."/>
   <translation tag="Please wait while the printer homes and probes." en="Please wait while the printer homes and probes."/>
   <translation tag="Please wait while the printer probes each screw position." en="Please wait while the printer probes each screw position."/>
+  <translation tag="Plugin actions" en="Plugin actions"/>
   <translation tag="Plugin already installed" en="Plugin already installed"/>
   <translation tag="Plugin disabled" en="Plugin disabled"/>
   <translation tag="Plugin installed successfully" en="Plugin installed successfully"/>

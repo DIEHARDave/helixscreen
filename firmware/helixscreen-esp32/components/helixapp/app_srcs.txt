@@ -114,6 +114,8 @@ src/led/led_device_page.cpp
 # The app menus that take plugin items call these; with plugins compiled out the menu API answers empty.
 src/plugin/plugin_menu.cpp
 src/plugin/plugin_menu_context.cpp
+src/ui/ui_plugin_menu_rows.cpp
+src/ui/ui_plugin_items_menu.cpp
 src/print/active_print_media_manager.cpp
 src/print/crc32.cpp
 src/print/filament_sensor_manager.cpp
