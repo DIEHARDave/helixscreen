@@ -7,9 +7,11 @@
 // AmsEditOverlayViewTestAccess friend shim.
 
 #include "ui_ams_edit_overlay.h"
+#include "ui_component_keypad.h"
 #include "ui_icon_codepoints.h"
 #include "ui_modal.h"
 #include "ui_nav_manager.h"
+#include "ui_swatch.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
@@ -1983,7 +1985,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Reset to tag restores identity, not just th
     AmsEditOverlay::SpoolEditSelection moved = access.sel();
     moved.family = "ABS";
     access.set_sel(moved);
-    access.call_handle_reset_to_tag();
+    access.click("btn_reset_tag");
     UpdateQueue::instance().drain();
 
     CHECK(access.working_info().material == "PETG");
@@ -2458,6 +2460,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a save in flight holds Back and the keypad 
     UpdateQueue::instance().drain();
     process_lvgl(10);
     lv_obj_t* root = overlay.get_root();
+    ui_keypad_init(test_screen());
 
     access.set_save_in_flight(true);
     access.call_handle_back();
@@ -2465,6 +2468,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a save in flight holds Back and the keypad 
     UpdateQueue::instance().drain();
     process_lvgl(10);
     CHECK_FALSE(fired);
+    CHECK_FALSE(ui_keypad_is_visible());
     CHECK(NavigationManager::instance().is_panel_on_top(root));
     CHECK(access.save_disabled() == 1);
     close_editor_overlay();
@@ -2696,6 +2700,176 @@ TEST_CASE_METHOD(LVGLUITestFixture, "each field the tag states carries its own b
     CHECK(subject_int("ams_edit_tag_temps") == 0);
     CHECK(subject_int("ams_edit_tag_brand") == 1);
     close_editor_overlay();
+}
+
+namespace {
+/// The "from tag" pill sharing a row with @p dropdown, or nullptr.
+lv_obj_t* tag_pill_beside(AmsEditOverlayViewTestAccess& access, const char* dropdown) {
+    lv_obj_t* dd = access.widget(dropdown);
+    REQUIRE(dd != nullptr);
+    lv_obj_t* row = lv_obj_get_parent(dd);
+    for (uint32_t i = 0; i < lv_obj_get_child_count(row); ++i) {
+        lv_obj_t* cell = lv_obj_get_child(row, static_cast<int32_t>(i));
+        if (lv_obj_get_child_count(cell) != 1) {
+            continue;
+        }
+        lv_obj_t* text = lv_obj_get_child(cell, 0);
+        if (lv_obj_check_type(text, &lv_label_class) &&
+            std::string(lv_label_get_text(text)) == "from tag") {
+            return cell;
+        }
+    }
+    return nullptr;
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the material and brand rows show their from-tag pill",
+                 "[ams_edit_overlay][tag]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    SlotInfo info = untracked_slot();
+    info.material = "PETG";
+    info.brand = "Polymaker";
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    helix::ams::TagReading tag;
+    tag.material = "PETG";
+    tag.brand = "Polymaker";
+    access.set_tag(tag);
+    access.call_update_tag_badges();
+    process_lvgl(5);
+
+    // Both layouts carry the pills; only the breakpoint decides which shows.
+    for (const char* dd : {"dropdown_material", "dropdown_material_split", "dropdown_brand",
+                           "dropdown_brand_split"}) {
+        INFO(dd);
+        lv_obj_t* pill = tag_pill_beside(access, dd);
+        REQUIRE(pill != nullptr);
+        CHECK_FALSE(lv_obj_has_flag(pill, LV_OBJ_FLAG_HIDDEN));
+    }
+
+    // A material the tag does not state loses its pill; the brand keeps its own.
+    REQUIRE(access.pick_dropdown("dropdown_material", "PLA"));
+    process_lvgl(5);
+    CHECK(lv_obj_has_flag(tag_pill_beside(access, "dropdown_material"), LV_OBJ_FLAG_HIDDEN));
+    CHECK(lv_obj_has_flag(tag_pill_beside(access, "dropdown_material_split"), LV_OBJ_FLAG_HIDDEN));
+    CHECK_FALSE(lv_obj_has_flag(tag_pill_beside(access, "dropdown_brand"), LV_OBJ_FLAG_HIDDEN));
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "picking another colour drops the colour's from-tag badge",
+                 "[ams_edit_overlay][tag][color]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    SlotInfo info = untracked_slot();
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    helix::ams::TagReading tag;
+    tag.color_rgb = info.color_rgb;
+    access.set_tag(tag);
+    access.call_update_tag_badges();
+    REQUIRE(subject_int("ams_edit_tag_color") == 1);
+
+    // The first preset tile in the grid, tapped.
+    lv_obj_t* grid = access.widget("color_grid");
+    REQUIRE(grid != nullptr);
+    REQUIRE(lv_obj_get_child_count(grid) > 1);
+    lv_obj_t* preset = lv_obj_get_child(grid, 1);
+    REQUIRE((lv_color_to_u32(helix::ui::swatch_color_of(preset)) & 0xFFFFFF) != info.color_rgb);
+    lv_obj_send_event(preset, LV_EVENT_CLICKED, nullptr);
+    process_lvgl(5);
+
+    CHECK(access.details_color_set());
+    CHECK(subject_int("ams_edit_tag_color") == 0);
+    CHECK(subject_int("ams_edit_tag_badge_visible") == 0);
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a colour no visible preset holds rings the custom tile",
+                 "[ams_edit_overlay][color]") {
+    auto& overlay = get_ams_edit_overlay();
+    SlotInfo info = untracked_slot();
+    info.color_rgb = 0x123457; // a hand-mixed colour, in no preset palette
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(subject_int("ams_edit_color_selected") == -2);
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the More section opens collapsed in every session",
+                 "[ams_edit_overlay][more][session]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    set_spoolman_available(true);
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK_FALSE(access.shown("detail_field_comment"));
+    access.click("more_row");
+    process_lvgl(5);
+    REQUIRE(access.shown("detail_field_comment"));
+    close_editor_overlay();
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK_FALSE(access.shown("detail_field_comment"));
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a cover that drops the open-time fetches re-runs them once",
+                 "[ams_edit_overlay][more][session]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    SpoolInfo& a = mock_spool(client, 7);
+    a.vendor = "Bambu Lab";
+    a.material = "ASA";
+    a.location = "Dry box 1";
+
+    // Spoolman comes up after the editor opened, so the fetches start from an
+    // activation instead of from the open.
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    set_spoolman_available(true);
+
+    // What NavigationManager runs when something (keypad, scanner) covers the
+    // editor and is dismissed.
+    auto cover_and_return = [&]() {
+        overlay.on_deactivate(DeactivateReason::NavigateAway);
+        UpdateQueue::instance().drain();
+        process_lvgl(10);
+        const std::string under_cover = access.field_text("detail_field_location");
+        overlay.on_activate();
+        return under_cover;
+    };
+
+    cover_and_return(); // the return sends both fetches
+    // Covered again before either answer is applied: both die with the cover.
+    CHECK(cover_and_return().empty());
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.field_text("detail_field_location") == "Dry box 1");
+
+    // Both landed: the next cover costs no request.
+    const int sent = client.call_count("server.spoolman.proxy");
+    cover_and_return();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(client.call_count("server.spoolman.proxy") == sent);
+
+    close_editor_overlay();
+    set_spoolman_available(false);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "the editor's non-swatch targets reach 44px",
