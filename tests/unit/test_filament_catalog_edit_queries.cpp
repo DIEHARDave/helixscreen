@@ -206,12 +206,25 @@ TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
     // The disc ladders are literals in the editor's consts; read them so a
     // change to either side of the 44px math fails here.
     const int disc_micro = read_px("ams_edit_grid_swatch_micro");
-    const int disc_medium = read_px("ams_edit_grid_swatch_medium");
+    // medium+ discs resolve through #swatch_grid_size; read the shared
+    // literal from globals.xml.
+    std::ifstream globals_in("ui_xml/globals.xml");
+    REQUIRE(globals_in.is_open());
+    std::string globals_xml((std::istreambuf_iterator<char>(globals_in)),
+                            std::istreambuf_iterator<char>());
+    auto read_global_px = [&](const std::string& name) -> int {
+        const std::string needle = "name=\"" + name + "\" value=\"";
+        auto at = globals_xml.find(needle);
+        REQUIRE(at != std::string::npos);
+        return std::atoi(globals_xml.c_str() + at + needle.size());
+    };
+    const int disc_medium = read_global_px("swatch_grid_size_medium");
     for (const char* cls : {"micro", "tiny", "small"}) {
         const std::string p = std::string("ams_edit_grid_");
+        const int disc = read_px(p + "swatch_" + cls);
         const int hit = read_px(p + "hit_" + cls);
         const int gap = read_px(p + "gap_" + cls);
-        CHECK(disc_micro + 2 * hit >= 44);
+        CHECK(disc + 2 * hit >= 44);
         CHECK(gap >= 2 * hit);
     }
     for (const char* cls : {"medium", "large", "xlarge", "xxlarge"}) {
@@ -221,4 +234,5 @@ TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
         CHECK(disc_medium + 2 * hit >= 44);
         CHECK(gap >= 2 * hit);
     }
+    (void)disc_micro;
 }
