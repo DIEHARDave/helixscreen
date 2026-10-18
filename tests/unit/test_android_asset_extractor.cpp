@@ -15,7 +15,9 @@
 
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
+#include <utility>
 
 #include "../catch_amalgamated.hpp"
 
@@ -397,4 +399,71 @@ TEST_CASE("A trailing slash on the files dir does not leak into the layout",
     CHECK(layout.data_dir == "/data/data/org.helixscreen.app/files/data");
     CHECK(layout.backup_dir == "/data/data/org.helixscreen.app/files/state");
     CHECK(layout.backup_fallback_dir == "/data/data/org.helixscreen.app/files/.helixscreen");
+}
+
+// ============================================================================
+// Auto Backup rules cover exactly the user's state in that layout
+// ============================================================================
+
+namespace {
+using Rule = std::pair<std::string, std::string>; // {"include"|"exclude", path}
+
+/// Every <include>/<exclude> under @p section (the whole file when empty).
+std::set<Rule> backup_rules(const std::string& xml_path, const std::string& section = "") {
+    const std::string xml = helix::text_io::read_file(xml_path).value_or("");
+    REQUIRE_FALSE(xml.empty());
+    size_t begin = 0;
+    size_t end = xml.size();
+    if (!section.empty()) {
+        begin = xml.find("<" + section + ">");
+        REQUIRE(begin != std::string::npos);
+        end = xml.find("</" + section + ">", begin);
+        REQUIRE(end != std::string::npos);
+    }
+    std::set<Rule> rules;
+    for (const char* kind : {"include", "exclude"}) {
+        const std::string open = std::string("<") + kind + " domain=\"file\" path=\"";
+        for (size_t at = xml.find(open, begin); at != std::string::npos && at < end;
+             at = xml.find(open, at + 1)) {
+            const size_t path_start = at + open.size();
+            rules.insert({kind, xml.substr(path_start, xml.find('"', path_start) - path_start)});
+        }
+    }
+    return rules;
+}
+
+std::set<std::string> paths_of(const std::set<Rule>& rules, const std::string& kind) {
+    std::set<std::string> out;
+    for (const Rule& r : rules) {
+        if (r.first == kind)
+            out.insert(r.second);
+    }
+    return out;
+}
+} // namespace
+
+TEST_CASE("Auto Backup includes the config layer and the settings backups",
+          "[android][asset][backup]") {
+    const std::string files = "/files";
+    const AndroidStorageLayout layout = android_storage_layout(files);
+    const auto relative = [&](const std::string& p) { return p.substr(files.size() + 1) + "/"; };
+    const std::set<std::string> expected = {relative(layout.data_dir + "/config"),
+                                            relative(layout.backup_dir)};
+
+    const std::string res = "android/app/src/main/res/xml/";
+    const std::set<Rule> legacy = backup_rules(res + "backup_rules.xml");
+    CHECK(paths_of(legacy, "include") == expected);
+    // Every exclusion narrows an include; one outside them would exclude nothing.
+    for (const std::string& ex : paths_of(legacy, "exclude")) {
+        CAPTURE(ex);
+        CHECK(ex.rfind(relative(layout.data_dir + "/config"), 0) == 0);
+    }
+    CHECK(paths_of(legacy, "exclude").count("data/config/telemetry_device.json") == 1);
+    CHECK(paths_of(legacy, "exclude").count("data/config/.helix-screen.lock") == 1);
+
+    // Android 12+ reads the other file; both of its sections must say the same.
+    for (const char* section : {"cloud-backup", "device-transfer"}) {
+        CAPTURE(section);
+        CHECK(backup_rules(res + "data_extraction_rules.xml", section) == legacy);
+    }
 }
