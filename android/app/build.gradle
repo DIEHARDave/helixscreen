@@ -225,6 +225,11 @@ def hostOnlyConfig = [
 // the same two out (RELEASE_ASSETS_EXCLUDE in mk/cross.mk).
 def mockOnlyAssets = ['test_gcodes', 'test_timelapse']
 
+// Font sources compiled into libmain.so (FONT_SOURCES in app/jni/CMakeLists.txt).
+// The app reads only the binary faces under fonts/cjk/ at runtime (CjkFontManager),
+// so the C arrays would be dead weight in the APK and in app storage.
+def compiledFontSources = 'fonts/*.c'
+
 // Same globs as regexes, for the post-copy audit below. Only '*' appears in
 // these patterns; everything around it is quoted literally.
 def nonShippableConfigPatterns = nonShippableConfig.collect {
@@ -253,6 +258,7 @@ task copyAssets(type: Copy) {
     from('../../assets') {
         into 'assets'
         exclude mockOnlyAssets + mockOnlyAssets.collect { "${it}/**" }
+        exclude compiledFontSources
     }
     from('../../config') {
         into 'config'
