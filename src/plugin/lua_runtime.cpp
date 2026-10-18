@@ -357,6 +357,70 @@ void LuaRuntime::invoke(int fn_ref, const PushFn& push_args) {
     spawn(push_args);
 }
 
+bool LuaRuntime::call_sync(int fn_ref, const PushFn& args, const ReadFn& read, CheckLimits limits) {
+    if (faulted_)
+        return false;
+    if (depth_ > 0) {
+        report_error("a menu check cannot run inside another plugin entry");
+        return false;
+    }
+    lua_State* co = nullptr;
+    int nargs = 0;
+    {
+        HostWorkGuard host_work(host_work_);
+        lua_rawgeti(L_, LUA_REGISTRYINDEX, fn_ref);
+        co = lua_newthread(L_);
+        threads_[co] = luaL_ref(L_, LUA_REGISTRYINDEX);
+        lua_xmove(L_, co, 1);
+        nargs = args ? args(co) : 0;
+    }
+    if (used_ > limits_.memory_bytes) {
+        lua_settop(co, 0);
+        drop(co);
+        report_error("menu check arguments exceed the plugin memory cap");
+        return false;
+    }
+
+    // The overrun of a check is reported, not faulted, so it never takes the enter()
+    // path; the kill flag is cleared here before any later entry can see it.
+    deadline_ = thread_cpu_time() + limits.time_budget;
+    wall_deadline_ = Clock::now() + limits.wall_ceiling;
+    killed_ = false;
+    yielded_for_async_ = false;
+    in_check_ = true;
+    ++depth_;
+    int nres = 0;
+    int status = lua_resume(co, L_, nargs, &nres);
+    --depth_;
+    in_check_ = false;
+    const bool killed = killed_;
+    killed_ = false;
+    yielded_for_async_ = false;
+
+    std::string failure;
+    if (killed) {
+        failure = "menu check exceeded its time budget";
+    } else if (status == LUA_YIELD) {
+        failure = "menu check yielded; a check must return without waiting";
+    } else if (status != LUA_OK) {
+        HostWorkGuard host_work(host_work_);
+        const char* msg = lua_tostring(co, -1);
+        luaL_traceback(L_, co, msg ? msg : "(error object is not a string)", 0);
+        if (const char* text = lua_tostring(L_, -1))
+            failure = text;
+        lua_pop(L_, 1);
+    } else if (read) {
+        HostWorkGuard host_work(host_work_);
+        read(co, nres);
+    }
+    lua_settop(co, 0);
+    drop(co);
+    if (failure.empty())
+        return true;
+    report_error(failure);
+    return false;
+}
+
 void LuaRuntime::on_close(std::function<void()> fn) {
     closers_.push_back(std::move(fn));
 }
@@ -486,6 +550,13 @@ void LuaRuntime::budget_hook(lua_State* L, lua_Debug*) {
 
 int LuaRuntime::await_async(lua_State* co, const std::function<void(Pending)>& start) {
     // Only entry coroutines are in threads_, which rejects plugin-made coroutines.
+    if (in_check_) {
+        lua_Debug ar{};
+        const char* name = lua_getstack(co, 0, &ar) && lua_getinfo(co, "n", &ar) && ar.name
+                               ? ar.name
+                               : "an async call";
+        return luaL_error(co, "%s is not allowed in a menu check", name);
+    }
     if (!threads_.count(co) || !lua_isyieldable(co))
         return luaL_error(co, "async call not allowed here: call it from a handler or the top "
                               "level of main.lua, not a metamethod, iterator, sort comparator, "

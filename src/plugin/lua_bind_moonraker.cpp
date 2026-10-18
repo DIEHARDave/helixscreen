@@ -202,6 +202,7 @@ int download(lua_State* L) {
 }
 
 int on_agent_event(lua_State* L) {
+    forbid_in_check(L, "helix.moonraker.on_agent_event");
     std::string event = luaL_checkstring(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
     auto& rt = LuaRuntime::from(L);
@@ -353,6 +354,7 @@ json merged_specs(SubscriptionHub& hub) {
 }
 
 int subscribe(lua_State* L) {
+    forbid_in_check(L, "helix.moonraker.subscribe");
     luaL_checktype(L, 1, LUA_TTABLE);
     luaL_checktype(L, 2, LUA_TFUNCTION);
     auto& rt = LuaRuntime::from(L);
@@ -436,6 +438,7 @@ int subscribe(lua_State* L) {
 }
 
 int subscription_cancel(lua_State* L) {
+    forbid_in_check(L, "subscription:cancel");
     uint64_t sid = *static_cast<uint64_t*>(luaL_checkudata(L, 1, kSubMeta));
     auto& rt = LuaRuntime::from(L);
     auto& mstate = moonraker_state_of(L);

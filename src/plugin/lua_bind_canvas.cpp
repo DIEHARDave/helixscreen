@@ -543,6 +543,7 @@ int m_clear(lua_State* L) {
 }
 
 int m_commit(lua_State* L) {
+    forbid_in_check(L, "canvas:commit");
     CanvasEntry* e = handle_entry(L);
     LuaRuntime& rt = context(L).rt;
     auto list = std::make_unique<DisplayList>(std::move(e->pending));
@@ -564,6 +565,7 @@ int m_size(lua_State* L) {
 }
 
 int m_on_size(lua_State* L) {
+    forbid_in_check(L, "canvas:on_size");
     CanvasEntry* e = handle_entry(L);
     LuaRuntime& rt = context(L).rt;
     // Validate before unref, so a bad argument cannot silence a live handler.
@@ -585,6 +587,7 @@ int m_on_size(lua_State* L) {
 }
 
 int canvas_new(lua_State* L) {
+    forbid_in_check(L, "helix.canvas");
     PluginContext& ctx = context(L);
     const char* local = luaL_checkstring(L, 1);
     if (*local == '\0')

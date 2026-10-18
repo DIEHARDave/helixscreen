@@ -203,6 +203,7 @@ void write_storage(const IoState& st) {
 }
 
 int storage_set(lua_State* L) {
+    forbid_in_check(L, "helix.storage.set");
     require_permission(L, Permission::Storage, "helix.storage.set");
     if (context(L).storage_path.empty())
         return luaL_error(L, "helix.storage: no storage path for this plugin");
@@ -262,6 +263,7 @@ int settings_get(lua_State* L) {
 }
 
 int settings_on_change(lua_State* L) {
+    forbid_in_check(L, "helix.settings.on_change");
     auto& ctx = context(L);
     std::string key = luaL_checkstring(L, 1);
     if (!find_decl(ctx.manifest, key))
@@ -273,6 +275,7 @@ int settings_on_change(lua_State* L) {
 }
 
 int settings_set(lua_State* L) {
+    forbid_in_check(L, "helix.settings.set");
     auto& ctx = context(L);
     std::string key = luaL_checkstring(L, 1);
     const SettingDecl* d = find_decl(ctx.manifest, key);

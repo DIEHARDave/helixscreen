@@ -98,6 +98,7 @@ int printer_get(lua_State* L) {
 }
 
 int printer_watch(lua_State* L) {
+    forbid_in_check(L, "helix.printer.watch");
     std::string name = luaL_checkstring(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
     const PrinterField* f = find_field(name);

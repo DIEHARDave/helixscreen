@@ -110,6 +110,7 @@ int subject_get(lua_State* L) {
 }
 
 int subject_set(lua_State* L) {
+    forbid_in_check(L, "subject:set");
     auto& s = check_subject(L);
     if (s.is_string) {
         size_t len = 0;
@@ -125,6 +126,7 @@ int subject_set(lua_State* L) {
 }
 
 int subject_observe(lua_State* L) {
+    forbid_in_check(L, "subject:observe");
     auto& s = check_subject(L);
     luaL_checktype(L, 2, LUA_TFUNCTION);
     auto& rt = LuaRuntime::from(L);
@@ -142,6 +144,7 @@ int subject_observe(lua_State* L) {
 }
 
 int make_subject(lua_State* L, bool is_string) {
+    forbid_in_check(L, "helix.subject");
     auto& rt = LuaRuntime::from(L);
     if (ui_state(L).subjects.size() >= kMaxSubjects)
         return luaL_error(L, "helix.subject: at most %d subjects per plugin",
@@ -183,6 +186,7 @@ int make_subject(lua_State* L, bool is_string) {
 }
 
 int ui_on(lua_State* L) {
+    forbid_in_check(L, "helix.ui.on");
     auto& rt = LuaRuntime::from(L);
     std::string name = luaL_checkstring(L, 1);
     if (!is_valid_local_name(name))
@@ -196,6 +200,7 @@ int ui_on(lua_State* L) {
 }
 
 int ui_toast(lua_State* L) {
+    forbid_in_check(L, "helix.ui.toast");
     const char* msg = luaL_checkstring(L, 1);
     static const char* const kNames[] = {"info", "success", "warning", "error", nullptr};
     static const ToastSeverity kSeverity[] = {ToastSeverity::INFO, ToastSeverity::SUCCESS,
@@ -224,6 +229,7 @@ int ui_text_width(lua_State* L) {
 }
 
 int ui_confirm(lua_State* L) {
+    forbid_in_check(L, "helix.ui.confirm");
     if (context(L).unloading)
         return luaL_error(L, "helix.ui.confirm cannot open during on_unload");
     auto& rt = LuaRuntime::from(L);
@@ -310,6 +316,7 @@ int ui_confirm(lua_State* L) {
 }
 
 int surface_handle_close(lua_State* L) {
+    forbid_in_check(L, "close");
     auto& ctx = context(L);
     if (ctx.ui)
         ctx.ui->close(static_cast<int>(lua_tointeger(L, lua_upvalueindex(1))));
@@ -329,6 +336,7 @@ enum class SurfaceArg { Overlay, Dialog };
 /// string key but on_open/on_close is an attribute for lv_xml_create.
 int open_surface(lua_State* L, SurfaceArg which) {
     const char* fn = which == SurfaceArg::Dialog ? "helix.ui.dialog" : "helix.ui.overlay";
+    forbid_in_check(L, fn);
     auto& rt = LuaRuntime::from(L);
     PluginUi* ui = context(L).ui;
     const PluginUi::OpenFn* open = !ui                           ? nullptr
@@ -467,18 +475,33 @@ PluginEventTarget parse_plugin_event(std::string_view user_data) {
 
 bool dispatch_ui_handler(LuaRuntime& rt, const std::string& name,
                          const std::optional<std::string>& arg) {
-    auto& handlers = ui_state(rt.state()).handlers;
-    auto it = handlers.find(name);
-    if (it == handlers.end())
-        return false;
-    rt.invoke(it->second, [arg](lua_State* co) {
+    return dispatch_ui_handler(rt, name, [arg](lua_State* co) {
         if (arg)
             lua_pushlstring(co, arg->data(), arg->size());
         else
             lua_pushnil(co);
         return 1;
     });
+}
+
+bool dispatch_ui_handler(LuaRuntime& rt, const std::string& name, const LuaRuntime::PushFn& args) {
+    auto& handlers = ui_state(rt.state()).handlers;
+    auto it = handlers.find(name);
+    if (it == handlers.end())
+        return false;
+    rt.invoke(it->second, args);
     return true;
+}
+
+bool call_ui_handler_sync(LuaRuntime& rt, const std::string& name, const LuaRuntime::PushFn& args,
+                          const LuaRuntime::ReadFn& read) {
+    auto& handlers = ui_state(rt.state()).handlers;
+    auto it = handlers.find(name);
+    if (it == handlers.end()) {
+        rt.report_error("menu check '" + name + "' is not registered with helix.ui.on");
+        return false;
+    }
+    return rt.call_sync(it->second, args, read);
 }
 
 // Retired subjects are freed at the next plugin load or unload rather than the
