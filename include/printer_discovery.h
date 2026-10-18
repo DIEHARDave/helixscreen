@@ -448,6 +448,10 @@ class PrinterDiscovery {
         return afc_buffer_names_;
     }
 
+    [[nodiscard]] const std::vector<std::string>& afc_extruder_names() const {
+        return afc_extruder_names_;
+    }
+
     [[nodiscard]] const std::vector<std::string>& tool_names() const {
         return tool_names_;
     }
@@ -968,7 +972,8 @@ class PrinterDiscovery {
     std::vector<std::string> afc_hub_names_;
     std::vector<std::string>
         afc_unit_object_names_; // Full names: "AFC_BoxTurtle Turtle_1", "AFC_OpenAMS AMS_1"
-    std::vector<std::string> afc_buffer_names_; // Buffer suffixes: "TN", "TN1", etc.
+    std::vector<std::string> afc_buffer_names_;   // Buffer suffixes: "TN", "TN1", etc.
+    std::vector<std::string> afc_extruder_names_; // [AFC_extruder <name>]: "extruder", ...
     std::vector<std::string> tool_names_;
     std::vector<std::string> filament_sensor_names_;
     std::vector<std::string> width_sensor_objects_;

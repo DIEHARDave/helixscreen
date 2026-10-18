@@ -376,6 +376,13 @@ void PrinterDiscovery::parse_objects(const nlohmann::json& objects) {
                 afc_hub_names_.push_back(hub_name);
             }
         }
+        // AFC extruder discovery (owns the <name>_tool_start/_tool_end sensors)
+        else if (name.rfind("AFC_extruder ", 0) == 0) {
+            std::string extruder_name = name.substr(13); // Remove "AFC_extruder " prefix
+            if (!extruder_name.empty()) {
+                afc_extruder_names_.push_back(extruder_name);
+            }
+        }
         // AFC_lane discovery (authoritative lane source for Vivid, OpenAMS, etc.)
         else if (name.rfind("AFC_lane ", 0) == 0) {
             std::string lane_name = name.substr(9); // Remove "AFC_lane " prefix (9 chars)
@@ -629,6 +636,9 @@ void PrinterDiscovery::parse_objects(const nlohmann::json& objects) {
     }
     if (!afc_buffer_names_.empty()) {
         natural_sort(afc_buffer_names_);
+    }
+    if (!afc_extruder_names_.empty()) {
+        natural_sort(afc_extruder_names_);
     }
 
     // Name order until the toolchanger's status says how Klipper numbers them
@@ -1008,6 +1018,7 @@ void PrinterDiscovery::clear() {
     afc_hub_names_.clear();
     afc_unit_object_names_.clear();
     afc_buffer_names_.clear();
+    afc_extruder_names_.clear();
     tool_names_.clear();
     filament_sensor_names_.clear();
     width_sensor_objects_.clear();
