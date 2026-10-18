@@ -74,8 +74,7 @@
            wizard_input_shaper_active subject so we don't get two bind_flag_if_eq
            rules fighting over the hidden flag. -->
       <ui_button name="cancel_calibration_btn"
-                 width="#wizard_button_width" height="#button_height" icon="alert_octagon" text="Cancel"
-                 variant="warning">
+                 width="#wizard_button_width" height="#button_height" icon="alert_octagon" text="Stop" variant="warning">
         <event_cb trigger="clicked" callback="on_cancel_is_calibration"/>
         <bind_flag_if_eq subject="wizard_input_shaper_active" flag="hidden" ref_value="0"/>
       </ui_button>

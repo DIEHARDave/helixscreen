@@ -355,7 +355,7 @@
                     text="The heater will cycle on and off several times." style_text_align="center"
                     style_text_color="#text_muted"/>
         <!-- Abort Button -->
-        <ui_button name="btn_abort" width="25%" icon="alert_octagon" text="Abort" variant="danger">
+        <ui_button name="btn_abort" width="25%" icon="alert_octagon" text="Stop" variant="danger">
           <event_cb trigger="clicked" callback="on_pid_abort"/>
         </ui_button>
       </lv_obj>

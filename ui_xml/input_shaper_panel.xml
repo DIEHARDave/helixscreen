@@ -141,7 +141,7 @@
           </progress_bar>
         </lv_obj>
         <!-- Abort button (bottom, like PID panel) -->
-        <ui_button name="btn_abort" width="25%" icon="alert_octagon" text="Abort" variant="danger">
+        <ui_button name="btn_abort" width="25%" icon="alert_octagon" text="Stop" variant="danger">
           <event_cb trigger="clicked" callback="input_shaper_cancel_cb"/>
         </ui_button>
       </lv_obj>
