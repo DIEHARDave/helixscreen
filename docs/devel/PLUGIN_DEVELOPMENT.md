@@ -401,7 +401,7 @@ describing what the menu was opened on.
 | `menu` | Where it appears | Opened on |
 |---|---|---|
 | `print_file` | the "⋯" button on the print details screen (Print select, a file opened) | the file shown |
-| `filament_slot` | the long-press menu of a filament slot, any filament system, below the Tool and Endless Spool rows | the slot |
+| `filament_slot` | the long-press menu of a filament slot, any filament system, in a column of its own beside Filament and Spool | the slot |
 | `spool` | the Spoolman spool menu, after the app's items | the spool |
 | `tile` | the configure (gear) button of the plugin's own home tile, in home edit mode | the tile |
 
@@ -473,8 +473,10 @@ end)
 - On print details, the bottom row becomes three icon buttons (Delete, "⋯", Print) once
   any enabled plugin declares a `print_file` item; "⋯" lists the items for that file, and
   says so when every one is hidden for it. Without such a plugin the row is unchanged.
-- In the filament slot and spool menus, each plugin's items sit under a divider, headed with
-  the plugin's name, plugins in load order and items in manifest order.
+- In the filament slot menu, plugin items get their own column beside Filament and Spool,
+  each plugin's items headed with its name; the column is absent when no item shows. In the
+  spool menu they sit under a divider after the app's items, headed the same way. Plugins
+  are in load order and items in manifest order.
 - A tile with `tile` items gets the gear in home edit mode; its items open from there.
 - Settings > Plugins lists "Adds to: ..." for a plugin with menu items. Menu items need no
   permission of their own, so adding or changing them in an update does not ask again.
@@ -736,7 +738,7 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Confirms | one `helix.ui.confirm` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxOpenConfirms` |
 | Canvas list bytes | charged against the plugin memory cap as staged | `include/plugin_canvas.h#DisplayList/bytes` |
 | Menu items | at most 4 per menu per plugin, 16 per manifest; a label is one line of at most 48 bytes | `include/plugin_manifest.h#kMaxMenuItemsPerMenu` |
-| Plugin rows per menu | across every plugin, per opening: print details 8, filament slot 4, spool 6, a tile 4; rows past it are left out in load order | `src/plugin/plugin_menu.cpp#row_cap` |
+| Plugin rows per menu | across every plugin, per opening: print details 8, filament slot 5, spool 6, a tile 4; rows past it are left out in load order | `src/plugin/plugin_menu.cpp#row_cap` |
 | Menu checks | 10 ms of CPU or 100 ms in all, separate from the entry budget; an overrun is an error (it counts toward the error limit), never a fault by itself | `include/lua_runtime.h#LuaRuntime/CheckLimits` |
 
 A fault (time budget, memory, error count, or `main.lua` failing to load) unloads the

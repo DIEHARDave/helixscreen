@@ -13,7 +13,10 @@ int row_cap(MenuKind kind) {
     case MenuKind::PrintFile:
         return 8;
     case MenuKind::FilamentSlot:
-        return 4;
+        // The slot menu's plugin column, measured at 480x272: a 17 px heading per
+        // plugin and 26 px rows stay within the 168 px Filament column, so the
+        // card grows no taller for them.
+        return 5;
     case MenuKind::Spool:
         return 6;
     case MenuKind::Tile:

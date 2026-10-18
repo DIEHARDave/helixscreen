@@ -554,8 +554,9 @@ void AmsContextMenu::append_slot_plugin_rows(lv_obj_t* menu_obj, int slot_index)
         backend_->get_slot_info(slot_index), info.unit_for_slot(slot_index),
         helix::ui::lane_label(menu_lane_noun(), slot_index));
     helix::ui::append_plugin_rows(
-        *this, lv_obj_find_by_name(menu_obj, "plugin_rows"),
-        plugin_menu::resolve(plugin_menu::MenuKind::FilamentSlot, context), context);
+        *this, lv_obj_find_by_name(menu_obj, "col_plugins"),
+        plugin_menu::resolve(plugin_menu::MenuKind::FilamentSlot, context), context,
+        /*divider=*/false);
 }
 
 // ============================================================================

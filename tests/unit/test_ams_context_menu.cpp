@@ -1487,7 +1487,7 @@ struct SlotMenuPlugin {
 
 } // namespace
 
-TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows sit under the dropdowns",
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows get their own column",
                  "[ui][ams][context_menu][plugin]") {
     SlotMenuPlugin plugin;
     auto backend = std::make_unique<AmsBackendMock>(4);
@@ -1496,23 +1496,36 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows sit under the d
     AmsContextMenu menu;
     REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
                                   /*is_loaded=*/false, backend.get()));
-    lv_obj_t* rows = lv_obj_find_by_name(test_screen(), "plugin_rows");
-    REQUIRE(rows);
-    lv_obj_t* heading = lv_obj_find_by_name(rows, "plugin_name");
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(col);
+    CHECK(lv_obj_get_parent(col) == lv_obj_find_by_name(test_screen(), "menu_columns"));
+    CHECK_FALSE(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
+    lv_obj_t* heading = lv_obj_find_by_name(col, "plugin_name");
     REQUIRE(heading);
     CHECK(std::string(lv_label_get_text(heading)) == "Slot Plug");
-    lv_obj_t* label = lv_obj_find_by_name(rows, "item_label");
+    lv_obj_t* label = lv_obj_find_by_name(col, "item_label");
     REQUIRE(label);
     CHECK(std::string(lv_label_get_text(label)) == "Look up");
-    // Below the Endless Spool row in the card.
-    lv_obj_t* card = lv_obj_get_parent(rows);
-    CHECK(lv_obj_get_index(rows) >
-          lv_obj_get_index(lv_obj_find_by_name(card, "backup_dropdown_row")));
 
     const std::string material = backend->get_slot_info(2).material;
     lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
     CHECK_FALSE(menu.is_visible());
     CHECK(plugin.seen() == "0|2|Gate 3|" + (material.empty() ? std::string("nil") : material));
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: the plugin column hides without plugin items",
+                 "[ui][ams][context_menu][plugin]") {
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(col);
+    CHECK(lv_obj_get_child_count(col) == 0);
+    CHECK(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
+    menu.hide();
     process_lvgl(20);
 }
 
@@ -1522,9 +1535,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: the external spool takes no
     REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
     AmsContextMenu menu;
     REQUIRE(menu.show_for_external_spool(test_screen(), test_screen()));
-    lv_obj_t* rows = lv_obj_find_by_name(test_screen(), "plugin_rows");
-    REQUIRE(rows);
-    CHECK(lv_obj_get_child_count(rows) == 0);
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(col);
+    CHECK(lv_obj_get_child_count(col) == 0);
+    CHECK(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
     menu.hide();
     process_lvgl(20);
 }

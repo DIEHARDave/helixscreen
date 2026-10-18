@@ -122,11 +122,14 @@ permissions, or do nothing.
   layer metadata arrive after the screen shows. Checks run when "⋯" is tapped, against the
   context as it stands then; if every item is hidden for this file, the menu says there are
   no plugin actions for it.
-- **Filament slot menu**: plugin rows go at the bottom of the card, below the Tool and
-  Endless Spool dropdowns, after a divider; each plugin's group is headed with the plugin's
-  name, plugins in load order, items in manifest order (Preston's choice). The card never
-  scrolls, so the builder measures it at 480x272 with the tallest app content and sets the
-  overall plugin-row cap from that measurement.
+- **Filament slot menu**: plugin rows get a column of their own (`col_plugins`) inside the
+  card's action columns, beside Filament and Spool; each plugin's group is headed with the
+  plugin's name, plugins in load order, items in manifest order (Preston's choice). The
+  Tool and Endless Spool dropdowns stay below the columns. The card already scrolls at
+  480x272 with no plugin rows (the mock Happy Hare menu overflows by 58 px), so the rows
+  must add width, not height: the column is a fixed responsive width and the cap (5) keeps
+  it within the 168 px Filament column there. With no item showing, the column is hidden
+  and the menu is unchanged.
 - **Spoolman spool menu**: the same rule, appended to its flat list: a divider, then each
   plugin's group headed with its name.
 - **Tile**: a plugin widget whose plugin declares `tile` items answers
@@ -175,8 +178,9 @@ without asking again; only permission growth asks, as today.
   label); one declared, then three icon buttons and "⋯" opens the item; a USB file, then
   "⋯" plus Print and the context has `source = "usb"`, `path = nil`, `local_path`; checks
   hiding every item, then "⋯" opens the "no plugin actions" state.
-- Slot menu: plugin rows render below the dropdowns with the plugin's name, and the card
-  fits without scrolling at 480x272 at the cap; the external spool menu shows no plugin
+- Slot menu: plugin rows render in their own column with the plugin's name, the column is
+  hidden without plugin items, and at the cap it adds no height at 480x272; the external
+  spool menu shows no plugin
   items.
 - Unload with the menu open: no handler runs on a later tap.
 - Settings > Plugins shows the "Adds to" line.
