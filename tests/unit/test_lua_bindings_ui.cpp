@@ -675,4 +675,37 @@ TEST_CASE_METHOD(LVGLTestFixture, "a check's <close> handlers run inside check m
     }
 }
 
+TEST_CASE_METHOD(XMLTestFixture, "binding metatables are locked against plugins",
+                 "[plugin][bindings][ui]") {
+    BoundRuntime b({&install_ui_bindings, &install_moonraker_bindings, &install_canvas_bindings},
+                   {Permission::MoonrakerWrite});
+    REQUIRE(b.t.run(R"(
+        local kinds = {
+            timer = helix.timer.after(100000, function() end),
+            subject = helix.subject.int("locked_n", 0),
+            canvas = helix.canvas("locked_c"),
+            subscription = helix.moonraker.subscribe({print_stats = {"state"}}, function() end),
+        }
+        seen = {}
+        for name, ud in pairs(kinds) do
+            seen[#seen + 1] = name .. "=" .. tostring(getmetatable(ud))
+        end
+        table.sort(seen)
+        seen = table.concat(seen, ",")
+        -- The arming attempt: with the metatable hidden there is no table to give a __gc.
+        armed = pcall(function()
+            getmetatable(helix.timer.after(100000, function() end)).__gc = function()
+                while true do end
+            end
+        end)
+        swap = pcall(setmetatable, kinds.timer, {})
+    )"));
+    CHECK(b.t.global("seen") == "canvas=locked,subject=locked,subscription=locked,timer=locked");
+    CHECK(b.t.global("armed") == "false");
+    CHECK(b.t.global("swap") == "false");
+    // A new userdata still works and GC finds nothing to finalize.
+    REQUIRE(
+        b.t.run("helix.timer.after(100000, function() end); collectgarbage(); collectgarbage()"));
+}
+
 #endif // HELIX_HAS_PLUGINS

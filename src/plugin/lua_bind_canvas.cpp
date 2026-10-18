@@ -651,7 +651,7 @@ void install_canvas_bindings(PluginContext& ctx) {
         delete state;
     });
 
-    luaL_newmetatable(L, kCanvasMeta);
+    new_locked_metatable(L, kCanvasMeta);
     lua_newtable(L);
     static const luaL_Reg methods[] = {
         {"line", &m_line}, {"polyline", &m_polyline}, {"rect", &m_rect},   {"circle", &m_circle},

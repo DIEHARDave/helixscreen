@@ -396,6 +396,12 @@ int i18n_on_change(lua_State* L) {
     return 0;
 }
 
+void new_locked_metatable(lua_State* L, const char* name) {
+    luaL_newmetatable(L, name);
+    lua_pushliteral(L, "locked");
+    lua_setfield(L, -2, "__metatable");
+}
+
 void forbid_in_check(lua_State* L, const char* call) {
     if (LuaRuntime::from(L).in_check())
         luaL_error(L, "%s is not allowed in a menu check", call);
@@ -431,7 +437,7 @@ void install_core_bindings(PluginContext& ctx) {
         delete i18n;
     });
 
-    luaL_newmetatable(L, kTimerMeta);
+    new_locked_metatable(L, kTimerMeta);
     lua_newtable(L);
     lua_pushcfunction(L, &timer_cancel);
     lua_setfield(L, -2, "cancel");

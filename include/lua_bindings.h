@@ -61,6 +61,12 @@ PluginContext& context(lua_State* L);
 /// by the cap check instead of landing whole in the Lua state.
 size_t memory_remaining(const LuaRuntime& rt);
 
+/// luaL_newmetatable for a binding's userdata type, with `__metatable` set so plugin
+/// code sees a string from getmetatable and cannot edit the table (a `__gc` added to it
+/// would be armed on the next userdata C creates, outside every time budget). Leaves
+/// the metatable on the stack. Every binding metatable is made through this.
+void new_locked_metatable(lua_State* L, const char* name);
+
 /// Raises "<call> is not allowed in a menu check" while the runtime runs a check
 /// (LuaRuntime::call_sync). The first statement of every binding with a side effect;
 /// async bindings are refused by await_async.

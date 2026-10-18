@@ -555,7 +555,7 @@ void install_ui_bindings(PluginContext& ctx) {
                                        {"set", &subject_set},
                                        {"observe", &subject_observe},
                                        {nullptr, nullptr}};
-    luaL_newmetatable(L, kSubjectMeta);
+    new_locked_metatable(L, kSubjectMeta);
     lua_newtable(L);
     luaL_setfuncs(L, methods, 0);
     lua_setfield(L, -2, "__index");

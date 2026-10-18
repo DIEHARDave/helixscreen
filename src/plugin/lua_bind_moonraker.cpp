@@ -487,7 +487,7 @@ void install_moonraker_bindings(PluginContext& ctx) {
         backend->set_plugin_objects(id, json::object());
     });
 
-    luaL_newmetatable(L, kSubMeta);
+    new_locked_metatable(L, kSubMeta);
     lua_newtable(L);
     lua_pushcfunction(L, &subscription_cancel);
     lua_setfield(L, -2, "cancel");
