@@ -217,6 +217,9 @@ class AmsEditOverlayViewTestAccess {
     void call_do_spoolman_save(helix::SpoolmanSlotSaver::LinkIntent intent) {
         overlay_.do_spoolman_save(intent);
     }
+    void call_repopulate() {
+        overlay_.repopulate();
+    }
     void call_open_color_view() {
         overlay_.open_color_view();
     }
@@ -3232,6 +3235,45 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         }
         theme_manager_refresh_layout_constants(disp);
     }
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "reopening the colour view keeps its preset grid instead of rebuilding it",
+                 "[ams_edit_overlay][color]") {
+    // 480x320 is a one-pane size: the fit verdict is 0, the subject's
+    // registered default is 1, so a remeasure on every open would flip it.
+    lv_display_t* disp = lv_display_get_default();
+    {
+        ScopedResolution res(disp, 480, 320);
+        theme_manager_refresh_layout_constants(disp);
+        auto& overlay = get_ams_edit_overlay();
+        AmsEditOverlayViewTestAccess access(overlay);
+        REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+        UpdateQueue::instance().drain();
+        process_lvgl(10);
+        access.call_open_color_view();
+        process_lvgl(10);
+        REQUIRE(color_subject("ams_edit_color_fits") == 0);
+
+        lv_obj_t* grid = lv_obj_find_by_name(access.widget("color_presets"), "color_swatch_grid");
+        REQUIRE(grid != nullptr);
+        static bool deleted;
+        deleted = false;
+        lv_obj_add_event_cb(grid, [](lv_event_t*) { deleted = true; }, LV_EVENT_DELETE, nullptr);
+
+        access.call_set_view(AmsEditOverlay::VIEW_EDITOR);
+        process_lvgl(10);
+        access.call_open_color_view();
+        process_lvgl(10);
+        CHECK_FALSE(deleted);
+        access.call_repopulate();
+        process_lvgl(10);
+        CHECK_FALSE(deleted);
+        CHECK(color_subject("ams_edit_color_fits") == 0);
+        CHECK(lv_obj_find_by_name(access.widget("color_presets"), "color_swatch_grid") == grid);
+        close_editor_overlay();
+    }
+    theme_manager_refresh_layout_constants(disp);
 }
 
 TEST_CASE("grid_preset_count fills whole rows less the custom tile",

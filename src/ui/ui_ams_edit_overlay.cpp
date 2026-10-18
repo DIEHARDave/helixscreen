@@ -1427,30 +1427,43 @@ bool AmsEditOverlay::color_panes_fit(int avail_w, int avail_h, int presets_w, in
 }
 
 void AmsEditOverlay::update_color_fit() {
-    // Measured with both panes built and shown: the decision is whether that
-    // form fits the overlay's content area without scrolling.
     lv_obj_t* view = find_widget("color_view");
     lv_obj_t* presets = find_widget("color_presets");
     lv_obj_t* custom = find_widget("color_custom");
     if (!view || !presets || !custom) {
         return;
     }
-    lv_subject_set_int(&color_fits_subject_, 1);
     lv_obj_update_layout(overlay_root_);
     lv_obj_t* area = lv_obj_get_parent(view);
     const int avail_h = lv_obj_get_content_height(area) -
                         lv_obj_get_style_pad_top(view, LV_PART_MAIN) -
                         lv_obj_get_style_pad_bottom(view, LV_PART_MAIN);
     const int avail_w = lv_obj_get_content_width(view);
-    const int gap = lv_obj_get_style_pad_column(view, LV_PART_MAIN);
-    const bool fits =
-        color_panes_fit(avail_w, avail_h, lv_obj_get_width(presets), lv_obj_get_height(presets),
-                        lv_obj_get_width(custom), lv_obj_get_height(custom), gap);
-    spdlog::debug("[AmsEditOverlay] Colour panes {}x{} + {}x{} gap {} in {}x{}: {}",
-                  lv_obj_get_width(presets), lv_obj_get_height(presets), lv_obj_get_width(custom),
-                  lv_obj_get_height(custom), gap, avail_w, avail_h,
-                  fits ? "together" : "one at a time");
-    lv_subject_set_int(&color_fits_subject_, fits ? 1 : 0);
+    // Both panes have fixed sizes, so the verdict follows the room alone. Each
+    // flip of ams_edit_color_fits rebuilds the preset grid's ~60 swatches, so
+    // the subject moves only when the verdict changes.
+    if (avail_w != color_fit_room_w_ || avail_h != color_fit_room_h_) {
+        // Measured with both panes built and shown: the decision is whether
+        // that form fits the overlay's content area without scrolling.
+        if (lv_subject_get_int(&color_fits_subject_) != 1) {
+            lv_subject_set_int(&color_fits_subject_, 1);
+            lv_obj_update_layout(overlay_root_);
+        }
+        const int gap = lv_obj_get_style_pad_column(view, LV_PART_MAIN);
+        color_fit_ =
+            color_panes_fit(avail_w, avail_h, lv_obj_get_width(presets), lv_obj_get_height(presets),
+                            lv_obj_get_width(custom), lv_obj_get_height(custom), gap);
+        color_fit_room_w_ = avail_w;
+        color_fit_room_h_ = avail_h;
+        spdlog::debug("[AmsEditOverlay] Colour panes {}x{} + {}x{} gap {} in {}x{}: {}",
+                      lv_obj_get_width(presets), lv_obj_get_height(presets),
+                      lv_obj_get_width(custom), lv_obj_get_height(custom), gap, avail_w, avail_h,
+                      color_fit_ ? "together" : "one at a time");
+    }
+    const int fits = color_fit_ ? 1 : 0;
+    if (lv_subject_get_int(&color_fits_subject_) != fits) {
+        lv_subject_set_int(&color_fits_subject_, fits);
+    }
 }
 
 void AmsEditOverlay::show_color_pane(int pane) {

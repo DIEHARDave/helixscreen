@@ -274,8 +274,9 @@ class AmsEditOverlay : public OverlayBase {
     void handle_custom_color_changed(uint32_t rgb);
     void handle_color_hex_changed();
     void handle_color_apply();
-    /// Measure the colour view with both panes shown and publish whether they
-    /// fit (ams_edit_color_fits).
+    /// Publish whether the colour view's two panes fit together
+    /// (ams_edit_color_fits). Measuring shows both panes, which rebuilds the
+    /// preset grid, so it measures only room it has not measured before.
     void update_color_fit();
     void show_color_pane(int pane);
 
@@ -314,6 +315,9 @@ class AmsEditOverlay : public OverlayBase {
     lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (size_color_grids)
     lv_subject_t color_fits_subject_{};      ///< 1=presets and picker shown together
     lv_subject_t color_pane_subject_{};      ///< one-pane form: 0=presets, 1=picker
+    int color_fit_room_w_ = -1;              ///< room update_color_fit last measured
+    int color_fit_room_h_ = -1;
+    bool color_fit_ = true; ///< that room's verdict
     lv_subject_t summary_text_subject_{};
     lv_subject_t tag_badge_visible_subject_{}; ///< any shown field is the tag's
     lv_subject_t tag_material_subject_{};
