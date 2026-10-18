@@ -1688,6 +1688,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" ru="Он зажат между датчиком хаба и его шестернёй. Откройте CFS, освободите хаб и повторите"/>
   <translation tag="It starts with your {} macro." ru="Начинается с вашего макроса {}."/>
   <translation tag="It&apos;s a new spool" ru="Это новая катушка"/>
+  <translation tag="Jammed" ru="Замятие"/>
   <translation tag="Jammed at the Toolhead" ru="Замятие в печатающей головке"/>
   <translation tag="Job Queue" ru="Очередь заданий"/>
   <translation tag="Job queue not enabled in Moonraker" ru="Очередь заданий не включена в Moonraker"/>

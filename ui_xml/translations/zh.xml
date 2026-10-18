@@ -1643,6 +1643,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" zh="它卡在集线器传感器与集线器齿轮之间。请打开 CFS 清理集线器后重试"/>
   <translation tag="It starts with your {} macro." zh="使用你的{}宏开始。"/>
   <translation tag="It&apos;s a new spool" zh="这是新料盘"/>
+  <translation tag="Jammed" zh="堵塞"/>
   <translation tag="Jammed at the Toolhead" zh="工具头处堵塞"/>
   <translation tag="Job Queue" zh="任务队列"/>
   <translation tag="Job queue not enabled in Moonraker" zh="Moonraker 未启用任务队列"/>

@@ -1643,6 +1643,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" ja="ハブセンサーとハブギアの間で詰まっています。CFS を開けてハブを取り除いてから再試行してください"/>
   <translation tag="It starts with your {} macro." ja="{}マクロで開始します。"/>
   <translation tag="It&apos;s a new spool" ja="新しいスプールです"/>
+  <translation tag="Jammed" ja="詰まり"/>
   <translation tag="Jammed at the Toolhead" ja="ツールヘッドで詰まり"/>
   <translation tag="Job Queue" ja="ジョブキュー"/>
   <translation tag="Job queue not enabled in Moonraker" ja="Moonraker でジョブキューが有効になっていません"/>

@@ -1813,6 +1813,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Está atascado entre el sensor del concentrador y su engranaje. Abra el CFS y despeje el concentrador antes de reintentar
   It starts with your {} macro.: Empieza con tu macro {}.
   It's a new spool: Es una bobina nueva
+  Jammed: Atascado
   Jammed at the Toolhead: Atascado en el cabezal
   Job Queue: Cola de trabajos
   Job queue not enabled in Moonraker: 'Cola de trabajos no habilitada en Moonraker'

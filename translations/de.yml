@@ -1821,6 +1821,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Es klemmt zwischen Hub-Sensor und Hub-Antriebsrad. CFS öffnen, den Hub frei machen und erneut versuchen
   It starts with your {} macro.: Er startet mit deinem Makro {}.
   It's a new spool: Es ist eine neue Spule
+  Jammed: Stau
   Jammed at the Toolhead: Stau am Werkzeugkopf
   Job Queue: Auftragswarteschlange
   Job queue not enabled in Moonraker: 'Auftragswarteschlange in Moonraker nicht aktiviert'
