@@ -56,7 +56,7 @@
  * display_mgr.shutdown();
  * @endcode
  */
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 namespace helix::ui {
 struct SaverHost;
 }
@@ -243,7 +243,7 @@ class DisplayManager : public helix::ICalibrationSink {
      */
     void restore_display_on_shutdown();
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     /**
      * @brief Start a screensaver immediately for preview/testing
      *

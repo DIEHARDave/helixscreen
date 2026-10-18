@@ -4,7 +4,7 @@
 
 #include "screensaver.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "config.h"
 #include "platform_capabilities.h"

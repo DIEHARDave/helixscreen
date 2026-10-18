@@ -7,7 +7,7 @@
 #include "screensaver_pixel_writer.h"
 #include "screensaver_sim_contract.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "screensaver_canvas.h"
 
 #include <lvgl.h>
@@ -254,7 +254,7 @@ template <typename Sim> struct SimRun {
     std::vector<DirtyRect> dirty;
 };
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 /// A clock reading of the time of day `seconds_of_day`, with no print.
 inline helix::ui::ClockReading reading_at(int32_t seconds_of_day, bool use_24h = false) {

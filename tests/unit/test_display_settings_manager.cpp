@@ -426,7 +426,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "DisplaySettingsManager preview_brightness doe
     }
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 // The default saver comes from the registry on every tier, not from a platform probe:
 // the gate steps a too-heavy default down on the device instead of disabling it up

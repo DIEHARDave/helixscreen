@@ -95,7 +95,7 @@ class DisplaySleepController {
     /// lifts (helix::WakeTouchLatch).
     bool note_press(int x, int y);
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     /// Starts @p type as a settings preview; the next touch dismisses it without auto-lock.
     void preview_screensaver(int type);
 #endif
@@ -152,7 +152,7 @@ class DisplaySleepController {
     lv_display_flush_cb_t m_saved_flush_cb_for_sleep = nullptr;
     bool m_flush_suppressed_for_sleep = false;
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     bool m_screensaver_active = false;
     bool m_screensaver_is_preview = false;
     /// Tick the preview started at, so the click that launched it cannot dismiss it.

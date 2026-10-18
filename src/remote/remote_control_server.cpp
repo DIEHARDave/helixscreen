@@ -2479,7 +2479,7 @@ nlohmann::json RemoteControlServer::handle_preview_screensaver(const nlohmann::j
     if (!type || *type == ScreensaverType::OFF) {
         throw std::invalid_argument("Unknown screensaver: " + name);
     }
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     return execute_on_ui_thread([type, name]() -> nlohmann::json {
         DisplayManager* dm = DisplayManager::instance();
         if (!dm) {

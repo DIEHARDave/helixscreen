@@ -4,7 +4,7 @@
 
 #include "screensaver_registry.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_clock_reading.h"
 #include "screensaver_cpu_clock.h"

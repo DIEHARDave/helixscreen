@@ -43,7 +43,7 @@
 #include "screen_hide_hold.h"
 #include "tap_latch.h"
 #include "touch_calibration_wrapper.h"
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver.h"
 #include "screensaver_clock.h"
@@ -455,7 +455,7 @@ bool DisplayManager::init(const Config& config) {
                  m_refresh_timing.screensaver_refr_period_ms, m_refresh_timing.loop_min_sleep_ms,
                  m_refresh_timing.screensaver_loop_min_sleep_ms);
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     // The gate halves the screensaver budget during prints and keys stored levels by display path.
     ScreensaverManager::instance().set_host(screensaver_host(m_backend.get()));
 #endif
@@ -863,7 +863,7 @@ void DisplayManager::restore_display_on_shutdown() {
     m_sleep.restore_on_shutdown();
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 helix::ui::SaverHost DisplayManager::screensaver_host(const DisplayBackend* backend) {
     helix::ui::SaverHost host;
     host.is_printing = [] {

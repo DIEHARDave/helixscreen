@@ -10,7 +10,7 @@
 #include "screensaver_sim_saver.h"
 #include "screensaver_starfield.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "misc/lv_timer_private.h"
 
