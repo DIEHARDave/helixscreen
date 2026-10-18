@@ -59,6 +59,7 @@ bool ShaperSweepChart::begin(lv_obj_t* host, char axis,
         ui_frequency_response_chart_set_freq_range(chart_, 0.0f, SHAPER_CHART_MAX_HZ);
         series_ =
             ui_frequency_response_chart_add_series(chart_, "Live PSD", shaper_raw_psd_color());
+        ui_frequency_response_chart_set_series_style(chart_, series_, SHAPER_MEASURED_STYLE);
     }
 
     column_ = (axis == 'Y' || axis == 'y') ? SweepColumn::Y : SweepColumn::X;

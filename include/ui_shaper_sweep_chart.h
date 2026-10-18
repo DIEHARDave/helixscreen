@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "ui_frequency_response_chart.h"
+
 #include "calibration_types.h"
 #include "live_sweep_preview.h"
 #include "lvgl/lvgl.h"
@@ -24,6 +26,10 @@ inline constexpr float SHAPER_CHART_HEADROOM = 1.1f;
 
 /// The results charts' raw PSD series color; the live curve uses it too.
 [[nodiscard]] lv_color_t shaper_raw_psd_color();
+
+/// The measured curve's look on every input shaper chart, live and final:
+/// the belt chart's filled, glowing curve, so the swap to the CSV is seamless.
+inline constexpr FrChartSeriesStyle SHAPER_MEASURED_STYLE{3, true, true};
 
 /**
  * @brief The input shaper's live sweep chart

@@ -1717,6 +1717,8 @@ void InputShaperPanel::populate_chart(char axis, const InputShaperResult& result
     // Add raw PSD series (always visible, semi-transparent light color)
     chart_data.raw_series_id = ui_frequency_response_chart_add_series(
         chart_data.chart, "Raw PSD", helix::ui::shaper_raw_psd_color());
+    ui_frequency_response_chart_set_series_style(chart_data.chart, chart_data.raw_series_id,
+                                                 helix::ui::SHAPER_MEASURED_STYLE);
     ui_frequency_response_chart_set_data(chart_data.chart, chart_data.raw_series_id, freqs.data(),
                                          amps.data(), freqs.size());
 

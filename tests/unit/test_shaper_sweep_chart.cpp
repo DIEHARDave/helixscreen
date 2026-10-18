@@ -127,11 +127,15 @@ TEST_CASE_METHOD(ShaperSweepChartFixture, "ShaperSweepChart draws like the resul
     CHECK(range.second == helix::ui::SHAPER_CHART_MAX_HZ);
     CHECK(lv_color_eq(ui_frequency_response_chart_get_series_color(chart.chart(), kSeries),
                       helix::ui::shaper_raw_psd_color()));
+    // The same look as the results' measured curve, as the tier allows it.
     const auto style = ui_frequency_response_chart_get_series_style(chart.chart(), kSeries);
-    const FrChartSeriesStyle plain;
-    CHECK(style.line_width == plain.line_width);
-    CHECK(style.glow == plain.glow);
-    CHECK(style.fill == plain.fill);
+    const auto caps = helix::PlatformCapabilities::detect();
+    const auto expected = fr_chart_effective_style(helix::ui::SHAPER_MEASURED_STYLE, caps.tier,
+                                                   caps.supports_animations);
+    CHECK(style.line_width == expected.line_width);
+    CHECK(style.glow == expected.glow);
+    CHECK(style.fill == expected.fill);
+    CHECK(style.fill);
 
     chart.on_progress(ShaperCalibrationPhase::Sweeping, 0.0f);
     CHECK(log.created == 0);
