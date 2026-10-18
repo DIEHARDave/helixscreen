@@ -111,3 +111,38 @@ TEST_CASE_METHOD(LVGLUITestFixture, "swatch gallery", "[.][swatch_gallery]") {
         lv_obj_delete(page);
     }
 }
+
+// The spool row alone at a size where the winding and textures can be judged:
+//
+//   HELIX_SWATCH_GALLERY_DIR=/tmp/out ./build/bin/helix-tests '[swatch_gallery_spools]'
+TEST_CASE_METHOD(LVGLUITestFixture, "swatch gallery spools", "[.][swatch_gallery_spools]") {
+    const char* dir = std::getenv("HELIX_SWATCH_GALLERY_DIR");
+    REQUIRE(dir != nullptr);
+    const char* size_env = std::getenv("HELIX_SWATCH_GALLERY_SPOOL");
+    const int32_t size = size_env ? std::atoi(size_env) : 240;
+    REQUIRE(size > 0);
+
+    ScopedThemeMode mode;
+    for (const bool dark : {false, true}) {
+        mode.set(dark);
+        lv_obj_t* page = lv_obj_create(test_screen());
+        lv_obj_remove_style_all(page);
+        lv_obj_set_size(page, 8 * size, size);
+
+        int col = 0;
+        for (const auto& f : FILAMENTS) {
+            lv_obj_t* spool = ui_spool_canvas_create(page, size);
+            lv_obj_set_pos(spool, col * size, 0);
+            helix::ui::spool_canvas_set_filament(spool, f.rgb, f.multi,
+                                                 helix::ui::swatch_finish_from_variant(f.name));
+            ++col;
+        }
+        lv_obj_update_layout(page);
+        lv_draw_buf_t* snap = lv_snapshot_take(page, LV_COLOR_FORMAT_ARGB8888);
+        REQUIRE(snap != nullptr);
+        write_png(std::string(dir) + (dark ? "/spools-dark.png" : "/spools-light.png"), snap,
+                  theme_manager_get_color("screen_bg"));
+        lv_draw_buf_destroy(snap);
+        lv_obj_delete(page);
+    }
+}

@@ -11,6 +11,7 @@
 #include "ams_state.h"
 #include "app_globals.h"
 #include "batch_feed_reconcile.h"
+#include "display_numbering.h"
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
 #include "json_utils.h"
@@ -2721,7 +2722,14 @@ std::vector<int> AmsBackendSnapmaker::last_print_tool_mapping() const {
 
 std::string AmsBackendSnapmaker::build_preprint_gcode(const std::set<int>& tools_used,
                                                       const std::map<int, int>& remap) const {
-    return preprint_gcode(tools_used, remap);
+    // The unload choice travels with every start, including one whose routing
+    // is unknown (empty tools_used): it needs no routing and the firmware
+    // forgets it when each print ends.
+    std::string gcode = preprint_gcode(tools_used, remap);
+    const std::string unload = end_unload_gcode();
+    if (!unload.empty())
+        gcode += (gcode.empty() ? "" : "\n") + unload;
+    return gcode;
 }
 
 std::string AmsBackendSnapmaker::preprint_gcode(const std::set<int>& tools_used,
@@ -3179,6 +3187,45 @@ AmsBackendSnapmaker::classify_error(const std::string& raw_line,
     return e;
 }
 
+namespace {
+/// Whether @p head holds soft filament, which the firmware's end-of-print
+/// macro never unloads.
+bool head_is_soft(const snapmaker::PrintPreferences& p, size_t head) {
+    return head < p.filament_soft.size() && p.filament_soft[head];
+}
+
+/// The saved unload-at-end choice for the toolheads the firmware reports, in
+/// its list order. The firmware clears its own list when every print ends, so
+/// the setting is the record of what the user picked. A soft-filament head
+/// keeps its saved bit: the firmware's end macro skips that head itself.
+std::vector<bool> end_unload_list(const snapmaker::PrintPreferences& p) {
+    std::vector<bool> list(p.end_unload_filament.size());
+    for (size_t t = 0; t < list.size(); ++t) {
+        list[t] = SettingsManager::instance().get_end_of_print_unload_tool(static_cast<int>(t));
+    }
+    return list;
+}
+
+/// The end-unload action id's tool, or nullopt for an id that is not one.
+std::optional<size_t> end_unload_tool(const std::string& action_id) {
+    static constexpr std::string_view prefix = "snapmaker_end_unload_t";
+    if (action_id.rfind(prefix, 0) != 0) {
+        return std::nullopt;
+    }
+    const std::string suffix = action_id.substr(prefix.size());
+    // Malformed ids stop here: a suffix that is not a parsable index names
+    // no tool.
+    if (!is_parsable_index(suffix)) {
+        return std::nullopt;
+    }
+    const auto parsed = helix::text_io::parse_leading<unsigned long>(suffix);
+    if (!parsed) {
+        return std::nullopt;
+    }
+    return static_cast<size_t>(*parsed);
+}
+} // namespace
+
 std::vector<helix::printer::DeviceSection> AmsBackendSnapmaker::get_device_sections() const {
     if (print_preferences().empty()) {
         return {}; // nothing reported yet - an empty section is worse than none
@@ -3225,15 +3272,26 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
         add_toggle("snapmaker_end_led_off", "Turn LED off when the print ends",
                    *p.end_led_turn_off);
     }
-    for (size_t t = 0; t < p.end_unload_filament.size(); ++t) {
+    // The firmware's list says how many heads there are; the values are the
+    // saved choice, because the firmware clears its own when a print ends.
+    const auto saved = end_unload_list(p);
+    for (size_t t = 0; t < saved.size(); ++t) {
         // Copy out as bool: indexing a const vector<bool> yields a standard-library
         // proxy type on some platforms, not bool, and the UI casts the value back to bool.
-        const bool unload = p.end_unload_filament[t];
-        DeviceAction a =
-            DeviceAction::toggle("snapmaker_end_unload_t" + std::to_string(t),
-                                 std::string(lv_tr("Unload at end")) + " - T" + std::to_string(t),
-                                 "snapmaker_print_prefs", unload);
+        // A soft-filament head never unloads, so its toggle never reads on.
+        const bool unload = saved[t] && !head_is_soft(p, t);
+        const int tool = static_cast<int>(t);
+        DeviceAction a = DeviceAction::toggle(
+            "snapmaker_end_unload_t" + std::to_string(t),
+            std::string(lv_tr("Unload at end")) + " - " +
+                helix::ui::tool_label_in_form(tool_noun(), helix::ui::tool_label(tool), tool,
+                                              helix::ui::ToolLabelForm::Full),
+            "snapmaker_print_prefs", unload);
         a.slot_index = static_cast<int>(t);
+        if (head_is_soft(p, t)) {
+            a.enabled = false;
+            a.disable_reason = lv_tr("Soft filament is never unloaded");
+        }
         out.push_back(std::move(a));
     }
     return out;
@@ -3277,34 +3335,25 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
         } else {
             return {};
         }
-    } else if (action_id.rfind("snapmaker_end_unload_t", 0) == 0) {
-        const std::string suffix = action_id.substr(sizeof("snapmaker_end_unload_t") - 1);
-        // Malformed ids stop here: a suffix that is not a parsable index
-        // names no tool.
-        if (!is_parsable_index(suffix)) {
-            return {};
-        }
+    } else if (const auto tool = end_unload_tool(action_id)) {
         // END_UNLOAD_FILAMENT takes the whole list, so the untouched tools
-        // travel at their current values or they are cleared. The snapshot is
-        // taken without holding mutex_ across the send that follows: a frame
-        // updating a different tool in that window loses to this write, which
-        // is the user-write-wins ordering.
-        const auto parsed_tool = helix::text_io::parse_leading<unsigned long>(suffix);
-        if (!parsed_tool) {
-            return {};
-        }
-        const size_t tool = static_cast<size_t>(*parsed_tool);
-        auto list = print_preferences().end_unload_filament;
+        // travel at their saved values or they are cleared. The firmware's
+        // own list is not used: it lags a tap behind, and it is cleared when
+        // each print ends.
+        const auto prefs = print_preferences();
         // A tool past the reported list is a stale id from before the firmware
         // reported fewer toolheads.
-        if (tool >= list.size()) {
+        if (*tool >= prefs.end_unload_filament.size()) {
             return {};
         }
         const auto* v = std::any_cast<bool>(&value);
-        if (v == nullptr) {
+        // The end macro skips a soft-filament head, so turning it on would
+        // promise an unload that never happens.
+        if (v == nullptr || (*v && head_is_soft(prefs, *tool))) {
             return {};
         }
-        list[tool] = *v;
+        auto list = end_unload_list(prefs);
+        list[*tool] = *v;
         changes.end_unload_filament = std::move(list);
     } else {
         return {};
@@ -3318,10 +3367,39 @@ AmsError AmsBackendSnapmaker::execute_device_action(const std::string& action_id
     if (gcode.empty()) {
         return AmsErrorHelper::not_supported(action_id);
     }
-    // The firmware refuses END_UNLOAD_FILAMENT while printing or paused unless
-    // FORCE=1, which we do not pass. The refusal arrives as a firmware
-    // exception and reaches the user through error classification, not here.
+    if (const auto tool = end_unload_tool(action_id)) {
+        // The saved choice is what every print start sends, so it is written
+        // whether or not the firmware can take it now.
+        SettingsManager::instance().set_end_of_print_unload_tool(static_cast<int>(*tool),
+                                                                 *std::any_cast<bool>(&value));
+        // The firmware refuses END_UNLOAD_FILAMENT while printing or paused
+        // unless FORCE=1, which we do not pass; the next print start carries it.
+        bool heads_free = false;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            heads_free = heads_free_locked();
+        }
+        if (!heads_free) {
+            spdlog::info("[AMS Snapmaker] Unload at end for T{} saved; sent at the next print "
+                         "start",
+                         *tool);
+            return AmsErrorHelper::success();
+        }
+    }
     return execute_gcode(gcode);
+}
+
+std::string AmsBackendSnapmaker::end_unload_gcode() const {
+    // The firmware resets end_unload_filament when every print ends, so the
+    // saved choice is re-sent ahead of each one. Before it has reported its
+    // list, the head count and support for the command are both unknown.
+    const auto prefs = print_preferences();
+    if (prefs.end_unload_filament.empty()) {
+        return {};
+    }
+    snapmaker::PrintPreferences changes;
+    changes.end_unload_filament = end_unload_list(prefs);
+    return snapmaker::write_print_preferences_gcode(changes);
 }
 
 } // namespace helix

@@ -201,6 +201,7 @@ struct StyleEntry {
 };
 
 #include <array>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -457,6 +458,42 @@ bool theme_manager_token_uses_vertical_axis(const char* base_name);
  * @return Map of base_name → value (decimal string, as XML consts are stored)
  */
 std::unordered_map<std::string, std::string> theme_manager_resolve_px_tokens(lv_display_t* display);
+
+namespace helix {
+
+/// The seven per-tier tables of one set of px constants, keyed by base name
+/// (`space_md` for `space_md_small`).
+struct PxTierTables {
+    std::unordered_map<std::string, std::string> micro, tiny, small, medium, large, xlarge, xxlarge;
+};
+
+/**
+ * @brief One constant's value for one tier suffix, with the ladder's fallbacks
+ *
+ * The optional tiers fall back inwards to the required triplet: _micro to _tiny
+ * then _small, _tiny to _small, _xlarge to _large, _xxlarge to _xlarge then
+ * _large. The caller guarantees @p base has the _small/_medium/_large triplet.
+ */
+const std::string& theme_manager_pick_px_tier(const PxTierTables& tables, const std::string& base,
+                                              const char* suffix);
+
+/**
+ * @brief Resolve every complete triplet in @p tables for @p display, DPI-scaled
+ *
+ * @p app_tokens selects the app's per-token axis policy (nav_width's own ladder,
+ * the vertical-axis tokens); without it every constant follows the cramped
+ * axis, which is what plugin constants use. Constants missing the triplet are
+ * left out.
+ */
+std::unordered_map<std::string, std::string>
+theme_manager_resolve_px_tables(const PxTierTables& tables, lv_display_t* display, bool app_tokens);
+
+/// Runs @p hook with the display at the end of every
+/// theme_manager_refresh_layout_constants(). Returns an id for removal.
+int theme_manager_add_layout_refresh_hook(std::function<void(lv_display_t*)> hook);
+void theme_manager_remove_layout_refresh_hook(int id);
+
+} // namespace helix
 
 /**
  * @brief Register responsive spacing tokens (space_* system)

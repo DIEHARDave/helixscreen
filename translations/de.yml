@@ -395,6 +395,7 @@ translations:
   'Bed mesh calibration failed: {}': 'Bettnetz-Kalibrierung fehlgeschlagen: {}'
   Bed mesh operation timed out: Bettnetz-Vorgang Zeitüberschreitung
   Bed mesh...: Bettnetz...
+  Bed size unknown: 'Bettgröße unbekannt'
   Bed tab moves lift to this height first: Bewegungen im Heizbett-Tab heben zuerst auf diese Höhe an
   Bed target set to {}°C: Bett-Zieltemperatur auf {}°C gesetzt
   Bed temp must be 0-%d°C: Betttemperatur muss 0-%d°C betragen
@@ -1315,6 +1316,7 @@ translations:
   Failed to load profile: Profil konnte nicht geladen werden
   Failed to load spools: Spulen konnten nicht geladen werden
   'Failed to modify G-code: {}': 'G-Code-Änderung fehlgeschlagen: {}'
+  Failed to move to calibration position: 'Kalibrierposition konnte nicht angefahren werden'
   Failed to open history: Verlauf konnte nicht geöffnet werden
   Failed to open history list: Verlaufsliste konnte nicht geöffnet werden
   Failed to open temperature graph: Temperaturgraph konnte nicht geöffnet werden
@@ -1350,6 +1352,7 @@ translations:
   'Failed to send command: {}': 'Befehl senden fehlgeschlagen: {}'
   Failed to send print data: Druckdaten konnten nicht gesendet werden
   Failed to send status request: Statusanfrage konnte nicht gesendet werden
+  Failed to set Z-offset: 'Z-Offset konnte nicht gesetzt werden'
   Failed to set active spool: Aktive Spule konnte nicht gesetzt werden
   'Failed to set flow rate: {}': 'Flussrate setzen fehlgeschlagen: {}'
   'Failed to set pressure advance: {}': 'Pressure Advance konnte nicht gesetzt werden: {}'
@@ -1357,6 +1360,8 @@ translations:
   'Failed to set temperature: {}': 'Temperatur setzen fehlgeschlagen: {}'
   'Failed to set {} temp: {}': '{}-Temperatur setzen fehlgeschlagen: {}'
   Failed to show confirmation dialog: Bestätigungsdialog konnte nicht angezeigt werden
+  Failed to start Z offset calibration: 'Z-Offset-Kalibrierung konnte nicht gestartet werden'
+  Failed to start bed heating: 'Bettheizung konnte nicht gestartet werden'
   'Failed to start installer: ': 'Installationsprogramm konnte nicht gestartet werden: '
   'Failed to start print: {}': 'Druck starten fehlgeschlagen: {}'
   'Failed to start uninstaller: ': 'Deinstallationsprogramm konnte nicht gestartet
@@ -3296,6 +3301,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Nur Momentaufnahme
   Soft: Weich
+  Soft filament is never unloaded: "Weiches Filament wird nie entladen"
   Software Updates: Software-Updates
   Some filaments don't match the slicer's intent.: Einige Filamente stimmen nicht
     mit der Vorgabe des Slicers überein.

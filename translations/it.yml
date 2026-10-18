@@ -390,6 +390,7 @@ translations:
   'Bed mesh calibration failed: {}': 'Calibrazione della mesh del piano non riuscita: {}'
   Bed mesh operation timed out: Mesh piano — tempo scaduto
   Bed mesh...: Mesh piano...
+  Bed size unknown: 'Dimensione del piatto sconosciuta'
   Bed tab moves lift to this height first: I movimenti della scheda Piano salgono prima a questa altezza
   Bed target set to {}°C: Obiettivo piano impostato a {}°C
   Bed temp must be 0-%d°C: La temperatura del piano deve essere 0-%d°C
@@ -1304,6 +1305,7 @@ translations:
   Failed to load profile: Impossibile caricare il profilo
   Failed to load spools: Caricamento bobine fallito
   'Failed to modify G-code: {}': 'Impossibile modificare G-code: {}'
+  Failed to move to calibration position: 'Impossibile spostarsi nella posizione di calibrazione'
   Failed to open history: Apertura cronologia fallita
   Failed to open history list: Apertura lista cronologia fallita
   Failed to open temperature graph: Impossibile aprire grafico temperature
@@ -1339,6 +1341,7 @@ translations:
   'Failed to send command: {}': 'Impossibile inviare comando: {}'
   Failed to send print data: Impossibile inviare i dati di stampa
   Failed to send status request: Impossibile inviare la richiesta di stato
+  Failed to set Z-offset: 'Impossibile impostare l''offset Z'
   Failed to set active spool: Impostazione bobina attiva fallita
   'Failed to set flow rate: {}': 'Impossibile impostare flusso: {}'
   'Failed to set pressure advance: {}': 'Impossibile impostare il Pressure Advance: {}'
@@ -1346,6 +1349,8 @@ translations:
   'Failed to set temperature: {}': 'Impossibile impostare temperatura: {}'
   'Failed to set {} temp: {}': 'Impossibile impostare temp. {}: {}'
   Failed to show confirmation dialog: Impossibile mostrare dialogo di conferma
+  Failed to start Z offset calibration: 'Impossibile avviare la calibrazione dell''offset Z'
+  Failed to start bed heating: 'Impossibile avviare il riscaldamento del piatto'
   'Failed to start installer: ': 'Impossibile avviare l''installer: '
   'Failed to start print: {}': 'Impossibile avviare stampa: {}'
   'Failed to start uninstaller: ': 'Impossibile avviare il programma di disinstallazione: '
@@ -3287,6 +3292,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Solo istantanea
   Soft: Morbido
+  Soft filament is never unloaded: "Il filamento morbido non viene mai scaricato"
   Software Updates: Aggiornamenti software
   Some filaments don't match the slicer's intent.: Alcuni filamenti non corrispondono
     alle intenzioni dello slicer.

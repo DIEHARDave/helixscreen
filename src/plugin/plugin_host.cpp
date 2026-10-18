@@ -141,6 +141,13 @@ const char* plugin_status_name(PluginStatus s) {
 
 PluginHost::PluginHost(Deps deps) : deps_(std::move(deps)) {
     g_live_host = this;
+    layout_hook_ = theme_manager_add_layout_refresh_hook(
+        [this](lv_display_t* display) { refresh_layout_constants(display); });
+}
+
+void PluginHost::refresh_layout_constants(lv_display_t* display) {
+    for (const auto& [id, l] : loaded_)
+        register_plugin_consts(l.consts, display);
 }
 
 PluginHost* PluginHost::live() {
@@ -148,6 +155,7 @@ PluginHost* PluginHost::live() {
 }
 
 PluginHost::~PluginHost() {
+    theme_manager_remove_layout_refresh_hook(layout_hook_);
     unload_all();
     guard_.invalidate();
     if (g_live_host == this)
@@ -370,9 +378,20 @@ bool PluginHost::load(PluginInfo& info) {
         }
     }
 
+    // Constants resolve when a component is created, so they are in place before
+    // any of the plugin's components is registered.
+    PluginConsts consts = collect_plugin_consts(buffers);
+    if (auto errors = missing_tier_errors(consts.px); !errors.empty()) {
+        info.status = PluginStatus::Invalid;
+        info.reason = errors.front();
+        return false;
+    }
+    register_plugin_consts(consts, lv_display_get_default());
+
     auto [it, inserted] = loaded_.try_emplace(id);
     Loaded& l = it->second;
     l.gen = next_load_gen_++;
+    l.consts = std::move(consts);
     for (size_t i = 0; i < xmls.size(); ++i) {
         if (lv_xml_register_component_from_data(stems[i].c_str(), buffers[i].c_str()) !=
             LV_RESULT_OK) {
@@ -411,14 +430,26 @@ bool PluginHost::load(PluginInfo& info) {
                 screen->show_setting(key, value);
         }
     };
-    l.ui.open = [this, id](const std::string& component, std::function<void()> on_closed,
+    l.ui.open = [this, id](const std::string& component, PluginUi::Callbacks cb,
                            const PluginUi::Attrs& attrs) {
-        return overlays_.open(id, component, std::move(on_closed), attrs);
+        return surfaces_.open_overlay(id, component, std::move(cb), attrs);
+    };
+    l.ui.dialog = [this, id](const std::string& component, PluginUi::Callbacks cb,
+                             const PluginUi::Attrs& attrs) {
+        return surfaces_.open_dialog(id, component, std::move(cb), attrs);
     };
     l.ui.open_count = [this](const std::string& plugin_id) {
-        return overlays_.open_count(plugin_id);
+        return surfaces_.overlay_count(plugin_id);
     };
-    l.ui.close = [this](int handle) { overlays_.close(handle); };
+    l.ui.dialog_count = [this](const std::string& plugin_id) {
+        return surfaces_.dialog_count(plugin_id);
+    };
+    l.ui.close = [this](int handle) { surfaces_.close(handle); };
+    l.ui.is_open = [this](int handle) { return surfaces_.is_open(handle); };
+    l.ui.queue_confirm = [this, id](std::function<bool()> present,
+                                    std::function<void()> cancelled) {
+        surfaces_.queue_confirm(id, std::move(present), std::move(cancelled));
+    };
     l.ctx->ui = &l.ui;
     register_plugin_translations(root);
     for (Installer install :
@@ -486,6 +517,7 @@ void PluginHost::unload(const std::string& id) {
     }
     // Overlays go before the runtime does too, and silently: the plugin's on_close
     // hooks point at a Lua state that is about to close.
+    surfaces_.drop_plugin(id);
     overlays_.close_all(id);
     // Its generated settings screen leaves the same way, through navigation, so
     // the close callback that erases it runs on every path.

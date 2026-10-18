@@ -364,6 +364,7 @@ translations:
   'Bed mesh calibration failed: {}': '热床网格校准失败：{}'
   Bed mesh operation timed out: 热床网格操作超时
   Bed mesh...: 热床网格...
+  Bed size unknown: '热床尺寸未知'
   Bed tab moves lift to this height first: 热床标签页的移动会先抬升到此高度
   Bed target set to {}°C: 热床目标已设为 {}°C
   Bed temp must be 0-%d°C: 热床温度必须为 0-%d°C
@@ -1220,6 +1221,7 @@ translations:
   Failed to load profile: 加载配置文件失败
   Failed to load spools: 加载料盘失败
   'Failed to modify G-code: {}': '修改 G-code 失败: {}'
+  Failed to move to calibration position: '无法移动到校准位置'
   Failed to open history: 打开历史记录失败
   Failed to open history list: 打开历史列表失败
   Failed to open temperature graph: 打开温度图表失败
@@ -1254,6 +1256,7 @@ translations:
   'Failed to send command: {}': '发送命令失败: {}'
   Failed to send print data: 发送打印数据失败
   Failed to send status request: 发送状态请求失败
+  Failed to set Z-offset: '无法设置 Z 偏移'
   Failed to set active spool: 设置活动料盘失败
   'Failed to set flow rate: {}': '设置流量失败: {}'
   'Failed to set pressure advance: {}': '设置压力提前失败: {}'
@@ -1261,6 +1264,8 @@ translations:
   'Failed to set temperature: {}': '设置温度失败: {}'
   'Failed to set {} temp: {}': '设置 {} 温度失败: {}'
   Failed to show confirmation dialog: 显示确认对话框失败
+  Failed to start Z offset calibration: '无法开始 Z 偏移校准'
+  Failed to start bed heating: '无法开始加热热床'
   'Failed to start installer: ': '启动安装程序失败: '
   'Failed to start print: {}': '开始打印失败: {}'
   'Failed to start uninstaller: ': '启动卸载程序失败: '
@@ -3087,6 +3092,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: 仅快照
   Soft: 柔和
+  Soft filament is never unloaded: "软性耗材不会卸载"
   Software Updates: 软件更新
   Some filaments don't match the slicer's intent.: 部分耗材与切片软件的意图不符。
   'Some mapped slots are short on filament:': '部分已映射槽位耗材不足：'

@@ -16,6 +16,8 @@
   <translation tag="Start the calibration print" de="Kalibrierungsdruck starten"/>
   <translation tag="Printing..." de="Druckt..."/>
   <translation tag="Which one is best?" de="Welches ist am besten?"/>
+  <translation tag="Pick result" de="Ergebnis wählen"/>
+  <translation tag="Use this" de="Dieses verwenden"/>
   <translation tag="sent to the companion" de="an den Begleitprozess gesendet"/>
   <translation tag="(no companion URL set)" de="(keine Begleitprozess-URL gesetzt)"/>
   <translation tag="print cancelled" de="Druck abgebrochen"/>

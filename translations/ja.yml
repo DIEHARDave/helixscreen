@@ -365,6 +365,7 @@ translations:
   'Bed mesh calibration failed: {}': 'ベッドメッシュのキャリブレーションに失敗しました: {}'
   Bed mesh operation timed out: ベッドメッシュ操作がタイムアウトしました
   Bed mesh...: ベッドメッシュ...
+  Bed size unknown: 'ベッドサイズが不明です'
   Bed tab moves lift to this height first: ベッドタブの移動はまずこの高さまで上昇します
   Bed target set to {}°C: ベッド目標温度を {}°C に設定しました
   Bed temp must be 0-%d°C: ベッド温度は 0〜%d°C にしてください
@@ -1224,6 +1225,7 @@ translations:
   Failed to load profile: プロファイルの読み込みに失敗しました
   Failed to load spools: スプールの読み込みに失敗しました
   'Failed to modify G-code: {}': 'G-code の変更に失敗しました: {}'
+  Failed to move to calibration position: 'キャリブレーション位置へ移動できませんでした'
   Failed to open history: 履歴を開けませんでした
   Failed to open history list: 履歴リストを開けませんでした
   Failed to open temperature graph: 温度グラフを開けませんでした
@@ -1258,6 +1260,7 @@ translations:
   'Failed to send command: {}': 'コマンドの送信に失敗しました: {}'
   Failed to send print data: 印刷データの送信に失敗しました
   Failed to send status request: ステータス要求の送信に失敗しました
+  Failed to set Z-offset: 'Zオフセットを設定できませんでした'
   Failed to set active spool: アクティブスプールの設定に失敗しました
   'Failed to set flow rate: {}': 'フロー率の設定に失敗しました: {}'
   'Failed to set pressure advance: {}': 'Pressure Advanceの設定に失敗しました: {}'
@@ -1265,6 +1268,8 @@ translations:
   'Failed to set temperature: {}': '温度の設定に失敗しました: {}'
   'Failed to set {} temp: {}': '{} 温度の設定に失敗しました: {}'
   Failed to show confirmation dialog: 確認ダイアログの表示に失敗しました
+  Failed to start Z offset calibration: 'Zオフセットのキャリブレーションを開始できませんでした'
+  Failed to start bed heating: 'ベッドの加熱を開始できませんでした'
   'Failed to start installer: ': 'インストーラーの起動に失敗しました: '
   'Failed to start print: {}': '印刷の開始に失敗しました: {}'
   'Failed to start uninstaller: ': 'アンインストーラーの起動に失敗しました: '
@@ -3096,6 +3101,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: スナップショットのみ
   Soft: ソフト
+  Soft filament is never unloaded: "ソフトフィラメントは排出されません"
   Software Updates: ソフトウェア更新
   Some filaments don't match the slicer's intent.: 一部のフィラメントがスライサーの意図と一致しません。
   'Some mapped slots are short on filament:': '一部の割り当て済みスロットのフィラメントが不足しています:'
