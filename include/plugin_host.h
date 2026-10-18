@@ -9,6 +9,7 @@
 #include "plugin_backend.h"
 #include "plugin_consts.h"
 #include "plugin_manifest.h"
+#include "plugin_menu.h"
 #include "plugin_overlay_host.h"
 #include "plugin_permissions.h"
 #include "plugin_presenter.h"
@@ -118,6 +119,14 @@ class PluginHost {
     PluginSettingsOverlay* settings_screen(const std::string& id);
     /// True when an open settings screen owns the row binding at `ud`.
     bool owns_row_binding(const void* ud);
+
+    /// plugin_menu::any_declared over the loaded, unfaulted plugins.
+    bool menu_declared(MenuKind kind, std::string_view plugin_id = {}) const;
+    /// plugin_menu::resolve: runs each item's check, applies plugin_menu::row_cap.
+    std::vector<plugin_menu::Entry> resolve_menu(MenuKind kind, const json& context,
+                                                 std::string_view only_plugin = {});
+    /// plugin_menu::activate: runs the item's handler when `e.gen` is still loaded.
+    void activate_menu(const plugin_menu::Entry& e, const json& context);
 
     /// The body of the global `plugin_event` XML callback.
     void dispatch_event(std::string_view user_data);

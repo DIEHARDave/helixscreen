@@ -111,6 +111,8 @@ src/led/led_auto_state.cpp
 src/led/led_controller.cpp
 src/led/led_devices.cpp
 src/led/led_device_page.cpp
+# The app menus that take plugin items call it; with plugins compiled out it answers empty.
+src/plugin/plugin_menu.cpp
 src/print/active_print_media_manager.cpp
 src/print/crc32.cpp
 src/print/filament_sensor_manager.cpp
