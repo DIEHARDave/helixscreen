@@ -92,6 +92,10 @@
     <px name="ams_edit_color_col_w_micro" value="132"/>
     <px name="ams_edit_color_col_w_tiny" value="148"/>
     <px name="ams_edit_color_col_w_small" value="160"/>
+    <!-- The split column exists only at the micro class; the taller classes
+         stack the grid full-width and never read this token. -->
+    <px name="ams_edit_color_col_w_medium" value="#ams_edit_color_col_w_small"/>
+    <px name="ams_edit_color_col_w_large" value="#ams_edit_color_col_w_small"/>
   </consts>
   <view name="ams_edit_overlay"
         extends="overlay_panel" title="Edit Spool" title_subject="ams_edit_title" hide_action_button="false"

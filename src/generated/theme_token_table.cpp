@@ -71,6 +71,8 @@ const TokenEntry k_token_table[] = {
     {"px", "ams_edit_color_col_w_micro", "132"},
     {"px", "ams_edit_color_col_w_tiny", "148"},
     {"px", "ams_edit_color_col_w_small", "160"},
+    {"px", "ams_edit_color_col_w_medium", "#ams_edit_color_col_w_small"},
+    {"px", "ams_edit_color_col_w_large", "#ams_edit_color_col_w_small"},
     {"px", "ams_right_col_w_micro", "145"},
     {"px", "ams_right_col_w_tiny", "145"},
     {"px", "ams_right_col_w_small", "200"},
