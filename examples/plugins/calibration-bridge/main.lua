@@ -1,8 +1,9 @@
 -- Calibration Bridge: run slicer-side filament calibrations at the printer.
 -- A companion (an OrcaSlicer plugin) posts wizard context through Moonraker
 -- agent events; the screen starts the pre-sliced print, asks which result is
--- best, and posts the answer back. Overlay-only: no home tile, the companion
--- event is the front door and the settings action row is the manual one.
+-- best, and posts the answer back. No home tile: an overlay holds the flow, a
+-- dialog asks the question when the print completes, the companion event is
+-- the front door and the settings action row is the manual one.
 --
 -- Contract (the README is the spec):
 --   event helixcal.available  {wizard, filament, printer, nozzle_mm, current,
@@ -111,8 +112,9 @@ end
 -- companion receives.
 local cal = nil
 local overlay_handle = nil
-local shown_opts = nil -- the dropdown options the showing overlay was opened with
-local reopen_pending = false
+local result_handle = nil
+local result_opts = nil -- the dropdown options the result dialog was opened with
+local result_reopen = false
 local start_inflight = false
 local cancel_inflight = false
 
@@ -144,8 +146,6 @@ local function refresh_ctx()
     ctx_current:set(t("Profile") .. ": " .. cal.fmt:format(cal.current))
 end
 
-local show_ask
-
 -- The dropdown's newline-separated labels, from the same formatter that
 -- renders the posted value.
 local function ask_options()
@@ -156,42 +156,68 @@ local function ask_options()
     return table.concat(labels, "\n")
 end
 
--- The overlay's dropdown options are fixed when it opens, so new choices need
--- a new overlay. Closing is asynchronous: the old one is gone once its
--- on_close runs, and only then can the new one open.
-local function on_ask_closed()
-    overlay_handle = nil
-    shown_opts = nil
-    if reopen_pending then
-        reopen_pending = false
-        if cal then
-            show_ask()
+local function open_ask()
+    if not overlay_handle then
+        overlay_handle = helix.ui.overlay("calibration-bridge__ask", {
+            on_close = function()
+                overlay_handle = nil
+            end,
+        })
+    end
+end
+
+local show_result
+
+-- The dialog's dropdown options are fixed when it opens, so new choices need a
+-- new dialog. Closing is asynchronous: the old one is gone once its on_close
+-- runs, and only then can the new one open. A dismissal ("user") leaves the
+-- question open; the overlay's Pick result button asks it again.
+local function on_result_closed(how)
+    result_handle = nil
+    result_opts = nil
+    if result_reopen then
+        result_reopen = false
+        if cal and state:get() == 3 then
+            show_result()
         end
     end
 end
 
-function show_ask()
-    shown_opts = ask_options()
-    overlay_handle = helix.ui.overlay("calibration-bridge__ask", {
-        opts = shown_opts,
-        on_close = on_ask_closed,
+function show_result()
+    result_opts = ask_options()
+    result_handle = helix.ui.dialog("calibration-bridge__result", {
+        opts = result_opts,
+        on_close = on_result_closed,
     })
 end
 
-local function open_ask()
-    if not overlay_handle then
-        show_ask()
+-- Opens the question, or reopens it with new choices. The dialog waits behind
+-- any app dialog showing (the print-complete one, for instance).
+local function open_result()
+    if not cal or state:get() ~= 3 then
         return
     end
-    if ask_options() ~= shown_opts and not reopen_pending then
-        reopen_pending = true
-        overlay_handle.close()
+    if not result_handle then
+        show_result()
+        return
+    end
+    if ask_options() ~= result_opts and not result_reopen then
+        result_reopen = true
+        result_handle.close()
+    end
+end
+
+-- Withdraws the question whether it is showing or still waiting.
+local function close_result()
+    result_reopen = false
+    if result_handle then
+        result_handle.close()
     end
 end
 
 local function cancel_cal()
+    close_result()
     cal = nil
-    reopen_pending = false
     set_state(0)
     refresh_ctx()
     choice_idx:set(0)
@@ -315,7 +341,7 @@ local function on_print_state(v)
     if v == "complete" then
         set_state(3)
         if helix.settings.get("auto_ask") ~= false then
-            open_ask()
+            open_result()
         end
     else
         set_state(1)
@@ -380,7 +406,17 @@ helix.ui.on("accept", function()
     local value = cal.choices[i + 1]
     result_value:set(cal.fmt:format(value))
     set_state(4)
+    close_result()
     post_result(value)
+end)
+
+helix.ui.on("open_result", function()
+    open_result()
+end)
+
+-- "Later" closes the question and keeps it open: Pick result asks again.
+helix.ui.on("later", function()
+    close_result()
 end)
 
 -- Stops the print the calibration started; the calibration resets only once
