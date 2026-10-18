@@ -104,6 +104,13 @@ std::vector<std::string> hoist_recents(const std::vector<std::string>& base,
     return out;
 }
 
+/// The option a dropdown's value_changed event picked. The dropdowns' event_cb
+/// carries no user_data: the widget's own selection is the index.
+int dropdown_index(lv_event_t* e) {
+    lv_obj_t* dd = lv_event_get_target_obj(e);
+    return dd ? static_cast<int>(lv_dropdown_get_selected(dd)) : -1;
+}
+
 } // namespace
 
 // ============================================================================
@@ -2011,23 +2018,19 @@ void AmsEditOverlay::register_callbacks() {
          [](lv_event_t*) { get_ams_edit_overlay().handle_add_to_spoolman(); }},
         {"ams_edit_material_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_option_selected(
-                 0, helix::ui::event_user_int(e).value_or(-1));
+             get_ams_edit_overlay().handle_option_selected(0, dropdown_index(e));
          }},
         {"ams_edit_variant_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_option_selected(
-                 1, helix::ui::event_user_int(e).value_or(-1));
+             get_ams_edit_overlay().handle_option_selected(1, dropdown_index(e));
          }},
         {"ams_edit_brand_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_option_selected(
-                 2, helix::ui::event_user_int(e).value_or(-1));
+             get_ams_edit_overlay().handle_option_selected(2, dropdown_index(e));
          }},
         {"ams_edit_product_dd_cb",
          [](lv_event_t* e) {
-             get_ams_edit_overlay().handle_option_selected(
-                 3, helix::ui::event_user_int(e).value_or(-1));
+             get_ams_edit_overlay().handle_option_selected(3, dropdown_index(e));
          }},
         {"ams_edit_print_label_cb",
          [](lv_event_t*) {

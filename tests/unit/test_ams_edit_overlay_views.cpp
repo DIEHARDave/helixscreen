@@ -100,8 +100,28 @@ class AmsEditOverlayViewTestAccess {
     void call_switch_to_editor() {
         overlay_.set_view(AmsEditOverlay::VIEW_EDITOR);
     }
-    void call_handle_option_selected(int row, int index) {
-        overlay_.handle_option_selected(row, index);
+    /// Pick @p option in the named dropdown the way a touch does: set the
+    /// widget's selection and send it value_changed, so the XML-registered
+    /// callback runs. False when the option is not in the list.
+    bool pick_dropdown(const char* name, const std::string& option) {
+        lv_obj_t* dd = overlay_.find_widget(name);
+        REQUIRE(dd != nullptr);
+        const std::string options = lv_dropdown_get_options(dd);
+        int index = 0;
+        size_t at = 0;
+        while (true) {
+            const size_t nl = options.find('\n', at);
+            if (options.substr(at, nl == std::string::npos ? nl : nl - at) == option) {
+                lv_dropdown_set_selected(dd, static_cast<uint32_t>(index));
+                lv_obj_send_event(dd, LV_EVENT_VALUE_CHANGED, nullptr);
+                return true;
+            }
+            if (nl == std::string::npos) {
+                return false;
+            }
+            at = nl + 1;
+            ++index;
+        }
     }
     AmsEditOverlay::SpoolEditSelection sel() {
         return overlay_.sel_;
@@ -1762,6 +1782,65 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     close_editor_overlay();
 }
 
+namespace {
+/// The option list's entries, in order.
+std::vector<std::string> split_options(const std::string& options) {
+    std::vector<std::string> out;
+    size_t at = 0;
+    while (at <= options.size()) {
+        const size_t nl = options.find('\n', at);
+        out.push_back(options.substr(at, nl == std::string::npos ? nl : nl - at));
+        if (nl == std::string::npos) {
+            break;
+        }
+        at = nl + 1;
+    }
+    return out;
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "every identity dropdown stages its pick through value_changed",
+                 "[ams_edit_overlay][dropdown][callback]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    REQUIRE(access.save_disabled() == 1);
+
+    // Material, through the stacked layout's dropdown.
+    REQUIRE(access.pick_dropdown("dropdown_material", "PLA"));
+    process_lvgl(5);
+    CHECK(access.sel().family == "PLA");
+    CHECK(access.save_disabled() == 0);
+
+    // Variant, through the split layout's twin: both layouts are wired.
+    const auto variants = split_options(access.dropdown_options("dropdown_variant_split"));
+    REQUIRE(variants.size() > 1);
+    REQUIRE(access.pick_dropdown("dropdown_variant_split", variants[1]));
+    process_lvgl(5);
+    CHECK(access.sel().variant == variants[1]);
+
+    // Brand: the first maker after Generic, which reveals the product row.
+    const auto brands = split_options(access.dropdown_options("dropdown_brand"));
+    REQUIRE(brands.size() > 2);
+    REQUIRE(brands[0] == "Generic");
+    REQUIRE(access.pick_dropdown("dropdown_brand", brands[1]));
+    process_lvgl(5);
+    CHECK(access.sel().brand == brands[1]);
+
+    // Product: any line that brand makes for the family.
+    const auto products = split_options(access.dropdown_options("dropdown_product"));
+    if (!products.empty() && !products[0].empty()) {
+        REQUIRE(access.pick_dropdown("dropdown_product", products[0]));
+        process_lvgl(5);
+        CHECK_FALSE(access.sel().product_id.empty());
+    }
+
+    close_editor_overlay();
+}
+
 TEST_CASE_METHOD(LVGLUITestFixture, "unknown material shows as its own selected family chip",
                  "[ams_edit_overlay][dropdown]") {
     auto& overlay = get_ams_edit_overlay();
@@ -1903,24 +1982,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a dropdown pick refreshes the temperature l
     // follow the pick immediately, not only after Save.
     AmsEditOverlay::SpoolEditSelection sel = access.sel();
     REQUIRE(sel.family == "PETG");
-    const std::string materials = access.dropdown_options("dropdown_material");
-    int pla_index = -1;
-    int index = 0;
-    for (size_t at = 0; at <= materials.size();) {
-        const size_t nl = materials.find('\n', at);
-        const std::string option = materials.substr(at, nl == std::string::npos ? nl : nl - at);
-        if (option == "PLA") {
-            pla_index = index;
-            break;
-        }
-        if (nl == std::string::npos) {
-            break;
-        }
-        at = nl + 1;
-        ++index;
-    }
-    REQUIRE(pla_index >= 0);
-    access.call_handle_option_selected(0, pla_index);
+    REQUIRE(access.pick_dropdown("dropdown_material", "PLA"));
     UpdateQueue::instance().drain();
     process_lvgl(10);
     CHECK(access.sel().family == "PLA");
@@ -2130,24 +2192,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a linked slot's family change refreshes the
 
     // Move the family to PLA through the dropdown; PLA's cooler range must
     // replace ASA's immediately.
-    const std::string materials = access.dropdown_options("dropdown_material");
-    int pla_index = -1;
-    int index = 0;
-    for (size_t at = 0; at <= materials.size();) {
-        const size_t nl = materials.find('\n', at);
-        const std::string option = materials.substr(at, nl == std::string::npos ? nl : nl - at);
-        if (option == "PLA") {
-            pla_index = index;
-            break;
-        }
-        if (nl == std::string::npos) {
-            break;
-        }
-        at = nl + 1;
-        ++index;
-    }
-    REQUIRE(pla_index >= 0);
-    access.call_handle_option_selected(0, pla_index);
+    REQUIRE(access.pick_dropdown("dropdown_material", "PLA"));
     UpdateQueue::instance().drain();
     process_lvgl(10);
     const std::string pla_range = lv_subject_get_string(temps);
