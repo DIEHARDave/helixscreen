@@ -244,6 +244,36 @@ void AmsBackendMultiAce::rebuild_units_locked() {
                         slot.status = SlotStatus::LOADED;
                     }
                 }
+
+                // The engine's own table is the bay's machine reading, the role
+                // a head's RFID tag plays: filed whole (an absent bay entry
+                // states nothing, retracting what an earlier frame said), then
+                // outranked by the lane's resolution, where a user's edit - and,
+                // after a restart, its stored record - declares what the bay
+                // holds. Temps no engine frame carries come from the stored
+                // record alone.
+                helix::ams::Observation engine(helix::ams::ObservationSource::VendorCache);
+                if (bay != u.bays.end()) {
+                    if (!bay->material.empty()) {
+                        engine.material = bay->material;
+                    }
+                    if (!bay->brand.empty()) {
+                        engine.brand = bay->brand;
+                    }
+                    engine.color_rgb = bay->color;
+                }
+                helix::ams::ingest(lane_id(slot.global_index), engine);
+                apply_resolved_lane(slot, slot.global_index);
+                if (const auto ovr = overrides_.find(slot.global_index); ovr != overrides_.end()) {
+                    const ams::ResolvedTemps temps = ams::resolved_temps(ovr->second);
+                    if (temps.nozzle_temp > 0) {
+                        slot.nozzle_temp_min = temps.nozzle_temp;
+                        slot.nozzle_temp_max = temps.nozzle_temp;
+                    }
+                    if (temps.bed_temp > 0) {
+                        slot.bed_temp = temps.bed_temp;
+                    }
+                }
                 unit.slots.push_back(std::move(slot));
             }
             total = std::max(total, unit.first_slot_global_index + unit.slot_count);
@@ -267,11 +297,89 @@ bool AmsBackendMultiAce::preload_finish_ends_unload_locked(int head) const {
     return ace_fed_locked(head);
 }
 
-SlotInfo* AmsBackendMultiAce::cached_slot_locked(int slot_index) {
-    if (slot_index >= kHeads) {
-        return nullptr;
+// ============================================================================
+// Slot identity
+// ============================================================================
+
+AmsError AmsBackendMultiAce::apply_user_edit(int slot_index, const SlotInfo& info,
+                                             const helix::ams::Observation& declared) {
+    if (!multiace::bay_of(slot_index)) {
+        return AmsBackendSnapmaker::apply_user_edit(slot_index, info, declared);
     }
-    return AmsBackendSnapmaker::cached_slot_locked(slot_index);
+    if (auto err = validate_slot_index(slot_index); err.result != AmsResult::SUCCESS) {
+        return err;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        SlotInfo* slot = system_info_.get_slot_global(slot_index);
+        if (!slot) {
+            return AmsErrorHelper::invalid_slot(lane_noun(), slot_index,
+                                                system_info_.total_slots - 1);
+        }
+        slot->assign_filament_fields(info);
+        // The staged record survives the restart; the lane's declaration, filed
+        // by commit_user_edit() once this returns, is what rebuild_units_locked
+        // lays back over every engine frame.
+        helix::ams::stage_user_override(overrides_, slot_index, info, declared);
+    }
+
+    if (override_store_) {
+        helix::ams::persist_staged_override(override_store_.get(), mutex_, overrides_, slot_index,
+                                            backend_log_tag(), "Override");
+    }
+
+    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    return AmsErrorHelper::success();
+}
+
+AmsError AmsBackendMultiAce::sync_external_identity(int slot_index, const SlotInfo& info) {
+    if (!multiace::bay_of(slot_index)) {
+        return AmsBackendSnapmaker::sync_external_identity(slot_index, info);
+    }
+    if (auto err = validate_slot_index(slot_index); err.result != AmsResult::SUCCESS) {
+        return err;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        SlotInfo* slot = system_info_.get_slot_global(slot_index);
+        if (!slot) {
+            return AmsErrorHelper::invalid_slot(lane_noun(), slot_index,
+                                                system_info_.total_slots - 1);
+        }
+        // overrides_ is left alone and nothing reaches the engine: the next
+        // frame restates its own table, which outranks a synced value.
+        slot->assign_filament_fields(info);
+    }
+
+    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    return AmsErrorHelper::success();
+}
+
+void AmsBackendMultiAce::clear_slot_override(int slot_index) {
+    if (!multiace::bay_of(slot_index)) {
+        AmsBackendSnapmaker::clear_slot_override(slot_index);
+        return;
+    }
+    if (auto err = validate_slot_index(slot_index); !err.success()) {
+        spdlog::warn("{} clear_slot_override: invalid slot {}", backend_log_tag(), slot_index);
+        return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        SlotInfo* slot = system_info_.get_slot_global(slot_index);
+        if (!slot) {
+            spdlog::warn("{} clear_slot_override: no slot entry for index {}", backend_log_tag(),
+                         slot_index);
+            return;
+        }
+        spdlog::info("{} Slot {} override cleared by user request", backend_log_tag(), slot_index);
+        clear_override_locked(slot_index, slot);
+    }
+
+    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
 }
 
 // ============================================================================
@@ -349,6 +457,48 @@ bool AmsBackendMultiAce::needs_unload_before_load(const AmsSystemInfo& info,
         return false;
     }
     return AmsBackendSnapmaker::needs_unload_before_load(info, target_slot);
+}
+
+std::optional<int> AmsBackendMultiAce::upstream_slot(int slot_index) const {
+    if (slot_index < 0 || slot_index >= kHeads) {
+        return std::nullopt;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!ace_fed_locked(slot_index)) {
+        return std::nullopt;
+    }
+    const auto bay = routed_bay_locked(slot_index);
+    if (!bay) {
+        return std::nullopt;
+    }
+    return multiace::bay_global(bay->first, bay->second);
+}
+
+int AmsBackendMultiAce::spool_display_number(int slot_index) const {
+    if (slot_index < 0) {
+        return slot_index + 1;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    // A routed head aliases its bay; every other lane (bays, unrouted heads)
+    // numbers in global order, so the numbers on spool-owning lanes run 1..N.
+    const auto aliased = [this](int head) {
+        return head < kHeads && ace_fed_locked(head) && routed_bay_locked(head).has_value();
+    };
+    int target = slot_index;
+    if (aliased(slot_index)) {
+        const auto bay = *routed_bay_locked(slot_index);
+        target = multiace::bay_global(bay.first, bay.second);
+    }
+    int n = 0;
+    for (int gi = 0; gi < system_info_.total_slots; ++gi) {
+        if (!aliased(gi)) {
+            ++n;
+        }
+        if (gi == target) {
+            break;
+        }
+    }
+    return n;
 }
 
 bool AmsBackendMultiAce::can_unload_from_toolhead(int slot_index) const {

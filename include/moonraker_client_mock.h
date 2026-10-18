@@ -2293,6 +2293,8 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// present-but-partial channel object resets the fields the backend's
     /// delta parse would otherwise carry forward.
     void publish_u1_channel_frame(int ext);
+    /// One filament_feed side's channels object, both of its channels whole.
+    [[nodiscard]] nlohmann::json u1_feed_side_json(int ext) const;
 
     // --- Standalone IFS module mock -----------------------------------------
     // HELIX_MOCK_AMS=ifs-module: pushes the module's objects (ifs /
@@ -2311,6 +2313,32 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// Apply one IFS-module gcode command token. @return true when the token
     /// was one of ours (the caller then stops walking the generic chain).
     bool apply_ifs_module_gcode(const std::string& cmd, const std::string& gcode);
+
+    // --- multiACE mock hardware ----------------------------------------------
+    // HELIX_MOCK_AMS=multiace: pushes the U1's own objects plus a plain `ace`
+    // so real discovery builds the PRODUCTION AmsBackendMultiAce and runs it
+    // against the engine-shaped frames served here — try_create_mock()
+    // declines this value, the same rule as the MedusaHC / IFS-module / CFS
+    // modes. Pair with HELIX_MOCK_PRINTER=snapmaker_u1. HELIX_MOCK_MULTIACE_MODE
+    // picks head|multi and HELIX_MOCK_MULTIACE_UNITS the connected unit count
+    // (1-4); ACE_LOAD_HEAD / ACE_UNLOAD_HEAD answer by routing a head to its
+    // bay (or clearing it) and walking the head's channel_state the way
+    // multiACE's shadow filament_feed does.
+    /// Apply one ACE_* engine command. @return true when the line was one.
+    bool apply_multiace_gcode(const std::string& gcode);
+
+    /// Routed bay per head ((ace idx, bay), none when the head is unloaded).
+    std::array<std::pair<int, int>, 4> multiace_route_{{{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}}};
+    /// The engine's swap phase word, walked while a routed load runs.
+    std::string multiace_swap_phase_{"idle"};
+    /// HELIX_MOCK_MULTIACE_UNITS, read once at start (1-4).
+    int multiace_units_{1};
+    /// HELIX_MOCK_MULTIACE_MODE, read once at start ("head" | "multi").
+    std::string multiace_mode_{"head"};
+    /// Guards the fields above across the simulation and gcode threads.
+    mutable std::mutex multiace_mutex_;
+    /// Read the two HELIX_MOCK_MULTIACE_* knobs into the members (idempotent).
+    void read_multiace_knobs();
 
     // --- CFS mock (K1 stock dialect) ----------------------------------------
     // HELIX_MOCK_AMS=cfs: pushes the `box` object so real discovery sets
@@ -2368,6 +2396,12 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     [[nodiscard]] bool cfs_toolhead_filament_detected() const {
         return cfs_loaded_slot_.load() >= 0;
     }
+
+    // --- multiACE mock hardware (public: the frame builder is what the
+    // parity test reads, beside the sibling mock-hardware builders above). ---
+    bool is_mock_multiace() const;
+    /// The `ace` object frame, the engine's get_status() shape.
+    [[nodiscard]] nlohmann::json multiace_status_json() const;
 
     /// display_status.message as the mock publishes it now: the last M117 once one was
     /// sent (an empty one included), else the print-start chatter for the current phase,

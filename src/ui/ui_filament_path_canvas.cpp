@@ -808,6 +808,35 @@ void ui_filament_path_canvas_set_slot_mapped_tool(lv_obj_t* obj, int slot, int t
     }
 }
 
+// NAMESPACE_OK: the widget's C setter API, beside its siblings
+void ui_filament_path_canvas_set_slot_upstream(lv_obj_t* obj, int slot, const char* caption) {
+    auto* data = get_data(obj);
+    if (!data || slot < 0 || slot >= FilamentPathData::MAX_SLOTS)
+        return;
+    char buf[FilamentPathData::UPSTREAM_CAPTION_BYTES] = {};
+    if (caption) {
+        snprintf(buf, sizeof(buf), "%s", caption);
+    }
+    if (strcmp(data->slot_upstream_caption[slot], buf) != 0) {
+        memcpy(data->slot_upstream_caption[slot], buf, sizeof(buf));
+        layered_mark_dirty(obj);
+    }
+}
+
+// NAMESPACE_OK: the widget's C getter API, beside its siblings
+void ui_filament_path_canvas_get_slot_upstream(lv_obj_t* obj, int slot, char* out,
+                                               size_t out_size) {
+    if (out_size == 0) {
+        return;
+    }
+    out[0] = '\0';
+    auto* data = get_data(obj);
+    if (!data || slot < 0 || slot >= FilamentPathData::MAX_SLOTS) {
+        return;
+    }
+    snprintf(out, out_size, "%s", data->slot_upstream_caption[slot]);
+}
+
 // Declared in ui_filament_path_internal.h inside helix::ui::fpath; the
 // ui_filament_path_canvas_* entry points around it are deliberately global.
 namespace helix::ui::fpath {

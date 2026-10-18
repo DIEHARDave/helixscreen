@@ -83,6 +83,7 @@ struct AmsSlotData {
     ObserverGuard active_loaded_observer; ///< Per-slot active-loaded (single highlight source)
     ObserverGuard action_observer;
     ObserverGuard target_slot_observer;
+    ObserverGuard slots_version_observer; ///< Spool table renumber -> badge number
 
     // Lifetime tokens paired with the observers that bind per-backend subjects
     // (status, lane_state, material, name). Secondary-backend (index > 0) subjects
@@ -379,6 +380,25 @@ static void bind_drying_badge(AmsSlotData* data, lv_subject_t* subject) {
 // Helper functions for observer logic (called by lambdas and initial triggers)
 
 /**
+ * @brief Set the badge's number text: the lane's spool number, not its index.
+ *
+ * A lane sharing another lane's spool (a fed toolhead lane) wears the storage
+ * lane's number, so the two count one spool. Lanes that hold their own spool
+ * keep the 1-based global order. Re-read on status changes: routing changes
+ * arrive with them and the alias follows the routing.
+ */
+static void apply_badge_number(AmsSlotData* data) {
+    if (!data || !data->slot_badge)
+        return;
+    AmsBackend* backend = AmsState::instance().get_backend(data->backend_index);
+    const int number = backend ? backend->spool_display_number(data->slot_index)
+                               : helix::ui::lane_number(data->slot_index);
+    char badge_text[16];
+    snprintf(badge_text, sizeof(badge_text), "%d", number);
+    lv_label_set_text(data->slot_badge, badge_text);
+}
+
+/**
  * @brief Color the status badge from the per-slot status subject.
  *
  * The badge itself always shows (every physical gate stays numbered/visible);
@@ -413,6 +433,7 @@ static void apply_status_badge(AmsSlotData* data, int status_int) {
     }
     lv_obj_remove_flag(data->status_badge_bg, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_bg_color(data->status_badge_bg, badge_bg, LV_PART_MAIN);
+    apply_badge_number(data);
 
     // Status fills are accents, so the label starts from the palette text colour and
     // shifts toward its pole as 4:1 needs
@@ -783,12 +804,24 @@ static void setup_slot_observers(AmsSlotData* data) {
             state.get_subjects_lifetime());
     }
 
-    // Update slot badge with 1-based display number
-    if (data->slot_badge) {
-        char badge_text[16];
-        snprintf(badge_text, sizeof(badge_text), "%d", helix::ui::lane_number(data->slot_index));
-        lv_label_set_text(data->slot_badge, badge_text);
+    // Slots version observer: the badge number follows the whole spool table,
+    // not only this lane's own status. A routing change re-numbers lanes that
+    // had no status change of their own (a lane stops or starts sharing a
+    // spool, and every lane after it shifts), and every such sync bumps this
+    // subject.
+    if (lv_subject_t* version_subject = state.get_slots_version_subject()) {
+        data->slots_version_observer = observe<int>(
+            version_subject, obj,
+            [](lv_obj_t* o, int /*version*/) {
+                auto* d = get_slot_data(o);
+                if (d)
+                    apply_badge_number(d);
+            },
+            state.get_subjects_lifetime());
     }
+
+    // Update slot badge with its spool's display number
+    apply_badge_number(data);
 
     // Trigger initial updates from current subject values. lane_state applies
     // BEFORE material so the label rule reads a current classification on the

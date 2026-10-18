@@ -41,6 +41,16 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
 
     [[nodiscard]] PathSegment get_slot_filament_segment(int slot_index) const override;
 
+    /// The bay routed to an ACE-fed head is that head lane's spool: the head
+    /// shows the bay's filament, not a spool of its own. nullopt everywhere
+    /// else, bays included (a bay is where its spool lives).
+    [[nodiscard]] std::optional<int> upstream_slot(int slot_index) const override;
+
+    /// Bays number the spools 1-based in global order; a routed head wears
+    /// its bay's number so the two lanes count one spool, and the numbers on
+    /// the lanes that hold their own spools stay consecutive.
+    [[nodiscard]] int spool_display_number(int slot_index) const override;
+
     /// A bay into a head holding another bay is not a swap for the screen to
     /// sequence: do_load_filament() sends the head's unload ahead of the load.
     [[nodiscard]] bool needs_unload_before_load(const AmsSystemInfo& info,
@@ -73,6 +83,17 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
     [[nodiscard]] std::optional<helix::ErrorEvent>
     classify_error(const std::string& raw_line, const helix::ClassifyContext& ctx) const override;
 
+    /// A bay edit lands on the bay's own SlotInfo and the shared override
+    /// store, keyed by the global slot index; nothing is written to the engine,
+    /// whose own spool table never sees the edit (phase 4). A head keeps the
+    /// base's path, which also writes the head's firmware record.
+    AmsError apply_user_edit(int slot_index, const SlotInfo& info,
+                             const helix::ams::Observation& declared) override;
+    AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+    /// The store, lane and SlotInfo halves of the same clear; a bay has no
+    /// head firmware record to drop and no tag product line to restate.
+    void clear_slot_override(int slot_index) override;
+
   protected:
     AmsError do_load_filament(int slot_index) override;
     AmsError do_unload_filament(int slot_index) override;
@@ -88,10 +109,6 @@ class AmsBackendMultiAce : public AmsBackendSnapmaker {
 
     /// The base frame parse, then the deferred bay load it may release.
     void handle_status(const nlohmann::json& status) override;
-
-    /// Bays are painted from each frame and have no lane records to repaint
-    /// from; a lane repaint would blank them.
-    SlotInfo* cached_slot_locked(int slot_index) override;
 
     const char* backend_log_tag() const override {
         return "[AMS multiACE]";

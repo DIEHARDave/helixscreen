@@ -791,6 +791,15 @@ static std::unique_ptr<AmsBackend> try_create_mock(IMoonrakerClient* mock_client
                      mode);
         return nullptr;
     }
+    // multiACE on a U1: mock hardware the same way. MoonrakerClientMock seeds
+    // the `ace` + `filament_detect` objects and the engine-shaped frames, and
+    // the production AmsBackendMultiAce runs against them (pair with
+    // HELIX_MOCK_PRINTER=snapmaker_u1).
+    if (mode == "multiace") {
+        spdlog::info("[AMS Backend] HELIX_MOCK_AMS=multiace selects mock hardware, not a mock "
+                     "backend - deferring to real discovery");
+        return nullptr;
+    }
     // Personas that model firmware HelixScreen talks to through a production
     // backend are mock hardware too: decline, and real discovery builds that
     // backend against the mock's objects. Decided from the header-only persona table: the
