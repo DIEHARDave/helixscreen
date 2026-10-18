@@ -1105,6 +1105,14 @@ TEST_CASE("matched belts open on Good Enough", "[belt][panel][tune]") {
         INFO(hidden);
         CHECK(lv_hidden(named(fx, hidden)));
     }
+    // The instruction reads in the matched colour on both heroes, not the path's.
+    const uint32_t success = lv_color_to_u32(theme_manager_get_color("success")) & 0xFFFFFF;
+    REQUIRE(success != (lv_color_to_u32(theme_manager_get_color("belt_path_b")) & 0xFFFFFF));
+    for (const char* label : {"bt_tune_instruction", "bt_tune_line_instruction"}) {
+        INFO(label);
+        CHECK((lv_color_to_u32(lv_obj_get_style_text_color(named(fx, label), LV_PART_MAIN)) &
+               0xFFFFFF) == success);
+    }
     // The gauge shows how close they are.
     CHECK(fx.state_int("bt_tune_has_gap") == 1);
     REQUIRE(fx.panel_session() != nullptr);
@@ -1121,7 +1129,8 @@ TEST_CASE("matched belts open on Good Enough", "[belt][panel][tune]") {
     // Calibrate Anyway: on to the calibration turn, nothing turned yet.
     fx.panel().handle_tune_clicked();
     REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ALREADY_MATCHED);
-    fx.panel().handle_tune_calibrate_anyway_clicked();
+    // Through the button's XML callback, as a tap does.
+    lv_obj_send_event(named(fx, "btn_tune_calibrate_anyway"), LV_EVENT_CLICKED, nullptr);
     CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
     const std::string instruction = fx.text("bt_tune_instruction");
     INFO("instruction: " << instruction);
@@ -1154,6 +1163,19 @@ TEST_CASE("Tune Belts waits for the printer's sweep range", "[belt][panel][tune]
     CHECK(fx.panel_session() == nullptr);
     fx.pump_ms(2000);
     CHECK(fx.mock().gcode_script_history().empty());
+}
+
+TEST_CASE("the settle's range query enables Tune Belts", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    // The entry query failed: Klipper's defaults stand in.
+    fx.panel_set_sweep_config(helix::calibration::ResonanceTesterConfig{});
+    REQUIRE(fx.state_int("bt_tune_range_known") == 0);
+    // Start's settle re-reads [resonance_tester], and the printer answers.
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    CHECK(fx.state_int("bt_tune_range_known") == 1);
+    CHECK_FALSE(lv_obj_has_state(named(fx, "btn_tune"), LV_STATE_DISABLED));
 }
 
 TEST_CASE("a failed range query keeps the range the printer reported", "[belt][panel][tune]") {
