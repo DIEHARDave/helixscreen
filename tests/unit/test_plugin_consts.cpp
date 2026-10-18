@@ -157,4 +157,22 @@ TEST_CASE_METHOD(LVGLUITestFixture, "refresh re-resolves plugin constants on a b
     lv_display_delete(small);
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture, "a theme layout refresh runs the registered hooks",
+                 "[plugin][consts][theme]") {
+    int calls = 0;
+    lv_display_t* seen = nullptr;
+    const int id = helix::theme_manager_add_layout_refresh_hook([&](lv_display_t* d) {
+        ++calls;
+        seen = d;
+    });
+    lv_display_t* display = lv_display_get_default();
+    theme_manager_refresh_layout_constants(display);
+    CHECK(calls == 1);
+    CHECK(seen == display);
+
+    helix::theme_manager_remove_layout_refresh_hook(id);
+    theme_manager_refresh_layout_constants(display);
+    CHECK(calls == 1);
+}
+
 #endif // HELIX_HAS_PLUGINS

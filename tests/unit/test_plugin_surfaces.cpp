@@ -204,6 +204,8 @@ TEST_CASE_METHOD(SurfacesFx, "a plugin dialog's primary button reaches the plugi
     lv_obj_t* ok = lv_obj_find_by_name(dialog, "widget-demo__ok");
     REQUIRE(ok != nullptr);
     CHECK(lv_obj_find_by_name(dialog, "btn_primary") == nullptr);
+    CHECK(lv_obj_find_by_name(dialog, "widget-demo__htitle") != nullptr);
+    CHECK(lv_obj_find_by_name(dialog, "header_title") == nullptr);
     lv_obj_send_event(ok, LV_EVENT_CLICKED, nullptr);
     settle();
     CHECK(events() == "pick:2");

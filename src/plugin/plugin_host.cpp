@@ -19,7 +19,6 @@
 #include "panel_widget_manager.h"
 #include "panel_widget_registry.h"
 #include "plugin_canvas.h"
-#include "plugin_consts.h"
 #include "plugin_settings_overlay.h"
 #include "plugin_xml_policy.h"
 #include "text_io.h"

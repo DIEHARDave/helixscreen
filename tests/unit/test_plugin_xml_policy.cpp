@@ -272,8 +272,8 @@ TEST_CASE("a missing or unowned *_name on dialog chrome is rejected", "[plugin][
     // Unowned.
     std::string unowned = kButtonRowNames;
     unowned.replace(unowned.find("ab__ok"), 6, "btn_ok");
-    CHECK_FALSE(
-        check_plugin_xml("ab", {}, view_with("<modal_button_row" + unowned + "/>")).empty());
+    CHECK(check_plugin_xml("ab", {}, view_with("<modal_button_row" + unowned + "/>"))
+              .find("primary_name=\"btn_ok\"") != std::string::npos);
 }
 
 TEST_CASE("a plugin's own component props ending in _name or _user_data are plain props",
