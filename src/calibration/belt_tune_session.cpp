@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 
 namespace helix::calibration {
@@ -133,11 +134,6 @@ float max_psd(const BeltCurve& curve) {
     return top;
 }
 
-/// The zone's looser path: the lower peak. `zone` is seen from PATH_A.
-BeltPath looser_path(const BeltTuneZone& zone) {
-    return zone.adj_hz <= zone.ref_hz ? BeltPath::PATH_A : BeltPath::PATH_B;
-}
-
 /// The value of the curve's bin nearest freq_hz; nullopt for an empty curve.
 std::optional<float> nearest_bin_value(const BeltCurve& curve, float freq_hz) {
     if (curve.empty()) {
@@ -148,10 +144,6 @@ std::optional<float> nearest_bin_value(const BeltCurve& curve, float freq_hz) {
             return std::abs(l.first - freq_hz) < std::abs(r.first - freq_hz);
         });
     return it->second;
-}
-
-float round_to_turn_step(float turns) {
-    return std::clamp(std::round(turns / TURN_STEP) * TURN_STEP, TURN_STEP, TURN_MAX);
 }
 
 } // namespace
@@ -303,60 +295,6 @@ std::optional<BeltPowerHint> zone_power_hint(const BeltCurve& a, const BeltCurve
     return h;
 }
 
-std::optional<BeltTuneZone> pick_tune_zone(const BeltComparison& cmp, BeltPath adjusted,
-                                           float band_min_hz, float band_max_hz,
-                                           const std::vector<float>& matched_zone_centres_hz) {
-    if (!cmp.valid) {
-        return std::nullopt;
-    }
-    const PeakCensus census(cmp);
-
-    const auto usable = [&](float a_hz, float b_hz) {
-        return std::abs(a_hz - b_hz) > MATCHED_MIN_HZ &&
-               !near_matched((a_hz + b_hz) / 2.0f, matched_zone_centres_hz);
-    };
-
-    // An unpaired tallest peak steers against the other path's nearest
-    // floor-eligible peak, but never across two unrelated modes.
-    if (const auto x = census.unpaired_tallest()) {
-        const auto& [peak, path] = *x;
-        const auto& others = path == BeltPath::PATH_A ? census.b : census.a;
-        const BeltPeak* partner = nullptr;
-        for (const auto& o : others) {
-            const float d = std::abs(o.freq_hz - peak.freq_hz);
-            if (o.amplitude >= census.floor && d <= ZONE_FALLBACK_MAX_HZ &&
-                (!partner || d < std::abs(partner->freq_hz - peak.freq_hz))) {
-                partner = &o;
-            }
-        }
-        if (partner) {
-            const float a_hz = path == BeltPath::PATH_A ? peak.freq_hz : partner->freq_hz;
-            const float b_hz = path == BeltPath::PATH_A ? partner->freq_hz : peak.freq_hz;
-            if (usable(a_hz, b_hz)) {
-                return make_zone(a_hz, b_hz, BeltZoneSource::TALLEST_UNPAIRED, adjusted,
-                                 band_min_hz, band_max_hz);
-            }
-        }
-    }
-
-    const BeltPeakPair* widest = nullptr;
-    for (const auto& pair : cmp.peaks.pairs) {
-        if (pair.a.amplitude < census.floor || pair.b.amplitude < census.floor ||
-            !usable(pair.a.freq_hz, pair.b.freq_hz)) {
-            continue;
-        }
-        if (!widest || std::abs(pair.a.freq_hz - pair.b.freq_hz) >
-                           std::abs(widest->a.freq_hz - widest->b.freq_hz)) {
-            widest = &pair;
-        }
-    }
-    if (!widest) {
-        return std::nullopt;
-    }
-    return make_zone(widest->a.freq_hz, widest->b.freq_hz, BeltZoneSource::PAIRED, adjusted,
-                     band_min_hz, band_max_hz);
-}
-
 std::optional<float> unexcited_floor_psd(const BeltCurve& curve, BeltSweepWindow swept,
                                          float band_min_hz, float band_max_hz) {
     std::vector<float> outside;
@@ -388,49 +326,6 @@ bool window_holds_peak(const BeltCurve& curve, BeltSweepWindow zone, BeltSweepWi
     return top > 0.0f && top >= PEAK_MIN_PROMINENCE * base;
 }
 
-std::optional<float> refine_peak_in_window(const BeltCurve& curve, BeltSweepWindow window,
-                                           std::optional<float> near_hz,
-                                           std::optional<float> floor_psd) {
-    const BeltCurve x = curve_in_band(curve, window.freq_start_hz, window.freq_end_hz);
-    const float top = max_psd(x);
-    std::vector<BeltPeak> peaks;
-    for (const auto& p : detect_belt_peaks(x, window.freq_start_hz, window.freq_end_hz)) {
-        if (p.amplitude >= NEAR_PEAK_MIN_FRACTION * top &&
-            (!floor_psd || p.amplitude >= PEAK_MIN_PROMINENCE * *floor_psd)) {
-            peaks.push_back(p);
-        }
-    }
-    if (peaks.empty()) {
-        return std::nullopt;
-    }
-    const auto chosen =
-        near_hz ? std::min_element(peaks.begin(), peaks.end(),
-                                   [n = *near_hz](const BeltPeak& l, const BeltPeak& r) {
-                                       return std::abs(l.freq_hz - n) < std::abs(r.freq_hz - n);
-                                   })
-                : std::max_element(peaks.begin(), peaks.end(),
-                                   [](const BeltPeak& l, const BeltPeak& r) {
-                                       return l.amplitude < r.amplitude;
-                                   });
-
-    // detect_belt_peaks copies bins, so the frequency matches exactly, and a
-    // peak is never a window edge bin, so both neighbours are in the window.
-    const auto it = std::find_if(x.begin(), x.end(),
-                                 [&](const auto& bin) { return bin.first == chosen->freq_hz; });
-    if (it == x.begin() || it == x.end() || std::next(it) == x.end()) {
-        return chosen->freq_hz;
-    }
-    const auto& [f0, y0] = *std::prev(it);
-    const auto& [f1, y1] = *it;
-    const auto& [f2, y2] = *std::next(it);
-    const float denom = y0 - 2.0f * y1 + y2;
-    if (std::abs(denom) < 1e-12f) {
-        return f1;
-    }
-    const float offset = std::clamp(0.5f * (y0 - y2) / denom, -0.5f, 0.5f);
-    return offset >= 0.0f ? f1 + offset * (f2 - f1) : f1 + offset * (f1 - f0);
-}
-
 float matched_tolerance_hz(const BeltCurve& curve) {
     if (curve.size() < 2) {
         return MATCHED_MIN_HZ;
@@ -444,45 +339,82 @@ float matched_tolerance_hz(const BeltCurve& curve) {
 // BeltTuneSession
 // ============================================================================
 
-BeltTuneSession::BeltTuneSession(const BeltCurve& a, const BeltCurve& b,
+namespace {
+
+/// A SCREW amount to the nearest TURN_STEP, within [min_turns, TURN_MAX].
+float clamp_turns(float turns, float min_turns) {
+    return std::clamp(std::round(turns / TURN_STEP) * TURN_STEP, min_turns, TURN_MAX);
+}
+
+} // namespace
+
+BeltTuneSession::BeltTuneSession(const BeltResponse& a, const BeltResponse& b,
                                  const BeltComparison& round0, float band_min_hz, float band_max_hz,
                                  BeltTensionerKind kind)
-    : a_(a), b_(b), round0_(round0), band_min_hz_(band_min_hz), band_max_hz_(band_max_hz),
-      kind_(kind), tolerance_hz_(std::max(matched_tolerance_hz(a), matched_tolerance_hz(b))),
-      shape_warning_(tallest_peak_unpaired(round0)) {
-    if (auto z = find_zone(matched_centres_hz_)) {
-        enter_zone(*z, looser_path(*z));
+    : a0_(a), b0_(b), a_full_(a), b_full_(b), band_min_hz_(band_min_hz), band_max_hz_(band_max_hz),
+      kind_(kind),
+      tolerance_hz_(std::max(matched_tolerance_hz(a.xyz), matched_tolerance_hz(b.xyz))),
+      shape_warning_(tallest_peak_unpaired(round0)),
+      candidates_(tune_zone_candidates(a, b, band_min_hz, band_max_hz)) {
+    if (candidates_.empty()) {
+        stage_ = BeltTuneStage::NO_ZONE;
+        spdlog::debug("[BeltTune] No zone candidates");
+        return;
     }
+    // The looser path by the strongest candidate's centroids is the one a
+    // calibration turn tightens.
+    const BeltTuneZone& strongest = candidates_.front().zone;
+    float a_hz = strongest.adj_hz;
+    float b_hz = strongest.ref_hz;
+    const auto ca = zone_centroid_hz(tuning_curve(a), strongest.window);
+    const auto cb = zone_centroid_hz(tuning_curve(b), strongest.window);
+    if (ca && cb) {
+        a_hz = *ca;
+        b_hz = *cb;
+    }
+    adjusted_ = a_hz <= b_hz ? BeltPath::PATH_A : BeltPath::PATH_B;
+    adj_hz_ = adjusted_ == BeltPath::PATH_A ? a_hz : b_hz;
+    ref_hz_ = adjusted_ == BeltPath::PATH_A ? b_hz : a_hz;
+    spdlog::debug("[BeltTune] {} candidates; strongest {:.1f}-{:.1f} Hz, A {:.2f} B {:.2f} Hz",
+                  candidates_.size(), strongest.window.freq_start_hz, strongest.window.freq_end_hz,
+                  a_hz, b_hz);
+
+    if (std::abs(gap_hz()) <= std::max(tolerance_hz_, CALIBRATION_MIN_MOVE_HZ)) {
+        stage_ = BeltTuneStage::ALREADY_MATCHED;
+        return;
+    }
+    start_unmatched();
 }
 
-std::optional<BeltTuneZone> BeltTuneSession::find_zone(std::vector<float> matched) const {
-    // pick_tune_zone only knows the 1 Hz floor; a zone within this session's
-    // tolerance is already matched, so it is skipped the same way.
-    for (;;) {
-        auto z = pick_tune_zone(round0_, BeltPath::PATH_A, band_min_hz_, band_max_hz_, matched);
-        if (!z || std::abs(z->adj_hz - z->ref_hz) > tolerance_hz_) {
-            return z;
-        }
-        matched.push_back((z->adj_hz + z->ref_hz) / 2.0f);
+void BeltTuneSession::start_unmatched() {
+    if (kind_ != BeltTensionerKind::SPRING) {
+        stage_ = BeltTuneStage::CALIBRATE;
+        return;
     }
+    registered_ = candidates_;
+    zone_index_ = 0;
+    enter_zone(registered_.front(), adjusted_);
 }
 
-void BeltTuneSession::enter_zone(const BeltTuneZone& zone, BeltPath path) {
-    // zone is seen from PATH_A.
+void BeltTuneSession::enter_zone(const BeltZoneCandidate& candidate, BeltPath path) {
     if (path != adjusted_) {
         clear_belt_history();
     }
     adjusted_ = path;
-    zone_ = zone;
+    zone_ = candidate.zone;
     if (path == BeltPath::PATH_B) {
         std::swap(zone_->adj_hz, zone_->ref_hz);
     }
-    const BeltCurve& ref_curve = adjusted_ == BeltPath::PATH_A ? b_ : a_;
-    const BeltCurve& adj_curve = adjusted_ == BeltPath::PATH_A ? a_ : b_;
-    ref_hz_ =
-        refine_peak_in_window(ref_curve, zone_->window, zone_->ref_hz).value_or(zone_->ref_hz);
-    adj_hz_ =
-        refine_peak_in_window(adj_curve, zone_->window, zone_->adj_hz).value_or(zone_->adj_hz);
+    const BeltCurve& a = tuning_curve(a_full_);
+    const BeltCurve& b = tuning_curve(b_full_);
+    if (!read_centroids(a, b, zone_->window)) {
+        adj_hz_ = zone_->adj_hz;
+        ref_hz_ = zone_->ref_hz;
+    }
+    last_a_ = a;
+    last_b_ = b;
+    stage_ = BeltTuneStage::BASELINE;
+    baseline_first_.reset();
     previous_gap_hz_.reset();
     window_widened_ = false;
     rounds_.clear();
@@ -492,14 +424,54 @@ void BeltTuneSession::enter_zone(const BeltTuneZone& zone, BeltPath path) {
                   adjusted_ == BeltPath::PATH_A ? "A" : "B", adj_hz_, ref_hz_);
 }
 
+bool BeltTuneSession::read_centroids(const BeltCurve& a, const BeltCurve& b, BeltSweepWindow zone) {
+    const auto ca = zone_centroid_hz(a, zone);
+    const auto cb = zone_centroid_hz(b, zone);
+    if (!ca || !cb) {
+        return false;
+    }
+    adj_hz_ = adjusted_ == BeltPath::PATH_A ? *ca : *cb;
+    ref_hz_ = adjusted_ == BeltPath::PATH_A ? *cb : *ca;
+    return true;
+}
+
 void BeltTuneSession::clear_belt_history() {
     rate_samples_.clear();
     unmeasured_turns_ = 0.0f;
     pending_turns_.reset();
 }
 
+void BeltTuneSession::book_turns(float turns) {
+    if (kind_ != BeltTensionerKind::SCREW) {
+        return;
+    }
+    (adjusted_ == BeltPath::PATH_A ? total_turns_a_ : total_turns_b_) += turns;
+    unmeasured_turns_ += std::abs(turns);
+}
+
+BeltTuneStage BeltTuneSession::stage() const {
+    return stage_;
+}
+
+const std::vector<BeltZoneCandidate>& BeltTuneSession::candidates() const {
+    return candidates_;
+}
+
+void BeltTuneSession::calibrate_anyway() {
+    if (stage_ == BeltTuneStage::ALREADY_MATCHED) {
+        start_unmatched();
+    }
+}
+
 const std::optional<BeltTuneZone>& BeltTuneSession::zone() const {
     return zone_;
+}
+
+std::optional<BeltSweepWindow> BeltTuneSession::sweep_window() const {
+    if (!zone_) {
+        return std::nullopt;
+    }
+    return zone_sweep_window(zone_->window, band_min_hz_, band_max_hz_);
 }
 
 BeltPath BeltTuneSession::adjusted_path() const {
@@ -508,7 +480,6 @@ BeltPath BeltTuneSession::adjusted_path() const {
 
 void BeltTuneSession::swap_adjusted_path() {
     adjusted_ = adjusted_ == BeltPath::PATH_A ? BeltPath::PATH_B : BeltPath::PATH_A;
-    path_swapped_ = true;
     if (zone_) {
         std::swap(zone_->adj_hz, zone_->ref_hz);
     }
@@ -525,26 +496,38 @@ float BeltTuneSession::gap_hz() const {
 BeltTuneAdvice BeltTuneSession::advice() const {
     BeltTuneAdvice out;
     out.path = adjusted_;
+    if (stage_ == BeltTuneStage::CALIBRATE) {
+        out.direction = BeltTurnDirection::TIGHTEN;
+        if (kind_ == BeltTensionerKind::SCREW) {
+            out.turns = CALIBRATION_TURNS;
+        }
+        return out;
+    }
     out.direction = gap_hz() > 0.0f ? BeltTurnDirection::LOOSEN : BeltTurnDirection::TIGHTEN;
+    if (stage_ == BeltTuneStage::UNREPEATABLE) {
+        return out;
+    }
     out.spring_reseat = kind_ == BeltTensionerKind::SPRING;
     if (kind_ != BeltTensionerKind::SCREW) {
         return out;
     }
+    const float gap = std::abs(gap_hz());
+    const float min_turns = gap < NEAR_MATCH_FACTOR * tolerance_hz_ ? TURN_MIN_NEAR : TURN_MIN;
     if (const auto rate = hz_per_turn()) {
-        out.turns = round_to_turn_step(std::abs(gap_hz()) / *rate);
-    } else {
-        // Nothing learned yet. If the last turn did nothing, try a bigger one;
-        // repeat checks in between change nothing.
-        out.turns = FIRST_TURN;
-        for (auto it = rounds_.rbegin(); it != rounds_.rend(); ++it) {
-            if (it->no_turn) {
-                continue;
-            }
-            if (it->outcome == BeltTuneOutcome::NO_MOVEMENT && it->turns_measured > 0.0f) {
-                out.turns = round_to_turn_step(2.0f * it->turns_measured);
-            }
-            break;
+        out.turns = clamp_turns(gap / *rate, min_turns);
+        return out;
+    }
+    // Nothing learned yet. If the last turn did nothing, try a bigger one;
+    // repeat checks in between change nothing.
+    out.turns = FIRST_TURN;
+    for (auto it = rounds_.rbegin(); it != rounds_.rend(); ++it) {
+        if (it->no_turn) {
+            continue;
         }
+        if (it->outcome == BeltTuneOutcome::NO_MOVEMENT && it->turns_measured > 0.0f) {
+            out.turns = clamp_turns(2.0f * it->turns_measured, min_turns);
+        }
+        break;
     }
     return out;
 }
@@ -555,8 +538,74 @@ void BeltTuneSession::record_turns(float turns) {
     }
 }
 
-const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
-                                                const BeltCurve& b_window) {
+BeltCalibrationResult BeltTuneSession::add_calibration_sweep(const BeltResponse& a_full,
+                                                             const BeltResponse& b_full) {
+    BeltCalibrationResult out;
+    if (stage_ != BeltTuneStage::CALIBRATE) {
+        return out;
+    }
+    book_turns(CALIBRATION_TURNS);
+    ++calibration_steps_;
+    out.turns = static_cast<float>(calibration_steps_) * CALIBRATION_TURNS;
+
+    // Each candidate's gap, adjusted - reference, now against round 0. The
+    // turn tightened the adjusted belt, so its side of the gap rising is the
+    // advised way.
+    const auto gap_over = [this](const BeltResponse& a, const BeltResponse& b,
+                                 BeltSweepWindow w) -> std::optional<float> {
+        const auto ca = zone_centroid_hz(tuning_curve(a), w);
+        const auto cb = zone_centroid_hz(tuning_curve(b), w);
+        if (!ca || !cb) {
+            return std::nullopt;
+        }
+        return adjusted_ == BeltPath::PATH_A ? *ca - *cb : *cb - *ca;
+    };
+    std::vector<std::pair<float, const BeltZoneCandidate*>> moved;
+    std::optional<float> best;
+    for (const auto& c : candidates_) {
+        const auto before = gap_over(a0_, b0_, c.zone.window);
+        const auto now = gap_over(a_full, b_full, c.zone.window);
+        if (!before || !now) {
+            continue;
+        }
+        const float move = *now - *before;
+        spdlog::debug("[BeltTune] Calibration step {}: zone {:.1f}-{:.1f} Hz moved {:+.2f} Hz",
+                      calibration_steps_, c.zone.window.freq_start_hz, c.zone.window.freq_end_hz,
+                      move);
+        best = best ? std::max(*best, move) : move;
+        if (move >= CALIBRATION_MIN_MOVE_HZ) {
+            moved.emplace_back(move, &c);
+        }
+    }
+    out.move_hz = best.value_or(0.0f);
+
+    if (moved.empty()) {
+        if (calibration_steps_ >= CALIBRATION_MAX_STEPS) {
+            stage_ = BeltTuneStage::NO_ZONE;
+            out.gave_up = true;
+        }
+        return out;
+    }
+    std::stable_sort(moved.begin(), moved.end(),
+                     [](const auto& l, const auto& r) { return l.first > r.first; });
+    std::vector<BeltZoneCandidate> registered;
+    for (const auto& m : moved) {
+        registered.push_back(*m.second);
+    }
+    registered_ = std::move(registered);
+    zone_index_ = 0;
+    a_full_ = a_full;
+    b_full_ = b_full;
+    enter_zone(registered_.front(), adjusted_);
+    if (kind_ == BeltTensionerKind::SCREW) {
+        rate_samples_.push_back(moved.front().first / out.turns);
+    }
+    out.registered = true;
+    return out;
+}
+
+const BeltTuneRound& BeltTuneSession::add_round(const BeltResponse& a_swept,
+                                                const BeltResponse& b_swept) {
     const BeltTuneAdvice advised = advice();
     BeltTuneRound r;
     ++total_rounds_;
@@ -574,90 +623,146 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
 
     const std::optional<float> pending = pending_turns_;
     pending_turns_.reset();
-    if (!zone_) {
+    if (!zone_ || stage_ == BeltTuneStage::NO_ZONE) {
         return finish(BeltTuneOutcome::NO_PEAK);
     }
+    if (stage_ == BeltTuneStage::UNREPEATABLE) {
+        // A Re-measure after a disagreement starts a fresh baseline pair.
+        stage_ = BeltTuneStage::BASELINE;
+        baseline_first_.reset();
+    }
+    const bool baseline = stage_ == BeltTuneStage::BASELINE;
     if (kind_ == BeltTensionerKind::SCREW) {
-        // Only a recorded turn counts. No turn is advised before a baseline.
+        // Only a recorded turn counts.
         if (pending && *pending > 0.0f) {
             r.turns_made = pending;
-        }
-        if (r.turns_made) {
-            const float signed_turns =
-                advised.direction == BeltTurnDirection::TIGHTEN ? *r.turns_made : -*r.turns_made;
-            (adjusted_ == BeltPath::PATH_A ? total_turns_a_ : total_turns_b_) += signed_turns;
-            unmeasured_turns_ += *r.turns_made;
+            book_turns(advised.direction == BeltTurnDirection::TIGHTEN ? *pending : -*pending);
         }
         // A repeatability check only when nothing was turned since the last
-        // measured round: a turn whose round found no peak still moved the belt.
-        r.no_turn = unmeasured_turns_ <= 0.0f && !needs_baseline_;
+        // measured round: a turn whose round measured nothing still moved the belt.
+        r.no_turn = unmeasured_turns_ <= 0.0f && !baseline;
     }
 
     const BeltSweepWindow window = zone_->window;
-    const BeltCurve& ref_curve = adjusted_ == BeltPath::PATH_A ? b_window : a_window;
-    const BeltCurve& adj_curve = adjusted_ == BeltPath::PATH_A ? a_window : b_window;
-    const bool ref_holds = window_holds_peak(ref_curve, window, window, band_min_hz_, band_max_hz_);
-    const bool adj_holds = window_holds_peak(adj_curve, window, window, band_min_hz_, band_max_hz_);
+    const BeltSweepWindow swept = *sweep_window();
+    const BeltCurve& a_curve = tuning_curve(a_swept);
+    const BeltCurve& b_curve = tuning_curve(b_swept);
+    const bool a_adjusted = adjusted_ == BeltPath::PATH_A;
+    const BeltCurve& ref_curve = a_adjusted ? b_curve : a_curve;
+    const BeltCurve& adj_curve = a_adjusted ? a_curve : b_curve;
+    const bool ref_holds = window_holds_peak(ref_curve, window, swept, band_min_hz_, band_max_hz_);
+    const bool adj_holds = window_holds_peak(adj_curve, window, swept, band_min_hz_, band_max_hz_);
     if (!ref_holds || !adj_holds) {
         r.reference_lost = !ref_holds && adj_holds;
         return finish(BeltTuneOutcome::NO_PEAK);
     }
-    const auto ref =
-        refine_peak_in_window(ref_curve, window, ref_hz_,
-                              unexcited_floor_psd(ref_curve, window, band_min_hz_, band_max_hz_));
-    const auto adj =
-        refine_peak_in_window(adj_curve, window, adj_hz_,
-                              unexcited_floor_psd(adj_curve, window, band_min_hz_, band_max_hz_));
 
-    if (!adj) {
-        const auto edge =
-            edge_maximum(curve_in_band(adj_curve, window.freq_start_hz, window.freq_end_hz));
-        if (edge) {
-            // The window moves once per zone until a peak is measured again: a
-            // peak still past the edge is not chased to the band's end.
-            if (window_widened_) {
-                return finish(BeltTuneOutcome::NO_PEAK);
-            }
-            // Re-centre on the reference, reaching past the edge the adjusted
-            // peak ran into, so the next sweep covers it. No gap from an edge bin.
-            const float centre = ref.value_or(ref_hz_);
-            const float half = std::max((window.freq_end_hz - window.freq_start_hz) / 2.0f,
-                                        std::abs(*edge - centre) + ZONE_MARGIN_HZ);
-            zone_->window.freq_start_hz = std::max(band_min_hz_, centre - half);
-            zone_->window.freq_end_hz = std::min(band_max_hz_, centre + half);
-            window_widened_ = true;
-            return finish(BeltTuneOutcome::OUT_OF_WINDOW);
+    const auto ca = zone_centroid_hz(a_curve, window);
+    const auto cb = zone_centroid_hz(b_curve, window);
+    const auto gap_of = [a_adjusted](float a_hz, float b_hz) {
+        return a_adjusted ? a_hz - b_hz : b_hz - a_hz;
+    };
+    const float turns_behind = unmeasured_turns_;
+    const auto adopt = [&]() {
+        window_widened_ = false;
+        unmeasured_turns_ = 0.0f;
+        ref_hz_ = a_adjusted ? *cb : *ca;
+        adj_hz_ = a_adjusted ? *ca : *cb;
+        last_a_ = a_curve;
+        last_b_ = b_curve;
+        r.ref_hz = ref_hz_;
+        r.adj_hz = adj_hz_;
+        r.gap_hz = gap_hz();
+        r.turns_measured = turns_behind;
+    };
+
+    // The pair's second round answers repeatability before anything else: a
+    // zone whose maximum hops to its edge between two untouched rounds does
+    // not repeat either.
+    if (baseline && baseline_first_ && ca && cb) {
+        const auto& [first_a, first_b] = *baseline_first_;
+        const auto power_ratio = [](float p1, float p2) {
+            const float lo = std::min(p1, p2);
+            return lo > 0.0f ? std::max(p1, p2) / lo : std::numeric_limits<float>::infinity();
+        };
+        const float first_gap = gap_of(first_a.centroid_hz, first_b.centroid_hz);
+        const bool repeats =
+            std::abs(gap_of(*ca, *cb) - first_gap) <= REPEAT_MAX_GAP_HZ &&
+            power_ratio(first_a.power, zone_power(a_curve, window)) <= REPEAT_MAX_POWER_RATIO &&
+            power_ratio(first_b.power, zone_power(b_curve, window)) <= REPEAT_MAX_POWER_RATIO;
+        if (!repeats) {
+            spdlog::debug("[BeltTune] Baseline pair disagrees: gap {:+.2f} then {:+.2f} Hz",
+                          first_gap, gap_of(*ca, *cb));
+            adopt();
+            baseline_first_.reset();
+            previous_gap_hz_.reset();
+            stage_ = BeltTuneStage::UNREPEATABLE;
+            return finish(BeltTuneOutcome::UNREPEATABLE);
         }
     }
-    if (!ref || !adj) {
-        r.reference_lost = !ref && adj;
+
+    // The reference was not turned, so its maximum on the zone edge means its
+    // peak left the zone rather than that the zone should follow it.
+    if (edge_maximum(curve_in_band(ref_curve, window.freq_start_hz, window.freq_end_hz))) {
+        r.reference_lost = true;
         return finish(BeltTuneOutcome::NO_PEAK);
     }
+    if (const auto edge =
+            edge_maximum(curve_in_band(adj_curve, window.freq_start_hz, window.freq_end_hz))) {
+        // The zone moves once per zone until a round is measured again: a
+        // peak still past the edge is not chased to the band's end.
+        if (window_widened_) {
+            return finish(BeltTuneOutcome::NO_PEAK);
+        }
+        // Re-centre on the reference, reaching past the edge the adjusted
+        // path's maximum ran into, so the next sweep covers it.
+        const float centre = zone_centroid_hz(ref_curve, window).value_or(ref_hz_);
+        const float half = std::max((window.freq_end_hz - window.freq_start_hz) / 2.0f,
+                                    std::abs(*edge - centre) + ZONE_MARGIN_HZ);
+        zone_->window.freq_start_hz = std::max(band_min_hz_, centre - half);
+        zone_->window.freq_end_hz = std::min(band_max_hz_, centre + half);
+        window_widened_ = true;
+        // A baseline round over the old zone compares with nothing over the new one.
+        baseline_first_.reset();
+        return finish(BeltTuneOutcome::OUT_OF_WINDOW);
+    }
 
-    const bool baseline = needs_baseline_;
-    needs_baseline_ = false;
-    window_widened_ = false;
+    if (!ca || !cb) {
+        r.reference_lost = a_adjusted ? (!cb && ca) : (!ca && cb);
+        return finish(BeltTuneOutcome::NO_PEAK);
+    }
     const float prev_gap = gap_hz();
-    ref_hz_ = *ref;
-    adj_hz_ = *adj;
-    const float gap = gap_hz();
-    r.ref_hz = ref_hz_;
-    r.adj_hz = adj_hz_;
-    r.gap_hz = gap;
+    const float gap = gap_of(*ca, *cb);
     // Only the adjusted belt was turned, so the gap's change is what the turn
-    // did: drift that moves both peaks together cancels out of it.
+    // did: drift that moves both paths together cancels out of it.
     const float move = gap - prev_gap;
 
-    // A sample needs the move and the turns behind it from the same zone.
-    const float turns_behind = unmeasured_turns_;
-    unmeasured_turns_ = 0.0f;
-    r.turns_measured = turns_behind;
+    if (!baseline) {
+        const auto rate = hz_per_turn();
+        const float bound =
+            rate ? std::max(IMPLAUSIBLE_MIN_HZ, IMPLAUSIBLE_RATE_FACTOR * turns_behind * *rate)
+                 : IMPLAUSIBLE_MIN_HZ * std::max(1.0f, turns_behind);
+        if (std::abs(move) > bound) {
+            spdlog::debug("[BeltTune] Gap moved {:+.2f} Hz, past the {:.2f} Hz bound", move, bound);
+            return finish(BeltTuneOutcome::IMPLAUSIBLE);
+        }
+    }
 
+    adopt();
     if (baseline) {
         previous_gap_hz_.reset();
+        if (!baseline_first_) {
+            baseline_first_ = std::make_pair(ZoneReading{*ca, zone_power(a_curve, window)},
+                                             ZoneReading{*cb, zone_power(b_curve, window)});
+            return finish(BeltTuneOutcome::BASELINE);
+        }
+        // The pair repeated (checked above).
+        baseline_first_.reset();
+        stage_ = BeltTuneStage::TUNE;
         return finish(std::abs(gap) <= tolerance_hz_ ? BeltTuneOutcome::MATCHED
                                                      : BeltTuneOutcome::BASELINE);
     }
+
     previous_gap_hz_ = prev_gap;
     const float expected = advised.direction == BeltTurnDirection::TIGHTEN ? 1.0f : -1.0f;
     BeltTuneOutcome outcome;
@@ -681,8 +786,8 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     }
     // A gap that moved against the advice says the turn went elsewhere (the
     // other belt, the other way), so it teaches nothing about this belt.
-    if (outcome != BeltTuneOutcome::WRONG_WAY && std::abs(move) >= MIN_MOVE_HZ &&
-        turns_behind > 0.0f) {
+    if (kind_ == BeltTensionerKind::SCREW && !r.no_turn && outcome != BeltTuneOutcome::WRONG_WAY &&
+        std::abs(move) >= MIN_MOVE_HZ && turns_behind > 0.0f) {
         rate_samples_.push_back(std::abs(move) / turns_behind);
     }
     return finish(outcome);
@@ -693,17 +798,11 @@ bool BeltTuneSession::zone_matched() const {
 }
 
 bool BeltTuneSession::next_zone() {
-    std::vector<float> matched = matched_centres_hz_;
-    if (zone_) {
-        matched.push_back((zone_->ref_hz + zone_->adj_hz) / 2.0f);
-    }
-    const auto z = find_zone(matched);
-    if (!z) {
+    if (!has_next_zone()) {
         return false;
     }
-    matched_centres_hz_ = std::move(matched);
-    enter_zone(*z, path_swapped_ ? adjusted_ : looser_path(*z));
-    needs_baseline_ = true;
+    ++zone_index_;
+    enter_zone(registered_[zone_index_], adjusted_);
     return true;
 }
 
@@ -712,15 +811,14 @@ bool BeltTuneSession::has_next_zone() const {
 }
 
 std::optional<BeltTuneZone> BeltTuneSession::peek_next_zone() const {
-    std::vector<float> matched = matched_centres_hz_;
-    if (zone_) {
-        matched.push_back((zone_->ref_hz + zone_->adj_hz) / 2.0f);
+    if (!zone_ || zone_index_ + 1 >= registered_.size()) {
+        return std::nullopt;
     }
-    return find_zone(std::move(matched));
+    return registered_[zone_index_ + 1].zone;
 }
 
 bool BeltTuneSession::needs_baseline() const {
-    return needs_baseline_;
+    return stage_ == BeltTuneStage::BASELINE;
 }
 
 std::optional<float> BeltTuneSession::hz_per_turn() const {
@@ -737,22 +835,37 @@ bool BeltTuneSession::show_mechanical_hint() const {
     if (shape_warning_) {
         return true;
     }
+    // Baseline rounds, repeat checks and dropped readings judge no turn.
+    const auto judges_a_turn = [](const BeltTuneRound& r) {
+        return !r.no_turn && r.outcome != BeltTuneOutcome::IMPLAUSIBLE &&
+               r.outcome != BeltTuneOutcome::BASELINE && r.outcome != BeltTuneOutcome::UNREPEATABLE;
+    };
     if (kind_ == BeltTensionerKind::SPRING) {
         // A re-seat that does not improve the match points at the mechanics.
         int without_improvement = 0;
         for (auto it = rounds_.rbegin(); it != rounds_.rend(); ++it) {
             if (it->outcome == BeltTuneOutcome::CLOSER || it->outcome == BeltTuneOutcome::MATCHED ||
-                it->outcome == BeltTuneOutcome::BASELINE) {
+                it->outcome == BeltTuneOutcome::BASELINE ||
+                it->outcome == BeltTuneOutcome::UNREPEATABLE) {
                 break;
             }
-            ++without_improvement;
+            if (judges_a_turn(*it)) {
+                ++without_improvement;
+            }
         }
         return without_improvement >= SPRING_STALL_ROUNDS;
     }
-    const auto unmatched = std::count_if(rounds_.begin(), rounds_.end(), [](const auto& r) {
-        return r.outcome != BeltTuneOutcome::MATCHED && !r.no_turn;
+    const auto unmatched = std::count_if(rounds_.begin(), rounds_.end(), [&](const auto& r) {
+        return r.outcome != BeltTuneOutcome::MATCHED && judges_a_turn(r);
     });
     return unmatched >= STALL_ROUNDS;
+}
+
+std::optional<BeltPowerHint> BeltTuneSession::power_hint() const {
+    if (!zone_) {
+        return std::nullopt;
+    }
+    return zone_power_hint(last_a_, last_b_, zone_->window);
 }
 
 const std::vector<BeltTuneRound>& BeltTuneSession::rounds() const {
@@ -788,10 +901,10 @@ int BeltTuneSession::total_rounds() const {
 }
 
 std::string format_belt_turns(float turns) {
-    static constexpr const char* EIGHTHS[] = {"", "⅛", "¼", "⅜", "½", "⅝", "¾", "⅞"};
-    const long eighths = std::lround(std::abs(turns) * 8.0f);
-    const long whole = eighths / 8;
-    const char* frac = EIGHTHS[eighths % 8];
+    static constexpr const char* QUARTERS[] = {"", "¼", "½", "¾"};
+    const long quarters = std::lround(std::abs(turns) * 4.0f);
+    const long whole = quarters / 4;
+    const char* frac = QUARTERS[quarters % 4];
     if (whole == 0) {
         return *frac ? frac : "0";
     }

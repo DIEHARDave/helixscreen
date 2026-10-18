@@ -1307,8 +1307,9 @@ void BeltTensionPanel::handle_tune_clicked() {
     }
     const auto kind =
         PrinterDetector::get_belt_tensioner(get_printer_state().profile_state().printer_type());
-    tune_.emplace(runs_[0].curve, runs_[1].curve, last_cmp_, sweep_cfg_.min_freq,
-                  sweep_cfg_.max_freq, kind);
+    tune_.emplace(helix::calibration::BeltResponse{runs_[0].curve, runs_[0].in_plane},
+                  helix::calibration::BeltResponse{runs_[1].curve, runs_[1].in_plane}, last_cmp_,
+                  sweep_cfg_.min_freq, sweep_cfg_.max_freq, kind);
     tune_shape_differs_ = helix::calibration::tallest_peak_unpaired(last_cmp_);
     tune_round0_similarity_ = similarity_percent_;
     tune_has_curves_ = false;
@@ -1452,7 +1453,7 @@ void BeltTensionPanel::start_tune_round() {
             }
         }
         begin_run({BeltPath::PATH_A, BeltPath::PATH_B}, /*clear_previous=*/false,
-                  tune_->zone()->window);
+                  *tune_->sweep_window());
     });
 }
 
@@ -1464,7 +1465,8 @@ void BeltTensionPanel::finish_tune_round() {
     const bool baseline = tune_->needs_baseline();
     const float gap_before = tune_->gap_hz();
     tune_last_direction_ = tune_->advice().direction;
-    const auto& round = tune_->add_round(tune_curves_[0], tune_curves_[1]);
+    const auto& round = tune_->add_round(helix::calibration::BeltResponse{tune_curves_[0], {}},
+                                         helix::calibration::BeltResponse{tune_curves_[1], {}});
     tune_has_curves_ = true;
     tune_last_outcome_ = round.outcome;
     tune_last_move_hz_ = std::abs(tune_->gap_hz() - gap_before);
@@ -1708,6 +1710,8 @@ std::string BeltTensionPanel::tune_last_message() const {
                            adj_letter);
     case BeltTuneOutcome::MATCHED:
     case BeltTuneOutcome::BASELINE:
+    case BeltTuneOutcome::IMPLAUSIBLE:
+    case BeltTuneOutcome::UNREPEATABLE:
         break;
     }
     return {};

@@ -5,15 +5,17 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 /**
  * @file belt_tune_session.h
- * @brief The guided belt-tuning loop's logic: zones, peaks, advice and outcomes
+ * @brief The guided belt-tuning loop's logic: zones, calibration, tracking and advice
  *
- * Pure: no LVGL, no I/O. The Belt Tension panel feeds it the round-0
- * comparison and each round's two windowed sweeps, and renders what it says.
- * A higher peak means a tighter belt, and clockwise tightens (#1736).
+ * Pure: no LVGL, no I/O. The Belt Tension panel feeds it the round-0 sweeps,
+ * the calibration sweeps and each round's two narrow sweeps, and renders what
+ * it says. Tuning reads the in-plane curves (psd_x + psd_y). A higher
+ * frequency means a tighter belt, and clockwise tightens (#1736).
  */
 
 namespace helix::calibration {
@@ -39,14 +41,14 @@ inline constexpr float CALIBRATION_TURNS = 1.0f;       ///< one full turn per ca
 inline constexpr int CALIBRATION_MAX_STEPS = 2;        ///< steps before the loop gives up
 inline constexpr float CALIBRATION_MIN_MOVE_HZ = 1.5f; ///< a smaller gap move is run-to-run wander
 inline constexpr float MATCHED_MIN_HZ = 1.0f;          ///< matched tolerance floor
-inline constexpr float MIN_MOVE_HZ = 0.5f;             ///< smaller peak moves are noise
-inline constexpr float FIRST_TURN = 0.25f;
-inline constexpr float TURN_STEP = 0.125f;
+inline constexpr float MIN_MOVE_HZ = 0.8f;             ///< smaller gap moves are noise
+inline constexpr float FIRST_TURN = 1.0f;              ///< the suggestion with no rate learned
+inline constexpr float TURN_STEP = 0.25f;
 inline constexpr float TURN_MIN = 0.5f;
 inline constexpr float TURN_MIN_NEAR = 0.25f; ///< the smallest turn when nearly matched
 /// "Nearly matched": |gap| under this multiple of the matched tolerance.
 inline constexpr float NEAR_MATCH_FACTOR = 1.5f;
-inline constexpr float TURN_MAX = 1.0f;
+inline constexpr float TURN_MAX = 2.0f;
 /// A round's gap move above max(IMPLAUSIBLE_MIN_HZ, IMPLAUSIBLE_RATE_FACTOR x
 /// turns x Hz/turn) is a measurement fault. Without a rate the bound is
 /// IMPLAUSIBLE_MIN_HZ x max(1, turns).
@@ -55,6 +57,10 @@ inline constexpr float IMPLAUSIBLE_RATE_FACTOR = 3.0f;
 /// Zone in-plane power differing by more than this between paths points at
 /// the mechanics, not tension.
 inline constexpr float POWER_HINT_RATIO = 3.0f;
+/// A baseline pair whose centroid gaps differ by more than this does not repeat.
+inline constexpr float REPEAT_MAX_GAP_HZ = 1.5f;
+/// ...nor one where either path's zone power differs by more than this factor.
+inline constexpr float REPEAT_MAX_POWER_RATIO = 2.0f;
 inline constexpr int STALL_ROUNDS = 8;        ///< unmatched rounds before the mechanical hint
 inline constexpr int SPRING_STALL_ROUNDS = 2; ///< spring rounds in a row without improvement
 /// A zone holds a peak when its maximum reaches this multiple of the unexcited
@@ -62,9 +68,6 @@ inline constexpr int SPRING_STALL_ROUNDS = 2; ///< spring rounds in a row withou
 inline constexpr float PEAK_MIN_PROMINENCE = 1.5f;
 /// In-band bins outside the swept range needed to measure the unexcited floor.
 inline constexpr int UNEXCITED_MIN_BINS = 8;
-/// A maximum competes for "nearest the previous peak" only at this fraction
-/// of the window's maximum.
-inline constexpr float NEAR_PEAK_MIN_FRACTION = 0.5f;
 inline constexpr float GAUGE_WARN_HZ = 3.0f; ///< gap gauge: warning colour up to here
 } // namespace belt_tune
 
@@ -105,19 +108,6 @@ struct BeltPowerHint {
 /// amplitude floor: the curves differ in shape, and the mechanical-causes
 /// hint shows.
 [[nodiscard]] bool tallest_peak_unpaired(const BeltComparison& cmp);
-
-/// The zone the next rounds tune. Peaks under ZONE_MIN_AMPLITUDE_FRACTION of
-/// the stronger path's in-band maximum never define one, nor do pairs no more
-/// than MATCHED_MIN_HZ apart or centred within ZONE_HALF_MIN_HZ of a matched
-/// zone centre. When tallest_peak_unpaired(), the taller unpaired tallest peak
-/// steers against the other path's nearest eligible peak within
-/// ZONE_FALLBACK_MAX_HZ (TALLEST_UNPAIRED); with none that close, or
-/// otherwise, the widest remaining pair defines the zone (PAIRED). The window
-/// is the zone's midpoint +- max(ZONE_HALF_MIN_HZ, gap / 2 + ZONE_MARGIN_HZ),
-/// clamped to the band.
-[[nodiscard]] std::optional<BeltTuneZone>
-pick_tune_zone(const BeltComparison& cmp, BeltPath adjusted, float band_min_hz, float band_max_hz,
-               const std::vector<float>& matched_zone_centres_hz);
 
 /// The zones a calibration turn tests, strongest first, at most
 /// MAX_ZONE_CANDIDATES. Built from the in-plane comparison over the band:
@@ -165,35 +155,48 @@ pick_tune_zone(const BeltComparison& cmp, BeltPath adjusted, float band_min_hz, 
 [[nodiscard]] bool window_holds_peak(const BeltCurve& curve, BeltSweepWindow zone,
                                      BeltSweepWindow swept, float band_min_hz, float band_max_hz);
 
-/// The curve's peak inside the window, refined between bins by parabolic
-/// interpolation. Candidates are interior local maxima at
-/// NEAR_PEAK_MIN_FRACTION of the window's maximum or more and, given a floor,
-/// at PEAK_MIN_PROMINENCE times it or more. With several, the one nearest
-/// near_hz, else the tallest. nullopt when none qualifies.
-[[nodiscard]] std::optional<float>
-refine_peak_in_window(const BeltCurve& curve, BeltSweepWindow window, std::optional<float> near_hz,
-                      std::optional<float> floor_psd = std::nullopt);
-
 /// A turn count to the nearest belt_tune::TURN_STEP, in fraction glyphs:
-/// "⅛", "¾", "1", "1¼". The sign is dropped.
+/// "¼", "¾", "1", "1¼". The sign is dropped.
 [[nodiscard]] std::string format_belt_turns(float turns);
 
 /// max(MATCHED_MIN_HZ, the curve's mean bin spacing).
 [[nodiscard]] float matched_tolerance_hz(const BeltCurve& curve);
 
+enum class BeltTuneStage {
+    /// Round 0's strongest candidate already matches: its centroid gap is
+    /// within max(tolerance_hz(), CALIBRATION_MIN_MOVE_HZ). Nothing is asked
+    /// of the user until calibrate_anyway().
+    ALREADY_MATCHED,
+    CALIBRATE, ///< waiting on a calibration turn and its full sweep of both paths
+    /// The zone is known; it is measured twice, with no turn between, before
+    /// any verdict. Neither round of the pair gives one.
+    BASELINE,
+    TUNE,    ///< each round's verdict reads the zone's gap move
+    NO_ZONE, ///< no candidate, or no candidate moved after CALIBRATION_MAX_STEPS turns
+    /// The baseline pair disagreed (REPEAT_MAX_GAP_HZ, REPEAT_MAX_POWER_RATIO):
+    /// no advice. The next round starts a fresh baseline pair.
+    UNREPEATABLE,
+};
+
 enum class BeltTuneOutcome {
     CLOSER,    ///< the gap shrank and kept its sign
     OVERSHOT,  ///< the gap changed sign
     WRONG_WAY, ///< the gap moved against the advice by MIN_MOVE_HZ or more
-    /// The gap moved less than MIN_MOVE_HZ. Outcomes read the gap's change,
-    /// not the adjusted peak's: only the adjusted belt was turned, so drift
-    /// common to both peaks cancels.
+    /// The gap moved less than MIN_MOVE_HZ, or the round turned nothing.
+    /// Outcomes read the gap's change, not one path's centroid: only the
+    /// adjusted belt was turned, so drift common to both paths cancels.
     NO_MOVEMENT,
     MATCHED,       ///< |gap| within the matched tolerance
-    NO_PEAK,       ///< a path's window holds no clear peak; nothing measured
-    OUT_OF_WINDOW, ///< the adjusted peak sits on the window edge; the window moved
-                   ///< (once per zone until a peak is measured again; then NO_PEAK)
-    BASELINE,      ///< a zone's first measurement after next_zone(): no gap history yet
+    NO_PEAK,       ///< a path's zone holds no clear peak; nothing measured
+    OUT_OF_WINDOW, ///< the adjusted path's maximum sits on the zone edge; the zone moved
+                   ///< (once per zone until a round is measured again; then NO_PEAK)
+    BASELINE,      ///< a round of the zone's baseline pair: no gap history yet
+    /// The gap moved past the sanity bound: a measurement fault. The reading
+    /// is dropped, the turns stay pending, and nothing is learned.
+    IMPLAUSIBLE,
+    /// The second round of a baseline pair disagreed with the first: the stage
+    /// is UNREPEATABLE.
+    UNREPEATABLE,
 };
 
 enum class BeltTurnDirection { TIGHTEN, LOOSEN };
@@ -205,101 +208,170 @@ struct BeltTuneAdvice {
     bool spring_reseat = false; ///< SPRING: release, settle, lock
 };
 
+/// One calibration sweep's verdict.
+struct BeltCalibrationResult {
+    bool registered = false; ///< a candidate's gap moved CALIBRATION_MIN_MOVE_HZ the advised way
+    float move_hz = 0.0f;    ///< the best candidate's gap move, positive = the advised way
+    float turns = 0.0f;      ///< calibration turns so far; the move is measured over all of them
+    bool gave_up = false;    ///< CALIBRATION_MAX_STEPS reached without a move: stage is NO_ZONE
+};
+
 struct BeltTuneRound {
-    float ref_hz = 0.0f;
-    float adj_hz = 0.0f;
+    float ref_hz = 0.0f;             ///< reference path's zone centroid
+    float adj_hz = 0.0f;             ///< adjusted path's zone centroid
     float gap_hz = 0.0f;             ///< adjusted - reference
     std::optional<float> turns_made; ///< what the stepper recorded before this round
     /// The turns this round's reading measured: its own plus any carried from
-    /// NO_PEAK or OUT_OF_WINDOW rounds since the last measured one. 0 on a
-    /// round that measured nothing.
+    /// NO_PEAK, OUT_OF_WINDOW or IMPLAUSIBLE rounds since the last measured
+    /// one. 0 on a round that measured nothing.
     float turns_measured = 0.0f;
     BeltTuneOutcome outcome = BeltTuneOutcome::NO_PEAK;
     /// NO_PEAK with a peak on the adjusted path only: the reference's peak
-    /// left the window, which a turn of the wrong belt does.
+    /// left the zone, which a turn of the wrong belt does.
     bool reference_lost = false;
     /// SCREW: nothing was turned since the last measured round, so the round
     /// checks repeatability rather than a turn. It never counts toward the
-    /// stall. Never set on a BASELINE round.
+    /// stall and teaches nothing. Never set on a baseline round.
     bool no_turn = false;
 };
 
-/// One tuning run: a zone at a time, a round per pair of windowed sweeps.
-/// The gap is always adjusted - reference from the same round, so drift
-/// between rounds cancels; negative means the adjusted belt is looser.
+/// One tuning run. Round 0's candidates are tested by a calibration turn; the
+/// zone that moved is tuned a round at a time, each round a pair of narrow
+/// sweeps. The gap is always adjusted - reference from the same round, so
+/// drift common to both paths cancels; negative means the adjusted belt is
+/// looser.
 class BeltTuneSession {
   public:
-    BeltTuneSession(const BeltCurve& a, const BeltCurve& b, const BeltComparison& round0,
+    /// `round0` is the psd_xyz comparison RESULTS showed; candidates come from
+    /// the responses' in-plane curves. Any kind may start ALREADY_MATCHED.
+    /// Otherwise SCREW and UNKNOWN start at CALIBRATE, and SPRING skips
+    /// calibration: the strongest candidate becomes the zone, adjusting its
+    /// looser path, at BASELINE.
+    BeltTuneSession(const BeltResponse& a, const BeltResponse& b, const BeltComparison& round0,
                     float band_min_hz, float band_max_hz, BeltTensionerKind kind);
 
+    [[nodiscard]] BeltTuneStage stage() const;
+    [[nodiscard]] const std::vector<BeltZoneCandidate>& candidates() const;
+    /// ALREADY_MATCHED only: go on as an unmatched session would (CALIBRATE,
+    /// or BASELINE for SPRING). Elsewhere it changes nothing.
+    void calibrate_anyway();
+    /// The zone being tuned, seen from the adjusted path; nullopt until
+    /// calibration registers (and at NO_ZONE). SPRING has one from the start.
     [[nodiscard]] const std::optional<BeltTuneZone>& zone() const;
+    /// The range a round sweeps: zone_sweep_window() of the zone. nullopt without a zone.
+    [[nodiscard]] std::optional<BeltSweepWindow> sweep_window() const;
+    /// ALREADY_MATCHED and CALIBRATE: the looser path by the strongest
+    /// candidate's centroid gap, the one the calibration turn tightens.
+    /// Later: the path being tuned.
     [[nodiscard]] BeltPath adjusted_path() const;
-    /// Swaps reference and adjusted, for this and later zones. The window
-    /// stays; the learned rate and this zone's rounds belong to the other
-    /// belt, so they clear.
+    /// Swaps reference and adjusted, for this and later zones. The zone stays;
+    /// the learned rate and this zone's rounds belong to the other belt, so
+    /// they clear. At CALIBRATE it changes which belt the turn tightens.
     void swap_adjusted_path();
-    [[nodiscard]] float gap_hz() const; ///< signed, adjusted - reference
-    /// Meaningless while needs_baseline(): measure the zone first.
+    /// Signed, adjusted - reference. ALREADY_MATCHED and CALIBRATE: round 0's
+    /// strongest candidate's centroid gap.
+    [[nodiscard]] float gap_hz() const;
+    /// CALIBRATE: tighten the adjusted path, CALIBRATION_TURNS for SCREW.
+    /// TUNE: from the gap and the learned rate. UNREPEATABLE: no amount and
+    /// no re-seat; the direction is not advice. Meaningless at
+    /// ALREADY_MATCHED, BASELINE and NO_ZONE.
     [[nodiscard]] BeltTuneAdvice advice() const;
     /// The stepper's value for the next round; SCREW only. A SCREW round with
     /// nothing turned since the last measured round (no recorded turn, or a
-    /// recorded zero, and none carried from a NO_PEAK or OUT_OF_WINDOW round)
-    /// is a no-turn round: it adopts the reading, teaches no rate and reads
-    /// NO_MOVEMENT unless MATCHED, NO_PEAK or OUT_OF_WINDOW.
+    /// recorded zero, and none carried from a NO_PEAK, OUT_OF_WINDOW or
+    /// IMPLAUSIBLE round) is a no-turn round: it adopts the reading, teaches
+    /// no rate and reads NO_MOVEMENT unless MATCHED, NO_PEAK, OUT_OF_WINDOW or
+    /// IMPLAUSIBLE.
     void record_turns(float turns);
-    /// Both paths swept over the current window.
-    const BeltTuneRound& add_round(const BeltCurve& a_window, const BeltCurve& b_window);
+    /// The full sweep of both paths after a calibration turn. Each candidate's
+    /// centroid gap is compared with round 0's, so a second step measures both
+    /// turns together. Outside CALIBRATE it changes nothing and returns a
+    /// result with registered false.
+    BeltCalibrationResult add_calibration_sweep(const BeltResponse& a_full,
+                                                const BeltResponse& b_full);
+    /// Both paths swept over sweep_window().
+    const BeltTuneRound& add_round(const BeltResponse& a_swept, const BeltResponse& b_swept);
     [[nodiscard]] bool zone_matched() const;
-    /// Marks this zone matched and moves to the next, keeping a swapped path;
-    /// without a swap the new zone's looser path is adjusted. The earlier
-    /// zone's turns moved this zone's peaks, so it needs a baseline round.
-    /// False, changing nothing, when no unmatched zone remains.
+    /// Marks this zone matched and moves to the next candidate the calibration
+    /// registered (every candidate, for SPRING), keeping the adjusted path.
+    /// The new zone needs a baseline pair. False, changing nothing, when none
+    /// remains.
     bool next_zone();
     [[nodiscard]] bool has_next_zone() const;
     /// The zone next_zone() would move to, seen from PATH_A; nullopt when none.
     [[nodiscard]] std::optional<BeltTuneZone> peek_next_zone() const;
-    /// True from next_zone() until a round measures both peaks.
+    /// stage() == BASELINE.
     [[nodiscard]] bool needs_baseline() const;
     [[nodiscard]] std::optional<float> hz_per_turn() const;
     /// tallest_peak_unpaired() for round 0, or this zone has stalled.
     [[nodiscard]] bool show_mechanical_hint() const;
+    /// zone_power_hint() over the zone for the latest curves measured across
+    /// it; nullopt without a zone.
+    [[nodiscard]] std::optional<BeltPowerHint> power_hint() const;
     [[nodiscard]] const std::vector<BeltTuneRound>& rounds() const; ///< current zone
 
     [[nodiscard]] BeltTensionerKind tensioner() const;
     [[nodiscard]] float tolerance_hz() const; ///< the matched band, +- around zero
-    [[nodiscard]] float reference_hz() const; ///< latest round's reference peak
+    [[nodiscard]] float reference_hz() const; ///< latest measured reference centroid
     [[nodiscard]] float adjusted_hz() const;
     [[nodiscard]] std::optional<float> previous_gap_hz() const; ///< hollow gauge needle
     /// Signed sum, tighten positive, of the turns recorded while `path` was
-    /// the adjusted one. SCREW only.
+    /// the adjusted one, calibration turns included. SCREW only.
     [[nodiscard]] float total_turns(BeltPath path) const;
-    [[nodiscard]] int total_rounds() const; ///< across zones
+    [[nodiscard]] int total_rounds() const; ///< across zones, calibration sweeps excluded
 
   private:
-    [[nodiscard]] std::optional<BeltTuneZone> find_zone(std::vector<float> matched) const;
-    void enter_zone(const BeltTuneZone& zone, BeltPath path);
-    void clear_belt_history();
+    /// One path's reading of the zone in one round.
+    struct ZoneReading {
+        float centroid_hz = 0.0f;
+        float power = 0.0f;
+    };
 
-    BeltCurve a_;
-    BeltCurve b_;
-    BeltComparison round0_;
+    /// The stage an unmatched session starts in: CALIBRATE, or the strongest
+    /// candidate at BASELINE for SPRING.
+    void start_unmatched();
+    /// Enters the candidate, adjusting `path`, with its centroids read from
+    /// the latest full sweep.
+    void enter_zone(const BeltZoneCandidate& candidate, BeltPath path);
+    void clear_belt_history();
+    /// SCREW: `turns` (signed, tighten positive) onto the adjusted belt's
+    /// total, and their magnitude onto the turns the next reading measures.
+    void book_turns(float turns);
+    /// ref_hz_ / adj_hz_ from both paths' centroids over the zone; false when
+    /// either has none.
+    bool read_centroids(const BeltCurve& a, const BeltCurve& b, BeltSweepWindow zone);
+
+    BeltResponse a0_;
+    BeltResponse b0_;
+    /// The latest full sweep: round 0, then each calibration sweep.
+    BeltResponse a_full_;
+    BeltResponse b_full_;
     float band_min_hz_;
     float band_max_hz_;
     BeltTensionerKind kind_;
     float tolerance_hz_;
     bool shape_warning_;
 
+    BeltTuneStage stage_ = BeltTuneStage::NO_ZONE;
+    std::vector<BeltZoneCandidate> candidates_;
+    /// Candidates the calibration registered, best move first (all of them for SPRING).
+    std::vector<BeltZoneCandidate> registered_;
+    size_t zone_index_ = 0; ///< into registered_
     std::optional<BeltTuneZone> zone_;
-    std::vector<float> matched_centres_hz_;
+    int calibration_steps_ = 0;
+
     BeltPath adjusted_ = BeltPath::PATH_A;
-    bool path_swapped_ = false;
-    bool needs_baseline_ = false;
     bool window_widened_ = false; ///< OUT_OF_WINDOW since the last measured round
     float ref_hz_ = 0.0f;
     float adj_hz_ = 0.0f;
     std::optional<float> previous_gap_hz_;
+    /// The baseline pair's first round, per path (A, B).
+    std::optional<std::pair<ZoneReading, ZoneReading>> baseline_first_;
     std::vector<BeltTuneRound> rounds_;
     int total_rounds_ = 0;
+    /// The latest in-plane curves measured across the zone, for power_hint().
+    BeltCurve last_a_;
+    BeltCurve last_b_;
 
     std::optional<float> pending_turns_;
     /// Turns since the last measured round, as magnitudes. Only a measured
