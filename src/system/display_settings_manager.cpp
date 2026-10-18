@@ -388,10 +388,15 @@ void DisplaySettingsManager::init_subjects() {
             old_enabled, helix::ui::screensaver_name(screensaver));
     }
     const int screensaver_type = static_cast<int>(screensaver);
+    constexpr int has_screensaver = 1;
 #else
     const int screensaver_type = 0;
+    constexpr int has_screensaver = 0;
 #endif
     UI_MANAGED_SUBJECT_INT(screensaver_type_subject_, screensaver_type, "settings_screensaver_type",
+                           subjects_);
+    // Build flag for XML visibility of the screensaver picker (ephemeral)
+    UI_MANAGED_SUBJECT_INT(has_screensaver_subject_, has_screensaver, "settings_has_screensaver",
                            subjects_);
     // Reads the screensaver type, so it follows that subject's init.
     UI_MANAGED_SUBJECT_INT(dim_row_kind_subject_,

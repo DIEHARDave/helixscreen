@@ -584,6 +584,7 @@ class DisplaySettingsManager {
     lv_subject_t timezone_subject_{};
 
     lv_subject_t screensaver_type_subject_{};
+    lv_subject_t has_screensaver_subject_{};
 
     bool subjects_initialized_ = false;
     bool hardware_keyboard_present_ = false;

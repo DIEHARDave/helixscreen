@@ -97,12 +97,15 @@
                               options_tag="Never&#10;1 minute&#10;5 minutes&#10;10 minutes&#10;20 minutes&#10;30 minutes"
                               callback="on_sleep_changed"/>
         <!-- Screensaver: the full list is the translation source; DisplaySettingsOverlay
-             rebuilds the options without the savers too heavy for this board -->
+             rebuilds the options without the savers too heavy for this board. Hidden in
+             builds without screensavers (settings_has_screensaver = 0). -->
         <setting_dropdown_row name="row_screensaver"
                               label="Screensaver" icon="television_classic" description="Show instead of dimming"
                               options="Off&#10;Flying Toasters&#10;Starfield&#10;3D Pipes&#10;Bouncing Printer&#10;Fireworks&#10;Bouncing Logo&#10;3D Maze&#10;Hyperspace&#10;Flip Clock&#10;Fireflies&#10;Aqua Surface&#10;High Fly"
                               options_tag="Off&#10;Flying Toasters&#10;Starfield&#10;3D Pipes&#10;Bouncing Printer&#10;Fireworks&#10;Bouncing Logo&#10;3D Maze&#10;Hyperspace&#10;Flip Clock&#10;Fireflies&#10;Aqua Surface&#10;High Fly"
-                              callback="on_screensaver_changed"/>
+                              callback="on_screensaver_changed" hidden="true">
+          <bind_flag_if_eq subject="settings_has_screensaver" flag="hidden" ref_value="0"/>
+        </setting_dropdown_row>
         <!-- Test Screensaver button (hidden when Off is selected). Starts hidden so it
              stays hidden wherever the binding cannot resolve. -->
         <lv_obj name="container_test_screensaver"

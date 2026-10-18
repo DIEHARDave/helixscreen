@@ -270,3 +270,37 @@ TEST_CASE_METHOD(LVGLUITestFixture, "DimRow: Screensaver after follows the scree
     }
 }
 #endif
+
+// The picker and its Test button follow the build's screensaver support and the chosen
+// saver from XML; nothing in C++ hides them.
+TEST_CASE_METHOD(LVGLUITestFixture, "Screensaver picker visibility comes from its subjects",
+                 "[display_settings][ui]") {
+    lv_subject_t* has_saver = lv_xml_get_subject(nullptr, "settings_has_screensaver");
+    lv_subject_t* type = lv_xml_get_subject(nullptr, "settings_screensaver_type");
+    REQUIRE(has_saver != nullptr);
+    REQUIRE(type != nullptr);
+    const int has_before = lv_subject_get_int(has_saver);
+    const int type_before = lv_subject_get_int(type);
+
+    lv_obj_t* overlay = static_cast<lv_obj_t*>(
+        lv_xml_create(lv_screen_active(), "settings_display_overlay", nullptr));
+    REQUIRE(overlay != nullptr);
+    lv_obj_t* row = lv_obj_find_by_name(overlay, "row_screensaver");
+    lv_obj_t* test_btn = lv_obj_find_by_name(overlay, "container_test_screensaver");
+    REQUIRE(row != nullptr);
+    REQUIRE(test_btn != nullptr);
+
+    lv_subject_set_int(has_saver, 0);
+    CHECK(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(has_saver, 1);
+    CHECK_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+
+    lv_subject_set_int(type, 0);
+    CHECK(lv_obj_has_flag(test_btn, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(type, 2);
+    CHECK_FALSE(lv_obj_has_flag(test_btn, LV_OBJ_FLAG_HIDDEN));
+
+    lv_obj_delete(overlay);
+    lv_subject_set_int(has_saver, has_before);
+    lv_subject_set_int(type, type_before);
+}
