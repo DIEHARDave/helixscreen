@@ -615,10 +615,16 @@ void AmsEditOverlay::rebuild_chip_rows() {
     material.push_back({lv_tr("Browse catalog..."), {}, true});
     material_chips_ = std::move(material);
 
-    // VARIANT: the catalog's variants for the family.
+    // VARIANT: the catalog's variants for the family; a variant the catalog
+    // lacks leads, selected, like an unknown family.
     std::vector<Chip> variants;
+    bool variant_known = false;
     for (const auto& v : catalog_->variants_in_family(sel_.family)) {
         variants.push_back({v.label, v.label, false});
+        variant_known = variant_known || iequals_str(v.label, sel_.variant);
+    }
+    if (!variant_known && !sel_.variant.empty()) {
+        variants.insert(variants.begin(), {sel_.variant, sel_.variant, false});
     }
     variant_chips_ = std::move(variants);
 
@@ -629,6 +635,9 @@ void AmsEditOverlay::rebuild_chip_rows() {
     std::vector<std::string> ordered = hoist_recents(makers, recent_brands_);
     bool brand_known = iequals_str(sel_.brand, "Generic");
     for (const auto& brand : ordered) {
+        if (iequals_str(brand, "Generic")) {
+            continue; // already leads the list
+        }
         brands.push_back({brand, brand, false});
         if (iequals_str(brand, sel_.brand)) {
             brand_known = true;
@@ -713,8 +722,12 @@ void AmsEditOverlay::handle_option_selected(int row, int index) {
                 editor.selection_moved_ = true;
                 editor.rebuild_chip_rows();
                 editor.update_summary();
+                editor.update_temp_display();
                 editor.update_sync_button_state();
             });
+        // The dropdown now reads "Browse catalog..."; put the real selection
+        // back, so a cancelled sheet leaves the row as it was.
+        refresh_dropdowns();
         return;
     }
     switch (row) {

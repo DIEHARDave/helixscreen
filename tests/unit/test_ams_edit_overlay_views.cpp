@@ -2551,3 +2551,85 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a price the field rounds does not make the 
     CHECK(access.is_dirty());
     close_editor_overlay();
 }
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the brand list names Generic once",
+                 "[ams_edit_overlay][dropdown]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    SlotInfo info = untracked_slot();
+    info.material = "PLA";
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    const auto brands = split_options(access.dropdown_options("dropdown_brand"));
+    CHECK(std::count(brands.begin(), brands.end(), std::string("Generic")) == 1);
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a variant the catalog lacks shows as the selected entry",
+                 "[ams_edit_overlay][dropdown]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    SlotInfo info = untracked_slot();
+    info.material = "PLA-Zebra";
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    REQUIRE(access.sel().family == "PLA");
+    REQUIRE(access.sel().variant == "Zebra");
+    CHECK(access.dropdown_selected("dropdown_variant") == "Zebra");
+    CHECK_FALSE(access.is_dirty());
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "Browse catalog leaves the row intact and a pick sets the temps",
+                 "[ams_edit_overlay][dropdown][browse]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    SlotInfo info = untracked_slot(); // PETG, Generic
+    info.nozzle_temp_min = 199;
+    info.nozzle_temp_max = 201;
+    info.bed_temp = 33;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    auto* temps = lv_xml_get_subject(nullptr, "ams_edit_temp_text");
+    REQUIRE(temps != nullptr);
+    const std::string stored = lv_subject_get_string(temps);
+    REQUIRE(stored.find("199") != std::string::npos);
+
+    REQUIRE(access.pick_dropdown("dropdown_material", "Browse catalog..."));
+    process_lvgl(10);
+    // The sheet is up and the row still names the selection, not the entry.
+    lv_obj_t* dlg = ModalStack::instance().top_dialog();
+    REQUIRE(dlg != nullptr);
+    CHECK(access.dropdown_selected("dropdown_material") == "PETG");
+
+    // Pick the first product row the sheet lists, then Select.
+    lv_obj_t* list = lv_obj_find_by_name(dlg, "product_list");
+    REQUIRE(list != nullptr);
+    const auto catalog = helix::printer::FilamentCatalog::load_full();
+    lv_obj_t* row = nullptr;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(list); ++i) {
+        lv_obj_t* child = lv_obj_get_child(list, static_cast<int32_t>(i));
+        const char* name = lv_obj_get_name(child);
+        if (name && catalog.resolve_id(name)) {
+            row = child;
+            break;
+        }
+    }
+    REQUIRE(row != nullptr);
+    lv_obj_send_event(row, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t* select = lv_obj_find_by_name(dlg, "btn_primary");
+    REQUIRE(select != nullptr);
+    lv_obj_send_event(select, LV_EVENT_CLICKED, nullptr);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    CHECK_FALSE(access.sel().product_id.empty());
+    CHECK(std::string(lv_subject_get_string(temps)).find("199") == std::string::npos);
+    close_editor_overlay();
+}
