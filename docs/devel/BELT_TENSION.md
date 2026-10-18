@@ -60,7 +60,7 @@ Z belts are deliberately unsupported; see the header comment on
 | `src/calibration/resonance_console.cpp` | `[resonance_tester]` config query and console-line parsing shared with input shaper |
 | `src/calibration/shaper_csv_parser.cpp` | `parse_resonance_csv`: reads the CSV, returns `(freq, psd_xyz)` pairs plus the in-plane `psd_x + psd_y` curve, or a classified error |
 | `src/api/moonraker_advanced_api.cpp` | `BeltResonanceCollector` (console follow + CSV read) and `test_belt_resonance` (entry point); `detect_belt_hardware` for kinematics |
-| `src/ui/ui_frequency_response_chart.cpp` | Shared chart: series styles, muted ghost series, sweep cursor, numbered and hollow markers, percent gridline labels |
+| `src/ui/ui_frequency_response_chart.cpp` | Shared chart: series styles, muted ghost series, sweep cursor, numbered and hollow markers, percent gridline labels, label gutters sized from the font (see `INPUT_SHAPER.md` § Axis label gutters) |
 | `src/calibration/belt_gating.cpp` | The pure Start-gate predicate |
 | `src/api/moonraker_client_mock.cpp` | `dispatch_test_resonances_response`: the `--test` simulation of a sweep |
 
@@ -124,7 +124,9 @@ there: the check has to happen before Start.
 **Stop** is not a pause. A sweep cannot be resumed, so `handle_stop_clicked` calls
 `BeltTensionCalibrator::emergency_abort`, which is
 `include/calibration_abort.h#emergency_stop_and_restart`: M112, then FIRMWARE_RESTART to
-clear the movement state the aborted sweep left behind.
+clear the movement state the aborted sweep left behind. The button is "Stop" with the
+`alert_octagon` icon on every view that can be measuring (`btn_stop`, `btn_tune_stop`),
+matching the other emergency-stop controls.
 
 ## Klipper facts the implementation leans on
 
@@ -472,6 +474,8 @@ with 3-15x A's in-plane power, which also caps Pearson similarity well below 100
 the tension matches. RESULTS does not show it.
 
 ### Next Zone and Confirm
+
+On a matched zone the view offers **Keep Tuning** (`BeltTensionPanel::handle_tune_keep_clicked`, shown while `bt_tune_has_zone` is 1), which resets the turn stepper and returns to the ADJUST phase for the same zone without sweeping, beside **Next Zone** or **Confirm**.
 
 **Next Zone** walks only the candidates the calibration registered, best move first (every
 candidate for SPRING). It sweeps the next zone's baseline pair at once, with laps, since the

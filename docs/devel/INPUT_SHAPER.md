@@ -170,6 +170,8 @@ bool   ui_frequency_response_chart_is_chart_mode(chart);
 lv_obj_t* ui_frequency_response_chart_get_obj(chart);
 ```
 
+**Axis label gutters.** The chart sizes its own label space from `font_small` instead of fixed pixels (`src/ui/ui_frequency_response_chart.cpp#apply_axis_pads`). The left pad is `ui_frequency_response_chart_y_gutter_width()`, the widest amplitude label the formatter can emit ("100%", "999k", "0.005", "1e-04", "100e9"), never under 36 px, plus `space_xs`; the bottom pad is `space_sm` plus the font height plus `space_xs`. Both re-run on `LV_EVENT_SIZE_CHANGED`, because a breakpoint change swaps the font under a live chart. Frequency labels are centred on their tick but clamped inside the chart's box (`ui_frequency_response_chart_x_label_center`, half-width from `ui_frequency_response_chart_x_label_half_width`) so "100 Hz" never clips at either edge. Tick spacing follows the range: 5 Hz up to a 40 Hz span, 10 Hz up to 80, so a zoomed belt-tuning zone still shows a few ticks. `ui_frequency_response_chart_get_freq_range()` reads the range back.
+
 ### Internal Structure
 
 ```cpp
@@ -331,7 +333,7 @@ The transfer math lives in `src/calibration/shaper_response.cpp` and reproduces 
 IDLE (0)          Shows instructions, current config, Calibrate X/Y/All buttons
   |
   v
-MEASURING (1)     Spinner/progress bar, step labels, Abort button
+MEASURING (1)     Spinner/progress bar, step labels, Stop button
 
 Both the panel and the first-run wizard step use the same analysis-phase
 treatment: the sweep shows a determinate bar; the offline analysis reports no
@@ -360,9 +362,9 @@ State visibility is controlled entirely through XML subject bindings:
 4. Calibrate Y axis (progress: "Step 2 of 2")
 5. Show results for both axes
 
-### Abort Behavior
+### Stop Behavior
 
-Aborting during calibration sends `M112` (emergency stop) followed by `FIRMWARE_RESTART`. This is necessary because `SHAPER_CALIBRATE` blocks the G-code queue and cannot be cancelled through normal means. Recovery dialog suppression is applied for 15 seconds.
+The Stop button (`ui_xml/input_shaper_panel.xml#btn_abort`, the wizard's `ui_xml/wizard_input_shaper.xml#cancel_calibration_btn`) sends `M112` (emergency stop) followed by `FIRMWARE_RESTART`. This is necessary because `SHAPER_CALIBRATE` blocks the G-code queue and cannot be cancelled through normal means. Recovery dialog suppression is applied for 15 seconds. Every control that performs this stop is labelled "Stop" with the `alert_octagon` icon and `variant="danger"`: Input Shaper, the wizard step, PID, Tool Offsets and Belt Tension.
 
 ### Klipper Commands
 
@@ -421,7 +423,7 @@ The PID panel provides an interactive UI for Klipper's `PID_CALIBRATE` command w
 IDLE (0)          Heater selection (extruder/bed), temp adjustment, material presets
   |
   v
-CALIBRATING (1)   Live temp graph, progress bar, Abort button
+CALIBRATING (1)   Live temp graph, progress bar, Stop button
   |
   +---> COMPLETE (3)   Shows Kp/Ki/Kd results with before/after comparison
   |
