@@ -240,6 +240,9 @@ class LiveSweepPreview {
     std::atomic<double> stream_time_s_{0.0};
 
     helix::AsyncLifetimeGuard lifetime_;
+    /// Taken from lifetime_ on the main thread when the source starts; the
+    /// loop thread defers through it, so stop() expiring it drops what it queued.
+    std::optional<helix::LifetimeToken> stream_token_;
 };
 
 } // namespace helix::calibration

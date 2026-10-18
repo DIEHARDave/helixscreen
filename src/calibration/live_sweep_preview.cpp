@@ -2,11 +2,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "live_sweep_preview.h"
 
+#include "belt_stream_client.h"
+#include "env_knobs.h"
+#include "i_moonraker_api.h"
+#include "i_moonraker_client.h"
 #include "text_io.h"
+
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cmath>
+#include <ctime>
 #include <limits>
+
+#ifdef __linux__
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
 
 namespace helix::calibration {
 
@@ -142,6 +155,267 @@ std::string parse_klippy_uds_address(const nlohmann::json& data) {
         return {};
     }
     return address->get_ref<const std::string&>();
+}
+
+void query_klippy_uds_address(IMoonrakerAPI& api, std::function<void(std::string)> on_done) {
+    api.rest().get_server_config(
+        [on_done](const RestResponse& resp) { on_done(parse_klippy_uds_address(resp.data)); },
+        [on_done](const MoonrakerError& err) {
+            spdlog::debug("[LiveSweepPreview] /server/config failed: {}", err.message);
+            on_done({});
+        });
+}
+
+void query_live_sweep_facts(IMoonrakerAPI& api, std::function<void(LiveSweepFacts)> on_done) {
+    IMoonrakerAPI* api_ptr = &api;
+    query_klippy_uds_address(api, [api_ptr, on_done](std::string path) {
+        LiveSweepFacts facts;
+        facts.socket_reachable = !path.empty() && BeltStreamClient::socket_reachable(path);
+        facts.socket_path = std::move(path);
+        query_resonance_tester_config(api_ptr->get_client(),
+                                      [facts, on_done](ResonanceTesterConfig cfg) mutable {
+                                          facts.cfg = std::move(cfg);
+                                          on_done(std::move(facts));
+                                      });
+    });
+}
+
+namespace {
+
+/// klippy's dump endpoint through an unchanged BeltStreamClient.
+class StreamClientBatchSource final : public IAccelBatchSource {
+  public:
+    bool start(const std::string& socket_path, const std::string& accel_chip,
+               BatchCallback on_batch, ErrorCallback on_error) override {
+        return client_.start(socket_path, accel_chip, std::move(on_batch), std::move(on_error));
+    }
+    void stop() override {
+        client_.stop();
+    }
+    [[nodiscard]] float sample_rate_hz() const override {
+        return client_.sample_rate_hz();
+    }
+
+  private:
+    BeltStreamClient client_;
+};
+
+/// HELIX_SWEEP_PREVIEW_OFF=1 turns the preview off for one run, for measuring
+/// what it costs on the board.
+bool preview_disabled() {
+    if (!helix::env_flag("HELIX_SWEEP_PREVIEW_OFF")) {
+        return false;
+    }
+    static std::atomic<bool> logged{false};
+    if (!logged.exchange(true)) {
+        spdlog::info("[LiveSweepPreview] HELIX_SWEEP_PREVIEW_OFF set: no live sweep preview");
+    }
+    return true;
+}
+
+int64_t thread_cpu_ns() {
+    timespec ts{};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) != 0) {
+        return 0;
+    }
+    return static_cast<int64_t>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
+}
+
+} // namespace
+
+std::unique_ptr<IAccelBatchSource> make_accel_batch_source(const SweepPlan& /*plan*/) {
+    return std::make_unique<StreamClientBatchSource>();
+}
+
+LiveSweepPreview::LiveSweepPreview() : factory_(make_accel_batch_source) {}
+
+LiveSweepPreview::~LiveSweepPreview() {
+    stop();
+}
+
+void LiveSweepPreview::set_source_factory(SourceFactory factory) {
+    if (state_ != State::IDLE) {
+        spdlog::warn("[LiveSweepPreview] source factory change ignored outside IDLE");
+        return;
+    }
+    factory_ = factory ? std::move(factory) : SourceFactory(make_accel_batch_source);
+}
+
+void LiveSweepPreview::arm(LiveSweepTarget target, PointsCallback on_points) {
+    stop();
+    points_.clear();
+    if (preview_disabled()) {
+        return;
+    }
+    target_ = std::move(target);
+    on_points_ = std::move(on_points);
+    hint_hz_.store(0.0f);
+    state_ = State::ARMED;
+}
+
+void LiveSweepPreview::note_console_frequency(float hz) {
+    if (!std::isfinite(hz) || hz <= 0.0f) {
+        return;
+    }
+    if (state_ == State::ARMED) {
+        hint_hz_.store(hz);
+        attach();
+    } else if (state_ == State::STREAMING) {
+        hint_hz_.store(hz);
+    }
+}
+
+void LiveSweepPreview::attach() {
+    accumulator_ = std::make_unique<SweepResponseAccumulator>(target_->plan);
+    finishing_.store(false);
+    finish_deadline_s_ = 0.0;
+    stop_requested_ = false;
+    no_lock_logged_ = false;
+    niced_ = false;
+    loop_cpu_first_ns_ = -1;
+    loop_cpu_ns_.store(0);
+    stream_time_s_.store(0.0);
+
+    source_ = factory_ ? factory_(target_->plan) : nullptr;
+    if (!source_) {
+        spdlog::info("[LiveSweepPreview] {}: no accelerometer stream, no live preview",
+                     target_->accel_chip);
+        accumulator_.reset();
+        state_ = State::DONE;
+        return;
+    }
+
+    stream_token_.emplace(lifetime_.token());
+    state_ = State::STREAMING;
+    const bool started = source_->start(
+        target_->socket_path, target_->accel_chip,
+        [this](const AccelBatch& batch) { on_batch(batch); },
+        [this](const std::string& message) { on_source_error(message); });
+    if (!started) {
+        spdlog::info("[LiveSweepPreview] {}: stream did not start, no live preview",
+                     target_->accel_chip);
+        stop_source();
+        state_ = State::DONE;
+        return;
+    }
+    spdlog::debug("[LiveSweepPreview] {}: streaming {:.0f}-{:.0f} Hz at {:.2f} Hz/s",
+                  target_->accel_chip, target_->plan.freq_start_hz, target_->plan.freq_end_hz,
+                  target_->plan.hz_per_sec);
+}
+
+void LiveSweepPreview::on_batch(const AccelBatch& batch) {
+    if (stop_requested_ || !accumulator_ || !source_) {
+        return;
+    }
+    if (!niced_) {
+        niced_ = true;
+#ifdef __linux__
+        const auto tid = static_cast<id_t>(::syscall(SYS_gettid));
+        if (::setpriority(PRIO_PROCESS, tid, PREVIEW_LOOP_NICE) != 0) {
+            spdlog::debug("[LiveSweepPreview] could not renice the stream thread");
+        }
+#endif
+    }
+    const int64_t cpu_at_start = thread_cpu_ns();
+    if (loop_cpu_first_ns_ < 0) {
+        loop_cpu_first_ns_ = cpu_at_start;
+    }
+
+    accumulator_->note_console_frequency(hint_hz_.load());
+    auto fresh =
+        accumulator_->add_samples(batch.samples, batch.contiguous(), source_->sample_rate_hz());
+    const double stream_s = accumulator_->stream_time_s();
+    stream_time_s_.store(stream_s);
+    loop_cpu_ns_.store(thread_cpu_ns() - loop_cpu_first_ns_);
+
+    if (!fresh.empty()) {
+        stream_token_->defer(
+            "LiveSweepPreview::points",
+            [this, fresh = std::move(fresh)]() mutable { deliver(std::move(fresh)); });
+    }
+
+    if (!no_lock_logged_ && !accumulator_->locked() && std::isnan(accumulator_->drive_start_s()) &&
+        stream_s >= PREVIEW_NO_LOCK_LOG_S) {
+        no_lock_logged_ = true;
+        spdlog::debug("[LiveSweepPreview] no lock on the drive after {:.0f} s of stream", stream_s);
+    }
+
+    bool done = accumulator_->complete();
+    if (finishing_.load()) {
+        if (finish_deadline_s_ <= 0.0) {
+            finish_deadline_s_ = stream_s + PREVIEW_FINISH_GRACE_S;
+        } else if (stream_s >= finish_deadline_s_) {
+            done = true;
+        }
+    }
+    if (done) {
+        // The loop thread cannot join itself: the stop runs on the main thread.
+        stop_requested_ = true;
+        stream_token_->defer("LiveSweepPreview::auto_stop", [this]() {
+            stop_source();
+            state_ = State::DONE;
+        });
+    }
+}
+
+void LiveSweepPreview::on_source_error(const std::string& message) {
+    if (stop_requested_) {
+        return;
+    }
+    stop_requested_ = true;
+    stream_token_->defer("LiveSweepPreview::source_error", [this, message]() {
+        spdlog::info("[LiveSweepPreview] {}: stream ended: {}",
+                     target_ ? target_->accel_chip : std::string(), message);
+        stop_source();
+        state_ = State::DONE;
+    });
+}
+
+void LiveSweepPreview::deliver(std::vector<SweepPoint> fresh) {
+    points_.insert(points_.end(), fresh.begin(), fresh.end());
+    // A copy: the callback may call stop() or arm(), which replace on_points_.
+    auto callback = on_points_;
+    if (callback) {
+        callback(points_);
+    }
+}
+
+void LiveSweepPreview::finish() {
+    if (state_ == State::STREAMING) {
+        finishing_.store(true);
+    } else if (state_ == State::ARMED) {
+        state_ = State::DONE;
+    }
+}
+
+void LiveSweepPreview::stop() {
+    stop_source();
+    state_ = State::IDLE;
+    target_.reset();
+    on_points_ = nullptr;
+}
+
+void LiveSweepPreview::stop_source() {
+    lifetime_.invalidate();
+    if (source_) {
+        source_->stop();
+        const double cpu_ms = static_cast<double>(loop_cpu_ns_.load()) / 1e6;
+        spdlog::info("[LiveSweepPreview] {}: {} points, loop thread {:.0f} ms CPU over {:.0f} s of "
+                     "stream",
+                     target_ ? target_->accel_chip : std::string(), points_.size(), cpu_ms,
+                     stream_time_s_.load());
+        source_.reset();
+    }
+    accumulator_.reset();
+    stream_token_.reset();
+}
+
+LiveSweepPreview::State LiveSweepPreview::state() const {
+    return state_;
+}
+
+const std::vector<SweepPoint>& LiveSweepPreview::points() const {
+    return points_;
 }
 
 } // namespace helix::calibration
