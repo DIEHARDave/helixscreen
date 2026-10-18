@@ -6,6 +6,11 @@
          lock-screen PIN dots (components/lock_screen.xml). -->
     <px name="legend_dot_size" value="8"/>
   </consts>
+  <styles>
+    <!-- The status block's floor keeps the spinner/bar swap from jumping. Short
+         screens drop it so the live chart below gets the height. -->
+    <style name="status_floor" min_height="160"/>
+  </styles>
   <view name="input_shaper_panel"
         extends="lv_obj" width="#overlay_width_transient" height="100%" align="right_mid" style_border_width="0"
         style_pad_all="0" style_bg_opa="255" style_bg_color="#card_bg" scrollable="false" flex_flow="column">
@@ -120,9 +125,10 @@
         <bind_flag_if_not_eq subject="input_shaper_state" flag="hidden" ref_value="1"/>
         <!-- Spinner and status container -->
         <lv_obj width="100%"
-                height="content" style_min_height="160" style_pad_all="#space_xl" flex_flow="column"
-                style_flex_main_place="center" style_flex_cross_place="center" style_flex_track_place="center"
-                style_pad_gap="#space_md" scrollable="false">
+                height="content" style_pad_all="#space_xl" flex_flow="column" style_flex_main_place="center"
+                style_flex_cross_place="center" style_flex_track_place="center" style_pad_gap="#space_md"
+                scrollable="false">
+          <bind_style_if_ge name="status_floor" subject="ui_breakpoint_v" ref_value="2"/>
 
           <text_heading name="status_label"
                         bind_text="is_measuring_axis_label" text="Calibrating..." style_text_align="center"/>
@@ -140,11 +146,12 @@
             <bind_flag_if_eq subject="is_measuring_has_progress" flag="hidden" ref_value="0"/>
           </progress_bar>
         </lv_obj>
-        <!-- Live response curve while the sweep runs -->
+        <!-- Live response curve while the sweep runs. Micro screens leave it
+             under 80 px, too short to read: progress only. -->
         <lv_obj name="chart_container_measuring"
                 width="100%" flex_grow="1" style_pad_all="0" style_radius="#border_radius" style_bg_color="#screen_bg"
                 style_bg_opa="255" scrollable="false">
-          <bind_flag_if_eq subject="is_measuring_has_chart" flag="hidden" ref_value="0"/>
+          <bind_flag_if cond="is_measuring_has_chart eq 0 or ui_breakpoint_v eq 0" flag="hidden"/>
         </lv_obj>
         <!-- Abort button (bottom, like PID panel) -->
         <ui_button name="btn_abort" width="25%" text="Abort" variant="danger">

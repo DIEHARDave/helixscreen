@@ -21,8 +21,9 @@
              flex_grow="1" style_radius="#border_radius" style_pad_all="#space_lg" style_pad_gap="#space_md"
              flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center">
 
-      <!-- Info section -->
+      <!-- Info section; on tiny screens the live chart takes its room -->
       <lv_obj width="100%" flex_flow="column" style_pad_all="0" style_pad_gap="#space_sm">
+        <bind_flag_if cond="wizard_input_shaper_has_chart eq 1 and ui_breakpoint_v eq 1" flag="hidden"/>
         <text_body width="100%"
                    text="Input shaping reduces vibration artifacts (ringing) in your prints." style_text_align="center"/>
         <text_small width="100%"
@@ -57,16 +58,17 @@
         </text_small>
       </lv_obj>
 
-      <!-- Live response curve while each axis sweeps, then that axis's result -->
+      <!-- Live response curve while each axis sweeps, then that axis's result.
+           Micro screens leave it under 80 px, too short to read: progress only. -->
       <lv_obj name="wizard_input_shaper_chart_host"
               width="100%" flex_grow="1" style_pad_all="0" style_radius="#border_radius" style_bg_color="#screen_bg"
               style_bg_opa="255" scrollable="false">
-        <bind_flag_if_eq subject="wizard_input_shaper_has_chart" flag="hidden" ref_value="0"/>
+        <bind_flag_if cond="wizard_input_shaper_has_chart eq 0 or ui_breakpoint_v eq 0" flag="hidden"/>
       </lv_obj>
 
       <!-- Spacer; the chart takes its room while it is shown -->
       <lv_obj flex_grow="1">
-        <bind_flag_if_eq subject="wizard_input_shaper_has_chart" flag="hidden" ref_value="1"/>
+        <bind_flag_if cond="wizard_input_shaper_has_chart eq 1 and ui_breakpoint_v ge 1" flag="hidden"/>
       </lv_obj>
 
       <!-- Start calibration button (centered, hidden once calibration started) -->
