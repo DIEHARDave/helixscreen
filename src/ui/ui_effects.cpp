@@ -306,7 +306,8 @@ void defocus_tree(lv_obj_t* obj) {
 }
 
 bool full_style_effects_active() {
-    lv_subject_t* tier = lv_xml_get_subject(nullptr, "platform_tier");
+    // Before app_globals_init_subjects() registers the tier, effects stay on.
+    lv_subject_t* tier = lv_xml_find_subject(nullptr, "platform_tier");
     return !tier || helix::full_style_effects_allowed(
                         static_cast<helix::PlatformTier>(lv_subject_get_int(tier)));
 }
