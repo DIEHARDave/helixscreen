@@ -142,6 +142,7 @@ English and the render sites translate it through the plugin's `i18n/` pack
 | `widgets` | array | `[]` | up to 8 home tiles |
 | `settings` | array | `[]` | the settings schema (§6) |
 | `settings_overlay` | string | empty | one of the plugin's own components, opened instead of the generated settings screen |
+| `menu_items` | array | `[]` | actions the plugin adds to app menus (§8, Menu items) |
 
 Each `widgets` entry:
 
@@ -390,6 +391,96 @@ display; if waking brings up the lock screen, the surface waits until it is unlo
 finishes, watch `print_state` and open a dialog when it reads `"complete"`; it appears
 once the user has dealt with the print-complete dialog (`examples/plugins/calibration-bridge`).
 | `helix.ui.text_width(str[, font])` | integer px | width `str` draws at in the live theme font, measured the way `c:text` draws it (no letter spacing, one line); `font` is a base token without the `font_` prefix (default `"body"`), and a size-suffixed or unknown token is an error, as for canvas text; `str` is at most 1024 bytes. Call it where the layout is decided (a widget hook, a canvas redraw), since the theme font changes with the display tier |
+
+### Menu items
+
+A plugin can add actions to four app menus. Each item names one of the plugin's
+`helix.ui.on` handlers; tapping it closes the menu and calls that handler with a table
+describing what the menu was opened on.
+
+| `menu` | Where it appears | Opened on |
+|---|---|---|
+| `print_file` | the "⋯" button on the print details screen (Print select, a file opened) | the file shown |
+| `filament_slot` | the long-press menu of a filament slot, any filament system, below the Tool and Endless Spool rows | the slot |
+| `spool` | the Spoolman spool menu, after the app's items | the spool |
+| `tile` | the configure (gear) button of the plugin's own home tile, in home edit mode | the tile |
+
+The external spool's menu takes no plugin items, and neither does the print file list's
+long-press (Delete).
+
+Declared in `manifest.json`:
+
+```json
+"menu_items": [
+  {"id": "calibrate", "menu": "print_file", "label": "Calibrate with this file",
+   "icon": "tune", "handler": "calibrate", "check": "can_calibrate"}
+]
+```
+
+| Field | Rules |
+|---|---|
+| `id` | unique within the plugin |
+| `menu` | `print_file`, `filament_slot`, `spool` or `tile`; a `tile` item needs at least one declared widget |
+| `label` | English source, translated through the plugin's `i18n/` pack |
+| `icon` | an icon name from `include/ui_icon_codepoints.h`, optional |
+| `handler` | a `helix.ui.on` handler name, required |
+| `check` | a `helix.ui.on` handler name, optional (below) |
+
+A malformed item rejects the manifest with the field named. Per-menu limits (items per
+plugin, and plugin rows per menu so a menu never scrolls) are in §10.
+
+**The handler** receives one table:
+
+| `menu` | Fields |
+|---|---|
+| `print_file` | `source` (`"printer"` or `"usb"`), `path` (relative to the gcodes root; `nil` for a USB file), `local_path` (USB files only), `name`, `estimated_time_s`, `filament` (a list, one per tool: `tool`, `material`, `color`, `grams`), `layer_height`, `object_height`, `tools_used` |
+| `filament_slot` | `unit`, `slot` (both 0-based), `label` (the slot's name as the menu shows it), `tool` (the mapped tool or `nil`), and what is loaded when known: `material`, `color` (hex), `brand`, `spool_id` (Spoolman) |
+| `spool` | `spool_id`, `material`, `color`, `brand`, `remaining_g` |
+| `tile` | `widget` (the declared widget id) |
+
+A field the printer does not report, or that has not loaded yet, is `nil`: the print
+details screen fetches some file metadata after it opens. The handler is an ordinary
+plugin entry, with the same time budget, fault rules and permissions as any
+`helix.ui.on` handler; it may open a dialog or overlay, or call Moonraker within the
+plugin's permissions.
+
+```lua
+helix.ui.on("calibrate", function(file)
+  helix.ui.dialog("my-plugin__start", {path = file.path or file.local_path})
+end)
+```
+
+**The check.** An item without `check` always shows, enabled. With `check`, the named
+handler is called with the same table when the menu opens and returns `true` (shown),
+`false` (hidden), or `{visible = true, enabled = false, reason = "Only for .gcode files"}`
+(shown greyed, with the reason). A check runs in check mode: anything with a side effect
+or a wait (`helix.gcode`, `helix.moonraker`, `helix.http`, `helix.storage` and
+`helix.settings` writes, `helix.sleep`, opening a dialog, overlay, confirm or toast)
+raises at once. It has its own short time budget. A check that raises, overruns or returns
+anything else hides only that item for this opening and counts toward the plugin's error
+limit (§10); the menu always opens.
+
+```lua
+helix.ui.on("can_calibrate", function(file)
+  if file.source == "usb" then
+    return {visible = true, enabled = false, reason = "Copy the file to the printer first"}
+  end
+  return true
+end)
+```
+
+**What the user sees.**
+- On print details, the bottom row becomes three icon buttons (Delete, "⋯", Print) once
+  any enabled plugin declares a `print_file` item; "⋯" lists the items for that file, and
+  says so when every one is hidden for it. Without such a plugin the row is unchanged.
+- In the filament slot and spool menus, each plugin's items sit under a divider, headed with
+  the plugin's name, plugins in load order and items in manifest order.
+- A tile with `tile` items gets the gear in home edit mode; its items open from there.
+- Settings > Plugins lists "Adds to: ..." for a plugin with menu items. Menu items need no
+  permission of their own, so adding or changing them in an update does not ask again.
+
+Disabling, faulting or unloading a plugin removes its items at once; a tap that lands
+after that does nothing.
 
 ### helix.widget (`src/plugin/lua_bind_widget.cpp`)
 
