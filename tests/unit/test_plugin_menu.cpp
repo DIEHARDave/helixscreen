@@ -248,4 +248,48 @@ TEST_CASE("menu calls without a host are empty", "[plugin][menu]") {
     CHECK(pm::row_cap(pm::MenuKind::Tile) == 4);
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "a check result with a metatable is refused unread",
+                 "[plugin][menu]") {
+    struct Case {
+        const char* id;
+        const char* index_fn;
+    };
+    // Each __index would misbehave if anything read the table through it.
+    const Case cases[] = {
+        {"m-error", R"(function() error("from __index") end)"},
+        {"m-loop", R"(function() while true do end end)"},
+        {"m-store", R"(function() helix.storage.set("leak", 1); return true end)"},
+    };
+    TempDir tmp;
+    json block = json{{"enabled", json::object()}};
+    for (const auto& c : cases) {
+        write_menu_plugin(tmp.path, c.id, c.id,
+                          spool_item("x", R"(,"check":"meta")"), std::string(R"(
+            helix.ui.on("run", function() end)
+            helix.ui.on("meta", function()
+                return setmetatable({}, {__index = )") + c.index_fn + R"(})
+            end)
+            helix.ui.on("probe", function() probe = helix.storage.get("leak") end)
+        )",
+                          R"("permissions":["storage"],)");
+        block["enabled"][c.id] = {{"version", "1.0.0"}, {"permissions", {"storage"}}};
+    }
+    HostRig rig(block);
+    rig.host->load_from(tmp.path.string());
+    helix::LogCapture logs;
+    CHECK(pm::resolve(pm::MenuKind::Spool, json::object()).empty());
+    for (const auto& c : cases) {
+        INFO(c.id);
+        LuaRuntime* rt = rig.host->runtime(c.id);
+        REQUIRE(rt);
+        CHECK_FALSE(rt->faulted());
+        CHECK(dispatch_ui_handler(*rt, "probe", std::nullopt));
+        lua_getglobal(rt->state(), "probe");
+        CHECK(lua_isnil(rt->state(), -1));
+        lua_pop(rt->state(), 1);
+    }
+    CHECK(logs.count_containing("must return a boolean") == 3);
+    CHECK(logs.count_containing("from __index") == 0);
+}
+
 #endif // HELIX_HAS_PLUGINS

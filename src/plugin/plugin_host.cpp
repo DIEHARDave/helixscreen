@@ -711,8 +711,10 @@ struct CheckVerdict {
     std::string reason;
 };
 
-/// Reads a check's return value: a boolean, or a table whose `visible` and `enabled`
+/// Reads a check's return value: a boolean, or a plain table whose `visible` and `enabled`
 /// are booleans (absent means true) and whose `reason` is a string (absent means none).
+/// It runs after the check has left check mode and its entry, so nothing here may run
+/// plugin code: fields are read raw, and a table with a metatable is not a valid result.
 CheckVerdict read_check_value(lua_State* co, int nres) {
     CheckVerdict v;
     if (nres < 1)
@@ -725,15 +727,23 @@ CheckVerdict read_check_value(lua_State* co, int nres) {
     }
     if (lua_type(co, at) != LUA_TTABLE)
         return v;
+    if (lua_getmetatable(co, at)) {
+        lua_pop(co, 1);
+        return v;
+    }
+    auto raw_field = [&](const char* key) {
+        lua_pushstring(co, key);
+        return lua_rawget(co, at);
+    };
     auto flag = [&](const char* key, bool& out) {
-        int t = lua_getfield(co, at, key);
+        int t = raw_field(key);
         bool ok = t == LUA_TNIL || t == LUA_TBOOLEAN;
         out = t == LUA_TNIL || lua_toboolean(co, -1);
         lua_pop(co, 1);
         return ok;
     };
     bool ok = flag("visible", v.visible) && flag("enabled", v.enabled);
-    int t = lua_getfield(co, at, "reason");
+    int t = raw_field("reason");
     if (t == LUA_TSTRING)
         v.reason = lua_tostring(co, -1);
     lua_pop(co, 1);
@@ -792,9 +802,10 @@ std::vector<plugin_menu::Entry> PluginHost::resolve_menu(MenuKind kind, const js
                         [&v](lua_State* co, int nres) { v = read_check_value(co, nres); }))
                     continue;
                 if (!v.valid) {
-                    l.rt->report_error("menu check '" + d.check +
-                                       "' must return a boolean or {visible = bool, enabled = "
-                                       "bool, reason = string}");
+                    l.rt->report_error(
+                        "menu check '" + d.check +
+                        "' must return a boolean or a plain table {visible = bool, enabled = "
+                        "bool, reason = string}");
                     continue;
                 }
                 if (!v.visible)
