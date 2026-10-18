@@ -499,6 +499,7 @@
   <translation tag="Calibrate Gates" ru="Калибровать шлюзы"/>
   <translation tag="Calibrate Gear" ru="Калибровать шестерню"/>
   <translation tag="Calibrate Purge Chute" ru="Калибровать жёлоб продувки"/>
+  <translation tag="Calibrate Toolhead" ru="Калибровать печатающую головку"/>
   <translation tag="Calibrate X" ru="Калибровать X"/>
   <translation tag="Calibrate Y" ru="Калибровать Y"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" ru="Калибровка компенсации вибраций для уменьшения артефактов звона"/>
@@ -1458,6 +1459,7 @@
   <translation tag="Grip filament" ru="Зажать филамент"/>
   <translation tag="Grip the filament" ru="Зажать филамент"/>
   <translation tag="Guide the toolhead to the chute&apos;s extrude position" ru="Подведите печатающую головку к позиции экструзии жёлоба"/>
+  <translation tag="Guided sensor-to-nozzle, unload and cutter retract calibration" ru="Пошаговая калибровка: датчик до сопла, выгрузка и ретракция резака"/>
   <translation tag="Guides and reference" ru="Руководства и справка"/>
   <translation tag="H" ru="Х"/>
   <translation tag="HELIXSCREEN" ru="HELIXSCREEN"/>

@@ -2487,6 +2487,67 @@ TEST_CASE("AFC device action test_lanes dispatches gcode", "[ams][afc][device_ac
     REQUIRE(helper.has_gcode("AFC_TEST_LANES"));
 }
 
+namespace {
+bool has_action(const std::vector<helix::printer::DeviceAction>& actions, const std::string& id) {
+    for (const auto& a : actions) {
+        if (a.id == id)
+            return true;
+    }
+    return false;
+}
+} // namespace
+
+// AFC_TOOLHEAD_CALIBRATION is a Python-registered command, so it never appears in
+// the objects list; printer.gcode.help is the only place a client can see it.
+TEST_CASE("AFC toolhead calibration action follows printer.gcode.help",
+          "[ams][afc][device_actions]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+
+    SECTION("hidden before the help reply arrives") {
+        CHECK_FALSE(has_action(helper.get_device_actions(), "toolhead_calibration"));
+    }
+
+    SECTION("shown in the toolhead section when AFC lists the command") {
+        nlohmann::json reply = {
+            {"jsonrpc", "2.0"},
+            {"result",
+             {{"AFC_CALIBRATION", "open the calibration menu"},
+              {"AFC_TOOLHEAD_CALIBRATION", "Open the toolhead variable calibration menu"}}}};
+        REQUIRE(AfcTestAccess::apply_gcode_help_response(helper, reply));
+
+        const auto actions = helper.get_device_actions();
+        const auto it = std::find_if(actions.begin(), actions.end(),
+                                     [](const auto& a) { return a.id == "toolhead_calibration"; });
+        REQUIRE(it != actions.end());
+        CHECK(it->section == "toolhead");
+        CHECK(it->enabled);
+    }
+
+    SECTION("hidden when AFC predates the command") {
+        nlohmann::json reply = {{"jsonrpc", "2.0"},
+                                {"result", {{"AFC_CALIBRATION", "open the calibration menu"}}}};
+        REQUIRE(AfcTestAccess::apply_gcode_help_response(helper, reply));
+        CHECK_FALSE(has_action(helper.get_device_actions(), "toolhead_calibration"));
+    }
+
+    SECTION("a malformed reply changes nothing") {
+        CHECK_FALSE(AfcTestAccess::apply_gcode_help_response(
+            helper, nlohmann::json{{"result", "AFC_TOOLHEAD_CALIBRATION"}}));
+        CHECK_FALSE(has_action(helper.get_device_actions(), "toolhead_calibration"));
+    }
+}
+
+TEST_CASE("AFC device action toolhead_calibration dispatches gcode", "[ams][afc][device_actions]") {
+    AmsBackendAfcTestHelper helper;
+    helper.initialize_test_lanes_with_slots(4);
+
+    auto result = helper.execute_device_action("toolhead_calibration");
+
+    REQUIRE(result.success());
+    REQUIRE(helper.has_gcode("AFC_TOOLHEAD_CALIBRATION"));
+}
+
 TEST_CASE("AFC device action change_blade dispatches gcode", "[ams][afc][device_actions][phase3]") {
     AmsBackendAfcTestHelper helper;
     helper.initialize_test_lanes_with_slots(4);

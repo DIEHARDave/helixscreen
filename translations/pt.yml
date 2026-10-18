@@ -493,6 +493,7 @@ translations:
   Calibrate Gates: 'Calibrar gates'
   Calibrate Gear: 'Calibrar a engrenagem'
   Calibrate Purge Chute: Calibrar calha de purga
+  Calibrate Toolhead: 'Calibrar cabeçote'
   Calibrate X: Calibrar X
   Calibrate Y: Calibrar Y
   Calibrate All Tools: Calibrar todas as ferramentas
@@ -1550,6 +1551,7 @@ translations:
   Grip filament: Segurar filamento
   Grip the filament: Segurar o filamento
   Guide the toolhead to the chute's extrude position: Leve o cabeçote até a posição de extrusão da calha
+  Guided sensor-to-nozzle, unload and cutter retract calibration: 'Calibração guiada: sensor ao bico, descarregamento e retração do cortador'
   Guides and reference: Guias e referência
   H: H
   HELIXSCREEN: HELIXSCREEN
