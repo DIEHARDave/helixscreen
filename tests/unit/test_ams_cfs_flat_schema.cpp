@@ -1247,3 +1247,99 @@ TEST_CASE_METHOD(CfsGoldenFixture, "CFS: a stock unit frame after flat ones retu
     CHECK(info.tool_to_slot_map[0] == 1);
     CHECK(info.tool_to_slot_map[1] == 0);
 }
+
+namespace {
+
+/// The four-box fixture as revision 2 reports it: one reading per box in
+/// boxes[], listed out of address order so a join by position would misfile
+/// them. Box 2 is offline and box 4 is not listed.
+json make_revision2_box() {
+    json box = load_box_fixture("cfs_fork_four_box_L8MMBCCK.json");
+    box["api_revision"] = 2;
+    box["boxes"] = json::parse(R"([
+        {"address": 3, "online": true, "slots": [8, 9, 10, 11],
+         "temp_c": 30.5, "humidity_pct": 61, "fault": null},
+        {"address": 1, "online": true, "slots": [0, 1, 2, 3],
+         "temp_c": 24, "humidity_pct": 38, "fault": null},
+        {"address": 2, "online": false, "slots": [4, 5, 6, 7],
+         "temp_c": null, "humidity_pct": null, "fault": null}
+    ])");
+    return box;
+}
+
+} // namespace
+
+TEST_CASE("CFS flat: revision 2 gives each box its own environment reading",
+          "[ams][cfs][flat][fork][environment][boxes]") {
+    json box = make_revision2_box();
+
+    SECTION("readings join on address") {
+        const auto info = AmsBackendCfs::parse_box_status(box);
+        REQUIRE(info.units.size() == 4);
+        REQUIRE(units_with_environment(info) == std::vector<int>{0, 2});
+        CHECK(info.units[0].environment->temperature_c == 24.0f);
+        CHECK(info.units[0].environment->humidity_pct == 38.0f);
+        CHECK(info.units[0].environment->has_humidity);
+        CHECK(info.units[2].environment->temperature_c == 30.5f);
+        CHECK(info.units[2].environment->humidity_pct == 61.0f);
+    }
+
+    SECTION("an online box with null readings shows none") {
+        box["boxes"][0]["temp_c"] = nullptr;
+        box["boxes"][0]["humidity_pct"] = nullptr;
+        REQUIRE(units_with_environment(AmsBackendCfs::parse_box_status(box)) ==
+                std::vector<int>{0});
+    }
+
+    SECTION("an offline box shows none even with a stale reading") {
+        box["boxes"][2]["temp_c"] = 22;
+        box["boxes"][2]["humidity_pct"] = 40;
+        REQUIRE(units_with_environment(AmsBackendCfs::parse_box_status(box)) ==
+                std::vector<int>{0, 2});
+    }
+
+    SECTION("the top-level legacy pair is not also attributed") {
+        box["load_path"]["box_addr"] = 4;
+        REQUIRE(units_with_environment(AmsBackendCfs::parse_box_status(box)) ==
+                std::vector<int>{0, 2});
+    }
+
+    SECTION("revision 1 ignores boxes[] and attributes the top-level pair as before") {
+        box.erase("api_revision");
+        box["load_path"]["box_addr"] = 2;
+        const auto info = AmsBackendCfs::parse_box_status(box);
+        REQUIRE(units_with_environment(info) == std::vector<int>{1});
+        CHECK(info.units[1].environment->temperature_c == 27.0f);
+        CHECK(info.units[1].environment->humidity_pct == 54.0f);
+    }
+
+    SECTION("revision 2 before the first poll (boxes empty) shows no reading") {
+        box["boxes"] = json::array();
+        REQUIRE(units_with_environment(AmsBackendCfs::parse_box_status(box)).empty());
+    }
+}
+
+TEST_CASE_METHOD(CfsGoldenFixture, "CFS flat: a delta without boxes[] keeps the per-box readings",
+                 "[ams][cfs][flat][environment][boxes]") {
+    const json full = make_revision2_box();
+    feed(box_frame(full));
+    REQUIRE(units_with_environment(backend.get_system_info()) == std::vector<int>{0, 2});
+
+    json edited = full;
+    edited["slots"][1]["material"] = "PETG";
+    const json delta = klipper_delta(full, edited);
+    REQUIRE_FALSE(delta.contains("boxes"));
+    feed(box_frame(delta));
+
+    auto info = backend.get_system_info();
+    REQUIRE(units_with_environment(info) == std::vector<int>{0, 2});
+    CHECK(info.units[2].environment->temperature_c == 30.5f);
+
+    json box3_cooler = edited;
+    box3_cooler["boxes"][0]["temp_c"] = 28;
+    feed(box_frame(klipper_delta(edited, box3_cooler)));
+    info = backend.get_system_info();
+    REQUIRE(units_with_environment(info) == std::vector<int>{0, 2});
+    CHECK(info.units[2].environment->temperature_c == 28.0f);
+    CHECK(info.units[0].environment->temperature_c == 24.0f);
+}

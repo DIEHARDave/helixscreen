@@ -551,6 +551,53 @@ static int find_external_slot_index(const nlohmann::json& box_json) {
     return -1;
 }
 
+// The temp_c / humidity_pct pair of a Flat payload object: the top level on
+// every revision, and each boxes[] entry from revision 2. Unlike the stock
+// schema these are JSON numbers, not strings, but safe_float accepts either, so
+// a firmware that switches spelling will not silently drop the readings. Null
+// (an offline box) or absent is no reading.
+static std::optional<EnvironmentData> flat_environment(const nlohmann::json& obj) {
+    const float temp_c = helix::json_util::safe_float(obj, "temp_c", -1.0f);
+    const float humidity = helix::json_util::safe_float(obj, "humidity_pct", -1.0f);
+    if (temp_c < 0.0f && humidity < 0.0f) {
+        return std::nullopt;
+    }
+    EnvironmentData env;
+    env.temperature_c = temp_c >= 0.0f ? temp_c : 0.0f;
+    env.humidity_pct = humidity >= 0.0f ? humidity : 0.0f;
+    env.has_humidity = humidity >= 0.0f;
+    return env;
+}
+
+// Revision 2's per-box readings, keyed by box address - 1 (our unit index),
+// or nullopt when the payload has no boxes[] to read them from. Joined on
+// `address`, never array position. A box that is offline, or that has not
+// reported a reading, maps to nullopt.
+static std::optional<std::map<int, std::optional<EnvironmentData>>>
+flat_box_environments(const nlohmann::json& box_json) {
+    if (AmsBackendCfs::fork_api_revision(box_json) < 2) {
+        return std::nullopt;
+    }
+    auto it = box_json.find("boxes");
+    if (it == box_json.end() || !it->is_array()) {
+        return std::nullopt;
+    }
+    std::map<int, std::optional<EnvironmentData>> readings;
+    for (const auto& entry : *it) {
+        if (!entry.is_object()) {
+            continue;
+        }
+        const int address = helix::json_util::safe_int(entry, "address", 0);
+        if (address < 1) {
+            continue;
+        }
+        readings[address - 1] = helix::json_util::safe_bool(entry, "online", true)
+                                    ? flat_environment(entry)
+                                    : std::nullopt;
+    }
+    return readings;
+}
+
 // The firmware slot number of every bay a Flat payload lists, in payload
 // order. The fork numbers slots globally, (box address - 1) * 4 + local, and
 // that number IS our bay's global index, so a box missing from the chain
@@ -1141,18 +1188,7 @@ AmsSystemInfo AmsBackendCfs::parse_flat_box_status(const nlohmann::json& box_jso
     unit.hub_tool_label = 0; // every box feeds the one extruder
     unit.slot_count = kBaysPerBox;
 
-    // Environment. Unlike the stock schema these are JSON numbers, not strings,
-    // but safe_float accepts either — so a firmware revision that switches
-    // spelling will not silently drop the readings.
-    float temp_c = helix::json_util::safe_float(box_json, "temp_c", -1.0f);
-    float humidity = helix::json_util::safe_float(box_json, "humidity_pct", -1.0f);
-    if (temp_c >= 0.0f || humidity >= 0.0f) {
-        EnvironmentData env;
-        env.temperature_c = temp_c >= 0.0f ? temp_c : 0.0f;
-        env.humidity_pct = humidity >= 0.0f ? humidity : 0.0f;
-        env.has_humidity = humidity >= 0.0f;
-        unit.environment = env;
-    }
+    unit.environment = flat_environment(box_json);
 
     // load_path describes the shared feed path: an encoder, a buffer, and a
     // printhead sensor. Stock CFS reports none of these, so these flags light
@@ -1257,22 +1293,33 @@ AmsSystemInfo AmsBackendCfs::parse_flat_box_status(const nlohmann::json& box_jso
         }
     }
 
-    // The payload carries one environment reading, taken from the box named by
-    // load_path.box_addr (1-based; null when nothing is loaded). Only that box
-    // shows it; giving it to every box would show one sensor as several zones.
-    // With no usable address it stays on the first box.
-    int environment_address = boxes.empty() ? -1 : boxes.begin()->first;
-    if (auto path_it = box_json.find("load_path");
-        path_it != box_json.end() && path_it->is_object()) {
-        const int box_addr = helix::json_util::safe_int(*path_it, "box_addr", 0);
-        if (boxes.count(box_addr - 1) != 0) {
-            environment_address = box_addr - 1;
+    // From revision 2 each box states its own reading in boxes[]. Before that
+    // the payload carries one, taken from the box named by load_path.box_addr
+    // (1-based; null when nothing is loaded). Only that box shows it; giving it
+    // to every box would show one sensor as several zones. With no usable
+    // address it stays on the first box.
+    if (const auto per_box = flat_box_environments(box_json)) {
+        for (auto& [address, box] : boxes) {
+            auto reading = per_box->find(address);
+            box.environment =
+                reading != per_box->end() ? reading->second : std::optional<EnvironmentData>{};
+        }
+    } else {
+        int environment_address = boxes.empty() ? -1 : boxes.begin()->first;
+        if (auto path_it = box_json.find("load_path");
+            path_it != box_json.end() && path_it->is_object()) {
+            const int box_addr = helix::json_util::safe_int(*path_it, "box_addr", 0);
+            if (boxes.count(box_addr - 1) != 0) {
+                environment_address = box_addr - 1;
+            }
+        }
+        for (auto& [address, box] : boxes) {
+            if (address != environment_address) {
+                box.environment.reset();
+            }
         }
     }
     for (auto& [address, box] : boxes) {
-        if (address != environment_address) {
-            box.environment.reset();
-        }
         info.units.push_back(std::move(box));
     }
     reserve_address_gaps(info);
