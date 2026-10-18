@@ -228,9 +228,6 @@ bool AmsEditOverlay::show_for_slot(lv_obj_t* parent, int slot_index, const SlotI
         overlay.destroy_overlay_ui();
     });
 
-    refresh_tag_state();
-    populate_detail_fields();
-
     // Reset per-session view state HERE (covered-safe — on_deactivate must not
     // touch it, since it also fires when the QR scanner merely covers us).
     if (open_on_picker) {
