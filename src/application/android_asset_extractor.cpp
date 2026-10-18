@@ -143,6 +143,10 @@ bool is_non_shippable_config_file(const std::string& filename) {
 /// seeds under assets/config/, so a file there is the user's: a theme saved from
 /// the editor, a printer_database.d override. The package may create one that is
 /// missing, but rewriting an existing one on every update would discard the edit.
+///
+/// So a file shipped under config/ is only ever seeded and never updated: an install
+/// keeps the first copy it received. Package content that must follow releases
+/// belongs under assets/config/.
 bool asset_dir_is_user_layer(const std::string& asset_path) {
     return asset_path == "config" || asset_path.rfind("config/", 0) == 0;
 }
