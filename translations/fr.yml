@@ -478,6 +478,7 @@ translations:
   CHANGED FROM LAST SESSION: MODIFIÉ DEPUIS LA DERNIÈRE SESSION
   CLOG: BOUCHON
   COLOR SENSORS: CAPTEURS DE COULEUR
+  'Completed: {}': 'Terminé : {}'
   CONFIGURATION: CONFIGURATION
   CONNECTION TYPE: TYPE DE CONNEXION
   CONTROLLABLE FANS: VENTILATEURS CONTRÔLABLES
@@ -863,6 +864,8 @@ translations:
     d'analyser la macro PRINT_START. Certaines options d'impression peuvent être indisponibles.
   Could not answer the connection request: 'Impossible de répondre à la demande de connexion'
   'Could not check {} - it stays in the queue': 'Impossible de vérifier {} – reste dans la file'
+  Load all stopped: 'Chargement global arrêté'
+  No filament was inserted in time. The heater is off and the carriage is restored: 'Aucun filament n''a été inséré à temps. La chauffe est coupée et le chariot est rétabli'
   Print hours between filter changes. Off hides this meter.: 'Heures d’impression entre deux changements de filtre. Désactivé masque ce compteur.'
   Print hours between nozzle changes. Off hides this meter.: 'Heures d’impression entre deux changements de buse. Désactivé masque ce compteur.'
   Print hours between rail cleaning and lubrication. Off hides this meter.: 'Heures d’impression entre deux nettoyages et graissages des rails. Désactivé masque ce compteur.'
@@ -1758,7 +1761,6 @@ translations:
   InputShaper: InputShaper
   Insert filament: 'Insérer le filament'
   Insert filament before resuming: Insérez le filament avant de reprendre
-  Insert filament into {}, then tap Continue: 'Insérez le filament dans {}, puis touchez Continuer'
   Inspecting bed...: Inspection du plateau...
   Install: Installer
   Install HelixPrint Plugin: Installer le plugin HelixPrint
@@ -3902,6 +3904,7 @@ translations:
   UI Scale: Échelle de l'interface
   UI Sounds: Sons de l'interface
   UI scale applies after restart: L'échelle de l'interface sera effective après redémarrage
+  Unload all stopped: 'Déchargement global arrêté'
   USB: USB
   USB DEVICES: APPAREILS USB
   USB drive connected: Clé USB connectée

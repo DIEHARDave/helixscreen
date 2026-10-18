@@ -669,6 +669,7 @@
   <translation tag="Completed {}d ago" ja="{} 日前に完了"/>
   <translation tag="Completed {}h ago" ja="{} 時間前に完了"/>
   <translation tag="Completed {}m ago" ja="{} 分前に完了"/>
+  <translation tag="Completed: {}" ja="完了: {}"/>
   <translation tag="Computing calibration..." ja="キャリブレーション計算中..."/>
   <translation tag="Config Dir" ja="設定ディレクトリ"/>
   <translation tag="Config Edit Failed" ja="設定の編集に失敗しました"/>
@@ -1582,7 +1583,6 @@
   <translation tag="InputShaper" ja="InputShaper"/>
   <translation tag="Insert filament" ja="フィラメントを差し込む"/>
   <translation tag="Insert filament before resuming" ja="再開前にフィラメントを挿入してください"/>
-  <translation tag="Insert filament into {}, then tap Continue" ja="{}にフィラメントを差し込み、続行をタップしてください"/>
   <translation tag="Inspecting bed..." ja="ベッドを検査中..."/>
   <translation tag="Install" ja="インストール"/>
   <translation tag="Install HelixPrint Plugin" ja="HelixPrint プラグインをインストール"/>
@@ -1752,6 +1752,7 @@
   <translation tag="Load Profile" ja="プロファイルを読み込む"/>
   <translation tag="Load a filament first before trying to unload" ja="排出する前にまずフィラメントを装填してください"/>
   <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" ja="このスロットに新しいスプールをセットするか、自動補充を有効にして一致するスプールに切り替えてください"/>
+  <translation tag="Load all stopped" ja="すべてのロードを停止しました"/>
   <translation tag="Load and unload filament at the tool by hand" ja="フィラメントはツールで手動でロード・アンロードしてください"/>
   <translation tag="Load cancelled: nozzle target dropped" ja="装填をキャンセル: ノズルの目標温度が下がりました"/>
   <translation tag="Load complete" ja="ロード完了"/>
@@ -2030,6 +2031,7 @@
   <translation tag="No filament environment sensors" ja="フィラメント環境センサーがありません"/>
   <translation tag="No filament loaded to unload" ja="取出すフィラメントが装填されていません"/>
   <translation tag="No filament sensor detected" ja="フィラメントセンサーが検出されません"/>
+  <translation tag="No filament was inserted in time. The heater is off and the carriage is restored" ja="時間内にフィラメントが挿入されませんでした。ヒーターを切り、キャリッジを元に戻しました"/>
   <translation tag="No filament. Load filament and retry." ja="フィラメントがありません。フィラメントを装填して再試行してください。"/>
   <translation tag="No filaments found" ja="フィラメントが見つかりません"/>
   <translation tag="No file loaded" ja="ファイルが読み込まれていません"/>
@@ -3497,6 +3499,7 @@
   <translation tag="Unload Extruder" ja="エクストルーダーから排出"/>
   <translation tag="Unload Failed" ja="取り出しに失敗しました"/>
   <translation tag="Unload Filament" ja="フィラメントを排出"/>
+  <translation tag="Unload all stopped" ja="すべてのアンロードを停止しました"/>
   <translation tag="Unload at end" ja="終了時に排出"/>
   <translation tag="Unload failed" ja="排出に失敗しました"/>
   <translation tag="Unload filament" ja="フィラメントをアンロード"/>

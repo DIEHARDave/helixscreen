@@ -60,6 +60,19 @@ class ToolChangerTestAccess {
         b.on_feed_reply(reply);
     }
 
+    /// Deliver what the console watcher parsed: a reply, or the dismissal echo
+    /// of the prompt ending without an answer.
+    static void feed_console_signal(AmsBackendToolChanger& b,
+                                    helix::mount_feed::ConsoleSignal signal) {
+        b.on_feed_signal(signal);
+    }
+
+    /// Advance the operator wait by @p ms, the way the watchdog timer does
+    /// once a second in the app.
+    static void feed_wait_elapsed(AmsBackendToolChanger& b, uint32_t ms) {
+        b.handle_wait_elapsed(ms);
+    }
+
     /// Deliver one gcode-response line to the Z-Mod marker handler, the
     /// main-thread half the notify_gcode_response listener drives on a real
     /// client. The listener itself needs a client, which the unit-test helper

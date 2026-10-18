@@ -46,6 +46,34 @@ std::string with_heater_off(std::string gcode) {
     return gcode + "\nM104 S0";
 }
 
+/// The heater object Klipper multi-extruder naming gives @p head's tool: the
+/// first extruder is plain `extruder`, the rest `extruder<n>`.
+std::string heater_name(int head) {
+    return head <= 0 ? "extruder" : fmt::format("extruder{}", head);
+}
+
+/// Warm @p head partway while another tool works, so its own M109 starts from
+/// heat instead of room temperature.
+std::string preheat_gcode(const HeadRequest& head) {
+    return fmt::format("SET_HEATER_TEMPERATURE HEATER={} TARGET={}", heater_name(head.head),
+                       head.temp_c * 65 / 100);
+}
+
+std::string heater_off_gcode(int head) {
+    return fmt::format("SET_HEATER_TEMPERATURE HEATER={} TARGET=0", heater_name(head));
+}
+
+/// The moves that work one tool's filament: the printer's own macro when it
+/// takes the tool, else the built-in slow draw and purge (or the full retract).
+std::string feed_or_retract_gcode(const Request& r, const HeadRequest& head) {
+    if (r.load) {
+        return r.macro.empty() ? "M83\nG1 E5 F60\nG1 E50 F300\nG1 E50 F300\nG1 E-10 F1800"
+                               : fmt::format("{} T={} TEMP={}", r.macro, head.head, head.temp_c);
+    }
+    return r.macro.empty() ? "M83\nG1 E-25 F1800\nG1 E-150 F1200"
+                           : fmt::format("{} T={}", r.macro, head.head);
+}
+
 } // namespace
 
 std::vector<Step> steps(bool load) {
@@ -112,27 +140,52 @@ std::string prompt_end_gcode() {
 
 std::vector<Stage> plan(const Request& r) {
     std::vector<Stage> stages;
-    if (!r.mount_gcode.empty()) {
-        stages.push_back({Step::Mount, r.mount_gcode});
+    const bool several = r.heads.size() > 1;
+    // Whichever stage follows an operator-wait stage closes the prompt: the
+    // reply moved the run on, and the dialog is still up until this lands.
+    bool close_prompt = false;
+    const auto push_stage = [&](Step step, std::string gcode, bool awaits, int tool) {
+        if (close_prompt) {
+            gcode = prompt_end_gcode() + "\n" + std::move(gcode);
+            close_prompt = false;
+        }
+        stages.push_back({step, std::move(gcode), awaits, tool});
+        if (awaits) {
+            close_prompt = true;
+        }
+    };
+    if (several && r.load) {
+        // One prompt for every strand, before anything mounts: the operator
+        // fills every tube once and the run then works tool by tool.
+        push_stage(Step::Insert, prompt_gcode(r), /*awaits_operator=*/true, 0);
     }
-    stages.push_back({Step::Heat, heat_gcode(r.temp_c)});
-    if (r.load) {
-        stages.push_back({Step::Insert, prompt_gcode(r), /*awaits_operator=*/true});
-        // The extruder grabs the inserted strand: draw it in slowly, purge the
-        // old color, retract off the melt.
-        const std::string feed = r.macro.empty()
-                                     ? "M83\nG1 E5 F60\nG1 E50 F300\nG1 E50 F300\nG1 E-10 F1800"
-                                     : fmt::format("{} T={} TEMP={}", r.macro, r.head, r.temp_c);
-        stages.push_back({Step::Purge, prompt_end_gcode() + "\n" + with_heater_off(feed)});
-    } else {
-        // Off the melt, then the rest of the way until the strand is out of the
-        // extruder.
-        const std::string retract = r.macro.empty() ? "M83\nG1 E-25 F1800\nG1 E-150 F1200"
-                                                    : fmt::format("{} T={}", r.macro, r.head);
-        stages.push_back({Step::Retract, with_heater_off(retract)});
+    for (size_t t = 0; t < r.heads.size(); ++t) {
+        const HeadRequest& head = r.heads[t];
+        const HeadRequest* next = t + 1 < r.heads.size() ? &r.heads[t + 1] : nullptr;
+        const std::string preheat = next ? preheat_gcode(*next) : std::string();
+        const int tool = static_cast<int>(t);
+        std::string heat = heat_gcode(head.temp_c);
+        if (!preheat.empty()) {
+            // The next tool warms partway while this one works. It rides the
+            // stage that starts this tool: mount where there is one, else heat.
+            if (head.mount_gcode.empty()) {
+                heat += "\n" + preheat;
+            }
+        }
+        if (!head.mount_gcode.empty()) {
+            push_stage(Step::Mount,
+                       preheat.empty() ? head.mount_gcode : head.mount_gcode + "\n" + preheat,
+                       false, tool);
+        }
+        push_stage(Step::Heat, std::move(heat), false, tool);
+        if (r.load && !several) {
+            push_stage(Step::Insert, prompt_gcode(r), /*awaits_operator=*/true, tool);
+        }
+        push_stage(r.load ? Step::Purge : Step::Retract,
+                   with_heater_off(feed_or_retract_gcode(r, head)), false, tool);
     }
     if (!r.restore_gcode.empty()) {
-        stages.push_back({Step::Restore, r.restore_gcode});
+        push_stage(Step::Restore, r.restore_gcode, false, static_cast<int>(r.heads.size()) - 1);
     }
     return stages;
 }
@@ -142,6 +195,23 @@ bool may_be_reply(std::string_view line) {
 }
 
 Reply parse_reply(std::string_view line) {
+    switch (parse_console(line)) {
+    case ConsoleSignal::Continue:
+        return Reply::Continue;
+    case ConsoleSignal::Cancel:
+        return Reply::Cancel;
+    case ConsoleSignal::None:
+    case ConsoleSignal::Dismissed:
+        break;
+    }
+    return Reply::None;
+}
+
+bool may_be_prompt_signal(std::string_view line) {
+    return may_be_reply(line) || line.find("action:prompt_end") != std::string_view::npos;
+}
+
+ConsoleSignal parse_console(std::string_view line) {
     // The console echo of `RESPOND TYPE=command MSG=<marker>` is "// <marker>".
     // Exact match only: the prompt's own button lines carry the marker text too.
     auto trim = [](std::string_view s) {
@@ -158,12 +228,15 @@ Reply parse_reply(std::string_view line) {
         line = trim(line.substr(2));
     }
     if (line == kContinueMarker) {
-        return Reply::Continue;
+        return ConsoleSignal::Continue;
     }
     if (line == kCancelMarker) {
-        return Reply::Cancel;
+        return ConsoleSignal::Cancel;
     }
-    return Reply::None;
+    if (line == "action:prompt_end") {
+        return ConsoleSignal::Dismissed;
+    }
+    return ConsoleSignal::None;
 }
 
 bool macro_takes_tool(const CachedMacroInfo& macro) {
@@ -197,12 +270,44 @@ int Run::step_index() const {
     return it == all.end() ? -1 : static_cast<int>(it - all.begin());
 }
 
+int Run::phase_index() const {
+    const int within = step_index();
+    if (within < 0) {
+        return -1;
+    }
+    const int tool = finished() ? static_cast<int>(request_.heads.size()) - 1
+                                : std::max(stages_[index_].tool_index, 0);
+    return tool * static_cast<int>(steps(request_.load).size()) + within;
+}
+
+std::vector<int> Run::completed_heads() const {
+    std::vector<int> done;
+    if (cleaning_up_ || request_.heads.size() < 2) {
+        return done;
+    }
+    // A tool is done once the run has moved past its last stage.
+    std::vector<size_t> last(request_.heads.size(), 0);
+    for (size_t i = 0; i < stages_.size(); ++i) {
+        const int t = stages_[i].tool_index;
+        if (t >= 0 && static_cast<size_t>(t) < last.size()) {
+            last[static_cast<size_t>(t)] = i;
+        }
+    }
+    for (size_t t = 0; t < last.size(); ++t) {
+        if (last[t] < index_) {
+            done.push_back(request_.heads[t].head);
+        }
+    }
+    return done;
+}
+
 void Run::stage_done() {
     if (finished() || awaiting_operator_) {
         return;
     }
     if (stages_[index_].awaits_operator && !cleaning_up_) {
         awaiting_operator_ = true;
+        waited_ms_ = 0;
         return;
     }
     ++index_;
@@ -220,18 +325,37 @@ void Run::operator_reply(Reply reply) {
     abort();
 }
 
+Run::WaitResult Run::advance_wait(uint32_t elapsed_ms) {
+    if (!awaiting_operator_) {
+        return WaitResult::NotWaiting;
+    }
+    waited_ms_ += elapsed_ms;
+    if (waited_ms_ < request_.prompt_timeout_ms) {
+        return WaitResult::Waiting;
+    }
+    abort();
+    return WaitResult::Expired;
+}
+
 void Run::abort() {
     if (cleaning_up_ || finished()) {
         index_ = stages_.size();
         return;
     }
     // Heater off and the carriage back where it was. A prompt still open is
-    // closed with it.
+    // closed with it. With several tools every heater in the plan goes off:
+    // the ones already worked are cooling, the preheated next one never
+    // starts, and the current one stops.
     std::string cleanup;
     if (awaiting_operator_ || current_step() == Step::Insert) {
         cleanup = prompt_end_gcode() + "\n";
     }
     cleanup += "M104 S0";
+    if (request_.heads.size() > 1) {
+        for (const HeadRequest& head : request_.heads) {
+            cleanup += "\n" + heater_off_gcode(head.head);
+        }
+    }
     if (!request_.restore_gcode.empty()) {
         cleanup += "\n" + request_.restore_gcode;
     }

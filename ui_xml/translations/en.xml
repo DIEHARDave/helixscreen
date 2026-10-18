@@ -669,6 +669,7 @@
   <translation tag="Completed {}d ago" en="Completed {}d ago"/>
   <translation tag="Completed {}h ago" en="Completed {}h ago"/>
   <translation tag="Completed {}m ago" en="Completed {}m ago"/>
+  <translation tag="Completed: {}" en="Completed: {}"/>
   <translation tag="Computing calibration..." en="Computing calibration..."/>
   <translation tag="Config Dir" en="Config Dir"/>
   <translation tag="Config Edit Failed" en="Config Edit Failed"/>
@@ -1582,7 +1583,6 @@
   <translation tag="InputShaper" en="InputShaper"/>
   <translation tag="Insert filament" en="Insert filament"/>
   <translation tag="Insert filament before resuming" en="Insert filament before resuming"/>
-  <translation tag="Insert filament into {}, then tap Continue" en="Insert filament into {}, then tap Continue"/>
   <translation tag="Inspecting bed..." en="Inspecting bed..."/>
   <translation tag="Install" en="Install"/>
   <translation tag="Install HelixPrint Plugin" en="Install HelixPrint Plugin"/>
@@ -1752,6 +1752,7 @@
   <translation tag="Load Profile" en="Load Profile"/>
   <translation tag="Load a filament first before trying to unload" en="Load a filament first before trying to unload"/>
   <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" en="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one"/>
+  <translation tag="Load all stopped" en="Load all stopped"/>
   <translation tag="Load and unload filament at the tool by hand" en="Load and unload filament at the tool by hand"/>
   <translation tag="Load cancelled: nozzle target dropped" en="Load cancelled: nozzle target dropped"/>
   <translation tag="Load complete" en="Load complete"/>
@@ -2030,6 +2031,7 @@
   <translation tag="No filament environment sensors" en="No filament environment sensors"/>
   <translation tag="No filament loaded to unload" en="No filament loaded to unload"/>
   <translation tag="No filament sensor detected" en="No filament sensor detected"/>
+  <translation tag="No filament was inserted in time. The heater is off and the carriage is restored" en="No filament was inserted in time. The heater is off and the carriage is restored"/>
   <translation tag="No filament. Load filament and retry." en="No filament. Load filament and retry."/>
   <translation tag="No filaments found" en="No filaments found"/>
   <translation tag="No file loaded" en="No file loaded"/>
@@ -3497,6 +3499,7 @@
   <translation tag="Unload Extruder" en="Unload Extruder"/>
   <translation tag="Unload Failed" en="Unload Failed"/>
   <translation tag="Unload Filament" en="Unload Filament"/>
+  <translation tag="Unload all stopped" en="Unload all stopped"/>
   <translation tag="Unload at end" en="Unload at end"/>
   <translation tag="Unload failed" en="Unload failed"/>
   <translation tag="Unload filament" en="Unload filament"/>

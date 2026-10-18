@@ -460,6 +460,7 @@ translations:
   CHANGED FROM LAST SESSION: CHANGED FROM LAST SESSION
   CLOG: CLOG
   COLOR SENSORS: COLOR SENSORS
+  'Completed: {}': 'Completed: {}'
   CONFIGURATION: CONFIGURATION
   CONNECTION TYPE: CONNECTION TYPE
   CONTROLLABLE FANS: CONTROLLABLE FANS
@@ -829,6 +830,8 @@ translations:
     not analyze PRINT_START macro. Some print options may be unavailable.
   Could not answer the connection request: Could not answer the connection request
   'Could not check {} - it stays in the queue': 'Could not check {} - it stays in the queue'
+  Load all stopped: Load all stopped
+  No filament was inserted in time. The heater is off and the carriage is restored: No filament was inserted in time. The heater is off and the carriage is restored
   Print hours between filter changes. Off hides this meter.: Print hours between filter changes. Off hides this meter.
   Print hours between nozzle changes. Off hides this meter.: Print hours between nozzle changes. Off hides this meter.
   Print hours between rail cleaning and lubrication. Off hides this meter.: Print hours between rail cleaning and lubrication. Off hides this meter.
@@ -1691,7 +1694,6 @@ translations:
   InputShaper: InputShaper
   Insert filament: Insert filament
   Insert filament before resuming: Insert filament before resuming
-  Insert filament into {}, then tap Continue: Insert filament into {}, then tap Continue
   'Inspecting bed...': 'Inspecting bed...'
   Install: Install
   Install HelixPrint Plugin: Install HelixPrint Plugin
@@ -3762,6 +3764,7 @@ translations:
   UI Scale: UI Scale
   UI Sounds: UI Sounds
   UI scale applies after restart: UI scale applies after restart
+  Unload all stopped: Unload all stopped
   USB: USB
   USB DEVICES: USB DEVICES
   USB drive connected: USB drive connected

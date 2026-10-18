@@ -3,11 +3,14 @@
 
 #pragma once
 
+#include "ui_timer_guard.h"
+
 #include "ams_subscription_backend.h"
 #include "filament_slot_override_store.h"
 #include "mount_feed_sequence.h"
 #include "toolchanger_addon.h"
 
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -176,6 +179,11 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     [[nodiscard]] int filament_head_count() const override {
         return get_system_info().total_slots;
     }
+    /// A machine that moves filament through the mounted tool can work every
+    /// tool in one run: Load all and Unload all pick several heads at once.
+    [[nodiscard]] int max_heads_per_filament_op() const override {
+        return mounts_to_feed_ ? get_system_info().total_slots : 1;
+    }
     [[nodiscard]] std::optional<int> head_for_slot(int slot) const override {
         if (slot < 0 || slot >= get_system_info().total_slots) {
             return std::nullopt;
@@ -264,6 +272,10 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     // Operations. Gated by AmsSubscriptionBackend's NVI wrapper.
     AmsError do_load_filament(int slot_index) override;
     AmsError do_unload_filament(int slot_index) override;
+    /// Load all / Unload all on a mount-to-feed changer: the printer's own
+    /// LOAD_ALL_FILAMENT / UNLOAD_ALL_FILAMENT when the selection is every
+    /// tool and the macro exists, else one sequenced run over the tools.
+    AmsError do_filament_batch(const std::vector<int>& slots, bool load) override;
     AmsError do_select_slot(int slot_index) override;
 
     /// On a tool changer, selecting a slot means mounting that toolhead —
@@ -346,16 +358,19 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     [[nodiscard]] bool slot_is_actively_loaded(int slot_index) const override;
 
     /// A swap is SELECTING for its whole duration on a controller that names no
-    /// direction, and UNLOADING then SELECTING on one that does. Nothing heats,
-    /// feeds or purges, so the filament vocabulary never saw the operation at
-    /// all - neither its start nor, half way through, its continuation.
+    /// direction, and UNLOADING then SELECTING on one that does. A
+    /// mount-to-feed run walks the filament vocabulary on top of that:
+    /// HEATING, LOADING, PURGING and UNLOADING are its stages.
     [[nodiscard]] bool action_tracks_step_operation(AmsAction action) const override {
-        // HEATING is here despite a changer never heating: it is the optimistic
+        // HEATING is here despite a swap never heating: it is the optimistic
         // marker AmsOperationSidebar::start_operation() sets the moment a user
         // starts an operation, before any frame arrives. Omitting it made the
         // sidebar hide the bar and clear target_load_slot_ on our OWN dispatch,
         // after which the rest of a user-initiated swap read as externally
         // started.
+        if (mounts_to_feed_) {
+            return action == AmsAction::SELECTING || ams_action_is_filament_operation(action);
+        }
         return action == AmsAction::SELECTING || action == AmsAction::UNLOADING ||
                action == AmsAction::HEATING;
     }
@@ -511,14 +526,34 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
 
   private:
     // --- Mount-to-feed (mount_feed_sequence.h) ---------------------------------
-    /// Start a Load (@p load) or Unload of @p head's filament through the
-    /// mounted tool. Main thread.
-    AmsError start_mount_feed(int head, bool load);
+    /// Start a Load (@p load) or Unload of @p heads' filament through the
+    /// mounted tool, one head or several. Main thread.
+    AmsError start_mount_feed(const std::vector<int>& heads, bool load);
+    /// Everything a run needs, read off the printer: per-head temp and mount,
+    /// the carriage restore, the printer's own macro, the (English) prompt.
+    [[nodiscard]] helix::mount_feed::Request build_feed_request(const std::vector<int>& heads,
+                                                                bool load);
     /// Send the run's current stage, or end the run when none is left.
     void send_feed_stage();
     void on_feed_stage_acked(uint64_t generation);
     void on_feed_stage_failed(uint64_t generation, const std::string& message);
     void on_feed_reply(helix::mount_feed::Reply reply);
+    /// The console watcher's signal, once a reply or a dismissal arrives.
+    void on_feed_signal(helix::mount_feed::ConsoleSignal signal);
+    /// The operator wait outlived its timeout: unwind the run and say so.
+    void handle_wait_elapsed(uint32_t elapsed_ms);
+    /// Arm or drop the one-second timer that watches the operator wait. LVGL
+    /// must be up for the timer; without it (unit tests) the wait is driven
+    /// through handle_wait_elapsed() by hand.
+    void set_wait_watchdog(bool armed);
+    void feed_wait_tick();
+    /// Why a run unwound early, for the toast that names what got done.
+    enum class FeedStopReason : uint8_t { Cancelled, TimedOut, Failed };
+    /// A run stopping early says what it did finish. A single tool's Cancel
+    /// stays silent; everything else accounts for itself. @p completed was
+    /// read off the run BEFORE its unwind: abort() collapses the stage list
+    /// the answer is derived from.
+    void toast_partial_run(FeedStopReason why, const std::vector<int>& completed);
     /// Mirror the run onto the published action and step. Caller holds mutex_.
     void publish_feed_state_locked();
     void register_mount_feed_listener();
@@ -535,6 +570,9 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     AmsAction feed_action_ = AmsAction::IDLE;
     int feed_phase_ = -1;
     std::optional<AmsAction> feed_step_action_;
+    /// Watches the operator prompt while it is up. Main thread (lv_timer).
+    helix::ui::LvglTimerGuard feed_wait_timer_;
+    std::chrono::steady_clock::time_point feed_wait_started_{};
 
     /// Z-Mod's Creator 5 row narrates its swaps through gcode-response markers
     /// (toolchanger_addon::parse_zmod_marker) rather than a status object, so

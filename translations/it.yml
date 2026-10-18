@@ -474,6 +474,7 @@ translations:
   CHANGED FROM LAST SESSION: MODIFICATO DALLA SESSIONE PRECEDENTE
   CLOG: INTASAMENTO
   COLOR SENSORS: SENSORI DI COLORE
+  'Completed: {}': 'Completato: {}'
   CONFIGURATION: CONFIGURAZIONE
   CONNECTION TYPE: TIPO DI CONNESSIONE
   CONTROLLABLE FANS: VENTOLE CONTROLLABILI
@@ -853,6 +854,8 @@ translations:
     disponibili.
   Could not answer the connection request: 'Impossibile rispondere alla richiesta di connessione'
   'Could not check {} - it stays in the queue': 'Impossibile verificare {} – resta in coda'
+  Load all stopped: Caricamento di tutti interrotto
+  No filament was inserted in time. The heater is off and the carriage is restored: 'Nessun filamento inserito in tempo. Il riscaldatore è spento e il carrello è ripristinato'
   Print hours between filter changes. Off hides this meter.: 'Ore di stampa tra un cambio filtro e l’altro. Spento nasconde questo contatore.'
   Print hours between nozzle changes. Off hides this meter.: 'Ore di stampa tra un cambio ugello e l’altro. Spento nasconde questo contatore.'
   Print hours between rail cleaning and lubrication. Off hides this meter.: 'Ore di stampa tra una pulizia e lubrificazione delle guide e l’altra. Spento nasconde questo contatore.'
@@ -1742,7 +1745,6 @@ translations:
   InputShaper: InputShaper
   Insert filament: 'Inserisci filamento'
   Insert filament before resuming: Inserire filamento prima di riprendere
-  Insert filament into {}, then tap Continue: 'Inserisci il filamento in {}, poi tocca Continua'
   Inspecting bed...: Ispezione piano...
   Install: Installa
   Install HelixPrint Plugin: Installa plugin HelixPrint
@@ -3871,6 +3873,7 @@ translations:
   UI Scale: Scala dell'interfaccia
   UI Sounds: Suoni interfaccia
   UI scale applies after restart: La scala dell'interfaccia è attiva dopo il riavvio
+  Unload all stopped: Scaricamento di tutti interrotto
   USB: USB
   USB DEVICES: DISPOSITIVI USB
   USB drive connected: Unità USB connessa

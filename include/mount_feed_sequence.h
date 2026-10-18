@@ -39,7 +39,7 @@ namespace helix::mount_feed {
 
 enum class Step : uint8_t { Mount, Heat, Insert, Purge, Retract, Restore };
 
-/// The steps a Load or an Unload shows, in order. Mount and Restore are
+/// The steps one tool's Load or Unload shows, in order. Mount and Restore are
 /// skipped when the tool is already on the carriage.
 [[nodiscard]] std::vector<Step> steps(bool load);
 
@@ -49,20 +49,37 @@ enum class Step : uint8_t { Mount, Heat, Insert, Purge, Retract, Restore };
 /// The coarse action @p step projects to.
 [[nodiscard]] AmsAction step_action(Step step);
 
+/// One tool's piece of a run: what the backend read off that tool at dispatch.
+struct HeadRequest {
+    int head = -1;
+    int temp_c = 0;
+    std::string mount_gcode; ///< Mounts @ref head; empty when it is already mounted
+};
+
+/// How long the operator prompt may wait before the run unwinds itself. A hot
+/// nozzle must not sit unattended.
+constexpr uint32_t PROMPT_TIMEOUT_MS = 180'000;
+
 /// What one Load or Unload needs to know, read off the backend at dispatch.
 struct Request {
     bool load = true;
-    int head = -1;
-    int temp_c = 0;
-    std::string mount_gcode;   ///< Mounts @ref head; empty when it is already mounted
+    /// The tools the run works, in order. One entry for a plain Load or
+    /// Unload; several for Load all / Unload all.
+    std::vector<HeadRequest> heads;
     std::string restore_gcode; ///< Puts the carriage back; empty when nothing changes
     /// The printer's own LOAD_FILAMENT / UNLOAD_FILAMENT taking T=, run in
     /// place of the built-in feed or retract moves; empty for the built-in ones.
     std::string macro;
-    std::string prompt_title;   ///< Translated
-    std::string prompt_text;    ///< Translated
-    std::string continue_label; ///< Translated
-    std::string cancel_label;   ///< Translated
+    /// The prompt may not outlive this. A Load of several tools asks once, up
+    /// front, for every strand.
+    uint32_t prompt_timeout_ms = PROMPT_TIMEOUT_MS;
+    /// The prompt fields are ENGLISH: they travel inside RESPOND lines, which
+    /// every client attached to the printer shows verbatim, so no locale of
+    /// ours may decide what Mainsail displays.
+    std::string prompt_title;
+    std::string prompt_text;
+    std::string continue_label;
+    std::string cancel_label;
 };
 
 struct Stage {
@@ -71,6 +88,9 @@ struct Stage {
     /// The stage raises the operator prompt: once it is sent, the run waits
     /// for a Reply before going on.
     bool awaits_operator = false;
+    /// Position of this stage's tool in Request::heads; the shared prompt
+    /// counts as the first tool's and Restore as the last one's.
+    int tool_index = 0;
 };
 
 /// The stages @p request runs, in order.
@@ -89,6 +109,18 @@ enum class Reply : uint8_t { None, Continue, Cancel };
 
 /// Whether a console line could be a reply, cheap enough to run on every line.
 [[nodiscard]] bool may_be_reply(std::string_view line);
+
+/// What one console line says about the operator prompt. Dismissed is the
+/// echo of `action:prompt_end` — the prompt is gone from every client, so the
+/// operator can no longer answer it.
+enum class ConsoleSignal : uint8_t { None, Continue, Cancel, Dismissed };
+
+/// parse_reply() plus the prompt-dismissal echo, for the watcher that sees
+/// every console line.
+[[nodiscard]] ConsoleSignal parse_console(std::string_view line);
+
+/// Whether @p line is one the prompt watcher must look at closer.
+[[nodiscard]] bool may_be_prompt_signal(std::string_view line);
 
 /// Whether the printer's @p macro takes the tool as T=, so it can stand in for
 /// the built-in feed or retract.
@@ -112,8 +144,11 @@ class Run {
     /// The gcode the current stage sends, or nullopt once the run is over.
     [[nodiscard]] std::optional<std::string> current_gcode() const;
 
-    /// Position of the current stage in steps(load), for the step bar.
+    /// Position of the current stage in steps(load), within the current tool.
     [[nodiscard]] int step_index() const;
+    /// Position in the whole run's step bar: with several tools, each tool owns
+    /// one strides'-worth of the bar, so the index never restarts mid-run.
+    [[nodiscard]] int phase_index() const;
     [[nodiscard]] Step current_step() const;
 
     /// The prompt is up and the run is waiting for the operator.
@@ -125,6 +160,10 @@ class Run {
     [[nodiscard]] bool aborted() const {
         return cleaning_up_;
     }
+    /// The tools whose work fully finished before the run stopped. Empty while
+    /// the run is still on its first tool, and after a clean completion the
+    /// caller reports success rather than a partial list.
+    [[nodiscard]] std::vector<int> completed_heads() const;
 
     /// The current stage's gcode was acked.
     void stage_done();
@@ -132,6 +171,10 @@ class Run {
     void operator_reply(Reply reply);
     /// The current stage failed, or the user cancelled.
     void abort();
+    /// What advancing the operator wait by @p elapsed_ms did. Expired also
+    /// aborts the run into its cleanup: the heaters must not wait for anyone.
+    enum class WaitResult : uint8_t { Waiting, NotWaiting, Expired };
+    [[nodiscard]] WaitResult advance_wait(uint32_t elapsed_ms);
 
   private:
     Request request_;
@@ -139,6 +182,7 @@ class Run {
     size_t index_ = 0;
     bool awaiting_operator_ = false;
     bool cleaning_up_ = false;
+    uint32_t waited_ms_ = 0;
 };
 
 } // namespace helix::mount_feed

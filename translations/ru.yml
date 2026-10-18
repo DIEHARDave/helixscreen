@@ -519,6 +519,7 @@ translations:
   CHANGED FROM LAST SESSION: ИЗМЕНЕНО С ПРОШЛОЙ СЕССИИ
   CLOG: ЗАСОР
   COLOR SENSORS: ДАТЧИКИ ЦВЕТА
+  'Completed: {}': 'Завершено: {}'
   CONFIGURATION: КОНФИГУРАЦИЯ
   CONNECTION TYPE: ТИП ПОДКЛЮЧЕНИЯ
   CONTROLLABLE FANS: УПРАВЛЯЕМЫЕ ВЕНТИЛЯТОРЫ
@@ -902,6 +903,8 @@ translations:
     быть недоступны.
   Could not answer the connection request: 'Не удалось ответить на запрос подключения'
   'Could not check {} - it stays in the queue': 'Не удалось проверить {} – остаётся в очереди'
+  Load all stopped: 'Загрузка всех остановлена'
+  No filament was inserted in time. The heater is off and the carriage is restored: 'Филамент не был вставлен вовремя. Нагреватель выключен, каретка возвращена'
   Print hours between filter changes. Off hides this meter.: 'Часы печати между заменами фильтра. «Выкл» скрывает этот счётчик.'
   Print hours between nozzle changes. Off hides this meter.: 'Часы печати между заменами сопла. «Выкл» скрывает этот счётчик.'
   Print hours between rail cleaning and lubrication. Off hides this meter.: 'Часы печати между чисткой и смазкой направляющих. «Выкл» скрывает этот счётчик.'
@@ -1785,7 +1788,6 @@ translations:
   InputShaper: InputShaper
   Insert filament: 'Вставить филамент'
   Insert filament before resuming: Вставьте филамент перед возобновлением
-  Insert filament into {}, then tap Continue: 'Вставьте филамент в {} и нажмите «Продолжить»'
   Inspecting bed...: Осмотр стола...
   Install: Установить
   Install HelixPrint Plugin: Установить плагин HelixPrint
@@ -3911,6 +3913,7 @@ translations:
   UI Scale: Масштаб интерфейса
   UI Sounds: Звуки интерфейса
   UI scale applies after restart: Масштаб интерфейса применяется после перезапуска
+  Unload all stopped: 'Выгрузка всех остановлена'
   USB: USB
   USB DEVICES: USB-УСТРОЙСТВА
   USB drive connected: USB-накопитель подключён

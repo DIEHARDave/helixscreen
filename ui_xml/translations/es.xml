@@ -669,6 +669,7 @@
   <translation tag="Completed {}d ago" es="Completado hace {} días"/>
   <translation tag="Completed {}h ago" es="Completado hace {} h"/>
   <translation tag="Completed {}m ago" es="Completado hace {} min"/>
+  <translation tag="Completed: {}" es="Completado: {}"/>
   <translation tag="Computing calibration..." es="Calculando calibración..."/>
   <translation tag="Config Dir" es="Directorio de Configuración"/>
   <translation tag="Config Edit Failed" es="Error al editar la configuración"/>
@@ -1582,7 +1583,6 @@
   <translation tag="InputShaper" es="InputShaper"/>
   <translation tag="Insert filament" es="Insertar filamento"/>
   <translation tag="Insert filament before resuming" es="Inserte filamento antes de reanudar"/>
-  <translation tag="Insert filament into {}, then tap Continue" es="Introduce el filamento en {} y toca Continuar"/>
   <translation tag="Inspecting bed..." es="Inspeccionando cama..."/>
   <translation tag="Install" es="Instalar"/>
   <translation tag="Install HelixPrint Plugin" es="Instalar Plugin HelixPrint"/>
@@ -1752,6 +1752,7 @@
   <translation tag="Load Profile" es="Cargar perfil"/>
   <translation tag="Load a filament first before trying to unload" es="Cargue primero filamento antes de intentar descargar"/>
   <translation tag="Load a new spool in this slot, or turn on Auto-Refill to switch to a matching one" es="Cargue una bobina nueva en esta ranura, o active el rellenado automático para cambiar a una equivalente"/>
+  <translation tag="Load all stopped" es="Carga de todo detenida"/>
   <translation tag="Load and unload filament at the tool by hand" es="Carga y descarga el filamento a mano en la herramienta"/>
   <translation tag="Load cancelled: nozzle target dropped" es="Carga cancelada: el objetivo de la boquilla bajó"/>
   <translation tag="Load complete" es="Carga completa"/>
@@ -2030,6 +2031,7 @@
   <translation tag="No filament environment sensors" es="Sin sensores ambientales de filamento"/>
   <translation tag="No filament loaded to unload" es="No hay filamento cargado para descargar"/>
   <translation tag="No filament sensor detected" es="No se detectó sensor de filamento"/>
+  <translation tag="No filament was inserted in time. The heater is off and the carriage is restored" es="No se introdujo filamento a tiempo. El calentador está apagado y el carro está restaurado"/>
   <translation tag="No filament. Load filament and retry." es="Sin filamento. Cargue filamento y reintente."/>
   <translation tag="No filaments found" es="No se encontraron filamentos"/>
   <translation tag="No file loaded" es="Sin archivo cargado"/>
@@ -3497,6 +3499,7 @@
   <translation tag="Unload Extruder" es="Descargar extrusor"/>
   <translation tag="Unload Failed" es="Fallo al descargar"/>
   <translation tag="Unload Filament" es="Descargar Filamento"/>
+  <translation tag="Unload all stopped" es="Descarga de todo detenida"/>
   <translation tag="Unload at end" es="Descargar al terminar"/>
   <translation tag="Unload failed" es="Error al descargar"/>
   <translation tag="Unload filament" es="Descargar filamento"/>

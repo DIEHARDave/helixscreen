@@ -35,12 +35,23 @@ namespace {
 mf::Request load_request() {
     mf::Request r;
     r.load = true;
-    r.head = 2;
-    r.temp_c = 215;
-    r.mount_gcode = "SELECT_TOOL T=2";
+    r.heads = {{/*head=*/2, /*temp_c=*/215, /*mount_gcode=*/"SELECT_TOOL T=2"}};
     r.restore_gcode = "SELECT_TOOL T=0";
     r.prompt_title = "Load filament";
     r.prompt_text = "Insert filament into Tool 3, then tap Continue";
+    r.continue_label = "Continue";
+    r.cancel_label = "Cancel";
+    return r;
+}
+
+/// A Load of tools 1 and 3 (0-based) with tool 0 on the carriage at the start.
+mf::Request multi_load_request() {
+    mf::Request r;
+    r.load = true;
+    r.heads = {{1, 210, "SELECT_TOOL T=1"}, {3, 220, "SELECT_TOOL T=3"}};
+    r.restore_gcode = "SELECT_TOOL T=0";
+    r.prompt_title = "Load filament";
+    r.prompt_text = "Insert filament into Tools 2, 4 as far as it goes, then tap Continue";
     r.continue_label = "Continue";
     r.cancel_label = "Cancel";
     return r;
@@ -88,8 +99,6 @@ class AckingChanger : public ToolChangerHelper {
         helix::ui::UpdateQueue::instance().drain();
     }
 
-    std::vector<std::string> sent_;
-
   private:
     std::vector<std::function<void()>> acks_;
     std::vector<std::function<void(const MoonrakerError&)>> errors_;
@@ -123,7 +132,7 @@ TEST_CASE("mount-to-feed: a load mounts, heats, prompts, purges and restores",
 TEST_CASE("mount-to-feed: the tool already on the carriage is neither mounted nor restored",
           "[toolchanger][mount_feed]") {
     mf::Request r = load_request();
-    r.mount_gcode.clear();
+    r.heads[0].mount_gcode.clear();
     r.restore_gcode.clear();
     const auto stages = mf::plan(r);
     REQUIRE(stages.size() == 3);
@@ -357,4 +366,320 @@ TEST_CASE("MedusaHC shows the mount-to-feed steps for a load and an unload",
     REQUIRE(unload.steps.size() == 4);
     CHECK(unload.steps[2].label == "Retract filament");
     CHECK(unload.steps[3].label == "Restore tool");
+}
+
+// ============================================================================
+// The operator wait
+// ============================================================================
+
+TEST_CASE("mount-to-feed: the operator wait times out into the cleanup",
+          "[toolchanger][mount_feed]") {
+    mf::Run run(load_request());
+    run.stage_done();
+    run.stage_done();
+    run.stage_done(); // the prompt is up
+    REQUIRE(run.awaiting_operator());
+
+    CHECK(run.advance_wait(1000) == mf::Run::WaitResult::Waiting);
+    CHECK(run.advance_wait(1000) == mf::Run::WaitResult::Waiting);
+    CHECK(run.awaiting_operator());
+    // Three minutes is the ceiling; the wait never outlives it.
+    CHECK(run.advance_wait(mf::PROMPT_TIMEOUT_MS) == mf::Run::WaitResult::Expired);
+    CHECK(run.aborted());
+    CHECK(run.current_gcode() ==
+          std::optional<std::string>(mf::prompt_end_gcode() + "\nM104 S0\nSELECT_TOOL T=0"));
+    // A wait that is not running is not expired either.
+    CHECK(run.advance_wait(1000) == mf::Run::WaitResult::NotWaiting);
+}
+
+TEST_CASE("mount-to-feed: a prompt dismissed without an answer reads as a dismissal",
+          "[toolchanger][mount_feed]") {
+    // The screen (or another client) closed the prompt: the echo of the
+    // prompt_end RESPOND is the only trace, and the operator can no longer
+    // answer what is gone.
+    CHECK(mf::parse_console("// action:prompt_end") == mf::ConsoleSignal::Dismissed);
+    CHECK(mf::parse_console("action:prompt_end") == mf::ConsoleSignal::Dismissed);
+    CHECK(mf::may_be_prompt_signal("// action:prompt_end"));
+    // The run's own stages send prompt_end too, but by then it is not waiting.
+    CHECK(mf::parse_console("// HELIX_MOUNT_FEED_CONTINUE") == mf::ConsoleSignal::Continue);
+    CHECK(mf::parse_console("// HELIX_MOUNT_FEED_CANCEL") == mf::ConsoleSignal::Cancel);
+    CHECK(mf::parse_console("echo: unrelated") == mf::ConsoleSignal::None);
+    CHECK_FALSE(mf::may_be_prompt_signal("echo: unrelated"));
+}
+
+// ============================================================================
+// Several tools in one run
+// ============================================================================
+
+TEST_CASE("mount-to-feed: a load of several tools asks once, then works tool by tool",
+          "[toolchanger][mount_feed][batch]") {
+    const auto stages = mf::plan(multi_load_request());
+    REQUIRE(stages.size() == 8);
+    // One prompt up front, naming every tool.
+    CHECK(stages[0].step == mf::Step::Insert);
+    CHECK(stages[0].awaits_operator);
+    CHECK(stages[0].gcode.find("Insert filament into Tools 2, 4 as far as it goes") !=
+          std::string::npos);
+    // The stage after the reply closes the prompt, mounts the first tool, and
+    // warms the second partway while the first works.
+    CHECK(stages[1].step == mf::Step::Mount);
+    CHECK(stages[1].gcode == mf::prompt_end_gcode() +
+                                 "\nSELECT_TOOL T=1\n"
+                                 "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=143");
+    CHECK(stages[2].gcode == "M109 S210");
+    CHECK(stages[3].gcode == "M83\nG1 E5 F60\nG1 E50 F300\nG1 E50 F300\nG1 E-10 F1800\nM104 S0");
+    // The last tool mounts with nothing left to preheat, and the carriage
+    // goes back to the tool the run found on it.
+    CHECK(stages[4].gcode == "SELECT_TOOL T=3");
+    CHECK(stages[5].gcode == "M109 S220");
+    CHECK(stages[6].gcode == "M83\nG1 E5 F60\nG1 E50 F300\nG1 E50 F300\nG1 E-10 F1800\nM104 S0");
+    CHECK(stages[7].gcode == "SELECT_TOOL T=0");
+}
+
+TEST_CASE("mount-to-feed: an unload of several tools preheats the next and restores at the end",
+          "[toolchanger][mount_feed][batch]") {
+    mf::Request r = multi_load_request();
+    r.load = false;
+    const auto stages = mf::plan(r);
+    REQUIRE(stages.size() == 7);
+    // No prompt in the unload direction.
+    CHECK(stages[0].step == mf::Step::Mount);
+    CHECK(stages[0].gcode == "SELECT_TOOL T=1\nSET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=143");
+    CHECK(stages[1].gcode == "M109 S210");
+    CHECK(stages[2].gcode == "M83\nG1 E-25 F1800\nG1 E-150 F1200\nM104 S0");
+    CHECK(stages[3].gcode == "SELECT_TOOL T=3");
+    CHECK(stages[4].gcode == "M109 S220");
+    CHECK(stages[5].gcode == "M83\nG1 E-25 F1800\nG1 E-150 F1200\nM104 S0");
+    CHECK(stages[6].gcode == "SELECT_TOOL T=0");
+}
+
+TEST_CASE("mount-to-feed: a multi-tool run's step index walks every tool's stride",
+          "[toolchanger][mount_feed][batch]") {
+    mf::Run run(multi_load_request());
+    REQUIRE(run.phase_index() == 2); // the prompt reads as tool 1's insert
+    run.stage_done();
+    REQUIRE(run.awaiting_operator());
+    run.operator_reply(mf::Reply::Continue);
+    CHECK(run.phase_index() == 0); // tool 1: mount
+    run.stage_done();
+    CHECK(run.phase_index() == 1); // tool 1: heat
+    run.stage_done();
+    CHECK(run.phase_index() == 3); // tool 1: purge
+    run.stage_done();
+    CHECK(run.phase_index() == 5); // tool 2: mount
+    run.stage_done();
+    CHECK(run.completed_heads() == std::vector<int>{1}); // tool 1's work is done
+    run.stage_done();
+    run.stage_done();
+    CHECK(run.completed_heads() == std::vector<int>{1});
+    run.stage_done();
+    CHECK(run.phase_index() == 9); // restore belongs to the last tool
+    CHECK(run.completed_heads() == std::vector<int>({1, 3}));
+    run.stage_done();
+    CHECK(run.finished());
+}
+
+TEST_CASE("mount-to-feed: a multi-tool stop turns every heater in the plan off",
+          "[toolchanger][mount_feed][batch]") {
+    mf::Run run(multi_load_request());
+    run.stage_done();
+    run.operator_reply(mf::Reply::Continue);
+    run.stage_done();
+    run.stage_done();
+    run.stage_done(); // tool 1 purged
+    CHECK(run.completed_heads() == std::vector<int>{1});
+    run.abort(); // tool 2's heat failed
+    CHECK(run.aborted());
+    CHECK(run.current_gcode() ==
+          std::optional<std::string>("M104 S0\n"
+                                     "SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
+                                     "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                                     "SELECT_TOOL T=0"));
+}
+
+// ============================================================================
+// Load all / Unload all on the backend
+// ============================================================================
+
+TEST_CASE("MedusaHC loads several tools in one sequenced run, preheating the next",
+          "[toolchanger][mount_feed][medusahc][batch]") {
+    AckingChanger tc(4);
+    tc.feed_status("ready", 0);
+    CHECK(tc.max_heads_per_filament_op() == 4);
+
+    REQUIRE(tc.load_filament_batch({1, 3}).success());
+    REQUIRE(tc.sent_.size() == 1);
+    // One prompt naming both tools, before anything mounts.
+    CHECK(tc.sent_.back().find("Insert filament into Tools 2, 4 as far as it goes") !=
+          std::string::npos);
+    tc.ack(); // the prompt is up
+    ToolChangerTestAccess::feed_operator_reply(tc, mf::Reply::Continue);
+    // The prompt closes on the first mount, which also preheats tool 3 (0-based
+    // head 3, 220C default material -> 143C).
+    CHECK(tc.sent_.back() == mf::prompt_end_gcode() +
+                                 "\nSELECT_TOOL T=1\n"
+                                 "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=143");
+    tc.ack();
+    CHECK(tc.sent_.back() == "M109 S220");
+    tc.ack();
+    CHECK(tc.sent_.back().find("G1 E50 F300") != std::string::npos);
+    tc.ack();
+    CHECK(tc.sent_.back() == "SELECT_TOOL T=3");
+    tc.ack();
+    CHECK(tc.sent_.back() == "M109 S220");
+    tc.ack();
+    CHECK(tc.sent_.back().find("G1 E50 F300") != std::string::npos);
+    tc.ack();
+    CHECK(tc.sent_.back() == "SELECT_TOOL T=0");
+    tc.ack();
+    CHECK(tc.get_current_action() == AmsAction::IDLE);
+}
+
+TEST_CASE("MedusaHC times a multi-tool load out and stops with every heater off",
+          "[toolchanger][mount_feed][medusahc][batch]") {
+    AckingChanger tc(4);
+    tc.feed_status("ready", 0);
+    REQUIRE(tc.load_filament_batch({1, 3}).success());
+    tc.ack(); // the prompt is up
+    REQUIRE(tc.get_system_info().is_busy());
+
+    ToolChangerTestAccess::feed_wait_elapsed(tc, mf::PROMPT_TIMEOUT_MS);
+    CHECK(tc.sent_.back() == mf::prompt_end_gcode() +
+                                 "\nM104 S0\n"
+                                 "SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
+                                 "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                                 "SELECT_TOOL T=0");
+    tc.ack();
+    CHECK(tc.get_current_action() == AmsAction::IDLE);
+}
+
+TEST_CASE("MedusaHC cancels a multi-tool load mid-sequence and unwinds every heater",
+          "[toolchanger][mount_feed][medusahc][batch]") {
+    AckingChanger tc(4);
+    tc.feed_status("ready", 0);
+    REQUIRE(tc.load_filament_batch({1, 3}).success());
+    tc.ack();
+    ToolChangerTestAccess::feed_operator_reply(tc, mf::Reply::Continue);
+    tc.ack(); // mounted tool 1 (with tool 3 preheating)
+    tc.ack(); // heated
+    tc.ack(); // purged
+    REQUIRE(tc.sent_.back() == "SELECT_TOOL T=3");
+    REQUIRE(tc.cancel().success());
+    CHECK(tc.sent_.back() == "M104 S0\n"
+                             "SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
+                             "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                             "SELECT_TOOL T=0");
+    tc.ack();
+    CHECK(tc.get_current_action() == AmsAction::IDLE);
+}
+
+TEST_CASE("MedusaHC counts a dismissed prompt as a Cancel", "[toolchanger][mount_feed][medusahc]") {
+    AckingChanger tc(4);
+    tc.feed_status("ready", 0);
+    REQUIRE(tc.load_filament(3).success());
+    tc.ack();
+    tc.ack();
+    tc.ack(); // the prompt is up
+    ToolChangerTestAccess::feed_console_signal(tc, mf::ConsoleSignal::Dismissed);
+    CHECK(tc.sent_.back() == mf::prompt_end_gcode() + "\nM104 S0\nSELECT_TOOL T=0");
+    tc.ack();
+    CHECK(tc.get_current_action() == AmsAction::IDLE);
+}
+
+TEST_CASE("MedusaHC times a single-tool load out when nobody inserts",
+          "[toolchanger][mount_feed][medusahc]") {
+    AckingChanger tc(4);
+    tc.feed_status("ready", 0);
+    REQUIRE(tc.load_filament(3).success());
+    tc.ack();
+    tc.ack();
+    tc.ack(); // the prompt is up
+    // A wait inside the ceiling keeps waiting.
+    ToolChangerTestAccess::feed_wait_elapsed(tc, mf::PROMPT_TIMEOUT_MS - 1000);
+    CHECK(tc.get_system_info().is_busy());
+    CHECK(tc.sent_.size() == 3);
+    ToolChangerTestAccess::feed_wait_elapsed(tc, 1000);
+    CHECK(tc.sent_.back() == mf::prompt_end_gcode() + "\nM104 S0\nSELECT_TOOL T=0");
+    tc.ack();
+    CHECK(tc.get_current_action() == AmsAction::IDLE);
+}
+
+TEST_CASE("MedusaHC sends the printer's LOAD_ALL_FILAMENT for a full selection",
+          "[toolchanger][mount_feed][medusahc][batch][macro]") {
+    auto& cache = MacroParamCache::instance();
+    cache.populate_from_configfile(
+        json{{"gcode_macro load_all_filament", {{"gcode", "{% if params.TEMP %}M109{% endif %}"}}},
+             {"gcode_macro unload_all_filament", {{"gcode", "M104 S0"}}}},
+        std::unordered_set<std::string>{"LOAD_ALL_FILAMENT", "UNLOAD_ALL_FILAMENT"});
+    struct ClearCache {
+        ~ClearCache() {
+            MacroParamCache::instance().clear();
+        }
+    } clear_cache;
+
+    AckingChanger tc(4);
+    tc.feed_status("ready", 0);
+    // Every tool selected: the printer's own macro runs the whole batch.
+    REQUIRE(tc.load_filament_batch({0, 1, 2, 3}).success());
+    REQUIRE(tc.sent_.size() == 1);
+    CHECK(tc.sent_.back() == "LOAD_ALL_FILAMENT TEMP=220");
+    CHECK(tc.get_current_action() == AmsAction::LOADING);
+
+    // A partial selection sequences tool by tool, macro or no macro. A fresh
+    // changer: this fixture drops the two-arg ack, so the optimistic action
+    // above never resolves and would refuse a second op.
+    AckingChanger partial(4);
+    partial.feed_status("ready", 0);
+    REQUIRE(partial.load_filament_batch({1, 2}).success());
+    CHECK(partial.sent_.back().find("action:prompt_begin") != std::string::npos);
+    CHECK(partial.sent_.back().find("Tools 2, 3") != std::string::npos);
+}
+
+TEST_CASE("MedusaHC sends the printer's UNLOAD_ALL_FILAMENT for a full selection",
+          "[toolchanger][mount_feed][medusahc][batch][macro]") {
+    auto& cache = MacroParamCache::instance();
+    cache.populate_from_configfile(
+        json{{"gcode_macro unload_all_filament", {{"gcode", "M104 S0"}}}},
+        std::unordered_set<std::string>{"UNLOAD_ALL_FILAMENT"});
+    struct ClearCache {
+        ~ClearCache() {
+            MacroParamCache::instance().clear();
+        }
+    } clear_cache;
+
+    AckingChanger tc(4);
+    tc.feed_status("ready", -1);
+    REQUIRE(tc.unload_filament_batch({0, 1, 2, 3}).success());
+    REQUIRE(tc.sent_.size() == 1);
+    // No TEMP: this macro takes none, and none is invented for it.
+    CHECK(tc.sent_.back() == "UNLOAD_ALL_FILAMENT");
+}
+
+TEST_CASE("MedusaHC's step bar tracks every filament-op action",
+          "[toolchanger][mount_feed][medusahc]") {
+    AckingChanger tc(4);
+    CHECK(tc.action_tracks_step_operation(AmsAction::SELECTING));
+    CHECK(tc.action_tracks_step_operation(AmsAction::HEATING));
+    CHECK(tc.action_tracks_step_operation(AmsAction::LOADING));
+    CHECK(tc.action_tracks_step_operation(AmsAction::PURGING));
+    CHECK(tc.action_tracks_step_operation(AmsAction::UNLOADING));
+    CHECK_FALSE(tc.action_tracks_step_operation(AmsAction::IDLE));
+    CHECK_FALSE(tc.action_tracks_step_operation(AmsAction::ERROR));
+}
+
+TEST_CASE("MedusaHC's step model spans every tool of a multi-tool run",
+          "[toolchanger][mount_feed][medusahc][batch]") {
+    AckingChanger tc(4);
+    tc.feed_status("ready", 0);
+    REQUIRE(tc.load_filament_batch({1, 3}).success());
+    const auto model = tc.get_operation_step_model(StepOperationType::LOAD_FRESH);
+    // Two tools x five steps, each label naming its tool.
+    REQUIRE(model.steps.size() == 10);
+    CHECK(model.steps[0].label == "Tool 1 of 2: Mount tool");
+    CHECK(model.steps[2].label == "Tool 1 of 2: Insert filament");
+    CHECK(model.steps[5].label == "Tool 2 of 2: Mount tool");
+    CHECK(model.steps[9].label == "Tool 2 of 2: Restore tool");
+    // The phase the run publishes lands inside this model.
+    tc.ack(); // prompt up -> phase 2
+    CHECK(tc.get_system_info().operation_phase == 2);
 }

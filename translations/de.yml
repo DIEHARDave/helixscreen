@@ -479,6 +479,7 @@ translations:
   CHANGED FROM LAST SESSION: SEIT LETZTER SITZUNG GEÄNDERT
   CLOG: VERSTOPFUNG
   COLOR SENSORS: FARBSENSOREN
+  'Completed: {}': 'Abgeschlossen: {}'
   CONFIGURATION: KONFIGURATION
   CONNECTION TYPE: VERBINDUNGSTYP
   CONTROLLABLE FANS: STEUERBARE LÜFTER
@@ -861,6 +862,8 @@ translations:
     verfügbar.
   Could not answer the connection request: 'Verbindungsanfrage konnte nicht beantwortet werden'
   'Could not check {} - it stays in the queue': '{} konnte nicht geprüft werden – bleibt in der Warteschlange'
+  Load all stopped: Laden gestoppt
+  No filament was inserted in time. The heater is off and the carriage is restored: 'Kein Filament wurde rechtzeitig eingeführt. Die Heizung ist aus und der Schlitten ist zurückgestellt'
   Print hours between filter changes. Off hides this meter.: 'Druckstunden zwischen Filterwechseln. Aus blendet diesen Zähler aus.'
   Print hours between nozzle changes. Off hides this meter.: 'Druckstunden zwischen Düsenwechseln. Aus blendet diesen Zähler aus.'
   Print hours between rail cleaning and lubrication. Off hides this meter.: 'Druckstunden zwischen Reinigen und Schmieren der Linearschienen. Aus blendet diesen Zähler aus.'
@@ -1752,7 +1755,6 @@ translations:
   InputShaper: InputShaper
   Insert filament: 'Filament einführen'
   Insert filament before resuming: Filament einlegen vor dem Fortsetzen
-  Insert filament into {}, then tap Continue: 'Filament in {} einführen, dann auf Fortfahren tippen'
   Inspecting bed...: Bett inspizieren...
   Install: Installieren
   Install HelixPrint Plugin: HelixPrint-Plugin installieren
@@ -3879,6 +3881,7 @@ translations:
   UI Scale: UI-Skalierung
   UI Sounds: UI-Töne
   UI scale applies after restart: UI-Skalierung gilt nach Neustart
+  Unload all stopped: Entladen gestoppt
   USB: USB
   USB DEVICES: USB-GERÄTE
   USB drive connected: USB-Laufwerk verbunden
