@@ -77,31 +77,32 @@ void ensure_homed_then(IMoonrakerAPI* api, AsyncLifetimeGuard& guard, std::funct
     // include/rpc_error_policy.h.
     const bool caller_surfaces = (on_error != nullptr);
 
-    api->execute_gcode("G28",
-                       guard.bg_cb("ensure_homed_then::g28_done",
-                                   [then = std::move(then)]() {
-                                       spdlog::info("[ensure_homed_then] G28 complete, proceeding");
-                                       // A homing macro can still be moving when G28
-                                       // acks, so idle_timeout reads "Printing". That
-                                       // busy is ours: without this stamp the motion
-                                       // guard refuses the continuation's move as an
-                                       // external operation.
-                                       get_printer_state().app_motion_activity().note_done();
-                                       if (then) {
-                                           then();
-                                       }
-                                   }),
-                       guard.bg_cb("ensure_homed_then::g28_error",
-                                   [on_error = std::move(on_error)](const MoonrakerError& err) {
-                                       spdlog::warn("[ensure_homed_then] G28 failed: {}",
-                                                    err.message);
-                                       if (on_error) {
-                                           on_error(err);
-                                       }
-                                   }),
-                       IMoonrakerAPI::HOMING_TIMEOUT_MS, /*silent=*/false,
-                       /*on_queued=*/nullptr,
-                       /*caller_surfaces_errors=*/caller_surfaces);
+    // A homing macro can still be moving when G28 acks, so idle_timeout reads
+    // "Printing" into the continuation. That episode is ours: without this the
+    // motion guard refuses the continuation's move as an external operation.
+    get_printer_state().app_motion_activity().note_episode_send();
+    api->execute_gcode(
+        "G28",
+        guard.bg_cb("ensure_homed_then::g28_done",
+                    [then = std::move(then)]() {
+                        spdlog::info("[ensure_homed_then] G28 complete, proceeding");
+                        // Restarts the ownership lapse, which a long
+                        // homing macro would otherwise run out.
+                        get_printer_state().app_motion_activity().note_episode_send();
+                        if (then) {
+                            then();
+                        }
+                    }),
+        guard.bg_cb("ensure_homed_then::g28_error",
+                    [on_error = std::move(on_error)](const MoonrakerError& err) {
+                        spdlog::warn("[ensure_homed_then] G28 failed: {}", err.message);
+                        if (on_error) {
+                            on_error(err);
+                        }
+                    }),
+        IMoonrakerAPI::HOMING_TIMEOUT_MS, /*silent=*/false,
+        /*on_queued=*/nullptr,
+        /*caller_surfaces_errors=*/caller_surfaces);
 }
 
 } // namespace helix
