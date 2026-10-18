@@ -57,6 +57,13 @@
         </text_small>
       </lv_obj>
 
+      <!-- Live response curve while each axis sweeps, then that axis's result -->
+      <lv_obj name="wizard_input_shaper_chart_host"
+              width="100%" flex_grow="1" style_pad_all="0" style_radius="#border_radius" style_bg_color="#screen_bg"
+              style_bg_opa="255" scrollable="false">
+        <bind_flag_if_eq subject="wizard_input_shaper_has_chart" flag="hidden" ref_value="0"/>
+      </lv_obj>
+
       <!-- Spacer -->
       <lv_obj flex_grow="1"/>
 

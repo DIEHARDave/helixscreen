@@ -2,12 +2,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "ui_update_queue.h"
+
 #include "belt_stream_client.h"
 #include "hv/EventLoopThread.h"
 #include "live_sweep_preview.h"
 #include "sweep_synth.h"
 
+#include <array>
 #include <atomic>
+#include <cmath>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -117,6 +121,48 @@ inline std::vector<AccelBatch> synth_batches(const SweepSynthSpec& spec, SweepAx
     }
     return out;
 }
+
+/**
+ * @brief Feeds a ManualBatchSource a sweep that trails the console
+ *
+ * For tests that run the mock printer's transcript: after each "Testing
+ * frequency" line, push samples until the drive reaches that line's value
+ * + 0.5 Hz, so the console leads the motion the way Klipper's lookahead does.
+ * Each new source (a new axis) gets a fresh synth over its own plan.
+ */
+class ConsoleLedFeeder {
+  public:
+    void feed(SourceLog& log, float latest_console_hz) {
+        if (log.created != synth_for_source_) {
+            synth_for_source_ = log.created;
+            SweepSynthSpec spec;
+            spec.plan = log.plan;
+            spec.drive_start_s = 1.7;
+            synth_ = std::make_unique<SweepSynth>(spec, [](float f) {
+                const float d = (f - 53.8f) / 6.0f;
+                const float level = 600.0f * std::sqrt(0.05f + 1.0f / (1.0f + d * d));
+                return std::array<float, 3>{level, 0.6f * level, 0.2f * level};
+            });
+        }
+        if (!synth_ || log.last == nullptr || latest_console_hz <= 0.0f) {
+            return;
+        }
+        // Past the plan's end, keep the stream running for the last steps.
+        const float end = log.plan.freq_end_hz;
+        const float reach = latest_console_hz >= end ? end + 3.0f : latest_console_hz + 0.5f;
+        const double until = 1.7 + (reach - log.plan.freq_start_hz) / log.plan.hz_per_sec;
+        while (log.last != nullptr && synth_->time_s() < until) {
+            AccelBatch batch;
+            batch.samples = synth_->next(300);
+            log.last->push(batch);
+            helix::ui::UpdateQueue::instance().drain();
+        }
+    }
+
+  private:
+    int synth_for_source_ = 0;
+    std::unique_ptr<SweepSynth> synth_;
+};
 
 /// A real loop thread pushing 300-sample SweepSynth batches every 5 ms.
 class LoopBatchSource final : public IAccelBatchSource {

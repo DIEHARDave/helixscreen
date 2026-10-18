@@ -597,10 +597,8 @@ TEST_CASE_METHOD(InputShaperDeltaFixture, "Per-axis result population",
 
 namespace {
 
-/// Runs the panel against the mock's transcript with a manual stream source.
-/// After each new "Testing frequency" line it pushes synthetic samples until
-/// the drive reaches that line's frequency + 0.5 Hz, so the console leads the
-/// motion the way Klipper's lookahead does.
+/// Runs the panel against the mock's transcript with a manual stream source
+/// fed by ConsoleLedFeeder.
 class InputShaperPreviewFixture : public InputShaperDeltaFixture {
   public:
     InputShaperPreviewFixture() {
@@ -638,30 +636,7 @@ class InputShaperPreviewFixture : public InputShaperDeltaFixture {
         lv_tick_inc(100);
         lv_timer_handler_safe();
         helix::ui::UpdateQueue::instance().drain();
-        if (log_.created != synth_for_source_) {
-            synth_for_source_ = log_.created;
-            SweepSynthSpec spec;
-            spec.plan = log_.plan;
-            spec.drive_start_s = 1.7;
-            synth_ = std::make_unique<SweepSynth>(spec, [](float f) {
-                const float d = (f - 53.8f) / 6.0f;
-                const float level = 600.0f * std::sqrt(0.05f + 1.0f / (1.0f + d * d));
-                return std::array<float, 3>{level, 0.6f * level, 0.2f * level};
-            });
-        }
-        if (!synth_ || log_.last == nullptr || latest_hz_ <= 0.0f) {
-            return;
-        }
-        // Past the plan's end, keep the stream running for the last steps.
-        const float end = log_.plan.freq_end_hz;
-        const float reach = latest_hz_ >= end ? end + 3.0f : latest_hz_ + 0.5f;
-        while (log_.last != nullptr &&
-               synth_->time_s() < 1.7 + (reach - log_.plan.freq_start_hz) / log_.plan.hz_per_sec) {
-            helix::calibration::AccelBatch batch;
-            batch.samples = synth_->next(300);
-            log_.last->push(batch);
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        feeder_.feed(log_, latest_hz_);
     }
 
     bool run_until(const std::function<bool()>& done, int max_ticks = 600) {
@@ -696,9 +671,8 @@ class InputShaperPreviewFixture : public InputShaperDeltaFixture {
     }
 
     helix::calibration::test::SourceLog log_;
+    helix::calibration::test::ConsoleLedFeeder feeder_;
     float latest_hz_ = 0.0f;
-    int synth_for_source_ = 0;
-    std::unique_ptr<SweepSynth> synth_;
 };
 
 } // namespace

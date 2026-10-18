@@ -463,6 +463,7 @@ subject:wizard_ams_details
 subject:wizard_ams_logo_color
 subject:wizard_ams_type
 subject:wizard_input_shaper_active
+subject:wizard_input_shaper_has_chart
 subject:wizard_input_shaper_indeterminate
 subject:wizard_input_shaper_progress
 subject:wizard_input_shaper_started
