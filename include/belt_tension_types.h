@@ -74,6 +74,14 @@ struct BeltTensionHardware {
 /// One path's response: (frequency Hz, psd_xyz) pairs, ascending frequency.
 using BeltCurve = std::vector<std::pair<float, float>>;
 
+/// One sweep's response on one frequency grid: psd_xyz for the similarity
+/// summary, psd_x + psd_y for tuning. Belt modes move the toolhead in the XY
+/// plane; Z motion in a band is the frame, not the belt.
+struct BeltResponse {
+    BeltCurve xyz;
+    BeltCurve in_plane; ///< empty when the CSV carried no psd_x and psd_y columns
+};
+
 enum class BeltVerdict { MATCHED, CLOSE, ADJUST };
 
 /// Provisional: they sort every real capture in tests/fixtures/belt_sweeps/

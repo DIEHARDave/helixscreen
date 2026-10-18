@@ -290,6 +290,31 @@ TEST_CASE("resonance CSV: a truncated last row is dropped, the rest kept", "[sha
     auto d = parse_resonance_csv(csv.path);
     REQUIRE(d.error == ResonanceCsvError::NONE);
     CHECK(d.curve.size() == 1);
+    REQUIRE(d.in_plane.size() == d.curve.size());
+    CHECK(d.in_plane[0].first == d.curve[0].first);
+}
+
+TEST_CASE("resonance CSV: the in-plane curve is psd_x + psd_y on the same bins",
+          "[shaper_csv][belt]") {
+    TempCsvFile csv("freq,psd_x,psd_y,psd_z,psd_xyz\n"
+                    "10,1,2,3,6\n"
+                    "11,4,5,1,10\n"
+                    "12,0.5,0.5,9,10\n");
+    auto d = parse_resonance_csv(csv.path);
+    REQUIRE(d.error == ResonanceCsvError::NONE);
+    const BeltCurve want_in_plane = {{10.0f, 3.0f}, {11.0f, 9.0f}, {12.0f, 1.0f}};
+    const BeltCurve want_xyz = {{10.0f, 6.0f}, {11.0f, 10.0f}, {12.0f, 10.0f}};
+    CHECK(d.in_plane == want_in_plane);
+    CHECK(d.curve == want_xyz);
+}
+
+TEST_CASE("resonance CSV: a CSV with psd_xyz but no psd_x or psd_y has an empty in-plane curve",
+          "[shaper_csv][belt]") {
+    TempCsvFile csv("freq,psd_xyz\n5.0,6\n5.8,7\n");
+    auto d = parse_resonance_csv(csv.path);
+    REQUIRE(d.error == ResonanceCsvError::NONE);
+    CHECK(d.curve.size() == 2);
+    CHECK(d.in_plane.empty());
 }
 
 TEST_CASE("resonance CSV: no freq or psd_xyz column", "[shaper_csv][belt]") {

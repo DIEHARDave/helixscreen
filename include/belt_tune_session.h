@@ -19,24 +19,48 @@
 namespace helix::calibration {
 
 namespace belt_tune {
-/// Peaks under this fraction of the stronger path's in-band maximum never
-/// define a zone.
+/// Peaks under this fraction of the stronger path's in-band in-plane maximum
+/// never define a zone.
 inline constexpr float ZONE_MIN_AMPLITUDE_FRACTION = 0.20f;
-inline constexpr float ZONE_HALF_MIN_HZ = 10.0f; ///< narrowest half-width of a zone window
-inline constexpr float ZONE_MARGIN_HZ = 5.0f;    ///< window reach beyond each zone peak
+/// A peak defines a zone only where psd_x + psd_y is at least this share of psd_xyz.
+inline constexpr float IN_PLANE_MIN_FRACTION = 0.5f;
+inline constexpr float ZONE_HALF_MIN_HZ = 10.0f; ///< narrowest half-width of a zone
+inline constexpr float ZONE_MARGIN_HZ = 5.0f;    ///< zone reach beyond each defining peak
 /// An unpaired tallest peak steers only against a peak this close on the other path.
 inline constexpr float ZONE_FALLBACK_MAX_HZ = 3.0f * belt_verdict::PAIR_MAX_HZ;
-inline constexpr float MATCHED_MIN_HZ = 1.0f; ///< matched tolerance floor
-inline constexpr float MIN_MOVE_HZ = 0.5f;    ///< smaller peak moves are noise
+inline constexpr int MAX_ZONE_CANDIDATES = 4;
+/// A narrow sweep starts this far below the zone, so its start transient
+/// lands in bins the analysis never reads.
+inline constexpr float ZONE_SWEEP_MARGIN_HZ = 10.0f;
+/// ...and ends this far above it: the last 15 Hz of a narrow sweep can read
+/// many times the zone's own power.
+inline constexpr float ZONE_SWEEP_TOP_MARGIN_HZ = 20.0f;
+inline constexpr float CALIBRATION_TURNS = 1.0f;       ///< one full turn per calibration step
+inline constexpr int CALIBRATION_MAX_STEPS = 2;        ///< steps before the loop gives up
+inline constexpr float CALIBRATION_MIN_MOVE_HZ = 1.5f; ///< a smaller gap move is run-to-run wander
+inline constexpr float MATCHED_MIN_HZ = 1.0f;          ///< matched tolerance floor
+inline constexpr float MIN_MOVE_HZ = 0.5f;             ///< smaller peak moves are noise
 inline constexpr float FIRST_TURN = 0.25f;
 inline constexpr float TURN_STEP = 0.125f;
+inline constexpr float TURN_MIN = 0.5f;
+inline constexpr float TURN_MIN_NEAR = 0.25f; ///< the smallest turn when nearly matched
+/// "Nearly matched": |gap| under this multiple of the matched tolerance.
+inline constexpr float NEAR_MATCH_FACTOR = 1.5f;
 inline constexpr float TURN_MAX = 1.0f;
+/// A round's gap move above max(IMPLAUSIBLE_MIN_HZ, IMPLAUSIBLE_RATE_FACTOR x
+/// turns x Hz/turn) is a measurement fault. Without a rate the bound is
+/// IMPLAUSIBLE_MIN_HZ x max(1, turns).
+inline constexpr float IMPLAUSIBLE_MIN_HZ = 6.0f;
+inline constexpr float IMPLAUSIBLE_RATE_FACTOR = 3.0f;
+/// Zone in-plane power differing by more than this between paths points at
+/// the mechanics, not tension.
+inline constexpr float POWER_HINT_RATIO = 3.0f;
 inline constexpr int STALL_ROUNDS = 8;        ///< unmatched rounds before the mechanical hint
 inline constexpr int SPRING_STALL_ROUNDS = 2; ///< spring rounds in a row without improvement
-/// A peak must reach this multiple of the unexcited floor (or, without one,
-/// of the window's minimum).
+/// A zone holds a peak when its maximum reaches this multiple of the unexcited
+/// floor (or, without one, of the zone's minimum).
 inline constexpr float PEAK_MIN_PROMINENCE = 1.5f;
-/// In-band bins outside the window needed to measure the unexcited floor.
+/// In-band bins outside the swept range needed to measure the unexcited floor.
 inline constexpr int UNEXCITED_MIN_BINS = 8;
 /// A maximum competes for "nearest the previous peak" only at this fraction
 /// of the window's maximum.
@@ -45,16 +69,37 @@ inline constexpr float GAUGE_WARN_HZ = 3.0f; ///< gap gauge: warning colour up t
 } // namespace belt_tune
 
 enum class BeltZoneSource {
-    PAIRED,           ///< a peak pair whose frequencies disagree
+    PAIRED,           ///< a peak pair
     TALLEST_UNPAIRED, ///< an unpaired tallest peak and the other path's nearest peak
 };
 
 struct BeltTuneZone {
-    BeltSweepWindow window;
+    BeltSweepWindow window; ///< the analysed bins; a sweep reaches past it (zone_sweep_window)
     BeltZoneSource source = BeltZoneSource::PAIRED;
     float ref_hz = 0.0f; ///< reference path's peak that defined the zone
     float adj_hz = 0.0f; ///< adjusted path's peak that defined the zone
 };
+
+/// A zone the calibration turn tests. Its zone is seen from PATH_A: adj_hz is
+/// A's peak, ref_hz B's.
+struct BeltZoneCandidate {
+    BeltTuneZone zone;
+    float strength = 0.0f; ///< the two defining peaks' in-plane amplitudes, summed
+};
+
+/// What the zone's power says when it differs too much between the paths.
+struct BeltPowerHint {
+    BeltPath stronger = BeltPath::PATH_A;
+    float freq_hz = 0.0f; ///< the stronger path's zone centroid
+    float ratio = 1.0f;   ///< stronger power over weaker, > POWER_HINT_RATIO
+};
+
+/// The curve tuning reads: in_plane, or xyz when the sweep had no per-axis columns.
+[[nodiscard]] const BeltCurve& tuning_curve(const BeltResponse& r);
+
+/// psd_x + psd_y over psd_xyz at the bin nearest freq_hz. 1 when in_plane is
+/// empty (nothing says otherwise); 0 when psd_xyz there is not positive.
+[[nodiscard]] float in_plane_fraction(const BeltResponse& r, float freq_hz);
 
 /// True when either path's tallest peak is unpaired and at or above the zone
 /// amplitude floor: the curves differ in shape, and the mechanical-causes
@@ -74,17 +119,51 @@ struct BeltTuneZone {
 pick_tune_zone(const BeltComparison& cmp, BeltPath adjusted, float band_min_hz, float band_max_hz,
                const std::vector<float>& matched_zone_centres_hz);
 
+/// The zones a calibration turn tests, strongest first, at most
+/// MAX_ZONE_CANDIDATES. Built from the in-plane comparison over the band:
+/// every pair whose two peaks reach ZONE_MIN_AMPLITUDE_FRACTION of the
+/// in-band in-plane maximum and IN_PLANE_MIN_FRACTION in-plane share
+/// (PAIRED), and an unpaired tallest peak meeting both, steered against the
+/// other path's nearest such peak within ZONE_FALLBACK_MAX_HZ
+/// (TALLEST_UNPAIRED). A matched pair is a candidate: the turn tests movement,
+/// not the gap. A candidate whose centre lies within ZONE_HALF_MIN_HZ of a
+/// stronger one's is dropped. Each window is the two peaks' midpoint
+/// +- max(ZONE_HALF_MIN_HZ, gap / 2 + ZONE_MARGIN_HZ), clamped to the band.
+[[nodiscard]] std::vector<BeltZoneCandidate> tune_zone_candidates(const BeltResponse& a,
+                                                                  const BeltResponse& b,
+                                                                  float band_min_hz,
+                                                                  float band_max_hz);
+
+/// What a narrow sweep of the zone sends: ZONE_SWEEP_MARGIN_HZ below it and
+/// ZONE_SWEEP_TOP_MARGIN_HZ above it, in whole Hz inside the band (start
+/// rounded up, end rounded down), so FREQ_START/FREQ_END never leave the
+/// printer's [resonance_tester] range.
+[[nodiscard]] BeltSweepWindow zone_sweep_window(BeltSweepWindow zone, float band_min_hz,
+                                                float band_max_hz);
+
+/// Power-weighted mean frequency of the curve's bins inside the zone
+/// (inclusive). nullopt with fewer than 3 such bins or no positive power.
+[[nodiscard]] std::optional<float> zone_centroid_hz(const BeltCurve& curve, BeltSweepWindow zone);
+
+/// Sum of the curve's values over the zone's bins (inclusive).
+[[nodiscard]] float zone_power(const BeltCurve& curve, BeltSweepWindow zone);
+
+/// The hint when one path's zone power exceeds the other's by more than
+/// POWER_HINT_RATIO; nullopt otherwise, or when either power is not positive.
+[[nodiscard]] std::optional<BeltPowerHint> zone_power_hint(const BeltCurve& a, const BeltCurve& b,
+                                                           BeltSweepWindow zone);
+
 /// What the belt reads unexcited: the median of the curve's in-band bins
-/// outside the window, which a windowed sweep does not drive. nullopt with
-/// fewer than UNEXCITED_MIN_BINS such bins.
+/// outside `swept`, which the sweep did not drive. nullopt with fewer than
+/// UNEXCITED_MIN_BINS such bins.
 [[nodiscard]] std::optional<float> unexcited_floor_psd(const BeltCurve& curve,
-                                                       BeltSweepWindow window, float band_min_hz,
+                                                       BeltSweepWindow swept, float band_min_hz,
                                                        float band_max_hz);
 
-/// Whether the window's maximum reaches PEAK_MIN_PROMINENCE times the
-/// unexcited floor, or, without one, times the window's minimum.
-[[nodiscard]] bool window_holds_peak(const BeltCurve& curve, BeltSweepWindow window,
-                                     float band_min_hz, float band_max_hz);
+/// Whether the zone's maximum reaches PEAK_MIN_PROMINENCE times the unexcited
+/// floor outside `swept`, or, without one, times the zone's minimum.
+[[nodiscard]] bool window_holds_peak(const BeltCurve& curve, BeltSweepWindow zone,
+                                     BeltSweepWindow swept, float band_min_hz, float band_max_hz);
 
 /// The curve's peak inside the window, refined between bins by parabolic
 /// interpolation. Candidates are interior local maxima at

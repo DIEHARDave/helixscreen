@@ -11,6 +11,7 @@
 
 using namespace helix::calibration;
 using helix::calibration::test::lorentzian_curve;
+using helix::calibration::test::response_from;
 using helix::calibration::test::windowed;
 
 namespace {
@@ -34,6 +35,18 @@ BeltCurve load_fixture(const std::string& name) {
     REQUIRE(data.error == ResonanceCsvError::NONE);
     REQUIRE_FALSE(data.curve.empty());
     return data.curve;
+}
+
+/// One path of a hardware capture pair, through the parser: path 'A' reads
+/// `<name>_axis_1_-1.csv`, 'B' reads `<name>_axis_1_1.csv`.
+BeltResponse load_fixture_response(const std::string& name, char path) {
+    const std::string file =
+        fixture_dir() + "belt_sweeps/" + name + (path == 'A' ? "_axis_1_-1.csv" : "_axis_1_1.csv");
+    auto data = parse_resonance_csv(file);
+    INFO("fixture missing or unparsable: " << file);
+    REQUIRE(data.error == ResonanceCsvError::NONE);
+    REQUIRE_FALSE(data.in_plane.empty());
+    return BeltResponse{data.curve, data.in_plane};
 }
 
 BeltComparison compare_fixture(const std::string& printer, float lo, float hi) {
@@ -848,7 +861,7 @@ TEST_CASE("tune peak: prominence over the unexcited floor", "[belt][tune]") {
             floor = std::min(floor, v);
         }
         const auto swept = windowed(full, w, floor);
-        CHECK(window_holds_peak(swept, w, 5.0f, 135.0f));
+        CHECK(window_holds_peak(swept, w, w, 5.0f, 135.0f));
         const auto f =
             refine_peak_in_window(swept, w, 119.5f, unexcited_floor_psd(swept, w, 5.0f, 135.0f));
         REQUIRE(f.has_value());
@@ -859,14 +872,14 @@ TEST_CASE("tune peak: prominence over the unexcited floor", "[belt][tune]") {
         const BeltSweepWindow w{95.0f, 117.0f};
         const auto flat = windowed(lorentzian_curve({}, LO, HI, 3200.0f / 4096.0f, 5.0f), w, 5.0f);
         REQUIRE(unexcited_floor_psd(flat, w, LO, HI).has_value());
-        CHECK_FALSE(window_holds_peak(flat, w, LO, HI));
+        CHECK_FALSE(window_holds_peak(flat, w, w, LO, HI));
     }
 
     SECTION("with too few unexcited bins, the window's own minimum is the floor") {
         const BeltSweepWindow w{95.0f, 117.0f};
         const auto only_window = lorentzian_curve({{106.0f, 1e4f}}, 95.0f, 117.5f);
         CHECK_FALSE(unexcited_floor_psd(only_window, w, LO, HI).has_value());
-        CHECK(window_holds_peak(only_window, w, LO, HI));
+        CHECK(window_holds_peak(only_window, w, w, LO, HI));
     }
 
     SECTION("candidates need the near-peak fraction and the floor prominence") {
@@ -1154,4 +1167,310 @@ TEST_CASE("tune advice: a turn carried past a peakless round still doubles", "[b
     REQUIRE(r.outcome == BeltTuneOutcome::NO_MOVEMENT);
     CHECK(r.turns_measured == Catch::Approx(0.25f));
     CHECK(s.advice().turns == std::optional<float>(0.5f));
+}
+
+// ============================================================================
+// In-plane zone candidates, centroids, power and the sweep window
+// ============================================================================
+
+namespace {
+
+constexpr float BIN_HZ = 3200.0f / 4096.0f;
+
+/// The frequency of the tallest bin of `curve` inside the zone (inclusive).
+float tallest_bin_hz(const BeltCurve& curve, BeltSweepWindow zone) {
+    const auto x = curve_in_band(curve, zone.freq_start_hz, zone.freq_end_hz);
+    REQUIRE_FALSE(x.empty());
+    return std::max_element(x.begin(), x.end(),
+                            [](const auto& l, const auto& r) { return l.second < r.second; })
+        ->first;
+}
+
+/// The curve with the bin nearest `hz` raised to `value`.
+BeltCurve with_spike(BeltCurve curve, float hz, float value) {
+    auto it = std::min_element(curve.begin(), curve.end(), [hz](const auto& l, const auto& r) {
+        return std::abs(l.first - hz) < std::abs(r.first - hz);
+    });
+    it->second = value;
+    return curve;
+}
+
+/// Each path's peaks, the same on both, as a response with 0.9 in-plane share.
+BeltResponse peaks_response(std::vector<std::pair<float, float>> peaks) {
+    return response_from(lorentzian_curve(std::move(peaks), LO, HI, BIN_HZ, 0.01f, 1.0f));
+}
+
+} // namespace
+
+TEST_CASE("zone candidates: the Voron's settled capture has two, strongest first", "[belt][tune]") {
+    const auto a = load_fixture_response("voron24_settled", 'A');
+    const auto b = load_fixture_response("voron24_settled", 'B');
+    const auto c = tune_zone_candidates(a, b, 5.0f, 135.0f);
+    REQUIRE(c.size() == 2);
+    CHECK(c[0].zone.source == BeltZoneSource::PAIRED);
+    CHECK(c[0].zone.adj_hz == Catch::Approx(128.6f).margin(0.1f));
+    CHECK(c[0].zone.ref_hz == Catch::Approx(128.6f).margin(0.1f));
+    CHECK(c[0].zone.window.freq_start_hz == Catch::Approx(118.6f).margin(0.1f));
+    CHECK(c[0].zone.window.freq_end_hz == Catch::Approx(135.0f).margin(0.1f));
+    CHECK(c[1].zone.source == BeltZoneSource::PAIRED);
+    CHECK(c[1].zone.adj_hz == Catch::Approx(37.8f).margin(0.1f));
+    CHECK(c[1].zone.ref_hz == Catch::Approx(37.8f).margin(0.1f));
+    CHECK(c[1].zone.window.freq_start_hz == Catch::Approx(27.8f).margin(0.1f));
+    CHECK(c[1].zone.window.freq_end_hz == Catch::Approx(47.8f).margin(0.1f));
+    CHECK(c[0].strength > c[1].strength);
+}
+
+TEST_CASE("zone candidates: the K1C's settled capture has one", "[belt][tune]") {
+    const auto a = load_fixture_response("k1c_settled", 'A');
+    const auto b = load_fixture_response("k1c_settled", 'B');
+    const auto c = tune_zone_candidates(a, b, 5.0f, 133.0f);
+    REQUIRE(c.size() == 1);
+    CHECK(c[0].zone.adj_hz == Catch::Approx(58.4f).margin(0.1f));
+    CHECK(c[0].zone.ref_hz == Catch::Approx(58.4f).margin(0.1f));
+    CHECK(c[0].zone.window.freq_start_hz == Catch::Approx(48.4f).margin(0.1f));
+    CHECK(c[0].zone.window.freq_end_hz == Catch::Approx(68.4f).margin(0.1f));
+}
+
+TEST_CASE("zone centroid: the in-plane centroids of the hardware captures", "[belt][tune]") {
+    struct Row {
+        const char* name;
+        BeltSweepWindow zone;
+        float a_hz;
+        float b_hz;
+    };
+    const Row rows[] = {
+        {"voron24_settled", {118.6f, 135.0f}, 129.12f, 127.17f},
+        {"voron24_turn1", {118.6f, 135.0f}, 130.04f, 126.92f},
+        {"voron24_turn2", {118.6f, 135.0f}, 128.31f, 129.79f},
+        {"voron24_settled_repeat", {118.6f, 135.0f}, 130.28f, 126.37f},
+        {"k1c_settled", {48.4f, 68.4f}, 59.19f, 59.34f},
+    };
+    for (const auto& row : rows) {
+        INFO(row.name);
+        const auto a =
+            zone_centroid_hz(tuning_curve(load_fixture_response(row.name, 'A')), row.zone);
+        const auto b =
+            zone_centroid_hz(tuning_curve(load_fixture_response(row.name, 'B')), row.zone);
+        REQUIRE(a.has_value());
+        REQUIRE(b.has_value());
+        CHECK(*a == Catch::Approx(row.a_hz).margin(0.05f));
+        CHECK(*b == Catch::Approx(row.b_hz).margin(0.05f));
+    }
+}
+
+TEST_CASE("zone centroid: the zone centroid wanders less than the tallest zone bin",
+          "[belt][tune]") {
+    const BeltSweepWindow zone{118.6f, 135.0f};
+    for (const char path : {'A', 'B'}) {
+        INFO("path " << path);
+        const auto settled = tuning_curve(load_fixture_response("voron24_settled", path));
+        const auto repeat = tuning_curve(load_fixture_response("voron24_settled_repeat", path));
+        const float centroid_move =
+            std::abs(*zone_centroid_hz(repeat, zone) - *zone_centroid_hz(settled, zone));
+        const float tallest_move =
+            std::abs(tallest_bin_hz(repeat, zone) - tallest_bin_hz(settled, zone));
+        CHECK(centroid_move == Catch::Approx(path == 'A' ? 1.16f : 0.80f).margin(0.05f));
+        CHECK(tallest_move == Catch::Approx(1.5f).margin(0.1f));
+        CHECK(centroid_move < tallest_move);
+    }
+}
+
+TEST_CASE("zone centroid: too few zone bins or no power is no centroid", "[belt][tune]") {
+    const BeltCurve two_bins = {{100.0f, 1.0f}, {101.0f, 2.0f}, {120.0f, 3.0f}};
+    CHECK_FALSE(zone_centroid_hz(two_bins, {99.0f, 110.0f}).has_value());
+    const BeltCurve zeros = {{100.0f, 0.0f}, {101.0f, 0.0f}, {102.0f, 0.0f}};
+    CHECK_FALSE(zone_centroid_hz(zeros, {99.0f, 110.0f}).has_value());
+    const BeltCurve three = {{100.0f, 1.0f}, {101.0f, 2.0f}, {102.0f, 1.0f}};
+    REQUIRE(zone_centroid_hz(three, {100.0f, 102.0f}).has_value());
+    CHECK(*zone_centroid_hz(three, {100.0f, 102.0f}) == Catch::Approx(101.0f));
+}
+
+TEST_CASE("zone power hint: the Voron's B path resonates far harder", "[belt][tune]") {
+    const BeltSweepWindow zone{118.6f, 135.0f};
+    SECTION("settled") {
+        const auto h =
+            zone_power_hint(tuning_curve(load_fixture_response("voron24_settled", 'A')),
+                            tuning_curve(load_fixture_response("voron24_settled", 'B')), zone);
+        REQUIRE(h.has_value());
+        CHECK(h->stronger == BeltPath::PATH_B);
+        CHECK(h->ratio == Catch::Approx(3.65f).margin(0.05f));
+        CHECK(h->freq_hz == Catch::Approx(127.17f).margin(0.05f));
+    }
+    SECTION("two turns") {
+        const auto h =
+            zone_power_hint(tuning_curve(load_fixture_response("voron24_turn2", 'A')),
+                            tuning_curve(load_fixture_response("voron24_turn2", 'B')), zone);
+        REQUIRE(h.has_value());
+        CHECK(h->stronger == BeltPath::PATH_B);
+        CHECK(h->ratio == Catch::Approx(15.3f).margin(0.3f));
+    }
+    SECTION("the K1C's paths are within 3x") {
+        CHECK_FALSE(zone_power_hint(tuning_curve(load_fixture_response("k1c_settled", 'A')),
+                                    tuning_curve(load_fixture_response("k1c_settled", 'B')),
+                                    {48.4f, 68.4f})
+                        .has_value());
+    }
+}
+
+TEST_CASE("zone power hint: equal, exactly 3x and zero power give none", "[belt][tune]") {
+    const BeltSweepWindow zone{100.0f, 104.0f};
+    const auto flat = [](float v) {
+        BeltCurve c;
+        for (float f = 100.0f; f <= 104.0f; f += 1.0f) {
+            c.emplace_back(f, v);
+        }
+        return c;
+    };
+    CHECK(zone_power(flat(2.0f), zone) == Catch::Approx(10.0f));
+    CHECK_FALSE(zone_power_hint(flat(1.0f), flat(1.0f), zone).has_value());
+    CHECK_FALSE(zone_power_hint(flat(1.0f), flat(3.0f), zone).has_value());
+    CHECK_FALSE(zone_power_hint(flat(0.0f), flat(3.0f), zone).has_value());
+    const auto h = zone_power_hint(flat(4.0f), flat(1.0f), zone);
+    REQUIRE(h.has_value());
+    CHECK(h->stronger == BeltPath::PATH_A);
+    CHECK(h->ratio == Catch::Approx(4.0f));
+    CHECK(h->freq_hz == Catch::Approx(102.0f));
+}
+
+TEST_CASE("zone candidates: a peak needs half its motion in the XY plane", "[belt][tune]") {
+    const auto peak = one_peak(100.0f);
+    const auto b = response_from(peak, 0.9f);
+    CHECK(tune_zone_candidates(response_from(peak, 0.4f), b, LO, HI).empty());
+    CHECK(tune_zone_candidates(response_from(peak, 0.5f), b, LO, HI).size() == 1);
+}
+
+TEST_CASE("in-plane fraction: no per-axis columns reads 1, no xyz power reads 0", "[belt][tune]") {
+    CHECK(in_plane_fraction(BeltResponse{one_peak(100.0f), {}}, 100.0f) == 1.0f);
+    const BeltCurve zeros = {{99.0f, 0.0f}, {100.0f, 0.0f}, {101.0f, 0.0f}};
+    CHECK(in_plane_fraction(BeltResponse{zeros, zeros}, 100.0f) == 0.0f);
+    const BeltResponse r{{{99.0f, 4.0f}, {100.0f, 8.0f}}, {{99.0f, 1.0f}, {100.0f, 6.0f}}};
+    CHECK(in_plane_fraction(r, 99.9f) == Catch::Approx(0.75f));
+    CHECK(&tuning_curve(r) == &r.in_plane);
+    const BeltResponse xyz_only{{{99.0f, 4.0f}}, {}};
+    CHECK(&tuning_curve(xyz_only) == &xyz_only.xyz);
+}
+
+TEST_CASE("zone candidates: without per-axis columns, psd_xyz is tuned", "[belt][tune]") {
+    const auto a = load_fixture_response("voron24_settled", 'A');
+    const auto b = load_fixture_response("voron24_settled", 'B');
+    const auto bare =
+        tune_zone_candidates(BeltResponse{a.xyz, {}}, BeltResponse{b.xyz, {}}, LO, HI);
+    const auto same =
+        tune_zone_candidates(BeltResponse{a.xyz, a.xyz}, BeltResponse{b.xyz, b.xyz}, LO, HI);
+    REQUIRE_FALSE(bare.empty());
+    REQUIRE(bare.size() == same.size());
+    for (size_t i = 0; i < bare.size(); ++i) {
+        CHECK(bare[i].zone.adj_hz == same[i].zone.adj_hz);
+        CHECK(bare[i].zone.ref_hz == same[i].zone.ref_hz);
+        CHECK(bare[i].zone.window.freq_start_hz == same[i].zone.window.freq_start_hz);
+        CHECK(bare[i].zone.window.freq_end_hz == same[i].zone.window.freq_end_hz);
+        CHECK(bare[i].strength == same[i].strength);
+    }
+}
+
+TEST_CASE("zone candidates: a weaker candidate within 10 Hz of a stronger one is dropped",
+          "[belt][tune]") {
+    SECTION("30 and 37 Hz keep only 37") {
+        const auto r = peaks_response({{30.0f, 1e4f}, {37.0f, 1.5e4f}});
+        const auto c = tune_zone_candidates(r, r, LO, HI);
+        REQUIRE(c.size() == 1);
+        CHECK(c[0].zone.adj_hz == Catch::Approx(37.0f).margin(0.5f));
+    }
+    SECTION("30 and 45 Hz keep both") {
+        const auto r = peaks_response({{30.0f, 1e4f}, {45.0f, 1.5e4f}});
+        const auto c = tune_zone_candidates(r, r, LO, HI);
+        REQUIRE(c.size() == 2);
+        CHECK(c[0].zone.adj_hz == Catch::Approx(45.0f).margin(0.5f));
+        CHECK(c[1].zone.adj_hz == Catch::Approx(30.0f).margin(0.5f));
+    }
+    SECTION("six well-separated pairs leave the strongest four") {
+        const auto r = peaks_response({{20.0f, 3e3f},
+                                       {40.0f, 4e3f},
+                                       {60.0f, 5e3f},
+                                       {80.0f, 6e3f},
+                                       {100.0f, 7e3f},
+                                       {120.0f, 8e3f}});
+        const auto c = tune_zone_candidates(r, r, LO, HI);
+        REQUIRE(c.size() == static_cast<size_t>(belt_tune::MAX_ZONE_CANDIDATES));
+        const float want[] = {120.0f, 100.0f, 80.0f, 60.0f};
+        for (size_t i = 0; i < c.size(); ++i) {
+            CHECK(c[i].zone.adj_hz == Catch::Approx(want[i]).margin(0.5f));
+        }
+    }
+}
+
+TEST_CASE("zone candidates: a matched pair is a candidate", "[belt][tune]") {
+    const auto r = response_from(one_peak(100.0f));
+    const auto c = tune_zone_candidates(r, r, LO, HI);
+    REQUIRE(c.size() == 1);
+    CHECK(c[0].zone.source == BeltZoneSource::PAIRED);
+    CHECK(c[0].zone.adj_hz == c[0].zone.ref_hz);
+}
+
+TEST_CASE("zone candidates: an unpaired tallest peak steers against the nearest", "[belt][tune]") {
+    const auto c = tune_zone_candidates(response_from(one_peak(110.0f)),
+                                        response_from(one_peak(98.0f)), LO, HI);
+    REQUIRE(c.size() == 1);
+    CHECK(c[0].zone.source == BeltZoneSource::TALLEST_UNPAIRED);
+    CHECK(c[0].zone.adj_hz == Catch::Approx(110.0f).margin(0.5f));
+    CHECK(c[0].zone.ref_hz == Catch::Approx(98.0f).margin(0.5f));
+    CHECK(c[0].zone.window.freq_start_hz == Catch::Approx(93.0f).margin(0.5f));
+    CHECK(c[0].zone.window.freq_end_hz == Catch::Approx(115.0f).margin(0.5f));
+}
+
+TEST_CASE("zone sweep window: whole Hz, inside the printer's range", "[belt][tune]") {
+    struct Row {
+        BeltSweepWindow zone;
+        float band_min;
+        float band_max;
+        float start;
+        float end;
+    };
+    const Row rows[] = {
+        {{118.6f, 135.0f}, 5.0f, 135.0f, 109.0f, 135.0f},
+        {{20.0f, 40.0f}, 5.0f, 135.0f, 10.0f, 60.0f},
+        {{8.0f, 30.0f}, 5.0f, 135.0f, 5.0f, 50.0f},
+        {{48.4f, 68.4f}, 5.0f, 133.33f, 39.0f, 88.0f},
+        {{100.0f, 120.0f}, 5.0f, 133.33f, 90.0f, 133.0f},
+        {{8.0f, 30.0f}, 5.5f, 135.0f, 6.0f, 50.0f},
+    };
+    for (const auto& row : rows) {
+        INFO(row.zone.freq_start_hz << "-" << row.zone.freq_end_hz << " in " << row.band_min << "-"
+                                    << row.band_max);
+        const auto w = zone_sweep_window(row.zone, row.band_min, row.band_max);
+        CHECK(w.freq_start_hz == row.start);
+        CHECK(w.freq_end_hz == row.end);
+        CHECK(w.freq_start_hz == std::floor(w.freq_start_hz));
+        CHECK(w.freq_end_hz == std::floor(w.freq_end_hz));
+        CHECK(w.freq_start_hz >= row.band_min);
+        CHECK(w.freq_end_hz <= row.band_max);
+    }
+}
+
+TEST_CASE("zone analysis: the sweep margins never reach a centroid, power or floor",
+          "[belt][tune]") {
+    const BeltSweepWindow zone{90.0f, 110.0f};
+    const auto clean = lorentzian_curve({{100.0f, 1e4f}}, LO, HI, BIN_HZ, 0.01f, 1.0f);
+    const float spike = 10.0f * 1e4f;
+    for (const float at : {85.0f, 125.0f}) {
+        INFO("spike at " << at);
+        const auto spiked = with_spike(clean, at, spike);
+        REQUIRE(zone_centroid_hz(clean, zone).has_value());
+        CHECK(zone_centroid_hz(spiked, zone) == zone_centroid_hz(clean, zone));
+        CHECK(zone_power(spiked, zone) == zone_power(clean, zone));
+    }
+
+    SECTION("the unexcited floor reads bins outside the swept range") {
+        // Margin bins at the floor, everything outside the sweep well above
+        // the zone's peak: only the bins outside `swept` say "no peak".
+        const BeltSweepWindow swept{80.0f, 130.0f};
+        BeltCurve c = lorentzian_curve({{100.0f, 10.0f}}, 70.0f, 140.0f, BIN_HZ, 0.01f, 1.0f);
+        for (auto& [f, v] : c) {
+            if (f < swept.freq_start_hz || f > swept.freq_end_hz) {
+                v = 10.0f;
+            }
+        }
+        CHECK_FALSE(window_holds_peak(c, zone, swept, 70.0f, 140.0f));
+        CHECK(window_holds_peak(c, zone, zone, 70.0f, 140.0f));
+    }
 }

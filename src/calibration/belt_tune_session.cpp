@@ -2,8 +2,8 @@
 
 /**
  * @file belt_tune_session.cpp
- * @brief Zone choice, peak refinement, advice and round outcomes for the
- *        guided belt-tuning loop
+ * @brief Zone candidates, in-plane zone analysis, advice and round outcomes for
+ *        the guided belt-tuning loop
  */
 
 #include "belt_tune_session.h"
@@ -138,6 +138,18 @@ BeltPath looser_path(const BeltTuneZone& zone) {
     return zone.adj_hz <= zone.ref_hz ? BeltPath::PATH_A : BeltPath::PATH_B;
 }
 
+/// The value of the curve's bin nearest freq_hz; nullopt for an empty curve.
+std::optional<float> nearest_bin_value(const BeltCurve& curve, float freq_hz) {
+    if (curve.empty()) {
+        return std::nullopt;
+    }
+    const auto it =
+        std::min_element(curve.begin(), curve.end(), [freq_hz](const auto& l, const auto& r) {
+            return std::abs(l.first - freq_hz) < std::abs(r.first - freq_hz);
+        });
+    return it->second;
+}
+
 float round_to_turn_step(float turns) {
     return std::clamp(std::round(turns / TURN_STEP) * TURN_STEP, TURN_STEP, TURN_MAX);
 }
@@ -150,6 +162,145 @@ float round_to_turn_step(float turns) {
 
 bool tallest_peak_unpaired(const BeltComparison& cmp) {
     return cmp.valid && PeakCensus(cmp).unpaired_tallest().has_value();
+}
+
+const BeltCurve& tuning_curve(const BeltResponse& r) {
+    return r.in_plane.empty() ? r.xyz : r.in_plane;
+}
+
+float in_plane_fraction(const BeltResponse& r, float freq_hz) {
+    if (r.in_plane.empty()) {
+        return 1.0f;
+    }
+    const auto xyz = nearest_bin_value(r.xyz, freq_hz);
+    if (!xyz || *xyz <= 0.0f) {
+        return 0.0f;
+    }
+    return nearest_bin_value(r.in_plane, freq_hz).value_or(0.0f) / *xyz;
+}
+
+std::vector<BeltZoneCandidate> tune_zone_candidates(const BeltResponse& a, const BeltResponse& b,
+                                                    float band_min_hz, float band_max_hz) {
+    const BeltComparison cmp =
+        compare_belt_paths(tuning_curve(a), tuning_curve(b), band_min_hz, band_max_hz);
+    if (!cmp.valid) {
+        return {};
+    }
+    const PeakCensus census(cmp);
+    const auto eligible = [&](const BeltResponse& r, const BeltPeak& p) {
+        return p.amplitude >= census.floor &&
+               in_plane_fraction(r, p.freq_hz) >= IN_PLANE_MIN_FRACTION;
+    };
+
+    std::vector<BeltZoneCandidate> found;
+    const auto add = [&](const BeltPeak& pa, const BeltPeak& pb, BeltZoneSource source) {
+        found.push_back(
+            {make_zone(pa.freq_hz, pb.freq_hz, source, BeltPath::PATH_A, band_min_hz, band_max_hz),
+             pa.amplitude + pb.amplitude});
+    };
+    for (const auto& pair : cmp.peaks.pairs) {
+        if (eligible(a, pair.a) && eligible(b, pair.b)) {
+            add(pair.a, pair.b, BeltZoneSource::PAIRED);
+        }
+    }
+
+    // The taller of the two unpaired tallest peaks steers against the other
+    // path's nearest eligible peak, but never across two unrelated modes.
+    const BeltPeak* tallest = nullptr;
+    BeltPath tallest_path = BeltPath::PATH_A;
+    for (const auto& [t, path] : {std::make_pair(&census.tallest_a, BeltPath::PATH_A),
+                                  std::make_pair(&census.tallest_b, BeltPath::PATH_B)}) {
+        const BeltResponse& r = path == BeltPath::PATH_A ? a : b;
+        if (t->peak && !t->paired && eligible(r, *t->peak) &&
+            (!tallest || t->peak->amplitude > tallest->amplitude)) {
+            tallest = &*t->peak;
+            tallest_path = path;
+        }
+    }
+    if (tallest) {
+        const bool on_a = tallest_path == BeltPath::PATH_A;
+        const BeltPeak* partner = nullptr;
+        for (const auto& o : on_a ? census.b : census.a) {
+            const float d = std::abs(o.freq_hz - tallest->freq_hz);
+            if (d <= ZONE_FALLBACK_MAX_HZ && eligible(on_a ? b : a, o) &&
+                (!partner || d < std::abs(partner->freq_hz - tallest->freq_hz))) {
+                partner = &o;
+            }
+        }
+        if (partner) {
+            add(on_a ? *tallest : *partner, on_a ? *partner : *tallest,
+                BeltZoneSource::TALLEST_UNPAIRED);
+        }
+    }
+
+    std::stable_sort(found.begin(), found.end(),
+                     [](const BeltZoneCandidate& l, const BeltZoneCandidate& r) {
+                         return l.strength > r.strength;
+                     });
+    std::vector<BeltZoneCandidate> out;
+    std::vector<float> centres;
+    for (const auto& c : found) {
+        const float centre = (c.zone.adj_hz + c.zone.ref_hz) / 2.0f;
+        if (near_matched(centre, centres)) {
+            continue;
+        }
+        centres.push_back(centre);
+        out.push_back(c);
+        if (out.size() == static_cast<size_t>(MAX_ZONE_CANDIDATES)) {
+            break;
+        }
+    }
+    return out;
+}
+
+BeltSweepWindow zone_sweep_window(BeltSweepWindow zone, float band_min_hz, float band_max_hz) {
+    BeltSweepWindow w;
+    w.freq_start_hz = std::ceil(std::max(band_min_hz, zone.freq_start_hz - ZONE_SWEEP_MARGIN_HZ));
+    w.freq_end_hz = std::floor(std::min(band_max_hz, zone.freq_end_hz + ZONE_SWEEP_TOP_MARGIN_HZ));
+    return w;
+}
+
+std::optional<float> zone_centroid_hz(const BeltCurve& curve, BeltSweepWindow zone) {
+    const BeltCurve x = curve_in_band(curve, zone.freq_start_hz, zone.freq_end_hz);
+    if (x.size() < 3) {
+        return std::nullopt;
+    }
+    double power = 0.0;
+    double moment = 0.0;
+    for (const auto& [f, v] : x) {
+        power += v;
+        moment += static_cast<double>(f) * v;
+    }
+    if (power <= 0.0) {
+        return std::nullopt;
+    }
+    return static_cast<float>(moment / power);
+}
+
+float zone_power(const BeltCurve& curve, BeltSweepWindow zone) {
+    double sum = 0.0;
+    for (const auto& bin : curve_in_band(curve, zone.freq_start_hz, zone.freq_end_hz)) {
+        sum += bin.second;
+    }
+    return static_cast<float>(sum);
+}
+
+std::optional<BeltPowerHint> zone_power_hint(const BeltCurve& a, const BeltCurve& b,
+                                             BeltSweepWindow zone) {
+    const float pa = zone_power(a, zone);
+    const float pb = zone_power(b, zone);
+    if (pa <= 0.0f || pb <= 0.0f) {
+        return std::nullopt;
+    }
+    BeltPowerHint h;
+    h.stronger = pa >= pb ? BeltPath::PATH_A : BeltPath::PATH_B;
+    h.ratio = pa >= pb ? pa / pb : pb / pa;
+    if (h.ratio <= POWER_HINT_RATIO) {
+        return std::nullopt;
+    }
+    h.freq_hz = zone_centroid_hz(h.stronger == BeltPath::PATH_A ? a : b, zone)
+                    .value_or((zone.freq_start_hz + zone.freq_end_hz) / 2.0f);
+    return h;
 }
 
 std::optional<BeltTuneZone> pick_tune_zone(const BeltComparison& cmp, BeltPath adjusted,
@@ -206,11 +357,11 @@ std::optional<BeltTuneZone> pick_tune_zone(const BeltComparison& cmp, BeltPath a
                      band_min_hz, band_max_hz);
 }
 
-std::optional<float> unexcited_floor_psd(const BeltCurve& curve, BeltSweepWindow window,
+std::optional<float> unexcited_floor_psd(const BeltCurve& curve, BeltSweepWindow swept,
                                          float band_min_hz, float band_max_hz) {
     std::vector<float> outside;
     for (const auto& bin : curve_in_band(curve, band_min_hz, band_max_hz)) {
-        if (bin.first < window.freq_start_hz || bin.first > window.freq_end_hz) {
+        if (bin.first < swept.freq_start_hz || bin.first > swept.freq_end_hz) {
             outside.push_back(bin.second);
         }
     }
@@ -222,15 +373,15 @@ std::optional<float> unexcited_floor_psd(const BeltCurve& curve, BeltSweepWindow
     return outside.size() % 2 == 1 ? outside[mid] : (outside[mid - 1] + outside[mid]) / 2.0f;
 }
 
-bool window_holds_peak(const BeltCurve& curve, BeltSweepWindow window, float band_min_hz,
-                       float band_max_hz) {
-    const BeltCurve x = curve_in_band(curve, window.freq_start_hz, window.freq_end_hz);
+bool window_holds_peak(const BeltCurve& curve, BeltSweepWindow zone, BeltSweepWindow swept,
+                       float band_min_hz, float band_max_hz) {
+    const BeltCurve x = curve_in_band(curve, zone.freq_start_hz, zone.freq_end_hz);
     if (x.empty()) {
         return false;
     }
     const float top = max_psd(x);
     const float base =
-        unexcited_floor_psd(curve, window, band_min_hz, band_max_hz)
+        unexcited_floor_psd(curve, swept, band_min_hz, band_max_hz)
             .value_or(std::min_element(x.begin(), x.end(), [](const auto& l, const auto& r) {
                           return l.second < r.second;
                       })->second);
@@ -445,8 +596,8 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     const BeltSweepWindow window = zone_->window;
     const BeltCurve& ref_curve = adjusted_ == BeltPath::PATH_A ? b_window : a_window;
     const BeltCurve& adj_curve = adjusted_ == BeltPath::PATH_A ? a_window : b_window;
-    const bool ref_holds = window_holds_peak(ref_curve, window, band_min_hz_, band_max_hz_);
-    const bool adj_holds = window_holds_peak(adj_curve, window, band_min_hz_, band_max_hz_);
+    const bool ref_holds = window_holds_peak(ref_curve, window, window, band_min_hz_, band_max_hz_);
+    const bool adj_holds = window_holds_peak(adj_curve, window, window, band_min_hz_, band_max_hz_);
     if (!ref_holds || !adj_holds) {
         r.reference_lost = !ref_holds && adj_holds;
         return finish(BeltTuneOutcome::NO_PEAK);
