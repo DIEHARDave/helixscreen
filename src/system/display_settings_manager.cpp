@@ -375,7 +375,7 @@ void DisplaySettingsManager::init_subjects() {
     helix::timezone_env::apply(tz.c_str(), TIMEZONE_ENTRIES[tz_index].posix_tz);
     spdlog::info("[DisplaySettingsManager] Timezone set to '{}' (index {})", tz, tz_index);
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     // Screensaver: a stored name, or a legacy type number, read leniently
     // (helix::ui::screensaver_from_setting). A fresh install, and a value naming no saver, run
     // the registry default for this build's colour depth.
@@ -894,7 +894,7 @@ int DisplaySettingsManager::get_screensaver_type() const {
     return lv_subject_get_int(const_cast<lv_subject_t*>(&screensaver_type_subject_));
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 void DisplaySettingsManager::set_screensaver_type(int type) {
     type = helix::ui::clamp_screensaver_type(type);
     spdlog::info("[DisplaySettingsManager] set_screensaver_type({})", type);

@@ -347,7 +347,7 @@ class DisplaySettingsManager {
      */
     int get_screensaver_type() const;
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     /** @brief Set screensaver type (updates subject, persists its stable name) */
     void set_screensaver_type(int type);
 #endif
