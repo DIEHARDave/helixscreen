@@ -5,8 +5,10 @@
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/plugin_host_test_support.h"
+#include "helix-xml/src/xml/lv_xml_translation.h"
 #include "plugin_host.h"
 #include "plugin_menu.h"
+#include "scope_exit.h"
 
 #include <filesystem>
 #include <fstream>
@@ -70,6 +72,27 @@ TEST_CASE_METHOD(LVGLTestFixture, "declared items resolve with labels in load or
     CHECK(pm::resolve(pm::MenuKind::PrintFile, json::object()).empty());
     CHECK(item_ids(pm::resolve(pm::MenuKind::Spool, json::object(), "b-plug")) ==
           std::vector<std::string>{"b-plug/x"});
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a menu item's plugin heading is translated like its label",
+                 "[plugin][menu][i18n]") {
+    helix::ScopeExit restore([] { lv_translation_set_language("en"); });
+    TempDir tmp;
+    write_menu_plugin(tmp.path, "tr-plug", "Heading Name", spool_item("one"), kRunLua);
+    std::filesystem::create_directories(tmp.path / "tr-plug" / "i18n");
+    std::ofstream(tmp.path / "tr-plug" / "i18n" / "de.xml")
+        << "<translations languages=\"de\">"
+           "<translation tag=\"Heading Name\" de=\"Kopfname\"/>"
+           "<translation tag=\"Item one\" de=\"Eintrag eins\"/>"
+           "</translations>";
+    HostRig rig(enabled_all({{"tr-plug", {}}}));
+    rig.host->load_from(tmp.path.string());
+    lv_translation_set_language("de");
+
+    auto entries = pm::resolve(pm::MenuKind::Spool, json::object());
+    REQUIRE(entries.size() == 1);
+    CHECK(entries[0].label == "Eintrag eins");
+    CHECK(entries[0].plugin_name == "Kopfname");
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "any_declared answers from declarations", "[plugin][menu]") {

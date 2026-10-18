@@ -791,7 +791,7 @@ std::vector<plugin_menu::Entry> PluginHost::resolve_menu(MenuKind kind, const js
             }
             plugin_menu::Entry e;
             e.plugin_id = m.id;
-            e.plugin_name = m.name;
+            e.plugin_name = lv_tr(m.name.c_str());
             e.item_id = d.id;
             e.label = lv_tr(d.label.c_str());
             e.icon = d.icon;
