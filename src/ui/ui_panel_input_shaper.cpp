@@ -238,6 +238,10 @@ void InputShaperPanel::init_subjects() {
                               "is_measuring_step_label", subjects_);
     UI_MANAGED_SUBJECT_INT(is_measuring_progress_, 0, "is_measuring_progress", subjects_);
     UI_MANAGED_SUBJECT_INT(is_measuring_has_progress_, 0, "is_measuring_has_progress", subjects_);
+    UI_MANAGED_SUBJECT_INT(is_measuring_has_chart_, 0, "is_measuring_has_chart", subjects_);
+    sweep_chart_.set_on_curve_changed([this](bool has_curve) {
+        lv_subject_set_int(&is_measuring_has_chart_, has_curve ? 1 : 0);
+    });
 
     // Per-axis result display subjects
     UI_MANAGED_SUBJECT_INT(is_results_has_x_, 0, "is_results_has_x", subjects_);
@@ -341,6 +345,7 @@ void InputShaperPanel::deinit_subjects() {
     // Same for the analysis elapsed timer: it writes the step label subject on
     // every tick, so it must not survive the subjects it refreshes.
     cancel_analysis_display();
+    sweep_chart_.stop();
 
     deinit_subjects_base(subjects_);
 }
@@ -429,6 +434,8 @@ void InputShaperPanel::on_activate() {
                             }));
     }
 
+    query_preview_facts();
+
     // Auto-start calibration for testing (env var)
     if (std::getenv("INPUT_SHAPER_AUTO_START")) {
         spdlog::info("[InputShaper] Auto-starting X calibration (INPUT_SHAPER_AUTO_START set)");
@@ -455,6 +462,8 @@ void InputShaperPanel::on_deactivating(DeactivateReason reason) {
     if (reason == DeactivateReason::Suspended) {
         return;
     }
+
+    stop_preview();
 
     // Cancel any in-progress calibration
     if (state_ == State::MEASURING && calibrator_) {
@@ -486,6 +495,7 @@ void InputShaperPanel::cleanup() {
     cancel_analysis_display();
 
     // Destroy chart widgets
+    sweep_chart_.destroy();
     if (x_chart_.chart) {
         ui_frequency_response_chart_destroy(x_chart_.chart);
         x_chart_.chart = nullptr;
@@ -506,6 +516,7 @@ void InputShaperPanel::cleanup() {
 
 void InputShaperPanel::on_ui_destroyed() {
     // Destroy chart widgets (native C structs, not LVGL children)
+    sweep_chart_.destroy();
     if (x_chart_.chart) {
         ui_frequency_response_chart_destroy(x_chart_.chart);
         x_chart_.chart = nullptr;
@@ -751,6 +762,7 @@ void InputShaperPanel::start_calibration(char axis) {
     cancel_analysis_display(); // no elapsed label from a previous run
     set_state(State::MEASURING);
     spdlog::info("[InputShaper] Starting calibration for axis {}", axis);
+    begin_axis_preview(axis);
 
     // Delegate to calibrator. lifetime_.bg_cb marshals each callback to the main
     // thread and drops it if the panel has been torn down; cal_tok additionally
@@ -759,11 +771,12 @@ void InputShaperPanel::start_calibration(char axis) {
         axis,
         lifetime_.bg_cb(
             "InputShaperPanel::calibration_progress",
-            [this, cal_tok](int percent, ShaperCalibrationPhase phase, float /*freq_hz*/) {
+            [this, cal_tok](int percent, ShaperCalibrationPhase phase, float freq_hz) {
                 if (cal_tok.expired()) {
                     spdlog::debug("[InputShaper] Discarding stale progress callback");
                     return;
                 }
+                sweep_chart_.on_progress(phase, freq_hz);
                 lv_subject_set_int(&is_measuring_progress_, percent);
                 // The phase comes from the collector — the percentage cannot be
                 // used to infer it, because a sweep whose range we guessed short
@@ -822,6 +835,36 @@ void InputShaperPanel::start_calibration(char axis) {
 // ANALYSIS-PHASE DISPLAY (spinner + elapsed-seconds label)
 // ============================================================================
 
+void InputShaperPanel::query_preview_facts() {
+    if (!api_) {
+        return;
+    }
+    helix::calibration::query_live_sweep_facts(
+        *api_, lifetime_.bg_cb("InputShaperPanel::preview_facts",
+                               [this](helix::calibration::LiveSweepFacts facts) {
+                                   preview_facts_ = std::move(facts);
+                               }));
+}
+
+void InputShaperPanel::begin_axis_preview(char axis) {
+    lv_obj_t* host =
+        overlay_root_
+            ? helix::ui::find_required(overlay_root_, "chart_container_measuring", get_name())
+            : nullptr;
+    const auto target = helix::calibration::live_sweep_target(
+        preview_facts_,
+        axis == 'X' ? helix::calibration::SweepAxis::X : helix::calibration::SweepAxis::Y);
+    if (!sweep_chart_.begin(host, axis, target)) {
+        spdlog::debug("[InputShaper] No live chart for axis {} (socket {}, reachable {})", axis,
+                      preview_facts_.socket_path, preview_facts_.socket_reachable);
+    }
+}
+
+void InputShaperPanel::stop_preview() {
+    sweep_chart_.stop();
+    lv_subject_set_int(&is_measuring_has_chart_, 0);
+}
+
 void InputShaperPanel::begin_analysis_display() {
     lv_subject_set_int(&is_measuring_has_progress_, 0);
     analysis_elapsed_.begin(&is_measuring_step_label_, [](uint32_t elapsed_seconds) {
@@ -837,6 +880,7 @@ void InputShaperPanel::cancel_calibration() {
     spdlog::info("[InputShaper] Abort clicked, sending emergency stop + firmware restart");
     calibrate_all_mode_ = false;
     calibration_lifetime_.invalidate(); // Discard any in-flight async callbacks
+    stop_preview();
 
     // E-stop + firmware restart: klippy comes back, so this is an expected
     // reconnect, not a fault
@@ -1080,6 +1124,7 @@ void InputShaperPanel::on_calibration_result(const InputShaperResult& result) {
 
     spdlog::info("[InputShaper] Calibration complete: {} @ {:.1f} Hz (vib: {:.1f}%)",
                  result.shaper_type, result.shaper_freq, result.vibrations);
+    stop_preview();
 
     // Surface a non-blocking warning when the recommendation succeeded but the
     // frequency-response chart data couldn't be read (e.g. Klipper's /tmp CSV
@@ -1161,6 +1206,7 @@ void InputShaperPanel::on_calibration_error(const std::string& message) {
     }
 
     spdlog::error("[InputShaper] Calibration error: {}", message);
+    stop_preview();
 
     // Reset Calibrate All mode on error to prevent stale state on retry
     calibrate_all_mode_ = false;

@@ -4,12 +4,14 @@
 #pragma once
 
 #include "ui_frequency_response_chart.h"
+#include "ui_shaper_sweep_chart.h"
 #include "ui_timer_guard.h"
 
 #include "async_lifetime_guard.h"
 #include "calibration_types.h" // For InputShaperResult
 #include "input_shaper_calibrator.h"
 #include "klipper_config_editor.h"
+#include "live_sweep_preview.h"
 #include "overlay_base.h"
 #include "platform_capabilities.h"
 #include "shaper_selection.h"
@@ -209,6 +211,12 @@ class InputShaperPanel : public OverlayBase {
 
     // Calibration commands
     void start_calibration(char axis);
+    /// Ask the printer for klippy's socket and [resonance_tester] (preview_facts_).
+    void query_preview_facts();
+    /// Start `axis`'s live chart in the MEASURING view when live_sweep_target() allows.
+    void begin_axis_preview(char axis);
+    /// Stop the live chart's stream and hide its host.
+    void stop_preview();
     void cancel_calibration();
     void apply_recommendation();
     void save_configuration();
@@ -293,6 +301,11 @@ class InputShaperPanel : public OverlayBase {
     // Widget/client references (overlay_root_ inherited from OverlayBase)
     helix::IMoonrakerClient* client_ = nullptr;
     helix::IMoonrakerAPI* api_ = nullptr;
+
+    // Live sweep chart (MEASURING)
+    lv_subject_t is_measuring_has_chart_{};
+    helix::calibration::LiveSweepFacts preview_facts_;
+    helix::ui::ShaperSweepChart sweep_chart_;
 
     // Private setup helper (called by create())
     void setup_widgets();

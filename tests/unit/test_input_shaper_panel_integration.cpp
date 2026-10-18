@@ -587,3 +587,177 @@ TEST_CASE_METHOD(InputShaperDeltaFixture, "Per-axis result population",
     CHECK(subject_string("is_result_y_shaper").empty());
     CHECK(subject_int("is_y_num_shapers") == 0);
 }
+
+// ============================================================================
+// Live sweep chart in MEASURING (prestonbrown/helixscreen#1812)
+// ============================================================================
+
+#include "../test_helpers/sweep_preview_fakes.h"
+#include "resonance_console.h"
+
+namespace {
+
+/// Runs the panel against the mock's transcript with a manual stream source.
+/// After each new "Testing frequency" line it pushes synthetic samples until
+/// the drive reaches that line's frequency + 0.5 Hz, so the console leads the
+/// motion the way Klipper's lookahead does.
+class InputShaperPreviewFixture : public InputShaperDeltaFixture {
+  public:
+    InputShaperPreviewFixture() {
+        ispta::InputShaperPanelTestAccess::set_preview_source_factory(
+            *panel_, helix::calibration::test::manual_factory(log_));
+        ispta::InputShaperPanelTestAccess::set_overlay_root(*panel_, view_);
+        set_reachable(true);
+        mock_client_.register_method_callback(
+            "notify_gcode_response", "preview_fixture", [this](const nlohmann::json& msg) {
+                const auto line = msg["params"][0].get<std::string>();
+                if (const auto hz = parse_testing_frequency(line)) {
+                    latest_hz_ = *hz;
+                }
+            });
+    }
+
+    ~InputShaperPreviewFixture() override {
+        mock_client_.unregister_method_callback("notify_gcode_response", "preview_fixture");
+        panel_->on_ui_destroyed();
+        ispta::InputShaperPanelTestAccess::set_preview_source_factory(*panel_, nullptr);
+        ispta::InputShaperPanelTestAccess::set_overlay_root(*panel_, nullptr);
+    }
+
+    void set_reachable(bool reachable) {
+        LiveSweepFacts facts;
+        facts.socket_path = "/tmp/k.sock";
+        facts.socket_reachable = reachable;
+        facts.cfg.accel_chip = "adxl345";
+        facts.cfg.from_printer = true;
+        ispta::InputShaperPanelTestAccess::set_preview_facts(*panel_, facts);
+    }
+
+    /// One mock tick, then samples up to the latest console frequency.
+    void tick() {
+        lv_tick_inc(100);
+        lv_timer_handler_safe();
+        helix::ui::UpdateQueue::instance().drain();
+        if (log_.created != synth_for_source_) {
+            synth_for_source_ = log_.created;
+            SweepSynthSpec spec;
+            spec.plan = log_.plan;
+            spec.drive_start_s = 1.7;
+            synth_ = std::make_unique<SweepSynth>(spec, [](float f) {
+                const float d = (f - 53.8f) / 6.0f;
+                const float level = 600.0f * std::sqrt(0.05f + 1.0f / (1.0f + d * d));
+                return std::array<float, 3>{level, 0.6f * level, 0.2f * level};
+            });
+        }
+        if (!synth_ || log_.last == nullptr || latest_hz_ <= 0.0f) {
+            return;
+        }
+        // Past the plan's end, keep the stream running for the last steps.
+        const float end = log_.plan.freq_end_hz;
+        const float reach = latest_hz_ >= end ? end + 3.0f : latest_hz_ + 0.5f;
+        while (log_.last != nullptr &&
+               synth_->time_s() < 1.7 + (reach - log_.plan.freq_start_hz) / log_.plan.hz_per_sec) {
+            helix::calibration::AccelBatch batch;
+            batch.samples = synth_->next(300);
+            log_.last->push(batch);
+            helix::ui::UpdateQueue::instance().drain();
+        }
+    }
+
+    bool run_until(const std::function<bool()>& done, int max_ticks = 600) {
+        for (int i = 0; i < max_ticks && !done(); ++i) {
+            tick();
+        }
+        return done();
+    }
+
+    [[nodiscard]] const helix::ui::ShaperSweepChart& chart() const {
+        return ispta::InputShaperPanelTestAccess::sweep_chart(*panel_);
+    }
+
+    /// Every clean point's column value is on the drawn curve. STANDARD
+    /// stores 200 of the 201-slot grid, so one point may be picked out.
+    [[nodiscard]] bool chart_shows(SweepColumn column) const {
+        if (chart().chart() == nullptr || chart().preview().points().empty()) {
+            return false;
+        }
+        const auto amps = ui_frequency_response_chart_get_series_amplitudes(chart().chart(), 0);
+        int missing = 0;
+        for (const auto& p : chart().preview().points()) {
+            if (!p.clean) {
+                continue;
+            }
+            const float v = sweep_column_value(p, column);
+            if (std::find(amps.begin(), amps.end(), v) == amps.end()) {
+                ++missing;
+            }
+        }
+        return missing <= 1;
+    }
+
+    helix::calibration::test::SourceLog log_;
+    float latest_hz_ = 0.0f;
+    int synth_for_source_ = 0;
+    std::unique_ptr<SweepSynth> synth_;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "the measuring view draws the live sweep",
+                 "[input_shaper][panel][preview]") {
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] { return log_.created == 1; }));
+    CHECK(log_.accel_chip == "adxl345");
+    CHECK(log_.plan.freq_start_hz == 5.0f);
+    CHECK(log_.plan.freq_end_hz == 135.0f);
+    CHECK(log_.plan.hz_per_sec == 1.0f);
+
+    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    CHECK(panel_state() == 1);
+    CHECK(chart_shows(SweepColumn::X));
+
+    // Analyzing: the stream is finishing or done, the curve stays up.
+    REQUIRE(run_until(
+        [&] { return subject_string("is_measuring_step_label").rfind("Analyzing", 0) == 0; }));
+    CHECK(chart().has_curve());
+    CHECK(subject_int("is_measuring_has_chart") == 1);
+
+    REQUIRE(run_until([&] { return panel_state() == 2; }));
+    CHECK(log_.stopped == log_.created);
+    CHECK(subject_int("is_measuring_has_chart") == 0);
+}
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "Calibrate All gives Y a fresh live sweep",
+                 "[input_shaper][panel][preview]") {
+    panel_->handle_calibrate_all_clicked();
+    REQUIRE(run_until([&] { return log_.created == 2; }));
+    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    CHECK(chart_shows(SweepColumn::Y));
+    REQUIRE(run_until([&] { return panel_state() == 2; }));
+    CHECK(log_.created == 2);
+    CHECK(log_.stopped == 2);
+}
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "no live sweep without klippy's socket",
+                 "[input_shaper][panel][preview]") {
+    set_reachable(false);
+    bool ever_shown = false;
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] {
+        ever_shown = ever_shown || subject_int("is_measuring_has_chart") == 1;
+        return panel_state() == 2;
+    }));
+    CHECK(log_.created == 0);
+    CHECK_FALSE(ever_shown);
+}
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "aborting the sweep stops the live stream",
+                 "[input_shaper][panel][preview]") {
+    panel_->handle_calibrate_x_clicked();
+    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    panel_->handle_cancel_clicked();
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(log_.created >= 1);
+    CHECK(log_.stopped == log_.created);
+    CHECK(subject_int("is_measuring_has_chart") == 0);
+}

@@ -102,6 +102,27 @@ struct InputShaperPanelTestAccess {
     static const char* quality_description(float vibrations) {
         return InputShaperPanel::get_quality_description(vibrations);
     }
+
+    // Live sweep chart (MEASURING): the stream source, the printer facts the
+    // gate reads, and the root the chart host is looked up under (the
+    // integration fixture builds the view without create()).
+    static void
+    set_preview_source_factory(InputShaperPanel& p,
+                               helix::calibration::LiveSweepPreview::SourceFactory factory) {
+        p.sweep_chart_.set_source_factory(std::move(factory));
+    }
+
+    static const helix::ui::ShaperSweepChart& sweep_chart(const InputShaperPanel& p) {
+        return p.sweep_chart_;
+    }
+
+    static void set_preview_facts(InputShaperPanel& p, helix::calibration::LiveSweepFacts facts) {
+        p.preview_facts_ = std::move(facts);
+    }
+
+    static void set_overlay_root(InputShaperPanel& p, lv_obj_t* root) {
+        p.overlay_root_ = root;
+    }
 };
 
 } // namespace ui

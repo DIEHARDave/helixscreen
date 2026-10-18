@@ -140,6 +140,12 @@
             <bind_flag_if_eq subject="is_measuring_has_progress" flag="hidden" ref_value="0"/>
           </progress_bar>
         </lv_obj>
+        <!-- Live response curve while the sweep runs -->
+        <lv_obj name="chart_container_measuring"
+                width="100%" flex_grow="1" style_pad_all="0" style_radius="#border_radius" style_bg_color="#screen_bg"
+                style_bg_opa="255" scrollable="false">
+          <bind_flag_if_eq subject="is_measuring_has_chart" flag="hidden" ref_value="0"/>
+        </lv_obj>
         <!-- Abort button (bottom, like PID panel) -->
         <ui_button name="btn_abort" width="25%" text="Abort" variant="danger">
           <event_cb trigger="clicked" callback="input_shaper_cancel_cb"/>

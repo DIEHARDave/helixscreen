@@ -311,6 +311,7 @@ subject:is_current_y_freq
 subject:is_current_y_type
 subject:is_error_message
 subject:is_measuring_axis_label
+subject:is_measuring_has_chart
 subject:is_measuring_has_progress
 subject:is_measuring_progress
 subject:is_measuring_step_label
