@@ -142,9 +142,8 @@
               width="100%" flex_grow="1" flex_flow="column" style_pad_gap="#ams_edit_vgap" scrollable="false">
         <bind_flag_if_not_eq subject="ams_edit_view" flag="hidden" ref_value="0"/>
 
-        <!-- Summary: colour dot + "eSUN Silk PETG, Blue" + from-tag badge.
-             At the short-landscape class the temperature line joins this row
-             (beside the weight pill); elsewhere it sits on its own line. -->
+        <!-- Summary: colour dot + "eSUN Silk PETG, Blue" + from-tag badge +
+             the weight pill. -->
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row_wrap" style_flex_cross_place="center"
                 style_pad_gap="#space_sm" scrollable="false">
@@ -156,13 +155,6 @@
           </lv_obj>
           <text_body name="summary_text" bind_text="ams_edit_summary_text" flex_grow="1" long_mode="dots"/>
           <tag_badge name="summary_tag_badge" subject="ams_edit_tag_badge_visible"/>
-          <lv_obj name="temp_row_short"
-                  width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
-                  style_pad_gap="#space_xs" scrollable="false" hidden="true">
-            <bind_flag_if cond="ui_breakpoint le 1 and ui_is_portrait eq 0" flag="hidden"/>
-            <text_small name="temp_line_short" bind_text="ams_edit_temp_text" style_text_color="#text_muted"/>
-            <tag_badge subject="ams_edit_tag_temps"/>
-          </lv_obj>
           <lv_obj name="weight_pill"
                   width="content" height="content" flex_flow="row" style_flex_cross_place="center"
                   style_pad_hor="#space_md" style_pad_ver="#space_xs" style_pad_gap="#space_xs"
@@ -177,11 +169,13 @@
             <event_cb trigger="clicked" callback="ams_edit_weight_cb"/>
           </lv_obj>
         </lv_obj>
-        <!-- Temperature line, full-width outside the short-landscape class. -->
+        <!-- Temperature line, full-width outside the short-landscape class; the
+             split layout carries its own under the form, where the colour
+             column leaves room. -->
         <lv_obj name="temp_row"
                 width="100%" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_xs" scrollable="false">
-          <bind_flag_if cond="ui_breakpoint le 1 and ui_is_portrait eq 0" flag="hidden"/>
+          <bind_flag_if cond="ui_breakpoint eq 0 and ui_is_portrait eq 0" flag="hidden"/>
           <text_small name="temp_line" bind_text="ams_edit_temp_text" style_text_color="#text_muted"/>
           <tag_badge subject="ams_edit_tag_temps"/>
         </lv_obj>
@@ -238,6 +232,12 @@
               </lv_dropdown>
               <tag_badge subject="ams_edit_tag_product"/>
             </lv_obj>
+            <lv_obj name="temp_row_split"
+                    width="100%" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+                    style_pad_gap="#space_xs" scrollable="false">
+              <text_small bind_text="ams_edit_temp_text" style_text_color="#text_muted"/>
+              <tag_badge subject="ams_edit_tag_temps"/>
+            </lv_obj>
           </lv_obj>
 
           <lv_obj width="#ams_edit_color_col_w"
@@ -248,9 +248,9 @@
               <text_small text="Color"/>
               <tag_badge subject="ams_edit_tag_color"/>
             </lv_obj>
-            <lv_obj width="content"
-                    height="content" style_pad_all="0" flex_flow="row_wrap" style_pad_gap="#ams_edit_grid_gap"
-                    scrollable="false">
+            <lv_obj name="color_grid_split"
+                    width="100%" height="content" style_pad_all="0" flex_flow="row_wrap"
+                    style_pad_gap="#ams_edit_grid_gap" scrollable="false">
               <!-- The custom colour: the app's rainbow custom swatch, the grid's
                    first tile so it shares the 44px hit pitch. It leads because
                    a count change rebuilds the repeat at the end of the row. -->
@@ -325,9 +325,9 @@
             <text_small text="Color"/>
             <tag_badge subject="ams_edit_tag_color"/>
           </lv_obj>
-          <lv_obj width="content"
-                  height="content" style_pad_all="0" flex_flow="row_wrap" style_pad_gap="#ams_edit_grid_gap"
-                  scrollable="false">
+          <lv_obj name="color_grid"
+                  width="100%" height="content" style_pad_all="0" flex_flow="row_wrap"
+                  style_pad_gap="#ams_edit_grid_gap" scrollable="false">
             <!-- The custom colour: the app's rainbow custom swatch, the grid's
                  first tile so it shares the 44px hit pitch. It leads because
                  a count change rebuilds the repeat at the end of the row. -->

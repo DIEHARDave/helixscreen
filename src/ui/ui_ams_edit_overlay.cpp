@@ -1063,15 +1063,6 @@ void AmsEditOverlay::reseed_details_for_spool() {
 
 void AmsEditOverlay::enter_editor() {
     catalog_ = printer::FilamentCatalog::load_full();
-    // The colour areas are subject-counted (a literal <repeat> inside <if> is
-    // refused by the engine). Each grid leads with the custom-colour swatch,
-    // so the narrow split column shows 8 presets (three rows of three tiles),
-    // the stacked grid 17 where height is scarce and 29 where it is not.
-    lv_subject_set_int(&color_col_count_subject_, 8);
-    lv_subject_t* bp = theme_manager_get_breakpoint_subject();
-    const int row_count =
-        (bp && lv_subject_get_int(bp) <= static_cast<int>(UiBreakpoint::Small)) ? 17 : 29;
-    lv_subject_set_int(&color_row_count_subject_, row_count);
     editor_entered_ = true;
 
     if (!api_) {
@@ -1092,10 +1083,58 @@ void AmsEditOverlay::enter_editor() {
     spdlog::debug("[AmsEditOverlay] Entered editor view");
 }
 
+int AmsEditOverlay::grid_preset_count(int grid_width, int tile, int gap, int rows,
+                                      int palette_size) {
+    if (tile <= 0 || rows <= 0) {
+        return 0;
+    }
+    // The custom-colour swatch takes the first tile.
+    const int per_row = std::max(1, (grid_width + gap) / (tile + gap));
+    return std::clamp(per_row * rows - 1, 0, palette_size);
+}
+
+void AmsEditOverlay::size_color_grids() {
+    // The colour areas are subject-counted (a literal <repeat> inside <if> is
+    // refused by the engine), sized here from the measured grid width: whole
+    // rows only, three in the split column, two in the stacked grid where
+    // height allows and one where it is scarce.
+    if (!overlay_root_) {
+        return;
+    }
+    lv_obj_update_layout(overlay_root_);
+    const int palette = static_cast<int>(swatch_palette(ColorPicker::Palette::General).size());
+    lv_subject_t* bp = theme_manager_get_breakpoint_subject();
+    const bool short_class = bp && lv_subject_get_int(bp) <= static_cast<int>(UiBreakpoint::Small);
+    const struct {
+        const char* grid;
+        const char* custom;
+        int rows;
+        lv_subject_t* count;
+    } grids[] = {
+        {"color_grid_split", "btn_custom_color_split", 3, &color_col_count_subject_},
+        {"color_grid", "btn_custom_color", short_class ? 1 : 2, &color_row_count_subject_},
+    };
+    for (const auto& g : grids) {
+        lv_obj_t* grid = find_widget(g.grid);
+        lv_obj_t* custom = find_widget(g.custom);
+        if (!grid || !custom) {
+            continue;
+        }
+        const int count =
+            grid_preset_count(lv_obj_get_content_width(grid), lv_obj_get_width(custom),
+                              lv_obj_get_style_pad_column(grid, LV_PART_MAIN), g.rows, palette);
+        // A hidden layout measures 0 wide; it keeps the count it has.
+        if (lv_obj_get_content_width(grid) > 0 && lv_subject_get_int(g.count) != count) {
+            lv_subject_set_int(g.count, count);
+        }
+    }
+}
+
 void AmsEditOverlay::populate_editor_view() {
     if (!catalog_) {
         catalog_ = printer::FilamentCatalog::load_full();
     }
+    size_color_grids();
     rebuild_option_lists();
     update_summary();
     update_temp_display();

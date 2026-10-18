@@ -1502,7 +1502,11 @@ split one (form left, colour column right) at the short landscape class, the
 stacked one elsewhere. They cannot be one `<if>`, because the engine refuses a
 `<repeat>` inside `<if>`. Each colour grid leads with the app's rainbow custom
 swatch (a count change rebuilds a `<repeat>` at the end of its row, so the
-fixed tile goes first); the summary swatch is the primary 44px colour entry.
+fixed tile goes first), and `size_color_grids()` sets each grid's preset count
+from its measured width in whole rows: three in the split column, two in the
+stacked grid, one where height is scarce. The split layout carries the
+temperature line under the form, where the colour column leaves room. The
+summary swatch is the primary 44px colour entry.
 Every non-swatch control reaches 44px: Reset to tag, More and the Add link sit
 in one short bar and reach it through `ext_click_area`, as the weight pill does.
 The editor fits without scrolling at 800x480, 480x320, 480x272 and 320x480,

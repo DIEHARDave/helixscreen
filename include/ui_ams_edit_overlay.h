@@ -162,6 +162,11 @@ class AmsEditOverlay : public OverlayBase {
     static std::string selected_type(const SpoolEditSelection& sel,
                                      const printer::FilamentCatalog& catalog);
 
+    /// Presets a colour grid shows: whole rows of @p tile at @p gap across
+    /// @p grid_width, @p rows of them, less the custom swatch's tile, capped at
+    /// the palette.
+    static int grid_preset_count(int grid_width, int tile, int gap, int rows, int palette_size);
+
   private:
     // === State ===
     int slot_index_ = -1;
@@ -278,8 +283,8 @@ class AmsEditOverlay : public OverlayBase {
     lv_subject_t scan_enabled_subject_{};    ///< 1=QR button may show ("ams_edit_scan_enabled")
     lv_subject_t product_hidden_subject_{};  ///< 1 while Generic selected
     lv_subject_t color_selected_subject_{};  ///< ringed preset index (-1 none)
-    lv_subject_t color_col_count_subject_{}; ///< split-column presets (8)
-    lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (17 short, 29 tall)
+    lv_subject_t color_col_count_subject_{}; ///< split-column presets (size_color_grids)
+    lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (size_color_grids)
     lv_subject_t summary_text_subject_{};
     lv_subject_t tag_badge_visible_subject_{}; ///< any shown field is the tag's
     lv_subject_t tag_material_subject_{};
@@ -335,6 +340,8 @@ class AmsEditOverlay : public OverlayBase {
     /// Apply the editor view's non-XML content (dropdown options, colour ring,
     /// summary, logistics fields) from state this object already holds.
     void populate_editor_view();
+    /// Set both colour grids' preset counts from their measured width.
+    void size_color_grids();
     void stage_selection_into_working();
     void handle_quick_swatch(lv_obj_t* swatch);
     void handle_picker_search(const char* text);

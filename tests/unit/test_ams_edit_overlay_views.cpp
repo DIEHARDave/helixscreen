@@ -2726,3 +2726,41 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the editor's non-swatch targets reach 44px"
     close_editor_overlay();
     set_spoolman_available(false);
 }
+
+TEST_CASE("grid_preset_count fills whole rows less the custom tile",
+          "[ams_edit_overlay][color][grid]") {
+    // 704 wide at a 32px tile and 12px gap: 16 per row.
+    CHECK(AmsEditOverlay::grid_preset_count(704, 32, 12, 1, 30) == 15);
+    CHECK(AmsEditOverlay::grid_preset_count(704, 32, 12, 2, 30) == 30); // capped at the palette
+    // A 132px column at a 30px tile and 14px gap: three per row.
+    CHECK(AmsEditOverlay::grid_preset_count(132, 30, 14, 3, 30) == 8);
+    // Narrower than one tile still holds the custom swatch alone.
+    CHECK(AmsEditOverlay::grid_preset_count(10, 30, 14, 1, 30) == 0);
+    CHECK(AmsEditOverlay::grid_preset_count(132, 0, 14, 3, 30) == 0);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the colour grid wraps inside the editor's width",
+                 "[ams_edit_overlay][color][grid]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    lv_obj_t* grid = access.widget("color_grid");
+    REQUIRE(grid != nullptr);
+    lv_obj_update_layout(grid);
+    // The grid's own box grows with a non-wrapping row; the layout it sits
+    // in is the editor's width.
+    lv_area_t box;
+    lv_obj_get_coords(lv_obj_get_parent(grid), &box);
+    const uint32_t tiles = lv_obj_get_child_count(grid);
+    REQUIRE(tiles > 1);
+    for (uint32_t i = 0; i < tiles; ++i) {
+        lv_area_t tile;
+        lv_obj_get_coords(lv_obj_get_child(grid, static_cast<int32_t>(i)), &tile);
+        INFO("tile " << i);
+        CHECK(tile.x2 <= box.x2);
+    }
+    close_editor_overlay();
+}
