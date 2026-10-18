@@ -238,10 +238,13 @@ class AbortManager {
     /// slow MCU re-enumeration (CFS rediscovery, RS-485 bus settle) enough
     /// headroom without leaving the user staring at "Restarting..." forever.
     static constexpr uint32_t RECONNECT_TIMEOUT_MS = 30000; ///< 30 seconds
-    /// Backstop for the recovery service itself: its restart check, the local
-    /// script and its re-check together finish well inside this, so it fires
-    /// only when the chain never reports back.
-    static constexpr uint32_t RESTART_TIMEOUT_MS = 150000; ///< 2.5 minutes
+    /// Backstop for the recovery service itself. The chain's worst case is its
+    /// deadline (polling stops), plus a script started just before it running
+    /// to its bound, plus one poll interval and one printer.info request
+    /// timing out after that: 120s + 90s + 2s + 60s = 272s with the defaults.
+    /// This sits above that, so it fires only when the chain never reports back;
+    /// the static_assert in abort_manager.cpp keeps the two in step.
+    static constexpr uint32_t RESTART_TIMEOUT_MS = 300000; ///< 5 minutes
 
   private:
     friend class AbortManagerTestAccess;

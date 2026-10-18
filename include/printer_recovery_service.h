@@ -18,12 +18,17 @@ enum class RecoveryOutcome {
     RESTART_ISSUED, ///< A restart was started; Klippy's state comes from its notifications.
 };
 
-/// Cadence and bound of the post-restart `printer.info` poll.
+/// Cadence and bounds of the recovery chain.
 struct RecoveryTiming {
     uint32_t poll_interval_ms = 2000;
+    /// How long a Klippy answering anything but `startup` or `ready` is given
+    /// before the script runs; restarts after the script runs.
     uint32_t verify_window_ms = 45000;
-    /// How long a Klippy still answering `startup` is waited for.
-    uint32_t startup_cap_ms = 120000;
+    /// Measured from recover(): past it the chain stops polling and ends. A
+    /// script already running is still waited for, up to script_timeout_ms.
+    uint32_t chain_deadline_ms = 120000;
+    /// helix-recover.sh is killed if it runs longer than this.
+    uint32_t script_timeout_ms = 90000;
 };
 
 /// Platform-blind printer recovery orchestrator.
@@ -44,11 +49,12 @@ struct RecoveryTiming {
 ///      that the restart began, so the chain then polls `printer.info` for a
 ///      bounded window: `ready` completes, while `error` (a startup failure
 ///      such as key298) or no `ready` before the window ends runs step 2 once.
-///      While Klippy keeps reporting `startup` the window stretches to a hard
-///      cap instead, since a slow boot is not a failure; the cap ends the
-///      chain with no script. After the script exits 0 the same poll runs
-///      once more, without escalating again, so a recovery that brings
-///      Klippy back reports it ready. Without a local script the chain ends
+///      While Klippy keeps reporting `startup` the window stretches to the
+///      chain's deadline instead, since a slow boot is not a failure; the
+///      deadline ends the chain with no script. After the script exits 0 the
+///      same poll runs once more, under the same deadline and without
+///      escalating again, so a recovery that brings Klippy back reports it
+///      ready. Without a local script the chain ends
 ///      at the first escalation: a startup error on a host with no platform
 ///      knowledge is a config fault no service restart clears, and the
 ///      app's klippy state already shows it.
@@ -104,7 +110,8 @@ class PrinterRecoveryService {
     /// Static — doesn't touch any instance state and the recover() chain
     /// captures lambdas that outlive `this` (the holding widget can be
     /// destroyed mid-chain; [L072]).
-    static void run_local_recovery(SuccessCallback on_success, ErrorCallback on_error);
+    static void run_local_recovery(uint32_t timeout_ms, SuccessCallback on_success,
+                                   ErrorCallback on_error);
 
     struct RestartVerification;
 

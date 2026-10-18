@@ -28,7 +28,7 @@ using namespace helix;
 namespace {
 
 constexpr RecoveryTiming kFastTiming{/*poll_interval_ms=*/100, /*verify_window_ms=*/1000,
-                                     /*startup_cap_ms=*/3000};
+                                     /*chain_deadline_ms=*/3000, /*script_timeout_ms=*/5000};
 
 const KlippyStatus kKey298{"error",
                            "Internal error during connect: !{\"code\": \"key298\", "
@@ -54,10 +54,12 @@ class RecoveryFixture : public LVGLTestFixture {
     }
 
     /// Install a helix-recover.sh that records each run and exits with @p rc.
-    void install_script(int rc) {
+    /// Install a helix-recover.sh that records each run, then runs @p tail
+    /// (its exit, or what it does instead).
+    void install_script(int rc, const std::string& tail = "") {
         const auto script = dir_ / "helix-recover.sh";
-        std::ofstream(script) << "#!/bin/sh\necho run >> '" << runs_file().string() << "'\nexit "
-                              << rc << "\n";
+        std::ofstream(script) << "#!/bin/sh\necho run >> '" << runs_file().string() << "'\n"
+                              << (tail.empty() ? "exit " + std::to_string(rc) : tail) << "\n";
         ::chmod(script.c_str(), 0755);
         detail::local_recovery_script_override_ref() = script.string();
     }
@@ -70,8 +72,8 @@ class RecoveryFixture : public LVGLTestFixture {
         return n;
     }
 
-    void recover() {
-        PrinterRecoveryService(api_.get(), kFastTiming)
+    void recover(RecoveryTiming timing = kFastTiming) {
+        PrinterRecoveryService(api_.get(), timing)
             .recover([this](RecoveryOutcome o) { outcome_ = o; },
                      [this](const MoonrakerError& e) { error_ = e; });
     }
@@ -350,4 +352,45 @@ TEST_CASE_METHOD(RecoveryFixture, "Recovery: one chain at a time, and the slot f
     run_to_end();
     REQUIRE(outcome_ == RecoveryOutcome::KLIPPY_READY);
     REQUIRE(api_->firmware_restarts == 2);
+}
+
+TEST_CASE_METHOD(RecoveryFixture,
+                 "Recovery: a script that never exits is killed and ends the chain", "[recovery]") {
+    install_script(0, "exec sleep 30");
+    api_->statuses = {kKey298};
+    RecoveryTiming timing = kFastTiming;
+    timing.script_timeout_ms = 300;
+
+    recover(timing);
+    run_to_end();
+
+    REQUIRE(script_runs() == 1);
+    REQUIRE_FALSE(outcome_.has_value());
+    REQUIRE(error_.has_value());
+    REQUIRE(error_->type == MoonrakerErrorType::TIMEOUT);
+
+    // The chain ended, so the next recovery is accepted.
+    error_.reset();
+    api_->statuses = {{"ready", ""}};
+    *api_->status_queries = 0;
+    recover(timing);
+    run_to_end();
+    REQUIRE(outcome_ == RecoveryOutcome::KLIPPY_READY);
+}
+
+TEST_CASE_METHOD(RecoveryFixture,
+                 "Recovery: the re-check after the script stops at the chain's deadline",
+                 "[recovery]") {
+    // The script takes most of the chain's 3000ms; the re-check gets only the rest.
+    install_script(0, "sleep 2\nexit 0");
+    api_->statuses = {kKey298, {"startup", ""}};
+
+    recover();
+    run_to_end();
+
+    REQUIRE(script_runs() == 1);
+    REQUIRE(outcome_ == RecoveryOutcome::RESTART_ISSUED);
+    // One poll before the script and about one per 100ms in the second left:
+    // a fresh 3000ms for the re-check would be about 30.
+    REQUIRE(status_queries() <= 18);
 }

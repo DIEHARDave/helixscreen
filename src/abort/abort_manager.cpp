@@ -10,6 +10,7 @@
 
 #include "data_root_resolver.h"
 #include "i_moonraker_api.h"
+#include "moonraker_request_tracker.h"
 #include "observer_factory.h"
 #include "printer_recovery_service.h"
 #include "printer_state.h"
@@ -841,6 +842,12 @@ void AbortManager::cancel_timer_cb(lv_timer_t* timer) {
         self->on_cancel_timeout();
     }
 }
+
+static_assert(AbortManager::RESTART_TIMEOUT_MS >
+                  RecoveryTiming{}.chain_deadline_ms + RecoveryTiming{}.script_timeout_ms +
+                      RecoveryTiming{}.poll_interval_ms +
+                      MoonrakerRequestTracker::DEFAULT_REQUEST_TIMEOUT_MS,
+              "the restart backstop must outlast the recovery chain's worst case");
 
 void AbortManager::restart_timer_cb(lv_timer_t* timer) {
     auto* self = static_cast<AbortManager*>(lv_timer_get_user_data(timer));

@@ -15,10 +15,13 @@
 #include <spdlog/spdlog.h>
 
 #include <atomic>
+#include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <memory>
 #include <string>
 #include <sys/wait.h>
+#include <thread>
 #include <unistd.h>
 
 namespace helix {
@@ -72,12 +75,15 @@ struct PrinterRecoveryService::RestartVerification {
     RecoveryTiming timing;
     SuccessCallback on_success;
     ErrorCallback on_error;
-    uint32_t started_at = 0;
+    /// When recover() was called: the chain's deadline counts from here.
+    uint32_t chain_started_at = 0;
+    /// When this round of polling began: the verify window counts from here.
+    uint32_t round_started_at = 0;
     /// The local script already ran for this chain; it never runs twice.
     bool script_ran = false;
 
     static void start(const std::shared_ptr<RestartVerification>& self) {
-        self->started_at = lv_tick_get();
+        self->round_started_at = lv_tick_get();
         self->schedule_poll(self);
     }
 
@@ -117,21 +123,22 @@ struct PrinterRecoveryService::RestartVerification {
             on_success(RecoveryOutcome::KLIPPY_READY);
             return;
         }
+        const uint32_t chain_elapsed = lv_tick_elaps(chain_started_at);
+        if (chain_elapsed >= timing.chain_deadline_ms) {
+            spdlog::warn("[Recovery] Klippy not ready {}ms into recovery (state '{}') — leaving "
+                         "its state to the printer status",
+                         chain_elapsed, status.state);
+            on_success(RecoveryOutcome::RESTART_ISSUED);
+            return;
+        }
         if (state == KlippyState::ERROR) {
             spdlog::warn("[Recovery] Klippy failed to start after restart: {}",
                          status.state_message);
             escalate(self);
             return;
         }
-        const uint32_t elapsed = lv_tick_elaps(started_at);
-        if (state == KlippyState::STARTUP && elapsed >= timing.startup_cap_ms) {
-            spdlog::warn("[Recovery] Klippy still starting up {}ms after restart — leaving its "
-                         "state to the printer status",
-                         elapsed);
-            on_success(RecoveryOutcome::RESTART_ISSUED);
-            return;
-        }
         // A Klippy still answering `startup` is booting slowly, not failing.
+        const uint32_t elapsed = lv_tick_elaps(round_started_at);
         if (state != KlippyState::STARTUP && elapsed >= timing.verify_window_ms) {
             spdlog::warn("[Recovery] Klippy not ready {}ms after restart (state '{}')", elapsed,
                          status.state);
@@ -157,6 +164,7 @@ struct PrinterRecoveryService::RestartVerification {
         }
         script_ran = true;
         run_local_recovery(
+            timing.script_timeout_ms,
             [self](RecoveryOutcome) {
                 spdlog::info("[Recovery] helix-recover.sh done — verifying Klippy comes back");
                 start(self);
@@ -182,7 +190,7 @@ std::string PrinterRecoveryService::local_recovery_script_path() {
     return root + "/bin/helix-recover.sh";
 }
 
-void PrinterRecoveryService::run_local_recovery(SuccessCallback on_success,
+void PrinterRecoveryService::run_local_recovery(uint32_t timeout_ms, SuccessCallback on_success,
                                                 ErrorCallback on_error) {
     const std::string script = local_recovery_script_path();
     if (script.empty() || ::access(script.c_str(), X_OK) != 0) {
@@ -199,7 +207,7 @@ void PrinterRecoveryService::run_local_recovery(SuccessCallback on_success,
     spdlog::info("[Recovery] Running local recovery script: {}", script);
     // Slow lane: this can block 30s+ on K2's klipper_mcu bounce. Fast lane
     // workers are scarce and meant for REST round-trips.
-    http::HttpExecutor::slow().submit([script, on_success, on_error]() {
+    http::HttpExecutor::slow().submit([script, timeout_ms, on_success, on_error]() {
         pid_t pid = ::fork();
         if (pid < 0) {
             const int e = errno;
@@ -224,10 +232,34 @@ void PrinterRecoveryService::run_local_recovery(SuccessCallback on_success,
             _exit(127); // execv only returns on failure
         }
 
-        // Parent: wait synchronously on the slow-lane worker. waitpid() blocks
-        // here, but that's exactly what HttpExecutor::slow() is for.
+        // Parent: wait on the slow-lane worker, bounded. A script that never
+        // exits would hold the recovery chain, and with it every later
+        // recovery, for the life of the process.
         int status = 0;
-        if (::waitpid(pid, &status, 0) < 0) {
+        const auto deadline =
+            std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+        pid_t waited = 0;
+        while ((waited = ::waitpid(pid, &status, WNOHANG)) == 0 &&
+               std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (waited == 0) {
+            ::kill(pid, SIGKILL);
+            ::waitpid(pid, &status, 0);
+            spdlog::error("[Recovery] helix-recover.sh still running after {}ms — killed it",
+                          timeout_ms);
+            ui::queue_update(
+                "PrinterRecoveryService::run_local_recovery(timeout)", [on_error, timeout_ms]() {
+                    on_error(MoonrakerError{MoonrakerErrorType::TIMEOUT,
+                                            -1,
+                                            "Local recovery script timed out after " +
+                                                std::to_string(timeout_ms / 1000) + "s",
+                                            "helix_recover_local",
+                                            {}});
+                });
+            return;
+        }
+        if (waited < 0) {
             const int e = errno;
             spdlog::error("[Recovery] waitpid() failed: {}", strerror(e));
             ui::queue_update("PrinterRecoveryService::run_local_recovery(wait-fail)", [on_error,
@@ -312,31 +344,33 @@ void PrinterRecoveryService::recover(SuccessCallback on_success, ErrorCallback o
             });
     };
 
-    auto run_local_then_services = [on_success, run_services_restart]() {
+    auto run_local_then_services = [script_timeout = timing_.script_timeout_ms, on_success,
+                                    run_services_restart]() {
         if (!local_recovery_available()) {
             spdlog::info("[Recovery] No local helix-recover.sh — skipping to services.restart");
             run_services_restart();
             return;
         }
-        run_local_recovery(on_success, [run_services_restart](const MoonrakerError& err) {
-            spdlog::warn("[Recovery] local recovery failed: {} — trying services.restart",
-                         err.message);
-            run_services_restart();
-        });
+        run_local_recovery(
+            script_timeout, on_success, [run_services_restart](const MoonrakerError& err) {
+                spdlog::warn("[Recovery] local recovery failed: {} — trying services.restart",
+                             err.message);
+                run_services_restart();
+            });
     };
 
-    auto verify_restart = [api, alive = api->client_lifetime_weak(), timing = timing_, on_success,
-                           on_error]() {
+    auto verify_restart = [api, alive = api->client_lifetime_weak(), timing = timing_,
+                           chain_start = lv_tick_get(), on_success, on_error]() {
         spdlog::info("[Recovery] firmware_restart accepted — verifying Klippy comes back ready");
         // The first poll waits one interval: until Klippy actually drops,
         // printer.info can still report the state from before the restart.
-        ui::queue_update("PrinterRecoveryService::verify(start)",
-                         [api, alive, timing, on_success, on_error]() {
-                             auto verification = std::make_shared<RestartVerification>(
-                                 RestartVerification{api, alive, timing, on_success, on_error});
-                             if (!verification->abandoned())
-                                 RestartVerification::start(verification);
-                         });
+        ui::queue_update("PrinterRecoveryService::verify(start)", [api, alive, timing, chain_start,
+                                                                   on_success, on_error]() {
+            auto verification = std::make_shared<RestartVerification>(
+                RestartVerification{api, alive, timing, on_success, on_error, chain_start});
+            if (!verification->abandoned())
+                RestartVerification::start(verification);
+        });
     };
 
     // Step 1: printer.firmware_restart. This is what users see in the
