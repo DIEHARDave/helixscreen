@@ -46,6 +46,15 @@ back by `filament_finish_of()`.
 
 A click handler reads the tapped colour with `helix::ui::swatch_color_of(target)`.
 
+**Every pickable swatch is a 44px touch target** (`#touch_target_min`), however small its disc.
+The target is the disc plus `hit` on each side, so in a grid `size + 2 * hit >= 44`, and the gap
+between swatches is at least `2 * hit`, so neighbouring targets abut instead of overlapping (LVGL
+gives an overlapped tap to the topmost widget, which makes taps land unpredictably). The shared
+token ladders (`swatch_grid_*`, `picker_tab_swatch_*` and the LED preset rows' `led_swatch_*`) keep
+that at every size class, and `tests/unit/test_color_swatch_grid.cpp` checks them per class.
+A grid that needs more room widens its container (the colour picker modal's
+`color_picker_modal_width`), never shrinks the target.
+
 ### C++
 
 | Call | When |
