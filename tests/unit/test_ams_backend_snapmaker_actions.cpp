@@ -161,6 +161,36 @@ TEST_CASE_METHOD(EndUnloadFixture, "every print start carries the saved end-unlo
     }
 }
 
+TEST_CASE_METHOD(EndUnloadFixture, "a soft-filament head cannot be set to unload at the end",
+                 "[ams][snapmaker][actions][end_unload]") {
+    // The firmware's end macro skips a soft-filament head, so a toggle reading
+    // "on" there would promise an unload that never happens.
+    SettingsManager::instance().set_end_of_print_unload_tools(0b0011);
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+    SnapmakerTestAccess::handle_status(backend,
+                                       frame({{"end_unload_filament", {false, false, false, false}},
+                                              {"filament_soft", {false, true, false, false}}}));
+
+    const auto actions = backend.get_device_actions();
+    const DeviceAction* soft = find_action(actions, "snapmaker_end_unload_t1");
+    REQUIRE(soft != nullptr);
+    REQUIRE_FALSE(soft->enabled);
+    REQUIRE_FALSE(soft->disable_reason.empty());
+    REQUIRE(std::any_cast<bool>(soft->current_value) == false);
+    REQUIRE(find_action(actions, "snapmaker_end_unload_t0")->enabled);
+
+    REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t1", std::any(true)).empty());
+    REQUIRE(backend.execute_device_action("snapmaker_end_unload_t1", std::any(true)).result ==
+            AmsResult::NOT_SUPPORTED);
+    // The saved choice stays for when the head holds a hard filament again.
+    REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b0011);
+
+    REQUIRE(backend.print_start_gcode_lines() ==
+            std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,0,0]"});
+    REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t2", std::any(true)) ==
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,1,0]");
+}
+
 TEST_CASE("executing a toggle emits only that field", "[ams][snapmaker][actions]") {
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);

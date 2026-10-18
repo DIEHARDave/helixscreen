@@ -3025,6 +3025,7 @@
   <translation tag="Snapmaker U1" ru="Snapmaker U1"/>
   <translation tag="Snapshot only" ru="Только снимок"/>
   <translation tag="Soft" ru="Мягкий"/>
+  <translation tag="Soft filament is never unloaded at the end of a print" ru="Мягкий филамент никогда не выгружается в конце печати"/>
   <translation tag="Software Updates" ru="Обновления ПО"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." ru="Некоторые филаменты не соответствуют замыслу слайсера."/>
   <translation tag="Some mapped slots are short on filament:" ru="В некоторых сопоставленных слотах мало филамента:"/>

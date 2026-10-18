@@ -3174,13 +3174,21 @@ AmsBackendSnapmaker::classify_error(const std::string& raw_line,
 }
 
 namespace {
-/// The saved unload-at-end choice for @p heads toolheads, in the firmware's
-/// list order. The firmware clears its own list when every print ends, so
-/// this is the record of what the user picked.
-std::vector<bool> saved_end_unload_list(size_t heads) {
-    std::vector<bool> list(heads);
-    for (size_t t = 0; t < heads; ++t) {
-        list[t] = SettingsManager::instance().get_end_of_print_unload_tool(static_cast<int>(t));
+/// Whether @p head holds soft filament, which the firmware's end-of-print
+/// macro never unloads.
+bool head_is_soft(const snapmaker::PrintPreferences& p, size_t head) {
+    return head < p.filament_soft.size() && p.filament_soft[head];
+}
+
+/// The unload-at-end list to send for the toolheads the firmware reports, in
+/// its list order: the saved choice, off for a soft-filament head. The
+/// firmware clears its own list when every print ends, so the setting is the
+/// record of what the user picked.
+std::vector<bool> end_unload_list(const snapmaker::PrintPreferences& p) {
+    std::vector<bool> list(p.end_unload_filament.size());
+    for (size_t t = 0; t < list.size(); ++t) {
+        list[t] = !head_is_soft(p, t) &&
+                  SettingsManager::instance().get_end_of_print_unload_tool(static_cast<int>(t));
     }
     return list;
 }
@@ -3253,7 +3261,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
     }
     // The firmware's list says how many heads there are; the values are the
     // saved choice, because the firmware clears its own when a print ends.
-    const auto saved = saved_end_unload_list(p.end_unload_filament.size());
+    const auto saved = end_unload_list(p);
     for (size_t t = 0; t < saved.size(); ++t) {
         // Copy out as bool: indexing a const vector<bool> yields a standard-library
         // proxy type on some platforms, not bool, and the UI casts the value back to bool.
@@ -3266,6 +3274,10 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
                                               helix::ui::ToolLabelForm::Full),
             "snapmaker_print_prefs", unload);
         a.slot_index = static_cast<int>(t);
+        if (head_is_soft(p, t)) {
+            a.enabled = false;
+            a.disable_reason = lv_tr("Soft filament is never unloaded at the end of a print");
+        }
         out.push_back(std::move(a));
     }
     return out;
@@ -3314,17 +3326,19 @@ std::string AmsBackendSnapmaker::build_preference_gcode(const std::string& actio
         // travel at their saved values or they are cleared. The firmware's
         // own list is not used: it lags a tap behind, and it is cleared when
         // each print ends.
-        const size_t heads = print_preferences().end_unload_filament.size();
+        const auto prefs = print_preferences();
         // A tool past the reported list is a stale id from before the firmware
         // reported fewer toolheads.
-        if (*tool >= heads) {
+        if (*tool >= prefs.end_unload_filament.size()) {
             return {};
         }
         const auto* v = std::any_cast<bool>(&value);
-        if (v == nullptr) {
+        // The end macro skips a soft-filament head, so turning it on would
+        // promise an unload that never happens.
+        if (v == nullptr || (*v && head_is_soft(prefs, *tool))) {
             return {};
         }
-        auto list = saved_end_unload_list(heads);
+        auto list = end_unload_list(prefs);
         list[*tool] = *v;
         changes.end_unload_filament = std::move(list);
     } else {
@@ -3365,12 +3379,12 @@ std::vector<std::string> AmsBackendSnapmaker::print_start_gcode_lines() const {
     // The firmware resets end_unload_filament when every print ends, so the
     // saved choice is re-sent ahead of each one. Before it has reported its
     // list, the head count and support for the command are both unknown.
-    const size_t heads = print_preferences().end_unload_filament.size();
-    if (heads == 0) {
+    const auto prefs = print_preferences();
+    if (prefs.end_unload_filament.empty()) {
         return {};
     }
     snapmaker::PrintPreferences changes;
-    changes.end_unload_filament = saved_end_unload_list(heads);
+    changes.end_unload_filament = end_unload_list(prefs);
     return {snapmaker::write_print_preferences_gcode(changes)};
 }
 

@@ -2971,6 +2971,7 @@
   <translation tag="Snapmaker U1" ja="Snapmaker U1"/>
   <translation tag="Snapshot only" ja="スナップショットのみ"/>
   <translation tag="Soft" ja="ソフト"/>
+  <translation tag="Soft filament is never unloaded at the end of a print" ja="ソフトフィラメントは印刷終了時に排出されません"/>
   <translation tag="Software Updates" ja="ソフトウェア更新"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." ja="一部のフィラメントがスライサーの意図と一致しません。"/>
   <translation tag="Some mapped slots are short on filament:" ja="一部の割り当て済みスロットのフィラメントが不足しています:"/>

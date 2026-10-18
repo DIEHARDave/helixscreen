@@ -3190,6 +3190,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Snapshot only
   Soft: Soft
+  Soft filament is never unloaded at the end of a print: Soft filament is never unloaded at the end of a print
   Software Updates: Software Updates
   Some filaments don't match the slicer's intent.: Some filaments don't match the
     slicer's intent.
