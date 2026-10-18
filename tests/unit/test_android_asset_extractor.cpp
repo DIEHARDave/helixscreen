@@ -36,6 +36,7 @@ bool asset_extraction_can_skip(const std::string& resolved_stamp, const std::str
 bool asset_extraction_succeeded(int dirs_requested, int dirs_extracted, int file_failures);
 bool is_non_shippable_config_file(const std::string& filename);
 bool asset_dir_is_user_layer(const std::string& asset_path);
+int remove_compiled_font_sources(const std::string& fonts_dir);
 } // namespace helix
 
 // ============================================================================
@@ -466,4 +467,32 @@ TEST_CASE("Auto Backup includes the config layer and the settings backups",
         CAPTURE(section);
         CHECK(backup_rules(res + "data_extraction_rules.xml", section) == legacy);
     }
+}
+
+// ============================================================================
+// Font C sources left by an earlier install are reclaimed
+// ============================================================================
+
+TEST_CASE("Only font C sources are removed from an extracted fonts dir",
+          "[android][asset][fonts]") {
+    TempDir tmp("fonts_reclaim");
+    const fs::path fonts = tmp.path() / "fonts";
+    write_file(fonts / "noto_sans_16.c", "static const uint8_t glyphs[] = {0};");
+    write_file(fonts / "mdi_icons_32.c", "x");
+    write_file(fonts / "NotoSans-Regular.ttf", "ttf");
+    write_file(fonts / "cjk" / "noto_sans_cjk_16.bin", "bin");
+    write_file(fonts / "custom_icons" / "spoolman.svg", "svg");
+
+    CHECK(remove_compiled_font_sources(fonts.string()) == 2);
+    CHECK_FALSE(fs::exists(fonts / "noto_sans_16.c"));
+    CHECK_FALSE(fs::exists(fonts / "mdi_icons_32.c"));
+    // CjkFontManager reads the .bin faces at runtime; nothing else here goes.
+    CHECK(fs::exists(fonts / "cjk" / "noto_sans_cjk_16.bin"));
+    CHECK(fs::exists(fonts / "NotoSans-Regular.ttf"));
+    CHECK(fs::exists(fonts / "custom_icons" / "spoolman.svg"));
+}
+
+TEST_CASE("A missing fonts dir removes nothing", "[android][asset][fonts]") {
+    TempDir tmp("fonts_missing");
+    CHECK(remove_compiled_font_sources((tmp.path() / "absent").string()) == 0);
 }

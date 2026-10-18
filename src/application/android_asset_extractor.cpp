@@ -147,6 +147,20 @@ bool asset_dir_is_user_layer(const std::string& asset_path) {
     return asset_path == "config" || asset_path.rfind("config/", 0) == 0;
 }
 
+int remove_compiled_font_sources(const std::string& fonts_dir) {
+    int removed = 0;
+    std::error_code ec;
+    for (fs::directory_iterator it(fonts_dir, ec), end; !ec && it != end; it.increment(ec)) {
+        if (it->path().extension() == ".c" && it->is_regular_file(ec)) {
+            std::error_code rm_ec;
+            if (fs::remove(it->path(), rm_ec)) {
+                removed++;
+            }
+        }
+    }
+    return removed;
+}
+
 AndroidStorageLayout android_storage_layout(const std::string& internal_storage) {
     std::string root = internal_storage;
     while (root.size() > 1 && root.back() == '/') {
@@ -419,6 +433,9 @@ void android_extract_assets_if_needed() {
         for (const char* mock_dir : {"test_gcodes", "test_timelapse"}) {
             fs::remove_all(target_dir + "/assets/" + mock_dir, ec);
         }
+        // Font C sources, compiled into the library and left out of the APK
+        // (compiledFontSources in build.gradle).
+        remove_compiled_font_sources(target_dir + "/assets/fonts");
     }
 
     // Walk MANIFEST.txt — every directory in the APK, one per line, in a stable
