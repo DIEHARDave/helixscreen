@@ -7,6 +7,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/backend_user_edit.h"
+#include "helix/ui/text_metrics.h"
 #if HELIX_HAS_PLUGINS
 #include "../test_helpers/plugin_host_test_support.h"
 #endif
@@ -1515,6 +1516,45 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows get their own c
     lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
     CHECK_FALSE(menu.is_visible());
     CHECK(plugin.seen() == "0|2|Gate 3|" + (material.empty() ? std::string("nil") : material));
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: the plugin column fits a typical label at 800x480",
+                 "[ui][ams][context_menu][plugin]") {
+    lv_display_t* disp = lv_display_get_default();
+    ScopedResolution res(disp, 800, 480);
+    theme_manager_refresh_layout_constants(disp);
+
+    helix::plugin::test::TempDir tmp;
+    std::filesystem::create_directories(tmp.path / "inspect");
+    std::ofstream(tmp.path / "inspect" / "manifest.json")
+        << R"({"id":"inspect","name":"Slot Demo","version":"1.0.0","menu_items":[
+             {"id":"i","menu":"filament_slot","label":"Inspect this slot","icon":"tune",
+              "handler":"go"}]})";
+    std::ofstream(tmp.path / "inspect" / "main.lua") << R"(helix.ui.on("go", function() end))";
+    helix::plugin::test::HostRig rig(helix::plugin::test::enabled("inspect", {}));
+    rig.host->load_from(tmp.path.string());
+
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    REQUIRE(col);
+    lv_obj_update_layout(lv_obj_get_screen(col));
+    lv_obj_t* label = lv_obj_find_by_name(col, "item_label");
+    REQUIRE(label);
+    const int32_t need =
+        helix::ui::text_width("Inspect this slot", lv_obj_get_style_text_font(label, LV_PART_MAIN),
+                              lv_obj_get_style_text_letter_space(label, LV_PART_MAIN));
+    CAPTURE(lv_obj_get_width(col), lv_obj_get_width(label), need);
+    CHECK(lv_obj_get_width(label) >= need);
+    lv_obj_t* card = lv_obj_find_by_name(test_screen(), "context_menu");
+    REQUIRE(card);
+    CHECK(lv_obj_get_width(card) <= 800);
+    menu.hide();
     process_lvgl(20);
 }
 

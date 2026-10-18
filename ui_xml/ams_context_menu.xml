@@ -17,9 +17,9 @@
          instead of widening the side-by-side card off a small screen. -->
     <px name="ams_context_plugin_col_w_micro" value="110"/>
     <px name="ams_context_plugin_col_w_tiny" value="120"/>
-    <px name="ams_context_plugin_col_w_small" value="140"/>
-    <px name="ams_context_plugin_col_w_medium" value="160"/>
-    <px name="ams_context_plugin_col_w_large" value="180"/>
+    <px name="ams_context_plugin_col_w_small" value="160"/>
+    <px name="ams_context_plugin_col_w_medium" value="200"/>
+    <px name="ams_context_plugin_col_w_large" value="220"/>
   </consts>
   <!-- Full-screen backdrop overlay - tap to dismiss -->
   <view name="context_backdrop" extends="context_menu_backdrop">
