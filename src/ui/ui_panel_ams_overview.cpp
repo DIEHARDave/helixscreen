@@ -102,6 +102,24 @@ static int32_t measured_bar_width(lv_obj_t* bars_container, int slot_count) {
                                     MINI_BAR_MAX_WIDTH_PX);
 }
 
+/// One bit per lane of @p unit, set when that lane's spool lives upstream of
+/// the unit itself: a head an ACE feeds draws the chain's end, and its spool
+/// box is the routed bay's, not a second one on the heads unit.
+static uint32_t upstream_lane_mask(const AmsUnit& unit) {
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (!backend) {
+        return 0;
+    }
+    uint32_t mask = 0;
+    const int lanes = static_cast<int>(unit.slots.size());
+    for (int s = 0; s < lanes && s < 32; ++s) {
+        if (backend->upstream_slot(unit.first_slot_global_index + s).has_value()) {
+            mask |= (1u << s);
+        }
+    }
+    return mask;
+}
+
 // ============================================================================
 // Construction
 // ============================================================================
@@ -565,7 +583,8 @@ void AmsOverviewPanel::update_unit_card(UnitCard& card, const AmsUnit& unit,
         int slot_count = static_cast<int>(unit.slots.size());
         if (helix::ui::lane_bars_stale(card.bars_built,
                                        {unit.first_slot_global_index, slot_count,
-                                        measured_bar_width(card.bars_container, slot_count)})) {
+                                        measured_bar_width(card.bars_container, slot_count),
+                                        upstream_lane_mask(unit)})) {
             helix::ui::safe_clean_children(card.bars_container);
             create_mini_bars(card, unit);
         }
@@ -589,7 +608,7 @@ void AmsOverviewPanel::create_mini_bars(UnitCard& card, const AmsUnit& unit) {
 
     int slot_count = static_cast<int>(unit.slots.size());
     if (slot_count <= 0) {
-        card.bars_built = {unit.first_slot_global_index, 0, 0};
+        card.bars_built = {unit.first_slot_global_index, 0, 0, 0};
         return;
     }
 
@@ -599,10 +618,11 @@ void AmsOverviewPanel::create_mini_bars(UnitCard& card, const AmsUnit& unit) {
     // inside ams_lane_bar, so the bars repaint in place instead of being
     // rebuilt on every refresh.
     int32_t bar_width = measured_bar_width(card.bars_container, slot_count);
-    card.bars_built = {unit.first_slot_global_index, slot_count, bar_width};
+    const uint32_t mask = upstream_lane_mask(unit);
+    card.bars_built = {unit.first_slot_global_index, slot_count, bar_width, mask};
 
     helix::ui::ams_lane_bar_create_range(card.bars_container, unit.first_slot_global_index,
-                                         slot_count, bar_width, MINI_BAR_HEIGHT_PX);
+                                         slot_count, bar_width, MINI_BAR_HEIGHT_PX, mask);
 }
 
 // ============================================================================

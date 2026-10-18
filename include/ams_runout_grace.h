@@ -30,7 +30,7 @@ class RunoutGrace {
     /// Same 30s as the AD5X IFS runout suppression.
     static constexpr std::chrono::seconds WINDOW{30};
     /// One stamp per AmsState slot subject.
-    static constexpr int MAX_SLOTS = 16;
+    static constexpr int MAX_SLOTS = 20;
 
     /// Feed one action sample. Arms the one-shot when an operation that passed
     /// through UNLOADING ends; tracked across the whole operation because a

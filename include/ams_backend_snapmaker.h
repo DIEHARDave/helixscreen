@@ -1025,6 +1025,7 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// AFTER firmware data has been populated and BEFORE event emission, so
     /// the very next get_slot_info() reflects the overridden values.
 
+  protected:
     /// Hardware-event detection under the insert rule
     /// (prestonbrown/helixscreen#1710): each RFID reading becomes a tracker
     /// fingerprint built from exactly the fields the rule judges - the UID
@@ -1044,9 +1045,13 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// don't race the baseline. (CFS shares the tracker but DOES need that
     /// guard - it writes color_value back to the box, which is half of its
     /// fingerprint.)
+    ///
+    /// Protected: AmsBackendMultiAce feeds its bays' engine identity through
+    /// the same rule and the same tracker.
     void check_hardware_event_clear(SlotInfo& slot, int slot_index,
                                     const helix::ams::SpoolEvidence& observed);
 
+  private:
     /// Brand / total_weight_g are kept: firmware populates them from the RFID
     /// tag. spool_name goes, and each clear restates the tag's product line.
     /// The tag has no colour-name field, so color_name is override-exclusive

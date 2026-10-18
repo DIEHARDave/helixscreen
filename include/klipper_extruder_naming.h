@@ -91,6 +91,22 @@ namespace helix {
 }
 
 /**
+ * @brief The Klipper extruder object name for a tool number: "extruder" for 0,
+ *        "extruderN" for N.
+ *
+ * The inverse of tool_number_for_extruder(), and the one spelling of "name
+ * head N's extruder" so a backend and a feed sequence cannot disagree about
+ * what to call it. Negative inputs read as 0, matching the bare name every
+ * caller has always used for head 0.
+ *
+ * @param tool 0-based tool number
+ * @return The extruder object name
+ */
+[[nodiscard]] inline std::string extruder_name_for_tool(int tool) {
+    return tool <= 0 ? std::string("extruder") : "extruder" + std::to_string(tool);
+}
+
+/**
  * @brief How many of @p names are Klipper extruder object names.
  *
  * The one spelling of "how many tools does this printer have" that every

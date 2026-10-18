@@ -24,6 +24,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -148,6 +149,11 @@ class Application {
     // Screen dimensions (0 = auto-detect from display hardware)
     int m_screen_width = 0;
     int m_screen_height = 0;
+
+    // HELIX_SCREEN_SIZE as read by parse_args(), which runs before logging is
+    // up; init logs the verdict once the sinks exist.
+    std::optional<std::string> m_screen_size_env;
+    bool m_screen_size_env_valid = false;
 
     // First-boot rotation probe decision and the kernel panel_orientation it
     // read (-1 = none), both taken in init_display() before the display exists

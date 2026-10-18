@@ -8,6 +8,7 @@
 #include "async_lifetime_guard.h"
 #include "lvgl/lvgl.h"
 #include "moonraker_job_api.h"
+#include "printer_recovery_service.h"
 #include "printer_state.h"
 #include "subject_managed_panel.h"
 
@@ -237,6 +238,13 @@ class AbortManager {
     /// slow MCU re-enumeration (CFS rediscovery, RS-485 bus settle) enough
     /// headroom without leaving the user staring at "Restarting..." forever.
     static constexpr uint32_t RECONNECT_TIMEOUT_MS = 30000; ///< 30 seconds
+    /// Backstop for the recovery service itself. The chain's worst case is its
+    /// deadline (polling stops), plus a script started just before it running
+    /// to its bound, plus one poll interval and one printer.info request
+    /// timing out after that: 120s + 90s + 2s + 60s = 272s with the defaults.
+    /// This sits above that, so it fires only when the chain never reports back;
+    /// the static_assert in abort_manager.cpp keeps the two in step.
+    static constexpr uint32_t RESTART_TIMEOUT_MS = 300000; ///< 5 minutes
 
   private:
     friend class AbortManagerTestAccess;
@@ -293,6 +301,7 @@ class AbortManager {
     helix::ui::LvglTimerGuard probe_timer_;
     helix::ui::LvglTimerGuard cancel_timer_;
     helix::ui::LvglTimerGuard reconnect_timer_;
+    helix::ui::LvglTimerGuard restart_timer_;
 
     // Invalidated by start_abort(), so replies from an earlier sequence are dropped
     helix::AsyncLifetimeGuard lifetime_;
@@ -349,7 +358,7 @@ class AbortManager {
     void on_cancel_success();
     void on_cancel_timeout();
     void on_estop_sent();
-    void on_restart_sent();
+    void on_restart_sent(RecoveryOutcome outcome);
     void on_klippy_state_changed(KlippyState klippy_state);
 
     // ========================================================================
@@ -396,6 +405,7 @@ class AbortManager {
     static void probe_timer_cb(lv_timer_t* timer);
     static void cancel_timer_cb(lv_timer_t* timer);
     static void reconnect_timer_cb(lv_timer_t* timer);
+    static void restart_timer_cb(lv_timer_t* timer);
 };
 
 } // namespace helix

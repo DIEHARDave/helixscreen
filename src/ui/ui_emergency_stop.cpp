@@ -863,7 +863,7 @@ void EmergencyStopOverlay::firmware_restart() {
     // before from the user's perspective.
     helix::PrinterRecoveryService recovery(api_);
     recovery.recover(
-        []() {
+        [](helix::RecoveryOutcome) {
             spdlog::info("[KlipperRecovery] Recovery initiated");
             // Toast will update when klippy_state changes to READY
         },

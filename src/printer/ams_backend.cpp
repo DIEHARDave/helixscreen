@@ -1074,6 +1074,8 @@ const char* filament_op_eligibility_reason(AmsBackend::FilamentOpEligibility e) 
         return "busy";
     case AmsBackend::FilamentOpEligibility::Error:
         return "feeder error";
+    case AmsBackend::FilamentOpEligibility::NotSupported:
+        return "not supported";
     }
     return "";
 }

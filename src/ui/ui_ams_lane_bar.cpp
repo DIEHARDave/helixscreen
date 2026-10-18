@@ -490,11 +490,14 @@ static void ams_lane_bar_xml_apply(lv_xml_parser_state_t* state, const char** at
 
 namespace helix::ui {
 void ams_lane_bar_create_range(lv_obj_t* parent, int first_slot_index, int slot_count,
-                               int32_t bar_width, int32_t bar_height) {
+                               int32_t bar_width, int32_t bar_height, uint32_t skip_mask) {
     char idx_buf[8], w_buf[8], h_buf[8];
     snprintf(w_buf, sizeof(w_buf), "%d", static_cast<int>(bar_width));
     snprintf(h_buf, sizeof(h_buf), "%d", static_cast<int>(bar_height));
     for (int s = 0; s < slot_count; ++s) {
+        if (skip_mask & (1u << s)) {
+            continue;
+        }
         snprintf(idx_buf, sizeof(idx_buf), "%d", first_slot_index + s);
         const char* attrs[] = {"slot_index", idx_buf, "bar_width", w_buf,
                                "bar_height", h_buf,   nullptr};

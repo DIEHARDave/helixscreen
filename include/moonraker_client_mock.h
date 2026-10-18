@@ -2335,6 +2335,12 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     int multiace_units_{1};
     /// HELIX_MOCK_MULTIACE_MODE, read once at start ("head" | "multi").
     std::string multiace_mode_{"head"};
+    /// Whether @p head is fed from the side feeder: head mode wires one unit
+    /// per head, so heads past the unit count have no ACE. Caller holds
+    /// multiace_mutex_.
+    [[nodiscard]] bool multiace_head_is_feeder(int head) const {
+        return multiace_mode_ != "multi" && head >= multiace_units_;
+    }
     /// Guards the fields above across the simulation and gcode threads.
     mutable std::mutex multiace_mutex_;
     /// Read the two HELIX_MOCK_MULTIACE_* knobs into the members (idempotent).

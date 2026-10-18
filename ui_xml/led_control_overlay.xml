@@ -166,9 +166,13 @@
             <lv_obj width="100%"
                     height="content" flex_flow="row" scrollable="false" style_pad_all="0"
                     style_pad_gap="#led_swatch_gap" style_flex_cross_place="center">
-              <!-- A subject-bound repeat must be its container's only child. -->
+              <!-- A subject-bound repeat must be its container's only child.
+                   The list takes the space the Custom swatch leaves and wraps
+                   inside it, so a portrait look column too narrow for the whole
+                   preset row wraps to a second line instead of running past the
+                   overlay edge. -->
               <lv_obj name="led_swatch_list"
-                      width="content" height="content" flex_flow="row" scrollable="false" style_pad_all="0"
+                      width="1" height="content" flex_grow="1" flex_flow="row_wrap" scrollable="false" style_pad_all="0"
                       style_pad_gap="#led_swatch_gap">
                 <repeat count="led_swatch_count">
                   <color_swatch name="led_swatch_${i}"
