@@ -27,7 +27,7 @@ Out of the box, HelixScreen tracks filament on its own. Nothing to enable.
 
 **Single spool (no AMS):** Tap the spool icon on the Filament panel to configure the **external spool** — set the material, color, and brand. Once set, the whole UI knows your filament: preset heat buttons show the right temperature, purge heats correctly, and the Home panel's Active Spool widget shows it. See [External Spool Configuration](filament.md#external-spool-configuration).
 
-**AMS / multi-material:** Each slot carries its own material, color, vendor, and remaining weight. On systems with **RFID** readers (Creality CFS, Snapmaker U1), spool info is detected automatically when you seat a spool. On systems without RFID, tap a slot's **Spool Info** to enter it yourself. See [Editing Filament Properties](filament.md#editing-filament-properties).
+**AMS / multi-material:** Each slot carries its own material, color, vendor, and remaining weight. On systems with **RFID** readers (Creality CFS, Snapmaker U1), spool info is detected automatically when you seat a spool. On systems without RFID, tap a slot's **Edit Spool** to enter it yourself. See [Editing Filament Properties](filament.md#editing-filament-properties).
 
 This information persists on the printer — it survives restarts, and it's written where OrcaSlicer 2.3.2+ can read it, so your slicer's filament panel stays in sync. See [Syncing with OrcaSlicer](filament.md#syncing-with-orcaslicer-232-and-later).
 
@@ -121,12 +121,12 @@ However it's tracked, remaining filament shows up in the same places:
 |---|---|
 | **Active Spool widget** (Home panel) | Current spool's material, color, and remaining vs. total weight |
 | **AMS sidebar** | Remaining weight of the loaded slot |
-| **Spool Info editor** | A per-slot remaining bar with percentage and weight |
+| **Edit Spool** | The slot's remaining weight, and the full weight when it is known ("650 g of 1000 g") |
 | **Spoolman inventory panel** | Weight and remaining percentage for every spool, with a warning icon on any spool that's running low (under 100 g) |
 
 **Runout** — actually running out of filament mid-print — is handled by your filament sensors and multi-filament hardware, not by the weight number. The printer's firmware pauses the print; HelixScreen then guides you through reloading. On **AFC (Box Turtle)** and **Happy Hare**, a backup slot you configured can take over automatically (Endless Spool). On the **Creality CFS**, **Auto-Refill** is run by the box itself and always pauses first: it switches only when Auto-Refill is on and another slot holds the exact same material and colour, and otherwise leaves the print paused for you. See [Reading Error States](filament.md#reading-error-states) and the Endless Spool notes in [Filament Management](filament.md#slot-context-menu).
 
-> **Tip:** The remaining weight is only as good as the starting number. Whenever you load a fresh spool, set its full weight — either by entering it in the Spool Info editor or by assigning a fresh Spoolman spool — so the estimate has an accurate starting point.
+> **Tip:** The remaining weight is only as good as the starting number. Whenever you load a fresh spool, set its full weight — either by entering it in Edit Spool or by assigning a fresh Spoolman spool — so the estimate has an accurate starting point.
 
 ---
 
