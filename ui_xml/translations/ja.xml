@@ -202,6 +202,7 @@
   <translation tag="Add custom filament" ja="カスタムフィラメントを追加"/>
   <translation tag="Add page" ja="ページを追加"/>
   <translation tag="Add to Queue" ja="キューに追加"/>
+  <translation tag="Add to Spoolman + label" ja="Spoolman に追加 + ラベル"/>
   <translation tag="Added to Spoolman" ja="Spoolman に追加しました"/>
   <translation tag="Added to queue (position {})" ja="キューに追加しました（{} 番目）"/>
   <translation tag="Added to queue (position {}) - queue is paused" ja="キューに追加しました（{} 番目）– キューは一時停止中です"/>
@@ -226,6 +227,7 @@
   <translation tag="All healthy" ja="すべて正常"/>
   <translation tag="All lights" ja="すべてのライト"/>
   <translation tag="All time" ja="全期間"/>
+  <translation tag="All..." ja="すべて..."/>
   <translation tag="Allow" ja="許可"/>
   <translation tag="Allow Home Screen Editing" ja="ホーム画面の編集を許可"/>
   <translation tag="Allow cold load/unload" ja="コールド時の装填/取り出しを許可"/>
@@ -328,6 +330,7 @@
   <translation tag="Barcode Scanner" ja="バーコードスキャナー"/>
   <translation tag="Base" ja="基準"/>
   <translation tag="Based on the newest {} prints" ja="最新の{}件の印刷に基づく"/>
+  <translation tag="Basic" ja="標準"/>
   <translation tag="Batch load failed" ja="一括装填に失敗しました"/>
   <translation tag="Batch unload failed" ja="一括排出に失敗しました"/>
   <translation tag="Beacon auto-calibrate sent" ja="Beacon自動キャリブレーション送信済み"/>
@@ -1912,7 +1915,9 @@
   <translation tag="Moonraker restarted but Spoolman not connected. Check server." ja="Moonraker は再起動しましたが Spoolman に未接続です。サーバーを確認してください。"/>
   <translation tag="Moonraker restarting...&#10;Waiting for reconnection..." ja="Moonraker再起動中...&#10;再接続を待機中..."/>
   <translation tag="Moonraker: " ja="Moonraker: "/>
+  <translation tag="More" ja="その他"/>
   <translation tag="More points = more accurate, but takes longer." ja="ポイント数が多いほど精度が上がりますが、時間がかかります。"/>
+  <translation tag="More..." ja="その他..."/>
   <translation tag="Motion" ja="動作"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." ja="モーションセンサーが固着: フィラメントはまだフィーダーにあります。再開すると送り込みます。"/>
   <translation tag="Motion timed out" ja="動作がタイムアウトしました"/>
@@ -2345,6 +2350,7 @@
   <translation tag="Preview Sounds" ja="サウンドをプレビュー"/>
   <translation tag="Previous" ja="前回"/>
   <translation tag="Price" ja="価格"/>
+  <translation tag="Price, location, lot, notes" ja="価格、場所、ロット、メモ"/>
   <translation tag="Primary" ja="プライマリ"/>
   <translation tag="Priming nozzle..." ja="ノズルをプライム中..."/>
   <translation tag="Priming..." ja="プライミング中..."/>
@@ -2472,6 +2478,7 @@
   <translation tag="Problem found" ja="問題が見つかりました"/>
   <translation tag="Proceed" ja="続行"/>
   <translation tag="Processing..." ja="処理中..."/>
+  <translation tag="Product" ja="製品"/>
   <translation tag="Profile deleted" ja="プロファイルを削除しました"/>
   <translation tag="Profile name (e.g., default)" ja="プロファイル名（例: default）"/>
   <translation tag="Profile names cannot contain &apos;;&apos;" ja="プロファイル名に &apos;;&apos; は使用できません"/>
@@ -2575,6 +2582,7 @@
   <translation tag="Recovering..." ja="復旧中..."/>
   <translation tag="Recovery failed" ja="復旧失敗"/>
   <translation tag="Recovery failed: {}" ja="復旧に失敗しました: {}"/>
+  <translation tag="Recycled" ja="リサイクル"/>
   <translation tag="Reduce Sensitivity" ja="感度を下げる"/>
   <translation tag="Reduce ringing and ghosting artifacts" ja="リンギングとゴーストのアーティファクトを軽減"/>
   <translation tag="Reduce vibration artifacts like ringing and ghosting" ja="リンギングやゴーストなどの振動アーティファクトを軽減"/>
@@ -2593,6 +2601,7 @@
   <translation tag="Remaining" ja="残り"/>
   <translation tag="Remaining (g)" ja="残量 (g)"/>
   <translation tag="Remaining Weight (g)" ja="残量（g）"/>
+  <translation tag="Remaining weight" ja="残り重量"/>
   <translation tag="Remember slot spool details across an eject" ja="取り出し後もスロットのスプール情報を記憶します"/>
   <translation tag="Remove" ja="削除"/>
   <translation tag="Remove PIN" ja="PIN を削除"/>
@@ -2651,6 +2660,7 @@
   <translation tag="Reset to Default" ja="デフォルトにリセット"/>
   <translation tag="Reset to defaults" ja="デフォルトに戻す"/>
   <translation tag="Reset to original values" ja="元の値にリセット"/>
+  <translation tag="Reset to tag" ja="タグから復元"/>
   <translation tag="Reset {}?" ja="{}をリセットしますか？"/>
   <translation tag="Resetting" ja="リセット中"/>
   <translation tag="Resetting system" ja="システムをリセットしています"/>
@@ -2777,6 +2787,7 @@
   <translation tag="Save changes to persist them across restarts?" ja="再起動後も変更を保持するために保存しますか？"/>
   <translation tag="Save failed: {}" ja="保存に失敗しました: {}"/>
   <translation tag="Save offsets?" ja="オフセットを保存しますか？"/>
+  <translation tag="Save the changes to this spool?" ja="このスプールの変更を保存しますか？"/>
   <translation tag="Save to Spool" ja="スプールに保存"/>
   <translation tag="Save to Spoolman" ja="Spoolman に保存"/>
   <translation tag="Saved Z-Offset" ja="保存されたZ-Offset"/>
@@ -3303,6 +3314,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" ja="このデバイスの RAM は {} MB しかありません。共振キャリブレーションはメモリを大量に消費し、プリンターのファームウェアが &quot;Timer Too Close&quot; エラーを報告したり、テスト中に再起動したりする可能性があります。それでも続行しますか？"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" ja="このデバイスの RAM は非常に少ないです。共振キャリブレーションはメモリを大量に消費し、&quot;Timer Too Close&quot; エラーを引き起こす可能性があります。それでも続行しますか？"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" ja="リンクされた Spoolman のスプールと一致しません。新しいスプールとして追加しますか、それともリンク先を一致するよう更新しますか？"/>
+  <translation tag="This doesn&apos;t match the linked Spoolman spool. Update it in Spoolman, or unlink and keep it on this slot?" ja="リンクされた Spoolman スプールと一致しません。Spoolman で更新するか、リンクを解除してこのスロットに保持しますか？"/>
   <translation tag="This dryer cannot run while filament from the unit is loaded" ja="このユニットのフィラメントが装填されている間は乾燥機を動作できません"/>
   <translation tag="This feature requires different hardware or configuration" ja="この機能には別のハードウェアまたは設定が必要です"/>
   <translation tag="This filament system does not report buffer or flow data." ja="このフィラメントシステムはバッファーやフローのデータを報告しません。"/>
@@ -3481,6 +3493,7 @@
   <translation tag="Unknown Spool" ja="不明なスプール"/>
   <translation tag="Unknown Step" ja="不明なステップ"/>
   <translation tag="Unknown error" ja="不明なエラー"/>
+  <translation tag="Unlink, keep on this slot" ja="リンク解除、このスロットに保持"/>
   <translation tag="Unload" ja="排出"/>
   <translation tag="Unload Distance" ja="アンロード距離"/>
   <translation tag="Unload Extruder" ja="エクストルーダーから排出"/>
@@ -3508,6 +3521,7 @@
   <translation tag="Unmount" ja="取り外し"/>
   <translation tag="Unretract Extra" ja="アンリトラクト追加量"/>
   <translation tag="Unretract Speed" ja="アンリトラクト速度"/>
+  <translation tag="Unsaved changes" ja="未保存の変更"/>
   <translation tag="Unsupported tape width" ja="サポートされていないテープ幅"/>
   <translation tag="Unsupported tape width: " ja="サポートされていないテープ幅: "/>
   <translation tag="Up next: {}" ja="次の印刷：{}"/>
@@ -3521,6 +3535,7 @@
   <translation tag="Update Helper Macros?" ja="ヘルパーマクロを更新しますか？"/>
   <translation tag="Update Success" ja="更新成功"/>
   <translation tag="Update from a Terminal" ja="ターミナルから更新"/>
+  <translation tag="Update in Spoolman" ja="Spoolman で更新"/>
   <translation tag="Update installed!" ja="アップデートをインストールしました！"/>
   <translation tag="Update your security PIN" ja="セキュリティ PIN を更新"/>
   <translation tag="Updates" ja="更新"/>
@@ -3546,6 +3561,7 @@
   <translation tag="Validating bed mesh..." ja="ベッドメッシュを検証中..."/>
   <translation tag="Value must be between {} and {}" ja="値は {} から {} の間で入力してください"/>
   <translation tag="Values must not be negative" ja="値は負の数にできません"/>
+  <translation tag="Variant" ja="バリアント"/>
   <translation tag="Velocity and acceleration limits" ja="速度と加速度の制限"/>
   <translation tag="Vendor" ja="ベンダー"/>
   <translation tag="Vendor Name" ja="ベンダー名"/>
@@ -3742,6 +3758,7 @@
   <translation tag="feeder error" ja="フィーダーエラー"/>
   <translation tag="feeder not in automatic mode" ja="フィーダーが自動モードではありません"/>
   <translation tag="filament sensor disabled" ja="フィラメントセンサーが無効"/>
+  <translation tag="from tag" ja="タグから"/>
   <translation tag="heated bed" ja="ヒートベッド"/>
   <translation tag="helixscreen.env ignored: owned by uid {}" ja="helixscreen.env は無視されました：uid {} が所有しています"/>
   <translation tag="helixscreen.env ignored: untrusted symlink chain" ja="helixscreen.env は無視されました：信頼できないシンボリックリンクチェーンです"/>

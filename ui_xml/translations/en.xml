@@ -202,6 +202,7 @@
   <translation tag="Add custom filament" en="Add custom filament"/>
   <translation tag="Add page" en="Add page"/>
   <translation tag="Add to Queue" en="Add to Queue"/>
+  <translation tag="Add to Spoolman + label" en="Add to Spoolman + label"/>
   <translation tag="Added to Spoolman" en="Added to Spoolman"/>
   <translation tag="Added to queue (position {})" en="Added to queue (position {})"/>
   <translation tag="Added to queue (position {}) - queue is paused" en="Added to queue (position {}) - queue is paused"/>
@@ -226,6 +227,7 @@
   <translation tag="All healthy" en="All healthy"/>
   <translation tag="All lights" en="All lights"/>
   <translation tag="All time" en="All time"/>
+  <translation tag="All..." en="All..."/>
   <translation tag="Allow" en="Allow"/>
   <translation tag="Allow Home Screen Editing" en="Allow Home Screen Editing"/>
   <translation tag="Allow cold load/unload" en="Allow cold load/unload"/>
@@ -328,6 +330,7 @@
   <translation tag="Barcode Scanner" en="Barcode Scanner"/>
   <translation tag="Base" en="Base"/>
   <translation tag="Based on the newest {} prints" en="Based on the newest {} prints"/>
+  <translation tag="Basic" en="Basic"/>
   <translation tag="Batch load failed" en="Batch load failed"/>
   <translation tag="Batch unload failed" en="Batch unload failed"/>
   <translation tag="Beacon auto-calibrate sent" en="Beacon auto-calibrate sent"/>
@@ -1912,7 +1915,9 @@
   <translation tag="Moonraker restarted but Spoolman not connected. Check server." en="Moonraker restarted but Spoolman not connected. Check server."/>
   <translation tag="Moonraker restarting...&#10;Waiting for reconnection..." en="Moonraker restarting...&#10;Waiting for reconnection..."/>
   <translation tag="Moonraker: " en="Moonraker: "/>
+  <translation tag="More" en="More"/>
   <translation tag="More points = more accurate, but takes longer." en="More points = more accurate, but takes longer."/>
+  <translation tag="More..." en="More..."/>
   <translation tag="Motion" en="Motion"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." en="Motion sensor stuck: filament is still at the feeder. Resume to feed it."/>
   <translation tag="Motion timed out" en="Motion timed out"/>
@@ -2345,6 +2350,7 @@
   <translation tag="Preview Sounds" en="Preview Sounds"/>
   <translation tag="Previous" en="Previous"/>
   <translation tag="Price" en="Price"/>
+  <translation tag="Price, location, lot, notes" en="Price, location, lot, notes"/>
   <translation tag="Primary" en="Primary"/>
   <translation tag="Priming nozzle..." en="Priming nozzle..."/>
   <translation tag="Priming..." en="Priming..."/>
@@ -2472,6 +2478,7 @@
   <translation tag="Problem found" en="Problem found"/>
   <translation tag="Proceed" en="Proceed"/>
   <translation tag="Processing..." en="Processing..."/>
+  <translation tag="Product" en="Product"/>
   <translation tag="Profile deleted" en="Profile deleted"/>
   <translation tag="Profile name (e.g., default)" en="Profile name (e.g., default)"/>
   <translation tag="Profile names cannot contain &apos;;&apos;" en="Profile names cannot contain &apos;;&apos;"/>
@@ -2575,6 +2582,7 @@
   <translation tag="Recovering..." en="Recovering..."/>
   <translation tag="Recovery failed" en="Recovery failed"/>
   <translation tag="Recovery failed: {}" en="Recovery failed: {}"/>
+  <translation tag="Recycled" en="Recycled"/>
   <translation tag="Reduce Sensitivity" en="Reduce Sensitivity"/>
   <translation tag="Reduce ringing and ghosting artifacts" en="Reduce ringing and ghosting artifacts"/>
   <translation tag="Reduce vibration artifacts like ringing and ghosting" en="Reduce vibration artifacts like ringing and ghosting"/>
@@ -2593,6 +2601,7 @@
   <translation tag="Remaining" en="Remaining"/>
   <translation tag="Remaining (g)" en="Remaining (g)"/>
   <translation tag="Remaining Weight (g)" en="Remaining Weight (g)"/>
+  <translation tag="Remaining weight" en="Remaining weight"/>
   <translation tag="Remember slot spool details across an eject" en="Remember slot spool details across an eject"/>
   <translation tag="Remove" en="Remove"/>
   <translation tag="Remove PIN" en="Remove PIN"/>
@@ -2651,6 +2660,7 @@
   <translation tag="Reset to Default" en="Reset to Default"/>
   <translation tag="Reset to defaults" en="Reset to defaults"/>
   <translation tag="Reset to original values" en="Reset to original values"/>
+  <translation tag="Reset to tag" en="Reset to tag"/>
   <translation tag="Reset {}?" en="Reset {}?"/>
   <translation tag="Resetting" en="Resetting"/>
   <translation tag="Resetting system" en="Resetting system"/>
@@ -2777,6 +2787,7 @@
   <translation tag="Save changes to persist them across restarts?" en="Save changes to persist them across restarts?"/>
   <translation tag="Save failed: {}" en="Save failed: {}"/>
   <translation tag="Save offsets?" en="Save offsets?"/>
+  <translation tag="Save the changes to this spool?" en="Save the changes to this spool?"/>
   <translation tag="Save to Spool" en="Save to Spool"/>
   <translation tag="Save to Spoolman" en="Save to Spoolman"/>
   <translation tag="Saved Z-Offset" en="Saved Z-Offset"/>
@@ -3303,6 +3314,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" en="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" en="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" en="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?"/>
+  <translation tag="This doesn&apos;t match the linked Spoolman spool. Update it in Spoolman, or unlink and keep it on this slot?" en="This doesn&apos;t match the linked Spoolman spool. Update it in Spoolman, or unlink and keep it on this slot?"/>
   <translation tag="This dryer cannot run while filament from the unit is loaded" en="This dryer cannot run while filament from the unit is loaded"/>
   <translation tag="This feature requires different hardware or configuration" en="This feature requires different hardware or configuration"/>
   <translation tag="This filament system does not report buffer or flow data." en="This filament system does not report buffer or flow data."/>
@@ -3481,6 +3493,7 @@
   <translation tag="Unknown Spool" en="Unknown Spool"/>
   <translation tag="Unknown Step" en="Unknown Step"/>
   <translation tag="Unknown error" en="Unknown error"/>
+  <translation tag="Unlink, keep on this slot" en="Unlink, keep on this slot"/>
   <translation tag="Unload" en="Unload"/>
   <translation tag="Unload Distance" en="Unload Distance"/>
   <translation tag="Unload Extruder" en="Unload Extruder"/>
@@ -3508,6 +3521,7 @@
   <translation tag="Unmount" en="Unmount"/>
   <translation tag="Unretract Extra" en="Unretract Extra"/>
   <translation tag="Unretract Speed" en="Unretract Speed"/>
+  <translation tag="Unsaved changes" en="Unsaved changes"/>
   <translation tag="Unsupported tape width" en="Unsupported tape width"/>
   <translation tag="Unsupported tape width: " en="Unsupported tape width: "/>
   <translation tag="Up next: {}" en="Up next: {}"/>
@@ -3521,6 +3535,7 @@
   <translation tag="Update Helper Macros?" en="Update Helper Macros?"/>
   <translation tag="Update Success" en="Update Success"/>
   <translation tag="Update from a Terminal" en="Update from a Terminal"/>
+  <translation tag="Update in Spoolman" en="Update in Spoolman"/>
   <translation tag="Update installed!" en="Update installed!"/>
   <translation tag="Update your security PIN" en="Update your security PIN"/>
   <translation tag="Updates" en="Updates"/>
@@ -3546,6 +3561,7 @@
   <translation tag="Validating bed mesh..." en="Validating bed mesh..."/>
   <translation tag="Value must be between {} and {}" en="Value must be between {} and {}"/>
   <translation tag="Values must not be negative" en="Values must not be negative"/>
+  <translation tag="Variant" en="Variant"/>
   <translation tag="Velocity and acceleration limits" en="Velocity and acceleration limits"/>
   <translation tag="Vendor" en="Vendor"/>
   <translation tag="Vendor Name" en="Vendor Name"/>
@@ -3742,6 +3758,7 @@
   <translation tag="feeder error" en="feeder error"/>
   <translation tag="feeder not in automatic mode" en="feeder not in automatic mode"/>
   <translation tag="filament sensor disabled" en="filament sensor disabled"/>
+  <translation tag="from tag" en="from tag"/>
   <translation tag="heated bed" en="heated bed"/>
   <translation tag="helixscreen.env ignored: owned by uid {}" en="helixscreen.env ignored: owned by uid {}"/>
   <translation tag="helixscreen.env ignored: untrusted symlink chain" en="helixscreen.env ignored: untrusted symlink chain"/>

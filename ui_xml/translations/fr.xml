@@ -202,6 +202,7 @@
   <translation tag="Add custom filament" fr="Ajouter un filament personnalisé"/>
   <translation tag="Add page" fr="Ajouter une page"/>
   <translation tag="Add to Queue" fr="Ajouter à la file"/>
+  <translation tag="Add to Spoolman + label" fr="Ajouter à Spoolman + étiquette"/>
   <translation tag="Added to Spoolman" fr="Ajouté à Spoolman"/>
   <translation tag="Added to queue (position {})" fr="Ajouté à la file (position {})"/>
   <translation tag="Added to queue (position {}) - queue is paused" fr="Ajouté à la file (position {}) – la file est en pause"/>
@@ -226,6 +227,7 @@
   <translation tag="All healthy" fr="Tout va bien"/>
   <translation tag="All lights" fr="Toutes les lumières"/>
   <translation tag="All time" fr="Depuis toujours"/>
+  <translation tag="All..." fr="Tout..."/>
   <translation tag="Allow" fr="Autoriser"/>
   <translation tag="Allow Home Screen Editing" fr="Autoriser la modification de l&apos;écran d&apos;accueil"/>
   <translation tag="Allow cold load/unload" fr="Autoriser le chargement/déchargement à froid"/>
@@ -328,6 +330,7 @@
   <translation tag="Barcode Scanner" fr="Scanner de codes-barres"/>
   <translation tag="Base" fr="Référence"/>
   <translation tag="Based on the newest {} prints" fr="Basé sur les {} impressions les plus récentes"/>
+  <translation tag="Basic" fr="Basique"/>
   <translation tag="Batch load failed" fr="Échec du chargement groupé"/>
   <translation tag="Batch unload failed" fr="Échec du déchargement groupé"/>
   <translation tag="Beacon auto-calibrate sent" fr="Beacon auto-calibrage envoyé"/>
@@ -1912,7 +1915,9 @@
   <translation tag="Moonraker restarted but Spoolman not connected. Check server." fr="Moonraker a redémarré mais Spoolman n&apos;est pas connecté. Vérifiez le serveur."/>
   <translation tag="Moonraker restarting...&#10;Waiting for reconnection..." fr="Redémarrage de Moonraker...&#10;En attente de reconnexion..."/>
   <translation tag="Moonraker: " fr="Moonraker : "/>
+  <translation tag="More" fr="Plus"/>
   <translation tag="More points = more accurate, but takes longer." fr="Plus de points = plus précis, mais prend plus de temps."/>
+  <translation tag="More..." fr="Plus..."/>
   <translation tag="Motion" fr="Mouvement"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." fr="Capteur de mouvement bloqué : le filament est toujours dans l&apos;alimentateur. Reprenez pour l&apos;alimenter."/>
   <translation tag="Motion timed out" fr="Délai de mouvement dépassé"/>
@@ -2345,6 +2350,7 @@
   <translation tag="Preview Sounds" fr="Aperçu des sons"/>
   <translation tag="Previous" fr="Précédent"/>
   <translation tag="Price" fr="Prix"/>
+  <translation tag="Price, location, lot, notes" fr="Prix, emplacement, lot, notes"/>
   <translation tag="Primary" fr="Principal"/>
   <translation tag="Priming nozzle..." fr="Amorçage de la buse..."/>
   <translation tag="Priming..." fr="Amorçage..."/>
@@ -2472,6 +2478,7 @@
   <translation tag="Problem found" fr="Problème détecté"/>
   <translation tag="Proceed" fr="Continuer"/>
   <translation tag="Processing..." fr="Traitement..."/>
+  <translation tag="Product" fr="Produit"/>
   <translation tag="Profile deleted" fr="Profil supprimé"/>
   <translation tag="Profile name (e.g., default)" fr="Nom du profil (ex : default)"/>
   <translation tag="Profile names cannot contain &apos;;&apos;" fr="Les noms de profil ne peuvent pas contenir &apos;;&apos;"/>
@@ -2575,6 +2582,7 @@
   <translation tag="Recovering..." fr="Récupération..."/>
   <translation tag="Recovery failed" fr="Échec de la récupération"/>
   <translation tag="Recovery failed: {}" fr="Échec de la récupération : {}"/>
+  <translation tag="Recycled" fr="Recyclé"/>
   <translation tag="Reduce Sensitivity" fr="Réduire la sensibilité"/>
   <translation tag="Reduce ringing and ghosting artifacts" fr="Réduire les artefacts d&apos;ondulation et de ghosting"/>
   <translation tag="Reduce vibration artifacts like ringing and ghosting" fr="Réduire les artefacts de vibration comme l&apos;ondulation et le ghosting"/>
@@ -2593,6 +2601,7 @@
   <translation tag="Remaining" fr="Restant"/>
   <translation tag="Remaining (g)" fr="Restant (g)"/>
   <translation tag="Remaining Weight (g)" fr="Poids restant (g)"/>
+  <translation tag="Remaining weight" fr="Poids restant"/>
   <translation tag="Remember slot spool details across an eject" fr="Mémoriser les détails de la bobine du slot après une éjection"/>
   <translation tag="Remove" fr="Supprimer"/>
   <translation tag="Remove PIN" fr="Supprimer le PIN"/>
@@ -2651,6 +2660,7 @@
   <translation tag="Reset to Default" fr="Réinitialiser par défaut"/>
   <translation tag="Reset to defaults" fr="Réinitialiser par défaut"/>
   <translation tag="Reset to original values" fr="Réinitialiser aux valeurs d&apos;origine"/>
+  <translation tag="Reset to tag" fr="Rétablir depuis le tag"/>
   <translation tag="Reset {}?" fr="Réinitialiser {} ?"/>
   <translation tag="Resetting" fr="Réinitialisation"/>
   <translation tag="Resetting system" fr="Réinitialisation du système"/>
@@ -2777,6 +2787,7 @@
   <translation tag="Save changes to persist them across restarts?" fr="Enregistrer les modifications pour les conserver après redémarrage ?"/>
   <translation tag="Save failed: {}" fr="Échec de l&apos;enregistrement : {}"/>
   <translation tag="Save offsets?" fr="Enregistrer les offsets ?"/>
+  <translation tag="Save the changes to this spool?" fr="Enregistrer les modifications de cette bobine ?"/>
   <translation tag="Save to Spool" fr="Enregistrer sur la bobine"/>
   <translation tag="Save to Spoolman" fr="Enregistrer dans Spoolman"/>
   <translation tag="Saved Z-Offset" fr="Z-Offset enregistré"/>
@@ -3303,6 +3314,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" fr="Cet appareil ne dispose que de {} Mo de RAM. La calibration de résonance est gourmande en mémoire et peut amener le firmware de l&apos;imprimante à signaler une erreur &quot;Timer Too Close&quot; ou à redémarrer en cours de test. Continuer quand même ?"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" fr="Cet appareil dispose de très peu de RAM. La calibration de résonance est gourmande en mémoire et peut provoquer une erreur &quot;Timer Too Close&quot;. Continuer quand même ?"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" fr="Cela ne correspond pas à la bobine Spoolman liée. L&apos;ajouter comme nouvelle bobine, ou mettre à jour la bobine liée pour correspondre ?"/>
+  <translation tag="This doesn&apos;t match the linked Spoolman spool. Update it in Spoolman, or unlink and keep it on this slot?" fr="Cela ne correspond pas à la bobine Spoolman liée. La mettre à jour dans Spoolman, ou délier et la garder sur cet emplacement ?"/>
   <translation tag="This dryer cannot run while filament from the unit is loaded" fr="Ce séchoir ne peut pas fonctionner tant que du filament de l&apos;unité est chargé"/>
   <translation tag="This feature requires different hardware or configuration" fr="Cette fonctionnalité requiert un autre matériel ou une autre configuration"/>
   <translation tag="This filament system does not report buffer or flow data." fr="Ce système de filament ne fournit ni données de tampon ni données de débit."/>
@@ -3481,6 +3493,7 @@
   <translation tag="Unknown Spool" fr="Bobine inconnue"/>
   <translation tag="Unknown Step" fr="Étape inconnue"/>
   <translation tag="Unknown error" fr="Erreur inconnue"/>
+  <translation tag="Unlink, keep on this slot" fr="Délier, garder sur cet emplacement"/>
   <translation tag="Unload" fr="Décharger"/>
   <translation tag="Unload Distance" fr="Distance de déchargement"/>
   <translation tag="Unload Extruder" fr="Décharger l&apos;extrudeur"/>
@@ -3508,6 +3521,7 @@
   <translation tag="Unmount" fr="Démonter"/>
   <translation tag="Unretract Extra" fr="Extra de dérétraction"/>
   <translation tag="Unretract Speed" fr="Vitesse de dérétraction"/>
+  <translation tag="Unsaved changes" fr="Modifications non enregistrées"/>
   <translation tag="Unsupported tape width" fr="Largeur de ruban non prise en charge"/>
   <translation tag="Unsupported tape width: " fr="Largeur de ruban non prise en charge : "/>
   <translation tag="Up next: {}" fr="À suivre : {}"/>
@@ -3521,6 +3535,7 @@
   <translation tag="Update Helper Macros?" fr="Mettre à jour les macros d&apos;aide ?"/>
   <translation tag="Update Success" fr="Mise à jour réussie"/>
   <translation tag="Update from a Terminal" fr="Mettre à jour depuis un terminal"/>
+  <translation tag="Update in Spoolman" fr="Mettre à jour dans Spoolman"/>
   <translation tag="Update installed!" fr="Mise à jour installée !"/>
   <translation tag="Update your security PIN" fr="Mettez à jour votre PIN de sécurité sur cette installation."/>
   <translation tag="Updates" fr="Mises à jour"/>
@@ -3546,6 +3561,7 @@
   <translation tag="Validating bed mesh..." fr="Validation du maillage du plateau..."/>
   <translation tag="Value must be between {} and {}" fr="La valeur doit être entre {} et {}"/>
   <translation tag="Values must not be negative" fr="Les valeurs ne doivent pas être négatives"/>
+  <translation tag="Variant" fr="Variante"/>
   <translation tag="Velocity and acceleration limits" fr="Limites de vitesse et d&apos;accélération"/>
   <translation tag="Vendor" fr="Fabricant"/>
   <translation tag="Vendor Name" fr="Nom du fournisseur"/>
@@ -3742,6 +3758,7 @@
   <translation tag="feeder error" fr="erreur d&apos;alimentateur"/>
   <translation tag="feeder not in automatic mode" fr="alimentateur pas en mode automatique"/>
   <translation tag="filament sensor disabled" fr="capteur de filament désactivé"/>
+  <translation tag="from tag" fr="du tag"/>
   <translation tag="heated bed" fr="plateau chauffant"/>
   <translation tag="helixscreen.env ignored: owned by uid {}" fr="helixscreen.env ignoré : appartient à l&apos;uid {}"/>
   <translation tag="helixscreen.env ignored: untrusted symlink chain" fr="helixscreen.env ignoré : chaîne de liens symboliques non fiable"/>
