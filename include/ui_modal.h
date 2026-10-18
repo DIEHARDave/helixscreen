@@ -473,6 +473,17 @@ class ModalStack {
     /// the stack keeps its order above anything created after it (an overlay).
     void raise_visible_to_foreground();
 
+    /// Mark the entry for @p backdrop as asked for by @p tag (a plugin id).
+    void set_tag(lv_obj_t* backdrop, std::string tag);
+    /// True while a visible (non-exiting) entry carries no tag: an app modal.
+    bool has_visible_untagged() const;
+    /// The tag of the topmost visible tagged entry, or "" when there is none.
+    std::string top_visible_tag() const;
+    /// True while a modal surface outside the stack (add_external_cover) is up.
+    bool has_external_cover() const {
+        return external_covers_ > 0;
+    }
+
     /// True while a visible (non-exiting) modal, or an external cover, holds the
     /// navbar chrome under a backdrop.
     bool covers_chrome() const;
@@ -534,6 +545,9 @@ class ModalStack {
         /// the entry frees it, so every path that empties the stack also frees
         /// the modals it owns.
         std::unique_ptr<Modal> owned_instance;
+        /// Who asked for this modal; empty for the app's own. A plugin dialog
+        /// carries its plugin id.
+        std::string tag;
     };
 
     std::vector<ModalEntry> stack_;
