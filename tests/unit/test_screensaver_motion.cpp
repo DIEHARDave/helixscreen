@@ -3,7 +3,7 @@
 
 #include "screensaver_motion.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_test_access.h"
 #endif
@@ -344,7 +344,7 @@ TEST_CASE("wrap_period is fireflies' wrap360 and never returns the period",
     CHECK(mismatches == 0);
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 // ============================================================================
 // Starfield and pipes run on frame time

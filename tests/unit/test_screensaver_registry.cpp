@@ -365,7 +365,7 @@ TEST_CASE("a stored screensaver setting reads leniently and falls back to the de
     }
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/screensaver_manager_test_access.h"

@@ -549,7 +549,7 @@ void HelixTestFixture::reset_all() {
     // later scrollable it shows, so row counts in unrelated pages read one too high.
     lv_subject_set_int(display_settings.subject_page_scroll_buttons(), 0);
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     // The manager stays initialised across tests, so a screensaver choice one test
     // made would otherwise be read back as the "fresh install" default by the next.
     // Set on the subject, not through set_screensaver_type(), which writes Config.

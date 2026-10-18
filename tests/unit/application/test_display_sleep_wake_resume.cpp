@@ -42,7 +42,7 @@
 
 using helix::DisplaySettingsManager;
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "screensaver.h"
 #endif
 
@@ -135,7 +135,7 @@ class SleepWakeFixture : public LVGLTestFixture {
     }
 
     ~SleepWakeFixture() override {
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
         ScreensaverManager::instance().stop();
 #endif
         display_->inv_en_cnt = saved_inv_en_cnt_;
@@ -181,7 +181,7 @@ class SleepWakeFixture : public LVGLTestFixture {
 
 } // namespace
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 TEST_CASE_METHOD(SleepWakeFixture, "waking from sleep resumes the panel the screensaver suspended",
                  "[application][display][sleep][screensaver][wake]") {

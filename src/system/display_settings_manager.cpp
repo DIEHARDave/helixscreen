@@ -288,15 +288,6 @@ void DisplaySettingsManager::init_subjects() {
     }
     UI_MANAGED_SUBJECT_INT(has_dimming_subject_, has_dimming ? 1 : 0, "settings_has_dimming",
                            subjects_);
-#if HELIX_ENABLE_SCREENSAVER
-    constexpr bool screensaver_available = true;
-#else
-    constexpr bool screensaver_available = false;
-#endif
-    UI_MANAGED_SUBJECT_INT(dim_row_kind_subject_,
-                           static_cast<int>(dim_row_kind(has_dimming, screensaver_available)),
-                           "settings_dim_row_kind", subjects_);
-
     // NOTE: the sleep >= dim cross-validation is deferred until after the
     // screensaver_type subject is initialized below — on no-backlight devices an
     // enabled screensaver requires the coupling too (#1049), and
@@ -397,11 +388,20 @@ void DisplaySettingsManager::init_subjects() {
             old_enabled, helix::ui::screensaver_name(screensaver));
     }
     const int screensaver_type = static_cast<int>(screensaver);
+    constexpr int has_screensaver = 1;
 #else
     const int screensaver_type = 0;
+    constexpr int has_screensaver = 0;
 #endif
     UI_MANAGED_SUBJECT_INT(screensaver_type_subject_, screensaver_type, "settings_screensaver_type",
                            subjects_);
+    // Build flag for XML visibility of the screensaver picker (ephemeral)
+    UI_MANAGED_SUBJECT_INT(has_screensaver_subject_, has_screensaver, "settings_has_screensaver",
+                           subjects_);
+    // Reads the screensaver type, so it follows that subject's init.
+    UI_MANAGED_SUBJECT_INT(dim_row_kind_subject_,
+                           static_cast<int>(dim_row_kind(has_dimming, screensaver_enabled())),
+                           "settings_dim_row_kind", subjects_);
 
     // Cross-validate: sleep must be >= dim when the device dims OR a screensaver
     // provides the dim-stage visual (#1049). This runs AFTER screensaver_type is
@@ -681,8 +681,9 @@ bool DisplaySettingsManager::screensaver_enabled() const {
 bool DisplaySettingsManager::should_couple_sleep_to_dim() const {
     // Sleep (power-off) must never precede the Dim stage. The Dim stage is a
     // backlight dim on dimming-capable devices, or — on no-backlight fbdev/DRM
-    // devices — an enabled screensaver. Couple in either case (#1049).
-    return has_dimming_control() || screensaver_enabled();
+    // devices — an enabled screensaver. Couple in either case (#1049): exactly
+    // when Display settings offers a dim-timeout row.
+    return dim_row_kind(has_dimming_control(), screensaver_enabled()) != DimRowKind::Hidden;
 }
 
 // =============================================================================
@@ -900,6 +901,8 @@ void DisplaySettingsManager::set_screensaver_type(int type) {
     spdlog::info("[DisplaySettingsManager] set_screensaver_type({})", type);
 
     lv_subject_set_int(&screensaver_type_subject_, type);
+    lv_subject_set_int(&dim_row_kind_subject_, static_cast<int>(dim_row_kind(
+                                                   has_dimming_control(), screensaver_enabled())));
 
     Config* config = Config::get_instance();
     config->set<std::string>(helix::ui::SCREENSAVER_SETTING_PATH,
@@ -934,12 +937,12 @@ bool DisplaySettingsManager::get_bed_mesh_show_zero_plane() const {
 // DISPLAY DIM OPTIONS
 // =============================================================================
 
-DisplaySettingsManager::DimRowKind
-DisplaySettingsManager::dim_row_kind(bool has_dimming, bool screensaver_available) {
+DisplaySettingsManager::DimRowKind DisplaySettingsManager::dim_row_kind(bool has_dimming,
+                                                                        bool screensaver_enabled) {
     if (has_dimming) {
         return DimRowKind::ScreenDim;
     }
-    return screensaver_available ? DimRowKind::ScreensaverAfter : DimRowKind::Hidden;
+    return screensaver_enabled ? DimRowKind::ScreensaverAfter : DimRowKind::Hidden;
 }
 
 int DisplaySettingsManager::dim_seconds_to_index(int seconds) {

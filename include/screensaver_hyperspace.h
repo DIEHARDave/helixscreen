@@ -2,7 +2,7 @@
 
 #pragma once
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_canvas.h"
 #include "screensaver_hyperspace_sim.h"

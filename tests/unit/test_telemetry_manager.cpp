@@ -3146,7 +3146,7 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     CHECK(recovered[0]["saver_settled_levels"] == json{{"aqua:1", 1}});
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 TEST_CASE_METHOD(TelemetryTestFixture,
                  "settings_snapshot names the configured screensaver by its stable name",
                  "[telemetry][settings][screensaver_usage]") {

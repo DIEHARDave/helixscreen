@@ -138,16 +138,8 @@ void DisplaySettingsOverlay::on_activate() {
     init_sleep_dropdown();
     init_ui_scale_dropdown();
 
-// The firmware defines HELIX_ENABLE_SCREENSAVER as 0 and links no ScreensaverManager, so these
-// test its value, not whether it is defined.
 #if HELIX_ENABLE_SCREENSAVER
     init_screensaver_dropdown();
-#else
-    for (const char* name : {"row_screensaver", "container_test_screensaver"}) {
-        if (lv_obj_t* obj = helix::ui::find_required(overlay_root_, name, get_name())) {
-            lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
 #endif
 }
 

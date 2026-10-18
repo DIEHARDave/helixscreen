@@ -551,7 +551,6 @@ ssize_t readlink(const char*, char*, size_t) {
 
 // --- DisplayManager screensaver/backlight, third batch (sysfs backlight) -----
 void DisplayManager::set_dim_timeout(int) {}
-void DisplayManager::preview_screensaver(int) {}
 void DisplayManager::set_backlight_brightness(int) {}
 bool DisplayManager::has_backlight_control() const {
     return false;

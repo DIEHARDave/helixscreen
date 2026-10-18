@@ -31,7 +31,7 @@
 #include "test_helpers/display_manager_test_access.h"
 #include "wake_touch_latch.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "screensaver.h"
 #endif
 
@@ -172,7 +172,7 @@ class WakeChain {
         remember_timers();
     }
     ~WakeChain() {
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
         ScreensaverManager::instance().stop();
 #endif
         helix::ui::UpdateQueue::instance().drain();
@@ -217,7 +217,7 @@ class WakeChain {
             DisplayManagerTestAccess::set_display_dimmed(mgr, true);
             break;
         case Idle::Screensaver:
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
             ScreensaverManager::instance().start(ScreensaverType::FLYING_TOASTERS);
             DisplayManagerTestAccess::set_display_dimmed(mgr, true);
             DisplayManagerTestAccess::set_screensaver_active(mgr, true);
@@ -304,7 +304,7 @@ class WakeChain {
 
 std::vector<Idle> idle_modes() {
     std::vector<Idle> modes{Idle::Sleep, Idle::Dim};
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     modes.push_back(Idle::Screensaver);
 #endif
     return modes;
