@@ -517,21 +517,26 @@
       <!-- HSV/hex + Select applies a custom color. Returns to the      -->
       <!-- editor view (its sole entry point).                          -->
       <!-- ============================================================ -->
+      <!-- The presets and the custom picker sit side by side where the row
+           holds both, and wrap onto two rows where it does not, so the picker
+           never covers the grid; overlay_content scrolls the stacked form. -->
       <lv_obj name="color_view"
-              width="100%" flex_grow="1" flex_flow="row" style_pad_all="#space_lg" style_pad_gap="#space_xl"
-              style_flex_main_place="center" style_flex_cross_place="center" scrollable="false" hidden="true">
+              width="100%" height="content" style_min_height="100%" flex_flow="row_wrap" style_pad_all="#space_lg"
+              style_pad_gap="#space_xl" style_flex_main_place="center" style_flex_cross_place="center"
+              style_flex_track_place="center" scrollable="false" hidden="true">
         <bind_flag_if_not_eq subject="ams_edit_view" flag="hidden" ref_value="2"/>
 
         <!-- Preset swatches: tap applies + returns -->
-        <lv_obj height="content"
-                flex_grow="1" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
+        <lv_obj name="color_presets"
+                width="content" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs"
+                scrollable="false">
           <text_small text="Presets"/>
           <color_swatch_grid swatch_callback="ams_edit_color_swatch_cb"/>
         </lv_obj>
 
         <!-- Custom hue: HSV + hex + Select -->
-        <lv_obj width="content"
-                height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xl"
+        <lv_obj name="color_custom"
+                width="content" height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xl"
                 style_flex_cross_place="center" scrollable="false">
           <ui_hsv_picker name="ams_color_hsv" sv_size="#sv_size" hue_height="#hue_height" gap="#space_sm"/>
           <lv_obj width="content"

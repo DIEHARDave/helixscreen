@@ -2790,6 +2790,9 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the editor's non-swatch targets reach 44px"
 }
 
 namespace {
+bool areas_overlap(const lv_area_t& a, const lv_area_t& b) {
+    return a.x1 <= b.x2 && b.x1 <= a.x2 && a.y1 <= b.y2 && b.y1 <= a.y2;
+}
 bool area_within(const lv_area_t& inner, const lv_area_t& outer) {
     return inner.x1 >= outer.x1 && inner.y1 >= outer.y1 && inner.x2 <= outer.x2 &&
            inner.y2 <= outer.y2;
@@ -2919,6 +2922,49 @@ TEST_CASE_METHOD(LVGLUITestFixture, "colour swatches keep a 7mm pitch on every c
         }
     }
     theme_manager_refresh_layout_constants(disp);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the custom-colour picker never covers the preset grid",
+                 "[ams_edit_overlay][color][touch]") {
+    struct Size {
+        int32_t w;
+        int32_t h;
+    };
+    lv_display_t* disp = lv_display_get_default();
+    for (const Size sz : {Size{800, 480}, Size{480, 320}, Size{480, 272}, Size{320, 480}}) {
+        CAPTURE(sz.w, sz.h);
+        {
+            ScopedResolution res(disp, sz.w, sz.h);
+            theme_manager_refresh_layout_constants(disp);
+            auto& overlay = get_ams_edit_overlay();
+            AmsEditOverlayViewTestAccess access(overlay);
+            REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+            UpdateQueue::instance().drain();
+            process_lvgl(10);
+            access.call_open_color_view();
+            process_lvgl(10);
+
+            lv_obj_t* grid = access.widget("color_swatch_grid");
+            lv_obj_t* custom = access.widget("color_custom");
+            REQUIRE(grid != nullptr);
+            REQUIRE(custom != nullptr);
+            lv_obj_update_layout(grid);
+            lv_area_t g;
+            lv_area_t c;
+            lv_obj_get_coords(grid, &g);
+            lv_obj_get_coords(custom, &c);
+            CAPTURE(g.x1, g.y1, g.x2, g.y2, c.x1, c.y1, c.x2, c.y2);
+            CHECK_FALSE(areas_overlap(g, c));
+            // Every swatch is inside the grid's box, so none hides under the picker.
+            for (uint32_t i = 0; i < lv_obj_get_child_count(grid); ++i) {
+                lv_area_t t;
+                lv_obj_get_coords(lv_obj_get_child(grid, static_cast<int32_t>(i)), &t);
+                CHECK_FALSE(areas_overlap(t, c));
+            }
+            close_editor_overlay();
+        }
+        theme_manager_refresh_layout_constants(disp);
+    }
 }
 
 TEST_CASE("grid_preset_count fills whole rows less the custom tile",
