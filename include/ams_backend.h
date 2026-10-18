@@ -17,6 +17,7 @@
 #include "ams_environment_zone.h"
 #include "ams_error.h"
 #include "ams_step_operation.h"
+#include "ams_tag_reading.h"
 #include "ams_types.h"
 #include "display_numbering.h"
 #include "error_event.h"
@@ -352,6 +353,32 @@ class AmsBackend {
      * @return SlotInfo struct (copy, safe for caller to hold)
      */
     [[nodiscard]] virtual SlotInfo get_slot_info(int slot_index) const = 0;
+
+    /**
+     * @brief What the slot's tag reader reported for the spool now in it
+     *
+     * The tag's own values, kept while a user edit overrides them, so the
+     * editor can mark the fields that came from the tag and restore them
+     * (helix::ams::reset_to_tag). A backend with no tag reader, a slot with no
+     * reading, and an out-of-range slot all answer nullopt. Thread-safe.
+     */
+    [[nodiscard]] virtual std::optional<helix::ams::TagReading> tag_reading(int slot_index) const {
+        (void)slot_index;
+        return std::nullopt;
+    }
+
+    /**
+     * @brief Per field, whether get_slot_info(slot_index) shows its tag's value
+     *
+     * Empty whenever tag_reading() is nullopt. Thread-safe.
+     */
+    [[nodiscard]] helix::ams::TagProvenance tag_provenance(int slot_index) const {
+        const std::optional<helix::ams::TagReading> tag = tag_reading(slot_index);
+        if (!tag) {
+            return {};
+        }
+        return helix::ams::tag_provenance(*tag, get_slot_info(slot_index));
+    }
 
     /**
      * @brief Get current action/operation status

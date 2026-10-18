@@ -425,6 +425,46 @@ is stating a grey, which `read_lane_color()` reads as an observation. When addin
 a field to the struct, pick a "nothing here" value a user could never legitimately
 enter for it.
 
+### Tag readings and provenance
+
+A backend with a tag reader (an RFID chip, or an inline colour scanner) answers
+`AmsBackend::tag_reading(slot)` with what the tag reported for the spool now in the
+slot, as a `helix::ams::TagReading` (`include/ams_tag_reading.h`): material, brand,
+product, colour with any multi-colour, nozzle min/max, bed temperature and total weight,
+each optional, unset where the tag said nothing. Every other backend answers `nullopt`.
+The reading is the tag's own, kept while a user's edit overrides it, which the lane's
+VendorCache record alone cannot do on a backend whose write-back replaces the box's
+record.
+
+`AmsBackend::tag_provenance(slot)` compares `get_slot_info()` against the reading: a field
+is from the tag when the tag states it and the slot shows that value (text
+case-insensitive; colour needs the multi-colour to match too). A user's override that
+differs reads as not from the tag, and `helix::ams::reset_to_tag(slot, reading)` is the
+edit that restores it, which also clears the colour name and a catalog pick the tag's
+identity no longer matches. Generic code calls only these three; the per-backend rule for
+what a tag reading is lives in each leaf doc:
+
+| Backend | Reading | How it is kept |
+|---|---|---|
+| Snapmaker U1 | `filament_detect.info` with a real `CARD_UID` | the firmware keeps it (edits go to `print_task_config`) |
+| CFS | the box's latched record plus the catalog temps for its code | `fold_tag_frame` |
+| QIDI Box | the saved RFID ids resolved through the Box tables, plus the profile temps | `fold_tag_frame` |
+| ACE | a frame whose `rfid` says identified | per bay, until a read finds no tag or the bay empties |
+| AFC | the lane's `td1_color` scan | `SlotInfo::scanned_color_rgb` |
+
+`helix::ams::fold_tag_frame(kept, raw, filed)` is the rule for a backend whose user edit
+is written back into the record the tag reader fills: a field the frame states and the
+own-write echo guard files replaces the kept value, a field the guard withholds is our own
+write coming back and keeps it, and a field the frame no longer states is dropped. Two
+limits follow from the box holding one record: after a restart the guard is not armed, so
+what the box reports (by then the user's values) becomes the reading; and a value typed on
+the printer's own screen is indistinguishable from a tag read.
+
+A user override survives the tag reader's next poll everywhere through the lane resolve:
+the declaring LocalUser record outranks VendorCache. The multi-colour is the one tag field
+no lane record carries, so a backend lays it onto the slot only while the lane declares no
+colour, and `SlotInfo::assign_filament_fields` carries it through an edit.
+
 ---
 
 ## 6. Clear semantics

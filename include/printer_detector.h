@@ -109,6 +109,14 @@ struct BuildVolume {
     float plate_y_max = 0.0f;
 };
 
+namespace helix {
+/// Klipper's probe x_offset/y_offset: the probe's position relative to the nozzle.
+struct ProbeXYOffset {
+    double x = 0.0;
+    double y = 0.0;
+};
+} // namespace helix
+
 /**
  * @brief Printer hardware discovery data
  *

@@ -1132,6 +1132,7 @@
   <translation tag="Exclude Object?" ru="Исключить объект?"/>
   <translation tag="Exclude Objects" ru="Исключение объектов"/>
   <translation tag="Excluded" ru="Исключён"/>
+  <translation tag="Excluding &quot;{}&quot;..." ru="Исключение «{}»..."/>
   <translation tag="Exclusion cancelled" ru="Исключение отменено"/>
   <translation tag="Execute printer macros" ru="Выполнить макросы принтера"/>
   <translation tag="Exhaust Fan" ru="Вытяжной вентилятор"/>
@@ -2197,8 +2198,10 @@
   <translation tag="ON: {} | OFF: {}" ru="ВКЛ: {} | ВЫКЛ: {}"/>
   <translation tag="OS" ru="OS"/>
   <translation tag="OS: " ru="ОС: "/>
+  <translation tag="Object" ru="Объект"/>
   <translation tag="Object picks apply only to prints started now" ru="Выбор объектов применяется только к печати, запущенной сейчас"/>
   <translation tag="Object positions unavailable" ru="Позиции объектов недоступны"/>
+  <translation tag="Object {}" ru="Объект {}"/>
   <translation tag="Objects" ru="Объекты"/>
   <translation tag="Objects in the print, with a tap to open the skip map" ru="Объекты печати, касание открывает карту пропуска"/>
   <translation tag="Off" ru="Выкл"/>

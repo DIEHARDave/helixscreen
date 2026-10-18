@@ -124,7 +124,7 @@ Status values observed in production and their mapping to `SlotStatus`:
 Fields present in production `AFC_lane` data but not in `AFC_stepper`:
 - `buffer: null` and `buffer_status: null` (OpenAMS has no buffers)
 - `dist_hub: 60` (OpenAMS, short distance) vs `1940-2230` (Box Turtle, long bowden)
-- `td1_td`, `td1_color`, `td1_scan_time` — TD1 filament tag detection sensor data (not currently used by HelixScreen)
+- `td1_td`, `td1_color`, `td1_scan_time` — the TD-1 inline scanner. `td1_color` lands on `SlotInfo::scanned_color_rgb`, never on `color_rgb`, and it is the lane's `tag_reading()`: a colour only, which Reset to tag puts back over a user's pick (`src/printer/ams_backend_afc.cpp#tag_reading`)
 
 ### Detection
 

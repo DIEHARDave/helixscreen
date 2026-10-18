@@ -1090,6 +1090,7 @@
   <translation tag="Exclude Object?" en="Exclude Object?"/>
   <translation tag="Exclude Objects" en="Exclude Objects"/>
   <translation tag="Excluded" en="Excluded"/>
+  <translation tag="Excluding &quot;{}&quot;..." en="Excluding &quot;{}&quot;..."/>
   <translation tag="Exclusion cancelled" en="Exclusion cancelled"/>
   <translation tag="Execute printer macros" en="Execute printer macros"/>
   <translation tag="Exhaust Fan" en="Exhaust Fan"/>
@@ -2152,8 +2153,10 @@
   <translation tag="ON: {} | OFF: {}" en="ON: {} | OFF: {}"/>
   <translation tag="OS" en="OS"/>
   <translation tag="OS: " en="OS: "/>
+  <translation tag="Object" en="Object"/>
   <translation tag="Object picks apply only to prints started now" en="Object picks apply only to prints started now"/>
   <translation tag="Object positions unavailable" en="Object positions unavailable"/>
+  <translation tag="Object {}" en="Object {}"/>
   <translation tag="Objects" en="Objects"/>
   <translation tag="Objects in the print, with a tap to open the skip map" en="Objects in the print, with a tap to open the skip map"/>
   <translation tag="Off" en="Off"/>

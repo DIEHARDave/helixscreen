@@ -1883,7 +1883,7 @@ void FilamentPanel::update_external_spool_from_state() {
 
     auto ext = AmsState::instance().get_external_spool_info();
     if (ext.has_value()) {
-        ui_spool_canvas_set_color(external_spool_canvas_, lv_color_hex(ext->color_rgb));
+        helix::ui::spool_canvas_set_filament(external_spool_canvas_, *ext);
         float fill =
             (ext->total_weight_g > 0) ? ext->remaining_weight_g / ext->total_weight_g : 1.0f;
         ui_spool_canvas_set_fill_level(external_spool_canvas_, fill);

@@ -1204,6 +1204,7 @@ translations:
   Exclude Object?: 'Excluir objeto?'
   Exclude Objects: 'Excluir objetos'
   Excluded: Excluído
+  Excluding "{}"...: 'Excluindo "{}"...'
   Exclusion cancelled: Exclusão cancelada
   Execute printer macros: Executar macros da impressora
   Exhaust Fan: Ventoinha de Exaustão
@@ -2372,8 +2373,10 @@ translations:
   'ON: {} | OFF: {}': 'LIGADO: {} | DESLIGADO: {}'
   OS: OS
   'OS: ': 'SO: '
+  Object: 'Objeto'
   Object picks apply only to prints started now: 'A seleção de objetos vale apenas para impressões iniciadas agora'
   Object positions unavailable: Posições dos objetos indisponíveis
+  Object {}: 'Objeto {}'
   Objects: Objetos
   Objects in the print, with a tap to open the skip map: 'Objetos da impressão, toque para abrir o mapa de exclusão'
   'Off': Desligado

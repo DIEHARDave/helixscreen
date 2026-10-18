@@ -413,6 +413,7 @@ void AmsBackendCfs::on_started() {
         std::lock_guard<std::mutex> lock(mutex_);
         mirrors_sorted_ = false;
         endless_spool_enable_reported_ = false;
+        tag_readings_.clear();
     }
 
     // Restore the persisted stock-dialect bypass declaration. The
@@ -1840,8 +1841,16 @@ void AmsBackendCfs::file_box_readings(const AmsSystemInfo& new_info) {
                 // back, not a tag read. The boundary stays empty: the
                 // fingerprint's own swap detection and Clear Spool are
                 // what end the suppression.
+                const helix::ams::Observation stated = cache;
                 own_write_echoes_.withhold(slot.global_index, std::string{}, cache);
                 helix::ams::ingest(lane, cache);
+                // The temperatures are the catalog's for the material code.
+                helix::ams::fold_tag_frame_into(
+                    tag_readings_, slot.global_index, stated, cache,
+                    slot.nozzle_temp_min > 0 ? std::optional<int>(slot.nozzle_temp_min)
+                                             : std::nullopt,
+                    slot.nozzle_temp_max > 0 ? std::optional<int>(slot.nozzle_temp_max)
+                                             : std::nullopt);
 
                 // Whether the identity declared on this bay still names
                 // what is in it. The id is new_info's, which is the flat
@@ -1858,6 +1867,15 @@ void AmsBackendCfs::file_box_readings(const AmsSystemInfo& new_info) {
             }
         }
     }
+}
+
+std::optional<helix::ams::TagReading> AmsBackendCfs::tag_reading(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = tag_readings_.find(slot_index);
+    if (it == tag_readings_.end()) {
+        return std::nullopt;
+    }
+    return it->second;
 }
 
 void AmsBackendCfs::apply_box_frame_locked(BoxFrame& f) {

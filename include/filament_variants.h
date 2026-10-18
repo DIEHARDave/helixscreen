@@ -198,3 +198,26 @@ void warm_orca_tables();
 void merge_user_orca_overrides(const std::map<std::string, std::string>& overrides);
 
 } // namespace filament
+
+namespace helix {
+
+/// A filament's surface finish: how its colour should be painted.
+enum class FilamentFinish : unsigned char { None, Silk, Matte, Marble, Sparkle };
+
+/**
+ * @brief The cosmetic finish a filament name announces, if any.
+ *
+ * Reads whole words of @p name ("PLA Silk", "Silk-PLA", "Galaxy Black",
+ * "PLA Matte"), case-insensitively, at the same '-', '_' and ' ' boundaries as
+ * the variant affixes, plus '+', '/', '(' and ')'. Silk also answers to Satin
+ * and Silky; Matte to Matt; Marble to Granite and Stone; Sparkle to Glitter,
+ * Galaxy, Shimmer and Starlight. The first finish word wins. A name that only
+ * contains a finish as a substring ("Silkworm") has none.
+ */
+FilamentFinish filament_finish_of(std::string_view name);
+
+/// The word for @p finish ("Silk", "Matte", "Marble", "Sparkle"; "" for none):
+/// what a finish subject carries, read back by filament_finish_of().
+const char* filament_finish_name(FilamentFinish finish);
+
+} // namespace helix

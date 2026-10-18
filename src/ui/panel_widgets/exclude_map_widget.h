@@ -50,6 +50,8 @@ class ExcludeMapWidget : public PanelWidget {
     ExcludeMapVerdict decide(int width_px, int height_px, ExcludeMapState state, int digits) const;
     void on_objects_changed();
     void publish(const Live& live);
+    /// @p current as the "Now printing" label can draw it; "" for none.
+    std::string current_display_name(const std::string& current) const;
     void sync_map();
 
     PrinterState& printer_state_;

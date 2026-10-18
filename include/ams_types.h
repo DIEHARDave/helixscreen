@@ -4,6 +4,7 @@
 #pragma once
 
 #include "filament_database.h"
+#include "filament_variants.h"
 #include "klipper_extruder_naming.h"
 #include "translation_loader.h"
 
@@ -1151,6 +1152,35 @@ struct SlotInfo {
     }
 
     /**
+     * @brief A key for how a swatch paints this slot beyond its colour: its
+     *        multi-colour list and finish. Equal keys paint alike.
+     */
+    [[nodiscard]] int paint_key() const {
+        uint32_t h = 2166136261u ^ static_cast<uint32_t>(finish());
+        for (char c : multi_color_hexes) {
+            h = (h ^ static_cast<unsigned char>(c)) * 16777619u;
+        }
+        return static_cast<int>(h & 0x7FFFFFFF);
+    }
+
+    /**
+     * @brief The surface finish the filament's names announce (silk, matte, ...)
+     *
+     * The first of material, product name and spool name that names one wins.
+     * Never the colour name: "Stone Grey" is a plain grey, not a marble.
+     * Swatches paint it; see helix::filament_finish_of().
+     */
+    [[nodiscard]] FilamentFinish finish() const {
+        for (const std::string* name : {&material, &product_name, &spool_name}) {
+            const FilamentFinish f = filament_finish_of(*name);
+            if (f != FilamentFinish::None) {
+                return f;
+            }
+        }
+        return FilamentFinish::None;
+    }
+
+    /**
      * @brief Check if filament is present in this slot
      *
      * Two-valued on purpose: a caller drawing a cell or gating an affordance
@@ -1177,15 +1207,17 @@ struct SlotInfo {
     /**
      * @brief Copy the filament fields an edit or an identity sync carries
      *
-     * Colour, material, brand, catalog pick, Spoolman link, weights and
-     * temperatures. Tool mapping, status and indices are the caller's.
+     * Colour (multi-colour included), material, brand, catalog pick, Spoolman
+     * link, weights and temperatures. Tool mapping, status and indices are the
+     * caller's.
      *
      * @return Whether any of them changed
      */
     bool assign_filament_fields(const SlotInfo& other) {
         auto fields = [](auto& s) {
-            return std::tuple_cat(identity_fields(s),
-                                  std::tie(s.nozzle_temp_min, s.nozzle_temp_max, s.bed_temp));
+            return std::tuple_cat(
+                identity_fields(s),
+                std::tie(s.multi_color_hexes, s.nozzle_temp_min, s.nozzle_temp_max, s.bed_temp));
         };
         const bool changed = fields(*this) != fields(other);
         fields(*this) = fields(other);

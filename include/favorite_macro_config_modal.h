@@ -46,7 +46,6 @@ class FavoriteMacroConfigModal : public Modal {
     void persist();
     void populate_macro_list();
     void populate_icon_grid();
-    void populate_color_grid();
     void refresh_highlights();
     void select_macro(const std::string& name);
     void select_icon(const std::string& name);
@@ -71,7 +70,6 @@ class FavoriteMacroConfigModal : public Modal {
 
     lv_obj_t* macro_list_ = nullptr;
     lv_obj_t* icon_grid_ = nullptr;
-    lv_obj_t* color_grid_ = nullptr;
 
     /// Saved-defaults editor opened from the Options tab. Owned here so it is
     /// never shown by an already-destroyed config modal.

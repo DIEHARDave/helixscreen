@@ -377,6 +377,46 @@ AmsError AmsBackendMock::start() {
             }
             emit_event(EVENT_SLOT_CHANGED);
             spdlog::info("[AMS Mock] Applied initial state scenario: grade (all lanes -> PLA-CF)");
+        } else if (scenario == "finishes") {
+            // One lane per swatch finish, and two multi-colour lanes, so every
+            // surface that paints a spool shows each one. The finish comes from
+            // the material or product name, the colour name is only a colour,
+            // and the lanes are unlinked so no Spoolman record renames them.
+            struct FinishLane {
+                const char* material;
+                const char* product;
+                const char* color_name;
+                uint32_t rgb;
+                const char* multi;
+            };
+            static constexpr FinishLane LANES[] = {
+                {"Silk PLA", "Silk PLA", "Gold", 0xD4AF37, ""},
+                {"Silk PLA", "Silk Tri-Colour", "Gold Silver Copper", 0xD4AF37,
+                 "#D4AF37,#C0C0C0,#B87333"},
+                {"PLA", "PLA Marble", "White", 0xE8E4DC, ""},
+                {"PETG", "Galaxy PETG", "Black", 0x1C1C2A, ""},
+                {"PLA Matte", "PLA Matte", "Charcoal", 0x3A3A3A, ""},
+                {"PLA", "PLA Dual-Colour", "Red Blue", 0xE53935, "#E53935,#1E88E5"},
+            };
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                for (int i = 0; i < slots_.slot_count(); ++i) {
+                    auto* entry = slots_.get_mut(i);
+                    if (!entry) {
+                        continue;
+                    }
+                    const FinishLane& lane = LANES[static_cast<size_t>(i) % std::size(LANES)];
+                    entry->info.material = lane.material;
+                    entry->info.product_name = lane.product;
+                    entry->info.color_name = lane.color_name;
+                    entry->info.color_rgb = lane.rgb;
+                    entry->info.multi_color_hexes = lane.multi;
+                    entry->info.spoolman_id = 0;
+                    entry->info.spool_name.clear();
+                }
+            }
+            emit_event(EVENT_SLOT_CHANGED);
+            spdlog::info("[AMS Mock] Applied initial state scenario: finishes");
         } else if (scenario == "feeder") {
             // Lane 3's filament waits at its feeder, short of its toolhead.
             set_slot_at_feeder(2);

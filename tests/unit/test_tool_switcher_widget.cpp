@@ -12,6 +12,7 @@
  */
 
 #include "ui_modal.h"
+#include "ui_swatch.h"
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/print_state_test_drivers.h"
@@ -1369,4 +1370,57 @@ TEST_CASE_METHOD(LVGLUITestFixture, "tool_switcher: the feeder state follows the
     rig.backend = nullptr;
     AmsState::instance().clear_backends();
     CHECK(lv_subject_get_int(open) == 0);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a multi-colour spool paints its split and finish through the "
+                 "swatch painter",
+                 "[tool_switcher][band][swatch]") {
+    ToolChangerRig rig(3);
+    map_heads_to_lanes(3);
+    SlotInfo spool = rig.backend->get_slot_info(1);
+    spool.color_rgb = 0xFF0000;
+    spool.multi_color_hexes = "#FF0000,#00FF00,#0000FF";
+    spool.material = "PLA Silk";
+    REQUIRE(rig.backend->sync_external_identity(1, spool).success());
+    process_lvgl(30);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    resize_content(h, 214, 211);
+    process_lvgl(30);
+    REQUIRE(published_int("tool_switcher_detail") == 1);
+    REQUIRE(published_int("tool_switcher_detail_rows") >= 2);
+
+    // The rail segment's band: its colours split, its finish silk.
+    lv_obj_t* band =
+        lv_obj_find_by_name(named(h, "tool_switcher_seg_1"), "tool_switcher_band_fill");
+    REQUIRE(band != nullptr);
+    CHECK(ui::has_swatch_paint(band));
+    CHECK(ui::swatch_paint_colors(band).size() == 3);
+    CHECK(ui::swatch_paint_finish(band) == ui::SwatchFinish::Silk);
+    // A single-colour head's band paints its one colour, plain.
+    lv_obj_t* plain =
+        lv_obj_find_by_name(named(h, "tool_switcher_seg_0"), "tool_switcher_band_fill");
+    REQUIRE(plain != nullptr);
+    CHECK(ui::has_swatch_paint(plain));
+    CHECK(ui::swatch_paint_colors(plain).empty());
+
+    // Head 0 is mounted, so head 1 is the second detail row: its dot splits too.
+    lv_obj_t* dot = named(h, "tool_switcher_detail_dot_1");
+    REQUIRE(dot != nullptr);
+    lv_obj_t* disc = lv_obj_find_by_name(dot, "color_swatch_disc");
+    REQUIRE(disc != nullptr);
+    CHECK(ui::has_swatch_paint(disc));
+    CHECK(ui::swatch_paint_colors(disc).size() == 3);
+
+    // The face mounting head 1 carries the same split and finish.
+    ToolState::instance().set_ams_topology(helix::test::make_head_topology(3, 1));
+    h.resize(2, 2, 60, 60);
+    process_lvgl(30);
+    REQUIRE(published_int("tool_switcher_mode") == static_cast<int>(ToolSwitcherMode::Single));
+    lv_obj_t* face_band =
+        lv_obj_find_by_name(named(h, "tool_switcher_face"), "tool_switcher_band_fill");
+    REQUIRE(face_band != nullptr);
+    CHECK(ui::swatch_paint_colors(face_band).size() == 3);
+    CHECK(ui::swatch_paint_finish(face_band) == ui::SwatchFinish::Silk);
 }

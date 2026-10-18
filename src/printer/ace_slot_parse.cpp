@@ -40,6 +40,27 @@ SlotStatus slot_status_from_string(const std::string& status_str) {
     return SlotStatus::UNKNOWN;
 }
 
+TagRead read_tag_state(const json& slot_json) {
+    const auto it = slot_json.find("rfid");
+    if (it == slot_json.end()) {
+        return TagRead::Silent;
+    }
+    if (it->is_boolean()) {
+        return it->get<bool>() ? TagRead::Identified : TagRead::Memory;
+    }
+    if (it->is_number_integer()) {
+        switch (it->get<std::int64_t>()) {
+        case 2:
+            return TagRead::Identified;
+        case 1:
+            return TagRead::NoTag;
+        default:
+            return TagRead::InProgress;
+        }
+    }
+    return TagRead::Silent;
+}
+
 std::optional<std::string> read_slot_material(const json& slot_json) {
     auto get_str = [&slot_json](const char* key) -> std::optional<std::string> {
         if (slot_json.is_object() && slot_json.contains(key) && slot_json[key].is_string()) {

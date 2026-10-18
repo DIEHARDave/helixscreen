@@ -15,9 +15,10 @@
     <style name="styles.press_wash" selector="pressed"/>
     <bind_flag_if cond="spool_db_result_count le ${index}" flag="hidden"/>
     <color_swatch index="$index"
-                  color_subject="spool_db_result_color_${index}" edge_subject="spool_db_result_edge_${index}"
-                  callback="on_wizard_catalog_result_selected" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
-                  reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring"/>
+                  color_subject="spool_db_result_color_${index}" colors_subject="spool_db_result_colors_${index}"
+                  finish_subject="spool_db_result_finish_${index}" callback="on_wizard_catalog_result_selected"
+                  size="#swatch_grid_size" hit="#swatch_grid_gap_half" reach="#swatch_grid_ring_reach"
+                  ring="styles.grid_swatch_ring"/>
     <lv_obj height="content"
             flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="0" style_bg_opa="0" style_border_width="0"
             scrollable="false" clickable="false" event_bubble="true">

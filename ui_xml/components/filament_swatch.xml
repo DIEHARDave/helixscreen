@@ -22,8 +22,10 @@
        label ("T31").
 
        C++ (FilamentMappingCard::rebuild_compact_view) owns only the dynamic data:
-         - top_band bg = gcode/palette intended color
-         - bottom_band bg = mapped slot present color (or empty variant)
+         - top_band paint = gcode/palette intended color
+         - bottom_band paint = mapped slot present color, with a multi-colour
+           spool's split and the filament's finish (or the empty variant)
+         Both bands paint through the swatch painter (helix::ui::apply_swatch_color)
          - material_label or tool_label text + contrast color (against top band bg)
          - slot_label text + contrast color (against bottom band bg)
          - divider bg color (contrast against a blend of both bands)

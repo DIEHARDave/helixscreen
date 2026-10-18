@@ -147,6 +147,11 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// A bay's last identified tag read (rfid true, or 2): material, colour and
+    /// the temperatures the frame carried. Dropped when the bay empties or a
+    /// finished read finds no tag.
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
     void persist_external_identity_impl(int slot_index,
@@ -277,6 +282,29 @@ class AmsBackendAce : public AmsSubscriptionBackend {
 
   private:
     friend class AceTestAccess;
+
+    /// Keep or drop bay @p slot_index's tag reading from one frame's slot entry:
+    /// its decoded @p tag_read, the frame's @p material and @p color, its
+    /// temp_min / temp_max, and @p present. Caller holds mutex_.
+    void note_tag_frame_locked(int slot_index, helix::ace::TagRead tag_read,
+                               const nlohmann::json& slot_json,
+                               const std::optional<std::string>& material,
+                               const std::optional<uint32_t>& color, std::optional<bool> present);
+
+    /// Lay the REST bridge's temp_min / temp_max onto @p slot, unless a user
+    /// edit moved the slot's temperatures this session. Caller holds mutex_.
+    void apply_hub_temps_locked(int slot_index, SlotInfo& slot,
+                                const nlohmann::json& slot_json) const;
+
+    /// Clear user_temps_ for @p slot_index. Caller holds mutex_.
+    void forget_user_temps_locked(int slot_index);
+
+    /// Per bay, whether a user edit this session set the temperatures; cleared
+    /// with the override and at on_started(). Under mutex_.
+    std::vector<bool> user_temps_;
+
+    /// Per bay, the last identified tag read. Under mutex_.
+    std::vector<std::optional<helix::ams::TagReading>> tag_readings_;
 
     // ========================================================================
     // REST Fallback (for BunnyACE/DuckACE without get_status())

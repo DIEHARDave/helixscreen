@@ -39,9 +39,9 @@
          published as theme_swatch_color_<i>; the fixed count matches it. -->
     <repeat count="30">
       <color_swatch index="${i}"
-                    color_subject="theme_swatch_color_${i}" edge_subject="theme_swatch_edge_${i}"
-                    selected_subject="$selected_subject" callback="$swatch_callback" size="$swatch_size" hit="$gap_half"
-                    reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring"/>
+                    color_subject="theme_swatch_color_${i}" selected_subject="$selected_subject"
+                    callback="$swatch_callback" size="$swatch_size" hit="$gap_half" reach="#swatch_grid_ring_reach"
+                    ring="styles.grid_swatch_ring"/>
     </repeat>
   </view>
 </component>

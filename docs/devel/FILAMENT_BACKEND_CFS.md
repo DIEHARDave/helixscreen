@@ -143,6 +143,16 @@ Every slot-index bound therefore goes through `slot_index_ceiling()`
 bay, so its bound stays the TNN alphabet even after the unit count is known - a slicer or
 Creality's own UI can hold a high key while fewer units are attached.
 
+**Tag reading.** The stock `material_type`/`color_value` arrays are latched RFID data,
+so the bay's box record is its tag reading: material, brand and the catalog's nozzle
+range for the code, colour; on the flat schema `material`, `brand`, `name` (the product)
+and `color`, with the per-material temperature. A user edit is written back into that
+same record, so the reading is folded frame by frame (`helix::ams::fold_tag_frame`): a
+field the own-write echo guard withholds keeps the tag's value. After a restart the box
+holds the user's values and they become the reading, and a value set on the printer's
+screen cannot be told from a tag read
+(`src/printer/ams_backend_cfs.cpp#file_box_readings`, `src/printer/ams_tag_reading.cpp#fold_tag_frame_into`).
+
 ### Endless spool (auto-refill)
 
 CFS reports `Available` + `ReadOnly` + `FirmwareManaged`, with `enabled` derived from

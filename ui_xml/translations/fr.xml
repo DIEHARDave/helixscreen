@@ -1090,6 +1090,7 @@
   <translation tag="Exclude Object?" fr="Exclure l&apos;objet ?"/>
   <translation tag="Exclude Objects" fr="Exclure des objets"/>
   <translation tag="Excluded" fr="Exclu"/>
+  <translation tag="Excluding &quot;{}&quot;..." fr="Exclusion de « {} »..."/>
   <translation tag="Exclusion cancelled" fr="Exclusion annulée"/>
   <translation tag="Execute printer macros" fr="Exécuter les macros de l&apos;imprimante"/>
   <translation tag="Exhaust Fan" fr="Ventilateur d&apos;extraction"/>
@@ -2152,8 +2153,10 @@
   <translation tag="ON: {} | OFF: {}" fr="MARCHE : {} | ARRÊT : {}"/>
   <translation tag="OS" fr="OS"/>
   <translation tag="OS: " fr="OS : "/>
+  <translation tag="Object" fr="Objet"/>
   <translation tag="Object picks apply only to prints started now" fr="La sélection d&apos;objets ne s&apos;applique qu&apos;aux impressions lancées maintenant"/>
   <translation tag="Object positions unavailable" fr="Positions des objets indisponibles"/>
+  <translation tag="Object {}" fr="Objet {}"/>
   <translation tag="Objects" fr="Objets"/>
   <translation tag="Objects in the print, with a tap to open the skip map" fr="Objets de l&apos;impression, un toucher ouvre la carte d&apos;exclusion"/>
   <translation tag="Off" fr="Éteint"/>

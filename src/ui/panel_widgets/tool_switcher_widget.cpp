@@ -63,6 +63,10 @@ lv_subject_t s_face_sub_subject{};
 char s_face_sub_buf[16] = {};
 lv_subject_t s_face_color_subject{};
 lv_subject_t s_face_has_color_subject{};
+lv_subject_t s_face_colors_subject{};
+char s_face_colors_buf[96] = {};
+lv_subject_t s_face_finish_subject{};
+char s_face_finish_buf[160] = {};
 lv_subject_t s_face_material_subject{};
 char s_face_material_buf[24] = {};
 lv_subject_t s_face_band_text_subject{};
@@ -102,6 +106,11 @@ IndexedSubjectPool s_seg_sub{"tool_switcher_seg", IndexedSubjectPool::Type::Stri
 IndexedSubjectPool s_seg_color{"tool_switcher_seg", IndexedSubjectPool::Type::Color, 0, "_color"};
 IndexedSubjectPool s_seg_has_color{"tool_switcher_seg", IndexedSubjectPool::Type::Int, 0,
                                    "_has_color"};
+// A multi-colour spool's colours (CSV) and the names its finish is read from, for the band.
+IndexedSubjectPool s_seg_colors{"tool_switcher_seg", IndexedSubjectPool::Type::String, 96,
+                                "_colors"};
+IndexedSubjectPool s_seg_finish{"tool_switcher_seg", IndexedSubjectPool::Type::String, 160,
+                                "_finish"};
 // The head's temperature whatever the label form, for its picker cell.
 IndexedSubjectPool s_seg_temp{"tool_switcher_seg", IndexedSubjectPool::Type::String, 16, "_temp"};
 // The head's label and second line in its picker cell, in the form the
@@ -123,13 +132,16 @@ IndexedSubjectPool s_detail_color{"tool_switcher_detail", IndexedSubjectPool::Ty
                                   "_color"};
 IndexedSubjectPool s_detail_has_color{"tool_switcher_detail", IndexedSubjectPool::Type::Int, 0,
                                       "_has_color"};
+IndexedSubjectPool s_detail_colors{"tool_switcher_detail", IndexedSubjectPool::Type::String, 96,
+                                   "_colors"};
 IndexedSubjectPool s_detail_hot{"tool_switcher_detail", IndexedSubjectPool::Type::Int, 0, "_hot"};
 IndexedSubjectPool s_detail_main{"tool_switcher_detail", IndexedSubjectPool::Type::Int, 0, "_main"};
 
 IndexedSubjectPool* const s_pools[] = {
-    &s_seg_label,   &s_seg_sub,      &s_seg_color,        &s_seg_has_color, &s_seg_temp,
-    &s_seg_pick,    &s_seg_pick_sub, &s_seg_state,        &s_seg_material,  &s_seg_band_text,
-    &s_detail_text, &s_detail_color, &s_detail_has_color, &s_detail_hot,    &s_detail_main};
+    &s_seg_label,     &s_seg_sub,       &s_seg_color,   &s_seg_has_color, &s_seg_colors,
+    &s_seg_finish,    &s_seg_temp,      &s_seg_pick,    &s_seg_pick_sub,  &s_seg_state,
+    &s_seg_material,  &s_seg_band_text, &s_detail_text, &s_detail_color,  &s_detail_has_color,
+    &s_detail_colors, &s_detail_hot,    &s_detail_main};
 
 void tool_switcher_widget_init_subjects() {
     s_subjects.ensure_init(
@@ -184,6 +196,12 @@ void tool_switcher_widget_init_subjects() {
             s_subjects.publish("tool_switcher_face_color", &s_face_color_subject);
             lv_subject_init_int(&s_face_has_color_subject, 0);
             s_subjects.publish("tool_switcher_face_has_color", &s_face_has_color_subject);
+            lv_subject_init_string(&s_face_colors_subject, s_face_colors_buf, nullptr,
+                                   sizeof(s_face_colors_buf), "");
+            s_subjects.publish("tool_switcher_face_colors", &s_face_colors_subject);
+            lv_subject_init_string(&s_face_finish_subject, s_face_finish_buf, nullptr,
+                                   sizeof(s_face_finish_buf), "");
+            s_subjects.publish("tool_switcher_face_finish", &s_face_finish_subject);
             lv_subject_init_string(&s_face_material_subject, s_face_material_buf, nullptr,
                                    sizeof(s_face_material_buf), "");
             s_subjects.publish("tool_switcher_face_material", &s_face_material_subject);
@@ -260,6 +278,8 @@ constexpr int kUnrailableHeads = 1 << 20;
 struct HeadFilament {
     bool has_color = false;
     uint32_t color_rgb = 0;
+    std::string colors; ///< SlotInfo::multi_color_hexes
+    std::string finish; ///< the finish by name, for the band (filament_finish_name)
     std::string material;
 };
 
@@ -278,6 +298,8 @@ HeadFilament head_filament(const helix::ToolInfo& tool) {
         return out;
     out.has_color = slot.color_rgb != helix::AMS_DEFAULT_SLOT_COLOR;
     out.color_rgb = slot.color_rgb;
+    out.colors = slot.multi_color_hexes;
+    out.finish = filament_finish_name(slot.finish());
     out.material = slot.material;
     return out;
 }
@@ -721,6 +743,8 @@ void ToolSwitcherWidget::publish_heads() {
             set_color_if_changed(s_seg_color.at(i), filament[i].color_rgb);
             set_color_if_changed(s_seg_band_text.at(i), band_text_rgb(filament[i].color_rgb));
         }
+        ui::copy_string_if_changed(s_seg_colors.at(i), filament[i].colors.c_str());
+        ui::copy_string_if_changed(s_seg_finish.at(i), filament[i].finish.c_str());
         ui::copy_string_if_changed(s_seg_material.at(i), filament[i].material.c_str());
         set_int_if_changed(s_seg_state.at(i),
                            static_cast<int>(tool_switcher_cell_state(i, active, fault)));
@@ -755,6 +779,8 @@ void ToolSwitcherWidget::publish_heads() {
         if (has_color) {
             set_color_if_changed(s_detail_color.at(r), filament[i].color_rgb);
         }
+        ui::copy_string_if_changed(s_detail_colors.at(r),
+                                   has_color ? filament[i].colors.c_str() : "");
     }
 
     int fit = 0;
@@ -796,6 +822,8 @@ void ToolSwitcherWidget::publish_heads() {
         set_color_if_changed(&s_face_color_subject, face_filament.color_rgb);
         set_color_if_changed(&s_face_band_text_subject, band_text_rgb(face_filament.color_rgb));
     }
+    ui::copy_string_if_changed(&s_face_colors_subject, face_filament.colors.c_str());
+    ui::copy_string_if_changed(&s_face_finish_subject, face_filament.finish.c_str());
     ui::copy_string_if_changed(&s_face_material_subject, face_filament.material.c_str());
 
     publish_two_line();

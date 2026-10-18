@@ -1162,6 +1162,7 @@ translations:
   Exclude Object?: Exclude Object?
   Exclude Objects: Exclude Objects
   Excluded: Excluded
+  Excluding "{}"...: Excluding "{}"...
   Exclusion cancelled: Exclusion cancelled
   Execute printer macros: Execute printer macros
   Exhaust Fan: Exhaust Fan
@@ -2305,8 +2306,10 @@ translations:
   'ON: {} | OFF: {}': 'ON: {} | OFF: {}'
   OS: OS
   'OS: ': 'OS: '
+  Object: Object
   Object picks apply only to prints started now: Object picks apply only to prints started now
   Object positions unavailable: Object positions unavailable
+  Object {}: Object {}
   Objects: Objects
   Objects in the print, with a tap to open the skip map: Objects in the print, with a tap to open the skip map
   'Off': 'Off'

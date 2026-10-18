@@ -1329,6 +1329,38 @@ class AmsState {
     }
 
     /**
+     * @brief The loaded filament's multi-colour list (CSV, SlotInfo::multi_color_hexes)
+     *
+     * Written before current_color, so a current_color observer reads the matching list.
+     */
+    lv_subject_t* get_current_colors_subject() {
+        return &current_colors_;
+    }
+
+    /**
+     * @brief The loaded filament's finish, by name (filament_finish_name(SlotInfo::finish()))
+     *
+     * Written before current_color, so a current_color observer reads the matching finish.
+     */
+    lv_subject_t* get_current_finish_subject() {
+        return &current_finish_;
+    }
+
+    /// The loaded filament as a swatch paints it, read from the three subjects
+    /// above. Main thread only.
+    struct LoadedPaint {
+        uint32_t rgb = 0;
+        std::string multi_color_hexes;
+        FilamentFinish finish = FilamentFinish::None;
+    };
+    [[nodiscard]] LoadedPaint current_paint() {
+        const char* colors = lv_subject_get_string(&current_colors_);
+        const char* finish = lv_subject_get_string(&current_finish_);
+        return {static_cast<uint32_t>(lv_subject_get_int(&current_color_)) & 0xFFFFFF,
+                colors ? colors : "", filament_finish_of(finish ? finish : "")};
+    }
+
+    /**
      * @brief Get current fill percent subject
      * @return Subject holding the loaded spool's fill in the
      *         SlotInfo::display_fill_pct() encoding (0-100, -1 = no data)
@@ -1563,6 +1595,16 @@ class AmsState {
      */
     [[nodiscard]] lv_subject_t* get_slot_fill_subject(int backend_index, int slot_index,
                                                       SubjectLifetime& lifetime);
+
+    /**
+     * @brief Per-slot paint key: changes whenever the slot's multi-colour list
+     *        or finish does, so a swatch observing it beside the colour subject
+     *        repaints when only those change (SlotInfo::paint_key()).
+     *
+     * Same token rule as get_slot_color_subject(int, int, SubjectLifetime&).
+     */
+    [[nodiscard]] lv_subject_t* get_slot_paint_subject(int backend_index, int slot_index,
+                                                       SubjectLifetime& lifetime);
 
     // ========================================================================
     // Per-Slot LIVE State Subject Accessors
@@ -2021,6 +2063,11 @@ class AmsState {
     /** @brief Set "Currently Loaded" subjects to default/empty state with guards */
     void set_current_loaded_defaults(bool write_header = true);
 
+    /// Publish the loaded filament's swatch: its colours and finish name
+    /// first, then its colour, whose observers repaint from all three.
+    void set_current_paint(uint32_t rgb, const std::string& multi_color_hexes = "",
+                           const std::string& finish_name = "");
+
     /** @brief Sync clog detection meter subjects from system info */
     void sync_clog_meter_from_info(const AmsSystemInfo& info);
 
@@ -2127,6 +2174,7 @@ class AmsState {
         std::vector<lv_subject_t> lane_states; // int: helix::ui::LaneState
         std::vector<lv_subject_t> has_errors;
         std::vector<lv_subject_t> severities; // int: SlotError::Severity
+        std::vector<lv_subject_t> paints;     // int: SlotInfo::paint_key()
         /// Material strings need storage the subject points into; same size as
         /// slot_materials_buf_ ("PETG-CF" etc. fits comfortably).
         static constexpr int MATERIAL_BUF_SIZE = 24;
@@ -2441,6 +2489,10 @@ class AmsState {
     char current_weight_text_buf_[32];
     lv_subject_t current_has_weight_{};
     lv_subject_t current_color_{};
+    lv_subject_t current_colors_{};
+    char current_colors_buf_[128];
+    lv_subject_t current_finish_{};
+    char current_finish_buf_[16];
     lv_subject_t current_fill_pct_{};
 
     // Per-slot subjects (color, status, remaining filament)
@@ -2453,8 +2505,9 @@ class AmsState {
     char slot_materials_buf_[MAX_SLOTS][24]; // buffers for material strings (holds "PETG-CF" etc.)
     lv_subject_t slot_names_[MAX_SLOTS]{};   // string: slot card spool name, or ""
     char slot_names_buf_[MAX_SLOTS][SLOT_NAME_BUF_SIZE];
-    lv_subject_t slot_fills_[MAX_SLOTS]{}; // int: fill percent 0-100, -1 = unknown/no-data
-                                           // (SlotInfo::display_fill_pct encoding)
+    lv_subject_t slot_fills_[MAX_SLOTS]{};  // int: fill percent 0-100, -1 = unknown/no-data
+                                            // (SlotInfo::display_fill_pct encoding)
+    lv_subject_t slot_paints_[MAX_SLOTS]{}; // int: SlotInfo::paint_key()
 
     // Per-slot LIVE state subjects — the panel observes these to redraw the path
     // and active-lane highlight in real time as Moonraker sensor data arrives.

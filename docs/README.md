@@ -53,6 +53,7 @@ Welcome to the HelixScreen documentation. Choose your path:
 | [**Moonraker Architecture**](devel/MOONRAKER_ARCHITECTURE.md) | Moonraker integration details |
 | [**RPC Error Ownership**](devel/RPC_ERROR_OWNERSHIP.md) | Which surface reports a failed JSON-RPC call — caller UI, generic fallback, or the `!!` router |
 | [**Theme System**](devel/THEME_SYSTEM.md) | Reactive theming, color tokens, responsive sizing |
+| [**Colour Swatches**](devel/COLOR_SWATCHES.md) | The one swatch painter: shape, edge, selection, multi-colour split, filament finishes |
 | [**Theme Contributor Guide**](devel/THEME_CONTRIBUTOR_GUIDE.md) | For people creating themes — JSON schema, palette design, no C++ needed |
 | [**Layout System**](devel/LAYOUT_SYSTEM.md) | Alternative layouts, auto-detection, CLI override, home widget grid |
 | [**Home Edit Mode**](devel/HOME_EDIT_MODE.md) | Rearranging the home grid: grab and click rules, gesture end, cross-page drag, page lifecycle |

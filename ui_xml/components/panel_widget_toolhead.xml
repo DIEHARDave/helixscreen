@@ -85,6 +85,7 @@
                      event_bubble="true">
             <bind_style_if_eq name="th_font_xs" subject="toolhead_rung" ref_value="2"/>
           </text_body>
+          <!-- SWATCH_OK: a homing-state dot, not a colour swatch -->
           <lv_obj name="toolhead_row_x_dot"
                   width="#space_sm" height="#space_sm" style_radius="9999" style_bg_opa="255" style_border_width="0"
                   scrollable="false" clickable="false" event_bubble="true">
@@ -104,6 +105,7 @@
                      event_bubble="true">
             <bind_style_if_eq name="th_font_xs" subject="toolhead_rung" ref_value="2"/>
           </text_body>
+          <!-- SWATCH_OK: a homing-state dot, not a colour swatch -->
           <lv_obj name="toolhead_row_y_dot"
                   width="#space_sm" height="#space_sm" style_radius="9999" style_bg_opa="255" style_border_width="0"
                   scrollable="false" clickable="false" event_bubble="true">
@@ -123,6 +125,7 @@
                      event_bubble="true">
             <bind_style_if_eq name="th_font_xs" subject="toolhead_rung" ref_value="2"/>
           </text_body>
+          <!-- SWATCH_OK: a homing-state dot, not a colour swatch -->
           <lv_obj name="toolhead_row_z_dot"
                   width="#space_sm" height="#space_sm" style_radius="9999" style_bg_opa="255" style_border_width="0"
                   scrollable="false" clickable="false" event_bubble="true">
