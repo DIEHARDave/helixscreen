@@ -745,4 +745,29 @@ TEST_CASE("an entry's <close> handler that raises or loops is contained",
     }
 }
 
+TEST_CASE("sandbox refuses __gc finalizers", "[plugin][lua_runtime]") {
+    TestRuntime t;
+    REQUIRE(t.run(R"(
+        ok, err = pcall(setmetatable, {}, {__gc = function() while true do end end})
+        plain = getmetatable(setmetatable({}, {__index = {a = 1}})) ~= nil
+    )"));
+    CHECK(t.global("ok") == "false");
+    CHECK(t.global("err").find("__gc is not available to plugins") != std::string::npos);
+    CHECK(t.global("plain") == "true");
+}
+
+TEST_CASE("a __gc added after setmetatable never runs", "[plugin][lua_runtime]") {
+    // Lua 5.4 marks an object for finalization only when setmetatable sees __gc.
+    TestRuntime t;
+    REQUIRE(t.run(R"(
+        local mt = {}
+        local obj = setmetatable({}, mt)
+        mt.__gc = function() ran = true end
+        obj = nil
+        collectgarbage()
+        collectgarbage()
+    )"));
+    CHECK(t.global("ran") == "nil");
+}
+
 #endif // HELIX_HAS_PLUGINS

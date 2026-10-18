@@ -46,6 +46,16 @@ _G.collectgarbage = function(opt, ...)
     end
     return collect(opt, ...)
 end
+-- Finalizers run with hooks off, so a __gc that loops would hang the UI thread past any
+-- budget, and one armed in a menu check would act later, outside check mode. Lua marks
+-- an object for finalization only here, so refusing __gc at setmetatable is enough.
+local set_mt, raw_get = setmetatable, rawget
+_G.setmetatable = function(t, mt)
+    if type(mt) == "table" and raw_get(mt, "__gc") ~= nil then
+        error("__gc is not available to plugins", 2)
+    end
+    return set_mt(t, mt)
+end
 -- An empty result returns at once: stock rep loops n times building nothing, with no
 -- allocation for the memory cap to refuse and no instruction for the time budget to see.
 -- Any non-empty result is sized up front, so the memory cap bounds it.

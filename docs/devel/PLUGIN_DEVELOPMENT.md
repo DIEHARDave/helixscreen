@@ -728,6 +728,7 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Memory per plugin | the manifest's `memory_mb` (1-64, default 2) | `src/plugin/plugin_host.cpp#load` |
 | Memory, all plugins | min(RAM / 16, 64 MB); a plugin that does not fit stays *over memory budget* | `src/plugin/plugin_host.cpp#plugin_memory_budget` |
 | Errors | the third within 60 s faults the plugin | `src/plugin/lua_runtime.cpp#report_error` |
+| Finalizers | `__gc` is not available to plugins: `setmetatable` raises on a metatable carrying it, since a finalizer runs outside every time budget | `src/plugin/lua_runtime.cpp#install_sandbox` |
 | Async results | a body that would cross the memory cap arrives as an error, not a fault | `include/lua_bindings.h#push_rpc_capped_body` |
 | Canvases per plugin | no fixed number: each canvas's entry, name and lists count against `memory_mb` with the Lua heap | `src/plugin/lua_bind_canvas.cpp#charge` |
 | Canvas list units | 4096 per list; a polyline counts each point, its area fill none | `include/plugin_canvas.h#kMaxCanvasUnits` |
