@@ -42,11 +42,13 @@ TEST_CASE_METHOD(LVGLUITestFixture, "color_swatch_grid: a tap reports the tapped
             static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "color_swatch_grid", attrs));
         REQUIRE(grid != nullptr);
         const auto& expected = helix::ui::swatch_palette(palette);
-        REQUIRE(lv_obj_get_child_count(grid) == expected.size());
+        // The palette follows the grid's hidden custom-colour lead tile.
+        REQUIRE(lv_obj_get_child_count(grid) == expected.size() + 1);
+        CHECK(lv_obj_has_flag(lv_obj_get_child(grid, 0), LV_OBJ_FLAG_HIDDEN));
 
         g_tapped.clear();
         for (uint32_t i = 0; i < expected.size(); ++i) {
-            lv_obj_send_event(lv_obj_get_child(grid, static_cast<int32_t>(i)), LV_EVENT_CLICKED,
+            lv_obj_send_event(lv_obj_get_child(grid, static_cast<int32_t>(i + 1)), LV_EVENT_CLICKED,
                               nullptr);
         }
         CHECK(g_tapped == expected);

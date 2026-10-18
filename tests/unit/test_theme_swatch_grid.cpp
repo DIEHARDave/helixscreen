@@ -36,6 +36,9 @@ constexpr int COLS = 6;
 constexpr int SURFACE_COUNT = 12;
 constexpr int ACCENT_COUNT = 18;
 constexpr int TOTAL = SURFACE_COUNT + ACCENT_COUNT;
+// The grid's first child is its custom-colour lead tile, hidden unless a host
+// asks for it; the palette swatches follow it.
+constexpr int LEAD = 1;
 
 /// Hue in degrees [0,360). Undefined (returns -1) for near-neutral colors.
 double hue_of(uint32_t rgb) {
@@ -74,7 +77,7 @@ std::vector<uint32_t> swatch_colors(lv_obj_t* grid) {
     std::vector<uint32_t> out;
     const uint32_t n = lv_obj_get_child_count(grid);
     out.reserve(n);
-    for (uint32_t i = 0; i < n; i++) {
+    for (uint32_t i = LEAD; i < n; i++) {
         lv_obj_t* child = lv_obj_get_child(grid, static_cast<int32_t>(i));
         lv_color_t bg = helix::ui::swatch_color_of(child);
         out.push_back(lv_color_to_u32(bg) & 0xFFFFFF);
@@ -109,14 +112,15 @@ TEST_CASE_METHOD(GridFixture,
                  "color_swatch_grid theme palette: exposes exactly 30 swatches in 6 columns",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
-    REQUIRE(lv_obj_get_child_count(grid) == TOTAL);
+    REQUIRE(lv_obj_get_child_count(grid) == TOTAL + LEAD);
+    CHECK(lv_obj_has_flag(lv_obj_get_child(grid, 0), LV_OBJ_FLAG_HIDDEN));
     REQUIRE(TOTAL % COLS == 0);
 }
 
 TEST_CASE_METHOD(GridFixture, "color_swatch_grid theme palette: every swatch is clickable",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
-    for (uint32_t i = 0; i < lv_obj_get_child_count(grid); i++) {
+    for (uint32_t i = LEAD; i < lv_obj_get_child_count(grid); i++) {
         lv_obj_t* child = lv_obj_get_child(grid, static_cast<int32_t>(i));
         INFO("swatch index " << i);
         REQUIRE(lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE));
@@ -237,8 +241,8 @@ struct PaletteSwitchFixture : public LVGLTestFixture {
         REQUIRE(host != nullptr);
         REQUIRE(lv_obj_get_child_count(host) == 1); // exactly one grid, never both
         lv_obj_t* grid = lv_obj_get_child(host, 0);
-        REQUIRE(lv_obj_get_child_count(grid) == TOTAL);
-        lv_color_t bg = helix::ui::swatch_color_of(lv_obj_get_child(grid, 0));
+        REQUIRE(lv_obj_get_child_count(grid) == TOTAL + LEAD);
+        lv_color_t bg = helix::ui::swatch_color_of(lv_obj_get_child(grid, LEAD));
         return lv_color_to_u32(bg) & 0xFFFFFF;
     }
 };

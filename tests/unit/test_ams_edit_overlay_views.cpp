@@ -3098,14 +3098,78 @@ TEST_CASE_METHOD(LVGLUITestFixture, "colour swatches keep a 7mm pitch on every c
     theme_manager_refresh_layout_constants(disp);
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture, "the custom-colour picker never covers the preset grid",
+TEST_CASE("color_panes_fit shows both panes only where one form fits the view",
+          "[ams_edit_overlay][color]") {
+    // Pane sizes and content boxes measured from the colour view at each class.
+    // 800x480: side by side, 252 + 20 + 302 = 574 of 672 wide, 235 of 372 tall.
+    CHECK(AmsEditOverlay::color_panes_fit(672, 372, 252, 235, 302, 209, 20));
+    // 480x320: 258 + 8 + 262 = 528 > 398 wide; stacked 229 + 8 + 175 = 412 > 259.
+    CHECK_FALSE(AmsEditOverlay::color_panes_fit(398, 259, 258, 229, 262, 175, 8));
+    // 480x272: 474 > 410 wide; stacked 355 > 204.
+    CHECK_FALSE(AmsEditOverlay::color_panes_fit(410, 204, 246, 219, 220, 128, 8));
+    // 320x480: 556 > 292 wide; stacked 443 > 326.
+    CHECK_FALSE(AmsEditOverlay::color_panes_fit(292, 326, 258, 229, 290, 206, 8));
+    // 600x1024 portrait: too narrow side by side (640 > 536), stacked 536 of 752.
+    CHECK(AmsEditOverlay::color_panes_fit(536, 752, 252, 238, 364, 274, 24));
+    // Exactly full fits; one pixel over does not.
+    CHECK(AmsEditOverlay::color_panes_fit(100, 50, 45, 50, 45, 50, 10));
+    CHECK_FALSE(AmsEditOverlay::color_panes_fit(99, 50, 45, 50, 45, 50, 10));
+    CHECK(AmsEditOverlay::color_panes_fit(50, 110, 50, 50, 50, 50, 10));
+    CHECK_FALSE(AmsEditOverlay::color_panes_fit(50, 109, 50, 50, 50, 50, 10));
+    // Side by side needs the height as well as the width.
+    CHECK_FALSE(AmsEditOverlay::color_panes_fit(500, 60, 100, 61, 100, 40, 10));
+}
+
+namespace {
+bool shown(lv_obj_t* obj) {
+    return obj && !lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN);
+}
+int color_subject(const char* name) {
+    lv_subject_t* s = lv_xml_get_subject(nullptr, name);
+    REQUIRE(s != nullptr);
+    return lv_subject_get_int(s);
+}
+/// Nothing in the colour view scrolls, and every shown swatch of the grid
+/// lies inside the overlay's content area.
+void check_color_view_static(AmsEditOverlayViewTestAccess& access) {
+    lv_obj_t* content = access.widget("overlay_content");
+    lv_obj_t* view = access.widget("color_view");
+    REQUIRE(content != nullptr);
+    REQUIRE(view != nullptr);
+    lv_obj_update_layout(content);
+    CHECK(lv_obj_get_scroll_bottom(content) <= 0);
+    CHECK(lv_obj_get_scroll_bottom(view) <= 0);
+    CHECK(lv_obj_get_scroll_right(view) <= 0);
+    lv_area_t area;
+    lv_obj_get_coords(content, &area);
+    lv_obj_t* grid = access.widget("color_swatch_grid");
+    if (!shown(grid) || !shown(access.widget("color_presets"))) {
+        return;
+    }
+    for (uint32_t i = 0; i < lv_obj_get_child_count(grid); ++i) {
+        lv_obj_t* tile = lv_obj_get_child(grid, static_cast<int32_t>(i));
+        if (!shown(tile)) {
+            continue;
+        }
+        lv_area_t t;
+        lv_obj_get_coords(tile, &t);
+        CAPTURE(i, t.x1, t.y1, t.x2, t.y2, area.x1, area.y1, area.x2, area.y2);
+        CHECK(area_within(t, area));
+    }
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "the colour view shows presets and picker together only where both fit",
                  "[ams_edit_overlay][color][touch]") {
     struct Size {
         int32_t w;
         int32_t h;
+        bool together;
     };
     lv_display_t* disp = lv_display_get_default();
-    for (const Size sz : {Size{800, 480}, Size{480, 320}, Size{480, 272}, Size{320, 480}}) {
+    for (const Size sz : {Size{800, 480, true}, Size{480, 320, false}, Size{480, 272, false},
+                          Size{320, 480, false}}) {
         CAPTURE(sz.w, sz.h);
         {
             ScopedResolution res(disp, sz.w, sz.h);
@@ -3115,26 +3179,55 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the custom-colour picker never covers the p
             REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
             UpdateQueue::instance().drain();
             process_lvgl(10);
+            const int ring = color_subject("ams_edit_color_selected");
             access.call_open_color_view();
             process_lvgl(10);
+            const std::string hex = access.field_text("ams_color_hex_input");
 
-            lv_obj_t* grid = access.widget("color_swatch_grid");
+            CHECK(color_subject("ams_edit_color_fits") == (sz.together ? 1 : 0));
+            lv_obj_t* presets = access.widget("color_presets");
             lv_obj_t* custom = access.widget("color_custom");
-            REQUIRE(grid != nullptr);
+            REQUIRE(presets != nullptr);
             REQUIRE(custom != nullptr);
-            lv_obj_update_layout(grid);
-            lv_area_t g;
-            lv_area_t c;
-            lv_obj_get_coords(grid, &g);
-            lv_obj_get_coords(custom, &c);
-            CAPTURE(g.x1, g.y1, g.x2, g.y2, c.x1, c.y1, c.x2, c.y2);
-            CHECK_FALSE(areas_overlap(g, c));
-            // Every swatch is inside the grid's box, so none hides under the picker.
-            for (uint32_t i = 0; i < lv_obj_get_child_count(grid); ++i) {
-                lv_area_t t;
-                lv_obj_get_coords(lv_obj_get_child(grid, static_cast<int32_t>(i)), &t);
-                CHECK_FALSE(areas_overlap(t, c));
+            check_color_view_static(access);
+
+            if (sz.together) {
+                // Both panes, apart, and no pane switch on offer.
+                CHECK(shown(presets));
+                CHECK(shown(custom));
+                CHECK_FALSE(shown(access.widget("btn_custom_color_lead")));
+                CHECK_FALSE(shown(access.widget("btn_color_presets")));
+                lv_area_t p;
+                lv_area_t c;
+                lv_obj_get_coords(presets, &p);
+                lv_obj_get_coords(custom, &c);
+                CAPTURE(p.x1, p.y1, p.x2, p.y2, c.x1, c.y1, c.x2, c.y2);
+                CHECK_FALSE(areas_overlap(p, c));
+            } else {
+                // The presets alone, led by the custom swatch.
+                CHECK(shown(presets));
+                CHECK_FALSE(shown(custom));
+                REQUIRE(shown(access.widget("btn_custom_color_lead")));
+
+                access.click("btn_custom_color_lead");
+                process_lvgl(10);
+                CHECK_FALSE(shown(presets));
+                CHECK(shown(custom));
+                CHECK(shown(access.widget("btn_color_presets")));
+                check_color_view_static(access);
+                // The custom colour and the editor's ring ride through the swap.
+                CHECK(access.field_text("ams_color_hex_input") == hex);
+                CHECK(color_subject("ams_edit_color_selected") == ring);
+
+                access.click("btn_color_presets");
+                process_lvgl(10);
+                CHECK(shown(presets));
+                CHECK_FALSE(shown(custom));
+                check_color_view_static(access);
+                CHECK(access.field_text("ams_color_hex_input") == hex);
+                CHECK(color_subject("ams_edit_color_selected") == ring);
             }
+            CHECK(access.view() == AmsEditOverlay::VIEW_COLOR);
             close_editor_overlay();
         }
         theme_manager_refresh_layout_constants(disp);

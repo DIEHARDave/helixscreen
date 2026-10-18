@@ -94,6 +94,13 @@
     <px name="ams_edit_hdr_gap_medium" value="4"/>
     <px name="ams_edit_hdr_gap_large" value="4"/>
   </consts>
+  <styles>
+    <!-- The colour view's presets pane: content-wide beside the picker, the
+         view's full width alone. Both are bound styles, since an inline width
+         would outrank either. -->
+    <style name="color_pane_fit" width="content"/>
+    <style name="color_pane_fill" width="100%"/>
+  </styles>
   <view name="ams_edit_overlay"
         extends="overlay_panel" title="Edit Spool" title_subject="ams_edit_title" hide_action_button="false"
         action_button_text="Save" action_button_callback="ams_edit_save_cb"
@@ -512,14 +519,15 @@
       </lv_obj>
 
       <!-- ============================================================ -->
-      <!-- COLOR VIEW (ams_edit_view=2): one screen — preset grid AND   -->
-      <!-- custom HSV side by side. A preset tap applies immediately;   -->
-      <!-- HSV/hex + Select applies a custom color. Returns to the      -->
-      <!-- editor view (its sole entry point).                          -->
+      <!-- COLOR VIEW (ams_edit_view=2): preset grid and custom HSV.    -->
+      <!-- A preset tap applies immediately; HSV/hex + Select applies a -->
+      <!-- custom color. Returns to the editor view (its sole entry).   -->
       <!-- ============================================================ -->
-      <!-- The presets and the custom picker sit side by side where the row
-           holds both, and wrap onto two rows where it does not, so the picker
-           never covers the grid; overlay_content scrolls the stacked form. -->
+      <!-- Where both panes fit the content area (ams_edit_color_fits, measured
+           by update_color_fit) they show together, side by side or wrapped onto
+           two rows. Where they do not, one pane fills the view at a time
+           (ams_edit_color_pane): the presets lead with the rainbow custom swatch,
+           which swaps in the picker, and the picker's Presets button swaps back. -->
       <lv_obj name="color_view"
               width="100%" height="content" style_min_height="100%" flex_flow="row_wrap" style_pad_all="#space_lg"
               style_pad_gap="#space_xl" style_flex_main_place="center" style_flex_cross_place="center"
@@ -528,16 +536,26 @@
 
         <!-- Preset swatches: tap applies + returns -->
         <lv_obj name="color_presets"
-                width="content" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs"
-                scrollable="false">
+                height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
+          <bind_flag_if cond="ams_edit_color_fits eq 0 and ams_edit_color_pane eq 1" flag="hidden"/>
+          <bind_style name="color_pane_fit" subject="ams_edit_color_fits" ref_value="1"/>
+          <bind_style name="color_pane_fill" subject="ams_edit_color_fits" ref_value="0"/>
           <text_small text="Presets"/>
-          <color_swatch_grid swatch_callback="ams_edit_color_swatch_cb"/>
+          <!-- Last child: the reactive <if> rebuilds at the end of the list. -->
+          <if cond="ams_edit_color_fits eq 1">
+            <color_swatch_grid swatch_callback="ams_edit_color_swatch_cb"/>
+            <else/>
+            <color_swatch_grid width="100%"
+                               swatch_callback="ams_edit_color_swatch_cb" lead_hidden="false"
+                               lead_callback="ams_edit_color_show_picker_cb"/>
+          </if>
         </lv_obj>
 
         <!-- Custom hue: HSV + hex + Select -->
         <lv_obj name="color_custom"
                 width="content" height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xl"
                 style_flex_cross_place="center" scrollable="false">
+          <bind_flag_if cond="ams_edit_color_fits eq 0 and ams_edit_color_pane eq 0" flag="hidden"/>
           <ui_hsv_picker name="ams_color_hsv" sv_size="#sv_size" hue_height="#hue_height" gap="#space_sm"/>
           <lv_obj width="content"
                   height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="start"
@@ -553,6 +571,10 @@
             </text_input>
             <ui_button name="btn_color_apply" width="100" height="#button_height_sm" text="Select" variant="primary">
               <event_cb trigger="clicked" callback="ams_edit_color_apply_cb"/>
+            </ui_button>
+            <ui_button name="btn_color_presets" width="100" height="#button_height_sm" text="Presets" variant="ghost">
+              <bind_flag_if_eq subject="ams_edit_color_fits" flag="hidden" ref_value="1"/>
+              <event_cb trigger="clicked" callback="ams_edit_color_show_presets_cb"/>
             </ui_button>
           </lv_obj>
         </lv_obj>

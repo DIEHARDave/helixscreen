@@ -490,6 +490,10 @@ void AmsEditOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(color_selected_subject_, -1, "ams_edit_color_selected", subjects_);
         UI_MANAGED_SUBJECT_INT(color_col_count_subject_, 8, "ams_edit_color_col_count", subjects_);
         UI_MANAGED_SUBJECT_INT(color_row_count_subject_, 29, "ams_edit_color_row_count", subjects_);
+        // Colour view: both panes at once where they fit (update_color_fit),
+        // else one at a time, switched by the custom swatch and Presets.
+        UI_MANAGED_SUBJECT_INT(color_fits_subject_, 1, "ams_edit_color_fits", subjects_);
+        UI_MANAGED_SUBJECT_INT(color_pane_subject_, 0, "ams_edit_color_pane", subjects_);
 
         // Summary line, temperatures, weight pill, badges, disclosure.
         UI_MANAGED_SUBJECT_STRING(summary_text_subject_, summary_buf_, "", "ams_edit_summary_text",
@@ -1187,6 +1191,7 @@ void AmsEditOverlay::repopulate() {
         break;
     case VIEW_COLOR:
         populate_color_view();
+        update_color_fit();
         break;
     case VIEW_EDITOR:
     default:
@@ -1406,8 +1411,50 @@ void AmsEditOverlay::open_color_view() {
     // Seed custom sub-state from the pending colour. Black seeds as-is — it is
     // a real colour (#1608).
     custom_color_ = details_color_;
+    lv_subject_set_int(&color_pane_subject_, 0);
     populate_color_view();
     set_view(VIEW_COLOR);
+    update_color_fit();
+}
+
+bool AmsEditOverlay::color_panes_fit(int avail_w, int avail_h, int presets_w, int presets_h,
+                                     int custom_w, int custom_h, int gap) {
+    const bool side_by_side =
+        presets_w + gap + custom_w <= avail_w && std::max(presets_h, custom_h) <= avail_h;
+    const bool stacked =
+        std::max(presets_w, custom_w) <= avail_w && presets_h + gap + custom_h <= avail_h;
+    return side_by_side || stacked;
+}
+
+void AmsEditOverlay::update_color_fit() {
+    // Measured with both panes built and shown: the decision is whether that
+    // form fits the overlay's content area without scrolling.
+    lv_obj_t* view = find_widget("color_view");
+    lv_obj_t* presets = find_widget("color_presets");
+    lv_obj_t* custom = find_widget("color_custom");
+    if (!view || !presets || !custom) {
+        return;
+    }
+    lv_subject_set_int(&color_fits_subject_, 1);
+    lv_obj_update_layout(overlay_root_);
+    lv_obj_t* area = lv_obj_get_parent(view);
+    const int avail_h = lv_obj_get_content_height(area) -
+                        lv_obj_get_style_pad_top(view, LV_PART_MAIN) -
+                        lv_obj_get_style_pad_bottom(view, LV_PART_MAIN);
+    const int avail_w = lv_obj_get_content_width(view);
+    const int gap = lv_obj_get_style_pad_column(view, LV_PART_MAIN);
+    const bool fits =
+        color_panes_fit(avail_w, avail_h, lv_obj_get_width(presets), lv_obj_get_height(presets),
+                        lv_obj_get_width(custom), lv_obj_get_height(custom), gap);
+    spdlog::debug("[AmsEditOverlay] Colour panes {}x{} + {}x{} gap {} in {}x{}: {}",
+                  lv_obj_get_width(presets), lv_obj_get_height(presets), lv_obj_get_width(custom),
+                  lv_obj_get_height(custom), gap, avail_w, avail_h,
+                  fits ? "together" : "one at a time");
+    lv_subject_set_int(&color_fits_subject_, fits ? 1 : 0);
+}
+
+void AmsEditOverlay::show_color_pane(int pane) {
+    lv_subject_set_int(&color_pane_subject_, pane);
 }
 
 void AmsEditOverlay::populate_color_view() {
@@ -2342,6 +2389,10 @@ void AmsEditOverlay::register_callbacks() {
          }},
         {"ams_edit_color_apply_cb",
          [](lv_event_t*) { get_ams_edit_overlay().handle_color_apply(); }},
+        {"ams_edit_color_show_picker_cb",
+         [](lv_event_t*) { get_ams_edit_overlay().show_color_pane(1); }},
+        {"ams_edit_color_show_presets_cb",
+         [](lv_event_t*) { get_ams_edit_overlay().show_color_pane(0); }},
         {"ams_edit_color_hex_changed_cb",
          [](lv_event_t*) { get_ams_edit_overlay().handle_color_hex_changed(); }},
         {"ams_edit_detail_field_changed_cb",

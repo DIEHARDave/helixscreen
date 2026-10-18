@@ -178,6 +178,12 @@ class AmsEditOverlay : public OverlayBase {
     static int color_ring_index(uint32_t rgb, bool colour_set, int visible_presets,
                                 const std::vector<uint32_t>& palette);
 
+    /// Whether the colour view shows its presets and its custom picker at once
+    /// in an @p avail_w x @p avail_h content box: side by side, or stacked, with
+    /// @p gap between them. False means one pane at a time.
+    static bool color_panes_fit(int avail_w, int avail_h, int presets_w, int presets_h,
+                                int custom_w, int custom_h, int gap);
+
   private:
     // === State ===
     int slot_index_ = -1;
@@ -268,6 +274,10 @@ class AmsEditOverlay : public OverlayBase {
     void handle_custom_color_changed(uint32_t rgb);
     void handle_color_hex_changed();
     void handle_color_apply();
+    /// Measure the colour view with both panes shown and publish whether they
+    /// fit (ams_edit_color_fits).
+    void update_color_fit();
+    void show_color_pane(int pane);
 
     // === Identity dropdowns ===
     /// One option's label and the value picking it stages.
@@ -302,6 +312,8 @@ class AmsEditOverlay : public OverlayBase {
     lv_subject_t color_selected_subject_{};  ///< ringed preset index (-1 none)
     lv_subject_t color_col_count_subject_{}; ///< split-column presets (size_color_grids)
     lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (size_color_grids)
+    lv_subject_t color_fits_subject_{};      ///< 1=presets and picker shown together
+    lv_subject_t color_pane_subject_{};      ///< one-pane form: 0=presets, 1=picker
     lv_subject_t summary_text_subject_{};
     lv_subject_t tag_badge_visible_subject_{}; ///< any shown field is the tag's
     lv_subject_t tag_material_subject_{};
