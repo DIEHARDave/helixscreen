@@ -1470,7 +1470,7 @@ The U1 will not resume while a toolhead the print uses has no material recorded 
 
 **Solution:**
 1. Open the filament system screen and tap the slot the message names
-2. Tap **Spool Info** and set the material (and colour, if you like), then save
+2. Tap **Edit Spool** and set the material (and colour, if you like), then save
 3. Tap **Resume** again
 
 If the printer refuses the resume for some other reason, HelixScreen shows the printer's own message as "Failed to resume: ..." instead.
@@ -1612,7 +1612,7 @@ Once updated, the community format is fully supported — display, loading, unlo
    curl -s http://<printer-ip>:7125/access/api_key
    ```
 2. **OrcaSlicer older than 2.3.2.** Older releases don't read slot info from the printer at all. Upgrade.
-3. **The slot has no spool info yet.** OrcaSlicer only gets what HelixScreen has. Set the material and color under the slot's **Spool Info** first.
+3. **The slot has no spool info yet.** OrcaSlicer only gets what HelixScreen has. Set the material and color under the slot's **Edit Spool** first.
 
 A material OrcaSlicer has no preset for comes across with its color and temperatures but no preset selected. That's expected; see [Syncing with OrcaSlicer](guide/filament.md#syncing-with-orcaslicer-232-and-later).
 

@@ -488,6 +488,8 @@ The CFS is an enclosed filament storage and delivery system for **Creality** pri
 > **K1 series note:** CFS on the K1, K1C, and K1 Max requires Creality's official CFS upgrade firmware (v2.3.5.33 or newer). Detection is automatic; no manual configuration is needed.
 
 > **Running community firmware?** Some K2 Plus owners replace Creality's firmware with a community build that has its own rewritten CFS module. HelixScreen recognizes those automatically and supports them fully — slots, spools, colors, humidity and temperature all display, and loading, unloading and filament changes all work from the touchscreen. Nothing to configure.
+>
+> On recent versions of that CFS module, each unit also shows its own temperature and humidity, a unit that stops answering is marked **Disconnected**, and Filament Mapping works: the tool-to-slot choices you make when starting a print are sent to the CFS just before it begins, for that print only. If a mapping points at a slot the CFS cannot feed from, or at a unit that is not answering, the print does not start and HelixScreen says why.
 
 ### Slot Layout
 

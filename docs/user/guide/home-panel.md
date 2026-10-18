@@ -1122,7 +1122,7 @@ The list is filtered to your printer's motion type, the same way the setup wizar
 3. The picker shows a scrollable list on the left and a live preview on the right
 4. Choose from one of three sources:
    - **Auto-Detect** (default) — HelixScreen selects an image based on your printer type reported by Klipper. Some printers have a second picture for optional hardware: a Creality K2 with a CFS connected shows the K2 with the CFS on top. The picture switches on its own once the CFS reports in, and back if it is disconnected. An image you pick yourself always stays in place
-   - **Shipped Images** — Over 25 pre-rendered images covering Voron, Creality, FlashForge, Anycubic, RatRig, FLSUN, and more
+   - **Shipped Images** — Every printer picture HelixScreen ships (over 80), covering Voron, Creality, FlashForge, Anycubic, RatRig, FLSUN, and more
    - **Custom Images** — Your own images (see below)
 5. Tap an image to select it — your choice takes effect immediately
 
