@@ -621,6 +621,12 @@ ui_frequency_response_chart_get_freq_range(ui_frequency_response_chart_t* chart)
 }
 
 // NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
+std::pair<float, float>
+ui_frequency_response_chart_get_amplitude_range(ui_frequency_response_chart_t* chart) {
+    return chart ? std::pair{chart->amp_min, chart->amp_max} : std::pair{0.0f, 0.0f};
+}
+
+// NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
 bool ui_frequency_response_chart_is_series_visible(
     ui_frequency_response_chart_t* chart, // NAMESPACE_OK: matches this file's C-style chart API
     int series_id) {

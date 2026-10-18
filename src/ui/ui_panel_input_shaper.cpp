@@ -9,6 +9,7 @@
 #include "ui_frequency_response_chart.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
+#include "ui_shaper_sweep_chart.h"
 #include "ui_timer_guard.h"
 #include "ui_toast_manager.h"
 #include "ui_update_queue.h"
@@ -1591,7 +1592,8 @@ void InputShaperPanel::create_chart_widgets() {
         x_chart_.chart = ui_frequency_response_chart_create(x_container);
         if (x_chart_.chart) {
             ui_frequency_response_chart_configure_for_platform(x_chart_.chart, tier);
-            ui_frequency_response_chart_set_freq_range(x_chart_.chart, 0.0f, 200.0f);
+            ui_frequency_response_chart_set_freq_range(x_chart_.chart, 0.0f,
+                                                       helix::ui::SHAPER_CHART_MAX_HZ);
         }
     }
 
@@ -1602,7 +1604,8 @@ void InputShaperPanel::create_chart_widgets() {
         y_chart_.chart = ui_frequency_response_chart_create(y_container);
         if (y_chart_.chart) {
             ui_frequency_response_chart_configure_for_platform(y_chart_.chart, tier);
-            ui_frequency_response_chart_set_freq_range(y_chart_.chart, 0.0f, 200.0f);
+            ui_frequency_response_chart_set_freq_range(y_chart_.chart, 0.0f,
+                                                       helix::ui::SHAPER_CHART_MAX_HZ);
         }
     }
 
@@ -1651,11 +1654,12 @@ void InputShaperPanel::populate_chart(char axis, const InputShaperResult& result
 
     // Find max amplitude for Y range
     float max_amp = *std::max_element(amps.begin(), amps.end());
-    ui_frequency_response_chart_set_amplitude_range(chart_data.chart, 0.0f, max_amp * 1.1f);
+    ui_frequency_response_chart_set_amplitude_range(chart_data.chart, 0.0f,
+                                                    max_amp * helix::ui::SHAPER_CHART_HEADROOM);
 
     // Add raw PSD series (always visible, semi-transparent light color)
-    chart_data.raw_series_id =
-        ui_frequency_response_chart_add_series(chart_data.chart, "Raw PSD", lv_color_hex(0xB0B0B0));
+    chart_data.raw_series_id = ui_frequency_response_chart_add_series(
+        chart_data.chart, "Raw PSD", helix::ui::shaper_raw_psd_color());
     ui_frequency_response_chart_set_data(chart_data.chart, chart_data.raw_series_id, freqs.data(),
                                          amps.data(), freqs.size());
 

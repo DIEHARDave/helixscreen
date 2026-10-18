@@ -467,6 +467,13 @@ void ui_frequency_response_chart_set_amplitude_range(ui_frequency_response_chart
                                                      float min, float max);
 
 /**
+ * @brief The amplitude axis range last set, as {min, max} ({0, 0} for null)
+ */
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+[[nodiscard]] std::pair<float, float>
+ui_frequency_response_chart_get_amplitude_range(ui_frequency_response_chart_t* chart);
+
+/**
  * @brief Get the underlying LVGL object
  *
  * Returns the root LVGL object for custom positioning/styling.
