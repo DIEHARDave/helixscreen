@@ -13,6 +13,8 @@
  * before the event fired.
  */
 
+#include "ui_update_queue.h"
+
 #include "wifi_backend_mock.h"
 #include "wifi_manager.h"
 #include "wifi_ui_utils.h"
@@ -21,6 +23,7 @@
 #include <functional>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <utility>
 
 namespace helix {
@@ -138,6 +141,50 @@ class WiFiManagerTestAccess {
     }
     static bool in_association_grace(const WiFiManager& wm) {
         return wm.in_association_grace();
+    }
+
+    /// Nothing queued or running on the control lane.
+    static bool control_idle(WiFiManager& wm) {
+        {
+            std::lock_guard<std::mutex> lock(wm.control_mutex_);
+            if (wm.control_lane_active_ || !wm.control_queue_.empty()) {
+                return false;
+            }
+        }
+        return radio_ops_inflight(wm) == 0;
+    }
+
+    /// Run the manager's queued work to rest: control calls run on a lane
+    /// worker and post their results to the UpdateQueue, and a result can
+    /// submit more lane work, so drain until both are quiet.
+    static bool settle(WiFiManager& wm, int timeout_ms = 5000) {
+        const auto deadline =
+            std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+        int quiet = 0;
+        while (std::chrono::steady_clock::now() < deadline) {
+            helix::ui::UpdateQueue::instance().drain();
+            quiet = control_idle(wm) ? quiet + 1 : 0;
+            if (quiet >= 3) {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        return false;
+    }
+
+    static void set_breaker_config(WiFiManager& wm, const wifi::ControlBreaker::Config& config) {
+        std::lock_guard<std::mutex> lock(wm.breaker_mutex_);
+        wm.breaker_ = wifi::ControlBreaker(config);
+    }
+
+    static bool breaker_open(WiFiManager& wm) {
+        return wm.breaker_open();
+    }
+
+    /// The backend event WiFiManager subscribes to for scan results, fired
+    /// on the calling thread as the backend's event loop would.
+    static void fire_scan_complete(WiFiManager& wm) {
+        wm.handle_scan_complete("");
     }
 };
 

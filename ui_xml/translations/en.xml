@@ -3683,6 +3683,7 @@
   <translation tag="WiFi control unavailable" en="WiFi control unavailable"/>
   <translation tag="WiFi hardware unavailable" en="WiFi hardware unavailable"/>
   <translation tag="WiFi initialization failed: {}" en="WiFi initialization failed: {}"/>
+  <translation tag="WiFi isn&apos;t responding" en="WiFi isn&apos;t responding"/>
   <translation tag="WiFi radio did not change state" en="WiFi radio did not change state"/>
   <translation tag="WiFi scan failed. Try again." en="WiFi scan failed. Try again."/>
   <translation tag="WiFi unavailable" en="WiFi unavailable"/>

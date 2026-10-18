@@ -4089,6 +4089,7 @@ translations:
   WiFi control unavailable: Controle WiFi indisponível
   WiFi hardware unavailable: Hardware WiFi indisponível
   'WiFi initialization failed: {}': 'Falha ao inicializar o WiFi: {}'
+  WiFi isn't responding: O WiFi não está respondendo
   WiFi radio did not change state: O rádio WiFi não mudou de estado
   WiFi scan failed. Try again.: A busca de WiFi falhou. Tente novamente.
   WiFi unavailable: WiFi indisponível

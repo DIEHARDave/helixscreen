@@ -74,6 +74,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "WiFiManager still sends a join that displaces
         error = msg;
         result = r;
     });
+    REQUIRE(helix::WiFiManagerTestAccess::settle(manager));
 
     REQUIRE_FALSE(success);
     REQUIRE(result == WiFiResult::NETWORK_NOT_FOUND);
@@ -94,6 +95,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "WiFiManager stays silent when no wired link i
 
     helix::WiFiManager manager(std::move(backend), /*silent=*/true);
     manager.connect("NotInScanResults", "pw", [](bool, const std::string&, WiFiResult) {});
+    REQUIRE(helix::WiFiManagerTestAccess::settle(manager));
 
     REQUIRE_FALSE(toasts.warned(lv_tr("Joining Wi-Fi disconnects the wired network.")));
 }
@@ -110,6 +112,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "WiFiManager reports the backend's own reason 
     std::string error;
     manager.connect("NotInScanResults", "",
                     [&](bool, const std::string& msg, WiFiResult) { error = msg; });
+    REQUIRE(helix::WiFiManagerTestAccess::settle(manager));
 
     // Whatever the mock said, it is not empty and it is not a canned message —
     // the reason is the only thing the user can act on.

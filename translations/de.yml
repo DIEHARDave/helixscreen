@@ -4093,6 +4093,7 @@ translations:
   WiFi control unavailable: WiFi-Steuerung nicht verfügbar
   WiFi hardware unavailable: WiFi-Hardware nicht verfügbar
   'WiFi initialization failed: {}': 'WiFi-Initialisierung fehlgeschlagen: {}'
+  WiFi isn't responding: WiFi antwortet nicht
   WiFi radio did not change state: WiFi-Funkmodul hat den Status nicht geändert
   WiFi scan failed. Try again.: WiFi-Suche fehlgeschlagen. Versuche es erneut.
   WiFi unavailable: WiFi nicht verfügbar

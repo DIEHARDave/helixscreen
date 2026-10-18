@@ -201,28 +201,33 @@ void WifiLinkMonitor::poll() {
     }
     const std::string netdev = wifi->netdev_name();
     const bool freq_ok = wifi->reports_frequency();
-    wifi->get_status_async(lifetime_.token(),
-                           [this, netdev, freq_ok](const WifiBackend::ConnectionStatus& st) {
-                               LinkSample s;
-                               s.uptime_s = uptime_seconds();
-                               s.connected = st.connected;
-                               if (st.connected) {
-                                   s.frequency_mhz = st.frequency_mhz;
-                                   // /proc is a kernel table read, not a device round trip; absent
-                                   // off Linux.
-                                   std::ifstream f("/proc/net/wireless");
-                                   std::stringstream buf;
-                                   buf << f.rdbuf();
-                                   if (auto radio = parse_proc_net_wireless(buf.str(), netdev)) {
-                                       s.radio = *radio;
-                                   }
-                               }
-                               {
-                                   std::lock_guard<std::mutex> lock(mutex_);
-                                   frequency_available_ = freq_ok;
-                               }
-                               record(s);
-                           });
+    wifi->get_status_async(
+        lifetime_.token(), [this, netdev, freq_ok](const WifiBackend::ConnectionStatus& st) {
+            // A status nobody could read is not a sample.
+            if (st.unresponsive) {
+                spdlog::debug("[WifiLink] WiFi control unresponsive — no sample");
+                return;
+            }
+            LinkSample s;
+            s.uptime_s = uptime_seconds();
+            s.connected = st.connected;
+            if (st.connected) {
+                s.frequency_mhz = st.frequency_mhz;
+                // /proc is a kernel table read, not a device round trip; absent
+                // off Linux.
+                std::ifstream f("/proc/net/wireless");
+                std::stringstream buf;
+                buf << f.rdbuf();
+                if (auto radio = parse_proc_net_wireless(buf.str(), netdev)) {
+                    s.radio = *radio;
+                }
+            }
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                frequency_available_ = freq_ok;
+            }
+            record(s);
+        });
 }
 
 void WifiLinkMonitor::record(const LinkSample& s) {

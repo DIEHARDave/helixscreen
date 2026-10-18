@@ -3683,6 +3683,7 @@
   <translation tag="WiFi control unavailable" zh="WiFi 控制不可用"/>
   <translation tag="WiFi hardware unavailable" zh="WiFi 硬件不可用"/>
   <translation tag="WiFi initialization failed: {}" zh="WiFi 初始化失败: {}"/>
+  <translation tag="WiFi isn&apos;t responding" zh="WiFi 无响应"/>
   <translation tag="WiFi radio did not change state" zh="WiFi 状态未改变"/>
   <translation tag="WiFi scan failed. Try again." zh="WiFi 扫描失败。请重试。"/>
   <translation tag="WiFi unavailable" zh="WiFi 不可用"/>

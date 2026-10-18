@@ -3987,6 +3987,7 @@ translations:
   WiFi control unavailable: WiFi control unavailable
   WiFi hardware unavailable: WiFi hardware unavailable
   'WiFi initialization failed: {}': 'WiFi initialization failed: {}'
+  WiFi isn't responding: WiFi isn't responding
   WiFi radio did not change state: WiFi radio did not change state
   WiFi scan failed. Try again.: WiFi scan failed. Try again.
   WiFi unavailable: WiFi unavailable

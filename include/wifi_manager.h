@@ -6,13 +6,17 @@
 #include "async_lifetime_guard.h"
 #include "lvgl/lvgl.h"
 #include "wifi_backend.h"
+#include "wifi_control_breaker.h"
 #include "wifi_scan_scheduler.h"
 
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -56,6 +60,18 @@ std::string connect_failure_message(WiFiResult result, const std::string& reason
  * - Thread-safe communication between backend and UI
  * - Cleaner separation between WiFi operations and UI timer management
  */
+///
+/// Threading: every backend control call a UI entry point makes (scan trigger,
+/// connect, disconnect, forget, radio, status read) runs on one serial lane
+/// over HttpExecutor::fast(), never on the LVGL thread. A wpa_supplicant
+/// request can wait 15 s on a wedged driver, so a call from the LVGL thread
+/// freezes the screen for that long. One lane, not one task per call, so a
+/// wedged daemon holds at most one of the pool's four workers and its
+/// requests run in the order the user made them. The ControlBreaker
+/// (wifi_control_breaker.h) stops the periodic scans and status polls once the
+/// daemon stops answering in time. Results reach the LVGL thread through
+/// LifetimeTokens. With the pool not running (ESP32, whose backend answers
+/// from memory) the lane runs each call inline.
 class WiFiManager {
   public:
     /**
@@ -107,7 +123,12 @@ class WiFiManager {
     /**
      * @brief Start periodic network scanning
      *
-     * Scans for available networks and invokes callback with results.
+     * Scans for available networks and invokes callback with results. The
+     * trigger runs on the control lane; a trigger already queued or running
+     * there is reused rather than sent again. While the control breaker is
+     * open and no probe is due, or the lane's current call has already taken
+     * the breaker's slow-call time, no scan is sent and the callback receives
+     * an empty list.
      * Scanning continues automatically, on an interval that backs off from
      * ScanScheduler::BASE_INTERVAL_MS up to ScanScheduler::MAX_INTERVAL_MS as
      * results stay unchanged (and suppresses entirely once connected and
@@ -132,7 +153,9 @@ class WiFiManager {
      * @brief Connect to WiFi network
      *
      * Attempts to connect to the specified network. Operation is asynchronous;
-     * callback invoked when connection succeeds or fails.
+     * callback invoked on the LVGL thread when connection succeeds or fails.
+     * A later connect() or disconnect() supersedes this attempt: its result is
+     * dropped.
      *
      * @param ssid Network name
      * @param password Network password (empty for open networks)
@@ -145,7 +168,7 @@ class WiFiManager {
                  bool is_hidden = false);
 
     /**
-     * @brief Disconnect from current network
+     * @brief Disconnect from current network (on the control lane)
      */
     void disconnect();
 
@@ -155,8 +178,9 @@ class WiFiManager {
      * Unlike the REMOVE_NETWORK cleanup issued internally elsewhere as a
      * connect-failure rollback, this is a real, user-initiated forget:
      * removes the credential from wherever the backend persists it (vendor
-     * config, HelixScreen's own credential store, or both), synchronously,
-     * then reports the outcome.
+     * config, HelixScreen's own credential store, or both), on the control
+     * lane, then reports the outcome on the LVGL thread. Not reported if the
+     * manager is destroyed first.
      *
      * @param ssid Network name to forget
      * @param on_complete Callback with (success, error). error is empty on
@@ -180,7 +204,10 @@ class WiFiManager {
      * through `token`. One read is in flight at a time: a caller arriving
      * during it is answered by the next read, so no answer predates its
      * request. Call from the main thread: the read is registered there, so a
-     * backend swap or the destructor waits for it. With the pool not running
+     * backend swap or the destructor waits for it. While the control breaker
+     * is open and no probe is due, or the lane's current call has already
+     * taken the breaker's slow-call time, the answer is the last good status
+     * with `unresponsive` set, without asking the backend. With the pool not running
      * (ESP32 never starts it; its backend answers from memory) `on_done` runs
      * before this returns.
      */
@@ -538,9 +565,6 @@ class WiFiManager {
     void begin_radio_op();
     void end_radio_op();
     void wait_for_radio_ops();
-    // Registers a radio op and ends it when the last copy is destroyed, so a
-    // work item the executor drops unrun still releases it. Main thread only.
-    std::shared_ptr<void> radio_op_scope();
 
     // Callers waiting on the status read in flight (get_status_async).
     struct StatusWaiter {
@@ -550,7 +574,73 @@ class WiFiManager {
     std::mutex status_waiters_mutex_;
     std::vector<StatusWaiter> status_waiters_;
     bool status_read_inflight_ = false;
+    // The last status a backend read returned in time, adjusted by
+    // CONNECTED/DISCONNECTED events. Guarded by status_waiters_mutex_. Answers
+    // callers while the breaker is open, and the scan scheduler's "connected?"
+    // question, which must not cost a backend round trip on the LVGL thread.
+    WifiBackend::ConnectionStatus cached_status_;
+    bool cached_connected();
     void run_status_reads();
+
+    // The control lane: backend control calls run here one at a time, in
+    // submission order, on an HttpExecutor::fast() worker (see the class
+    // comment). The running drain holds a radio op, so the destructor and the
+    // backend swap wait for the call in progress; the destructor drops what is
+    // still queued. `on_dropped` runs for an op that never runs.
+    struct ControlOp {
+        const char* tag = nullptr;
+        std::function<void()> work;
+        std::function<void()> on_dropped;
+    };
+    std::mutex control_mutex_;
+    std::deque<ControlOp> control_queue_; // guarded by control_mutex_
+    bool control_lane_active_ = false;    // guarded by control_mutex_
+    bool control_shutdown_ = false;       // guarded by control_mutex_
+    void submit_control(const char* tag, std::function<void()> work,
+                        std::function<void()> on_dropped = nullptr);
+    void run_control_ops();
+    void drop_control_ops();
+
+    // Health of the control interface (wifi_control_breaker.h). record() runs
+    // on the lane, allow_call() on the LVGL thread.
+    std::mutex breaker_mutex_;
+    helix::wifi::ControlBreaker breaker_; // guarded by breaker_mutex_
+    static uint64_t monotonic_ms();
+    // Feeds the breaker one health call that started at `started`. Returns
+    // whether it answered in time. Lane thread.
+    bool record_health_call(std::chrono::steady_clock::time_point started);
+    // Claims a breaker admission for a health call about to be sent. LVGL thread.
+    bool breaker_allows_call();
+    bool breaker_open();
+
+    // When the call now running on the lane started; unset while idle.
+    // Guarded by control_mutex_. The breaker only hears about calls that
+    // finish, and a send blocked on a daemon that stopped reading never does.
+    std::optional<std::chrono::steady_clock::time_point> control_op_started_;
+    // The call now running has taken the breaker's slow-call time already,
+    // so anything queued behind it will wait at least that long. LVGL thread.
+    bool control_stalled();
+
+    // A scan trigger is queued or running on the lane. LVGL thread only.
+    bool scan_trigger_inflight_ = false;
+    enum class ScanRequest { Sent, Coalesced, Refused };
+    // Sends one scan trigger down the lane unless one is already in flight or
+    // the breaker refuses. `user_refresh` selects start_scan()'s failure
+    // reporting over the periodic tick's. LVGL thread only.
+    ScanRequest request_scan(bool user_refresh);
+    void apply_scan_trigger_result(const WiFiError& result, bool user_refresh);
+
+    // Bumped by connect() and disconnect(), so a connect result arriving after
+    // the attempt was superseded is dropped. LVGL thread only.
+    uint64_t connect_generation_ = 0;
+    void apply_connect_result(uint64_t generation, const std::string& ssid,
+                              const WiFiError& result);
+
+    // Toasts a forget outcome and hands it to the caller. Static: it runs
+    // after the lane call and needs nothing of the manager. LVGL thread.
+    static void
+    report_forget_result(const std::string& ssid, const WiFiError& result,
+                         const std::function<void(bool success, const std::string& error)>& cb);
 
     // Sysfs root used by has_non_wifi_network_path() to gate the stored-radio
     // -state reassert (Task 15: never disable the radio on a device whose

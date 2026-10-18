@@ -3836,6 +3836,7 @@ translations:
   WiFi control unavailable: WiFi 制御は利用できません
   WiFi hardware unavailable: WiFi ハードウェアが利用できません
   'WiFi initialization failed: {}': 'WiFi の初期化に失敗しました: {}'
+  WiFi isn't responding: WiFi が応答しません
   WiFi radio did not change state: WiFiの状態が変わりませんでした
   WiFi scan failed. Try again.: WiFi のスキャンに失敗しました。もう一度お試しください。
   WiFi unavailable: WiFi が利用できません
