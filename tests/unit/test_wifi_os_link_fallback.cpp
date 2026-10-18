@@ -258,6 +258,7 @@ TEST_CASE("start_scan with OS link up suppresses the scan-failed user warning",
 
     helix::WiFiManagerTestAccess::set_os_link_probe([]() { return true; });
     wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(helix::WiFiManagerTestAccess::settle(*wm));
     REQUIRE(warnings == 0);
 
     // Sanity: with the OS link DOWN, the same failing path DOES warn. This is
@@ -265,6 +266,7 @@ TEST_CASE("start_scan with OS link up suppresses the scan-failed user warning",
     warnings = 0;
     helix::WiFiManagerTestAccess::set_os_link_probe([]() { return false; });
     wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(helix::WiFiManagerTestAccess::settle(*wm));
     REQUIRE(warnings >= 1);
 
     helix::ui::set_test_notification_warning_hook(nullptr);
@@ -290,9 +292,11 @@ TEST_CASE("A scan that fails right after our own forget does not warn the user",
     // Go through the real entry point, so the test covers the stamp being taken
     // and not just the predicate.
     wm->forget("SomeNetwork", nullptr);
+    REQUIRE(helix::WiFiManagerTestAccess::settle(*wm));
     REQUIRE(helix::WiFiManagerTestAccess::in_association_grace(*wm));
 
     wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(helix::WiFiManagerTestAccess::settle(*wm));
     REQUIRE(warnings == 0);
 
     // Sanity / mutation guard: once the grace has passed, the same failing scan
@@ -302,6 +306,7 @@ TEST_CASE("A scan that fails right after our own forget does not warn the user",
     helix::WiFiManagerTestAccess::expire_association_grace(*wm);
     REQUIRE_FALSE(helix::WiFiManagerTestAccess::in_association_grace(*wm));
     wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(helix::WiFiManagerTestAccess::settle(*wm));
     REQUIRE(warnings >= 1);
 
     helix::ui::set_test_notification_warning_hook(nullptr);
@@ -336,10 +341,12 @@ TEST_CASE("WiFi failure toasts render in the active language",
     helix::ui::set_test_notification_error_hook([&](const std::string& m) { error = m; });
 
     wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(helix::WiFiManagerTestAccess::settle(*wm));
     CHECK(warning == "WiFi-Suche fehlgeschlagen. Versuche es erneut.");
 
     // The SSID is a format argument, so the translated template still carries it.
     wm->connect("HomeNet", "", nullptr);
+    REQUIRE(helix::WiFiManagerTestAccess::settle(*wm));
     CHECK(error.rfind("Verbindung mit WiFi-Netzwerk '", 0) == 0);
     CHECK(error.find(helix::redact::ssid("HomeNet")) != std::string::npos);
 

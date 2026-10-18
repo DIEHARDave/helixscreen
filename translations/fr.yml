@@ -4105,6 +4105,7 @@ translations:
   WiFi control unavailable: Contrôle WiFi indisponible
   WiFi hardware unavailable: Matériel WiFi indisponible
   'WiFi initialization failed: {}': 'Échec de l''initialisation du WiFi : {}'
+  WiFi isn't responding: Le WiFi ne répond pas
   WiFi radio did not change state: La radio WiFi n'a pas changé d'état
   WiFi scan failed. Try again.: La recherche WiFi a échoué. Réessayez.
   WiFi unavailable: WiFi non disponible

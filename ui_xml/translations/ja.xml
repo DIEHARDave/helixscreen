@@ -3670,6 +3670,7 @@
   <translation tag="WiFi control unavailable" ja="WiFi 制御は利用できません"/>
   <translation tag="WiFi hardware unavailable" ja="WiFi ハードウェアが利用できません"/>
   <translation tag="WiFi initialization failed: {}" ja="WiFi の初期化に失敗しました: {}"/>
+  <translation tag="WiFi isn&apos;t responding" ja="WiFi が応答しません"/>
   <translation tag="WiFi radio did not change state" ja="WiFiの状態が変わりませんでした"/>
   <translation tag="WiFi scan failed. Try again." ja="WiFi のスキャンに失敗しました。もう一度お試しください。"/>
   <translation tag="WiFi unavailable" ja="WiFi が利用できません"/>

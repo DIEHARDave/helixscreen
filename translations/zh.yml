@@ -3814,6 +3814,7 @@ translations:
   WiFi control unavailable: WiFi 控制不可用
   WiFi hardware unavailable: WiFi 硬件不可用
   'WiFi initialization failed: {}': 'WiFi 初始化失败: {}'
+  WiFi isn't responding: WiFi 无响应
   WiFi radio did not change state: WiFi 状态未改变
   WiFi scan failed. Try again.: WiFi 扫描失败。请重试。
   WiFi unavailable: WiFi 不可用

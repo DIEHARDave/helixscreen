@@ -4072,6 +4072,7 @@ translations:
   WiFi control unavailable: Control de WiFi no disponible
   WiFi hardware unavailable: Hardware WiFi no disponible
   'WiFi initialization failed: {}': 'Error al inicializar el WiFi: {}'
+  WiFi isn't responding: El WiFi no responde
   WiFi radio did not change state: La radio WiFi no cambió de estado
   WiFi scan failed. Try again.: La búsqueda WiFi falló. Inténtalo de nuevo.
   WiFi unavailable: WiFi no disponible

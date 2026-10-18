@@ -3730,6 +3730,7 @@
   <translation tag="WiFi control unavailable" ru="Управление WiFi недоступно"/>
   <translation tag="WiFi hardware unavailable" ru="Оборудование WiFi недоступно"/>
   <translation tag="WiFi initialization failed: {}" ru="Ошибка инициализации WiFi: {}"/>
+  <translation tag="WiFi isn&apos;t responding" ru="WiFi не отвечает"/>
   <translation tag="WiFi radio did not change state" ru="Состояние модуля WiFi не изменилось"/>
   <translation tag="WiFi scan failed. Try again." ru="Поиск сетей WiFi не удался. Повторите попытку."/>
   <translation tag="WiFi unavailable" ru="WiFi недоступен"/>

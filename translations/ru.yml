@@ -4110,6 +4110,7 @@ translations:
   WiFi control unavailable: Управление WiFi недоступно
   WiFi hardware unavailable: Оборудование WiFi недоступно
   'WiFi initialization failed: {}': 'Ошибка инициализации WiFi: {}'
+  WiFi isn't responding: WiFi не отвечает
   WiFi radio did not change state: Состояние модуля WiFi не изменилось
   WiFi scan failed. Try again.: Поиск сетей WiFi не удался. Повторите попытку.
   WiFi unavailable: WiFi недоступен
