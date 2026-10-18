@@ -155,7 +155,7 @@ class AmsPanel : public PanelBase {
 
     // === Slot Management ===
 
-    static constexpr int MAX_VISIBLE_SLOTS = 20; ///< Max slots displayed (a U1 with four ACE units)
+    static constexpr int MAX_VISIBLE_SLOTS = AMS_DETAIL_MAX_SLOTS; ///< Max slots displayed
     lv_obj_t* slot_widgets_[MAX_VISIBLE_SLOTS] = {nullptr};
     lv_obj_t* label_widgets_[MAX_VISIBLE_SLOTS] = {nullptr}; ///< Separate label layer for z-order
     AmsDetailWidgets detail_widgets_;                        ///< Shared component widget pointers

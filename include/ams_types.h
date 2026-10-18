@@ -44,6 +44,13 @@ constexpr uint32_t AMS_DEFAULT_SLOT_COLOR = 0x808080;
 /// shows always has a badge to bind; both caps derive from this one constant.
 constexpr int AMS_MAX_UNITS = 16;
 
+/// Slots the AMS UI binds per backend: AmsState's per-slot subjects, the path
+/// canvas, the endless-spool arrows and the slot grids all derive their caps
+/// from this one constant. AFC and Happy Hare report every lane they find, so
+/// a many-unit rig is ordinary hardware; 64 is sixteen four-lane units. A slot
+/// past it keeps working in the backend and shows unbound in the UI.
+constexpr int AMS_MAX_SLOTS = 64;
+
 /**
  * @brief Type of AMS system detected
  *

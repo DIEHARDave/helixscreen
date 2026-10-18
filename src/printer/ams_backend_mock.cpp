@@ -77,8 +77,8 @@ constexpr float SELECTING_VARIANCE = 0.15f; // ±15%
 } // namespace
 
 AmsBackendMock::AmsBackendMock(int slot_count) {
-    // Clamp slot count to reasonable range
-    slot_count = std::clamp(slot_count, 1, 16);
+    // Up to one backend's block of lane ids, so a mock can exceed AMS_MAX_SLOTS.
+    slot_count = std::clamp(slot_count, 1, helix::ams::LANES_PER_BACKEND);
 
     // Initialize system info (non-slot metadata)
     system_info_.type = AmsType::HAPPY_HARE; // Mock as Happy Hare

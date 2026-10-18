@@ -604,6 +604,7 @@ void AmsState::sync_from_backend() {
     sync_bypass(backend, info);
     sync_feeder(backend);
     lv_subject_set_int(&ams_slot_count_, info.total_slots);
+    warn_if_slots_exceed_subjects(info.total_slots);
 
     // Update tool change progress raw data (text formatting in UI layer)
     if (info.number_of_toolchanges > 0) {
@@ -946,7 +947,7 @@ bool AmsState::sync_tool_spools(AmsBackend* backend, const AmsSystemInfo& info) 
     // tool_spools.json plus a Moonraker DB key, so the stale spool outlived
     // restarts. Observed on the .112 BoxTurtle: "Assigned spool 86 () to tool 0"
     // fired during an EJECT, and ToolState::clear_spool() had no callers at all.
-    for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+    for (int i = 0; i < info.total_slots; ++i) {
         const SlotInfo* slot = info.get_slot_global(i);
         if (!slot || slot->mapped_tool < 0) {
             continue;
@@ -986,7 +987,7 @@ bool AmsState::sync_tool_spools(AmsBackend* backend, const AmsSystemInfo& info) 
     if (backend->supports_per_tool_spool_assignment()) {
         auto& tool_state = ToolState::instance();
         const auto& tools = tool_state.tools();
-        for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+        for (int i = 0; i < info.total_slots; ++i) {
             const SlotInfo* slot = info.get_slot_global(i);
             if (slot && slot->mapped_tool >= 0 && slot->spoolman_id == 0) {
                 int ti = slot->mapped_tool;
@@ -1244,6 +1245,16 @@ void AmsState::publish_unit_env_indicator(int idx, const UnitEnvIndicator& e) {
         set_string_if_changed(&env_ind_drying_text_[idx], e.drying_text);
 }
 
+void AmsState::warn_if_slots_exceed_subjects(int total_slots) {
+    if (total_slots <= MAX_SLOTS || total_slots == slot_overflow_warned_total_) {
+        return;
+    }
+    slot_overflow_warned_total_ = total_slots;
+    spdlog::warn("[AMS State] Backend reports {} slots but per-slot subjects cover {}; "
+                 "slots {}-{} show unbound",
+                 total_slots, MAX_SLOTS, MAX_SLOTS + 1, total_slots);
+}
+
 bool AmsState::clear_unused_slot_subjects(int total_slots) {
     // Clear remaining slot subjects, only firing when values actually change
     bool any_slot_changed = false;
@@ -1355,6 +1366,9 @@ void AmsState::refresh_slot_names() {
 }
 
 bool AmsState::write_slot_subjects(AmsBackend& backend, int slot_index, const SlotInfo& slot) {
+    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+        return false;
+    }
     bool changed = false;
 
     int new_color = static_cast<int>(slot.color_rgb);
@@ -1457,10 +1471,12 @@ void AmsState::update_slot(int slot_index) {
     assert_main_thread();
 
     auto* backend = get_backend(0);
-    if (!backend || slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (!backend || slot_index < 0) {
         return;
     }
 
+    // A slot past MAX_SLOTS has no subjects of its own, but it can still be
+    // the loaded one and still map to a tool.
     SlotInfo slot = backend->get_slot_info(slot_index);
     if (slot.slot_index >= 0) {
         if (write_slot_subjects(*backend, slot_index, slot)) {

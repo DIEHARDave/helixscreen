@@ -132,9 +132,8 @@ class AmsState {
      *
      * Per-slot subjects (color, status) are allocated statically.
      * Systems with more slots will only have subjects for the first MAX_SLOTS.
-     * 20 covers a U1 with four ACE Pro units: 4 heads + 4x4 bays.
      */
-    static constexpr int MAX_SLOTS = 20;
+    static constexpr int MAX_SLOTS = AMS_MAX_SLOTS;
     /// Bytes held per slot-name subject, NUL included. Names longer than a
     /// card can show are cut on a codepoint boundary; the label ellipsizes.
     static constexpr size_t SLOT_NAME_BUF_SIZE = 64;
@@ -2127,6 +2126,8 @@ class AmsState {
     /// Reset the slot subjects past @p total_slots.
     /// @return true when a slot subject changed
     bool clear_unused_slot_subjects(int total_slots);
+    /// Warn once per slot count when the backend has more slots than subjects.
+    void warn_if_slots_exceed_subjects(int total_slots);
     /// @}
 
     /**
@@ -2519,6 +2520,7 @@ class AmsState {
     lv_subject_t slot_lane_states_[MAX_SLOTS]{};      // int: helix::ui::LaneState (classify_lane)
     lv_subject_t slot_has_error_[MAX_SLOTS]{};        // int: 0/1 BLOCKED or carries a SlotError
     lv_subject_t slot_error_severity_[MAX_SLOTS]{};   // int: SlotError::Severity (INFO when none)
+    int slot_overflow_warned_total_ = 0;              // slot count the overflow warning last named
 
     // Per-unit environment subjects (CFS temp/humidity)
     lv_subject_t unit_temp_[MAX_UNITS]{};         // int: tenths of C (270 = 27.0C), 0 = no data

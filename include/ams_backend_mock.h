@@ -36,7 +36,7 @@ class AmsBackendMock : public AmsBackend {
 
     /**
      * @brief Construct mock backend with specified slot count
-     * @param slot_count Number of simulated slots (1-16, default 4)
+     * @param slot_count Number of simulated slots (1 to ams::LANES_PER_BACKEND, default 4)
      */
     explicit AmsBackendMock(int slot_count = 4);
 

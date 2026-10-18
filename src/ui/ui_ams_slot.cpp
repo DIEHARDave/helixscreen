@@ -637,8 +637,14 @@ static void ams_slot_event_cb(lv_event_t* e) {
  * Uses observer factory pattern for type-safe lambda observers
  */
 static void setup_slot_observers(AmsSlotData* data) {
-    if (data->slot_index < 0 || data->slot_index >= AmsState::MAX_SLOTS) {
+    if (data->slot_index < 0) {
         spdlog::warn("[AmsSlot] Invalid slot index {}, skipping observers", data->slot_index);
+        return;
+    }
+    if (data->slot_index >= AmsState::MAX_SLOTS) {
+        // AmsState warns once for the whole overflow; this slot stays unbound.
+        spdlog::debug("[AmsSlot] Slot {} is past the subject ceiling, left unbound",
+                      data->slot_index);
         return;
     }
 

@@ -47,8 +47,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "FilamentPath: upstream caption set, read and 
     }
 
     SECTION("out-of-range slots are refused both ways") {
-        ui_filament_path_canvas_set_slot_upstream(path, 16, "X");
-        ui_filament_path_canvas_get_slot_upstream(path, 16, buf, sizeof(buf));
+        ui_filament_path_canvas_set_slot_upstream(path, helix::AMS_MAX_SLOTS, "X");
+        ui_filament_path_canvas_get_slot_upstream(path, helix::AMS_MAX_SLOTS, buf, sizeof(buf));
         CHECK(std::string(buf).empty());
         ui_filament_path_canvas_set_slot_upstream(path, -1, "X");
         ui_filament_path_canvas_get_slot_upstream(path, -1, buf, sizeof(buf));

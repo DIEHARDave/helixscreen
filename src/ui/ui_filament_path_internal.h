@@ -274,7 +274,7 @@ struct FilamentPathData {
     lv_obj_t* slot_grid = nullptr;
     // The spool box's front edge below slot_grid's top, INT32_MIN when none.
     int32_t lane_entry_offset = INT32_MIN;
-    static constexpr int MAX_SLOTS = 16;
+    static constexpr int MAX_SLOTS = helix::AMS_MAX_SLOTS;
     lv_obj_t* spool_containers[MAX_SLOTS] = {};
 
     // Per-slot filament state (for showing all installed filaments, not just active)
