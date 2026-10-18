@@ -397,9 +397,11 @@ void DisplaySettingsManager::init_subjects() {
             old_enabled, helix::ui::screensaver_name(screensaver));
     }
     const int screensaver_type = static_cast<int>(screensaver);
+#else
+    const int screensaver_type = 0;
+#endif
     UI_MANAGED_SUBJECT_INT(screensaver_type_subject_, screensaver_type, "settings_screensaver_type",
                            subjects_);
-#endif
 
     // Cross-validate: sleep must be >= dim when the device dims OR a screensaver
     // provides the dim-stage visual (#1049). This runs AFTER screensaver_type is
@@ -673,11 +675,7 @@ bool DisplaySettingsManager::has_dimming_control() const {
 }
 
 bool DisplaySettingsManager::screensaver_enabled() const {
-#ifdef HELIX_ENABLE_SCREENSAVER
     return get_screensaver_type() != 0;
-#else
-    return false;
-#endif
 }
 
 bool DisplaySettingsManager::should_couple_sleep_to_dim() const {
@@ -892,11 +890,11 @@ std::string DisplaySettingsManager::get_timezone_options() {
 // SCREENSAVER
 // =============================================================================
 
-#ifdef HELIX_ENABLE_SCREENSAVER
 int DisplaySettingsManager::get_screensaver_type() const {
     return lv_subject_get_int(const_cast<lv_subject_t*>(&screensaver_type_subject_));
 }
 
+#ifdef HELIX_ENABLE_SCREENSAVER
 void DisplaySettingsManager::set_screensaver_type(int type) {
     type = helix::ui::clamp_screensaver_type(type);
     spdlog::info("[DisplaySettingsManager] set_screensaver_type({})", type);
