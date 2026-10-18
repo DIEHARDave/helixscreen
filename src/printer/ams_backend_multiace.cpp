@@ -5,6 +5,7 @@
 
 #include "ace_slot_parse.h"
 #include "ams_fault_event.h"
+#include "klipper_extruder_naming.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "snapmaker_exceptions.h"
 
@@ -50,10 +51,6 @@ std::optional<int> fault_head(int index, const std::string& message) {
     return std::nullopt;
 }
 
-std::string head_extruder_name(int head) {
-    return head == 0 ? std::string("extruder") : fmt::format("extruder{}", head);
-}
-
 } // namespace
 
 AmsBackendMultiAce::AmsBackendMultiAce(IMoonrakerAPI* api, helix::IMoonrakerClient* client)
@@ -82,6 +79,12 @@ std::optional<std::pair<int, int>> AmsBackendMultiAce::routed_bay_locked(int hea
     }
     const auto& src = head_source_[static_cast<size_t>(head)];
     if (!src || src->load_failed || src->ace < 0 || src->slot < 0) {
+        return std::nullopt;
+    }
+    // A route naming a unit the engine is not reporting describes a bay this
+    // backend cannot show; reading it would badge and caption a lane that has
+    // no spool behind it.
+    if (unit_position_locked(src->ace) < 0) {
         return std::nullopt;
     }
     return std::make_pair(src->ace, src->slot);
@@ -144,7 +147,15 @@ void AmsBackendMultiAce::apply_extension_locked(const nlohmann::json& status, bo
     if (d.head_manual) {
         head_manual_ = *d.head_manual;
     }
+    std::vector<int> load_failed_heads;
     if (d.head_source) {
+        for (int h = 0; h < kHeads; ++h) {
+            const auto& src = (*d.head_source)[static_cast<size_t>(h)];
+            const auto& prev = head_source_[static_cast<size_t>(h)];
+            if (src && src->load_failed && !(prev && prev->load_failed)) {
+                load_failed_heads.push_back(h);
+            }
+        }
         head_source_ = *d.head_source;
     }
     if (d.aces) {
@@ -185,6 +196,15 @@ void AmsBackendMultiAce::apply_extension_locked(const nlohmann::json& status, bo
         d.aces) {
         rebuild_units_locked();
         changed = true;
+    }
+
+    // The engine's own account of a load that failed: the frame hides the
+    // route (load_failed) and this says why, on the rising edge only so a
+    // stream of frames carrying the standing failure reports it once.
+    // Collected here under the lock; handle_status emits outside it.
+    for (int h : load_failed_heads) {
+        pending_load_failed_errors_.push_back(AmsErrorHelper::position_label(tool_noun(), h) +
+                                              ": " + lv_tr("Load failed"));
     }
 }
 
@@ -239,11 +259,30 @@ void AmsBackendMultiAce::rebuild_units_locked() {
                 const auto head = multiace::head_for_bay(mode_, u.idx, s, head_ace_, feed);
                 if (head) {
                     slot.mapped_tool = *head;
-                    slot.extruder_name = head_extruder_name(*head);
+                    slot.extruder_name = helix::extruder_name_for_tool(*head);
                     if (routed_bay_locked(*head) == std::make_pair(u.idx, s)) {
                         slot.status = SlotStatus::LOADED;
                     }
                 }
+
+                // The engine's bay table is also the bay's identity signal,
+                // the role a head's RFID reading plays: a change runs the
+                // shared insert rule and a different-spool verdict clears the
+                // bay's user edit, the same hardware-event clear a head with
+                // a tag has. A bay entry stating no identity (an empty bay)
+                // and an absent entry are both no signal: they state nothing
+                // about a DIFFERENT spool, so the baseline waits for one.
+                // Must run before the ingest below so the clear sees the
+                // engine's own reading, not the lane's resolved view.
+                helix::ams::SpoolEvidence bay_evidence;
+                if (bay != u.bays.end()) {
+                    bay_evidence.tag_uid = bay->uid;
+                    bay_evidence.material = bay->material;
+                    bay_evidence.color_rgb = bay->color;
+                    bay_evidence.tag_read_complete =
+                        !bay->uid.empty() || !bay->material.empty() || bay->color.has_value();
+                }
+                check_hardware_event_clear(slot, slot.global_index, bay_evidence);
 
                 // The engine's own table is the bay's machine reading, the role
                 // a head's RFID tag plays: filed whole (an absent bay entry
@@ -459,6 +498,18 @@ bool AmsBackendMultiAce::needs_unload_before_load(const AmsSystemInfo& info,
     return AmsBackendSnapmaker::needs_unload_before_load(info, target_slot);
 }
 
+AmsBackend::FilamentOpEligibility AmsBackendMultiAce::slot_op_eligibility(int slot_index,
+                                                                          bool load) const {
+    if (load) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (slot_index >= 0 && slot_index < kHeads && active_locked() &&
+            ace_fed_locked(slot_index)) {
+            return FilamentOpEligibility::NotSupported;
+        }
+    }
+    return AmsBackendSnapmaker::slot_op_eligibility(slot_index, load);
+}
+
 std::optional<int> AmsBackendMultiAce::upstream_slot(int slot_index) const {
     if (slot_index < 0 || slot_index >= kHeads) {
         return std::nullopt;
@@ -481,6 +532,8 @@ int AmsBackendMultiAce::spool_display_number(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
     // A routed head aliases its bay; every other lane (bays, unrouted heads)
     // numbers in global order, so the numbers on spool-owning lanes run 1..N.
+    // Only indices a unit actually covers count: a gap the engine left in the
+    // ace numbering is not a spool, so the numbers stay consecutive.
     const auto aliased = [this](int head) {
         return head < kHeads && ace_fed_locked(head) && routed_bay_locked(head).has_value();
     };
@@ -491,7 +544,7 @@ int AmsBackendMultiAce::spool_display_number(int slot_index) const {
     }
     int n = 0;
     for (int gi = 0; gi < system_info_.total_slots; ++gi) {
-        if (!aliased(gi)) {
+        if (!aliased(gi) && system_info_.get_slot_global(gi)) {
             ++n;
         }
         if (gi == target) {
@@ -567,7 +620,6 @@ std::optional<AmsError> AmsBackendMultiAce::head_load_refusal(int head, bool ace
 }
 
 AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
-    cancel_pending_load("a new load");
     int head = -1;
     bool engine = false;
     bool ace_head = false;
@@ -618,7 +670,12 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
             return *refusal;
         }
         if (!ace_head) {
-            return dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
+            AmsError err =
+                dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
+            if (err.success()) {
+                cancel_pending_load("a new load");
+            }
+            return err;
         }
         if (mode == multiace::Mode::MULTI) {
             // Multi mode defaults a bare load to the globally active unit, not
@@ -629,10 +686,18 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
                                     " has no recorded bay to load from",
                                 lv_tr("Select a filament slot to load"), "", slot_index);
             }
-            return dispatch_feed(multiace::load_gcode(head, recorded), EVENT_LOAD_COMPLETE);
+            AmsError err = dispatch_feed(multiace::load_gcode(head, recorded), EVENT_LOAD_COMPLETE);
+            if (err.success()) {
+                cancel_pending_load("a new load");
+            }
+            return err;
         }
         // Head mode defaults to the wired unit and the head's last bay.
-        return dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
+        AmsError err = dispatch_feed(multiace::load_gcode(head, std::nullopt), EVENT_LOAD_COMPLETE);
+        if (err.success()) {
+            cancel_pending_load("a new load");
+        }
+        return err;
     }
 
     // The engine swaps bays mid-print itself, as the sliced file asks; a bay
@@ -657,7 +722,11 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
                         "", slot_index);
     }
     if (!head_loaded && !head_has_source) {
-        return dispatch_feed(multiace::load_gcode(head, bay), EVENT_LOAD_COMPLETE);
+        AmsError err = dispatch_feed(multiace::load_gcode(head, bay), EVENT_LOAD_COMPLETE);
+        if (err.success()) {
+            cancel_pending_load("a new load");
+        }
+        return err;
     }
 
     // ACE_LOAD_HEAD answers OK and feeds nothing into a head that still holds
@@ -706,6 +775,14 @@ AmsError AmsBackendMultiAce::do_load_filament(int slot_index) {
 
 void AmsBackendMultiAce::handle_status(const nlohmann::json& status) {
     AmsBackendSnapmaker::handle_status(status);
+    std::vector<std::string> load_failed;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        load_failed.swap(pending_load_failed_errors_);
+    }
+    for (const std::string& message : load_failed) {
+        emit_event(EVENT_ERROR, message);
+    }
     advance_pending_load();
 }
 
@@ -778,7 +855,6 @@ void AmsBackendMultiAce::advance_pending_load() {
 }
 
 AmsError AmsBackendMultiAce::do_unload_filament(int slot_index) {
-    cancel_pending_load("an unload");
     int head = slot_index;
     bool engine = false;
     {
@@ -795,15 +871,23 @@ AmsError AmsBackendMultiAce::do_unload_filament(int slot_index) {
             head = *h;
         }
     }
-    if (!engine || head < 0) {
+    if (!engine) {
         return AmsBackendSnapmaker::do_unload_filament(head);
     }
+    if (head < 0) {
+        // The engine owns the feed state machine while it is active: no head
+        // resolved means nothing to unload, never the stock leaf macro.
+        return AmsErrorHelper::not_loaded();
+    }
     // Every head, ACE-fed or not: the engine owns the feed state machine.
-    return dispatch_feed(multiace::unload_gcode(head), EVENT_UNLOAD_COMPLETE);
+    AmsError err = dispatch_feed(multiace::unload_gcode(head), EVENT_UNLOAD_COMPLETE);
+    if (err.success()) {
+        cancel_pending_load("an unload");
+    }
+    return err;
 }
 
 AmsError AmsBackendMultiAce::do_select_slot(int slot_index) {
-    cancel_pending_load("a tool change");
     if (slot_index < kHeads) {
         return AmsBackendSnapmaker::do_select_slot(slot_index);
     }
@@ -826,20 +910,25 @@ AmsError AmsBackendMultiAce::do_select_slot(int slot_index) {
 }
 
 AmsError AmsBackendMultiAce::do_change_tool(int tool_number) {
-    cancel_pending_load("a tool change");
     if (tool_number >= kHeads) {
         return AmsErrorHelper::tool_out_of_range(tool_number);
     }
-    return AmsBackendSnapmaker::do_change_tool(tool_number);
+    AmsError err = AmsBackendSnapmaker::do_change_tool(tool_number);
+    if (err.success()) {
+        cancel_pending_load("a tool change");
+    }
+    return err;
 }
 
 AmsError AmsBackendMultiAce::do_park_active_tool() {
-    cancel_pending_load("a tool park");
-    return AmsBackendSnapmaker::do_park_active_tool();
+    AmsError err = AmsBackendSnapmaker::do_park_active_tool();
+    if (err.success()) {
+        cancel_pending_load("a tool park");
+    }
+    return err;
 }
 
 AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bool load) {
-    cancel_pending_load("a batch operation");
     std::vector<int> heads;
     bool engine = false;
     bool any_ace = false;
@@ -852,7 +941,9 @@ AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bo
                 if (s >= kHeads) {
                     const auto h = head_for_global_locked(s);
                     if (load || !h || routed_bay_locked(*h) != multiace::bay_of(s)) {
-                        return AmsErrorHelper::not_supported("Batch load from ACE bays");
+                        return AmsErrorHelper::not_supported(
+                            load ? "Batch load from ACE bays"
+                                 : "Batch unload of unrouted ACE bays");
                     }
                     head = *h;
                 }
@@ -895,9 +986,14 @@ AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bo
         std::vector<int> sorted = heads;
         std::sort(sorted.begin(), sorted.end());
         if (!loaded_heads.empty() && sorted == loaded_heads) {
-            // The engine's own unload-all, whose sequencing covers every
-            // loaded head, ACE-fed or not.
-            return dispatch_feed(multiace::unload_all_gcode(), EVENT_UNLOAD_COMPLETE);
+            // The engine's own unload-all: its loop walks all four heads and
+            // unloads every one whose motion sensor sees filament, ACE-fed,
+            // feeder and manual alike (its _unload_all_heads).
+            AmsError err = dispatch_feed(multiace::unload_all_gcode(), EVENT_UNLOAD_COMPLETE);
+            if (err.success()) {
+                cancel_pending_load("a batch operation");
+            }
+            return err;
         }
     }
 
@@ -910,7 +1006,12 @@ AmsError AmsBackendMultiAce::do_filament_batch(const std::vector<int>& slots, bo
         }
         script += load ? multiace::load_gcode(h, std::nullopt) : multiace::unload_gcode(h);
     }
-    return dispatch_feed(std::move(script), load ? EVENT_LOAD_COMPLETE : EVENT_UNLOAD_COMPLETE);
+    AmsError err =
+        dispatch_feed(std::move(script), load ? EVENT_LOAD_COMPLETE : EVENT_UNLOAD_COMPLETE);
+    if (err.success()) {
+        cancel_pending_load("a batch operation");
+    }
+    return err;
 }
 
 // ============================================================================
@@ -998,8 +1099,7 @@ AmsBackendMultiAce::classify_error(const std::string& raw_line,
         return AmsBackendSnapmaker::classify_error(raw_line, ctx);
     }
 
-    const std::string token =
-        fmt::format("{:04d}-{:04d}-{:04d}-{:04d}", code->level, code->id, code->index, code->code);
+    const std::string token = snapmaker::format_exception_code(*code);
     std::string message = detail;
     if (const auto at = message.find(token); at != std::string::npos) {
         message.erase(at, token.size());

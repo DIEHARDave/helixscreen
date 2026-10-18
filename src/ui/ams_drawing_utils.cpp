@@ -546,6 +546,14 @@ SystemToolLayout compute_system_tool_layout(const helix::AmsSystemInfo& info,
             if (shared_phys >= 0) {
                 // Reuse existing physical nozzle
                 utl.first_physical_tool = shared_phys;
+            } else if (min_tool < 0 && unit_extruder.empty() && unit.hub_tool_label < 0) {
+                // An unwired hub: no lane names a tool, an extruder or a label,
+                // so the unit converges on no head at all and feeds no nozzle.
+                // Its lanes end at the hub (PREP/NONE on the path).
+                utl.first_physical_tool = total_physical;
+                utl.tool_count = 0;
+                result.units.push_back(utl);
+                continue;
             } else {
                 utl.first_physical_tool = total_physical;
                 total_physical += 1;

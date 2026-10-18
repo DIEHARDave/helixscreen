@@ -19,6 +19,7 @@
 #include "helix_version.h"
 #include "humidity_sensor_types.h"
 #include "hv/requests.h"
+#include "i_moonraker_api.h"
 #include "klipper_extruder_naming.h"
 #include "layer_pause.h"
 #include "led/led_controller.h"
@@ -777,8 +778,9 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                             publish_identity_locked();
                             hardware_.set_software_version(software_version);
                         }
-                        std::string state = result.value("state", "");
-                        std::string state_message = result.value("state_message", "");
+                        const KlippyStatus status = parse_klippy_status(result);
+                        const std::string& state = status.state;
+                        const std::string& state_message = status.state_message;
 
                         // Detect Kalico (Klipper fork with MPC support)
                         auto app = result.value("app", "");
@@ -805,18 +807,20 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                         // shut down between the request and the response, and the
                         // stale answer would then re-enable everything against a
                         // dead printer.
-                        if (state == "shutdown" || state == "disconnected") {
+                        //
+                        // Moonraker's own "disconnected" seeds SHUTDOWN: Klippy is
+                        // not serving, which is what SHUTDOWN gates on.
+                        const std::optional<KlippyState> seed =
+                            state == "disconnected" ? std::optional(KlippyState::SHUTDOWN)
+                                                    : parse_klippy_state(state);
+                        if (seed == KlippyState::SHUTDOWN || seed == KlippyState::ERROR) {
                             spdlog::warn("[Moonraker Client] Printer is in {} state at startup",
                                          state);
-                            get_printer_state().set_klippy_state_if_unseeded(KlippyState::SHUTDOWN);
-                        } else if (state == "error") {
-                            spdlog::warn("[Moonraker Client] Printer is in ERROR state at startup");
-                            get_printer_state().set_klippy_state_if_unseeded(KlippyState::ERROR);
-                        } else if (state == "startup") {
+                        } else if (seed == KlippyState::STARTUP) {
                             spdlog::info("[Moonraker Client] Printer is starting up");
-                            get_printer_state().set_klippy_state_if_unseeded(KlippyState::STARTUP);
-                        } else if (state == "ready") {
-                            get_printer_state().set_klippy_state_if_unseeded(KlippyState::READY);
+                        }
+                        if (seed) {
+                            get_printer_state().set_klippy_state_if_unseeded(*seed, state_message);
                         }
                     }
 

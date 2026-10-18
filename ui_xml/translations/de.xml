@@ -466,6 +466,7 @@
   <translation tag="Calibrate Gates" de="Gates kalibrieren"/>
   <translation tag="Calibrate Gear" de="Zahnrad kalibrieren"/>
   <translation tag="Calibrate Purge Chute" de="Entlüftungsrinne kalibrieren"/>
+  <translation tag="Calibrate Toolhead" de="Werkzeugkopf kalibrieren"/>
   <translation tag="Calibrate X" de="X kalibrieren"/>
   <translation tag="Calibrate Y" de="Y kalibrieren"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" de="Input Shaping kalibrieren, um Ringing-Artefakte im Druck zu reduzieren"/>
@@ -1425,6 +1426,7 @@
   <translation tag="Grip filament" de="Filament greifen"/>
   <translation tag="Grip the filament" de="Filament greifen"/>
   <translation tag="Guide the toolhead to the chute&apos;s extrude position" de="Werkzeugkopf zur Extrusionsposition der Rinne führen"/>
+  <translation tag="Guided sensor-to-nozzle, unload and cutter retract calibration" de="Geführte Kalibrierung: Sensor zur Düse, Entladeweg und Einzug des Schneiders"/>
   <translation tag="Guides and reference" de="Anleitungen und Referenz"/>
   <translation tag="H" de="H"/>
   <translation tag="HELIXSCREEN" de="HELIXSCREEN"/>

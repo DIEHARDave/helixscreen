@@ -1370,6 +1370,7 @@ class AmsBackend {
         SensorDisabled,    ///< load needs the head's motion sensor enabled
         Busy,              ///< transient or unrecognised channel state
         Error,             ///< the feeder reports a fault
+        NotSupported,      ///< the backend refuses this operation on this lane
     };
 
     /**

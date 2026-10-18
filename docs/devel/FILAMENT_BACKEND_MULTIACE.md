@@ -86,6 +86,12 @@ feeder and manual heads included: the engine owns the feed state machine for all
 | Select a bay | `T<h>` when it is h's routed bay, refused otherwise | |
 | Batch unload covering every loaded head | `ACE_UNLOAD_ALL_HEADS` | |
 | Batch unload, part of the loaded heads | `ACE_UNLOAD_HEAD` per head, one script | |
+
+`ACE_UNLOAD_ALL_HEADS` is sent only when the selection is every loaded head, because the
+engine's own loop (the _unload_all_heads command handler in its ace.py module) walks all
+four heads and unloads every one whose motion sensor sees filament — ACE-fed, feeder and
+manual alike, and it counts a feeder head's tip-pull as a successful unload. Feeder and
+manual heads in the selection are therefore covered by the macro, not skipped by it.
 | Batch load | refused when any selected head is ACE-fed | `ACE_LOAD_HEAD` per head, one script, after every head passes the single-load checks |
 | Dry unit k | `ACE_DRY ACE=k TEMP=t DURATION=m`; stop `ACE_STOP_DRYING ACE=k` | |
 
@@ -99,8 +105,10 @@ if the frame that finally shows it empty arrives later. So does the
 engine leaving multi/head mode, or a print holding the heads by the time the head empties
 (the shared print-active rule, so a start this screen is preparing counts before the printer
 reports it);
-each of those raises EVENT_ERROR naming the bay. A failed unload, or any other filament op
-(a tool change and a tool park included), drops it at once. A head loaded with no recorded
+each of those raises EVENT_ERROR naming the bay. A failed unload, or another filament op
+that actually dispatches (a tool change and a tool park included), drops it at once; an op
+that is refused before sending changes nothing, the pending load included. A head loaded
+with no recorded
 `head_source` refuses a bay swap outright: the engine has no bay to return that strand to. `ACE_SWAP_HEAD` would do both in one
 command, but its behaviour outside a print is unconfirmed. `needs_unload_before_load()` is
 false for a bay: the screen's swap ladder would send `T<h>`, which loads no bay.
@@ -156,6 +164,14 @@ user's own word and still wins. Clearing a bay drops the override and the lane's
 records and lets the engine's reading show again — the same clear semantics a
 head with a tag has.
 
+A bay edit also clears on the hardware event, the same rule a head's RFID tag
+runs: every frame's bay identity (uid, else material and colour) goes through
+the shared `SlotFingerprintTracker`, and a change the insert rule reads as a
+different spool clears the override and lets the engine's table show through.
+A bay entry stating no identity — an empty bay, or an entry the frame omits —
+is no signal: the record waits for evidence, so a bay that empties and refills
+with the same material and colour keeps the edit.
+
 `AmsBackendMultiAce::apply_user_edit` / `sync_external_identity` /
 `clear_slot_override` route by unit: a bay index resolves through
 `multiace::bay_of()` into its own unit's `SlotInfo` and the shared override
@@ -171,9 +187,12 @@ the stored record, the only place they live.
 `MoonrakerClientMock` lists the U1 feed objects plus the plain `ace` object and serves
 engine-shaped `ace` frames from `HELIX_MOCK_MULTIACE_MODE` (head default, multi) and
 `HELIX_MOCK_MULTIACE_UNITS` (1-4), so real discovery builds this backend and runs against
-them. Head 1 starts routed to ACE 1 bay 1; `ACE_LOAD_HEAD` / `ACE_UNLOAD_HEAD` answer by
-routing (or clearing) and walking the head's channel_state, an unload parking at
-`preload_finish`. `tests/unit/test_ams_mock_multiace_parity.cpp` pins the frame to the real
+them. In head mode the units wire the heads 1:1 (head h to unit h) and the heads past the
+unit count are side-feeder heads; head 1 starts routed to ACE 1 bay 1. `ACE_LOAD_HEAD` /
+`ACE_UNLOAD_HEAD` answer by routing (or clearing) and walking the head's channel_state, an
+unload parking at `preload_finish`; a feeder head loads from its side port (no route) and
+`ACE_UNLOAD_ALL_HEADS` unloads every head whose sensor sees filament, feeder heads
+included. `tests/unit/test_ams_mock_multiace_parity.cpp` pins the frame to the real
 parser and backend. Full knob table: `docs/devel/MOCK_ENVIRONMENT_VARIABLES.md` under
 `HELIX_MOCK_AMS`.
 

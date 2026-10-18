@@ -132,8 +132,9 @@ class AmsState {
      *
      * Per-slot subjects (color, status) are allocated statically.
      * Systems with more slots will only have subjects for the first MAX_SLOTS.
+     * 20 covers a U1 with four ACE Pro units: 4 heads + 4x4 bays.
      */
-    static constexpr int MAX_SLOTS = 16;
+    static constexpr int MAX_SLOTS = 20;
     /// Bytes held per slot-name subject, NUL included. Names longer than a
     /// card can show are cut on a codepoint boundary; the label ellipsizes.
     static constexpr size_t SLOT_NAME_BUF_SIZE = 64;

@@ -466,6 +466,7 @@
   <translation tag="Calibrate Gates" en="Calibrate Gates"/>
   <translation tag="Calibrate Gear" en="Calibrate Gear"/>
   <translation tag="Calibrate Purge Chute" en="Calibrate Purge Chute"/>
+  <translation tag="Calibrate Toolhead" en="Calibrate Toolhead"/>
   <translation tag="Calibrate X" en="Calibrate X"/>
   <translation tag="Calibrate Y" en="Calibrate Y"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" en="Calibrate input shaping to reduce ringing artifacts in prints"/>
@@ -1424,6 +1425,7 @@
   <translation tag="Grip filament" en="Grip filament"/>
   <translation tag="Grip the filament" en="Grip the filament"/>
   <translation tag="Guide the toolhead to the chute&apos;s extrude position" en="Guide the toolhead to the chute&apos;s extrude position"/>
+  <translation tag="Guided sensor-to-nozzle, unload and cutter retract calibration" en="Guided sensor-to-nozzle, unload and cutter retract calibration"/>
   <translation tag="Guides and reference" en="Guides and reference"/>
   <translation tag="H" en="H"/>
   <translation tag="HELIXSCREEN" en="HELIXSCREEN"/>

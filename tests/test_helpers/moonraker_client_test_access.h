@@ -4,6 +4,7 @@
 
 #include "moonraker_client.h"
 
+#include <chrono>
 #include <shared_mutex>
 
 namespace helix {
@@ -47,6 +48,21 @@ class MoonrakerClientTestAccess {
     // auto-reconnect follows without calling connect().
     static void fire_ws_close(MoonrakerClient& c) {
         c.on_ws_close();
+    }
+
+    // Run one health-timer tick, as the libhv timer does every 5s.
+    static void health_tick(MoonrakerClient& c) {
+        c.on_health_tick();
+    }
+
+    static bool klippy_state_polling(const MoonrakerClient& c) {
+        return c.klippy_state_poll_->started_at.load() != 0;
+    }
+
+    // Move the running poll's start @p ms into the past, as that much time passing would.
+    static void age_klippy_state_poll(MoonrakerClient& c, std::chrono::milliseconds ms) {
+        c.klippy_state_poll_->started_at -=
+            std::chrono::duration_cast<std::chrono::steady_clock::duration>(ms).count();
     }
 
     // Take the shared lock a WebSocket trampoline holds for as long as its callback

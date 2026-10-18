@@ -298,6 +298,14 @@ std::optional<StatusFrame> helix::parse_status_notification(const json& notifica
     return frame;
 }
 
+void PrinterState::apply_klippy_status(const json& webhooks, double eventtime,
+                                       bool from_cached_snapshot,
+                                       std::optional<uint64_t> frame_epoch) {
+    if (network_state_.apply_webhooks(webhooks, eventtime, from_cached_snapshot, frame_epoch)) {
+        calibration_state_.reset_klippy_volatile();
+    }
+}
+
 void PrinterState::update_from_status(const json& state, double eventtime,
                                       bool from_cached_snapshot,
                                       std::optional<uint64_t> frame_epoch, bool whole_objects) {
@@ -367,9 +375,7 @@ void PrinterState::update_from_status(const json& state, double eventtime,
 
     // Klippy state from webhooks (shutdown/error detection), gated on freshness.
     if (auto it = state.find("webhooks"); it != state.end()) {
-        if (network_state_.apply_webhooks(*it, eventtime, from_cached_snapshot, frame_epoch)) {
-            calibration_state_.reset_klippy_volatile();
-        }
+        apply_klippy_status(*it, eventtime, from_cached_snapshot, frame_epoch);
     }
 
     // Track Klipper pause_resume.is_paused (PAUSE/RESUME gcode state)
@@ -445,16 +451,20 @@ void PrinterState::set_klippy_state_sync(KlippyState state) {
     set_klippy_state_internal(state);
 }
 
-void PrinterState::set_klippy_state_if_unseeded(KlippyState state) {
+void PrinterState::set_klippy_state_if_unseeded(KlippyState state,
+                                                const std::string& state_message) {
     // Deferred so the "has anything live landed?" check runs on the main thread,
     // in the same serialized order as the webhooks parse. Checking on the caller's
     // thread would race: a live frame could land between the check and the apply,
     // and printer.info's older answer would win anyway.
     async_lifetime_.defer("PrinterState::set_klippy_state_if_unseeded",
-                          [this, state]() { set_klippy_state_if_unseeded_internal(state); });
+                          [this, state, state_message]() {
+                              set_klippy_state_if_unseeded_internal(state, state_message);
+                          });
 }
 
-void PrinterState::set_klippy_state_if_unseeded_internal(KlippyState state) {
+void PrinterState::set_klippy_state_if_unseeded_internal(KlippyState state,
+                                                         const std::string& state_message) {
     if (network_state_.klippy_state_from_live()) {
         spdlog::debug("[PrinterState] Ignoring printer.info klippy state {} — a live state "
                       "has already been applied",
@@ -466,6 +476,9 @@ void PrinterState::set_klippy_state_if_unseeded_internal(KlippyState state) {
     // subscription snapshot that follows it on the same connection is strictly
     // newer, so it must still be allowed to correct this value.
     set_klippy_state_internal(state);
+    if (!state_message.empty()) {
+        network_state_.set_klippy_state_message(state_message, state);
+    }
 }
 
 void PrinterState::set_klippy_state_internal(KlippyState state) {

@@ -3,6 +3,8 @@
 
 #include "afc_defaults.h"
 
+#include <algorithm>
+
 namespace helix::printer {
 
 std::vector<DeviceSection> afc_default_sections() {
@@ -85,6 +87,16 @@ std::vector<DeviceAction> afc_default_actions() {
         DA::toggle("brush_enabled", "Enable Brush Wipe", "purge", false, "broom",
                    "Enable brush wipe after purging"),
     };
+}
+
+void afc_add_toolhead_calibration_action(std::vector<DeviceAction>& actions) {
+    const auto first_toolhead = std::find_if(actions.begin(), actions.end(),
+                                             [](const auto& a) { return a.section == "toolhead"; });
+    actions.insert(first_toolhead,
+                   DeviceAction::button("toolhead_calibration", "Calibrate Toolhead", "toolhead",
+                                        "play",
+                                        "Guided sensor-to-nozzle, unload and cutter retract "
+                                        "calibration"));
 }
 
 AfcCapabilities afc_default_capabilities() {

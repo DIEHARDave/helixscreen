@@ -2459,6 +2459,7 @@ void AmsBackendMock::set_afc_mode(bool enabled) {
         // AFC device sections and actions — use all defaults
         mock_device_sections_ = helix::printer::afc_default_sections();
         mock_device_actions_ = helix::printer::afc_default_actions();
+        helix::printer::afc_add_toolhead_calibration_action(mock_device_actions_);
 
         // Disable save_restart in mock mode (no real Klipper to restart)
         for (auto& action : mock_device_actions_) {
@@ -2830,6 +2831,7 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
         // AFC device sections and actions
         mock_device_sections_ = helix::printer::afc_default_sections();
         mock_device_actions_ = helix::printer::afc_default_actions();
+        helix::printer::afc_add_toolhead_calibration_action(mock_device_actions_);
         for (auto& action : mock_device_actions_) {
             if (action.id == "save_restart") {
                 action.enabled = false;
@@ -3023,6 +3025,7 @@ void AmsBackendMock::set_vivid_mixed_mode(bool enabled) {
         // AFC device sections and actions
         mock_device_sections_ = helix::printer::afc_default_sections();
         mock_device_actions_ = helix::printer::afc_default_actions();
+        helix::printer::afc_add_toolhead_calibration_action(mock_device_actions_);
         for (auto& action : mock_device_actions_) {
             if (action.id == "save_restart") {
                 action.enabled = false;
@@ -3426,6 +3429,7 @@ void AmsBackendMock::set_htlf_toolchanger_mode(bool enabled) {
         // AFC device sections and actions
         mock_device_sections_ = helix::printer::afc_default_sections();
         mock_device_actions_ = helix::printer::afc_default_actions();
+        helix::printer::afc_add_toolhead_calibration_action(mock_device_actions_);
 
         spdlog::info("[AmsBackendMock] HTLF+Toolchanger mode: HTLF_1 (4, MIXED) + Tools (3, "
                      "PARALLEL) = 7 slots");
@@ -3688,6 +3692,7 @@ void AmsBackendMock::apply_afc_profile_locked(const AfcMockLane* lanes, int lane
 
     mock_device_sections_ = helix::printer::afc_default_sections();
     mock_device_actions_ = helix::printer::afc_default_actions();
+    helix::printer::afc_add_toolhead_calibration_action(mock_device_actions_);
 
     spdlog::info("[AmsBackendMock] AFC profile '{}': {} units / {} lanes", type_name, unit_count,
                  lane_count);

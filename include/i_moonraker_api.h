@@ -23,6 +23,18 @@ class IMoonrakerClient; // returned by get_client()
 class PrinterState;     // returned by printer_state()
 class PrinterDiscovery; // returned by hardware()
 
+/// Klippy's state as Moonraker's printer.info reports it. `state` is the raw
+/// string: Klipper's ready/startup/shutdown/error (parse_klippy_state() maps
+/// those), or Moonraker's own "disconnected" while it has no Klippy connection.
+struct KlippyStatus {
+    std::string state;
+    std::string state_message;
+};
+
+/// Read state and state_message from a printer.info `result` object; either is
+/// empty when absent or not a string.
+KlippyStatus parse_klippy_status(const nlohmann::json& info);
+
 /**
  * @brief Abstract interface for the high-level Moonraker API façade.
  *
@@ -48,6 +60,7 @@ class IMoonrakerAPI {
     using BoolCallback = std::function<void(bool)>;
     using StringCallback = std::function<void(const std::string&)>;
     using JsonCallback = std::function<void(const json&)>;
+    using KlippyStatusCallback = std::function<void(const KlippyStatus&)>;
 
     using PowerDevicesCallback = std::function<void(const std::vector<PowerDevice>&)>;
     using SensorsCallback =
@@ -271,8 +284,8 @@ class IMoonrakerAPI {
     // Query Operations
     // ========================================================================
 
-    /// @brief Query if printer is ready for commands
-    virtual void is_printer_ready(BoolCallback on_result, ErrorCallback on_error) = 0;
+    /// @brief Query Klippy's state and state message (printer.info)
+    virtual void get_klippy_status(KlippyStatusCallback on_result, ErrorCallback on_error) = 0;
 
     /// @brief Get current print state
     virtual void get_print_state(StringCallback on_result, ErrorCallback on_error) = 0;

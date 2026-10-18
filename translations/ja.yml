@@ -472,6 +472,7 @@ translations:
   Calibrate Gates: 'ゲートをキャリブレート'
   Calibrate Gear: 'ギアをキャリブレート'
   Calibrate Purge Chute: パージシュートをキャリブレート
+  Calibrate Toolhead: 'ツールヘッドをキャリブレート'
   Calibrate X: X軸をキャリブレート
   Calibrate Y: Y軸をキャリブレート
   Calibrate All Tools: すべてのツールをキャリブレート
@@ -1474,6 +1475,7 @@ translations:
   Grip filament: フィラメントを把持
   Grip the filament: フィラメントを把持
   Guide the toolhead to the chute's extrude position: ツールヘッドをシュートの押出し位置へ誘導します
+  Guided sensor-to-nozzle, unload and cutter retract calibration: 'ガイド付きキャリブレーション：センサーからノズルまで、アンロード、カッターの引き戻し'
   Guides and reference: ガイドとリファレンス
   H: H
   HELIXSCREEN: HELIXSCREEN

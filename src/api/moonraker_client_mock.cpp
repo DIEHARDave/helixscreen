@@ -2845,10 +2845,19 @@ nlohmann::json MoonrakerClientMock::multiace_status_json() const {
     };
 
     nlohmann::json head_ace = nlohmann::json::object();
+    nlohmann::json head_feeder = nlohmann::json::object();
     nlohmann::json head_source = nlohmann::json::object();
+    nlohmann::json ace_heads = nlohmann::json::array();
     for (int h = 0; h < 4; ++h) {
         const std::string key = std::to_string(h);
-        head_ace[key] = head_mode ? (h % multiace_units_) : 0;
+        // The engine wires one unit per head; a head with no unit to spare is
+        // fed from the side feeder, the state head_mode_2ace_2feeder models.
+        const bool ace_fed = !multiace_head_is_feeder(h);
+        head_ace[key] = head_mode ? (ace_fed ? h : -1) : 0;
+        head_feeder[key] = !ace_fed;
+        if (ace_fed) {
+            ace_heads.push_back(h);
+        }
         const auto& route = multiace_route_[static_cast<size_t>(h)];
         if (route.first < 0) {
             head_source[key] = nullptr;
@@ -2867,8 +2876,8 @@ nlohmann::json MoonrakerClientMock::multiace_status_json() const {
     ace["head_ace"] = head_ace;
     ace["head_source"] = head_source;
     ace["head_manual"] = {{"0", false}, {"1", false}, {"2", false}, {"3", false}};
-    ace["head_feeder"] = {{"0", false}, {"1", false}, {"2", false}, {"3", false}};
-    ace["ace_heads"] = json::array({0, 1, 2, 3});
+    ace["head_feeder"] = head_feeder;
+    ace["ace_heads"] = ace_heads;
 
     nlohmann::json aces = nlohmann::json::array();
     for (int u = 0; u < multiace_units_; ++u) {
@@ -2922,9 +2931,10 @@ bool MoonrakerClientMock::apply_multiace_gcode(const std::string& gcode) {
 
     std::vector<int> heads;
     if (cmd == "ACE_UNLOAD_ALL_HEADS") {
-        std::lock_guard<std::mutex> lock(multiace_mutex_);
+        // The engine's own loop unloads every head whose motion sensor sees
+        // filament, ACE-fed, feeder and manual alike.
         for (int h = 0; h < 4; ++h) {
-            if (multiace_route_[static_cast<size_t>(h)].first >= 0) {
+            if (u1_filament_detected_[static_cast<size_t>(h)]) {
                 heads.push_back(h);
             }
         }
@@ -2939,25 +2949,31 @@ bool MoonrakerClientMock::apply_multiace_gcode(const std::string& gcode) {
             int slot = multiace_token(gcode, "SLOT", -1);
             {
                 std::lock_guard<std::mutex> lock(multiace_mutex_);
-                if (ace < 0 || slot < 0) {
-                    // A bare load takes the unit wired to the head (head mode)
-                    // or unit 1, bay 1.
-                    ace = (multiace_mode_ != "multi") ? (h % multiace_units_) : 0;
-                    slot = 0;
+                if (multiace_head_is_feeder(h)) {
+                    // A feeder head loads from the side port: no bay is routed
+                    // and head_source stays null, the engine's own shape.
+                    ace = -1;
+                } else {
+                    if (ace < 0 || slot < 0) {
+                        // A bare load takes the unit wired to the head (head
+                        // mode) or unit 1, bay 1.
+                        ace = (multiace_mode_ != "multi") ? h : 0;
+                        slot = 0;
+                    }
+                    // HEAD is clamped where it is read; an out-of-range ACE or
+                    // SLOT must not reach the route table or the bay seeds.
+                    ace = std::clamp(ace, 0, multiace_units_ - 1);
+                    slot = std::clamp(slot, 0, 3);
+                    if (multiace_route_[i].first >= 0) {
+                        // The engine feeds nothing into an occupied head.
+                        spdlog::warn("[MoonrakerClientMock] multiACE mock: head {} already "
+                                     "loaded - load feeds nothing",
+                                     h);
+                        continue;
+                    }
+                    multiace_route_[i] = {ace, slot};
+                    multiace_swap_phase_ = "done";
                 }
-                // HEAD is clamped where it is read; an out-of-range ACE or
-                // SLOT must not reach the route table or the bay seeds.
-                ace = std::clamp(ace, 0, multiace_units_ - 1);
-                slot = std::clamp(slot, 0, 3);
-                if (multiace_route_[i].first >= 0) {
-                    // The engine feeds nothing into an occupied head.
-                    spdlog::warn("[MoonrakerClientMock] multiACE mock: head {} already loaded - "
-                                 "load feeds nothing",
-                                 h);
-                    continue;
-                }
-                multiace_route_[i] = {ace, slot};
-                multiace_swap_phase_ = "done";
             }
             u1_channel_state_[i] = "preload_finish";
             u1_filament_detected_[i] = true;
@@ -2972,7 +2988,7 @@ bool MoonrakerClientMock::apply_multiace_gcode(const std::string& gcode) {
                 multiace_route_[i] = {-1, -1};
                 multiace_swap_phase_ = "idle";
             }
-            if (had_route) {
+            if (had_route || u1_filament_detected_[i]) {
                 u1_channel_state_[i] = "unload_heat_finish";
                 publish_u1_channel_frame(h);
                 // multiACE's feed unload parks the channel at preload_finish.
