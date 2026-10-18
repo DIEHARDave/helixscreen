@@ -660,7 +660,7 @@ namespace {
 struct DetectedK2Fixture : LVGLTestFixture {
     DetectedK2Fixture() {
         AmsState::instance().clear_backends();
-        AmsState::instance().init_subjects(false);
+        AmsState::instance().init_subjects(true);
         PrinterImageManager::instance().set_active_image("");
         Config* config = Config::get_instance();
         config->set<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "Creality K2");

@@ -48,7 +48,7 @@ FilamentConsumptionTracker::instance().stop()
 destroy_panels()
 ui_notification_deinit()
 deinit_active_print_media_manager()
-StaticSubjectRegistry::instance().deinit_all()
+StaticSubjectRegistry::instance().deinit_all(
 destroy_panels()
 m_job_queue_state.reset()
 CjkFontManager::instance().shutdown()

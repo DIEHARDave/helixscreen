@@ -191,11 +191,12 @@ TEST_CASE("recent_brands keeps first-seen order", "[catalog][edit-spool]") {
 
 TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
           "[catalog][edit-spool]") {
-    // The touch box is disc + 2*hit (color_swatch's ext_click_area), and the
-    // grid gap must be >= 2*hit so adjacent targets tile at their pitch
-    // without overlapping. Read the ladders straight out of the XML so a
-    // regression in the consts fails here, not on a device.
-    std::ifstream in("ui_xml/ams_edit_overlay.xml");
+    // The editor's grids size from the shared swatch_grid ladders. The touch box
+    // is disc + 2*hit, with hit = gap_half (color_swatch's ext_click_area), and the
+    // gap must be >= 2*hit so adjacent targets tile at their pitch without
+    // overlapping. Read the ladders straight out of globals.xml so a regression in
+    // the consts fails here, not on a device.
+    std::ifstream in("ui_xml/globals.xml");
     REQUIRE(in.is_open());
     std::string xml((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     auto read_px = [&](const std::string& name) -> int {
@@ -204,36 +205,12 @@ TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
         REQUIRE(at != std::string::npos);
         return std::atoi(xml.c_str() + at + needle.size());
     };
-    // The disc ladders are literals in the editor's consts; read them so a
-    // change to either side of the 44px math fails here.
-    const int disc_micro = read_px("ams_edit_grid_swatch_micro");
-    // medium+ discs resolve through #swatch_grid_size; read the shared
-    // literal from globals.xml.
-    std::ifstream globals_in("ui_xml/globals.xml");
-    REQUIRE(globals_in.is_open());
-    std::string globals_xml((std::istreambuf_iterator<char>(globals_in)),
-                            std::istreambuf_iterator<char>());
-    auto read_global_px = [&](const std::string& name) -> int {
-        const std::string needle = "name=\"" + name + "\" value=\"";
-        auto at = globals_xml.find(needle);
-        REQUIRE(at != std::string::npos);
-        return std::atoi(globals_xml.c_str() + at + needle.size());
-    };
-    const int disc_medium = read_global_px("swatch_grid_size_medium");
-    for (const char* cls : {"micro", "tiny", "small"}) {
-        const std::string p = std::string("ams_edit_grid_");
-        const int disc = read_px(p + "swatch_" + cls);
-        const int hit = read_px(p + "hit_" + cls);
-        const int gap = read_px(p + "gap_" + cls);
+    for (const char* cls : {"micro", "tiny", "small", "medium", "large"}) {
+        INFO("class " << cls);
+        const int disc = read_px(std::string("swatch_grid_size_") + cls);
+        const int gap = read_px(std::string("swatch_grid_gap_") + cls);
+        const int hit = read_px(std::string("swatch_grid_gap_half_") + cls);
         CHECK(disc + 2 * hit >= 44);
         CHECK(gap >= 2 * hit);
     }
-    for (const char* cls : {"medium", "large", "xlarge", "xxlarge"}) {
-        const std::string p = std::string("ams_edit_grid_");
-        const int hit = read_px(p + "hit_" + cls);
-        const int gap = read_px(p + "gap_" + cls);
-        CHECK(disc_medium + 2 * hit >= 44);
-        CHECK(gap >= 2 * hit);
-    }
-    (void)disc_micro;
 }
