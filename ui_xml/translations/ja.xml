@@ -339,6 +339,7 @@
   <translation tag="Bed" ja="ベッド"/>
   <translation tag="Bed (°C)" ja="ベッド (°C)"/>
   <translation tag="Bed Clear Check" ja="ベッド上の異物チェック"/>
+  <translation tag="Bed Drying" ja="ベッド乾燥"/>
   <translation tag="Bed Heater" ja="ベッドヒーター"/>
   <translation tag="Bed Level" ja="ベッドレベル"/>
   <translation tag="Bed Leveling" ja="ベッドレベリング"/>
@@ -540,6 +541,7 @@
   <translation tag="Chamber" ja="チャンバー"/>
   <translation tag="Chamber (°C)" ja="チャンバー (°C)"/>
   <translation tag="Chamber Cooling Fan" ja="チャンバー冷却ファン"/>
+  <translation tag="Chamber Dryer" ja="チャンバー乾燥機"/>
   <translation tag="Chamber Fan" ja="チャンバーファン"/>
   <translation tag="Chamber Heater" ja="チャンバーヒーター"/>
   <translation tag="Chamber Heater Fan" ja="チャンバーヒーターファン"/>
@@ -1093,6 +1095,7 @@
   <translation tag="Excellent Accuracy" ja="非常に高精度"/>
   <translation tag="Exception: {}" ja="例外: {}"/>
   <translation tag="Exclude" ja="除外"/>
+  <translation tag="Exclude Object" ja="オブジェクト除外"/>
   <translation tag="Exclude Object?" ja="オブジェクトを除外しますか？"/>
   <translation tag="Exclude Objects" ja="オブジェクトの除外"/>
   <translation tag="Excluded" ja="除外"/>
@@ -1247,6 +1250,7 @@
   <translation tag="Fan" ja="ファン"/>
   <translation tag="Fan Calibration" ja="ファンキャリブレーション"/>
   <translation tag="Fan Speeds" ja="ファン速度"/>
+  <translation tag="Fan Tach" ja="ファン回転計"/>
   <translation tag="Fan Transfer" ja="ファン熱伝達"/>
   <translation tag="Fan available but not assigned to any role" ja="ファンは使用可能ですが役割が割り当てられていません"/>
   <translation tag="Fan control failed: {}" ja="ファン制御に失敗しました: {}"/>
@@ -1336,6 +1340,7 @@
   <translation tag="File not found on printer." ja="プリンター上にファイルが見つかりません。"/>
   <translation tag="File not found: {}" ja="ファイルが見つかりません: {}"/>
   <translation tag="Filename" ja="ファイル名"/>
+  <translation tag="Filter Fan" ja="フィルターファン"/>
   <translation tag="Fine" ja="微動"/>
   <translation tag="Fine Inner" ja="微動・内側"/>
   <translation tag="Fine Outer" ja="微動・外側"/>
@@ -1482,8 +1487,10 @@
   <translation tag="Heating..." ja="加熱中..."/>
   <translation tag="Heating: %d / %d°C" ja="加熱中: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" ja="有効なベッドメッシュの高さマップと平面度"/>
+  <translation tag="HelixPrint Plugin" ja="HelixPrintプラグイン"/>
   <translation tag="HelixScreen" ja="HelixScreen"/>
   <translation tag="HelixScreen Crashed" ja="HelixScreen がクラッシュしました"/>
+  <translation tag="HelixScreen Macros" ja="HelixScreenマクロ"/>
   <translation tag="HelixScreen is detecting your display orientation" ja="HelixScreenがディスプレイの向きを検出しています"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." ja="HelixScreen はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。"/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." ja="HelixScreenがこれをprinter.cfgに書き込み、Klipperを再起動します。プリンターは一時的に切断されます。"/>
@@ -1725,6 +1732,7 @@
   <translation tag="Layer" ja="レイヤー"/>
   <translation tag="Layer Height" ja="レイヤー高さ"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." ja="レイヤーマクロはレイヤーが変わるごとに 1 フレームを撮影します。ほとんどの印刷に最適です。"/>
+  <translation tag="Layer Pause" ja="レイヤー一時停止"/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." ja="レイヤーモードはレイヤー変更ごとに1フレームをキャプチャします。ほとんどの印刷に最適です。"/>
   <translation tag="Layer {} of {} · {:.2f} mm" ja="レイヤー {} / {} · {:.2f} mm"/>
   <translation tag="Layer {} of {}." ja="レイヤー {} / {}。"/>
@@ -2515,6 +2523,7 @@
   <translation tag="Purge &amp; Wipe" ja="パージとワイプ"/>
   <translation tag="Purge Chute Calibration" ja="パージシュートのキャリブレーション"/>
   <translation tag="Purge Length" ja="パージ長"/>
+  <translation tag="Purge Line" ja="パージライン"/>
   <translation tag="Purge chute calibration failed: {}" ja="パージシュートのキャリブレーションに失敗しました: {}"/>
   <translation tag="Purge chute position saved." ja="パージシュートの位置を保存しました。"/>
   <translation tag="Purge failed: {}" ja="パージに失敗しました: {}"/>
@@ -2942,6 +2951,7 @@
   <translation tag="Setup Timelapse" ja="タイムラプスを設定"/>
   <translation tag="Several printers match - choose yours" ja="複数のプリンターが一致します - 選択してください"/>
   <translation tag="Shadow Intensity" ja="影の強度"/>
+  <translation tag="Shake&amp;Tune" ja="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." ja="ツールヘッドを対角線ごとに動かし、2つの結果を同時に表示します。張りが同じベルトは同じ位置でピークになります。"/>
   <translation tag="Share Usage Data" ja="使用データを共有"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." ja="匿名の使用統計を共有して、HelixScreen の改善にご協力ください。個人データは一切収集されません。"/>
@@ -3821,6 +3831,7 @@
   <translation tag="remaining before clog detection triggers" ja="残りで詰まり検出が作動します"/>
   <translation tag="rendering" ja="レンダリング中"/>
   <translation tag="reset at {} h" ja="{} 時間時点でリセット"/>
+  <translation tag="set manually" ja="手動設定"/>
   <translation tag="sleep {} min" ja="{}分でスリープ"/>
   <translation tag="slots)" ja="スロット)"/>
   <translation tag="started" ja="開始"/>
@@ -3845,6 +3856,8 @@
   <translation tag="{} Hardware Issues" ja="ハードウェアの問題 {} 件"/>
   <translation tag="{} Issues Detected" ja="問題を {} 件検出"/>
   <translation tag="{} LED strips available" ja="{} 個の LED ストリップが利用可能です"/>
+  <translation tag="{} MCUs" ja="{} MCU"/>
+  <translation tag="{} Tools" ja="{} ツール"/>
   <translation tag="{} and {} are both mapped here" ja="{} と {} の両方がここに割り当てられています"/>
   <translation tag="{} available" ja="{} が利用可能"/>
   <translation tag="{} axes homed" ja="{} 軸がホーミング済み"/>

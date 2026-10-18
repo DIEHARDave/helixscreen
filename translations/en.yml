@@ -356,6 +356,7 @@ translations:
   Bed: Bed
   Bed (°C): Bed (°C)
   Bed Clear Check: Bed Clear Check
+  Bed Drying: Bed Drying
   Bed Heater: Bed Heater
   Bed Level: Bed Level
   Bed Leveling: Bed Leveling
@@ -575,6 +576,7 @@ translations:
   Chamber: Chamber
   Chamber (°C): Chamber (°C)
   Chamber Cooling Fan: Chamber Cooling Fan
+  Chamber Dryer: Chamber Dryer
   Chamber Fan: Chamber Fan
   Chamber Heater: Chamber Heater
   Chamber Heater Fan: Chamber Heater Fan
@@ -1168,6 +1170,7 @@ translations:
   Excellent Accuracy: Excellent Accuracy
   'Exception: {}': 'Exception: {}'
   Exclude: Exclude
+  Exclude Object: Exclude Object
   Exclude Object?: Exclude Object?
   Exclude Objects: Exclude Objects
   Excluded: Excluded
@@ -1331,6 +1334,7 @@ translations:
   Fan: Fan
   Fan Calibration: Fan Calibration
   Fan Speeds: Fan Speeds
+  Fan Tach: Fan Tach
   Fan Transfer: Fan Transfer
   Fan available but not assigned to any role: Fan available but not assigned to any role
   'Fan control failed: {}': 'Fan control failed: {}'
@@ -1426,6 +1430,7 @@ translations:
   File not found on printer.: File not found on printer.
   'File not found: {}': 'File not found: {}'
   Filename: Filename
+  Filter Fan: Filter Fan
   Fine: Fine
   Fine Inner: Fine Inner
   Fine Outer: Fine Outer
@@ -1580,8 +1585,10 @@ translations:
   Heating...: Heating...
   'Heating: %d / %d°C': 'Heating: %d / %d°C'
   Heightmap and flatness of the active bed mesh: Heightmap and flatness of the active bed mesh
+  HelixPrint Plugin: HelixPrint Plugin
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen Crashed
+  HelixScreen Macros: HelixScreen Macros
   HelixScreen is detecting your display orientation: HelixScreen is detecting your
     display orientation
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -1856,6 +1863,7 @@ translations:
   Layer Height: Layer Height
   Layer Macro captures one frame per layer change. Best for most prints.: Layer Macro
     captures one frame per layer change. Best for most prints.
+  Layer Pause: Layer Pause
   Layer mode captures one frame per layer change. Best for most prints.: Layer mode
     captures one frame per layer change. Best for most prints.
   Layer {} of {} · {:.2f} mm: Layer {} of {} · {:.2f} mm
@@ -2688,6 +2696,7 @@ translations:
   Purge & Wipe: Purge & Wipe
   Purge Chute Calibration: Purge Chute Calibration
   Purge Length: Purge Length
+  Purge Line: Purge Line
   'Purge chute calibration failed: {}': 'Purge chute calibration failed: {}'
   Purge chute position saved.: Purge chute position saved.
   'Purge failed: {}': 'Purge failed: {}'
@@ -3152,6 +3161,7 @@ translations:
   Setup Timelapse: Setup Timelapse
   Several printers match - choose yours: Several printers match - choose yours
   Shadow Intensity: Shadow Intensity
+  Shake&Tune: Shake&Tune
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.
   Share Usage Data: Share Usage Data
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Share
@@ -4133,6 +4143,7 @@ translations:
   remaining before clog detection triggers: remaining before clog detection triggers
   rendering: rendering
   reset at {} h: reset at {} h
+  set manually: set manually
   sleep {} min: sleep {} min
   slots): slots)
   started: started
@@ -4157,6 +4168,8 @@ translations:
   '{} Hardware Issues': '{} Hardware Issues'
   '{} Issues Detected': '{} Issues Detected'
   '{} LED strips available': '{} LED strips available'
+  '{} MCUs': '{} MCUs'
+  '{} Tools': '{} Tools'
   '{} and {} are both mapped here': '{} and {} are both mapped here'
   '{} available': '{} available'
   '{} axes homed': '{} axes homed'

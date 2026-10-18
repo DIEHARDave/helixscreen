@@ -367,6 +367,7 @@ translations:
   Bed: Piano
   Bed (°C): Piatto (°C)
   Bed Clear Check: 'Controllo piano libero'
+  Bed Drying: 'Asciugatura sul piatto'
   Bed Heater: Riscaldatore piano
   Bed Level: Livellamento piano
   Bed Leveling: Livellamento piano
@@ -589,6 +590,7 @@ translations:
   Chamber: Camera
   Chamber (°C): Camera (°C)
   Chamber Cooling Fan: Ventola raffreddamento camera
+  Chamber Dryer: 'Essiccatore camera'
   Chamber Fan: Ventola camera
   Chamber Heater: Riscaldatore camera
   Chamber Heater Fan: Ventola riscaldatore camera
@@ -1206,6 +1208,7 @@ translations:
   Excellent Accuracy: Precisione eccellente
   'Exception: {}': 'Eccezione: {}'
   Exclude: Escludi
+  Exclude Object: 'Escludi oggetto'
   Exclude Object?: 'Escludere oggetto?'
   Exclude Objects: 'Escludi oggetti'
   Excluded: Escluso
@@ -1373,6 +1376,7 @@ translations:
   Fan: Ventola
   Fan Calibration: Calibrazione ventola
   Fan Speeds: 'Velocità delle ventole'
+  Fan Tach: 'Tachimetro ventola'
   Fan Transfer: Trasferimento ventola
   Fan available but not assigned to any role: 'Ventola disponibile ma non assegnata a nessun ruolo'
   'Fan control failed: {}': 'Controllo ventola fallito: {}'
@@ -1469,6 +1473,7 @@ translations:
   File not found on printer.: File non trovato sulla stampante.
   'File not found: {}': 'File non trovato: {}'
   Filename: Nome file
+  Filter Fan: 'Ventola filtro'
   Fine: Preciso
   Fine Inner: Preciso interno
   Fine Outer: Preciso esterno
@@ -1626,8 +1631,10 @@ translations:
   Heating...: Riscaldamento...
   'Heating: %d / %d°C': 'Riscaldamento: %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Mappa delle altezze e planarità della mesh del piano attiva'
+  HelixPrint Plugin: 'Plugin HelixPrint'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen si è arrestato
+  HelixScreen Macros: 'Macro HelixScreen'
   HelixScreen is detecting your display orientation: HelixScreen sta rilevando l'orientamento
     del display
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -1911,6 +1918,7 @@ translations:
   Layer Macro captures one frame per layer change. Best for most prints.: Layer Macro
     cattura un fotogramma per ogni cambio di strato. Ideale per la maggior parte delle
     stampe.
+  Layer Pause: 'Pausa al layer'
   Layer mode captures one frame per layer change. Best for most prints.: La modalità
     layer cattura un fotogramma per cambio layer. Ideale per la maggior parte delle
     stampe.
@@ -2755,6 +2763,7 @@ translations:
   Purge & Wipe: 'Spurgo e pulizia'
   Purge Chute Calibration: Calibrazione condotto di spurgo
   Purge Length: 'Lunghezza di spurgo'
+  Purge Line: 'Linea di spurgo'
   'Purge chute calibration failed: {}': 'Calibrazione del condotto di spurgo non riuscita: {}'
   Purge chute position saved.: Posizione del condotto di spurgo salvata.
 
@@ -3229,6 +3238,7 @@ translations:
   Setup Timelapse: Configura timelapse
   Several printers match - choose yours: Più stampanti corrispondono - scegli la tua
   Shadow Intensity: Intensità ombra
+  Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Scuote la testina lungo ciascuna diagonale e sovrappone le due risposte. Cinghie bilanciate hanno il picco insieme.
   Share Usage Data: Condividi dati d'uso
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Condividi
@@ -4239,6 +4249,7 @@ translations:
     intasamento
   rendering: rendering
   reset at {} h: 'ripristinato a {} h'
+  set manually: 'manuale'
   sleep {} min: sospensione tra {} min
   slots): slot)
   started: avviato
@@ -4263,6 +4274,8 @@ translations:
   '{} Hardware Issues': '{} problemi hardware'
   '{} Issues Detected': '{} problemi rilevati'
   '{} LED strips available': '{} strisce LED disponibili'
+  '{} MCUs': '{} MCU'
+  '{} Tools': '{} utensili'
   '{} and {} are both mapped here': '{} e {} sono entrambi assegnati qui'
   '{} available': '{} disponibile'
   '{} axes homed': 'Assi {} in posizione'

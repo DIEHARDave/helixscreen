@@ -339,6 +339,7 @@
   <translation tag="Bed" it="Piano"/>
   <translation tag="Bed (°C)" it="Piatto (°C)"/>
   <translation tag="Bed Clear Check" it="Controllo piano libero"/>
+  <translation tag="Bed Drying" it="Asciugatura sul piatto"/>
   <translation tag="Bed Heater" it="Riscaldatore piano"/>
   <translation tag="Bed Level" it="Livellamento piano"/>
   <translation tag="Bed Leveling" it="Livellamento piano"/>
@@ -540,6 +541,7 @@
   <translation tag="Chamber" it="Camera"/>
   <translation tag="Chamber (°C)" it="Camera (°C)"/>
   <translation tag="Chamber Cooling Fan" it="Ventola raffreddamento camera"/>
+  <translation tag="Chamber Dryer" it="Essiccatore camera"/>
   <translation tag="Chamber Fan" it="Ventola camera"/>
   <translation tag="Chamber Heater" it="Riscaldatore camera"/>
   <translation tag="Chamber Heater Fan" it="Ventola riscaldatore camera"/>
@@ -1093,6 +1095,7 @@
   <translation tag="Excellent Accuracy" it="Precisione eccellente"/>
   <translation tag="Exception: {}" it="Eccezione: {}"/>
   <translation tag="Exclude" it="Escludi"/>
+  <translation tag="Exclude Object" it="Escludi oggetto"/>
   <translation tag="Exclude Object?" it="Escludere oggetto?"/>
   <translation tag="Exclude Objects" it="Escludi oggetti"/>
   <translation tag="Excluded" it="Escluso"/>
@@ -1247,6 +1250,7 @@
   <translation tag="Fan" it="Ventola"/>
   <translation tag="Fan Calibration" it="Calibrazione ventola"/>
   <translation tag="Fan Speeds" it="Velocità delle ventole"/>
+  <translation tag="Fan Tach" it="Tachimetro ventola"/>
   <translation tag="Fan Transfer" it="Trasferimento ventola"/>
   <translation tag="Fan available but not assigned to any role" it="Ventola disponibile ma non assegnata a nessun ruolo"/>
   <translation tag="Fan control failed: {}" it="Controllo ventola fallito: {}"/>
@@ -1336,6 +1340,7 @@
   <translation tag="File not found on printer." it="File non trovato sulla stampante."/>
   <translation tag="File not found: {}" it="File non trovato: {}"/>
   <translation tag="Filename" it="Nome file"/>
+  <translation tag="Filter Fan" it="Ventola filtro"/>
   <translation tag="Fine" it="Preciso"/>
   <translation tag="Fine Inner" it="Preciso interno"/>
   <translation tag="Fine Outer" it="Preciso esterno"/>
@@ -1482,8 +1487,10 @@
   <translation tag="Heating..." it="Riscaldamento..."/>
   <translation tag="Heating: %d / %d°C" it="Riscaldamento: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" it="Mappa delle altezze e planarità della mesh del piano attiva"/>
+  <translation tag="HelixPrint Plugin" it="Plugin HelixPrint"/>
   <translation tag="HelixScreen" it="HelixScreen"/>
   <translation tag="HelixScreen Crashed" it="HelixScreen si è arrestato"/>
+  <translation tag="HelixScreen Macros" it="Macro HelixScreen"/>
   <translation tag="HelixScreen is detecting your display orientation" it="HelixScreen sta rilevando l&apos;orientamento del display"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." it="HelixScreen si integrerà con il tuo cambia-filamento per operazioni di stampa multi-bobina/colore."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." it="HelixScreen scriverà questo in printer.cfg e riavvierà Klipper. La stampante si disconnetterà brevemente."/>
@@ -1725,6 +1732,7 @@
   <translation tag="Layer" it="Strato"/>
   <translation tag="Layer Height" it="Altezza layer"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." it="Layer Macro cattura un fotogramma per ogni cambio di strato. Ideale per la maggior parte delle stampe."/>
+  <translation tag="Layer Pause" it="Pausa al layer"/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." it="La modalità layer cattura un fotogramma per cambio layer. Ideale per la maggior parte delle stampe."/>
   <translation tag="Layer {} of {} · {:.2f} mm" it="Strato {} di {} · {:.2f} mm"/>
   <translation tag="Layer {} of {}." it="Strato {} di {}."/>
@@ -2515,6 +2523,7 @@
   <translation tag="Purge &amp; Wipe" it="Spurgo e pulizia"/>
   <translation tag="Purge Chute Calibration" it="Calibrazione condotto di spurgo"/>
   <translation tag="Purge Length" it="Lunghezza di spurgo"/>
+  <translation tag="Purge Line" it="Linea di spurgo"/>
   <translation tag="Purge chute calibration failed: {}" it="Calibrazione del condotto di spurgo non riuscita: {}"/>
   <translation tag="Purge chute position saved." it="Posizione del condotto di spurgo salvata."/>
   <translation tag="Purge failed: {}" it="Spurgo fallito: {}"/>
@@ -2942,6 +2951,7 @@
   <translation tag="Setup Timelapse" it="Configura timelapse"/>
   <translation tag="Several printers match - choose yours" it="Più stampanti corrispondono - scegli la tua"/>
   <translation tag="Shadow Intensity" it="Intensità ombra"/>
+  <translation tag="Shake&amp;Tune" it="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." it="Scuote la testina lungo ciascuna diagonale e sovrappone le due risposte. Cinghie bilanciate hanno il picco insieme."/>
   <translation tag="Share Usage Data" it="Condividi dati d&apos;uso"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." it="Condividi statistiche di utilizzo anonime per aiutarci a migliorare HelixScreen. Nessun dato personale viene mai raccolto."/>
@@ -3821,6 +3831,7 @@
   <translation tag="remaining before clog detection triggers" it="rimanente prima che si attivi il rilevamento intasamento"/>
   <translation tag="rendering" it="rendering"/>
   <translation tag="reset at {} h" it="ripristinato a {} h"/>
+  <translation tag="set manually" it="manuale"/>
   <translation tag="sleep {} min" it="sospensione tra {} min"/>
   <translation tag="slots)" it="slot)"/>
   <translation tag="started" it="avviato"/>
@@ -3845,6 +3856,8 @@
   <translation tag="{} Hardware Issues" it="{} problemi hardware"/>
   <translation tag="{} Issues Detected" it="{} problemi rilevati"/>
   <translation tag="{} LED strips available" it="{} strisce LED disponibili"/>
+  <translation tag="{} MCUs" it="{} MCU"/>
+  <translation tag="{} Tools" it="{} utensili"/>
   <translation tag="{} and {} are both mapped here" it="{} e {} sono entrambi assegnati qui"/>
   <translation tag="{} available" it="{} disponibile"/>
   <translation tag="{} axes homed" it="Assi {} in posizione"/>

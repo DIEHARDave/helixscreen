@@ -378,6 +378,7 @@
   <translation tag="Bed" ru="Стол"/>
   <translation tag="Bed (°C)" ru="Стол (°C)"/>
   <translation tag="Bed Clear Check" ru="Проверка чистоты стола"/>
+  <translation tag="Bed Drying" ru="Сушка на столе"/>
   <translation tag="Bed Heater" ru="Нагреватель стола"/>
   <translation tag="Bed Level" ru="Уровень стола"/>
   <translation tag="Bed Leveling" ru="Выравнивание стола"/>
@@ -579,6 +580,7 @@
   <translation tag="Chamber" ru="Камера"/>
   <translation tag="Chamber (°C)" ru="Камера (°C)"/>
   <translation tag="Chamber Cooling Fan" ru="Вентилятор охлаждения камеры"/>
+  <translation tag="Chamber Dryer" ru="Сушилка камеры"/>
   <translation tag="Chamber Fan" ru="Вентилятор камеры"/>
   <translation tag="Chamber Heater" ru="Нагреватель камеры"/>
   <translation tag="Chamber Heater Fan" ru="Вентилятор нагревателя камеры"/>
@@ -1135,6 +1137,7 @@
   <translation tag="Excellent Accuracy" ru="Отличная точность"/>
   <translation tag="Exception: {}" ru="Исключение: {}"/>
   <translation tag="Exclude" ru="Исключить"/>
+  <translation tag="Exclude Object" ru="Исключение объектов"/>
   <translation tag="Exclude Object?" ru="Исключить объект?"/>
   <translation tag="Exclude Objects" ru="Исключение объектов"/>
   <translation tag="Excluded" ru="Исключён"/>
@@ -1289,6 +1292,7 @@
   <translation tag="Fan" ru="Вентилятор"/>
   <translation tag="Fan Calibration" ru="Калибровка вентилятора"/>
   <translation tag="Fan Speeds" ru="Скорости вентиляторов"/>
+  <translation tag="Fan Tach" ru="Тахометр вентилятора"/>
   <translation tag="Fan Transfer" ru="Теплообмен с вентилятором"/>
   <translation tag="Fan available but not assigned to any role" ru="Вентилятор доступен, но не назначен ни на одну роль"/>
   <translation tag="Fan control failed: {}" ru="Ошибка управления вентилятором: {}"/>
@@ -1378,6 +1382,7 @@
   <translation tag="File not found on printer." ru="Файл не найден на принтере."/>
   <translation tag="File not found: {}" ru="Файл не найден: {}"/>
   <translation tag="Filename" ru="Имя файла"/>
+  <translation tag="Filter Fan" ru="Вентилятор фильтра"/>
   <translation tag="Fine" ru="Точно"/>
   <translation tag="Fine Inner" ru="Точно (внутренний)"/>
   <translation tag="Fine Outer" ru="Точно (внешний)"/>
@@ -1527,8 +1532,10 @@
   <translation tag="Heating..." ru="Нагрев..."/>
   <translation tag="Heating: %d / %d°C" ru="Нагрев: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" ru="Карта высот и ровность активной сетки стола"/>
+  <translation tag="HelixPrint Plugin" ru="Плагин HelixPrint"/>
   <translation tag="HelixScreen" ru="HelixScreen"/>
   <translation tag="HelixScreen Crashed" ru="HelixScreen аварийно завершился"/>
+  <translation tag="HelixScreen Macros" ru="Макросы HelixScreen"/>
   <translation tag="HelixScreen is detecting your display orientation" ru="HelixScreen определяет ориентацию дисплея"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." ru="HelixScreen интегрируется с вашим сменщиком филамента для многокатушечной/многоцветной печати."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." ru="HelixScreen записывает это в printer.cfg и перезапускает Klipper. Принтер ненадолго отключится."/>
@@ -1770,6 +1777,7 @@
   <translation tag="Layer" ru="Слой"/>
   <translation tag="Layer Height" ru="Высота слоя"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." ru="Слоевой макрос захватывает один кадр при смене слоя. Подходит для большинства печатей."/>
+  <translation tag="Layer Pause" ru="Пауза на слое"/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." ru="Послойный режим захватывает один кадр на каждую смену слоя. Лучший выбор для большинства печатей."/>
   <translation tag="Layer {} of {} · {:.2f} mm" ru="Слой {} из {} · {:.2f} мм"/>
   <translation tag="Layer {} of {}." ru="Слой {} из {}."/>
@@ -2569,6 +2577,7 @@
   <translation tag="Purge &amp; Wipe" ru="Продувка и очистка"/>
   <translation tag="Purge Chute Calibration" ru="Калибровка жёлоба продувки"/>
   <translation tag="Purge Length" ru="Длина продувки"/>
+  <translation tag="Purge Line" ru="Линия прочистки"/>
   <translation tag="Purge chute calibration failed: {}" ru="Не удалось калибровать жёлоб продувки: {}"/>
   <translation tag="Purge chute position saved." ru="Позиция жёлоба продувки сохранена."/>
   <translation tag="Purge failed: {}" ru="Ошибка прочистки: {}"/>
@@ -2996,6 +3005,7 @@
   <translation tag="Setup Timelapse" ru="Настроить таймлапс"/>
   <translation tag="Several printers match - choose yours" ru="Подходят несколько принтеров - выберите свой"/>
   <translation tag="Shadow Intensity" ru="Интенсивность тени"/>
+  <translation tag="Shake&amp;Tune" ru="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." ru="Раскачивает печатающую головку вдоль каждой диагонали и накладывает два отклика. У одинаково натянутых ремней пики совпадают."/>
   <translation tag="Share Usage Data" ru="Делиться данными использования"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." ru="Делитесь анонимной статистикой использования, чтобы помочь нам улучшить HelixScreen. Персональные данные никогда не собираются."/>
@@ -3884,6 +3894,7 @@
   <translation tag="remaining before clog detection triggers" ru="осталось до срабатывания обнаружения засора"/>
   <translation tag="rendering" ru="рендеринг"/>
   <translation tag="reset at {} h" ru="сброс на {} ч"/>
+  <translation tag="set manually" ru="вручную"/>
   <translation tag="sleep {} min" ru="сон через {} мин"/>
   <translation tag="slots)" ru="слотов)"/>
   <translation tag="started" ru="запущено"/>
@@ -3908,6 +3919,8 @@
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>
   <translation tag="{} Issues Detected" ru="Обнаружено проблем: {}"/>
   <translation tag="{} LED strips available" ru="Доступно светодиодных лент: {}"/>
+  <translation tag="{} MCUs" ru="{} MCU"/>
+  <translation tag="{} Tools" ru="Инструментов: {}"/>
   <translation tag="{} and {} are both mapped here" ru="{} и {} оба назначены сюда"/>
   <translation tag="{} available" ru="Доступна версия {}"/>
   <translation tag="{} axes homed" ru="Оси {} запаркованы"/>

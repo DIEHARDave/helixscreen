@@ -372,6 +372,7 @@ translations:
   Bed: Heizbett
   Bed (°C): Bett (°C)
   Bed Clear Check: 'Bett-frei-Prüfung'
+  Bed Drying: 'Bett-Trocknung'
   Bed Heater: Bettheizung
   Bed Level: Bettnivellierung
   Bed Leveling: Bettnivellierung
@@ -598,6 +599,7 @@ translations:
   Chamber: Kammer
   Chamber (°C): Kammer (°C)
   Chamber Cooling Fan: Kammer-Kühllüfter
+  Chamber Dryer: 'Kammertrockner'
   Chamber Fan: Kammerlüfter
   Chamber Heater: Kammerheizung
   Chamber Heater Fan: Kammer-Heizlüfter
@@ -1214,6 +1216,7 @@ translations:
   Excellent Accuracy: Ausgezeichnete Genauigkeit
   'Exception: {}': 'Ausnahme: {}'
   Exclude: Ausschließen
+  Exclude Object: 'Objekt ausschließen'
   Exclude Object?: 'Objekt ausschließen?'
   Exclude Objects: 'Objekte ausschließen'
   Excluded: Ausgeschlossen
@@ -1385,6 +1388,7 @@ translations:
   Fan: Lüfter
   Fan Calibration: Lüfter-Kalibrierung
   Fan Speeds: 'Lüftergeschwindigkeiten'
+  Fan Tach: 'Lüfterdrehzahl'
   Fan Transfer: Lüfterwärmeübertragung
   Fan available but not assigned to any role: 'Lüfter verfügbar, aber keiner Rolle zugewiesen'
   'Fan control failed: {}': 'Lüftersteuerung fehlgeschlagen: {}'
@@ -1480,6 +1484,7 @@ translations:
   File not found on printer.: Datei auf dem Drucker nicht gefunden.
   'File not found: {}': 'Datei nicht gefunden: {}'
   Filename: Dateiname
+  Filter Fan: 'Filterlüfter'
   Fine: Fein
   Fine Inner: Fein Innen
   Fine Outer: Fein Außen
@@ -1637,8 +1642,10 @@ translations:
   Heating...: Heizt...
   'Heating: %d / %d°C': 'Aufheizen: %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Höhenkarte und Ebenheit des aktiven Bettnetzes'
+  HelixPrint Plugin: 'HelixPrint-Plugin'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen abgestürzt
+  HelixScreen Macros: 'HelixScreen-Makros'
   HelixScreen is detecting your display orientation: HelixScreen erkennt Ihre Display-Ausrichtung
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     wird sich mit Ihrem Filamentwechsler für Multi-Spulen/Farb-Druckoperationen integrieren.
@@ -1921,6 +1928,7 @@ translations:
   Layer Height: Schichthöhe
   Layer Macro captures one frame per layer change. Best for most prints.: Layer-Makro
     erfasst ein Bild pro Schichtwechsel. Am besten für die meisten Drucke.
+  Layer Pause: 'Schichtpause'
   Layer mode captures one frame per layer change. Best for most prints.: Schichtmodus
     nimmt ein Bild pro Schichtwechsel auf. Am besten für die meisten Drucke.
   Layer {} of {} · {:.2f} mm: Schicht {} von {} · {:.2f} mm
@@ -2765,6 +2773,7 @@ translations:
   Purge & Wipe: 'Entlüften & Abwischen'
   Purge Chute Calibration: Entlüftungsrinnen-Kalibrierung
   Purge Length: 'Entlüftungslänge'
+  Purge Line: 'Spüllinie'
   'Purge chute calibration failed: {}': 'Kalibrierung der Entlüftungsrinne fehlgeschlagen: {}'
   Purge chute position saved.: Position der Entlüftungsrinne gespeichert.
 
@@ -3239,6 +3248,7 @@ translations:
   Setup Timelapse: Zeitraffer einrichten
   Several printers match - choose yours: Mehrere Drucker passen - Drucker auswählen
   Shadow Intensity: Schattenintensität
+  Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Rüttelt den Werkzeugkopf entlang jeder Diagonale und legt die beiden Antworten übereinander. Gleich gespannte Riemen haben ihre Spitze an derselben Stelle.
   Share Usage Data: Nutzungsdaten teilen
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Teilen
@@ -4247,6 +4257,7 @@ translations:
     auslöst
   rendering: wird gerendert
   reset at {} h: 'zurückgesetzt bei {} Std'
+  set manually: 'manuell gesetzt'
   sleep {} min: Ruhezustand nach {} Min.
   slots): Slots)
   started: gestartet
@@ -4271,6 +4282,8 @@ translations:
   '{} Hardware Issues': '{} Hardware-Probleme'
   '{} Issues Detected': '{} Probleme erkannt'
   '{} LED strips available': '{} LED-Streifen verfügbar'
+  '{} MCUs': '{} MCUs'
+  '{} Tools': '{} Werkzeuge'
   '{} and {} are both mapped here': '{} und {} sind beide hier zugewiesen'
   '{} available': '{} verfügbar'
   '{} axes homed': '{}-Achsen referenziert'

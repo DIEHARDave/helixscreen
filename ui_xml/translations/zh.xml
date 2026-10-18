@@ -339,6 +339,7 @@
   <translation tag="Bed" zh="热床"/>
   <translation tag="Bed (°C)" zh="热床 (°C)"/>
   <translation tag="Bed Clear Check" zh="热床清空检查"/>
+  <translation tag="Bed Drying" zh="热床烘干"/>
   <translation tag="Bed Heater" zh="热床加热器"/>
   <translation tag="Bed Level" zh="热床调平"/>
   <translation tag="Bed Leveling" zh="热床调平"/>
@@ -540,6 +541,7 @@
   <translation tag="Chamber" zh="腔体"/>
   <translation tag="Chamber (°C)" zh="腔体 (°C)"/>
   <translation tag="Chamber Cooling Fan" zh="腔体冷却风扇"/>
+  <translation tag="Chamber Dryer" zh="腔体烘干"/>
   <translation tag="Chamber Fan" zh="腔体风扇"/>
   <translation tag="Chamber Heater" zh="仓室加热器"/>
   <translation tag="Chamber Heater Fan" zh="腔体加热风扇"/>
@@ -1093,6 +1095,7 @@
   <translation tag="Excellent Accuracy" zh="精度极佳"/>
   <translation tag="Exception: {}" zh="异常: {}"/>
   <translation tag="Exclude" zh="排除"/>
+  <translation tag="Exclude Object" zh="排除对象"/>
   <translation tag="Exclude Object?" zh="排除对象？"/>
   <translation tag="Exclude Objects" zh="排除对象"/>
   <translation tag="Excluded" zh="已排除"/>
@@ -1247,6 +1250,7 @@
   <translation tag="Fan" zh="风扇"/>
   <translation tag="Fan Calibration" zh="风扇校准"/>
   <translation tag="Fan Speeds" zh="风扇速度"/>
+  <translation tag="Fan Tach" zh="风扇转速"/>
   <translation tag="Fan Transfer" zh="风扇传热"/>
   <translation tag="Fan available but not assigned to any role" zh="风扇可用，但未分配任何角色"/>
   <translation tag="Fan control failed: {}" zh="风扇控制失败: {}"/>
@@ -1336,6 +1340,7 @@
   <translation tag="File not found on printer." zh="打印机上未找到文件。"/>
   <translation tag="File not found: {}" zh="未找到文件: {}"/>
   <translation tag="Filename" zh="文件名"/>
+  <translation tag="Filter Fan" zh="过滤风扇"/>
   <translation tag="Fine" zh="细调"/>
   <translation tag="Fine Inner" zh="细调内圈"/>
   <translation tag="Fine Outer" zh="细调外圈"/>
@@ -1482,8 +1487,10 @@
   <translation tag="Heating..." zh="正在加热..."/>
   <translation tag="Heating: %d / %d°C" zh="加热中：%d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" zh="当前热床网格的高度图和平整度"/>
+  <translation tag="HelixPrint Plugin" zh="HelixPrint 插件"/>
   <translation tag="HelixScreen" zh="HelixScreen"/>
   <translation tag="HelixScreen Crashed" zh="HelixScreen 崩溃"/>
+  <translation tag="HelixScreen Macros" zh="HelixScreen 宏"/>
   <translation tag="HelixScreen is detecting your display orientation" zh="HelixScreen正在检测显示屏方向"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." zh="HelixScreen 将与您的耗材更换器集成，用于多料盘/多色打印操作。"/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." zh="HelixScreen 会将此写入 printer.cfg 并重启 Klipper。打印机将短暂断开连接。"/>
@@ -1725,6 +1732,7 @@
   <translation tag="Layer" zh="层"/>
   <translation tag="Layer Height" zh="层高"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." zh="层变化宏在每次层变化时捕获一帧。适合大多数打印。"/>
+  <translation tag="Layer Pause" zh="层暂停"/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." zh="层模式在每次换层时捕获一帧。适用于大多数打印。"/>
   <translation tag="Layer {} of {} · {:.2f} mm" zh="第 {} / {} 层 · {:.2f} mm"/>
   <translation tag="Layer {} of {}." zh="第 {} 层，共 {} 层。"/>
@@ -2515,6 +2523,7 @@
   <translation tag="Purge &amp; Wipe" zh="排料与擦拭"/>
   <translation tag="Purge Chute Calibration" zh="排料口校准"/>
   <translation tag="Purge Length" zh="排料长度"/>
+  <translation tag="Purge Line" zh="排料线"/>
   <translation tag="Purge chute calibration failed: {}" zh="排料口校准失败：{}"/>
   <translation tag="Purge chute position saved." zh="排料口位置已保存。"/>
   <translation tag="Purge failed: {}" zh="清洗失败: {}"/>
@@ -2942,6 +2951,7 @@
   <translation tag="Setup Timelapse" zh="设置延时摄影"/>
   <translation tag="Several printers match - choose yours" zh="多台打印机匹配 - 请选择您的打印机"/>
   <translation tag="Shadow Intensity" zh="阴影强度"/>
+  <translation tag="Shake&amp;Tune" zh="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." zh="沿每条对角线振动工具头，并同时显示两条响应曲线。张力一致的皮带峰值重合。"/>
   <translation tag="Share Usage Data" zh="共享使用数据"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." zh="分享匿名使用统计数据，帮助我们改进 HelixScreen。绝不会收集任何个人数据。"/>
@@ -3821,6 +3831,7 @@
   <translation tag="remaining before clog detection triggers" zh="剩余即触发堵料检测"/>
   <translation tag="rendering" zh="渲染中"/>
   <translation tag="reset at {} h" zh="于 {} 小时时重置"/>
+  <translation tag="set manually" zh="手动设置"/>
   <translation tag="sleep {} min" zh="{} 分钟后休眠"/>
   <translation tag="slots)" zh="个槽位)"/>
   <translation tag="started" zh="已启动"/>
@@ -3845,6 +3856,8 @@
   <translation tag="{} Hardware Issues" zh="{} 个硬件问题"/>
   <translation tag="{} Issues Detected" zh="检测到 {} 个问题"/>
   <translation tag="{} LED strips available" zh="{} 条 LED 灯带可用"/>
+  <translation tag="{} MCUs" zh="{} 个 MCU"/>
+  <translation tag="{} Tools" zh="{} 个工具"/>
   <translation tag="{} and {} are both mapped here" zh="{} 和 {} 都映射到这里"/>
   <translation tag="{} available" zh="{} 可用"/>
   <translation tag="{} axes homed" zh="{} 轴已归位"/>

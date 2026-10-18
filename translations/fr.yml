@@ -371,6 +371,7 @@ translations:
   Bed: Plateau
   Bed (°C): Plateau (°C)
   Bed Clear Check: 'Vérification du plateau libre'
+  Bed Drying: 'Séchage sur plateau'
   Bed Heater: Chauffage du plateau
   Bed Level: Niveau du plateau
   Bed Leveling: Mise à niveau du plateau
@@ -598,6 +599,7 @@ translations:
   Chamber: Enceinte
   Chamber (°C): Enceinte (°C)
   Chamber Cooling Fan: Ventilateur de refroidissement de chambre
+  Chamber Dryer: 'Séchoir de caisson'
   Chamber Fan: Ventilateur de chambre
   Chamber Heater: Chauffage de chambre
   Chamber Heater Fan: Ventilateur du chauffage de chambre
@@ -1217,6 +1219,7 @@ translations:
   Excellent Accuracy: Excellente précision
   'Exception: {}': 'Exception : {}'
   Exclude: Exclure
+  Exclude Object: 'Exclure objet'
   Exclude Object?: 'Exclure l''objet ?'
   Exclude Objects: 'Exclure des objets'
   Excluded: Exclu
@@ -1389,6 +1392,7 @@ translations:
   Fan: Ventilateur
   Fan Calibration: Calibration du ventilateur
   Fan Speeds: 'Vitesses des ventilateurs'
+  Fan Tach: 'Tachymètre ventilateur'
   Fan Transfer: Transfert ventilateur
   Fan available but not assigned to any role: 'Ventilateur disponible mais attribué à aucun rôle'
   'Fan control failed: {}': 'Échec du contrôle ventilateur : {}'
@@ -1485,6 +1489,7 @@ translations:
   File not found on printer.: Fichier introuvable sur l'imprimante.
   'File not found: {}': 'Fichier introuvable : {}'
   Filename: Nom du fichier
+  Filter Fan: 'Ventilateur de filtre'
   Fine: Fin
   Fine Inner: Fin intérieur
   Fine Outer: Fin extérieur
@@ -1641,8 +1646,10 @@ translations:
   Heating...: Chauffage...
   'Heating: %d / %d°C': 'Chauffage : %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Carte des hauteurs et planéité du maillage du plateau actif'
+  HelixPrint Plugin: 'Plugin HelixPrint'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen a planté
+  HelixScreen Macros: 'Macros HelixScreen'
   HelixScreen is detecting your display orientation: HelixScreen détecte l'orientation
     de votre écran
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -1926,6 +1933,7 @@ translations:
   Layer Macro captures one frame per layer change. Best for most prints.: La macro
     de couche capture une image à chaque changement de couche. Idéal pour la plupart
     des impressions.
+  Layer Pause: 'Pause à la couche'
   Layer mode captures one frame per layer change. Best for most prints.: Le mode couche
     capture une image par changement de couche. Idéal pour la plupart des impressions.
   Layer {} of {} · {:.2f} mm: Couche {} sur {} · {:.2f} mm
@@ -2774,6 +2782,7 @@ translations:
   Purge & Wipe: 'Purge et essuyage'
   Purge Chute Calibration: Calibration de la goulotte de purge
   Purge Length: 'Longueur de purge'
+  Purge Line: 'Ligne de purge'
   'Purge chute calibration failed: {}': 'Échec de la calibration de la goulotte de purge : {}'
   Purge chute position saved.: Position de la goulotte de purge enregistrée.
 
@@ -3251,6 +3260,7 @@ translations:
   Setup Timelapse: Configurer le timelapse
   Several printers match - choose yours: Plusieurs imprimantes correspondent - choisissez la vôtre
   Shadow Intensity: Intensité de l'ombre
+  Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Fait vibrer la tête d'outil le long de chaque diagonale et superpose les deux réponses. Des courroies équilibrées culminent ensemble.
   Share Usage Data: Partager les données d'utilisation
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Partagez
@@ -4273,6 +4283,7 @@ translations:
     de bouchon
   rendering: rendu en cours
   reset at {} h: 'réinitialisé à {} h'
+  set manually: 'manuel'
   sleep {} min: veille dans {} min
   slots): emplacements)
   started: lancé
@@ -4297,6 +4308,8 @@ translations:
   '{} Hardware Issues': '{} problèmes matériels'
   '{} Issues Detected': '{} problèmes détectés'
   '{} LED strips available': '{} bandeaux LED disponibles'
+  '{} MCUs': '{} MCU'
+  '{} Tools': '{} outils'
   '{} and {} are both mapped here': '{} et {} sont tous deux affectés ici'
   '{} available': '{} disponible'
   '{} axes homed': 'Axes {} référencés'

@@ -342,6 +342,7 @@ translations:
   Bed: ベッド
   Bed (°C): ベッド (°C)
   Bed Clear Check: 'ベッド上の異物チェック'
+  Bed Drying: 'ベッド乾燥'
   Bed Heater: ベッドヒーター
   Bed Level: ベッドレベル
   Bed Leveling: ベッドレベリング
@@ -548,6 +549,7 @@ translations:
   Chamber: チャンバー
   Chamber (°C): チャンバー (°C)
   Chamber Cooling Fan: チャンバー冷却ファン
+  Chamber Dryer: 'チャンバー乾燥機'
   Chamber Fan: チャンバーファン
   Chamber Heater: チャンバーヒーター
   Chamber Heater Fan: チャンバーヒーターファン
@@ -1133,6 +1135,7 @@ translations:
   Excellent Accuracy: 非常に高精度
   'Exception: {}': '例外: {}'
   Exclude: 除外
+  Exclude Object: 'オブジェクト除外'
   Exclude Object?: 'オブジェクトを除外しますか？'
   Exclude Objects: 'オブジェクトの除外'
   Excluded: 除外
@@ -1291,6 +1294,7 @@ translations:
   Fan: ファン
   Fan Calibration: ファンキャリブレーション
   Fan Speeds: 'ファン速度'
+  Fan Tach: 'ファン回転計'
   Fan Transfer: ファン熱伝達
   Fan available but not assigned to any role: 'ファンは使用可能ですが役割が割り当てられていません'
   'Fan control failed: {}': 'ファン制御に失敗しました: {}'
@@ -1384,6 +1388,7 @@ translations:
   File not found on printer.: プリンター上にファイルが見つかりません。
   'File not found: {}': 'ファイルが見つかりません: {}'
   Filename: ファイル名
+  Filter Fan: 'フィルターファン'
   Fine: 微動
   Fine Inner: 微動・内側
   Fine Outer: 微動・外側
@@ -1536,8 +1541,10 @@ translations:
   Heating...: 加熱中...
   'Heating: %d / %d°C': '加熱中: %d / %d°C'
   Heightmap and flatness of the active bed mesh: '有効なベッドメッシュの高さマップと平面度'
+  HelixPrint Plugin: 'HelixPrintプラグイン'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
+  HelixScreen Macros: 'HelixScreenマクロ'
   HelixScreen is detecting your display orientation: HelixScreenがディスプレイの向きを検出しています
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。
@@ -1796,6 +1803,7 @@ translations:
   Layer Height: レイヤー高さ
   Layer Macro captures one frame per layer change. Best for most prints.: レイヤーマクロはレイヤーが変わるごとに
     1 フレームを撮影します。ほとんどの印刷に最適です。
+  Layer Pause: 'レイヤー一時停止'
   Layer mode captures one frame per layer change. Best for most prints.: レイヤーモードはレイヤー変更ごとに1フレームをキャプチャします。ほとんどの印刷に最適です。
   Layer {} of {} · {:.2f} mm: レイヤー {} / {} · {:.2f} mm
   Layer {} of {}.: 'レイヤー {} / {}。'
@@ -2606,6 +2614,7 @@ translations:
   Purge & Wipe: 'パージとワイプ'
   Purge Chute Calibration: パージシュートのキャリブレーション
   Purge Length: 'パージ長'
+  Purge Line: 'パージライン'
   'Purge chute calibration failed: {}': 'パージシュートのキャリブレーションに失敗しました: {}'
   Purge chute position saved.: パージシュートの位置を保存しました。
 
@@ -3046,6 +3055,7 @@ translations:
   Setup Timelapse: タイムラプスを設定
   Several printers match - choose yours: 複数のプリンターが一致します - 選択してください
   Shadow Intensity: 影の強度
+  Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: ツールヘッドを対角線ごとに動かし、2つの結果を同時に表示します。張りが同じベルトは同じ位置でピークになります。
   Share Usage Data: 使用データを共有
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: 匿名の使用統計を共有して、HelixScreen
@@ -3983,6 +3993,7 @@ translations:
   remaining before clog detection triggers: 残りで詰まり検出が作動します
   rendering: レンダリング中
   reset at {} h: '{} 時間時点でリセット'
+  set manually: '手動設定'
   sleep {} min: '{}分でスリープ'
   slots): スロット)
   started: 開始
@@ -4007,6 +4018,8 @@ translations:
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'
   '{} Issues Detected': '問題を {} 件検出'
   '{} LED strips available': '{} 個の LED ストリップが利用可能です'
+  '{} MCUs': '{} MCU'
+  '{} Tools': '{} ツール'
   '{} and {} are both mapped here': '{} と {} の両方がここに割り当てられています'
   '{} available': '{} が利用可能'
   '{} axes homed': '{} 軸がホーミング済み'

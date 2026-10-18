@@ -366,6 +366,7 @@ translations:
   Bed: Cama
   Bed (°C): Cama (°C)
   Bed Clear Check: 'Comprobación de cama libre'
+  Bed Drying: 'Secado en cama'
   Bed Heater: Calentador de Cama
   Bed Level: Nivel de Cama
   Bed Leveling: Nivelación de Cama
@@ -592,6 +593,7 @@ translations:
   Chamber: Cámara
   Chamber (°C): Cámara (°C)
   Chamber Cooling Fan: Ventilador de enfriamiento de cámara
+  Chamber Dryer: 'Secador de cámara'
   Chamber Fan: Ventilador de Cámara
   Chamber Heater: Calentador de Cámara
   Chamber Heater Fan: Ventilador del calentador de cámara
@@ -1209,6 +1211,7 @@ translations:
   Excellent Accuracy: Precisión Excelente
   'Exception: {}': 'Excepción: {}'
   Exclude: Excluir
+  Exclude Object: 'Excluir objeto'
   Exclude Object?: '¿Excluir objeto?'
   Exclude Objects: 'Excluir objetos'
   Excluded: Excluido
@@ -1375,6 +1378,7 @@ translations:
   Fan: Ventilador
   Fan Calibration: Calibración del ventilador
   Fan Speeds: 'Velocidades de ventilador'
+  Fan Tach: 'Tacómetro de ventilador'
   Fan Transfer: Transferencia del ventilador
   Fan available but not assigned to any role: 'Ventilador disponible pero sin función asignada'
   'Fan control failed: {}': 'Error en control de ventilador: {}'
@@ -1471,6 +1475,7 @@ translations:
   File not found on printer.: Archivo no encontrado en la impresora.
   'File not found: {}': 'Archivo no encontrado: {}'
   Filename: Nombre de Archivo
+  Filter Fan: 'Ventilador de filtro'
   Fine: Fino
   Fine Inner: Fino interior
   Fine Outer: Fino exterior
@@ -1628,8 +1633,10 @@ translations:
   Heating...: Calentando...
   'Heating: %d / %d°C': 'Calentando: %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Mapa de alturas y planitud de la malla de cama activa'
+  HelixPrint Plugin: 'Plugin HelixPrint'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen se Bloqueó
+  HelixScreen Macros: 'Macros de HelixScreen'
   HelixScreen is detecting your display orientation: HelixScreen está detectando la
     orientación de su pantalla
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -1911,6 +1918,7 @@ translations:
   Layer Height: Altura de Capa
   Layer Macro captures one frame per layer change. Best for most prints.: Layer Macro
     captura un fotograma por cada cambio de capa. Lo mejor para la mayoría de impresiones.
+  Layer Pause: 'Pausa por capa'
   Layer mode captures one frame per layer change. Best for most prints.: El modo de
     capa captura un cuadro por cambio de capa. Mejor para la mayoría de las impresiones.
   Layer {} of {} · {:.2f} mm: Capa {} de {} · {:.2f} mm
@@ -2757,6 +2765,7 @@ translations:
   Purge & Wipe: 'Purgar y limpiar'
   Purge Chute Calibration: Calibración del conducto de purga
   Purge Length: 'Longitud de purga'
+  Purge Line: 'Línea de purga'
   'Purge chute calibration failed: {}': 'Falló la calibración del conducto de purga: {}'
   Purge chute position saved.: Posición del conducto de purga guardada.
 
@@ -3231,6 +3240,7 @@ translations:
   Setup Timelapse: Configurar Timelapse
   Several printers match - choose yours: Varias impresoras coinciden - elija la suya
   Shadow Intensity: Intensidad de Sombra
+  Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Sacude el cabezal a lo largo de cada diagonal y superpone las dos respuestas. Las correas igualadas alcanzan su pico juntas.
   Share Usage Data: Compartir datos de uso
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Comparta
@@ -4238,6 +4248,7 @@ translations:
     de obstrucción
   rendering: renderizando
   reset at {} h: 'restablecido a las {} h'
+  set manually: 'manual'
   sleep {} min: reposo en {} min
   slots): ranuras)
   started: iniciado
@@ -4262,6 +4273,8 @@ translations:
   '{} Hardware Issues': '{} problemas de hardware'
   '{} Issues Detected': '{} problemas detectados'
   '{} LED strips available': '{} tiras LED disponibles'
+  '{} MCUs': '{} MCU'
+  '{} Tools': '{} herramientas'
   '{} and {} are both mapped here': '{} y {} están asignados aquí'
   '{} available': '{} disponible'
   '{} axes homed': 'Ejes {} en origen'

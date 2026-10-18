@@ -413,6 +413,7 @@ translations:
   Bed: Стол
   Bed (°C): Стол (°C)
   Bed Clear Check: 'Проверка чистоты стола'
+  Bed Drying: 'Сушка на столе'
   Bed Heater: Нагреватель стола
   Bed Level: Уровень стола
   Bed Leveling: Выравнивание стола
@@ -636,6 +637,7 @@ translations:
   Chamber: Камера
   Chamber (°C): Камера (°C)
   Chamber Cooling Fan: Вентилятор охлаждения камеры
+  Chamber Dryer: 'Сушилка камеры'
   Chamber Fan: Вентилятор камеры
   Chamber Heater: Нагреватель камеры
   Chamber Heater Fan: Вентилятор нагревателя камеры
@@ -1250,6 +1252,7 @@ translations:
   Excellent Accuracy: Отличная точность
   'Exception: {}': 'Исключение: {}'
   Exclude: Исключить
+  Exclude Object: 'Исключение объектов'
   Exclude Object?: 'Исключить объект?'
   Exclude Objects: 'Исключение объектов'
   Excluded: Исключён
@@ -1415,6 +1418,7 @@ translations:
   Fan: Вентилятор
   Fan Calibration: Калибровка вентилятора
   Fan Speeds: 'Скорости вентиляторов'
+  Fan Tach: 'Тахометр вентилятора'
   Fan Transfer: Теплообмен с вентилятором
   Fan available but not assigned to any role: 'Вентилятор доступен, но не назначен ни на одну роль'
   'Fan control failed: {}': 'Ошибка управления вентилятором: {}'
@@ -1510,6 +1514,7 @@ translations:
   File not found on printer.: Файл не найден на принтере.
   'File not found: {}': 'Файл не найден: {}'
   Filename: Имя файла
+  Filter Fan: 'Вентилятор фильтра'
   Fine: Точно
   Fine Inner: Точно (внутренний)
   Fine Outer: Точно (внешний)
@@ -1670,8 +1675,10 @@ translations:
   Heating...: Нагрев...
   'Heating: %d / %d°C': 'Нагрев: %d / %d°C'
   Heightmap and flatness of the active bed mesh: 'Карта высот и ровность активной сетки стола'
+  HelixPrint Plugin: 'Плагин HelixPrint'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen аварийно завершился
+  HelixScreen Macros: 'Макросы HelixScreen'
   HelixScreen is detecting your display orientation: HelixScreen определяет ориентацию
     дисплея
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
@@ -1952,6 +1959,7 @@ translations:
   Layer Height: Высота слоя
   Layer Macro captures one frame per layer change. Best for most prints.: Слоевой
     макрос захватывает один кадр при смене слоя. Подходит для большинства печатей.
+  Layer Pause: 'Пауза на слое'
   Layer mode captures one frame per layer change. Best for most prints.: Послойный
     режим захватывает один кадр на каждую смену слоя. Лучший выбор для большинства
     печатей.
@@ -2804,6 +2812,7 @@ translations:
   Purge & Wipe: 'Продувка и очистка'
   Purge Chute Calibration: Калибровка жёлоба продувки
   Purge Length: 'Длина продувки'
+  Purge Line: 'Линия прочистки'
   'Purge chute calibration failed: {}': 'Не удалось калибровать жёлоб продувки: {}'
   Purge chute position saved.: Позиция жёлоба продувки сохранена.
 
@@ -3274,6 +3283,7 @@ translations:
   Setup Timelapse: Настроить таймлапс
   Several printers match - choose yours: Подходят несколько принтеров - выберите свой
   Shadow Intensity: Интенсивность тени
+  Shake&Tune: 'Shake&Tune'
   Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together.: Раскачивает печатающую головку вдоль каждой диагонали и накладывает два отклика. У одинаково натянутых ремней пики совпадают.
   Share Usage Data: Делиться данными использования
   Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected.: Делитесь
@@ -4279,6 +4289,7 @@ translations:
   remaining before clog detection triggers: осталось до срабатывания обнаружения засора
   rendering: рендеринг
   reset at {} h: 'сброс на {} ч'
+  set manually: 'вручную'
   sleep {} min: сон через {} мин
   slots): слотов)
   started: запущено
@@ -4303,6 +4314,8 @@ translations:
   '{} Hardware Issues': 'Проблем с оборудованием: {}'
   '{} Issues Detected': 'Обнаружено проблем: {}'
   '{} LED strips available': 'Доступно светодиодных лент: {}'
+  '{} MCUs': '{} MCU'
+  '{} Tools': 'Инструментов: {}'
   '{} and {} are both mapped here': '{} и {} оба назначены сюда'
   '{} available': Доступна версия {}
   '{} axes homed': 'Оси {} запаркованы'

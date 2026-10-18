@@ -339,6 +339,7 @@
   <translation tag="Bed" en="Bed"/>
   <translation tag="Bed (°C)" en="Bed (°C)"/>
   <translation tag="Bed Clear Check" en="Bed Clear Check"/>
+  <translation tag="Bed Drying" en="Bed Drying"/>
   <translation tag="Bed Heater" en="Bed Heater"/>
   <translation tag="Bed Level" en="Bed Level"/>
   <translation tag="Bed Leveling" en="Bed Leveling"/>
@@ -540,6 +541,7 @@
   <translation tag="Chamber" en="Chamber"/>
   <translation tag="Chamber (°C)" en="Chamber (°C)"/>
   <translation tag="Chamber Cooling Fan" en="Chamber Cooling Fan"/>
+  <translation tag="Chamber Dryer" en="Chamber Dryer"/>
   <translation tag="Chamber Fan" en="Chamber Fan"/>
   <translation tag="Chamber Heater" en="Chamber Heater"/>
   <translation tag="Chamber Heater Fan" en="Chamber Heater Fan"/>
@@ -1093,6 +1095,7 @@
   <translation tag="Excellent Accuracy" en="Excellent Accuracy"/>
   <translation tag="Exception: {}" en="Exception: {}"/>
   <translation tag="Exclude" en="Exclude"/>
+  <translation tag="Exclude Object" en="Exclude Object"/>
   <translation tag="Exclude Object?" en="Exclude Object?"/>
   <translation tag="Exclude Objects" en="Exclude Objects"/>
   <translation tag="Excluded" en="Excluded"/>
@@ -1247,6 +1250,7 @@
   <translation tag="Fan" en="Fan"/>
   <translation tag="Fan Calibration" en="Fan Calibration"/>
   <translation tag="Fan Speeds" en="Fan Speeds"/>
+  <translation tag="Fan Tach" en="Fan Tach"/>
   <translation tag="Fan Transfer" en="Fan Transfer"/>
   <translation tag="Fan available but not assigned to any role" en="Fan available but not assigned to any role"/>
   <translation tag="Fan control failed: {}" en="Fan control failed: {}"/>
@@ -1336,6 +1340,7 @@
   <translation tag="File not found on printer." en="File not found on printer."/>
   <translation tag="File not found: {}" en="File not found: {}"/>
   <translation tag="Filename" en="Filename"/>
+  <translation tag="Filter Fan" en="Filter Fan"/>
   <translation tag="Fine" en="Fine"/>
   <translation tag="Fine Inner" en="Fine Inner"/>
   <translation tag="Fine Outer" en="Fine Outer"/>
@@ -1482,8 +1487,10 @@
   <translation tag="Heating..." en="Heating..."/>
   <translation tag="Heating: %d / %d°C" en="Heating: %d / %d°C"/>
   <translation tag="Heightmap and flatness of the active bed mesh" en="Heightmap and flatness of the active bed mesh"/>
+  <translation tag="HelixPrint Plugin" en="HelixPrint Plugin"/>
   <translation tag="HelixScreen" en="HelixScreen"/>
   <translation tag="HelixScreen Crashed" en="HelixScreen Crashed"/>
+  <translation tag="HelixScreen Macros" en="HelixScreen Macros"/>
   <translation tag="HelixScreen is detecting your display orientation" en="HelixScreen is detecting your display orientation"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." en="HelixScreen will integrate with your filament changer for multi-spool/color print operations."/>
   <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." en="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect."/>
@@ -1725,6 +1732,7 @@
   <translation tag="Layer" en="Layer"/>
   <translation tag="Layer Height" en="Layer Height"/>
   <translation tag="Layer Macro captures one frame per layer change. Best for most prints." en="Layer Macro captures one frame per layer change. Best for most prints."/>
+  <translation tag="Layer Pause" en="Layer Pause"/>
   <translation tag="Layer mode captures one frame per layer change. Best for most prints." en="Layer mode captures one frame per layer change. Best for most prints."/>
   <translation tag="Layer {} of {} · {:.2f} mm" en="Layer {} of {} · {:.2f} mm"/>
   <translation tag="Layer {} of {}." en="Layer {} of {}."/>
@@ -2515,6 +2523,7 @@
   <translation tag="Purge &amp; Wipe" en="Purge &amp; Wipe"/>
   <translation tag="Purge Chute Calibration" en="Purge Chute Calibration"/>
   <translation tag="Purge Length" en="Purge Length"/>
+  <translation tag="Purge Line" en="Purge Line"/>
   <translation tag="Purge chute calibration failed: {}" en="Purge chute calibration failed: {}"/>
   <translation tag="Purge chute position saved." en="Purge chute position saved."/>
   <translation tag="Purge failed: {}" en="Purge failed: {}"/>
@@ -2942,6 +2951,7 @@
   <translation tag="Setup Timelapse" en="Setup Timelapse"/>
   <translation tag="Several printers match - choose yours" en="Several printers match - choose yours"/>
   <translation tag="Shadow Intensity" en="Shadow Intensity"/>
+  <translation tag="Shake&amp;Tune" en="Shake&amp;Tune"/>
   <translation tag="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together." en="Shakes the toolhead along each diagonal and overlays the two responses. Matched belts peak together."/>
   <translation tag="Share Usage Data" en="Share Usage Data"/>
   <translation tag="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected." en="Share anonymous usage statistics to help us make HelixScreen better. No personal data is ever collected."/>
@@ -3821,6 +3831,7 @@
   <translation tag="remaining before clog detection triggers" en="remaining before clog detection triggers"/>
   <translation tag="rendering" en="rendering"/>
   <translation tag="reset at {} h" en="reset at {} h"/>
+  <translation tag="set manually" en="set manually"/>
   <translation tag="sleep {} min" en="sleep {} min"/>
   <translation tag="slots)" en="slots)"/>
   <translation tag="started" en="started"/>
@@ -3845,6 +3856,8 @@
   <translation tag="{} Hardware Issues" en="{} Hardware Issues"/>
   <translation tag="{} Issues Detected" en="{} Issues Detected"/>
   <translation tag="{} LED strips available" en="{} LED strips available"/>
+  <translation tag="{} MCUs" en="{} MCUs"/>
+  <translation tag="{} Tools" en="{} Tools"/>
   <translation tag="{} and {} are both mapped here" en="{} and {} are both mapped here"/>
   <translation tag="{} available" en="{} available"/>
   <translation tag="{} axes homed" en="{} axes homed"/>
