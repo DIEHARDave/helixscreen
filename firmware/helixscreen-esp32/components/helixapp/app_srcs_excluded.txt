@@ -29,6 +29,7 @@ src/remote/  # all 8 src/ files beneath
 src/tools/  # all 1 src/ files beneath
 
 # --- individual files (same dir, partially compiled) ---
+src/api/accel_batch_source_mock.cpp  # not in the v1 Core+AMS cut
 src/api/backlight_backend.cpp  # not in the v1 Core+AMS cut
 src/api/display_backend.cpp  # not in the v1 Core+AMS cut
 src/api/display_backend_drm.cpp  # not in the v1 Core+AMS cut

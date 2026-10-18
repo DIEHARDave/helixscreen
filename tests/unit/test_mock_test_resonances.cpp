@@ -331,3 +331,87 @@ TEST_CASE_METHOD(BeltMockFixture, "the mock's resonance_tester names its acceler
     CHECK(mock.resonance_tester_settings()["accel_chip"] == "adxl345");
     CHECK(parse_resonance_tester_config(mock_settings(mock)).accel_chip == "adxl345");
 }
+
+namespace {
+
+/// Every console line one gcode produces, pumping until the CSV line or the budget.
+std::vector<std::string> run_long(BeltMockFixture& f, const std::string& gcode) {
+    f.lines.clear();
+    f.mock.gcode_script(gcode);
+    for (int i = 0; i < 20000; ++i) {
+        lv_tick_inc(5);
+        lv_timer_handler();
+        if (!f.lines.empty() && parse_written_csv_path(f.lines.back())) {
+            break;
+        }
+    }
+    return f.lines;
+}
+
+size_t testing_lines_before_calculating(const std::vector<std::string>& lines,
+                                        std::vector<float>* freqs = nullptr) {
+    size_t n = 0;
+    for (const auto& line : lines) {
+        if (line.rfind("Calculating the best", 0) == 0) {
+            break;
+        }
+        if (const auto hz = parse_testing_frequency(line)) {
+            ++n;
+            if (freqs) {
+                freqs->push_back(*hz);
+            }
+        }
+    }
+    return n;
+}
+
+void check_response(const helix::calibration::MockSweepResponse& r, float peak, float hwhm,
+                    float drive, float drive_margin, std::array<float, 3> weights) {
+    CHECK(r.peak_hz == Catch::Approx(peak));
+    CHECK(r.half_width_hz == Catch::Approx(hwhm));
+    CHECK(r.drive_mm_s2 == Catch::Approx(drive).margin(drive_margin));
+    for (size_t i = 0; i < 3; ++i) {
+        CHECK(r.axis_weight[i] == Catch::Approx(weights[i]).margin(1e-3));
+    }
+}
+
+} // namespace
+
+TEST_CASE_METHOD(BeltMockFixture, "the mock records what each sweep resonates like",
+                 "[mock][sweep_preview]") {
+    REQUIRE(run("TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a SWEEPING_PERIOD=0"));
+    check_response(mock.active_sweep_response(), 110.0f, 10.0f, 300.0f, 0.5f,
+                   {0.671f, 0.671f, 0.316f});
+
+    REQUIRE(parse_written_csv_path(run_long(*this, "SHAPER_CALIBRATE AXIS=X").back()));
+    check_response(mock.active_sweep_response(), 53.8f, 8.0f, 0.248f, 0.001f,
+                   {1.0f, 0.387f, 0.283f});
+
+    REQUIRE(parse_written_csv_path(run_long(*this, "SHAPER_CALIBRATE AXIS=Y").back()));
+    check_response(mock.active_sweep_response(), 48.2f, 8.0f, 0.248f, 0.001f,
+                   {0.387f, 1.0f, 0.283f});
+    MoonrakerClientMock::remove_shaper_csvs();
+}
+
+TEST_CASE_METHOD(BeltMockFixture, "a realtime shaper sweep prints every whole Hz",
+                 "[mock][sweep_preview]") {
+    SECTION("realtime") {
+        mock.set_shaper_sweep_realtime(true);
+        const auto lines = run_long(*this, "SHAPER_CALIBRATE AXIS=X");
+        REQUIRE_FALSE(lines.empty());
+        REQUIRE(parse_written_csv_path(lines.back()));
+        std::vector<float> freqs;
+        CHECK(testing_lines_before_calculating(lines, &freqs) == 131);
+        REQUIRE(freqs.size() == 131);
+        for (size_t i = 0; i < freqs.size(); ++i) {
+            CHECK(freqs[i] == static_cast<float>(5 + i));
+        }
+    }
+    SECTION("compact by default") {
+        const auto lines = run_long(*this, "SHAPER_CALIBRATE AXIS=X");
+        REQUIRE_FALSE(lines.empty());
+        REQUIRE(parse_written_csv_path(lines.back()));
+        CHECK(testing_lines_before_calculating(lines) == 20);
+    }
+    MoonrakerClientMock::remove_shaper_csvs();
+}

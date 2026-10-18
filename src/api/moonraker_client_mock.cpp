@@ -6461,6 +6461,25 @@ json MoonrakerClientMock::build_input_shaper_config() const {
     };
 }
 
+uint32_t MoonrakerClientMock::sweep_line_interval_ms() const {
+    if (belt_line_interval_ms_ != 0) {
+        return belt_line_interval_ms_;
+    }
+    return static_cast<uint32_t>(std::max(1, sim_speed().shorten_wait_ms(static_cast<int>(
+                                                 1000.0 / std::max(1.0, resonance_hz_per_sec_)))));
+}
+
+helix::calibration::MockSweepResponse MoonrakerClientMock::active_sweep_response() const {
+    std::lock_guard<std::mutex> lock(sweep_response_mutex_);
+    return sweep_response_;
+}
+
+std::unique_ptr<helix::calibration::IAccelBatchSource>
+MoonrakerClientMock::make_accel_batch_source(const helix::calibration::SweepPlan& plan) const {
+    return std::make_unique<helix::calibration::MockAccelBatchSource>(plan, active_sweep_response(),
+                                                                      get_simulation_speedup());
+}
+
 void MoonrakerClientMock::play_console_lines(std::vector<std::string> lines, uint32_t interval_ms,
                                              std::function<void()> on_done) {
     std::vector<std::function<void()>> steps;
@@ -6515,16 +6534,36 @@ void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
     std::vector<std::string> lines;
     char buf[256];
 
+    {
+        // Matches write_mock_shaper_csv(): the axis's own column peaks at
+        // 0.0205 with the other two at 15% and 8% of its power.
+        std::lock_guard<std::mutex> lock(sweep_response_mutex_);
+        const bool x = axis_lower == 'x';
+        sweep_response_ =
+            helix::calibration::MockSweepResponse{x ? 53.8f : 48.2f, 8.0f, 0.248f,
+                                                  x ? std::array<float, 3>{1.0f, 0.387f, 0.283f}
+                                                    : std::array<float, 3>{0.387f, 1.0f, 0.283f}};
+    }
+
     // Phase 1: frequency sweep across the configured [resonance_tester] range,
-    // ending exactly on max_freq the way a real sweep does.
+    // ending exactly on max_freq the way a real sweep does. Realtime plays a
+    // line per whole Hz at the belt sweep's cadence; otherwise 20 lines.
+    std::vector<std::string> sweep_lines;
     constexpr int SWEEP_STEPS = 20;
     const double min_freq = resonance_min_freq_;
     const double max_freq = resonance_max_freq_;
-    for (int i = 0; i < SWEEP_STEPS; ++i) {
-        const double freq =
-            min_freq + (max_freq - min_freq) * i / static_cast<double>(SWEEP_STEPS - 1);
-        snprintf(buf, sizeof(buf), "Testing frequency %.0f Hz", freq);
-        lines.emplace_back(buf);
+    if (shaper_sweep_realtime_) {
+        for (double freq = std::ceil(min_freq); freq <= max_freq + 1e-9; freq += 1.0) {
+            snprintf(buf, sizeof(buf), "Testing frequency %.0f Hz", freq);
+            sweep_lines.emplace_back(buf);
+        }
+    } else {
+        for (int i = 0; i < SWEEP_STEPS; ++i) {
+            const double freq =
+                min_freq + (max_freq - min_freq) * i / static_cast<double>(SWEEP_STEPS - 1);
+            snprintf(buf, sizeof(buf), "Testing frequency %.0f Hz", freq);
+            lines.emplace_back(buf);
+        }
     }
 
     // Phase 2: analysis heartbeats, the sweep-finished marker, then one fit +
@@ -6574,7 +6613,7 @@ void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
              shaper_csv_path(axis_lower).c_str());
     const std::string csv_line(buf);
 
-    play_console_lines(std::move(lines), 100, [this, axis_lower, csv_line] {
+    auto finish = [this, axis_lower, csv_line] {
         // Write actual CSV file so frequency response chart has data.
         // When shaper_csv_writable_ is false, simulate Klipper's /tmp
         // output being unreadable (e.g. PrivateTmp) by removing any
@@ -6588,7 +6627,15 @@ void MoonrakerClientMock::dispatch_shaper_calibrate_response(char axis) {
         dispatch_gcode_response(csv_line);
         spdlog::info("[MoonrakerClientMock] Dispatched SHAPER_CALIBRATE response for axis {}",
                      static_cast<char>(std::toupper(static_cast<unsigned char>(axis_lower))));
-    });
+    };
+    if (sweep_lines.empty()) {
+        play_console_lines(std::move(lines), 100, std::move(finish));
+    } else {
+        play_console_lines(std::move(sweep_lines), sweep_line_interval_ms(),
+                           [this, rest = std::move(lines), finish = std::move(finish)]() mutable {
+                               play_console_lines(std::move(rest), 100, std::move(finish));
+                           });
+    }
 
     spdlog::info("[MoonrakerClientMock] Started SHAPER_CALIBRATE timer for axis {} ({:.0f}-{:.0f} "
                  "Hz sweep)",
@@ -6689,11 +6736,14 @@ void MoonrakerClientMock::dispatch_test_resonances_response(const std::string& g
         final_line = buf;
     }
 
-    const uint32_t interval = belt_line_interval_ms_ != 0
-                                  ? belt_line_interval_ms_
-                                  : static_cast<uint32_t>(std::max(
-                                        1, sim_speed().shorten_wait_ms(static_cast<int>(
-                                               1000.0 / std::max(1.0, resonance_hz_per_sec_)))));
+    {
+        // The CSV's peak is 3e4 with a 10 Hz half width and 0.45 / 0.45 / 0.10
+        // power shares; a one-second step of amplitude A reads about A^2 / 3.
+        std::lock_guard<std::mutex> lock(sweep_response_mutex_);
+        sweep_response_ = helix::calibration::MockSweepResponse{
+            sweep_peak_hz, 10.0f, 300.0f, {0.671f, 0.671f, 0.316f}};
+    }
+    const uint32_t interval = sweep_line_interval_ms();
 
     play_console_lines(
         std::move(lines), interval,

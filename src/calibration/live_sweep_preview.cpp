@@ -2,11 +2,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "live_sweep_preview.h"
 
+#include "app_globals.h"
 #include "belt_stream_client.h"
 #include "env_knobs.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
+#include "runtime_config.h"
 #include "text_io.h"
+
+#ifdef HELIX_ENABLE_MOCKS
+#include "moonraker_client_mock.h"
+#endif
 
 #include <spdlog/spdlog.h>
 
@@ -223,7 +229,18 @@ int64_t thread_cpu_ns() {
 
 } // namespace
 
-std::unique_ptr<IAccelBatchSource> make_accel_batch_source(const SweepPlan& /*plan*/) {
+std::unique_ptr<IAccelBatchSource> make_accel_batch_source(const SweepPlan& plan) {
+#ifdef HELIX_ENABLE_MOCKS
+    if (get_runtime_config()->should_mock_moonraker()) {
+        if (MoonrakerClientMock* mock = get_moonraker_client_mock()) {
+            return mock->make_accel_batch_source(plan);
+        }
+        spdlog::warn("[LiveSweepPreview] mock printer without a mock client: no live preview");
+        return nullptr;
+    }
+#else
+    (void)plan;
+#endif
     return std::make_unique<StreamClientBatchSource>();
 }
 
