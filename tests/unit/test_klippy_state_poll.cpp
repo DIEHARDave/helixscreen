@@ -91,7 +91,7 @@ class KlippyPollFixture : public LVGLTestFixture {
     }
 
     void tick() {
-        MoonrakerClientTestAccess::poll_klippy_state(client_);
+        MoonrakerClientTestAccess::health_tick(client_);
         helix::ui::UpdateQueue::instance().drain();
     }
 
@@ -220,6 +220,32 @@ TEST_CASE_METHOD(KlippyPollFixture, "Klippy poll: it gives up after its bound",
 
     REQUIRE_FALSE(MoonrakerClientTestAccess::klippy_state_polling(client_));
     REQUIRE(client_.info_requests == 1);
+    tick();
+    REQUIRE(client_.info_requests == 1);
+}
+
+TEST_CASE_METHOD(KlippyPollFixture,
+                 "Klippy poll: disconnect() ends the poll and drops a late answer",
+                 "[klippy][klippy_poll]") {
+    disconnect_klippy();
+    client_.hold = true;
+    tick();
+    REQUIRE(client_.info_requests == 1);
+    REQUIRE(client_.held);
+
+    // The real client's disconnect, not the mock's simulation of one.
+    client_.MoonrakerClient::disconnect();
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE_FALSE(MoonrakerClientTestAccess::klippy_state_polling(client_));
+    const KlippyState after_disconnect = klippy_state();
+
+    client_.info = {{"state", "error"}, {"state_message", kKey298}};
+    client_.answer_held();
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(klippy_state() == after_disconnect);
+    REQUIRE(after_disconnect != KlippyState::ERROR);
+
+    client_.hold = false;
     tick();
     REQUIRE(client_.info_requests == 1);
 }

@@ -700,6 +700,28 @@ TEST_CASE_METHOD(AbortManagerTestFixture,
 }
 
 TEST_CASE_METHOD(AbortManagerTestFixture,
+                 "AbortManager: an abort that ends another way disarms the restart backstop",
+                 "[abort][shutdown_recovery][timeout]") {
+    AbortManager::instance().start_abort();
+    simulate_kalico_not_present();
+    simulate_queue_blocked();
+    AbortManagerTestAccess::on_estop_sent(AbortManager::instance());
+    lv_timer_t* backstop = AbortManagerTestAccess::restart_timer(AbortManager::instance());
+    REQUIRE(backstop != nullptr);
+    lv_timer_set_period(backstop, 10);
+
+    // Ends through complete_abort while still in SENT_RESTART.
+    AbortManagerTestAccess::on_reconnect_timeout(AbortManager::instance());
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
+    const std::string message = AbortManager::instance().last_result_message();
+
+    process_lvgl(50);
+
+    REQUIRE(AbortManager::instance().get_state() == AbortManager::State::COMPLETE);
+    REQUIRE(AbortManager::instance().last_result_message() == message);
+}
+
+TEST_CASE_METHOD(AbortManagerTestFixture,
                  "AbortManager: the recovery reporting back disarms the "
                  "restart backstop",
                  "[abort][shutdown_recovery][timeout]") {

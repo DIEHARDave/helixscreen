@@ -50,9 +50,9 @@ class MoonrakerClientTestAccess {
         c.on_ws_close();
     }
 
-    // One health-timer tick's worth of the post-disconnect Klippy state poll.
-    static void poll_klippy_state(MoonrakerClient& c) {
-        c.poll_klippy_state();
+    // Run one health-timer tick, as the libhv timer does every 5s.
+    static void health_tick(MoonrakerClient& c) {
+        c.on_health_tick();
     }
 
     static bool klippy_state_polling(const MoonrakerClient& c) {

@@ -819,6 +819,9 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
 
     void start_health_timer();
     void stop_health_timer();
+    /// One health-timer tick: request timeouts, the Klippy state poll, reconnect
+    /// staleness. The timer calls it under callback_lifecycle_mutex_.
+    void on_health_tick();
 
     // Builds the reconn_setting_t from reconnect_min_delay_ms_/reconnect_max_delay_ms_
     // and installs it via setReconnect(). Shared by connect() and

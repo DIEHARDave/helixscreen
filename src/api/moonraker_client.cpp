@@ -115,25 +115,28 @@ void MoonrakerClient::start_health_timer() {
             return;
         }
 
-        // Check pending request timeouts
-        process_timeouts();
-
-        poll_klippy_state();
-
-        // Check for stalled reconnection
-        ConnectionState state = connection_state_.load();
-        if (state == ConnectionState::RECONNECTING) {
-            auto elapsed = steady_ms_since(reconnect_started_at_.load(std::memory_order_relaxed));
-            if (elapsed > MAX_RECONNECT_STALL_MS) {
-                spdlog::error("[Moonraker Client] Reconnection stalled for {}ms, giving up",
-                              elapsed);
-                set_connection_state(ConnectionState::FAILED);
-                emit_event(moonraker_event::reconnect_stalled());
-            }
-        }
+        on_health_tick();
     });
     spdlog::debug("[Moonraker Client] Health check timer started ({}ms interval)",
                   HEALTH_CHECK_INTERVAL_MS);
+}
+
+void MoonrakerClient::on_health_tick() {
+    // Check pending request timeouts
+    process_timeouts();
+
+    poll_klippy_state();
+
+    // Check for stalled reconnection
+    ConnectionState state = connection_state_.load();
+    if (state == ConnectionState::RECONNECTING) {
+        auto elapsed = steady_ms_since(reconnect_started_at_.load(std::memory_order_relaxed));
+        if (elapsed > MAX_RECONNECT_STALL_MS) {
+            spdlog::error("[Moonraker Client] Reconnection stalled for {}ms, giving up", elapsed);
+            set_connection_state(ConnectionState::FAILED);
+            emit_event(moonraker_event::reconnect_stalled());
+        }
+    }
 }
 
 void MoonrakerClient::stop_health_timer() {
