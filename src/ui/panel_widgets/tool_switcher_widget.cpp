@@ -13,6 +13,7 @@
 #include "app_globals.h"
 #include "helix/ui/text_metrics.h"
 #include "helix/xml/indexed_subject_pool.h"
+#include "helix_psram_attr.h"
 #include "observer_factory.h"
 #include "panel_widget_registry.h"
 #include "panel_widget_size.h"
@@ -41,63 +42,63 @@ using helix::xml::IndexedSubjectPool;
 // registration rides SubjectInitializer's panel-subject phase so they exist
 // before any XML that binds them is parsed. Mode and label form are the
 // ToolSwitcherMode and ToolLabelForm enum values.
-lv_subject_t s_mode_subject{};
-lv_subject_t s_cols_subject{};
-lv_subject_t s_rows_subject{};
-lv_subject_t s_cell_w_subject{};
-lv_subject_t s_cell_h_subject{};
-lv_subject_t s_rail_h_subject{};
-lv_subject_t s_rail_w_subject{};
-lv_subject_t s_detail_subject{};
-lv_subject_t s_detail_rows_subject{};
-lv_subject_t s_label_form_subject{};
-lv_subject_t s_park_supported_subject{};
-lv_subject_t s_feeder_supported_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_mode_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_cols_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_rows_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_cell_w_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_cell_h_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_rail_h_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_rail_w_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_detail_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_detail_rows_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_label_form_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_park_supported_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_feeder_supported_subject{};
 // The rail feeder cell's FeederLabelForm.
-lv_subject_t s_feeder_label_subject{};
-lv_subject_t s_change_blocked_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_feeder_label_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_change_blocked_subject{};
 // The mounted head as the Pair and Single faces read it.
-lv_subject_t s_face_label_subject{};
-char s_face_label_buf[48] = {};
-lv_subject_t s_face_sub_subject{};
-char s_face_sub_buf[16] = {};
-lv_subject_t s_face_color_subject{};
-lv_subject_t s_face_has_color_subject{};
-lv_subject_t s_face_colors_subject{};
-char s_face_colors_buf[96] = {};
-lv_subject_t s_face_finish_subject{};
-char s_face_finish_buf[160] = {};
-lv_subject_t s_face_material_subject{};
-char s_face_material_buf[24] = {};
-lv_subject_t s_face_band_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_face_label_subject{};
+HELIX_PSRAM_BSS char s_face_label_buf[48] = {};
+HELIX_PSRAM_BSS lv_subject_t s_face_sub_subject{};
+HELIX_PSRAM_BSS char s_face_sub_buf[16] = {};
+HELIX_PSRAM_BSS lv_subject_t s_face_color_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_face_has_color_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_face_colors_subject{};
+HELIX_PSRAM_BSS char s_face_colors_buf[96] = {};
+HELIX_PSRAM_BSS lv_subject_t s_face_finish_subject{};
+HELIX_PSRAM_BSS char s_face_finish_buf[160] = {};
+HELIX_PSRAM_BSS lv_subject_t s_face_material_subject{};
+HELIX_PSRAM_BSS char s_face_material_buf[24] = {};
+HELIX_PSRAM_BSS lv_subject_t s_face_band_text_subject{};
 // The face's size: its cell along the long axis, the whole view across it.
-lv_subject_t s_face_w_subject{};
-lv_subject_t s_face_h_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_face_w_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_face_h_subject{};
 // The tile's filament band (rail segments and the face): its height and
 // whether it carries the material name (tool_switcher_band()).
-lv_subject_t s_band_h_subject{};
-lv_subject_t s_band_labelled_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_band_h_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_band_labelled_subject{};
 // 1 where every cell shown holds its second line (a segment's sub, the face's
 // temperature) below its label, on both axes.
-lv_subject_t s_two_line_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_two_line_subject{};
 // The physical heads (ToolState::physical_heads()): every one, which the
 // picker lays out, and the rail's share, which is all of them where the rail
 // can draw them and none where the tile shows the face instead.
-lv_subject_t s_heads_subject{};
-lv_subject_t s_rail_heads_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_heads_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_rail_heads_subject{};
 // The picker: its grid (fit_tool_picker_grid()) and its cells' band and second
 // line.
-lv_subject_t s_picker_cell_w_subject{};
-lv_subject_t s_picker_cell_h_subject{};
-lv_subject_t s_picker_grid_w_subject{};
-lv_subject_t s_picker_grid_max_h_subject{};
-lv_subject_t s_picker_band_h_subject{};
-lv_subject_t s_picker_band_labelled_subject{};
-lv_subject_t s_picker_two_line_subject{};
-lv_subject_t s_picker_feeder_label_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_picker_cell_w_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_picker_cell_h_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_picker_grid_w_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_picker_grid_max_h_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_picker_band_h_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_picker_band_labelled_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_picker_two_line_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_picker_feeder_label_subject{};
 // The picker footer's buttons grow to their content, so their labels always
 // show: the second-line subject they bind is constantly 1.
-lv_subject_t s_footer_labels_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_footer_labels_subject{};
 helix::WidgetSubjects s_subjects{"ToolSwitcherWidgetSubjects"};
 
 // Per head, indexed by tool: tool_switcher_seg_<i>_label and so on.
