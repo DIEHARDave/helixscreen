@@ -699,7 +699,9 @@ TEST_CASE_METHOD(XMLTestFixture, "binding metatables are locked against plugins"
             end
         end)
         swap = pcall(setmetatable, kinds.timer, {})
+        strmeta = tostring(getmetatable(""))
     )"));
+    CHECK(b.t.global("strmeta") == "locked");
     CHECK(b.t.global("seen") == "canvas=locked,subject=locked,subscription=locked,timer=locked");
     CHECK(b.t.global("armed") == "false");
     CHECK(b.t.global("swap") == "false");

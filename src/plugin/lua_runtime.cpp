@@ -56,6 +56,8 @@ _G.setmetatable = function(t, mt)
     end
     return set_mt(t, mt)
 end
+-- The shared string metatable is the app's, like the bindings' userdata ones.
+getmetatable("").__metatable = "locked"
 -- An empty result returns at once: stock rep loops n times building nothing, with no
 -- allocation for the memory cap to refuse and no instruction for the time budget to see.
 -- Any non-empty result is sized up front, so the memory cap bounds it.
