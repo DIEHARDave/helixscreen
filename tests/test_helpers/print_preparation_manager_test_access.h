@@ -41,6 +41,11 @@ class PrintPreparationManagerTestAccess {
                              helix::FileVersion version = {}) {
         m.request_scan(filename, "", "", version);
     }
+    /// Keep @p scan as the answer for the file whose scan_key() is @p key.
+    static void keep_scan(helix::ui::PrintPreparationManager& m, const std::string& key,
+                          helix::gcode::ScanResult scan) {
+        m.keep_scan(key, key, {}, std::move(scan), {});
+    }
     static size_t kept_scan_count(const helix::ui::PrintPreparationManager& m) {
         return m.kept_scans_.size();
     }

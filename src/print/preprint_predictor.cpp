@@ -273,24 +273,33 @@ PreprintEstimate PreprintPredictor::estimate(const PreprintHeating& heating,
     durations[static_cast<int>(PrintStartPhase::HOMING)] =
         static_cast<float>(predicted_homing_seconds());
 
-    // A skipped phase leaves the recorded wall clock along with its own
-    // entry; a phase this start adds joins both.
+    // With history the recorded wall clock already holds every phase the
+    // start ran, including ones the matcher never named, so a run phase adds
+    // nothing and a skipped one takes off what it averaged across the window.
+    // Without history the durations are the total, and a run phase the
+    // defaults lack joins them.
+    const bool history = has_predictions();
     float wall_clock_delta = 0.0f;
     std::map<int, int> generic;
     for (const auto& [phase, runs] : overrides) {
         const auto it = durations.find(phase);
         if (!runs) {
-            if (it != durations.end()) {
-                wall_clock_delta -= it->second;
-                durations.erase(it);
+            if (it == durations.end())
+                continue;
+            durations.erase(it);
+            if (history) {
+                wall_clock_delta -=
+                    static_cast<float>(weighted_entry_mean([p = phase](const PreprintEntry& e) {
+                        const auto d = e.phase_durations.find(p);
+                        return d != e.phase_durations.end() ? static_cast<double>(d->second) : 0.0;
+                    }));
             }
-        } else if (it == durations.end()) {
+        } else if (!history && it == durations.end()) {
             if (generic.empty())
                 generic = generic_phase_durations();
             const auto g = generic.find(phase);
             if (g != generic.end()) {
                 durations[phase] = static_cast<float>(g->second);
-                wall_clock_delta += static_cast<float>(g->second);
             }
         }
     }
@@ -311,8 +320,8 @@ PreprintEstimate PreprintPredictor::estimate(const PreprintHeating& heating,
     // durations sum swings both ways - short when phases go undetected, long
     // when the thermal model overshoots - so it supplies only the shape.
     result.total_seconds =
-        has_predictions() ? std::max(0.0f, static_cast<float>(predicted_total()) + wall_clock_delta)
-                          : durations_sum;
+        history ? std::max(0.0f, static_cast<float>(predicted_total()) + wall_clock_delta)
+                : durations_sum;
     return result;
 }
 
@@ -333,12 +342,18 @@ int PreprintPredictor::predicted_total() const {
     // PrintStartPhase. Summing predicted_phases() would silently lose that
     // unmapped time (on AD5M-style printers the phase map captures <40% of
     // real elapsed time).
-    auto weights = compute_weights();
+    return static_cast<int>(std::round(weighted_entry_mean(
+        [](const PreprintEntry& e) { return static_cast<double>(e.total_seconds); })));
+}
+
+double PreprintPredictor::weighted_entry_mean(
+    const std::function<double(const PreprintEntry&)>& value) const {
+    const auto weights = compute_weights();
     double weighted_sum = 0.0;
     for (size_t i = 0; i < entries_.size(); ++i) {
-        weighted_sum += weights[i] * static_cast<double>(entries_[i].total_seconds);
+        weighted_sum += weights[i] * value(entries_[i]);
     }
-    return static_cast<int>(std::round(weighted_sum));
+    return weighted_sum;
 }
 
 std::vector<PreprintEntry> PreprintPredictor::load_entries_from_config() {

@@ -584,11 +584,33 @@ TEST_CASE("PreprintPredictor: estimate with history takes the recorded wall cloc
         CHECK(predictor.estimate({}, {{mesh, false}}).total_seconds == 280.0f);
     }
 
-    SECTION("a phase the start runs and the history lacks is added") {
+    SECTION("a phase the start runs adds nothing: the wall clock already holds it") {
+        // AD5M-style: the matcher never named the mesh, the option is on.
         const auto est = predictor.estimate({}, {{qgl, true}, {mesh, true}});
-        const float qgl_s =
-            static_cast<float>(PreprintPredictor::generic_phase_durations().at(qgl));
-        CHECK(est.durations.at(qgl) == qgl_s);
-        CHECK(est.total_seconds == 400.0f + qgl_s);
+        CHECK(est.durations.count(qgl) == 0);
+        CHECK(est.total_seconds == 400.0f);
     }
+}
+
+TEST_CASE("PreprintPredictor: a skipped phase takes off its share of the whole window",
+          "[print][predictor][estimate]") {
+    PreprintConfigScope config;
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+
+    // The older start meshed for 120s, the newer one did not; each spent 280s
+    // on everything else, so skipping the mesh leaves 280s whatever the weights.
+    PreprintEntry meshed;
+    meshed.total_seconds = 400;
+    meshed.timestamp = 1000;
+    meshed.phase_durations = {{mesh, 120}};
+    PreprintEntry unmeshed;
+    unmeshed.total_seconds = 280;
+    unmeshed.timestamp = 2000;
+    PreprintPredictor predictor;
+    predictor.add_entry(meshed);
+    predictor.add_entry(unmeshed);
+
+    REQUIRE(predictor.predicted_total() > 280);
+    CHECK(predictor.estimate({}, {{mesh, false}}).total_seconds ==
+          Catch::Approx(280.0f).margin(0.5f));
 }

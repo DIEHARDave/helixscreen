@@ -2201,7 +2201,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     FileMetadata file;
     file.first_layer_bed_temp = 60.0;
     file.first_layer_extr_temp = 220.0;
-    details.recalculate_estimate(&file);
+    details.recalculate_estimate(&file, "countdown.gcode");
     const int shown = lv_subject_get_int(details.get_preprint_estimate_subject());
 
     collector().start();

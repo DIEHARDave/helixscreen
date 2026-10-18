@@ -2349,12 +2349,14 @@ void PrintSelectDetailView::load_gcode_for_preview() {
     if (current_local_path_.empty()) {
         api_->files().get_file_metadata(
             file_path,
-            [this, tok](const FileMetadata& metadata) {
+            [this, tok, key = current_file_key()](const FileMetadata& metadata) {
                 // L081 Mechanism C: marshal member writes + LVGL/show_gcode_viewer
                 // to main thread before touching `this`.
-                tok.defer("DetailView::metadata_apply", [this, metadata]() {
+                tok.defer("DetailView::metadata_apply", [this, key, metadata]() {
                     // Cache for PrintStartController's pre-print checks (e.g., filament weight)
-                    apply_file_metadata(metadata);
+                    if (!apply_file_metadata(key, metadata)) {
+                        return;
+                    }
 
                     // Check if file is safe to render given available RAM. When
                     // the shared file already loaded this same size passed the
@@ -2531,7 +2533,8 @@ static void update_prep_time_label() {
     }
     auto* mgr = s_detail_view_instance->get_prep_manager();
     const auto& metadata = s_detail_view_instance->get_file_metadata();
-    mgr->recalculate_estimate(metadata ? &*metadata : nullptr);
+    mgr->recalculate_estimate(metadata ? &*metadata : nullptr,
+                              s_detail_view_instance->current_file_key());
 
     int estimate_s = lv_subject_get_int(mgr->get_preprint_estimate_subject());
 
@@ -2557,9 +2560,16 @@ static void update_prep_time_label() {
     s_detail_view_instance->set_prep_estimate_visible(1);
 }
 
-void PrintSelectDetailView::apply_file_metadata(const FileMetadata& metadata) {
+bool PrintSelectDetailView::apply_file_metadata(const std::string& file_key,
+                                                const FileMetadata& metadata) {
+    if (file_key != current_file_key()) {
+        spdlog::debug("[DetailView] Dropping metadata for {}: {} is shown now", file_key,
+                      current_file_key());
+        return false;
+    }
     cached_file_metadata_ = metadata;
     update_prep_time_label();
+    return true;
 }
 
 // ============================================================================

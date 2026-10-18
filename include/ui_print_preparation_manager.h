@@ -625,8 +625,11 @@ class PrintPreparationManager {
      * history (or default phases) for this temp bucket and window, and the
      * phases the option toggles skip or add. Updates preprint_estimate_subject_;
      * 0 when @p file_metadata is null (not loaded yet, or a USB file).
+     *
+     * @param file_key The file's scan_key(): the name its pre-start block
+     *        renders with, and the scan whose START_PRINT temps it reads
      */
-    void recalculate_estimate(const FileMetadata* file_metadata);
+    void recalculate_estimate(const FileMetadata* file_metadata, const std::string& file_key);
 
     /**
      * @brief Invalidate the cached PreprintPredictor

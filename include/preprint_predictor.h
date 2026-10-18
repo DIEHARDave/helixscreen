@@ -5,6 +5,7 @@
 #include "json_fwd.h"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <vector>
 
@@ -188,8 +189,10 @@ class PreprintPredictor {
      * Durations: the heating seconds, the predicted phases (history, else the
      * defaults) with homing at predicted_homing_seconds(), then @p overrides
      * applied. Total: with history, the recorded wall clock (which already
-     * holds heating) less every removed phase and plus every added one;
-     * without history, the sum of the durations.
+     * holds heating and every phase the start ran, matched or not) less each
+     * skipped phase's share of it; a phase the start runs adds nothing.
+     * Without history, the sum of the durations, a run phase the defaults
+     * lack added at its generic duration.
      */
     [[nodiscard]] PreprintEstimate estimate(const PreprintHeating& heating,
                                             const PreprintPhaseOverrides& overrides = {}) const;
@@ -239,6 +242,10 @@ class PreprintPredictor {
   private:
     /// Exponential time-decay weights (oldest=low, newest=high), normalized to sum=1
     [[nodiscard]] std::vector<double> compute_weights() const;
+
+    /// @p value per entry, averaged over every entry with compute_weights()
+    [[nodiscard]] double
+    weighted_entry_mean(const std::function<double(const PreprintEntry&)>& value) const;
 
     std::vector<PreprintEntry> entries_;
 };

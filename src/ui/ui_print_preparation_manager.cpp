@@ -297,7 +297,8 @@ lv_subject_t* PrintPreparationManager::get_preprint_estimate_subject() {
     return &preprint_estimate_subject_;
 }
 
-void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_metadata) {
+void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_metadata,
+                                                   const std::string& file_key) {
     // Callers reach this before any getter fetch (the detail view computes
     // the estimate on open), so the subject is initialised here.
     ensure_estimate_subject_initialized();
@@ -324,10 +325,14 @@ void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_meta
     heating.nozzle_target_known = nozzle_target > 0.0f;
 
     // The history this start will be measured against: its temp bucket and
-    // whether a host-side block runs ahead of the job (the collector's window).
+    // whether a host-side block runs ahead of the job (the collector's window),
+    // built from what start_print() builds it from.
     const int temp_bucket = bed_temp >= 40.0f ? 2 : 1;
+    const gcode::ScanResult* scan = scan_result_for(file_key);
     const helix::PreprintWindow window =
-        pre_start_block(collect_macro_skip_params(), {}, nullptr).gcode.empty()
+        pre_start_block(collect_macro_skip_params(), file_key,
+                        scan && scan->print_start.found ? &scan->print_start : nullptr)
+                .gcode.empty()
             ? helix::PreprintWindow::PrinterEdge
             : helix::PreprintWindow::HostPreStart;
     if (!predictor_cached_ || cached_temp_bucket_ != temp_bucket || cached_window_ != window) {
@@ -1596,8 +1601,8 @@ PrintPreparationManager::collect_macro_skip_params() const {
     }
 
     if (!skip_params.empty()) {
-        spdlog::info("[PrintPreparationManager] Collected {} skip params (DB+macro combined)",
-                     skip_params.size());
+        spdlog::debug("[PrintPreparationManager] Collected {} skip params (DB+macro combined)",
+                      skip_params.size());
     }
 
     return skip_params;
@@ -1700,8 +1705,8 @@ std::vector<std::string> PrintPreparationManager::collect_pre_start_gcode_lines(
     }
 
     if (!lines.empty()) {
-        spdlog::info("[PrintPreparationManager] Collected {} pre-start gcode line(s)",
-                     lines.size());
+        spdlog::debug("[PrintPreparationManager] Collected {} pre-start gcode line(s)",
+                      lines.size());
     }
     return lines;
 }

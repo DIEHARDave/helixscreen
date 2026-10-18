@@ -1337,9 +1337,10 @@ class PrintSelectDetailViewTestAccess {
     static lv_obj_t* gcode_viewer(const helix::ui::PrintSelectDetailView& view) {
         return view.gcode_viewer_;
     }
-    static void apply_file_metadata(helix::ui::PrintSelectDetailView& view,
+    /// The metadata fetch's answer for the file whose current_file_key() is @p key.
+    static void apply_file_metadata(helix::ui::PrintSelectDetailView& view, const std::string& key,
                                     const FileMetadata& metadata) {
-        view.apply_file_metadata(metadata);
+        view.apply_file_metadata(key, metadata);
     }
 };
 
@@ -1391,7 +1392,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     metadata.filename = "prep.gcode";
     metadata.first_layer_bed_temp = 60.0;
     metadata.first_layer_extr_temp = 220.0;
-    PrintSelectDetailViewTestAccess::apply_file_metadata(view, metadata);
+    PrintSelectDetailViewTestAccess::apply_file_metadata(view, "prep.gcode", metadata);
     process_lvgl(20);
 
     CHECK(lv_subject_get_int(visible) == 1);
@@ -1424,6 +1425,60 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     view.hide();
     helix::ui::UpdateQueue::instance().drain();
     lv_timer_handler(); // the close callback runs on the next tick
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a file's late metadata never lands on the next file shown",
+                 "[print_select][detail][xml][estimate]") {
+    CacheDirGuard guard;
+
+    register_xml_callbacks({
+        {"on_print_select_detail_backdrop", detail_noop_cb},
+        {"on_print_select_print_button", detail_noop_cb},
+        {"on_print_select_delete_button", detail_noop_cb},
+        {"on_print_detail_back_clicked", detail_noop_cb},
+        {"on_toggle_sliced_colors", detail_noop_cb},
+        {"on_print_select_detail_objects", detail_noop_cb},
+    });
+
+    helix::ui::PrintSelectDetailView view;
+    view.init_subjects();
+    lv_obj_t* const root = view.create(test_screen());
+    REQUIRE(root != nullptr);
+    view.set_dependencies(nullptr, &get_printer_state());
+    lv_subject_t* const estimate = view.get_prep_manager()->get_preprint_estimate_subject();
+
+    FileMetadata a;
+    a.filename = "sub/a.gcode";
+    a.first_layer_bed_temp = 110.0;
+    a.first_layer_extr_temp = 280.0;
+    FileMetadata b;
+    b.filename = "sub/b.gcode";
+    b.first_layer_bed_temp = 60.0;
+    b.first_layer_extr_temp = 220.0;
+
+    view.show("a.gcode", "sub", "PLA");
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(20);
+    view.show("b.gcode", "sub", "PLA");
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(20);
+    REQUIRE(view.current_file_key() == "sub/b.gcode");
+
+    PrintSelectDetailViewTestAccess::apply_file_metadata(view, "sub/b.gcode", b);
+    process_lvgl(20);
+    const int shown = lv_subject_get_int(estimate);
+    REQUIRE(shown > 0);
+
+    // A's fetch answers last, carrying a hotter bed and nozzle than B's.
+    PrintSelectDetailViewTestAccess::apply_file_metadata(view, "sub/a.gcode", a);
+    process_lvgl(20);
+    REQUIRE(view.get_file_metadata().has_value());
+    CHECK(view.get_file_metadata()->first_layer_bed_temp == 60.0);
+    CHECK(lv_subject_get_int(estimate) == shown);
+
+    view.hide();
+    helix::ui::UpdateQueue::instance().drain();
+    lv_timer_handler();
 }
 
 namespace {
