@@ -33,6 +33,8 @@
 #include "src/ui/panel_widgets/active_spool_widget.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <memory>
 
 #include "../catch_amalgamated.hpp"
@@ -2785,6 +2787,144 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the editor's non-swatch targets reach 44px"
     check_44("more_row");
     close_editor_overlay();
     set_spoolman_available(false);
+}
+
+namespace {
+bool area_within(const lv_area_t& inner, const lv_area_t& outer) {
+    return inner.x1 >= outer.x1 && inner.y1 >= outer.y1 && inner.x2 <= outer.x2 &&
+           inner.y2 <= outer.y2;
+}
+int y_centre(lv_obj_t* obj) {
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    return (a.y1 + a.y2) / 2;
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "the header's icon buttons are round targets on the title's line",
+                 "[ams_edit_overlay][touch][header]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    set_spoolman_available(true);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    auto* scan = lv_xml_get_subject(nullptr, "ams_edit_scan_enabled");
+    REQUIRE(scan != nullptr);
+    lv_subject_set_int(scan, 1);
+    process_lvgl(5);
+
+    lv_obj_t* title = access.widget("header_title");
+    REQUIRE(title != nullptr);
+    lv_obj_update_layout(title);
+    for (const char* name : {"btn_hdr_spoolman", "btn_hdr_scan_qr"}) {
+        INFO(name);
+        REQUIRE(access.shown(name));
+        lv_obj_t* btn = access.widget(name);
+        // A filled circle, so it reads as a button and not a bare glyph.
+        CHECK(lv_obj_get_width(btn) == lv_obj_get_height(btn));
+        CHECK(lv_obj_get_style_bg_opa(btn, LV_PART_MAIN) == LV_OPA_COVER);
+        CHECK(lv_obj_get_style_radius(btn, LV_PART_MAIN) >= lv_obj_get_height(btn) / 2);
+        // A full touch target, all of it inside the parent's box: LVGL
+        // never hit-tests a child outside its parent.
+        const lv_area_t hit = access.click_area(name);
+        CHECK(lv_area_get_width(&hit) >= 44);
+        CHECK(lv_area_get_height(&hit) >= 44);
+        lv_area_t parent;
+        lv_obj_get_coords(lv_obj_get_parent(btn), &parent);
+        CHECK(area_within(hit, parent));
+        CHECK(std::abs(y_centre(btn) - y_centre(title)) <= 2);
+    }
+    // The two targets meet without overlapping, so neither steals the other's taps.
+    const lv_area_t a = access.click_area("btn_hdr_spoolman");
+    const lv_area_t b = access.click_area("btn_hdr_scan_qr");
+    CHECK(a.x2 < b.x1);
+
+    // The linked-spool badge is an indicator: no target of its own, so a tap
+    // on it is the back button's.
+    lv_obj_t* badge = access.widget("header_title_badge");
+    REQUIRE(badge != nullptr);
+    CHECK_FALSE(lv_obj_has_flag(badge, LV_OBJ_FLAG_CLICKABLE));
+
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "every colour swatch's reach is inside the grid and its own",
+                 "[ams_edit_overlay][touch][color][grid]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    lv_obj_t* grid = access.widget("color_grid");
+    REQUIRE(grid != nullptr);
+    lv_obj_update_layout(grid);
+    lv_area_t box;
+    lv_obj_get_coords(grid, &box);
+    const uint32_t tiles = lv_obj_get_child_count(grid);
+    REQUIRE(tiles > 2);
+    lv_area_t prev{};
+    for (uint32_t i = 0; i < tiles; ++i) {
+        lv_obj_t* tile = lv_obj_get_child(grid, static_cast<int32_t>(i));
+        lv_area_t hit;
+        lv_obj_get_click_area(tile, &hit);
+        INFO("tile " << i);
+        // The edge rows and columns too: reach outside the grid is never hit-tested.
+        CHECK(area_within(hit, box));
+        CHECK(lv_area_get_width(&hit) >= 44);
+        CHECK(lv_area_get_height(&hit) >= 44);
+        if (i > 0 && hit.y1 == prev.y1) {
+            CHECK(prev.x2 < hit.x1);
+        }
+        prev = hit;
+    }
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "colour swatches keep a 7mm pitch on every class's panel",
+                 "[ams_edit_overlay][touch][color][grid]") {
+    struct Panel {
+        int32_t w;
+        int32_t h;
+        double inches;
+    };
+    // 7" 800x480, 3.5" 480x320 (and its portrait), 4.3" 480x272.
+    const Panel panels[] = {{800, 480, 7.0}, {480, 320, 3.5}, {320, 480, 3.5}, {480, 272, 4.3}};
+    lv_display_t* disp = lv_display_get_default();
+    const auto token = [](const char* name) {
+        const char* v = lv_xml_get_const(lv_xml_component_get_scope("ams_edit_overlay"), name);
+        REQUIRE(v != nullptr);
+        // A value naming a global token ("#swatch_grid_size") resolves through it.
+        if (v[0] == '#') {
+            v = lv_xml_get_const(nullptr, v + 1);
+            REQUIRE(v != nullptr);
+        }
+        return std::atoi(v);
+    };
+    for (const Panel& p : panels) {
+        CAPTURE(p.w, p.h);
+        {
+            ScopedResolution res(disp, p.w, p.h);
+            theme_manager_refresh_layout_constants(disp);
+            REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_edit_overlay.xml") ==
+                    LV_RESULT_OK);
+            const int disc = token("ams_edit_grid_swatch");
+            const int gap = token("ams_edit_grid_gap");
+            const int hit = token("ams_edit_grid_hit");
+            const double dpi = std::hypot(p.w, p.h) / p.inches;
+            const double floor_px = 7.0 / 25.4 * dpi;
+            CAPTURE(disc, gap, hit, dpi, floor_px);
+            CHECK(disc + gap >= floor_px);
+            // The reach tiles the gap exactly: adjacent targets meet, never overlap.
+            CHECK(2 * hit == gap);
+        }
+    }
+    // Put the component back at the suite's size for the cases that follow.
+    theme_manager_refresh_layout_constants(disp);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_edit_overlay.xml") == LV_RESULT_OK);
 }
 
 TEST_CASE("grid_preset_count fills whole rows less the custom tile",

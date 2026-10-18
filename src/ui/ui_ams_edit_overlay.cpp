@@ -429,6 +429,9 @@ void AmsEditOverlay::on_ui_destroyed() {}
 void AmsEditOverlay::on_activate() {
     OverlayBase::on_activate();
     update_ui();
+    // The push sets the overlay's final width after the editor was built, so
+    // the colour rows are counted again against the width they show at.
+    size_color_grids();
     // A cover (keypad, scanner) dropped any open-time fetch still in flight;
     // re-arm the ones that never landed.
     if (editor_entered_) {

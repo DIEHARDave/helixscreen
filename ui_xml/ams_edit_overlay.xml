@@ -4,8 +4,9 @@
 <!-- Spool editor overlay. One overlay, internal views selected by the
      ams_edit_view int subject: 0=editor (the identity form; the entry view),
      1=Spoolman spool picker, 2=custom color (presets + HSV).
-     Header: back (ams_edit_back_cb), lane-name title (ams_edit_title),
-     Spoolman + Scan QR icon buttons (header_content slot, left of the
+     Header: back (ams_edit_back_cb), lane-name title (ams_edit_title), the
+     linked-spool badge (an indicator, part of the back target), and Spoolman
+     + Scan QR round icon buttons (header_content slot, left of the
      dirty-gated Save action). All three header subjects are written
      exclusively by AmsEditOverlay::set_view()/update_ui(). -->
 <component>
@@ -35,18 +36,22 @@
     <px name="field_w_text_large" value="180"/>
     <!-- Both colour grids' swatch size: the cramped classes take the micro
          size so the folded grid leaves room for the product row. -->
-    <!-- Touch floor: every swatch's hit box is >= 44px, and the gap is
-         44 - disc so adjacent targets tile at exactly 44px pitch without
-         overlapping (overlaps make LVGL give the tap to the topmost). -->
+    <!-- Touch floor: a swatch's pitch (disc + gap) is at least 7mm on the
+         class's panel, and hit = gap / 2 so adjacent targets tile at that
+         pitch without overlapping (overlaps make LVGL give the tap to the
+         topmost). 44px clears 7mm up to 160 dpi; the tiny class is the
+         3.5" 480x320 panel at 165 dpi, where 7mm is 46px. -->
+    <!-- Each grid is padded by the reach, so the outer swatches' reach
+         lies inside the grid's box, where LVGL hit-tests it. -->
     <px name="ams_edit_grid_hit_micro" value="7"/>
-    <px name="ams_edit_grid_hit_tiny" value="7"/>
+    <px name="ams_edit_grid_hit_tiny" value="8"/>
     <px name="ams_edit_grid_hit_small" value="7"/>
     <px name="ams_edit_grid_hit_medium" value="6"/>
     <px name="ams_edit_grid_hit_large" value="6"/>
     <px name="ams_edit_grid_hit_xlarge" value="6"/>
     <px name="ams_edit_grid_hit_xxlarge" value="6"/>
     <px name="ams_edit_grid_gap_micro" value="14"/>
-    <px name="ams_edit_grid_gap_tiny" value="14"/>
+    <px name="ams_edit_grid_gap_tiny" value="16"/>
     <px name="ams_edit_grid_gap_small" value="14"/>
     <px name="ams_edit_grid_gap_medium" value="12"/>
     <px name="ams_edit_grid_gap_large" value="12"/>
@@ -106,29 +111,53 @@
     <px name="ams_edit_bar_hit_large" value="8"/>
     <px name="ams_edit_bar_hit_xlarge" value="8"/>
     <px name="ams_edit_bar_hit_xxlarge" value="8"/>
+    <!-- Header icon buttons: hit reach and spacing. The buttons are
+         #button_height_sm circles; the reach takes each to the header's
+         height (40 at micro) or 44, and the gap is twice the reach so the
+         two targets meet without overlapping. -->
+    <px name="ams_edit_hdr_hit_micro" value="8"/>
+    <px name="ams_edit_hdr_hit_small" value="2"/>
+    <px name="ams_edit_hdr_hit_medium" value="2"/>
+    <px name="ams_edit_hdr_hit_large" value="2"/>
+    <px name="ams_edit_hdr_gap_micro" value="16"/>
+    <px name="ams_edit_hdr_gap_small" value="4"/>
+    <px name="ams_edit_hdr_gap_medium" value="4"/>
+    <px name="ams_edit_hdr_gap_large" value="4"/>
   </consts>
   <view name="ams_edit_overlay"
         extends="overlay_panel" title="Edit Spool" title_subject="ams_edit_title" hide_action_button="false"
         action_button_text="Save" action_button_callback="ams_edit_save_cb"
         action_button_disabled_subject="ams_edit_save_disabled" action_button_hidden_subject="ams_edit_save_hidden"
         title_badge_icon="spoolman" title_badge_subject="ams_edit_is_managed" back_button_callback="ams_edit_back_cb">
-    <!-- Header icon buttons, left of Save: Choose from Spoolman and Scan QR.
-         Injected into header_bar's content slot; gated on Spoolman
-         availability (ams_edit_scan_enabled also carries the no-camera
-         build gate). -->
+    <!-- Header icon buttons, left of Save: Choose from Spoolman and Scan QR,
+         the app's round icon-only header button (elevated circle, as Motion
+         and Print Status use). Injected into header_bar's content slot;
+         gated on Spoolman availability (ams_edit_scan_enabled also carries
+         the no-camera build gate). The row is the header's full height and
+         padded by the reach, so each button's ext_click_area lies inside it:
+         LVGL only hit-tests a child inside its parent's box. -->
     <header_bar-header_content>
-      <ui_button name="btn_hdr_spoolman"
-                 width="content" height="#header_button_height" variant="ghost" icon="spoolman" icon_size="sm"
-                 style_pad_hor="#space_sm" hidden="true">
+      <lv_obj name="hdr_actions"
+              width="content" height="100%" style_pad_ver="0" style_pad_hor="#ams_edit_hdr_hit"
+              style_pad_gap="#ams_edit_hdr_gap" style_bg_opa="0" style_border_width="0" scrollable="false"
+              clickable="false" flex_flow="row" style_flex_cross_place="center" style_flex_track_place="center"
+              hidden="true">
         <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
-        <event_cb trigger="clicked" callback="ams_edit_choose_spoolman_cb"/>
-      </ui_button>
-      <ui_button name="btn_hdr_scan_qr"
-                 width="content" height="#header_button_height" variant="ghost" icon="qrcode_scan" icon_size="sm"
-                 style_pad_hor="#space_sm" hidden="true">
-        <bind_flag_if_eq subject="ams_edit_scan_enabled" flag="hidden" ref_value="0"/>
-        <event_cb trigger="clicked" callback="ams_edit_scan_qr_cb"/>
-      </ui_button>
+        <ui_button name="btn_hdr_spoolman"
+                   width="#button_height_sm" height="#button_height_sm" style_radius="9999"
+                   style_bg_color="#elevated_bg" style_pad_hor="0" style_pad_ver="0" icon="spoolman" icon_size="sm"
+                   ext_click_area="#ams_edit_hdr_hit" hidden="true">
+          <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
+          <event_cb trigger="clicked" callback="ams_edit_choose_spoolman_cb"/>
+        </ui_button>
+        <ui_button name="btn_hdr_scan_qr"
+                   width="#button_height_sm" height="#button_height_sm" style_radius="9999"
+                   style_bg_color="#elevated_bg" style_pad_hor="0" style_pad_ver="0" icon="qrcode_scan" icon_size="sm"
+                   ext_click_area="#ams_edit_hdr_hit" hidden="true">
+          <bind_flag_if_eq subject="ams_edit_scan_enabled" flag="hidden" ref_value="0"/>
+          <event_cb trigger="clicked" callback="ams_edit_scan_qr_cb"/>
+        </ui_button>
+      </lv_obj>
     </header_bar-header_content>
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_left="#space_md" style_pad_right="#space_md" style_pad_top="#space_xs"
@@ -249,7 +278,7 @@
               <tag_badge subject="ams_edit_tag_color"/>
             </lv_obj>
             <lv_obj name="color_grid_split"
-                    width="100%" height="content" style_pad_all="0" flex_flow="row_wrap"
+                    width="100%" height="content" style_pad_all="#ams_edit_grid_hit" flex_flow="row_wrap"
                     style_pad_gap="#ams_edit_grid_gap" scrollable="false">
               <!-- The custom colour: the app's rainbow custom swatch, the grid's
                    first tile so it shares the 44px hit pitch. It leads because
@@ -326,7 +355,7 @@
             <tag_badge subject="ams_edit_tag_color"/>
           </lv_obj>
           <lv_obj name="color_grid"
-                  width="100%" height="content" style_pad_all="0" flex_flow="row_wrap"
+                  width="100%" height="content" style_pad_all="#ams_edit_grid_hit" flex_flow="row_wrap"
                   style_pad_gap="#ams_edit_grid_gap" scrollable="false">
             <!-- The custom colour: the app's rainbow custom swatch, the grid's
                  first tile so it shares the 44px hit pitch. It leads because
