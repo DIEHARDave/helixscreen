@@ -1,9 +1,13 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "belt_test_signals.h"
+#include "shaper_csv_parser.h"
 #include "sweep_response_estimator.h"
+#include "sweep_synth.h"
 
+#include <algorithm>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <vector>
 
@@ -333,4 +337,389 @@ TEST_CASE("DriveLock scales estimates by the sweep rate", "[sweep_preview][lock]
     }
     REQUIRE(lock.locked());
     CHECK(lock.drive_start_s() == Approx(1.70).margin(1e-5));
+}
+
+namespace {
+
+constexpr float kRate = 3053.0f;
+constexpr size_t kBatch = 300;
+constexpr double kConsoleLeadS = 1.5;
+
+/// amp * sqrt(0.02 + 1 / (1 + ((f - peak) / hwhm)^2)) * weight[axis]
+SweepAxisGain lorentzian(float peak_hz, float hwhm_hz,
+                         std::array<float, 3> weights = {0.5f, 0.5f, 0.1f}, float amp = 800.0f) {
+    return [=](float f) {
+        const float d = (f - peak_hz) / hwhm_hz;
+        const float level = amp * std::sqrt(0.02f + 1.0f / (1.0f + d * d));
+        return std::array<float, 3>{level * weights[0], level * weights[1], level * weights[2]};
+    };
+}
+
+SweepSynthSpec main_spec(SweepPlan plan = {5.0f, 135.0f, 1.0f}) {
+    SweepSynthSpec spec;
+    spec.plan = plan;
+    spec.drive_start_s = 1.7;
+    spec.rate_hz = kRate;
+    spec.noise_mm_s2 = 30.0f;
+    return spec;
+}
+
+/// What a case changes about the driver's stream.
+struct DriveOptions {
+    bool hints = true;
+    /// Samples before this stream time are never delivered.
+    double first_sample_s = 0.0;
+    /// Batch [first, last] times -> whether it arrives contiguous.
+    std::function<bool(double, double)> contiguous;
+    /// Added to every sample before delivery.
+    std::function<void(AccelSample&)> overlay;
+    /// Rate each batch is delivered with, by its first sample's time.
+    std::function<float(double)> rate;
+    /// After each batch: the accumulator, the batch's last time, points so far.
+    std::function<void(const SweepResponseAccumulator&, double, size_t)> after_batch;
+    /// Swap to this synth (and its hints) from this stream time on.
+    const SweepSynthSpec* second_spec = nullptr;
+    double second_from_s = 0.0;
+};
+
+struct DriveResult {
+    std::vector<SweepPoint> points;
+    bool locked = false;
+    double drive_start_s = 0.0;
+    bool complete = false;
+};
+
+float ramp_hz(const SweepSynthSpec& spec, double t_s) {
+    return static_cast<float>(spec.plan.freq_start_hz +
+                              spec.plan.hz_per_sec * (t_s - spec.drive_start_s));
+}
+
+/// The console leads the motion by kConsoleLeadS and prints whole Hz.
+DriveResult drive_sweep(const SweepSynthSpec& spec, const SweepAxisGain& gain,
+                        const DriveOptions& opt = {}) {
+    SweepResponseAccumulator acc(spec.plan);
+    SweepSynth synth(spec, gain);
+    std::unique_ptr<SweepSynth> second;
+    if (opt.second_spec != nullptr) {
+        // Advanced batch for batch with the first, so the swap keeps stream time.
+        second = std::make_unique<SweepSynth>(*opt.second_spec, gain);
+    }
+    const SweepSynthSpec& last_spec = opt.second_spec != nullptr ? *opt.second_spec : spec;
+    const double end_s =
+        last_spec.drive_start_s +
+        (last_spec.plan.freq_end_hz - last_spec.plan.freq_start_hz) / last_spec.plan.hz_per_sec +
+        2.0;
+
+    DriveResult result;
+    while (synth.time_s() < end_s) {
+        const double t = synth.time_s();
+        const bool use_second = second && t >= opt.second_from_s;
+        const SweepSynthSpec& active = use_second ? *opt.second_spec : spec;
+        auto batch = synth.next(kBatch);
+        if (second) {
+            auto other = second->next(kBatch);
+            if (use_second) {
+                batch = std::move(other);
+            }
+        }
+        if (static_cast<double>(batch.back().time) < opt.first_sample_s) {
+            continue;
+        }
+        batch.erase(std::remove_if(batch.begin(), batch.end(),
+                                   [&](const AccelSample& s) {
+                                       return static_cast<double>(s.time) < opt.first_sample_s;
+                                   }),
+                    batch.end());
+        if (opt.overlay) {
+            for (auto& s : batch) {
+                opt.overlay(s);
+            }
+        }
+        if (opt.hints && t + kConsoleLeadS >= active.drive_start_s) {
+            acc.note_console_frequency(
+                std::floor(std::min(ramp_hz(active, t + kConsoleLeadS), active.plan.freq_end_hz)));
+        }
+        const bool contiguous =
+            !opt.contiguous || opt.contiguous(static_cast<double>(batch.front().time),
+                                              static_cast<double>(batch.back().time));
+        const float rate = opt.rate ? opt.rate(t) : kRate;
+        const auto fresh = acc.add_samples(batch, contiguous, rate);
+        result.points.insert(result.points.end(), fresh.begin(), fresh.end());
+        if (opt.after_batch) {
+            opt.after_batch(acc, static_cast<double>(batch.back().time), result.points.size());
+        }
+    }
+    result.locked = acc.locked();
+    result.drive_start_s = acc.drive_start_s();
+    result.complete = acc.complete();
+    return result;
+}
+
+void require_every_point_once(const std::vector<SweepPoint>& points, const SweepPlan& plan) {
+    REQUIRE(points.size() == plan.point_count());
+    for (size_t i = 0; i < points.size(); ++i) {
+        INFO("point " << i);
+        REQUIRE(points[i].freq_hz == plan.point_hz(i));
+    }
+}
+
+float argmax_hz(const std::vector<SweepPoint>& points) {
+    float best_hz = 0.0f;
+    float best = -1.0f;
+    for (const auto& p : points) {
+        if (p.clean && p.psd_xyz() > best) {
+            best = p.psd_xyz();
+            best_hz = p.freq_hz;
+        }
+    }
+    return best_hz;
+}
+
+std::string estimator_fixture_dir() {
+    std::string src = __FILE__;
+    auto pos = src.rfind("/tests/unit/");
+    if (pos != std::string::npos) {
+        return src.substr(0, pos) + "/tests/fixtures/";
+    }
+    return "tests/fixtures/";
+}
+
+/// Linear interpolation of a CSV curve, clamped at its ends.
+float interpolate(const BeltCurve& curve, float f) {
+    if (f <= curve.front().first) {
+        return curve.front().second;
+    }
+    for (size_t i = 1; i < curve.size(); ++i) {
+        if (f <= curve[i].first) {
+            const auto& [f0, p0] = curve[i - 1];
+            const auto& [f1, p1] = curve[i];
+            return p0 + (p1 - p0) * (f - f0) / (f1 - f0);
+        }
+    }
+    return curve.back().second;
+}
+
+} // namespace
+
+TEST_CASE("SweepResponseAccumulator measures a K1C-like sweep", "[sweep_preview][accumulator]") {
+    const auto spec = main_spec();
+    const auto r = drive_sweep(spec, lorentzian(58.4f, 3.8f));
+    REQUIRE(r.locked);
+    CHECK(std::abs(r.drive_start_s - 1.7) < 0.1);
+    require_every_point_once(r.points, spec.plan);
+    for (const auto& p : r.points) {
+        INFO(p.freq_hz);
+        CHECK(p.clean);
+    }
+    CHECK(std::abs(argmax_hz(r.points) - 58.4f) <= 1.0f);
+    CHECK(r.complete);
+}
+
+TEST_CASE("SweepResponseAccumulator follows a 2 Hz/s sweep", "[sweep_preview][accumulator]") {
+    const auto spec = main_spec({5.0f, 135.0f, 2.0f});
+    const auto r = drive_sweep(spec, lorentzian(58.4f, 3.8f));
+    REQUIRE(r.locked);
+    CHECK(std::abs(r.drive_start_s - 1.7) < 0.1);
+    require_every_point_once(r.points, spec.plan);
+    CHECK(std::abs(argmax_hz(r.points) - 58.4f) <= 1.0f);
+}
+
+TEST_CASE("SweepResponseAccumulator is not captured by a ringing mode",
+          "[sweep_preview][accumulator]") {
+    const auto spec = main_spec({50.0f, 80.0f, 1.0f});
+    DriveOptions opt;
+    opt.overlay = [](AccelSample& s) {
+        const auto ring = static_cast<float>(1000.0 * std::sin(2.0 * kPi * 52.0 * s.time));
+        s.x += 0.6f * ring;
+        s.y += 0.6f * ring;
+        s.z += 0.1f * ring;
+    };
+    const auto r = drive_sweep(spec, lorentzian(58.4f, 3.8f), opt);
+    REQUIRE(r.locked);
+    CHECK(std::abs(r.drive_start_s - 1.7) < 0.1);
+}
+
+TEST_CASE("SweepResponseAccumulator keeps the per-axis columns apart",
+          "[sweep_preview][accumulator]") {
+    const auto spec = main_spec();
+    const auto r = drive_sweep(spec, lorentzian(58.4f, 3.8f, {1.0f, 0.5f, 0.1f}));
+    REQUIRE(r.locked);
+    REQUIRE(r.points.size() == spec.plan.point_count());
+    const SweepPoint* peak = nullptr;
+    for (const auto& p : r.points) {
+        if (!p.clean) {
+            continue;
+        }
+        CHECK(p.psd_xyz() == p.psd_x + p.psd_y + p.psd_z);
+        if (peak == nullptr || p.psd_xyz() > peak->psd_xyz()) {
+            peak = &p;
+        }
+    }
+    REQUIRE(peak != nullptr);
+    CHECK(peak->psd_x > 3.0f * peak->psd_y);
+}
+
+TEST_CASE("SweepResponseAccumulator ignores a slow sweeping overlay",
+          "[sweep_preview][accumulator]") {
+    const auto spec = main_spec();
+    const auto plain = drive_sweep(spec, lorentzian(58.4f, 3.8f));
+    DriveOptions opt;
+    opt.overlay = [](AccelSample& s) {
+        s.x += static_cast<float>(400.0 * std::sin(2.0 * kPi * 0.83 * s.time));
+    };
+    const auto swept = drive_sweep(spec, lorentzian(58.4f, 3.8f), opt);
+    REQUIRE(swept.locked);
+    CHECK(std::abs(swept.drive_start_s - 1.7) < 0.15);
+    REQUIRE(swept.points.size() == plain.points.size());
+    for (size_t i = 0; i < swept.points.size(); ++i) {
+        const auto& a = swept.points[i];
+        const auto& b = plain.points[i];
+        if (a.freq_hz <= 10.0f) {
+            continue;
+        }
+        INFO(a.freq_hz);
+        REQUIRE(a.clean);
+        REQUIRE(b.clean);
+        CHECK(std::abs(a.psd_xyz() - b.psd_xyz()) / b.psd_xyz() < 0.05f);
+    }
+}
+
+TEST_CASE("SweepResponseAccumulator marks a step with a gap unclean",
+          "[sweep_preview][accumulator]") {
+    const auto spec = main_spec();
+    const double gap_at = 1.7 + 25.0; // drive 30 Hz
+    DriveOptions opt;
+    opt.contiguous = [gap_at](double first, double last) {
+        return !(first <= gap_at && gap_at <= last);
+    };
+    const auto r = drive_sweep(spec, lorentzian(58.4f, 3.8f), opt);
+    require_every_point_once(r.points, spec.plan);
+    for (const auto& p : r.points) {
+        INFO(p.freq_hz);
+        if (p.freq_hz == 30.0f) {
+            CHECK_FALSE(p.clean);
+            CHECK(std::isnan(p.psd_x));
+            CHECK(std::isnan(p.psd_y));
+            CHECK(std::isnan(p.psd_z));
+        } else if (p.freq_hz <= 28.0f || p.freq_hz >= 33.0f) {
+            CHECK(p.clean);
+        }
+    }
+}
+
+TEST_CASE("SweepResponseAccumulator never locks on hiss", "[sweep_preview][accumulator]") {
+    for (uint32_t seed = 1; seed <= 5; ++seed) {
+        INFO("seed " << seed);
+        auto spec = main_spec();
+        spec.seed = seed;
+        bool ever_locked = false;
+        DriveOptions opt;
+        opt.after_batch = [&ever_locked](const SweepResponseAccumulator& acc, double, size_t) {
+            ever_locked = ever_locked || acc.locked();
+        };
+        const auto r =
+            drive_sweep(spec, [](float) { return std::array<float, 3>{0.0f, 0.0f, 0.0f}; }, opt);
+        CHECK_FALSE(ever_locked);
+        CHECK(r.points.empty());
+    }
+}
+
+TEST_CASE("SweepResponseAccumulator takes no reading without a console hint",
+          "[sweep_preview][accumulator]") {
+    DriveOptions opt;
+    opt.hints = false;
+    const auto r = drive_sweep(main_spec(), lorentzian(58.4f, 3.8f), opt);
+    CHECK_FALSE(r.locked);
+    CHECK(r.points.empty());
+}
+
+TEST_CASE("SweepResponseAccumulator attaches after the drive started",
+          "[sweep_preview][accumulator]") {
+    const auto spec = main_spec();
+    DriveOptions opt;
+    opt.first_sample_s = 4.0;
+    const auto r = drive_sweep(spec, lorentzian(58.4f, 3.8f), opt);
+    REQUIRE(r.locked);
+    require_every_point_once(r.points, spec.plan);
+    for (const auto& p : r.points) {
+        // The step's span start on the true ramp.
+        const double span_start = 1.7 + (std::max(p.freq_hz - 0.5f, 5.0f) - 5.0f);
+        INFO(p.freq_hz << " span starts " << span_start);
+        CHECK(p.clean == (span_start >= 4.0));
+    }
+}
+
+TEST_CASE("SweepResponseAccumulator drops and regains a lock", "[sweep_preview][accumulator]") {
+    const auto spec = main_spec();
+    auto later = main_spec();
+    later.drive_start_s = 7.7; // the ramp drops 6 Hz at 30 s
+    bool lost_after_33 = false;
+    bool relocked_after_loss = false;
+    DriveOptions opt;
+    opt.second_spec = &later;
+    opt.second_from_s = 30.0;
+    opt.after_batch = [&](const SweepResponseAccumulator& acc, double t, size_t) {
+        if (t > 33.0 && !acc.locked()) {
+            lost_after_33 = true;
+        }
+        if (lost_after_33 && acc.locked()) {
+            relocked_after_loss = true;
+        }
+    };
+    const auto r = drive_sweep(spec, lorentzian(58.4f, 3.8f), opt);
+    CHECK(lost_after_33);
+    CHECK(relocked_after_loss);
+    REQUIRE(r.locked);
+    CHECK(std::abs(r.drive_start_s - 7.7) < 0.1);
+    require_every_point_once(r.points, spec.plan);
+    CHECK(std::any_of(r.points.begin(), r.points.end(),
+                      [](const SweepPoint& p) { return !p.clean; }));
+}
+
+TEST_CASE("SweepResponseAccumulator takes no reading at rate 0", "[sweep_preview][accumulator]") {
+    const auto spec = main_spec();
+    bool locked_during_rate_0 = false;
+    size_t points_during_rate_0 = 0;
+    DriveOptions opt;
+    // Batches starting before 6 s arrive with rate 0.
+    opt.rate = [](double t) { return t < 6.0 ? 0.0f : kRate; };
+    opt.after_batch = [&](const SweepResponseAccumulator& acc, double t, size_t points) {
+        if (t < 6.0) {
+            locked_during_rate_0 = locked_during_rate_0 || acc.locked();
+            points_during_rate_0 = points;
+        }
+    };
+    const auto r = drive_sweep(spec, lorentzian(58.4f, 3.8f), opt);
+    CHECK_FALSE(locked_during_rate_0);
+    CHECK(points_during_rate_0 == 0);
+    REQUIRE(r.locked);
+    require_every_point_once(r.points, spec.plan);
+}
+
+TEST_CASE("SweepResponseAccumulator reproduces real CSV shapes", "[sweep_preview][accumulator]") {
+    const char* fixtures[] = {"k1c_axis_1_-1.csv", "k1c_axis_1_1.csv",
+                              "voron24_kalico_axis_1_1.csv", "ad5m_axis_1_1.csv"};
+    for (const char* name : fixtures) {
+        INFO(name);
+        const auto csv = parse_resonance_csv(estimator_fixture_dir() + "belt_sweeps/" + name);
+        REQUIRE(csv.error == ResonanceCsvError::NONE);
+        REQUIRE_FALSE(csv.curve.empty());
+        const BeltCurve curve = csv.curve;
+        const SweepAxisGain gain = [curve](float f) {
+            const float p = std::max(interpolate(curve, f), 0.0f);
+            return std::array<float, 3>{20.0f * std::sqrt(0.45f * p), 20.0f * std::sqrt(0.45f * p),
+                                        20.0f * std::sqrt(0.10f * p)};
+        };
+        const auto r = drive_sweep(main_spec(), gain);
+        REQUIRE(r.locked);
+        BeltCurve preview;
+        for (const auto& p : r.points) {
+            if (p.clean) {
+                preview.emplace_back(p.freq_hz, p.psd_xyz());
+            }
+        }
+        const float similarity = band_similarity(csv.curve, preview, 5.0f, 135.0f);
+        INFO("similarity " << similarity);
+        CHECK(similarity >= 90.0f);
+    }
 }

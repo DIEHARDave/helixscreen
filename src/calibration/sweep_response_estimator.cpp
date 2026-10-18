@@ -250,4 +250,162 @@ float DriveLock::model_hz(double at_s) const {
                               static_cast<double>(plan_.hz_per_sec) * (at_s - t0_s_));
 }
 
+namespace {
+
+/// Index of the first sample at or after `t_s`.
+size_t first_at_or_after(const std::deque<AccelSample>& buffer, double t_s) {
+    const auto it =
+        std::lower_bound(buffer.begin(), buffer.end(), t_s, [](const AccelSample& s, double t) {
+            return static_cast<double>(s.time) < t;
+        });
+    return static_cast<size_t>(it - buffer.begin());
+}
+
+/// Index of the first sample after `t_s`.
+size_t first_after(const std::deque<AccelSample>& buffer, double t_s) {
+    const auto it =
+        std::upper_bound(buffer.begin(), buffer.end(), t_s, [](double t, const AccelSample& s) {
+            return t < static_cast<double>(s.time);
+        });
+    return static_cast<size_t>(it - buffer.begin());
+}
+
+bool overlaps_gap(const std::deque<std::pair<double, double>>& gaps, double lo_s, double hi_s) {
+    for (const auto& [first, last] : gaps) {
+        if (lo_s <= last && first <= hi_s) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+SweepResponseAccumulator::SweepResponseAccumulator(SweepPlan plan) : plan_(plan), lock_(plan) {}
+
+void SweepResponseAccumulator::note_console_frequency(float hz) {
+    if (std::isfinite(hz) && hz > 0.0f) {
+        hint_hz_ = hz;
+    }
+}
+
+std::vector<SweepPoint>
+SweepResponseAccumulator::add_samples(const std::vector<AccelSample>& samples, bool contiguous,
+                                      float rate_hz) {
+    using namespace sweep_preview;
+    std::vector<SweepPoint> finished;
+    if (samples.empty() || !plan_.valid()) {
+        return finished;
+    }
+
+    buffer_.insert(buffer_.end(), samples.begin(), samples.end());
+    stream_time_s_ = static_cast<double>(buffer_.back().time);
+    if (!contiguous) {
+        gaps_.emplace_back(static_cast<double>(samples.front().time),
+                           static_cast<double>(samples.back().time));
+    }
+    const double keep_from = stream_time_s_ - BUFFER_S;
+    while (!buffer_.empty() && static_cast<double>(buffer_.front().time) < keep_from) {
+        buffer_.pop_front();
+    }
+    while (!gaps_.empty() && gaps_.front().second < keep_from) {
+        gaps_.pop_front();
+    }
+    if (!(rate_hz > 0.0f)) {
+        return finished;
+    }
+
+    // Drive-frequency readings, each over the LOCK_WINDOW_S ending at its time.
+    const double front_s = static_cast<double>(buffer_.front().time);
+    next_reading_s_ = std::max(next_reading_s_, front_s + LOCK_WINDOW_S);
+    std::vector<AccelSample> window;
+    for (; next_reading_s_ <= stream_time_s_; next_reading_s_ += LOCK_INTERVAL_S) {
+        if (!std::isfinite(hint_hz_)) {
+            continue;
+        }
+        const double lo = next_reading_s_ - LOCK_WINDOW_S;
+        if (overlaps_gap(gaps_, lo, next_reading_s_)) {
+            continue;
+        }
+        const size_t begin = first_after(buffer_, lo);
+        const size_t end = first_after(buffer_, next_reading_s_);
+        window.assign(buffer_.begin() + static_cast<std::ptrdiff_t>(begin),
+                      buffer_.begin() + static_cast<std::ptrdiff_t>(end));
+        const auto drive =
+            find_drive_hz(window.data(), window.size(), rate_hz, hint_hz_, plan_.hz_per_sec);
+        if (drive) {
+            lock_.observe(next_reading_s_ - LOCK_WINDOW_S / 2.0, *drive);
+        }
+    }
+
+    // Steps whose span the newest sample has passed. Before the first lock
+    // there is no t0 to place them with; after a loss the last one places
+    // them, unclean.
+    const double t0 = lock_.drive_start_s();
+    if (std::isnan(t0)) {
+        return finished;
+    }
+    const size_t count = plan_.point_count();
+    const double start = plan_.freq_start_hz;
+    const double rate = plan_.hz_per_sec;
+    const double half = STEP_HZ / 2.0;
+    std::array<std::vector<float>, 3> axes;
+    while (next_point_ < count) {
+        const double f = plan_.point_hz(next_point_);
+        const double f_lo = std::max(f - half, start);
+        const double f_hi = std::min(f + half, static_cast<double>(plan_.freq_end_hz));
+        const double t_lo = t0 + (f_lo - start) / rate;
+        const double t_hi = t0 + (f_hi - start) / rate;
+        if (stream_time_s_ <= t_hi) {
+            break;
+        }
+
+        SweepPoint point;
+        point.freq_hz = static_cast<float>(f);
+        const size_t begin = first_at_or_after(buffer_, t_lo);
+        const size_t end = first_after(buffer_, t_hi);
+        point.clean = lock_.locked() && t_lo >= static_cast<double>(buffer_.front().time) &&
+                      !overlaps_gap(gaps_, t_lo, t_hi) && end >= begin + 2;
+        if (point.clean) {
+            for (auto& a : axes) {
+                a.clear();
+            }
+            for (size_t i = begin; i < end; ++i) {
+                axes[0].push_back(buffer_[i].x);
+                axes[1].push_back(buffer_[i].y);
+                axes[2].push_back(buffer_[i].z);
+            }
+            const auto fz = static_cast<float>(f);
+            point.psd_x = goertzel_psd(axes[0].data(), axes[0].size(), fz, rate_hz);
+            point.psd_y = goertzel_psd(axes[1].data(), axes[1].size(), fz, rate_hz);
+            point.psd_z = goertzel_psd(axes[2].data(), axes[2].size(), fz, rate_hz);
+        } else {
+            point.psd_x = point.psd_y = point.psd_z = kNaNf;
+        }
+        finished.push_back(point);
+        ++next_point_;
+    }
+    return finished;
+}
+
+bool SweepResponseAccumulator::locked() const {
+    return lock_.locked();
+}
+
+double SweepResponseAccumulator::drive_start_s() const {
+    return lock_.drive_start_s();
+}
+
+bool SweepResponseAccumulator::complete() const {
+    return plan_.valid() && next_point_ >= plan_.point_count();
+}
+
+double SweepResponseAccumulator::stream_time_s() const {
+    return stream_time_s_;
+}
+
+const SweepPlan& SweepResponseAccumulator::plan() const {
+    return plan_;
+}
+
 } // namespace helix::calibration
