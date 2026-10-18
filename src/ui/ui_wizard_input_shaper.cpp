@@ -241,7 +241,7 @@ static void begin_is_calibration_flow(WizardInputShaperStep* step) {
                 if (cal) {
                     cal->run_calibration(
                         'X',
-                        [token](int percent, ShaperCalibrationPhase phase) {
+                        [token](int percent, ShaperCalibrationPhase phase, float /*freq_hz*/) {
                             const int bar =
                                 WizardInputShaperStep::combined_bar_value(percent, phase, false);
                             if (bar < 0) {
@@ -272,7 +272,8 @@ static void begin_is_calibration_flow(WizardInputShaperStep* step) {
                             if (cal2) {
                                 cal2->run_calibration(
                                     'Y',
-                                    [token](int percent, ShaperCalibrationPhase phase) {
+                                    [token](int percent, ShaperCalibrationPhase phase,
+                                            float /*freq_hz*/) {
                                         const int bar = WizardInputShaperStep::combined_bar_value(
                                             percent, phase, true);
                                         if (bar < 0) {

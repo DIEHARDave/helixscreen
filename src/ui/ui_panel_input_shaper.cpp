@@ -758,7 +758,7 @@ void InputShaperPanel::start_calibration(char axis) {
         axis,
         lifetime_.bg_cb(
             "InputShaperPanel::calibration_progress",
-            [this, cal_tok](int percent, ShaperCalibrationPhase phase) {
+            [this, cal_tok](int percent, ShaperCalibrationPhase phase, float /*freq_hz*/) {
                 if (cal_tok.expired()) {
                     spdlog::debug("[InputShaper] Discarding stale progress callback");
                     return;

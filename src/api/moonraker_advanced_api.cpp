@@ -1687,7 +1687,7 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
         collector_state_ = CollectorState::CALCULATING;
         // The percent is meaningless in this phase (the UI shows a spinner plus
         // elapsed time); the report exists to carry the phase change itself.
-        emit_progress(0, ShaperCalibrationPhase::Analyzing, "Calculating results...");
+        emit_progress(0, ShaperCalibrationPhase::Analyzing, 0.0f, "Calculating results...");
     }
 
     void parse_sweep_line(const std::string& line) {
@@ -1725,7 +1725,7 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
 
             char status[64];
             snprintf(status, sizeof(status), "Testing frequency %.0f Hz", freq);
-            emit_progress(percent, ShaperCalibrationPhase::Sweeping, status);
+            emit_progress(percent, ShaperCalibrationPhase::Sweeping, freq, status);
 
             // Structural end-of-sweep: reaching the configured ceiling means
             // the toolhead is done regardless of what the firmware prints
@@ -1835,9 +1835,10 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
         }
     }
 
-    void emit_progress(int percent, ShaperCalibrationPhase phase, const std::string& status) {
+    void emit_progress(int percent, ShaperCalibrationPhase phase, float freq_hz,
+                       const std::string& status) {
         if (on_progress_) {
-            on_progress_(percent, phase);
+            on_progress_(percent, phase, freq_hz);
         }
         spdlog::trace("[InputShaperCollector] Progress: {}% - {}", percent, status);
     }
@@ -1856,7 +1857,7 @@ class InputShaperCollector : public std::enable_shared_from_this<InputShaperColl
         unregister();
 
         // Emit 100% progress
-        emit_progress(100, ShaperCalibrationPhase::Complete, "Complete");
+        emit_progress(100, ShaperCalibrationPhase::Complete, 0.0f, "Complete");
 
         if (on_success_) {
             InputShaperResult result;
