@@ -83,6 +83,20 @@ Once the zone is known, the first narrow round is a BASELINE (no verdict), so ev
 compares narrow against narrow. Each sweep runs `ZONE_SWEEP_MARGIN_HZ` (10) past both ends of
 the zone, and the analysis uses the zone bins only, so the start transient falls outside.
 
+### 3a. Repeatability before advice (ruled: Preston, 2026-10-18)
+
+"If we aren't repeatable, we shouldn't advise how to tune belts, and steer people towards
+mechanical checks." The BASELINE round sweeps the zone twice on both paths, with no turn
+between. When the two disagree, the loop gives no turn advice: it shows "These readings
+aren't repeatable, so tuning can't be steered. Check the mechanics first." with the
+mechanical-causes modal, and offers Re-measure (a fresh pair) and Good Enough. Disagreement
+is either:
+- the in-plane centroid gap moving more than `REPEAT_MAX_GAP_HZ` (1.5) between the two, or
+- either path's in-plane zone power differing by more than `REPEAT_MAX_POWER_RATIO` (2.0).
+
+From the data: K1C full sweeps repeat within about 1 Hz; Voron narrow no-turn repeats swung
+the gap by 4-8 Hz and B's zone power by 2-5x.
+
 ### 4. Track the in-plane centroid, steer on the gap
 
 The per-path reading is the power-weighted centroid of psd_x + psd_y over the zone, which

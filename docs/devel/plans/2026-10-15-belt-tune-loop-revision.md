@@ -766,3 +766,25 @@ class BeltTuneSession {
 - [ ] ONE `make land-gate` on the combined result.
 - [ ] Batch landing per CLAUDE.md, worktree teardown, a comment on #1736.
 - [ ] Hardware, with Preston's OK: on the K1C, Tune Belts from the hands-off state shows "Belts already match", and no windowed sweep ever sends `FREQ_END` above 133. On the Voron, from A +1 off the tuned position, the design's four checks; expect the first calibration turn to report "didn't register" (see the data table) and record whether the second does.
+
+
+## Addendum (2026-10-18): repeatability before advice (design §3a)
+
+Owned by **Task 3** (session, pure) and **Task 5** (panel). Implementers of those tasks
+include it; the reviewer checks it.
+
+- Session: `inline constexpr float REPEAT_MAX_GAP_HZ = 1.5f;` and
+  `inline constexpr float REPEAT_MAX_POWER_RATIO = 2.0f;` in `belt_tune`. A BASELINE takes two
+  rounds of both paths (`add_round` twice, no turn between). New stage `UNREPEATABLE` (or an
+  equivalent outcome on the second baseline round) when the in-plane centroid gap of the two
+  rounds differs by more than REPEAT_MAX_GAP_HZ, or either path's in-plane zone power ratio
+  (max/min of the two rounds) exceeds REPEAT_MAX_POWER_RATIO. In UNREPEATABLE, `advice()` gives
+  no direction or amount; a fresh BASELINE pair (Re-measure) may clear it. Tests: the Voron
+  10-15 narrow no-turn CSVs (hw-2026-10-15/narrow/*tuned*, *nolaps*) land UNREPEATABLE; the
+  K1C pair (hw-2026-10-15/k1c base r1/r2 trimmed to the zone) does not; boundary cases at
+  exactly 1.5 Hz and 2.0x.
+- Panel: the BASELINE run sweeps the pair twice (four narrow sweeps, one settle before the
+  first); UNREPEATABLE shows the line "These readings aren't repeatable, so tuning can't be
+  steered. Check the mechanics first." with the Why modal, hides the turn instruction and the
+  stepper, and offers Re-measure and Good Enough. Duration estimates count both sweeps.
+  Translations synced.
