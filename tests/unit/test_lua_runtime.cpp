@@ -722,4 +722,27 @@ TEST_CASE("require is refused in a check, and loads later as usual",
     CHECK(t.global("loads") == "1");
 }
 
+TEST_CASE("an entry's <close> handler that raises or loops is contained",
+          "[plugin][lua_runtime][lua_budget]") {
+    {
+        TestRuntime t;
+        CHECK_FALSE(t.run(R"(
+            local g <close> = setmetatable({}, {__close = function() error("from close") end})
+            local _ = nil + 1
+        )"));
+        CHECK_FALSE(t.rt->faulted());
+        CHECK(t.run("after = true"));
+    }
+    {
+        TestRuntime t;
+        auto start = std::chrono::steady_clock::now();
+        CHECK_FALSE(t.run(R"(
+            local g <close> = setmetatable({}, {__close = function() while true do end end})
+            local _ = nil + 1
+        )"));
+        CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds(2));
+        CHECK(t.rt->faulted()); // an entry's overrun faults, as any entry's does
+    }
+}
+
 #endif // HELIX_HAS_PLUGINS

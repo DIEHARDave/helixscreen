@@ -395,14 +395,12 @@ bool LuaRuntime::call_sync(int fn_ref, const PushFn& args, const ReadFn& read, C
     ++depth_;
     int nres = 0;
     int status = lua_resume(co, L_, nargs, &nres);
-    --depth_;
-    in_check_ = false;
-    const bool killed = killed_;
-    killed_ = false;
-    yielded_for_async_ = false;
 
+    // Everything that can run plugin code stays inside check mode and the check's
+    // budget: reading the results, and closing the thread, which runs any pending
+    // <close> handlers (protected, so one that raises is only a failure).
     std::string failure;
-    if (killed) {
+    if (killed_) {
         failure = "menu check exceeded its time budget";
     } else if (status == LUA_YIELD) {
         failure = "menu check yielded; a check must return without waiting";
@@ -417,7 +415,23 @@ bool LuaRuntime::call_sync(int fn_ref, const PushFn& args, const ReadFn& read, C
         HostWorkGuard host_work(host_work_);
         read(co, nres);
     }
-    lua_settop(co, 0);
+    const bool killed_before_close = killed_;
+    if (lua_closethread(co, L_) != LUA_OK) {
+        std::string why;
+        if (killed_ && !killed_before_close) {
+            why = "menu check exceeded its time budget in a <close> handler";
+        } else {
+            const char* msg = lua_tostring(co, -1);
+            why = std::string("menu check <close> handler failed: ") +
+                  (msg ? msg : "(error object is not a string)");
+        }
+        failure = failure.empty() ? why : failure + "; " + why;
+    }
+    --depth_;
+    in_check_ = false;
+    killed_ = false;
+    yielded_for_async_ = false;
+
     drop(co);
     if (failure.empty())
         return true;

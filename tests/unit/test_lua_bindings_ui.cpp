@@ -638,4 +638,41 @@ TEST_CASE_METHOD(LVGLTestFixture, "dispatch_ui_handler with a table",
     CHECK_FALSE(dispatch_ui_handler(*b.t.rt, "missing", LuaRuntime::PushFn{}));
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "a check's <close> handlers run inside check mode",
+                 "[plugin][bindings][ui][check]") {
+    struct Case {
+        const char* name;
+        const char* close_body;
+        const char* log;
+    };
+    // Each check fails after arming a to-be-closed variable; its __close runs as the
+    // check's thread is closed.
+    const Case cases[] = {
+        {"stores", R"(helix.storage.set("x", 1))",
+         "helix.storage.set is not allowed in a menu check"},
+        {"raises", R"(error("from __close"))", "from __close"},
+        {"loops", "while true do end", "menu check exceeded its time budget"},
+    };
+    TempDir dir;
+    for (const auto& c : cases) {
+        INFO(c.name);
+        BoundRuntime b(check_installers(), {Permission::Storage}, {}, dir.file("s.json"));
+        REQUIRE(b.t.run(std::string(R"(
+            helix.ui.on("check", function()
+                local guard <close> = setmetatable({}, {__close = function() )") +
+                        c.close_body + R"( end})
+                local _ = nil + 1
+            end)
+        )"));
+        helix::LogCapture logs;
+        CHECK_FALSE(run_check(b, "check"));
+        CHECK(logs.count_containing(c.log) >= 1);
+        CHECK_FALSE(b.t.rt->faulted());
+        helix::ui::UpdateQueue::instance().drain();
+        REQUIRE(b.t.run(R"(stored = helix.storage.get("x"))"));
+        CHECK(b.t.global("stored") == "nil");
+        CHECK(b.t.run("ok = true"));
+    }
+}
+
 #endif // HELIX_HAS_PLUGINS
