@@ -86,3 +86,35 @@ TEST_CASE("resonance_tester config reads the first probe point", "[resonance_con
         CHECK(cfg.from_printer);
     }
 }
+
+TEST_CASE("resonance_tester config reads the accelerometer chips",
+          "[resonance_console][sweep_preview]") {
+    const auto parse = [](const char* text) {
+        return parse_resonance_tester_config(nlohmann::json::parse(text));
+    };
+
+    auto one = parse(R"({"resonance_tester": {"accel_chip": "adxl345"}})");
+    CHECK(one.accel_chip == "adxl345");
+    CHECK(one.accel_chip_x.empty());
+    CHECK(one.accel_chip_y.empty());
+
+    auto split = parse(
+        R"({"resonance_tester": {"accel_chip_x": " adxl345 hotend ", "accel_chip_y": "lis2dw bed"}})");
+    CHECK(split.accel_chip.empty());
+    CHECK(split.accel_chip_x == "adxl345 hotend");
+    CHECK(split.accel_chip_y == "lis2dw bed");
+
+    auto number = parse(R"({"resonance_tester": {"accel_chip": 7}})");
+    CHECK(number.from_printer);
+    CHECK(number.accel_chip.empty());
+
+    auto none = parse_resonance_tester_config(nlohmann::json::object());
+    CHECK(none.accel_chip.empty());
+    CHECK(none.accel_chip_x.empty());
+    CHECK(none.accel_chip_y.empty());
+
+    auto malformed =
+        parse(R"({"resonance_tester": {"min_freq": "fast", "accel_chip": "adxl345"}})");
+    CHECK_FALSE(malformed.from_printer);
+    CHECK(malformed.accel_chip.empty());
+}

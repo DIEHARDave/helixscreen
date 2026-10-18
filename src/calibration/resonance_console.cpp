@@ -127,6 +127,16 @@ ResonanceTesterConfig parse_resonance_tester_config(const nlohmann::json& settin
     if (const auto pp = rt->find("probe_points"); pp != rt->end()) {
         cfg.probe_point = parse_probe_point(*pp);
     }
+    auto read_chip = [&rt](const char* key) -> std::string {
+        const auto it = rt->find(key);
+        if (it == rt->end() || !it->is_string()) {
+            return {};
+        }
+        return std::string(text_io::trim(it->get_ref<const std::string&>()));
+    };
+    cfg.accel_chip = read_chip("accel_chip");
+    cfg.accel_chip_x = read_chip("accel_chip_x");
+    cfg.accel_chip_y = read_chip("accel_chip_y");
     return cfg;
 }
 

@@ -25,6 +25,12 @@ struct ResonanceTesterConfig {
     /// The first probe_points entry (x, y, z), machine coordinates. nullopt
     /// when absent or unparseable; that alone does not reject the range.
     std::optional<std::array<float, 3>> probe_point;
+    /// accel_chip, accel_chip_x and accel_chip_y as configured, trimmed; ""
+    /// when absent or not a string. Names a config section ("adxl345",
+    /// "adxl345 hotend"), not an endpoint.
+    std::string accel_chip;
+    std::string accel_chip_x;
+    std::string accel_chip_y;
 
     /// Seconds one sweep takes: (max - min) / hz_per_sec.
     [[nodiscard]] float sweep_seconds() const;

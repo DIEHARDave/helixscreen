@@ -6371,7 +6371,8 @@ json MoonrakerClientMock::resonance_tester_settings() const {
     json rt = {{"min_freq", resonance_min_freq_},
                {"max_freq", resonance_max_freq_},
                {"accel_per_hz", 75.0},
-               {"hz_per_sec", resonance_hz_per_sec_}};
+               {"hz_per_sec", resonance_hz_per_sec_},
+               {"accel_chip", "adxl345"}};
     if (resonance_probe_points_) {
         // The belt settling laps run at this height.
         const auto axis_max = helix::mock::descriptor(printer_type_).axis_max;

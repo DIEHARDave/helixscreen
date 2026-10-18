@@ -325,3 +325,9 @@ TEST_CASE_METHOD(BeltMockFixture, "a lap outside the travel is rejected", "[belt
         return l.rfind("!! Move out of range", 0) == 0;
     }));
 }
+
+TEST_CASE_METHOD(BeltMockFixture, "the mock's resonance_tester names its accelerometer",
+                 "[sweep_preview][target]") {
+    CHECK(mock.resonance_tester_settings()["accel_chip"] == "adxl345");
+    CHECK(parse_resonance_tester_config(mock_settings(mock)).accel_chip == "adxl345");
+}
