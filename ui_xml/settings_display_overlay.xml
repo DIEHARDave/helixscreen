@@ -94,11 +94,12 @@
                               options="Off&#10;Flying Toasters&#10;Starfield&#10;3D Pipes&#10;Bouncing Printer&#10;Fireworks&#10;Bouncing Logo&#10;3D Maze&#10;Hyperspace&#10;Flip Clock&#10;Fireflies&#10;Aqua Surface&#10;High Fly"
                               options_tag="Off&#10;Flying Toasters&#10;Starfield&#10;3D Pipes&#10;Bouncing Printer&#10;Fireworks&#10;Bouncing Logo&#10;3D Maze&#10;Hyperspace&#10;Flip Clock&#10;Fireflies&#10;Aqua Surface&#10;High Fly"
                               callback="on_screensaver_changed"/>
-        <!-- Test Screensaver button (hidden when Off is selected) -->
+        <!-- Test Screensaver button (hidden when Off is selected). Starts hidden so it
+             stays hidden wherever the binding cannot resolve. -->
         <lv_obj name="container_test_screensaver"
                 width="100%" height="content" style_pad_left="#space_lg" style_pad_right="#space_lg"
                 style_pad_top="#space_sm" style_pad_bottom="#space_md" style_pad_gap="0" flex_flow="row"
-                style_flex_main_place="end" scrollable="false">
+                style_flex_main_place="end" scrollable="false" hidden="true">
           <bind_flag_if_eq subject="settings_screensaver_type" flag="hidden" ref_value="0"/>
           <ui_button name="btn_test_screensaver"
                      width="content" height="#button_height_sm" variant="outline" text="Test Screensaver" icon="play">

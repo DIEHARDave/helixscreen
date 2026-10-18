@@ -340,10 +340,14 @@ class DisplaySettingsManager {
     // SCREENSAVER
     // =========================================================================
 
-#ifdef HELIX_ENABLE_SCREENSAVER
-    /** @brief Get screensaver type (a ScreensaverType value, include/screensaver_registry.h) */
+    /**
+     * @brief Get screensaver type (a ScreensaverType value, include/screensaver_registry.h)
+     *
+     * Always Off (0) when HELIX_ENABLE_SCREENSAVER is not compiled in.
+     */
     int get_screensaver_type() const;
 
+#ifdef HELIX_ENABLE_SCREENSAVER
     /** @brief Set screensaver type (updates subject, persists its stable name) */
     void set_screensaver_type(int type);
 #endif
@@ -523,12 +527,15 @@ class DisplaySettingsManager {
         return &timezone_subject_;
     }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
-    /** @brief Screensaver type subject (a ScreensaverType value, include/screensaver_registry.h) */
+    /**
+     * @brief Screensaver type subject (a ScreensaverType value, include/screensaver_registry.h)
+     *
+     * Registered in every build, as Off without screensaver support, so XML that binds
+     * `settings_screensaver_type` resolves and hides saver-only controls.
+     */
     lv_subject_t* subject_screensaver_type() {
         return &screensaver_type_subject_;
     }
-#endif
 
   private:
     DisplaySettingsManager();
@@ -568,9 +575,7 @@ class DisplaySettingsManager {
     lv_subject_t rotation_available_subject_{};
     lv_subject_t timezone_subject_{};
 
-#ifdef HELIX_ENABLE_SCREENSAVER
     lv_subject_t screensaver_type_subject_{};
-#endif
 
     bool subjects_initialized_ = false;
     bool hardware_keyboard_present_ = false;
