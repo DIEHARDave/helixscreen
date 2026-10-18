@@ -752,3 +752,21 @@ TEST_CASE_METHOD(InputShaperPreviewFixture, "aborting the sweep stops the live s
     CHECK(log_.stopped == log_.created);
     CHECK(subject_int("is_measuring_has_chart") == 0);
 }
+
+TEST_CASE_METHOD(InputShaperPreviewFixture, "no stream where the layout hides the live chart",
+                 "[input_shaper][panel][preview]") {
+    lv_subject_t* fits = lv_xml_find_subject(lv_xml_component_get_scope("input_shaper_panel"),
+                                             "is_measuring_chart_fits");
+    REQUIRE(fits != nullptr);
+    CHECK(helix::ui::live_chart_layout_fits("input_shaper_panel", "is_measuring_chart_fits"));
+    lv_subject_set_int(fits, 0);
+    CHECK_FALSE(helix::ui::live_chart_layout_fits("input_shaper_panel", "is_measuring_chart_fits"));
+
+    panel_->handle_calibrate_x_clicked();
+    const bool done = run_until([&] { return panel_state() == 2; });
+    lv_subject_set_int(fits, 1);
+    REQUIRE(done);
+    CHECK(log_.created == 0);
+    // An absent gate reads as fitting.
+    CHECK(helix::ui::live_chart_layout_fits("input_shaper_panel", "no_such_gate"));
+}

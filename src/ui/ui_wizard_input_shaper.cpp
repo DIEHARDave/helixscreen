@@ -598,9 +598,13 @@ void WizardInputShaperStep::begin_axis_preview(char axis) {
     lv_obj_t* host = screen_root_
                          ? lv_obj_find_by_name(screen_root_, "wizard_input_shaper_chart_host")
                          : nullptr;
-    const auto target = helix::calibration::live_sweep_target(
-        preview_facts_,
-        axis == 'X' ? helix::calibration::SweepAxis::X : helix::calibration::SweepAxis::Y);
+    // Where the layout hides the chart, nothing streams: no target arms nothing.
+    const bool fits =
+        helix::ui::live_chart_layout_fits("wizard_input_shaper", "wizard_input_shaper_chart_fits");
+    const auto target = fits ? helix::calibration::live_sweep_target(
+                                   preview_facts_, axis == 'X' ? helix::calibration::SweepAxis::X
+                                                               : helix::calibration::SweepAxis::Y)
+                             : std::nullopt;
     if (!sweep_chart_.begin(host, axis, target)) {
         spdlog::debug("[{}] No live chart for axis {}", get_name(), axis);
     }

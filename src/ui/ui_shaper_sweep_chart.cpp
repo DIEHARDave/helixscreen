@@ -23,6 +23,12 @@ lv_color_t shaper_raw_psd_color() {
     return lv_color_hex(0xB0B0B0);
 }
 
+bool live_chart_layout_fits(const char* component_name, const char* gate_subject) {
+    lv_xml_component_scope_t* scope = lv_xml_component_get_scope(component_name);
+    lv_subject_t* gate = lv_xml_find_subject(scope, gate_subject);
+    return gate == nullptr || lv_subject_get_int(gate) != 0;
+}
+
 ShaperSweepChart::~ShaperSweepChart() {
     // No LVGL here: the owner's widget tree may already be gone. Owners
     // destroy() while it is alive.

@@ -27,6 +27,15 @@ inline constexpr float SHAPER_CHART_HEADROOM = 1.1f;
 /// The results charts' raw PSD series color; the live curve uses it too.
 [[nodiscard]] lv_color_t shaper_raw_psd_color();
 
+/**
+ * @brief Whether a component's layout shows the live chart at the current size
+ *
+ * Reads the gate subject the component's XML publishes (a <subject_expr> over
+ * the breakpoint), so the size rule lives in the layout and C++ only asks it.
+ * True when the gate is absent. Main thread.
+ */
+[[nodiscard]] bool live_chart_layout_fits(const char* component_name, const char* gate_subject);
+
 /// The measured curve's look on every input shaper chart, live and final:
 /// the belt chart's filled, glowing curve, so the swap to the CSV is seamless.
 inline constexpr FrChartSeriesStyle SHAPER_MEASURED_STYLE{3, true, true};

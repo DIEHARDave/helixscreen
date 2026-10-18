@@ -996,3 +996,17 @@ TEST_CASE_METHOD(WizardUnreachableFixture, "the wizard step runs without klippy'
     CHECK(log_.created == 0);
     CHECK_FALSE(ever_shown);
 }
+
+TEST_CASE_METHOD(WizardPreviewFixture, "the wizard step streams nothing where its chart is hidden",
+                 "[wizard][input_shaper][preview]") {
+    lv_subject_t* fits = lv_xml_find_subject(lv_xml_component_get_scope("wizard_input_shaper"),
+                                             "wizard_input_shaper_chart_fits");
+    REQUIRE(fits != nullptr);
+    REQUIRE(lv_subject_get_int(fits) == 1);
+    lv_subject_set_int(fits, 0);
+    start();
+    const bool done = run_until([&] { return step_->is_calibration_complete(); });
+    lv_subject_set_int(fits, 1);
+    REQUIRE(done);
+    CHECK(log_.created == 0);
+}

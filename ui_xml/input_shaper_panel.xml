@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
+  <subjects>
+    <!-- 1 where this layout shows the live sweep chart. Micro screens leave it
+         under 80 px, too short to read, so there the view is progress only and
+         InputShaperPanel does not stream the preview at all. -->
+    <subject_expr name="is_measuring_chart_fits" expr="ui_breakpoint_v ge 1"/>
+  </subjects>
   <consts>
     <!-- Legend indicator dot size, held constant across breakpoints like the
          lock-screen PIN dots (components/lock_screen.xml). -->
@@ -148,12 +154,11 @@
             <event_cb trigger="clicked" callback="input_shaper_cancel_cb"/>
           </ui_button>
         </lv_obj>
-        <!-- Live response curve while the sweep runs. Micro screens leave it
-             under 80 px, too short to read: progress only. -->
+        <!-- Live response curve while the sweep runs, where it fits -->
         <lv_obj name="chart_container_measuring"
                 width="100%" flex_grow="1" style_pad_all="0" style_radius="#border_radius" style_bg_color="#screen_bg"
                 style_bg_opa="255" scrollable="false">
-          <bind_flag_if cond="is_measuring_has_chart eq 0 or ui_breakpoint_v eq 0" flag="hidden"/>
+          <bind_flag_if cond="is_measuring_has_chart eq 0 or is_measuring_chart_fits eq 0" flag="hidden"/>
         </lv_obj>
       </lv_obj>
       <!-- ============================================================ -->

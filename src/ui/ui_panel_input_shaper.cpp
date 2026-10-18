@@ -857,9 +857,13 @@ void InputShaperPanel::begin_axis_preview(char axis) {
         overlay_root_
             ? helix::ui::find_required(overlay_root_, "chart_container_measuring", get_name())
             : nullptr;
-    const auto target = helix::calibration::live_sweep_target(
-        preview_facts_,
-        axis == 'X' ? helix::calibration::SweepAxis::X : helix::calibration::SweepAxis::Y);
+    // Where the layout hides the chart, nothing streams: no target arms nothing.
+    const bool fits =
+        helix::ui::live_chart_layout_fits("input_shaper_panel", "is_measuring_chart_fits");
+    const auto target = fits ? helix::calibration::live_sweep_target(
+                                   preview_facts_, axis == 'X' ? helix::calibration::SweepAxis::X
+                                                               : helix::calibration::SweepAxis::Y)
+                             : std::nullopt;
     if (!sweep_chart_.begin(host, axis, target)) {
         spdlog::debug("[InputShaper] No live chart for axis {} (socket {}, reachable {})", axis,
                       preview_facts_.socket_path, preview_facts_.socket_reachable);
