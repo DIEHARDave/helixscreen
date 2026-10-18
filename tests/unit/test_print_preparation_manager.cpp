@@ -14,10 +14,15 @@
 #include "../test_helpers/preprint_config_scope.h"
 #include "../test_helpers/print_preparation_manager_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/registered_backend.h"
+#include "../test_helpers/snapmaker_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
+#include "ams_backend_mock.h"
+#include "ams_backend_snapmaker.h"
 #include "app_globals.h"
 #include "capability_matrix.h"
+#include "config.h"
 #include "gcode_file_modifier.h"
 #include "gcode_ops_detector.h"
 #include "hv/EventLoopThread.h"
@@ -35,6 +40,7 @@
 #include "printer_detector.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
+#include "settings_manager.h"
 
 #include <spdlog/sinks/null_sink.h>
 #include <spdlog/spdlog.h>
@@ -2962,6 +2968,55 @@ TEST_CASE_METHOD(HelixTestFixture,
 
     auto lines = PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(manager);
     REQUIRE(lines.empty());
+}
+
+namespace {
+std::vector<std::string> end_unload_lines(const std::vector<std::string>& lines) {
+    std::vector<std::string> out;
+    for (const auto& l : lines) {
+        if (l.find("END_UNLOAD_FILAMENT") != std::string::npos) {
+            out.push_back(l);
+        }
+    }
+    return out;
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "PrintPreparationManager: the pre-start block carries the backend's per-print "
+                 "lines",
+                 "[print_preparation][pre_start][end_unload]") {
+    helix::Config::get_instance();
+    helix::SettingsManager::instance().init_subjects();
+    helix::SettingsManager::instance().set_end_of_print_unload_tools(0b0110);
+    PrinterState& printer_state = get_printer_state();
+    PrinterStateTestAccess::reset(printer_state);
+    printer_state.init_subjects(false);
+
+    SECTION("a U1 sends its saved end-unload list ahead of the print") {
+        printer_state.set_printer_type_sync("Snapmaker U1");
+        helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend(nullptr, nullptr);
+        nlohmann::json ptc = {{"end_unload_filament", {false, false, false, false}}};
+        SnapmakerTestAccess::handle_status(*backend, {{"print_task_config", ptc}});
+
+        PrintPreparationManager manager;
+        manager.set_dependencies(nullptr, &printer_state);
+        const auto lines = PrintPreparationManagerTestAccess::get_pre_start_block_lines(manager);
+        REQUIRE(end_unload_lines(lines) ==
+                std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[0,1,1,0]"});
+    }
+
+    SECTION("another filament system sends nothing of the kind") {
+        printer_state.set_printer_type_sync("FlashForge Adventurer 5M Pro");
+        helix::test::RegisteredBackend<AmsBackendMock> backend(4);
+
+        PrintPreparationManager manager;
+        manager.set_dependencies(nullptr, &printer_state);
+        const auto lines = PrintPreparationManagerTestAccess::get_pre_start_block_lines(manager);
+        REQUIRE(end_unload_lines(lines).empty());
+    }
+
+    helix::SettingsManager::instance().set_end_of_print_unload_tools(0);
 }
 
 TEST_CASE("PrintPreparationManager: collect_pre_start_gcode_lines empty when no printer state set",

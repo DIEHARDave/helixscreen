@@ -514,6 +514,49 @@ class SettingsManager {
         return settings_.subject(Key::AfcUnloadAfterPrint);
     }
 
+    // =========================================================================
+    // END-OF-PRINT UNLOAD PER TOOL (per-printer; for firmware that forgets it)
+    // =========================================================================
+
+    /**
+     * @brief Which tools unload their filament when a print ends, bit N = tool N.
+     *
+     * For firmware that takes this as a per-print option and clears it when
+     * each print ends: the choice is kept here and the filament backend sends
+     * it ahead of every print. Default 0 (no tool unloads).
+     */
+    int get_end_of_print_unload_tools() const {
+        return settings_.get(Key::EndOfPrintUnloadTools);
+    }
+
+    /** @brief Replace the whole end-of-print unload mask */
+    void set_end_of_print_unload_tools(int mask) {
+        settings_.set(Key::EndOfPrintUnloadTools, mask);
+    }
+
+    /** @brief Whether @p tool unloads when a print ends; false outside the mask's range */
+    bool get_end_of_print_unload_tool(int tool) const {
+        return tool >= 0 && tool < END_OF_PRINT_UNLOAD_MAX_TOOLS &&
+               (get_end_of_print_unload_tools() & (1 << tool)) != 0;
+    }
+
+    /** @brief Set one tool's bit, leaving the others as stored; ignores a tool out of range */
+    void set_end_of_print_unload_tool(int tool, bool unload) {
+        if (tool < 0 || tool >= END_OF_PRINT_UNLOAD_MAX_TOOLS) {
+            return;
+        }
+        const int mask = get_end_of_print_unload_tools();
+        set_end_of_print_unload_tools(unload ? (mask | (1 << tool)) : (mask & ~(1 << tool)));
+    }
+
+    /** @brief End-of-print unload mask subject (integer bitmask) */
+    lv_subject_t* subject_end_of_print_unload_tools() {
+        return settings_.subject(Key::EndOfPrintUnloadTools);
+    }
+
+    /// Tools the end-of-print unload mask can name (its row's maximum is 255).
+    static constexpr int END_OF_PRINT_UNLOAD_MAX_TOOLS = 8;
+
     /**
      * @brief Whether to show the bypass spool even when bypass is disengaged.
      *
@@ -870,6 +913,7 @@ class SettingsManager {
         ShowWidgetLabels,
         AutoColorMap,
         AfcUnloadAfterPrint,
+        EndOfPrintUnloadTools,
         AmsAlwaysShowBypassSpool,
         AmsKeepSpoolInfoOnEject,
         AmsForceBypassControls,

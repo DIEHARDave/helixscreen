@@ -2,8 +2,11 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "../helix_test_fixture.h"
+#include "../lvgl_test_fixture.h"
 #include "../test_helpers/snapmaker_test_access.h"
 #include "ams_backend_snapmaker.h"
+#include "config.h"
+#include "settings_manager.h"
 
 #include <algorithm>
 #include <any>
@@ -28,6 +31,19 @@ const DeviceAction* find_action(const std::vector<DeviceAction>& as, const std::
     auto it = std::find_if(as.begin(), as.end(), [&](const DeviceAction& a) { return a.id == id; });
     return it == as.end() ? nullptr : &(*it);
 }
+
+/// The per-tool unload-at-end choice lives in a SettingsManager subject, which
+/// answers its default until init_subjects() runs.
+struct EndUnloadFixture : LVGLTestFixture {
+    EndUnloadFixture() {
+        helix::Config::get_instance();
+        SettingsManager::instance().init_subjects();
+        SettingsManager::instance().set_end_of_print_unload_tools(0);
+    }
+    ~EndUnloadFixture() override {
+        SettingsManager::instance().set_end_of_print_unload_tools(0);
+    }
+};
 } // namespace
 
 TEST_CASE("snapmaker exposes its firmware settings as device actions",
@@ -72,11 +88,14 @@ TEST_CASE("a setting the firmware has not reported is not offered", "[ams][snapm
     REQUIRE(find_action(actions, "snapmaker_auto_replenish") == nullptr);
 }
 
-TEST_CASE("end-unload offers one toggle per reported toolhead", "[ams][snapmaker][actions]") {
-    HelixTestFixture fixture;
+TEST_CASE_METHOD(EndUnloadFixture, "end-unload offers one toggle per reported toolhead",
+                 "[ams][snapmaker][actions][end_unload]") {
+    // The firmware's list says how many heads there are; the values are ours.
+    // It clears every entry when a print ends, so its echo is not the choice.
+    SettingsManager::instance().set_end_of_print_unload_tools(0b0001);
     AmsBackendSnapmaker backend(nullptr, nullptr);
-    SnapmakerTestAccess::handle_status(
-        backend, frame({{"end_unload_filament", {true, false, false, true}}}));
+    SnapmakerTestAccess::handle_status(backend,
+                                       frame({{"end_unload_filament", {false, true, true, true}}}));
     const auto actions = backend.get_device_actions();
     REQUIRE(find_action(actions, "snapmaker_end_unload_t0") != nullptr);
     REQUIRE(find_action(actions, "snapmaker_end_unload_t3") != nullptr);
@@ -87,6 +106,61 @@ TEST_CASE("end-unload offers one toggle per reported toolhead", "[ams][snapmaker
             false);
 }
 
+TEST_CASE_METHOD(EndUnloadFixture, "end-unload toggles name the toolhead and its T index",
+                 "[ams][snapmaker][actions][end_unload]") {
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+    SnapmakerTestAccess::handle_status(
+        backend, frame({{"end_unload_filament", {false, false, false, false}}}));
+    const auto actions = backend.get_device_actions();
+    REQUIRE(find_action(actions, "snapmaker_end_unload_t1")->label ==
+            "Unload at end - Toolhead 2 (T1)");
+}
+
+TEST_CASE_METHOD(EndUnloadFixture, "quick end-unload toggles compose instead of wiping each other",
+                 "[ams][snapmaker][actions][end_unload]") {
+    // Each toggle sends the whole list. The firmware echo has not caught up
+    // between taps a second apart, so a list built from it would carry only
+    // the latest tap.
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+    SnapmakerTestAccess::handle_status(
+        backend, frame({{"end_unload_filament", {false, false, false, false}}}));
+    backend.execute_device_action("snapmaker_end_unload_t1", std::any(true));
+    backend.execute_device_action("snapmaker_end_unload_t2", std::any(true));
+    backend.execute_device_action("snapmaker_end_unload_t3", std::any(true));
+
+    REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b1110);
+    REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t0", std::any(false)) ==
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[0,1,1,1]");
+
+    backend.execute_device_action("snapmaker_end_unload_t2", std::any(false));
+    REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b1010);
+}
+
+TEST_CASE_METHOD(EndUnloadFixture, "every print start carries the saved end-unload list",
+                 "[ams][snapmaker][actions][end_unload]") {
+    AmsBackendSnapmaker backend(nullptr, nullptr);
+
+    SECTION("nothing before the firmware reports how many heads it has") {
+        SettingsManager::instance().set_end_of_print_unload_tools(0b0101);
+        REQUIRE(backend.print_start_gcode_lines().empty());
+    }
+
+    SECTION("the list comes from the setting, not the cleared echo") {
+        SnapmakerTestAccess::handle_status(
+            backend, frame({{"end_unload_filament", {false, false, false, false}}}));
+        SettingsManager::instance().set_end_of_print_unload_tools(0b0101);
+        REQUIRE(backend.print_start_gcode_lines() ==
+                std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,1,0]"});
+    }
+
+    SECTION("all off is sent too, so a stale firmware list cannot ride into the print") {
+        SnapmakerTestAccess::handle_status(
+            backend, frame({{"end_unload_filament", {true, true, true, true}}}));
+        REQUIRE(backend.print_start_gcode_lines() ==
+                std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[0,0,0,0]"});
+    }
+}
+
 TEST_CASE("executing a toggle emits only that field", "[ams][snapmaker][actions]") {
     HelixTestFixture fixture;
     AmsBackendSnapmaker backend(nullptr, nullptr);
@@ -95,13 +169,14 @@ TEST_CASE("executing a toggle emits only that field", "[ams][snapmaker][actions]
     REQUIRE(g == "SET_PRINT_PREFERENCES END_LED_TURN_OFF=1");
 }
 
-TEST_CASE("executing the per-tool toggle rewrites the whole array", "[ams][snapmaker][actions]") {
+TEST_CASE_METHOD(EndUnloadFixture, "executing the per-tool toggle rewrites the whole array",
+                 "[ams][snapmaker][actions][end_unload]") {
     // END_UNLOAD_FILAMENT takes the full list, so flipping one tool must send
-    // the others at their current values or they are cleared.
-    HelixTestFixture fixture;
+    // the others at their saved values or they are cleared.
+    SettingsManager::instance().set_end_of_print_unload_tools(0b0101);
     AmsBackendSnapmaker backend(nullptr, nullptr);
     SnapmakerTestAccess::handle_status(
-        backend, frame({{"end_unload_filament", {true, false, true, false}}}));
+        backend, frame({{"end_unload_filament", {false, false, false, false}}}));
     const std::string g = backend.build_preference_gcode("snapmaker_end_unload_t1", std::any(true));
     REQUIRE(g == "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,1,0]");
 }
