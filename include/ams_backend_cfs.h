@@ -198,8 +198,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         t.raises_runout_fault_during_job = true;
         return t;
     }();
+    /// kTraits, plus the pre-print send on Fork firmware with BOX_PRINT_MAP.
     [[nodiscard]] BackendTraits traits() const override {
-        return kTraits;
+        BackendTraits t = kTraits;
+        t.requires_preprint_send = fork_print_map_;
+        return t;
     }
 
   protected:
@@ -316,11 +319,34 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         return false;
     }
     /// Native via BOX_MODIFY_TN, except on the Fork dialect: box.py registers
-    /// no such command and exposes no tool->slot table to write.
+    /// no such command and exposes no tool->slot table to write. Fork firmware
+    /// with BOX_PRINT_MAP takes the map for the next print as a pre-print send
+    /// (build_preprint_gcode()); without it Fork has no remap route.
     [[nodiscard]] RemapStrategy get_remap_strategy() const override {
-        return macro_variant_ == CfsMacroVariant::Fork ? RemapStrategy::None
-                                                       : RemapStrategy::Native;
+        if (macro_variant_ != CfsMacroVariant::Fork) {
+            return RemapStrategy::Native;
+        }
+        return fork_print_map_ ? RemapStrategy::PrePrintSend : RemapStrategy::None;
     }
+
+    /// `BOX_PRINT_MAP MAP=<tool>:<slot>,...` for the next print, or "" when
+    /// the firmware has no BOX_PRINT_MAP. See print_map_gcode().
+    [[nodiscard]] std::string build_preprint_gcode(const std::set<int>& tools_used,
+                                                   const std::map<int, int>& remap) const override;
+
+    /// The Fork map for the next print, in BOX_PRINT_START's MAP= format: file
+    /// tool, then global slot (our bay index). Every tool the file uses is
+    /// named, a tool @p remap leaves out at its own slot (box.py's default
+    /// T<n> = slot n), so the map states the whole print. "" when nothing is
+    /// remapped: the firmware's default is already that map, and the command
+    /// has no clearing form.
+    [[nodiscard]] static std::string print_map_gcode(const std::set<int>& tools_used,
+                                                     const std::map<int, int>& remap);
+
+    /// The firmware registers BOX_PRINT_MAP: revision 3 and later. The command
+    /// is registered in Python, so no gcode_macro lookup can see it, and the
+    /// revision is the only positive evidence the app has.
+    [[nodiscard]] static bool fork_has_print_map(const nlohmann::json& box_json);
 
     /// The CFS owns its own tool->slot table and get_tool_mapping() returns it.
     [[nodiscard]] bool owns_tool_mapping_table() const override {
@@ -775,6 +801,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// merged flat state), so manual loads name the slot rather than T<n>.
     /// Written by handle_status on the main thread; read by command builders.
     std::atomic<bool> fork_select_slot_{false};
+
+    /// Fork firmware registers BOX_PRINT_MAP (fork_has_print_map() of the
+    /// merged flat state). Same writer and lifetime as fork_select_slot_.
+    std::atomic<bool> fork_print_map_{false};
 
     /// Stock dialect only: the user has declared bypass intent (sidebar toggle
     /// ON after the chained unload). Paired with BOX_ENABLE_CFS_PRINT ENABLE=0

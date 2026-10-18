@@ -1686,6 +1686,7 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
             macro_variant_ = model_macro_variant_;
         }
         fork_select_slot_ = false;
+        fork_print_map_ = false;
         spdlog::info("[AMS CFS] Stock box schema reported, flat state dropped");
     }
     const bool is_flat =
@@ -1746,6 +1747,12 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
                          "send {}",
                          select_slot ? "present" : "absent", fork_api_revision(state),
                          select_slot ? "BOX_SELECT_SLOT" : "T<n>");
+        }
+        const bool print_map = fork_has_print_map(state);
+        if (fork_print_map_.exchange(print_map) != print_map) {
+            spdlog::info("[AMS CFS] Fork BOX_PRINT_MAP {} (API revision {}): tool remap {}",
+                         print_map ? "present" : "absent", fork_api_revision(state),
+                         print_map ? "sent before each print" : "unavailable");
         }
     }
 
@@ -3099,7 +3106,9 @@ AmsError AmsBackendCfs::can_set_tool_mapping(int tool_number, int slot_index) co
     // exists wherever firmware's map says it does — a slicer-driven remap or
     // Creality's own UI can hold a high key while fewer units are attached —
     // so its bound is the TNN alphabet.
-    if (get_remap_strategy() == RemapStrategy::None) {
+    // Only the native route writes a table; a Fork pre-print map is sent by
+    // build_preprint_gcode() and has no BOX_MODIFY_TN to send here.
+    if (get_remap_strategy() != RemapStrategy::Native) {
         return AmsErrorHelper::not_supported("Tool remapping on this firmware's CFS module");
     }
     constexpr int CFS_MAX_SLOTS = 16; // 4 units × 4 slots
@@ -3508,6 +3517,41 @@ bool AmsBackendCfs::fork_has_print_mapping(const nlohmann::json& box_json) {
 
 int AmsBackendCfs::fork_api_revision(const nlohmann::json& box_json) {
     return std::max(1, helix::json_util::safe_int(box_json, "api_revision", 1));
+}
+
+bool AmsBackendCfs::fork_has_print_map(const nlohmann::json& box_json) {
+    return fork_api_revision(box_json) >= 3;
+}
+
+std::string AmsBackendCfs::build_preprint_gcode(const std::set<int>& tools_used,
+                                                const std::map<int, int>& remap) const {
+    return fork_print_map_ ? print_map_gcode(tools_used, remap) : "";
+}
+
+std::string AmsBackendCfs::print_map_gcode(const std::set<int>& tools_used,
+                                           const std::map<int, int>& remap) {
+    std::map<int, int> resolved;
+    for (const int tool : tools_used) {
+        if (tool >= 0) {
+            resolved[tool] = tool;
+        }
+    }
+    bool remapped = false;
+    for (const auto& [tool, slot] : remap) {
+        if (tool < 0 || slot < 0) {
+            continue;
+        }
+        resolved[tool] = slot;
+        remapped = remapped || slot != tool;
+    }
+    if (!remapped) {
+        return "";
+    }
+    std::string map;
+    for (const auto& [tool, slot] : resolved) {
+        map += (map.empty() ? "" : ",") + std::to_string(tool) + ":" + std::to_string(slot);
+    }
+    return "BOX_PRINT_MAP MAP=" + map;
 }
 
 std::string AmsBackendCfs::load_gcode(int idx, CfsMacroVariant variant, bool fork_select_slot) {
