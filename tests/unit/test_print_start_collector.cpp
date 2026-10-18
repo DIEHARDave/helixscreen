@@ -510,6 +510,7 @@ TEST_CASE("PrintStart: typical noise lines should not match phases", "[print][ne
 // - HELIX:PHASE:COMPLETE -> sets COMPLETE phase
 // - Various phase transitions
 
+#include "ui_print_preparation_manager.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
@@ -2181,6 +2182,34 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     drain_async_updates();
     const int settled = lv_subject_get_int(state().print_state().get_preprint_remaining_subject());
     REQUIRE(settled <= corrected);
+}
+
+TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
+                 "Print details estimate and the countdown total agree",
+                 "[print][collector][eta][estimate]") {
+    // Same printer, same temperatures, same targets: the number the details
+    // screen shows before Print is the total the countdown starts from.
+    PreprintConfigScope config;
+    auto& rates = ThermalRateManager::instance();
+    rates.reset();
+    rates.get_model("extruder").set_default_rate(0.5f);
+    rates.get_model("heater_bed").set_default_rate(2.0f);
+
+    set_all_temps(250, 600, 250, 2200); // bed 25/60C, nozzle 25/220C
+    PrintPreparationManager details;
+    details.set_dependencies(nullptr, &state());
+    FileMetadata file;
+    file.first_layer_bed_temp = 60.0;
+    file.first_layer_extr_temp = 220.0;
+    details.recalculate_estimate(&file);
+    const int shown = lv_subject_get_int(details.get_preprint_estimate_subject());
+
+    collector().start();
+    const float countdown_total = PrintStartCollectorTestAccess::get_predicted_total(collector());
+
+    REQUIRE(shown > 300);
+    REQUIRE(shown == static_cast<int>(countdown_total));
+    rates.reset();
 }
 
 TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,

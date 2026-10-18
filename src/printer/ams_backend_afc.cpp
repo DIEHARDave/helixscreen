@@ -268,6 +268,14 @@ bool AmsBackendAfc::owns_filament_sensor(const std::string& bare_name,
     if (bare_name == "tool_start" || bare_name == "tool_end") {
         return true;
     }
+    // Per-extruder toolhead sensors are <extruder>_tool_start, <extruder>_tool_end.
+    // A `pin_tool_start: virtual` one is a software switch whose ENABLE sets AFC's
+    // toolhead load state, so it must never be offered as a plain runout toggle.
+    for (const auto& extruder : discovery.afc_extruder_names()) {
+        if (bare_name == extruder + "_tool_start" || bare_name == extruder + "_tool_end") {
+            return true;
+        }
+    }
     // Per-lane sensors are <lane>_prep, <lane>_load, <lane>_selector.
     for (const auto& lane : discovery.afc_lane_names()) {
         if (bare_name == lane + "_prep" || bare_name == lane + "_load" ||

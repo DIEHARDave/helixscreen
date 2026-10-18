@@ -698,6 +698,10 @@ class PrintSelectDetailView : public OverlayBase {
   private:
     friend class ::PrintSelectDetailViewTestAccess;
 
+    /// Keep the file's fetched metadata and re-estimate the prep time, which
+    /// heats to the metadata's first-layer temperatures.
+    void apply_file_metadata(const FileMetadata& metadata);
+
     /**
      * @brief LV_EVENT_DELETE hook on the detail root: the only notice this view
      *        gets when the tree is deleted by anything other than

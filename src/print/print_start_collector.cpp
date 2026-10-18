@@ -3030,70 +3030,31 @@ void PrintStartCollector::compute_predicted_weights() {
     int bed_target = helix::ui::temperature::deci_to_degrees(
         lv_subject_get_int(state_.temperature_state().get_bed_target_subject()));
 
-    std::map<int, float> durations;
+    helix::PreprintHeating heating;
+    heating.nozzle_seconds = mgr.estimate_heating_seconds(
+        "extruder", static_cast<float>(start_ext_temp_), static_cast<float>(ext_target));
+    heating.bed_seconds = mgr.estimate_heating_seconds(
+        "heater_bed", static_cast<float>(start_bed_temp_), static_cast<float>(bed_target));
+    heating.nozzle_target_known = ext_target > 0;
 
-    // Heating phases from thermal model
-    float ext_heat = mgr.estimate_heating_seconds("extruder", static_cast<float>(start_ext_temp_),
-                                                  static_cast<float>(ext_target));
-    float bed_heat = mgr.estimate_heating_seconds("heater_bed", static_cast<float>(start_bed_temp_),
-                                                  static_cast<float>(bed_target));
-    if (ext_heat > 0)
-        durations[static_cast<int>(PrintStartPhase::HEATING_NOZZLE)] = ext_heat;
-    if (bed_heat > 0)
-        durations[static_cast<int>(PrintStartPhase::HEATING_BED)] = bed_heat;
-
-    // Non-heating phases from predictor + write predicted weights under lock
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        auto pred_phases = predictor_.predicted_phases();
-
-        for (const auto& [phase, secs] : pred_phases) {
-            if (phase != static_cast<int>(PrintStartPhase::HEATING_BED) &&
-                phase != static_cast<int>(PrintStartPhase::HEATING_NOZZLE)) {
-                durations[phase] = static_cast<float>(secs);
-            }
-        }
-
-        durations[static_cast<int>(PrintStartPhase::HOMING)] =
-            static_cast<float>(predictor_.predicted_homing_seconds());
-
-        // When nozzle target is unknown (common with bed-first macros that
-        // issue M109 after homing/mesh), include a placeholder so progress
-        // doesn't over-inflate by assigning all weight to known phases.
-        int nozzle_phase = static_cast<int>(PrintStartPhase::HEATING_NOZZLE);
-        if (ext_target == 0 && durations.find(nozzle_phase) == durations.end()) {
-            durations[nozzle_phase] = 60.0f; // Conservative placeholder
-        }
+        const helix::PreprintEstimate estimate = predictor_.estimate(heating);
 
         float durations_sum = 0.0f;
-        for (const auto& [_, dur] : durations) {
+        for (const auto& [_, dur] : estimate.durations) {
             durations_sum += dur;
         }
 
-        // Phase weights are fractions of durations_sum so they always sum
-        // to 1.0, regardless of the total used for display.
+        // Phase weights are fractions of the durations' sum so they always
+        // sum to 1.0, whatever total the display uses.
         predicted_phase_weights_.clear();
         if (durations_sum > 0.0f) {
-            for (const auto& [phase, dur] : durations) {
+            for (const auto& [phase, dur] : estimate.durations) {
                 predicted_phase_weights_[phase] = dur / durations_sum;
             }
         }
-
-        // Absolute total: prefer the recorded wall-clock history whenever we
-        // have it. The recorded total_seconds is the honest empirical
-        // end-to-end duration (it captures heating + any gcode the phase
-        // regexes never mapped). durations_sum is a *theoretical* estimate that
-        // swings in BOTH directions: it under-counts when regexes miss phases,
-        // but it also grossly OVER-counts when the thermal model overshoots
-        // heating time — on the Snapmaker U1 it computed ~900s against a true
-        // ~300s pre-print whose clean history sits at 295-375s. The old max()
-        // assumed only under-counting and so latched onto the 900s overshoot.
-        // durations_sum still drives the per-phase WEIGHTS (relative shape)
-        // above; only the absolute total comes from history. No history → fall
-        // back to the theoretical sum.
-        int wall_clock_estimate = predictor_.predicted_total();
-        predicted_total_seconds_ =
-            predictor_.has_predictions() ? static_cast<float>(wall_clock_estimate) : durations_sum;
+        predicted_total_seconds_ = estimate.total_seconds;
     }
 
     // Track targets and rates used so we can detect changes and recompute

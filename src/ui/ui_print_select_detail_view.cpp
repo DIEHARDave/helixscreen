@@ -2381,7 +2381,7 @@ void PrintSelectDetailView::load_gcode_for_preview() {
                 // to main thread before touching `this`.
                 tok.defer("DetailView::metadata_apply", [this, metadata]() {
                     // Cache for PrintStartController's pre-print checks (e.g., filament weight)
-                    cached_file_metadata_ = metadata;
+                    apply_file_metadata(metadata);
 
                     // Check if file is safe to render given available RAM. When
                     // the shared file already loaded this same size passed the
@@ -2557,7 +2557,8 @@ static void update_prep_time_label() {
         return;
     }
     auto* mgr = s_detail_view_instance->get_prep_manager();
-    mgr->recalculate_estimate();
+    const auto& metadata = s_detail_view_instance->get_file_metadata();
+    mgr->recalculate_estimate(metadata ? &*metadata : nullptr);
 
     int estimate_s = lv_subject_get_int(mgr->get_preprint_estimate_subject());
 
@@ -2581,6 +2582,11 @@ static void update_prep_time_label() {
     }
     lv_subject_copy_string(s_detail_view_instance->get_prep_time_estimate_subject(), buf);
     s_detail_view_instance->set_prep_estimate_visible(1);
+}
+
+void PrintSelectDetailView::apply_file_metadata(const FileMetadata& metadata) {
+    cached_file_metadata_ = metadata;
+    update_prep_time_label();
 }
 
 // ============================================================================

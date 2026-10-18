@@ -8,6 +8,7 @@
  * Tests pure prediction logic without LVGL or Config dependencies.
  */
 
+#include "../test_helpers/preprint_config_scope.h"
 #include "preprint_predictor.h"
 #include "printer_state.h"
 
@@ -518,4 +519,76 @@ TEST_CASE("PreprintPredictor: omitting the window filter keeps every entry", "[p
     predictor.load_entries(entries, 1);
 
     REQUIRE(predictor.get_entries().size() == 3);
+}
+
+// ============================================================================
+// estimate(): the model the countdown and the print details share
+// ============================================================================
+
+TEST_CASE("PreprintPredictor: estimate without history sums heating and default phases",
+          "[print][predictor][estimate]") {
+    PreprintConfigScope config;
+    PreprintPredictor predictor;
+    const int homing = static_cast<int>(PrintStartPhase::HOMING);
+    const int nozzle = static_cast<int>(PrintStartPhase::HEATING_NOZZLE);
+    const int bed = static_cast<int>(PrintStartPhase::HEATING_BED);
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+
+    float phases = 0.0f;
+    for (const auto& [phase, secs] : PreprintPredictor::default_phase_durations()) {
+        phases += phase == homing ? std::max(secs, PreprintPredictor::MIN_HOMING_SECONDS) : secs;
+    }
+
+    SECTION("heating sits on top of the phases") {
+        const auto e = predictor.estimate({100.0f, 70.0f, true});
+        CHECK(e.durations.at(nozzle) == 100.0f);
+        CHECK(e.durations.at(bed) == 70.0f);
+        CHECK(e.total_seconds == 170.0f + phases);
+    }
+
+    SECTION("an unknown nozzle target holds the placeholder") {
+        const auto e = predictor.estimate({0.0f, 70.0f, false});
+        CHECK(e.durations.at(nozzle) == PreprintPredictor::UNKNOWN_NOZZLE_HEAT_SECONDS);
+        CHECK(e.total_seconds == 70.0f + PreprintPredictor::UNKNOWN_NOZZLE_HEAT_SECONDS + phases);
+    }
+
+    SECTION("a skipped phase leaves") {
+        const auto e = predictor.estimate({0.0f, 0.0f, true}, {{mesh, false}});
+        CHECK(e.durations.count(mesh) == 0);
+        CHECK(e.total_seconds == phases - PreprintPredictor::default_phase_durations().at(mesh));
+    }
+}
+
+TEST_CASE("PreprintPredictor: estimate with history takes the recorded wall clock",
+          "[print][predictor][estimate]") {
+    PreprintConfigScope config;
+    const int homing = static_cast<int>(PrintStartPhase::HOMING);
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+    const int qgl = static_cast<int>(PrintStartPhase::QGL);
+
+    PreprintEntry e;
+    e.total_seconds = 400;
+    e.timestamp = 1000;
+    e.phase_durations = {{homing, 30}, {mesh, 120}};
+    PreprintPredictor predictor;
+    predictor.add_entry(e);
+
+    SECTION("heating is already inside the recorded total") {
+        const auto est = predictor.estimate({100.0f, 70.0f, true});
+        CHECK(est.total_seconds == 400.0f);
+        CHECK(est.durations.at(mesh) == 120.0f);
+        CHECK(est.durations.at(static_cast<int>(PrintStartPhase::HEATING_BED)) == 70.0f);
+    }
+
+    SECTION("a skipped phase comes off the wall clock") {
+        CHECK(predictor.estimate({}, {{mesh, false}}).total_seconds == 280.0f);
+    }
+
+    SECTION("a phase the start runs and the history lacks is added") {
+        const auto est = predictor.estimate({}, {{qgl, true}, {mesh, true}});
+        const float qgl_s =
+            static_cast<float>(PreprintPredictor::generic_phase_durations().at(qgl));
+        CHECK(est.durations.at(qgl) == qgl_s);
+        CHECK(est.total_seconds == 400.0f + qgl_s);
+    }
 }
