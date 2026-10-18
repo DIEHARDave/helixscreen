@@ -10,11 +10,13 @@
 #include "../test_fixtures.h"
 #include "../test_helpers/plugin_host_test_support.h"
 #include "locale_formats.h"
+#include "lodepng_encode.h"
 #include "panel_widget_registry.h"
 #include "plugin_host.h"
 #include "plugin_xml_policy.h"
 #include "translation_loader.h"
 
+#include <cstdlib>
 #include <fstream>
 #include <iterator>
 #include <lvgl.h>
@@ -705,6 +707,46 @@ TEST_CASE_METHOD(XMLTestFixture, "the state machine speaks German", "[plugin][ex
 
     lv_translation_set_language("en");
     helix::ui::locale_set_language("en");
+}
+
+// The result dialog over the overlay, for eyes rather than assertions. Hidden;
+// run on demand:
+//   HELIX_SHOT_DIR=/tmp/out ./build/bin/helix-tests '[calibration_bridge_shot]'
+TEST_CASE_METHOD(CalibrationFx, "calibration-bridge result dialog screenshot",
+                 "[.][calibration_bridge_shot]") {
+    const char* dir = std::getenv("HELIX_SHOT_DIR");
+    REQUIRE(dir != nullptr);
+    HostRig rig(cb_block(json{{"auto_open", true}}));
+    REQUIRE(register_component("header_bar"));
+    rig.host->load_from("examples/plugins");
+    run_to_asking(rig);
+    process_lvgl(800);
+    drain();
+    REQUIRE(ModalStack::instance().top_visible_tag() == "calibration-bridge");
+    lv_obj_update_layout(lv_screen_active());
+    lv_draw_buf_t* snap = lv_snapshot_take(lv_screen_active(), LV_COLOR_FORMAT_ARGB8888);
+    REQUIRE(snap != nullptr);
+    const int w = static_cast<int>(snap->header.w);
+    const int h = static_cast<int>(snap->header.h);
+    std::vector<unsigned char> rgba(static_cast<size_t>(w) * h * 4);
+    for (int y = 0; y < h; ++y) {
+        const auto* row =
+            reinterpret_cast<const lv_color32_t*>(snap->data + y * snap->header.stride);
+        for (int x = 0; x < w; ++x) {
+            unsigned char* d = &rgba[(static_cast<size_t>(y) * w + x) * 4];
+            d[0] = row[x].red;
+            d[1] = row[x].green;
+            d[2] = row[x].blue;
+            d[3] = 255;
+        }
+    }
+    unsigned char* out = nullptr;
+    size_t out_size = 0;
+    REQUIRE(lodepng_encode32(&out, &out_size, rgba.data(), w, h) == 0);
+    std::ofstream(std::string(dir) + "/calibration-bridge-result.png", std::ios::binary)
+        .write(reinterpret_cast<char*>(out), static_cast<std::streamsize>(out_size));
+    free(out);
+    lv_draw_buf_destroy(snap);
 }
 
 #endif // HELIX_HAS_PLUGINS
