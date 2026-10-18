@@ -156,6 +156,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   both front corners of the bed, a spot inside the enclosure, the light), shows the chips
   where they will sit, and saves. That works for your own photo too, and re-tags a shipped
   picture you disagree with; Reset tags puts it back.
+- **The printer picture shows an attached CFS** - a Creality K2 with a CFS connected shows
+  the K2 with the CFS on top, switching on its own when the CFS reports in or drops out. A
+  picture you picked yourself stays in place.
 - **Icon tiles resize** - the single-icon tiles (power, lock, shutdown, firmware restart,
   LED, network and the rest) scale with their tile instead of staying one fixed size, and
   can be resized for the first time. On most panels they take half-cell steps in width; on
@@ -410,6 +413,25 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   automatic unload, so Unload shows a notice telling you to cut and pull the filament at the
   head, and sends nothing; to mount a head without feeding it, use Select slot in the slot
   menu. A fault from Z-Mod opens a dialog in the firmware's own words.
+- **A new Edit Spool editor** - tap a slot and choose Edit Spool for one screen that shows
+  the filament in words with its colour and remaining weight, the temperatures for what you
+  picked, and Material, Variant, Brand and Product lists that narrow each other down, with
+  the full filament catalog one tap away. Colour swatches are at least 7 mm across on every
+  screen. The full colour view puts the presets and a custom colour picker side by side where
+  both fit, and on small screens they take turns. On systems that read a spool's tag, a
+  "from tag" pill marks each value the tag supplied, and Reset to tag puts them all back.
+  Spoolman's spool list and QR scan are round buttons in the header, and a linked spool's
+  price, location, lot and notes sit under More. A save still talking to Spoolman finishes
+  even if you leave the screen, and a save that only partly succeeds says which part did
+  not: with Spoolman offline, the slot saves and price, location, lot and notes wait in the
+  editor. Which tool a slot feeds is picked from Assigned Tool in the slot's menu.
+- **Creality CFS on the K2 Plus community firmware** - on the Kalico-based K2 Plus port and
+  its own CFS module, loads use the module's slot selection, and each CFS unit shows its own
+  temperature and humidity. With a recent module, the Filament Mapping you choose when
+  starting a print is sent to the CFS just before the print and applies to that print only;
+  a mapping that points at a slot the CFS cannot feed, or at a unit that has stopped
+  answering, stops the print from starting and says why. A unit that stops answering is
+  marked Disconnected until it comes back.
 
 **Drying filament**
 
@@ -709,6 +731,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   the print when one is running, and refuses to touch anything mid-print.
 - **Hardware Health shows its status** - the Settings row carries the live result with a
   severity-coloured icon, and critical problems get their own alert icon.
+- **Settings > Printer opens the Printer Manager** - the printer's name, picture, model,
+  software versions and detected hardware are one tap away in Settings, so they are reachable
+  without the home screen's printer picture.
 
 **Plugins**
 
@@ -740,6 +765,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Plugins can drive their own settings** - a plugin's own screen can act as the control
   surface for the settings it declares (`helix.settings.set`). The generated settings page
   stays in step, and setting a value it already holds saves nothing.
+- **Plugins can add actions to the app's menus** - an enabled plugin can put its own items on
+  the print details screen's menu (the dots button), in a column of their own in a filament
+  slot's menu, in the Spoolman spool menu, and behind the gear on its own home tile in edit
+  mode. Each item gets the file, slot or spool the menu was opened on, and can hide itself or
+  show greyed out with a reason when it does not apply. A plugin can only add rows: the app's
+  own items stay as they are, and a menu never grows long enough to scroll. Settings >
+  Plugins lists which menus a plugin adds to, before you enable it and on its row. A plugin
+  can also build up to 32 widgets.
 
 **Files, USB and installing**
 
@@ -998,6 +1031,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Network**
 
+- **A stuck WiFi service froze the screen** - when the printer's WiFi service stopped
+  answering, every scan, status check or tap on a network held the whole screen for up to
+  15 seconds. WiFi is now handled in the background, so the screen stays responsive. After a
+  few slow answers HelixScreen shows "WiFi isn't responding", keeps the last network list and
+  status on screen, stops piling on requests, and checks again after about 15 seconds, then
+  less often up to every 2 minutes; the message clears on its own when the service answers.
+  Connecting, disconnecting, forgetting a network and the WiFi switch each show that message
+  once instead of a failure of their own.
 - **A printer whose address changed was retried at the old one forever** - the Android app
   hanging mid-print until a restart. The printer's name is looked up again before every
   reconnect.
@@ -1103,6 +1144,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Printing and preview**
 
+- **The prep time estimate on print details** - the "~6 min prep time" line counts heating
+  from the current temperatures up to the file's own first-layer temperatures, and matches
+  the countdown shown once the print starts. It learns from how long your printer actually
+  took, with separate timings for a cold bed and a warm one. Turning a pre-print option off
+  takes its time off the estimate; turning one on adds time only when your recent prints
+  skipped that step. The line waits for the file's details to load, and is not shown for
+  files on a USB stick.
 - **A heater wait names the heater it waits on** - during print preparation the label reads
   the waiting command (M109, M190, M191 or TEMPERATURE_WAIT) instead of guessing from which
   heater is short, so a nozzle settling at its target, a cool-down before probing, or the
@@ -1363,6 +1411,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   healthy, warning, blocked, the three FlowGuard positions, buffer armed and counting down,
   and no-hardware. `SAVE_CONFIG` also returned failure from every gcode script call, which
   meant no test could drive a probe calibration through to a save.
+- BTT K-Touch firmware: the theme, tool switcher, filament sidebar and slot menu values and
+  the settings store moved from the ESP32's scarce internal RAM to PSRAM, keeping internal RAM
+  under the ceiling the WiFi driver's receive buffers need.
 - 306 test files were missing their copyright header.
 - A content-fit sweep now measures every widget against its authored minimum on all eight
   shipping geometries, and the user guide, configuration reference and FAQ were corrected:
