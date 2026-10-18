@@ -713,8 +713,9 @@ struct CheckVerdict {
 
 /// Reads a check's return value: a boolean, or a plain table whose `visible` and `enabled`
 /// are booleans (absent means true) and whose `reason` is a string (absent means none).
-/// It runs after the check has left check mode and its entry, so nothing here may run
-/// plugin code: fields are read raw, and a table with a metatable is not a valid result.
+/// call_sync runs it between the check's resume and closing its thread, outside any
+/// protected call, so nothing here may run plugin code: an error would reach the panic
+/// handler. Fields are read raw, and a table with a metatable is not a valid result.
 CheckVerdict read_check_value(lua_State* co, int nres) {
     CheckVerdict v;
     if (nres < 1)
