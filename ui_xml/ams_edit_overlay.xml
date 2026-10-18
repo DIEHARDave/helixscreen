@@ -259,16 +259,8 @@
               <!-- The custom colour: the app's rainbow custom swatch, the grid's
                    first tile so it shares the 44px hit pitch. It leads because
                    a count change rebuilds the repeat at the end of the row. -->
-              <color_swatch name="btn_custom_color_split"
-                            index="-2" fill="disc_rainbow" selected_subject="ams_edit_color_selected"
-                            callback="ams_edit_custom_color_cb" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
-                            reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring">
-                <lv_obj width="50%"
-                        height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
-                        style_border_width="0" clickable="false" event_bubble="true" scrollable="false">
-                  <icon src="pencil" size="xs" align="center" clickable="false" event_bubble="true"/>
-                </lv_obj>
-              </color_swatch>
+              <custom_color_swatch name="btn_custom_color_split"
+                                   selected_subject="ams_edit_color_selected" callback="ams_edit_custom_color_cb"/>
               <repeat count="ams_edit_color_col_count">
                 <color_swatch index="${i}"
                               color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"
@@ -336,16 +328,8 @@
             <!-- The custom colour: the app's rainbow custom swatch, the grid's
                  first tile so it shares the 44px hit pitch. It leads because
                  a count change rebuilds the repeat at the end of the row. -->
-            <color_swatch name="btn_custom_color"
-                          index="-2" fill="disc_rainbow" selected_subject="ams_edit_color_selected"
-                          callback="ams_edit_custom_color_cb" size="#swatch_grid_size" hit="#swatch_grid_gap_half"
-                          reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring">
-              <lv_obj width="50%"
-                      height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
-                      style_border_width="0" clickable="false" event_bubble="true" scrollable="false">
-                <icon src="pencil" size="xs" align="center" clickable="false" event_bubble="true"/>
-              </lv_obj>
-            </color_swatch>
+            <custom_color_swatch name="btn_custom_color"
+                                 selected_subject="ams_edit_color_selected" callback="ams_edit_custom_color_cb"/>
             <repeat count="ams_edit_color_row_count">
               <color_swatch index="${i}"
                             color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"

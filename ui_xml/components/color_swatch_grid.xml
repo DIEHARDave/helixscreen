@@ -44,16 +44,9 @@
   <view name="color_swatch_grid"
         extends="lv_obj" width="#swatch_grid_width" height="content" style_pad_all="0" flex_flow="row_wrap"
         style_pad_gap="$gap" style_flex_main_place="center" scrollable="false">
-    <color_swatch name="btn_custom_color_lead"
-                  hidden="$lead_hidden" index="-2" fill="disc_rainbow" selected_subject="$selected_subject"
-                  callback="$lead_callback" size="$swatch_size" hit="$gap_half" reach="#swatch_grid_ring_reach"
-                  ring="styles.grid_swatch_ring">
-      <lv_obj width="50%"
-              height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
-              style_border_width="0" clickable="false" event_bubble="true" scrollable="false">
-        <icon src="pencil" size="xs" align="center" clickable="false" event_bubble="true"/>
-      </lv_obj>
-    </color_swatch>
+    <custom_color_swatch name="btn_custom_color_lead"
+                         hidden="$lead_hidden" selected_subject="$selected_subject" callback="$lead_callback"
+                         size="$swatch_size" hit="$gap_half"/>
     <repeat count="30">
       <color_swatch index="${i}"
                     color_subject="${palette}_swatch_color_${i}" selected_subject="$selected_subject"

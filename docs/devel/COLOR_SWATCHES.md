@@ -41,6 +41,7 @@ back by `filament_finish_of()`.
 | Component | When |
 |-----------|------|
 | `<color_swatch>` | A swatch the user picks: a touch target with a selection ring. Props `color_subject` or `color`, `colors_subject` (CSV), `finish_subject` (a filament name), `fill` (a style; the LED Custom swatch's hue wheel), `selected_subject` + `index`, `callback`, `clickable`, `bubble`, `size`, `hit`, `reach`, `ring`. Grids repeat it (`color_swatch_grid.xml`). |
+| `<custom_color_swatch>` | The rainbow custom-colour swatch (hue wheel, centre glyph, `index` -2) that opens a colour editor: leading a preset grid, closing the LED colour row. Props `icon` (`pencil` default, `plus`), `selected_subject`, `callback`, `size`, `hit`, `reach`, `ring`; sizing defaults to the preset grids' tokens. |
 | `<color_dot>` | A colour that is only shown (a spool in a list, a slot in a row, a tool's dot): no ring, no reach, clicks go to the row. Same colour props plus `size`. |
 | `<swatch_paint>` | The bare painter, for a rounded rect (set `style_radius`) or a fill inside another control (the LED power button). Attributes `color`, `bind_color`, `colors`, `bind_colors`, `finish`, `bind_finish`, `edge="off"`. With no colour it paints nothing. |
 

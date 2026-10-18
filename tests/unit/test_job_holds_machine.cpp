@@ -401,6 +401,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/color_swatch_grid.xml",
     "ui_xml/components/context_menu_backdrop.xml",
     "ui_xml/components/context_menu_card.xml",
+    "ui_xml/components/custom_color_swatch.xml",
     "ui_xml/components/exclude_object_map.xml",
     "ui_xml/components/exclude_object_row.xml",
     "ui_xml/components/exclude_object_side_list.xml",
