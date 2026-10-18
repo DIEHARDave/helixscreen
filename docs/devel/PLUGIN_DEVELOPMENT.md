@@ -434,8 +434,8 @@ plugin, and plugin rows per menu so a menu never scrolls) are in §10.
 | `menu` | Fields |
 |---|---|
 | `print_file` | `source` (`"printer"` or `"usb"`), `path` (relative to the gcodes root; `nil` for a USB file), `local_path` (USB files only), `name`, `estimated_time_s`, `filament` (a list, one per tool: `tool`, `material`, `color`, `grams`), `layer_height`, `object_height`, `tools_used` |
-| `filament_slot` | `unit`, `slot` (both 0-based), `label` (the slot's name as the menu shows it), `tool` (the mapped tool or `nil`), and what is loaded when known: `material`, `color` (hex), `brand`, `spool_id` (Spoolman) |
-| `spool` | `spool_id`, `material`, `color`, `brand`, `remaining_g` |
+| `filament_slot` | `unit`, `slot` (both 0-based), `label` (the slot's name as the menu shows it), `tool` (the mapped tool or `nil`), and what is loaded when known: `material`, `color` (`"#RRGGBB"`; `nil` when the slot reports the app's default grey `#808080`, which stands for an unknown colour, so a grey spool reads as unknown), `brand`, `spool_id` (Spoolman). An empty slot carries none of these four |
+| `spool` | `spool_id`, `material`, `color` (`"#RRGGBB"`), `brand`, `remaining_g` (`nil` when Spoolman reports no remaining weight or 0 g: the two cannot be told apart) |
 | `tile` | `widget` (the widget's name: its declared id without the `<id>__` prefix) |
 
 A field the printer does not report, or that has not loaded yet, is `nil`: the print
