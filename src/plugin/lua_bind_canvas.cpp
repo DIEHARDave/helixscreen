@@ -344,6 +344,7 @@ void check_color(lua_State* L, const char* tok) {
 // ---- methods --------------------------------------------------------------
 
 int m_line(lua_State* L) {
+    forbid_in_check(L, "canvas:line");
     CanvasEntry* e = handle_entry(L);
     Staged st;
     st.prim.op = CanvasOp::Line;
@@ -364,6 +365,7 @@ int m_line(lua_State* L) {
 }
 
 int m_polyline(lua_State* L) {
+    forbid_in_check(L, "canvas:polyline");
     CanvasEntry* e = handle_entry(L);
     if (lua_type(L, 2) != LUA_TTABLE)
         return luaL_error(L, "helix.canvas: polyline needs an even-length array of at least "
@@ -462,6 +464,7 @@ void parse_shape_opts(lua_State* L, int opts, DisplayList& pending, bool with_ra
 }
 
 int m_rect(lua_State* L) {
+    forbid_in_check(L, "canvas:rect");
     CanvasEntry* e = handle_entry(L);
     Staged st;
     st.prim.op = CanvasOp::Rect;
@@ -476,6 +479,7 @@ int m_rect(lua_State* L) {
 }
 
 int m_circle(lua_State* L) {
+    forbid_in_check(L, "canvas:circle");
     CanvasEntry* e = handle_entry(L);
     Staged st;
     st.prim.op = CanvasOp::Circle;
@@ -489,6 +493,7 @@ int m_circle(lua_State* L) {
 }
 
 int m_arc(lua_State* L) {
+    forbid_in_check(L, "canvas:arc");
     CanvasEntry* e = handle_entry(L);
     Staged st;
     st.prim.op = CanvasOp::Arc;
@@ -510,6 +515,7 @@ int m_arc(lua_State* L) {
 }
 
 int m_text(lua_State* L) {
+    forbid_in_check(L, "canvas:text");
     CanvasEntry* e = handle_entry(L);
     size_t len = 0;
     const char* str = luaL_checklstring(L, 4, &len);
@@ -540,6 +546,7 @@ int m_text(lua_State* L) {
 }
 
 int m_clear(lua_State* L) {
+    forbid_in_check(L, "canvas:clear");
     CanvasEntry* e = handle_entry(L);
     context(L).rt.release_external(e->pending_charge);
     e->pending_charge = 0;

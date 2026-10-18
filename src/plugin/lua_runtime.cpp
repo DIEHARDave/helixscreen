@@ -263,6 +263,10 @@ int LuaRuntime::lua_print(lua_State* L) {
 
 int LuaRuntime::lua_require(lua_State* L) {
     auto& rt = from(L);
+    // A module's top level is an ordinary entry's work; run from a check, a refused
+    // call inside it would leave a half-loaded module cached.
+    if (rt.in_check_)
+        return luaL_error(L, "require is not allowed in a menu check");
     std::string name = luaL_checkstring(L, 1);
     lua_rawgetp(L, LUA_REGISTRYINDEX, &kLoadedKey);
     lua_getfield(L, -1, name.c_str());

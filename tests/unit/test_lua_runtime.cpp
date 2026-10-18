@@ -709,4 +709,17 @@ TEST_CASE("call_sync refuses a faulted runtime and a nested call", "[plugin][lua
     CHECK_FALSE(read);
 }
 
+TEST_CASE("require is refused in a check, and loads later as usual",
+          "[plugin][lua_runtime][check]") {
+    TestRuntime t;
+    REQUIRE(t.run(R"(function f() local d = require("deep"); return true end)"));
+    helix::LogCapture logs;
+    CHECK_FALSE(t.rt->call_sync(global_ref(t, "f"), {}, {}));
+    CHECK(logs.count_containing("require is not allowed in a menu check") == 1);
+    CHECK(t.global("loads") == "nil"); // the module's top level never ran
+    CHECK_FALSE(t.rt->faulted());
+    REQUIRE(t.run(R"(d = require("deep"))"));
+    CHECK(t.global("loads") == "1");
+}
+
 #endif // HELIX_HAS_PLUGINS

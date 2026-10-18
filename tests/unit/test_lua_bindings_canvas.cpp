@@ -581,4 +581,25 @@ TEST_CASE_METHOD(DemoRig, "two instances of one canvas name share the slot",
     lv_refr_now(nullptr);
 }
 
+TEST_CASE_METHOD(XMLTestFixture, "a menu check cannot draw or clear a canvas",
+                 "[plugin][lua][canvas][check]") {
+    BoundRuntime b({&install_ui_bindings, &install_canvas_bindings});
+    REQUIRE(b.t.run(R"(
+        c = helix.canvas("chk")
+        c:line(0, 0, 1, 1)
+        helix.ui.on("draw", function() c:line(0, 0, 2, 2); return true end)
+        helix.ui.on("wipe", function() c:clear(); return true end)
+    )"));
+    helix::LogCapture logs;
+    CHECK_FALSE(call_ui_handler_sync(*b.t.rt, "draw", {}, {}));
+    CHECK_FALSE(call_ui_handler_sync(*b.t.rt, "wipe", {}, {}));
+    CHECK(logs.count_containing("canvas:line is not allowed in a menu check") == 1);
+    CHECK(logs.count_containing("canvas:clear is not allowed in a menu check") == 1);
+    REQUIRE(b.t.run("c:commit()"));
+    const DisplayList* list = canvas_committed("test-plugin__chk");
+    REQUIRE(list);
+    CHECK(list->prims.size() == 1); // the line drawn outside the check, and nothing else
+    CHECK_FALSE(b.t.rt->faulted());
+}
+
 #endif // HELIX_HAS_PLUGINS
