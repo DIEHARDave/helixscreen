@@ -188,8 +188,24 @@ class AmsEditOverlay : public OverlayBase {
     CompletionCallback completion_callback_;
     bool completion_fired_ = false; ///< Guards single-fire completion
     // A Spoolman save is in flight. The editor stays open while it runs, so a
-    // second tap on Save is reachable and would start a second save.
+    // second tap on Save is reachable and would start a second save. Back,
+    // the weight keypad and the scanner stay shut too: the save's completion
+    // closes the editor, and must not pop something pushed on top of it.
     bool save_in_flight_ = false;
+    /// Bumped by every show_for_slot(). Save completions run on
+    /// object_lifetime_ (they are owed to Spoolman and the slot, not to the
+    /// screen), so each one checks it still belongs to the session it began in.
+    uint32_t session_ = 0;
+    /// True once the editor view has been populated this session. A picker-entry
+    /// session reaches the editor first through enter_editor(); later returns
+    /// keep the staged edits.
+    bool editor_entered_ = false;
+    /// The linked spool's record fetch: requested and not yet landed (cleared
+    /// when a cover drops it), and the spool id whose record did land.
+    bool linked_fetch_pending_ = false;
+    int details_spool_id_ = 0;
+    bool recents_pending_ = false;
+    bool recents_loaded_ = false;
     // Spool logistics fields (More section) for the linked spool record.
     SpoolInfo detail_original_; ///< as fetched on entry
     SpoolInfo detail_working_;  ///< live field edits
@@ -200,10 +216,22 @@ class AmsEditOverlay : public OverlayBase {
     void read_detail_fields();
     /// Re-seed detail_original_/detail_working_ from working_info_ for the
     /// spool it currently names - on open, and after a picker relink or a QR
-    /// scan swaps the spool underneath the editor.
+    /// scan swaps the spool underneath the editor. The fields show blank until
+    /// that spool's record lands.
     void reseed_details_for_spool();
+    /// Fetch the linked spool's record once: it feeds both the identity sync
+    /// and the More fields.
+    void fetch_linked_spool();
+    /// Apply a fetched record, unless the slot no longer names that spool. A
+    /// selection or field the user already changed is kept.
+    void apply_linked_spool(int spool_id, const SpoolInfo& spool);
+    /// The editor view after the picker or colour view: entered on first use,
+    /// otherwise shown with the staged edits intact.
+    void return_to_editor();
+    /// After a relink or a QR scan put a different spool under the editor.
+    void load_swapped_spool();
     /// The logistics PATCH rides an Update-in-Spoolman save when the identity
-    /// prompt owns this save (2b): set by handle_save, consumed by
+    /// prompt owns this save: set by handle_save, consumed by
     /// do_spoolman_save's success path.
     bool logistics_pending_ = false;
 

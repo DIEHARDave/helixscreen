@@ -209,6 +209,34 @@ class AmsEditOverlayViewTestAccess {
     bool details_color_set() {
         return overlay_.details_color_set_;
     }
+    bool has_tag() const {
+        return overlay_.tag_.has_value();
+    }
+    void call_handle_back() {
+        overlay_.handle_back();
+    }
+    void call_handle_weight_tap() {
+        overlay_.handle_weight_tap();
+    }
+    void set_save_in_flight(bool in_flight) {
+        overlay_.save_in_flight_ = in_flight;
+        overlay_.update_sync_button_state();
+    }
+    /// What a cover (keypad, scanner pushed on top) does to screen-scoped work.
+    void drop_screen_lifetime() {
+        overlay_.lifetime_.invalidate();
+    }
+    std::string field_text(const char* name) {
+        lv_obj_t* w = overlay_.find_widget(name);
+        REQUIRE(w != nullptr);
+        const char* t = lv_textarea_get_text(w);
+        return t ? t : "";
+    }
+    void click(const char* name) {
+        lv_obj_t* w = overlay_.find_widget(name);
+        REQUIRE(w != nullptr);
+        lv_obj_send_event(w, LV_EVENT_CLICKED, nullptr);
+    }
     static void build_spool_patches(const SpoolInfo& original, const SpoolInfo& edited,
                                     nlohmann::json& spool_patch, nlohmann::json& filament_patch) {
         SpoolmanSlotSaver::build_spool_patches(original, edited, spool_patch, filament_patch);
@@ -2202,4 +2230,255 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a linked slot's family change refreshes the
     close_editor_overlay();
     get_printer_state().capabilities_state().set_spoolman_available(false);
     UpdateQueue::instance().drain();
+}
+
+namespace {
+/// The mock's record for @p id, added when the inventory lacks one (a GET
+/// serves the first match, so an existing record is edited, not shadowed).
+SpoolInfo& mock_spool(MoonrakerClientMock& client, int id) {
+    auto& spools = client.spoolman_mock().get_mock_spools();
+    auto it =
+        std::find_if(spools.begin(), spools.end(), [id](const SpoolInfo& s) { return s.id == id; });
+    if (it == spools.end()) {
+        SpoolInfo added;
+        added.id = id;
+        spools.push_back(added);
+        return spools.back();
+    }
+    return *it;
+}
+
+void set_spoolman_available(bool available) {
+    auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
+    REQUIRE(spoolman_subj != nullptr);
+    lv_subject_set_int(spoolman_subj, available ? 1 : 0);
+    get_printer_state().capabilities_state().set_spoolman_available(available);
+    UpdateQueue::instance().drain();
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a relink never carries the old spool's More fields over",
+                 "[ams_edit_overlay][more][relink]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SpoolInfo& a = mock_spool(client, 7);
+    a.filament_id = 3;
+    a.vendor = "Bambu Lab";
+    a.material = "ASA";
+    a.color_hex = "8A949E";
+    a.location = "Dry box 1";
+    a.comment = "opened 5/3";
+    SpoolInfo& b = mock_spool(client, 22);
+    b.filament_id = 9;
+    b.vendor = "eSUN";
+    b.material = "PETG";
+    b.color_hex = "FF6600";
+    b.location = "Shelf B";
+    b.comment = "";
+    const SpoolInfo spool_b = b;
+    set_spoolman_available(true);
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    REQUIRE(access.field_text("detail_field_location") == "Dry box 1");
+
+    access.set_cached_spools({spool_b});
+    access.call_handle_spool_selected(22);
+    // Before B's record lands the fields are blank, not A's.
+    CHECK(access.field_text("detail_field_location").empty());
+    CHECK(access.field_text("detail_field_comment").empty());
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.field_text("detail_field_location") == "Shelf B");
+
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(20);
+    UpdateQueue::instance().drain();
+
+    for (const auto& upd : client.spoolman_mock().spool_updates) {
+        const std::string body = upd.patch.dump();
+        CHECK(body.find("Dry box 1") == std::string::npos);
+        CHECK(body.find("opened 5/3") == std::string::npos);
+    }
+
+    if (overlay.get_root() && NavigationManager::instance().is_panel_in_stack(overlay.get_root())) {
+        close_editor_overlay();
+    }
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a late spool record never overwrites a relink or a pick",
+                 "[ams_edit_overlay][more][relink]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    SpoolInfo& a = mock_spool(client, 7);
+    a.vendor = "Bambu Lab";
+    a.material = "ASA";
+    a.location = "Dry box 1";
+    set_spoolman_available(true);
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api, nullptr));
+    // The open-time fetch is queued; the user picks before it lands.
+    REQUIRE(access.pick_dropdown("dropdown_material", "PLA"));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.sel().family == "PLA"); // the record did not reset the pick
+    CHECK(access.field_text("detail_field_location") == "Dry box 1");
+    close_editor_overlay();
+
+    // A relink made before A's record lands keeps B's identity.
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api, nullptr));
+    SpoolInfo other;
+    other.id = 31;
+    other.vendor = "Sunlu";
+    other.material = "PETG";
+    access.set_cached_spools({other});
+    access.call_handle_spool_selected(31);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.working_info().spoolman_id == 31);
+    CHECK(access.working_info().brand == "Sunlu");
+    CHECK(access.field_text("detail_field_location") != "Dry box 1");
+    close_editor_overlay();
+    set_spoolman_available(false);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "picker-entry then Back builds the editor from this slot alone",
+                 "[ams_edit_overlay][picker][session]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    // A previous session on a tag-read ASA slot.
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    helix::ams::TagReading tag;
+    tag.material = "ASA";
+    tag.brand = "Bambu Lab";
+    access.set_tag(tag);
+    close_editor_overlay();
+
+    // Picker-entry on an untracked PETG slot, then Back to the editor.
+    REQUIRE(overlay.show_for_slot(test_screen(), 1, untracked_slot(), nullptr, nullptr, true));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    REQUIRE(access.view() == AmsEditOverlay::VIEW_SPOOL_PICKER);
+    CHECK_FALSE(access.has_tag());
+    access.call_handle_back();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR);
+    CHECK(access.sel().family == "PETG");
+    CHECK(access.sel().brand == "Generic");
+    CHECK(access.dropdown_selected("dropdown_material") == "PETG");
+    CHECK(access.dropdown_selected("dropdown_brand") == "Generic");
+    auto* reset_visible = lv_xml_get_subject(nullptr, "ams_edit_reset_tag_visible");
+    REQUIRE(reset_visible != nullptr);
+    CHECK(lv_subject_get_int(reset_visible) == 0);
+    CHECK_FALSE(access.is_dirty());
+
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "leaving the picker keeps the edits staged in the editor",
+                 "[ams_edit_overlay][picker][session]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    REQUIRE(access.pick_dropdown("dropdown_material", "PLA"));
+    access.set_detail_field("detail_field_comment", "keep dry");
+    access.call_switch_to_picker();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    // "Not in your spools? Set it up" returns to the editor, edits intact.
+    access.click("picker_setup_entry");
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR);
+    CHECK(access.sel().family == "PLA");
+    CHECK(access.detail_comment() == "keep dry");
+    CHECK(access.is_dirty());
+
+    access.set_detail_field("detail_field_comment", "");
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a save in flight holds Back and the keypad shut",
+                 "[ams_edit_overlay][save][session]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    bool fired = false;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr,
+                                  [&](const AmsEditOverlay::EditResult&) { fired = true; }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    lv_obj_t* root = overlay.get_root();
+
+    access.set_save_in_flight(true);
+    access.call_handle_back();
+    access.call_handle_weight_tap();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK_FALSE(fired);
+    CHECK(NavigationManager::instance().is_panel_on_top(root));
+    CHECK(access.save_disabled() == 1);
+    close_editor_overlay();
+
+    // The next session starts with Save governed by its own edits alone.
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    access.call_apply_weight(321);
+    CHECK(access.save_disabled() == 0);
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a Spoolman save completes even if the editor was covered",
+                 "[ams_edit_overlay][save][session]") {
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+    SpoolInfo& a = mock_spool(client, 7);
+    a.filament_id = 3;
+    a.vendor = "Bambu Lab";
+    a.material = "ASA";
+    a.color_hex = "8A949E";
+    a.comment = "";
+    set_spoolman_available(true);
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    bool saved = false;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api,
+                                  [&](const AmsEditOverlay::EditResult& r) { saved = r.saved; }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    access.set_detail_field("detail_field_comment", "covered");
+    access.call_handle_save();
+    access.drop_screen_lifetime(); // covered before the PATCH answers
+    UpdateQueue::instance().drain();
+    process_lvgl(20);
+    UpdateQueue::instance().drain();
+    process_lvgl(20);
+
+    CHECK(saved);
+    if (!saved) {
+        close_editor_overlay();
+    }
+    set_spoolman_available(false);
 }
