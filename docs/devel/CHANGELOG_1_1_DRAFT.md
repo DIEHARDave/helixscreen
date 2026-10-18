@@ -573,12 +573,15 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   > Delete this box only when that is done, not when the code looks finished.
 
 - **Guided belt tuning** (#1736) - after a Belt Tension path comparison (Advanced >
-  Calibration, the two-sweep check, not the pluck tuner above), Tune belts walks you through
-  closing the gap one belt at a time. It names the belt to adjust and which way, re-measures
-  only the stretch of the spectrum where the two disagree instead of the whole range, and shows
-  the remaining gap on a gauge. On Voron 2.4 and Trident it also suggests how far to turn and
-  learns how many Hz a turn moves on your machine; other printers get direction-only advice.
-  Beta, and the thresholds are provisional until it has run on more hardware.
+  Calibration, the two-sweep check, not the pluck tuner above), Tune Belts walks you through
+  closing the gap one belt at a time. It tells you when the belts already match, finds the
+  zone to tune with one calibration turn instead of trusting the tallest peak, runs short
+  settling laps before each sweep, and re-measures only the stretch of the spectrum that moved,
+  always inside your printer's sweep range. It checks that readings repeat before it advises
+  anything, and flags a path that resonates far harder than the other as a mechanical problem
+  rather than tension. On Voron 2.4 and Trident it suggests how far to turn, in quarter turns;
+  other printers get direction-only advice. Beta, and the thresholds are provisional until it
+  has run on more hardware.
 
 - **Switch a Kalico heater between PID and MPC** (#1237) - the method selector on Kalico
   printers is out of beta. It migrates your config in both directions, and cancelling a
