@@ -80,17 +80,6 @@ bool unobserved(lv_subject_t& s) {
     return lv_ll_get_head(&s.subs_ll) == nullptr;
 }
 
-bool is_valid_local_name(std::string_view n) {
-    if (n.empty() || n.size() > 48)
-        return false;
-    for (char c : n) {
-        bool ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
-        if (!ok)
-            return false;
-    }
-    return true;
-}
-
 void on_subject_change(lv_observer_t* obs, lv_subject_t* subject) {
     auto* ctx = static_cast<ObserverCtx*>(lv_observer_get_user_data(obs));
     if (!ctx->armed)

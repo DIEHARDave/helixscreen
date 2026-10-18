@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "plugin_menu_kind.h"
 #include "plugin_permissions.h"
 
 #include <optional>
@@ -49,6 +50,21 @@ struct WidgetDecl {
     bool half_cells = false; ///< resizes and may be authored in half cells
 };
 
+constexpr int kMaxMenuItemsPerMenu = 4; ///< per plugin, per menu
+constexpr int kMaxMenuItems = 16;       ///< per manifest
+constexpr size_t kMaxMenuLabelBytes = 48;
+
+/// One entry of the manifest's `menu_items` array. `handler` and `check` are local
+/// `helix.ui.on` names; `check` and `icon` are empty when absent.
+struct MenuItemDecl {
+    std::string id;
+    std::string label;
+    std::string icon;
+    std::string handler;
+    std::string check;
+    MenuKind menu = MenuKind::PrintFile;
+};
+
 struct Manifest {
     std::string id;
     std::string name;
@@ -61,6 +77,7 @@ struct Manifest {
     std::vector<SettingDecl> settings;
     std::string settings_overlay; ///< XML component name, empty when absent
     std::vector<WidgetDecl> widgets;
+    std::vector<MenuItemDecl> menu_items;
 };
 
 /// `manifest` is set only when `errors` is empty.
@@ -74,6 +91,10 @@ ManifestParse parse_manifest(const std::string& text);
 /// `^[a-z][a-z0-9-]{1,31}$`. No underscore, so the id cannot contain the
 /// ownership separator.
 bool is_valid_plugin_id(std::string_view id);
+
+/// A name a plugin registers without its id prefix (`helix.ui.on`): 1 to 48 of
+/// `[a-z0-9_-]`.
+bool is_valid_local_name(std::string_view name);
 
 /// Separator between a plugin id and the rest of a name that plugin owns.
 /// Doubled because app names share the single-underscore space (`ams_*`,
