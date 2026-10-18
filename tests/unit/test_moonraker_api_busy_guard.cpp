@@ -608,13 +608,12 @@ TEST_CASE_METHOD(BusyGuardApiFixture,
                  "chained jogs into an external episode are refused once it settles",
                  "[busy_guard][mock][motion][1108]") {
     // A bed mesh started elsewhere 1.2 s ago. A Z nudge at +0.5 s went out while
-    // the guard was still settling and was acked at once; every later nudge
-    // lands well inside the previous one's ack grace.
+    // the guard was still settling and sits queued behind the mesh, unacked;
+    // every later nudge lands while it is still in flight.
     set_idle_printing(true);
     set_print_state(PrintJobState::STANDBY);
     const auto start = observe_episode_start(state, std::chrono::milliseconds(1200));
     state.app_motion_activity().note_sent(start + std::chrono::milliseconds(500));
-    state.app_motion_activity().note_done(start + std::chrono::milliseconds(520));
     REQUIRE(state.app_motion_activity().recently_active());
 
     for (int nudge = 0; nudge < 3; ++nudge) {
@@ -654,5 +653,51 @@ TEST_CASE_METHOD(BusyGuardApiFixture, "the app's own jog episode passes the jogs
                                 [this](const MoonrakerError& err) { error_cb(err); });
         CHECK_FALSE(error_called);
         CHECK_FALSE(mock_client.gcode_script_history().empty());
+    }
+}
+
+TEST_CASE_METHOD(BusyGuardApiFixture,
+                 "a jog stuck behind someone else's gcode disowns the app's episode",
+                 "[busy_guard][mock][motion][1108]") {
+    // The app's jog started the episode 4 s ago and acked. A later jog has sat
+    // unacked for 2.5 s: Klipper is running someone else's command, so the
+    // busy-ness is no longer the app's.
+    set_idle_printing(true);
+    set_print_state(PrintJobState::STANDBY);
+    const auto start = observe_episode_start(state, std::chrono::seconds(4));
+    state.app_motion_activity().note_sent(start - std::chrono::milliseconds(100));
+    state.app_motion_activity().note_done(start - std::chrono::milliseconds(80));
+    state.app_motion_activity().note_sent(IdleTimeoutBusy::clock::now() -
+                                          std::chrono::milliseconds(2500));
+
+    api->motion().move_axis('Z', 0.1, 600.0, nullptr,
+                            [this](const MoonrakerError& err) { error_cb(err); });
+    CHECK(error_called);
+    CHECK(mock_client.gcode_script_history().empty());
+}
+
+TEST_CASE_METHOD(BusyGuardApiFixture,
+                 "a housekeeping burst that the app's fast jogs keep up passes the next jog",
+                 "[busy_guard][mock][motion]") {
+    // A delayed_gcode burst set idle_timeout high 1.2 s ago. A jog at +0.3 s
+    // went out before anything settled and keeps the flag up.
+    set_idle_printing(true);
+    set_print_state(PrintJobState::STANDBY);
+    const auto start = observe_episode_start(state, std::chrono::milliseconds(1200));
+    state.app_motion_activity().note_sent(start + std::chrono::milliseconds(300));
+
+    SECTION("the jog acked at once: Klipper was free, the episode is the app's") {
+        state.app_motion_activity().note_done(start + std::chrono::milliseconds(310));
+        api->motion().move_axis('X', 1.0, 3000.0, nullptr,
+                                [this](const MoonrakerError& err) { error_cb(err); });
+        CHECK_FALSE(error_called);
+        CHECK_FALSE(mock_client.gcode_script_history().empty());
+    }
+
+    SECTION("the jog never acked: it is queued behind someone else's command") {
+        api->motion().move_axis('X', 1.0, 3000.0, nullptr,
+                                [this](const MoonrakerError& err) { error_cb(err); });
+        CHECK(error_called);
+        CHECK(mock_client.gcode_script_history().empty());
     }
 }

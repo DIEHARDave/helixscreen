@@ -143,3 +143,35 @@ TEST_CASE("ensure_homed_then's continuation is not refused as someone else's bus
     client.stop_temperature_simulation();
     client.disconnect();
 }
+
+TEST_CASE("ensure_homed_then's G28 ack adopts no episode that begins after it",
+          "[homing][toolhead][busy_guard]") {
+    LVGLTestFixture fixture;
+    helix::PrinterState& state = get_printer_state();
+    state.init_subjects(false);
+    state.set_klippy_state_sync(helix::KlippyState::READY);
+    lv_subject_set_int(state.print_state().get_print_state_enum_subject(),
+                       static_cast<int>(helix::PrintJobState::STANDBY));
+    lv_subject_copy_string(state.motion_state().get_homed_axes_subject(), "");
+
+    MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
+    client.connect("ws://mock/websocket", []() {}, []() {});
+    MoonrakerAPI api{client, state};
+
+    helix::AsyncLifetimeGuard guard;
+    bool ran = false;
+    helix::ensure_homed_then(&api, guard, [&] { ran = true; }, nullptr);
+    // A homing pass longer than the grace window, then the ack.
+    std::this_thread::sleep_for(helix::BusyEpisodeOwner::GRACE_WINDOW +
+                                std::chrono::milliseconds(100));
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(ran);
+
+    // An operation someone else starts just after the ack is not the app's.
+    const auto external = helix::BusyEpisodeOwner::clock::now() + std::chrono::milliseconds(100);
+    CHECK_FALSE(state.app_motion_activity().owns_busy_episode(external,
+                                                              external + std::chrono::seconds(1)));
+
+    client.stop_temperature_simulation();
+    client.disconnect();
+}

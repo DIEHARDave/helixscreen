@@ -88,7 +88,7 @@ void ensure_homed_then(IMoonrakerAPI* api, AsyncLifetimeGuard& guard, std::funct
                         spdlog::info("[ensure_homed_then] G28 complete, proceeding");
                         // Restarts the ownership lapse, which a long
                         // homing macro would otherwise run out.
-                        get_printer_state().app_motion_activity().note_episode_send();
+                        get_printer_state().app_motion_activity().note_still_active();
                         if (then) {
                             then();
                         }

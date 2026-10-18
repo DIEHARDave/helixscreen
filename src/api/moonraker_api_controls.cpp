@@ -347,7 +347,7 @@ void MoonrakerAPI::execute_gcode(const std::string& gcode, SuccessCallback on_su
                         helix::discretionary_gcode_noun(gcode));
         }
         if (!silent) {
-            state_.app_command_episode().note_sent();
+            state_.app_command_episode().note_untracked_send();
         }
         json queued_params = {{"script", gcode}};
         // "Sending", not "queuing": the command goes to Klipper NOW and Klipper runs
@@ -407,7 +407,7 @@ void MoonrakerAPI::execute_gcode(const std::string& gcode, SuccessCallback on_su
     // printer state change), so it may follow an external op's start closely
     // and must not claim that episode for the user.
     if (!silent) {
-        ps->app_command_episode().note_sent();
+        ps->app_command_episode().note_untracked_send();
     }
 
     // Guard: only wrap on_success in lambda if non-null, otherwise pass nullptr.
