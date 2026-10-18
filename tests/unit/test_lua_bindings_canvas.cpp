@@ -612,6 +612,7 @@ TEST_CASE_METHOD(XMLTestFixture, "a menu check cannot draw, commit or create a c
         CHECK_FALSE(call_ui_handler_sync(*b.t.rt, "check", {}, {}));
         CHECK(logs.has_line_with({c.call, "is not allowed in a menu check"}));
         CHECK(canvas_committed("test-plugin__chk") == nullptr);
+        CHECK_FALSE(canvas_known("test-plugin__fresh"));
         REQUIRE(b.t.run("c:commit()"));
         const DisplayList* list = canvas_committed("test-plugin__chk");
         REQUIRE(list);
