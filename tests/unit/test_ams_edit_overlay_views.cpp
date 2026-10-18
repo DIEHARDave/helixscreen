@@ -1,7 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// View-level tests for the AMS slot editor overlay redesign: identity chip
+// View-level tests for the AMS slot editor overlay redesign: identity dropdown
 // contents (tracked vs untracked), managed-state subject, pre-selection, and
 // view transitions. Uses the full-UI fixture (real XML tree) plus the
 // AmsEditOverlayViewTestAccess friend shim.
@@ -122,6 +122,16 @@ class AmsEditOverlayViewTestAccess {
     void call_handle_add_to_spoolman() {
         overlay_.handle_add_to_spoolman();
     }
+    void set_detail_field(const char* name, const char* text) {
+        lv_obj_t* w = overlay_.find_widget(name);
+        REQUIRE(w != nullptr);
+        lv_textarea_set_text(w, text);
+        overlay_.read_detail_fields();
+        overlay_.update_sync_button_state();
+    }
+    std::string detail_comment() const {
+        return overlay_.detail_working_.comment;
+    }
     std::string dropdown_options(const char* name) {
         lv_obj_t* dd = overlay_.find_widget(name);
         return dd ? lv_dropdown_get_options(dd) : std::string();
@@ -218,7 +228,7 @@ SlotInfo tracked_slot() {
 
 // A slot as apply_spool_to_slot() leaves it: spool_name is the Spoolman
 // filament name alone, with brand and material in their own fields. Nothing
-// about the name repeats the other two, so the chip has to join all three.
+// about the name repeats the other two, so the summary has to join all three.
 SlotInfo tracked_slot_spoolman_named() {
     SlotInfo info;
     info.slot_index = 0;
@@ -388,7 +398,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
 TEST_CASE_METHOD(LVGLUITestFixture, "picker no longer offers a standalone unlink entry",
                  "[ams_edit_overlay][spool_edit][picker]") {
-    // The picker_unlink_entry is retired — the single unlink path is spool-edit
+    // The picker_unlink_entry is retired — the single unlink path is the Save
     // Save with the toggle off (covered above).
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayViewTestAccess access(overlay);
@@ -461,7 +471,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     close_editor_overlay();
 
     // A sentinel slot keeps its grey starting point: the picker needs some
-    // seed, and the sentinel grey is what the slot's own chip already shows.
+    // seed, and the sentinel grey is what the slot's own summary already shows.
     SlotInfo sentinel = untracked_slot();
     sentinel.color_rgb = AMS_DEFAULT_SLOT_COLOR;
     sentinel.color_name.clear();
@@ -932,7 +942,7 @@ TEST_CASE_METHOD(OverlayConsumerCommitFixture,
                  "two-step relink header Save never prompts or PATCHes the old spool",
                  "[ams_edit_overlay][filament_picker][picker][header_save]") {
     // Task #16, two-step variant: reach the picker via Change Filament (not the
-    // one-tap entry), pick a different spool, return to the overview, then tap
+    // one-tap entry), pick a different spool, return to the editor, then tap
     // header Save. Same relink semantics: no confirm, no PATCH of the old spool.
 
     SpoolInfo linked_a;
@@ -973,14 +983,14 @@ TEST_CASE_METHOD(OverlayConsumerCommitFixture,
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    access.call_handle_spool_selected(22); // stages the relink, returns to overview
+    access.call_handle_spool_selected(22); // stages the relink, returns to the editor
     UpdateQueue::instance().drain();
     process_lvgl(10);
     REQUIRE(access.view() == AmsEditOverlay::VIEW_EDITOR);
     REQUIRE_FALSE(fired); // not committed yet
     REQUIRE(access.working_info().spoolman_id == 22);
 
-    access.call_handle_save(); // header Save on the overview
+    access.call_handle_save(); // header Save on the editor
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
@@ -1097,7 +1107,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     edited.material = "PLA"; // ASA -> PLA on the SAME spool 7
     access.set_working_info(edited);
 
-    access.call_handle_save(); // header Save on the overview
+    access.call_handle_save(); // header Save on the editor
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
@@ -1385,11 +1395,63 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     client.set_mock_spoolman_enabled(false);
     helix::TextLogCapture log;
 
-    // A brand move is an edit Spoolman has to write, and it never prompts.
+    // A brand move on a linked spool changes which filament the spool points
+    // at, so it PROMPTS (Update in Spoolman / Unlink) exactly like a material
+    // move - not silently writing. The prompt owns this save; nothing is
+    // written until a button answers it.
     SlotInfo edited = access.working_info();
     edited.brand = "Sunlu";
     access.set_working_info(edited);
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK_FALSE(ModalStack::instance().stack_empty()); // the Update/Unlink prompt
+    CHECK_FALSE(log.contains("Spoolman save failed")); // no write was attempted
+    CHECK_FALSE(fired);
 
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a failed Spoolman write keeps the editor open on the staged edit",
+                 "[ams_edit_overlay][spoolman][failure]") {
+    // A weight-only edit (spool-level, no identity move) reaches the Spoolman
+    // write with no prompt - and with every request failing, nothing is
+    // written anywhere, so the editor stays on the user's edit rather than
+    // closing on a local commit they would read as saved.
+    PrinterState state;
+    MoonrakerClientMock client;
+    MoonrakerAPIMock api(client, state);
+
+    SpoolInfo linked;
+    linked.id = 7;
+    linked.filament_id = 3;
+    linked.vendor = "Bambu Lab";
+    linked.material = "ASA";
+    linked.color_hex = "8A949E";
+    client.spoolman_mock().get_mock_spools().push_back(linked);
+
+    auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
+    REQUIRE(spoolman_subj != nullptr);
+    lv_subject_set_int(spoolman_subj, 1);
+    get_printer_state().capabilities_state().set_spoolman_available(true);
+    UpdateQueue::instance().drain();
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    bool fired = false;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), &api,
+                                  [&](const AmsEditOverlay::EditResult&) { fired = true; }));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    client.set_mock_spoolman_enabled(false);
+    helix::TextLogCapture log;
+
+    SlotInfo weighed = access.working_info();
+    weighed.remaining_weight_g = 500;
+    access.set_working_info(weighed);
     access.call_handle_save();
     UpdateQueue::instance().drain();
     process_lvgl(10);
@@ -1398,14 +1460,12 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     process_lvgl(10);
 
     CHECK_FALSE(fired);
-    CHECK(access.working_info().brand == "Sunlu");
+    CHECK(access.working_info().remaining_weight_g == 500);
     CHECK(log.contains("Spoolman save failed; nothing written"));
     // Save is available again: the edit is still staged and still unsaved.
     CHECK(access.save_disabled() == 0);
 
-    NavigationManager::instance().go_back();
-    UpdateQueue::instance().drain();
-    process_lvgl(10);
+    close_editor_overlay();
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,
@@ -1601,7 +1661,7 @@ TEST_CASE("AmsEditOverlay::save_is_disabled holds Save shut while a save is in f
 // Chip-row editor (redesign): pure selection rules + row publishing
 // ============================================================================
 
-TEST_CASE("selection_from_slot splits family/variant/brand", "[ams_edit_overlay][chips]") {
+TEST_CASE("selection_from_slot splits family/variant/brand", "[ams_edit_overlay][dropdown]") {
     SlotInfo info;
     info.material = "PLA-CF";
     info.brand = "eSUN";
@@ -1630,7 +1690,7 @@ TEST_CASE("selection_from_slot splits family/variant/brand", "[ams_edit_overlay]
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "apply_family_change pins the brand/variant reset rules",
-                 "[ams_edit_overlay][chips]") {
+                 "[ams_edit_overlay][dropdown]") {
     auto catalog = helix::printer::FilamentCatalog::load_full();
 
     AmsEditOverlay::SpoolEditSelection sel;
@@ -1673,7 +1733,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "apply_family_change pins the brand/variant 
 
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "editor dropdowns publish families, variants, Generic-first brands",
-                 "[ams_edit_overlay][chips]") {
+                 "[ams_edit_overlay][dropdown]") {
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayViewTestAccess access(overlay);
 
@@ -1700,7 +1760,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "unknown material shows as its own selected family chip",
-                 "[ams_edit_overlay][chips]") {
+                 "[ams_edit_overlay][dropdown]") {
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayViewTestAccess access(overlay);
 
@@ -1760,7 +1820,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "weight pill keypad stages remaining grams",
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "Reset to tag restores identity, not just the colour",
-                 "[ams_edit_overlay][chips][tag]") {
+                 "[ams_edit_overlay][dropdown][tag]") {
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayViewTestAccess access(overlay);
 
@@ -1817,6 +1877,75 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Reset to tag restores identity, not just th
     UpdateQueue::instance().drain();
     CHECK(access.working_info().material == "PETG");
     CHECK_FALSE(access.is_dirty());
+
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a dropdown pick refreshes the temperature line",
+                 "[ams_edit_overlay][dropdown][r10]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    SlotInfo info = untracked_slot(); // PETG opens with PETG's range
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    auto* temps = lv_xml_get_subject(nullptr, "ams_edit_temp_text");
+    REQUIRE(temps != nullptr);
+    const std::string petg_range = lv_subject_get_string(temps);
+    REQUIRE(petg_range.find("PETG") == std::string::npos); // range text, not name
+    CHECK(!petg_range.empty());
+
+    // Move the family to PLA through the dropdown path; the temps line must
+    // follow the pick immediately, not only after Save.
+    AmsEditOverlay::SpoolEditSelection sel = access.sel();
+    REQUIRE(sel.family == "PETG");
+    const std::string materials = access.dropdown_options("dropdown_material");
+    int pla_index = -1;
+    int index = 0;
+    for (size_t at = 0; at <= materials.size();) {
+        const size_t nl = materials.find('\n', at);
+        const std::string option = materials.substr(at, nl == std::string::npos ? nl : nl - at);
+        if (option == "PLA") {
+            pla_index = index;
+            break;
+        }
+        if (nl == std::string::npos) {
+            break;
+        }
+        at = nl + 1;
+        ++index;
+    }
+    REQUIRE(pla_index >= 0);
+    access.call_handle_option_selected(0, pla_index);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.sel().family == "PLA");
+    CHECK(lv_subject_get_string(temps) != petg_range);
+
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a More-section edit lights Save and stages on it",
+                 "[ams_edit_overlay][more]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    SlotInfo info = untracked_slot();
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    REQUIRE_FALSE(access.is_dirty());
+
+    // A Notes-only edit is a real edit: dirty, and survives Save's staging.
+    access.set_detail_field("detail_field_comment", "keep dry");
+    UpdateQueue::instance().drain();
+    CHECK(access.is_dirty());
+
+    access.call_handle_save();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    CHECK(access.detail_comment() == "keep dry");
 
     close_editor_overlay();
 }

@@ -227,7 +227,6 @@
   <translation tag="All healthy" zh="一切正常"/>
   <translation tag="All lights" zh="全部灯光"/>
   <translation tag="All time" zh="全部时间"/>
-  <translation tag="All..." zh="全部..."/>
   <translation tag="Allow" zh="允许"/>
   <translation tag="Allow Home Screen Editing" zh="允许编辑主屏幕"/>
   <translation tag="Allow cold load/unload" zh="允许冷态加载/卸载"/>
@@ -1918,7 +1917,6 @@
   <translation tag="Moonraker: " zh="Moonraker: "/>
   <translation tag="More" zh="更多"/>
   <translation tag="More points = more accurate, but takes longer." zh="点数越多越精确，但耗时更长。"/>
-  <translation tag="More..." zh="更多..."/>
   <translation tag="Motion" zh="运动"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." zh="运动传感器卡住：耗材仍在送料器中。继续即可送入。"/>
   <translation tag="Motion timed out" zh="运动超时"/>

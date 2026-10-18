@@ -260,7 +260,6 @@
   <translation tag="All healthy" ru="Всё в порядке"/>
   <translation tag="All lights" ru="Вся подсветка"/>
   <translation tag="All time" ru="За всё время"/>
-  <translation tag="All..." ru="Все..."/>
   <translation tag="Allow" ru="Разрешить"/>
   <translation tag="Allow Home Screen Editing" ru="Разрешить редактирование главного экрана"/>
   <translation tag="Allow cold load/unload" ru="Разрешить загрузку/выгрузку без нагрева"/>
@@ -1963,7 +1962,6 @@
   <translation tag="Moonraker: " ru="Moonraker: "/>
   <translation tag="More" ru="Ещё"/>
   <translation tag="More points = more accurate, but takes longer." ru="Больше точек — точнее, но дольше."/>
-  <translation tag="More..." ru="Ещё..."/>
   <translation tag="Motion" ru="Движение"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." ru="Датчик движения застрял: филамент всё ещё в фидере. Продолжите, чтобы подать его."/>
   <translation tag="Motion timed out" ru="Время ожидания движения истекло"/>

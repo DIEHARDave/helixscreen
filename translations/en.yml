@@ -233,7 +233,6 @@ translations:
   All healthy: All healthy
   All lights: All lights
   All time: All time
-  All...: All...
   Allow: Allow
   Allow Home Screen Editing: Allow Home Screen Editing
   Allow cold load/unload: Allow cold load/unload
@@ -2056,7 +2055,6 @@ translations:
   More: More
   More points = more accurate, but takes longer.: More points = more accurate, but
     takes longer.
-  More...: More...
   Motion: Motion
   'Motion sensor stuck: filament is still at the feeder. Resume to feed it.': 'Motion sensor stuck: filament is still at the feeder. Resume to feed it.'
   Motion timed out: Motion timed out

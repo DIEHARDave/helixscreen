@@ -227,7 +227,6 @@
   <translation tag="All healthy" en="All healthy"/>
   <translation tag="All lights" en="All lights"/>
   <translation tag="All time" en="All time"/>
-  <translation tag="All..." en="All..."/>
   <translation tag="Allow" en="Allow"/>
   <translation tag="Allow Home Screen Editing" en="Allow Home Screen Editing"/>
   <translation tag="Allow cold load/unload" en="Allow cold load/unload"/>
@@ -1918,7 +1917,6 @@
   <translation tag="Moonraker: " en="Moonraker: "/>
   <translation tag="More" en="More"/>
   <translation tag="More points = more accurate, but takes longer." en="More points = more accurate, but takes longer."/>
-  <translation tag="More..." en="More..."/>
   <translation tag="Motion" en="Motion"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." en="Motion sensor stuck: filament is still at the feeder. Resume to feed it."/>
   <translation tag="Motion timed out" en="Motion timed out"/>

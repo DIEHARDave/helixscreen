@@ -15,7 +15,6 @@
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
-#include "ams_remap.h"
 #include "ams_state.h"
 #include "ams_tag_reading.h"
 #include "app_globals.h"
@@ -443,6 +442,12 @@ void AmsEditOverlay::fill_dropdown(const char* stacked_name, const char* split_n
     }
     for (const char* name : {stacked_name, split_name}) {
         if (lv_obj_t* dd = name && name[0] ? find_widget(name) : nullptr) {
+            if (chips.empty()) {
+                // No lines for this brand: an empty list, and no phantom
+                // first-item selection.
+                lv_dropdown_set_options(dd, "");
+                continue;
+            }
             lv_dropdown_set_options(dd, options.c_str());
             lv_dropdown_set_selected(dd, selected < 0 ? 0 : selected);
         }
@@ -581,8 +586,16 @@ void AmsEditOverlay::handle_option_selected(int row, int index) {
         catalog_sheet_->show(
             lv_screen_active(), sel_.family, [](const helix::printer::EffectiveFilament& ef) {
                 auto& editor = get_ams_edit_overlay();
-                editor.sel_.family = filament::display_family(ef.type);
-                editor.sel_.variant = filament::variant_label(ef.type, editor.sel_.family);
+                const std::string family = filament::display_family(ef.type);
+                const std::string variant = filament::variant_label(ef.type, family);
+                // Re-picking what is already selected is a no-op, like the
+                // dropdowns.
+                if (family == editor.sel_.family && variant == editor.sel_.variant &&
+                    ef.brand == editor.sel_.brand && ef.id == editor.sel_.product_id) {
+                    return;
+                }
+                editor.sel_.family = family;
+                editor.sel_.variant = variant;
                 editor.sel_.brand = ef.brand;
                 editor.sel_.product_id = ef.id;
                 editor.selection_moved_ = true;
@@ -625,6 +638,7 @@ void AmsEditOverlay::handle_option_selected(int row, int index) {
     selection_moved_ = true;
     rebuild_chip_rows();
     update_summary();
+    update_temp_display();
     update_sync_button_state();
 }
 
@@ -1122,13 +1136,20 @@ bool AmsEditOverlay::selection_dirty() const {
 bool AmsEditOverlay::is_dirty() const {
     // The same field set the old editor compared, minus the tool mapping
     // (Assigned Tool moved to the context menu).
-    return working_info_.color_rgb != original_info_.color_rgb ||
-           working_info_.material != original_info_.material ||
-           working_info_.brand != original_info_.brand ||
-           working_info_.spoolman_id != original_info_.spoolman_id ||
-           std::abs(working_info_.remaining_weight_g - original_info_.remaining_weight_g) > 0.1f ||
-           std::abs(working_info_.total_weight_g - original_info_.total_weight_g) > 0.1f ||
-           selection_dirty();
+    const bool identity_dirty = working_info_.color_rgb != original_info_.color_rgb ||
+                                working_info_.material != original_info_.material ||
+                                working_info_.brand != original_info_.brand ||
+                                working_info_.spoolman_id != original_info_.spoolman_id;
+    const bool weight_dirty =
+        std::abs(working_info_.remaining_weight_g - original_info_.remaining_weight_g) > 0.1f ||
+        std::abs(working_info_.total_weight_g - original_info_.total_weight_g) > 0.1f;
+    // The More-section fields ride the same save (build_spool_patches), so an
+    // edit there alone must light Save and prompt on Back.
+    const bool details_dirty = detail_working_.price != detail_original_.price ||
+                               detail_working_.location != detail_original_.location ||
+                               detail_working_.lot_nr != detail_original_.lot_nr ||
+                               detail_working_.comment != detail_original_.comment;
+    return identity_dirty || weight_dirty || details_dirty || selection_dirty();
 }
 
 void AmsEditOverlay::update_sync_button_state() {
@@ -1503,6 +1524,12 @@ void AmsEditOverlay::fire_completion(bool saved) {
 }
 
 void AmsEditOverlay::close_editor(bool saved) {
+    // Guarded like fire_completion: a second close (prompt double-tap, close
+    // callback racing the Save path) must not pop whatever screen opened
+    // after us.
+    if (completion_fired_) {
+        return;
+    }
     fire_completion(saved);
     helix::nav::go_back();
 }
@@ -1589,6 +1616,11 @@ void AmsEditOverlay::handle_add_to_spoolman() {
 }
 
 void AmsEditOverlay::handle_save() {
+    // The editor stays open while an async Spoolman save runs; a second Save
+    // from the prompt or the header would start a second find-or-create.
+    if (save_in_flight_) {
+        return;
+    }
     if (lv_subject_get_int(&view_mode_subject_) == VIEW_COLOR) {
         apply_color(custom_color_); // Select on the colour view stages + returns
         return;
@@ -1608,6 +1640,65 @@ void AmsEditOverlay::handle_save() {
         working_info_.color_rgb = details_color_;
         working_info_.color_name = helix::get_color_name_from_hex(details_color_);
         working_info_.multi_color_hexes.clear();
+    }
+
+    // The More section's Spoolman-owned fields (price/location/lot/notes):
+    // PATCH the spool record's diff before committing, the way the identity
+    // outcomes write theirs. Withheld when the identity prompt is about to
+    // own this save - Cancel must still be a true abort.
+    if (working_info_.spoolman_id > 0 && api_ &&
+        may_write_spoolman_now(original_info_, working_info_)) {
+        nlohmann::json spool_patch;
+        nlohmann::json filament_patch;
+        SpoolmanSlotSaver::build_spool_patches(detail_original_, detail_working_, spool_patch,
+                                               filament_patch);
+        if (!spool_patch.empty() || !filament_patch.empty()) {
+            const int spool_id = detail_working_.id;
+            const int filament_id = detail_working_.filament_id;
+            save_in_flight_ = true;
+            update_sync_button_state();
+            auto token = lifetime_.token();
+            auto on_saved = [this, token]() {
+                token.defer("AmsEditOverlay::logistics_saved", [this]() {
+                    save_in_flight_ = false;
+                    detail_original_ = detail_working_;
+                    update_sync_button_state();
+                    commit_and_close();
+                });
+            };
+            auto on_error = [this, token, spool_id](const MoonrakerError& err) {
+                spdlog::error("[AmsEditOverlay] Logistics PATCH for spool {} failed: {}", spool_id,
+                              err.message);
+                token.defer("AmsEditOverlay::logistics_error", [this]() {
+                    save_in_flight_ = false;
+                    ToastManager::instance().show(ToastSeverity::ERROR,
+                                                  lv_tr("Failed to save spool"), 3000);
+                    update_sync_button_state();
+                });
+            };
+            if (!spool_patch.empty()) {
+                api_->spoolman().update_spoolman_spool(
+                    spool_id, spool_patch,
+                    [this, token, filament_id, filament_patch, on_saved, on_error]() {
+                        token.defer("AmsEditOverlay::after_logistics_spool_patch",
+                                    [this, filament_id, filament_patch, on_saved, on_error]() {
+                                        if (!filament_patch.empty() && filament_id > 0) {
+                                            api_->spoolman().update_spoolman_filament(
+                                                filament_id, filament_patch, on_saved, on_error);
+                                        } else {
+                                            on_saved();
+                                        }
+                                    });
+                    },
+                    on_error);
+                return; // commit continues from the callback
+            }
+            if (!filament_patch.empty() && filament_id > 0) {
+                api_->spoolman().update_spoolman_filament(filament_id, filament_patch, on_saved,
+                                                          on_error);
+                return;
+            }
+        }
     }
 
     commit_and_close();
@@ -1727,7 +1818,12 @@ void AmsEditOverlay::do_spoolman_save(helix::SpoolmanSlotSaver::LinkIntent inten
                     repointed.filament_name = working_info_.spool_name;
                     repointed.color_hex = helix::color_to_hex_string(working_info_.color_rgb);
                     if (auto* owner = AmsState::instance().get_backend()) {
+#if !defined(HELIX_PLATFORM_ESP32)
+                        // spoolman_manager.cpp is scoped out of the ESP32
+                        // image; the repointed record there re-reads on the
+                        // next poll instead.
                         SpoolmanManager::apply_fetched_spool(*owner, 0, slot_index_, repointed);
+#endif
                     }
                 }
                 if (result.created_new_spool || result.repointed_filament) {
@@ -1763,6 +1859,12 @@ bool AmsEditOverlay::may_write_spoolman_now(const SlotInfo& original, const Slot
 
 bool AmsEditOverlay::is_material_identity_change(const SlotInfo& original, const SlotInfo& edited) {
     if (!helix::FilamentMapper::materials_match(original.material, edited.material)) {
+        return true;
+    }
+    // A brand-only move changes which filament the spool should point at,
+    // exactly like a material move; Spoolman's detect_changes includes it.
+
+    if (!iequals_str(original.brand, edited.brand)) {
         return true;
     }
     return !helix::FilamentMapper::colors_match(original.color_rgb, edited.color_rgb);

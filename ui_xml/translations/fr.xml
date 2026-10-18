@@ -227,7 +227,6 @@
   <translation tag="All healthy" fr="Tout va bien"/>
   <translation tag="All lights" fr="Toutes les lumières"/>
   <translation tag="All time" fr="Depuis toujours"/>
-  <translation tag="All..." fr="Tout..."/>
   <translation tag="Allow" fr="Autoriser"/>
   <translation tag="Allow Home Screen Editing" fr="Autoriser la modification de l&apos;écran d&apos;accueil"/>
   <translation tag="Allow cold load/unload" fr="Autoriser le chargement/déchargement à froid"/>
@@ -1918,7 +1917,6 @@
   <translation tag="Moonraker: " fr="Moonraker : "/>
   <translation tag="More" fr="Plus"/>
   <translation tag="More points = more accurate, but takes longer." fr="Plus de points = plus précis, mais prend plus de temps."/>
-  <translation tag="More..." fr="Plus..."/>
   <translation tag="Motion" fr="Mouvement"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." fr="Capteur de mouvement bloqué : le filament est toujours dans l&apos;alimentateur. Reprenez pour l&apos;alimenter."/>
   <translation tag="Motion timed out" fr="Délai de mouvement dépassé"/>

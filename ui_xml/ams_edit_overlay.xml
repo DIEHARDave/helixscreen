@@ -10,7 +10,6 @@
      exclusively by AmsEditOverlay::set_view()/update_ui(). -->
 <component>
   <consts>
-    <px name="left_column_width" value="120"/>
     <!-- Spool-picker list max height: caps the scroll viewport so the picker
          stays inside the overlay. Tuned to show ~5 rows at each breakpoint. -->
     <px name="spool_list_max_height_micro" value="130"/>
@@ -325,9 +324,13 @@
              The four logistics fields inside are Spoolman-owned on a linked
              slot, so the section only opens there. -->
         <lv_obj name="more_row"
-                width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_hor="#space_sm"
-                style_pad_ver="#ams_edit_more_pad" style_pad_gap="#space_sm" style_radius="#border_radius"
-                style_bg_opa="0" style_border_width="0" scrollable="false" clickable="true">
+                width="100%" height="content" flex_flow="row" style_flex_cross_place="center" hidden="true"
+                style_pad_hor="#space_sm" style_pad_ver="#ams_edit_more_pad" style_pad_gap="#space_sm"
+                style_radius="#border_radius" style_bg_opa="0" style_border_width="0" scrollable="false"
+                clickable="true">
+          <!-- The four fields inside are Spoolman-owned, so the toggle itself
+               only exists on a linked slot. -->
+          <bind_flag_if_eq subject="ams_edit_is_managed" flag="hidden" ref_value="0"/>
           <style name="styles.press_wash" selector="pressed"/>
           <event_cb trigger="clicked" callback="ams_edit_more_toggle_cb"/>
           <icon name="more_chevron" src="chevron_down" size="sm" variant="muted" clickable="false" event_bubble="true"/>

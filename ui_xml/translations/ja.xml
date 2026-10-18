@@ -227,7 +227,6 @@
   <translation tag="All healthy" ja="すべて正常"/>
   <translation tag="All lights" ja="すべてのライト"/>
   <translation tag="All time" ja="全期間"/>
-  <translation tag="All..." ja="すべて..."/>
   <translation tag="Allow" ja="許可"/>
   <translation tag="Allow Home Screen Editing" ja="ホーム画面の編集を許可"/>
   <translation tag="Allow cold load/unload" ja="コールド時の装填/取り出しを許可"/>
@@ -1918,7 +1917,6 @@
   <translation tag="Moonraker: " ja="Moonraker: "/>
   <translation tag="More" ja="その他"/>
   <translation tag="More points = more accurate, but takes longer." ja="ポイント数が多いほど精度が上がりますが、時間がかかります。"/>
-  <translation tag="More..." ja="その他..."/>
   <translation tag="Motion" ja="動作"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." ja="モーションセンサーが固着: フィラメントはまだフィーダーにあります。再開すると送り込みます。"/>
   <translation tag="Motion timed out" ja="動作がタイムアウトしました"/>
