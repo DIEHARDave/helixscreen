@@ -1500,10 +1500,13 @@ void BeltTensionPanel::handle_tune_confirm_clicked() {
         return;
     }
     const auto& t = *tune_;
+    // A zone that matched at its baseline took no tuning round: no count to report.
     const int rounds = t.total_rounds();
-    std::string summary = fmt::format(
-        fmt::runtime(rounds == 1 ? lv_tr(" · Tuned in {} round") : lv_tr(" · Tuned in {} rounds")),
-        rounds);
+    std::string summary =
+        rounds == 0 ? std::string()
+                    : fmt::format(fmt::runtime(rounds == 1 ? lv_tr(" · Tuned in {} round")
+                                                           : lv_tr(" · Tuned in {} rounds")),
+                                  rounds);
     if (t.tensioner() == helix::calibration::BeltTensionerKind::SCREW) {
         for (const auto path : {BeltPath::PATH_A, BeltPath::PATH_B}) {
             const float turns = t.total_turns(path);
@@ -2102,7 +2105,11 @@ void BeltTensionPanel::query_hw_facts() {
     helix::calibration::query_resonance_tester_config(
         *client_, lifetime_.bg_cb("BeltTension::resonance_cfg",
                                   [this](helix::calibration::ResonanceTesterConfig cfg) {
-                                      set_sweep_config(cfg);
+                                      // A failed query answers with defaults, which
+                                      // never replace a range the printer reported.
+                                      if (cfg.from_printer || !sweep_cfg_.from_printer) {
+                                          set_sweep_config(cfg);
+                                      }
                                       hw_sweep_known_ = true;
                                       push_chart_data();
                                       refresh_hw_sweep();

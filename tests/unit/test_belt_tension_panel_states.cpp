@@ -235,6 +235,10 @@ class BeltPanelFixture : public XMLTestFixture {
     size_t measure_label_buf_size() const {
         return sizeof(panel_->tune_measure_label_buf_);
     }
+    /// Re-asks the printer's [resonance_tester] range, as an activation does.
+    void panel_query_hw_facts() {
+        panel_->query_hw_facts();
+    }
     /// Hands the panel a [resonance_tester] answer, as its queries do.
     void panel_set_sweep_config(const helix::calibration::ResonanceTesterConfig& cfg) {
         panel_->set_sweep_config(cfg);
@@ -1152,6 +1156,29 @@ TEST_CASE("Tune Belts waits for the printer's sweep range", "[belt][panel][tune]
     CHECK(fx.mock().gcode_script_history().empty());
 }
 
+TEST_CASE("a failed range query keeps the range the printer reported", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    fx.mock().set_resonance_sweep_range(10.0, 120.0);
+    fx.panel_query_hw_facts();
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.state_int("bt_tune_range_known") == 1);
+    const std::string sweep = fx.text("bt_hw_sweep");
+    INFO("sweep: " << sweep);
+    REQUIRE(sweep.rfind("10-120 Hz", 0) == 0);
+
+    // The query fails: its answer is Klipper's defaults, which say nothing new.
+    fx.mock().fail_next("printer.objects.query");
+    fx.panel_query_hw_facts();
+    fx.pump_ms(500);
+    CHECK(fx.state_int("bt_tune_range_known") == 1);
+    CHECK(fx.text("bt_hw_sweep") == sweep);
+    CHECK_FALSE(lv_obj_has_state(named(fx, "btn_tune"), LV_STATE_DISABLED));
+    fx.panel().handle_tune_clicked();
+    CHECK(fx.state_int("belt_tension_state") == TUNING);
+}
+
 TEST_CASE("a calibration turn that doesn't register asks for another", "[belt][panel][tune]") {
     BeltPanelFixture fx;
     get_printer_state().set_printer_type_sync("Voron 2.4");
@@ -1550,6 +1577,24 @@ void rebuild_drops_late_callbacks(BeltPanelFixture& fx) {
 }
 
 } // namespace
+
+TEST_CASE("a zone matched at its baseline reports no round count", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    // The calibration sweep finds B at A's peak: its baseline matches.
+    fx.mock().set_belt_tune_script('B', {110.0f});
+    enter_tuning(fx);
+    tune_round(fx);
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    REQUIRE(fx.panel_session()->total_rounds() == 0);
+
+    fx.panel().handle_tune_confirm_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    INFO("facts: " << fx.text("bt_facts"));
+    CHECK(fx.text("bt_facts").find("Tuned in") == std::string::npos);
+    // The calibration turn is still reported.
+    CHECK(fx.text("bt_facts").find(" · B tightened about 1 turn") != std::string::npos);
+}
 
 TEST_CASE("Stop during a tuning sweep lands on START", "[belt][panel][tune]") {
     BeltPanelFixture fx;

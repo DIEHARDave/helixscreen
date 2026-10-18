@@ -478,7 +478,8 @@ candidate for SPRING). It sweeps the next zone's baseline pair at once, with lap
 earlier zone's turns moved it; its label shows that duration (`peek_next_zone`). **Confirm**
 runs a full two-path CHECK with the pre-tuning curves ghosted, and the facts line carries
 " · Tuned in N rounds" (tuning rounds only; baseline rounds and calibration sweeps are not
-counted, and neither are they in "Round N") plus, on SCREW printers, each path's net
+counted, and neither are they in "Round N"; a zone that matched at its baseline reports no
+count) plus, on SCREW printers, each path's net
 turns in quarters, calibration turns included (`total_turns`).
 
 Every sweep re-checks the Start gate (`gate_allows_sweep`): Measure, Re-measure, Next Zone,
