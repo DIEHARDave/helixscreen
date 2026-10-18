@@ -1854,6 +1854,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Он зажат между датчиком хаба и его шестернёй. Откройте CFS, освободите хаб и повторите
   It starts with your {} macro.: Начинается с вашего макроса {}.
   It's a new spool: Это новая катушка
+  Jammed: Замятие
   Jammed at the Toolhead: Замятие в печатающей головке
   Job Queue: Очередь заданий
   Job queue not enabled in Moonraker: 'Очередь заданий не включена в Moonraker'

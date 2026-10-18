@@ -1827,6 +1827,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Il est coincé entre le capteur du hub et son engrenage. Ouvrez le CFS et dégagez le hub avant de réessayer
   It starts with your {} macro.: Elle démarre avec votre macro {}.
   It's a new spool: C'est une nouvelle bobine
+  Jammed: Bourrage
   Jammed at the Toolhead: Bourrage à la tête d'outil
   Job Queue: File d'impression
   Job queue not enabled in Moonraker: 'File d''impression non activée dans Moonraker'

@@ -1762,6 +1762,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying
   It starts with your {} macro.: It starts with your {} macro.
   It's a new spool: It's a new spool
+  Jammed: Jammed
   Jammed at the Toolhead: Jammed at the Toolhead
   Job Queue: Job Queue
   Job queue not enabled in Moonraker: Job queue not enabled in Moonraker

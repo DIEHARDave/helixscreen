@@ -1643,6 +1643,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" de="Es klemmt zwischen Hub-Sensor und Hub-Antriebsrad. CFS öffnen, den Hub frei machen und erneut versuchen"/>
   <translation tag="It starts with your {} macro." de="Er startet mit deinem Makro {}."/>
   <translation tag="It&apos;s a new spool" de="Es ist eine neue Spule"/>
+  <translation tag="Jammed" de="Stau"/>
   <translation tag="Jammed at the Toolhead" de="Stau am Werkzeugkopf"/>
   <translation tag="Job Queue" de="Auftragswarteschlange"/>
   <translation tag="Job queue not enabled in Moonraker" de="Auftragswarteschlange in Moonraker nicht aktiviert"/>

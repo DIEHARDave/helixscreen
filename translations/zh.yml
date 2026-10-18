@@ -1699,6 +1699,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: 它卡在集线器传感器与集线器齿轮之间。请打开 CFS 清理集线器后重试
   It starts with your {} macro.: 使用你的{}宏开始。
   It's a new spool: 这是新料盘
+  Jammed: 堵塞
   Jammed at the Toolhead: 工具头处堵塞
   Job Queue: 任务队列
   Job queue not enabled in Moonraker: 'Moonraker 未启用任务队列'
