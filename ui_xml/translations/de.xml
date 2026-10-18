@@ -1251,7 +1251,6 @@
   <translation tag="Failed to update moonraker.conf." de="moonraker.conf konnte nicht aktualisiert werden."/>
   <translation tag="Failed to update moonraker.conf.&#10;Check printer connection." de="moonraker.conf konnte nicht aktualisiert werden.&#10;Druckerverbindung prüfen."/>
   <translation tag="Failed to upload modified G-code: {}" de="Geänderten G-Code hochladen fehlgeschlagen: {}"/>
-  <translation tag="Failed to upload remapped G-code: {}" de="Neu zugeordneter G-code konnte nicht hochgeladen werden: {}"/>
   <translation tag="Failed to upload the extracted G-code: {}" de="Extrahierter G-code konnte nicht hochgeladen werden: {}"/>
   <translation tag="Failed to upload the rewritten G-code: {}" de="Umgeschriebener G-code konnte nicht hochgeladen werden: {}"/>
   <translation tag="Fair match" de="Mäßige Passung"/>

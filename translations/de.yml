@@ -1389,8 +1389,6 @@ translations:
   : "moonraker.conf konnte nicht aktualisiert werden.\nDruckerverbindung prüfen."
   'Failed to upload modified G-code: {}': 'Geänderten G-Code hochladen fehlgeschlagen:
     {}'
-  'Failed to upload remapped G-code: {}': 'Neu zugeordneter G-code konnte nicht hochgeladen
-    werden: {}'
   Fair match: "Mäßige Passung"
   'Failed to upload the extracted G-code: {}': 'Extrahierter G-code konnte nicht hochgeladen werden: {}'
   'Failed to upload the rewritten G-code: {}': 'Umgeschriebener G-code konnte nicht hochgeladen werden: {}'

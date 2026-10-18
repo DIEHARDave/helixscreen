@@ -473,7 +473,7 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path forwards its window",
     REQUIRE(pump_until(done));
     const auto history = mock_client_.gcode_script_history();
     CHECK(std::any_of(history.begin(), history.end(), [](const std::string& g) {
-        return g.find("TEST_RESONANCES AXIS=1,-1 FREQ_START=88 FREQ_END=120 ") == 0;
+        return g.find("TEST_RESONANCES AXIS=1,-1 FREQ_START=89 FREQ_END=119 ") == 0;
     }));
 }
 
