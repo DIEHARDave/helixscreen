@@ -105,6 +105,8 @@ bool is_filled_grade(std::string_view name);
  * Thin wrapper over extract_base_material() that guarantees a non-empty result:
  * a type we cannot reduce becomes its own family (a heading with one entry),
  * which keeps unknown//user-overlay types visible instead of silently dropped.
+ * A recycled grade files under its polymer ("rPLA" is PLA, variant Recycled),
+ * although extract_base_material() keeps it a material of its own.
  */
 std::string display_family(std::string_view type);
 
