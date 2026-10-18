@@ -23,7 +23,6 @@ namespace {
 
 const char kCanvasStateKey = 0;
 const char kCanvasMeta[] = "helix.canvas";
-constexpr size_t kMaxCanvases = 8;
 constexpr int32_t kMaxStroke = 64;
 constexpr int32_t kMaxOpaPercent = 100; // opa is authored 0-100; stored as 0-255
 constexpr size_t kMaxTextBytes = 256;
@@ -36,6 +35,7 @@ constexpr size_t kRaiseRoom = 4096;
 
 struct CanvasEntry {
     std::string full;
+    size_t name_charge = 0; ///< the entry and its name, held until unload
     DisplayList pending;
     size_t pending_charge = 0;
     size_t committed_charge = 0;
@@ -287,6 +287,15 @@ void plan_tokens(DisplayList& pending, const char* color, const char* border, co
     }
 }
 
+// Charges `bytes` of canvas data to the plugin's memory budget, or raises with
+// nothing charged.
+void charge(lua_State* L, size_t bytes) {
+    LuaRuntime& rt = context(L).rt;
+    const size_t room = memory_remaining(rt);
+    if (room < kRaiseRoom || bytes > room - kRaiseRoom || !rt.reserve_external(bytes))
+        luaL_error(L, "helix.canvas: plugin memory budget exceeded");
+}
+
 // Appends a fully validated primitive, charging the cap for the exact bytes
 // DisplayList::bytes() will grow by. Every raise happens before the charge, so
 // a refused call adds nothing.
@@ -307,11 +316,7 @@ void add_staged(lua_State* L, CanvasEntry* e, Staged& st, size_t units) {
     if (e->pending_charge == 0)
         growth += sizeof(DisplayList); // the list's own footprint starts charging here
 
-    LuaRuntime& rt = context(L).rt;
-    const size_t room = memory_remaining(rt);
-    if (room < kRaiseRoom || growth > room - kRaiseRoom)
-        luaL_error(L, "helix.canvas: list would exceed the plugin memory cap");
-    rt.reserve_external(growth);
+    charge(L, growth);
 
     for (const std::string& tok : st.fresh_tokens)
         e->pending.tokens.push_back(tok);
@@ -601,12 +606,14 @@ int canvas_new(lua_State* L) {
             break;
         }
     if (index == s->canvases.size()) {
-        if (s->canvases.size() >= kMaxCanvases)
-            return luaL_error(L, "helix.canvas: at most %d canvases per plugin",
-                              static_cast<int>(kMaxCanvases));
+        // No count cap: each canvas's entry and name count against the plugin's
+        // memory budget, as its lists do.
+        const size_t name_charge = sizeof(CanvasEntry) + full.size();
+        charge(L, name_charge);
         s->canvases.push_back(std::make_unique<CanvasEntry>());
         index = s->canvases.size() - 1;
         s->canvases[index]->full = full;
+        s->canvases[index]->name_charge = name_charge;
         canvas_set_size_listener(full, [s, full](int32_t, int32_t) {
             // Never enters Lua from the size event: coalesce, defer, deliver.
             if (CanvasEntry* cur = entry_of(s, full); cur && cur->size_ref != LUA_NOREF)
@@ -632,6 +639,7 @@ void install_canvas_bindings(PluginContext& ctx) {
         for (const auto& e : state->canvases) {
             canvas_set_size_listener(e->full, {});
             canvas_commit(e->full, nullptr); // an unloaded plugin's canvases go blank
+            state->rt->release_external(e->name_charge + e->pending_charge + e->committed_charge);
         }
         delete state;
     });

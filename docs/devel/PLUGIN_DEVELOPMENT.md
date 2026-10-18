@@ -504,7 +504,8 @@ after `<id>__` (like a subject name) and must match a `plugin_canvas` element's 
 the plugin's XML (§7). One canvas name is one drawing: every live `plugin_canvas` with
 that name shows the same committed list, so give a tile canvas and an overlay canvas
 different names. Calling `helix.canvas("x")` again returns a handle onto the same canvas.
-A plugin holds at most 8 canvases; an empty name is an error.
+There is no fixed number of canvases: each one, its name and its lists count against the
+plugin's `memory_mb` together with its Lua heap. An empty name is an error.
 
 Drawing is staged, then published:
 
@@ -521,10 +522,11 @@ Drawing is staged, then published:
 - Every options table accepts only the keys listed for its call; an unknown key is an
   error. Omitted options use the defaults in the table.
 - Each staged primitive charges the plugin's memory cap for the exact bytes it adds
-  (`include/plugin_canvas.h#DisplayList/bytes`). A call that would cross the cap raises
-  "list would exceed the plugin memory cap" and adds nothing. `commit()` moves the charge
-  onto the published list and releases the bytes of the list it replaces; `clear()`
-  releases the pending charge.
+  (`include/plugin_canvas.h#DisplayList/bytes`), and a new canvas charges its entry and
+  name. A call that would cross the cap raises "helix.canvas: plugin memory budget
+  exceeded" and adds nothing; the plugin stays loaded. `commit()` moves the charge onto
+  the published list and releases the bytes of the list it replaces (an empty commit
+  releases it all); `clear()` releases the pending charge; unload releases everything.
 
 | Call | Options | Defaults |
 |---|---|---|
@@ -727,7 +729,7 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Memory, all plugins | min(RAM / 16, 64 MB); a plugin that does not fit stays *over memory budget* | `src/plugin/plugin_host.cpp#plugin_memory_budget` |
 | Errors | the third within 60 s faults the plugin | `src/plugin/lua_runtime.cpp#report_error` |
 | Async results | a body that would cross the memory cap arrives as an error, not a fault | `include/lua_bindings.h#push_rpc_capped_body` |
-| Canvases per plugin | 8 | `src/plugin/lua_bind_canvas.cpp` |
+| Canvases per plugin | no fixed number: each canvas's entry, name and lists count against `memory_mb` with the Lua heap | `src/plugin/lua_bind_canvas.cpp#charge` |
 | Canvas list units | 4096 per list; a polyline counts each point, its area fill none | `include/plugin_canvas.h#kMaxCanvasUnits` |
 | Canvas tokens | 32 distinct color and font tokens per list | `include/plugin_canvas.h#kMaxCanvasTokens` |
 | Canvas coordinates | finite, within +-16384; stroke and border widths 0 to 64 | `include/plugin_canvas.h#kMaxCanvasCoord` |
@@ -736,7 +738,7 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Measured text | at most 1024 bytes per `helix.ui.text_width` string | `src/plugin/lua_bind_ui.cpp` |
 | Dialogs | one `helix.ui.dialog` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxDialogs` |
 | Confirms | one `helix.ui.confirm` shown or waiting per plugin | `src/plugin/lua_bind_ui.cpp#kMaxOpenConfirms` |
-| Canvas list bytes | charged against the plugin memory cap as staged | `include/plugin_canvas.h#DisplayList/bytes` |
+| Canvas list bytes | charged against the plugin memory cap as staged; a call that would cross it raises, never faults | `include/plugin_canvas.h#DisplayList/bytes` |
 | Home tiles | at most 32 `widgets` per plugin | `include/plugin_manifest.h#kMaxWidgetsPerPlugin` |
 | Menu items | at most 4 per menu per plugin, 16 per manifest; a label is one line of at most 48 bytes | `include/plugin_manifest.h#kMaxMenuItemsPerMenu` |
 | Plugin rows per menu | across every plugin, per opening: print details 8, filament slot 5, spool 6, a tile 4; rows past it are left out in load order | `src/plugin/plugin_menu.cpp#row_cap` |
