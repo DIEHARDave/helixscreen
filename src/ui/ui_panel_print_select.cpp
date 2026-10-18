@@ -3650,9 +3650,9 @@ void PrintSelectPanel::apply_remap(const std::vector<helix::ToolMapping>& update
     }
 
     case AmsBackend::RemapStrategy::PrePrintSend: {
-        // Snapmaker U1: log each non-identity choice for on-device confirmation,
+        // Log each non-identity choice for on-device confirmation,
         // then push the full vector into the shared card store. The backend send
-        // (SET_PRINT_EXTRUDER_MAP via build_preprint_gcode) happens at print-start
+        // (build_preprint_gcode) happens at print-start
         // through PrintStartController, which reads get_effective_remap() — that
         // identity-filters, so only changed tools emit a line.
         // The same routing get_effective_remap()'s identity filter asks, so this
@@ -3662,8 +3662,8 @@ void PrintSelectPanel::apply_remap(const std::vector<helix::ToolMapping>& update
         for (const auto& m : updated) {
             if (m.tool_index >= 0 && m.mapped_slot >= 0 &&
                 m.mapped_slot != routing.head(m.tool_index)) {
-                spdlog::debug("[{}] U1 remap applied: tool {} -> head {}", get_name(), m.tool_index,
-                              m.mapped_slot);
+                spdlog::debug("[{}] pre-print remap applied: tool {} -> slot {}", get_name(),
+                              m.tool_index, m.mapped_slot);
             }
         }
         if (detail_view_) {
