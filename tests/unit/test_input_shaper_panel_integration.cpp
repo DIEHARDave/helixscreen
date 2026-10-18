@@ -704,9 +704,26 @@ TEST_CASE_METHOD(InputShaperPreviewFixture, "the measuring view draws the live s
 TEST_CASE_METHOD(InputShaperPreviewFixture, "Calibrate All gives Y a fresh live sweep",
                  "[input_shaper][panel][preview]") {
     panel_->handle_calibrate_all_clicked();
-    REQUIRE(run_until([&] { return log_.created == 2; }));
-    REQUIRE(run_until([&] { return subject_int("is_measuring_has_chart") == 1; }));
+    // Once a curve is up, the chart never goes blank while measuring: X's CSV
+    // curve holds it between X's result and Y's first points.
+    bool shown = false;
+    bool blanked = false;
+    auto watch = [&] {
+        const int has = subject_int("is_measuring_has_chart");
+        shown = shown || has == 1;
+        blanked = blanked || (shown && has == 0 && panel_state() == 1);
+    };
+    REQUIRE(run_until([&] {
+        watch();
+        return log_.created == 2;
+    }));
+    CHECK(subject_int("is_measuring_has_chart") == 1);
+    REQUIRE(run_until([&] {
+        watch();
+        return !chart().preview().points().empty();
+    }));
     CHECK(chart_shows(SweepColumn::Y));
+    CHECK_FALSE(blanked);
     REQUIRE(run_until([&] { return panel_state() == 2; }));
     CHECK(log_.created == 2);
     CHECK(log_.stopped == 2);

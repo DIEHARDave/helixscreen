@@ -496,6 +496,9 @@ void InputShaperPanel::cleanup() {
 
     // Destroy chart widgets
     sweep_chart_.destroy();
+    if (subjects_initialized_) {
+        lv_subject_set_int(&is_measuring_has_chart_, 0);
+    }
     if (x_chart_.chart) {
         ui_frequency_response_chart_destroy(x_chart_.chart);
         x_chart_.chart = nullptr;
@@ -517,6 +520,9 @@ void InputShaperPanel::cleanup() {
 void InputShaperPanel::on_ui_destroyed() {
     // Destroy chart widgets (native C structs, not LVGL children)
     sweep_chart_.destroy();
+    if (subjects_initialized_) {
+        lv_subject_set_int(&is_measuring_has_chart_, 0);
+    }
     if (x_chart_.chart) {
         ui_frequency_response_chart_destroy(x_chart_.chart);
         x_chart_.chart = nullptr;
@@ -861,7 +867,7 @@ void InputShaperPanel::begin_axis_preview(char axis) {
 }
 
 void InputShaperPanel::stop_preview() {
-    sweep_chart_.stop();
+    sweep_chart_.clear();
     lv_subject_set_int(&is_measuring_has_chart_, 0);
 }
 
@@ -1124,7 +1130,12 @@ void InputShaperPanel::on_calibration_result(const InputShaperResult& result) {
 
     spdlog::info("[InputShaper] Calibration complete: {} @ {:.1f} Hz (vib: {:.1f}%)",
                  result.shaper_type, result.shaper_freq, result.vibrations);
-    stop_preview();
+    if (calibrate_all_mode_ && result.axis == 'X') {
+        // X's CSV curve holds the chart until Y's first preview points replace it.
+        sweep_chart_.show_curve(result.freq_response);
+    } else {
+        stop_preview();
+    }
 
     // Surface a non-blocking warning when the recommendation succeeded but the
     // frequency-response chart data couldn't be read (e.g. Klipper's /tmp CSV

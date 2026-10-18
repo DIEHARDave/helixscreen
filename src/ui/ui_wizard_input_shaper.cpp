@@ -498,7 +498,6 @@ void WizardInputShaperStep::cleanup() {
     lv_subject_set_int(&calibration_indeterminate_, 0);
 
     // The chart lives in the screen the wizard framework is about to delete.
-    pending_axis_ = 0;
     sweep_chart_.destroy();
     if (subjects_initialized_) {
         lv_subject_set_int(&has_chart_, 0);
@@ -596,23 +595,18 @@ void WizardInputShaperStep::query_preview_facts() {
 }
 
 void WizardInputShaperStep::begin_axis_preview(char axis) {
-    pending_axis_ = axis;
+    lv_obj_t* host = screen_root_
+                         ? lv_obj_find_by_name(screen_root_, "wizard_input_shaper_chart_host")
+                         : nullptr;
+    const auto target = helix::calibration::live_sweep_target(
+        preview_facts_,
+        axis == 'X' ? helix::calibration::SweepAxis::X : helix::calibration::SweepAxis::Y);
+    if (!sweep_chart_.begin(host, axis, target)) {
+        spdlog::debug("[{}] No live chart for axis {}", get_name(), axis);
+    }
 }
 
 void WizardInputShaperStep::on_axis_progress(ShaperCalibrationPhase phase, float freq_hz) {
-    if (pending_axis_ != 0 && phase == ShaperCalibrationPhase::Sweeping && freq_hz > 0.0f) {
-        const char axis = pending_axis_;
-        pending_axis_ = 0;
-        lv_obj_t* host = screen_root_
-                             ? lv_obj_find_by_name(screen_root_, "wizard_input_shaper_chart_host")
-                             : nullptr;
-        const auto target = helix::calibration::live_sweep_target(
-            preview_facts_,
-            axis == 'X' ? helix::calibration::SweepAxis::X : helix::calibration::SweepAxis::Y);
-        if (!sweep_chart_.begin(host, axis, target)) {
-            spdlog::debug("[{}] No live chart for axis {}", get_name(), axis);
-        }
-    }
     sweep_chart_.on_progress(phase, freq_hz);
 }
 
@@ -621,8 +615,7 @@ void WizardInputShaperStep::on_axis_result(const InputShaperResult& result) {
 }
 
 void WizardInputShaperStep::stop_preview() {
-    pending_axis_ = 0;
-    sweep_chart_.stop();
+    sweep_chart_.clear();
     if (subjects_initialized_) {
         lv_subject_set_int(&has_chart_, 0);
     }

@@ -213,26 +213,37 @@ TEST_CASE_METHOD(ShaperSweepChartFixture, "ShaperSweepChart swaps the preview fo
     CHECK(amps() == std::vector<float>{1.0f, 4.0f});
 }
 
-TEST_CASE_METHOD(ShaperSweepChartFixture, "ShaperSweepChart starts fresh on every begin",
+TEST_CASE_METHOD(ShaperSweepChartFixture,
+                 "ShaperSweepChart keeps the last curve until the next axis draws",
                  "[input_shaper][preview]") {
     const SweepPlan plan{5.0f, 135.0f, 1.0f};
     REQUIRE(chart.begin(host, 'X', target(plan)));
     auto synth = synth_for(plan);
     play(synth, plan, 20.0);
     REQUIRE(curve_events == std::vector<bool>{true});
+    chart.show_curve({{5.0f, 1.0f}, {6.0f, 4.0f}});
 
+    // Y arms: X's curve stays up, never blank, until Y's first points.
     REQUIRE(chart.begin(host, 'Y', target(plan)));
-    CHECK(curve_events == std::vector<bool>{true, false});
-    CHECK(log.stopped == 1);
+    CHECK(curve_events == std::vector<bool>{true});
+    CHECK(chart.has_curve());
+    CHECK(amps() == std::vector<float>{1.0f, 4.0f});
     auto second = synth_for(plan);
+    play(second, plan, 1.5); // the drive has not started: nothing finite
+    CHECK(amps() == std::vector<float>{1.0f, 4.0f});
     play(second, plan, 20.0);
     CHECK(log.created == 2);
-    CHECK(curve_events == std::vector<bool>{true, false, true});
+    CHECK(curve_events == std::vector<bool>{true});
+    CHECK(amps().size() > 2);
 
     const auto drawn = amps();
-    REQUIRE_FALSE(drawn.empty());
     chart.stop();
     CHECK(same_curve(amps(), drawn));
+
+    chart.clear();
+    CHECK(curve_events == std::vector<bool>{true, false});
+    CHECK_FALSE(chart.has_curve());
+    CHECK(log.stopped == 2);
 
     lv_obj_t* other = lv_obj_create(test_screen());
     lv_obj_set_size(other, 400, 200);

@@ -49,9 +49,11 @@ class ShaperSweepChart {
     /**
      * @brief Start a fresh curve for `axis` ('X' or 'Y') in `host`
      *
-     * Clears any earlier curve. Creates the chart in `host` on first use (and
-     * again when `host` changed). Returns false, arming nothing, when `target`
-     * is nullopt or `host` is null.
+     * Whatever is drawn (the previous axis's CSV curve) stays until the new
+     * preview's first points replace it, so the chart never goes blank between
+     * axes; clear() is how a caller starts from empty. Creates the chart in
+     * `host` on first use (and again, empty, when `host` changed). Returns
+     * false, arming nothing, when `target` is nullopt or `host` is null.
      */
     bool begin(lv_obj_t* host, char axis,
                const std::optional<helix::calibration::LiveSweepTarget>& target);
@@ -65,6 +67,8 @@ class ShaperSweepChart {
 
     /// Stop streaming; what is drawn stays.
     void stop();
+    /// Stop streaming and empty the chart (has_curve() false).
+    void clear();
     /// Stop and free the chart. Call before the host's widget tree goes.
     void destroy();
 

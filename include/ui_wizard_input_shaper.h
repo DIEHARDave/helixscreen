@@ -220,9 +220,8 @@ class WizardInputShaperStep : public helix::wizard::Step {
     /// Ask the printer for klippy's socket and [resonance_tester]; the answer
     /// lands in preview_facts_ before the noise check finishes.
     void query_preview_facts();
-    /// Start `axis`'s live curve when live_sweep_target() allows one. The
-    /// chart switches over on that axis's first sweep report, so the previous
-    /// axis's CSV curve stays up until the new sweep is moving.
+    /// Start `axis`'s live curve when live_sweep_target() allows one; the
+    /// previous axis's CSV curve stays up until the new preview draws.
     void begin_axis_preview(char axis);
     /// A progress report for the running axis.
     void on_axis_progress(ShaperCalibrationPhase phase, float freq_hz);
@@ -339,8 +338,6 @@ class WizardInputShaperStep : public helix::wizard::Step {
 
     helix::calibration::LiveSweepFacts preview_facts_;
     helix::ui::ShaperSweepChart sweep_chart_;
-    /// The axis begin_axis_preview() named, until its first sweep report; 0 when none.
-    char pending_axis_ = 0;
 
     // Calibrator instance (owns the calibrator)
     std::unique_ptr<helix::calibration::InputShaperCalibrator> calibrator_;

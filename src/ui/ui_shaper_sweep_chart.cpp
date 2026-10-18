@@ -40,15 +40,12 @@ void ShaperSweepChart::set_on_curve_changed(std::function<void(bool has_curve)> 
 bool ShaperSweepChart::begin(lv_obj_t* host, char axis,
                              const std::optional<LiveSweepTarget>& target) {
     preview_.stop();
-    if (chart_ != nullptr && series_ >= 0) {
-        ui_frequency_response_chart_clear(chart_);
-    }
-    set_has_curve(false);
     if (!target || host == nullptr) {
         return false;
     }
 
     if (chart_ != nullptr && host_ != host) {
+        set_has_curve(false);
         destroy();
     }
     if (chart_ == nullptr) {
@@ -107,6 +104,14 @@ void ShaperSweepChart::stop() {
     preview_.stop();
 }
 
+void ShaperSweepChart::clear() {
+    preview_.stop();
+    if (chart_ != nullptr) {
+        ui_frequency_response_chart_clear(chart_);
+    }
+    set_has_curve(false);
+}
+
 void ShaperSweepChart::destroy() {
     preview_.stop();
     if (chart_ != nullptr) {
@@ -134,10 +139,13 @@ const LiveSweepPreview& ShaperSweepChart::preview() const {
 
 void ShaperSweepChart::on_points(const std::vector<SweepPoint>& points) {
     const auto series = layout_preview(points, column_, 0.0f, SHAPER_CHART_MAX_HZ);
-    draw(series.freqs, series.amps, series.max_amp);
-    if (series.max_amp > 0.0f) {
-        set_has_curve(true);
+    // Until a finite point exists, whatever is drawn (the previous axis's
+    // curve) stays up.
+    if (series.max_amp <= 0.0f) {
+        return;
     }
+    draw(series.freqs, series.amps, series.max_amp);
+    set_has_curve(true);
 }
 
 void ShaperSweepChart::draw(const std::vector<float>& freqs, const std::vector<float>& amps,
