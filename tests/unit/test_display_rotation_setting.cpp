@@ -18,6 +18,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "config.h"
 #include "display_settings_manager.h"
+#include "screensaver_registry.h"
 
 #include "../catch_amalgamated.hpp"
 
@@ -232,3 +233,40 @@ TEST_CASE_METHOD(LVGLUITestFixture, "DimRow: settings_dim_row_kind shows at most
 
     lv_obj_delete(overlay);
 }
+
+#if HELIX_ENABLE_SCREENSAVER
+// On a device without a dimmable backlight the overlay's dim-timeout row tracks the
+// screensaver choice live: Off leaves nothing for the timeout to start.
+TEST_CASE_METHOD(LVGLUITestFixture, "DimRow: Screensaver after follows the screensaver choice",
+                 "[display_settings][dim_row][ui]") {
+    DisplaySettingsManager& mgr = DisplaySettingsManager::instance();
+    REQUIRE_FALSE(mgr.has_dimming_control());
+    Config* config = Config::get_instance();
+    const std::string stored_name = config->get<std::string>("/display/screensaver_type", "");
+    const int before = mgr.get_screensaver_type();
+
+    lv_obj_t* overlay = static_cast<lv_obj_t*>(
+        lv_xml_create(lv_screen_active(), "settings_display_overlay", nullptr));
+    REQUIRE(overlay != nullptr);
+    lv_obj_t* dim = lv_obj_find_by_name(overlay, "row_display_dim");
+    lv_obj_t* saver_after = lv_obj_find_by_name(overlay, "row_screensaver_after");
+    REQUIRE(dim != nullptr);
+    REQUIRE(saver_after != nullptr);
+
+    mgr.set_screensaver_type(static_cast<int>(ScreensaverType::OFF));
+    CHECK(lv_obj_has_flag(saver_after, LV_OBJ_FLAG_HIDDEN));
+    CHECK(lv_obj_has_flag(dim, LV_OBJ_FLAG_HIDDEN));
+
+    mgr.set_screensaver_type(static_cast<int>(ScreensaverType::STARFIELD));
+    CHECK_FALSE(lv_obj_has_flag(saver_after, LV_OBJ_FLAG_HIDDEN));
+    CHECK(lv_obj_has_flag(dim, LV_OBJ_FLAG_HIDDEN));
+
+    lv_obj_delete(overlay);
+    mgr.set_screensaver_type(before);
+    if (stored_name.empty()) {
+        config->get_json("/display").erase("screensaver_type");
+    } else {
+        config->set<std::string>("/display/screensaver_type", stored_name);
+    }
+}
+#endif

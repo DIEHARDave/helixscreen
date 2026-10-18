@@ -140,7 +140,7 @@ class DisplaySettingsManager {
     /**
      * @brief Whether a screensaver is enabled (type != OFF).
      *
-     * Always false when HELIX_ENABLE_SCREENSAVER is not compiled in.
+     * Always false when HELIX_ENABLE_SCREENSAVER is undefined or 0, where the type is Off.
      */
     bool screensaver_enabled() const;
 
@@ -343,7 +343,7 @@ class DisplaySettingsManager {
     /**
      * @brief Get screensaver type (a ScreensaverType value, include/screensaver_registry.h)
      *
-     * Always Off (0) when HELIX_ENABLE_SCREENSAVER is not compiled in.
+     * Always Off (0) when HELIX_ENABLE_SCREENSAVER is undefined or 0.
      */
     int get_screensaver_type() const;
 
@@ -377,9 +377,10 @@ class DisplaySettingsManager {
 
     /// The form the dim-timeout row takes in Display settings. Without a dimmable
     /// backlight the same timeout starts the screensaver, so the row is offered
-    /// under that name when one can run, and hidden when nothing would happen.
+    /// under that name while one is enabled, and hidden when nothing would happen.
+    /// should_couple_sleep_to_dim() holds exactly when this is not Hidden.
     enum class DimRowKind { Hidden = 0, ScreenDim = 1, ScreensaverAfter = 2 };
-    static DimRowKind dim_row_kind(bool has_dimming, bool screensaver_available);
+    static DimRowKind dim_row_kind(bool has_dimming, bool screensaver_enabled);
 
     // =========================================================================
     // DISPLAY SLEEP OPTIONS (for dropdown population)
