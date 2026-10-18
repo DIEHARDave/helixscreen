@@ -400,13 +400,15 @@ describing what the menu was opened on.
 
 | `menu` | Where it appears | Opened on |
 |---|---|---|
-| `print_file` | the "⋯" button on the print details screen (Print select, a file opened) | the file shown |
+| `print_file` | the dots button (`dots_vertical`) on the print details screen (Print select, a file opened) | the file shown |
 | `filament_slot` | the long-press menu of a filament slot, any filament system, in a column of its own beside Filament and Spool | the slot |
 | `spool` | the Spoolman spool menu, after the app's items | the spool |
 | `tile` | the configure (gear) button of the plugin's own home tile, in home edit mode | the tile |
 
 The external spool's menu takes no plugin items, and neither does the print file list's
-long-press (Delete).
+long-press (Delete). No other app menu takes them. A plugin item can only add a row: it
+cannot hide, reorder or relabel the app's own items, and tapping it only calls the
+plugin's own handler with plain data.
 
 Declared in `manifest.json`:
 
@@ -422,11 +424,12 @@ Declared in `manifest.json`:
 | `id` | unique within the plugin |
 | `menu` | `print_file`, `filament_slot`, `spool` or `tile`; a `tile` item needs at least one declared widget |
 | `label` | English source, translated through the plugin's `i18n/` pack |
-| `icon` | an icon name from `include/ui_icon_codepoints.h`, optional; a name not in that table rejects the manifest |
+| `icon` | an icon name from `include/ui_icon_codepoints.h`, optional (`puzzle_outline` when omitted); a name not in that table rejects the manifest, since the icon widget would draw a broken-image glyph for it |
 | `handler` | a `helix.ui.on` handler name, required |
 | `check` | a `helix.ui.on` handler name, optional (below) |
 
-A malformed item rejects the manifest with the field named. Per-menu limits (items per
+`handler` and `check` are local names, the same 1-48 chars of `[a-z0-9_-]` that
+`helix.ui.on` takes. A malformed item rejects the manifest with the field named. Per-menu limits (items per
 plugin, and plugin rows per menu so a menu never scrolls) are in §10.
 
 **The handler** receives one table:
@@ -453,12 +456,25 @@ end)
 **The check.** An item without `check` always shows, enabled. With `check`, the named
 handler is called with the same table when the menu opens and returns `true` (shown),
 `false` (hidden), or `{visible = true, enabled = false, reason = "Only for .gcode files"}`
-(shown greyed, with the reason). A check runs in check mode: anything with a side effect
-or a wait (`helix.gcode`, `helix.moonraker`, `helix.http`, `helix.storage` and
-`helix.settings` writes, `helix.sleep`, opening a dialog, overlay, confirm or toast,
-registering a handler, observer or timer) raises at once. It has its own short time
-budget. A check that raises, overruns or returns anything else hides only that item for
-this opening and counts toward the plugin's error limit (§10); the menu always opens.
+(shown greyed, with the reason). In the table, an absent `visible` or `enabled` means
+`true` and `reason` is optional; the reason shows under the label whenever it is set. The
+result is read raw: its fields must be plain booleans and a string, and a table carrying
+a metatable is not a valid result (`src/plugin/plugin_host.cpp#read_check_value`).
+
+A check runs in check mode (`src/plugin/lua_runtime.cpp#call_sync`): anything with
+a side effect or a wait raises "`<call>` is not allowed in a menu check" before acting.
+That covers every async call (`helix.gcode`, `helix.moonraker`, `helix.http`,
+`helix.sleep`), `helix.storage.set`, `helix.settings.set`, `subject:set`, opening a
+dialog, overlay, confirm or toast, closing a surface, `helix.canvas` and every canvas
+method (a check never draws), creating a subject, `helix.widget`, starting or cancelling
+a timer, registering a handler, observer, watch or subscription, and `require` (a module's
+top level is ordinary entry work, and a refusal inside it would cache a half-loaded
+module). Reading subjects, printer fields, settings, storage and the plugin's own Lua
+state is fine. The check's coroutine is closed inside check mode and its budget, so a
+pending `<close>` handler runs under the same rules. A check has its own short time
+budget, separate from the entry budget. A check that raises, overruns, yields, returns
+nothing or returns anything else hides only that item for this opening and counts toward
+the plugin's error limit (§10), never as a fault by itself; the menu always opens.
 
 ```lua
 helix.ui.on("can_calibrate", function(file)
@@ -470,16 +486,33 @@ end)
 ```
 
 **What the user sees.**
-- On print details, the bottom row becomes three icon buttons (Delete, "⋯", Print) once
-  any enabled plugin declares a `print_file` item; "⋯" lists the items for that file, and
-  says so when every one is hidden for it. Without such a plugin the row is unchanged.
-- In the filament slot menu, plugin items get their own column beside Filament and Spool,
-  each plugin's items headed with its name; the column is absent when no item shows. In the
-  spool menu they sit under a divider after the app's items, headed the same way. Plugins
-  are in load order and items in manifest order.
-- A tile with `tile` items gets the gear in home edit mode; its items open from there.
-- Settings > Plugins lists "Adds to: ..." for a plugin with menu items. Menu items need no
-  permission of their own, so adding or changing them in an update does not ask again.
+- On print details, the bottom row becomes three icon buttons (Delete, the dots button,
+  Print) once any enabled plugin declares a `print_file` item; for a USB file, where
+  Delete is hidden, it is the dots button and Print. Whether the button shows is decided
+  from the declarations alone, because the file's time, height and layer metadata arrive
+  after the screen opens; the checks run when it is tapped, against the context as it
+  stands then. When every item is hidden for that file the menu says "No plugin actions
+  for this file". Without such a plugin the row is unchanged, with Print's full label.
+- In the filament slot menu, plugin items get their own column (`col_plugins` in
+  `ui_xml/ams_context_menu.xml`) beside Filament and Spool, each plugin's items headed
+  with its name; the column is hidden when no item shows, so the menu is then unchanged.
+  The card already scrolls at 480x272 without plugin rows, so the column adds width, never
+  height: it is a fixed width per screen size (110 px at micro, 120 at tiny, 160 at small,
+  200 at medium, 220 at large; the `ams_context_plugin_col_w` tokens) and a longer label
+  ellipsizes. The row cap of 5 (§10) is the most that keeps the column no taller than the
+  Filament column at 480x272. The Tool and Endless Spool dropdowns stay below the columns.
+- In the spool menu plugin items sit under a divider after the app's items, headed the
+  same way. In every menu plugins are in load order and items in manifest order; a plugin
+  cannot choose its position among other plugins.
+- A tile with `tile` items gets the gear in home edit mode (decided from the declaration,
+  no check runs to show it); its items open in a menu below the tile, and only that
+  plugin's items appear there. When every one is hidden the menu says "No actions right
+  now".
+- Settings > Plugins lists "Adds to: ..." (Print details, Filament slot menu, Spool menu,
+  Its home tile) for a plugin with menu items, in the enable prompt after the permission
+  lines and on the plugin's row. The line is informational: menu items need no permission
+  of their own, since a handler can do only what the plugin's granted permissions allow,
+  so adding or changing them in an update does not ask again.
 
 Disabling, faulting or unloading a plugin removes its items at once; a tap that lands
 after that does nothing.
@@ -686,6 +719,12 @@ and `string.dump` are nil; `collectgarbage` accepts only `count`, `collect` and 
 `<plugin>/name.lua` or `<plugin>/lib/name.lua`, with dotted names mapping to folders,
 rejects `..` and absolute paths, and caches the result
 (`src/plugin/lua_runtime.cpp#lua_require`).
+
+`setmetatable` refuses a metatable carrying `__gc`: finalizers run with the time-budget
+hook off, so a looping one would hang the UI thread, and one armed in a menu check would
+act later, outside check mode. The metatables the app owns are locked: `getmetatable`
+on a string, or on a subject, timer, subscription or canvas handle, returns `"locked"`,
+so plugin code cannot change how strings or bindings behave.
 
 Define a global `on_unload` function to run once before the plugin closes, on reload,
 disable, removal and shutdown. A faulted plugin's `on_unload` does not run, so never keep
