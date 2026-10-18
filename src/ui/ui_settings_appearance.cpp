@@ -32,6 +32,36 @@ namespace helix::settings {
 using helix::ui::event_checked;
 using helix::ui::event_selected;
 
+namespace {
+
+bool same_palette(const helix::ModePalette& a, const helix::ModePalette& b) {
+    for (size_t i = 0; i < helix::ModePalette::color_names().size(); ++i) {
+        if (a.at(i) != b.at(i)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool same_properties(const helix::ThemeProperties& a, const helix::ThemeProperties& b) {
+    return a.border_radius_size == b.border_radius_size && a.border_width == b.border_width &&
+           a.border_opacity == b.border_opacity && a.shadow_intensity == b.shadow_intensity &&
+           a.shadow_opa == b.shadow_opa && a.shadow_offset_y == b.shadow_offset_y &&
+           a.handle_style == b.handle_style && a.handle_color == b.handle_color;
+}
+
+/// Whether the screen already shows @p theme in @p dark mode, colours included:
+/// the editor previews unsaved colours under the theme's own name.
+bool theme_is_showing(const helix::ThemeData& theme, bool dark) {
+    const helix::ThemeData& active = theme_manager_get_active_theme();
+    return theme_manager_is_dark_mode() == dark && active.name == theme.name &&
+           active.filename == theme.filename && same_palette(active.dark, theme.dark) &&
+           same_palette(active.light, theme.light) &&
+           same_properties(active.properties, theme.properties);
+}
+
+} // namespace
+
 void AppearanceSettingsOverlay::init_subjects() {
     // Theme Apply button disabled subject (1=disabled initially)
     UI_MANAGED_SUBJECT_INT(theme_apply_disabled_subject_, 1, "theme_apply_disabled", subjects_);
@@ -268,7 +298,9 @@ void AppearanceSettingsOverlay::handle_theme_settings_clicked() {
 
         helix::nav::register_overlay(theme_explorer_overlay_, nullptr);
         helix::nav::on_close(theme_explorer_overlay_, [this]() {
-            theme_manager_apply_theme(original_theme_, theme_manager_is_dark_mode());
+            if (!theme_is_showing(original_theme_, original_is_dark_)) {
+                theme_manager_apply_theme(original_theme_, original_is_dark_);
+            }
             if (theme_explorer_overlay_) {
                 helix::ui::defocus_tree(theme_explorer_overlay_);
                 lv_obj_add_flag(theme_explorer_overlay_, LV_OBJ_FLAG_HIDDEN);
@@ -295,8 +327,9 @@ void AppearanceSettingsOverlay::sync_explorer_to_active_theme() {
 
     original_theme_index_ = DisplaySettingsManager::instance().get_theme_index();
     original_theme_ = theme_manager_get_active_theme();
+    original_is_dark_ = theme_manager_is_dark_mode();
 
-    preview_is_dark_ = theme_manager_is_dark_mode();
+    preview_is_dark_ = original_is_dark_;
     lv_obj_t* dark_toggle =
         helix::ui::find_required(theme_explorer_overlay_, "preview_dark_mode_toggle", get_name());
     if (dark_toggle) {
@@ -331,10 +364,11 @@ void AppearanceSettingsOverlay::handle_apply_theme_clicked() {
     DisplaySettingsManager::instance().set_theme_by_index(selected_index);
     std::string theme_name = DisplaySettingsManager::instance().get_theme_name();
 
-    // The preview already shows this theme, and closing the explorer applies
-    // original_theme_ once more, so no apply here.
+    // The preview already shows this theme; committing it makes closing the
+    // explorer a no-op rather than a revert.
     original_theme_index_ = selected_index;
     original_theme_ = theme_manager_get_active_theme();
+    original_is_dark_ = theme_manager_is_dark_mode();
 
     spdlog::info("[{}] Theme '{}' applied (index {})", get_name(), theme_name, selected_index);
 

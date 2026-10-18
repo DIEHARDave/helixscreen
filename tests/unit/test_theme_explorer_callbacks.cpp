@@ -99,6 +99,22 @@ class ThemeExplorerFixture : public LVGLUITestFixture {
         lv_obj_send_event(dropdown_, LV_EVENT_VALUE_CHANGED, nullptr);
     }
 
+    /// The explorer's root: the overlay the preset dropdown lives in.
+    lv_obj_t* explorer() const {
+        lv_obj_t* obj = dropdown_;
+        while (obj && !NavigationManager::instance().is_panel_in_stack(obj)) {
+            obj = lv_obj_get_parent(obj);
+        }
+        return obj;
+    }
+
+    /// Back out of the explorer the way its header's back button does.
+    void close_explorer() {
+        REQUIRE(explorer() != nullptr);
+        NavigationManager::instance().go_back();
+        settle();
+    }
+
     std::array<lv_obj_t*, UI_PANEL_COUNT> panels_{};
     lv_obj_t* dropdown_ = nullptr;
 };
@@ -126,13 +142,43 @@ TEST_CASE_METHOD(ThemeExplorerFixture, "ThemeExplorer: one pick applies the them
         REQUIRE(theme_manager_is_dark_mode());
     }
 
-    SECTION("Apply commits the previewed theme with one apply, counting the close") {
+    SECTION("Apply commits the previewed theme with no further apply, counting the close") {
         pick("nord");
+        lv_obj_t* root = explorer();
+        REQUIRE(root != nullptr);
 
         int before = theme_apply_generation();
         overlay().handle_apply_theme_clicked();
         settle();
-        REQUIRE(theme_apply_generation() - before == 1);
+        // Pointer comparison only: the explorer is deleted once it closes.
+        REQUIRE_FALSE(NavigationManager::instance().is_panel_in_stack(root));
+        REQUIRE(theme_apply_generation() - before == 0);
         REQUIRE(theme_manager_get_active_theme().filename == "nord");
     }
+
+    SECTION("closing without a change applies nothing") {
+        int before = theme_apply_generation();
+        close_explorer();
+        REQUIRE(theme_apply_generation() - before == 0);
+    }
+}
+
+TEST_CASE_METHOD(ThemeExplorerFixture,
+                 "ThemeExplorer: cancelling restores the original theme in its original mode",
+                 "[theme][ui]") {
+    const std::string original = theme_manager_get_active_theme().filename;
+    const bool original_dark = theme_manager_is_dark_mode();
+    REQUIRE(theme_manager_supports_dark_mode());
+    REQUIRE(theme_manager_supports_light_mode());
+
+    pick("nord");
+    overlay().handle_preview_dark_mode_toggled(!original_dark);
+    REQUIRE(theme_manager_is_dark_mode() != original_dark);
+
+    int before = theme_apply_generation();
+    close_explorer();
+
+    CHECK(theme_apply_generation() - before == 1);
+    CHECK(theme_manager_get_active_theme().filename == original);
+    CHECK(theme_manager_is_dark_mode() == original_dark);
 }
