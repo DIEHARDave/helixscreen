@@ -4344,3 +4344,5 @@ translations:
   '{} → {}: no filament loaded.': '{} → {} : aucun filament chargé.'
   '{}% left': '{} % restant'
   '{}:{:02} elapsed': '{}:{:02} écoulé'
+  'Basic': 'Basique'
+  'Recycled': 'Recyclé'

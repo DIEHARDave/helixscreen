@@ -468,6 +468,84 @@ std::string display_family(std::string_view type) {
     return base.empty() ? std::string(type) : base;
 }
 
+namespace {
+
+/// Trim leading and trailing separator characters off a token remnant.
+std::string_view trim_separators(std::string_view s) {
+    while (!s.empty() && is_separator(s.front())) {
+        s.remove_prefix(1);
+    }
+    while (!s.empty() && is_separator(s.back())) {
+        s.remove_suffix(1);
+    }
+    return s;
+}
+
+/// The wordy finishes spell "Silk PLA", never "PLA-Silk".
+bool variant_leads_with_word(const std::string& label) {
+    static const char* const k_leading[] = {"Silk", "Matte", "Wood", "Marble",  "Metal",
+                                            "Glow", "AERO",  "LW",   "Recycled"};
+    for (const char* word : k_leading) {
+        if (iequals(label, word)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+// NAMESPACE_OK: namespace filament, beside extract_base_material
+std::string variant_label(std::string_view type, std::string_view family) {
+    std::string_view work = helix::text_io::trim(type);
+    if (work.empty()) {
+        return "Basic";
+    }
+    // Resolve the alias first so decoration sits on the canonical spelling
+    // ("SILK" -> "Silk PLA"), the same order extract_base_material uses.
+    work = resolve_alias(work);
+    const std::string fam = family.empty() ? display_family(work) : std::string(family);
+
+    if (iequals(work, fam)) {
+        return "Basic";
+    }
+    std::string_view rem;
+    if (work.size() > fam.size() && iequals(work.substr(0, fam.size()), fam)) {
+        rem = trim_separators(work.substr(fam.size()));
+    } else if (work.size() > fam.size() && iequals(work.substr(work.size() - fam.size()), fam)) {
+        rem = trim_separators(work.substr(0, work.size() - fam.size()));
+    } else {
+        // The reduction came from the override table or an alias; the whole
+        // spelling is the variant as far as a chip can show it.
+        rem = work;
+    }
+    if (rem.empty()) {
+        return "Basic";
+    }
+    if (iequals(rem, "r")) {
+        return "Recycled";
+    }
+    return std::string(rem);
+}
+
+// NAMESPACE_OK: namespace filament, beside extract_base_material
+std::string compose_family_type(const std::string& family, const std::string& variant) {
+    if (variant.empty() || variant == "Basic") {
+        return family;
+    }
+    if (variant == "Recycled") {
+        return "r" + family;
+    }
+    if (variant_leads_with_word(variant)) {
+        return variant + " " + family;
+    }
+    // A "+" grade fuses to the polymer name ("PLA+", never "PLA-+").
+    if (variant.front() == '+') {
+        return family + variant;
+    }
+    return family + "-" + variant;
+}
+
 bool FilamentVariantsTestAccess::parse_orca_tables(const std::string& json_text,
                                                    std::set<std::string>& library_types,
                                                    std::map<std::string, std::string>& overrides,

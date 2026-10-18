@@ -4052,3 +4052,5 @@ translations:
   '{} → {}: no filament loaded.': '{} → {}: フィラメントが装填されていません。'
   '{}% left': '残り {}%'
   '{}:{:02} elapsed': 経過 {}:{:02}
+  'Basic': '標準'
+  'Recycled': 'リサイクル'
