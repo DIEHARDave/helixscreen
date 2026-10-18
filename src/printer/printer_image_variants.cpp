@@ -18,7 +18,8 @@ AmsType parse_filament_system(const nlohmann::json& value) {
     if (!value.is_string()) {
         return AmsType::NONE;
     }
-    return ams_type_from_string(value.get_ref<const std::string&>());
+    const AmsType type = ams_type_from_string(value.get_ref<const std::string&>());
+    return is_filament_system(type) ? type : AmsType::NONE;
 }
 
 bool condition_holds(std::string_view key, const nlohmann::json& value,
