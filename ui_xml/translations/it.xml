@@ -461,6 +461,7 @@
   <translation tag="Calibrate Gates" it="Calibra le gate"/>
   <translation tag="Calibrate Gear" it="Calibra l&apos;ingranaggio"/>
   <translation tag="Calibrate Purge Chute" it="Calibra condotto di spurgo"/>
+  <translation tag="Calibrate Toolhead" it="Calibra testina"/>
   <translation tag="Calibrate X" it="Calibra X"/>
   <translation tag="Calibrate Y" it="Calibra Y"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" it="Calibra input shaping per ridurre artefatti di ringing nelle stampe"/>
@@ -1415,6 +1416,7 @@
   <translation tag="Grip filament" it="Afferra il filamento"/>
   <translation tag="Grip the filament" it="Afferra il filamento"/>
   <translation tag="Guide the toolhead to the chute&apos;s extrude position" it="Portare la testina alla posizione di estrusione del condotto"/>
+  <translation tag="Guided sensor-to-nozzle, unload and cutter retract calibration" it="Calibrazione guidata: sensore all&apos;ugello, scarico e retrazione della taglierina"/>
   <translation tag="Guides and reference" it="Guide e riferimenti"/>
   <translation tag="H" it="H"/>
   <translation tag="HELIXSCREEN" it="HELIXSCREEN"/>

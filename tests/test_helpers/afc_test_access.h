@@ -229,6 +229,9 @@ class AfcTestAccess {
     static decltype(auto) apply_afc_version_response(B& b, A&&... a) {
         return b.apply_afc_version_response(std::forward<A>(a)...);
     }
+    template <class B, class... A> static decltype(auto) apply_gcode_help_response(B& b, A&&... a) {
+        return b.apply_gcode_help_response(std::forward<A>(a)...);
+    }
     template <class B, class... A> static decltype(auto) detect_afc_version(B& b, A&&... a) {
         return b.detect_afc_version(std::forward<A>(a)...);
     }

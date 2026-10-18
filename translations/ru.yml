@@ -541,6 +541,7 @@ translations:
   Calibrate Gates: 'Калибровать шлюзы'
   Calibrate Gear: 'Калибровать шестерню'
   Calibrate Purge Chute: Калибровать жёлоб продувки
+  Calibrate Toolhead: 'Калибровать печатающую головку'
   Calibrate X: Калибровать X
   Calibrate Y: Калибровать Y
   Calibrate All Tools: Калибровать все инструменты
@@ -1595,6 +1596,7 @@ translations:
   Grip filament: Зажать филамент
   Grip the filament: Зажать филамент
   Guide the toolhead to the chute's extrude position: Подведите печатающую головку к позиции экструзии жёлоба
+  Guided sensor-to-nozzle, unload and cutter retract calibration: 'Пошаговая калибровка: датчик до сопла, выгрузка и ретракция резака'
   Guides and reference: Руководства и справка
   H: Х
   HELIXSCREEN: HELIXSCREEN

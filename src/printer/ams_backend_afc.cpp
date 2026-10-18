@@ -331,6 +331,7 @@ void AmsBackendAfc::on_started() {
     }
 
     detect_afc_version();
+    detect_afc_commands();
 
     // If we have discovered lanes (from PrinterCapabilities), initialize them now.
     // This provides immediate lane data for every AFC version. query_lane_data()
@@ -3870,6 +3871,41 @@ void AmsBackendAfc::detect_afc_version() {
     );
 }
 
+void AmsBackendAfc::detect_afc_commands() {
+    if (!client_) {
+        return;
+    }
+
+    auto token = lifetime_.token();
+    client_->send_jsonrpc(
+        "printer.gcode.help", nlohmann::json::object(),
+        [this, token](const nlohmann::json& response) {
+            token.defer("AmsBackendAfc::detect_afc_commands_success",
+                        [this, response]() { apply_gcode_help_response(response); });
+        },
+        [](const MoonrakerError& err) {
+            spdlog::debug("[AMS AFC] Could not list gcode commands: {}", err.message);
+        },
+        0,   // default timeout
+        true // silent: a probe, the actions it gates simply stay hidden
+    );
+}
+
+bool AmsBackendAfc::apply_gcode_help_response(const nlohmann::json& response) {
+    const auto result = response.find("result");
+    if (result == response.end() || !result->is_object()) {
+        return false;
+    }
+    const bool has_toolhead_cal = result->contains("AFC_TOOLHEAD_CALIBRATION");
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        has_toolhead_calibration_ = has_toolhead_cal;
+    }
+    spdlog::debug("[AMS AFC] AFC_TOOLHEAD_CALIBRATION {}",
+                  has_toolhead_cal ? "available" : "not registered");
+    return true;
+}
+
 // ============================================================================
 // Initial State Query
 // ============================================================================
@@ -6365,6 +6401,10 @@ std::vector<helix::printer::DeviceAction> AmsBackendAfc::get_device_actions() co
             actions.end());
     }
 
+    if (has_toolhead_calibration_) {
+        helix::printer::afc_add_toolhead_calibration_action(actions);
+    }
+
     // SET_BOWDEN_LENGTH is HUB-keyed, and a hub-less topology (PARALLEL /
     // direct_load lanes) has nothing the slider could address — the control
     // cannot succeed there. The execute path keeps its not_supported as
@@ -6618,6 +6658,8 @@ AmsError AmsBackendAfc::execute_device_action(const std::string& action_id, cons
 
     if (action_id == "calibration_wizard") {
         return execute_gcode("AFC_CALIBRATION");
+    } else if (action_id == "toolhead_calibration") {
+        return execute_gcode("AFC_TOOLHEAD_CALIBRATION");
     } else if (action_id == "bowden_length") {
         if (!value.has_value()) {
             return AmsError(AmsResult::WRONG_STATE, "Bowden length value required",
