@@ -139,7 +139,7 @@
       <!-- EDITOR VIEW (ams_edit_view=0): the entry view.               -->
       <!-- ============================================================ -->
       <lv_obj name="editor_view"
-              width="100%" flex_grow="1" flex_flow="column" style_pad_gap="#ams_edit_vgap" scrollable="false">
+              width="100%" height="content" flex_flow="column" style_pad_gap="#ams_edit_vgap" scrollable="false">
         <bind_flag_if_not_eq subject="ams_edit_view" flag="hidden" ref_value="0"/>
 
         <!-- Summary: colour dot + "eSUN Silk PETG, Blue" + from-tag badge +
@@ -187,7 +187,7 @@
              the colour grid under the form. Each dropdown's option list ends
              in "Browse catalog..." for the full catalog picker. -->
         <lv_obj name="layout_split"
-                width="100%" height="content" flex_grow="1" style_pad_all="0" flex_flow="row" style_pad_gap="#space_md"
+                width="100%" height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_md"
                 style_flex_cross_place="start" scrollable="false">
           <bind_flag_if cond="ui_breakpoint gt 0 or ui_is_portrait eq 1" flag="hidden"/>
           <lv_obj height="content"

@@ -63,6 +63,9 @@ class AmsEditOverlayViewTestAccess {
     int is_managed() {
         return lv_subject_get_int(&overlay_.is_managed_subject_);
     }
+    void toggle_more() {
+        overlay_.handle_more_toggle();
+    }
     void set_cached_spools(std::vector<SpoolInfo> spools) {
         overlay_.cached_spools_ = std::move(spools);
         // Mirror populate_picker's precompute so direct-drive tests exercise
@@ -2072,6 +2075,57 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a More-section edit lights Save and stages 
     CHECK(access.detail_comment() == "keep dry");
 
     close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the open More section scrolls into reach, unclipped",
+                 "[ams_edit_overlay][more]") {
+    // The More toggle exists only on a Spoolman-linked slot.
+    auto* spoolman_subj = lv_xml_get_subject(nullptr, "printer_has_spoolman");
+    REQUIRE(spoolman_subj != nullptr);
+    lv_subject_set_int(spoolman_subj, 1);
+    get_printer_state().capabilities_state().set_spoolman_available(true);
+    UpdateQueue::instance().drain();
+
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    REQUIRE(access.is_managed() == 1);
+    access.toggle_more();
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    lv_obj_t* content = access.widget("overlay_content");
+    lv_obj_t* comment = access.widget("detail_field_comment");
+    REQUIRE(content);
+    REQUIRE(comment);
+    lv_obj_update_layout(content);
+    REQUIRE_FALSE(
+        lv_obj_has_flag(lv_obj_get_parent(lv_obj_get_parent(comment)), LV_OBJ_FLAG_HIDDEN));
+
+    lv_area_t field;
+    lv_area_t box;
+    lv_obj_get_coords(comment, &field);
+    lv_obj_get_coords(content, &box);
+    // At 800x480 the open section runs past the viewport, so only scrolling reaches it.
+    REQUIRE(field.y2 > box.y2);
+
+    // No container between the field and the scroller clips it.
+    for (lv_obj_t* p = lv_obj_get_parent(comment); p && p != content; p = lv_obj_get_parent(p)) {
+        lv_area_t a;
+        lv_obj_get_coords(p, &a);
+        CAPTURE(lv_obj_get_name(p), a.y2, field.y2);
+        CHECK(field.y2 <= a.y2);
+    }
+    // The scroller's extent covers the field's bottom edge.
+    CHECK(field.y2 <= box.y2 + lv_obj_get_scroll_bottom(content));
+
+    close_editor_overlay();
+    get_printer_state().capabilities_state().set_spoolman_available(false);
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "a picker relink reseeds the More section to the new spool",
