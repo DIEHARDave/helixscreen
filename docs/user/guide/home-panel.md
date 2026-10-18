@@ -1189,9 +1189,29 @@ If the deleted image was active, HelixScreen falls back to auto-detect.
 
 Below the identity card, the overlay displays current software versions for Klipper, Moonraker, and HelixScreen, with update indicators when new versions are available.
 
-### Hardware Capabilities
+On a printer running Kalico, the Klipper row is labeled **Kalico**.
 
-A row of chips shows detected hardware capabilities: Probe, Bed Mesh, Heated Bed, LEDs, ADXL, QGL, Z-Tilt, and others depending on your Klipper configuration.
+### Capabilities
+
+The **Capabilities** section lists everything HelixScreen found on your printer, grouped under six headings: Motion & Leveling, Thermal & Air, Filament & Toolhead, Printing, Electronics & Accessories, and Add-ons. Only what was detected appears; a heading with nothing under it is hidden.
+
+Many chips carry a detail after the name, so you can check that HelixScreen identified your hardware correctly:
+
+| Chip | Example | What the detail tells you |
+|------|---------|---------------------------|
+| Kinematics | CoreXY | How your printer moves, from your Klipper config |
+| Build volume | 350×350×340 | The travel HelixScreen read from your stepper limits, in mm |
+| Probe | Probe · Beacon | Which probe type was recognized |
+| Filament system | Happy Hare · 8 | Each multi-material system and its slot count |
+| Tool changer | Tool Changer · 4 Tools | Toolheads on a tool changer, or **2 Extruders** on an IDEX or other multi-extruder printer |
+| MCUs | 2 MCUs | How many controller boards Klipper reports (one board shows its chip name) |
+| Counts | Fans · 2, Power · 4 | How many of that item were found. Fans counts the fans you can control, other than part cooling |
+
+A chip that says **set manually** (for example **QGL · set manually**) is one you turned on yourself with a [capability override](../CONFIGURATION.md#capability-overrides) even though HelixScreen did not detect it on the printer.
+
+**Tap any chip** to go to the screen that uses it, such as Bed Mesh, Input Shaper, LED Control or the Power panel. Chips with no screen of their own open a short note explaining what the feature is and where HelixScreen uses it. Belt Tension and Tool Offsets open their screens only when beta features are on; otherwise they show the note.
+
+If something you know is on your printer is missing from this list, HelixScreen did not detect it. See [A feature is missing for hardware my printer has](../TROUBLESHOOTING.md#a-feature-is-missing-for-hardware-my-printer-has).
 
 ![Printer Manager — name, image, software versions](../../images/user/home-printer-manager.png)
 
