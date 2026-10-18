@@ -218,6 +218,9 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_u1_feeding(const std
     if (apply_u1_feeding_gcode(gcode)) {
         return 0;
     }
+    if (apply_multiace_gcode(gcode)) {
+        return 0;
+    }
     if (is_command(gcode, "DEFECT_DETECTION_CONFIG")) {
         if (has_token(gcode, "CLEAN_BED_ENABLE=0")) {
             u1_clean_bed_enable_ = false;

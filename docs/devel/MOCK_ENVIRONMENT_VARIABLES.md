@@ -469,7 +469,7 @@ Select the mock AMS topology/type.
 
 | Property | Value |
 |----------|-------|
-| **Values** | `none`, `afc`, `toolchanger` / `tc`, `mixed`, `multi`, `torture`, `stealth`, `vivid`, `ifs`, `htlf`, `snapmaker`, `medusahc` / `medusahc-fork`, `ifs-module`, `cfs`, `openams` |
+| **Values** | `none`, `afc`, `toolchanger` / `tc`, `mixed`, `multi`, `torture`, `stealth`, `vivid`, `ifs`, `htlf`, `snapmaker`, `medusahc` / `medusahc-fork`, `ifs-module`, `cfs`, `openams`, `multiace` |
 | **Default** | The persona's own (`helix::mock::effective_mock_ams`): `toolchanger` on `creator5`, `ifs` on `ad5x`, `cfs` on `k2`, `snapmaker` on `snapmaker_u1`; Happy Hare, LINEAR, 4 slots on every other persona |
 | **File** | `src/printer/ams_backend.cpp` |
 
@@ -492,6 +492,25 @@ Select the mock AMS topology/type.
 | `ifs-module` | 1 | **Standalone AD5X IFS module - mock HARDWARE, real backend.** The Forge-X drop-in's `ifs`/`ifs_materials` objects + stock-named sensors. Aliases: `ifs_module`, `ad5x-module`. See below |
 | `cfs` | 1 | **Creality CFS, K1 stock dialect - mock HARDWARE, real backend.** The stock `box` status object plus the calibration command surface. Alias: `cfs-k1`. See below |
 | `openams` | 1 | **OpenAMS hub - mock HARDWARE, real backend.** Lists and pushes the `oams_manager` status object (4-bay hub unit, FPS lane, groups T0/T1/T2, slot 4 loaded) so real discovery claims OpenAMS and the production `AmsBackendOpenAms` runs. Slots 3 and 4 get ASA identity seeded into `lane_data`; `OPENAMS_UNLOAD` / `OPENAMS_LOAD GROUP=Tn` flip the loaded slot |
+| `multiace` | 1 | **multiACE on a U1 - mock HARDWARE, real backend.** Pushes the U1 feed objects plus the plain `ace` object so real discovery builds the production `AmsBackendMultiAce` and runs it against engine-shaped frames. Pair with `HELIX_MOCK_PRINTER=snapmaker_u1`. See below |
+
+`HELIX_MOCK_AMS=multiace` takes two knobs (read once at start by `MoonrakerClientMock`):
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `HELIX_MOCK_MULTIACE_MODE` | `head` | The engine's mode: `head` (each unit a HUB wired to one head) or `multi` (bay s of every unit feeds head s, PARALLEL) |
+| `HELIX_MOCK_MULTIACE_UNITS` | `1` | Connected ACE Pro units, 1-4 |
+
+Head 1 starts routed to ACE 1 bay 1 (a red PLA), and `ACE_LOAD_HEAD HEAD=h [ACE=k SLOT=s]` / `ACE_UNLOAD_HEAD HEAD=h` answer by routing (or clearing) and walking the head's `channel_state` the way multiACE's shadow `filament_feed` does - an unload parks at `preload_finish`. `ACE_DRY` / `ACE_STOP_DRYING` are acknowledged; the dryer state itself is static in the mock. The frame is pinned to the real parser and backend by `tests/unit/test_ams_mock_multiace_parity.cpp` (`[multiace][mock]`).
+
+```bash
+# multiACE, head mode, one unit
+HELIX_MOCK_PRINTER=snapmaker_u1 HELIX_MOCK_AMS=multiace ./build/bin/helix-screen --test
+
+# multi mode, two units: the path canvas draws two PARALLEL units over four heads
+HELIX_MOCK_PRINTER=snapmaker_u1 HELIX_MOCK_AMS=multiace HELIX_MOCK_MULTIACE_MODE=multi \
+HELIX_MOCK_MULTIACE_UNITS=2 ./build/bin/helix-screen --test
+```
 
 `HELIX_MOCK_AMS=openams` takes more knobs (all read by `MoonrakerClientMock`):
 
