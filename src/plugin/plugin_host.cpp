@@ -19,6 +19,7 @@
 #include "panel_widget_manager.h"
 #include "panel_widget_registry.h"
 #include "plugin_canvas.h"
+#include "plugin_consts.h"
 #include "plugin_settings_overlay.h"
 #include "plugin_xml_policy.h"
 #include "text_io.h"
@@ -141,6 +142,13 @@ const char* plugin_status_name(PluginStatus s) {
 
 PluginHost::PluginHost(Deps deps) : deps_(std::move(deps)) {
     g_live_host = this;
+    layout_hook_ = theme_manager_add_layout_refresh_hook(
+        [this](lv_display_t* display) { refresh_layout_constants(display); });
+}
+
+void PluginHost::refresh_layout_constants(lv_display_t* display) {
+    for (const auto& [id, l] : loaded_)
+        register_plugin_consts(l.consts, display);
 }
 
 PluginHost* PluginHost::live() {
@@ -148,6 +156,7 @@ PluginHost* PluginHost::live() {
 }
 
 PluginHost::~PluginHost() {
+    theme_manager_remove_layout_refresh_hook(layout_hook_);
     unload_all();
     guard_.invalidate();
     if (g_live_host == this)
@@ -370,9 +379,20 @@ bool PluginHost::load(PluginInfo& info) {
         }
     }
 
+    // Constants resolve when a component is created, so they are in place before
+    // any of the plugin's components is registered.
+    PluginConsts consts = collect_plugin_consts(buffers);
+    if (auto errors = missing_tier_errors(consts.px); !errors.empty()) {
+        info.status = PluginStatus::Invalid;
+        info.reason = errors.front();
+        return false;
+    }
+    register_plugin_consts(consts, lv_display_get_default());
+
     auto [it, inserted] = loaded_.try_emplace(id);
     Loaded& l = it->second;
     l.gen = next_load_gen_++;
+    l.consts = std::move(consts);
     for (size_t i = 0; i < xmls.size(); ++i) {
         if (lv_xml_register_component_from_data(stems[i].c_str(), buffers[i].c_str()) !=
             LV_RESULT_OK) {

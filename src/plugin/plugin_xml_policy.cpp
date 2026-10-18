@@ -22,7 +22,19 @@ struct Walk {
     std::string id;
     const std::vector<std::string>* components;
     std::string error;
+    int consts_depth = 0; ///< inside a <consts> block
 };
+
+/// The value elements a <consts> block holds.
+bool is_const_value_element(std::string_view el) {
+    return el == "px" || el == "int" || el == "percentage" || el == "color" || el == "string";
+}
+
+/// App subjects a plugin may read in a conditional bind: the display tier and
+/// orientation, so a plugin component can lay itself out per screen size.
+bool is_readonly_layout_subject(std::string_view s) {
+    return s == "ui_breakpoint" || s == "ui_breakpoint_v" || s == "ui_is_portrait";
+}
 
 // helix-xml resolves a child tag both as written and with an "lv_obj-" prefix
 // (lv_xml_widget_get_processor), so every element comparison happens on the
@@ -114,7 +126,8 @@ bool cond_identifiers_owned(std::string_view id, std::string_view expr, std::str
             while (i < expr.size() && (alnum(expr[i]) || expr[i] == '_'))
                 ++i;
             std::string_view word = expr.substr(start, i - start);
-            if (!is_word_operator(word) && !is_owned_name(id, word)) {
+            if (!is_word_operator(word) && !is_owned_name(id, word) &&
+                !is_readonly_layout_subject(word)) {
                 why = "cond may name only subjects owned by the plugin";
                 return false;
             }
@@ -138,6 +151,22 @@ void fail(Walk& w, std::string msg) {
 void on_start(void* ud, const XML_Char* name, const XML_Char** attrs) {
     auto& w = *static_cast<Walk*>(ud);
     std::string_view el = strip_lv_obj_prefix(name);
+    if (el == "consts") {
+        ++w.consts_depth;
+        return;
+    }
+    if (is_const_value_element(el)) {
+        if (w.consts_depth == 0) {
+            fail(w, "<" + std::string(name) + "> belongs inside <consts>");
+            return;
+        }
+        for (int i = 0; attrs[i]; i += 2) {
+            if (std::string_view(attrs[i]) == "name" && !is_owned_name(w.id, attrs[i + 1]))
+                fail(w, "constant '" + std::string(attrs[i + 1]) + "' must be named " + w.id +
+                            "__<name>");
+        }
+        return;
+    }
     if (!is_allowed_element(w, el)) {
         fail(w, "<" + std::string(name) + "> is not available to plugins");
         return;
@@ -169,15 +198,24 @@ void on_start(void* ud, const XML_Char* name, const XML_Char** attrs) {
     // remove_style*, bind_style*); it names no object.
     bool names_object = el != "prop" && el != "style" && !starts_with(el, "remove_style") &&
                         !starts_with(el, "bind_style");
+    const bool conditional_bind =
+        starts_with(el, "bind_flag_if") || starts_with(el, "bind_style_if");
     for (int i = 0; attrs[i]; i += 2) {
         if (!names_object && std::string_view(attrs[i]) == "name")
+            continue;
+        if (conditional_bind && std::string_view(attrs[i]) == "subject" &&
+            is_readonly_layout_subject(attrs[i + 1]))
             continue;
         if (auto why = check_plugin_attr(w.id, attrs[i], attrs[i + 1]))
             fail(w, std::move(*why));
     }
 }
 
-void on_end(void*, const XML_Char*) {}
+void on_end(void* ud, const XML_Char* name) {
+    auto& w = *static_cast<Walk*>(ud);
+    if (strip_lv_obj_prefix(name) == "consts" && w.consts_depth > 0)
+        --w.consts_depth;
+}
 
 } // namespace
 

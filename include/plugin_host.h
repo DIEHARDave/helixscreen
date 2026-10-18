@@ -7,6 +7,7 @@
 #include "lua_bindings.h"
 #include "lua_runtime.h"
 #include "plugin_backend.h"
+#include "plugin_consts.h"
 #include "plugin_manifest.h"
 #include "plugin_overlay_host.h"
 #include "plugin_permissions.h"
@@ -97,6 +98,10 @@ class PluginHost {
         return overlays_;
     }
 
+    /// Re-resolves every loaded plugin's breakpoint constants for @p display.
+    /// Runs on its own after every theme layout refresh.
+    void refresh_layout_constants(lv_display_t* display);
+
     /// The queue every plugin dialog, overlay and confirm passes through.
     PluginPresenter& presenter() {
         return presenter_;
@@ -131,6 +136,8 @@ class PluginHost {
         /// Each component this plugin registered, with the scope it created: an app that later
         /// registers the same name replaces the scope, and unload must then leave it alone.
         std::vector<std::pair<std::string, const void*>> components;
+        /// Its <consts>, kept to re-resolve the breakpoint ladder on a resize.
+        PluginConsts consts;
         /// The widget definitions this plugin registered, to unregister at unload.
         std::vector<std::string> widget_ids;
         size_t memory_bytes = 0;
@@ -162,6 +169,7 @@ class PluginHost {
     /// Widget definitions changed since the last notify_widget_defs_changed(). Survives a
     /// bulk unload_all so load_from's single end-of-scan notify covers plugins that went.
     bool widget_defs_dirty_ = false;
+    int layout_hook_ = 0;
     PluginOverlayHost overlays_;
     PluginPresenter presenter_;
     /// Destroyed first: it closes dialogs that still point back at it.

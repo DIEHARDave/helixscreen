@@ -361,3 +361,4 @@ src/ui/ui_presentation_gate.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_dialog.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_presenter.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_surfaces.cpp  # not in the v1 Core+AMS cut
+src/plugin/plugin_consts.cpp  # not in the v1 Core+AMS cut

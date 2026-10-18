@@ -292,4 +292,39 @@ TEST_CASE("*_user_data must name an owned handler", "[plugin][xml_policy]") {
     CHECK_FALSE(check_plugin_attr("ab", "primary_user_data", "ab__go:2").has_value());
 }
 
+TEST_CASE("plugin consts with owned names pass; unowned and stray values are rejected",
+          "[plugin][xml_policy]") {
+    CHECK(check_plugin_xml("ab", {}, R"(<component><consts><px name="ab__w_small" value="4"/>
+        <color name="ab__tint" value="0xff0000"/></consts><view extends="lv_obj"/></component>)")
+              .empty());
+    CHECK(check_plugin_xml("ab", {}, R"(<component><consts><px name="space_md" value="4"/>
+        </consts><view extends="lv_obj"/></component>)")
+              .find("space_md") != std::string::npos);
+    CHECK_FALSE(check_plugin_xml("ab", {}, view_with(R"(<px name="ab__w" value="4"/>)")).empty());
+}
+
+TEST_CASE("breakpoint subjects are readable in conditional binds only", "[plugin][xml_policy]") {
+    for (const char* subject : {"ui_breakpoint", "ui_breakpoint_v", "ui_is_portrait"}) {
+        CHECK(check_plugin_xml("ab", {},
+                               view_with(std::string(R"(<lv_obj><bind_flag_if_eq subject=")") +
+                                         subject + R"(" flag="hidden" ref_value="0"/></lv_obj>)"))
+                  .empty());
+        CHECK(check_plugin_xml(
+                  "ab", {},
+                  view_with(std::string(R"(<lv_obj><bind_style_if_ge name="s" subject=")") +
+                            subject + R"(" ref_value="2"/></lv_obj>)"))
+                  .empty());
+    }
+    CHECK_FALSE(check_plugin_xml("ab", {}, view_with(R"(<lv_slider bind_value="ui_breakpoint"/>)"))
+                    .empty());
+    CHECK_FALSE(
+        check_plugin_xml("ab", {}, view_with(R"(<lv_label bind_text="ui_breakpoint"/>)")).empty());
+    CHECK(
+        check_plugin_xml(
+            "ab", {},
+            view_with(
+                R"(<lv_obj><bind_flag_if subject="ab__x" cond="ui_breakpoint lt 2" flag="hidden"/></lv_obj>)"))
+            .empty());
+}
+
 #endif // HELIX_HAS_PLUGINS
