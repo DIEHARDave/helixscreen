@@ -18,6 +18,9 @@ struct PrinterManagerOverlayTestAccess {
     static void finish_name_edit(PrinterManagerOverlay& o) {
         o.finish_name_edit();
     }
+    static void destroy_ui(PrinterManagerOverlay& o) {
+        o.on_ui_destroyed();
+    }
     static int chip_refresh_count(const PrinterManagerOverlay& o) {
         return o.chip_refresh_count_;
     }

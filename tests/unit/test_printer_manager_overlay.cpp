@@ -515,6 +515,20 @@ TEST_CASE_METHOD(CapabilityChipsFixture,
 }
 
 TEST_CASE_METHOD(CapabilityChipsFixture,
+                 "PrinterManagerOverlay: destroying the UI stops watching the chip inputs",
+                 "[printer_manager]") {
+    REQUIRE(show() != nullptr);
+    PrinterManagerOverlay& pm = get_printer_manager_overlay();
+    const int before = PrinterManagerOverlayTestAccess::chip_refresh_count(pm);
+
+    PrinterManagerOverlayTestAccess::destroy_ui(pm);
+    state().capabilities_state().set_power_device_count(5);
+    settle();
+
+    CHECK(PrinterManagerOverlayTestAccess::chip_refresh_count(pm) == before);
+}
+
+TEST_CASE_METHOD(CapabilityChipsFixture,
                  "PrinterManagerOverlay: a count that changes while open updates its chip",
                  "[printer_manager]") {
     auto& caps = state().capabilities_state();

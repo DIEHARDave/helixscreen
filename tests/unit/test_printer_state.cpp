@@ -1397,6 +1397,57 @@ TEST_CASE("PrinterState: set_kinematics gates belt compare on true CoreXY", "[st
     }
 }
 
+namespace {
+std::string firmware_name_subject_text() {
+    lv_subject_t* s = lv_xml_get_subject(nullptr, "klipper_firmware_name");
+    REQUIRE(s != nullptr);
+    return lv_subject_get_string(s);
+}
+} // namespace
+
+TEST_CASE("PrinterState: firmware name reads Klipper before any discovery",
+          "[state][hardware][firmware]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(true);
+
+    REQUIRE(firmware_name_subject_text() == "Klipper");
+}
+
+TEST_CASE("PrinterState::set_hardware publishes the firmware name", "[state][hardware][firmware]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(true);
+
+    SECTION("Kalico") {
+        PrinterDiscovery hw;
+        hw.set_is_kalico(true);
+        state.set_hardware(std::move(hw));
+        REQUIRE(firmware_name_subject_text() == "Kalico");
+    }
+
+    SECTION("Klipper") {
+        PrinterDiscovery hw;
+        state.set_hardware(std::move(hw));
+        REQUIRE(firmware_name_subject_text() == "Klipper");
+    }
+}
+
+TEST_CASE("PrinterState: set_kinematics bumps the hardware generation",
+          "[state][kinematics][hardware]") {
+    lv_init_safe();
+    PrinterState& state = get_printer_state();
+    PrinterStateTestAccess::reset(state);
+    state.init_subjects(false);
+
+    lv_subject_t* gen = state.capabilities_state().subject(Capability::HardwareGeneration);
+    const int before = lv_subject_get_int(gen);
+    state.set_kinematics("corexy");
+    REQUIRE(lv_subject_get_int(gen) != before);
+}
+
 TEST_CASE("PrinterState: Update kinematics from toolhead notification", "[state][kinematics][ui]") {
     lv_init_safe();
 
