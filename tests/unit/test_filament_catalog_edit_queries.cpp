@@ -203,10 +203,10 @@ TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
         REQUIRE(at != std::string::npos);
         return std::atoi(xml.c_str() + at + needle.size());
     };
-    // The disc ladder resolves through #tokens; assert on the literal
-    // micro/small/medium grid consts the ladders reference.
-    const int disc_micro = 30;
-    const int disc_medium = 32;
+    // The disc ladders are literals in the editor's consts; read them so a
+    // change to either side of the 44px math fails here.
+    const int disc_micro = read_px("ams_edit_grid_swatch_micro");
+    const int disc_medium = read_px("ams_edit_grid_swatch_medium");
     for (const char* cls : {"micro", "tiny", "small"}) {
         const std::string p = std::string("ams_edit_grid_");
         const int hit = read_px(p + "hit_" + cls);
