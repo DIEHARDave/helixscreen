@@ -29,6 +29,7 @@
 #include "filament_op_heater.h"
 #include "filament_op_router.h"
 #include "filament_op_slot_resolver.h"
+#include "helix_psram_attr.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
@@ -194,21 +195,21 @@ void dispatch_backend_unload(int slot_index, int target_slot, FilamentOpTicket t
  * live binding. Registered once, deinit'd via StaticSubjectRegistry (which runs
  * before lv_deinit()), same shape as ScrewsTiltShareModal's row subjects.
  */
-lv_subject_t s_unload_disabled{};
-lv_subject_t s_load_disabled{};
-lv_subject_t s_reset_disabled{};
-lv_subject_t s_check_gates_disabled{};
-lv_subject_t s_load_hidden{};
-lv_subject_t s_unload_hidden{};
-lv_subject_t s_unload_picks{};
-lv_subject_t s_mount_hidden{};
-lv_subject_t s_mount_disabled{};
-lv_subject_t s_park_hidden{};
-lv_subject_t s_park_disabled{};
-lv_subject_t s_action_reason{};
-lv_subject_t s_action_reason_shown{};
-char s_action_reason_buf[192];
-lv_subject_t s_supports_reset{};
+HELIX_PSRAM_BSS lv_subject_t s_unload_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_load_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_reset_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_check_gates_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_load_hidden{};
+HELIX_PSRAM_BSS lv_subject_t s_unload_hidden{};
+HELIX_PSRAM_BSS lv_subject_t s_unload_picks{};
+HELIX_PSRAM_BSS lv_subject_t s_mount_hidden{};
+HELIX_PSRAM_BSS lv_subject_t s_mount_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_park_hidden{};
+HELIX_PSRAM_BSS lv_subject_t s_park_disabled{};
+HELIX_PSRAM_BSS lv_subject_t s_action_reason{};
+HELIX_PSRAM_BSS lv_subject_t s_action_reason_shown{};
+HELIX_PSRAM_BSS char s_action_reason_buf[192];
+HELIX_PSRAM_BSS lv_subject_t s_supports_reset{};
 bool s_gating_subjects_initialized = false;
 SubjectManager s_subjects;
 

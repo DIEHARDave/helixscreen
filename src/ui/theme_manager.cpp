@@ -10,6 +10,7 @@
 #include "border_radius_sizes.h"
 #include "config.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "helix_psram_attr.h"
 #include "layout_manager.h"
 #include "lvgl/lvgl.h"
 #include "lvgl/src/display/lv_display_private.h" // screens[]: LVGL has no screen iterator
@@ -66,7 +67,7 @@ ThemeRuntime& runtime() {
 }
 
 ThemeSubjects& subjects() {
-    static ThemeSubjects subs;
+    static HELIX_PSRAM_BSS ThemeSubjects subs;
     return subs;
 }
 
