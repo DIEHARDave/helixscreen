@@ -11,6 +11,7 @@
 #include "ui_temperature_utils.h"
 #include "ui_timer_guard.h"
 
+#include "ams_state.h"
 #include "app_globals.h"
 #include "callout_chip.h"
 #include "config.h"
@@ -256,6 +257,15 @@ void PrinterImageWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         [](PrinterImageWidget* w, const char* /*type*/) { w->schedule_image_refresh(); },
         get_printer_state().get_subjects_lifetime());
 
+    hardware_observers_.clear();
+    AmsState& ams = AmsState::instance();
+    for (lv_subject_t* s : {ams.get_backend_count_subject(), ams.get_ams_type_subject()}) {
+        hardware_observers_.push_back(helix::ui::observe<int>(
+            s, this,
+            [](PrinterImageWidget* w, int /*value*/) { w->refresh_if_detected_image_changed(); },
+            ams.get_subjects_lifetime()));
+    }
+
     // A recycled instance's mode is the last tree's; hide the layer until the
     // timer has positioned this tree's chips.
     lv_subject_set_int(&s_printer_callout_mode, static_cast<int>(CalloutMode::ImageOnly));
@@ -270,6 +280,7 @@ void PrinterImageWidget::detach() {
     // UpdateQueue holds a weak alive token that this reset expires, so a
     // deferred refresh can't land on a detached tree.
     printer_type_observer_.reset();
+    hardware_observers_.clear();
     callout_observers_.clear();
     bed_temp_lt_.reset();
     bed_target_lt_.reset();
@@ -418,6 +429,15 @@ void PrinterImageWidget::refresh_printer_image() {
 
     // Schedule cache check after layout resolves
     schedule_cache_check();
+}
+
+void PrinterImageWidget::refresh_if_detected_image_changed() {
+    // Hardware subjects change on every connect; redrawing an unchanged image
+    // would drop its decoded copy for nothing.
+    if (!widget_obj_ || helix::PrinterImageManager::instance().get_displayed_image_path(
+                            printer_images::current_screen_width()) == current_source_path_)
+        return;
+    schedule_image_refresh();
 }
 
 void PrinterImageWidget::schedule_image_refresh() {

@@ -6,6 +6,8 @@
 #include "../test_fixtures.h"
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/process_async_timers.h"
+#include "../test_helpers/typed_mock_backend.h"
+#include "ams_state.h"
 #include "app_globals.h"
 #include "config.h"
 #include "misc/lv_timer_private.h"
@@ -390,4 +392,50 @@ TEST_CASE_METHOD(XMLTestFixture,
     process_async_timers();
     helix::ConfigTestAccess::data(*cfg) = saved;
     helix::ConfigTestAccess::active_printer_id(*cfg) = saved_active;
+}
+
+// A filament system registers after connect, after the home panel is built. A
+// database entry's image_variants can pick another image for it, so the widget
+// re-resolves when the detected filament systems change, and back when they go.
+TEST_CASE_METHOD(XMLTestFixture,
+                 "PrinterImageWidget switches to an image variant when a filament system registers",
+                 "[panel_widget][printer_image][printer_image_variants]") {
+    helix::init_widget_registrations();
+    helix::PanelWidgetManager::instance().init_widget_subjects();
+    get_printer_state().init_subjects(false);
+    AmsState& ams = AmsState::instance();
+    ams.clear_backends();
+    ams.init_subjects(false);
+
+    Config* cfg = Config::get_instance();
+    cfg->set<std::string>(cfg->df() + helix::wizard::PRINTER_TYPE, "Creality K2");
+
+    lv_obj_t* widget_obj = lv_obj_create(test_screen());
+    lv_obj_set_size(widget_obj, 200, 200);
+    lv_obj_t* img = lv_image_create(widget_obj);
+    lv_obj_set_name(img, "printer_image");
+    process_lvgl(2);
+
+    helix::PrinterImageWidget w;
+    w.attach(widget_obj, test_screen());
+    helix::ui::UpdateQueue::instance().drain();
+    process_async_timers();
+    auto source = [&]() { return std::string(static_cast<const char*>(lv_image_get_src(img))); };
+    const std::string plain = source();
+    REQUIRE(plain.find("creality-k2") != std::string::npos);
+    REQUIRE(plain.find("creality-k2-cfs") == std::string::npos);
+
+    ams.add_backend(std::make_unique<helix::test::TypedMockBackend>(AmsType::CFS));
+    helix::ui::UpdateQueue::instance().drain();
+    process_async_timers();
+    CHECK(source().find("creality-k2-cfs") != std::string::npos);
+
+    ams.clear_backends();
+    helix::ui::UpdateQueue::instance().drain();
+    process_async_timers();
+    CHECK(source() == plain);
+
+    w.detach();
+    process_async_timers();
+    cfg->set<std::string>(cfg->df() + helix::wizard::PRINTER_TYPE, "");
 }

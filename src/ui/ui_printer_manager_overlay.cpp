@@ -29,7 +29,6 @@
 #include "prerendered_images.h"
 #include "printer_detector.h"
 #include "printer_image_manager.h"
-#include "printer_images.h"
 #include "printer_name_sync.h"
 #include "static_panel_registry.h"
 #include "subject_debug_registry.h"
@@ -393,11 +392,8 @@ void PrinterManagerOverlay::refresh_printer_info() {
         lv_display_t* disp = lv_display_get_default();
         int screen_width = disp ? lv_display_get_horizontal_resolution(disp) : 800;
 
-        auto& pim = helix::PrinterImageManager::instance();
-        std::string new_path = pim.get_active_image_path(screen_width);
-        if (new_path.empty()) {
-            new_path = printer_images::get_best_printer_image(model);
-        }
+        std::string new_path =
+            helix::PrinterImageManager::instance().get_displayed_image_path(screen_width);
 
         // LVGL keys its decoded copy on the path alone, and an import can rewrite an
         // image in place under that same path, so the decoded copy is dropped on

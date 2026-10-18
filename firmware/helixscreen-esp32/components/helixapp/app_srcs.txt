@@ -229,6 +229,7 @@ src/printer/printer_excluded_objects_state.cpp
 src/printer/printer_fan_state.cpp
 src/printer/printer_hardware.cpp
 src/printer/printer_hardware_validation_state.cpp
+src/printer/printer_image_variants.cpp
 src/printer/printer_motion_state.cpp
 src/printer/printer_network_state.cpp
 src/printer/printer_plugin_status_state.cpp

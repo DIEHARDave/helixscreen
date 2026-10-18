@@ -20,7 +20,6 @@
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
-#include "config.h"
 #include "helix_fs.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "prerendered_images.h"
@@ -28,7 +27,6 @@
 #include "printer_images.h"
 #include "ui/ui_widget_helpers.h"
 #include "usb_manager.h"
-#include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
 
@@ -132,13 +130,9 @@ void PrinterImageOverlay::on_activate() {
         update_preview(active_id, display_name, preview_path);
     } else {
         // Show the auto-detected image as preview
-        std::string auto_path;
-        Config* config = Config::get_instance();
-        std::string printer_type =
-            config->get<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "");
-        auto_path = printer_images::get_best_printer_image(printer_type);
-
-        update_preview("", lv_tr("Auto-Detect"), auto_path);
+        update_preview("", lv_tr("Auto-Detect"),
+                       helix::PrinterImageManager::instance().get_detected_image_path(
+                           printer_images::current_screen_width()));
     }
 }
 
@@ -442,13 +436,9 @@ void PrinterImageOverlay::handle_auto_detect() {
     update_selection_indicator("");
 
     // Show the auto-detected image as preview
-    std::string auto_path;
-    Config* config = Config::get_instance();
-    std::string printer_type =
-        config->get<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "");
-    auto_path = printer_images::get_best_printer_image(printer_type);
-
-    update_preview("", "Auto-Detect", auto_path);
+    update_preview("", "Auto-Detect",
+                   helix::PrinterImageManager::instance().get_detected_image_path(
+                       printer_images::current_screen_width()));
     NOTIFY_INFO(lv_tr("Printer image set to auto-detect"));
 }
 

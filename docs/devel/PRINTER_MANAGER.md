@@ -327,6 +327,7 @@ The printer database (`config/printer_database.json`) is the source of truth for
 | `name` | Human-readable name shown in UI |
 | `manufacturer` | Manufacturer name |
 | `image` | PNG filename in `assets/images/printers/` |
+| `image_variants` | Optional ordered list of alternate images chosen by detected hardware, e.g. `[{"when": {"filament_system": "cfs"}, "image": "creality-k2-cfs.png"}]`. See [Image Lookup](#image-lookup) |
 | `print_start_profile` | Profile for print start phase detection |
 | `z_offset_calibration_strategy` | Z-offset calibration approach: `probe_calibrate`, `endstop`, or `firmware_managed` (HelixScreen offers no Save step of its own). Omit to derive from probe presence. Separate from *where the value is stored* — see `include/z_offset_persistence.h` |
 | `z_offset_persists` | `false` on a `firmware_managed` printer whose firmware does not persist a `SET_GCODE_OFFSET` adjustment, so Print Tune calls the adjustment temporary instead of auto-saved. Omit (default `true`) when the firmware persists it. An installed persistence provider (`include/z_offset_persistence.h`) counts as persisting whatever this says. |
@@ -359,6 +360,32 @@ Detection scores are combined across multiple heuristics. A confidence of >= 70 
 ### Image Lookup
 
 `PrinterDetector::get_image_for_printer(name)` returns the `image` field for a given printer name. Note: there is no `PrinterDatabase` class -- the printer database is a JSON file (`config/printer_database.json`) accessed through `PrinterDetector` static methods. `helix::printer_images::get_best_printer_image()` then resolves this to an LVGL path, preferring pre-rendered `.bin` files.
+
+**What the connected printer shows** comes from one resolver,
+`src/system/printer_image_manager.cpp#get_displayed_image_path`: the
+user's chosen image (`custom:` or `shipped:`) if there is one, else
+`get_detected_image_path()`, the configured printer type's image after `image_variants`.
+The home widget, the printer manager, the screensavers, the image picker's Auto-Detect
+preview and the tagger all read it; the wizard's model list uses the plain `image`, since
+it names models rather than the machine in front of it.
+
+`image_variants` is an ordered list on an entry. Each variant is `{"when": {...},
+"image": "..."}`; the first whose every condition holds replaces `image`, and none holding
+leaves `image`. The matcher is a pure function over detected facts
+(`include/printer_image_variants.h`, `[printer_image_variants]`), so a vendor name appears
+only in the database.
+
+| Condition | Holds when | Values |
+|---|---|---|
+| `filament_system` | a registered filament-system backend is of this kind (any of them, not only the active one) | an `AmsType` spelling `ams_type_from_string()` parses: `cfs`, `afc`, `happy_hare`, `ace`, `tool_changer`, `ad5x_ifs`, `snapmaker`, `qidi_box`, `openams` |
+
+A condition key or value the build does not know makes its variant never match, so the
+entry degrades to its plain image; the `[printer_database][schema]` test fails on one, and
+`scripts/check_printer_images.py` fails on a variant image that is not on disk. A new
+condition is a new `HardwareFacts` field, a branch in `condition_holds()`, and its
+gathering in `PrinterImageManager`. The home widget re-resolves when AmsState's
+backend count or type changes, so a filament system registering after connect switches the
+image live. Each variant image needs its own `regions.json` entry for the callout chips.
 
 ---
 

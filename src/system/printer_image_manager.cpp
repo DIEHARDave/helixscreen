@@ -3,12 +3,15 @@
 
 #include "printer_image_manager.h"
 
+#include "ams_backend.h"
+#include "ams_state.h"
 #include "config.h"
 #include "data_root_resolver.h"
 #include "helix_fs.h"
 #include "lvgl_image_writer.h"
 #include "prerendered_images.h"
 #include "printer_image_regions.h"
+#include "printer_image_variants.h"
 #include "printer_images.h"
 #include "settings_manager.h"
 #include "static_subject_registry.h"
@@ -161,14 +164,39 @@ void PrinterImageManager::notify_image_changed() {
     }
 }
 
+namespace {
+
+/// The hardware AmsState has detected, as the facts image variants are chosen by.
+printer_images::HardwareFacts detected_hardware_facts() {
+    printer_images::HardwareFacts facts;
+    AmsState& ams = AmsState::instance();
+    for (int i = 0; i < ams.backend_count(); ++i) {
+        if (const AmsBackend* backend = ams.get_backend(i)) {
+            facts.filament_systems.push_back(backend->get_type());
+        }
+    }
+    return facts;
+}
+
+} // namespace
+
+std::string PrinterImageManager::get_detected_image_path(int screen_width) {
+    Config* config = Config::get_instance();
+    const std::string printer_type =
+        config->get<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "");
+    if (printer_type.empty()) {
+        return printer_images::default_printer_image_path();
+    }
+    return printer_images::get_best_image_for_file(
+        PrinterDetector::get_image_for_printer(printer_type, detected_hardware_facts()),
+        screen_width);
+}
+
 std::string PrinterImageManager::get_displayed_image_path(int screen_width) {
     std::string path = get_active_image_path(screen_width);
     if (!path.empty())
         return path;
-    Config* config = Config::get_instance();
-    const std::string printer_type =
-        config->get<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "");
-    return printer_images::get_best_printer_image(printer_type);
+    return get_detected_image_path(screen_width);
 }
 
 // =============================================================================

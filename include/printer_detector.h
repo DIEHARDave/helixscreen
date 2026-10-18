@@ -16,6 +16,9 @@ class Config;
 namespace helix {
 class PrinterDiscovery;
 }
+namespace helix::printer_images {
+struct HardwareFacts;
+}
 
 /**
  * @brief Printer auto-detection result with confidence and reasoning
@@ -204,6 +207,17 @@ class PrinterDetector {
      * @return Image filename if found, empty string if not found
      */
     static std::string get_image_for_printer(const std::string& printer_name);
+
+    /**
+     * @brief Image filename for a printer type, given the hardware detected on it
+     *
+     * The entry's first `image_variants` entry whose conditions @p facts meet,
+     * else its plain `image` (printer_image_variants.h).
+     *
+     * @return Image filename if found, empty string if not found
+     */
+    static std::string get_image_for_printer(const std::string& printer_name,
+                                             const helix::printer_images::HardwareFacts& facts);
 
     /**
      * @brief Get console filter pattern preset for a printer

@@ -1,6 +1,7 @@
 {
   "version": "2.0",
   "description": "Printer auto-detection database with Klipper hardware fingerprints",
+  "_field_image_variants": "Optional on a printer entry: an ordered list of alternate images chosen by hardware the app detects on the connected printer, each {\"when\": {<condition>: <value>, ...}, \"image\": \"<file in assets/images/printers/>\"}. The first variant whose every condition holds replaces the entry's image; none holding leaves the plain image, and a custom image the user picked always wins. Conditions: filament_system - a detected filament system of this kind, spelled as ams_type_from_string() parses it (cfs, afc, happy_hare, ace, tool_changer, ad5x_ifs, snapmaker, qidi_box, openams). A condition key or value this build does not know makes its variant never match, and the [printer_database][schema] test fails on one, so a misspelling cannot ship silently. The image re-resolves when detection changes, so a filament system registering after connect switches it live.",
   "heuristic_types": {
     "hostname_match": "Match against Moonraker hostname (from /printer/info)",
     "hostname_exclude": "Exclude this printer if the hostname matches this pattern",
@@ -2178,6 +2179,14 @@
       "toolhead_style": "creality_k2",
       "image": "creality-k2.png",
       "_image_comment": "creality-k2.png is a byte copy of creality-k2-plus.png until a photo of the base K2 exists. It keeps its own filename because detection tells machines apart by image: a shared file would make the base K2 and the K2 Plus one machine to the tie rules",
+      "image_variants": [
+        {
+          "when": {
+            "filament_system": "cfs"
+          },
+          "image": "creality-k2-cfs.png"
+        }
+      ],
       "probe_type": "prtouch_v3",
       "preset": "k2",
       "preset_default": true,
