@@ -98,10 +98,8 @@ json spool_context(const SpoolInfo& spool) {
 }
 
 json tile_context(const std::string& widget_id) {
-    const auto sep = widget_id.find(plugin::kPluginNameSeparator);
-    return json{{"widget", sep == std::string::npos
-                               ? widget_id
-                               : widget_id.substr(sep + plugin::kPluginNameSeparator.size())}};
+    const std::string_view local = plugin::local_part_of(widget_id);
+    return json{{"widget", local.empty() ? widget_id : std::string(local)}};
 }
 
 } // namespace helix::plugin_menu

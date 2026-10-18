@@ -465,10 +465,11 @@ PluginEventTarget parse_plugin_event(std::string_view user_data) {
         arg = std::string(user_data.substr(colon + 1));
     }
     std::string_view id = owner_of(head);
-    if (!is_valid_plugin_id(id) || head.size() <= id.size() + kPluginNameSeparator.size())
+    std::string_view name = local_part_of(head);
+    if (!is_valid_plugin_id(id) || name.empty())
         return t;
     t.id = std::string(id);
-    t.name = std::string(head.substr(id.size() + kPluginNameSeparator.size()));
+    t.name = std::string(name);
     t.arg = std::move(arg);
     return t;
 }

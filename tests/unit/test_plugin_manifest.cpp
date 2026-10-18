@@ -70,6 +70,10 @@ TEST_CASE("owned names need the id, the separator and a rest", "[plugin][manifes
     CHECK(owner_of("orca-cal__my_status") == "orca-cal");
     CHECK(owner_of("orca-cal_status").empty());
     CHECK(owner_of("nounderscore").empty());
+    CHECK(local_part_of("orca-cal__my_status") == "my_status");
+    CHECK(local_part_of("orca-cal__a__b") == "a__b");
+    CHECK(local_part_of("orca-cal_status").empty());
+    CHECK(local_part_of("orca-cal__").empty());
 }
 
 TEST_CASE("a complete manifest parses", "[plugin][manifest]") {

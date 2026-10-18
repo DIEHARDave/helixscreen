@@ -112,4 +112,12 @@ bool is_owned_name(std::string_view id, std::string_view name);
 /// form.
 std::string_view owner_of(std::string_view name);
 
+/// The `<rest>` of `<id>__<rest>`; empty when the name is not in that form. Header-only
+/// so code built without the plugin runtime can split a name too.
+constexpr std::string_view local_part_of(std::string_view name) {
+    const size_t pos = name.find(kPluginNameSeparator);
+    return pos == std::string_view::npos ? std::string_view{}
+                                         : name.substr(pos + kPluginNameSeparator.size());
+}
+
 } // namespace helix::plugin
