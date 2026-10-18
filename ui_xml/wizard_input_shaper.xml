@@ -64,8 +64,10 @@
         <bind_flag_if_eq subject="wizard_input_shaper_has_chart" flag="hidden" ref_value="0"/>
       </lv_obj>
 
-      <!-- Spacer -->
-      <lv_obj flex_grow="1"/>
+      <!-- Spacer; the chart takes its room while it is shown -->
+      <lv_obj flex_grow="1">
+        <bind_flag_if_eq subject="wizard_input_shaper_has_chart" flag="hidden" ref_value="1"/>
+      </lv_obj>
 
       <!-- Start calibration button (centered, hidden once calibration started) -->
       <ui_button name="start_calibration_btn"
