@@ -798,6 +798,7 @@
   <translation tag="Could not save the printer image tags" de="Bildmarkierungen konnten nicht gespeichert werden"/>
   <translation tag="Could not skip {}" de="{} konnte nicht übersprungen werden"/>
   <translation tag="Could not start Bluetooth discovery" de="Bluetooth-Erkennung konnte nicht gestartet werden"/>
+  <translation tag="Could not turn the heaters off" de="Die Heizungen konnten nicht ausgeschaltet werden"/>
   <translation tag="Could not update filaments" de="Filamente konnten nicht aktualisiert werden"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." de="Spoolman-Status konnte nicht überprüft werden. Moonraker startet möglicherweise noch neu."/>
   <translation tag="Couldn&apos;t assign the tool" de="Werkzeug konnte nicht zugewiesen werden"/>
@@ -1761,6 +1762,7 @@
   <translation tag="Load filament first" de="Laden Sie zuerst Filament"/>
   <translation tag="Load into which tool?" de="In welches Werkzeug laden?"/>
   <translation tag="Load or unload filament." de="Filament laden oder entladen."/>
+  <translation tag="Load stopped" de="Laden gestoppt"/>
   <translation tag="Load the required filaments or start anyway?" de="Benötigte Filamente laden oder trotzdem starten?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." de="Spulen laden, entladen und wechseln. Ihr Multi-Filament-System auf einen Blick sehen, Filament den Werkzeugen zuordnen und Filamentsensoren überwachen."/>
   <translation tag="Load..." de="Laden..."/>
@@ -3506,6 +3508,7 @@
   <translation tag="Unload filament?" de="Filament entladen?"/>
   <translation tag="Unload from toolhead first" de="Entladen Sie zuerst aus dem Werkzeugkopf"/>
   <translation tag="Unload macro not configured" de="Entlade-Makro nicht konfiguriert"/>
+  <translation tag="Unload stopped" de="Entladen gestoppt"/>
   <translation tag="Unload the CFS filament before enabling bypass" de="Entladen Sie das CFS-Filament, bevor Sie den Bypass aktivieren"/>
   <translation tag="Unload this unit first" de="Entladen Sie zuerst diese Einheit"/>
   <translation tag="Unload which tool?" de="Welches Werkzeug entladen?"/>

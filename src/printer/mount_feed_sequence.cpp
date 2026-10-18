@@ -46,17 +46,16 @@ std::string with_heater_off(std::string gcode) {
     return gcode + "\nM104 S0";
 }
 
-/// The heater object Klipper multi-extruder naming gives @p head's tool: the
-/// first extruder is plain `extruder`, the rest `extruder<n>`.
-std::string heater_name(int head) {
-    return head <= 0 ? "extruder" : fmt::format("extruder{}", head);
-}
-
 /// Warm @p head partway while another tool works, so its own M109 starts from
-/// heat instead of room temperature.
+/// heat instead of room temperature - unless it is already set at least that
+/// hot, in which case its target stands and nothing is sent.
 std::string preheat_gcode(const HeadRequest& head) {
+    const int preheat = head.temp_c * 65 / 100;
+    if (head.heater_target_c >= preheat) {
+        return {};
+    }
     return fmt::format("SET_HEATER_TEMPERATURE HEATER={} TARGET={}", heater_name(head.head),
-                       head.temp_c * 65 / 100);
+                       preheat);
 }
 
 std::string heater_off_gcode(int head) {
@@ -75,6 +74,10 @@ std::string feed_or_retract_gcode(const Request& r, const HeadRequest& head) {
 }
 
 } // namespace
+
+std::string heater_name(int head) {
+    return head <= 0 ? "extruder" : fmt::format("extruder{}", head);
+}
 
 std::vector<Step> steps(bool load) {
     if (load) {
@@ -285,16 +288,20 @@ std::vector<int> Run::completed_heads() const {
     if (cleaning_up_ || request_.heads.size() < 2) {
         return done;
     }
-    // A tool is done once the run has moved past its last stage.
-    std::vector<size_t> last(request_.heads.size(), 0);
+    // A tool is done once the run has moved past its last WORK stage: the
+    // carriage restore that follows the last tool belongs to the whole run,
+    // so a tool being put back counts as complete, not in flight.
+    std::vector<size_t> last_work(request_.heads.size(), 0);
     for (size_t i = 0; i < stages_.size(); ++i) {
-        const int t = stages_[i].tool_index;
-        if (t >= 0 && static_cast<size_t>(t) < last.size()) {
-            last[static_cast<size_t>(t)] = i;
+        const Stage& s = stages_[i];
+        if (s.step == Step::Restore || s.tool_index < 0 ||
+            static_cast<size_t>(s.tool_index) >= last_work.size()) {
+            continue;
         }
+        last_work[static_cast<size_t>(s.tool_index)] = i;
     }
-    for (size_t t = 0; t < last.size(); ++t) {
-        if (last[t] < index_) {
+    for (size_t t = 0; t < last_work.size(); ++t) {
+        if (last_work[t] < index_) {
             done.push_back(request_.heads[t].head);
         }
     }
@@ -342,19 +349,19 @@ void Run::abort() {
         index_ = stages_.size();
         return;
     }
-    // Heater off and the carriage back where it was. A prompt still open is
-    // closed with it. With several tools every heater in the plan goes off:
-    // the ones already worked are cooling, the preheated next one never
-    // starts, and the current one stops.
+    // The carriage goes back where it was, a prompt still open is closed with
+    // it, and every heater in the plan goes off BY NAME: the active extruder
+    // before the first mount is the PREVIOUS tool's, and a blanket M104 S0
+    // would zero a target its user set.
     std::string cleanup;
     if (awaiting_operator_ || current_step() == Step::Insert) {
-        cleanup = prompt_end_gcode() + "\n";
+        cleanup = prompt_end_gcode();
     }
-    cleanup += "M104 S0";
-    if (request_.heads.size() > 1) {
-        for (const HeadRequest& head : request_.heads) {
-            cleanup += "\n" + heater_off_gcode(head.head);
+    for (const HeadRequest& head : request_.heads) {
+        if (!cleanup.empty()) {
+            cleanup += "\n";
         }
+        cleanup += heater_off_gcode(head.head);
     }
     if (!request_.restore_gcode.empty()) {
         cleanup += "\n" + request_.restore_gcode;

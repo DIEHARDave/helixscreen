@@ -159,8 +159,17 @@ answer with `RESPOND TYPE=command MSG=HELIX_MOUNT_FEED_CONTINUE` / `..._CANCEL`;
 watches the console for that exact echo (`mount_feed::parse_console()`). The sidebar's Cancel
 (`AmsBackendToolChanger::cancel()`), the prompt's Cancel, and a prompt **dismissed** anywhere
 (the screen's own dismiss sends `action:prompt_end`, whose echo is the only trace) all turn
-the rest of the run into the cleanup: prompt closed, `M104 S0`, carriage restored. A stage
-that fails does the same; Klipper's own error line reports the failure.
+the rest of the run into the cleanup: prompt closed, the plan's heaters turned off BY NAME
+(`SET_HEATER_TEMPERATURE ... TARGET=0`, never a blanket `M104 S0` - the active extruder
+before the first mount is the PREVIOUS tool's, and its user-set target must survive), and
+the carriage restored. A stage that fails does the same; Klipper's own error line reports
+the failure. A cleanup that cannot be sent at all ends the run and says
+`Could not turn the heaters off`.
+
+A lost connection or a klippy restart under a live run strands it: no ack can arrive for
+the stage in flight. `abandon_feed_run_after_disconnect()` runs from both `on_started()`
+(the reconnect) and `on_stopping()`: it sends the whole cleanup best effort and resets the
+run without waiting for an ack.
 
 **The wait has a ceiling.** Nobody inserting the filament for three minutes
 (`mount_feed::PROMPT_TIMEOUT_MS`) unwinds the run the same way - a hot nozzle must not sit
@@ -172,7 +181,9 @@ sidebar's picker accepts several heads on this backend. A Load of several asks *
 front ("Insert filament into Tools 1, 2, 4 as far as it goes, then tap Continue"), then
 works tool by tool: each tool's opening stage preheats the **next** one to 65% of its
 material temperature (`SET_HEATER_TEMPERATURE HEATER=extruder<n>`, the Klipper multi-extruder
-naming - `extruder` for tool 0), so its own `M109` starts from heat. An Unload of several
+naming - `extruder` for tool 0), so its own `M109` starts from heat. A preheat never LOWERS
+a target: a next tool already set hotter than the preheat value is left alone
+(`HeadRequest::heater_target_c`, read off the live extruder targets at dispatch). An Unload of several
 runs the same sequence with no prompt. At the end the carriage is restored to the tool the
 run found on it (or parked). A stop mid-sequence - cancel, timeout, failed stage - turns
 every heater in the plan off, restores the carriage, and toasts the tools that did complete

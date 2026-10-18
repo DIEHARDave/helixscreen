@@ -798,6 +798,7 @@
   <translation tag="Could not save the printer image tags" es="Error al guardar las marcas de la imagen"/>
   <translation tag="Could not skip {}" es="No se pudo omitir {}"/>
   <translation tag="Could not start Bluetooth discovery" es="No se pudo iniciar el descubrimiento Bluetooth"/>
+  <translation tag="Could not turn the heaters off" es="No se pudieron apagar los calentadores"/>
   <translation tag="Could not update filaments" es="No se pudieron actualizar los filamentos"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." es="No se pudo verificar el estado de Spoolman. Moonraker puede estar reiniciándose."/>
   <translation tag="Couldn&apos;t assign the tool" es="No se pudo asignar la herramienta"/>
@@ -1761,6 +1762,7 @@
   <translation tag="Load filament first" es="Cargue filamento primero"/>
   <translation tag="Load into which tool?" es="¿En qué herramienta cargar?"/>
   <translation tag="Load or unload filament." es="Carga o descarga filamento."/>
+  <translation tag="Load stopped" es="Carga detenida"/>
   <translation tag="Load the required filaments or start anyway?" es="¿Cargar los filamentos requeridos o iniciar de todos modos?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." es="Carga, descarga e intercambia bobinas. Ve tu sistema multi-filamento de un vistazo, mapea el filamento a las herramientas y monitoriza los sensores de agotamiento."/>
   <translation tag="Load..." es="Cargar..."/>
@@ -3506,6 +3508,7 @@
   <translation tag="Unload filament?" es="¿Descargar filamento?"/>
   <translation tag="Unload from toolhead first" es="Descargue primero desde el cabezal"/>
   <translation tag="Unload macro not configured" es="Macro de descarga no configurado"/>
+  <translation tag="Unload stopped" es="Descarga detenida"/>
   <translation tag="Unload the CFS filament before enabling bypass" es="Descargue el filamento del CFS antes de activar el bypass"/>
   <translation tag="Unload this unit first" es="Descargue primero esta unidad"/>
   <translation tag="Unload which tool?" es="¿Qué herramienta descargar?"/>

@@ -211,7 +211,9 @@ TEST_CASE("mount-to-feed: the run waits on the operator and cleans up on Cancel"
     run.operator_reply(mf::Reply::Cancel);
     CHECK(run.aborted());
     CHECK(run.current_gcode() ==
-          std::optional<std::string>(mf::prompt_end_gcode() + "\nM104 S0\nSELECT_TOOL T=0"));
+          std::optional<std::string>(mf::prompt_end_gcode() +
+                                     "\nSET_HEATER_TEMPERATURE HEATER=extruder2 TARGET=0\n"
+                                     "SELECT_TOOL T=0"));
     run.stage_done();
     CHECK(run.finished());
 }
@@ -221,7 +223,9 @@ TEST_CASE("mount-to-feed: a failure turns the rest into heater off and restore",
     mf::Run run(load_request());
     run.stage_done(); // mounted
     run.abort();      // the heat failed
-    CHECK(run.current_gcode() == std::optional<std::string>("M104 S0\nSELECT_TOOL T=0"));
+    CHECK(run.current_gcode() ==
+          std::optional<std::string>("SET_HEATER_TEMPERATURE HEATER=extruder2 TARGET=0\n"
+                                     "SELECT_TOOL T=0"));
     run.abort(); // a failure inside the cleanup ends the run
     CHECK(run.finished());
 }
@@ -322,7 +326,9 @@ TEST_CASE("MedusaHC cancels a load waiting on the operator",
     tc.ack();
     tc.ack(); // the prompt is up
     REQUIRE(tc.cancel().success());
-    CHECK(tc.sent_.back() == mf::prompt_end_gcode() + "\nM104 S0\nSELECT_TOOL T=0");
+    CHECK(tc.sent_.back() == mf::prompt_end_gcode() +
+                                 "\nSET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                                 "SELECT_TOOL T=0");
     tc.ack();
     CHECK(tc.get_current_action() == AmsAction::IDLE);
 }
@@ -337,7 +343,10 @@ TEST_CASE("MedusaHC refuses a second op while one runs, and cleans up a failed s
 
     tc.ack();  // mounted
     tc.fail(); // the heat failed
-    CHECK(tc.sent_.back() == "M104 S0\nSELECT_TOOL T=0");
+    CHECK(tc.sent_.back() == "SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
+                             "SELECT_TOOL T=0");
+    // One tool: the failure toast is about the load, not a batch.
+    CHECK(ToolChangerTestAccess::feed_last_toast(tc) == "Load stopped");
     tc.ack();
     CHECK(tc.get_current_action() == AmsAction::IDLE);
 }
@@ -387,7 +396,9 @@ TEST_CASE("mount-to-feed: the operator wait times out into the cleanup",
     CHECK(run.advance_wait(mf::PROMPT_TIMEOUT_MS) == mf::Run::WaitResult::Expired);
     CHECK(run.aborted());
     CHECK(run.current_gcode() ==
-          std::optional<std::string>(mf::prompt_end_gcode() + "\nM104 S0\nSELECT_TOOL T=0"));
+          std::optional<std::string>(mf::prompt_end_gcode() +
+                                     "\nSET_HEATER_TEMPERATURE HEATER=extruder2 TARGET=0\n"
+                                     "SELECT_TOOL T=0"));
     // A wait that is not running is not expired either.
     CHECK(run.advance_wait(1000) == mf::Run::WaitResult::NotWaiting);
 }
@@ -471,9 +482,9 @@ TEST_CASE("mount-to-feed: a multi-tool run's step index walks every tool's strid
     CHECK(run.completed_heads() == std::vector<int>{1}); // tool 1's work is done
     run.stage_done();
     run.stage_done();
-    CHECK(run.completed_heads() == std::vector<int>{1});
-    run.stage_done();
     CHECK(run.phase_index() == 9); // restore belongs to the last tool
+    // The restore in flight counts the tool it is putting back as complete:
+    // its filament work is done.
     CHECK(run.completed_heads() == std::vector<int>({1, 3}));
     run.stage_done();
     CHECK(run.finished());
@@ -491,8 +502,7 @@ TEST_CASE("mount-to-feed: a multi-tool stop turns every heater in the plan off",
     run.abort(); // tool 2's heat failed
     CHECK(run.aborted());
     CHECK(run.current_gcode() ==
-          std::optional<std::string>("M104 S0\n"
-                                     "SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
+          std::optional<std::string>("SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
                                      "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
                                      "SELECT_TOOL T=0"));
 }
@@ -545,8 +555,7 @@ TEST_CASE("MedusaHC times a multi-tool load out and stops with every heater off"
 
     ToolChangerTestAccess::feed_wait_elapsed(tc, mf::PROMPT_TIMEOUT_MS);
     CHECK(tc.sent_.back() == mf::prompt_end_gcode() +
-                                 "\nM104 S0\n"
-                                 "SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
+                                 "\nSET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
                                  "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
                                  "SELECT_TOOL T=0");
     tc.ack();
@@ -565,10 +574,10 @@ TEST_CASE("MedusaHC cancels a multi-tool load mid-sequence and unwinds every hea
     tc.ack(); // purged
     REQUIRE(tc.sent_.back() == "SELECT_TOOL T=3");
     REQUIRE(tc.cancel().success());
-    CHECK(tc.sent_.back() == "M104 S0\n"
-                             "SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
+    CHECK(tc.sent_.back() == "SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=0\n"
                              "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
                              "SELECT_TOOL T=0");
+    CHECK(ToolChangerTestAccess::feed_last_toast(tc) == "Load all stopped Completed: Tool 2");
     tc.ack();
     CHECK(tc.get_current_action() == AmsAction::IDLE);
 }
@@ -581,7 +590,9 @@ TEST_CASE("MedusaHC counts a dismissed prompt as a Cancel", "[toolchanger][mount
     tc.ack();
     tc.ack(); // the prompt is up
     ToolChangerTestAccess::feed_console_signal(tc, mf::ConsoleSignal::Dismissed);
-    CHECK(tc.sent_.back() == mf::prompt_end_gcode() + "\nM104 S0\nSELECT_TOOL T=0");
+    CHECK(tc.sent_.back() == mf::prompt_end_gcode() +
+                                 "\nSET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                                 "SELECT_TOOL T=0");
     tc.ack();
     CHECK(tc.get_current_action() == AmsAction::IDLE);
 }
@@ -599,7 +610,9 @@ TEST_CASE("MedusaHC times a single-tool load out when nobody inserts",
     CHECK(tc.get_system_info().is_busy());
     CHECK(tc.sent_.size() == 3);
     ToolChangerTestAccess::feed_wait_elapsed(tc, 1000);
-    CHECK(tc.sent_.back() == mf::prompt_end_gcode() + "\nM104 S0\nSELECT_TOOL T=0");
+    CHECK(tc.sent_.back() == mf::prompt_end_gcode() +
+                                 "\nSET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                                 "SELECT_TOOL T=0");
     tc.ack();
     CHECK(tc.get_current_action() == AmsAction::IDLE);
 }
@@ -682,4 +695,116 @@ TEST_CASE("MedusaHC's step model spans every tool of a multi-tool run",
     // The phase the run publishes lands inside this model.
     tc.ack(); // prompt up -> phase 2
     CHECK(tc.get_system_info().operation_phase == 2);
+}
+
+// ============================================================================
+// Review fixes
+// ============================================================================
+
+TEST_CASE("mount-to-feed: an abort before the first mount never touches the previous tool's "
+          "heater",
+          "[toolchanger][mount_feed]") {
+    // The run is stopped while the carriage still carries the tool that was on
+    // it, whose heater may hold a target its user set. The cleanup turns the
+    // RUN's heaters off by name; a blanket M104 S0 would zero that target.
+    mf::Run run(load_request());
+    REQUIRE(run.current_step() == mf::Step::Mount);
+    run.abort();
+    const std::string cleanup = run.current_gcode().value_or("");
+    CHECK(cleanup == "SET_HEATER_TEMPERATURE HEATER=extruder2 TARGET=0\nSELECT_TOOL T=0");
+    CHECK(cleanup.find("M104") == std::string::npos);
+}
+
+TEST_CASE("mount-to-feed: the next tool's preheat never lowers a hotter target",
+          "[toolchanger][mount_feed][batch]") {
+    // Tool 3 idles at 200C (its user set it, or a job just used it); its
+    // preheat value would be 143C. Sending that would PULL IT DOWN.
+    mf::Request r = multi_load_request();
+    r.heads[1].heater_target_c = 200;
+    const auto stages = mf::plan(r);
+    REQUIRE(stages.size() == 8);
+    CHECK(stages[1].gcode == mf::prompt_end_gcode() + "\nSELECT_TOOL T=1");
+    CHECK(stages[1].gcode.find("SET_HEATER_TEMPERATURE HEATER=extruder3") == std::string::npos);
+
+    // A cooler idle tool (50C) still warms to the preheat value, and a cold
+    // one starts from it.
+    r.heads[1].heater_target_c = 50;
+    CHECK(mf::plan(r)[1].gcode.find("SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=143") !=
+          std::string::npos);
+    r.heads[1].heater_target_c = 0;
+    CHECK(mf::plan(r)[1].gcode.find("SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=143") !=
+          std::string::npos);
+}
+
+TEST_CASE("MedusaHC unwinds a live run when the connection is lost or restored",
+          "[toolchanger][mount_feed][medusahc]") {
+    // The reconnect path: the prompt is up, nothing will ever ack it, and the
+    // cleanup has to reach the printer while the new connection still carries
+    // gcode.
+    {
+        AckingChanger tc(4);
+        tc.feed_status("ready", 0);
+        REQUIRE(tc.load_filament(3).success());
+        tc.ack();
+        tc.ack();
+        tc.ack(); // the prompt is up
+        REQUIRE(tc.get_system_info().is_busy());
+
+        ToolChangerTestAccess::feed_disconnect_started(tc);
+        CHECK(tc.sent_.back() == mf::prompt_end_gcode() +
+                                     "\nSET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                                     "SELECT_TOOL T=0");
+        CHECK(tc.get_current_action() == AmsAction::IDLE);
+        CHECK_FALSE(tc.can_cancel_operation());
+    }
+    // And the stopping path, mid-purge rather than mid-prompt: no prompt_end,
+    // every heater in the plan off, carriage back.
+    {
+        AckingChanger tc(4);
+        tc.feed_status("ready", 0);
+        REQUIRE(tc.load_filament(3).success());
+        tc.ack(); // mounted
+        ToolChangerTestAccess::feed_disconnect_stopping(tc);
+        CHECK(tc.sent_.back() == "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                                 "SELECT_TOOL T=0");
+        CHECK(tc.get_current_action() == AmsAction::IDLE);
+        CHECK_FALSE(tc.can_cancel_operation());
+    }
+}
+
+TEST_CASE("MedusaHC ends the run and says so when the cleanup itself cannot be sent",
+          "[toolchanger][mount_feed][medusahc]") {
+    // A feed stage's send fails synchronously only when the connection cannot
+    // carry it; the stock helper's 4-arg override always succeeds, so the
+    // cleanup's dispatch fails through a local flag.
+    struct FailingCleanupChanger : AckingChanger {
+        bool fail_sends = false;
+        explicit FailingCleanupChanger(int tools) : AckingChanger(tools) {}
+        AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                               std::function<void(const MoonrakerError&)> on_error,
+                               bool silent) override {
+            if (fail_sends) {
+                sent_.push_back(gcode);
+                return AmsErrorHelper::command_failed(gcode, "simulated send failure");
+            }
+            return AckingChanger::execute_gcode(gcode, std::move(on_complete), std::move(on_error),
+                                                silent);
+        }
+    };
+    FailingCleanupChanger tc(4);
+    tc.feed_status("ready", 0);
+    REQUIRE(tc.load_filament(3).success());
+    tc.ack(); // mounted; the heat stage is in flight
+    tc.fail_sends = true;
+    tc.fail(); // the heat failed, and the cleanup cannot leave either
+
+    // The cleanup was attempted, once - and the run is over, not stuck busy
+    // waiting for an ack that cannot arrive.
+    const std::string cleanup = "SET_HEATER_TEMPERATURE HEATER=extruder3 TARGET=0\n"
+                                "SELECT_TOOL T=0";
+    REQUIRE(tc.sent_.back() == cleanup);
+    CHECK(ToolChangerTestAccess::feed_last_toast(tc) == "Could not turn the heaters off");
+    CHECK(tc.get_current_action() == AmsAction::IDLE);
+    CHECK_FALSE(tc.can_cancel_operation());
+    CHECK(std::count(tc.sent_.begin(), tc.sent_.end(), cleanup) == 1);
 }

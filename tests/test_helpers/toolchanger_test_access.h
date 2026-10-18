@@ -73,6 +73,21 @@ class ToolChangerTestAccess {
         b.handle_wait_elapsed(ms);
     }
 
+    /// A reconnect arriving under a live run (on_started).
+    static void feed_disconnect_started(AmsBackendToolChanger& b) {
+        b.on_started();
+    }
+
+    /// The backend stopping under a live run (on_stopping).
+    static void feed_disconnect_stopping(AmsBackendToolChanger& b) {
+        b.on_stopping();
+    }
+
+    /// The wording of the last toast a feed run raised.
+    static const std::string& feed_last_toast(const AmsBackendToolChanger& b) {
+        return b.feed_last_toast_;
+    }
+
     /// Deliver one gcode-response line to the Z-Mod marker handler, the
     /// main-thread half the notify_gcode_response listener drives on a real
     /// client. The listener itself needs a client, which the unit-test helper

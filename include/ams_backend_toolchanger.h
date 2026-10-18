@@ -540,6 +540,11 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     void on_feed_reply(helix::mount_feed::Reply reply);
     /// The console watcher's signal, once a reply or a dismissal arrives.
     void on_feed_signal(helix::mount_feed::ConsoleSignal signal);
+    /// A lost connection (or a klippy restart) under a live run: the full
+    /// cleanup goes out, best effort, and the run resets without waiting for
+    /// an ack that can no longer arrive. Shared by on_started() (reconnect)
+    /// and on_stopping().
+    void abandon_feed_run_after_disconnect();
     /// The operator wait outlived its timeout: unwind the run and say so.
     void handle_wait_elapsed(uint32_t elapsed_ms);
     /// Arm or drop the one-second timer that watches the operator wait. LVGL
@@ -554,6 +559,8 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// read off the run BEFORE its unwind: abort() collapses the stage list
     /// the answer is derived from.
     void toast_partial_run(FeedStopReason why, const std::vector<int>& completed);
+    /// One error toast about a run, with the no-LVGL test guard in one place.
+    void show_feed_toast(const std::string& message);
     /// Mirror the run onto the published action and step. Caller holds mutex_.
     void publish_feed_state_locked();
     void register_mount_feed_listener();
@@ -573,6 +580,9 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// Watches the operator prompt while it is up. Main thread (lv_timer).
     helix::ui::LvglTimerGuard feed_wait_timer_;
     std::chrono::steady_clock::time_point feed_wait_started_{};
+    /// The last toast a feed run raised, recorded before the LVGL guard so
+    /// unit tests can pin the wording without a display.
+    std::string feed_last_toast_;
 
     /// Z-Mod's Creator 5 row narrates its swaps through gcode-response markers
     /// (toolchanger_addon::parse_zmod_marker) rather than a status object, so

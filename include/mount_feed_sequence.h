@@ -54,6 +54,10 @@ struct HeadRequest {
     int head = -1;
     int temp_c = 0;
     std::string mount_gcode; ///< Mounts @ref head; empty when it is already mounted
+    /// The tool's heater target right now. The next-tool preheat must never
+    /// LOWER a target, so a tool already set hotter than the preheat value is
+    /// left alone instead of being pulled back to it.
+    int heater_target_c = 0;
 };
 
 /// How long the operator prompt may wait before the run unwinds itself. A hot
@@ -95,6 +99,10 @@ struct Stage {
 
 /// The stages @p request runs, in order.
 [[nodiscard]] std::vector<Stage> plan(const Request& request);
+
+/// The heater object Klipper multi-extruder naming gives @p head's tool: the
+/// first extruder is plain `extruder`, the rest `extruder<n>`.
+[[nodiscard]] std::string heater_name(int head);
 
 /// The RESPOND lines that raise the operator prompt.
 [[nodiscard]] std::string prompt_gcode(const Request& request);

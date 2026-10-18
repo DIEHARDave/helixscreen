@@ -798,6 +798,7 @@
   <translation tag="Could not save the printer image tags" it="Impossibile salvare i contrassegni dell&apos;immagine"/>
   <translation tag="Could not skip {}" it="Impossibile saltare {}"/>
   <translation tag="Could not start Bluetooth discovery" it="Impossibile avviare la ricerca Bluetooth"/>
+  <translation tag="Could not turn the heaters off" it="Impossibile spegnere i riscaldatori"/>
   <translation tag="Could not update filaments" it="Impossibile aggiornare i filamenti"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." it="Impossibile verificare lo stato di Spoolman. Moonraker potrebbe essere ancora in riavvio."/>
   <translation tag="Couldn&apos;t assign the tool" it="Impossibile assegnare lo strumento"/>
@@ -1761,6 +1762,7 @@
   <translation tag="Load filament first" it="Prima carica il filamento"/>
   <translation tag="Load into which tool?" it="In quale strumento caricare?"/>
   <translation tag="Load or unload filament." it="Carica o scarica il filamento."/>
+  <translation tag="Load stopped" it="Caricamento interrotto"/>
   <translation tag="Load the required filaments or start anyway?" it="Caricare i filamenti richiesti o avviare comunque?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." it="Carica, scarica e sostituisci le bobine. Visualizza a colpo d&apos;occhio il tuo sistema multi-filamento, mappa il filamento sugli strumenti e monitora i sensori di esaurimento."/>
   <translation tag="Load..." it="Carica..."/>
@@ -3506,6 +3508,7 @@
   <translation tag="Unload filament?" it="Scaricare il filamento?"/>
   <translation tag="Unload from toolhead first" it="Scarica prima dalla testina"/>
   <translation tag="Unload macro not configured" it="Macro scaricamento non configurata"/>
+  <translation tag="Unload stopped" it="Scaricamento interrotto"/>
   <translation tag="Unload the CFS filament before enabling bypass" it="Scarica il filamento del CFS prima di attivare il bypass"/>
   <translation tag="Unload this unit first" it="Scarica prima questa unità"/>
   <translation tag="Unload which tool?" it="Quale strumento scaricare?"/>

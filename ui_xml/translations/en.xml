@@ -798,6 +798,7 @@
   <translation tag="Could not save the printer image tags" en="Could not save the printer image tags"/>
   <translation tag="Could not skip {}" en="Could not skip {}"/>
   <translation tag="Could not start Bluetooth discovery" en="Could not start Bluetooth discovery"/>
+  <translation tag="Could not turn the heaters off" en="Could not turn the heaters off"/>
   <translation tag="Could not update filaments" en="Could not update filaments"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." en="Could not verify Spoolman status. Moonraker may still be restarting."/>
   <translation tag="Couldn&apos;t assign the tool" en="Couldn&apos;t assign the tool"/>
@@ -1761,6 +1762,7 @@
   <translation tag="Load filament first" en="Load filament first"/>
   <translation tag="Load into which tool?" en="Load into which tool?"/>
   <translation tag="Load or unload filament." en="Load or unload filament."/>
+  <translation tag="Load stopped" en="Load stopped"/>
   <translation tag="Load the required filaments or start anyway?" en="Load the required filaments or start anyway?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." en="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors."/>
   <translation tag="Load..." en="Load..."/>
@@ -3506,6 +3508,7 @@
   <translation tag="Unload filament?" en="Unload filament?"/>
   <translation tag="Unload from toolhead first" en="Unload from toolhead first"/>
   <translation tag="Unload macro not configured" en="Unload macro not configured"/>
+  <translation tag="Unload stopped" en="Unload stopped"/>
   <translation tag="Unload the CFS filament before enabling bypass" en="Unload the CFS filament before enabling bypass"/>
   <translation tag="Unload this unit first" en="Unload this unit first"/>
   <translation tag="Unload which tool?" en="Unload which tool?"/>

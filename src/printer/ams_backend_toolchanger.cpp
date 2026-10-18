@@ -19,6 +19,7 @@
 #include "lane_source_store.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "macro_param_cache.h"
+#include "printer_state.h"
 #include "settings_manager.h"
 
 #include <spdlog/fmt/fmt.h>
@@ -92,6 +93,10 @@ AmsError AmsBackendToolChanger::additional_start_checks() {
 }
 
 void AmsBackendToolChanger::on_started() {
+    // A reconnect under a live run means the stage in flight will never be
+    // acked: unwind it before anything else, while the new connection can
+    // still carry the cleanup.
+    abandon_feed_run_after_disconnect();
     // Deliberately NOT additional_start_checks(): start() calls that one while
     // holding mutex_, and load_blocking() both blocks the caller and needs
     // mutex_ to publish its result. Doing it there self-deadlocks on a
@@ -156,6 +161,9 @@ void AmsBackendToolChanger::query_zmod_tool_state() {
 }
 
 void AmsBackendToolChanger::on_stopping() {
+    // Losing the client under a live run strands a hot nozzle: the cleanup
+    // goes out while the connection may still carry it, and the run resets.
+    abandon_feed_run_after_disconnect();
     unregister_zmod_marker_listener();
     unregister_mount_feed_listener();
 }
@@ -1442,6 +1450,14 @@ helix::mount_feed::Request AmsBackendToolChanger::build_feed_request(const std::
     const int first = heads.front();
     SlotInfo slot;
     int mounted = -1;
+    // The next-tool preheat must never lower a heater's target, so each
+    // head's current target rides the request. Null API (unit tests) reads 0.
+    std::unordered_map<std::string, float> targets;
+    if (api_) {
+        for (const auto& [name, info] : api_->printer_state().temperature_state().extruders()) {
+            targets[name] = info.target;
+        }
+    }
     {
         std::lock_guard<std::mutex> lock(mutex_);
         mounted = system_info_.current_slot;
@@ -1462,6 +1478,8 @@ helix::mount_feed::Request AmsBackendToolChanger::build_feed_request(const std::
                             .value_or(helix::ui::PreheatTarget{
                                 app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP, ""})
                             .temp_c;
+            const auto target = targets.find(mf::heater_name(head));
+            hr.heater_target_c = target != targets.end() ? static_cast<int>(target->second) : 0;
             req.heads.push_back(std::move(hr));
         }
         // The carriage goes back to whatever the run found on it. A run of one
@@ -1612,6 +1630,17 @@ void AmsBackendToolChanger::on_feed_stage_failed(uint64_t generation, const std:
     if (!feed_run_ || generation != feed_generation_) {
         return;
     }
+    if (feed_run_->aborted()) {
+        // The CLEANUP itself failed to leave: no repeat of the run's toast -
+        // the run already accounted for itself. What is new is that a nozzle
+        // may still be hot, and nothing further this side can do about it.
+        spdlog::error("[AMS ToolChanger] Mount-to-feed cleanup failed to send ({})", message);
+        show_feed_toast(lv_tr("Could not turn the heaters off"));
+        feed_run_->abort(); // already unwinding: this only ends the run
+        ++feed_generation_;
+        send_feed_stage();
+        return;
+    }
     // Klipper's own `!!` line reports the failure; this only unwinds. A
     // failure inside the cleanup ends the run where it stands.
     spdlog::warn("[AMS ToolChanger] Mount-to-feed stage failed ({}); cleaning up", message);
@@ -1667,9 +1696,7 @@ void AmsBackendToolChanger::handle_wait_elapsed(uint32_t elapsed_ms) {
 
 void AmsBackendToolChanger::toast_partial_run(FeedStopReason why,
                                               const std::vector<int>& completed) {
-    if (!feed_run_ || !lv_is_initialized()) {
-        // No LVGL is the unit-test shape; the gcode the unwind sends is what
-        // the tests pin.
+    if (!feed_run_) {
         return;
     }
     const bool several = feed_run_->request().heads.size() > 1;
@@ -1682,8 +1709,11 @@ void AmsBackendToolChanger::toast_partial_run(FeedStopReason why,
     if (why == FeedStopReason::TimedOut) {
         base = lv_tr("No filament was inserted in time. The heater is off and the carriage is "
                      "restored");
-    } else {
+    } else if (several) {
         base = feed_run_->request().load ? lv_tr("Load all stopped") : lv_tr("Unload all stopped");
+    } else {
+        // One tool never was an "all": the toast is about its own load.
+        base = feed_run_->request().load ? lv_tr("Load stopped") : lv_tr("Unload stopped");
     }
     std::string list;
     for (int head : completed) {
@@ -1695,7 +1725,44 @@ void AmsBackendToolChanger::toast_partial_run(FeedStopReason why,
     if (!list.empty()) {
         base += " " + fmt::format(fmt::runtime(lv_tr("Completed: {}")), list);
     }
-    ToastManager::instance().show(ToastSeverity::ERROR, base.c_str());
+    show_feed_toast(base);
+}
+
+void AmsBackendToolChanger::show_feed_toast(const std::string& message) {
+    // Recorded before the guard: unit tests pin the wording without a display.
+    feed_last_toast_ = message;
+    if (!lv_is_initialized()) {
+        return;
+    }
+    ToastManager::instance().show(ToastSeverity::ERROR, message.c_str());
+}
+
+void AmsBackendToolChanger::abandon_feed_run_after_disconnect() {
+    if (!feed_run_) {
+        return;
+    }
+    // No ack can arrive for the stage in flight, and the operator prompt
+    // stays up on every other client. Send the whole cleanup best effort and
+    // reset the run now, rather than leaving a hot nozzle behind bookkeeping.
+    spdlog::warn("[AMS ToolChanger] Connection lost under a mount-to-feed run; sending the "
+                 "cleanup and resetting the run");
+    feed_run_->abort();
+    const std::optional<std::string> cleanup = feed_run_->current_gcode();
+    feed_run_.reset();
+    ++feed_generation_;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        feed_active_ = false;
+        feed_phase_ = -1;
+        feed_step_action_.reset();
+        system_info_.action = AmsAction::IDLE;
+        system_info_.operation_phase = -1;
+        step_action_.reset();
+    }
+    if (cleanup) {
+        execute_gcode(*cleanup);
+    }
+    emit_event(EVENT_STATE_CHANGED);
 }
 
 void AmsBackendToolChanger::set_wait_watchdog(bool armed) {

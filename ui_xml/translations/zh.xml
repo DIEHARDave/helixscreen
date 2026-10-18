@@ -798,6 +798,7 @@
   <translation tag="Could not save the printer image tags" zh="保存打印机图片标记失败"/>
   <translation tag="Could not skip {}" zh="无法跳过 {}"/>
   <translation tag="Could not start Bluetooth discovery" zh="无法启动蓝牙发现"/>
+  <translation tag="Could not turn the heaters off" zh="无法关闭加热"/>
   <translation tag="Could not update filaments" zh="无法更新耗材"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." zh="无法验证 Spoolman 状态。Moonraker 可能仍在重启中。"/>
   <translation tag="Couldn&apos;t assign the tool" zh="无法分配工具"/>
@@ -1761,6 +1762,7 @@
   <translation tag="Load filament first" zh="请先装载耗材"/>
   <translation tag="Load into which tool?" zh="装入哪个工具？"/>
   <translation tag="Load or unload filament." zh="装载或卸载耗材。"/>
+  <translation tag="Load stopped" zh="装载已停止"/>
   <translation tag="Load the required filaments or start anyway?" zh="加载所需耗材还是直接开始？"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." zh="加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将耗材映射到工具，并监控耗材用尽传感器。"/>
   <translation tag="Load..." zh="加载..."/>
@@ -3506,6 +3508,7 @@
   <translation tag="Unload filament?" zh="卸载耗材?"/>
   <translation tag="Unload from toolhead first" zh="请先从工具头卸载"/>
   <translation tag="Unload macro not configured" zh="卸载宏未配置"/>
+  <translation tag="Unload stopped" zh="卸载已停止"/>
   <translation tag="Unload the CFS filament before enabling bypass" zh="启用旁通前请先卸载 CFS 耗材"/>
   <translation tag="Unload this unit first" zh="请先卸载此单元"/>
   <translation tag="Unload which tool?" zh="卸载哪个工具？"/>

@@ -840,6 +840,7 @@
   <translation tag="Could not save the printer image tags" ru="Не удалось сохранить отметки изображения"/>
   <translation tag="Could not skip {}" ru="Не удалось пропустить {}"/>
   <translation tag="Could not start Bluetooth discovery" ru="Не удалось запустить поиск Bluetooth"/>
+  <translation tag="Could not turn the heaters off" ru="Не удалось выключить нагреватели"/>
   <translation tag="Could not update filaments" ru="Не удалось обновить филаменты"/>
   <translation tag="Could not verify Spoolman status. Moonraker may still be restarting." ru="Не удалось проверить статус Spoolman. Moonraker может ещё перезапускаться."/>
   <translation tag="Couldn&apos;t assign the tool" ru="Не удалось назначить инструмент"/>
@@ -1806,6 +1807,7 @@
   <translation tag="Load filament first" ru="Сначала загрузите филамент"/>
   <translation tag="Load into which tool?" ru="В какой инструмент загрузить?"/>
   <translation tag="Load or unload filament." ru="Загружайте или выгружайте филамент."/>
+  <translation tag="Load stopped" ru="Загрузка остановлена"/>
   <translation tag="Load the required filaments or start anyway?" ru="Загрузить нужные филаменты или начать без них?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map filament to tools, and monitor runout sensors." ru="Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте филамент с инструментами и отслеживайте датчики окончания филамента."/>
   <translation tag="Load..." ru="Загрузить..."/>
@@ -3566,6 +3568,7 @@
   <translation tag="Unload filament?" ru="Выгрузить филамент?"/>
   <translation tag="Unload from toolhead first" ru="Сначала выгрузите из печатающей головки"/>
   <translation tag="Unload macro not configured" ru="Макрос выгрузки не настроен"/>
+  <translation tag="Unload stopped" ru="Выгрузка остановлена"/>
   <translation tag="Unload the CFS filament before enabling bypass" ru="Выгрузите филамент CFS перед включением обхода"/>
   <translation tag="Unload this unit first" ru="Сначала выгрузите этот узел"/>
   <translation tag="Unload which tool?" ru="Из какого инструмента выгрузить?"/>
