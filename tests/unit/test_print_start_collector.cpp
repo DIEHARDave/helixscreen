@@ -7987,6 +7987,37 @@ TEST_CASE_METHOD(SilentVoronReplayFixture,
 }
 
 TEST_CASE_METHOD(SilentVoronReplayFixture,
+                 "PrintStartCollector: the history entry records the phases its start skipped",
+                 "[print][collector][preprint][silent_voron]") {
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+    const auto run = [&](const std::optional<std::set<int>>& told) {
+        set_all_temps(300, 900, 320, 0);
+        collector().start();
+        collector().enable_fallbacks();
+        if (told) {
+            collector().note_skipped_phases(*told);
+        }
+        settle();
+        clock_.advance(std::chrono::seconds(60));
+        tick_fallbacks();
+        settle();
+        collector().complete_from_external_signal("first layer");
+        settle();
+        collector().stop();
+        settle();
+    };
+
+    run(std::set<int>{mesh});
+    run(std::nullopt); // a start nothing told: the last run's list does not carry over
+
+    const auto entries = helix::PreprintPredictor::load_entries_from_config();
+    REQUIRE(entries.size() == 2);
+    REQUIRE(entries[0].skipped_phases.has_value());
+    CHECK(*entries[0].skipped_phases == std::set<int>{mesh});
+    CHECK_FALSE(entries[1].skipped_phases.has_value());
+}
+
+TEST_CASE_METHOD(SilentVoronReplayFixture,
                  "PrintStartCollector: an already-homed printer does not show Homing",
                  "[print][collector][preprint][silent_voron][homing]") {
     lv_subject_copy_string(state().motion_state().get_homed_axes_subject(), "xyz");

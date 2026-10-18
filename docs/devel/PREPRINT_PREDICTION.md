@@ -44,7 +44,7 @@ PrintStartCollector (owns lifecycle, phase detection, timing)
 - **PreprintPredictor is a pure-logic class** with zero dependencies on LVGL, Config, or threading. This makes it trivially testable.
 - **PrintStartCollector owns the predictor instance** and manages loading/saving. It also owns the LVGL timer that periodically updates the ETA display.
 - **Static convenience method** `PreprintPredictor::predicted_total_from_config()` allows UI code (print select panel, print status panel) to get predictions without access to the collector.
-- **One estimate function.** `PreprintPredictor::estimate()` turns heating seconds, the predicted phases and a start's phase overrides into the duration map and the absolute total. The collector's countdown and the print details estimate both call it. The countdown passes no overrides, so given the same temperatures, targets and history the two numbers are equal exactly when the details side's overrides change nothing: no toggle turned off, and, before any history exists, no toggle left on for a phase the default map lacks.
+- **One estimate function.** `PreprintPredictor::estimate()` turns heating seconds, the predicted phases and a start's phase overrides into the duration map and the absolute total. The collector's countdown and the print details estimate both call it. The countdown passes no overrides, so given the same temperatures, targets and history the two numbers are equal exactly when the details side's overrides change nothing: no toggle turned off, and no toggle left on for a phase `estimate()` adds (before any history, a phase the default map lacks; with history, a phase every entry in the window recorded as skipped).
 
 ---
 
@@ -323,17 +323,20 @@ is the whole model:
 1. **Durations.** The two heating phases from `PreprintHeating` (seconds the thermal model
    priced), every other phase from `predicted_phases()` - the history when the loaded bucket
    has any, else `default_phase_durations()` - and HOMING at `predicted_homing_seconds()`.
-2. **Overrides.** A phase the start skips is removed from the map. Without history, a phase
-   it runs that the map lacks is added at its `generic_phase_durations()` value. With history,
-   a phase it runs adds nothing, recorded or not: the wall clock already holds it, including a
-   phase the matcher never named. A phase with no override stays as the history or the
-   defaults have it, because those already describe what the start macro runs.
+2. **Overrides.** A phase the start skips is removed from the map. A phase it runs that the
+   map lacks is added at its `generic_phase_durations()` value without history. With history
+   it is added (to the map and the total) only when every entry in the window lists it in
+   `skipped`: no start there ran it, so the wall clock lacks it. Otherwise it adds nothing - a
+   start that did not skip it ran it, and the wall clock holds it even when the matcher never
+   named it - and an entry with no `skipped` field counts as not skipped, so legacy history
+   never adds. A phase with no override stays as the history or the defaults have it, because
+   those already describe what the start macro runs.
 3. **Nozzle placeholder.** While the nozzle target is unknown (a bed-first macro issues its
    M109 late) HEATING_NOZZLE holds `UNKNOWN_NOZZLE_HEAT_SECONDS` (60s).
 4. **Total.** With history, `predicted_total()` (the recorded wall clock) less each skipped
-   phase's share of it: the phase's seconds averaged over every entry in the window with the
-   same weights as `predicted_total()`, an entry without the phase counting 0. Without history,
-   the sum of the durations.
+   phase's share of it - the phase's seconds averaged over every entry in the window with the
+   same weights as `predicted_total()`, an entry without the phase counting 0 - plus each phase
+   step 2 added. Without history, the sum of the durations.
 
 **Heating with history.** The recorded wall clock already contains every heat-up, so with
 history the heating seconds shape the countdown's phase weights but never move the total.
@@ -448,7 +451,8 @@ Entries are stored in the main config file (`config/settings.json`) at the JSON 
           "PURGING": 20
         },
         "temp_bucket": 1,
-        "window": 2
+        "window": 2,
+        "skipped": ["QGL"]
       }
     ]
   }
@@ -463,6 +467,7 @@ Entries are stored in the main config file (`config/settings.json`) at the JSON 
   `migrate_v24_to_v25` converts them.
 - `temp_bucket`: Optional. 1 = cold start (bed below 40°C at start), 2 = warm start (40°C or above); omitted means unknown. Older versions stored the raw nozzle target temperature here; those values are dropped at load time as a one-shot migration.
 - `window`: Optional. `PreprintWindow` enum int - 1 = `PrinterEdge`, 2 = `HostPreStart`; omitted means legacy (read back as `Unknown`, treated as `PrinterEdge` when filtering). See "Measurement windows" above.
+- `skipped`: Optional. `PrintStartPhase` names of the phases this start's option toggles turned off (bed_mesh, qgl, z_tilt, nozzle_clean, purge_line), as `PrintPreparationManager::start_print()` handed them to `PrintStartCollector::note_skipped_phases()`. `[]` means the start skipped nothing; omitted means unknown - a legacy entry, or a start this screen did not send. `estimate()` reads it to tell a phase no start ran from one the matcher missed.
 
 ### Save Flow
 
@@ -622,7 +627,8 @@ Tests cover:
 - `load_entries` caps at `MAX_ENTRIES`
 - `temp_bucket` filtering, including legacy bucket=0 entries matching any filter
 - Window filtering: host-pre-start rejects printer-edge history and vice versa; legacy entries count as printer-edge, not host-pre-start
-- `estimate()`: heating on top of the default phases without history, the nozzle placeholder, the recorded wall clock with history, a run phase adding nothing with history, a skipped phase taking off its share of the whole window, and added phases priced at the generic defaults without history
+- `estimate()`: heating on top of the default phases without history, the nozzle placeholder, the recorded wall clock with history, a run phase adding nothing with history unless every entry skipped it (one entry that ran it, or one that recorded nothing, adds nothing), a skipped phase taking off its share of the whole window, and added phases priced at the generic defaults
+- `skipped` round-tripping through the stored history: a list, an empty list, and absent
 
 The print details side is `[print_preparation][estimate]` in
 `tests/unit/test_print_preparation_manager.cpp` (no metadata, cold and warm printers,

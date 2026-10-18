@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <functional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -40,6 +41,9 @@ class PrintPreparationManagerTestAccess {
     static void request_scan(helix::ui::PrintPreparationManager& m, const std::string& filename,
                              helix::FileVersion version = {}) {
         m.request_scan(filename, "", "", version);
+    }
+    static std::set<int> skipped_preprint_phases(const helix::ui::PrintPreparationManager& m) {
+        return m.skipped_preprint_phases();
     }
     /// Keep @p scan as the answer for the file whose scan_key() is @p key.
     static void keep_scan(helix::ui::PrintPreparationManager& m, const std::string& key,

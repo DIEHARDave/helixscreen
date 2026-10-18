@@ -279,9 +279,10 @@ PreprintEstimate PreprintPredictor::estimate(const PreprintHeating& heating,
 
     // With history the recorded wall clock already holds every phase the
     // start ran, including ones the matcher never named, so a run phase adds
-    // nothing and a skipped one takes off what it averaged across the window.
-    // Without history the durations are the total, and a run phase the
-    // defaults lack joins them.
+    // to it only when every start in the window recorded skipping it, and a
+    // skipped one takes off what it averaged across the window. Without
+    // history the durations are the total, and a run phase the defaults lack
+    // joins them.
     const bool history = has_predictions();
     float wall_clock_delta = 0.0f;
     std::map<int, int> generic;
@@ -298,12 +299,14 @@ PreprintEstimate PreprintPredictor::estimate(const PreprintHeating& heating,
                         return d != e.phase_durations.end() ? static_cast<double>(d->second) : 0.0;
                     }));
             }
-        } else if (!history && it == durations.end()) {
+        } else if (it == durations.end() && (!history || every_entry_skipped(phase))) {
             if (generic.empty())
                 generic = generic_phase_durations();
             const auto g = generic.find(phase);
             if (g != generic.end()) {
                 durations[phase] = static_cast<float>(g->second);
+                if (history)
+                    wall_clock_delta += static_cast<float>(g->second);
             }
         }
     }
@@ -348,6 +351,13 @@ int PreprintPredictor::predicted_total() const {
     // real elapsed time).
     return static_cast<int>(std::round(weighted_entry_mean(
         [](const PreprintEntry& e) { return static_cast<double>(e.total_seconds); })));
+}
+
+bool PreprintPredictor::every_entry_skipped(int phase) const {
+    return !entries_.empty() &&
+           std::all_of(entries_.begin(), entries_.end(), [phase](const PreprintEntry& e) {
+               return e.skipped_phases && e.skipped_phases->count(phase) > 0;
+           });
 }
 
 double PreprintPredictor::weighted_entry_mean(
@@ -414,6 +424,20 @@ std::vector<PreprintEntry> PreprintPredictor::load_entries_from_config() {
                 entry.phase_durations[static_cast<int>(*phase)] = val.get<int>();
             }
         }
+        if (ej.contains("skipped") && ej["skipped"].is_array()) {
+            std::set<int> skipped;
+            for (const auto& name : ej["skipped"]) {
+                const auto phase = name.is_string()
+                                       ? print_start_phase_from_name(name.get<std::string>())
+                                       : std::nullopt;
+                if (phase) {
+                    skipped.insert(static_cast<int>(*phase));
+                } else {
+                    ++dropped_phases;
+                }
+            }
+            entry.skipped_phases = std::move(skipped);
+        }
         entries.push_back(std::move(entry));
     }
     if (dropped_legacy > 0) {
@@ -453,6 +477,17 @@ json PreprintPredictor::entries_to_json(const std::vector<PreprintEntry>& entrie
         // something; a reader treats its absence as PrinterEdge.
         if (e.window != PreprintWindow::Unknown) {
             entry_json["window"] = static_cast<int>(e.window);
+        }
+        // Omitted when unknown, so an absent field and an empty list differ.
+        if (e.skipped_phases) {
+            json skipped_json = json::array();
+            for (const int phase : *e.skipped_phases) {
+                const auto name = print_start_phase_name(static_cast<PrintStartPhase>(phase));
+                if (!name.empty()) {
+                    skipped_json.push_back(std::string(name));
+                }
+            }
+            entry_json["skipped"] = std::move(skipped_json);
         }
         entries_json.push_back(std::move(entry_json));
     }

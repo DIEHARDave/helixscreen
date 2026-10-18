@@ -408,6 +408,11 @@ void PrintStartCollector::note_host_side_pre_start(const std::string& dispatched
     load_prediction_history();
 }
 
+void PrintStartCollector::note_skipped_phases(std::set<int> phases) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    skipped_phases_ = std::move(phases);
+}
+
 void PrintStartCollector::reset_run_locked() {
     printing_state_start_ = helix::sim::SimulatedClock::now();
     last_signal_time_ = printing_state_start_;
@@ -417,6 +422,7 @@ void PrintStartCollector::reset_run_locked() {
     // Assume the narrower window until something says otherwise.
     window_ = helix::PreprintWindow::PrinterEdge;
     host_pre_start_echo_lines_.clear();
+    skipped_phases_.reset();
     detected_phases_.clear();
     current_phase_ = PrintStartPhase::INITIALIZING;
     print_start_detected_ = false;
@@ -3275,6 +3281,7 @@ void PrintStartCollector::save_prediction_entry() {
 
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
+        entry.skipped_phases = skipped_phases_;
         predictor_.add_entry(entry);
     }
 

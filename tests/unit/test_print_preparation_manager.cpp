@@ -4576,3 +4576,21 @@ TEST_CASE_METHOD(HelixTestFixture,
     fx.manager.recalculate_estimate(&file, file.filename);
     REQUIRE(lv_subject_get_int(fx.manager.get_preprint_estimate_subject()) == 500);
 }
+
+TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: a start records the phases its toggles turned off",
+                 "[print_preparation][estimate]") {
+    lv_init_safe();
+    PrinterState& printer_state = get_printer_state();
+    PrinterStateTestAccess::reset(printer_state);
+    printer_state.init_subjects(false);
+    PrintPreparationManager manager;
+    manager.set_dependencies(nullptr, &printer_state);
+
+    // bed_mesh off, qgl on, the rest not shown.
+    manager.set_option_state_provider([](const std::string& id) {
+        return id == "bed_mesh" ? 0 : id == "qgl" ? 1 : -1;
+    });
+    CHECK(PrintPreparationManagerTestAccess::skipped_preprint_phases(manager) ==
+          std::set<int>{static_cast<int>(helix::PrintStartPhase::BED_MESH)});
+}
