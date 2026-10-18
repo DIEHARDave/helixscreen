@@ -24,6 +24,7 @@
 #include "filament_op_execute.h"
 #include "filament_op_slot_resolver.h"
 #include "filament_variants.h"
+#include "helix_psram_attr.h"
 #include "i_moonraker_api.h"
 #include "plugin_menu_context.h"
 #include "printer_state.h"
@@ -41,28 +42,28 @@ namespace helix::ui {
 // Static member initialization
 bool AmsContextMenu::callbacks_registered_ = false;
 bool AmsContextMenu::subjects_initialized_ = false;
-lv_subject_t AmsContextMenu::slot_is_loaded_subject_;
-lv_subject_t AmsContextMenu::slot_can_load_subject_;
-lv_subject_t AmsContextMenu::slot_can_purge_subject_;
-lv_subject_t AmsContextMenu::slot_unload_hint_subject_;
-lv_subject_t AmsContextMenu::slot_unload_hint_visible_subject_;
-char AmsContextMenu::slot_unload_hint_buf_[128];
-lv_subject_t AmsContextMenu::slot_eject_hint_subject_;
-lv_subject_t AmsContextMenu::slot_eject_hint_visible_subject_;
-char AmsContextMenu::slot_eject_hint_buf_[128];
-lv_subject_t AmsContextMenu::slot_can_clear_subject_;
-lv_subject_t AmsContextMenu::slot_clear_hint_subject_;
-lv_subject_t AmsContextMenu::slot_clear_hint_visible_subject_;
-char AmsContextMenu::slot_clear_hint_buf_[192];
-lv_subject_t AmsContextMenu::slot_preload_subject_;
-lv_subject_t AmsContextMenu::slot_load_hint_subject_;
-lv_subject_t AmsContextMenu::slot_load_hint_visible_subject_;
-char AmsContextMenu::slot_load_hint_buf_[192];
-lv_subject_t AmsContextMenu::slot_mount_subject_;
-lv_subject_t AmsContextMenu::slot_park_subject_;
-lv_subject_t AmsContextMenu::slot_backup_label_subject_;
-lv_subject_t AmsContextMenu::slot_tool_row_visible_subject_;
-char AmsContextMenu::slot_backup_label_buf_[64];
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_is_loaded_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_can_load_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_can_purge_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_unload_hint_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_unload_hint_visible_subject_;
+HELIX_PSRAM_BSS char AmsContextMenu::slot_unload_hint_buf_[128];
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_eject_hint_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_eject_hint_visible_subject_;
+HELIX_PSRAM_BSS char AmsContextMenu::slot_eject_hint_buf_[128];
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_can_clear_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_clear_hint_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_clear_hint_visible_subject_;
+HELIX_PSRAM_BSS char AmsContextMenu::slot_clear_hint_buf_[192];
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_preload_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_load_hint_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_load_hint_visible_subject_;
+HELIX_PSRAM_BSS char AmsContextMenu::slot_load_hint_buf_[192];
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_mount_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_park_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_backup_label_subject_;
+HELIX_PSRAM_BSS lv_subject_t AmsContextMenu::slot_tool_row_visible_subject_;
+HELIX_PSRAM_BSS char AmsContextMenu::slot_backup_label_buf_[64];
 
 // ============================================================================
 // Construction / Destruction

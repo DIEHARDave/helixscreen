@@ -11,6 +11,7 @@
 #include "audio_settings_manager.h"
 #include "config.h"
 #include "display_settings_manager.h"
+#include "helix_psram_attr.h"
 #include "i_moonraker_client.h"
 #include "input_settings_manager.h"
 #include "json_utils.h"
@@ -191,7 +192,7 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
 };
 
 SettingsManager& SettingsManager::instance() {
-    static SettingsManager instance;
+    static HELIX_PSRAM_BSS SettingsManager instance;
     return instance;
 }
 
