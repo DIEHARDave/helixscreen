@@ -66,11 +66,14 @@ json print_file_context(const PrintFileFacts& f) {
     return j;
 }
 
-json slot_context(const SlotInfo& slot, const AmsUnit* unit, const std::string& label) {
+json slot_context(const SlotInfo& slot, int global_index, const AmsUnit* unit,
+                  const std::string& label) {
     json j = json::object();
     if (unit)
         j["unit"] = unit->unit_index;
-    j["slot"] = slot.slot_index;
+    // Counted from the unit's first slot: backends disagree on whether
+    // SlotInfo::slot_index is local to the unit or global.
+    j["slot"] = unit ? global_index - unit->first_slot_global_index : global_index;
     j["label"] = label;
     if (slot.mapped_tool >= 0)
         j["tool"] = slot.mapped_tool;

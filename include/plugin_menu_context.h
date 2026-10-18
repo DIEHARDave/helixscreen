@@ -34,8 +34,10 @@ struct PrintFileFacts {
 };
 
 json print_file_context(const PrintFileFacts& facts);
-/// `label` is the slot's name as the menu header shows it; `unit` may be null.
-json slot_context(const SlotInfo& slot, const AmsUnit* unit, const std::string& label);
+/// `global_index` is the slot's index across every unit, `unit` the unit holding it
+/// (null when unknown), `label` the slot's name as the menu header shows it.
+json slot_context(const SlotInfo& slot, int global_index, const AmsUnit* unit,
+                  const std::string& label);
 json spool_context(const SpoolInfo& spool);
 /// `widget_id` is the full `<plugin>__<name>` id; the table carries the declared name.
 json tile_context(const std::string& widget_id);

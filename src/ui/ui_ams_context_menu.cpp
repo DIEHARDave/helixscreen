@@ -551,7 +551,7 @@ void AmsContextMenu::append_slot_plugin_rows(lv_obj_t* menu_obj, int slot_index)
         return;
     const AmsSystemInfo info = backend_->get_system_info();
     const plugin_menu::json context = plugin_menu::slot_context(
-        backend_->get_slot_info(slot_index), info.unit_for_slot(slot_index),
+        backend_->get_slot_info(slot_index), slot_index, info.unit_for_slot(slot_index),
         helix::ui::lane_label(menu_lane_noun(), slot_index));
     helix::ui::append_plugin_rows(
         *this, lv_obj_find_by_name(menu_obj, "col_plugins"),

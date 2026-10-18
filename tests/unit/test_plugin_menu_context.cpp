@@ -89,14 +89,14 @@ TEST_CASE("slot context with nothing known", "[plugin][menu][context]") {
     s.material = "PLA"; // what it last held
     s.color_rgb = 0x112233;
     s.spoolman_id = 9;
-    json j = slot_context(s, nullptr, "Lane 3");
+    json j = slot_context(s, 2, nullptr, "Lane 3");
     CHECK(j == json{{"slot", 2}, {"label", "Lane 3"}});
 
     s.status = SlotStatus::AVAILABLE;
     s.material.clear();
     s.color_rgb = AMS_DEFAULT_SLOT_COLOR;
     s.spoolman_id = 0;
-    CHECK(slot_context(s, nullptr, "Lane 3") == json{{"slot", 2}, {"label", "Lane 3"}});
+    CHECK(slot_context(s, 2, nullptr, "Lane 3") == json{{"slot", 2}, {"label", "Lane 3"}});
 }
 
 TEST_CASE("slot context with everything", "[plugin][menu][context]") {
@@ -110,7 +110,8 @@ TEST_CASE("slot context with everything", "[plugin][menu][context]") {
     s.spoolman_id = 42;
     AmsUnit u;
     u.unit_index = 1;
-    json j = slot_context(s, &u, "Turtle 2 slot 2");
+    u.first_slot_global_index = 4;
+    json j = slot_context(s, 5, &u, "Turtle 2 slot 2");
     CHECK(j == json{{"unit", 1},
                     {"slot", 1},
                     {"label", "Turtle 2 slot 2"},
@@ -119,6 +120,30 @@ TEST_CASE("slot context with everything", "[plugin][menu][context]") {
                     {"brand", "Polymaker"},
                     {"color", "#00A0FF"},
                     {"spool_id", 42}});
+}
+
+TEST_CASE("slot context counts the slot within its own unit", "[plugin][menu][context]") {
+    // Two four-slot units; the menu is on the second unit's first slot. The
+    // backend's own slot_index is not trusted: some report it globally.
+    AmsSystemInfo sys;
+    for (int u = 0; u < 2; ++u) {
+        AmsUnit unit;
+        unit.unit_index = u;
+        unit.slot_count = 4;
+        unit.first_slot_global_index = u * 4;
+        for (int i = 0; i < 4; ++i) {
+            SlotInfo slot;
+            slot.slot_index = u * 4 + i; // a backend that fills it globally
+            slot.global_index = u * 4 + i;
+            unit.slots.push_back(slot);
+        }
+        sys.units.push_back(unit);
+    }
+    const AmsUnit* unit = sys.unit_for_slot(4);
+    REQUIRE(unit);
+    json j = slot_context(*sys.get_slot_global(4), 4, unit, "Box 2 slot 1");
+    CHECK(j["unit"] == 1);
+    CHECK(j["slot"] == 0);
 }
 
 TEST_CASE("spool context", "[plugin][menu][context]") {
