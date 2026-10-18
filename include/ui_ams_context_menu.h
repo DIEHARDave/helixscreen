@@ -204,6 +204,9 @@ class AmsContextMenu : public ContextMenu {
     /// The Endless Spool row's label in the backend's own noun ("Backup Gate").
     static lv_subject_t slot_backup_label_subject_;
     static char slot_backup_label_buf_[64];
+    /// 1 = the Assigned Tool row shows: the backend accepts a tool->lane
+    /// mapping-table write (can_write_mapping_table()).
+    static lv_subject_t slot_tool_row_visible_subject_;
     /// Preload row: 0 = hidden (backend has no lane preload), 1 = shown but
     /// disabled (busy, filament loaded, or a print blocks filament ops),
     /// 2 = enabled.
