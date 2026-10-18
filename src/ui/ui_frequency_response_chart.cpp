@@ -19,9 +19,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <string>
 #include <vector>
 
 /// Left padding of the chart: the amplitude gutter when its labels show.
@@ -272,6 +274,71 @@ std::vector<FrChartRun> fr_chart_finite_runs(const float* amps, size_t count) {
         }
     }
     return runs;
+}
+
+// NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
+std::vector<std::string> fr_chart_amplitude_labels(float amp_min, float amp_max, int divisions,
+                                                   bool percent) {
+    std::vector<std::string> labels;
+    if (divisions < 1) {
+        return labels;
+    }
+    std::vector<float> values;
+    for (int i = 0; i <= divisions; ++i) {
+        values.push_back(amp_max - (amp_max - amp_min) * static_cast<float>(i) /
+                                       static_cast<float>(divisions));
+    }
+    char buf[24];
+    if (percent) {
+        for (float v : values) {
+            snprintf(buf, sizeof(buf), "%.0f%%", v);
+            labels.emplace_back(buf);
+        }
+        return labels;
+    }
+
+    struct Unit {
+        float scale;
+        const char* suffix;
+    };
+    const float magnitude = std::max(std::abs(amp_max), std::abs(amp_min));
+    const Unit unit = magnitude >= 1e9f    ? Unit{1e9f, "e9"}
+                      : magnitude >= 1e6f  ? Unit{1e6f, "M"}
+                      : magnitude >= 1e3f  ? Unit{1e3f, "k"}
+                      : magnitude >= 1.0f  ? Unit{1.0f, ""}
+                      : magnitude >= 1e-3f ? Unit{1e-3f, "m"}
+                                           : Unit{1e-6f, "u"};
+
+    // The fewest decimals that keep every label distinct and within 5% of a
+    // division of its true value; trailing zeros are dropped ("22m", not "22.0m").
+    const float step = std::abs(amp_max - amp_min) / static_cast<float>(divisions) / unit.scale;
+    for (int decimals = 0; decimals <= 2; ++decimals) {
+        labels.clear();
+        bool close = true;
+        for (float v : values) {
+            if (v == 0.0f) {
+                labels.emplace_back("0");
+                continue;
+            }
+            const float scaled = v / unit.scale;
+            snprintf(buf, sizeof(buf), "%.*f", decimals, scaled);
+            close = close && std::abs(std::strtof(buf, nullptr) - scaled) <= 0.05f * step;
+            std::string text(buf);
+            if (text.find('.') != std::string::npos) {
+                text.erase(text.find_last_not_of('0') + 1);
+                if (text.back() == '.') {
+                    text.pop_back();
+                }
+            }
+            labels.push_back(text + unit.suffix);
+        }
+        std::vector<std::string> sorted = labels;
+        std::sort(sorted.begin(), sorted.end());
+        if (close && std::adjacent_find(sorted.begin(), sorted.end()) == sorted.end()) {
+            break;
+        }
+    }
+    return labels;
 }
 
 /**
@@ -1477,7 +1544,7 @@ int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font) {
     constexpr int32_t MIN_GUTTER = 36;
     int32_t widest = 0;
     // Every shape the amplitude formatter emits, at its widest.
-    for (const char* sample : {"100%", "999k", "0.005", "1e-04", "100e9"}) {
+    for (const char* sample : {"100%", "99.5k", "99.5m", "99.5u", "100e9"}) {
         widest = std::max(widest, text_width(font, sample));
     }
     return std::max(MIN_GUTTER, widest);
@@ -1640,39 +1707,17 @@ static void draw_y_axis_labels_cb(lv_event_t* e) {
 
     // Draw labels at each horizontal division (matching grid lines)
     constexpr int H_DIVISIONS = 4;
-    float amp_range = chart->amp_max - chart->amp_min;
 
-    // Persistent label buffers
-    static char amp_labels[8][12];
+    // Persistent label buffers: LVGL may draw a label after this returns.
+    static char amp_labels[H_DIVISIONS + 1][12];
+    const auto labels = fr_chart_amplitude_labels(chart->amp_min, chart->amp_max, H_DIVISIONS,
+                                                  chart->y_labels_percent);
 
     for (int i = 0; i <= H_DIVISIONS; i++) {
         int32_t y = content_y1 + (content_height * i) / H_DIVISIONS;
 
-        // Amplitude value at this division (top = max, bottom = min)
-        float amp = chart->amp_max - (amp_range * i) / H_DIVISIONS;
-
-        // Format amplitude value compactly
         char* buf = amp_labels[i];
-        if (chart->y_labels_percent) {
-            snprintf(buf, 12, "%.0f%%", amp);
-        } else if (amp == 0.0f) {
-            snprintf(buf, 12, "0");
-        } else if (amp >= 1e9f) {
-            snprintf(buf, 12, "%.0fe9", amp / 1e9f);
-        } else if (amp >= 1e6f) {
-            snprintf(buf, 12, "%.0fM", amp / 1e6f);
-        } else if (amp >= 1e3f) {
-            snprintf(buf, 12, "%.0fk", amp / 1e3f);
-        } else if (amp >= 1.0f) {
-            snprintf(buf, 12, "%.0f", amp);
-        } else if (amp >= 0.01f) {
-            snprintf(buf, 12, "%.2f", amp);
-        } else if (amp >= 0.001f) {
-            snprintf(buf, 12, "%.3f", amp);
-        } else {
-            // Very small values: use scientific-ish notation
-            snprintf(buf, 12, "%.0e", amp);
-        }
+        snprintf(buf, sizeof(amp_labels[i]), "%s", labels[static_cast<size_t>(i)].c_str());
 
         // Position label centered vertically on the grid line
         lv_area_t label_area;

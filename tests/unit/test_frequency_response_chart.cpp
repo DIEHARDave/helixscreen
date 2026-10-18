@@ -1321,3 +1321,20 @@ TEST_CASE_METHOD(LVGLTestFixture, "styled, muted and marked series render gaps",
     CHECK(ui_frequency_response_chart_get_series_amplitudes(chart, styled).size() == 40);
     ui_frequency_response_chart_destroy(chart);
 }
+
+TEST_CASE("amplitude labels are distinct and compact", "[frequency_response_chart][axis]") {
+    using V = std::vector<std::string>;
+    CHECK(fr_chart_amplitude_labels(0.0f, 0.022f, 4, false) ==
+          V{"22m", "16.5m", "11m", "5.5m", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 0.003f, 4, false) ==
+          V{"3m", "2.25m", "1.5m", "0.75m", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 33000.0f, 4, false) ==
+          V{"33k", "24.8k", "16.5k", "8.2k", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 400.0f, 4, false) == V{"400", "300", "200", "100", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 2e9f, 4, false) ==
+          V{"2e9", "1.5e9", "1e9", "0.5e9", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 0.0004f, 4, false) ==
+          V{"400u", "300u", "200u", "100u", "0"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 100.0f, 4, true) == V{"100%", "75%", "50%", "25%", "0%"});
+    CHECK(fr_chart_amplitude_labels(0.0f, 1.0f, 0, false).empty());
+}

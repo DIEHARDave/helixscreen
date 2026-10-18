@@ -53,6 +53,7 @@
 #include "platform_capabilities.h"
 
 #include <cstddef>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -186,11 +187,24 @@ void ui_frequency_response_chart_set_y_labels_visible(ui_frequency_response_char
 /**
  * @brief Width of the amplitude-label gutter for @p font
  *
- * The widest label the gutter draws ("100%", "999k", "0.005", "1e-04",
+ * The widest label the gutter draws ("100%", "99.5k", "99.5m", "99.5u",
  * "100e9"), never less than 36 px. The chart adds space_xs on top of it.
  */
 // NAMESPACE_OK: matches this file's C-style chart API
 int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font);
+
+/**
+ * @brief The amplitude gutter's labels, top (amp_max) to bottom (amp_min) (pure)
+ *
+ * divisions + 1 labels at amp_max - i * (amp_max - amp_min) / divisions.
+ * Percent mode prints "%.0f%%". Otherwise one SI suffix for the whole axis,
+ * picked from the larger end's magnitude (e9, M, k, none, m, u), and the
+ * fewest decimals (0 to 2) that keep every label distinct; an exact 0 reads "0".
+ * {0, 0.022}: "22m", "16.5m", "11m", "5.5m", "0".
+ */
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+[[nodiscard]] std::vector<std::string> fr_chart_amplitude_labels(float amp_min, float amp_max,
+                                                                 int divisions, bool percent);
 
 /**
  * @brief Half the box each frequency label is centred in, for @p font
