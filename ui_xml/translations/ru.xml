@@ -2870,10 +2870,12 @@
   <translation tag="Save to Spool" ru="Сохранить на катушку"/>
   <translation tag="Save to Spoolman" ru="Сохранить в Spoolman"/>
   <translation tag="Saved Z-Offset" ru="Сохранённый Z-Offset"/>
+  <translation tag="Saved to Spoolman, but the spool&apos;s price, location, lot and notes didn&apos;t save." ru="Сохранено в Spoolman, но цена, расположение, партия и заметки катушки не сохранились."/>
   <translation tag="Saved to crash_report.txt (QR not available)" ru="Сохранено в crash_report.txt (QR недоступен)"/>
   <translation tag="Saved to printer configuration." ru="Сохранено в конфигурацию принтера."/>
   <translation tag="Saved to {}. It applies whenever this filament becomes active." ru="Сохранено в {}. Применяется каждый раз, когда этот филамент становится активным."/>
   <translation tag="Saved values, and whether to ask before running" ru="Сохранённые значения и запрос перед запуском"/>
+  <translation tag="Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved." ru="Сохранено. Spoolman не в сети, поэтому цена, расположение, партия и заметки остаются здесь несохранёнными."/>
   <translation tag="Saves to Klipper config and restarts firmware." ru="Сохраняет в конфигурацию Klipper и перезапускает прошивку."/>
   <translation tag="Saving Configuration..." ru="Сохранение конфигурации..."/>
   <translation tag="Saving Z-offset..." ru="Сохранение Z-offset..."/>
@@ -3107,6 +3109,7 @@
   <translation tag="Spoolman needs a color for this filament." ru="Spoolman требует цвет для этого филамента."/>
   <translation tag="Spoolman needs a material for this filament." ru="Spoolman требует материал для этого филамента."/>
   <translation tag="Spoolman removed." ru="Spoolman удалён."/>
+  <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." ru="Spoolman сохранил цену, расположение, партию и заметки, но не остальное. Больше на этом принтере ничего не изменилось."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" ru="Spoolman недоступен — вес филамента может быть устаревшим"/>
   <translation tag="Spoolman was not configured." ru="Spoolman не был настроен."/>
   <translation tag="Spoolman: %zu Spool" ru="Spoolman: %zu катушка"/>
@@ -3166,6 +3169,7 @@
   <translation tag="Std Deviation" ru="Станд. отклонение"/>
   <translation tag="Step" ru="Шаг"/>
   <translation tag="Step 1 of 3" ru="Шаг 1 из 3"/>
+  <translation tag="Still saving this spool…" ru="Эта катушка ещё сохраняется…"/>
   <translation tag="Still working... taking longer than usual" ru="Всё ещё выполняется... дольше обычного"/>
   <translation tag="Stop" ru="Стоп"/>
   <translation tag="Stop Drying" ru="Остановить сушку"/>
@@ -3434,6 +3438,7 @@
   <translation tag="This replaces the printer&apos;s helper macros with the current version. A print is running, so Klipper restarts after it finishes." ru="Это заменит вспомогательные макросы принтера текущей версией. Идёт печать, поэтому Klipper перезапустится после её завершения."/>
   <translation tag="This replaces this screen&apos;s home layout for this printer with the one on the printer&apos;s own screen." ru="Раскладка главного экрана этого экрана для данного принтера будет заменена раскладкой с экрана самого принтера."/>
   <translation tag="This slot feeds no tool" ru="Этот слот не подаёт филамент ни в один инструмент"/>
+  <translation tag="This spool&apos;s details haven&apos;t loaded from Spoolman yet. Try Save again." ru="Данные этой катушки ещё не загружены из Spoolman. Нажмите «Сохранить» ещё раз."/>
   <translation tag="This system does not support bypass mode" ru="Эта система не поддерживает режим обхода"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." ru="Этот инструмент проверяет каждый винт стола и показывает, насколько его нужно отрегулировать."/>
   <translation tag="This update asks for new permissions:" ru="Это обновление запрашивает новые разрешения:"/>

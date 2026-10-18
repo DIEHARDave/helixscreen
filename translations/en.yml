@@ -3010,11 +3010,13 @@ translations:
   Save to Spool: Save to Spool
   Save to Spoolman: Save to Spoolman
   Saved Z-Offset: Saved Z-Offset
+  Saved to Spoolman, but the spool's price, location, lot and notes didn't save.: Saved to Spoolman, but the spool's price, location, lot and notes didn't save.
   Saved to crash_report.txt (QR not available): Saved to crash_report.txt (QR not
     available)
   Saved to printer configuration.: Saved to printer configuration.
   Saved to {}. It applies whenever this filament becomes active.: Saved to {}. It applies whenever this filament becomes active.
   Saved values, and whether to ask before running: Saved values, and whether to ask before running
+  Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.: Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.
   Saves to Klipper config and restarts firmware.: Saves to Klipper config and restarts
     firmware.
   Saving Configuration...: Saving Configuration...
@@ -3275,6 +3277,7 @@ translations:
   Spoolman needs a color for this filament.: Spoolman needs a color for this filament.
   Spoolman needs a material for this filament.: Spoolman needs a material for this filament.
   Spoolman removed.: Spoolman removed.
+  Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.
   Spoolman unavailable — filament weights may be stale: Spoolman unavailable — filament
     weights may be stale
   Spoolman was not configured.: Spoolman was not configured.
@@ -3329,6 +3332,7 @@ translations:
   Std Deviation: Std Deviation
   Step: Step
   Step 1 of 3: Step 1 of 3
+  Still saving this spool…: Still saving this spool…
   Still working... taking longer than usual: Still working... taking longer than usual
   Stop: Stop
   Stop Drying: Stop Drying
@@ -3646,6 +3650,7 @@ translations:
   : This replaces the printer's helper macros with the current version. A print is running, so Klipper restarts after it finishes.
   This replaces this screen's home layout for this printer with the one on the printer's own screen.: This replaces this screen's home layout for this printer with the one on the printer's own screen.
   This slot feeds no tool: This slot feeds no tool
+  This spool's details haven't loaded from Spoolman yet. Try Save again.: This spool's details haven't loaded from Spoolman yet. Try Save again.
   This system does not support bypass mode: This system does not support bypass mode
   This tool probes each bed screw and tells you how much to adjust.: This tool probes
     each bed screw and tells you how much to adjust.

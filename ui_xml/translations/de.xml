@@ -2816,10 +2816,12 @@
   <translation tag="Save to Spool" de="Auf Spule speichern"/>
   <translation tag="Save to Spoolman" de="In Spoolman speichern"/>
   <translation tag="Saved Z-Offset" de="Gespeicherter Z-Offset"/>
+  <translation tag="Saved to Spoolman, but the spool&apos;s price, location, lot and notes didn&apos;t save." de="In Spoolman gespeichert, aber Preis, Standort, Los und Notizen der Spule wurden nicht gespeichert."/>
   <translation tag="Saved to crash_report.txt (QR not available)" de="In crash_report.txt gespeichert (QR nicht verfügbar)"/>
   <translation tag="Saved to printer configuration." de="In Druckerkonfiguration gespeichert."/>
   <translation tag="Saved to {}. It applies whenever this filament becomes active." de="Auf {} gespeichert. Der Wert wird angewendet, sobald dieses Filament aktiv wird."/>
   <translation tag="Saved values, and whether to ask before running" de="Gespeicherte Werte und ob vor dem Ausführen gefragt wird"/>
+  <translation tag="Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved." de="Gespeichert. Spoolman ist offline, daher bleiben Preis, Standort, Los und Notizen hier ungespeichert."/>
   <translation tag="Saves to Klipper config and restarts firmware." de="Speichert in Klipper-Konfiguration und startet Firmware neu."/>
   <translation tag="Saving Configuration..." de="Konfiguration wird gespeichert..."/>
   <translation tag="Saving Z-offset..." de="Z-Offset wird gespeichert..."/>
@@ -3053,6 +3055,7 @@
   <translation tag="Spoolman needs a color for this filament." de="Spoolman benötigt eine Farbe für dieses Filament."/>
   <translation tag="Spoolman needs a material for this filament." de="Spoolman benötigt ein Material für dieses Filament."/>
   <translation tag="Spoolman removed." de="Spoolman entfernt."/>
+  <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." de="Spoolman hat Preis, Standort, Los und Notizen gespeichert, aber nicht den Rest. Sonst hat sich an diesem Drucker nichts geändert."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" de="Spoolman nicht verfügbar — Filamentgewichte können veraltet sein"/>
   <translation tag="Spoolman was not configured." de="Spoolman war nicht konfiguriert."/>
   <translation tag="Spoolman: %zu Spool" de="Spoolman: %zu Spule"/>
@@ -3106,6 +3109,7 @@
   <translation tag="Std Deviation" de="Std.-Abweichung"/>
   <translation tag="Step" de="Schritt"/>
   <translation tag="Step 1 of 3" de="Schritt 1 von 3"/>
+  <translation tag="Still saving this spool…" de="Diese Spule wird noch gespeichert…"/>
   <translation tag="Still working... taking longer than usual" de="Arbeitet noch... dauert länger als gewöhnlich"/>
   <translation tag="Stop" de="Stoppen"/>
   <translation tag="Stop Drying" de="Trocknen stoppen"/>
@@ -3374,6 +3378,7 @@
   <translation tag="This replaces the printer&apos;s helper macros with the current version. A print is running, so Klipper restarts after it finishes." de="Dies ersetzt die Hilfsmakros des Druckers durch die aktuelle Version. Ein Druck läuft, daher wird Klipper nach dessen Abschluss neu gestartet."/>
   <translation tag="This replaces this screen&apos;s home layout for this printer with the one on the printer&apos;s own screen." de="Dadurch wird das Startbildschirm-Layout dieses Bildschirms für diesen Drucker durch das Layout vom Bildschirm des Druckers ersetzt."/>
   <translation tag="This slot feeds no tool" de="Dieser Slot versorgt kein Werkzeug"/>
+  <translation tag="This spool&apos;s details haven&apos;t loaded from Spoolman yet. Try Save again." de="Die Spulendetails wurden noch nicht aus Spoolman geladen. Tippe erneut auf Speichern."/>
   <translation tag="This system does not support bypass mode" de="Dieses System unterstützt den Bypass-Modus nicht"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." de="Dieses Werkzeug tastet jede Bettschraube ab und zeigt Ihnen, wie viel Sie einstellen müssen."/>
   <translation tag="This update asks for new permissions:" de="Dieses Update fragt nach neuen Berechtigungen:"/>

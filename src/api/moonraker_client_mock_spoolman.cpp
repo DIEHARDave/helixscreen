@@ -469,6 +469,12 @@ bool MockSpoolmanServer::proxy(const json& params, json& result, MoonrakerError&
             return true;
         }
         if (method == "PATCH") {
+            if (refuse_spool_patch_key && body.contains(*refuse_spool_patch_key)) {
+                spdlog::debug("[MockSpoolman] 500: refusing PATCH of spool {} carrying '{}'", *id,
+                              *refuse_spool_patch_key);
+                err = spoolman_error(500);
+                return false;
+            }
             if (body.size() == 1 && body.contains("remaining_weight") &&
                 body["remaining_weight"].is_number()) {
                 weight_updates.push_back({*id, body["remaining_weight"].get<double>()});

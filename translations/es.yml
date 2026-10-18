@@ -3084,11 +3084,13 @@ translations:
   Save to Spool: Guardar en bobina
   Save to Spoolman: Guardar en Spoolman
   Saved Z-Offset: Z-Offset guardado
+  Saved to Spoolman, but the spool's price, location, lot and notes didn't save.: 'Guardado en Spoolman, pero el precio, la ubicación, el lote y las notas de la bobina no se guardaron.'
   Saved to crash_report.txt (QR not available): Guardado en crash_report.txt (QR no
     disponible)
   Saved to printer configuration.: Guardado en la configuración de la impresora.
   Saved to {}. It applies whenever this filament becomes active.: Guardado en {}. Se aplica cada vez que este filamento se activa.
   Saved values, and whether to ask before running: 'Valores guardados y si se debe preguntar antes de ejecutar'
+  Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.: 'Guardado. Spoolman está desconectado, así que el precio, la ubicación, el lote y las notas quedan aquí sin guardar.'
   Saves to Klipper config and restarts firmware.: Guarda en la configuración de Klipper
     y reinicia el firmware.
   Saving Configuration...: Guardando Configuración...
@@ -3355,6 +3357,7 @@ translations:
   Spoolman needs a color for this filament.: Spoolman necesita un color para este filamento.
   Spoolman needs a material for this filament.: Spoolman necesita un material para este filamento.
   Spoolman removed.: Spoolman eliminado.
+  Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman guardó el precio, la ubicación, el lote y las notas, pero no el resto. Nada más cambió en esta impresora.'
   Spoolman unavailable — filament weights may be stale: Spoolman no disponible — los
     pesos del filamento pueden estar desactualizados
   Spoolman was not configured.: Spoolman no estaba configurado.
@@ -3414,6 +3417,7 @@ translations:
   Std Deviation: Desviación Estándar
   Step: Paso
   Step 1 of 3: Paso 1 de 3
+  Still saving this spool…: 'Todavía se está guardando esta bobina…'
   Still working... taking longer than usual: Aún trabajando... tardando más de lo
     habitual
   Stop: Detener
@@ -3746,6 +3750,7 @@ translations:
   : 'Esto reemplaza las macros de ayuda de la impresora por la versión actual. Hay una impresión en curso, así que Klipper se reiniciará al terminar.'
   This replaces this screen's home layout for this printer with the one on the printer's own screen.: "Esto reemplaza el diseño de la pantalla de inicio de esta pantalla para esta impresora por el de la pantalla de la propia impresora."
   This slot feeds no tool: 'Esta ranura no alimenta ninguna herramienta'
+  This spool's details haven't loaded from Spoolman yet. Try Save again.: 'Los detalles de esta bobina aún no se han cargado desde Spoolman. Vuelve a pulsar Guardar.'
   This system does not support bypass mode: 'Este sistema no es compatible con el modo bypass'
   This tool probes each bed screw and tells you how much to adjust.: Esta herramienta
     sondea cada tornillo de cama y le indica cuánto ajustar.

@@ -3081,11 +3081,13 @@ translations:
   Save to Spool: Salva sulla bobina
   Save to Spoolman: Salva su Spoolman
   Saved Z-Offset: Z-Offset Salvato
+  Saved to Spoolman, but the spool's price, location, lot and notes didn't save.: 'Salvato in Spoolman, ma prezzo, posizione, lotto e note della bobina non sono stati salvati.'
   Saved to crash_report.txt (QR not available): Salvato in crash_report.txt (QR non
     disponibile)
   Saved to printer configuration.: Salvato nella configurazione stampante.
   Saved to {}. It applies whenever this filament becomes active.: Salvato su {}. Viene applicato ogni volta che questo filamento diventa attivo.
   Saved values, and whether to ask before running: 'Valori salvati e se chiedere prima di eseguire'
+  Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.: 'Salvato. Spoolman è offline, quindi prezzo, posizione, lotto e note restano qui non salvati.'
   Saves to Klipper config and restarts firmware.: Salva nella configurazione Klipper
     e riavvia il firmware.
   Saving Configuration...: Salvataggio configurazione...
@@ -3355,6 +3357,7 @@ translations:
   Spoolman needs a color for this filament.: Spoolman richiede un colore per questo filamento.
   Spoolman needs a material for this filament.: Spoolman richiede un materiale per questo filamento.
   Spoolman removed.: Spoolman rimosso.
+  Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'Spoolman ha salvato prezzo, posizione, lotto e note, ma non il resto. Nient''altro è cambiato su questa stampante.'
   Spoolman unavailable — filament weights may be stale: Spoolman non disponibile —
     i pesi del filamento potrebbero non essere aggiornati
   Spoolman was not configured.: Spoolman non era configurato.
@@ -3414,6 +3417,7 @@ translations:
   Std Deviation: Dev. standard
   Step: Passaggio
   Step 1 of 3: Passaggio 1 di 3
+  Still saving this spool…: 'Salvataggio di questa bobina in corso…'
   Still working... taking longer than usual: Ancora in corso... ci vuole più tempo
     del solito
   Stop: Ferma
@@ -3744,6 +3748,7 @@ translations:
   : 'Sostituisce le macro di ausilio della stampante con la versione attuale. Una stampa è in corso, quindi Klipper verrà riavviato al termine.'
   This replaces this screen's home layout for this printer with the one on the printer's own screen.: "Questo sostituisce il layout della schermata iniziale di questo schermo per questa stampante con quello dello schermo della stampante."
   This slot feeds no tool: 'Questo slot non alimenta alcuno strumento'
+  This spool's details haven't loaded from Spoolman yet. Try Save again.: 'I dettagli di questa bobina non sono ancora stati caricati da Spoolman. Premi di nuovo Salva.'
   This system does not support bypass mode: 'Questo sistema non supporta la modalità bypass'
   This tool probes each bed screw and tells you how much to adjust.: Questo strumento
     sonda ogni vite del piano e indica quanto regolare.

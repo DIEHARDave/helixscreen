@@ -61,6 +61,7 @@ char AmsContextMenu::slot_load_hint_buf_[192];
 lv_subject_t AmsContextMenu::slot_mount_subject_;
 lv_subject_t AmsContextMenu::slot_park_subject_;
 lv_subject_t AmsContextMenu::slot_backup_label_subject_;
+lv_subject_t AmsContextMenu::slot_tool_row_visible_subject_;
 char AmsContextMenu::slot_backup_label_buf_[64];
 
 // ============================================================================
@@ -92,6 +93,7 @@ void AmsContextMenu::init_subjects() {
     lv_subject_init_int(&slot_park_subject_, 0);
     lv_subject_init_string(&slot_backup_label_subject_, slot_backup_label_buf_, nullptr,
                            sizeof(slot_backup_label_buf_), "");
+    lv_subject_init_int(&slot_tool_row_visible_subject_, 0);
 
     lv_xml_register_subject(nullptr, "ams_slot_is_loaded", &slot_is_loaded_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_can_load", &slot_can_load_subject_);
@@ -113,6 +115,7 @@ void AmsContextMenu::init_subjects() {
     lv_xml_register_subject(nullptr, "ams_slot_mount", &slot_mount_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_park", &slot_park_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_backup_label", &slot_backup_label_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_tool_row_visible", &slot_tool_row_visible_subject_);
 
     subjects_initialized_ = true;
 }
@@ -312,7 +315,7 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
         }
 
         // Show Clear Spool button when external spool has an assignment.
-        // btn_edit ("Spool Info") is always shown so users can reopen the edit modal.
+        // btn_edit ("Edit Spool") is always shown so users can reopen the editor.
         auto ext_info = AmsState::instance().get_external_spool_info();
         bool has_assignment =
             ext_info.has_value() && (ext_info->spoolman_id > 0 || !ext_info->material.empty());
@@ -1060,7 +1063,6 @@ void AmsContextMenu::configure_dropdowns() {
     backup_dropdown_ = helix::ui::find_required(menu(), "backup_dropdown", "AmsContextMenu");
 
     // Find row containers and divider
-    lv_obj_t* tool_row = helix::ui::find_required(menu(), "tool_dropdown_row", "AmsContextMenu");
     lv_obj_t* backup_row =
         helix::ui::find_required(menu(), "backup_dropdown_row", "AmsContextMenu");
     lv_obj_t* divider = helix::ui::find_required(menu(), "dropdown_divider", "AmsContextMenu");
@@ -1072,11 +1074,10 @@ void AmsContextMenu::configure_dropdowns() {
     // can_write_mapping_table() gate the print-start apply path uses (the U1
     // honours remaps through its pre-print send while refusing the table
     // write, and an unusable dropdown is worse than none).
-    if (backend_ && helix::printer::can_write_mapping_table(*backend_)) {
+    const bool tool_row = backend_ && helix::printer::can_write_mapping_table(*backend_);
+    lv_subject_set_int(&slot_tool_row_visible_subject_, tool_row ? 1 : 0);
+    if (tool_row) {
         populate_tool_dropdown();
-        if (tool_row) {
-            lv_obj_remove_flag(tool_row, LV_OBJ_FLAG_HIDDEN);
-        }
         show_any_dropdown = true;
         spdlog::debug("[AmsContextMenu] Assigned Tool row shown");
     }

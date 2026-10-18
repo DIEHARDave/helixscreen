@@ -2816,10 +2816,12 @@
   <translation tag="Save to Spool" pt="Salvar no carretel"/>
   <translation tag="Save to Spoolman" pt="Salvar no Spoolman"/>
   <translation tag="Saved Z-Offset" pt="Z-Offset Salvo"/>
+  <translation tag="Saved to Spoolman, but the spool&apos;s price, location, lot and notes didn&apos;t save." pt="Salvo no Spoolman, mas o preço, a localização, o lote e as notas do carretel não foram salvos."/>
   <translation tag="Saved to crash_report.txt (QR not available)" pt="Salvo em crash_report.txt (QR não disponível)"/>
   <translation tag="Saved to printer configuration." pt="Salvo na configuração da impressora."/>
   <translation tag="Saved to {}. It applies whenever this filament becomes active." pt="Salvo em {}. É aplicado sempre que este filamento ficar ativo."/>
   <translation tag="Saved values, and whether to ask before running" pt="Valores salvos e se deve perguntar antes de executar"/>
+  <translation tag="Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved." pt="Salvo. O Spoolman está offline, então o preço, a localização, o lote e as notas ficam aqui sem salvar."/>
   <translation tag="Saves to Klipper config and restarts firmware." pt="Salva na configuração do Klipper e reinicia o firmware."/>
   <translation tag="Saving Configuration..." pt="Salvando Configuração..."/>
   <translation tag="Saving Z-offset..." pt="Salvando Z-offset..."/>
@@ -3053,6 +3055,7 @@
   <translation tag="Spoolman needs a color for this filament." pt="O Spoolman precisa de uma cor para este filamento."/>
   <translation tag="Spoolman needs a material for this filament." pt="O Spoolman precisa de um material para este filamento."/>
   <translation tag="Spoolman removed." pt="Spoolman removido."/>
+  <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." pt="O Spoolman salvou o preço, a localização, o lote e as notas, mas não o resto. Nada mais mudou nesta impressora."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" pt="Spoolman indisponível — os pesos do filamento podem estar desatualizados"/>
   <translation tag="Spoolman was not configured." pt="Spoolman não estava configurado."/>
   <translation tag="Spoolman: %zu Spool" pt="Spoolman: %zu Bobina"/>
@@ -3106,6 +3109,7 @@
   <translation tag="Std Deviation" pt="Desvio Padrão"/>
   <translation tag="Step" pt="Etapa"/>
   <translation tag="Step 1 of 3" pt="Etapa 1 de 3"/>
+  <translation tag="Still saving this spool…" pt="Ainda salvando este carretel…"/>
   <translation tag="Still working... taking longer than usual" pt="Ainda processando... está demorando mais que o normal"/>
   <translation tag="Stop" pt="Parar"/>
   <translation tag="Stop Drying" pt="Parar Secagem"/>
@@ -3374,6 +3378,7 @@
   <translation tag="This replaces the printer&apos;s helper macros with the current version. A print is running, so Klipper restarts after it finishes." pt="Isto substitui as macros de ajuda da impressora pela versão atual. Uma impressão está em andamento, então o Klipper será reiniciado ao término."/>
   <translation tag="This replaces this screen&apos;s home layout for this printer with the one on the printer&apos;s own screen." pt="Isso substitui o layout da tela inicial desta tela para esta impressora pelo layout da tela da própria impressora."/>
   <translation tag="This slot feeds no tool" pt="Este slot não alimenta nenhuma ferramenta"/>
+  <translation tag="This spool&apos;s details haven&apos;t loaded from Spoolman yet. Try Save again." pt="Os detalhes deste carretel ainda não foram carregados do Spoolman. Toque em Salvar novamente."/>
   <translation tag="This system does not support bypass mode" pt="Este sistema não oferece suporte ao modo bypass"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." pt="Esta ferramenta sonda cada parafuso da mesa e informa quanto ajustar."/>
   <translation tag="This update asks for new permissions:" pt="Esta atualização pede novas permissões:"/>

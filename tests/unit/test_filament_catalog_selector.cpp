@@ -290,12 +290,13 @@ TEST_CASE_METHOD(XMLTestFixture,
     // rather than getting its own heading. Its variant-run key is the raw type
     // string "PLA+", which sorts by ASCII before "PLA-CF"/"PLA-GF" because '+'
     // (0x2B) is less than '-' (0x2D) — same alphabetical-by-type rule as every
-    // other variant run, not a special case.
+    // other variant run, not a special case. Recycled "rPLA" files under PLA
+    // as its Recycled variant.
     auto names = sel.product_names_for_test();
     REQUIRE(names == std::vector<std::string>{"PLA", "PLA High Speed", "PLA Matte", "PLA Silk",
                                               "Support for PLA", "Glow PLA", "Marble PLA",
                                               "Matte PLA", "Metal PLA", "PLA+", "PLA-CF", "PLA-GF",
-                                              "Silk PLA", "Wood PLA"});
+                                              "rPLA", "Silk PLA", "Wood PLA"});
 
     sel.detach();
 }

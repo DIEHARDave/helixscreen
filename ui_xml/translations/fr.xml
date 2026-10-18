@@ -2816,10 +2816,12 @@
   <translation tag="Save to Spool" fr="Enregistrer sur la bobine"/>
   <translation tag="Save to Spoolman" fr="Enregistrer dans Spoolman"/>
   <translation tag="Saved Z-Offset" fr="Z-Offset enregistré"/>
+  <translation tag="Saved to Spoolman, but the spool&apos;s price, location, lot and notes didn&apos;t save." fr="Enregistré dans Spoolman, mais le prix, l&apos;emplacement, le lot et les notes de la bobine n&apos;ont pas été enregistrés."/>
   <translation tag="Saved to crash_report.txt (QR not available)" fr="Enregistré dans crash_report.txt (QR non disponible)"/>
   <translation tag="Saved to printer configuration." fr="Enregistré dans la configuration de l&apos;imprimante."/>
   <translation tag="Saved to {}. It applies whenever this filament becomes active." fr="Enregistré sur {}. Appliqué chaque fois que ce filament devient actif."/>
   <translation tag="Saved values, and whether to ask before running" fr="Valeurs enregistrées et demande de confirmation avant exécution ou non"/>
+  <translation tag="Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved." fr="Enregistré. Spoolman est hors ligne, donc le prix, l&apos;emplacement, le lot et les notes restent ici sans être enregistrés."/>
   <translation tag="Saves to Klipper config and restarts firmware." fr="Enregistre dans la config Klipper et redémarre le firmware."/>
   <translation tag="Saving Configuration..." fr="Enregistrement de la configuration..."/>
   <translation tag="Saving Z-offset..." fr="Enregistrement du Z-offset..."/>
@@ -3053,6 +3055,7 @@
   <translation tag="Spoolman needs a color for this filament." fr="Spoolman a besoin d&apos;une couleur pour ce filament."/>
   <translation tag="Spoolman needs a material for this filament." fr="Spoolman a besoin d&apos;un matériau pour ce filament."/>
   <translation tag="Spoolman removed." fr="Spoolman supprimé."/>
+  <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." fr="Spoolman a enregistré le prix, l&apos;emplacement, le lot et les notes, mais pas le reste. Rien d&apos;autre n&apos;a changé sur cette imprimante."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" fr="Spoolman indisponible — les poids de filament peuvent être obsolètes"/>
   <translation tag="Spoolman was not configured." fr="Spoolman n&apos;était pas configuré."/>
   <translation tag="Spoolman: %zu Spool" fr="Spoolman : %zu bobine"/>
@@ -3106,6 +3109,7 @@
   <translation tag="Std Deviation" fr="Écart type"/>
   <translation tag="Step" fr="Étape"/>
   <translation tag="Step 1 of 3" fr="Étape 1 sur 3"/>
+  <translation tag="Still saving this spool…" fr="Enregistrement de cette bobine en cours…"/>
   <translation tag="Still working... taking longer than usual" fr="Toujours en cours... cela prend plus de temps que d&apos;habitude"/>
   <translation tag="Stop" fr="Arrêter"/>
   <translation tag="Stop Drying" fr="Arrêter le séchage"/>
@@ -3374,6 +3378,7 @@
   <translation tag="This replaces the printer&apos;s helper macros with the current version. A print is running, so Klipper restarts after it finishes." fr="Cela remplace les macros d&apos;aide de l&apos;imprimante par la version actuelle. Une impression est en cours, Klipper redémarrera une fois terminée."/>
   <translation tag="This replaces this screen&apos;s home layout for this printer with the one on the printer&apos;s own screen." fr="Cela remplace la disposition de l&apos;écran d&apos;accueil de cet écran pour cette imprimante par celle de l&apos;écran de l&apos;imprimante."/>
   <translation tag="This slot feeds no tool" fr="Ce slot n&apos;alimente aucun outil"/>
+  <translation tag="This spool&apos;s details haven&apos;t loaded from Spoolman yet. Try Save again." fr="Les détails de cette bobine ne sont pas encore chargés depuis Spoolman. Appuyez à nouveau sur Enregistrer."/>
   <translation tag="This system does not support bypass mode" fr="Ce système ne prend pas en charge le mode bypass"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." fr="Cet outil palpe chaque vis du plateau et vous indique combien ajuster."/>
   <translation tag="This update asks for new permissions:" fr="Cette mise à jour demande de nouvelles autorisations :"/>

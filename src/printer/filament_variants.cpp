@@ -463,6 +463,11 @@ bool is_filled_grade(std::string_view name) {
 
 std::string display_family(std::string_view type) {
     std::string base = extract_base_material(type);
+    // A recycled grade ("rPLA") is a material of its own to the database, but
+    // a variant of its polymer on the shelf: it files under that family.
+    if (base.size() > 1 && base[0] == 'r' && find_material(std::string_view(base).substr(1))) {
+        return base.substr(1);
+    }
     // A type we cannot reduce is its own family — one heading, one entry — so
     // user-overlay and firmware-only types stay reachable instead of vanishing.
     return base.empty() ? std::string(type) : base;

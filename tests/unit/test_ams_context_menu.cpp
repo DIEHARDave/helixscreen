@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_ams_context_menu.h"
+#include "ui_button.h"
+#include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/backend_user_edit.h"
@@ -1597,3 +1599,68 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: the external spool takes no
     process_lvgl(20);
 }
 #endif // HELIX_HAS_PLUGINS
+
+// ============================================================================
+// Edit Spool + Assigned Tool
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: Edit Spool opens the editor",
+                 "[ui][ams][context_menu][edit_spool]") {
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    auto backend = std::make_unique<AmsBackendMock>(4);
+
+    AmsContextMenu menu;
+    std::optional<AmsContextMenu::MenuAction> fired;
+    menu.set_action_callback(
+        [&](AmsContextMenu::MenuAction action, int /*slot*/) { fired = action; });
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+
+    lv_obj_t* btn = lv_obj_find_by_name(test_screen(), "btn_edit");
+    REQUIRE(btn != nullptr);
+    lv_obj_t* label = ui_button_get_label(btn);
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "Edit Spool");
+
+    lv_obj_send_event(btn, LV_EVENT_CLICKED, nullptr);
+    UpdateQueue::instance().drain();
+    REQUIRE(fired.has_value());
+    CHECK(*fired == AmsContextMenu::MenuAction::EDIT);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: Assigned Tool shows only where a mapping write lands",
+                 "[ui][ams][context_menu][edit_spool]") {
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+
+    const auto row_shown = [this](AmsBackendMock& backend) {
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                      /*is_loaded=*/false, &backend));
+        lv_obj_t* row = lv_obj_find_by_name(test_screen(), "tool_dropdown_row");
+        REQUIRE(row != nullptr);
+        lv_obj_t* label = lv_obj_find_by_name(row, "tool_label");
+        REQUIRE(label != nullptr);
+        CHECK(std::string(lv_label_get_text(label)) == "Assigned Tool");
+        const bool shown = !lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN);
+        menu.hide();
+        return shown;
+    };
+
+    AmsBackendMock writable(4);
+    writable.set_remap_strategy(AmsBackend::RemapStrategy::Native);
+    writable.set_remap_ready(true);
+    CHECK(row_shown(writable));
+
+    AmsBackendMock not_ready(4);
+    not_ready.set_remap_strategy(AmsBackend::RemapStrategy::Native);
+    not_ready.set_remap_ready(false);
+    CHECK_FALSE(row_shown(not_ready));
+
+    AmsBackendMock pre_print(4);
+    pre_print.set_remap_strategy(AmsBackend::RemapStrategy::PrePrintSend);
+    CHECK_FALSE(row_shown(pre_print));
+
+    // A writable backend after a refused one: the row comes back.
+    CHECK(row_shown(writable));
+}

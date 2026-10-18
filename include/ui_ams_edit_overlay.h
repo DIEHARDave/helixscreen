@@ -19,6 +19,7 @@
 #include "subject_managed_panel.h"
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -38,12 +39,12 @@ namespace helix::ui {
  * @brief NavigationManager overlay for editing AMS filament slot properties
  *
  * Single overlay hosting internal views selected by the ams_edit_view int
- * subject: 0=editor (chip rows; the entry view), 1=Spoolman spool picker,
+ * subject: 0=editor (the identity form; the entry view), 1=Spoolman spool picker,
  * 2=color. Header back button routes per-view; header Save action is
  * dirty-gated via the ams_edit_save_disabled subject.
  *
- * The editor view is a chip-row state machine: Material family, Variant,
- * Brand, Product as a cascading dropdown form (each list ends in a
+ * The editor view is a cascading dropdown form: Material family, Variant,
+ * Brand, Product (each list ends in a
  * browse-the-catalog entry), plus a colour
  * grid, a weight pill (numeric keypad) and a collapsed More section.
  * Selection state lives in SpoolEditSelection; Save stages it into the
@@ -81,11 +82,13 @@ class AmsEditOverlay : public OverlayBase {
     static constexpr int VIEW_EDITOR = 0;
     static constexpr int VIEW_SPOOL_PICKER = 1;
     static constexpr int VIEW_COLOR = 2;
+    /// ams_edit_color_selected value that rings the grid's custom swatch.
+    static constexpr int kCustomColorIndex = -2;
 
     /**
-     * @brief The chip-row selection the editor is staging
+     * @brief The identity selection the editor is staging
      *
-     * family/variant/brand are chip labels; product_id is a catalog id (""
+     * family/variant/brand are option labels; product_id is a catalog id (""
      * = no product pick). An unknown value (a firmware/Spoolman material the
      * catalog lacks) is kept verbatim in family/brand so an untouched
      * open+Save round-trips it.
@@ -122,7 +125,7 @@ class AmsEditOverlay : public OverlayBase {
     void on_activate() override;
     void on_deactivating(DeactivateReason reason) override;
     void on_ui_destroyed() override;
-    /// The chip labels, the colour selection ring and the logistics field
+    /// The dropdown options, the colour selection ring and the logistics field
     /// text are populated on view entry, not by the XML — re-apply them for
     /// the view that is showing when a hot-reload rebuilds the tree.
     void repopulate() override;
@@ -143,8 +146,8 @@ class AmsEditOverlay : public OverlayBase {
 
     // === Pure selection decisions (exposed for tests) ===
 
-    /// Split a slot's material/brand/product into the chip selection. Unknown
-    /// values pass through verbatim (they render as their own selected chip).
+    /// Split a slot's material/brand/product into the selection. Unknown
+    /// values pass through verbatim (they show as their own selected option).
     static SpoolEditSelection selection_from_slot(const SlotInfo& info);
 
     /// Rule: changing the family keeps the brand when it makes the new
@@ -160,18 +163,36 @@ class AmsEditOverlay : public OverlayBase {
     static std::string selected_type(const SpoolEditSelection& sel,
                                      const printer::FilamentCatalog& catalog);
 
+    /// Presets a colour grid shows: whole rows of @p tile at @p gap across
+    /// @p grid_width, @p rows of them, less the custom swatch's tile, capped at
+    /// the palette.
+    static int grid_preset_count(int grid_width, int tile, int gap, int rows, int palette_size);
+
+    /// Whether @p info carries a colour someone chose: not the unset grey,
+    /// and not the bare black some firmware reports for an empty slot.
+    static bool slot_has_colour(const SlotInfo& info);
+
+    /// The ams_edit_color_selected value for @p rgb: the index of the first of
+    /// @p visible_presets palette entries it matches, kCustomColorIndex for a
+    /// set colour none of them holds, -1 when no colour is set.
+    static int color_ring_index(uint32_t rgb, bool colour_set, int visible_presets,
+                                const std::vector<uint32_t>& palette);
+
   private:
     // === State ===
     int slot_index_ = -1;
     SlotInfo original_info_; ///< Original info for dirty comparison
     SlotInfo working_info_;  ///< Working copy being edited
 
-    /// Chip selection state; staged into working_info_ by handle_save().
+    /// Dropdown selection state; staged into working_info_ by handle_save().
     SpoolEditSelection sel_;
-    /// True once the user moved a chip (family/variant/brand/product) or the
+    /// True once the user moved a dropdown (family/variant/brand/product) or the
     /// colour: Save rewrites identity only then, so an untouched open+save
     /// changes nothing.
     bool selection_moved_ = false;
+    /// True once Reset to tag restored the identity this session: a spool
+    /// record landing later must not overwrite it.
+    bool identity_reset_ = false;
     uint32_t details_color_ = 0;     ///< pending colour
     bool details_color_set_ = false; ///< true once the user picked a colour
     /// The slot's tag reading, refreshed on open; drives the from-tag badge
@@ -188,22 +209,53 @@ class AmsEditOverlay : public OverlayBase {
     CompletionCallback completion_callback_;
     bool completion_fired_ = false; ///< Guards single-fire completion
     // A Spoolman save is in flight. The editor stays open while it runs, so a
-    // second tap on Save is reachable and would start a second save.
+    // second tap on Save is reachable and would start a second save. Back,
+    // the weight keypad and the scanner stay shut too: the save's completion
+    // closes the editor, and must not pop something pushed on top of it.
     bool save_in_flight_ = false;
+    /// Bumped by every show_for_slot(). Save completions run on
+    /// object_lifetime_ (they are owed to Spoolman and the slot, not to the
+    /// screen) and finish from a SaveCapture: a save commits the slot it
+    /// captured through the callback it began with, editor open or not. Only
+    /// the editor-side follow-ups (closing it, keeping it open on a failure,
+    /// the identity prompt) check the session is still the one showing.
+    uint32_t session_ = 0;
+    /// True once the editor view has been populated this session. A picker-entry
+    /// session reaches the editor first through enter_editor(); later returns
+    /// keep the staged edits.
+    bool editor_entered_ = false;
+    /// The linked spool's record fetch: requested and not yet landed (cleared
+    /// when a cover drops it), and the spool id whose record did land.
+    bool linked_fetch_pending_ = false;
+    int details_spool_id_ = 0;
+    bool recents_pending_ = false;
+    bool recents_loaded_ = false;
     // Spool logistics fields (More section) for the linked spool record.
     SpoolInfo detail_original_; ///< as fetched on entry
     SpoolInfo detail_working_;  ///< live field edits
-    /// The catalog the chip rows read; loaded per open.
+    /// The catalog the dropdowns read; loaded per open.
     std::optional<printer::FilamentCatalog> catalog_;
 
     void populate_detail_fields();
     void read_detail_fields();
     /// Re-seed detail_original_/detail_working_ from working_info_ for the
     /// spool it currently names - on open, and after a picker relink or a QR
-    /// scan swaps the spool underneath the editor.
+    /// scan swaps the spool underneath the editor. The fields show blank until
+    /// that spool's record lands.
     void reseed_details_for_spool();
+    /// Fetch the linked spool's record once: it feeds both the identity sync
+    /// and the More fields.
+    void fetch_linked_spool();
+    /// Apply a fetched record, unless the slot no longer names that spool. A
+    /// selection or field the user already changed is kept.
+    void apply_linked_spool(int spool_id, const SpoolInfo& spool);
+    /// The editor view after the picker or colour view: entered on first use,
+    /// otherwise shown with the staged edits intact.
+    void return_to_editor();
+    /// After a relink or a QR scan put a different spool under the editor.
+    void load_swapped_spool();
     /// The logistics PATCH rides an Update-in-Spoolman save when the identity
-    /// prompt owns this save (2b): set by handle_save, consumed by
+    /// prompt owns this save: set by handle_save, consumed by
     /// do_spoolman_save's success path.
     bool logistics_pending_ = false;
 
@@ -217,22 +269,23 @@ class AmsEditOverlay : public OverlayBase {
     void handle_color_hex_changed();
     void handle_color_apply();
 
-    // === Chip row publishing ===
-    /// One chip's label and the value a tap stages.
-    struct Chip {
+    // === Identity dropdowns ===
+    /// One option's label and the value picking it stages.
+    struct Option {
         std::string label;
         std::string payload; ///< family / variant / brand / catalog id
-        bool more = false;   ///< the trailing More... / All... chip
+        bool more = false;   ///< the trailing "Browse catalog..." entry
     };
-    std::vector<Chip> material_chips_;
-    std::vector<Chip> variant_chips_;
-    std::vector<Chip> brand_chips_;
-    std::vector<Chip> product_chips_;
+    std::vector<Option> material_options_;
+    std::vector<Option> variant_options_;
+    std::vector<Option> brand_options_;
+    std::vector<Option> product_options_;
     /// Fill both layouts' dropdown widgets from the option vectors.
     void refresh_dropdowns();
     void fill_dropdown(const char* stacked_name, const char* split_name,
-                       const std::vector<Chip>& chips, const std::string& selected_payload);
-    void rebuild_chip_rows();
+                       const std::vector<Option>& options_list,
+                       const std::string& selected_payload);
+    void rebuild_option_lists();
     void handle_option_selected(int row, int index);
 
     // === Subjects for XML binding ===
@@ -247,10 +300,19 @@ class AmsEditOverlay : public OverlayBase {
     lv_subject_t scan_enabled_subject_{};    ///< 1=QR button may show ("ams_edit_scan_enabled")
     lv_subject_t product_hidden_subject_{};  ///< 1 while Generic selected
     lv_subject_t color_selected_subject_{};  ///< ringed preset index (-1 none)
-    lv_subject_t color_col_count_subject_{}; ///< split-column presets (15)
-    lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (18 short, 30 tall)
+    lv_subject_t color_col_count_subject_{}; ///< split-column presets (size_color_grids)
+    lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (size_color_grids)
     lv_subject_t summary_text_subject_{};
-    lv_subject_t tag_badge_visible_subject_{};
+    lv_subject_t tag_badge_visible_subject_{}; ///< any shown field is the tag's
+    lv_subject_t tag_material_subject_{};
+    lv_subject_t tag_brand_subject_{};
+    lv_subject_t tag_product_subject_{};
+    lv_subject_t tag_color_subject_{};
+    lv_subject_t tag_temps_subject_{};
+    /// The temperatures the temp line shows, for the temps badge.
+    int shown_nozzle_min_ = 0;
+    int shown_nozzle_max_ = 0;
+    int shown_bed_temp_ = 0;
     lv_subject_t temp_text_subject_{};
     lv_subject_t weight_text_subject_{};
     lv_subject_t weight_hint_subject_{};
@@ -272,7 +334,7 @@ class AmsEditOverlay : public OverlayBase {
     std::vector<std::string> cached_searchables_;
     /// Debounce for the picker's search input.
     helix::ui::SearchDebounce picker_search_debounce_;
-    /// The More... / All... full-catalog sheet (created lazily, reused).
+    /// The "Browse catalog..." sheet (created lazily, reused).
     std::unique_ptr<FilamentCatalogPickerModal> catalog_sheet_;
 
     // === Internal Methods ===
@@ -292,19 +354,57 @@ class AmsEditOverlay : public OverlayBase {
     void render_spool_list(const std::string& filter);
     void handle_spool_selected(int spool_id);
     void enter_editor();
-    /// Apply the editor view's non-XML content (chip labels, colour ring,
+    /// Apply the editor view's non-XML content (dropdown options, colour ring,
     /// summary, logistics fields) from state this object already holds.
     void populate_editor_view();
+    /// Set both colour grids' preset counts from their measured width.
+    void size_color_grids();
+    /// Presets the showing colour grid displays.
+    int visible_preset_count();
     void stage_selection_into_working();
     void handle_quick_swatch(lv_obj_t* swatch);
     void handle_picker_search(const char* text);
     void fetch_recents();
     void refresh_tag_state();
+    /// The slot as the form shows it now (staged selection, pending colour,
+    /// the temperature line's values).
+    SlotInfo shown_slot() const;
+    /// Set each "from tag" badge from the tag's provenance over shown_slot().
+    void update_tag_badges();
 
     // === Completion / close orchestration ===
     void fire_completion(bool saved); ///< Idempotent; does NOT pop the overlay
     void close_editor(bool saved);    ///< fire_completion + NavigationManager go_back
     void commit_and_close();
+
+    /// Everything a save needs to finish after the editor is gone.
+    struct SaveCapture {
+        uint32_t session = 0;
+        int slot_index = -1;
+        SlotInfo original; ///< the diff base
+        SlotInfo saving;   ///< the slot this save commits
+        CompletionCallback owed;
+        nlohmann::json chained_spool_patch; ///< More fields riding the Update arm
+        int chained_spool_id = 0;
+        bool more_saved = false; ///< a More PATCH ran ahead of this commit and landed
+        bool stay_open = false;  ///< commit the slot but keep the editor (unsaved More edits)
+    };
+    SaveCapture capture_save() const;
+    /// Saves still running per slot, editor open or not. show_for_slot()
+    /// refuses a slot with one pending: its editor would show, and could save,
+    /// the slot as it was before that save commits.
+    std::map<int, int> pending_saves_;
+    bool save_pending_for(int slot_index) const;
+    void begin_slot_save(int slot_index);
+    void end_slot_save(int slot_index);
+    /// The editor that began @p cap is still showing it.
+    bool save_is_live(const SaveCapture& cap) const;
+    /// Close that editor with @p committed, or hand it to @p cap's callback.
+    void deliver_commit(const SaveCapture& cap, const SlotInfo& committed);
+    /// The commit decision (offline lock, relink, Spoolman save, local) over a
+    /// capture; commit_and_close() runs it over the current state.
+    void commit_capture(const SaveCapture& cap);
+    void run_spoolman_save(const SaveCapture& cap, helix::SpoolmanSlotSaver::LinkIntent intent);
 
     friend class ::AmsEditOverlayTestAccess;
     friend class ::AmsEditOverlayViewTestAccess;

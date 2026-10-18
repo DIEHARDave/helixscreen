@@ -3085,11 +3085,13 @@ translations:
   Save to Spool: Salvar no carretel
   Save to Spoolman: Salvar no Spoolman
   Saved Z-Offset: Z-Offset Salvo
+  Saved to Spoolman, but the spool's price, location, lot and notes didn't save.: 'Salvo no Spoolman, mas o preço, a localização, o lote e as notas do carretel não foram salvos.'
   Saved to crash_report.txt (QR not available): Salvo em crash_report.txt (QR não
     disponível)
   Saved to printer configuration.: Salvo na configuração da impressora.
   Saved to {}. It applies whenever this filament becomes active.: Salvo em {}. É aplicado sempre que este filamento ficar ativo.
   Saved values, and whether to ask before running: 'Valores salvos e se deve perguntar antes de executar'
+  Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved.: 'Salvo. O Spoolman está offline, então o preço, a localização, o lote e as notas ficam aqui sem salvar.'
   Saves to Klipper config and restarts firmware.: Salva na configuração do Klipper
     e reinicia o firmware.
   Saving Configuration...: Salvando Configuração...
@@ -3360,6 +3362,7 @@ translations:
   Spoolman needs a color for this filament.: O Spoolman precisa de uma cor para este filamento.
   Spoolman needs a material for this filament.: O Spoolman precisa de um material para este filamento.
   Spoolman removed.: Spoolman removido.
+  Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer.: 'O Spoolman salvou o preço, a localização, o lote e as notas, mas não o resto. Nada mais mudou nesta impressora.'
   Spoolman unavailable — filament weights may be stale: Spoolman indisponível — os
     pesos do filamento podem estar desatualizados
   Spoolman was not configured.: Spoolman não estava configurado.
@@ -3419,6 +3422,7 @@ translations:
   Std Deviation: Desvio Padrão
   Step: Etapa
   Step 1 of 3: Etapa 1 de 3
+  Still saving this spool…: 'Ainda salvando este carretel…'
   Still working... taking longer than usual: Ainda processando... está demorando mais
     que o normal
   Stop: Parar
@@ -3750,6 +3754,7 @@ translations:
   : 'Isto substitui as macros de ajuda da impressora pela versão atual. Uma impressão está em andamento, então o Klipper será reiniciado ao término.'
   This replaces this screen's home layout for this printer with the one on the printer's own screen.: "Isso substitui o layout da tela inicial desta tela para esta impressora pelo layout da tela da própria impressora."
   This slot feeds no tool: 'Este slot não alimenta nenhuma ferramenta'
+  This spool's details haven't loaded from Spoolman yet. Try Save again.: 'Os detalhes deste carretel ainda não foram carregados do Spoolman. Toque em Salvar novamente.'
   This system does not support bypass mode: 'Este sistema não oferece suporte ao modo bypass'
   This tool probes each bed screw and tells you how much to adjust.: Esta ferramenta
     sonda cada parafuso da mesa e informa quanto ajustar.

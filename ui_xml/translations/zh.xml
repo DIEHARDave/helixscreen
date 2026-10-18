@@ -2816,10 +2816,12 @@
   <translation tag="Save to Spool" zh="保存到料盘"/>
   <translation tag="Save to Spoolman" zh="保存到 Spoolman"/>
   <translation tag="Saved Z-Offset" zh="已保存 Z 偏移"/>
+  <translation tag="Saved to Spoolman, but the spool&apos;s price, location, lot and notes didn&apos;t save." zh="已保存到 Spoolman，但料盘的价格、位置、批次和备注未保存。"/>
   <translation tag="Saved to crash_report.txt (QR not available)" zh="已保存到 crash_report.txt（二维码不可用）"/>
   <translation tag="Saved to printer configuration." zh="已保存到打印机配置。"/>
   <translation tag="Saved to {}. It applies whenever this filament becomes active." zh="已保存到{}。每当该耗材启用时都会应用。"/>
   <translation tag="Saved values, and whether to ask before running" zh="保存的值,以及运行前是否询问"/>
+  <translation tag="Saved. Spoolman is offline, so price, location, lot and notes stay here unsaved." zh="已保存。Spoolman 离线，因此价格、位置、批次和备注暂留在此处，尚未保存。"/>
   <translation tag="Saves to Klipper config and restarts firmware." zh="保存到 Klipper 配置并重启固件。"/>
   <translation tag="Saving Configuration..." zh="正在保存配置..."/>
   <translation tag="Saving Z-offset..." zh="正在保存 Z 偏移..."/>
@@ -3053,6 +3055,7 @@
   <translation tag="Spoolman needs a color for this filament." zh="Spoolman 需要该耗材的颜色。"/>
   <translation tag="Spoolman needs a material for this filament." zh="Spoolman 需要该耗材的材料。"/>
   <translation tag="Spoolman removed." zh="Spoolman 已移除。"/>
+  <translation tag="Spoolman saved the price, location, lot and notes, but not the rest. Nothing else changed on this printer." zh="Spoolman 已保存价格、位置、批次和备注，但其余内容未保存。此打印机上没有其他更改。"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" zh="Spoolman不可用 — 耗材重量可能已过期"/>
   <translation tag="Spoolman was not configured." zh="Spoolman 未配置。"/>
   <translation tag="Spoolman: %zu Spool" zh="Spoolman: %zu 个线轴"/>
@@ -3106,6 +3109,7 @@
   <translation tag="Std Deviation" zh="标准差"/>
   <translation tag="Step" zh="步骤"/>
   <translation tag="Step 1 of 3" zh="第 1 步，共 3 步"/>
+  <translation tag="Still saving this spool…" zh="此料盘仍在保存中…"/>
   <translation tag="Still working... taking longer than usual" zh="仍在处理……耗时比平常更长"/>
   <translation tag="Stop" zh="停止"/>
   <translation tag="Stop Drying" zh="停止干燥"/>
@@ -3374,6 +3378,7 @@
   <translation tag="This replaces the printer&apos;s helper macros with the current version. A print is running, so Klipper restarts after it finishes." zh="这会将打印机的帮助宏替换为当前版本。当前正在打印，Klipper 将在打印结束后重启。"/>
   <translation tag="This replaces this screen&apos;s home layout for this printer with the one on the printer&apos;s own screen." zh="这将用打印机自身屏幕上的布局替换此屏幕上该打印机的主屏幕布局。"/>
   <translation tag="This slot feeds no tool" zh="此槽位不向任何工具供料"/>
+  <translation tag="This spool&apos;s details haven&apos;t loaded from Spoolman yet. Try Save again." zh="此料盘的详细信息尚未从 Spoolman 加载。请再次点击保存。"/>
   <translation tag="This system does not support bypass mode" zh="此系统不支持旁通模式"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." zh="此工具探测每个热床螺丝并告诉您需要调整多少。"/>
   <translation tag="This update asks for new permissions:" zh="此更新请求新的权限："/>
