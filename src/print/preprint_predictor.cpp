@@ -114,6 +114,10 @@ std::vector<PreprintEntry> PreprintPredictor::get_entries() const {
     return entries_;
 }
 
+int PreprintPredictor::temp_bucket_for(float bed_c) {
+    return bed_c >= WARM_BED_C ? 2 : 1;
+}
+
 bool PreprintPredictor::has_predictions() const {
     return !entries_.empty();
 }

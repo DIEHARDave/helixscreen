@@ -327,7 +327,7 @@ void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_meta
     // The history this start will be measured against: its temp bucket and
     // whether a host-side block runs ahead of the job (the collector's window),
     // built from what start_print() builds it from.
-    const int temp_bucket = bed_temp >= 40.0f ? 2 : 1;
+    const int temp_bucket = helix::PreprintPredictor::temp_bucket_for(bed_temp);
     const gcode::ScanResult* scan = scan_result_for(file_key);
     const helix::PreprintWindow window =
         pre_start_block(collect_macro_skip_params(), file_key,

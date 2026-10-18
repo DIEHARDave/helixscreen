@@ -106,6 +106,13 @@ class PreprintPredictor {
     void load_entries(const std::vector<PreprintEntry>& entries,
                       StartCondition condition = StartCondition::COLD);
 
+    /// Bed temperature at or above which a start counts as warm
+    static constexpr float WARM_BED_C = 40.0f;
+
+    /// The temp_bucket a start with the bed at @p bed_c belongs to: 2 (warm)
+    /// at or above WARM_BED_C, else 1 (cold)
+    [[nodiscard]] static int temp_bucket_for(float bed_c);
+
     /**
      * @brief Load entries with legacy temp_bucket filtering (backward compat)
      *

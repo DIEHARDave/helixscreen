@@ -614,3 +614,10 @@ TEST_CASE("PreprintPredictor: a skipped phase takes off its share of the whole w
     CHECK(predictor.estimate({}, {{mesh, false}}).total_seconds ==
           Catch::Approx(280.0f).margin(0.5f));
 }
+
+TEST_CASE("PreprintPredictor: a bed at 40C starts warm, below it cold", "[print][predictor]") {
+    CHECK(PreprintPredictor::temp_bucket_for(25.0f) == 1);
+    CHECK(PreprintPredictor::temp_bucket_for(39.9f) == 1);
+    CHECK(PreprintPredictor::temp_bucket_for(40.0f) == 2);
+    CHECK(PreprintPredictor::temp_bucket_for(60.0f) == 2);
+}

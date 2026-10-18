@@ -2977,7 +2977,7 @@ void PrintStartCollector::load_prediction_history() {
     // Cold (1) vs Warm (2) based on current bed temp
     int bed_temp = helix::ui::temperature::deci_to_degrees(
         lv_subject_get_int(state_.temperature_state().get_bed_temp_subject()));
-    int temp_bucket = (bed_temp >= 40) ? 2 : 1;
+    int temp_bucket = helix::PreprintPredictor::temp_bucket_for(static_cast<float>(bed_temp));
 
     std::lock_guard<std::mutex> lock(state_mutex_);
     predictor_.load_entries(entries, temp_bucket, window_);
@@ -3269,7 +3269,8 @@ void PrintStartCollector::save_prediction_entry() {
     entry.total_seconds = wall_clock_total;
     entry.timestamp = static_cast<int64_t>(std::time(nullptr));
     entry.phase_durations = std::move(phase_durations);
-    entry.temp_bucket = (start_bed_temp_ >= 40) ? 2 : 1;
+    entry.temp_bucket =
+        helix::PreprintPredictor::temp_bucket_for(static_cast<float>(start_bed_temp_));
     entry.window = window_;
 
     {
