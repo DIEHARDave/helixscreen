@@ -125,15 +125,41 @@ engine's own message. The engine also sends index 0 for a fault tied to no head 
 command, code 200), so index 0 carries a toolhead label only when the message names head 1.
 Idle, the fault is a refusal of the command the user just sent. Every other line goes to the U1 backend's classifier.
 
+## Path view and numbering
+
+The overview and the unit view both read one rule, generic in
+`compute_system_tool_layout`: a lane or unit naming an extruder a placed nozzle already
+belongs to shares that nozzle, whatever topology placed it. Unit 0 places the four head
+nozzles from the heads' extruder names, so a head-mode ACE unit (HUB, all four bays naming
+one head's extruder) draws onto its head's nozzle and a multi-mode unit (PARALLEL, bay s
+naming head s) onto all four: one physical head is one nozzle everywhere (4 on this rig,
+never 8 or 20).
+
+A routed head lane's spool lives in its bay, so `upstream_slot(h)` answers the routed bay
+and `spool_display_number()` resolves through it: a routed head wears its bay's number and
+the badges on lanes holding their own spools run 1..N with no gap or repeat. The unit view
+draws the upstream lane's name as a small caption on the fed head's column
+(`helix::ui::upstream_lane_caption`, "ACE 2" + middle dot + bay number), on the row a prep
+sensor would occupy - an ACE-fed head has no prep sensor of its own.
+
+## Mock mode
+
+`HELIX_MOCK_AMS=multiace` (pair with `HELIX_MOCK_PRINTER=snapmaker_u1`) is mock HARDWARE:
+`MoonrakerClientMock` lists the U1 feed objects plus the plain `ace` object and serves
+engine-shaped `ace` frames from `HELIX_MOCK_MULTIACE_MODE` (head default, multi) and
+`HELIX_MOCK_MULTIACE_UNITS` (1-4), so real discovery builds this backend and runs against
+them. Head 1 starts routed to ACE 1 bay 1; `ACE_LOAD_HEAD` / `ACE_UNLOAD_HEAD` answer by
+routing (or clearing) and walking the head's channel_state, an unload parking at
+`preload_finish`. `tests/unit/test_ams_mock_multiace_parity.cpp` pins the frame to the real
+parser and backend. Full knob table: `docs/devel/MOCK_ENVIRONMENT_VARIABLES.md` under
+`HELIX_MOCK_AMS`.
+
 ## Not yet
 
-- The path view: one physical nozzle per head across the overview, the upstream caption on
-  an ACE-fed head, spool numbering that counts a routed bay once.
 - A print started from another client (Mainsail, Fluidd, the slicer) while a bay swap's
   unload runs: if its start has not reached a status frame by the frame that shows the head
   empty, the deferred load is still sent, and Klipper queues it behind the start. This screen
   has no signal for a start it did not make until the printer reports it.
-- Mock mode (`HELIX_MOCK_AMS=multiace`).
 - Editing a bay's spool: `apply_user_edit` and `sync_external_identity` answer only the four
   heads, so a bay edit is refused as an invalid slot.
 - The `multiace_event` console watcher (`multiace::parse_event_line` exists), the spool
