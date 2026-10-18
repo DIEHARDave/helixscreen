@@ -126,6 +126,14 @@ TEST_CASE("one row per discovered plugin, status and reason in the description",
     CHECK(fx.desc_text(fx.row("bad-name")).find("must match") != std::string::npos);
 }
 
+TEST_CASE("a plugin row lists the menus it adds to", "[plugin][plugins_overlay]") {
+    ListFx fx;
+    fx.open();
+    CHECK(fx.desc_text(fx.row("widget-demo")).find("\nAdds to: Print details") !=
+          std::string::npos);
+    CHECK(fx.desc_text(fx.row("hello")).find("Adds to") == std::string::npos);
+}
+
 TEST_CASE("tapping a disabled plugin consents, then enables with its permissions recorded",
           "[plugin][plugins_overlay]") {
     ListFx fx;

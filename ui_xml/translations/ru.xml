@@ -242,6 +242,7 @@
   <translation tag="Adding printer" ru="Добавление принтера"/>
   <translation tag="Adding to queue..." ru="Добавление в очередь..."/>
   <translation tag="Address" ru="Адрес"/>
+  <translation tag="Adds to:" ru="Добавляет в:"/>
   <translation tag="Adjust screen brightness level" ru="Настроить уровень яркости экрана"/>
   <translation tag="Adjust screws, then re-probe." ru="Отрегулируйте винты, затем перепроверьте."/>
   <translation tag="Adjustments stay active until restart. Save after print completes." ru="Настройки активны до перезагрузки. Сохраните после завершения печати."/>
@@ -1365,6 +1366,7 @@
   <translation tag="Filament saved" ru="Филамент сохранён"/>
   <translation tag="Filament sensor available for runout detection" ru="Датчик филамента доступен для обнаружения окончания"/>
   <translation tag="Filament sensor available. Add to config for runout detection?" ru="Доступен датчик филамента. Добавить в конфигурацию для обнаружения окончания филамента?"/>
+  <translation tag="Filament slot menu" ru="Меню слота филамента"/>
   <translation tag="Filament snapped inside CFS" ru="Филамент сломался внутри CFS"/>
   <translation tag="Filament stalled between CFS hub and extruder sensor" ru="Филамент остановился между хабом CFS и датчиком экструдера"/>
   <translation tag="Filament stuck in connector during unload" ru="Филамент застрял в разъёме при выгрузке"/>
@@ -1686,6 +1688,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" ru="Он зажат между датчиком хаба и его шестернёй. Откройте CFS, освободите хаб и повторите"/>
   <translation tag="It starts with your {} macro." ru="Начинается с вашего макроса {}."/>
   <translation tag="It&apos;s a new spool" ru="Это новая катушка"/>
+  <translation tag="Its home tile" ru="Его плитка на главном экране"/>
   <translation tag="Jammed at the Toolhead" ru="Замятие в печатающей головке"/>
   <translation tag="Job Queue" ru="Очередь заданий"/>
   <translation tag="Job queue not enabled in Moonraker" ru="Очередь заданий не включена в Moonraker"/>
@@ -2451,6 +2454,7 @@
   <translation tag="Print a test tower and tune K by eye" ru="Напечатать тестовую башню и подобрать K на глаз"/>
   <translation tag="Print cancelled" ru="Печать отменена"/>
   <translation tag="Print complete" ru="Печать завершена"/>
+  <translation tag="Print details" ru="Сведения о печати"/>
   <translation tag="Print did not start" ru="Печать не началась"/>
   <translation tag="Print didn&apos;t start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})" ru="Печать не началась — принтер может быть занят или не в сети (опросы B3={}, статус=0x{:02X}, ошибка=0x{:02X})"/>
   <translation tag="Print ending..." ru="Завершение печати..."/>
@@ -3085,6 +3089,7 @@
   <translation tag="Spool archived" ru="Катушка архивирована"/>
   <translation tag="Spool created successfully" ru="Катушка успешно создана"/>
   <translation tag="Spool deleted" ru="Катушка удалена"/>
+  <translation tag="Spool menu" ru="Меню катушки"/>
   <translation tag="Spool motor" ru="Мотор катушки"/>
   <translation tag="Spool saved" ru="Катушка сохранена"/>
   <translation tag="Spool wt (g)" ru="Вес катушки (г)"/>

@@ -209,6 +209,7 @@
   <translation tag="Adding printer" es="Añadiendo impresora"/>
   <translation tag="Adding to queue..." es="Añadiendo a la cola..."/>
   <translation tag="Address" es="Dirección"/>
+  <translation tag="Adds to:" es="Añade a:"/>
   <translation tag="Adjust screen brightness level" es="Ajustar el nivel de brillo de la pantalla"/>
   <translation tag="Adjust screws, then re-probe." es="Ajuste los tornillos, luego vuelva a sondear."/>
   <translation tag="Adjustments stay active until restart. Save after print completes." es="Los ajustes permanecen activos hasta reiniciar. Guarde después de que termine la impresión."/>
@@ -1323,6 +1324,7 @@
   <translation tag="Filament saved" es="Filamento guardado"/>
   <translation tag="Filament sensor available for runout detection" es="Sensor de filamento disponible para detección de agotamiento"/>
   <translation tag="Filament sensor available. Add to config for runout detection?" es="Sensor de filamento disponible. ¿Añadirlo a la configuración para detectar el fin del filamento?"/>
+  <translation tag="Filament slot menu" es="Menú de ranura de filamento"/>
   <translation tag="Filament snapped inside CFS" es="El filamento se rompió dentro del CFS"/>
   <translation tag="Filament stalled between CFS hub and extruder sensor" es="El filamento se detuvo entre el concentrador del CFS y el sensor del extrusor"/>
   <translation tag="Filament stuck in connector during unload" es="Filamento atascado en el conector durante la descarga"/>
@@ -1641,6 +1643,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" es="Está atascado entre el sensor del concentrador y su engranaje. Abra el CFS y despeje el concentrador antes de reintentar"/>
   <translation tag="It starts with your {} macro." es="Empieza con tu macro {}."/>
   <translation tag="It&apos;s a new spool" es="Es una bobina nueva"/>
+  <translation tag="Its home tile" es="Su mosaico de inicio"/>
   <translation tag="Jammed at the Toolhead" es="Atascado en el cabezal"/>
   <translation tag="Job Queue" es="Cola de trabajos"/>
   <translation tag="Job queue not enabled in Moonraker" es="Cola de trabajos no habilitada en Moonraker"/>
@@ -2403,6 +2406,7 @@
   <translation tag="Print a test tower and tune K by eye" es="Imprime una torre de prueba y ajusta K a ojo"/>
   <translation tag="Print cancelled" es="Impresión cancelada"/>
   <translation tag="Print complete" es="Impresión completa"/>
+  <translation tag="Print details" es="Detalles de impresión"/>
   <translation tag="Print did not start" es="La impresión no se inició"/>
   <translation tag="Print didn&apos;t start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})" es="La impresión no comenzó — la impresora puede estar ocupada o desconectada (sondeos B3={}, status=0x{:02X}, error=0x{:02X})"/>
   <translation tag="Print ending..." es="Finalizando impresión..."/>
@@ -3031,6 +3035,7 @@
   <translation tag="Spool archived" es="Bobina archivada"/>
   <translation tag="Spool created successfully" es="Bobina creada correctamente"/>
   <translation tag="Spool deleted" es="Bobina eliminada"/>
+  <translation tag="Spool menu" es="Menú de bobina"/>
   <translation tag="Spool motor" es="Motor de bobina"/>
   <translation tag="Spool saved" es="Bobina guardada"/>
   <translation tag="Spool wt (g)" es="Peso bobina (g)"/>

@@ -209,6 +209,7 @@
   <translation tag="Adding printer" en="Adding printer"/>
   <translation tag="Adding to queue..." en="Adding to queue..."/>
   <translation tag="Address" en="Address"/>
+  <translation tag="Adds to:" en="Adds to:"/>
   <translation tag="Adjust screen brightness level" en="Adjust screen brightness level"/>
   <translation tag="Adjust screws, then re-probe." en="Adjust screws, then re-probe."/>
   <translation tag="Adjustments stay active until restart. Save after print completes." en="Adjustments stay active until restart. Save after print completes."/>
@@ -1323,6 +1324,7 @@
   <translation tag="Filament saved" en="Filament saved"/>
   <translation tag="Filament sensor available for runout detection" en="Filament sensor available for runout detection"/>
   <translation tag="Filament sensor available. Add to config for runout detection?" en="Filament sensor available. Add to config for runout detection?"/>
+  <translation tag="Filament slot menu" en="Filament slot menu"/>
   <translation tag="Filament snapped inside CFS" en="Filament snapped inside CFS"/>
   <translation tag="Filament stalled between CFS hub and extruder sensor" en="Filament stalled between CFS hub and extruder sensor"/>
   <translation tag="Filament stuck in connector during unload" en="Filament stuck in connector during unload"/>
@@ -1641,6 +1643,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" en="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying"/>
   <translation tag="It starts with your {} macro." en="It starts with your {} macro."/>
   <translation tag="It&apos;s a new spool" en="It&apos;s a new spool"/>
+  <translation tag="Its home tile" en="Its home tile"/>
   <translation tag="Jammed at the Toolhead" en="Jammed at the Toolhead"/>
   <translation tag="Job Queue" en="Job Queue"/>
   <translation tag="Job queue not enabled in Moonraker" en="Job queue not enabled in Moonraker"/>
@@ -2403,6 +2406,7 @@
   <translation tag="Print a test tower and tune K by eye" en="Print a test tower and tune K by eye"/>
   <translation tag="Print cancelled" en="Print cancelled"/>
   <translation tag="Print complete" en="Print complete"/>
+  <translation tag="Print details" en="Print details"/>
   <translation tag="Print did not start" en="Print did not start"/>
   <translation tag="Print didn&apos;t start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})" en="Print didn&apos;t start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})"/>
   <translation tag="Print ending..." en="Print ending..."/>
@@ -3031,6 +3035,7 @@
   <translation tag="Spool archived" en="Spool archived"/>
   <translation tag="Spool created successfully" en="Spool created successfully"/>
   <translation tag="Spool deleted" en="Spool deleted"/>
+  <translation tag="Spool menu" en="Spool menu"/>
   <translation tag="Spool motor" en="Spool motor"/>
   <translation tag="Spool saved" en="Spool saved"/>
   <translation tag="Spool wt (g)" en="Spool wt (g)"/>

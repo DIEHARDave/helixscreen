@@ -219,6 +219,7 @@ translations:
   Adding printer: Ajout d'une imprimante
   Adding to queue...: Ajout à la file...
   Address: Adresse
+  'Adds to:': 'Ajoute à :'
   Adjust screen brightness level: Ajuster le niveau de luminosité de l'écran
   Adjust screws, then re-probe.: Ajustez les vis, puis re-palpez.
   Adjustments stay active until restart. Save after print completes.: Les ajustements
@@ -1472,6 +1473,7 @@ translations:
   Filament sensor available for runout detection: Capteur de filament disponible pour
     la détection de fin de filament
   Filament sensor available. Add to config for runout detection?: 'Capteur de filament disponible. L''ajouter à la configuration pour détecter la fin du filament ?'
+  Filament slot menu: 'Menu du slot de filament'
   Filament snapped inside CFS: Le filament s'est cassé dans le CFS
   Filament stalled between CFS hub and extruder sensor: Le filament est bloqué entre le hub CFS et le capteur d'extrudeur
   Filament stuck in connector during unload: Filament coincé dans le connecteur pendant le déchargement
@@ -1825,6 +1827,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Il est coincé entre le capteur du hub et son engrenage. Ouvrez le CFS et dégagez le hub avant de réessayer
   It starts with your {} macro.: Elle démarre avec votre macro {}.
   It's a new spool: C'est une nouvelle bobine
+  Its home tile: 'Sa tuile d''accueil'
   Jammed at the Toolhead: Bourrage à la tête d'outil
   Job Queue: File d'impression
   Job queue not enabled in Moonraker: 'File d''impression non activée dans Moonraker'
@@ -2651,6 +2654,7 @@ translations:
   Print Was Terminated: L'impression a été interrompue
   Print a test tower and tune K by eye: Imprimer une tour de test et régler K à l'œil
   Print cancelled: Impression annulée
+  Print details: 'Détails d''impression'
   Print did not start: L'impression n'a pas démarré
   Print complete: Impression terminée
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): L'impression
@@ -3356,6 +3360,7 @@ translations:
   Spool archived: Bobine archivée
   Spool created successfully: Bobine créée avec succès
   Spool deleted: Bobine supprimée
+  Spool menu: 'Menu de la bobine'
   Spool motor: Moteur de bobine
   Spool saved: Bobine enregistrée
   Spool wt (g): Poids bobine (g)

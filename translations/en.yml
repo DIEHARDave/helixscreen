@@ -212,6 +212,7 @@ translations:
   Adding printer: Adding printer
   Adding to queue...: Adding to queue...
   Address: Address
+  'Adds to:': 'Adds to:'
   Adjust screen brightness level: Adjust screen brightness level
   Adjust screws, then re-probe.: Adjust screws, then re-probe.
   Adjustments stay active until restart. Save after print completes.: Adjustments
@@ -1413,6 +1414,7 @@ translations:
   Filament sensor available for runout detection: Filament sensor available for runout
     detection
   Filament sensor available. Add to config for runout detection?: Filament sensor available. Add to config for runout detection?
+  Filament slot menu: Filament slot menu
   Filament snapped inside CFS: Filament snapped inside CFS
   Filament stalled between CFS hub and extruder sensor: Filament stalled between CFS hub and extruder sensor
   Filament stuck in connector during unload: Filament stuck in connector during unload
@@ -1760,6 +1762,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying
   It starts with your {} macro.: It starts with your {} macro.
   It's a new spool: It's a new spool
+  Its home tile: Its home tile
   Jammed at the Toolhead: Jammed at the Toolhead
   Job Queue: Job Queue
   Job queue not enabled in Moonraker: Job queue not enabled in Moonraker
@@ -2571,6 +2574,7 @@ translations:
   Print a test tower and tune K by eye: Print a test tower and tune K by eye
   Print cancelled: Print cancelled
   'Print complete': 'Print complete'
+  Print details: Print details
   Print did not start: Print did not start
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): Print
     didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})
@@ -3253,6 +3257,7 @@ translations:
   Spool archived: Spool archived
   Spool created successfully: Spool created successfully
   Spool deleted: Spool deleted
+  Spool menu: Spool menu
   Spool motor: Spool motor
   Spool saved: Spool saved
   Spool wt (g): Spool wt (g)

@@ -209,6 +209,7 @@ translations:
   Adding printer: プリンターを追加中
   Adding to queue...: キューに追加中...
   Address: アドレス
+  'Adds to:': '追加先:'
   Adjust screen brightness level: 画面の明るさを調整します
   Adjust screws, then re-probe.: ネジを調整して、再度プローブしてください。
   Adjustments stay active until restart. Save after print completes.: 調整は再起動まで有効です。印刷完了後に保存してください。
@@ -1371,6 +1372,7 @@ translations:
   Filament saved: フィラメントを保存しました
   Filament sensor available for runout detection: フィラメント切れ検出用のフィラメントセンサーが利用可能です
   Filament sensor available. Add to config for runout detection?: 'フィラメントセンサーが使用可能です。フィラメント切れ検出のために設定に追加しますか？'
+  Filament slot menu: 'フィラメントスロットのメニュー'
   Filament snapped inside CFS: CFS 内でフィラメントが折れました
   Filament stalled between CFS hub and extruder sensor: CFS ハブとエクストルーダーセンサーの間でフィラメントが止まりました
   Filament stuck in connector during unload: アンロード中にコネクター内でフィラメントが詰まりました
@@ -1702,6 +1704,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: ハブセンサーとハブギアの間で詰まっています。CFS を開けてハブを取り除いてから再試行してください
   It starts with your {} macro.: '{}マクロで開始します。'
   It's a new spool: 新しいスプールです
+  Its home tile: 'ホームのタイル'
   Jammed at the Toolhead: ツールヘッドで詰まり
   Job Queue: ジョブキュー
   Job queue not enabled in Moonraker: 'Moonraker でジョブキューが有効になっていません'
@@ -2493,6 +2496,7 @@ translations:
   Print Was Terminated: 印刷が中止されました
   Print a test tower and tune K by eye: テストタワーを印刷して目視でKを調整
   Print cancelled: 印刷がキャンセルされました
+  Print details: '印刷の詳細'
   Print did not start: 印刷は開始されませんでした
   Print complete: 印刷完了
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): 印刷が開始されませんでした
@@ -3138,6 +3142,7 @@ translations:
   Spool archived: スプールをアーカイブしました
   Spool created successfully: スプールを作成しました
   Spool deleted: スプールを削除しました
+  Spool menu: 'スプールのメニュー'
   Spool motor: スプールモーター
   Spool saved: スプールを保存しました
   Spool wt (g): スプール重量 (g)

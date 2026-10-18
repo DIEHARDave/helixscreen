@@ -209,6 +209,7 @@
   <translation tag="Adding printer" ja="プリンターを追加中"/>
   <translation tag="Adding to queue..." ja="キューに追加中..."/>
   <translation tag="Address" ja="アドレス"/>
+  <translation tag="Adds to:" ja="追加先:"/>
   <translation tag="Adjust screen brightness level" ja="画面の明るさを調整します"/>
   <translation tag="Adjust screws, then re-probe." ja="ネジを調整して、再度プローブしてください。"/>
   <translation tag="Adjustments stay active until restart. Save after print completes." ja="調整は再起動まで有効です。印刷完了後に保存してください。"/>
@@ -1323,6 +1324,7 @@
   <translation tag="Filament saved" ja="フィラメントを保存しました"/>
   <translation tag="Filament sensor available for runout detection" ja="フィラメント切れ検出用のフィラメントセンサーが利用可能です"/>
   <translation tag="Filament sensor available. Add to config for runout detection?" ja="フィラメントセンサーが使用可能です。フィラメント切れ検出のために設定に追加しますか？"/>
+  <translation tag="Filament slot menu" ja="フィラメントスロットのメニュー"/>
   <translation tag="Filament snapped inside CFS" ja="CFS 内でフィラメントが折れました"/>
   <translation tag="Filament stalled between CFS hub and extruder sensor" ja="CFS ハブとエクストルーダーセンサーの間でフィラメントが止まりました"/>
   <translation tag="Filament stuck in connector during unload" ja="アンロード中にコネクター内でフィラメントが詰まりました"/>
@@ -1641,6 +1643,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" ja="ハブセンサーとハブギアの間で詰まっています。CFS を開けてハブを取り除いてから再試行してください"/>
   <translation tag="It starts with your {} macro." ja="{}マクロで開始します。"/>
   <translation tag="It&apos;s a new spool" ja="新しいスプールです"/>
+  <translation tag="Its home tile" ja="ホームのタイル"/>
   <translation tag="Jammed at the Toolhead" ja="ツールヘッドで詰まり"/>
   <translation tag="Job Queue" ja="ジョブキュー"/>
   <translation tag="Job queue not enabled in Moonraker" ja="Moonraker でジョブキューが有効になっていません"/>
@@ -2403,6 +2406,7 @@
   <translation tag="Print a test tower and tune K by eye" ja="テストタワーを印刷して目視でKを調整"/>
   <translation tag="Print cancelled" ja="印刷がキャンセルされました"/>
   <translation tag="Print complete" ja="印刷完了"/>
+  <translation tag="Print details" ja="印刷の詳細"/>
   <translation tag="Print did not start" ja="印刷は開始されませんでした"/>
   <translation tag="Print didn&apos;t start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})" ja="印刷が開始されませんでした — プリンターがビジー状態またはオフラインの可能性があります (B3 polls={}, status=0x{:02X}, error=0x{:02X})"/>
   <translation tag="Print ending..." ja="印刷終了中..."/>
@@ -3031,6 +3035,7 @@
   <translation tag="Spool archived" ja="スプールをアーカイブしました"/>
   <translation tag="Spool created successfully" ja="スプールを作成しました"/>
   <translation tag="Spool deleted" ja="スプールを削除しました"/>
+  <translation tag="Spool menu" ja="スプールのメニュー"/>
   <translation tag="Spool motor" ja="スプールモーター"/>
   <translation tag="Spool saved" ja="スプールを保存しました"/>
   <translation tag="Spool wt (g)" ja="スプール重量 (g)"/>

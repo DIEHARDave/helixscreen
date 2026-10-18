@@ -217,6 +217,7 @@ translations:
   Adding printer: Aggiunta stampante
   Adding to queue...: Aggiunta alla coda...
   Address: Indirizzo
+  'Adds to:': 'Aggiunge a:'
   Adjust screen brightness level: Regola il livello di luminosità dello schermo
   Adjust screws, then re-probe.: Regolare le viti, poi risondare.
   Adjustments stay active until restart. Save after print completes.: Le regolazioni
@@ -1456,6 +1457,7 @@ translations:
   Filament sensor available for runout detection: Sensore filamento disponibile per
     il rilevamento esaurimento
   Filament sensor available. Add to config for runout detection?: 'Sensore filamento disponibile. Aggiungerlo alla configurazione per rilevare l''esaurimento?'
+  Filament slot menu: 'Menu dello slot filamento'
   Filament snapped inside CFS: Il filamento si è spezzato nel CFS
   Filament stalled between CFS hub and extruder sensor: Il filamento si è fermato tra l'hub CFS e il sensore dell'estrusore
   Filament stuck in connector during unload: Filamento bloccato nel connettore durante lo scaricamento
@@ -1809,6 +1811,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: È inceppato tra il sensore dell'hub e il relativo ingranaggio. Aprire il CFS e liberare l'hub prima di riprovare
   It starts with your {} macro.: Inizia con la tua macro {}.
   It's a new spool: È una nuova bobina
+  Its home tile: 'Il suo riquadro della home'
   Jammed at the Toolhead: Inceppato nella testina
   Job Queue: Coda lavori
   Job queue not enabled in Moonraker: 'Coda lavori non abilitata in Moonraker'
@@ -2635,6 +2638,7 @@ translations:
   Print Was Terminated: Stampa interrotta
   Print a test tower and tune K by eye: Stampa una torre di prova e regola K a occhio
   Print cancelled: Stampa annullata
+  Print details: 'Dettagli di stampa'
   Print did not start: La stampa non è iniziata
   Print complete: Stampa completata
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): La
@@ -3332,6 +3336,7 @@ translations:
   Spool archived: Bobina archiviata
   Spool created successfully: Bobina creata con successo
   Spool deleted: Bobina eliminata
+  Spool menu: 'Menu della bobina'
   Spool motor: Motore bobina
   Spool saved: Bobina salvata
   Spool wt (g): Peso bobina (g)

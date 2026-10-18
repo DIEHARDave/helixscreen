@@ -209,6 +209,7 @@
   <translation tag="Adding printer" de="Drucker wird hinzugefügt"/>
   <translation tag="Adding to queue..." de="Wird zur Warteschlange hinzugefügt..."/>
   <translation tag="Address" de="Adresse"/>
+  <translation tag="Adds to:" de="Ergänzt:"/>
   <translation tag="Adjust screen brightness level" de="Bildschirmhelligkeit anpassen"/>
   <translation tag="Adjust screws, then re-probe." de="Schrauben einstellen, dann erneut prüfen."/>
   <translation tag="Adjustments stay active until restart. Save after print completes." de="Anpassungen bleiben bis zum Neustart aktiv. Nach Druckende speichern."/>
@@ -1323,6 +1324,7 @@
   <translation tag="Filament saved" de="Filament gespeichert"/>
   <translation tag="Filament sensor available for runout detection" de="Filamentsensor zur Auslauferkennung verfügbar"/>
   <translation tag="Filament sensor available. Add to config for runout detection?" de="Filamentsensor verfügbar. Zur Konfiguration hinzufügen, um das Filamentende zu erkennen?"/>
+  <translation tag="Filament slot menu" de="Filament-Slot-Menü"/>
   <translation tag="Filament snapped inside CFS" de="Filament ist im CFS gebrochen"/>
   <translation tag="Filament stalled between CFS hub and extruder sensor" de="Filament steckt zwischen CFS-Hub und Extruder-Sensor fest"/>
   <translation tag="Filament stuck in connector during unload" de="Filament beim Entladen im Anschluss verklemmt"/>
@@ -1641,6 +1643,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" de="Es klemmt zwischen Hub-Sensor und Hub-Antriebsrad. CFS öffnen, den Hub frei machen und erneut versuchen"/>
   <translation tag="It starts with your {} macro." de="Er startet mit deinem Makro {}."/>
   <translation tag="It&apos;s a new spool" de="Es ist eine neue Spule"/>
+  <translation tag="Its home tile" de="Seine Startseiten-Kachel"/>
   <translation tag="Jammed at the Toolhead" de="Stau am Werkzeugkopf"/>
   <translation tag="Job Queue" de="Auftragswarteschlange"/>
   <translation tag="Job queue not enabled in Moonraker" de="Auftragswarteschlange in Moonraker nicht aktiviert"/>
@@ -2403,6 +2406,7 @@
   <translation tag="Print a test tower and tune K by eye" de="Testturm drucken und K nach Augenmaß einstellen"/>
   <translation tag="Print cancelled" de="Druck abgebrochen"/>
   <translation tag="Print complete" de="Druck abgeschlossen"/>
+  <translation tag="Print details" de="Druckdetails"/>
   <translation tag="Print did not start" de="Druck wurde nicht gestartet"/>
   <translation tag="Print didn&apos;t start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})" de="Druck nicht gestartet – Drucker ist möglicherweise beschäftigt oder offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})"/>
   <translation tag="Print ending..." de="Druck wird beendet..."/>
@@ -3031,6 +3035,7 @@
   <translation tag="Spool archived" de="Spule archiviert"/>
   <translation tag="Spool created successfully" de="Spule erfolgreich erstellt"/>
   <translation tag="Spool deleted" de="Spule gelöscht"/>
+  <translation tag="Spool menu" de="Spulenmenü"/>
   <translation tag="Spool motor" de="Spulenmotor"/>
   <translation tag="Spool saved" de="Spule gespeichert"/>
   <translation tag="Spool wt (g)" de="Spulengewicht (g)"/>

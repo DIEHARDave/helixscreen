@@ -209,6 +209,7 @@
   <translation tag="Adding printer" it="Aggiunta stampante"/>
   <translation tag="Adding to queue..." it="Aggiunta alla coda..."/>
   <translation tag="Address" it="Indirizzo"/>
+  <translation tag="Adds to:" it="Aggiunge a:"/>
   <translation tag="Adjust screen brightness level" it="Regola il livello di luminosità dello schermo"/>
   <translation tag="Adjust screws, then re-probe." it="Regolare le viti, poi risondare."/>
   <translation tag="Adjustments stay active until restart. Save after print completes." it="Le regolazioni restano attive fino al riavvio. Salvare dopo il completamento della stampa."/>
@@ -1323,6 +1324,7 @@
   <translation tag="Filament saved" it="Filamento salvato"/>
   <translation tag="Filament sensor available for runout detection" it="Sensore filamento disponibile per il rilevamento esaurimento"/>
   <translation tag="Filament sensor available. Add to config for runout detection?" it="Sensore filamento disponibile. Aggiungerlo alla configurazione per rilevare l&apos;esaurimento?"/>
+  <translation tag="Filament slot menu" it="Menu dello slot filamento"/>
   <translation tag="Filament snapped inside CFS" it="Il filamento si è spezzato nel CFS"/>
   <translation tag="Filament stalled between CFS hub and extruder sensor" it="Il filamento si è fermato tra l&apos;hub CFS e il sensore dell&apos;estrusore"/>
   <translation tag="Filament stuck in connector during unload" it="Filamento bloccato nel connettore durante lo scaricamento"/>
@@ -1641,6 +1643,7 @@
   <translation tag="It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying" it="È inceppato tra il sensore dell&apos;hub e il relativo ingranaggio. Aprire il CFS e liberare l&apos;hub prima di riprovare"/>
   <translation tag="It starts with your {} macro." it="Inizia con la tua macro {}."/>
   <translation tag="It&apos;s a new spool" it="È una nuova bobina"/>
+  <translation tag="Its home tile" it="Il suo riquadro della home"/>
   <translation tag="Jammed at the Toolhead" it="Inceppato nella testina"/>
   <translation tag="Job Queue" it="Coda lavori"/>
   <translation tag="Job queue not enabled in Moonraker" it="Coda lavori non abilitata in Moonraker"/>
@@ -2403,6 +2406,7 @@
   <translation tag="Print a test tower and tune K by eye" it="Stampa una torre di prova e regola K a occhio"/>
   <translation tag="Print cancelled" it="Stampa annullata"/>
   <translation tag="Print complete" it="Stampa completata"/>
+  <translation tag="Print details" it="Dettagli di stampa"/>
   <translation tag="Print did not start" it="La stampa non è iniziata"/>
   <translation tag="Print didn&apos;t start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})" it="La stampa non è iniziata — la stampante potrebbe essere occupata o offline (B3 polls={}, status=0x{:02X}, error=0x{:02X})"/>
   <translation tag="Print ending..." it="Fine stampa in corso..."/>
@@ -3031,6 +3035,7 @@
   <translation tag="Spool archived" it="Bobina archiviata"/>
   <translation tag="Spool created successfully" it="Bobina creata con successo"/>
   <translation tag="Spool deleted" it="Bobina eliminata"/>
+  <translation tag="Spool menu" it="Menu della bobina"/>
   <translation tag="Spool motor" it="Motore bobina"/>
   <translation tag="Spool saved" it="Bobina salvata"/>
   <translation tag="Spool wt (g)" it="Peso bobina (g)"/>

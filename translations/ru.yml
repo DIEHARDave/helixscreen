@@ -258,6 +258,7 @@ translations:
   Adding printer: Добавление принтера
   Adding to queue...: Добавление в очередь...
   Address: Адрес
+  'Adds to:': 'Добавляет в:'
   Adjust screen brightness level: Настроить уровень яркости экрана
   Adjust screws, then re-probe.: Отрегулируйте винты, затем перепроверьте.
   Adjustments stay active until restart. Save after print completes.: Настройки активны
@@ -1497,6 +1498,7 @@ translations:
   Filament sensor available for runout detection: Датчик филамента доступен для обнаружения
     окончания
   Filament sensor available. Add to config for runout detection?: 'Доступен датчик филамента. Добавить в конфигурацию для обнаружения окончания филамента?'
+  Filament slot menu: 'Меню слота филамента'
   Filament snapped inside CFS: Филамент сломался внутри CFS
   Filament stalled between CFS hub and extruder sensor: Филамент остановился между хабом CFS и датчиком экструдера
   Filament stuck in connector during unload: Филамент застрял в разъёме при выгрузке
@@ -1852,6 +1854,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Он зажат между датчиком хаба и его шестернёй. Откройте CFS, освободите хаб и повторите
   It starts with your {} macro.: Начинается с вашего макроса {}.
   It's a new spool: Это новая катушка
+  Its home tile: 'Его плитка на главном экране'
   Jammed at the Toolhead: Замятие в печатающей головке
   Job Queue: Очередь заданий
   Job queue not enabled in Moonraker: 'Очередь заданий не включена в Moonraker'
@@ -2675,6 +2678,7 @@ translations:
   Print Was Terminated: Печать была прекращена
   Print a test tower and tune K by eye: Напечатать тестовую башню и подобрать K на глаз
   Print cancelled: Печать отменена
+  Print details: 'Сведения о печати'
   Print did not start: Печать не началась
   Print complete: Печать завершена
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): Печать
@@ -3376,6 +3380,7 @@ translations:
   Spool archived: Катушка архивирована
   Spool created successfully: Катушка успешно создана
   Spool deleted: Катушка удалена
+  Spool menu: 'Меню катушки'
   Spool motor: Мотор катушки
   Spool saved: Катушка сохранена
   Spool wt (g): Вес катушки (г)

@@ -217,6 +217,7 @@ translations:
   Adding printer: Adicionando impressora
   Adding to queue...: Adicionando à fila...
   Address: Endereço
+  'Adds to:': 'Adiciona a:'
   Adjust screen brightness level: Ajustar nível de brilho da tela
   Adjust screws, then re-probe.: Ajuste os parafusos, depois sonde novamente.
   Adjustments stay active until restart. Save after print completes.: Ajustes permanecem
@@ -1456,6 +1457,7 @@ translations:
   Filament sensor available for runout detection: Sensor de filamento disponível para
     detecção de fim de filamento
   Filament sensor available. Add to config for runout detection?: 'Sensor de filamento disponível. Adicionar à configuração para detectar o fim do filamento?'
+  Filament slot menu: 'Menu do slot de filamento'
   Filament snapped inside CFS: O filamento partiu dentro do CFS
   Filament stalled between CFS hub and extruder sensor: O filamento parou entre o hub do CFS e o sensor do extrusor
   Filament stuck in connector during unload: Filamento preso no conector durante a descarga
@@ -1813,6 +1815,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Está preso entre o sensor do hub e a engrenagem do hub. Abra o CFS e desobstrua o hub antes de tentar novamente
   It starts with your {} macro.: Ela começa com a sua macro {}.
   It's a new spool: É um carretel novo
+  Its home tile: 'Seu bloco da tela inicial'
   Jammed at the Toolhead: Atolado no cabeçote
   Job Queue: Fila de Trabalhos
   Job queue not enabled in Moonraker: 'Fila de trabalhos não ativada no Moonraker'
@@ -2636,6 +2639,7 @@ translations:
   Print Was Terminated: A impressão foi terminada
   Print a test tower and tune K by eye: Imprima uma torre de teste e ajuste K a olho
   Print cancelled: Impressão cancelada
+  Print details: 'Detalhes da impressão'
   Print did not start: A impressão não iniciou
   Print complete: Impressão concluída
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): A
@@ -3337,6 +3341,7 @@ translations:
   Spool archived: Carretel arquivado
   Spool created successfully: Bobina criada com sucesso
   Spool deleted: Carretel excluído
+  Spool menu: 'Menu do carretel'
   Spool motor: Motor da bobina
   Spool saved: Carretel salvo
   Spool wt (g): Peso carretel (g)

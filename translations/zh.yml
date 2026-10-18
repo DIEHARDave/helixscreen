@@ -208,6 +208,7 @@ translations:
   Adding printer: 正在添加打印机
   Adding to queue...: 正在添加到队列...
   Address: 地址
+  'Adds to:': '添加到:'
   Adjust screen brightness level: 调整屏幕亮度
   Adjust screws, then re-probe.: 调整螺丝，然后重新探测。
   Adjustments stay active until restart. Save after print completes.: 调整在重启前保持有效。打印完成后保存。
@@ -1367,6 +1368,7 @@ translations:
   Filament saved: 耗材已保存
   Filament sensor available for runout detection: 耗材传感器可用于耗尽检测
   Filament sensor available. Add to config for runout detection?: '检测到耗材传感器。添加到配置中以检测断料？'
+  Filament slot menu: '耗材槽位操作'
   Filament snapped inside CFS: 耗材在 CFS 内断裂
   Filament stalled between CFS hub and extruder sensor: 耗材停滞在 CFS 集线器与挤出机传感器之间
   Filament stuck in connector during unload: 退料时耗材卡在接头内
@@ -1697,6 +1699,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: 它卡在集线器传感器与集线器齿轮之间。请打开 CFS 清理集线器后重试
   It starts with your {} macro.: 使用你的{}宏开始。
   It's a new spool: 这是新料盘
+  Its home tile: '其主页磁贴'
   Jammed at the Toolhead: 工具头处堵塞
   Job Queue: 任务队列
   Job queue not enabled in Moonraker: 'Moonraker 未启用任务队列'
@@ -2485,6 +2488,7 @@ translations:
   Print Was Terminated: 打印已终止
   Print a test tower and tune K by eye: 打印测试塔并目测调整K值
   Print cancelled: 打印已取消
+  Print details: '打印详情'
   Print did not start: 打印未启动
   Print complete: 打印完成
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): 打印未开始
@@ -3129,6 +3133,7 @@ translations:
   Spool archived: 料盘已归档
   Spool created successfully: 料盘创建成功
   Spool deleted: 料盘已删除
+  Spool menu: '料盘操作'
   Spool motor: 料盘电机
   Spool saved: 料盘已保存
   Spool wt (g): 料盘重量 (g)

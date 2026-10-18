@@ -219,6 +219,7 @@ translations:
   Adding printer: Drucker wird hinzugefügt
   Adding to queue...: Wird zur Warteschlange hinzugefügt...
   Address: Adresse
+  'Adds to:': 'Ergänzt:'
   Adjust screen brightness level: Bildschirmhelligkeit anpassen
   Adjust screws, then re-probe.: Schrauben einstellen, dann erneut prüfen.
   Adjustments stay active until restart. Save after print completes.: Anpassungen
@@ -1467,6 +1468,7 @@ translations:
   Filament sensor available for runout detection: Filamentsensor zur Auslauferkennung
     verfügbar
   Filament sensor available. Add to config for runout detection?: 'Filamentsensor verfügbar. Zur Konfiguration hinzufügen, um das Filamentende zu erkennen?'
+  Filament slot menu: 'Filament-Slot-Menü'
   Filament snapped inside CFS: Filament ist im CFS gebrochen
   Filament stalled between CFS hub and extruder sensor: Filament steckt zwischen CFS-Hub und Extruder-Sensor fest
   Filament stuck in connector during unload: Filament beim Entladen im Anschluss verklemmt
@@ -1819,6 +1821,7 @@ translations:
   It is jammed between the hub sensor and the hub gear. Open the CFS and clear the hub before retrying: Es klemmt zwischen Hub-Sensor und Hub-Antriebsrad. CFS öffnen, den Hub frei machen und erneut versuchen
   It starts with your {} macro.: Er startet mit deinem Makro {}.
   It's a new spool: Es ist eine neue Spule
+  Its home tile: 'Seine Startseiten-Kachel'
   Jammed at the Toolhead: Stau am Werkzeugkopf
   Job Queue: Auftragswarteschlange
   Job queue not enabled in Moonraker: 'Auftragswarteschlange in Moonraker nicht aktiviert'
@@ -2643,6 +2646,7 @@ translations:
   Print Was Terminated: Druck wurde abgebrochen
   Print a test tower and tune K by eye: Testturm drucken und K nach Augenmaß einstellen
   Print cancelled: Druck abgebrochen
+  Print details: 'Druckdetails'
   Print did not start: Druck wurde nicht gestartet
   Print complete: Druck abgeschlossen
   Print didn't start — printer may be busy or offline (B3 polls={}, status=0x{:02X}, error=0x{:02X}): Druck
@@ -3341,6 +3345,7 @@ translations:
   Spool archived: Spule archiviert
   Spool created successfully: Spule erfolgreich erstellt
   Spool deleted: Spule gelöscht
+  Spool menu: 'Spulenmenü'
   Spool motor: Spulenmotor
   Spool saved: Spule gespeichert
   Spool wt (g): Spulengewicht (g)
