@@ -278,6 +278,9 @@ class AmsContextMenu : public ContextMenu {
     /// The word this menu spells a position with. The backend the menu was
     /// shown for owns the answer; with none, the active printer's does.
     LaneNoun menu_lane_noun() const;
+    /// Plugin items for the slot, under a divider at the bottom of the card. A lane
+    /// menu only: the external spool takes no plugin items.
+    void append_slot_plugin_rows(lv_obj_t* menu_obj, int slot_index);
     int get_current_tool_for_slot() const;
     int get_current_backup_for_slot() const;
 

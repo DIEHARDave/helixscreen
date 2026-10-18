@@ -5,6 +5,9 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/backend_user_edit.h"
+#if HELIX_HAS_PLUGINS
+#include "../test_helpers/plugin_host_test_support.h"
+#endif
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/registered_backend.h"
 #include "../test_helpers/snapmaker_test_access.h"
@@ -22,6 +25,9 @@
 #include "printer_discovery.h"
 #include "toolchanger_addon.h"
 
+#include <filesystem>
+#include <fstream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -1441,3 +1447,85 @@ TEST_CASE_METHOD(LVGLUITestFixture, "the context menu shows a backend's eject re
         CHECK(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
     }
 }
+
+// ============================================================================
+// Plugin items for the slot
+// ============================================================================
+
+#if HELIX_HAS_PLUGINS
+namespace {
+
+/// One enabled plugin declaring a filament_slot item whose handler records its context.
+struct SlotMenuPlugin {
+    helix::plugin::test::TempDir tmp;
+    std::unique_ptr<helix::plugin::test::HostRig> rig;
+
+    SlotMenuPlugin() {
+        std::filesystem::create_directories(tmp.path / "slot-plug");
+        std::ofstream(tmp.path / "slot-plug" / "manifest.json")
+            << R"({"id":"slot-plug","name":"Slot Plug","version":"1.0.0","menu_items":[
+                 {"id":"look","menu":"filament_slot","label":"Look up","handler":"look"}]})";
+        std::ofstream(tmp.path / "slot-plug" / "main.lua") << R"(
+            helix.ui.on("look", function(ctx)
+                seen = string.format("%s|%s|%s|%s", tostring(ctx.unit), tostring(ctx.slot),
+                                     tostring(ctx.label), tostring(ctx.material))
+            end)
+        )";
+        rig = std::make_unique<helix::plugin::test::HostRig>(
+            helix::plugin::test::enabled("slot-plug", {}));
+        rig->host->load_from(tmp.path.string());
+    }
+
+    std::string seen() {
+        lua_State* L = rig->host->runtime("slot-plug")->state();
+        lua_getglobal(L, "seen");
+        std::string s = lua_isnil(L, -1) ? "nil" : lua_tostring(L, -1);
+        lua_pop(L, 1);
+        return s;
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows sit under the dropdowns",
+                 "[ui][ams][context_menu][plugin]") {
+    SlotMenuPlugin plugin;
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* rows = lv_obj_find_by_name(test_screen(), "plugin_rows");
+    REQUIRE(rows);
+    lv_obj_t* heading = lv_obj_find_by_name(rows, "plugin_name");
+    REQUIRE(heading);
+    CHECK(std::string(lv_label_get_text(heading)) == "Slot Plug");
+    lv_obj_t* label = lv_obj_find_by_name(rows, "item_label");
+    REQUIRE(label);
+    CHECK(std::string(lv_label_get_text(label)) == "Look up");
+    // Below the Endless Spool row in the card.
+    lv_obj_t* card = lv_obj_get_parent(rows);
+    CHECK(lv_obj_get_index(rows) >
+          lv_obj_get_index(lv_obj_find_by_name(card, "backup_dropdown_row")));
+
+    const std::string material = backend->get_slot_info(2).material;
+    lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
+    CHECK_FALSE(menu.is_visible());
+    CHECK(plugin.seen() == "0|2|Gate 3|" + (material.empty() ? std::string("nil") : material));
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: the external spool takes no plugin rows",
+                 "[ui][ams][context_menu][plugin]") {
+    SlotMenuPlugin plugin;
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_for_external_spool(test_screen(), test_screen()));
+    lv_obj_t* rows = lv_obj_find_by_name(test_screen(), "plugin_rows");
+    REQUIRE(rows);
+    CHECK(lv_obj_get_child_count(rows) == 0);
+    menu.hide();
+    process_lvgl(20);
+}
+#endif // HELIX_HAS_PLUGINS

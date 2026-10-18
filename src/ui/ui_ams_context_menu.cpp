@@ -10,6 +10,7 @@
 #include "ui_callback_helpers.h"
 #include "ui_error_reporting.h"
 #include "ui_overlay_qr_scanner.h"
+#include "ui_plugin_menu_rows.h"
 #include "ui_toast_manager.h"
 
 #include "ams_backend.h"
@@ -24,6 +25,7 @@
 #include "filament_op_slot_resolver.h"
 #include "filament_variants.h"
 #include "i_moonraker_api.h"
+#include "plugin_menu_context.h"
 #include "printer_state.h"
 #include "spoolman_types.h"
 #include "ui/ui_widget_helpers.h"
@@ -540,6 +542,20 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
 
     // Configure dropdowns based on backend capabilities
     configure_dropdowns();
+
+    append_slot_plugin_rows(menu_obj, slot_index);
+}
+
+void AmsContextMenu::append_slot_plugin_rows(lv_obj_t* menu_obj, int slot_index) {
+    if (!backend_ || !plugin_menu::any_declared(plugin_menu::MenuKind::FilamentSlot))
+        return;
+    const AmsSystemInfo info = backend_->get_system_info();
+    const plugin_menu::json context = plugin_menu::slot_context(
+        backend_->get_slot_info(slot_index), info.unit_for_slot(slot_index),
+        helix::ui::lane_label(menu_lane_noun(), slot_index));
+    helix::ui::append_plugin_rows(
+        *this, lv_obj_find_by_name(menu_obj, "plugin_rows"),
+        plugin_menu::resolve(plugin_menu::MenuKind::FilamentSlot, context), context);
 }
 
 // ============================================================================
