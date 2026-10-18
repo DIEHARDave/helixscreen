@@ -338,49 +338,83 @@ static void draw_gradient_rect(SpoolLayer* layer, int32_t x1, int32_t y1, int32_
     }
 }
 
-// A multi-colour filament's bands across the part of the wound filament the
-// viewer sees (the back cap and the body up to the front flange), split the way
-// every swatch splits (helix::ui::swatch_split_thresholds()), each band shaded
-// top to bottom like a single-colour filament.
+// A multi-colour filament wound on the spool. The colour runs around the
+// winding, so each colour owns a section of the axis, and every boundary
+// between sections is a wrap circle seen in perspective: it arcs toward the
+// back cap at mid-height and returns to its axis position at the top and
+// bottom of the filament. Within one row the arc is a constant leftward shift,
+// so a row is an equal-band split slid along the axis; the seams blend over a
+// share of a band so a gradient filament (a tri-silk) reads as one strand.
 namespace {
 struct FilamentBands {
     std::vector<lv_color_t> colors;
-    std::vector<float> t;
     lv_area_t field;
+    float band;
+    float bulge; // how far a boundary arcs left at mid-height, in pixels
 
-    FilamentBands(std::vector<lv_color_t> c, const lv_area_t& visible)
-        : colors(std::move(c)), t(helix::ui::swatch_split_thresholds(visible, 0, colors.size())),
-          field(visible) {}
+    static constexpr float BLEND = 0.30f; // of a band, centred on each seam
 
-    size_t band_at(int32_t x, int32_t y) const {
-        const float w = static_cast<float>(lv_area_get_width(&field));
-        const float h = static_cast<float>(lv_area_get_height(&field));
-        const float f = ((x + 0.5f - field.x1) * w + (y + 0.5f - field.y1) * h) / (w * w + h * h);
-        size_t k = 0;
-        while (k < t.size() && f >= t[k])
-            ++k;
-        return k;
+    FilamentBands(std::vector<lv_color_t> c, const lv_area_t& visible, float arc)
+        : colors(std::move(c)), field(visible),
+          band(static_cast<float>(lv_area_get_width(&visible)) / static_cast<float>(colors.size())),
+          bulge(arc) {}
+
+    lv_color_t color_at(float u) const {
+        const size_t n = colors.size();
+        if (u <= 0.0f) {
+            return colors.front();
+        }
+        if (u >= static_cast<float>(n - 1)) {
+            return colors.back();
+        }
+        const size_t k = static_cast<size_t>(u);
+        const float f = u - static_cast<float>(k);
+        if (f > 0.5f - BLEND / 2.0f && k + 1 < n) {
+            const float t = (f - (0.5f - BLEND / 2.0f)) / BLEND;
+            return lv_color_mix(colors[k + 1], colors[k], static_cast<uint8_t>(255.0f * t));
+        }
+        if (f < 0.5f - BLEND / 2.0f && k > 0) {
+            const float t = (f + (0.5f - BLEND / 2.0f)) / BLEND;
+            return lv_color_mix(colors[k], colors[k - 1], static_cast<uint8_t>(255.0f * t));
+        }
+        return colors[k];
     }
 
-    lv_color_t shade(size_t k, float g) const {
-        const lv_color_t side = ams_draw::darken_color(colors[k], 30);
+    lv_color_t shade(lv_color_t base, float g) const {
+        const lv_color_t side = ams_draw::darken_color(base, 30);
         return ams_draw::blend_color(ams_draw::lighten_color(side, 70),
                                      ams_draw::darken_color(side, 35), g);
     }
 
-    // Row @p y from @p xa to @p xb at opacity @p opa, split into band spans.
+    // Row @p y from @p xa to @p xb at opacity @p opa, bands curved per row.
     void fill_row(SpoolLayer* layer, int32_t y, int32_t xa, int32_t xb, float g,
                   lv_opa_t opa) const {
+        const float h = static_cast<float>(lv_area_get_height(&field));
+        const float cy = static_cast<float>(field.y1) + h / 2.0f;
+        const float ny = h > 0.0f ? (static_cast<float>(y) + 0.5f - cy) / (h / 2.0f) : 0.0f;
+        // The wrap circles follow the filament ellipse's curvature.
+        const float curve = std::sqrt(std::max(0.0f, 1.0f - ny * ny));
+        const float shift = bulge * curve;
+
         lv_draw_fill_dsc_t dsc;
         lv_draw_fill_dsc_init(&dsc);
         dsc.opa = opa;
         int32_t from = xa;
         while (from <= xb) {
-            const size_t k = band_at(from, y);
+            const float u =
+                (static_cast<float>(from) + 0.5f + shift - static_cast<float>(field.x1)) / band;
+            const lv_color_t base = color_at(u);
             int32_t to = from;
-            while (to < xb && band_at(to + 1, y) == k)
+            while (to < xb) {
+                const float u2 =
+                    (static_cast<float>(to + 1) + 0.5f + shift - static_cast<float>(field.x1)) /
+                    band;
+                if (static_cast<int32_t>(u2 * 8.0f) != static_cast<int32_t>(u * 8.0f)) {
+                    break;
+                }
                 ++to;
-            dsc.color = shade(k, g);
+            }
+            dsc.color = shade(base, g);
             lv_area_t span = {from, y, to, y};
             spool_fill(layer, &dsc, &span);
             from = to + 1;
@@ -592,15 +626,19 @@ static void render_spool_pixels(SpoolCanvasData* data) {
         // Gradient colors for 3D lighting effect (stronger gradient)
         lv_color_t fil_light = ams_draw::lighten_color(filament_side, 70); // Top: much brighter
         lv_color_t fil_dark = ams_draw::darken_color(filament_side, 35);   // Bottom: darker
+        if (data->finish == helix::ui::SwatchFinish::Matte) {
+            // A matte filament's wound colour is its own colour, dulled.
+            fil_light = helix::ui::swatch_matte_color(fil_light);
+            fil_dark = helix::ui::swatch_matte_color(fil_dark);
+        }
 
         int32_t fil_top = cy - filament_ry;
         int32_t fil_bottom = cy + filament_ry;
         if (band_colors.size() >= 2) {
             // The split spans what the viewer sees of the filament: the back
             // cap's left edge to where the front flange covers the body.
-            const lv_area_t visible = {left_x - filament_rx, fil_top, right_x - flange_rx,
-                                       fil_bottom};
-            const FilamentBands bands(band_colors, visible);
+            const lv_area_t visible = {left_x - filament_rx, fil_top, right_x, fil_bottom};
+            const FilamentBands bands(band_colors, visible, filament_rx * 0.55f);
             draw_banded_ellipse(&layer, left_x, cy, filament_rx, filament_ry, bands);
             draw_banded_rect(&layer, left_x, fil_top, right_x, fil_bottom, bands);
         } else {

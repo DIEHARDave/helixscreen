@@ -274,11 +274,13 @@ struct PixelTarget {
     }
 };
 
-// Silk: a diagonal specular band, brightest just above the centre line, fading
-// to nothing at both sides. Stops along the top-left to bottom-right diagonal.
+// Silk: a diagonal specular ridge spanning the whole shape: faint at both
+// corners, brightest along the top-left to bottom-right diagonal. The low
+// tails are what keep a tall region (a spool body) sheened end to end instead
+// of carrying a bare band across its middle.
 void silk_pixels(const PixelTarget& t) {
-    static constexpr float FRACS[] = {60, 100, 120, 145, 190};
-    static constexpr float OPAS[] = {0, 70, 170, 50, 0};
+    static constexpr float FRACS[] = {4, 55, 128, 200, 251};
+    static constexpr float OPAS[] = {22, 85, 170, 75, 18};
     const lv_area_t& a = t.area;
     const float w = static_cast<float>(lv_area_get_width(&a));
     const float h = static_cast<float>(lv_area_get_height(&a));
@@ -306,7 +308,7 @@ void silk_pixels(const PixelTarget& t) {
 // Marble: a fine speckle of darker and lighter flecks.
 void marble_pixels(const PixelTarget& t) {
     const int32_t s = short_side(t.area);
-    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 28, 8, 220));
+    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 14, 12, 340));
     const int32_t fleck = s >= 48 ? 2 : 1;
     const auto points = swatch_texture_points(t.area, t.radius, count, area_seed(t.area));
     for (size_t i = 0; i < points.size(); ++i) {
@@ -319,7 +321,7 @@ void marble_pixels(const PixelTarget& t) {
 // Sparkle: a few small four-pointed glints.
 void sparkle_pixels(const PixelTarget& t) {
     const int32_t s = short_side(t.area);
-    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 160, 3, 24));
+    const size_t count = static_cast<size_t>(std::clamp<int32_t>(s * s / 70, 6, 44));
     const int32_t arm = std::max<int32_t>(1, s / 14);
     const auto points = swatch_texture_points(t.area, t.radius, count, area_seed(t.area) ^ 0x5A5Au);
     const lv_color_t white = lv_color_white();
@@ -766,7 +768,23 @@ std::vector<SwatchPoint> swatch_texture_points(const lv_area_t& area, int32_t ra
     // Keep texture a pixel inside the rim, where the edge would cover it.
     lv_area_t inner = area;
     lv_area_increase(&inner, -1, -1);
+    // A jittered grid with offset rows spreads the texture evenly; plain
+    // random sampling clumps, which reads as bare patches at small sizes.
     Lcg rng{seed ? seed : 1u};
+    const float step = std::sqrt((w * h) / static_cast<float>(count));
+    bool offset = false;
+    for (float gy = y0 + step / 2.0f; gy < y0 + h; gy += step) {
+        const float dx = offset ? step / 2.0f : 0.0f;
+        offset = !offset;
+        for (float gx = x0 + step / 2.0f + dx; gx < x0 + w; gx += step) {
+            const float x = gx + (rng.next() - 0.5f) * step * 0.7f;
+            const float y = gy + (rng.next() - 0.5f) * step * 0.7f;
+            if (swatch_shape_contains(inner, radius, x, y)) {
+                points.push_back({x, y});
+            }
+        }
+    }
+    // Top up anywhere the shape clipped the grid, so a requested count holds.
     for (size_t tries = 0; points.size() < count && tries < count * 8; ++tries) {
         const float x = x0 + rng.next() * w;
         const float y = y0 + rng.next() * h;

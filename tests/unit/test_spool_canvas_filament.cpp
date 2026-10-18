@@ -41,10 +41,27 @@ TEST_CASE_METHOD(LVGLUITestFixture, "spool_canvas: a multi-colour filament split
 
     helix::ui::spool_canvas_set_filament(canvas, 0xFF0000, "#FF0000,#0000FF",
                                          helix::ui::SwatchFinish::Plain);
-    const lv_color32_t split_upper = px(canvas, 24, 15);
-    const lv_color32_t split_lower = px(canvas, 24, 50);
-    CHECK(split_upper.red > split_upper.blue); // colour 0 keeps the top-left
-    CHECK(split_lower.blue > split_lower.red); // colour 1 takes the bottom-right
+    // Wound bands run vertically: colour 0 owns the left of the filament,
+    // colour 1 the right. Find each band's column and the blend between them.
+    int32_t red_x = -1, blue_x = -1;
+    for (int32_t x = 6; x < SPOOL - 6 && (red_x < 0 || blue_x < 0); ++x) {
+        const lv_color32_t c = px(canvas, x, 32);
+        if (red_x < 0 && c.red > c.blue + 40)
+            red_x = x;
+        if (blue_x < 0 && c.blue > c.red + 40)
+            blue_x = x;
+    }
+    REQUIRE(red_x >= 0);
+    REQUIRE(blue_x >= 0);
+    CHECK(red_x < blue_x);
+    bool blended = false; // some column between the bands carries both colours
+    for (int32_t y = 18; y < 46 && !blended; y += 4) {
+        for (int32_t x = red_x + 1; x < blue_x && !blended; ++x) {
+            const lv_color32_t c = px(canvas, x, y);
+            blended = c.red > 60 && c.blue > 60;
+        }
+    }
+    CHECK(blended);
 
     // A plain colour clears the split again.
     ui_spool_canvas_set_color(canvas, lv_color_hex(0xFF0000));
@@ -59,9 +76,12 @@ TEST_CASE_METHOD(LVGLUITestFixture, "spool_canvas: silk lights the body, matte m
 
     helix::ui::spool_canvas_set_filament(canvas, 0x2060C0, "", helix::ui::SwatchFinish::Plain);
     const lv_color32_t plain = px(canvas, 26, 33);
+    const lv_color32_t plain_top = px(canvas, 26, 17);
 
     helix::ui::spool_canvas_set_filament(canvas, 0x2060C0, "", helix::ui::SwatchFinish::Silk);
     CHECK(brightness(px(canvas, 26, 33)) > brightness(plain) + 30);
+    // The sheen spans the whole body, not a band across its middle.
+    CHECK(brightness(px(canvas, 26, 17)) > brightness(plain_top) + 12);
 
     helix::ui::spool_canvas_set_filament(canvas, 0x2060C0, "", helix::ui::SwatchFinish::Matte);
     const lv_color32_t matte = px(canvas, 26, 33);
