@@ -4,23 +4,9 @@
  * @file helix_cache_dir.cpp
  * @brief Cache-directory resolution cascade.
  *
- * Lifted out of app_globals.cpp so the TEST BINARY can link the real thing.
- * app_globals.o is excluded from the test link (mk/tests.mk) because it carries
- * the global subjects and app state, and tests/ui_test_utils.cpp used to supply
- * a hand-written get_helix_cache_dir() in its place — a two-rung fake that
- * honoured HELIX_CACHE_DIR and otherwise returned "/tmp/helix_test_<subdir>",
- * a shape this cascade never produces. Every assertion in
- * tests/unit/test_cache_dir.cpp landed on that fake, so rungs 2-7 (config,
- * platform, XDG, HOME, /var/tmp, /tmp) were never under test at all. Same drift
- * mk/tests.mk documents for ui_text_input.o and ui_emergency_stop.o.
- *
- * This translation unit has no global subjects and no app state — only Config,
- * helix::paths and spdlog — so it links into the test binary cleanly and the
- * stub is gone. Test isolation now comes from HELIX_CACHE_DIR, which is rung 1
- * of the real cascade, rather than from a second implementation of it.
- *
- * Declarations stay in app_globals.h: the split is about what links, not about
- * churning 28 call sites.
+ * This translation unit has no global subjects and no app state - only Config,
+ * helix::paths and spdlog. Tests isolate themselves through HELIX_CACHE_DIR,
+ * rung 1 of the cascade. Declarations live in app_globals.h.
  */
 
 #include "app_globals.h"

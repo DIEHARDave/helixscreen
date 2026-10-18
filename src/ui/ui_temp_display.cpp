@@ -14,12 +14,14 @@
 #include "helix-xml/src/xml/lv_xml_widget.h"
 #include "helix-xml/src/xml/parsers/lv_xml_obj_parser.h"
 #include "helix/ui/shared_font_style.h"
+#include "helix/ui/text_metrics.h"
 #include "lvgl/lvgl.h"
 #include "printer_temperature_state.h" // helix::ChamberMode
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -74,6 +76,11 @@ struct TempDisplayData {
     // Last value seen from the ui_breakpoint subject. Only meaningful when
     // hide_target_below_bp >= 0 — that is the only case that subscribes.
     int current_bp = 0;
+
+    // align_current: the current reading holds the width of the widest reading
+    // its face can render, right-aligned, so displays stacked in a column put
+    // their separators at one x whatever the digits are.
+    bool align_current = false;
 
     // Child label pointers for efficient updates
     lv_obj_t* current_label = nullptr;
@@ -230,6 +237,31 @@ static void format_target_text(TempDisplayData* data) {
         snprintf(data->target_text_buf, sizeof(data->target_text_buf), "%d", data->target_temp);
     }
     lv_subject_copy_string(&data->target_text_subject, data->target_text_buf);
+}
+
+/**
+ * Fix the current label at the width of the widest reading in its face. The
+ * face is read back from the label rather than taken from the size attribute,
+ * because a bound style (a tile rung) can retier it after creation. Writing the
+ * width re-fires LV_EVENT_STYLE_CHANGED, so it only writes on a change.
+ */
+static void apply_current_width(TempDisplayData* data) {
+    if (!data || !data->align_current || !data->current_label)
+        return;
+    const lv_font_t* font = lv_obj_get_style_text_font(data->current_label, LV_PART_MAIN);
+    const int32_t letter_space =
+        lv_obj_get_style_text_letter_space(data->current_label, LV_PART_MAIN);
+    // format_temp_number() renders "NN.N" below 100°C and "NNN" at or above it.
+    const int32_t width = std::max(helix::ui::text_width("00.0", font, letter_space),
+                                   helix::ui::text_width("000", font, letter_space));
+    if (lv_obj_get_style_width(data->current_label, LV_PART_MAIN) != width) {
+        lv_obj_set_width(data->current_label, width);
+    }
+}
+
+static void on_current_style_changed(lv_event_t* e) {
+    auto* container = static_cast<lv_obj_t*>(lv_event_get_user_data(e));
+    apply_current_width(get_data(container));
 }
 
 /** Format decidegrees as a compact number (one decimal, dropped when >= 100) */
@@ -449,6 +481,11 @@ static void* ui_temp_display_create_cb(lv_xml_parser_state_t* state, const char*
         data_ptr->hide_target_when_off = true;
     }
 
+    const char* align_current_str = lv_xml_get_value_of(attrs, "align_current");
+    if (align_current_str && strcmp(align_current_str, "true") == 0) {
+        data_ptr->align_current = true;
+    }
+
     // Parse hide_target_below_bp — drop separator+target on small screens.
     // Value is a breakpoint name (micro|tiny|small|medium|large|xlarge|xxlarge).
     const char* hide_below_str = lv_xml_get_value_of(attrs, "hide_target_below_bp");
@@ -545,6 +582,13 @@ static void* ui_temp_display_create_cb(lv_xml_parser_state_t* state, const char*
                          "authored",
                          rung_subject_name);
         }
+    }
+
+    if (registered->align_current) {
+        lv_obj_set_style_text_align(registered->current_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+        apply_current_width(registered);
+        lv_obj_add_event_cb(registered->current_label, on_current_style_changed,
+                            LV_EVENT_STYLE_CHANGED, container);
     }
 
     // Seed visibility from the initial state — with hide_target_when_off that

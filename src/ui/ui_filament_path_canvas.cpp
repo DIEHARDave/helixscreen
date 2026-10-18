@@ -161,6 +161,37 @@ bool helix::ui::recorded_box_hit(lv_point_t p, const lv_area_t& box, lv_point_t 
                        box.y2 - box.y1, margin);
 }
 
+helix::ui::ParallelTap helix::ui::parallel_tap_at(lv_point_t p, const ParallelTapLayout& layout) {
+    // The nearest column whose reach, [lo, hi] about its x, holds p.x.
+    auto nearest = [&](int32_t lo, int32_t hi) {
+        int best = -1;
+        int32_t best_d = INT32_MAX;
+        for (int i = 0; i < layout.slot_count; i++) {
+            const int32_t dx = p.x - layout.slot_x[i];
+            if (dx >= lo && dx <= hi && abs(dx) < best_d) {
+                best = i;
+                best_d = abs(dx);
+            }
+        }
+        return best;
+    };
+    // The tube runs down to the glyph's top; only a glyph drawn up past the
+    // sensor row cedes the stretch above that row.
+    if (p.y < LV_MAX(layout.sensor_y, layout.head.y1)) {
+        const int32_t r = layout.lane_half_width;
+        if (const int i = nearest(-r, r); i >= 0) {
+            return {ParallelTapTarget::Lane, i};
+        }
+        return {};
+    }
+    if (p.y >= layout.head.y1 && p.y <= layout.head.y2) {
+        if (const int i = nearest(layout.head.x1, layout.head.x2); i >= 0) {
+            return {ParallelTapTarget::Toolhead, i};
+        }
+    }
+    return {};
+}
+
 // ============================================================================
 // Event handlers
 // ============================================================================
@@ -203,36 +234,30 @@ static void filament_path_click_cb(lv_event_t* e) {
     // For PARALLEL topology (tool changers), accept clicks on toolheads AND the
     // filament line/spool area (top half of canvas, above the sensor dots)
     if (data->topology == static_cast<int>(helix::PathTopology::PARALLEL) && data->slot_callback) {
-        const ParallelRows rows = parallel_rows(*data, compute_base_geometry(obj, data));
-        int32_t toolhead_y = rows.toolhead_y;
-        int32_t sensor_y = rows.sensor_y;
-        int32_t tool_scale = rows.tool_scale;
-
-        // Toolhead click area (bottom half)
-        int32_t hit_radius_y = tool_scale * 4;
-        if (abs(point.y - toolhead_y) < hit_radius_y) {
-            for (int i = 0; i < data->slot_count; i++) {
-                int32_t slot_x = x_off + get_slot_x(data, i, x_off);
-                int32_t hit_radius_x = LV_MAX(20, tool_scale * 3);
-                if (abs(point.x - slot_x) < hit_radius_x) {
-                    spdlog::debug("[FilamentPath] Toolhead {} clicked (parallel topology)", i);
-                    data->slot_callback(i, data->slot_user_data);
-                    return;
-                }
+        const BaseGeometry g = compute_base_geometry(obj, data);
+        const ParallelRows rows = parallel_rows(*data, g);
+        const helix::ui::GlyphBounds glyph =
+            toolhead_glyph_bounds(0, rows.toolhead_y, rows.tool_scale);
+        helix::ui::ParallelTapLayout layout;
+        layout.slot_x = g.slot_x;
+        layout.slot_count = g.slot_count;
+        layout.sensor_y = rows.sensor_y;
+        layout.lane_half_width = LV_MAX(20, rows.tool_scale * 3);
+        layout.head = {glyph.left, glyph.top, glyph.right, glyph.bottom};
+        const helix::ui::ParallelTap tap = helix::ui::parallel_tap_at(point, layout);
+        if (tap.target == helix::ui::ParallelTapTarget::Toolhead) {
+            spdlog::debug("[FilamentPath] Toolhead {} clicked (parallel topology)", tap.slot);
+            if (data->toolhead_callback) {
+                data->toolhead_callback(tap.slot, data->toolhead_user_data);
+            } else {
+                data->slot_callback(tap.slot, data->slot_user_data);
             }
+            return;
         }
-
-        // Spool/filament line click area (top of canvas down to sensor dots)
-        if (point.y < sensor_y) {
-            for (int i = 0; i < data->slot_count; i++) {
-                int32_t slot_x = x_off + get_slot_x(data, i, x_off);
-                int32_t hit_radius_x = LV_MAX(20, tool_scale * 3);
-                if (abs(point.x - slot_x) < hit_radius_x) {
-                    spdlog::debug("[FilamentPath] Spool {} clicked (parallel topology)", i);
-                    data->slot_callback(i, data->slot_user_data);
-                    return;
-                }
-            }
+        if (tap.target == helix::ui::ParallelTapTarget::Lane) {
+            spdlog::debug("[FilamentPath] Spool {} clicked (parallel topology)", tap.slot);
+            data->slot_callback(tap.slot, data->slot_user_data);
+            return;
         }
     }
 
@@ -565,8 +590,14 @@ void ui_filament_path_canvas_set_filament_segment(lv_obj_t* obj, int segment) {
 
     // When not in eject mode and the active slot has a prep sensor, clamp the
     // minimum displayed segment to LANE so the retract animation stops at the
-    // lane sensor instead of overshooting past the slot/prep sensor.
-    if (!data->eject_mode && data->active_slot >= 0 &&
+    // lane sensor instead of overshooting past the slot/prep sensor. A PARALLEL
+    // lane with no load sensor has nothing to retract to past its entry sensor,
+    // so its entry reading stands.
+    const bool entry_reading_stands =
+        data->topology == static_cast<int>(helix::PathTopology::PARALLEL) &&
+        data->active_slot >= 0 && data->active_slot < FilamentPathData::MAX_SLOTS &&
+        !data->slot_has_load_sensor[data->active_slot];
+    if (!data->eject_mode && !entry_reading_stands && data->active_slot >= 0 &&
         data->active_slot < FilamentPathData::MAX_SLOTS &&
         data->slot_has_prep_sensor[data->active_slot] && new_segment > 0 &&
         new_segment < static_cast<int>(helix::PathSegment::LANE)) {
@@ -653,6 +684,16 @@ void ui_filament_path_canvas_set_slot_callback(lv_obj_t* obj, filament_path_slot
     if (data) {
         data->slot_callback = cb;
         data->slot_user_data = user_data;
+    }
+}
+
+void helix::ui::filament_path_canvas_set_toolhead_callback(lv_obj_t* obj,
+                                                           filament_path_slot_cb_t cb,
+                                                           void* user_data) {
+    auto* data = get_data(obj);
+    if (data) {
+        data->toolhead_callback = cb;
+        data->toolhead_user_data = user_data;
     }
 }
 
@@ -765,6 +806,35 @@ void ui_filament_path_canvas_set_slot_mapped_tool(lv_obj_t* obj, int slot, int t
         data->mapped_tool[slot] = tool;
         layered_mark_dirty(obj);
     }
+}
+
+// NAMESPACE_OK: the widget's C setter API, beside its siblings
+void ui_filament_path_canvas_set_slot_upstream(lv_obj_t* obj, int slot, const char* caption) {
+    auto* data = get_data(obj);
+    if (!data || slot < 0 || slot >= FilamentPathData::MAX_SLOTS)
+        return;
+    char buf[FilamentPathData::UPSTREAM_CAPTION_BYTES] = {};
+    if (caption) {
+        snprintf(buf, sizeof(buf), "%s", caption);
+    }
+    if (strcmp(data->slot_upstream_caption[slot], buf) != 0) {
+        memcpy(data->slot_upstream_caption[slot], buf, sizeof(buf));
+        layered_mark_dirty(obj);
+    }
+}
+
+// NAMESPACE_OK: the widget's C getter API, beside its siblings
+void ui_filament_path_canvas_get_slot_upstream(lv_obj_t* obj, int slot, char* out,
+                                               size_t out_size) {
+    if (out_size == 0) {
+        return;
+    }
+    out[0] = '\0';
+    auto* data = get_data(obj);
+    if (!data || slot < 0 || slot >= FilamentPathData::MAX_SLOTS) {
+        return;
+    }
+    snprintf(out, out_size, "%s", data->slot_upstream_caption[slot]);
 }
 
 // Declared in ui_filament_path_internal.h inside helix::ui::fpath; the

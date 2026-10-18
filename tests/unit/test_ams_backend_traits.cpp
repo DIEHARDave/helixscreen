@@ -108,7 +108,9 @@ TEST_CASE("A backend that sets no traits answers the base defaults", "[ams][trai
     CHECK(t.slot_status_tracks_filament);
     CHECK(t.allows_implicit_chaining);
     CHECK_FALSE(t.supports_auto_heat_on_load);
+    CHECK_FALSE(t.supports_auto_heat_on_unload);
     CHECK_FALSE(t.holds_optimistic_action);
+    CHECK_FALSE(t.unloads_stand_alone);
     CHECK_FALSE(t.has_per_slot_loaded_authority);
 }
 
@@ -119,14 +121,21 @@ TEST_CASE("Real kTraits keep the answers the UI branches on", "[ams][traits]") {
     CHECK(AmsBackendHappyHare::kTraits.has_physical_tray);
     CHECK_FALSE(AmsBackendHappyHare::kTraits.recovers_filament_on_resume);
     CHECK_FALSE(AmsBackendHappyHare::kTraits.should_suppress_idle_runout_modal);
-    CHECK_FALSE(AmsBackendHappyHare::kTraits.supports_batch_filament_ops);
+    CHECK(AmsBackendHappyHare::kTraits.supports_reset);
     CHECK_FALSE(AmsBackendHappyHare::kTraits.allows_implicit_chaining);
     CHECK_FALSE(AmsBackendSnapmaker::kTraits.has_physical_tray);
-    CHECK(AmsBackendSnapmaker::kTraits.supports_batch_filament_ops);
+    // Reset is offered only where it clears something the backend keeps.
+    CHECK_FALSE(AmsBackendSnapmaker::kTraits.supports_reset);
+    CHECK_FALSE(AmsBackendToolChanger::kTraits.supports_reset);
     // Only a backend silent until its firmware starts holds the UI's action.
     CHECK(AmsBackendHappyHare::kTraits.holds_optimistic_action);
     CHECK_FALSE(AmsBackendAfc::kTraits.holds_optimistic_action);
-    CHECK_FALSE(AmsBackendSnapmaker::kTraits.holds_optimistic_action);
+    CHECK(AmsBackendSnapmaker::kTraits.holds_optimistic_action);
+    // A tool changer's dock is the first half of a swap; a U1 unload is whole.
+    CHECK(AmsBackendSnapmaker::kTraits.unloads_stand_alone);
+    CHECK_FALSE(AmsBackendToolChanger::kTraits.unloads_stand_alone);
+    CHECK_FALSE(AmsBackendHappyHare::kTraits.unloads_stand_alone);
+    CHECK_FALSE(AmsBackendAfc::kTraits.unloads_stand_alone);
 }
 
 TEST_CASE("The mock leaves spool persistence to ToolState in every persona",

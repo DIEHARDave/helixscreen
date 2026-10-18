@@ -87,22 +87,32 @@ std::string display_label(int slot) {
     return material;
 }
 
+std::optional<SlotTemps> slot_temps(int slot) {
+    if (!slot_valid(slot)) {
+        return std::nullopt;
+    }
+    auto branded = MaterialSettingsManager::instance().get_preset_filament(slot);
+    if (branded && branded->is_branded()) {
+        // Exact branded product temps (whole °C ints, same unit as MaterialInfo).
+        return SlotTemps{branded->nozzle, branded->bed};
+    }
+    auto mat = filament::find_material(name(slot));
+    if (!mat) {
+        return std::nullopt;
+    }
+    return SlotTemps{mat->nozzle_recommended(), mat->bed_temp};
+}
+
 std::string temp_label(int slot) {
     if (!slot_valid(slot)) {
         return {};
     }
-    char buf[TEMP_BUF_SIZE];
-    auto branded = MaterialSettingsManager::instance().get_preset_filament(slot);
-    if (branded && branded->is_branded()) {
-        // Exact branded product temps (whole °C ints, same unit as MaterialInfo).
-        std::snprintf(buf, sizeof(buf), "%d°C / %d°C", branded->nozzle, branded->bed);
-        return buf;
-    }
-    auto mat = filament::find_material(name(slot));
-    if (!mat) {
+    const auto temps = slot_temps(slot);
+    if (!temps) {
         return "---";
     }
-    std::snprintf(buf, sizeof(buf), "%d°C / %d°C", mat->nozzle_recommended(), mat->bed_temp);
+    char buf[TEMP_BUF_SIZE];
+    std::snprintf(buf, sizeof(buf), "%d°C / %d°C", temps->nozzle, temps->bed);
     return buf;
 }
 

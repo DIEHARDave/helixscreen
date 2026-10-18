@@ -29,7 +29,7 @@ The `assets/config/printer_database.json` entries for `qidi_plus_4`, `qidi_q2`, 
 
 ### Firmware Openness
 
-QIDI printers (Q1 Pro and newer) run forks of Klipper and Moonraker from [QIDITECH/klipper](https://github.com/QIDITECH/klipper) and [QIDITECH/moonraker](https://github.com/QIDITECH/moonraker). SSH is open by default (`mks` / `makerbase`), and KIAUH is pre-installed. QIDI discourages upstream Klipper updates because their board requires their fork.
+QIDI printers (Q1 Pro and newer) run forks of Klipper and Moonraker from [QIDITECH/klipper](https://github.com/QIDITECH/klipper) and [QIDITECH/moonraker](https://github.com/QIDITECH/moonraker). SSH is open by default, with a login that differs by model (`mks` / `makerbase` on the Q2, `qidi` / `qiditech` on the Max 4; full table in [QIDI_SUPPORT.md#ssh-logins](printers/QIDI_SUPPORT.md#ssh-logins)), and KIAUH is pre-installed. QIDI discourages upstream Klipper updates because their board requires their fork.
 
 **The Box firmware itself ships as obfuscated `.so` Python extension modules.** A community open-source reimplementation at [qidi-community/Plus4-Wiki customisable_qidibox_firmware](https://github.com/qidi-community/Plus4-Wiki/tree/main/content/customisable_qidibox_firmware) replaces six modules (box_detect.py, box_rfid.py, box_stepper.py, box_extras.py, aht20_f.py, buttons_irq.py) with editable Python. Maintainers label it "strongly WIP." This repo is the primary protocol reference for a HelixScreen integrator.
 
@@ -86,6 +86,15 @@ Spools identify via MIFARE Classic RFID tags. Data lives in sector 1 block 0. Th
 - [TinkerBarn/BoxRFID](https://github.com/TinkerBarn/BoxRFID) — Electron desktop app
 - [n0cloud/qidi-box-rfid-manager](https://github.com/n0cloud/qidi-box-rfid-manager) — mobile
 - [LexyGuru/Qidi_RFID_App](https://github.com/LexyGuru/Qidi_RFID_App)
+
+The Box saves what it read off a tag as `filament_slot<N>` / `color_slot<N>` /
+`vendor_slot<N>` ids, and `tag_reading()` is those ids resolved through the Box tables
+(material, colour, brand) plus the filament profile's nozzle range. HelixScreen's own edit
+writes the same variables, so the reading is folded frame by frame
+(`helix::ams::fold_tag_frame`): fields the own-write echo guard withholds keep the tag's
+value. After a restart the saved ids are the user's and become the reading, and an id set
+from the printer's own screen cannot be told from a tag read
+(`src/printer/ams_backend_qidi.cpp#parse_save_variables`, `src/printer/ams_tag_reading.cpp#fold_tag_frame_into`).
 
 ### Slot Metadata, Swap Detection and the Metadata Clear
 

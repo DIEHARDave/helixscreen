@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <list>
 #include <string>
 
@@ -94,6 +95,35 @@ class ToastManager {
     /** True if at least one toast is visible. */
     bool is_visible() const;
 
+    /**
+     * What one show*() or hide(action) call asked for, reported on the calling
+     * thread before the toast is queued or looked up.
+     */
+    struct Event {
+        enum class Kind {
+            Show,      ///< show(), show_with_detail() or show_with_action()
+            HideAction ///< hide(action_callback, user_data)
+        };
+        Kind kind = Kind::Show;
+        ToastSeverity severity = ToastSeverity::INFO;
+        std::string message;
+        std::string detail;
+        uint32_t duration_ms = 0;
+        toast_action_callback_t action_cb = nullptr;
+        void* action_user_data = nullptr;
+    };
+
+    /** Install the one observer every Event goes to; an empty function removes
+     *  it. The test binary reads what code under test asked to show through it.
+     *  Not synchronized: install it before the calls it should see. */
+    void set_observer(std::function<void(const Event&)> observer) {
+        observer_ = std::move(observer);
+    }
+
+    /** Before init(), queue @p text for the drain that follows init() and
+     *  return true; after it, return false and queue nothing. Thread-safe. */
+    bool defer_until_initialized(ToastSeverity severity, const char* text, uint32_t duration_ms);
+
     /** Whether init() has completed. Callers before phase 9d should route
      *  through PendingStartupWarnings — see ui_notification.cpp. Atomic
      *  because ui_notification may read this from background threads. */
@@ -128,17 +158,7 @@ class ToastManager {
      *  flapping sensor re-raising one notice) otherwise stack N identical
      *  widgets. An action toast only folds into one whose button runs the
      *  same callback on the same user_data: two toasts with one message but
-     *  different targets are two questions, and merging them would drop one.
-     *
-     *  Defined inline (header-only): mk/tests.mk excludes
-     *  ui_toast_manager.o from the test build and tests/ui_test_utils.cpp
-     *  supplies a stub ToastManager for the rest of the class, so an
-     *  out-of-line definition here would need a second copy in the stub —
-     *  and the unit test would end up exercising that copy, not this one.
-     *  Keeping the one real implementation in the header means both the
-     *  app binary and the test binary link the same code; only LVGL's
-     *  lv_timer_reset() is needed, which is available in both. Do not
-     *  move this back to ui_toast_manager.cpp or add a stub override. */
+     *  different targets are two questions, and merging them would drop one. */
     bool refresh_duplicate(ToastSeverity severity, const char* message,
                            toast_action_callback_t action_cb = nullptr,
                            void* action_user_data = nullptr) {
@@ -161,14 +181,7 @@ class ToastManager {
      *  of a widget in active_. Returns active_.end() when the node lives
      *  outside every registered toast — the safe no-op answer for event
      *  callbacks that can fire after their toast's list entry is gone
-     *  (deinit_subjects runs on printer switches, not only before lv_deinit).
-     *
-     *  Defined inline for the same reason as refresh_duplicate() above:
-     *  mk/tests.mk excludes ui_toast_manager.o from the test build and
-     *  tests/ui_test_utils.cpp stubs the class, so an out-of-line definition
-     *  would never be linked into helix-tests and the unit tests would
-     *  exercise a stub, not the real walk. Depends only on lvgl.h; do not
-     *  move it to ui_toast_manager.cpp or add includes here. */
+     *  (deinit_subjects runs on printer switches, not only before lv_deinit). */
     ToastList::iterator find_owning_toast(lv_obj_t* node) {
         while (node) {
             for (auto it = active_.begin(); it != active_.end(); ++it) {
@@ -207,6 +220,7 @@ class ToastManager {
     ToastList active_;
     size_t max_visible_ = MAX_VISIBLE;
     std::atomic<bool> initialized_{false};
+    std::function<void(const Event&)> observer_;
 
     friend class ToastManagerTestAccess;
 };
@@ -233,8 +247,7 @@ namespace notifications {
  *
  * Honours the user's minimum toast severity, and drops the toast before
  * ToastManager::init() since there is no history row to fall back on.
- * Main thread only. Inline so the test binary runs this code against its
- * ToastManager stub.
+ * Main thread only.
  */
 inline void show_transient_success(const char* text, uint32_t duration_ms) {
     auto& toasts = ToastManager::instance();

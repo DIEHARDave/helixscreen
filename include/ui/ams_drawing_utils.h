@@ -32,6 +32,18 @@ struct HubGroup {
     std::string hub_id;     ///< Empty for a unit that is its own hub
     std::vector<int> units; ///< Member unit indices, in backend order
 };
+/**
+ * @brief Caption naming the lane whose spool feeds @p slot: the upstream
+ *        lane's unit and position, "ACE 2 · 3"
+ *
+ * Built from the backend's upstream_slot(): empty when the lane's spool is its
+ * own, when it has no backend answer, or when the upstream lane is not one
+ * this system shows. The position is 1-based inside its unit, spelled with the
+ * shared unit separator.
+ */
+[[nodiscard]] std::string upstream_lane_caption(const helix::AmsSystemInfo& info,
+                                                const helix::AmsBackend& backend, int slot);
+
 } // namespace helix::ui
 
 namespace ams_draw {

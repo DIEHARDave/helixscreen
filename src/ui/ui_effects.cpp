@@ -12,6 +12,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <functional>
 
 namespace helix::ui {
 
@@ -182,23 +183,65 @@ void flash_object(lv_obj_t* obj, int32_t duration_ms, bool force) {
 }
 
 namespace {
-std::vector<lv_obj_t*> s_always_on_top;
+struct ChromeEntry {
+    lv_obj_t* obj;
+    std::function<void()> raise; ///< empty: lv_obj_move_foreground(obj)
+};
+std::vector<ChromeEntry> s_always_on_top;
+bool s_chrome_covered = false;
+
+auto find_chrome(const lv_obj_t* obj) {
+    return std::find_if(s_always_on_top.begin(), s_always_on_top.end(),
+                        [obj](const ChromeEntry& e) { return e.obj == obj; });
+}
+
+void raise_chrome_on(lv_obj_t* parent, const lv_obj_t* except) {
+    // Copied: a raise callback may register or unregister chrome.
+    const std::vector<ChromeEntry> entries = s_always_on_top;
+    for (const ChromeEntry& e : entries) {
+        if (e.obj == except || !lv_obj_is_valid(e.obj) ||
+            (parent && lv_obj_get_parent(e.obj) != parent)) {
+            continue;
+        }
+        if (e.raise) {
+            e.raise();
+        } else {
+            lv_obj_move_foreground(e.obj);
+        }
+    }
+}
 } // namespace
 
-void add_always_on_top(lv_obj_t* obj) {
-    if (obj &&
-        std::find(s_always_on_top.begin(), s_always_on_top.end(), obj) == s_always_on_top.end()) {
-        s_always_on_top.push_back(obj);
+void set_chrome_covered(bool covered) {
+    if (s_chrome_covered == covered) {
+        return;
+    }
+    s_chrome_covered = covered;
+    if (!covered) {
+        raise_chrome_on(nullptr, nullptr);
+    }
+}
+
+bool chrome_covered() {
+    return s_chrome_covered;
+}
+
+void add_always_on_top(lv_obj_t* obj, std::function<void()> raise) {
+    if (obj && find_chrome(obj) == s_always_on_top.end()) {
+        s_always_on_top.push_back({obj, std::move(raise)});
     }
 }
 
 void remove_always_on_top(lv_obj_t* obj) {
-    s_always_on_top.erase(std::remove(s_always_on_top.begin(), s_always_on_top.end(), obj),
-                          s_always_on_top.end());
+    auto it = find_chrome(obj);
+    if (it != s_always_on_top.end()) {
+        s_always_on_top.erase(it);
+    }
 }
 
 ScopedHideChrome::ScopedHideChrome() {
-    for (lv_obj_t* obj : s_always_on_top) {
+    for (const ChromeEntry& e : s_always_on_top) {
+        lv_obj_t* obj = e.obj;
         if (lv_obj_is_valid(obj) && !lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) {
             hidden_.push_back(obj);
             lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
@@ -219,17 +262,13 @@ void bring_to_front(lv_obj_t* obj) {
         return;
     }
     lv_obj_move_foreground(obj);
-    for (lv_obj_t* top : s_always_on_top) {
-        if (top != obj && lv_obj_is_valid(top) &&
-            lv_obj_get_parent(top) == lv_obj_get_parent(obj)) {
-            lv_obj_move_foreground(top);
-        }
+    if (!s_chrome_covered) {
+        raise_chrome_on(lv_obj_get_parent(obj), obj);
     }
 }
 
 bool is_screen_chrome(const lv_obj_t* child) {
-    return child && std::find(s_always_on_top.begin(), s_always_on_top.end(), child) !=
-                        s_always_on_top.end();
+    return child && find_chrome(child) != s_always_on_top.end();
 }
 
 lv_obj_t* create_fullscreen_backdrop(lv_obj_t* parent, lv_opa_t opacity) {

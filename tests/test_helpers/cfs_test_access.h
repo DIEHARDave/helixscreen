@@ -36,6 +36,11 @@ class CfsTestAccess {
         return b.dispatch_action_script(std::move(gcode));
     }
 
+    /// Runs only the startup store load: a null client skips the initial query.
+    static void start_load(helix::printer::AmsBackendCfs& b) {
+        b.on_started();
+    }
+
     /// Takes a notify frame, the shape the subscription delivers.
     static void handle_status(helix::printer::AmsBackendCfs& b, const nlohmann::json& n) {
         b.handle_status_update(n);

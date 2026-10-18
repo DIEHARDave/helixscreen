@@ -166,6 +166,7 @@ class AmsState {
     struct EnvIndicatorSubjectNames {
         std::string temp_text;
         std::string humidity_text;
+        std::string humidity;
         std::string humidity_status;
         std::string humidity_visible;
         std::string visible;
@@ -906,6 +907,15 @@ class AmsState {
     }
 
     /**
+     * @brief Get feeder open subject
+     * @return Subject holding 1 while the backend's frame-side feeder reports
+     *         itself open (filament released), 0 when closed or absent
+     */
+    lv_subject_t* get_feeder_open_subject() {
+        return &ams_feeder_open_;
+    }
+
+    /**
      * @brief Get slot count subject
      * @return Subject holding total number of slots
      */
@@ -1319,6 +1329,38 @@ class AmsState {
     }
 
     /**
+     * @brief The loaded filament's multi-colour list (CSV, SlotInfo::multi_color_hexes)
+     *
+     * Written before current_color, so a current_color observer reads the matching list.
+     */
+    lv_subject_t* get_current_colors_subject() {
+        return &current_colors_;
+    }
+
+    /**
+     * @brief The loaded filament's finish, by name (filament_finish_name(SlotInfo::finish()))
+     *
+     * Written before current_color, so a current_color observer reads the matching finish.
+     */
+    lv_subject_t* get_current_finish_subject() {
+        return &current_finish_;
+    }
+
+    /// The loaded filament as a swatch paints it, read from the three subjects
+    /// above. Main thread only.
+    struct LoadedPaint {
+        uint32_t rgb = 0;
+        std::string multi_color_hexes;
+        FilamentFinish finish = FilamentFinish::None;
+    };
+    [[nodiscard]] LoadedPaint current_paint() {
+        const char* colors = lv_subject_get_string(&current_colors_);
+        const char* finish = lv_subject_get_string(&current_finish_);
+        return {static_cast<uint32_t>(lv_subject_get_int(&current_color_)) & 0xFFFFFF,
+                colors ? colors : "", filament_finish_of(finish ? finish : "")};
+    }
+
+    /**
      * @brief Get current fill percent subject
      * @return Subject holding the loaded spool's fill in the
      *         SlotInfo::display_fill_pct() encoding (0-100, -1 = no data)
@@ -1451,6 +1493,17 @@ class AmsState {
     [[nodiscard]] lv_subject_t* get_slot_remaining_subject(int slot_index);
 
     /**
+     * @brief Get the drying-state subject for a specific slot (primary backend)
+     *
+     * Holds a helix::printer::ZoneDryingState as int: Idle everywhere except a dryer
+     * that drives its gates one by one.
+     *
+     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @return Subject pointer or nullptr if out of range
+     */
+    [[nodiscard]] lv_subject_t* get_slot_drying_subject(int slot_index);
+
+    /**
      * @brief Get per-slot material-type subject (primary backend's flat array).
      *
      * Holds the last-synced material string ("PLA", "PETG", …, or "" when the
@@ -1543,6 +1596,16 @@ class AmsState {
     [[nodiscard]] lv_subject_t* get_slot_fill_subject(int backend_index, int slot_index,
                                                       SubjectLifetime& lifetime);
 
+    /**
+     * @brief Per-slot paint key: changes whenever the slot's multi-colour list
+     *        or finish does, so a swatch observing it beside the colour subject
+     *        repaints when only those change (SlotInfo::paint_key()).
+     *
+     * Same token rule as get_slot_color_subject(int, int, SubjectLifetime&).
+     */
+    [[nodiscard]] lv_subject_t* get_slot_paint_subject(int backend_index, int slot_index,
+                                                       SubjectLifetime& lifetime);
+
     // ========================================================================
     // Per-Slot LIVE State Subject Accessors
     // ========================================================================
@@ -1632,6 +1695,9 @@ class AmsState {
 
     /// Drying active flag (1=drying, 0=passive)
     [[nodiscard]] lv_subject_t* get_env_ind_drying_active_subject(int unit_index);
+
+    /// Humidity for the indicator's drop, in tenths of %RH; -1 with no reading
+    [[nodiscard]] lv_subject_t* get_env_ind_humidity_subject(int unit_index);
 
     /// Humidity status for indicator (0=ok/green, 1=warn/yellow, 2=danger/red)
     [[nodiscard]] lv_subject_t* get_env_ind_humidity_status_subject(int unit_index);
@@ -1990,8 +2056,17 @@ class AmsState {
     /** @brief Fire external_spool_color_ subject to notify observers of spool changes */
     void notify_external_spool_changed(const SlotInfo& info);
 
+    /// set_external_spool_info() without the notify, for a caller that still
+    /// has lane sources to file before observers may re-read the record.
+    void store_external_spool_info(const SlotInfo& info);
+
     /** @brief Set "Currently Loaded" subjects to default/empty state with guards */
     void set_current_loaded_defaults(bool write_header = true);
+
+    /// Publish the loaded filament's swatch: its colours and finish name
+    /// first, then its colour, whose observers repaint from all three.
+    void set_current_paint(uint32_t rgb, const std::string& multi_color_hexes = "",
+                           const std::string& finish_name = "");
 
     /** @brief Sync clog detection meter subjects from system info */
     void sync_clog_meter_from_info(const AmsSystemInfo& info);
@@ -2034,11 +2109,13 @@ class AmsState {
     void reset_backend_subjects();
     void sync_system_subjects(const AmsSystemInfo& info);
     /// Push or drop the AMS tool topology in ToolState.
-    void sync_tool_topology(AmsBackend* backend);
+    void sync_tool_topology(AmsBackend* backend, const AmsSystemInfo& info);
     /// filament_loaded, the runout indicator's edge state, and the unload grace.
     void sync_filament_runout(const AmsSystemInfo& info);
     /// The bypass subjects, the bypass edge, and the external spool subjects.
     void sync_bypass(AmsBackend* backend, const AmsSystemInfo& info);
+    /// ams_feeder_open from the backend's frame-side feeder, 0 without one.
+    void sync_feeder(AmsBackend* backend);
     /// Bump tool_map_version when the physical or applied routing moved.
     void sync_tool_routing(AmsBackend* backend, const AmsSystemInfo& info);
     /// The slot <-> ToolState spool bridge, both directions, and its save.
@@ -2097,6 +2174,7 @@ class AmsState {
         std::vector<lv_subject_t> lane_states; // int: helix::ui::LaneState
         std::vector<lv_subject_t> has_errors;
         std::vector<lv_subject_t> severities; // int: SlotError::Severity
+        std::vector<lv_subject_t> paints;     // int: SlotInfo::paint_key()
         /// Material strings need storage the subject points into; same size as
         /// slot_materials_buf_ ("PETG-CF" etc. fits comfortably).
         static constexpr int MATERIAL_BUF_SIZE = 24;
@@ -2234,6 +2312,7 @@ class AmsState {
     lv_subject_t supports_bypass_{};
     lv_subject_t ams_slot_count_{};
     lv_subject_t ams_cards_compact_{};
+    lv_subject_t ams_feeder_open_{};
     lv_subject_t slots_version_{};
     lv_subject_t tool_map_version_{};
     /// First-gate (port) filament-present flag for the ACTIVE tool (#991).
@@ -2410,6 +2489,10 @@ class AmsState {
     char current_weight_text_buf_[32];
     lv_subject_t current_has_weight_{};
     lv_subject_t current_color_{};
+    lv_subject_t current_colors_{};
+    char current_colors_buf_[128];
+    lv_subject_t current_finish_{};
+    char current_finish_buf_[16];
     lv_subject_t current_fill_pct_{};
 
     // Per-slot subjects (color, status, remaining filament)
@@ -2417,12 +2500,14 @@ class AmsState {
     lv_subject_t slot_statuses_[MAX_SLOTS]{};
     lv_subject_t slot_remaining_[MAX_SLOTS]{}; // string: "52m" or "432g" or ""
     char slot_remaining_buf_[MAX_SLOTS][16];   // buffers for remaining strings
+    lv_subject_t slot_drying_[MAX_SLOTS]{};    // int: helix::printer::ZoneDryingState
     lv_subject_t slot_materials_[MAX_SLOTS]{}; // string: "PLA", "PETG", … or "" (last synced type)
     char slot_materials_buf_[MAX_SLOTS][24]; // buffers for material strings (holds "PETG-CF" etc.)
     lv_subject_t slot_names_[MAX_SLOTS]{};   // string: slot card spool name, or ""
     char slot_names_buf_[MAX_SLOTS][SLOT_NAME_BUF_SIZE];
-    lv_subject_t slot_fills_[MAX_SLOTS]{}; // int: fill percent 0-100, -1 = unknown/no-data
-                                           // (SlotInfo::display_fill_pct encoding)
+    lv_subject_t slot_fills_[MAX_SLOTS]{};  // int: fill percent 0-100, -1 = unknown/no-data
+                                            // (SlotInfo::display_fill_pct encoding)
+    lv_subject_t slot_paints_[MAX_SLOTS]{}; // int: SlotInfo::paint_key()
 
     // Per-slot LIVE state subjects — the panel observes these to redraw the path
     // and active-lane highlight in real time as Moonraker sensor data arrives.
@@ -2473,6 +2558,7 @@ class AmsState {
     lv_subject_t env_ind_humidity_text_[MAX_UNITS]{};
     char env_ind_humidity_text_buf_[MAX_UNITS][ENV_IND_TEXT_BUF_SIZE]{};
     lv_subject_t env_ind_visible_[MAX_UNITS]{};
+    lv_subject_t env_ind_humidity_[MAX_UNITS]{};        // int: tenths of %RH, -1 = no reading
     lv_subject_t env_ind_humidity_status_[MAX_UNITS]{}; // 0=ok, 1=warn, 2=danger
     lv_subject_t env_ind_humidity_visible_[MAX_UNITS]{};
     lv_subject_t env_ind_drying_active_[MAX_UNITS]{};
@@ -2490,6 +2576,7 @@ class AmsState {
     char env_ind_detail_temp_text_buf_[ENV_IND_TEXT_BUF_SIZE]{};
     lv_subject_t env_ind_detail_humidity_text_{};
     char env_ind_detail_humidity_text_buf_[ENV_IND_TEXT_BUF_SIZE]{};
+    lv_subject_t env_ind_detail_humidity_{};
     lv_subject_t env_ind_detail_humidity_status_{};
     lv_subject_t env_ind_detail_humidity_visible_{};
     lv_subject_t env_ind_detail_visible_{};
@@ -2502,6 +2589,7 @@ class AmsState {
     struct UnitEnvIndicator {
         std::string temp_text;
         std::string humidity_text;
+        int humidity_x10 = -1;   // tenths of %RH, -1 = no reading
         int humidity_status = 0; // 0=ok, 1=warn, 2=danger
         bool humidity_visible = false;
         bool visible = false;

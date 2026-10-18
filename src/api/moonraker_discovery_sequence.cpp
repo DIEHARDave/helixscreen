@@ -19,6 +19,8 @@
 #include "helix_version.h"
 #include "humidity_sensor_types.h"
 #include "hv/requests.h"
+#include "klipper_extruder_naming.h"
+#include "layer_pause.h"
 #include "led/led_controller.h"
 #include "macro_executor.h"
 #include "macro_fan_analyzer.h"
@@ -503,9 +505,9 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                 std::string error_reason = "Failed to query printer objects from Moonraker";
                 if (response.contains("error") && response["error"].contains("message") &&
                     response["error"]["message"].is_string()) {
-                    error_reason = response["error"]["message"].get<std::string>();
-                    spdlog::error("[Moonraker Client] printer.objects.list failed: {}",
-                                  error_reason);
+                    const auto raw_reason = response["error"]["message"].get<std::string>();
+                    spdlog::error("[Moonraker Client] printer.objects.list failed: {}", raw_reason);
+                    error_reason = MoonrakerError::extract_friendly_message(raw_reason);
                 } else {
                     spdlog::error(
                         "[Moonraker Client] printer.objects.list failed: invalid response");
@@ -905,8 +907,9 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                                 {
                                     std::lock_guard<std::mutex> lock(hardware_mutex_);
                                     hardware_.parse_build_volume(settings);
-                                    hardware_.parse_filament_diameter(settings);
+                                    hardware_.parse_extruder_dimensions(settings);
                                     hardware_.parse_leveling_probe_points(settings);
+                                    hardware_.parse_probe_xy_offset(settings);
                                 }
 
                                 // Which macros take the host down with them.
@@ -1224,8 +1227,13 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     // pl_env_valid / file_path: Snapmaker-fork Power-Loss-Recovery fields.
     // Absent (harmless) on mainline Klipper — Moonraker sends explicit null
     // for a subscribed field the connected firmware never populates.
+    // file_position: the byte the print stands on, which names the start-
+    // sequence step running on a printer whose slicer inlines it
+    // (PrintStartCollector). It moves exactly when progress does, so it adds
+    // no frames.
     subscription_objects["virtual_sdcard"] =
-        json::array({"progress", "layer", "layer_count", "is_active", "pl_env_valid", "file_path"});
+        json::array({"progress", "layer", "layer_count", "is_active", "pl_env_valid", "file_path",
+                     "file_position"});
     subscription_objects["toolhead"] =
         json::array({"position", "homed_axes", "kinematics", "extruder", "max_velocity",
                      "axis_minimum", "axis_maximum"});
@@ -1249,9 +1257,13 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     // PrinterTemperatureState reads temperature, target and duty cycle. Power
     // is what distinguishes an element working flat out from one barely
     // ticking over at the same temperature, so it is worth the field.
+    // An extruder also carries pressure advance, which the tuning screens read
+    // back as the truth of what is in effect.
     static const json heater_fields = json::array({"temperature", "target", "power"});
+    static const json extruder_fields =
+        json::array({"temperature", "target", "power", "pressure_advance"});
     for (const auto& heater : heaters) {
-        subscription_objects[heater] = heater_fields;
+        subscription_objects[heater] = is_extruder_name(heater) ? extruder_fields : heater_fields;
     }
 
     // All discovered sensors. temperature_fan also lives in fans and is
@@ -1454,6 +1466,12 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     // machines have them and what their objects are called.
     for (const auto& object : helix::toolchanger_addon::required_status_objects(hw)) {
         subscription_objects[object] = nullptr;
+    }
+
+    // Scheduled layer pause: the macro whose variables hold the schedule.
+    // See include/layer_pause.h.
+    for (const auto& obj : helix::layer_pause::required_status_objects(hw)) {
+        subscription_objects[obj] = json::array({"pause_next_layer", "pause_at_layer"});
     }
 
     // Firmware retraction. PrinterCalibrationState reads the four tunable

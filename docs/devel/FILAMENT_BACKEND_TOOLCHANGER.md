@@ -84,7 +84,7 @@ ones. Numbers with gaps (0, 1, 5) still map slot by position, so slot 2 is selec
 | Command | Action |
 |---------|--------|
 | `SELECT_TOOL T={n}` | Mount the tool Klipper numbers `n` (what a slot tap sends; slot `n` is tool number `n`) |
-| `UNSELECT_TOOL` | Unmount current tool (park it) |
+| `UNSELECT_TOOL` | Park the current tool (`park_active_tool()`) |
 | `T{n}` | Tool change macro |
 
 ### Initialization states
@@ -296,24 +296,24 @@ command and the Load is refused; a lane name is never constructed for an object 
 printer lacks.
 
 Without the shim (Z-Mod older than 1.7.4, or no `zmod_afclite` object) there is no feed:
-Load stays a tool mount, `_T_IN T=<n>`.
+`head_filament_ops()` answers Load Manual, and Load refuses with that reason and sends
+nothing.
 
 With the feed present the backend answers capability questions the generic code asks:
+`head_filament_ops()` (Load Automatic for every head the shim published a lane for),
 `load_feeds_filament()` (Load is a feed, so a head that reads loaded still accepts it and
-the planner does not refuse the mounted tool or swap another in first),
-`supports_auto_heat_on_load()` (the shim heats the right head, so the UI does not
-preheat, which would heat the active head), and `supports_gate_select()`. Mounting a tool
-is then the context menu's **Select slot**, which sends `_T_IN T=<n>` like every
-other explicit tool change. Busy and printing refusals are unchanged. Other tool changers
-keep Load as a mount.
+the planner does not swap another in first) and `supports_auto_heat_on_load()` (the shim
+heats the right head, so the UI does not preheat, which would heat the active head).
+Mounting a tool is never a filament op: it is the toolhead tap and the sidebar's Mount,
+which send `_T_IN T=<n>` like every other tool change. Busy and printing refusals are
+unchanged.
 
 There is **no automatic unload** on the Creator 5: the user cuts the filament at the head
-and pulls it out. The row answers `AmsBackend::unload_is_manual()` true, and every UI
-control that means "take the filament out" (the filament panel's Unload, the AMS sidebar's
-Unload button, the runout and sensor-widget unload actions, all through
-`notify_if_unload_is_manual`) shows one info toast saying so and sends nothing, heating
-included. The context menu's **Unmount** and the tool-change flow are explicit tool
-operations: they still send `_T_OUT` and are not gated.
+and pulls it out. The row answers `AmsBackend::unload_is_manual()` true, so
+`head_filament_ops()` answers Unload Manual with that reason, and every UI control that
+means "take the filament out" disables or, through `notify_if_filament_op_unavailable()`,
+shows one info toast and sends nothing, heating included. **Park** (`park_active_tool()`)
+is a tool operation: it still sends `_T_OUT`.
 
 ### Mock
 

@@ -6,12 +6,16 @@
 #include "ui_update_queue.h"
 
 #include "ams_state.h"
+#include "app_globals.h"
 #include "i_moonraker_client.h"
 #include "i_moonraker_sub_apis.h"
+#include "pa_tuning.h"
+#include "printer_state.h"
 #include "replace_method_callback.h"
 #include "spoolman_manager.h"
 #include "spoolman_types.h"
 #include "tool_state.h"
+#include "tune_controller.h"
 
 #include <spdlog/spdlog.h>
 
@@ -104,6 +108,33 @@ void sync_external_spool(const SpoolInfo& spool, std::string log_context) {
                             });
 }
 
+void apply_saved_pressure_advance(const SpoolInfo& spool) {
+    if (!helix::tune::pressure_advance_enabled()) {
+        return; // a beta feature: off means no send at all
+    }
+    auto& state = get_printer_state();
+    const bool printing = job_holds_machine(state.print_state().get_print_lifecycle());
+    if (!helix::pa::should_auto_apply_on_activation(printing, spool.pressure_advance)) {
+        if (spool.pressure_advance) {
+            spdlog::info("[Application] Spool {} has K={:.4f} saved; not applied during a print",
+                         spool.id, *spool.pressure_advance);
+        }
+        return;
+    }
+    std::vector<helix::pa::SpoolOnExtruder> mounted;
+    auto& tools = ToolState::instance();
+    for (const auto& tool : tools.tools()) {
+        if (tool.spoolman_id > 0) {
+            mounted.push_back({tool.spoolman_id, tool.effective_heater()});
+        }
+    }
+    const std::string extruder = helix::pa::extruder_for_spool(
+        spool.id, mounted, state.temperature_state().active_extruder_name());
+    spdlog::info("[Application] Applying spool {}'s saved pressure advance {:.4f} to {}", spool.id,
+                 *spool.pressure_advance, extruder);
+    helix::tune::set_pressure_advance(get_moonraker_api(), extruder, *spool.pressure_advance);
+}
+
 void sync_from_status(ISpoolmanAPI& spoolman, bool connected, int active_spool_id) {
     if (!connected || active_spool_id <= 0) {
         spdlog::debug("[Application] No active Spoolman spool to sync "
@@ -181,6 +212,11 @@ void on_active_spool_set(ISpoolmanAPI& spoolman, const nlohmann::json& data) {
             if (!spool_opt)
                 return;
             sync_external_spool(*spool_opt, "updated via notification");
+            // Only on an activation, never on the startup sync: a reconnect
+            // must not overwrite a K the user set by hand since.
+            helix::ui::queue_update(
+                "spoolman_active_spool_sync::apply_saved_pressure_advance",
+                [spool = *spool_opt]() { apply_saved_pressure_advance(spool); });
         },
         [spool_id](const MoonrakerError& err) {
             spdlog::warn("[Application] Failed to fetch notified spool {}: {}", spool_id,

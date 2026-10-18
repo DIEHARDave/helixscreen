@@ -52,7 +52,7 @@ The one-liner above works on every supported platform, but each printer family h
 | Generic Linux - Raspberry Pi, BTT CB1/CB2/Manta, x86 | This page - see [Generic Linux Install](#generic-linux-install-raspberry-pi-btt-x86) below |
 | Creality K1 / K1C / K1 Max | [Creality K1C Setup Guide](guide/creality-k1c-setup.md) - root access plus Simple AF or Guilouz firmware |
 | Creality K2 / K2 Plus / K2 Pro | [K2 Series Install](guide/install-k2.md) - works on stock firmware, no custom firmware needed |
-| Flashforge Adventurer 5M / 5M Pro | [Adventurer 5M Install](guide/install-ad5m.md) - Forge-X or Klipper Mod, plus a ready-made firmware image |
+| Flashforge Adventurer 5M / 5M Pro | [Adventurer 5M Install](guide/install-ad5m.md) - Forge-X (recommended) or ZMOD firmware mod first |
 | FlashForge Adventurer 5X | [Adventurer 5X Install (ZMOD)](guide/install-ad5x.md) - the ZMOD firmware mod manages install and updates |
 | FlashForge Creator 5 / Creator 5 Pro | [Z-Mod wiki](https://wiki.zmod.link/C5PRO/) - Z-Mod installs and updates HelixScreen itself; on [Reforge](https://github.com/Klipper4FlashForge/firmware), HelixScreen ships with the firmware |
 | Elegoo Centauri Carbon | [Centauri Carbon Install](guide/install-cc1.md) - requires the OpenCentauri COSMOS firmware, 26.07.0 or newer |
@@ -227,6 +227,25 @@ curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- --verbose
 The full log is saved either way, to `~/printer_data/logs/helixscreen-install.log` (it shows up in Mainsail and Fluidd's log list). The previous run's log is kept as `helixscreen-install.log.1`. On printers without a `printer_data` folder, the log is in a `logs` folder next to the HelixScreen install.
 
 > **Where does it install?** The installer puts HelixScreen in your home directory when it runs as a normal user (with or without a Klipper ecosystem alongside), and in `/opt` when it runs as root. Override with `INSTALL_DIR=/custom/path/helixscreen` (the directory name must contain `helixscreen`).
+
+#### Installing from a downloaded package
+
+If you already downloaded a release from the [releases page](https://github.com/prestonbrown/helixscreen/releases), the installer installs exactly that release and does not download anything. Either name the archive:
+
+```bash
+sh install.sh helixscreen-pi-v1.1.0.tar.gz
+```
+
+(`--local helixscreen-pi-v1.1.0.tar.gz` does the same), or extract it and run the installer that comes inside it:
+
+```bash
+tar -xzf helixscreen-pi-v1.1.0.tar.gz
+./helixscreen/install.sh
+```
+
+The installer says `Installing the package next to this installer` and shows the package's version in its plan. If the package was built for a different kind of printer or computer, it stops and changes nothing. Adding `--version` or `--update` makes it download from the internet instead.
+
+A beta package (a version like `v1.1.0-beta.9`) puts a new install on the Beta update channel, so later updates stay on betas. If HelixScreen is already installed, the update channel you picked in the app is kept. Change it any time under **Settings > Updates > Update Channel**.
 
 ### Step 3: Complete the Setup Wizard
 
@@ -573,9 +592,11 @@ path: ~/helixscreen
 ```
 
 > **Important:** Do not add `install_script`, `managed_services`, or `persistent_files`
-> to this section; these options are not supported with `type: web` and Moonraker will
-> log warnings about unparsed config options. Service restart after updates is handled
-> automatically by a systemd path unit installed during setup.
+> to this section. The first two are ignored by `type: web` and Moonraker logs warnings
+> about them; `persistent_files` cannot keep your settings because the update replaces
+> the whole install folder. Your settings are kept in `printer_data/config/helixscreen/`
+> instead, and service restart after updates is handled automatically by a systemd path
+> unit installed during setup.
 
 Then restart Moonraker:
 ```bash

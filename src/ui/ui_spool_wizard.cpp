@@ -100,7 +100,10 @@ void SpoolWizardOverlay::init_subjects() {
                                   "wizard_summary_filament", subjects_);
         UI_MANAGED_SUBJECT_COLOR(summary_color_subject_, lv_color_hex(0x808080),
                                  "wizard_summary_color", subjects_);
-        UI_MANAGED_SUBJECT_INT(summary_edge_subject_, 0, "wizard_summary_edge", subjects_);
+        UI_MANAGED_SUBJECT_STRING(summary_colors_subject_, summary_colors_buf_, "",
+                                  "wizard_summary_colors", subjects_);
+        UI_MANAGED_SUBJECT_STRING(summary_finish_subject_, summary_finish_buf_, "",
+                                  "wizard_summary_finish", subjects_);
 
         // Create vendor/filament form visibility toggles
         UI_MANAGED_SUBJECT_INT(show_create_vendor_subject_, 0, "spool_wizard_show_create_vendor",
@@ -130,7 +133,8 @@ void SpoolWizardOverlay::init_subjects() {
         catalog_titles_.ensure_size(rows);
         catalog_details_.ensure_size(rows);
         catalog_colors_.ensure_size(rows);
-        catalog_edges_.ensure_size(rows);
+        catalog_multi_.ensure_size(rows);
+        catalog_finish_.ensure_size(rows);
     });
 }
 
@@ -139,7 +143,8 @@ void SpoolWizardOverlay::deinit_subjects() {
     catalog_titles_.reclaim();
     catalog_details_.reclaim();
     catalog_colors_.reclaim();
-    catalog_edges_.reclaim();
+    catalog_multi_.reclaim();
+    catalog_finish_.reclaim();
 }
 
 // ============================================================================
@@ -479,13 +484,15 @@ void SpoolWizardOverlay::enter_spool_details() {
         }
     }
 
-    // The summary swatch, edged where its colour would vanish into the card
+    // The summary swatch: the filament's colour or colours, and its finish
     uint32_t color_val = 0x808080;
     helix::parse_hex_color(selected_filament_.color_hex.c_str(), color_val);
     if (subjects_initialized_) {
         lv_subject_set_color(&summary_color_subject_, lv_color_hex(color_val));
-        lv_subject_set_int(&summary_edge_subject_,
-                           helix::ui::swatch_needs_edge_here(color_val) ? 1 : 0);
+        lv_subject_copy_string(&summary_colors_subject_,
+                               selected_filament_.multi_color_hexes.c_str());
+        const std::string finish = selected_filament_.material + " " + selected_filament_.name;
+        lv_subject_copy_string(&summary_finish_subject_, finish.c_str());
     }
 
     // Enable proceed if weight is pre-filled
@@ -1350,7 +1357,7 @@ void SpoolWizardOverlay::set_new_filament_color(const std::string& hex, const st
         lv_obj_t* swatch = lv_obj_find_by_name(search_root, "filament_color_swatch");
         if (swatch) {
             uint32_t color_val = std::strtoul(hex.c_str(), nullptr, 16);
-            lv_obj_set_style_bg_color(swatch, lv_color_hex(color_val), 0);
+            helix::ui::apply_swatch_color(swatch, color_val, "");
         }
     }
 
@@ -1389,7 +1396,9 @@ void SpoolWizardOverlay::populate_filament_list() {
         lv_obj_t* swatch = helix::ui::find_required(row, "color_swatch", get_name());
         if (swatch && !fil.color_hex.empty()) {
             uint32_t color_val = std::strtoul(fil.color_hex.c_str(), nullptr, 16);
-            helix::ui::apply_swatch_color(swatch, color_val, "");
+            helix::ui::apply_swatch_color(
+                swatch, color_val, fil.multi_color_hexes,
+                helix::ui::swatch_finish_from_variant(fil.material + " " + fil.name));
         }
 
         // Set combined material - name label
@@ -1899,7 +1908,12 @@ void SpoolWizardOverlay::apply_catalog_results(std::vector<helix::ExternalFilame
             uint32_t rgb = 0x808080;
             helix::parse_hex_color(hex.c_str(), rgb);
             catalog_colors_.set_color(i, rgb);
-            catalog_edges_.set_int(i, helix::ui::swatch_needs_edge_here(rgb) ? 1 : 0);
+            std::string multi;
+            for (const auto& h : f.color_hexes) {
+                multi += (multi.empty() ? "" : ",") + h;
+            }
+            catalog_multi_.set_string(i, multi);
+            catalog_finish_.set_string(i, f.material + " " + f.name);
         }
         lv_subject_set_int(&catalog_count_subject_, static_cast<int32_t>(catalog_results_.size()));
     }

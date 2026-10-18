@@ -255,11 +255,9 @@ void PrintPreviewController::on_viewer_loaded(lv_obj_t* viewer, void* user_data,
     // lands after the print switched publishes a list that does not
     // match the new print, and its markers stay hidden.
     {
-        std::vector<helix::gcode::ScheduledPause> pauses;
-        helix::gcode::ProgressAxis axis = helix::gcode::ProgressAxis::BytePosition;
-        if (helix::ui_gcode_viewer_get_scheduled_pauses(viewer, pauses, axis)) {
-            self->printer_state_.print_state().set_scheduled_pauses(std::move(pauses), axis,
-                                                                    self->gcode_load_filename_);
+        if (auto scan = helix::ui_gcode_viewer_get_pause_scan(viewer)) {
+            self->printer_state_.print_state().set_pause_scan(std::move(scan),
+                                                              self->gcode_load_filename_);
         }
     }
 
@@ -365,8 +363,15 @@ void PrintPreviewController::load_for_viewing(const std::string& filename) {
         return;
     }
 
+    // A .3mf started from here prints as G-code of its own; that is what renders.
+    const std::string source = helix::gcode::preview_gcode_for(
+        filename, lv_subject_get_string(printer_state_.print_state().get_print_filename_subject()));
+    if (source != filename) {
+        spdlog::debug("[{}] Previewing '{}', the G-code printing for '{}'", log_tag_, source,
+                      filename);
+    }
     fetcher_.fetch(
-        filename, [this, filename](const std::string& path) { load_file(path.c_str(), filename); },
+        source, [this, filename](const std::string& path) { load_file(path.c_str(), filename); },
         [this](helix::ui::GcodePreviewFetcher::Unavailable) { host_.show_viewer(false); });
 }
 

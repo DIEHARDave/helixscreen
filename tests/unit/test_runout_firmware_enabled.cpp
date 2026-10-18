@@ -67,8 +67,8 @@ nlohmann::json sensor_frame(const char* klipper, bool filament_detected,
     return nlohmann::json{{klipper, fields}};
 }
 
-/// RAII capture of the toast severities through the hooks the notification
-/// stubs call (tests/ui_test_utils.h).
+/// RAII capture of the toast severities through the notification hooks
+/// (tests/ui_test_utils.h).
 class ToastCapture {
   public:
     ToastCapture() {

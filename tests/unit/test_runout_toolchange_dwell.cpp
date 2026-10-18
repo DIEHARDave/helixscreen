@@ -25,9 +25,9 @@
  *      swallows the genuine runout has made the printer quieter, not better.
  *   3. Printers the dwell does not cover keep the immediate edge toast.
  *
- * Toasts are observed through the notification hooks in tests/ui_test_utils.h;
- * the production notification layer is replaced by log-only stubs in the test
- * binary, so asserting against anything else would pass vacuously.
+ * Toasts are observed through the notification hooks in tests/ui_test_utils.h,
+ * which see every notification raised whether or not a toast widget is built;
+ * the toast stack itself stays empty until ToastManager::init().
  */
 
 #include "ui_update_queue.h"

@@ -3,7 +3,7 @@
 **Settings > Printing** holds the settings that change how your printer moves, heats and handles filament, and the buttons and macros HelixScreen runs for you. The page has three sections:
 
 - **MACHINE**: Machine Limits, Motion, Retraction Settings and Enclosure
-- **FILAMENT**: Material Temperatures, Allow cold load/unload and Cool nozzle after filament ops
+- **FILAMENT**: Material Temperatures, Allow cold load/unload, Cool nozzle after filament ops, Edit filament on insert and Confirm tool changes
 - **EXTRAS**: Timelapse and Macro Buttons
 
 Looking for how the printer is *drawn* (toolhead picture, G-code preview, Z button labels, bed mesh view)? That's in [Appearance](appearance.md#printer-visuals).
@@ -40,7 +40,7 @@ Under the sliders, a **Config-defined** section shows your **Max Z Velocity** an
 
 ## Motion
 
-Jog speeds, how far each jog pad button moves, and the Bed tab's Z clearance. See [Motion](../motion.md#motion-settings) for what each one does.
+Jog speeds, how far each jog pad button moves, the Bed tab's Z clearance, and whether Save Z-Offset buttons appear. See [Motion](../motion.md#motion-settings) for what each one does.
 
 ---
 
@@ -105,7 +105,7 @@ The file has two lists: `types` for materials (PLA, PETG and so on) and `filamen
 
 - Fields: `nozzle_min`, `nozzle_max`, `bed`, `chamber` (0 means no chamber heat), `preheat_macro`, `macro_handles_heating`, `dry_temp`, `dry_time` (minutes), `density` (g/cm³), `category` and `compat_group`.
 - Write numbers as plain numbers: `205`, not `"205"`. A field holding text or `null` is ignored (with a warning in the log) and the built-in value stays.
-- A new material must set `nozzle_min` and `nozzle_max`, with `nozzle_max` at least `nozzle_min`. One without a usable nozzle range is skipped, with a warning in the log. Set `bed` too; anything else you leave out is 0. Its `compat_group` is its own name unless you set one, so endless spool never swaps it for a different material. Set `compat_group` to an existing group (for example `"PLA"`) only if it really can stand in for that group.
+- A new material must set `nozzle_min` and `nozzle_max`, with `nozzle_max` at least `nozzle_min`. One without a usable nozzle range is skipped, with a warning in the log. Set `bed` too; anything else you leave out is 0. Its `compat_group` is its own name unless you set one, so Endless Spool never swaps it for a different material. Set `compat_group` to an existing group (for example `"PLA"`) only if it really can stand in for that group.
 - The built-in list is the `types` section of `assets/filaments.json` in the HelixScreen install folder. Read it for names and defaults, but don't edit it: updates replace it.
 - **Reset to Default** on the Material Temperatures screen removes your temperature and macro changes for a built-in material. A material you added has no default, so the button is hidden for it.
 
@@ -151,6 +151,28 @@ A filament change heats the nozzle to printing temperature. Left alone, it would
 **Turn this off if your filament system already does it.** [AFC](../filament.md) has its own cool-down after loading, and other filament systems are adding the same. Two timers controlling one heater only confuses things, so keep one and switch the other off.
 
 The setting is per printer, so an AFC printer can turn it off while your other printers keep it. To change the two-minute wait, see [`cooldown_delay_seconds`](../../CONFIGURATION.md#cooldown_delay_seconds).
+
+---
+
+## Confirm tool changes
+
+| Setting | What happens |
+|---------|--------------|
+| **On** (default) | Tapping another tool asks "Switch to Tool 2 (T1)?" before the printer moves |
+| **Off** | Tapping another tool switches to it straight away |
+
+> Only shown on printers with more than one tool.
+
+On a printer with more than one toolhead, three places switch tools with a tap: the tool switcher on the home screen, a toolhead on your filament system's screen, and the tool list on the Filament screen. This setting decides whether those taps ask first. Where a hub feeds several lanes into one toolhead, selecting that toolhead keeps the lane already loaded in it.
+
+Some things happen whatever the switch says:
+
+- A paused print always asks, because the toolhead moves while your part is still on the bed. Printers whose filament change homes the toolhead itself (such as the AD5X) refuse a tool change while paused instead.
+- While a print is running or starting, or while spools are on the bed, the change is refused with a message.
+- While your filament system is waiting for you to deal with a problem, the change is refused with "The filament system needs attention". Sort it out on the filament system's screen, then try again.
+- While your filament system is busy loading or unloading, the tap does nothing.
+
+Tapping a filament tube or spool on the filament system's screen never switches tools: it opens the slot menu. So does tapping the toolhead that is already mounted.
 
 ---
 

@@ -423,3 +423,33 @@ TEST_CASE("PrinterTemperatureState: rediscovery frees removed and adds new extru
 
     state.deinit_subjects();
 }
+
+TEST_CASE("PrinterTemperatureState: pressure advance is tracked per extruder and mirrored "
+          "for the active one",
+          "[core][temperature][pa_tune]") {
+    lv_init_safe();
+    PrinterTemperatureState state;
+    state.init_subjects(false);
+    state.init_extruders({"extruder", "extruder1"});
+
+    lv_subject_t* active = state.get_active_extruder_pressure_advance_subject();
+    CHECK(lv_subject_get_int(active) == -1);
+    CHECK_FALSE(state.extruder_pressure_advance("extruder"));
+
+    state.update_from_status({{"extruder", {{"pressure_advance", 0.042}, {"smooth_time", 0.04}}},
+                              {"extruder1", {{"pressure_advance", 0.5}}}});
+    CHECK(lv_subject_get_int(active) == 420);
+    REQUIRE(state.extruder_pressure_advance("extruder1"));
+    CHECK(*state.extruder_pressure_advance("extruder1") == Catch::Approx(0.5f));
+    CHECK_FALSE(state.extruder_pressure_advance("extruder7"));
+
+    // A frame without the field leaves the value alone.
+    state.update_from_status({{"extruder", {{"temperature", 200.0}}}});
+    CHECK(lv_subject_get_int(active) == 420);
+
+    // Switching tools shows the new tool's K.
+    state.set_active_extruder("extruder1");
+    CHECK(lv_subject_get_int(active) == 5000);
+
+    state.deinit_subjects();
+}

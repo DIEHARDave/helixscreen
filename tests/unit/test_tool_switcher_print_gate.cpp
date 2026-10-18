@@ -25,8 +25,11 @@
  * backend relaxation invisible (see test_ams_paused_filament_ops.cpp).
  */
 
+#include "ui_modal.h"
+
 #include "../lvgl_test_fixture.h"
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/modal_answer.h"
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/tool_switcher_rig.h"
 #include "../test_helpers/tool_switcher_test_access.h"
@@ -36,6 +39,7 @@
 #include "ams_state.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
+#include "safety_settings_manager.h"
 #include "tool_state.h"
 
 #include <memory>
@@ -320,7 +324,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
     REQUIRE(list != nullptr);
     REQUIRE(lv_obj_get_child_count(list) == 3);
-    lv_obj_t* head_row = lv_obj_find_by_name(lv_obj_get_child(list, 1), "tool_btn");
+    lv_obj_t* head_row = lv_obj_get_child(list, 1);
     lv_obj_t* park_row = lv_obj_find_by_name(lv_obj_get_parent(list), "tool_park_btn");
     REQUIRE(head_row != nullptr);
     REQUIRE(park_row != nullptr);
@@ -343,4 +347,57 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         CHECK(rig.warnings[0].find("Cannot park while a print is active") != std::string::npos);
     }
     CHECK_FALSE(h.widget().has_overlay_open());
+}
+
+// ============================================================================
+// Confirm tool changes
+// ============================================================================
+
+namespace {
+
+struct ToolSwitcherConfirmFixture : public LVGLUITestFixture {
+    ToolSwitcherConfirmFixture() {
+        helix::test::set_wire_state(state(), helix::PrintJobState::STANDBY);
+    }
+    ToolChangerRig rig{3};
+};
+
+} // namespace
+
+TEST_CASE_METHOD(ToolSwitcherConfirmFixture, "with Confirm tool changes on, a head tap asks first",
+                 "[ams][tool-switcher][tool-change][confirm]") {
+    SafetySettingsManager::instance().set_tool_change_require_confirmation(true);
+    ToolSwitcherWidget widget(state());
+    ToolSwitcherTestAccess::select_tool(widget, 1);
+
+    CHECK(rig.backend->change_tool_calls == 0);
+    REQUIRE(ModalStack::instance().top_dialog() != nullptr);
+
+    SECTION("confirming changes tool") {
+        helix::test::answer_top_modal("btn_primary");
+        CHECK(rig.backend->change_tool_calls == 1);
+        CHECK(rig.backend->last_tool == 1);
+    }
+    SECTION("cancelling changes nothing") {
+        helix::test::answer_top_modal("btn_secondary");
+        CHECK(rig.backend->change_tool_calls == 0);
+    }
+}
+
+TEST_CASE_METHOD(ToolSwitcherConfirmFixture,
+                 "a paused print asks once whether Confirm tool changes is on or off",
+                 "[ams][tool-switcher][tool-change][confirm][paused]") {
+    const bool confirm = GENERATE(false, true);
+    CAPTURE(confirm);
+    SafetySettingsManager::instance().set_tool_change_require_confirmation(confirm);
+    helix::test::set_wire_state(state(), helix::PrintJobState::PAUSED);
+    rig.backend->self_homes = false;
+
+    ToolSwitcherWidget widget(state());
+    ToolSwitcherTestAccess::select_tool(widget, 1);
+    CHECK(rig.backend->change_tool_calls == 0);
+    helix::test::answer_top_modal("btn_primary");
+    CHECK(rig.backend->change_tool_calls == 1);
+    // One dialog, not the paused one stacked over the plain one.
+    CHECK(ModalStack::instance().stack_empty());
 }

@@ -4,8 +4,6 @@
 
 The Home Panel is your printer dashboard — a fully customizable grid of widgets spread across multiple pages, like home screens on a phone. You choose what appears, where it goes, how big each widget is, and can rearrange everything with drag-and-drop.
 
-<!-- Screenshot: default home panel layout, idle printer -->
-
 ---
 
 ## The Widget Grid
@@ -21,7 +19,14 @@ Your dashboard is built from **widgets** — individual cards that display print
 
 Most widgets don't draw their own box. Instead, neighbouring widgets sit on one **shared card background** that flows around the whole group, so a cluster of small readouts reads as a single panel rather than a row of separate tiles. A few widgets bring their own surface and stay visually distinct — Print Status, Camera, Nozzle Temperatures and the AMS spool view — and Printer Image and Tips deliberately float on the bare background. Move a widget and the card reshapes itself around wherever it lands.
 
-When you first launch HelixScreen, a default layout is created with your printer image, print status, temperatures, and other commonly used widgets, arranged to suit your screen. From there, you can customize everything.
+When you first launch HelixScreen, a default layout is created with your printer image, print status, temperatures, and other commonly used widgets, arranged to suit your screen and what your printer can do. Every screen size gets one, from the small 320x240 panels up to large desktop windows. From there, you can customize everything.
+
+A few things about the default layout that are on purpose:
+
+- **Notifications always sit in a corner** of the screen, so the bell is in the same place on every printer.
+- **Only hardware you have is shown.** The chamber temperature tile, for instance, appears only on enclosed printers. If your printer has no chamber, or no filament box, that spot is left empty rather than filled with a tile that does nothing.
+- **Empty cells are intentional.** The default never pads a layout with filler tiles. A gap means the printer has nothing for that cell, and you can put any widget from the Widget Catalog there.
+- **Room to breathe.** The printer image has a margin around it, and from 1024x600 up the space between widgets is wider too.
 
 ### On ultrawide and portrait screens
 
@@ -35,7 +40,7 @@ same square cell, so an unusually shaped screen simply gets an unusually shaped 
 Ultrawide and portrait screens each start from **their own default layout**, not a stretched
 landscape one. **Tips** is part of the portrait layout, running full width above the print
 status card; it is left out only on the shortest portrait panels, where a band of rotating
-hints costs more of the screen than it earns. Any widget left out of a default layout is
+hints costs more of the screen than it earns. The ultrawide default is two bands: the printer image and the readouts on top, with Print Status and the temperature graph sharing the bottom. Any widget left out of a default layout is
 still in the Widget Catalog if you want it.
 
 Buttons, input fields, and headers are sized from the screen's *height* on portrait panels, so a tall screen gets taller, easier-to-hit controls rather than the cramped ones its narrow width would otherwise imply.
@@ -162,7 +167,7 @@ Almost every widget is resizable. **Print Controls** keeps its fixed 2x1 size an
    - Resizing stops if it would overlap another widget
 6. **Release** to apply the new size — the widget rebuilds at its new dimensions
 
-Some widgets adapt their content based on size. For example, the Digital Clock shows just the time at 1x1, adds the date at 2x1, and shows uptime too at 2x2 or larger.
+Some widgets adapt their content based on size. For example, the Digital Clock shows just the time when the date does not fit, adds the date as soon as it does (1.5x1 is usually enough), and shows uptime too at 2x2 or larger.
 
 ### Snapping and half cells
 
@@ -170,15 +175,15 @@ Widgets place and resize in half-cell steps. What varies is which axes a widget 
 
 | Widget | What it can do |
 |--------|----------------|
-| **Print Status**, **Camera**, **Printer Image**, **Temperature Graph**, **Tips**, **Job Queue**, **Print Stats**, **Speed / Flow**, **Multi-Filament System Status**, **Active Spool**, **Nozzle Temperatures**, **Temperatures**, **Fan Speeds**, **Tool Switcher**, **Clog Detection**, **Digital Clock**, **Z-Offset**, **Filament Dryer**, **Host Health**, **Toolhead**, **Bed Mesh**, **Exclude Objects** | Move **and resize** in half-cell steps on **both** axes - so 1.5x1 and 2x2.5 are real sizes |
+| **Print Status**, **Camera**, **Printer Image**, **Temperature Graph**, **Tips**, **Job Queue**, **Print Stats**, **Printer Message**, **Speed / Flow**, **Multi-Filament System Status**, **Active Spool**, **Nozzle Temperatures**, **Temperatures**, **Fan Speeds**, **Tool Switcher**, **Clog Detection**, **Digital Clock**, **Z-Offset**, **Filament Dryer**, **Host Health**, **Maintenance**, **Toolhead**, **Bed Mesh**, **Exclude Objects** | Move **and resize** in half-cell steps on **both** axes - so 1.5x1 and 2x2.5 are real sizes |
 | **Preheat**, **Macro Button** | Half-cell steps **across** only - useful when a long macro name is getting cut off |
 | **Network**, **LED Light**, **LED Controls**, **Filament Sensor**, **Notifications**, **G-code Console**, **Macros**, **Motion**, **Bypass**, **Fan**, **Temperature Sensors**, the single **Nozzle**, **Bed** and **Chamber** temperature tiles, **Shutdown/Reboot**, **Lock Screen**, **Firmware Restart** | Move **and resize** in half-cell steps on both axes. These are the centred-icon tiles: they start at half a cell wide by one cell tall and grow as large as you like, stepping their icon and text up to whatever the new size carries |
 | **Power** | Resizes in half-cell steps like the tiles above, but never below one whole cell - its round device badge does not shrink |
 | **Humidity**, **Width Sensor** | Snap to whole cells in both directions (1x1 up to 2x2) |
 
-On the smallest panels (about 480 pixels wide or less), half-cell steps are not offered at all: every widget snaps to whole cells there, because half a cell cannot carry an icon and a reading side by side.
+On the smallest panels (480x272 and 480x320), widgets that show a reading snap to whole cells, because half a cell cannot carry an icon and a reading side by side. Icon-only tiles such as LED Light, Notifications, Lock Screen and Firmware Restart still go down to half a cell; they drop their caption to fit.
 
-The floor across the grid: no widget goes below half a cell wide by one cell tall, and the height floor is one whole cell for every widget. Some of the bigger widgets - **Preheat**, **Print Status**, **Print Controls**, **Job Queue**, **Clog Detection** - have a two-cell minimum width.
+The floor across the grid: no widget goes below half a cell wide by one cell tall, and the height floor is one whole cell for every widget. Some of the bigger widgets - **Preheat**, **Print Status**, **Print Controls**, **Clog Detection** - have a two-cell minimum width.
 
 You don't have to remember which is which. The dot grid tells you: **whole-cell dots are always drawn, and the smaller, fainter half-cell dots in between appear only while a widget that can use them is selected** - and only on the axis it can use them on. If you see the extra dots, you can snap to them. If you don't, the widget you have selected snaps to whole cells.
 
@@ -264,9 +269,16 @@ This is a full reset, so be sure before you confirm it:
 - Widget positions, sizes, and the set of enabled widgets all go back to defaults
 - **Per-widget settings go too** — display modes, the fan each Fan widget watches, the macro on each Macro Button. The layout is rebuilt from scratch, not adjusted
 
-The default layout is authored per screen shape rather than being one arrangement stretched to fit, so what you get depends on your panel. On a typical 800x480 landscape screen: **Printer Image** in the top-left, a block of small readouts (nozzle, bed, LED, notifications, fan, filament) to its right, the **Temperature Graph** down the right side, and **Print Status** as a wide band across the bottom. Bigger screens get the same shape with more room, and add **Tips** as a footer band. Portrait and ultrawide screens have their own layouts. Anything not placed by the default layout auto-fills the leftover cells.
+The default layout is made for your screen and your printer rather than being one arrangement stretched to fit, so what you get depends on both. On a typical 800x480 landscape screen: **Printer Image** in the top-left, a row of nozzle and bed temperatures, fans and **Notifications** (in the corner) to its right, your filament system or humidity readout below that, the **Temperature Graph** down the right side, and **Print Status** as a wide band across the bottom. Bigger screens get the same shape with more room, and add **Tips** as a footer band. Portrait and ultrawide screens have their own layouts, and so do the very small ones: the 320x240 panel on the Creality Hi drops the printer image to make room for a taller Print Status card. Widgets your printer has no hardware for are left out, and cells nothing fits are left empty. Anything the default layout does not place is still in the Widget Catalog.
 
-### Exiting Edit Mode
+### Copying the Layout From a Printer's Own Screen
+
+If a printer runs HelixScreen on its own display, that screen shares its home layout with the other screens that connect to it. When you add such a printer on another screen (a phone, a desktop, a second panel), its home screen starts as a copy of the printer's own layout instead of the default one, and a message tells you so. Your widget settings come along: macros, LED, fan, sensors and camera choices. Widgets that only make sense for one screen (Network, Clock, Lock Screen, Tips, Notifications and Shutdown/Reboot) are not copied, and the screen keeps its own. Screens differ in size, so tiles are fitted to your grid and may land a little differently.
+
+This only happens once, for a printer whose home screen you have never arranged on that screen. After that, the layout is yours: changes on either screen never carry over to the other, and **Reset** gives you the default layout, not the printer's.
+
+To copy it again later, open the Widget Catalog and tap **Copy layout from printer**, then confirm. This replaces the current home layout on that screen, whether or not you have changed it. The button does not appear on the printer's own screen.
+
 
 - Tap the **Done** button in the navigation bar
 - The other navigation buttons are disabled while you edit. If something else takes you off the Home panel, Edit Mode exits automatically and saves your changes
@@ -283,11 +295,12 @@ These are the same 5 groups the Widget Catalog uses on the device.
 
 | Widget | Description | Default | Min | Max | Resizable | Hardware Required |
 |--------|-------------|---------|-----|-----|-----------|-------------------|
-| **Printer Image** | Your printer's photo, with live chips for the heaters, part fan and light while they are in use (see [Status Chips on the Printer Image](#status-chips-on-the-printer-image)). Tap a chip for that part's controls, or the picture itself to open the Printer Manager overlay where you can change the name, image, and see hardware info. | 2x2 | 1x1 | 4x3 | Yes | — |
+| **Printer Image** | Your printer's photo, with live chips for the heaters, part fan and light while they are in use (see [Status Chips on the Printer Image](#status-chips-on-the-printer-image)). Tap a chip for that part's controls (the light bulb switches the light), or the picture itself to open the Printer Manager overlay where you can change the name, image, and see hardware info. | 2x2 | 1x1 | 4x3 | Yes | — |
 | **Print Status** | Tracks the print job in all three of its states - idle (pick a file), preparing (pre-print steps with a progress bar), and printing (filename, percentage, ETA, elapsed time). Pauses scheduled in the G-code (M600, PAUSE and friends) show as ticks on the progress bar and arc, so you can see a filament change coming. Tap opens the full Print Status overlay whenever a job is preparing or printing, or the file browser when idle. | 2x2 | 2x1 | Full width x3 | Yes | — |
 | **Print Controls** | Pause, resume, and stop buttons for the running print, right on the dashboard. | 2x1 | 2x1 | 2x1 | No | — |
-| **Print Stats** | Print history statistics — total prints, success rate, and total print time. Tap to open the full print history overlay. | 2x2 | 2x1 | 3x2 | Yes | — |
-| **Job Queue** | Shows the number of queued print jobs. Tap to open the Job Queue Manager modal (see [Job Queue Manager](#job-queue-manager) below). | 2x2 | 2x2 | 4x3 | Yes | — |
+| **Print Stats** | The hours you have printed this week. Wider and taller sizes add a bar for each of the last seven days (with the weekday's initial under each at the largest size) and a line of lifetime totals: prints, hours and filament in meters. At its smallest size it is one line, the hours and "this week" (shortened to "/wk" on the smallest screens). Tap to open the full print history overlay. | 2x2 | 1x0.5 | 3x2 | Yes | — |
+| **Printer Message** | The message your printer's macros show with `M117` or `SET_DISPLAY_TEXT` ("Heating bed...", "Homing..."), the line a stock printer LCD keeps on screen. It shows whether or not a print is running, and says "No message" when there is none. At half a row tall it is one line that scrolls when the message is too long; taller sizes wrap it. Display only. | 2x1 | 1x0.5 | Full width x3 | Yes | — |
+| **Job Queue** | The next queued job and how many wait behind it, with a one-tap start when the printer is free. Tap anywhere else on the widget to open the Job Queue Manager modal (see [Job Queue widget](#job-queue-widget) and [Job Queue Manager](#job-queue-manager) below). | 2x2 | 1x0.5 | 4x3 | Yes | Moonraker `[job_queue]` |
 | **Speed / Flow** | The speed and flow override percentages, each shown in the warning color whenever it is not 100%. During a print it adds the live toolhead speed (mm/s) and volumetric flow (mm³/s) wherever there is room for them. At its smallest size, 0.5x0.5, it shows speed alone. Below 1x1 there is room for only one number per reading: if you chose mm/s in the Print Tune overlay (see [Percent or mm/s](printing.md#print-tune-overlay)), the live readings take the percentages' place there. At its largest sizes during a print, **-** and **+** buttons change each value by 5%, and a long press on a value sets it back to 100%. Tap anywhere else on the widget to open the Print Tune overlay. | 2x1 | 0.5x0.5 | 4x2 | Yes | — |
 | **Exclude Objects** | During a print with two or more objects, how many are still printing and how many you have skipped. From 0.5x1 up it draws a small map of the objects: the one printing now in the accent color, skipped ones faded and hatched. Wider sizes name the object printing now, and 2x2 adds a **Skip objects...** button. The widget never skips anything itself: a tap opens the full objects map on the Print Status screen, where you confirm. See [Exclude Objects Widget](#exclude-objects-widget) below. | 2x2 | 0.5x0.5 | 4x3 | Yes | Klipper `[exclude_object]` |
 
@@ -321,7 +334,7 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Clog Detection** | Filament clog and flow health monitor. Shows the FlowGuard bar. Tap to open the Buffer Status detail modal. Configurable via the gear icon in Edit Mode. See [Clog Detection Widget](#clog-detection-widget) below. | 2x1 | 2x1 | 4x2 | Yes | AMS/MMU detected |
 | **Filament Buffer** | Where the filament buffer between your feeder and extruder sits against its target: an upright slider (loose up, tight down) beside a big colored reading; an OpenAMS pressure sensor is a fill gauge instead, rising from the bottom with a tick at its target. At 2x1 it adds the target, the last minute as a trace, and says whether the filament is running tight, loose or balanced (OpenAMS: at, above or below target). Tap for Buffer Status. | 1x1 | 1x1 | 2x1 | Yes | A filament pressure sensor or sync feedback |
 | **Bypass** | One-tap toggle for external-spool bypass. Shows the bypass state (icon changes, and the external spool's color and material while engaged) - tap to toggle. Same guards as the AMS panel's bypass toggle: if filament is loaded from a lane it unloads first, and while a job holds the printer (preparing, printing, or paused) the tap is refused with a "Bypass cannot be changed while printing" warning. | 1x1 | 0.5x1 | Full grid | Yes | Filament system with bypass |
-| **Humidity** | Enclosure humidity reading from a connected sensor. | 1x1 | 1x1 | 2x2 | Yes | Humidity sensor |
+| **Humidity** | Enclosure humidity reading from a connected sensor, beside a water drop filled to the same level (an empty outline while the sensor has no reading). | 1x1 | 1x1 | 2x2 | Yes | Humidity sensor |
 | **Filament Dryer** | Drying progress for every dryer your printer has: the heated filament boxes, an add-on chamber heater, and drying on the heated bed. Idle, it shows the humidity; while drying, the time left, usually inside a progress ring. See [Filament Dryer Widget](#filament-dryer-widget) below. Tap to open the dryer's own screen. It never starts or stops a cycle. | 1x1 | 0.5x0.5 | 3x4 | Yes | A filament dryer |
 
 ### Controls
@@ -346,11 +359,12 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Network** | Current network connection status - WiFi signal strength (with bar indicator) or Ethernet. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **Host Health** | How hard the computer running Klipper and your printer's controller boards are working: CPU load and temperature, memory, and the busiest board. It turns amber or red when something needs attention (see [Host Health Widget](#host-health-widget) below). Tap to open the Performance screen. | 2x1 | 0.5x0.5 | 4x4 | Yes | Performance readings |
 | **Notifications** | Shows pending notification count with a severity badge (info/warning/error). Tap to open the notification history overlay. | 1x1 | 0.5x1 | Full grid | Yes | — |
-| **Digital Clock** | Current time and date. Respects your 12/24-hour preference from display settings. Content adapts to size: time only at 1x1, time + date at 2x1, time + date + system uptime at 2x2+. Resizes in half-cell steps — see [Snapping and half cells](#snapping-and-half-cells). | 2x1 | 1x1 | 3x3 | Yes | — |
+| **Digital Clock** | Current time and date. Respects your 12/24-hour preference from display settings. Content adapts to size: time only when the date does not fit, time + date once it does (about 1.5x1), time + date + system uptime at 2x2+. Resizes in half-cell steps — see [Snapping and half cells](#snapping-and-half-cells). | 2x1 | 1x1 | 3x3 | Yes | — |
+| **Maintenance** | Service hour meters for the HEPA filter, the nozzle and the linear rails. Hours count up while the printer is printing (pauses do not count) and are kept per printer. The ring shows the part closest to its service interval, turning amber at three quarters of the interval and red once it is reached, when a notice also pops up once. Wider sizes list every part with its hours left; at 2x2 each part gets a bar, and the total print time shows where it fits. Tap to open the Maintenance screen: reset a part after servicing it (it asks first), and set each part's interval, where **Off** hides that part. If you used the Maintenance Meters example plugin, its hours carry over the first time. | 1x1 | 0.5x0.5 | 4x2 | Yes | — |
 | **Tips** | Rotating helpful tips about 3D printing and HelixScreen features. Tap any tip to see the full article. Tips rotate automatically. | 4x2 | 2x1 | Full width x2 | Horizontal only | — |
-| **Shutdown/Reboot** | Shutdown or reboot your printer's host system. Shows a confirmation dialog before acting. | 1x1 | 0.5x1 | Full grid | Yes | — |
+| **Shutdown/Reboot** | Shutdown or reboot your printer's host system. Shows a confirmation dialog before acting. When the screen runs on a different machine than the printer, the dialog lets you pick Screen, Printer or Both, and starts on Screen. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **Firmware Restart** | Restart the Klipper firmware. Useful when Klipper enters SHUTDOWN state. This widget automatically appears during firmware errors even if disabled. | 1x1 | 0.5x1 | Full grid | Yes | — |
-| **Lock Screen** | Locks the screen immediately. Set a PIN in Settings > System > Security first, otherwise there is nothing to unlock with. | 1x1 | 0.5x1 | Full grid | Yes | — |
+| **Lock Screen** | Locks the screen immediately. With no PIN set the lock icon is greyed out and tapping it opens Settings > System > Security so you can set one. | 1x1 | 0.5x1 | Full grid | Yes | — |
 
 #### Shutdown/Reboot Widget
 
@@ -422,7 +436,8 @@ While **not** in Edit Mode, widgets respond to taps and other gestures:
 | Print Status | Opens Print Status overlay (preparing or printing) or File Browser (idle) |
 | Print Controls | Pauses, resumes, or stops the print — one button each |
 | Print Stats | Opens print history overlay |
-| Job Queue | Opens Job Queue Manager modal |
+| Printer Message | — (display only) |
+| Job Queue | Opens Job Queue Manager modal; the **Start next** button starts the next job instead |
 | Speed / Flow | Opens the Print Tune overlay. At its largest sizes during a print, the **-** and **+** buttons change speed or flow by 5% without opening anything, and a long press on a value sets it back to 100% |
 | Z-Offset | Opens the Print Tune overlay. At 2x2 and larger, the arrow buttons nudge the offset and the step button cycles the step size. From 2x1 up, **Save** appears while there is an unsaved offset |
 | Exclude Objects | Opens the Print Status screen with its objects map. Does nothing when there is no print or only one object |
@@ -458,7 +473,7 @@ While **not** in Edit Mode, widgets respond to taps and other gestures:
 | Motion | Opens the Motion panel overlay |
 | Toolhead | Opens the Motion panel. The **Home All** button homes the printer instead |
 | Bed Mesh | Opens the Bed Mesh screen. With no mesh loaded and nothing printing, 2x2 and larger offers **Calibrate** and **Load profile** |
-| Tool Switcher | Switches to the tapped tool; tapping the mounted tool, or the single large button on small widgets, opens the tool picker. **Park** docks the mounted tool |
+| Tool Switcher | Switches to the tapped tool, asking first unless [Confirm tool changes](settings/printing.md#confirm-tool-changes) is off; tapping the mounted tool, or the single large button on small widgets, opens the tool picker. **Park** docks the mounted tool |
 | Power | Toggles the bound power device |
 | Shutdown/Reboot | Shows confirmation, then shuts down/reboots |
 | Firmware Restart | Restarts Klipper firmware |
@@ -496,6 +511,23 @@ Two things it does not change:
   time, leave confirmation on.
 
 ---
+
+## Job Queue widget
+
+The **Job Queue** widget is available when Moonraker has its `[job_queue]` component. What it shows depends on the queue and the printer:
+
+- **Printer free, jobs waiting** - the name of the next job and a **Bed clear · Start next** button. From the Wide size up it also shows the job's picture and its time estimate; larger sizes list the jobs behind it. At small sizes the button is shortened to **Start next**, and at the smallest to an icon.
+- **A print running** - how many jobs are queued and **Next:** with the first one's name. "Starts automatically" appears only while a print runs and Moonraker's `automatic_transition` is on in `moonraker.conf`; otherwise you start each job yourself.
+- **Queue starting a job** - "Starting" and the job's name while Moonraker loads it, and from the moment you tap **Start next** while the widget checks the job. The button is gone until the start ends.
+- **Empty queue** - a short note that nothing is queued.
+
+**Start next** starts the job in one tap, with the pre-print options it was queued with, or the defaults when it has none. The job leaves the queue only once the print has started. The same checks run as when you press Print in the file view: a material or spool warning asks you first, and a printer that is busy says so and keeps the job queued.
+
+Two cases open the job in the file view instead, with a notice saying why: a job the widget cannot check (for example a file it cannot read), and a job where a tool has no loaded slot, where you pick **Map Filament…**. In the file view, the Print button reads **Checking file…** while the scan it needs is still running.
+
+Tap anywhere else on the widget to open the [Job Queue Manager](#job-queue-manager).
+
+![Job Queue widget at 2x1 - the next job, its time estimate, how many wait behind it, and the Bed clear · Start next button](../../images/user/home-job-queue-tile.png)
 
 ## Job Queue Manager
 
@@ -676,9 +708,14 @@ The widget updates automatically when the active tool changes, whether you switc
 
 Tap a tool that is not mounted to switch to it. Tapping the tool that is already mounted opens the tool picker instead.
 
-- **When idle**, the tool change happens right away.
-- **When paused**, a confirmation dialog appears first, because changing tools mid-print can cause problems. Printers whose filament change homes the toolhead itself (such as the AD5X) refuse tool changes while paused as well.
+- **When idle**, HelixScreen asks "Switch to Tool 2 (T1)?" first. Turn off [Confirm tool changes](settings/printing.md#confirm-tool-changes) in Settings > Printing to switch right away.
+- **When paused**, a confirmation dialog always appears first, because changing tools mid-print can cause problems. Printers whose filament change homes the toolhead itself (such as the AD5X) refuse tool changes while paused as well.
 - **While printing or preparing to print**, and while spools are [drying on the bed](temperature.md#drying-filament-on-the-bed), switching is unavailable: the tools are greyed out, and a tap shows a warning instead of changing tools.
+- **While your filament system needs attention** (it has stopped and is waiting for you), a tap shows a warning instead. While it is busy loading or unloading, a tap does nothing.
+
+Where a hub feeds several lanes into one toolhead, tapping that head picks up the lane already loaded in it, so its filament stays where it is (#1811). With no lane loaded, or more than one claiming the head, the head's lowest lane is used.
+
+A toolhead on your [filament system's screen](filament.md#switching-toolheads-from-the-filament-path) and the tool list on the Filament screen switch tools the same way.
 
 ### Parking the Tool
 
@@ -726,6 +763,7 @@ The Z-Offset widget shows the live Z-offset, the same number as the Z-Offset row
 - The caption reads "mm Z-offset" until you change it. After that it shows how far you have moved since the last save, for example "+0.020 unsaved", and the number turns the warning color.
 - **Save** writes the offset to your printer's config. Klipper restarts when it does, and you are asked to confirm first. It is greyed out while a print is running.
 - On a tool changer the number is the active tool's own offset. Printers whose firmware keeps the offset itself, such as the FlashForge AD5M and AD5X on ZMOD, have nothing to save, so **Save** never appears.
+- **Save** also stays hidden when **Save Z-Offset Buttons** is off in [Settings > Motion](motion.md#motion-settings), which it is by default on tool changers.
 
 **Tap** anywhere except the buttons to open the Print Tune overlay.
 
@@ -739,11 +777,13 @@ The Filament Dryer widget collects every way your printer can dry filament into 
 
 | Size | Idle | While drying |
 |------|------|--------------|
-| 0.5x0.5 | Humidity, or a dryer icon when no sensor reports it | Time left, with a progress ring when the progress is known |
+| 0.5x0.5 | Humidity, or an empty drop when no sensor reports it | Time left, with a progress ring when the progress is known |
 | 1x0.5, 0.5x1 | Humidity | Time left and temperature |
 | 1x1 | Humidity and "Not drying" | Time left and temperature, usually inside a progress ring |
 | 2x1 | Humidity and "Not drying" | The ring beside the dryer's name, time left, temperature, humidity and the clock time it finishes |
 | 2x2 and larger | One row per dryer, with its humidity and temperature | The same rows, each with time left and a progress bar |
+
+Below 2x2, the idle humidity sits beside a drop filled to the wettest box's reading, as large as the tile leaves room for. It is the same drop the Humidity widget uses; with no humidity sensor the drop is an empty outline. While drying, the 0.5x1 size shows a heater icon over the time instead.
 
 When two or more dryers run at once, the smaller sizes show how many are drying and the times left instead of a ring. A chamber heater's cycle only gets a ring if HelixScreen saw it start, because the heater reports minutes left but not how long the cycle was.
 
@@ -1088,9 +1128,9 @@ While the printer is working, small chips on the printer image show what each pa
 
 - **Nozzle, bed and chamber** - a temperature chip appears while the heater has a target, and stays, greyed, until a heater you turned off has cooled below 50°C. The chamber chip appears only on printers with a chamber heater.
 - **Part fan** - shows its speed while it is running.
-- **Light** - shows while your chamber light is on.
+- **Light** - a small light bulb at the top of the picture, shown whenever your printer has a light HelixScreen can switch. It is lit while the light is on and dark while it is off.
 
-Tap a heater chip for its temperature graph, the fan chip for the fan controls, or the light chip for the chamber light's page in the LEDs overlay.
+Tap a heater chip for its temperature graph or the fan chip for the fan controls. **Tap the light bulb to switch the light on or off.** Press and hold it to open the light's page in the LEDs overlay instead.
 
 On the most common printers the shipped pictures know where each part is, so each chip points at its part: beside the picture with a line to it on a wide tile, or on top of it on a small one. On other pictures, including your own photos, the chips sit along the edge of the picture until you tag its parts.
 
@@ -1157,19 +1197,16 @@ A row of chips shows detected hardware capabilities: Probe, Bed Mesh, Heated Bed
 
 ### Managing Multiple Printers
 
-> Requires [beta features](beta-features.md) to be enabled and at least two printers configured.
+The Printer Manager overlay always shows a **Manage Printers** button in its top bar (a printer icon on a portrait screen). Tap it to open the printer management screen (same as Settings > Connection > Printers), where you add, switch and remove printers.
 
-When you have multiple printers configured, the Printer Manager overlay shows a **Manage Printers** button at the bottom. Tap it to open the printer management screen (same as Settings > Connection > Printers).
-
-You can also switch printers directly from the **navigation bar**. When multiple printers are configured, a badge with your printer's name appears in the nav bar. Tap it to see a quick-switch menu listing all your printers — tap any printer to switch instantly.
+You can also switch printers directly from the **navigation bar**. Turn on **Show Printer Switcher** on the printer management screen and a badge with your printer's name appears in the nav bar. Tap it to see a quick-switch menu listing all your printers — tap any printer to switch instantly.
 
 #### Adding Your First Extra Printer
 
-1. Enable [beta features](beta-features.md) if you haven't already
-2. Go to **Settings** > **Printers** (under the Printer section)
-3. Tap **Add Printer**
-4. The Setup Wizard launches — enter the new printer's IP address and port, select hardware, and complete the wizard
-5. After the wizard finishes, you're connected to the new printer
+1. Go to **Settings** > **Printers** (under the Printer section)
+2. Tap **Add Printer**
+3. The Setup Wizard launches — enter the new printer's IP address and port, select hardware, and complete the wizard
+4. After the wizard finishes, you're connected to the new printer
 
 #### Switching Between Printers
 

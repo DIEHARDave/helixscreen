@@ -88,6 +88,8 @@ class PinEntryModal {
     void clear_digits();
     void show_error(const char* text = nullptr);
     void hide_error();
+    void cover_chrome();
+    void uncover_chrome();
 
     // State
     std::string heading_;
@@ -95,6 +97,7 @@ class PinEntryModal {
     std::string digit_buffer_;
 
     lv_obj_t* backdrop_ = nullptr;
+    bool covering_chrome_ = false;
     lv_obj_t* dialog_ = nullptr;
 
     static constexpr int MIN_DIGITS = 4;

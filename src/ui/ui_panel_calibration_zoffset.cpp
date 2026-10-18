@@ -14,6 +14,7 @@
 #include "config.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
+#include "motion_presets.h"
 #include "observer_factory.h"
 #include "printer_state.h"
 #include "probe_preparation.h"
@@ -22,6 +23,7 @@
 #include "static_panel_registry.h"
 #include "toolhead_homing.h"
 #include "ui/ui_widget_helpers.h"
+#include "z_offset_calibration_approach.h"
 #include "z_offset_persistence.h"
 #include "z_offset_utils.h"
 
@@ -434,10 +436,25 @@ void ZOffsetCalibrationPanel::arm_saving_timeout() {
 // GCODE COMMANDS (strategy-aware dispatch)
 // ============================================================================
 
+using helix::zoffset_cal::ReadingPoint;
+
+static zoffset_cal::ApproachInputs approach_inputs(IMoonrakerAPI& api, PrinterState& ps,
+                                                   ReadingPoint point, bool all_homed) {
+    zoffset_cal::ApproachInputs in;
+    in.all_homed = all_homed;
+    in.point = point;
+    in.gcode_travel = ps.motion_state().get_gcode_axis_bounds();
+    in.plate = preset_area(ps.motion_state().get_axis_bounds(), in.gcode_travel,
+                           api.hardware().build_volume());
+    in.circular_bed = circular_bed_kinematics(api.hardware().kinematics());
+    in.probe_offset = api.hardware().probe_xy_offset();
+    return in;
+}
+
 void ZOffsetCalibrationPanel::start_calibration() {
     if (!api_) {
         spdlog::error("[ZOffsetCal] No IMoonrakerAPI");
-        on_calibration_result(false, "No printer connection");
+        on_calibration_result(false, lv_tr("No printer connection"));
         return;
     }
 
@@ -462,7 +479,7 @@ void ZOffsetCalibrationPanel::start_calibration() {
                 // No bg-thread tok.expired() — tok.defer() gates on the main thread (L081).
                 spdlog::error("[ZOffsetCal] Failed to start bed heating: {}", err.message);
                 tok.defer("ZOffsetCalibrationPanel::on_calibration_result(bed_heat)", [this]() {
-                    on_calibration_result(false, "Failed to start bed heating");
+                    on_calibration_result(false, lv_tr("Failed to start bed heating"));
                 });
             });
 
@@ -503,25 +520,22 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
     const bool all_homed = helix::toolhead_is_homed(ps);
 
     if (strategy == ZOffsetCalibrationStrategy::FIRMWARE_MANAGED) {
-        // Manual Z calibrate: home, move to center, lower to Z0.1
+        // Manual Z calibrate: home, move over the plate centre, lower to Z0.1
         cumulative_z_delta_ = 0.0f;
 
-        // Use hardcoded center (110, 110) as safe default for most printers
-        float center_x = 110.0f;
-        float center_y = 110.0f;
-
-        std::string gcode;
-        if (!all_homed) {
-            gcode = "G28\n";
+        const auto approach = zoffset_cal::calibration_approach(
+            approach_inputs(*api_, ps, ReadingPoint::Nozzle, all_homed));
+        if (!approach.nozzle) {
+            // Lowering to Z0.1 at a guessed XY can put the nozzle off the plate.
+            spdlog::warn(
+                "[ZOffsetCal] Plate bounds unknown, not starting gcode_offset calibration");
+            on_calibration_result(false, lv_tr("Bed size unknown"));
+            return;
         }
-
-        char move_cmd[128];
-        snprintf(move_cmd, sizeof(move_cmd), "G1 X%.1f Y%.1f Z5 F3000\nG1 Z0.1 F300", center_x,
-                 center_y);
-        gcode += move_cmd;
+        std::string gcode = approach.gcode + "G1 Z0.1 F300";
 
         spdlog::info("[ZOffsetCal] Starting gcode_offset calibration (center={:.1f},{:.1f})",
-                     center_x, center_y);
+                     *approach.nozzle->x, *approach.nozzle->y);
 
         auto tok = lifetime_.token();
         api_->execute_gcode(
@@ -544,47 +558,42 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
                                          "connection was interrupted"));
                 } else {
                     spdlog::error("[ZOffsetCal] Failed to move to position: {}", err.message);
-                    tok.defer(
-                        "ZOffsetCalibrationPanel::on_calibration_result(move_fail)", [this]() {
-                            on_calibration_result(false, "Failed to move to calibration position");
-                        });
+                    tok.defer("ZOffsetCalibrationPanel::on_calibration_result(move_fail)",
+                              [this]() {
+                                  on_calibration_result(
+                                      false, lv_tr("Failed to move to calibration position"));
+                              });
                 }
             },
             IAdvancedAPI::PROBING_TIMEOUT_MS);
     } else {
         // Probe calibrate or endstop strategy
-        std::string gcode;
         if (!all_homed) {
             // Diagnostic-only re-fetch — all_homed above already decided the branch.
             const char* homed_dbg =
                 lv_subject_get_string(ps.motion_state().get_homed_axes_subject());
             spdlog::info("[ZOffsetCal] Axes not homed (homed_axes='{}'), homing first",
                          homed_dbg ? homed_dbg : "");
-            gcode = "G28\n";
         }
 
-        const char* calibrate_cmd = nullptr;
-        if (strategy == ZOffsetCalibrationStrategy::ENDSTOP) {
-            calibrate_cmd = "Z_ENDSTOP_CALIBRATE";
+        auto sensors = helix::sensors::ProbeSensorManager::instance().get_sensors();
+        const auto probe_type =
+            sensors.empty() ? helix::sensors::ProbeSensorType::STANDARD : sensors[0].type;
+        const auto command = zoffset_cal::calibration_command(strategy, probe_type);
+        const char* calibrate_cmd = command.gcode;
+
+        // Every calibrate command reads at the current XY, so the head goes
+        // over the plate centre even when nothing needed homing.
+        const auto approach =
+            zoffset_cal::calibration_approach(approach_inputs(*api_, ps, command.point, all_homed));
+        if (approach.nozzle) {
+            spdlog::info("[ZOffsetCal] Calibration start position X{:.1f} Y{:.1f}",
+                         *approach.nozzle->x, *approach.nozzle->y);
         } else {
-            // Check probe type for probe-specific calibration commands
-            auto& probe_mgr = helix::sensors::ProbeSensorManager::instance();
-            auto sensors = probe_mgr.get_sensors();
-            auto probe_type =
-                sensors.empty() ? helix::sensors::ProbeSensorType::STANDARD : sensors[0].type;
-            switch (probe_type) {
-            case helix::sensors::ProbeSensorType::CARTOGRAPHER:
-                calibrate_cmd = "CARTOGRAPHER_SCAN_CALIBRATE";
-                break;
-            case helix::sensors::ProbeSensorType::BEACON:
-                calibrate_cmd = "BEACON_CALIBRATE";
-                break;
-            default:
-                calibrate_cmd = "PROBE_CALIBRATE";
-                break;
-            }
+            spdlog::warn("[ZOffsetCal] Plate bounds unknown, calibrating at the current position");
         }
-        // Prepare the probe after homing, immediately before the calibrate command.
+        std::string gcode = approach.gcode;
+        // Prepare the probe after the approach, immediately before the calibrate command.
         const uint32_t prep_timeout_ms = helix::probe_prep::append_preparation(
             gcode, helix::probe_prep::Operation::ZOffsetCalibrate, calibrate_cmd);
         gcode += calibrate_cmd;
@@ -611,7 +620,7 @@ void ZOffsetCalibrationPanel::begin_probe_sequence() {
                 } else {
                     spdlog::error("[ZOffsetCal] Failed to start calibration: {}", err.message);
                     tok.defer("ZOffsetCalibrationPanel::on_calibration_result(cal_fail)", [this]() {
-                        on_calibration_result(false, "Failed to start Z offset calibration");
+                        on_calibration_result(false, lv_tr("Failed to start Z offset calibration"));
                     });
                 }
             },
@@ -674,6 +683,8 @@ void ZOffsetCalibrationPanel::send_accept() {
     final_offset_ = current_z_;
     on_calibration_result(true, "");
 
+    // FIRMWARE_MANAGED ignores the Z-offset save setting on purpose: the
+    // firmware persists the offset itself, so there is no save to withhold.
     if (strategy == ZOffsetCalibrationStrategy::FIRMWARE_MANAGED) {
         // Apply cumulative delta as gcode Z offset
         set_state(State::SAVING);
@@ -708,8 +719,28 @@ void ZOffsetCalibrationPanel::send_accept() {
             [this, tok](const MoonrakerError& err) {
                 // No bg-thread tok.expired() — tok.defer() gates on the main thread (L081).
                 spdlog::error("[ZOffsetCal] SET_GCODE_OFFSET failed: {}", err.message);
-                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(gcode_fail)",
-                          [this]() { on_calibration_result(false, "Failed to set Z-offset"); });
+                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(gcode_fail)", [this]() {
+                    on_calibration_result(false, lv_tr("Failed to set Z-offset"));
+                });
+            });
+    } else if (!helix::zoffset::save_enabled()) {
+        // Saving is off for this printer: ACCEPT stages the result for Klipper's
+        // next SAVE_CONFIG and nothing here sends one. The complete state says so.
+        spdlog::info("[ZOffsetCal] Z-offset saving is off - sending ACCEPT without saving");
+        auto tok = lifetime_.token();
+        api_->execute_gcode(
+            "ACCEPT",
+            [this, tok]() {
+                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(accept_nosave_ok)",
+                          [this]() { on_calibration_result(true, ""); });
+            },
+            [this, tok](const MoonrakerError& err) {
+                tok.defer("ZOffsetCalibrationPanel::on_calibration_result(accept_nosave_fail)",
+                          [this, err]() {
+                              on_calibration_result(
+                                  false, fmt::format(fmt::runtime(lv_tr("ACCEPT failed: {}")),
+                                                     err.localized_message()));
+                          });
             });
     } else {
         // Probe/endstop: ACCEPT then apply+save

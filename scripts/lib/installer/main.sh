@@ -38,13 +38,32 @@ trap 'STEP_FAIL_REASON=interrupted; exit 129' HUP
 trap 'STEP_FAIL_REASON=interrupted; exit 130' INT
 trap 'STEP_FAIL_REASON=interrupted; exit 143' TERM
 
+# The last progress line: ok on a clean exit, else the failing step's reason
+# (or the exit status when no step named one). Sent once per run.
+_progress_result() { # exit status
+    [ "$PROGRESS" = 1 ] && [ "$PROGRESS_RESULT_SENT" = 0 ] || return 0
+    PROGRESS_RESULT_SENT=1
+    if [ "$STEP_OPEN" = 1 ]; then
+        _progress_emit step "$STEP_PROGRESS_N" "$STEP_TOTAL" fail "$STEP_TITLE" "${STEP_FAIL_REASON:-}"
+        STEP_OPEN=0
+    fi
+    if [ "$1" -eq 0 ]; then
+        _progress_emit result ok
+    else
+        _progress_emit result fail "${STEP_FAIL_REASON:-exit $1}"
+    fi
+}
+
 # The failure block's closing lines, for a run that passed the confirm point
 # and then stopped: the failed step, what state the printer is in, and where
 # the full log is. The log is kept before anything prints, and nothing here
 # may end the shell early: stderr can be a terminal that no longer exists.
 installer_exit_report() { # exit status
     set +e
-    [ "$1" -ne 0 ] && [ -n "${HELIX_CONFIRMED:-}" ] || return 0
+    if ! { [ "$1" -ne 0 ] && [ -n "${HELIX_CONFIRMED:-}" ]; }; then
+        _progress_result "$1"
+        return 0
+    fi
     _ier_state=$(install_state_line)
     finalize_install_log
     step_fail "${STEP_FAIL_REASON:-}"
@@ -56,6 +75,7 @@ installer_exit_report() { # exit status
     if [ -n "${INSTALL_LOG_KEPT:-}" ]; then
         printf '%s\n' "Full log: $(display_path "$INSTALL_LOG_KEPT")" >&2
     fi
+    _progress_result "$1"
     return 0
 }
 
@@ -126,7 +146,12 @@ install_state_line() {
 usage() {
     echo "HelixScreen Installer"
     echo ""
-    echo "Usage: $0 [options]"
+    echo "Usage: $0 [options] [ARCHIVE]"
+    echo ""
+    echo "Given a release archive (.zip or .tar.gz), it installs that archive."
+    echo "Run from inside an extracted release package with no --version,"
+    echo "--local or --update, it installs that package. Otherwise it installs"
+    echo "the latest release for your update channel."
     echo ""
     echo "Options:"
     echo "  --update       Update existing installation (preserves config)"
@@ -141,10 +166,13 @@ usage() {
     echo "                 (e.g. curl ... | sh -s -- --clean --yes)"
     echo "  --dry-run      Show what would be installed and changed, then exit."
     echo "                 Changes nothing; exits non-zero if a check would stop the install."
+    echo "  --progress     Also print one machine-readable HELIX-PROGRESS line per event"
+    echo "                 on stdout (see docs/devel/INSTALLER.md)."
     echo "  --verbose, -v  Print every detail line and command output as it happens."
     echo "                 The full log is always written either way."
     echo "  --version VER  Install specific version (default: latest)"
-    echo "  --local FILE   Install from local archive (.zip or .tar.gz, skip download)"
+    echo "  --local FILE   Install from local archive (.zip or .tar.gz, skip download)."
+    echo "                 Naming the archive without --local does the same"
     echo "  --skip-kiauh-registration"
     echo "                 Skip KIAUH extension registration (default: install if KIAUH detected)"
     echo "  --standalone   Self-managed install beside your printer's mod"
@@ -175,6 +203,8 @@ usage() {
     echo "  $0 --clean --yes      # Same, without the interactive confirmation"
     echo "  $0 --version v1.1.0   # Install specific version"
     echo "  $0 --local /tmp/helixscreen-ad5m.tar.gz  # Install from local file"
+    echo "  $0 --desktop helixscreen-x86-desktop-v1.1.0.tar.gz  # Same, no --local needed"
+    echo "  ./helixscreen/install.sh --desktop  # Install the package you extracted"
     echo "  $0 --standalone       # Self-managed install beside the mod (mod hosts)"
     echo "  $0 --desktop          # x86_64: a window on your desktop, for your user"
 }
@@ -192,6 +222,7 @@ parse_installer_args() {
     DRY_RUN=false
     version=""
     local_tarball=""
+    package_dir=""
     skip_kiauh_registration=false
     MOD_PAYLOAD_ROOT=""
     HELIX_MOD_PAYLOAD_UPDATES=""
@@ -228,6 +259,10 @@ parse_installer_args() {
                 DRY_RUN=true
                 shift
                 ;;
+            --progress)
+                PROGRESS=1
+                shift
+                ;;
             --verbose|-v)
                 # shellcheck disable=SC2034  # consumed by common.sh (log_info, run_logged)
                 HELIX_INSTALL_VERBOSE=1
@@ -246,7 +281,7 @@ parse_installer_args() {
                     log_error "--local requires a file path argument"
                     exit 1
                 fi
-                local_tarball="$2"
+                _set_local_archive "$2"
                 shift 2
                 ;;
             --skip-kiauh-registration)
@@ -313,6 +348,16 @@ parse_installer_args() {
                 exit 0
                 ;;
             *)
+                # A release archive named on its own is what --local names.
+                case "$1" in
+                    *.zip | *.tar.gz | *.tgz)
+                        if [ -f "$1" ]; then
+                            _set_local_archive "$1"
+                            shift
+                            continue
+                        fi
+                        ;;
+                esac
                 log_error "Unknown option: $1"
                 usage
                 exit 1
@@ -333,6 +378,15 @@ parse_installer_args() {
         log_error "--dry-run cannot be combined with --uninstall; nothing was removed"
         exit 1
     fi
+}
+
+# Record the archive this run installs; naming two is a mistake, not a choice.
+_set_local_archive() {
+    if [ -n "$local_tarball" ] && [ "$local_tarball" != "$1" ]; then
+        log_error "Only one archive can be installed at a time: $local_tarball and $1"
+        exit 1
+    fi
+    local_tarball="$1"
 }
 
 # Auto-detect the payload contract: a bare install on a host the mod profile
@@ -768,6 +822,8 @@ main() {
     # to write. Autodetect (probe) plus the operator's overrides decide.
     parse_installer_args "$@"
     mod_payload_autodetect
+    # Before the platform settles: an x86 package's flavour feeds that choice.
+    detect_package_beside_installer
 
     # Self-delete safety guard runs as early as possible — before platform
     # detection, which exits on "unsupported" hardware and would otherwise
@@ -789,6 +845,7 @@ main() {
     platform=$(detect_platform)
     print_platform_banner "$platform"
     resolve_x86_flavour
+    _progress_emit platform "$platform"
     # For platforms that share a binary with pi/pi32 (e.g. m1), the download
     # URL uses the donor platform key while $platform stays put so hooks,
     # banner, and competing-UI shutdown still target the real device.
@@ -833,6 +890,7 @@ main() {
     # --mod-payload mode wiring (root precedence, OTA warning, mod-host
     # notice) - after detection, before the requirements checks.
     mod_payload_mode_block
+    settle_package_beside_installer
 
     # Check permissions
     check_permissions "$platform"
@@ -873,7 +931,7 @@ main() {
         resolve_update_channel
     fi
 
-    # Get version (skip if using local archive)
+    # Get version: a handed-over archive or package names its own.
     if [ -n "$local_tarball" ]; then
         # Validate local file exists
         if [ ! -f "$local_tarball" ]; then
@@ -888,16 +946,22 @@ main() {
             version="local"
         fi
         log_info "Installing from local file: ${BOLD}${local_tarball}${NC}"
-    else
-        if [ -z "$version" ]; then
-            version=$(get_latest_version "$download_platform")
-        else
-            # After resolve_update_channel: a channel read from the installed
-            # config outranks the one a prerelease --version implies. A --local
-            # archive never moves the channel; it picks a build, not a feed.
-            match_channel_to_version "$version"
-        fi
+    elif [ -n "$package_dir" ]; then
+        # The package beside the installer is what was handed over, whatever
+        # the channel's latest is.
+        # shellcheck disable=SC2154  # set by release.sh (detect_package_beside_installer)
+        version="$package_version"
+        # shellcheck disable=SC2154  # set by release.sh (detect_package_beside_installer)
+        log_info "Installing the package next to this installer: ${version} (${package_platform})"
+    elif [ -z "$version" ]; then
+        version=$(get_latest_version "$download_platform")
     fi
+    # A prerelease installed by name, as --version, an archive whose name
+    # carries it, or the package beside the installer, puts the install on
+    # beta. After resolve_update_channel, so a channel read from the installed
+    # config outranks it. A stable version and an unversioned zip ("local")
+    # move nothing, and the latest a channel resolved to is already on it.
+    match_channel_to_version "$version"
     log_info "Target version: ${BOLD}${version}${NC}"
 
     # The release must exist before the plan offers it; HEAD requests only.
@@ -935,6 +999,9 @@ download_step() {
     if [ -n "$local_tarball" ]; then
         step "Unpacking local archive" "Unpacked local archive"
         use_local_tarball "$local_tarball"
+    elif [ -n "${package_dir:-}" ]; then
+        step "Using the package next to the installer" "Used the package next to the installer"
+        use_package_tree "$package_dir"
     else
         step "Downloading" "Downloaded"
         download_release "$version" "$download_platform"
@@ -1123,6 +1190,11 @@ apply_install() {
     fi
     seed_update_channel
 
+    # The camera, include and seed steps above record their uninstall ledgers
+    # as plain files in the install dir. Relocate them into printer_data now,
+    # or a Moonraker web update would delete them before the next installer run.
+    setup_config_symlink quiet
+
     # Configure ALSA "default" when the board has no card 0 (e.g. Pi + HDMI-audio
     # screens like the BTT HDMI5, whose only outputs are vc4hdmi0/vc4hdmi1 at
     # indices 1/2). Safe no-op when "default" already works or /etc/asound.conf
@@ -1187,6 +1259,7 @@ apply_desktop_install() {
     fi
     extract_release "$platform"
     verify_binary_deps "$platform"
+    seed_update_channel
     step_done "$(display_path "$INSTALL_DIR")"
 
     step "Adding HelixScreen to the app menu" "Added HelixScreen to the app menu"

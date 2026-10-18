@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "favorite_macro_config_modal.h"
 
+#include "ui_callback_helpers.h"
 #include "ui_event_safety.h"
 #include "ui_fonts.h"
 #include "ui_icon.h"
@@ -12,6 +13,7 @@
 #include "device_display_name.h"
 #include "favorite_macro_config.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "helix/xml/indexed_subject_pool.h"
 #include "i_moonraker_api.h"
 #include "macro_param_cache.h"
 #include "macro_param_defaults.h"
@@ -25,6 +27,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -36,6 +39,10 @@ lv_subject_t s_require_confirm_subject{};
 /// 1 while the configured macro declares a parameter list, so the Options tab
 /// can show the "Default Parameters" row only for macros that have one.
 lv_subject_t s_has_param_defaults_subject{};
+/// Index into ICON_COLORS of the colour the swatch ring marks, or -1.
+lv_subject_t s_selected_color_subject{};
+/// favorite_macro_config_modal.xml's swatches bind fav_macro_swatch_color_<i>.
+std::unique_ptr<helix::xml::IndexedSubjectPool> s_color_pool;
 bool s_subjects_registered = false;
 SubjectManager s_subjects;
 
@@ -70,13 +77,10 @@ static constexpr uint32_t ICON_COLORS[] = {
 };
 static constexpr size_t ICON_COLOR_COUNT = std::size(ICON_COLORS);
 
-static constexpr int COLOR_SWATCH_SIZE = 28;
-
-void apply_color_swatch_highlight(lv_obj_t* swatch, bool selected) {
-    lv_obj_set_style_border_width(swatch, selected ? 2 : 1, 0);
-    lv_obj_set_style_border_color(
-        swatch,
-        selected ? theme_manager_get_color("primary") : theme_manager_get_color("text_muted"), 0);
+/// The index of @p color in ICON_COLORS, or -1.
+int icon_color_index(uint32_t color) {
+    const auto* it = std::find(std::begin(ICON_COLORS), std::end(ICON_COLORS), color);
+    return it == std::end(ICON_COLORS) ? -1 : static_cast<int>(it - std::begin(ICON_COLORS));
 }
 
 } // namespace
@@ -91,10 +95,16 @@ void register_favorite_macro_config_subjects() {
     // reads correctly even before on_show() loads a widget's config.
     lv_subject_init_int(&s_require_confirm_subject, 1);
     lv_subject_init_int(&s_has_param_defaults_subject, 0);
+    lv_subject_init_int(&s_selected_color_subject, -1);
+    s_color_pool = std::make_unique<helix::xml::IndexedSubjectPool>(
+        "fav_macro_swatch_color", helix::xml::IndexedSubjectPool::Type::Color);
+    s_color_pool->ensure_size(ICON_COLOR_COUNT);
     s_subjects.publish("fav_macro_config_tab", &s_tab_subject);
     s_subjects.publish("fav_macro_require_confirm", &s_require_confirm_subject);
     s_subjects.publish("fav_macro_has_param_defaults", &s_has_param_defaults_subject);
+    s_subjects.publish("fav_macro_selected_color", &s_selected_color_subject);
     StaticSubjectRegistry::instance().register_deinit("FavoriteMacroConfigSubjects", []() {
+        s_color_pool.reset();
         s_subjects.deinit_all();
         s_subjects_registered = false;
     });
@@ -134,13 +144,19 @@ void FavoriteMacroConfigModal::on_show() {
     load_config();
     macro_list_ = helix::ui::find_required(dialog(), "macro_list", get_name());
     icon_grid_ = helix::ui::find_required(dialog(), "icon_grid", get_name());
-    color_grid_ = helix::ui::find_required(dialog(), "color_grid", get_name());
     lv_subject_set_int(&s_tab_subject, 0);
     lv_subject_set_int(&s_require_confirm_subject, require_confirmation_ ? 1 : 0);
     refresh_param_defaults_visible();
     populate_macro_list();
     populate_icon_grid();
-    populate_color_grid();
+    // The theme-default entry shows the current theme's secondary colour.
+    for (size_t i = 0; i < ICON_COLOR_COUNT; ++i) {
+        const uint32_t rgb = ICON_COLORS[i] == 0
+                                 ? lv_color_to_u32(theme_manager_get_color("secondary")) & 0xFFFFFF
+                                 : ICON_COLORS[i];
+        s_color_pool->set_color(i, rgb);
+    }
+    lv_subject_set_int(&s_selected_color_subject, icon_color_index(icon_color_));
     spdlog::debug("[FavoriteMacroConfig] Opened: widget={}, macro={}", widget_id_, macro_name_);
 }
 
@@ -287,39 +303,6 @@ void FavoriteMacroConfigModal::populate_icon_grid() {
     spdlog::debug("[FavoriteMacroConfigModal] Populated icon grid ({} icons)", CURATED_ICON_COUNT);
 }
 
-void FavoriteMacroConfigModal::populate_color_grid() {
-    if (!color_grid_)
-        return;
-
-    for (size_t i = 0; i < ICON_COLOR_COUNT; ++i) {
-        lv_obj_t* swatch = lv_obj_create(color_grid_);
-        lv_obj_set_size(swatch, COLOR_SWATCH_SIZE, COLOR_SWATCH_SIZE);
-        lv_obj_remove_flag(swatch, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(swatch, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_set_style_radius(swatch, 4, 0);
-        lv_obj_set_style_pad_all(swatch, 0, 0);
-
-        if (ICON_COLORS[i] == 0) {
-            lv_obj_set_style_bg_color(swatch, theme_manager_get_color("secondary"), 0);
-        } else {
-            lv_obj_set_style_bg_color(swatch, lv_color_hex(ICON_COLORS[i]), 0);
-        }
-        lv_obj_set_style_bg_opa(swatch, LV_OPA_COVER, 0);
-
-        lv_obj_set_style_bg_opa(swatch, LV_OPA_70, LV_PART_MAIN | LV_STATE_PRESSED);
-
-        apply_color_swatch_highlight(swatch, ICON_COLORS[i] == icon_color_);
-
-        lv_obj_set_user_data(swatch,
-                             reinterpret_cast<void*>(static_cast<uintptr_t>(ICON_COLORS[i])));
-        lv_obj_add_event_cb(swatch, FavoriteMacroConfigModal::color_swatch_cb, LV_EVENT_CLICKED,
-                            nullptr);
-    }
-
-    spdlog::debug("[FavoriteMacroConfigModal] Populated color grid ({} swatches)",
-                  ICON_COLOR_COUNT);
-}
-
 void FavoriteMacroConfigModal::refresh_highlights() {
     if (macro_list_) {
         uint32_t count = lv_obj_get_child_count(macro_list_);
@@ -336,15 +319,7 @@ void FavoriteMacroConfigModal::refresh_highlights() {
         helix::ui::refresh_icon_grid(icon_grid_, effective);
     }
 
-    if (color_grid_) {
-        uint32_t count = lv_obj_get_child_count(color_grid_);
-        for (uint32_t i = 0; i < count; ++i) {
-            lv_obj_t* swatch = lv_obj_get_child(color_grid_, i);
-            auto color =
-                static_cast<uint32_t>(reinterpret_cast<uintptr_t>(lv_obj_get_user_data(swatch)));
-            apply_color_swatch_highlight(swatch, color == icon_color_);
-        }
-    }
+    lv_subject_set_int(&s_selected_color_subject, icon_color_index(icon_color_));
 }
 
 void FavoriteMacroConfigModal::select_macro(const std::string& name) {
@@ -390,10 +365,9 @@ void FavoriteMacroConfigModal::macro_row_cb(lv_event_t* e) {
 
 void FavoriteMacroConfigModal::color_swatch_cb(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[FavoriteMacroConfigModal] color_swatch_cb");
-    auto* target = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-    auto color = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(lv_obj_get_user_data(target)));
-    if (s_active_) {
-        s_active_->select_color(color);
+    const int index = helix::ui::event_user_int(e).value_or(-1);
+    if (s_active_ && index >= 0 && index < static_cast<int>(ICON_COLOR_COUNT)) {
+        s_active_->select_color(ICON_COLORS[index]);
     }
     LVGL_SAFE_EVENT_CB_END();
 }

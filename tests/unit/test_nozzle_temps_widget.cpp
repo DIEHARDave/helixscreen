@@ -122,6 +122,15 @@ TEST_CASE("NozzleTempsWidget: collapses multiplexed lanes to one nozzle row",
         REQUIRE(extruders[0] == "extruder");
     }
 
+    SECTION("A tool naming an empty extruder heats nothing and gets no row") {
+        std::vector<ToolInfo> tools(3);
+        tools[0].extruder_name = "extruder";
+        tools[1].extruder_name = std::string();
+        tools[2].extruder_name = "extruder1";
+        auto extruders = distinct_extruder_names(tools);
+        REQUIRE(extruders == std::vector<std::string>{"extruder", "extruder1"});
+    }
+
     SECTION("Empty tool list -> no rows") {
         REQUIRE(distinct_extruder_names({}).empty());
     }

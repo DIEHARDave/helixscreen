@@ -7,8 +7,10 @@
 #include "ui_update_queue.h"
 
 #include "ams_state.h"
+#include "app_globals.h"
 #include "config.h"
 #include "format_utils.h"
+#include "i_moonraker_api.h"
 #include "json_utils.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "memory_monitor.h"
@@ -16,11 +18,14 @@
 #include "text_io.h"
 #include "thermal_rate_model.h"
 #include "unit_conversions.h"
+#include "wait_line_reader.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <ctime>
 
 using namespace helix;
@@ -161,6 +166,7 @@ void PrintStartCollector::start() {
 
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
+        run_generation_.fetch_add(1);
         reset_run_locked();
         leveling_points_ = state_.get_discovery().leveling_probe_points();
         // Snapshot stale subject values so fallbacks only trigger on real changes
@@ -257,6 +263,10 @@ void PrintStartCollector::start() {
         // status frames, edge-triggered. No-op unless the profile declares any.
         self->handle_status_signals(status);
 
+        // A start sequence written into the file: the line the print stands
+        // on is the step running. No-op unless the profile says so.
+        self->handle_start_block_position(status);
+
         // Check _START_PRINT.print_started (AD5M KAMP macro)
         if (status.contains("gcode_macro _START_PRINT")) {
             const auto& macro = status["gcode_macro _START_PRINT"];
@@ -307,12 +317,15 @@ void PrintStartCollector::start() {
                     collector->update_eta_display();
                     collector->check_purge_shape();
                     collector->check_fallback_completion();
+                    collector->flush_deferred_start_block_step();
                 }
             },
             ETA_UPDATE_INTERVAL_MS, this);
         spdlog::debug("[PrintStartCollector] ETA timer created ({}ms interval)",
                       ETA_UPDATE_INTERVAL_MS);
     }
+    query_phase_object();
+
     // Run first update immediately
     update_eta_display();
 
@@ -336,6 +349,13 @@ void PrintStartCollector::stop() {
     }
 
     fallbacks_enabled_.store(false);
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (start_block_cancel_) {
+            start_block_cancel_->store(true);
+            start_block_cancel_.reset();
+        }
+    }
 
     // Delete ETA timer (must be on main thread, but stop() is always called from main thread)
     if (eta_timer_) {
@@ -401,7 +421,19 @@ void PrintStartCollector::reset_run_locked() {
     current_phase_ = PrintStartPhase::INITIALIZING;
     print_start_detected_ = false;
     max_sequential_progress_ = 0;
-    phase_enter_times_.clear();
+    phase_time_spent_.clear();
+    phase_since_ = printing_state_start_;
+    start_block_.set_steps({});
+    start_block_requested_ = false;
+    file_position_.reset();
+    frame_filename_.clear();
+    deferred_step_.reset();
+    console_phase_line_.clear();
+    if (start_block_cancel_) {
+        start_block_cancel_->store(true);
+        start_block_cancel_.reset();
+    }
+    console_phase_time_ = helix::sim::SimulatedClock::time_point::min();
     mesh_probe_current_ = 0;
     mesh_probe_total_ = 0;
     mesh_points_.reset();
@@ -410,6 +442,7 @@ void PrintStartCollector::reset_run_locked() {
     mesh_seconds_per_probe_ = 0.0f;
     mesh_extrapolation_armed_ = false;
     mesh_entry_ext_target_ = 0;
+    mesh_counts_probes_ = true;
     pre_mesh_points_.reset();
     pre_mesh_last_probe_time_ = {};
     current_mesh_message_.clear();
@@ -417,9 +450,14 @@ void PrintStartCollector::reset_run_locked() {
     heater_wait_report_time_ = helix::sim::SimulatedClock::time_point::min();
     heater_wait_shown_ = false;
     wait_heater_arrived_at_ = helix::sim::SimulatedClock::time_point::min();
+    heaters_ready_wait_since_ = helix::sim::SimulatedClock::time_point::min();
+    forget_wait_line_locked();
     pre_wait_phase_ = PrintStartPhase::IDLE;
     pre_wait_message_.clear();
     last_phase_object_state_.clear();
+    phase_object_state_cache_.reset();
+    phase_object_context_cache_.reset();
+    live_object_phase_ = PrintStartPhase::IDLE;
     held_status_signal_rules_.clear();
     bed_mesh_present_ = false;
     temps_ready_time_ = {};
@@ -874,6 +912,9 @@ void PrintStartCollector::check_fallback_completion() {
     // degree or so. The chamber counts only once both heaters are at target.
     // Before the first real signal the proactive detection above owns the
     // heaters.
+    // What this tick read the wait as holding on; the chamber-wait flag
+    // follows it, so the flag drops the tick the chamber stops being why.
+    PrintStartPhase tick_waited_on = PrintStartPhase::IDLE;
     if (real_signal_seen_.load(std::memory_order_relaxed)) {
         bool waiting;
         bool nozzle_short;
@@ -886,25 +927,73 @@ void PrintStartCollector::check_fallback_completion() {
             bed_short = !heating_target_reached_locked(PrintStartPhase::HEATING_BED);
         }
         if (!waiting) {
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                forget_wait_line_locked();
+            }
             end_heater_wait();
         } else {
+            request_wait_line();
             const int chamber_temp =
                 lv_subject_get_int(state_.temperature_state().get_chamber_temp_subject());
             const int chamber_target =
                 lv_subject_get_int(state_.temperature_state().get_chamber_target_subject());
-            const bool chamber_heating = !nozzle_short && !bed_short && chamber_target > 0 &&
+            const auto& temps = state_.temperature_state();
+            const bool heaters_ready = !nozzle_short && !bed_short;
+            const bool chamber_heating = heaters_ready && chamber_target > 0 &&
                                          chamber_temp < chamber_target - TEMP_TOLERANCE_DECIDEGREES;
-            const PrintStartPhase waited_on = nozzle_short      ? PrintStartPhase::HEATING_NOZZLE
-                                              : bed_short       ? PrintStartPhase::HEATING_BED
-                                              : chamber_heating ? PrintStartPhase::SOAKING
-                                                                : PrintStartPhase::IDLE;
+            // The chamber device reporting its own wait (M191) settles it.
+            const bool device_wait = heaters_ready && temps.chamber_wait_active();
+            // A wait that goes on with the nozzle and bed ready while the
+            // chamber heater refused its target is a wait on that chamber: a
+            // TEMPERATURE_WAIT MINIMUM names no heater target. A printer with
+            // no chamber heater soaks on its sensor, and a refusal is what
+            // tells this wait from any other (a probe coil's, say). M109 can
+            // hold a few seconds past arrival while it settles, so this
+            // reading needs the wait to outlast that first.
+            const bool heater_refused =
+                !temps.chamber_heater_name().empty() &&
+                temps.chamber_command_rejection().kind != chamber::CommandRejection::None;
+            const std::string& chamber_heater = temps.chamber_heater_name();
+            bool chamber_unheated = false;
+            std::optional<PrintStartPhase> named;
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                const auto now = helix::sim::SimulatedClock::now();
+                if (!heaters_ready) {
+                    heaters_ready_wait_since_ = helix::sim::SimulatedClock::time_point::min();
+                } else if (heaters_ready_wait_since_ ==
+                           helix::sim::SimulatedClock::time_point::min()) {
+                    heaters_ready_wait_since_ = now;
+                }
+                const bool settled =
+                    heaters_ready &&
+                    heaters_ready_wait_since_ != helix::sim::SimulatedClock::time_point::min() &&
+                    now - heaters_ready_wait_since_ >= CHAMBER_WAIT_SETTLE;
+                chamber_unheated =
+                    settled && chamber_target <= 0 && !chamber_heater.empty() && heater_refused;
+                if (wait_line_read_) {
+                    named = heater_waited_on(wait_line_, chamber_heater);
+                }
+            }
+            // The command at the print position names the heater when it is
+            // one of the waits; otherwise the heater still short of its
+            // target is the best guess.
+            const PrintStartPhase guessed = nozzle_short ? PrintStartPhase::HEATING_NOZZLE
+                                            : bed_short  ? PrintStartPhase::HEATING_BED
+                                            : device_wait || chamber_heating || chamber_unheated
+                                                ? PrintStartPhase::SOAKING
+                                                : PrintStartPhase::IDLE;
+            const PrintStartPhase waited_on = named.value_or(guessed);
+            tick_waited_on = waited_on;
             // The report that shows the waited-on heater arriving is the
-            // wait's last, so moving the label to another heater takes a
-            // report after the tick that saw it arrive: the next wait.
+            // wait's last, so moving the label to another heater on a guess
+            // takes a report after the tick that saw it arrive: the next wait.
+            // The waiting command needs no such proof.
             bool may_relabel = true;
             {
                 std::lock_guard<std::mutex> lock(state_mutex_);
-                if (!heater_wait_shown_ || waited_on == current_phase_) {
+                if (named || !heater_wait_shown_ || waited_on == current_phase_) {
                     wait_heater_arrived_at_ = helix::sim::SimulatedClock::time_point::min();
                 } else if (wait_heater_arrived_at_ ==
                            helix::sim::SimulatedClock::time_point::min()) {
@@ -915,9 +1004,26 @@ void PrintStartCollector::check_fallback_completion() {
                 }
             }
             if (waited_on != PrintStartPhase::IDLE && may_relabel) {
-                relabel_heating_phase(waited_on, /*heater_wait=*/true);
+                relabel_heating_phase(
+                    waited_on, /*heater_wait=*/true,
+                    waited_on == PrintStartPhase::SOAKING
+                        ? chamber_wait_message(chamber_temp,
+                                               device_wait && temps.chamber_wait_target_c() > 0
+                                                   ? static_cast<int>(std::lround(
+                                                         temps.chamber_wait_target_c() * 10))
+                                                   : chamber_target)
+                        : std::string());
             }
         }
+    }
+    {
+        bool chamber_wait;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            chamber_wait = heater_wait_shown_ && current_phase_ == PrintStartPhase::SOAKING &&
+                           tick_waited_on == PrintStartPhase::SOAKING;
+        }
+        state_.print_state().set_print_start_chamber_wait(chamber_wait);
     }
 
     // =========================================================================
@@ -989,14 +1095,21 @@ void PrintStartCollector::check_fallback_completion() {
     // Temps count only at target, the same 2C test that completes a heating
     // phase: a bed at 90% of its target can be minutes short of it. An unknown
     // nozzle target (ext_target=0) cannot be confirmed, so it never counts.
+    //
+    // A heater far above its target is cooling toward it (a nozzle cooled for
+    // probing), which a wait blocks on as surely as a climb.
     const bool nozzle_target_set = ext_target > 0;
+    const bool bed_cooling = bed_target > 0 && bed_temp > bed_target + TEMP_TOLERANCE_DECIDEGREES;
+    const bool nozzle_cooling =
+        ext_target > 0 && ext_temp > ext_target + TEMP_TOLERANCE_DECIDEGREES;
     bool temps_at_target;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        temps_at_target = nozzle_target_set &&
+        temps_at_target = nozzle_target_set && !nozzle_cooling && !bed_cooling &&
                           heating_target_reached_locked(PrintStartPhase::HEATING_NOZZLE) &&
                           heating_target_reached_locked(PrintStartPhase::HEATING_BED);
     }
+    const bool in_live_step = in_live_preprint_step();
 
     // A pre-print that is still narrating itself is not stuck, however long it
     // runs, and a timeout that ends it saves no phase timings, so a deadline
@@ -1004,7 +1117,9 @@ void PrintStartCollector::check_fallback_completion() {
     // for PREPRINT_QUIET_TIMEOUT without activity as well as for the clock. The
     // ceiling ignores temperatures and inferred activity, since a heater that
     // never settles must not hold Preparing open, but still waits that long
-    // without a matched line or probe line.
+    // without a matched line or probe line. A pre-print step the printer
+    // reports live holds the deadline timeouts until it ends: a silent cool-down
+    // inside one outlasts the quiet gate.
     const auto now = helix::sim::SimulatedClock::now();
     helix::sim::SimulatedClock::duration quiet_for;
     helix::sim::SimulatedClock::duration signal_quiet_for;
@@ -1022,7 +1137,7 @@ void PrintStartCollector::check_fallback_completion() {
         predicted_total > 0
             ? std::chrono::seconds(static_cast<int>(predicted_total * ADAPTIVE_TIMEOUT_MARGIN))
             : FALLBACK_TIMEOUT;
-    if (elapsed > deadline && temps_at_target && quiet) {
+    if (elapsed > deadline && temps_at_target && quiet && !in_live_step) {
         spdlog::info("[PrintStartCollector] Fallback: timeout ({} sec, predicted={:.0f}s, "
                      "quiet={}s)",
                      elapsed_sec, predicted_total, quiet_sec);
@@ -1100,11 +1215,21 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
     // A heater wait reports once a second for as long as it blocks. The
     // fallback tick reads the stamp; the wait itself is the printer working.
     if (is_heater_wait_report(line)) {
+        bool wait_starts;
         {
             std::lock_guard<std::mutex> lock(state_mutex_);
-            heater_wait_report_time_ = helix::sim::SimulatedClock::now();
+            const auto now = helix::sim::SimulatedClock::now();
+            wait_starts = heater_wait_report_time_ + HEATER_WAIT_REPORT_GAP <= now;
+            heater_wait_report_time_ = now;
         }
         note_inferred_activity();
+        // Read the waiting command now rather than at the next tick, which
+        // would otherwise label the wait's first seconds from a guess.
+        if (wait_starts && real_signal_seen_.load(std::memory_order_relaxed)) {
+            auto self = shared_from_this();
+            helix::ui::queue_update("PrintStartCollector::wait_started",
+                                    [self]() { self->request_wait_line(); });
+        }
     }
 
     // Check for HELIX:PHASE signals (highest priority - definitive signals from plugin/macros)
@@ -1136,13 +1261,16 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
         PrintStartProfile::MatchResult match;
         if (profile_->try_match_signal(line, match)) {
             real_signal_seen_.store(true, std::memory_order_relaxed);
+            note_signal();
             // Profile messages are English tags — resolve through the pack.
             match.message = lv_tr(match.message.c_str());
-            if (profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
-                update_phase(match.phase, match.message, match.progress);
-            } else {
-                update_phase(match.phase, match.message.c_str());
-            }
+            apply_console_phase(line, [&] {
+                if (profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
+                    update_phase(match.phase, match.message, match.progress);
+                } else {
+                    update_phase(match.phase, match.message.c_str());
+                }
+            });
             return;
         }
     }
@@ -1258,6 +1386,16 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
             }
             // Below threshold — don't enter BED_MESH yet, skip probe counting
             return;
+        }
+
+        bool counting = true;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            counting = mesh_counts_probes_;
+        }
+        if (in_mesh && !counting &&
+            (helix::parse_probe_progress(line) || helix::is_probe_result_line(line))) {
+            return; // a check of a stored mesh: activity, not points to count
         }
 
         if (in_mesh) {
@@ -1438,12 +1576,30 @@ void PrintStartCollector::check_phase_patterns(const std::string& line) {
 
     PrintStartProfile::MatchResult match;
     if (profile_->try_match_pattern(line, match)) {
-        apply_profile_match(match);
+        apply_console_phase(line, [&] { apply_profile_match(match); });
+    }
+}
+
+void PrintStartCollector::apply_console_phase(const std::string& line,
+                                              const std::function<void()>& apply) {
+    PrintStartPhase phase_before;
+    std::string message_before;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        phase_before = current_phase_;
+        message_before = current_message_;
+    }
+    apply();
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    if (current_phase_ != phase_before || current_message_ != message_before) {
+        console_phase_time_ = helix::sim::SimulatedClock::now();
+        console_phase_line_ = line;
+        deferred_step_.reset();
     }
 }
 
 void PrintStartCollector::apply_profile_match(const PrintStartProfile::MatchResult& match,
-                                              bool marks_real_signal) {
+                                              bool marks_real_signal, bool live_state) {
     marks_real_signal = marks_real_signal && match.narrates;
     if (marks_real_signal) {
         real_signal_seen_.store(true, std::memory_order_relaxed);
@@ -1475,6 +1631,10 @@ void PrintStartCollector::apply_profile_match(const PrintStartProfile::MatchResu
         if (detected_phases_.find(match.phase) == detected_phases_.end()) {
             detected_phases_.insert(match.phase);
             should_update = true;
+        } else if (live_state && (match.phase != current_phase_ ||
+                                  trim_trailing_ellipsis(match.message) !=
+                                      trim_trailing_ellipsis(current_message_))) {
+            should_update = true;
         } else if ((marks_real_signal || (match.phase == PrintStartPhase::BED_MESH &&
                                           current_phase_ == PrintStartPhase::BED_MESH)) &&
                    static_cast<int>(match.phase) >= static_cast<int>(current_phase_) &&
@@ -1491,7 +1651,7 @@ void PrintStartCollector::apply_profile_match(const PrintStartProfile::MatchResu
         if (profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
             update_phase(match.phase, match.message, match.progress);
         } else {
-            update_phase(match.phase, match.message.c_str());
+            update_phase(match.phase, match.message.c_str(), match.counts_probes);
         }
         spdlog::debug("[PrintStartCollector] Detected phase: {}", static_cast<int>(match.phase));
     }
@@ -1502,7 +1662,9 @@ void PrintStartCollector::apply_leveling_phase(helix::PrintStartPhase phase) {
     apply_profile_match(match, /*marks_real_signal=*/false);
 }
 
-void PrintStartCollector::handle_phase_object_status(const json& status) {
+void PrintStartCollector::handle_phase_object_status(const json& status,
+                                                     std::optional<uint64_t> seed_run) {
+    const bool seed = seed_run.has_value();
     if (!profile_ || !profile_->has_phase_object()) {
         return;
     }
@@ -1514,18 +1676,61 @@ void PrintStartCollector::handle_phase_object_status(const json& status) {
     if (object == status.end() || !object->is_object()) {
         return; // this frame does not carry the phase object (delta-only update)
     }
+    const std::string& context_field = profile_->phase_object_context_field();
+    const bool qualified = !context_field.empty();
+
+    // A null state is a step that has begun without naming one yet; it
+    // replaces the previous step's state rather than leaving it standing.
     const auto field = object->find(profile_->phase_object_field());
-    if (field == object->end() || !field->is_string()) {
+    const bool has_state =
+        field != object->end() && (field->is_string() || (qualified && field->is_null()));
+    const auto context = qualified ? object->find(context_field) : object->end();
+    const bool has_context = context != object->end();
+    if (!has_state && !has_context) {
         return;
     }
-    const std::string state = field->get_ref<const std::string&>();
-    if (state.empty()) {
-        return;
+
+    // An answer checks its run under the same lock as its cache writes and its
+    // latch, so a start() before either keeps it out of the next run. A start()
+    // after the latch can still meet the one match already on its way, as it
+    // can a frame that arrived just before it.
+    const auto stale_seed_locked = [&] { return seed && *seed_run != run_generation_.load(); };
+    std::string state;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (stale_seed_locked()) {
+            return;
+        }
+        if (has_state && !(seed && phase_object_state_cache_)) {
+            phase_object_state_cache_ = field->is_string() ? field->get<std::string>() : "";
+        }
+        if (has_context && !(seed && phase_object_context_cache_)) {
+            phase_object_context_cache_ = PrintStartProfile::innermost_context(*context);
+            // An empty stack is no step at all: nothing is left to hold, and
+            // a step pushed again with the same state is a new one.
+            if (phase_object_context_cache_->empty()) {
+                live_object_phase_ = PrintStartPhase::IDLE;
+                last_phase_object_state_.clear();
+            }
+        }
+        if (!phase_object_state_cache_ || phase_object_state_cache_->empty()) {
+            return;
+        }
+        state = qualified
+                    ? PrintStartProfile::qualify_state(phase_object_context_cache_.value_or(""),
+                                                       *phase_object_state_cache_)
+                    : *phase_object_state_cache_;
     }
 
     PrintStartProfile::MatchResult match;
     if (!profile_->try_match_state(state, match)) {
         return; // a state the profile has no mapping for is not a phase signal
+    }
+    // The start-up answer can be the last print's final state: a file that
+    // never ran its end macro leaves that print's stack standing until the
+    // next start pushes its own. Only a frame the new run sees may complete it.
+    if (seed && match.phase == PrintStartPhase::COMPLETE) {
+        return;
     }
 
     // Klipper notifies on every field change in the object, so an unchanged
@@ -1534,15 +1739,55 @@ void PrintStartCollector::handle_phase_object_status(const json& status) {
     // not a change of phase.
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        if (state == last_phase_object_state_) {
+        if (stale_seed_locked() || state == last_phase_object_state_) {
             return;
         }
         last_phase_object_state_ = state;
+        if (qualified) {
+            live_object_phase_ = match.phase;
+        }
     }
 
     spdlog::debug("[PrintStartCollector] Phase-object state '{}' -> phase {}", state,
                   static_cast<int>(match.phase));
-    apply_profile_match(match);
+    apply_profile_match(match, /*marks_real_signal=*/true, /*live_state=*/qualified);
+}
+
+bool PrintStartCollector::in_live_preprint_step() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return live_object_phase_ != PrintStartPhase::IDLE &&
+           live_object_phase_ != PrintStartPhase::COMPLETE;
+}
+
+void PrintStartCollector::apply_phase_object_query(const json& response, uint64_t run) {
+    // An answer to an earlier run's query describes that run's printer.
+    if (!active_.load()) {
+        return;
+    }
+    const json* result = json_util::find_member(response, "result");
+    const json* status = result != nullptr ? json_util::find_member(*result, "status") : nullptr;
+    if (status != nullptr) {
+        handle_phase_object_status(*status, run);
+    }
+}
+
+void PrintStartCollector::query_phase_object() {
+    if (!profile_ || !profile_->has_phase_object() ||
+        profile_->phase_object_context_field().empty()) {
+        return;
+    }
+    const std::string& name = profile_->phase_object_name();
+    json params = {
+        {"objects", json::object({{name, json::array({profile_->phase_object_field(),
+                                                      profile_->phase_object_context_field()})}})}};
+    auto self = shared_from_this();
+    const uint64_t run = run_generation_.load();
+    client_.send_jsonrpc(
+        "printer.objects.query", params,
+        [self, run](const json& response) { self->apply_phase_object_query(response, run); },
+        [](const MoonrakerError& /*err*/) {
+            spdlog::debug("[PrintStartCollector] Failed to query the phase object");
+        });
 }
 
 void PrintStartCollector::handle_status_signals(const json& status) {
@@ -1716,7 +1961,8 @@ bool PrintStartCollector::check_k2_cfs_signal(const std::string& line) {
 /// Snapmaker U1: Inspecting bed → Detecting plate → Bed mesh). Caller must
 /// hold state_mutex_.
 void PrintStartCollector::maybe_reset_for_mesh_subphase_locked(PrintStartPhase next_phase,
-                                                               const std::string& next_message) {
+                                                               const std::string& next_message,
+                                                               bool counts_probes) {
     if (next_phase != PrintStartPhase::BED_MESH) {
         if (current_phase_ == PrintStartPhase::BED_MESH) {
             current_mesh_message_.clear();
@@ -1733,6 +1979,7 @@ void PrintStartCollector::maybe_reset_for_mesh_subphase_locked(PrintStartPhase n
         return;
     }
     current_mesh_message_ = next_message;
+    mesh_counts_probes_ = counts_probes;
     mesh_probe_current_ = 0;
     mesh_probe_total_ = 0;
     mesh_points_.reset();
@@ -1796,7 +2043,8 @@ void PrintStartCollector::enter_bed_mesh_with_buffer(const char* message) {
                   count);
 }
 
-void PrintStartCollector::update_phase(PrintStartPhase phase, const char* message) {
+void PrintStartCollector::update_phase(PrintStartPhase phase, const char* message,
+                                       bool counts_mesh_probes) {
     int progress;
     bool should_save = false;
     bool has_predictions = false;
@@ -1827,22 +2075,14 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const char* messag
             current_phase_ != phase) {
             pre_mesh_points_.reset();
         }
-        maybe_reset_for_mesh_subphase_locked(phase, message ? message : "");
-        current_phase_ = phase;
+        maybe_reset_for_mesh_subphase_locked(phase, message ? message : "", counts_mesh_probes);
+        entering_mesh = entering_mesh && mesh_counts_probes_;
+        enter_phase_locked(phase);
         current_message_ = message ? message : "";
         // A phase signal means the queue moved on from any heater wait.
         heater_wait_shown_ = false;
         heater_wait_report_time_ = helix::sim::SimulatedClock::time_point::min();
         detected_phases_.insert(phase); // Track for progress calculation
-
-        // Record phase enter timestamp (skip IDLE and INITIALIZING)
-        int phase_int = static_cast<int>(phase);
-        if (phase != PrintStartPhase::IDLE && phase != PrintStartPhase::INITIALIZING &&
-            phase != PrintStartPhase::COMPLETE) {
-            if (phase_enter_times_.find(phase_int) == phase_enter_times_.end()) {
-                phase_enter_times_[phase_int] = helix::sim::SimulatedClock::now();
-            }
-        }
 
         if (phase == PrintStartPhase::COMPLETE) {
             should_save = true;
@@ -1890,21 +2130,12 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const std::string&
             pre_mesh_points_.reset();
         }
         maybe_reset_for_mesh_subphase_locked(phase, message);
-        current_phase_ = phase;
+        enter_phase_locked(phase);
         current_message_ = message;
         // A phase signal means the queue moved on from any heater wait.
         heater_wait_shown_ = false;
         heater_wait_report_time_ = helix::sim::SimulatedClock::time_point::min();
         detected_phases_.insert(phase);
-
-        // Record phase enter timestamp (skip IDLE and INITIALIZING)
-        int phase_int = static_cast<int>(phase);
-        if (phase != PrintStartPhase::IDLE && phase != PrintStartPhase::INITIALIZING &&
-            phase != PrintStartPhase::COMPLETE) {
-            if (phase_enter_times_.find(phase_int) == phase_enter_times_.end()) {
-                phase_enter_times_[phase_int] = helix::sim::SimulatedClock::now();
-            }
-        }
 
         // Monotonic progress guard: never allow progress to decrease in sequential mode
         // (except COMPLETE which always goes to 100%)
@@ -1929,10 +2160,335 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const std::string&
     }
 }
 
-void PrintStartCollector::relabel_heating_phase(PrintStartPhase resolved, bool heater_wait) {
-    const char* message = resolved == PrintStartPhase::HEATING_BED ? lv_tr("Heating Bed...")
-                          : resolved == PrintStartPhase::SOAKING   ? lv_tr("Heating chamber...")
-                                                                   : lv_tr("Heating Nozzle...");
+void PrintStartCollector::forget_wait_line_locked() {
+    wait_line_ = {};
+    wait_line_read_ = false;
+    wait_line_unreadable_ = false;
+    wait_line_position_.reset();
+    ++wait_line_gen_;
+}
+
+std::optional<PrintStartPhase>
+PrintStartCollector::heater_waited_on(const helix::WaitLine& line,
+                                      const std::string& chamber_heater) {
+    switch (line.kind) {
+    case helix::WaitKind::M109:
+        return PrintStartPhase::HEATING_NOZZLE;
+    case helix::WaitKind::M190:
+        return PrintStartPhase::HEATING_BED;
+    case helix::WaitKind::M191:
+        // A printer with no chamber heater runs M191 as a macro over some
+        // other wait, and an M191 there says nothing about a chamber heater.
+        if (chamber_heater.empty()) {
+            return std::nullopt;
+        }
+        return PrintStartPhase::SOAKING;
+    case helix::WaitKind::TemperatureWait:
+        if (line.sensor == "heater_bed") {
+            return PrintStartPhase::HEATING_BED;
+        }
+        if (line.tool) {
+            return PrintStartPhase::HEATING_NOZZLE;
+        }
+        if (helix::wait_names_chamber_heater(line, chamber_heater)) {
+            return PrintStartPhase::SOAKING;
+        }
+        return std::nullopt;
+    case helix::WaitKind::Other:
+        break;
+    }
+    return std::nullopt;
+}
+
+// The command at the print position: the line starting at
+// virtual_sdcard.file_position. Main thread; the position answer and the
+// line land under state_mutex_ and are read on the next tick.
+void PrintStartCollector::request_wait_line() {
+    if (!active_.load()) {
+        return;
+    }
+    const char* file = lv_subject_get_string(state_.print_state().get_print_filename_subject());
+    if (!file || !file[0]) {
+        return;
+    }
+    IMoonrakerAPI* api = get_moonraker_api();
+    if (!api || !api->transfers().supports_range_reads()) {
+        return; // the line could not be read, so where the print is would go unused
+    }
+    uint64_t gen;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (wait_line_unreadable_) {
+            return;
+        }
+        gen = wait_line_gen_;
+    }
+    auto self = shared_from_this();
+    const std::string filename = file;
+    const auto read_at = [self, gen, filename](uint64_t pos) {
+        const std::optional<uint64_t> position = pos;
+        uint64_t read_gen;
+        {
+            std::lock_guard<std::mutex> lock(self->state_mutex_);
+            if (gen != self->wait_line_gen_ || position == self->wait_line_position_) {
+                return; // the wait ended, or the line there is already read
+            }
+            self->wait_line_position_ = position;
+            self->wait_line_ = {};
+            self->wait_line_read_ = false;
+            read_gen = ++self->wait_line_gen_;
+        }
+        helix::ui::queue_update(
+            "PrintStartCollector::read_wait_line", [self, read_gen, filename, pos]() {
+                IMoonrakerAPI* api = get_moonraker_api();
+                if (!api || !api->transfers().supports_range_reads()) {
+                    return;
+                }
+                helix::read_wait_line_at(
+                    api->transfers(), filename, pos,
+                    [self, read_gen](const helix::WaitLine& line) {
+                        self->apply_wait_line(read_gen, line);
+                    },
+                    [self, read_gen, pos](const MoonrakerError& e) {
+                        spdlog::debug("[PrintStartCollector] Wait line at {} not read: {}", pos,
+                                      e.message);
+                        std::lock_guard<std::mutex> lock(self->state_mutex_);
+                        if (read_gen == self->wait_line_gen_) {
+                            self->wait_line_unreadable_ = true;
+                        }
+                    });
+            });
+    };
+    // A subscribed position is current; the query covers a printer whose
+    // frames have not carried one yet.
+    std::optional<uint64_t> subscribed;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        subscribed = file_position_;
+    }
+    if (subscribed) {
+        read_at(*subscribed);
+        return;
+    }
+    client_.send_jsonrpc(
+        "printer.objects.query", {{"objects", {{"virtual_sdcard", {"file_position"}}}}},
+        [read_at](const json& resp) {
+            if (const std::optional<uint64_t> position =
+                    helix::virtual_sdcard_file_position(resp)) {
+                read_at(*position);
+            }
+        },
+        [](const MoonrakerError& e) {
+            spdlog::debug("[PrintStartCollector] virtual_sdcard not read: {}", e.message);
+        });
+}
+
+void PrintStartCollector::handle_start_block_position(const json& status) {
+    const std::optional<uint64_t> position = helix::virtual_sdcard_file_position(status);
+    const json* print_stats = json_util::find_member(status, "print_stats");
+    const json* filename = print_stats ? json_util::find_member(*print_stats, "filename") : nullptr;
+    if (!position && !(filename && filename->is_string())) {
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (position) {
+            file_position_ = position;
+        }
+        if (filename && filename->is_string()) {
+            frame_filename_ = filename->get<std::string>();
+        }
+    }
+    if (!position || !profile_ || !profile_->scripted_start()) {
+        return;
+    }
+    flush_deferred_start_block_step();
+    std::optional<helix::StartBlockStep> step;
+    bool request = false;
+    uint64_t run = 0;
+    std::string file;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (!active_.load() || current_phase_ == PrintStartPhase::COMPLETE) {
+            return;
+        }
+        run = run_generation_.load();
+        if (!start_block_requested_) {
+            start_block_requested_ = true;
+            request = true;
+            file = frame_filename_;
+        } else {
+            step = start_block_.advance(*position);
+        }
+    }
+    if (request) {
+        auto self = shared_from_this();
+        helix::ui::queue_update("PrintStartCollector::request_start_block",
+                                [self, run, file = std::move(file)]() mutable {
+                                    self->request_start_block(run, std::move(file));
+                                });
+    }
+    if (step) {
+        apply_start_block_step(*step, run);
+    }
+}
+
+void PrintStartCollector::request_start_block(uint64_t run, std::string filename) {
+    // The run's own frames name its file; the subject is the fallback for a
+    // reprint, whose frames need not repeat an unchanged name.
+    if (filename.empty()) {
+        const char* subject =
+            lv_subject_get_string(state_.print_state().get_print_filename_subject());
+        filename = subject ? subject : "";
+    }
+    IMoonrakerAPI* api = get_moonraker_api();
+    const bool readable = !filename.empty() && api && api->transfers().supports_range_reads();
+    if (!active_.load() || run != run_generation_.load() || !readable) {
+        if (filename.empty()) {
+            // The filename arrives in the same frames as the position; the
+            // next position asks again.
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            if (run == run_generation_.load()) {
+                start_block_requested_ = false;
+            }
+        }
+        return;
+    }
+    auto cancel = std::make_shared<std::atomic<bool>>(false);
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (run != run_generation_.load()) {
+            return;
+        }
+        start_block_cancel_ = cancel;
+    }
+    // The answer lands on the transfer's thread, which must not hold the last
+    // reference: the destructor deletes an LVGL timer.
+    std::weak_ptr<PrintStartCollector> weak = weak_from_this();
+    api->transfers().download_file_range(
+        "gcodes", filename, 0, helix::kStartBlockHeadBytes,
+        [weak, run, filename](const std::string& head) {
+            auto self = weak.lock();
+            if (!self) {
+                return;
+            }
+            auto steps = helix::scan_start_block(head, head.size() >= helix::kStartBlockHeadBytes);
+            std::optional<helix::StartBlockStep> step;
+            {
+                std::lock_guard<std::mutex> lock(self->state_mutex_);
+                if (run != self->run_generation_.load()) {
+                    return;
+                }
+                spdlog::info("[PrintStartCollector] Start block of {}: {} steps", filename,
+                             steps.size());
+                self->start_block_.set_steps(std::move(steps));
+                if (self->file_position_) {
+                    step = self->start_block_.advance(*self->file_position_);
+                }
+            }
+            if (step) {
+                self->apply_start_block_step(*step, run);
+            }
+            // The weak_ptr's lock may be the last reference; hand it to the
+            // main thread so the destructor runs there.
+            helix::ui::queue_update("PrintStartCollector::start_block_read", [self]() {});
+        },
+        [filename](const MoonrakerError& e) {
+            spdlog::debug("[PrintStartCollector] Start block of {} not read: {}", filename,
+                          e.message);
+        },
+        cancel);
+}
+
+void PrintStartCollector::apply_start_block_step(const helix::StartBlockStep& step, uint64_t run) {
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (!active_.load() || run != run_generation_.load() ||
+            current_phase_ == PrintStartPhase::COMPLETE) {
+            return;
+        }
+        if (console_phase_time_ + START_BLOCK_CONSOLE_GRACE > helix::sim::SimulatedClock::now()) {
+            if (profile_ && profile_->start_block_step_owns(step.command, console_phase_line_)) {
+                spdlog::debug("[PrintStartCollector] Start-block step at {} left to its own "
+                              "console line",
+                              step.offset);
+                deferred_step_.reset();
+            } else {
+                spdlog::debug("[PrintStartCollector] Start-block step at {} deferred past the "
+                              "previous command's console line",
+                              step.offset);
+                deferred_step_ = step;
+                deferred_step_run_ = run;
+            }
+            return;
+        }
+        deferred_step_.reset();
+    }
+    const PrintStartPhase phase = helix::start_block_step_phase(step.kind);
+    const char* message = phase_signal_message(phase);
+    switch (step.kind) {
+    case helix::StartBlockStepKind::HomeAxes:
+        message = lv_tr("Homing axes...");
+        break;
+    case helix::StartBlockStepKind::ProbeZ:
+        message = lv_tr("Probing Z...");
+        break;
+    case helix::StartBlockStepKind::BedMesh:
+        message = lv_tr("Bed mesh...");
+        break;
+    default:
+        break;
+    }
+    spdlog::debug("[PrintStartCollector] Start-block step at {} -> phase {}", step.offset,
+                  static_cast<int>(phase));
+    PrintStartProfile::MatchResult match{phase, message, 0};
+    apply_profile_match(match, /*marks_real_signal=*/true, /*live_state=*/true);
+}
+
+void PrintStartCollector::flush_deferred_start_block_step() {
+    std::optional<helix::StartBlockStep> step;
+    uint64_t run = 0;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (!deferred_step_ ||
+            console_phase_time_ + START_BLOCK_CONSOLE_GRACE > helix::sim::SimulatedClock::now()) {
+            return;
+        }
+        step = std::move(deferred_step_);
+        deferred_step_.reset();
+        run = deferred_step_run_;
+    }
+    apply_start_block_step(*step, run);
+}
+
+void PrintStartCollector::apply_wait_line(uint64_t gen, const helix::WaitLine& line) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    if (gen != wait_line_gen_) {
+        return; // read for a position or wait that has since moved on
+    }
+    spdlog::info("[PrintStartCollector] Waiting command: kind {}, sensor '{}'",
+                 static_cast<int>(line.kind), line.sensor);
+    wait_line_ = line;
+    wait_line_read_ = true;
+}
+
+std::string PrintStartCollector::chamber_wait_message(int temp_deci, int target_deci) {
+    const int temp_c = static_cast<int>(std::lround(helix::units::from_decidegrees(temp_deci)));
+    if (target_deci > 0) {
+        return fmt::format(
+            fmt::runtime(lv_tr("Waiting for chamber {} / {}°C")), temp_c,
+            static_cast<int>(std::lround(helix::units::from_decidegrees(target_deci))));
+    }
+    return fmt::format(fmt::runtime(lv_tr("Waiting for chamber {}°C")), temp_c);
+}
+
+void PrintStartCollector::relabel_heating_phase(PrintStartPhase resolved, bool heater_wait,
+                                                const std::string& label) {
+    const std::string message =
+        !label.empty()                             ? label
+        : resolved == PrintStartPhase::HEATING_BED ? std::string(lv_tr("Heating Bed..."))
+        : resolved == PrintStartPhase::SOAKING     ? std::string(lv_tr("Heating chamber..."))
+                                                   : std::string(lv_tr("Heating Nozzle..."));
     int progress;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
@@ -1963,12 +2519,19 @@ void PrintStartCollector::relabel_heating_phase(PrintStartPhase resolved, bool h
                 cached_ext_target_.load(std::memory_order_relaxed) > mesh_entry_ext_target_;
             allowed = heating || mesh_gave_way;
         }
-        if (!allowed || current_phase_ == resolved) {
+        // A label carrying live readings follows them within the phase.
+        if (!allowed ||
+            (current_phase_ == resolved && (label.empty() || current_message_ == label))) {
             return;
         }
-        spdlog::info("[PrintStartCollector] Heating correction: phase {} -> {}{}",
-                     static_cast<int>(current_phase_), static_cast<int>(resolved),
-                     heater_wait ? " (heater wait)" : "");
+        if (current_phase_ == resolved) {
+            // A label with live readings follows them once a degree.
+            spdlog::debug("[PrintStartCollector] Heater wait label: '{}'", message);
+        } else {
+            spdlog::info("[PrintStartCollector] Heating correction: phase {} -> {}{}",
+                         static_cast<int>(current_phase_), static_cast<int>(resolved),
+                         heater_wait ? " (heater wait)" : "");
+        }
         if (takeover) {
             heater_wait_shown_ = true;
             pre_wait_phase_ = current_phase_;
@@ -2015,10 +2578,9 @@ void PrintStartCollector::end_heater_wait() {
 
 int PrintStartCollector::switch_phase_locked(PrintStartPhase phase, const std::string& message) {
     maybe_reset_for_mesh_subphase_locked(phase, message);
-    current_phase_ = phase;
+    enter_phase_locked(phase);
     current_message_ = message;
     detected_phases_.insert(phase);
-    phase_enter_times_.try_emplace(static_cast<int>(phase), helix::sim::SimulatedClock::now());
     // A sequential profile's progress moves only with its own signals.
     if (profile_ && profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
         return max_sequential_progress_;
@@ -2106,17 +2668,11 @@ int PrintStartCollector::calculate_progress_locked() const {
                                   0.95f);
         } else {
             // Time-based for non-heating phases
-            auto enter_it = phase_enter_times_.find(static_cast<int>(current_phase_));
-            if (enter_it != phase_enter_times_.end()) {
-                float elapsed =
-                    static_cast<float>(std::chrono::duration_cast<std::chrono::seconds>(
-                                           helix::sim::SimulatedClock::now() - enter_it->second)
-                                           .count());
-                auto pred = predictor_.predicted_phases();
-                auto pred_it = pred.find(static_cast<int>(current_phase_));
-                if (pred_it != pred.end() && pred_it->second > 0) {
-                    phase_frac = std::min(elapsed / static_cast<float>(pred_it->second), 0.95f);
-                }
+            const float elapsed = static_cast<float>(phase_seconds_locked(current_phase_).count());
+            auto pred = predictor_.predicted_phases();
+            auto pred_it = pred.find(static_cast<int>(current_phase_));
+            if (pred_it != pred.end() && pred_it->second > 0) {
+                phase_frac = std::min(elapsed / static_cast<float>(pred_it->second), 0.95f);
             }
         }
         progress += cur_it->second * phase_frac;
@@ -2181,13 +2737,32 @@ bool PrintStartCollector::phase_skipped_locked(int phase) const {
 
 int PrintStartCollector::get_current_phase_elapsed_seconds() const {
     std::lock_guard<std::mutex> lock(state_mutex_);
-    int phase_int = static_cast<int>(current_phase_);
-    auto it = phase_enter_times_.find(phase_int);
-    if (it == phase_enter_times_.end()) {
-        return 0;
+    return static_cast<int>(phase_seconds_locked(current_phase_).count());
+}
+
+void PrintStartCollector::enter_phase_locked(PrintStartPhase phase) {
+    if (phase != current_phase_) {
+        const auto now = helix::sim::SimulatedClock::now();
+        phase_time_spent_[static_cast<int>(current_phase_)] += now - phase_since_;
+        phase_since_ = now;
     }
-    auto elapsed = helix::sim::SimulatedClock::now() - it->second;
-    return static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsed).count());
+    current_phase_ = phase;
+}
+
+std::chrono::seconds PrintStartCollector::phase_seconds_locked(PrintStartPhase phase) const {
+    if (phase == PrintStartPhase::IDLE || phase == PrintStartPhase::INITIALIZING ||
+        phase == PrintStartPhase::COMPLETE) {
+        return std::chrono::seconds::zero();
+    }
+    helix::sim::SimulatedClock::duration spent{};
+    if (const auto it = phase_time_spent_.find(static_cast<int>(phase));
+        it != phase_time_spent_.end()) {
+        spent = it->second;
+    }
+    if (phase == current_phase_) {
+        spent += helix::sim::SimulatedClock::now() - phase_since_;
+    }
+    return std::chrono::duration_cast<std::chrono::seconds>(spent);
 }
 
 // ============================================================================
@@ -2225,13 +2800,7 @@ void PrintStartCollector::update_eta_display() {
 
         auto completed = get_completed_phase_ints_locked();
         int current = static_cast<int>(current_phase_);
-        int phase_elapsed = 0;
-        auto it = phase_enter_times_.find(current);
-        if (it != phase_enter_times_.end()) {
-            phase_elapsed = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(
-                                                 helix::sim::SimulatedClock::now() - it->second)
-                                                 .count());
-        }
+        const int phase_elapsed = static_cast<int>(phase_seconds_locked(current_phase_).count());
 
         // Compute remaining from composite per-phase durations (weights * total)
         float remaining_f = 0.0f;
@@ -2439,13 +3008,17 @@ void PrintStartCollector::feed_thermal_sample() {
 
     if (phase == PrintStartPhase::HEATING_BED || phase == PrintStartPhase::HEATING_NOZZLE) {
         // Temps are in decidegrees (value * 10)
-        int ext_temp =
-            lv_subject_get_int(state_.temperature_state().get_active_extruder_temp_subject());
-        int bed_temp = lv_subject_get_int(state_.temperature_state().get_bed_temp_subject());
-        mgr.get_model("extruder")
-            .record_sample(helix::ui::temperature::deci_to_degrees_f(ext_temp), now_ms);
-        mgr.get_model("heater_bed")
-            .record_sample(helix::ui::temperature::deci_to_degrees_f(bed_temp), now_ms);
+        auto& temps = state_.temperature_state();
+        const auto feed = [&](const char* heater, lv_subject_t* temp, lv_subject_t* target) {
+            auto& model = mgr.get_model(heater);
+            const float t = helix::ui::temperature::deci_to_degrees_f(lv_subject_get_int(temp));
+            model.note_target(helix::ui::temperature::deci_to_degrees_f(lv_subject_get_int(target)),
+                              t, now_ms);
+            model.record_sample(t, now_ms);
+        };
+        feed("extruder", temps.get_active_extruder_temp_subject(),
+             temps.get_active_extruder_target_subject());
+        feed("heater_bed", temps.get_bed_temp_subject(), temps.get_bed_target_subject());
     }
 }
 
@@ -2690,32 +3263,20 @@ void PrintStartCollector::save_prediction_entry() {
         std::lock_guard<std::mutex> lock(state_mutex_);
         start_time = printing_state_start_;
 
-        // Build sorted list of phase enter times
-        std::vector<std::pair<int, helix::sim::SimulatedClock::time_point>> sorted_phases(
-            phase_enter_times_.begin(), phase_enter_times_.end());
-        std::sort(sorted_phases.begin(), sorted_phases.end(),
-                  [](const auto& a, const auto& b) { return a.second < b.second; });
-
-        for (size_t i = 0; i < sorted_phases.size(); ++i) {
-            int phase_int = sorted_phases[i].first;
-            // Heating phases tracked by ThermalRateModel, not predictor
-            if (phase_int == static_cast<int>(PrintStartPhase::HEATING_BED) ||
-                phase_int == static_cast<int>(PrintStartPhase::HEATING_NOZZLE)) {
+        // Heating phases are tracked by ThermalRateModel, not the predictor.
+        // A phase entered within the second it left (G28 followed at once by
+        // proactive HEATING_BED detection on AD5M) records nothing: HOMING=0
+        // entries would poison the MAD filter and suppress the default-floor
+        // fallback in compute_predicted_weights().
+        for (int phase_int = 0; phase_int < helix::print_start_phase_count(); ++phase_int) {
+            const auto phase = static_cast<PrintStartPhase>(phase_int);
+            if (phase == PrintStartPhase::HEATING_BED || phase == PrintStartPhase::HEATING_NOZZLE) {
                 continue;
             }
-            auto end_time = (i + 1 < sorted_phases.size()) ? sorted_phases[i + 1].second : now;
-            int duration = static_cast<int>(
-                std::chrono::duration_cast<std::chrono::seconds>(end_time - sorted_phases[i].second)
-                    .count());
-            // Skip zero-second phases — these happen when two phases enter
-            // within the same second (e.g. G28 followed immediately by
-            // proactive HEATING_BED detection on AD5M). Recording HOMING=0
-            // repeatedly would poison the MAD filter and suppress the
-            // default-floor fallback in compute_predicted_weights().
-            if (duration <= 0) {
-                continue;
+            const int duration = static_cast<int>(phase_seconds_locked(phase).count());
+            if (duration > 0) {
+                phase_durations[phase_int] = duration;
             }
-            phase_durations[phase_int] = duration;
         }
 
         // --- Diagnostic: predicted vs actual per-phase ---

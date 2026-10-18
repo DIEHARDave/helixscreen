@@ -33,6 +33,7 @@
 #include "../test_helpers/mock_bypass.h"
 #include "../test_helpers/mock_printer.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/scoped_cache_dir.h"
 #include "../test_helpers/scoped_portrait_layout.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
@@ -126,33 +127,7 @@ namespace {
 /// at create() time; the handlers themselves don't matter to this subject.
 void detail_noop_cb(lv_event_t* /*e*/) {}
 
-/// Per-test temp cache dir for HELIX_CACHE_DIR — keeps ToolsUsedCache disk
-/// state out of the real user cache. Saves/restores the env var so later
-/// tests in this binary are unaffected (tests share the process env).
-struct CacheDirGuard {
-    std::filesystem::path dir;
-    std::string prev_env_;
-    bool had_prev_ = false;
-    CacheDirGuard()
-        : dir(std::filesystem::temp_directory_path() /
-              ("detail_subjects_test_" + std::to_string(::getpid()))) {
-        std::filesystem::create_directories(dir);
-        if (const char* old = ::getenv("HELIX_CACHE_DIR")) {
-            prev_env_ = old;
-            had_prev_ = true;
-        }
-        ::setenv("HELIX_CACHE_DIR", dir.c_str(), 1);
-    }
-    ~CacheDirGuard() {
-        if (had_prev_) {
-            ::setenv("HELIX_CACHE_DIR", prev_env_.c_str(), 1);
-        } else {
-            ::unsetenv("HELIX_CACHE_DIR");
-        }
-        std::error_code ec;
-        std::filesystem::remove_all(dir, ec);
-    }
-};
+using CacheDirGuard = helix::test::ScopedCacheDir;
 
 } // namespace
 
@@ -196,7 +171,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     // Saved states for a queued job: bed_mesh flipped off, timelapse flipped
     // on, plus an id no option set has ever defined.
-    view.seed_option_states({{"bed_mesh", false}, {"timelapse", true}, {"ghost_option", true}});
+    view.seed_option_states(
+        {"queued.gcode", {{"bed_mesh", false}, {"timelapse", true}, {"ghost_option", true}}});
     view.show("queued.gcode", "", "PLA");
     helix::ui::UpdateQueue::instance().drain();
 
@@ -433,8 +409,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
     };
 
     SECTION("warmed cache: ready=1 and tools_used seeded before activation") {
-        helix::ToolsUsedCache warmer;
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime);
 
@@ -473,8 +449,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
         // "non-empty": with no API nothing can ever read the file, so the
         // degrade path settles it and the latch still opens rather than
         // hanging on the skeleton forever.
-        helix::ToolsUsedCache warmer;
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", /*filament_colors=*/{}, {}, kSize, kMtime);
 
@@ -495,8 +471,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
         // Guards the common path against the change above: metadata that
         // carried colors settles the palette question during show(), so a
         // re-print still renders final chips on the first frame.
-        helix::ToolsUsedCache warmer;
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime);
         REQUIRE(lv_subject_get_int(ready) == 1);
@@ -505,8 +481,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
     }
 
     SECTION("stale cache entry (mtime changed) is a miss") {
-        helix::ToolsUsedCache warmer;
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime + 1);
         REQUIRE(lv_subject_get_int(ready) == 0); // re-sliced file → skeleton
@@ -529,28 +505,32 @@ lv_obj_t* make_detail_root(lv_obj_t* parent) {
 }
 } // namespace
 
-TEST_CASE_METHOD(LVGLUITestFixture, "Sliced colors toggle sits outside the filament card",
+TEST_CASE_METHOD(LVGLUITestFixture, "Sliced colors toggle sits on the preview it recolors",
                  "[print_select][detail][xml]") {
-    // The toggle recolors the 3D preview, not the chips. Task 4 merges the two
-    // cards and the header cannot carry the toggle, the chevron and two icons
-    // at 480x272 — so the toggle must already live outside the card.
+    // The toggle recolors the 3D preview, not the chips, so it lives on the
+    // preview card and the options column carries no row for it.
     lv_obj_t* const root = make_detail_root(test_screen());
     REQUIRE(root != nullptr);
 
     lv_obj_t* const toggle = lv_obj_find_by_name(root, "sliced_colors_toggle");
     REQUIRE(toggle != nullptr);
+    CHECK(lv_obj_has_flag(toggle, LV_OBJ_FLAG_CHECKABLE));
 
-    lv_obj_t* const card = lv_obj_find_by_name(root, "filament_mapping_card");
-    REQUIRE(card != nullptr);
+    lv_obj_t* const preview = lv_obj_find_by_name(root, "detail_card");
+    lv_obj_t* const column = lv_obj_find_by_name(root, "options_section");
+    REQUIRE(preview != nullptr);
+    REQUIRE(column != nullptr);
 
-    // Walk up from the toggle: the filament card must not be an ancestor.
+    bool on_preview = false;
     for (lv_obj_t* p = lv_obj_get_parent(toggle); p != nullptr; p = lv_obj_get_parent(p)) {
-        CHECK(p != card);
+        on_preview = on_preview || p == preview;
+        CHECK(p != column);
     }
+    CHECK(on_preview);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,
-                 "Sliced colors row is shown only while the live viewer is on screen",
+                 "Sliced colors toggle is shown only while the live viewer is on screen",
                  "[print_select][detail][xml]") {
     // The toggle sets detail_prefer_sliced_colors, which apply_preview_colors()
     // uses to choose which mappings feed the 3D gcode viewer. It reaches nothing
@@ -563,7 +543,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     //
     // Built through the real view rather than make_detail_root(): the two
     // subjects below are registered by PrintSelectDetailView::init_subjects(),
-    // so a bare lv_xml_create() finds the row but not the subjects driving it.
+    // so a bare lv_xml_create() finds the toggle but not the subjects driving it.
     register_xml_callbacks({
         {"on_print_select_detail_backdrop", detail_noop_cb},
         {"on_print_select_print_button", detail_noop_cb},
@@ -578,7 +558,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* const root = view.create(test_screen());
     REQUIRE(root != nullptr);
 
-    lv_obj_t* const row = lv_obj_find_by_name(root, "sliced_colors_row");
+    lv_obj_t* const row = lv_obj_find_by_name(root, "sliced_colors_toggle");
     REQUIRE(row != nullptr);
 
     lv_subject_t* const mode = lv_xml_get_subject(nullptr, "detail_gcode_viewer_mode");
@@ -603,9 +583,20 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
 
     // Both: the live viewer is what is on screen, the toggle recolours something
-    // visible, so the row is offered.
+    // visible, so the toggle is offered.
     set_state(1, 1);
     CHECK_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+
+    // Its checked state follows the preference both ways, so a reopened view
+    // (which resets the preference) never shows a stale "on".
+    lv_subject_t* const prefer = lv_xml_get_subject(nullptr, "detail_prefer_sliced_colors");
+    REQUIRE(prefer != nullptr);
+    lv_subject_set_int(prefer, 1);
+    process_lvgl(20);
+    CHECK(lv_obj_has_state(row, LV_STATE_CHECKED));
+    lv_subject_set_int(prefer, 0);
+    process_lvgl(20);
+    CHECK_FALSE(lv_obj_has_state(row, LV_STATE_CHECKED));
 
     // And it goes away again when the viewer does - the binding is reactive, not
     // a one-shot evaluated when the tree was built.
@@ -665,6 +656,24 @@ TEST_CASE_METHOD(LVGLUITestFixture, "prep time estimate line appears on the firs
     lv_subject_set_int(visible, 0);
     process_lvgl(20);
     CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+
+    // Micro and tiny give the line's row to the options column, estimate or
+    // not; small and up keep it.
+    lv_subject_set_int(visible, 1);
+    lv_subject_t* const bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
+    REQUIRE(bp != nullptr);
+    const int32_t real_bp = lv_subject_get_int(bp);
+    for (int32_t tier : {0, 1}) {
+        INFO("breakpoint " << tier);
+        lv_subject_set_int(bp, tier);
+        process_lvgl(20);
+        CHECK(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+    }
+    lv_subject_set_int(bp, 2);
+    process_lvgl(20);
+    CHECK_FALSE(lv_obj_has_flag(line, LV_OBJ_FLAG_HIDDEN));
+    lv_subject_set_int(bp, real_bp);
+    process_lvgl(20);
 
     view.hide();
     helix::ui::UpdateQueue::instance().drain();
@@ -794,8 +803,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // it is a no-op until either the viewer has parsed or a headless scan landed.
     constexpr size_t kSize = 4321;
     constexpr time_t kMtime = 8765;
-    helix::ToolsUsedCache warmer;
-    warmer.store("sub/one_tool.gcode", kSize, kMtime, {0});
+    auto& warmer = helix::tools_used_cache();
+    warmer.store("sub/one_tool.gcode", {kSize, kMtime}, {0});
 
     // T0 prints red PLA, per the slicer palette show() is handed.
     const std::vector<std::string> colors{"#FF0000"};
@@ -959,8 +968,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A bypassed single-lane print renders no fil
     // the visibility rules did.
     constexpr size_t kSize = 999;
     constexpr time_t kMtime = 1111;
-    helix::ToolsUsedCache warmer;
-    warmer.store("sub/bypass_one.gcode", kSize, kMtime, {0});
+    auto& warmer = helix::tools_used_cache();
+    warmer.store("sub/bypass_one.gcode", {kSize, kMtime}, {0});
 
     // THREE palette entries against ONE used tool, deliberately. The card
     // decides visibility from print_lane_requirement(), which prefers the used
@@ -1049,9 +1058,9 @@ TEST_CASE_METHOD(LVGLUITestFixture, "The tap chevron tracks the card, and the ba
 
     constexpr size_t kSize = 2468;
     constexpr time_t kMtime = 1357;
-    helix::ToolsUsedCache warmer;
-    warmer.store("sub/two_tools.gcode", kSize, kMtime, {0, 1});
-    warmer.store("sub/no_palette.gcode", kSize, kMtime, {0});
+    auto& warmer = helix::tools_used_cache();
+    warmer.store("sub/two_tools.gcode", {kSize, kMtime}, {0, 1});
+    warmer.store("sub/no_palette.gcode", {kSize, kMtime}, {0});
 
     lv_subject_t* const visible = lv_xml_get_subject(nullptr, "filament_mapping_visible");
     lv_subject_t* const remappable = lv_xml_get_subject(nullptr, "color_card_remappable");
@@ -1261,8 +1270,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A tap on the filament card opens the remap 
 
     constexpr size_t kSize = 1122;
     constexpr time_t kMtime = 3344;
-    helix::ToolsUsedCache warmer;
-    warmer.store("sub/two_tools.gcode", kSize, kMtime, {0, 1});
+    auto& warmer = helix::tools_used_cache();
+    warmer.store("sub/two_tools.gcode", {kSize, kMtime}, {0, 1});
     view.show("two_tools.gcode", "sub", "PLA", {"#FF0000", "#00FF00"}, {"PLA", "PETG"}, kSize,
               kMtime);
 
@@ -1535,8 +1544,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A name the printer cannot be sent is refuse
     d.view.toggle_exclude_pick("Plain");
     helix::ui::set_test_notification_warning_hook(nullptr);
 
-    CHECK(d.view.exclude_picks() == std::vector<std::string>{"Plain"});
-    REQUIRE(warnings.size() == 2);
+    CHECK(d.view.exclude_picks() == std::vector<std::string>{"Pi\xc3\xa8"
+                                                             "ce",
+                                                             "Plain"});
+    REQUIRE(warnings.size() == 1);
     CHECK(warnings[0].find("Part 1") != std::string::npos);
 }
 

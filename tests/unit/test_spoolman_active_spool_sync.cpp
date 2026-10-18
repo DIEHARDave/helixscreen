@@ -94,6 +94,8 @@ class RecordingSpoolman : public helix::ISpoolmanAPI {
     void update_spoolman_filament(int, const json&, SuccessCallback, ErrorCallback) override {}
     void update_spoolman_filament_color(int, const std::string&, SuccessCallback,
                                         ErrorCallback) override {}
+    void set_spoolman_filament_extra_number(int, const std::string&, const std::string&, double,
+                                            SuccessCallback, ErrorCallback) override {}
     void get_spoolman_vendors(helix::VendorListCallback, ErrorCallback) override {}
     void get_spoolman_filaments(helix::FilamentListCallback, ErrorCallback) override {}
     void get_spoolman_filaments(int, helix::FilamentListCallback, ErrorCallback) override {}

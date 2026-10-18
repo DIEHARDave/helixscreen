@@ -33,9 +33,12 @@
 
 #include "ui_update_queue.h"
 
+#include "../lvgl_test_fixture.h"
+#include "../test_helpers/scoped_env.h"
 #include "../test_helpers/toolchanger_test_helper.h"
 #include "ams_state.h"
 #include "error_event.h"
+#include "moonraker_client_mock.h"
 #include "printer_discovery.h"
 #include "toolchanger_addon.h"
 
@@ -187,6 +190,37 @@ TEST_CASE("Feeder actions send the provider's gcode", "[ams][toolchanger][feeder
     CHECK(h.sent()[1] == "CLOSE");
 }
 
+TEST_CASE("The feeder answers the generic feeder questions from its live state",
+          "[ams][toolchanger][feeder]") {
+    ToolChangerHelper h(4);
+    h.set_tool_sensor(toolchanger_addon::resolve_tool_sensor(medusahc_discovery()));
+    h.set_feeder(helix::toolchanger_addon::resolve_feeder(medusahc_discovery()));
+    h.feed_status("ready", 0);
+    REQUIRE(h.supports_feeder_control());
+
+    h.feed(json{{"medusahc", {{"operation", "idle"}, {"current_tool", 0}, {"feeder_open", true}}}});
+    CHECK(h.feeder_open());
+    h.feed(
+        json{{"medusahc", {{"operation", "idle"}, {"current_tool", 0}, {"feeder_open", false}}}});
+    CHECK_FALSE(h.feeder_open());
+
+    REQUIRE(h.set_feeder_open(true).success());
+    REQUIRE(h.set_feeder_open(false).success());
+    REQUIRE(h.sent().size() == 2);
+    CHECK(h.sent()[0] == "OPEN");
+    CHECK(h.sent()[1] == "CLOSE");
+}
+
+TEST_CASE("A tool changer without a feeder refuses the generic feeder calls",
+          "[ams][toolchanger][feeder]") {
+    ToolChangerHelper h(4);
+    h.feed_status("ready", 0);
+    CHECK_FALSE(h.supports_feeder_control());
+    CHECK_FALSE(h.feeder_open());
+    CHECK_FALSE(h.set_feeder_open(true).success());
+    CHECK(h.sent().empty());
+}
+
 TEST_CASE("A tool changer without a feeder exposes no device actions",
           "[ams][toolchanger][feeder]") {
     // Every non-MedusaHC klipper-toolchanger printer must be exactly as it was.
@@ -311,7 +345,7 @@ TEST_CASE("Unmounting uses the machine's own drop command", "[ams][toolchanger][
     tc.set_tool_sensor(toolchanger_addon::resolve_tool_sensor(hw));
     tc.feed(json{{"medusahc", {{"state", "ready"}, {"current_tool", 1}}}});
 
-    auto err = tc.unload_filament(1);
+    auto err = tc.park_active_tool();
     REQUIRE(err.success());
     REQUIRE_FALSE(tc.sent().empty());
     // DROP_TOOL takes no tool argument: there is only ever one tool on the head.
@@ -436,7 +470,7 @@ TEST_CASE("A tool changer's steps project SELECTING, and docking projects UNLOAD
 
 TEST_CASE("A running swap publishes its step's action, and the closing grip reads IDLE",
           "[ams][toolchanger][coarse]") {
-    // The unmount dispatches as UNLOADING, but its first step releases the
+    // The park dispatches as UNLOADING, but its first step releases the
     // filament, which projects SELECTING. The grip that closes the swap lands
     // on the frame that ends it, and a finished swap reads IDLE whatever step
     // index it left behind.
@@ -451,7 +485,7 @@ TEST_CASE("A running swap publishes its step's action, and the closing grip read
     AmsState::instance().set_active_step_operation(StepOperationType::UNLOAD);
     tc.feed(
         json{{"medusahc", {{"operation", "idle"}, {"current_tool", 0}, {"feeder_open", false}}}});
-    REQUIRE(tc.unload_filament(0).success());
+    REQUIRE(tc.park_active_tool().success());
 
     tc.feed(
         json{{"medusahc", {{"operation", "idle"}, {"current_tool", 0}, {"feeder_open", true}}}});
@@ -760,13 +794,21 @@ TEST_CASE("A fresh dispatch does not inherit the previous swap's gripper latch",
 // Wording and refusals
 // ============================================================================
 
-TEST_CASE("A changer's load mounts a tool rather than moving filament",
-          "[ams][toolchanger][labels]") {
-    // Drives the Mount/Unmount wording. Asked as a capability so the Snapmaker
-    // U1 - a tool changer whose load really does feed filament - keeps the
-    // filament wording.
+TEST_CASE("Discovery makes a MedusaHC changer load and unload through the carriage",
+          "[ams][toolchanger][labels][mount_feed]") {
+    // One extruder drive serves every tool, so a load mounts the tool first;
+    // to the UI it is simply an automatic Load and Unload.
     ToolChangerHelper tc(2);
-    CHECK(tc.load_mounts_tool());
+    tc.set_discovery(medusahc_discovery());
+    const auto ops = tc.head_filament_ops(0);
+    CHECK(ops.load == FilamentOpSupport::Automatic);
+    CHECK(ops.unload == FilamentOpSupport::Automatic);
+    CHECK(tc.carriage_can_be_empty());
+    CHECK(tc.load_feeds_filament());
+
+    // A plain klipper-toolchanger keeps filament by hand.
+    ToolChangerHelper plain(2);
+    CHECK(plain.head_filament_ops(0).load == FilamentOpSupport::Manual);
 }
 
 TEST_CASE("A blocked unmount explains itself only when it can", "[ams][toolchanger][labels]") {
@@ -957,4 +999,28 @@ TEST_CASE("An ejected tool draws no filament in its tube", "[ams][toolchanger][m
     // A docked tool carries its own hot end and its own strand, so it keeps one.
     CHECK(tc.get_slot_filament_segment(1) == PathSegment::NOZZLE);
     CHECK(tc.get_slot_filament_segment(0) == PathSegment::NOZZLE);
+}
+
+// ============================================================================
+// The mock's dock-sensor fault
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "HELIX_MOCK_MEDUSA_SENSOR_ERROR makes the mock's docks report no tool",
+                 "[ams][toolchanger][medusahc][mock]") {
+    ScopedEnv ams_env("HELIX_MOCK_AMS", "medusahc");
+    ScopedEnv printer_env("HELIX_MOCK_PRINTER", nullptr);
+    const bool fault = GENERATE(true, false);
+    CAPTURE(fault);
+    ScopedEnv fault_env("HELIX_MOCK_MEDUSA_SENSOR_ERROR", fault ? "1" : nullptr);
+
+    MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+    REQUIRE(mock.is_mock_medusahc());
+
+    // -2 is the schema's "the docks cannot tell", distinct from -1, nothing
+    // mounted.
+    const json status = mock.medusa_status_json();
+    REQUIRE(status.contains("current_tool"));
+    CHECK((status["current_tool"].get<int>() == -2) == fault);
+    CHECK((mock.pin_watch_status_json()["current_tool"].get<int>() == -2) == fault);
 }

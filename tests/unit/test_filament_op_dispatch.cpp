@@ -359,39 +359,6 @@ TEST_CASE("plan_load: reloading the seated slot itself is a plain load, not a sw
 // Refusals
 // =============================================================================
 
-TEST_CASE("plan_load: toolchanger refuses a load on the tool already mounted",
-          "[filament][dispatch][refusal][1183]") {
-    // Bundle 9KRXZ62P. SELECT_TOOL on the carriage tool is a firmware no-op;
-    // dispatching it left the Load button spinning for 120 s and locked out
-    // every later operation via is_busy(). The sidebar has always refused here.
-    AmsSystemInfo sys = make_sys(5, /*current_slot=*/4);
-    BackendCaps tc = fresh_ams();
-    tc.is_tool_changer = true;
-    tc.needs_unload_before_load = true;
-
-    auto plan = plan_load(sys, tc, /*target_slot=*/4, /*macro_available=*/true,
-                          /*macro_user_configured=*/false);
-    CHECK(plan.tier == FilamentTier::Refused);
-    CHECK(plan.refusal == FilamentRefusal::AlreadyMounted);
-    CHECK(plan.ams_call == AmsCall::None);
-}
-
-TEST_CASE("plan_load: toolchanger still swaps to a DIFFERENT tool",
-          "[filament][dispatch][refusal][1183]") {
-    // Guard rail on the refusal above: it must key on the mounted tool, not on
-    // being a toolchanger.
-    AmsSystemInfo sys = make_sys(5, /*current_slot=*/4);
-    BackendCaps tc = fresh_ams();
-    tc.is_tool_changer = true;
-    tc.needs_unload_before_load = true;
-
-    auto plan = plan_load(sys, tc, /*target_slot=*/1, /*macro_available=*/true,
-                          /*macro_user_configured=*/false);
-    CHECK(plan.tier == FilamentTier::AmsBackend);
-    CHECK(plan.ams_call == AmsCall::ChangeTool);
-    CHECK(plan.ams_arg == 1);
-}
-
 TEST_CASE("plan_load: unresolved slot refuses with SelectSlot", "[filament][dispatch][refusal]") {
     AmsSystemInfo sys = make_sys(4, -1);
 

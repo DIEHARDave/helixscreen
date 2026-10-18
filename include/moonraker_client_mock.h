@@ -515,6 +515,17 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
      */
     void set_chamber_target(double target);
 
+    /**
+     * @brief A chamber target arriving by the appliance's route around the
+     *        gcode queue (or by gcode, for the same heater)
+     *
+     * With HELIX_MOCK_DRAGONBREATH_REJECT set, the appliance turns every target
+     * down: the heater target stays 0 and the status object reports the
+     * rejection. Otherwise the target is taken and any rejection cleared.
+     * @return the route's reply, {"accepted", "reason", "seq"}
+     */
+    json chamber_route_set_target(double target);
+
     // ========== Test Helpers ==========
 
     /**
@@ -912,6 +923,17 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// object. Empty when the file is not loaded.
     [[nodiscard]] json skip_wrapper_status() const;
 
+    /// HELIX_MOCK_LAYER_PAUSE (default on): the client.cfg layer-pause macros.
+    [[nodiscard]] static bool layer_pause_macros_loaded();
+    /// `gcode_macro SET_PRINT_STATS_INFO` with the schedule; empty when off.
+    [[nodiscard]] json layer_pause_status() const;
+    /// Add the three macros' objects to an objects list when loaded.
+    static void append_layer_pause_objects(json& objects);
+    /// The simulated print reached a new layer: fire a scheduled pause.
+    void layer_pause_on_layer(int previous_layer, int current_layer);
+    /// CANCEL_PRINT clears both schedules, as client.cfg's does.
+    void reset_layer_pause();
+
     /// A print-start step reaching its wrapper: true, and the flag restored,
     /// when a skip was set for it.
     bool consume_skip(helix::skip_wrappers::Op op);
@@ -1178,6 +1200,14 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// MoonrakerClientMock*, not members.
     bool led_effect_enabled(const std::string& object_name) const;
 
+    /// An extruder's pressure advance K and smooth time, as SET_PRESSURE_ADVANCE
+    /// last left them. An extruder never set reads the config default.
+    struct PressureAdvance {
+        double advance = 0.04;
+        double smooth_time = 0.04;
+    };
+    PressureAdvance pressure_advance_for(const std::string& extruder) const;
+
     /// Current mock offset for a tool on one axis, in mm. Seeded distinct per
     /// tool AND per axis and updated by SET_TOOL_PARAMETER, so a value set
     /// earlier in the session survives into a later status snapshot instead of
@@ -1309,6 +1339,16 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
      * Empty object for the FORK variant (no pin_watch) and for NONE.
      */
     nlohmann::json pin_watch_status_json() const;
+
+    /**
+     * @brief U1 `defect_detection` status: the module's stored config, which
+     *        is what its get_status() returns.
+     *
+     * Empty object for every persona but the U1. main_enable and
+     * clean_bed.enable follow DEFECT_DETECTION_CONFIG MAIN_ENABLE=0|1 and
+     * CLEAN_BED_ENABLE=0|1.
+     */
+    nlohmann::json defect_detection_status() const;
 
   private:
     // Test visibility into the chamber-key cache and the synchronous initial
@@ -1979,6 +2019,11 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     std::atomic<double> print_progress_{0.0}; // 0.0 to 1.0
     /// Last layer announced on the console. Sim thread only.
     int last_console_layer_ = 0;
+    int layer_pause_last_layer_ = 0; ///< status thread only
+    std::atomic<bool> layer_pause_next_{false};
+    std::atomic<int> layer_pause_next_armed_at_{0}; ///< layer the request arrived on
+    std::atomic<bool> layer_pause_at_enable_{false};
+    std::atomic<int> layer_pause_at_layer_{0};
     std::atomic<int> speed_factor_{100}; // Percentage
     std::atomic<int> flow_factor_{100};  // Percentage
     std::atomic<int> fan_speed_{0};      // 0-255
@@ -2049,6 +2094,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     struct LedColor {
         double r = 0.0, g = 0.0, b = 0.0, w = 0.0;
     };
+    /// Guarded by pressure_advance_mutex_.
+    std::map<std::string, PressureAdvance> pressure_advance_;
+    mutable std::mutex pressure_advance_mutex_;
+
     std::map<std::string, LedColor> led_states_; // LED name -> color
     mutable std::mutex led_mutex_;               // Protects led_states_
     /// Klipper object names of the enabled LED effects. SET_LED_EFFECT is
@@ -2254,6 +2303,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
         "load_finish", "preload_finish", "load_finish", "preload_finish"};
     std::array<bool, static_cast<size_t>(U1_CHANNELS)> u1_filament_detected_{true, true, true,
                                                                              true};
+    /// defect_detection main_enable and clean_bed.enable, switched by
+    /// DEFECT_DETECTION_CONFIG.
+    std::atomic<bool> u1_defect_main_enable_{true};
+    std::atomic<bool> u1_clean_bed_enable_{true};
 
     /// One feeder command line: walk the named channel through its states.
     /// HELIX_MOCK_BATCH_FAIL_SLOT=<n> swaps that channel's terminal for its
@@ -2265,6 +2318,8 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// present-but-partial channel object resets the fields the backend's
     /// delta parse would otherwise carry forward.
     void publish_u1_channel_frame(int ext);
+    /// One filament_feed side's channels object, both of its channels whole.
+    [[nodiscard]] nlohmann::json u1_feed_side_json(int ext) const;
 
     // --- Standalone IFS module mock -----------------------------------------
     // HELIX_MOCK_AMS=ifs-module: pushes the module's objects (ifs /
@@ -2283,6 +2338,32 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// Apply one IFS-module gcode command token. @return true when the token
     /// was one of ours (the caller then stops walking the generic chain).
     bool apply_ifs_module_gcode(const std::string& cmd, const std::string& gcode);
+
+    // --- multiACE mock hardware ----------------------------------------------
+    // HELIX_MOCK_AMS=multiace: pushes the U1's own objects plus a plain `ace`
+    // so real discovery builds the PRODUCTION AmsBackendMultiAce and runs it
+    // against the engine-shaped frames served here — try_create_mock()
+    // declines this value, the same rule as the MedusaHC / IFS-module / CFS
+    // modes. Pair with HELIX_MOCK_PRINTER=snapmaker_u1. HELIX_MOCK_MULTIACE_MODE
+    // picks head|multi and HELIX_MOCK_MULTIACE_UNITS the connected unit count
+    // (1-4); ACE_LOAD_HEAD / ACE_UNLOAD_HEAD answer by routing a head to its
+    // bay (or clearing it) and walking the head's channel_state the way
+    // multiACE's shadow filament_feed does.
+    /// Apply one ACE_* engine command. @return true when the line was one.
+    bool apply_multiace_gcode(const std::string& gcode);
+
+    /// Routed bay per head ((ace idx, bay), none when the head is unloaded).
+    std::array<std::pair<int, int>, 4> multiace_route_{{{-1, -1}, {-1, -1}, {-1, -1}, {-1, -1}}};
+    /// The engine's swap phase word, walked while a routed load runs.
+    std::string multiace_swap_phase_{"idle"};
+    /// HELIX_MOCK_MULTIACE_UNITS, read once at start (1-4).
+    int multiace_units_{1};
+    /// HELIX_MOCK_MULTIACE_MODE, read once at start ("head" | "multi").
+    std::string multiace_mode_{"head"};
+    /// Guards the fields above across the simulation and gcode threads.
+    mutable std::mutex multiace_mutex_;
+    /// Read the two HELIX_MOCK_MULTIACE_* knobs into the members (idempotent).
+    void read_multiace_knobs();
 
     // --- CFS mock (K1 stock dialect) ----------------------------------------
     // HELIX_MOCK_AMS=cfs: pushes the `box` object so real discovery sets
@@ -2341,14 +2422,32 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
         return cfs_loaded_slot_.load() >= 0;
     }
 
+    // --- multiACE mock hardware (public: the frame builder is what the
+    // parity test reads, beside the sibling mock-hardware builders above). ---
+    bool is_mock_multiace() const;
+    /// The `ace` object frame, the engine's get_status() shape.
+    [[nodiscard]] nlohmann::json multiace_status_json() const;
+
+    /// display_status.message as the mock publishes it now: the last M117 once one was
+    /// sent (an empty one included), else the print-start chatter for the current phase,
+    /// else null.
+    [[nodiscard]] json current_display_message() const;
+    /// The M117 a typical PRINT_START macro shows during a simulated print-start step
+    /// (a SimulatedPrintStartPhase value).
+    static const char* print_start_display_message(uint8_t simulated_phase);
+
   private:
     // --- gcode_script() handlers (moonraker_client_mock_gcode*.cpp) -----------
     // One handler per command family. A handler returns a code to end the
     // script, or std::nullopt to let the checks after it see the same line.
     using GcodeResult = std::optional<int>;
     GcodeResult gcode_skip_wrappers(const std::string& gcode);
+    GcodeResult gcode_layer_pause(const std::string& gcode);
     GcodeResult gcode_ifs_module(const std::string& gcode);
     GcodeResult gcode_medusa(const std::string& gcode);
+    /// RESPOND: echoes MSG on the console the way Klipper's [respond] does, so
+    /// an action prompt a script raises reaches the screen.
+    GcodeResult gcode_respond(const std::string& gcode);
     GcodeResult gcode_zmod(const std::string& gcode);
     GcodeResult gcode_cfs(const std::string& gcode);
     GcodeResult gcode_openams(const std::string& script);
@@ -2388,6 +2487,7 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     GcodeResult gcode_shaper_calibrate(const std::string& gcode);
     GcodeResult gcode_test_resonances(const std::string& gcode);
     GcodeResult gcode_set_led(const std::string& gcode);
+    GcodeResult gcode_set_pressure_advance(const std::string& gcode);
     GcodeResult gcode_probe_calibrate(const std::string& gcode);
     GcodeResult gcode_testz(const std::string& gcode);
     GcodeResult gcode_accept(const std::string& gcode);
@@ -2439,6 +2539,12 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     std::atomic<bool> dragonbreath_fault_{false};
     std::atomic<bool> dragonbreath_offline_{false};
     std::atomic<bool> dragonbreath_external_{false};
+    /// HELIX_MOCK_DRAGONBREATH_REJECT: the vendor code every chamber target is
+    /// refused with ("" = targets are accepted). Written once at construction.
+    std::string dragonbreath_reject_code_;
+    std::atomic<int> dragonbreath_reject_seq_{0};
+    std::atomic<double> dragonbreath_reject_target_{0.0};
+    std::atomic<bool> dragonbreath_rejection_outstanding_{false};
     std::atomic<bool> panda_breath_offline_{false};
     std::atomic<bool> panda_breath_auto_{false};
 

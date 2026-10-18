@@ -46,7 +46,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver.h"
-#include "screensaver_flip_clock.h"
+#include "screensaver_clock.h"
 #endif
 
 #include "pending_startup_warnings.h"
@@ -105,7 +105,7 @@ static int sdl_event_filter(void* /*userdata*/, SDL_Event* event) {
 
 DisplayManager::DisplayManager()
     : m_sleep(DisplaySleepHost{m_backend, m_backlight, m_display, m_shutting_down,
-                               [this] { disable_input_briefly(); },
+                               [] { cancel_pointer_presses(); },
                                [this](lv_display_flush_cb_t cb) { restore_flush_cb(cb); }}) {}
 
 DisplayManager::~DisplayManager() {
@@ -149,6 +149,28 @@ void apply_image_cache_env() {
 }
 
 } // namespace
+
+void DisplayManager::schedule_brightness_reassert() {
+    // Schedule delayed brightness override to counteract ForgeX's delayed_gcode.
+    // On AD5M, Klipper's reset_screen fires ~3s after Klipper becomes READY.
+    // Klipper typically becomes ready 10-20s after boot, so a 20s delay ensures
+    // we fire AFTER the delayed_gcode dims the screen.
+    // Only the FlashForge firmwares dim behind our back.
+    if (helix::board::current_info().firmware_dims_backlight_after_boot) {
+        m_brightness_reassert_timer.reset(lv_timer_create(
+            [](lv_timer_t* t) {
+                auto* dm = static_cast<DisplayManager*>(lv_timer_get_user_data(t));
+                dm->m_brightness_reassert_timer.release();
+                if (dm->m_backlight && dm->m_backlight->is_available()) {
+                    const int brightness = DisplaySettingsManager::instance().user_brightness();
+                    dm->m_backlight->set_brightness(brightness);
+                    spdlog::info("[DisplayManager] Delayed brightness override: {}%", brightness);
+                }
+                lv_timer_delete(t);
+            },
+            20000, this));
+    }
+}
 
 bool DisplayManager::init(const Config& config) {
     if (m_initialized) {
@@ -495,25 +517,7 @@ bool DisplayManager::init(const Config& config) {
         m_backlight->set_brightness(100);
         spdlog::debug("[DisplayManager] Backlight forced ON at 100% for startup");
 
-        // Schedule delayed brightness override to counteract ForgeX's delayed_gcode.
-        // On AD5M, Klipper's reset_screen fires ~3s after Klipper becomes READY.
-        // Klipper typically becomes ready 10-20s after boot, so a 20s delay ensures
-        // we fire AFTER the delayed_gcode dims the screen.
-        // Only the FlashForge firmwares dim behind our back.
-        if (helix::board::current_info().firmware_dims_backlight_after_boot) {
-            lv_timer_create(
-                [](lv_timer_t* t) {
-                    auto* dm = static_cast<DisplayManager*>(lv_timer_get_user_data(t));
-                    if (dm && dm->m_backlight && dm->m_backlight->is_available()) {
-                        const int brightness = DisplaySettingsManager::instance().user_brightness();
-                        dm->m_backlight->set_brightness(brightness);
-                        spdlog::info("[DisplayManager] Delayed brightness override: {}%",
-                                     brightness);
-                    }
-                    lv_timer_delete(t);
-                },
-                20000, this);
-        }
+        schedule_brightness_reassert();
     }
 
     // Dim and sleep behavior
@@ -585,6 +589,9 @@ void DisplayManager::set_active_instance(DisplayManager* dm) {
 }
 
 void DisplayManager::shutdown() {
+    // Ahead of the initialized check: a handler can be installed on a manager that
+    // never ran init(), and its event callback holds this manager either way.
+    remove_resize_handler();
     if (!m_initialized) {
         return;
     }
@@ -613,6 +620,7 @@ void DisplayManager::shutdown() {
     m_display = nullptr;
 
     m_sleep.abandon_lvgl_state();
+    m_brightness_reassert_timer.reset();
 
     // Release backends
     m_backlight.reset();
@@ -864,8 +872,8 @@ helix::ui::SaverHost DisplayManager::screensaver_host(const DisplayBackend* back
     // The remaining time the print status panel shows, smoothed by PrintEtaEstimator.
     host.print_status = [] {
         helix::PrinterPrintState& print = get_printer_state().print_state();
-        helix::ui::FlipClockPrint status;
-        status.phase = helix::ui::flip_print_phase(print.get_print_lifecycle());
+        helix::ui::ClockPrint status;
+        status.phase = helix::ui::clock_print_phase(print.get_print_lifecycle());
         status.remaining_s = lv_subject_get_int(print.get_print_time_left_subject());
         status.progress_pct = lv_subject_get_int(print.get_print_progress_display_subject());
         return status;
@@ -968,54 +976,25 @@ void DisplayManager::enable_affine_calibration() {
 }
 
 // ============================================================================
-// Input Gating (Wake-Only First Touch)
+// Wake-touch press cancel
 // ============================================================================
 
-void DisplayManager::disable_input_briefly() {
-    // Disable all pointer input devices, and cancel whatever press is already
-    // in flight on each.
-    //
-    // lv_indev_enable(false) is a pure flag write: pr_timestamp, long_pr_sent
-    // and pointer.act_obj all survive the blackout, so a finger still on the
-    // glass when input comes back keeps counting toward LV_EVENT_LONG_PRESSED
-    // from the ORIGINAL touch-down. On the wake touch that means a long-press
-    // gesture the user never made — home-grid edit mode opening behind the lock
-    // screen (#1245). lv_indev_reset() is what actually discards that state, and
-    // it lands even while the device is disabled: lv_indev_read() runs the reset
-    // query handler before it checks the enabled flag.
+void DisplayManager::cancel_pointer_presses() {
+    // A pointer whose read callback is not wrapped (SDL's mouse, which Android's touch also
+    // arrives through) has already handed the wake touch to LVGL. lv_indev_reset() drops
+    // that press's target, long-press clock and scroll, and lv_indev_wait_release() keeps
+    // LVGL from re-pressing, scrolling or clicking anything until the finger lifts.
+    // A wrapped pointer reports the wake touch as released, so only the reset applies.
     lv_indev_t* indev = lv_indev_get_next(nullptr);
     while (indev) {
         if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER) {
-            lv_indev_enable(indev, false);
+            if (lv_indev_get_state(indev) == LV_INDEV_STATE_PRESSED) {
+                lv_indev_wait_release(indev);
+            }
             lv_indev_reset(indev, nullptr);
         }
         indev = lv_indev_get_next(indev);
     }
-
-    // Schedule re-enable after 200ms via LVGL timer
-    lv_timer_create(reenable_input_cb, 200, nullptr);
-
-    // info-level so the wake-gate window is captured in debug bundles by
-    // default — diagnoses "tapped Resume but nothing happened" reports
-    // (#22) by letting us correlate user-reported tap times with the
-    // 200ms blackout window.
-    spdlog::info("[DisplayManager] Wake-gate engaged: input disabled for 200ms");
-}
-
-void DisplayManager::reenable_input_cb(lv_timer_t* timer) {
-    // Re-enable all pointer input devices
-    lv_indev_t* indev = lv_indev_get_next(nullptr);
-    while (indev) {
-        if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER) {
-            lv_indev_enable(indev, true);
-        }
-        indev = lv_indev_get_next(indev);
-    }
-
-    // Delete the one-shot timer
-    lv_timer_delete(timer);
-
-    spdlog::info("[DisplayManager] Wake-gate released: input re-enabled");
 }
 
 // ============================================================================
@@ -1033,12 +1012,17 @@ void DisplayManager::sleep_aware_read_cb(lv_indev_t* indev, lv_indev_data_t* dat
         dm->m_original_pointer_read_cb(indev, data);
     }
 
-    // A press while asleep is absorbed so LVGL sees no press; while dimmed it passes
-    // through but still requests the wake. Decided on the raw press, because LVGL only
-    // updates its activity time on PRESSED and evdev can drain press+release in one read.
-    if (data->state == LV_INDEV_STATE_PRESSED &&
-        dm->m_sleep.note_press(data->point.x, data->point.y)) {
-        data->state = LV_INDEV_STATE_RELEASED;
+    // A press while asleep, dimmed or under a screensaver wakes the display, and LVGL sees
+    // that touch as released until the finger lifts.
+    const bool was_swallowing = dm->m_wake_latch.swallowing();
+    const helix::WakeTouchLatch::Sample out = dm->m_wake_latch.filter(
+        {data->state == LV_INDEV_STATE_PRESSED, data->point.x, data->point.y}, lv_tick_get(),
+        [dm](int32_t x, int32_t y) { return dm->m_sleep.note_press(x, y); });
+    data->state = out.pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+    data->point.x = out.x;
+    data->point.y = out.y;
+    if (was_swallowing && !dm->m_wake_latch.swallowing()) {
+        spdlog::info("[DisplayManager] Wake touch released; input resumes");
     }
 
     // After the wake handling, so a suppressed press can never cost a wake request.
@@ -1193,69 +1177,70 @@ void DisplayManager::settle_display_rotation(lv_display_rotation_t rot, int phys
 // Window Resize Handler (Desktop/SDL)
 // ============================================================================
 
-void DisplayManager::resize_timer_cb(lv_timer_t* timer) {
-    auto* self = static_cast<DisplayManager*>(lv_timer_get_user_data(timer));
-    if (!self || self->m_shutting_down) {
+void DisplayManager::fan_out_resize() {
+    if (m_shutting_down) {
         return;
     }
 
     // A timer armed before the suspension began must not fan out either - the
     // rotation probe polls for taps through lv_timer_handler(), and this is the
     // callback that can sit in a multi-second theme refresh while it does.
-    if (self->m_resize_fanout_suspended) {
+    if (m_resize_fanout_suspended) {
         spdlog::debug("[DisplayManager] Resize fanout suspended - dropping pending debounce");
-        lv_timer_delete(timer);
-        self->m_resize_debounce_timer = nullptr;
         return;
     }
 
     spdlog::debug(
         "[DisplayManager] Resize debounce complete: {}x{}, calling {} registered callbacks",
-        self->width(), self->height(), self->m_resize_callbacks.size());
+        width(), height(), m_resize_callbacks.size());
 
-    // Call all registered callbacks
-    for (auto callback : self->m_resize_callbacks) {
-        if (callback) {
+    // The debounce is disarmed before this runs, so a SIZE_CHANGED raised by a
+    // callback arms a fresh one. A callback may register another (panels do so
+    // lazily), which can reallocate the vector: index it, and stop at the count
+    // this resize started with so a newcomer runs from the next resize on.
+    const size_t count = m_resize_callbacks.size();
+    for (size_t i = 0; i < count; i++) {
+        if (ResizeCallback callback = m_resize_callbacks[i]) {
             callback();
         }
     }
+}
 
-    // Delete one-shot timer
-    lv_timer_delete(timer);
-    self->m_resize_debounce_timer = nullptr;
+void DisplayManager::on_screen_size_changed(lv_obj_t* screen) {
+    if (m_shutting_down) {
+        return;
+    }
+
+    lv_coord_t width = lv_obj_get_width(screen);
+    lv_coord_t height = lv_obj_get_height(screen);
+
+    if (m_resize_fanout_suspended) {
+        spdlog::debug("[DisplayManager] Screen size changed to {}x{} while resize fanout "
+                      "suspended - no debounce armed",
+                      width, height);
+        return;
+    }
+
+    spdlog::debug("[DisplayManager] Screen size changed to {}x{}, resetting debounce timer", width,
+                  height);
+    m_resize_debounce.schedule([this]() { fan_out_resize(); });
 }
 
 void DisplayManager::resize_event_cb(lv_event_t* e) {
-    lv_event_code_t code = lv_event_get_code(e);
-
-    if (code == LV_EVENT_SIZE_CHANGED) {
-        auto* self = static_cast<DisplayManager*>(lv_event_get_user_data(e));
-        if (!self || self->m_shutting_down) {
-            return;
-        }
-
-        lv_obj_t* screen = static_cast<lv_obj_t*>(lv_event_get_target(e));
-        lv_coord_t width = lv_obj_get_width(screen);
-        lv_coord_t height = lv_obj_get_height(screen);
-
-        if (self->m_resize_fanout_suspended) {
-            spdlog::debug("[DisplayManager] Screen size changed to {}x{} while resize fanout "
-                          "suspended - no debounce armed",
-                          width, height);
-            return;
-        }
-
-        spdlog::debug("[DisplayManager] Screen size changed to {}x{}, resetting debounce timer",
-                      width, height);
-
-        // Reset or create debounce timer
-        if (self->m_resize_debounce_timer) {
-            lv_timer_reset(self->m_resize_debounce_timer);
-        } else {
-            self->m_resize_debounce_timer =
-                lv_timer_create(resize_timer_cb, RESIZE_DEBOUNCE_MS, self);
-            lv_timer_set_repeat_count(self->m_resize_debounce_timer, 1); // One-shot
-        }
+    auto* self = static_cast<DisplayManager*>(lv_event_get_user_data(e));
+    if (!self) {
+        return;
+    }
+    switch (lv_event_get_code(e)) {
+    case LV_EVENT_SIZE_CHANGED:
+        self->on_screen_size_changed(static_cast<lv_obj_t*>(lv_event_get_target(e)));
+        break;
+    case LV_EVENT_DELETE:
+        // LVGL drops the screen's callbacks with it, so there is nothing left to detach.
+        self->m_resize_screen = nullptr;
+        break;
+    default:
+        break;
     }
 }
 
@@ -1265,10 +1250,21 @@ void DisplayManager::init_resize_handler(lv_obj_t* screen) {
         return;
     }
 
-    // Add SIZE_CHANGED event listener to screen
+    remove_resize_handler();
     lv_obj_add_event_cb(screen, resize_event_cb, LV_EVENT_SIZE_CHANGED, this);
+    lv_obj_add_event_cb(screen, resize_event_cb, LV_EVENT_DELETE, this);
+    m_resize_screen = screen;
 
     spdlog::trace("[DisplayManager] Resize handler initialized on screen");
+}
+
+void DisplayManager::remove_resize_handler() {
+    m_resize_debounce.cancel();
+    // m_resize_screen is cleared when the screen is deleted, so a non-null one is live.
+    if (m_resize_screen && lv_is_initialized()) {
+        lv_obj_remove_event_cb_with_user_data(m_resize_screen, resize_event_cb, this);
+    }
+    m_resize_screen = nullptr;
 }
 
 void DisplayManager::set_resize_fanout_suspended(bool suspended) {

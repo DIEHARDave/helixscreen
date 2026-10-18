@@ -29,6 +29,9 @@ class InputSettingsManager {
   public:
     static InputSettingsManager& instance();
 
+    /// The static PersistedSetting table this manager is built from.
+    static settings::TableView persisted_table();
+
     /// Default scroll momentum decay; see helix::input_defaults::SCROLL_THROW.
     static constexpr int DEFAULT_SCROLL_THROW = helix::input_defaults::SCROLL_THROW;
 

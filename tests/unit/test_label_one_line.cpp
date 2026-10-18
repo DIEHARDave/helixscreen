@@ -113,6 +113,75 @@ TEST_CASE_METHOD(XMLTestFixture, "style_max_height opts a dotted label out and l
     CHECK(lv_obj_get_height(label) > line_height("font_small"));
 }
 
+TEST_CASE_METHOD(XMLTestFixture, "max_lines lets a dotted label wrap to N lines, then dots",
+                 "[ui_text][one_line][max_lines]") {
+    lv_obj_t* label = build(*this, "max_lines_long",
+                            std::string("<text_small name=\"l\" width=\"100%\" long_mode=\"dots\""
+                                        " max_lines=\"2\" text=\"") +
+                                LONG_TEXT + "\"/>",
+                            "l");
+    REQUIRE(label != nullptr);
+    settle(label);
+    const int32_t two_lines =
+        line_height("font_small") * 2 + lv_obj_get_style_text_line_space(label, LV_PART_MAIN);
+    CHECK(lv_obj_get_height(label) == two_lines);
+    CHECK(ends_with_dots(label));
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "max_lines leaves text that fits at its own height",
+                 "[ui_text][one_line][max_lines]") {
+    lv_obj_t* label = build(*this, "max_lines_short",
+                            "<text_small name=\"l\" width=\"100%\" long_mode=\"dots\""
+                            " max_lines=\"2\" text=\"Short\"/>",
+                            "l");
+    REQUIRE(label != nullptr);
+    settle(label);
+    CHECK(lv_obj_get_height(label) == line_height("font_small"));
+    CHECK_FALSE(ends_with_dots(label));
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "max_lines below 1 still holds a dotted label to one line",
+                 "[ui_text][one_line][max_lines]") {
+    lv_obj_t* label = build(*this, "max_lines_zero",
+                            std::string("<text_small name=\"l\" width=\"100%\" long_mode=\"dots\""
+                                        " max_lines=\"0\" text=\"") +
+                                LONG_TEXT + "\"/>",
+                            "l");
+    REQUIRE(label != nullptr);
+    settle(label);
+    CHECK(lv_obj_get_height(label) == line_height("font_small"));
+    CHECK(ends_with_dots(label));
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "an explicit height opts a dotted label out of max_lines",
+                 "[ui_text][one_line][max_lines]") {
+    lv_obj_t* label = build(*this, "max_lines_px",
+                            std::string("<text_small name=\"l\" width=\"100%\" height=\"57\""
+                                        " long_mode=\"dots\" max_lines=\"2\" text=\"") +
+                                LONG_TEXT + "\"/>",
+                            "l");
+    REQUIRE(label != nullptr);
+    settle(label);
+    CHECK(lv_obj_get_height(label) == 57);
+    CHECK(lv_obj_get_style_max_height(label, LV_PART_MAIN) == LV_COORD_MAX);
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "text_button honours max_lines",
+                 "[ui_text][one_line][max_lines]") {
+    lv_obj_t* label = build(*this, "max_lines_text_button",
+                            std::string("<text_button name=\"l\" width=\"100%\" long_mode=\"dots\""
+                                        " max_lines=\"2\" text=\"") +
+                                LONG_TEXT + "\"/>",
+                            "l");
+    REQUIRE(label != nullptr);
+    settle(label);
+    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    REQUIRE(font != nullptr);
+    CHECK(lv_obj_get_height(label) == lv_font_get_line_height(font) * 2 +
+                                          lv_obj_get_style_text_line_space(label, LV_PART_MAIN));
+    CHECK(ends_with_dots(label));
+}
+
 TEST_CASE_METHOD(XMLTestFixture, "wrap and scroll long modes are left at content height",
                  "[ui_text][one_line]") {
     SECTION("wrap") {
@@ -246,6 +315,41 @@ TEST_CASE_METHOD(XMLTestFixture, "a held label that leaves DOTS is no longer pin
     const int32_t one_line = lv_obj_get_height(label);
     REQUIRE(one_line == lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
 
+    lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_WRAP);
+    lv_obj_set_height(label, LV_SIZE_CONTENT);
+    lv_obj_set_style_text_font(label, theme_manager_get_font("font_heading"), LV_PART_MAIN);
+    settle(label);
+    CHECK(lv_obj_get_style_height(label, LV_PART_MAIN) == LV_SIZE_CONTENT);
+    CHECK(lv_obj_get_height(label) > line_height("font_heading"));
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "an any-mode hold pins a wrapping label and follows its font",
+                 "[ui_text][one_line]") {
+    lv_obj_t* label = lv_label_create(test_screen());
+    lv_obj_set_width(label, 80);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_WRAP);
+    lv_label_set_text(label, LONG_TEXT);
+    helix::ui::label_hold_one_line(label, helix::ui::LineHold::AnyMode);
+    settle(label);
+    CHECK(lv_obj_get_height(label) ==
+          lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
+
+    lv_obj_set_style_text_font(label, theme_manager_get_font("font_heading"), LV_PART_MAIN);
+    settle(label);
+    CHECK(lv_obj_get_height(label) == line_height("font_heading"));
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "a released label is no longer pinned", "[ui_text][one_line]") {
+    lv_obj_t* label = lv_label_create(test_screen());
+    lv_obj_set_width(label, 80);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
+    lv_label_set_text(label, LONG_TEXT);
+    helix::ui::label_hold_one_line(label, helix::ui::LineHold::AnyMode);
+    settle(label);
+    REQUIRE(lv_obj_get_height(label) ==
+            lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
+
+    helix::ui::label_release_lines(label);
     lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_WRAP);
     lv_obj_set_height(label, LV_SIZE_CONTENT);
     lv_obj_set_style_text_font(label, theme_manager_get_font("font_heading"), LV_PART_MAIN);

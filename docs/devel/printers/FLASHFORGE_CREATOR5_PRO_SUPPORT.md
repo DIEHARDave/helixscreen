@@ -217,13 +217,13 @@ gets no command. Without the shim (Z-Mod older than 1.7.4) Load stays a tool mou
 
 Load stays enabled while a head reads loaded, since the printer cannot tell an inserted
 strand from a fed one, and the UI does not preheat (the shim heats the head it feeds).
-Mounting a head is the slot menu's **Select slot**, which sends `_T_IN T=<n>`.
+Mounting a head is the toolhead tap, which sends `_T_IN T=<n>`.
 
 **There is no automatic unload on the Creator 5.** The user cuts the filament at the head
 and pulls it out by hand; the firmware's `TOOL_UNLOAD` says so only after heating. The
-Z-Mod row answers `AmsBackend::unload_is_manual()` true, so the filament panel and AMS
-sidebar Unload controls show a notice up front and send and heat nothing. Unmount in the
-slot menu remains a `_T_OUT` tool park.
+Z-Mod row answers `AmsBackend::unload_is_manual()` true, so Unload is disabled with that
+reason, and any surface that still reaches it shows a notice and sends and heats nothing.
+The sidebar's **Park** remains a `_T_OUT` tool park.
 
 One upstream dependency: [ghzserg/z_c5pro#1](https://github.com/ghzserg/z_c5pro/pull/1)
 adds `slots`, `palette` and a live `active_tool_id` to `zmod_color.get_status()`. Without

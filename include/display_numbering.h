@@ -10,6 +10,10 @@
 
 namespace helix::ui {
 
+/// U+00B7 MIDDLE DOT, the separator between a unit name and a position inside
+/// it. Shared so every "Unit · N" label spells it the same way.
+inline constexpr const char* kUnitSeparator = "\xc2\xb7";
+
 /**
  * @brief The word a backend uses for one physical filament position.
  *
@@ -131,6 +135,14 @@ bool tool_badges_add_information(const std::vector<int>& tool_to_slot, int slot_
 std::string noun_text(LaneNoun noun);
 
 /**
+ * @brief The Endless Spool field's name for @p noun: "Backup Slot", "Backup Gate".
+ *
+ * A whole translated phrase per noun, not "Backup " + noun_text(): the
+ * qualifier goes after the noun in most locales and is often compounded into it.
+ */
+std::string backup_lane_text(LaneNoun noun);
+
+/**
  * @brief A physical position: "Slot 1", "Lane 2", "Tool 4".
  * @return empty when @p index is negative
  */
@@ -145,6 +157,16 @@ std::string lane_label(LaneNoun noun, int index);
  * own word, like every other sentence that points a user at a lane.
  */
 std::string clear_spool_blocked_hint(LaneNoun noun, int index);
+
+/**
+ * @brief A position label scoped inside its named unit: "<unit> · <body>".
+ *
+ * The one composition behind every unit-qualified position ("Turtle 1 ·
+ * Slot 2", a fed lane's upstream caption "ACE 2 · 3"), so the separator and
+ * spacing cannot drift between them. An empty unit degrades to the body
+ * alone, the single-unit form.
+ */
+std::string unit_scoped_label(std::string_view unit_display_name, std::string_view body);
 
 /**
  * @brief A physical position inside a named unit: "Turtle 1 · Slot 2".
@@ -205,5 +227,11 @@ LaneNoun active_lane_noun();
  * @return the active AMS backend's tool_noun(), else LaneNoun::Tool
  */
 LaneNoun active_tool_noun();
+
+/**
+ * @brief tool_label_in_form() under active_tool_noun(): what every surface
+ *        naming a tool of the connected printer shows ("Toolhead 3 (T2)" on a U1).
+ */
+std::string active_tool_label(std::string_view name, int index, ToolLabelForm form);
 
 } // namespace helix::ui

@@ -876,7 +876,7 @@ TEST_CASE("endless_spool_status turns capabilities into a status line",
         const auto status = endless_spool_status(caps);
 
         CHECK(status.kind == EndlessSpoolStatusKind::On);
-        CHECK(status.text == "Switches to a backup spool on runout");
+        CHECK(status.text == "Switches to another spool on runout");
     }
 
     SECTION("Off reads as 'it will not switch' and never as unknown") {
@@ -898,7 +898,7 @@ TEST_CASE("endless_spool_status turns capabilities into a status line",
         const auto status = endless_spool_status(caps);
 
         CHECK(status.kind == EndlessSpoolStatusKind::Unknown);
-        CHECK(status.text == "Backup spool switching state unknown");
+        CHECK(status.text == "Endless Spool state unknown");
         CHECK(status.text.find("not switch") == std::string::npos);
         CHECK(status.kind != EndlessSpoolStatusKind::Off);
     }
@@ -920,10 +920,10 @@ TEST_CASE("endless_spool_status turns capabilities into a status line",
         CHECK(static_cast<int>(status.kind) != 0); // 0 is what the XML hides on
         CHECK(status.kind != EndlessSpoolStatusKind::Off);
         CHECK(status.text ==
-              "Auto-refill is on but no two slots hold matching filament, so nothing will "
-              "switch on runout\nThe printer's firmware chooses the backup spool itself");
+              "Endless Spool is on but no two slots hold matching filament, so nothing "
+              "will switch on runout\nThe printer's firmware chooses where to switch on runout");
         // The first line must not be the plain-On or plain-Off sentence.
-        CHECK(status.text.find("Switches to a backup spool") == std::string::npos);
+        CHECK(status.text.find("Switches to another spool") == std::string::npos);
         CHECK(status.text.find("Will not switch spools") == std::string::npos);
     }
 
@@ -938,8 +938,8 @@ TEST_CASE("endless_spool_status turns capabilities into a status line",
         const auto status = endless_spool_status(caps);
 
         CHECK(status.kind == EndlessSpoolStatusKind::On);
-        CHECK(status.text == "Switches to a backup spool on runout\n"
-                             "The printer's firmware chooses the backup spool itself");
+        CHECK(status.text == "Switches to another spool on runout\n"
+                             "The printer's firmware chooses where to switch on runout");
         // The reason is exactly endless_spool_restriction_text(), never a second
         // copy of the same prose.
         CHECK(status.text.find(endless_spool_restriction_text(
@@ -984,7 +984,7 @@ TEST_CASE("endless_spool_status turns capabilities into a status line",
         const auto status = endless_spool_status(caps);
 
         CHECK(status.kind == EndlessSpoolStatusKind::NeedsPlugin);
-        CHECK(status.text == "No automatic backup-spool package is installed");
+        CHECK(status.text == "No Endless Spool package is installed");
         CHECK(status.text.find("{}") == std::string::npos); // no unfilled placeholder
     }
 
@@ -997,8 +997,8 @@ TEST_CASE("endless_spool_status turns capabilities into a status line",
         caps.provider = "bambufy";
         const auto status = endless_spool_status(caps);
 
-        CHECK(status.text == "Switches to a backup spool on runout (bambufy)\n"
-                             "Configured in the backup-spool package, not from here");
+        CHECK(status.text == "Switches to another spool on runout (bambufy)\n"
+                             "Endless Spool is configured in its package, not from here");
     }
 
     SECTION("every capability corner produces text iff it produces a visible kind") {
@@ -1088,7 +1088,7 @@ TEST_CASE("Every backend's real capabilities produce a sane status line",
 
         const auto status = endless_spool_status(caps);
         CHECK(status.kind == EndlessSpoolStatusKind::On);
-        CHECK(status.text == "Switches to a backup spool on runout");
+        CHECK(status.text == "Switches to another spool on runout");
         CHECK(status.text.find('\n') == std::string::npos);
     }
 
@@ -1100,7 +1100,7 @@ TEST_CASE("Every backend's real capabilities produce a sane status line",
 
         const auto status = endless_spool_status(caps);
         CHECK(status.kind == EndlessSpoolStatusKind::Unknown);
-        CHECK(status.text == "Backup spool switching state unknown\n"
+        CHECK(status.text == "Endless Spool state unknown\n"
                              "Waiting for the filament system to report its state");
     }
 }

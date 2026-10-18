@@ -3,6 +3,7 @@
 #include "led/led_devices.h"
 
 #include "device_display_name.h"
+#include "i18n_plural.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "text_io.h"
 
@@ -157,8 +158,9 @@ std::string macro_device_note(const LedMacroInfo& macro) {
         if (macro.presets.empty()) {
             return lv_tr("No presets configured");
         }
-        return fmt::format(fmt::runtime(lv_tr("{} preset{}")), macro.presets.size(),
-                           macro.presets.size() == 1 ? "" : "s");
+        return fmt::format(
+            fmt::runtime(ui::tr_plural("{} preset", "{} presets", macro.presets.size())),
+            macro.presets.size());
     }
     return {};
 }

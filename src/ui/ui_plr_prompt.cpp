@@ -15,7 +15,6 @@
 #include "moonraker_error.h"
 #include "plr_backend.h"
 #include "printer_state.h"
-#include "snapmaker_resume.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -61,8 +60,9 @@ void run_recovery_gcode(IMoonrakerAPI* api, const std::string& gcode, const char
         [fail_fmt_tr, log_tag](const MoonrakerError& err) {
             spdlog::error("[PLR] {} failed: {}", log_tag, err.message);
             helix::ui::queue_update("ui_plr_prompt::recovery_error", [fail_fmt_tr, err]() {
-                NOTIFY_ERROR(fmt::runtime(fail_fmt_tr), helix::snapmaker_extract_coded_msg(
-                                                            err.message, err.localized_message()));
+                // from_json_rpc already replaced any firmware error envelope
+                // in the message with its text.
+                NOTIFY_ERROR(fmt::runtime(fail_fmt_tr), err.localized_message());
             });
         },
         timeout_ms);

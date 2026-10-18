@@ -127,8 +127,16 @@ class AbortManager {
      * - Resolves HeaterInterruptSupport from printer.info "app" field if UNKNOWN
      * - If SUPPORTED -> TRY_HEATER_INTERRUPT (soft interrupt for M109 waits)
      * - If UNSUPPORTED or UNKNOWN -> PROBE_QUEUE (skip heater interrupt)
+     *
+     * @p entry starts further in when the caller already knows what the queue
+     * is doing. Cancel sends printer.print.cancel at once: the caller has made
+     * the wait holding the queue end (or the firmware ends it on a cancel), so
+     * a probe would only stall behind it and escalate for nothing.
+     * EmergencyStop goes straight to M112 + FIRMWARE_RESTART, for a wait that
+     * nothing else ends; the caller confirms it with the user first.
      */
-    void start_abort();
+    enum class Entry { Probe, Cancel, EmergencyStop };
+    void start_abort(Entry entry = Entry::Probe);
 
     /**
      * @brief Check if abort is currently in progress

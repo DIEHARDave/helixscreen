@@ -284,11 +284,25 @@ AmsBackendQidi::~AmsBackendQidi() = default;
 
 // --- Lifecycle hooks ---
 
+std::optional<helix::ams::TagReading> AmsBackendQidi::tag_reading(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = tag_readings_.find(slot_index);
+    if (it == tag_readings_.end()) {
+        return std::nullopt;
+    }
+    return it->second;
+}
+
 void AmsBackendQidi::on_started() {
     // Load persisted per-slot overrides before any parse can run, so the
     // fingerprint baseline and a staged clear agree about what the user had.
     // Call with NO lock held: the DB round-trip blocks, and the parse path
     // takes this mutex.
+    {
+        // A start is a new session: the tag readings described the last one.
+        std::lock_guard<std::mutex> lock(mutex_);
+        tag_readings_.clear();
+    }
     if (api_) {
         auto loaded =
             helix::ams::make_loaded_override_store(api_, "qidi", get_type(), backend_log_tag());
@@ -903,11 +917,19 @@ void AmsBackendQidi::parse_save_variables(const nlohmann::json& variables) {
         // lands would linger forever, the > 0 gates below having nothing to
         // overwrite.
         helix::ams::Observation cache(helix::ams::ObservationSource::VendorCache);
+        std::optional<int> profile_nozzle_min;
+        std::optional<int> profile_nozzle_max;
         if (rfid.filament_id > 0) {
             auto p = fila_profiles_.find(rfid.filament_id);
             if (p != fila_profiles_.end()) {
                 slot->nozzle_temp_min = p->second.nozzle_min;
                 slot->nozzle_temp_max = p->second.nozzle_max;
+                if (p->second.nozzle_min > 0) {
+                    profile_nozzle_min = p->second.nozzle_min;
+                }
+                if (p->second.nozzle_max > 0) {
+                    profile_nozzle_max = p->second.nozzle_max;
+                }
                 if (!p->second.type.empty()) {
                     slot->material = p->second.type;
                     cache.material = p->second.type;
@@ -949,8 +971,12 @@ void AmsBackendQidi::parse_save_variables(const nlohmann::json& variables) {
         // no id keys restates the write the same way and is judged the same
         // way. A key carried with 0 never reaches here armed: it moves the
         // fingerprint first, and the clear that follows drops the guard.
+        const helix::ams::Observation stated = cache;
         own_write_echoes_.withhold(i, std::string{}, cache);
         helix::ams::ingest(lane_id(i), cache);
+        // The temperatures are the filament profile's for the same id.
+        helix::ams::fold_tag_frame_into(tag_readings_, i, stated, cache, profile_nozzle_min,
+                                        profile_nozzle_max);
 
         // An insert the ids did not vouch for: the table rows are the Box's
         // memory of the last spool, so a spool that goes in without moving
@@ -1444,6 +1470,15 @@ std::optional<helix::ErrorEvent> AmsBackendQidi::current_error() const {
     // (no QIDI hardware). (prestonbrown/helixscreen#1041)
     e.recovery_actions = {{lv_tr("OK"), "", "qidi::dismiss", ""}};
     return e;
+}
+
+std::string AmsBackendQidi::eject_unavailable_reason(int slot_index) const {
+    if (supports_lane_eject() || !get_slot_info(slot_index).is_present()) {
+        return {};
+    }
+    // Translated here: the extractor reads literals, and lv_tr() on a runtime string would
+    // leave this untranslatable.
+    return lv_tr("Eject needs [force_move] enabled in printer config");
 }
 
 AmsError AmsBackendQidi::eject_lane(int slot_index) {

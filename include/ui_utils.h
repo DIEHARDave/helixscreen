@@ -578,4 +578,16 @@ void pass_child_overhang(lv_obj_t* obj);
  */
 void refresh_overhang_chain(lv_obj_t* child);
 
+/**
+ * Stores @p obj in the static pointer @p slot and keeps @p slot from outliving it.
+ *
+ * Deleting an ancestor (a screen, say) frees @p obj without its holder being told. A
+ * pointer left behind then names freed memory, and once the allocator reuses that memory
+ * lv_obj_is_valid() vouches for an unrelated object. The slot is cleared by @p obj's
+ * LV_EVENT_DELETE, and only while it still names the dying object: a deferred delete of
+ * an old object lands after a new one has been stored. Remembering the same object
+ * twice leaves one handler. Pass nullptr to store nullptr.
+ */
+void store_until_deleted(lv_obj_t** slot, lv_obj_t* obj);
+
 } // namespace helix::ui

@@ -172,20 +172,17 @@ TEST_CASE("A frame with none of our fields reads as no news", "[toolchanger][too
 // Feeder macro selection
 // ============================================================================
 
-TEST_CASE("The feeder prefers the controller's native command",
+TEST_CASE("The feeder uses the plain OPEN/CLOSE names on every MedusaHC build",
           "[toolchanger][toolsource][feeder]") {
-    // The official build registers MHC_OPEN/MHC_CLOSE and ships legacy OPEN/CLOSE
-    // aliases forwarding to them, so both work there. Prefer the native one.
-    auto official = toolchanger_addon::resolve_feeder(medusahc_hw(/*official_macros=*/true));
-    REQUIRE(official.present);
-    CHECK(official.open_gcode == "MHC_OPEN");
-    CHECK(official.close_gcode == "MHC_CLOSE");
-
-    // Stock config has only the plain macros.
-    auto stock = toolchanger_addon::resolve_feeder(medusahc_hw(/*official_macros=*/false));
-    REQUIRE(stock.present);
-    CHECK(stock.open_gcode == "OPEN");
-    CHECK(stock.close_gcode == "CLOSE");
+    // The controller's OPEN/CLOSE forward to its MHC_* commands and work on a
+    // parked tool, and the stock config has only the plain names.
+    for (const bool official : {true, false}) {
+        CAPTURE(official);
+        auto feeder = toolchanger_addon::resolve_feeder(medusahc_hw(official));
+        REQUIRE(feeder.present);
+        CHECK(feeder.open_gcode == "OPEN");
+        CHECK(feeder.close_gcode == "CLOSE");
+    }
 }
 
 // ============================================================================
@@ -223,22 +220,22 @@ TEST_CASE("An override replaces the detected macro", "[toolchanger][feeder][macr
     CHECK(f.close_gcode == "CUSTOM_GRIP");
     CHECK(f.open_choice == "CUSTOM_RELEASE");
     // The detected default is kept so picking "auto" again restores it.
-    CHECK(f.detected_open == "MHC_OPEN");
-    CHECK(f.detected_close == "MHC_CLOSE");
+    CHECK(f.detected_open == "OPEN");
+    CHECK(f.detected_close == "CLOSE");
 }
 
 TEST_CASE("'auto' and empty both mean the detected default", "[toolchanger][feeder][macro]") {
     auto hw = medusahc_hw(/*official_macros=*/true);
 
     auto explicit_auto = toolchanger_addon::resolve_feeder(hw, "auto", "auto");
-    CHECK(explicit_auto.open_gcode == "MHC_OPEN");
+    CHECK(explicit_auto.open_gcode == "OPEN");
     CHECK(explicit_auto.open_choice == "auto");
 
     // A never-set setting reads back empty on some config paths; it must not
     // blank the gcode and silently break the button.
     auto empty = toolchanger_addon::resolve_feeder(hw, "", "");
-    CHECK(empty.open_gcode == "MHC_OPEN");
-    CHECK(empty.close_gcode == "MHC_CLOSE");
+    CHECK(empty.open_gcode == "OPEN");
+    CHECK(empty.close_gcode == "CLOSE");
     CHECK(empty.open_choice == "auto");
 }
 

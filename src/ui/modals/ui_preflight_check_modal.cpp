@@ -71,7 +71,7 @@ void PreflightCheckModal::on_show() {
     // no double-wiring.
     //   btn_primary   → on_ok()       → Print Anyway
     //   btn_secondary → on_cancel()   → Cancel
-    //   btn_tertiary  → on_tertiary() → Remap…
+    //   btn_tertiary  → on_tertiary() → Map Filament…
     wire_ok_button("btn_primary");
     wire_cancel_button("btn_secondary");
     wire_tertiary_button("btn_tertiary");
@@ -191,7 +191,7 @@ lv_obj_t* PreflightCheckModal::create_tool_row(lv_obj_t* list, const helix::Tool
 
     // Intended (slicer) color swatch.
     if (auto* intended = helix::ui::find_required(row, "intended_swatch", get_name())) {
-        lv_obj_set_style_bg_color(intended, lv_color_hex(check.intended_color), 0);
+        helix::ui::apply_swatch_color(intended, check.intended_color, "");
     }
 
     // Seated swatch / EMPTY label. Look up the live slot by mapped_slot.
@@ -202,7 +202,8 @@ lv_obj_t* PreflightCheckModal::create_tool_row(lv_obj_t* list, const helix::Tool
     if (check.slot_present && seated && !seated->is_empty) {
         if (seated_swatch) {
             helix::ui::apply_swatch_color(seated_swatch, seated->color_rgb,
-                                          seated->multi_color_hexes);
+                                          seated->multi_color_hexes,
+                                          helix::ui::swatch_finish(seated->finish));
             lv_obj_remove_flag(seated_swatch, LV_OBJ_FLAG_HIDDEN);
         }
     } else {

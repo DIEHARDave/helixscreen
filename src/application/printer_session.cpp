@@ -60,6 +60,7 @@
 #include "printer_discovery.h"
 #include "printer_retarget.h"
 #include "printer_state.h"
+#include "queued_job_start.h"
 #include "sensor_state.h"
 #include "session_wiring.h"
 #include "settings_manager.h"
@@ -788,6 +789,10 @@ void PrinterSession::teardown_printer_scope(TeardownScope scope, DisplayManager*
         helix::led::LedAutoState::instance().deinit();
         helix::led::LedController::instance().deinit();
     }
+
+    // The home tile's queued-job starter outlives every printer and drives
+    // print-select's prep manager and this API: drop its start before either is freed.
+    helix::queue::abandon_queued_job_start();
 
     // Stop ALL LVGL animations before destroying panels: they hold widget pointers, and
     // completion callbacks fired by lv_anim_delete_all() would dereference freed objects

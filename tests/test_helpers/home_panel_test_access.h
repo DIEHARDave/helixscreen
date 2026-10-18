@@ -8,6 +8,7 @@
 
 #include "panel_widget_manager.h"
 
+#include <string>
 #include <vector>
 
 // Friend access to HomePanel internals. `ui_panel_home.h` declares
@@ -168,6 +169,10 @@ struct HomePanelTestAccess {
     /// The observer-fired page change, as carousel_scroll_end_cb delivers it.
     static void fire_page_changed(HomePanel& panel, int new_page) {
         panel.on_page_changed(new_page);
+    }
+
+    static std::string& last_printer_image_path(HomePanel& panel) {
+        return panel.last_printer_image_path_;
     }
 
     /// Publish the panel-lifetime subjects (the page badge and the populated

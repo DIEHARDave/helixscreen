@@ -1091,6 +1091,7 @@ CPP_WIDGET_FILES: dict[str, dict[str, Any]] = {
             "stroke_color": {"type": "color"},
             "stroke_opa": {"type": "opa"},
             "text_transform": {"type": "enum", "enum": "text_transform"},
+            "max_lines": {"type": "int"},
         },
     },
     "ui_text.cpp:text_button": {
@@ -1117,6 +1118,7 @@ CPP_WIDGET_FILES: dict[str, dict[str, Any]] = {
             "label_hidden_if_bp_eq": {"type": "int"},
             "label_hidden_subject": {"type": "string"},
             "label_hidden_if_eq": {"type": "int"},
+            "label_hidden_cond": {"type": "string"},
             "bind_text-fmt": {"type": "string"},
             "text-fmt": {"type": "string"},
         },

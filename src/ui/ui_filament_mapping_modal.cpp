@@ -128,23 +128,30 @@ void FilamentMappingModal::on_ok() {
     if (on_updated_cb_) {
         on_updated_cb_(mappings_);
     }
-    hide();
+    hide(ModalCloseReason::ButtonPress);
 }
 
 void FilamentMappingModal::on_cancel() {
+    revert();
+    hide(ModalCloseReason::ButtonPress);
+}
+
+void FilamentMappingModal::on_dismissed() {
+    revert();
+}
+
+void FilamentMappingModal::revert() {
     mappings_ = original_mappings_;
 
-    // The persisted preference is part of what Cancel undoes. Without this the
-    // toggle was a one-way door: flip it to see the other mode, press Cancel,
-    // and the printer kept the new preference for every future print — on every
-    // backend that can reach this picker. Written only when it actually changed
-    // so a plain Cancel does not churn the settings file.
+    // The persisted preference is part of what a cancel undoes: the toggle
+    // writes it straight through, so a flip made only to see the other mode
+    // would otherwise stick for every future print, on every backend that can
+    // reach this picker. Written only when it changed, so a plain Cancel does
+    // not churn the settings file.
     if (auto_color_map_ != original_auto_color_map_) {
         SettingsManager::instance().set_auto_color_map(original_auto_color_map_);
         auto_color_map_ = original_auto_color_map_;
     }
-
-    hide();
 }
 
 // ============================================================================
@@ -198,7 +205,7 @@ lv_obj_t* FilamentMappingModal::create_tool_row(int tool_index) {
 
     lv_color_t gcode_color = lv_color_hex(tool.color_rgb);
     if (auto* expected_swatch = helix::ui::find_required(row, "expected_swatch", get_name())) {
-        lv_obj_set_style_bg_color(expected_swatch, gcode_color, 0);
+        helix::ui::apply_swatch_color(expected_swatch, tool.color_rgb, "");
     }
 
     if (auto* tool_label = helix::ui::find_required(row, "tool_label", get_name())) {
@@ -226,10 +233,11 @@ lv_obj_t* FilamentMappingModal::create_tool_row(int tool_index) {
     if (auto* chosen_swatch = helix::ui::find_required(row, "chosen_swatch", get_name())) {
         if (mapped && !mapped->is_empty) {
             helix::ui::apply_swatch_color(chosen_swatch, mapped->color_rgb,
-                                          mapped->multi_color_hexes);
+                                          mapped->multi_color_hexes,
+                                          helix::ui::swatch_finish(mapped->finish));
             lv_obj_remove_flag(chosen_swatch, LV_OBJ_FLAG_HIDDEN);
         } else if (mapped && mapped->is_empty) {
-            lv_obj_set_style_bg_opa(chosen_swatch, LV_OPA_TRANSP, 0);
+            helix::ui::clear_swatch_color(chosen_swatch);
             lv_obj_set_style_border_width(chosen_swatch, 2, 0);
             lv_obj_set_style_border_color(chosen_swatch, theme_manager_get_color("warning"), 0);
             lv_obj_set_style_border_opa(chosen_swatch, LV_OPA_COVER, 0);

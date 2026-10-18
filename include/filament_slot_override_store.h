@@ -134,9 +134,12 @@ class FilamentSlotOverrideStore {
     // Klipper plugins own lane_data, AFC deletes that whole namespace on every
     // boot and full-POSTs each lane record, and load_blocking() would otherwise
     // ingest those foreign records as if they were user overrides.
+    // migrates_legacy_namespace: the first load of an empty store copies slots forward from
+    // the pre-lane_data "helix-screen:<backend_id>_slot_overrides" blob. Only the backends that
+    // ever wrote that blob (ACE, CFS) set it.
     FilamentSlotOverrideStore(IMoonrakerAPI* api, std::string backend_id,
                               LaneKeyStyle key_style = LaneKeyStyle::Lane,
-                              std::string ns = "lane_data");
+                              std::string ns = "lane_data", bool migrates_legacy_namespace = false);
 
     /// Test-only view of the configured namespace.
     [[nodiscard]] const std::string& namespace_for_test() const {
@@ -161,9 +164,11 @@ class FilamentSlotOverrideStore {
     /// several writers share can ask for one at any time.
     ///
     /// @p cb is never called on failure: a re-read that could not reach the
-    /// database must leave what a lane already knows standing. @p cb runs on
-    /// the API's callback thread; marshal from there.
-    void reload_async(ReloadCallback cb);
+    /// database must leave what a lane already knows standing. @p on_failure,
+    /// when given, is called instead, for a caller holding work until the read
+    /// lands. Exactly one of the two runs, on the API's callback thread;
+    /// marshal from there.
+    void reload_async(ReloadCallback cb, std::function<void()> on_failure = nullptr);
 
     using SaveCallback = std::function<void(bool success, std::string error)>;
     void save_async(int slot_index, const FilamentSlotOverride& override, SaveCallback cb);
@@ -203,6 +208,17 @@ class FilamentSlotOverrideStore {
         return lane_data_records_;
     }
 
+    /// Rewrite each record last_lane_data_records() holds through @p amend,
+    /// before anything classifies them; @p amend also gets the slot and the
+    /// raw document the record came from. Only this view changes: persisting
+    /// the repair is the caller's save.
+    void amend_loaded_records(const std::function<void(int slot, FilamentSlotOverride&,
+                                                       const nlohmann::json& wire)>& amend) {
+        for (auto& [slot, entry] : lane_data_records_) {
+            amend(slot, entry.record, entry.wire);
+        }
+    }
+
   private:
     // Test-only access to mutate load_timeout_ without exposing a public
     // setter. Per L065, prefer friend-class over test-only public methods.
@@ -223,6 +239,7 @@ class FilamentSlotOverrideStore {
     // (Lane style) or "T0" (Tool style) on disk. See format_lane_key in the
     // .cpp for the exact rule.
     std::string namespace_ = "lane_data";
+    bool migrates_legacy_namespace_ = false;
     // Local timeout for load_blocking()'s cv.wait_for. Defaults to 5 seconds;
     // overridable by FilamentSlotOverrideStoreTestAccess for timeout tests.
     // Stored as milliseconds (not seconds) because tests need sub-second
@@ -305,10 +322,10 @@ struct LoadedOverrideStore {
 /// mutex across it stalls the parse path (and self-deadlocks a caller that
 /// takes a non-recursive mutex before asking). Publish the result under the
 /// lock afterwards, which is one move of each field.
-[[nodiscard]] LoadedOverrideStore make_loaded_override_store(IMoonrakerAPI* api,
-                                                             std::string backend_id, AmsType type,
-                                                             const std::string& log_tag,
-                                                             std::string ns = "lane_data");
+[[nodiscard]] LoadedOverrideStore
+make_loaded_override_store(IMoonrakerAPI* api, std::string backend_id, AmsType type,
+                           const std::string& log_tag, std::string ns = "lane_data",
+                           bool migrates_legacy_namespace = false);
 
 // =============================================================================
 // Shared firmware -> lane_data mirror helper
@@ -364,7 +381,14 @@ struct DeclaredOnLane {
 };
 
 /// What @p lane's declaring sources hold, read from the lane source store.
-[[nodiscard]] DeclaredOnLane declared_on_lane(LaneId lane);
+///
+/// With @p record, the lane's stored override, a value on the lane's user
+/// record counts only where @p record declares that field. The rest of that
+/// record is another tool's statement, filed on the user's rung at load
+/// (prestonbrown/helixscreen#1632): it yields to the next change on the lane
+/// rather than guarding the field against it.
+[[nodiscard]] DeclaredOnLane declared_on_lane(LaneId lane,
+                                              const FilamentSlotOverride* record = nullptr);
 
 /// Mirror firmware-detected color/material into `overrides[slot_index]` and
 /// fire `store->save_async` to push the resulting record to the lane_data
@@ -583,6 +607,12 @@ class SlotFingerprintTracker {
     using BaselineSink = std::function<void(int, const std::string&)>;
     void set_baseline_sink(BaselineSink sink) {
         baseline_sink_ = std::move(sink);
+    }
+
+    /// Drop a slot's baseline, so its next observation is a first one. Pending
+    /// expectations are kept.
+    void forget_baseline(int slot_index) {
+        baseline_.erase(slot_index);
     }
 
     /// Whether an unconsumed expectation is pending for a slot.

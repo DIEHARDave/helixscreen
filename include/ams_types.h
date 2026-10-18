@@ -4,6 +4,7 @@
 #pragma once
 
 #include "filament_database.h"
+#include "filament_variants.h"
 #include "klipper_extruder_naming.h"
 #include "translation_loader.h"
 
@@ -315,6 +316,16 @@ enum class AmsAction {
     CUTTING = 10,    ///< Cutting filament before retraction (modern AMS)
     PURGING = 11     ///< Purging old filament color after load
 };
+
+/**
+ * @brief Does @p action keep the system from taking a new operation?
+ *
+ * Everything but IDLE and ERROR: an operation in flight, a sensor check, or a
+ * pause waiting on the user.
+ */
+inline bool ams_action_holds_system(AmsAction action) {
+    return action != AmsAction::IDLE && action != AmsAction::ERROR;
+}
 
 /**
  * @brief Is the system doing anything at all right now?
@@ -664,6 +675,17 @@ inline const char* path_topology_to_string(PathTopology topology) {
 }
 
 /**
+ * @brief How the spool last inserted in a lane was identified, on a lane whose
+ *        tag reader answers a moment after presence rises.
+ */
+enum class InsertIdentity : uint8_t {
+    NotRead, ///< No insert under judgement: no reader, or the insert was dropped
+    Pending, ///< Presence rose; the reader has not answered yet
+    FromTag, ///< The reader named the spool
+    NoTag,   ///< The reader found no tag, or never answered in time
+};
+
+/**
  * @brief Unified path segments (AFC-inspired naming)
  *
  * Both Happy Hare and AFC map to these same logical segments. The path
@@ -976,6 +998,26 @@ struct BufferHealth {
     }
 };
 
+namespace printer {
+
+/**
+ * @brief What a zone or a slot is doing, from the firmware's per-gate drying states.
+ *
+ * `Queued` is its own answer rather than a shade of `Active`: a backend that caps
+ * simultaneous heaters leaves later zones waiting, and a waiting zone shown as idle reads
+ * as a control that did nothing. `Cancelled` and `Complete` likewise differ - one answers
+ * "someone stopped it", the other "it finished".
+ */
+enum class ZoneDryingState : int {
+    Idle = 0,     ///< Not part of any cycle
+    Queued = 1,   ///< In the cycle, waiting for a concurrency slot
+    Active = 2,   ///< Heater on now
+    Complete = 3, ///< Ran to the end
+    Cancelled = 4 ///< Stopped before finishing
+};
+
+} // namespace printer
+
 /**
  * @brief Information about a single slot/lane
  *
@@ -1072,6 +1114,10 @@ struct SlotInfo {
     // Per-slot environment sensors (optional — most backends don't have these)
     std::optional<EnvironmentData> environment; ///< nullopt = no per-slot sensors
 
+    /// This slot's part in a drying cycle, for a dryer that drives its gates one by one
+    /// (DryerInfo::supports_gate_selection). Idle everywhere else.
+    printer::ZoneDryingState drying_state = printer::ZoneDryingState::Idle;
+
     /**
      * @brief Get remaining percentage
      * @return 0-100 or -1 if unknown
@@ -1106,6 +1152,35 @@ struct SlotInfo {
     }
 
     /**
+     * @brief A key for how a swatch paints this slot beyond its colour: its
+     *        multi-colour list and finish. Equal keys paint alike.
+     */
+    [[nodiscard]] int paint_key() const {
+        uint32_t h = 2166136261u ^ static_cast<uint32_t>(finish());
+        for (char c : multi_color_hexes) {
+            h = (h ^ static_cast<unsigned char>(c)) * 16777619u;
+        }
+        return static_cast<int>(h & 0x7FFFFFFF);
+    }
+
+    /**
+     * @brief The surface finish the filament's names announce (silk, matte, ...)
+     *
+     * The first of material, product name and spool name that names one wins.
+     * Never the colour name: "Stone Grey" is a plain grey, not a marble.
+     * Swatches paint it; see helix::filament_finish_of().
+     */
+    [[nodiscard]] FilamentFinish finish() const {
+        for (const std::string* name : {&material, &product_name, &spool_name}) {
+            const FilamentFinish f = filament_finish_of(*name);
+            if (f != FilamentFinish::None) {
+                return f;
+            }
+        }
+        return FilamentFinish::None;
+    }
+
+    /**
      * @brief Check if filament is present in this slot
      *
      * Two-valued on purpose: a caller drawing a cell or gating an affordance
@@ -1132,15 +1207,17 @@ struct SlotInfo {
     /**
      * @brief Copy the filament fields an edit or an identity sync carries
      *
-     * Colour, material, brand, catalog pick, Spoolman link, weights and
-     * temperatures. Tool mapping, status and indices are the caller's.
+     * Colour (multi-colour included), material, brand, catalog pick, Spoolman
+     * link, weights and temperatures. Tool mapping, status and indices are the
+     * caller's.
      *
      * @return Whether any of them changed
      */
     bool assign_filament_fields(const SlotInfo& other) {
         auto fields = [](auto& s) {
-            return std::tuple_cat(identity_fields(s),
-                                  std::tie(s.nozzle_temp_min, s.nozzle_temp_max, s.bed_temp));
+            return std::tuple_cat(
+                identity_fields(s),
+                std::tie(s.multi_color_hexes, s.nozzle_temp_min, s.nozzle_temp_max, s.bed_temp));
         };
         const bool changed = fields(*this) != fields(other);
         fields(*this) = fields(other);
@@ -1752,7 +1829,7 @@ struct AmsSystemInfo {
      * @return true if actively loading, unloading, etc.
      */
     [[nodiscard]] bool is_busy() const {
-        return action != AmsAction::IDLE && action != AmsAction::ERROR;
+        return ams_action_holds_system(action);
     }
 
     // === Multi-unit helpers ===
@@ -2016,6 +2093,34 @@ struct DryerInfo {
     bool supports_live_temp = false;     ///< Target temp re-sends without stopping
     bool supports_live_duration = false; ///< Remaining time changes without stopping
 
+    /// Can a cycle also end early once the box reads at or below a target relative
+    /// humidity? The duration still bounds the cycle; the target only shortens it.
+    bool supports_humidity_target = false;
+
+    /// The target, in %RH, a start with none applies, when the backend knows it.
+    /// Unset means the dryer either applies no target or does not say which.
+    std::optional<float> default_humidity_target;
+
+    /// Can a cycle be started and stopped on a chosen subset of this dryer's gates? True
+    /// only where each gate has its own heater, so the subset is what actually heats.
+    bool supports_gate_selection = false;
+
+    /// Can a cycle turn the selected spools while it dries? Needs a motor that drives
+    /// the spool itself, and an explicit gate selection to say which ones.
+    bool supports_rotation = false;
+
+    /// Highest humidity target, in %RH, a surface offers.
+    static constexpr float kMaxHumidityTargetPct = 99.0f;
+
+    /// @p pct as a humidity target this dryer takes, or nullopt for none: the dryer
+    /// cannot take one, or @p pct is unset (0 or below). Above the ceiling clamps to it.
+    [[nodiscard]] std::optional<float> humidity_target(float pct) const {
+        if (!supports_humidity_target || !(pct > 0.0f)) {
+            return std::nullopt;
+        }
+        return std::min(pct, kMaxHumidityTargetPct);
+    }
+
     /// @p temp_c inside this dryer's settable range. A bound of 0 is unset and
     /// clamps nothing on its side. Every surface offering a preset clamps
     /// through here, so the value it shows is the value it sends.
@@ -2069,6 +2174,22 @@ struct DryerInfo {
             return false;
         return std::abs(current_temp_c - target_temp_c) <= tolerance_c;
     }
+};
+
+/**
+ * @brief Everything a drying start asks of a backend.
+ *
+ * Empty @p gates leaves the choice to the dryer, which is the whole unit or whatever
+ * the firmware defaults to: exactly the start a backend sends with no selection at all.
+ */
+struct DryingRequest {
+    float temp_c = 0.0f;
+    int duration_min = 0;
+    std::optional<float> humidity_pct; ///< Unset leaves the dryer's own target
+    int fan_pct = -1;                  ///< -1 = backend default
+    int unit = 0;
+    std::vector<int> gates; ///< Global gate indices; needs DryerInfo::supports_gate_selection
+    bool rotate = false;    ///< Needs DryerInfo::supports_rotation
 };
 
 /**
@@ -2450,6 +2571,9 @@ struct DeviceAction {
     int slot_index = -1;              ///< If action is per-slot (-1 = system-wide)
     bool enabled = true;              ///< Whether action is currently available
     std::string disable_reason;       ///< Why disabled (if applicable)
+    /// Id of a registered guided flow (ui_guided_device_flow.h) the UI starts instead of
+    /// executing the action directly. Empty for an ordinary action.
+    std::string guided_flow;
 
     // Factories for the four control types. Argument order is fixed: id, label, section, the
     // type-specific fields, then optional icon and description. scripts/translations/

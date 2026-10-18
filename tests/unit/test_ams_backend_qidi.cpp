@@ -6,6 +6,7 @@
 #include "../test_helpers/filament_slot_override_store_test_access.h"
 #include "../test_helpers/mock_printer.h"
 #include "../test_helpers/print_state_test_drivers.h"
+#include "ams_backend_mock.h"
 #include "ams_backend_qidi.h"
 #include "ams_error.h"
 #include "ams_types.h"
@@ -2213,6 +2214,43 @@ TEST_CASE("QIDI Box own identity push echo does not clear the edit", "[ams][qidi
     CHECK(QidiBoxTestAccess::get_override(backend, 0).has_value());
 }
 
+TEST_CASE("QIDI Box keeps the tag's reading under its own write's echo",
+          "[ams][qidi_box][tag_reading]") {
+    helix::test::RegisteredBackend<RecordingQidiBackend> harness;
+    RecordingQidiBackend& backend = *harness;
+
+    QidiBoxTestAccess::apply_filas_list(backend, STOCK_FILAS_EXCERPT);
+    QidiBoxTestAccess::parse_vars(
+        backend, json{{"filament_slot0", 1}, {"color_slot0", 18}, {"vendor_slot0", 1}});
+    const auto tag = backend.tag_reading(0);
+    REQUIRE(tag.has_value());
+    REQUIRE(tag->material.has_value());
+    REQUIRE(tag->color_rgb.has_value());
+    CHECK(backend.tag_provenance(0).from_tag(helix::ams::TagField::Material));
+
+    auto info = backend.get_slot_info(0);
+    info.material = "ABS";
+    info.brand = "eSUN";
+    info.color_rgb = 0x060606u;
+    helix::test::edit_slot_as_user(backend, 0, info);
+    // The Box now holds the ids our write pushed; the tag's are gone from it.
+    QidiBoxTestAccess::parse_vars(
+        backend, json{{"filament_slot0", 11}, {"color_slot0", 2}, {"vendor_slot0", 2}});
+
+    const auto shown = backend.get_slot_info(0);
+    REQUIRE(shown.material == "ABS");
+    const auto kept = backend.tag_reading(0);
+    REQUIRE(kept.has_value());
+    CHECK(kept->material == tag->material);
+    CHECK(kept->color_rgb == tag->color_rgb);
+    CHECK(kept->brand == tag->brand);
+    CHECK_FALSE(backend.tag_provenance(0).from_tag(helix::ams::TagField::Material));
+
+    const auto reset = helix::ams::reset_to_tag(shown, *kept);
+    CHECK(reset.material == *tag->material);
+    CHECK(reset.color_rgb == *tag->color_rgb);
+}
+
 TEST_CASE("QIDI Box colour and vendor writes keep the echo expectation alive", "[ams][qidi_box]") {
     // A material no fila profile matches still pushes colour and vendor, and
     // the echo of those two writes must not be mistaken for a spool swap.
@@ -2590,9 +2628,7 @@ TEST_CASE("QIDI Box clear writes the firmware zeros while a print is active", "[
     REQUIRE(QidiBoxTestAccess::get_override(backend, 0).has_value());
 
     helix::test::set_wire_state(state, helix::PrintJobState::PRINTING);
-    for (int i = 0; i < 8; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     REQUIRE(state.print_state().get_print_lifecycle() == PrintState::Printing);
 
     backend.clear_slot_override(0);
@@ -2743,4 +2779,34 @@ TEST_CASE("clearing a QIDI Box slot takes the linked spool's brand off it",
 
     CHECK(backend.get_slot_info(0).brand.empty());
     CHECK(backend.get_slot_info(0).spool_name.empty());
+}
+
+TEST_CASE("QIDI Box explains an unavailable eject", "[ams][qidi_box]") {
+    AmsBackendQidi backend(nullptr, nullptr);
+    QidiBoxTestAccess::parse_vars(backend, json{{"slot0", 0}, {"slot1", 1}});
+
+    SECTION("force_move off with filament in the lane") {
+        QidiBoxTestAccess::set_force_move(backend, false);
+        REQUIRE_FALSE(backend.supports_lane_eject());
+        CHECK_FALSE(backend.eject_unavailable_reason(1).empty());
+        // An empty lane has nothing to eject, so there is nothing to explain.
+        CHECK(backend.eject_unavailable_reason(0).empty());
+    }
+
+    SECTION("force_move on") {
+        QidiBoxTestAccess::set_force_move(backend, true);
+        REQUIRE(backend.supports_lane_eject());
+        CHECK(backend.eject_unavailable_reason(1).empty());
+    }
+
+    SECTION("an out-of-range slot") {
+        QidiBoxTestAccess::set_force_move(backend, false);
+        CHECK(backend.eject_unavailable_reason(-1).empty());
+        CHECK(backend.eject_unavailable_reason(99).empty());
+    }
+
+    SECTION("the base backend has no reason") {
+        helix::AmsBackendMock mock(4);
+        CHECK(mock.eject_unavailable_reason(1).empty());
+    }
 }

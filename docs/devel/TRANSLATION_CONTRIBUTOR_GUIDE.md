@@ -156,17 +156,18 @@ This is a significant undertaking — realistically 10–20 hours for a solo tra
 
 Most entries are flat `"key": "value"` pairs. But for entries that describe a count of something, some languages need plural variants. HelixScreen supports the [CLDR plural categories](https://cldr.unicode.org/index/cldr-spec/plural-rules) (`zero`, `one`, `two`, `few`, `many`, `other`).
 
-Russian example from `translations/ru.yml`:
+Count strings come as an English pair: a singular key (`"1 print"`) used for exactly one, and a plural key (`"{} prints"`) for every other count. Russian example from `translations/ru.yml`:
 
 ```yaml
-"items_selected":
-  one: "{count} элемент выбран"       # 1, 21, 31...
-  few: "{count} элемента выбрано"     # 2-4, 22-24...
-  many: "{count} элементов выбрано"   # 5-20, 25-30...
-  other: "{count} элемента выбрано"   # decimals
+"1 print": "1 печать"
+"{} prints":
+  one: "{} печать"     # 21, 31, 101...
+  few: "{} печати"     # 2-4, 22-24...
+  many: "{} печатей"   # 0, 5-20, 25-30...
+  other: "{} печати"   # required: used for any category you leave out
 ```
 
-If your language has plural variation and the string is count-dependent, convert it from a flat string to the nested form above. See [TRANSLATION_SYSTEM.md § Plural Rules](TRANSLATION_SYSTEM.md#plural-rules) for which categories apply to your language.
+If your language has plural variation and the string is count-dependent, convert the plural key's value from a flat string to the nested form above. Only keys the code passes to `helix::ui::tr_plural()` read the nested forms; ask in your PR if a count string you need is still a plain `lv_tr()`. See [TRANSLATION_SYSTEM.md § Plural Rules](TRANSLATION_SYSTEM.md#plural-rules) for which categories apply to your language.
 
 Languages that need this most heavily: Russian, Polish, Arabic, Czech, and most Slavic languages. English, German, Spanish, French, and Italian get away with `one`/`other` only. Japanese and Chinese have no plural inflection at all — flat strings are fine.
 
@@ -251,7 +252,7 @@ Submit the PR without local testing. Note in the PR description that you didn't 
    - What language / what area
    - Your qualifications (native speaker? professional translator? just fluent?)
    - Anything you were uncertain about and want a second opinion on
-4. **Commit the regenerated artifacts too.** The source `translations/*.yml` plus the runtime XML packs (`ui_xml/translations/*.xml`) belong in the same PR — they're not gitignored because the running app loads them directly. If you changed any Chinese or Japanese strings, also commit the regenerated CJK runtime fonts (`assets/fonts/cjk/*.bin`) — that font is subset to exactly the characters used, so new glyphs need `make regen-fonts`. (There's no `src/generated/lv_i18n_translations.*` to commit anymore — that legacy table was removed.) If you didn't run the build, note that and we'll regenerate during review.
+4. **Commit the regenerated artifacts too.** The source `translations/*.yml` plus the runtime XML packs (`ui_xml/translations/*.xml`) belong in the same PR — they're not gitignored because the running app loads them directly. If you changed any Chinese or Japanese strings, also commit the regenerated CJK runtime fonts (`assets/fonts/cjk/*.bin`) — that font is subset to exactly the characters used, so new glyphs need `make regen-fonts`. If you didn't run the build, note that and we'll regenerate during review.
 
 Translations don't need to be complete in a single PR. If you want to translate a panel's worth of strings and submit, then do another panel next week, that's welcome. Partial translations are better than no translation.
 

@@ -5,13 +5,24 @@
 
 namespace helix {
 
+/// How a local power request ended.
+enum class PowerResult {
+    Dispatched,    ///< One of the mechanisms accepted the request.
+    NotAuthorized, ///< logind refused for lack of a polkit grant, and every fallback failed.
+    Failed,        ///< Every mechanism failed for another reason.
+};
+
+/// True when @p dbus_error_name is logind's answer to a caller polkit has not
+/// authorized. Pure; null reads as false.
+bool is_authorization_error(const char* dbus_error_name);
+
 /// Initiates shutdown/reboot of the machine running helixscreen. Tries logind
-/// via sd-bus first; falls back to systemctl if sd-bus is unavailable or the
-/// call fails. Returns true if one of the mechanisms dispatched successfully.
+/// via sd-bus first; falls back to systemctl, then busybox, if sd-bus is
+/// unavailable or the call fails.
 class SystemPower {
   public:
-    static bool reboot_local();
-    static bool shutdown_local();
+    static PowerResult reboot_local();
+    static PowerResult shutdown_local();
 };
 
 } // namespace helix

@@ -37,6 +37,11 @@
          panel-local style; the dotted styles.invisible form crosses that
          boundary. -->
     <style name="invisible" opa="0"/>
+    <!-- Widget catalog on a portrait screen, over its inline 70% width: a narrow
+         panel takes the whole screen, a wider one keeps at least the
+         #catalog_min_width an 800x480 landscape panel gets. -->
+    <style name="catalog_portrait_full" min_width="100%"/>
+    <style name="catalog_portrait_min" min_width="#catalog_min_width"/>
 
     <!-- A mono AMS logo (a white mark) is tinted to the text color so it reads in both
          themes. Full-color logos are not given this style. -->
@@ -106,13 +111,34 @@
          (modal_button_row): an inset outline, which the inline border_width
          cannot override, and which the dialog's edge cannot clip. -->
     <style name="accent_outline" outline_width="2" outline_color="#card_bg" outline_opa="255" outline_pad="-4"/>
-    <style name="led_chip_idle" bg_color="#card_bg" bg_opa="255" border_width="#border_width" border_color="#border"/>
-    <style name="led_chip_active" bg_color="#primary" bg_opa="28%" border_color="#primary"/>
+    <!-- A chip you switch on or pick: an outlined card-colored chip while idle,
+         filled with the primary tint and outlined in primary while active. The
+         LEDs overlay's effects and levels and the pre-print option tiles share
+         it, so an "on" chip reads the same everywhere. -->
+    <style name="chip_idle" bg_color="#card_bg" bg_opa="255" border_width="#border_width" border_color="#border"/>
+    <style name="chip_active" bg_color="#primary" bg_opa="28%" border_color="#primary"/>
     <!-- A swatch is its whole touch target: a transparent circle whose padding
          is the ring's reach, holding the colored disc. The selection ring is its
          border, so it draws inside the swatch and no container can clip it. -->
     <style name="led_ring_holder" radius="9999" bg_opa="0" border_width="0" pad_all="#led_ring_reach"/>
     <style name="led_swatch_ring" border_width="#led_ring_width" border_color="#text" border_opa="255"/>
+    <!-- Motion jog layouts: a key block that runs across in landscape and
+         down in portrait (or the reverse), its keys centred, and the weight a
+         run of several keys takes beside single ones (bind one per
+         orientation: an inline flex_grow would outrank the bound style). -->
+    <style name="jog_flow_row"
+           layout="flex" flex_flow="row" flex_main_place="center" flex_cross_place="center" flex_track_place="center"/>
+    <style name="jog_flow_column"
+           layout="flex" flex_flow="column" flex_main_place="center" flex_cross_place="center" flex_track_place="center"/>
+    <style name="jog_grow_1" flex_grow="1"/>
+    <style name="jog_grow_2" flex_grow="2"/>
+    <style name="jog_grow_3" flex_grow="3"/>
+    <!-- A button in a row of mutually exclusive choices (jog modes, jog
+         steps): the chosen one solid, the rest a muted wash of the same
+         colour. Bind exactly one per state. Home buttons use the solid one
+         for an axis that still needs homing. -->
+    <style name="choice_selected" bg_color="#primary" bg_opa="255"/>
+    <style name="choice_idle" bg_color="#primary" bg_opa="40"/>
     <!-- A row of a single-choice picker list, and the chosen one. -->
     <style name="picker_row" bg_opa="0" border_width="0" radius="#border_radius" pad_hor="#space_sm" pad_ver="0"/>
     <style name="selected_row" bg_color="#primary" bg_opa="40"/>
@@ -122,6 +148,16 @@
     <style name="buffer_ok" text_color="#text_muted"/>
     <style name="buffer_warning" text_color="#warning"/>
     <style name="buffer_danger" text_color="#danger"/>
+    <!-- A maintenance meter's colour by its status (maintenance_*_status), shared by the
+         home tile and the detail overlay: the hours, the ring's indicator and the bar's.
+         Bind the indicator ones with selector="indicator". -->
+    <style name="maint_text_warn" text_color="#warning"/>
+    <style name="maint_text_danger" text_color="#danger"/>
+    <style name="maint_arc_warn" arc_color="#warning"/>
+    <style name="maint_arc_danger" arc_color="#danger"/>
+    <style name="maint_bar_normal" bg_color="#primary"/>
+    <style name="maint_bar_warn" bg_color="#warning"/>
+    <style name="maint_bar_danger" bg_color="#danger"/>
     <!-- The inset a buffer trace draws into: no fill, so only the line shows. -->
     <style name="buffer_trace_area" bg_opa="0" border_width="0" pad_all="#space_xxs"/>
 
@@ -143,9 +179,13 @@
     <style name="action_cell"
            width="48%" min_height="#touch_target_min" max_height="#touch_target_min" pad_ver="#space_xxs"/>
     <!-- A text-only cell (ams_actions_text_only): the label's face and the narrow
-         side padding that let it fill the cell. A cell that shows its icon keeps
-         the theme's padding. -->
+         side padding that let it fill the cell. A cell with its icon beside the
+         label keeps the theme's padding. -->
     <style name="action_cell_text" pad_hor="#ams_action_pad_hor" text_font="#ams_action_label_font"/>
+    <!-- A stacked cell (ams_actions_stacked) centres its icon over the label, so
+         it can give the label the narrow side padding too: below medium a
+         half-width cell is otherwise too narrow for "Settings". -->
+    <style name="action_cell_stacked" pad_hor="#ams_action_pad_hor"/>
     <!-- Four to a row, for a narrow portrait screen with no height for two rows. -->
     <style name="action_cell_quarter" width="23%"/>
   </styles>

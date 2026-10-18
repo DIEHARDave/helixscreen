@@ -6,10 +6,12 @@
 #include "action_prompt_manager.h" // PromptData / PromptButton
 #include "async_lifetime_guard.h"
 #include "error_event.h"
+#include "firmware_error_envelope.h"
 #include "i_moonraker_client.h" // SubscriptionId
 #include "lvgl.h"               // lv_timer_t (held presentations)
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -106,10 +108,14 @@ class GcodeErrorRouter {
     GcodeErrorRouter& operator=(const GcodeErrorRouter&) = delete;
 
     /// Splits a raw response line into translated `text` plus extracted
-    /// `out_code`. Static + side-effect free so the replay path can
-    /// reuse it without holding any router state. Public because tests
-    /// cover both the pure-JSON and embedded-JSON shapes K2 emits.
-    static void clean_error_text(std::string& text, std::string& out_code);
+    /// `out_code`. A firmware JSON envelope anywhere in the text is replaced
+    /// by its message (or the error table's curated wording for its code),
+    /// keeping the prose around it; `out_scheme`, when given, says whether
+    /// the code is one the error table and severity rules know. Static +
+    /// side-effect free so the replay path can reuse it without holding any
+    /// router state.
+    static void clean_error_text(std::string& text, std::string& out_code,
+                                 FirmwareCodeScheme* out_scheme = nullptr);
 
     /// Replay age gate. Decides whether a latched `!!` line from the
     /// gcode_store should be re-surfaced on (re)connect, given its
@@ -162,6 +168,25 @@ class GcodeErrorRouter {
     /// stream: such a fault is current by definition, so INFO floors to a
     /// toast.
     void process_line(const std::string& line, bool firmware_reported = false);
+
+    /// Classify context read from the live printer state. Main thread only.
+    static ClassifyContext current_classify_context();
+
+    /// True when the active backend classifies the `!!` copy of an RPC error
+    /// carrying `message` as a command refusal this router presents.
+    [[nodiscard]] bool explains_rpc_error(const std::string& message) const;
+
+    /// The broadcast claimant installed into rpc_error_correlation: when
+    /// explains_rpc_error(), take `report` and run it after
+    /// RPC_REPORT_CLAIM_MS unless the explanation has surfaced by then.
+    bool claim_rpc_report(const std::string& message, std::function<void()>& report);
+
+    /// Context carried by one claimed report's timer. Defined in the .cpp.
+    struct ClaimCtx;
+
+    /// Claimed reports' timers, cancelled in the dtor like pending_deferred_.
+    /// Main-thread only.
+    std::vector<lv_timer_t*> pending_claims_;
 
     /// CRITICAL error that carries a recovery action: delegates to the
     /// shared RecoveryModalPresenter.

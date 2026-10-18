@@ -25,11 +25,10 @@ enum class FilamentTier {
 /// Why a plan declined to dispatch. Each maps to different caller-side copy.
 enum class FilamentRefusal {
     None,
-    SelectSlot,     ///< Load: the backend wants a slot and none resolved
-    NothingLoaded,  ///< Unload: the selected slot has no filament to pull
-    AlreadyMounted, ///< The requested tool is already on the carriage
-    BypassLoaded,   ///< Load: a lane was asked for, but the bypass spool still
-                    ///< crosses the toolhead and only a hand can clear it
+    SelectSlot,    ///< Load: the backend wants a slot and none resolved
+    NothingLoaded, ///< Unload: the selected slot has no filament to pull
+    BypassLoaded,  ///< Load: a lane was asked for, but the bypass spool still
+                   ///< crosses the toolhead and only a hand can clear it
 };
 
 /// Which backend entry point tier 1 should call. Load is NOT always
@@ -64,7 +63,6 @@ struct BackendCaps {
     /// SAME slot the plan targets. It is a per-lane question: on a MIXED unit a
     /// direct-fed lane and a hub-routed one get different answers.
     bool needs_unload_before_load = false;
-    bool is_tool_changer = false; ///< get_type() == AmsType::TOOL_CHANGER
     /// AmsBackend::is_bypass_active(). Distinct from
     /// !requires_slot_selection_for_load(): that answer is also false for a
     /// backend that simply does not need a slot, and the two want opposite
@@ -76,9 +74,8 @@ struct BackendCaps {
     /// claims, which is what makes the active-head sentinel a resolvable
     /// unload target.
     bool toolhead_unaccounted = false;
-    /// AmsBackend::load_feeds_filament(). A Load on a tool changer is then a
-    /// feed into the named head: the head being the mounted one is no reason to
-    /// refuse, and no other tool needs swapping in first.
+    /// AmsBackend::load_feeds_filament(): Load is a firmware feed into the
+    /// named head, so no other lane needs swapping out first.
     bool load_feeds_filament = false;
 };
 
@@ -89,12 +86,6 @@ struct BackendCaps {
  * merely existing: its default is `!is_bypass_active()`, so bypass deliberately
  * falls through to the user's LOAD_FILAMENT macro. Preserve that — it is how a
  * bypass spool loads at all.
- *
- * The already-mounted refusal is the fix for debug bundle 9KRXZ62P: SELECT_TOOL
- * on the tool already on the carriage is a firmware no-op, and dispatching it
- * left the Load button spinning for 120 s. AmsOperationSidebar has carried this
- * guard privately since it was written; FilamentPanel and the runout handler
- * never had it.
  *
  * @param sys           Backend system info (current_slot, per-slot mapped_tool).
  * @param caps          Backend capability answers.
@@ -151,9 +142,6 @@ struct BackendCaps {
         }
         if (caps.load_feeds_filament) {
             return {FilamentTier::AmsBackend, FilamentRefusal::None, AmsCall::Load, target_slot};
-        }
-        if (caps.is_tool_changer && sys.current_slot >= 0 && sys.current_slot == target_slot) {
-            return {FilamentTier::Refused, FilamentRefusal::AlreadyMounted, AmsCall::None, -1};
         }
         // Load-vs-swap: a machine that already has filament seated cannot simply
         // feed another lane. Centralized in needs_unload_before_load() so the UI

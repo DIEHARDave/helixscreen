@@ -22,7 +22,10 @@
 
 #include "../lvgl_test_fixture.h"
 #include "ams_backend_afc.h"
+#include "ams_backend_cfs.h"
 #include "ams_backend_happy_hare.h"
+#include "ams_backend_snapmaker.h"
+#include "ams_backend_toolchanger.h"
 #include "filament_macro_profiles.h"
 #include "filament_op_dispatch.h"
 #include "filament_op_execute.h"
@@ -150,11 +153,11 @@ TEST_CASE_METHOD(PreheatSkipFixture, "preheat_skip_reason: backend auto-heat, ti
     REQUIRE(helix::ui::preheat_skip_reason(swap, StandardMacroSlot::LoadFilament, &backend) ==
             PreheatSkip::BackendSelfHeats);
 
-    // An unload is not a load: no backend claims to heat for one.
+    // An unload answers to its own claim, which AFC's TOOL_UNLOAD makes too.
     FilamentOpPlan unload = plan_at(FilamentTier::AmsBackend);
     unload.ams_call = helix::ui::AmsCall::Unload;
     REQUIRE(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &backend) ==
-            PreheatSkip::None);
+            PreheatSkip::BackendSelfHeats);
 
     // The same backend is no reason to skip once bypass has dropped the op past
     // tier 1 — the backend is not what runs there.
@@ -273,4 +276,54 @@ TEST_CASE_METHOD(PreheatSkipFixture, "needs_prerequisite_home: a backend that do
     REQUIRE(helix::ui::needs_prerequisite_home(plan_at(FilamentTier::AmsBackend),
                                                StandardMacroSlot::LoadFilament, &backend,
                                                /*toolhead_homed=*/false));
+}
+
+TEST_CASE_METHOD(PreheatSkipFixture, "preheat_skip_reason: an unload answers to the unload claim",
+                 "[filament][preheat][skip]") {
+    FilamentOpPlan unload = plan_at(FilamentTier::AmsBackend);
+    unload.ams_call = helix::ui::AmsCall::Unload;
+
+    // Happy Hare claims neither, so the UI heats for its unload.
+    ColdBackend cold;
+    REQUIRE_FALSE(cold.supports_auto_heat_on_unload());
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &cold) ==
+          PreheatSkip::None);
+
+    // AFC's TOOL_UNLOAD heats the extruder itself.
+    helix::AmsBackendAfc afc(nullptr, nullptr);
+    REQUIRE(afc.supports_auto_heat_on_unload());
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &afc) ==
+          PreheatSkip::BackendSelfHeats);
+
+    // The unload claim alone is no reason to skip a load on a backend that
+    // does not claim that too.
+    helix::AmsBackendToolChanger changer(nullptr, nullptr);
+    REQUIRE_FALSE(changer.supports_auto_heat_on_unload());
+    FilamentOpPlan load = plan_at(FilamentTier::AmsBackend);
+    CHECK(helix::ui::preheat_skip_reason(load, StandardMacroSlot::LoadFilament, &changer) ==
+          PreheatSkip::None);
+}
+
+TEST_CASE_METHOD(PreheatSkipFixture, "preheat_skip_reason: an unload claim is per unload",
+                 "[filament][preheat][skip]") {
+    FilamentOpPlan unload = plan_at(FilamentTier::AmsBackend);
+    unload.ams_call = helix::ui::AmsCall::Unload;
+
+    // No CFS unload script we send heats; the bypass one ends in a raw retract.
+    helix::printer::AmsBackendCfs cfs(nullptr, nullptr);
+    unload.ams_arg = helix::ui::EXTERNAL_SPOOL_SLOT;
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &cfs) ==
+          PreheatSkip::None);
+    unload.ams_arg = 0;
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &cfs) ==
+          PreheatSkip::None);
+
+    // The U1's AUTO_FEEDING unload heats; with no slot to name it falls back to
+    // the bare INNER_FILAMENT_UNLOAD leaf, which does not.
+    helix::AmsBackendSnapmaker u1(nullptr, nullptr);
+    CHECK(u1.unload_heats_hotend(0));
+    CHECK_FALSE(u1.unload_heats_hotend(-1)); // nothing loaded to resolve
+    unload.ams_arg = -1;
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &u1) ==
+          PreheatSkip::None);
 }

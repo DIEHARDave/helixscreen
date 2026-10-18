@@ -117,3 +117,27 @@ TEST_CASE("dryer layout: fits_at is monotonic in both axes", "[dryer][layout]") 
         }
     }
 }
+
+TEST_CASE("dryer layout: the drop takes the largest rung the text leaves room for",
+          "[dryer][layout]") {
+    // A glyph ladder of 10, 20, 30, 40, 50 and 60 px squares.
+    constexpr int kGlyph[kTileRungs] = {10, 20, 30, 40, 50, 60};
+    constexpr DropTextBlock kBeside{80, 30, true, 4, 2};
+    constexpr DropTextBlock kStacked{40, 12, false, 2, 2};
+
+    // Beside: 40 + 4 + 80 + 2 = 126 wide, 40 + 1 tall.
+    CHECK(drop_block_box(40, 40, kBeside).w == 126);
+    CHECK(drop_block_box(40, 40, kBeside).h == 41);
+    CHECK(choose_drop_rung(126, 41, kGlyph, kGlyph, kBeside) == 3);
+    CHECK(choose_drop_rung(125, 200, kGlyph, kGlyph, kBeside) == 2);
+    CHECK(choose_drop_rung(126, 40, kGlyph, kGlyph, kBeside) == 2);
+    // A short glyph sits inside the text's height.
+    CHECK(drop_block_box(20, 20, kBeside).h == 31);
+
+    // Stacked: 30 over 2 + 12, so 45 tall; width is the wider of the two plus slack.
+    CHECK(choose_drop_rung(42, 45, kGlyph, kGlyph, kStacked) == 2);
+    CHECK(choose_drop_rung(42, 44, kGlyph, kGlyph, kStacked) == 1);
+    CHECK(choose_drop_rung(500, 500, kGlyph, kGlyph, kStacked) == kTileRungs - 1);
+    // No room for even the smallest: the floor the rung was measured at.
+    CHECK(choose_drop_rung(5, 5, kGlyph, kGlyph, kStacked) == 0);
+}

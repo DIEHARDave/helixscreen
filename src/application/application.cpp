@@ -97,6 +97,8 @@
 #include "ui_fan_control_overlay.h"
 #include "ui_gcode_viewer.h"
 #include "ui_gradient_canvas.h"
+#include "ui_guided_device_flow.h"
+#include "ui_humidity_drop.h"
 #include "ui_icon.h"
 #include "ui_icon_loader.h"
 #include "ui_keyboard_manager.h"
@@ -640,6 +642,9 @@ int Application::run(int argc, char** argv) {
     // Note: record_session() is called after m_session.init_panel_subjects() so that
     // SettingsManager subjects are ready and the enabled state can be synced.
     TelemetryManager::instance().init(user_config_dir);
+#ifdef HELIX_ENABLE_SCREENSAVER
+    TelemetryManager::instance().set_screensaver_usage(&ScreensaverManager::instance().usage());
+#endif
 
     // First heap snapshot, before panel construction and XML load. Later
     // snapshots are diffed against this to narrow down which startup phase
@@ -1698,6 +1703,7 @@ bool Application::register_widgets() {
     ui_gcode_viewer_register();
     ui_gradient_canvas_register();
     helix::ui::register_helix_sparkline_widget();
+    helix::ui::register_humidity_drop_widget();
 
     // Initialize component systems
     ui_component_header_bar_init();
@@ -1721,6 +1727,10 @@ bool Application::register_xml_components() {
     helix::register_xml_components();
     spdlog::debug("[Application] XML components registered");
 
+    // Guided flows must exist before any overlay builds: an action that names an unregistered
+    // flow is refused rather than executed.
+    helix::ui::register_cfs_device_flows();
+
     // Start XML hot reloader if enabled. Default ON for native (non-release)
     // builds so editing XML during dev Just Works; OFF for cross-compiled
     // release targets. Env var HELIX_HOT_RELOAD={0,1} overrides either way.
@@ -1743,12 +1753,8 @@ bool Application::init_translations() {
     // are expected and produce many "language is missing from tag" warnings
     helix::logging::set_suppress_translation_warnings(true);
 
-    // NOTE: lv_i18n (src/generated/lv_i18n_translations.c) was a parallel i18n
-    // subsystem kept alongside LVGL's native lv_translation_* API. It was never
-    // read from — lv_i18n_get_text() has no callers in the tree. Removing the
-    // init/set_locale calls lets LTO strip the ~1 MB of compiled language pack
-    // rodata. All real language switching goes through lv_translation_set_language
-    // and the per-locale XML files loaded below.
+    // All language switching goes through lv_translation_set_language and the
+    // per-locale XML files loaded below.
 
     // Load ONLY the current locale's translations. Parsing the combined
     // translations.xml with all 9 languages at startup burns ~500-700 KB of

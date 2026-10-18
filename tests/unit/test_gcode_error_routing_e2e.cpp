@@ -9,23 +9,12 @@
 // test_gcode_error_routing.cpp; this test closes the gap on the *presentation
 // glue* that process_line drives.
 //
-// IMPORTANT — test-binary boundary (why this test is shaped the way it is):
-// The test build EXCLUDES ui_notification.o and replaces ui_notification_error()
-// with a logging-only stub in tests/ui_test_utils.cpp (see mk/tests.mk:
-// "ui_notification.o ... ui_test_utils.o provides stub ... functions").
-// Reason: the real ui_notification.cpp pulls get_notification_subject() from
-// app_globals.o, which is itself stubbed in tests — linking both duplicates
-// symbols. Consequently process_line()'s PresentAs::MODAL arm calls the STUB,
-// which never builds a modal, so an assert on modal_get_top() after
-// process_line() ALWAYS fails in the test binary regardless of the feature.
-//
-// What this test therefore verifies — every link the production path traverses
-// EXCEPT the stubbed thunk, with no weakened assertion:
+// What this test verifies, in two seams:
 //   1. Routing seam (real classifier + real paused PrinterState): the exact
 //      classification process_line performs maps the jam to PresentAs::MODAL.
 //      This is the severity gate end-to-end — flip the printer to idle and the
 //      same line drops below MODAL.
-//   2. Presentation seam (real ui_modal.o — NOT stubbed): handing the modal
+//   2. Presentation seam (real ui_modal.o): handing the modal
 //      layer the same (title, detail) that process_line passes to
 //      ui_notification_error renders a real modal_dialog whose dialog_message
 //      holds the FULL untruncated text. This is the E1+E2 proof against the
@@ -151,11 +140,9 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // ---- Seam 2: presentation (REAL ui_modal.o) ----
     // process_line's MODAL arm calls
     //   ui_notification_error(modal_title_for(*ev), ev->detail.c_str(), /*modal=*/true)
-    // which, in production, routes the modal case to modal_alert(...). In
-    // the test binary ui_notification_error is a logging-only stub (see header
-    // comment), so we drive the same modal layer it would with the SAME
-    // (title, detail) process_line hands it. modal_title_for(GENERIC) ==
-    // "Printer Error".
+    // which routes the modal case to modal_alert(...). This drives that modal
+    // layer directly with the SAME (title, detail) process_line hands it. modal_title_for(GENERIC)
+    // == "Printer Error".
     //
     // NOTE: since #1152 the paused case routes through present_recovery_modal()
     // in production, not this alert path. What this seam still proves is the
@@ -371,7 +358,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Routing E2E: Happy Hare runout pause routes
     }
 
     // Drive the REAL glue end-to-end. api() is non-null so present_recovery_modal
-    // runs the show_prompt arm (not the ui_notification_error stub).
+    // runs the show_prompt arm (not the ui_notification_error arm).
     helix::ui::RecoveryModalPresenter presenter3(api());
     helix::GcodeErrorRouter router(api(), client(), presenter3);
     REQUIRE_NOTHROW(GcodeErrorRouterTestAccess::process_line(router, "!! Runout detected"));

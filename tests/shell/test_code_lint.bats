@@ -1385,10 +1385,10 @@ check_deinit_all_does_not_log() {
     local out='' err=''
     # `make -C <dir>` implies --print-directory and exports it through MAKEFLAGS,
     # so an inner make launched under one writes "Entering/Leaving directory" to
-    # STDOUT around the echoed value. --no-print-directory cancels that inherited
-    # -w; -s alone does not. make's stderr is kept for the failure message: a red
+    # STDOUT around the echoed value. scratch_make's --no-print-directory cancels
+    # that inherited -w; -s alone does not. make's stderr is kept for the failure message: a red
     # here must say what make said.
-    out="$(make --no-print-directory -s print-vacuous-max \
+    out="$(scratch_make -s print-vacuous-max \
         2>"$BATS_TEST_TMPDIR/vacuous-max.err")" || true
     [[ "$out" =~ ^[0-9]+$ ]] && return 0
     err="$(cat "$BATS_TEST_TMPDIR/vacuous-max.err")" || true
@@ -3317,11 +3317,12 @@ own_endpoint_http_offenders() {
 # thumbnail decode, per file-detail open and per print-status build.
 
 @test "per-event ESP32 paths read free PSRAM, never walk the heap" {
-    local files="include/esp_psram_thumbnail.h src/system/memory_utils.cpp src/ui/ui_panel_print_select.cpp src/print/active_print_media_manager.cpp src/ui/ui_panel_print_status.cpp"
+    local files="include/esp_psram_thumbnail.h include/tinfl_inflate.h src/system/memory_utils.cpp src/ui/ui_panel_print_select.cpp src/print/active_print_media_manager.cpp src/ui/ui_panel_print_status.cpp"
     run bash -c "grep -n 'heap_caps_get_largest_free_block\|heap_caps_get_info' $files | grep -v ':[0-9]*: *//'"
     [ "$status" -eq 1 ]  # grep returns 1 when no matches found
 
-    run grep -n 'heap_caps_get_free_size(MALLOC_CAP_SPIRAM)' include/esp_psram_thumbnail.h
+    # The thumbnail decode's allocator: its free_bytes() gates every decode.
+    run grep -n 'heap_caps_get_free_size(MALLOC_CAP_SPIRAM)' include/tinfl_inflate.h
     [ "$status" -eq 0 ]
 }
 
@@ -3436,4 +3437,14 @@ CPP
     run python3 scripts/check_vendor_branches.py --root "$root"
     [ "$status" -eq 1 ] || fail "name() compares not counted"
     contains "2 branch" "$output"
+}
+
+# A device action naming a guided flow is refused when the flow is unregistered, so every
+# boot path that registers XML components must also register the flows.
+@test "every boot path registers the guided device flows" {
+    local f
+    for f in src/application/application.cpp firmware/helixscreen-esp32/components/helixapp/app_boot.cpp; do
+        run grep -c 'register_cfs_device_flows();' "$f"
+        [ "$output" = "1" ] || fail "$f does not register the CFS guided flows"
+    done
 }

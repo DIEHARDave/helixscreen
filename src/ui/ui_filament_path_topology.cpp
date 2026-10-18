@@ -92,8 +92,12 @@ SlotRenderStates compute_slot_render_states(const FilamentPathData* data) {
         }
 
         // Active slot overrides with current load/unload state when present.
+        // SPOOL reports no strand in the path, so it cannot show filament the
+        // slot's own report says is not there: an empty active lane stays empty.
         s.is_mounted = (i == data->active_slot);
-        if (s.is_mounted && data->filament_segment > 0) {
+        const auto active_seg = static_cast<PathSegment>(data->filament_segment);
+        const bool strand_in_path = active_seg > PathSegment::SPOOL;
+        if (s.is_mounted && active_seg != PathSegment::NONE && (strand_in_path || s.has_filament)) {
             s.has_filament = true;
             s.color = lv_color_hex(data->filament_color);
             s.segment = static_cast<PathSegment>(data->filament_segment);
@@ -198,6 +202,33 @@ void draw_parallel_tool(const RenderCtx& ctx, const SlotRenderStates& states, in
     draw_toolhead(ctx.layer, slot_x, toolhead_y, noz_color, tool_scale, toolhead_opa);
 }
 
+// A fed lane's upstream caption, on the row its prep sensor band would take:
+// a lane with an upstream has no prep sensor of its own, so the row is free.
+void draw_upstream_captions(const RenderCtx& ctx, const ParallelRows& rows) {
+    const FilamentPathData* data = ctx.data;
+    const lv_font_t* font = data->theme.label_font;
+    if (!font)
+        return;
+    const int32_t font_h = lv_font_get_line_height(font);
+    for (int i = 0; i < LV_MIN(data->slot_count, FilamentPathData::MAX_SLOTS); i++) {
+        const char* caption = data->slot_upstream_caption[i];
+        if (!caption[0])
+            continue;
+        lv_draw_label_dsc_t dsc;
+        lv_draw_label_dsc_init(&dsc);
+        dsc.color = data->theme.color_muted;
+        dsc.font = font;
+        dsc.align = LV_TEXT_ALIGN_CENTER;
+        dsc.text = caption;
+        const int32_t half_col = (ctx.geo.slot_count > 1)
+                                     ? (ctx.geo.slot_x[1] - ctx.geo.slot_x[0]) / 2
+                                     : ctx.geo.width / 2;
+        const lv_area_t area = {ctx.geo.slot_x[i] - half_col, rows.prep_y - font_h,
+                                ctx.geo.slot_x[i] + half_col, rows.prep_y};
+        lv_draw_label(ctx.layer, &dsc, &area);
+    }
+}
+
 void render_parallel(lv_obj_t* obj, lv_layer_t* layer, FilamentPathData* data) {
     RenderCtx ctx{layer, data, compute_base_geometry(obj, data)};
     PathPlan& plan = plan_scratch();
@@ -211,6 +242,7 @@ void render_parallel(lv_obj_t* obj, lv_layer_t* layer, FilamentPathData* data) {
         for (int i = 0; i < LV_MIN(data->slot_count, FilamentPathData::MAX_SLOTS); i++)
             draw_parallel_tool(ctx, states, i, rows, pass);
     }
+    draw_upstream_captions(ctx, rows);
 }
 
 // ============================================================================

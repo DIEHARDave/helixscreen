@@ -7,12 +7,13 @@
 #include "ui_utils.h"
 
 #include "lv_draw_buf_guard.h"
+#include "screensaver_image.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cstdlib>
-#include <draw/lv_image_decoder_private.h>
+#include <iterator>
 
 using helix::ui::DirtyRect;
 using helix::ui::screensaver::flap_frame_at;
@@ -133,10 +134,37 @@ static constexpr ObjectDef OBJECTS[] = {
 };
 static constexpr int NUM_OBJECTS = sizeof(OBJECTS) / sizeof(OBJECTS[0]);
 
-// Sprites flown per level, indexed like LEVEL_PERIODS_MS. Every visible sprite costs
-// dirty-region work each frame, so the rungs past half rate thin the flock rather than slow it
-// again. OBJECTS[] is ordered by delay and wave, so a prefix keeps a representative mix.
-static constexpr int LEVEL_SPRITE_CAPS[] = {NUM_OBJECTS, NUM_OBJECTS, 25, 10};
+namespace helix::ui {
+namespace {
+
+struct ToasterLevel {
+    uint32_t period_ms; // frame period in ms
+    int sprites;        // sprites flown, a prefix of OBJECTS[]
+};
+
+// The ladder, most expensive level first. Every visible sprite costs dirty-region work each
+// frame, and a halved rate that still flies every sprite saves little, so the rungs past half
+// rate thin the flock rather than slow it again. OBJECTS[] is ordered by delay and wave, so a
+// prefix keeps a representative mix.
+constexpr ToasterLevel TOASTER_LEVELS[] = {
+    {SAVER_FAST_PERIOD, NUM_OBJECTS},
+    {33, NUM_OBJECTS},
+    {33, 25},
+    {33, 10},
+};
+
+} // namespace
+} // namespace helix::ui
+
+using helix::ui::TOASTER_LEVELS;
+
+size_t FlyingToasterScreensaver::ladder_size() const {
+    return std::size(TOASTER_LEVELS);
+}
+
+uint32_t FlyingToasterScreensaver::ladder_period_ms(size_t level) const {
+    return helix::ui::ladder_period(TOASTER_LEVELS, level);
+}
 
 int FlyingToasterScreensaver::get_scale_factor() const {
     lv_display_t* disp = lv_display_get_default();
@@ -167,12 +195,8 @@ void FlyingToasterScreensaver::on_level_request(size_t level) {
 }
 
 size_t FlyingToasterScreensaver::sprite_limit(size_t level) const {
-    // A member sees the private period table, so the two stay the same length here.
-    static_assert(sizeof(LEVEL_SPRITE_CAPS) / sizeof(LEVEL_SPRITE_CAPS[0]) ==
-                      sizeof(LEVEL_PERIODS_MS) / sizeof(LEVEL_PERIODS_MS[0]),
-                  "every level needs both a frame period and a sprite cap");
-    constexpr size_t last = sizeof(LEVEL_SPRITE_CAPS) / sizeof(LEVEL_SPRITE_CAPS[0]) - 1;
-    return static_cast<size_t>(std::min(NUM_OBJECTS, LEVEL_SPRITE_CAPS[std::min(level, last)]));
+    return static_cast<size_t>(std::min(
+        NUM_OBJECTS, TOASTER_LEVELS[std::min(level, std::size(TOASTER_LEVELS) - 1)].sprites));
 }
 
 void FlyingToasterScreensaver::drop_sprites_past(size_t limit) {
@@ -333,30 +357,9 @@ void FlyingToasterScreensaver::decode_sprites() {
     // When used as lv_image_set_src(), LVGL treats these as LV_IMAGE_SRC_VARIABLE —
     // no file open, no PNG decompression, just direct pixel data.
     for (int i = 0; i < NUM_TOASTER_FRAMES; i++) {
-        lv_image_decoder_dsc_t dsc;
-        lv_result_t res = lv_image_decoder_open(&dsc, TOASTER_FRAMES[i], nullptr);
-        if (res == LV_RESULT_OK && dsc.decoded) {
-            m_decoded_frames[i] = lv_draw_buf_dup(dsc.decoded);
-            lv_image_decoder_close(&dsc);
-        } else {
-            spdlog::warn("[Screensaver] Failed to pre-decode {}", TOASTER_FRAMES[i]);
-            if (res == LV_RESULT_OK)
-                lv_image_decoder_close(&dsc);
-        }
+        m_decoded_frames[i] = helix::ui::saver_decode_image(TOASTER_FRAMES[i], "toaster frame");
     }
-
-    {
-        lv_image_decoder_dsc_t dsc;
-        lv_result_t res = lv_image_decoder_open(&dsc, TOAST_IMG, nullptr);
-        if (res == LV_RESULT_OK && dsc.decoded) {
-            m_decoded_toast = lv_draw_buf_dup(dsc.decoded);
-            lv_image_decoder_close(&dsc);
-        } else {
-            spdlog::warn("[Screensaver] Failed to pre-decode {}", TOAST_IMG);
-            if (res == LV_RESULT_OK)
-                lv_image_decoder_close(&dsc);
-        }
-    }
+    m_decoded_toast = helix::ui::saver_decode_image(TOAST_IMG, "toast");
 
     spdlog::debug("[Screensaver] Pre-decoded {} toaster frames + toast sprite into RAM",
                   NUM_TOASTER_FRAMES);

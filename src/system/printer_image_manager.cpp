@@ -47,15 +47,7 @@ PrinterImageManager& PrinterImageManager::instance() {
 
 void PrinterImageManager::init(const std::string& config_dir) {
     custom_dir_ = config_dir + "/custom_images/";
-
-    // Initialize image-changed subject (version counter for observers)
-    if (!subjects_initialized_) {
-        lv_subject_init_int(&image_changed_subject_, 0);
-        subjects_.register_subject(&image_changed_subject_);
-        subjects_initialized_ = true;
-        StaticSubjectRegistry::instance().register_deinit(
-            "PrinterImageManager", []() { PrinterImageManager::instance().deinit_subjects(); });
-    }
+    init_subjects();
 
     if (!hfs::create_directories(custom_dir_)) {
         spdlog::error("[PrinterImageManager] Failed to create custom_images dir: {}",
@@ -63,6 +55,17 @@ void PrinterImageManager::init(const std::string& config_dir) {
         return;
     }
     spdlog::info("[PrinterImageManager] Initialized, custom_dir: {}", custom_dir_);
+}
+
+void PrinterImageManager::init_subjects() {
+    if (subjects_initialized_)
+        return;
+    // Version counter for observers
+    lv_subject_init_int(&image_changed_subject_, 0);
+    subjects_.register_subject(&image_changed_subject_);
+    subjects_initialized_ = true;
+    StaticSubjectRegistry::instance().register_deinit(
+        "PrinterImageManager", []() { PrinterImageManager::instance().deinit_subjects(); });
 }
 
 void PrinterImageManager::deinit_subjects() {

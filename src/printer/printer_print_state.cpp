@@ -14,6 +14,7 @@
 #include "ui_update_queue.h"
 
 #include "data_root_resolver.h"
+#include "firmware_error_envelope.h"
 #include "format_utils.h"
 #include "json_utils.h"
 #include "plr_backend.h"
@@ -65,6 +66,10 @@ void PrinterPrintState::init_subjects(bool register_xml) {
     INIT_SUBJECT_INT(print_progress_display, 0, subjects_, register_xml);
     INIT_SUBJECT_STRING(print_progress_text, "0%", subjects_, register_xml);
     INIT_SUBJECT_INT(pause_markers_version, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(layer_pause_availability,
+                     static_cast<int>(helix::layer_pause::Availability::Hidden), subjects_,
+                     register_xml);
+    INIT_SUBJECT_INT(layer_pause_layer, 0, subjects_, register_xml);
     INIT_SUBJECT_STRING(print_filename, "", subjects_, register_xml);
     INIT_SUBJECT_STRING(print_state, "standby", subjects_, register_xml);
     // RAW_PRINT_STATE_OK: declaring the wire subject itself.
@@ -98,6 +103,7 @@ void PrinterPrintState::init_subjects(bool register_xml) {
     // Print start progress subjects
     INIT_SUBJECT_INT(print_start_phase, static_cast<int>(PrintStartPhase::IDLE), subjects_,
                      register_xml);
+    INIT_SUBJECT_INT(print_start_chamber_wait, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(print_lifecycle, static_cast<int>(PrintState::Idle), subjects_, register_xml);
     INIT_SUBJECT_INT(job_holds_machine, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(machine_motion_blocked, spool_latch_active_.load() ? 1 : 0, subjects_,
@@ -274,17 +280,90 @@ void PrinterPrintState::freeze_progress_display(bool complete) {
                   lv_subject_get_int(&print_progress_display_));
 }
 
-void PrinterPrintState::set_scheduled_pauses(std::vector<helix::gcode::ScheduledPause> pauses,
-                                             helix::gcode::ProgressAxis axis,
-                                             const std::string& source_filename) {
-    scheduled_pauses_ = std::move(pauses);
-    pause_marker_axis_ = axis;
+void PrinterPrintState::bump_pause_markers_version() {
+    lv_subject_set_int(&pause_markers_version_, lv_subject_get_int(&pause_markers_version_) + 1);
+}
+
+void PrinterPrintState::set_pause_scan(helix::gcode::PauseScanPtr scan,
+                                       const std::string& source_filename) {
+    if (!scan) {
+        return;
+    }
+    pause_scan_ = std::move(scan);
     pause_source_filename_ = source_filename;
-    int version = lv_subject_get_int(&pause_markers_version_) + 1;
-    lv_subject_set_int(&pause_markers_version_, version);
-    spdlog::debug("[PrinterPrintState] Scheduled pauses published: {} (axis={})",
-                  scheduled_pauses_.size(),
-                  axis == helix::gcode::ProgressAxis::SlicerTime ? "slicer" : "bytes");
+    bump_pause_markers_version();
+    spdlog::debug("[PrinterPrintState] Pause scan published: {} pauses, {} layer marks (axis={})",
+                  pause_scan_->pauses.size(), pause_scan_->layer_marks.size(),
+                  pause_scan_->axis == helix::gcode::ProgressAxis::SlicerTime ? "slicer" : "bytes");
+}
+
+std::optional<float> PrinterPrintState::layer_pause_marker_fraction() const {
+    const int layer = lv_subject_get_int(const_cast<lv_subject_t*>(&layer_pause_layer_));
+    if (layer <= 0 || !pause_scan_matches_current_file()) {
+        return std::nullopt;
+    }
+    const auto* mark = helix::gcode::find_layer_mark(*pause_scan_, layer);
+    if (!mark) {
+        return std::nullopt;
+    }
+    return helix::gcode::display_fraction(*mark, pause_scan_->axis);
+}
+
+void PrinterPrintState::set_layer_pause_state_object(std::string object) {
+    layer_pause_state_object_ = std::move(object);
+    layer_pause_.reset();
+    refresh_layer_pause();
+}
+
+bool PrinterPrintState::file_may_report_layer(int layer) const {
+    if (!pause_scan_matches_current_file()) {
+        return true;
+    }
+    return helix::gcode::find_layer_mark(*pause_scan_, layer) != nullptr;
+}
+
+void PrinterPrintState::note_layer_pause_next_layer(bool enable) {
+    layer_pause_.note_next_layer(enable, slicer_current_layer_);
+    refresh_layer_pause();
+}
+
+void PrinterPrintState::note_layer_pause_at_layer(int layer) {
+    layer_pause_.note_at_layer(layer);
+    refresh_layer_pause();
+}
+
+void PrinterPrintState::refresh_layer_pause() {
+    if (!subjects_initialized_) {
+        return;
+    }
+    // The macros compare against print_stats.info only, so every layer here is
+    // that numbering, never print_layer_current_'s other sources.
+    const int current = slicer_current_layer_;
+    const int total = slicer_total_layers_;
+    layer_pause_.on_layer(current);
+    // RAW_PRINT_STATE_OK: the pause the macro caused is the printer's own.
+    const bool paused = get_print_job_state() == PrintJobState::PAUSED;
+    if (paused && !layer_pause_seen_paused_) {
+        layer_pause_.on_paused(current);
+    }
+    layer_pause_seen_paused_ = paused;
+
+    const auto availability = helix::layer_pause::classify(lv_subject_get_int(&print_active_) != 0,
+                                                           slicer_layers_reported_, current, total);
+    if (lv_subject_get_int(&layer_pause_availability_) != static_cast<int>(availability)) {
+        lv_subject_set_int(&layer_pause_availability_, static_cast<int>(availability));
+    }
+
+    // A schedule only means something while a print runs that can fire it.
+    const int pending = availability == helix::layer_pause::Availability::Hidden
+                            ? 0
+                            : helix::layer_pause::pending_layer(layer_pause_.effective(), current);
+    if (lv_subject_get_int(&layer_pause_layer_) != pending) {
+        spdlog::debug("[PrinterPrintState] Layer pause pending at layer {} (current {})", pending,
+                      current);
+        lv_subject_set_int(&layer_pause_layer_, pending);
+        bump_pause_markers_version();
+    }
 }
 
 void PrinterPrintState::unfreeze_progress_display() {
@@ -300,18 +379,20 @@ void PrinterPrintState::reset_for_new_print() {
     // Filename is Moonraker's source of truth - it updates when the print actually starts.
     lv_subject_set_int(&print_progress_, 0);
     unfreeze_progress_display();
-    // Scheduled pauses belong to the previous job's file. A scan for the new
+    // The pause scan belongs to the previous job's file. A scan for the new
     // file may still be in flight; the publish-side filename guard keeps its
     // late result off the new print if the file differs.
-    if (!scheduled_pauses_.empty()) {
-        scheduled_pauses_.clear();
+    if (pause_scan_) {
+        pause_scan_.reset();
         pause_source_filename_.clear();
-        pause_marker_axis_ = helix::gcode::ProgressAxis::BytePosition;
-        int version = lv_subject_get_int(&pause_markers_version_) + 1;
-        lv_subject_set_int(&pause_markers_version_, version);
+        bump_pause_markers_version();
     }
     lv_subject_set_int(&print_layer_current_, 0);
     has_real_layer_data_ = false;
+    slicer_layers_reported_ = false;
+    slicer_current_layer_ = 0;
+    slicer_total_layers_ = 0;
+    layer_pause_.reset_for_new_print();
     layer_source_ = LayerSource::Estimate;
     // Commanded Z belongs to the print run, not the file — clear it. Do NOT
     // clear layer_height_/first_layer_height_: like print_layer_total_ and
@@ -334,6 +415,7 @@ void PrinterPrintState::reset_for_new_print() {
     // DON'T clear estimated_print_time_ - it belongs to the file, not the session
     // Reset the estimator so it seeds from the first real measurement
     eta_estimator_.reset();
+    refresh_layer_pause();
     spdlog::trace("[PrinterPrintState] Reset print progress for new print (slicer_est={}s)",
                   estimated_print_time_);
 }
@@ -374,6 +456,15 @@ bool PrinterPrintState::status_indicates_active_print(const nlohmann::json& stat
     // maps an unknown string to STANDBY, which lands on false as before.
     const std::string st = ps["state"].get<std::string>();
     return printer_has_job(parse_print_job_state(st.c_str()));
+}
+
+void PrinterPrintState::clear_print_exception() {
+    print_exception_id_ = -1;
+    print_exception_code_ = -1;
+    print_exception_message_.clear();
+    if (lv_subject_get_int(&print_exception_) != -1) {
+        lv_subject_set_int(&print_exception_, -1);
+    }
 }
 
 void PrinterPrintState::update_from_status(const nlohmann::json& status, bool whole_objects) {
@@ -433,6 +524,16 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
             // - Set outcome when print reaches a terminal state (COMPLETE/CANCELLED/ERROR)
             // - Clear outcome when a NEW print starts (PRINTING from non-PAUSED)
             if (new_state != current_state) {
+                // The exception describes one pause. Leaving the pause (a
+                // resume, a cancel, a new print) ends it, so a later pause
+                // whose frames carry no exception is not read as that one.
+                // An exception in this same frame is parsed below and latches
+                // again.
+                // RAW_PRINT_STATE_OK: the exception belongs to the printer's own
+                // pause, so the wire state is what scopes it.
+                if (new_state != PrintJobState::PAUSED) {
+                    clear_print_exception();
+                }
                 // Entering a terminal state: record the outcome
                 if (new_state == PrintJobState::COMPLETE) {
                     spdlog::info("[PrinterPrintState] Print completed - setting outcome=COMPLETE");
@@ -541,6 +642,7 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                             phase);
                         lv_subject_set_int(&print_start_phase_,
                                            static_cast<int>(PrintStartPhase::IDLE));
+                        lv_subject_set_int(&print_start_chamber_wait_, 0);
                         publish_lifecycle_state();
                         lv_subject_copy_string(&print_start_message_, "");
                         lv_subject_set_int(&print_start_progress_, 0);
@@ -570,12 +672,14 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
         // (e.g. "Filament Sensor filament_sensor: Runout Detected"). Subscribed-field
         // updates may send null when the field is absent on the Klipper side.
         if (auto msg_it = stats.find("message"); msg_it != stats.end()) {
-            const char* new_msg = "";
-            if (msg_it->is_string()) {
-                new_msg = msg_it->get_ref<const std::string&>().c_str();
-            }
-            if (strcmp(lv_subject_get_string(&print_message_), new_msg) != 0) {
-                lv_subject_copy_string(&print_message_, new_msg);
+            // A print error can carry a firmware JSON envelope; every consumer
+            // shows or substring-matches the message, so decode it once here.
+            const std::string new_msg =
+                msg_it->is_string()
+                    ? decode_firmware_error_text(msg_it->get_ref<const std::string&>())
+                    : std::string();
+            if (new_msg != lv_subject_get_string(&print_message_)) {
+                lv_subject_copy_string(&print_message_, new_msg.c_str());
             }
         }
 
@@ -601,7 +705,8 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                 }
                 if (auto emsg_it = exc.find("message");
                     emsg_it != exc.end() && emsg_it->is_string()) {
-                    print_exception_message_ = emsg_it->get<std::string>();
+                    print_exception_message_ =
+                        decode_firmware_error_text(emsg_it->get<std::string>());
                 } else {
                     print_exception_message_.clear();
                 }
@@ -637,6 +742,8 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                 }
                 apply_layer_current(current_layer, LayerSource::Reported, "print_stats.info");
                 current_layer_from_info = true;
+                slicer_layers_reported_ = true;
+                slicer_current_layer_ = current_layer;
             }
 
             if (info.contains("total_layer") && info["total_layer"].is_number()) {
@@ -649,6 +756,8 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
                     lv_subject_set_int(&print_layer_total_, total_layer);
                 }
                 total_layer_from_info = true;
+                slicer_layers_reported_ = true;
+                slicer_total_layers_ = total_layer;
             }
         } else if (stats.contains("info")) {
             spdlog::debug("[LayerTracker] print_stats.info is null/missing - slicer may not emit "
@@ -990,6 +1099,15 @@ void PrinterPrintState::update_from_status(const nlohmann::json& status, bool wh
             }
         }
     }
+
+    // The printer's own record of a scheduled layer pause, when it keeps one.
+    if (!layer_pause_state_object_.empty()) {
+        if (const auto* object =
+                helix::json_util::find_member(status, layer_pause_state_object_.c_str())) {
+            layer_pause_.apply_status(*object);
+        }
+    }
+    refresh_layer_pause();
 }
 
 void PrinterPrintState::update_print_show_progress() {
@@ -1192,6 +1310,9 @@ void PrinterPrintState::set_print_start_state(PrintStartPhase phase, const char*
                 lv_subject_set_int(&print_outcome_, static_cast<int>(PrintOutcome::NONE));
             }
         }
+        if (phase != PrintStartPhase::SOAKING) {
+            set_print_start_chamber_wait(false);
+        }
         if (lv_subject_get_int(&print_start_phase_) != static_cast<int>(phase)) {
             lv_subject_set_int(&print_start_phase_, static_cast<int>(phase));
             publish_lifecycle_state();
@@ -1213,6 +1334,7 @@ void PrinterPrintState::reset_print_start_state() {
         if (phase != static_cast<int>(PrintStartPhase::IDLE)) {
             spdlog::debug("[PrinterPrintState] Resetting print start state to IDLE");
             lv_subject_set_int(&print_start_phase_, static_cast<int>(PrintStartPhase::IDLE));
+            lv_subject_set_int(&print_start_chamber_wait_, 0);
             publish_lifecycle_state();
             lv_subject_copy_string(&print_start_message_, "");
             lv_subject_set_int(&print_start_progress_, 0);
@@ -1220,6 +1342,13 @@ void PrinterPrintState::reset_print_start_state() {
             update_display_message_visible();
         }
     });
+}
+
+void PrinterPrintState::set_print_start_chamber_wait(bool waiting) {
+    const int value = waiting ? 1 : 0;
+    if (lv_subject_get_int(&print_start_chamber_wait_) != value) {
+        lv_subject_set_int(&print_start_chamber_wait_, value);
+    }
 }
 
 void PrinterPrintState::set_print_in_progress(bool in_progress) {
@@ -1376,8 +1505,7 @@ void PrinterPrintState::reconcile_preparing() {
     // file the user chose.
     auto bare = [](const std::string& p) {
         const std::string resolved = gcode::resolve_gcode_filename(p);
-        const size_t slash = resolved.find_last_of('/');
-        return slash == std::string::npos ? resolved : resolved.substr(slash + 1);
+        return gcode::get_filename_basename(resolved);
     };
 
     const bool mine = bare(reported) == bare(preparing_job_.filename);

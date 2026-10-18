@@ -567,3 +567,62 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     lv_display_remove_event_cb_with_user_data(disp, count_layout_pass, nullptr);
 }
+
+// ============================================================================
+// store_until_deleted()
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "UI Utils: store_until_deleted clears the slot when the object dies",
+                 "[ui_utils][store_until_deleted]") {
+    lv_obj_t* slot = nullptr;
+    lv_obj_t* obj = lv_obj_create(test_screen());
+    helix::ui::store_until_deleted(&slot, obj);
+    CHECK(slot == obj);
+
+    lv_obj_delete(obj);
+    CHECK(slot == nullptr);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "UI Utils: store_until_deleted ignores the death of an object the slot has left",
+                 "[ui_utils][store_until_deleted]") {
+    lv_obj_t* slot = nullptr;
+    lv_obj_t* a = lv_obj_create(test_screen());
+    lv_obj_t* b = lv_obj_create(test_screen());
+    helix::ui::store_until_deleted(&slot, a);
+    helix::ui::store_until_deleted(&slot, b);
+
+    lv_obj_delete(a);
+    CHECK(slot == b);
+
+    lv_obj_delete(b);
+    CHECK(slot == nullptr);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "UI Utils: store_until_deleted registers one handler per object",
+                 "[ui_utils][store_until_deleted]") {
+    lv_obj_t* slot = nullptr;
+    lv_obj_t* obj = lv_obj_create(test_screen());
+    const uint32_t base = lv_obj_get_event_count(obj);
+
+    helix::ui::store_until_deleted(&slot, obj);
+    CHECK(lv_obj_get_event_count(obj) == base + 1);
+    helix::ui::store_until_deleted(&slot, obj);
+    CHECK(lv_obj_get_event_count(obj) == base + 1);
+
+    lv_obj_delete(obj);
+    CHECK(slot == nullptr);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "UI Utils: store_until_deleted with nullptr stores nullptr",
+                 "[ui_utils][store_until_deleted]") {
+    lv_obj_t* slot = nullptr;
+    lv_obj_t* obj = lv_obj_create(test_screen());
+    helix::ui::store_until_deleted(&slot, obj);
+    helix::ui::store_until_deleted(&slot, nullptr);
+    CHECK(slot == nullptr);
+
+    lv_obj_delete(obj);
+    CHECK(slot == nullptr);
+}

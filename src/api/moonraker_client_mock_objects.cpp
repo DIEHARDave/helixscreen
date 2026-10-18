@@ -531,6 +531,12 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             if (objects.contains("zmod_color")) {
                 status_obj["zmod_color"] = self->zmod_color_status();
             }
+            // The U1 defect_detection module's stored config.
+            if (objects.contains("defect_detection")) {
+                if (auto dd = self->defect_detection_status(); !dd.empty()) {
+                    status_obj["defect_detection"] = dd;
+                }
+            }
             for (auto it = objects.begin(); it != objects.end(); ++it) {
                 if (it.key() != "pin_watch" && it.key().rfind("pin_watch ", 0) != 0) {
                     continue;
@@ -584,6 +590,11 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             // HELIX_MOCK_SKIP_WRAPPERS: the skip flags and leveling `applied`.
             const json wrapper_status = self->skip_wrapper_status();
             for (const auto& [name, status] : wrapper_status.items()) {
+                if (objects.contains(name)) {
+                    status_obj[name] = status;
+                }
+            }
+            for (const auto& [name, status] : self->layer_pause_status().items()) {
                 if (objects.contains(name)) {
                     status_obj[name] = status;
                 }
@@ -689,10 +700,12 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
 
             // extruder
             if (objects.contains("extruder")) {
-                status_obj["extruder"] = {{"temperature", 25.0},
-                                          {"target", 0.0},
-                                          {"power", 0.0},
-                                          {"pressure_advance", 0.04}};
+                status_obj["extruder"] = {
+                    {"temperature", 25.0},
+                    {"target", 0.0},
+                    {"power", 0.0},
+                    {"pressure_advance", self->pressure_advance_for("extruder").advance},
+                    {"smooth_time", self->pressure_advance_for("extruder").smooth_time}};
             }
 
             // Toolchanger secondary extruders (HELIX_MOCK_AMS=toolchanger registers
@@ -702,22 +715,28 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             //   extruder3 COOLING (200, no target). The contains() guard is
             //   self-limiting: these heaters only exist in toolchanger mode.
             if (objects.contains("extruder1")) {
-                status_obj["extruder1"] = {{"temperature", 150.0},
-                                           {"target", 250.0},
-                                           {"power", 0.8},
-                                           {"pressure_advance", 0.04}};
+                status_obj["extruder1"] = {
+                    {"temperature", 150.0},
+                    {"target", 250.0},
+                    {"power", 0.8},
+                    {"pressure_advance", self->pressure_advance_for("extruder1").advance},
+                    {"smooth_time", self->pressure_advance_for("extruder1").smooth_time}};
             }
             if (objects.contains("extruder2")) {
-                status_obj["extruder2"] = {{"temperature", 248.0},
-                                           {"target", 250.0},
-                                           {"power", 0.2},
-                                           {"pressure_advance", 0.04}};
+                status_obj["extruder2"] = {
+                    {"temperature", 248.0},
+                    {"target", 250.0},
+                    {"power", 0.2},
+                    {"pressure_advance", self->pressure_advance_for("extruder2").advance},
+                    {"smooth_time", self->pressure_advance_for("extruder2").smooth_time}};
             }
             if (objects.contains("extruder3")) {
-                status_obj["extruder3"] = {{"temperature", 200.0},
-                                           {"target", 0.0},
-                                           {"power", 0.0},
-                                           {"pressure_advance", 0.04}};
+                status_obj["extruder3"] = {
+                    {"temperature", 200.0},
+                    {"target", 0.0},
+                    {"power", 0.0},
+                    {"pressure_advance", self->pressure_advance_for("extruder3").advance},
+                    {"smooth_time", self->pressure_advance_for("extruder3").smooth_time}};
             }
 
             // toolhead
@@ -793,6 +812,12 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             // Z-Mod's colour registry (creator5_zmod persona).
             if (objects.contains("zmod_color")) {
                 status_obj["zmod_color"] = self->zmod_color_status();
+            }
+            // The U1 defect_detection module's stored config.
+            if (objects.contains("defect_detection")) {
+                if (auto dd = self->defect_detection_status(); !dd.empty()) {
+                    status_obj["defect_detection"] = dd;
+                }
             }
             for (auto it = objects.begin(); it != objects.end(); ++it) {
                 if (it.key() != "pin_watch" && it.key().rfind("pin_watch ", 0) != 0) {
@@ -942,7 +967,8 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
 
             // display_status (for progress/message display)
             if (objects.contains("display_status")) {
-                status_obj["display_status"] = {{"progress", 0.0}, {"message", nullptr}};
+                status_obj["display_status"] = {{"progress", 0.0},
+                                                {"message", self->current_display_message()}};
             }
 
             // LED effect objects (for tracking enabled state)
@@ -951,6 +977,11 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             // HELIX_MOCK_SKIP_WRAPPERS: the skip flags and leveling `applied`.
             const json wrapper_status = self->skip_wrapper_status();
             for (const auto& [name, status] : wrapper_status.items()) {
+                if (objects.contains(name)) {
+                    status_obj[name] = status;
+                }
+            }
+            for (const auto& [name, status] : self->layer_pause_status().items()) {
                 if (objects.contains(name)) {
                     status_obj[name] = status;
                 }

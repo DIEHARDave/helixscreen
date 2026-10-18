@@ -377,6 +377,51 @@ AmsError AmsBackendMock::start() {
             }
             emit_event(EVENT_SLOT_CHANGED);
             spdlog::info("[AMS Mock] Applied initial state scenario: grade (all lanes -> PLA-CF)");
+        } else if (scenario == "finishes") {
+            // One lane per swatch finish, and two multi-colour lanes, so every
+            // surface that paints a spool shows each one. The finish comes from
+            // the material or product name, the colour name is only a colour,
+            // and the lanes are unlinked so no Spoolman record renames them.
+            struct FinishLane {
+                const char* material;
+                const char* product;
+                const char* color_name;
+                uint32_t rgb;
+                const char* multi;
+            };
+            static constexpr FinishLane LANES[] = {
+                {"Silk PLA", "Silk PLA", "Gold", 0xD4AF37, ""},
+                {"Silk PLA", "Silk Tri-Colour", "Gold Silver Copper", 0xD4AF37,
+                 "#D4AF37,#C0C0C0,#B87333"},
+                {"PLA", "PLA Marble", "White", 0xE8E4DC, ""},
+                {"PETG", "Galaxy PETG", "Black", 0x1C1C2A, ""},
+                {"PLA Matte", "PLA Matte", "Charcoal", 0x3A3A3A, ""},
+                {"PLA", "PLA Dual-Colour", "Red Blue", 0xE53935, "#E53935,#1E88E5"},
+            };
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                for (int i = 0; i < slots_.slot_count(); ++i) {
+                    auto* entry = slots_.get_mut(i);
+                    if (!entry) {
+                        continue;
+                    }
+                    const FinishLane& lane = LANES[static_cast<size_t>(i) % std::size(LANES)];
+                    entry->info.material = lane.material;
+                    entry->info.product_name = lane.product;
+                    entry->info.color_name = lane.color_name;
+                    entry->info.color_rgb = lane.rgb;
+                    entry->info.multi_color_hexes = lane.multi;
+                    entry->info.spoolman_id = 0;
+                    entry->info.spool_name.clear();
+                }
+            }
+            emit_event(EVENT_SLOT_CHANGED);
+            spdlog::info("[AMS Mock] Applied initial state scenario: finishes");
+        } else if (scenario == "feeder") {
+            // Lane 3's filament waits at its feeder, short of its toolhead.
+            set_slot_at_feeder(2);
+            emit_event(EVENT_SLOT_CHANGED);
+            spdlog::info("[AMS Mock] Applied initial state scenario: feeder (slot 2)");
         } else if (scenario == "blocked") {
             // A jammed lane with no error object, as the QIDI Box reports one.
             force_slot_status(1, SlotStatus::BLOCKED);
@@ -661,6 +706,9 @@ PathSegment AmsBackendMock::get_slot_filament_segment(int slot_index) const {
     if (!entry) {
         return PathSegment::NONE;
     }
+    if (slot_index == slot_at_feeder_) {
+        return PathSegment::PREP;
+    }
 
     if (entry->info.status != SlotStatus::AVAILABLE &&
         entry->info.status != SlotStatus::FROM_BUFFER) {
@@ -687,6 +735,12 @@ PathSegment AmsBackendMock::infer_error_segment() const {
 }
 
 AmsError AmsBackendMock::load_filament(int slot_index) {
+    if (const HeadFilamentOps ops = head_filament_ops(std::max(slot_index, 0));
+        ops.load != FilamentOpSupport::Automatic) {
+        // The backend this persona stands in for refuses the same way.
+        return AmsError(AmsResult::NOT_SUPPORTED, "No filament feed for this tool", ops.load_reason,
+                        "");
+    }
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -734,6 +788,11 @@ AmsError AmsBackendMock::load_filament(int slot_index) {
 }
 
 AmsError AmsBackendMock::unload_filament(int slot_index) {
+    if (const HeadFilamentOps ops = head_filament_ops(std::max(slot_index, 0));
+        ops.unload != FilamentOpSupport::Automatic) {
+        return AmsError(AmsResult::NOT_SUPPORTED, "No filament unload on this tool changer",
+                        ops.unload_reason, "");
+    }
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -834,8 +893,8 @@ BackendTraits AmsBackendMock::traits() const {
     // environment UI is drivable in --test whatever the emulated firmware has.
     // An empty mode resolves to "dryer" or "passive", both of which have sensors.
     const std::string& mode = environment_mode_;
-    t.has_environment_sensors =
-        mode.empty() || mode == "passive" || mode == "dryer" || mode == "slot";
+    t.has_environment_sensors = mode.empty() || mode == "passive" || mode == "dryer" ||
+                                mode == "slot" || mode == "emu_dryer";
     return t;
 }
 
@@ -1627,6 +1686,27 @@ void AmsBackendMock::set_environment_mode(const std::string& mode) {
 
     if (mode == "emu") {
         unit_dryers_.assign(unit_count, DryerInfo{}); // nothing to drive, only to watch
+    } else if (mode == "emu_dryer") {
+        // A heater per lane, an eSpooler per spool, and a cycle part-way through on the
+        // first unit: lane 1 heating, lane 2 waiting its turn, lane 3 finished.
+        DryerInfo d = heated();
+        d.supports_gate_selection = true;
+        d.supports_rotation = true;
+        unit_dryers_.assign(unit_count, d);
+        int gate_count = 0;
+        for (const auto& u : system_info_.units) {
+            gate_count += u.slot_count;
+        }
+        gate_drying_.assign(static_cast<size_t>(std::max(gate_count, 0)),
+                            helix::printer::ZoneDryingState::Idle);
+        begin_gate_cycle_locked({0, 1, 2});
+        if (gate_drying_.size() > 2) {
+            gate_drying_[2] = helix::printer::ZoneDryingState::Complete;
+        }
+        pending_drying_unit_ = 0;
+        pending_drying_temp_c_ = 55.0f;
+        pending_drying_duration_min_ = 240;
+        pending_drying_elapsed_min_ = 40;
     } else if (mode == "mixed") {
         unit_dryers_.assign(unit_count, DryerInfo{});
         unit_dryers_[0] = heated();
@@ -1676,12 +1756,33 @@ void AmsBackendMock::populate_environment_data(AmsSystemInfo& info) const {
     const bool no_humidity = std::getenv("HELIX_MOCK_NO_HUMIDITY") != nullptr;
     auto mode = resolve_environment_mode();
     if (mode != "passive" && mode != "dryer" && mode != "slot" && mode != "emu" &&
-        mode != "mixed" && mode != "capped") {
+        mode != "emu_dryer" && mode != "mixed" && mode != "capped") {
         return;
     }
 
+    // A cycle that has ended leaves its waiting and heating gates finished.
+    if (mode == "emu_dryer") {
+        for (auto& unit : info.units) {
+            const bool running = static_cast<size_t>(unit.unit_index) < unit_dryers_.size() &&
+                                 unit_dryers_[static_cast<size_t>(unit.unit_index)].active;
+            for (auto& slot : unit.slots) {
+                const auto gate =
+                    static_cast<size_t>(unit.first_slot_global_index + slot.slot_index);
+                if (gate >= gate_drying_.size()) {
+                    continue;
+                }
+                auto state = gate_drying_[gate];
+                if (!running && (state == helix::printer::ZoneDryingState::Active ||
+                                 state == helix::printer::ZoneDryingState::Queued)) {
+                    state = helix::printer::ZoneDryingState::Complete;
+                }
+                slot.drying_state = state;
+            }
+        }
+    }
+
     // EMU: a sealed box per lane, so every slot carries its own reading.
-    if (mode == "emu") {
+    if (mode == "emu" || mode == "emu_dryer") {
         constexpr float lane_humidity[] = {31.0f, 38.0f, 45.0f, 52.0f, 58.0f, 63.0f};
         int lane = 0;
         for (auto& unit : info.units) {
@@ -1809,12 +1910,37 @@ void AmsBackendMock::set_dryer_speed(int speed_x) {
     spdlog::info("[AmsBackendMock] Dryer speed set to {}x", dryer_speed_x_);
 }
 
+void AmsBackendMock::set_dryer_humidity_target(bool enabled) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    dryer_humidity_target_ = enabled;
+    spdlog::info("[AmsBackendMock] Dryer humidity target {}", enabled ? "enabled" : "disabled");
+}
+
+void AmsBackendMock::set_dryer_default_humidity(std::optional<float> pct) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    dryer_default_humidity_ = pct;
+    spdlog::info("[AmsBackendMock] Dryer default humidity target {}",
+                 pct ? fmt::format("{:.0f}%", *pct) : std::string("unset"));
+}
+
 DryerInfo AmsBackendMock::get_dryer_info(int unit) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (unit >= 0 && static_cast<size_t>(unit) < unit_dryers_.size()) {
-        return unit_dryers_[static_cast<size_t>(unit)];
+    DryerInfo out = (unit >= 0 && static_cast<size_t>(unit) < unit_dryers_.size())
+                        ? unit_dryers_[static_cast<size_t>(unit)]
+                        : dryer_state_;
+    out.supports_humidity_target = out.supported && dryer_humidity_target_;
+    out.default_humidity_target =
+        out.supports_humidity_target ? dryer_default_humidity_ : std::nullopt;
+    return out;
+}
+
+AmsError AmsBackendMock::start_drying_to_humidity(float temp_c, int duration_min,
+                                                  float humidity_pct, int fan_pct, int unit) {
+    if (!get_dryer_info(unit).humidity_target(humidity_pct)) {
+        return AmsError{AmsResult::NOT_SUPPORTED, "Dryer humidity target not available"};
     }
-    return dryer_state_;
+    spdlog::info("[AmsBackendMock] start_drying_to_humidity: target {}%", humidity_pct);
+    return start_drying(temp_c, duration_min, fan_pct, unit);
 }
 
 std::vector<helix::printer::EnvironmentZone> AmsBackendMock::get_environment_zones(int unit) const {
@@ -1977,6 +2103,86 @@ AmsError AmsBackendMock::start_drying(float temp_c, int duration_min, int fan_pc
     return AmsError{AmsResult::SUCCESS};
 }
 
+void AmsBackendMock::begin_gate_cycle_locked(const std::vector<int>& gates) {
+    std::fill(gate_drying_.begin(), gate_drying_.end(), helix::printer::ZoneDryingState::Idle);
+    bool first = true;
+    for (int gate : gates) {
+        if (gate < 0 || static_cast<size_t>(gate) >= gate_drying_.size()) {
+            continue;
+        }
+        gate_drying_[static_cast<size_t>(gate)] = first ? helix::printer::ZoneDryingState::Active
+                                                        : helix::printer::ZoneDryingState::Queued;
+        first = false;
+    }
+}
+
+AmsError AmsBackendMock::start_drying_request(const DryingRequest& request) {
+    bool per_gate = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        per_gate = resolve_environment_mode() == "emu_dryer";
+        if (per_gate) {
+            std::vector<int> gates = request.gates;
+            if (gates.empty()) {
+                for (const auto& u : system_info_.units) {
+                    if (u.unit_index == request.unit) {
+                        for (int i = 0; i < u.slot_count; ++i) {
+                            gates.push_back(u.first_slot_global_index + i);
+                        }
+                    }
+                }
+            }
+            spdlog::info("[AmsBackendMock] Drying {} gate(s) on unit {}{}", gates.size(),
+                         request.unit, request.rotate ? ", rotating spools" : "");
+            begin_gate_cycle_locked(gates);
+        }
+    }
+    if (!per_gate) {
+        return AmsBackend::start_drying_request(request);
+    }
+    return start_drying(request.temp_c, request.duration_min, request.fan_pct, request.unit);
+}
+
+AmsError AmsBackendMock::stop_drying_gates(int unit, const std::vector<int>& gates) {
+    using helix::printer::ZoneDryingState;
+    auto live = [](ZoneDryingState st) {
+        return st == ZoneDryingState::Active || st == ZoneDryingState::Queued;
+    };
+    bool per_gate = false;
+    bool any_left = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        per_gate = resolve_environment_mode() == "emu_dryer";
+        if (per_gate) {
+            for (size_t g = 0; g < gate_drying_.size(); ++g) {
+                const bool named = gates.empty() || std::find(gates.begin(), gates.end(),
+                                                              static_cast<int>(g)) != gates.end();
+                if (named && live(gate_drying_[g])) {
+                    gate_drying_[g] = ZoneDryingState::Cancelled;
+                }
+            }
+            any_left = std::any_of(gate_drying_.begin(), gate_drying_.end(), live);
+            // The next waiting gate takes the heater.
+            if (std::none_of(gate_drying_.begin(), gate_drying_.end(),
+                             [](ZoneDryingState st) { return st == ZoneDryingState::Active; })) {
+                const auto next =
+                    std::find(gate_drying_.begin(), gate_drying_.end(), ZoneDryingState::Queued);
+                if (next != gate_drying_.end()) {
+                    *next = ZoneDryingState::Active;
+                }
+            }
+        }
+    }
+    if (!per_gate) {
+        return AmsBackend::stop_drying_gates(unit, gates);
+    }
+    if (any_left) {
+        emit_event(EVENT_STATE_CHANGED);
+        return AmsError{AmsResult::SUCCESS};
+    }
+    return stop_drying(unit);
+}
+
 AmsError AmsBackendMock::stop_drying(int unit) {
     spdlog::info("[AmsBackendMock] stop_drying: unit {}", unit);
 
@@ -2039,6 +2245,8 @@ void AmsBackendMock::set_tool_changer_mode(bool enabled) {
 
         // Rename unit to reflect tool changer nature
         if (!system_info_.units.empty()) {
+            // klipper-toolchanger publishes no per-tool filament sensor.
+            system_info_.units[0].has_toolhead_sensor = false;
             system_info_.units[0].name = "Mock Tool Changer";
         }
 
@@ -3495,8 +3703,13 @@ PathTopology AmsBackendMock::get_unit_topology(int unit_index) const {
 
 bool AmsBackendMock::slot_has_prep_sensor(int slot_index) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    // Mock always has prep sensors on all valid slots (matches AFC behavior)
-    return slots_.is_valid_index(slot_index);
+    // Every persona's lanes carry an entry sensor except a tool changer's.
+    return system_info_.type != AmsType::TOOL_CHANGER && slots_.is_valid_index(slot_index);
+}
+
+void AmsBackendMock::set_slot_at_feeder(int slot_index) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    slot_at_feeder_ = slot_index;
 }
 
 bool AmsBackendMock::slot_has_load_sensor(int slot_index) const {
@@ -3927,14 +4140,70 @@ bool AmsBackendMock::owns_tool_mapping_table() const {
 }
 
 bool AmsBackendMock::carriage_can_be_empty() const {
-    bool snapmaker = false;
+    // AmsBackendSnapmaker and AmsBackendToolChanger dock their heads; every
+    // other mode answers what the backend it stands in for answers.
+    std::lock_guard<std::mutex> lock(mutex_);
+    return snapmaker_mode_ || system_info_.type == AmsType::TOOL_CHANGER;
+}
+
+HeadFilamentOps AmsBackendMock::head_filament_ops(int head) const {
+    bool changer = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        snapmaker = snapmaker_mode_;
+        changer = system_info_.type == AmsType::TOOL_CHANGER;
     }
-    // AmsBackendSnapmaker parks its heads; every other mode answers what the
-    // backend it stands in for answers. traits() takes mutex_ itself.
-    return snapmaker || load_mounts_tool();
+    // The mock tool changer has no firmware feed, so it answers as
+    // AmsBackendToolChanger does without one.
+    if (changer) {
+        return AmsBackendToolChanger::head_ops_for(/*feeds_head=*/false, /*cut_to_unload=*/false);
+    }
+    return AmsBackend::head_filament_ops(head);
+}
+
+int AmsBackendMock::filament_head_count() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return is_tool_changer(system_info_.type) ? system_info_.total_slots : 1;
+}
+
+std::optional<int> AmsBackendMock::head_for_slot(int slot) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (slot < 0 || slot >= system_info_.total_slots) {
+        return std::nullopt;
+    }
+    return is_tool_changer(system_info_.type) ? slot : 0;
+}
+
+std::optional<int> AmsBackendMock::head_source_slot(int head, const AmsSystemInfo& info) const {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (is_tool_changer(system_info_.type)) {
+            if (head < 0 || head >= system_info_.total_slots) {
+                return std::nullopt;
+            }
+            return head;
+        }
+    }
+    return AmsBackend::head_source_slot(head, info);
+}
+
+std::optional<bool> AmsBackendMock::head_has_filament(int head) const {
+    bool per_tool = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        per_tool = is_tool_changer(system_info_.type);
+        if (per_tool && (head < 0 || head >= system_info_.total_slots)) {
+            return std::nullopt;
+        }
+    }
+    if (per_tool) {
+        return can_unload_from_toolhead(head);
+    }
+    return AmsBackend::head_has_filament(head);
+}
+
+int AmsBackendMock::max_heads_per_filament_op() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return snapmaker_mode_ ? system_info_.total_slots : 1;
 }
 
 void AmsBackendMock::set_remap_strategy(RemapStrategy strategy) {

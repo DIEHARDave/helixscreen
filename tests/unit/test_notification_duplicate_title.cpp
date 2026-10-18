@@ -10,12 +10,10 @@
 // literal is the one remaining copy, and this test pins their agreement: it
 // looks up the title under the constant, against the real modal tree.
 //
-// ui_notification.o is excluded from the test link (mk/tests.mk) and its stub
-// builds no modal at all - the same constraint test_fault_modal_dismiss.cpp
-// documents, answered the same way: pin the contract against the real modal
-// tree. The assertions below are the two prerequisites of the suppression
-// predicate, asserted per modal type: the top modal's title label is reachable
-// under the canonical widget name, and it carries the title text.
+// The contract is pinned against the real modal tree, as
+// test_fault_modal_dismiss.cpp does. The assertions below are the two prerequisites of the
+// suppression predicate, asserted per modal type: the top modal's title label is reachable under
+// the canonical widget name, and it carries the title text.
 //
 // Two cases, because the contract has two halves: a ui_dialog alert (what
 // ui_notification_error itself pushes) is the control; ActionPromptModal (what

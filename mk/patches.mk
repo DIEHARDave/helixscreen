@@ -14,6 +14,8 @@ LVGL_PATCHED_FILES := \
 	src/drivers/display/fb/lv_linux_fbdev.h \
 	src/core/lv_refr.c \
 	src/core/lv_observer.c \
+	src/core/lv_observer.h \
+	src/widgets/span/lv_span.c \
 	src/widgets/slider/lv_slider.c \
 	src/widgets/image/lv_image.c \
 	src/stdlib/clib/lv_string_clib.c \
@@ -136,13 +138,15 @@ LUA_PATCHED_FILES := \
 # a real change should cost a rebuild. cksum is POSIX, so this also works on
 # the BusyBox and Buildroot hosts.
 #
-# The list is spelled out rather than globbed. libhv's own build installs the
-# include/hv/ copies our -isystem path resolves to, so on a checkout that has
-# not been built they do not exist yet, and a glob would silently stop watching
-# the very headers the objects compile against.
+# Only the source headers are listed, never the include/hv/ copies our
+# -isystem path resolves to. libhv's build installs those copies from these
+# sources, and $(LIBHV_LIB) reruns that build whenever a patched source moves,
+# before any object that includes them compiles, so the sources already decide
+# their content. The copies exist only once libhv has been built: a hash that
+# read them would differ between a cold tree's first make and its second, and
+# through the -D below would recompile every object twice.
 ABI_HEADERS := \
 	$(addprefix $(LIBHV_DIR)/,$(filter %.h,$(LIBHV_PATCHED_FILES))) \
-	$(addprefix $(LIBHV_DIR)/include/hv/,$(notdir $(filter %.h,$(LIBHV_PATCHED_FILES)))) \
 	$(addprefix $(LVGL_DIR)/,$(filter %.h,$(LVGL_PATCHED_FILES))) \
 	$(addprefix $(LUA_DIR)/,$(filter %.h,$(LUA_PATCHED_FILES)))
 ABI_STAMP := $(BUILD_DIR)/.thirdparty-abi
@@ -608,6 +612,7 @@ $(PATCHES_STAMP): $(PATCH_FILES) $(LVGL_HEAD) $(LIBHV_HEAD) $(LUA_HEAD) $(APPLIE
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_event_dispatch_cb_guard.patch "LVGL dispatch-cb bounds gate + widget identity (3XNZQB2R)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_obj_event_null_guards.patch "LVGL obj-event NULL guards (VHTR49QJ — recoverable bail + telemetry)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_style_null_guards.patch "LVGL style NULL guards patch (null style pointers in transitions/cache)"
+	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_subject_deinit_refuses_observers.patch "LVGL subject deinit refuses observers patch (#1279)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_obj_flag_screen_parent_null_guard.patch "LVGL obj flag screen-parent NULL guard (hide/unhide a screen)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_flex_hidden_grow_gap.patch "LVGL flex hidden+grow gap fix (upstream #9897 backport)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_check_arg_backport.patch "LVGL LV_CHECK_ARG backport patch (master macro for v9.5.0; drop at upgrade)"

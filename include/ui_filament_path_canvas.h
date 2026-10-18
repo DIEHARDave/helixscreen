@@ -503,6 +503,29 @@ bool ui_filament_path_canvas_get_bypass_merge_pos(lv_obj_t* obj, int32_t* cx_out
 void ui_filament_path_canvas_set_slot_mapped_tool(lv_obj_t* obj, int slot, int tool);
 
 /**
+ * @brief Set the caption naming the lane whose spool feeds this one
+ *
+ * A lane fed from storage upstream of it ("ACE 2 · 3") draws that caption on
+ * its column, so the path names where its filament comes from. NULL or an
+ * empty string clears it; the text is copied. PARALLEL topology draws it.
+ *
+ * @param obj The filament_path_canvas widget
+ * @param slot Slot index (0-15)
+ * @param caption Caption text, or NULL for none
+ */
+void ui_filament_path_canvas_set_slot_upstream(lv_obj_t* obj, int slot, const char* caption);
+
+/**
+ * @brief Read back a slot's upstream caption ("" when it has none)
+ *
+ * @param obj The filament_path_canvas widget
+ * @param slot Slot index (0-15)
+ * @param out Buffer receiving the caption
+ * @param out_size Size of @p out
+ */
+void ui_filament_path_canvas_get_slot_upstream(lv_obj_t* obj, int slot, char* out, size_t out_size);
+
+/**
  * @brief Set per-lane Klipper extruder identity for toolhead badges
  *
  * Each entry is the tool number implied by that lane's extruder name
@@ -587,6 +610,20 @@ int filament_path_canvas_buffer_fault_state(lv_obj_t* obj);
 void filament_path_canvas_release_buffer(lv_obj_t* obj);
 
 /**
+ * @brief Set click callback for a toolhead on a PARALLEL (one head per tool) path
+ *
+ * A tap on a head reaches this callback; a tap on its filament tube or spool
+ * still reaches the slot callback. With none set, a head tap reaches the slot
+ * callback too.
+ *
+ * @param obj The filament_path_canvas widget
+ * @param cb Callback function (slot_index, user_data)
+ * @param user_data User data passed to callback
+ */
+void filament_path_canvas_set_toolhead_callback(lv_obj_t* obj, filament_path_slot_cb_t cb,
+                                                void* user_data);
+
+/**
  * @brief Pure coordinate hit-test for an axis-aligned box.
  *
  * Returns true when point @p p falls within the box centered at (@p cx, @p cy)
@@ -606,5 +643,36 @@ bool hub_box_hit(lv_point_t p, int32_t cx, int32_t cy, int32_t w, int32_t h, int
  */
 bool recorded_box_hit(lv_point_t p, const lv_area_t& box, lv_point_t rendered_origin,
                       lv_point_t current_origin, int32_t margin);
+
+/// What a tap on a PARALLEL path landed on.
+enum class ParallelTapTarget : uint8_t {
+    None,
+    Toolhead, ///< A tool's head glyph
+    Lane,     ///< A tool's filament tube or spool, above its entry sensor
+};
+
+struct ParallelTap {
+    ParallelTapTarget target = ParallelTapTarget::None;
+    int slot = -1;
+};
+
+/// Where a PARALLEL path draws its lanes and heads, for parallel_tap_at().
+struct ParallelTapLayout {
+    const int32_t* slot_x = nullptr; ///< Each column's center x
+    int slot_count = 0;
+    int32_t sensor_y = 0;        ///< A lane owns at least everything above this row
+    int32_t lane_half_width = 0; ///< A lane's reach either side of its column
+    lv_area_t head{};            ///< A head glyph's drawn bounds, x relative to its column
+};
+
+/**
+ * @brief Pure hit-test for a tap on a PARALLEL path.
+ *
+ * Above the head glyph's top a tap is a lane's, and above the sensor row it
+ * is a lane's however tall the glyph is drawn, so a tap on a tube never
+ * reaches a head. Below that a tap is a head's only inside a drawn glyph
+ * (bounds inclusive). Where neighbours overlap, the nearest column answers.
+ */
+ParallelTap parallel_tap_at(lv_point_t p, const ParallelTapLayout& layout);
 } // namespace helix::ui
 #endif

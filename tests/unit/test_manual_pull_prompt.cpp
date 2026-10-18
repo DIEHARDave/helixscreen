@@ -44,10 +44,9 @@ class ManualPullFixture : public LVGLTestFixture {
         FilamentSensorManager::instance().init_subjects();
         toolhead_ = FilamentSensorManager::instance().get_toolhead_detected_subject();
         REQUIRE(toolhead_ != nullptr);
-        // The test build replaces ui_notification_info() with a log-only stub, so
-        // NotificationHistory and PendingStartupWarnings are both unreachable from
-        // here. The stub's hook is the observation point — same idiom the WiFi
-        // warning tests use via set_test_notification_warning_hook().
+        // The info hook sees the prompt whether it reaches the toast stack or the
+        // pre-init startup queue — same idiom the WiFi warning tests use via
+        // set_test_notification_warning_hook().
         helix::ui::set_test_notification_info_hook([this](const std::string& msg) {
             if (msg.find(PROMPT_FRAGMENT) != std::string::npos) {
                 ++prompts_;

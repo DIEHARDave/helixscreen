@@ -25,6 +25,7 @@
 #include "ams_backend_qidi.h"
 #endif
 #if HELIX_HAS_SNAPMAKER
+#include "ams_backend_multiace.h"
 #include "ams_backend_snapmaker.h"
 #endif
 #include "ams_backend_toolchanger.h"
@@ -101,7 +102,7 @@ AmsError endless_spool_read_only_error(helix::printer::EndlessSpoolRestriction r
     return AmsError(AmsResult::NOT_SUPPORTED,
                     "Endless spool is read-only on this backend" +
                         (reason.empty() ? std::string() : " (" + reason + ")"),
-                    reason.empty() ? std::string("Endless spool cannot be changed here") : reason,
+                    reason.empty() ? std::string("Endless Spool cannot be changed here") : reason,
                     "");
 }
 
@@ -244,7 +245,12 @@ std::vector<helix::printer::EnvironmentZone> AmsBackend::get_environment_zones(i
                 z.unit_index = unit_idx;
                 z.env = *s.environment;
                 z.dryer = dryer;
-                z.state = state;
+                // A dryer that heats gates one by one reports each lane's own part in
+                // the cycle; one running gate does not make the whole unit Active.
+                z.state = dryer.supports_gate_selection ? s.drying_state : state;
+                if (dryer.supports_gate_selection) {
+                    z.dryer.active = z.state == ZoneDryingState::Active;
+                }
                 zones.push_back(std::move(z));
             }
         } else if (au.environment.has_value() || dryer.supported) {
@@ -269,6 +275,44 @@ std::vector<helix::printer::EnvironmentZone> AmsBackend::get_environment_zones(i
         }
     }
     return zones;
+}
+
+AmsError AmsBackend::start_drying_request(const DryingRequest& request) {
+    if (!request.gates.empty() || request.rotate) {
+        return AmsErrorHelper::not_supported("Drying selected gates");
+    }
+    if (request.humidity_pct) {
+        return start_drying_to_humidity(request.temp_c, request.duration_min, *request.humidity_pct,
+                                        request.fan_pct, request.unit);
+    }
+    return start_drying(request.temp_c, request.duration_min, request.fan_pct, request.unit);
+}
+
+AmsError AmsBackend::stop_drying_gates(int unit, const std::vector<int>& gates) {
+    if (!gates.empty()) {
+        return AmsErrorHelper::not_supported("Drying selected gates");
+    }
+    return stop_drying(unit);
+}
+
+HeadFilamentOps AmsBackend::head_filament_ops(int /*head*/) const {
+    HeadFilamentOps ops;
+    if (unload_is_manual()) {
+        ops.unload = FilamentOpSupport::Manual;
+        ops.unload_reason = lv_tr("This printer has no automatic unload. Cut the filament at the "
+                                  "head and pull it out by hand.");
+    }
+    return ops;
+}
+
+std::optional<int> AmsBackend::head_source_slot(int head, const AmsSystemInfo& info) const {
+    for (int slot = 0; slot < info.total_slots; ++slot) {
+        const SlotInfo* lane = info.get_slot_global(slot);
+        if (lane && lane->mapped_tool == head && head_for_slot(slot) == head) {
+            return slot;
+        }
+    }
+    return std::nullopt;
 }
 
 AmsError AmsBackend::unload_active_filament() {
@@ -684,6 +728,18 @@ create_mock_with_features(int gate_count, IMoonrakerClient* mock_client = nullpt
         mock->set_dryer_enabled(true);
         spdlog::info("[AMS Backend] Mock dryer enabled");
 
+        // HELIX_MOCK_DRYER_HUMIDITY_TARGET=1: the dryer also takes a humidity target.
+        if (const char* hum = std::getenv("HELIX_MOCK_DRYER_HUMIDITY_TARGET");
+            hum && std::string(hum) != "0" && std::string(hum) != "false") {
+            mock->set_dryer_humidity_target(true);
+        }
+        // HELIX_MOCK_DRYER_DEFAULT_HUMIDITY=<pct>: the target a start with none applies.
+        if (const char* def = std::getenv("HELIX_MOCK_DRYER_DEFAULT_HUMIDITY")) {
+            if (const auto pct = helix::text_io::parse_leading<float>(def); pct && *pct > 0.0f) {
+                mock->set_dryer_default_humidity(*pct);
+            }
+        }
+
         // Optionally run an active drying session so the countdown ticks live
         // (HELIX_MOCK_DRYING). Uses the real countdown thread, so it respects
         // HELIX_MOCK_DRYER_SPEED. A 6h / 55 C session already ~1/3 through (4:00
@@ -733,6 +789,15 @@ static std::unique_ptr<AmsBackend> try_create_mock(IMoonrakerClient* mock_client
         spdlog::info("[AMS Backend] HELIX_MOCK_AMS={} selects mock hardware, not a mock "
                      "backend - deferring to real discovery",
                      mode);
+        return nullptr;
+    }
+    // multiACE on a U1: mock hardware the same way. MoonrakerClientMock seeds
+    // the `ace` + `filament_detect` objects and the engine-shaped frames, and
+    // the production AmsBackendMultiAce runs against them (pair with
+    // HELIX_MOCK_PRINTER=snapmaker_u1).
+    if (mode == "multiace") {
+        spdlog::info("[AMS Backend] HELIX_MOCK_AMS=multiace selects mock hardware, not a mock "
+                     "backend - deferring to real discovery");
         return nullptr;
     }
     // Personas that model firmware HelixScreen talks to through a production
@@ -828,7 +893,9 @@ const std::vector<std::string>& AmsBackend::filament_sensor_object_prefixes() {
 }
 
 std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, IMoonrakerAPI* api,
-                                               IMoonrakerClient* client) {
+                                               IMoonrakerClient* client,
+                                               const helix::PrinterDiscovery* hw) {
+    (void)hw; // only variant-bearing types read it, and those can be compiled out
 #ifdef HELIX_ENABLE_MOCKS
     if (auto mock = try_create_mock(client)) {
         return mock;
@@ -913,6 +980,10 @@ std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, IMoonraker
         if (!api || !client) {
             spdlog::error("[AMS Backend] Snapmaker requires IMoonrakerAPI and MoonrakerClient");
             return nullptr;
+        }
+        if (hw && multiace::present(*hw)) {
+            spdlog::debug("[AMS Backend] Creating Snapmaker SnapSwap backend with multiACE");
+            return std::make_unique<AmsBackendMultiAce>(api, client);
         }
         spdlog::debug("[AMS Backend] Creating Snapmaker SnapSwap backend");
         return std::make_unique<AmsBackendSnapmaker>(api, client);

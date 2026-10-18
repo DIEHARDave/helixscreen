@@ -24,6 +24,7 @@
 #include "printer_detector.h"
 #include "printer_state.h" // PrinterState, complete for get_print_lifecycle()
 #include "theme_manager.h"
+#include "tool_change_request.h"
 #include "ui/ams_drawing_utils.h"
 
 #include <spdlog/spdlog.h>
@@ -35,6 +36,7 @@
 #include <cstdio>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // ============================================================================
@@ -340,6 +342,12 @@ void clear_translate(lv_obj_t* obj) {
     lv_obj_set_style_translate_y(obj, 0, LV_PART_MAIN);
 }
 
+// Tool changers have no housing around their spools.
+bool unit_has_physical_tray() {
+    auto* backend = helix::AmsState::instance().get_backend(0);
+    return !backend || backend->has_physical_tray();
+}
+
 } // namespace
 
 AmsDetailWidgets ams_detail_find_widgets(lv_obj_t* root) {
@@ -539,6 +547,15 @@ void helix::ui::ams_detail_sync_lane_entry(lv_obj_t* canvas, lv_obj_t* slot_grid
         lv_obj_get_coords(s_tray.container, &c);
         lv_obj_get_coords(slot_grid, &g);
         offset = c.y1 + (int32_t)std::lround(s_tray.box.fb) - g.y1;
+    } else if (slot_grid && !unit_has_physical_tray()) {
+        // With no housing the lanes leave from under the spools' flanges.
+        lv_obj_update_layout(slot_grid);
+        lv_area_t g;
+        lv_obj_get_coords(slot_grid, &g);
+        float x = 0, y = 0;
+        int32_t size = 0;
+        if (spool_centre(slot_grid, {g.x1, g.y1}, x, y, size))
+            offset = (int32_t)std::lround(y + tray::SPOOL_FLANGE_RADIUS * size);
     }
     ui_filament_path_canvas_set_lane_entry(canvas, offset);
 }
@@ -565,8 +582,7 @@ bool helix::ui::ams_detail_error_in_view(const helix::AmsSystemInfo& info, int u
 }
 
 AmsSlotLayout helix::ui::ams_detail_slot_layout(int32_t available_width, int slot_count) {
-    auto* backend = helix::AmsState::instance().get_backend(0);
-    if (backend && !backend->has_physical_tray())
+    if (!unit_has_physical_tray())
         return calculate_ams_slot_layout(available_width, slot_count);
     const float spool = (float)theme_manager_get_spacing("ams_slot_spool_size");
     if (spool <= 0)
@@ -603,12 +619,11 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
     s_tray.valid = false;
     lv_obj_t* container = lv_obj_get_parent(w.slot_grid);
 
-    // Tool changers don't have a physical tray/housing
-    auto* backend = helix::AmsState::instance().get_backend(0);
-    if (backend && !backend->has_physical_tray()) {
+    if (!unit_has_physical_tray()) {
         lv_obj_add_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
         return;
     }
+    auto* backend = helix::AmsState::instance().get_backend(0);
     lv_obj_remove_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
 
     // Attach draw callbacks once per object instance. This function runs on every
@@ -799,6 +814,7 @@ void ams_detail_update_badges(AmsDetailWidgets& w, lv_obj_t* slot_widgets[], int
     helix::ui::safe_clean_children(w.badge_layer);
 
     int32_t slot_spacing = layout.slot_width - layout.overlap;
+    lv_obj_update_layout(w.badge_layer);
 
     for (int i = 0; i < slot_count; ++i) {
         if (slot_widgets[i]) {
@@ -981,6 +997,9 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
             color = backend->get_slot_info(global_idx).color_rgb;
         }
         ui_filament_path_canvas_set_slot_filament(canvas, i, static_cast<int>(slot_seg), color);
+        const std::string caption = helix::ui::upstream_lane_caption(info, *backend, global_idx);
+        ui_filament_path_canvas_set_slot_upstream(canvas, i,
+                                                  caption.empty() ? nullptr : caption.c_str());
     }
 
     // The buffer box: AFC buffer health, Happy Hare sync feedback, or a
@@ -1094,6 +1113,8 @@ bool ams_dispatch_backend_action(AmsContextMenu::MenuAction action, int slot,
     case MenuAction::CHECK_GATE:
     case MenuAction::PRELOAD:
     case MenuAction::CLEAR_SPOOL:
+    case MenuAction::MOUNT:
+    case MenuAction::PARK:
         break;
     default:
         return false; // caller's own switch owns it
@@ -1138,6 +1159,19 @@ bool ams_dispatch_backend_action(AmsContextMenu::MenuAction action, int slot,
         }
         break;
     }
+
+    case MenuAction::MOUNT: {
+        // The toolhead tap's own verdict: refusals and the paused-job
+        // confirmation are the same as from any other tool control.
+        if (const auto head = backend->head_for_slot(slot)) {
+            offer_tool_change(get_printer_state(), *head);
+        }
+        break;
+    }
+
+    case MenuAction::PARK:
+        request_tool_park(get_printer_state());
+        break;
 
     case MenuAction::CHECK_GATE: {
         AmsError error = backend->check_gate(slot);
@@ -1264,6 +1298,11 @@ std::unordered_map<int, InsertOffer>& insert_offers() {
     return offers;
 }
 
+std::unordered_set<int>& insert_prompt_claims() {
+    static std::unordered_set<int> claims;
+    return claims;
+}
+
 void clear_if_lane_unchanged(int slot) {
     auto& offers = insert_offers();
     const auto it = offers.find(slot);
@@ -1284,9 +1323,31 @@ void clear_if_lane_unchanged(int slot) {
 
 void reset_insert_offers_for_test() {
     insert_offers().clear();
+    insert_prompt_claims().clear();
+}
+
+void claim_insert_prompt(int slot) {
+    insert_prompt_claims().insert(slot);
+}
+
+void release_insert_prompt(int slot) {
+    insert_prompt_claims().erase(slot);
+}
+
+void release_all_insert_prompts() {
+    insert_prompt_claims().clear();
+}
+
+bool insert_prompt_claimed(int slot) {
+    return insert_prompt_claims().count(slot) != 0;
 }
 
 void offer_clear_after_unverified_insert(int slot) {
+    if (insert_prompt_claimed(slot)) {
+        spdlog::debug("[AMS] Slot {} insert belongs to the slot editor; no same-spool notice",
+                      slot);
+        return;
+    }
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend ||
         clear_spool_blocked_by_print(get_printer_state().print_state().get_print_lifecycle(),

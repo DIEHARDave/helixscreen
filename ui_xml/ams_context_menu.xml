@@ -38,15 +38,7 @@
           <lv_obj name="col_heading"
                   width="100%" height="content" style_pad_all="0" style_pad_gap="#space_xs" flex_flow="column"
                   scrollable="false" clickable="false">
-            <!-- Two fixed headings rather than one rewritten from C++: on a
-                 changer this column mounts and unmounts tools, and nothing
-                 about it is filament. -->
-            <text_small name="col_filament_label" text="Filament" style_text_color="#text_muted">
-              <bind_flag_if_eq subject="ams_slot_mounts_tool" flag="hidden" ref_value="1"/>
-            </text_small>
-            <text_small name="col_tool_label" text="Tool" style_text_color="#text_muted">
-              <bind_flag_if_eq subject="ams_slot_mounts_tool" flag="hidden" ref_value="0"/>
-            </text_small>
+            <text_small name="col_filament_label" text="Filament" style_text_color="#text_muted"/>
             <lv_obj width="100%"
                     height="1" style_bg_color="#text_muted" style_bg_opa="38" style_pad_all="0" scrollable="false"
                     clickable="false"/>
@@ -72,6 +64,12 @@
             <bind_state_if_eq subject="ams_slot_is_loaded" state="disabled" ref_value="0"/>
             <event_cb trigger="clicked" callback="ams_context_unload_cb"/>
           </ui_button>
+          <!-- Why this head's Load (and Unload, when the reason is the same) is
+               unavailable. Text and visibility come from decide_slot_actions(). -->
+          <text_small name="load_blocked_hint"
+                      width="100%" long_mode="wrap" bind_text="ams_slot_load_hint" style_text_color="#text_muted">
+            <bind_flag_if_eq subject="ams_slot_load_hint_visible" flag="hidden" ref_value="0"/>
+          </text_small>
           <!-- Purge (external spool only; hidden for lanes). The lane menu has no
                purge action - purging is about what is at the nozzle, not a lane. -->
           <ui_button name="btn_purge"
@@ -80,15 +78,14 @@
             <bind_state_if_eq subject="ams_slot_can_purge" state="disabled" ref_value="0"/>
             <event_cb trigger="clicked" callback="ams_context_purge_cb"/>
           </ui_button>
-          <!-- Eject hint (QIDI Box): a lane has ejectable filament but
-               [force_move] enable_force_move is off, so eject is unavailable.
-               Revealed from C++ instead of silently omitting the action (#1041). -->
+          <!-- Eject refusal the user can act on. Text and visibility both come from
+               AmsBackend::eject_unavailable_reason(). -->
           <text_small name="eject_force_move_hint"
-                      width="100%" long_mode="wrap" text="Eject needs [force_move] enabled in printer config"
-                      style_text_color="#text_muted" hidden="true"/>
-          <!-- Unload/Unmount refusal the user can act on (e.g. a tool changer
-               whose dock sensors cannot identify the mounted tool). Text and
-               visibility both come from AmsBackend::unload_blocked_reason(). -->
+                      width="100%" long_mode="wrap" bind_text="ams_slot_eject_hint" style_text_color="#text_muted">
+            <bind_flag_if_eq subject="ams_slot_eject_hint_visible" flag="hidden" ref_value="0"/>
+          </text_small>
+          <!-- Unload refusal the user can act on: the head's reason from
+               decide_slot_actions(), else AmsBackend::unload_blocked_reason(). -->
           <text_small name="unload_blocked_hint"
                       width="100%" long_mode="wrap" bind_text="ams_slot_unload_hint" style_text_color="#text_muted">
             <bind_flag_if_eq subject="ams_slot_unload_hint_visible" flag="hidden" ref_value="0"/>
@@ -112,6 +109,28 @@
             <bind_flag_if_eq subject="ams_slot_preload" flag="hidden" ref_value="0"/>
             <bind_state_if_eq subject="ams_slot_preload" state="disabled" ref_value="1"/>
             <event_cb trigger="clicked" callback="ams_context_preload_cb"/>
+          </ui_button>
+          <!-- Mount the tool this slot feeds, and Park the mounted one: a tool
+               action set apart under its own rule, offered where the head's
+               filament is all by hand (decide_slot_actions()). -->
+          <lv_obj name="tool_actions_divider"
+                  width="100%" height="1" style_bg_color="#text_muted" style_bg_opa="38" style_pad_all="0"
+                  scrollable="false" clickable="false">
+            <bind_flag_if cond="ams_slot_mount eq 0 and ams_slot_park eq 0" flag="hidden"/>
+          </lv_obj>
+          <ui_button name="btn_mount"
+                     height="#button_height_sm" icon="swap_horizontal" text="Mount" variant="ghost" clickable="true"
+                     style_flex_main_place="start">
+            <bind_flag_if_eq subject="ams_slot_mount" flag="hidden" ref_value="0"/>
+            <bind_state_if_eq subject="ams_slot_mount" state="disabled" ref_value="1"/>
+            <event_cb trigger="clicked" callback="ams_context_mount_cb"/>
+          </ui_button>
+          <ui_button name="btn_park"
+                     height="#button_height_sm" icon="eject" text="Park" variant="ghost" clickable="true"
+                     style_flex_main_place="start">
+            <bind_flag_if_eq subject="ams_slot_park" flag="hidden" ref_value="0"/>
+            <bind_state_if_eq subject="ams_slot_park" state="disabled" ref_value="1"/>
+            <event_cb trigger="clicked" callback="ams_context_park_cb"/>
           </ui_button>
         </lv_obj>
         <!-- Spool identity / Spoolman actions -->
@@ -140,9 +159,9 @@
                      style_flex_main_place="start" hidden="true">
             <event_cb trigger="clicked" callback="ams_context_scan_qr_cb"/>
           </ui_button>
-          <!-- Spool Info Button — always opens edit modal -->
+          <!-- Edit Spool Button — always opens the spool editor -->
           <ui_button name="btn_edit"
-                     height="#button_height_sm" icon="tune" text="Spool Info" variant="ghost" clickable="true"
+                     height="#button_height_sm" icon="tune" text="Edit Spool" variant="ghost" clickable="true"
                      style_flex_main_place="start">
             <event_cb trigger="clicked" callback="ams_context_edit_cb"/>
           </ui_button>
@@ -179,12 +198,13 @@
           <event_cb trigger="value_changed" callback="ams_context_tool_changed_cb"/>
         </lv_dropdown>
       </lv_obj>
-      <!-- Backup Slot Dropdown (Endless Spool) -->
+      <!-- Endless Spool: the backup position, labelled in the backend's noun -->
       <lv_obj name="backup_dropdown_row"
               width="100%" height="content" style_pad_all="0" style_pad_left="#space_sm" style_pad_right="#space_sm"
-              flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false"
-              hidden="true">
+              flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_xs"
+              scrollable="false" hidden="true">
         <lv_label name="backup_icon" text="#icon_infinity" style_text_font="mdi_icons_16" style_text_color="#text_muted"/>
+        <text_small name="backup_label" flex_grow="1" bind_text="ams_slot_backup_label" long_mode="wrap"/>
         <lv_dropdown name="backup_dropdown"
                      width="#ams_context_dropdown_w" height="#button_height_sm" style_radius="#border_radius">
           <event_cb trigger="value_changed" callback="ams_context_backup_changed_cb"/>

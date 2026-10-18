@@ -38,9 +38,10 @@ All developer documentation lives here. When working on features, look up the re
 | `LVGL9_XML_GUIDE.md` | XML syntax, all widgets (ui_card, ui_button, ui_markdown, etc.), bindings |
 | `DEVELOPER_QUICK_REFERENCE.md` | Quick code patterns: modals, CSV parser, layout, migration |
 | `MODAL_SYSTEM.md` | ui_dialog, modal_button_row, Modal subclass pattern |
+| `COLOR_SWATCHES.md` | Every colour swatch: the one painter (`ui_swatch.h`), shape/edge/selection rules, multi-colour split, finishes from the filament name, `color_swatch` / `color_dot` / `swatch_paint`, the hand-rolled-swatch gate |
 | `THEME_SYSTEM.md` | Theme internals: ThemeManager style architecture, StyleRole roles, adding themed widgets |
 | `THEME_CONTRIBUTOR_GUIDE.md` | For people **creating themes** — JSON schema, palette design, testing. No C++ needed. |
-| `LAYOUT_SYSTEM.md` | Layout system internals: LayoutManager C++ API, auto-detection logic, and the home widget grid (`GridLayout` sizing, `assets/config/default_layout.json` anchors, widget span/`min_colspan` authoring) |
+| `LAYOUT_SYSTEM.md` | Layout system internals: LayoutManager C++ API, auto-detection logic, and the home widget grid (`GridLayout` sizing, `assets/config/default_layout.json` anchors, candidate slots and live defaults, widget span/`min_colspan` authoring) |
 | `HOME_EDIT_MODE.md` | Home-grid edit mode: the session over a page, the selection, grab and click rules, the event shield and the events that end a gesture (release, press lost, indev reset), the carousel swipe policy, cross-page drag and the next-page slot, page creation and pruning. Read before touching `GridEditMode` or HomePanel's edit handlers |
 | `PANEL_WIDGET_GUIDE.md` | Home widget authoring: registry def, widget class, XML; the measured-layout reference pattern (pure decision fn, subjects, binds) with nozzle_temps as exemplar; the shared size ladder (`SizeRung`, content chrome, `LiveTileOwner`, `value_status`), the seven sized widgets built on it and the checklist they pass (centring, covered-panel gate, language switch, toolhead-safety census, gate owner row, ESP32 PSRAM statics) |
 | `PLUGIN_DEVELOPMENT.md` | Writing a Lua plugin: manifest, XML rules, the helix.* API, permissions, limits, debugging |
@@ -65,7 +66,7 @@ All developer documentation lives here. When working on features, look up the re
 | `LABEL_PRINTER_SYSTEM.md` | Label printing: Brother QL, Phomemo, Niimbot, MakeID protocols; USB/TCP/Bluetooth transports |
 | `FILAMENT_MANAGEMENT.md` | Filament system hub: multi-backend architecture, slot metadata, filament-op dispatch, endless spool, UI panels, dryer commands, device ops, mock mode, add-a-backend guide |
 | `FILAMENT_ENVIRONMENT_ZONES.md` | Filament boxes (heated and passive): the `EnvironmentZone` model, the three discovery paths, drying-state folding and the concurrency cap, the tabs-vs-list presentation rule, what a backend must publish to get a box on screen, and the `DryerSummary` that folds box, chamber and bed drying for the Dryer home widget |
-| `FILAMENT_BACKEND_AFC.md`, `FILAMENT_BACKEND_OPENAMS.md`, `FILAMENT_BACKEND_HAPPY_HARE.md`, `FILAMENT_BACKEND_ACE.md`, `FILAMENT_BACKEND_TOOLCHANGER.md`, `FILAMENT_BACKEND_AD5X_IFS.md`, `FILAMENT_BACKEND_CFS.md`, `FILAMENT_BACKEND_QIDI_BOX.md`, `FILAMENT_BACKEND_SNAPMAKER_U1.md` | One leaf per filament backend: protocol, data sources, G-code commands, topology, capability table |
+| `FILAMENT_BACKEND_AFC.md`, `FILAMENT_BACKEND_OPENAMS.md`, `FILAMENT_BACKEND_HAPPY_HARE.md`, `FILAMENT_BACKEND_ACE.md`, `FILAMENT_BACKEND_TOOLCHANGER.md`, `FILAMENT_BACKEND_AD5X_IFS.md`, `FILAMENT_BACKEND_CFS.md`, `FILAMENT_BACKEND_QIDI_BOX.md`, `FILAMENT_BACKEND_SNAPMAKER_U1.md`, `FILAMENT_BACKEND_MULTIACE.md` | One leaf per filament backend: protocol, data sources, G-code commands, topology, capability table |
 | `FILAMENT_BACKEND_MEDUSAHC.md` | MedusaHC hotend changer. NOT its own backend: it is a klipper-toolchanger printer plus two add-ons (dock sensors that outrank `toolchanger.tool_number`, and a servo feeder). Read with `FILAMENT_BACKEND_TOOLCHANGER.md` |
 | `printer-research/QIDI_BOX_HEATER.md` | QIDI Box PTC heater RE reference: Klipper objects, G-code commands, firmware variants, HelixScreen integration |
 | `printer-research/CREALITY_CFS_K2_INTERNALS.md` | Creality K2 CFS module RE reference: box.cfg, `box` schema variants and field encodings, `BOX_*`/`M8200` commands, error codes, runout and auto-refill, the community Kalico port |
@@ -74,6 +75,7 @@ All developer documentation lives here. When working on features, look up the re
 | `MULTI_EXTRUDER_TEMPERATURE.md` | Multi-extruder temperature tracking, ExtruderInfo, dynamic subjects |
 | `TOOL_ABSTRACTION.md` | ToolState singleton, ToolInfo, tool-to-backend mapping, DetectState |
 | `INPUT_SHAPER.md` | Calibration panels, frequency response charts, CSV parser, PID |
+| `PRESSURE_ADVANCE_TUNING.md` | Pressure advance tuned by eye on a live test print: tower generator, host-driven ramp, band picker, Spoolman extra field, the `helix-screen`/`pressure_advance` Moonraker key a slicer plugin can read |
 | `BELT_TUNER.md` | Pluck-based belt tension tuner: Klipper UDS accel stream, pluck detection, harmonic pitch estimation. **Read its Validation status section first - the feature is green in CI and has never measured a real belt, and its thresholds are circular** |
 | `BELT_TENSION.md` | Belt Tension check: two `TEST_RESONANCES` sweeps compared as curves, the Start gate, provisional verdict constants, mock knobs |
 | `PREPRINT_PREDICTION.md` | ETA prediction engine, phase timing, weighted history |
@@ -82,7 +84,7 @@ All developer documentation lives here. When working on features, look up the re
 | `PRINT_CONTROL_BUTTONS.md` | PrintControlButtons controller: owned subjects, pure view function, optimistic pending-action machine, 2x1 home widget, panel delegation |
 | `PRINT_START_PROFILES.md` | Print start phase detection, developer guide: the observer pipeline, arming, the five signal sources (console, probe lines, bed-mesh flap, toolhead position, fallbacks), evidence kinds, JSON profile schema, authoring a profile for a new printer, threading/lifetime rules, and which tests pin what |
 | `PRINT_START_INTEGRATION.md` | User-facing macro setup for print start tracking |
-| `Z_OFFSET_PERSISTENCE.md` | Firmware that stores the z-offset outside `gcode_move` and zeroes the live one between prints (ZMOD on AD5M/AD5X): why the idle reading lies, the `persisted_z_offset` subjects, the relative-vs-absolute `SET_GCODE_OFFSET` rule, and the one-row recipe for adding a firmware |
+| `Z_OFFSET_PERSISTENCE.md` | Firmware that stores the z-offset outside `gcode_move` and zeroes the live one between prints (ZMOD on AD5M/AD5X): why the idle reading lies, the `persisted_z_offset` subjects, the relative-vs-absolute `SET_GCODE_OFFSET` rule, the one-row recipe for adding a firmware, and the per-printer Save Z-Offset setting (`zoffset::save_enabled()`) with what it hides and how it changes the Print Tune hint |
 | `POWER_LOSS_RECOVERY.md` | Resume-after-power-loss: the passive Snapmaker and Qidi backends vs the **active, side-effectful** Creality probe, capability detection per firmware, and the mandatory probe-before-resume safety invariant |
 | `UPDATE_SYSTEM.md` | Update channels (stable/beta/dev), R2 CDN, Moonraker updater |
 | `SOUND_SYSTEM.md` | Audio architecture, JSON themes, backends (SDL, ALSA, PWM, M300). User guide: `../user/guide/settings/sound.md` |

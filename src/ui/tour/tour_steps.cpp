@@ -67,7 +67,7 @@ std::vector<TourStep> build_tour_steps(bool has_ams) {
     steps.push_back({"nav_btn_filament",
                      "Filament",
                      "Load, unload, and swap spools. View your multi-filament system at a glance, "
-                     "map colors to slots, and monitor runout sensors.",
+                     "map filament to tools, and monitor runout sensors.",
                      TooltipAnchor::PreferRight,
                      {}});
     steps.push_back({"nav_btn_advanced",

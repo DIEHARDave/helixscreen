@@ -537,6 +537,7 @@ ad5x_check_chroot_context() {
 #   4. Well-known users: biqu, pi, mks
 #   5. Fallback: root
 # Sets: KLIPPER_USER, KLIPPER_HOME
+# KLIPPER_HOMES_ROOT is the test seam for /home; nothing on a device ever sets it.
 detect_klipper_user() {
     # 1. systemd service owner (most reliable on Pi)
     if command -v systemctl >/dev/null 2>&1; then
@@ -563,15 +564,16 @@ detect_klipper_user() {
     fi
 
     # 3. printer_data directory scan
+    local homes_root="${KLIPPER_HOMES_ROOT:-/home}"
     local pd_dir
-    for pd_dir in /home/*/printer_data; do
+    for pd_dir in "$homes_root"/*/printer_data; do
         [ -d "$pd_dir" ] || continue
         local pd_user
-        pd_user=$(echo "$pd_dir" | sed 's|^/home/||;s|/printer_data$||')
+        pd_user=$(basename "$(dirname "$pd_dir")")
         if [ -n "$pd_user" ] && id "$pd_user" >/dev/null 2>&1; then
             KLIPPER_USER="$pd_user"
             KLIPPER_GROUP=$(_resolve_primary_group "$pd_user")
-            KLIPPER_HOME="/home/$pd_user"
+            KLIPPER_HOME="$homes_root/$pd_user"
             log_info "Klipper user (printer_data): $KLIPPER_USER (group: $KLIPPER_GROUP)"
             return 0
         fi
@@ -1398,7 +1400,7 @@ resolve_platform_hook_key() {
 # These are the files users may want to edit from Fluidd/Mainsail, and that
 # the app writes to at runtime. All other files in INSTALL_DIR/config/ are
 # static assets reinstalled on each update.
-HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json"
+HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json .webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings .platform_hook .nginx_webcam_accesslog"
 
 # User-writable config DIRECTORIES that live in printer_data/config/helixscreen/.
 #
@@ -1569,6 +1571,7 @@ _safe_remove_migrated_config_dir() {
 #   ~/helixscreen/config/settings.json → above          (symlink)
 #
 # On upgrade from old layout, migrates files from install dir to printer_data.
+# Args: $1 = "quiet" to skip the success line (a repeat pass).
 # Reads: KLIPPER_HOME / KLIPPER_CONFIG_DIR (via klipper_config_dir), INSTALL_DIR
 setup_config_symlink() {
     # Only proceed if we have a Klipper config dir and an install directory
@@ -1750,7 +1753,7 @@ setup_config_symlink() {
         fi
     done
 
-    log_success "Config directory: $pd_helix"
+    [ "${1:-}" = "quiet" ] || log_success "Config directory: $pd_helix"
     # shellcheck disable=SC2034  # consumed by plan.sh (print_summary)
     HELIX_CONFIG_EDITABLE="$pd_helix"
     return 0

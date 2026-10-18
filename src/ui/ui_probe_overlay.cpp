@@ -14,6 +14,7 @@
 #include "app_globals.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
+#include "moonraker_error.h"
 #include "printer_state.h"
 #include "probe_preparation.h"
 #include "probe_sensor_manager.h"
@@ -668,7 +669,7 @@ void ProbeOverlay::handle_probe_accuracy() {
                 spdlog::error("[Probe] PROBE_ACCURACY error: {}", line);
                 api->unregister_method_callback("notify_gcode_response", handler_name);
 
-                std::string error_msg = line;
+                std::string error_msg = MoonrakerError::friendly_error_line(line);
                 helix::ui::queue_update("ProbeOverlay::handle_probe_accuracy", [error_msg]() {
                     get_global_probe_overlay().set_accuracy_error(error_msg);
                 });

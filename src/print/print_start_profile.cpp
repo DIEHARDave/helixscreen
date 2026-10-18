@@ -187,6 +187,17 @@ bool PrintStartProfile::try_match_signal(const std::string& line, MatchResult& r
     return false;
 }
 
+bool PrintStartProfile::start_block_step_owns(const std::string& command,
+                                              const std::string& console_line) const {
+    const auto it = start_block_owned_lines_.find(command);
+    if (it == start_block_owned_lines_.end()) {
+        return false;
+    }
+    return std::any_of(it->second.begin(), it->second.end(), [&](const std::string& text) {
+        return console_line.find(text) != std::string::npos;
+    });
+}
+
 bool PrintStartProfile::try_match_pattern(const std::string& line, MatchResult& result) const {
     return match_pattern_list(response_patterns_, line, result);
 }
@@ -216,6 +227,7 @@ bool PrintStartProfile::match_pattern_list(const std::vector<ResponsePattern>& p
             result.progress = rp.weight; // Caller interprets based on progress_mode
             result.hold_seconds = 0;
             result.narrates = rp.narrates;
+            result.counts_probes = rp.counts_probes;
             if (rp.hold_minutes_group > 0 &&
                 static_cast<size_t>(rp.hold_minutes_group) < match.size()) {
                 // Firmware prints the number with a '.' whatever the UI locale.
@@ -233,6 +245,20 @@ bool PrintStartProfile::match_pattern_list(const std::vector<ResponsePattern>& p
         }
     }
     return false;
+}
+
+std::string PrintStartProfile::innermost_context(const nlohmann::json& value) {
+    if (value.is_string()) {
+        return value.get<std::string>();
+    }
+    if (value.is_array() && !value.empty() && value.back().is_string()) {
+        return value.back().get<std::string>();
+    }
+    return {};
+}
+
+std::string PrintStartProfile::qualify_state(const std::string& context, const std::string& state) {
+    return context + "/" + state;
 }
 
 std::vector<std::string> PrintStartProfile::required_status_objects() const {
@@ -302,6 +328,26 @@ bool PrintStartProfile::parse_json(const json& j, const std::string& source_path
     // Creality tag stream in gcode_response (optional, defaults to false)
     if (j.contains("cfs_signals") && j["cfs_signals"].is_boolean()) {
         cfs_signals_ = j["cfs_signals"].get<bool>();
+    }
+
+    // Start sequence inlined in the print file (optional, defaults to false)
+    if (j.contains("scripted_start") && j["scripted_start"].is_boolean()) {
+        scripted_start_ = j["scripted_start"].get<bool>();
+    }
+
+    // Console lines a start-block command prints while it runs (optional)
+    if (j.contains("start_block_owned_lines") && j["start_block_owned_lines"].is_object()) {
+        for (const auto& [command, lines] : j["start_block_owned_lines"].items()) {
+            if (!lines.is_array()) {
+                continue;
+            }
+            auto& owned = start_block_owned_lines_[helix::text_io::to_upper(command)];
+            for (const auto& text : lines) {
+                if (text.is_string() && !text.get_ref<const std::string&>().empty()) {
+                    owned.push_back(text.get<std::string>());
+                }
+            }
+        }
     }
 
     // Silent-window position inference (optional, defaults to false)
@@ -405,6 +451,24 @@ bool PrintStartProfile::parse_json(const json& j, const std::string& source_path
                              source_path);
                 phase_object_name_.clear();
                 phase_object_field_.clear();
+            }
+            // A bad context qualifier drops the whole phase object: its
+            // state_patterns are written against "<context>/<state>" keys, so
+            // matching bare states against them would only ever miss.
+            if (po.contains("context_field")) {
+                const auto& cf = po["context_field"];
+                if (cf.is_string() && !cf.get_ref<const std::string&>().empty()) {
+                    phase_object_context_field_ = cf.get<std::string>();
+                } else {
+                    spdlog::warn("[PrintStartProfile] phase_object context_field must be a "
+                                 "non-empty string in {} - phase_object ignored",
+                                 source_path);
+                    phase_object_name_.clear();
+                    phase_object_field_.clear();
+                }
+            }
+            if (phase_object_name_.empty()) {
+                phase_object_context_field_.clear();
             }
         } else {
             spdlog::warn(
@@ -518,6 +582,16 @@ void PrintStartProfile::parse_pattern_array(const nlohmann::json& array,
             } else {
                 spdlog::warn("[PrintStartProfile] Ignoring non-boolean narrates for {} '{}' in {}",
                              kind, pattern_str, source_path);
+            }
+        }
+
+        if (rp_json.contains("counts_probes")) {
+            if (rp_json["counts_probes"].is_boolean()) {
+                rp.counts_probes = rp_json["counts_probes"].get<bool>();
+            } else {
+                spdlog::warn(
+                    "[PrintStartProfile] Ignoring non-boolean counts_probes for {} '{}' in {}",
+                    kind, pattern_str, source_path);
             }
         }
 

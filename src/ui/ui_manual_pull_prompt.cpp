@@ -11,6 +11,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <optional>
+#include <string>
+
 namespace {
 
 /// Held file-static rather than on an owner because the two surfaces that arm
@@ -86,14 +89,30 @@ void manual_pull_unload_finished() {
     fire("unload complete");
 }
 
-bool notify_if_unload_is_manual(const AmsBackend* backend) {
-    if (!backend || !backend->unload_is_manual()) {
+bool notify_if_filament_op_unavailable(const AmsBackend* backend, int slot, bool load) {
+    if (!backend) {
         return false;
     }
-    spdlog::info(
-        "[ManualPull] Backend has no automatic unload — telling the user, sending nothing");
-    NOTIFY_INFO(lv_tr("This printer has no automatic unload. Cut the filament at the head and "
-                      "pull it out by hand."));
+    std::optional<int> head = slot >= 0 ? backend->head_for_slot(slot) : std::nullopt;
+    if (slot < 0) {
+        head = backend->filament_head_count() == 1
+                   ? std::optional<int>(0)
+                   : backend->head_for_slot(backend->get_system_info().current_slot);
+    }
+    if (!head) {
+        return false;
+    }
+    const HeadFilamentOps ops = backend->head_filament_ops(*head);
+    if ((load ? ops.load : ops.unload) == FilamentOpSupport::Automatic) {
+        return false;
+    }
+    const std::string& reason = load ? ops.load_reason : ops.unload_reason;
+    spdlog::info("[ManualPull] {} on head {} is not automatic here — telling the user, sending "
+                 "nothing",
+                 load ? "Load" : "Unload", *head);
+    if (!reason.empty()) {
+        NOTIFY_INFO("{}", reason);
+    }
     return true;
 }
 

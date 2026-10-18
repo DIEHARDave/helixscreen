@@ -6,6 +6,7 @@
 // feed them.
 
 #include "ui_breakpoint.h"
+#include "ui_effects.h"
 #include "ui_fonts.h"
 
 #include "border_radius_sizes.h"
@@ -248,15 +249,6 @@ static void init_extra_styles(const theme_palette_t* palette) {
     extra_styles_initialized = true;
 }
 
-static bool full_style_effects_allowed_here() {
-    // The tier is seeded once at startup; until then, keep the full look.
-    static lv_subject_t* tier = nullptr;
-    if (!tier)
-        tier = lv_xml_get_subject(nullptr, "platform_tier");
-    return !tier || helix::full_style_effects_allowed(
-                        static_cast<helix::PlatformTier>(lv_subject_get_int(tier)));
-}
-
 /**
  * @brief HelixScreen theme apply callback - applies styles based on widget type
  *
@@ -270,7 +262,7 @@ static void helix_theme_apply(lv_theme_t* theme, lv_obj_t* obj) {
     if (default_theme_backup && default_theme_backup->apply_cb) {
         default_theme_backup->apply_cb(default_theme_backup, obj);
     }
-    if (!full_style_effects_allowed_here()) {
+    if (!helix::ui::full_style_effects_active()) {
         lv_obj_remove_style(obj, nullptr, LV_PART_SCROLLBAR | LV_STATE_SCROLLED);
     }
 

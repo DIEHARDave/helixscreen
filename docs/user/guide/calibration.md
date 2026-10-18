@@ -151,7 +151,7 @@ Interactive panel for dialing in your Z-offset when not printing. Works with all
 3. Tap **Start** — the printer homes and begins the calibration sequence
 4. Use the **+/−** adjustment buttons to lower the nozzle (paper test: adjust until paper drags slightly)
 5. Tap **Accept** when satisfied, or **Abort** to cancel
-6. The offset is saved to your Klipper config automatically
+6. The offset is saved to your Klipper config automatically. On printers whose firmware keeps the Z-offset itself (FlashForge with ZMOD, for example) HelixScreen applies it and the firmware stores it. On the Snapmaker U1 nothing stores it: the firmware re-applies each head's own stored offset whenever that head is picked up, so the result lasts only until the next tool change. With **Save Z-Offset Buttons** off in [Settings > Motion](motion.md#motion-settings), HelixScreen does not save the result: Klipper holds it until the next config save, and the completion screen says so
 
 HelixScreen picks the right calibration command for your setup (`PROBE_CALIBRATE`, `Z_ENDSTOP_CALIBRATE`, or `SET_GCODE_OFFSET`) based on your printer's detected probe configuration.
 
@@ -317,6 +317,31 @@ Where the result goes depends on the printer:
 - **Creator 5 Pro:** the printer keeps nothing. Copy the value into the filament's slicer profile.
 
 Leaving the screen while it is still heating stops the run. Once measuring has started, **Stop** ends the run on the screen, but the printer finishes that measurement on its own and the nozzle stays hot.
+
+---
+
+## Pressure Advance Tuning (test tower)
+
+> Added in 1.1. A [beta feature](beta-features.md).
+
+Works on any Klipper printer. HelixScreen prints a small test tower, raises pressure advance as the tower grows, and lets you take over while you watch the corners. You pick the height that looked best, and that value is applied.
+
+1. Open **Advanced > Calibration > Pressure Advance Tuning**.
+2. On a printer with more than one extruder (a tool changer or IDEX), pick which one to tune; filament lanes feeding one nozzle count as one. Tap the material preset that matches what's loaded; it sets the nozzle and bed temperature.
+3. Choose **Direct drive** or **Bowden**. That sets a sensible range (0 to 0.1 for direct drive, 0 to 1.0 for Bowden); adjust **Start K** and **End K** with **-** and **+** if you want a different range.
+4. Clear the plate, tap **Print Test Tower** and confirm. HelixScreen uploads a hollow tower 40 mm wide and about 31 mm tall (roughly 11 minutes plus heating) and starts it. It begins with your printer's own start macro (PRINT_START or similar, with the bed and nozzle temperatures), so homing, leveling and purging happen the way they do for a sliced file, and ends with your end macro. A printer without a start macro just homes and heats.
+5. The tuner fills the screen while the tower prints: the pressure advance in effect, large, and the current layer and height. The value steps up every 3 mm. Under the value, a list shows each height range printed so far and the value it printed at, newest first.
+6. Watch the corners. Tap **-** or **+** at any time (pick the step size along the bottom): the automatic steps stop and your value stays until the print ends, so you can judge it.
+7. When the print finishes, or you tap **End Test**, you get a list of height ranges and the value that was in effect for each. Measure up from the plate, find the band with sharp corners (no bulge, no gap), tap it and tap **Apply**. **Keep current** keeps whatever value you ended on. **Discard** puts back the value you started with. The end of the tower's own G-code also puts the original value back, so a print stopped any other way never leaves a test value behind.
+
+The values in the list are what the printer reported while each band printed, so if you changed the value from the console or a macro during the test, the list shows that too.
+
+**After you apply:**
+
+- The value is active right away, but Klipper forgets it at the next restart. Enter it as **Pressure advance** in your slicer's filament profile.
+- If Spoolman is connected and a spool is active, **Save to Spool** stores it on that spool's filament. See [Pressure advance per filament](filament-tracking.md#pressure-advance-per-filament).
+
+You can leave the tuner during the print; the steps keep going. Open it again from **Tuner** in the print's **Tune** overlay.
 
 ---
 

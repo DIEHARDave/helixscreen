@@ -52,6 +52,7 @@ src/api/moonraker_client_mock_gcode.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_gcode_calibration.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_files.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_history.cpp  # not in the v1 Core+AMS cut
+src/api/moonraker_client_mock_layer_pause.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_objects.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_print.cpp  # not in the v1 Core+AMS cut
 src/api/moonraker_client_mock_queue.cpp  # not in the v1 Core+AMS cut
@@ -151,6 +152,7 @@ src/rendering/bed_mesh_rasterizer.cpp  # not in the v1 Core+AMS cut
 src/rendering/bed_mesh_render_thread.cpp  # not in the v1 Core+AMS cut
 src/rendering/bed_mesh_renderer.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_camera.cpp  # not in the v1 Core+AMS cut
+src/rendering/gcode_crease_shading.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_data_source.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_geometry_builder.cpp  # not in the v1 Core+AMS cut
 src/rendering/gcode_gles_renderer.cpp  # not in the v1 Core+AMS cut
@@ -222,6 +224,7 @@ src/system/pwm_sound_backend.cpp  # not in the v1 Core+AMS cut
 src/system/qr_decoder.cpp  # not in the v1 Core+AMS cut
 src/system/release_page.cpp  # not in the v1 Core+AMS cut
 src/system/screen_locality.cpp  # not in the v1 Core+AMS cut
+src/system/screensaver_usage.cpp  # not in the v1 Core+AMS cut
 src/system/screenshot.cpp  # not in the v1 Core+AMS cut
 src/system/sdl_sound_backend.cpp  # not in the v1 Core+AMS cut
 src/system/sheet_label_layout.cpp  # not in the v1 Core+AMS cut
@@ -244,27 +247,38 @@ src/ui/ipp_print_modal.cpp  # not in the v1 Core+AMS cut
 src/ui/modals/ui_spaghetti_detection_modal.cpp  # not in the v1 Core+AMS cut
 src/ui/pid_progress_tracker.cpp  # not in the v1 Core+AMS cut
 src/ui/recovery_modal_presenter.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_aqua.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_aqua_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_base.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_blur.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_bounce.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_canvas.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_clock.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_clock_reading.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_cpu_clock.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_fireflies.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_fireflies_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_fireworks.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_fireworks_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_flip_clock.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_flip_clock_sim.cpp  # not in the v1 Core+AMS cut
-src/ui/screensaver_hyperspace.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_hyperspace_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_frame.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_frame_timer.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_gate.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_heightfield.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_highfly.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_highfly_sim.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_image.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_level_store.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_manager.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_maze.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_maze_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_overlay.cpp  # not in the v1 Core+AMS cut
-src/ui/screensaver_pipes.cpp  # not in the v1 Core+AMS cut
-src/ui/screensaver_starfield.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_pipes_sim.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_pipes_teapot.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_starfield_sim.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_stroke_digits.cpp  # not in the v1 Core+AMS cut
 src/system/splash_asset_choice.cpp  # not in the v1 Core+AMS cut
 src/ui/splash_screen.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_ams_tool_text.cpp  # not in the v1 Core+AMS cut
@@ -285,6 +299,7 @@ src/ui/ui_panel_belt_tension.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_pid.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_tool_offset.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_pa.cpp  # not in the v1 Core+AMS cut
+src/ui/ui_overlay_pa_tuning.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_zoffset.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_glyphs.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_input_shaper.cpp  # not in the v1 Core+AMS cut
@@ -322,6 +337,7 @@ src/ui/view_gestures.cpp  # two-finger gestures for the 3D G-code viewer and 3D 
 src/system/jz_pwm_sound_backend.cpp  # AD5X-only: exec's the Linux fx-pwm child; no process model on ESP32
 src/ui/ui_selector_model.cpp  # selector model for the wizard printer step, not in the v1 Core+AMS cut
 src/printer/k2_stock_detection_source.cpp  # not in the v1 Core+AMS cut
+src/printer/z_offset_calibration_approach.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_permissions.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_manifest.cpp  # not in the v1 Core+AMS cut
 src/plugin/lua_runtime.cpp  # not in the v1 Core+AMS cut
@@ -345,3 +361,8 @@ src/plugin/plugin_source_app.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_dir_watcher.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_canvas.cpp  # not in the v1 Core+AMS cut
 src/api/wifi_link_monitor.cpp  # only consumers are application.cpp and the debug bundle, both excluded
+src/ui/ui_presentation_gate.cpp  # not in the v1 Core+AMS cut
+src/plugin/plugin_dialog.cpp  # not in the v1 Core+AMS cut
+src/plugin/plugin_presenter.cpp  # not in the v1 Core+AMS cut
+src/plugin/plugin_surfaces.cpp  # not in the v1 Core+AMS cut
+src/plugin/plugin_consts.cpp  # not in the v1 Core+AMS cut

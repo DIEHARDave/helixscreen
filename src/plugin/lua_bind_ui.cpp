@@ -6,8 +6,8 @@
 #include "ui_modal.h"
 #include "ui_toast_manager.h"
 
+#include "helix/ui/text_metrics.h"
 #include "lua_bindings.h"
-#include "lvgl/src/misc/lv_text_private.h" // lv_text_get_width
 #include "plugin_canvas.h"
 #include "plugin_overlay_host.h"
 #include "plugin_xml_policy.h"
@@ -28,6 +28,7 @@ const char kUiStateKey = 0;
 constexpr size_t kMaxString = 1024;
 constexpr size_t kMaxSubjects = 128;
 constexpr size_t kMaxOpenConfirms = 1;
+constexpr size_t kMaxDialogs = 1;
 
 struct ObserverCtx {
     LuaRuntime* rt;
@@ -229,9 +230,7 @@ int ui_text_width(lua_State* L) {
                           "helix.ui.text_width: font token '%s' must be a base token; a "
                           "size-suffixed variant renders as the default font below its tier",
                           name);
-    lv_text_attributes_t attributes = {};
-    attributes.max_width = LV_COORD_MAX;
-    lua_pushinteger(L, lv_text_get_width(str, static_cast<uint32_t>(len), font, &attributes));
+    lua_pushinteger(L, helix::ui::text_width_n(str, static_cast<uint32_t>(len), font));
     return 1;
 }
 
@@ -286,56 +285,92 @@ int ui_confirm(lua_State* L) {
             --ui_ptr->open_confirms;
         }
     };
-    helix::ui::ConfirmOptions opts;
-    opts.on_cancel = [run, cancel_ref, release] {
+    auto cancel = [run, cancel_ref, release] {
         release();
         run(cancel_ref);
     };
-    opts.on_dismiss = opts.on_cancel;
-    opts.owner_token = rt.token();
-    lv_obj_t* dialog = helix::ui::modal_confirm(
-        title.c_str(), msg.c_str(), severity, confirm_text.c_str(),
-        [run, confirm_ref, release] {
-            release();
-            run(confirm_ref);
-        },
-        opts);
-    if (dialog)
-        ui.open_confirm = dialog;
-    else // never shown, so no close path will release the slot
-        release();
+    auto present = [ui_ptr, run, confirm_ref, release, cancel, title, msg, severity, confirm_text,
+                    token = rt.token(), plugin_id = rt.plugin_id()] {
+        if (token.expired())
+            return false;
+        helix::ui::ConfirmOptions opts;
+        opts.on_cancel = cancel;
+        opts.on_dismiss = cancel;
+        opts.owner_token = token;
+        lv_obj_t* dialog = helix::ui::modal_confirm(
+            title.c_str(), msg.c_str(), severity, confirm_text.c_str(),
+            [run, confirm_ref, release] {
+                release();
+                run(confirm_ref);
+            },
+            opts);
+        if (!dialog) {
+            release(); // never shown, so no close path will release the slot
+            return false;
+        }
+        // Tagged with its plugin, so it holds other plugins back but never its own.
+        ModalStack::instance().set_tag(ModalStack::instance().backdrop_for(dialog), plugin_id);
+        ui_ptr->open_confirm = dialog;
+        return true;
+    };
+    if (context(L).ui && context(L).ui->queue_confirm)
+        context(L).ui->queue_confirm(std::move(present), release);
+    else
+        present();
     return 0;
 }
 
-int overlay_handle_close(lua_State* L) {
+int surface_handle_close(lua_State* L) {
     auto& ctx = context(L);
     if (ctx.ui)
         ctx.ui->close(static_cast<int>(lua_tointeger(L, lua_upvalueindex(1))));
     return 0;
 }
 
-int ui_overlay(lua_State* L) {
+int surface_handle_is_open(lua_State* L) {
+    auto& ctx = context(L);
+    const int handle = static_cast<int>(lua_tointeger(L, lua_upvalueindex(1)));
+    lua_pushboolean(L, ctx.ui && ctx.ui->is_open && ctx.ui->is_open(handle));
+    return 1;
+}
+
+enum class SurfaceArg { Overlay, Dialog };
+
+/// helix.ui.overlay and helix.ui.dialog: (component[, attrs]) -> handle. Every
+/// string key but on_open/on_close is an attribute for lv_xml_create.
+int open_surface(lua_State* L, SurfaceArg which) {
+    const char* fn = which == SurfaceArg::Dialog ? "helix.ui.dialog" : "helix.ui.overlay";
     auto& rt = LuaRuntime::from(L);
-    if (!context(L).ui)
-        return luaL_error(L, "helix.ui.overlay is not available here");
+    PluginUi* ui = context(L).ui;
+    const PluginUi::OpenFn* open = !ui                           ? nullptr
+                                   : which == SurfaceArg::Dialog ? &ui->dialog
+                                                                 : &ui->open;
+    if (!open || !*open)
+        return luaL_error(L, "%s is not available here", fn);
     if (context(L).unloading)
-        return luaL_error(L, "helix.ui.overlay cannot open during on_unload");
+        return luaL_error(L, "%s cannot open during on_unload", fn);
     std::string component = luaL_checkstring(L, 1);
     if (!is_owned_name(rt.plugin_id(), component))
-        return luaL_error(L, "helix.ui.overlay: component '%s' is not owned by this plugin",
+        return luaL_error(L, "%s: component '%s' is not owned by this plugin", fn,
                           component.c_str());
+    if (which == SurfaceArg::Dialog && ui->dialog_count &&
+        ui->dialog_count(rt.plugin_id()) >= kMaxDialogs)
+        return luaL_error(L, "%s: at most %d dialog per plugin", fn, static_cast<int>(kMaxDialogs));
 
+    int on_open_ref = LUA_NOREF;
     int on_close_ref = LUA_NOREF;
     PluginUi::Attrs attrs;
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
-        // Every string key but on_close is an attribute for lv_xml_create; anything
-        // else is a mistake Lua should hear about now rather than a widget
-        // silently ignoring.
+        auto is_callback_key = [](const std::string& k) {
+            return k == "on_open" || k == "on_close";
+        };
+        // Anything else that is not a string is a mistake Lua should hear about
+        // now rather than a widget silently ignoring.
         std::string bad_value_key;
         lua_pushnil(L);
         while (lua_next(L, 2) != 0) {
-            if (lua_type(L, -2) == LUA_TSTRING && std::string(lua_tostring(L, -2)) != "on_close") {
+            if (lua_type(L, -2) == LUA_TSTRING && !is_callback_key(lua_tostring(L, -2))) {
                 if (lua_type(L, -1) != LUA_TSTRING)
                     bad_value_key = lua_tostring(L, -2);
                 else
@@ -344,53 +379,82 @@ int ui_overlay(lua_State* L) {
             lua_pop(L, 1);
         }
         if (!bad_value_key.empty())
-            return luaL_error(L, "helix.ui.overlay: attribute '%s' must be a string",
-                              bad_value_key.c_str());
+            return luaL_error(L, "%s: attribute '%s' must be a string", fn, bad_value_key.c_str());
         for (const auto& [name, value] : attrs) {
             if (auto why = check_plugin_attr(rt.plugin_id(), name, value))
-                return luaL_error(L, "helix.ui.overlay: attribute '%s': %s", name.c_str(),
-                                  why->c_str());
+                return luaL_error(L, "%s: attribute '%s': %s", fn, name.c_str(), why->c_str());
         }
-        // The ref is taken only once every error path is past: luaL_error unwinds
-        // without running anything that could release it.
+        for (const char* key : {"on_open", "on_close"}) {
+            lua_getfield(L, 2, key);
+            const bool bad = !lua_isnil(L, -1) && !lua_isfunction(L, -1);
+            lua_pop(L, 1);
+            if (bad)
+                return luaL_error(L, "%s: %s must be a function", fn, key);
+        }
+        // Refs are taken only once every error path is past: luaL_error unwinds
+        // without running anything that could release them.
+        lua_getfield(L, 2, "on_open");
+        if (lua_isfunction(L, -1))
+            on_open_ref = rt.ref_value(L, -1);
+        lua_pop(L, 1);
         lua_getfield(L, 2, "on_close");
-        if (!lua_isnil(L, -1)) {
-            if (!lua_isfunction(L, -1)) {
-                lua_pop(L, 1);
-                return luaL_error(L, "helix.ui.overlay: on_close must be a function");
-            }
+        if (lua_isfunction(L, -1))
             on_close_ref = rt.ref_value(L, -1);
-        }
         lua_pop(L, 1);
     }
 
     LuaRuntime* rtp = &rt;
-    auto& ui = *context(L).ui;
-    size_t opens_before = ui.open_count ? ui.open_count(rt.plugin_id()) : 0;
-    int handle = ui.open(
-        component,
-        [rtp, on_close_ref, token = rt.token()] {
-            if (on_close_ref != LUA_NOREF && !token.expired()) {
-                rtp->invoke(on_close_ref);
-                rtp->unref(on_close_ref);
-            }
-        },
-        attrs);
-    // A failed or no-op open (the component is already showing) never runs this
-    // call's on_close, so its ref is released here; the showing overlay keeps
-    // the callback it was opened with.
-    if (on_close_ref != LUA_NOREF &&
-        (handle == 0 || (ui.open_count && ui.open_count(rt.plugin_id()) == opens_before)))
-        rt.unref(on_close_ref);
-    if (handle == 0) {
-        return luaL_error(L, "helix.ui.overlay: cannot open '%s'", component.c_str());
+    auto token = rt.token();
+    PluginUi::Callbacks cb;
+    cb.on_open = [rtp, on_open_ref, token] {
+        if (on_open_ref != LUA_NOREF && !token.expired())
+            rtp->invoke(on_open_ref);
+    };
+    cb.on_close = [rtp, on_open_ref, on_close_ref, token](CloseHow how) {
+        if (token.expired())
+            return;
+        if (on_close_ref != LUA_NOREF) {
+            rtp->invoke(on_close_ref, [how](lua_State* co) {
+                lua_pushstring(co, close_how_name(how));
+                return 1;
+            });
+            rtp->unref(on_close_ref);
+        }
+        if (on_open_ref != LUA_NOREF)
+            rtp->unref(on_open_ref);
+    };
+    const size_t before =
+        which == SurfaceArg::Overlay && ui->open_count ? ui->open_count(rt.plugin_id()) : 0;
+    const int handle = (*open)(component, std::move(cb), attrs);
+    // A failed or no-op open (the component is already requested) never runs
+    // these callbacks, so their refs are released here.
+    const bool adopted = handle != 0 && (which == SurfaceArg::Dialog || !ui->open_count ||
+                                         ui->open_count(rt.plugin_id()) != before);
+    if (!adopted) {
+        if (on_open_ref != LUA_NOREF)
+            rt.unref(on_open_ref);
+        if (on_close_ref != LUA_NOREF)
+            rt.unref(on_close_ref);
     }
+    if (handle == 0)
+        return luaL_error(L, "%s: cannot open '%s'", fn, component.c_str());
 
     lua_newtable(L);
     lua_pushinteger(L, handle);
-    lua_pushcclosure(L, &overlay_handle_close, 1);
+    lua_pushcclosure(L, &surface_handle_close, 1);
     lua_setfield(L, -2, "close");
+    lua_pushinteger(L, handle);
+    lua_pushcclosure(L, &surface_handle_is_open, 1);
+    lua_setfield(L, -2, "is_open");
     return 1;
+}
+
+int ui_overlay(lua_State* L) {
+    return open_surface(L, SurfaceArg::Overlay);
+}
+
+int ui_dialog(lua_State* L) {
+    return open_surface(L, SurfaceArg::Dialog);
 }
 
 } // namespace
@@ -490,9 +554,10 @@ void install_ui_bindings(PluginContext& ctx) {
         {"int", [](lua_State* L) { return make_subject(L, false); }},
         {"string", [](lua_State* L) { return make_subject(L, true); }},
         {nullptr, nullptr}};
-    static const luaL_Reg ui_fns[] = {
-        {"on", &ui_on},           {"toast", &ui_toast},           {"confirm", &ui_confirm},
-        {"overlay", &ui_overlay}, {"text_width", &ui_text_width}, {nullptr, nullptr}};
+    static const luaL_Reg ui_fns[] = {{"on", &ui_on},           {"toast", &ui_toast},
+                                      {"confirm", &ui_confirm}, {"overlay", &ui_overlay},
+                                      {"dialog", &ui_dialog},   {"text_width", &ui_text_width},
+                                      {nullptr, nullptr}};
     lua_getglobal(L, "helix");
     lua_newtable(L);
     luaL_setfuncs(L, subject_fns, 0);

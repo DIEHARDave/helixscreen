@@ -881,7 +881,15 @@ its siblings. HelixScreen closes that gap in one place:
   font or padding change (`helix::ui::label_hold_one_line`, `include/ui_text.h`).
 - **An explicit height opts out.** A px or % `height`, or `style_max_height`,
   leaves the label alone, which is how a deliberately multi-line dotted label is
-  written (`option_tile.xml`: `style_max_height="100%"` inside a fixed tile).
+  written (`panel_widget_tips.xml`: `style_max_height="100%"` inside a fixed cell).
+- **`max_lines="N"` wraps first, then dots.** On a `text_*` widget with
+  `long_mode="dots"`, the label wraps to at most N lines of its own font and
+  ellipsizes the last one; shorter text keeps its own height. The cap follows
+  font and padding changes like the one-line hold, a value below 1 counts as 1,
+  and an explicit `height` or `style_max_height` opts out the same way
+  (`helix::ui::label_hold_lines`; `printer_manager_overlay.xml`'s printer name).
+  `text_button` honours it too, but only when given: without it a dotted
+  `text_button` keeps its own sizing.
 - **The label still needs a width bound.** `width="100%"`, or `flex_grow="1"`
   (with `width="1"`/`width="0"`) in a row. With no width, or `width="content"`
   and no `style_max_width`, the text never wraps, so there is nothing to
@@ -1044,6 +1052,11 @@ An inline `style_text_font` attribute still outranks both.
 3. Add to `scripts/regen_mdi_fonts.sh`
 4. Run `make regen-fonts`
 
+A mark MDI does not have (a brand logo such as Spoolman's) is drawn as a single-path
+24x24 SVG in `assets/fonts/custom_icons/`, compiled into `assets/fonts/helix-custom-icons.ttf`
+by `scripts/build_custom_icon_font.py`, and listed in `CUSTOM_ICONS` instead of `MDI_ICONS`.
+It then lands in the same faces and is used like any other `<icon src="...">`.
+
 ### Semantic Typography
 
 **ALWAYS use semantic text components instead of `<lv_label>` with hardcoded fonts.**
@@ -1124,6 +1137,8 @@ Semantic button with variant-based styling and auto-contrast text.
 
 **Built-in defaults:** Responsive `button_height` (48/52/72px), `border_radius`, auto-contrast text color
 
+**XML children:** A `ui_button` with no `icon`, no `text` and no layout of its own takes its children from XML and centres them on every axis, so a `flex_flow` row of icon plus caption lines up with a text button beside it. `style_flex_*` attributes on the button override the centring.
+
 **Reactive text with subject binding:**
 
 `ui_button` supports two ways to bind text to a subject:
@@ -1164,6 +1179,7 @@ button outgrows a small panel. Both need the button to carry an icon and a label
 | `stacked_subject="S"` + `stacked_if_eq="N"` | Stacks the button as above while int subject `S` equals `N`, and returns it to the row layout otherwise, following `S` live. The subject spelling of `stacked_if_bp_lte`, for a condition the breakpoint alone does not express: point it at a `<subject_expr>`. An empty `S` installs no binding. From ui_xml/components/ams_sidebar.xml, whose `ams_actions_stacked` stacks the action buttons in landscape and in narrow portrait cells and lays them icon-beside-label in a portrait 2x2 cell. |
 | `label_hidden_if_bp_eq="N"` | Hides the button's label while `ui_breakpoint == N`, collapsing it to icon-only; every other rung shows the label. The `ui_breakpoint` spelling of the pair below. |
 | `label_hidden_subject="S"` + `label_hidden_if_eq="N"` | Hides the label while int subject `S` equals `N`. An empty `S` installs no binding. From ui_xml/components/panel_widget_control_buttons.xml, where the widget folds the breakpoint rule into its own measured subject. |
+| `label_hidden_cond="EXPR"` | Hides the label while the expression is nonzero, e.g. `ui_is_portrait eq 1 and ui_breakpoint lt 4`. Names resolve in the button's own scope, so globals like `ui_breakpoint` work from inside a nested component. The header bar's secondary button forwards it as `action_button_2_label_hidden_cond`. Use one label-hiding form per button: each binding writes the same label flag, so with two the most recent change wins. |
 
 Give each label one writer: a widget that measures whether its label fits should fold the breakpoint rule into its own subject rather than set both attributes. The same holds for stacking: set `stacked_if_bp_lte` or `stacked_subject`, never both, or the two observers fight over the layout.
 
@@ -1282,7 +1298,7 @@ The widget is registered via `ui_markdown_init()` in `xml_registration.cpp`. Thi
 
 #### home_action_tile
 
-One centred icon over one label, filling its cell (`ui_xml/components/home_action_tile.xml`). The home action tiles and every cell of the Controls panel's Calibration & Tools card, plus Motors Off on its Position card, are built from it, so a row of them aligns by construction. Extend its props rather than hand-building a look-alike cell.
+One centred icon over one label, filling its cell (`ui_xml/components/home_action_tile.xml`). The home action tiles and every cell of the Controls panel's Calibration & Tools card (through `calib_tile.xml`, which sizes the cell), plus Motors Off on its Position card, are built from it, so a row of them aligns by construction. Extend its props rather than hand-building a look-alike cell.
 
 | Prop | Default | Purpose |
 |------|---------|---------|
@@ -1298,7 +1314,7 @@ One centred icon over one label, filling its cell (`ui_xml/components/home_actio
 
 #### option_tile
 
-One pre-print option as a checkable tile: an icon and a two-line label in an outline, with a corner check tab that appears only while checked (`ui_xml/components/option_tile.xml`). The whole tile is the tap target. Its view sets `state_trickle`, so the tile's checked state reaches the children and each child styles itself with a `-checked` state style (the border turns `#primary`, the icon tints, the tab's `style_opa` goes 255). You do not instantiate it from XML: `PrePrintOptionsRenderer` creates one tile per option and binds the option's subject to the tile's checked state (`src/ui/ui_pre_print_options_renderer.cpp`). The tile height and the tab's negative lift come from the `option_tile_height_*` / `option_tile_tab_lift_*` token ladders in `ui_xml/globals.xml`.
+One pre-print option as a toggle pill: an icon and a label of up to two lines (`max_lines="2"`, word-wrapped, then ellipsized), with no check box (`ui_xml/components/option_tile.xml`). The whole pill is the tap target. Off, it wears `styles.chip_idle` (an outline, label muted); on, `styles.chip_active` (the primary-tinted fill and outline the LED chips use), and a check replaces the icon in the same slot so the label never moves. Its view sets `state_trickle`, so the pill's checked state reaches the children and each child styles itself with a `-checked` state style. You do not instantiate it from XML: `PrePrintOptionsRenderer` creates one pill per option and binds the option's subject to the pill's checked state (`src/ui/ui_pre_print_options_renderer.cpp`). The pill height comes from the `option_tile_height_*` token ladder in `ui_xml/globals.xml`.
 
 | Prop | Default | Purpose |
 |------|---------|---------|

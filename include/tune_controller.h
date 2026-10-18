@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include <optional>
 #include <string>
 
 namespace helix {
@@ -27,6 +28,27 @@ void set_speed_percent(IMoonrakerAPI* api, int pct);
 
 /// Clamp and send M221. No-op when `api` is null. Errors surface via NOTIFY_ERROR.
 void set_flow_percent(IMoonrakerAPI* api, int pct);
+
+/// Pressure advance control is a beta feature. Every pressure-advance send that
+/// is not the tuner's own run (the Tune row, spool activation, Save to Spool)
+/// checks this, not only the widgets that would show it.
+bool pressure_advance_enabled();
+
+/// The Tune overlay's pressure-advance step: one tap is 0.001 of K, two
+/// buttons give 0.005.
+inline constexpr float kPaTuneStep = 0.001f;
+
+/// Clamp and send SET_PRESSURE_ADVANCE for `extruder`. No-op when `api` is
+/// null. The printer's reported pressure_advance is the readback: callers
+/// display that, not the value they asked for. Errors surface via NOTIFY_ERROR.
+void set_pressure_advance(IMoonrakerAPI* api, const std::string& extruder, float k);
+
+/// K from the active-extruder pressure-advance subject (K x 10000), nullopt
+/// while the extruder has not reported one.
+std::optional<float> pressure_advance_from_subject(int value);
+
+/// The readout for that subject: four decimals, or a dash before any report.
+std::string pressure_advance_text(int subject_value);
 
 /// Volumetric flow for a live extruder velocity given in centi-mm/s, the unit
 /// PrinterState publishes it in, through filament of the given diameter.

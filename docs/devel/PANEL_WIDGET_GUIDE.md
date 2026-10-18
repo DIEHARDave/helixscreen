@@ -25,12 +25,20 @@ printer image's live callouts are a third instance
 
 | Piece | Where | Notes |
 |-------|-------|-------|
-| Registry def | `src/ui/panel_widget_registry.cpp` | id, display name, icon, category, default/enabled, colspan/rowspan and their min/max, whether it may span half cells |
+| Registry def | `src/ui/panel_widget_registry.cpp` | id, display name, icon, category, default/enabled, colspan/rowspan and their min/max, whether it may span half cells, `scope` |
 | Widget class | `src/ui/panel_widgets/<name>_widget.{h,cpp}` | extends `PanelWidget`; implements `attach()` / `detach()` / `on_size_changed()` |
 | XML component | `ui_xml/components/panel_widget_<name>.xml` | the entire appearance |
 | Row/child components | `ui_xml/components/<name>_*.xml` | repeated fragments the widget creates per item |
 | Registration | `register_<name>_widget()` | factory + `register_widget_subjects()` (see below) |
 | Placement | `assets/config/panel_widgets/<preset>/home.json` | per-printer-preset seeds; users rearrange at runtime |
+
+Choose `scope` (`include/panel_widget_registry.h#WidgetScope`) for every new def. The default,
+`Printer`, is right for anything that describes the printer or its host: temperatures, fans,
+macros, LEDs, cameras, Moonraker perf data. Use `Screen` only when the tile describes the
+device it is drawn on (its own network link, clock, lock, tips, notifications, host power).
+A screen-scoped widget is left out of the home layout the printer's own screen shares, and
+the receiving screen keeps its own default for it (see "Layouts shared by the printer's own
+screen" in `LAYOUT_SYSTEM.md`).
 
 Not every definition is compiled in. A Lua plugin registers its widgets at load
 time as runtime definitions (`register_runtime_widget_def`,
@@ -121,7 +129,17 @@ and the state is part of what `needs` was measured for.
 **`src/ui/panel_widgets/content_chrome.h`** measures the box the content really draws in.
 `helix::measure_content_chrome(root, reserve_px)` walks the single-child chain from the
 widget's root down to the first container that holds more than one child and sums the
-padding of every container on the way, plus the flex gap of that branching container. The
+padding of every container on the way, plus the flex gap of that branching container as its
+`BranchGap` says. `Visible` (the default) charges the gap when more than one child is
+visible: flex leaves hidden children out, so a part that is hidden is not charged the gap
+beside it. Visibility is the last verdict's, though, so a ladder whose parts change by rung
+decides on padding alone (`content_padding_or_estimate()`, `BranchGap::None`) and counts
+each rung's gaps in its needs, or charges the gap whatever is visible (`BranchGap::Always`,
+speed/flow); otherwise a box near a boundary decides one rung from below and the other from
+above. TileSizing takes `None`: `decide_tile_layout()` prices the gap before every part a
+candidate draws, and a part outside the glyph/value/label stack (bypass's spool row) is
+counted as `TileSizing::Content::detail_font` while it is drawn. `PanelWidgetHarnessBase::unsettled_boxes()` finds those
+boxes in a test. The
 widget subtracts the result from the span's pixel size and decides on what is left, so a
 theme or breakpoint that changes the tile's padding moves the boundaries with it. The
 tree does not exist yet when the load path asks `fits_at()`, so each widget's `decide()`
@@ -151,6 +169,7 @@ it with `bind_style_if_eq` to whatever that widget draws.
 | `status::override_status(pct)` | a speed or flow override | Warn whenever it is off 100% |
 | `status::z_offset_status(save_available)` | whether an unsaved offset exists | Warn while there is one to save |
 | `status::mesh_flatness_status(range_mm)` | a bed mesh's Z range | Normal below 0.15 mm, Warn below 0.30, Danger above |
+| `status::maintenance_status(used_fraction)` | a maintenance meter's used share of its interval | Normal below 0.75, Warn from there, Danger once due |
 | `status::host_health_status(HostHealthInput)` | host CPU, CPU temperature, Pi throttle bits, busiest MCU load, MCU retransmits, gcodes disk free | the worst status, with the `HealthCause` that set it |
 
 A metric the printer does not report stays at its `-1` default in `HostHealthInput` and is
@@ -195,8 +214,11 @@ is pure and has a boundary test; the widget measures, decides and publishes.
 | `toolhead` | `toolhead_layout.h`, `toolhead_plate.h` | - | homed letters (Z height while printing) at Glance and Strip; axis rows at Column and Cell; a top-down plate with crosshair and Z bar from Wide; Home All at Full while idle with an axis unhomed |
 | `bed_mesh_tile` | `bed_mesh_tile_layout.h` | `printer_has_bed_mesh` | a grid glyph and Z range at Glance; the heatmap from Strip; profile details at Wide; colour scale, footer, Calibrate and Load profile from Full; a static 3D render at Large on a full-tier board |
 | `exclude_map` | `exclude_map_layout.h` | `printer_has_exclude_object` | counts of skipped and remaining objects; the mini exclude-object map from Column up; the object printing now at Wide and above; a "Skip objects..." button at Full |
+| `job_queue` | `job_queue_tile_layout.h`, `include/job_queue_tile_state.h` | `printer_has_job_queue` | the next job and the queued count; Start next from Strip (icon only at Strip), with the thumbnail and estimate from Wide, and up to three following jobs at Full; "Starts automatically" only while a print runs under `automatic_transition` |
+| `print_stats` | `print_stats_tile_layout.h`, `include/print_activity.h` | - | this week's hours on one line at Strip; hours stacked over "this week" at Cell; seven day bars beside the hours at Wide; bars with weekday initials under them at Full; a lifetime line (prints, hours, filament in meters) where it fits whole |
+| `maintenance` | `maintenance_tile_layout.h`, `maintenance_model.h`, `include/maintenance_meters.h` | - | the ring of the meter closest to due with its hours left at Glance; its name and hours on one line at Strip; the ring over the name at Column and Cell; the ring beside a row per meter at Wide; a title, a row and a bar per meter and the total print time at Full. The ring is a square whose side the widget publishes (`maintenance_ring_d`), because an arc draws its circle from its top-left corner |
 
-All seven offer half-cell spans: their registry rows in `src/ui/panel_widget_registry.cpp`
+All ten offer half-cell spans: their registry rows in `src/ui/panel_widget_registry.cpp`
 set `supports_half_col` and `supports_half_row` and a one-track minimum, which is the
 combination `PanelWidgetDef` requires for a minimum below a whole cell (the flag on that
 axis AND a `fits_at()` that can refuse). A Glance tile is therefore a legal 0.5x0.5
@@ -222,6 +244,13 @@ The shared decisions around them:
   (`src/ui/panel_widgets/dryer_model.h`), and `summarize_dryers()` in
   `include/dryer_summary.h` is the only place box, chamber and bed drying are folded
   together. See [FILAMENT_ENVIRONMENT_ZONES.md](FILAMENT_ENVIRONMENT_ZONES.md#the-dryer-summary).
+- **State that outlives the tile lives in a model.** The maintenance meters accrue print
+  time whether or not their tile is on a page, so `helix::maintenance_model`
+  (`src/ui/panel_widgets/maintenance_model.h`) owns the state, its subjects and its
+  persistence, and is brought up from the widget's `register_widget_subjects()` hook once
+  per session. The rules (accrual, the due latch, intervals, the persisted form, the
+  plugin-store migration) are pure, in `include/maintenance_meters.h`; the tile only
+  measures and publishes its rung.
 
 ### Rules every sized widget follows
 
@@ -478,9 +507,9 @@ pattern with touch size as the constraint instead of text width
 (prestonbrown/helixscreen#1784). The pure decision is `helix::decide_tool_switcher_layout()`
 (`src/ui/panel_widgets/tool_switcher_layout.h`): from the content box (the tile less
 `#space_md` each side), the head count, the `#touch_target_min` floor (48 px), the 2 px
-cell gap, the body and small line heights and whether the backend can park, it returns a
-`ToolSwitcherLayout` whose mode is the first that fits: a segment per head plus Park
-(`RailWithPark`), a segment per head (`Rail`), the mounted head's face beside Park
+cell gap, the body and small line heights and the action cells the backend offers
+(`ToolSwitcherActions`: Park, the feeder), it returns a `ToolSwitcherLayout` whose mode is
+the first that fits: a segment per head plus every action cell (`RailWithActions`), a segment per head (`Rail`), the mounted head's face beside Park
 (`Pair`), or the face alone (`Single`). Every cell it hands back clears the floor on both
 axes, and `fits_at()` refuses a tile whose content box cannot hold one face, so no size
 draws a target a finger cannot hit. The widget publishes the verdict as
@@ -490,14 +519,17 @@ and the face's text (`tool_switcher_face_label`, `_sub`, `_color`, `_has_color`)
 XML (`ui_xml/components/panel_widget_tool_switcher.xml`) sizes segments with
 `bind_style_prop` off `_cell_w`/`_cell_h`. The face sizes itself off `tool_switcher_face_w`
 and `tool_switcher_face_h`: its cell along a `Pair`'s long axis, the whole view across it.
-Colour strips are `tool_switcher_strip_h` on a segment or the face, from the cell height,
-and `tool_switcher_row_strip_h` on a sheet row, from the 48 px `#touch_target_min` floor
-every row clears. The sheet (`ToolSwitcherWidget::ToolPicker`,
-`ui_xml/tool_switcher_picker.xml`) is the fallback for whatever the tile does not show:
-it lists every head and Park in rows at least `#touch_target_min` tall, opens from the face or from
-the mounted segment, and is the only way to Park in `Rail` or `Single`. A printer with
-more heads than the segment pools hold (`ToolSwitcherWidget::kPoolSize`) is decided as
-unrailable and gets the face and the sheet.
+Every cell carries its filament colour as one band (`ui_xml/components/tool_switcher_band.xml`),
+sized per surface by the pure `tool_switcher_band()`: the lower part of the cell with the
+material name on it where one small line fits, else a plain bar. Each head's look follows
+`tool_switcher_seg_<i>_state` (`tool_switcher_cell_state()`): idle, mounted, or faulted while
+the changer reports an error. The picker (`ToolSwitcherWidget::ToolPicker`,
+`ui_xml/tool_switcher_picker.xml`) is the fallback for whatever the tile does not show: a grid
+of the rail's own segments sized by `fit_tool_picker_grid()` (three columns up to six heads,
+four beyond, never scrolling up to eight), with Park and the feeder in a footer under it. It
+opens from the face or from the mounted segment. A printer with more heads than the segment
+pools hold (`ToolSwitcherWidget::kPoolSize`) is decided as unrailable and gets the face and
+the picker.
 
 ### Engine contracts this pattern relies on
 

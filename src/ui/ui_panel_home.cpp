@@ -147,9 +147,14 @@ void HomePanel::init_subjects() {
 
     subjects_initialized_ = true;
 
-    // Self-register cleanup — ensures deinit runs before lv_deinit()
-    StaticPanelRegistry::instance().register_destroy(
-        "HomePanelSubjects", []() { get_global_home_panel().deinit_subjects(); });
+    // Self-register cleanup — ensures deinit runs before lv_deinit(). The hook
+    // peeks: an absent panel has no subjects to deinit, and building one here
+    // would construct a panel against a PrinterState and LVGL mid-teardown.
+    StaticPanelRegistry::instance().register_destroy("HomePanelSubjects", []() {
+        if (auto* panel = helix::lazy_global_if_exists<HomePanel>()) {
+            panel->deinit_subjects();
+        }
+    });
 
     spdlog::debug("[{}] Registered subjects and event callbacks", get_name());
 }
@@ -866,7 +871,10 @@ void HomePanel::setup_widget_gate_observers() {
                 }
             }
         }
-        populate_widgets(/*force=*/false);
+        // A live default rearranged by this change can keep the same widget
+        // list, which the unforced path would read as nothing to do.
+        const bool relaid = helix::PanelWidgetManager::instance().refresh_live_default("home");
+        populate_widgets(/*force=*/relaid);
     });
 }
 

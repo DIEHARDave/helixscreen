@@ -120,13 +120,14 @@ The built-in catalog (gate subjects from the def table; "-" means always availab
 | `clog_detection` | `ClogDetectionWidget` (the FlowGuard bar) | `clog_meter_mode` |
 | `filament_buffer` | `FilamentBufferWidget` | `buffer_present` |
 | `print_stats` | `PrintStatsWidget` | - |
+| `display_message` | `DisplayMessageWidget` | - |
 | `gcode_console` | `GCodeConsoleWidget` | - |
 | `camera` | `CameraWidget`, `HELIX_HAS_CAMERA` builds only | - |
 | `notifications` | `TileWidget` (sizing only) | - |
 
-That catalog, rendered: the stock grid a fresh mock instance builds from the [`assets/config/default_layout.json`](../../../assets/config/default_layout.json) anchors, with the print-library and status tiles at the top and everything else auto-placed below:
+That catalog, rendered: the stock grid a fresh mock instance resolves from the [`assets/config/default_layout.json`](../../../assets/config/default_layout.json) table at 800x480 (see [LAYOUT_SYSTEM.md](../LAYOUT_SYSTEM.md)):
 
-<img src="../../images/screenshot-home-panel.png" alt="Home panel grid: print library card and status card (nozzle temp, fan rows, LED strip, notifications) on a dark theme with a left nav bar" width="800"/>
+<img src="../../images/screenshot-home-panel.png" alt="Home panel grid: printer image with light bulb chip, nozzle and bed temperatures, fans, notifications corner, AMS spools, temperature graph and print status card on a dark theme with a left nav bar" width="800"/>
 
 ### populate_widgets(): from saved layout to attached grid
 
@@ -195,7 +196,7 @@ Two subtleties both families hit. First, `observe<int>` defers its initial fire 
 ## Going deeper
 
 - [`../PANEL_WIDGET_GUIDE.md`](../PANEL_WIDGET_GUIDE.md) - authoring a widget: registry def, class, XML, the measured-layout pattern, the shared size ladder and the checklist the sized widgets follow.
-- [`../LAYOUT_SYSTEM.md`](../LAYOUT_SYSTEM.md) - the grid itself: `GridLayout` track math, half-cell tracks, breakpoint column counts, preset seed layouts, span authoring.
+- [`../LAYOUT_SYSTEM.md`](../LAYOUT_SYSTEM.md) - the grid itself: `GridLayout` track math, half-cell tracks, breakpoint column counts, the capability-resolved default layout and its slots, preset overlays, span authoring.
 - [`../HOME_EDIT_MODE.md`](../HOME_EDIT_MODE.md) - edit mode: the session over a page, grab and click rules, the events that end a gesture, cross-page drag and the page lifecycle.
 - [`../PAGE_SCROLL_BUTTONS.md`](../PAGE_SCROLL_BUTTONS.md) - the `PANEL_WIDGET_TILE_FLAG` consumer: why the chevron gutter must not descend into a tile.
 - [`../PLUGIN_DEVELOPMENT.md`](../PLUGIN_DEVELOPMENT.md) - plugin-declared widgets and their Lua hooks.
@@ -218,7 +219,7 @@ Read in this order; about 30 minutes total.
 5. `src/ui/panel_widget_manager.cpp#populate_widgets`: once top to bottom; `resolve_slot`, the `~gated` short-circuit key, the `fits_at` grow on anchors, the two auto-place policies, the write-back rules, the create/attach loop, grid-last activation.
 6. `src/ui/panel_widget_manager.cpp#setup_gate_observers`: the registry walk, the `GateRebuildSlot` coalescing, and `clear_gate_observers()` canceling in-flight rebuilds.
 7. `src/ui/ui_panel_home.cpp#populate_page`: the ID snapshot, the gate-flip swap, reuse-map extraction, freeze+drain+`safe_clean_children`; then `reseat_widgets()` and `relayout_edit_page()` beside it.
-8. `include/panel_widget_config.h#PanelWidgetEntry` and the `PanelWidgetConfig` API around it: pages, `set_widget_config`, the preset-seed loader (`include/panel_widget_config.h#try_populate_from_preset_seed`).
+8. `include/panel_widget_config.h#PanelWidgetEntry` and the `PanelWidgetConfig` API around it: pages, `set_widget_config`, the preset-overlay loader (`include/panel_widget_config.h#load_preset_overlay`).
 9. `src/ui/panel_widgets/motion_widget.cpp#register_motion_widget`: the whole 59-line widget, the minimum viable `PanelWidget`.
 10. `src/ui/panel_widgets/fan_stack_widget.cpp#register_fan_stack_widget`: then `attach_stack`, `bind_fans`, `bind_fan_observer` (note the manual initial-value read), and the version observer in `setup_common_observers`.
 11. `src/ui/panel_widgets/led_widget.cpp#attach` through `bind_led()`: the second instance of the version-observer pattern.

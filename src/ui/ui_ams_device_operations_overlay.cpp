@@ -84,7 +84,8 @@ void AmsDeviceOperationsOverlay::init_subjects() {
                                "ams_device_ops_printer_retains_spool_info", subjects_);
 
         // QIDI Box gating + eject distance/velocity value displays
-        UI_MANAGED_SUBJECT_INT(is_qidi_subject_, 0, "ams_device_ops_is_qidi", subjects_);
+        UI_MANAGED_SUBJECT_INT(has_eject_params_subject_, 0, "ams_device_ops_has_eject_params",
+                               subjects_);
         UI_MANAGED_SUBJECT_STRING(qidi_eject_distance_display_subject_, qidi_eject_distance_buf_,
                                   "", "ams_device_ops_qidi_eject_distance_display", subjects_);
         UI_MANAGED_SUBJECT_STRING(qidi_eject_velocity_display_subject_, qidi_eject_velocity_buf_,
@@ -222,11 +223,11 @@ void AmsDeviceOperationsOverlay::register_callbacks() {
              // can_reset_endless_spool_subject_ from editable(), which a reset does not
              // change, and this overlay renders no endless-spool assignments at all (the
              // backup arrows live on AmsPanel and are not refreshed from here) - so
-             // without a toast, wiping every spool's failover looks exactly like a no-op.
+             // without a toast, wiping every backup looks exactly like a no-op.
              helix::ui::modal_confirm(
                  lv_tr("Reset Endless Spool?"),
-                 lv_tr("This clears every spool's failover assignment. The print will stop on "
-                       "runout until you set up failover again."),
+                 lv_tr("This clears every Endless Spool backup. The print will stop on runout "
+                       "until you set up Endless Spool again."),
                  ModalSeverity::Warning, lv_tr("Reset"), [] {
                      AmsBackend* b = AmsState::instance().get_backend();
                      if (!b) {
@@ -234,9 +235,9 @@ void AmsDeviceOperationsOverlay::register_callbacks() {
                      }
                      AmsError result = b->reset_endless_spool();
                      if (!result.success()) {
-                         helix::ui::notify_ams_error(result, lv_tr("Reset endless spool failed"));
+                         helix::ui::notify_ams_error(result, lv_tr("Reset Endless Spool failed"));
                      } else {
-                         NOTIFY_INFO("{}", lv_tr("Endless spool failover cleared for every slot"));
+                         NOTIFY_INFO("{}", lv_tr("Endless Spool backups cleared"));
                      }
                      get_ams_device_operations_overlay().refresh();
                  });
@@ -347,7 +348,7 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
         lv_subject_set_int(&bypass_is_virtual_subject_, 0);
         lv_subject_set_int(&reports_spool_ids_subject_, 0);
         lv_subject_set_int(&printer_retains_spool_info_subject_, 0);
-        lv_subject_set_int(&is_qidi_subject_, 0);
+        lv_subject_set_int(&has_eject_params_subject_, 0);
         lv_subject_set_int(&can_reset_endless_spool_subject_, 0);
         lv_subject_set_int(&can_abort_subject_, 0);
         details_buf_[0] = '\0';
@@ -434,7 +435,7 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
     // The eject distance/velocity rows apply only to backends with configurable
     // eject params (QIDI Box). Sync the sliders + value displays from settings.
     bool show_eject_params = backend->supports_configurable_eject_params();
-    lv_subject_set_int(&is_qidi_subject_, show_eject_params ? 1 : 0);
+    lv_subject_set_int(&has_eject_params_subject_, show_eject_params ? 1 : 0);
     if (show_eject_params && overlay_) {
         int eject_distance = SettingsManager::instance().get_qidi_eject_distance();
         int eject_velocity = SettingsManager::instance().get_qidi_eject_velocity();

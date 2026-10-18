@@ -4,8 +4,11 @@
 #include "snapmaker_status_parse.h"
 
 #include "ams_status_json.h"
+#include "json_utils.h"
 #include "lane_translation.h"
 #include "text_io.h"
+
+#include <spdlog/fmt/fmt.h>
 
 #include <algorithm>
 #include <cctype>
@@ -111,26 +114,56 @@ SnapmakerRfidInfo parse_rfid_info(const nlohmann::json& json) {
     if (json.contains("WEIGHT") && json["WEIGHT"].is_number()) {
         info.weight_g = json["WEIGHT"].get<int>();
     }
+    // COLOR_NUMS counts the RGB_n fields the tag carries; one is the plain
+    // colour ARGB_COLOR already states.
+    const int color_nums = json_util::safe_int(json, "COLOR_NUMS", 1);
+    if (color_nums >= 2) {
+        std::string joined;
+        for (int n = 1; n <= std::min(color_nums, 5); ++n) {
+            const std::string key = "RGB_" + std::to_string(n);
+            const nlohmann::json* rgb = json_util::find_member(json, key.c_str());
+            if (!rgb || !rgb->is_number()) {
+                joined.clear();
+                break;
+            }
+            if (!joined.empty()) {
+                joined += ',';
+            }
+            joined += fmt::format("#{:06X}",
+                                  static_cast<uint32_t>(json_util::as_int64(*rgb)) & 0xFFFFFFu);
+        }
+        info.multi_color_hexes = std::move(joined);
+    }
     // CARD_UID is a 4-byte array like [144, 32, 196, 2]. Canonicalize to a
     // comma-joined string so the override system's baseline comparison is a
     // simple string == string check. Empty / missing array stays as empty
     // string (treated as "no tag / unread" by check_hardware_event_clear).
-    if (json.contains("CARD_UID") && json["CARD_UID"].is_array()) {
-        const auto& arr = json["CARD_UID"];
+    const nlohmann::json* card_uid = json_util::find_member(json, "CARD_UID");
+    if (card_uid && card_uid->is_array()) {
         std::string uid;
-        for (size_t i = 0; i < arr.size(); ++i) {
-            if (!arr[i].is_number()) {
+        bool has_card = false;
+        bool readable = true;
+        for (const auto& byte : *card_uid) {
+            if (!byte.is_number()) {
+                readable = false;
                 // If any byte isn't a number, bail out — partial UIDs aren't
                 // safe to compare. Leave info.uid empty so the check is a
                 // no-op for this parse.
                 uid.clear();
                 break;
             }
+            const std::int64_t value = json_util::as_int64(byte);
+            has_card = has_card || value != 0;
             if (!uid.empty())
                 uid.push_back(',');
-            uid += std::to_string(arr[i].get<int>());
+            uid += std::to_string(value);
+        }
+        if (readable) {
+            info.has_card = has_card;
         }
         info.uid = std::move(uid);
+    } else if (card_uid && card_uid->is_number()) {
+        info.has_card = json_util::as_double(*card_uid) != 0.0;
     }
 
     return info;
@@ -238,6 +271,8 @@ PrintTaskConfigDelta parse_print_task_config(const nlohmann::json& status) {
     d.filament_exist = ams::read_indexed<bool, kToolCount>(ptc, "filament_exist");
     d.filament_type = ams::read_indexed<std::string, kToolCount>(ptc, "filament_type");
     d.filament_vendor = ams::read_indexed<std::string, kToolCount>(ptc, "filament_vendor");
+    d.filament_sub_type = ams::read_indexed<std::string, kToolCount>(ptc, "filament_sub_type");
+    d.filament_official = ams::read_indexed<bool, kToolCount>(ptc, "filament_official");
     d.filament_color_rgba = ams::read_indexed<std::string, kToolCount>(ptc, "filament_color_rgba");
     return d;
 }

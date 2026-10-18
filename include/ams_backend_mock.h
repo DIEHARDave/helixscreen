@@ -220,7 +220,15 @@ class AmsBackendMock : public AmsBackend {
     // Dryer
     [[nodiscard]] DryerInfo get_dryer_info(int unit = 0) const override;
     AmsError start_drying(float temp_c, int duration_min, int fan_pct = -1, int unit = 0) override;
+    /// Runs the same simulated cycle as start_drying(); the target is logged, not simulated.
+    AmsError start_drying_to_humidity(float temp_c, int duration_min, float humidity_pct,
+                                      int fan_pct = -1, int unit = 0) override;
     AmsError stop_drying(int unit = 0) override;
+    /// The "emu_dryer" rig marks the started gates Active (the first) and Queued (the
+    /// rest), then runs the ordinary simulated cycle. Every other rig answers as the base.
+    AmsError start_drying_request(const DryingRequest& request) override;
+    /// The "emu_dryer" rig cancels just those gates and ends the cycle once none is left.
+    AmsError stop_drying_gates(int unit, const std::vector<int>& gates) override;
 
     /**
      * @brief Report the capped rig's non-running heated zones as Queued.
@@ -273,6 +281,18 @@ class AmsBackendMock : public AmsBackend {
     [[nodiscard]] bool remap_ready() const override;
     [[nodiscard]] bool owns_tool_mapping_table() const override;
     [[nodiscard]] bool carriage_can_be_empty() const override;
+
+    /// One head per slot where the persona's backend has one per tool (tool
+    /// changer, Snapmaker), one shared head otherwise; the Snapmaker batches
+    /// all of them, as AmsBackendSnapmaker does.
+    /// A tool-changer persona answers as AmsBackendToolChanger does with no feed.
+    [[nodiscard]] HeadFilamentOps head_filament_ops(int head) const override;
+    [[nodiscard]] int filament_head_count() const override;
+    [[nodiscard]] std::optional<int> head_for_slot(int slot) const override;
+    [[nodiscard]] std::optional<int> head_source_slot(int head,
+                                                      const AmsSystemInfo& info) const override;
+    [[nodiscard]] std::optional<bool> head_has_filament(int head) const override;
+    [[nodiscard]] int max_heads_per_filament_op() const override;
 
     /// Emulate a backend that declares a different route. The shape worth
     /// reaching for is RemapStrategy::None — ACE, or a single-extruder printer
@@ -449,6 +469,8 @@ class AmsBackendMock : public AmsBackend {
      * - "passive": Per-unit temp/humidity, no dryer capability
      * - "dryer": Per-unit temp/humidity + dryer supported (default when dryer enabled)
      * - "slot": Per-slot temp/humidity (different values per slot)
+     * - "emu_dryer": A sealed box, a sensor and a heater per lane; the dryer takes a gate
+     *   selection and rotation, and a cycle is already running on lanes 1-3
      * - "" or unset: auto-detect from dryer state (dryer enabled → "dryer", else "passive")
      *
      * Can also be set via HELIX_MOCK_AMS_ENV environment variable.
@@ -465,6 +487,22 @@ class AmsBackendMock : public AmsBackend {
      * - Support start_drying() and stop_drying() commands
      */
     void set_dryer_enabled(bool enabled);
+
+    /**
+     * @brief Whether the simulated dryers take a humidity target
+     *
+     * Off by default, the answer every dryer gives that has no humidity-terminated
+     * cycle. Can also be set via HELIX_MOCK_DRYER_HUMIDITY_TARGET=1.
+     */
+    void set_dryer_humidity_target(bool enabled);
+
+    /**
+     * @brief The target a start with none applies, reported as
+     *        DryerInfo::default_humidity_target while the dryers take a target
+     *
+     * Unset by default. Can also be set via HELIX_MOCK_DRYER_DEFAULT_HUMIDITY=<pct>.
+     */
+    void set_dryer_default_humidity(std::optional<float> pct);
 
     /**
      * @brief Set dryer simulation speed multiplier
@@ -681,6 +719,10 @@ class AmsBackendMock : public AmsBackend {
      * by HELIX_MOCK_AMS=snapmaker).
      */
     void set_snapmaker_mode(bool enabled);
+
+    /// Hold @p slot_index's filament at its feeder: its entry sensor reads it,
+    /// its toolhead has not taken it (HELIX_MOCK_AMS_STATE=feeder).
+    void set_slot_at_feeder(int slot_index);
 
     /**
      * @brief Configure (or clear) the simulated Snapmaker print task.
@@ -1029,9 +1071,11 @@ class AmsBackendMock : public AmsBackend {
     std::string environment_mode_; ///< "passive", "dryer", "slot", or "" (auto)
 
     // Dryer simulation state
-    bool dryer_enabled_ = false;        ///< Whether dryer is simulated
-    int dryer_initial_elapsed_min_ = 0; ///< One-shot head start for next start_drying()
-    DryerInfo dryer_state_;             ///< Current dryer state
+    bool dryer_enabled_ = false;                  ///< Whether dryer is simulated
+    int dryer_initial_elapsed_min_ = 0;           ///< One-shot head start for next start_drying()
+    bool dryer_humidity_target_ = false;          ///< Dryers report supports_humidity_target
+    std::optional<float> dryer_default_humidity_; ///< Reported default humidity target
+    DryerInfo dryer_state_;                       ///< Current dryer state
     /// Per-unit dryer overrides. Empty = every unit reports dryer_state_, which is the
     /// single-enclosure shape. A rig with a heated box beside a passive one fills this.
     std::vector<DryerInfo> unit_dryers_;
@@ -1048,9 +1092,15 @@ class AmsBackendMock : public AmsBackend {
     float pending_drying_temp_c_ = 0.0f;
     int pending_drying_duration_min_ = 0;
     int pending_drying_elapsed_min_ = 0;
+    /// Per-gate drying state of the "emu_dryer" rig, indexed by global gate.
+    std::vector<helix::printer::ZoneDryingState> gate_drying_;
+    /// Mark @p gates' part in a new cycle: the first Active, the rest Queued, every
+    /// other gate Idle. Caller holds mutex_.
+    void begin_gate_cycle_locked(const std::vector<int>& gates);
 
     // Tool changer mode (alternative to filament system simulation)
     bool tool_changer_mode_ = false; ///< Simulate tool changer instead of filament system
+    int slot_at_feeder_ = -1;        ///< Lane whose filament only its entry sensor sees
 
     // AFC mode (alternative to Happy Hare simulation)
     bool afc_mode_ = false;              ///< Simulate AFC Box Turtle instead of Happy Hare

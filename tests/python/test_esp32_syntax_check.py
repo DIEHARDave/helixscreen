@@ -76,3 +76,18 @@ def test_rebase_path_rewrites_the_bare_root(tmp_path):
     assert rebase("-I/cfg") == f"-I{tree}"
     assert rebase("-fmacro-prefix-map=/cfg=.") == f"-fmacro-prefix-map={tree}=."
     assert rebase("-I/cfgx/include") == "-I/cfgx/include"
+
+
+def test_one_per_header_checks_a_header_through_a_single_includer():
+    units = {"src/x.cpp": {}, "src/y.cpp": {}, "src/z.cpp": {}}
+    sources = {r: '#include "common.h"\n' for r in units}
+    assert esc.select_units(units, ["include/common.h"], sources.get,
+                            one_per_header=True) == ["src/x.cpp"]
+    assert esc.select_units(units, ["include/common.h"], sources.get) == sorted(units)
+
+
+def test_one_per_header_reuses_a_staged_includer_instead_of_adding_one():
+    units = {"src/x.cpp": {}, "src/y.cpp": {}}
+    sources = {r: '#include "common.h"\n' for r in units}
+    assert esc.select_units(units, ["include/common.h", "src/y.cpp"], sources.get,
+                            one_per_header=True) == ["src/y.cpp"]

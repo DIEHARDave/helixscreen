@@ -24,6 +24,8 @@ The `box` Klipper object is shared by several firmwares that agree on almost not
 | `Stock` | `T1`–`T4` nested units, four parallel arrays each, material **codes** | `parse_stock_box_status()` |
 | `Flat` | One `slots[]` array of self-describing objects, plain material names, `#RRGGBB` colors | `parse_flat_box_status()` |
 
+Both schemas arrive as deltas, so each parser reads a merged copy of the box rather than the frame: `stock_box_state_` merges stock frames recursively (a `T<n>` frame may carry only the unit fields that changed), and `flat_box_state_` replaces each top-level field a flat frame carries, because Klipper sends a changed field of box.py's object whole. A flat frame that edits a slot carries `slots` alone, and its `temp_c`, `humidity_pct` and `load_path` come from the merge. A frame with neither `slots` nor a `T<n>` unit is a delta of the schema the box spoke last: flat after a `slots` frame, stock after a `T<n>` frame. A `T<n>` frame after flat ones returns the schema to stock and the Fork dialect to the model's own. Presence gates (`runout`, `runout_swap_enabled`, `filament_detected`) and the per-bay RFID fingerprints still read the frame itself, since a field it omits is one it said nothing about. Both merges reset at `on_started()` and when the schema switches. A bay's swap fingerprint is `material_type|color_value` on stock (`101001|0FF5500`) and `MATERIAL|RRGGBB` on flat, so across a schema switch only the colour still compares: a baseline whose shape names the other schema, live or loaded from the record's persisted fingerprint, is a swap when its colour differs from the reading's (stock's leading `0` aside), and otherwise is dropped so the reading becomes a first observation that the record then persists (`AmsBackendCfs::fingerprint_schema`, `src/printer/ams_backend_cfs.cpp#check_hardware_event_clear`). A shape both schemas can spell (`PLA|`) is compared as usual.
+
 Both axes are decided **from the payload, never from `PrinterDetector`** — a community port reports as stock K2 Plus hardware by every model signal, so model detection cannot see the firmware swap. `Stock` is the default for anything ambiguous.
 
 The command dialect is selected by the explicit `api_version == 1` field rather than inferred from the `Flat` status layout, so another firmware can use the same layout without inheriting this one's commands. It also cannot be detected with `has_macro("BOX_LOAD")`: the Fork commands are registered in Python, so they are not gcode_macros and never appear in `printer.objects.list`.
@@ -140,6 +142,16 @@ Every slot-index bound therefore goes through `slot_index_ceiling()`
 4-slot CFS still refuses index 7. A remap's **tool number** is a routing-table key, not a
 bay, so its bound stays the TNN alphabet even after the unit count is known - a slicer or
 Creality's own UI can hold a high key while fewer units are attached.
+
+**Tag reading.** The stock `material_type`/`color_value` arrays are latched RFID data,
+so the bay's box record is its tag reading: material, brand and the catalog's nozzle
+range for the code, colour; on the flat schema `material`, `brand`, `name` (the product)
+and `color`, with the per-material temperature. A user edit is written back into that
+same record, so the reading is folded frame by frame (`helix::ams::fold_tag_frame`): a
+field the own-write echo guard withholds keeps the tag's value. After a restart the box
+holds the user's values and they become the reading, and a value set on the printer's
+screen cannot be told from a tag read
+(`src/printer/ams_backend_cfs.cpp#file_box_readings`, `src/printer/ams_tag_reading.cpp#fold_tag_frame_into`).
 
 ### Endless spool (auto-refill)
 

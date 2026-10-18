@@ -181,6 +181,9 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         // per-slot question (#1199).
         t.has_per_slot_loaded_authority = true;
         t.supports_auto_heat_on_load = true;
+        // supports_auto_heat_on_unload stays false: no CFS unload script we send
+        // shows a heat. The bay scripts are cut-and-retract primitives, and the
+        // bypass unload ends in a raw extruder retract (bypass_unload_gcode()).
         t.has_environment_sensors = true;
         // True: the CFS clears the toolhead without a lane. bypass_unload_gcode()
         // is exactly that script - QUIT_MATERIAL (heat, cut, retract) plus the
@@ -233,6 +236,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// The box's record of the bay's tag, kept while our own write-back holds
+    /// the box record (helix::ams::fold_tag_frame).
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
     void persist_external_identity_impl(int slot_index,
@@ -440,6 +447,13 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// spool as a swap at its first poll. Fewer or more pipes is already
     /// current or a value no build of ours wrote, and is left as found.
     static std::string normalize_legacy_flat_fingerprint(const std::string& stored);
+
+    /// The schema whose feed builds a fingerprint of this shape, or nullopt
+    /// when either could have: stock joins the raw material_type code and
+    /// "0RRGGBB" colour_value, flat joins a material name and six hex digits.
+    /// A baseline of one schema's shape never equals a reading of the other's,
+    /// so check_hardware_event_clear compares only their colours across it.
+    static std::optional<CfsSchema> fingerprint_schema(const std::string& fingerprint);
 
     /// True when this `box` payload comes from the community box.py, i.e. the
     /// firmware speaks CfsMacroVariant::Fork.
@@ -688,12 +702,20 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// parse reads, since one frame carries only the units that changed.
     /// handle_status runs on the main thread only.
     nlohmann::json stock_box_state_ = nlohmann::json::object();
+    /// Every flat `box` frame since the session began or the last stock one,
+    /// merged per top-level field: what the flat parse reads, since a frame
+    /// carries only the fields that changed (a slot edit sends `slots` and no
+    /// temp_c). Main thread only, like stock_box_state_.
+    nlohmann::json flat_box_state_ = nlohmann::json::object();
 
     // K1 vs K2 macro dialect, latched in ctor from PrinterDetector. Most
     // callers route through dispatch_action_script and pull the macro string
     // from the static helpers (load_gcode/unload_gcode/swap_gcode), so this
     // is read on the script-build side, not in hot paths.
     CfsMacroVariant macro_variant_ = CfsMacroVariant::K2;
+    /// The dialect the ctor read from the model, which macro_variant_ returns
+    /// to when a box that spoke the Fork dialect reports stock units again.
+    CfsMacroVariant model_macro_variant_ = CfsMacroVariant::K2;
 
     /// Save-response line captured by the last chute save (main thread only:
     /// written when the save completes, read by last_chute_saved_position).
@@ -977,6 +999,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     // last read there. All access under mutex_.
     std::unordered_map<int, bool> bay_present_;
     std::unordered_map<int, helix::ams::SpoolEvidence> bay_evidence_;
+
+    /// Each bay's tag reading, folded frame by frame from the box record so a
+    /// field our own write replaced keeps the tag's value. All access under
+    /// mutex_.
+    std::unordered_map<int, helix::ams::TagReading> tag_readings_;
 
     // A stock-schema insert whose RFID probe has not answered yet. The stock
     // arrays latch the pulled spool's colour and material, so the edge frame

@@ -2019,9 +2019,12 @@ std::set<int> scan_tools_used_from_content(const std::string& content,
 }
 
 std::set<int> scan_tools_used_from_file(const std::string& filepath,
-                                        std::set<int> early_exit_full_set) {
+                                        std::set<int> early_exit_full_set, bool* opened) {
     std::set<int> tools;
     helix::text_io::LineReader in(filepath);
+    if (opened) {
+        *opened = static_cast<bool>(in);
+    }
     if (!in) {
         return tools;
     }

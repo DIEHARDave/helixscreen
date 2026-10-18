@@ -764,8 +764,9 @@ nlohmann::json RemoteControlServer::handle_demo(const nlohmann::json& params) {
 
     return execute_on_ui_thread([name]() -> nlohmann::json {
         wake_display();
-        if (!helix::show_demo_overlay(name)) {
-            throw std::invalid_argument("Unknown demo overlay: " + name);
+        std::string error;
+        if (!helix::show_demo_overlay(name, &error)) {
+            throw std::invalid_argument(error.empty() ? "Unknown demo overlay: " + name : error);
         }
         return {{"shown", true}, {"name", name}};
     });

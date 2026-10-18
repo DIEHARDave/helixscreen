@@ -341,10 +341,26 @@ class FilamentSensorManager {
      * sensor keeps working. A lane that was LOADED and lost filament mid-use
      * (slot present, sensor now false) still reports a real runout.
      *
+     * When the backend names the lane being fed (get_current_slot() >= 0), only
+     * the sensor of that lane, or of the current tool, can report a runout: the
+     * other lanes are idle, and a lane whose filament waits in a feeder short of
+     * the toolhead reads empty at its own switch. The tool match keeps a
+     * per-toolhead sensor (lane = tool index) live on a multi-extruder system
+     * whose current slot counts lanes. With no current lane, every present
+     * lane counts.
+     *
      * @return true if at least one runout-role sensor reports no filament on a
      *         lane that is loaded/present (or that does not map to a lane).
      */
     [[nodiscard]] bool has_real_runout() const;
+
+    /**
+     * @brief The lane of the runout has_real_runout() finds, or nullopt for none.
+     *
+     * -1 when the runout is real but its sensor maps to no lane (a plain
+     * toolhead or extruder sensor).
+     */
+    [[nodiscard]] std::optional<int> real_runout_lane() const;
 
     /**
      * @brief Find required tools whose mapped AMS lane is genuinely empty.

@@ -224,7 +224,7 @@ There are three runout queries, from coarse to fine:
 | Query | Considers | Used by |
 |-------|-----------|---------|
 | `has_any_runout()` | every monitoring sensor | `filament_any_runout` subject |
-| `has_real_runout()` | same, but a sensor that maps to an AMS lane the backend reports empty is not a runout | runout guidance modal, print status panel |
+| `has_real_runout()` | same, but a sensor that maps to an AMS lane is a runout only when that lane is present and, if the backend names a current slot, is that slot | runout guidance modal, print status panel |
 | `find_empty_required_lanes()` / `compute_scoped_runout_value()` | only the tools the current print uses, via the AMS backend's per-slot presence | pre-print check, `filament_runout_scoped` |
 
 `print_scopes_runout_badge()` limits the scoped badge to PRINTING and PAUSED, since during Preparing the panel's tool list still describes the previous job.

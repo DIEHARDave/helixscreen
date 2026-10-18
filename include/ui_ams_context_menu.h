@@ -87,7 +87,9 @@ class AmsContextMenu : public ContextMenu {
         SPOOLMAN,         ///< Assign Spoolman spool
         SCAN_QR,          ///< Scan QR code to assign spool
         PURGE,            ///< Purge the current filament through the nozzle
-        TOGGLE_BYPASS     ///< Engage or disengage bypass (external spool only)
+        TOGGLE_BYPASS,    ///< Engage or disengage bypass (external spool only)
+        MOUNT,            ///< Mount the tool this slot feeds
+        PARK              ///< Put the mounted tool back in its dock
     };
 
     using ActionCallback = std::function<void(MenuAction action, int slot_index)>;
@@ -182,14 +184,16 @@ class AmsContextMenu : public ContextMenu {
     /// 1 = Purge enabled. External-spool menu only; the lane menu has no Purge
     /// entry, so nothing binds this there.
     static lv_subject_t slot_can_purge_subject_;
-    /// 1 = this backend's load/unload mount and unmount a tool, so the menu
-    /// shows the tool wording instead of the filament wording.
-    static lv_subject_t slot_mounts_tool_subject_;
     /// One-line reason the unload is unavailable, and whether to show it.
     /// Text and visibility are separate because bind_flag needs an int.
     static lv_subject_t slot_unload_hint_subject_;
     static lv_subject_t slot_unload_hint_visible_subject_;
     static char slot_unload_hint_buf_[128];
+    /// One-line reason Eject is unavailable (AmsBackend::eject_unavailable_reason), and
+    /// whether to show it.
+    static lv_subject_t slot_eject_hint_subject_;
+    static lv_subject_t slot_eject_hint_visible_subject_;
+    static char slot_eject_hint_buf_[128];
     /// 1 = Clear Spool enabled, 0 = the lane feeds the active print, so the
     /// clear must wait (clear_spool_blocked_by_print()). The reason rides the
     /// hint pair below, same shape as the unload hint.
@@ -197,10 +201,21 @@ class AmsContextMenu : public ContextMenu {
     static lv_subject_t slot_clear_hint_subject_;
     static lv_subject_t slot_clear_hint_visible_subject_;
     static char slot_clear_hint_buf_[192];
+    /// The Endless Spool row's label in the backend's own noun ("Backup Gate").
+    static lv_subject_t slot_backup_label_subject_;
+    static char slot_backup_label_buf_[64];
     /// Preload row: 0 = hidden (backend has no lane preload), 1 = shown but
     /// disabled (busy, filament loaded, or a print blocks filament ops),
     /// 2 = enabled.
     static lv_subject_t slot_preload_subject_;
+    // Why this head's Load is unavailable, from decide_slot_actions().
+    static lv_subject_t slot_load_hint_subject_;
+    static lv_subject_t slot_load_hint_visible_subject_;
+    static char slot_load_hint_buf_[192];
+    // Mount and Park for a head whose filament is all by hand: 0 hidden,
+    // 1 disabled, 2 enabled.
+    static lv_subject_t slot_mount_subject_;
+    static lv_subject_t slot_park_subject_;
     static bool subjects_initialized_;
 
     // === Backend reference for dropdown operations ===
@@ -239,6 +254,8 @@ class AmsContextMenu : public ContextMenu {
     void handle_gate_select();
     void handle_gate_check();
     void handle_preload();
+    void handle_mount();
+    void handle_park();
     void handle_edit();
     void handle_clear_spool();
     void handle_purge();
@@ -436,6 +453,8 @@ class AmsContextMenu : public ContextMenu {
     static void on_gate_select_cb(lv_event_t* e);
     static void on_gate_check_cb(lv_event_t* e);
     static void on_preload_cb(lv_event_t* e);
+    static void on_mount_cb(lv_event_t* e);
+    static void on_park_cb(lv_event_t* e);
     static void on_edit_cb(lv_event_t* e);
     static void on_clear_spool_cb(lv_event_t* e);
     static void on_purge_cb(lv_event_t* e);

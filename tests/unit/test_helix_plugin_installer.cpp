@@ -10,20 +10,64 @@
  * 2. Preference management (should_prompt_install, set_install_declined)
  * 3. Install script path resolution
  * 4. Remote install command generation
- *
- * NOTE: These tests are written BEFORE the implementation (test-first development).
- *       The HelixPluginInstaller class will be implemented to pass these tests.
+ * 5. Running install.sh: exit codes, timeout, arguments - always a stub in a
+ *    temp dir (SandboxedInstaller), never the repository's script
  */
 
 #include "../../include/config.h"
 #include "../../include/helix_plugin_installer.h"
+#include "../test_helpers/helix_plugin_installer_test_access.h"
+#include "../test_helpers/unique_temp_dir.h"
 
+#include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <string>
 
 #include "../catch_amalgamated.hpp"
 
 using namespace helix;
+
+namespace {
+
+/// An installer whose install.sh lookup is confined to an empty temp dir, so
+/// nothing a test does can reach the repository's moonraker-plugin/install.sh.
+/// write_script() puts a stub there that records its arguments and then runs
+/// the given body.
+struct SandboxedInstaller {
+    SandboxedInstaller() : root(helix::test::unique_temp_dir("helix_plugin_installer")) {
+        std::filesystem::create_directories(root + "/moonraker-plugin");
+        HelixPluginInstallerTestAccess::set_script_search_root(installer, root);
+        installer.set_websocket_url("ws://localhost:7125/websocket");
+    }
+
+    ~SandboxedInstaller() {
+        std::error_code ec;
+        std::filesystem::remove_all(root, ec);
+    }
+
+    std::string script_path() const {
+        return root + "/moonraker-plugin/install.sh";
+    }
+
+    void write_script(const std::string& body) const {
+        std::ofstream(script_path()) << "#!/bin/sh\n"
+                                     << "printf '%s ' \"$@\" > '" << root << "/args'\n"
+                                     << body << "\n";
+    }
+
+    /// The arguments the stub was run with, space-separated; empty if it never ran.
+    std::string script_args() const {
+        std::ifstream in(root + "/args");
+        return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    }
+
+    std::string root;
+    HelixPluginInstaller installer;
+};
+
+} // namespace
 TEST_CASE("HelixPluginInstaller is_local_moonraker WSS handling", "[plugin_installer]") {
     SECTION("is_local_moonraker answers from the URL the installer was given") {
         // The predicate itself is tested once, in test_host_identity.cpp. What
@@ -153,39 +197,25 @@ TEST_CASE("HelixPluginInstaller preferences logic", "[plugin_installer][preferen
 // ============================================================================
 
 TEST_CASE("HelixPluginInstaller script path", "[plugin_installer]") {
-    SECTION("get_install_script_path returns valid path when script exists") {
-        helix::HelixPluginInstaller installer;
+    SandboxedInstaller sandbox;
 
-        std::string path = installer.get_install_script_path();
-
-        // In development environment, should find the script
-        if (!path.empty()) {
-            REQUIRE(std::filesystem::exists(path));
-            REQUIRE(path.find("install.sh") != std::string::npos);
-        }
-        // In test environment without bundled script, may return empty
-        // This is acceptable - we fall back to remote instructions
+    SECTION("an empty search root resolves to nothing") {
+        CHECK(sandbox.installer.get_install_script_path().empty());
+        // Path resolution is a pure query - it must not move the state machine.
+        CHECK(sandbox.installer.get_state() == helix::PluginInstallState::IDLE);
     }
 
-    SECTION("get_install_script_path never returns a path that isn't there") {
-        helix::HelixPluginInstaller installer;
+    SECTION("a script under the search root is the one resolved") {
+        sandbox.write_script("exit 0");
+        CHECK(sandbox.installer.get_install_script_path() ==
+              std::filesystem::canonical(sandbox.script_path()).string());
+    }
 
-        // The resolver walks a candidate list and returns the first entry that
-        // exists and canonicalizes to a file still named install.sh. Every
-        // other outcome is "". The exec bit is deliberately not required: the
-        // script runs via /bin/sh because Moonraker's zip extractor does not
-        // restore unix modes. The invariant that holds regardless of whether
-        // this checkout has the script bundled is: empty, or a real file
-        // called install.sh.
-        const std::string path = installer.get_install_script_path();
-
-        CHECK((path.empty() || std::filesystem::exists(path)));
-        if (!path.empty()) {
-            CHECK(std::filesystem::path(path).filename() == "install.sh");
-        }
-
-        // Path resolution is a pure query - it must not move the state machine.
-        CHECK(installer.get_state() == helix::PluginInstallState::IDLE);
+    SECTION("a symlink named install.sh that points at another file is refused") {
+        const std::string other = sandbox.root + "/payload.sh";
+        std::ofstream(other) << "#!/bin/sh\nexit 0\n";
+        std::filesystem::create_symlink(other, sandbox.script_path());
+        CHECK(sandbox.installer.get_install_script_path().empty());
     }
 }
 
@@ -240,22 +270,47 @@ TEST_CASE("HelixPluginInstaller install_local_sync error handling", "[plugin_ins
 
         REQUIRE(result.success == false);
     }
+}
 
-    SECTION("install_local_sync fails gracefully when script not found (localhost)") {
-        helix::HelixPluginInstaller installer;
+TEST_CASE("HelixPluginInstaller install_local_sync runs the script it finds",
+          "[plugin_installer]") {
+    SandboxedInstaller sandbox;
+    auto& installer = sandbox.installer;
 
-        // Set localhost URL so is_local_moonraker() returns true
-        installer.set_websocket_url("ws://localhost:7125/websocket");
-
+    SECTION("no script: fails without starting") {
         const auto result = installer.install_local_sync();
+        CHECK_FALSE(result.success);
+        CHECK(result.message.find("not found") != std::string::npos);
+        CHECK(installer.get_state() == helix::PluginInstallState::IDLE);
+        CHECK(sandbox.script_args().empty());
+    }
 
-        // In test environment, install.sh likely won't be found
-        // If script not found, should fail with appropriate message
-        if (!result.success) {
-            REQUIRE((result.message.find("not found") != std::string::npos ||
-                     result.message.find("failed") != std::string::npos ||
-                     result.message.find("Failed") != std::string::npos));
-        }
+    SECTION("exit 0: succeeds, and the script was asked to install without restarting") {
+        sandbox.write_script("exit 0");
+        const auto result = installer.install_local_sync();
+        CHECK(result.success);
+        CHECK(installer.get_state() == helix::PluginInstallState::SUCCESS);
+        CHECK(sandbox.script_args() == "--no-restart --auto ");
+    }
+
+    SECTION("non-zero exit: fails") {
+        sandbox.write_script("echo 'moonraker.conf not writable'\nexit 1");
+        const auto result = installer.install_local_sync();
+        CHECK_FALSE(result.success);
+        CHECK(result.message.find("failed") != std::string::npos);
+        CHECK(installer.get_state() == helix::PluginInstallState::FAILED);
+    }
+
+    SECTION("a script that outlives the timeout is killed and reported as timed out") {
+        HelixPluginInstallerTestAccess::set_script_timeout_seconds(installer, 1);
+        sandbox.write_script("exec sleep 30");
+        const auto started = std::chrono::steady_clock::now();
+        const auto result = installer.install_local_sync();
+        const auto waited = std::chrono::steady_clock::now() - started;
+        CHECK_FALSE(result.success);
+        CHECK(result.message.find("timed out") != std::string::npos);
+        CHECK(installer.get_state() == helix::PluginInstallState::FAILED);
+        CHECK(waited < std::chrono::seconds(10));
     }
 }
 
@@ -315,32 +370,53 @@ TEST_CASE("HelixPluginInstaller uninstall_local error handling", "[plugin_instal
         // State should remain IDLE (uninstall didn't start due to remote URL)
         REQUIRE(installer.get_state() == helix::PluginInstallState::IDLE);
     }
+}
 
-    SECTION("uninstall_local fails gracefully when script not found (localhost)") {
-        helix::HelixPluginInstaller installer;
+TEST_CASE("HelixPluginInstaller uninstall_local runs the script it finds", "[plugin_installer]") {
+    using Outcome = helix::UninstallOutcome;
+    SandboxedInstaller sandbox;
+    auto& installer = sandbox.installer;
 
-        // Set localhost URL so is_local_moonraker() returns true
-        installer.set_websocket_url("ws://localhost:7125/websocket");
+    bool called = false;
+    Outcome outcome = Outcome::SUCCESS;
+    std::string message;
+    auto record = [&](Outcome o, const std::string& m) {
+        called = true;
+        outcome = o;
+        message = m;
+    };
 
-        bool callback_called = false;
-        Outcome callback_outcome = Outcome::SUCCESS;
-        std::string callback_message;
+    SECTION("no script: fails without starting") {
+        installer.uninstall_local(record);
+        REQUIRE(called);
+        CHECK(outcome == Outcome::FAILED);
+        CHECK(message.find("not found") != std::string::npos);
+        CHECK(installer.get_state() == helix::PluginInstallState::IDLE);
+    }
 
-        installer.uninstall_local([&](Outcome outcome, const std::string& msg) {
-            callback_called = true;
-            callback_outcome = outcome;
-            callback_message = msg;
-        });
+    SECTION("exit 0: succeeds, and the script was asked to uninstall without restarting") {
+        sandbox.write_script("exit 0");
+        installer.uninstall_local(record);
+        REQUIRE(called);
+        CHECK(outcome == Outcome::SUCCESS);
+        CHECK(sandbox.script_args() == "--no-restart --uninstall-auto ");
+    }
 
-        // In test environment, install.sh likely won't be found
-        REQUIRE(callback_called);
+    SECTION("exit 2: the plugin is gone but a config file needs attention") {
+        sandbox.write_script("exit 2");
+        installer.uninstall_local(record);
+        REQUIRE(called);
+        CHECK(outcome == Outcome::NEEDS_ATTENTION);
+        CHECK(installer.get_state() == helix::PluginInstallState::NEEDS_ATTENTION);
+    }
 
-        // If script not found, should fail with appropriate message
-        if (callback_outcome != Outcome::SUCCESS) {
-            REQUIRE((callback_message.find("not found") != std::string::npos ||
-                     callback_message.find("failed") != std::string::npos ||
-                     callback_message.find("Failed") != std::string::npos));
-        }
+    SECTION("a script that outlives the timeout is reported as timed out") {
+        HelixPluginInstallerTestAccess::set_script_timeout_seconds(installer, 1);
+        sandbox.write_script("exec sleep 30");
+        installer.uninstall_local(record);
+        REQUIRE(called);
+        CHECK(outcome == Outcome::FAILED);
+        CHECK(message.find("timed out") != std::string::npos);
     }
 }
 

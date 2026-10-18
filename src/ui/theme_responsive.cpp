@@ -18,11 +18,14 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 using namespace helix;
 using helix::theme_detail::runtime;
@@ -164,7 +167,6 @@ static constexpr const char* VERTICAL_AXIS_TOKENS[] = {
     "button_height_lg",
     "chamber_preset_h",
     "header_height",
-    "input_height",
     "temp_card_height",
     "dialog_content_max",
     "dialog_content_pinned_max",
@@ -184,17 +186,8 @@ bool theme_manager_token_uses_vertical_axis(const char* base_name) {
     return false;
 }
 
-namespace {
-
-/// The seven per-tier value tables, parsed once per resolve.
-struct PxTierTables {
-    std::unordered_map<std::string, std::string> micro, tiny, small, medium, large, xlarge, xxlarge;
-};
-
-/// Pick a token's value for one tier suffix, applying the declared fallbacks:
-/// the optional tiers (_micro, _tiny, _xlarge, _xxlarge) fall back inwards to
-/// the required _small/_medium/_large triplet. Caller guarantees the triplet.
-const std::string& pick_tier(const PxTierTables& t, const std::string& base, const char* suffix) {
+const std::string& helix::theme_manager_pick_px_tier(const PxTierTables& t, const std::string& base,
+                                                     const char* suffix) {
     const auto& small_val = t.small.at(base);
 
     if (strcmp(suffix, "_micro") == 0) {
@@ -226,8 +219,6 @@ const std::string& pick_tier(const PxTierTables& t, const std::string& base, con
     return (xl_it != t.xlarge.end()) ? xl_it->second : t.large.at(base);
 }
 
-} // namespace
-
 std::unordered_map<std::string, std::string>
 theme_manager_resolve_px_tokens(lv_display_t* display) {
     // theme_detail::ui_xml_dir(), not the "ui_xml" literal: on ESP-IDF the asset root is a
@@ -243,6 +234,12 @@ theme_manager_resolve_px_tokens(lv_display_t* display) {
         theme_manager_parse_all_xml_for_suffix(theme_detail::ui_xml_dir(), "px", "_xxlarge"),
     };
 
+    return theme_manager_resolve_px_tables(t, display, true);
+}
+
+std::unordered_map<std::string, std::string>
+helix::theme_manager_resolve_px_tables(const PxTierTables& t, lv_display_t* display,
+                                       bool app_tokens) {
     // Two ladders, one classification function. Landscape and square displays
     // have min(w,h) == h, so these two suffixes are equal there and nothing
     // moves; only portrait geometry sees a difference.
@@ -266,12 +263,13 @@ theme_manager_resolve_px_tokens(lv_display_t* display) {
         if (t.medium.find(base_name) == t.medium.end() || t.large.find(base_name) == t.large.end())
             continue;
 
-        const char* suffix = base_name == "nav_width" ? nav_suffix
+        const char* suffix = !app_tokens                ? cramped_suffix
+                             : base_name == "nav_width" ? nav_suffix
                              : theme_manager_token_uses_vertical_axis(base_name.c_str())
                                  ? vertical_suffix
                                  : cramped_suffix;
 
-        resolved[base_name] = pick_tier(t, base_name, suffix);
+        resolved[base_name] = theme_manager_pick_px_tier(t, base_name, suffix);
     }
 
     // Apply the high-DPI UI scale to every px token — spacing, padding, and
@@ -383,23 +381,40 @@ void theme_manager_refresh_orientation(lv_display_t* display) {
         return;
     }
 
-    LayoutType type;
-    if (LayoutManager::instance().is_initialized()) {
-        type = LayoutManager::instance().type();
-    } else {
-        lv_display_t* disp = display ? display : lv_display_get_default();
-        if (!disp) {
-            return;
-        }
-        type = detect_layout_type(lv_display_get_horizontal_resolution(disp),
-                                  lv_display_get_vertical_resolution(disp));
+    lv_display_t* disp = display ? display : lv_display_get_default();
+    if (!disp && !LayoutManager::instance().is_initialized()) {
+        return;
     }
+    const int w = disp ? lv_display_get_horizontal_resolution(disp) : 0;
+    const int h = disp ? lv_display_get_vertical_resolution(disp) : 0;
+    const LayoutType type = app_layout_type(w, h);
     if (portrait_subject) {
         lv_subject_set_int(portrait_subject, is_portrait_layout(type) ? 1 : 0);
     }
     if (ultrawide_subject) {
         lv_subject_set_int(ultrawide_subject, type == LayoutType::ULTRAWIDE ? 1 : 0);
     }
+}
+
+namespace {
+std::vector<std::pair<int, std::function<void(lv_display_t*)>>>& layout_refresh_hooks() {
+    static std::vector<std::pair<int, std::function<void(lv_display_t*)>>> hooks;
+    return hooks;
+}
+} // namespace
+
+int helix::theme_manager_add_layout_refresh_hook(std::function<void(lv_display_t*)> hook) {
+    static int next_id = 1;
+    const int id = next_id++;
+    layout_refresh_hooks().emplace_back(id, std::move(hook));
+    return id;
+}
+
+void helix::theme_manager_remove_layout_refresh_hook(int id) {
+    auto& hooks = layout_refresh_hooks();
+    hooks.erase(
+        std::remove_if(hooks.begin(), hooks.end(), [id](const auto& h) { return h.first == id; }),
+        hooks.end());
 }
 
 void theme_manager_refresh_layout_constants(lv_display_t* display) {
@@ -478,6 +493,9 @@ void theme_manager_refresh_layout_constants(lv_display_t* display) {
     // Switch size presets are the same ladder expressed as plain C++ values,
     // and were likewise chosen once at startup (#1210, Notes).
     ui_switch_init_size_presets(display);
+
+    for (const auto& [id, hook] : layout_refresh_hooks())
+        hook(display);
 
     spdlog::info("[Theme] Responsive state refreshed for {}x{}: nav={}px, "
                  "overlay transient={}px destination={}px (breakpoint={})",

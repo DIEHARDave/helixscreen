@@ -8,6 +8,7 @@
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "printer_discovery.h"
+#include "safety_settings_manager.h"
 #include "src/ui/panel_widgets/tool_switcher_widget.h"
 #include "tool_state.h"
 
@@ -63,6 +64,18 @@ class GateBackend : public AmsBackendMock {
     /// Slot reads, which take the backend's mutex: what a widget refresh costs it.
     mutable int slot_info_calls = 0;
 
+    /// The action get_system_info() reports in place of the mock's own; IDLE
+    /// leaves the mock's.
+    AmsAction report_action = AmsAction::IDLE;
+
+    AmsSystemInfo get_system_info() const override {
+        AmsSystemInfo info = AmsBackendMock::get_system_info();
+        if (report_action != AmsAction::IDLE) {
+            info.action = report_action;
+        }
+        return info;
+    }
+
     SlotInfo get_slot_info(int slot_index) const override {
         ++slot_info_calls;
         return AmsBackendMock::get_slot_info(slot_index);
@@ -83,6 +96,24 @@ class GateBackend : public AmsBackendMock {
         return AmsErrorHelper::success();
     }
 
+    bool has_feeder = false;
+    bool feeder_is_open = false;
+    /// Every set_feeder_open() request, in order: true opens, false closes.
+    std::vector<bool> feeder_requests;
+
+    bool supports_feeder_control() const override {
+        return has_feeder;
+    }
+
+    bool feeder_open() const override {
+        return feeder_is_open;
+    }
+
+    AmsError set_feeder_open(bool open) override {
+        feeder_requests.push_back(open);
+        return AmsErrorHelper::success();
+    }
+
     AmsError change_tool(int tool_number) override {
         ++change_tool_calls;
         last_tool = tool_number;
@@ -96,14 +127,18 @@ class GateBackend : public AmsBackendMock {
 
 /// A klipper-toolchanger printer with @p heads heads, each its own extruder,
 /// driven through a GateBackend, with the warning and error toasts recorded.
-/// Head 0 is mounted. Tears it all down on the way out, so later test files
-/// inherit no tools or backend.
+/// Head 0 is mounted. "Confirm tool changes" is off, so a tap dispatches at
+/// once; a test of the confirmation turns it on. Tears it all down on the way
+/// out, so later test files inherit no tools, backend or setting.
 struct ToolChangerRig {
     GateBackend* backend = nullptr;
     std::vector<std::string> warnings;
     std::vector<std::string> errors;
+    bool saved_confirm = SafetySettingsManager::instance().get_tool_change_require_confirmation();
 
-    explicit ToolChangerRig(int heads) {
+    /// @p slots, where given, is the backend's lane count, for a rig whose
+    /// lanes outnumber its heads.
+    explicit ToolChangerRig(int heads, int slots = 0) {
         // Registered by name: the rail's repeat and its bindings read
         // tool_count and active_tool from XML.
         ToolState::instance().deinit_subjects();
@@ -118,7 +153,7 @@ struct ToolChangerRig {
         ToolState::instance().init_tools(hw);
         REQUIRE(ToolState::instance().tool_count() == heads);
 
-        auto owned = std::make_unique<GateBackend>(heads);
+        auto owned = std::make_unique<GateBackend>(slots > 0 ? slots : heads);
         owned->set_tool_changer_mode(true);
         owned->set_operation_delay(0);
         REQUIRE(owned->start());
@@ -135,9 +170,11 @@ struct ToolChangerRig {
             [this](const std::string& msg) { warnings.push_back(msg); });
         ui::set_test_notification_error_hook(
             [this](const std::string& msg) { errors.push_back(msg); });
+        SafetySettingsManager::instance().set_tool_change_require_confirmation(false);
     }
 
     ~ToolChangerRig() {
+        SafetySettingsManager::instance().set_tool_change_require_confirmation(saved_confirm);
         ui::set_test_notification_warning_hook(nullptr);
         ui::set_test_notification_error_hook(nullptr);
         if (backend) {

@@ -103,10 +103,11 @@ struct SpoolCacheKey {
     uint16_t size;
     uint8_t fill_bucket; // 0..FILL_BUCKETS
     SpoolGlow glow;
+    uint32_t filament_hash = 0; // multi-colour list and finish; 0 for a plain single colour
 
     bool operator==(const SpoolCacheKey& o) const {
         return color_rgb == o.color_rgb && size == o.size && fill_bucket == o.fill_bucket &&
-               glow == o.glow;
+               glow == o.glow && filament_hash == o.filament_hash;
     }
 };
 
@@ -115,7 +116,7 @@ struct SpoolCacheKeyHash {
         // Mix: color is the high-cardinality field, so weight it.
         return (static_cast<size_t>(k.color_rgb) * 0x9E3779B1u) ^
                (static_cast<size_t>(k.size) << 17) ^ (static_cast<size_t>(k.glow) << 8) ^
-               static_cast<size_t>(k.fill_bucket);
+               static_cast<size_t>(k.fill_bucket) ^ (static_cast<size_t>(k.filament_hash) << 3);
     }
 };
 
@@ -171,6 +172,10 @@ struct SpoolCanvasData {
     int32_t size = DEFAULT_SIZE;
     lv_color_t color = lv_color_hex(DEFAULT_COLOR);
     float fill_level = 1.0f;
+    /// A multi-colour filament's colours (two or more), else empty: the body
+    /// is split the way every swatch splits (helix::ui::swatch_split_thresholds).
+    std::vector<lv_color_t> colors;
+    helix::ui::SwatchFinish finish = helix::ui::SwatchFinish::Plain;
 
     // Last-rendered key, for dedup (idea #1). Valid only when has_rendered.
     SpoolCacheKey last_key{0, 0, 0, SpoolGlow::None};
@@ -333,6 +338,139 @@ static void draw_gradient_rect(SpoolLayer* layer, int32_t x1, int32_t y1, int32_
     }
 }
 
+// How a wound body is lit: the top is lifted toward white and the bottom
+// pressed toward black, from the filament's side colour. A matte filament
+// scatters light, so its body carries a much shallower ramp than a glossy one.
+namespace {
+struct BodyShade {
+    uint8_t lift;
+    uint8_t drop;
+
+    static BodyShade of(helix::ui::SwatchFinish finish) {
+        return finish == helix::ui::SwatchFinish::Matte ? BodyShade{28, 14} : BodyShade{70, 35};
+    }
+    lv_color_t side(lv_color_t base) const {
+        return ams_draw::darken_color(base, 30);
+    }
+    lv_color_t top(lv_color_t base) const {
+        return ams_draw::lighten_color(side(base), lift);
+    }
+    lv_color_t bottom(lv_color_t base) const {
+        return ams_draw::darken_color(side(base), drop);
+    }
+};
+
+// A multi-colour filament wound on the spool. A dual or triple colour strand
+// carries its colours side by side, so the winding shows them as thin
+// alternating stripes, one strand wide, cycling through the colours along the
+// axis. Each stripe is a wrap circle seen in perspective: it arcs toward the
+// back cap at mid-height and returns to its axis position at the top and
+// bottom of the filament. Within one row the arc is a constant leftward shift,
+// so a row is the strand sequence slid left by the cap's curve there.
+struct FilamentBands {
+    std::vector<lv_color_t> colors;
+    lv_area_t field;
+    float strand; // one strand's width along the axis, in pixels
+    float bulge;  // how far a wrap arcs left at mid-height: the cap's x radius
+    float blend;  // share of a strand each seam blends over
+    BodyShade shading;
+
+    FilamentBands(std::vector<lv_color_t> c, const lv_area_t& axis, float strand_px, float arc,
+                  bool soft, BodyShade shade)
+        : colors(std::move(c)), field(axis), strand(std::max(strand_px, 1.0f)), bulge(arc),
+          // A silk strand's colours shade into each other where they meet;
+          // other strands meet at a hard, anti-aliased seam.
+          blend(soft ? 0.8f : std::min(1.0f, 0.75f / std::max(strand_px, 1.0f))), shading(shade) {}
+
+    // Strand k spans [k, k + 1) of @p u and is colour k mod n; seams sit at
+    // the integers.
+    lv_color_t color_at(float u) const {
+        const size_t n = colors.size();
+        auto color_of_strand = [&](float k) {
+            const auto i = static_cast<long>(k) % static_cast<long>(n);
+            return colors[static_cast<size_t>(i < 0 ? i + static_cast<long>(n) : i)];
+        };
+        const float half = blend / 2.0f;
+        const float seam = std::round(u);
+        if (std::fabs(u - seam) < half) {
+            float t = (u - seam + half) / blend;
+            t = t * t * (3.0f - 2.0f * t);
+            return lv_color_mix(color_of_strand(seam), color_of_strand(seam - 1.0f),
+                                static_cast<uint8_t>(255.0f * t));
+        }
+        return color_of_strand(std::floor(u));
+    }
+
+    // Row @p y from @p xa to @p xb at opacity @p opa, bands curved per row.
+    void fill_row(SpoolLayer* layer, int32_t y, int32_t xa, int32_t xb, float g,
+                  lv_opa_t opa) const {
+        const float h = static_cast<float>(lv_area_get_height(&field));
+        const float cy = static_cast<float>(field.y1) + h / 2.0f;
+        const float ny = h > 0.0f ? (static_cast<float>(y) + 0.5f - cy) / (h / 2.0f) : 0.0f;
+        // The wrap circles follow the filament ellipse's curvature.
+        const float curve = std::sqrt(std::max(0.0f, 1.0f - ny * ny));
+        const float shift = bulge * curve;
+        auto color_of = [&](int32_t x) {
+            const lv_color_t base = color_at(
+                (static_cast<float>(x) + 0.5f + shift - static_cast<float>(field.x1)) / strand);
+            return ams_draw::blend_color(shading.top(base), shading.bottom(base), g);
+        };
+
+        lv_draw_fill_dsc_t dsc;
+        lv_draw_fill_dsc_init(&dsc);
+        dsc.opa = opa;
+        int32_t from = xa;
+        while (from <= xb) {
+            const lv_color_t c = color_of(from);
+            int32_t to = from;
+            while (to < xb && lv_color_eq(color_of(to + 1), c)) {
+                ++to;
+            }
+            dsc.color = c;
+            lv_area_t span = {from, y, to, y};
+            spool_fill(layer, &dsc, &span);
+            from = to + 1;
+        }
+    }
+};
+} // namespace
+
+static float row_gradient(int32_t y, int32_t top, int32_t height) {
+    return height > 0 ? fast_sqrt_01(static_cast<float>(y - top) / static_cast<float>(height))
+                      : 0.0f;
+}
+
+// The banded twin of draw_gradient_rect().
+static void draw_banded_rect(SpoolLayer* layer, int32_t x1, int32_t y1, int32_t x2, int32_t y2,
+                             const FilamentBands& bands) {
+    for (int32_t y = y1; y <= y2; y++)
+        bands.fill_row(layer, y, x1, x2, row_gradient(y, y1, y2 - y1), LV_OPA_COVER);
+}
+
+// The banded twin of draw_gradient_ellipse(), with the same anti-aliased rim.
+static void draw_banded_ellipse(SpoolLayer* layer, int32_t cx, int32_t cy, int32_t rx, int32_t ry,
+                                const FilamentBands& bands) {
+    for (int32_t y = -ry; y <= ry; y++) {
+        const float y_norm = static_cast<float>(y) / static_cast<float>(ry);
+        const float x_extent = rx * fast_sqrt_01(1.0f - y_norm * y_norm);
+        const float g = fast_sqrt_01(static_cast<float>(y + ry) / static_cast<float>(2 * ry));
+        if (x_extent < 0.5f) {
+            const float pole_opa = (x_extent > 0.01f) ? (x_extent * 2.0f) : 0.3f;
+            bands.fill_row(layer, cy + y, cx, cx, g, static_cast<lv_opa_t>(pole_opa * 255.0f));
+            continue;
+        }
+        const int32_t x_inner = static_cast<int32_t>(x_extent);
+        const float x_frac = x_extent - static_cast<float>(x_inner);
+        if (x_frac > 0.01f) {
+            const auto edge_opa = static_cast<lv_opa_t>(x_frac * 255.0f);
+            bands.fill_row(layer, cy + y, cx - x_inner - 1, cx - x_inner - 1, g, edge_opa);
+            bands.fill_row(layer, cy + y, cx + x_inner + 1, cx + x_inner + 1, g, edge_opa);
+        }
+        if (x_inner > 0)
+            bands.fill_row(layer, cy + y, cx - x_inner, cx + x_inner, g, LV_OPA_COVER);
+    }
+}
+
 // Draw a highlight edge along the LEFT side of an ellipse (simulates 3D thickness)
 // width_px: how many pixels wide the highlight band is
 static void draw_ellipse_left_edge(SpoolLayer* layer, int32_t cx, int32_t cy, int32_t rx,
@@ -460,8 +598,16 @@ static void render_spool_pixels(SpoolCanvasData* data) {
     // Colors (from theme tokens)
     lv_color_t back_color = theme_manager_get_color("spool_body_shade");
     lv_color_t front_color = theme_manager_get_color("spool_body");
-    lv_color_t filament_color = data->color;
-    lv_color_t filament_side = ams_draw::darken_color(filament_color, 30);
+    // Matte filament is drawn in its muted colour; the other finishes texture
+    // the body once it is drawn.
+    const bool matte = data->finish == helix::ui::SwatchFinish::Matte;
+    const BodyShade shading = BodyShade::of(data->finish);
+    lv_color_t filament_color = matte ? helix::ui::swatch_matte_color(data->color) : data->color;
+    std::vector<lv_color_t> band_colors = data->colors;
+    if (matte) {
+        for (auto& c : band_colors)
+            c = helix::ui::swatch_matte_color(c);
+    }
 
     // Clear canvas
     lv_canvas_fill_bg(data->canvas, lv_color_black(), LV_OPA_TRANSP);
@@ -489,17 +635,48 @@ static void render_spool_pixels(SpoolCanvasData* data) {
     // Gradient: lighter at top (lit), darker at bottom (shadow)
     // ========================================
     if (fill > 0.01f) {
-        // Gradient colors for 3D lighting effect (stronger gradient)
-        lv_color_t fil_light = ams_draw::lighten_color(filament_side, 70); // Top: much brighter
-        lv_color_t fil_dark = ams_draw::darken_color(filament_side, 35);   // Bottom: darker
+        lv_color_t fil_light = shading.top(filament_color);
+        lv_color_t fil_dark = shading.bottom(filament_color);
 
-        // 2a: Back face ellipse (with gradient)
-        draw_gradient_ellipse(&layer, left_x, cy, filament_rx, filament_ry, fil_light, fil_dark);
-
-        // 2b: Rectangle body connecting the two faces (with gradient)
         int32_t fil_top = cy - filament_ry;
         int32_t fil_bottom = cy + filament_ry;
-        draw_gradient_rect(&layer, left_x, fil_top, right_x, fil_bottom, fil_light, fil_dark);
+        // What the viewer sees of the filament: the back cap's left edge to
+        // where the front flange covers the body.
+        const lv_area_t visible = {left_x - filament_rx, fil_top, right_x, fil_bottom};
+        if (band_colors.size() >= 2) {
+            // Every wrap is the back cap's circle slid along the axis, so each
+            // stripe bulges exactly as the cap does. A 1.75 mm strand on a
+            // spool about 200 mm across is an eightieth of its diameter.
+            const bool soft = data->finish == helix::ui::SwatchFinish::Silk;
+            const lv_area_t axis = {left_x, fil_top, right_x, fil_bottom};
+            const float strand_px = std::max(2.0f, 2.0f * static_cast<float>(flange_ry) / 80.0f);
+            const FilamentBands bands(band_colors, axis, strand_px, static_cast<float>(filament_rx),
+                                      soft, shading);
+            draw_banded_ellipse(&layer, left_x, cy, filament_rx, filament_ry, bands);
+            draw_banded_rect(&layer, left_x, fil_top, right_x, fil_bottom, bands);
+        } else {
+            // 2a: Back face ellipse (with gradient)
+            draw_gradient_ellipse(&layer, left_x, cy, filament_rx, filament_ry, fil_light,
+                                  fil_dark);
+            // 2b: Rectangle body connecting the two faces (with gradient)
+            draw_gradient_rect(&layer, left_x, fil_top, right_x, fil_bottom, fil_light, fil_dark);
+        }
+
+        // 2b': the finish's texture over everything drawn of the filament,
+        // back cap included, written into the buffer.
+        const float cap_rx = static_cast<float>(std::max<int32_t>(filament_rx, 1));
+        const float cap_ry = static_cast<float>(std::max<int32_t>(filament_ry, 1));
+        const helix::ui::SwatchCoverage wound = [=](float x, float y) {
+            if (y < static_cast<float>(fil_top) || y > static_cast<float>(fil_bottom + 1))
+                return 0.0f;
+            if (x >= static_cast<float>(left_x))
+                return x <= static_cast<float>(right_x + 1) ? 1.0f : 0.0f;
+            const float dx = (x - static_cast<float>(left_x)) / cap_rx;
+            const float dy = (y - static_cast<float>(cy)) / cap_ry;
+            const float d = std::sqrt(dx * dx + dy * dy);
+            return std::clamp((1.0f - d) * cap_rx + 0.5f, 0.0f, 1.0f);
+        };
+        helix::ui::swatch_paint_finish_pixels(data->draw_buf, visible, wound, data->finish);
 
         // 2c: Front face ellipse (will be covered by front flange anyway)
         lv_color_t front_light = ams_draw::lighten_color(filament_color, 70);
@@ -538,6 +715,14 @@ static void render_spool_pixels(SpoolCanvasData* data) {
     spdlog::trace("[SpoolCanvas] Redrawn: size={}, fill={:.0f}%", size, fill * 100.0f);
 }
 
+// Folds the multi-colour list and finish into the render cache key.
+static uint32_t filament_hash(const SpoolCanvasData& d) {
+    uint32_t h = static_cast<uint32_t>(d.finish) * 0x01000193u;
+    for (lv_color_t c : d.colors)
+        h = (h ^ color_to_rgb24(c)) * 0x01000193u;
+    return h;
+}
+
 static void repaint_bound_glows(lv_obj_t* spool_canvas);
 static void unbind_glows(lv_obj_t* spool_canvas);
 static void clear_glow_cache();
@@ -560,7 +745,7 @@ static bool redraw_spool_pixels(SpoolCanvasData* data) {
         return false;
 
     SpoolCacheKey key{color_to_rgb24(data->color), static_cast<uint16_t>(data->size),
-                      compute_fill_bucket(data->fill_level), SpoolGlow::None};
+                      compute_fill_bucket(data->fill_level), SpoolGlow::None, filament_hash(*data)};
 
     // Dedup: already rendered this bucketed state, nothing to do.
     if (data->has_rendered && data->last_key == key) {
@@ -733,10 +918,13 @@ void ui_spool_canvas_set_color(lv_obj_t* canvas, lv_color_t color) {
     // entirely (the cache-aware redraw would dedup, but this saves the hash
     // + lookup on the common scroll-recycle-same-color path).
     if (data->has_rendered && data->color.red == color.red && data->color.green == color.green &&
-        data->color.blue == color.blue) {
+        data->color.blue == color.blue && data->colors.empty() &&
+        data->finish == helix::ui::SwatchFinish::Plain) {
         return;
     }
     data->color = color;
+    data->colors.clear();
+    data->finish = helix::ui::SwatchFinish::Plain;
     redraw_spool(data);
 }
 
@@ -771,6 +959,29 @@ void ui_spool_canvas_redraw(lv_obj_t* canvas) {
         redraw_spool(data);
     }
 }
+
+namespace helix::ui {
+
+void spool_canvas_set_filament(lv_obj_t* canvas, uint32_t rgb, const std::string& multi_color_hexes,
+                               SwatchFinish finish) {
+    auto* data = get_data(canvas);
+    if (!data)
+        return;
+    std::vector<lv_color_t> colors = parse_multi_colors(multi_color_hexes);
+    if (colors.size() < 2)
+        colors.clear();
+    data->color = lv_color_hex(rgb);
+    data->colors = std::move(colors);
+    data->finish = finish;
+    redraw_spool(data);
+}
+
+void spool_canvas_set_filament(lv_obj_t* canvas, const SlotInfo& slot) {
+    spool_canvas_set_filament(canvas, slot.color_rgb, slot.multi_color_hexes,
+                              swatch_finish_of(slot));
+}
+
+} // namespace helix::ui
 
 float ui_spool_canvas_get_fill_level(lv_obj_t* canvas) {
     auto* data = get_data(canvas);

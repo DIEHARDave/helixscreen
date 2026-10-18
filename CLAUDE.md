@@ -60,6 +60,7 @@ make t F='[tag]'                     # Build, then run ONE tag or case (the inne
 #   Correct only when you have not edited code since the last `make test`:
 #   `make -j` builds the app alone, so after an edit the bare binary reports the
 #   PREVIOUS build's numbers. `make t` costs 5-18s and buys exactly that guarantee.
+#   A stale binary prints `WARNING: helix-tests is stale` on stderr first: believe it.
 make unit-sweep                      # C++ unit tests only, sharded (~50s idle)
 make full-test-run                   # unit-sweep + the bats suite (~2m) - the completion gate
 #   Nothing else runs bats locally: not the commit hook, not test-xml. Without this
@@ -67,6 +68,13 @@ make full-test-run                   # unit-sweep + the bats suite (~2m) - the c
 #   quality-checks.sh runs [.] on any staged code change, nightly CI runs [slow].
 #   `make test-run` runs nothing: it prints which of these fits the question
 #   you have and exits non-zero. Cadence table: tests/CLAUDE.md.
+make land-gate                       # THE pre-landing gate (~10m): ONCE per batch, before anything reaches main
+#   full-test-run, plus the sweep in CI's 8-shard layout, CI's tests/ui pytest
+#   slice (headless), the moonraker plugin tests, and the generated-artefact
+#   checks (theme token table, xml schema + lint-xml, lvgl event codes). C++ on
+#   the test host as full-test-run's sweep goes; the rest here in parallel; a
+#   PASS/FAIL table with durations at the end. full-test-run alone is NOT a
+#   landing gate: it skips tests/ui and CI's shard layout, both of which red CI.
 
 make dev-timing                      # What the dev loop costs, measured (ledger from transcripts)
 #   Medians for every build, suite and test run, so "is this worth running" is
@@ -104,9 +112,14 @@ scripts/test-host-run.sh sweep                   # make unit-sweep on the test h
 #   nothing. The container has no ld.so.preload and its image matches CI's.
 #   It runs your tree as it is on disk, uncommitted edits included: an rsync to
 #   a per-tree mirror (/work/trees/<tree>) whose build/ persists, so a warm run
-#   rebuilds only what changed, and different trees run at once. The output says
+#   rebuilds only what changed, and different trees run at once. A new tree's
+#   first run copies the warm mirror nearest in history (reflinked, seconds),
+#   so it does not cold-build; HELIX_TEST_SEED=0 opts out. The output says
 #   HEAD + clean or + dirty <hash>. `--commit` runs the pushed HEAD instead, for a
-#   verdict others must reproduce (mutate always does). `make full-test-run`
+#   verdict others must reproduce. mutate always runs the pushed HEAD, in a
+#   checkout per tree (/work/mutate/<tree>), so trees no longer queue for one
+#   slot. Copies unused 14 days are pruned when a new one is made; --prune and
+#   --drop TREE do it by hand. `make full-test-run`
 #   runs the sweep there while bats runs here when the link pays (TEST_HOST=1
 #   forces it, TEST_HOST=0 keeps both local). On a ZFS host keep
 #   build headroom with the zfs_arc_sys_free tunable (zeus keeps 64 GiB). The
@@ -184,6 +197,35 @@ scripts/teardown-worktree.sh my-branch -n    # ...or just print the plan
 
 ---
 
+## Verification Cadence: rigor once, at the finish
+
+**Every expensive check runs once per batch, at the finish, sized to what the batch touched.**
+Running a check again buys no rigor; it only costs the session hours. Applies to you and to
+every agent you brief: put this table in the brief, because agents default to over-verifying.
+
+| When | Run | Not then |
+|---|---|---|
+| **While building** - each task, each agent, each review fix | `make t F='[tags the change touches]'` once after the change. A new or changed test: break the line it pins once, see it go red, restore (one `make t` cycle) | `mutate-diff`, `unit-sweep`, `full-test-run`, `land-gate`, screenshots, ASAN, re-reviews |
+| **Finish** - once per batch (every branch landing together) | 1. One review of the batch; a second round only for a crash, lifetime, data-loss or wrong-hardware-command finding (anything else is fixed without re-review). 2. `make mutate-diff MUTATE_ARGS="--tests '[touched tags]'"`: the batch's own hunks against only the tests for the code it touched, never the whole suite. 3. One screenshot per changed screen. 4. ONE `make land-gate` on the combined result | a gate per branch; a second full gate for a docs-only or test-only fix |
+| **Gate red** | Fix it, rerun only the failing stage's command (`build/land-gate/<stage>.log` names it), then one more `land-gate` only if the fix touched `src/` or `include/` | rerunning the whole gate to "be sure" |
+| **Release** | Whole-branch mutation, ASAN on the test host, device checks | |
+
+**Several changes or agents at once: one test plan, owned by one session.** The orchestrator
+decides the plan before work starts and writes it into every brief: agents run their tags and
+hand back; they never run mutation, sweeps, gates or their own reviews. The orchestrator runs
+the finish once over everything. With peer sessions, message them the same way: whoever is
+landing next owns the batch, the others hand over branch + SHA and stop testing, and one
+review, one scoped mutation run and one gate cover all of it (§ Sharing This Tree, "Land in
+batches"). A branch that lands alone while others are a few minutes from ready costs everyone
+a second gate.
+
+What keeps this from leaving holes: every new test is proven red once while it is written,
+every changed hunk is mutated once at the finish, and the full suite runs once in CI's layout
+before anything reaches main. Each line of code is checked once, by the cheapest check that
+can see it.
+
+---
+
 ## Sharing This Tree With Other Sessions
 
 **Message the other session first.** Overlapping work - a claim on a tree you need, a
@@ -219,15 +261,16 @@ What is shared here:
   an unpushed main stalls every merge behind it until its owner is found.
 - **Land in batches and gate once.** Before taking main, message whoever holds it or is
   queued and fold your ready branch into one landing: one session merges every ready branch
-  and runs ONE `make full-test-run` on the combined result. A full gate per branch turns N
+  and runs ONE `make land-gate` on the combined result. A full gate per branch turns N
   landings into N serial 10-minute gates, and parallel gates leave thelio's CPU spinning on
-  the same suite. Run the full gate once per branch, at the end: a review fix gets its tags
-  (`make t F=...`), and the batch gate covers the rest.
+  the same suite. The full gate runs once per batch, at the end: a review fix gets its tags
+  (`make t F=...`), and the batch gate covers the rest (§ Verification Cadence).
 - **`MM` does not mean a peer is mid-commit.** It is ambiguous, and one command settles it:
   `git diff HEAD -- <path>`. Empty means the committed content is what is on disk, only the
   INDEX holds an older copy, and nothing is in flight. A `git commit -- <paths>` whose
   pre-commit hook reformats the file leaves exactly that: the pre-format copy stranded in the
-  index. Clear it with `git add <path>`: index becomes HEAD, so there is nothing unpublished
+  index. The post-commit hook clears that case itself; one left by a commit made without
+  the hook clears with `git add <path>`: index becomes HEAD, so there is nothing unpublished
   for a peer to sweep, and it discards nothing. A non-empty `git diff HEAD` is the case worth
   waiting on; confirm with `pgrep -x git` plus each pid's cwd and `helix-claim check
   worktree:main` before concluding anything about who owns it.
@@ -249,6 +292,8 @@ What is shared here:
   scripts/helix-claim check worktree:main        # FREE | LIVE | STALE  (exit 1 if LIVE)
   if scripts/helix-claim take device:k2plus deploy --pid $$ --note 192.168.1.50; then  # gate on the exit code; never pipe take
       trap 'scripts/helix-claim release-if-owned-by $$ device:k2plus' EXIT; make deploy-k2plus; fi
+  scripts/helix-claim take worktree:main edit --session   # owner = this session's `claude` process (--pid auto); errors if none is an ancestor
+  scripts/helix-claim take worktree:main edit --ack-red-main   # worktree:main is refused while Build / Code Quality is red on origin/main; fails open without gh; the merge hook always acks
   scripts/helix-claim list                       # everything, with derived liveness
   scripts/helix-claim resources                  # memory, load, claims, top RSS, test host: before heavy work
   scripts/helix-claim run heavy:sweep -- make unit-sweep   # claimed while it runs
@@ -285,7 +330,7 @@ What is shared here:
   | Hook | Behaviour |
   |------|-----------|
   | `pre-commit` | If `MERGE_HEAD` exists, claims this tree under the **git process's** pid so the merge announces itself. Prints nothing unless another session already holds the tree. Then runs the existing quality checks unchanged. |
-  | `post-commit` | Releases that claim **only if the claim names this commit's own pid**, so a session claim spanning several commits survives. |
+  | `post-commit` | Points any committed path's stale index entry back at HEAD's blob (the `MM` a reformatting hook leaves after `git commit -- <paths>`; `.githooks/lib/sync-index-to-head.sh`), then releases that claim **only if the claim names this commit's own pid**, so a session claim spanning several commits survives. |
 
   Ordinary human git use stays silent: the hooks speak only on a real conflict. Advisory by
   design; `HELIX_CLAIM_STRICT=1` makes `pre-commit` refuse instead of warn. `--no-verify`
@@ -367,7 +412,7 @@ Features, refactors, new panels/widgets/managers — **scope AFTER investigating
 | **No exceptions (firmware)** | `try`/`catch`/`throw`, `j.value("k", d)`, `j.at("k")`, one-arg `json::parse`, `std::stoi`, value-form `any_cast` in firmware-compiled code | `json_util::safe_*`/`as_*`, `json::parse(s, nullptr, false)`, `text_io::parse_leading`, `any_cast<T>(&a)`; `exception_policy.h` for shared code. The ESP32 image builds `-fno-exceptions`, so a throw is an abort; `scripts/check_esp32_app_srcs.py` gates the calls |
 | **No std::regex** | `std::regex`, `#include <regex>` in app code | `helix::Regex` (`include/helix_regex.h`, heap backtracking). libstdc++'s matcher recurses per input character and overflows musl's small thread stacks with no crash file. Lint-gated in `tests/shell/test_code_lint.bats`; escape hatch `// STD_REGEX_OK: <reason>` |
 | **Bug commits** | Filing an issue just so the commit can cite one | Cite the issue when one already exists: `fix(scope): thing (prestonbrown/helixscreen#123)`. No issue? `fix(scope): thing` is complete on its own — the commit body carries the explanation. |
-| **Unproven tests** | "Tests pass" as evidence the change is tested | `make mutate-diff`, once per branch. A green suite is not evidence. `tests/CLAUDE.md` § "Proving a test can fail" |
+| **Unproven tests** | "Tests pass" as evidence the change is tested | A hand break while writing the test, then `make mutate-diff` scoped to the touched tags, once per batch at the finish (§ Verification Cadence). A green suite is not evidence. `tests/CLAUDE.md` § "Proving a test can fail" |
 | **Commit body length** | 3-paragraph Tests / Verification / Mutation essay | Subject + ~4-line paragraph. Reserve the long form for genuine state-machine fixes that touch multiple subsystems |
 | **Comment archaeology** | `// unlike the three widgets 3d0875bff fixed`, `// this used to memcpy the whole canvas`, `// pre-fix the stream wrote into freed memory` | State the constraint, not the history: `// Invalidating here freezes a fullscreen view the user is watching`. § below |
 | **Submodule mods** | Edit `lib/lvgl/...` / `lib/libhv/...` directly | `patches/*.patch`; `lib/helix-xml/` is ours and edited directly. `.claude/rules/submodules.md` |
@@ -536,6 +581,13 @@ Design work overrides `superpowers:brainstorming` and `superpowers:writing-plans
   test cases and values; leave the bodies to the implementer. Every header a plan defines gets a
   `scripts/syntax_check.py` pass before execution starts. A plan of uncompiled code is a second
   codebase that drifts from the first.
+
+Execution overrides `superpowers:subagent-driven-development`, `executing-plans`,
+`requesting-code-review` and `test-driven-development` here: § Verification Cadence wins.
+No per-task review or re-review: the implementer self-checks and runs its tags, and the
+batch gets one review at the finish. Each plan or skill's "verify" step means its tags, not a
+sweep, gate or mutation run. TDD still holds: the new test goes red first, which is the
+one hand-break proof.
 
 ---
 

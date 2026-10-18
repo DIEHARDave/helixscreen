@@ -29,7 +29,7 @@ Out of the box, HelixScreen tracks filament on its own. Nothing to enable.
 
 **AMS / multi-material:** Each slot carries its own material, color, vendor, and remaining weight. On systems with **RFID** readers (Creality CFS, Snapmaker U1), spool info is detected automatically when you seat a spool. On systems without RFID, tap a slot's **Spool Info** to enter it yourself. See [Editing Filament Properties](filament.md#editing-filament-properties).
 
-This information persists on the printer — it survives restarts, and it's written where OrcaSlicer 2.3.2+ can read it, so your slicer's filament panel stays in sync. See [Syncing with OrcaSlicer](filament.md#syncing-with-orcaslicer-232-and-later-including-240).
+This information persists on the printer — it survives restarts, and it's written where OrcaSlicer 2.3.2+ can read it, so your slicer's filament panel stays in sync. See [Syncing with OrcaSlicer](filament.md#syncing-with-orcaslicer-232-and-later).
 
 ### How remaining weight is estimated
 
@@ -101,6 +101,16 @@ Tap **+ Add** in the Spoolman panel to create a new spool in three steps:
 
 HelixScreen creates the vendor, filament, and spool records together in Spoolman, so the new spool is ready to assign right away.
 
+### Pressure advance per filament
+
+> Added in 1.1. A [beta feature](beta-features.md): with beta features off, nothing is saved and nothing is applied.
+
+When you finish a [pressure advance test tower](calibration.md#pressure-advance-tuning-test-tower), **Save to Spool** stores the value on that spool's **filament** in Spoolman, in an extra field named `pressure_advance` (HelixScreen creates the field the first time). Every spool of that filament shares it.
+
+From then on, when a spool of that filament becomes active (set active from the Spoolman panel, Spoolman's web page, or an AMS slot change), HelixScreen sets that pressure advance on the extruder the spool feeds (on a tool changer, the tool the spool is assigned to). It does this only when nothing is printing: if your slicer sets pressure advance at the start of a print, the slicer's value wins for that print.
+
+**Getting it into OrcaSlicer.** OrcaSlicer does not read Spoolman directly. [spoolman2slicer](https://github.com/bofh69/spoolman2slicer) turns your Spoolman filaments into OrcaSlicer filament profiles, and its templates already read the `pressure_advance` field, so the value you tuned ends up in the profile. HelixScreen also keeps the latest results in Moonraker's database for a future OrcaSlicer plugin; plugins can read it today but cannot yet change a profile.
+
 ---
 
 ## Seeing How Much Is Left
@@ -114,7 +124,7 @@ However it's tracked, remaining filament shows up in the same places:
 | **Spool Info editor** | A per-slot remaining bar with percentage and weight |
 | **Spoolman inventory panel** | Weight and remaining percentage for every spool, with a warning icon on any spool that's running low (under 100 g) |
 
-**Runout** — actually running out of filament mid-print — is handled by your filament sensors and multi-filament hardware, not by the weight number. The printer's firmware pauses the print; HelixScreen then guides you through reloading. On **AFC (Box Turtle)** and **Happy Hare**, a backup slot you configured can take over automatically (Endless Spool). On the **Creality CFS**, auto-refill is run by the box itself and always pauses first: it swaps only when auto-refill is on and another slot holds the exact same material and colour, and otherwise leaves the print paused for you. See [Reading Error States](filament.md#reading-error-states) and the Endless Spool notes in [Filament Management](filament.md#slot-context-menu).
+**Runout** — actually running out of filament mid-print — is handled by your filament sensors and multi-filament hardware, not by the weight number. The printer's firmware pauses the print; HelixScreen then guides you through reloading. On **AFC (Box Turtle)** and **Happy Hare**, a backup slot you configured can take over automatically (Endless Spool). On the **Creality CFS**, **Auto-Refill** is run by the box itself and always pauses first: it switches only when Auto-Refill is on and another slot holds the exact same material and colour, and otherwise leaves the print paused for you. See [Reading Error States](filament.md#reading-error-states) and the Endless Spool notes in [Filament Management](filament.md#slot-context-menu).
 
 > **Tip:** The remaining weight is only as good as the starting number. Whenever you load a fresh spool, set its full weight — either by entering it in the Spool Info editor or by assigning a fresh Spoolman spool — so the estimate has an accurate starting point.
 

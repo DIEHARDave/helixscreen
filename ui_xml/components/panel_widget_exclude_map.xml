@@ -30,17 +30,14 @@
   <view name="panel_widget_exclude_map"
         extends="lv_obj" width="100%" height="100%" style_pad_all="#space_xxs" scrollable="false">
     <event_cb trigger="clicked" callback="exclude_map_clicked_cb"/>
-    <lv_obj name="exclude_map_body"
-            width="100%" height="100%" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
-            style_flex_track_place="center" style_pad_all="0" style_pad_row="0" style_pad_column="0" style_bg_opa="0"
-            style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="exclude_map_body"
+                  width="100%" height="100%" flex_flow="column" style_flex_main_place="center"
+                  style_flex_cross_place="center" style_flex_track_place="center" style_pad_row="0" style_pad_column="0">
 
       <!-- Placeholder: an icon, and from the strip rung up its caption. -->
-      <lv_obj name="exclude_map_placeholder"
-              width="100%" height="content" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="center" style_flex_track_place="center" style_pad_all="0"
-              style_pad_row="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-              event_bubble="true">
+      <pass_through name="exclude_map_placeholder"
+                    width="100%" height="content" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="center" style_flex_track_place="center" style_pad_row="#space_xxs">
         <bind_flag_if_eq subject="exclude_map_placeholder" flag="hidden" ref_value="0"/>
         <icon name="exclude_map_placeholder_icon"
               src="debug_step_over" size="xs" variant="muted" clickable="false" event_bubble="true"/>
@@ -49,49 +46,41 @@
                    event_bubble="true">
           <bind_flag_if_eq subject="exclude_map_rung" flag="hidden" ref_value="0"/>
         </text_tiny>
-      </lv_obj>
+      </pass_through>
 
       <!-- 0 glance: the icon over remaining/total. -->
-      <lv_obj name="exclude_map_glance"
-              width="100%" height="content" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="center" style_flex_track_place="center" style_pad_all="0"
-              style_pad_row="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-              event_bubble="true">
+      <pass_through name="exclude_map_glance"
+                    width="100%" height="content" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="center" style_flex_track_place="center" style_pad_row="#space_xxs">
         <bind_flag_if cond="exclude_map_placeholder eq 1 or exclude_map_rung ne 0" flag="hidden"/>
         <icon name="exclude_map_glance_icon"
               src="debug_step_over" size="xs" variant="muted" clickable="false" event_bubble="true"/>
         <text_tiny name="exclude_map_glance_count"
                    bind_text="exclude_map_count_text" clickable="false" event_bubble="true"/>
-      </lv_obj>
+      </pass_through>
 
       <!-- 1 strip: object and skipped counts on two lines. -->
-      <lv_obj name="exclude_map_strip"
-              width="100%" height="content" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="center" style_flex_track_place="center" style_pad_all="0"
-              style_pad_row="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-              event_bubble="true">
+      <pass_through name="exclude_map_strip"
+                    width="100%" height="content" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="center" style_flex_track_place="center" style_pad_row="#space_xxs">
         <bind_flag_if cond="exclude_map_placeholder eq 1 or exclude_map_rung ne 1" flag="hidden"/>
         <text_tiny name="exclude_map_strip_objects"
                    bind_text="exclude_map_objects_text" clickable="false" event_bubble="true"/>
         <text_tiny name="exclude_map_strip_skipped"
                    bind_text="exclude_map_skipped_text" style_text_color="#text_muted" clickable="false"
                    event_bubble="true"/>
-      </lv_obj>
+      </pass_through>
 
       <!-- 2..5: the map and the text under it (column, cell, full) or beside it (wide). -->
-      <lv_obj name="exclude_map_content"
-              width="100%" height="100%" style_pad_all="0" style_pad_row="#space_xxs" style_pad_column="#space_xs"
-              style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="exclude_map_content"
+                    width="100%" height="100%" style_pad_row="#space_xxs" style_pad_column="#space_xs">
         <bind_flag_if_eq subject="exclude_map_show_map" flag="hidden" ref_value="0"/>
         <bind_style_if_not_eq name="em_stacked" subject="exclude_map_rung" ref_value="4"/>
         <bind_style_if_eq name="em_inline" subject="exclude_map_rung" ref_value="4"/>
-        <lv_obj name="exclude_map_host"
-                width="100%" height="100%" flex_grow="1" style_pad_all="0" style_bg_opa="0" style_border_width="0"
-                scrollable="false" clickable="false" event_bubble="true"/>
-        <lv_obj name="exclude_map_text"
-                height="content" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
-                style_flex_track_place="center" style_pad_all="0" style_pad_row="#space_xxs" style_bg_opa="0"
-                style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+        <pass_through name="exclude_map_host" width="100%" height="100%" flex_grow="1"/>
+        <pass_through name="exclude_map_text"
+                      height="content" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
+                      style_flex_track_place="center" style_pad_row="#space_xxs">
           <bind_style_if_eq name="em_text_beside" subject="exclude_map_rung" ref_value="4"/>
           <bind_style_if_not_eq name="em_text_under" subject="exclude_map_rung" ref_value="4"/>
           <text_tiny name="exclude_map_now_caption"
@@ -121,8 +110,8 @@
             <bind_flag_if_eq subject="exclude_map_show_skip" flag="hidden" ref_value="0"/>
             <event_cb trigger="clicked" callback="exclude_map_skip_cb"/>
           </ui_button>
-        </lv_obj>
-      </lv_obj>
-    </lv_obj>
+        </pass_through>
+      </pass_through>
+    </pass_through>
   </view>
 </component>

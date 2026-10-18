@@ -229,19 +229,22 @@ namespace helix::ui {
  *
  * A string subject initialized without a previous-value buffer notifies on
  * every copy, and a bound label then redraws even for the text it shows.
+ * @return whether the subject changed
  */
-inline void copy_string_if_changed(lv_subject_t* subject, const char* text) {
-    if (std::strcmp(lv_subject_get_string(subject), text) != 0) {
-        lv_subject_copy_string(subject, text);
-    }
+inline bool copy_string_if_changed(lv_subject_t* subject, const char* text) {
+    if (std::strcmp(lv_subject_get_string(subject), text) == 0)
+        return false;
+    lv_subject_copy_string(subject, text);
+    return true;
 }
 
 /// Write @p value into an int subject only when it differs, so a sync that finds
-/// the same value wakes no observer.
-inline void set_int_if_changed(lv_subject_t* subject, int value) {
-    if (lv_subject_get_int(subject) != value) {
-        lv_subject_set_int(subject, value);
-    }
+/// the same value wakes no observer. Returns whether the subject changed.
+inline bool set_int_if_changed(lv_subject_t* subject, int value) {
+    if (lv_subject_get_int(subject) == value)
+        return false;
+    lv_subject_set_int(subject, value);
+    return true;
 }
 
 } // namespace helix::ui

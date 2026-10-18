@@ -329,14 +329,16 @@ void FilamentSensorWidget::show_tap_modal(bool status_only) {
 
 void FilamentSensorWidget::dispatch_load() {
     AmsBackend* backend = AmsState::instance().get_backend();
-    // No slot picker on this tile either — mirrors PrintStatusWidget::dispatch_load().
-    const int slot = backend ? backend->get_current_slot() : -1;
+    // No slot picker on this tile: the runout names its head.
+    const int slot = helix::ui::runout_target_slot(
+        backend, helix::FilamentSensorManager::instance().real_runout_lane(), /*load=*/true);
     helix::ui::execute_filament_load(backend, slot, "[FilamentSensorWidget]");
 }
 
 void FilamentSensorWidget::dispatch_unload() {
     AmsBackend* backend = AmsState::instance().get_backend();
-    const int slot = backend ? backend->get_current_slot() : -1;
+    const int slot = helix::ui::runout_target_slot(
+        backend, helix::FilamentSensorManager::instance().real_runout_lane(), /*load=*/false);
 
     // unload_target_is_loaded()'s is_current_slot arm is what makes this
     // reachable during a runout: the lane's own sensor clears while filament

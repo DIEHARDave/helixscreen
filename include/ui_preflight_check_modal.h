@@ -24,9 +24,9 @@ namespace helix::ui {
  *   - the actually-seated slot color swatch (or an "EMPTY" label)
  *   - a severity glyph (✓ / ⚠ / ✗)
  * plus an explanation line and three actions:
- *   - Remap…       (tertiary; only when the active backend supports remap)
- *   - Cancel       (secondary)
- *   - Print Anyway (primary)
+ *   - Map Filament… (tertiary; only when the active backend supports remap)
+ *   - Cancel        (secondary)
+ *   - Print Anyway  (primary)
  *
  * Seated color/material is looked up from
  * AmsState::collect_available_slots() by ToolCheck::mapped_slot — the
@@ -56,9 +56,14 @@ class PreflightCheckModal : public Modal {
     void set_on_force(Action a) {
         on_force_ = std::move(a);
     }
-    /// "Remap…" callback (only invoked when the Remap button is shown).
+    /// "Map Filament…" callback (only invoked when the Map Filament button is shown).
     void set_on_remap(Action a) {
         on_remap_ = std::move(a);
+    }
+    /// Runs once the modal closes, however it closed, after any Print Anyway
+    /// or Remap callback.
+    void set_on_closed(Action a) {
+        on_closed_ = std::move(a);
     }
 
   protected:
@@ -71,10 +76,16 @@ class PreflightCheckModal : public Modal {
     void on_cancel() override { // Cancel
         hide();
     }
-    void on_tertiary() override { // Remap…
+    void on_tertiary() override { // Map Filament…
         if (on_remap_)
             on_remap_();
         hide();
+    }
+    void on_hide() override {
+        if (auto closed = std::move(on_closed_)) {
+            on_closed_ = nullptr;
+            closed();
+        }
     }
 
   private:
@@ -83,7 +94,7 @@ class PreflightCheckModal : public Modal {
                               const std::vector<helix::AvailableSlot>& slots);
 
     helix::PreflightResult result_;
-    Action on_force_, on_remap_;
+    Action on_force_, on_remap_, on_closed_;
 };
 
 } // namespace helix::ui

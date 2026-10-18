@@ -174,6 +174,15 @@ AFC's opt-in rests on `AFC_stepper.<lane>.tool_loaded`, which upstream's `set_lo
 hub*, not to the toolhead — only `tool_loaded` answers the toolhead question, which is why
 `parse_afc_stepper` maps `"Loaded"` to `AVAILABLE`.
 
+**Which lane a parked head holds.** `build_ams_topology()` asks `slot_is_actively_loaded()`
+of every tool's lane and hands the answers to ToolState as `ToolTopology::tool_seated`.
+Where a hub feeds several lanes into one head, `PhysicalHead::seated_tool` is the lane that
+head holds, and `PhysicalHead::representative_tool()` prefers it over the head's lowest
+lane. The home tool switcher's head tap and the preheat widget's head target both resolve
+through it, so selecting a parked head keeps its filament instead of swapping lanes on the
+way (prestonbrown/helixscreen#1811). Two lanes claiming one head decide nothing, and the
+lowest lane stands.
+
 AD5X IFS derives its stamp from the same two inputs `system_info_.filament_loaded` is
 assigned from, so the two cannot disagree — but only after dropping the lane's own port
 sensor from the condition. A runout clears `port_presence_` while the filament that lane
@@ -496,7 +505,7 @@ When it runs, the production path is `PrintSelectPanel::apply_remap()` -> `Print
 
 The strategy is guarded in `open_remap_modal()` (`include/ui_panel_print_select.h`), which asks `PrintPreparationManager::check_modification_capability()` rather than testing for the plugin itself: rewriting a file before printing is the same act the pre-print options perform, and two copies of "may we modify this file" is how one of them ends up offering a picker the other would refuse. `tests/unit/test_gcode_tool_remapper.cpp` pins the four families, the detector and the swap collision-safety; `tests/unit/test_remap_strategy.cpp` pins the strategy half and the pick rule; `tests/unit/test_start_macro_remap_note.cpp` pins the scan lookup and the note text; `tests/unit/test_filament_mapping_modal_cancel.cpp` pins that the banner tracks the picks and never leaks into a show that set no note (the subjects behind it are process-wide).
 
-User-facing counterpart: [Tool Mapping § Printers that remap by rewriting the file](../user/guide/filament.md#printers-that-remap-by-rewriting-the-file).
+User-facing counterpart: [Filament Mapping § Printers that map filament by rewriting the file](../user/guide/filament.md#printers-that-map-filament-by-rewriting-the-file).
 
 ### AD5X IFS material/color reconcile (locks, insert, #1065/#1071)
 
@@ -825,7 +834,7 @@ Each entry in the `filaments` array is one branded product:
   "density": 1.24,              // OPTIONAL — else inherit type
   "codes": { "cfs": "07001" },  // OPTIONAL, open scheme-keyed map (see below)
   "orca_id": "OGF...",          // provenance: OrcaSlicer filament_id (NOT a CFS code)
-  "source": "orca"              // provenance: orca | cfs-seed | user
+  "source": "orca"              // provenance: orca | cfs-seed | helix-seed | vendor-spec | user
 }
 ```
 
@@ -1044,10 +1053,19 @@ This shallow-clones OrcaSlicer's `resources/profiles` at the pinned tag into
 `build/orca-profiles` (sparse checkout, blob-filtered), runs
 `scripts/import_orca_filaments.py` to resolve `inherits` chains, extract
 facts, and union them with the preserved CFS-code seed
-(`scripts/fixtures/cfs_seed.json`), carries the hand-maintained `types` table
+(`scripts/fixtures/filament_seed.json`), carries the hand-maintained `types` table
 through from the existing file, writes `assets/filaments.json`, and discards the
 cloned Orca checkout. Nothing from the Orca clone is committed — only the
 derived output. Bump `ORCA_TAG` to refresh against newer Orca data.
+
+Products come from the shared `OrcaFilamentLibrary` and from the vendor packs
+named in `VENDOR_PACKS` (`scripts/import_orca_filaments.py`), for filament
+brands Orca profiles only under their own printers (Eryone). To add a brand
+whose pack is `resources/profiles/<Vendor>/filament`, add `<Vendor>` there and
+regenerate. A pack's `@<nozzle>` and `@<printer>` variants are skipped in favour
+of the base profile, and a profile that changes material from its template
+keeps only the temps, range and density it sets itself. Pack types never join
+`orca_library_types`: Orca shows those presets on that vendor's printers only.
 
 `assets/filaments.json` is **generated but committed** (same pattern as fonts
 and translations) — cross-compiled targets need the file present without
@@ -1110,6 +1128,17 @@ open question of how much of the per-lane loop can be expressed in XML.
 
 ---
 
+### Insert prompts
+
+`FilamentInsertWatcher` opens the slot editor on a lane's `slot_insert_presence()`
+going empty to present, unless the lane's tag reader names the spool
+(`slot_insert_identity()`, `lane_insert_action()` in `include/filament_insert_policy.h`).
+While it waits on the reader or holds the editor open it claims the lane
+(`claim_insert_prompt()`, `include/ui_insert_notice.h`), and the "Same spool?"
+notice stays quiet for a claimed lane. That suppression only works when the
+reader answers after the presence edge, as on the U1's Pending path. A backend
+that queues the notice from the same parse as the edge can still show both.
+
 ## UI Panels
 
 ### AMS Panel (`ui_panel_ams`)
@@ -1118,7 +1147,11 @@ The detail panel showing slots, path visualization, hub sensors, and the current
 
 Key features:
 - Slot grid with overlap layout for >4 slots (shared via `ui_ams_slot_layout.h`)
-- Path canvas showing filament routing from slots through hub to toolhead
+- Path canvas showing filament routing from slots through hub to toolhead. On a PARALLEL
+  path a tap on another tool's head offers to switch to it through `offer_tool_change()`
+  (`TOOL_ABSTRACTION.md` § "Requesting a Tool Change from the UI"); a tube, spool, the
+  mounted head or a head mapped to no tool opens the slot context menu
+  (`FILAMENT_PATH_CANVAS.md` § "Cache & Invalidation" has the hit-test)
 - Backend selector (shown when `backend_count > 1`)
 - Unit scoping: can display a subset of slots for a single unit within a multi-unit backend
 
@@ -1671,7 +1704,8 @@ A backend fault reaches the user through one of **two independent channels**. Th
 | **AD5X IFS** | — | `AmsAction::ERROR`, raised by `evaluate_runout_locked()` or by an operation timeout | Runout: Resume (primary, hot) · Purge `M83`+`G1 E` (hot) · `IFS_UNLOCK` (danger, cold). Timeout: `IFS_UNLOCK` alone. **No "Load slot N"** — every IFS load path self-homes and trash-moves into the part |
 | **CFS** | **inverted** — `is_bang_line()` returns `nullopt`, so `!!` `key8xx` codes stay with the generic classifier. Claims only paused `respond_info` lines matching the auto-refill give-up wording | — (never assigns `AmsAction::ERROR`) | Resume (primary, hot) · Reset CFS = `BOX_ERROR_CLEAR` (danger, cold) |
 | **QIDI Box** | — | `AmsAction::ERROR`, raised by a negative `slot<N>` state word (blocked lane) | Lone dismiss — recovery gcode unknown, clearance is manual (#1041) |
-| **ACE**, **Tool changer**, **Snapmaker** | — | — | — (generic runout modal owns these; see below) |
+| **Snapmaker** | `is_bang_line()`, while paused or printing, then the firmware's `e<N> not edit filament` resume refusal, as "Filament not set" with `command_refusal` set (§ third channel below) | — | Lone OK dismiss: no one-tap gcode sets a filament type. Runout itself is the generic modal's, as below |
+| **ACE**, **Tool changer** | — | — | — (generic runout modal owns these; see below) |
 
 **There is a third channel, and it decides whether Channel A speaks at all.** When the fault
 originated in a macro *we* sent, the same rejection also comes back as the JSON-RPC error reply
@@ -1681,6 +1715,17 @@ if the answer is "the caller's own UI", it records the message and `GcodeErrorRo
 `!!` toast — Channel A never runs its presentation. This is why a backend's dispatch path must
 declare `caller_surfaces_errors` honestly: a log-only `on_error` that claims the report
 silences Channel A for a fault nobody saw. See `RPC_ERROR_OWNERSHIP.md`.
+
+A backend can take the other side of that trade for a refusal it explains better than the
+caller can. An `ErrorEvent` with `command_refusal` set is never suppressed as "already
+reported via RPC"; instead the caller routes its own report through
+`rpc_error_correlation::report_unless_explained()`, which the router claims when the active
+backend's `classify_error()` of the `!!` copy is a command refusal it will present. The
+caller's report then runs only if the explanation has not surfaced 1.5 s later. Resume
+(`dispatch_prepared_resume()`) and recovery-button sends (`RecoveryModalPresenter`) report
+this way, so the U1's `e<N> not edit filament` reads as "Filament not set" rather than a
+raw "Failed to resume:" toast. `RPC_ERROR_OWNERSHIP.md` § "A refusal the classifier
+explains" has the mechanism.
 
 **Why CFS inverts the usual gate.** Creality's box reports coded faults as `!!` lines carrying a `key8xx` JSON payload, which `error_classify::classify()` already decodes into a CRITICAL event (and a "Reset CFS" button for `key840`). Claiming those in `classify_error()` would either duplicate that path or silently replace it. The runout give-up messages ride the *other* half of the same channel — plain `respond_info` output that no classifier looks at — so taking non-`!!` lines and only non-`!!` lines is what keeps the two from colliding.
 
@@ -1693,7 +1738,7 @@ silences Channel A for a fault nobody saw. See `RPC_ERROR_OWNERSHIP.md`.
 
 A merely-`silent` request records **nothing** in the RPC ledger. `silent` means "no automatic toast from us", not "the user was told" — recording on it would mute the `!!` copy for a failure that reached no one. Only a caller that declared `caller_surfaces_errors`, or the generic fallback actually firing, earns a record. See `RPC_ERROR_OWNERSHIP.md`.
 
-`RecoveryModalPresenter` separately dedups on `detail` **plus** the action set — the action set is part of the identity because AFC legitimately emits byte-identical text on both channels with different affordances (#1171). Backends should populate `ErrorEvent::raw_detail` with the firmware's untranslated wording when `detail` has been rewritten, or the ledger has nothing the other channel can match.
+`RecoveryModalPresenter` separately dedups on `detail` **plus** the action set (a `command_refusal` event first clears that memory, since it answers the command just sent) — the action set is part of the identity because AFC legitimately emits byte-identical text on both channels with different affordances (#1171). Backends should populate `ErrorEvent::raw_detail` with the firmware's untranslated wording when `detail` has been rewritten, or the ledger has nothing the other channel can match.
 
 **Who owns the runout surface.** Both channels compete with a third, older surface: the generic sensor-driven modal (`FilamentRunoutHandler` on the pause edge, `PrintStatusWidget` when idle), gated by `RuntimeConfig::should_show_runout_modal()`. A fourth entry point, the home-panel "Filament Sensor" tile (`FilamentSensorWidget`), opens the same `RunoutGuidanceModal` on a deliberate tap while printing or paused, and `SensorSettingsOverlay` when the tracked sensor is disabled - see "The five dispatch surfaces" below. The rule is **one surface per printer**: that predicate returns false exactly for the backends in the table above that raise their own runout fault (AFC, Happy Hare, AD5X IFS, CFS), and true for hub backends that raise nothing (ACE, QIDI Box) — which the old blanket "is it a hub AMS" test silenced with nothing put in its place (#1250).
 
@@ -1744,14 +1789,71 @@ None of the five surfaces navigate away to dispatch anymore. `plan_load()` /
 `plan_unload()` answer the tier decision for all of them; `filament_op_execute.h` runs
 that decision for the three surfaces above that don't own a per-surface execution ladder.
 
-**Batch load/unload** is a sixth surface, gated per backend: only a backend whose `kTraits`
-sets `supports_batch_filament_ops` gets the multi-slot Load All / Unload All button in
-the AMS operation sidebar, which opens `BatchFilamentModal`
-(`include/ui_batch_filament_modal.h`). The Snapmaker U1 is the only real backend that
-qualifies today. The modal dispatches the whole selected set through the backend's
-`load_filament_batch()` / `unload_filament_batch()`, which route through the
-same `run_filament_op()` executor as a single-slot op; the per-backend script shapes live in
-each backend's doc ([Snapmaker U1](FILAMENT_BACKEND_SNAPMAKER_U1.md)).
+**The head picker** (`BatchFilamentModal`, `include/ui_batch_filament_modal.h`) is what the
+sidebar's Load and Unload open, described in
+[§ Backend-neutral filament operations](#backend-neutral-filament-operations). It decides
+nothing: it hands the chosen heads back to the sidebar. One head takes the per-slot path
+above; several (a backend whose `max_heads_per_filament_op()` is above one, the Snapmaker
+U1 today) run through `load_filament_batch()` / `unload_filament_batch()`, which route
+through the same `run_filament_op()` executor as a single-slot op. The per-backend script
+shapes live in each backend's doc ([Snapmaker U1](FILAMENT_BACKEND_SNAPMAKER_U1.md)).
+
+### Backend-neutral filament operations
+
+**Load and Unload mean filament on every printer.** They never mount or park a tool:
+mounting is the toolhead tap (`offer_tool_change()`, `include/tool_change_request.h`) and
+the sidebar's Mount cell, parking is `request_tool_park()`. A backend that needs a tool on
+the carriage to feed it mounts the tool inside its own load. The UI never asks which
+backend it is on: `scripts/check_filament_ops_neutral.py` fails a `get_type()` call or an
+`AmsType::` name in the filament-op files.
+
+The backend answers per-head questions (`include/ams_backend.h`, "Heads"), none of which
+read the current tool or slot:
+
+| Query | Answers |
+|-------|---------|
+| `filament_head_count()` | Nozzles filament is fed into. 1 on a shared toolhead |
+| `head_for_slot(slot)` | The head a slot feeds; nullopt for one routed nowhere (an unrouted multiACE bay) |
+| `head_source_slot(head, info)` | The head's Assigned Tool slot: what a Load feeds |
+| `head_filament_ops(head)` | `FilamentOpSupport` per direction (Automatic, Manual, Unavailable) with a translated reason for anything but Automatic |
+| `head_has_filament(head)` | Filament an Unload would act on; nullopt where nothing senses it |
+| `max_heads_per_filament_op()` | How many heads one op may name; above one means a batch |
+| `supports_reset()` | Whether the sidebar's Reset means anything (a trait) |
+
+`include/filament_action_set.h` turns those answers into what a surface offers, as plain
+values a test can build: `read_filament_head_view()` (`include/filament_op_execute.h`)
+reads a `FilamentHeadView` off the live backend, and three pure functions decide.
+
+- `decide_filament_actions()` is the sidebar. Load opens the head picker on every printer;
+  Unload is one tap on one head and the picker on several. A docking machine
+  (`carriage_can_be_empty()`) where no head has an automatic filament op shows **Mount...**
+  and **Park** in their place. Where heads dock and a feed exists, Park stands beside Load
+  and Unload. A direction no head can do by machine is disabled with the head's reason,
+  shown in the line under the grid.
+- `decide_slot_actions(view, head)` is the slot context menu. Load and Unload stay,
+  disabled with the head's reason where it is not automatic; a head with no automatic op
+  on a docking machine adds Mount (disabled with "Already mounted" on the mounted one) and,
+  on the mounted head, Park.
+- `decide_head_picker_rows(view, op)` is the picker. A row names the slot the op uses; a
+  head with no assigned slot is disabled with "Assign a slot first". The preselection is
+  the selected head, else the mounted one, and only when that head can act. It is a
+  preselection, never a precondition.
+
+Busy and print gating disable every action with no reason (the stepper or the print says
+why). The shared executor (`execute_filament_load()` / `execute_filament_unload()`) and
+the sidebar's per-slot handlers refuse a non-automatic head through
+`notify_if_filament_op_unavailable()`, which toasts the reason and sends nothing, so a
+runout dialog or the sensor tile explains instead of mounting. The runout surfaces take
+their head from the runout itself: `FilamentSensorManager::real_runout_lane()` through
+`runout_target_slot()`.
+
+| Backend | Heads | Load / Unload |
+|---|---|---|
+| Happy Hare, AFC (one extruder), ACE, CFS, QIDI, AD5X IFS, OpenAMS | 1 | Automatic |
+| Snapmaker U1, multiACE | 4 | Automatic, batch of 4; a multiACE bay maps to its routed head |
+| Creator 5 with the afclite feed | one per tool | Load Automatic (the feed), Unload Manual (cut at the head) |
+| MedusaHC (one extruder drive) | one per tool | Automatic: the backend mounts the tool, heats, prompts the operator, purges and restores the carriage ([FILAMENT_BACKEND_MEDUSAHC.md](FILAMENT_BACKEND_MEDUSAHC.md#loading-and-unloading-filament)) |
+| klipper-toolchanger with no feed | one per tool | Manual: the sidebar shows Mount and Park |
 
 ### The dispatch ladder
 
@@ -1782,7 +1884,6 @@ slot's `mapped_tool`. Every other call takes the slot.
 | Refusal | Meaning | Reached from |
 |---------|---------|--------------|
 | `SelectSlot` | The backend wants a slot and none resolved | Load only |
-| `AlreadyMounted` | The requested tool is already on the carriage. `SELECT_TOOL` on it is a firmware no-op (9KRXZ62P) | Load only, tool changers only |
 | `NothingLoaded` | No slot resolved, or nothing at that slot worth pulling | Unload only — its *only* refusal |
 
 ### One deliberate asymmetry between load and unload
@@ -1853,18 +1954,19 @@ carry a comment saying so. Read `include/filament_op_dispatch.h` before "fixing"
 |----------|-------------|
 | Which tier does this operation take? | `plan_load()` / `plan_unload()` |
 | Is this a fresh load or a swap? | `plan_load()` via `needs_unload_before_load()` -> `AmsCall::ChangeTool` |
-| Is the requested tool already mounted? | `plan_load()` -> `FilamentRefusal::AlreadyMounted` |
+| Can this head's Load or Unload run on this printer at all? | `AmsBackend::head_filament_ops()`, asked through `filament_action_set.h` and `notify_if_filament_op_unavailable()` |
 | Is there anything at this slot to unload? | `unload_target_is_loaded()` — actively loaded, **or** filament at the toolhead, **or** it is the current slot (the runout-recovery case, #995 / #1199). The `ACTIVE_HEAD_SLOT` sentinel (-1) counts only while the backend reports the toolhead unaccounted (#1324) |
 | Which slot do this tool's buttons act on? | `resolve_op_button_slot()` |
 | Are Load / Unload enabled right now? | `compute_op_button_gating()` — load state *and* print state |
-| How does a plan actually run? | `filament_op_execute.h` - `execute_filament_load()` / `execute_filament_unload()` / `execute_filament_purge()`, shared by `PrintStatusWidget`, `FilamentRunoutHandler`, and `FilamentSensorWidget` |
+| How does a plan actually run? | `filament_op_execute.h` - `execute_filament_load()` / `execute_filament_unload()` / `execute_filament_purge()`, shared by `PrintStatusWidget`, `FilamentRunoutHandler`, `FilamentSensorWidget`, the external-spool menu, bed drying, and the panel's and sidebar's macro tiers |
+| Must the nozzle heat first, to what, and when is it hot? | `filament_op_heater.h` - `decide_preheat()` (pure rule) and `FilamentOpHeater` (owned by `SubjectInitializer`, `get_filament_op_heater()`). Every `execute_filament_*()` runs through it; the panel's extrude/retract/purge and the sidebar's tier-1 ladder call `run_after_preheat()` directly. It cools down only what it heated for (a hand preheat or a self-heating backend is not its to turn off), and abandons a preheat whose target never lands, that runs past its timeout, whose target is taken away, or that a print start overtakes |
 
 **Per-surface — presentation, and correctly different.**
 
 | Surface | Owns |
 |---------|------|
 | `FilamentPanel` | `begin_operation_guard()` / `operation_guard_`, the `backend_op_active_` gate on `ams_action_observer_`, the on-button spinner (`op_started` / `op_succeeded` / `op_failed`), and `navigate_to_ams_panel()` on `SelectSlot` |
-| `AmsOperationSidebar` | The step model (`start_operation(StepOperationType::LOAD_FRESH / LOAD_SWAP / UNLOAD)`, which marks the operation busy with its first step's projected action, `HEATING` for the legacy bar) and the preheat state machine (`get_load_temp_for_slot()`, `pending_load_slot_`, `check_pending_load()`, `ui_initiated_heat_`) |
+| `AmsOperationSidebar` | The step model (`start_operation(StepOperationType::LOAD_FRESH / LOAD_SWAP / UNLOAD)`, which marks the operation busy with its first step's projected action, `HEATING` for the legacy bar) and the Heat step drawn from `FilamentOpHeater`'s progress reports (`run_backend_op_after_preheat()`) |
 | `FilamentRunoutHandler` | Staying put. Every outcome is a toast; navigating would tear down the dialog the user is standing in |
 | `FilamentSensorWidget` (home tile) | No navigation either - toast-only refusals, and the modal stays up for a repeated Purge tap. Also owns the tap-routing decision itself (`decide_tap_destination()` in `filament_widget_tap_policy.h`): disabled sensor vs. printing vs. everything else |
 | All of the above | Toast copy, and whether to toast at all. On a *dispatch* failure that is not purely presentational: the send's `caller_surfaces_errors` says whether this surface's `on_error` really shows the user something, and a surface that claims it silences `GcodeErrorRouter`'s `!!` report of the same rejection. A surface that only logs must pass `false` — see `RPC_ERROR_OWNERSHIP.md` |
@@ -1874,24 +1976,38 @@ Two consequences worth naming, because they look like bugs and are not:
 - **The sidebar is silent on a refusal; the panel toasts.** The AMS grid already highlights
   the mounted slot and greys the unpickable ones, so a toast there narrates what the user
   can see. On the Filament panel the button is the only feedback there is.
-- **Tool changers skip the sidebar's preheat entirely.** `SELECT_TOOL` owns its own heat
-  sequence and the backend sets `SELECTING` at dispatch, resolving on the macro ack (#1183);
+- **Tool changers skip the sidebar's stepper and the preheat.** `SELECT_TOOL` owns its own
+  heat sequence (the backend claims `supports_auto_heat_on_load`, so `preheat_skip_reason()`
+  skips) and the backend sets `SELECTING` at dispatch, resolving on the macro ack (#1183);
   an optimistic `HEATING` stepper would fight it. Only the *decision* is shared.
+- **A preheat outlives the surface that asked.** A dialog can be dismissed and the AMS panel
+  closed mid-heat; `FilamentOpHeater` runs the op once the nozzle is hot either way. The same
+  request again (op, slot and owning surface) while it waits cancels it (the heater goes back
+  off if it was off); a different op from the same surface is refused with a toast, since the
+  runout dialog stays open after Load offering Purge; a request from another surface replaces
+  it. A reload asked for during a pause is dropped when the pause ends (Resume sits on the
+  same open dialog), so it never runs into the resumed print. A surface whose user
+  waits on the op's end sets `FilamentOpSurface::on_preheat_ended` (bed drying does), which
+  also fires when its own request is not run. The cooldown afterwards turns off the
+  extruder that was heated, which need not be the active one.
 - **The optimistic action outlives backend silence.** A backend that declares
-  `BackendTraits::holds_optimistic_action` (Happy Hare) sets no action at dispatch and
+  `BackendTraits::holds_optimistic_action` (Happy Hare, Snapmaker U1) sets no action at dispatch and
   reports `IDLE` through the UI preheat and until its firmware starts, and every sync (the
   sidebar's 1.5s stall watchdog included) would copy that. For those, `start_operation()`
   calls `AmsState::hold_optimistic_action()`, so a backend `IDLE` leaves the action alone
   until the backend reports a busy action of its own, which takes over for the rest of the
   operation. Dispatch restarts the budget (`hand_operation_to_backend()`). The hold ends on
   a refused dispatch, a backend `EVENT_ERROR` (Happy Hare emits one when its gcode or the
-  pre-op G28 fails), an abandoned preheat (sidebar torn down, or the nozzle target taken
+  pre-op G28 fails, the U1 when its `AUTO_FEEDING` fails), a backend
+  `EVENT_LOAD_COMPLETE` / `EVENT_UNLOAD_COMPLETE` (the U1 raises one when its
+  `AUTO_FEEDING` answers OK), an abandoned preheat (sidebar torn down, or the nozzle target taken
   away), a backend swap, or the budget running out (prestonbrown/helixscreen#1057).
 
 Two more where the surface deliberately does **not** use the plan's value:
 
-- The sidebar **re-plans after preheat** (`check_pending_load()`) instead of replaying the
-  plan it computed before heating — the firmware may have picked up or dropped a tool while
+- An op that waited on a preheat **re-plans** when the nozzle is hot instead of replaying the
+  plan computed before heating (the executor's deferred path, the sidebar's
+  `dispatch_backend_load()`) — the firmware may have picked up or dropped a tool while
   the nozzle came up, which flips load-vs-swap.
 - The sidebar passes its caller's raw `slot_index` to `unload_filament()`, **not**
   `plan.ams_arg`: its own Unload button means "whatever is active" and passes `-1`, which the
@@ -2001,7 +2117,7 @@ load_target = max(new_material_temp, last_nonzero_nozzle_target, current_actual_
 **Latch lifecycle.**
 - **Set:** every status update with `target > 0` (per extruder).
 - **Survives:** cooldown to 0 (the whole point).
-- **Reset:** on **unload only** — the filament is physically pulled, so nothing is left to purge. `FilamentPanel::execute_unload()` and `AmsOperationSidebar::handle_unload()` call `PrinterState::clear_nozzle_load_latch()`.
+- **Reset:** on **unload only** — the filament is physically pulled, so nothing is left to purge. Every unload clears it at dispatch, after any preheat (which heats to it): the executor's `dispatch_unload()` and the sidebar's `dispatch_backend_unload()` call `clear_load_latch()`.
 - **Not persisted** across restart — a power cycle means a cold printer that reheats anyway, and persistence is where staleness would bite.
 
 **Where the guard lives.** `TemperatureController::set_target(HeaterType, celsius, opts)` applies the floor when `opts.keep_previous_hot` is set. Nozzle only — bed/chamber and any send without the flag are untouched, so cooldown-to-0 and deliberate manual keypad lowers still work.
@@ -2010,8 +2126,7 @@ load_target = max(new_material_temp, last_nonzero_nozzle_target, current_actual_
 | Call site | Flag | Rationale |
 |-----------|------|-----------|
 | Material preset tap (`handle_preset_button`, `handle_spool_preset_button`, Home `PreheatWidget`) | ❌ off | a request for that temperature; load/unload apply the floor when the swap happens |
-| Op preheat (`start_preheat_for_op` — load/extrude/purge/etc.) | ✅ on | controller computes the max; replaced the old target-only check |
-| AMS load-with-preheat (`handle_load_with_preheat`) | ✅ on | skip/wait decision also uses `max(actual, latch)` so a cooled nozzle still reheats to purge |
+| Filament-op preheat (`FilamentOpHeater::run_after_preheat` — every load/unload/purge/extrude/retract surface) | ✅ on | controller computes the max; `decide_preheat()` folds the latch into the wait too, so a cooled nozzle still reheats to purge |
 | Manual keypad entry (`handle_custom_nozzle_confirmed`) | ❌ off | deliberate override |
 | Cooldown-to-0 | ❌ off | must still reach 0 |
 
@@ -2034,6 +2149,7 @@ Each backend has its own leaf doc covering the protocol, data sources, G-code co
 | CFS | Creality Filament System (K2 built-in; K1/K1C/K1 Max upgrade) | [FILAMENT_BACKEND_CFS.md](FILAMENT_BACKEND_CFS.md) |
 | QIDI Box | QIDI PLUS4 / Q2 / MAX4 RFID hub, chainable to 4 boxes | [FILAMENT_BACKEND_QIDI_BOX.md](FILAMENT_BACKEND_QIDI_BOX.md) |
 | Snapmaker U1 | SnapSwap 4-toolhead parallel toolchanger with per-channel RFID | [FILAMENT_BACKEND_SNAPMAKER_U1.md](FILAMENT_BACKEND_SNAPMAKER_U1.md) |
+| multiACE | Snapmaker U1 with 1-4 ACE Pro units upstream of its heads; the U1 backend plus ACE units, chosen in the factory from the discovered hardware | [FILAMENT_BACKEND_MULTIACE.md](FILAMENT_BACKEND_MULTIACE.md) |
 
 ### AmsType Enum
 
@@ -2339,7 +2455,7 @@ AMS panel env badges          AmsEnvironmentOverlay (Tabs / Single)
                                 duration, start/stop, queued banner
                                              │
                                              ▼
-                              start_drying / stop_drying (unit = shown zone's unit_index)
+                              start_drying_request / stop_drying_gates (unit = shown zone's unit_index)
 ```
 
 `DryerInfo` (declared in `include/ams_types.h`) carries:
@@ -2356,12 +2472,26 @@ AMS panel env badges          AmsEnvironmentOverlay (Tabs / Single)
 | `min_temp_c` / `max_temp_c` / `max_duration_min` | float / float / int | Hardware limits. The overlay clamps both the keypad and the Start command to exactly these |
 | `supports_fan_control` | bool | Can fan speed be set independently |
 | `supports_live_temp` / `supports_live_duration` | bool | Whether a running cycle can be retargeted without stopping. Both default false, so an unchecked backend takes the visible stop-and-restart path rather than silently dropping an adjustment |
+| `supports_humidity_target` | bool | Whether a cycle can also end early once the box reads at or below a target %RH. The overlay shows its optional target field only when this is true. Blank sends no target, so the dryer's own default applies; `humidity_target(pct)` turns a field value into the target to send, or none |
+| `default_humidity_target` | optional float | The target, %RH, a start with none applies, when the backend knows it. The blank field's placeholder shows it as `NN%`, or the short `auto` key when unset. Reported only alongside `supports_humidity_target` |
+| `supports_gate_selection` | bool | Whether a cycle can start and stop on a chosen subset of the dryer's gates, true only where each gate has its own heater. The overlay offers its lane chips only then |
+| `supports_rotation` | bool | Whether a cycle can turn the selected spools while it dries (`DryingRequest::rotate`). Needs `supports_gate_selection` |
 
 > **Humidity is not on `DryerInfo`.** It lives on `EnvironmentData`, carried either per unit
 > (`AmsUnit::environment`) or per slot (`SlotInfo::environment`), because humidity is a
 > per-enclosure reading from an environment sensor and not a property of a drying session.
 > `EnvironmentZone` pairs one `EnvironmentData` with one `DryerInfo`, which is what lets a box
 > report humidity with no heater behind it.
+
+> **Per-slot drying state.** A dryer that heats gates one by one (`supports_gate_selection`)
+> also reports each gate's part in the cycle as `SlotInfo::drying_state`, a
+> `helix::printer::ZoneDryingState` (Idle / Queued / Active / Complete / Cancelled; the enum
+> lives in `include/ams_types.h`). It is Idle on every other dryer. `AmsState` publishes it per
+> slot as `ams_slot_<n>_drying` (primary backend only), the slot's drying badge binds to it,
+> and the generic zone walk (`AmsBackend::get_environment_zones`) uses it as a per-slot zone's
+> state instead of the unit's. Happy Hare fills it from the per-gate `drying_state` list; a
+> list shorter than the gate count leaves the remaining slots Idle. The capability flags are
+> per unit: ask `get_dryer_info(unit)`, never assume one unit's answer holds for another.
 
 `AmsEnvironmentOverlay` shows a **set of zones** with one selected, not a unit. It owns its own
 `ams_env_overlay_humidity_visible` subject rather than binding the unit cards'
@@ -2382,7 +2512,10 @@ Declared in `include/ams_backend.h`. The command virtuals default to `supported=
 | `get_dryer_info(unit)` | `DryerInfo{.supported=false}` | Read one unit's dryer state |
 | `get_environment_zones(unit)` | Derived from `AmsUnit::environment` / `SlotInfo::environment` + `get_dryer_info()` | The boxes this system exposes ([FILAMENT_ENVIRONMENT_ZONES.md](FILAMENT_ENVIRONMENT_ZONES.md)) |
 | `start_drying(temp, minutes, fan, unit)` | NOT_SUPPORTED | Begin a drying session |
+| `start_drying_to_humidity(temp, minutes, humidity_pct, fan, unit)` | NOT_SUPPORTED | Begin a session that also ends at a humidity target. Only for a dryer reporting `supports_humidity_target`; with no target the overlay calls `start_drying()` |
 | `stop_drying(unit)` | NOT_SUPPORTED | End the active session |
+| `start_drying_request(request)` | `start_drying()`, or `start_drying_to_humidity()` with a target; NOT_SUPPORTED with gates or rotation | The overlay's one start call. `DryingRequest` carries temp, minutes, optional humidity target, unit, and optionally `gates` and `rotate`. Override only to take a selection |
+| `stop_drying_gates(unit, gates)` | `stop_drying()` with no gates; NOT_SUPPORTED with some | Stop just those gates; the rest of the cycle keeps running |
 | `update_drying(temp, minutes, fan, unit)` | NOT_SUPPORTED | Change temp/time mid-session |
 | `get_drying_presets()` | `get_default_drying_presets()` | Return material-preset list |
 
@@ -2414,6 +2547,7 @@ Happy Hare's filament dryer is driven by the `MMU_HEATER` command and configured
 **What HelixScreen supports today:**
 
 - **Commands.** `MMU_HEATER DRY=1 TEMP=<°C> TIMER=<minutes>` to start, `MMU_HEATER STOP=1` to stop. `TIMER` is **minutes** (float, `minval=0`), so sub-hour cycles are valid — the duration field in the overlay is a minutes field for this reason.
+- **Humidity target (Happy Hare 4).** `MMU_HEATER DRY=1 TEMP=<°C> TIMER=<minutes> HUMIDITY=<%RH>` ends the cycle once the environment sensor reads at or below the target; `TIMER` still bounds it, and `STOP=1` cancels it like any cycle. `HUMIDITY` is a float with `minval=0` and no maximum; left out, Happy Hare applies its own `heater_default_dry_humidity` (25% by default), so a start with no target sends exactly the temp + time command and the cycle is still humidity-bounded, at that default. The backend reads `heater_default_dry_humidity` from the unit's `[mmu_unit_parameters <unit>]` configfile settings (Klipper reports it even when only defaulted) into `DryerInfo::default_humidity_target`, so the overlay's blank field reads e.g. `25%`, and `auto` until the config has loaded. HelixScreen offers no way to send `HUMIDITY=0` (run the full time regardless of humidity); keypad 0 clears the field back to blank. A sensor with no humidity reading makes Happy Hare ignore the target and run the full time. `get_dryer_info()` reports `supports_humidity_target` only on v4, and a duration change (stop and restart) carries the target of a cycle HelixScreen started into the new cycle. A cycle started elsewhere restarts with no `HUMIDITY=`, so the printer's default applies: Happy Hare publishes only `drying_state` in its status (`mmu_environment_manager.get_status()`), and the running target appears only in the `MMU_HEATER` console report. Verified against [mmu_heater.py](https://github.com/moggieuk/Happy-Hare/blob/1ac0303c6f83c09f4ae8254dbebf8b4128e637c5/extras/mmu/commands/mmu_heater.py) and [mmu_environment_manager.py](https://github.com/moggieuk/Happy-Hare/blob/1ac0303c6f83c09f4ae8254dbebf8b4128e637c5/extras/mmu/unit/mmu_environment_manager.py) at Happy-Hare `main` @ 1ac0303c.
 - **Box temperature.** Read from the `filament_heater` `heater_generic` object's live `temperature`.
 - **Box humidity.** Happy Hare's `mmu` object deliberately does **not** republish temp/humidity (`mmu_environment_manager.get_status()` omits them by design); the client must read the environment sensor object directly. Humidity therefore comes from the **backing humidity chip** — `bme280` / `htu21d` / `sht3x` / `aht10` `<name>`, where `<name>` is the bare second token of the `environment_sensor` value (e.g. `temperature_sensor box` → `htu21d box`). Discovery subscribes these chips and requests the `humidity` field on all temperature sensors (only objects present in `objects.list` are subscribed, so this is safe for printers without them).
 - **Per-unit / multi-MMU resolution.** Happy Hare has two mutually-exclusive enclosure forms: a **shared** enclosure (scalar `filament_heater` / `environment_sensor`) or **per-gate** hardware (plural `filament_heaters` / `environment_sensors`, one entry per gate, distributed across units for multi-MMU). `get_system_info()` resolves **each unit's** heater + sensor — the scalar form applies to every unit; the per-gate lists map each unit to the object at its first gate (`first_slot_global_index`). So a multi-MMU rig with distinct box sensors shows the correct temp/humidity per unit in the panel indicator and overlay.
@@ -2421,7 +2555,7 @@ Happy Hare's filament dryer is driven by the `MMU_HEATER` command and configured
 
 **What is NOT yet supported (boundary):**
 
-- **Drying is commanded per unit, not per box.** `GATES=` lists every gate on the target unit, empty gates included. On an EMU rig, whose boxes are per-lane, a Start on one box commands the whole unit. Drying a chosen subset of gates, per-gate countdowns (Happy Hare tracks one setpoint and one end-of-cycle clock, so `target_temp_c` / `duration_min` / `remaining_min` are the same on every zone), and the `HUMIDITY=` termination target are open in **#1026**.
+- **Per-gate countdowns.** Happy Hare tracks one setpoint and one end-of-cycle clock, so `target_temp_c` / `duration_min` / `remaining_min` are the same on every zone. A chosen subset of gates can be dried on Happy Hare 4 per-gate heaters (`GATES=`, `ROTATE=1`; see [FILAMENT_ENVIRONMENT_ZONES.md](FILAMENT_ENVIRONMENT_ZONES.md) § Happy Hare specifics), but with every lane chip selected, the default, the start is the whole-unit command above. Verified against [mmu_heater.py](https://github.com/moggieuk/Happy-Hare/blob/ee30acdd/extras/mmu/commands/mmu_heater.py) at Happy-Hare `main` @ ee30acdd; untested on hardware.
 
 > Note: the per-gate paths are unit-tested against synthetic status frames (scalar + 2-unit per-gate) and unverified on real hardware - we own no EMU rig. The QIDI Box (the common Happy-Hare-on-a-box case) is a single shared sensor.
 
@@ -2761,6 +2895,29 @@ on a multi-extruder rig, swaps the single bowden / toolhead / toolhead-LED entri
 per-extruder ones. See the [AFC-Specific Features](FILAMENT_BACKEND_AFC.md#afc-specific-features) section for
 details.
 
+#### Guided flows
+
+A `DeviceAction` whose `guided_flow` names a registered flow is started through that flow
+instead of being executed and toasted. `include/ui_guided_device_flow.h` holds the registry
+(`register_guided_device_flow`, `find_guided_device_flow`): a flow supplies `start(label)` and,
+optionally, `attach_status(container)` to append status widgets below the section's buttons.
+The section overlay (`src/ui/ui_ams_device_section_detail_overlay.cpp`) knows only that
+registry. It never names a vendor, and a flow id with no registration is refused with a
+warning rather than executed, because the flow is what asks before moving the machine.
+
+The Creality CFS flows (`cfs_purge_chute`, `cfs_cutter`) live in `src/ui/ui_cfs_device_flows.cpp`
+and are registered by `register_cfs_device_flows()` at startup, before any overlay builds
+(`Application::register_xml_components()`, and the ESP32 `app_boot.cpp` boot path). A new
+vendor flow is one new file plus one `guided_flow` string on its backend's action.
+
+#### Unavailable operations explain themselves
+
+`AmsBackend::unload_blocked_reason(slot)` and `eject_unavailable_reason(slot)` return a
+translated one-line reason, or empty. The lane context menu binds them to the
+`ams_slot_unload_hint` / `ams_slot_eject_hint` subjects, so the UI never decides which backend
+owes the user an explanation. The Device Operations overlay shows its eject distance and
+velocity rows from `supports_configurable_eject_params()` (`ams_device_ops_has_eject_params`).
+
 ---
 
 ## Mock Mode for Testing
@@ -3017,6 +3174,7 @@ static constexpr BackendTraits kTraits = [] {
 - `get_remap_strategy()`, `remap_ready()`, `owns_tool_mapping_table()`, `get_tool_mapping()` -- Tool mapping. **Three questions, one spelling each.** `get_remap_strategy()` says HOW a user's tool->lane pick is carried out (`Native` writes your table, `GcodeRewrite` rewrites the job, `PrePrintSend` is a firmware pre-print send, `None` means it cannot be). `remap_ready()` says whether that route is usable YET -- default true, override only where discovery gates it, as AD5X IFS does on `_IFS_VARS`. `owns_tool_mapping_table()` says whether you hold a tool->slot table for `ToolState` to adopt; the Snapmaker U1 answers **no** and still honors every pick, through its pre-print send, which is why this is not the same question as the first two. Ask them through `ams_remap.h` -- never by combining them at a call site, which is how one question came to have six answers that could disagree. Three named predicates there, and the difference between them is `GcodeRewrite`: `can_remap()` asks whether the user's pick will be honored at all (yes), `remap_is_persistent()` whether the answer outlives the send (yes, it is in the job file), `can_write_mapping_table()` whether a `set_tool_mapping()` write lands (no, there is no table).
 - `get_device_sections()`, `get_device_actions()`, `execute_device_action()` -- Device-specific actions
 - `set_discovery()` -- Discovery configuration: pull and resolve what this backend needs from the `PrinterDiscovery` snapshot, before `start()`
+- `supports_auto_heat_on_unload` (`kTraits`) -- The unload counterpart: the backend's unload command heats the hotend itself, or (a tool changer's unmount) moves no filament through it. Set only where what the backend sends provably heats: a wrong claim runs a cold extrude, a missing one costs a second wait. A backend whose unloads differ answers per call through `unload_heats_hotend(slot)` (Snapmaker's bare fallback does not heat); CFS makes no claim. Read through `preheat_skip_reason()` like the load claim.
 - `supports_auto_heat_on_load` (`kTraits`) -- Auto-heat capability. It is one of three reasons a surface skips its own preheat, and **no surface should read it directly**: ask `helix::ui::preheat_skip_reason()` (`include/filament_op_execute.h`), which also covers the "Allow cold load/unload" setting and a stock macro that heats in its own body (`helix::filament_macros::macro_heats_hotend()`, `include/filament_macro_profiles.h`). The AMS sidebar reading only this one is what left that setting ignored on the AMS panel (prestonbrown/helixscreen#1494).
 - `supports_lane_eject()` + `eject_lane()` -- Cold retract of a lane's filament back to the spool. Without the predicate the context menu never offers Eject, whatever `eject_lane()` does.
 - `has_per_slot_loaded_authority` (`kTraits`) -- Set true only when the firmware reports load state **per slot**. Leave it false when your per-slot answer is derived from an aggregate "current slot" pointer, or a mid-toolchange null will drop the highlight.
@@ -3026,7 +3184,7 @@ static constexpr BackendTraits kTraits = [] {
 whole group gets **no error dialog at all**, silently. Read § [Two error channels](#two-error-channels)
 before implementing any of them:
 
-- `classify_error()` -- Channel A: claim one gcode-response line and return an `ErrorEvent`. The router applies **no line filtering**, so every override must gate itself (AFC and Happy Hare take only `!!` lines via `helix::is_bang_line`; CFS deliberately takes only non-`!!` lines). Return `nullopt` to defer to the generic classifier.
+- `classify_error()` -- Channel A: claim one gcode-response line and return an `ErrorEvent`. The router applies **no line filtering**, so every override must gate itself (AFC and Happy Hare take only `!!` lines via `helix::is_bang_line`; CFS deliberately takes only non-`!!` lines). Return `nullopt` to defer to the generic classifier. Set `ErrorEvent::command_refusal` only for a line that explains why the firmware refused a command the user just sent: the router also asks the hook ahead of the `!!` copy (`GcodeErrorRouter::explains_rpc_error()`), so a refusal override must be side-effect free and log nothing.
 - `current_error()` -- Channel B: the current actionable fault derived from backend **status**, consulted only by `AmsErrorBridge` on the rising edge into `AmsAction::ERROR`. Independent of channel A, not an alternative to it: AFC overrides both.
 - `build_recovery_actions()` (protected) -- The buttons the user can tap for the current fault. **The caller already holds `mutex_`**, which is non-recursive: an override that locks deadlocks. The base returns an empty vector deliberately: `decide_presentation()` keys off `recovery_actions.empty()` to pick MODAL vs MODAL_WITH_RECOVER, so recovery is strictly opt-in.
 - **Your dispatch path must pass `caller_surfaces_errors=false` when its `on_error` only logs.** `AmsSubscriptionBackend::ensure_homed_then()` and `dispatch_payload()` (`include/ams_subscription_backend.h`) take it as `std::optional<bool>`; unset means "derive from `on_error`". That derivation is wrong whenever the callback ends up in `handle_dispatch_error()`'s default -- log the message and reset the action to `AmsAction::IDLE`, which no user ever sees. Claiming the report there records the rejection for RPC dedup and silences Channel A's `!!` copy, so a failed macro reaches nobody. `scripts/check_gcode_error_ownership.py` gates the log-only shape at zero; the escape hatch is `// ERROR_OWNERSHIP_OK: <reason>`. See `RPC_ERROR_OWNERSHIP.md`.

@@ -954,6 +954,46 @@ bool PrinterDiscovery::parse_build_volume(const nlohmann::json& settings) {
     return true;
 }
 
+void PrinterDiscovery::parse_probe_xy_offset(const nlohmann::json& settings) {
+    probe_xy_offset_.reset();
+    if (!settings.is_object()) {
+        return;
+    }
+    // Klipper allows one Z probe, so the first section present is the one
+    // PROBE_CALIBRATE uses. Section names arrive lowercased.
+    static constexpr const char* kProbeSections[] = {"probe", "bltouch", "smart_effector",
+                                                     "load_cell_probe", "dockable_probe"};
+    const nlohmann::json* section = nullptr;
+    for (const char* name : kProbeSections) {
+        const auto s = settings.find(name);
+        if (s != settings.end() && s->is_object()) {
+            section = &*s;
+            break;
+        }
+    }
+    if (!section) {
+        for (const auto& [name, value] : settings.items()) {
+            if (name.rfind("probe_eddy_current ", 0) == 0 && value.is_object()) {
+                section = &value;
+                break;
+            }
+        }
+    }
+    if (!section) {
+        return;
+    }
+    ProbeXYOffset offset;
+    const auto x = section->find("x_offset");
+    if (x != section->end() && x->is_number()) {
+        offset.x = x->get<double>();
+    }
+    const auto y = section->find("y_offset");
+    if (y != section->end() && y->is_number()) {
+        offset.y = y->get<double>();
+    }
+    probe_xy_offset_ = offset;
+}
+
 void PrinterDiscovery::clear() {
     // Hardware lists
     heaters_.clear();
@@ -1016,7 +1056,9 @@ void PrinterDiscovery::clear() {
     chamber_cooling_fan_name_.clear();
     chamber_fan_resting_deci_ = 0;
     filament_diameter_mm_ = filament::DEFAULT_DIAMETER_MM;
+    nozzle_diameter_mm_ = DEFAULT_NOZZLE_DIAMETER_MM;
     leveling_probe_points_.clear();
+    probe_xy_offset_.reset();
     fan_max_power_.clear();
     has_led_ = false;
     led_effects_.clear();

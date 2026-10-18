@@ -4,6 +4,7 @@
 #pragma once
 #if HELIX_HAS_ACE
 
+#include "ace_slot_parse.h"
 #include "ams_bypass_policy.h"
 #include "ams_subscription_backend.h"
 #include "async_lifetime_guard.h"
@@ -146,6 +147,11 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// A bay's last identified tag read (rfid true, or 2): material, colour and
+    /// the temperatures the frame carried. Dropped when the bay empties or a
+    /// finished read finds no tag.
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
     void persist_external_identity_impl(int slot_index,
@@ -277,6 +283,29 @@ class AmsBackendAce : public AmsSubscriptionBackend {
   private:
     friend class AceTestAccess;
 
+    /// Keep or drop bay @p slot_index's tag reading from one frame's slot entry:
+    /// its decoded @p tag_read, the frame's @p material and @p color, its
+    /// temp_min / temp_max, and @p present. Caller holds mutex_.
+    void note_tag_frame_locked(int slot_index, helix::ace::TagRead tag_read,
+                               const nlohmann::json& slot_json,
+                               const std::optional<std::string>& material,
+                               const std::optional<uint32_t>& color, std::optional<bool> present);
+
+    /// Lay the REST bridge's temp_min / temp_max onto @p slot, unless a user
+    /// edit moved the slot's temperatures this session. Caller holds mutex_.
+    void apply_hub_temps_locked(int slot_index, SlotInfo& slot,
+                                const nlohmann::json& slot_json) const;
+
+    /// Clear user_temps_ for @p slot_index. Caller holds mutex_.
+    void forget_user_temps_locked(int slot_index);
+
+    /// Per bay, whether a user edit this session set the temperatures; cleared
+    /// with the override and at on_started(). Under mutex_.
+    std::vector<bool> user_temps_;
+
+    /// Per bay, the last identified tag read. Under mutex_.
+    std::vector<std::optional<helix::ams::TagReading>> tag_readings_;
+
     // ========================================================================
     // REST Fallback (for BunnyACE/DuckACE without get_status())
     // ========================================================================
@@ -288,31 +317,6 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     void poll_info();
     void poll_status();
     void poll_slots();
-
-    /**
-     * @brief Parse slot color from either RGB array [r,g,b] or hex string "#RRGGBB"
-     *
-     * Empty when the value carries no colour: a short or non-numeric array, a
-     * string the shared lane colour grammar refuses, any other JSON type. That
-     * is a different answer from pure black, which ACE reports for an empty bay
-     * and which is a real reading, so the two must not share a return value.
-     *
-     * @param color_val JSON value (array or string)
-     * @return Parsed RGB color value, or nullopt when the value states none
-     */
-    static std::optional<uint32_t> parse_slot_color(const nlohmann::json& color_val);
-
-    /**
-     * @brief Read one slot's material, for both slot-bearing producers (the
-     *        WebSocket object path and the REST /slots poll read the same hub).
-     *
-     * `material` is the Kobra S1 fork/native live spelling, `type` the
-     * ValgACE spelling; material wins when both are stated. An empty or
-     * absent value states no reading.
-     *
-     * @return The material, or nullopt when the slot states none
-     */
-    static std::optional<std::string> read_slot_material(const nlohmann::json& slot_json);
 
     /**
      * @brief Pick the ace/filament_hub/ace_instance_N object to parse from a
@@ -370,17 +374,6 @@ class AmsBackendAce : public AmsSubscriptionBackend {
         });
 
     /**
-     * @brief Map an ACE slot status string to a SlotStatus.
-     *
-     * Single source of truth shared by the WebSocket object path
-     * (parse_ace_object) and the REST fallback path (parse_slots_response) so
-     * the two vocabularies can't drift. empty/runout -> EMPTY;
-     * available/loaded/ready/preload/running -> AVAILABLE; anything else
-     * (including "unknown") -> UNKNOWN.
-     */
-    static SlotStatus slot_status_from_string(const std::string& status_str);
-
-    /**
      * @brief The manager-shaped `ace` object in a status frame, when one is
      *        present.
      *
@@ -397,14 +390,6 @@ class AmsBackendAce : public AmsSubscriptionBackend {
      *         null when no manager-shaped `ace` is present
      */
     static const nlohmann::json* manager_ace_object(const nlohmann::json& status);
-
-    /// Fold one status-shaped object's dryer state into dryer_info_ under
-    /// either spelling: `dryer` (ValgACE/native) or `dryer_status` (Kobra S1
-    /// fork), each with either nested key set ({status, target_temp,
-    /// duration, remain_time} or {active, current_temp, remaining_minutes,
-    /// duration_minutes}). Also reads the top-level ambient `temp`, which a
-    /// stated dryer current temp overrides. Caller holds mutex_.
-    void apply_dryer_state_locked(const nlohmann::json& data);
 
     /// Fold the manager's path sensors (`rdm_sensor` at the hub,
     /// `toolhead_sensor` at the extruder) into the cached readings and onto the

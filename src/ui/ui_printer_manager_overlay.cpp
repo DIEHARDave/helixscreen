@@ -105,9 +105,10 @@ lv_obj_t* PrinterManagerOverlay::create(lv_obj_t* parent) {
             LV_EVENT_CANCEL, nullptr);
     }
 
-    // Clicking the overlay content area while editing saves and dismisses the input.
+    // Clicking anywhere in the body while editing saves and dismisses the input.
     // LVGL DEFOCUSED events don't fire reliably on touchscreens, so we use a
-    // click handler on the scrollable content instead.
+    // click handler on the body instead; the body's containers (the scrolling
+    // details column among them) set event_bubble so a tap on them lands here.
     if (auto* content = helix::ui::find_required(overlay_root_, "overlay_content", get_name())) {
         lv_obj_add_event_cb(
             content,

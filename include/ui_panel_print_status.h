@@ -9,6 +9,7 @@
 #include "ui_modal.h"
 #include "ui_observer_guard.h"
 #include "ui_print_exclude_object_manager.h"
+#include "ui_print_layer_pause.h"
 #include "ui_print_light_timelapse.h"
 #include "ui_print_tune_overlay.h"
 #include "ui_temperature_utils.h" // HEATER_STATUS_BUF_BYTES
@@ -388,6 +389,16 @@ class PrintStatusPanel : public OverlayBase {
     // every size where the cap does not bind.
     lv_subject_t graph_fits_subject_{};
 
+    // Each action row's layout (row 1 Light/Timelapse/Pause, row 2
+    // Tune/Cancel): stacked icon over label (always at tiny and below, and
+    // wherever a long translation cannot sit beside its icon), and tall when
+    // that stacking happens from small up. Set by
+    // PrintStatusLayoutFitter::recompute_actions_crowded().
+    lv_subject_t row1_stacked_subject_{};
+    lv_subject_t row1_tall_subject_{};
+    lv_subject_t row2_stacked_subject_{};
+    lv_subject_t row2_tall_subject_{};
+
     // Aux fan present subject (1=aux cluster visible, 0=hidden).
     // Set by bind_fan_speeds() when an aux fan is discovered.
     lv_subject_t aux_fan_present_subject_{};
@@ -529,6 +540,7 @@ class PrintStatusPanel : public OverlayBase {
 
     // Light/timelapse controls (extracted Phase 2 functionality)
     PrintLightTimelapseControls light_timelapse_controls_;
+    helix::ui::PrintLayerPauseControls layer_pause_controls_;
 
     // Resize callback registration flag
     bool resize_registered_ = false;
@@ -560,8 +572,6 @@ class PrintStatusPanel : public OverlayBase {
     void update_objects_text(); ///< Update "X of Y obj" display from exclude state
     /// Publish whether the objects button shows: [exclude_object] and 2+ defined objects.
     void refresh_exclude_objects_available();
-    void
-    update_view_toggle_position(bool objects_visible); ///< Shift view toggle when objects btn shown
     void animate_badge_pop_in(lv_obj_t* badge, const char* label); ///< Pop-in animation for badges
     void animate_print_complete();  ///< Celebratory animation when print finishes
     void animate_print_cancelled(); ///< Warning animation when print is cancelled
@@ -583,6 +593,12 @@ class PrintStatusPanel : public OverlayBase {
     void handle_reprint_button(); ///< Reprint the cancelled file
     /// The file Reprint starts: the original, never a rewritten temp copy.
     [[nodiscard]] std::string reprint_filename() const;
+    /// reprint_filename() with the archive plate to extract, for a .3mf printed that way.
+    [[nodiscard]] helix::gcode::ReprintTarget reprint_target() const;
+    /// Reprints @p target with no print controller to route through: a plain
+    /// file starts directly; an archive plate, which only the controller can
+    /// extract, is refused.
+    void reprint_without_controller(const helix::gcode::ReprintTarget& target);
     void handle_files_click(); ///< Open print select while this overlay holds the screen
     void handle_resize();
 

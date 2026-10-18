@@ -99,9 +99,7 @@ class MacroFailureFixture : public LVGLTestFixture {
     // The rpc callback settles on the calling thread, but the toast and the
     // suppression writes hop the queue, so drain until it stops producing.
     void settle() {
-        for (int i = 0; i < 4; i++) {
-            helix::ui::UpdateQueueTestAccess::drain_all(UpdateQueue::instance());
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 };
 

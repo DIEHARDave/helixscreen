@@ -138,6 +138,15 @@ bool is_portrait_layout(LayoutType type) {
            type == LayoutType::MICRO_PORTRAIT;
 }
 
+LayoutType app_layout_type(int width, int height) {
+    const LayoutManager& lm = LayoutManager::instance();
+    return lm.is_initialized() ? lm.type() : detect_layout_type(width, height);
+}
+
+bool app_layout_is_portrait(int width, int height) {
+    return is_portrait_layout(app_layout_type(width, height));
+}
+
 LayoutType LayoutManager::detect(int width, int height) const {
     return detect_layout_type(width, height);
 }

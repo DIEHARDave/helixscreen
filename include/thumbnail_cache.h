@@ -8,6 +8,7 @@
 #include "thumbnail_processor.h"
 #include "thumbnail_rules.h"
 #include "thumbnail_write_journal.h"
+#include "zip_reader.h"
 
 #include <atomic>
 #include <chrono>
@@ -154,6 +155,18 @@ class ThumbnailCache {
      * @return `{cache_dir}/` + helix::thumbnail_file_name(hash, nullptr)
      */
     [[nodiscard]] std::string get_cache_path(const std::string& cache_id) const;
+
+    /**
+     * @brief What is already cached for a cache id, without touching it
+     *
+     * The pre-scaled .bin for @p target, else the full PNG, else empty. Read only: no LRU
+     * bump, no freshness check, no invalidation, no fetch, so a caller that must cause no
+     * side effect (a screensaver start) can ask.
+     *
+     * @return LVGL path ("A:...") or empty
+     */
+    [[nodiscard]] std::string peek(const std::string& cache_id,
+                                   const helix::ThumbnailTarget& target) const;
 
     /**
      * @brief Get LVGL path if thumbnail is already cached
@@ -750,5 +763,19 @@ void fetch_thumbnail_from_gcode(const std::string& gcode_path, size_t max_header
                                 ThumbnailLoadContext ctx,
                                 ThumbnailCache::SuccessCallback on_success,
                                 ThumbnailCache::ErrorCallback on_error);
+
+/**
+ * @brief A thumbnail stored inside an archive on the printer: a .3mf's plate render
+ *
+ * The sibling of fetch_thumbnail_from_gcode() for an image that is an entry of
+ * @p archive_path: served from the cache when it holds this entry for an
+ * archive no newer than @p source_modified, else read with one ranged read,
+ * cached as ThumbnailSource::ArchiveEntry and prescaled. Same callback contract.
+ */
+void fetch_thumbnail_from_archive(const std::string& archive_path, const zip::ZipEntry& entry,
+                                  time_t source_modified, IMoonrakerAPI* api,
+                                  const ThumbnailTarget& target, ThumbnailLoadContext ctx,
+                                  ThumbnailCache::SuccessCallback on_success,
+                                  ThumbnailCache::ErrorCallback on_error);
 
 } // namespace helix

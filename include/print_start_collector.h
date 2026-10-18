@@ -4,6 +4,7 @@
 #pragma once
 
 #include "bed_mesh_probe_parser.h"
+#include "chamber_wait_line.h"
 #include "helix_regex.h"
 #include "i_moonraker_client.h"
 #include "leveling_probe_points.h"
@@ -13,13 +14,17 @@
 #include "print_start_purge_shape.h"
 #include "printer_state.h"
 #include "simulated_clock.h"
+#include "start_block_steps.h"
 #include "thermal_rate_model.h"
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -204,6 +209,17 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     }
 
     /**
+     * @brief Whether the printer reports a pre-print step still under way
+     *
+     * True while the latest matched context-qualified phase-object state maps
+     * to a phase short of COMPLETE (a priming line, a cool-down for probing).
+     * Such a step holds the deadline timeouts and the first-extrusion
+     * fallback. A bare phase-object state never counts: a display label
+     * outlives its step.
+     */
+    [[nodiscard]] bool in_live_preprint_step() const;
+
+    /**
      * @brief Record the printer's live bed-mesh presence
      *
      * Fed from the bed_mesh status stream. A mesh that disappears while the
@@ -281,6 +297,17 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
         return predictor_;
     }
 
+    /**
+     * @brief The heater a blocking wait command waits on
+     *
+     * M109 is the nozzle whichever way its temperature moves, M190 the bed,
+     * and M191 or a TEMPERATURE_WAIT on @p chamber_heater itself the chamber
+     * (SOAKING), but only with a chamber heater configured. A TEMPERATURE_WAIT on heater_bed or an
+     * extruder is that heater. Anything else names no heater: nullopt.
+     */
+    [[nodiscard]] static std::optional<helix::PrintStartPhase>
+    heater_waited_on(const helix::WaitLine& line, const std::string& chamber_heater);
+
   private:
     /**
      * @brief Handle incoming G-code response
@@ -317,9 +344,13 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      *   flag picks the quiet gate the match refreshes: narration holds every
      *   timeout, inference only the deadline timeouts (note_signal() and
      *   note_inferred_activity()).
+     * @param live_state Whether the match names the step running now rather
+     *   than an event that happened. A context-qualified phase-object state is
+     *   live: it may move the display to any phase, an earlier one included,
+     *   since the printer reports what it is doing, not a line that arrived late.
      */
     void apply_profile_match(const PrintStartProfile::MatchResult& match,
-                             bool marks_real_signal = true);
+                             bool marks_real_signal = true, bool live_state = false);
 
     /// Show a gantry-leveling / Z-tilt phase inferred from the configured
     /// probe points. Inference, not narration: it never mutes the proactive
@@ -335,10 +366,34 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * the match through apply_profile_match(). An unchanged state string does
      * not re-fire; profiles without a phase object ignore every frame.
      *
+     * With a context field declared, the state is matched as
+     * "<innermost context>/<state>". Klipper sends only the fields that
+     * changed, so each field's last value is cached and a frame carrying
+     * either one re-matches the pair.
+     *
      * Thread-safe: runs on the WebSocket background thread, like the other
      * notify_status_update handling in start().
+     *
+     * @param seed_run Set for the answer to the query start() sends, to the
+     *   run that sent it: its values fill only the fields no frame has
+     *   delivered yet, since a frame may be newer, and it is dropped once
+     *   another run has begun.
      */
-    void handle_phase_object_status(const nlohmann::json& status);
+    void handle_phase_object_status(const nlohmann::json& status,
+                                    std::optional<uint64_t> seed_run = std::nullopt);
+
+    /// Fetch the phase object's current state and context once at start():
+    /// a context opened before the collector armed is never sent again
+    /// until it changes, and every state inside it would match without it.
+    void query_phase_object();
+
+    /// The start-up query's answer for run `run`; ignored once a later
+    /// start() has begun another run.
+    void apply_phase_object_query(const nlohmann::json& response, uint64_t run);
+
+    /// Bumped by every start() under state_mutex_, so an answer can tell
+    /// which run asked.
+    std::atomic<uint64_t> run_generation_{0};
 
     /**
      * @brief Check a status frame against the profile's status-signal rules
@@ -411,14 +466,22 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * Inspecting Bed). The probe counters need to reset between sub-phases
      * so the displayed "(N/M)" doesn't roll past M. Caller must hold
      * state_mutex_.
+     *
+     * @param counts_probes Whether the new BED_MESH step's probe lines are
+     *        mesh points to count (mesh_counts_probes_).
      */
     void maybe_reset_for_mesh_subphase_locked(helix::PrintStartPhase next_phase,
-                                              const std::string& next_message);
+                                              const std::string& next_message,
+                                              bool counts_probes = true);
 
     /**
      * @brief Update phase and recalculate progress (weighted mode)
+     *
+     * @param counts_mesh_probes For BED_MESH: whether its probe lines count
+     *        against a point total (see PrintStartProfile::MatchResult).
      */
-    void update_phase(helix::PrintStartPhase phase, const char* message);
+    void update_phase(helix::PrintStartPhase phase, const char* message,
+                      bool counts_mesh_probes = true);
 
     /**
      * @brief Update phase with explicit progress value (sequential mode)
@@ -444,7 +507,48 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * chamber. Main thread only, like everything that sets or clears a
      * wait's label.
      */
-    void relabel_heating_phase(helix::PrintStartPhase resolved, bool heater_wait = false);
+    void relabel_heating_phase(helix::PrintStartPhase resolved, bool heater_wait = false,
+                               const std::string& label = {});
+
+    /// The label a heater wait on the chamber shows: the live chamber
+    /// temperature against its target, or alone when the heater has none.
+    static std::string chamber_wait_message(int temp_deci, int target_deci);
+
+    /// Follow virtual_sdcard.file_position through the start block, on a
+    /// profile whose start sequence the slicer writes into the file. The
+    /// first position read fetches and scans the file's head. Any thread.
+    void handle_start_block_position(const nlohmann::json& status);
+    /// Fetch and scan the head of @p filename for run @p run. Main thread.
+    void request_start_block(uint64_t run, std::string filename);
+    /// Show the step run @p run reached, unless the console already named
+    /// what that line is doing. Dropped once another run has begun or the
+    /// pre-print is COMPLETE. Any thread; takes state_mutex_ itself.
+    void apply_start_block_step(const helix::StartBlockStep& step, uint64_t run);
+
+    /// Run @p apply, the phase match of console line @p line, and if it
+    /// changed the phase or message shown, stamp console_phase_time_ with it
+    /// and drop any deferred step. Takes state_mutex_ itself; @p apply must
+    /// not hold it.
+    void apply_console_phase(const std::string& line, const std::function<void()>& apply);
+    /// Show the deferred start-block step once the console grace has passed.
+    /// Any thread; takes state_mutex_ itself.
+    void flush_deferred_start_block_step();
+
+    /// Make @p phase current, crediting the time since the last change to the
+    /// phase it replaces. Caller holds state_mutex_.
+    void enter_phase_locked(helix::PrintStartPhase phase);
+    /// Time spent in @p phase this run, its visit now under way included.
+    /// Zero for IDLE, INITIALIZING and COMPLETE, which are not timed. Caller
+    /// holds state_mutex_.
+    std::chrono::seconds phase_seconds_locked(helix::PrintStartPhase phase) const;
+
+    /// Ask where the print is, and read the command there if the position
+    /// moved since the last read. Main thread.
+    void request_wait_line();
+    /// Store read @p gen's answer if no later position superseded it. Any thread.
+    void apply_wait_line(uint64_t gen, const helix::WaitLine& line);
+    /// Drop the current wait's line. Caller holds state_mutex_.
+    void forget_wait_line_locked();
 
     /// Give the phase a heater wait displaced back, if the wait's label is
     /// still the one showing. Main thread only; takes state_mutex_ itself.
@@ -603,8 +707,11 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     std::atomic<bool> fallbacks_enabled_{false};
     std::atomic<helix::SubscriptionId> macro_subscription_id_{0};
 
-    // Phase timing for duration prediction (protected by state_mutex_)
-    std::map<int, helix::sim::SimulatedClock::time_point> phase_enter_times_;
+    // Phase timing for duration prediction (protected by state_mutex_). A
+    // phase can be shown more than once in one start (a toolchanger probes Z
+    // after every tool pick), so each keeps the sum of its visits.
+    std::map<int, helix::sim::SimulatedClock::duration> phase_time_spent_;
+    helix::sim::SimulatedClock::time_point phase_since_;
     helix::PreprintPredictor predictor_;
     int loaded_temp_bucket_{0};
     /// Which window this run is measuring. Defaults to PrinterEdge: an
@@ -695,6 +802,53 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     helix::sim::SimulatedClock::time_point wait_heater_arrived_at_ =
         helix::sim::SimulatedClock::time_point::min();
 
+    /// When a fallback tick first saw a wait still reporting with the nozzle
+    /// and bed at target, min() otherwise. Guarded by state_mutex_.
+    helix::sim::SimulatedClock::time_point heaters_ready_wait_since_ =
+        helix::sim::SimulatedClock::time_point::min();
+    /// How long a wait must outlast the nozzle and bed arriving before an
+    /// unheated chamber is read as what it waits on.
+    static constexpr auto CHAMBER_WAIT_SETTLE = std::chrono::seconds(5);
+
+    /// The command a heater wait is running: the line at
+    /// virtual_sdcard.file_position, read again whenever the position moves,
+    /// since one wait can hand straight to the next with no gap in the
+    /// reports. wait_line_read_ is false until the read for
+    /// wait_line_position_ answers; wait_line_unreadable_ stops the queries
+    /// for the rest of a wait whose read failed. Guarded by state_mutex_.
+    helix::WaitLine wait_line_;
+    bool wait_line_read_ = false;
+    /// The start block's steps and how far the print is through them, on a
+    /// scripted-start profile. start_block_requested_ is set once the head
+    /// read is on its way. Guarded by state_mutex_.
+    helix::StartBlockFollower start_block_;
+    bool start_block_requested_ = false;
+    /// virtual_sdcard.file_position and print_stats.filename as this run's
+    /// status frames last carried them. Guarded by state_mutex_.
+    std::optional<uint64_t> file_position_;
+    std::string frame_filename_;
+    /// A step that reached its line within the console grace, while the
+    /// console's latest change came from a line its command does not print:
+    /// the previous command's last words. It shows once the grace passes,
+    /// unless the console changes the display again first. The console line
+    /// behind that change is console_phase_line_. Guarded by state_mutex_.
+    std::optional<helix::StartBlockStep> deferred_step_;
+    uint64_t deferred_step_run_ = 0;
+    std::string console_phase_line_;
+    /// Set to stop the head read in flight: a new run or stop().
+    std::shared_ptr<std::atomic<bool>> start_block_cancel_;
+    /// When a console line last changed the phase shown. A step whose position
+    /// arrives within START_BLOCK_CONSOLE_GRACE after it is the line the
+    /// console line came from: Moonraker batches status frames, so a command's
+    /// own first words reach us before the position that names its line.
+    /// Guarded by state_mutex_.
+    helix::sim::SimulatedClock::time_point console_phase_time_ =
+        helix::sim::SimulatedClock::time_point::min();
+    static constexpr auto START_BLOCK_CONSOLE_GRACE = std::chrono::seconds(1);
+    bool wait_line_unreadable_ = false;
+    std::optional<uint64_t> wait_line_position_;
+    uint64_t wait_line_gen_ = 0;
+
     /// Nozzle target (°C) when BED_MESH was entered. A higher target while the
     /// mesh is idle is the print-temperature heat that follows it. Guarded by
     /// state_mutex_.
@@ -704,6 +858,24 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// notifies on every field change in the object, so the same state
     /// re-arrives; it must not re-fire the phase. Cleared in start()/reset().
     std::string last_phase_object_state_;
+
+    /// Whether the current BED_MESH step's probe lines are mesh points to
+    /// count. False for a step that only checks a stored mesh: its probes
+    /// still show the printer working, but no "(N/M)" is shown and no point
+    /// total is fetched. Guarded by state_mutex_.
+    bool mesh_counts_probes_ = true;
+
+    /// Last value of the phase object's state and context fields seen in
+    /// any frame; nullopt until one arrives. A null or absent-in-firmware
+    /// state caches as "". Guarded by state_mutex_; cleared in start().
+    std::optional<std::string> phase_object_state_cache_;
+    std::optional<std::string> phase_object_context_cache_;
+
+    /// Phase the latest matched context-qualified phase-object state maps
+    /// to; IDLE when none has matched. While it names a pre-print step the
+    /// deadline timeouts wait for the printer to leave it. Guarded by
+    /// state_mutex_; cleared in start().
+    helix::PrintStartPhase live_object_phase_ = helix::PrintStartPhase::IDLE;
 
     /// Status-signal rules whose predicate held on the last frame carrying
     /// their object — the edge-trigger latch, keyed by rule name. A rule in

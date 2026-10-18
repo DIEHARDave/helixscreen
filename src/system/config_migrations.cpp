@@ -282,26 +282,24 @@ static void migrate_v11_to_v12(json& config, const std::string& /*config_path*/)
     }
 }
 
-/// Repair stale AD5X display settings from the pre-#431 preset. The original AD5X
-/// preset (#235) set sleep_backlight_off=false under the assumption that backlight
-/// power-off prevented wake-on-touch. #431 corrected this after hardware verification.
-/// Users whose wizard ran between those commits still have the stale combination
-/// (backlight never turns off at sleep).
-static void migrate_v12_to_v13(json& config, const std::string& /*config_path*/) {
-    bool is_ad5x = false;
-    if (helix::json_util::safe_string(config, "preset") == "ad5x") {
-        is_ad5x = true;
-    } else if (config.contains("printers") && config["printers"].is_object()) {
-        for (auto& [printer_id, printer] : config["printers"].items()) {
-            if (helix::json_util::safe_string(printer, "type") == "FlashForge Adventurer 5X") {
-                is_ad5x = true;
-                break;
-            }
-        }
+/// True when the config's preset is `preset`, or any saved printer has type `printer_type`.
+/// A migration freezes its detection rule at the version it repairs, so this reads the raw
+/// config and never asks PrinterDetector.
+static bool config_names_printer(const json& config, const char* preset, const char* printer_type) {
+    if (helix::json_util::safe_string(config, "preset") == preset)
+        return true;
+    if (!config.contains("printers") || !config["printers"].is_object())
+        return false;
+    for (const auto& [printer_id, printer] : config["printers"].items()) {
+        if (helix::json_util::safe_string(printer, "type") == printer_type)
+            return true;
     }
-    if (!is_ad5x)
-        return;
+    return false;
+}
 
+/// Turn the backlight off at sleep when the display block still carries the stale pair
+/// (sleep_backlight_off=false with hardware_blank=0).
+static void restore_backlight_off_sleep(json& config, const char* log_tag) {
     if (!config.contains("display") || !config["display"].is_object())
         return;
 
@@ -310,9 +308,21 @@ static void migrate_v12_to_v13(json& config, const std::string& /*config_path*/)
         helix::json_util::safe_int(display, "hardware_blank", -1) == 0) {
         display["sleep_backlight_off"] = true;
         display["hardware_blank"] = 1;
-        spdlog::info("[Config] Migration v13: restored AD5X backlight-off sleep "
-                     "(sleep_backlight_off=true, hardware_blank=1)");
+        spdlog::info("[Config] {}: restored AD5X backlight-off sleep "
+                     "(sleep_backlight_off=true, hardware_blank=1)",
+                     log_tag);
     }
+}
+
+/// Repair stale AD5X display settings from the pre-#431 preset. The original AD5X
+/// preset (#235) set sleep_backlight_off=false under the assumption that backlight
+/// power-off prevented wake-on-touch. #431 corrected this after hardware verification.
+/// Users whose wizard ran between those commits still have the stale combination
+/// (backlight never turns off at sleep).
+static void migrate_v12_to_v13(json& config, const std::string& /*config_path*/) {
+    // VENDOR_OK: a migration freezes the printers it repairs
+    if (config_names_printer(config, "ad5x", "FlashForge Adventurer 5X"))
+        restore_backlight_off_sleep(config, "Migration v13");
 }
 
 /// Fold legacy telemetry_config.json into settings.json. The previous
@@ -365,31 +375,9 @@ static void migrate_v13_to_v14(json& config, const std::string& config_path) {
 /// release that introduces this migration. Detection condition is identical to
 /// v12→v13 so the fix is idempotent if the wizard is re-run on an older build.
 static void migrate_v14_to_v15(json& config, const std::string& /*config_path*/) {
-    bool is_ad5x = false;
-    if (helix::json_util::safe_string(config, "preset") == "ad5x") {
-        is_ad5x = true;
-    } else if (config.contains("printers") && config["printers"].is_object()) {
-        for (auto& [printer_id, printer] : config["printers"].items()) {
-            if (helix::json_util::safe_string(printer, "type") == "FlashForge Adventurer 5X") {
-                is_ad5x = true;
-                break;
-            }
-        }
-    }
-    if (!is_ad5x)
-        return;
-
-    if (!config.contains("display") || !config["display"].is_object())
-        return;
-
-    auto& display = config["display"];
-    if (!helix::json_util::safe_bool(display, "sleep_backlight_off", true) &&
-        helix::json_util::safe_int(display, "hardware_blank", -1) == 0) {
-        display["sleep_backlight_off"] = true;
-        display["hardware_blank"] = 1;
-        spdlog::info("[Config] Migration v15: re-applied AD5X backlight-off sleep "
-                     "after wizard-override removal");
-    }
+    // VENDOR_OK: a migration freezes the printers it repairs
+    if (config_names_printer(config, "ad5x", "FlashForge Adventurer 5X"))
+        restore_backlight_off_sleep(config, "Migration v15");
 }
 
 /// v15 → v16: Turn the screensaver off on BASIC/EMBEDDED tiers where Flying Toasters

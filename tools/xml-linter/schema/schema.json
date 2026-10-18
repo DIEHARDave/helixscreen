@@ -1370,6 +1370,9 @@
         "stroke_opa": {
           "type": "opa"
         },
+        "max_lines": {
+          "type": "int"
+        },
         "text_transform": {
           "type": "enum",
           "enum": "text_transform"
@@ -1387,6 +1390,9 @@
         },
         "stroke_opa": {
           "type": "opa"
+        },
+        "max_lines": {
+          "type": "int"
         },
         "text_transform": {
           "type": "enum",
@@ -1406,6 +1412,9 @@
         "stroke_opa": {
           "type": "opa"
         },
+        "max_lines": {
+          "type": "int"
+        },
         "text_transform": {
           "type": "enum",
           "enum": "text_transform"
@@ -1423,6 +1432,9 @@
         },
         "stroke_opa": {
           "type": "opa"
+        },
+        "max_lines": {
+          "type": "int"
         },
         "text_transform": {
           "type": "enum",
@@ -1442,6 +1454,9 @@
         "stroke_opa": {
           "type": "opa"
         },
+        "max_lines": {
+          "type": "int"
+        },
         "text_transform": {
           "type": "enum",
           "enum": "text_transform"
@@ -1460,6 +1475,9 @@
         "stroke_opa": {
           "type": "opa"
         },
+        "max_lines": {
+          "type": "int"
+        },
         "text_transform": {
           "type": "enum",
           "enum": "text_transform"
@@ -1476,6 +1494,9 @@
           "type": "color"
         },
         "stroke_opa": {
+          "type": "string"
+        },
+        "max_lines": {
           "type": "string"
         },
         "text_transform": {
@@ -1542,6 +1563,9 @@
         },
         "label_hidden_if_eq": {
           "type": "int"
+        },
+        "label_hidden_cond": {
+          "type": "string"
         },
         "icon_hidden_subject": {
           "type": "string"
@@ -1739,6 +1763,9 @@
         },
         "hide_target_when_off": {
           "type": "bool"
+        },
+        "align_current": {
+          "type": "string"
         },
         "hide_target_below_bp": {
           "type": "string"
@@ -1947,8 +1974,52 @@
       "attributes": {},
       "inherits": "lv_obj"
     },
+    "humidity_drop": {
+      "attributes": {
+        "bind_value": {
+          "type": "string"
+        },
+        "size": {
+          "type": "enum",
+          "enum": "_widget_size"
+        },
+        "width": {
+          "type": "string"
+        },
+        "height": {
+          "type": "string"
+        }
+      },
+      "inherits": "lv_obj"
+    },
     "leader_line": {
       "attributes": {},
+      "inherits": "lv_obj"
+    },
+    "swatch_paint": {
+      "attributes": {
+        "color": {
+          "type": "color"
+        },
+        "bind_color": {
+          "type": "color"
+        },
+        "colors": {
+          "type": "color"
+        },
+        "bind_colors": {
+          "type": "color"
+        },
+        "finish": {
+          "type": "string"
+        },
+        "bind_finish": {
+          "type": "string"
+        },
+        "edge": {
+          "type": "string"
+        }
+      },
       "inherits": "lv_obj"
     },
     "lv_obj-bind_tile_rung": {
@@ -2923,7 +2994,9 @@
     "ams_lane_spool",
     "belt_gap_gauge",
     "belt_path_sketch",
+    "humidity_drop",
     "leader_line",
+    "swatch_paint",
     "lv_obj-bind_tile_rung"
   ],
   "runtime_constants": [
@@ -2973,6 +3046,58 @@
     "ams_context_dropdown_w_micro",
     "ams_context_dropdown_w_small",
     "ams_context_dropdown_w_tiny",
+    "ams_edit_color_col_w",
+    "ams_edit_color_col_w_large",
+    "ams_edit_color_col_w_medium",
+    "ams_edit_color_col_w_micro",
+    "ams_edit_color_col_w_small",
+    "ams_edit_color_col_w_tiny",
+    "ams_edit_grid_gap",
+    "ams_edit_grid_gap_large",
+    "ams_edit_grid_gap_medium",
+    "ams_edit_grid_gap_micro",
+    "ams_edit_grid_gap_small",
+    "ams_edit_grid_gap_tiny",
+    "ams_edit_grid_gap_xlarge",
+    "ams_edit_grid_gap_xxlarge",
+    "ams_edit_grid_hit",
+    "ams_edit_grid_hit_large",
+    "ams_edit_grid_hit_medium",
+    "ams_edit_grid_hit_micro",
+    "ams_edit_grid_hit_small",
+    "ams_edit_grid_hit_tiny",
+    "ams_edit_grid_hit_xlarge",
+    "ams_edit_grid_hit_xxlarge",
+    "ams_edit_grid_swatch",
+    "ams_edit_grid_swatch_large",
+    "ams_edit_grid_swatch_medium",
+    "ams_edit_grid_swatch_micro",
+    "ams_edit_grid_swatch_small",
+    "ams_edit_grid_swatch_tiny",
+    "ams_edit_grid_swatch_xlarge",
+    "ams_edit_grid_swatch_xxlarge",
+    "ams_edit_more_pad",
+    "ams_edit_more_pad_large",
+    "ams_edit_more_pad_medium",
+    "ams_edit_more_pad_micro",
+    "ams_edit_more_pad_small",
+    "ams_edit_more_pad_tiny",
+    "ams_edit_more_pad_xlarge",
+    "ams_edit_more_pad_xxlarge",
+    "ams_edit_row_label_w",
+    "ams_edit_row_label_w_large",
+    "ams_edit_row_label_w_medium",
+    "ams_edit_row_label_w_micro",
+    "ams_edit_row_label_w_small",
+    "ams_edit_row_label_w_tiny",
+    "ams_edit_vgap",
+    "ams_edit_vgap_large",
+    "ams_edit_vgap_medium",
+    "ams_edit_vgap_micro",
+    "ams_edit_vgap_small",
+    "ams_edit_vgap_tiny",
+    "ams_edit_vgap_xlarge",
+    "ams_edit_vgap_xxlarge",
     "ams_header_logo_size",
     "ams_header_logo_size_large",
     "ams_header_logo_size_medium",
@@ -3254,14 +3379,6 @@
     "button_height_xxlarge",
     "button_padding",
     "button_width_action",
-    "calib_cell_height",
-    "calib_cell_width",
-    "calib_cell_width_large",
-    "calib_cell_width_medium",
-    "calib_cell_width_micro",
-    "calib_cell_width_small",
-    "calib_cell_width_tiny",
-    "calib_cell_width_xlarge",
     "calib_icon_size",
     "calib_icon_size_large",
     "calib_icon_size_medium",
@@ -3269,12 +3386,27 @@
     "calib_icon_size_small",
     "calib_icon_size_tiny",
     "calib_icon_size_xlarge",
+    "calib_tile_min_height",
+    "calib_tile_min_height_large",
+    "calib_tile_min_height_medium",
+    "calib_tile_min_height_micro",
+    "calib_tile_min_height_small",
+    "calib_tile_min_height_tiny",
+    "calib_tile_min_height_xlarge",
+    "calib_tile_min_width",
+    "calib_tile_min_width_large",
+    "calib_tile_min_width_medium",
+    "calib_tile_min_width_micro",
+    "calib_tile_min_width_small",
+    "calib_tile_min_width_tiny",
+    "calib_tile_min_width_xlarge",
     "card_base_width",
     "card_bg",
     "card_height",
     "card_max_width",
     "card_min_width",
     "card_width",
+    "catalog_min_width",
     "chamber_header_gap",
     "chamber_header_gap_large",
     "chamber_header_gap_medium",
@@ -3310,6 +3442,12 @@
     "color_preview_size",
     "color_preview_size_small",
     "color_text_height",
+    "controls_action_row_portrait",
+    "controls_action_row_portrait_large",
+    "controls_action_row_portrait_medium",
+    "controls_action_row_portrait_small",
+    "controls_action_row_portrait_tiny",
+    "controls_action_row_portrait_xlarge",
     "controls_toggle_icon_size",
     "controls_toggle_icon_size_large",
     "controls_toggle_icon_size_medium",
@@ -3407,6 +3545,13 @@
     "filament_ams_row_h_micro",
     "filament_ams_row_h_small",
     "filament_ams_row_h_tiny",
+    "filament_chip_row_height",
+    "filament_chip_row_height_large",
+    "filament_chip_row_height_medium",
+    "filament_chip_row_height_micro",
+    "filament_chip_row_height_small",
+    "filament_chip_row_height_tiny",
+    "filament_chip_row_height_xlarge",
     "filament_error",
     "filament_hub_bg_dark",
     "filament_hub_bg_light",
@@ -3455,6 +3600,14 @@
     "font_heading_tiny",
     "font_heading_xlarge",
     "font_heading_xxlarge",
+    "font_jog_key",
+    "font_jog_key_large",
+    "font_jog_key_medium",
+    "font_jog_key_micro",
+    "font_jog_key_small",
+    "font_jog_key_tiny",
+    "font_jog_key_xlarge",
+    "font_jog_key_xxlarge",
     "font_mono",
     "font_mono_large",
     "font_mono_medium",
@@ -3518,6 +3671,13 @@
     "hidden_connecting_height_tiny",
     "hidden_connecting_height_xlarge",
     "hidden_connecting_height_xxlarge",
+    "home_grid_gap",
+    "home_grid_gap_large",
+    "home_grid_gap_medium",
+    "home_grid_gap_small",
+    "home_grid_gap_tiny",
+    "home_grid_gap_xlarge",
+    "home_grid_gap_xxlarge",
     "hue_height",
     "icon_badge_radius",
     "icon_badge_radius_large",
@@ -3542,6 +3702,14 @@
     "icon_font_hero_tiny",
     "icon_font_hero_xlarge",
     "icon_font_hero_xxlarge",
+    "icon_font_jog_key",
+    "icon_font_jog_key_large",
+    "icon_font_jog_key_medium",
+    "icon_font_jog_key_micro",
+    "icon_font_jog_key_small",
+    "icon_font_jog_key_tiny",
+    "icon_font_jog_key_xlarge",
+    "icon_font_jog_key_xxlarge",
     "icon_font_lg",
     "icon_font_lg_large",
     "icon_font_lg_medium",
@@ -3608,6 +3776,22 @@
     "input_height_tiny",
     "input_height_xlarge",
     "input_height_xxlarge",
+    "jog_mode_h",
+    "jog_mode_h_large",
+    "jog_mode_h_medium",
+    "jog_mode_h_micro",
+    "jog_mode_h_small",
+    "jog_mode_h_tiny",
+    "jog_mode_h_xlarge",
+    "jog_mode_h_xxlarge",
+    "jog_mode_w",
+    "jog_mode_w_large",
+    "jog_mode_w_medium",
+    "jog_mode_w_micro",
+    "jog_mode_w_small",
+    "jog_mode_w_tiny",
+    "jog_mode_w_xlarge",
+    "jog_mode_w_xxlarge",
     "keypad_width",
     "keypad_width_large",
     "keypad_width_medium",
@@ -3748,6 +3932,14 @@
     "motion_z_col_w_micro",
     "motion_z_col_w_small",
     "motion_z_col_w_tiny",
+    "nav_estop_reach",
+    "nav_estop_reach_large",
+    "nav_estop_reach_medium",
+    "nav_estop_reach_micro",
+    "nav_estop_reach_small",
+    "nav_estop_reach_tiny",
+    "nav_estop_reach_xlarge",
+    "nav_estop_reach_xxlarge",
     "nav_estop_size",
     "nav_estop_size_large",
     "nav_estop_size_medium",
@@ -3784,20 +3976,6 @@
     "option_tile_height_small",
     "option_tile_height_tiny",
     "option_tile_height_xlarge",
-    "option_tile_tab",
-    "option_tile_tab_large",
-    "option_tile_tab_lift",
-    "option_tile_tab_lift_large",
-    "option_tile_tab_lift_medium",
-    "option_tile_tab_lift_micro",
-    "option_tile_tab_lift_small",
-    "option_tile_tab_lift_tiny",
-    "option_tile_tab_lift_xlarge",
-    "option_tile_tab_medium",
-    "option_tile_tab_micro",
-    "option_tile_tab_small",
-    "option_tile_tab_tiny",
-    "option_tile_tab_xlarge",
     "overlay_bg",
     "overlay_bg_dark",
     "overlay_bg_light",
@@ -3806,6 +3984,20 @@
     "overlay_text_light",
     "overlay_width_destination",
     "overlay_width_transient",
+    "pa_tune_nudge_h",
+    "pa_tune_nudge_h_large",
+    "pa_tune_nudge_h_medium",
+    "pa_tune_nudge_h_micro",
+    "pa_tune_nudge_h_small",
+    "pa_tune_nudge_h_tiny",
+    "pa_tune_nudge_h_xlarge",
+    "pa_tune_nudge_w",
+    "pa_tune_nudge_w_large",
+    "pa_tune_nudge_w_medium",
+    "pa_tune_nudge_w_micro",
+    "pa_tune_nudge_w_small",
+    "pa_tune_nudge_w_tiny",
+    "pa_tune_nudge_w_xlarge",
     "panel_button_width",
     "picker_tab_swatch_gap",
     "picker_tab_swatch_gap_half",
@@ -3823,9 +4015,15 @@
     "pin_btn_height",
     "pin_dot_size",
     "play_icon_size",
+    "pm_identity_width",
+    "pm_identity_width_large",
+    "pm_identity_width_medium",
+    "pm_identity_width_small",
+    "pm_identity_width_tiny",
     "pm_image_size",
     "pm_image_size_large",
     "pm_image_size_medium",
+    "pm_image_size_portrait",
     "pm_image_size_small",
     "preview_offset_y",
     "primary",
@@ -4029,14 +4227,6 @@
     "step_row_gap_small",
     "success",
     "sv_size",
-    "swatch_col_height",
-    "swatch_col_height_large",
-    "swatch_col_height_medium",
-    "swatch_col_height_micro",
-    "swatch_col_height_small",
-    "swatch_col_height_tiny",
-    "swatch_col_height_xlarge",
-    "swatch_col_height_xxlarge",
     "swatch_grid_gap",
     "swatch_grid_gap_half",
     "swatch_grid_gap_half_large",
@@ -4114,6 +4304,7 @@
     "test_switch_width_large",
     "text",
     "text_muted",
+    "text_on_danger",
     "text_on_primary",
     "text_small_line_h",
     "text_small_line_h_large",
@@ -4215,6 +4406,13 @@
     "tray_side_light",
     "tray_wall_dark",
     "tray_wall_light",
+    "tune_pa_btn_w",
+    "tune_pa_btn_w_large",
+    "tune_pa_btn_w_medium",
+    "tune_pa_btn_w_micro",
+    "tune_pa_btn_w_small",
+    "tune_pa_btn_w_tiny",
+    "tune_pa_btn_w_xlarge",
     "warning",
     "wizard_button_width",
     "z_tune_dir_col_w",

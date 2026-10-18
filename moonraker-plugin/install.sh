@@ -102,19 +102,47 @@ components_under() {
     return 1
 }
 
-# Print the running Moonraker's argv, one argument per line.
-running_moonraker_args() {
+# Print the running Moonraker's /proc directory.
+running_moonraker_proc() {
     for f in "$PROC_ROOT"/[0-9]*/cmdline; do
         [ -r "$f" ] || continue
         args=$(tr '\000' '\n' < "$f" 2>/dev/null) || continue
         case "$args" in
             *moonraker.py*)
-                printf '%s\n' "$args"
+                printf '%s' "$(dirname "$f")"
                 return 0
                 ;;
         esac
     done
     return 1
+}
+
+# Print the running Moonraker's argv, one argument per line.
+running_moonraker_args() {
+    proc=$(running_moonraker_proc) || return 1
+    tr '\000' '\n' < "$proc/cmdline" 2>/dev/null
+}
+
+# Print where the running Moonraker's "/" is from here: empty when it shares
+# ours, the chroot directory when it runs in one (Forge-X runs Moonraker in
+# /data/.mod/.forge-x). Every path in its argv is relative to that root.
+running_moonraker_root() {
+    proc=$(running_moonraker_proc) || return 0
+    root=$(readlink "$proc/root" 2>/dev/null) || return 0
+    [ "$root" = "/" ] && return 0
+    printf '%s' "${root%/}"
+}
+
+# Translate a path on this side into the same file as the running Moonraker
+# names it: strip its chroot prefix when the path lies inside the chroot. A
+# path outside it is only visible to Moonraker through a bind mount at the
+# same place (Forge-X binds /opt/config), which the caller checks.
+path_for_moonraker() {
+    mroot=$(running_moonraker_root)
+    case "$1" in
+        "$mroot"/*) [ -n "$mroot" ] && { printf '%s' "${1#"$mroot"}"; return 0; } ;;
+    esac
+    printf '%s' "$1"
 }
 
 # Print the argument following the first of the given flags in the running
@@ -134,9 +162,12 @@ find_moonraker_components() {
     done
 
     script=$(running_moonraker_args | awk '/moonraker\.py$/ { print; exit }')
-    if [ -n "$script" ] && [ -d "$(dirname "$script")/components" ]; then
-        printf '%s' "$(dirname "$script")/components"
-        return 0
+    if [ -n "$script" ]; then
+        script="$(running_moonraker_root)$script"
+        if [ -d "$(dirname "$script")/components" ]; then
+            printf '%s' "$(dirname "$script")/components"
+            return 0
+        fi
     fi
 
     for root in $MOONRAKER_SRC_PATHS; do
@@ -154,8 +185,11 @@ find_moonraker_components() {
 # Find the directory holding moonraker.conf: the user's home first, then the
 # running Moonraker's -c/-d arguments, then the known vendor layouts.
 find_config_dir() {
+    mroot=$(running_moonraker_root)
     conf=$(running_moonraker_arg -c --configfile)
     data=$(running_moonraker_arg -d --datapath)
+    conf="${conf:+$mroot$conf}"
+    data="${data:+$mroot$data}"
     for loc in \
         "$HOME/printer_data/config" \
         "$HOME/klipper_config" \
@@ -169,6 +203,114 @@ find_config_dir() {
         fi
     done
     printf ''
+}
+
+# Print the file the [helix_print] section belongs in, given the directory
+# holding moonraker.conf. Normally moonraker.conf itself. A firmware mod that
+# owns moonraker.conf (a symlink into the mod's own tree, which its updates
+# rewrite) includes a user.moonraker.conf for the user's sections: Forge-X's
+# `[include mod_data/user.moonraker.conf]`. The section goes there instead.
+helix_conf_file() {
+    conf="$1/moonraker.conf"
+    if [ -L "$conf" ]; then
+        # Trailing blanks after "]" include the CR of a file saved on Windows;
+        # neither changes what Moonraker includes.
+        inc=$(sed -n 's/^\[include[[:space:]]\{1,\}\([^]*?]*user\.moonraker\.conf\)[[:space:]]*\][[:space:]]*$/\1/p' "$conf" 2>/dev/null |
+            tail -n 1)
+        if [ -n "$inc" ]; then
+            case "$inc" in
+                /*) printf '%s' "$(running_moonraker_root)$inc" ;;
+                *) printf '%s' "$1/$inc" ;;
+            esac
+            return 0
+        fi
+    fi
+    printf '%s' "$conf"
+}
+
+# Print the running Klipper's extras/virtual_sdcard.py, the code that decides
+# which files SDCARD_PRINT_FILE can open. Empty when no Klipper runs here.
+running_klipper_sdcard_source() {
+    for f in "$PROC_ROOT"/[0-9]*/cmdline; do
+        [ -r "$f" ] || continue
+        klippy=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/klippy\/klippy\.py$/ { print; exit }')
+        [ -n "$klippy" ] || continue
+        root=$(readlink "$(dirname "$f")/root" 2>/dev/null) || root=""
+        [ "$root" = "/" ] && root=""
+        for sdcard in "${root%/}$(dirname "$klippy")/extras/virtual_sdcard.py" \
+                      "$(dirname "$klippy")/extras/virtual_sdcard.py"; do
+            if [ -f "$sdcard" ]; then
+                printf '%s' "$sdcard"
+                return 0
+            fi
+        done
+        return 0
+    done
+}
+
+# Generic probe: a virtual_sdcard that prunes dot-directories from its walk
+# with str.startswith, the idiomatic spelling of the filter.
+sdcard_prunes_dot_dirs_generic() {
+    grep -Eq "dirs\[:\] *= *\[d for d in dirs if not d\.startswith\(['\"]\.['\"]\)" "$1"
+}
+
+# Vendor probe, Forge-X: its Klipper patch "Ignore hidden files and
+# directories" (ff5m commit aab9d340) spells the filter as an index compare.
+sdcard_prunes_dot_dirs_forgex() {
+    grep -Eq "dirs\[:\] *= *\[d for d in dirs if not d\[0\] *== *['\"]\.['\"]" "$1"
+}
+
+# Capability: whether the running Klipper hides dot-directories from
+# SDCARD_PRINT_FILE. There a print started through the plugin's symlink under
+# a hidden directory fails with "Unable to open file", so the symlink directory
+# has to be a visible one.
+klipper_hides_dot_dirs() {
+    sdcard=$(running_klipper_sdcard_source)
+    [ -n "$sdcard" ] || return 1
+    for probe in sdcard_prunes_dot_dirs_generic sdcard_prunes_dot_dirs_forgex; do
+        "$probe" "$sdcard" && return 0
+    done
+    return 1
+}
+
+# Give [helix_print] in @1 a visible `symlink_dir: helix_print`, unless the
+# section already sets symlink_dir (the user's value stands).
+ensure_visible_symlink_dir() {
+    file="$1"
+    if awk '/^\[helix_print\]/ { s = 1; next } /^\[/ { s = 0 }
+            s && /^[[:space:]]*symlink_dir[[:space:]]*[:=]/ { found = 1 }
+            END { exit !found }' "$file"; then
+        info "Keeping the symlink_dir already set in $(basename "$file")"
+        return 0
+    fi
+    info "Klipper skips hidden directories here: setting symlink_dir: helix_print"
+    awk '{ print } !done && /^\[helix_print\]/ { print "symlink_dir: helix_print"; done = 1 }' \
+        "$file" > "$file.tmp" && cat "$file.tmp" > "$file" && rm -f "$file.tmp"
+}
+
+# Remove the [helix_print] section from one config file, with a backup.
+# Returns 1 when the file had the section and could not be edited.
+remove_helix_section() {
+    file="$1"
+    [ -f "$file" ] && grep -q '^\[helix_print\]' "$file" || return 0
+    backup_file="${file}.bak.$(date +%Y%m%d_%H%M%S)"
+    if ! cp "$file" "$backup_file"; then
+        warn "Could not back up $(basename "$file") - leaving the [helix_print] section in place"
+        return 1
+    fi
+    info "Created backup: $backup_file"
+    info "Removing [helix_print] section from $(basename "$file")"
+    # Use awk for cross-platform config section removal
+    # This correctly handles helix_print as the last section in the file
+    if ! (awk '
+        /^\[helix_print\]/ { skip = 1; next }
+        /^\[/ { skip = 0 }
+        !skip { print }
+    ' "$file" > "$file.tmp" && cat "$file.tmp" > "$file" && rm -f "$file.tmp"); then
+        warn "Could not remove [helix_print] from $(basename "$file") - see $backup_file"
+        return 1
+    fi
+    return 0
 }
 
 # Main installation
@@ -264,6 +406,35 @@ uninstall() {
     return "$exit_status"
 }
 
+# The same probe as _has_real_curl in scripts/lib/installer/release.sh.
+# Detect whether `curl` is curl proper, with the flags we pass it. Creality K1
+# firmware ships libhv's example client as /usr/bin/curl: it answers to the name,
+# prints "curl version 1.0.0" and rejects -s, -S, -L, -o and -f. Real curl's first
+# --version output starts "curl <digit>...". Shell builtins only, so it holds on
+# a PATH with no head or grep. Cache the result so we only probe once.
+_REAL_CURL=""
+_has_real_curl() {
+    if [ -z "$_REAL_CURL" ]; then
+        _REAL_CURL=no
+        if command -v curl >/dev/null 2>&1; then
+            case "$(curl --version 2>/dev/null)" in
+                "curl "[0-9]*) _REAL_CURL=yes ;;
+            esac
+        fi
+    fi
+    [ "$_REAL_CURL" = "yes" ]
+}
+
+# Whether a GET of the URL succeeds: real curl, else wget. BusyBox systems
+# (Forge-X outside its chroot) carry wget but no curl, and a K1's /usr/bin/curl
+# is an impostor that rejects -s and -f.
+moonraker_answers() {
+    if _has_real_curl && curl -sf --max-time 2 "$1" > /dev/null 2>&1; then
+        return 0
+    fi
+    command -v wget > /dev/null 2>&1 && wget -q -T 2 -O /dev/null "$1" > /dev/null 2>&1
+}
+
 # Wait for Moonraker to become available after restart
 wait_for_moonraker() {
     [ "$NO_RESTART" = "true" ] && return 0
@@ -274,7 +445,7 @@ wait_for_moonraker() {
     info "Waiting for Moonraker to become available..."
 
     while [ "$attempt" -lt "$max_attempts" ]; do
-        if curl -s --max-time 2 "$moonraker_url/server/info" > /dev/null 2>&1; then
+        if moonraker_answers "$moonraker_url/server/info"; then
             info "Moonraker is ready!"
             return 0
         fi
@@ -299,9 +470,28 @@ restart_moonraker() {
         sudo systemctl restart moonraker || warn "Failed to restart Moonraker via systemctl"
     elif command -v service > /dev/null 2>&1; then
         sudo service moonraker restart || warn "Failed to restart Moonraker via service"
+    elif request_moonraker_restart; then
+        info "Asked Moonraker to restart itself"
     else
-        warn "Neither systemctl nor service found - please restart Moonraker manually"
+        warn "No way to restart Moonraker found - please restart Moonraker manually"
     fi
+}
+
+# POST /server/restart: Moonraker re-launches itself in place, the one restart
+# that works where no service manager reaches it (Forge-X's chroot). Real curl
+# first, then wget, which BusyBox carries where curl is absent or an impostor;
+# -sf and wget's own status make an HTTP error (a 401) a failure.
+# Kept identical in scripts/lib/installer/moonraker.sh: this script runs
+# standalone (piped from GitHub, or from an install tree without scripts/lib)
+# and cannot source it; a bats test holds the two copies equal.
+# Returns 0 when Moonraker accepted the request.
+request_moonraker_restart() {
+    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
+    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
+        return 0
+    fi
+    command -v wget >/dev/null 2>&1 &&
+        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
 }
 
 # Strip phase-tracking instrumentation from PRINT_START via the bundled
@@ -375,34 +565,17 @@ auto_uninstall() {
         strip_phase_tracking_instrumentation "$config_dir" || exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
     fi
 
-    # Remove config section if possible. The plugin itself is already gone
-    # at this point, so a failure backing up or editing moonraker.conf here
-    # is "needs attention", not a failed uninstall, and must not trip set -e
-    # and skip the rest of this function.
+    # Remove config section if possible, from moonraker.conf and from the
+    # user file a mod-owned moonraker.conf includes. The plugin itself is
+    # already gone at this point, so a failure backing up or editing a config
+    # here is "needs attention", not a failed uninstall, and must not trip
+    # set -e and skip the rest of this function.
     if [ -n "$config_dir" ] && [ -f "$config_dir/moonraker.conf" ]; then
-        moonraker_conf="$config_dir/moonraker.conf"
-
-        if grep -q '^\[helix_print\]' "$moonraker_conf"; then
-            backup_file="${moonraker_conf}.bak.$(date +%Y%m%d_%H%M%S)"
-            if cp "$moonraker_conf" "$backup_file"; then
-                info "Created backup: $backup_file"
-
-                info "Removing [helix_print] section from moonraker.conf"
-                # Use awk for cross-platform config section removal
-                # This correctly handles helix_print as the last section in the file
-                if ! (awk '
-                    /^\[helix_print\]/ { skip = 1; next }
-                    /^\[/ { skip = 0 }
-                    !skip { print }
-                ' "$moonraker_conf" > "$moonraker_conf.tmp" && mv "$moonraker_conf.tmp" "$moonraker_conf"); then
-                    warn "Could not remove [helix_print] from moonraker.conf - see $backup_file"
-                    exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
-                fi
-            else
-                warn "Could not back up moonraker.conf - leaving the [helix_print] section in place"
-                exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
-            fi
-        fi
+        section_file=$(helix_conf_file "$config_dir")
+        for file in "$config_dir/moonraker.conf" "$section_file"; do
+            remove_helix_section "$file" || exit_status=$EXIT_UNINSTALL_NEEDS_ATTENTION
+            [ "$section_file" = "$config_dir/moonraker.conf" ] && break
+        done
     fi
 
     # Restart Moonraker
@@ -455,9 +628,11 @@ auto_install() {
         error "Cannot write to components directory: $components_dir"
     fi
 
+    section_file=""
     if [ -n "$config_dir" ] && [ -f "$config_dir/moonraker.conf" ]; then
-        if [ ! -w "$config_dir/moonraker.conf" ]; then
-            error "Cannot write to moonraker.conf: $config_dir/moonraker.conf"
+        section_file=$(helix_conf_file "$config_dir")
+        if [ -e "$section_file" ] && [ ! -w "$section_file" ]; then
+            error "Cannot write to $section_file"
         fi
     fi
 
@@ -468,27 +643,41 @@ auto_install() {
         error "A file (not symlink) exists at $target"
     fi
 
+    # The link is read by Moonraker, so it names the plugin as Moonraker
+    # sees it, which differs from here when Moonraker runs in a chroot.
+    link_to=$(path_for_moonraker "$PLUGIN_FILE")
+    if [ ! -f "$(running_moonraker_root)$link_to" ]; then
+        error "Moonraker cannot see $PLUGIN_FILE from its root ($(running_moonraker_root))"
+    fi
+
     # Use ln -sf for atomic replacement (removes existing symlink first)
-    ln -sf "$PLUGIN_FILE" "$target"
-    info "Created symlink: $target"
+    ln -sf "$link_to" "$target"
+    info "Created symlink: $target -> $link_to"
 
     # Auto-configure moonraker.conf if possible
-    if [ -n "$config_dir" ] && [ -f "$config_dir/moonraker.conf" ]; then
-        moonraker_conf="$config_dir/moonraker.conf"
-
+    if [ -n "$section_file" ]; then
         # Check if [helix_print] section already exists
-        if grep -q '^\[helix_print\]' "$moonraker_conf"; then
+        if grep -q '^\[helix_print\]' "$config_dir/moonraker.conf" "$section_file" 2>/dev/null; then
             info "Config section [helix_print] already exists"
         else
             # Create backup before modifying config
-            backup_file="${moonraker_conf}.bak.$(date +%Y%m%d_%H%M%S)"
-            cp "$moonraker_conf" "$backup_file"
-            info "Created backup: $backup_file"
+            if [ -f "$section_file" ]; then
+                backup_file="${section_file}.bak.$(date +%Y%m%d_%H%M%S)"
+                cp "$section_file" "$backup_file"
+                info "Created backup: $backup_file"
+            fi
 
-            info "Adding [helix_print] section to moonraker.conf"
-            printf '\n' >> "$moonraker_conf"
-            printf '%s\n' "[helix_print]" >> "$moonraker_conf"
-            printf '%s\n' "# HelixScreen plugin - auto-configured" >> "$moonraker_conf"
+            info "Adding [helix_print] section to $section_file"
+            printf '\n' >> "$section_file"
+            printf '%s\n' "[helix_print]" >> "$section_file"
+            printf '%s\n' "# HelixScreen plugin - auto-configured" >> "$section_file"
+        fi
+
+        if klipper_hides_dot_dirs; then
+            section_holder="$section_file"
+            grep -q '^\[helix_print\]' "$section_file" 2>/dev/null \
+                || section_holder="$config_dir/moonraker.conf"
+            ensure_visible_symlink_dir "$section_holder"
         fi
     else
         warn "Could not find moonraker.conf - manual config required"

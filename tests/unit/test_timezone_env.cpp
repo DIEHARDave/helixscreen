@@ -5,6 +5,7 @@
 // IANA timezones on devices that ship without /usr/share/zoneinfo/ (notably
 // Elegoo Centauri Carbon running OpenCentauri COSMOS).
 
+#include "test_helpers/scoped_env.h"
 #include "test_helpers/unique_temp_dir.h"
 #include "timezone_env.h"
 
@@ -43,36 +44,21 @@ fs::path make_temp_zoneinfo() {
 
 // Snapshot/restore TZ + TZDIR + working directory across tests. The fallback
 // inspects getcwd() when building the bundled path.
-struct EnvGuard {
-    std::string saved_tz;
-    std::string saved_tzdir;
-    fs::path saved_cwd;
-    bool tz_was_set = false;
-    bool tzdir_was_set = false;
+struct TimezoneScope {
+    // Declared first so it is destroyed last: the probe state is reset only
+    // after TZ and TZDIR are back to their original values.
+    struct ProbeReset {
+        ~ProbeReset() {
+            ::tzset();
+            helix::timezone_env::reset_probe_state();
+        }
+    } probe_reset;
+    helix::ScopedEnv tz{"TZ"};
+    helix::ScopedEnv tzdir{"TZDIR"};
+    fs::path saved_cwd = fs::current_path();
 
-    EnvGuard() {
-        if (const char* v = ::getenv("TZ")) {
-            saved_tz = v;
-            tz_was_set = true;
-        }
-        if (const char* v = ::getenv("TZDIR")) {
-            saved_tzdir = v;
-            tzdir_was_set = true;
-        }
-        saved_cwd = fs::current_path();
-    }
-    ~EnvGuard() {
+    ~TimezoneScope() {
         fs::current_path(saved_cwd);
-        if (tz_was_set)
-            ::setenv("TZ", saved_tz.c_str(), 1);
-        else
-            ::unsetenv("TZ");
-        if (tzdir_was_set)
-            ::setenv("TZDIR", saved_tzdir.c_str(), 1);
-        else
-            ::unsetenv("TZDIR");
-        ::tzset();
-        helix::timezone_env::reset_probe_state();
     }
 };
 
@@ -80,7 +66,7 @@ struct EnvGuard {
 
 TEST_CASE("timezone_env: falls back to bundled TZDIR when system zoneinfo missing",
           "[timezone_env]") {
-    EnvGuard guard;
+    TimezoneScope guard;
     helix::timezone_env::reset_probe_state();
 
     fs::path temp = make_temp_zoneinfo();
@@ -111,7 +97,7 @@ TEST_CASE("timezone_env: falls back to bundled TZDIR when system zoneinfo missin
 
 TEST_CASE("timezone_env: apply() with bundled TZDIR yields correct localtime offset",
           "[timezone_env]") {
-    EnvGuard guard;
+    TimezoneScope guard;
     helix::timezone_env::reset_probe_state();
 
     fs::path temp = make_temp_zoneinfo();
@@ -151,7 +137,7 @@ TEST_CASE("timezone_env: apply() with bundled TZDIR yields correct localtime off
 }
 
 TEST_CASE("timezone_env: leaves TZDIR untouched when system zoneinfo present", "[timezone_env]") {
-    EnvGuard guard;
+    TimezoneScope guard;
     helix::timezone_env::reset_probe_state();
     ::unsetenv("TZDIR");
 

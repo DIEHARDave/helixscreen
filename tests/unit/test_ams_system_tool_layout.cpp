@@ -1187,3 +1187,204 @@ TEST_CASE("Toolhead badges: several toolheads are named by extruder, never by a 
         CHECK(badges.numbers[0] == info.get_slot_global(2)->mapped_tool);
     }
 }
+
+// ============================================================================
+// A lane naming an already-placed nozzle's extruder shares that nozzle
+// ============================================================================
+
+namespace {
+
+/// The U1 shape: a PARALLEL unit of four head lanes, each naming its own
+/// Klipper extruder ("extruder", "extruder1".."extruder3").
+AmsSystemInfo head_unit_system() {
+    AmsSystemInfo info;
+    info.type = AmsType::SNAPMAKER;
+    AmsUnit& heads = info.units.emplace_back();
+    heads.unit_index = 0;
+    heads.slot_count = 4;
+    heads.first_slot_global_index = 0;
+    heads.topology = PathTopology::PARALLEL;
+    for (int s = 0; s < 4; ++s) {
+        SlotInfo slot;
+        slot.slot_index = s;
+        slot.global_index = s;
+        slot.mapped_tool = s;
+        slot.extruder_name = (s == 0) ? "extruder" : "extruder" + std::to_string(s);
+        heads.slots.push_back(slot);
+    }
+    return info;
+}
+
+/// One storage unit of four bays feeding @p topology routes: head mode passes
+/// HUB with every bay naming one head's extruder, multi mode passes PARALLEL
+/// with bay s naming head s's.
+AmsUnit storage_unit(int index, PathTopology topo) {
+    AmsUnit unit;
+    unit.unit_index = index;
+    unit.slot_count = 4;
+    unit.first_slot_global_index = index * 4;
+    unit.topology = topo;
+    for (int s = 0; s < 4; ++s) {
+        SlotInfo slot;
+        slot.slot_index = s;
+        slot.global_index = index * 4 + s;
+        slot.mapped_tool = (topo == PathTopology::HUB) ? 1 : s;
+        slot.extruder_name = (topo == PathTopology::HUB)
+                                 ? "extruder1"
+                                 : ((s == 0) ? "extruder" : "extruder" + std::to_string(s));
+        unit.slots.push_back(slot);
+    }
+    return unit;
+}
+
+} // namespace
+
+TEST_CASE("SystemToolLayout: a HUB unit shares a PARALLEL lane's nozzle by extruder name",
+          "[ams][tool_layout]") {
+    AmsSystemInfo info = head_unit_system();
+    info.units.push_back(storage_unit(1, PathTopology::HUB));
+    info.total_slots = 8;
+
+    const auto layout = compute_system_tool_layout(info, nullptr);
+
+    // Four heads, four nozzles: the HUB unit's bays converge on head 1's
+    // existing nozzle instead of adding a fifth.
+    CHECK(layout.total_physical_tools == 4);
+    REQUIRE(layout.units.size() == 2);
+    CHECK(layout.units[1].tool_count == 1);
+    CHECK(layout.units[1].first_physical_tool == 1);
+}
+
+TEST_CASE("SystemToolLayout: a PARALLEL unit shares every placed nozzle it names",
+          "[ams][tool_layout]") {
+    AmsSystemInfo info = head_unit_system();
+    for (int u = 1; u <= 4; ++u) {
+        info.units.push_back(storage_unit(u, PathTopology::PARALLEL));
+    }
+    info.total_slots = 20;
+
+    const auto layout = compute_system_tool_layout(info, nullptr);
+
+    // Four storage units, each naming all four extruders: still four nozzles.
+    CHECK(layout.total_physical_tools == 4);
+    REQUIRE(layout.units.size() == 5);
+    for (int u = 1; u <= 4; ++u) {
+        CHECK(layout.units[static_cast<size_t>(u)].tool_count == 4);
+        CHECK(layout.units[static_cast<size_t>(u)].first_physical_tool == 0);
+    }
+}
+
+TEST_CASE("SystemToolLayout: a shared unit labels only the nozzles it feeds",
+          "[ams][tool_layout]") {
+    // Three HUB units place nozzles 0-2 (the HUB branch writes no label
+    // overrides), then a names-PARALLEL unit shares the outer two: phys 0 and
+    // phys 2, skipping phys 1. The nozzle at phys 1 belongs to the middle HUB
+    // alone, and the shared unit must not write a label on it while
+    // numbering its own two.
+    AmsSystemInfo info;
+    info.type = AmsType::AFC;
+    const char* const extruders[3] = {"extruder", "extruder1", "extruder2"};
+    for (int u = 0; u < 3; ++u) {
+        AmsUnit& hub = info.units.emplace_back();
+        hub.unit_index = u;
+        hub.slot_count = 1;
+        hub.first_slot_global_index = u;
+        hub.topology = PathTopology::HUB;
+        SlotInfo slot;
+        slot.slot_index = 0;
+        slot.global_index = u;
+        slot.mapped_tool = u;
+        slot.extruder_name = extruders[u];
+        hub.slots.push_back(slot);
+    }
+    AmsUnit& shares = info.units.emplace_back();
+    shares.unit_index = 3;
+    shares.slot_count = 2;
+    shares.first_slot_global_index = 3;
+    shares.topology = PathTopology::PARALLEL;
+    for (int s = 0; s < 2; ++s) {
+        SlotInfo slot;
+        slot.slot_index = s;
+        slot.global_index = 3 + s;
+        slot.mapped_tool = 7 + 2 * s; // T7 and T9
+        slot.extruder_name = (s == 0) ? "extruder" : "extruder2";
+        shares.slots.push_back(slot);
+    }
+    info.total_slots = 5;
+
+    const auto layout = compute_system_tool_layout(info, nullptr);
+
+    CHECK(layout.total_physical_tools == 3);
+    REQUIRE(layout.units.size() == 4);
+    CHECK(layout.units[3].tool_count == 2);
+    CHECK(layout.units[3].first_physical_tool == 0);
+    CHECK(layout.virtual_to_physical.at(7) == 0);
+    CHECK(layout.virtual_to_physical.at(9) == 2);
+    // The middle HUB's label on the nozzle between the two shared ones
+    // survives: no override covers it, only the label loop can clobber it.
+    REQUIRE(layout.physical_to_virtual_label.size() == 3);
+    CHECK(layout.physical_to_virtual_label[1] == 1);
+}
+
+namespace {
+
+/// A backend that answers per-lane extruder identities for a hand-built MIXED
+/// unit: the MIXED branch reads lanes through get_slot_info(), unlike the
+/// PARALLEL branch, which reads the unit's own slots.
+class NamedLanesMock : public helix::AmsBackendMock {
+  public:
+    std::map<int, std::pair<int, std::string>> lanes; // global index -> (tool, extruder)
+
+    helix::PathTopology get_unit_topology(int u) const override {
+        // The layout prefers the backend's answer over unit.topology, so the
+        // stub speaks for every unit: PARALLEL heads, then the MIXED unit.
+        return u == 1 ? helix::PathTopology::MIXED : helix::PathTopology::PARALLEL;
+    }
+    helix::SlotInfo get_slot_info(int gi) const override {
+        if (auto it = lanes.find(gi); it != lanes.end()) {
+            helix::SlotInfo slot;
+            slot.slot_index = gi;
+            slot.global_index = gi;
+            slot.mapped_tool = it->second.first;
+            slot.extruder_name = it->second.second;
+            return slot;
+        }
+        return AmsBackendMock::get_slot_info(gi);
+    }
+};
+
+} // namespace
+
+TEST_CASE("SystemToolLayout: a MIXED unit shares placed nozzles too", "[ams][tool_layout]") {
+    NamedLanesMock backend;
+    AmsSystemInfo info = head_unit_system();
+    AmsUnit& mixed = info.units.emplace_back();
+    mixed.unit_index = 1;
+    mixed.slot_count = 4;
+    mixed.first_slot_global_index = 4;
+    mixed.topology = PathTopology::MIXED;
+    mixed.lane_is_hub_routed = {false, false, true, true};
+    for (int s = 0; s < 4; ++s) {
+        SlotInfo slot;
+        slot.slot_index = s;
+        slot.global_index = 4 + s;
+        slot.mapped_tool = 4 + s;
+        mixed.slots.push_back(slot);
+    }
+    info.total_slots = 8;
+    // Direct lanes: one names head 2's placed extruder, one is new. The hub
+    // lanes agree on head 1's placed extruder.
+    backend.lanes = {
+        {4, {4, "extruder1"}}, {5, {5, "extruder9"}}, {6, {6, "extruder"}}, {7, {7, "extruder"}}};
+
+    const auto layout = compute_system_tool_layout(info, &backend);
+
+    // Four placed nozzles plus the one new extruder: five, not seven.
+    CHECK(layout.total_physical_tools == 5);
+    REQUIRE(layout.units.size() == 2);
+    CHECK(layout.units[1].tool_count == 3); // two direct lanes + the hub group
+    CHECK(layout.units[1].first_physical_tool == 0);
+    CHECK(layout.virtual_to_physical.at(4) == 1); // direct, shared with head 2
+    CHECK(layout.virtual_to_physical.at(5) == 4); // direct, new
+    CHECK(layout.virtual_to_physical.at(6) == 0); // hub group on head 1's nozzle
+}

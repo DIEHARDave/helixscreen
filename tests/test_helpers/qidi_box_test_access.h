@@ -28,6 +28,9 @@ class QidiBoxTestAccess {
     static void parse_vars(AmsBackendQidi& b, const json& v) {
         b.parse_save_variables(v);
     }
+    static void set_force_move(AmsBackendQidi& b, bool enabled) {
+        b.fw_force_move_enabled_ = enabled;
+    }
     /// Feeds @p status the way the subscription delivers it: inside the
     /// notify_status_update envelope.
     static void handle_status(AmsBackendQidi& b, const json& status) {

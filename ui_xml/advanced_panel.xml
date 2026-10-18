@@ -28,9 +28,9 @@
        container runs no layout at all and all three buttons land on top of
        each other at the same y. -->
   <styles>
-    <style name="estop_bar_row" layout="flex" flex_flow="row"/>
+    <style name="estop_bar_row" layout="flex" flex_flow="row_wrap"/>
     <style name="estop_bar_column" layout="flex" flex_flow="column"/>
-    <style name="estop_btn_inline" flex_grow="1"/>
+    <style name="estop_btn_inline" flex_grow="1" min_width="content" pad_hor="#space_sm"/>
     <style name="estop_btn_stacked" width="100%" flex_grow="0"/>
   </styles>
   <view name="advanced_panel"
@@ -68,7 +68,7 @@
         <lv_obj name="container_spoolman" width="100%" style_pad_all="0" scrollable="false">
           <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="0"/>
           <setting_action_row name="row_spoolman"
-                              label="Spoolman" icon="inventory" description="Filament tracking and inventory">
+                              label="Spoolman" icon="spoolman" description="Filament tracking and inventory">
             <event_cb trigger="clicked" callback="on_advanced_spoolman"/>
           </setting_action_row>
         </lv_obj>
@@ -83,7 +83,7 @@
         <!-- Fallback message when Spoolman not available -->
         <lv_obj name="container_no_spoolman" width="100%" style_pad_all="0" scrollable="false">
           <bind_flag_if_eq subject="printer_has_spoolman" flag="hidden" ref_value="1"/>
-          <setting_info_row name="row_no_spoolman" label="Spoolman" icon="inventory" value="Not configured"/>
+          <setting_info_row name="row_no_spoolman" label="Spoolman" icon="spoolman" value="Not configured"/>
         </lv_obj>
       </setting_group>
       <!-- ================================================================== -->
@@ -205,6 +205,14 @@
           <bind_flag_if_eq subject="printer_has_pa_cal" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="on_calibration_pa"/>
         </setting_action_row>
+        <!-- Pressure advance tuned by eye on a live test print: any Klipper extruder -->
+        <beta_feature>
+          <setting_action_row name="row_pa_tuning"
+                              label="Pressure Advance Tuning" icon="gauge"
+                              description="Print a test tower and tune K by eye">
+            <event_cb trigger="clicked" callback="on_pa_tuning_clicked"/>
+          </setting_action_row>
+        </beta_feature>
         <!-- Tool Offsets (tool changers with the calibration macro only) -->
         <beta_feature>
           <setting_action_row name="row_tool_offsets"
@@ -298,7 +306,7 @@
         <event_cb trigger="clicked" callback="advanced_restart_klipper_clicked"/>
       </ui_button>
       <ui_button name="advanced_firmware_restart_btn"
-                 height="#button_height_sm" icon="update" text="Firmware Restart" variant="secondary">
+                 height="#button_height_sm" icon="cog_refresh" text="Firmware Restart" variant="secondary">
         <bind_style_if name="estop_btn_stacked" cond="ui_is_portrait"/>
         <bind_style_if name="estop_btn_inline" cond="ui_is_portrait" invert="true"/>
         <event_cb trigger="clicked" callback="advanced_firmware_restart_clicked"/>

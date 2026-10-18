@@ -95,7 +95,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     lv_xml_register_component_from_data(
         "test_home_reseat_stub",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
     ScopedWidgetFactory a("shutdown", stub_factory());
     ScopedWidgetFactory b("lock", stub_factory());
     ScopedHomeLayout home;

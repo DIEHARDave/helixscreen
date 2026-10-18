@@ -67,7 +67,7 @@ EspHttpLane& EspHttpLane::instance() {
 }
 
 bool EspHttpLane::submit_get(std::string url, size_t range_max_bytes, FetchSuccessCb on_success,
-                             FetchErrorCb on_error, FetchCancelFlag cancelled) {
+                             FetchErrorCb on_error, FetchCancelFlag cancelled, uint64_t offset) {
     const size_t cap = clamp_fetch_cap(range_max_bytes);
 
     {
@@ -78,7 +78,7 @@ bool EspHttpLane::submit_get(std::string url, size_t range_max_bytes, FetchSucce
             return false;
         }
         queue_.push_back(Job{std::move(url), cap, std::move(on_success), std::move(on_error),
-                             std::move(cancelled)});
+                             std::move(cancelled), offset});
 
         // The worker is the only thing that drains the queue and releases
         // slots. Without it the job sits forever and its slot is never
@@ -176,11 +176,13 @@ void EspHttpLane::run_one(const Job& job) {
         return;
     }
 
-    // Bounded prefix via Range — mirrors desktop's download_file_partial
-    // (src/api/moonraker_file_transfer_api.cpp): "bytes=0-{cap-1}", inclusive.
-    // Servers that ignore Range return 200 with the full body; the read loop
-    // below enforces the cap regardless of what the server does with Range.
-    std::string range = "bytes=0-" + std::to_string(job.cap - 1);
+    // Bounded range — mirrors desktop's download_file_range
+    // (src/api/moonraker_file_transfer_api.cpp): "bytes={offset}-{offset+cap-1}",
+    // inclusive. Servers that ignore Range return 200 with the full body; the
+    // read loop below enforces the cap regardless of what the server does with
+    // Range, and a 200 for a range past the start is refused below.
+    std::string range =
+        "bytes=" + std::to_string(job.offset) + "-" + std::to_string(job.offset + job.cap - 1);
     esp_http_client_set_header(client, "Range", range.c_str());
 
     esp_err_t err = esp_http_client_open(client, 0);
@@ -197,9 +199,10 @@ void EspHttpLane::run_one(const Job& job) {
     const int64_t content_length = esp_http_client_fetch_headers(client);
 
     int status = esp_http_client_get_status_code(client);
-    if (status != 200 && status != 206) {
+    if ((status != 200 && status != 206) || (status == 200 && job.offset > 0)) {
         if (job.on_error) {
-            job.on_error("HTTP " + std::to_string(status));
+            job.on_error(status == 200 ? std::string("server ignored Range")
+                                       : "HTTP " + std::to_string(status));
         }
         esp_http_client_close(client);
         esp_http_client_cleanup(client);

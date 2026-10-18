@@ -1767,7 +1767,8 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
             }
 #endif
         }
-        TelemetryManager::instance().notify_overlay_opened(overlay_name);
+        TelemetryManager::instance().notify_overlay_opened(helix::overlay_telemetry_id(
+            lv_obj_get_name(overlay_panel), lc ? lc->get_name() : nullptr));
         crash_handler::breadcrumb::note("overlay+", overlay_name.c_str());
 
         // Lifecycle: Deactivate what's currently visible before showing new overlay
@@ -1816,6 +1817,8 @@ void NavigationManager::push_overlay(lv_obj_t* overlay_panel, bool hide_previous
         // Show overlay
         lv_obj_remove_flag(overlay_panel, LV_OBJ_FLAG_HIDDEN);
         helix::ui::bring_to_front(overlay_panel);
+        // Modals stay above any overlay, including one pushed while they show.
+        ModalStack::instance().raise_visible_to_foreground();
         // Claim taps landing anywhere within the panel bounds. Overlays are
         // narrower than the screen and sit in front of a full-screen, clickable
         // dismiss-backdrop. Without this, a touch that misses an interactive

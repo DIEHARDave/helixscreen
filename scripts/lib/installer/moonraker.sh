@@ -89,6 +89,33 @@ find_moonraker_update_manager_dir() {
         done
     done
 
+    # Last, the running Moonraker itself, seen through its own root: Forge-X
+    # runs it in a chroot (/data/.mod/.forge-x) that no static path names.
+    local pkg
+    pkg=$(running_moonraker_package_dir)
+    if [ -n "$pkg" ] && [ -d "$pkg/components/update_manager" ]; then
+        echo "$pkg/components/update_manager"
+        return 0
+    fi
+
+    echo ""
+}
+
+# Print the running Moonraker's python package directory (the one holding
+# moonraker.py) as a path from here: its argv names paths inside its own
+# root, which is a chroot's directory when it runs in one. Empty when no
+# Moonraker is running. HELIX_PROC_ROOT is the tests' seam.
+running_moonraker_package_dir() {
+    local proc="${HELIX_PROC_ROOT:-/proc}" f script root
+    for f in "$proc"/[0-9]*/cmdline; do
+        [ -r "$f" ] || continue
+        script=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/moonraker\.py$/ { print; exit }')
+        case "$script" in /*) ;; *) continue ;; esac
+        root=$(readlink "$(dirname "$f")/root" 2>/dev/null) || root=""
+        [ "$root" = "/" ] && root=""
+        echo "${root%/}$(dirname "$script")"
+        return 0
+    done
     echo ""
 }
 
@@ -435,10 +462,16 @@ disable_system_updates_on_buildroot() {
     log_note "Disabled OS package updates in $conf (no OS package manager)"
 }
 
-# Remove unsupported options from the helixscreen update_manager section.
-# type: web only supports: type, channel, repo, path.
-# Options like persistent_files, managed_services, and install_script are
-# not supported and cause Moonraker to log "unparsed config option" warnings.
+# Remove options that do not belong in the helixscreen update_manager section.
+# managed_services and install_script are not read by a type: web stanza, so
+# Moonraker logs an "unparsed config option" warning for each.
+# persistent_files IS read by type: web, but Moonraker matches it against
+# top-level entry names of path: only (no globs, no nested paths), and our
+# release zip ships a top-level config/. Listing config would restore the saved
+# directory to config/config after extraction; a nested entry such as
+# config/settings.json never matches. It therefore cannot preserve anything
+# useful and is removed. User config survives through the symlinks into
+# printer_data/config/helixscreen/ instead (setup_config_symlink).
 # Args: $1 = moonraker.conf path
 # Point an existing stanza's `path:` at INSTALL_DIR.
 # The value is interpolated once, when the section is first added, and nothing
@@ -551,19 +584,23 @@ cleanup_unsupported_options() {
     log_success "Cleaned up unsupported options from moonraker.conf"
 }
 
-# Write release_info.json if not already present
-# Moonraker type:web needs this file to detect installed version
+# Write release_info.json naming the installed binary's version. Moonraker
+# type:web and the installer's "Update <from> -> <to>" line both read it, and a
+# tree updated by copying files in keeps whatever version it was first written
+# with, so a file naming another version is rewritten.
 write_release_info() {
     local release_info="${INSTALL_DIR}/release_info.json"
-
-    if [ -f "$release_info" ]; then
-        return 0
-    fi
 
     # Try to detect version from binary
     local version=""
     if [ -x "${INSTALL_DIR}/bin/helix-screen" ]; then
         version=$("${INSTALL_DIR}/bin/helix-screen" --version 2>/dev/null | head -n 1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+[^ ]*' || echo "")
+    fi
+
+    if [ -f "$release_info" ]; then
+        # No version to compare against: keep what is there.
+        [ -n "$version" ] || return 0
+        [ "$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$release_info" | head -n 1)" = "$version" ] && return 0
     fi
 
     if [ -z "$version" ]; then
@@ -822,8 +859,32 @@ restart_moonraker() {
         fi
     done
 
+    # No service manager this script can reach (Forge-X runs Moonraker in its
+    # chroot, outside any init script here): ask Moonraker to restart itself.
+    if request_moonraker_restart; then
+        log_info "Asked Moonraker to restart itself to apply configuration"
+        return 0
+    fi
+
     log_warn "Could not find a way to restart Moonraker - restart it manually for the configuration change to take effect."
     return 0
+}
+
+# POST /server/restart: Moonraker re-launches itself in place, the one restart
+# that works where no service manager reaches it (Forge-X's chroot). Real curl
+# first, then wget, which BusyBox carries where curl is absent or an impostor;
+# -sf and wget's own status make an HTTP error (a 401) a failure.
+# Kept identical in moonraker-plugin/install.sh, which runs standalone (piped
+# from GitHub, or from an install tree without scripts/lib) and cannot source
+# this file; a bats test holds the two copies equal.
+# Returns 0 when Moonraker accepted the request.
+request_moonraker_restart() {
+    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
+    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
+        return 0
+    fi
+    command -v wget >/dev/null 2>&1 &&
+        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
 }
 
 # What configure_moonraker_updates would add, for the plan. Read-only: the
@@ -881,9 +942,9 @@ configure_moonraker_updates() {
 
     # --auto-update is refused for every payload install, wherever the root
     # sits. Moonraker's type:web updater rmtree()s `path:` before extracting
-    # and the generated stanza carries no persistent_files, so it destroys the
-    # config/ and platform/ preservation the payload contract exists to
-    # provide - and config/ lives inside the root. Where the root sits changes
+    # persistent_files matches only top-level names of path:, so nothing can
+    # keep the config/ and platform/ preservation the payload contract exists
+    # to provide - and config/ lives inside the root. Where the root sits changes
     # nothing: a payload's lifecycle belongs to the mod's OTA, not to a second
     # updater that cannot see the contract. The option is refused, not the
     # install; completing without the updater armed is the safe outcome,
@@ -895,8 +956,6 @@ configure_moonraker_updates() {
         log_error "Moonraker's type:web updater replaces the whole root on update, destroying"
         log_error "the config/ and platform/ preservation the payload contract provides."
         log_error "The mod's own OTA updates a payload install; arm nothing else against it."
-        # TODO(#1505): a persistent_files-aware stanza could make a payload
-        # root safe for --auto-update; refused until that is decided.
         return 0
     fi
 
@@ -1000,8 +1059,9 @@ configure_moonraker_updates() {
         sync_update_manager_path "$conf"
         # channel: likewise — rewrite it to whatever this update resolved to.
         sync_update_manager_channel "$conf"
-        # Remove options not supported by type: web (persistent_files,
-        # managed_services, install_script) that cause Moonraker warnings.
+        # Remove managed_services and install_script (unread by type: web,
+        # warned about as unparsed) and persistent_files (read, but it matches
+        # top-level names only and cannot preserve our config/ layout).
         cleanup_unsupported_options "$conf"
         # Where the OS has no package manager, silence the provider warnings.
         disable_system_updates_on_buildroot "$conf"

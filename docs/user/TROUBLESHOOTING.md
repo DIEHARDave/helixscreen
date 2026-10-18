@@ -403,10 +403,13 @@ curl -fsSL https://releases.helixscreen.org/install.sh | bash
 
 **Verify polkit rules are installed:**
 ```bash
-# Check for HelixScreen polkit rules (one of these should exist)
-ls -la /etc/polkit-1/rules.d/50-helixscreen-network.rules
+# Check for HelixScreen polkit rules (one of these should exist;
+# older installs may have 50-helixscreen-network.rules instead of 49-)
+ls -la /etc/polkit-1/rules.d/49-helixscreen-network.rules
 ls -la /etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
 ```
+
+HelixScreen also installs a second polkit rule, `49-helixscreen-power.rules` (or `helixscreen-power.pkla` on older systems), which lets the screen shut down and reboot its own computer. See [Screen Shutdown/Reboot is not permitted](#screen-shutdownreboot-is-not-permitted).
 
 **Check NetworkManager permissions:**
 ```bash
@@ -430,6 +433,34 @@ sudo systemctl restart helixscreen
 > **Note:** The manual fix disables permission checks for all users. The installer method is preferred as it only grants access to the HelixScreen service user.
 
 ---
+
+### Screen Shutdown/Reboot is not permitted
+
+**Symptoms:**
+- Shutting down or rebooting the screen shows "Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it."
+- The log shows `Interactive authentication required` from `[SystemPower]`
+
+**Cause:**
+When HelixScreen runs as a normal user (as on a Raspberry Pi), the system only lets it power off or reboot the computer if a polkit rule allows it. HelixScreen installs that rule itself, and reinstalls it every time it starts:
+- `/etc/polkit-1/rules.d/49-helixscreen-power.rules` (polkit 0.106 and newer, Debian 12+)
+- `/etc/polkit-1/localauthority/50-local.d/helixscreen-power.pkla` (older polkit, Debian 11)
+
+The rule allows power off and reboot only. It does not override a shutdown block held by another program, such as a package upgrade in progress.
+
+**Solutions:**
+
+**Restart HelixScreen**, which installs the rule:
+```bash
+sudo systemctl restart helixscreen
+ls -la /etc/polkit-1/rules.d/49-helixscreen-power.rules
+```
+
+**Check that it works** without powering anything off (replace `pi` with the user HelixScreen runs as):
+```bash
+sudo systemd-run --uid=pi --pipe --wait busctl call org.freedesktop.login1 \
+  /org/freedesktop/login1 org.freedesktop.login1.Manager CanPowerOff
+```
+`s "yes"` means the rule is working; `s "challenge"` means it is missing.
 
 ### SSL/TLS certificate errors
 
@@ -1390,6 +1421,24 @@ curl -X POST http://localhost:7125/printer/print/cancel
 
 ---
 
+### Snapmaker U1: Resume shows "Filament not set"
+
+**Symptoms:**
+- After a pause (a runout, say), tapping Resume shows **Filament not set**: "Slot 2 has no filament type set, so the printer will not resume."
+- The print stays paused
+
+**What's going on:**
+The U1 will not resume while a toolhead the print uses has no material recorded for it. Snapmaker RFID spools fill that in by themselves; a spool without a tag leaves it empty. When you have set that slot's material in HelixScreen, HelixScreen writes it into the printer's record before resuming, except after a runout, when you may have loaded a different spool. So this message means either the print paused on a runout or neither the printer nor HelixScreen knows what is loaded there.
+
+**Solution:**
+1. Open the filament system screen and tap the slot the message names
+2. Tap **Spool Info** and set the material (and colour, if you like), then save
+3. Tap **Resume** again
+
+If the printer refuses the resume for some other reason, HelixScreen shows the printer's own message as "Failed to resume: ..." instead.
+
+---
+
 ### Power cut out during a print
 
 **Symptoms:**
@@ -1511,6 +1560,23 @@ curl -s 'http://localhost:7125/printer/objects/query?box' | grep -o 'slots\|T1'
 Once updated, the community format is fully supported — display, loading, unloading and filament changes all work, with nothing to configure.
 
 > **If your firmware installed HelixScreen for you**, its installer may pin an older version than the one that added this support. Updating HelixScreen through Fluidd or Mainsail (rather than reinstalling the firmware) picks up the newer release.
+
+### OrcaSlicer doesn't pick up your slot colors or materials
+
+**Symptoms:**
+- Slots show the right color and material in HelixScreen, but OrcaSlicer's filament panel stays on its defaults
+- OrcaSlicer can upload and start prints on the printer, so the connection itself looks fine
+
+**Causes and fixes:**
+
+1. **OrcaSlicer 2.4 with a blank API key.** OrcaSlicer 2.4 (reported on 2.4.2) sends a placeholder API key when the field is empty. A Moonraker that relies on `trusted_clients` rejects it with `401 Invalid API Key`, and the filament sync fails without saying so. Either upgrade to OrcaSlicer 2.5, which sends no key when the field is empty, or put your real Moonraker API key in OrcaSlicer's printer connection settings. Run this from a machine Moonraker already trusts to print the key:
+   ```bash
+   curl -s http://<printer-ip>:7125/access/api_key
+   ```
+2. **OrcaSlicer older than 2.3.2.** Older releases don't read slot info from the printer at all. Upgrade.
+3. **The slot has no spool info yet.** OrcaSlicer only gets what HelixScreen has. Set the material and color under the slot's **Spool Info** first.
+
+A material OrcaSlicer has no preset for comes across with its color and temperatures but no preset selected. That's expected; see [Syncing with OrcaSlicer](guide/filament.md#syncing-with-orcaslicer-232-and-later).
 
 ### Load/Unload fails
 

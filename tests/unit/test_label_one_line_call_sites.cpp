@@ -16,6 +16,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_fixtures.h"
 #include "../test_helpers/job_queue_state_test_access.h"
+#include "../test_helpers/job_queue_subjects_fixture.h"
 #include "../test_helpers/one_line_label.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "app_globals.h"
@@ -37,27 +38,30 @@ using namespace helix;
 using helix::test::find_dotted_label;
 using helix::test::held_to_one_line;
 
-TEST_CASE_METHOD(LVGLUITestFixture, "job queue widget rows hold the filename to one line",
+TEST_CASE_METHOD(LVGLUITestFixture, "job queue tile holds the filename to one line",
                  "[one_line][job_queue]") {
     PanelWidgetManager::instance().init_widget_subjects();
     JobQueueState jqs(nullptr, nullptr);
-    JobQueueStateTestAccess::set_jobs(
-        jqs,
-        {{"job-1", "an_extremely_long_queued_filename_that_cannot_fit_in_any_home_tile_v12.gcode",
-          1000.0, 30.0}});
+    ScopedJobQueueSubjects subject_guard;
+    jqs.init_subjects();
     set_job_queue_state(&jqs);
+    lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_has_job_queue"), 1);
+    JobQueueStatus status;
+    status.queue_state = "ready";
+    status.queued_jobs.push_back(
+        {"job-1", "an_extremely_long_queued_filename_that_cannot_fit_in_any_home_tile_v12.gcode",
+         1000.0, 30.0});
+    JobQueueStateTestAccess::deliver_status(jqs, status);
 
     {
         PanelWidgetHarness<JobQueueWidget> h(test_screen());
-        h.resize(1, 1, widget_size::w_normal(), widget_size::h_tall());
+        h.resize(1, 1, 114, 54);
         process_lvgl(30);
-        lv_obj_t* container = h.child("job_list_container");
-        REQUIRE(container != nullptr);
-        REQUIRE(lv_obj_get_child_count(container) == 1);
-        lv_obj_t* name = find_dotted_label(lv_obj_get_child(container, 0));
-        REQUIRE(name != nullptr);
-        CHECK(held_to_one_line(name));
+        lv_obj_t* hero = h.child("jq_hero");
+        REQUIRE(hero != nullptr);
+        CHECK(held_to_one_line(hero));
     }
+    lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_has_job_queue"), 0);
     set_job_queue_state(nullptr);
 }
 

@@ -22,8 +22,8 @@
     <header_bar name="overlay_header"
                 title="Print Status" hide_action_button_2="false" action_button_2_icon="folder"
                 action_button_2_icon_size="sm" action_button_2_bg_color="#elevated_bg" action_button_2_radius="9999"
-                action_button_2_width="#button_height_sm" action_button_2_min_width="0"
-                action_button_2_callback="on_print_status_files"/>
+                action_button_2_width="#button_height_sm" action_button_2_min_width="0" action_button_2_icon_only="1"
+                action_button_height="#button_height_sm" action_button_2_callback="on_print_status_files"/>
     <!-- Content Area (portrait: stacked column, viewer on top, controls below) -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="0"
@@ -137,6 +137,16 @@
                           clickable="false" event_bubble="true"/>
           </lv_obj>
         </ui_card>
+
+        <!-- Chamber heater trouble (fault, offline, or a refused target with Retry).
+             Self-hides while the heater is healthy. Hidden below MEDIUM like the
+             landscape layout; the chamber prompt carries a refused target there. -->
+        <lv_obj name="chamber_fault_banner_slot"
+                width="100%" height="content" style_pad_all="0" style_border_width="0" style_bg_opa="0"
+                scrollable="false">
+          <bind_flag_if cond="ui_breakpoint lt 3" flag="hidden"/>
+          <chamber_fault_banner name="chamber_fault_banner"/>
+        </lv_obj>
 
         <!-- Merged status row: Speed/Flow on the left, filament + AMS on the right. -->
         <!-- Tapping Speed/Flow switches between percentages and mm/s + mm³/s -->

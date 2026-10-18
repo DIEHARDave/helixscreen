@@ -43,6 +43,9 @@ class DisplaySettingsManager {
   public:
     static DisplaySettingsManager& instance();
 
+    /// The static PersistedSetting table this manager is built from.
+    static settings::TableView persisted_table();
+
     // Non-copyable
     DisplaySettingsManager(const DisplaySettingsManager&) = delete;
     DisplaySettingsManager& operator=(const DisplaySettingsManager&) = delete;

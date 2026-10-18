@@ -19,7 +19,8 @@
   "extruder": [
     "temperature",
     "target",
-    "power"
+    "power",
+    "pressure_advance"
   ],
   "fan": [
     "speed"
@@ -98,7 +99,8 @@
     "layer_count",
     "is_active",
     "pl_env_valid",
-    "file_path"
+    "file_path",
+    "file_position"
   ],
   "webhooks": [
     "state",

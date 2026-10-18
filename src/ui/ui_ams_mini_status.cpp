@@ -721,8 +721,12 @@ static lv_obj_t* create_spool_cell(lv_obj_t* parent, int slot_index, int spool_s
     if (!lspool)
         spdlog::error("[AmsMiniStatus] ams_lane_spool creation failed for slot {}", slot_index);
 
-    lv_obj_t* badge = ams_draw::create_lane_badge(wrap, helix::ui::lane_number(slot_index),
-                                                  spool_size * 2 / 5, false);
+    // The lane's spool number, so a lane sharing another's spool wears that
+    // spool's number; the plain 1-based lane number when no backend answers.
+    helix::AmsBackend* badge_backend = helix::AmsState::instance().get_backend();
+    const int badge_number = badge_backend ? badge_backend->spool_display_number(slot_index)
+                                           : helix::ui::lane_number(slot_index);
+    lv_obj_t* badge = ams_draw::create_lane_badge(wrap, badge_number, spool_size * 2 / 5, false);
     if (badge) {
         snprintf(nm, sizeof(nm), "spool_badge_%d", slot_index);
         lv_obj_set_name(badge, nm);

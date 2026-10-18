@@ -82,6 +82,7 @@ curl -sSL https://releases.helixscreen.org/install.sh | sh
 | `--clean` | Remove old installation completely, then fresh install |
 | `--version VER` | Install specific version (e.g., `--version v1.1.0`) |
 | `--local FILE` | Install from a local archive (.zip or .tar.gz, skip download) |
+| `FILE` | An existing `.zip`, `.tar.gz` or `.tgz` named on its own is `--local FILE`; any other bare word stays `Unknown option`. Two different archives are refused |
 
 ### 2. Local Archive Install
 
@@ -94,6 +95,46 @@ sh /data/install.sh --local /data/helixscreen-ad5m.zip
 ```
 
 The installer auto-detects when HTTPS is unavailable and prints manual download instructions.
+
+A handed-over archive is the version installed: `parse_tarball_version` reads it from the
+filename for the plan (an unversioned zip shows `local`), and nothing consults the channel or
+the network for it. A prerelease archive (or package, below) moves the install to the beta
+channel exactly as a prerelease `--version` does, through `match_channel_to_version`: the plan
+reads `(beta)` and `seed_update_channel` records it for the app (the desktop flavour included,
+into its user's `~/.helixscreen` backup as well), unless an existing install's settings.json
+names a channel, which wins. A `beta` or `dev` `R2_CHANNEL` from the environment wins over the
+version and is recorded the same way. A stable archive and an
+unversioned zip move nothing.
+
+### 2a. The Package Beside the Installer
+
+Every release package ships `install.sh` at its root, so `tar -xzf ... && ./helixscreen/install.sh`
+is a natural thing for a user to run. With no `--version`, `--local` or `--update`, that
+installs the package it sits in (`detect_package_beside_installer` and
+`settle_package_beside_installer` in `scripts/lib/installer/release.sh#detect_package_beside_installer`):
+
+- **What counts as a package.** `installer_self_dir` (the directory `$0` lives in; none under
+  `curl | sh`) is named `helixscreen`, the tar layout's top directory, and holds `bin/helix-screen`, `ui_xml/`, `assets/` and a release_info.json with a
+  `version` and an `asset_name` of the form `helixscreen-<platform>.zip`, which the packaging
+  bakes (`write-release-info` in `mk/cross.mk`). The release zip is flat, so unzipped in place
+  its payload sits among the directory's other files; that directory never counts, or copying
+  it would install everything beside the payload. The plan says `Installing the package next to
+  this installer: <version> (<platform>)`.
+- **Never an installed tree.** An install ships the same `install.sh` (for offline updates), and
+  installing a tree onto itself means nothing, so that copy keeps resolving online. The package
+  is dropped when its directory is a known install root (`_HELIX_KNOWN_INSTALL_DIRS`,
+  `$KLIPPER_HOME/helixscreen`, the desktop root) or, once `set_install_paths` has run, this
+  run's `INSTALL_DIR`. Uninstall runs and the in-app updater (`HELIX_SELF_UPDATE=1`) never look.
+- **Platform match.** The package's asset must be the one `helix_self_update_asset` names for
+  this host, the same name its self-update would fetch, or the run stops before the pre-flight
+  checks with both platforms named (and `--desktop`/`--kiosk` suggested for the two x86
+  flavours). The ELF check in `extract_release` still runs after that.
+- **Flavour.** On x86 with no flag and no install on disk, an `x86-desktop` package picks the
+  desktop flavour and an `x86` package the kiosk (`X86_FLAVOUR_REASON` "the package").
+- **Install path.** `use_package_tree` stages the directory as `_ARCHIVE_FORMAT=tree`, and
+  `extract_release` copies it (`cp -R`, so the copy belongs to whoever runs the install, as the
+  tar path's `-o` gives) where it would unpack an archive; validation, the
+  backup/swap and the config restore are the archive's. The user's tree is only read.
 
 ### 3. KIAUH Extension
 
@@ -117,14 +158,14 @@ From a repo checkout, the modular installer sources modules directly:
 
 ### Before the confirm point (read-only)
 
-1. **Host probe and arguments** -- `host_profile_probe`, `parse_installer_args`, `mod_payload_autodetect`
+1. **Host probe and arguments** -- `host_profile_probe`, `parse_installer_args`, `mod_payload_autodetect`, `detect_package_beside_installer` (before platform detection, since an x86 package's flavour feeds `resolve_x86_flavour`)
 2. **Guards** -- refuse an uninstall run from the install dir; refuse to install over a firmware-managed HelixScreen
 3. **Platform detection** -- `detect_platform()` returns one of `cc1`, `k2`, `ad5m`, `ad5x`, `k1`, `snapmaker-u1`, `m1`, `pi`, `pi32`, `x86`, or `unsupported` (plus zmod/guilouz sub-detectors); `unsupported` exits. On `x86`, `resolve_x86_flavour` then settles desktop vs kiosk, and a desktop install is platform `x86-desktop` from there on (see [x86: Desktop Window or Kiosk](#x86-desktop-window-or-kiosk-x86-x86-desktop))
 4. **Firmware detection** -- AD5M/AD5X: `detect_mod_flavor`; K1: `detect_k1_firmware`
-5. **Path configuration** -- `set_install_paths()` sets `INSTALL_DIR`, `INIT_SCRIPT_DEST`, `PREVIOUS_UI_SCRIPT`, `TMP_DIR`; `mod_payload_mode_block` settles payload mode
+5. **Path configuration** -- `set_install_paths()` sets `INSTALL_DIR`, `INIT_SCRIPT_DEST`, `PREVIOUS_UI_SCRIPT`, `TMP_DIR`; `mod_payload_mode_block` settles payload mode; `settle_package_beside_installer` drops a package that is the install itself and refuses one for another platform
 6. **Permission check** -- Root required on AD5M/K1; sudo on Pi; refused on `x86-desktop`, which installs as the user and also refuses a directory at its root that is not a desktop install. `--uninstall` branches off here and exits, so it never reaches the confirm point; `parse_installer_args` refuses `--uninstall --dry-run`
 7. **Pre-flight checks** -- `detect_missing_unzip`, `check_requirements`, `detect_missing_runtime_deps`, `check_disk_space`, `detect_init_system`, `check_klipper_ecosystem`
-8. **Version and release** -- `resolve_update_channel` (update or existing install), then `--local` filename, `--version` or `get_latest_version`; `probe_release` HEADs the archive so the plan only offers a release that exists
+8. **Version and release** -- `resolve_update_channel` (update or existing install), then the `--local` filename, the package beside the installer, `--version` or `get_latest_version`, then `match_channel_to_version` on whichever version that settled; `probe_release` HEADs the archive so the plan only offers a release that exists. When every candidate answers 404, `print_release_with_platform_hint` reads the stable, beta and dev manifests in that order and prints the `--version` command for the first release that lists this platform (with `--desktop` for the desktop flavour), or a generic `--version` hint when none can be read. It never installs that release on its own
 9. **Detection for the plan** -- `detect_competing_uis` (only stock UIs that are running or would start at boot; one an earlier install already disabled is not listed), `detect_moonraker_integration`, `detect_kiauh` (no Add when the extension is already installed)
 
 ### The confirm point
@@ -352,6 +393,20 @@ The output layer is in `scripts/lib/installer/common.sh` (steps, logging), `plan
 - **Failure report.** The EXIT trap (`installer_exit_report`) runs only for a run that passed the confirm point. It prints the failed step, a state line from `install_state_line` saying what the run actually changed (nothing, what was stopped, the new install in place but not set up, rolled back), and `Full log: <path>`.
 - **Log location.** The log is written to the scratch dir while the run is going, then `finalize_install_log` moves it to `install_log_dest`: `$KLIPPER_HOME/printer_data/logs/helixscreen-install.log` when `printer_data` exists (Mainsail and Fluidd list it), otherwise `logs/helixscreen-install.log` under `install_state_root` (outside the install dir, which an update replaces whole). The previous run's log is kept as `.1`.
 - **Environment.** `HELIX_INSTALL_VERBOSE`, `HELIX_INSTALL_TTY`, `HELIX_INSTALL_LOGO=kitty|iterm|sixel|text` (skips the terminal query and forces that logo), and `HELIX_TTY_DEVICE` (the file the `Continue?` prompt and the logo query use; tests point it at a nonexistent path so no prompt can block).
+
+### Machine-readable progress
+
+`--progress` makes a driving program (the desktop installer over SSH) able to follow a run. The human output stays on stderr, unchanged; stdout carries one line per event, tab-separated, every line starting `HELIX-PROGRESS`:
+
+| Line | Meaning |
+|------|---------|
+| `platform<TAB><platform>` | Once, after platform detection. |
+| `step<TAB><n><TAB><total><TAB><status><TAB><title><TAB><detail>` | `status` is `start`, then exactly one of `ok`, `fail`, `skip` for the same `n`. `detail` is empty on `start` and `skip`. A skipped step's number is reused by the next step, matching the `[n/N]` the human output shows. |
+| `result<TAB>ok` / `result<TAB>fail<TAB><reason>` | Last line of every run, sent from the exit handler. `reason` is the failing step's reason, else `exit <status>`. |
+
+A run that fails before platform detection (a bad argument, for one) sends `result` with no `platform` line. When no step named a reason, the `fail` reason is `exit <status>`. The `platform` value is the final one the install uses, so a desktop x86 run reports `x86-desktop`.
+
+Tabs, newlines and carriage returns inside a title or detail become single spaces, so a record never splits. All emission goes through `_progress_emit` in `scripts/lib/installer/common.sh`; without `--progress` it prints nothing.
 
 ## Mod-Managed Hosts: the Payload Contract (Forge-X)
 
@@ -581,11 +636,12 @@ prints it):
 | 4 | A provable desktop install **and** a kiosk install | exit 1, asking for a flag |
 | 5 | A provable desktop install | desktop |
 | 6 | A kiosk install: the service unit or init script, or a `bin/helix-screen` under a kiosk root that is not a desktop payload | kiosk |
-| 7 | `--uninstall` with nothing found | kiosk (the unchanged sweep) |
-| 8 | Running as root | kiosk: a desktop install refuses root |
-| 9 | No desktop present (`_in_graphical_session`, or a display manager active or enabled) | kiosk |
-| 10 | `--update`, `--dry-run`, `--yes`, or no terminal to answer | desktop, inferred |
-| 11 | Otherwise | asks `Run HelixScreen in a window on this desktop? [Y/n]`; end of input exits with nothing changed, since "no" takes over the screen |
+| 7 | The package beside the installer is an `x86-desktop` or `x86` build | that package's flavour |
+| 8 | `--uninstall` with nothing found | kiosk (the unchanged sweep) |
+| 9 | Running as root | kiosk: a desktop install refuses root |
+| 10 | No desktop present (`_in_graphical_session`, or a display manager active or enabled) | kiosk |
+| 11 | `--update`, `--dry-run`, `--yes`, or no terminal to answer | desktop, inferred |
+| 12 | Otherwise | asks `Run HelixScreen in a window on this desktop? [Y/n]`; end of input exits with nothing changed, since "no" takes over the screen |
 
 **Proof of ownership.** A desktop install is recognised by its payload, not its path:
 `desktop_payload_is_ours` needs `bin/helix-screen` and a release_info.json naming
@@ -604,7 +660,7 @@ No home-relative path is on `HELIX_INSTALL_DIRS`, whose sweep removes without ch
 | **Updates** | The app only announces them (Install Update opens the release page, and `UpdateChecker::start_download()` refuses on this build); `install.sh --update` finds the install and keeps `config/` |
 | **Uninstall** | `uninstall_desktop`: the root after the ownership proof, its `.old` backups, the menu entry when it launches this root, the install log. Nothing outside the user's home |
 
-Tests: `tests/shell/test_x86_desktop_flavour.bats`.
+Tests: `tests/shell/test_x86_desktop_flavour.bats`, and `tests/shell/test_installer_given_package.bats` for an archive or package handed to the installer.
 
 ### K2 / Other Platforms
 
@@ -681,10 +737,6 @@ The installer configures Moonraker to enable one-click updates from Mainsail/Flu
    channel: stable
    repo: prestonbrown/helixscreen
    path: /home/biqu/helixscreen
-   persistent_files:
-       config/settings.json
-       config/helixscreen.env
-       config/.disabled_services
    ```
 
 2. **release_info.json** written to `$INSTALL_DIR/` -- Moonraker `type:web` needs this to detect the installed version
@@ -693,13 +745,15 @@ The installer configures Moonraker to enable one-click updates from Mainsail/Flu
 
 ### Config Survival on Updates
 
-Moonraker's `type: web` updater wipes the install directory (`shutil.rmtree`) before extracting each update. Config is preserved via three layers:
+Moonraker's `type: web` updater moves any `persistent_files` entries aside, `shutil.rmtree`s the install directory, extracts the zip and moves the saved entries back. `persistent_files` is read for `type: web`, but entries match only top-level names of `path:`: there are no globs and a nested entry such as `config/settings.json` never matches. The release zip ships a top-level `config/`, so listing `config` would restore the saved directory to `config/config` after extraction. The installer therefore writes no `persistent_files` and removes one from an existing stanza (`cleanup_unsupported_options`, which also drops `managed_services` and `install_script`, options a `type: web` stanza does not read). Config is preserved by three layers:
 
-1. **`persistent_files`** in moonraker.conf -- Moonraker backs up listed files before rmtree and restores them after extraction
-2. **Rolling backups** -- `Config::save()` maintains backups in `/var/lib/helixscreen/` (systemd `StateDirectory`) and `$HOME/.helixscreen/` (fallback). `Config::init()` auto-restores from these if the config file is missing after an update.
+1. **Config symlinks** -- user-owned files live in `printer_data/config/helixscreen/` (outside the managed path) and `$INSTALL_DIR/config/<file>` are symlinks into it (`setup_config_symlink`). `rmtree` unlinks the symlinks and leaves the targets. After the zip extracts, `config/restore-user-config.sh` re-creates the symlinks (`restore_config_symlinks`) and the platform hooks file (`restore_platform_hooks`). It runs from `refresh-service-units.sh` on systemd (update watcher and every service start) and from `config/helixscreen.init` `start` on SysV and procd platforms (the K2 procd shim delegates to that init script). The init script copy in `/etc/init.d` is installed by the installer, so a printer picks the call up on its next installer run. Which files and directories qualify is `HELIX_USER_CONFIG_FILES` / `HELIX_USER_CONFIG_DIRS`; the installer and `restore-user-config.sh` each carry a copy, and `tests/shell/test_state_ledger_survival.bats` fails when they differ.
+2. **Rolling backups** -- `Config::save()` maintains backups in `/var/lib/helixscreen/` (systemd `StateDirectory`) and `$HOME/.helixscreen/` (fallback). `Config::init()` auto-restores from these if the config file is missing, or is the packaged default, after an update.
 3. **SysV init script** -- On BusyBox systems (K1, AD5M) where systemd isn't available, the init script exports `HOME=/root` and creates `/var/lib/helixscreen/` so backup paths are persistent (not volatile `/tmp/`).
 
-The installer also runs `ensure_persistent_files()` on every upgrade to add `persistent_files` to existing Moonraker configs that predate this feature.
+The uninstall ledgers (disabled services, Klipper includes, settings seeds, camera migration, K2 camera and K2 nginx markers) are in `HELIX_USER_CONFIG_FILES`, so they survive too. They are never seeded: a ledger that was not written stays absent, because its presence is what uninstall reads as "this was done". The steps that write them run after `setup_config_symlink`, so `main` calls it a second time (`quiet`) to relocate them. `restore_config_symlinks` also moves a real dotfile ledger into printer_data when none exists there, which migrates an install that predates the relocation on its next service start. Uninstall finds a ledger with `_ledger_path`, which prefers the install dir and falls back to the printer_data copy, and removes it through `remove_state_file`, which deletes the printer_data target as well as the link.
+
+The restore finds printer_data from a record the installer writes: `HELIX_PD_HELIX` in the installed init script (set beside `DAEMON_DIR`) and a `# HELIX_PD_HELIX=` line in `helixscreen.service` (read back by `refresh-service-units.sh` before it re-templates the unit). Only an install that predates the record falls back to scanning the known Klipper homes. When a real file in the install dir differs from its printer_data copy, printer_data always wins. The real file is kept as `<name>.pre-restore` (an earlier one rotates to `.pre-restore.1`) only if it is newer than the release marker file, meaning something wrote it after the zip was extracted; otherwise it is the packaged copy and is dropped. A line-oriented ledger present in both places is merged line by line instead. Every decision is logged to the syslog with `logger -t helixscreen`. A template `helixscreen.init` that a web update put in place on a U1 (where it runs from the install dir) adopts its own install dir when the default one has no binary.
 
 ### Migration
 
@@ -741,7 +795,7 @@ sysv-chmod:/etc/init.d/S80klipperscreen
 sysv-chmod:/etc/init.d/S40xorg
 ```
 
-The uninstaller reads this file and reverses each action (systemd enable, chmod +x). This is listed in `persistent_files` in the Moonraker config so it survives zip updates.
+The uninstaller reads this file and reverses each action (systemd enable, chmod +x). It is in `HELIX_USER_CONFIG_FILES`, so it lives in `printer_data/config/helixscreen/` and survives zip updates through the config symlink.
 
 ---
 

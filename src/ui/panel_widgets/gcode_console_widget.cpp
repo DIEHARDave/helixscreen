@@ -12,6 +12,7 @@
 #include "grid_layout.h"
 #include "i_moonraker_api.h"
 #include "panel_widget_registry.h"
+#include "src/ui/panel_widgets/content_chrome.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -115,7 +116,7 @@ void GCodeConsoleWidget::on_size_changed(int colspan, int rowspan, int width_px,
     sizing_.measure_and_publish(width_px, height_px);
 
     const lv_font_t* font = row_font();
-    const int line_h = font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
+    const int line_h = line_px(font);
     // One extra so a partial row fills the top edge instead of leaving a gap.
     max_rows_ = line_h > 0 ? static_cast<size_t>(height_px / line_h) + 1 : MAX_LINES;
 

@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -568,21 +569,30 @@ class PrinterDiscovery {
     }
 
     /**
-     * @brief Read the filament diameter from [extruder] filament_diameter
+     * @brief Read [extruder] filament_diameter and nozzle_diameter
      *
-     * A missing, null or non-positive value leaves the current diameter.
+     * A missing, null or non-positive value leaves the current one.
      *
      * @param settings JSON object from a configfile.settings response
      */
-    void parse_filament_diameter(const nlohmann::json& settings) {
+    void parse_extruder_dimensions(const nlohmann::json& settings) {
         const auto extruder = settings.find("extruder");
         if (extruder == settings.end() || !extruder->is_object()) {
             return;
         }
-        const auto d = extruder->find("filament_diameter");
-        if (d != extruder->end() && d->is_number() && d->get<float>() > 0.0f) {
-            filament_diameter_mm_ = d->get<float>();
-        }
+        auto read_positive = [&extruder](const char* key, float& out) {
+            const auto v = extruder->find(key);
+            if (v != extruder->end() && v->is_number() && v->get<float>() > 0.0f) {
+                out = v->get<float>();
+            }
+        };
+        read_positive("filament_diameter", filament_diameter_mm_);
+        read_positive("nozzle_diameter", nozzle_diameter_mm_);
+    }
+
+    /// Nozzle diameter in mm, [extruder] nozzle_diameter.
+    [[nodiscard]] float nozzle_diameter_mm() const {
+        return nozzle_diameter_mm_;
     }
 
     /// Filament diameter in mm the extruder is configured for.
@@ -629,6 +639,23 @@ class PrinterDiscovery {
     /// Configured gantry-leveling / Z-tilt probe points; empty when neither is configured.
     [[nodiscard]] const std::vector<LevelingProbePoint>& leveling_probe_points() const {
         return leveling_probe_points_;
+    }
+
+    /**
+     * @brief Read the Z probe's XY offset from the nozzle
+     *
+     * From x_offset/y_offset of the first Klipper Z probe section present:
+     * [probe], [bltouch], [smart_effector], [load_cell_probe], Kalico's
+     * [dockable_probe], or a [probe_eddy_current <name>]. An axis the section omits is 0, Klipper's
+     * default. No such section leaves the offset unknown.
+     *
+     * @param settings JSON object from a configfile.settings response
+     */
+    void parse_probe_xy_offset(const nlohmann::json& settings);
+
+    /// The Z probe's XY offset from the nozzle; nullopt when no probe section is configured.
+    [[nodiscard]] const std::optional<ProbeXYOffset>& probe_xy_offset() const {
+        return probe_xy_offset_;
     }
 
     /**
@@ -996,7 +1023,10 @@ class PrinterDiscovery {
                                              ///< the K2 M141 macro parks the setpoint on this fan's
                                              ///< target, not the heater's.
     float filament_diameter_mm_ = filament::DEFAULT_DIAMETER_MM; ///< [extruder] filament_diameter
+    static constexpr float DEFAULT_NOZZLE_DIAMETER_MM = 0.4f;
+    float nozzle_diameter_mm_ = DEFAULT_NOZZLE_DIAMETER_MM; ///< [extruder] nozzle_diameter
     std::vector<LevelingProbePoint> leveling_probe_points_; ///< [quad_gantry_level]/[z_tilt] points
+    std::optional<ProbeXYOffset> probe_xy_offset_;          ///< Z probe x_offset/y_offset
     int chamber_fan_resting_deci_ = 0; ///< Cooling fan's configured resting/off target
                                        ///< (decidegrees), from configfile.settings
                                        ///< target_temp. 0 = unknown. M141 S0 returns here.
@@ -1061,6 +1091,12 @@ namespace helix {
  */
 void init_subsystems_from_hardware(const PrinterDiscovery& hardware, IMoonrakerAPI* api,
                                    IMoonrakerClient* client);
+
+/// Re-reads the filament, probe and width sensor config. A preset assigns sensor roles after
+/// discovery has already loaded that config, so every path that applies a preset calls this
+/// or the sensors keep the roles inferred from their names until the next restart.
+/// UI thread only.
+void reload_sensor_roles_after_preset();
 
 /// Saves Klipper's hostname for the active printer, writing only when it changed. The
 /// connection-failed prompt re-finds the printer over mDNS by it (#1217).

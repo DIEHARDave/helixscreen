@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ui_filename_utils.h"
+
 #include "json_fwd.h"
 #include "text_io.h"
 
@@ -319,12 +321,6 @@ select_thumbnail(const std::vector<ThumbnailInfo>& thumbnails, int target_w, int
 
 namespace helix {
 
-/// The directory a gcodes-root path sits in: "sub/dir/Foo.gcode" -> "sub/dir", "Foo.gcode" -> "".
-[[nodiscard]] inline std::string gcode_dir_of(const std::string& gcode_path) {
-    const auto slash = gcode_path.find_last_of('/');
-    return slash == std::string::npos ? std::string() : gcode_path.substr(0, slash);
-}
-
 /**
  * @brief Which of a file's thumbnails to fetch for a box, as a path from the gcodes root
  *
@@ -449,6 +445,14 @@ struct PowerDevice {
 /**
  * @brief Result from start_modified_print() API call
  */
+namespace helix {
+/// What the HelixPrint plugin's status says about itself (server.helix.status).
+struct HelixPluginInfo {
+    bool available = false;  ///< installed and enabled
+    std::string symlink_dir; ///< where it links a modified print; empty when not reported
+};
+} // namespace helix
+
 struct ModifiedPrintResult {
     std::string original_filename; ///< Original file path
     std::string print_filename;    ///< Symlink path used for printing

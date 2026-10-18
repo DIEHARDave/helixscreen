@@ -17,7 +17,14 @@ Advisory, never blocking, when it cannot answer: no docker, no IDF image (it is
 not pulled, ~9GB), or the configure fails. esp32-build CI stays the backstop.
 
 usage: esp32_syntax_check.py --base SHA [--head SHA] [--tree DIR] [--jobs N]
+       esp32_syntax_check.py --staged
        HELIX_ESP32_SYNTAX=0 skips it.
+
+--staged is the commit hook's form: the staged sources the firmware compiles,
+and each staged header through ONE unit that includes it (a staged source that
+does, when there is one), so a commit touching a widely included header pays
+for one compile, not hundreds; pre-push still checks every includer. It never
+configures: with no cached flags it says so and leaves that to pre-push.
 """
 
 import argparse
@@ -67,49 +74,77 @@ def compile_args(entry):
     return out + ["-fsyntax-only"]
 
 
-def rebase_path(tok, src_root, tree, fallback_root):
+def rebase_path(tok, src_root, tree, *fallback_roots):
     """Point every path under the configured source root at the tree being checked.
 
     Rewrites the root wherever it sits in the token (-I, -isystem, -include,
     -D values such as LV_CONF_PATH="...", -fmacro-prefix-map=). A path that
-    does not exist there (build/generated in a never-built checkout) falls
-    back to the primary checkout's copy.
+    does not exist there (build/generated in a never-built checkout, lib/ in an
+    index overlay) resolves through the fallback roots in order: the checkout,
+    then the primary checkout's copy.
     """
     def sub(m):
         rel = m.group(1)
         if not rel:
             return tree
-        cand = os.path.join(tree, rel)
-        if not os.path.exists(cand) and os.path.exists(os.path.join(fallback_root, rel)):
-            cand = os.path.join(fallback_root, rel)
-        return cand
+        for root in (tree, *fallback_roots):
+            cand = os.path.join(root, rel)
+            if os.path.exists(cand):
+                return cand
+        return os.path.join(tree, rel)
 
     # The root alone (-I<root>, a prefix map's <root>=) is a path too; a longer
     # sibling name (<root>x/) is not.
     return re.sub(re.escape(src_root) + r'(?:/+([^"\s\\=]*))?(?![^/"\s\\=])', sub, tok)
 
 
-def select_units(units, changed, read_source):
+def select_units(units, changed, read_source, one_per_header=False):
     """Relative paths of the units to check.
 
     units: {relpath: entry}; changed: relpaths; read_source(rel) -> text.
     A changed source is checked if the firmware compiles it. A changed header
-    is checked through the units that include it directly.
+    is checked through the units that include it directly, or with
+    one_per_header through a single one of them, preferring a unit already
+    picked.
     Direct includers only; a transitive include graph when a break
     slips past through a header-of-a-header.
     """
     picked = {rel for rel in changed if rel in units}
     headers = [rel for rel in changed if rel.endswith(HEADER_EXTS)]
+    includers = {h: [] for h in headers}
     if headers:
-        for rel in units:
+        for rel in sorted(units):
             text = read_source(rel)
             if text is None:
                 continue
-            for inc in INCLUDE_RE.findall(text):
-                if any(h == inc or h.endswith("/" + inc) for h in headers):
-                    picked.add(rel)
-                    break
+            incs = INCLUDE_RE.findall(text)
+            for h in headers:
+                if any(h == inc or h.endswith("/" + inc) for inc in incs):
+                    includers[h].append(rel)
+    for h, units_of_h in includers.items():
+        if not one_per_header:
+            picked.update(units_of_h)
+        elif units_of_h and not picked.intersection(units_of_h):
+            picked.add(units_of_h[0])
     return sorted(picked)
+
+
+INDEX_DIRS = ("src", "include", FW_DIR)
+
+
+def index_overlay(tree, dest):
+    """Write the staged copy of every tracked file under INDEX_DIRS into dest.
+
+    The commit hook compiles what the commit will contain. The working tree can
+    hold a fix the index lacks, or a peer's unstaged header, and either would
+    decide the verdict instead. ~0.25s for the ~2200 files.
+    """
+    dest.mkdir(parents=True, exist_ok=True)
+    listing = subprocess.run(["git", "-C", str(tree), "ls-files", "-z", "--", *INDEX_DIRS],
+                             check=True, capture_output=True).stdout
+    subprocess.run(["git", "-C", str(tree), "checkout-index", "-z", "--stdin", "-f",
+                    f"--prefix={dest}/"], input=listing, check=True, capture_output=True)
+    return dest
 
 
 def docker_base(mounts):
@@ -162,6 +197,7 @@ def main():
     ap.add_argument("--head", default="HEAD")
     ap.add_argument("--tree")
     ap.add_argument("--jobs", type=int, default=0)
+    ap.add_argument("--staged", action="store_true")
     ap.add_argument("--run-jobs", help=argparse.SUPPRESS)
     args = ap.parse_args()
     if args.run_jobs:
@@ -172,9 +208,11 @@ def main():
     tree = os.path.realpath(args.tree or git(".", "rev-parse", "--show-toplevel").strip())
     primary = os.path.dirname(
         git(tree, "rev-parse", "--path-format=absolute", "--git-common-dir").strip())
-    changed = [p for p in git(tree, "diff", "--name-only", "--diff-filter=d", args.base,
-                              args.head).splitlines()
-               if p.endswith(SOURCE_EXTS + HEADER_EXTS)]
+    if args.staged:
+        diff = git(tree, "diff", "--cached", "--name-only", "--diff-filter=d")
+    else:
+        diff = git(tree, "diff", "--name-only", "--diff-filter=d", args.base, args.head)
+    changed = [p for p in diff.splitlines() if p.endswith(SOURCE_EXTS + HEADER_EXTS)]
     if not changed:
         return 0
     if not shutil.which("docker") or subprocess.run(
@@ -186,6 +224,10 @@ def main():
     cache = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / \
         "helixscreen" / "esp32-syntax" / config_key(tree, args.head)
     if not (cache / "compile_commands.json").exists():
+        if args.staged:
+            print("ℹ️  esp32 syntax check: no cached firmware flags for this CMake state; "
+                  "pre-push configures them (minutes, once)")
+            return 0
         # Each configure is ~33MB; keep the newest few.
         for old in sorted(cache.parent.glob("*"), key=lambda p: p.stat().st_mtime)[:-3]:
             shutil.rmtree(old, ignore_errors=True)
@@ -199,20 +241,33 @@ def main():
         if f.startswith(src_root + "/") and f.endswith(SOURCE_EXTS):
             units[f[len(src_root) + 1:]] = entry
 
+    overlay = None
+    source_tree, fallbacks = tree, (primary,)
+    if args.staged:
+        overlay = index_overlay(tree, cache / f"index-{os.getpid()}")
+        source_tree, fallbacks = str(overlay), (tree, primary)
+    try:
+        return check_units(args, units, changed, src_root, source_tree, fallbacks, cache, mounts)
+    finally:
+        if overlay is not None:
+            shutil.rmtree(overlay, ignore_errors=True)
+
+
+def check_units(args, units, changed, src_root, source_tree, fallbacks, cache, mounts):
     def read_source(rel):
         try:
-            return Path(tree, rel).read_text(errors="replace")
+            return Path(source_tree, rel).read_text(errors="replace")
         except OSError:
             return None
 
-    picked = select_units(units, changed, read_source)
+    picked = select_units(units, changed, read_source, one_per_header=args.staged)
     if not picked:
         return 0
     specs = []
     for rel in picked:
         entry = units[rel]
         specs.append({"rel": rel, "cwd": entry["directory"],
-                      "args": [rebase_path(t, src_root, tree, primary)
+                      "args": [rebase_path(t, src_root, source_tree, *fallbacks)
                                for t in compile_args(entry)]})
     jobs_file = cache / f"jobs-{os.getpid()}.json"
     jobs_file.write_text(json.dumps(specs))
@@ -237,7 +292,8 @@ def main():
         errors = [l for l in f["out"].splitlines() if "error" in l][:8]
         print(f"❌ {f['rel']} does not compile for the ESP32:")
         print("\n".join("   " + l for l in errors))
-    print("   Reproduce: python3 scripts/esp32_syntax_check.py --base <sha> (HELIX_ESP32_SYNTAX=0 skips)")
+    form = "--staged" if args.staged else "--base <sha>"
+    print(f"   Reproduce: python3 scripts/esp32_syntax_check.py {form} (HELIX_ESP32_SYNTAX=0 skips)")
     return 1
 
 

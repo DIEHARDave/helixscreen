@@ -52,7 +52,7 @@ edit_mk() {
 # --- the real tree passes ----------------------------------------------------
 
 @test "passes on the repository as committed" {
-    run python3 "$GATE"
+    run python3 "$GATE" --repo-root "$(scratch_tree)"
     [ "$status" -eq 0 ] || fail "gate failed on the real tree: $output"
     contains "variant links match" "$output"
     # Every variant platform in mk/cross.mk was actually compared.
@@ -81,7 +81,7 @@ edit_mk() {
 
 @test "fails when an object is added to the main link only" {
     printf '%s\n' '$(TARGET): $(OBJ_DIR)/seeded_drift.o' > "$WORK/seed.mk"
-    run python3 "$GATE" --platform x86-both --extra-makefile "$WORK/seed.mk"
+    run python3 "$GATE" --repo-root "$(scratch_tree)" --platform x86-both --extra-makefile "$WORK/seed.mk"
     [ "$status" -eq 1 ] || fail "expected exit 1, got $status: $output"
     contains "does not link build/x86/obj/seeded_drift.o" "$output"
 }
@@ -90,14 +90,14 @@ edit_mk() {
     # A renamed swap variable must not quietly widen into "allow nothing" or
     # "allow everything"; the gate has to say it lost track of it.
     printf '%s\n' 'undefine DRM_CRASH_OBJ' > "$WORK/seed.mk"
-    run python3 "$GATE" --platform pi-both --extra-makefile "$WORK/seed.mk"
+    run python3 "$GATE" --repo-root "$(scratch_tree)" --platform pi-both --extra-makefile "$WORK/seed.mk"
     [ "$status" -eq 1 ] || fail "expected exit 1, got $status: $output"
     contains "DRM_CRASH_OBJ" "$output"
 }
 
 @test "fails when make cannot parse the platform" {
     printf '%s\n' '$(error seeded parse failure)' > "$WORK/seed.mk"
-    run python3 "$GATE" --platform pi-both --extra-makefile "$WORK/seed.mk"
+    run python3 "$GATE" --repo-root "$(scratch_tree)" --platform pi-both --extra-makefile "$WORK/seed.mk"
     [ "$status" -eq 1 ] || fail "expected exit 1, got $status: $output"
     contains "seeded parse failure" "$output"
 }
@@ -131,6 +131,8 @@ edit_mk() {
 @test "qc_link_parity reports the gate's verdict" {
     . scripts/qc/link_parity.sh
     section_time() { :; }
+    # The wrapper names no tree, so the gate it runs is pointed at scratch_tree.
+    mock_command_script python3 "exec $(command -v python3) \"\$@\" --repo-root '$(scratch_tree)'"
     run qc_link_parity
     [ "$status" -eq 0 ] || fail "qc_link_parity failed: $output"
     contains "variant links match" "$output"

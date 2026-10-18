@@ -12,6 +12,7 @@
 
 #include "ui_update_queue.h"
 
+#include "layer_pause.h"
 #include "pa_calibration.h"
 #include "sound_manager.h"
 #include "state/subject_macros.h"
@@ -54,11 +55,13 @@ constexpr CapabilityDef CAPABILITY_DEFS[] = {
     {Capability::HasChamberHeater, "printer_has_chamber_heater", 0},
     {Capability::HasChamberHeaterDiagnostics, "printer_has_chamber_heater_diagnostics", 0},
     {Capability::HasChamberFilterFan, "printer_has_chamber_filter_fan", 0},
+    {Capability::HasChamberTargetRoute, "printer_has_chamber_target_route", 0},
     {Capability::HasChamberElementTemp, "printer_has_chamber_element_temp", 0},
     {Capability::HasChamberDryer, "printer_has_chamber_dryer", 0},
     {Capability::HasChamber, "printer_has_chamber", 0},
     {Capability::HasScrewsTilt, "printer_has_screws_tilt", 0},
     {Capability::HasExcludeObject, "printer_has_exclude_object", 0},
+    {Capability::HasLayerPause, "printer_has_layer_pause", 0},
     {Capability::HasToolOffsetCal, "printer_has_tool_offset_cal", 0},
     {Capability::HideManualZCalibration, "hide_manual_z_calibration", 0},
     {Capability::HasPaCal, "printer_has_pa_cal", 0},
@@ -227,6 +230,7 @@ void PrinterCapabilitiesState::set_hardware(const PrinterDiscovery& hardware,
     // Screws tilt adjust capability
     set_capability(Capability::HasScrewsTilt, hardware.has_screws_tilt() ? 1 : 0);
     set_capability(Capability::HasExcludeObject, hardware.has_exclude_object() ? 1 : 0);
+    set_capability(Capability::HasLayerPause, helix::layer_pause::supported(hardware) ? 1 : 0);
 
     // Automatic tool offset calibration: the module owns what "can" means.
     set_capability(Capability::HasToolOffsetCal,
@@ -388,6 +392,10 @@ void PrinterCapabilitiesState::set_has_chamber_heater_diagnostics(bool available
 
 void PrinterCapabilitiesState::set_has_chamber_filter_fan(bool available) {
     set_capability(Capability::HasChamberFilterFan, available ? 1 : 0);
+}
+
+void PrinterCapabilitiesState::set_has_chamber_target_route(bool available) {
+    set_capability(Capability::HasChamberTargetRoute, available ? 1 : 0);
 }
 
 void PrinterCapabilitiesState::set_has_chamber_element_temp(bool available) {

@@ -686,6 +686,26 @@ ccache -s        # "Hits" should climb sharply on the 2nd+ worktree build
 ccache -p | grep -E 'base_dir|hash_dir|max_size'
 ```
 
+### The third-party header ABI stamp
+
+Our objects reach the patched LVGL, libhv and Lua headers through `-isystem`, which `-MMD` leaves
+out of the `.d` files, so a patch that moves a struct member would otherwise invalidate nothing.
+`mk/patches.mk` hashes those headers plus `patches/*.patch` with `cksum` into
+`build/.thirdparty-abi` (a prerequisite of every compile rule) and onto every compile line as
+`-DHELIX_TP_ABI=<hash>`, so ccache keys on it too. The patch step re-records the stamp after it
+rewrites the headers, and both links run `check_abi_unchanged`, which fails a link whose headers
+moved under it after the stamp was recorded.
+
+The hash reads libhv's **source** headers (`lib/libhv/evpp/TcpClient.h` and so on), never the
+`lib/libhv/include/hv/` copies the compiler actually resolves. Those copies are gitignored and
+only libhv's own build creates them, from those same sources, before any object that includes
+them compiles. Hashing them would give a cold tree (fresh clone, new worktree, test-host mirror)
+one hash on its first `make` and another on its second, and the second would recompile every
+object with no ccache hit. In a tree whose patches are already applied (every `setup-worktree.sh` tree, every test-host mirror), a cold tree's second `make` compiles nothing. A fresh clone that runs `make` before `make apply-patches` still compiles twice, because the first parse hashes the unpatched headers; so does the build after any patch edit.
+
+Editing any `patches/*.patch` still rebuilds every object: `build/.patches-applied` is a
+prerequisite of all of them, independent of this hash.
+
 ### Typical worktree workflow
 
 ```bash
@@ -905,6 +925,8 @@ make libs-clean     # Clean all library artifacts at once
 
 `helix-tests` links through a response file: make's `$(file ...)` function writes the object list to `$(OBJ_DIR)/<binary>.objs` (for the plain build, `build/obj/helix-tests.objs`) and the compiler reads it as `@<that file>`. Inline, the list passes Linux's 128 KiB per-argument limit once object paths grow, as the ASAN build's do, and bash refuses the recipe with "Argument list too long".
 
+The link also compiles in `helix_build_tree_stamp`, the output of `scripts/tree_stamp.sh` taken when the test build's make starts, before anything compiles: the HEAD commit and a hash of every file the binary is built from whose content differs from it, tracked or untracked. "Built from" is the list `scripts/test_link_sources.py` derives from the link's objects and their `.d` files (`$(OBJ_DIR)/<binary>.stamp-paths`), so an app-only source such as `src/main.cpp` never marks the binary stale. At startup the binary runs `scripts/tree_stamp.sh --paths <that list> <that commit>` from its working directory and prints `WARNING: helix-tests is stale` when the answer differs, so running `./build/bin/helix-tests` after an edit without `make test` says so instead of quietly reporting the previous build's results. Measuring against the recorded commit keeps a commit of already-built edits from reading as stale. A source saved while the build ran leaves the binary stamped with the tree as the build started, and the link dates the binary back so the next `make test` relinks it. The stamp never forces a relink by itself, and `tree_stamp.sh` never writes the index (a refresh there would take `index.lock` in a shared tree). `HELIX_TESTS_NO_STALE_CHECK=1` skips the check, and `mk/tests.mk` exports it for every run make starts. `helix-screen` carries no stamp: its link rule is shared by every cross and packaging target, and `scripts/check_link_parity.py` requires the fbdev and EGL variant links to carry every object the main link has.
+
 ### Test Harness
 
 The dependency system includes a comprehensive test suite:
@@ -990,10 +1012,29 @@ Formatting is automatically checked by the pre-commit hook (`.git/hooks/pre-comm
 3. **Prevents commit** if a formatted file could not be re-staged (partially staged hunks)
 4. **Full sweeps (pre-push, CI) fail** on any unformatted file outside `CLANG_FORMAT_BASELINE`, the list of files that predate the gate; an entry leaves the list once the file is auto-formatted on its next staging
 
+After the commit, `.githooks/post-commit` runs `.githooks/lib/sync-index-to-head.sh`.
+`git commit -- <paths>` commits from a temporary index, so a file the hook
+reformatted lands formatted in HEAD and on disk while the real index keeps the
+pre-format blob, and `git status` reads `MM`. For each committed path whose working
+tree equals HEAD but whose index entry does not, the step points the entry at HEAD's
+own blob. It never hashes the working tree, so nothing that is not already committed
+reaches the index.
+
 To bypass (not recommended):
 ```bash
 git commit --no-verify
 ```
+
+### Staged-input checks that would otherwise wait for a full run
+
+Each is path-gated, so a commit staging none of its inputs pays nothing:
+
+| Gate | Staged trigger | Cost | Catches |
+|------|----------------|------|---------|
+| `qc_esp32_compile` | a `.c`/`.cpp`/`.h`/`.hpp` under `src/`, `include/` or the firmware | ~6s for two units | host-green, ESP32-red code: `scripts/esp32_syntax_check.py --staged` compiles the staged firmware sources and one includer per staged header in the IDF image, from an index overlay (`git checkout-index` of `src/`, `include/` and the firmware, ~0.25s), so the commit's content decides and not the working tree. Never configures (pre-push does, once per CMake change); advisory skip without docker or the image |
+| `qc_toolhead_census` | `ui_xml/**/*.xml`, the census test | ~0.2s | all five XML cases of `tests/unit/test_job_holds_machine.cpp`: an unclassified control-bearing file, a stale row, a drifted or misspelled guard count, a guard in a no-machine file, a `<bind_state_*>` disabling on `print_active`, and XML naming `job_holds_machine` (`scripts/check_toolhead_census.py`) |
+| `qc_theme_artifacts` | top-level `ui_xml/*.xml`, the two artefacts | ~0.1s | `src/generated/theme_token_table.cpp` not matching the staged tokens (`make regen-tokens`), and a `tests/fixtures/theme_const_golden.txt` the token change provably invalidates (`scripts/check_theme_artifacts.py`; the fix needs the test binary, so it prints the regen command; when regenerating leaves the golden unchanged, `HELIX_GOLDEN_CURRENT=1 git commit ...` says it is current) |
+| `qc_xml_linter` | also `src/**/*.cpp`, theme defaults, `lib/helix-xml`, `mk/tools.mk` | ~0.7s when it lints; silent when nothing it reads is staged | `tools/xml-linter/schema/schema.json` stale against any extractor input |
 
 ### Pre-push Integration
 
@@ -1315,9 +1356,13 @@ Two kinds of remote machine help here, and both are optional:
   `tsan`, `mutate`) in a container: `scripts/test-host-run.sh`. It mirrors your
   working tree as it is on disk, uncommitted edits included, into a per-tree
   directory whose `build/` persists, so a warm run rebuilds only what changed.
+  A tree's first run copies the nearest warm mirror first, so it starts warm
+  too (below).
   With one configured, `make full-test-run` runs the C++ sweep there while bats
   runs locally whenever the link makes that pay (`TEST_HOST=1` forces it,
-  `TEST_HOST=0` or `HELIX_TEST_HOST_AUTO=0` keeps both local).
+  `TEST_HOST=0` or `HELIX_TEST_HOST_AUTO=0` keeps both local). `make land-gate`
+  makes the same choice for its two C++ sweeps (`scripts/lib/sweep_location.sh`
+  holds it for both gates).
 - a **remote build host** builds natively or for the cross targets:
   `make remote-native`, `make remote-test`, `make remote-pi` and siblings
   (`mk/remote.mk`, `scripts/remote-build.sh`).
@@ -1350,14 +1395,16 @@ host simply runs both suites locally, without a word.
 
 | Variable | Used by | Meaning (default) |
 |----------|---------|-------------------|
-| `HELIX_TEST_HOST` | `test-host-run.sh`, `full-test-run`, `helix-claim resources`, teardown | ssh name of the test host (none) |
+| `HELIX_TEST_HOST` | `test-host-run.sh`, `full-test-run`, `land-gate`, `helix-claim resources`, teardown | ssh name of the test host (none) |
 | `HELIX_TEST_CONTAINER` | same | container name (`helix-test`) |
 | `HELIX_TEST_TREES_HOST` | same | mirror root on the host, relative to the ssh user's home unless absolute (`helix-test/trees`) |
 | `HELIX_TEST_TREES` | same | the same directory inside the container (`/work/trees`) |
 | `HELIX_TEST_CCACHE` | same | ccache dir inside the container (`/work/ccache`) |
-| `HELIX_TEST_WORKDIR` | `test-host-run.sh --commit`, `mutate` | git checkout inside the container (`/work/helixscreen`) |
+| `HELIX_TEST_WORKDIR` | `test-host-run.sh --commit` | the shared git checkout inside the container (`/work/helixscreen`); mutate checkouts copy it |
+| `HELIX_TEST_SEED` | `test-host-run.sh` | `0` starts a new mirror cold instead of copying the nearest warm one (`1`) |
+| `HELIX_TEST_PRUNE_DAYS` | `test-host-run.sh` | creating a mirror or mutate checkout removes those unused this many days; `0` never (`14`) |
 | `HELIX_TEST_LOCK_DIR` | `test-host-run.sh` | lock directory on the host (`/tmp`) |
-| `HELIX_TEST_HOST_AUTO` | `full-test-run` | `0` keeps an unforced gate local even with a test host configured (`1`) |
+| `HELIX_TEST_HOST_AUTO` | `full-test-run`, `land-gate` | `0` keeps an unforced gate local even with a test host configured (`1`) |
 | `REMOTE_HOST`, `REMOTE_USER` | `mk/remote.mk`, `remote-build.sh` | remote build host and optional user (none) |
 | `REMOTE_DIR` | `mk/remote.mk` | rsync target on the remote for the cross targets (none). `remote-sync` rsyncs `--delete` into it, so give it a directory of its own, never a checkout you work in |
 | `REMOTE_BUILD_DIR` | `remote-build.sh` | its own clone on the remote (`~/helix-remote`), which it hard-resets and cleans every run. It works only in a directory it created (marked `.helix-remote-build`) and refuses any other |
@@ -1387,9 +1434,54 @@ The setup builds the image from `docker/Dockerfile.sanitizer` in your tree,
 streamed over ssh, and starts the container with the parent of
 `HELIX_TEST_TREES_HOST` mounted at the parent of `HELIX_TEST_TREES`. Re-run it
 after the Dockerfile changes; `--recreate` swaps the container for one from the
-new image. `scripts/test-host-run.sh --prune [DAYS]` removes mirrors nobody has
-synced for DAYS (14), and `teardown-worktree.sh` drops a tree's mirror with the
-tree.
+new image.
+
+**Mirrors start warm.** A tree whose mirror has no `build/` yet (a new worktree)
+is seeded before its first sync: the run copies the mirror whose recorded HEAD
+is fewest commits away from yours (each run writes the HEAD it synced to
+`.helix-mirror-head` in its mirror; a mirror qualifies once it has linked
+`helix-tests`, records a HEAD, is not locked by a run, and has no orphaned
+make in it), then syncs over it, and make rebuilds only what differs. A mirror
+that predates the HEAD record rebuilds once on its next run (ccache serves most
+of it), since its file times came from the local tree. A run that is killed
+mid-copy leaves the copying shell running on the host; it holds a seed lock
+that the tree's next run waits on. On zeus a fresh worktree's first `sweep` took 15 minutes cold and
+2 minutes 20 seeded (a 28 s copy). The copy is `cp -a --reflink=auto`: on a ZFS (2.2 or later, with
+`feature@block_cloning`) or btrfs host the copy shares blocks and takes
+seconds, elsewhere it is a plain copy. A per-mirror ZFS dataset and `zfs clone`
+would cost the same, but would tie each clone to its origin's snapshot, so the
+seed could not be pruned while any clone lived. The build's own dependency
+files and compile-command fragments name the mirror's absolute path; the copy
+rewrites them to the new mirror's path. `HELIX_TEST_SEED=0` starts a mirror
+cold.
+
+The sync compares files by content (`rsync -c`) and writes a changed file with
+the test host's clock rather than its local time. That is what makes a copied
+`build/` trustworthy: an unchanged file keeps the time make last saw, and a
+changed one is always newer than its object, even when its local time is older
+(a seeded mirror, a checkout that restored an old time, two machines' clocks).
+It costs a few seconds of checksumming a run.
+
+**mutate gets a checkout per tree.** mutate needs git history, so it runs the
+pushed HEAD as `--commit` does, but in `<parent of HELIX_TEST_TREES>/mutate/<tree>`
+under that tree's own lock instead of the one shared `HELIX_TEST_WORKDIR`: two
+trees mutate at once, one tree's second mutate waits for its first. The
+checkout's first run copies the most recently used checkout (another tree's,
+or the shared one), `build/` included, and refreshes git's index before the
+reset, so only files that differ are rewritten and rebuilt. With every
+checkout busy it waits for the newest. `--commit` with any other job still
+runs in the shared checkout. The run passes `--workers auto`, so it mutates
+several hunks at once (one per 12 cores, at most 6), each in a reflink copy of
+the checkout beside it (`mutate/.<tree>.mutate-w<i>`) that the run removes when
+it ends; a run killed with SIGKILL leaves them for its tree's next run to
+replace. Its builds and test shards draw from the host's jobpool.
+
+**Cleanup.** `scripts/test-host-run.sh --prune [DAYS]` removes mirrors and
+mutate checkouts nobody has run for DAYS (14); a run that creates either one
+does the same pass with `HELIX_TEST_PRUNE_DAYS` (14, `0` never), so the copies
+do not accumulate. One whose lock is held is in use and stays. `--drop TREE`
+removes one tree's mirror and mutate checkout, and `teardown-worktree.sh` runs
+it with the tree.
 
 ## Font Generation
 

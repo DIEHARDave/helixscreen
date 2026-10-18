@@ -136,6 +136,14 @@ TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: medium-tier budgets land on thei
     }
 }
 
+TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: a box draws the same parts whatever it was before",
+                 "[widget_size][speed_flow]") {
+    PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());
+    CHECK(h.unsettled_boxes(box_sweep(55, 55, 20, 240)) == std::vector<std::string>{});
+    CHECK(h.unsettled_boxes(box_sweep(114, 114, 20, 240)) == std::vector<std::string>{});
+    CHECK(h.unsettled_boxes(box_sweep(20, 300, 113, 113)) == std::vector<std::string>{});
+}
+
 TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: each rung shows exactly its parts",
                  "[widget_size][speed_flow]") {
     PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());

@@ -145,7 +145,6 @@ std::optional<PathTopology> topology_from_token(const std::string& topology) {
 /// once rather than after the next frame.
 void write_filament_fields(SlotInfo& slot, const SlotInfo& info) {
     slot.assign_filament_fields(info);
-    slot.multi_color_hexes = info.multi_color_hexes;
 }
 
 } // namespace

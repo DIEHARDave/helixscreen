@@ -28,13 +28,11 @@
  * the warning must STILL fire. A suppression that also blinds the genuine runout
  * has not fixed anything.
  *
- * Toasts are observed through the notification hooks in tests/ui_test_utils.h.
- * The production notification layer is REPLACED by log-only stubs in the test
- * binary, so NotificationHistory and PendingStartupWarnings are both unreachable
- * from a unit test and would silently capture nothing — which would make every
- * suppression assertion below vacuously true. The hooks are the supported
- * observation point, and they separate WARNING from INFO for us, so "I
- * suppressed the wrong toast" fails on severity as well as on text.
+ * Toasts are observed through the notification hooks in tests/ui_test_utils.h,
+ * which see every notification raised before the toast threshold or the
+ * pre-init startup queue decide how it is shown. They separate WARNING from
+ * INFO for us, so "I suppressed the wrong toast" fails on severity as well as
+ * on text.
  */
 
 #include "ui_manual_pull_prompt.h"
@@ -77,8 +75,8 @@ nlohmann::json toolhead_status(bool detected) {
     return nlohmann::json{{TOOLHEAD_SENSOR, {{"filament_detected", detected}, {"enabled", true}}}};
 }
 
-/// RAII capture of the two toast severities in play, through the hooks the
-/// notification stubs call (tests/ui_test_utils.h). Severity is kept separate on
+/// RAII capture of the two toast severities in play, through the notification
+/// hooks (tests/ui_test_utils.h). Severity is kept separate on
 /// purpose: the warning and the hint fire on the same sensor edge, so proving
 /// the right one survived means proving WHICH one did.
 class ToastCapture {

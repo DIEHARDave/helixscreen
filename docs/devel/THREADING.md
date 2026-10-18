@@ -512,6 +512,13 @@ enqueueing after `update_queue_shutdown()` ran — that is a real bug, not noise
 primary-fan `get_fan_speed_subject()` (the genuinely no-argument overload). Teardown across a
 soft restart is covered by `ObserverGuard`'s invalidation epoch instead (§6).
 
+A subject between `lv_subject_deinit()` and its next `lv_subject_init_*()` refuses new
+observers (`patches/lvgl_subject_deinit_refuses_observers.patch`): the attach returns NULL,
+the `observe<V>()` factory returns an empty guard, and LVGL logs `Subject is deinitialized;
+observer refused`. The refusal stops the next init from orphaning the observer, but the
+observer is still missing: that warning in a log means something attached before the subject's
+owner re-initialized it, and the attach belongs after that init.
+
 **Dynamic subjects** are destroyed and recreated when hardware is rediscovered after a
 disconnect. Observing one without a `SubjectLifetime` is a use-after-free:
 `lv_subject_deinit()` frees the subject's observer list, but `ObserverGuard` still holds a

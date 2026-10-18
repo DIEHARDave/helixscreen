@@ -12,12 +12,14 @@
 #include "helix-xml/src/xml/parsers/lv_xml_label_parser.h"
 #include "helix-xml/src/xml/parsers/lv_xml_obj_parser.h"
 #include "helix/ui/shared_font_style.h"
+#include "helix/ui/text_metrics.h"
 #include "lvgl/lvgl.h"
-#include "lvgl/src/misc/lv_text_private.h" // lv_text_get_width, lv_text_encoded_next/prev
+#include "lvgl/src/misc/lv_text_private.h" // lv_text_encoded_next/prev
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -335,6 +337,12 @@ static void bind_long_mode_to_animations_pref(lv_xml_parser_state_t* state, lv_o
  * NOTE: Translation auto-tagging is handled in lv_xml_label_parser.c -
  * any text= attribute automatically becomes a translation lookup key.
  */
+/// The max_lines attribute, at least 1; 1 when absent.
+static int32_t max_lines_attr(const char** attrs) {
+    const char* value = lv_xml_get_value_of(attrs, "max_lines");
+    return value ? std::max<int32_t>(1, lv_xml_atoi(value)) : 1;
+}
+
 static void ui_text_apply(lv_xml_parser_state_t* state, const char** attrs) {
     // Apply label properties (text, long_mode, etc.) and base object properties
     lv_xml_label_apply(state, attrs);
@@ -343,9 +351,10 @@ static void ui_text_apply(lv_xml_parser_state_t* state, const char** attrs) {
 
     bind_long_mode_to_animations_pref(state, label);
 
-    // A dotted label meant for one line must not grow to fit its wrapped text,
-    // or it never ellipsizes (prestonbrown/helixscreen#1775).
-    helix::ui::label_hold_one_line_if_dotted(label);
+    // A dotted label must not grow to fit its wrapped text, or it never
+    // ellipsizes (prestonbrown/helixscreen#1775): max_lines="N" lets it wrap
+    // to N lines first, and without it the label holds to one.
+    helix::ui::label_hold_lines_if_dotted(label, max_lines_attr(attrs));
 
     // Apply stroke attributes (stroke_width, stroke_color, stroke_opa)
     apply_stroke_attrs(label, attrs);
@@ -442,6 +451,11 @@ static void ui_text_button_apply(lv_xml_parser_state_t* state, const char** attr
 
     bind_long_mode_to_animations_pref(state, label);
 
+    // Only on request: a dotted text_button has always sized itself.
+    if (lv_xml_get_value_of(attrs, "max_lines")) {
+        helix::ui::label_hold_lines_if_dotted(label, max_lines_attr(attrs));
+    }
+
     lv_obj_t* parent = lv_obj_get_parent(label);
 
     if (!parent) {
@@ -491,30 +505,35 @@ void ui_text_apply_transform(lv_obj_t* label, const char* transform) {
     }
 }
 
-/// Drawn width of the first @p len bytes of @p txt, as lv_draw_label lays them out.
-static int32_t text_width(const char* txt, uint32_t len, const lv_font_t* font,
-                          int32_t letter_space) {
-    if (len == 0) {
-        return 0;
-    }
-    lv_text_attributes_t attributes = {};
-    attributes.letter_space = letter_space;
-    attributes.max_width = LV_COORD_MAX;
-    attributes.text_flags = LV_TEXT_FLAG_NONE;
-    return lv_text_get_width(txt, len, font, &attributes);
-}
-
 /// "…" when @p font has the glyph, else the three-dot spelling LVGL's own DOTS mode uses.
 static const char* ellipsis_for(const lv_font_t* font) {
     static constexpr const char* ELLIPSIS = "\xE2\x80\xA6"; // U+2026
-    lv_font_glyph_dsc_t glyph;
-    if (lv_font_get_glyph_dsc(font, &glyph, 0x2026, 0) && !glyph.is_placeholder) {
-        return ELLIPSIS;
-    }
-    return "...";
+    return helix::ui::font_renders_text(font, ELLIPSIS) ? ELLIPSIS : "...";
 }
 
 namespace helix::ui {
+
+bool font_renders_text(const lv_font_t* font, const char* text) {
+    if (!font || !text) {
+        return true;
+    }
+    uint32_t i = 0;
+    while (text[i] != '\0') {
+        const uint32_t letter = lv_text_encoded_next(text, &i);
+        // The loop stops at the terminator, so a 0 here is a byte the decoder rejected.
+        if (letter == 0) {
+            return false;
+        }
+        if (letter < 0x20) {
+            continue;
+        }
+        lv_font_glyph_dsc_t glyph;
+        if (!lv_font_get_glyph_dsc(font, &glyph, letter, 0) || glyph.is_placeholder) {
+            return false;
+        }
+    }
+    return true;
+}
 
 std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_t* font,
                              int32_t letter_space) {
@@ -526,13 +545,14 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
         return source;
     }
     const auto len = static_cast<uint32_t>(source.size());
-    if (text_width(text, len, font, letter_space) <= max_width) {
+    if (helix::ui::text_width_n(text, len, font, letter_space) <= max_width) {
         return source;
     }
 
     const char* ellipsis = ellipsis_for(font);
-    const int32_t budget = max_width - text_width(ellipsis, static_cast<uint32_t>(strlen(ellipsis)),
-                                                  font, letter_space);
+    const int32_t budget =
+        max_width - helix::ui::text_width_n(ellipsis, static_cast<uint32_t>(strlen(ellipsis)), font,
+                                            letter_space);
     if (budget <= 0) {
         return ellipsis;
     }
@@ -544,20 +564,21 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
     while (head_end < len) {
         uint32_t next = head_end;
         lv_text_encoded_next(text, &next);
-        if (next > len || text_width(text, next, font, letter_space) > head_budget) {
+        if (next > len || helix::ui::text_width_n(text, next, font, letter_space) > head_budget) {
             break;
         }
         head_end = next;
     }
 
     // Tail: whole glyphs from the end, into whatever the head left over.
-    const int32_t tail_budget = budget - text_width(text, head_end, font, letter_space);
+    const int32_t tail_budget =
+        budget - helix::ui::text_width_n(text, head_end, font, letter_space);
     uint32_t tail_start = len;
     while (tail_start > head_end) {
         uint32_t prev = tail_start;
         lv_text_encoded_prev(text, &prev);
         if (prev <= head_end ||
-            text_width(text + prev, len - prev, font, letter_space) > tail_budget) {
+            helix::ui::text_width_n(text + prev, len - prev, font, letter_space) > tail_budget) {
             break;
         }
         tail_start = prev;
@@ -568,8 +589,9 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
     std::string fitted;
     for (;;) {
         fitted = source.substr(0, head_end) + ellipsis + source.substr(tail_start);
-        if (tail_start >= len || text_width(fitted.c_str(), static_cast<uint32_t>(fitted.size()),
-                                            font, letter_space) <= max_width) {
+        if (tail_start >= len ||
+            helix::ui::text_width_n(fitted.c_str(), static_cast<uint32_t>(fitted.size()), font,
+                                    letter_space) <= max_width) {
             break;
         }
         lv_text_encoded_next(text, &tail_start);
@@ -579,44 +601,72 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
 
 namespace {
 
-void apply_one_line_height(lv_obj_t* label) {
-    // A held label that has since left DOTS keeps whatever height its owner
-    // gives it.
-    if (lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
+// The hook's user data: the line count, and whether the hold applies in any
+// long mode.
+void* pack_line_hold(int32_t lines, LineHold when) {
+    return reinterpret_cast<void*>(static_cast<intptr_t>(lines) * 2 +
+                                   (when == LineHold::AnyMode ? 1 : 0));
+}
+
+void apply_line_cap(lv_obj_t* label, int32_t lines, LineHold when) {
+    // A dotted-only hold on a label that has since left DOTS keeps whatever
+    // height its owner gives it.
+    if (when == LineHold::Dotted && lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
         return;
     }
     const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
     if (!font) {
         return;
     }
-    const int32_t height = lv_font_get_line_height(font) +
-                           lv_obj_get_style_space_top(label, LV_PART_MAIN) +
-                           lv_obj_get_style_space_bottom(label, LV_PART_MAIN);
-    // Setting the height refreshes the style and re-sends STYLE_CHANGED, which
-    // lands back here; comparing first is what ends that loop.
-    if (lv_obj_get_style_height(label, LV_PART_MAIN) != height) {
+    const int32_t cap = lv_font_get_line_height(font) * lines +
+                        lv_obj_get_style_text_line_space(label, LV_PART_MAIN) * (lines - 1) +
+                        lv_obj_get_style_space_top(label, LV_PART_MAIN) +
+                        lv_obj_get_style_space_bottom(label, LV_PART_MAIN);
+    // Setting a size refreshes the style and re-sends STYLE_CHANGED, which
+    // lands back here; comparing first is what ends that loop. One line is a
+    // fixed height; more is a ceiling, so shorter text keeps its own height.
+    if (lines == 1) {
+        if (lv_obj_get_style_height(label, LV_PART_MAIN) != cap) {
+            // DECLARATIVE_OK: measured from the label's computed font, which XML cannot name
+            lv_obj_set_height(label, cap);
+        }
+    } else if (lv_obj_get_style_max_height(label, LV_PART_MAIN) != cap) {
         // DECLARATIVE_OK: measured from the label's computed font, which XML cannot name
-        lv_obj_set_height(label, height);
+        lv_obj_set_style_max_height(label, cap, LV_PART_MAIN);
     }
 }
 
-void one_line_style_changed_cb(lv_event_t* e) {
-    apply_one_line_height(static_cast<lv_obj_t*>(lv_event_get_current_target(e)));
+void line_cap_style_changed_cb(lv_event_t* e) {
+    const auto packed = reinterpret_cast<intptr_t>(lv_event_get_user_data(e));
+    apply_line_cap(static_cast<lv_obj_t*>(lv_event_get_current_target(e)),
+                   static_cast<int32_t>(packed / 2),
+                   (packed % 2) != 0 ? LineHold::AnyMode : LineHold::Dotted);
 }
 
 } // namespace
 
-void label_hold_one_line(lv_obj_t* label) {
-    if (!label) {
+void label_hold_lines(lv_obj_t* label, int32_t lines, LineHold when) {
+    if (!label || lines < 1) {
         return;
     }
     // One hook per label however often it is held.
-    lv_obj_remove_event_cb(label, one_line_style_changed_cb);
-    lv_obj_add_event_cb(label, one_line_style_changed_cb, LV_EVENT_STYLE_CHANGED, nullptr);
-    apply_one_line_height(label);
+    lv_obj_remove_event_cb(label, line_cap_style_changed_cb);
+    lv_obj_add_event_cb(label, line_cap_style_changed_cb, LV_EVENT_STYLE_CHANGED,
+                        pack_line_hold(lines, when));
+    apply_line_cap(label, lines, when);
 }
 
-void label_hold_one_line_if_dotted(lv_obj_t* label) {
+void label_hold_one_line(lv_obj_t* label, LineHold when) {
+    label_hold_lines(label, 1, when);
+}
+
+void label_release_lines(lv_obj_t* label) {
+    if (label) {
+        lv_obj_remove_event_cb(label, line_cap_style_changed_cb);
+    }
+}
+
+void label_hold_lines_if_dotted(lv_obj_t* label, int32_t lines) {
     if (!label || lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
         return;
     }
@@ -624,7 +674,11 @@ void label_hold_one_line_if_dotted(lv_obj_t* label) {
         lv_obj_get_style_max_height(label, LV_PART_MAIN) != LV_COORD_MAX) {
         return;
     }
-    label_hold_one_line(label);
+    label_hold_lines(label, lines);
+}
+
+void label_hold_one_line_if_dotted(lv_obj_t* label) {
+    label_hold_lines_if_dotted(label, 1);
 }
 
 } // namespace helix::ui

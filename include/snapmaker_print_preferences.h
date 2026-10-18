@@ -31,7 +31,12 @@ struct PrintPreferences {
     std::optional<bool> end_led_turn_off;
     std::optional<std::string> filament_entangle_sen; ///< "low" | "medium" | "high"
     std::vector<bool> end_unload_filament;            ///< one per toolhead
+    /// One per toolhead: the head's filament is soft, so the end-of-print
+    /// macro never unloads it. Read-only; no write carries it.
+    std::vector<bool> filament_soft;
 
+    /// No setting reported. `filament_soft` describes the loaded filament,
+    /// not a setting, so it alone does not count.
     [[nodiscard]] bool empty() const;
 
     /// Overlays what @p incoming sets onto this record. A delta frame that

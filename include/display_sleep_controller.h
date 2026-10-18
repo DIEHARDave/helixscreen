@@ -23,8 +23,8 @@ struct DisplaySleepHost {
     const std::unique_ptr<BacklightBackend>& backlight;
     lv_display_t* const& display;
     const bool& shutting_down;
-    /// Swallows the wake touch so it cannot trigger UI actions.
-    std::function<void()> gate_input;
+    /// Ends the press LVGL is tracking on every pointer and makes each wait for its release.
+    std::function<void()> cancel_pointer_presses;
     /// Re-installs a flush callback on the display and forces a full upload.
     std::function<void(lv_display_flush_cb_t)> restore_flush_cb;
 };
@@ -90,8 +90,9 @@ class DisplaySleepController {
         return m_use_hardware_blank;
     }
 
-    /// A press arrived. While asleep or dimmed it requests a wake; returns true when the
-    /// press must be absorbed (asleep) so LVGL never sees it.
+    /// A press arrived. While asleep, dimmed or showing a screensaver it requests a wake and
+    /// returns true: the press is the wake touch, which the caller hides from LVGL until it
+    /// lifts (helix::WakeTouchLatch).
     bool note_press(int x, int y);
 
 #ifdef HELIX_ENABLE_SCREENSAVER
@@ -126,7 +127,8 @@ class DisplaySleepController {
 
     bool m_display_sleeping = false;
     bool m_display_dimmed = false;
-    bool m_wake_requested = false; // set by note_press() while asleep or dimmed
+    bool m_wake_requested = false;  // set by note_press() while asleep or dimmed
+    bool m_wake_from_input = false; // wake() is running for the user's touch or activity
     int m_dim_timeout_sec = 600;
     int m_dim_brightness_percent = 30;
 

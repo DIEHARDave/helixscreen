@@ -73,17 +73,18 @@ void manual_pull_unload_finished();
 void disarm_manual_pull_prompt();
 
 /**
- * @brief Tell the user there is no automatic unload, when the backend says so.
+ * @brief Tell the user why a filament op cannot run on this head, when it cannot.
  *
- * For an Unload control whose intent is "take the filament out" on a machine
- * where nothing can (AmsBackend::unload_is_manual()). Raises one info toast and
- * returns true; the caller then sends nothing and heats nothing. A repeat tap
- * folds into the toast already showing instead of stacking another. Returns
- * false, silently, for a null backend or one with an automatic unload.
+ * Asks AmsBackend::head_filament_ops() for the head @p slot feeds (the active
+ * head for a negative slot). Where that direction is not automatic, raises one
+ * info toast with the backend's reason and returns true; the caller then sends
+ * nothing and heats nothing. A repeat tap folds into the toast already showing
+ * instead of stacking another. Returns false, silently, for a null backend or
+ * an automatic op.
  *
- * Not for an explicit unmount/park control: that is a tool operation, not a
- * filament one, and stays available.
+ * @param slot The slot the op names, or negative for "whatever is active".
+ * @param load true for Load, false for Unload.
  */
-bool notify_if_unload_is_manual(const AmsBackend* backend);
+bool notify_if_filament_op_unavailable(const AmsBackend* backend, int slot, bool load);
 
 } // namespace helix::ui

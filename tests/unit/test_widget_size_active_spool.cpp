@@ -40,6 +40,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/scoped_widget_labels.h"
 #include "ams_state.h"
 #include "ams_types.h"
 #include "helix-xml/src/xml/lv_xml.h"
@@ -186,4 +187,15 @@ TEST_CASE_METHOD(LVGLUITestFixture, "active_spool stays colored after a wide ins
     REQUIRE(color_is(ui_spool_canvas_get_color(wide2), TEST_SPOOL_COLOR));
 
     AmsState::instance().clear_external_spool_info();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "active_spool: a box draws the same parts whatever it was before",
+                 "[widget_size][active_spool][1805]") {
+    helix::test::ScopedWidgetLabelsShown labels;
+    PanelWidgetHarness<ActiveSpoolWidget> h(test_screen(), api());
+    CHECK(h.unsettled_boxes(box_sweep(173, 173, 20, 240)) == std::vector<std::string>{});
+    CHECK(h.unsettled_boxes(box_sweep(60, 60, 20, 240)) == std::vector<std::string>{});
+    CHECK(h.unsettled_boxes(box_sweep(20, 300, 29, 29)) == std::vector<std::string>{});
+    CHECK(h.unsettled_boxes(box_sweep(20, 300, 60, 60)) == std::vector<std::string>{});
 }

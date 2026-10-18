@@ -238,6 +238,17 @@ inline std::string_view utf8_prefix(std::string_view s, size_t max_bytes) {
     return s.substr(0, end);
 }
 
+/// The first UTF-8 codepoint of `s`, its length read from the lead byte; ""
+/// when `s` is empty. The view points into `s`.
+inline std::string_view utf8_first_codepoint(std::string_view s) {
+    if (s.empty()) {
+        return {};
+    }
+    const auto lead = static_cast<unsigned char>(s.front());
+    const size_t length = lead >= 0xF0 ? 4 : lead >= 0xE0 ? 3 : lead >= 0xC0 ? 2 : 1;
+    return s.substr(0, length);
+}
+
 /// ASCII-only case mapping: bytes outside A-Z / a-z pass through untouched,
 /// whatever the process locale.
 inline std::string to_lower(std::string_view s) {
@@ -248,6 +259,22 @@ inline std::string to_lower(std::string_view s) {
         }
     }
     return out;
+}
+
+/// Whether @p a and @p b are the same text under to_lower().
+inline bool equals_ignore_case(std::string_view a, std::string_view b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i) {
+        const auto lower = [](char c) {
+            return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+        };
+        if (lower(a[i]) != lower(b[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 inline std::string to_upper(std::string_view s) {

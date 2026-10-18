@@ -310,7 +310,7 @@ live breadcrumb of the navigation stack, e.g. `controls / motion_panel_0 > `.
 | `resolve <target>` | Print the absolute locator a target resolves to |
 | `list_panels` | List the registered base panels (the fixed `PanelId` set) |
 | `wake`, `screensaver off` | Reset the idle timer / dismiss the screensaver |
-| `screensaver <name>` | Preview a saver by its stable registry name (`maze`, `flipclock`, ...) the way Test Screensaver does. The reply names what `runs` (a saver too heavy for the board runs its fallback), or says `started: false` when a saver is already up. `screensaver off`, in any case, is `wake` |
+| `screensaver <name>` | Preview a saver by its stable registry name (`maze`, `flipclock`, `aqua`, `highfly`, ...) the way Test Screensaver does. The reply names what `runs` (a saver too heavy for the board runs its fallback), or says `started: false` when a saver is already up. `screensaver off`, in any case, is `wake` |
 
 ### The working directory
 
@@ -412,6 +412,15 @@ input pipeline**, so gestures behave exactly as they do under a finger.
 
 Each command returns only after LVGL has sampled the device twice, so sequences do
 not race the indev timer.
+
+Every pointer command counts as activity before it sets the pointer state, but the
+display wakes only on the main loop's next idle tick, after the pointer may already
+have been read. On a sleeping, dimmed or screensaver-covered display that first
+`press` or `tap` can therefore be taken as the wake touch and cancel without
+clicking, depending on whether LVGL's read timer runs before that tick. Send `wake`
+first when the display may be idle. `ctl` cannot reliably produce a wake touch either;
+the swallow of a real one (`SCREENSAVERS.md` § Waking) is covered by `[wake_swallow]`
+in the unit suite.
 
 The device is created lazily on the first pointer command and coexists with the
 real SDL/evdev pointer; LVGL supports multiple pointer indevs. Instances that never
@@ -780,14 +789,19 @@ reads the resolved value, so it shows which one is really in effect.
 state, constructed with representative sample data and the real lifecycle:
 `preflight-check`, `color-mismatch`, `runout-modal`, `lock-screen`,
 `print-status`, `print-tune`, `ams`, `camera`, `ams-error-toast`,
-`action-prompt-worst`, `action-prompt-many`, `spaghetti-detection`.
+`action-prompt-worst`, `action-prompt-many`, `action-prompt-hex`, `action-prompt-zmod`,
+`spaghetti-detection`, `bed-check` (the modal a printer bed check raises when it stops a
+print).
 `spaghetti-detection` fetches its camera still from the mock's unreachable webcam, so set
 `HELIX_DEMO_SNAPSHOT_URL` to a JPEG URL to see the preview.
 
 `action-prompt-many` raises a Klipper `action:prompt` carrying seven material
-presets, the case where the buttons cannot share one row and must wrap. Both
-`action-prompt-*` demos need a live `action:prompt_begin`, so no sequence of
-clicks reaches them in mock mode.
+presets, the case where the buttons cannot share one row and must wrap. The
+`action-prompt-*` demos all need a live `action:prompt_begin`, so no sequence of
+clicks reaches them in mock mode. `action-prompt-zmod` feeds the Z-Mod color
+picker's own `// action:` lines (one text line, three groups of eight swatches, a
+footer Cancel) through the app's `ActionPromptManager::process_line`, so it shows
+what that printer's macro would.
 
 `ams-error-toast` raises the two-line AMS error toast (message plus
 `AmsError::suggestion`) using the longest suggestion any backend produces. The

@@ -69,7 +69,11 @@ class ToolChangerHelper : public AmsBackendToolChanger {
         return sent_;
     }
 
-  private:
+  public:
+    /// Every gcode any execute_gcode virtual sent. Public, and shared with
+    /// every derived fixture: a redeclared copy in a subclass silently
+    /// collects only the overloads that subclass overrides, and the tests
+    /// read an empty history of everything else.
     std::vector<std::string> sent_;
     bool fail_gcode_ = false;
 };

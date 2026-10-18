@@ -464,6 +464,8 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info, helix::ui::L
                                s.temp_text.c_str(),
                                "humidity_text",
                                s.humidity_text.c_str(),
+                               "humidity",
+                               s.humidity.c_str(),
                                "humidity_status",
                                s.humidity_status.c_str(),
                                "humidity_visible",
@@ -748,7 +750,10 @@ void AmsOverviewPanel::refresh_system_path(const AmsSystemInfo& info, int curren
         helix::ui::bypass_spool_set_visible(bypass_widgets_, show_bypass);
         if (show_bypass) {
             bypass_spool_set_has_spool(bypass_widgets_, ext_spool.has_value());
-            bypass_spool_set_color(bypass_widgets_, bypass_color);
+            if (ext_spool)
+                bypass_spool_set_filament(bypass_widgets_, *ext_spool);
+            else
+                bypass_spool_set_color(bypass_widgets_, bypass_color);
             bypass_spool_set_material(bypass_widgets_, (ext_spool && !ext_spool->material.empty())
                                                            ? ext_spool->material.c_str()
                                                            : "");
@@ -1729,7 +1734,7 @@ void AmsOverviewPanel::refresh_system_bypass() {
         helix::ui::bypass_spool_set_visible(bypass_widgets_, show_bypass2);
         bypass_spool_set_has_spool(bypass_widgets_, show_bypass2 && ext_spool.has_value());
         if (show_bypass2 && ext_spool) {
-            bypass_spool_set_color(bypass_widgets_, ext_spool->color_rgb);
+            bypass_spool_set_filament(bypass_widgets_, *ext_spool);
         } else {
             bypass_spool_set_color(bypass_widgets_, 0x888888);
         }

@@ -16,6 +16,7 @@
 // contract the theme editor's users navigate by.
 
 #include "ui_color_picker.h"
+#include "ui_swatch.h"
 
 #include "../lvgl_test_fixture.h"
 
@@ -75,7 +76,7 @@ std::vector<uint32_t> swatch_colors(lv_obj_t* grid) {
     out.reserve(n);
     for (uint32_t i = 0; i < n; i++) {
         lv_obj_t* child = lv_obj_get_child(grid, static_cast<int32_t>(i));
-        lv_color_t bg = lv_obj_get_style_bg_color(child, LV_PART_MAIN);
+        lv_color_t bg = helix::ui::swatch_color_of(child);
         out.push_back(lv_color_to_u32(bg) & 0xFFFFFF);
     }
     return out;
@@ -84,6 +85,7 @@ std::vector<uint32_t> swatch_colors(lv_obj_t* grid) {
 struct GridFixture : public LVGLTestFixture {
     GridFixture() {
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/globals.xml") == LV_RESULT_OK);
+        helix::ui::register_swatch_paint_widget();
         helix::ui::ensure_swatch_grid_subjects();
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/color_swatch.xml") ==
                 LV_RESULT_OK);
@@ -204,6 +206,7 @@ struct PaletteSwitchFixture : public LVGLTestFixture {
 
     PaletteSwitchFixture() {
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/globals.xml") == LV_RESULT_OK);
+        helix::ui::register_swatch_paint_widget();
         helix::ui::ensure_swatch_grid_subjects();
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/color_swatch.xml") ==
                 LV_RESULT_OK);
@@ -232,7 +235,7 @@ struct PaletteSwitchFixture : public LVGLTestFixture {
         REQUIRE(lv_obj_get_child_count(host) == 1); // exactly one grid, never both
         lv_obj_t* grid = lv_obj_get_child(host, 0);
         REQUIRE(lv_obj_get_child_count(grid) == TOTAL);
-        lv_color_t bg = lv_obj_get_style_bg_color(lv_obj_get_child(grid, 0), LV_PART_MAIN);
+        lv_color_t bg = helix::ui::swatch_color_of(lv_obj_get_child(grid, 0));
         return lv_color_to_u32(bg) & 0xFFFFFF;
     }
 };

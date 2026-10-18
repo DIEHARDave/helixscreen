@@ -182,8 +182,10 @@ class UnhomedToolChanger : public helix::test::ToolChangerHelper {
 } // namespace
 
 // Bed drying's unload and the filament surfaces all route through
-// execute_filament_unload(): an unhomed printer homes and unloads, unasked.
-TEST_CASE("an unload through execute_filament_unload on an unhomed printer homes and proceeds",
+// execute_filament_unload(). On a tool changer the unload is by hand, so even an
+// unhomed one neither homes nor sends: nothing would move.
+TEST_CASE("an unload through execute_filament_unload on a tool changer homes nothing and sends "
+          "nothing",
           "[ams][homing][filament]") {
     LVGLTestFixture fixture;
     UnhomedToolChanger tc(4);
@@ -192,9 +194,7 @@ TEST_CASE("an unload through execute_filament_unload on an unhomed printer homes
     helix::ui::execute_filament_unload(&tc, 1, /*target_is_loaded=*/true, "[HomingTest]");
 
     CHECK(ModalStack::instance().empty());
-    REQUIRE(tc.sent().size() == 2);
-    CHECK(tc.sent()[0] == "G28");
-    CHECK(tc.sent()[1] == "UNSELECT_TOOL T=1");
+    CHECK(tc.sent().empty());
 }
 
 // =====================================================================

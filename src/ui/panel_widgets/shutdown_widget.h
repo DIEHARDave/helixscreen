@@ -7,6 +7,7 @@
 
 #include "async_lifetime_guard.h"
 #include "src/ui/panel_widgets/tiled_panel_widget.h"
+#include "system_power.h"
 
 #include <functional>
 #include <string>
@@ -52,6 +53,36 @@ class ShutdownWidget : public TiledPanelWidget {
 
 void register_shutdown_widget();
 
+/// Translated toast text for a failed screen power action, or nullptr when
+/// @p result is Dispatched. A missing polkit grant gets its own text, since
+/// restarting the service is what installs the rule.
+const char* screen_power_failure_message(PowerResult result, bool is_reboot);
+
+/// Which power dialog a screen gets.
+enum class ShutdownDialogMode {
+    SingleViaMoonraker,  ///< Same host, Moonraker up: machine.shutdown takes the device down.
+    SingleViaLocalPower, ///< Same host, Moonraker down: SystemPower on this host.
+    Dual,                ///< Different hosts: Both / Printer / Screen split buttons.
+};
+
+struct ShutdownDialogPlan {
+    ShutdownDialogMode mode;
+    /// Scope the split buttons open on. Read only in Dual mode.
+    ShutdownScope dual_default;
+};
+
+/// Decide the dialog for this screen. Pure.
+///
+/// While connected, the live verdict (@p live_moonraker_remote, published on
+/// every CONNECTED edge) decides same-host vs remote. Before the first
+/// CONNECTED edge that verdict sits at its default (local), so the configured
+/// host (@p configured_host_same, from is_moonraker_on_same_host()) decides.
+///
+/// A remote screen opens on Screen: the user is standing at the screen, and
+/// powering down a printer on another machine has to be chosen on purpose.
+ShutdownDialogPlan plan_shutdown_dialog(bool api_connected, bool live_moonraker_remote,
+                                        bool configured_host_same);
+
 /// Configure @p modal with single-/dual-scope callbacks for @p api (matching
 /// the home-panel widget's behavior — including local-fallback when Moonraker
 /// is disconnected) and show it as a child of @p parent_screen.
@@ -74,11 +105,17 @@ void show_shutdown_dialog(IMoonrakerAPI* api, ShutdownModal& modal, AsyncLifetim
 /// @param allow_local_fallback True only when Moonraker runs on THIS host, so
 ///                             powering down locally is the same act the user
 ///                             asked for. Never set it for a remote printer.
-/// @param local_action         Performs the local power action; returns success.
-/// @return true if the local fallback ran and succeeded. Otherwise an error
-///         toast is shown and false is returned.
-bool handle_machine_power_failure(const std::string& err_message, bool is_reboot,
-                                  bool allow_local_fallback,
-                                  const std::function<bool()>& local_action);
+/// @param local_action         Performs the local power action.
+/// @return Dispatched if the local fallback ran and succeeded. Otherwise the
+///         local result (Failed when no fallback ran), and the toast from
+///         machine_power_failure_message() is shown.
+PowerResult handle_machine_power_failure(const std::string& err_message, bool is_reboot,
+                                         bool allow_local_fallback,
+                                         const std::function<PowerResult()>& local_action);
+
+/// Translated toast text for a failed printer-host power action, given what
+/// the local fallback returned (Failed when none ran), or nullptr when it was
+/// Dispatched. An authorization refusal gets the same text as the screen path.
+const char* machine_power_failure_message(PowerResult local_result, bool is_reboot);
 
 } // namespace helix

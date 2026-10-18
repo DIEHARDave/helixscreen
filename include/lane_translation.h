@@ -93,6 +93,10 @@ void withdraw_cleared_fields(Observation& standing, const Observation& edit);
 /// Only the fields the record actually carries are observed.
 [[nodiscard]] Observation declared_from_record(const FilamentSlotOverride& record);
 
+/// Write every field @p obs carries onto @p record, leaving the rest standing:
+/// declared_from_record() run backwards. Declarations are untouched.
+void amend_record(FilamentSlotOverride& record, const Observation& obs);
+
 /// Split a stored record into the several sources it may declare independently.
 ///
 /// declared_from_record gives a record ONE verdict, which is right the moment
@@ -239,6 +243,9 @@ inline constexpr std::chrono::system_clock::time_point k_unknown_stamp_before =
 /// Whether @p record declares its material as the user's own choice.
 [[nodiscard]] bool declares_material(const FilamentSlotOverride& record);
 
+/// Whether @p record declares its spool name as the user's own choice.
+[[nodiscard]] bool declares_spool_name(const FilamentSlotOverride& record);
+
 /// Withdraw @p record's colour and material declarations, leaving both values
 /// where they are.
 void withdraw_color_and_material(FilamentSlotOverride& record);
@@ -258,6 +265,17 @@ void withdraw_spool_owned_declarations(FilamentSlotOverride& record);
 /// clears the binding, passes through as @p edited has it.
 [[nodiscard]] SlotInfo keep_spool_owned_identity(const SlotInfo& original, const SlotInfo& edited,
                                                  const std::optional<Observation>& spool_record);
+
+/// Blank @p edited's spool name when the edit re-declared the spool under it.
+///
+/// A spool name describes the spool the brand, material and catalog product
+/// named, a free-form name the user typed as much as a vendor's product line.
+/// An edit that moves any of them (brand and material compared without case)
+/// and leaves the name as it was would label the new spool with the old one's
+/// name. A first catalog pick is not a move: the editor adopts one on
+/// every Save. A name the edit itself changed stands, and so does any name on
+/// a linked lane, which is the spool's own. Returns true when it blanked.
+bool drop_stale_spool_name(const SlotInfo& original, SlotInfo& edited);
 
 /// The roster names, as `helix_declared` spells them, of the fields a linked
 /// spool owns that @p edited moved away from @p original and @p applied does

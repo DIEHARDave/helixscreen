@@ -140,6 +140,7 @@ void AmsState::init_subjects(bool register_xml) {
         helix::xml::register_subject_in_current_scope("ams_supports_bypass", &supports_bypass_);
     INIT_SUBJECT_INT(ams_slot_count, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(ams_cards_compact, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_feeder_open, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(slots_version, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(tool_map_version, 0, subjects_, register_xml);
     // Default 1 (present) so non-auto-feed / unknown backends never gate Resume (#991).
@@ -241,6 +242,9 @@ void AmsState::init_subjects(bool register_xml) {
                                                       &current_has_weight_);
 
     INIT_SUBJECT_INT(current_color, 0x505050, subjects_, register_xml);
+    // Read by C++ alongside current_color (ui_ams_current_tool.cpp), never bound in XML.
+    INIT_SUBJECT_STRING(current_colors, "", subjects_, false);
+    INIT_SUBJECT_STRING(current_finish, "", subjects_, false);
     INIT_SUBJECT_INT(current_fill_pct, 0, subjects_,
                      register_xml); // SUBJECT_OK: AmsOperationSidebar draws it on the loaded spool
 
@@ -307,6 +311,13 @@ void AmsState::init_subjects(bool register_xml) {
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &slot_remaining_[i]);
 
+        lv_subject_init_int(&slot_drying_[i],
+                            static_cast<int>(helix::printer::ZoneDryingState::Idle));
+        snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_drying", i);
+        subjects_.register_subject(&slot_drying_[i], register_xml ? name_buf : nullptr);
+        if (register_xml)
+            helix::xml::register_subject_in_current_scope(name_buf, &slot_drying_[i]);
+
         lv_subject_init_string(&slot_materials_[i], slot_materials_buf_[i], nullptr,
                                sizeof(slot_materials_buf_[i]), "");
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_material", i);
@@ -329,6 +340,10 @@ void AmsState::init_subjects(bool register_xml) {
         subjects_.register_subject(&slot_fills_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &slot_fills_[i]);
+
+        // Per-slot paint key, C++ only: lane spools repaint on it.
+        lv_subject_init_int(&slot_paints_[i], 0);
+        subjects_.register_subject(&slot_paints_[i], nullptr);
 
         // Per-slot LIVE state subjects (path segment, toolhead-present, active-loaded)
         lv_subject_init_int(&slot_segments_[i], static_cast<int>(PathSegment::NONE));
@@ -421,6 +436,12 @@ void AmsState::init_subjects(bool register_xml) {
         subjects_.register_subject(&env_ind_humidity_text_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_text_[i]);
+
+        lv_subject_init_int(&env_ind_humidity_[i], -1);
+        snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity", i);
+        subjects_.register_subject(&env_ind_humidity_[i], register_xml ? name_buf : nullptr);
+        if (register_xml)
+            helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_[i]);
 
         lv_subject_init_int(&env_ind_humidity_status_[i], 0);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_status", i);
@@ -520,6 +541,13 @@ void AmsState::init_subjects(bool register_xml) {
     if (register_xml)
         helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_text",
                                                       &env_ind_detail_humidity_text_);
+
+    lv_subject_init_int(&env_ind_detail_humidity_, -1);
+    subjects_.register_subject(&env_ind_detail_humidity_,
+                               register_xml ? "ams_env_ind_detail_humidity" : nullptr);
+    if (register_xml)
+        helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity",
+                                                      &env_ind_detail_humidity_);
 
     lv_subject_init_int(&env_ind_detail_humidity_status_, 0);
     subjects_.register_subject(&env_ind_detail_humidity_status_,
@@ -652,6 +680,7 @@ void AmsState::register_xml_subject_names() {
     helix::xml::register_subject_in_current_scope("ams_supports_bypass", &supports_bypass_);
     helix::xml::register_subject_in_current_scope("ams_slot_count", &ams_slot_count_);
     helix::xml::register_subject_in_current_scope("ams_cards_compact", &ams_cards_compact_);
+    helix::xml::register_subject_in_current_scope("ams_feeder_open", &ams_feeder_open_);
     helix::xml::register_subject_in_current_scope("slots_version", &slots_version_);
     helix::xml::register_subject_in_current_scope("tool_map_version", &tool_map_version_);
     helix::xml::register_subject_in_current_scope("active_tool_port_present",
@@ -767,6 +796,8 @@ void AmsState::register_xml_subject_names() {
         helix::xml::register_subject_in_current_scope(name_buf, &slot_statuses_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_remaining", i);
         helix::xml::register_subject_in_current_scope(name_buf, &slot_remaining_[i]);
+        snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_drying", i);
+        helix::xml::register_subject_in_current_scope(name_buf, &slot_drying_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_material", i);
         helix::xml::register_subject_in_current_scope(name_buf, &slot_materials_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_name", i);
@@ -823,6 +854,8 @@ void AmsState::register_xml_subject_names() {
         helix::xml::register_subject_in_current_scope(name_buf, &env_ind_temp_text_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_text", i);
         helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_text_[i]);
+        snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity", i);
+        helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_status", i);
         helix::xml::register_subject_in_current_scope(name_buf, &env_ind_humidity_status_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_visible", i);
@@ -842,6 +875,8 @@ void AmsState::register_xml_subject_names() {
                                                   &env_ind_detail_temp_text_);
     helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_text",
                                                   &env_ind_detail_humidity_text_);
+    helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity",
+                                                  &env_ind_detail_humidity_);
     helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_status",
                                                   &env_ind_detail_humidity_status_);
     helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_visible",
@@ -929,6 +964,13 @@ lv_subject_t* AmsState::get_slot_remaining_subject(int slot_index) {
         return nullptr;
     }
     return &slot_remaining_[slot_index];
+}
+
+lv_subject_t* AmsState::get_slot_drying_subject(int slot_index) {
+    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+        return nullptr;
+    }
+    return &slot_drying_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_material_subject(int slot_index) {
@@ -1026,6 +1068,13 @@ lv_subject_t* AmsState::get_env_ind_visible_subject(int unit_index) {
     return &env_ind_visible_[unit_index];
 }
 
+lv_subject_t* AmsState::get_env_ind_humidity_subject(int unit_index) {
+    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+        return nullptr;
+    }
+    return &env_ind_humidity_[unit_index];
+}
+
 lv_subject_t* AmsState::get_env_ind_humidity_status_subject(int unit_index) {
     if (unit_index < 0 || unit_index >= MAX_UNITS) {
         return nullptr;
@@ -1060,6 +1109,7 @@ AmsState::EnvIndicatorSubjectNames AmsState::env_indicator_subject_names(int uni
     if (unit_index < 0 || unit_index >= MAX_UNITS) {
         names.temp_text = ENV_IND_OFF_TEXT_SUBJECT;
         names.humidity_text = ENV_IND_OFF_TEXT_SUBJECT;
+        names.humidity = ENV_IND_OFF_FLAG_SUBJECT;
         names.drying_text = ENV_IND_OFF_TEXT_SUBJECT;
         names.humidity_status = ENV_IND_OFF_FLAG_SUBJECT;
         names.humidity_visible = ENV_IND_OFF_FLAG_SUBJECT;
@@ -1075,6 +1125,7 @@ AmsState::EnvIndicatorSubjectNames AmsState::env_indicator_subject_names(int uni
     };
     names.temp_text = expand("temp_text");
     names.humidity_text = expand("humidity_text");
+    names.humidity = expand("humidity");
     names.humidity_status = expand("humidity_status");
     names.humidity_visible = expand("humidity_visible");
     names.visible = expand("visible");
@@ -1184,6 +1235,12 @@ lv_subject_t* AmsState::get_slot_name_subject(int backend_index, int slot_index,
                                 slot_names_);
 }
 
+lv_subject_t* AmsState::get_slot_paint_subject(int backend_index, int slot_index,
+                                               SubjectLifetime& lifetime) {
+    return backend_slot_subject(backend_index, slot_index, lifetime, &BackendSlotSubjects::paints,
+                                slot_paints_);
+}
+
 lv_subject_t* AmsState::get_slot_lane_state_subject(int backend_index, int slot_index,
                                                     SubjectLifetime& lifetime) {
     return backend_slot_subject(backend_index, slot_index, lifetime,
@@ -1210,6 +1267,7 @@ void AmsState::BackendSlotSubjects::init(int count) {
     lane_states.resize(count);
     has_errors.resize(count);
     severities.resize(count);
+    paints.resize(count);
     material_bufs.resize(count);
     materials.resize(count);
     name_bufs.resize(count);
@@ -1221,6 +1279,7 @@ void AmsState::BackendSlotSubjects::init(int count) {
         lv_subject_init_int(&lane_states[i], static_cast<int>(helix::ui::LaneState::Empty));
         lv_subject_init_int(&has_errors[i], 0);
         lv_subject_init_int(&severities[i], static_cast<int>(SlotError::Severity::INFO));
+        lv_subject_init_int(&paints[i], 0);
         lv_subject_init_string(&materials[i], material_bufs[i].data(), nullptr,
                                BackendSlotSubjects::MATERIAL_BUF_SIZE, "");
         lv_subject_init_string(&names[i], name_bufs[i].data(), nullptr, SLOT_NAME_BUF_SIZE, "");
@@ -1241,7 +1300,8 @@ void AmsState::BackendSlotSubjects::deinit() {
         lv_subject_deinit(&c);
     for (auto& s : statuses)
         lv_subject_deinit(&s);
-    for (auto* group : {&fills, &lane_states, &has_errors, &severities, &materials, &names})
+    for (auto* group :
+         {&fills, &lane_states, &has_errors, &severities, &paints, &materials, &names})
         for (auto& subj : *group)
             lv_subject_deinit(&subj);
     colors.clear();
@@ -1250,6 +1310,7 @@ void AmsState::BackendSlotSubjects::deinit() {
     lane_states.clear();
     has_errors.clear();
     severities.clear();
+    paints.clear();
     materials.clear();
     material_bufs.clear();
     names.clear();
@@ -1261,6 +1322,7 @@ void AmsState::BackendSlotSubjects::write(int i, const SlotInfo& slot) {
     lv_subject_set_int(&colors[i], static_cast<int>(slot.color_rgb));
     lv_subject_set_int(&statuses[i], static_cast<int>(slot.status));
     lv_subject_set_int(&fills[i], slot.display_fill_pct());
+    lv_subject_set_int(&paints[i], slot.paint_key());
     lv_subject_set_int(&lane_states[i], static_cast<int>(helix::ui::classify_lane(slot)));
     // No prev buffer, so LVGL notifies on every copy; compare here instead.
     if (strcmp(lv_subject_get_string(&materials[i]), slot.material.c_str()) != 0)

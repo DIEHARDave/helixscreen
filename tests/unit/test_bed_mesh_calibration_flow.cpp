@@ -37,9 +37,7 @@ using json = nlohmann::json;
 namespace {
 
 void drain() {
-    for (int i = 0; i < 32; ++i) {
-        helix::ui::UpdateQueueTestAccess::drain_all(UpdateQueue::instance());
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance(), 32);
 }
 
 bool mentions(const std::string& haystack, const char* needle) {

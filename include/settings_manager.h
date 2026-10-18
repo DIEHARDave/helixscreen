@@ -6,6 +6,7 @@
 #include "ams_types.h"
 #include "bed_drying.h"
 #include "lvgl/lvgl.h"
+#include "maintenance_meters.h"
 #include "persisted_setting.h"
 #include "subject_managed_panel.h"
 
@@ -24,6 +25,14 @@ enum class JogMode;
 
 /** @brief Z movement style override (Auto=detect from kinematics, or force) */
 enum class ZMovementStyle { AUTO = 0, BED_MOVES = 1, NOZZLE_MOVES = 2 };
+
+/// Motion panel Jog-tab arrangement. Pad is the circular two-ring pad with a
+/// Z column; Arrows and ArrowsHome are arrow keys with one shared step
+/// selector (home buttons beside the arrows, or in the centre of each cross);
+/// AxisRows gives each axis a row of minus/plus buttons at the jog mode's two
+/// distances.
+enum class MotionLayout { Pad = 0, Arrows = 1, ArrowsHome = 2, AxisRows = 3 };
+inline constexpr int MOTION_LAYOUT_COUNT = 4;
 
 /** @brief Toolhead rendering style (Auto=detect from printer type, or force) */
 enum class ToolheadStyle {
@@ -81,6 +90,9 @@ class SettingsManager {
      * @return Reference to global SettingsManager
      */
     static SettingsManager& instance();
+
+    /// The static PersistedSetting table this manager is built from.
+    static settings::TableView persisted_table();
 
     // Prevent copying
     SettingsManager(const SettingsManager&) = delete;
@@ -150,6 +162,18 @@ class SettingsManager {
     /// False when the save failed.
     [[nodiscard]] bool set_bed_drying_record(const helix::bed_drying::RunRecord& record);
     bool clear_bed_drying_record();
+
+    // =========================================================================
+    // MAINTENANCE METERS
+    // =========================================================================
+
+    /// The maintenance meters saved in the printer section @p printer_prefix (a
+    /// Config::df() value); nullopt when none was ever saved there.
+    std::optional<helix::maintenance::State>
+    get_maintenance_record(const std::string& printer_prefix) const;
+    /// Written and saved at once. False when the save failed.
+    bool set_maintenance_record(const std::string& printer_prefix,
+                                const helix::maintenance::State& state);
 
     // =========================================================================
     // CHAMBER ASSIGNMENT (owned by SettingsManager — sensor/heater override)
@@ -296,6 +320,21 @@ class SettingsManager {
     /** @brief Set the Bed-tab clearance height in mm (clamped, persisted) */
     void set_bed_map_clearance_mm(int mm) {
         settings_.set(Key::BedMapClearance, mm);
+    }
+
+    /** @brief Motion panel Jog-tab layout (default Pad) */
+    MotionLayout get_motion_layout() const {
+        return static_cast<MotionLayout>(settings_.get(Key::MotionLayout));
+    }
+
+    /** @brief Set the motion panel Jog-tab layout (clamped, persisted) */
+    void set_motion_layout(MotionLayout layout) {
+        settings_.set(Key::MotionLayout, static_cast<int>(layout));
+    }
+
+    /** @brief Motion layout subject (integer, MotionLayout values) */
+    lv_subject_t* subject_motion_layout() {
+        return settings_.subject(Key::MotionLayout);
     }
 
     // =========================================================================
@@ -474,6 +513,49 @@ class SettingsManager {
     lv_subject_t* subject_afc_unload_after_print() {
         return settings_.subject(Key::AfcUnloadAfterPrint);
     }
+
+    // =========================================================================
+    // END-OF-PRINT UNLOAD PER TOOL (per-printer; for firmware that forgets it)
+    // =========================================================================
+
+    /**
+     * @brief Which tools unload their filament when a print ends, bit N = tool N.
+     *
+     * For firmware that takes this as a per-print option and clears it when
+     * each print ends: the choice is kept here and the filament backend sends
+     * it ahead of every print. Default 0 (no tool unloads).
+     */
+    int get_end_of_print_unload_tools() const {
+        return settings_.get(Key::EndOfPrintUnloadTools);
+    }
+
+    /** @brief Replace the whole end-of-print unload mask */
+    void set_end_of_print_unload_tools(int mask) {
+        settings_.set(Key::EndOfPrintUnloadTools, mask);
+    }
+
+    /** @brief Whether @p tool unloads when a print ends; false outside the mask's range */
+    bool get_end_of_print_unload_tool(int tool) const {
+        return tool >= 0 && tool < END_OF_PRINT_UNLOAD_MAX_TOOLS &&
+               (get_end_of_print_unload_tools() & (1 << tool)) != 0;
+    }
+
+    /** @brief Set one tool's bit, leaving the others as stored; ignores a tool out of range */
+    void set_end_of_print_unload_tool(int tool, bool unload) {
+        if (tool < 0 || tool >= END_OF_PRINT_UNLOAD_MAX_TOOLS) {
+            return;
+        }
+        const int mask = get_end_of_print_unload_tools();
+        set_end_of_print_unload_tools(unload ? (mask | (1 << tool)) : (mask & ~(1 << tool)));
+    }
+
+    /** @brief End-of-print unload mask subject (integer bitmask) */
+    lv_subject_t* subject_end_of_print_unload_tools() {
+        return settings_.subject(Key::EndOfPrintUnloadTools);
+    }
+
+    /// Tools the end-of-print unload mask can name (its row's maximum is 255).
+    static constexpr int END_OF_PRINT_UNLOAD_MAX_TOOLS = 8;
 
     /**
      * @brief Whether to show the bypass spool even when bypass is disengaged.
@@ -754,6 +836,23 @@ class SettingsManager {
     }
 
     // =========================================================================
+    // Z-OFFSET SAVE (per-printer; the decision lives in helix::zoffset)
+    // =========================================================================
+
+    /// Whether the app offers to persist the Z offset on this printer, as a
+    /// helix::zoffset::SaveMode: 0=Auto, 1=Show, 2=Hide. Read it through
+    /// helix::zoffset::save_enabled(), which resolves Auto.
+    int get_z_offset_save_mode() const {
+        return settings_.get(Key::ZOffsetSaveMode);
+    }
+    void set_z_offset_save_mode(int mode) {
+        settings_.set(Key::ZOffsetSaveMode, mode);
+    }
+    lv_subject_t* subject_z_offset_save_mode() {
+        return settings_.subject(Key::ZOffsetSaveMode);
+    }
+
+    // =========================================================================
     // BARCODE SCANNER (owned by SettingsManager — manual device selection)
     // =========================================================================
 
@@ -806,6 +905,7 @@ class SettingsManager {
         JogSpeedZ,
         MotionShowActualPosition,
         BedMapClearance,
+        MotionLayout,
         QidiEjectDistance,
         QidiEjectVelocity,
         ToolheadStyle,
@@ -813,6 +913,7 @@ class SettingsManager {
         ShowWidgetLabels,
         AutoColorMap,
         AfcUnloadAfterPrint,
+        EndOfPrintUnloadTools,
         AmsAlwaysShowBypassSpool,
         AmsKeepSpoolInfoOnEject,
         AmsForceBypassControls,
@@ -823,6 +924,7 @@ class SettingsManager {
         DetectionEnabled,
         DetectionPauseOnDetect,
         DetectionPolicyU1,
+        ZOffsetSaveMode,
         COUNT
     };
     settings::PersistedSettings<Key, static_cast<size_t>(Key::COUNT)> settings_;

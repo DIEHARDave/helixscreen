@@ -19,6 +19,7 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "print_lifecycle_state.h"
 #include "printer_state.h"
 
@@ -67,9 +68,7 @@ struct JobHoldsMachineFixture : public LVGLTestFixture {
     /// set_print_start_state() defers, so drive the queue to quiescence rather
     /// than once - a handler running during a drain can queue more work.
     static void drain() {
-        for (int pass = 0; pass < 8; ++pass) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 
     void report_job_state(const char* moonraker_state) {
@@ -228,9 +227,7 @@ TEST_CASE_METHOD(XMLTestFixture, "the bypass tile is disabled during a host-side
     // of it and cannot keep this tile from being tapped.
     state().update_from_status(nlohmann::json{{"print_stats", {{"state", "standby"}}}});
     state().print_state().set_print_start_state(helix::PrintStartPhase::BED_MESH, "", 0);
-    for (int pass = 0; pass < 8; ++pass) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 
     REQUIRE(lv_subject_get_int(state().print_state().get_print_active_subject()) == 0);
     REQUIRE(lv_obj_has_state(tile, LV_STATE_DISABLED));
@@ -238,9 +235,7 @@ TEST_CASE_METHOD(XMLTestFixture, "the bypass tile is disabled during a host-side
     // And it comes back when the block is abandoned - a latched-disabled control
     // is the failure mode that would make this fix worse than the bug.
     state().print_state().set_print_start_state(helix::PrintStartPhase::IDLE, "", 0);
-    for (int pass = 0; pass < 8; ++pass) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     REQUIRE_FALSE(lv_obj_has_state(tile, LV_STATE_DISABLED));
 }
 
@@ -265,18 +260,14 @@ TEST_CASE_METHOD(XMLTestFixture, "moves_machine installs the toolhead guard by c
     // lifecycle subject moves.
     state().update_from_status(nlohmann::json{{"print_stats", {{"state", "standby"}}}});
     state().print_state().set_print_start_state(helix::PrintStartPhase::BED_MESH, "", 0);
-    for (int pass = 0; pass < 8; ++pass) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 
     REQUIRE(lv_subject_get_int(state().print_state().get_print_active_subject()) == 0);
     REQUIRE(lv_obj_has_state(control, LV_STATE_DISABLED));
 
     // And it releases - a latched-disabled control is the failure mode.
     state().print_state().set_print_start_state(helix::PrintStartPhase::IDLE, "", 0);
-    for (int pass = 0; pass < 8; ++pass) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     REQUIRE_FALSE(lv_obj_has_state(control, LV_STATE_DISABLED));
 
     // Spools on the bed block the same controls with no job at all
@@ -332,27 +323,35 @@ constexpr GuardedFile kGuardedFiles[] = {
     {"ui_xml/calibration_tool_offset_panel.xml", 2},
     {"ui_xml/chamber_dryer_modal.xml", 1},
     {"ui_xml/cfs_chute_calibration_overlay.xml", 6},
-    {"ui_xml/components/ams_sidebar.xml", 2},
+    {"ui_xml/components/ams_sidebar.xml", 3},
     {"ui_xml/components/chamber_dryer_row.xml", 1},
     {"ui_xml/components/panel_widget_bed_mesh_tile.xml", 1},
     {"ui_xml/components/panel_widget_bypass.xml", 1},
+    {"ui_xml/components/panel_widget_job_queue.xml", 2},
     {"ui_xml/components/panel_widget_toolhead.xml", 1},
     {"ui_xml/components/panel_widget_z_offset.xml", 2},
     {"ui_xml/calibration_pa_panel.xml", 2},
     {"ui_xml/controls_panel.xml", 17},
     {"ui_xml/header_bar.xml", 1},
+    {"ui_xml/pa_tuning_overlay.xml", 1},
     {"ui_xml/micro/controls_panel.xml", 17},
     {"ui_xml/micro/header_bar.xml", 1},
     {"ui_xml/motion_panel.xml", 8},
     {"ui_xml/components/move_preset_grid.xml", 11},
     {"ui_xml/components/motion_bed_map.xml", 2},
+    // Every layout's home key; the layouts themselves hold only components.
+    {"ui_xml/components/motion_home_button.xml", 1},
+    {"ui_xml/components/motion_leveling_row.xml", 2},
+    // Jog keys stay live through a print, as the pad layout's Z column does;
+    // the layouts' home keys carry the guards.
+    {"ui_xml/components/motion_jog_button.xml", 0},
     {"ui_xml/probe_generic_panel.xml", 2},
     {"ui_xml/probe_eddy_panel.xml", 2},
     {"ui_xml/probe_cartographer_panel.xml", 2},
     {"ui_xml/probe_bltouch_panel.xml", 2},
     {"ui_xml/probe_beacon_panel.xml", 2},
     {"ui_xml/temp_graph_overlay.xml", 2},
-    {"ui_xml/tool_switcher_picker.xml", 1},
+    {"ui_xml/components/tool_switcher_feeder_segment.xml", 1},
     {"ui_xml/components/tool_switcher_park_segment.xml", 1},
 };
 
@@ -391,13 +390,16 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/ams_env_pill.xml",
     "ui_xml/components/ams_environment_indicator.xml",
     "ui_xml/components/barcode_scanner_device_row.xml",
+    "ui_xml/components/bed_check_modal.xml",
     "ui_xml/components/bed_drying_banner.xml",
     "ui_xml/components/bed_mesh_canvas_band.xml",
     "ui_xml/components/bed_mesh_profiles_card.xml",
     "ui_xml/components/buffer_status_modal.xml",
+    "ui_xml/components/calib_tile.xml",
     "ui_xml/components/camera_config_modal.xml",
     "ui_xml/components/camera_fullscreen.xml",
     "ui_xml/components/chamber_fault_banner.xml",
+    "ui_xml/components/chamber_stall_modal.xml",
     "ui_xml/components/clog_detection_config_modal.xml",
     "ui_xml/components/color_swatch.xml",
     "ui_xml/components/color_swatch_grid.xml",
@@ -423,6 +425,13 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/job_queue_row.xml",
     "ui_xml/components/lock_screen.xml",
     "ui_xml/components/material_temps_row.xml",
+    // The layouts' own markup carries only the resize hook; their keys are
+    // motion_jog_button / motion_home_button, classified above.
+    "ui_xml/components/motion_jog_arrows.xml",
+    "ui_xml/components/motion_jog_arrows_home.xml",
+    "ui_xml/components/motion_jog_rows.xml",
+    "ui_xml/components/motion_jog_modes.xml",
+    "ui_xml/components/motion_step_bar.xml",
     "ui_xml/components/navbar_drying.xml",
     "ui_xml/components/navbar_estop.xml",
     "ui_xml/components/option_tile.xml",
@@ -442,10 +451,10 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/panel_widget_firmware_restart.xml",
     "ui_xml/components/panel_widget_gcode_console.xml",
     "ui_xml/components/panel_widget_host_health.xml",
-    "ui_xml/components/panel_widget_job_queue.xml",
     "ui_xml/components/panel_widget_led.xml",
     "ui_xml/components/panel_widget_led_controls.xml",
     "ui_xml/components/panel_widget_lock.xml",
+    "ui_xml/components/panel_widget_maintenance.xml",
     "ui_xml/components/panel_widget_macros.xml",
     "ui_xml/components/panel_widget_motion.xml",
     "ui_xml/components/panel_widget_network.xml",
@@ -475,6 +484,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/print_status_preview_card.xml",
     "ui_xml/components/printer_switch_row.xml",
     "ui_xml/components/progress_bar.xml",
+    "ui_xml/components/progress_bar_estimate.xml",
     "ui_xml/components/spaghetti_detection_modal.xml",
     "ui_xml/components/temp_card_unified.xml",
     "ui_xml/components/temp_graph_config_modal.xml",
@@ -483,7 +493,6 @@ constexpr const char* kNoMachineControlFiles[] = {
     // refuses the change, or spools on the bed) rather than moves_machine,
     // which also holds through a pause, where the change is offered behind a
     // confirmation.
-    "ui_xml/components/tool_picker_button.xml",
     "ui_xml/components/tool_switcher_face.xml",
     "ui_xml/components/tool_switcher_segment.xml",
     "ui_xml/components/upgrade_banner.xml",
@@ -519,6 +528,8 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/job_queue_modal.xml",
     "ui_xml/klipper_recovery_dialog.xml",
     "ui_xml/label_printer_settings.xml",
+    "ui_xml/layer_pause_modal.xml",
+    "ui_xml/led_auto_color_swatches.xml",
     "ui_xml/led_control_overlay.xml",
     "ui_xml/led_list_chip.xml",
     "ui_xml/led_picker.xml",
@@ -526,6 +537,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/led_white_tone.xml",
     "ui_xml/machine_limits_overlay.xml",
     "ui_xml/macro_buttons_overlay.xml",
+    "ui_xml/maintenance_overlay.xml",
     "ui_xml/macro_card.xml",
     "ui_xml/macro_panel.xml",
     "ui_xml/macro_param_modal.xml",
@@ -558,6 +570,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/print_status_configure_picker.xml",
     "ui_xml/print_status_panel.xml",
     "ui_xml/print_tune_panel.xml",
+    "ui_xml/components/tune_pa_row.xml",
     "ui_xml/printer_image_list_item.xml",
     "ui_xml/printer_image_overlay.xml",
     "ui_xml/printer_image_tagger_overlay.xml",

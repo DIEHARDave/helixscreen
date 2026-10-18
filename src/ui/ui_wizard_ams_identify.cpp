@@ -5,6 +5,7 @@
 
 #include "ams_state.h"
 #include "ams_types.h"
+#include "i18n_plural.h"
 #include "lvgl/lvgl.h"
 #include "static_panel_registry.h"
 #include "ui/ui_widget_helpers.h"
@@ -191,7 +192,9 @@ std::string WizardAmsIdentifyStep::get_ams_details() const {
 
     // Start with slot count if available
     if (const int bays = info.present_slot_count(); bays > 0) {
-        details = fmt::format(lv_tr("{} slots"), bays);
+        details = fmt::format(
+            fmt::runtime(helix::ui::tr_plural(nullptr, "{} slots", static_cast<uint64_t>(bays))),
+            bays);
     }
 
     // Add unit name if available (e.g., "• Turtle 1")

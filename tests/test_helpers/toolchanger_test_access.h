@@ -53,6 +53,41 @@ class ToolChangerTestAccess {
         return b.pending_dispatch_action_.has_value();
     }
 
+    /// Deliver the operator's prompt reply to the mount-to-feed run, the
+    /// main-thread half its notify_gcode_response listener drives on a real
+    /// client.
+    static void feed_operator_reply(AmsBackendToolChanger& b, helix::mount_feed::Reply reply) {
+        b.on_feed_reply(reply);
+    }
+
+    /// Deliver what the console watcher parsed: a reply, or the dismissal echo
+    /// of the prompt ending without an answer.
+    static void feed_console_signal(AmsBackendToolChanger& b,
+                                    helix::mount_feed::ConsoleSignal signal) {
+        b.on_feed_signal(signal);
+    }
+
+    /// Advance the operator wait by @p ms, the way the watchdog timer does
+    /// once a second in the app.
+    static void feed_wait_elapsed(AmsBackendToolChanger& b, uint32_t ms) {
+        b.handle_wait_elapsed(ms);
+    }
+
+    /// A reconnect arriving under a live run (on_started).
+    static void feed_disconnect_started(AmsBackendToolChanger& b) {
+        b.on_started();
+    }
+
+    /// The backend stopping under a live run (on_stopping).
+    static void feed_disconnect_stopping(AmsBackendToolChanger& b) {
+        b.on_stopping();
+    }
+
+    /// The wording of the last toast a feed run raised.
+    static const std::string& feed_last_toast(const AmsBackendToolChanger& b) {
+        return b.feed_last_toast_;
+    }
+
     /// Deliver one gcode-response line to the Z-Mod marker handler, the
     /// main-thread half the notify_gcode_response listener drives on a real
     /// client. The listener itself needs a client, which the unit-test helper

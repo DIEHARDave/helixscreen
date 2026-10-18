@@ -451,6 +451,14 @@ TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: report_to_text includ
 // GitHub URL Generation [crash_reporter]
 // ============================================================================
 
+TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: the GitHub issue body names the board",
+                 "[crash_reporter]") {
+    write_crash_file();
+    auto report = cr.collect_report();
+    report.board = "creator5-pro";
+    CHECK(cr.generate_github_url(report).find("creator5-pro") != std::string::npos);
+}
+
 TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: generate_github_url produces valid URL",
                  "[crash_reporter]") {
     write_crash_file();

@@ -80,7 +80,7 @@ them** - there is no macros-only deployment, so `[medusahc]` is always present.
 
 | | Source | Objects | Status schema | Feeder macros |
 |---|---|---|---|---|
-| **(a) Irbis3D Python controller** | [Irbis3D/MedusaHC-Python-Controller](https://github.com/Irbis3D/MedusaHC-Python-Controller) `klippy/extras/medusahc.py` | `[pin_watch io]`, `[toolchanger]`, `[tool T0..3]`, `[medusahc]` | `operation`, `current_tool`, `target_tool`, `last_error`, `feeder_open`, `layer`, `sensor_error`, `tool_count`, `sensors` | `MHC_OPEN` / `MHC_CLOSE`, plus legacy aliases |
+| **(a) Irbis3D Python controller** | [Irbis3D/MedusaHC-Python-Controller](https://github.com/Irbis3D/MedusaHC-Python-Controller) `klippy/extras/medusahc.py` | `[pin_watch io]`, `[toolchanger]`, `[tool T0..3]`, `[medusahc]` | `operation`, `current_tool`, `target_tool`, `last_error`, `feeder_open`, `layer`, `sensor_error`, `tool_count`, `sensors` | `MHC_OPEN` / `MHC_CLOSE`, plus the `OPEN` / `CLOSE` aliases HelixScreen sends |
 | **(b) topi314's fork** | [topi314/MedusaHC](https://github.com/topi314/MedusaHC) `scripts/medusahc.py` | `[medusahc]` **alone** - drops both `[pin_watch]` and `[toolchanger]` | `state`, `current_tool`, `target_tool`, `tool_count`, `feeder_open`, `error` (bool), `layer`, `head_loaded`, flat `toolN_docked`, plus calibration fields | `OPEN` / `CLOSE` |
 
 Object presence cannot separate the two - both register `[medusahc]` - so
@@ -123,10 +123,93 @@ the only thing in the way. `[pin_watch io]` is staying upstream, so a machine wi
 `[medusahc]` stays the exception - but it is an exception someone is running today, and the
 object alone is now enough to claim it.
 
-Feeder macro selection is capability-driven rather than hardcoded: `MHC_OPEN`/`MHC_CLOSE`
-when discovery sees those macros, else `OPEN`/`CLOSE`. Irbis3D ships legacy `OPEN`/`CLOSE`
-aliases forwarding to `MHC_*`, so either works there; preferring the native command is what
-keeps the fork - which registers only `OPEN`/`CLOSE` - working off the same rule.
+The feeder buttons send the plain `OPEN` / `CLOSE` on every configuration. Irbis3D's
+controller ships them as aliases forwarding to its `MHC_*` commands, the stock config and
+topi314's fork register only those names, and they work on a parked tool. Irbis3D's
+controller is the one HelixScreen builds against; the fork stays supported as a fallback.
+
+## Loading and unloading filament
+
+MedusaHC has one extruder drive serving every tool, so filament moves only through the tool
+on the carriage. `toolchanger_addon::feeds_through_mount()` (the provider row's
+`feeds_through_mount`) says so, `AmsBackendToolChanger::set_discovery()` sets
+`mounts_to_feed_`, and the backend answers `head_filament_ops()` Automatic in both
+directions with `needs_mount_to_feed()` true. To every surface it is a plain Load and
+Unload; the mounting happens inside the operation.
+
+`include/mount_feed_sequence.h` builds the stages; `AmsBackendToolChanger::start_mount_feed()`
+sends them one at a time, each on the previous one's ack, as ONE `LOADING` or `UNLOADING`
+operation whose step bar is the stage list:
+
+| Load | Gcode | Unload | Gcode |
+|------|-------|--------|-------|
+| Mount tool | `SELECT_TOOL T=<n>` (or the machine's own `T<n>`); skipped when already mounted | Mount tool | same |
+| Heat nozzle | `M109 S<material temp>` (the target slot's material, else 220) | Heat nozzle | same |
+| Insert filament | an action prompt: "Insert filament into Tool N, then tap Continue", with Continue and Cancel. The extruder grabs the strand itself: nothing is opened and nothing is pushed by hand past it | Retract filament | `M83`, `G1 E-25 F1800`, `G1 E-150 F1200` (until the strand is fully out), `M104 S0` |
+| Purge | `M83`, `G1 E5 F60` (slow draw), `G1 E50 F300` twice, `G1 E-10 F1800`, `M104 S0` | Restore tool | remount the tool that was on the carriage, or park if none was |
+| Restore tool | same as Unload's | | |
+
+Neither direction sends `OPEN`: the feeder buttons stay a separate control.
+
+The prompt is Klipper's own action prompt, raised with `RESPOND TYPE=command` lines, so it
+shows on this screen and on Mainsail/Fluidd alike, and it needs `[respond]`. Its payload is
+**English whatever this screen's language is** - the RESPOND lines are console text every
+client shows verbatim, so no locale of ours may decide what Mainsail displays. Its buttons
+answer with `RESPOND TYPE=command MSG=HELIX_MOUNT_FEED_CONTINUE` / `..._CANCEL`; the backend
+watches the console for that exact echo (`mount_feed::parse_console()`). The sidebar's Cancel
+(`AmsBackendToolChanger::cancel()`), the prompt's Cancel, and a prompt **dismissed** anywhere
+(the screen's own dismiss sends `action:prompt_end`, whose echo is the only trace) all turn
+the rest of the run into the cleanup: prompt closed, the plan's heaters turned off BY NAME
+(`SET_HEATER_TEMPERATURE ... TARGET=0`, never a blanket `M104 S0` - the active extruder
+before the first mount is the PREVIOUS tool's, and its user-set target must survive), and
+the carriage restored. A stage that fails does the same; Klipper's own error line reports
+the failure. A cleanup that cannot be sent at all ends the run and says
+`Could not turn the heaters off`.
+
+A lost connection or a klippy restart under a live run strands it: no ack can arrive for
+the stage in flight. `abandon_feed_run_after_disconnect()` runs from both `on_started()`
+(the reconnect) and `on_stopping()`: it sends the whole cleanup best effort and resets the
+run without waiting for an ack.
+
+**The wait has a ceiling.** Nobody inserting the filament for three minutes
+(`mount_feed::PROMPT_TIMEOUT_MS`) unwinds the run the same way - a hot nozzle must not sit
+unattended - and raises an error toast. A `LvglTimerGuard` watches the wait while LVGL is
+up; unit tests drive `handle_wait_elapsed()` through `ToolChangerTestAccess` instead.
+
+**Load all / Unload all.** `max_heads_per_filament_op()` answers the tool count, so the
+sidebar's picker accepts several heads on this backend. A Load of several asks **once**, up
+front ("Insert filament into Tools 1, 2, 4 as far as it goes, then tap Continue"), then
+works tool by tool: each tool's opening stage preheats the **next** one to 65% of its
+material temperature (`SET_HEATER_TEMPERATURE HEATER=extruder<n>`, the Klipper multi-extruder
+naming - `extruder` for tool 0), so its own `M109` starts from heat. A preheat never LOWERS
+a target: a next tool already set hotter than the preheat value is left alone
+(`HeadRequest::heater_target_c`, read off the live extruder targets at dispatch). An Unload of several
+runs the same sequence with no prompt. At the end the carriage is restored to the tool the
+run found on it (or parked). A stop mid-sequence - cancel, timeout, failed stage - turns
+every heater in the plan off, restores the carriage, and toasts the tools that did complete
+(`mount_feed::Run::completed_heads()`).
+
+**Macro first, both levels.** When the printer defines `LOAD_FILAMENT` / `UNLOAD_FILAMENT`
+taking `T=` (read from the macro's template through `MacroParamCache`,
+`mount_feed::macro_takes_tool()`), the feed or retract stage calls
+`LOAD_FILAMENT T=<n> TEMP=<t>` / `UNLOAD_FILAMENT T=<n>` instead of the built-in moves.
+When it defines `LOAD_ALL_FILAMENT` / `UNLOAD_ALL_FILAMENT` and the selection is **every**
+tool, the batch is that one macro instead (`TEMP=` when its template takes it) and HelixScreen
+sequences nothing. topi314's macros (github.com/topi314/klipper, branch `ducr10`,
+`macros/filament.cfg`) are that shape. Stock MedusaHC has none.
+
+While a run is active its stage owns the published action and step: the swap frames its
+Mount and Restore stages raise (`operation`, the gripper) do not end it. The step bar is
+the stage list, one stride per tool for a multi-tool run ("Tool 2 of 3: Purge"), built by
+`get_operation_step_model()` from the live run; `Run::phase_index()` publishes the index
+into it. The backend claims
+`filament_ops_self_home`, so a load or unload is refused while a print is running or
+paused, and `supports_auto_heat_on_load/unload`, so the UI does not preheat the active tool
+before the backend mounts another.
+
+`HELIX_MOCK_AMS=medusahc` runs all of it against mock hardware: the mock client echoes
+`RESPOND` lines, so the prompt appears and its buttons drive the run. Tests:
+`tests/unit/test_toolchanger_mount_feed.cpp`. **Unverified on hardware.**
 
 ## Overriding the feeder macros
 
@@ -140,9 +223,8 @@ user-selectable, not hardcoded.
 plus anything containing `OPEN`, `CLOSE`, `FEEDER` or `GRIP`. A raw macro list runs to
 hundreds of entries and is unusable as a picker; a free-text field cannot be typo-checked.
 
-The first option is the `auto` sentinel, which restores whatever detection chose. That is
-what makes a later migration free: a user who picks `auto` today gets `OPEN` now and
-`MHC_OPEN` the moment the controller registers it, without revisiting the setting.
+The first option is the `auto` sentinel, which restores whatever detection chose (`OPEN` /
+`CLOSE`).
 
 `Feeder` carries all of it - `open_gcode` (what is actually sent), `detected_open` (what
 detection chose, kept so `auto` can be restored), `open_choice` (the stored pick) and
@@ -285,7 +367,7 @@ chose while the rewritten body selects others. The rewrite handles `INITIAL_TOOL
 `TOOL=`, and the Filament Mapping dialog warns about the rest while the picks move a tool; see
 [the remapper](FILAMENT_MANAGEMENT.md#gcode-tool-remapper). The recommended slicer start
 G-code for these machines is in the user guide,
-[Printers that remap by rewriting the file](../user/guide/filament.md#printers-that-remap-by-rewriting-the-file).
+[Printers that map filament by rewriting the file](../user/guide/filament.md#printers-that-map-filament-by-rewriting-the-file).
 
 `HELIX_MOCK_AMS=medusahc-fork` runs the rewrite route end to end in `--test`; set
 `helix_plugin_installed` to `1` with `ctl set` to get past the plugin gate.

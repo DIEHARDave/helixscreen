@@ -4,6 +4,7 @@
 #include "display_numbering.h"
 
 #include "ams_state.h"
+#include "i18n_plural.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 
 #include <spdlog/fmt/fmt.h>
@@ -13,8 +14,6 @@
 namespace helix::ui {
 
 namespace {
-/// U+00B7 MIDDLE DOT, the separator between a unit name and its position.
-constexpr const char* kUnitSeparator = "\xc2\xb7";
 
 /**
  * @brief The translated plural for @p noun, as a range header spells it.
@@ -115,6 +114,24 @@ std::string noun_text(LaneNoun noun) {
     return lv_tr("Slot");
 }
 
+std::string backup_lane_text(LaneNoun noun) {
+    switch (noun) {
+    case LaneNoun::Lane:
+        return lv_tr("Backup Lane");
+    case LaneNoun::Gate:
+        return lv_tr("Backup Gate");
+    case LaneNoun::Tool:
+        return lv_tr("Backup Tool");
+    case LaneNoun::Feeder:
+        return lv_tr("Backup Feeder");
+    case LaneNoun::Toolhead:
+        return lv_tr("Backup Toolhead");
+    case LaneNoun::Slot:
+        break;
+    }
+    return lv_tr("Backup Slot");
+}
+
 std::string lane_label(LaneNoun noun, int index) {
     const int n = lane_number(index);
     if (n < 0)
@@ -130,13 +147,19 @@ std::string clear_spool_blocked_hint(LaneNoun noun, int index) {
                        lane_label(noun, index));
 }
 
+std::string unit_scoped_label(std::string_view unit_display_name, std::string_view body) {
+    if (unit_display_name.empty() || body.empty())
+        return std::string(body);
+    return std::string(unit_display_name) + " " + kUnitSeparator + " " + std::string(body);
+}
+
 std::string lane_label(LaneNoun noun, std::string_view unit_display_name, int index) {
     if (unit_display_name.empty())
         return lane_label(noun, index);
     const std::string body = lane_label(noun, index);
     if (body.empty())
         return {};
-    return std::string(unit_display_name) + " " + kUnitSeparator + " " + body;
+    return unit_scoped_label(unit_display_name, body);
 }
 
 std::string lane_range_label(LaneNoun noun, int first_index, int last_index) {
@@ -153,29 +176,30 @@ std::string lane_range_label(LaneNoun noun, int first_index, int last_index) {
 
 std::string lane_count_label(LaneNoun noun, int count) {
     // Wide enough for the longest form: ru "Печатающие головки" is 35 bytes.
-    // Each lv_tr() sits inside its snprintf so the format-specifier gate sees
-    // the pair - a format held in a variable between the two is invisible to
-    // it. No default: a new enumerator must fail to compile here, not pass a
+    // Each tr_plural() sits inside its snprintf so the format-specifier gate
+    // sees the pair - a format held in a variable between the two is invisible
+    // to it. No default: a new enumerator must fail to compile here, not pass a
     // null format to snprintf.
     char buf[64];
+    const auto n = static_cast<uint64_t>(count);
     switch (noun) {
     case LaneNoun::Lane:
-        snprintf(buf, sizeof(buf), lv_tr("%d lanes"), count);
+        snprintf(buf, sizeof(buf), tr_plural(nullptr, "%d lanes", n), count);
         return buf;
     case LaneNoun::Gate:
-        snprintf(buf, sizeof(buf), lv_tr("%d gates"), count);
+        snprintf(buf, sizeof(buf), tr_plural(nullptr, "%d gates", n), count);
         return buf;
     case LaneNoun::Tool:
-        snprintf(buf, sizeof(buf), lv_tr("%d tools"), count);
+        snprintf(buf, sizeof(buf), tr_plural(nullptr, "%d tools", n), count);
         return buf;
     case LaneNoun::Feeder:
-        snprintf(buf, sizeof(buf), lv_tr("%d feeders"), count);
+        snprintf(buf, sizeof(buf), tr_plural(nullptr, "%d feeders", n), count);
         return buf;
     case LaneNoun::Toolhead:
-        snprintf(buf, sizeof(buf), lv_tr("%d toolheads"), count);
+        snprintf(buf, sizeof(buf), tr_plural(nullptr, "%d toolheads", n), count);
         return buf;
     case LaneNoun::Slot:
-        snprintf(buf, sizeof(buf), lv_tr("%d slots"), count);
+        snprintf(buf, sizeof(buf), tr_plural(nullptr, "%d slots", n), count);
         return buf;
     }
     return {};
@@ -191,6 +215,10 @@ LaneNoun active_tool_noun() {
     auto& ams = AmsState::instance();
     const auto* backend = ams.get_backend(ams.active_backend_index());
     return backend ? backend->tool_noun() : LaneNoun::Tool;
+}
+
+std::string active_tool_label(std::string_view name, int index, ToolLabelForm form) {
+    return tool_label_in_form(active_tool_noun(), name, index, form);
 }
 
 bool tool_badges_add_information(const std::vector<int>& tool_to_slot, int slot_count) {

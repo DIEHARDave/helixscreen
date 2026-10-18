@@ -17,7 +17,7 @@ Code map:
 | `src/api/moonraker_api_print.cpp` | `check_continue_print_state()` / `cancel_continue_print()` JSON-RPC calls. |
 
 Tests: `tests/unit/test_plr_backend.cpp`, `test_plr_offer.cpp`, `test_plr_state.cpp`,
-`test_plr_prompt.cpp`, `test_plr_error.cpp`.
+`test_plr_prompt.cpp`, `test_firmware_error_envelope.cpp`.
 
 Backend precedence in `plr_select_backend()`: SNAPMAKER first, then QIDI, then
 CREALITY. No firmware carries more than one marker set, so the order only makes a
@@ -47,7 +47,7 @@ on an AFC-modded U1 (bundle UDZJQVQZ) whose backend is not the Snapmaker one.
 | Recovery filename | `virtual_sdcard.file_path` |
 | Resume | gcode `SDCARD_PRINT_PL_RESTORE` |
 | Discard | gcode `SDCARD_PRINT_PL_CLEAR_ENV` |
-| Errors | JSON-coded; `snapmaker_extract_coded_msg()` pulls out the human `msg` |
+| Errors | JSON-coded (`{"coded": ..., "msg": ...}`); `MoonrakerError::from_json_rpc` decodes it through `include/firmware_error_envelope.h` |
 
 ### Qidi Q2 / Q1 Pro / Plus 4 - passive
 

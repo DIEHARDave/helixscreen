@@ -53,11 +53,15 @@ struct StepOperationResult {
  *        active backend. Passed in rather than recomputed here: this used to
  *        carry its own copy of the action list, the sidebar's visibility check
  *        carried another, and the two disagreed about SELECTING.
+ * @param unloads_stand_alone AmsBackend::unloads_stand_alone() for the active
+ *        backend: an unload is never the first half of a swap, so UNLOADING
+ *        means UNLOAD and a LOADING after it is a fresh load of its own.
  * @return StepOperationResult with detection result
  */
 inline StepOperationResult detect_step_operation(AmsAction action, AmsAction prev_action,
                                                  StepOperationType current_op, bool is_external,
-                                                 bool filament_loaded, bool is_active_action) {
+                                                 bool filament_loaded, bool is_active_action,
+                                                 bool unloads_stand_alone) {
     StepOperationResult result;
 
     // External operation just started (transitioned from IDLE to any active action)
@@ -67,7 +71,9 @@ inline StepOperationResult detect_step_operation(AmsAction action, AmsAction pre
         if (action == AmsAction::LOADING) {
             // Started directly with loading — fresh load
             result.op_type = StepOperationType::LOAD_FRESH;
-        } else if (filament_loaded) {
+        } else if (unloads_stand_alone && action == AmsAction::UNLOADING) {
+            result.op_type = StepOperationType::UNLOAD;
+        } else if (filament_loaded && !unloads_stand_alone) {
             // Filament loaded + unload-like first action → swap
             result.op_type = StepOperationType::LOAD_SWAP;
         } else {
@@ -77,9 +83,11 @@ inline StepOperationResult detect_step_operation(AmsAction action, AmsAction pre
         return result;
     }
 
-    // Explicit unload detection (not part of a swap where UNLOADING follows cutting/tip-forming)
+    // Explicit unload detection (not part of a swap where UNLOADING follows cutting/tip-forming).
+    // An unload already on screen keeps its bar when it returns to UNLOADING after a heat step.
     if (is_external && action == AmsAction::UNLOADING && prev_action != AmsAction::CUTTING &&
-        prev_action != AmsAction::FORMING_TIP && current_op != StepOperationType::LOAD_SWAP) {
+        prev_action != AmsAction::FORMING_TIP && current_op != StepOperationType::LOAD_SWAP &&
+        current_op != StepOperationType::UNLOAD) {
         result.should_recreate = true;
         result.op_type = StepOperationType::UNLOAD;
         return result;
@@ -87,8 +95,13 @@ inline StepOperationResult detect_step_operation(AmsAction action, AmsAction pre
 
     // Mid-operation upgrade: what looked like a standalone unload is actually a swap.
     // Loading started after unloading — upgrade to LOAD_SWAP so remaining steps display.
+    // Where unloads stand alone, that load is a new operation with its own steps.
     if (is_external && action == AmsAction::LOADING && current_op == StepOperationType::UNLOAD) {
         result.should_recreate = true;
+        if (unloads_stand_alone) {
+            result.op_type = StepOperationType::LOAD_FRESH;
+            return result;
+        }
         result.op_type = StepOperationType::LOAD_SWAP;
         result.jump_to_step = 2; // Skip heat + cut/tip (already done)
         return result;

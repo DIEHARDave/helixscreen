@@ -47,6 +47,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <optional>
@@ -266,7 +267,7 @@ void AmsState::init_backends_from_hardware(const helix::PrinterDiscovery& hardwa
         spdlog::info("[AMS State] Creating backend for: {} ({})", system.name,
                      ams_type_to_string(system.type));
 
-        auto backend = AmsBackend::create(system.type, api, client);
+        auto backend = AmsBackend::create(system.type, api, client, &hardware);
         if (!backend) {
             spdlog::warn("[AMS State] Failed to create {} backend", system.name);
             continue;
@@ -423,6 +424,7 @@ void AmsState::reset_backend_subjects() {
     lv_subject_set_int(&filament_runout_, 0);
     lv_subject_set_int(&bypass_active_, 0);
     lv_subject_set_int(&supports_bypass_, 0);
+    lv_subject_set_int(&ams_feeder_open_, 0);
     lv_subject_set_int(&ams_slot_count_, 0);
     lv_subject_set_int(&active_tool_port_present_, 1);
 
@@ -597,9 +599,10 @@ void AmsState::sync_from_backend() {
     const AmsSystemInfo& info = *snapshot;
 
     sync_system_subjects(info);
-    sync_tool_topology(backend);
+    sync_tool_topology(backend, info);
     sync_filament_runout(info);
     sync_bypass(backend, info);
+    sync_feeder(backend);
     lv_subject_set_int(&ams_slot_count_, info.total_slots);
 
     // Update tool change progress raw data (text formatting in UI layer)
@@ -756,11 +759,11 @@ void AmsState::sync_system_subjects(const AmsSystemInfo& info) {
     lv_subject_set_int(&ams_current_tool_, info.current_tool);
 }
 
-void AmsState::sync_tool_topology(AmsBackend* backend) {
+void AmsState::sync_tool_topology(AmsBackend* backend, const AmsSystemInfo& info) {
     // Push tool topology to ToolState when the active backend multiplexes tools.
     // Otherwise leave ToolState in its extruder-enumerated state.
     auto& tool_state = helix::ToolState::instance();
-    if (auto topo = helix::build_ams_topology(backend, 0)) {
+    if (auto topo = helix::build_ams_topology(backend, 0, info)) {
         tool_state.clear_backend_active_tool();
         tool_state.set_ams_topology(*topo);
         return;
@@ -846,6 +849,14 @@ void AmsState::sync_filament_runout(const AmsSystemInfo& info) {
     // removal this unload caused, and anything after a reload is a new event.
     if (info.filament_loaded) {
         runout_grace_.on_filament_loaded();
+    }
+}
+
+void AmsState::sync_feeder(AmsBackend* backend) {
+    const int open = backend->supports_feeder_control() && backend->feeder_open() ? 1 : 0;
+    if (lv_subject_get_int(&ams_feeder_open_) != open) {
+        spdlog::debug("[AmsState] feeder open -> {}", open);
+        lv_subject_set_int(&ams_feeder_open_, open);
     }
 }
 
@@ -1161,6 +1172,9 @@ AmsState::UnitEnvIndicator AmsState::compute_unit_env_indicator(AmsBackend* back
         // Format humidity text (e.g., "46%")
         snprintf(buf, sizeof(buf), "%d%%", static_cast<int>(unit.environment->humidity_pct));
         out.humidity_text = buf;
+        if (unit.environment->has_humidity)
+            out.humidity_x10 =
+                std::max(0, static_cast<int>(std::lround(unit.environment->humidity_pct * 10.0f)));
 
         // Humidity status color from the most restrictive loaded material:
         // 0=ok (green), 1=warn (yellow), 2=danger (red)
@@ -1221,6 +1235,7 @@ void set_string_if_changed(lv_subject_t* subject, const std::string& value) {
 void AmsState::publish_unit_env_indicator(int idx, const UnitEnvIndicator& e) {
     set_string_if_changed(&env_ind_temp_text_[idx], e.temp_text);
     set_string_if_changed(&env_ind_humidity_text_[idx], e.humidity_text);
+    lv_subject_set_int(&env_ind_humidity_[idx], e.humidity_x10);
     lv_subject_set_int(&env_ind_humidity_status_[idx], e.humidity_status);
     lv_subject_set_int(&env_ind_humidity_visible_[idx], e.humidity_visible ? 1 : 0);
     lv_subject_set_int(&env_ind_visible_[idx], e.visible ? 1 : 0);
@@ -1236,6 +1251,10 @@ bool AmsState::clear_unused_slot_subjects(int total_slots) {
         int default_color = static_cast<int>(AMS_DEFAULT_SLOT_COLOR);
         if (lv_subject_get_int(&slot_colors_[i]) != default_color) {
             lv_subject_set_int(&slot_colors_[i], default_color);
+            any_slot_changed = true;
+        }
+        if (lv_subject_get_int(&slot_paints_[i]) != 0) {
+            lv_subject_set_int(&slot_paints_[i], 0);
             any_slot_changed = true;
         }
         int default_status = static_cast<int>(SlotStatus::UNKNOWN);
@@ -1260,6 +1279,10 @@ bool AmsState::clear_unused_slot_subjects(int total_slots) {
         // Clear remaining filament for unused slots
         if (strcmp(lv_subject_get_string(&slot_remaining_[i]), "") != 0) {
             lv_subject_copy_string(&slot_remaining_[i], "");
+        }
+        const int idle = static_cast<int>(helix::printer::ZoneDryingState::Idle);
+        if (lv_subject_get_int(&slot_drying_[i]) != idle) {
+            lv_subject_set_int(&slot_drying_[i], idle);
         }
         // Clear material for unused slots — bump so the label clears (#1065)
         if (strcmp(lv_subject_get_string(&slot_materials_[i]), "") != 0) {
@@ -1374,11 +1397,24 @@ bool AmsState::write_slot_subjects(AmsBackend& backend, int slot_index, const Sl
         changed = true;
     }
 
+    // Multi-colour list and finish: a swatch beside the colour repaints on it.
+    const int new_paint = slot.paint_key();
+    if (lv_subject_get_int(&slot_paints_[slot_index]) != new_paint) {
+        lv_subject_set_int(&slot_paints_[slot_index], new_paint);
+        changed = true;
+    }
+
     // Measured remaining length, "" when the backend publishes none. The slot
     // shows it under its material; weight has its own surfaces.
     std::string remaining = slot.remaining_length_display();
     if (strcmp(lv_subject_get_string(&slot_remaining_[slot_index]), remaining.c_str()) != 0) {
         lv_subject_copy_string(&slot_remaining_[slot_index], remaining.c_str());
+    }
+
+    // The lane's part in a drying cycle, for the drying badge on its slot.
+    const int new_drying = static_cast<int>(slot.drying_state);
+    if (lv_subject_get_int(&slot_drying_[slot_index]) != new_drying) {
+        lv_subject_set_int(&slot_drying_[slot_index], new_drying);
     }
 
     // Material type. The ams_slot widget binds this subject directly (its
@@ -1504,9 +1540,12 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
             }
         }
     } else if (event == AmsBackend::EVENT_LOAD_COMPLETE ||
-               event == AmsBackend::EVENT_UNLOAD_COMPLETE ||
-               event == AmsBackend::EVENT_TOOL_CHANGED) {
-        // These events indicate state change, sync everything
+               event == AmsBackend::EVENT_UNLOAD_COMPLETE) {
+        // The operation is over, so an optimistic action held over the
+        // backend's silence ends with it; a busy action the backend still
+        // reports keeps the display until its own last frame.
+        queue_sync(true, -1, /*ends_operation=*/true);
+    } else if (event == AmsBackend::EVENT_TOOL_CHANGED) {
         queue_sync(true, -1);
     } else if (event == AmsBackend::EVENT_ERROR) {
         // Error occurred, sync to get error state. An error ends the operation,
@@ -1612,6 +1651,7 @@ void AmsState::mirror_detail_env_subjects(AmsBackend* backend, const AmsSystemIn
     }
     set_string_if_changed(&env_ind_detail_temp_text_, e.temp_text);
     set_string_if_changed(&env_ind_detail_humidity_text_, e.humidity_text);
+    lv_subject_set_int(&env_ind_detail_humidity_, e.humidity_x10);
     lv_subject_set_int(&env_ind_detail_humidity_status_, e.humidity_status);
     lv_subject_set_int(&env_ind_detail_humidity_visible_, e.humidity_visible ? 1 : 0);
     lv_subject_set_int(&env_ind_detail_visible_, e.visible ? 1 : 0);
@@ -1854,8 +1894,19 @@ void AmsState::set_current_loaded_defaults(bool write_header) {
         lv_subject_copy_string(&current_weight_text_, "");
     }
     lv_subject_set_int(&current_has_weight_, 0);
-    lv_subject_set_int(&current_color_, 0x505050);
+    set_current_paint(0x505050);
     lv_subject_set_int(&current_fill_pct_, 0);
+}
+
+void AmsState::set_current_paint(uint32_t rgb, const std::string& multi_color_hexes,
+                                 const std::string& finish_name) {
+    if (strcmp(lv_subject_get_string(&current_colors_), multi_color_hexes.c_str()) != 0) {
+        lv_subject_copy_string(&current_colors_, multi_color_hexes.c_str());
+    }
+    if (strcmp(lv_subject_get_string(&current_finish_), finish_name.c_str()) != 0) {
+        lv_subject_copy_string(&current_finish_, finish_name.c_str());
+    }
+    lv_subject_set_int(&current_color_, static_cast<int>(rgb));
 }
 
 void AmsState::sync_current_loaded_from_backend() {
@@ -1978,7 +2029,6 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
 
     if (!loaded_backend) {
         set_current_loaded_defaults();
-        lv_subject_set_int(&current_color_, 0x505050);
         return;
     }
 
@@ -2002,8 +2052,8 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         auto ext_spool = get_external_spool_info();
         if (ext_spool.has_value()) {
             const auto& ext = ext_spool.value();
-            int ext_color = static_cast<int>(ext.color_rgb);
-            lv_subject_set_int(&current_color_, ext_color);
+            set_current_paint(ext.color_rgb, ext.multi_color_hexes,
+                              filament_finish_name(ext.finish()));
             lv_subject_set_int(&current_fill_pct_, ext.display_fill_pct());
 
             // Build label from spool info — same resolver as the loaded-slot
@@ -2040,7 +2090,7 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
                 lv_subject_copy_string(&current_weight_text_, "");
             }
             lv_subject_set_int(&current_has_weight_, 0);
-            lv_subject_set_int(&current_color_, 0x888888);
+            set_current_paint(0x888888);
             lv_subject_set_int(&current_fill_pct_, -1);
         }
     } else if (slot_index >= 0 && filament_loaded) {
@@ -2065,8 +2115,8 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         }
 
         // Set color
-        int slot_color = static_cast<int>(slot_info.color_rgb);
-        lv_subject_set_int(&current_color_, slot_color);
+        set_current_paint(slot_info.color_rgb, slot_info.multi_color_hexes,
+                          filament_finish_name(slot_info.finish()));
         lv_subject_set_int(&current_fill_pct_, slot_info.display_fill_pct());
 
         // Build the material label. The slot's own name/brand/material win, the

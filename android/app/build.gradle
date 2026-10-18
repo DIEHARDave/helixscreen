@@ -210,6 +210,7 @@ def nonShippableConfig = [
 def hostOnlyConfig = [
     'helixscreen.service',              // systemd unit
     'refresh-service-units.sh',         // systemd unit maintenance
+    'restore-user-config.sh',           // post-update restore, run by the init script and the unit maintenance
     'ensure-polkit-rule.sh',            // polkit
     'helixscreen-network.pkla',         // polkit
     '99-helixscreen-backlight.rules',   // udev

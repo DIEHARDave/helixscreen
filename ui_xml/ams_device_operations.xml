@@ -164,7 +164,7 @@
         <lv_obj name="row_qidi_eject_distance"
                 width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm"
                 scrollable="false">
-          <bind_flag_if_eq subject="ams_device_ops_is_qidi" flag="hidden" ref_value="0"/>
+          <bind_flag_if_eq subject="ams_device_ops_has_eject_params" flag="hidden" ref_value="0"/>
           <!-- Header: icon + label/description + current value -->
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="space_between"
@@ -197,7 +197,7 @@
         <lv_obj name="row_qidi_eject_velocity"
                 width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm"
                 scrollable="false">
-          <bind_flag_if_eq subject="ams_device_ops_is_qidi" flag="hidden" ref_value="0"/>
+          <bind_flag_if_eq subject="ams_device_ops_has_eject_params" flag="hidden" ref_value="0"/>
           <!-- Header: icon + label/description + current value -->
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="space_between"
@@ -231,12 +231,11 @@
              single-unit Happy Hare groups, and the mock. Read-only systems
              like CFS and AD5X IFS hide the row). The base reset_endless_spool()
              loops set_endless_spool_backup(slot, -1) over every slot; Happy
-             Hare overrides it with MMU_ENDLESS_SPOOL RESET=1. Wipes ALL failover
+             Hare overrides it with MMU_ENDLESS_SPOOL RESET=1. Wipes ALL endless-spool
              config, so the tap opens a confirmation modal rather than firing
              immediately. -->
         <setting_action_row name="row_reset_endless_spool"
-                            label="Reset Endless Spool" icon="restart"
-                            description="Clear all spool failover assignments"
+                            label="Reset Endless Spool" icon="restart" description="Clear every Endless Spool backup"
                             callback="on_ams_reset_endless_spool_clicked">
           <bind_flag_if_eq subject="ams_device_ops_can_reset_endless_spool" flag="hidden" ref_value="0"/>
         </setting_action_row>

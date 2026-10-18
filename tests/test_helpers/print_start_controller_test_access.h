@@ -15,6 +15,7 @@
 #include "ui_print_start_controller.h"
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -55,6 +56,16 @@ class PrintStartControllerTestAccess {
     static const std::vector<std::string>&
     filament_colors(const helix::ui::PrintStartController& c) {
         return c.filament_colors_;
+    }
+
+    /// The context the gates read, gathered as run_gates_from() gathers it.
+    static helix::PrintStartContext gather(const helix::ui::PrintStartController& c) {
+        return c.gather_print_start_context();
+    }
+
+    /// The name of the gate the open dialog belongs to.
+    static std::string_view open_gate_name(const helix::ui::PrintStartController& c) {
+        return c.gate_list_[c.gate_resume_index_].name;
     }
 
     // --- print-start success hook (test_job_queue_start_guard.cpp) ---

@@ -205,9 +205,8 @@ class AmsDeviceOperationsOverlay : public OverlayBase {
     /// so it is shown disabled with a note instead of silently lying.
     lv_subject_t printer_retains_spool_info_subject_{};
 
-    /// Subject for QIDI Box backend detection (0=not QIDI, 1=QIDI) — gates the
-    /// eject distance/velocity rows, which only apply to QIDI Box systems
-    lv_subject_t is_qidi_subject_{};
+    /// 1 when the backend has configurable eject distance/velocity; gates those rows.
+    lv_subject_t has_eject_params_subject_{};
 
     /// Display string subject for the QIDI eject distance value (e.g. "878 mm")
     lv_subject_t qidi_eject_distance_display_subject_{};

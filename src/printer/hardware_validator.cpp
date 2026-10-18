@@ -9,6 +9,7 @@
 
 #include "config.h"
 #include "hardware_role_registry.h"
+#include "i18n_plural.h"
 #include "json_utils.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "printer_discovery.h"
@@ -248,15 +249,18 @@ void HardwareValidator::notify_user(const HardwareValidationResult& result) {
             message = fmt::format(lv_tr("Critical hardware missing: {}"),
                                   result.critical_missing[0].hardware_name);
         } else {
-            message =
-                fmt::format(lv_tr("{} critical hardware issues"), result.critical_missing.size());
+            const size_t critical = result.critical_missing.size();
+            message = fmt::format(fmt::runtime(helix::ui::tr_plural(
+                                      nullptr, "{} critical hardware issues", critical)),
+                                  critical);
         }
         severity = ToastSeverity::ERROR;
     } else if (!result.expected_missing.empty() || !result.changed_from_last_session.empty()) {
         size_t count = result.expected_missing.size() + result.changed_from_last_session.size();
-        message = fmt::format(count == 1 ? lv_tr("{} configured item not found")
-                                         : lv_tr("{} configured items not found"),
-                              count);
+        message =
+            fmt::format(fmt::runtime(helix::ui::tr_plural("{} configured item not found",
+                                                          "{} configured items not found", count)),
+                        count);
         severity = ToastSeverity::WARNING;
     } else {
         // Build intelligent message based on hardware types
@@ -272,15 +276,20 @@ void HardwareValidator::notify_user(const HardwareValidationResult& result) {
         }
 
         if (led_count > 0 && sensor_count == 0 && other_count == 0) {
-            message = led_count == 1 ? lv_tr("LED strip available for lighting control")
-                                     : fmt::format(lv_tr("{} LED strips available"), led_count);
+            message = fmt::format(
+                fmt::runtime(helix::ui::tr_plural("LED strip available for lighting control",
+                                                  "{} LED strips available", led_count)),
+                led_count);
         } else if (sensor_count > 0 && led_count == 0 && other_count == 0) {
-            message = sensor_count == 1
-                          ? lv_tr("Filament sensor available for runout detection")
-                          : fmt::format(lv_tr("{} filament sensors available"), sensor_count);
+            message = fmt::format(
+                fmt::runtime(helix::ui::tr_plural("Filament sensor available for runout detection",
+                                                  "{} filament sensors available", sensor_count)),
+                sensor_count);
         } else {
-            message =
-                fmt::format(lv_tr("{} new hardware available"), result.newly_discovered.size());
+            const size_t discovered = result.newly_discovered.size();
+            message = fmt::format(fmt::runtime(helix::ui::tr_plural(
+                                      nullptr, "{} new hardware available", discovered)),
+                                  discovered);
         }
         severity = ToastSeverity::INFO;
     }

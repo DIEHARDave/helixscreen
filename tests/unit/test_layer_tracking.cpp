@@ -775,6 +775,20 @@ TEST_CASE("Layer tracking: never-reporting printer keeps sticky false (fallback 
         /*current_layer=*/0, /*print_duration=*/5, /*seen_layer_zero=*/false));
 }
 
+TEST_CASE("A pre-print step the printer reports holds the first-extrusion fallback",
+          "[layer_tracking][print_stats]") {
+    // A priming line extrudes before the print: on a printer that reports no
+    // layers, print_duration goes positive while the firmware still says it
+    // is priming.
+    REQUIRE_FALSE(MoonrakerManager::should_complete_preprint(
+        /*printer_reports_layers=*/false, /*current_layer=*/0, /*print_duration=*/2,
+        /*seen_layer_zero=*/false, /*layer_advanced=*/false, /*in_live_preprint_step=*/true));
+    // A real first layer is authoritative whatever the step says.
+    REQUIRE(MoonrakerManager::should_complete_preprint(
+        /*printer_reports_layers=*/true, /*current_layer=*/1, /*print_duration=*/2,
+        /*seen_layer_zero=*/true, /*layer_advanced=*/false, /*in_live_preprint_step=*/true));
+}
+
 // ============================================================================
 // Z-height current-layer derivation (issue kostake#4542)
 //

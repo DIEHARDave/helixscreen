@@ -19,13 +19,18 @@
 // real LVGL layout pass, which is the only way the wrap actually manifests.
 
 #include "ui_modal.h"
+#include "ui_swatch.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/scoped_geometry.h"
 #include "action_prompt_manager.h"
 #include "action_prompt_modal.h"
+#include "demo_prompt_lines.h"
 #include "display_settings_manager.h"
+#include "lvgl/src/misc/lv_area_private.h" // lv_area_is_in
 #include "theme_manager.h"
 
+#include <algorithm>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -53,6 +58,17 @@ helix::PromptData make_regular_prompt(int n_buttons) {
         data.buttons.push_back(std::move(btn));
     }
     return data;
+}
+
+// Z-Mod's color picker, parsed from the same wire lines the ctl demo sends.
+helix::PromptData make_zmod_color_prompt() {
+    helix::ActionPromptManager manager;
+    helix::PromptData shown;
+    manager.set_on_show([&shown](const helix::PromptData& data) { shown = data; });
+    for (const std::string& line : helix::demo::zmod_color_picker_lines()) {
+        manager.process_line(line);
+    }
+    return shown;
 }
 
 class ActionPromptLayoutFixture : public LVGLUITestFixture {
@@ -296,6 +312,215 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture, "ActionPromptModal: secondary uses t
     const lv_color_t bg = lv_obj_get_style_bg_color(btns[0], LV_PART_MAIN);
     CHECK(lv_color_eq(bg, theme_manager_get_color("secondary")));
     CHECK_FALSE(lv_color_eq(bg, theme_manager_get_color("success")));
+
+    modal_.hide();
+}
+
+// A hex in the third field (or the legacy fourth) fills the button with that
+// color, and the label picks whatever reads on it; a field that is not a color
+// leaves the themed default (prestonbrown/helixscreen#1806).
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: hex button fills with the color and keeps text readable",
+                 "[action_prompt][layout][ui_integration][hex_color][1806]") {
+    using helix::ActionPromptManager;
+    helix::PromptData data;
+    data.title = "Colors";
+    data.buttons = {
+        ActionPromptManager::parse_button_spec("Standard|GCODE_CMD_1|error"),
+        ActionPromptManager::parse_button_spec("HEX Dark (White Text)|GCODE_CMD_2|ff5722"),
+        ActionPromptManager::parse_button_spec("HEX Light (Black Text)|GCODE_CMD_3|#e0e0e0"),
+        ActionPromptManager::parse_button_spec("Legacy|GCODE_CMD_4|primary|21cc3d"),
+        ActionPromptManager::parse_button_spec("Garbage|GCODE_CMD_5|zzzzzz"),
+    };
+
+    REQUIRE(modal_.show_prompt(test_screen(), data));
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == 5);
+
+    auto bg = [&](size_t i) { return lv_obj_get_style_bg_color(btns[i], LV_PART_MAIN); };
+    CHECK(lv_color_eq(bg(0), theme_manager_get_color("danger")));
+    CHECK(lv_color_eq(bg(1), lv_color_hex(0xff5722)));
+    CHECK(lv_color_eq(bg(2), lv_color_hex(0xe0e0e0)));
+    CHECK(lv_color_eq(bg(3), lv_color_hex(0x21cc3d)));
+    CHECK(lv_color_eq(bg(4), theme_manager_get_color("primary")));
+
+    for (size_t i = 0; i < btns.size(); ++i) {
+        lv_obj_t* label = lv_obj_get_child(btns[i], 0);
+        REQUIRE(label != nullptr);
+        const lv_color_t text = lv_obj_get_style_text_color(label, LV_PART_MAIN);
+        INFO("button[" << i << "] \"" << data.buttons[i].label << "\"");
+        CHECK(helix::contrast_ratio(text, bg(i)) >= kThemeTextContrastThreshold);
+    }
+
+    modal_.hide();
+}
+
+// A Z-Mod swatch tile carries no text: it shows a circle of its color painted
+// by the swatch painter, which owns the contrast edge, and the tile itself
+// draws nothing.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: a label-less hex button is a swatch",
+                 "[action_prompt][layout][ui_integration][hex_color][1806][swatch]") {
+    using helix::ActionPromptManager;
+    helix::PromptData data;
+    data.title = "Select color";
+    data.buttons = {
+        ActionPromptManager::parse_button_spec("_ |CHANGE_ZCOLOR SLOT=1 HEX=f72224|f72224"),
+        ActionPromptManager::parse_button_spec("Named|GCODE|e0e0e0"),
+    };
+
+    REQUIRE(modal_.show_prompt(test_screen(), data));
+    lv_obj_update_layout(test_screen());
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == 2);
+
+    lv_obj_t* disc = lv_obj_find_by_name(btns[0], "color_swatch_disc");
+    REQUIRE(disc != nullptr);
+    CHECK(helix::ui::has_swatch_paint(disc));
+    const auto colors = helix::ui::swatch_paint_colors(disc);
+    REQUIRE(colors.size() == 1);
+    CHECK(lv_color_eq(colors[0], lv_color_hex(0xf72224)));
+    CHECK(lv_color_eq(helix::ui::swatch_color_of(btns[0]), lv_color_hex(0xf72224)));
+    CHECK(lv_obj_get_style_radius(disc, LV_PART_MAIN) == LV_RADIUS_CIRCLE);
+    CHECK(lv_obj_get_width(disc) == lv_obj_get_height(disc));
+    CHECK(lv_obj_get_width(disc) > 0);
+    CHECK(lv_obj_get_style_bg_opa(btns[0], LV_PART_MAIN) == LV_OPA_TRANSP);
+    CHECK(lv_obj_get_style_border_width(btns[0], LV_PART_MAIN) == 0);
+
+    // A labelled hex button is an ordinary filled button.
+    CHECK(lv_obj_find_by_name(btns[1], "color_swatch_disc") == nullptr);
+    CHECK(lv_obj_get_style_bg_opa(btns[1], LV_PART_MAIN) == LV_OPA_COVER);
+
+    modal_.hide();
+}
+
+// On a 480x272 panel the swatch grid takes the room the screen has: the card
+// widens until every tile is a full touch target across, and the tiles grow
+// into the free height under the card cap, with nothing pushed off the card.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: swatch grid uses the room a 480x272 screen has",
+                 "[action_prompt][layout][ui_integration][hex_color][1806][swatch]") {
+    helix::test::ScopedGeometry micro(480, 272);
+    REQUIRE(modal_.show_prompt(test_screen(), make_zmod_color_prompt()));
+    lv_obj_t* dialog = modal_.dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_update_layout(test_screen());
+
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == 25);
+    lv_area_t card;
+    lv_obj_get_coords(dialog, &card);
+    lv_area_t screen;
+    lv_obj_get_coords(test_screen(), &screen);
+    CHECK(lv_area_is_in(&card, &screen, 0));
+
+    // Width holds the touch target. Height may drop below it so every color
+    // stays visible, but tiles must grow into the free room: taller than
+    // button_height, which is all an unfitted tile gets here.
+    const int32_t touch_min = theme_manager_get_spacing("touch_target_min");
+    const int32_t button_h = theme_manager_get_spacing("button_height");
+    REQUIRE(touch_min > 0);
+    REQUIRE(button_h > 0);
+    for (size_t i = 0; i < 24; ++i) {
+        lv_area_t a;
+        lv_obj_get_coords(btns[i], &a);
+        CAPTURE(i, lv_area_get_width(&a), lv_area_get_height(&a), touch_min, button_h);
+        CHECK(lv_area_get_width(&a) >= touch_min);
+        CHECK(lv_area_get_height(&a) > button_h);
+        CHECK(lv_area_is_in(&a, &card, 0));
+        // The circle fills the tile's shorter side.
+        lv_obj_t* disc = lv_obj_find_by_name(btns[i], "color_swatch_disc");
+        REQUIRE(disc != nullptr);
+        CHECK(lv_obj_get_width(disc) == std::min(lv_area_get_width(&a), lv_area_get_height(&a)));
+        CHECK(lv_obj_get_height(disc) == lv_obj_get_width(disc));
+    }
+    lv_area_t footer;
+    lv_obj_get_coords(btns[24], &footer);
+    CHECK(lv_area_is_in(&footer, &card, 0));
+
+    modal_.hide();
+}
+
+// A screen with room for full-size tiles keeps the card and tiles it had.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: swatch grid at 800x480 keeps the standard card",
+                 "[action_prompt][layout][ui_integration][hex_color][1806]") {
+    helix::test::ScopedGeometry medium(800, 480);
+    REQUIRE(modal_.show_prompt(test_screen(), make_zmod_color_prompt()));
+    lv_obj_t* dialog = modal_.dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_update_layout(test_screen());
+
+    CHECK(lv_obj_get_width(dialog) == 480);
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == 25);
+    const int32_t touch_min = theme_manager_get_spacing("touch_target_min");
+    const int32_t button_h = theme_manager_get_spacing("button_height");
+    for (size_t i = 0; i < 24; ++i) {
+        CAPTURE(i, touch_min, button_h);
+        CHECK(lv_obj_get_height(btns[i]) == button_h);
+        CHECK(lv_obj_get_width(btns[i]) >= touch_min);
+    }
+
+    modal_.hide();
+}
+
+// Labelled buttons are not swatches: a 480x272 prompt of them keeps the
+// standard card width and button height.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: labelled buttons at 480x272 keep the standard card",
+                 "[action_prompt][layout][ui_integration][hex_color][1806]") {
+    helix::test::ScopedGeometry micro(480, 272);
+    REQUIRE(modal_.show_prompt(test_screen(), make_regular_prompt(4)));
+    lv_obj_t* dialog = modal_.dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_update_layout(test_screen());
+
+    CHECK(lv_obj_get_width(dialog) == 480 * 70 / 100);
+    for (lv_obj_t* btn : ActionPromptModalTestAccess::buttons(modal_)) {
+        CHECK(lv_obj_get_height(btn) == theme_manager_get_spacing("button_height"));
+    }
+
+    modal_.hide();
+}
+
+// More swatch rows than the card can hold at button_height: the tiles stop
+// shrinking there and the grid scrolls, so the footer stays on the card.
+TEST_CASE_METHOD(ActionPromptLayoutFixture,
+                 "ActionPromptModal: a swatch grid too tall for 480x272 scrolls",
+                 "[action_prompt][layout][ui_integration][hex_color][1806]") {
+    helix::test::ScopedGeometry micro(480, 272);
+    helix::PromptData data = make_zmod_color_prompt();
+    helix::PromptButton footer = data.buttons.back();
+    data.buttons.pop_back();
+    const size_t swatches = data.buttons.size();
+    for (size_t i = 0; i < swatches; ++i) {
+        helix::PromptButton extra = data.buttons[i];
+        extra.group_id += 3;
+        data.buttons.push_back(extra);
+    }
+    data.buttons.push_back(footer);
+
+    REQUIRE(modal_.show_prompt(test_screen(), data));
+    lv_obj_t* dialog = modal_.dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_update_layout(test_screen());
+
+    const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
+    REQUIRE(btns.size() == 2 * swatches + 1);
+    for (size_t i = 0; i < 2 * swatches; ++i) {
+        CAPTURE(i);
+        CHECK(lv_obj_get_height(btns[i]) == theme_manager_get_spacing("button_height"));
+    }
+    lv_obj_t* container = lv_obj_find_by_name(dialog, "button_container");
+    REQUIRE(container != nullptr);
+    CHECK(lv_obj_has_flag(container, LV_OBJ_FLAG_SCROLLABLE));
+    CHECK(lv_obj_get_scroll_bottom(container) > 0);
+
+    lv_area_t card, footer_area;
+    lv_obj_get_coords(dialog, &card);
+    lv_obj_get_coords(btns.back(), &footer_area);
+    CHECK(lv_area_is_in(&footer_area, &card, 0));
 
     modal_.hide();
 }

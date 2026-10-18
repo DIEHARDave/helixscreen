@@ -11,8 +11,8 @@
         event_bubble="true">
     <bind_flag_if_eq subject="print_start_phase" flag="hidden" ref_value="0"/>
     <text_body text="Preparing Print" clickable="false" event_bubble="true"/>
-    <progress_bar name="print_start_bar"
-                  width="90%" bind_value="print_start_progress" clickable="false" event_bubble="true"/>
+    <progress_bar_estimate name="print_start_bar"
+                           width="90%" bind_value="print_start_progress" clickable="false" event_bubble="true"/>
     <text_small bind_text="print_start_message" clickable="false" event_bubble="true"/>
     <text_small name="print_start_eta"
                 bind_text="print_start_time_left" style_text_color="#text_muted" clickable="false" event_bubble="true"/>

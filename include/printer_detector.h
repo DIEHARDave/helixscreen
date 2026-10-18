@@ -110,6 +110,14 @@ struct BuildVolume {
     float plate_y_max = 0.0f;
 };
 
+namespace helix {
+/// Klipper's probe x_offset/y_offset: the probe's position relative to the nozzle.
+struct ProbeXYOffset {
+    double x = 0.0;
+    double y = 0.0;
+};
+} // namespace helix
+
 /**
  * @brief Printer hardware discovery data
  *
@@ -408,6 +416,16 @@ class PrinterDetector {
      */
     static bool hide_manual_z_calibration(const std::string& printer_name);
 
+    /// The database's `z_offset_persists` field for @p printer_name: false when the
+    /// firmware keeps a SET_GCODE_OFFSET adjustment only for the running print.
+    /// True when absent or unknown. Read only for the firmware_managed strategy.
+    static bool z_offset_persists(const std::string& printer_name);
+
+    /// The database's `"tool_change_resets_z_offset": true` flag for @p printer_name:
+    /// activating a tool re-applies that head's stored gcode offset absolutely,
+    /// replacing any adjustment. False when absent or unknown.
+    static bool tool_change_resets_z_offset(const std::string& printer_name);
+
     /// Look up probe type override from the printer database.
     /// @return Probe type string (e.g., "prtouch_v2"), or empty if not specified
     static std::string get_probe_type(const std::string& printer_name);
@@ -594,6 +612,11 @@ class PrinterDetector {
     /// any other value, and for an unknown printer.
     static helix::calibration::BeltTensionerKind
     get_belt_tensioner(const std::string& printer_name);
+
+    /// The database's `"klipper_hides_dot_dirs": true` flag for @p printer_name:
+    /// its Klipper skips dot-directories when it resolves a file to print, so a
+    /// copy staged under one fails to open. False when absent or unknown.
+    static bool klipper_hides_dot_dirs(const std::string& printer_name);
 
     /**
      * @brief Check if connected printer is a Creality K1 series

@@ -14,6 +14,7 @@
  */
 
 #include "../../include/pending_startup_warnings.h"
+#include "../test_helpers/log_capture.h"
 
 #include <atomic>
 #include <string>
@@ -193,4 +194,24 @@ TEST_CASE("PendingStartupWarnings: drops past cap, preserves earlier entries",
     REQUIRE(captured.size() >= 1);
     REQUIRE(captured.size() <= 100);
     REQUIRE(captured.front() == "msg_0");
+}
+
+TEST_CASE("PendingStartupWarnings: warns once per overflow, again after a drain",
+          "[startup_warnings]") {
+    auto& q = PendingStartupWarnings::instance();
+    q.clear();
+    LogCapture log(512);
+    const auto overflow = [&q](const std::string& prefix) {
+        for (int i = 0; i < 80; i++) {
+            q.enqueue(PendingStartupWarnings::Severity::INFO, prefix + std::to_string(i));
+        }
+    };
+
+    overflow("a_");
+    CHECK(log.count_containing("queue full") == 1);
+
+    q.drain([](PendingStartupWarnings::Severity, const std::string&, uint32_t) {});
+    overflow("b_");
+    CHECK(log.count_containing("queue full") == 2);
+    q.clear();
 }

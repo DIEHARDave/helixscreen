@@ -9,7 +9,6 @@
 #include "ui_filename_utils.h"
 #include "ui_format_utils.h"
 #include "ui_nav.h"
-#include "ui_next_tick.h"
 #include "ui_overlay_temp_graph.h"
 #include "ui_panel_print_select.h"
 #include "ui_panel_print_status.h"
@@ -44,9 +43,11 @@
 #include "print_history_manager.h"
 #include "printer_state.h"
 #include "runtime_config.h"
+#include "src/ui/panel_widgets/content_chrome.h"
 #include "standard_macros.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
+#include "text_measure.h"
 #include "theme_manager.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_load_context.h"
@@ -431,8 +432,8 @@ void PrintStatusWidget::detach() {
     // Invalidate lifetime guard FIRST to abort in-flight async fetches
     lifetime_.invalidate();
     live_instances().erase(this);
-    idle_reset_pending_ = false;
-    active_apply_pending_ = false;
+    idle_reset_timer_.cancel();
+    active_apply_timer_.cancel();
     // The next attach may bring fresh XML thumbs that show nothing of this.
     shown_idle_thumb_ = {};
 
@@ -507,6 +508,44 @@ void PrintStatusWidget::on_activate() {
         !job_holds_machine(printer_state_.print_state().get_print_lifecycle())) {
         defer_reset_print_card_to_idle();
     }
+}
+
+namespace helix {
+
+IdleCardNeeds measure_idle_card_needs() {
+    IdleCardNeeds n;
+    // ui_card pads by #space_md; a pixel per side covers its border.
+    const int card_pad = theme_manager_get_spacing("space_md") + 1;
+    n.chrome_w = 2 * card_pad;
+    n.chrome_h = 2 * card_pad;
+    const lv_font_t* title_font = theme_manager_get_font("font_body");
+    const lv_font_t* line_font = theme_manager_get_font("font_small");
+    n.gap = theme_manager_get_spacing("space_xs");
+    n.title_h = title_font ? lv_font_get_line_height(title_font) : 0;
+    // The "when" and "meta" lines, stacked with the column's gap.
+    n.detail_h = line_font ? 2 * lv_font_get_line_height(line_font) + n.gap : 0;
+    n.button_h = theme_manager_get_spacing("button_height_sm");
+    // A caption measured in font_body, the larger face a button label takes.
+    const int button_chrome = helix::button_label_chrome_w();
+    n.reprint_w = ui::measure_text_px(lv_tr("Reprint Last"), title_font) + button_chrome;
+    n.queue_w = ui::measure_text_px(lv_tr("Job Queue"), title_font) + button_chrome;
+    return n;
+}
+
+bool idle_card_fits(const IdleCardNeeds& n, int width_px, int height_px) {
+    const int avail_w = width_px - n.chrome_w;
+    if (avail_w < std::max(n.reprint_w, n.queue_w)) {
+        return false;
+    }
+    const bool side_by_side = avail_w >= n.reprint_w + n.gap + n.queue_w;
+    const int buttons_h = side_by_side ? n.button_h : 2 * n.button_h + n.gap;
+    return height_px - n.chrome_h >= n.title_h + n.gap + n.detail_h + n.gap + buttons_h;
+}
+
+} // namespace helix
+
+bool PrintStatusWidget::fits_at(int width_px, int height_px) const {
+    return idle_card_fits(measure_idle_card_needs(), width_px, height_px);
 }
 
 void PrintStatusWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int width_px,
@@ -966,44 +1005,29 @@ time_t PrintStatusWidget::get_last_print_source_modified() const {
 }
 
 void PrintStatusWidget::defer_reset_print_card_to_idle() {
-    if (idle_reset_pending_) {
-        return;
-    }
-    idle_reset_pending_ = true;
-    // run_next_tick escapes the UpdateQueue::process_pending() batch (see
-    // CLAUDE.md "Safe escape routes"). detach() invalidates lifetime_, so a
-    // callback queued before it is skipped and the next attach queues its own.
-    helix::ui::run_next_tick(lifetime_.token(), [this]() {
-        if (widget_obj_ && idle_reset_pending_) {
-            idle_reset_pending_ = false;
+    // A zero-period timer fires on the next LVGL tick, outside the
+    // UpdateQueue::process_pending() batch the callers run in. detach() cancels
+    // it, so a recycled instance never sees a tick queued by its previous
+    // attach.
+    idle_reset_timer_.schedule_once([this]() {
+        if (widget_obj_) {
             reset_print_card_to_idle();
         }
     });
 }
 
 void PrintStatusWidget::defer_apply_active_thumbnail() {
-    if (active_apply_pending_) {
-        return;
-    }
-    active_apply_pending_ = true;
-    // run_next_tick escapes the UpdateQueue::process_pending() batch the
-    // observers run in, the same escape defer_reset_print_card_to_idle() makes
-    // for the idle sibling. detach() invalidates lifetime_, so a callback queued
-    // before it is skipped and the next attach queues its own.
-    helix::ui::run_next_tick(lifetime_.token(), [this]() {
-        if (!active_apply_pending_) {
-            return;
-        }
-        active_apply_pending_ = false;
+    // Same next-tick escape as defer_reset_print_card_to_idle().
+    active_apply_timer_.schedule_once([this]() {
         if (!widget_obj_ || !print_card_active_thumb_) {
             return;
         }
         // Trigger hardening (#1001), matching reset_print_card_to_idle(): by the
         // time the tick fires, populate_page's safe_clean_children() may have
         // reparented this subtree onto lv_layer_top() to await deletion.
-        // lv_image_set_src → update_align → lv_obj_update_layout would then walk
+        // lv_image_set_src -> update_align -> lv_obj_update_layout would then walk
         // the whole layer and recurse into sibling condemned grid subtrees whose
-        // children may already be freed → SIGSEGV in grid calc().
+        // children may already be freed -> SIGSEGV in grid calc().
         if (!helix::ui::is_on_active_screen(print_card_active_thumb_)) {
             spdlog::debug("[PrintStatusWidget] Skip active thumbnail: off active screen "
                           "(mid-teardown)");
@@ -1128,22 +1152,14 @@ void PrintStatusWidget::reset_print_card_to_idle() {
     // before it ever reaches this callback.
     req.api = api;
 
-    auto token = lifetime_.token();
-
+    // fetch() delivers on the main thread and only while ctx is still current,
+    // so the callback may touch members directly.
     get_thumbnail_cache().fetch(
         req, ctx,
-        [this, token, ctx, key = req.key, stamp = req.source_modified](const std::string& lvgl_path,
-                                                                       bool /*degraded*/) {
-            // Marshal first, then touch members — a bare expired() check
-            // followed by a `this` dereference is L081 Mechanism C.
-            token.defer(
-                "PrintStatusWidget::apply_idle_thumb", [this, ctx, key, stamp, lvgl_path]() {
-                    // A later resolve can land in the hop this defer adds.
-                    if (!ctx.is_valid())
-                        return;
-                    publish_idle_render(key, stamp, lvgl_path);
-                    spdlog::info("[PrintStatusWidget] Idle thumbnail loaded: {}", lvgl_path);
-                });
+        [this, key = req.key, stamp = req.source_modified](const std::string& lvgl_path,
+                                                           bool /*degraded*/) {
+            publish_idle_render(key, stamp, lvgl_path);
+            spdlog::info("[PrintStatusWidget] Idle thumbnail loaded: {}", lvgl_path);
         },
         [](const std::string& error) {
             spdlog::debug("[PrintStatusWidget] Idle thumbnail fetch failed: {}", error);
@@ -1340,10 +1356,10 @@ void PrintStatusWidget::show_idle_runout_modal() {
 
 void PrintStatusWidget::dispatch_load() {
     AmsBackend* backend = AmsState::instance().get_backend();
-    // Nothing is printing, so there is no "currently feeding" lane to infer from
-    // a print job — the backend's own active slot is the only target available,
-    // and this dialog has no slot picker.
-    const int slot = backend ? backend->get_current_slot() : -1;
+    // This dialog has no slot picker: an idle runout names its head, and with
+    // no lane named the backend's active slot is the target.
+    const int slot = helix::ui::runout_target_slot(
+        backend, helix::FilamentSensorManager::instance().real_runout_lane(), /*load=*/true);
     helix::ui::execute_filament_load(backend, slot, "[PrintStatusWidget]");
 }
 

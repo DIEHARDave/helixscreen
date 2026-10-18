@@ -3,10 +3,10 @@
 
 /**
  * @file test_ams_loaded_spool_sidebar.cpp
- * @brief The AMS sidebar at 800x480: it paints the loaded card's spool (the
+ * @brief The AMS sidebar: at 800x480 it paints the loaded card's spool (the
  *        loaded filament's colour and how much is left on it, through every
- *        current-loaded branch), and its action buttons keep their labels inside
- *        them in every shipped language.
+ *        current-loaded branch), and at 800x480 and 480x320 its action buttons
+ *        keep their labels inside them in every shipped language.
  */
 
 #include "ui_ams_sidebar.h"
@@ -19,6 +19,7 @@
 
 #include "../test_fixtures.h"
 #include "../test_helpers/backend_user_edit.h"
+#include "../test_helpers/scoped_geometry.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "ams_types.h"
@@ -27,6 +28,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -182,9 +184,15 @@ TEST_CASE_METHOD(XMLTestFixture, "AMS sidebar paints the loaded spool's colour a
     AmsState::instance().set_backend(nullptr);
 }
 
-TEST_CASE_METHOD(XMLTestFixture,
-                 "AMS sidebar action labels stay inside their buttons in every language",
-                 "[ui_integration][ams][i18n]") {
+namespace {
+
+/// Every visible sidebar action on the AMS panel at the current geometry, in
+/// every shipped language, on Happy Hare's mock (Home, Check slots), AFC's
+/// (Reset) and the Snapmaker's (Load... and Unload... for its parallel heads).
+/// Each label sits inside its button and each button on screen. With
+/// @p whole_in, the languages listed must show their full text; the rest may
+/// ellipsize, inside the button.
+void check_action_labels(XMLTestFixture& fx, std::initializer_list<const char*> whole_in) {
     ScopedLanguage restore_lang;
     register_ams_widgets_and_xml_once();
 
@@ -196,33 +204,42 @@ TEST_CASE_METHOD(XMLTestFixture,
             helix::ui::ensure_translation_loaded(lang);
             lv_translation_set_language(lang);
         }
+        bool whole = false;
+        for (const char* w : whole_in) {
+            whole = whole || std::strcmp(w, lang) == 0;
+        }
 
-        // Happy Hare's mock shows Home and Check slots; AFC's shows Reset.
-        for (const bool afc : {false, true}) {
-            CAPTURE(afc);
+        for (const char* backend : {"happy_hare", "afc", "snapmaker"}) {
+            CAPTURE(backend);
             auto mock = std::make_unique<AmsBackendMock>(4);
-            mock->set_afc_mode(afc);
+            mock->set_afc_mode(std::strcmp(backend, "afc") == 0);
+            mock->set_snapmaker_mode(std::strcmp(backend, "snapmaker") == 0);
             REQUIRE(mock->start().success());
             AmsState::instance().set_backend(std::move(mock));
             AmsState::instance().init_subjects(true);
             AmsState::instance().sync_from_backend();
 
-            AmsPanel panel(state(), &api());
+            AmsPanel panel(fx.state(), &fx.api());
             panel.init_subjects();
             lv_obj_t* panel_obj =
-                static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "ams_panel", nullptr));
+                static_cast<lv_obj_t*>(lv_xml_create(fx.test_screen(), "ams_panel", nullptr));
             REQUIRE(panel_obj != nullptr);
-            panel.setup(panel_obj, test_screen());
+            panel.setup(panel_obj, fx.test_screen());
             panel.on_activate();
-            process_lvgl(20);
-            lv_obj_update_layout(test_screen());
+            fx.process_lvgl(20);
+            lv_obj_update_layout(fx.test_screen());
 
+            lv_area_t screen;
+            lv_obj_get_coords(fx.test_screen(), &screen);
             int checked = 0;
             const std::string reset_key = AmsState::instance().get_backend()->reset_button_label();
             const std::pair<const char*, std::string> buttons[] = {
-                {"btn_unload", "Unload"},           {"btn_batch_unload", "Unload..."},
-                {"btn_batch_load", "Load..."},      {"btn_reset", reset_key},
-                {"btn_check_gates", "Check Slots"}, {"btn_settings", "Settings"},
+                {"btn_unload", "Unload"},
+                {"btn_batch_unload", "Unload..."},
+                {"btn_load", "Load..."},
+                {"btn_reset", reset_key},
+                {"btn_check_gates", "Check Slots"},
+                {"btn_settings", "Settings"},
             };
             for (const auto& [name, key] : buttons) {
                 CAPTURE(name);
@@ -231,6 +248,10 @@ TEST_CASE_METHOD(XMLTestFixture,
                 if (lv_obj_has_flag(btn, LV_OBJ_FLAG_HIDDEN)) {
                     continue;
                 }
+                lv_area_t outer;
+                lv_obj_get_coords(btn, &outer);
+                CHECK(outer.y2 <= screen.y2);
+                CHECK(outer.x2 <= screen.x2);
                 lv_obj_t* label = button_label(btn);
                 REQUIRE(label != nullptr);
                 lv_area_t inner;
@@ -241,16 +262,18 @@ TEST_CASE_METHOD(XMLTestFixture,
                 CHECK(text.x2 <= inner.x2);
                 CHECK(text.y1 >= inner.y1);
                 CHECK(text.y2 <= inner.y2);
-                // Whole, in every language: the label shows its full translation (a
-                // dots label rewrites its own text), and that text fits its width.
-                const std::string want = lv_tr(key.c_str());
-                CAPTURE(want);
-                CHECK(std::string(lv_label_get_text(label)) == want);
-                const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
-                lv_point_t natural;
-                lv_text_get_size(&natural, want.c_str(), font, 0, 0, LV_COORD_MAX,
-                                 LV_TEXT_FLAG_NONE);
-                CHECK(natural.x <= lv_area_get_width(&text));
+                if (whole) {
+                    // The label shows its full translation (a dots label rewrites
+                    // its own text), and that text fits its width.
+                    const std::string want = lv_tr(key.c_str());
+                    CAPTURE(want);
+                    CHECK(std::string(lv_label_get_text(label)) == want);
+                    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+                    lv_point_t natural;
+                    lv_text_get_size(&natural, want.c_str(), font, 0, 0, LV_COORD_MAX,
+                                     LV_TEXT_FLAG_NONE);
+                    CHECK(natural.x <= lv_area_get_width(&text));
+                }
                 ++checked;
             }
             CHECK(checked >= 3);
@@ -258,8 +281,24 @@ TEST_CASE_METHOD(XMLTestFixture,
             panel.on_deactivate(DeactivateReason::NavigateAway);
             panel.clear_panel_reference();
             lv_obj_delete(panel_obj);
-            process_lvgl(10);
+            fx.process_lvgl(10);
             AmsState::instance().set_backend(nullptr);
         }
     }
+}
+
+} // namespace
+
+TEST_CASE_METHOD(XMLTestFixture,
+                 "AMS sidebar action labels stay inside their buttons in every language",
+                 "[ui_integration][ams][i18n]") {
+    check_action_labels(*this, {"en", "de", "fr", "es", "pt", "it", "ru", "ja", "zh"});
+}
+
+// The Snapmaker U1's screen: two half-width cells of a 145px column, icon over
+// label. English shows whole; a longer translation ellipsizes on one line.
+TEST_CASE_METHOD(XMLTestFixture, "AMS sidebar action labels fit at 480x320",
+                 "[ui_integration][ams][i18n]") {
+    helix::test::ScopedGeometry tiny(480, 320);
+    check_action_labels(*this, {"en"});
 }

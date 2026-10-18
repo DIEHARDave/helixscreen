@@ -7,6 +7,7 @@
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/print_history_manager_test_access.h"
 #include "../test_helpers/print_status_widget_test_access.h"
+#include "../test_helpers/thumbnail_test_png.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "moonraker_api.h"
@@ -237,6 +238,27 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
     widget.detach();
 }
 
+TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
+                 "PrintStatusWidget: detach cancels a queued idle reset and runs nothing",
+                 "[print_status_widget][idle_thumb]") {
+    auto* subj = PrintStatusWidgetTestAccess::idle_thumb_path_subject();
+    static constexpr const char* SENTINEL = "A:assets/images/__test_seed__.png";
+
+    PrintStatusWidget widget;
+    lv_obj_t* container = create_mock_print_card(test_screen());
+
+    widget.attach(container, test_screen());
+    widget.on_activate();
+    REQUIRE(PrintStatusWidgetTestAccess::idle_reset_pending(widget));
+
+    widget.detach();
+    CHECK_FALSE(PrintStatusWidgetTestAccess::idle_reset_pending(widget));
+
+    lv_subject_copy_string(subj, SENTINEL);
+    process_lvgl(200);
+    CHECK(std::string(static_cast<const char*>(subj->value.pointer)) == SENTINEL);
+}
+
 // attach() resolves the idle thumbnail, and so does the print-state observer's
 // first notification; on_activate() follows attach on a dashboard rebuild. On a
 // cache miss each resolve is its own HTTP request for the same file, so the
@@ -302,34 +324,6 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
 // =============================================================================
 
 namespace {
-
-/// Smallest PNG the cache and the processor will both accept: a 10x10 solid
-/// square, 75 bytes. Same bytes as tests/unit/test_thumbnail_cache_request.cpp.
-// clang-format off
-const std::vector<uint8_t> TINY_PNG = {
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x0A,
-    0x08, 0x02, 0x00, 0x00, 0x00, 0x02, 0x50, 0x58, 0xEA, 0x00, 0x00, 0x00,
-    0x12, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x68, 0x70, 0x50, 0xC0,
-    0x83, 0x18, 0x46, 0xA5, 0xB1, 0x21, 0x00, 0x24, 0x51, 0x57, 0x81, 0xF7,
-    0xEC, 0xA3, 0x23, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-    0x42, 0x60, 0x82};
-// clang-format on
-
-/// Drop a raw PNG into the cache's PNG slot for `key` WITHOUT a pre-scaled
-/// .bin. That is the one cache state that sends fetch_optimized down its
-/// "PNG is cached, queue the pre-scale" branch, which resolves on the processor
-/// pool and delivers through the UpdateQueue — i.e. asynchronously, which is
-/// the whole point.
-void plant_cached_png(const ThumbnailCache& cache, const std::string& key) {
-    const std::string path = cache.get_cache_path(key);
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    REQUIRE(out.good());
-    out.write(reinterpret_cast<const char*>(TINY_PNG.data()),
-              static_cast<std::streamsize>(TINY_PNG.size()));
-    out.close();
-    REQUIRE(std::filesystem::exists(path));
-}
 
 /// The pre-scaled lookup the widget performs, freshness-blind: source_modified
 /// stays 0, so this answers "is the .bin present at all" regardless of mtime.
@@ -533,9 +527,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     REQUIRE(subject_value() == path_b);
     REQUIRE(get_idle_thumb_src(container) == path_b);
 
-    // A's parked completion lands now. Two drains: the fetch callback itself,
-    // then the tok.defer hop it schedules.
-    queue.drain();
+    // A's parked completion lands now.
     queue.drain();
 
     CHECK(subject_value() == path_b);
@@ -545,10 +537,10 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     cache.invalidate(key);
 }
 
-// The staleness check runs where the cache delivers, and applying the result
-// takes one more queue hop. A newer resolve landing in that hop must still win.
+// The cache delivers on the main thread and checks staleness there, so the
+// widget applies the result in the same delivery with no hop of its own.
 TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
-                 "PrintStatusWidget: a load superseded during its apply hop cannot overwrite",
+                 "PrintStatusWidget: an async idle load applies in the delivery that carries it",
                  "[print_status_widget][idle_thumb][thumbnail]") {
     auto& cache = get_thumbnail_cache();
     const std::string key = head_thumbnail_key();
@@ -559,7 +551,40 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     widget.attach(container, test_screen());
     process_lvgl(200);
 
-    const helix::ThumbnailTarget target_a = size_thumb(container, 100, 100);
+    const helix::ThumbnailTarget target = size_thumb(container, 100, 100);
+    plant_cached_png(cache, key);
+    set_moonraker_api(api_.get());
+    auto& queue = helix::ui::UpdateQueue::instance();
+    queue.drain();
+
+    PrintStatusWidgetTestAccess::reset_to_idle(widget);
+    REQUIRE(subject_value() == BENCHY_PATH);
+    REQUIRE(park_pool_result());
+    const std::string path = cached_bin(cache, key, target);
+    REQUIRE_FALSE(path.empty());
+
+    queue.drain();
+    CHECK(subject_value() == path);
+    CHECK(get_idle_thumb_src(container) == path);
+    CHECK(helix::ui::UpdateQueueTestAccess::queue_empty(queue));
+
+    widget.detach();
+    cache.invalidate(key);
+}
+
+TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
+                 "PrintStatusWidget: an async idle load landing after detach publishes nothing",
+                 "[print_status_widget][idle_thumb][thumbnail]") {
+    auto& cache = get_thumbnail_cache();
+    const std::string key = head_thumbnail_key();
+    cache.invalidate(key);
+
+    PrintStatusWidget widget;
+    lv_obj_t* container = create_mock_print_card(test_screen());
+    widget.attach(container, test_screen());
+    process_lvgl(200);
+
+    const helix::ThumbnailTarget target = size_thumb(container, 100, 100);
     plant_cached_png(cache, key);
     set_moonraker_api(api_.get());
     auto& queue = helix::ui::UpdateQueue::instance();
@@ -567,26 +592,12 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
 
     PrintStatusWidgetTestAccess::reset_to_idle(widget);
     REQUIRE(park_pool_result());
-    const std::string path_a = cached_bin(cache, key, target_a);
-    REQUIRE_FALSE(path_a.empty());
-
-    // A's delivery passes the staleness check and queues its apply.
-    queue.drain();
-    REQUIRE_FALSE(helix::ui::UpdateQueueTestAccess::queue_empty(queue));
-
-    // B resolves synchronously from cache in between.
-    const helix::ThumbnailTarget target_b = size_thumb(container, 900, 900);
-    const auto planted_b =
-        helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, target_b);
-    REQUIRE(planted_b.success);
-    PrintStatusWidgetTestAccess::reset_to_idle(widget);
-    REQUIRE(subject_value() == planted_b.output_path);
-
-    queue.drain();
-    CHECK(subject_value() == planted_b.output_path);
-    CHECK(get_idle_thumb_src(container) == planted_b.output_path);
+    REQUIRE_FALSE(cached_bin(cache, key, target).empty());
 
     widget.detach();
+    queue.drain();
+    CHECK(subject_value() == BENCHY_PATH);
+
     cache.invalidate(key);
 }
 

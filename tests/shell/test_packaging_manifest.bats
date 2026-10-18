@@ -82,7 +82,6 @@ ui_xml" ]
         assets/config/print_start_profiles
         assets/config/themes/defaults
         assets/config/platform
-        assets/config/panel_widgets
         assets/fonts
         assets/images
         assets/sounds

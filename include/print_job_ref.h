@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ui_filename_utils.h"
+
 #include <string>
 
 namespace helix {
@@ -30,7 +32,7 @@ struct PrintJobRef {
 
     /// Full path used for metadata lookup.
     [[nodiscard]] std::string full_path() const {
-        return path.empty() ? filename : path + "/" + filename;
+        return gcode::join_gcode_path(path, filename);
     }
 };
 

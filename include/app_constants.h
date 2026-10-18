@@ -92,6 +92,12 @@ constexpr std::chrono::seconds PRINT_START_GRACE_PERIOD{1};
 inline const auto PROCESS_START_TIME = std::chrono::steady_clock::now();
 } // namespace startup
 
+namespace transfer {
+/// A transfer, or a wait on file reads, that makes no progress for this long
+/// is treated as stalled and given up.
+constexpr uint32_t STALL_MS = 30000;
+} // namespace transfer
+
 /**
  * @brief Animation timing constants for UI micro-animations
  *

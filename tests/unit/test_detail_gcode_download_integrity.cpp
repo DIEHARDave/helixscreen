@@ -41,7 +41,11 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/delayed_file_transfers.h"
 #include "../test_helpers/planted_gcode.h"
+#include "../test_helpers/scoped_cache_dir.h"
+#include "../test_helpers/scoped_macros_read.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "gcode_ops_detector.h"
 #include "gcode_preview_fetcher.h"
 #include "helix-xml/src/xml/lv_xml.h"
@@ -52,6 +56,7 @@
 #include "print_start_checks.h"
 #include "print_status_preview_decision.h"
 #include "printer_state.h"
+#include "test_helpers/scoped_env.h"
 #include "tools_used_cache.h"
 
 #include <cstdio>
@@ -74,55 +79,7 @@ namespace {
 /// that panel, but the XML references them at create() time).
 void detail_noop_cb(lv_event_t* /*e*/) {}
 
-/// Per-test temp cache dir for HELIX_CACHE_DIR — keeps ToolsUsedCache disk
-/// state and the shared gcode download out of the real user cache.
-/// Saves/restores the env var so later tests in this binary are unaffected.
-struct CacheDirGuard {
-    std::filesystem::path dir;
-    std::string prev_env_;
-    bool had_prev_ = false;
-    CacheDirGuard()
-        : dir(std::filesystem::temp_directory_path() /
-              ("detail_gcode_integrity_" + std::to_string(::getpid()))) {
-        std::filesystem::create_directories(dir);
-        if (const char* old = ::getenv("HELIX_CACHE_DIR")) {
-            prev_env_ = old;
-            had_prev_ = true;
-        }
-        ::setenv("HELIX_CACHE_DIR", dir.c_str(), 1);
-    }
-    ~CacheDirGuard() {
-        if (had_prev_) {
-            ::setenv("HELIX_CACHE_DIR", prev_env_.c_str(), 1);
-        } else {
-            ::unsetenv("HELIX_CACHE_DIR");
-        }
-        std::error_code ec;
-        std::filesystem::remove_all(dir, ec);
-    }
-};
-
-/// Save/set/restore one environment variable (used for
-/// HELIX_FORCE_GCODE_MEMORY_FAIL — read per-call by memory_utils).
-struct EnvGuard {
-    std::string name_;
-    std::string prev_env_;
-    bool had_prev_ = false;
-    EnvGuard(std::string name, std::string value) : name_(std::move(name)) {
-        if (const char* old = ::getenv(name_.c_str())) {
-            prev_env_ = old;
-            had_prev_ = true;
-        }
-        ::setenv(name_.c_str(), value.c_str(), 1);
-    }
-    ~EnvGuard() {
-        if (had_prev_) {
-            ::setenv(name_.c_str(), prev_env_.c_str(), 1);
-        } else {
-            ::unsetenv(name_.c_str());
-        }
-    }
-};
+using CacheDirGuard = helix::test::ScopedCacheDir;
 
 /// Resolve a test gcode asset the way MoonrakerAPIMock does (repo root,
 /// build/, build/bin/ cwd fallbacks) so the test works from any of them.
@@ -135,129 +92,6 @@ std::string find_test_asset(const std::string& filename) {
     }
     return {};
 }
-
-/// MoonrakerFileTransferAPIMock with an opt-in transfer HOLD. While
-/// hold_transfers is set, download_file_to_path captures the request instead
-/// of resolving it; the test later releases the queue to simulate a slow
-/// network finishing. Lets the preflight timeout fire genuinely mid-download
-/// — the exact compound race the settlement gate guards against.
-class DelayedFileTransfers : public MoonrakerFileTransferAPIMock {
-  public:
-    using MoonrakerFileTransferAPIMock::MoonrakerFileTransferAPIMock;
-
-    void download_file_to_path(const std::string& root, const std::string& path,
-                               const std::string& dest_path, StringCallback on_success,
-                               ErrorCallback on_error, ProgressCallback on_progress) override {
-        (void)on_progress;
-        ++download_count;
-        if (!hold_transfers) {
-            MoonrakerFileTransferAPIMock::download_file_to_path(
-                root, path, dest_path, std::move(on_success), std::move(on_error));
-            return;
-        }
-        held_.push_back([this, root, path, dest_path, on_success = std::move(on_success),
-                         on_error = std::move(on_error)]() {
-            MoonrakerFileTransferAPIMock::download_file_to_path(root, path, dest_path, on_success,
-                                                                on_error);
-        });
-    }
-
-    /// When set, every footer read reports failure. The detail view then
-    /// falls back to the whole-file download + Tn scan — the path these
-    /// cache-poisoning tests were written against, and the one a slicer that
-    /// writes no per-tool usage line still takes in production.
-    void download_file_tail(const std::string& root, const std::string& path, size_t max_bytes,
-                            StringCallback on_success, ErrorCallback on_error) override {
-        ++tail_read_count;
-        if (fail_tail_reads) {
-            if (on_error) {
-                on_error(MoonrakerError::file_not_found("download_file_tail",
-                                                        "footer read disabled by test"));
-            }
-            return;
-        }
-        MoonrakerFileTransferAPIMock::download_file_tail(
-            root, path, max_bytes, std::move(on_success), std::move(on_error));
-    }
-
-    /// Holds the preamble read the operations scan makes, the way hold_transfers
-    /// holds the whole-file download.
-    void download_file_partial(const std::string& root, const std::string& path, size_t max_bytes,
-                               StringCallback on_success, ErrorCallback on_error,
-                               CancelFlag = nullptr) override {
-        ++partial_read_count;
-        if (!hold_partials) {
-            MoonrakerFileTransferAPIMock::download_file_partial(
-                root, path, max_bytes, std::move(on_success), std::move(on_error));
-            return;
-        }
-        held_partials_.push_back([this, root, path, max_bytes, on_success = std::move(on_success),
-                                  on_error = std::move(on_error)]() {
-            MoonrakerFileTransferAPIMock::download_file_partial(root, path, max_bytes, on_success,
-                                                                on_error);
-        });
-    }
-
-    void release_held_partials() {
-        auto held = std::move(held_partials_);
-        held_partials_.clear();
-        for (auto& h : held) {
-            h();
-        }
-    }
-
-    bool hold_transfers = false;
-    bool hold_partials = false;
-    bool fail_tail_reads = false;
-
-    /// A transport that writes no local copies and reads no tails, as on the ESP32.
-    bool local_copies = true;
-    bool tail_reads = true;
-    bool supports_local_copies() const override {
-        return local_copies;
-    }
-    bool supports_tail_reads() const override {
-        return tail_reads;
-    }
-
-    /// How many footer reads the view has asked for. The tools-used cache
-    /// persists only the used-tool set, so a cache hit must NOT suppress the
-    /// read that also answers the palette and the per-tool grams.
-    int tail_read_count = 0;
-    /// Whole-file downloads and preamble reads, counted the same way.
-    int download_count = 0;
-    int partial_read_count = 0;
-
-    /// Resolve every held transfer (copies the real asset, fires callbacks
-    /// synchronously — same as an unheld call).
-    void release_held() {
-        auto held = std::move(held_);
-        held_.clear();
-        for (auto& h : held) {
-            h();
-        }
-    }
-
-  private:
-    std::vector<std::function<void()>> held_;
-    std::vector<std::function<void()>> held_partials_;
-};
-
-/// MoonrakerAPIMock whose transfers() serves the holdable DelayedFileTransfers
-/// instance (everything else behaves identically to the plain mock).
-class DelayedMoonrakerAPIMock : public MoonrakerAPIMock {
-  public:
-    DelayedMoonrakerAPIMock(helix::MoonrakerClient& client, helix::PrinterState& state,
-                            DelayedFileTransfers& transfers)
-        : MoonrakerAPIMock(client, state), transfers_(transfers) {}
-
-    MoonrakerFileTransferAPI& transfers() override {
-        return transfers_;
-    }
-
-  private:
-    DelayedFileTransfers& transfers_;
-};
 
 /// LVGL UI fixture + the mock API stack the detail view talks to (mirrors
 /// MoonrakerAPIMockTestFixture in test_moonraker_api_mock.cpp), with an
@@ -303,9 +137,7 @@ class DetailDownloadFixture : public LVGLUITestFixture {
     /// through ensure_gcode_downloaded / finish_scan crosses the UpdateQueue
     /// via tok.defer — pump a few passes so the whole chain has run.
     void drain_queue_chain() {
-        for (int i = 0; i < 4; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 
     /// Production close flow: go_back is deferred, so drain runs
@@ -350,8 +182,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
 
     // …but the empty set is NOT an answer about this file: nothing may be
     // persisted under its (path, size, mtime) key.
-    helix::ToolsUsedCache fresh;
-    REQUIRE(fresh.lookup("no_such_mock_file.gcode", kSize, kMtime) == std::nullopt);
+    auto& fresh = helix::tools_used_cache();
+    REQUIRE(fresh.lookup("no_such_mock_file.gcode", {kSize, kMtime}) == std::nullopt);
 
     pop_and_drain();
 }
@@ -360,7 +192,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "successful scan of a zero-tool file persists the empty set",
                  "[print_select][detail_view][gcode_cache]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty()); // tests must run from repo/build cwd
@@ -379,8 +211,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // so finish_scan's deferred body publishes readiness.
     REQUIRE(wait_until([this]() { return ready(); }, 15000));
 
-    helix::ToolsUsedCache fresh;
-    const auto got = fresh.lookup("3DBenchy.gcode", benchy_size, kMtime);
+    auto& fresh = helix::tools_used_cache();
+    const auto got = fresh.lookup("3DBenchy.gcode", {benchy_size, kMtime});
     // The empty set must be a HIT, not a miss — else every open of every
     // single-extruder file re-scans, and the fix over-corrected.
     REQUIRE(got.has_value());
@@ -397,7 +229,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "stale on-disk copy with a mismatched size is re-downloaded",
                  "[print_select][detail_view][gcode_cache]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty());
@@ -438,7 +270,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "oversize reject removes the canonical file once the scan no longer needs it",
                  "[print_select][detail_view][gcode_cache]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty());
@@ -449,8 +281,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // download serves the viewer alone — the reprint-of-an-oversize-file
     // leak scenario (every open re-downloads, viewer rejects, file lingers).
     {
-        helix::ToolsUsedCache warmer;
-        warmer.store("3DBenchy.gcode", benchy_size, kMtime, {0});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("3DBenchy.gcode", {benchy_size, kMtime}, {0});
     }
 
     view_.show("3DBenchy.gcode", "", "PLA", {"#FF0000"}, {}, benchy_size, kMtime);
@@ -473,7 +305,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "scan",
                  "[print_select][detail_view][gcode_cache]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     // u1_4color_ring.gcode carries standalone T0–T3 lines: a correct scan
     // yields {0,1,2,3}; a scan whose file was deleted mid-run yields {} —
@@ -525,12 +357,12 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // The late scan runs against the INTACT file and persists the real set.
     REQUIRE(wait_until(
         [&]() {
-            helix::ToolsUsedCache fresh;
-            return fresh.lookup(key, file_size, kMtime).has_value();
+            auto& fresh = helix::tools_used_cache();
+            return fresh.lookup(key, {file_size, kMtime}).has_value();
         },
         15000));
-    helix::ToolsUsedCache fresh;
-    const auto got = fresh.lookup(key, file_size, kMtime);
+    auto& fresh = helix::tools_used_cache();
+    const auto got = fresh.lookup(key, {file_size, kMtime});
     REQUIRE(got.has_value());
     REQUIRE(*got == std::set<int>{0, 1, 2, 3});
 
@@ -545,7 +377,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "footer read answers tools_used without downloading the whole file",
                  "[print_select][detail_view][gcode_footer]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     // ssr_heat_sink_orca's footer says `filament used [g] = 0.00, 0.00, 0.00,
     // 0.00, 10.16` — only T4 prints, out of a 5-slot palette.
@@ -569,8 +401,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     REQUIRE_FALSE(std::filesystem::exists(canonical_path_for(key)));
 
     // Authoritative: the next open of this file renders final chips instantly.
-    helix::ToolsUsedCache fresh;
-    const auto cached = fresh.lookup(key, size, kMtime);
+    auto& fresh = helix::tools_used_cache();
+    const auto cached = fresh.lookup(key, {size, kMtime});
     REQUIRE(cached.has_value());
     REQUIRE(*cached == std::set<int>{4});
 
@@ -581,7 +413,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
 TEST_CASE_METHOD(DetailDownloadFixture, "footer read sizes its window from gcode_end_byte",
                  "[print_select][detail_view][gcode_footer]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     // u1_4color_ring's usage line sits 26 KB from EOF — past a 20 KB guess,
     // inside both the exact gcode_end_byte window and the 64 KB default.
@@ -609,7 +441,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "footer read backfills the palette when metadata carried none",
                  "[print_select][detail_view][gcode_footer]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     // calicat_calico: `filament used [g] = 6.34, 0.00, 0.00, 0.00` and
     // `filament_colour = #E7BD00;#00C502;#F4E2C1;#ED1C24`.
@@ -642,7 +474,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "a footer read that cannot answer falls back to the full scan",
                  "[print_select][detail_view][gcode_footer]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("u1_4color_ring.gcode");
     REQUIRE_FALSE(asset.empty());
@@ -690,7 +522,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // async parse thread that outlives the test (the isolation listener flags it,
     // and an unjoined hv/std::async thread is a real cross-test hazard, not just
     // noise). Same guard the whole-file-scan case above uses.
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty()); // tests must run from repo/build cwd
@@ -700,8 +532,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // Warm the cache so the used-tool question is settled before show() runs —
     // exactly what a second open of an already-viewed file sees.
     {
-        helix::ToolsUsedCache warmer;
-        warmer.store("3DBenchy.gcode", size, kMtime, {0});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("3DBenchy.gcode", {size, kMtime}, {0});
     }
 
     REQUIRE(transfers_.tail_read_count == 0);
@@ -735,7 +567,7 @@ TEST_CASE_METHOD(DetailDownloadFixture, "nothing outstanding issues no footer re
     // async parse thread that outlives the test (the isolation listener flags it,
     // and an unjoined hv/std::async thread is a real cross-test hazard, not just
     // noise). Same guard the whole-file-scan case above uses.
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty());
@@ -757,16 +589,11 @@ TEST_CASE_METHOD(DetailDownloadFixture, "nothing outstanding issues no footer re
 namespace {
 
 /// This printer's M729 is a macro that shuts it down.
-struct StopMacroCache {
-    StopMacroCache() {
-        nlohmann::json config;
-        config["gcode_macro M729"] = {
-            {"gcode", "{action_emergency_stop(\"M729 is not supported\")}"}};
-        helix::MacroParamCache::instance().populate_from_configfile(config, {"M729"});
-    }
-    ~StopMacroCache() {
-        helix::MacroParamCache::instance().clear();
-    }
+struct StopMacroCache : helix::test::ScopedMacrosRead {
+    StopMacroCache()
+        : ScopedMacrosRead({{"gcode_macro M729",
+                             {{"gcode", "{action_emergency_stop(\"M729 is not supported\")}"}}}},
+                           {"M729"}) {}
 };
 
 } // namespace
@@ -775,7 +602,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "A Print tap waits for the file scan's printer-stopping command check",
                  "[print_select][detail_view][printer_stop]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
     StopMacroCache macros;
 
     // Tools scan settles, the operations scan is held, the tap waits; releasing
@@ -881,7 +708,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "A .3mf opened after a G-code file carries none of its embedded operations",
                  "[print_select][detail_view][qidi_3mf]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
     const std::string pid = std::to_string(::getpid());
     const std::string gcode_name = "embedded_mesh_" + pid + ".gcode";
     const std::string gcode = "G28\nBED_MESH_CALIBRATE\nG1 X10 Y10 E1\n";
@@ -915,6 +742,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
 TEST_CASE_METHOD(DetailDownloadFixture, "A .3mf still fetches metadata for the pre-print checks",
                  "[print_select][detail_view][qidi_3mf]") {
     CacheDirGuard guard;
+    // A printer that reads .3mf archives itself, and so reports their metadata.
+    helix::ScopedEnv native("HELIX_MOCK_3MF_METADATA", "1");
     const std::string name = "qidi_meta_" + std::to_string(::getpid()) + ".gcode.3mf";
     const std::string zip = std::string("PK\x03\x04", 4) + "not gcode";
     PlantedGcode file(name, "", zip);
@@ -991,7 +820,10 @@ TEST_CASE_METHOD(DetailDownloadFixture, "A USB file is read from the stick, neve
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
     REQUIRE(wait_until(
-        [&]() { return view_.is_gcode_loaded() && ready() && prep->has_scan_result_for(name); },
+        [&]() {
+            return view_.is_gcode_loaded() && ready() &&
+                   prep->has_scan_result_for(stick.path.string());
+        },
         15000));
     drain_queue_chain();
 
@@ -1015,13 +847,13 @@ TEST_CASE_METHOD(DetailDownloadFixture, "An unreadable USB file asks Moonraker f
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
     REQUIRE(
-        wait_until([&]() { return ready() && prep->has_printer_stop_answer_for(name); }, 15000));
+        wait_until([&]() { return ready() && prep->has_printer_stop_answer_for(missing); }, 15000));
     drain_queue_chain();
 
     CHECK(transfers_.download_count == 0);
     CHECK(transfers_.tail_read_count == 0);
     CHECK(transfers_.partial_read_count == 0);
-    CHECK(prep->printer_stop_check_for(name).state == helix::PrinterStopCheck::State::NotRun);
+    CHECK(prep->printer_stop_check_for(missing).state == helix::PrinterStopCheck::State::NotRun);
 
     pop_and_drain();
 }
@@ -1030,7 +862,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "A USB file named like a printer file gets its own operations scan",
                  "[print_select][detail_view][usb]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
     const std::string name = "same_name_" + std::to_string(::getpid()) + ".gcode";
     const std::string printer_gcode = "G28\nBED_MESH_CALIBRATE\nG1 X10 Y10 E1\n";
     PlantedGcode printer_file(name, "", printer_gcode);
@@ -1046,7 +878,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     StickFile stick(name, stick_gcode);
     view_.show(name, "", "PLA", {"#FF0000"}, {}, stick_gcode.size(), 42, 0, stick.path.string());
     prep = view_.get_prep_manager();
-    REQUIRE(wait_until([&]() { return prep->has_scan_result_for(name); }, 15000));
+    REQUIRE(wait_until([&]() { return prep->has_scan_result_for(stick.path.string()); }, 15000));
     drain_queue_chain();
 
     CHECK_FALSE(prep->get_scan_result()->has_operation(helix::gcode::OperationType::BED_MESH));
@@ -1058,7 +890,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "A USB file's operations scan does not wait on the slow lane",
                  "[print_select][detail_view][usb]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
     const std::string name = "busy_lane_" + std::to_string(::getpid()) + ".gcode";
     const std::string content = "G28\nBED_MESH_CALIBRATE\nG1 X10 Y10 E1\n";
     StickFile stick(name, content);
@@ -1071,7 +903,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     view_.show(name, "", "PLA", {"#FF0000"}, {}, content.size(), 42, 0, stick.path.string());
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
-    CHECK(wait_until([&]() { return prep->has_printer_stop_answer_for(name); }, 5000));
+    CHECK(
+        wait_until([&]() { return prep->has_printer_stop_answer_for(stick.path.string()); }, 5000));
 
     release.set_value();
     REQUIRE(wait_until([this]() { return ready(); }, 15000));

@@ -407,8 +407,9 @@ has no press target to release (`indev_proc_release`: `lib/lvgl/src/indev/lv_ind
 the shield could commit on follows a reset.
 
 **So input is reset only when the press itself should end.** Navigation, a modal closing and the
-wake from display sleep interrupt a drag for real, and cancel it; nothing resets input as the
-display goes to sleep (`src/application/display_manager.cpp#disable_input_briefly`). The rule for new code that retires
+display waking from sleep, dim or a screensaver interrupt a drag for real, and cancel it (the
+wake through `src/application/display_manager.cpp#cancel_pointer_presses`); nothing resets input as the
+display goes to sleep. The rule for new code that retires
 objects while a press may be in flight on them: reset input through
 `helix::ui::reset_input_within(subtree)` (`src/ui/ui_utils.cpp#reset_input_within`), which resets
 only a pointer whose press or scroll target lies inside the subtree, and never call an unscoped

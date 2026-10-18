@@ -20,7 +20,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/getting-started.md` | Navigation, touch gestures, setup wizard, keyboard |
 | `guide/supported-printers.md` | Per-printer feature detail for deeply-integrated models (AD5X IFS, K1/K2 CFS, QIDI Box, Snapmaker U1, ACE), generic auto-detection baseline |
 | `guide/creality-k1c-setup.md` | End-to-end K1/K1C/K1 Max setup: root access, Simple AF / Guilouz firmware, HelixScreen install, updating, firmware upgrade path |
-| `guide/install-ad5m.md` | End-to-end Adventurer 5M / 5M Pro setup: firmware image or Forge-X / Klipper Mod install, service control, updating, uninstall |
+| `guide/install-ad5m.md` | End-to-end Adventurer 5M / 5M Pro setup: Forge-X / ZMOD / Klipper Mod install, service control, updating, uninstall |
 | `guide/install-ad5x.md` | Adventurer 5X (ZMOD) setup: ZMOD prerequisite, chroot install, updating, uninstall |
 | `guide/install-cc1.md` | Centauri Carbon setup: COSMOS firmware flash, HelixScreen install, gui-switcher, updating, uninstall |
 | `guide/install-k2.md` | End-to-end K2 / K2 Plus / K2 Pro setup: stock-firmware install, service control, updating, uninstall |
@@ -29,7 +29,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/install-linux-desktop.md` | x86_64 Linux desktop package: the app in a window, per-user install with `--desktop`, connecting to a remote printer, window size, updating, uninstall, running from the tarball |
 | `guide/install-esp32.md` | BigTreeTech K-Touch (ESP32-S3) alpha firmware: browser flasher, esptool install, first-boot hotspot setup, updating, recovery, other ESP32-S3 panels |
 | `guide/home-panel.md` | Home dashboard, printer manager, custom images |
-| `guide/printing.md` | File selection, printing, tune overlay, Z-offset |
+| `guide/printing.md` | File selection, printing, pausing at a layer (beta), tune overlay, Z-offset |
 | `guide/print-monitoring.md` | Pre-print filament checks (empty-slot block, unassigned-tool Color Mismatch, bypass exemption), camera-based failure detection (Snapmaker U1 dialog, Creality K2 AI toggle) |
 | `guide/temperature.md` | Nozzle/bed temperature panels, presets, reassigning preset filament types, graphs, drying filament on the bed, chamber heater diagnostics card |
 | `guide/chamber-heater.md` | Add-on chamber heater setup (BIGTREETECH Panda Breath): network step, stock vs DragonBreath firmware, the Klipper module and config each needs, the Snapmaker U1 menu shortcut, troubleshooting |
@@ -46,7 +46,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/settings/appearance.md` | Dark mode, themes and the theme editor, animations, widget labels, printer visuals (toolhead style, G-code preview, Z movement, bed mesh render) |
 | `guide/settings/touch-input.md` | Touch calibration, debug viz, scroll engage distance, long press, home screen editing, scroll guard, scroll buttons, Android keyboard and navigation bar |
 | `guide/settings/sound.md` | Sounds, volume, UI sounds, sound themes, output device, custom themes, supported hardware, troubleshooting |
-| `guide/settings/printing.md` | Machine limits, motion, retraction, enclosure, material temperatures, cold load/unload, post-filament cooldown, timelapse, macro buttons |
+| `guide/settings/printing.md` | Machine limits, motion, retraction, enclosure, material temperatures, cold load/unload, post-filament cooldown, tool-change confirmation, timelapse, macro buttons |
 | `guide/settings/devices.md` | Hardware health, camera, multi-filament systems, fans, sensors, LEDs, power devices, Spoolman |
 | `guide/settings/led-settings.md` | LED strip selection, auto-state, macro devices, setup guides |
 | `guide/settings/safety.md` | Safety & Alerts: E-Stop confirmation, cancel escalation, macro confirmation, spaghetti detection, print completion alert, on-screen alerts |

@@ -61,10 +61,11 @@ std::set<std::string> token_names() {
         names.insert(std::string(name) + "_light");
         names.insert(std::string(name) + "_dark");
     }
-    for (const char* name : {"border_radius", "border_width", "border_opacity", "shadow_intensity",
-                             "shadow_opa", "shadow_offset_y", "shadow_cast", "overlay_shadow_opa",
-                             "overlay_width_transient", "overlay_width_destination", "nav_width",
-                             "font_body", "font_small", "font_heading", "text_on_primary"}) {
+    for (const char* name :
+         {"border_radius", "border_width", "border_opacity", "shadow_intensity", "shadow_opa",
+          "shadow_offset_y", "shadow_cast", "overlay_shadow_opa", "overlay_width_transient",
+          "overlay_width_destination", "nav_width", "font_body", "font_small", "font_heading",
+          "text_on_primary", "text_on_danger"}) {
         names.insert(name);
     }
     for (int i = 1; i <= 8; ++i) {

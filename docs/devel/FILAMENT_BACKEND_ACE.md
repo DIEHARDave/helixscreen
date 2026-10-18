@@ -3,7 +3,7 @@
 The Anycubic ACE Pro is a 4-slot dryer-equipped multi-material hub (8 slots in Rinkhals
 "Combo" setups), surfaced through four different software stacks: native Anycubic
 GoKlipper via Rinkhals (primary), community ValgACE/BunnyACE REST, the unverified
-Kobra-S1 fork, and multiACE on the Snapmaker U1 (detected, deliberately declined). Topology is
+Kobra-S1 fork, and multiACE on the Snapmaker U1 (driven by its own backend, not this one). Topology is
 `PathTopology::HUB`; WebSocket on the native path, REST fallback.
 
 ## ACE (Anycubic ACE Pro)
@@ -18,7 +18,7 @@ whichever of these the printer is running:
 | 1 | **Native Anycubic GoKlipper (via Rinkhals)** | `filament_hub` printer object (config `[ace]`) | WebSocket query/subscribe | **Primary real user base** — stock Kobra 3 / 3 V2 / 3 Max / S1 / S1 Max (Combo) flashed with [Rinkhals](https://github.com/jbatonnet/Rinkhals) | ✅ Handled (parses `filament_hub`) |
 | 2 | **Community ValgACE / BunnyACE / DuckACE** | `ace` printer object + `ace_status.py` | `/server/ace/*` REST bridge | ACE Pro bolted onto a **non-Anycubic DIY printer** (niche; DuckACE abandoned) | ✅ Handled (REST fallback) |
 | 3 | **Mainline-Python Kobra-S1 fork** (`github.com/Kobra-S1/klipper-kobra-s1`) | manager `ace` object + per-unit `ace_instance_N` objects + `ace_status` Moonraker component | WebSocket query/subscribe + `/server/ace/*` REST | KS1 users replacing KobraOS with mainline Klipper (often on an external Pi) | ✅ Handled (object path: instance slots + manager `current_index`; REST: `/status` `ace_manager`) |
-| 4 | **multiACE / SnapAce** ([`decay71/multiACE`](https://github.com/decay71/multiACE)) | `ace` printer object, but a **multi-unit** `aces[]` status shape | WebSocket only (no REST bridge) | **Snapmaker U1** with 1-4 ACE Pro / ACE Pro 2 units bolted on | ⚠️ **Declined** - recognised at detection, and the Snapmaker U1 backend keeps the printer. The `aces[]` shape is unread |
+| 4 | **multiACE / SnapAce** ([`decay71/multiACE`](https://github.com/decay71/multiACE)) | `ace` printer object, but a **multi-unit** `aces[]` status shape | WebSocket only (no REST bridge) | **Snapmaker U1** with 1-4 ACE Pro / ACE Pro 2 units bolted on | ➡️ **Another backend** - recognised at detection; the Snapmaker U1 backend keeps the printer and `AmsBackendMultiAce` reads the `aces[]` shape ([FILAMENT_BACKEND_MULTIACE.md](FILAMENT_BACKEND_MULTIACE.md)) |
 
 **How to think about the four:**
 
@@ -45,10 +45,11 @@ whichever of these the printer is running:
 
 ### Path 4: multiACE (Snapmaker U1 + ACE Pro)
 
-> **Recognised, not driven.** A U1 that gains multiACE keeps its Snapmaker backend and its
-> four-toolhead UI; what it loses is the ACE-specific affordances, because the `aces[]` slot
-> shape is not modelled (prestonbrown/helixscreen#1426). No hardware seen; this is a source
-> read of the upstream repo (2026-09-01, v0.99.8b).
+> **Not this backend's.** A U1 that gains multiACE keeps its Snapmaker backend and its
+> four-toolhead UI, and `AmsBackendMultiAce` adds the ACE units upstream of the heads:
+> [FILAMENT_BACKEND_MULTIACE.md](FILAMENT_BACKEND_MULTIACE.md). The detection rule below is
+> what keeps `AmsBackendAce` away from it (prestonbrown/helixscreen#1426). Source read of
+> the upstream repo (2026-09-01, v0.99.8b).
 
 [multiACE](https://github.com/decay71/multiACE) hangs **1-4 Anycubic ACE Pro / ACE Pro 2
 units off a Snapmaker U1** — the U1's four toolheads each get fed from an ACE slot through
@@ -102,8 +103,8 @@ stack this chain matches runs on an unmodded U1. The yield is scoped to `AmsType
 a U1 carrying a filament system we *can* read - Happy Hare, AFC - still hands that system
 the printer.
 
-Net result: a multiACE U1 keeps the four-toolhead Snapmaker UI, and loses only the
-ACE-specific affordances.
+Net result: a multiACE U1 keeps the four-toolhead Snapmaker UI, and the factory builds
+`AmsBackendMultiAce` for it, which reads the `aces[]` shape this backend cannot.
 
 > **Do not confuse multiACE with the other U1 + ACE Pro mod.**
 > [DnG-Crafts/U1-Ace](https://github.com/DnG-Crafts/U1-Ace) registers `ace_device`, which
@@ -270,6 +271,20 @@ These belong to ValgACE's Moonraker component (`ace_status.py`) and are used **o
 
 - **Native path (`filament_hub`):** WebSocket query + subscription. State is held under `mutex_`; updates arriving on the WebSocket background thread are deferred to the main thread via `token.defer(...)` (L081-safe — never mutate UI state directly from the WS callback).
 - **Community fallback path (`ace`):** a background polling thread runs at ~500ms intervals when the backend is active, caching state under mutex protection.
+
+### Tag reading
+
+`tag_reading()` keeps a bay's last frame whose `rfid` says identified (`true`, or `2` in
+the integer form): material, colour, and `temp_min`/`temp_max` when the frame carries them.
+A finished read that found no tag (`false`, or `1`) or an emptied bay drops it; `0` and
+`3` are a read not finished yet and leave it standing. Both parse paths, the subscription
+and the REST bridge, record it and lay the lane's resolved identity over the hub's memory,
+so a user's edit survives either path's next poll
+(`src/printer/ams_backend_ace.cpp#note_tag_frame_locked`). The REST bridge also reports `temp_min`/`temp_max`;
+they stand unless a user edit moved the slot's temperatures this session. The stored
+record keeps a nozzle temperature for every edit, the hub's own included, so it cannot
+say which were the user's: after a restart the hub's temperatures apply again
+(`src/printer/ams_backend_ace.cpp#apply_hub_temps_locked`).
 
 ### Capabilities
 

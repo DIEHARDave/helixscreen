@@ -275,6 +275,9 @@ bool GridEditMode::enter(lv_obj_t* container, PanelWidgetConfig* config, int pag
     active_ = true;
     container_ = container;
     config_ = config;
+    if (config_) {
+        config_->set_edit_session_open(true);
+    }
     page_index_ = page_index;
     lv_subject_set_int(&get_home_edit_mode_subject(), 1);
     // Called inside a pointer gesture, that gesture is the hold entering edit
@@ -424,6 +427,7 @@ void GridEditMode::exit() {
     // placement, the entry's position sync) asked for a save once edits
     // settle; the session ending is the latest that save can wait.
     if (config_) {
+        config_->set_edit_session_open(false);
         config_->flush_pending_save();
     }
     if (rebuild) {

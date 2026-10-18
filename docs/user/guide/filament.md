@@ -4,7 +4,7 @@
 
 ## External Spool Configuration
 
-If you're not using an AMS or multi-material system, you can tell HelixScreen what filament is loaded by configuring an **external spool**. Tap the spool icon on the Filament panel to set the material, color, and brand. If Spoolman is configured, you can also link to a specific Spoolman spool.
+If you're not using an AMS or multi-material system, you can tell HelixScreen what filament is loaded by configuring an **external spool**. Tap the spool icon on the Filament panel to set the material, color, and brand. If Spoolman is configured, you can also link to a specific Spoolman spool. A spool whose filament carries a tuned pressure advance applies it when it becomes active; see [Pressure advance per filament](filament-tracking.md#pressure-advance-per-filament).
 
 Once configured, the external spool information is used throughout the UI:
 
@@ -99,8 +99,8 @@ The slot view shows all your filament slots in a visual tray layout:
 - **Spool icons** — Each slot displays a 3D spool visualization with its filament color
 - **Spool labels**: Above each spool. With four slots or fewer, the label shows the spool's name (for example "Bone White") over its material (PLA, PETG, ABS, etc.). When the name already says the material, as in "PLA+ Bone White", only the name is shown, and a slot with no name shows just the material. With five or more slots there is only room for the material, shortened to its first four letters. On smaller screens five or more labels alternate between two rows, so neighbours never overlap, and a thin line leads from a raised label down to its spool.
 - **Status badge** — Slot number with color-coded background (green = loaded, gray = empty, red = error)
-- **Tool badge**: A small badge (T0, T1, etc.) on a slot shows which tool prints from it. When every tool feeds the slot of its own number (T0 the first slot, T1 the second, and so on), the badges would only repeat the slot numbers, so they are hidden. They appear when the tools are mapped any other way, for example after you remap a tool or when two tools share a slot. A badge in the warning color marks a mapping you set yourself rather than the one your system reports.
-- **Environment pill**: On a box that reports temperature or humidity, a pill stands at the right end of the box: a thermometer with the temperature over a water drop with the humidity. While the box dries, the temperature line shows the heat icon and the time left. Tap the pill to open that box's drying and humidity screen (see [Filament Drying and Humidity](#filament-drying-and-humidity)). Boxes with no readings have no pill, and the box takes the full width.
+- **Tool badge**: A small badge (T0, T1, etc.) on a slot shows which tool prints from it. When every tool feeds the slot of its own number (T0 the first slot, T1 the second, and so on), the badges would only repeat the slot numbers, so they are hidden. They appear when the tools are mapped any other way, for example after you change a slot's [Assigned Tool](#assigned-tool) or when two tools share a slot. A badge in the warning color marks a mapping you set yourself rather than the one your system reports.
+- **Environment pill**: On a box that reports temperature or humidity, a pill stands at the right end of the box: a thermometer with the temperature over a water drop with the humidity. The drop fills to the humidity reading, so a wet box shows a full drop at a glance; a box whose sensor gives no reading shows an empty outline. While the box dries, the temperature line shows the heat icon and the time left. Tap the pill to open that box's drying and humidity screen (see [Filament Drying and Humidity](#filament-drying-and-humidity)). Boxes with no readings have no pill, and the box takes the full width.
 
 Below the slot grid, a **filament path diagram** shows the routing from slots through the hub/selector to the toolhead. This updates in real time during load/unload operations, including eject animations when retracting filament at the slot sensor. On the Anycubic ACE the path reads the hub and toolhead sensors the driver publishes, so a strand parked partway down the tube is drawn where it actually sits - short of the hub - rather than back at the spool.
 
@@ -168,13 +168,24 @@ On small portrait screens there is room for the steps only as a row of dots, so 
 | Button | Action |
 |--------|--------|
 | **Bypass** (toggle) | Feed filament directly to the extruder, bypassing the AMS. Shown when your hardware supports bypass, or when you turn on **Enable Bypass Controls** - see [When Bypass Doesn't Appear](#when-bypass-doesnt-appear). The toggle is guarded: it can't be changed while a job holds the machine (a "Bypass cannot be changed while printing" warning appears), if a lane's filament is loaded it is unloaded first before bypass engages, and where a hardware sensor owns the bypass the toggle only reports that the sensor is in control. |
-| **Load...** | Snapmaker U1 only: opens a picker to load several heads at once - see below. On other systems, tap a slot in the slot view and choose **Load** |
-| **Unload** | Retract the currently loaded filament back to its slot. It also works when filament is stuck in the toolhead and no slot claims it, on systems that can tell. If your system needs to know which slot that filament came from and cannot tell, Unload first asks **Which lane is in the toolhead?** - pick the lane, or tap outside the list to cancel. On the Snapmaker U1 it reads **Unload...** and opens a picker instead - see below |
+| **Load...** | Opens a picker naming each tool and the slot it loads from - the slot set as its **Assigned Tool**. Pick the tool and confirm. To load any other slot, tap that slot in the slot view and choose **Load** |
+| **Unload** | Retract the currently loaded filament back to its slot. It also works when filament is stuck in the toolhead and no slot claims it, on systems that can tell. If your system needs to know which slot that filament came from and cannot tell, Unload first asks **Which lane is in the toolhead?** - pick the lane, or tap outside the list to cancel. On a printer with several toolheads it reads **Unload...** and opens the picker instead - see below |
+| **Mount...** / **Park** | Tool changers. **Mount...** picks a tool and puts it on the carriage; **Park** puts the mounted tool back in its dock. On a tool changer that cannot feed filament itself, these stand where Load and Unload would be |
 | **Reset** | Reset the AMS system state (useful after jams or errors) |
 | **Check slots** | Happy Hare only: checks every slot's sensor. The printer parks the toolhead and moves each lane's filament to test it, so the button is greyed out while a print is running |
 | **Settings** | Open the AMS Management overlay for advanced controls |
 
-**Loading or unloading several heads at once (Snapmaker U1).** The U1 has a toolhead per slot, so **Load** and **Unload** there open a picker listing every head with what it holds - the material and whether it is loaded, ready to load, or empty. Unload comes with the loaded heads already ticked; Load comes with the empty-but-fed heads ticked. Tick the heads you want and confirm: if a ticked head turns out not to take the operation, it is skipped with a warning naming the head and the reason, and the rest continue. The U1 runs its own batch command, which preheats the next head while the current one finishes.
+**Load and Unload always mean filament.** They never mount or park a tool - that is what tapping a toolhead, **Mount...** and **Park** are for. A printer that needs a tool on the carriage to feed it mounts the tool as part of the load.
+
+**The tool picker.** Each row names a tool and, where it is not the tool's own, the slot it uses, with what that slot holds - the material and whether it is loaded, ready to load, or empty. The tool you have selected, or else the one on the carriage, comes ticked when it can take the operation. A tool with no slot assigned to it is greyed out with **Assign a slot first**; set one with **Assigned Tool** in the slot's menu.
+
+**Loading or unloading several heads at once.** On a printer with a toolhead per slot (Snapmaker U1, MedusaHC), the picker lets you tick several heads. The prompt text the printer shows is English - every screen attached to the printer sees the same words. If a ticked head turns out not to take the operation, it is skipped with a warning naming the head and the reason, and the rest continue. A head whose own sensor reports it empty is not tickable for Unload at all: there is nothing in it for an unload to act on.
+
+**MedusaHC.** One extruder drive serves every tool, so **Load** mounts the tool, heats it and asks you to insert the filament into that tool - the extruder grabs it, so tap **Continue** once it is in. The printer then draws it in slowly, purges and puts back whichever tool was on the carriage before (or parks, if none was). **Unload** mounts, heats, retracts until the filament is fully out, and restores the carriage the same way. The prompt's words are English even on a translated screen, because every client attached to the printer shows them. **Cancel** on the prompt or in the sidebar, closing the prompt without answering, or leaving it waiting for three minutes all turn the heater off and restore the carriage, with a message saying so.
+
+Ticking several tools loads or unloads them in one run. A load asks once up front - insert a strand into every ticked tool as far as it goes - then works tool by tool, warming each next tool partway while the current one runs, and puts the carriage back at the end. Stopping part way (cancelling, a timeout, a failure) turns every heater off, restores the carriage, and names the tools that did finish. If your printer defines its own `LOAD_FILAMENT` / `UNLOAD_FILAMENT` taking `T=`, those run for each tool's feed and retract; a `LOAD_ALL_FILAMENT` / `UNLOAD_ALL_FILAMENT` runs the whole batch when you ticked every tool. Neither works while a print is running or paused.
+
+**Tool changers that cannot feed filament.** On a klipper-toolchanger with no feed command, filament goes in and out of each tool by hand. The sidebar shows **Mount...** and **Park** instead of Load and Unload, and a slot's menu shows Load and Unload greyed out with **Load and unload filament at the tool by hand**, plus **Mount** (or **Park**, on the mounted tool). On the Creator 5 with the afclite feed, Load feeds the tool and Unload stays a cut by hand.
 
 ### When Bypass Doesn't Appear
 
@@ -218,6 +229,12 @@ Both entries grey out for the same reasons the Filament panel's buttons do: whil
 
 > The same Load and Unload are on the **Filament panel**, which acts on the external spool whenever bypass is the current selection.
 
+### Switching Toolheads from the Filament Path
+
+On printers with a toolhead per slot (the Snapmaker U1, tool changers, and AFC units with an extruder for each lane), the filament path draws every toolhead. **Tap a toolhead that is not mounted** to switch to it. HelixScreen asks "Switch to Tool 2 (T1)?" first, unless you turned off [Confirm tool changes](settings/printing.md#confirm-tool-changes). The same rules apply as on the home screen's [Tool Switcher](home-panel.md#switching-tools): a paused print always asks, and a running print, spools on the bed, or a filament system waiting for you refuses the change with a message.
+
+Tapping the mounted toolhead, or any slot's filament tube or spool, opens the slot menu below instead, so a tap meant for the filament never moves the toolhead.
+
 ### Slot Context Menu
 
 **Tap any slot** to open a context menu with actions for that specific slot:
@@ -234,17 +251,17 @@ Both entries grey out for the same reasons the Filament panel's buttons do: whil
 | **Scan QR Code** | Scan a filament QR code to auto-fill spool data. Only shown when Spoolman is configured. |
 | **Clear Spool** | Erase everything HelixScreen and the printer's firmware remember about this slot: your saved edits, the slot's spool details, and the Spoolman link, plus the printer's own record where the firmware lets it be wiped (Happy Hare's whole gate map entry, the QIDI Box's stored slot values). What is left afterwards is only what the hardware can physically read - on the ACE, the Snapmaker U1 and a stock CFS the firmware's record cannot be wiped (read-only, or the RFID tag is simply re-read), so the slot repopulates from it. Shown whenever the slot carries an assignment, loaded or not. Refused on the lane feeding an active, paused or preparing print - the button greys out and says why. |
 
-> **Note:** On a Happy Hare printer that fills its gates from Spoolman (Spoolman pull mode), the firmware side is refused for both edits and Clear Spool, and the reason names Spoolman: make colour, material and spool changes in Spoolman itself. Clear Spool still clears HelixScreen's own copy, so remove the spool in Spoolman to finish the job.
+> **Note:** On a Happy Hare printer that fills its gates from Spoolman (Spoolman pull mode), the firmware side is refused for both edits and Clear Spool, and the reason names Spoolman: make color, material and spool changes in Spoolman itself. Clear Spool still clears HelixScreen's own copy, so remove the spool in Spoolman to finish the job.
 
-On systems that support **Endless Spool**, the context menu also includes:
+**Endless Spool** switches to another spool when one runs out mid-print. Creality calls it Auto-Refill, Snapmaker Auto-Replenish, zMod Infinite Spool Mode, AFC infinite spool and Happy Hare EndlessSpool; HelixScreen calls it Endless Spool everywhere except on a vendor's own toggle. On systems that support it, the context menu also includes:
 
-- **Backup Slot** — Choose a backup slot to automatically switch to if this spool runs out mid-print. The backup must hold a compatible material; a slot holding something else is marked **(incompatible)** and can't be picked. A slot holding the *same* material in a different grade — PLA-CF behind PLA, say — is marked **(different grade)** and *can* be picked: the swap will work, but filled filaments print slower and wear a brass nozzle, and this one happens mid-print without you there, so the label tells you before you choose it. This picker appears on **AFC (Box Turtle)** and on **single-unit Happy Hare** setups; a multi-unit Happy Hare shows its groups read-only, because the command that edits them acts on whichever unit is selected.
+- **Backup Slot** (**Backup Lane** on AFC, **Backup Gate** on Happy Hare) — Choose where to switch to if this spool runs out mid-print. The backup must hold a compatible material; a slot holding something else is marked **(incompatible)** and can't be picked. A slot holding the *same* material in a different grade — PLA-CF behind PLA, say — is marked **(different grade)** and *can* be picked: the swap will work, but filled filaments print slower and wear a brass nozzle, and this one happens mid-print without you there, so the label tells you before you choose it. This picker appears on **AFC (Box Turtle)** and on **single-unit Happy Hare** setups; a multi-unit Happy Hare shows its groups read-only, because the command that edits them acts on whichever unit is selected.
 
-**The Creality CFS is different: there is nothing to pick.** Its auto-refill is managed entirely by the box's firmware, so the Backup Slot row appears **greyed out** and no backup arrows are drawn between the slots. The box decides for itself which slot can stand in, and it only accepts one holding the **exact same material and the exact same colour**. If nothing matches, or auto-refill is switched off, it does not swap at all: the print stays paused and HelixScreen tells you which of the two it was. Auto-refill itself can be turned on or off from the CFS device actions.
+**The Creality CFS is different: there is nothing to pick.** Its **Auto-Refill** is managed entirely by the box's firmware. Stock CFS firmware never says which slot it would switch to, so the menu has no Backup Slot row and no backup arrows are drawn between the slots; the line at the bottom of the menu says whether Auto-Refill is on and that the firmware chooses. A community Kalico-based CFS setup that publishes its switch plan is the exception: while Auto-Refill is on, a slot with a planned backup shows the Backup Slot row **greyed out** with that slot in it, and arrows mark the plan. Either way, the box decides for itself which slot can stand in, and it only accepts one holding the **exact same material and the exact same colour**. If nothing matches, or Auto-Refill is switched off, it does not switch at all: the print stays paused and HelixScreen tells you which of the two it was. Auto-Refill itself can be turned on or off from the CFS device actions.
 
-> **Clearing every backup at once:** To remove all failover assignments in one step — back to "a runout just stops the print" — open the AMS Management overlay and tap **Reset Endless Spool**. See [AMS Management (Settings Overlay)](#ams-management-settings-overlay) below.
+> **Clearing every backup at once:** To remove every Endless Spool backup in one step — back to "a runout just stops the print" — open the AMS Management overlay and tap **Reset Endless Spool**. See [AMS Management (Settings Overlay)](#ams-management-settings-overlay) below.
 
-> **Assigning tools:** Tool-to-slot mapping isn't set from the slot context menu — it's done from the **filament mapping card** that appears when you select a multi-tool file to print. See [Tool Mapping](#tool-mapping) below.
+> **Assigning tools:** Which tool a slot feeds is set in two places. For one print, use the **Filament Mapping** card that appears when you select a multi-tool file: see [Filament Mapping](#filament-mapping) below. To change the printer's own standing assignment, tap **Spool Info** and pick the slot's **Assigned Tool**: see [Assigned Tool](#assigned-tool) below.
 
 ### Editing Filament Properties
 
@@ -296,9 +313,11 @@ Every piece of information on a lane - color, material, brand, spool name, remai
 
 **Swapping a spool is noticed, even with the screen off.** Each lane remembers a fingerprint of the spool it held, so a spool swapped while HelixScreen was not running clears the old spool's edits instead of painting them onto the new one. This works on the QIDI Box, on the Creality CFS (including community Kalico-based CFS setups), and - by RFID tag - on the Snapmaker U1.
 
-### Tool Mapping
+### Filament Mapping
 
-For multi-tool prints, you can control which AMS slot feeds each tool the slicer expects (T0, T1, T2, …). The mapping controls appear as a **filament mapping card** on the file detail screen — open a file from the print browser and, if your file uses multiple tools and your AMS supports editable tool mapping, the card shows a compact row of color pairs. Tap the card to open the **Filament Mapping** dialog.
+<a id="tool-mapping"></a>
+
+For multi-tool prints, you can control which AMS slot feeds each tool the slicer expects (T0, T1, T2, …). The mapping controls appear as a **Filament Mapping** card on the file detail screen — open a file from the print browser and, if your file uses multiple tools and your AMS supports Filament Mapping, the card shows a compact row of color pairs. Tap the card to open the **Filament Mapping** dialog.
 
 In the dialog you get one row per tool in the file:
 
@@ -310,11 +329,13 @@ Tap **Done** to keep your mapping, or **Cancel** to discard it.
 
 > **Tip:** When you actually start the print, HelixScreen re-checks these mappings and stops with a **Check filament** dialog if any required tool points at an empty slot — unless bypass is engaged, in which case the mappings aren't feeding the print and the check is skipped. See [Print Monitoring & Failure Detection](print-monitoring.md#pre-print-filament-check).
 
-> **Note:** The mapping card only appears on backends with editable tool mapping. On fixed 1:1 systems (Snapmaker U1, ACE) tools always map directly to their matching slot, so there's nothing to assign.
+> **Note:** The mapping card only appears on systems that support Filament Mapping. On fixed 1:1 systems (Snapmaker U1, ACE) tools always map directly to their matching slot, so there's nothing to assign.
 
 > **Note:** The card also hides itself while **bypass is engaged on a single-tool file**, because the print takes its filament from the external spool and the mapping decides nothing — showing it would offer an assignment the print ignores. The **Bypass active** note on the file detail screen appears in its place. A *multi-tool* file with bypass engaged still shows the card: those prints do use the lanes.
 
-### Printers that remap by rewriting the file
+### Printers that map filament by rewriting the file
+
+<a id="printers-that-remap-by-rewriting-the-file"></a>
 
 Most filament systems carry out your mapping themselves: HelixScreen tells the printer "tool 0 comes from slot 2" and the printer does the rest. A few can't, because their firmware has no mapping table. On those, HelixScreen rewrites a copy of the G-code with the new tool numbers and prints that copy. Today that means a tool changer running without klipper-toolchanger, such as the [MedusaHC fork](#medusahc-hotend-changer) that drops `[toolchanger]`.
 
@@ -326,13 +347,13 @@ This needs the **HelixPrint plugin** on your printer. Without it the mapping car
 - Temperature commands for a specific tool: `M104 T1 S220`, `M109 T0 S230`
 - An `INITIAL_TOOL=` or `TOOL=` value on any command line, such as `PRINT_START INITIAL_TOOL=0` or `SET_TOOL_TEMPERATURE TOOL=1`, so a start macro that picks up or primes the first tool picks up the right one
 
-**What it does not change:** any other per-tool value you pass to your start macro, such as `EXTRUDER_TEMP=`, `EXTRUDER1_TEMP=`, `T0_TEMP=`, `TOOL_TEMP=` or `T=`, and a tool given by name rather than number (`TOOL=T0`). Those names are your own macro's, and HelixScreen can't know whether `EXTRUDER_TEMP` means "tool 0" or "the tool this print starts with", so it leaves them as sliced. If your start macro heats tools from those values, a job remapped from tool 0 to tool 1 heats tool 0 and then switches to a cold tool 1.
+**What it does not change:** any other per-tool value you pass to your start macro, such as `EXTRUDER_TEMP=`, `EXTRUDER1_TEMP=`, `T0_TEMP=`, `TOOL_TEMP=` or `T=`, and a tool given by name rather than number (`TOOL=T0`). Those names are your own macro's, and HelixScreen can't know whether `EXTRUDER_TEMP` means "tool 0" or "the tool this print starts with", so it leaves them as sliced. If your start macro heats tools from those values, a job whose tool 0 you map to tool 1 heats tool 0 and then switches to a cold tool 1.
 
 When the file you picked passes values like these and your picks move at least one tool to a different number, the **Filament Mapping** dialog shows a warning naming them, for example:
 
-> Your PRINT_START line passes per-tool settings that remapping does not change (EXTRUDER_TEMP, EXTRUDER1_TEMP). A remapped tool may not be heated.
+> Your PRINT_START line passes per-tool settings that Filament Mapping does not change (EXTRUDER_TEMP, EXTRUDER1_TEMP). A tool you map filament to may not be heated.
 
-The warning appears and disappears as you change the picks: leave every tool on its own number and there is nothing to warn about, because the file prints as sliced. It doesn't stop you remapping; if your macro doesn't use those values to heat anything, you can ignore it.
+The warning appears and disappears as you change the picks: leave every tool on its own number and there is nothing to warn about, because the file prints as sliced. It doesn't stop you mapping filament; if your macro doesn't use those values to heat anything, you can ignore it.
 
 **Recommended start G-code.** Do the tool heating in plain `M104`/`M109` lines, which the rewrite does change, and keep only the bed, homing and mesh in `PRINT_START`. In OrcaSlicer's **Machine start G-code** (one `M104` line per tool your printer has):
 
@@ -345,9 +366,15 @@ PRINT_START INITIAL_TOOL=[initial_tool] BED_TEMP=[bed_temperature_initial_layer_
 M109 T[initial_tool] S{first_layer_temperature[initial_tool]}
 ```
 
-Keep the `M109` for the first tool last. It sets that tool from its idle temperature up to printing temperature and waits, so it has to come after the idle lines. `INITIAL_TOOL=` and `TOOL=` are fine to keep if your macro uses them: the rewrite moves them along with everything else. OrcaSlicer adds a `T[initial_tool]` line right after the start G-code, and that line is remapped too.
+Keep the `M109` for the first tool last. It sets that tool from its idle temperature up to printing temperature and waits, so it has to come after the idle lines. `INITIAL_TOOL=` and `TOOL=` are fine to keep if your macro uses them: the rewrite moves them along with everything else. OrcaSlicer adds a `T[initial_tool]` line right after the start G-code, and that line is rewritten too.
 
-### Syncing with OrcaSlicer (2.3.2 and later, including 2.4.0)
+### Assigned Tool
+
+Separately from Filament Mapping, some filament systems keep their own table of which slot each tool prints from, and it stays in place from one print to the next. Where HelixScreen can write that table (such as AFC, Happy Hare and the QIDI Box), the filament editor shows an **Assigned Tool** dropdown: tap a slot, choose **Spool Info**, and pick the tool that slot should feed. The tool badges in the slot view show the result.
+
+Filament Mapping is chosen per print, from the file you are about to print. Assigned Tool is the printer's standing table, which a print uses when nothing maps it otherwise.
+
+### Syncing with OrcaSlicer (2.3.2 and later)
 
 When you edit spool info in HelixScreen — on any supported filament system (AD5X IFS, Snapmaker U1, ACE, CFS) — that information is saved to your printer in the standard location OrcaSlicer 2.3.2 and later reads automatically. Open OrcaSlicer after editing and your slot's vendor, material, color, and temperatures show up in the filament panel with no extra setup.
 
@@ -361,6 +388,10 @@ Either way, your printer's filament info and OrcaSlicer stay in sync. The sync i
 
 > **Requirements:** OrcaSlicer 2.3.2 or newer, connected to the same printer's Moonraker. Nothing to enable on the HelixScreen side — it's automatic.
 
+> **OrcaSlicer 2.5:** sync works the same way, with nothing to change. 2.5 also re-reads the slots when you switch OrcaSlicer to a different printer, so each printer's filaments show up without a manual sync.
+
+> **Nothing comes across on OrcaSlicer 2.4?** If your Moonraker connection in OrcaSlicer has no API key, 2.4 sends a placeholder key that Moonraker rejects, so the sync silently fails. See [Troubleshooting](../TROUBLESHOOTING.md#orcaslicer-doesnt-pick-up-your-slot-colors-or-materials).
+
 ### AMS Management (Settings Overlay)
 
 Tap **Settings** in the sidebar to open the AMS Management overlay with advanced controls:
@@ -371,7 +402,7 @@ Tap **Settings** in the sidebar to open the AMS Management overlay with advanced
 - **Bypass Mode** — Toggle direct-feed mode (if supported by hardware). The toggle refuses while a filament operation is running, and on systems that require it, while filament is still loaded - unload first. When a hardware sensor owns the bypass, this row becomes a read-only "Controlled by hardware sensor" indicator instead of a toggle. If your machine has no bypass according to its firmware, an **Enable Bypass Controls** toggle appears here instead - see [When Bypass Doesn't Appear](#when-bypass-doesnt-appear)
 - **Always Show Bypass Spool** — Keep the external spool visible on the filament path even while bypass is disengaged (AFC systems only)
 - **Keep Spool Info on Eject** — When a lane is emptied, keep its spool details so reloading the same spool after maintenance needs no re-selection (on by default). Turn it off to start fresh when a lane empties. This applies only to spools you selected in HelixScreen: a spool assigned elsewhere (such as Mainsail) clears with the lane. To have every assigned spool remembered no matter where it was picked, use the firmware's own retention instead (AFC: `remember_spool` in AFC.cfg) - HelixScreen follows the spool the firmware reports. Note that when the firmware's own retention is switched on for every lane, it takes precedence: this toggle then has no effect and shows as disabled with a note explaining why. Shown on systems whose firmware tracks spool ids per lane (such as AFC and Happy Hare); systems that detect spool swaps by tag always refresh on a swap regardless of this setting.
-- **Reset Endless Spool** — Wipe every slot's backup assignment at once, so a runout stops the print until you set up failover again. Only appears on systems whose failover you can edit here (AFC, single-unit Happy Hare); hidden on CFS and AD5X, which manage it in firmware. Asks you to confirm before clearing. See [Endless Spool / Backup Slot](#slot-context-menu) above.
+- **Reset Endless Spool** — Clear every slot's backup at once, so a runout stops the print until you set up Endless Spool again. Only appears on systems whose Endless Spool backups you can edit here (AFC, single-unit Happy Hare); hidden on CFS and AD5X, which manage it in firmware. Asks you to confirm before clearing. See [Endless Spool / Backup Slot](#slot-context-menu) above.
 - **System status** — Current system state and firmware version
 
 Below the top-level controls, **device-specific settings appear as expandable sections** that vary by hardware. Tap a section to open it; inside you'll find buttons, on/off toggles, and sliders for that group, and changes apply immediately.
@@ -399,7 +430,7 @@ Other backends show their own (usually smaller) set of sections, or none at all.
 ### Tips
 
 - When an AMS slot is actively loaded, its material information drives spool preset behavior — you'll see a spool preset button on the Filament and Temperature panels, and purge macros receive the correct temperature automatically. See [External Spool Configuration](#external-spool-configuration) for details.
-- The filament path diagram at the bottom of the slot view is interactive — you can tap slot entry points to trigger a load.
+- The filament path diagram at the bottom of the slot view is interactive: tap a slot's spool or tube to open its slot menu, and on printers with a toolhead per slot, tap another toolhead to [switch to it](#switching-toolheads-from-the-filament-path).
 - During a load or unload, watch the step progress in the sidebar to track exactly where the operation is.
 
 ---
@@ -473,7 +504,7 @@ Tap the menu icon on the CFS panel to access device actions:
 | Action | What It Does |
 |--------|--------------|
 | **Refresh** | Re-read all RFID tags across all units — useful after swapping spools while the printer was off |
-| **Auto-Refill** | Toggle automatic backup spool switching. A runout pauses the print either way; with this on, the box then swaps in another slot **only** if one holds the exact same material and colour, and resumes. With it off, or with no match, the print stays paused |
+| **Auto-Refill** | Switch to a matching slot on runout. A runout pauses the print either way; with this on, the box then swaps in another slot **only** if one holds the exact same material and colour, and resumes. With it off, or with no match, the print stays paused |
 | **Nozzle Clean** | Trigger the nozzle cleaning routine using the CFS's built-in silicone strip |
 
 ### CFS and the External Spool
@@ -510,9 +541,13 @@ Each channel has an RFID reader that reads Snapmaker filament tags automatically
 
 You can still edit spool info manually from the slot context menu for spools without a tag.
 
+**Setting the material for a spool without a tag.** The U1 keeps its own record of what each head holds, and it refuses to resume a paused print while a head the print uses has no material in that record (the printer reports `e1 not edit filament`, counting heads from 0). When you set a head's material in HelixScreen, the printer's record is updated too: on stock firmware with the printer's own filament command, and on the Extended Firmware through its filament endpoint. A vendor other than Snapmaker is recorded as "Generic", and a sub-type other than one of Snapmaker's product lines as "Basic". HelixScreen only fills a blank record or writes a material you changed yourself, and it doesn't rewrite the record when the material hasn't changed, because each write resets that head's flow calibration. With the RFID reader turned off, HelixScreen can't tell a Snapmaker spool from any other, so a material you set on such a head replaces what its tag recorded.
+
 ### Runout and Resume
 
-The U1 tracks filament with a motion sensor per tool. When a runout fires mid-print, HelixScreen prepares the printer before resuming — disabling the runout sensor, heating the tool, priming a short length of filament past the encoder, and re-enabling the sensor — so a plain Resume actually continues the print. If the motion sensor reports a runout but filament is still physically present (a stale sensor reading), HelixScreen recovers silently without prompting you.
+The U1 tracks filament with a motion sensor per tool. When you resume a print that paused for something other than a runout, HelixScreen first checks the printer's filament record for every head the print uses. If a head's record is blank but HelixScreen knows its material, HelixScreen fills the record in before resuming. After a runout it doesn't, because you may have loaded a different spool. If the record stays blank, the resume is refused and HelixScreen explains that the head needs its material set.
+
+After a runout, HelixScreen has the printer refeed the head from its feeder (heating, feeding and purging, which takes about a minute and a half) before it sends Resume, so a plain Resume actually continues the print. If the motion sensor reports a runout but filament is still physically present (a stale sensor reading), HelixScreen recovers silently without prompting you.
 
 > **Note:** Because each toolhead is independent, the Snapmaker backend has no Home, Recover, Reset, Bypass, or Endless Spool controls — those apply to shared-path AMS hardware only.
 
@@ -560,11 +595,11 @@ Operations screen, **Open feeder macro** and **Close feeder macro** list the mac
 on your printer. Leave them on **auto** to keep HelixScreen's automatic choice, which also
 means you'll pick up the newer commands for free if you migrate later.
 
-### Tool mapping
+### Filament Mapping on MedusaHC
 
 You can point a G-code tool number at a different physical tool, which is useful when a
 slicer project expects a different tool order than your machine is loaded with. See
-[Tool Mapping](#tool-mapping) above for the dialog itself.
+[Filament Mapping](#filament-mapping) above for the dialog itself.
 
 How the mapping reaches the printer depends on your setup:
 
@@ -574,8 +609,8 @@ How the mapping reaches the printer depends on your setup:
 - **topi314's fork** (no `[toolchanger]`): there is no mapping table to write, so
   HelixScreen rewrites the file instead. That needs the HelixPrint plugin, and any
   per-tool temperatures you pass to `PRINT_START` stay as sliced. Read
-  [Printers that remap by rewriting the file](#printers-that-remap-by-rewriting-the-file)
-  before your first remapped print; it has start G-code that heats the right tools.
+  [Printers that map filament by rewriting the file](#printers-that-map-filament-by-rewriting-the-file)
+  before your first print that maps filament; it has start G-code that heats the right tools.
 
 ### What HelixScreen remembers per tool
 
@@ -633,7 +668,7 @@ AFC (Box Turtle, OpenAMS), AD5X IFS, Snapmaker U1 and tool changers report no en
 
 ### Opening a Box
 
-On the **Filament** panel, any box with a reading or a heater shows a small badge beside its slots: a thermometer with the temperature, and a water drop with the humidity where a sensor exists. Tap the badge. That is the whole route - there is nothing to open under Settings.
+On the **Filament** panel, any box with a reading or a heater shows a small badge beside its slots: a thermometer with the temperature, and a water drop with the humidity where a sensor exists. The drop fills up to the reading: nearly empty in a dry box, nearly full in a humid one. Tap the badge. That is the whole route - there is nothing to open under Settings.
 
 What opens depends on how many boxes that unit has:
 
@@ -680,6 +715,31 @@ Three things about the fields are worth knowing:
 - **Your last values come back.** HelixScreen remembers the temperature and duration you last started a dry with, per printer, and fills them in the next time you open a box.
 
 Left alone, HelixScreen picks the preset that suits the filament in that box - the most conservative one, meaning the lowest drying temperature among the materials loaded there, so a mixed box isn't dried at the temperature its most tolerant spool would take. Type a value yourself and that stops for the rest of the visit; pick a preset by hand and it starts again.
+
+### Choosing Lanes to Dry (Happy Hare 4, beta)
+
+> **Beta feature.** The lane chips and Rotate appear only with [beta features](beta-features.md) turned on. With beta off, Start and Stop dry the whole unit, exactly as they always have. The drying badges on the spools show either way.
+
+On a Happy Hare 4 unit that has its own heater on every lane (an EMU-style build), the box's screen shows a **Dry** row of lane chips where the lane line would be, one chip per heated lane on that unit. Every chip starts selected each time you open the screen, which dries the whole unit exactly as before.
+
+- **Tap a chip to leave that lane out** of the next dry, and tap it again to put it back. The last selected chip can't be cleared: a dry needs at least one lane.
+- **Rotate** appears when the unit has an eSpooler. Turn it on and the selected spools are turned while they dry. Happy Hare only rotates a spool whose filament end has been pulled back out of the gate and fixed to the spool, and it warns in the console about any lane that isn't.
+- **Stop Drying with some chips cleared** stops only the selected lanes, and the notice names them ("Stopped drying Gate 2, Gate 3"); the others keep drying. With every chip selected it stops the whole cycle.
+
+To make room for the chips, the Material Comfort list wraps into two columns while they show, and on the smallest screens (480x272) it is hidden; the humidity reading above it stays.
+
+Happy Hare runs one drying cycle per unit, so pick your lanes before you tap **Start Drying**. A lane can't be added to a cycle that is already running: stop it and start again with the new selection. On these units the button and the time left follow the unit's cycle, so a lane that isn't drying still shows **Stop Drying** while its neighbours are.
+
+Each lane's part in the cycle shows on its spool on the **Filament** panel, as a small badge on the spool face:
+
+| Badge | Meaning |
+|-------|---------|
+| Heat waves | Drying now |
+| Clock | Waiting for a heater (Happy Hare limits how many lane heaters run at once) |
+| Check mark | Finished |
+| Cross | Stopped before it finished |
+
+A lane that isn't part of a cycle has no badge. Shared-heater units, Happy Hare 3 and every other filament system don't show the chips or the badges, and dry exactly as they always have.
 
 ### Material Comfort
 

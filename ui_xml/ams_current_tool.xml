@@ -24,7 +24,8 @@
     - Clickable to open AMS panel for slot management
 
     Requires C++ backing (ui_ams_current_tool.cpp) to handle:
-    - Color swatch background color (from ams_current_color subject)
+    - The colour swatch's paint: the loaded filament's colour, colours and
+      finish (AmsState current_color / current_colors / current_finish)
     - Click handler to open AMS panel
 
     Binds to subjects:
@@ -53,10 +54,7 @@
     <!-- The tool's physical label (Tool 1, or Toolhead 1 on a backend that names
          the printing end differently). Overwritten at runtime by the binding. -->
     <text_small name="tool_label" text="Tool 1" bind_text="ams_current_tool_text"/>
-    <!-- Color swatch showing current filament color (color set via C++) -->
-    <lv_obj name="color_swatch"
-            width="16" height="16" style_radius="8" style_border_width="1" style_border_color="#text_muted"
-            style_border_opa="80" style_bg_color="#text_muted" style_bg_opa="255" scrollable="false" clickable="false"
-            event_bubble="true"/>
+    <!-- The loaded filament's colour, painted from C++ -->
+    <color_dot name="color_swatch" color="#text_muted" size="#space_lg"/>
   </view>
 </component>

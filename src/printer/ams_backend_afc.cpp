@@ -5930,6 +5930,17 @@ AmsError AmsBackendAfc::apply_user_edit(int slot_index, const SlotInfo& info,
     return AmsErrorHelper::success();
 }
 
+std::optional<helix::ams::TagReading> AmsBackendAfc::tag_reading(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const SlotInfo* slot = slot_info_locked(slot_index);
+    if (!slot || !slot->has_scan()) {
+        return std::nullopt;
+    }
+    helix::ams::TagReading reading;
+    reading.color_rgb = *slot->scanned_color_rgb;
+    return reading;
+}
+
 AmsError AmsBackendAfc::sync_external_identity(int slot_index, const SlotInfo& info) {
     {
         std::lock_guard<std::mutex> lock(mutex_);

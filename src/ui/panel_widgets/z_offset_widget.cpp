@@ -18,12 +18,12 @@
 #include "printer_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 #include "tool_state.h"
 #include "value_status.h"
+#include "widget_subjects.h"
 #include "z_offset_utils.h"
 
 #include <spdlog/spdlog.h>
@@ -55,37 +55,29 @@ char s_value_text_buf[32];
 char s_caption_text_buf[48];
 char s_step_text_buf[16];
 char s_tool_text_buf[32];
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"ZOffsetWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes and acts: a transient
 // instance (a fits_at probe, a rebuild's outgoing widget) must not overwrite the
 // tile's verdict.
 helix::LiveTileOwner<helix::ZOffsetWidget> s_tile;
 
 void z_offset_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide), "z_offset_rung",
-                           s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_save_subject, 0, "z_offset_show_save", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_steppers_subject, 0, "z_offset_show_steppers", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_tool_label_subject, 0, "z_offset_show_tool_label", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "z_offset_status", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_value_text_subject, s_value_text_buf, "", "z_offset_value_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_caption_text_subject, s_caption_text_buf, "",
-                              "z_offset_caption_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_step_text_subject, s_step_text_buf, "", "z_offset_step_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_tool_text_subject, s_tool_text_buf, "", "z_offset_tool_text",
-                              s_subjects);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("ZOffsetWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-        }
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
+                               "z_offset_rung", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_save_subject, 0, "z_offset_show_save", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_steppers_subject, 0, "z_offset_show_steppers", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_tool_label_subject, 0, "z_offset_show_tool_label",
+                               s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "z_offset_status", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_value_text_subject, s_value_text_buf, "", "z_offset_value_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_caption_text_subject, s_caption_text_buf, "",
+                                  "z_offset_caption_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_step_text_subject, s_step_text_buf, "", "z_offset_step_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_tool_text_subject, s_tool_text_buf, "", "z_offset_tool_text",
+                                  s_subjects);
     });
 }
 
@@ -129,13 +121,7 @@ Fonts load_fonts() {
             theme_manager_get_font("icon_font_xs")};
 }
 
-int line_px(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
-
-int text_px(const std::string& text, const lv_font_t* font) {
-    return measure_text_px(text.c_str(), font);
-}
+using helix::line_px;
 
 /// The minimum content box each rung draws in. Mirrors panel_widget_z_offset.xml:
 /// spacing is the XML's pad_row (space_xxs) and pad_column (space_xs); the gap
@@ -154,7 +140,7 @@ helix::RungNeeds measure_needs(bool tool_changer) {
     constexpr int kSlackPx = 1;
     const int button_px = theme_manager_get_spacing("button_height_sm");
 
-    const int icon_w = text_px(helix::ui::icon::lookup_codepoint("axis_z_arrow"), f.icon);
+    const int icon_w = measure_text_px(helix::ui::icon::lookup_codepoint("axis_z_arrow"), f.icon);
     const int icon_h = line_px(f.icon);
     const int xs_h = line_px(f.xs);
     const int small_h = line_px(f.small);
@@ -169,22 +155,23 @@ helix::RungNeeds measure_needs(bool tool_changer) {
     worst.pending_delta_microns = -888;
     const std::string unit_caption = compose_caption({});
     const std::string delta_caption = compose_caption(worst);
-    const int caption_w = std::max(text_px(unit_caption, f.xs), text_px(delta_caption, f.xs));
+    const int caption_w =
+        std::max(measure_text_px(unit_caption, f.xs), measure_text_px(delta_caption, f.xs));
     // The indicator draws proportionally and survives shrinking; this is the least
     // width at which its tick labels still read.
     const int indicator_w = 3 * theme_manager_get_spacing("space_xl");
 
     helix::RungNeeds needs;
     needs.glance =
-        rung_box(std::max(icon_w, text_px(wide2, f.xs)) + tight, icon_h + xs_h + kSlackPx);
-    needs.strip = rung_box(icon_w + col_gap + text_px(wide3, f.xs) + tight,
+        rung_box(std::max(icon_w, measure_text_px(wide2, f.xs)) + tight, icon_h + xs_h + kSlackPx);
+    needs.strip = rung_box(icon_w + col_gap + measure_text_px(wide3, f.xs) + tight,
                            std::max(icon_h, xs_h) + kSlackPx);
     // A tall half cell has the height for the unit under the value, which a short one
     // does not; that is what separates Column from Glance.
-    needs.column = rung_box(std::max(icon_w, text_px(wide3, f.xs)) + tight,
+    needs.column = rung_box(std::max(icon_w, measure_text_px(wide3, f.xs)) + tight,
                             icon_h + 2 * xs_h + 2 * row_gap + comfort + kSlackPx);
 
-    const int cell_row_w = icon_w + col_gap + text_px(wide3, f.body);
+    const int cell_row_w = icon_w + col_gap + measure_text_px(wide3, f.body);
     const int cell_w = std::max(cell_row_w, caption_w);
     const int cell_h = std::max(icon_h, body_h) + row_gap + xs_h;
     // Height gets the same margin: a 1x0.5 tile is one pixel short of this box, and
@@ -194,13 +181,14 @@ helix::RungNeeds measure_needs(bool tool_changer) {
     needs.wide = rung_box(cell_w + col_gap + indicator_w + col_gap + button_px + comfort,
                           std::max(cell_h, button_px) + comfort + kSlackPx);
 
-    const int full_row_w = icon_w + col_gap + text_px(wide3, f.heading);
+    const int full_row_w = icon_w + col_gap + measure_text_px(wide3, f.heading);
     const std::string tool_label = helix::ui::lane_label(helix::ui::active_tool_noun(), 88);
     const int block_w =
-        std::max({full_row_w, caption_w, tool_changer ? text_px(tool_label, f.small) : 0});
+        std::max({full_row_w, caption_w, tool_changer ? measure_text_px(tool_label, f.small) : 0});
     const int block_h =
         std::max(icon_h, heading_h) + row_gap + xs_h + (tool_changer ? row_gap + small_h : 0);
-    const int stepper_w = 2 * button_px + text_px(step_text(0), f.small) + 2 * col_gap + comfort;
+    const int stepper_w =
+        2 * button_px + measure_text_px(step_text(0), f.small) + 2 * col_gap + comfort;
     needs.full = rung_box(std::max(block_w + col_gap + indicator_w, stepper_w) + comfort,
                           block_h + 2 * (row_gap + button_px) + kSlackPx);
     return needs;
@@ -246,15 +234,9 @@ ZOffsetWidget::LiveState ZOffsetWidget::read_live() const {
 }
 
 ZOffsetVerdict ZOffsetWidget::decide(int width_px, int height_px, bool tool_changer) const {
-    // The tree's own padding where it exists; before it does (the load path asks
-    // fits_at then) the root's padding on each side plus the body's gap.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {3 * pad, 3 * pad};
-    }
+    // The tree's own padding where it exists, and before it does (the load path asks
+    // fits_at then) the root's. measure_needs() counts the gaps between the body's parts.
+    const ContentChrome chrome = content_padding_or_estimate(root(), "space_xxs", "space_xxs");
     ZOffsetInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;

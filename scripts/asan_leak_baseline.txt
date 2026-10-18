@@ -21,20 +21,13 @@
 # The ceilings below catch an already-listed origin leaking MORE, which the key
 # set alone cannot see. They come from the SUMMARY line, so they cover direct
 # and indirect bytes together.
-# Ceilings are the zeus ASAN run (16 shards) measured at 147 allocations / 15254 B, plus ~25% headroom.
-max-leaked-bytes: 19100
-max-leaked-objects: 184
+# Ceilings are the zeus ASAN run (16 shards) measured at 48 allocations / 9710 B, plus ~25% headroom.
+max-leaked-bytes: 12100
+max-leaked-objects: 60
 #
-# Why each remaining origin is still here:
+# Why the remaining origin is still here:
 #
 # <no-stack>: allocated inside the distro's libcrypto (CRYPTO_zalloc), whose
 #   frames carry no frame pointers, so the unwinder stops there and no frame of
 #   ours is ever recorded. libcrypto owns the allocation; nothing of ours can free it.
-#
-# lv_ll_ins_tail: observer nodes attached to a singleton's subject after a test
-#   deinit'ed it. lv_subject_deinit() leaves the subject's type set, so it still
-#   accepts observers, and the owner's next init_subjects() memzeroes the subject
-#   and orphans them. Fixing it means test fixtures that re-init the singletons
-#   they observe, or a subject that refuses observers once deinit'ed (#1279).
 <no-stack>
-lib/lvgl/src/misc/lv_ll.c::lv_ll_ins_tail

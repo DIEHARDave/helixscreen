@@ -458,11 +458,13 @@ TEST_CASE("PanelWidgetDef: half-cell capability is classified per widget",
         {"tips", {true, true}},              // wrapping body text
         {"job_queue", {true, true}},         // list rows
         {"print_stats", {true, true}},       // stat rows
+        {"display_message", {true, true}},   // one scrolling line to wrapped text
         {"ams", {true, true}},               // lane slots side by side
         {"active_spool", {true, true}},      // measured compact/wide switch
         {"nozzle_temps", {true, true}},      // decide_nozzle_layout() is measured
         {"speed_flow", {true, true}},        // decide_speed_flow_layout() is measured
         {"dryer", {true, true}},             // decide_dryer_layout() is measured
+        {"maintenance", {true, true}},       // decide_maintenance_tile_layout() is measured
         {"toolhead", {true, true}},          // decide_toolhead_layout() is measured
         {"z_offset", {true, true}},          // decide_z_offset_layout() is measured
         {"exclude_map", {true, true}},       // decide_exclude_map_layout() is measured

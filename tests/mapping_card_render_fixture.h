@@ -11,8 +11,7 @@
  * LVGLUITestFixture (XML component registration — lv_xml_create must build
  * filament_swatch) plus a started AmsBackendMock so update() passes its
  * availability/editable-mapping gates. Widget wiring mirrors MappingCardFixture
- * (test_filament_mapping_drain_reentrancy.cpp); AMS wiring mirrors
- * test_ams_available_slots.cpp.
+ * (test_filament_mapping_drain_reentrancy.cpp); the AMS is a ScopedMockAms.
  *
  * Lives in its own header because more than one test file renders the card.
  */
@@ -21,51 +20,26 @@
 #include "ui_update_queue.h"
 
 #include "ams_backend_mock.h"
-#include "ams_state.h"
 #include "lvgl_ui_test_fixture.h"
-
-#include <memory>
+#include "test_helpers/scoped_mock_ams.h"
 
 struct MappingCardRenderFixture : LVGLUITestFixture {
     helix::ui::FilamentMappingCard card;
+    /// Declared after the card, so the AMS is removed before the card goes.
+    helix::test::ScopedMockAms ams;
+    helix::AmsBackendMock* mock = nullptr;
     lv_obj_t* card_widget = nullptr;
     lv_obj_t* rows = nullptr;
     lv_obj_t* warning = nullptr;
-    helix::AmsBackendMock* mock = nullptr;
 
     /// @param slot_count AMS backend slot count. Defaults to 4, matching every
     ///        existing caller, so this stays default-constructible; a derived
     ///        fixture can pass 1 to force the single-slot case the
     ///        multi-tool-vs-single-extruder visibility rule branches on.
-    explicit MappingCardRenderFixture(int slot_count = 4) {
-        // AmsState subjects must exist before backend events fire; the base
-        // fixture already initialized PrinterState's (the init order
-        // subject_initializer.cpp enforces in production).
-        auto& ams = helix::AmsState::instance();
-        ams.init_subjects(false);
-
-        auto owned = std::make_unique<helix::AmsBackendMock>(slot_count);
-        mock = owned.get();
-        mock->set_operation_delay(0);
-        ams.set_backend(std::move(owned));
-        mock->start();
-
+    explicit MappingCardRenderFixture(int slot_count = 4) : ams(slot_count), mock(ams.backend) {
         card_widget = lv_obj_create(test_screen());
         rows = lv_obj_create(card_widget);
         warning = lv_obj_create(card_widget);
         card.create(card_widget, rows, warning);
-    }
-
-    ~MappingCardRenderFixture() override {
-        // Detach while LVGL still runs and before members die (base-class
-        // teardown has not happened yet). Drain first so queued backend-event
-        // syncs don't leak into the next test.
-        helix::ui::UpdateQueue::instance().drain();
-        if (mock) {
-            mock->stop();
-        }
-        auto& ams = helix::AmsState::instance();
-        ams.clear_backends();
-        ams.deinit_subjects();
     }
 };

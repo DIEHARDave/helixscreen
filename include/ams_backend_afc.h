@@ -262,6 +262,9 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
         t.cold_lane_ops_refused_during_print = true;
         // AFC heats the extruder itself from default_material_temps.
         t.supports_auto_heat_on_load = true;
+        // TOOL_UNLOAD heats the extruder itself: AFC narrates the unload as
+        // heat, cut, unload (toolchange_phase_template() in ams_backend_afc.cpp).
+        t.supports_auto_heat_on_unload = true;
         // AFC uses SET_SPOOL_ID gcode for persistence
         t.has_firmware_spool_persistence = true;
         // AFC publishes a lane spool_id in its status
@@ -418,6 +421,10 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
     AmsError sync_external_identity(int slot_index, const SlotInfo& info) override;
+
+    /// The lane's inline colour scan (a TD-1), which SlotInfo keeps apart from
+    /// color_rgb: the scanner's colour is the reading.
+    [[nodiscard]] std::optional<helix::ams::TagReading> tag_reading(int slot_index) const override;
     void persist_slot_weight(int slot_index, float remaining_weight_g,
                              float total_weight_g) override;
     void persist_external_identity_impl(int slot_index,

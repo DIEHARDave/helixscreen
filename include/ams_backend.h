@@ -17,6 +17,7 @@
 #include "ams_environment_zone.h"
 #include "ams_error.h"
 #include "ams_step_operation.h"
+#include "ams_tag_reading.h"
 #include "ams_types.h"
 #include "display_numbering.h"
 #include "error_event.h"
@@ -72,13 +73,12 @@ namespace helix {
  * so the mock cannot drift from the hardware it emulates.
  */
 struct BackendTraits {
-    bool load_mounts_tool = false;
     bool load_feeds_filament = false;
     bool tracks_consumption_natively = false;
     bool hub_on_toolhead = false;
     bool has_per_slot_loaded_authority = false;
     bool filament_ops_self_home = false;
-    bool supports_batch_filament_ops = false;
+    bool supports_reset = true;
     bool reset_moves_filament = false;
     bool supports_recover_with_state = false;
     bool supports_lane_preload = false;
@@ -97,11 +97,13 @@ struct BackendTraits {
     bool should_hide_slot_tool_badge = false;
     bool requires_preprint_send = false;
     bool supports_auto_heat_on_load = false;
+    bool supports_auto_heat_on_unload = false;
     bool has_firmware_spool_persistence = false;
     bool printer_reports_spool_ids = false;
     bool recovers_filament_on_resume = false;
     bool has_environment_sensors = false;
     bool holds_optimistic_action = false;
+    bool unloads_stand_alone = false;
     bool raises_runout_fault = false;
     bool raises_runout_fault_during_job = false;
     bool unloads_to_hub_between_prints = false;
@@ -114,6 +116,27 @@ struct BackendTraits {
     bool operator!=(const BackendTraits& o) const {
         return !(*this == o);
     }
+};
+
+/// How a head's filament op is done on this machine.
+enum class FilamentOpSupport : uint8_t {
+    Automatic,   ///< The backend runs it
+    Manual,      ///< The user does it by hand; the reason says how
+    Unavailable, ///< It cannot be done here; the reason says why
+};
+
+/**
+ * @brief What one head can do with filament, and why not.
+ *
+ * Answers filament questions only. Whether the head is mounted is never an
+ * input: a backend that needs the tool on the carriage to feed it mounts the
+ * tool inside the op.
+ */
+struct HeadFilamentOps {
+    FilamentOpSupport load = FilamentOpSupport::Automatic;
+    FilamentOpSupport unload = FilamentOpSupport::Automatic;
+    std::string load_reason;   ///< Translated; empty when load is Automatic
+    std::string unload_reason; ///< Translated; empty when unload is Automatic
 };
 
 /**
@@ -330,6 +353,32 @@ class AmsBackend {
      * @return SlotInfo struct (copy, safe for caller to hold)
      */
     [[nodiscard]] virtual SlotInfo get_slot_info(int slot_index) const = 0;
+
+    /**
+     * @brief What the slot's tag reader reported for the spool now in it
+     *
+     * The tag's own values, kept while a user edit overrides them, so the
+     * editor can mark the fields that came from the tag and restore them
+     * (helix::ams::reset_to_tag). A backend with no tag reader, a slot with no
+     * reading, and an out-of-range slot all answer nullopt. Thread-safe.
+     */
+    [[nodiscard]] virtual std::optional<helix::ams::TagReading> tag_reading(int slot_index) const {
+        (void)slot_index;
+        return std::nullopt;
+    }
+
+    /**
+     * @brief Per field, whether get_slot_info(slot_index) shows its tag's value
+     *
+     * Empty whenever tag_reading() is nullopt. Thread-safe.
+     */
+    [[nodiscard]] helix::ams::TagProvenance tag_provenance(int slot_index) const {
+        const std::optional<helix::ams::TagReading> tag = tag_reading(slot_index);
+        if (!tag) {
+            return {};
+        }
+        return helix::ams::tag_provenance(*tag, get_slot_info(slot_index));
+    }
 
     /**
      * @brief Get current action/operation status
@@ -625,43 +674,24 @@ class AmsBackend {
     }
 
     /**
-     * @brief True when load/unload MOUNT and UNMOUNT a tool instead of moving filament.
-     *
-     * A hotend or toolhead changer's "load" is `SELECT_TOOL`: no filament is fed,
-     * nothing is heated by us, nothing purges. Surfaces are expected to say so -
-     * calling that button "Load" invites the reasonable reading that the tool
-     * gets picked up, heated and then actually loaded with filament, which is
-     * not what happens.
-     *
-     * NOT the same question as `is_tool_changer()`. The Snapmaker U1 is a tool
-     * changer whose load really does feed filament through the selected
-     * toolhead, so it stays false here and keeps the filament wording.
-     */
-    [[nodiscard]] bool load_mounts_tool() const {
-        return traits().load_mounts_tool;
-    }
-
-    /**
      * @brief True when the carriage can hold no tool at all, so a current tool
      *        of -1 means "nothing mounted" rather than "nothing loaded".
      *
-     * Every machine whose load mounts a tool can park it. A tool changer whose
-     * load feeds filament (the Snapmaker U1) parks its heads too, so it
-     * overrides this while load_mounts_tool() stays false.
+     * A machine whose heads dock (a tool changer, the Snapmaker U1) answers
+     * true: its heads are mounted and parked, which is never a filament op.
      */
     [[nodiscard]] virtual bool carriage_can_be_empty() const {
-        return load_mounts_tool();
+        return false;
     }
 
     /**
-     * @brief True when Load feeds filament into a head on a machine whose heads are
-     *        otherwise mounted and unmounted.
+     * @brief True when Load is a firmware feed that cannot tell an inserted strand
+     *        from a fed one.
      *
      * A changer whose firmware offers a feed command (see
-     * toolchanger_addon::ToolFeed) answers Load with that feed, and mounting a
-     * tool becomes the separate select-slot action. Such a machine cannot tell
-     * an inserted strand from a fed one, so a head that reads loaded still
-     * accepts Load, and the firmware heats the right head itself.
+     * toolchanger_addon::ToolFeed) answers Load with that feed. A head that
+     * reads loaded still accepts Load there, and the firmware heats the right
+     * head itself.
      */
     [[nodiscard]] bool load_feeds_filament() const {
         return traits().load_feeds_filament;
@@ -676,6 +706,17 @@ class AmsBackend {
      * unload. Empty means "no explanation worth showing"; surfaces omit the hint.
      */
     [[nodiscard]] virtual std::string unload_blocked_reason(int /*slot_index*/) const {
+        return {};
+    }
+
+    /**
+     * @brief Why Eject is unavailable for this lane, in one line, or empty.
+     *
+     * Same contract as unload_blocked_reason(): the refusal is a configuration the
+     * user can fix, so the lane menu states it instead of silently omitting the
+     * action. Empty means eject is available or there is nothing to say.
+     */
+    [[nodiscard]] virtual std::string eject_unavailable_reason(int /*slot_index*/) const {
         return {};
     }
 
@@ -943,6 +984,56 @@ class AmsBackend {
         return false;
     }
 
+    /**
+     * @brief How the spool last inserted in this lane was identified
+     *
+     * A backend whose tag reader answers after the lane's presence rises
+     * reports Pending until it does, so an insert is not taken as unnamed
+     * before the reader has spoken. Default: NotRead (no reader).
+     */
+    [[nodiscard]] virtual InsertIdentity slot_insert_identity(int slot_index) const {
+        (void)slot_index;
+        return InsertIdentity::NotRead;
+    }
+
+    /**
+     * @brief The presence reading the insert watcher judges on this lane
+     *
+     * An insert is this reading's empty to present edge. nullopt means the lane
+     * cannot tell an insert. Default: the slot status, on lanes with a prep
+     * sensor. A backend whose status also moves for reasons other than a spool
+     * going in (a tool parking, firmware metadata) answers from the sensor itself.
+     */
+    [[nodiscard]] virtual std::optional<bool> slot_insert_presence(int slot_index) const {
+        if (!slot_has_prep_sensor(slot_index))
+            return std::nullopt;
+        return slot_status_reports_filament(get_slot_info(slot_index).status);
+    }
+
+    /**
+     * @brief The lane whose spool is this lane's, when the two lanes share one
+     *
+     * A lane fed from storage upstream (a bay routed to a toolhead lane) shows
+     * another lane's spool: the spool's home is the bay, and the fed lane is
+     * the same filament's path onward. nullopt when the lane's spool is its
+     * own, which is every lane on a backend that does not answer this.
+     */
+    [[nodiscard]] virtual std::optional<int> upstream_slot(int slot_index) const {
+        (void)slot_index;
+        return std::nullopt;
+    }
+
+    /**
+     * @brief The number a spool badge shows for this lane
+     *
+     * The base numbers lanes 1-based in global order. A backend whose lanes
+     * share spools resolves through upstream_slot(), so a fed lane and the
+     * storage lane feeding it wear one number and each spool counts once.
+     */
+    [[nodiscard]] virtual int spool_display_number(int slot_index) const {
+        return slot_index + 1;
+    }
+
     // ========================================================================
     // Filament Operations
     // ========================================================================
@@ -1174,15 +1265,55 @@ class AmsBackend {
     // Batch Filament Operations (parallel-toolhead printers)
     // ========================================================================
 
-    /**
-     * @brief Whether this backend can load/unload several slots as one operation
-     *
-     * Gates the UI affordance only. A backend that answers true must implement
-     * load_filament_batch() / unload_filament_batch().
-     */
-    [[nodiscard]] bool supports_batch_filament_ops() const {
-        return traits().supports_batch_filament_ops;
+    // ========================================================================
+    // Heads (backend-neutral filament questions)
+    //
+    // A head is a nozzle filament is fed into. None of these read the current
+    // tool or slot: which head is mounted or active is never an input to a
+    // filament op.
+    // ========================================================================
+
+    /// How many heads filament can be fed into. One on a shared toolhead.
+    [[nodiscard]] virtual int filament_head_count() const {
+        return 1;
     }
+
+    /// The head @p slot feeds, or nullopt when it feeds none (a negative slot,
+    /// or a source not routed to any head). @p slot is one the caller read
+    /// from this backend; the one-head default does not re-read the slot count.
+    [[nodiscard]] virtual std::optional<int> head_for_slot(int slot) const {
+        if (slot < 0) {
+            return std::nullopt;
+        }
+        return 0;
+    }
+
+    /// Whether @p head's load and unload are automatic, manual or unavailable,
+    /// with the reason for anything but automatic.
+    [[nodiscard]] virtual HeadFilamentOps head_filament_ops(int head) const;
+
+    /// Whether @p head holds filament that an unload would act on. nullopt when
+    /// nothing on this machine can tell. Never "is the head mounted".
+    [[nodiscard]] virtual std::optional<bool> head_has_filament(int head) const {
+        if (head != 0) {
+            return std::nullopt;
+        }
+        return is_filament_loaded();
+    }
+
+    /// How many heads one load or unload may name. A backend that answers more
+    /// than one implements load_filament_batch() / unload_filament_batch(),
+    /// which run them together.
+    [[nodiscard]] virtual int max_heads_per_filament_op() const {
+        return 1;
+    }
+
+    /// The slot @p head is fed from: its Assigned Tool slot, the lane whose
+    /// mapped tool is @p head and which feeds that head. nullopt when no slot
+    /// is assigned to it. @p info is the caller's get_system_info() reading, so
+    /// a caller that already holds one costs the backend no second read.
+    [[nodiscard]] virtual std::optional<int> head_source_slot(int head,
+                                                              const AmsSystemInfo& info) const;
 
     /**
      * @brief Whether a batch this process dispatched is still unverified
@@ -1322,6 +1453,31 @@ class AmsBackend {
         return false;
     }
 
+    /**
+     * @brief Open or close the frame-side filament feeder (async)
+     *
+     * Only a machine whose filament is held by a gripper on the frame, not by
+     * the travelling head, has one. Opening releases the filament so it can be
+     * pulled by hand; closing grips it again. The reported state follows in a
+     * later status frame, through feeder_open().
+     *
+     * @return not_supported() by default
+     */
+    virtual AmsError set_feeder_open(bool open) {
+        (void)open;
+        return AmsErrorHelper::not_supported("Feeder");
+    }
+
+    /// Whether set_feeder_open() can act on this printer.
+    [[nodiscard]] virtual bool supports_feeder_control() const {
+        return false;
+    }
+
+    /// Whether the feeder last reported itself open (filament released).
+    [[nodiscard]] virtual bool feeder_open() const {
+        return false;
+    }
+
     // ========================================================================
     // Recovery Operations
     // ========================================================================
@@ -1366,6 +1522,17 @@ class AmsBackend {
      */
     [[nodiscard]] bool reset_moves_filament() const {
         return traits().reset_moves_filament;
+    }
+
+    /**
+     * @brief Whether the sidebar's Reset button means anything here.
+     *
+     * False where the backend has no state for a reset to clear that its own
+     * recovery does not already cover: a tool changer, whose reset re-runs its
+     * initialisation, and the Snapmaker U1, whose reset is a no-op.
+     */
+    [[nodiscard]] bool supports_reset() const {
+        return traits().supports_reset;
     }
 
     /**
@@ -2291,6 +2458,26 @@ class AmsBackend {
     }
 
     /**
+     * @brief Start drying that also ends once the box reaches a humidity target
+     *
+     * The cycle runs at most @p duration_min and ends sooner once the box's relative
+     * humidity reads at or below @p humidity_pct. Only a backend whose
+     * get_dryer_info(unit).supports_humidity_target is true implements this; callers
+     * with no target use start_drying(), which leaves any target to the dryer's own default.
+     *
+     * @param humidity_pct Target relative humidity, % (positive)
+     */
+    virtual AmsError start_drying_to_humidity(float temp_c, int duration_min, float humidity_pct,
+                                              int fan_pct = -1, int unit = 0) {
+        (void)temp_c;
+        (void)duration_min;
+        (void)humidity_pct;
+        (void)fan_pct;
+        (void)unit;
+        return AmsErrorHelper::not_supported("Dryer humidity target");
+    }
+
+    /**
      * @brief Stop drying operation
      *
      * Stops any active drying and turns off heater/fan.
@@ -2301,6 +2488,24 @@ class AmsBackend {
         (void)unit;
         return AmsErrorHelper::not_supported("Dryer");
     }
+
+    /**
+     * @brief Start drying as @p request describes
+     *
+     * The one entry point a surface needs whatever the dryer can do. With no gates and
+     * no rotation it is exactly start_drying(), or start_drying_to_humidity() when a
+     * target is set, so a backend overrides it only to take a gate selection
+     * (DryerInfo::supports_gate_selection) or spool rotation (supports_rotation).
+     */
+    virtual AmsError start_drying_request(const DryingRequest& request);
+
+    /**
+     * @brief Stop drying on @p gates only, or everything on @p unit when empty
+     *
+     * Empty @p gates is exactly stop_drying(). Gates need
+     * DryerInfo::supports_gate_selection; the rest of the cycle keeps running.
+     */
+    virtual AmsError stop_drying_gates(int unit, const std::vector<int>& gates);
 
     /**
      * @brief Update drying parameters while running
@@ -3015,6 +3220,34 @@ class AmsBackend {
     }
 
     /**
+     * @brief Whether this backend's unload_filament() needs no preheat from the UI
+     *
+     * The unload counterpart of supports_auto_heat_on_load(): the command the
+     * backend sends heats the hotend itself, or moves no filament through it.
+     * Each backend sets it from what its own unload command does. Ask
+     * unload_heats_hotend() for a particular unload.
+     */
+    [[nodiscard]] bool supports_auto_heat_on_unload() const {
+        return traits().supports_auto_heat_on_unload;
+    }
+
+    /**
+     * @brief Whether unload_filament(@p slot_index) brings the hotend up itself
+     *
+     * Per call, because one backend can send a self-heating command for one
+     * unload and a bare retract for another. True only where the heat is shown:
+     * in the gcode we send for that unload (QIDI's M109), or in the documented
+     * behaviour of the firmware command we send on that path (AFC TOOL_UNLOAD,
+     * the IFS toolhead unload, the U1's AUTO_FEEDING unload), cited where the
+     * backend sets it. A wrong true runs a cold extrude; a wrong false costs a
+     * second wait. Defaults to the trait.
+     */
+    [[nodiscard]] virtual bool unload_heats_hotend(int slot_index) const {
+        (void)slot_index;
+        return supports_auto_heat_on_unload();
+    }
+
+    /**
      * @brief Whether the UI's optimistic action must outlive this backend's IDLE
      *
      * True for a backend that publishes nothing between the user starting a
@@ -3026,6 +3259,21 @@ class AmsBackend {
      */
     [[nodiscard]] bool holds_optimistic_action() const {
         return traits().holds_optimistic_action;
+    }
+
+    /**
+     * @brief Whether an unload here is always a whole operation, never the
+     *        first half of a swap
+     *
+     * A swap pulls one lane out of a shared toolhead and pushes another in, so
+     * an UNLOADING seen from IDLE with filament loaded usually starts one. On a
+     * machine where every lane has its own toolhead and the firmware runs load
+     * and unload as separate commands, nothing follows an unload, and the step
+     * bar must show the unload's own steps. A tool changer's dock is UNLOADING
+     * too, but its pick follows as one swap, so it leaves this false.
+     */
+    [[nodiscard]] bool unloads_stand_alone() const {
+        return traits().unloads_stand_alone;
     }
 
     /**
@@ -3070,6 +3318,17 @@ class AmsBackend {
     }
 
   protected:
+    /**
+     * @brief Whether filament reaches @p head only through the mounted tool.
+     *
+     * A backend answering true mounts the tool inside its own load and unload
+     * and puts the carriage back afterwards. Never a question the UI asks: to
+     * every surface the op is simply a Load or an Unload.
+     */
+    [[nodiscard]] virtual bool needs_mount_to_feed(int /*head*/) const {
+        return false;
+    }
+
     /**
      * @brief Send this backend's tool-mapping verb.
      *
@@ -3375,10 +3634,14 @@ class AmsBackend {
      * @param detected_type The detected AMS type from printer discovery
      * @param api Pointer to IMoonrakerAPI for sending commands
      * @param client Pointer to helix::IMoonrakerClient for subscriptions
+     * @param hw The discovered hardware, for a type whose backend has variants
+     *        told apart by what else the printer carries. Null builds the
+     *        type's base backend.
      * @return Unique pointer to backend instance, or nullptr if type is NONE
      */
     static std::unique_ptr<AmsBackend> create(AmsType detected_type, IMoonrakerAPI* api,
-                                              helix::IMoonrakerClient* client);
+                                              helix::IMoonrakerClient* client,
+                                              const helix::PrinterDiscovery* hw = nullptr);
 
     /**
      * @brief Create mock backend for testing

@@ -4,6 +4,7 @@
 #include "ui_temp_graph.h"
 
 #include "ui_format_utils.h"
+#include "ui_swatch.h"
 
 #include "lv_draw_buf_guard.h"
 #include "system/crash_handler.h"
@@ -956,19 +957,15 @@ static void draw_legend_cb(lv_event_t* e) {
         chip_area.y2 = y + chip_h;
         lv_draw_rect(layer, &rect_dsc, &chip_area);
 
-        // Draw color swatch (small filled circle)
-        lv_draw_rect_dsc_t swatch_dsc;
-        lv_draw_rect_dsc_init(&swatch_dsc);
-        swatch_dsc.bg_color = meta->color;
-        swatch_dsc.bg_opa = LV_OPA_COVER;
-        swatch_dsc.radius = LV_RADIUS_CIRCLE;
-
+        // The series colour as a swatch circle
         lv_area_t swatch_area;
         swatch_area.x1 = x + chip_pad_h;
         swatch_area.y1 = y + (chip_h - swatch_size) / 2;
         swatch_area.x2 = swatch_area.x1 + swatch_size;
         swatch_area.y2 = swatch_area.y1 + swatch_size;
-        lv_draw_rect(layer, &swatch_dsc, &swatch_area);
+        helix::ui::SwatchPaint swatch_paint;
+        swatch_paint.colors = {meta->color};
+        helix::ui::draw_swatch(layer, swatch_area, swatch_paint);
 
         // Draw series name label
         lv_draw_label_dsc_t label_dsc;

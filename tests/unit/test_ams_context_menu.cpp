@@ -14,7 +14,9 @@
 #include "ams_backend_snapmaker.h"
 #include "ams_backend_toolchanger.h"
 #include "ams_types.h"
+#include "app_globals.h"
 #include "filament_database.h"
+#include "filament_op_execute.h"
 #include "filament_op_slot_resolver.h"
 #include "filament_variants.h"
 #include "printer_discovery.h"
@@ -1002,59 +1004,45 @@ TEST_CASE("The dock-sensor withdrawal is not a permanent blanking",
 }
 
 // ============================================================================
-// Mount / Unmount are a carriage question, not a filament question
+// On a tool changer with no feed, filament is by hand and the menu mounts
 // ============================================================================
 
-TEST_CASE("Mount and Unmount follow the carriage rather than filament presence",
+TEST_CASE("A no-feed tool changer's menu offers Mount and Park, never a filament op",
           "[ams][context_menu][toolchanger]") {
-    // Each tool on a changer carries its own filament permanently, so SlotInfo
-    // presence is true for all four at once and can decide nothing here. A gate
-    // reading presence alone offers Unmount on the three tools sitting in their
-    // docks and refuses Mount on every one of them. Which tool is on the
-    // carriage is the only term this axis may use.
+    // Each tool carries its own filament permanently, so presence is true for
+    // all four at once and decides nothing. Which tool is on the carriage
+    // decides Mount and Park; nothing decides Load or Unload, which are by hand.
     DockSensorToolChanger backend;
     backend.feed(nlohmann::json{{"medusahc", {{"operation", "idle"}, {"current_tool", 1}}}});
-
-    REQUIRE(backend.load_mounts_tool());
     REQUIRE(backend.get_current_slot() == 1);
     REQUIRE_FALSE(backend.get_system_info().is_busy());
 
-    // The state that makes presence useless as a discriminator.
-    for (int slot = 0; slot < 4; ++slot) {
-        CAPTURE(slot);
-        REQUIRE(backend.get_slot_info(slot).is_present());
-    }
+    const auto view = helix::ui::read_filament_head_view(&backend, get_printer_state());
+    REQUIRE(view.heads.size() == 4);
+    CHECK(view.mounted_head == 1);
 
-    // T1 is on the carriage: it is the only unmount target, and mounting the
-    // tool already mounted is the firmware no-op plan_load() refuses.
-    const auto mounted = ops_for(backend, 1);
-    CHECK_FALSE(mounted.can_load);
-    CHECK(mounted.unload_enabled);
+    const auto mounted = helix::ui::decide_slot_actions(view, 1);
+    CHECK_FALSE(mounted.load.enabled);
+    CHECK_FALSE(mounted.load.reason.empty());
+    CHECK_FALSE(mounted.unload.enabled);
+    CHECK(mounted.mount.visible);
+    CHECK_FALSE(mounted.mount.enabled);
+    CHECK(mounted.park.visible == backend.supports_tool_park());
 
     for (int slot : {0, 2, 3}) {
         CAPTURE(slot);
-        const auto docked = ops_for(backend, slot);
-        CHECK(docked.can_load);
-        CHECK_FALSE(docked.unload_enabled);
+        const auto docked = helix::ui::decide_slot_actions(view, slot);
+        CHECK_FALSE(docked.load.enabled);
+        CHECK(docked.mount.visible);
+        CHECK(docked.mount.enabled);
+        CHECK_FALSE(docked.park.visible);
     }
-}
 
-TEST_CASE("The mount target moves with the carriage", "[ams][context_menu][toolchanger]") {
-    // A swap must hand both buttons over: the tool that left the carriage
-    // becomes mountable, and the one that arrived becomes the unmount target.
-    DockSensorToolChanger backend;
-    backend.feed(nlohmann::json{{"medusahc", {{"operation", "idle"}, {"current_tool", 1}}}});
-    REQUIRE(ops_for(backend, 1).unload_enabled);
-
+    // A swap hands Mount over: the departed tool becomes mountable.
     backend.feed(nlohmann::json{{"medusahc", {{"operation", "idle"}, {"current_tool", 3}}}});
-
-    const auto arrived = ops_for(backend, 3);
-    CHECK(arrived.unload_enabled);
-    CHECK_FALSE(arrived.can_load);
-
-    const auto departed = ops_for(backend, 1);
-    CHECK_FALSE(departed.unload_enabled);
-    CHECK(departed.can_load);
+    const auto after = helix::ui::read_filament_head_view(&backend, get_printer_state());
+    CHECK(helix::ui::decide_slot_actions(after, 1).mount.enabled);
+    CHECK_FALSE(helix::ui::decide_slot_actions(after, 3).mount.enabled);
 }
 
 // ============================================================================
@@ -1126,6 +1114,41 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* header = lv_obj_find_by_name(test_screen(), "slot_header");
     REQUIRE(header != nullptr);
     CHECK(std::string(lv_label_get_text(header)) == "Gate 3");
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: the Endless Spool row is labelled in the backend's own word",
+                 "[ui][ams][context_menu]") {
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+
+    const auto backup_label_after_show = [this](bool afc) {
+        auto backend = std::make_unique<AmsBackendMock>(4);
+        backend->set_afc_mode(afc);
+        backend->set_endless_spool_supported(true);
+        backend->set_endless_spool_editable(true);
+
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                      /*is_loaded=*/false, backend.get()));
+
+        lv_obj_t* row = lv_obj_find_by_name(test_screen(), "backup_dropdown_row");
+        REQUIRE(row != nullptr);
+        REQUIRE_FALSE(lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN));
+
+        lv_subject_t* subject = lv_xml_get_subject(nullptr, "ams_slot_backup_label");
+        REQUIRE(subject != nullptr);
+        const std::string from_subject = lv_subject_get_string(subject);
+
+        lv_obj_t* label = lv_obj_find_by_name(row, "backup_label");
+        REQUIRE(label != nullptr);
+        CHECK(std::string(lv_label_get_text(label)) == from_subject);
+
+        menu.hide();
+        return from_subject;
+    };
+
+    CHECK(backup_label_after_show(/*afc=*/false) == "Backup Gate");
+    CHECK(backup_label_after_show(/*afc=*/true) == "Backup Lane");
 }
 
 // ============================================================================
@@ -1364,4 +1387,57 @@ TEST_CASE("Load stays offered on the mounted head when Load is a feed",
     mounting.set_tool_sensor(helix::toolchanger_addon::resolve_tool_sensor(hw));
     mounting.feed(nlohmann::json{{"zmod_color", {{"active_tool_id", 1}}}});
     CHECK_FALSE(ops_for(mounting, 1).can_load);
+}
+
+// ============================================================================
+// on_created: the eject refusal is the backend's to explain
+// ============================================================================
+
+namespace {
+class EjectReasonBackend : public AmsBackendMock {
+  public:
+    using AmsBackendMock::AmsBackendMock;
+    std::string reason;
+    [[nodiscard]] std::string eject_unavailable_reason(int /*slot_index*/) const override {
+        return reason;
+    }
+};
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the context menu shows a backend's eject reason",
+                 "[ui][ams][context_menu]") {
+    auto backend = std::make_unique<EjectReasonBackend>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+
+    SECTION("a reason reaches the hint") {
+        backend->reason = "x";
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                      /*is_loaded=*/false, backend.get()));
+
+        lv_subject_t* hint = lv_xml_get_subject(nullptr, "ams_slot_eject_hint");
+        REQUIRE(hint != nullptr);
+        CHECK(std::string(lv_subject_get_string(hint)) == "x");
+        lv_subject_t* visible = lv_xml_get_subject(nullptr, "ams_slot_eject_hint_visible");
+        REQUIRE(visible != nullptr);
+        CHECK(lv_subject_get_int(visible) == 1);
+
+        lv_obj_t* label = lv_obj_find_by_name(test_screen(), "eject_force_move_hint");
+        REQUIRE(label != nullptr);
+        CHECK_FALSE(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+    }
+
+    SECTION("no reason hides the hint") {
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                      /*is_loaded=*/false, backend.get()));
+
+        lv_subject_t* visible = lv_xml_get_subject(nullptr, "ams_slot_eject_hint_visible");
+        REQUIRE(visible != nullptr);
+        CHECK(lv_subject_get_int(visible) == 0);
+
+        lv_obj_t* label = lv_obj_find_by_name(test_screen(), "eject_force_move_hint");
+        REQUIRE(label != nullptr);
+        CHECK(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+    }
 }

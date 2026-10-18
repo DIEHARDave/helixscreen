@@ -46,6 +46,7 @@
 #include <functional>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -242,9 +243,7 @@ TEST_CASE_METHOD(HelixTestFixture,
 
     auto card = [&state]() {
         // The plugin lands through the queue and its observer queues the count.
-        for (int i = 0; i < 4; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
         return lv_subject_get_int(
             state.composite_visibility_state().get_has_any_preprint_options_subject());
     };
@@ -286,18 +285,14 @@ TEST_CASE_METHOD(HelixTestFixture,
     state.set_helix_plugin_installed(true);
     helix::ui::UpdateQueue::instance().drain();
     device.reset();
-    for (int i = 0; i < 4; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     CHECK(manager.gcode_rewrite_block() == helix::GcodeRewriteBlock::None);
 
     // Clearing the dependencies drops the observer, so a later change queues
     // nothing for this manager.
     manager.set_dependencies(nullptr, nullptr);
     state.set_helix_plugin_installed(false);
-    for (int i = 0; i < 4; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
 
 TEST_CASE("PrintPreparationManager: get_temp_directory", "[print_preparation][safety]") {
@@ -3094,20 +3089,19 @@ TEST_CASE_METHOD(HelixTestFixture,
     SECTION("job temps come from the file's own START_PRINT call") {
         // The gcode file's START_PRINT line is the source of truth for temps
         // (Moonraker metadata lies on multi-material files). The scanner
-        // extracts them into print_start; the pre-start renderer must use
-        // them when the scanned file is the file being printed.
+        // extracts them into print_start, and the start hands the renderer
+        // its own file's call.
         gcode::ScanResult scan;
         scan.print_start.found = true;
         scan.print_start.macro_name = "START_PRINT";
         scan.print_start.raw_line = "START_PRINT EXTRUDER_TEMP=260 BED_TEMP=105";
         scan.print_start.extruder_temp = 260;
         scan.print_start.bed_temp = 105;
-        manager.set_cached_scan_result(scan, "part.gcode");
 
         manager.set_option_state_provider(
             [](const std::string& id) { return id == "bed_mesh" ? 1 : -1; });
-        auto lines =
-            PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(manager, "part.gcode");
+        auto lines = PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(
+            manager, "part.gcode", &scan.print_start);
         bool found = false;
         for (const auto& l : lines) {
             if (l.find("BED_MESH_CALIBRATE_START_PRINT") != std::string::npos) {
@@ -3119,12 +3113,13 @@ TEST_CASE_METHOD(HelixTestFixture,
         REQUIRE(found);
     }
 
-    SECTION("temps render 0 when the scan cache is for a different file") {
+    SECTION("temps render 0 when the start has no START_PRINT call of its own") {
+        // The shown file's scan is not the started file's.
         gcode::ScanResult scan;
         scan.print_start.found = true;
         scan.print_start.bed_temp = 105;
         scan.print_start.extruder_temp = 260;
-        manager.set_cached_scan_result(scan, "other.gcode");
+        manager.set_cached_scan_result(scan, "part.gcode");
 
         manager.set_option_state_provider(
             [](const std::string& id) { return id == "bed_mesh" ? 1 : -1; });
@@ -3554,13 +3549,12 @@ TEST_CASE_METHOD(HelixTestFixture,
 // ============================================================================
 // A start that dies inside the manager must retire the preparing job
 //
-// The modify and remap routes take NO completion callback — continue_print_start()
-// calls modify_and_print() and returns — so PrintStartController's
-// retire_preparing(Failed) is unreachable from them. Nothing else can retire the
-// job, and `print_in_progress` is now PUBLISHED from that job rather than set by
-// hand, so a leak latches the flag until the 1800s watchdog: can_start_new_print()
-// refuses every later print, job_holds_machine stays 1 (greying jog, levelling,
-// macros and the bypass tile), and the panel sits on "Preparing".
+// The modify and remap routes end without an error message, so
+// PrintStartController's retire_preparing(Failed) is unreachable from them.
+// Nothing else can retire the job, and `print_in_progress` is PUBLISHED from that
+// job rather than set by hand, so a leak latches the flag until the 1800s watchdog:
+// can_start_new_print() refuses every later print, job_holds_machine stays 1 (greying jog,
+// levelling, macros and the bypass tile), and the panel sits on "Preparing".
 //
 // Mutation check: delete the abandon_start() call from the exit this drives and
 // the REQUIRE_FALSE below fails.
@@ -3589,11 +3583,17 @@ TEST_CASE_METHOD(HelixTestFixture,
     // Mutation-verified: deleting abandon_start("modify_no_api") fails the
     // REQUIRE_FALSE below. (Deleting the OTHER guard's call does not, which is
     // the point of naming which exit this drives rather than guessing.)
-    PrintPreparationManagerTestAccess::modify_and_print(manager, "doomed.gcode");
+    std::optional<bool> completed;
+    PrintPreparationManagerTestAccess::modify_and_print(
+        manager, "doomed.gcode", nullptr,
+        [&completed](bool success, const std::string&) { completed = success; });
 
     REQUIRE_FALSE(state.print_state().has_preparing_job());
     REQUIRE(lv_subject_get_int(state.print_state().get_print_in_progress_subject()) == 0);
     REQUIRE(state.print_state().last_preparing_exit() == helix::PreparingExit::Failed);
+    // The caller waiting on the start learns it ended.
+    REQUIRE(completed.has_value());
+    CHECK_FALSE(*completed);
 
     // And the machine is released — this is the user-visible half of the latch.
     REQUIRE(lv_subject_get_int(state.print_state().get_job_holds_machine_subject()) == 0);
@@ -3635,9 +3635,7 @@ namespace {
 /// Run queued callbacks until nothing new is enqueued. Each drain() swaps out
 /// one batch, and these stages enqueue their successor from inside a batch.
 void drain_until_quiet() {
-    for (int i = 0; i < 16; ++i) {
-        UpdateQueue::instance().drain();
-    }
+    UpdateQueueTestAccess::drain_all(UpdateQueue::instance(), 16);
 }
 
 /// Number of lines equal to @p want once any trailing CR is stripped.
@@ -3778,6 +3776,42 @@ TEST_CASE_METHOD(HelixTestFixture,
 }
 
 TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: a printer that cannot print from a dot-directory "
+                 "gets its copies staged in the visible directory",
+                 "[print_preparation][remap][staging]") {
+    lv_init_safe();
+    PrinterStateTestAccess::reset(get_printer_state());
+    get_printer_state().init_subjects(false);
+
+    MockPrinter mock_printer;
+    auto& state = mock_printer.state;
+    auto& api = mock_printer.api;
+    PrintPreparationManager manager;
+    manager.set_dependencies(&api, &state);
+    state.print_state().begin_preparing(PrintJobRef{kRemapFixture, "gcodes", ""});
+
+    const bool forgex = GENERATE(true, false);
+    const std::string route = GENERATE(std::string("remap"), std::string("modify"));
+    CAPTURE(forgex, route);
+    REQUIRE(state.profile_state().set_printer_type(forgex ? "FlashForge Adventurer 5M (ForgeX)"
+                                                          : "FlashForge Adventurer 5M",
+                                                   true, false, false));
+    const std::string root = forgex ? "helix_staging/modified_" : ".helix_temp/modified_";
+    if (route == "remap") {
+        manager.modify_and_print_with_remap(kRemapFixture, {{1, 2}}, nullptr);
+    } else {
+        manager.set_cached_scan_result(gcode::ScanResult{}, kRemapFixture);
+        PrintPreparationManagerTestAccess::modify_and_print(manager, kRemapFixture);
+    }
+    drain_until_quiet();
+
+    const auto& uploads = api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    CHECK(uploads[0].dest_path.rfind(root, 0) == 0);
+    CHECK(gcode::resolve_gcode_filename(uploads[0].dest_path) == kRemapFixture);
+}
+
+TEST_CASE_METHOD(HelixTestFixture,
                  "PrintPreparationManager: a remap that changes nothing prints the original",
                  "[print_preparation][remap]") {
     lv_init_safe();
@@ -3826,6 +3860,34 @@ TEST_CASE_METHOD(HelixTestFixture,
     drain_until_quiet();
     CHECK_FALSE(BusyOverlay::is_pending());
     CHECK_FALSE(BusyOverlay::is_visible());
+}
+
+TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: a failed remap start answers its completion",
+                 "[print_preparation][remap]") {
+    // The completion is how the caller learns to re-enable Print: a remap that
+    // dies on the way must answer it, once, as a failure.
+    lv_init_safe();
+    MockPrinter mock_printer;
+    auto& state = mock_printer.state;
+    auto& api = mock_printer.api;
+
+    PrintPreparationManager manager;
+    manager.set_dependencies(&api, &state);
+    state.print_state().begin_preparing(PrintJobRef{"no_such_file.gcode", "gcodes", ""});
+
+    int answers = 0;
+    bool answered_success = true;
+    manager.modify_and_print_with_remap("no_such_file.gcode", {{1, 2}}, nullptr,
+                                        [&](bool success, const std::string& /*error*/) {
+                                            ++answers;
+                                            answered_success = success;
+                                        });
+    drain_until_quiet();
+
+    CHECK(answers == 1);
+    CHECK_FALSE(answered_success);
+    CHECK_FALSE(state.print_state().has_preparing_job());
 }
 
 TEST_CASE_METHOD(HelixTestFixture,

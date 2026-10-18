@@ -40,6 +40,10 @@ class PrintStartProfile {
         /// that only names a target ("Bed: 90c") says nothing about what runs
         /// next, so it must not silence the collector's own inference.
         bool narrates = true;
+        /// For a BED_MESH match: whether its probe lines are a mesh to count
+        /// against the mesh's point total. A validation that probes a few
+        /// points of a stored mesh is not.
+        bool counts_probes = true;
     };
 
     /**
@@ -63,6 +67,8 @@ class PrintStartProfile {
         int hold_minutes_group = 0;
         /// False for a label that states a target rather than narrating a step
         bool narrates = true;
+        /// False for a BED_MESH step whose probes are not the mesh's points
+        bool counts_probes = true;
     };
 
     /**
@@ -177,6 +183,16 @@ class PrintStartProfile {
     bool try_match_signal(const std::string& line, MatchResult& result) const;
 
     /**
+     * @brief Whether a start-block command prints @p console_line while it runs
+     *
+     * From `start_block_owned_lines`: per upper-case command word, the text a
+     * console line contains when that command printed it (an action code, a
+     * probe report). Such a line refines the step it belongs to rather than
+     * naming the step before it.
+     */
+    bool start_block_step_owns(const std::string& command, const std::string& console_line) const;
+
+    /**
      * @brief Try to match a line against response patterns (regex)
      *
      * Runs regex search against each response pattern. Supports $1, $2
@@ -262,6 +278,13 @@ class PrintStartProfile {
         return cfs_signals_;
     }
 
+    /// True when the slicer writes this printer's start sequence into the
+    /// file instead of calling a PRINT_START macro that runs it, so the line
+    /// at virtual_sdcard.file_position names the step running now.
+    bool scripted_start() const {
+        return scripted_start_;
+    }
+
     /// True when this printer's pre-print chain goes silent (no
     /// gcode_response markers) for minutes while it homes Z, validates the
     /// mesh at its corners, and sweeps a calibration mesh — but toolhead
@@ -300,6 +323,24 @@ class PrintStartProfile {
     const std::string& phase_object_field() const {
         return phase_object_field_;
     }
+
+    /// The field inside the phase object naming the step the state belongs
+    /// to; empty when the profile declares none. Firmware that nests steps
+    /// reuses one state string across them (LEVELING while a print decides
+    /// how to level, LEVELING while a mesh runs), so with this set the
+    /// state_patterns match "<innermost context>/<state>" instead of the bare
+    /// state (see qualify_state()).
+    const std::string& phase_object_context_field() const {
+        return phase_object_context_field_;
+    }
+
+    /// The innermost step named by a context field's value: the last element
+    /// of an array (a stack, outermost first), a string as-is, and empty for
+    /// null, an empty stack or any other shape.
+    static std::string innermost_context(const nlohmann::json& value);
+
+    /// The text state_patterns match for a context-qualified phase object.
+    static std::string qualify_state(const std::string& context, const std::string& state);
 
     /// Klipper status objects that must be subscribed for this profile's
     /// phase-object source to ever see a frame: the declared object name, or
@@ -343,6 +384,8 @@ class PrintStartProfile {
     ProgressMode progress_mode_ = ProgressMode::WEIGHTED;
     bool adaptive_meshing_{false};
     bool cfs_signals_{false};
+    bool scripted_start_{false};
+    std::unordered_map<std::string, std::vector<std::string>> start_block_owned_lines_;
     bool position_signals_{false};
     std::vector<SignalFormat> signal_formats_;
     std::vector<ResponsePattern> response_patterns_;
@@ -350,6 +393,7 @@ class PrintStartProfile {
     std::vector<SilentPhaseEntry> silent_progression_;
     std::string phase_object_name_;
     std::string phase_object_field_;
+    std::string phase_object_context_field_;
     std::vector<StatusSignalRule> status_signals_;
 
     /**

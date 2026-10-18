@@ -44,10 +44,6 @@ int authored_rung() {
     return 2;
 }
 
-int line_height_of(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
-
 } // namespace
 
 TileSizing::TileSizing(const std::string& instance_id)
@@ -112,12 +108,15 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
         const lv_font_t* badge_face = theme_manager_get_font("font_body_bold");
         badge_w = ui::text_width(content_.icon_badge.c_str(), badge_face) +
                   theme_manager_get_spacing("space_xxs");
-        badge_h = line_height_of(badge_face);
+        badge_h = line_px(badge_face);
     }
 
     // The component draws the caption translated, so that is what is measured.
     // A label with no translation (a device's own name) comes back unchanged.
     const char* label = content_.label.empty() ? "" : lv_tr(content_.label.c_str());
+
+    const int detail_h =
+        content_.detail_font ? line_px(theme_manager_get_font(content_.detail_font)) : 0;
 
     TileRungMetrics rungs[kTileRungs];
     for (int r = 0; r < kTileRungs; ++r) {
@@ -140,16 +139,20 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
         rungs[r].icon_h = std::max(glyph_h, badge_h);
         rungs[r].value_full_w = ui::text_width(content_.widest_value.c_str(), value_face);
         rungs[r].value_current_w = ui::text_width(content_.widest_current.c_str(), value_face);
-        rungs[r].value_h = line_height_of(value_face);
+        rungs[r].value_h = line_px(value_face);
         rungs[r].label_w = ui::text_width(label, label_face);
-        rungs[r].label_h = line_height_of(label_face);
+        rungs[r].label_h = line_px(label_face);
+        rungs[r].detail_h = detail_h;
     }
 
     const int gap = theme_manager_get_spacing("space_xs");
 
     // The chrome between the tile's outer box and the box its content draws in
-    // (measure_content_chrome). Before the tree exists (the load path asks fits_at
-    // then) a gap on each side is the conservative stand-in.
+    // (measure_content_chrome): padding alone. decide_tile_layout prices a gap
+    // of `gap` between every pair of parts each candidate draws, which covers
+    // the flex gap the tile draws between them, so the verdict reads nothing the
+    // last verdict hid or showed. Before the tree exists (the load path asks
+    // fits_at then) a gap on each side is the conservative stand-in.
     // A gap on each side on top of whatever is measured. A measured-exact fit
     // renders as an overlap by a pixel or two, and the walk cannot see a
     // container that is not on the single-child chain, so the reservation is
@@ -160,7 +163,8 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
     int chrome_w = 2 * gap;
     int chrome_h = 2 * gap;
     if (content_root_) {
-        const ContentChrome chrome = measure_content_chrome(content_root_, gap, row_inset);
+        const ContentChrome chrome =
+            measure_content_chrome(content_root_, gap, row_inset, BranchGap::None);
         chrome_w = chrome.w;
         chrome_h = chrome.h;
     }
@@ -194,15 +198,15 @@ int TileSizing::whole_cell_px() const {
 bool TileSizing::fits(int width_px, int height_px) const {
     // Where half a cell is offered at all. A track is 34px at micro and 40px at
     // tiny. Neither can carry a glyph and a reading together at any rung, so a
-    // tile with a reading floors at a whole cell on both. An icon-only tile
-    // draws its glyph alone in a tiny track, but a micro track is within a
-    // pixel of the widest glyph, so micro floors every tile. Declining the size
-    // here rather than lowering the registry minimum keeps one floor for every
-    // screen and lets the resize clamp and the load path grow past it, which
-    // they both already do through grow_span_to_fit.
+    // tile with a reading floors at a whole cell on both. An icon-only tile is
+    // left to decide(), which drops the label and measures its own glyph against
+    // the box: a micro track is within a pixel of the widest glyph, so that
+    // verdict differs from tile to tile. Declining the size here rather than
+    // lowering the registry minimum keeps one floor for every screen and lets
+    // the resize clamp and the load path grow past it, which they both already
+    // do through grow_span_to_fit.
     const UiBreakpoint bp = widget_size::current_breakpoint();
-    const bool small_tier_floor =
-        bp <= UiBreakpoint::Micro || (content_.has_value && bp <= UiBreakpoint::Tiny);
+    const bool small_tier_floor = content_.has_value && bp <= UiBreakpoint::Tiny;
     if (small_tier_floor) {
         const int whole_cell = whole_cell_px();
         if (width_px < whole_cell || height_px < whole_cell) {
@@ -237,13 +241,14 @@ void TileSizing::follow_label_setting() {
         return;
     }
     label_setting_observer_ = ui::observe<int>(
-        shown, this,
-        [](TileSizing* self, int /*shown*/) {
-            if (self->last_width_px_ >= 0) {
-                self->measure_and_publish(self->last_width_px_, self->last_height_px_);
-            }
-        },
+        shown, this, [](TileSizing* self, int /*shown*/) { self->remeasure(); },
         settings.get_subjects_lifetime());
+}
+
+void TileSizing::remeasure() {
+    if (last_width_px_ >= 0) {
+        measure_and_publish(last_width_px_, last_height_px_);
+    }
 }
 
 void TileSizing::measure_and_publish(int width_px, int height_px) {

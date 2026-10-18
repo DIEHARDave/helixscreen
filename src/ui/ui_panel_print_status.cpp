@@ -51,6 +51,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "memory_monitor.h"
 #include "memory_utils.h"
+#include "non_filament_pause.h"
 #include "observer_factory.h"
 #include "pre_start_exclude.h"
 #include "preprint_predictor.h"
@@ -217,12 +218,14 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, IMoonrakerAPI* a
                 },
                 [this]() { return is_active_; }}),
       progress_text_(printer_state, lifecycle_),
-      layout_fitter_(
-          get_name(), printer_state,
-          {&fan_row_density_subject_, &aux_icon_visible_subject_, &aux_full_visible_subject_,
-           &aux_short_visible_subject_, &fans_fit_subject_, &graph_fits_subject_},
-          {[this]() { return overlay_root_; }, [this]() { return subjects_initialized_; },
-           [this]() { return !aux_fan_name_.empty(); }}) {
+      layout_fitter_(get_name(), printer_state,
+                     {&fan_row_density_subject_, &aux_icon_visible_subject_,
+                      &aux_full_visible_subject_, &aux_short_visible_subject_, &fans_fit_subject_,
+                      &graph_fits_subject_, &row1_stacked_subject_, &row1_tall_subject_,
+                      &row2_stacked_subject_, &row2_tall_subject_},
+                     {[this]() { return overlay_root_; },
+                      [this]() { return subjects_initialized_; },
+                      [this]() { return !aux_fan_name_.empty(); }}) {
     preview_.set_api(api);
     // Pre-init local subject used by observer callback below (fires immediately on subscribe)
     lv_subject_init_int(&exclude_objects_available_subject_, 0);
@@ -594,6 +597,8 @@ void PrintStatusPanel::init_subjects() {
     light_timelapse_controls_.init_subjects();
     light_timelapse_controls_.set_api(api_);
     set_global_light_timelapse_controls(&light_timelapse_controls_);
+    layer_pause_controls_.init_subjects(printer_state_);
+    layer_pause_controls_.set_api(api_);
 
     // Preparing state subjects
     UI_MANAGED_SUBJECT_INT(preparing_visible_subject_, 0, "preparing_visible", subjects_);
@@ -616,6 +621,10 @@ void PrintStatusPanel::init_subjects() {
     // graph stays hidden until the first measured recompute after attach —
     // landscape and every non-capped portrait size never leave that state.
     UI_MANAGED_SUBJECT_INT(graph_fits_subject_, 0, "print_status_graph_fits", subjects_);
+    UI_MANAGED_SUBJECT_INT(row1_stacked_subject_, 0, "print_status_row1_stacked", subjects_);
+    UI_MANAGED_SUBJECT_INT(row1_tall_subject_, 0, "print_status_row1_tall", subjects_);
+    UI_MANAGED_SUBJECT_INT(row2_stacked_subject_, 0, "print_status_row2_stacked", subjects_);
+    UI_MANAGED_SUBJECT_INT(row2_tall_subject_, 0, "print_status_row2_tall", subjects_);
     UI_MANAGED_SUBJECT_INT(aux_fan_present_subject_, 0, "print_status_aux_fan_present", subjects_);
 
     // Density + composite subjects for 3-tier adaptive content.
@@ -664,6 +673,7 @@ void PrintStatusPanel::init_subjects() {
                         return;
                     self->layout_fitter_.recompute_fans_density();
                     self->layout_fitter_.recompute_fans_fit();
+                    self->layout_fitter_.recompute_actions_crowded();
                 },
                 subject_never_freed());
         }
@@ -910,9 +920,13 @@ void PrintStatusPanel::init_subjects() {
                       initial_phase, prog);
     }
 
-    // Self-register cleanup — ensures deinit runs before lv_deinit()
-    StaticPanelRegistry::instance().register_destroy(
-        "PrintStatusPanelSubjects", []() { get_global_print_status_panel().deinit_subjects(); });
+    // Self-register cleanup — ensures deinit runs before lv_deinit(). It reaches the
+    // global only if one exists: building it here, inside destroy_all(), would leave a
+    // panel with live observers behind the teardown.
+    StaticPanelRegistry::instance().register_destroy("PrintStatusPanelSubjects", []() {
+        if (auto* panel = helix::lazy_global_if_exists<PrintStatusPanel>())
+            panel->deinit_subjects();
+    });
 
     spdlog::debug("[{}] Subjects initialized (20 subjects)", get_name());
 }
@@ -926,6 +940,7 @@ void PrintStatusPanel::deinit_subjects() {
     // Clear light/timelapse global accessor
     set_global_light_timelapse_controls(nullptr);
     light_timelapse_controls_.deinit_subjects();
+    layer_pause_controls_.deinit_subjects();
 
     // Reset observers on local subjects BEFORE deinit frees them.
     // subjects_.deinit_all() calls lv_subject_deinit which frees observer
@@ -1276,6 +1291,7 @@ void PrintStatusPanel::on_activate() {
         token.defer("PrintStatusPanel::on_activate_fan_row_recompute", [this]() {
             layout_fitter_.recompute_fans_density();
             layout_fitter_.recompute_fans_fit();
+            layout_fitter_.recompute_actions_crowded();
         });
     }
 
@@ -1757,20 +1773,16 @@ void PrintStatusPanel::handle_tune_button() {
 }
 
 std::string PrintStatusPanel::reprint_filename() const {
+    return reprint_target().file;
+}
+
+helix::gcode::ReprintTarget PrintStatusPanel::reprint_target() const {
     // print_stats names the copy that ran, which for a print this app
     // rewrote is a temp file deleted when the print ends. An identity this
     // session recorded at commit names the original exactly; without one, the
     // report places the original only when it encodes the whole path.
-    // The recorded identity only fills in what the report cannot place: a
-    // report naming another file means another client printed since.
-    const auto& print_state = printer_state_.print_state();
-    const std::optional<std::string> reported =
-        helix::gcode::trusted_original_path(current_print_filename_);
-    const std::string& recorded = print_state.get_print_identity_override();
-    if (!recorded.empty() && (!reported || *reported == recorded)) {
-        return recorded;
-    }
-    return reported.value_or("");
+    return helix::gcode::reprint_target(printer_state_.print_state().get_print_identity_override(),
+                                        current_print_filename_);
 }
 
 void PrintStatusPanel::handle_reprint_button() {
@@ -1783,8 +1795,11 @@ void PrintStatusPanel::handle_reprint_button() {
         return;
     }
 
-    const std::string filename = reprint_filename();
-    spdlog::info("[{}] Reprint button clicked - reprinting: {}", get_name(), filename);
+    const helix::gcode::ReprintTarget target = reprint_target();
+    const std::string& filename = target.file;
+    spdlog::info("[{}] Reprint button clicked - reprinting: {}{}", get_name(), filename,
+                 target.archive_plate > 0 ? fmt::format(" (plate {})", target.archive_plate)
+                                          : std::string());
 
     if (filename.empty() && !current_print_filename_.empty()) {
         // A same-named file elsewhere is not necessarily the one that printed.
@@ -1828,29 +1843,42 @@ void PrintStatusPanel::handle_reprint_button() {
             [this, tok]() mutable {
                 tok.defer("PrintStatusPanel::reprint_reenable",
                           [this]() { ui_set_button_enabled(btn_cancel_, true); });
-            });
+            },
+            target.archive_plate);
     } else {
-        // Fallback: controller unreachable — keep the existing direct path so reprint
-        // still works (no U1 pre-send).
-        spdlog::warn("[{}] No print controller for reprint — using direct start (no U1 pre-send)",
-                     get_name());
-        helix::warn_printer_stop_check_skipped("a reprint", filename,
-                                               "a reprint does not scan the file");
-        api_->job().start_print(
-            filename,
-            lifetime_.bg_cb("PrintStatusPanel::reprint_ok",
-                            [this, filename]() {
-                                spdlog::info("[{}] Reprint started: {}", get_name(), filename);
-                            }),
-            [this, token = lifetime_.token()](const MoonrakerError& err) {
-                // Runs on libhv WS event loop — marshal LVGL work to main.
-                token.defer("PrintStatusPanel::reprint_err", [this, err]() {
-                    spdlog::error("[{}] Failed to reprint: {}", get_name(), err.message);
-                    helix::ui::notify_error_tr(TR_NOOP("Failed to reprint: {}"), err);
-                    ui_set_button_enabled(btn_cancel_, true);
-                });
-            });
+        reprint_without_controller(target);
     }
+}
+
+void PrintStatusPanel::reprint_without_controller(const helix::gcode::ReprintTarget& target) {
+    const std::string& filename = target.file;
+    if (target.archive_plate > 0) {
+        // A plate prints only extracted, which takes the controller; started
+        // directly, the printer would print the .3mf instead.
+        spdlog::warn("[{}] Not reprinting plate {} of {}: no print controller", get_name(),
+                     target.archive_plate, filename);
+        NOTIFY_WARNING(lv_tr("Open the .3mf in Print Files to print this plate again."));
+        ui_set_button_enabled(btn_cancel_, true);
+        return;
+    }
+    // Controller unreachable: a direct start (no U1 pre-send).
+    spdlog::warn("[{}] No print controller for reprint — using direct start (no U1 pre-send)",
+                 get_name());
+    helix::warn_printer_stop_check_skipped("a reprint", filename,
+                                           "a reprint does not scan the file");
+    api_->job().start_print(
+        filename,
+        lifetime_.bg_cb(
+            "PrintStatusPanel::reprint_ok",
+            [this, filename]() { spdlog::info("[{}] Reprint started: {}", get_name(), filename); }),
+        [this, token = lifetime_.token()](const MoonrakerError& err) {
+            // Runs on libhv WS event loop — marshal LVGL work to main.
+            token.defer("PrintStatusPanel::reprint_err", [this, err]() {
+                spdlog::error("[{}] Failed to reprint: {}", get_name(), err.message);
+                helix::ui::notify_error_tr(TR_NOOP("Failed to reprint: {}"), err);
+                ui_set_button_enabled(btn_cancel_, true);
+            });
+        });
 }
 
 void PrintStatusPanel::handle_files_click() {
@@ -2203,7 +2231,8 @@ void PrintStatusPanel::recompute_paused_overlay_visibility() {
     } else if (pending == helix::ui::PendingAction::Resuming) {
         reason = lv_tr("Resuming...");
     } else if (paused) {
-        if (FilamentSensorManager::instance().has_real_runout()) {
+        if (!helix::non_filament_pause::explained() &&
+            FilamentSensorManager::instance().has_real_runout()) {
             AmsBackend* backend = AmsState::instance().get_backend();
             std::string lane = backend ? helix::ui::lane_label(helix::ui::active_lane_noun(),
                                                                backend->get_current_slot())
@@ -2745,29 +2774,6 @@ void PrintStatusPanel::on_preprint_elapsed_changed(int seconds) {
     progress_text_.show_elapsed(lifecycle_.preprint_elapsed_seconds());
 }
 
-void PrintStatusPanel::update_view_toggle_position(bool objects_visible) {
-    if (!overlay_root_)
-        return;
-    // Resolve the card by name, not by walking up from the viewer: the previews
-    // live one level down inside preview_clear_area, while both corner buttons
-    // are direct children of thumbnail_section.
-    lv_obj_t* card = helix::ui::find_required(overlay_root_, "thumbnail_section", get_name());
-    if (!card)
-        return;
-    lv_obj_t* btn = helix::ui::find_required(card, "btn_view_toggle", get_name());
-    if (!btn)
-        return;
-
-    int32_t space_md = theme_manager_get_spacing("space_md");
-    if (objects_visible) {
-        lv_obj_t* btn_objects = helix::ui::find_required(card, "btn_objects", get_name());
-        int32_t obj_w = btn_objects ? lv_obj_get_width(btn_objects) : 36;
-        lv_obj_set_style_translate_x(btn, space_md + obj_w + space_md, LV_PART_MAIN);
-    } else {
-        lv_obj_set_style_translate_x(btn, space_md, LV_PART_MAIN);
-    }
-}
-
 void PrintStatusPanel::refresh_exclude_objects_available() {
     // Klipper reports defined objects only from the G-code file it is
     // printing, so a print is never a 3MF.
@@ -2778,7 +2784,6 @@ void PrintStatusPanel::refresh_exclude_objects_available() {
                               : 0;
     lv_subject_set_int(&exclude_objects_available_subject_, available);
     update_objects_text();
-    update_view_toggle_position(available != 0);
 }
 
 void PrintStatusPanel::update_objects_text() {

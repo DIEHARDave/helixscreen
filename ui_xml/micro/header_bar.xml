@@ -24,12 +24,12 @@
     <!-- Titles render in capitals; "none" keeps the title's own case (a name
          whose case carries meaning, like "LEDs"). -->
     <prop name="title_transform" type="string" default="uppercase"/>
-    <!-- Optional trailing badge: a small image plus a short label, for a screen
+    <!-- Optional trailing badge: a small icon plus a short label, for a screen
          that needs to show WHICH record it is editing. Both parts are empty by
          default and the group stays hidden unless title_badge_subject resolves
          to 1. The label text is left to the owning screen — bind
          "header_title_badge_text" with lv_label_bind_text. -->
-    <prop name="title_badge_image" type="string" default=""/>
+    <prop name="title_badge_icon" type="string" default=""/>
     <prop name="title_badge_subject" type="string" default=""/>
     <!-- Back button callback - defaults to standard navigation go_back -->
     <prop name="back_button_callback" type="string" default="on_header_back_clicked"/>
@@ -76,14 +76,22 @@
          value so the button reads as a circle. 72, not the base 90: this tier's
          header is 40px tall and every slot-2 px comes out of the title. -->
     <prop name="action_button_2_min_width" type="string" default="72"/>
+    <!-- "1" for an icon-only button narrower than the default padding allows:
+         no padding, the icon centred. Pair it with action_button_height and
+         action_button_2_width set to one size for a circle. -->
+    <prop name="action_button_2_icon_only" type="string" default="0"/>
     <prop name="action_button_2_callback" type="string" default=""/>
     <prop name="hide_action_button_2" type="string" default="true"/>
     <prop name="action_button_2_hidden_subject" type="string" default=""/>
     <!-- Expression form of the above; mirrors the base header_bar, including
          the empty default (see its comment for why not a constant). -->
     <prop name="action_button_2_hidden_cond" type="string" default=""/>
+    <prop name="action_button_2_label_hidden_cond" type="string" default=""/>
     <prop name="action_button_2_disabled_subject" type="string" default=""/>
   </api>
+  <styles>
+    <style name="action_icon_only" pad_hor="0" pad_ver="0"/>
+  </styles>
   <view extends="lv_obj"
         width="100%" height="40" style_pad_left="0" style_pad_right="#space_xl" style_pad_top="0" style_pad_bottom="0"
         flex_flow="row" style_flex_main_place="space_between" style_flex_track_place="center"
@@ -107,13 +115,13 @@
                     long_mode="clip" bind_text="$title_subject" text="$title" translation_tag="$title_tag"
                     text_transform="$title_transform" flex_grow="1" style_text_align="left" clickable="false"
                     event_bubble="true" scrollable="false"/>
-      <!-- Trailing badge (image + label), see the props above. -->
+      <!-- Trailing badge (icon + label), see the props above. -->
       <lv_obj name="header_title_badge"
               width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
               style_pad_gap="#space_xxs" hidden="true" clickable="false" event_bubble="true" scrollable="false">
         <bind_flag_if_eq subject="$title_badge_subject" flag="hidden" ref_value="0"/>
-        <lv_image src="$title_badge_image"
-                  style_image_recolor="#text_muted" style_image_recolor_opa="255" clickable="false" event_bubble="true"/>
+        <icon name="header_title_badge_icon"
+              src="$title_badge_icon" size="xs" variant="muted" clickable="false" event_bubble="true"/>
         <text_small name="header_title_badge_text" style_text_color="#text_muted" clickable="false" event_bubble="true"/>
       </lv_obj>
     </lv_obj>
@@ -134,7 +142,8 @@
                style_min_width="$action_button_2_min_width" style_radius="$action_button_2_radius"
                style_bg_color="$action_button_2_bg_color" hidden="$hide_action_button_2" icon="$action_button_2_icon"
                icon_size="$action_button_2_icon_size" text="$action_button_2_text"
-               translation_tag="$action_button_2_text_tag">
+               translation_tag="$action_button_2_text_tag" label_hidden_cond="$action_button_2_label_hidden_cond">
+      <bind_style_if name="action_icon_only" cond="$action_button_2_icon_only"/>
       <bind_state_if_eq subject="$action_button_2_disabled_subject" state="disabled" ref_value="1"/>
       <bind_flag_if cond="$action_button_2_hidden_cond" flag="hidden"/>
       <bind_flag_if_eq subject="$action_button_2_hidden_subject" flag="hidden" ref_value="1"/>

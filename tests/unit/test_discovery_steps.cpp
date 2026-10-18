@@ -14,16 +14,24 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/breadcrumb_capture.h"
+#include "../test_helpers/config_test_access.h"
+#include "../test_helpers/printer_capture.h"
 #include "app_globals.h"
 #include "async_lifetime_guard.h"
+#include "config.h"
 #include "discovery_steps.h"
+#include "filament_sensor_manager.h"
 #include "hardware_setup_prompter.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
+#include "printer_detector.h"
 #include "printer_state.h"
+#include "wizard_config_paths.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -216,4 +224,124 @@ TEST_CASE("the print_active decision: the discovery status can raise it, never l
     CHECK(helix::discovery_print_active(true, printing));
     CHECK_FALSE(helix::discovery_print_active(false, idle));
     CHECK_FALSE(helix::discovery_print_active(false, json::object()));
+}
+
+namespace {
+
+constexpr const char* kCc1Sensor = "filament_switch_sensor filament_sensor";
+
+/// The global Config swapped for a fresh install and restored on scope exit.
+class FreshInstallConfig {
+  public:
+    FreshInstallConfig()
+        : config_(*helix::Config::get_instance()), data_(helix::ConfigTestAccess::data(config_)),
+          path_(helix::ConfigTestAccess::path(config_)),
+          id_(helix::ConfigTestAccess::active_printer_id(config_)),
+          dir_((std::filesystem::temp_directory_path() /
+                ("helix_preset_roles_" + std::to_string(getpid())))
+                   .string()) {
+        std::filesystem::create_directories(dir_);
+        helix::ConfigTestAccess::path(config_) = dir_ + "/settings.json";
+        helix::ConfigTestAccess::active_printer_id(config_) = "default";
+        helix::ConfigTestAccess::data(config_) = {
+            {"active_printer_id", "default"},
+            {"printers",
+             {{"default", {{"moonraker_host", "127.0.0.1"}, {"wizard_completed", false}}}}}};
+        get_printer_state().set_printer_type_sync("");
+    }
+    ~FreshInstallConfig() {
+        helix::FilamentSensorManager::instance().discover_sensors({});
+        helix::ConfigTestAccess::data(config_) = data_;
+        helix::ConfigTestAccess::path(config_) = path_;
+        helix::ConfigTestAccess::active_printer_id(config_) = id_;
+        get_printer_state().set_printer_type_sync("");
+        std::filesystem::remove_all(dir_);
+    }
+    helix::Config& config() {
+        return config_;
+    }
+
+  private:
+    helix::Config& config_;
+    json data_;
+    std::string path_;
+    std::string id_;
+    std::string dir_;
+};
+
+bool cc1_sensor_is_runout() {
+    for (const auto& sensor : helix::FilamentSensorManager::instance().get_sensors()) {
+        if (sensor.klipper_name == kCc1Sensor) {
+            return sensor.role == helix::FilamentSensorRole::RUNOUT;
+        }
+    }
+    return false;
+}
+
+/// Sensors discovered and their config loaded before any preset exists, as startup does.
+void discover_cc1_sensor_without_preset(helix::PrinterDiscovery& hw) {
+    hw.parse_objects(
+        helix::test::load_printer_capture("elegoo_centauri_carbon_objects_list").at("objects"));
+    auto& fsm = helix::FilamentSensorManager::instance();
+    fsm.discover_sensors(hw.filament_sensor_names());
+    fsm.load_config_from_file();
+}
+
+} // namespace
+
+// A preset applied by the auto-detect step lands after the sensors were discovered and their
+// config loaded. The CC1's `filament_sensor` has no role by name, so the preset's role has to
+// reach the manager in the same session or the home filament tile stays blank until restart.
+TEST_CASE_METHOD(StepFixture, "a preset applied during discovery sets the sensor roles at once",
+                 "[discovery_steps][preset][sensors]") {
+    FreshInstallConfig fresh;
+    discover_cc1_sensor_without_preset(api.hardware());
+    REQUIRE_FALSE(cc1_sensor_is_runout());
+
+    fresh.config().set_preset("cc1");
+    auto ctx = context(/*hw_changed=*/true);
+    for (const DiscoveryStep& step : helix::discovery_core_steps()) {
+        if (std::string(step.name) == "auto_detect_printer") {
+            step.run(ctx);
+        }
+    }
+
+    CHECK(cc1_sensor_is_runout());
+}
+
+// The wizard and the Printer Manager apply a preset through apply_type_choice, which must
+// reload the sensors the same way.
+TEST_CASE_METHOD(StepFixture, "a printer type chosen by the user sets the sensor roles at once",
+                 "[discovery_steps][preset][sensors]") {
+    FreshInstallConfig fresh;
+    discover_cc1_sensor_without_preset(api.hardware());
+    REQUIRE_FALSE(cc1_sensor_is_runout());
+
+    REQUIRE_FALSE(PrinterDetector::apply_type_choice(&fresh.config(), "Elegoo Centauri Carbon",
+                                                     api.hardware())
+                      .empty());
+
+    CHECK(cc1_sensor_is_runout());
+}
+
+// An install whose wizard finished and whose printer type is saved gets the preset's sensor
+// block merged on the next discovery; the sensors must pick it up without a restart.
+TEST_CASE_METHOD(StepFixture, "a migrated preset sensor block takes effect in the same session",
+                 "[discovery_steps][preset][sensors]") {
+    FreshInstallConfig fresh;
+    discover_cc1_sensor_without_preset(api.hardware());
+    REQUIRE_FALSE(cc1_sensor_is_runout());
+
+    helix::Config& config = fresh.config();
+    config.set<bool>(config.df() + "wizard_completed", true);
+    config.set<std::string>(config.df() + helix::wizard::PRINTER_TYPE, "Elegoo Centauri Carbon");
+
+    auto ctx = context(/*hw_changed=*/true);
+    for (const DiscoveryStep& step : helix::discovery_core_steps()) {
+        if (std::string(step.name) == "auto_detect_printer") {
+            step.run(ctx);
+        }
+    }
+
+    CHECK(cc1_sensor_is_runout());
 }

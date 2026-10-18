@@ -12,6 +12,7 @@
 #include "env_knobs.h"
 #include "gcode_parser.h"
 #include "helix_thread.h"
+#include "home_layout_share.h"
 #include "macro_param_cache.h"
 #include "mock_persona.h"
 #include "mock_planted_gcodes.h"
@@ -164,11 +165,34 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
         set_config_settings_section("gcode_macro product_param", {{"variable_bed_size_x", "350"},
                                                                   {"variable_bed_size_y", "350"}});
     }
+    // The MedusaHC dock sensors disagree from the first frame: the changer
+    // fault every head but the mounted one is drawn under.
+    medusa_sensor_error_.store(helix::env_flag("HELIX_MOCK_MEDUSA_SENSOR_ERROR"));
     dragonbreath_fault_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_FAULT");
     dragonbreath_offline_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_OFFLINE");
     dragonbreath_external_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_EXTERNAL");
+    if (const char* reject = std::getenv("HELIX_MOCK_DRAGONBREATH_REJECT"); reject && *reject) {
+        dragonbreath_reject_code_ = reject;
+    }
     panda_breath_offline_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_OFFLINE");
     panda_breath_auto_ = helix::env_flag("HELIX_MOCK_PANDA_BREATH_AUTO");
+
+    // HELIX_MOCK_HOME_LAYOUT=<json file> pre-seeds the database record the
+    // printer's own screen publishes its home layout to.
+    if (const char* layout_path = std::getenv("HELIX_MOCK_HOME_LAYOUT");
+        layout_path && *layout_path) {
+        std::ifstream layout_file(layout_path);
+        json layout = layout_file.good() ? json::parse(layout_file, nullptr, false) : json();
+        if (layout.is_discarded() || !layout.is_object()) {
+            spdlog::warn("[MoonrakerClientMock] HELIX_MOCK_HOME_LAYOUT '{}' is not a readable "
+                         "JSON object",
+                         layout_path);
+        } else {
+            mock_db_set(helix::home_layout::kNamespace, helix::home_layout::kKey, layout);
+            spdlog::info("[MoonrakerClientMock] Pre-seeded the published home layout from '{}'",
+                         layout_path);
+        }
+    }
 
     // Initialize idle timeout tracking
     last_activity_time_ = std::chrono::steady_clock::now();
@@ -382,6 +406,18 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
                          "HELIX_MOCK_BELT_FAIL",
                          fail);
         }
+    }
+
+    // HELIX_MOCK_DISPLAY_MESSAGE=<text> — start with an M117 message already set, as a
+    // printer whose macros left one before the screen connected. It counts as a sent
+    // M117, so it shows until the next M117 replaces or clears it.
+    if (const char* message_env = std::getenv("HELIX_MOCK_DISPLAY_MESSAGE");
+        message_env && message_env[0]) {
+        std::lock_guard<std::mutex> lock(display_message_mutex_);
+        display_message_ = message_env;
+        display_message_set_ = true;
+        spdlog::info("[MoonrakerClientMock] HELIX_MOCK_DISPLAY_MESSAGE — display message \"{}\"",
+                     display_message_);
     }
 
     // HELIX_MOCK_EXCLUDE_OBJECTS=<n>|1 — publish a synthetic multi-object plate at
@@ -739,6 +775,16 @@ void MoonrakerClientMock::append_chamber_backend_status(json& status_obj, double
                 {"source", mock_external ? "device" : "klipper"},
                 {"lease_owned", !mock_external && chamber_target > 0.0},
                 {"connected", !mock_offline}};
+            // The rejection fields only once a target has been refused, as a
+            // glue that has rejected nothing yet reports none.
+            if (const int seq = dragonbreath_reject_seq_.load(); seq > 0) {
+                const bool outstanding = dragonbreath_rejection_outstanding_.load();
+                const std::string code = outstanding ? dragonbreath_reject_code_ : std::string();
+                status_obj[diag]["protocol_error"] = code;
+                status_obj[diag]["protocol_error_code"] = code;
+                status_obj[diag]["protocol_error_seq"] = seq;
+                status_obj[diag]["protocol_error_target"] = dragonbreath_reject_target_.load();
+            }
         } else if (backend->id() == "panda_breath") {
             // VENDOR_OK: mirrors the stock Panda Breath binding's status
             // object as captured live on the U1 rig (issue #1290).
@@ -1184,9 +1230,10 @@ void MoonrakerClientMock::populate_capabilities() {
         // The U1 capture's identifying objects. Not `filament_detect`, which would
         // make discovery stand up the production Snapmaker backend; this persona
         // runs the mock one.
-        for (const char* obj : {"tool", "fm175xx_reader", "tmc2240 stepper_x", "purifier", "camera",
-                                "gcode_macro FILAMENT_DT_UPDATE", "gcode_macro FILAMENT_DT_QUERY",
-                                "gcode_macro EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE_ALL"}) {
+        for (const char* obj :
+             {"tool", "fm175xx_reader", "tmc2240 stepper_x", "purifier", "camera",
+              "defect_detection", "gcode_macro FILAMENT_DT_UPDATE", "gcode_macro FILAMENT_DT_QUERY",
+              "gcode_macro EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE_ALL"}) {
             mock_objects.push_back(obj);
         }
         for (int i = 0; i < 4; ++i) {
@@ -1223,6 +1270,7 @@ void MoonrakerClientMock::populate_capabilities() {
     mock_objects.push_back("gcode_macro G28");           // Home all
     mock_objects.push_back("gcode_macro M600");          // Filament change
     mock_objects.push_back("gcode_macro _SYSTEM_MACRO"); // System macro (hidden by default)
+    append_layer_pause_objects(mock_objects);
     for (const auto& name : helix::sim::mock_padded_macro_names()) {
         mock_objects.push_back("gcode_macro " + name);
     }
@@ -1400,6 +1448,21 @@ void MoonrakerClientMock::populate_capabilities() {
                      variant == MedusaVariant::CONTROLLER ? "controller" : "fork");
     }
 
+    // multiACE mock hardware (HELIX_MOCK_AMS=multiace): the U1's own feed
+    // objects plus the plain `ace` object multiACE registers, so real
+    // discovery stands the PRODUCTION AmsBackendMultiAce up against the frames
+    // the simulation serves below (same rule as the MedusaHC modes:
+    // try_create_mock() declines this value). The U1 persona deliberately
+    // omits `filament_detect` so the plain mock backend runs; this mode puts
+    // it back, so pair it with HELIX_MOCK_PRINTER=snapmaker_u1.
+    if (is_mock_multiace()) {
+        for (const char* obj : {"filament_detect", "filament_feed left", "filament_feed right",
+                                "print_task_config", "machine_state_manager", "ace"}) {
+            mock_objects.push_back(obj);
+        }
+        read_multiace_knobs();
+    }
+
     // Standalone IFS module mock mode (HELIX_MOCK_AMS=ifs-module): the
     // module's own objects plus its stock-named sensors, so real discovery
     // sets AmsType::AD5X_IFS and the production AmsBackendAd5xIfs runs against
@@ -1478,6 +1541,7 @@ void MoonrakerClientMock::populate_capabilities() {
     discovery_.modify_hardware([&](PrinterDiscovery& hw) {
         hw.parse_config_keys(mock_config);
         hw.parse_build_volume(mock_config);
+        hw.parse_probe_xy_offset(mock_config);
         macros_snapshot = hw.macros();
     });
 
@@ -2363,6 +2427,20 @@ constexpr std::array<const char*, 17> kZmodValidTypes = {
 
 } // namespace
 
+nlohmann::json MoonrakerClientMock::defect_detection_status() const {
+    if (printer_type_ != PrinterType::SNAPMAKER_U1) {
+        return nlohmann::json::object();
+    }
+    auto feature = [](bool enable) {
+        return nlohmann::json{{"enable", enable}, {"sensitivity", "low"}};
+    };
+    return nlohmann::json{{"main_enable", u1_defect_main_enable_.load()},
+                          {"clean_bed", feature(u1_clean_bed_enable_.load())},
+                          {"noodle", feature(true)},
+                          {"residue", feature(false)},
+                          {"nozzle", feature(false)}};
+}
+
 json MoonrakerClientMock::zmod_color_status() const {
     std::lock_guard<std::mutex> lock(zmod_mutex_);
     json slots = json::array();
@@ -2629,10 +2707,9 @@ void MoonrakerClientMock::advance_medusa_swap() {
     spdlog::info("[MoonrakerClientMock] MedusaHC swap complete: T{} on head", target);
 }
 
-void MoonrakerClientMock::publish_u1_channel_frame(int ext) {
+nlohmann::json MoonrakerClientMock::u1_feed_side_json(int ext) const {
     // "filament_feed left" carries extruders 0/1, "right" carries 2/3.
     const int first = (ext < 2) ? 0 : 2;
-    const std::string side = (ext < 2) ? "left" : "right";
     nlohmann::json channels = nlohmann::json::object();
     for (int i = first; i < first + 2; ++i) {
         channels["extruder" + std::to_string(i)] = {
@@ -2645,7 +2722,12 @@ void MoonrakerClientMock::publish_u1_channel_frame(int ext) {
             {"module_exist", true},
         };
     }
-    dispatch_status_update({{"filament_feed " + side, std::move(channels)}});
+    return channels;
+}
+
+void MoonrakerClientMock::publish_u1_channel_frame(int ext) {
+    const std::string side = (ext < 2) ? "left" : "right";
+    dispatch_status_update({{"filament_feed " + side, u1_feed_side_json(ext)}});
 }
 
 bool MoonrakerClientMock::apply_u1_feeding_gcode(const std::string& gcode) {
@@ -2706,6 +2788,205 @@ bool MoonrakerClientMock::apply_u1_feeding_gcode(const std::string& gcode) {
     return true;
 }
 
+// ============================================================================
+// multiACE mock hardware (HELIX_MOCK_AMS=multiace)
+// ============================================================================
+
+bool MoonrakerClientMock::is_mock_multiace() const {
+    return effective_mock_ams_env() == "multiace";
+}
+
+namespace {
+
+/// The mock's per-bay identity table, shared by every unit: bay 1 a tagged red
+/// PLA, bay 2 a blue PETG, bay 3 empty, bay 4 a black PLA.
+struct MultiaceBaySeed {
+    const char* status;
+    const char* material;
+    const char* brand;
+    std::array<int, 3> color;
+};
+
+constexpr std::array<MultiaceBaySeed, 4> kMultiaceBays{{
+    {"ready", "PLA", "Anycubic", {255, 0, 0}},
+    {"ready", "PETG", "Generic", {0, 0, 255}},
+    {"empty", "", "", {0, 0, 0}},
+    {"ready", "PLA", "Generic", {0, 0, 0}},
+}};
+
+/// One integer VAL= token of a gcode line, or @p fallback when absent.
+int multiace_token(const std::string& gcode, const char* key, int fallback) {
+    const std::string needle = std::string(key) + "=";
+    const size_t at = gcode.find(needle);
+    if (at == std::string::npos) {
+        return fallback;
+    }
+    try {
+        return std::stoi(gcode.substr(at + needle.size()));
+    } catch (...) {
+        return fallback;
+    }
+}
+
+} // namespace
+
+nlohmann::json MoonrakerClientMock::multiace_status_json() const {
+    std::lock_guard<std::mutex> lock(multiace_mutex_);
+    const bool head_mode = multiace_mode_ != "multi";
+    nlohmann::json ace = {
+        {"api_version", 1},
+        {"mode", head_mode ? "head" : "multi"},
+        {"swap_phase", multiace_swap_phase_},
+        {"swap_in_progress", multiace_swap_phase_ != "idle" && multiace_swap_phase_ != "done"},
+        {"unload_all_active", false},
+        {"event_seq", 0},
+        {"quad_replenish", false},
+        {"quad_first", false},
+    };
+
+    nlohmann::json head_ace = nlohmann::json::object();
+    nlohmann::json head_source = nlohmann::json::object();
+    for (int h = 0; h < 4; ++h) {
+        const std::string key = std::to_string(h);
+        head_ace[key] = head_mode ? (h % multiace_units_) : 0;
+        const auto& route = multiace_route_[static_cast<size_t>(h)];
+        if (route.first < 0) {
+            head_source[key] = nullptr;
+            continue;
+        }
+        const MultiaceBaySeed& bay = kMultiaceBays[static_cast<size_t>(route.second)];
+        char color_hex[8];
+        snprintf(color_hex, sizeof(color_hex), "%02X%02X%02X", bay.color[0], bay.color[1],
+                 bay.color[2]);
+        head_source[key] = {
+            {"ace_index", route.first}, {"slot", route.second}, {"type", bay.material},
+            {"color", color_hex},       {"brand", bay.brand},   {"subtype", ""},
+            {"load_failed", false},
+        };
+    }
+    ace["head_ace"] = head_ace;
+    ace["head_source"] = head_source;
+    ace["head_manual"] = {{"0", false}, {"1", false}, {"2", false}, {"3", false}};
+    ace["head_feeder"] = {{"0", false}, {"1", false}, {"2", false}, {"3", false}};
+    ace["ace_heads"] = json::array({0, 1, 2, 3});
+
+    nlohmann::json aces = nlohmann::json::array();
+    for (int u = 0; u < multiace_units_; ++u) {
+        nlohmann::json slots = nlohmann::json::array();
+        for (int s = 0; s < 4; ++s) {
+            const MultiaceBaySeed& bay = kMultiaceBays[static_cast<size_t>(s)];
+            slots.push_back({
+                {"index", s},
+                {"status", bay.status},
+                {"material", bay.material},
+                {"brand", bay.brand},
+                {"color", json::array({bay.color[0], bay.color[1], bay.color[2]})},
+                {"rfid", s == 0 ? 2 : 0},
+            });
+        }
+        aces.push_back({
+            {"idx", u},
+            {"connected", true},
+            {"protocol", "v1"},
+            {"model", "ACE Pro"},
+            {"firmware", "V1.3.84"},
+            {"status", "ready"},
+            {"temp", 25},
+            {"humidity", u == 0 ? json(31.5) : json(nullptr)},
+            {"gate_status", json::array({1, 1, 0, 1})},
+            {"slots", slots},
+        });
+    }
+    ace["aces"] = aces;
+    return ace;
+}
+
+bool MoonrakerClientMock::apply_multiace_gcode(const std::string& gcode) {
+    const size_t token_end = gcode.find_first_of(" \t");
+    const std::string cmd = gcode.substr(0, token_end);
+    const bool load = cmd == "ACE_LOAD_HEAD";
+    const bool unload = cmd == "ACE_UNLOAD_HEAD" || cmd == "ACE_UNLOAD_ALL_HEADS";
+    if (!load && !unload && cmd != "ACE_DRY" && cmd != "ACE_STOP_DRYING") {
+        return false;
+    }
+    if (!is_mock_multiace()) {
+        return false; // an ACE_* line on a printer the mock does not simulate
+    }
+
+    if (cmd == "ACE_DRY" || cmd == "ACE_STOP_DRYING") {
+        spdlog::info("[MoonrakerClientMock] multiACE mock: {} acknowledged (dryer state is "
+                     "static in the mock)",
+                     cmd);
+        return true;
+    }
+
+    std::vector<int> heads;
+    if (cmd == "ACE_UNLOAD_ALL_HEADS") {
+        std::lock_guard<std::mutex> lock(multiace_mutex_);
+        for (int h = 0; h < 4; ++h) {
+            if (multiace_route_[static_cast<size_t>(h)].first >= 0) {
+                heads.push_back(h);
+            }
+        }
+    } else {
+        heads.push_back(std::clamp(multiace_token(gcode, "HEAD", 0), 0, 3));
+    }
+
+    for (int h : heads) {
+        const auto i = static_cast<size_t>(h);
+        if (load) {
+            int ace = multiace_token(gcode, "ACE", -1);
+            int slot = multiace_token(gcode, "SLOT", -1);
+            {
+                std::lock_guard<std::mutex> lock(multiace_mutex_);
+                if (ace < 0 || slot < 0) {
+                    // A bare load takes the unit wired to the head (head mode)
+                    // or unit 1, bay 1.
+                    ace = (multiace_mode_ != "multi") ? (h % multiace_units_) : 0;
+                    slot = 0;
+                }
+                // HEAD is clamped where it is read; an out-of-range ACE or
+                // SLOT must not reach the route table or the bay seeds.
+                ace = std::clamp(ace, 0, multiace_units_ - 1);
+                slot = std::clamp(slot, 0, 3);
+                if (multiace_route_[i].first >= 0) {
+                    // The engine feeds nothing into an occupied head.
+                    spdlog::warn("[MoonrakerClientMock] multiACE mock: head {} already loaded - "
+                                 "load feeds nothing",
+                                 h);
+                    continue;
+                }
+                multiace_route_[i] = {ace, slot};
+                multiace_swap_phase_ = "done";
+            }
+            u1_channel_state_[i] = "preload_finish";
+            u1_filament_detected_[i] = true;
+            publish_u1_channel_frame(h);
+            u1_channel_state_[i] = "load_finish";
+            publish_u1_channel_frame(h);
+        } else {
+            bool had_route = false;
+            {
+                std::lock_guard<std::mutex> lock(multiace_mutex_);
+                had_route = multiace_route_[i].first >= 0;
+                multiace_route_[i] = {-1, -1};
+                multiace_swap_phase_ = "idle";
+            }
+            if (had_route) {
+                u1_channel_state_[i] = "unload_heat_finish";
+                publish_u1_channel_frame(h);
+                // multiACE's feed unload parks the channel at preload_finish.
+                u1_channel_state_[i] = "preload_finish";
+                u1_filament_detected_[i] = false;
+                publish_u1_channel_frame(h);
+            }
+        }
+        spdlog::info("[MoonrakerClientMock] multiACE mock: {} head {}", load ? "load" : "unload",
+                     h);
+    }
+    return true;
+}
+
 nlohmann::json MoonrakerClientMock::pin_watch_status_json() const {
     const MedusaVariant variant = mock_medusa_variant();
     if (variant == MedusaVariant::NONE || variant == MedusaVariant::FORK) {
@@ -2713,6 +2994,38 @@ nlohmann::json MoonrakerClientMock::pin_watch_status_json() const {
     }
     const int current = medusa_current_tool_.load();
     return nlohmann::json{{"current_tool", medusa_sensor_error_.load() ? -2 : current}};
+}
+
+void MoonrakerClientMock::read_multiace_knobs() {
+    std::lock_guard<std::mutex> lock(multiace_mutex_);
+    if (const char* mode_env = std::getenv("HELIX_MOCK_MULTIACE_MODE")) {
+        const std::string mode = helix::text_io::to_lower(mode_env);
+        if (mode == "multi" || mode == "head") {
+            multiace_mode_ = mode;
+        } else {
+            spdlog::warn("[MoonrakerClientMock] HELIX_MOCK_MULTIACE_MODE='{}' is not 'head' or "
+                         "'multi' - using the default 'head'",
+                         mode_env);
+        }
+    }
+    if (const char* units_env = std::getenv("HELIX_MOCK_MULTIACE_UNITS")) {
+        try {
+            multiace_units_ = std::clamp(std::stoi(units_env), 1, 4);
+        } catch (...) {
+            spdlog::warn("[MoonrakerClientMock] HELIX_MOCK_MULTIACE_UNITS='{}' is not a number - "
+                         "using 1",
+                         units_env);
+            multiace_units_ = 1;
+        }
+    }
+    // One routed head at rest, so the path view has a chain to draw.
+    const bool unrouted = std::all_of(multiace_route_.begin(), multiace_route_.end(),
+                                      [](const auto& r) { return r.first < 0; });
+    if (unrouted) {
+        multiace_route_[0] = {0, 0};
+    }
+    spdlog::info("[MoonrakerClientMock] multiACE mock: mode={}, units={}", multiace_mode_,
+                 multiace_units_);
 }
 
 void MoonrakerClientMock::populate_hardware() {
@@ -4292,6 +4605,15 @@ void MoonrakerClientMock::dispatch_initial_state() {
     // The discovery subscription is built before configfile is read here, so
     // the leveling-skip objects it never asked for are announced with the rest.
     initial_status.update(skip_wrapper_status());
+    initial_status.update(layer_pause_status());
+
+    // multiACE mock: the `ace` object and both filament_feed sides at rest, so
+    // the production backend's first parse sees what a booted rig reports.
+    if (is_mock_multiace()) {
+        initial_status["ace"] = multiace_status_json();
+        initial_status["filament_feed left"] = u1_feed_side_json(0);
+        initial_status["filament_feed right"] = u1_feed_side_json(2);
+    }
 
     // Use the base class dispatch method (same as real client)
     dispatch_status_update(initial_status);
@@ -4565,6 +4887,48 @@ void MoonrakerClientMock::set_bed_target(double target) {
 
 void MoonrakerClientMock::set_chamber_target(double target) {
     chamber_target_.store(target);
+}
+
+json MoonrakerClientMock::chamber_route_set_target(double target) {
+    const std::string key = chamber_heater_status_key();
+    if (!dragonbreath_reject_code_.empty()) {
+        const int seq = ++dragonbreath_reject_seq_;
+        dragonbreath_reject_target_.store(target);
+        dragonbreath_rejection_outstanding_.store(true);
+        set_chamber_target(0.0);
+        spdlog::info("[MoonrakerClientMock] Chamber target {}°C refused ({}), seq {}", target,
+                     dragonbreath_reject_code_, seq);
+        json status = {{"dragonbreath",
+                        {{"protocol_error", dragonbreath_reject_code_},
+                         {"protocol_error_code", dragonbreath_reject_code_},
+                         {"protocol_error_seq", seq},
+                         {"protocol_error_target", target}}}};
+        if (!key.empty()) {
+            status[key] = {{"target", 0.0}};
+        }
+        dispatch_status_update(status);
+        return {{"accepted", false},
+                {"pending", false},
+                {"reason", dragonbreath_reject_code_},
+                {"seq", seq},
+                {"target", target}};
+    }
+    set_chamber_target(target);
+    reset_idle_timeout();
+    const bool cleared = dragonbreath_rejection_outstanding_.exchange(false);
+    json status = json::object();
+    if (!key.empty()) {
+        status[key] = {{"target", target}};
+    }
+    if (cleared) {
+        status["dragonbreath"] = {{"protocol_error", ""}, {"protocol_error_code", ""}};
+    }
+    dispatch_status_update(status);
+    return {{"accepted", true},
+            {"pending", false},
+            {"reason", nullptr},
+            {"seq", dragonbreath_reject_seq_.load()},
+            {"target", target}};
 }
 
 void MoonrakerClientMock::dispatch_method_callback(const std::string& method, const json& msg) {
@@ -4983,6 +5347,10 @@ void MoonrakerClientMock::temperature_simulation_loop() {
 
         // A console line per layer while printing, so the console has live
         // output to show in --test.
+        if (print_state_str == "printing") {
+            layer_pause_on_layer(layer_pause_last_layer_, current_layer);
+        }
+        layer_pause_last_layer_ = current_layer;
         if (print_state_str == "printing" && current_layer > 0 &&
             current_layer != last_console_layer_) {
             last_console_layer_ = current_layer;
@@ -5049,23 +5417,7 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             // A user-set M117 message (even cleared to "") always wins over the
             // canned phase strings below - those only apply before the user has
             // ever sent an M117.
-            {"display_status",
-             {{"progress", progress},
-              {"message",
-               [&]() -> json {
-                   {
-                       std::lock_guard<std::mutex> lock(display_message_mutex_);
-                       if (display_message_set_)
-                           return display_message_;
-                   }
-                   if (phase == MockPrintPhase::PREHEAT)
-                       return "Heating...";
-                   if (phase == MockPrintPhase::PRINTING && progress < 0.02)
-                       return "Purging nozzle";
-                   if (phase == MockPrintPhase::PRINTING)
-                       return nullptr; // Most of print has no active message
-                   return nullptr;
-               }()}}},
+            {"display_status", {{"progress", progress}, {"message", current_display_message()}}},
             // stepper_enable tracks actual motor driver state (immediate response to M84)
             {"stepper_enable",
              {{"steppers",
@@ -5138,6 +5490,12 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // map, and the vendor/color/material arrays).
         if (is_mock_cfs()) {
             status_obj["box"] = cfs_box_status_json();
+        }
+        // multiACE mock: the engine-shaped `ace` frame the production
+        // AmsBackendMultiAce parses. The filament_feed frames ride the initial
+        // status and each ACE_* command's publish, not this loop.
+        if (is_mock_multiace()) {
+            status_obj["ace"] = multiace_status_json();
         }
         if (printer_type_ == PrinterType::CREALITY_K2_PLUS) {
             append_k2_status(status_obj);
@@ -6389,6 +6747,43 @@ void MoonrakerClientMock::dispatch_measure_axes_noise_response() {
         "Axes noise for xy-axis accelerometer: 12.345678 (x), 15.678901 (y), 8.234567 (z)");
 
     spdlog::info("[MoonrakerClientMock] Dispatched MEASURE_AXES_NOISE response");
+}
+
+const char* MoonrakerClientMock::print_start_display_message(uint8_t simulated_phase) {
+    switch (static_cast<SimulatedPrintStartPhase>(simulated_phase)) {
+    case SimulatedPrintStartPhase::PRINT_START_MARKER:
+    case SimulatedPrintStartPhase::HOMING:
+        return "Homing...";
+    case SimulatedPrintStartPhase::HEATING_BED:
+        return "Heating bed...";
+    case SimulatedPrintStartPhase::HEATING_NOZZLE:
+        return "Heating nozzle...";
+    case SimulatedPrintStartPhase::QGL:
+        return "Leveling Gantry...";
+    case SimulatedPrintStartPhase::BED_MESH:
+        return "Calibrating bed mesh...";
+    case SimulatedPrintStartPhase::PURGING:
+    case SimulatedPrintStartPhase::LAYER_1:
+        return "Purging nozzle";
+    case SimulatedPrintStartPhase::NONE:
+        break;
+    }
+    return "Heating...";
+}
+
+json MoonrakerClientMock::current_display_message() const {
+    {
+        std::lock_guard<std::mutex> lock(display_message_mutex_);
+        if (display_message_set_)
+            return display_message_;
+    }
+    const MockPrintPhase phase = print_phase_.load();
+    if (phase == MockPrintPhase::PREHEAT)
+        return print_start_display_message(simulated_print_start_phase_.load());
+    if (phase == MockPrintPhase::PRINTING && print_progress_.load() < 0.02)
+        return "Purging nozzle";
+    // Most of a print, and idle, carry no message.
+    return nullptr;
 }
 
 void MoonrakerClientMock::advance_print_start_simulation() {

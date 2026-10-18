@@ -795,9 +795,10 @@ stage_weight_override(std::unordered_map<int, FilamentSlotOverride>& overrides, 
 // ============================================================================
 
 FilamentSlotOverrideStore::FilamentSlotOverrideStore(IMoonrakerAPI* api, std::string backend_id,
-                                                     LaneKeyStyle key_style, std::string ns)
+                                                     LaneKeyStyle key_style, std::string ns,
+                                                     bool migrates_legacy_namespace)
     : api_(api), backend_id_(std::move(backend_id)), key_style_(key_style),
-      namespace_(std::move(ns)) {}
+      namespace_(std::move(ns)), migrates_legacy_namespace_(migrates_legacy_namespace) {}
 
 std::string FilamentSlotOverrideStore::cache_dir_effective() const {
     if (!cache_dir_.empty()) {
@@ -859,8 +860,6 @@ std::unordered_map<int, FilamentSlotOverride> try_migrate_legacy(IMoonrakerAPI* 
                                                                  LaneKeyStyle key_style) {
     std::unordered_map<int, FilamentSlotOverride> empty_result;
     if (!api)
-        return empty_result;
-    if (backend_id != "ace" && backend_id != "cfs")
         return empty_result;
 
     const std::string legacy_ns = "helix-screen";
@@ -1277,8 +1276,14 @@ bool is_absent_namespace(const MoonrakerError& err) {
 
 } // namespace
 
-void FilamentSlotOverrideStore::reload_async(ReloadCallback cb) {
-    if (!api_ || !cb) {
+void FilamentSlotOverrideStore::reload_async(ReloadCallback cb, std::function<void()> on_failure) {
+    if (!cb) {
+        return;
+    }
+    if (!api_) {
+        if (on_failure) {
+            on_failure();
+        }
         return;
     }
     // Carry everything the callbacks read by value. The store can be destroyed
@@ -1289,19 +1294,25 @@ void FilamentSlotOverrideStore::reload_async(ReloadCallback cb) {
     const std::string ns = namespace_;
     api_->database_get_namespace(
         namespace_,
-        [style, id, cb](const nlohmann::json& value) {
+        [style, id, cb, on_failure](const nlohmann::json& value) {
             if (!value.is_object()) {
+                if (on_failure) {
+                    on_failure();
+                }
                 return;
             }
             cb(parse_namespace_document(value, style, id));
         },
-        [style, id, ns, cb](const MoonrakerError& err) {
+        [style, id, ns, cb, on_failure](const MoonrakerError& err) {
             if (is_absent_namespace(err)) {
                 cb(parse_namespace_document(nlohmann::json::object(), style, id));
                 return;
             }
             spdlog::debug("[FilamentSlotOverrideStore:{}] reload of {} failed: {}", id, ns,
                           err.message);
+            if (on_failure) {
+                on_failure();
+            }
         });
 }
 
@@ -1544,7 +1555,7 @@ std::unordered_map<int, FilamentSlotOverride> FilamentSlotOverrideStore::load_bl
     // round-trip succeeded, so this is the right moment. In the offline
     // fallback branch above we explicitly do NOT migrate — a transient
     // network blip should not attempt destructive namespace moves.
-    if (result.empty() && (backend_id_ == "ace" || backend_id_ == "cfs")) {
+    if (result.empty() && migrates_legacy_namespace_) {
         auto migrated =
             try_migrate_legacy(api_, backend_id_, load_timeout_, cache_dir_effective(), key_style_);
         if (!migrated.empty())
@@ -1788,15 +1799,16 @@ std::optional<int> FilamentSlotOverrideStore::load_seated_slot_blocking() {
 // Shared firmware -> lane_data mirror helper
 // =============================================================================
 
-DeclaredOnLane declared_on_lane(LaneId lane) {
+DeclaredOnLane declared_on_lane(LaneId lane, const FilamentSlotOverride* record) {
     const LaneSources sources = lane_sources(lane);
-    const auto held = [&sources](auto field) {
+    const auto held = [&sources](auto field, bool user_declares) {
         return (sources.spoolman.has_value() && ((*sources.spoolman).*field).has_value()) ||
-               (sources.local_user.has_value() && ((*sources.local_user).*field).has_value());
+               (user_declares && sources.local_user.has_value() &&
+                ((*sources.local_user).*field).has_value());
     };
     DeclaredOnLane declared;
-    declared.color = held(&Observation::color_rgb);
-    declared.material = held(&Observation::material);
+    declared.color = held(&Observation::color_rgb, !record || declares_color(*record));
+    declared.material = held(&Observation::material, !record || declares_material(*record));
     return declared;
 }
 
@@ -2031,13 +2043,14 @@ void SlotFingerprintTracker::clear() {
 
 LoadedOverrideStore make_loaded_override_store(IMoonrakerAPI* api, std::string backend_id,
                                                AmsType type, const std::string& log_tag,
-                                               std::string ns) {
+                                               std::string ns, bool migrates_legacy_namespace) {
     if (!api) {
         return {};
     }
     LoadedOverrideStore result;
     result.store = std::make_unique<FilamentSlotOverrideStore>(
-        api, std::move(backend_id), lane_key_style_for(type), std::move(ns));
+        api, std::move(backend_id), lane_key_style_for(type), std::move(ns),
+        migrates_legacy_namespace);
     result.overrides = result.store->load_blocking();
     spdlog::info("{} Loaded {} slot overrides from filament_slot store", log_tag,
                  result.overrides.size());

@@ -77,6 +77,15 @@ class PrinterPluginStatusState {
      */
     void set_installed(bool installed);
 
+    /// The plugin's link directory (its status' `symlink_dir`); empty when it
+    /// reported none. Also tells the filename helpers to recognise it.
+    void set_link_dir(const std::string& dir);
+
+    /// The plugin's link directory, or empty when unknown.
+    const std::string& link_dir() const {
+        return link_dir_;
+    }
+
     /**
      * @brief Set the discovery-derived helper-macro install status
      *
@@ -148,6 +157,7 @@ class PrinterPluginStatusState {
   private:
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
+    std::string link_dir_;
 
     // Plugin status subjects (tri-state: -1=unknown, 0=no, 1=yes)
     lv_subject_t helix_plugin_installed_{}; // HelixPrint Klipper plugin

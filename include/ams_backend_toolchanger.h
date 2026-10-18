@@ -3,10 +3,14 @@
 
 #pragma once
 
+#include "ui_timer_guard.h"
+
 #include "ams_subscription_backend.h"
 #include "filament_slot_override_store.h"
+#include "mount_feed_sequence.h"
 #include "toolchanger_addon.h"
 
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -108,29 +112,91 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         // The per-slot tool badge ("T0", "T1", ...) is redundant with the toolhead
         // label shown below each slot on a tool changer.
         t.should_hide_slot_tool_badge = true;
-        // Load is SELECT_TOOL and unload is UNSELECT_TOOL: a mount and an unmount,
-        // with no filament motion of any kind. See do_load_filament().
-        t.load_mounts_tool = true;
+        // Reset re-runs the changer's initialisation, which the toolchanger's own
+        // recovery already offers.
+        t.supports_reset = false;
         return t;
     }();
     /// With a firmware feed command (Z-Mod's afclite shim), Load feeds filament
-    /// and the firmware heats the head it feeds. The carriage semantics (a tool
-    /// can be mounted or parked, Unmount) stay those of kTraits.
+    /// and the firmware heats the head it feeds.
     static constexpr BackendTraits kTraitsWithFeed = [] {
         BackendTraits t = kTraits;
         t.load_feeds_filament = true;
         t.supports_auto_heat_on_load = true;
-        // Mounting a tool is the select-slot action once Load is a feed.
-        t.supports_gate_select = true;
+        return t;
+    }();
+    /// One extruder drive serving every tool (MedusaHC): a load or unload
+    /// mounts the tool, heats it and moves filament through it itself, so the
+    /// UI neither preheats nor treats a paused print as a time to do it, and a
+    /// head that reads loaded still accepts Load.
+    static constexpr BackendTraits kTraitsMountFeed = [] {
+        BackendTraits t = kTraits;
+        t.load_feeds_filament = true;
+        t.supports_auto_heat_on_load = true;
+        t.supports_auto_heat_on_unload = true;
+        t.filament_ops_self_home = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {
-        return tool_feed_.present ? kTraitsWithFeed : kTraits;
+        if (tool_feed_.present) {
+            return kTraitsWithFeed;
+        }
+        return mounts_to_feed_ ? kTraitsMountFeed : kTraits;
     }
 
-    /// Mounts the tool; Load is a feed on a machine that has one.
-    AmsError select_gate(int slot_index) override {
-        return tool_feed_.present ? select_slot(slot_index) : AmsBackend::select_gate(slot_index);
+    /// Whether this machine moves filament only through the mounted tool
+    /// (toolchanger_addon::feeds_through_mount()). Set from discovery.
+    void set_mounts_to_feed(bool mounts) {
+        mounts_to_feed_ = mounts;
+    }
+
+    /// A load or unload running its mount-to-feed sequence can be cancelled:
+    /// the heater goes off and the carriage goes back.
+    [[nodiscard]] bool can_cancel_operation() const override;
+
+    /// Every tool docks: the carriage can hold none.
+    [[nodiscard]] bool carriage_can_be_empty() const override {
+        return true;
+    }
+
+    /**
+     * @brief What each head can do with filament.
+     *
+     * Nothing on a klipper-toolchanger moves filament unless the firmware
+     * publishes a feed for that head: then Load is that feed. No feed reverses,
+     * so Unload is always the user's job. Mounting and parking are never a
+     * filament op: the toolhead tap and park_active_tool() do those.
+     */
+    [[nodiscard]] HeadFilamentOps head_filament_ops(int head) const override;
+
+    /// The answers head_filament_ops() gives, shared with the mock so its
+    /// tool-changer persona cannot drift from this backend.
+    /// @param feeds_head    The firmware publishes a feed for the head.
+    /// @param cut_to_unload The machine's unload is a cut at the head (unload_is_manual()).
+    [[nodiscard]] static HeadFilamentOps head_ops_for(bool feeds_head, bool cut_to_unload);
+
+    /// One head per tool, fed from that tool's own slot.
+    [[nodiscard]] int filament_head_count() const override {
+        return get_system_info().total_slots;
+    }
+    /// A machine that moves filament through the mounted tool can work every
+    /// tool in one run: Load all and Unload all pick several heads at once.
+    [[nodiscard]] int max_heads_per_filament_op() const override {
+        return mounts_to_feed_ ? get_system_info().total_slots : 1;
+    }
+    [[nodiscard]] std::optional<int> head_for_slot(int slot) const override {
+        if (slot < 0 || slot >= get_system_info().total_slots) {
+            return std::nullopt;
+        }
+        return slot;
+    }
+    [[nodiscard]] std::optional<int> head_source_slot(int head,
+                                                      const AmsSystemInfo&) const override {
+        return head_for_slot(head);
+    }
+    /// Nothing here senses filament in a head.
+    [[nodiscard]] std::optional<bool> head_has_filament(int) const override {
+        return std::nullopt;
     }
 
     /// Z-Mod's Creator 5 has no automatic unload: the user cuts the filament at
@@ -206,6 +272,10 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     // Operations. Gated by AmsSubscriptionBackend's NVI wrapper.
     AmsError do_load_filament(int slot_index) override;
     AmsError do_unload_filament(int slot_index) override;
+    /// Load all / Unload all on a mount-to-feed changer: the printer's own
+    /// LOAD_ALL_FILAMENT / UNLOAD_ALL_FILAMENT when the selection is every
+    /// tool and the macro exists, else one sequenced run over the tools.
+    AmsError do_filament_batch(const std::vector<int>& slots, bool load) override;
     AmsError do_select_slot(int slot_index) override;
 
     /// On a tool changer, selecting a slot means mounting that toolhead —
@@ -231,11 +301,9 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
      */
     AmsError do_change_tool(int tool_number) override;
 
-    /// The unmount Unload already sends with no tool named: whatever is on the
-    /// carriage goes back to its dock.
-    AmsError do_park_active_tool() override {
-        return do_unload_filament(-1);
-    }
+    /// Whatever is on the carriage goes back to its dock: UNSELECT_TOOL, or the
+    /// machine's own unmount where its extra runs the swap.
+    AmsError do_park_active_tool() override;
 
   public:
     /// A machine whose own swap commands have no unmount can only trade one
@@ -243,6 +311,14 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     [[nodiscard]] bool supports_tool_park() const override {
         return !tool_commands_.present || !tool_commands_.unselect.empty();
     }
+
+    /// Sends the feeder's own open or close command, refused while a print or
+    /// a swap holds the machine: the gripper is all that holds the filament.
+    AmsError set_feeder_open(bool open) override;
+    [[nodiscard]] bool supports_feeder_control() const override {
+        return feeder_.present;
+    }
+    [[nodiscard]] bool feeder_open() const override;
 
     /**
      * @brief Offer Unload only for the tool currently on the carriage.
@@ -282,16 +358,19 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     [[nodiscard]] bool slot_is_actively_loaded(int slot_index) const override;
 
     /// A swap is SELECTING for its whole duration on a controller that names no
-    /// direction, and UNLOADING then SELECTING on one that does. Nothing heats,
-    /// feeds or purges, so the filament vocabulary never saw the operation at
-    /// all - neither its start nor, half way through, its continuation.
+    /// direction, and UNLOADING then SELECTING on one that does. A
+    /// mount-to-feed run walks the filament vocabulary on top of that:
+    /// HEATING, LOADING, PURGING and UNLOADING are its stages.
     [[nodiscard]] bool action_tracks_step_operation(AmsAction action) const override {
-        // HEATING is here despite a changer never heating: it is the optimistic
+        // HEATING is here despite a swap never heating: it is the optimistic
         // marker AmsOperationSidebar::start_operation() sets the moment a user
         // starts an operation, before any frame arrives. Omitting it made the
         // sidebar hide the bar and clear target_load_slot_ on our OWN dispatch,
         // after which the rest of a user-initiated swap read as externally
         // started.
+        if (mounts_to_feed_) {
+            return action == AmsAction::SELECTING || ams_action_is_filament_operation(action);
+        }
         return action == AmsAction::SELECTING || action == AmsAction::UNLOADING ||
                action == AmsAction::HEATING;
     }
@@ -443,8 +522,68 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         return step_action_;
     }
     void on_stopping() override;
+    [[nodiscard]] bool needs_mount_to_feed(int head) const override;
 
   private:
+    // --- Mount-to-feed (mount_feed_sequence.h) ---------------------------------
+    /// Start a Load (@p load) or Unload of @p heads' filament through the
+    /// mounted tool, one head or several. Main thread.
+    AmsError start_mount_feed(const std::vector<int>& heads, bool load);
+    /// Everything a run needs, read off the printer: per-head temp and mount,
+    /// the carriage restore, the printer's own macro, the (English) prompt.
+    [[nodiscard]] helix::mount_feed::Request build_feed_request(const std::vector<int>& heads,
+                                                                bool load);
+    /// Send the run's current stage, or end the run when none is left.
+    void send_feed_stage();
+    void on_feed_stage_acked(uint64_t generation);
+    void on_feed_stage_failed(uint64_t generation, const std::string& message);
+    void on_feed_reply(helix::mount_feed::Reply reply);
+    /// The console watcher's signal, once a reply or a dismissal arrives.
+    void on_feed_signal(helix::mount_feed::ConsoleSignal signal);
+    /// A lost connection (or a klippy restart) under a live run: the full
+    /// cleanup goes out, best effort, and the run resets without waiting for
+    /// an ack that can no longer arrive. Shared by on_started() (reconnect)
+    /// and on_stopping().
+    void abandon_feed_run_after_disconnect();
+    /// The operator wait outlived its timeout: unwind the run and say so.
+    void handle_wait_elapsed(uint32_t elapsed_ms);
+    /// Arm or drop the one-second timer that watches the operator wait. LVGL
+    /// must be up for the timer; without it (unit tests) the wait is driven
+    /// through handle_wait_elapsed() by hand.
+    void set_wait_watchdog(bool armed);
+    void feed_wait_tick();
+    /// Why a run unwound early, for the toast that names what got done.
+    enum class FeedStopReason : uint8_t { Cancelled, TimedOut, Failed };
+    /// A run stopping early says what it did finish. A single tool's Cancel
+    /// stays silent; everything else accounts for itself. @p completed was
+    /// read off the run BEFORE its unwind: abort() collapses the stage list
+    /// the answer is derived from.
+    void toast_partial_run(FeedStopReason why, const std::vector<int>& completed);
+    /// One error toast about a run, with the no-LVGL test guard in one place.
+    void show_feed_toast(const std::string& message);
+    /// Mirror the run onto the published action and step. Caller holds mutex_.
+    void publish_feed_state_locked();
+    void register_mount_feed_listener();
+    void unregister_mount_feed_listener();
+    /// The command that mounts @p slot_index, and the one that parks.
+    [[nodiscard]] std::string mount_gcode(int slot_index) const;
+    [[nodiscard]] std::string park_gcode() const;
+
+    bool mounts_to_feed_ = false;
+    /// The run in progress. Main thread only; feed_active_ mirrors it under mutex_.
+    std::optional<helix::mount_feed::Run> feed_run_;
+    uint64_t feed_generation_ = 0;
+    bool feed_active_ = false;
+    AmsAction feed_action_ = AmsAction::IDLE;
+    int feed_phase_ = -1;
+    std::optional<AmsAction> feed_step_action_;
+    /// Watches the operator prompt while it is up. Main thread (lv_timer).
+    helix::ui::LvglTimerGuard feed_wait_timer_;
+    std::chrono::steady_clock::time_point feed_wait_started_{};
+    /// The last toast a feed run raised, recorded before the LVGL guard so
+    /// unit tests can pin the wording without a display.
+    std::string feed_last_toast_;
+
     /// Z-Mod's Creator 5 row narrates its swaps through gcode-response markers
     /// (toolchanger_addon::parse_zmod_marker) rather than a status object, so
     /// on_started() subscribes notify_gcode_response for that row alone and

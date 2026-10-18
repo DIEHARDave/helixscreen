@@ -147,6 +147,15 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked);
 lv_obj_t* ui_button_get_icon(lv_obj_t* btn);
 
 /**
+ * @brief Get the text label of a ui_button
+ *
+ * Returns nullptr if the button has no label (icon-only) or is not a ui_button.
+ * For callers that measure the button's text, such as a menu sizing its card.
+ */
+// NAMESPACE_OK: joins this header's global ui_button_* free-function API
+lv_obj_t* ui_button_get_label(lv_obj_t* btn);
+
+/**
  * @brief Get the op-state spinner arc of a ui_button, if one exists
  *
  * A ui_button created with bind_op_state lazily creates an animated arc spinner

@@ -55,6 +55,14 @@ TEST_CASE("ValueStatus ints match the humidity status encoding", "[value_status]
     CHECK(static_cast<int>(ValueStatus::Danger) == 2);
 }
 
+TEST_CASE("maintenance_status: Warn from three quarters, Danger once due", "[value_status]") {
+    CHECK(status::maintenance_status(0.0) == ValueStatus::Normal);
+    CHECK(status::maintenance_status(0.7499) == ValueStatus::Normal);
+    CHECK(status::maintenance_status(0.75) == ValueStatus::Warn);
+    CHECK(status::maintenance_status(0.9999) == ValueStatus::Warn);
+    CHECK(status::maintenance_status(1.0) == ValueStatus::Danger);
+}
+
 namespace {
 
 using status::HealthCause;

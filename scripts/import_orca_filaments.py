@@ -18,7 +18,25 @@ TYPE_MAP = {
     "PET-CF": "PET-CF", "PET-GF": "PET-GF", "ABS": "ABS", "ABS-CF": "ABS-CF",
     "ASA": "ASA", "PC": "PC", "PA": "PA", "PA-CF": "PA-CF", "PA6": "PA6",
     "TPU": "TPU", "PVA": "PVA", "HIPS": "HIPS", "PPS-CF": "PPS-CF",
+    "PLA Silk": "Silk PLA",
 }
+
+# Orca vendor packs (resources/profiles/<vendor>/filament) whose filament
+# profiles become catalog products alongside the OrcaFilamentLibrary. Each pack
+# resolves inheritance within its own directory, never across packs.
+VENDOR_PACKS = ("Eryone",)
+
+# Per-material facts a vendor-pack profile inherits from its template only when
+# both are the same material (resolve_vendor_profile).
+_MATERIAL_FACT_KEYS = (
+    "nozzle_temperature",
+    "nozzle_temperature_range_low",
+    "nozzle_temperature_range_high",
+    "filament_density",
+    "textured_plate_temp",
+    "hot_plate_temp",
+    "cool_plate_temp",
+)
 
 BED_PRIORITY = ("textured_plate_temp", "hot_plate_temp", "cool_plate_temp")
 
@@ -187,7 +205,44 @@ def _display_name(profile_name: str, brand: str) -> str:
     return name or profile_name
 
 
-def build_catalog(orca_root, cfs_seed, type_ranges, library_marker="OrcaFilamentLibrary"):
+def _add_product(products, seen, resolved, profile_name, type_ranges):
+    """Build one product from a resolved profile, collapsing per-color duplicates."""
+    brand = first_scalar(resolved.get("filament_vendor")) or "Generic"
+    resolved["_product_name"] = _display_name(profile_name, brand)
+    orca_type = first_scalar(resolved.get("filament_type")) or ""
+    product = build_product(resolved, type_ranges.get(map_type(orca_type)))
+    key = (product["brand"], product["name"])
+    if key in seen:
+        return
+    seen.add(key)
+    products.append(product)
+
+
+def resolve_vendor_profile(profile: dict, by_name: dict) -> dict:
+    """resolve_inherits() for a vendor pack, keeping only facts about this material.
+
+    Vendor packs derive every material from one template (Eryone's ABS, ASA, PA and
+    TPU all inherit "Eryone Standard PLA"). A profile that changes `filament_type`
+    keeps only the material facts it sets itself: the template's range, density and
+    plate temps describe the template's material, not this one.
+    """
+    resolved = resolve_inherits(profile, by_name)
+    parent = by_name.get(profile.get("inherits") or "")
+    if parent is None:
+        return resolved
+    parent_type = first_scalar(resolve_inherits(parent, by_name).get("filament_type"))
+    if first_scalar(resolved.get("filament_type")) == parent_type:
+        return resolved
+    for key in _MATERIAL_FACT_KEYS:
+        if key not in profile:
+            resolved.pop(key, None)
+    return resolved
+
+
+def build_catalog(orca_root, seed, type_ranges, library_marker="OrcaFilamentLibrary",
+                  vendor_packs=None):
+    if vendor_packs is None:
+        vendor_packs = VENDOR_PACKS
     # The OrcaFilamentLibrary is self-contained (its own base/ dir). Resolve
     # inheritance ONLY within it: loading the ~30 other vendor packs clobbers
     # same-named bases (e.g. fdm_filament_pc) in the flat name->profile map and
@@ -204,31 +259,38 @@ def build_catalog(orca_root, cfs_seed, type_ranges, library_marker="OrcaFilament
         if library_marker and library_marker not in profile.get("_src", ""):
             continue  # skip printer-specific profiles outside the library
         resolved = resolve_inherits(profile, by_name)
-        brand = first_scalar(resolved.get("filament_vendor")) or "Generic"
-        resolved["_product_name"] = _display_name(pname, brand)
         orca_type = first_scalar(resolved.get("filament_type")) or ""
         # RAW type — this is the vocabulary Orca matches on. Must NOT be
         # map_type()'d: our catalog deliberately carries finer types than Orca.
         if orca_type:
             library_types.add(orca_type)
-        base_range = type_ranges.get(map_type(orca_type))
-        product = build_product(resolved, base_range)
-        key = (product["brand"], product["name"])
-        if key in seen:
-            continue  # collapse per-color duplicates
-        seen.add(key)
-        products.append(product)
-    _merge_cfs_seed(products, cfs_seed)
+        _add_product(products, seen, resolved, pname, type_ranges)
+    # Vendor packs add products only. Their types are not library types: Orca
+    # shows a vendor pack's presets on that vendor's printers alone, so a lane
+    # material matched against them would miss on every other printer.
+    for vendor in vendor_packs:
+        vendor_root = os.path.join(orca_root, vendor, "filament")
+        if not os.path.isdir(vendor_root):
+            continue
+        vendor_by_name = load_profiles(vendor_root)
+        for pname, profile in vendor_by_name.items():
+            # "@<nozzle>" / "@<printer>" variants retune a base profile for one
+            # machine; the base profile is the product.
+            if profile.get("instantiation") != "true" or "@" in pname:
+                continue
+            resolved = resolve_vendor_profile(profile, vendor_by_name)
+            _add_product(products, seen, resolved, pname, type_ranges)
+    _merge_seed(products, seed)
     _dedupe_ids(products)
     _assert_no_degenerate_ranges(products)
     products.sort(key=lambda p: (p.get("source", ""), p["brand"].lower(), p["name"].lower(), p["id"]))
     return products, sorted(library_types)
 
 
-def _merge_cfs_seed(products, cfs_seed):
-    """Fold the CFS seed into the Orca products instead of appending it wholesale.
+def _merge_seed(products, seed):
+    """Fold the filament seed into the Orca products instead of appending it wholesale.
 
-    The seed exists to carry per-material CFS codes (used to match a physical CFS
+    The seed carries per-material CFS codes (used to match a physical CFS
     spool by its embedded code), but it names its generics "Generic TPU" while the
     Orca library names the same material "TPU". Appended as-is, the two surface as
     duplicate picker rows with conflicting temps (the seed generics are nozzle-only).
@@ -249,13 +311,17 @@ def _merge_cfs_seed(products, cfs_seed):
     so hand-edits to assets/filaments.json alone would be wiped — the seed here is
     what makes the entry durable across regen.
 
-    Despite the `cfs_seed` name, the seed file is also the durable home for
+    The seed file is also the durable home for
     `source: "helix-seed"` placeholder products: minimal Generic entries whose only
     job is to make a filament_database.h type reachable in the material picker,
     which builds its list from the catalog rather than from the type table. They
     carry no temps or density on purpose — every value inherits from
     filament_database.h so the two layers cannot drift. Orca has no profiles for
     these types, so they always take the standalone-append path below.
+
+    `source: "vendor-spec"` entries are real products Orca has no profile for,
+    carrying the temperatures the maker publishes. They take the same
+    standalone-append path, and the next regen keeps them.
     """
     def _name_key(s):
         # Fold "PLA-Silk" == "PLA Silk", but keep "+" -- it's a meaningful suffix
@@ -276,7 +342,7 @@ def _merge_cfs_seed(products, cfs_seed):
     # exactly that pair), so dropping `type` from the key costs no precision, and
     # a type disagreement now RESOLVES instead of forking.
     orca_by_key = {(p["brand"], _name_key(p["name"])): p for p in products}
-    for entry in cfs_seed:
+    for entry in seed:
         merged = dict(entry)
         merged["name"] = _display_name(entry.get("name", ""), entry.get("brand", ""))
         merged["id"] = _slug(entry.get("brand", ""), merged["name"])
@@ -286,7 +352,7 @@ def _merge_cfs_seed(products, cfs_seed):
             if seed_type and match.get("type") != seed_type:
                 # The seed is hand-curated against filament_database.h; Orca's
                 # open-enum type is not. The seed wins, and says so out loud.
-                print(f"NOTE: cfs_seed retypes {match['id']}: "
+                print(f"NOTE: seed retypes {match['id']}: "
                       f"{match.get('type')!r} -> {seed_type!r}", file=sys.stderr)
                 match["type"] = seed_type
             codes = match.setdefault("codes", {})
@@ -299,7 +365,7 @@ def _merge_cfs_seed(products, cfs_seed):
 def _assert_no_degenerate_ranges(products):
     """Refuse to emit a catalog containing a zero-width or inverted nozzle range.
 
-    build_product() already reconciles Orca's ranges, but the cfs_seed path writes
+    build_product() already reconciles Orca's ranges, but the seed path writes
     nozzle_min/nozzle_max straight through unvalidated, so this is the one gate
     every product passes regardless of source. A degenerate range is silently
     useless in the UI, which is why it survived to ship once; failing the
@@ -321,7 +387,7 @@ def _assert_no_degenerate_ranges(products):
 def _dedupe_ids(products):
     """Disambiguate duplicate `id`s in place with a `-2`, `-3`, ... suffix.
 
-    Safety net for the union of Orca-derived products and cfs_seed: no matter
+    Safety net for the union of Orca-derived products and seed: no matter
     the source, a duplicate id would silently shadow an earlier product in any
     id-keyed consumer. Logs a warning naming every colliding id.
     """
@@ -366,12 +432,12 @@ def _type_ranges(types):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Derive filaments.json from OrcaSlicer.")
     ap.add_argument("--orca", required=True, help="OrcaSlicer resources/profiles root")
-    ap.add_argument("--cfs-seed", required=True)
+    ap.add_argument("--seed", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--orca-tag", default="unknown")
     args = ap.parse_args(argv)
 
-    with open(args.cfs_seed, encoding="utf-8") as f:
+    with open(args.seed, encoding="utf-8") as f:
         seed = json.load(f)
     types = _load_types(args.out)
     catalog, library_types = build_catalog(args.orca, seed, _type_ranges(types))

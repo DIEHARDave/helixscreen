@@ -9,10 +9,12 @@
   <view extends="lv_obj"
         width="100%" height="100%" style_pad_all="0" style_pad_gap="0" style_bg_opa="0%" flex_flow="column"
         scrollable="false">
-    <!-- Printer image container -->
+    <!-- Printer image container. The padding keeps the picture off the tile's
+         edge; the image, the callout layer and the callout layout all work in
+         its content box. -->
     <lv_obj name="printer_container"
-            width="100%" flex_grow="1" style_bg_color="#screen_bg" style_pad_all="0" scrollable="false" align="center"
-            clickable="true">
+            width="100%" flex_grow="1" style_bg_color="#screen_bg" style_pad_all="#space_sm" scrollable="false"
+            align="center" clickable="true">
       <event_cb trigger="clicked" callback="printer_manager_clicked_cb"/>
       <!-- Fills the container; a one-side callout layout moves and shrinks it
            (apply_callout_layout), so it is placed from the top-left. -->

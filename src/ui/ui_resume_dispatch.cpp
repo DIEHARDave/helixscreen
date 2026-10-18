@@ -8,6 +8,7 @@
 #include "ui_modal.h"
 #include "ui_update_queue.h"
 
+#include "ams_backend.h"
 #include "ams_state.h"
 #include "app_globals.h"
 #include "i_moonraker_api.h"
@@ -15,6 +16,7 @@
 #include "moonraker_job_api.h"
 #include "print_start_checks.h"
 #include "printer_state.h"
+#include "rpc_error_correlation.h"
 #include "standard_macros.h"
 
 #include <spdlog/fmt/fmt.h>
@@ -26,13 +28,28 @@ namespace helix::ui {
 
 namespace {
 
-/// Restart-from-beginning dispatch for the modal shown when
-/// virtual_sdcard.is_active=false makes RESUME a silent no-op. Invoked from the
-/// modal's confirm callback with captured copies, so nothing here can dangle
-/// with the dialog or leak on a dismissal.
-void restart_from_beginning(IMoonrakerAPI* api, const std::string& filename,
-                            const std::string& log_prefix,
-                            const std::function<void()>& on_failure) {
+/// The actual send, reached only after the user confirms.
+void send_cancel_macro(IMoonrakerAPI* api, const std::string& log_prefix) {
+    const auto& cancel_info = StandardMacros::instance().get(StandardMacroSlot::Cancel);
+    spdlog::info("{} Using StandardMacros cancel: {}", log_prefix, cancel_info.get_macro());
+    StandardMacros::instance().execute(
+        StandardMacroSlot::Cancel, api,
+        [log_prefix]() { spdlog::info("{} Print cancelled", log_prefix); },
+        [log_prefix](const MoonrakerError& err) {
+            spdlog::error("{} Failed to cancel print: {}", log_prefix, err.message);
+            // StandardMacros::execute may deliver this from the libhv WebSocket
+            // thread; the toast is main-thread only.
+            queue_update("dispatch_cancel_print::on_error", [err]() {
+                NOTIFY_ERROR(lv_tr("Failed to cancel: {}"), err.localized_message());
+            });
+        });
+}
+
+} // namespace
+
+void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filename,
+                                  const std::string& log_prefix,
+                                  const std::function<void()>& on_failure) {
     if (!api) {
         spdlog::error("{} restart_confirm: api is null", log_prefix);
         if (on_failure)
@@ -56,8 +73,17 @@ void restart_from_beginning(IMoonrakerAPI* api, const std::string& filename,
     // Multi-line gcode is accepted by Klipper's gcode.script. Both lines
     // run synchronously before "ok" returns, so on_success only fires
     // after CANCEL_PRINT_BASE has dropped the print_stats.state to standby.
+    // A filament system whose firmware forgets per-print preferences between
+    // prints gets them again here, once the cancel has left the printer idle;
+    // the restart carries no routing, so nothing else is sent.
+    std::string prep = "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE";
+    if (AmsBackend* backend = AmsState::instance().get_backend();
+        backend && backend->requires_preprint_send()) {
+        if (const std::string prefs = backend->build_preprint_gcode({}, {}); !prefs.empty())
+            prep += "\n" + prefs;
+    }
     api->execute_gcode(
-        "SDCARD_RESET_FILE\nCANCEL_PRINT_BASE",
+        prep,
         [api, filename, log_prefix, on_failure]() {
             queue_update("ui_resume_dispatch::restart_start_print", [api, filename, log_prefix,
                                                                      on_failure]() {
@@ -87,25 +113,6 @@ void restart_from_beginning(IMoonrakerAPI* api, const std::string& filename,
             });
         });
 }
-
-/// The actual send, reached only after the user confirms.
-void send_cancel_macro(IMoonrakerAPI* api, const std::string& log_prefix) {
-    const auto& cancel_info = StandardMacros::instance().get(StandardMacroSlot::Cancel);
-    spdlog::info("{} Using StandardMacros cancel: {}", log_prefix, cancel_info.get_macro());
-    StandardMacros::instance().execute(
-        StandardMacroSlot::Cancel, api,
-        [log_prefix]() { spdlog::info("{} Print cancelled", log_prefix); },
-        [log_prefix](const MoonrakerError& err) {
-            spdlog::error("{} Failed to cancel print: {}", log_prefix, err.message);
-            // StandardMacros::execute may deliver this from the libhv WebSocket
-            // thread; the toast is main-thread only.
-            queue_update("dispatch_cancel_print::on_error", [err]() {
-                NOTIFY_ERROR(lv_tr("Failed to cancel: {}"), err.localized_message());
-            });
-        });
-}
-
-} // namespace
 
 void show_restart_required_modal(IMoonrakerAPI* api, const std::string& filename,
                                  const std::string& authored_reason, std::string log_prefix,
@@ -144,7 +151,7 @@ void show_restart_required_modal(IMoonrakerAPI* api, const std::string& filename
     lv_obj_t* modal = modal_confirm(
         lv_tr("Print Was Terminated"), body.c_str(), ModalSeverity::Warning, lv_tr("Restart"),
         [api, filename, log_prefix, on_failure]() {
-            restart_from_beginning(api, filename, log_prefix, on_failure);
+            restart_print_from_beginning(api, filename, log_prefix, on_failure);
         },
         opts);
     if (!modal) {
@@ -178,7 +185,12 @@ void dispatch_prepared_resume(IMoonrakerAPI* api, std::string log_prefix,
                 spdlog::error("{} Failed to resume: {}", log_prefix, err.message);
                 helix::ui::queue_update(
                     "dispatch_prepared_resume::on_macro_error", [err, on_failure]() {
-                        NOTIFY_ERROR(lv_tr("Failed to resume: {}"), err.localized_message());
+                        // A classifier that owns this refusal explains it from
+                        // Klipper's `!!` copy; the raw words beside it would be a
+                        // second report of one rejection.
+                        rpc_error_correlation::report_unless_explained(err.message, [err]() {
+                            NOTIFY_ERROR(lv_tr("Failed to resume: {}"), err.localized_message());
+                        });
                         if (on_failure)
                             on_failure();
                     });

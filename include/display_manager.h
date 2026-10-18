@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include "ui_coalesced_timer.h"
+#include "ui_timer_guard.h"
+
 #include "backlight_backend.h"
 #include "color_transform.h"
 #include "display_backend.h"
@@ -14,6 +17,7 @@
 #include "touch_calibration.h"
 #include "touch_calibration_session.h"
 #include "touch_calibration_wrapper.h"
+#include "wake_touch_latch.h"
 
 #include <functional>
 #include <lvgl.h>
@@ -524,7 +528,8 @@ class DisplayManager : public helix::ICalibrationSink {
      * @brief Initialize resize handler on the given screen
      *
      * Sets up SIZE_CHANGED event listener with debouncing. Call once during
-     * application startup after the screen is created.
+     * application startup after the screen is created; a second call moves the
+     * listener to the new screen. shutdown() and the destructor remove it.
      *
      * @param screen Root screen object to monitor
      */
@@ -566,6 +571,10 @@ class DisplayManager : public helix::ICalibrationSink {
     }
 
   private:
+    /// Re-apply the user's brightness 20 s after startup on boards whose stock firmware
+    /// dims the panel behind our back (board::Info::firmware_dims_backlight_after_boot).
+    void schedule_brightness_reassert();
+
     // Test-only seam (#1049): grants the test harness access to the private
     // sleep/wake/power-off members so the idle paths can be exercised without a
     // full init(). See tests/test_helpers/display_manager_test_access.h.
@@ -619,15 +628,28 @@ class DisplayManager : public helix::ICalibrationSink {
 
     // Runs inside sleep_aware_read_cb, so only where that wrapper is installed
     helix::ScrollClickGuard m_scroll_guard;
+    // The wrapped pointer's wake touch; sleep_aware_read_cb wraps m_pointer alone
+    helix::WakeTouchLatch m_wake_latch;
 
     // Resize handler state
     std::vector<ResizeCallback> m_resize_callbacks;
-    lv_timer_t* m_resize_debounce_timer = nullptr;
     bool m_resize_fanout_suspended = false;
     static constexpr uint32_t RESIZE_DEBOUNCE_MS = 250;
+    // Trailing-edge: every SIZE_CHANGED pushes the fan-out RESIZE_DEBOUNCE_MS past it.
+    // Its callback dereferences this manager; the member cancels it on destruction.
+    helix::ui::CoalescedTimer m_resize_debounce{RESIZE_DEBOUNCE_MS};
+    // The object carrying resize_event_cb with this manager as its user data;
+    // cleared when that object is deleted.
+    lv_obj_t* m_resize_screen = nullptr;
+    // Its callback dereferences this manager, so it must not outlive it.
+    helix::ui::LvglTimerGuard m_brightness_reassert_timer;
 
     static void resize_event_cb(lv_event_t* e);
-    static void resize_timer_cb(lv_timer_t* timer);
+    void on_screen_size_changed(lv_obj_t* screen);
+    void fan_out_resize();
+    /// Cancels the pending debounce and detaches resize_event_cb from m_resize_screen.
+    /// Its SIZE_CHANGED and DELETE registrations both go.
+    void remove_resize_handler();
 
     /**
      * @brief Configure scroll behavior on pointer device
@@ -681,17 +703,12 @@ class DisplayManager : public helix::ICalibrationSink {
     void setup_keyboard_group();
 
     /**
-     * @brief Temporarily disable pointer input after wake
+     * @brief End the press LVGL is tracking on every pointer, until each one lifts
      *
-     * Prevents the wake touch from triggering UI actions.
-     * Re-enables automatically after 200ms via LVGL timer.
+     * Runs on wake, so the touch that woke the display cannot click, long-press or
+     * scroll on a pointer the sleep-aware wrapper does not cover.
      */
-    void disable_input_briefly();
-
-    /**
-     * @brief Timer callback to re-enable input after wake
-     */
-    static void reenable_input_cb(lv_timer_t* timer);
+    static void cancel_pointer_presses();
 
     /**
      * @brief Sleep-aware input wrapper callback

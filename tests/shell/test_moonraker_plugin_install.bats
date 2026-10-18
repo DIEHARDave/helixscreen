@@ -107,6 +107,19 @@ heater_pin: PB1
 EOF
 }
 
+# curl proper (its --version starts "curl <digit>"), exiting $1 for every other
+# call and logging its argv to $2 when given.
+mock_real_curl() {
+    local status="$1" log="${2:-}"
+    local body='case "$1" in --version) echo "curl 8.5.0 (x86_64-pc-linux-gnu)"; exit 0;; esac'
+    if [ -n "$log" ]; then
+        body="$body
+printf '%s\\n' \"\$*\" >> '$log'"
+    fi
+    mock_command_script "curl" "$body
+exit $status"
+}
+
 # Build a scratch HOME shaped like a real printer's: a Moonraker checkout
 # with the plugin symlinked in, and printer_data/config holding an
 # instrumented printer.cfg plus the real helix_macros.cfg. Shims sudo,
@@ -124,9 +137,11 @@ setup_instrumented_home() {
         > "$c/moonraker.conf"
     write_instrumented_printer_cfg "$c/printer.cfg"
 
-    for cmd in sudo service curl; do
+    for cmd in sudo service; do
         mock_command_script "$cmd" 'exit 0'
     done
+    mock_real_curl 0
+    mock_command_script "wget" 'exit 8'
 }
 
 @test "install.sh passes POSIX syntax check" {
@@ -349,7 +364,7 @@ setup_instrumented_home() {
     # clean uninstall into a reported failure.
     local home="$BATS_TEST_TMPDIR/home"
     setup_instrumented_home "$home"
-    mock_command_script "curl" 'exit 1'
+    mock_real_curl 1
     mock_command_script "sleep" 'exit 0'
     local expected="$BATS_TEST_TMPDIR/expected_printer.cfg"
     write_original_printer_cfg "$expected"
@@ -370,7 +385,7 @@ setup_instrumented_home() {
     local c="$home/printer_data/config"
     printf '[gcode_macro PRINT_START]\ngcode:\n    G28\n    # <<< HELIX_TRACKING v2 >>>\n    HELIX_PHASE_HOMING\n' \
         > "$c/printer.cfg"
-    mock_command_script "curl" 'exit 1'
+    mock_real_curl 1
     mock_command_script "sleep" 'exit 0'
 
     run env HOME="$home" sh "$SCRIPT" --uninstall-auto
@@ -412,9 +427,11 @@ setup_creality_k1_layout() {
     printf '[server]\nhost: 0.0.0.0\n' > "$data/config/moonraker.conf"
     printf '%s\0' "$root/usr/data/moonraker/moonraker-env/bin/python" "$pkg/moonraker.py" \
         -d "$data" > "$root/proc/1444/cmdline"
-    for cmd in sudo service curl; do
+    for cmd in sudo service; do
         mock_command_script "$cmd" 'exit 0'
     done
+    mock_real_curl 0
+    mock_command_script "wget" 'exit 8'
 }
 
 @test "auto install finds a Creality K1 Moonraker from its running process" {
@@ -448,4 +465,304 @@ setup_creality_k1_layout() {
     for r in $roots; do
         printf '%s\n' "$plugin_roots" | grep -qx "$r" || fail "plugin install.sh misses Moonraker root $r"
     done
+}
+
+# Forge-X on an AD5M: Moonraker runs in a chroot at /data/.mod/.forge-x, so
+# its argv names paths inside the chroot, and the installer runs either
+# outside it (ssh) or inside it (HelixScreen's own install, which shares the
+# chroot). moonraker.conf is the mod's own git-tracked file, reached through a
+# symlink, and includes mod_data/user.moonraker.conf for the user's sections.
+# The plugin sits under /opt/config, which the chroot sees at the same path.
+setup_forgex_layout() {
+    local root="$1"
+    local chroot="$root/data/.mod/.forge-x"
+    local pkg="$chroot/root/moonraker-env/moonraker"
+    local cfg="$chroot/root/printer_data/config"
+    mkdir -p "$pkg/components" "$cfg/mod" "$cfg/mod_data" "$root/home" "$root/proc/1925"
+    : > "$pkg/moonraker.py"
+    printf '[server]\nport: 7125\n\n[include mod_data/user.moonraker.conf]\n' > "$cfg/mod/moonraker.conf"
+    ln -s mod/moonraker.conf "$cfg/moonraker.conf"
+    printf '[authorization]\ntrusted_clients:\n  0.0.0.0/0\n' > "$cfg/mod_data/user.moonraker.conf"
+    printf '%s\0' /root/moonraker-env/bin/python3 /root/moonraker-env/moonraker/moonraker.py \
+        -d /root/printer_data > "$root/proc/1925/cmdline"
+    ln -s "$chroot" "$root/proc/1925/root"
+    # The plugin as installed under the bind-mounted /opt/config.
+    mkdir -p "$chroot/opt/config/mod_data/helixscreen"
+    cp -R "$REPO_ROOT/moonraker-plugin" "$chroot/opt/config/mod_data/helixscreen/"
+    for cmd in sudo service; do
+        mock_command_script "$cmd" 'exit 0'
+    done
+    mock_real_curl 0
+    mock_command_script "wget" 'exit 8'
+}
+
+FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
+
+@test "auto install from outside a Forge-X chroot links the plugin as Moonraker sees it" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local cfg="$chroot/root/printer_data/config"
+    cp "$cfg/mod/moonraker.conf" "$BATS_TEST_TMPDIR/mod.conf.before"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    local link="$chroot/root/moonraker-env/moonraker/components/helix_print.py"
+    [ -L "$link" ] || fail "no plugin link in the chroot's components"
+    [ "$(readlink "$link")" = "$FORGEX_PLUGIN/helix_print.py" ] \
+        || fail "link names $(readlink "$link"), not the in-chroot path"
+    grep -q '^\[helix_print\]' "$cfg/mod_data/user.moonraker.conf" \
+        || fail "section not in user.moonraker.conf"
+    [ -L "$cfg/moonraker.conf" ] || fail "the mod's moonraker.conf symlink was replaced"
+    cmp -s "$BATS_TEST_TMPDIR/mod.conf.before" "$cfg/mod/moonraker.conf" \
+        || fail "the mod's own moonraker.conf was edited"
+}
+
+@test "auto install refuses a plugin Moonraker cannot see from its chroot" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -ne 0 ] || fail "installed a link Moonraker cannot follow"
+    contains "cannot see" "$output"
+    [ ! -e "$chroot/root/moonraker-env/moonraker/components/helix_print.py" ] \
+        && [ ! -L "$chroot/root/moonraker-env/moonraker/components/helix_print.py" ]
+}
+
+@test "auto uninstall from outside a Forge-X chroot removes the link and the user section" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local cfg="$chroot/root/printer_data/config"
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    cp "$cfg/mod/moonraker.conf" "$BATS_TEST_TMPDIR/mod.conf.before"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    [ ! -L "$chroot/root/moonraker-env/moonraker/components/helix_print.py" ]
+    ! grep -q '^\[helix_print\]' "$cfg/mod_data/user.moonraker.conf"
+    grep -q '^trusted_clients:' "$cfg/mod_data/user.moonraker.conf" \
+        || fail "the user's own sections were lost"
+    [ -L "$cfg/moonraker.conf" ]
+    cmp -s "$BATS_TEST_TMPDIR/mod.conf.before" "$cfg/mod/moonraker.conf"
+}
+
+@test "with no service manager the auto install asks Moonraker to restart itself" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local log="$BATS_TEST_TMPDIR/curl.log"
+    mock_real_curl 0 "$log"
+
+    local bin="$BATS_TEST_TMPDIR/no-service-path"
+    mkdir -p "$bin"
+    local tool p
+    for tool in sh dirname basename cp mv rm ln grep awk sed tail tr cat date sleep readlink; do
+        p="$(command -v "$tool")" && ln -sf "$p" "$bin/$tool"
+    done
+    ln -sf "$BATS_TEST_TMPDIR/bin/curl" "$bin/curl"
+    # Present but managing no moonraker unit, as a stray systemctl would be.
+    mock_command_script "systemctl" 'exit 1'
+    ln -sf "$BATS_TEST_TMPDIR/bin/systemctl" "$bin/systemctl"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" PATH="$bin:$HELIX_TEST_SANDBOX_BIN" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- '-sf --max-time 5 -X POST http://127.0.0.1:7125/server/restart' "$log" \
+        || fail "no self-restart request: $(cat "$log")"
+}
+
+@test "with only wget, as outside Forge-X's chroot, the auto install restarts and waits" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local log="$BATS_TEST_TMPDIR/wget.log"
+    mock_command_script "wget" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    mock_command_script "systemctl" 'exit 1'
+
+    local bin="$BATS_TEST_TMPDIR/wget-only-path"
+    mkdir -p "$bin"
+    local tool p
+    for tool in sh dirname basename cp mv rm ln grep awk sed tail tr cat date sleep readlink; do
+        p="$(command -v "$tool")" && ln -sf "$p" "$bin/$tool"
+    done
+    ln -sf "$BATS_TEST_TMPDIR/bin/wget" "$bin/wget"
+    ln -sf "$BATS_TEST_TMPDIR/bin/systemctl" "$bin/systemctl"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" PATH="$bin:$HELIX_TEST_SANDBOX_BIN" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- "--post-data= http://127.0.0.1:7125/server/restart" "$log" \
+        || fail "no self-restart request: $(cat "$log")"
+    grep -q "http://localhost:7125/server/info" "$log" || fail "never waited for Moonraker"
+    contains "Moonraker is ready" "$output"
+}
+
+# Klipper running outside the chroot, as on Forge-X. $2 picks its
+# virtual_sdcard: "hides" carries Forge-X's filter dropping dot-directories
+# from the files SDCARD_PRINT_FILE can open (its d[0] == '.' spelling),
+# "hides-startswith" the same filter spelled with str.startswith, and
+# anything else lists every directory.
+add_running_klipper() {
+    local root="$1" mode="$2"
+    local extras="$root/opt/klipper/klippy/extras"
+    mkdir -p "$extras" "$root/proc/1820"
+    : > "$root/opt/klipper/klippy/klippy.py"
+    {
+        printf '            for root, dirs, files in os.walk(\n'
+        printf '                    self.sdcard_dirname, followlinks=True, topdown=True):\n'
+        case "$mode" in
+            hides)
+                printf '                # Ignore hidden files and directories\n'
+                printf "                files = [f for f in files if not f[0] == '.']\n"
+                printf "                dirs[:] = [d for d in dirs if not d[0] == '.']\n"
+                ;;
+            hides-startswith)
+                printf "                dirs[:] = [d for d in dirs if not d.startswith('.')]\n"
+                ;;
+        esac
+        printf '                for name in files:\n'
+    } > "$extras/virtual_sdcard.py"
+    printf '%s\0' /opt/Python-3.7.11/bin/python3.7 "$root/opt/klipper/klippy/klippy.py" \
+        /opt/config/printer.cfg > "$root/proc/1820/cmdline"
+}
+
+forgex_install() {
+    local root="$1"
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$root/data/.mod/.forge-x$FORGEX_PLUGIN/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+}
+
+user_conf_of() {
+    printf '%s' "$1/data/.mod/.forge-x/root/printer_data/config/mod_data/user.moonraker.conf"
+}
+
+@test "a Klipper that skips dot-directories gets a visible symlink_dir" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides
+
+    forgex_install "$root"
+
+    local conf
+    conf=$(user_conf_of "$root")
+    awk '/^\[helix_print\]/ { getline; print; exit }' "$conf" | grep -qx 'symlink_dir: helix_print' \
+        || fail "symlink_dir not set under [helix_print]: $(cat "$conf")"
+}
+
+@test "re-installing does not add a second symlink_dir" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides
+
+    forgex_install "$root"
+    forgex_install "$root"
+
+    [ "$(grep -c '^symlink_dir:' "$(user_conf_of "$root")")" -eq 1 ]
+}
+
+@test "a symlink_dir the user set is kept" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides
+    local conf
+    conf=$(user_conf_of "$root")
+    printf '\n[helix_print]\nsymlink_dir: my_links\ncleanup_delay: 600\n' >> "$conf"
+
+    forgex_install "$root"
+
+    [ "$(grep -c '^symlink_dir:' "$conf")" -eq 1 ]
+    grep -qx 'symlink_dir: my_links' "$conf"
+    contains "Keeping the symlink_dir" "$output"
+}
+
+@test "a Klipper that lists dot-directories keeps the default hidden symlink_dir" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" lists
+
+    forgex_install "$root"
+
+    grep -q '^\[helix_print\]' "$(user_conf_of "$root")"
+    ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
+}
+
+@test "install.sh and the main installer carry the same request_moonraker_restart" {
+    local fn='/^request_moonraker_restart() {$/,/^}$/p'
+    local a b
+    a=$(sed -n "$fn" "$SCRIPT")
+    b=$(sed -n "$fn" "$REPO_ROOT/scripts/lib/installer/moonraker.sh")
+    [ -n "$a" ] || fail "no request_moonraker_restart in $SCRIPT"
+    [ "$a" = "$b" ] || fail "the two copies differ"
+}
+
+@test "install.sh carries the main installer's _has_real_curl" {
+    local fn='/^_has_real_curl() {$/,/^}$/p'
+    local a b
+    a=$(sed -n "$fn" "$SCRIPT")
+    b=$(sed -n "$fn" "$REPO_ROOT/scripts/lib/installer/release.sh")
+    [ -n "$a" ] || fail "no _has_real_curl in $SCRIPT"
+    [ "$a" = "$b" ] || fail "the two copies differ"
+}
+
+@test "a curl that answers with an HTTP error does not count as Moonraker being up" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    # Moonraker answering 401: curl exits 0 unless -f makes that a 22.
+    mock_command_script "curl" 'case "$1" in --version) echo "curl 8.5.0"; exit 0;; esac
+for a in "$@"; do case "$a" in -f|-sf) exit 22;; esac; done
+exit 0'
+    mock_command_script "wget" 'exit 8'
+    mock_command_script "sleep" 'exit 0'
+    mock_command_script "systemctl" 'exit 1'
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
+    contains "did not respond" "$output"
+    ! contains "Moonraker is ready" "$output"
+}
+
+@test "an include line with CRLF and trailing blanks still finds user.moonraker.conf" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local cfg="$root/data/.mod/.forge-x/root/printer_data/config"
+    printf '[server]\r\nport: 7125\r\n\r\n[include mod_data/user.moonraker.conf]  \t\r\n' \
+        > "$cfg/mod/moonraker.conf"
+    cp "$cfg/mod/moonraker.conf" "$BATS_TEST_TMPDIR/mod.conf.before"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$root/data/.mod/.forge-x$FORGEX_PLUGIN/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    grep -q '^\[helix_print\]' "$cfg/mod_data/user.moonraker.conf" \
+        || fail "section not in user.moonraker.conf"
+    cmp -s "$BATS_TEST_TMPDIR/mod.conf.before" "$cfg/mod/moonraker.conf" \
+        || fail "the mod's own moonraker.conf was edited"
+}
+
+@test "a Klipper pruning dot-directories with startswith gets a visible symlink_dir too" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides-startswith
+
+    forgex_install "$root"
+
+    grep -qx 'symlink_dir: helix_print' "$(user_conf_of "$root")"
+}
+
+@test "with no Klipper running the default hidden symlink_dir stays" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+
+    forgex_install "$root"
+
+    ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
 }

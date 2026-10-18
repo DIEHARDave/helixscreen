@@ -145,7 +145,7 @@ void ui_keypad_init(lv_obj_t* parent) {
     // it is built. Only the widget tree is deferred.
     ui_keypad_init_subjects();
 
-    keypad_parent = parent;
+    helix::ui::store_until_deleted(&keypad_parent, parent);
     // The in-pad confirm key (phone layout, integer fields) does what the header's Set does.
     register_xml_callbacks({
         {"on_keypad_confirm",
@@ -163,11 +163,13 @@ static bool ensure_keypad_built() {
         return true;
     }
     if (!keypad_parent) {
-        spdlog::error("[Keypad] Cannot build keypad: never initialized with a parent");
+        spdlog::error(
+            "[Keypad] Cannot build keypad: no parent (never initialized, or it was deleted)");
         return false;
     }
 
-    keypad_widget = (lv_obj_t*)lv_xml_create(keypad_parent, "numeric_keypad_panel", nullptr);
+    helix::ui::store_until_deleted(
+        &keypad_widget, (lv_obj_t*)lv_xml_create(keypad_parent, "numeric_keypad_panel", nullptr));
     if (!keypad_widget) {
         spdlog::error("[Keypad] Failed to create keypad from XML");
         return false;
@@ -234,7 +236,8 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
         // Blur when the platform can afford it, a plain dim when it cannot - the same
         // 40/255 the navigation layer uses for a first overlay, so the pad dims its
         // surroundings exactly as much as any other layer does.
-        keypad_backdrop = helix::ui::create_fullscreen_backdrop(screen, 40);
+        helix::ui::store_until_deleted(&keypad_backdrop,
+                                       helix::ui::create_fullscreen_backdrop(screen, 40));
         if (keypad_backdrop) {
             helix::ui::bring_to_front(keypad_backdrop);
         }

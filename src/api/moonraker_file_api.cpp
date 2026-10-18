@@ -4,12 +4,14 @@
 #include "moonraker_file_api.h"
 
 #include "ui_error_reporting.h"
+#include "ui_filename_utils.h"
 
 #include "i_moonraker_client.h"
 #include "json_utils.h"
 #include "moonraker_api_internal.h"
 #include "spdlog/spdlog.h"
 #include "text_io.h"
+#include "three_mf_conversions.h"
 #include "try_reserve.h"
 
 using namespace moonraker_internal;
@@ -190,6 +192,23 @@ void MoonrakerFileAPI::prune_expired_metascan_cooldown_locked(
     for (auto it = metascan_cooldown_until_.begin(); it != metascan_cooldown_until_.end();) {
         it = (it->second <= now) ? metascan_cooldown_until_.erase(it) : std::next(it);
     }
+}
+
+void MoonrakerFileAPI::get_archive_conversions(ArchiveConversionsCallback on_success,
+                                               ErrorCallback on_error) {
+    client_.send_jsonrpc(
+        "server.helix.3mf_conversions", json::object(),
+        [on_success](const json& response) {
+            const auto it = response.find("result");
+            const auto conversions =
+                helix::three_mf::parse_conversions(it != response.end() ? *it : json::object());
+            if (on_success) {
+                on_success(conversions);
+            }
+        },
+        on_error,
+        0,     // timeout_ms: use default
+        true); // silent: a printer without the converter answers an error
 }
 
 void MoonrakerFileAPI::metascan_file(const std::string& filename, FileMetadataCallback on_success,
@@ -433,9 +452,7 @@ std::optional<std::vector<FileInfo>> MoonrakerFileAPI::parse_file_list(const jso
             info.path = get_string(item, "path");
             if (!info.path.empty()) {
                 // filename is the last component of the path
-                size_t last_slash = info.path.rfind('/');
-                info.filename = (last_slash != std::string::npos) ? info.path.substr(last_slash + 1)
-                                                                  : info.path;
+                info.filename = helix::gcode::get_filename_basename(info.path);
             } else {
                 info.filename = get_string(item, "filename");
             }

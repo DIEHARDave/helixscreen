@@ -164,6 +164,19 @@ class Modal {
     static void hide(lv_obj_t* dialog, ModalCloseReason reason = ModalCloseReason::Programmatic);
 
     /**
+     * @brief Let the navbar chrome stay in front of this modal's backdrop
+     *
+     * An open modal covers the navbar, E-stop included, so a tap meant for
+     * its backdrop cannot land on a navbar button. The E-stop's own
+     * confirmation opts out: a second press on the E-stop while it is open
+     * is deliberate and must reach the button. No other modal uses this.
+     *
+     * @param dialog Dialog returned by show(); untracked dialogs are ignored
+     * @param covers False to leave the chrome in front of the backdrop
+     */
+    static void set_covers_chrome(lv_obj_t* dialog, bool covers);
+
+    /**
      * @brief Get the topmost modal's dialog
      * @return Dialog object, or nullptr if no modals visible
      */
@@ -265,17 +278,39 @@ class Modal {
     virtual void on_hide() {}
 
     /**
+     * @brief Called after on_hide() when the close was not a button's answer
+     *
+     * A backdrop tap, a static-path ESC, an XML hot-reload rebuild, a system
+     * sweep and a programmatic hide() all land here; a close passed
+     * ModalCloseReason::ButtonPress does not. A subclass whose caller holds
+     * state the buttons resolve (a pending guard, an unsaved preview) clears or
+     * reverts it here, so no close can leave it behind. Fires at most once per
+     * showing, from hide() only: ~Modal and ModalStack::clear() skip it.
+     */
+    virtual void on_dismissed() {}
+
+    /**
      * @brief Called when Ok button is clicked (default: hides)
      */
     virtual void on_ok() {
-        hide();
+        hide(ModalCloseReason::ButtonPress);
     }
 
     /**
      * @brief Called when Cancel button is clicked (default: hides)
      */
     virtual void on_cancel() {
-        hide();
+        hide(ModalCloseReason::ButtonPress);
+    }
+
+    /**
+     * @brief Called on ESC (default: on_cancel())
+     *
+     * A modal whose Cancel button commits an action (Abort, Resume) overrides
+     * this to close without deciding anything, so a stray key cannot act.
+     */
+    virtual void on_escape() {
+        on_cancel();
     }
 
     /**
@@ -284,7 +319,7 @@ class Modal {
      * Used for 3-button modals like runout guidance (Load/Resume/Cancel Print).
      */
     virtual void on_tertiary() {
-        hide();
+        hide(ModalCloseReason::ButtonPress);
     }
 
     /**
@@ -293,21 +328,21 @@ class Modal {
      * Used for 4+ button modals like extended runout guidance.
      */
     virtual void on_quaternary() {
-        hide();
+        hide(ModalCloseReason::ButtonPress);
     }
 
     /**
      * @brief Called when Quinary button is clicked (default: hides)
      */
     virtual void on_quinary() {
-        hide();
+        hide(ModalCloseReason::ButtonPress);
     }
 
     /**
      * @brief Called when Senary button is clicked (default: hides)
      */
     virtual void on_senary() {
-        hide();
+        hide(ModalCloseReason::ButtonPress);
     }
 
   protected:
@@ -418,6 +453,10 @@ class ModalStack {
     /// Return the component name of the top (most recent non-exiting) modal, or "" if empty.
     std::string top_component_name() const;
 
+    /// The dialog of the topmost non-exiting modal built from @p component_name,
+    /// wherever it sits in the stack; nullptr when none is.
+    lv_obj_t* dialog_for_component(const std::string& component_name) const;
+
     // Get backdrop for a dialog
     lv_obj_t* backdrop_for(lv_obj_t* dialog) const;
 
@@ -429,6 +468,37 @@ class ModalStack {
 
     // Check if any modals are visible (not counting those in exit animation)
     bool empty() const;
+
+    /// Bring every visible (non-exiting) backdrop to the front, bottom to top, so
+    /// the stack keeps its order above anything created after it (an overlay).
+    void raise_visible_to_foreground();
+
+    /// Mark the entry for @p backdrop as asked for by @p tag (a plugin id).
+    void set_tag(lv_obj_t* backdrop, std::string tag);
+    /// True while a visible (non-exiting) entry carries no tag: an app modal.
+    bool has_visible_untagged() const;
+    /// The tag of the topmost visible tagged entry, or "" when there is none.
+    std::string top_visible_tag() const;
+    /// True while a modal surface outside the stack (add_external_cover) is up.
+    bool has_external_cover() const {
+        return external_covers_ > 0;
+    }
+
+    /// True while a visible (non-exiting) modal, or an external cover, holds the
+    /// navbar chrome under a backdrop.
+    bool covers_chrome() const;
+
+    /// A modal surface outside this stack (the PIN pad) holds the chrome covered
+    /// until it calls remove_external_cover(). Counted, so it composes with the
+    /// stack's own modals in either order.
+    void add_external_cover();
+    void remove_external_cover();
+
+    /// Whether the entry for @p backdrop covers the chrome; no-op if untracked.
+    void set_covers_chrome(lv_obj_t* backdrop, bool covers);
+
+    /// The lowest backdrop of a visible modal that covers the chrome, or nullptr.
+    lv_obj_t* lowest_covering_backdrop() const;
 
     // Check if stack is completely empty (including exiting)
     bool stack_empty() const {
@@ -470,13 +540,18 @@ class ModalStack {
         std::string component_name;
         bool exiting; /**< true = exit animation in progress, ignore hide() calls */
         Modal* owner; /**< owning instance, or nullptr for static Modal::show() modals */
+        bool covers_chrome = true; /**< backdrop sits over the navbar chrome */
         /// Set when this entry owns the instance (Modal::show_owned). Erasing
         /// the entry frees it, so every path that empties the stack also frees
         /// the modals it owns.
         std::unique_ptr<Modal> owned_instance;
+        /// Who asked for this modal; empty for the app's own. A plugin dialog
+        /// carries its plugin id.
+        std::string tag;
     };
 
     std::vector<ModalEntry> stack_;
+    int external_covers_ = 0;
 
     static void exit_animation_done(lv_anim_t* anim);
 

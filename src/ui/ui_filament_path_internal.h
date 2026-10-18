@@ -294,6 +294,12 @@ struct FilamentPathData {
     int mapped_tool[MAX_SLOTS];              // -1 = use slot index as fallback
     bool slot_is_hub_routed[MAX_SLOTS] = {}; // true = lane routes through hub (MIXED topology)
 
+    // Caption naming the lane whose spool feeds this one ("ACE 2 · 3"), for a
+    // lane fed from storage upstream of it. Empty = the lane's spool is its
+    // own. Copied on set; drawn small and muted on the lane's column.
+    static constexpr int UPSTREAM_CAPTION_BYTES = 24;
+    char slot_upstream_caption[MAX_SLOTS][UPSTREAM_CAPTION_BYTES] = {};
+
     // Per-lane Klipper extruder identity, derived from the lane's extruder name
     // (#1229). Toolhead badges read "E<n>" from this when every lane resolved;
     // otherwise they fall back to the AFC lane aliases in mapped_tool.
@@ -343,6 +349,8 @@ struct FilamentPathData {
     // Callbacks
     filament_path_slot_cb_t slot_callback = nullptr;
     void* slot_user_data = nullptr;
+    filament_path_slot_cb_t toolhead_callback = nullptr;
+    void* toolhead_user_data = nullptr;
     filament_path_bypass_cb_t bypass_callback = nullptr;
     void* bypass_user_data = nullptr;
     filament_path_buffer_cb_t buffer_callback = nullptr;

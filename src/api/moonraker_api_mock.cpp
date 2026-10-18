@@ -257,8 +257,7 @@ void MoonrakerFileAPIMock::list_files(const std::string& root, const std::string
         for (const auto& [file_path, content] : config_files_) {
             FileInfo info;
             info.path = file_path;
-            auto slash = file_path.rfind('/');
-            info.filename = (slash == std::string::npos) ? file_path : file_path.substr(slash + 1);
+            info.filename = helix::gcode::get_filename_basename(file_path);
             info.size = content.size();
             info.is_dir = false;
             listing.push_back(info);
@@ -385,11 +384,7 @@ void MoonrakerFileTransferAPIMock::download_file(const std::string& root, const 
     }
 
     // Strip any leading directory components to get just the filename
-    std::string filename = path;
-    size_t last_slash = path.rfind('/');
-    if (last_slash != std::string::npos) {
-        filename = path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(path);
 
     spdlog::debug("[MoonrakerAPIMock] download_file: root='{}', path='{}' -> filename='{}'", root,
                   path, filename);
@@ -455,30 +450,59 @@ void MoonrakerFileTransferAPIMock::download_file_partial(const std::string& root
                                                          StringCallback on_success,
                                                          ErrorCallback on_error,
                                                          CancelFlag /*cancelled*/) {
-    spdlog::debug("[MoonrakerAPIMock] download_file_partial: root='{}', path='{}', max_bytes={}",
-                  root, path, max_bytes);
+    read_range(root, path, 0, max_bytes, "download_file_partial", std::move(on_success),
+               std::move(on_error));
+}
+
+void MoonrakerFileTransferAPIMock::download_file_range(const std::string& root,
+                                                       const std::string& path, uint64_t offset,
+                                                       size_t len, StringCallback on_success,
+                                                       ErrorCallback on_error,
+                                                       CancelFlag /*cancelled*/) {
+    ++range_reads_;
+    read_range(root, path, offset, len, "download_file_range", std::move(on_success),
+               std::move(on_error));
+}
+
+void MoonrakerFileTransferAPIMock::read_range(const std::string& root, const std::string& path,
+                                              uint64_t offset, size_t len, const char* op,
+                                              StringCallback on_success, ErrorCallback on_error) {
+    if (hold_range_reads_) {
+        held_range_reads_.push_back([this, root, path, offset, len, op,
+                                     on_success = std::move(on_success),
+                                     on_error = std::move(on_error)]() {
+            serve_range(root, path, offset, len, op, on_success, on_error);
+        });
+        return;
+    }
+    serve_range(root, path, offset, len, op, on_success, on_error);
+}
+
+void MoonrakerFileTransferAPIMock::serve_range(const std::string& root, const std::string& path,
+                                               uint64_t offset, size_t len, const char* op,
+                                               const StringCallback& on_success,
+                                               const ErrorCallback& on_error) {
+    spdlog::debug("[MoonrakerAPIMock] {}: root='{}', path='{}', {} bytes at {}", op, root, path,
+                  len, offset);
 
     // Config root: serve HELIX_MOCK_PLUGINS_DIR and the injected config root by full path,
-    // mirroring the real partial download's head-range contract.
+    // mirroring the real ranged download's contract.
     const ConfigRootFile config = lookup_config_root(root, path);
     if (config.owned) {
         if (!config.content) {
             if (on_error)
-                on_error(MoonrakerError::file_not_found("download_file_partial",
-                                                        "Mock config file not found: " + path));
+                on_error(MoonrakerError::file_not_found(op, "Mock config file not found: " + path));
             return;
         }
         if (on_success)
-            on_success(config.content->substr(0, max_bytes));
+            on_success(offset < config.content->size()
+                           ? config.content->substr(static_cast<size_t>(offset), len)
+                           : std::string());
         return;
     }
 
     // Strip any leading directory components to get just the filename
-    std::string filename = path;
-    size_t last_slash = path.rfind('/');
-    if (last_slash != std::string::npos) {
-        filename = path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(path);
 
     // Find the test file using fallback path search
     std::string local_path = find_test_file(filename);
@@ -486,24 +510,25 @@ void MoonrakerFileTransferAPIMock::download_file_partial(const std::string& root
     if (local_path.empty()) {
         spdlog::warn("[MoonrakerAPIMock] File not found in test directories: {}", filename);
         if (on_error) {
-            MoonrakerError err = MoonrakerError::file_not_found("download_file_partial",
-                                                                "Mock file not found: " + filename);
-            on_error(err);
+            on_error(MoonrakerError::file_not_found(op, "Mock file not found: " + filename));
         }
         return;
     }
 
-    // Read up to max_bytes from the local file
+    // Read up to len bytes from offset in the local file
     std::ifstream file(local_path, std::ios::binary);
     if (file) {
         std::string content;
-        content.resize(max_bytes);
-        file.read(&content[0], static_cast<std::streamsize>(max_bytes));
-        content.resize(static_cast<size_t>(file.gcount()));
+        file.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
+        if (file) {
+            content.resize(len);
+            file.read(&content[0], static_cast<std::streamsize>(len));
+            content.resize(static_cast<size_t>(file.gcount()));
+        }
         file.close();
 
-        spdlog::debug("[MoonrakerAPIMock] Partial download {} ({} of {} bytes)", filename,
-                      content.size(), max_bytes);
+        spdlog::debug("[MoonrakerAPIMock] Ranged read {} ({} of {} bytes at {})", filename,
+                      content.size(), len, offset);
 
         if (on_success) {
             on_success(content);
@@ -511,9 +536,7 @@ void MoonrakerFileTransferAPIMock::download_file_partial(const std::string& root
     } else {
         spdlog::error("[MoonrakerAPIMock] Failed to read file: {}", local_path);
         if (on_error) {
-            MoonrakerError err = MoonrakerError::file_not_found(
-                "download_file_partial", "Failed to read test file: " + filename);
-            on_error(err);
+            on_error(MoonrakerError::file_not_found(op, "Failed to read test file: " + filename));
         }
     }
 }
@@ -522,11 +545,7 @@ void MoonrakerFileTransferAPIMock::download_file_tail(const std::string& root,
                                                       const std::string& path, size_t max_bytes,
                                                       StringCallback on_success,
                                                       ErrorCallback on_error) {
-    std::string filename = path;
-    size_t last_slash = path.rfind('/');
-    if (last_slash != std::string::npos) {
-        filename = path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(path);
 
     spdlog::debug("[MoonrakerAPIMock] download_file_tail: root='{}', path='{}', max_bytes={}", root,
                   path, max_bytes);
@@ -605,11 +624,7 @@ void MoonrakerFileTransferAPIMock::download_file_to_path(
     }
 
     // Extract just the filename from the path
-    std::string filename = path;
-    size_t last_slash = path.find_last_of('/');
-    if (last_slash != std::string::npos) {
-        filename = path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(path);
 
     spdlog::debug(
         "[MoonrakerAPIMock] download_file_to_path: root='{}', path='{}' -> filename='{}', "
@@ -630,6 +645,12 @@ void MoonrakerFileTransferAPIMock::download_file_to_path(
                 break;
             }
         }
+    }
+
+    // A file under a subdirectory of the gcodes root, as Moonraker addresses it.
+    if (local_path.empty() && root == "gcodes" &&
+        std::filesystem::exists(helix::mock::gcode_disk_path(path))) {
+        local_path = helix::mock::gcode_disk_path(path);
     }
 
     if (local_path.empty()) {
@@ -702,6 +723,18 @@ void MoonrakerFileTransferAPIMock::upload_file_from_path(
                                   std::istreambuf_iterator<char>());
         }
     }
+    // A --test run with a gcodes directory of its own (HELIX_MOCK_GCODE_DIR)
+    // keeps what it uploads there, so the printer side can list, size and
+    // serve it back as Moonraker would.
+    if (root == "gcodes" && std::getenv("HELIX_MOCK_GCODE_DIR") &&
+        !helix::mock::planted_gcode_dir().empty()) {
+        const std::filesystem::path dest =
+            std::filesystem::path(helix::mock::planted_gcode_dir()) / dest_path;
+        std::error_code ec;
+        std::filesystem::create_directories(dest.parent_path(), ec);
+        std::ofstream out(dest, std::ios::binary);
+        out << record.content;
+    }
     path_uploads_.push_back(record);
 
     spdlog::info("[MoonrakerAPIMock] Mock upload_file_from_path: root='{}', dest='{}', "
@@ -738,6 +771,18 @@ void MoonrakerFileTransferAPIMock::upload_file(const std::string& root, const st
     // config edit actually wrote, and so a later download reads it back.
     if (root == "config" && !config_files_.empty()) {
         config_files_[path] = content;
+    }
+    // A gcode upload is kept on disk, so starting a print of it reads the
+    // file's own metadata (layer count, estimate) as Moonraker would.
+    if (root == "gcodes") {
+        const std::string& planted = helix::mock::planted_gcode_dir();
+        const std::filesystem::path dest =
+            std::filesystem::path(planted.empty() ? helix::mock::uploaded_gcode_dir() : planted) /
+            path;
+        std::error_code ec;
+        std::filesystem::create_directories(dest.parent_path(), ec);
+        std::ofstream out(dest, std::ios::binary);
+        out << content;
     }
 
     // Mock always succeeds

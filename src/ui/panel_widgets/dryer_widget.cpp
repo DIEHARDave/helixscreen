@@ -10,6 +10,8 @@
 #include "ui_event_safety.h"
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
+#include "ui_subject_registry.h"
+#include "ui_tile_rung.h"
 
 #include "display_numbering.h"
 #include "display_settings_manager.h"
@@ -22,10 +24,10 @@
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/dryer_model.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
+#include "widget_subjects.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -48,6 +50,9 @@ constexpr int kMaxTimes = 4;
 struct Flags {
     lv_subject_t rung{};
     lv_subject_t show_icon{};
+    lv_subject_t show_drop{};
+    lv_subject_t drop_rung{};
+    lv_subject_t rh_x10{};
     lv_subject_t show_ring{};
     lv_subject_t ring_pct{};
     lv_subject_t show_info{};
@@ -79,8 +84,7 @@ struct RowSubjects {
 };
 HELIX_PSRAM_BSS RowSubjects s_rows[kMaxRows];
 
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"DryerWidgetSubjects"};
 bool s_rows_composed = false;
 
 // The instance bound to the live tile is the only one that publishes.
@@ -104,63 +108,47 @@ void dryer_init_subjects() {
     // gate subject before any widget exists. Every call, so a model that was deinited on
     // its own comes back with its sources attached.
     helix::dryer_model::init_subjects();
-    if (s_subjects_initialized)
-        return;
-
-    init_int(s_flags.rung, static_cast<int>(helix::SizeRung::Cell), "home_dryer_rung");
-    init_int(s_flags.show_icon, 1, "home_dryer_show_icon");
-    init_int(s_flags.show_ring, 0, "home_dryer_show_ring");
-    init_int(s_flags.ring_pct, 0, "home_dryer_ring_pct");
-    init_int(s_flags.show_info, 1, "home_dryer_show_info");
-    init_int(s_flags.show_time, 0, "home_dryer_show_time");
-    init_int(s_flags.show_name, 0, "home_dryer_show_name");
-    init_int(s_flags.show_temp, 0, "home_dryer_show_temp");
-    init_int(s_flags.show_rh_detail, 0, "home_dryer_show_rh_detail");
-    init_int(s_flags.show_rh, 0, "home_dryer_show_rh");
-    init_int(s_flags.show_status, 0, "home_dryer_show_status");
-    init_int(s_flags.show_end, 0, "home_dryer_show_end");
-    init_int(s_flags.show_count, 0, "home_dryer_show_count");
-    init_int(s_flags.show_times, 0, "home_dryer_show_times");
-    init_int(s_flags.row_count, 0, "home_dryer_row_count");
-    init_text(s_texts.time, "home_dryer_time_text");
-    init_text(s_texts.name, "home_dryer_name_text");
-    init_text(s_texts.temp, "home_dryer_temp_text");
-    init_text(s_texts.rh_detail, "home_dryer_rh_detail_text");
-    init_text(s_texts.rh, "home_dryer_rh_text");
-    init_text(s_texts.status, "home_dryer_status_text");
-    init_text(s_texts.end, "home_dryer_end_text");
-    init_text(s_texts.count, "home_dryer_count_text");
-    init_text(s_texts.times, "home_dryer_times_text");
-    for (int i = 0; i < kMaxRows; ++i) {
-        // The names must outlive the registration, so they live in a static table.
-        static HELIX_PSRAM_BSS char names[kMaxRows][4][32];
-        snprintf(names[i][0], sizeof(names[i][0]), "home_dryer_row_%d_name", i);
-        snprintf(names[i][1], sizeof(names[i][1]), "home_dryer_row_%d_time", i);
-        snprintf(names[i][2], sizeof(names[i][2]), "home_dryer_row_%d_detail", i);
-        snprintf(names[i][3], sizeof(names[i][3]), "home_dryer_row_%d_pct", i);
-        init_text(s_rows[i].name, names[i][0]);
-        init_text(s_rows[i].time, names[i][1]);
-        init_text(s_rows[i].detail, names[i][2]);
-        init_int(s_rows[i].pct, -1, names[i][3]);
-    }
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("DryerWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
+    s_subjects.ensure_init([] {
+        init_int(s_flags.rung, static_cast<int>(helix::SizeRung::Cell), "home_dryer_rung");
+        init_int(s_flags.show_icon, 0, "home_dryer_show_icon");
+        init_int(s_flags.show_drop, 1, "home_dryer_show_drop");
+        init_int(s_flags.drop_rung, 0, "home_dryer_drop_rung");
+        init_int(s_flags.rh_x10, -1, "home_dryer_rh_x10");
+        init_int(s_flags.show_ring, 0, "home_dryer_show_ring");
+        init_int(s_flags.ring_pct, 0, "home_dryer_ring_pct");
+        init_int(s_flags.show_info, 1, "home_dryer_show_info");
+        init_int(s_flags.show_time, 0, "home_dryer_show_time");
+        init_int(s_flags.show_name, 0, "home_dryer_show_name");
+        init_int(s_flags.show_temp, 0, "home_dryer_show_temp");
+        init_int(s_flags.show_rh_detail, 0, "home_dryer_show_rh_detail");
+        init_int(s_flags.show_rh, 0, "home_dryer_show_rh");
+        init_int(s_flags.show_status, 0, "home_dryer_show_status");
+        init_int(s_flags.show_end, 0, "home_dryer_show_end");
+        init_int(s_flags.show_count, 0, "home_dryer_show_count");
+        init_int(s_flags.show_times, 0, "home_dryer_show_times");
+        init_int(s_flags.row_count, 0, "home_dryer_row_count");
+        init_text(s_texts.time, "home_dryer_time_text");
+        init_text(s_texts.name, "home_dryer_name_text");
+        init_text(s_texts.temp, "home_dryer_temp_text");
+        init_text(s_texts.rh_detail, "home_dryer_rh_detail_text");
+        init_text(s_texts.rh, "home_dryer_rh_text");
+        init_text(s_texts.status, "home_dryer_status_text");
+        init_text(s_texts.end, "home_dryer_end_text");
+        init_text(s_texts.count, "home_dryer_count_text");
+        init_text(s_texts.times, "home_dryer_times_text");
+        for (int i = 0; i < kMaxRows; ++i) {
+            // The names must outlive the registration, so they live in a static table.
+            static HELIX_PSRAM_BSS char names[kMaxRows][4][32];
+            snprintf(names[i][0], sizeof(names[i][0]), "home_dryer_row_%d_name", i);
+            snprintf(names[i][1], sizeof(names[i][1]), "home_dryer_row_%d_time", i);
+            snprintf(names[i][2], sizeof(names[i][2]), "home_dryer_row_%d_detail", i);
+            snprintf(names[i][3], sizeof(names[i][3]), "home_dryer_row_%d_pct", i);
+            init_text(s_rows[i].name, names[i][0]);
+            init_text(s_rows[i].time, names[i][1]);
+            init_text(s_rows[i].detail, names[i][2]);
+            init_int(s_rows[i].pct, -1, names[i][3]);
         }
     });
-}
-
-void set_text(TextSubject& text, const std::string& value) {
-    if (value != lv_subject_get_string(&text.subject))
-        lv_subject_copy_string(&text.subject, value.c_str());
-}
-
-void set_int(lv_subject_t& subject, int value) {
-    if (lv_subject_get_int(&subject) != value)
-        lv_subject_set_int(&subject, value);
 }
 
 // "2:30" while a cycle has hours left, "45m" under one, "9h" at ten or more, so the
@@ -279,13 +267,7 @@ Fonts load_fonts() {
             theme_manager_get_font("icon_font_xs")};
 }
 
-int line_px(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
-
-int text_px(const std::string& text, const lv_font_t* font) {
-    return measure_text_px(text.c_str(), font);
-}
+using helix::line_px;
 
 int widest(std::initializer_list<int> widths) {
     return widths.size() ? *std::max_element(widths.begin(), widths.end()) : 0;
@@ -305,6 +287,57 @@ RowMetrics measure_rows(const Fonts& f) {
             theme_manager_get_spacing("space_xs")};
 }
 
+/// The box the humidity drop takes at each icon-ladder rung, in the faces the Humidity
+/// tile draws it in.
+struct DropGlyphs {
+    int w[helix::kTileRungs]{};
+    int h[helix::kTileRungs]{};
+};
+
+DropGlyphs measure_drop_glyphs() {
+    DropGlyphs g;
+    for (int r = 0; r < helix::kTileRungs; ++r) {
+        const helix::ui::TileGlyphBox box =
+            helix::ui::tile_glyph_box(helix::ui::tile_rung_face(helix::ui::TileLadder::Icon, r));
+        g.w[r] = box.w;
+        g.h[r] = box.h;
+    }
+    return g;
+}
+
+/// The widest idle text a single-block rung draws beside or under the drop, in that rung's
+/// faces. Mirrors panel_widget_dryer.xml: a stack spaces its children by space_xxs, a row
+/// by space_xs.
+helix::DropTextBlock idle_text_block(helix::SizeRung rung, const Fonts& f) {
+    using helix::SizeRung;
+    const int row_gap = theme_manager_get_spacing("space_xxs");
+    const int col_gap = theme_manager_get_spacing("space_xs");
+    // Measured and rendered widths disagree by a few pixels; a text rung is never
+    // budgeted to the last one.
+    const int comfort = theme_manager_get_spacing("space_xs");
+    const int tight = std::max<int>(2, theme_manager_get_spacing("space_xxs") / 2);
+    const std::string rh_short = "100%";
+    const std::string rh_long = fmt::format("100% {}", lv_tr("RH"));
+    const std::string not_drying = lv_tr("Not drying");
+    const int xs_h = line_px(f.xs);
+
+    switch (rung) {
+    case SizeRung::Strip:
+        return {measure_text_px(rh_long, f.xs), xs_h, true, col_gap, tight};
+    case SizeRung::Column:
+        return {widest({measure_text_px(rh_short, f.xs), measure_text_px(lv_tr("RH"), f.xs)}),
+                2 * xs_h + row_gap, false, row_gap, tight};
+    case SizeRung::Cell:
+        return {widest({measure_text_px(rh_long, f.body), measure_text_px(not_drying, f.small)}),
+                line_px(f.body) + row_gap + line_px(f.small), false, row_gap, comfort};
+    case SizeRung::Wide:
+        return {widest({measure_text_px(rh_long, f.heading), measure_text_px(not_drying, f.body)}),
+                line_px(f.heading) + row_gap + line_px(f.body), true, col_gap, comfort};
+    default:
+        return {measure_text_px(rh_short, f.xs), xs_h, false, row_gap, tight};
+    }
+}
+
 /// The minimum content box each rung draws in for the state being decided. Mirrors
 /// panel_widget_dryer.xml: a stack spaces its children by space_xxs, a row by space_xs.
 helix::RungNeeds measure_needs(DState state) {
@@ -320,7 +353,7 @@ helix::RungNeeds measure_needs(DState state) {
     const int ring_md = theme_manager_get_spacing("button_height");
 
     const std::string icon = helix::ui::icon::lookup_codepoint("heat_wave");
-    const int icon_w = text_px(icon, f.icon);
+    const int icon_w = measure_text_px(icon, f.icon);
     const int icon_h = line_px(f.icon);
     const int xs_h = line_px(f.xs);
     const int small_h = line_px(f.small);
@@ -328,9 +361,7 @@ helix::RungNeeds measure_needs(DState state) {
     const int heading_h = line_px(f.heading);
 
     // The widest each string can draw.
-    const std::string rh_short = "100%";
     const std::string rh_long = fmt::format("100% {}", lv_tr("RH"));
-    const std::string not_drying = lv_tr("Not drying");
     const std::string time_w = "9:59";
     const std::string temps = "88/88°C";
     const std::string current = "88°C";
@@ -342,42 +373,41 @@ helix::RungNeeds measure_needs(DState state) {
     helix::RungNeeds needs;
     switch (state) {
     case DState::Idle: {
-        needs.glance = rung_box(std::max(icon_w, text_px(rh_short, f.xs)) + tight,
-                                icon_h + row_gap + xs_h + 1);
-        needs.strip =
-            rung_box(icon_w + col_gap + text_px(rh_long, f.xs) + tight, std::max(icon_h, xs_h) + 1);
-        needs.column =
-            rung_box(widest({icon_w, text_px(rh_short, f.xs), text_px(lv_tr("RH"), f.xs)}) + tight,
-                     icon_h + 2 * row_gap + 2 * xs_h + 1);
-        needs.cell = rung_box(
-            widest({icon_w, text_px(rh_long, f.body), text_px(not_drying, f.small)}) + comfort,
-            icon_h + body_h + small_h + 2 * row_gap + 1);
-        needs.wide = rung_box(
-            icon_w + col_gap + widest({text_px(rh_long, f.heading), text_px(not_drying, f.body)}) +
-                comfort,
-            heading_h + body_h + row_gap + 1);
+        // At the smallest drop; decide() grows it into whatever room the rung leaves.
+        const DropGlyphs drop = measure_drop_glyphs();
+        const auto idle = [&](helix::SizeRung rung) {
+            return helix::drop_block_box(drop.w[0], drop.h[0], idle_text_block(rung, f));
+        };
+        needs.glance = idle(helix::SizeRung::Glance);
+        needs.strip = idle(helix::SizeRung::Strip);
+        needs.column = idle(helix::SizeRung::Column);
+        needs.cell = idle(helix::SizeRung::Cell);
+        needs.wide = idle(helix::SizeRung::Wide);
         break;
     }
     case DState::Single:
     case DState::Multi: {
         needs.glance = rung_box(ring_sm + tight, ring_sm + 1);
         needs.strip =
-            rung_box(text_px(time_w, f.xs) + col_gap + text_px(temps, f.xs) + tight, xs_h + 1);
+            rung_box(measure_text_px(time_w, f.xs) + col_gap + measure_text_px(temps, f.xs) + tight,
+                     xs_h + 1);
         // The icon on top keeps a half cell square a Glance ring and a tall one a column.
-        needs.column =
-            rung_box(widest({icon_w, text_px(time_w, f.xs), text_px(current, f.xs)}) + tight,
-                     icon_h + 2 * row_gap + 2 * xs_h + 1);
-        needs.cell = rung_box(std::max(ring_md, text_px(temps, f.small)) + comfort,
+        needs.column = rung_box(
+            widest({icon_w, measure_text_px(time_w, f.xs), measure_text_px(current, f.xs)}) + tight,
+            icon_h + 2 * row_gap + 2 * xs_h + 1);
+        needs.cell = rung_box(std::max(ring_md, measure_text_px(temps, f.small)) + comfort,
                               ring_md + row_gap + small_h + 1);
         if (state == DState::Single) {
-            const int text_w = widest({text_px(name_w, f.body), text_px(temps, f.small),
-                                       text_px(rh_long, f.small), text_px(end_w, f.small)});
+            const int text_w =
+                widest({measure_text_px(name_w, f.body), measure_text_px(temps, f.small),
+                        measure_text_px(rh_long, f.small), measure_text_px(end_w, f.small)});
             needs.wide = rung_box(ring_md + col_gap + text_w + comfort,
                                   std::max(ring_md, body_h + 3 * small_h + 3 * row_gap) + 1);
         } else {
-            needs.wide =
-                rung_box(std::max(text_px(count_w, f.heading), text_px(times_w, f.small)) + comfort,
-                         heading_h + small_h + row_gap + 1);
+            needs.wide = rung_box(
+                std::max(measure_text_px(count_w, f.heading), measure_text_px(times_w, f.small)) +
+                    comfort,
+                heading_h + small_h + row_gap + 1);
         }
         break;
     }
@@ -385,8 +415,9 @@ helix::RungNeeds measure_needs(DState state) {
     // Full lists at least three sources' worth of rows, so a 2x1 tile stays Wide.
     const RowMetrics rows = measure_rows(f);
     const std::string detail_w = fmt::format("88/88°C  100% {}", lv_tr("RH"));
-    const int row_w = std::max(text_px(name_w, f.small) + col_gap + text_px("9:59", f.small),
-                               text_px(detail_w, f.xs));
+    const int row_w =
+        std::max(measure_text_px(name_w, f.small) + col_gap + measure_text_px("9:59", f.small),
+                 measure_text_px(detail_w, f.xs));
     needs.full = rung_box(row_w + comfort, 3 * rows.row_h + 2 * rows.row_gap + 1);
     return needs;
 }
@@ -429,13 +460,8 @@ DryerWidget::~DryerWidget() {
 DryerVerdict DryerWidget::decide(int width_px, int height_px, const SummaryState& state) const {
     // The tree's own padding where it exists; before it does (the load path asks fits_at
     // then) the root's padding on each side plus the body's gap.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {3 * pad, 3 * pad};
-    }
+    const ContentChrome chrome =
+        content_chrome_or_estimate(root(), "space_xxs", "space_xxs", "space_xxs", "space_xxs");
     const DState dstate =
         !state.drying ? DState::Idle : (state.multi ? DState::Multi : DState::Single);
     const Fonts f = load_fonts();
@@ -458,7 +484,13 @@ DryerVerdict DryerWidget::decide(int width_px, int height_px, const SummaryState
                   width_px, height_px, chrome.w, chrome.h, n.glance.w, n.glance.h, n.strip.w,
                   n.strip.h, n.column.w, n.column.h, n.cell.w, n.cell.h, n.wide.w, n.wide.h,
                   n.full.w, n.full.h, state.drying, state.multi);
-    return decide_dryer_layout(in);
+    DryerVerdict verdict = decide_dryer_layout(in);
+    if (dstate == DState::Idle && verdict.rung != SizeRung::Full) {
+        const DropGlyphs drop = measure_drop_glyphs();
+        verdict.drop_rung = choose_drop_rung(in.content_w, in.content_h, drop.w, drop.h,
+                                             idle_text_block(verdict.rung, f));
+    }
+    return verdict;
 }
 
 DryerWidget::SummaryState DryerWidget::read_state() {
@@ -538,9 +570,10 @@ bool DryerWidget::fits_at(int width_px, int height_px) const {
 }
 
 void DryerWidget::publish_verdict() {
-    set_int(s_flags.rung, static_cast<int>(verdict_.rung));
-    set_int(s_flags.show_ring, verdict_.show_ring ? 1 : 0);
-    set_int(s_flags.row_count, verdict_.row_count);
+    helix::ui::set_int_if_changed(&s_flags.rung, static_cast<int>(verdict_.rung));
+    helix::ui::set_int_if_changed(&s_flags.show_ring, verdict_.show_ring ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_flags.row_count, verdict_.row_count);
+    helix::ui::set_int_if_changed(&s_flags.drop_rung, verdict_.drop_rung);
 }
 
 void DryerWidget::publish_texts() {
@@ -556,47 +589,53 @@ void DryerWidget::publish_texts() {
     TextSet t;
     if (rung != SizeRung::Full)
         t = compose_single(summary, rung, use_24h);
-    set_text(s_texts.time, t.time);
-    set_text(s_texts.name, t.name);
-    set_text(s_texts.temp, t.temp);
-    set_text(s_texts.rh_detail, t.rh_detail);
-    set_text(s_texts.rh, t.rh);
-    set_text(s_texts.status, t.status);
-    set_text(s_texts.end, t.end);
-    set_text(s_texts.count, t.count);
-    set_text(s_texts.times, t.times);
+    helix::ui::copy_string_if_changed(&s_texts.time.subject, t.time.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.name.subject, t.name.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.temp.subject, t.temp.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.rh_detail.subject, t.rh_detail.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.rh.subject, t.rh.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.status.subject, t.status.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.end.subject, t.end.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.count.subject, t.count.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.times.subject, t.times.c_str());
 
     const bool single = rung != SizeRung::Full;
     const auto flag = [](const std::string& s) { return s.empty() ? 0 : 1; };
     const bool ring = verdict_.show_ring;
-    set_int(s_flags.show_icon, single && (!drying || rung == SizeRung::Column) ? 1 : 0);
-    set_int(s_flags.show_time, flag(t.time) && !ring ? 1 : 0);
-    set_int(s_flags.show_name, flag(t.name));
-    set_int(s_flags.show_temp, flag(t.temp));
-    set_int(s_flags.show_rh_detail, flag(t.rh_detail));
-    set_int(s_flags.show_rh, flag(t.rh));
-    set_int(s_flags.show_status, flag(t.status));
-    set_int(s_flags.show_end, flag(t.end));
-    set_int(s_flags.show_count, flag(t.count));
-    set_int(s_flags.show_times, flag(t.times));
-    set_int(s_flags.show_info, (flag(t.time) && !ring) || flag(t.name) || flag(t.temp) ||
-                                       flag(t.rh_detail) || flag(t.rh) || flag(t.status) ||
-                                       flag(t.end) || flag(t.count) || flag(t.times)
-                                   ? 1
-                                   : 0);
+    helix::ui::set_int_if_changed(&s_flags.show_drop, single && !drying ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_flags.show_icon,
+                                  single && drying && rung == SizeRung::Column ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_flags.rh_x10,
+                                  summary.highest_rh_pct >= 0 ? summary.highest_rh_pct * 10 : -1);
+    helix::ui::set_int_if_changed(&s_flags.show_time, flag(t.time) && !ring ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_flags.show_name, flag(t.name));
+    helix::ui::set_int_if_changed(&s_flags.show_temp, flag(t.temp));
+    helix::ui::set_int_if_changed(&s_flags.show_rh_detail, flag(t.rh_detail));
+    helix::ui::set_int_if_changed(&s_flags.show_rh, flag(t.rh));
+    helix::ui::set_int_if_changed(&s_flags.show_status, flag(t.status));
+    helix::ui::set_int_if_changed(&s_flags.show_end, flag(t.end));
+    helix::ui::set_int_if_changed(&s_flags.show_count, flag(t.count));
+    helix::ui::set_int_if_changed(&s_flags.show_times, flag(t.times));
+    helix::ui::set_int_if_changed(&s_flags.show_info,
+                                  (flag(t.time) && !ring) || flag(t.name) || flag(t.temp) ||
+                                          flag(t.rh_detail) || flag(t.rh) || flag(t.status) ||
+                                          flag(t.end) || flag(t.count) || flag(t.times)
+                                      ? 1
+                                      : 0);
 
     const DryerSource* primary = primary_source(summary);
-    set_int(s_flags.ring_pct, ring && primary ? std::clamp(primary->progress_pct, 0, 100) : 0);
+    helix::ui::set_int_if_changed(&s_flags.ring_pct,
+                                  ring && primary ? std::clamp(primary->progress_pct, 0, 100) : 0);
 
     // Rows only exist at Full; below it nothing is composed for them, and what Full left
     // behind is cleared once.
     if (rung != SizeRung::Full) {
         if (s_rows_composed) {
             for (auto& row : s_rows) {
-                set_text(row.name, "");
-                set_text(row.time, "");
-                set_text(row.detail, "");
-                set_int(row.pct, -1);
+                helix::ui::copy_string_if_changed(&row.name.subject, "");
+                helix::ui::copy_string_if_changed(&row.time.subject, "");
+                helix::ui::copy_string_if_changed(&row.detail.subject, "");
+                helix::ui::set_int_if_changed(&row.pct, -1);
             }
             s_rows_composed = false;
         }
@@ -607,19 +646,21 @@ void DryerWidget::publish_texts() {
         RowSubjects& row = s_rows[i];
         const bool shown = i < verdict_.row_count && i < static_cast<int>(summary.sources.size());
         if (!shown) {
-            set_int(row.pct, -1);
+            helix::ui::set_int_if_changed(&row.pct, -1);
             continue;
         }
         const DryerSource& s = summary.sources[static_cast<size_t>(i)];
-        set_text(row.name, source_name(s));
-        set_text(row.time,
-                 s.drying ? format_time_left(s.remaining_min) : std::string(lv_tr("Idle")));
+        helix::ui::copy_string_if_changed(&row.name.subject, std::string(source_name(s)).c_str());
+        helix::ui::copy_string_if_changed(
+            &row.time.subject,
+            std::string(s.drying ? format_time_left(s.remaining_min) : std::string(lv_tr("Idle")))
+                .c_str());
         std::string detail = temp_text(s, !s.drying);
         const std::string rh = rh_text(s.humidity_pct, true);
         if (!rh.empty())
             detail += detail.empty() ? rh : "  " + rh;
-        set_text(row.detail, detail);
-        set_int(row.pct, s.drying ? s.progress_pct : -1);
+        helix::ui::copy_string_if_changed(&row.detail.subject, detail.c_str());
+        helix::ui::set_int_if_changed(&row.pct, s.drying ? s.progress_pct : -1);
     }
 }
 

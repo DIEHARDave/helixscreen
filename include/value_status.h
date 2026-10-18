@@ -35,6 +35,14 @@ constexpr ValueStatus mesh_flatness_status(float range_mm) {
                               : ValueStatus::Danger;
 }
 
+/// A maintenance meter from its used share of the service interval: Normal below three
+/// quarters, Warn from there, Danger once the interval is reached.
+constexpr ValueStatus maintenance_status(double used_fraction) {
+    return used_fraction >= 1.0    ? ValueStatus::Danger
+           : used_fraction >= 0.75 ? ValueStatus::Warn
+                                   : ValueStatus::Normal;
+}
+
 /// Free space on the gcodes disk below which the host is Warn.
 constexpr int kDiskLowFreeMb = 500;
 

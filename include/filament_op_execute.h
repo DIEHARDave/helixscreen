@@ -7,27 +7,25 @@
  *        has already decided which tier to take.
  *
  * filament_op_dispatch.h (plan_load(), plan_unload()) centralizes the DECISION
- * of which tier a filament operation takes. The act of actually running that
- * tier — building BackendCaps, switching over FilamentTier, dispatching the
- * configured macro or falling back to raw gcode — had begun to diverge the
- * same way across surfaces before this file existed. Extracted from
- * PrintStatusWidget::dispatch_load(), which was the first duplicate of
- * FilamentRunoutHandler's version. FilamentRunoutHandler was converted onto
- * this file too, so both callers now share this execution; FilamentPanel and
- * AmsOperationSidebar still answer the same plan_load()/plan_unload()
- * decision but each run their own independent execution ladder — unconverted
- * follow-up.
+ * of which tier a filament operation takes. This file runs that tier: building
+ * BackendCaps, switching over FilamentTier, dispatching the configured macro or
+ * falling back to raw gcode. Every entry point heats the nozzle first through
+ * FilamentOpHeater (filament_op_heater.h) when the op needs it, so a surface on
+ * this ladder cannot dispatch onto a cold nozzle.
  */
 
 #pragma once
 
+#include "filament_action_set.h"
 #include "filament_op_dispatch.h"
 #include "filament_op_router.h"
+#include "filament_op_slot_resolver.h"
 #include "moonraker_types.h"
 #include "standard_macros.h"
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 
 namespace helix {
@@ -60,6 +58,32 @@ namespace helix::ui {
  */
 [[nodiscard]] BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out,
                                             int target_slot);
+
+/**
+ * @brief Read the filament action decision's inputs off a live AmsBackend.
+ *
+ * selected_head stays -1: a surface with a selection sets it itself.
+ *
+ * @param backend  May be null; the view then reports no backend.
+ * @param snapshot A get_system_info() reading of @p backend already in hand
+ *                 (AmsState's shared one); null reads the backend.
+ */
+[[nodiscard]] FilamentHeadView read_filament_head_view(AmsBackend* backend, PrinterState& state,
+                                                       const AmsSystemInfo* snapshot = nullptr);
+
+/**
+ * @brief The slot a runout's Load or Unload names.
+ *
+ * The runout's own lane decides the head. An Unload takes that lane, which is
+ * what sits in the head; a Load takes the head's Assigned Tool slot, falling
+ * back to the lane. A runout that names no lane uses the active slot.
+ *
+ * @param backend      May be null; the answer is then -1.
+ * @param runout_lane  FilamentSensorManager::real_runout_lane(): nullopt or -1
+ *                     when the runout names no lane.
+ */
+[[nodiscard]] int runout_target_slot(AmsBackend* backend, std::optional<int> runout_lane,
+                                     bool load);
 
 /// The extruder a filament op heats, and the numbers a nozzle prefill holds to.
 struct OpNozzle {
@@ -112,7 +136,7 @@ struct OpNozzle {
 enum class PreheatSkip {
     None,             ///< Preheat as usual
     UserOverride,     ///< "Allow cold load/unload" — the user's macros do their own heating
-    BackendSelfHeats, ///< AmsBackend::supports_auto_heat_on_load()
+    BackendSelfHeats, ///< AmsBackend::supports_auto_heat_on_load() / _on_unload()
     MacroSelfHeats,   ///< helix::filament_macros::macro_heats_hotend()
 };
 
@@ -244,6 +268,30 @@ struct FilamentOpSurface {
     /// sends nothing. Unset sends straight away.
     std::function<void(std::function<void()> send, std::function<void(const MoonrakerError&)> fail)>
         before_macro;
+
+    /// The material to heat for when neither the target lane nor the external
+    /// spool names one (a material preset the surface offers). Asked once, when
+    /// the op is requested. Unset heats to DEFAULT_LOAD_PREHEAT_TEMP there.
+    std::function<std::optional<PreheatTarget>()> preheat_fallback_material;
+
+    /// The preheat this op waited on ended without running it: the user
+    /// withdrew it, another op replaced it, or it could not complete. Unset is
+    /// right for a surface whose user saw the heater's toast and has nothing
+    /// waiting on the op; a surface with a continuation (a flow that moves on
+    /// once the op finishes) must set it, or that flow stalls silently. Runs on
+    /// the main thread, through the guard.
+    std::function<void()> on_preheat_ended;
+
+    /// Names this surface to the preheat: the same op on the same slot from the
+    /// same owner is a re-tap. Unset uses log_tag, which every caller passes as a
+    /// literal naming its surface.
+    const void* owner = nullptr;
+
+    /// Whether the surface is still there for the user, for a dispatch that runs
+    /// after a preheat. One that is not raises no parameter prompt: the dispatch
+    /// downgrades ParamPolicy::Prompt to Unattended, which sends the prefill read
+    /// at request time. Unset counts as alive.
+    std::function<bool()> alive;
 };
 
 /// @note **`log_tag` must have static storage duration.** All three functions
@@ -259,9 +307,11 @@ struct FilamentOpSurface {
 /// tier through plan_load() and running it. `log_tag` prefixes the spdlog lines
 /// so a reader can still tell which surface asked.
 ///
-/// Extracted from PrintStatusWidget::dispatch_load(). filament_op_dispatch.h
-/// already centralizes the DECISION; this centralizes the EXECUTION, which had
-/// begun to diverge the same way.
+/// Unless the plan is refused, the op goes through FilamentOpHeater first: it
+/// runs now on a hot nozzle, or once the nozzle is hot. A deferred op re-plans
+/// against AmsState's backend at that moment, since the backend or its lanes
+/// can change while the nozzle heats. A request while a preheat is pending
+/// cancels that preheat instead.
 void execute_filament_load(AmsBackend* backend, int slot, const char* log_tag);
 
 /// Load, with this surface's bookkeeping hung off the shared ladder.
@@ -280,12 +330,7 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
 /// Purge counterpart. Two tiers only (the configured macro, then
 /// filament_purge_fallback_gcode() from filament_op_router.h) — no AmsBackend
 /// exposes a purge entry point, so there is no plan_purge() to route through.
-/// Extracted from FilamentRunoutHandler::dispatch_purge(), the one existing
-/// purge dispatch that was NOT entangled with panel UI state; that method now
-/// calls this. FilamentPanel::execute_purge() was deliberately not the source:
-/// it drives that panel's operation_guard_ spinner and a macro-parameter modal
-/// with a nozzle-temperature prefill, none of which apply here — and it
-/// remains an unconverted third copy for that reason.
+/// Heats for the loaded lane's material first, like the load and unload.
 void execute_filament_purge(const char* log_tag);
 
 } // namespace helix::ui

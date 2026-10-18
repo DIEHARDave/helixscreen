@@ -123,9 +123,19 @@ ModalStack& ModalStack::instance() {
     return instance;
 }
 
+// A visible modal blocks the navbar: its backdrop covers the always-on-top
+// chrome (E-stop included) until the last visible modal starts to close.
+static void sync_chrome_cover(const ModalStack& stack) {
+    helix::ui::set_chrome_covered(stack.covers_chrome());
+}
+
 void ModalStack::push(lv_obj_t* backdrop, lv_obj_t* dialog, const std::string& component_name,
                       Modal* owner) {
-    stack_.push_back({backdrop, dialog, component_name, false /* exiting */, owner});
+    stack_.push_back({backdrop, dialog, component_name, false /* exiting */, owner, true, {}});
+    sync_chrome_cover(*this);
+    if (backdrop && lv_obj_is_valid(backdrop)) {
+        lv_obj_move_foreground(backdrop);
+    }
     spdlog::debug("[ModalStack] Pushed modal '{}' (stack depth: {})", component_name,
                   stack_.size());
     crash_handler::breadcrumb::note("modal+", component_name.c_str(),
@@ -157,6 +167,7 @@ void ModalStack::remove(lv_obj_t* backdrop, bool free_owned_now) {
                                         static_cast<long>(stack_.size() - 1));
         std::unique_ptr<Modal> owned = std::move(it->owned_instance);
         stack_.erase(it);
+        sync_chrome_cover(*this);
         if (owned) {
             // An owned instance must die BEFORE its widget tree: subclass
             // destructors may touch widgets they created in on_show()
@@ -224,6 +235,7 @@ void ModalStack::clear() {
         }
         lv_obj_delete(entry.backdrop);
     }
+    sync_chrome_cover(*this);
 }
 
 lv_obj_t* ModalStack::top_dialog() const {
@@ -243,6 +255,14 @@ std::string ModalStack::top_component_name() const {
             return it->component_name;
     }
     return "";
+}
+
+lv_obj_t* ModalStack::dialog_for_component(const std::string& component_name) const {
+    for (auto it = stack_.rbegin(); it != stack_.rend(); ++it) {
+        if (!it->exiting && it->component_name == component_name)
+            return it->dialog;
+    }
+    return nullptr;
 }
 
 lv_obj_t* ModalStack::backdrop_for(lv_obj_t* dialog) const {
@@ -300,6 +320,49 @@ bool ModalStack::empty() const {
     return true;
 }
 
+void ModalStack::add_external_cover() {
+    ++external_covers_;
+    sync_chrome_cover(*this);
+}
+
+void ModalStack::remove_external_cover() {
+    if (external_covers_ > 0) {
+        --external_covers_;
+    }
+    sync_chrome_cover(*this);
+}
+
+bool ModalStack::covers_chrome() const {
+    if (external_covers_ > 0) {
+        return true;
+    }
+    for (const auto& entry : stack_) {
+        if (!entry.exiting && entry.covers_chrome) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ModalStack::set_covers_chrome(lv_obj_t* backdrop, bool covers) {
+    for (auto& entry : stack_) {
+        if (entry.backdrop == backdrop) {
+            entry.covers_chrome = covers;
+            sync_chrome_cover(*this);
+            return;
+        }
+    }
+}
+
+lv_obj_t* ModalStack::lowest_covering_backdrop() const {
+    for (const auto& entry : stack_) {
+        if (!entry.exiting && entry.covers_chrome) {
+            return entry.backdrop;
+        }
+    }
+    return nullptr;
+}
+
 bool ModalStack::mark_exiting(lv_obj_t* backdrop) {
     for (auto& entry : stack_) {
         if (entry.backdrop == backdrop) {
@@ -310,6 +373,7 @@ bool ModalStack::mark_exiting(lv_obj_t* backdrop) {
             }
             entry.exiting = true;
             spdlog::debug("[ModalStack] Marked modal '{}' as exiting", entry.component_name);
+            sync_chrome_cover(*this);
             return true;
         }
     }
@@ -739,17 +803,40 @@ bool Modal::show_owned(std::unique_ptr<Modal> modal, lv_obj_t* parent, const cha
     return true;
 }
 
-// If any visible (non-exiting) modal remains, bring the new topmost one to the
-// foreground so it isn't left buried behind a backdrop that is on its way out.
+void ModalStack::raise_visible_to_foreground() {
+    for (const auto& entry : stack_) {
+        if (!entry.exiting && entry.backdrop) {
+            helix::ui::bring_to_front(entry.backdrop);
+        }
+    }
+}
+
+void ModalStack::set_tag(lv_obj_t* backdrop, std::string tag) {
+    for (auto& entry : stack_) {
+        if (entry.backdrop == backdrop) {
+            entry.tag = std::move(tag);
+            return;
+        }
+    }
+}
+
+bool ModalStack::has_visible_untagged() const {
+    return std::any_of(stack_.begin(), stack_.end(),
+                       [](const ModalEntry& e) { return !e.exiting && e.tag.empty(); });
+}
+
+std::string ModalStack::top_visible_tag() const {
+    for (auto it = stack_.rbegin(); it != stack_.rend(); ++it) {
+        if (!it->exiting && !it->tag.empty()) {
+            return it->tag;
+        }
+    }
+    return {};
+}
+
+// Visible modals come back in front of a backdrop that is on its way out.
 static void raise_top_modal_to_foreground(ModalStack& stack) {
-    lv_obj_t* top = stack.top_dialog();
-    if (!top) {
-        return;
-    }
-    lv_obj_t* top_backdrop = stack.backdrop_for(top);
-    if (top_backdrop && !stack.is_exiting(top_backdrop)) {
-        helix::ui::bring_to_front(top_backdrop);
-    }
+    stack.raise_visible_to_foreground();
 }
 
 static const char* close_reason_name(ModalCloseReason reason) {
@@ -830,6 +917,13 @@ void Modal::hide(lv_obj_t* dialog, ModalCloseReason reason) {
     stack.animate_exit(backdrop, dialog);
 
     raise_top_modal_to_foreground(stack);
+}
+
+void Modal::set_covers_chrome(lv_obj_t* dialog, bool covers) {
+    auto& stack = ModalStack::instance();
+    if (lv_obj_t* backdrop = stack.backdrop_for(dialog)) {
+        stack.set_covers_chrome(backdrop, covers);
+    }
 }
 
 lv_obj_t* Modal::get_top() {
@@ -961,6 +1055,9 @@ void Modal::hide(ModalCloseReason reason) {
 
     // Call hook before destruction
     on_hide();
+    if (reason != ModalCloseReason::ButtonPress) {
+        on_dismissed();
+    }
 
     // Save pointers before clearing (needed for animation)
     lv_obj_t* backdrop = backdrop_;
@@ -1160,9 +1257,8 @@ void Modal::esc_key_cb(lv_event_t* e) {
 
     auto* self = static_cast<Modal*>(lv_event_get_user_data(e));
     if (self) {
-        // Instance modal - call on_cancel to allow override
         spdlog::debug("[{}] ESC key pressed - closing", self->get_name());
-        self->on_cancel();
+        self->on_escape();
     } else {
         // Static modal - hide topmost
         lv_obj_t* top = ModalStack::instance().top_dialog();
@@ -1328,7 +1424,7 @@ class ConfirmationModal : public Modal {
     }
 
     void on_cancel() override {
-        // esc_key_cb() is the ONLY caller - the cancel button goes to
+        // on_escape()'s default is the ONLY caller - the cancel button goes to
         // secondary_clicked() instead. So this is unambiguously "closed with no
         // button pressed": hide and let on_hide() report the dismissal. That is
         // what makes the documented on_dismiss contract true for ESC as well as

@@ -40,9 +40,7 @@
     <bind_style_if_ge name="sf_fill" subject="speed_flow_rung" ref_value="4"/>
     <!-- Glance to Wide: one line of icon, label and value. Hidden at Full, which
          has its own two-line block below. -->
-    <lv_obj name="speed_flow_main"
-            height="content" style_pad_all="0" style_pad_row="0" style_pad_column="#space_xs" style_bg_opa="0"
-            style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="speed_flow_main" height="content" style_pad_row="0" style_pad_column="#space_xs">
       <bind_style_if_lt name="sf_shrink" subject="speed_flow_rung" ref_value="4"/>
       <bind_style_if_ge name="sf_fill" subject="speed_flow_rung" ref_value="4"/>
       <bind_style_if name="sf_stacked" cond="speed_flow_rung eq 0 or speed_flow_rung eq 2"/>
@@ -66,7 +64,7 @@
         <bind_flag_if_not_eq subject="speed_flow_rung" flag="hidden" ref_value="4"/>
         <bind_flag_if_eq subject="speed_flow_show_measured" flag="hidden" ref_value="0"/>
       </text_small>
-    </lv_obj>
+    </pass_through>
     <!-- The reading under the value at Cell. -->
     <text_tiny name="speed_flow_measured_below"
                bind_text="$measured_subject" style_text_color="#text_muted" clickable="false" event_bubble="true">
@@ -74,15 +72,13 @@
       <bind_flag_if_eq subject="speed_flow_show_measured" flag="hidden" ref_value="0"/>
     </text_tiny>
     <!-- Full: label and measured reading above a large value flanked by steppers. -->
-    <lv_obj name="speed_flow_full"
-            width="100%" height="content" flex_flow="column" style_flex_main_place="start"
-            style_flex_cross_place="center" style_pad_all="0" style_pad_row="#space_xxs" style_bg_opa="0"
-            style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="speed_flow_full"
+                  width="100%" height="content" flex_flow="column" style_flex_main_place="start"
+                  style_flex_cross_place="center" style_pad_row="#space_xxs">
       <bind_flag_if_not_eq subject="speed_flow_rung" flag="hidden" ref_value="5"/>
-      <lv_obj width="100%"
-              height="content" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
-              style_pad_all="0" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-              event_bubble="true">
+      <pass_through width="100%"
+                    height="content" flex_flow="row" style_flex_main_place="space_between"
+                    style_flex_cross_place="center">
         <text_small name="speed_flow_full_label"
                     text="$label" translation_tag="$label_tag" style_text_color="#text_muted" clickable="false"
                     event_bubble="true"/>
@@ -90,11 +86,10 @@
                     bind_text="$measured_subject" style_text_color="#text_muted" clickable="false" event_bubble="true">
           <bind_flag_if_eq subject="speed_flow_show_measured" flag="hidden" ref_value="0"/>
         </text_small>
-      </lv_obj>
-      <lv_obj width="100%"
-              height="content" flex_flow="row" style_flex_main_place="space_between" style_flex_cross_place="center"
-              style_pad_all="0" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-              event_bubble="true">
+      </pass_through>
+      <pass_through width="100%"
+                    height="content" flex_flow="row" style_flex_main_place="space_between"
+                    style_flex_cross_place="center">
         <ui_button name="speed_flow_minus" width="#button_height_sm" height="#button_height_sm" text="-">
           <bind_flag_if_eq subject="speed_flow_show_steppers" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="$step_callback" user_data="-5"/>
@@ -112,7 +107,7 @@
           <bind_flag_if_eq subject="speed_flow_show_steppers" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="$step_callback" user_data="5"/>
         </ui_button>
-      </lv_obj>
-    </lv_obj>
+      </pass_through>
+    </pass_through>
   </view>
 </component>

@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "../tests/mocks/mock_printer_state.h"
+#include "gcode_parser.h"
 #include "moonraker_client_mock.h"
 #include "moonraker_client_mock_internal.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -108,6 +110,34 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_medusa(const std::st
     return std::nullopt;
 }
 
+MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_respond(const std::string& gcode) {
+    if (!is_command(gcode, "RESPOND")) {
+        return std::nullopt;
+    }
+    // Klipper's prefixes: TYPE=command is "//", error is "!!", echo (the
+    // default) is "echo:". MSG is quoted when it holds spaces.
+    std::string type = "echo";
+    if (const size_t t = gcode.find("TYPE="); t != std::string::npos) {
+        const size_t end = gcode.find_first_of(" \t", t + 5);
+        type = gcode.substr(t + 5, end == std::string::npos ? std::string::npos : end - t - 5);
+        std::transform(type.begin(), type.end(), type.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    }
+    std::string msg;
+    const size_t m = gcode.find("MSG=");
+    if (m != std::string::npos) {
+        if (m + 4 < gcode.size() && gcode[m + 4] == '"') {
+            const size_t close = gcode.rfind('"');
+            msg = close > m + 4 ? gcode.substr(m + 5, close - m - 5) : gcode.substr(m + 5);
+        } else {
+            msg = gcode.substr(m + 4);
+        }
+    }
+    const char* prefix = type == "command" ? "// " : (type == "error" ? "!! " : "echo: ");
+    dispatch_gcode_response(prefix + msg);
+    return 0;
+}
+
 // CFS commands (HELIX_MOCK_AMS=cfs). The calibration commands match on the
 // command token exactly. BOX_FIND_CUT_POS and BOX_CUSTOM_COMMAND are CFS-only vocabulary, and
 // the chute jog script (BOX_CUSTOM_COMMAND aside) falls through to the generic
@@ -209,11 +239,30 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_openams_line(const s
     return std::nullopt;
 }
 
-// Snapmaker U1 commands. Unconditional: AUTO_FEEDING and PARK_EXTRUDER are
-// U1-only vocabulary, so no mock printer mode needs to arm them, and no other
-// printer's script can contain the tokens.
+// Snapmaker U1 commands. Unconditional: AUTO_FEEDING, PARK_EXTRUDER and
+// DEFECT_DETECTION_CONFIG are U1-only vocabulary, so no mock printer mode
+// needs to arm them, and no other printer's script can contain the tokens.
 MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_u1_feeding(const std::string& gcode) {
     if (apply_u1_feeding_gcode(gcode)) {
+        return 0;
+    }
+    if (apply_multiace_gcode(gcode)) {
+        return 0;
+    }
+    if (is_command(gcode, "DEFECT_DETECTION_CONFIG")) {
+        if (has_token(gcode, "CLEAN_BED_ENABLE=0")) {
+            u1_clean_bed_enable_ = false;
+        } else if (has_token(gcode, "CLEAN_BED_ENABLE=1")) {
+            u1_clean_bed_enable_ = true;
+        }
+        if (has_token(gcode, "MAIN_ENABLE=0")) {
+            u1_defect_main_enable_ = false;
+        } else if (has_token(gcode, "MAIN_ENABLE=1")) {
+            u1_defect_main_enable_ = true;
+        }
+        spdlog::info("[MoonrakerClientMock] U1 DEFECT_DETECTION_CONFIG: main_enable={} "
+                     "clean_bed.enable={}",
+                     u1_defect_main_enable_.load(), u1_clean_bed_enable_.load());
         return 0;
     }
     // "Detach Toolhead": the head goes back to its dock and nothing is
@@ -259,7 +308,10 @@ MoonrakerClientMock::gcode_heater_temperature(const std::string& gcode) {
         // "HEATER=dragonbreath" for backend-named ones (a hard-coded
         // "chamber" comparison silently ignores those).
         const std::string bare = chamber_heater_bare_name();
-        if (!bare.empty() && gcode.find("HEATER=" + bare) != std::string::npos) {
+        if (!bare.empty() && gcode.find("HEATER=" + bare) != std::string::npos &&
+            !dragonbreath_reject_code_.empty()) {
+            chamber_route_set_target(target);
+        } else if (!bare.empty() && gcode.find("HEATER=" + bare) != std::string::npos) {
             set_chamber_target(target);
             reset_idle_timeout();
             spdlog::info("[MoonrakerClientMock] Chamber target set to {}°C", target);
@@ -702,6 +754,7 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_resume(const std::st
 // CANCEL_PRINT - Cancel current print
 MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_cancel_print(const std::string&) {
     cancel_print_internal();
+    reset_layer_pause();
     return std::nullopt;
 }
 
@@ -810,6 +863,39 @@ MoonrakerClientMock::gcode_set_fan_speed(const std::string& gcode) {
 }
 
 // LED control - SET_LED LED=<name> RED=<0-1> GREEN=<0-1> BLUE=<0-1> [WHITE=<0-1>]
+MoonrakerClientMock::PressureAdvance
+MoonrakerClientMock::pressure_advance_for(const std::string& extruder) const {
+    std::lock_guard<std::mutex> lock(pressure_advance_mutex_);
+    auto it = pressure_advance_.find(extruder);
+    return it == pressure_advance_.end() ? PressureAdvance{} : it->second;
+}
+
+MoonrakerClientMock::GcodeResult
+MoonrakerClientMock::gcode_set_pressure_advance(const std::string& gcode) {
+    // Klipper defaults EXTRUDER to the active one; the mock prints on "extruder".
+    const std::string extruder =
+        helix::gcode::gcode_param_value(gcode, "EXTRUDER").value_or("extruder");
+    PressureAdvance pa = pressure_advance_for(extruder);
+    if (auto v = helix::gcode::gcode_param_value(gcode, "ADVANCE")) {
+        pa.advance = std::max(0.0, std::strtod(v->c_str(), nullptr));
+    }
+    if (auto v = helix::gcode::gcode_param_value(gcode, "SMOOTH_TIME")) {
+        pa.smooth_time = std::max(0.0, std::strtod(v->c_str(), nullptr));
+    }
+    {
+        std::lock_guard<std::mutex> lock(pressure_advance_mutex_);
+        pressure_advance_[extruder] = pa;
+    }
+    spdlog::info("[MoonrakerClientMock] SET_PRESSURE_ADVANCE {} ADVANCE={:.4f} SMOOTH_TIME={:.4f}",
+                 extruder, pa.advance, pa.smooth_time);
+    dispatch_status_update(
+        {{extruder, {{"pressure_advance", pa.advance}, {"smooth_time", pa.smooth_time}}}});
+    // Klipper's own acknowledgement, so console consumers see the same text.
+    dispatch_gcode_response(fmt::format("pressure_advance: {:.6f}", pa.advance));
+    dispatch_gcode_response(fmt::format("pressure_advance_smooth_time: {:.6f}", pa.smooth_time));
+    return std::nullopt;
+}
+
 MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_set_led(const std::string& gcode) {
     // Parse LED name
     std::string led_name;
@@ -1127,10 +1213,14 @@ int MoonrakerClientMock::gcode_script(const std::string& raw_gcode) {
     GcodeResult r;
 
     gcode_skip_wrappers(g);
+    gcode_layer_pause(g);
     if (is_mock_ifs_module() && (r = gcode_ifs_module(g))) {
         return *r;
     }
     if (is_mock_medusahc() && (r = gcode_medusa(g))) {
+        return *r;
+    }
+    if ((r = gcode_respond(raw_gcode))) {
         return *r;
     }
     if (printer_type_ == PrinterType::FLASHFORGE_CREATOR5_ZMOD && (r = gcode_zmod(g))) {
@@ -1254,7 +1344,7 @@ int MoonrakerClientMock::gcode_script(const std::string& raw_gcode) {
         dispatch_measure_axes_noise_response();
     }
     if (has_token(g, "SET_PRESSURE_ADVANCE")) {
-        spdlog::warn("[MoonrakerClientMock] STUB: SET_PRESSURE_ADVANCE NOT IMPLEMENTED");
+        gcode_set_pressure_advance(g);
     }
     if (has_token(g, "SET_LED")) {
         gcode_set_led(g);

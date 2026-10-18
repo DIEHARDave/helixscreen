@@ -21,12 +21,12 @@
 #include "panel_widget_registry.h"
 #include "panel_widget_size.h"
 #include "printer_state.h"
-#include "static_subject_registry.h"
 #include "subject_debug_registry.h"
 #include "subject_managed_panel.h"
 #include "system/telemetry_manager.h"
 #include "translation_loader.h"
 #include "ui/ui_cleanup_helpers.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -38,34 +38,22 @@
 // Module-level subject for status text binding (static — shared across instances)
 static lv_subject_t s_camera_status_subject;
 static char s_camera_status_buffer[64];
-static bool s_subjects_initialized = false;
-static SubjectManager s_subjects;
+static helix::WidgetSubjects s_subjects{"CameraWidgetSubjects"};
 // The translation key the status text was produced from, so a language switch
 // can render it again; nullptr while it shows text that is not a key.
 static const char* s_camera_status_key = TR_NOOP("No Camera");
 
 static void camera_widget_init_subjects() {
-    if (s_subjects_initialized) {
-        return;
-    }
+    s_subjects.ensure_init([] {
+        lv_subject_init_string(&s_camera_status_subject, s_camera_status_buffer, nullptr,
+                               sizeof(s_camera_status_buffer), lv_tr(s_camera_status_key));
+        s_subjects.publish("camera_status_text", &s_camera_status_subject);
+        SubjectDebugRegistry::instance().register_subject(
+            &s_camera_status_subject, "camera_status_text", LV_SUBJECT_TYPE_STRING, __FILE__,
+            __LINE__);
 
-    lv_subject_init_string(&s_camera_status_subject, s_camera_status_buffer, nullptr,
-                           sizeof(s_camera_status_buffer), lv_tr(s_camera_status_key));
-    s_subjects.publish("camera_status_text", &s_camera_status_subject);
-    SubjectDebugRegistry::instance().register_subject(
-        &s_camera_status_subject, "camera_status_text", LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
-
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("CameraWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-            spdlog::trace("[CameraWidget] Subjects deinitialized");
-        }
+        spdlog::debug("[CameraWidget] Subjects initialized");
     });
-
-    spdlog::debug("[CameraWidget] Subjects initialized");
 }
 
 // Only one fullscreen camera overlay can be open at a time
@@ -584,7 +572,7 @@ void CameraWidget::update_stream_fps() {
 
 void CameraWidget::set_status_text(const char* text) {
     s_camera_status_key = nullptr;
-    if (s_subjects_initialized) {
+    if (s_subjects.initialized()) {
         lv_subject_copy_string(&s_camera_status_subject, text);
     }
 }

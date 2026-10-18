@@ -436,19 +436,27 @@ inline ScreenBounds project_aabb_to_screen(const glm::mat4& mvp, const AABB& box
 }
 
 /**
- * @brief Distance from point `p` to the segment `a`-`b`, all in screen pixels.
+ * @brief The point on segment `a`-`b` nearest `p`.
  *
- * Shared by the 2D picker and the GLES picker. A degenerate segment
- * (a == b) returns the distance to that point rather than dividing by zero.
+ * Units are the caller's: screen pixels for the pickers, millimetres for
+ * crease shading. A degenerate segment (a == b) returns `a` rather than
+ * dividing by zero.
  */
-inline float point_segment_distance(const glm::vec2& p, const glm::vec2& a, const glm::vec2& b) {
+inline glm::vec2 closest_point_on_segment(const glm::vec2& p, const glm::vec2& a,
+                                          const glm::vec2& b) {
     const glm::vec2 v = b - a;
     const float len_sq = glm::dot(v, v);
     if (len_sq <= 0.0f) {
-        return glm::length(p - a);
+        return a;
     }
     const float t = glm::clamp(glm::dot(p - a, v) / len_sq, 0.0f, 1.0f);
-    return glm::length(p - (a + t * v));
+    return a + t * v;
+}
+
+/// Distance from point `p` to the segment `a`-`b`. Shared by the 2D picker and
+/// the GLES picker.
+inline float point_segment_distance(const glm::vec2& p, const glm::vec2& a, const glm::vec2& b) {
+    return glm::length(p - closest_point_on_segment(p, a, b));
 }
 
 } // namespace helix::gcode

@@ -15,8 +15,11 @@
  * Run with: ./build/bin/helix-tests "[widget_size][dryer]"
  */
 
+#include "ui_humidity_drop.h"
+
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "dryer_summary.h"
 #include "panel_widget_manager.h"
@@ -29,6 +32,13 @@
 using namespace helix;
 using helix::printer::EnvironmentZone;
 using helix::printer::ZoneDryingState;
+using helix::test::Box;
+using helix::test::kCell;
+using helix::test::kColumn;
+using helix::test::kGlance;
+using helix::test::kStrip;
+using helix::test::kWide;
+using helix::ui::humidity_drop_value;
 
 namespace {
 
@@ -126,17 +136,6 @@ lv_obj_t* part(PanelWidgetHarness<DryerWidget>& h, const char* name) {
     return obj;
 }
 
-struct Box {
-    int w;
-    int h;
-    SizeRung rung;
-};
-
-constexpr Box kMedium[] = {
-    {55, 54, SizeRung::Glance}, {114, 54, SizeRung::Strip}, {55, 113, SizeRung::Column},
-    {114, 113, SizeRung::Cell}, {234, 113, SizeRung::Wide}, {234, 232, SizeRung::Full},
-};
-
 } // namespace
 
 TEST_CASE_METHOD(DryerFixture, "dryer: medium-tier budgets land on their rung, idle and drying",
@@ -144,7 +143,7 @@ TEST_CASE_METHOD(DryerFixture, "dryer: medium-tier budgets land on their rung, i
     PanelWidgetHarness<DryerWidget> h(test_screen());
     for (const auto& input : {one_box_idle(), one_box_drying(), two_drying()}) {
         publish(input);
-        for (const auto& b : kMedium) {
+        for (const auto& b : test::kMediumLadder) {
             INFO(b.w << "x" << b.h << " drying=" << summarize_dryers(input).drying_count);
             h.resize(1, 1, b.w, b.h);
             CHECK(rung_subject() == static_cast<int>(b.rung));
@@ -161,7 +160,9 @@ TEST_CASE_METHOD(DryerFixture, "dryer: idle shows the highest humidity, then the
 
     h.resize(1, 1, 55, 54);
     CHECK(subject_text("home_dryer_rh_text") == "52%");
-    CHECK(shown(part(h, "dryer_icon")));
+    CHECK(shown(part(h, "dryer_drop")));
+    CHECK(humidity_drop_value(part(h, "dryer_drop")) == 520);
+    CHECK_FALSE(shown(part(h, "dryer_icon")));
     CHECK(shown(part(h, "dryer_rh")));
     CHECK_FALSE(shown(part(h, "dryer_status")));
     CHECK_FALSE(shown(part(h, "dryer_ring_box")));
@@ -174,7 +175,46 @@ TEST_CASE_METHOD(DryerFixture, "dryer: idle shows the highest humidity, then the
     h.resize(1, 1, 234, 113);
     CHECK(subject_text("home_dryer_rh_text") == "52% RH");
     CHECK(shown(part(h, "dryer_status")));
-    CHECK(shown(part(h, "dryer_icon")));
+    CHECK(shown(part(h, "dryer_drop")));
+    CHECK_FALSE(shown(part(h, "dryer_icon")));
+}
+
+TEST_CASE_METHOD(DryerFixture, "dryer: the idle drop grows with the tile", "[widget_size][dryer]") {
+    publish(one_box_idle());
+    PanelWidgetHarness<DryerWidget> h(test_screen());
+
+    // Wide: the drop stands at least as tall as the two lines of text beside it.
+    h.resize(1, 1, kWide.w, kWide.h);
+    lv_obj_update_layout(test_screen());
+    const int wide_rung = subject_int("home_dryer_drop_rung");
+    const int text_h =
+        lv_obj_get_height(part(h, "dryer_rh")) + lv_obj_get_height(part(h, "dryer_status"));
+    CHECK(lv_obj_get_height(part(h, "dryer_drop")) >= text_h);
+
+    // A Cell stacks it over the text and still grows it past the smallest face.
+    h.resize(1, 1, kCell.w, kCell.h);
+    const int cell_rung = subject_int("home_dryer_drop_rung");
+    CHECK(cell_rung > 0);
+    CHECK(cell_rung <= wide_rung);
+
+    // A half cell draws it no larger than a full one.
+    h.resize(1, 1, kGlance.w, kGlance.h);
+    CHECK(subject_int("home_dryer_drop_rung") <= cell_rung);
+
+    // The drop never overflows the tile it grew into.
+    for (const auto& b : {kGlance, kStrip, kColumn, kCell, kWide}) {
+        INFO(b.w << "x" << b.h);
+        h.resize(1, 1, b.w, b.h);
+        lv_obj_update_layout(test_screen());
+        lv_area_t tile;
+        lv_area_t drop;
+        lv_obj_get_coords(h.root(), &tile);
+        lv_obj_get_coords(part(h, "dryer_drop"), &drop);
+        CHECK(drop.y1 >= tile.y1);
+        CHECK(drop.y2 <= tile.y2);
+        CHECK(drop.x1 >= tile.x1);
+        CHECK(drop.x2 <= tile.x2);
+    }
 }
 
 TEST_CASE_METHOD(DryerFixture, "dryer: no humidity source leaves Not drying alone",
@@ -191,7 +231,8 @@ TEST_CASE_METHOD(DryerFixture, "dryer: no humidity source leaves Not drying alon
 
     h.resize(1, 1, 55, 54);
     CHECK_FALSE(shown(part(h, "dryer_rh")));
-    CHECK(shown(part(h, "dryer_icon")));
+    CHECK(shown(part(h, "dryer_drop")));
+    CHECK(humidity_drop_value(part(h, "dryer_drop")) == helix::ui::humidity_drop::kUnknown);
 }
 
 TEST_CASE_METHOD(DryerFixture, "dryer: drying draws the ring at Glance, Cell and Wide",
@@ -204,6 +245,7 @@ TEST_CASE_METHOD(DryerFixture, "dryer: drying draws the ring at Glance, Cell and
     CHECK(subject_text("home_dryer_time_text") == "2:30");
     CHECK(subject_int("home_dryer_ring_pct") == 38);
     CHECK_FALSE(shown(part(h, "dryer_icon")));
+    CHECK_FALSE(shown(part(h, "dryer_drop")));
     CHECK_FALSE(shown(part(h, "dryer_time"))); // the ring carries it
 
     h.resize(1, 1, 114, 54);
@@ -215,6 +257,8 @@ TEST_CASE_METHOD(DryerFixture, "dryer: drying draws the ring at Glance, Cell and
 
     h.resize(1, 1, 55, 113);
     CHECK_FALSE(shown(part(h, "dryer_ring_box")));
+    CHECK(shown(part(h, "dryer_icon"))); // the heater, not the humidity
+    CHECK_FALSE(shown(part(h, "dryer_drop")));
     CHECK(subject_text("home_dryer_temp_text") == "47\xC2\xB0"
                                                   "C");
 
@@ -240,8 +284,7 @@ TEST_CASE_METHOD(DryerFixture, "dryer: an unknown progress draws the time with n
     publish(in);
     PanelWidgetHarness<DryerWidget> h(test_screen());
 
-    for (const auto& b : {Box{55, 54, SizeRung::Glance}, Box{114, 113, SizeRung::Cell},
-                          Box{234, 113, SizeRung::Wide}}) {
+    for (const auto& b : {kGlance, kCell, kWide}) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
         CHECK_FALSE(shown(part(h, "dryer_ring_box")));
@@ -413,7 +456,7 @@ TEST_CASE_METHOD(DryerFixture, "dryer: content sits at the vertical centre of th
     for (const auto& input : {one_box_idle(), one_box_drying()}) {
         publish(input);
         PanelWidgetHarness<DryerWidget> h(test_screen());
-        for (const auto& b : kMedium) {
+        for (const auto& b : test::kMediumLadder) {
             if (b.rung == SizeRung::Full)
                 continue;
             INFO(b.w << "x" << b.h << " drying=" << summarize_dryers(input).drying_count);

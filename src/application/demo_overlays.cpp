@@ -22,6 +22,7 @@
 #include "ui_runout_guidance_modal.h"
 #include "ui_spaghetti_detection_modal.h"
 
+#include "action_prompt_manager.h"
 #include "action_prompt_modal.h"
 #include "ams_error.h"
 #include "ams_types.h"
@@ -30,6 +31,7 @@
 #include "camera_stream.h"
 #include "color_utils.h"
 #include "data_root_resolver.h"
+#include "demo_prompt_lines.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "led/ui_led_control_overlay.h"
 #include "preflight_validator.h"
@@ -57,7 +59,7 @@ namespace helix {
 // active print) or configured state (lock PIN), so mock-mode navigation can't
 // reach them — the remote-control `demo` command uses this to capture them for
 // screenshots with the real widget lifecycle. Must run on the UI thread.
-bool show_demo_overlay(const std::string& name) {
+bool show_demo_overlay(const std::string& name, std::string* error) {
     lv_obj_t* screen = lv_screen_active();
 
     if (name == "preflight-check") {
@@ -224,6 +226,57 @@ bool show_demo_overlay(const std::string& name) {
         return true;
     }
 
+    if (name == "action-prompt-hex") {
+        // Buttons colored by hex in the third field, as Fluidd, Mainsail and
+        // Z-Mod send them, plus a Z-Mod color-picker grid of "_ " swatch tiles
+        // (prestonbrown/helixscreen#1806). The specs go through the real
+        // parser, so this shows exactly what a wire prompt would.
+        using helix::ActionPromptManager;
+        helix::PromptData data;
+        data.title = "Select color";
+        data.text_lines = {"Pick a color for slot 1."};
+        for (const char* spec :
+             {"Standard|GCODE_CMD_1|error", "HEX Dark (White Text)|GCODE_CMD_2|ff5722",
+              "HEX Light (Black Text)|GCODE_CMD_3|e0e0e0"}) {
+            data.buttons.push_back(ActionPromptManager::parse_button_spec(spec));
+        }
+        const char* const palette[] = {"ffffff", "fef043", "0acc38", "21cc3d", "2750e0", "a03cf7",
+                                       "f330f9", "f72224", "7c4b00", "898989", "161616", "#0de2a0"};
+        int group = 0;
+        for (size_t i = 0; i < std::size(palette); ++i) {
+            if (i % 6 == 0) {
+                ++group;
+            }
+            auto btn = ActionPromptManager::parse_button_spec(
+                std::string("_ |CHANGE_ZCOLOR SLOT=1 HEX=") + palette[i] + "|" + palette[i]);
+            btn.group_id = group;
+            data.buttons.push_back(std::move(btn));
+        }
+        data.buttons.push_back(ActionPromptManager::parse_button_spec("Back||secondary"));
+        data.buttons.back().is_footer = true;
+        helix::ui::ActionPromptModal::show_owned_prompt(screen, data);
+        return true;
+    }
+
+    if (name == "action-prompt-zmod") {
+        // The lines go through the app's ActionPromptManager, the same path a
+        // printer's response takes, so this is exactly what Z-Mod's macro shows.
+        auto* manager = helix::ActionPromptManager::instance();
+        if (manager == nullptr) {
+            const std::string reason =
+                "action-prompt-zmod: no ActionPromptManager is registered (no printer session)";
+            spdlog::warn("[Demo] {}", reason);
+            if (error != nullptr) {
+                *error = reason;
+            }
+            return false;
+        }
+        for (const std::string& line : helix::demo::zmod_color_picker_lines()) {
+            manager->process_line(line);
+        }
+        return true;
+    }
+
     if (name == "lock-screen") {
         helix::ui::LockScreenOverlay::instance().show();
         return true;
@@ -254,6 +307,13 @@ bool show_demo_overlay(const std::string& name) {
         modal->set_detection("Spaghetti detected (78%)");
         modal->request_camera_frame(sources);
         return Modal::show_owned(std::move(modal), screen);
+    }
+
+    if (name == "bed-check") {
+        // The modal a printer's bed check raises. Left unbound: the presenter
+        // binds it to the paused job, and a mock with no paused job would
+        // close it at once.
+        return Modal::show_owned(std::make_unique<helix::detection::BedCheckModal>(), screen);
     }
 
     if (name == "ams-error-toast") {

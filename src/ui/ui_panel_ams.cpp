@@ -22,7 +22,6 @@
 #include "ui_overlay_qr_scanner.h"
 #include "ui_panel_common.h"
 #include "ui_spool_canvas.h"
-#include "ui_swatch.h"
 #include "ui_utils.h"
 
 #include "ams_backend.h"
@@ -48,6 +47,7 @@
 #include "static_panel_registry.h"
 #include "system/crash_handler.h"
 #include "theme_manager.h"
+#include "tool_change_request.h"
 #include "ui/ams_drawing_utils.h"
 #include "wizard_config_paths.h"
 
@@ -892,6 +892,8 @@ void AmsPanel::setup_path_canvas() {
 
     // Set slot click callback (panel-specific)
     ui_filament_path_canvas_set_slot_callback(path_canvas_, on_path_slot_clicked, this);
+    helix::ui::filament_path_canvas_set_toolhead_callback(path_canvas_, on_path_toolhead_clicked,
+                                                          this);
 
     // Set selector/hub click callback (opens Happy Hare selector context menu)
     ui_filament_path_canvas_set_hub_callback(path_canvas_, &AmsPanel::on_path_hub_clicked_thunk,
@@ -1104,8 +1106,6 @@ void AmsPanel::refresh_slots() {
 
 void AmsPanel::update_slot_colors() {
     int slot_count = lv_subject_get_int(AmsState::instance().get_slot_count_subject());
-    int backend_idx = AmsState::instance().active_backend_index();
-    AmsBackend* backend = AmsState::instance().get_backend(backend_idx);
 
     for (int i = 0; i < MAX_VISIBLE_SLOTS; ++i) {
         if (!slot_widgets_[i]) {
@@ -1119,21 +1119,6 @@ void AmsPanel::update_slot_colors() {
         }
 
         lv_obj_remove_flag(slot_widgets_[i], LV_OBJ_FLAG_HIDDEN);
-
-        // Get slot color from AmsState subject (using active backend)
-        lv_subject_t* color_subject = AmsState::instance().get_slot_color_subject(backend_idx, i);
-        if (color_subject) {
-            uint32_t rgb = static_cast<uint32_t>(lv_subject_get_int(color_subject));
-
-            // Find color swatch within slot. Multi-color spools render as
-            // diagonal chunks; single-color falls back to a solid fill.
-            lv_obj_t* swatch = lv_obj_find_by_name(slot_widgets_[i], "color_swatch");
-            if (swatch) {
-                std::string multi =
-                    backend ? backend->get_slot_info(i).multi_color_hexes : std::string();
-                helix::ui::apply_swatch_color(swatch, rgb, multi);
-            }
-        }
 
         // Material and fill are no longer pushed here: the ams_slot widget
         // observes its own per-slot subjects (AmsState::get_slot_material_subject
@@ -1281,6 +1266,34 @@ void AmsPanel::on_path_slot_clicked(int slot_index, void* user_data) {
     }
 
     self->show_context_menu(slot_index, self->path_canvas_, click_pt);
+}
+
+void AmsPanel::on_path_toolhead_clicked(int slot_index, void* user_data) {
+    auto* self = static_cast<AmsPanel*>(user_data);
+    if (!self) {
+        return;
+    }
+
+    // A head tap mounts that head's tool. Its own tube and spool open the slot
+    // menu instead (on_path_slot_clicked), so a tap meant for the filament
+    // never moves the carriage.
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (!backend) {
+        return;
+    }
+    const AmsSystemInfo info = backend->get_system_info();
+    const SlotInfo* slot = info.get_slot_global(slot_index);
+    if (!slot || slot->mapped_tool < 0) {
+        on_path_slot_clicked(slot_index, user_data);
+        return;
+    }
+
+    spdlog::info("[AmsPanel] Toolhead {} (T{}) clicked", slot_index, slot->mapped_tool);
+    const auto verdict = helix::ui::offer_tool_change(self->printer_state_, slot->mapped_tool);
+    // The mounted head's tap is the slot menu's, the same as its tube's.
+    if (verdict == helix::ui::ToolChangeVerdict::AlreadyActive) {
+        on_path_slot_clicked(slot_index, user_data);
+    }
 }
 
 void AmsPanel::on_path_hub_clicked_thunk(lv_point_t click_pt, void* user_data) {

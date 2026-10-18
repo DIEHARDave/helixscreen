@@ -30,12 +30,12 @@
                width="100%" long_mode="wrap" style_pad_left="#space_lg" style_pad_right="#space_lg"
                style_pad_top="#space_xs" style_pad_bottom="#space_md" style_text_color="#text_muted"/>
 
-    <!-- Button row: Remap… (tertiary, optional), Cancel (secondary),
+    <!-- Button row: Map Filament… (tertiary, optional), Cancel (secondary),
          Print Anyway (primary). Wired programmatically; no XML callbacks to
          avoid double-wiring. The tertiary button is hidden from C++ when the
          active backend's remap strategy is None. -->
     <modal_button_row hide_tertiary="false"
-                      tertiary_variant="primary" tertiary_text="Remap…" secondary_text="Cancel"
+                      tertiary_variant="primary" tertiary_text="Map Filament…" secondary_text="Cancel"
                       primary_text="Print Anyway"/>
   </view>
 </component>

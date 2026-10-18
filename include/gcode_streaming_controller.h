@@ -377,6 +377,30 @@ class GCodeStreamingController {
     float get_layer_z(size_t layer_index) const;
 
     /**
+     * @brief G-code lines the index counted in a layer's byte range
+     *
+     * A load whose read fails returns an empty segment list, which is also
+     * what a genuinely empty layer looks like. A layer the index counted lines
+     * in but that loaded no segments at all is the read failure.
+     *
+     * @param layer_index Zero-based layer index
+     * @return Line count, or 0 if invalid
+     */
+    uint32_t get_layer_line_count(size_t layer_index) const;
+
+    /**
+     * @brief Drop a layer from the cache so the next access reads it again
+     *
+     * A failed read is cached as an empty layer like any other result; a
+     * caller that recognises one (see get_layer_line_count()) evicts it to
+     * retry the read.
+     *
+     * @param layer_index Zero-based layer index
+     * @return true if the layer was cached
+     */
+    bool evict_layer(size_t layer_index);
+
+    /**
      * @brief Find layer closest to Z height
      * @param z Z coordinate
      * @return Layer index, or -1 if no layers

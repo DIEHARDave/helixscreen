@@ -26,6 +26,12 @@
 // Spoolman Data Types
 // ============================================================================
 
+/// Spoolman filament extra field that carries a pressure advance K. One per
+/// filament: K belongs to the material and the extruder, not to one spool.
+namespace helix {
+inline constexpr const char* SPOOLMAN_PA_EXTRA_KEY = "pressure_advance";
+} // namespace helix
+
 /**
  * @brief Vendor information from Spoolman
  */
@@ -119,6 +125,10 @@ struct SpoolInfo {
     int bed_temp_max = 0;
     int bed_temp_recommended = 0;
 
+    /// Pressure advance K saved on the filament (extra field
+    /// SPOOLMAN_PA_EXTRA_KEY), nullopt when none is saved.
+    std::optional<float> pressure_advance;
+
     /**
      * @brief Get remaining percentage
      * @return Percentage of filament remaining (0-100)
@@ -157,6 +167,12 @@ struct SpoolInfo {
     [[nodiscard]] std::string display_name() const {
         std::string name = helix::compose_filament_label(vendor, filament_name, material);
         return name.empty() ? "Unknown Spool" : name;
+    }
+
+    /// The surface finish the material or filament name announces (silk, ...).
+    [[nodiscard]] helix::FilamentFinish finish() const {
+        const helix::FilamentFinish f = helix::filament_finish_of(material);
+        return f != helix::FilamentFinish::None ? f : helix::filament_finish_of(filament_name);
     }
 };
 
@@ -255,6 +271,25 @@ int64_t spool_recency_key(const SpoolInfo& spool);
  * cannot churn the list order.
  */
 void sort_spools_by_recency(std::vector<SpoolInfo>& spools);
+
+/**
+ * @brief The material families of @p spools, in the list's own order
+ *
+ * The recents source for the spool editor's Material row. The input is the
+ * recency-sorted spool list the Spoolman API returns (sort_spools_by_recency()
+ * applied in the API layer), so first appearance IS most-recent-first; families
+ * dedupe case-insensitively keeping the first spelling. Empty materials are
+ * skipped. Pure: no fetch, no clock.
+ */
+// NAMESPACE_OK: sits beside sort_spools_by_recency at file scope
+std::vector<std::string> recent_material_families(const std::vector<SpoolInfo>& spools);
+
+/**
+ * @brief The brands of @p spools, in the list's own order — see
+ * recent_material_families().
+ */
+// NAMESPACE_OK: sits beside sort_spools_by_recency at file scope
+std::vector<std::string> recent_brands(const std::vector<SpoolInfo>& spools);
 
 // ============================================================================
 // SpoolInfo → SlotInfo Conversion

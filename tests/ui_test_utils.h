@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ui_notification.h"
 #include "ui_toast_manager.h"
 
 #include "lvgl/lvgl.h"
@@ -112,84 +113,84 @@ void set_test_temperature_history_manager(TemperatureHistoryManager* mgr);
 namespace helix {
 namespace ui {
 
-/**
- * @brief Install a hook invoked by the test ui_notification_warning() stubs.
+/*
+ * Observation hooks over the real notification and toast objects.
  *
- * Lets a test observe whether a user-facing WiFi warning toast was emitted
- * (the production path is stubbed to a log-only no-op in tests). Pass nullptr
- * to clear. The hook receives the formatted warning message.
+ * ui_notification.o and ui_toast_manager.o are linked into the test binary.
+ * Each reports every call to one observer (helix::ui::set_notification_observer(),
+ * ToastManager::set_observer()) on the calling thread, before threading, the
+ * pre-init startup queue or the user's toast threshold decide what is shown;
+ * ui_test_utils.cpp installs both and routes each event to the hook below for
+ * its kind. A hook is empty until a test sets it; pass nullptr to clear.
+ */
+
+/**
+ * @brief Hook for timed warnings: ui_notification_warning() (message only,
+ *        never the title) and ui_notification_warning_with_detail() (the
+ *        history row, "message - detail").
  */
 void set_test_notification_warning_hook(std::function<void(const std::string&)> hook);
 
 /**
- * @brief Install a hook invoked by the test ui_notification_warning_sticky() stub.
- *
- * Separate hook from the warning one so a test can tell the sticky channel
- * (never auto-dismisses) from the timed one, not just read the text. Pass
- * nullptr to clear. The hook receives the formatted warning message.
+ * @brief Hook for ui_notification_warning_sticky(), which stays on screen until
+ *        dismissed. Separate from the warning hook so a test can tell the two
+ *        channels apart, not just read the text. Receives "message - detail".
  */
 void set_test_notification_sticky_warning_hook(std::function<void(const std::string&)> hook);
 
 /**
- * @brief Install a hook invoked by the test ui_notification_error() stub.
- *
- * Same purpose as the warning hook: user-facing error toasts are compiled out
- * of the test build, so this is the only way a test can observe that one was
- * raised. Pass nullptr to clear.
+ * @brief Hook for ui_notification_error(), ui_notification_printer_fault() and
+ *        ui_notification_error_with_detail(), modal or not.
  */
 void set_test_notification_error_hook(std::function<void(const std::string&)> hook);
 
 /**
- * @brief Install a hook invoked by the test ui_notification_info() stubs.
- *
- * Third of the same set. INFO toasts are the ones that GUIDE rather than alarm
- * ("filament is clear, pull it out"), so a test asserting that the user was told
- * what to do next has no other observation point: NotificationHistory and
- * PendingStartupWarnings both sit behind the production ui_notification_info(),
- * which this file replaces with a log-only no-op. Pass nullptr to clear.
+ * @brief Hook for ui_notification_info(). INFO notices GUIDE rather than alarm
+ *        ("filament is clear, pull it out"), so this is how a test asserts the
+ *        user was told what to do next.
  */
 void set_test_notification_info_hook(std::function<void(const std::string&)> hook);
 
 /**
- * @brief Install a hook invoked by the test ui_notification_success() stubs.
- *
- * The fourth of the set, for flows whose outcome is a success toast: a test that
- * a failure is never reported as success needs to see the success path too.
- * Pass nullptr to clear.
+ * @brief Hook for ui_notification_success(), for flows whose outcome is a
+ *        success toast: a test that a failure is never reported as success
+ *        needs to see the success path too.
  */
 void set_test_notification_success_hook(std::function<void(const std::string&)> hook);
 
 /**
- * @brief Install a hook invoked by the test ui_notification_*_with_action() stubs.
+ * @brief Hook for the history-only ui_notification_*_with_action() rows.
  *
- * Those calls add a history row only, which the test build replaces with a
- * log-only no-op. The hook receives the row's severity, message and action id,
- * so a test can prove an entry was added and that tapping it would dispatch
- * the right action. Pass nullptr to clear.
+ * Receives the row's severity, message and action id, so a test can prove an
+ * entry was added and that tapping it would dispatch the right action.
  */
 void set_test_notification_action_hook(
     std::function<void(ToastSeverity, const std::string&, const std::string&)> hook);
 
 /**
- * @brief Install a hook invoked by the test ToastManager stub's show paths.
+ * @brief Hook for every ui_notification_* call, as the whole event: title,
+ *        severity, history-row text, action and stickiness. Runs before the
+ *        per-kind hooks above.
+ */
+void set_test_notification_event_hook(std::function<void(const NotificationEvent&)> hook);
+
+/**
+ * @brief Hook for every ToastManager::show*() call, including the ones
+ *        ui_notification_* makes once the toast system is initialized.
  *
- * Same purpose as the notification hooks, one layer down: code that calls
- * ToastManager::show() directly (deliberately bypassing ui_notification_* and
- * its history row) has no other observation point in the test binary — the
- * real ToastManager is excluded from the link. Carries the severity so a
- * wrong-severity toast fails on severity, not just wording, and the duration
- * so a sticky (0) call cannot silently read as a timed one. Pass nullptr to
- * clear.
+ * Carries the severity so a wrong-severity toast fails on severity, not just
+ * wording, and the duration so a sticky (0) call cannot read as a timed one.
+ * A show_with_detail() call arrives as "message - detail".
  */
 void set_test_toast_hook(std::function<void(ToastSeverity, const std::string&, uint32_t)> hook);
 
 /**
  * @brief Press the action button of the most recent action toast
  *
- * The stub ToastManager keeps the last show_with_action() callback and its
- * user_data so a test can act as the user tapping the button. Returns false
- * when no action toast has been shown since the last call or since
- * set_test_toast_hook(), which forgets the last action.
+ * Calls the last show_with_action() callback with its user_data, as the user
+ * tapping the button would. Returns false when no action toast has been shown
+ * since the last call or since set_test_toast_hook(), which forgets the last
+ * action.
  */
 bool fire_last_toast_action();
 
@@ -200,6 +201,14 @@ bool fire_last_toast_action();
  * Cleared, like the last action, by set_test_toast_hook().
  */
 bool last_action_toast_dismissed();
+
+/**
+ * @brief Clear every hook above and the recorded action toasts.
+ *
+ * HelixTestFixture::reset_all() runs it, so a hook capturing a test's stack
+ * locals cannot outlive the test case.
+ */
+void clear_test_hooks();
 
 } // namespace ui
 } // namespace helix

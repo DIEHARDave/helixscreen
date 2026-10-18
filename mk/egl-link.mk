@@ -107,7 +107,7 @@ $(EGL_TARGET): $(APP_C_OBJS) $(EGL_APP_OBJS) $(EGL_APP_VARIANT_OBJS) $(APP_MODUL
                $(EGL_LVGL_OBJS) $(EGL_LVGL_VARIANT_OBJS) $(EGL_LVGL_SHADER_OBJ) \
                $(HELIX_XML_OBJS) $(THORVG_OBJS) $(SPDLOG_OBJS) $(LV_MARKDOWN_OBJS) $(QUIRC_OBJS) \
                $(LUA_OBJS) \
-               $(FONT_OBJS) $(TRANS_OBJS) $(APP_DNS_RESOLV_OBJ) $(WPA_DEPS) \
+               $(FONT_OBJS) $(APP_DNS_RESOLV_OBJ) $(WPA_DEPS) \
                | $(EGL_LINK_AFTER)
 	$(Q)mkdir -p $(BIN_DIR)
 	$(ECHO) "$(MAGENTA)$(BOLD)[LD/egl]$(RESET) $@"

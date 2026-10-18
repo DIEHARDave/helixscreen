@@ -49,8 +49,12 @@ class AmsEditOverlayTestAccess {
     void set_slot_index(int idx) {
         overlay_.slot_index_ = idx;
     }
-    void set_save_to_spoolman_opt_in(bool opt_in) {
-        overlay_.save_to_spoolman_opt_in_ = opt_in;
+    void set_save_to_spoolman_opt_in(bool) {
+        // The toggle is gone: untracked slots reach Spoolman only through the
+        // Add-to-Spoolman link, which sets the create intent directly.
+    }
+    void call_handle_add_to_spoolman() {
+        overlay_.handle_add_to_spoolman();
     }
     void set_completion_callback(AmsEditOverlay::CompletionCallback cb) {
         overlay_.completion_callback_ = std::move(cb);
@@ -84,11 +88,6 @@ class AmsEditOverlayTestAccess {
     }
     static bool needs_identity_confirmation(const SlotInfo& original, const SlotInfo& edited) {
         return AmsEditOverlay::needs_identity_confirmation(original, edited);
-    }
-    static AmsEditOverlay::WeightStaging
-    decide_weight_staging(bool entered_tracked, bool remaining_filled, bool total_filled) {
-        return AmsEditOverlay::decide_weight_staging(entered_tracked, remaining_filled,
-                                                     total_filled);
     }
     static bool may_write_spoolman_now(const SlotInfo& original, const SlotInfo& edited) {
         return AmsEditOverlay::may_write_spoolman_now(original, edited);
@@ -482,50 +481,6 @@ TEST_CASE("AmsEditOverlay::should_create_new_spool is gated by the Save-to-Spool
 // the user had to reopen and save a second time. Observed on the .112 BoxTurtle:
 // save at 19:13:24 emitted SET_COLOR + SET_MATERIAL and no SET_WEIGHT; the
 // weight only landed on the following save at 19:13:40.
-TEST_CASE("AmsEditOverlay::decide_weight_staging stages remaining even when unlinking in place",
-          "[ams][edit_overlay][spoolman]") {
-    SECTION("genuinely untracked slot stages both fields") {
-        auto s = AmsEditOverlayTestAccess::decide_weight_staging(
-            /*entered_tracked=*/false, /*remaining_filled=*/true, /*total_filled=*/true);
-        CHECK(s.stage_remaining);
-        CHECK(s.stage_total);
-    }
-
-    SECTION("unlinked-in-place stages remaining but NOT total (core-weight ambiguity)") {
-        auto s = AmsEditOverlayTestAccess::decide_weight_staging(
-            /*entered_tracked=*/true, /*remaining_filled=*/true, /*total_filled=*/true);
-        CHECK(s.stage_remaining); // the bug: this was false, so SET_WEIGHT never fired
-        CHECK_FALSE(s.stage_total);
-    }
-
-    SECTION("blank fields stage nothing (blank means unchanged)") {
-        auto s = AmsEditOverlayTestAccess::decide_weight_staging(
-            /*entered_tracked=*/false, /*remaining_filled=*/false, /*total_filled=*/false);
-        CHECK_FALSE(s.stage_remaining);
-        CHECK_FALSE(s.stage_total);
-    }
-
-    SECTION("blank remaining is not staged even on a genuinely untracked slot") {
-        auto s = AmsEditOverlayTestAccess::decide_weight_staging(
-            /*entered_tracked=*/false, /*remaining_filled=*/false, /*total_filled=*/true);
-        CHECK_FALSE(s.stage_remaining);
-        CHECK(s.stage_total);
-    }
-}
-
-// The logistics two-PATCH in handle_spool_edit_save() ran BEFORE
-// commit_and_close() evaluated needs_identity_confirmation(), so a save that was
-// about to ask "Different filament?" had already written to Spoolman by the time
-// the dialog appeared — and Cancel, documented as a true abort, could not take it
-// back. Observed on the .112 BoxTurtle:
-//
-//   19:11:55  Updating spool 86 with 1 fields
-//   19:11:55  Spool 86 updated successfully
-//   19:11:55  set_active_spool(86)
-//   19:11:56  Confirmation dialog shown: 'Different filament?'
-//   19:12:17  fire_completion saved=false        <- user cancelled
-//
-// Invariant: if the edit will prompt, nothing may be written first.
 TEST_CASE("AmsEditOverlay::may_write_spoolman_now withholds writes until identity is confirmed",
           "[ams][edit_overlay][spoolman]") {
     SlotInfo linked;
@@ -696,7 +651,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     process_lvgl(10);
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture, "show_for_slot opens on the overview by default (#1071)",
+TEST_CASE_METHOD(LVGLUITestFixture, "show_for_slot opens on the editor by default (#1071)",
                  "[ams_edit_overlay][spoolman][ui_integration][1071]") {
     auto& overlay = get_ams_edit_overlay();
     AmsEditOverlayTestAccess access(overlay);
@@ -708,7 +663,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "show_for_slot opens on the overview by defa
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    CHECK(access.get_view_mode() == AmsEditOverlay::VIEW_OVERVIEW);
+    CHECK(access.get_view_mode() == AmsEditOverlay::VIEW_EDITOR);
 
     NavigationManager::instance().go_back();
     UpdateQueue::instance().drain();

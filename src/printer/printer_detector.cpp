@@ -8,6 +8,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "data_root_resolver.h"
+#include "filament_sensor_manager.h"
 #include "helix_fs.h"
 #include "json_utils.h"
 #include "klipper_extruder_naming.h"
@@ -16,8 +17,10 @@
 #include "printer_discovery.h"
 #include "printer_state.h"
 #include "probe_preparation.h"
+#include "probe_sensor_manager.h"
 #include "text_io.h"
 #include "thermal_rate_model.h"
+#include "width_sensor_manager.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
@@ -1050,10 +1053,10 @@ const json* printer_member(const std::string& printer_name, const char* field) {
     return printer ? helix::json_util::find_member(*printer, field) : nullptr;
 }
 
-/// A boolean field of the entry named `printer_name`, false when either is absent.
-bool printer_flag(const std::string& printer_name, const char* field) {
+/// A boolean field of the entry named `printer_name`, @p fallback when either is absent.
+bool printer_flag(const std::string& printer_name, const char* field, bool fallback = false) {
     const json* printer = find_printer_entry(printer_name);
-    return printer != nullptr && helix::json_util::safe_bool(*printer, field, false);
+    return printer ? helix::json_util::safe_bool(*printer, field, fallback) : fallback;
 }
 
 /// One string field of the entry named `printer_name`, or "" when either is absent.
@@ -1254,6 +1257,7 @@ std::string PrinterDetector::apply_preset_with_variants(helix::Config* config,
     }
 
     config->set_preset(applied);
+    helix::reload_sensor_roles_after_preset();
     return applied;
 }
 
@@ -1579,6 +1583,14 @@ bool PrinterDetector::hide_manual_z_calibration(const std::string& printer_name)
     return printer_flag(printer_name, "hide_manual_z_calibration");
 }
 
+bool PrinterDetector::z_offset_persists(const std::string& printer_name) {
+    return printer_flag(printer_name, "z_offset_persists", true);
+}
+
+bool PrinterDetector::tool_change_resets_z_offset(const std::string& printer_name) {
+    return printer_flag(printer_name, "tool_change_resets_z_offset");
+}
+
 // ============================================================================
 // Probe Type Lookup
 // ============================================================================
@@ -1683,6 +1695,10 @@ PrinterDetector::get_belt_tensioner(const std::string& printer_name) {
     if (kind == "spring")
         return BeltTensionerKind::SPRING;
     return BeltTensionerKind::UNKNOWN;
+}
+
+bool PrinterDetector::klipper_hides_dot_dirs(const std::string& printer_name) {
+    return printer_flag(printer_name, "klipper_hides_dot_dirs");
 }
 
 // ============================================================================
@@ -1816,7 +1832,9 @@ bool PrinterDetector::auto_detect_and_save(const helix::PrinterDiscovery& discov
         // installs without this hook).
         std::string saved_preset = get_preset_for_name(saved_type);
         if (!saved_preset.empty()) {
-            config->apply_preset_file(saved_preset);
+            if (config->apply_preset_file(saved_preset)) {
+                helix::reload_sensor_roles_after_preset();
+            }
         }
         // Apply the saved type to PrinterState for the same reason the
         // detected-type path does: it is what resolves the pre-print option

@@ -20,9 +20,11 @@ namespace helix {
  *
  * @param name One of: preflight-check, runout-modal, lock-screen,
  *             print-status, print-tune, ams-error-toast,
- *             spaghetti-detection.
- * @return true if the name was recognized and the overlay shown, false if unknown.
+ *             spaghetti-detection, bed-check.
+ * @param error When non-null, receives why a recognized demo could not be shown
+ *              (left empty for an unknown name).
+ * @return true if the name was recognized and the overlay shown, false otherwise.
  */
-bool show_demo_overlay(const std::string& name);
+bool show_demo_overlay(const std::string& name, std::string* error = nullptr);
 
 } // namespace helix

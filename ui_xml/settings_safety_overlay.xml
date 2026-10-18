@@ -67,6 +67,17 @@
           </lv_obj>
         </lv_obj>
         <!-- ================================================================== -->
+        <!-- BED CLEAR CHECK (only when the printer has a switchable camera bed check) -->
+        <!-- ================================================================== -->
+        <lv_obj name="container_bed_check" width="100%" style_pad_all="0" scrollable="false" flex_flow="column">
+          <bind_flag_if_eq subject="detection_bed_check_available" flag="hidden" ref_value="0"/>
+          <setting_toggle_row name="row_bed_check"
+                              label="Bed Clear Check" icon="train_flatbed"
+                              description="Camera checks the bed is empty before each print"
+                              subject="detection_bed_check_enabled" callback="on_bed_check_changed"
+                              disabled="detection_bed_check_switchable" disabled_ref_value="0"/>
+        </lv_obj>
+        <!-- ================================================================== -->
         <!-- PRINT COMPLETION ALERT -->
         <!-- ================================================================== -->
         <setting_dropdown_row name="row_completion_alert"

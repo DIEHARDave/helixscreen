@@ -34,9 +34,11 @@
 #include "bed_mesh_stats.h"
 #include "display_settings_manager.h"
 #include "format_utils.h"
+#include "i18n_plural.h"
 #include "i_moonraker_api.h"
 #include "layout_manager.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "moonraker_error.h"
 #include "observer_factory.h"
 #include "printer_detector.h"
 #include "printer_state.h"
@@ -181,9 +183,14 @@ void BedMeshPanel::init_subjects() {
                                   helix::bed_mesh::DEFAULT_PROFILE, "bed_mesh_calibrate_name",
                                   subjects_);
 
-        // Self-register cleanup — ensures deinit runs before lv_deinit()
-        StaticPanelRegistry::instance().register_destroy(
-            "BedMeshPanelSubjects", []() { get_global_bed_mesh_panel().deinit_subjects(); });
+        // Self-register cleanup — ensures deinit runs before lv_deinit(). The
+        // hook peeks: an absent panel has no subjects to deinit, and building
+        // one here would construct a panel mid-teardown.
+        StaticPanelRegistry::instance().register_destroy("BedMeshPanelSubjects", []() {
+            if (auto* panel = helix::lazy_global_if_exists<BedMeshPanel>()) {
+                panel->deinit_subjects();
+            }
+        });
 
         spdlog::debug("[{}] Subjects registered", get_name());
     });
@@ -1556,7 +1563,10 @@ void BedMeshPanel::on_probe_progress(int current, int total) {
     } else {
         // Fallback: firmware didn't report total — show spinner instead of bar
         lv_subject_set_int(&bed_mesh_probe_indeterminate_, 1);
-        const std::string text = fmt::format(lv_tr("Probing... ({} points)"), current);
+        const std::string text =
+            fmt::format(fmt::runtime(helix::ui::tr_plural(nullptr, "Probing... ({} points)",
+                                                          static_cast<uint64_t>(current))),
+                        current);
         std::snprintf(probe_text_buf_, sizeof(probe_text_buf_), "%s", text.c_str());
         spdlog::debug("[BedMeshPanel] Probe progress: {} points (total unknown)", current);
     }
@@ -1717,47 +1727,10 @@ void BedMeshPanel::save_profile_as(const std::string& name, std::function<void()
         });
 }
 
-/// Strip Klipper error prefixes and make messages user-friendly
-static std::string sanitize_error_message(const std::string& raw) {
-    std::string msg = raw;
-
-    // Strip Klipper emergency/error prefixes
-    if (msg.rfind("!! ", 0) == 0)
-        msg = msg.substr(3);
-    if (msg.rfind("Error:", 0) == 0)
-        msg = msg.substr(6);
-    if (msg.rfind("error:", 0) == 0)
-        msg = msg.substr(6);
-
-    // Trim leading whitespace
-    auto start = msg.find_first_not_of(" \t");
-    if (start != std::string::npos && start > 0)
-        msg = msg.substr(start);
-
-    // Strip JSON-looking content (e.g. {"message": "Must home axis..."} → extract message)
-    if (!msg.empty() && msg.front() == '{') {
-        auto mpos = msg.find("\"message\"");
-        if (mpos != std::string::npos) {
-            // Find the value after "message":
-            auto colon = msg.find(':', mpos + 9);
-            if (colon != std::string::npos) {
-                auto qstart = msg.find('"', colon + 1);
-                auto qend =
-                    (qstart != std::string::npos) ? msg.find('"', qstart + 1) : std::string::npos;
-                if (qstart != std::string::npos && qend != std::string::npos) {
-                    msg = msg.substr(qstart + 1, qend - qstart - 1);
-                }
-            }
-        }
-    }
-
-    return msg;
-}
-
 void BedMeshPanel::on_calibration_error(const std::string& message) {
     cooldown_after_probing();
     spdlog::error("[BedMeshPanel] Calibration error: {}", message);
-    std::string clean = sanitize_error_message(message);
+    std::string clean = MoonrakerError::friendly_error_line(message);
     std::strncpy(error_message_buf_, clean.c_str(), sizeof(error_message_buf_) - 1);
     error_message_buf_[sizeof(error_message_buf_) - 1] = '\0';
     lv_subject_copy_string(&bed_mesh_error_message_, error_message_buf_);

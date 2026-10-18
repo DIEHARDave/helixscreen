@@ -30,6 +30,7 @@ inline constexpr int CONTRIBUTOR_COUNT = sizeof(CONTRIBUTORS) / sizeof(CONTRIBUT
 #endif
 #include "format_utils.h"
 #include "helix_version.h"
+#include "i18n_plural.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
 #include "json_utils.h"
@@ -160,7 +161,9 @@ void AboutSettingsOverlay::register_callbacks() {
                  const char* action = currently_on ? lv_tr("disable") : lv_tr("enable");
                  std::string msg =
                      remaining == 1 ? fmt::format(lv_tr("1 more tap to {} beta features"), action)
-                                    : fmt::format(lv_tr("{} more taps to {} beta features"),
+                                    : fmt::format(fmt::runtime(helix::ui::tr_plural(
+                                                      nullptr, "{} more taps to {} beta features",
+                                                      static_cast<uint64_t>(remaining))),
                                                   remaining, action);
                  ToastManager::instance().show(ToastSeverity::INFO, msg.c_str(), 1000);
              } else if (remaining == 0) {

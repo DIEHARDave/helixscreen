@@ -425,3 +425,12 @@ TEST_CASE("to_lower and to_upper map ASCII only", "[text_io]") {
     CHECK(to_lower("\xC3\x89\xE9") == "\xC3\x89\xE9");
     CHECK(to_upper("\xC3\xA9\xE9") == "\xC3\xA9\xE9");
 }
+
+TEST_CASE("utf8_first_codepoint takes the whole lead character", "[text_io]") {
+    using helix::text_io::utf8_first_codepoint;
+    CHECK(utf8_first_codepoint("").empty());
+    CHECK(utf8_first_codepoint("Mon") == "M");
+    CHECK(utf8_first_codepoint("\xC3\xA9t\xC3\xA9") == "\xC3\xA9");         // 2 bytes
+    CHECK(utf8_first_codepoint("\xE6\x9C\x88") == "\xE6\x9C\x88");          // 3 bytes
+    CHECK(utf8_first_codepoint("\xF0\x9F\x98\x80x") == "\xF0\x9F\x98\x80"); // 4 bytes
+}

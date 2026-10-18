@@ -88,7 +88,7 @@ HelixScreen reads standard G-code, so most slicers work. But support is tiered:
 
 | Slicer | Status | Notes |
 |--------|--------|-------|
-| **OrcaSlicer 2.3.2+** | **Primary** | The slicer we develop and test against. Best experience — including one-way (HelixScreen → OrcaSlicer) filament preset sync with HelixScreen's filament slots. Recommended for everyone. |
+| **OrcaSlicer 2.3.2+** | **Primary** | The slicer we develop and test against. Best experience — including one-way (HelixScreen → OrcaSlicer) filament preset sync with HelixScreen's filament slots. Recommended for everyone. G-code from the 2.5 alpha has been checked and needs nothing new from HelixScreen. |
 | Manufacturer slicers (Creality Print, FlashForge Orca, Bambu Studio, etc.) | **Supported** | Most are OrcaSlicer/PrusaSlicer forks and work well. We aim to support them. This is about G-code and profiles, not the vendor's own network path: on the Creality K1 series the stock backend keeps running beside HelixScreen, so Creality Print can still reach the printer. If it cannot, see [Troubleshooting](TROUBLESHOOTING.md#creality-print-can-no-longer-find-or-connect-to-the-printer). |
 | PrusaSlicer / SuperSlicer | **Supported** | Fully usable, including exclude-objects and pre-print options. |
 | Cura | **Not targeted** | We don't test against Cura and don't build features for it, but we don't go out of our way to break it. Output generally works; some features (exclude objects, filament sync) need extra setup or aren't available. |
@@ -274,7 +274,7 @@ Labels include spool name, material, color swatch, temperatures, and a QR code. 
 - **ACE** (Anycubic ACE Pro) — supported on native Anycubic firmware (the `filament_hub` Klipper object, e.g. Kobra on Rinkhals) and on the community ValgACE/BunnyACE/DuckACE Klipper drivers
 - **Tool changers** — supported
 
-Features include visual slot configuration with tool badges, endless spool arrows, tap-to-edit popup, Spoolman integration, and material compatibility validation.
+Features include visual slot configuration with tool badges, Endless Spool arrows, Filament Mapping, tap-to-edit popup, Spoolman integration, and material compatibility validation.
 
 ### Can I customize the home screen widgets?
 

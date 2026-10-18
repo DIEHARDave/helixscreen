@@ -384,6 +384,7 @@ AmsBackendCfs::AmsBackendCfs(IMoonrakerAPI* api, helix::IMoonrakerClient* client
     macro_variant_ = (PrinterDetector::is_creality_k1() || PrinterDetector::is_creality_hi())
                          ? CfsMacroVariant::K1
                          : CfsMacroVariant::K2;
+    model_macro_variant_ = macro_variant_;
 
     spdlog::info("[AMS CFS] Backend created — macro variant: {}",
                  macro_variant_ == CfsMacroVariant::K1 ? "K1 (BOX_*)" : "K2 (CR_BOX_*)");
@@ -403,14 +404,16 @@ bool AmsBackendCfs::owns_filament_sensor(const std::string& bare_name,
 void AmsBackendCfs::on_started() {
     spdlog::info("[AMS CFS] Backend started — querying initial box state");
 
-    // A start is a new session: the merged stock frames, the first-frame
-    // mirror sort and whether the auto-refill bit has been seen describe the
-    // last one.
+    // A start is a new session: the merged stock and flat frames, the
+    // first-frame mirror sort and whether the auto-refill bit has been seen
+    // describe the last one.
     stock_box_state_ = nlohmann::json::object();
+    flat_box_state_ = nlohmann::json::object();
     {
         std::lock_guard<std::mutex> lock(mutex_);
         mirrors_sorted_ = false;
         endless_spool_enable_reported_ = false;
+        tag_readings_.clear();
     }
 
     // Restore the persisted stock-dialect bypass declaration. The
@@ -436,7 +439,8 @@ void AmsBackendCfs::on_started() {
     // lane_data is empty (Task 8).
     if (api_) {
         auto loaded =
-            helix::ams::make_loaded_override_store(api_, "cfs", get_type(), backend_log_tag());
+            helix::ams::make_loaded_override_store(api_, "cfs", get_type(), backend_log_tag(),
+                                                   "lane_data", /*migrates_legacy_namespace=*/true);
         if (loaded.store) {
             helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
                                               backend_index());
@@ -1253,14 +1257,22 @@ AmsSystemInfo AmsBackendCfs::parse_flat_box_status(const nlohmann::json& box_jso
         }
     }
 
-    // One environment reading covers the chain; giving it to every box would
-    // show the same sensor as several zones.
-    bool environment_placed = false;
+    // The payload carries one environment reading, taken from the box named by
+    // load_path.box_addr (1-based; null when nothing is loaded). Only that box
+    // shows it; giving it to every box would show one sensor as several zones.
+    // With no usable address it stays on the first box.
+    int environment_address = boxes.empty() ? -1 : boxes.begin()->first;
+    if (auto path_it = box_json.find("load_path");
+        path_it != box_json.end() && path_it->is_object()) {
+        const int box_addr = helix::json_util::safe_int(*path_it, "box_addr", 0);
+        if (boxes.count(box_addr - 1) != 0) {
+            environment_address = box_addr - 1;
+        }
+    }
     for (auto& [address, box] : boxes) {
-        if (environment_placed) {
+        if (address != environment_address) {
             box.environment.reset();
         }
-        environment_placed = environment_placed || box.environment.has_value();
         info.units.push_back(std::move(box));
     }
     reserve_address_gaps(info);
@@ -1403,6 +1415,49 @@ std::string AmsBackendCfs::normalize_legacy_flat_fingerprint(const std::string& 
     return head + "|" + stored.substr(start);
 }
 
+// The colour half of a fingerprint as RRGGBB, uppercase: stock's "0RRGGBB"
+// loses its leading pad, so a stock and a flat reading of one colour compare
+// equal. Empty when the fingerprint carries no colour.
+static std::string fingerprint_rgb(const std::string& fingerprint) {
+    const auto pipe = fingerprint.find('|');
+    if (pipe == std::string::npos) {
+        return "";
+    }
+    std::string color = fingerprint.substr(pipe + 1);
+    if (color.size() == 7 && color[0] == '0') {
+        color.erase(0, 1);
+    }
+    for (auto& c : color) {
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    }
+    return color;
+}
+
+std::optional<CfsSchema> AmsBackendCfs::fingerprint_schema(const std::string& fingerprint) {
+    const auto pipe = fingerprint.find('|');
+    if (pipe == std::string::npos || fingerprint.find('|', pipe + 1) != std::string::npos) {
+        return std::nullopt;
+    }
+    const std::string material = fingerprint.substr(0, pipe);
+    const std::string color = fingerprint.substr(pipe + 1);
+    const auto is_digit = [](char c) { return c >= '0' && c <= '9'; };
+    const auto is_upper_hex = [&is_digit](char c) { return is_digit(c) || (c >= 'A' && c <= 'F'); };
+    // Stock colour_value is "0RRGGBB"; compose_cfs_flat_uid writes six
+    // uppercase hex digits. With no colour, a stock material_type is a
+    // numeric code where a flat material is a name.
+    if (color.size() == 7) {
+        return CfsSchema::Stock;
+    }
+    if (color.size() == 6 && std::all_of(color.begin(), color.end(), is_upper_hex)) {
+        return CfsSchema::Flat;
+    }
+    if (color.empty() && !material.empty() &&
+        std::all_of(material.begin(), material.end(), is_digit)) {
+        return CfsSchema::Stock;
+    }
+    return std::nullopt;
+}
+
 // The flat schema's per-slot fingerprint, fed to the same
 // check_hardware_event_clear path as the stock composite above. It carries
 // exactly the insert rule's evidence fields, material and colour (see
@@ -1424,7 +1479,12 @@ static std::string build_cfs_flat_slot_uid(const nlohmann::json& slot_json) {
 /// What one full `box` frame carries from the parse to the locked steps that
 /// apply it.
 struct AmsBackendCfs::BoxFrame {
+    /// The frame as it arrived. Presence gates read it: a field it omits is
+    /// one this frame said nothing about.
     const nlohmann::json* box = nullptr;
+    /// The box as the merge of every frame the parse has seen, which is what
+    /// it read. A value that needs the whole payload reads this.
+    const nlohmann::json* state = nullptr;
     bool is_flat = false;
     bool has_unit_data = false;
     bool print_holds_machine = false;
@@ -1566,21 +1626,64 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
 
     const auto shape = cfs::classify_box_frame(box);
     const bool has_unit_data = shape.has_unit_data;
-    // Flat schema: a `slots` array is the payload that carries everything —
-    // there is no top-level/per-unit split to reason about, so its presence
-    // alone marks a full update.
-    const bool is_flat = detect_schema(box) == CfsSchema::Flat;
+    // A `slots` array or a T{n} unit names the frame's schema. A frame with
+    // neither is a delta of whichever schema the box spoke last: after a flat
+    // frame, a frame carrying only temp_c is a flat frame, and after a T{n}
+    // one, a frame carrying only filament_useup or map is a stock one.
+    //
+    // The Fork dialect belongs to the flat module, so a box speaking stock
+    // again takes back the model's own dialect along with the schema.
+    if (has_unit_data && schema_ != CfsSchema::Stock) {
+        schema_ = CfsSchema::Stock;
+        if (macro_variant_ == CfsMacroVariant::Fork) {
+            macro_variant_ = model_macro_variant_;
+        }
+        spdlog::info("[AMS CFS] Stock box schema reported, flat state dropped");
+    }
+    const bool is_flat =
+        detect_schema(box) == CfsSchema::Flat || (schema_ == CfsSchema::Flat && !has_unit_data);
     const bool is_full_update = shape.has_top_level || has_unit_data || is_flat;
+
+    // Frames are deltas in both schemas, so the parse reads the box as the
+    // merge of every frame since the session began or the schema changed. A
+    // stock unit leaves only when a frame reports it disconnected.
+    //
+    // The two merges differ on purpose. A stock frame is merged recursively,
+    // since a T{n} frame may name only the unit fields that changed. Klipper
+    // diffs box.py's flat object per top-level field and sends each changed
+    // field whole, so a flat field replaces its predecessor outright: a
+    // recursive merge would keep a key that left a nested object (a deleted
+    // `materials` entry) and erase an explicit null instead of storing it.
+    if (is_flat) {
+        if (!stock_box_state_.empty()) {
+            stock_box_state_ = nlohmann::json::object();
+        }
+        if (!flat_box_state_.is_object()) {
+            flat_box_state_ = nlohmann::json::object();
+        }
+        for (const auto& [key, value] : box.items()) {
+            flat_box_state_[key] = value;
+        }
+    } else {
+        if (!flat_box_state_.empty()) {
+            flat_box_state_ = nlohmann::json::object();
+        }
+        if (!stock_box_state_.is_object()) {
+            stock_box_state_ = nlohmann::json::object();
+        }
+        stock_box_state_.merge_patch(box);
+    }
+    const nlohmann::json& state = is_flat ? flat_box_state_ : stock_box_state_;
 
     if (is_flat && schema_ != CfsSchema::Flat) {
         schema_ = CfsSchema::Flat;
         // Select the command dialect from the explicit API version, not by
         // assuming every `slots[]` payload implements the same commands.
-        if (detect_fork_dialect(box)) {
+        if (detect_fork_dialect(state)) {
             macro_variant_ = CfsMacroVariant::Fork;
             spdlog::info("[AMS CFS] Flat box schema + fork dialect detected "
                          "(community box.py, API v{}) — Fork control enabled",
-                         helix::json_util::safe_int(box, "api_version", 0));
+                         helix::json_util::safe_int(state, "api_version", 0));
         } else {
             spdlog::warn("[AMS CFS] Flat box schema without a supported API version — "
                          "slot display active, control paths disabled (no verified "
@@ -1588,21 +1691,9 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
         }
     }
 
-    // Stock frames are deltas: a frame naming only T3 says nothing about T1
-    // and T2, so the parse reads the box as the merge of every frame since
-    // the last flat one. A unit leaves only when a frame reports it
-    // disconnected.
-    if (is_flat) {
-        stock_box_state_ = nlohmann::json::object();
-    } else {
-        if (!stock_box_state_.is_object()) {
-            stock_box_state_ = nlohmann::json::object();
-        }
-        stock_box_state_.merge_patch(box);
-    }
-
-    // Partial updates (measuring_wheel, etc.): skip — don't touch state
-    if (!is_full_update) {
+    // Partial updates (measuring_wheel, etc.): skip — don't touch state.
+    // A flat session has nothing to parse until the box has stated its slots.
+    if (!is_full_update || (is_flat && detect_schema(state) != CfsSchema::Flat)) {
         return;
     }
 
@@ -1616,12 +1707,13 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
         std::lock_guard<std::mutex> lock(mutex_);
         own_labels = pushed_material_codes_;
     }
-    auto new_info = parse_box_status(is_flat ? box : stock_box_state_, &own_labels);
+    auto new_info = parse_box_status(state, &own_labels);
 
     file_box_readings(new_info);
 
     BoxFrame frame;
     frame.box = &box;
+    frame.state = &state;
     frame.is_flat = is_flat;
     frame.has_unit_data = has_unit_data;
     frame.print_holds_machine = print_holds_machine;
@@ -1630,7 +1722,7 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
 
     // Payload reads happen before the lock; the values converge under it with
     // everything else below.
-    frame.external_index = is_flat ? find_external_slot_index(box) : -1;
+    frame.external_index = is_flat ? find_external_slot_index(state) : -1;
 
     // Firmware-sourced mapping tick. box.map is what the CFS itself
     // reports — verified on a live K2: BOX_MODIFY_TN T1A=T1B echoed back
@@ -1749,8 +1841,16 @@ void AmsBackendCfs::file_box_readings(const AmsSystemInfo& new_info) {
                 // back, not a tag read. The boundary stays empty: the
                 // fingerprint's own swap detection and Clear Spool are
                 // what end the suppression.
+                const helix::ams::Observation stated = cache;
                 own_write_echoes_.withhold(slot.global_index, std::string{}, cache);
                 helix::ams::ingest(lane, cache);
+                // The temperatures are the catalog's for the material code.
+                helix::ams::fold_tag_frame_into(
+                    tag_readings_, slot.global_index, stated, cache,
+                    slot.nozzle_temp_min > 0 ? std::optional<int>(slot.nozzle_temp_min)
+                                             : std::nullopt,
+                    slot.nozzle_temp_max > 0 ? std::optional<int>(slot.nozzle_temp_max)
+                                             : std::nullopt);
 
                 // Whether the identity declared on this bay still names
                 // what is in it. The id is new_info's, which is the flat
@@ -1767,6 +1867,15 @@ void AmsBackendCfs::file_box_readings(const AmsSystemInfo& new_info) {
             }
         }
     }
+}
+
+std::optional<helix::ams::TagReading> AmsBackendCfs::tag_reading(int slot_index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = tag_readings_.find(slot_index);
+    if (it == tag_readings_.end()) {
+        return std::nullopt;
+    }
+    return it->second;
 }
 
 void AmsBackendCfs::apply_box_frame_locked(BoxFrame& f) {
@@ -1866,12 +1975,14 @@ void AmsBackendCfs::apply_box_units_locked(BoxFrame& f) {
         //
         // The flat swap plan follows the same presence rule: a delta
         // omitting `runout` keeps the last plan, an explicit null
-        // (nothing loaded) clears it. Stock never publishes one.
+        // (nothing loaded) clears it. Stock never publishes one. The
+        // plan names bays, so it is read against the merged state: the
+        // frame that changes it need not carry `slots`.
         if (is_flat) {
             system_info_.endless_spool_group_ids.clear();
             system_info_.endless_spool_groups_reported = false;
             if (box.contains("runout")) {
-                flat_backup_edges_ = parse_flat_runout_edges(box);
+                flat_backup_edges_ = parse_flat_runout_edges(*f.state);
             }
         } else {
             flat_backup_edges_.reset();
@@ -4080,7 +4191,7 @@ AmsBackendCfs::classify_error(const std::string& raw_line,
         message = lv_tr("Filament ran out and the CFS found no matching spool to switch to. "
                         "Load a spool of the same material and color, then resume.");
     } else if (refill_disabled) {
-        message = lv_tr("Filament ran out. Auto-refill is off, so the CFS will not switch "
+        message = lv_tr("Filament ran out. Auto-Refill is off, so the CFS will not switch "
                         "spools on its own. Load filament, then resume.");
     } else if (no_tray_available) {
         message = lv_tr("Filament ran out. The CFS knows which spools match, but those slots "
@@ -4234,7 +4345,7 @@ std::vector<helix::printer::DeviceSection> AmsBackendCfs::get_device_sections() 
     // renders only actions whose section matches one declared here.
     using DS = helix::printer::DeviceSection;
     std::vector<DS> sections = {
-        DS{"maintenance", "Maintenance", 0, "RFID, auto-refill, nozzle and link care"},
+        DS{"maintenance", "Maintenance", 0, "RFID, Auto-Refill, nozzle and link care"},
     };
     if (macro_variant_ == CfsMacroVariant::K1) {
         sections.push_back(
@@ -4258,7 +4369,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() co
         DA::button("refresh_rfid", "Refresh RFID", "maintenance", "",
                    "Re-read spool RFID tags and remaining length"),
         DA::toggle("toggle_auto_refill", "Toggle Auto-Refill", "maintenance",
-                   std::move(auto_refill), "", "Enable/disable automatic backup spool switching"),
+                   std::move(auto_refill), "", "Switch to a matching slot on runout"),
         DA::button("nozzle_clean", "Clean Nozzle", "maintenance", "",
                    "Wipe nozzle on silicone cleaning strip"),
         DA::button("comm_test", "Communication Test", "maintenance", "",
@@ -4273,10 +4384,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() co
         if (print_blocks) {
             reason = "Printer is busy with a print";
         }
-        for (DA a : {DA::button("calibrate_cutter", "Calibrate Cutter", "calibration", "",
-                                "Home and sweep the cutter to re-find its position"),
-                     DA::button("calibrate_purge_chute", "Calibrate Purge Chute", "calibration", "",
-                                "Guide the toolhead to the chute's extrude position")}) {
+        DA cutter = DA::button("calibrate_cutter", "Calibrate Cutter", "calibration", "",
+                               "Home and sweep the cutter to re-find its position");
+        cutter.guided_flow = "cfs_cutter";
+        DA chute = DA::button("calibrate_purge_chute", "Calibrate Purge Chute", "calibration", "",
+                              "Guide the toolhead to the chute's extrude position");
+        chute.guided_flow = "cfs_purge_chute";
+        for (DA a : {std::move(cutter), std::move(chute)}) {
             a.enabled = !print_blocks;
             a.disable_reason = reason;
             actions.push_back(std::move(a));
@@ -4703,6 +4817,28 @@ std::map<int, int> AmsBackendCfs::collect_insert_probes_locked(const nlohmann::j
 
 bool AmsBackendCfs::check_hardware_event_clear(SlotInfo& slot, int slot_index,
                                                const std::string& observed_uid) {
+    // A baseline in the other schema's shape cannot equal any reading of this
+    // one, so only the colour, the one field both spell alike, still compares.
+    // A different colour is a swap and stays a Changed comparison; the same
+    // colour, or none on either side, makes the reading a first observation.
+    // The observed side must name the current schema too: a reading this
+    // schema could also have spelled the other way is compared as usual,
+    // which never leaves a slot blind to its own swaps.
+    if (const auto base = rfid_tracker_.baseline(slot_index)) {
+        const auto base_schema = fingerprint_schema(*base);
+        const std::string base_rgb = fingerprint_rgb(*base);
+        const std::string observed_rgb = fingerprint_rgb(observed_uid);
+        const bool colour_moved =
+            !base_rgb.empty() && !observed_rgb.empty() && base_rgb != observed_rgb;
+        if (base_schema && *base_schema != schema_ && fingerprint_schema(observed_uid) == schema_ &&
+            !colour_moved) {
+            spdlog::info("{} Slot {} fingerprint {} is from the other box schema, "
+                         "re-baselining on {}",
+                         backend_log_tag(), slot_index, *base, observed_uid);
+            rfid_tracker_.forget_baseline(slot_index);
+        }
+    }
+
     std::string old_uid;
     const auto event = rfid_tracker_.observe(slot_index, observed_uid, &old_uid);
 
