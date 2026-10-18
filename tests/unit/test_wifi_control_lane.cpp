@@ -9,9 +9,11 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/wifi_manager_test_access.h"
+#include "../ui_test_utils.h"
 #include "async_lifetime_guard.h"
 #include "http_executor.h"
 #include "wifi_backend_mock.h"
+#include "wifi_backend_wpa_supplicant.h"
 #include "wifi_control_breaker.h"
 #include "wifi_manager.h"
 
@@ -48,11 +50,20 @@ class StallingBackend : public WifiBackendMock {
 
     WiFiError trigger_scan() override {
         enter(triggers_);
+        if (fail_triggers_.load()) {
+            return WiFiError(WiFiResult::BACKEND_ERROR, "FAIL-BUSY", "");
+        }
         return WiFiError(WiFiResult::SUCCESS);
     }
     WiFiError connect_network(const std::string&, const std::string&, bool) override {
         enter(connects_);
+        if (const int ms = connect_delay_ms_.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        }
         return WiFiError(WiFiResult::SUCCESS);
+    }
+    bool supports_wpa_supplicant_fallback() const override {
+        return true;
     }
     WiFiError disconnect_network() override {
         enter(disconnects_);
@@ -88,6 +99,14 @@ class StallingBackend : public WifiBackendMock {
     }
     void set_status_delay_ms(int ms) {
         status_delay_ms_ = ms;
+    }
+    /// A join that takes this long, the way NetworkManager's does while it
+    /// joins the previous nmcli worker.
+    void set_connect_delay_ms(int ms) {
+        connect_delay_ms_ = ms;
+    }
+    void fail_triggers() {
+        fail_triggers_ = true;
     }
 
     int triggers() const {
@@ -131,6 +150,8 @@ class StallingBackend : public WifiBackendMock {
     std::atomic<int> triggers_{0}, connects_{0}, disconnects_{0}, forgets_{0}, radios_{0},
         statuses_{0};
     std::atomic<int> status_delay_ms_{0};
+    std::atomic<int> connect_delay_ms_{0};
+    std::atomic<bool> fail_triggers_{false};
 };
 
 struct ControlLaneFixture : LVGLTestFixture {
@@ -149,8 +170,10 @@ struct ControlLaneFixture : LVGLTestFixture {
     }
 
     ~ControlLaneFixture() override {
-        if (wm) {
+        if (backend) {
             backend->release();
+        }
+        if (wm) {
             WiFiManagerTestAccess::settle(*wm);
             wm.reset();
         }
@@ -166,6 +189,16 @@ struct ControlLaneFixture : LVGLTestFixture {
                              [got](const WifiBackend::ConnectionStatus& s) { *got = s; });
         REQUIRE(wait_until([&] { return got->has_value(); }));
         return **got;
+    }
+
+    /// Park a status read on the lane and wait until it has outlived the
+    /// breaker's slow-call time, so the lane counts as stalled.
+    void stall_lane_on_status_read(int slow_call_ms) {
+        backend->stall();
+        const int before = backend->statuses();
+        wm->get_status_async(guard.token(), [](const WifiBackend::ConnectionStatus&) {});
+        REQUIRE(wait_until([&] { return backend->statuses() == before + 1; }));
+        std::this_thread::sleep_for(std::chrono::milliseconds(slow_call_ms * 2));
     }
 };
 
@@ -350,4 +383,266 @@ TEST_CASE_METHOD(ControlLaneFixture,
 
     backend->release();
     REQUIRE(wait_until([&] { return first_answered; }));
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "user actions queued behind a call that never returns fail by their deadline",
+                 "[wifi][wifi_control_lane]") {
+    // Short deadlines; the breaker's own slow-call time stays at its default, so
+    // the lane is not yet stalled when these are queued.
+    WiFiManagerTestAccess::set_user_op_timeouts(*wm, 300, 300, 60000);
+    backend->stall();
+    const int asked = backend->statuses();
+    wm->get_status_async(guard.token(), [](const WifiBackend::ConnectionStatus&) {});
+    REQUIRE(wait_until([&] { return backend->statuses() == asked + 1; }));
+
+    std::optional<WiFiResult> connect_result;
+    std::optional<bool> forgot;
+    std::optional<bool> radio_ok;
+    wm->connect("Net", "password",
+                [&](bool, const std::string&, WiFiResult r) { connect_result = r; });
+    wm->forget("Net", [&](bool ok, const std::string&) { forgot = ok; });
+    wm->set_enabled_async(true, guard.token(), [&](bool ok, bool) { radio_ok = ok; });
+
+    REQUIRE(wait_until([&] { return connect_result && forgot && radio_ok; }, 2000));
+    CHECK(*connect_result == WiFiResult::TIMEOUT);
+    CHECK_FALSE(*forgot);
+    CHECK_FALSE(*radio_ok);
+    CHECK_FALSE(WiFiManagerTestAccess::connecting(*wm));
+
+    // Once the stuck call returns, what the user was told failed is not sent.
+    backend->release();
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    CHECK(backend->connects() == 0);
+    CHECK(backend->forgets() == 0);
+    CHECK(backend->radios() == 0);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "user actions fail at once while WiFi control is stalled",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    // An open WiFi link would hide the radio's toast; this case is about the wording.
+    WiFiManagerTestAccess::set_os_link_probe([] { return false; });
+    stall_lane_on_status_read(50);
+    // Held by the hook, so a REQUIRE that gives up leaves nothing dangling.
+    auto toasts = std::make_shared<std::vector<std::string>>();
+    helix::ui::set_test_notification_event_hook(
+        [toasts](const helix::ui::NotificationEvent& e) { toasts->push_back(e.message); });
+
+    std::optional<WiFiResult> connect_result;
+    std::optional<std::string> forget_error;
+    std::optional<bool> radio_ok;
+    wm->disconnect(); // first: a disconnect supersedes a connect made before it
+    wm->connect("Net", "password",
+                [&](bool, const std::string&, WiFiResult r) { connect_result = r; });
+    wm->forget("Net", [&](bool, const std::string& e) { forget_error = e; });
+    wm->set_enabled_async(true, guard.token(), [&](bool ok, bool) { radio_ok = ok; });
+
+    // Answered on the next pass, not after the stuck call.
+    REQUIRE(wait_until([&] { return connect_result && forget_error && radio_ok; }, 200));
+    CHECK(*connect_result == WiFiResult::TIMEOUT);
+    CHECK(*forget_error == "WiFi isn't responding");
+    CHECK_FALSE(*radio_ok);
+
+    // One plain message per action, not each action's failure toast with the
+    // reason glued on.
+    helix::ui::set_test_notification_event_hook(nullptr);
+    WiFiManagerTestAccess::reset_os_link_probe();
+    CHECK(toasts->size() == 4);
+    for (const auto& t : *toasts) {
+        CHECK(t == "WiFi isn't responding");
+    }
+
+    backend->release();
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    CHECK(backend->connects() == 0);
+    CHECK(backend->forgets() == 0);
+    CHECK(backend->radios() == 0);
+    CHECK(backend->disconnects() == 0);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "a slow connect does not mark WiFi unresponsive",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    backend->set_connect_delay_ms(400);
+
+    std::optional<WiFiResult> first;
+    wm->connect("Net", "password", [&](bool, const std::string&, WiFiResult r) { first = r; });
+    REQUIRE(wait_until([&] { return backend->connects() == 1; }));
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    // A poll waits for the join instead of reporting WiFi as not responding,
+    // and the user retrying the join is not refused.
+    std::optional<WiFiResult> retry;
+    wm->connect("Net", "password", [&](bool, const std::string&, WiFiResult r) { retry = r; });
+    const auto status = read_status();
+    CHECK_FALSE(status.unresponsive);
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    CHECK(backend->connects() == 2);
+    CHECK_FALSE(first.has_value()); // superseded by the retry
+    CHECK_FALSE(retry.has_value()); // sent; waiting on the backend's events
+    CHECK_FALSE(WiFiManagerTestAccess::breaker_open(*wm));
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "a refused scan keeps the networks already shown",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    std::vector<WiFiNetwork> shown;
+    wm->start_scan([&](const std::vector<WiFiNetwork>& n) { shown = n; });
+    REQUIRE(WiFiManagerTestAccess::settle(*wm));
+    WiFiManagerTestAccess::fire_scan_complete(*wm);
+    REQUIRE(wait_until([&] { return !shown.empty(); }));
+    const auto first = shown;
+
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    stall_lane_on_status_read(50);
+    bool answered = false;
+    wm->start_scan([&](const std::vector<WiFiNetwork>& n) {
+        answered = true;
+        shown = n;
+    });
+    REQUIRE(wait_until([&] { return answered; }, 1000));
+    CHECK(shown.size() == first.size());
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "a refresh coalesced onto a trigger that fails is answered",
+                 "[wifi][wifi_control_lane]") {
+    backend->stall();
+    backend->fail_triggers();
+    wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(wait_until([&] { return backend->triggers() == 1; }));
+
+    bool answered = false;
+    wm->start_scan([&](const std::vector<WiFiNetwork>&) { answered = true; });
+    backend->release();
+    REQUIRE(wait_until([&] { return answered; }, 2000));
+    CHECK(backend->triggers() == 1);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "a refresh coalesced onto a trigger that never returns is answered",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    WiFiManagerTestAccess::set_breaker_config(*wm, {200, 3, 400, 2000});
+    backend->stall();
+    wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(wait_until([&] { return backend->triggers() == 1; }));
+
+    bool answered = false;
+    wm->start_scan([&](const std::vector<WiFiNetwork>&) { answered = true; });
+    REQUIRE(wait_until([&] { return answered; }, 2000));
+    CHECK(backend->triggers() == 1); // still parked: the answer did not wait for it
+}
+
+TEST_CASE_METHOD(ControlLaneFixture, "calls after the lane has closed are not run",
+                 "[wifi][wifi_control_lane]") {
+    SECTION("closed for shutdown") {
+        // A call in progress, so a closed lane that still queued the forget
+        // would answer it only once that call returned.
+        backend->stall();
+        const int asked = backend->statuses();
+        wm->get_status_async(guard.token(), [](const WifiBackend::ConnectionStatus&) {});
+        REQUIRE(wait_until([&] { return backend->statuses() == asked + 1; }));
+        WiFiManagerTestAccess::shut_control_lane(*wm);
+        std::optional<bool> forgot;
+        wm->forget("Net", [&](bool ok, const std::string&) { forgot = ok; });
+        REQUIRE(wait_until([&] { return forgot.has_value(); }, 500));
+        CHECK_FALSE(*forgot);
+        backend->release();
+        REQUIRE(WiFiManagerTestAccess::settle(*wm));
+        CHECK(backend->forgets() == 0);
+    }
+    SECTION("the worker pool stopped") {
+        read_status(); // the pool has run this manager's calls
+        const int asked = backend->statuses();
+        HttpExecutor::fast().stop();
+        backend->stall(); // a call run on this thread now would take MAX_STALL
+        const auto started = std::chrono::steady_clock::now();
+        std::optional<bool> forgot;
+        wm->forget("Net", [&](bool ok, const std::string&) { forgot = ok; });
+        std::optional<WifiBackend::ConnectionStatus> status;
+        wm->get_status_async(guard.token(),
+                             [&](const WifiBackend::ConnectionStatus& s) { status = s; });
+        CHECK(std::chrono::steady_clock::now() - started < std::chrono::milliseconds(500));
+        REQUIRE(wait_until([&] { return forgot.has_value() && status.has_value(); }, 1000));
+        CHECK_FALSE(*forgot);
+        CHECK(status->unresponsive);
+        CHECK(backend->forgets() == 0);
+        CHECK(backend->statuses() == asked);
+        HttpExecutor::fast().start();
+    }
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "the wpa_supplicant fallback does not hold the UI thread for the lane",
+                 "[wifi][wifi_control_lane]") {
+    backend->stall();
+    wm->start_scan([](const std::vector<WiFiNetwork>&) {});
+    REQUIRE(wait_until([&] { return backend->triggers() == 1; }));
+    g_forget_calls = 0;
+    std::optional<bool> forgot;
+    wm->forget("Net", [&](bool ok, const std::string&) { forgot = ok; });
+
+    WiFiManagerTestAccess::fire_init_failed(*wm, /*silent=*/true, "init failed");
+    const auto started = std::chrono::steady_clock::now();
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(std::chrono::steady_clock::now() - started < std::chrono::milliseconds(500));
+
+    // The swap happens once the call in progress returns; what was queued for
+    // the failed backend is answered, not sent.
+    backend->release();
+    REQUIRE(wait_until([&] {
+        return dynamic_cast<WifiBackendWpaSupplicant*>(WiFiManagerTestAccess::backend(*wm)) !=
+               nullptr;
+    }));
+    backend = nullptr; // freed by the swap
+    REQUIRE(wait_until([&] { return forgot.has_value(); }));
+    CHECK_FALSE(*forgot);
+    CHECK(g_forget_calls == 0);
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "a CONNECTED event does not leave another network's name in the cache",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    backend->set_connected_state(true, "Home", "192.168.1.10", 80);
+    REQUIRE(read_status().ssid == "Home");
+
+    // A join to another network: its DISCONNECTED is swallowed mid-connect.
+    WiFiManagerTestAccess::begin_connect(*wm, [](bool, const std::string&, WiFiResult) {});
+    WiFiManagerTestAccess::fire_disconnected(*wm);
+    WiFiManagerTestAccess::fire_connected(*wm);
+
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    stall_lane_on_status_read(50);
+    const auto cached = read_status();
+    REQUIRE(cached.unresponsive);
+    CHECK(cached.connected);
+    CHECK(cached.ssid != "Home");
+    CHECK(cached.ip_address != "192.168.1.10");
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "a status read batched behind a failed probe is answered from cache",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    WiFiManagerTestAccess::set_breaker_config(*wm, {100, 3, 300, 5000});
+    backend->set_connected_state(true, "Home", "192.168.1.10", 80);
+    REQUIRE(read_status().ssid == "Home");
+
+    backend->set_status_delay_ms(150);
+    for (int i = 0; i < 3; ++i) {
+        read_status();
+    }
+    REQUIRE(WiFiManagerTestAccess::breaker_open(*wm));
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+
+    // The probe is admitted and still slow; a poll arriving during it joins the
+    // next batch, which the open breaker must not send.
+    const int asked = backend->statuses();
+    bool probe_answered = false;
+    wm->get_status_async(guard.token(),
+                         [&](const WifiBackend::ConnectionStatus&) { probe_answered = true; });
+    REQUIRE(wait_until([&] { return backend->statuses() == asked + 1; }, 1000, 1));
+    const auto batched = read_status();
+    CHECK(batched.unresponsive);
+    CHECK(batched.ssid == "Home");
+    CHECK(probe_answered);
+    CHECK(backend->statuses() == asked + 1);
 }
