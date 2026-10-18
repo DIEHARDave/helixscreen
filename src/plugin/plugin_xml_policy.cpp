@@ -206,7 +206,8 @@ void on_start(void* ud, const XML_Char* name, const XML_Char** attrs) {
         if (conditional_bind && std::string_view(attrs[i]) == "subject" &&
             is_readonly_layout_subject(attrs[i + 1]))
             continue;
-        if (auto why = check_plugin_attr(w.id, attrs[i], attrs[i + 1]))
+        if (auto why = check_plugin_attr(w.id, attrs[i], attrs[i + 1],
+                                         required_object_names(el) != nullptr))
             fail(w, std::move(*why));
     }
 }
@@ -220,7 +221,7 @@ void on_end(void* ud, const XML_Char* name) {
 } // namespace
 
 std::optional<std::string> check_plugin_attr(std::string_view id, std::string_view name,
-                                             std::string_view value) {
+                                             std::string_view value, bool chrome_props) {
     // Base font tokens only: a size-suffixed variant names a face AssetManager
     // registers from its tier up, so on a smaller display the XML engine
     // silently substitutes the default font.
@@ -234,11 +235,13 @@ std::optional<std::string> check_plugin_attr(std::string_view id, std::string_vi
     bool is_subject =
         name == "subject" || ends_with(name, "_subject") || starts_with(name, "bind_");
     bool is_cond = name == "cond" || ends_with(name, "_cond");
-    bool is_target = name == "user_data" || ends_with(name, "_user_data");
+    // The app's dialog chrome takes its objects' names and its buttons' targets
+    // through props (modal_button_row's primary_name, primary_user_data); on a
+    // plugin's own components those suffixes are ordinary props.
+    bool is_target = name == "user_data" || (chrome_props && ends_with(name, "_user_data"));
     // Screen-wide lookups by name (lv_obj_find_by_name from lv_layer_top or the
-    // screen) must never resolve to a plugin object. A component prop ending in
-    // _name names one of its objects (modal_button_row's primary_name).
-    bool is_object_name = name == "name" || ends_with(name, "_name");
+    // screen) must never resolve to a plugin object.
+    bool is_object_name = name == "name" || (chrome_props && ends_with(name, "_name"));
     if (!is_callback && !is_subject && !is_cond && !is_target && !is_object_name)
         return std::nullopt;
     if (!value.empty() && value.front() == '$')

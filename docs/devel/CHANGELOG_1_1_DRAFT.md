@@ -611,6 +611,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   reading off. Tangle sensitivity, end-of-print unload per toolhead, and manual bed levelling
   with a PEI plate check are all on screen. Loading preheats to the firmware's own
   temperature for that filament. Firmware faults appear with translated wording.
+- **Snapmaker U1: unload at end of print sticks** - turn it on per toolhead under the filament
+  system's Print Behaviour settings and it now applies to every print, including Print Again
+  and a restart from the beginning; before, the printer forgot it after the next print, and
+  switching several toolheads on quickly could leave only the last one set. A toolhead loaded
+  with soft filament such as TPU is never unloaded, as on the Snapmaker screen. HelixScreen
+  now sends the choice with every print it starts, so a different choice made from another
+  app between prints is replaced by HelixScreen's.
 - **Snapmaker U1 with the multiACE mod** (#1426) - keeps its filament screen instead of being
   mistaken for a plain ACE setup.
 - **Power-loss recovery works on Qidi printers (#1716)** - on a Q2, Q1 Pro or Plus 4 running
@@ -721,6 +728,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   calibration companion that asks you to pick a result on screen. A step-by-step tutorial
   walks through building the first of the new four. Plugins can be shared in the Discord
   #plugin-showcase channel (#1771).
+- **Plugin dialogs** - a plugin can ask a question in a dialog that looks and closes like
+  the app's own, sized for your screen. Plugin dialogs and screens never cover the app's: one
+  that arrives while an error, a warning, the print-complete dialog or the lock screen is
+  showing waits its turn and appears once you have dealt with it, waking the screen. Calibration
+  Bridge now asks which result was best this way when its print completes.
 - **Plugin translations** - a plugin can ship an `i18n/` folder with translation packs, and
   its manifest text, screens and code follow the app language. A pack only supplies words the
   app does not already translate, so a plugin cannot change the app's own labels; English

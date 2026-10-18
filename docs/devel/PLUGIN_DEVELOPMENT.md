@@ -232,13 +232,14 @@ Attribute rules (`src/plugin/plugin_xml_policy.cpp#check_plugin_attr`):
   attribute must read `plugin_event`.
 - `user_data` carries the target: `<id>__<name>` optionally followed by `:arg`. The host
   runs the `helix.ui.on` handler `name` with `arg` as a string, or `nil` without a colon.
-  A component prop ending in `_user_data` (`modal_button_row`'s `primary_user_data`) is
-  a target too and follows the same rule.
+  On `modal_button_row` and `modal_header`, a prop ending in `_user_data`
+  (`primary_user_data`) is a target too and follows the same rule.
 - Every subject reference (`subject`, `*_subject`, and any `bind_*` attribute) must name a
   subject this plugin owns, spelled `<id>__<name>`.
 - Object `name=` attributes must be `<id>__<name>`, so a screen-wide lookup never
-  resolves a plugin object. So must any attribute ending in `_name`, which is how a
-  component prop names one of its objects (`modal_button_row`'s `primary_name`).
+  resolves a plugin object. On `modal_button_row` and `modal_header`, so must every
+  prop ending in `_name`, which is how they name their objects (`primary_name`). On
+  your own components, `_name` and `_user_data` props are ordinary props.
 - `modal_button_row` and `modal_header` name their objects with app names by default
   (`btn_primary`, `header_title`), so a plugin must pass every one of their name props,
   owned: `primary_name`, `secondary_name`, `tertiary_name`, `quaternary_name`,

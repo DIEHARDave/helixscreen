@@ -274,9 +274,15 @@ TEST_CASE("a missing or unowned *_name on dialog chrome is rejected", "[plugin][
     unowned.replace(unowned.find("ab__ok"), 6, "btn_ok");
     CHECK_FALSE(
         check_plugin_xml("ab", {}, view_with("<modal_button_row" + unowned + "/>")).empty());
-    // Any *_name attribute is an object name.
-    CHECK(check_plugin_attr("ab", "primary_name", "btn_primary").has_value());
-    CHECK_FALSE(check_plugin_attr("ab", "primary_name", "ab__ok").has_value());
+}
+
+TEST_CASE("a plugin's own component props ending in _name or _user_data are plain props",
+          "[plugin][xml_policy]") {
+    // Only the app's dialog chrome names objects through *_name props.
+    CHECK(check_plugin_xml("ab", {"ab__row"},
+                           view_with(R"(<ab__row file_name="Benchy" job_user_data="x"/>)"))
+              .empty());
+    CHECK_FALSE(check_plugin_attr("ab", "file_name", "Benchy").has_value());
 }
 
 TEST_CASE("dialog chrome callbacks must be plugin_event", "[plugin][xml_policy]") {
@@ -287,9 +293,23 @@ TEST_CASE("dialog chrome callbacks must be plugin_event", "[plugin][xml_policy]"
             .empty());
 }
 
-TEST_CASE("*_user_data must name an owned handler", "[plugin][xml_policy]") {
-    CHECK(check_plugin_attr("ab", "primary_user_data", "other__go").has_value());
-    CHECK_FALSE(check_plugin_attr("ab", "primary_user_data", "ab__go:2").has_value());
+TEST_CASE("dialog chrome *_user_data must name an owned handler", "[plugin][xml_policy]") {
+    CHECK_FALSE(
+        check_plugin_xml(
+            "ab", {},
+            view_with(
+                std::string(
+                    R"(<modal_button_row primary_callback="plugin_event" primary_user_data="other__go")") +
+                kButtonRowNames + "/>"))
+            .empty());
+    CHECK(
+        check_plugin_xml(
+            "ab", {},
+            view_with(
+                std::string(
+                    R"(<modal_button_row primary_callback="plugin_event" primary_user_data="ab__go:2")") +
+                kButtonRowNames + "/>"))
+            .empty());
 }
 
 TEST_CASE("plugin consts with owned names pass; unowned and stray values are rejected",
