@@ -221,6 +221,18 @@ class AmsEditOverlayViewTestAccess {
     bool details_color_set() {
         return overlay_.details_color_set_;
     }
+    void call_update_tag_badges() {
+        overlay_.update_tag_badges();
+    }
+    /// The touch box: the widget plus its ext_click_area, after layout.
+    lv_area_t click_area(const char* name) {
+        lv_obj_t* w = overlay_.find_widget(name);
+        REQUIRE(w != nullptr);
+        lv_obj_update_layout(w);
+        lv_area_t a;
+        lv_obj_get_click_area(w, &a);
+        return a;
+    }
     bool has_tag() const {
         return overlay_.tag_.has_value();
     }
@@ -2630,4 +2642,87 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK_FALSE(access.sel().product_id.empty());
     CHECK(std::string(lv_subject_get_string(temps)).find("199") == std::string::npos);
     close_editor_overlay();
+}
+
+namespace {
+int subject_int(const char* name) {
+    auto* subj = lv_xml_get_subject(nullptr, name);
+    REQUIRE(subj != nullptr);
+    return lv_subject_get_int(subj);
+}
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "each field the tag states carries its own badge",
+                 "[ams_edit_overlay][tag]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    SlotInfo info = untracked_slot();
+    info.material = "PETG";
+    info.brand = "Polymaker";
+    info.nozzle_temp_min = 230;
+    info.nozzle_temp_max = 250;
+    info.bed_temp = 80;
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+
+    helix::ams::TagReading tag;
+    tag.material = "PETG";
+    tag.brand = "Polymaker";
+    tag.color_rgb = 0x112233; // the slot shows another colour
+    tag.nozzle_temp_min = 230;
+    tag.nozzle_temp_max = 250;
+    tag.bed_temp = 80;
+    access.set_tag(tag);
+    access.call_update_tag_badges();
+    CHECK(subject_int("ams_edit_tag_badge_visible") == 1);
+    CHECK(subject_int("ams_edit_tag_material") == 1);
+    CHECK(subject_int("ams_edit_tag_brand") == 1);
+    CHECK(subject_int("ams_edit_tag_temps") == 1);
+    CHECK(subject_int("ams_edit_tag_color") == 0);
+    CHECK(subject_int("ams_edit_tag_product") == 0);
+
+    // Moving the material off the tag's drops that badge (and the temps it
+    // brought) and keeps the brand's.
+    REQUIRE(access.pick_dropdown("dropdown_material", "PLA"));
+    process_lvgl(5);
+    CHECK(subject_int("ams_edit_tag_material") == 0);
+    CHECK(subject_int("ams_edit_tag_temps") == 0);
+    CHECK(subject_int("ams_edit_tag_brand") == 1);
+    close_editor_overlay();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the editor's non-swatch targets reach 44px",
+                 "[ams_edit_overlay][touch]") {
+    auto& overlay = get_ams_edit_overlay();
+    AmsEditOverlayViewTestAccess access(overlay);
+    auto check_44 = [&](const char* name) {
+        INFO(name);
+        REQUIRE(access.shown(name));
+        const lv_area_t a = access.click_area(name);
+        CHECK(lv_area_get_width(&a) >= 44);
+        CHECK(lv_area_get_height(&a) >= 44);
+    };
+
+    set_spoolman_available(true);
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, untracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    auto* reset_visible = lv_xml_get_subject(nullptr, "ams_edit_reset_tag_visible");
+    REQUIRE(reset_visible != nullptr);
+    lv_subject_set_int(reset_visible, 1);
+    process_lvgl(5);
+    check_44("btn_custom_color");
+    check_44("weight_pill");
+    check_44("add_to_spoolman_link");
+    check_44("btn_reset_tag");
+    lv_subject_set_int(reset_visible, 0);
+    close_editor_overlay();
+
+    REQUIRE(overlay.show_for_slot(test_screen(), 0, tracked_slot(), nullptr, nullptr));
+    UpdateQueue::instance().drain();
+    process_lvgl(10);
+    check_44("more_row");
+    close_editor_overlay();
+    set_spoolman_available(false);
 }

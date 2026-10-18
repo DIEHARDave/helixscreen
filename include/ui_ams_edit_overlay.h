@@ -81,6 +81,8 @@ class AmsEditOverlay : public OverlayBase {
     static constexpr int VIEW_EDITOR = 0;
     static constexpr int VIEW_SPOOL_PICKER = 1;
     static constexpr int VIEW_COLOR = 2;
+    /// ams_edit_color_selected value that rings the grid's custom swatch.
+    static constexpr int kCustomColorIndex = -2;
 
     /**
      * @brief The identity selection the editor is staging
@@ -276,10 +278,19 @@ class AmsEditOverlay : public OverlayBase {
     lv_subject_t scan_enabled_subject_{};    ///< 1=QR button may show ("ams_edit_scan_enabled")
     lv_subject_t product_hidden_subject_{};  ///< 1 while Generic selected
     lv_subject_t color_selected_subject_{};  ///< ringed preset index (-1 none)
-    lv_subject_t color_col_count_subject_{}; ///< split-column presets (9)
-    lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (18 short, 30 tall)
+    lv_subject_t color_col_count_subject_{}; ///< split-column presets (8)
+    lv_subject_t color_row_count_subject_{}; ///< stacked-grid presets (17 short, 29 tall)
     lv_subject_t summary_text_subject_{};
-    lv_subject_t tag_badge_visible_subject_{};
+    lv_subject_t tag_badge_visible_subject_{}; ///< any shown field is the tag's
+    lv_subject_t tag_material_subject_{};
+    lv_subject_t tag_brand_subject_{};
+    lv_subject_t tag_product_subject_{};
+    lv_subject_t tag_color_subject_{};
+    lv_subject_t tag_temps_subject_{};
+    /// The temperatures the temp line shows, for the temps badge.
+    int shown_nozzle_min_ = 0;
+    int shown_nozzle_max_ = 0;
+    int shown_bed_temp_ = 0;
     lv_subject_t temp_text_subject_{};
     lv_subject_t weight_text_subject_{};
     lv_subject_t weight_hint_subject_{};
@@ -329,6 +340,11 @@ class AmsEditOverlay : public OverlayBase {
     void handle_picker_search(const char* text);
     void fetch_recents();
     void refresh_tag_state();
+    /// The slot as the form shows it now (staged selection, pending colour,
+    /// the temperature line's values).
+    SlotInfo shown_slot() const;
+    /// Set each "from tag" badge from the tag's provenance over shown_slot().
+    void update_tag_badges();
 
     // === Completion / close orchestration ===
     void fire_completion(bool saved); ///< Idempotent; does NOT pop the overlay

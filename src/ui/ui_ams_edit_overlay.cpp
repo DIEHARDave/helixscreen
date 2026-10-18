@@ -486,14 +486,20 @@ void AmsEditOverlay::init_subjects() {
         // Row visibility for the Generic-gated product dropdown.
         UI_MANAGED_SUBJECT_INT(product_hidden_subject_, 1, "ams_edit_product_hidden", subjects_);
         UI_MANAGED_SUBJECT_INT(color_selected_subject_, -1, "ams_edit_color_selected", subjects_);
-        UI_MANAGED_SUBJECT_INT(color_col_count_subject_, 9, "ams_edit_color_col_count", subjects_);
-        UI_MANAGED_SUBJECT_INT(color_row_count_subject_, 30, "ams_edit_color_row_count", subjects_);
+        UI_MANAGED_SUBJECT_INT(color_col_count_subject_, 8, "ams_edit_color_col_count", subjects_);
+        UI_MANAGED_SUBJECT_INT(color_row_count_subject_, 29, "ams_edit_color_row_count", subjects_);
 
         // Summary line, temperatures, weight pill, badges, disclosure.
         UI_MANAGED_SUBJECT_STRING(summary_text_subject_, summary_buf_, "", "ams_edit_summary_text",
                                   subjects_);
         UI_MANAGED_SUBJECT_INT(tag_badge_visible_subject_, 0, "ams_edit_tag_badge_visible",
                                subjects_);
+        // Per-field "from tag" badges: the value the form shows is the tag's.
+        UI_MANAGED_SUBJECT_INT(tag_material_subject_, 0, "ams_edit_tag_material", subjects_);
+        UI_MANAGED_SUBJECT_INT(tag_brand_subject_, 0, "ams_edit_tag_brand", subjects_);
+        UI_MANAGED_SUBJECT_INT(tag_product_subject_, 0, "ams_edit_tag_product", subjects_);
+        UI_MANAGED_SUBJECT_INT(tag_color_subject_, 0, "ams_edit_tag_color", subjects_);
+        UI_MANAGED_SUBJECT_INT(tag_temps_subject_, 0, "ams_edit_tag_temps", subjects_);
         UI_MANAGED_SUBJECT_STRING(temp_text_subject_, temp_buf_, "", "ams_edit_temp_text",
                                   subjects_);
         UI_MANAGED_SUBJECT_STRING(weight_text_subject_, weight_buf_, "", "ams_edit_weight_text",
@@ -994,13 +1000,46 @@ void AmsEditOverlay::refresh_tag_state() {
         tag_ = backend->tag_reading(slot_index_);
     }
     lv_subject_set_int(&reset_tag_visible_subject_, (tag_ && !tag_->empty()) ? 1 : 0);
-    bool from_tag = false;
-    if (tag_) {
-        const ams::TagProvenance prov = ams::tag_provenance(
-            *tag_, backend ? backend->get_slot_info(slot_index_) : working_info_);
-        from_tag = prov.any();
+    update_tag_badges();
+}
+
+SlotInfo AmsEditOverlay::shown_slot() const {
+    // What the form shows right now: the staged selection, the pending
+    // colour and the temperature line, over the working copy.
+    SlotInfo shown = working_info_;
+    if (selection_moved_ && catalog_) {
+        shown.material = selected_type(sel_, *catalog_);
+        shown.brand = sel_.brand;
+        const auto* ef = sel_.product_id.empty() ? nullptr : catalog_->resolve_id(sel_.product_id);
+        shown.product_name = ef ? ef->name : std::string();
     }
-    lv_subject_set_int(&tag_badge_visible_subject_, from_tag ? 1 : 0);
+    if (details_color_set_) {
+        shown.color_rgb = details_color_;
+        shown.multi_color_hexes.clear();
+    }
+    shown.nozzle_temp_min = shown_nozzle_min_;
+    shown.nozzle_temp_max = shown_nozzle_max_;
+    shown.bed_temp = shown_bed_temp_;
+    return shown;
+}
+
+void AmsEditOverlay::update_tag_badges() {
+    if (!subjects_initialized_) {
+        return;
+    }
+    ams::TagProvenance prov;
+    if (tag_) {
+        prov = ams::tag_provenance(*tag_, shown_slot());
+    }
+    using ams::TagField;
+    lv_subject_set_int(&tag_badge_visible_subject_, prov.any() ? 1 : 0);
+    lv_subject_set_int(&tag_material_subject_, prov.from_tag(TagField::Material) ? 1 : 0);
+    lv_subject_set_int(&tag_brand_subject_, prov.from_tag(TagField::Brand) ? 1 : 0);
+    lv_subject_set_int(&tag_product_subject_, prov.from_tag(TagField::Product) ? 1 : 0);
+    lv_subject_set_int(&tag_color_subject_, prov.from_tag(TagField::Color) ? 1 : 0);
+    lv_subject_set_int(
+        &tag_temps_subject_,
+        (prov.from_tag(TagField::NozzleTemp) || prov.from_tag(TagField::BedTemp)) ? 1 : 0);
 }
 
 void AmsEditOverlay::reseed_details_for_spool() {
@@ -1025,12 +1064,13 @@ void AmsEditOverlay::reseed_details_for_spool() {
 void AmsEditOverlay::enter_editor() {
     catalog_ = printer::FilamentCatalog::load_full();
     // The colour areas are subject-counted (a literal <repeat> inside <if> is
-    // refused by the engine): the narrow split column shows 9, the stacked
-    // grid 18 where height is scarce and 30 where it is not.
-    lv_subject_set_int(&color_col_count_subject_, 9);
+    // refused by the engine). Each grid leads with the custom-colour swatch,
+    // so the narrow split column shows 8 presets (three rows of three tiles),
+    // the stacked grid 17 where height is scarce and 29 where it is not.
+    lv_subject_set_int(&color_col_count_subject_, 8);
     lv_subject_t* bp = theme_manager_get_breakpoint_subject();
     const int row_count =
-        (bp && lv_subject_get_int(bp) <= static_cast<int>(UiBreakpoint::Small)) ? 18 : 30;
+        (bp && lv_subject_get_int(bp) <= static_cast<int>(UiBreakpoint::Small)) ? 17 : 29;
     lv_subject_set_int(&color_row_count_subject_, row_count);
     editor_entered_ = true;
 
@@ -1111,9 +1151,10 @@ void AmsEditOverlay::update_summary() {
                            details_color_set_ ? std::string() : working_info_.multi_color_hexes);
     }
 
-    // Ring the preset the pending colour matches, if any.
+    // Ring the preset the pending colour matches; a colour no preset holds
+    // rings the custom swatch (index -2).
     const uint32_t pending = details_color_set_ ? details_color_ : working_info_.color_rgb;
-    int ring = -1;
+    int ring = kCustomColorIndex;
     const auto& palette = swatch_palette(ColorPicker::Palette::General);
     for (size_t i = 0; i < palette.size(); ++i) {
         if (palette[i] == pending) {
@@ -1140,6 +1181,7 @@ void AmsEditOverlay::update_summary() {
         weight_hint_buf_[0] = '\0';
     }
     lv_subject_copy_string(&weight_hint_subject_, weight_hint_buf_);
+    update_tag_badges();
 }
 
 void AmsEditOverlay::update_temp_display() {
@@ -1186,6 +1228,10 @@ void AmsEditOverlay::update_temp_display() {
         temp_buf_[0] = '\0';
     }
     lv_subject_copy_string(&temp_text_subject_, temp_buf_);
+    shown_nozzle_min_ = nozzle_min;
+    shown_nozzle_max_ = nozzle_max;
+    shown_bed_temp_ = bed_temp;
+    update_tag_badges();
 }
 
 // ============================================================================
@@ -2110,7 +2156,7 @@ void AmsEditOverlay::register_callbacks() {
              get_ams_edit_overlay().handle_quick_swatch(lv_event_get_target_obj(e));
          }},
         {"ams_edit_custom_color_cb", [](lv_event_t*) { get_ams_edit_overlay().open_color_view(); }},
-        {"ams_edit_reset_color_cb",
+        {"ams_edit_reset_tag_cb",
          [](lv_event_t*) { get_ams_edit_overlay().handle_reset_to_tag(); }},
         {"ams_edit_color_swatch_cb",
          [](lv_event_t* e) {

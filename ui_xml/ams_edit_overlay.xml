@@ -33,8 +33,8 @@
     <px name="field_w_text_small" value="120"/>
     <px name="field_w_text_medium" value="150"/>
     <px name="field_w_text_large" value="180"/>
-    <!-- The stacked colour grid's swatch size: the cramped classes take the
-         micro size so the folded grid leaves room for the product row. -->
+    <!-- Both colour grids' swatch size: the cramped classes take the micro
+         size so the folded grid leaves room for the product row. -->
     <!-- Touch floor: every swatch's hit box is >= 44px, and the gap is
          44 - disc so adjacent targets tile at exactly 44px pitch without
          overlapping (overlaps make LVGL give the tap to the topmost). -->
@@ -94,6 +94,18 @@
          stack the grid full-width and never read this token. -->
     <px name="ams_edit_color_col_w_medium" value="#ams_edit_color_col_w_small"/>
     <px name="ams_edit_color_col_w_large" value="#ams_edit_color_col_w_small"/>
+    <!-- Hit reach for the weight pill: its 24px minimum height reaches 44.
+         The summary row is 44 tall, so the reach stays inside it. -->
+    <px name="ams_edit_pill_hit" value="10"/>
+    <!-- Hit reach for the More toggle and the Add link: the bar's height
+         plus twice this is at least 44 at every class. -->
+    <px name="ams_edit_bar_hit_micro" value="13"/>
+    <px name="ams_edit_bar_hit_tiny" value="13"/>
+    <px name="ams_edit_bar_hit_small" value="12"/>
+    <px name="ams_edit_bar_hit_medium" value="8"/>
+    <px name="ams_edit_bar_hit_large" value="8"/>
+    <px name="ams_edit_bar_hit_xlarge" value="8"/>
+    <px name="ams_edit_bar_hit_xxlarge" value="8"/>
   </consts>
   <view name="ams_edit_overlay"
         extends="overlay_panel" title="Edit Spool" title_subject="ams_edit_title" hide_action_button="false"
@@ -143,21 +155,19 @@
             <color_dot name="summary_color_swatch" size="#swatch_grid_size" color="#card_bg"/>
           </lv_obj>
           <text_body name="summary_text" bind_text="ams_edit_summary_text" flex_grow="1" long_mode="dots"/>
-          <lv_obj name="summary_tag_badge"
-                  width="content" height="content" style_pad_hor="#space_xs" style_pad_ver="0" style_radius="9999"
-                  style_bg_color="#info" style_bg_opa="60" style_border_width="0" scrollable="false" clickable="false"
-                  hidden="true">
-            <bind_flag_if_eq subject="ams_edit_tag_badge_visible" flag="hidden" ref_value="0"/>
-            <text_xs text="from tag" clickable="false"/>
-          </lv_obj>
-          <text_small name="temp_line_short" bind_text="ams_edit_temp_text" style_text_color="#text_muted" hidden="true">
+          <tag_badge name="summary_tag_badge" subject="ams_edit_tag_badge_visible"/>
+          <lv_obj name="temp_row_short"
+                  width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+                  style_pad_gap="#space_xs" scrollable="false" hidden="true">
             <bind_flag_if cond="ui_breakpoint le 1 and ui_is_portrait eq 0" flag="hidden"/>
-          </text_small>
+            <text_small name="temp_line_short" bind_text="ams_edit_temp_text" style_text_color="#text_muted"/>
+            <tag_badge subject="ams_edit_tag_temps"/>
+          </lv_obj>
           <lv_obj name="weight_pill"
                   width="content" height="content" flex_flow="row" style_flex_cross_place="center"
                   style_pad_hor="#space_md" style_pad_ver="#space_xs" style_pad_gap="#space_xs"
                   style_radius="#border_radius" style_bg_color="#elevated_bg" style_bg_opa="255" style_border_width="1"
-                  style_border_color="#border" scrollable="false" clickable="true">
+                  style_border_color="#border" scrollable="false" clickable="true" ext_click_area="#ams_edit_pill_hit">
             <style name="styles.press_wash" selector="pressed"/>
             <icon src="weight" size="xs" variant="muted" clickable="false" event_bubble="true"/>
             <text_body bind_text="ams_edit_weight_text" clickable="false" event_bubble="true"/>
@@ -168,9 +178,13 @@
           </lv_obj>
         </lv_obj>
         <!-- Temperature line, full-width outside the short-landscape class. -->
-        <text_small name="temp_line" bind_text="ams_edit_temp_text" style_text_color="#text_muted">
+        <lv_obj name="temp_row"
+                width="100%" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+                style_pad_gap="#space_xs" scrollable="false">
           <bind_flag_if cond="ui_breakpoint le 1 and ui_is_portrait eq 0" flag="hidden"/>
-        </text_small>
+          <text_small name="temp_line" bind_text="ams_edit_temp_text" style_text_color="#text_muted"/>
+          <tag_badge subject="ams_edit_tag_temps"/>
+        </lv_obj>
 
         <!-- Two layouts, both built, one hidden (bind_flag, not a structural
              <if>: the engine refuses <repeat> nested inside <if>). The short
@@ -192,6 +206,7 @@
                            height="#button_height_sm" flex_grow="1" style_radius="#border_radius" options="">
                 <event_cb trigger="value_changed" callback="ams_edit_material_dd_cb"/>
               </lv_dropdown>
+              <tag_badge subject="ams_edit_tag_material"/>
             </lv_obj>
             <lv_obj width="100%"
                     height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
@@ -210,6 +225,7 @@
                            height="#button_height_sm" flex_grow="1" style_radius="#border_radius" options="">
                 <event_cb trigger="value_changed" callback="ams_edit_brand_dd_cb"/>
               </lv_dropdown>
+              <tag_badge subject="ams_edit_tag_brand"/>
             </lv_obj>
             <lv_obj width="100%"
                     height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
@@ -220,6 +236,7 @@
                            height="#button_height_sm" flex_grow="1" style_radius="#border_radius" options="">
                 <event_cb trigger="value_changed" callback="ams_edit_product_dd_cb"/>
               </lv_dropdown>
+              <tag_badge subject="ams_edit_tag_product"/>
             </lv_obj>
           </lv_obj>
 
@@ -228,25 +245,32 @@
             <lv_obj width="100%"
                     height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs"
                     style_flex_cross_place="center" scrollable="false">
-              <text_small text="Color" flex_grow="1"/>
-              <ui_button name="btn_custom_color_split" width="28" height="28" icon="pencil" variant="ghost">
-                <event_cb trigger="clicked" callback="ams_edit_custom_color_cb"/>
-              </ui_button>
+              <text_small text="Color"/>
+              <tag_badge subject="ams_edit_tag_color"/>
             </lv_obj>
             <lv_obj width="content"
                     height="content" style_pad_all="0" flex_flow="row_wrap" style_pad_gap="#ams_edit_grid_gap"
                     scrollable="false">
+              <!-- The custom colour: the app's rainbow custom swatch, the grid's
+                   first tile so it shares the 44px hit pitch. It leads because
+                   a count change rebuilds the repeat at the end of the row. -->
+              <color_swatch name="btn_custom_color_split"
+                            index="-2" fill="disc_rainbow" selected_subject="ams_edit_color_selected"
+                            callback="ams_edit_custom_color_cb" size="#ams_edit_grid_swatch" hit="#ams_edit_grid_hit"
+                            reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring">
+                <lv_obj width="50%"
+                        height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
+                        style_border_width="0" clickable="false" event_bubble="true" scrollable="false">
+                  <icon src="pencil" size="xs" align="center" clickable="false" event_bubble="true"/>
+                </lv_obj>
+              </color_swatch>
               <repeat count="ams_edit_color_col_count">
                 <color_swatch index="${i}"
                               color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"
-                              callback="ams_edit_quick_swatch_cb" size="#swatch_grid_size" hit="#ams_edit_grid_hit"
+                              callback="ams_edit_quick_swatch_cb" size="#ams_edit_grid_swatch" hit="#ams_edit_grid_hit"
                               reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring"/>
               </repeat>
             </lv_obj>
-            <ui_button height="24" text="Reset to tag" variant="ghost" style_pad_hor="#space_sm" hidden="true">
-              <bind_flag_if_eq subject="ams_edit_reset_tag_visible" flag="hidden" ref_value="0"/>
-              <event_cb trigger="clicked" callback="ams_edit_reset_color_cb"/>
-            </ui_button>
           </lv_obj>
         </lv_obj>
 
@@ -262,6 +286,7 @@
                          height="#button_height_sm" flex_grow="1" style_radius="#border_radius" options="">
               <event_cb trigger="value_changed" callback="ams_edit_material_dd_cb"/>
             </lv_dropdown>
+            <tag_badge subject="ams_edit_tag_material"/>
           </lv_obj>
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
@@ -280,6 +305,7 @@
                          height="#button_height_sm" flex_grow="1" style_radius="#border_radius" options="">
               <event_cb trigger="value_changed" callback="ams_edit_brand_dd_cb"/>
             </lv_dropdown>
+            <tag_badge subject="ams_edit_tag_brand"/>
           </lv_obj>
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
@@ -290,23 +316,31 @@
                          height="#button_height_sm" flex_grow="1" style_radius="#border_radius" options="">
               <event_cb trigger="value_changed" callback="ams_edit_product_dd_cb"/>
             </lv_dropdown>
+            <tag_badge subject="ams_edit_tag_product"/>
           </lv_obj>
 
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xs"
                   style_flex_cross_place="center" scrollable="false">
-            <text_small text="Color" flex_grow="1"/>
-            <ui_button name="btn_custom_color" width="28" height="28" icon="pencil" variant="ghost">
-              <event_cb trigger="clicked" callback="ams_edit_custom_color_cb"/>
-            </ui_button>
-            <ui_button height="24" text="Reset to tag" variant="ghost" style_pad_hor="#space_sm" hidden="true">
-              <bind_flag_if_eq subject="ams_edit_reset_tag_visible" flag="hidden" ref_value="0"/>
-              <event_cb trigger="clicked" callback="ams_edit_reset_color_cb"/>
-            </ui_button>
+            <text_small text="Color"/>
+            <tag_badge subject="ams_edit_tag_color"/>
           </lv_obj>
           <lv_obj width="content"
                   height="content" style_pad_all="0" flex_flow="row_wrap" style_pad_gap="#ams_edit_grid_gap"
                   scrollable="false">
+            <!-- The custom colour: the app's rainbow custom swatch, the grid's
+                 first tile so it shares the 44px hit pitch. It leads because
+                 a count change rebuilds the repeat at the end of the row. -->
+            <color_swatch name="btn_custom_color"
+                          index="-2" fill="disc_rainbow" selected_subject="ams_edit_color_selected"
+                          callback="ams_edit_custom_color_cb" size="#ams_edit_grid_swatch" hit="#ams_edit_grid_hit"
+                          reach="#swatch_grid_ring_reach" ring="styles.grid_swatch_ring">
+              <lv_obj width="50%"
+                      height="50%" align="center" style_radius="9999" style_bg_opa="255" style_bg_color="#screen_bg"
+                      style_border_width="0" clickable="false" event_bubble="true" scrollable="false">
+                <icon src="pencil" size="xs" align="center" clickable="false" event_bubble="true"/>
+              </lv_obj>
+            </color_swatch>
             <repeat count="ams_edit_color_row_count">
               <color_swatch index="${i}"
                             color_subject="general_swatch_color_${i}" selected_subject="ams_edit_color_selected"
@@ -316,19 +350,22 @@
           </lv_obj>
         </lv_obj>
 
-        <!-- MORE: a collapsed disclosure for the four logistics fields, which
-             are Spoolman-owned, so the toggle exists only on a linked slot.
-             The quiet Add-to-Spoolman link is the untracked slot's way in, so
-             it sits beside the toggle rather than inside it. -->
+        <!-- The quiet actions bar. MORE is a collapsed disclosure for the four
+             logistics fields, which are Spoolman-owned, so the toggle exists
+             only on a linked slot. The Add-to-Spoolman link is the untracked
+             slot's way in, so it sits beside the toggle rather than inside it.
+             Reset to tag restores every field the spool's tag states. Each
+             reaches a 44px hit through ext_click_area, so the bar stays short. -->
         <lv_obj name="more_bar"
                 width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
                 style_pad_gap="#space_sm" scrollable="false">
-          <bind_flag_if cond="ams_edit_is_managed eq 0 and ams_edit_add_spoolman_visible eq 0" flag="hidden"/>
+          <bind_flag_if cond="ams_edit_is_managed eq 0 and ams_edit_add_spoolman_visible eq 0 and ams_edit_reset_tag_visible eq 0"
+                        flag="hidden"/>
           <lv_obj name="more_row"
                   height="content" flex_grow="1" flex_flow="row" style_flex_cross_place="center" hidden="true"
                   style_pad_hor="#space_sm" style_pad_ver="#ams_edit_more_pad" style_pad_gap="#space_sm"
                   style_radius="#border_radius" style_bg_opa="0" style_border_width="0" scrollable="false"
-                  clickable="true">
+                  clickable="true" ext_click_area="#ams_edit_bar_hit">
             <bind_flag_if_eq subject="ams_edit_is_managed" flag="hidden" ref_value="0"/>
             <style name="styles.press_wash" selector="pressed"/>
             <event_cb trigger="clicked" callback="ams_edit_more_toggle_cb"/>
@@ -340,12 +377,24 @@
           <lv_obj name="add_to_spoolman_link"
                   width="content" height="content" style_pad_hor="#space_xs" style_pad_ver="#space_xxs" flex_flow="row"
                   style_flex_cross_place="center" style_pad_gap="#space_xxs" style_radius="#border_radius"
-                  style_bg_opa="0" style_border_width="0" clickable="true" scrollable="false" hidden="true">
+                  style_bg_opa="0" style_border_width="0" clickable="true" scrollable="false" hidden="true"
+                  ext_click_area="#ams_edit_bar_hit">
             <bind_flag_if_eq subject="ams_edit_add_spoolman_visible" flag="hidden" ref_value="0"/>
             <style name="styles.press_wash" selector="pressed"/>
             <event_cb trigger="clicked" callback="ams_edit_add_to_spoolman_cb"/>
             <icon src="plus" size="xs" variant="primary" clickable="false" event_bubble="true"/>
             <text_small text="Add to Spoolman + label" style_text_color="#primary" clickable="false" event_bubble="true"/>
+          </lv_obj>
+          <lv_obj name="btn_reset_tag"
+                  width="content" height="content" style_pad_hor="#space_xs" style_pad_ver="#space_xxs" flex_flow="row"
+                  style_flex_cross_place="center" style_pad_gap="#space_xxs" style_radius="#border_radius"
+                  style_bg_opa="0" style_border_width="0" clickable="true" scrollable="false" hidden="true"
+                  ext_click_area="#ams_edit_bar_hit">
+            <bind_flag_if_eq subject="ams_edit_reset_tag_visible" flag="hidden" ref_value="0"/>
+            <style name="styles.press_wash" selector="pressed"/>
+            <event_cb trigger="clicked" callback="ams_edit_reset_tag_cb"/>
+            <icon src="undo" size="xs" variant="primary" clickable="false" event_bubble="true"/>
+            <text_small text="Reset to tag" style_text_color="#primary" clickable="false" event_bubble="true"/>
           </lv_obj>
         </lv_obj>
         <lv_obj name="more_section"
