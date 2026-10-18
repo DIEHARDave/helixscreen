@@ -6,23 +6,29 @@
 
 #include "../helix_test_fixture.h"
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/backend_user_edit.h"
+#include "../test_helpers/mock_printer.h"
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/snapmaker_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_multiace.h"
 #include "ams_backend_snapmaker.h"
 #include "ams_state.h"
+#include "filament_slot_override_store.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "multiace_status.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
+#include "test_helpers/registered_backend.h"
 #include "ui/ams_drawing_utils.h"
 
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <set>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -130,6 +136,37 @@ class CapturingMultiAce : public AmsBackendMultiAce {
 struct MultiAceFixture : public HelixTestFixture {
     ~MultiAceFixture() override {
         helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    }
+};
+
+/// The real on_started(), where the backend acquires its loaded override
+/// store. As in test_ams_override_store_lifecycle.cpp: start() is final on
+/// AmsSubscriptionBackend and drags in subscription setup a store round-trip
+/// has no use for.
+class StoreBackedMultiAce : public CapturingMultiAce {
+  public:
+    explicit StoreBackedMultiAce(IMoonrakerAPI* api) : CapturingMultiAce(api, nullptr) {}
+    using AmsBackendMultiAce::on_started;
+};
+
+/// Per-test read-cache sandbox, so a neighbouring test's stored records are
+/// not reachable from this one (the cache file serves every backend in the
+/// process). Same idiom as test_ams_override_store_lifecycle.cpp.
+struct MultiAceOverrideCacheDir {
+    std::filesystem::path path;
+    std::filesystem::path previous;
+    explicit MultiAceOverrideCacheDir(const std::string& suffix) {
+        previous = helix::ams::detail::slot_override_cache_dir_ref();
+        path = std::filesystem::temp_directory_path() /
+               ("multiace_override_" + suffix + "_" + std::to_string(::getpid()));
+        std::filesystem::remove_all(path);
+        std::filesystem::create_directories(path);
+        helix::ams::detail::slot_override_cache_dir_ref() = path;
+    }
+    ~MultiAceOverrideCacheDir() {
+        helix::ams::detail::slot_override_cache_dir_ref() = previous;
+        std::error_code ec;
+        std::filesystem::remove_all(path, ec);
     }
 };
 
@@ -806,4 +843,168 @@ TEST_CASE_METHOD(MultiAceFixture, "an ACE-fed head's upstream caption names its 
     // An unrouted head and a bay have no upstream to name.
     CHECK(helix::ui::upstream_lane_caption(info, b, 1).empty());
     CHECK(helix::ui::upstream_lane_caption(info, b, multiace::bay_global(0, 0)).empty());
+}
+
+// ============================================================================
+// Bay identity editing
+// ============================================================================
+
+TEST_CASE_METHOD(MultiAceFixture, "a bay edit lands and survives the engine's frames",
+                 "[multiace][ams]") {
+    helix::test::RegisteredBackend<CapturingMultiAce> reg;
+    CapturingMultiAce& b = *reg;
+    b.frame(ace_frame("head_mode_4ace.json"));
+
+    // ACE 2 bay 1 feeds head 1, which nothing is routed to: an edit there is
+    // identity for a spool sitting in the box, not for a printing lane.
+    const int bay = multiace::bay_global(1, 0);
+    REQUIRE(b.get_slot_info(bay).material == "PLA");
+    REQUIRE(b.get_slot_info(bay).color_rgb == 0xFF0000);
+
+    SlotInfo edit = b.get_slot_info(bay);
+    edit.material = "PETG";
+    edit.brand = "Polymaker";
+    edit.color_rgb = 0x1E5AA8;
+    edit.spool_name = "Blue PETG";
+    REQUIRE(b.commit_user_edit(bay, b.get_slot_info(bay), edit).success());
+
+    const SlotInfo edited = b.get_slot_info(bay);
+    CHECK(edited.material == "PETG");
+    CHECK(edited.brand == "Polymaker");
+    CHECK(edited.color_rgb == 0x1E5AA8u);
+    CHECK(edited.spool_name == "Blue PETG");
+
+    SECTION("a frame restating the engine's table does not take the bay back") {
+        b.frame(ace_frame("head_mode_4ace.json"));
+        const SlotInfo reframed = b.get_slot_info(bay);
+        CHECK(reframed.material == "PETG");
+        CHECK(reframed.brand == "Polymaker");
+        CHECK(reframed.color_rgb == 0x1E5AA8u);
+    }
+    SECTION("a topology-only frame rebuilds the units and keeps the edit") {
+        b.frame(json{{"ace", {{"head_source", json::object()}}}});
+        CHECK(b.get_slot_info(bay).material == "PETG");
+        CHECK(b.get_slot_info(bay).color_rgb == 0x1E5AA8u);
+    }
+
+    // The head lane the bay feeds keeps the U1's own identity: a bay edit
+    // writes the bay, and nothing else.
+    CHECK(b.get_slot_info(1).material.empty());
+    CHECK(b.get_slot_info(1).color_rgb != edited.color_rgb);
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "bay edits refuse slots the backend does not show",
+                 "[multiace][ams]") {
+    SlotInfo edit;
+    edit.material = "PETG";
+    edit.color_rgb = 0x1E5AA8;
+
+    SECTION("no engine contract: the bays do not exist") {
+        helix::test::RegisteredBackend<CapturingMultiAce> reg;
+        CapturingMultiAce& b = *reg;
+        CHECK_FALSE(helix::test::apply_edit(b, multiace::bay_global(0, 0), edit).success());
+    }
+    SECTION("an index past the last bay") {
+        helix::test::RegisteredBackend<CapturingMultiAce> reg;
+        CapturingMultiAce& b = *reg;
+        b.frame(ace_frame("head_mode_4ace.json"));
+        REQUIRE(b.get_system_info().total_slots == 20);
+        CHECK_FALSE(helix::test::apply_edit(b, 20, edit).success());
+        CHECK_FALSE(helix::test::apply_edit(b, -1, edit).success());
+    }
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "clearing a bay spool drops the edit and yields to the engine",
+                 "[multiace][ams]") {
+    MultiAceOverrideCacheDir cache("clear");
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+
+    helix::test::RegisteredBackend<StoreBackedMultiAce> reg(&api);
+    StoreBackedMultiAce& b = *reg;
+    b.on_started();
+    b.frame(ace_frame("head_mode_4ace.json"));
+
+    const int bay = multiace::bay_global(1, 0);
+    SlotInfo edit = b.get_slot_info(bay);
+    // Unlinked: an edit that links a spool declares the binding alone and the
+    // server's record supplies the identity, which is not this test's subject.
+    edit.material = "PETG";
+    edit.brand = "Polymaker";
+    edit.color_rgb = 0x1E5AA8;
+    edit.spool_name = "Blue PETG";
+    REQUIRE(b.commit_user_edit(bay, b.get_slot_info(bay), edit).success());
+    REQUIRE(b.get_slot_info(bay).material == "PETG");
+
+    // The clear the context menu runs: the commit clears what an edit states,
+    // then the override record and the lane's own records go with it. A bay
+    // whose engine states identity reads the engine's word again - the same
+    // clear semantics a head with a tag has, where the tag's own statement
+    // survives the clear of everything the user laid over it.
+    SlotInfo original = b.get_slot_info(bay);
+    SlotInfo cleared = original;
+    cleared.material.clear();
+    cleared.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_name.clear();
+    cleared.brand.clear();
+    cleared.spool_name.clear();
+    cleared.clear_spoolman_link();
+    REQUIRE(b.commit_user_edit(bay, original, cleared).success());
+    b.clear_slot_override(bay);
+
+    const SlotInfo after = b.get_slot_info(bay);
+    CHECK(after.material == "PLA");
+    CHECK(after.brand == "Anycubic");
+    // The fields only the user's record supplied stay gone.
+    CHECK(after.spool_name.empty());
+    CHECK(after.spoolman_id == 0);
+
+    // The frame path agrees: the engine's table is the bay's machine reading.
+    // As on a head, the colour the user picked sits on the slot until this
+    // frame's repaint resolves the lane the clear left.
+    b.frame(ace_frame("head_mode_4ace.json"));
+    const SlotInfo reframed = b.get_slot_info(bay);
+    CHECK(reframed.material == "PLA");
+    CHECK(reframed.color_rgb == 0xFF0000u);
+}
+
+TEST_CASE_METHOD(MultiAceFixture, "a bay edit survives a restart and outranks the engine's table",
+                 "[multiace][ams][filament_slot_override]") {
+    MultiAceOverrideCacheDir cache("restart");
+    MockPrinter mock_printer;
+    auto& api = mock_printer.api;
+
+    // Session 1: the user names the spool in ACE 2 bay 1.
+    {
+        helix::test::RegisteredBackend<StoreBackedMultiAce> reg(&api);
+        StoreBackedMultiAce& b = *reg;
+        b.on_started();
+        b.frame(ace_frame("head_mode_4ace.json"));
+        SlotInfo edit = b.get_slot_info(multiace::bay_global(1, 0));
+        edit.material = "PETG";
+        edit.brand = "Polymaker";
+        edit.color_rgb = 0x1E5AA8;
+        REQUIRE(b.commit_user_edit(multiace::bay_global(1, 0),
+                                   b.get_slot_info(multiace::bay_global(1, 0)), edit)
+                    .success());
+    }
+
+    // Session 2: the store loads, the engine restates its own table, and the
+    // stored edit still wins.
+    {
+        helix::test::RegisteredBackend<StoreBackedMultiAce> reg(&api);
+        StoreBackedMultiAce& b = *reg;
+        b.on_started();
+        b.frame(ace_frame("head_mode_4ace.json"));
+
+        const SlotInfo slot = b.get_slot_info(multiace::bay_global(1, 0));
+        CHECK(slot.material == "PETG");
+        CHECK(slot.brand == "Polymaker");
+        CHECK(slot.color_rgb == 0x1E5AA8u);
+        // A bay nobody edited keeps the engine's word: ACE 1 bay 2 is the
+        // engine's Generic blue PETG, not the edit's Polymaker shade.
+        const SlotInfo untouched = b.get_slot_info(multiace::bay_global(0, 1));
+        CHECK(untouched.brand == "Generic");
+        CHECK(untouched.color_rgb == 0x0000FFu);
+    }
 }
