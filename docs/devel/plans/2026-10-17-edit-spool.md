@@ -17,7 +17,7 @@ controls nobody uses there.
 |---|---|
 | `ui_xml/ams_edit_overlay.xml` | Rebuilt: overview view removed; editor (chip rows) is the entry view |
 | `src/ui/ui_ams_edit_overlay.{h,cpp}` | Chip-row state machine; weight keypad; unsaved-changes prompt; new Spoolman save prompt; removals |
-| `ui_xml/components/ams_edit_chip.xml` (new) | One chip component (led_list_chip pattern) |
+| (removed) | the chip component was retired with the pivot |
 | `ui_xml/components/color_swatch_grid.xml` | Add `count` prop (default 30) for the narrow colour column |
 | `ui_xml/ams_context_menu.xml` + `src/ui/ui_ams_context_menu.cpp` | "Spool Info" → "Edit Spool"; revive Assigned Tool row gated on `can_write_mapping_table()` |
 | `include/filament_catalog.h` + `src/printer/filament_catalog.cpp` | Pure family/variant/brand/product queries |
@@ -32,7 +32,11 @@ controls nobody uses there.
    VIEW_OVERVIEW). No overview view exists anymore.
 2. **Title**: `lane_label(active_lane_noun(), slot_index_)` ("Gate 3"); external slot keeps
    "External Filament".
-3. **Chip rows** (all horizontal scrollers, "More..." / "All..." trailing):
+3. **Identity picking = dropdown cascade form** (PIVOT after Preston saw the
+   chip rows: chips rejected, Bambu/Creality-style labelled dropdowns shipped).
+   Material (family) / Variant / Brand / Product dropdown rows, cascading
+   exactly as the chips did; each list ends in a quiet "Browse catalog..."
+   entry opening the FilamentCatalogPickerModal (search + free entry).
    MATERIAL = families recents-first; VARIANT = catalog variants for the family (Basic,
    +, CF, GF, HS, Silk, Matte, Wood, Marble, Recycled…; finishes are variants —
    `filament_variants.h` is the model); BRAND = Generic first, then brands making that
