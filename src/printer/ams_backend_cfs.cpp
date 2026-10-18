@@ -569,12 +569,18 @@ static std::optional<EnvironmentData> flat_environment(const nlohmann::json& obj
     return env;
 }
 
-// Revision 2's per-box readings, keyed by box address - 1 (our unit index),
-// or nullopt when the payload has no boxes[] to read them from. Joined on
-// `address`, never array position. A box that is offline, or that has not
-// reported a reading, maps to nullopt.
-static std::optional<std::map<int, std::optional<EnvironmentData>>>
-flat_box_environments(const nlohmann::json& box_json) {
+// What one revision 2 boxes[] entry says about its box. An offline box has no
+// reading, whatever its temp_c still holds.
+struct FlatBoxReport {
+    bool online = true;
+    std::optional<EnvironmentData> environment;
+};
+
+// Revision 2's per-box reports, keyed by box address - 1 (our unit index), or
+// nullopt when the payload has no boxes[] to read them from. Joined on
+// `address`, never array position.
+static std::optional<std::map<int, FlatBoxReport>>
+flat_box_reports(const nlohmann::json& box_json) {
     if (AmsBackendCfs::fork_api_revision(box_json) < 2) {
         return std::nullopt;
     }
@@ -582,7 +588,7 @@ flat_box_environments(const nlohmann::json& box_json) {
     if (it == box_json.end() || !it->is_array()) {
         return std::nullopt;
     }
-    std::map<int, std::optional<EnvironmentData>> readings;
+    std::map<int, FlatBoxReport> reports;
     for (const auto& entry : *it) {
         if (!entry.is_object()) {
             continue;
@@ -591,11 +597,11 @@ flat_box_environments(const nlohmann::json& box_json) {
         if (address < 1) {
             continue;
         }
-        readings[address - 1] = helix::json_util::safe_bool(entry, "online", true)
-                                    ? flat_environment(entry)
-                                    : std::nullopt;
+        FlatBoxReport& report = reports[address - 1];
+        report.online = helix::json_util::safe_bool(entry, "online", true);
+        report.environment = report.online ? flat_environment(entry) : std::nullopt;
     }
-    return readings;
+    return reports;
 }
 
 // The firmware slot number of every bay a Flat payload lists, in payload
@@ -1293,16 +1299,21 @@ AmsSystemInfo AmsBackendCfs::parse_flat_box_status(const nlohmann::json& box_jso
         }
     }
 
-    // From revision 2 each box states its own reading in boxes[]. Before that
+    // From revision 2 each box states its own reading and whether it answers in
+    // boxes[]; one it does not list keeps the chain-wide driver_ready. Before that
     // the payload carries one, taken from the box named by load_path.box_addr
     // (1-based; null when nothing is loaded). Only that box shows it; giving it
     // to every box would show one sensor as several zones. With no usable
     // address it stays on the first box.
-    if (const auto per_box = flat_box_environments(box_json)) {
+    if (const auto per_box = flat_box_reports(box_json)) {
         for (auto& [address, box] : boxes) {
-            auto reading = per_box->find(address);
-            box.environment =
-                reading != per_box->end() ? reading->second : std::optional<EnvironmentData>{};
+            auto report = per_box->find(address);
+            if (report == per_box->end()) {
+                box.environment.reset();
+                continue;
+            }
+            box.environment = report->second.environment;
+            box.connected = box.connected && report->second.online;
         }
     } else {
         int environment_address = boxes.empty() ? -1 : boxes.begin()->first;

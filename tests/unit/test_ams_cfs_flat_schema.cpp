@@ -1343,3 +1343,41 @@ TEST_CASE_METHOD(CfsGoldenFixture, "CFS flat: a delta without boxes[] keeps the 
     CHECK(info.units[2].environment->temperature_c == 28.0f);
     CHECK(info.units[0].environment->temperature_c == 24.0f);
 }
+
+TEST_CASE_METHOD(CfsGoldenFixture,
+                 "CFS flat: a box reporting offline reads disconnected until it returns",
+                 "[ams][cfs][flat][boxes]") {
+    const json full = make_revision2_box();
+    feed(box_frame(full));
+    auto info = backend.get_system_info();
+    REQUIRE(info.units.size() == 4);
+    CHECK(info.units[0].connected);
+    CHECK_FALSE(info.units[1].connected);
+    CHECK(info.units[2].connected);
+    // Not listed in boxes[]: nothing says it is offline.
+    CHECK(info.units[3].connected);
+
+    json back = full;
+    back["boxes"][2]["online"] = true;
+    back["boxes"][2]["temp_c"] = 23;
+    back["boxes"][2]["humidity_pct"] = 41;
+    feed(box_frame(klipper_delta(full, back)));
+    info = backend.get_system_info();
+    CHECK(info.units[1].connected);
+    REQUIRE(units_with_environment(info) == std::vector<int>{0, 1, 2});
+
+    feed(box_frame(klipper_delta(back, full)));
+    info = backend.get_system_info();
+    CHECK_FALSE(info.units[1].connected);
+    CHECK(info.units[0].connected);
+}
+
+TEST_CASE("CFS flat: revision 1 ignores boxes[] online flags", "[ams][cfs][flat][boxes]") {
+    json box = make_revision2_box();
+    box.erase("api_revision");
+    const auto info = AmsBackendCfs::parse_box_status(box);
+    for (const auto& u : info.units) {
+        INFO("unit " << u.unit_index);
+        CHECK(u.connected);
+    }
+}
