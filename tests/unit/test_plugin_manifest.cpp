@@ -377,6 +377,8 @@ TEST_CASE("menu_items errors", "[plugin][manifest]") {
         {R"({"id":"a","label":"L","handler":"h"})", "menu_items[0]: 'menu'"},
         {R"({"id":"a","menu":"spool","label":"L","handler":"h","icon":3})",
          "menu_items[0]: 'icon'"},
+        {R"({"id":"a","menu":"spool","label":"L","handler":"h","icon":"no_such_icon"})",
+         "menu_items[0]: 'icon' 'no_such_icon' is not an app icon name"},
         {long_item.c_str(), "menu_items[0]: 'label'"},
         {R"({"id":"a","menu":"tile","label":"L","handler":"h"})",
          "menu_items[0]: 'tile' items need a widget"},

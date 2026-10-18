@@ -422,7 +422,7 @@ Declared in `manifest.json`:
 | `id` | unique within the plugin |
 | `menu` | `print_file`, `filament_slot`, `spool` or `tile`; a `tile` item needs at least one declared widget |
 | `label` | English source, translated through the plugin's `i18n/` pack |
-| `icon` | an icon name from `include/ui_icon_codepoints.h`, optional |
+| `icon` | an icon name from `include/ui_icon_codepoints.h`, optional; a name not in that table rejects the manifest |
 | `handler` | a `helix.ui.on` handler name, required |
 | `check` | a `helix.ui.on` handler name, optional (below) |
 

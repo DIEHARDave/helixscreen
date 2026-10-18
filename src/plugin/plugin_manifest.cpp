@@ -5,6 +5,8 @@
 
 #include "plugin_manifest.h"
 
+#include "ui_icon_codepoints.h"
+
 #include <algorithm>
 #include <iterator>
 #include <set>
@@ -284,6 +286,9 @@ void parse_menu_items(const json& arr, Manifest& m, std::vector<std::string>& er
         if (!d.label.empty())
             check_display_field("label", d.label, kMaxMenuLabelBytes, local);
         optional_string(it, "icon", d.icon, local);
+        // The icon widget's own table: a name it cannot find draws the broken-image glyph.
+        if (!d.icon.empty() && !helix::ui::icon::lookup_codepoint(d.icon.c_str()))
+            local.push_back("'icon' '" + d.icon + "' is not an app icon name");
         require_string(it, "handler", d.handler, local);
         check_local_name("handler", d.handler, local);
         optional_string(it, "check", d.check, local);
