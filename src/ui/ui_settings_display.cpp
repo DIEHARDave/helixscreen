@@ -143,8 +143,10 @@ void DisplaySettingsOverlay::on_activate() {
 #if HELIX_ENABLE_SCREENSAVER
     init_screensaver_dropdown();
 #else
-    if (lv_obj_t* ss_row = helix::ui::find_required(overlay_root_, "row_screensaver", get_name())) {
-        lv_obj_add_flag(ss_row, LV_OBJ_FLAG_HIDDEN);
+    for (const char* name : {"row_screensaver", "container_test_screensaver"}) {
+        if (lv_obj_t* obj = helix::ui::find_required(overlay_root_, name, get_name())) {
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 #endif
 }
