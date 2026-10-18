@@ -265,6 +265,34 @@ bits must agree.
 The fresh-install default is depth-aware (`default_screensaver_type`): Flip Clock when the
 build draws at its depth, otherwise the first registered saver that does, and Off when none do.
 
+`HELIX_ENABLE_SCREENSAVER` decides whether a build has savers at all, and every guard tests
+its value: `#if HELIX_ENABLE_SCREENSAVER` / `#if !HELIX_ENABLE_SCREENSAVER`, never `#ifdef`.
+The Makefile (with `ENABLE_SCREENSAVER=yes`, the default) and the Android CMake build pass a
+bare `-D`, which reads as 1; `ENABLE_SCREENSAVER=no` leaves it undefined, which reads as 0. The ESP32
+firmware defines it as 0 (`firmware/helixscreen-esp32/components/helixapp/CMakeLists.txt`),
+which an `#ifdef` would read as on. A build without savers still registers
+`settings_screensaver_type` (always Off) and `settings_has_screensaver` (0), so the XML
+bindings on them resolve: `row_screensaver` and `container_test_screensaver` start
+`hidden="true"` in `ui_xml/settings_display_overlay.xml` and their bindings decide from
+there, with no C++ hiding them.
+
+## The idle timeout and the dim row
+
+The saver starts at the dim timeout (`/display/dim_sec`). Display settings offers that
+timeout in one of three forms, picked by `DisplaySettingsManager::dim_row_kind()` from whether
+the display has a dimmable backlight and whether a saver is enabled (type not Off), and
+published as `settings_dim_row_kind`:
+
+| Dimmable backlight | Saver enabled | Row shown |
+|---|---|---|
+| yes | either | Screen Dim |
+| no | yes | Screensaver after |
+| no | no | none |
+
+Both rows edit the same setting. The rule that sleep may not come before the dim stage
+(`should_couple_sleep_to_dim()`) holds exactly when a row is shown, so the two cannot
+disagree, and `set_screensaver_type()` republishes the row kind when the saver changes.
+
 ## Adding a saver
 
 1. Add the type to `ScreensaverType` and a row to `SCREENSAVERS` with a stable name and depths.

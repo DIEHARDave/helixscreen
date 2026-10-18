@@ -586,7 +586,7 @@ HELIX_SCREENSAVER_NOW=starfield ./build/bin/helix-screen --test -vv
 HELIX_SCREENSAVER_NOW=1 ./build/bin/helix-screen --test -vv
 ```
 
-Requires a build with `HELIX_ENABLE_SCREENSAVER` — the whole block is `#ifdef`-ed out otherwise, and the variable is then ignored.
+Requires a build with screensavers (`HELIX_ENABLE_SCREENSAVER` defined and non-zero; the ESP32 firmware defines it as 0). Without them the whole block is compiled out and the variable is ignored.
 
 ### `HELIX_REFR_PERIOD_MS`
 
@@ -634,7 +634,7 @@ Level 0 frame period of every screensaver, for manual testing: the saver draws a
 HELIX_SCREENSAVER_REFR_PERIOD_MS=0 HELIX_SCREENSAVER_NOW=1 ./build/bin/helix-screen --test -vv
 ```
 
-Requires a build with `HELIX_ENABLE_SCREENSAVER`.
+Requires a build with screensavers (`HELIX_ENABLE_SCREENSAVER` non-zero).
 
 ### `HELIX_SCREENSAVER_BUDGET_PCT`
 
@@ -651,7 +651,7 @@ Replaces the screensaver gate's CPU budget, as a whole percent of one core. Each
 HELIX_SCREENSAVER_BUDGET_PCT=5 HELIX_SCREENSAVER_NOW=toasters ./build/bin/helix-screen --test -vv
 ```
 
-Requires a build with `HELIX_ENABLE_SCREENSAVER`.
+Requires a build with screensavers (`HELIX_ENABLE_SCREENSAVER` non-zero).
 
 ### `HELIX_SCREENSAVER_LEVEL`
 
@@ -668,7 +668,7 @@ Runs every saver that starts at this quality level and turns the gate off for th
 HELIX_SCREENSAVER_LEVEL=1 HELIX_SCREENSAVER_NOW=pipes ./build/bin/helix-screen --test -vv
 ```
 
-Requires a build with `HELIX_ENABLE_SCREENSAVER`.
+Requires a build with screensavers (`HELIX_ENABLE_SCREENSAVER` non-zero).
 
 ### `HELIX_LOOP_MIN_SLEEP_MS`
 
@@ -2370,7 +2370,7 @@ SSL_CERT_FILE=/usr/data/ca-certificates.crt ./build/bin/helix-screen
 
 The store is resolved on the first such request and logged as `[TLS] Verifying our servers against <path>`. Servers are checked for chain and hostname but not for validity dates, because printers often boot with a 1970 clock. A store that exists but cannot be loaded trusts nothing, so those requests fail with `[TLS] Certificate for '<host>' rejected: ...`. With no store at all the app logs a warning and connects unverified.
 
-Telemetry also refuses to send when no store is found: on devices with no CA bundle at all (AD5M stock firmware), glibc's NSS resolver can `SIGSEGV` during the SSL handshake. The check runs once and is cached, so setting the variable after startup does not re-enable sends.
+Telemetry also refuses to send when no store is found: on devices with no CA bundle at all (AD5M stock firmware), glibc's NSS resolver can `SIGSEGV` during the SSL handshake. The check runs once and is cached, so setting the variable after startup does not re-enable sends. On Android, telemetry, crash reports and debug bundle uploads go through the platform's own HTTPS stack, which needs no CA bundle on disk, so these variables do not apply to them and telemetry always has a transport (`src/system/ingest_client.cpp#transport_available`).
 
 ---
 

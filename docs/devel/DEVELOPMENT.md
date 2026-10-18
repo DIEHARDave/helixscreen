@@ -274,7 +274,7 @@ make compile_commands  # Generates compile_commands.json (requires bear)
 |-------------|----------|----------|-------------|
 | Layout, styling, colors | `ui_xml/*.xml` | **No** | **Yes** — ON by default for native builds |
 | Logic, bindings, handlers | `src/*.cpp`, `include/*.h` | Yes (`make -j`) | No |
-| Theme colors | `config/themes/*.json` | No — just restart | No |
+| Theme colors | `assets/config/themes/defaults/*.json` | No — just restart | No |
 | Translations | `translations/*.yml` (e.g. `translations/en.yml`) | Yes (code generation step) | No |
 
 ### XML Hot Reload
@@ -325,7 +325,7 @@ Key points for UI contributors:
 | `ui_xml/components/` | Reusable XML components |
 | `ui_xml/ultrawide/` | Ultrawide layout overrides |
 | `ui_xml/globals.xml` | Design tokens and global variables (shared, never override) |
-| `config/themes/` | Theme JSON files (color palettes) |
+| `assets/config/themes/defaults/` | Shipped theme JSON files (color palettes). `config/themes/` is the user layer and holds nothing in the repo |
 
 ---
 
