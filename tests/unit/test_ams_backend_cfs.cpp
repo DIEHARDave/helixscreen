@@ -6326,6 +6326,179 @@ TEST_CASE("CFS fork: commands name the firmware slot, not the bay position",
     }
 }
 
+// Firmware with print mapping registers BOX_SELECT_SLOT, which always names a
+// slot. T<n> names the file's tool during a mapped print, so a manual load sent
+// as T<n> mid-print would feed whatever slot that tool maps to.
+TEST_CASE("CFS fork: manual loads select the slot when the firmware has print mapping",
+          "[ams][cfs][fork][select_slot]") {
+    CfsRemapHelper backend;
+    backend.mark_running();
+    json box = make_gapped_fork_box();
+
+    SECTION("revision 2") {
+        box["api_revision"] = 2;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+
+        SECTION("load") {
+            REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+        }
+        SECTION("swap") {
+            REQUIRE(backend.change_tool(8).result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=8"});
+        }
+        SECTION("external spool") {
+            box["loaded_slot"] = -1;
+            box["runout"] = nullptr;
+            CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+            REQUIRE(backend.enable_bypass().result == AmsResult::SUCCESS);
+            CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=12"});
+        }
+    }
+
+    SECTION("revision 1 with print_mapping_version 1") {
+        box["print_mapping_version"] = 1;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+    }
+
+    SECTION("revision 1 without print mapping keeps T<n>") {
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"T7"});
+    }
+
+    SECTION("revision 1 without print mapping keeps T<external>") {
+        box["loaded_slot"] = -1;
+        box["runout"] = nullptr;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.enable_bypass().result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"T12"});
+    }
+
+    SECTION("a delta without the version fields keeps the capability") {
+        box["api_revision"] = 2;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CfsTestAccess::handle_status(backend, make_cfs_notification(json{{"temp_c", 25}}));
+        REQUIRE(backend.load_filament(7).result == AmsResult::SUCCESS);
+        CHECK(backend.dispatched == std::vector<std::string>{"BOX_SELECT_SLOT SLOT=7"});
+    }
+
+    SECTION("stock dialect is unchanged") {
+        CHECK(AmsBackendCfs::load_gcode(7, CfsMacroVariant::K2).find("BOX_SELECT_SLOT") ==
+              std::string::npos);
+        CHECK(AmsBackendCfs::swap_gcode(7, CfsMacroVariant::K1).find("BOX_SELECT_SLOT") ==
+              std::string::npos);
+    }
+}
+
+// BOX_PRINT_MAP sets the tool->slot map for the next print only, so the Fork
+// remap is a pre-print send. Its MAP= is BOX_PRINT_START's: file tool, then
+// global slot, which is our bay index.
+TEST_CASE("CFS fork: print mapping goes out as BOX_PRINT_MAP before the print",
+          "[ams][cfs][fork][print_map]") {
+    CfsRemapHelper backend;
+    backend.mark_running();
+    json box = make_gapped_fork_box();
+
+    SECTION("revision 3 sends the map") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::PrePrintSend);
+        CHECK(backend.requires_preprint_send());
+        CHECK(helix::printer::can_remap(backend));
+        CHECK_FALSE(helix::printer::remap_is_persistent(backend.get_remap_strategy()));
+
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 6}}) ==
+              "BOX_PRINT_MAP MAP=0:5,1:6");
+
+        // The format, apart from which slots this box set can feed.
+        CHECK(AmsBackendCfs::print_map_gcode({0, 1}, {{0, 5}, {1, 2}}) ==
+              "BOX_PRINT_MAP MAP=0:5,1:2");
+        // A used tool the user left alone is still named, at its own slot, so
+        // the map says what the whole print means.
+        CHECK(AmsBackendCfs::print_map_gcode({0, 1, 2}, {{0, 5}}) ==
+              "BOX_PRINT_MAP MAP=0:5,1:1,2:2");
+        // Tool order is the file's, not the remap's insertion order.
+        CHECK(AmsBackendCfs::print_map_gcode({}, {{3, 9}, {1, 6}}) == "BOX_PRINT_MAP MAP=1:6,3:9");
+    }
+
+    SECTION("no remap sends nothing") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.build_preprint_gcode({0, 1}, {}).empty());
+        CHECK(backend.build_preprint_gcode({}, {}).empty());
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 0}, {1, 1}}).empty());
+    }
+
+    SECTION("a remap to a slot that cannot feed sends nothing and says why") {
+        box["api_revision"] = 3;
+        box["boxes"] = json::array(
+            {json{{"address", 2}, {"online", false}}, json{{"address", 3}, {"online", true}}});
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+
+        // Box 2 (slots 4-7) is not answering.
+        auto err = backend.check_preprint_remap({0}, {{0, 5}});
+        CHECK(err.result == AmsResult::WRONG_STATE);
+        CHECK(err.slot_index == 5);
+        CHECK(err.user_msg.find("Disconnected") != std::string::npos);
+        CHECK(backend.build_preprint_gcode({0}, {{0, 5}}).empty());
+
+        // Box 1 (slots 0-3) is not on the bus at all.
+        err = backend.check_preprint_remap({0}, {{0, 1}});
+        CHECK(err.result == AmsResult::INVALID_SLOT);
+        CHECK(err.slot_index == 1);
+        CHECK(backend.build_preprint_gcode({0}, {{0, 1}}).empty());
+
+        // One bad target refuses the whole map, not just its own entry.
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 9}, {1, 5}}).empty());
+
+        // Box 3 answers.
+        CHECK(backend.check_preprint_remap({0}, {{0, 9}}).success());
+        CHECK(backend.build_preprint_gcode({0}, {{0, 9}}) == "BOX_PRINT_MAP MAP=0:9");
+    }
+
+    SECTION("the pre-print send is not a BOX_MODIFY_TN table write") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.can_set_tool_mapping(0, 5).result == AmsResult::NOT_SUPPORTED);
+        CHECK(backend.set_tool_mapping(0, 5).result == AmsResult::NOT_SUPPORTED);
+        CHECK(backend.captured.empty());
+    }
+
+    SECTION("revision 2 has no BOX_PRINT_MAP: no remap, no pre-print send") {
+        box["api_revision"] = 2;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::None);
+        CHECK_FALSE(backend.requires_preprint_send());
+        CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 2}}).empty());
+    }
+
+    SECTION("revision 1 has none either") {
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::None);
+        CHECK_FALSE(backend.requires_preprint_send());
+    }
+
+    SECTION("a box that turns stock drops it") {
+        box["api_revision"] = 3;
+        CfsTestAccess::handle_status(backend, make_cfs_notification(box));
+        REQUIRE(backend.requires_preprint_send());
+        CfsTestAccess::handle_status(backend, make_cfs_notification(make_cfs_status_json()["box"]));
+        CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::Native);
+        CHECK_FALSE(backend.requires_preprint_send());
+    }
+}
+
+TEST_CASE("CFS stock keeps its native remap and no pre-print send", "[ams][cfs][print_map]") {
+    CfsRemapHelper backend;
+    CHECK(backend.get_remap_strategy() == AmsBackend::RemapStrategy::Native);
+    CHECK_FALSE(backend.requires_preprint_send());
+    CHECK(backend.build_preprint_gcode({0, 1}, {{0, 5}, {1, 2}}).empty());
+}
+
 // A bay in a box missing from the chain is refused, not sent: box.py registers
 // no T<n> for a slot it has not found.
 TEST_CASE("CFS fork: a bay no box reported is refused", "[ams][cfs][fork][1464]") {

@@ -14,6 +14,9 @@
 
 #include "ui_print_start_controller.h"
 
+#include <functional>
+#include <map>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -110,6 +113,14 @@ class PrintStartControllerTestAccess {
 
     static bool apply_remaps(helix::ui::PrintStartController& c) {
         return c.apply_filament_remaps();
+    }
+
+    /// The pre-print send execute_print_start() makes for a backend that
+    /// requires one.
+    static void send_preprint(helix::ui::PrintStartController& c, const std::set<int>& tools_used,
+                              const std::map<int, int>& remap, std::function<void()> on_done,
+                              std::function<void()> on_abort) {
+        c.send_backend_preprint_then(tools_used, remap, std::move(on_done), std::move(on_abort));
     }
 
     /// Register the restore observer the way execute_print_start() does right

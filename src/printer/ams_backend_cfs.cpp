@@ -551,6 +551,59 @@ static int find_external_slot_index(const nlohmann::json& box_json) {
     return -1;
 }
 
+// The temp_c / humidity_pct pair of a Flat payload object: the top level on
+// every revision, and each boxes[] entry from revision 2. Unlike the stock
+// schema these are JSON numbers, not strings, but safe_float accepts either, so
+// a firmware that switches spelling will not silently drop the readings. Null
+// (an offline box) or absent is no reading.
+static std::optional<EnvironmentData> flat_environment(const nlohmann::json& obj) {
+    const float temp_c = helix::json_util::safe_float(obj, "temp_c", -1.0f);
+    const float humidity = helix::json_util::safe_float(obj, "humidity_pct", -1.0f);
+    if (temp_c < 0.0f && humidity < 0.0f) {
+        return std::nullopt;
+    }
+    EnvironmentData env;
+    env.temperature_c = temp_c >= 0.0f ? temp_c : 0.0f;
+    env.humidity_pct = humidity >= 0.0f ? humidity : 0.0f;
+    env.has_humidity = humidity >= 0.0f;
+    return env;
+}
+
+// What one revision 2 boxes[] entry says about its box. An offline box has no
+// reading, whatever its temp_c still holds.
+struct FlatBoxReport {
+    bool online = true;
+    std::optional<EnvironmentData> environment;
+};
+
+// Revision 2's per-box reports, keyed by box address - 1 (our unit index), or
+// nullopt when the payload has no boxes[] to read them from. Joined on
+// `address`, never array position.
+static std::optional<std::map<int, FlatBoxReport>>
+flat_box_reports(const nlohmann::json& box_json) {
+    if (AmsBackendCfs::fork_api_revision(box_json) < 2) {
+        return std::nullopt;
+    }
+    auto it = box_json.find("boxes");
+    if (it == box_json.end() || !it->is_array()) {
+        return std::nullopt;
+    }
+    std::map<int, FlatBoxReport> reports;
+    for (const auto& entry : *it) {
+        if (!entry.is_object()) {
+            continue;
+        }
+        const int address = helix::json_util::safe_int(entry, "address", 0);
+        if (address < 1) {
+            continue;
+        }
+        FlatBoxReport& report = reports[address - 1];
+        report.online = helix::json_util::safe_bool(entry, "online", true);
+        report.environment = report.online ? flat_environment(entry) : std::nullopt;
+    }
+    return reports;
+}
+
 // The firmware slot number of every bay a Flat payload lists, in payload
 // order. The fork numbers slots globally, (box address - 1) * 4 + local, and
 // that number IS our bay's global index, so a box missing from the chain
@@ -1141,18 +1194,7 @@ AmsSystemInfo AmsBackendCfs::parse_flat_box_status(const nlohmann::json& box_jso
     unit.hub_tool_label = 0; // every box feeds the one extruder
     unit.slot_count = kBaysPerBox;
 
-    // Environment. Unlike the stock schema these are JSON numbers, not strings,
-    // but safe_float accepts either — so a firmware revision that switches
-    // spelling will not silently drop the readings.
-    float temp_c = helix::json_util::safe_float(box_json, "temp_c", -1.0f);
-    float humidity = helix::json_util::safe_float(box_json, "humidity_pct", -1.0f);
-    if (temp_c >= 0.0f || humidity >= 0.0f) {
-        EnvironmentData env;
-        env.temperature_c = temp_c >= 0.0f ? temp_c : 0.0f;
-        env.humidity_pct = humidity >= 0.0f ? humidity : 0.0f;
-        env.has_humidity = humidity >= 0.0f;
-        unit.environment = env;
-    }
+    unit.environment = flat_environment(box_json);
 
     // load_path describes the shared feed path: an encoder, a buffer, and a
     // printhead sensor. Stock CFS reports none of these, so these flags light
@@ -1257,22 +1299,38 @@ AmsSystemInfo AmsBackendCfs::parse_flat_box_status(const nlohmann::json& box_jso
         }
     }
 
-    // The payload carries one environment reading, taken from the box named by
-    // load_path.box_addr (1-based; null when nothing is loaded). Only that box
-    // shows it; giving it to every box would show one sensor as several zones.
-    // With no usable address it stays on the first box.
-    int environment_address = boxes.empty() ? -1 : boxes.begin()->first;
-    if (auto path_it = box_json.find("load_path");
-        path_it != box_json.end() && path_it->is_object()) {
-        const int box_addr = helix::json_util::safe_int(*path_it, "box_addr", 0);
-        if (boxes.count(box_addr - 1) != 0) {
-            environment_address = box_addr - 1;
+    // From revision 2 each box states its own reading and whether it answers in
+    // boxes[]; one it does not list keeps the chain-wide driver_ready. Before that
+    // the payload carries one, taken from the box named by load_path.box_addr
+    // (1-based; null when nothing is loaded). Only that box shows it; giving it
+    // to every box would show one sensor as several zones. With no usable
+    // address it stays on the first box.
+    if (const auto per_box = flat_box_reports(box_json)) {
+        for (auto& [address, box] : boxes) {
+            auto report = per_box->find(address);
+            if (report == per_box->end()) {
+                box.environment.reset();
+                continue;
+            }
+            box.environment = report->second.environment;
+            box.connected = box.connected && report->second.online;
+        }
+    } else {
+        int environment_address = boxes.empty() ? -1 : boxes.begin()->first;
+        if (auto path_it = box_json.find("load_path");
+            path_it != box_json.end() && path_it->is_object()) {
+            const int box_addr = helix::json_util::safe_int(*path_it, "box_addr", 0);
+            if (boxes.count(box_addr - 1) != 0) {
+                environment_address = box_addr - 1;
+            }
+        }
+        for (auto& [address, box] : boxes) {
+            if (address != environment_address) {
+                box.environment.reset();
+            }
         }
     }
     for (auto& [address, box] : boxes) {
-        if (address != environment_address) {
-            box.environment.reset();
-        }
         info.units.push_back(std::move(box));
     }
     reserve_address_gaps(info);
@@ -1638,6 +1696,8 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
         if (macro_variant_ == CfsMacroVariant::Fork) {
             macro_variant_ = model_macro_variant_;
         }
+        fork_select_slot_ = false;
+        fork_print_map_ = false;
         spdlog::info("[AMS CFS] Stock box schema reported, flat state dropped");
     }
     const bool is_flat =
@@ -1688,6 +1748,22 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
             spdlog::warn("[AMS CFS] Flat box schema without a supported API version — "
                          "slot display active, control paths disabled (no verified "
                          "command dialect)");
+        }
+    }
+
+    if (is_flat && macro_variant_ == CfsMacroVariant::Fork) {
+        const bool select_slot = fork_has_print_mapping(state);
+        if (fork_select_slot_.exchange(select_slot) != select_slot) {
+            spdlog::info("[AMS CFS] Fork print mapping {} (API revision {}): manual loads "
+                         "send {}",
+                         select_slot ? "present" : "absent", fork_api_revision(state),
+                         select_slot ? "BOX_SELECT_SLOT" : "T<n>");
+        }
+        const bool print_map = fork_has_print_map(state);
+        if (fork_print_map_.exchange(print_map) != print_map) {
+            spdlog::info("[AMS CFS] Fork BOX_PRINT_MAP {} (API revision {}): tool remap {}",
+                         print_map ? "present" : "absent", fork_api_revision(state),
+                         print_map ? "sent before each print" : "unavailable");
         }
     }
 
@@ -2439,7 +2515,7 @@ AmsError AmsBackendCfs::do_load_filament(int slot_index) {
         spdlog::info("[AMS CFS] Bypass load — external spool, via {}",
                      has_load_material ? "LOAD_MATERIAL" : "fallback feed");
     } else {
-        gcode = load_gcode(firmware_slot, macro_variant_);
+        gcode = load_gcode(firmware_slot, macro_variant_, fork_select_slot_);
     }
 
     if (gcode.empty()) {
@@ -2555,8 +2631,8 @@ AmsError AmsBackendCfs::do_change_tool(int tool) {
     // sit high while fewer units are attached. The 1:1 slot identity (CFS bays
     // map 1:1 to tools) is what lets the builders below encode it as a bay
     // TNN; encodability is the only bound a key needs.
-    std::string gcode = needs_unload ? swap_gcode(firmware_slot, macro_variant_)
-                                     : load_gcode(firmware_slot, macro_variant_);
+    std::string gcode = needs_unload ? swap_gcode(firmware_slot, macro_variant_, fork_select_slot_)
+                                     : load_gcode(firmware_slot, macro_variant_, fork_select_slot_);
     if (gcode.empty()) {
         if (firmware_slot < 0) {
             return firmware_slot_unknown(tool);
@@ -3041,7 +3117,9 @@ AmsError AmsBackendCfs::can_set_tool_mapping(int tool_number, int slot_index) co
     // exists wherever firmware's map says it does — a slicer-driven remap or
     // Creality's own UI can hold a high key while fewer units are attached —
     // so its bound is the TNN alphabet.
-    if (get_remap_strategy() == RemapStrategy::None) {
+    // Only the native route writes a table; a Fork pre-print map is sent by
+    // build_preprint_gcode() and has no BOX_MODIFY_TN to send here.
+    if (get_remap_strategy() != RemapStrategy::Native) {
         return AmsErrorHelper::not_supported("Tool remapping on this firmware's CFS module");
     }
     constexpr int CFS_MAX_SLOTS = 16; // 4 units × 4 slots
@@ -3195,8 +3273,8 @@ AmsError AmsBackendCfs::enable_bypass() {
     }
 
     if (schema_ == CfsSchema::Flat) {
-        // Fork dialect: the firmware owns the whole attended flow. T<external>
-        // heats, moves to the wastebin, then waits (EXTERNAL_WAIT = 30 s in
+        // Fork dialect: the firmware owns the whole attended flow. Selecting
+        // the external slot heats, moves to the wastebin, then waits (EXTERNAL_WAIT = 30 s in
         // box.py) for the user to insert filament before feeding — a gcode
         // that legitimately blocks, so it goes through dispatch_action_script
         // for the homing/verification plumbing like every other CFS action.
@@ -3204,14 +3282,13 @@ AmsError AmsBackendCfs::enable_bypass() {
             return AmsError(AmsResult::NOT_SUPPORTED, "Bypass not supported",
                             lv_tr("This CFS firmware exposes no external spool slot"), "");
         }
-        std::string gcode = "T" + std::to_string(external_slot_index_);
+        std::string gcode = fork_slot_gcode(external_slot_index_, fork_select_slot_);
         {
             std::lock_guard<std::mutex> lock(mutex_);
             system_info_.action = AmsAction::LOADING;
             begin_phase_tracking();
         }
-        spdlog::info("[AMS CFS] Enabling bypass via fork T{} (attended load)",
-                     external_slot_index_);
+        spdlog::info("[AMS CFS] Enabling bypass via fork {} (attended load)", gcode);
         return dispatch_action_script(std::move(gcode));
     }
 
@@ -3439,15 +3516,89 @@ std::string AmsBackendCfs::slot_set_gcode(int global_slot_index, const std::stri
            " SPOOLMAN_ID=" + std::to_string(spoolman_id > 0 ? spoolman_id : -1);
 }
 
-std::string AmsBackendCfs::load_gcode(int idx, CfsMacroVariant variant) {
+std::string AmsBackendCfs::fork_slot_gcode(int slot, bool select_slot) {
+    return select_slot ? "BOX_SELECT_SLOT SLOT=" + std::to_string(slot)
+                       : "T" + std::to_string(slot);
+}
+
+bool AmsBackendCfs::fork_has_print_mapping(const nlohmann::json& box_json) {
+    return fork_api_revision(box_json) >= 2 ||
+           helix::json_util::safe_int(box_json, "print_mapping_version", 0) == 1;
+}
+
+int AmsBackendCfs::fork_api_revision(const nlohmann::json& box_json) {
+    return std::max(1, helix::json_util::safe_int(box_json, "api_revision", 1));
+}
+
+bool AmsBackendCfs::fork_has_print_map(const nlohmann::json& box_json) {
+    return fork_api_revision(box_json) >= 3;
+}
+
+std::string AmsBackendCfs::build_preprint_gcode(const std::set<int>& tools_used,
+                                                const std::map<int, int>& remap) const {
+    if (!fork_print_map_) {
+        return "";
+    }
+    if (auto err = check_preprint_remap(tools_used, remap); !err.success()) {
+        spdlog::warn("[AMS CFS] BOX_PRINT_MAP not sent: {}", err.technical_msg);
+        return "";
+    }
+    return print_map_gcode(tools_used, remap);
+}
+
+AmsError AmsBackendCfs::check_preprint_remap(const std::set<int>& /*tools_used*/,
+                                             const std::map<int, int>& remap) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& [tool, slot] : remap) {
+        if (tool < 0 || slot < 0 || slot == tool) {
+            continue;
+        }
+        if (firmware_slot_locked(slot) < 0) {
+            return firmware_slot_unknown(slot);
+        }
+        const AmsUnit* unit = system_info_.unit_for_slot(slot);
+        if (unit && !unit->connected) {
+            return AmsErrorHelper::slot_ineligible(lane_noun(), slot, "Disconnected");
+        }
+    }
+    return AmsErrorHelper::success();
+}
+
+std::string AmsBackendCfs::print_map_gcode(const std::set<int>& tools_used,
+                                           const std::map<int, int>& remap) {
+    std::map<int, int> resolved;
+    for (const int tool : tools_used) {
+        if (tool >= 0) {
+            resolved[tool] = tool;
+        }
+    }
+    bool remapped = false;
+    for (const auto& [tool, slot] : remap) {
+        if (tool < 0 || slot < 0) {
+            continue;
+        }
+        resolved[tool] = slot;
+        remapped = remapped || slot != tool;
+    }
+    if (!remapped) {
+        return "";
+    }
+    std::string map;
+    for (const auto& [tool, slot] : resolved) {
+        map += (map.empty() ? "" : ",") + std::to_string(tool) + ":" + std::to_string(slot);
+    }
+    return "BOX_PRINT_MAP MAP=" + map;
+}
+
+std::string AmsBackendCfs::load_gcode(int idx, CfsMacroVariant variant, bool fork_select_slot) {
     if (variant == CfsMacroVariant::Fork) {
-        // The Box T command owns the complete load or change operation.
+        // The Box command owns the complete load or change operation.
         constexpr int CFS_MAX_SLOTS = 16;
         if (idx < 0 || idx >= CFS_MAX_SLOTS) {
             spdlog::error("[AMS CFS] Invalid slot index for load: {}", idx);
             return "";
         }
-        return "T" + std::to_string(idx);
+        return fork_slot_gcode(idx, fork_select_slot);
     }
     std::string tnn = CfsMaterialDb::slot_to_tnn(idx);
     if (tnn.empty()) {
@@ -3657,20 +3808,19 @@ std::string AmsBackendCfs::bypass_unload_gcode(CfsMacroVariant variant, bool has
            "RESTORE_GCODE_STATE NAME=helix_cfs_bypass";
 }
 
-std::string AmsBackendCfs::swap_gcode(int idx, CfsMacroVariant variant) {
+std::string AmsBackendCfs::swap_gcode(int idx, CfsMacroVariant variant, bool fork_select_slot) {
     if (variant == CfsMacroVariant::Fork) {
-        // T<n> — box.py registers one per physical slot plus the external bay
-        // (_register_t_commands) and routes it through its change engine, which
-        // cuts, retracts, loads and flushes as one operation. There is no
-        // BOX_CHANGE; that name appears only in a user-written alias macro that
-        // this firmware does not define.
-        //
+        // BOX_SELECT_SLOT, or T<n> on firmware without print mapping: box.py
+        // routes either through its change engine, which cuts, retracts, loads
+        // and flushes as one operation. There is no BOX_CHANGE; that name
+        // appears only in a user-written alias macro that this firmware does
+        // not define.
         constexpr int CFS_MAX_SLOTS = 16;
         if (idx < 0 || idx >= CFS_MAX_SLOTS) {
             spdlog::error("[AMS CFS] Invalid slot index for swap: {}", idx);
             return "";
         }
-        return "T" + std::to_string(idx);
+        return fork_slot_gcode(idx, fork_select_slot);
     }
     std::string tnn = CfsMaterialDb::slot_to_tnn(idx);
     if (tnn.empty()) {

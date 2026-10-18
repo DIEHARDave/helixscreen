@@ -241,6 +241,8 @@ class PrintStartController {
      * @p tools_used and @p remap (supplied by the caller), sends it, and only invokes
      * @p on_done (which starts the print) after the send succeeds. On send error it
      * surfaces a user-visible failure, calls @p on_abort, and does NOT start the print.
+     * A remap the backend refuses (check_preprint_remap()) ends the same way, with
+     * nothing sent.
      * If there is nothing to send (empty tools or empty gcode), @p on_done runs immediately.
      *
      * Callbacks land on the WebSocket background thread; the body is deferred to
@@ -260,6 +262,10 @@ class PrintStartController {
     void send_backend_preprint_then(const std::set<int>& tools_used,
                                     const std::map<int, int>& remap, std::function<void()> on_done,
                                     std::function<void()> on_abort);
+
+    /// The "Print setup failed" modal for a pre-print send that did not
+    /// happen: @p reason when one is known, else the printer-refusal text.
+    static void report_preprint_failure(const std::string& reason);
 
     /// Ordered gate pipeline. Runs gates[index..], shows ONE modal at the
     /// first non-Pass verdict; proceed resumes at the next index with a
