@@ -486,6 +486,7 @@ void PluginHost::unload(const std::string& id) {
     }
     // Overlays go before the runtime does too, and silently: the plugin's on_close
     // hooks point at a Lua state that is about to close.
+    presenter_.drop_plugin(id);
     overlays_.close_all(id);
     // Its generated settings screen leaves the same way, through navigation, so
     // the close callback that erases it runs on every path.

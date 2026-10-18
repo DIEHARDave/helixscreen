@@ -10,6 +10,7 @@
 #include "plugin_manifest.h"
 #include "plugin_overlay_host.h"
 #include "plugin_permissions.h"
+#include "plugin_presenter.h"
 
 #include <cstdint>
 #include <functional>
@@ -95,6 +96,11 @@ class PluginHost {
         return overlays_;
     }
 
+    /// The queue every plugin dialog, overlay and confirm passes through.
+    PluginPresenter& presenter() {
+        return presenter_;
+    }
+
     /// Opens the plugin's settings: its settings_overlay component when the manifest
     /// names one, else the generated screen. False when the plugin is not loaded, or
     /// has neither settings nor an overlay.
@@ -156,6 +162,7 @@ class PluginHost {
     /// bulk unload_all so load_from's single end-of-scan notify covers plugins that went.
     bool widget_defs_dirty_ = false;
     PluginOverlayHost overlays_;
+    PluginPresenter presenter_;
     /// Generated settings screens currently open. More than one only while an
     /// earlier one is still sliding out.
     std::vector<std::unique_ptr<PluginSettingsOverlay>> settings_screens_;

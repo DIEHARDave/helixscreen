@@ -359,3 +359,4 @@ src/plugin/plugin_canvas.cpp  # not in the v1 Core+AMS cut
 src/api/wifi_link_monitor.cpp  # only consumers are application.cpp and the debug bundle, both excluded
 src/ui/ui_presentation_gate.cpp  # not in the v1 Core+AMS cut
 src/plugin/plugin_dialog.cpp  # not in the v1 Core+AMS cut
+src/plugin/plugin_presenter.cpp  # not in the v1 Core+AMS cut
