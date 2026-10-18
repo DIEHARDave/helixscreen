@@ -306,6 +306,26 @@ TEST_CASE("head picker: a head with no assigned slot is disabled with a reason",
     CHECK(rows[2].enabled);
 }
 
+TEST_CASE("head picker: an unload row a sensor reports empty is not tickable",
+          "[filament][actions]") {
+    // The not-known-to-be-empty rule the sidebar already follows, on the rows
+    // a multi-head picker offers: a head whose own sensor says EMPTY has
+    // nothing for an unload to act on, whatever the firmware would do with
+    // the command.
+    // ready_head() is a ready-to-LOAD head: its sensor already says empty.
+    HeadState unknown = ready_head(4);
+    unknown.has_filament.reset();
+    const auto rows = decide_head_picker_rows(view_of({ready_head(3), unknown, loaded_head(5)}),
+                                              HeadPickOp::Unload);
+    CHECK_FALSE(rows[0].enabled);
+    CHECK(rows[0].reason == "Empty");
+    CHECK_FALSE(rows[0].preselected);
+    // Nothing senses the second head: it stays tickable, not assumed empty.
+    CHECK(rows[1].enabled);
+    CHECK(rows[1].reason.empty());
+    CHECK(rows[2].enabled);
+}
+
 TEST_CASE("backend filament ops: defaults answer one automatic head", "[ams][filament_ops]") {
     // The plain U1 shape stands in for "any backend" on the base-class
     // answers it does not override.

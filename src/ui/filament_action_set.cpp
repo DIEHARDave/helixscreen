@@ -178,6 +178,12 @@ std::vector<HeadPickRow> decide_head_picker_rows(const FilamentHeadView& view, H
             row.slot = state.unload_slot.value_or(-1);
             if (!automatic(state.ops.unload)) {
                 row.reason = state.ops.unload_reason;
+            } else if (state.unload_slot.has_value() && state.has_filament &&
+                       !*state.has_filament) {
+                // A head its own sensor reports empty has nothing for an
+                // unload to act on; offering the tick sends a command the
+                // firmware would refuse or, worse, run against nothing.
+                row.reason = lv_tr("Empty");
             } else {
                 row.enabled = state.unload_slot.has_value();
             }
