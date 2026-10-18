@@ -485,7 +485,6 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/spaghetti_detection_modal.xml",
     "ui_xml/components/temp_card_unified.xml",
     "ui_xml/components/temp_graph_config_modal.xml",
-    "ui_xml/components/theme_swatch_grid.xml",
     // Head changes: guarded by tool_switcher_change_blocked (a print that
     // refuses the change, or spools on the bed) rather than moves_machine,
     // which also holds through a pause, where the change is offered behind a

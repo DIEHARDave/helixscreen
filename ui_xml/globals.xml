@@ -41,7 +41,7 @@
     <px name="color_picker_modal_width_large" value="500"/>
     <px name="color_picker_modal_width_xlarge" value="510"/>
     <px name="color_picker_modal_width_xxlarge" value="520"/>
-    <!-- The 6-column, 30-swatch preset grids (color_swatch_grid, theme_swatch_grid):
+    <!-- The 6-column, 30-swatch preset grids (color_swatch_grid, either palette):
          swatch, gap, half the gap (each swatch's hit reach), and the grid width,
          six swatches and five gaps, so the 30 always form 5 even rows. Every
          class keeps each swatch's whole touch target at least 7mm on its

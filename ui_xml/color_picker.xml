@@ -97,7 +97,8 @@
              Must stay the LAST child — a reactive <if> appends its rebuilt body
              to the end of the parent's child list. -->
         <if cond="color_picker_palette eq 1">
-          <theme_swatch_grid swatch_callback="color_swatch_clicked_cb" selected_subject="color_picker_selected_swatch"/>
+          <color_swatch_grid palette="theme"
+                             swatch_callback="color_swatch_clicked_cb" selected_subject="color_picker_selected_swatch"/>
           <else/>
           <color_swatch_grid swatch_callback="color_swatch_clicked_cb" selected_subject="color_picker_selected_swatch"/>
         </if>
@@ -118,10 +119,10 @@
         <!-- Only child of presets_content, so the reactive <if> ordering
              constraint is satisfied. -->
         <if cond="color_picker_palette eq 1">
-          <theme_swatch_grid width="100%"
-                             swatch_callback="color_swatch_clicked_cb" selected_subject="color_picker_selected_swatch"
-                             swatch_size="#picker_tab_swatch_size" gap="#picker_tab_swatch_gap"
-                             gap_half="#picker_tab_swatch_gap_half"/>
+          <color_swatch_grid width="100%"
+                             palette="theme" swatch_callback="color_swatch_clicked_cb"
+                             selected_subject="color_picker_selected_swatch" swatch_size="#picker_tab_swatch_size"
+                             gap="#picker_tab_swatch_gap" gap_half="#picker_tab_swatch_gap_half"/>
           <else/>
           <color_swatch_grid width="100%"
                              swatch_callback="color_swatch_clicked_cb" selected_subject="color_picker_selected_swatch"

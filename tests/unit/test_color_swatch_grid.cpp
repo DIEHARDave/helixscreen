@@ -34,12 +34,12 @@ TEST_CASE_METHOD(LVGLUITestFixture, "color_swatch_grid: a tap reports the tapped
     lv_xml_register_event_cb(nullptr, "test_grid_tap_cb", record_tap);
     for (const auto palette :
          {helix::ui::ColorPicker::Palette::General, helix::ui::ColorPicker::Palette::Theme}) {
-        const char* component = palette == helix::ui::ColorPicker::Palette::General
-                                    ? "color_swatch_grid"
-                                    : "theme_swatch_grid";
-        INFO(component);
-        const char* attrs[] = {"swatch_callback", "test_grid_tap_cb", nullptr};
-        auto* grid = static_cast<lv_obj_t*>(lv_xml_create(test_screen(), component, attrs));
+        const char* name =
+            palette == helix::ui::ColorPicker::Palette::General ? "general" : "theme";
+        INFO(name);
+        const char* attrs[] = {"swatch_callback", "test_grid_tap_cb", "palette", name, nullptr};
+        auto* grid =
+            static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "color_swatch_grid", attrs));
         REQUIRE(grid != nullptr);
         const auto& expected = helix::ui::swatch_palette(palette);
         REQUIRE(lv_obj_get_child_count(grid) == expected.size());

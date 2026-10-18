@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // TEST_MIRROR_OK: registers and instantiates the shipped
-//                 ui_xml/components/theme_swatch_grid.xml and color_swatch_grid.xml
+//                 ui_xml/components/color_swatch_grid.xml (both palettes)
 //                 through lv_xml_create(); every colour asserted on is read back out of
 //                 the real widget tree. The "mirrors that block verbatim" note further
 //                 down describes a probe component built from color_picker.xml's <if> --
 //                 test input, not reimplemented production logic.
 //
-// theme_swatch_grid is the theme-editor's preset palette. Unlike the general
-// color_swatch_grid it is structured: the first 12 swatches are a dark->light
+// The theme palette (color_swatch_grid palette="theme") is the theme-editor's
+// presets. Unlike the general palette it is structured: the first 12 swatches are a dark->light
 // surface ramp (screen_bg / card_bg / border / text tokens) and the remaining
 // 18 are 6 hue families x 3 tones, laid out so that column == hue family.
 // These tests pin that structure — a reordered or dropped swatch breaks the
@@ -89,14 +89,15 @@ struct GridFixture : public LVGLTestFixture {
         helix::ui::ensure_swatch_grid_subjects();
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/color_swatch.xml") ==
                 LV_RESULT_OK);
-        REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/theme_swatch_grid.xml") ==
+        REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/color_swatch_grid.xml") ==
                 LV_RESULT_OK);
     }
 
     lv_obj_t* create() {
-        const char* attrs[] = {"swatch_callback", "theme_swatch_clicked_cb", nullptr};
+        const char* attrs[] = {"swatch_callback", "theme_swatch_clicked_cb", "palette", "theme",
+                               nullptr};
         auto* grid =
-            static_cast<lv_obj_t*>(lv_xml_create(lv_screen_active(), "theme_swatch_grid", attrs));
+            static_cast<lv_obj_t*>(lv_xml_create(lv_screen_active(), "color_swatch_grid", attrs));
         REQUIRE(grid != nullptr);
         return grid;
     }
@@ -104,14 +105,15 @@ struct GridFixture : public LVGLTestFixture {
 
 } // namespace
 
-TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: exposes exactly 30 swatches in 6 columns",
+TEST_CASE_METHOD(GridFixture,
+                 "color_swatch_grid theme palette: exposes exactly 30 swatches in 6 columns",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
     REQUIRE(lv_obj_get_child_count(grid) == TOTAL);
     REQUIRE(TOTAL % COLS == 0);
 }
 
-TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: every swatch is clickable",
+TEST_CASE_METHOD(GridFixture, "color_swatch_grid theme palette: every swatch is clickable",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
     for (uint32_t i = 0; i < lv_obj_get_child_count(grid); i++) {
@@ -121,7 +123,8 @@ TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: every swatch is clickable",
     }
 }
 
-TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: surface block is a monotonic dark->light ramp",
+TEST_CASE_METHOD(GridFixture,
+                 "color_swatch_grid theme palette: surface block is a monotonic dark->light ramp",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
     auto colors = swatch_colors(grid);
@@ -142,7 +145,8 @@ TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: surface block is a monotonic d
     REQUIRE(relative_luminance(colors[SURFACE_COUNT - 1]) > 230.0);
 }
 
-TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: accent columns hold one hue family each",
+TEST_CASE_METHOD(GridFixture,
+                 "color_swatch_grid theme palette: accent columns hold one hue family each",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
     auto colors = swatch_colors(grid);
@@ -164,7 +168,8 @@ TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: accent columns hold one hue fa
     }
 }
 
-TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: accent rows darken from muted to deep",
+TEST_CASE_METHOD(GridFixture,
+                 "color_swatch_grid theme palette: accent rows darken from muted to deep",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
     auto colors = swatch_colors(grid);
@@ -189,13 +194,13 @@ TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: accent rows darken from muted 
 
 namespace {
 
-constexpr uint32_t THEME_FIRST_SWATCH = 0x0B0D14;   // theme_swatch_grid row 1 col 1
-constexpr uint32_t GENERAL_FIRST_SWATCH = 0x1A1A1A; // color_swatch_grid row 1 col 1
+constexpr uint32_t THEME_FIRST_SWATCH = 0x0B0D14;   // theme palette row 1 col 1
+constexpr uint32_t GENERAL_FIRST_SWATCH = 0x1A1A1A; // general palette row 1 col 1
 
 constexpr const char* PALETTE_SWITCH_COMPONENT =
     "<component><view><lv_obj name='host'>"
     "  <if cond='color_picker_palette eq 1'>"
-    "    <theme_swatch_grid swatch_callback='color_swatch_clicked_cb'/>"
+    "    <color_swatch_grid palette='theme' swatch_callback='color_swatch_clicked_cb'/>"
     "    <else/>"
     "    <color_swatch_grid swatch_callback='color_swatch_clicked_cb'/>"
     "  </if>"
@@ -211,8 +216,6 @@ struct PaletteSwitchFixture : public LVGLTestFixture {
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/color_swatch.xml") ==
                 LV_RESULT_OK);
         REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/color_swatch_grid.xml") ==
-                LV_RESULT_OK);
-        REQUIRE(lv_xml_register_component_from_file("A:ui_xml/components/theme_swatch_grid.xml") ==
                 LV_RESULT_OK);
         lv_subject_init_int(&palette_subject, 0);
         lv_xml_register_subject(nullptr, "color_picker_palette", &palette_subject);
@@ -254,7 +257,8 @@ TEST_CASE_METHOD(PaletteSwitchFixture, "color picker palette: General selects th
     REQUIRE(built_grid_first_swatch() == GENERAL_FIRST_SWATCH);
 }
 
-TEST_CASE_METHOD(GridFixture, "theme_swatch_grid: no two swatches are visually identical",
+TEST_CASE_METHOD(GridFixture,
+                 "color_swatch_grid theme palette: no two swatches are visually identical",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
     auto colors = swatch_colors(grid);
