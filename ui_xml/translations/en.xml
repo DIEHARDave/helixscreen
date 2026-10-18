@@ -2909,7 +2909,9 @@
   <translation tag="Screen shutdown failed" en="Screen shutdown failed"/>
   <translation tag="Screen sleeps after the selected period of inactivity" en="Screen sleeps after the selected period of inactivity"/>
   <translation tag="Screensaver" en="Screensaver"/>
+  <translation tag="Screensaver after" en="Screensaver after"/>
   <translation tag="Screensaver disabled" en="Screensaver disabled"/>
+  <translation tag="Screensaver starts after this period of inactivity" en="Screensaver starts after this period of inactivity"/>
   <translation tag="Screws Tilt" en="Screws Tilt"/>
   <translation tag="Scroll Buttons" en="Scroll Buttons"/>
   <translation tag="Scroll Engage Distance" en="Scroll Engage Distance"/>

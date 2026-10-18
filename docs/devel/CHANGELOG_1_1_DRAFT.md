@@ -725,6 +725,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   every other board with a 16-bit display. Each saver draws less on a slower board rather
   than stalling it, and the starfield redraws only what moved, so it costs a small fraction
   of what it did.
+- **Screensaver after, on screens without a dimmable backlight** - a phone or tablet running
+  the Android app, and any screen whose brightness HelixScreen can't change, has nothing to
+  dim, so the dim timer is what starts the screensaver. Settings > Display now offers it there
+  as Screensaver after, with the same choices as Screen Dim, instead of hiding it and always
+  waiting 10 minutes. The row is hidden while the screensaver is Off.
 - **The AD5X buzzer plays chords and music** - UI sounds play as chords, tracker music plays
   in four voices, and `M300` beeps from your macros take the buzzer when Klipper holds it.
 - **On-screen keyboard keys look like keys** - each key has a raised edge in its own colour
@@ -1071,6 +1076,22 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   and the Snapmaker U1) it runs once if the restart does not bring Klipper back, with a time
   limit so it can never hang.
 
+**Android app**
+
+- **Settings were never backed up** - the app had nowhere to keep its rolling settings
+  backups, and Android's own backup tried to save the whole app, far over its limit, so it
+  saved nothing. The app now keeps its backups in its own storage, and Android's backup takes
+  just your settings, so a phone restored from a backup gets them back.
+- **An update could overwrite your own files** - installing a new APK rewrote files you had
+  changed, such as a printer database override. An update now only adds files that are
+  missing and leaves yours alone.
+- **Telemetry never sent from Android** - with telemetry turned on, nothing left the device.
+  It now sends, the same as on every other platform. Telemetry is still off unless you turn
+  it on.
+- **The app took over 200 MB more storage than it needed** - test prints for the simulated
+  printer and font source files came along with every install. They are left out of the APK,
+  so the download is smaller, and an update removes the copies an older version unpacked.
+
 **Filament systems**
 
 - **Filament stuck in the toolhead with no slot claiming it could not be unloaded** (#1324) - on
@@ -1187,6 +1208,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   in a prompt no longer showed every stop point at once after switching printers, and names
   the fault in one line (Stopped, or Jammed at the toolhead).
 
+- **AD5M: the Spoolman spool editor showed a Print Label button that did nothing** - the
+  AD5M build has no label printing, and the button is hidden there now.
+
 **Printing and preview**
 
 - **The prep time estimate on print details** - the "~6 min prep time" line counts heating
@@ -1264,6 +1288,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Home screen**
 
+- **Tapping the lights quickly said the printer was busy** - each command keeps the printer
+  briefly busy, so a few quick taps on an idle printer brought up "Printer is busy - your
+  change will run when it's ready". The message now appears only when something other than
+  your own commands is keeping the printer busy, such as a bed mesh started from elsewhere.
 - **The printer picture** showed a generic silhouette until restart when detection finished
   late (#1552), and on the K1 family drew blank for up to a second on first show.
 - **Widgets did not adapt to the panel they were on** - the size bands were flat pixel values
@@ -1317,6 +1345,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 
 **Display and touch**
 
+- **Picking a theme froze the screen for about two seconds** - every pick in the theme
+  explorer, and Apply, drew the theme twice. Each now draws it once.
+- **Backing out of the theme explorer kept the previewed light or dark mode** - flipping Dark
+  Mode while browsing and then leaving without Apply kept the flipped mode. Leaving now puts
+  back the theme and mode you had.
+- **The Nord theme looked out of date and lost your edits on update** - every install carried
+  an old copy of Nord that hid the current one and was rewritten on each update. That copy is
+  removed on the next start; a Nord you edited yourself is kept.
 - **The touch that wakes the screen pressed whatever was under it** - from a dimmed screen
   the waking tap went straight through (a tap meant to wake it could press Back), and from
   sleep or a screensaver a slightly long touch could too. The waking touch now does nothing

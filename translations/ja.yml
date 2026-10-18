@@ -3020,7 +3020,9 @@ translations:
   Screen shutdown failed: 画面のシャットダウンに失敗しました
   Screen sleeps after the selected period of inactivity: 選択した時間操作がないと画面が減光します
   Screensaver: スクリーンセーバー
+  Screensaver after: スクリーンセーバー開始
   Screensaver disabled: スクリーンセーバーを無効化しました
+  Screensaver starts after this period of inactivity: この時間操作がないとスクリーンセーバーが始まります
   Screws Tilt: ネジ傾き
   Scroll Buttons: スクロールボタン
   Scroll Engage Distance: スクロール開始距離

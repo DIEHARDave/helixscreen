@@ -36,6 +36,20 @@ TEST_CASE("DisplaySettingsManager::animations_default policy", "[display_setting
     REQUIRE(DisplaySettingsManager::animations_default(false, false) == false);
 }
 
+// Without a dimmable backlight the dim timeout is what starts the screensaver, so
+// the row stays reachable under that name; with neither, it would set nothing.
+TEST_CASE("DisplaySettingsManager::dim_row_kind policy", "[display_settings]") {
+    using Kind = DisplaySettingsManager::DimRowKind;
+    CHECK(DisplaySettingsManager::dim_row_kind(true, true) == Kind::ScreenDim);
+    CHECK(DisplaySettingsManager::dim_row_kind(true, false) == Kind::ScreenDim);
+    CHECK(DisplaySettingsManager::dim_row_kind(false, true) == Kind::ScreensaverAfter);
+    CHECK(DisplaySettingsManager::dim_row_kind(false, false) == Kind::Hidden);
+    // settings_display_overlay.xml binds the two rows to these values.
+    CHECK(static_cast<int>(Kind::Hidden) == 0);
+    CHECK(static_cast<int>(Kind::ScreenDim) == 1);
+    CHECK(static_cast<int>(Kind::ScreensaverAfter) == 2);
+}
+
 TEST_CASE_METHOD(LVGLTestFixture, "DisplaySettingsManager default values after init",
                  "[display_settings]") {
     // Reset config to defaults so prior tests' set_*() calls don't pollute
@@ -412,7 +426,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "DisplaySettingsManager preview_brightness doe
     }
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 // The default saver comes from the registry on every tier, not from a platform probe:
 // the gate steps a too-heavy default down on the device instead of disabling it up
@@ -496,6 +510,48 @@ TEST_CASE_METHOD(LVGLTestFixture, "screensaver type defaults to the registry def
         config->set<bool>("/display/screensaver_enabled", stored_legacy);
     } else {
         config->get_json("/display").erase("screensaver_enabled");
+    }
+    mgr.deinit_subjects();
+    mgr.init_subjects();
+}
+
+// Without a dimmable backlight the dim timeout only starts a screensaver, so with the
+// saver Off there is no dim stage: no row to offer and no sleep >= dim coupling.
+TEST_CASE_METHOD(LVGLTestFixture, "dim row and sleep coupling follow the screensaver type",
+                 "[display_settings][dim_row][screensaver]") {
+    Config* config = Config::get_instance();
+    config->set<int>("/display/sleep_sec", 1200); // makes sure the /display group exists
+    const nlohmann::json* type_node = config->try_get_json("/display/screensaver_type");
+    const std::optional<nlohmann::json> stored_type =
+        type_node ? std::optional<nlohmann::json>(*type_node) : std::nullopt;
+
+    using Kind = DisplaySettingsManager::DimRowKind;
+    DisplaySettingsManager& mgr = DisplaySettingsManager::instance();
+    mgr.deinit_subjects();
+    config->set<std::string>("/display/screensaver_type", "off");
+    mgr.init_subjects();
+    REQUIRE_FALSE(mgr.has_dimming_control());
+    lv_subject_t* kind = lv_xml_get_subject(nullptr, "settings_dim_row_kind");
+    REQUIRE(kind != nullptr);
+
+    SECTION("a saver stored as Off starts the row hidden") {
+        CHECK(lv_subject_get_int(kind) == static_cast<int>(Kind::Hidden));
+        CHECK_FALSE(mgr.should_couple_sleep_to_dim());
+    }
+
+    SECTION("choosing a saver shows Screensaver after, and Off hides it again") {
+        mgr.set_screensaver_type(static_cast<int>(ScreensaverType::FIREWORKS));
+        CHECK(lv_subject_get_int(kind) == static_cast<int>(Kind::ScreensaverAfter));
+        CHECK(mgr.should_couple_sleep_to_dim());
+        mgr.set_screensaver_type(static_cast<int>(ScreensaverType::OFF));
+        CHECK(lv_subject_get_int(kind) == static_cast<int>(Kind::Hidden));
+        CHECK_FALSE(mgr.should_couple_sleep_to_dim());
+    }
+
+    if (stored_type) {
+        config->set<nlohmann::json>("/display/screensaver_type", *stored_type);
+    } else {
+        config->get_json("/display").erase("screensaver_type");
     }
     mgr.deinit_subjects();
     mgr.init_subjects();

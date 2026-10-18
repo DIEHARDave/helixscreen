@@ -132,9 +132,12 @@ Everything else is pushed out. A large static in firmware-compiled code carries 
 ([`include/helix_psram_attr.h`](../../../include/helix_psram_attr.h)), which is `EXT_RAM_BSS_ATTR` here and empty
 on every other platform: `AmsState`'s instance
 (`src/printer/ams_state.cpp#"static HELIX_PSRAM_BSS AmsState instance"`), the filament path planner's scratch
-(`src/ui/ui_filament_path_topology.cpp#plan_scratch`), `PrinterState`, `TelemetryManager` and `UpdateChecker`. The
-home widgets follow the same rule: the module-level subjects and text buffers of the toolhead, host health, dryer
-and bed mesh tile widgets, the dryer model's subjects, and the `BedMeshState` and `PerformanceState` singletons
+(`src/ui/ui_filament_path_topology.cpp#plan_scratch`), `PrinterState`, `SettingsManager`
+(`src/system/settings_manager.cpp#"static HELIX_PSRAM_BSS SettingsManager instance"`), `TelemetryManager`, `UpdateChecker`, the theme's XML
+subjects (`src/ui/theme_manager.cpp#subjects`), and the subjects and hint buffers of the AMS sidebar and context
+menu (`src/ui/ui_ams_sidebar.cpp`, `src/ui/ui_ams_context_menu.cpp`). The
+home widgets follow the same rule: the module-level subjects and text buffers of the toolhead, host health,
+dryer, bed mesh tile and tool switcher widgets, the dryer model's subjects, and the `BedMeshState` and `PerformanceState` singletons
 they read are `HELIX_PSRAM_BSS` (`src/ui/panel_widgets/toolhead_widget.cpp`, `src/printer/bed_mesh_state.cpp#instance`,
 `src/system/performance_state.cpp#instance`), because the subjects and buffers of a handful of widgets are
 enough together to push `.dram0.bss` over its ceiling. Only for statics first touched after boot and never reached by DMA or an ISR. A thread that does not need internal RAM

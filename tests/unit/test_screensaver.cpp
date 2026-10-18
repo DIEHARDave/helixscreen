@@ -15,7 +15,7 @@ using namespace helix;
 // Screensaver Settings Tests
 // ============================================================================
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 TEST_CASE_METHOD(LVGLTestFixture,
                  "a fresh install defaults the screensaver to the flip clock on every tier",

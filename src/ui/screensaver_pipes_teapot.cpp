@@ -23,7 +23,7 @@
 // The data derives from Martin Newell's teapot, as Juhana Kouhia archived it from Philip
 // Schneider in 1990.
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_pipes_sim.h"
 

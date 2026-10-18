@@ -2963,7 +2963,9 @@
   <translation tag="Screen shutdown failed" ru="Ошибка выключения экрана"/>
   <translation tag="Screen sleeps after the selected period of inactivity" ru="Экран затемнится после выбранного периода простоя"/>
   <translation tag="Screensaver" ru="Заставка"/>
+  <translation tag="Screensaver after" ru="Заставка через"/>
   <translation tag="Screensaver disabled" ru="Заставка отключена"/>
+  <translation tag="Screensaver starts after this period of inactivity" ru="Заставка включается после этого периода простоя"/>
   <translation tag="Screws Tilt" ru="Наклон винтов"/>
   <translation tag="Scroll Buttons" ru="Кнопки прокрутки"/>
   <translation tag="Scroll Engage Distance" ru="Расстояние активации прокрутки"/>

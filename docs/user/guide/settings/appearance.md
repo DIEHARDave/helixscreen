@@ -29,6 +29,8 @@ To change your theme:
 3. If the theme has both a light and a dark version, the **Dark Mode** switch picks which one you see.
 4. Tap **Apply**. The new theme takes effect everywhere right away. No restart needed.
 
+To back out, leave the explorer without tapping **Apply**. Your previous theme comes back, in the light or dark version it was in when you opened the explorer, even if you flipped the **Dark Mode** switch while looking around.
+
 ### Built-in Themes
 
 Eighteen themes come with HelixScreen, listed alphabetically in the Theme Preset menu. Every theme has a dark version. All but the four marked **Dark only** also have a light version.

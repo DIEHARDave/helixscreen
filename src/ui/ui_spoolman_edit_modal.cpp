@@ -9,9 +9,9 @@
 #include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
+#include "label_printer_settings.h"
 #if HELIX_HAS_LABEL_PRINTER
 #include "ipp_print_modal.h"
-#include "label_printer_settings.h"
 #include "label_printer_utils.h"
 #endif
 #include "i_moonraker_api.h"
@@ -142,13 +142,8 @@ void SpoolEditModal::init_subjects() {
                            sizeof(save_button_text_buf_), lv_tr("Close"));
     subjects_.publish("spoolman_edit_save_text", &save_button_text_subject_);
 
-#if HELIX_HAS_LABEL_PRINTER
-    // Ensure label printer subjects are initialized before we reference them
-    helix::LabelPrinterSettingsManager::instance().init_subjects();
-    lv_xml_register_subject(
-        lv_xml_component_get_scope("spoolman_edit_modal"), "label_printer_configured",
-        helix::LabelPrinterSettingsManager::instance().subject_printer_configured());
-#endif
+    lv_xml_register_subject(lv_xml_component_get_scope("spoolman_edit_modal"),
+                            "label_printer_configured", helix::label_printer_configured_subject());
 
     subjects_initialized_ = true;
 }

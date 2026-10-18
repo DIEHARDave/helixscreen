@@ -15,7 +15,7 @@
 #include "printer_state.h"
 #include "screen_hide_hold.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "screensaver.h"
 #endif
 
@@ -122,7 +122,7 @@ void DisplaySleepController::configure(const DisplaySleepConfig& config) {
 void DisplaySleepController::enter_sleep(int timeout_sec) {
     DisplayBackend* backend = m_host.backend.get();
     BacklightBackend* backlight = m_host.backlight.get();
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     // Stop screensaver before entering full sleep
     if (m_screensaver_active) {
         ScreensaverManager::instance().stop();
@@ -301,7 +301,7 @@ void DisplaySleepController::restore_flush_after_sleep() {
 
 void DisplaySleepController::tick() {
     BacklightBackend* backlight = m_host.backlight.get();
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     ScreensaverManager::instance().on_idle_check_tick();
     // HELIX_SCREENSAVER_NOW: start a screensaver on the first tick. A registered saver name
     // picks that saver; any other value the configured one, or flying toasters.
@@ -392,7 +392,7 @@ void DisplaySleepController::tick() {
     in.can_dim = backlight && backlight->supports_dimming();
     in.wake_requested = m_wake_requested;
     in.host_resumed = resumed_from_host_sleep;
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     in.has_screensaver = ScreensaverManager::configured_type() != ScreensaverType::OFF;
     in.saver_running = m_screensaver_active;
     in.is_preview = m_screensaver_is_preview;
@@ -416,7 +416,7 @@ void DisplaySleepController::tick() {
         enter_sleep(sleep_timeout_sec);
         break;
     case helix::IdleAction::StartSaver:
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
         m_display_dimmed = true;
         // Suspend the active panel lifecycle so widget timers (clock, etc.) do not
         // invalidate the UI underneath the screensaver.
@@ -501,7 +501,7 @@ void DisplaySleepController::wake() {
     m_display_sleeping = false;
     m_display_dimmed = false;
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     bool was_preview = m_screensaver_is_preview;
     m_screensaver_is_preview = false;
     m_preview_start_tick_ms = 0;
@@ -584,7 +584,7 @@ bool DisplaySleepController::note_press(int x, int y) {
     return true;
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 void DisplaySleepController::preview_screensaver(int type) {
     if (m_host.shutting_down || m_screensaver_active) {
         return;

@@ -326,7 +326,7 @@ Just reference the token. The system handles light/dark mode for you:
 
 ### Theme JSON structure
 
-Themes are defined in `config/themes/`. Here's a snippet from `nord.json`:
+Themes are defined in `assets/config/themes/defaults/`. Here's a snippet from `nord.json`:
 
 ```json
 {

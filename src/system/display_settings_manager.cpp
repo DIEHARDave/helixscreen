@@ -288,7 +288,6 @@ void DisplaySettingsManager::init_subjects() {
     }
     UI_MANAGED_SUBJECT_INT(has_dimming_subject_, has_dimming ? 1 : 0, "settings_has_dimming",
                            subjects_);
-
     // NOTE: the sleep >= dim cross-validation is deferred until after the
     // screensaver_type subject is initialized below — on no-backlight devices an
     // enabled screensaver requires the coupling too (#1049), and
@@ -367,7 +366,7 @@ void DisplaySettingsManager::init_subjects() {
     helix::timezone_env::apply(tz.c_str(), TIMEZONE_ENTRIES[tz_index].posix_tz);
     spdlog::info("[DisplaySettingsManager] Timezone set to '{}' (index {})", tz, tz_index);
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     // Screensaver: a stored name, or a legacy type number, read leniently
     // (helix::ui::screensaver_from_setting). A fresh install, and a value naming no saver, run
     // the registry default for this build's colour depth.
@@ -389,9 +388,20 @@ void DisplaySettingsManager::init_subjects() {
             old_enabled, helix::ui::screensaver_name(screensaver));
     }
     const int screensaver_type = static_cast<int>(screensaver);
+    constexpr int has_screensaver = 1;
+#else
+    const int screensaver_type = 0;
+    constexpr int has_screensaver = 0;
+#endif
     UI_MANAGED_SUBJECT_INT(screensaver_type_subject_, screensaver_type, "settings_screensaver_type",
                            subjects_);
-#endif
+    // Build flag for XML visibility of the screensaver picker (ephemeral)
+    UI_MANAGED_SUBJECT_INT(has_screensaver_subject_, has_screensaver, "settings_has_screensaver",
+                           subjects_);
+    // Reads the screensaver type, so it follows that subject's init.
+    UI_MANAGED_SUBJECT_INT(dim_row_kind_subject_,
+                           static_cast<int>(dim_row_kind(has_dimming, screensaver_enabled())),
+                           "settings_dim_row_kind", subjects_);
 
     // Cross-validate: sleep must be >= dim when the device dims OR a screensaver
     // provides the dim-stage visual (#1049). This runs AFTER screensaver_type is
@@ -665,18 +675,15 @@ bool DisplaySettingsManager::has_dimming_control() const {
 }
 
 bool DisplaySettingsManager::screensaver_enabled() const {
-#ifdef HELIX_ENABLE_SCREENSAVER
     return get_screensaver_type() != 0;
-#else
-    return false;
-#endif
 }
 
 bool DisplaySettingsManager::should_couple_sleep_to_dim() const {
     // Sleep (power-off) must never precede the Dim stage. The Dim stage is a
     // backlight dim on dimming-capable devices, or — on no-backlight fbdev/DRM
-    // devices — an enabled screensaver. Couple in either case (#1049).
-    return has_dimming_control() || screensaver_enabled();
+    // devices — an enabled screensaver. Couple in either case (#1049): exactly
+    // when Display settings offers a dim-timeout row.
+    return dim_row_kind(has_dimming_control(), screensaver_enabled()) != DimRowKind::Hidden;
 }
 
 // =============================================================================
@@ -884,16 +891,18 @@ std::string DisplaySettingsManager::get_timezone_options() {
 // SCREENSAVER
 // =============================================================================
 
-#ifdef HELIX_ENABLE_SCREENSAVER
 int DisplaySettingsManager::get_screensaver_type() const {
     return lv_subject_get_int(const_cast<lv_subject_t*>(&screensaver_type_subject_));
 }
 
+#if HELIX_ENABLE_SCREENSAVER
 void DisplaySettingsManager::set_screensaver_type(int type) {
     type = helix::ui::clamp_screensaver_type(type);
     spdlog::info("[DisplaySettingsManager] set_screensaver_type({})", type);
 
     lv_subject_set_int(&screensaver_type_subject_, type);
+    lv_subject_set_int(&dim_row_kind_subject_, static_cast<int>(dim_row_kind(
+                                                   has_dimming_control(), screensaver_enabled())));
 
     Config* config = Config::get_instance();
     config->set<std::string>(helix::ui::SCREENSAVER_SETTING_PATH,
@@ -927,6 +936,14 @@ bool DisplaySettingsManager::get_bed_mesh_show_zero_plane() const {
 // =============================================================================
 // DISPLAY DIM OPTIONS
 // =============================================================================
+
+DisplaySettingsManager::DimRowKind DisplaySettingsManager::dim_row_kind(bool has_dimming,
+                                                                        bool screensaver_enabled) {
+    if (has_dimming) {
+        return DimRowKind::ScreenDim;
+    }
+    return screensaver_enabled ? DimRowKind::ScreensaverAfter : DimRowKind::Hidden;
+}
 
 int DisplaySettingsManager::dim_seconds_to_index(int seconds) {
     for (int i = 0; i < DIM_OPTIONS_COUNT; i++) {

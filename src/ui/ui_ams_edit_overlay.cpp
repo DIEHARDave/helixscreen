@@ -24,6 +24,7 @@
 #include "filament_display_name.h"
 #include "filament_variants.h"
 #include "format_utils.h"
+#include "label_printer_settings.h"
 #include "lane_translation.h"
 #include "spoolman_manager.h"
 #include "static_panel_registry.h"
@@ -31,7 +32,6 @@
 #include "ui/ui_widget_helpers.h"
 #if HELIX_HAS_LABEL_PRINTER
 #include "ipp_print_modal.h"
-#include "label_printer_settings.h"
 #include "label_printer_utils.h"
 #endif
 #include "ui_breakpoint.h"
@@ -522,15 +522,11 @@ void AmsEditOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_STRING(spoolman_id_subject_, spoolman_id_buf_, "",
                                   "ams_edit_spoolman_id", subjects_);
 
-#if HELIX_HAS_LABEL_PRINTER
         // Expose the label-printer readiness flag to XML so
         // btn_detail_print_label can bind its `hidden` flag declaratively and
         // track pairing/unpairing while the overlay is open.
-        helix::LabelPrinterSettingsManager::instance().init_subjects();
-        lv_xml_register_subject(
-            nullptr, "label_printer_configured",
-            helix::LabelPrinterSettingsManager::instance().subject_printer_configured());
-#endif
+        lv_xml_register_subject(nullptr, "label_printer_configured",
+                                helix::label_printer_configured_subject());
     });
 }
 

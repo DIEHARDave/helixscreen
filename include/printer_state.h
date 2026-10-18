@@ -8,6 +8,7 @@
 #include "app_macro_activity.h"
 #include "app_motion_activity.h"
 #include "async_lifetime_guard.h"
+#include "busy_episode_owner.h"
 #include "capability_overrides.h"
 #include "hardware_validator.h"
 #include "lvgl/lvgl.h"
@@ -786,6 +787,22 @@ class PrinterState {
         return app_macro_activity_;
     }
 
+    /// Every user command execute_gcode sends, discretionary fan/temp/LED
+    /// included. Consulted ONLY by the busy-queue toast, through
+    /// is_busy_episode_app_initiated(); the blocking-op predicates never read
+    /// it, so a light tap cannot let a jog through during an external op.
+    helix::BusyEpisodeOwner& app_command_episode() {
+        return app_command_episode_;
+    }
+
+    /**
+     * @brief Whether the current idle_timeout busy episode began with the user's own command
+     *
+     * Any gcode reads "Printing" while it runs, so a burst of light taps can
+     * hold a settled busy episode up on an idle printer. Toast attribution only.
+     */
+    bool is_busy_episode_app_initiated();
+
     /**
      * @brief Get the configured (saved) z-offset in microns
      *
@@ -891,6 +908,9 @@ class PrinterState {
     /// App-initiated macro/filament-op activity tracker for busy-TOAST attribution
     /// only — never consulted by the blocking-op predicates (see accessor).
     helix::AppMacroActivity app_macro_activity_;
+
+    /// User-command sends for busy-TOAST attribution only (see accessor).
+    helix::BusyEpisodeOwner app_command_episode_;
 
     /// Hardware validation state component (issue counts, severity, status text)
     helix::PrinterHardwareValidationState hardware_validation_state_;

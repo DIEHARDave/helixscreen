@@ -4,7 +4,7 @@
 
 #include "screensaver_bounce.h"
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 
 namespace helix {
 

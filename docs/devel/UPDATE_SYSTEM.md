@@ -367,7 +367,9 @@ Default: `https://releases.helixscreen.org` (compiled as `DEFAULT_R2_BASE_URL`).
 **Where the state dir lives.** `/var/lib/helixscreen` on every platform - Pi, K1,
 K2, AD5M, AD5X, CC1 and U1 all resolve the same compile-time `STATE_DIR_DEFAULT`
 (`include/app_constants.h`); no platform falls back to `~/.helixscreen` for this
-file. systemd units create it via `StateDirectory=helixscreen`
+file. The Android app is the exception: it has no `/var/lib`, so
+`android_configure_backup_dirs()` points the state dir at `files/state` in app storage
+(`docs/devel/ANDROID_ASSETS.md`). systemd units create it via `StateDirectory=helixscreen`
 (`StateDirectoryMode=0700`), and the SysV init script (`config/helixscreen.init`)
 `mkdir -p`s it at boot. On a device where neither has run yet:
 

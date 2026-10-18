@@ -2909,7 +2909,9 @@
   <translation tag="Screen shutdown failed" it="Spegnimento schermo fallito"/>
   <translation tag="Screen sleeps after the selected period of inactivity" it="Lo schermo si attenuerà dopo il periodo di inattività selezionato"/>
   <translation tag="Screensaver" it="Salvaschermo"/>
+  <translation tag="Screensaver after" it="Salvaschermo dopo"/>
   <translation tag="Screensaver disabled" it="Salvaschermo disattivato"/>
+  <translation tag="Screensaver starts after this period of inactivity" it="Il salvaschermo si avvia dopo questo periodo di inattività"/>
   <translation tag="Screws Tilt" it="Inclinazione viti"/>
   <translation tag="Scroll Buttons" it="Pulsanti di scorrimento"/>
   <translation tag="Scroll Engage Distance" it="Distanza di attivazione scorrimento"/>

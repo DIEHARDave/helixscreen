@@ -2909,7 +2909,9 @@
   <translation tag="Screen shutdown failed" pt="Falha ao desligar a tela"/>
   <translation tag="Screen sleeps after the selected period of inactivity" pt="A tela escurecerá após o período selecionado de inatividade"/>
   <translation tag="Screensaver" pt="Protetor de Tela"/>
+  <translation tag="Screensaver after" pt="Protetor de Tela após"/>
   <translation tag="Screensaver disabled" pt="Protetor de tela desativado"/>
+  <translation tag="Screensaver starts after this period of inactivity" pt="O protetor de tela inicia após este período de inatividade"/>
   <translation tag="Screws Tilt" pt="Inclinação dos Parafusos"/>
   <translation tag="Scroll Buttons" pt="Botões de rolagem"/>
   <translation tag="Scroll Engage Distance" pt="Distância de ativação da rolagem"/>

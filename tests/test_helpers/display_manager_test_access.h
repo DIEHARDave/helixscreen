@@ -222,7 +222,7 @@ class DisplayManagerTestAccess {
         }
     }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     // What check_display_sleep() records when it starts a screensaver.
     static void set_screensaver_active(DisplayManager& dm, bool active) {
         dm.m_sleep.m_screensaver_active = active;

@@ -176,7 +176,7 @@
 #include "helix_sparkline.h"
 #include "setting_group.h"
 #include "temperature_service.h"
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 #include "screensaver.h"
 #endif
 #include "display_metrics.h"
@@ -412,6 +412,7 @@ int Application::run(int argc, char** argv) {
 #ifdef __ANDROID__
     // Extract APK assets to internal storage before data root resolution
     helix::android_extract_assets_if_needed();
+    helix::android_configure_backup_dirs();
 #endif
 
     // Ensure we're running from the project root
@@ -652,7 +653,7 @@ int Application::run(int argc, char** argv) {
     // Note: record_session() is called after m_session.init_panel_subjects() so that
     // SettingsManager subjects are ready and the enabled state can be synced.
     TelemetryManager::instance().init(user_config_dir);
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     TelemetryManager::instance().set_screensaver_usage(&ScreensaverManager::instance().usage());
 #endif
 
@@ -2049,7 +2050,7 @@ int Application::main_loop() {
     // Splash handoff timing risk on target hardware (AD5M, Pi 3B) is theoretical —
     // verify on real hardware as part of Task 5 manual checks. If it's an issue,
     // move this call after the post-splash refresh block or defer via lv_async_call.
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
     show_screensaver_migration_notice_if_pending();
 #endif
 
@@ -2410,7 +2411,7 @@ void Application::on_enter_foreground() {
     spdlog::info("[Application] Foreground resume complete");
 }
 
-#ifdef HELIX_ENABLE_SCREENSAVER
+#if HELIX_ENABLE_SCREENSAVER
 void Application::show_screensaver_migration_notice_if_pending() {
     auto* cfg = Config::get_instance();
 

@@ -14,6 +14,10 @@ namespace helix::ingest {
 /// `wrangler secret put INGEST_API_KEY` in each worker under server/, and release.
 inline constexpr const char* API_KEY = "hx-tel-v1-a7f3c9e2d1b84056";
 
+/// Whether this build has a transport that can verify our servers: the platform's
+/// own HTTPS stack on Android, else a CA store for libhv to verify against.
+bool transport_available();
+
 /// POSTs `body` as application/json, with `content_encoding` (e.g. "gzip") when
 /// non-empty. Returns {status, response body}; status 0 is a transport or
 /// verification failure.

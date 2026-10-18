@@ -4,8 +4,8 @@
 <!-- Spool editor overlay. One overlay, internal views selected by the
      ams_edit_view int subject: 0=editor (the identity form; the entry view),
      1=Spoolman spool picker, 2=custom color (presets + HSV).
-     Header: back (ams_edit_back_cb), lane-name title (ams_edit_title), the
-     linked-spool badge (an indicator, part of the back target), and Spoolman
+     Header: back (ams_edit_back_cb), lane-name title (bound from C++ in AmsEditOverlay::create()),
+     the linked-spool badge (an indicator, part of the back target), and Spoolman
      + Scan QR round icon buttons (header_content slot, left of the
      dirty-gated Save action). All three header subjects are written
      exclusively by AmsEditOverlay::set_view()/update_ui(). -->
@@ -102,10 +102,10 @@
     <style name="color_pane_fill" width="100%"/>
   </styles>
   <view name="ams_edit_overlay"
-        extends="overlay_panel" title="Edit Spool" title_subject="ams_edit_title" hide_action_button="false"
-        action_button_text="Save" action_button_callback="ams_edit_save_cb"
-        action_button_disabled_subject="ams_edit_save_disabled" action_button_hidden_subject="ams_edit_save_hidden"
-        title_badge_icon="spoolman" title_badge_subject="ams_edit_is_managed" back_button_callback="ams_edit_back_cb">
+        extends="overlay_panel" title="Edit Spool" hide_action_button="false" action_button_text="Save"
+        action_button_callback="ams_edit_save_cb" action_button_disabled_subject="ams_edit_save_disabled"
+        action_button_hidden_subject="ams_edit_save_hidden" title_badge_icon="spoolman"
+        title_badge_subject="ams_edit_is_managed" back_button_callback="ams_edit_back_cb">
     <!-- Header icon buttons, left of Save: Choose from Spoolman and Scan QR,
          drawn by styles.header_icon_button. Injected into header_bar's content slot;
          gated on Spoolman availability (ams_edit_scan_enabled also carries
@@ -426,9 +426,8 @@
             </text_input>
           </lv_obj>
           <!-- Spool-logistics action: visible only when a label printer is
-               configured. The static hidden="true" is the fallback for builds
-               without label-printer support, where `label_printer_configured`
-               is never registered and this binding is skipped. -->
+               configured. Starts hidden so it stays hidden wherever the
+               binding cannot resolve. -->
           <ui_button name="btn_detail_print_label"
                      width="content" height="#button_height_sm" text="Print Label" variant="secondary" icon="printer"
                      hidden="true">

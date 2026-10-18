@@ -69,7 +69,13 @@ static std::vector<std::string> scan_mock_gcode_files(const std::string& subdir 
     const std::string& planted = helix::mock::planted_gcode_dir();
     const bool planted_found = !planted.empty() && scan_gcode_dir(planted + suffix, files);
     if (!scan_gcode_dir(dir_path, files) && !planted_found) {
-        spdlog::warn("[MoonrakerClientMock] Cannot open test G-code directory: {}", dir_path);
+        // The app probes subdirectories (usb, .helix_temp, ...) that a fixture tree
+        // may simply not have; only a missing root means the mock has no files.
+        if (subdir.empty()) {
+            spdlog::warn("[MoonrakerClientMock] Cannot open test G-code directory: {}", dir_path);
+        } else {
+            spdlog::debug("[MoonrakerClientMock] No test G-code subdirectory: {}", dir_path);
+        }
         return files;
     }
     std::sort(files.begin(), files.end());

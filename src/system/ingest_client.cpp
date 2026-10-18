@@ -14,6 +14,14 @@
 
 namespace helix::ingest {
 
+bool transport_available() {
+#ifdef __ANDROID__
+    return true;
+#else
+    return !helix::tls::find_ca_store().empty();
+#endif
+}
+
 std::pair<int, std::string> post(const std::string& url, const std::string& body, int timeout_sec,
                                  const std::string& content_encoding) {
 #ifdef __ANDROID__
