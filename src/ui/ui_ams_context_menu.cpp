@@ -14,6 +14,7 @@
 
 #include "ams_backend.h"
 #include "ams_bypass_policy.h"
+#include "ams_remap.h"
 #include "ams_state.h"
 #include "ams_types.h"
 #include "app_globals.h"
@@ -1002,10 +1003,19 @@ void AmsContextMenu::configure_dropdowns() {
 
     bool show_any_dropdown = false;
 
-    // The tool row stays hidden: a slot's Assigned Tool is set from the spool
-    // editor, and per-print Filament Mapping from the filament card on the
-    // print-detail view, which has the file's tool list to map against.
-    (void)tool_row;
+    // Assigned Tool lives here: the persistent tool->lane map is a property of
+    // the slot, not of one edit. Shown only where a write lands — the same
+    // can_write_mapping_table() gate the print-start apply path uses (the U1
+    // honours remaps through its pre-print send while refusing the table
+    // write, and an unusable dropdown is worse than none).
+    if (backend_ && helix::printer::can_write_mapping_table(*backend_)) {
+        populate_tool_dropdown();
+        if (tool_row) {
+            lv_obj_remove_flag(tool_row, LV_OBJ_FLAG_HIDDEN);
+        }
+        show_any_dropdown = true;
+        spdlog::debug("[AmsContextMenu] Assigned Tool row shown");
+    }
 
     // Configure endless spool dropdown — see decide_show_backup_row().
     if (backend_) {
