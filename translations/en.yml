@@ -205,6 +205,7 @@ translations:
   Add custom filament: Add custom filament
   Add page: Add page
   Add to Queue: Add to Queue
+  Add to Spoolman + label: Add to Spoolman + label
   Added to Spoolman: Added to Spoolman
   Added to queue (position {}): Added to queue (position {})
   Added to queue (position {}) - queue is paused: Added to queue (position {}) - queue is paused
@@ -232,6 +233,7 @@ translations:
   All healthy: All healthy
   All lights: All lights
   All time: All time
+  All...: All...
   Allow: Allow
   Allow Home Screen Editing: Allow Home Screen Editing
   Allow cold load/unload: Allow cold load/unload
@@ -2050,8 +2052,10 @@ translations:
   ? "Moonraker restarting...\nWaiting for reconnection..."
   : "Moonraker restarting...\nWaiting for reconnection..."
   'Moonraker: ': 'Moonraker: '
+  More: More
   More points = more accurate, but takes longer.: More points = more accurate, but
     takes longer.
+  More...: More...
   Motion: Motion
   'Motion sensor stuck: filament is still at the feeder. Resume to feed it.': 'Motion sensor stuck: filament is still at the feeder. Resume to feed it.'
   Motion timed out: Motion timed out
@@ -2513,6 +2517,7 @@ translations:
   Preview Sounds: Preview Sounds
   Previous: Previous
   Price: Price
+  Price, location, lot, notes: Price, location, lot, notes
   Primary: Primary
   'Priming nozzle...': 'Priming nozzle...'
   Priming...: Priming...
@@ -2645,6 +2650,7 @@ translations:
   Proceed: Proceed
   # Source: abort_progress_modal.xml:20
   Processing...: Processing...
+  Product: Product
   Profile deleted: Profile deleted
   Profile name (e.g., default): Profile name (e.g., default)
   Profile names cannot contain ';': Profile names cannot contain ';'
@@ -2774,6 +2780,7 @@ translations:
   Remaining: Remaining
   Remaining (g): Remaining (g)
   Remaining Weight (g): Remaining Weight (g)
+  Remaining weight: Remaining weight
   Remember slot spool details across an eject: Remember slot spool details across an eject
   Remove: Remove
   Remove PIN: Remove PIN
@@ -2833,6 +2840,7 @@ translations:
   Reset to Default: Reset to Default
   Reset to defaults: Reset to defaults
   Reset to original values: Reset to original values
+  Reset to tag: Reset to tag
   Reset {}?: Reset {}?
   Resetting: Resetting
   Resetting system: Resetting system
@@ -2972,6 +2980,7 @@ translations:
   'Save failed: {}': 'Save failed: {}'
   Save Offsets: Save Offsets
   Save offsets?: Save offsets?
+  Save the changes to this spool?: Save the changes to this spool?
   Save to Spool: Save to Spool
   Save to Spoolman: Save to Spoolman
   Saved Z-Offset: Saved Z-Offset
@@ -3569,6 +3578,7 @@ translations:
   ? This device has very little RAM. Resonance calibration is memory-intensive and may cause a "Timer Too Close" error. Continue anyway?
   : This device has very little RAM. Resonance calibration is memory-intensive and may cause a "Timer Too Close" error. Continue anyway?
   This doesn't match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?: This doesn't match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?
+  This doesn't match the linked Spoolman spool. Update it in Spoolman, or unlink and keep it on this slot?: This doesn't match the linked Spoolman spool. Update it in Spoolman, or unlink and keep it on this slot?
   This dryer cannot run while filament from the unit is loaded: This dryer cannot run while filament from the unit is loaded
   This feature requires different hardware or configuration: This feature requires different hardware or configuration
   This filament system does not report buffer or flow data.: This filament system does not report buffer or flow data.
@@ -3780,6 +3790,7 @@ translations:
   Unknown Spool: Unknown Spool
   Unknown Step: Unknown Step
   Unknown error: Unknown error
+  Unlink, keep on this slot: Unlink, keep on this slot
   Unload: Unload
   Unload Distance: Unload Distance
   Unload Extruder: Unload Extruder
@@ -3807,6 +3818,7 @@ translations:
   Unmount: Unmount
   Unretract Extra: Unretract Extra
   Unretract Speed: Unretract Speed
+  Unsaved changes: Unsaved changes
   Unsupported tape width: Unsupported tape width
   'Unsupported tape width: ': 'Unsupported tape width: '
   'Up next: {}': 'Up next: {}'
@@ -3820,6 +3832,7 @@ translations:
   Update Helper Macros?: Update Helper Macros?
   Update Success: Update Success
   Update from a Terminal: Update from a Terminal
+  Update in Spoolman: Update in Spoolman
   Update installed!: Update installed!
   Update your security PIN: Update your security PIN
   Updates: Updates
@@ -3846,6 +3859,7 @@ translations:
   'Validating bed mesh...': 'Validating bed mesh...'
   Value must be between {} and {}: Value must be between {} and {}
   Values must not be negative: Values must not be negative
+  Variant: Variant
   Velocity and acceleration limits: Velocity and acceleration limits
   Vendor: Vendor
   Vendor Name: Vendor Name
@@ -4056,6 +4070,7 @@ translations:
   feeder error: feeder error
   feeder not in automatic mode: feeder not in automatic mode
   filament sensor disabled: filament sensor disabled
+  from tag: from tag
   heated bed: heated bed
   'helixscreen.env ignored: owned by uid {}': 'helixscreen.env ignored: owned by uid {}'
   'helixscreen.env ignored: untrusted symlink chain': 'helixscreen.env ignored: untrusted symlink chain'
