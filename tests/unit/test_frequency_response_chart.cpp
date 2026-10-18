@@ -34,7 +34,10 @@
 #include "lvgl/lvgl.h"
 #include "lvgl/src/misc/lv_text_private.h"
 
+#include <cmath>
 #include <cstring>
+#include <limits>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -1176,4 +1179,145 @@ TEST_CASE("frequency labels stay inside the chart's box", "[frequency_response_c
     CHECK(ui_frequency_response_chart_x_label_center(110, 32, 100, 400) == 132);
     // Narrower than one box: nowhere to move it, so it stays on the tick.
     CHECK(ui_frequency_response_chart_x_label_center(120, 32, 100, 140) == 120);
+}
+
+// ============================================================================
+// NaN gaps (prestonbrown/helixscreen#1812)
+// ============================================================================
+
+namespace {
+
+constexpr float kGap = std::numeric_limits<float>::quiet_NaN();
+
+std::vector<std::pair<size_t, size_t>> runs_of(std::vector<float> amps) {
+    std::vector<std::pair<size_t, size_t>> out;
+    for (const FrChartRun& r : fr_chart_finite_runs(amps.data(), amps.size())) {
+        out.emplace_back(r.begin, r.end);
+    }
+    return out;
+}
+
+lv_obj_t* inner_lv_chart(ui_frequency_response_chart_t* chart) {
+    lv_obj_t* root = ui_frequency_response_chart_get_obj(chart);
+    for (uint32_t i = 0; i < lv_obj_get_child_count(root); ++i) {
+        lv_obj_t* child = lv_obj_get_child(root, static_cast<int32_t>(i));
+        if (lv_obj_check_type(child, &lv_chart_class)) {
+            return child;
+        }
+    }
+    return nullptr;
+}
+
+} // namespace
+
+TEST_CASE("fr_chart_finite_runs splits a series at its gaps", "[frequency_response_chart][gaps]") {
+    using Runs = std::vector<std::pair<size_t, size_t>>;
+    const float inf = std::numeric_limits<float>::infinity();
+    CHECK(runs_of({1, 2, kGap, 3, 4, 5, kGap}) == Runs{{0, 2}, {3, 6}});
+    CHECK(runs_of({kGap, 1, kGap, 2}).empty());
+    CHECK(runs_of({1, 2, 3}) == Runs{{0, 3}});
+    CHECK(fr_chart_finite_runs(nullptr, 0).empty());
+    CHECK(runs_of({1, inf, 2, 3}) == Runs{{2, 4}});
+    CHECK(runs_of({1}).empty());
+    CHECK(runs_of({kGap, kGap}).empty());
+}
+
+TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "a NaN amplitude is no point on the chart",
+                 "[frequency_response_chart][gaps]") {
+    auto* chart = ui_frequency_response_chart_create(screen);
+    REQUIRE(chart != nullptr);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+    ui_frequency_response_chart_set_amplitude_range(chart, 0.0f, 100.0f);
+    const int id = ui_frequency_response_chart_add_series(chart, "live", lv_color_hex(0xB0B0B0));
+    REQUIRE(id >= 0);
+
+    const float freqs[] = {10, 20, 30, 40};
+    const float amps[] = {10, kGap, 30, 40};
+    ui_frequency_response_chart_set_data(chart, id, freqs, amps, 4);
+
+    lv_obj_t* lv_chart = inner_lv_chart(chart);
+    REQUIRE(lv_chart != nullptr);
+    lv_chart_series_t* ser = lv_chart_get_series_next(lv_chart, nullptr);
+    REQUIRE(ser != nullptr);
+    const int32_t* y = lv_chart_get_series_y_array(lv_chart, ser);
+    REQUIRE(lv_chart_get_point_count(lv_chart) == 4);
+    const uint32_t start = lv_chart_get_x_start_point(lv_chart, ser);
+    std::vector<int32_t> values;
+    for (uint32_t i = 0; i < 4; ++i) {
+        values.push_back(y[(start + i) % 4]);
+    }
+    CHECK(values == std::vector<int32_t>{100, LV_CHART_POINT_NONE, 300, 400});
+
+    const auto stored = ui_frequency_response_chart_get_series_amplitudes(chart, id);
+    REQUIRE(stored.size() == 4);
+    CHECK(std::isnan(stored[1]));
+
+    ui_frequency_response_chart_destroy(chart);
+}
+
+TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "BASIC downsampling carries gaps through",
+                 "[frequency_response_chart][gaps]") {
+    auto* chart = ui_frequency_response_chart_create(screen);
+    REQUIRE(chart != nullptr);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::BASIC);
+    const int id = ui_frequency_response_chart_add_series(chart, "live", lv_color_hex(0xB0B0B0));
+
+    std::vector<float> freqs(131);
+    std::vector<float> amps(131);
+    for (size_t i = 0; i < 131; ++i) {
+        freqs[i] = 5.0f + static_cast<float>(i);
+        amps[i] = i < 10 ? kGap : static_cast<float>(i);
+    }
+    ui_frequency_response_chart_set_data(chart, id, freqs.data(), amps.data(), amps.size());
+    const auto stored = ui_frequency_response_chart_get_series_amplitudes(chart, id);
+    REQUIRE(stored.size() == 50);
+    CHECK(std::isnan(stored[0]));
+    // Picks land at src index i * 130 / 49: index 4 picks source 10.
+    for (size_t i = 4; i < stored.size(); ++i) {
+        INFO(i);
+        CHECK(std::isfinite(stored[i]));
+    }
+    ui_frequency_response_chart_destroy(chart);
+}
+
+// LVGLTestFixture's display flushes; this file's own fixture makes displays
+// with no flush callback, so only that one display is refreshed.
+TEST_CASE_METHOD(LVGLTestFixture, "styled, muted and marked series render gaps",
+                 "[frequency_response_chart][gaps]") {
+    lv_obj_t* screen = test_screen();
+    auto* chart = ui_frequency_response_chart_create(screen);
+    REQUIRE(chart != nullptr);
+    lv_obj_set_size(ui_frequency_response_chart_get_obj(chart), 600, 300);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+    ui_frequency_response_chart_set_amplitude_range(chart, 0.0f, 100.0f);
+
+    std::vector<float> freqs(40);
+    std::vector<float> amps(40);
+    std::vector<float> none(40, kGap);
+    for (size_t i = 0; i < 40; ++i) {
+        freqs[i] = static_cast<float>(i);
+        amps[i] = (i % 7 == 3) ? kGap : static_cast<float>(i);
+    }
+    const int styled =
+        ui_frequency_response_chart_add_series(chart, "styled", lv_color_hex(0xFF0000));
+    ui_frequency_response_chart_set_series_style(chart, styled, FrChartSeriesStyle{3, true, true});
+    ui_frequency_response_chart_set_data(chart, styled, freqs.data(), amps.data(), amps.size());
+    const FrChartMarker markers[] = {{3.0f, 1}, {10.0f, 0}};
+    ui_frequency_response_chart_set_markers(chart, styled, markers, 2);
+    ui_frequency_response_chart_mark_peak(chart, styled, 3.0f, 50.0f);
+
+    const int muted =
+        ui_frequency_response_chart_add_series(chart, "muted", lv_color_hex(0x00FF00));
+    ui_frequency_response_chart_set_series_muted(chart, muted, true);
+    ui_frequency_response_chart_set_data(chart, muted, freqs.data(), amps.data(), amps.size());
+
+    const int empty =
+        ui_frequency_response_chart_add_series(chart, "empty", lv_color_hex(0x0000FF));
+    ui_frequency_response_chart_set_series_style(chart, empty, FrChartSeriesStyle{3, true, true});
+    ui_frequency_response_chart_set_data(chart, empty, freqs.data(), none.data(), none.size());
+
+    lv_obj_invalidate(screen);
+    lv_refr_now(lv_obj_get_display(screen));
+    CHECK(ui_frequency_response_chart_get_series_amplitudes(chart, styled).size() == 40);
+    ui_frequency_response_chart_destroy(chart);
 }

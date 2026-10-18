@@ -255,6 +255,25 @@ static void downsample_data(const float* src_freqs, const float* src_amps, size_
     }
 }
 
+// NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
+std::vector<FrChartRun> fr_chart_finite_runs(const float* amps, size_t count) {
+    std::vector<FrChartRun> runs;
+    size_t i = 0;
+    while (i < count) {
+        while (i < count && !std::isfinite(amps[i])) {
+            ++i;
+        }
+        const size_t begin = i;
+        while (i < count && std::isfinite(amps[i])) {
+            ++i;
+        }
+        if (i - begin >= 2) {
+            runs.push_back(FrChartRun{begin, i});
+        }
+    }
+    return runs;
+}
+
 /**
  * @brief Update LVGL chart with series data
  */
@@ -275,6 +294,10 @@ static void update_chart_series(ui_frequency_response_chart_t* chart, FrequencyS
     for (size_t i = 0; i < count; i++) {
         // Scale amplitude to chart range (LVGL chart uses int32_t)
         float amp = series->amplitudes[i];
+        if (!std::isfinite(amp)) {
+            lv_chart_set_next_value(chart->chart, series->lv_series, LV_CHART_POINT_NONE);
+            continue;
+        }
         float amp_range = chart->amp_max - chart->amp_min;
         int32_t scaled;
         if (amp_range > 0) {
@@ -1023,6 +1046,9 @@ static void draw_peak_dots_cb(lv_event_t* e) {
         float peak_amp = (series->peak_idx < series->amplitudes.size())
                              ? series->amplitudes[series->peak_idx]
                              : series->peak_amplitude;
+        if (!std::isfinite(peak_amp)) {
+            continue;
+        }
         float amp_frac = (peak_amp - chart->amp_min) / amp_range;
         amp_frac = std::max(0.0f, std::min(1.0f, amp_frac));
         int32_t abs_y = content_y2 - static_cast<int32_t>(amp_frac * content_height);
@@ -1129,10 +1155,12 @@ static void stroke_polyline(lv_layer_t* layer, lv_draw_line_dsc_t dsc, const Cha
                             const ui_frequency_response_chart_t* chart,
                             const FrequencySeriesData* series) {
     const size_t total_pts = series->amplitudes.size();
-    for (size_t j = 1; j < total_pts; j++) {
-        dsc.p1 = plot_point(plot, chart, j - 1, total_pts, series->amplitudes[j - 1]);
-        dsc.p2 = plot_point(plot, chart, j, total_pts, series->amplitudes[j]);
-        lv_draw_line(layer, &dsc);
+    for (const FrChartRun& run : fr_chart_finite_runs(series->amplitudes.data(), total_pts)) {
+        for (size_t j = run.begin + 1; j < run.end; j++) {
+            dsc.p1 = plot_point(plot, chart, j - 1, total_pts, series->amplitudes[j - 1]);
+            dsc.p2 = plot_point(plot, chart, j, total_pts, series->amplitudes[j]);
+            lv_draw_line(layer, &dsc);
+        }
     }
 }
 
@@ -1284,24 +1312,27 @@ static void draw_styled_series_cb(lv_event_t* e) {
             tri_dsc.grad.stops[1].opa = LV_OPA_TRANSP;
             tri_dsc.grad.stops[1].frac = 255;
 
-            for (size_t j = 1; j < total_pts; j++) {
-                const lv_point_precise_t top_a =
-                    plot_point(plot, chart, j - 1, total_pts, series->amplitudes[j - 1]);
-                const lv_point_precise_t top_b =
-                    plot_point(plot, chart, j, total_pts, series->amplitudes[j]);
+            for (const FrChartRun& run :
+                 fr_chart_finite_runs(series->amplitudes.data(), total_pts)) {
+                for (size_t j = run.begin + 1; j < run.end; j++) {
+                    const lv_point_precise_t top_a =
+                        plot_point(plot, chart, j - 1, total_pts, series->amplitudes[j - 1]);
+                    const lv_point_precise_t top_b =
+                        plot_point(plot, chart, j, total_pts, series->amplitudes[j]);
 
-                // One quad per segment down to the plot bottom, split into two
-                // triangles.
-                tri_dsc.p[0] = top_a;
-                tri_dsc.p[1] = top_b;
-                tri_dsc.p[2].x = top_a.x;
-                tri_dsc.p[2].y = plot.y2;
-                lv_draw_triangle(layer, &tri_dsc);
+                    // One quad per segment down to the plot bottom, split into
+                    // two triangles.
+                    tri_dsc.p[0] = top_a;
+                    tri_dsc.p[1] = top_b;
+                    tri_dsc.p[2].x = top_a.x;
+                    tri_dsc.p[2].y = plot.y2;
+                    lv_draw_triangle(layer, &tri_dsc);
 
-                tri_dsc.p[0] = top_b;
-                tri_dsc.p[1].x = top_b.x;
-                tri_dsc.p[1].y = plot.y2;
-                lv_draw_triangle(layer, &tri_dsc);
+                    tri_dsc.p[0] = top_b;
+                    tri_dsc.p[1].x = top_b.x;
+                    tri_dsc.p[1].y = plot.y2;
+                    lv_draw_triangle(layer, &tri_dsc);
+                }
             }
         }
 
@@ -1379,6 +1410,9 @@ static void draw_markers_cb(lv_event_t* e) {
                     best = d;
                     idx = j;
                 }
+            }
+            if (idx >= total_pts || !std::isfinite(series->amplitudes[idx])) {
+                continue;
             }
             const lv_point_precise_t p =
                 plot_point(plot, chart, idx, total_pts, series->amplitudes[idx]);

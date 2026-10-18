@@ -38,6 +38,12 @@
  *
  * When set_data is called with more points than max_points for the current tier,
  * the data is automatically downsampled while preserving frequency range endpoints.
+ * Downsampling picks points, so on BASIC a narrow peak can fall between picks.
+ *
+ * A non-finite amplitude is a gap: the built-in renderer skips it
+ * (LV_CHART_POINT_NONE) and the styled and muted passes stroke and fill only
+ * fr_chart_finite_runs(). Points are still placed by index, so a caller
+ * drawing a partial curve passes the full grid with NaN where it has no value.
  *
  * @see platform_capabilities.h for tier definitions
  * @see docs/INPUT_SHAPING_IMPLEMENTATION.md for design rationale
@@ -314,6 +320,26 @@ void ui_frequency_response_chart_set_cursor(ui_frequency_response_chart_t* chart
  */
 // NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
 void ui_frequency_response_chart_clear_cursor(ui_frequency_response_chart_t* chart);
+
+/**
+ * @brief A run of consecutive finite amplitudes, [begin, end)
+ */
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+struct FrChartRun {
+    size_t begin = 0;
+    size_t end = 0;
+};
+
+/**
+ * @brief Where a series can be stroked (pure)
+ *
+ * Every maximal run of finite values at least two points long, in order. A
+ * non-finite amplitude is a gap: no segment or fill touches it, and a lone
+ * finite point between two gaps draws nothing.
+ * {1, 2, NaN, 3, 4, 5, NaN} -> {[0,2), [3,6)}.
+ */
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+[[nodiscard]] std::vector<FrChartRun> fr_chart_finite_runs(const float* amps, size_t count);
 
 // ============================================================================
 // Data Management
