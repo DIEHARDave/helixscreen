@@ -3321,7 +3321,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Только снимок
   Soft: Мягкий
-  Soft filament is never unloaded at the end of a print: "Мягкий филамент никогда не выгружается в конце печати"
+  Soft filament is never unloaded: "Мягкий филамент никогда не выгружается"
   Software Updates: Обновления ПО
   Some filaments don't match the slicer's intent.: Некоторые филаменты не соответствуют
     замыслу слайсера.

@@ -3180,15 +3180,14 @@ bool head_is_soft(const snapmaker::PrintPreferences& p, size_t head) {
     return head < p.filament_soft.size() && p.filament_soft[head];
 }
 
-/// The unload-at-end list to send for the toolheads the firmware reports, in
-/// its list order: the saved choice, off for a soft-filament head. The
-/// firmware clears its own list when every print ends, so the setting is the
-/// record of what the user picked.
+/// The saved unload-at-end choice for the toolheads the firmware reports, in
+/// its list order. The firmware clears its own list when every print ends, so
+/// the setting is the record of what the user picked. A soft-filament head
+/// keeps its saved bit: the firmware's end macro skips that head itself.
 std::vector<bool> end_unload_list(const snapmaker::PrintPreferences& p) {
     std::vector<bool> list(p.end_unload_filament.size());
     for (size_t t = 0; t < list.size(); ++t) {
-        list[t] = !head_is_soft(p, t) &&
-                  SettingsManager::instance().get_end_of_print_unload_tool(static_cast<int>(t));
+        list[t] = SettingsManager::instance().get_end_of_print_unload_tool(static_cast<int>(t));
     }
     return list;
 }
@@ -3265,7 +3264,8 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
     for (size_t t = 0; t < saved.size(); ++t) {
         // Copy out as bool: indexing a const vector<bool> yields a standard-library
         // proxy type on some platforms, not bool, and the UI casts the value back to bool.
-        const bool unload = saved[t];
+        // A soft-filament head never unloads, so its toggle never reads on.
+        const bool unload = saved[t] && !head_is_soft(p, t);
         const int tool = static_cast<int>(t);
         DeviceAction a = DeviceAction::toggle(
             "snapmaker_end_unload_t" + std::to_string(t),
@@ -3276,7 +3276,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
         a.slot_index = static_cast<int>(t);
         if (head_is_soft(p, t)) {
             a.enabled = false;
-            a.disable_reason = lv_tr("Soft filament is never unloaded at the end of a print");
+            a.disable_reason = lv_tr("Soft filament is never unloaded");
         }
         out.push_back(std::move(a));
     }

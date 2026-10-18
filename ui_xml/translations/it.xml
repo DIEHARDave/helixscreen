@@ -2971,7 +2971,7 @@
   <translation tag="Snapmaker U1" it="Snapmaker U1"/>
   <translation tag="Snapshot only" it="Solo istantanea"/>
   <translation tag="Soft" it="Morbido"/>
-  <translation tag="Soft filament is never unloaded at the end of a print" it="Il filamento morbido non viene mai scaricato a fine stampa"/>
+  <translation tag="Soft filament is never unloaded" it="Il filamento morbido non viene mai scaricato"/>
   <translation tag="Software Updates" it="Aggiornamenti software"/>
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." it="Alcuni filamenti non corrispondono alle intenzioni dello slicer."/>
   <translation tag="Some mapped slots are short on filament:" it="Alcuni slot assegnati hanno poco filamento:"/>

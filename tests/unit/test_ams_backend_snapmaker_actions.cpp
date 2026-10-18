@@ -161,8 +161,10 @@ TEST_CASE_METHOD(EndUnloadFixture, "every print start carries the saved end-unlo
     }
 }
 
-TEST_CASE_METHOD(EndUnloadFixture, "a soft-filament head cannot be set to unload at the end",
-                 "[ams][snapmaker][actions][end_unload]") {
+TEST_CASE_METHOD(
+    EndUnloadFixture,
+    "a soft-filament head's unload toggle is disabled with a reason, and its saved choice survives",
+    "[ams][snapmaker][actions][end_unload]") {
     // The firmware's end macro skips a soft-filament head, so a toggle reading
     // "on" there would promise an unload that never happens.
     SettingsManager::instance().set_end_of_print_unload_tools(0b0011);
@@ -185,10 +187,19 @@ TEST_CASE_METHOD(EndUnloadFixture, "a soft-filament head cannot be set to unload
     // The saved choice stays for when the head holds a hard filament again.
     REQUIRE(SettingsManager::instance().get_end_of_print_unload_tools() == 0b0011);
 
+    // The saved list goes out as saved; the firmware skips the soft head itself.
     REQUIRE(backend.print_start_gcode_lines() ==
-            std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,0,0]"});
+            std::vector<std::string>{"SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,0,0]"});
     REQUIRE(backend.build_preference_gcode("snapmaker_end_unload_t2", std::any(true)) ==
-            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,0,1,0]");
+            "SET_PRINT_PREFERENCES END_UNLOAD_FILAMENT=[1,1,1,0]");
+
+    // Rigid filament back in the head: the saved choice reads on again.
+    SnapmakerTestAccess::handle_status(backend,
+                                       frame({{"filament_soft", {false, false, false, false}}}));
+    const auto after = backend.get_device_actions();
+    REQUIRE(find_action(after, "snapmaker_end_unload_t1")->enabled);
+    REQUIRE(std::any_cast<bool>(find_action(after, "snapmaker_end_unload_t1")->current_value) ==
+            true);
 }
 
 TEST_CASE("executing a toggle emits only that field", "[ams][snapmaker][actions]") {

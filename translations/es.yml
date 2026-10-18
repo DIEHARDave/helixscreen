@@ -3277,7 +3277,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Solo instantánea
   Soft: Suave
-  Soft filament is never unloaded at the end of a print: "El filamento suave nunca se descarga al final de una impresión"
+  Soft filament is never unloaded: "El filamento suave nunca se descarga"
   Software Updates: Actualizaciones de software
   Some filaments don't match the slicer's intent.: Algunos filamentos no coinciden
     con la intención del laminador.

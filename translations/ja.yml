@@ -3086,7 +3086,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: スナップショットのみ
   Soft: ソフト
-  Soft filament is never unloaded at the end of a print: "ソフトフィラメントは印刷終了時に排出されません"
+  Soft filament is never unloaded: "ソフトフィラメントは排出されません"
   Software Updates: ソフトウェア更新
   Some filaments don't match the slicer's intent.: 一部のフィラメントがスライサーの意図と一致しません。
   'Some mapped slots are short on filament:': '一部の割り当て済みスロットのフィラメントが不足しています:'

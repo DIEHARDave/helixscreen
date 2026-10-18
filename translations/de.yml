@@ -3286,7 +3286,7 @@ translations:
   Snapmaker U1: Snapmaker U1
   Snapshot only: Nur Momentaufnahme
   Soft: Weich
-  Soft filament is never unloaded at the end of a print: "Weiches Filament wird am Druckende nie entladen"
+  Soft filament is never unloaded: "Weiches Filament wird nie entladen"
   Software Updates: Software-Updates
   Some filaments don't match the slicer's intent.: Einige Filamente stimmen nicht
     mit der Vorgabe des Slicers überein.
