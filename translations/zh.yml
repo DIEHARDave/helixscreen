@@ -1879,6 +1879,8 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 长按任意磁贴进入编辑模式 — 重新排列、调整大小、移除或添加小组件，并为您喜欢的布局添加额外页面。
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): '长按主屏幕网格可重新排列小组件（若误触请关闭）'
   Longest Disconnect: 最长断开时长
+  Loosen {0} noticeably: "明显放松 {0}"
+  Loosen {0} one full turn: "将 {0} 放松一整圈"
   Loosen {0} {1}: '放松 {0} {1}'
   Loosen {}: "放松 {}"
   Looking for the active spool...: 正在查找当前料盘...
@@ -3379,6 +3381,8 @@ translations:
   'That setting cannot be changed while a print is running': '打印进行中无法更改该设置'
   That slot cannot stand in for this one: 该槽位无法替代当前槽位
   That tool is already loaded: 该工具已加载耗材
+  That turn didn't register yet. Loosen {0} a little more.: "这次转动还没有体现出来。请将 {0} 再放松一点。"
+  That turn didn't register yet. Loosen {0} one more full turn.: "这次转动还没有体现出来。请将 {0} 再放松一整圈。"
   That turn didn't register yet. Tighten {0} a little more.: "这次转动还没有体现出来。请将 {0} 再拉紧一点。"
   That turn didn't register yet. Tighten {0} one more full turn.: "这次转动还没有体现出来。请将 {0} 再拉紧一整圈。"
   The CFS odometer hardware is faulty and needs repair or replacement: CFS 计量硬件故障，需维修或更换
@@ -3445,7 +3449,6 @@ translations:
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: '打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。'
   The printer finishes this measurement on its own.: '打印机会自行完成这次测量。'
   The printer halted this print and cannot resume it. Restart from the beginning?: 打印机已停止此打印且无法恢复。从头重新开始？
-  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "打印机尚未报告其 [resonance_tester] 范围,因此无法把小范围扫频限制在其内。"
   The printer has not reported its axis limits yet.: '打印机尚未报告其轴限位。'
   The printer has not reported its maximum velocity yet.: '打印机尚未报告其最大速度。'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.

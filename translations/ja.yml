@@ -1885,6 +1885,8 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': タイルを長押しして編集モードに入ります — ウィジェットの並べ替え、サイズ変更、削除、追加や、好みのレイアウトに合わせたページの追加ができます。
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'ホーム画面のグリッドを長押しするとウィジェットを並べ替えできます（誤動作する場合はオフにしてください）'
   Longest Disconnect: 最長切断時間
+  Loosen {0} noticeably: "{0}をはっきり緩める"
+  Loosen {0} one full turn: "{0}を1回転緩める"
   Loosen {0} {1}: '{0}を{1}緩める'
   Loosen {}: "{}を緩める"
   Looking for the active spool...: 使用中のスプールを検索中...
@@ -3388,6 +3390,8 @@ translations:
   'That setting cannot be changed while a print is running': '印刷中はこの設定を変更できません'
   That slot cannot stand in for this one: そのスロットはこのスロットの代わりになりません
   That tool is already loaded: そのツールはすでに装填されています
+  That turn didn't register yet. Loosen {0} a little more.: "その回転はまだ反映されていません。{0}をもう少し緩めてください。"
+  That turn didn't register yet. Loosen {0} one more full turn.: "その回転はまだ反映されていません。{0}をもう1回転緩めてください。"
   That turn didn't register yet. Tighten {0} a little more.: "その回転はまだ反映されていません。{0}をもう少し締めてください。"
   That turn didn't register yet. Tighten {0} one more full turn.: "その回転はまだ反映されていません。{0}をもう1回転締めてください。"
   The CFS odometer hardware is faulty and needs repair or replacement: CFS の走行距離計ハードウェアが故障しています。修理または交換が必要です
@@ -3454,7 +3458,6 @@ translations:
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'プリンターは隅で押出しを行い、測定値が一致するまで繰り返します。目視での判断は不要です。'
   The printer finishes this measurement on its own.: 'この測定はプリンターが最後まで行います。'
   The printer halted this print and cannot resume it. Restart from the beginning?: プリンターはこの印刷を停止し、再開できません。最初からやり直しますか？
-  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "プリンターが[resonance_tester]の範囲を報告していないため、部分スイープをその範囲内に収められません。"
   The printer has not reported its axis limits yet.: 'プリンターがまだ軸の範囲を報告していません。'
   The printer has not reported its maximum velocity yet.: 'プリンターがまだ最大速度を報告していません。'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.

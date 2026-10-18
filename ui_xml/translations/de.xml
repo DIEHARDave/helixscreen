@@ -1816,6 +1816,8 @@
   <translation tag="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)" de="Lange auf das Startraster drücken, um Widgets neu anzuordnen (ausschalten, wenn es versehentlich auslöst)"/>
   <translation tag="Longest Disconnect" de="Längste Trennung"/>
   <translation tag="Looking for the active spool..." de="Suche aktive Spule..."/>
+  <translation tag="Loosen {0} noticeably" de="{0} spürbar lockern"/>
+  <translation tag="Loosen {0} one full turn" de="{0} eine volle Umdrehung lockern"/>
   <translation tag="Loosen {0} {1}" de="{0} um {1} lockern"/>
   <translation tag="Loosen {}" de="{} lockern"/>
   <translation tag="Lost connection during print — try again" de="Verbindung während des Drucks verloren — erneut versuchen"/>
@@ -3268,6 +3270,8 @@
   <translation tag="That setting cannot be changed while a print is running" de="Diese Einstellung kann während eines laufenden Drucks nicht geändert werden"/>
   <translation tag="That slot cannot stand in for this one" de="Dieser Slot kann nicht für diesen einspringen"/>
   <translation tag="That tool is already loaded" de="Dieses Werkzeug ist bereits geladen"/>
+  <translation tag="That turn didn&apos;t register yet. Loosen {0} a little more." de="Diese Drehung hat sich noch nicht gezeigt. Lockere {0} noch etwas mehr."/>
+  <translation tag="That turn didn&apos;t register yet. Loosen {0} one more full turn." de="Diese Drehung hat sich noch nicht gezeigt. Lockere {0} um eine weitere volle Umdrehung."/>
   <translation tag="That turn didn&apos;t register yet. Tighten {0} a little more." de="Diese Drehung hat sich noch nicht gezeigt. Spanne {0} noch etwas mehr."/>
   <translation tag="That turn didn&apos;t register yet. Tighten {0} one more full turn." de="Diese Drehung hat sich noch nicht gezeigt. Spanne {0} um eine weitere volle Umdrehung."/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" de="Die Wegmesshardware des CFS ist defekt und muss repariert oder ersetzt werden"/>
@@ -3323,7 +3327,6 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." de="Der Drucker extrudiert in einer Ecke und wiederholt, bis die Messwerte übereinstimmen. Du beurteilst nichts mit dem Auge."/>
   <translation tag="The printer finishes this measurement on its own." de="Der Drucker beendet diese Messung selbst."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" de="Der Drucker hat diesen Druck angehalten und kann ihn nicht fortsetzen. Von vorne neu starten?"/>
-  <translation tag="The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it." de="Der Drucker hat seinen [resonance_tester]-Bereich nicht gemeldet, daher lässt sich ein schmaler Sweep nicht darin halten."/>
   <translation tag="The printer has not reported its axis limits yet." de="Der Drucker hat seine Achsgrenzen noch nicht gemeldet."/>
   <translation tag="The printer has not reported its maximum velocity yet." de="Der Drucker hat seine Höchstgeschwindigkeit noch nicht gemeldet."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." de="Der Drucker heizt die Düse, macht ein paar kurze Testbewegungen in einer Ecke der Platte und misst sie selbst. Er wiederholt, bis die Messwerte übereinstimmen, und meldet dann eine Zahl."/>

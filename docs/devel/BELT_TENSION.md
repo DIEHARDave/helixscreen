@@ -343,17 +343,24 @@ the strongest candidate's centroid gap) by `CALIBRATION_TURNS` (one full turn) o
 printers, "noticeably" on UNKNOWN ones, and **Measure** runs the laps and a full sweep of both
 paths. `src/calibration/belt_tune_session.cpp#add_calibration_sweep` compares every candidate's gap with round 0's, over all
 calibration turns so far, and counts only a move the advised way (the turned belt's side of
-the gap rising) of at least `CALIBRATION_MIN_MOVE_HZ` (1.5 Hz):
+the gap rising for a tightening turn, falling for a loosening one) of at least
+`CALIBRATION_MIN_MOVE_HZ` (1.5 Hz).
+
+**Adjust X instead** at CALIBRATE is offered only before the first step
+(`can_swap_adjusted_path`, `bt_tune_can_swap`): every step is measured against round 0 on the
+same belt, so a swap after one would mix two belts' turns into one move and one turn count.
+Before it, the swap makes the turn loosen the tighter belt ("Loosen A one full turn"), which
+closes the gap from the other side.
 
 - **registered**: the candidates that moved, best move first, become the zones Next Zone walks;
   the best one is entered with the calibration sweep's centroids, and on SCREW printers its move
   per calibration turn seeds Hz per turn. The panel chains the baseline with no laps
   (`start_tune_round(false)`);
 - **not registered**: "That turn didn't register yet. Tighten B one more full turn." (UNKNOWN:
-  "a little more");
+  "a little more"; after a swap, "Loosen A ...");
 - **gave up** after `CALIBRATION_MAX_STEPS` (2) steps: NO_ZONE, "Nothing followed 2 turns of B.
-  Turn B back 2 turns, then check the mechanics." (UNKNOWN: "Undo them"), with the mechanical
-  hint row shown.
+  Turn B back 2 turns, then check the mechanics." (UNKNOWN: "Undo them"). That line is the
+  whole message: the "gap is not closing" warning does not show, since nothing was tuned.
 
 Calibration turns count toward the per-belt totals Confirm reports. The Voron data says the
 first calibration turn will often not register there; that is the rule working (see the
@@ -370,13 +377,14 @@ bins only, so the margins never reach a centroid, an edge test or a power sum.
 
 **The window never leaves the printer's `[resonance_tester]` range.** `zone_sweep_window`
 returns whole-Hz bounds inside `[min_freq, max_freq]` (start rounded up, end rounded down), so
-the API's floor/ceil of `FREQ_START` / `FREQ_END` changes nothing. Klipper accepts a
+the API's own inward rounding of `FREQ_START` / `FREQ_END` (start up, end down) changes
+nothing. Klipper accepts a
 `FREQ_END` up to 300 Hz whatever `max_freq` says, and a K1C (max_freq 133.33) shut its MCU
 down ("Move queue overflow") on a sweep to 200 Hz, so this clamp is the only guard. Where the
-band cuts the top margin short, the margin is whatever remains. Tune refuses with an ERROR
-("The printer has not reported its [resonance_tester] range...") while `sweep_cfg_` still
-holds Klipper's defaults (`ResonanceTesterConfig::from_printer` false): on a K1C the default
-135 would send `FREQ_END=135`. Full sweeps send no `FREQ_*` at all.
+band cuts the top margin short, the margin is whatever remains. **Tune Belts** stays disabled
+(`bt_tune_range_known`) while `sweep_cfg_` still holds Klipper's defaults
+(`ResonanceTesterConfig::from_printer` false): on a K1C the default 135 would send
+`FREQ_END=135`. Full sweeps send no `FREQ_*` at all.
 
 A round takes about `2 x window / hz_per_sec` plus the laps, twice that for a baseline pair;
 the Re-measure and Next Zone labels count both (`round_minutes`). Klipper writes the CSV across
@@ -469,7 +477,8 @@ the tension matches. RESULTS does not show it.
 candidate for SPRING). It sweeps the next zone's baseline pair at once, with laps, since the
 earlier zone's turns moved it; its label shows that duration (`peek_next_zone`). **Confirm**
 runs a full two-path CHECK with the pre-tuning curves ghosted, and the facts line carries
-" · Tuned in N rounds" (baseline rounds included) plus, on SCREW printers, each path's net
+" · Tuned in N rounds" (tuning rounds only; baseline rounds and calibration sweeps are not
+counted, and neither are they in "Round N") plus, on SCREW printers, each path's net
 turns in quarters, calibration turns included (`total_turns`).
 
 Every sweep re-checks the Start gate (`gate_allows_sweep`): Measure, Re-measure, Next Zone,

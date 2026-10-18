@@ -1947,6 +1947,8 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): Long-press the home grid to rearrange widgets (turn off if it triggers by accident)
   Longest Disconnect: Longest Disconnect
+  Loosen {0} noticeably: Loosen {0} noticeably
+  Loosen {0} one full turn: Loosen {0} one full turn
   Loosen {0} {1}: Loosen {0} {1}
   Loosen {}: Loosen {}
   Looking for the active spool...: Looking for the active spool...
@@ -3507,6 +3509,8 @@ translations:
   'That setting cannot be changed while a print is running': 'That setting cannot be changed while a print is running'
   That slot cannot stand in for this one: That slot cannot stand in for this one
   That tool is already loaded: That tool is already loaded
+  That turn didn't register yet. Loosen {0} a little more.: That turn didn't register yet. Loosen {0} a little more.
+  That turn didn't register yet. Loosen {0} one more full turn.: That turn didn't register yet. Loosen {0} one more full turn.
   That turn didn't register yet. Tighten {0} a little more.: That turn didn't register yet. Tighten {0} a little more.
   That turn didn't register yet. Tighten {0} one more full turn.: That turn didn't register yet. Tighten {0} one more full turn.
   The CFS odometer hardware is faulty and needs repair or replacement: The CFS odometer hardware is faulty and needs repair or replacement
@@ -3574,7 +3578,6 @@ translations:
   The printer finishes this measurement on its own.: 'The printer finishes this measurement on its own.'
   The printer halted this print and cannot resume it. Restart from the beginning?: The
     printer halted this print and cannot resume it. Restart from the beginning?
-  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.
   The printer has not reported its axis limits yet.: The printer has not reported its axis limits yet.
   The printer has not reported its maximum velocity yet.: The printer has not reported its maximum velocity yet.
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.

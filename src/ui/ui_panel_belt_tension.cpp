@@ -301,6 +301,8 @@ void BeltTensionPanel::init_subjects() {
     UI_MANAGED_SUBJECT_INT(tune_has_power_hint_subject_, 0, "bt_tune_has_power_hint", subjects_);
     UI_MANAGED_SUBJECT_INT(tune_has_gap_subject_, 0, "bt_tune_has_gap", subjects_);
     UI_MANAGED_SUBJECT_INT(tune_unrepeatable_subject_, 0, "bt_tune_unrepeatable", subjects_);
+    UI_MANAGED_SUBJECT_INT(tune_can_swap_subject_, 0, "bt_tune_can_swap", subjects_);
+    UI_MANAGED_SUBJECT_INT(tune_range_known_subject_, 0, "bt_tune_range_known", subjects_);
     UI_MANAGED_SUBJECT_STRING(tune_measure_short_label_subject_, tune_measure_short_label_buf_, "",
                               "bt_tune_measure_short_label", subjects_);
     UI_MANAGED_SUBJECT_STRING(tune_swap_label_subject_, tune_swap_label_buf_, "",
@@ -924,7 +926,7 @@ void BeltTensionPanel::start_settle() {
                                       // A failed query answers with defaults; keep
                                       // what the printer said before.
                                       if (cfg.from_printer) {
-                                          sweep_cfg_ = cfg;
+                                          set_sweep_config(cfg);
                                       }
                                       go();
                                   }));
@@ -1344,8 +1346,7 @@ void BeltTensionPanel::handle_tune_clicked() {
     // A narrow sweep sends FREQ_END, which Klipper takes up to 300 Hz whatever
     // the printer's max_freq says; Klipper's defaults are no stand-in for it.
     if (!sweep_cfg_.from_printer) {
-        on_error(lv_tr("The printer has not reported its [resonance_tester] range, so a narrow "
-                       "sweep cannot be kept inside it."));
+        spdlog::warn("[BeltTension] Tune refused: the printer has not reported its sweep range");
         return;
     }
     const auto kind =
@@ -1453,7 +1454,9 @@ void BeltTensionPanel::handle_tune_swap_clicked() {
     if (!tune_ || (tune_phase_ != TunePhase::ADJUST && tune_phase_ != TunePhase::CALIBRATE)) {
         return;
     }
-    tune_->swap_adjusted_path();
+    if (!tune_->swap_adjusted_path()) {
+        return;
+    }
     tune_adj_history_.clear();
     tune_last_outcome_.reset();
     tune_last_calibration_.reset();
@@ -1703,7 +1706,6 @@ void BeltTensionPanel::refresh_tune() {
     const auto advice = t.advice();
     const float gap = t.gap_hz();
     const float tolerance = t.tolerance_hz();
-    const bool gave_up = tune_last_calibration_ && tune_last_calibration_->gave_up;
 
     lv_subject_set_int(&tune_kind_subject_, screw                                        ? 1
                                             : t.tensioner() == BeltTensionerKind::SPRING ? 2
@@ -1716,8 +1718,9 @@ void BeltTensionPanel::refresh_tune() {
     lv_subject_set_int(&tune_has_zone_subject_, zone ? 1 : 0);
     lv_subject_set_int(&tune_has_gap_subject_, has_gap ? 1 : 0);
     lv_subject_set_int(&tune_has_next_zone_subject_, t.peek_next_zone() ? 1 : 0);
+    lv_subject_set_int(&tune_can_swap_subject_, t.can_swap_adjusted_path() ? 1 : 0);
     lv_subject_set_int(&tune_shape_warning_subject_,
-                       unrepeatable || gave_up || t.show_mechanical_hint() ? 1 : 0);
+                       unrepeatable || t.show_mechanical_hint() ? 1 : 0);
     lv_subject_set_int(&tune_severity_subject_,
                        static_cast<int>(helix::ui::belt_gap_severity(gap, tolerance)));
 
@@ -1727,8 +1730,11 @@ void BeltTensionPanel::refresh_tune() {
     } else if (stage == BeltTuneStage::ALREADY_MATCHED) {
         instruction = lv_tr("Belts already match");
     } else if (calibrating) {
-        instruction = fmt::format(fmt::runtime(screw ? lv_tr("Tighten {0} one full turn")
-                                                     : lv_tr("Tighten {0} noticeably")),
+        const bool loosen = advice.direction == BeltTurnDirection::LOOSEN;
+        instruction = fmt::format(fmt::runtime(screw ? (loosen ? lv_tr("Loosen {0} one full turn")
+                                                               : lv_tr("Tighten {0} one full turn"))
+                                                     : (loosen ? lv_tr("Loosen {0} noticeably")
+                                                               : lv_tr("Tighten {0} noticeably"))),
                                   adj_letter);
     } else if (tune_phase_ == TunePhase::MATCHED) {
         instruction = fmt::format(fmt::runtime(lv_tr("Matched at {:.1f} Hz")), t.adjusted_hz());
@@ -1877,12 +1883,14 @@ std::string BeltTensionPanel::tune_last_message() const {
                                                           "Undo them, then check the mechanics.")),
                                        adj_letter);
         }
-        return fmt::format(
-            fmt::runtime(screw
-                             ? lv_tr("That turn didn't register yet. Tighten {0} one more full "
-                                     "turn.")
-                             : lv_tr("That turn didn't register yet. Tighten {0} a little more.")),
-            adj_letter);
+        const bool loosen = t.advice().direction == helix::calibration::BeltTurnDirection::LOOSEN;
+        const char* line =
+            screw ? (loosen ? lv_tr("That turn didn't register yet. Loosen {0} one more full turn.")
+                            : lv_tr("That turn didn't register yet. Tighten {0} one more full "
+                                    "turn."))
+                  : (loosen ? lv_tr("That turn didn't register yet. Loosen {0} a little more.")
+                            : lv_tr("That turn didn't register yet. Tighten {0} a little more."));
+        return fmt::format(fmt::runtime(line), adj_letter);
     }
     if (!tune_last_outcome_) {
         return {};
@@ -2094,11 +2102,18 @@ void BeltTensionPanel::query_hw_facts() {
     helix::calibration::query_resonance_tester_config(
         *client_, lifetime_.bg_cb("BeltTension::resonance_cfg",
                                   [this](helix::calibration::ResonanceTesterConfig cfg) {
-                                      sweep_cfg_ = cfg;
+                                      set_sweep_config(cfg);
                                       hw_sweep_known_ = true;
                                       push_chart_data();
                                       refresh_hw_sweep();
                                   }));
+}
+
+void BeltTensionPanel::set_sweep_config(const helix::calibration::ResonanceTesterConfig& cfg) {
+    sweep_cfg_ = cfg;
+    if (subjects_initialized_) {
+        lv_subject_set_int(&tune_range_known_subject_, cfg.from_printer ? 1 : 0);
+    }
 }
 
 void BeltTensionPanel::refresh_hw_sweep() {

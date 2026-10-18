@@ -2045,6 +2045,8 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Долгое нажатие на любую плитку переводит в режим редактирования — переставляйте, изменяйте размер, удаляйте или добавляйте виджеты, а также добавляйте дополнительные страницы под свой макет.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Долгое нажатие на сетку главного экрана переставляет виджеты (отключите, если срабатывает случайно)'
   Longest Disconnect: Самое долгое отключение
+  Loosen {0} noticeably: "Заметно ослабить {0}"
+  Loosen {0} one full turn: "Ослабить {0} на полный оборот"
   Loosen {0} {1}: 'Ослабить {0} на {1}'
   Loosen {}: "Ослабить {}"
   Looking for the active spool...: Поиск активной катушки...
@@ -3643,6 +3645,8 @@ translations:
   'That setting cannot be changed while a print is running': 'Этот параметр нельзя изменить во время печати'
   That slot cannot stand in for this one: Этот слот не может заменить текущий
   That tool is already loaded: Этот инструмент уже загружен
+  That turn didn't register yet. Loosen {0} a little more.: "Этот поворот ещё не отразился. Ослабьте {0} ещё немного."
+  That turn didn't register yet. Loosen {0} one more full turn.: "Этот поворот ещё не отразился. Ослабьте {0} ещё на один полный оборот."
   That turn didn't register yet. Tighten {0} a little more.: "Этот поворот ещё не отразился. Натяните {0} ещё немного."
   That turn didn't register yet. Tighten {0} one more full turn.: "Этот поворот ещё не отразился. Натяните {0} ещё на один полный оборот."
   The CFS odometer hardware is faulty and needs repair or replacement: Оборудование одометра CFS неисправно и требует ремонта или замены
@@ -3713,7 +3717,6 @@ translations:
   The printer finishes this measurement on its own.: 'Принтер завершит это измерение сам.'
   The printer halted this print and cannot resume it. Restart from the beginning?: Принтер
     остановил эту печать и не может её возобновить. Начать с начала?
-  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "Принтер не сообщил свой диапазон [resonance_tester], поэтому узкую развёртку нельзя удержать внутри него."
   The printer has not reported its axis limits yet.: 'Принтер ещё не сообщил пределы осей.'
   The printer has not reported its maximum velocity yet.: 'Принтер ещё не сообщил максимальную скорость.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.

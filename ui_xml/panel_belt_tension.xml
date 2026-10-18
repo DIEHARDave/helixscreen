@@ -325,6 +325,7 @@
               <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0 and bt_narrow eq 0"/>
               <bind_style_if name="bt_content_w" cond="bt_narrow eq 1"/>
               <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1"/>
+              <bind_state_if_eq subject="bt_tune_range_known" state="disabled" ref_value="0"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_cb"/>
             </ui_button>
           </lv_obj>
@@ -399,7 +400,7 @@
               <bind_flag_if_not_eq subject="bt_tune_kind" flag="hidden" ref_value="1"/>
             </text_small>
             <icon src="swap_horizontal" size="xs" variant="secondary" clickable="false" event_bubble="true">
-              <bind_flag_if cond="bt_tune_phase ne 0 and bt_tune_phase ne 3" flag="hidden"/>
+              <bind_flag_if cond="bt_tune_phase ne 0 and bt_tune_phase ne 3 or bt_tune_can_swap eq 0" flag="hidden"/>
             </icon>
           </lv_obj>
           <belt_gap_gauge name="bt_tune_line_gauge" width="100%" height="#space_xl">
@@ -612,7 +613,7 @@
             <ui_button name="btn_tune_swap"
                        width="0" height="#button_height" flex_grow="1" bind_text="bt_tune_swap_label"
                        variant="secondary" long_mode="dots">
-              <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0 and (ui_is_portrait eq 0 or ui_breakpoint eq 0) or bt_tune_phase eq 4"
+              <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0 and (ui_is_portrait eq 0 or ui_breakpoint eq 0) or bt_tune_phase eq 4 or bt_tune_can_swap eq 0"
                             flag="hidden"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_swap_cb"/>
             </ui_button>

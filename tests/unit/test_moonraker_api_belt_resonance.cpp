@@ -138,12 +138,28 @@ TEST_CASE_METHOD(BeltApiFixture, "a windowed sweep sends FREQ_START and FREQ_END
     auto cancel = api_->advanced().test_belt_resonance(
         "1,-1", "helix_belt_a", nullptr, [&](const calibration::BeltResponse&) { done = true; },
         [&](const MoonrakerError& e) { FAIL(e.message); },
-        calibration::BeltSweepWindow{88.4f, 119.6f});
+        calibration::BeltSweepWindow{88.0f, 120.0f});
     pump_until(done);
     const auto history = mock_client_.gcode_script_history();
     CHECK(std::find(history.begin(), history.end(),
                     "TEST_RESONANCES AXIS=1,-1 FREQ_START=88 FREQ_END=120 OUTPUT=resonances "
                     "NAME=helix_belt_a SWEEPING_PERIOD=0") != history.end());
+}
+
+TEST_CASE_METHOD(BeltApiFixture, "a fractional window is rounded inward to whole Hz",
+                 "[belt][api]") {
+    // A K1C's max_freq is 133.33: rounding the end up would sweep past it.
+    mock_client_.clear_gcode_script_history();
+    std::atomic<bool> done{false};
+    auto cancel = api_->advanced().test_belt_resonance(
+        "1,1", "helix_belt_b", nullptr, [&](const calibration::BeltResponse&) { done = true; },
+        [&](const MoonrakerError& e) { FAIL(e.message); },
+        calibration::BeltSweepWindow{98.6f, 133.33f});
+    pump_until(done);
+    const auto history = mock_client_.gcode_script_history();
+    CHECK(std::find(history.begin(), history.end(),
+                    "TEST_RESONANCES AXIS=1,1 FREQ_START=99 FREQ_END=133 OUTPUT=resonances "
+                    "NAME=helix_belt_b SWEEPING_PERIOD=0") != history.end());
 }
 
 TEST_CASE_METHOD(BeltApiFixture, "a sweep without a window sends today's G-code", "[belt][api]") {

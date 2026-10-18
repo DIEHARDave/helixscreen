@@ -3302,8 +3302,10 @@ MoonrakerAdvancedAPI::BeltRunCancel MoonrakerAdvancedAPI::test_belt_resonance(
     // parameter ignores it.
     std::string freq_range;
     if (window) {
+        // Inward to whole Hz: Klipper takes any FREQ_END up to 300 Hz, so rounding
+        // the end up could sweep past the printer's max_freq.
         freq_range = fmt::format(" FREQ_START={:.0f} FREQ_END={:.0f}",
-                                 std::floor(window->freq_start_hz), std::ceil(window->freq_end_hz));
+                                 std::ceil(window->freq_start_hz), std::floor(window->freq_end_hz));
     }
     const std::string gcode =
         fmt::format("TEST_RESONANCES AXIS={}{} OUTPUT=resonances NAME={} SWEEPING_PERIOD=0",

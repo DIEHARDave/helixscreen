@@ -2015,6 +2015,8 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Lange auf eine Kachel drücken, um in den Bearbeitungsmodus zu wechseln — Widgets neu anordnen, in der Größe ändern, entfernen oder hinzufügen und weitere Seiten für Ihr bevorzugtes Layout anlegen.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Lange auf das Startraster drücken, um Widgets neu anzuordnen (ausschalten, wenn es versehentlich auslöst)'
   Longest Disconnect: Längste Trennung
+  Loosen {0} noticeably: "{0} spürbar lockern"
+  Loosen {0} one full turn: "{0} eine volle Umdrehung lockern"
   Loosen {0} {1}: '{0} um {1} lockern'
   Loosen {}: "{} lockern"
   Looking for the active spool...: Suche aktive Spule...
@@ -3602,6 +3604,8 @@ translations:
   'That setting cannot be changed while a print is running': 'Diese Einstellung kann während eines laufenden Drucks nicht geändert werden'
   That slot cannot stand in for this one: Dieser Slot kann nicht für diesen einspringen
   That tool is already loaded: Dieses Werkzeug ist bereits geladen
+  That turn didn't register yet. Loosen {0} a little more.: "Diese Drehung hat sich noch nicht gezeigt. Lockere {0} noch etwas mehr."
+  That turn didn't register yet. Loosen {0} one more full turn.: "Diese Drehung hat sich noch nicht gezeigt. Lockere {0} um eine weitere volle Umdrehung."
   That turn didn't register yet. Tighten {0} a little more.: "Diese Drehung hat sich noch nicht gezeigt. Spanne {0} noch etwas mehr."
   That turn didn't register yet. Tighten {0} one more full turn.: "Diese Drehung hat sich noch nicht gezeigt. Spanne {0} um eine weitere volle Umdrehung."
   The CFS odometer hardware is faulty and needs repair or replacement: Die Wegmesshardware des CFS ist defekt und muss repariert oder ersetzt werden
@@ -3675,7 +3679,6 @@ translations:
   The printer halted this print and cannot resume it. Restart from the beginning?: Der
     Drucker hat diesen Druck angehalten und kann ihn nicht fortsetzen. Von vorne neu
     starten?
-  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "Der Drucker hat seinen [resonance_tester]-Bereich nicht gemeldet, daher lässt sich ein schmaler Sweep nicht darin halten."
   The printer has not reported its axis limits yet.: 'Der Drucker hat seine Achsgrenzen noch nicht gemeldet.'
   The printer has not reported its maximum velocity yet.: 'Der Drucker hat seine Höchstgeschwindigkeit noch nicht gemeldet.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.

@@ -1860,6 +1860,8 @@
   <translation tag="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)" ru="Долгое нажатие на сетку главного экрана переставляет виджеты (отключите, если срабатывает случайно)"/>
   <translation tag="Longest Disconnect" ru="Самое долгое отключение"/>
   <translation tag="Looking for the active spool..." ru="Поиск активной катушки..."/>
+  <translation tag="Loosen {0} noticeably" ru="Заметно ослабить {0}"/>
+  <translation tag="Loosen {0} one full turn" ru="Ослабить {0} на полный оборот"/>
   <translation tag="Loosen {0} {1}" ru="Ослабить {0} на {1}"/>
   <translation tag="Loosen {}" ru="Ослабить {}"/>
   <translation tag="Lost connection during print — try again" ru="Потеряно соединение во время печати — попробуйте снова"/>
@@ -3327,6 +3329,8 @@
   <translation tag="That setting cannot be changed while a print is running" ru="Этот параметр нельзя изменить во время печати"/>
   <translation tag="That slot cannot stand in for this one" ru="Этот слот не может заменить текущий"/>
   <translation tag="That tool is already loaded" ru="Этот инструмент уже загружен"/>
+  <translation tag="That turn didn&apos;t register yet. Loosen {0} a little more." ru="Этот поворот ещё не отразился. Ослабьте {0} ещё немного."/>
+  <translation tag="That turn didn&apos;t register yet. Loosen {0} one more full turn." ru="Этот поворот ещё не отразился. Ослабьте {0} ещё на один полный оборот."/>
   <translation tag="That turn didn&apos;t register yet. Tighten {0} a little more." ru="Этот поворот ещё не отразился. Натяните {0} ещё немного."/>
   <translation tag="That turn didn&apos;t register yet. Tighten {0} one more full turn." ru="Этот поворот ещё не отразился. Натяните {0} ещё на один полный оборот."/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" ru="Оборудование одометра CFS неисправно и требует ремонта или замены"/>
@@ -3382,7 +3386,6 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." ru="Принтер выдавливает пластик в углу и повторяет, пока показания не сойдутся. Ничего не нужно оценивать на глаз."/>
   <translation tag="The printer finishes this measurement on its own." ru="Принтер завершит это измерение сам."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" ru="Принтер остановил эту печать и не может её возобновить. Начать с начала?"/>
-  <translation tag="The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it." ru="Принтер не сообщил свой диапазон [resonance_tester], поэтому узкую развёртку нельзя удержать внутри него."/>
   <translation tag="The printer has not reported its axis limits yet." ru="Принтер ещё не сообщил пределы осей."/>
   <translation tag="The printer has not reported its maximum velocity yet." ru="Принтер ещё не сообщил максимальную скорость."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." ru="Принтер нагревает сопло, делает несколько коротких тестовых перемещений в углу стола и сам их измеряет. Он повторяет, пока показания не сойдутся, и затем сообщает одно число."/>

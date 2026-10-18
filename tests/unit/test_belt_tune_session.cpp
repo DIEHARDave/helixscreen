@@ -409,8 +409,9 @@ TEST_CASE("already matched: under the calibration's 1.5 Hz wander, over one bin"
     CHECK(over.stage() == BeltTuneStage::CALIBRATE);
 }
 
-TEST_CASE("calibration advice: one full turn of the looser belt, and a swap turns the other",
-          "[belt][tune]") {
+TEST_CASE(
+    "calibration advice: one full turn of the looser belt, and a swap loosens the tighter one",
+    "[belt][tune]") {
     auto screw = session_for(104.0f, 100.0f, BeltTensionerKind::SCREW);
     REQUIRE(screw.stage() == BeltTuneStage::CALIBRATE);
     CHECK(screw.adjusted_path() == BeltPath::PATH_B);
@@ -422,11 +423,63 @@ TEST_CASE("calibration advice: one full turn of the looser belt, and a swap turn
     CHECK(unknown.advice().direction == BeltTurnDirection::TIGHTEN);
     CHECK_FALSE(unknown.advice().turns.has_value());
 
-    screw.swap_adjusted_path();
+    CHECK(screw.can_swap_adjusted_path());
+    CHECK(screw.swap_adjusted_path());
     CHECK(screw.stage() == BeltTuneStage::CALIBRATE);
     CHECK(screw.adjusted_path() == BeltPath::PATH_A);
     CHECK(screw.advice().path == BeltPath::PATH_A);
-    CHECK(screw.advice().direction == BeltTurnDirection::TIGHTEN);
+    // A is the tighter belt: closing the gap from its side means loosening it.
+    CHECK(screw.advice().direction == BeltTurnDirection::LOOSEN);
+    CHECK(screw.advice().turns == std::optional<float>(1.0f));
+}
+
+TEST_CASE("calibration swap: refused once a calibration step is in", "[belt][tune]") {
+    auto s = session_for(104.0f, 100.0f, BeltTensionerKind::SCREW);
+    REQUIRE_FALSE(s.add_calibration_sweep(peak_response(104.0f), peak_response(100.0f)).registered);
+    REQUIRE(s.stage() == BeltTuneStage::CALIBRATE);
+    CHECK_FALSE(s.can_swap_adjusted_path());
+    CHECK_FALSE(s.swap_adjusted_path());
+    CHECK(s.adjusted_path() == BeltPath::PATH_B);
+    CHECK(s.advice().direction == BeltTurnDirection::TIGHTEN);
+    CHECK(s.gap_hz() < 0.0f);
+    // The give-up after the second step still names B's two turns.
+    const auto r = s.add_calibration_sweep(peak_response(104.0f), peak_response(100.0f));
+    CHECK(r.gave_up);
+    CHECK(r.turns == 2.0f);
+    CHECK(s.adjusted_path() == BeltPath::PATH_B);
+    CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(2.0f));
+    CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(0.0f));
+}
+
+TEST_CASE("calibration swap: loosening the tighter belt registers the gap closing",
+          "[belt][tune]") {
+    auto s = session_for(104.0f, 100.0f, BeltTensionerKind::SCREW);
+    REQUIRE(s.swap_adjusted_path());
+    REQUIRE(s.advice().direction == BeltTurnDirection::LOOSEN);
+
+    SECTION("A falls 3 Hz: the advised way") {
+        const auto r = s.add_calibration_sweep(peak_response(101.0f), peak_response(100.0f));
+        CHECK(r.registered);
+        CHECK(r.move_hz == Catch::Approx(3.0f).margin(0.3f));
+        REQUIRE(s.hz_per_turn().has_value());
+        CHECK(*s.hz_per_turn() == Catch::Approx(3.0f).margin(0.3f));
+        CHECK(s.adjusted_path() == BeltPath::PATH_A);
+        CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(-1.0f));
+        CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.0f));
+    }
+    SECTION("A rises 3 Hz: the wrong way, not registered") {
+        const auto r = s.add_calibration_sweep(peak_response(107.0f), peak_response(100.0f));
+        CHECK_FALSE(r.registered);
+        CHECK(r.move_hz < 0.0f);
+    }
+    SECTION("two steps that move nothing give up on A") {
+        s.add_calibration_sweep(peak_response(104.0f), peak_response(100.0f));
+        const auto r = s.add_calibration_sweep(peak_response(104.0f), peak_response(100.0f));
+        CHECK(r.gave_up);
+        CHECK(r.turns == 2.0f);
+        CHECK(s.adjusted_path() == BeltPath::PATH_A);
+        CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(-2.0f));
+    }
 }
 
 TEST_CASE("calibration on a real shape: the K1C with B shifted down", "[belt][tune]") {
@@ -663,6 +716,32 @@ TEST_CASE("repeatability: the baseline pair's gap and power must agree", "[belt]
     SECTION("power 2.5x down on the adjusted path does not") {
         CHECK(pair(100.0f, 100.0f, 1.0f, 0.4f) == BeltTuneOutcome::UNREPEATABLE);
     }
+}
+
+TEST_CASE("repeatability: a pair round with no peak discards the pair", "[belt][tune]") {
+    auto s = session_for(104.0f, 100.0f, BeltTensionerKind::SPRING);
+    const auto w = *s.sweep_window();
+    REQUIRE(s.add_round(triangle(104.0f, 1.0f, w), triangle(100.0f, 1.0f, w)).outcome ==
+            BeltTuneOutcome::BASELINE);
+    const auto flat = response_from(flat_curve());
+    REQUIRE(s.add_round(flat, flat).outcome == BeltTuneOutcome::NO_PEAK);
+    CHECK(s.stage() == BeltTuneStage::BASELINE);
+    // A fresh pair: this round is its first, never judged against the reading
+    // before the no-peak round (a 2.5 Hz gap move).
+    CHECK(s.add_round(triangle(104.0f, 1.0f, w), triangle(102.5f, 1.0f, w)).outcome ==
+          BeltTuneOutcome::BASELINE);
+    CHECK(s.stage() == BeltTuneStage::BASELINE);
+    CHECK(s.add_round(triangle(104.0f, 1.0f, w), triangle(102.5f, 1.0f, w)).outcome ==
+          BeltTuneOutcome::BASELINE);
+    CHECK(s.stage() == BeltTuneStage::TUNE);
+}
+
+TEST_CASE("rounds: only tuning rounds are counted", "[belt][tune]") {
+    auto s = tuning(112.0f, 98.0f, 100.0f, BeltTensionerKind::SCREW);
+    CHECK(s.total_rounds() == 0);
+    s.record_turns(1.0f);
+    sweep(s, 112.0f, 103.0f);
+    CHECK(s.total_rounds() == 1);
 }
 
 TEST_CASE("repeatability: no advice until a fresh pair agrees", "[belt][tune]") {
@@ -1116,7 +1195,8 @@ TEST_CASE("tune rate: the calibration sample is the first, then the median of re
     CHECK(*s.hz_per_turn() == Catch::Approx(3.0f).margin(0.3f));
     CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(3.5f));
     CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(0.0f));
-    CHECK(s.total_rounds() == 5);
+    // Tuning rounds only: the baseline pair is not counted.
+    CHECK(s.total_rounds() == 3);
     CHECK(s.rounds().size() == 5);
 }
 
@@ -1390,7 +1470,7 @@ TEST_CASE("tune zones: a later zone starts from its own baseline", "[belt][tune]
     CHECK(s.needs_baseline());
     CHECK(s.rounds().empty());
     CHECK_FALSE(s.zone_matched());
-    CHECK(s.total_rounds() == 3);
+    CHECK(s.total_rounds() == 1);
     // The first zone's turn already moved B's 48 Hz mode to 49: a baseline,
     // not a move for the suggested turn.
     const auto& base = sweep_curves(s, a, b(49.0f, 103.5f));

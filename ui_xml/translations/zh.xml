@@ -1815,6 +1815,8 @@
   <translation tag="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)" zh="长按主屏幕网格可重新排列小组件（若误触请关闭）"/>
   <translation tag="Longest Disconnect" zh="最长断开时长"/>
   <translation tag="Looking for the active spool..." zh="正在查找当前料盘..."/>
+  <translation tag="Loosen {0} noticeably" zh="明显放松 {0}"/>
+  <translation tag="Loosen {0} one full turn" zh="将 {0} 放松一整圈"/>
   <translation tag="Loosen {0} {1}" zh="放松 {0} {1}"/>
   <translation tag="Loosen {}" zh="放松 {}"/>
   <translation tag="Lost connection during print — try again" zh="打印过程中连接丢失 — 请重试"/>
@@ -3267,6 +3269,8 @@
   <translation tag="That setting cannot be changed while a print is running" zh="打印进行中无法更改该设置"/>
   <translation tag="That slot cannot stand in for this one" zh="该槽位无法替代当前槽位"/>
   <translation tag="That tool is already loaded" zh="该工具已加载耗材"/>
+  <translation tag="That turn didn&apos;t register yet. Loosen {0} a little more." zh="这次转动还没有体现出来。请将 {0} 再放松一点。"/>
+  <translation tag="That turn didn&apos;t register yet. Loosen {0} one more full turn." zh="这次转动还没有体现出来。请将 {0} 再放松一整圈。"/>
   <translation tag="That turn didn&apos;t register yet. Tighten {0} a little more." zh="这次转动还没有体现出来。请将 {0} 再拉紧一点。"/>
   <translation tag="That turn didn&apos;t register yet. Tighten {0} one more full turn." zh="这次转动还没有体现出来。请将 {0} 再拉紧一整圈。"/>
   <translation tag="The CFS odometer hardware is faulty and needs repair or replacement" zh="CFS 计量硬件故障，需维修或更换"/>
@@ -3322,7 +3326,6 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." zh="打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。"/>
   <translation tag="The printer finishes this measurement on its own." zh="打印机会自行完成这次测量。"/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" zh="打印机已停止此打印且无法恢复。从头重新开始？"/>
-  <translation tag="The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it." zh="打印机尚未报告其 [resonance_tester] 范围,因此无法把小范围扫频限制在其内。"/>
   <translation tag="The printer has not reported its axis limits yet." zh="打印机尚未报告其轴限位。"/>
   <translation tag="The printer has not reported its maximum velocity yet." zh="打印机尚未报告其最大速度。"/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." zh="打印机会加热喷嘴，在打印板角落进行几次短促的测试挤出并自行测量。它会重复直到读数一致，然后给出一个数值。"/>

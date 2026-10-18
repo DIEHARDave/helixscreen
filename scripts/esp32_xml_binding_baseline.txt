@@ -241,6 +241,7 @@ subject:bt_similarity
 subject:bt_similarity_was
 subject:bt_tune_amount
 subject:bt_tune_baseline
+subject:bt_tune_can_swap
 subject:bt_tune_confirm_label
 subject:bt_tune_cta
 subject:bt_tune_dir
@@ -261,6 +262,7 @@ subject:bt_tune_next_zone_label
 subject:bt_tune_path
 subject:bt_tune_phase
 subject:bt_tune_power_hint
+subject:bt_tune_range_known
 subject:bt_tune_rate
 subject:bt_tune_round
 subject:bt_tune_severity

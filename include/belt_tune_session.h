@@ -261,17 +261,21 @@ class BeltTuneSession {
     /// The range a round sweeps: zone_sweep_window() of the zone. nullopt without a zone.
     [[nodiscard]] std::optional<BeltSweepWindow> sweep_window() const;
     /// ALREADY_MATCHED and CALIBRATE: the looser path by the strongest
-    /// candidate's centroid gap, the one the calibration turn tightens.
-    /// Later: the path being tuned.
+    /// candidate's centroid gap (the other after a swap), the one the
+    /// calibration turn moves. Later: the path being tuned.
     [[nodiscard]] BeltPath adjusted_path() const;
     /// Swaps reference and adjusted, for this and later zones. The zone stays;
     /// the learned rate and this zone's rounds belong to the other belt, so
-    /// they clear. At CALIBRATE it changes which belt the turn tightens.
-    void swap_adjusted_path();
+    /// they clear. At CALIBRATE it changes which belt the turn moves, and is
+    /// refused (false, nothing changes) once a calibration step is in: every
+    /// step is measured against round 0 on the same belt.
+    bool swap_adjusted_path();
+    [[nodiscard]] bool can_swap_adjusted_path() const;
     /// Signed, adjusted - reference. ALREADY_MATCHED and CALIBRATE: round 0's
     /// strongest candidate's centroid gap.
     [[nodiscard]] float gap_hz() const;
-    /// CALIBRATE: tighten the adjusted path, CALIBRATION_TURNS for SCREW.
+    /// CALIBRATE: CALIBRATION_TURNS (SCREW) of the adjusted path, toward the
+    /// other: tighten the looser belt, or loosen the tighter one after a swap.
     /// TUNE: from the gap and the learned rate. UNREPEATABLE: no amount and
     /// no re-seat; the direction is not advice. Meaningless at
     /// ALREADY_MATCHED, BASELINE and NO_ZONE.
@@ -318,7 +322,8 @@ class BeltTuneSession {
     /// Signed sum, tighten positive, of the turns recorded while `path` was
     /// the adjusted one, calibration turns included. SCREW only.
     [[nodiscard]] float total_turns(BeltPath path) const;
-    [[nodiscard]] int total_rounds() const; ///< across zones, calibration sweeps excluded
+    /// Tuning rounds across zones; calibration sweeps and baseline rounds excluded.
+    [[nodiscard]] int total_rounds() const;
 
   private:
     /// One path's reading of the zone in one round.

@@ -302,6 +302,9 @@ class BeltTensionPanel : public OverlayBase {
     void query_hw_facts();
     /// bt_hw_sweep from sweep_cfg_ and the laps; nothing until the range is known.
     void refresh_hw_sweep();
+    /// Adopt a [resonance_tester] answer; Tune Belts waits for one the printer
+    /// reported (bt_tune_range_known).
+    void set_sweep_config(const helix::calibration::ResonanceTesterConfig& cfg);
     /// Ask the calibrator for kinematics and the accelerometer; the answer
     /// clears detection_pending_.
     void start_hardware_detection();
@@ -420,6 +423,8 @@ class BeltTensionPanel : public OverlayBase {
     lv_subject_t tune_has_power_hint_subject_{};
     lv_subject_t tune_has_gap_subject_{};
     lv_subject_t tune_unrepeatable_subject_{};
+    lv_subject_t tune_can_swap_subject_{};
+    lv_subject_t tune_range_known_subject_{};
     lv_subject_t tune_measure_short_label_subject_{};
     char tune_measure_short_label_buf_[32] = {};
     lv_subject_t tune_swap_label_subject_{};

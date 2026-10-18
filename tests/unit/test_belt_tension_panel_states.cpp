@@ -235,9 +235,9 @@ class BeltPanelFixture : public XMLTestFixture {
     size_t measure_label_buf_size() const {
         return sizeof(panel_->tune_measure_label_buf_);
     }
-    /// The [resonance_tester] range as the panel holds it.
-    helix::calibration::ResonanceTesterConfig& panel_sweep_cfg() {
-        return panel_->sweep_cfg_;
+    /// Hands the panel a [resonance_tester] answer, as its queries do.
+    void panel_set_sweep_config(const helix::calibration::ResonanceTesterConfig& cfg) {
+        panel_->set_sweep_config(cfg);
     }
     /// The live tuning session; null outside TUNING.
     const helix::calibration::BeltTuneSession* panel_session() {
@@ -1129,21 +1129,24 @@ TEST_CASE("matched belts open on Good Enough", "[belt][panel][tune]") {
     CHECK(fx.mock().gcode_script_history().empty());
 }
 
-TEST_CASE("Tune refuses a range the printer never reported", "[belt][panel][tune]") {
+TEST_CASE("Tune Belts waits for the printer's sweep range", "[belt][panel][tune]") {
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
     REQUIRE(fx.pump_until_state(RESULTS));
-    // Klipper's defaults (max 135) stand in until a query answers.
-    fx.panel_sweep_cfg().from_printer = false;
-    fx.mock().clear_gcode_script_history();
+    REQUIRE(fx.state_int("bt_tune_range_known") == 1);
+    CHECK_FALSE(lv_obj_has_state(named(fx, "btn_tune"), LV_STATE_DISABLED));
 
+    // Klipper's defaults (max 135) stand in until a query answers.
+    helix::calibration::ResonanceTesterConfig defaults;
+    REQUIRE_FALSE(defaults.from_printer);
+    fx.panel_set_sweep_config(defaults);
+    CHECK(fx.state_int("bt_tune_range_known") == 0);
+    CHECK(lv_obj_has_state(named(fx, "btn_tune"), LV_STATE_DISABLED));
+
+    fx.mock().clear_gcode_script_history();
     fx.panel().handle_tune_clicked();
-    CHECK(fx.state_int("belt_tension_state") ==
-          static_cast<int>(BeltTensionPanel::ViewState::ERROR));
-    CHECK(fx.text("bt_error_message") ==
-          "The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be "
-          "kept inside it.");
+    CHECK(fx.state_int("belt_tension_state") == RESULTS);
     CHECK(fx.panel_session() == nullptr);
     fx.pump_ms(2000);
     CHECK(fx.mock().gcode_script_history().empty());
@@ -1214,6 +1217,8 @@ TEST_CASE("the second turn registers and chains a narrow baseline without settli
 TEST_CASE("a calibration that gives up says to turn back", "[belt][panel][tune]") {
     BeltPanelFixture fx;
     get_printer_state().set_printer_type_sync("Voron 2.4");
+    // Paired tallest peaks: no shape warning of their own.
+    fx.mock().set_belt_peaks_hz(104.0f, 98.0f);
     fx.mock().set_belt_tune_script('B', {98.2f, 98.4f});
     enter_tuning(fx);
     tune_round(fx);
@@ -1224,7 +1229,8 @@ TEST_CASE("a calibration that gives up says to turn back", "[belt][panel][tune]"
     CHECK(fx.text("bt_tune_instruction") == "Nothing to tune here");
     CHECK(fx.text("bt_tune_last") ==
           "Nothing followed 2 turns of B. Turn B back 2 turns, then check the mechanics.");
-    CHECK(fx.state_int("bt_tune_shape_warning") == 1);
+    // The line says it all: no "gap is not closing" warning, since nothing was tuned.
+    CHECK(fx.state_int("bt_tune_shape_warning") == 0);
     CHECK(fx.state_int("bt_tune_has_zone") == 0);
     CHECK(lv_hidden(named(fx, "btn_tune_keep")));
 }
@@ -1318,15 +1324,15 @@ TEST_CASE("each outcome has its own last-turn line", "[belt][panel][tune]") {
 }
 
 TEST_CASE("Adjust A instead swaps the instruction", "[belt][panel][tune]") {
-    SECTION("the calibration turn") {
+    SECTION("the calibration turn loosens the tighter belt") {
         BeltPanelFixture fx;
         enter_tuning(fx);
         REQUIRE(fx.text("bt_tune_instruction") == "Tighten B noticeably");
         fx.panel().handle_tune_swap_clicked();
         CHECK(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
-        CHECK(fx.text("bt_tune_instruction") == "Tighten A noticeably");
+        CHECK(fx.text("bt_tune_instruction") == "Loosen A noticeably");
         CHECK(fx.state_int("bt_tune_path") == 0);
-        CHECK(fx.state_int("bt_tune_dir") == 0);
+        CHECK(fx.state_int("bt_tune_dir") == 1);
         CHECK(fx.text("bt_tune_gap_caption") == "A tighter than B");
         CHECK(fx.text("bt_tune_swap_label") == "Adjust B instead");
     }
@@ -1340,6 +1346,38 @@ TEST_CASE("Adjust A instead swaps the instruction", "[belt][panel][tune]") {
         CHECK(fx.state_int("bt_tune_dir") == 1);
         CHECK(fx.text("bt_tune_gap_caption") == "A tighter than B");
         CHECK(fx.text("bt_tune_swap_label") == "Adjust B instead");
+    }
+}
+
+TEST_CASE("the calibration belt can be swapped only before the first step", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    // Neither path moves: no step registers.
+    fx.mock().set_belt_tune_script('A', {110.0f});
+    fx.mock().set_belt_tune_script('B', {98.0f});
+    enter_tuning(fx);
+    CHECK(fx.state_int("bt_tune_can_swap") == 1);
+    CHECK_FALSE(lv_hidden(named(fx, "btn_tune_swap")));
+
+    SECTION("before: the other belt loosens one full turn") {
+        fx.panel().handle_tune_swap_clicked();
+        CHECK(fx.text("bt_tune_instruction") == "Loosen A one full turn");
+        CHECK_FALSE(lv_hidden(named(fx, "bt_tune_icon_ccw")));
+        CHECK(lv_hidden(named(fx, "bt_tune_icon_cw")));
+        tune_round(fx);
+        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+        CHECK(fx.text("bt_tune_last") ==
+              "That turn didn't register yet. Loosen A one more full turn.");
+        CHECK(fx.state_int("bt_tune_can_swap") == 0);
+    }
+    SECTION("after a step: refused, and the button is gone") {
+        tune_round(fx);
+        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_CALIBRATE);
+        CHECK(fx.state_int("bt_tune_can_swap") == 0);
+        CHECK(lv_hidden(named(fx, "btn_tune_swap")));
+        fx.panel().handle_tune_swap_clicked();
+        CHECK(fx.state_int("bt_tune_path") == 1);
+        CHECK(fx.text("bt_tune_instruction") == "Tighten B one full turn");
     }
 }
 
@@ -1885,8 +1923,8 @@ TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]
     replay_to_adjust(fx, belts);
     belts.set_b({108.0f});
     tune_round(fx);
-    // Two baseline rounds, then this one.
-    REQUIRE(fx.text("bt_tune_round") == "Round 4");
+    // The baseline pair is not a round: this was the first, the next is the second.
+    REQUIRE(fx.text("bt_tune_round") == "Round 2");
     const std::string zone = fx.text("bt_tune_zone");
     const std::string last = fx.text("bt_tune_last");
     REQUIRE_FALSE(fx.panel_detection_pending());
@@ -1897,14 +1935,14 @@ TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]
         fx.pump_ms(500);
         CHECK(fx.state_int("belt_tension_state") == TUNING);
         CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
-        CHECK(fx.text("bt_tune_round") == "Round 4");
+        CHECK(fx.text("bt_tune_round") == "Round 2");
         CHECK(fx.text("bt_tune_zone") == zone);
         CHECK(fx.text("bt_tune_last") == last);
         // The calibrator is not asked to detect hardware again.
         CHECK_FALSE(fx.panel_detection_pending());
         // The loop carries on from where it was.
         tune_round(fx);
-        CHECK(fx.text("bt_tune_round") == "Round 5");
+        CHECK(fx.text("bt_tune_round") == "Round 3");
     }
     SECTION("while a round sweeps") {
         fx.panel().handle_tune_measure_clicked();
@@ -1920,7 +1958,7 @@ TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]
             fx.pump_ms(100);
         }
         CHECK(fx.state_int("belt_tension_state") == TUNING);
-        CHECK(fx.text("bt_tune_round") == "Round 5");
+        CHECK(fx.text("bt_tune_round") == "Round 3");
     }
     SECTION("leaving after a suspension makes the next entry a fresh one") {
         fx.panel().on_deactivate(DeactivateReason::Suspended);
@@ -2249,7 +2287,8 @@ TEST_CASE("every locale's tuning strings fit their buffers", "[belt][panel][tune
 
         for (const char* instruction :
              {"Release {}'s tensioner, let the spring settle, lock it", "Tighten {}", "Loosen {}",
-              "Tighten {0} one full turn", "Tighten {0} noticeably"}) {
+              "Tighten {0} one full turn", "Tighten {0} noticeably", "Loosen {0} one full turn",
+              "Loosen {0} noticeably"}) {
             INFO(instruction);
             CHECK(f(instruction, 'A').size() < fx.instruction_buf_size());
         }
@@ -2271,6 +2310,8 @@ TEST_CASE("every locale's tuning strings fit their buffers", "[belt][panel][tune
               "The gap grew after loosening {0}. Check you turned Path {0}'s tensioner.",
               "That turn didn't register yet. Tighten {0} one more full turn.",
               "That turn didn't register yet. Tighten {0} a little more.",
+              "That turn didn't register yet. Loosen {0} one more full turn.",
+              "That turn didn't register yet. Loosen {0} a little more.",
               "Nothing followed the turns on {0}. Undo them, then check the mechanics."}) {
             INFO(last);
             CHECK(f(last, 'A').size() < fx.last_buf_size());

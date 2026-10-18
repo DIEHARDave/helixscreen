@@ -2006,6 +2006,8 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Pressione e segure qualquer bloco para entrar no modo de edição — reorganize, redimensione, remova ou adicione widgets, e adicione páginas extras para o seu layout preferido.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Pressione longamente a grade inicial para reorganizar os widgets (desative se disparar por acidente)'
   Longest Disconnect: Maior Desconexão
+  Loosen {0} noticeably: "Afrouxar {0} visivelmente"
+  Loosen {0} one full turn: "Afrouxar {0} uma volta completa"
   Loosen {0} {1}: 'Afrouxar {0} {1}'
   Loosen {}: "Afrouxar {}"
   Looking for the active spool...: Procurando o carretel ativo...
@@ -3599,6 +3601,8 @@ translations:
   'That setting cannot be changed while a print is running': 'Essa configuração não pode ser alterada durante uma impressão'
   That slot cannot stand in for this one: Esse slot não pode substituir este
   That tool is already loaded: Essa ferramenta já está carregada
+  That turn didn't register yet. Loosen {0} a little more.: "Esse giro ainda não apareceu. Afrouxe {0} um pouco mais."
+  That turn didn't register yet. Loosen {0} one more full turn.: "Esse giro ainda não apareceu. Afrouxe {0} mais uma volta completa."
   That turn didn't register yet. Tighten {0} a little more.: "Esse giro ainda não apareceu. Aperte {0} um pouco mais."
   That turn didn't register yet. Tighten {0} one more full turn.: "Esse giro ainda não apareceu. Aperte {0} mais uma volta completa."
   The CFS odometer hardware is faulty and needs repair or replacement: O hardware do odômetro do CFS está com defeito e precisa de reparo ou substituição
@@ -3670,7 +3674,6 @@ translations:
   The printer finishes this measurement on its own.: 'A impressora conclui esta medição por conta própria.'
   The printer halted this print and cannot resume it. Restart from the beginning?: A
     impressora parou esta impressão e não pode retomá-la. Reiniciar do início?
-  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "A impressora não informou sua faixa de [resonance_tester], então uma varredura estreita não pode ser mantida dentro dela."
   The printer has not reported its axis limits yet.: 'A impressora ainda não informou os limites dos eixos.'
   The printer has not reported its maximum velocity yet.: 'A impressora ainda não informou a velocidade máxima.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.

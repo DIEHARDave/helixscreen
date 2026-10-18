@@ -2018,6 +2018,8 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Appui long sur n''importe quelle tuile pour entrer en mode édition — réorganisez, redimensionnez, supprimez ou ajoutez des widgets, et ajoutez des pages supplémentaires pour votre disposition préférée.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Appui long sur la grille d''accueil pour réorganiser les widgets (désactivez si cela se déclenche par accident)'
   Longest Disconnect: Déconnexion la plus longue
+  Loosen {0} noticeably: "Détendre {0} nettement"
+  Loosen {0} one full turn: "Détendre {0} d'un tour complet"
   Loosen {0} {1}: 'Détendre {0} de {1}'
   Loosen {}: "Détendre {}"
   Looking for the active spool...: Recherche de la bobine active...
@@ -3618,6 +3620,8 @@ translations:
   'That setting cannot be changed while a print is running': 'Ce réglage ne peut pas être modifié pendant une impression'
   That slot cannot stand in for this one: Cet emplacement ne peut pas remplacer celui-ci
   That tool is already loaded: Cet outil est déjà chargé
+  That turn didn't register yet. Loosen {0} a little more.: "Ce tour ne s'est pas encore vu. Détendez {0} un peu plus."
+  That turn didn't register yet. Loosen {0} one more full turn.: "Ce tour ne s'est pas encore vu. Détendez {0} d'un tour complet de plus."
   That turn didn't register yet. Tighten {0} a little more.: "Ce tour ne s'est pas encore vu. Tendez {0} un peu plus."
   That turn didn't register yet. Tighten {0} one more full turn.: "Ce tour ne s'est pas encore vu. Tendez {0} d'un tour complet de plus."
   The CFS odometer hardware is faulty and needs repair or replacement: Le matériel d'odométrie du CFS est défectueux et doit être réparé ou remplacé
@@ -3690,7 +3694,6 @@ translations:
   The printer halted this print and cannot resume it. Restart from the beginning?: L'imprimante
     a arrêté cette impression et ne peut pas la reprendre. Redémarrer depuis le début
     ?
-  The printer has not reported its [resonance_tester] range, so a narrow sweep cannot be kept inside it.: "L'imprimante n'a pas indiqué sa plage [resonance_tester], un balayage étroit ne peut donc pas y être maintenu."
   The printer has not reported its axis limits yet.: 'L''imprimante n''a pas encore signalé les limites de ses axes.'
   The printer has not reported its maximum velocity yet.: 'L''imprimante n''a pas encore signalé sa vitesse maximale.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.

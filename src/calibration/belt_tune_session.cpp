@@ -478,7 +478,14 @@ BeltPath BeltTuneSession::adjusted_path() const {
     return adjusted_;
 }
 
-void BeltTuneSession::swap_adjusted_path() {
+bool BeltTuneSession::can_swap_adjusted_path() const {
+    return stage_ != BeltTuneStage::CALIBRATE || calibration_steps_ == 0;
+}
+
+bool BeltTuneSession::swap_adjusted_path() {
+    if (!can_swap_adjusted_path()) {
+        return false;
+    }
     adjusted_ = adjusted_ == BeltPath::PATH_A ? BeltPath::PATH_B : BeltPath::PATH_A;
     if (zone_) {
         std::swap(zone_->adj_hz, zone_->ref_hz);
@@ -487,6 +494,7 @@ void BeltTuneSession::swap_adjusted_path() {
     clear_belt_history();
     previous_gap_hz_.reset();
     rounds_.clear();
+    return true;
 }
 
 float BeltTuneSession::gap_hz() const {
@@ -497,7 +505,8 @@ BeltTuneAdvice BeltTuneSession::advice() const {
     BeltTuneAdvice out;
     out.path = adjusted_;
     if (stage_ == BeltTuneStage::CALIBRATE) {
-        out.direction = BeltTurnDirection::TIGHTEN;
+        // Toward the other belt: the looser one tightens, the tighter one loosens.
+        out.direction = gap_hz() > 0.0f ? BeltTurnDirection::LOOSEN : BeltTurnDirection::TIGHTEN;
         if (kind_ == BeltTensionerKind::SCREW) {
             out.turns = CALIBRATION_TURNS;
         }
@@ -544,13 +553,14 @@ BeltCalibrationResult BeltTuneSession::add_calibration_sweep(const BeltResponse&
     if (stage_ != BeltTuneStage::CALIBRATE) {
         return out;
     }
-    book_turns(CALIBRATION_TURNS);
+    const float advised = advice().direction == BeltTurnDirection::TIGHTEN ? 1.0f : -1.0f;
+    book_turns(advised * CALIBRATION_TURNS);
     ++calibration_steps_;
     out.turns = static_cast<float>(calibration_steps_) * CALIBRATION_TURNS;
 
-    // Each candidate's gap, adjusted - reference, now against round 0. The
-    // turn tightened the adjusted belt, so its side of the gap rising is the
-    // advised way.
+    // Each candidate's gap, adjusted - reference, now against round 0. A
+    // tightening turn raises the adjusted belt's side of the gap and a
+    // loosening one lowers it; a move that way is positive.
     const auto gap_over = [this](const BeltResponse& a, const BeltResponse& b,
                                  BeltSweepWindow w) -> std::optional<float> {
         const auto ca = zone_centroid_hz(tuning_curve(a), w);
@@ -568,7 +578,7 @@ BeltCalibrationResult BeltTuneSession::add_calibration_sweep(const BeltResponse&
         if (!before || !now) {
             continue;
         }
-        const float move = *now - *before;
+        const float move = advised * (*now - *before);
         spdlog::debug("[BeltTune] Calibration step {}: zone {:.1f}-{:.1f} Hz moved {:+.2f} Hz",
                       calibration_steps_, c.zone.window.freq_start_hz, c.zone.window.freq_end_hz,
                       move);
@@ -608,13 +618,19 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltResponse& a_swept,
                                                 const BeltResponse& b_swept) {
     const BeltTuneAdvice advised = advice();
     BeltTuneRound r;
-    ++total_rounds_;
+    if (stage_ == BeltTuneStage::TUNE) {
+        ++total_rounds_;
+    }
     r.ref_hz = ref_hz_;
     r.adj_hz = adj_hz_;
     r.gap_hz = gap_hz();
 
     const auto finish = [&](BeltTuneOutcome outcome) -> const BeltTuneRound& {
         r.outcome = outcome;
+        // A pair round that measured nothing breaks the pair: the next round opens a fresh one.
+        if (outcome == BeltTuneOutcome::NO_PEAK && stage_ == BeltTuneStage::BASELINE) {
+            baseline_first_.reset();
+        }
         rounds_.push_back(r);
         spdlog::debug("[BeltTune] Round {}: ref {:.2f} adj {:.2f} gap {:+.2f} Hz, outcome {}",
                       total_rounds_, r.ref_hz, r.adj_hz, r.gap_hz, static_cast<int>(outcome));

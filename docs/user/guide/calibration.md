@@ -255,7 +255,7 @@ After adjusting a belt, you do not need to re-run both paths:
 
 ### Tuning Your Belts
 
-When the results show the paths differ, **Tune Belts** (**Fine-tune** if they already match well) walks you through closing the gap one belt at a time. Instead of repeating the full check after every adjustment, it re-measures only the stretch of the spectrum where the two paths disagree, which takes a fraction of the time. The same requirements as the full check apply, and every Measure, Re-measure, Next Zone and Confirm checks them again: if a print has started or Klipper has dropped out, the sweep is refused with the reason. Tuning needs to know your printer's sweep range, so if the printer has not reported its `[resonance_tester]` settings, Tune Belts says so instead of guessing.
+When the results show the paths differ, **Tune Belts** (**Fine-tune** if they already match well) walks you through closing the gap one belt at a time. Instead of repeating the full check after every adjustment, it re-measures only the stretch of the spectrum where the two paths disagree, which takes a fraction of the time. The same requirements as the full check apply, and every Measure, Re-measure, Next Zone and Confirm checks them again: if a print has started or Klipper has dropped out, the sweep is refused with the reason. Tuning needs to know your printer's sweep range, so Tune Belts stays disabled until the printer has reported its `[resonance_tester]` settings.
 
 Before every sweep that can follow a belt adjustment, the toolhead runs three quick laps around the bed. A turned tensioner first changes only the stretch of belt next to it; the laps spread the change around the whole belt so the reading reflects it. On a printer with several toolheads the laps stay in the middle of the bed, clear of the parked tools.
 
@@ -289,7 +289,7 @@ To work through it:
    - "No clear peak in this zone": the sweep found nothing to compare there. Try again, or see below
    - "peak moved out of the zone. Widening it.": nothing to do, the next sweep covers the wider range
 3. When the gap is inside the matched band, the zone is **matched**. If another zone moved with your calibration turn, **Next Zone** moves on to it and measures it at once (twice, as above); on larger screens the button shows how long that takes. Otherwise **Confirm** runs a full two-path check and shows the result against the one you started from, with the rounds taken and the total turns per belt, calibration turns included
-4. **Adjust X instead** switches which belt you are tuning, if the other one is easier to reach or you turned the wrong one. **Good Enough** leaves tuning with your starting results
+4. **Adjust X instead** switches which belt you are tuning, if the other one is easier to reach or you turned the wrong one. During the calibration turn it is offered only before your first Measure, and it turns the instruction into loosening the tighter belt instead. **Good Enough** leaves tuning with your starting results
 
 The screen can dim or show the screensaver while you are at the tensioner; waking it returns you to the same round. On printers with little memory the low-memory warning is asked once, at the first sweep of a tuning session.
 
