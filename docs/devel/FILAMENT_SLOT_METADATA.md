@@ -196,6 +196,7 @@ own hardware-event signal:
 |---------|------------|------------|-----------------------|---------------------------|
 | `AmsBackendAd5xIfs` | `ifs` | `update_slot_from_state` → `apply_resolved_lane` | `Adventurer5M.json` color RGB change | brand, spool_name, spoolman filament/vendor ids, weights, color_name |
 | `AmsBackendSnapmaker` | `snapmaker` | tail loop at end of `handle_status` | `filament_detect.info[ch].CARD_UID` byte-array → canonicalized string | spool_name, spoolman filament/vendor ids, remaining_weight_g |
+| `AmsBackendMultiAce` | `snapmaker` (same backend id) | `rebuild_units_locked` per-bay loop, before the lane ingest | Heads: the base's `CARD_UID` path. Bays: the engine table's uid, else material+colour, through the same shared tracker; an entry stating no identity is no signal | spool_name, spoolman filament/vendor ids, remaining_weight_g |
 | `AmsBackendAce` | `ace` | `parse_ace_object` per-slot loop | Status transition: EMPTY/UNKNOWN → present | brand, spool_name, spoolman filament/vendor ids, weights, color_name |
 | `AmsBackendCfs` | `cfs` | `handle_status` tail loop | Composite `material_type\|color_value` fingerprint | spool_name, spoolman filament/vendor ids, remaining_weight_g |
 | `AmsBackendToolChanger` | `toolchanger` | `handle_status` tail loop, `initialize_tools()` tail, and after the start-time load | **None** - see below | *every* field |

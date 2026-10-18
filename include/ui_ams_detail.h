@@ -22,7 +22,7 @@
  */
 
 /// Maximum slots supported in a single detail view
-static constexpr int AMS_DETAIL_MAX_SLOTS = 16;
+static constexpr int AMS_DETAIL_MAX_SLOTS = 20;
 
 /// Widget pointers resolved from an ams_unit_detail component
 struct AmsDetailWidgets {

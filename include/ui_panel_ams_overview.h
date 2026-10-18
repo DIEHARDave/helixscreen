@@ -28,6 +28,10 @@ struct LaneBarsGeometry {
     int first_slot = -1;
     int slot_count = 0;
     int32_t width = 0;
+    /// One bit per lane, set when that lane's spool lives upstream of the
+    /// unit (a fed head's chain ends at its routed bay): those lanes get no
+    /// spool box here, the upstream lane already draws the box.
+    uint32_t upstream_mask = 0;
 };
 
 /// Whether bars built for @p built must be rebuilt for @p now. Each bar binds
@@ -35,7 +39,7 @@ struct LaneBarsGeometry {
 /// count still needs new bars; color, fill and state repaint in place.
 inline bool lane_bars_stale(const LaneBarsGeometry& built, const LaneBarsGeometry& now) {
     return built.first_slot != now.first_slot || built.slot_count != now.slot_count ||
-           built.width != now.width;
+           built.width != now.width || built.upstream_mask != now.upstream_mask;
 }
 
 } // namespace helix::ui
