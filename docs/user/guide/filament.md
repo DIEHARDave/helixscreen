@@ -413,7 +413,7 @@ Below the top-level controls, **device-specific settings appear as expandable se
 |---------|---------------|
 | **Setup** | Run Calibration Wizard, Bowden Length, LED toggles (system + per-toolhead), Quiet Mode |
 | **Speed Settings** | Forward and reverse move-speed multipliers |
-| **Toolhead** | Sensor-to-nozzle, unload, and post-sensor clear distances (per tool) |
+| **Toolhead** | Calibrate Toolhead, then the sensor-to-nozzle, unload, and post-sensor clear distances (per tool). **Calibrate Toolhead** walks you through measuring the sensor-to-nozzle and unload distances and the cutter retract, with AFC asking each question on screen. It appears only when your AFC version has that calibration |
 | **Maintenance** | Test All Lanes, Change Blade, Park, Clean Brush, Reset Motor Timer |
 | **Hub & Cutter** | Cutter enable, cut distance, hub bowden length, assisted retract |
 | **Tip Forming** | Ramming volume, unloading start speed, cooling-tube length and retraction |
