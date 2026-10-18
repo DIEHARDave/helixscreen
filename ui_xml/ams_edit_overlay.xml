@@ -41,23 +41,23 @@
     <!-- Touch floor: every swatch's hit box is >= 44px, and the gap is
          44 - disc so adjacent targets tile at exactly 44px pitch without
          overlapping (overlaps make LVGL give the tap to the topmost). -->
-    <px name="ams_edit_grid_hit_micro" value="9"/>
-    <px name="ams_edit_grid_hit_tiny" value="9"/>
-    <px name="ams_edit_grid_hit_small" value="9"/>
+    <px name="ams_edit_grid_hit_micro" value="7"/>
+    <px name="ams_edit_grid_hit_tiny" value="7"/>
+    <px name="ams_edit_grid_hit_small" value="7"/>
     <px name="ams_edit_grid_hit_medium" value="6"/>
     <px name="ams_edit_grid_hit_large" value="6"/>
     <px name="ams_edit_grid_hit_xlarge" value="6"/>
     <px name="ams_edit_grid_hit_xxlarge" value="6"/>
-    <px name="ams_edit_grid_gap_micro" value="18"/>
-    <px name="ams_edit_grid_gap_tiny" value="18"/>
-    <px name="ams_edit_grid_gap_small" value="18"/>
+    <px name="ams_edit_grid_gap_micro" value="14"/>
+    <px name="ams_edit_grid_gap_tiny" value="14"/>
+    <px name="ams_edit_grid_gap_small" value="14"/>
     <px name="ams_edit_grid_gap_medium" value="12"/>
     <px name="ams_edit_grid_gap_large" value="12"/>
     <px name="ams_edit_grid_gap_xlarge" value="12"/>
     <px name="ams_edit_grid_gap_xxlarge" value="12"/>
-    <px name="ams_edit_grid_swatch_micro" value="#swatch_grid_size_micro"/>
-    <px name="ams_edit_grid_swatch_tiny" value="#swatch_grid_size_micro"/>
-    <px name="ams_edit_grid_swatch_small" value="#swatch_grid_size_micro"/>
+    <px name="ams_edit_grid_swatch_micro" value="30"/>
+    <px name="ams_edit_grid_swatch_tiny" value="30"/>
+    <px name="ams_edit_grid_swatch_small" value="30"/>
     <px name="ams_edit_grid_swatch_medium" value="#swatch_grid_size"/>
     <px name="ams_edit_grid_swatch_large" value="#swatch_grid_size"/>
     <px name="ams_edit_grid_swatch_xlarge" value="#swatch_grid_size"/>
@@ -135,7 +135,12 @@
         <lv_obj width="100%"
                 height="content" style_pad_all="0" flex_flow="row_wrap" style_flex_cross_place="center"
                 style_pad_gap="#space_sm" scrollable="false">
-          <color_dot name="summary_color_swatch" size="#swatch_grid_size" color="#card_bg"/>
+          <lv_obj name="summary_swatch_wrap"
+                  width="44" height="44" style_pad_all="0" style_bg_opa="0" style_border_width="0" flex_flow="row"
+                  style_flex_main_place="center" style_flex_cross_place="center" scrollable="false" clickable="true">
+            <event_cb trigger="clicked" callback="ams_edit_custom_color_cb"/>
+            <color_dot name="summary_color_swatch" size="#swatch_grid_size" color="#card_bg"/>
+          </lv_obj>
           <text_body name="summary_text" bind_text="ams_edit_summary_text" flex_grow="1" long_mode="dots"/>
           <lv_obj name="summary_tag_badge"
                   width="content" height="content" style_pad_hor="#space_xs" style_pad_ver="0" style_radius="9999"
@@ -476,7 +481,7 @@
 
         <!-- Custom hue: HSV + hex + Select -->
         <lv_obj width="content"
-                height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_md"
+                height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_xl"
                 style_flex_cross_place="center" scrollable="false">
           <ui_hsv_picker name="ams_color_hsv" sv_size="#sv_size" hue_height="#hue_height" gap="#space_sm"/>
           <lv_obj width="content"

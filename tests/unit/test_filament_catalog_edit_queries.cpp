@@ -205,7 +205,7 @@ TEST_CASE("editor swatch touch targets meet the 44px floor at every class",
     };
     // The disc ladder resolves through #tokens; assert on the literal
     // micro/small/medium grid consts the ladders reference.
-    const int disc_micro = 26;
+    const int disc_micro = 30;
     const int disc_medium = 32;
     for (const char* cls : {"micro", "tiny", "small"}) {
         const std::string p = std::string("ams_edit_grid_");
