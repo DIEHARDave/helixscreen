@@ -11,8 +11,8 @@ namespace helix::test {
 /// of the process. A test that drives initiate() waits that window out first,
 /// or a shard that reaches it early sees a refusal no code under test made.
 inline void wait_out_print_start_grace() {
-    std::this_thread::sleep_until(app_constants::startup::PROCESS_START_TIME +
-                                  app_constants::startup::PRINT_START_GRACE_PERIOD);
+    std::this_thread::sleep_until(app_constants::startup::kProcessStartTime +
+                                  app_constants::startup::kPrintStartGracePeriod);
 }
 
 } // namespace helix::test

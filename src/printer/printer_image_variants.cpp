@@ -11,7 +11,7 @@ namespace helix::printer_images {
 
 namespace {
 
-constexpr std::string_view FILAMENT_SYSTEM = "filament_system";
+constexpr std::string_view kFilamentSystem = "filament_system";
 
 /// The AmsType a `filament_system` value names, NONE when it names none.
 AmsType parse_filament_system(const nlohmann::json& value) {
@@ -24,7 +24,7 @@ AmsType parse_filament_system(const nlohmann::json& value) {
 
 bool condition_holds(std::string_view key, const nlohmann::json& value,
                      const HardwareFacts& facts) {
-    if (key == FILAMENT_SYSTEM) {
+    if (key == kFilamentSystem) {
         const AmsType wanted = parse_filament_system(value);
         if (wanted == AmsType::NONE) {
             return false;
@@ -38,11 +38,11 @@ bool condition_holds(std::string_view key, const nlohmann::json& value,
 } // namespace
 
 bool is_known_variant_condition(std::string_view key) {
-    return key == FILAMENT_SYSTEM;
+    return key == kFilamentSystem;
 }
 
 bool is_valid_variant_condition_value(std::string_view key, const nlohmann::json& value) {
-    if (key == FILAMENT_SYSTEM) {
+    if (key == kFilamentSystem) {
         return parse_filament_system(value) != AmsType::NONE;
     }
     return false;

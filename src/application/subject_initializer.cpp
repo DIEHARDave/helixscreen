@@ -534,9 +534,9 @@ void SubjectInitializer::init_usb_manager(const RuntimeConfig& runtime_config) {
             (void)drive;
 
             // Suppress toast for drives detected within 3 seconds of startup
-            constexpr auto GRACE_PERIOD = std::chrono::seconds(3);
+            constexpr auto kGracePeriod = std::chrono::seconds(3);
             auto now = std::chrono::steady_clock::now();
-            bool within_grace_period = (now - usb_setup_time) < GRACE_PERIOD;
+            bool within_grace_period = (now - usb_setup_time) < kGracePeriod;
 
             if (event == UsbEvent::DRIVE_INSERTED) {
                 if (!within_grace_period) {

@@ -286,7 +286,7 @@ void DisplaySettingsOverlay::init_screensaver_dropdown() {
         if (!options.empty()) {
             options += "\n";
         }
-        const char* label = lv_tr(info ? info->label_key : helix::ui::SCREENSAVER_OFF_LABEL_KEY);
+        const char* label = lv_tr(info ? info->label_key : helix::ui::kScreensaverOffLabelKey);
         options += label;
         if (type == runs && runs_too_heavy) {
             options += std::string(" (") + lv_tr("too slow") + ")";
@@ -301,7 +301,7 @@ void DisplaySettingsOverlay::init_screensaver_dropdown() {
     lv_dropdown_set_selected(dropdown, static_cast<uint32_t>(index));
 
     spdlog::debug("[{}] Screensaver dropdown: {} of {} savers offered, stored type {} runs as {}",
-                  get_name(), screensaver_choices_.size() - 1, helix::ui::SCREENSAVER_COUNT,
+                  get_name(), screensaver_choices_.size() - 1, helix::ui::kScreensaverCount,
                   static_cast<int>(configured), static_cast<int>(runs));
 #endif
 }

@@ -17,9 +17,9 @@
  */
 
 #include "../lvgl_test_fixture.h"
-#include "test_helpers/afc_test_access.h"
 #include "ams_backend_afc.h"
 #include "ams_types.h"
+#include "test_helpers/afc_test_access.h"
 
 #include <string>
 
@@ -150,7 +150,7 @@ TEST_CASE("lane_data leaves an unparseable color at the default", "[afc][databas
     AfcDatabaseResponseHelper afc;
     const json lanes = {{"lane1", {{"color", "not-a-color"}}}};
     REQUIRE(afc.apply_lanes(envelope("lane_data", lanes)));
-    CHECK(afc.get_slot_info(0).color_rgb == AMS_DEFAULT_SLOT_COLOR);
+    CHECK(afc.get_slot_info(0).color_rgb == kAmsDefaultSlotColor);
 }
 
 // AFC's real lane_data payload carries NO status keys — no tool_loaded, loaded,

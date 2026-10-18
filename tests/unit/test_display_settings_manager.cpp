@@ -231,7 +231,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "preview_viewer_enabled follows the persisted 
     REQUIRE(std::getenv("HELIX_GCODE_MODE") == nullptr);
 
     DisplaySettingsManager::instance().set_gcode_render_mode(
-        helix::gcode_viewer::RENDER_MODE_THUMBNAIL_ONLY);
+        helix::gcode_viewer::kRenderModeThumbnailOnly);
     CHECK_FALSE(helix::ui::preview_viewer_enabled());
 
     DisplaySettingsManager::instance().set_gcode_render_mode(2);
@@ -445,7 +445,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "screensaver type defaults to the registry def
     config->get_json("/display").erase("screensaver_enabled");
     DisplaySettingsManager::instance().deinit_subjects();
 
-    const int registry_default = static_cast<int>(helix::ui::DEFAULT_SCREENSAVER_TYPE);
+    const int registry_default = static_cast<int>(helix::ui::kDefaultScreensaverType);
     DisplaySettingsManager& mgr = DisplaySettingsManager::instance();
 
     SECTION("a fresh install runs the registry default") {
@@ -459,7 +459,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "screensaver type defaults to the registry def
         REQUIRE(mgr.get_screensaver_type() == registry_default);
         // The migration persists its answer, by name, so the legacy key is read once.
         REQUIRE(config->get<std::string>("/display/screensaver_type", "") ==
-                helix::ui::screensaver_name(helix::ui::DEFAULT_SCREENSAVER_TYPE));
+                helix::ui::screensaver_name(helix::ui::kDefaultScreensaverType));
     }
 
     SECTION("legacy screensaver_enabled=false migrates to Off") {

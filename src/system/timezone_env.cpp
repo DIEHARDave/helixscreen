@@ -16,8 +16,8 @@ namespace helix::timezone_env {
 
 namespace {
 
-constexpr const char* DEFAULT_SYSTEM_PROBE = "/usr/share/zoneinfo/UTC";
-constexpr const char* DEFAULT_BUNDLED_SUBDIR = "assets/zoneinfo";
+constexpr const char* kDefaultSystemProbe = "/usr/share/zoneinfo/UTC";
+constexpr const char* kDefaultBundledSubdir = "assets/zoneinfo";
 
 bool probed_ = false;
 std::string active_tzdir_;
@@ -35,8 +35,8 @@ const char* configure_tzdir(const char* system_probe, const char* bundled_subdir
     }
     probed_ = true;
 
-    const char* probe = system_probe ? system_probe : DEFAULT_SYSTEM_PROBE;
-    const char* subdir = bundled_subdir ? bundled_subdir : DEFAULT_BUNDLED_SUBDIR;
+    const char* probe = system_probe ? system_probe : kDefaultSystemProbe;
+    const char* subdir = bundled_subdir ? bundled_subdir : kDefaultBundledSubdir;
 
     if (path_exists(probe)) {
         // System tzdata present — let glibc use its default TZDIR.

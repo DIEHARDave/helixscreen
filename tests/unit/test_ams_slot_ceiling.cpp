@@ -3,7 +3,7 @@
 
 /**
  * @file test_ams_slot_ceiling.cpp
- * @brief A large multi-unit setup binds every lane up to AMS_MAX_SLOTS, and a
+ * @brief A large multi-unit setup binds every lane up to kAmsMaxSlots, and a
  *        lane past it degrades with one warning instead of blanking.
  *
  * The 23-lane backend is the shape of a seven-unit AFC rig: twenty-two unit
@@ -25,9 +25,9 @@
 
 #include "../catch_amalgamated.hpp"
 
-using helix::AMS_MAX_SLOTS;
 using helix::AmsBackendMock;
 using helix::AmsState;
+using helix::kAmsMaxSlots;
 using helix::PathSegment;
 using helix::SlotInfo;
 using helix::SlotStatus;
@@ -108,7 +108,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "FilamentPath: the canvas holds state for la
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "AmsState: a loaded lane past the ceiling still drives Currently Loaded",
                  "[ams][slot_ceiling]") {
-    constexpr int kLanes = AMS_MAX_SLOTS + 2;
+    constexpr int kLanes = kAmsMaxSlots + 2;
     constexpr int kBeyond = kLanes - 1;
     auto& ams = AmsState::instance();
     ams.init_subjects(true);

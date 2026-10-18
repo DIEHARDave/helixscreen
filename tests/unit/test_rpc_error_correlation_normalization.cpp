@@ -223,9 +223,9 @@ TEST_CASE_METHOD(CorrelationFixture,
     // wording, sent identically on both channels) becomes "Must home axes
     // first" on the router side only. The RPC side records Klipper's wording,
     // so the exact-string dedup misses and BOTH toasts fire.
-    const std::string REWRITTEN = "Must home axis first";
+    const std::string kRewritten = "Must home axis first";
 
-    auto r = run_both_channels(REWRITTEN);
+    auto r = run_both_channels(kRewritten);
 
     INFO("router toasts: " << r.router_toasts << " suppressions: " << r.suppressions);
     CHECK(r.caller_cb_fired);

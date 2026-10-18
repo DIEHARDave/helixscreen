@@ -19,9 +19,9 @@
  *     the mapping lands — query_lane_data() is one-shot and never retried
  */
 
-#include "test_helpers/afc_test_access.h"
 #include "ams_backend_afc.h"
 #include "ams_types.h"
+#include "test_helpers/afc_test_access.h"
 
 #include <string>
 
@@ -39,7 +39,7 @@ nlohmann::json tool_record(const char* color, const char* material, const char* 
             {"spool_id", spool_id}};
 }
 
-constexpr uint32_t kDefaultColor = AMS_DEFAULT_SLOT_COLOR;
+constexpr uint32_t kDefaultColor = kAmsDefaultSlotColor;
 
 namespace helix {
 

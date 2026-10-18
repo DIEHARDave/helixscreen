@@ -62,7 +62,7 @@ void FlipClockScreensaver::draw_text(SaverLabel& label, const std::string& text,
         if (on_card) {
             sim_.redraw_card(frame, 0, dirty);
         } else {
-            PixelWriter(frame).fill_rect(label.box(), FlipClockSim::BACKGROUND);
+            PixelWriter(frame).fill_rect(label.box(), FlipClockSim::kBackground);
             dirty.push_back(label.box());
         }
     }

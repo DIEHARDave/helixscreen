@@ -264,9 +264,9 @@ void SpoolmanManager::fetch_linked_external_spool(int ext_spoolman_id) {
                     // translation would stand the Spoolman record just
                     // dropped right back up.
                     const bool had_record =
-                        helix::ams::lane_sources(helix::ams::BYPASS_LANE_ID).spoolman.has_value();
+                        helix::ams::lane_sources(helix::ams::kBypassLaneId).spoolman.has_value();
                     const std::optional<SlotInfo> kept_view = state.get_external_spool_info();
-                    helix::ams::drop_lane_source(helix::ams::BYPASS_LANE_ID,
+                    helix::ams::drop_lane_source(helix::ams::kBypassLaneId,
                                                  helix::ams::ObservationSource::Spoolman);
                     if (had_record && kept_view.has_value()) {
                         SlotInfo kept = *kept_view;
@@ -275,7 +275,7 @@ void SpoolmanManager::fetch_linked_external_spool(int ext_spoolman_id) {
                         const helix::ams::Observation nothing_declared(
                             helix::ams::ObservationSource::Remembered);
                         helix::ams::file_kept_identity(
-                            helix::ams::BYPASS_LANE_ID, helix::ams::BYPASS_SLOT_INDEX,
+                            helix::ams::kBypassLaneId, helix::ams::kBypassSlotIndex,
                             helix::ams::user_override_from_slot_info(nothing_declared, kept,
                                                                      kept.material, nullptr));
                     }
@@ -312,7 +312,7 @@ void SpoolmanManager::fetch_linked_external_spool(int ext_spoolman_id) {
                     return;
                 }
 
-                if (SpoolmanManager::file_spool_on_lane(helix::ams::BYPASS_LANE_ID, spool)) {
+                if (SpoolmanManager::file_spool_on_lane(helix::ams::kBypassLaneId, spool)) {
                     // The stored binding is what a restart reads before any
                     // poll answers, so the fetched record moves it too, the
                     // same reason a slot fetch persists its lane record.
@@ -494,12 +494,12 @@ void SpoolmanManager::fetch_linked_slot(int backend_index, int slot_index, int s
 
                 mgr.consecutive_failures_++;
 
-                if (mgr.consecutive_failures_ >= CB_FAILURE_THRESHOLD) {
+                if (mgr.consecutive_failures_ >= kCbFailureThreshold) {
                     mgr.cb_open_ = true;
                     mgr.cb_tripped_at_ms_ = lv_tick_get();
                     spdlog::warn("[SpoolmanManager] Spoolman circuit breaker OPEN after {} "
                                  "failures, backing off {}s",
-                                 mgr.consecutive_failures_, CB_BACKOFF_MS / 1000);
+                                 mgr.consecutive_failures_, kCbBackoffMs / 1000);
 
                     // Notify the user once per outage, and only when
                     // Spoolman is actually configured: a printer that never
@@ -611,9 +611,9 @@ void SpoolmanManager::refresh_spoolman_weights() {
     // Circuit breaker: if open, check if backoff period has elapsed
     if (cb_open_) {
         uint32_t elapsed = now - cb_tripped_at_ms_;
-        if (elapsed < CB_BACKOFF_MS) {
+        if (elapsed < kCbBackoffMs) {
             spdlog::trace("[SpoolmanManager] Spoolman circuit breaker open, {}ms remaining",
-                          CB_BACKOFF_MS - elapsed);
+                          kCbBackoffMs - elapsed);
             return;
         }
         // Backoff elapsed — half-open: allow one probe request through
@@ -624,7 +624,7 @@ void SpoolmanManager::refresh_spoolman_weights() {
     // Debounce: skip if called too recently
     if (last_refresh_ms_ > 0) {
         uint32_t since_last = now - last_refresh_ms_;
-        if (since_last < DEBOUNCE_MS) {
+        if (since_last < kDebounceMs) {
             spdlog::trace("[SpoolmanManager] Spoolman refresh debounced ({}ms since last)",
                           since_last);
             return;
@@ -882,7 +882,7 @@ void SpoolmanManager::ensure_poll_timer() {
                 auto* self = static_cast<SpoolmanManager*>(lv_timer_get_user_data(timer));
                 self->refresh_spoolman_weights();
             },
-            POLL_INTERVAL_MS, this);
+            kPollIntervalMs, this);
     }
 
     // Also do an immediate refresh - outside the lock. refresh_spoolman_weights()

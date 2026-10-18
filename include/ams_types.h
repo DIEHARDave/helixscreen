@@ -37,19 +37,19 @@
 namespace helix {
 
 /// Default color for slots without filament info (medium gray)
-constexpr uint32_t AMS_DEFAULT_SLOT_COLOR = 0x808080;
+constexpr uint32_t kAmsDefaultSlotColor = 0x808080;
 
 /// Units the AMS UI addresses. The overview's path canvas draws this many and
 /// AmsState allocates this many sets of per-unit subjects, so a unit the path
 /// shows always has a badge to bind; both caps derive from this one constant.
-constexpr int AMS_MAX_UNITS = 16;
+constexpr int kAmsMaxUnits = 16;
 
 /// Slots the AMS UI binds per backend: AmsState's per-slot subjects, the path
 /// canvas, the endless-spool arrows and the slot grids all derive their caps
 /// from this one constant. AFC and Happy Hare report every lane they find, so
 /// a many-unit rig is ordinary hardware; 64 is sixteen four-lane units. A slot
 /// past it keeps working in the backend and shows unbound in the UI.
-constexpr int AMS_MAX_SLOTS = 64;
+constexpr int kAmsMaxSlots = 64;
 
 /**
  * @brief Type of AMS system detected
@@ -721,7 +721,7 @@ enum class PathSegment {
 };
 
 /// Number of path segments for iteration (NONE through NOZZLE)
-constexpr int PATH_SEGMENT_COUNT = 8;
+constexpr int kPathSegmentCount = 8;
 
 /**
  * @brief Get string name for path segment
@@ -1037,12 +1037,12 @@ struct SlotInfo {
     SlotStatus status = SlotStatus::UNKNOWN;
 
     // Filament information
-    std::string color_name;                      ///< Named color (e.g., "Red", "Blue")
-    uint32_t color_rgb = AMS_DEFAULT_SLOT_COLOR; ///< RGB color for UI (0xRRGGBB)
-    std::string multi_color_hexes;               ///< Comma-separated hex codes for multi-color
-                                                 ///< (e.g., "#D4AF37,#C0C0C0,#B87333")
-    std::string material;                        ///< Material type (e.g., "PLA", "PETG", "ABS")
-    std::string brand;                           ///< Brand name (e.g., "Polymaker", "eSUN")
+    std::string color_name;                    ///< Named color (e.g., "Red", "Blue")
+    uint32_t color_rgb = kAmsDefaultSlotColor; ///< RGB color for UI (0xRRGGBB)
+    std::string multi_color_hexes;             ///< Comma-separated hex codes for multi-color
+                                               ///< (e.g., "#D4AF37,#C0C0C0,#B87333")
+    std::string material;                      ///< Material type (e.g., "PLA", "PETG", "ABS")
+    std::string brand;                         ///< Brand name (e.g., "Polymaker", "eSUN")
 
     // Catalog product identity — WHICH branded product, not just its material.
     //
@@ -1147,7 +1147,7 @@ struct SlotInfo {
      * ui_ams_mini_status.cpp); keep all three in agreement.
      */
     [[nodiscard]] bool has_filament_info() const {
-        return !material.empty() || color_rgb != AMS_DEFAULT_SLOT_COLOR;
+        return !material.empty() || color_rgb != kAmsDefaultSlotColor;
     }
 
     /**
@@ -2007,10 +2007,10 @@ struct AmsSystemInfo {
  * Used for print preview to show which colors are needed.
  */
 struct FilamentRequirement {
-    int tool_index = -1;                         ///< Tool number from G-code (T0, T1, etc.)
-    uint32_t color_rgb = AMS_DEFAULT_SLOT_COLOR; ///< Color hint from slicer
-    std::string material;                        ///< Material hint from slicer (if available)
-    int mapped_slot = -1;                        ///< Which slot is mapped to this tool
+    int tool_index = -1;                       ///< Tool number from G-code (T0, T1, etc.)
+    uint32_t color_rgb = kAmsDefaultSlotColor; ///< Color hint from slicer
+    std::string material;                      ///< Material hint from slicer (if available)
+    int mapped_slot = -1;                      ///< Which slot is mapped to this tool
 
     /**
      * @brief Check if this requirement is satisfied by a slot
@@ -2209,11 +2209,11 @@ struct DryingRequest {
  * @return Vector of default DryingPreset structs
  */
 inline std::vector<DryingPreset> get_default_drying_presets() {
-    constexpr int DEFAULT_FAN_PCT = 50;
+    constexpr int kDefaultFanPct = 50;
 
     std::vector<DryingPreset> result;
     for (const auto& fp : filament::get_drying_presets_by_group()) {
-        result.emplace_back(fp.name, static_cast<float>(fp.temp_c), fp.time_min, DEFAULT_FAN_PCT);
+        result.emplace_back(fp.name, static_cast<float>(fp.temp_c), fp.time_min, kDefaultFanPct);
     }
     return result;
 }

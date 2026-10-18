@@ -69,25 +69,25 @@ class IMoonrakerAPI {
     // ========== G-code execute_gcode timeout constants ==========
     // Default (timeout_ms = 0) is MoonrakerRequestTracker's 60s. These are for
     // long-running commands.
-    static constexpr uint32_t HOMING_TIMEOUT_MS = 300000;        // 5 min — G28 on large printers
-    static constexpr uint32_t AMS_OPERATION_TIMEOUT_MS = 300000; // 5 min — MMU/AFC/tool change ops
-    static constexpr uint32_t EXTRUSION_TIMEOUT_MS =
+    static constexpr uint32_t kHomingTimeoutMs = 300000;       // 5 min — G28 on large printers
+    static constexpr uint32_t kAmsOperationTimeoutMs = 300000; // 5 min — MMU/AFC/tool change ops
+    static constexpr uint32_t kExtrusionTimeoutMs =
         120000; // 2 min — filament purge/load at slow feedrate
-    static constexpr uint32_t MACRO_TIMEOUT_MS =
+    static constexpr uint32_t kMacroTimeoutMs =
         300000; // 5 min — user macros can do anything (homing, leveling, filament ops)
     /// 20 min — a pre-print macro chain that the print start must WAIT for.
     /// Creality's BED_MESH_CALIBRATE_START_PRINT homes, wipes, heats the bed to
     /// print temp and then runs a full adaptive mesh; measured at ~10 min on a
-    /// warm K2 Plus, and a cold ASA soak to 105C pushes it past MACRO_TIMEOUT_MS.
+    /// warm K2 Plus, and a cold ASA soak to 105C pushes it past kMacroTimeoutMs.
     /// If even this ceiling expires while the printer still reports busy,
     /// PrintPreparationManager waits for the busy->idle edge instead of failing;
     /// only a printer that never goes idle aborts the start.
-    static constexpr uint32_t PRE_START_MACRO_TIMEOUT_MS = 1200000;
+    static constexpr uint32_t kPreStartMacroTimeoutMs = 1200000;
 
     /// Moonraker's default API port. When the HTTP base points here we assume a
     /// "direct to Moonraker" connection, where the webcam is served by a separate
     /// reverse proxy (conventionally nginx on :80) rather than the API port.
-    static constexpr int MOONRAKER_DEFAULT_PORT = 7125;
+    static constexpr int kMoonrakerDefaultPort = 7125;
 
     virtual ~IMoonrakerAPI() = default;
 

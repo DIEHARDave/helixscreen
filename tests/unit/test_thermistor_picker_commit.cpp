@@ -36,8 +36,8 @@ using namespace helix;
 
 namespace {
 
-constexpr const char* SENSOR_A = "temperature_sensor helix_test_probe_a";
-constexpr const char* SENSOR_B = "temperature_sensor helix_test_probe_b";
+constexpr const char* kSensorA = "temperature_sensor helix_test_probe_a";
+constexpr const char* kSensorB = "temperature_sensor helix_test_probe_b";
 
 /// Index of a klipper_name in the order the picker builds its rows.
 int row_index_of(const std::string& klipper_name) {
@@ -81,9 +81,9 @@ class ThermistorPickerFixture : public XMLTestFixture {
     ThermistorPickerFixture() {
         helix::ui::ContextMenu::register_shared_callbacks();
         REQUIRE(register_component("thermistor_configure_picker"));
-        helix::sensors::TemperatureSensorManager::instance().discover({SENSOR_A, SENSOR_B});
-        REQUIRE(row_index_of(SENSOR_A) >= 0);
-        REQUIRE(row_index_of(SENSOR_B) >= 0);
+        helix::sensors::TemperatureSensorManager::instance().discover({kSensorA, kSensorB});
+        REQUIRE(row_index_of(kSensorA) >= 0);
+        REQUIRE(row_index_of(kSensorB) >= 0);
     }
 
     ~ThermistorPickerFixture() override {
@@ -91,7 +91,7 @@ class ThermistorPickerFixture : public XMLTestFixture {
     }
 };
 
-/// Open the configure picker on a widget bound to SENSOR_A only, tick SENSOR_B,
+/// Open the configure picker on a widget bound to kSensorA only, tick kSensorB,
 /// and return the picker so the caller can close it whichever way it likes.
 OpenPicker open_and_tick_second_sensor(ThermistorWidget& widget, lv_obj_t* screen) {
     REQUIRE(widget.get_component_name() == "panel_widget_thermistor");
@@ -102,7 +102,7 @@ OpenPicker open_and_tick_second_sensor(ThermistorWidget& widget, lv_obj_t* scree
     REQUIRE(picker.card != nullptr);
     REQUIRE(picker.sensor_list != nullptr);
 
-    lv_obj_t* row = lv_obj_get_child(picker.sensor_list, row_index_of(SENSOR_B));
+    lv_obj_t* row = lv_obj_get_child(picker.sensor_list, row_index_of(kSensorB));
     REQUIRE(row != nullptr);
     REQUIRE_FALSE(row_is_checked(row));
 
@@ -118,7 +118,7 @@ OpenPicker open_and_tick_second_sensor(ThermistorWidget& widget, lv_obj_t* scree
 TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor configure picker: backdrop tap commits",
                  "[thermistor][context_menu]") {
     ThermistorWidget widget("thermistor");
-    widget.set_config({{"sensors", std::vector<std::string>{SENSOR_A}}});
+    widget.set_config({{"sensors", std::vector<std::string>{kSensorA}}});
 
     lv_obj_t* tile = lv_obj_create(test_screen());
     widget.attach(tile, test_screen());
@@ -134,7 +134,7 @@ TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor configure picker: backdrop
 TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor configure picker: Done commits",
                  "[thermistor][context_menu]") {
     ThermistorWidget widget("thermistor");
-    widget.set_config({{"sensors", std::vector<std::string>{SENSOR_A}}});
+    widget.set_config({{"sensors", std::vector<std::string>{kSensorA}}});
 
     lv_obj_t* tile = lv_obj_create(test_screen());
     widget.attach(tile, test_screen());
@@ -153,7 +153,7 @@ TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor configure picker: Done com
 TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor configure picker: both paths close the card",
                  "[thermistor][context_menu]") {
     ThermistorWidget widget("thermistor");
-    widget.set_config({{"sensors", std::vector<std::string>{SENSOR_A}}});
+    widget.set_config({{"sensors", std::vector<std::string>{kSensorA}}});
 
     lv_obj_t* tile = lv_obj_create(test_screen());
     widget.attach(tile, test_screen());
@@ -168,14 +168,14 @@ TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor configure picker: both pat
 TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor picker rows hold the sensor name to one line",
                  "[thermistor][one_line]") {
     ThermistorWidget widget("thermistor");
-    widget.set_config({{"sensors", std::vector<std::string>{SENSOR_A}}});
+    widget.set_config({{"sensors", std::vector<std::string>{kSensorA}}});
     lv_obj_t* tile = lv_obj_create(test_screen());
     widget.attach(tile, test_screen());
     widget.on_edit_configure();
 
     OpenPicker picker = find_open_picker(test_screen());
     REQUIRE(picker.sensor_list != nullptr);
-    lv_obj_t* row = lv_obj_get_child(picker.sensor_list, row_index_of(SENSOR_A));
+    lv_obj_t* row = lv_obj_get_child(picker.sensor_list, row_index_of(kSensorA));
     lv_obj_t* name = helix::test::find_dotted_label(row);
     REQUIRE(name != nullptr);
     CHECK(helix::test::held_to_one_line(name));
@@ -191,7 +191,7 @@ TEST_CASE_METHOD(ThermistorPickerFixture,
     REQUIRE(register_component("components/panel_widget_thermistor_carousel"));
     ThermistorWidget widget("thermistor");
     widget.set_config(
-        {{"sensors", std::vector<std::string>{SENSOR_A, SENSOR_B}}, {"display_mode", "carousel"}});
+        {{"sensors", std::vector<std::string>{kSensorA, kSensorB}}, {"display_mode", "carousel"}});
     REQUIRE(widget.get_component_name() == "panel_widget_thermistor_carousel");
     auto* tile = static_cast<lv_obj_t*>(
         lv_xml_create(test_screen(), "panel_widget_thermistor_carousel", nullptr));

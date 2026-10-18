@@ -70,7 +70,7 @@ void PrinterManagerOverlay::init_subjects() {
         UI_MANAGED_SUBJECT_INT(has_mcus_, 0, "pm_has_mcus", subjects_);
         for (const auto& spec : cap_chip_specs()) {
             const auto i = static_cast<size_t>(spec.chip);
-            UI_MANAGED_SUBJECT_STRING_N(chip_text_[i], chip_text_bufs_[i].data(), CHIP_TEXT_LEN, "",
+            UI_MANAGED_SUBJECT_STRING_N(chip_text_[i], chip_text_bufs_[i].data(), kChipTextLen, "",
                                         spec.text_subject, subjects_);
         }
     });

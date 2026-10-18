@@ -14,11 +14,11 @@
 
 using namespace helix;
 
-static constexpr int ESCALATION_TIMEOUT_VALUES[] = {15, 30, 60, 120};
+static constexpr int kEscalationTimeoutValues[] = {15, 30, 60, 120};
 
 using settings::Scope;
 // Row order is SafetySettingsManager::Key.
-static constexpr settings::PersistedSetting SAFETY_SETTINGS[] = {
+static constexpr settings::PersistedSetting kSafetySettings[] = {
     {"settings_estop_confirm", "/safety/estop_require_confirmation", Scope::Global, true, 1, 0, 1,
      "estop_confirm"},
     {"settings_cancel_escalation_enabled", "/safety/cancel_escalation_enabled", Scope::Global, true,
@@ -37,10 +37,10 @@ SafetySettingsManager& SafetySettingsManager::instance() {
 }
 
 settings::TableView SafetySettingsManager::persisted_table() {
-    return {SAFETY_SETTINGS, std::size(SAFETY_SETTINGS)};
+    return {kSafetySettings, std::size(kSafetySettings)};
 }
 
-SafetySettingsManager::SafetySettingsManager() : settings_(SAFETY_SETTINGS) {
+SafetySettingsManager::SafetySettingsManager() : settings_(kSafetySettings) {
     spdlog::trace("[SafetySettingsManager] Constructor");
 }
 
@@ -108,7 +108,7 @@ void SafetySettingsManager::deinit_subjects() {
 int SafetySettingsManager::get_cancel_escalation_timeout_seconds() const {
     int index = lv_subject_get_int(const_cast<lv_subject_t*>(&cancel_escalation_timeout_subject_));
     index = std::max(0, std::min(3, index));
-    return ESCALATION_TIMEOUT_VALUES[index];
+    return kEscalationTimeoutValues[index];
 }
 
 void SafetySettingsManager::set_cancel_escalation_timeout_seconds(int seconds) {
@@ -128,12 +128,12 @@ void SafetySettingsManager::set_cancel_escalation_timeout_seconds(int seconds) {
     lv_subject_set_int(&cancel_escalation_timeout_subject_, index);
 
     Config* config = Config::get_instance();
-    config->set<int>("/safety/cancel_escalation_timeout_seconds", ESCALATION_TIMEOUT_VALUES[index]);
+    config->set<int>("/safety/cancel_escalation_timeout_seconds", kEscalationTimeoutValues[index]);
     config->save();
 
     spdlog::debug(
         "[SafetySettingsManager] Cancel escalation timeout set to {}s (index {}) and saved",
-        ESCALATION_TIMEOUT_VALUES[index], index);
+        kEscalationTimeoutValues[index], index);
 }
 
 int SafetySettingsManager::get_min_toast_severity() const {

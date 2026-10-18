@@ -33,17 +33,17 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
         return;
     }
 
-    if (temp_c > high_temp_ + RISE_EPSILON_C) {
+    if (temp_c > high_temp_ + kRiseEpsilonC) {
         high_temp_ = temp_c;
         last_rise_tick_ = tick_ms;
         holding_ = false;
     } else if (holding_ ||
-               (tick_ms > last_rise_tick_ && tick_ms - last_rise_tick_ >= STALL_REANCHOR_MS)) {
+               (tick_ms > last_rise_tick_ && tick_ms - last_rise_tick_ >= kStallReanchorMs)) {
         // Holding, not climbing: the next step starts from this reading.
         holding_ = true;
         last_temp_ = temp_c;
         last_tick_ = tick_ms;
-        high_temp_ = std::min(high_temp_, temp_c + RISE_EPSILON_C);
+        high_temp_ = std::min(high_temp_, temp_c + kRiseEpsilonC);
         return;
     }
 
@@ -52,7 +52,7 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
     const float counted_temp = target_known_ ? std::min(temp_c, target_c_) : temp_c;
     float delta_from_last = counted_temp - last_temp_;
 
-    if (delta_from_last >= MIN_DELTA_FROM_LAST && tick_ms > last_tick_) {
+    if (delta_from_last >= kMinDeltaFromLast && tick_ms > last_tick_) {
         const float step_s = static_cast<float>(tick_ms - last_tick_) / 1000.0f;
         climb_seconds_ += step_s;
         climb_degrees_ += delta_from_last;
@@ -60,8 +60,8 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
 
         if (has_measured_heat_rate_) {
             // EMA: blend new instantaneous rate with running estimate
-            measured_heat_rate_ = EMA_NEW_WEIGHT * inst_rate + EMA_OLD_WEIGHT * measured_heat_rate_;
-        } else if (climb_degrees_ >= MIN_TOTAL_MOVEMENT) {
+            measured_heat_rate_ = kEmaNewWeight * inst_rate + kEmaOldWeight * measured_heat_rate_;
+        } else if (climb_degrees_ >= kMinTotalMovement) {
             // First usable measurement — seed from the climb so far
             measured_heat_rate_ = climb_seconds_ / climb_degrees_;
             has_measured_heat_rate_ = true;
@@ -74,7 +74,7 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
 }
 
 void ThermalRateModel::note_target(float target_c, float temp_c, uint32_t tick_ms) {
-    const bool raised = target_c > target_c_ + RISE_EPSILON_C;
+    const bool raised = target_c > target_c_ + kRiseEpsilonC;
     target_c_ = target_c;
     target_known_ = true;
     if (!raised || start_tick_ == 0) {
@@ -145,7 +145,7 @@ float ThermalRateModel::blended_rate_for_save() const {
         return 0.0f;
     const float measured = climb_rate();
     if (has_history_ && hist_heat_rate_ > 0)
-        return SAVE_NEW_WEIGHT * measured + SAVE_OLD_WEIGHT * hist_heat_rate_;
+        return kSaveNewWeight * measured + kSaveOldWeight * hist_heat_rate_;
     return measured;
 }
 
@@ -192,7 +192,7 @@ float ThermalRateManager::estimate_heating_seconds(const std::string& heater_nam
 }
 
 void ThermalRateManager::load_from_config(helix::Config& config) {
-    for (const char* heater : PERSISTED_HEATERS) {
+    for (const char* heater : kPersistedHeaters) {
         std::string path = std::string("/thermal/rates/") + heater + "/heat_rate";
         float rate = config.get<float>(path, 0.0f);
         if (rate > 0.0f) {

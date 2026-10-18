@@ -127,7 +127,7 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     AmsError do_select_slot(int slot_index) override;
     AmsError do_change_tool(int tool_number) override;
     /// Load, unload and tool change: ensure_homed_then() with an error leg that
-    /// emits EVENT_ERROR, which ends an operation Happy Hare never reported.
+    /// emits kEventError, which ends an operation Happy Hare never reported.
     AmsError dispatch_filament_op(std::string cmd);
 
   public:
@@ -425,7 +425,7 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     // PRIVATE namespace: lane_data belongs to the Happy Hare plugin, same as
     // AFC. See AmsBackendAfc for the full rationale.
     //
-    static constexpr const char* OVERRIDE_NAMESPACE = "helix-screen-hh-overrides";
+    static constexpr const char* kOverrideNamespace = "helix-screen-hh-overrides";
     /// Store on the SHARED lane_data namespace, used only by
     /// publish_external_spool_lane. Happy Hare's plugin owns that namespace.
     std::unique_ptr<helix::ams::FilamentSlotOverrideStore> lane_publish_store_;

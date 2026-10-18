@@ -761,7 +761,7 @@ class GCodeLayerRenderer {
     /// truly unreadable layer must not stall the build.
     int unreadable_layer_ = -1;
     int unreadable_retries_ = 0;
-    static constexpr int MAX_UNREADABLE_RETRIES = 3;
+    static constexpr int kMaxUnreadableRetries = 3;
 
     /// Wall time the current progressive cache build started, and whether its
     /// completion has been reported yet.
@@ -793,35 +793,35 @@ class GCodeLayerRenderer {
 
     // Progressive rendering - render N layers per frame to avoid blocking UI
     // These are defaults; actual values come from config or adaptive adjustment
-    static constexpr int DEFAULT_LAYERS_PER_FRAME = 15;
-    static constexpr int MIN_LAYERS_PER_FRAME = 1;
-    static constexpr int MAX_LAYERS_PER_FRAME = 100;
-    static constexpr int DEFAULT_ADAPTIVE_TARGET_MS = 16; // ~60 FPS
+    static constexpr int kDefaultLayersPerFrame = 15;
+    static constexpr int kMinLayersPerFrame = 1;
+    static constexpr int kMaxLayersPerFrame = 100;
+    static constexpr int kDefaultAdaptiveTargetMs = 16; // ~60 FPS
     // Wall-clock cap on one render_layers_to_cache() batch. The layer count
     // above is sized for cheap full-file lookups, but a streaming miss parses
     // the layer on the calling thread, so a full batch can cost hundreds of
     // milliseconds per frame on a slow board. steady_clock rather than
     // lv_tick_get(): the box must measure real time, including under a test
     // fixture whose lv_tick is virtual.
-    static constexpr int SOLID_BATCH_BUDGET_MS = 8;
+    static constexpr int kSolidBatchBudgetMs = 8;
 
     // Constrained device limits (AD5M, low-RAM embedded < 256MB)
-    static constexpr int CONSTRAINED_START_LPF = 5;
-    static constexpr int CONSTRAINED_MAX_LPF = 15;
-    static constexpr float CONSTRAINED_GROWTH_CAP = 1.3f; // vs 2.0f normal
+    static constexpr int kConstrainedStartLpf = 5;
+    static constexpr int kConstrainedMaxLpf = 15;
+    static constexpr float kConstrainedGrowthCap = 1.3f; // vs 2.0f normal
 
-    int layers_per_frame_{DEFAULT_LAYERS_PER_FRAME}; ///< Current layers per frame (may be adaptive)
-    int config_layers_per_frame_{0};                 ///< Config value (0 = adaptive)
-    int adaptive_target_ms_{DEFAULT_ADAPTIVE_TARGET_MS}; ///< Target render time for adaptive mode
-    uint32_t last_frame_render_ms_{0}; ///< Render time of last frame (for adaptive)
+    int layers_per_frame_{kDefaultLayersPerFrame}; ///< Current layers per frame (may be adaptive)
+    int config_layers_per_frame_{0};               ///< Config value (0 = adaptive)
+    int adaptive_target_ms_{kDefaultAdaptiveTargetMs}; ///< Target render time for adaptive mode
+    uint32_t last_frame_render_ms_{0};                 ///< Render time of last frame (for adaptive)
 
     // Device-aware limits
-    bool is_constrained_device_{false};              ///< True if device has < 256MB RAM
-    int max_layers_per_frame_{MAX_LAYERS_PER_FRAME}; ///< Device-adjusted max (15 on constrained)
+    bool is_constrained_device_{false};            ///< True if device has < 256MB RAM
+    int max_layers_per_frame_{kMaxLayersPerFrame}; ///< Device-adjusted max (15 on constrained)
 
     // Warm-up frames: skip heavy rendering for first N frames to let panel layout complete
-    static constexpr int WARMUP_FRAMES = 2;
-    int warmup_frames_remaining_{WARMUP_FRAMES}; ///< Countdown before heavy render starts
+    static constexpr int kWarmupFrames = 2;
+    int warmup_frames_remaining_{kWarmupFrames}; ///< Countdown before heavy render starts
 
     /// Load config values from settings.json
     void load_config();

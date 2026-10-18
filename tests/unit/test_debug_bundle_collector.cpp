@@ -921,12 +921,12 @@ TEST_CASE("DebugBundleCollector: extract_gcode_macro_names captures bare macro n
 TEST_CASE("DebugBundleCollector: extract_gcode_macro_names caps runaway configs",
           "[debug-bundle][filament][macro-names]") {
     json objects = json::array();
-    for (size_t i = 0; i < helix::DebugBundleCollector::MAX_GCODE_MACRO_NAMES + 50; ++i) {
+    for (size_t i = 0; i < helix::DebugBundleCollector::kMaxGcodeMacroNames + 50; ++i) {
         objects.push_back("gcode_macro M" + std::to_string(i));
     }
 
     auto macros = helix::DebugBundleCollector::extract_gcode_macro_names(objects);
-    REQUIRE(macros.size() == helix::DebugBundleCollector::MAX_GCODE_MACRO_NAMES);
+    REQUIRE(macros.size() == helix::DebugBundleCollector::kMaxGcodeMacroNames);
     CHECK(macros[0].get<std::string>() == "M0");
 }
 
@@ -1606,13 +1606,13 @@ TEST_CASE_METHOD(HelixTestFixture, "UpdateChecker: settings.json r2_url is ignor
     // developer machine cannot feed the trusted update_urls.json lookup.
     helix::test::ScopedUpdateUrls urls("helix_r2");
     REQUIRE(UpdateChecker::effective_r2_base_url() ==
-            std::string(UpdateChecker::DEFAULT_R2_BASE_URL));
+            std::string(UpdateChecker::kDefaultR2BaseUrl));
 
     auto* config = helix::Config::get_instance();
     // The base URL is root-owned authority; a settings.json copy is ignored.
     config->set<std::string>("/update/r2_url", "https://mirror.example.com/rel///");
     REQUIRE(UpdateChecker::effective_r2_base_url() ==
-            std::string(UpdateChecker::DEFAULT_R2_BASE_URL));
+            std::string(UpdateChecker::kDefaultR2BaseUrl));
 }
 
 TEST_CASE("UpdateChecker: channel_name covers every channel", "[debug-bundle][update]") {
@@ -1919,8 +1919,8 @@ std::vector<LFE> ad5m_logs_root() {
     };
 }
 
-const std::vector<std::string> KLIPPY_STEMS = {"klippy.log", "printer.log"};
-const std::vector<std::string> MOONRAKER_STEMS = {"moonraker.log"};
+const std::vector<std::string> kKlippyStems = {"klippy.log", "printer.log"};
+const std::vector<std::string> kMoonrakerStems = {"moonraker.log"};
 
 } // namespace
 
@@ -1930,48 +1930,48 @@ TEST_CASE("DebugBundleCollector: pick_rotated_sibling finds the crash's real log
         // The trap. crowsnest.log.2026-08-11 is 940 KB and ~5 days newer than the
         // newest klippy rotation, so any "newest rotated file" rule ships a
         // webcam log in place of the crash.
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(pi_logs_root(), KLIPPY_STEMS) ==
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(pi_logs_root(), kKlippyStems) ==
                 "klippy.log.2026-06-08");
     }
 
     SECTION("Pi layout: moonraker rotation") {
         REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(
-                    pi_logs_root(), MOONRAKER_STEMS) == "moonraker.log.2026-08-09");
+                    pi_logs_root(), kMoonrakerStems) == "moonraker.log.2026-08-09");
     }
 
     SECTION("AD5M/AD5X layout: klippy's log is printer.log, with an hour suffix") {
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(ad5m_logs_root(), KLIPPY_STEMS) ==
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(ad5m_logs_root(), kKlippyStems) ==
                 "printer.log.2026-06-13_15");
     }
 
     SECTION("AD5M layout: the moonraker rotation that held the LYGVE39Y incident") {
         REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(
-                    ad5m_logs_root(), MOONRAKER_STEMS) == "moonraker.log.2026-08-11");
+                    ad5m_logs_root(), kMoonrakerStems) == "moonraker.log.2026-08-11");
     }
 
     SECTION("never the active file, however it sorts") {
         std::vector<LFE> only_active = {{"moonraker.log", 999999, 9999999999.0}};
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(only_active, MOONRAKER_STEMS)
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(only_active, kMoonrakerStems)
                     .empty());
     }
 
     SECTION("never a nested path — mod/init.log.1 is not klippy's") {
         std::vector<LFE> nested = {{"mod/printer.log.1", 9999, 9999999999.0}};
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(nested, KLIPPY_STEMS).empty());
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(nested, kKlippyStems).empty());
     }
 
     SECTION("never a different daemon that merely shares the suffix shape") {
         std::vector<LFE> other = {{"crowsnest.log.2026-08-11", 940700, 9999999999.0},
                                   {"mainsail-error.log.1", 10, 9999999999.0}};
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(other, KLIPPY_STEMS).empty());
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(other, MOONRAKER_STEMS).empty());
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(other, kKlippyStems).empty());
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(other, kMoonrakerStems).empty());
     }
 
     SECTION("numeric rotation suffixes count too") {
         std::vector<LFE> numeric = {{"moonraker.log", 100, 500.0},
                                     {"moonraker.log.1", 100, 400.0},
                                     {"moonraker.log.2", 100, 300.0}};
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(numeric, MOONRAKER_STEMS) ==
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(numeric, kMoonrakerStems) ==
                 "moonraker.log.1"); // newest of the rotations
     }
 
@@ -1980,12 +1980,12 @@ TEST_CASE("DebugBundleCollector: pick_rotated_sibling finds the crash's real log
         std::vector<LFE> tricky = {{"printer.log_backup.1", 500, 9999999999.0},
                                    {"printer.logger.2", 500, 9999999999.0},
                                    {"printer.log.2026-01-01", 500, 100.0}};
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(tricky, KLIPPY_STEMS) ==
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling(tricky, kKlippyStems) ==
                 "printer.log.2026-01-01");
     }
 
     SECTION("empty listing is not a crash") {
-        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling({}, KLIPPY_STEMS).empty());
+        REQUIRE(helix::DebugBundleCollector::pick_rotated_sibling({}, kKlippyStems).empty());
     }
 }
 
@@ -2024,16 +2024,16 @@ TEST_CASE("DebugBundleCollector: condense threshold preserves EVERY proc_stats s
         // Not a defect in the Klipper path — klippy.log has no equivalent block,
         // and this is exactly why moonraker.log cannot inherit the same number.
         auto out = helix::DebugBundleCollector::condense_klipper_log(
-            raw, helix::DebugBundleCollector::KLIPPER_CONDENSE_MAX_REPEATS, /*tail_lines=*/0);
+            raw, helix::DebugBundleCollector::kKlipperCondenseMaxRepeats, /*tail_lines=*/0);
         REQUIRE(count_block(out, "17864624") < 30); // incident sacrificed
         REQUIRE(count_block(out, "17864626") == 30);
     }
 
     SECTION("the moonraker threshold keeps both blocks whole") {
         // Reads the shipping constant, not a copy of it: dropping
-        // MOONRAKER_CONDENSE_MAX_REPEATS back toward Klipper's value fails here.
+        // kMoonrakerCondenseMaxRepeats back toward Klipper's value fails here.
         auto out = helix::DebugBundleCollector::condense_klipper_log(
-            raw, helix::DebugBundleCollector::MOONRAKER_CONDENSE_MAX_REPEATS, /*tail_lines=*/0);
+            raw, helix::DebugBundleCollector::kMoonrakerCondenseMaxRepeats, /*tail_lines=*/0);
         REQUIRE(count_block(out, "17864624") == 30);
         REQUIRE(count_block(out, "17864626") == 30);
     }

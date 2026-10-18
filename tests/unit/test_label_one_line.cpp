@@ -29,7 +29,7 @@
 namespace {
 
 /// Far wider than any test container in any font the suite loads.
-constexpr const char* LONG_TEXT =
+constexpr const char* kLongText =
     "An extremely long spool name that cannot possibly fit on one line of a narrow row";
 
 /// Registers a one-off component from an XML string and instantiates it.
@@ -72,7 +72,7 @@ TEST_CASE_METHOD(XMLTestFixture, "text_small with dots and no height holds one l
     lv_obj_t* label = build(*this, "one_line_default",
                             std::string("<text_small name=\"l\" width=\"100%\" long_mode=\"dots\""
                                         " text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     CHECK(lv_obj_get_height(label) == line_height("font_small"));
@@ -84,7 +84,7 @@ TEST_CASE_METHOD(XMLTestFixture, "text_body with dots and height=content holds o
     lv_obj_t* label = build(*this, "one_line_content",
                             std::string("<text_body name=\"l\" width=\"100%\" height=\"content\""
                                         " long_mode=\"dots\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     CHECK(lv_obj_get_height(label) == line_height("font_body"));
@@ -96,7 +96,7 @@ TEST_CASE_METHOD(XMLTestFixture, "an explicit px height opts a dotted label out"
     lv_obj_t* label = build(*this, "one_line_px",
                             std::string("<text_small name=\"l\" width=\"100%\" height=\"57\""
                                         " long_mode=\"dots\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     CHECK(lv_obj_get_height(label) == 57);
@@ -107,7 +107,7 @@ TEST_CASE_METHOD(XMLTestFixture, "style_max_height opts a dotted label out and l
     lv_obj_t* label = build(*this, "one_line_maxh",
                             std::string("<text_small name=\"l\" width=\"100%\""
                                         " style_max_height=\"200\" long_mode=\"dots\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     CHECK(lv_obj_get_height(label) > line_height("font_small"));
@@ -118,7 +118,7 @@ TEST_CASE_METHOD(XMLTestFixture, "max_lines lets a dotted label wrap to N lines,
     lv_obj_t* label = build(*this, "max_lines_long",
                             std::string("<text_small name=\"l\" width=\"100%\" long_mode=\"dots\""
                                         " max_lines=\"2\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     settle(label);
@@ -145,7 +145,7 @@ TEST_CASE_METHOD(XMLTestFixture, "max_lines below 1 still holds a dotted label t
     lv_obj_t* label = build(*this, "max_lines_zero",
                             std::string("<text_small name=\"l\" width=\"100%\" long_mode=\"dots\""
                                         " max_lines=\"0\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     settle(label);
@@ -158,7 +158,7 @@ TEST_CASE_METHOD(XMLTestFixture, "an explicit height opts a dotted label out of 
     lv_obj_t* label = build(*this, "max_lines_px",
                             std::string("<text_small name=\"l\" width=\"100%\" height=\"57\""
                                         " long_mode=\"dots\" max_lines=\"2\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     settle(label);
@@ -171,7 +171,7 @@ TEST_CASE_METHOD(XMLTestFixture, "text_button honours max_lines",
     lv_obj_t* label = build(*this, "max_lines_text_button",
                             std::string("<text_button name=\"l\" width=\"100%\" long_mode=\"dots\""
                                         " max_lines=\"2\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     settle(label);
@@ -188,7 +188,7 @@ TEST_CASE_METHOD(XMLTestFixture, "wrap and scroll long modes are left at content
         lv_obj_t* label = build(*this, "one_line_wrap",
                                 std::string("<text_small name=\"l\" width=\"100%\""
                                             " long_mode=\"wrap\" text=\"") +
-                                    LONG_TEXT + "\"/>",
+                                    kLongText + "\"/>",
                                 "l");
         REQUIRE(label != nullptr);
         CHECK(lv_obj_get_height(label) > line_height("font_small"));
@@ -198,7 +198,7 @@ TEST_CASE_METHOD(XMLTestFixture, "wrap and scroll long modes are left at content
         lv_obj_t* label = build(*this, "one_line_scroll",
                                 std::string("<text_small name=\"l\" width=\"100%\""
                                             " long_mode=\"scroll\" text=\"") +
-                                    LONG_TEXT + "\"/>",
+                                    kLongText + "\"/>",
                                 "l");
         REQUIRE(label != nullptr);
         CHECK(lv_obj_get_style_height(label, LV_PART_MAIN) == LV_SIZE_CONTENT);
@@ -211,7 +211,7 @@ TEST_CASE_METHOD(XMLTestFixture, "the one-line height includes the label's paddi
                             std::string("<text_small name=\"l\" width=\"100%\""
                                         " style_pad_top=\"5\" style_pad_bottom=\"3\""
                                         " long_mode=\"dots\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     CHECK(lv_obj_get_height(label) == line_height("font_small") + 8);
@@ -223,7 +223,7 @@ TEST_CASE_METHOD(XMLTestFixture, "the one-line height follows a font and padding
     lv_obj_t* label = build(*this, "one_line_refont",
                             std::string("<text_small name=\"l\" width=\"100%\""
                                         " long_mode=\"dots\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     REQUIRE(line_height("font_heading") != line_height("font_small"));
@@ -251,7 +251,7 @@ TEST_CASE_METHOD(XMLTestFixture, "ui_button with dots holds its label to one lin
     lv_obj_t* btn = build(*this, "one_line_button",
                           std::string("<ui_button name=\"b\" width=\"90\" height=\"80\""
                                       " long_mode=\"dots\" text=\"") +
-                              LONG_TEXT + "\"/>",
+                              kLongText + "\"/>",
                           "b");
     REQUIRE(btn != nullptr);
     lv_obj_t* label = nullptr;
@@ -274,7 +274,7 @@ TEST_CASE_METHOD(XMLTestFixture, "holding a label twice registers one hook and s
     lv_obj_t* label = build(*this, "one_line_twice",
                             std::string("<text_small name=\"l\" width=\"100%\""
                                         " long_mode=\"dots\" text=\"") +
-                                LONG_TEXT + "\"/>",
+                                kLongText + "\"/>",
                             "l");
     REQUIRE(label != nullptr);
     const uint32_t hooks = lv_obj_get_event_count(label);
@@ -296,7 +296,7 @@ TEST_CASE_METHOD(XMLTestFixture, "label_hold_one_line pins a plain lv_label",
     lv_obj_t* label = lv_label_create(test_screen());
     lv_obj_set_width(label, 80);
     lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
-    lv_label_set_text(label, LONG_TEXT);
+    lv_label_set_text(label, kLongText);
     helix::ui::label_hold_one_line(label);
     settle(label);
     const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
@@ -309,7 +309,7 @@ TEST_CASE_METHOD(XMLTestFixture, "a held label that leaves DOTS is no longer pin
     lv_obj_t* label = lv_label_create(test_screen());
     lv_obj_set_width(label, 80);
     lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
-    lv_label_set_text(label, LONG_TEXT);
+    lv_label_set_text(label, kLongText);
     helix::ui::label_hold_one_line(label);
     settle(label);
     const int32_t one_line = lv_obj_get_height(label);
@@ -328,7 +328,7 @@ TEST_CASE_METHOD(XMLTestFixture, "an any-mode hold pins a wrapping label and fol
     lv_obj_t* label = lv_label_create(test_screen());
     lv_obj_set_width(label, 80);
     lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_WRAP);
-    lv_label_set_text(label, LONG_TEXT);
+    lv_label_set_text(label, kLongText);
     helix::ui::label_hold_one_line(label, helix::ui::LineHold::AnyMode);
     settle(label);
     CHECK(lv_obj_get_height(label) ==
@@ -343,7 +343,7 @@ TEST_CASE_METHOD(XMLTestFixture, "a released label is no longer pinned", "[ui_te
     lv_obj_t* label = lv_label_create(test_screen());
     lv_obj_set_width(label, 80);
     lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
-    lv_label_set_text(label, LONG_TEXT);
+    lv_label_set_text(label, kLongText);
     helix::ui::label_hold_one_line(label, helix::ui::LineHold::AnyMode);
     settle(label);
     REQUIRE(lv_obj_get_height(label) ==

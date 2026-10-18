@@ -56,7 +56,7 @@
 
 namespace helix {
 
-static_assert(RunoutGrace::MAX_SLOTS == AmsState::MAX_SLOTS, "one unload stamp per slot subject");
+static_assert(RunoutGrace::kMaxSlots == AmsState::kMaxSlots, "one unload stamp per slot subject");
 
 namespace ams_state_detail {
 
@@ -443,7 +443,7 @@ void AmsState::reset_backend_subjects() {
     units_drying_signature_.clear();
 
     // Per-unit environment and its indicator.
-    for (int i = 0; i < MAX_UNITS; ++i) {
+    for (int i = 0; i < kMaxUnits; ++i) {
         lv_subject_set_int(&unit_temp_[i], 0);
         lv_subject_set_int(&unit_humidity_[i], 0);
         lv_subject_set_int(&unit_absent_[i], 0);
@@ -628,7 +628,7 @@ void AmsState::sync_from_backend() {
 
     // Update per-slot subjects, only firing when values actually change
     bool any_slot_changed = false;
-    for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+    for (int i = 0; i < std::min(info.total_slots, kMaxSlots); ++i) {
         const SlotInfo* slot = info.get_slot_global(i);
         if (slot && write_slot_subjects(*backend, i, *slot)) {
             any_slot_changed = true;
@@ -1097,7 +1097,7 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
     // Update per-unit environment subjects (CFS temperature/humidity)
     for (const auto& unit : info.units) {
         int idx = unit.unit_index;
-        if (idx >= 0 && idx < MAX_UNITS) {
+        if (idx >= 0 && idx < kMaxUnits) {
             lv_subject_set_int(&unit_absent_[idx], unit.absent ? 1 : 0);
             set_int_if_changed(&unit_logo_color_[idx], get_unit_logo(unit, info).color ? 1 : 0);
             lv_subject_set_int(&unit_disconnected_[idx], (!unit.absent && !unit.connected) ? 1 : 0);
@@ -1114,7 +1114,7 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
     }
 
     // Clear environment subjects for units beyond what backend reports
-    for (int i = static_cast<int>(info.units.size()); i < MAX_UNITS; ++i) {
+    for (int i = static_cast<int>(info.units.size()); i < kMaxUnits; ++i) {
         lv_subject_set_int(&unit_temp_[i], 0);
         lv_subject_set_int(&unit_humidity_[i], 0);
         lv_subject_set_int(&unit_absent_[i], 0);
@@ -1143,12 +1143,12 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
     for (size_t k = 0; k < info.units.size(); ++k) {
         indicators[k] = compute_unit_env_indicator(backend, info.units[k]);
         const int idx = info.units[k].unit_index;
-        if (idx >= 0 && idx < MAX_UNITS)
+        if (idx >= 0 && idx < kMaxUnits)
             publish_unit_env_indicator(idx, indicators[k]);
     }
 
     // Clear indicator for units beyond what backend reports
-    for (int i = static_cast<int>(info.units.size()); i < MAX_UNITS; ++i) {
+    for (int i = static_cast<int>(info.units.size()); i < kMaxUnits; ++i) {
         lv_subject_set_int(&env_ind_visible_[i], 0);
         lv_subject_set_int(&env_ind_humidity_visible_[i], 0);
         lv_subject_set_int(&env_ind_drying_active_[i], 0);
@@ -1161,7 +1161,7 @@ AmsState::UnitEnvIndicator AmsState::compute_unit_env_indicator(AmsBackend* back
                                                                 const AmsUnit& unit) {
     UnitEnvIndicator out;
     const bool has_env = unit.environment.has_value();
-    char buf[ENV_IND_TEXT_BUF_SIZE];
+    char buf[kEnvIndTextBufSize];
     if (has_env) {
         // Format temperature text (e.g., "24°C")
         snprintf(buf, sizeof(buf),
@@ -1215,7 +1215,7 @@ AmsState::UnitEnvIndicator AmsState::compute_unit_env_indicator(AmsBackend* back
         // Compact countdown for the small indicator
         const int hrs = dryer.remaining_min / 60;
         const int mins = dryer.remaining_min % 60;
-        char drying_buf[ENV_IND_DRYING_BUF_SIZE];
+        char drying_buf[kEnvIndDryingBufSize];
         if (hrs > 0)
             snprintf(drying_buf, sizeof(drying_buf), "%d:%02d", hrs, mins);
         else
@@ -1245,20 +1245,20 @@ void AmsState::publish_unit_env_indicator(int idx, const UnitEnvIndicator& e) {
 }
 
 void AmsState::warn_if_slots_exceed_subjects(int total_slots) {
-    if (total_slots <= MAX_SLOTS || total_slots == slot_overflow_warned_total_) {
+    if (total_slots <= kMaxSlots || total_slots == slot_overflow_warned_total_) {
         return;
     }
     slot_overflow_warned_total_ = total_slots;
     spdlog::warn("[AMS State] Backend reports {} slots but per-slot subjects cover {}; "
                  "slots {}-{} show unbound",
-                 total_slots, MAX_SLOTS, MAX_SLOTS + 1, total_slots);
+                 total_slots, kMaxSlots, kMaxSlots + 1, total_slots);
 }
 
 bool AmsState::clear_unused_slot_subjects(int total_slots) {
     // Clear remaining slot subjects, only firing when values actually change
     bool any_slot_changed = false;
-    for (int i = total_slots; i < MAX_SLOTS; ++i) {
-        int default_color = static_cast<int>(AMS_DEFAULT_SLOT_COLOR);
+    for (int i = total_slots; i < kMaxSlots; ++i) {
+        int default_color = static_cast<int>(kAmsDefaultSlotColor);
         if (lv_subject_get_int(&slot_colors_[i]) != default_color) {
             lv_subject_set_int(&slot_colors_[i], default_color);
             any_slot_changed = true;
@@ -1338,7 +1338,7 @@ void AmsState::refresh_slot_names() {
     bool changed = false;
     if (auto* backend = get_backend(0)) {
         const AmsSystemInfo info = backend->get_system_info();
-        for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+        for (int i = 0; i < std::min(info.total_slots, kMaxSlots); ++i) {
             const SlotInfo* slot = info.get_slot_global(i);
             if (slot && write_slot_name(&slot_names_[i], sizeof(slot_names_buf_[i]), *slot)) {
                 changed = true;
@@ -1354,7 +1354,7 @@ void AmsState::refresh_slot_names() {
         const AmsSystemInfo info = backend->get_system_info();
         for (int i = 0; i < std::min(info.total_slots, subs.slot_count); ++i) {
             const SlotInfo* slot = info.get_slot_global(i);
-            if (slot && write_slot_name(&subs.names[i], SLOT_NAME_BUF_SIZE, *slot)) {
+            if (slot && write_slot_name(&subs.names[i], kSlotNameBufSize, *slot)) {
                 changed = true;
             }
         }
@@ -1365,7 +1365,7 @@ void AmsState::refresh_slot_names() {
 }
 
 bool AmsState::write_slot_subjects(AmsBackend& backend, int slot_index, const SlotInfo& slot) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return false;
     }
     bool changed = false;
@@ -1474,7 +1474,7 @@ void AmsState::update_slot(int slot_index) {
         return;
     }
 
-    // A slot past MAX_SLOTS has no subjects of its own, but it can still be
+    // A slot past kMaxSlots has no subjects of its own, but it can still be
     // the loaded one and still map to a tool.
     SlotInfo slot = backend->get_slot_info(slot_index);
     if (slot.slot_index >= 0) {
@@ -1539,7 +1539,7 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
 
     if (event == AmsBackend::EVENT_STATE_CHANGED) {
         queue_sync(true, -1);
-    } else if (event == AmsBackend::EVENT_SLOT_CHANGED) {
+    } else if (event == AmsBackend::kEventSlotChanged) {
         // Parse slot index from data. Fall back to a full sync for ANY case
         // where we can't parse a specific slot — empty data OR non-numeric.
         // Dropping the event silently (the old behavior) left the UI stale
@@ -1554,20 +1554,20 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
                 queue_sync(true, -1);
             }
         }
-    } else if (event == AmsBackend::EVENT_LOAD_COMPLETE ||
-               event == AmsBackend::EVENT_UNLOAD_COMPLETE) {
+    } else if (event == AmsBackend::kEventLoadComplete ||
+               event == AmsBackend::kEventUnloadComplete) {
         // The operation is over, so an optimistic action held over the
         // backend's silence ends with it; a busy action the backend still
         // reports keeps the display until its own last frame.
         queue_sync(true, -1, /*ends_operation=*/true);
-    } else if (event == AmsBackend::EVENT_TOOL_CHANGED) {
+    } else if (event == AmsBackend::kEventToolChanged) {
         queue_sync(true, -1);
-    } else if (event == AmsBackend::EVENT_ERROR) {
+    } else if (event == AmsBackend::kEventError) {
         // Error occurred, sync to get error state. An error ends the operation,
         // so an optimistic action held over the backend's silence ends with it.
         queue_sync(true, -1, /*ends_operation=*/true);
         spdlog::warn("[AMS State] Backend error - {}", data);
-    } else if (event == AmsBackend::EVENT_ATTENTION_REQUIRED) {
+    } else if (event == AmsBackend::kEventAttentionRequired) {
         // User intervention needed
         queue_sync(true, -1);
         spdlog::warn("[AMS State] Attention required - {}", data);

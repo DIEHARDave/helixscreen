@@ -23,9 +23,9 @@ namespace helix {
 class AppMotionActivity {
   public:
     using clock = std::chrono::steady_clock;
-    static constexpr std::chrono::seconds GRACE_WINDOW = BusyEpisodeOwner::GRACE_WINDOW;
+    static constexpr std::chrono::seconds kGraceWindow = BusyEpisodeOwner::kGraceWindow;
     /// Longest a busy episode can pass as the app's own after its last send.
-    static constexpr std::chrono::seconds MAX_SELF_BUSY = BusyEpisodeOwner::MAX_SELF_BUSY;
+    static constexpr std::chrono::seconds kMaxSelfBusy = BusyEpisodeOwner::kMaxSelfBusy;
 
     void note_sent(clock::time_point now = clock::now()) {
         episode_.note_sent(now);
@@ -50,7 +50,7 @@ class AppMotionActivity {
             return false;
         }
         const clock::time_point last{clock::duration{last_ns}};
-        return (now - last) < GRACE_WINDOW;
+        return (now - last) < kGraceWindow;
     }
 
     /**

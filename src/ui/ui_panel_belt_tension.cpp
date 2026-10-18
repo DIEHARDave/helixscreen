@@ -580,7 +580,7 @@ void BeltTensionPanel::start_next_measurement() {
 
     // One guard spans the whole queue: every progress line re-arms it, so it
     // measures silence, not sweep length.
-    stall_guard_.begin(STALL_TIMEOUT_MS, [this]() { on_stall(); });
+    stall_guard_.begin(kStallTimeoutMs, [this]() { on_stall(); });
 
     if (!calibrator_) {
         on_error(lv_tr("No printer connection"));
@@ -601,7 +601,7 @@ void BeltTensionPanel::on_sweep_progress(int /*percent*/, float freq_hz) {
     }
     // Re-arm on every line: the guard fires only on true silence.
     stall_guard_.end();
-    stall_guard_.begin(STALL_TIMEOUT_MS, [this]() { on_stall(); });
+    stall_guard_.begin(kStallTimeoutMs, [this]() { on_stall(); });
 
     if (chart_) {
         ui_frequency_response_chart_set_cursor(chart_, freq_hz, path_color(queue_.front()));
@@ -646,7 +646,7 @@ void BeltTensionPanel::on_sweep_error(const std::string& message) {
 }
 
 void BeltTensionPanel::on_stall() {
-    spdlog::warn("[BeltTension] Stall guard fired: no progress for {} ms", STALL_TIMEOUT_MS);
+    spdlog::warn("[BeltTension] Stall guard fired: no progress for {} ms", kStallTimeoutMs);
     on_error(lv_tr("Klipper stopped reporting progress. Its analysis can run out of memory on "
                    "small printers and leave Klipper stuck, where a firmware restart cannot "
                    "reach it. Power-cycle the printer (or restart Klipper over SSH), then try "
@@ -703,7 +703,7 @@ void BeltTensionPanel::populate_results(const helix::calibration::BeltComparison
     // Paired peaks, strongest first: "Peaks 35/36 · 133/132 Hz" (A/B).
     const auto& pairs = cmp.peaks.pairs;
     std::string pair_list;
-    for (size_t i = 0; i < pairs.size() && i < MAX_LISTED_PEAKS; ++i) {
+    for (size_t i = 0; i < pairs.size() && i < kMaxListedPeaks; ++i) {
         pair_list += fmt::format("{}{:.0f}/{:.0f}", i == 0 ? "" : " · ", pairs[i].a.freq_hz,
                                  pairs[i].b.freq_hz);
     }
@@ -718,8 +718,8 @@ void BeltTensionPanel::populate_results(const helix::calibration::BeltComparison
     const auto listed = [](std::vector<helix::calibration::BeltPeak> peaks) {
         std::sort(peaks.begin(), peaks.end(),
                   [](const auto& l, const auto& r) { return l.amplitude > r.amplitude; });
-        if (peaks.size() > MAX_LISTED_PEAKS) {
-            peaks.resize(MAX_LISTED_PEAKS);
+        if (peaks.size() > kMaxListedPeaks) {
+            peaks.resize(kMaxListedPeaks);
         }
         std::sort(peaks.begin(), peaks.end(),
                   [](const auto& l, const auto& r) { return l.freq_hz < r.freq_hz; });
@@ -758,7 +758,7 @@ void BeltTensionPanel::push_chart_markers(const helix::calibration::BeltComparis
     // hollow rings on the listed unpaired peaks.
     std::vector<FrChartMarker> markers[2];
     const auto& pairs = cmp.peaks.pairs;
-    for (size_t i = 0; i < pairs.size() && i < MAX_LISTED_PEAKS; ++i) {
+    for (size_t i = 0; i < pairs.size() && i < kMaxListedPeaks; ++i) {
         const int number = static_cast<int>(i) + 1;
         markers[0].push_back({pairs[i].a.freq_hz, number});
         markers[1].push_back({pairs[i].b.freq_hz, number});
@@ -767,7 +767,7 @@ void BeltTensionPanel::push_chart_markers(const helix::calibration::BeltComparis
                                  std::vector<FrChartMarker>& out) {
         std::sort(peaks.begin(), peaks.end(),
                   [](const auto& l, const auto& r) { return l.amplitude > r.amplitude; });
-        for (size_t i = 0; i < peaks.size() && i < MAX_LISTED_PEAKS; ++i) {
+        for (size_t i = 0; i < peaks.size() && i < kMaxListedPeaks; ++i) {
             out.push_back({peaks[i].freq_hz, 0});
         }
     };

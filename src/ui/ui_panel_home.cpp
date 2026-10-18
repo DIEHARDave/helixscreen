@@ -1015,7 +1015,7 @@ void HomePanel::refresh_printer_image() {
     // dynamic_cast this replaces, and works under -fno-rtti (firmware).
     for (auto& page : pages_) {
         for (auto& w : page.widgets) {
-            if (w && std::strcmp(w->id(), helix::PrinterImageWidget::WIDGET_ID) == 0) {
+            if (w && std::strcmp(w->id(), helix::PrinterImageWidget::kWidgetId) == 0) {
                 static_cast<helix::PrinterImageWidget*>(w.get())->refresh_printer_image();
                 return;
             }
@@ -1028,7 +1028,7 @@ void HomePanel::trigger_idle_runout_check() {
     // for why the id() match stands in for a dynamic_cast).
     for (auto& page : pages_) {
         for (auto& w : page.widgets) {
-            if (w && std::strcmp(w->id(), helix::PrintStatusWidget::WIDGET_ID) == 0) {
+            if (w && std::strcmp(w->id(), helix::PrintStatusWidget::kWidgetId) == 0) {
                 static_cast<helix::PrintStatusWidget*>(w.get())->trigger_idle_runout_check();
                 return;
             }
@@ -1094,7 +1094,7 @@ bool HomePanel::finger_drifted_since_press() const {
     lv_indev_get_point(indev, &now);
     const int dx = now.x - press_start_point_.x;
     const int dy = now.y - press_start_point_.y;
-    const int limit = lv_dpx(app_constants::input::EDIT_MODE_MOVE_CANCEL_DPX);
+    const int limit = lv_dpx(app_constants::input::kEditModeMoveCancelDpx);
     return (dx * dx + dy * dy) > (limit * limit);
 }
 

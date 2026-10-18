@@ -24,7 +24,7 @@
 using helix::SlotInfo;
 using helix::SlotStatus;
 
-using helix::ui::EXTERNAL_SPOOL_SLOT;
+using helix::ui::kExternalSpoolSlot;
 using helix::ui::load_preheat_temp;
 using helix::ui::PreheatTarget;
 using helix::ui::resolve_load_preheat_material;
@@ -96,7 +96,7 @@ TEST_CASE("External spool is consulted when the load has no AMS lane of its own"
     SECTION("bypass sentinel goes straight to the spool, ignoring any lane") {
         const SlotInfo lane_that_must_not_win = lane("ABS");
         auto resolved =
-            resolve_load_preheat_material(EXTERNAL_SPOOL_SLOT, &lane_that_must_not_win, &ext);
+            resolve_load_preheat_material(kExternalSpoolSlot, &lane_that_must_not_win, &ext);
         REQUIRE(resolved.has_value());
         CHECK(resolved->temp_c == db_recommended("PETG"));
     }
@@ -109,7 +109,7 @@ TEST_CASE("External spool is consulted when the load has no AMS lane of its own"
 
     SECTION("bypass with no spool assigned resolves nothing") {
         CHECK_FALSE(
-            resolve_load_preheat_material(EXTERNAL_SPOOL_SLOT, nullptr, nullptr).has_value());
+            resolve_load_preheat_material(kExternalSpoolSlot, nullptr, nullptr).has_value());
     }
 
     SECTION("a lane that names nothing does not mask the spool") {

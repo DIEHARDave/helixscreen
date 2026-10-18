@@ -106,7 +106,7 @@ class AmsEditOverlayViewTestAccess {
         overlay_.handle_spool_selected(spool_id);
     }
     void call_switch_to_editor() {
-        overlay_.set_view(AmsEditOverlay::VIEW_EDITOR);
+        overlay_.set_view(AmsEditOverlay::kViewEditor);
     }
     /// Pick @p option in the named dropdown the way a touch does: set the
     /// widget's selection and send it value_changed, so the XML-registered
@@ -521,14 +521,14 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     access.call_open_color_view();
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    CHECK(access.view() == AmsEditOverlay::VIEW_COLOR);
+    CHECK(access.view() == AmsEditOverlay::kViewColor);
 
     uint32_t before = access.working_info().color_rgb;
     access.call_apply_color(0x1E88E5);
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR);
+    CHECK(access.view() == AmsEditOverlay::kViewEditor);
     CHECK(access.details_color() == 0x1E88E5);
     CHECK(access.details_color_set());
     CHECK(access.working_info().color_rgb == before); // slot untouched until Save
@@ -564,7 +564,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // A sentinel slot keeps its grey starting point: the picker needs some
     // seed, and the sentinel grey is what the slot's own summary already shows.
     SlotInfo sentinel = untracked_slot();
-    sentinel.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    sentinel.color_rgb = kAmsDefaultSlotColor;
     sentinel.color_name.clear();
     REQUIRE(overlay.show_for_slot(test_screen(), 0, sentinel, nullptr, nullptr));
     UpdateQueue::instance().drain();
@@ -908,7 +908,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "picker-entry spool selection commits and cl
         /*open_on_picker=*/true));
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    REQUIRE(access.view() == AmsEditOverlay::VIEW_SPOOL_PICKER);
+    REQUIRE(access.view() == AmsEditOverlay::kViewSpoolPicker);
 
     access.set_cached_spools(two_spools());
     access.call_render_spool_list("");
@@ -998,7 +998,7 @@ TEST_CASE_METHOD(OverlayConsumerCommitFixture,
         /*open_on_picker=*/true));
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    REQUIRE(access.view() == AmsEditOverlay::VIEW_SPOOL_PICKER);
+    REQUIRE(access.view() == AmsEditOverlay::kViewSpoolPicker);
 
     access.set_cached_spools(two_spools());
     access.call_render_spool_list("");
@@ -1067,7 +1067,7 @@ TEST_CASE_METHOD(OverlayConsumerCommitFixture,
     access.call_switch_to_picker(); // Change-Filament entry: clears the shortcut
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    REQUIRE(access.view() == AmsEditOverlay::VIEW_SPOOL_PICKER);
+    REQUIRE(access.view() == AmsEditOverlay::kViewSpoolPicker);
 
     access.set_cached_spools(two_spools());
     access.call_render_spool_list("");
@@ -1077,7 +1077,7 @@ TEST_CASE_METHOD(OverlayConsumerCommitFixture,
     access.call_handle_spool_selected(22); // stages the relink, returns to the editor
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    REQUIRE(access.view() == AmsEditOverlay::VIEW_EDITOR);
+    REQUIRE(access.view() == AmsEditOverlay::kViewEditor);
     REQUIRE_FALSE(fired); // not committed yet
     REQUIRE(access.working_info().spoolman_id == 22);
 
@@ -1249,7 +1249,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a linked slot still saves a color while Spo
     access.call_enter_editor();
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    REQUIRE(access.view() == AmsEditOverlay::VIEW_EDITOR);
+    REQUIRE(access.view() == AmsEditOverlay::kViewEditor);
 
     access.set_details_color(0x112233);
     access.call_handle_save(); // header Save on spool-edit finishes the edit
@@ -1283,7 +1283,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "header-picker selection returns to the edit
     access.call_switch_to_picker(); // Change-Filament entry: clears the shortcut
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    REQUIRE(access.view() == AmsEditOverlay::VIEW_SPOOL_PICKER);
+    REQUIRE(access.view() == AmsEditOverlay::kViewSpoolPicker);
 
     access.set_cached_spools(two_spools());
     access.call_render_spool_list("");
@@ -1294,7 +1294,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "header-picker selection returns to the edit
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR);
+    CHECK(access.view() == AmsEditOverlay::kViewEditor);
     CHECK_FALSE(fired); // no commit — the editor's header Save commits later
     CHECK(access.working_info().spoolman_id == 22); // staged, awaiting review
 
@@ -1361,20 +1361,20 @@ TEST_CASE_METHOD(LVGLUITestFixture, "header Save shows on the editor, hides on p
     REQUIRE(save_dis != nullptr);
     REQUIRE(lv_subject_get_int(hide_subj) == 0); // editor: visible
 
-    access.call_set_view(AmsEditOverlay::VIEW_SPOOL_PICKER);
+    access.call_set_view(AmsEditOverlay::kViewSpoolPicker);
     REQUIRE(lv_subject_get_int(hide_subj) == 1); // picker: hidden
 
     // Editor: Save stays VISIBLE and is disabled while nothing is dirty —
     // the dropdowns stage into working_info_ only through Save.
-    access.call_set_view(AmsEditOverlay::VIEW_EDITOR);
+    access.call_set_view(AmsEditOverlay::kViewEditor);
     REQUIRE(lv_subject_get_int(hide_subj) == 0);
     REQUIRE_FALSE(access.is_dirty());
     CHECK(lv_subject_get_int(save_dis) == 1);
 
-    access.call_set_view(AmsEditOverlay::VIEW_COLOR);
+    access.call_set_view(AmsEditOverlay::kViewColor);
     REQUIRE(lv_subject_get_int(hide_subj) == 1); // color: hidden
 
-    access.call_set_view(AmsEditOverlay::VIEW_EDITOR);
+    access.call_set_view(AmsEditOverlay::kViewEditor);
     REQUIRE(lv_subject_get_int(hide_subj) == 0);
     // Overview: dirty-gated — a clean slot keeps Save disabled.
     CHECK(lv_subject_get_int(save_dis) == 1);
@@ -1736,13 +1736,13 @@ TEST_CASE("AmsEditOverlay::save_is_disabled holds Save shut while a save is in f
     using Access = AmsEditOverlayViewTestAccess;
 
     SECTION("the editor gates on the edit") {
-        CHECK(Access::save_is_disabled(AmsEditOverlay::VIEW_EDITOR, false, false));
-        CHECK_FALSE(Access::save_is_disabled(AmsEditOverlay::VIEW_EDITOR, false, true));
+        CHECK(Access::save_is_disabled(AmsEditOverlay::kViewEditor, false, false));
+        CHECK_FALSE(Access::save_is_disabled(AmsEditOverlay::kViewEditor, false, true));
     }
 
     SECTION("a save in flight holds it shut on any view") {
-        CHECK(Access::save_is_disabled(AmsEditOverlay::VIEW_EDITOR, true, true));
-        CHECK(Access::save_is_disabled(AmsEditOverlay::VIEW_EDITOR, true, false));
+        CHECK(Access::save_is_disabled(AmsEditOverlay::kViewEditor, true, true));
+        CHECK(Access::save_is_disabled(AmsEditOverlay::kViewEditor, true, false));
     }
 }
 
@@ -2463,13 +2463,13 @@ TEST_CASE_METHOD(LVGLUITestFixture, "picker-entry then Back builds the editor fr
     REQUIRE(overlay.show_for_slot(test_screen(), 1, untracked_slot(), nullptr, nullptr, true));
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    REQUIRE(access.view() == AmsEditOverlay::VIEW_SPOOL_PICKER);
+    REQUIRE(access.view() == AmsEditOverlay::kViewSpoolPicker);
     CHECK_FALSE(access.has_tag());
     access.call_handle_back();
     UpdateQueue::instance().drain();
     process_lvgl(10);
 
-    CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR);
+    CHECK(access.view() == AmsEditOverlay::kViewEditor);
     CHECK(access.sel().family == "PETG");
     CHECK(access.sel().brand == "Generic");
     CHECK(access.dropdown_selected("dropdown_material") == "PETG");
@@ -2500,7 +2500,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "leaving the picker keeps the edits staged i
     access.click("picker_setup_entry");
     UpdateQueue::instance().drain();
     process_lvgl(10);
-    CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR);
+    CHECK(access.view() == AmsEditOverlay::kViewEditor);
     CHECK(access.sel().family == "PLA");
     CHECK(access.detail_comment() == "keep dry");
     CHECK(access.is_dirty());
@@ -3230,7 +3230,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                 CHECK(access.field_text("ams_color_hex_input") == hex);
                 CHECK(color_subject("ams_edit_color_selected") == ring);
             }
-            CHECK(access.view() == AmsEditOverlay::VIEW_COLOR);
+            CHECK(access.view() == AmsEditOverlay::kViewColor);
             close_editor_overlay();
         }
         theme_manager_refresh_layout_constants(disp);
@@ -3261,7 +3261,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         deleted = false;
         lv_obj_add_event_cb(grid, [](lv_event_t*) { deleted = true; }, LV_EVENT_DELETE, nullptr);
 
-        access.call_set_view(AmsEditOverlay::VIEW_EDITOR);
+        access.call_set_view(AmsEditOverlay::kViewEditor);
         process_lvgl(10);
         access.call_open_color_view();
         process_lvgl(10);
@@ -3456,7 +3456,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "an unset slot rings no colour tile",
     SlotInfo info = untracked_slot();
     info.material.clear();
     info.color_name.clear();
-    info.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    info.color_rgb = kAmsDefaultSlotColor;
     REQUIRE(overlay.show_for_slot(test_screen(), 0, info, nullptr, nullptr));
     UpdateQueue::instance().drain();
     process_lvgl(10);
@@ -3688,7 +3688,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     REQUIRE(results.size() == 1);
     CHECK(results[0].saved);
     CHECK(results[0].slot_info.remaining_weight_g == 321);
-    CHECK(access.view() == AmsEditOverlay::VIEW_EDITOR); // still open
+    CHECK(access.view() == AmsEditOverlay::kViewEditor); // still open
     CHECK(access.detail_comment() == "later");
     REQUIRE(toasts.size() == 1);
     CHECK(toasts[0].find("offline") != std::string::npos);

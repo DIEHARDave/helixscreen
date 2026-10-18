@@ -180,7 +180,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "WiFiManager delivers AUTHENTICATION_FAILED as
     lv_timer_handler_safe(); // drain the queue → arms the grace timer
     REQUIRE(calls == 0);
 
-    lv_tick_inc(5000); // past AUTH_FAIL_GRACE_MS with no CONNECTED
+    lv_tick_inc(5000); // past kAuthFailGraceMs with no CONNECTED
     lv_timer_handler_safe();
 
     REQUIRE(calls == 1);
@@ -204,7 +204,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "WiFiManager delivers a watchdog timeout as TI
                                                 });
     helix::WiFiManagerTestAccess::arm_connect_watchdog(*manager);
 
-    lv_tick_inc(46000); // past CONNECT_TIMEOUT_MS
+    lv_tick_inc(46000); // past kConnectTimeoutMs
     lv_timer_handler_safe();
 
     REQUIRE(calls == 1);

@@ -46,10 +46,10 @@ inline AmsSlotLayout calculate_ams_slot_layout(int32_t available_width, int slot
         return layout;
 
     if (slot_count > 4) {
-        constexpr float OVERLAP_RATIO = 0.5f;
+        constexpr float kOverlapRatio = 0.5f;
         layout.slot_width = static_cast<int32_t>(
-            available_width / (slot_count * (1.0f - OVERLAP_RATIO) + OVERLAP_RATIO));
-        layout.overlap = static_cast<int32_t>(layout.slot_width * OVERLAP_RATIO);
+            available_width / (slot_count * (1.0f - kOverlapRatio) + kOverlapRatio));
+        layout.overlap = static_cast<int32_t>(layout.slot_width * kOverlapRatio);
     } else {
         layout.slot_width = available_width / slot_count;
         layout.overlap = 0;

@@ -13,7 +13,7 @@
 #include "ams_tool_map_sync.h"
 #include "cfs_status_parse.h"
 #include "filament_catalog.h"
-#include "filament_op_dispatch.h" // EXTERNAL_SPOOL_SLOT — the shared bypass sentinel
+#include "filament_op_dispatch.h" // kExternalSpoolSlot — the shared bypass sentinel
 #include "filament_slot_override.h"
 #include "filament_slot_override_store.h"
 #include "json_utils.h"
@@ -1083,14 +1083,14 @@ AmsBackendCfs::parse_stock_box_status(const nlohmann::json& box_json,
 // CfsMaterialDb::parse_color: that one owns Creality's leading-zero "0RRGGBB"
 // form and its "-1"/"None" sentinels, which are this firmware's alone.
 //
-// Both of the helper's non-colour answers land on AMS_DEFAULT_SLOT_COLOR,
+// Both of the helper's non-colour answers land on kAmsDefaultSlotColor,
 // because SlotInfo has no other way to say "no colour": the external-spool
 // entry writes the key empty (Cleared) and a malformed value is refused rather
 // than half-read (NoReading), and a bay renders as "unknown colour" for either.
 static uint32_t parse_flat_slot_color(const std::string& raw) {
     const auto reading = helix::ams::read_lane_color(raw);
     return reading.kind == helix::ams::ColorReadingKind::Observed ? reading.rgb
-                                                                  : AMS_DEFAULT_SLOT_COLOR;
+                                                                  : kAmsDefaultSlotColor;
 }
 
 // The flat schema's box-gate presence reading, or nullopt when this frame
@@ -2489,7 +2489,7 @@ AmsError AmsBackendCfs::do_load_filament(int slot_index) {
     // where the bypass UNLOAD could be exercised. Fork excluded: its own
     // T<external> command owns the attended load (see enable_bypass()).
     const bool bypass =
-        slot_index == helix::ui::EXTERNAL_SPOOL_SLOT && macro_variant_ != CfsMacroVariant::Fork;
+        slot_index == helix::ui::kExternalSpoolSlot && macro_variant_ != CfsMacroVariant::Fork;
 
     // The bound is the attached unit count (the TNN alphabet while the box
     // size is unknown), so a 4-slot CFS refuses index 7 here instead of
@@ -2577,7 +2577,7 @@ AmsError AmsBackendCfs::do_unload_filament(int slot_index) {
     // Fork is excluded because its BOX_UNLOAD selects the external branch itself
     // from loaded_slot — the same split disable_bypass() already makes.
     const bool bypass =
-        slot_index == helix::ui::EXTERNAL_SPOOL_SLOT && macro_variant_ != CfsMacroVariant::Fork;
+        slot_index == helix::ui::kExternalSpoolSlot && macro_variant_ != CfsMacroVariant::Fork;
 
     std::string gcode;
     if (bypass) {
@@ -2763,7 +2763,7 @@ AmsError AmsBackendCfs::apply_user_edit(int slot_index, const SlotInfo& info,
                                        info.color_rgb, &declared);
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -2783,7 +2783,7 @@ AmsError AmsBackendCfs::sync_external_identity(int slot_index, const SlotInfo& i
 
     spdlog::info("[AMS CFS] Synced slot {} info: {} {}", slot_index, info.material,
                  info.color_name);
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -3122,8 +3122,8 @@ AmsError AmsBackendCfs::can_set_tool_mapping(int tool_number, int slot_index) co
     if (get_remap_strategy() != RemapStrategy::Native) {
         return AmsErrorHelper::not_supported("Tool remapping on this firmware's CFS module");
     }
-    constexpr int CFS_MAX_SLOTS = 16; // 4 units × 4 slots
-    if (tool_number < 0 || tool_number >= CFS_MAX_SLOTS) {
+    constexpr int kCfsMaxSlots = 16; // 4 units × 4 slots
+    if (tool_number < 0 || tool_number >= kCfsMaxSlots) {
         return AmsErrorHelper::tool_out_of_range(tool_number);
     }
     if (auto err = validate_slot_index(slot_index); !err.success()) {
@@ -3495,8 +3495,8 @@ bool AmsBackendCfs::detect_fork_dialect(const nlohmann::json& box_json) {
 std::string AmsBackendCfs::slot_set_gcode(int global_slot_index, const std::string& material,
                                           uint32_t color_rgb, const std::string& brand,
                                           const std::string& name, int spoolman_id) {
-    constexpr int CFS_MAX_SLOTS = 16; // 4 units × 4 slots
-    if (global_slot_index < 0 || global_slot_index >= CFS_MAX_SLOTS) {
+    constexpr int kCfsMaxSlots = 16; // 4 units × 4 slots
+    if (global_slot_index < 0 || global_slot_index >= kCfsMaxSlots) {
         spdlog::error("[AMS CFS] Invalid slot index for slot-set: {}", global_slot_index);
         return "";
     }
@@ -3597,8 +3597,8 @@ std::string AmsBackendCfs::print_map_gcode(const std::set<int>& tools_used,
 std::string AmsBackendCfs::load_gcode(int idx, CfsMacroVariant variant, bool fork_select_slot) {
     if (variant == CfsMacroVariant::Fork) {
         // The Box command owns the complete load or change operation.
-        constexpr int CFS_MAX_SLOTS = 16;
-        if (idx < 0 || idx >= CFS_MAX_SLOTS) {
+        constexpr int kCfsMaxSlots = 16;
+        if (idx < 0 || idx >= kCfsMaxSlots) {
             spdlog::error("[AMS CFS] Invalid slot index for load: {}", idx);
             return "";
         }
@@ -3726,10 +3726,10 @@ namespace {
 /// Relative (G91) and restored, so it composes with any caller's positioning
 /// mode. M400 so the caller's park does not overlap the pull.
 std::string feed_gcode(bool retract) {
-    constexpr int FEED_MM = 80;
-    constexpr int FEED_RATE = 600; // [box] tn_retrude_velocity
-    return "G91\nG0 E" + std::string(retract ? "-" : "") + std::to_string(FEED_MM) + " F" +
-           std::to_string(FEED_RATE) + "\nG90\nM400";
+    constexpr int kFeedMm = 80;
+    constexpr int kFeedRate = 600; // [box] tn_retrude_velocity
+    return "G91\nG0 E" + std::string(retract ? "-" : "") + std::to_string(kFeedMm) + " F" +
+           std::to_string(kFeedRate) + "\nG90\nM400";
 }
 
 /// The unload direction, named for its call sites.
@@ -3819,8 +3819,8 @@ std::string AmsBackendCfs::swap_gcode(int idx, CfsMacroVariant variant, bool for
         // and flushes as one operation. There is no BOX_CHANGE; that name
         // appears only in a user-written alias macro that this firmware does
         // not define.
-        constexpr int CFS_MAX_SLOTS = 16;
-        if (idx < 0 || idx >= CFS_MAX_SLOTS) {
+        constexpr int kCfsMaxSlots = 16;
+        if (idx < 0 || idx >= kCfsMaxSlots) {
             spdlog::error("[AMS CFS] Invalid slot index for swap: {}", idx);
             return "";
         }
@@ -3924,13 +3924,13 @@ AmsError AmsBackendCfs::dispatch_action_script(std::string gcode) {
                 if (macro_variant_ != CfsMacroVariant::Fork) {
                     api_->execute_gcode(
                         "BOX_RESTORE_FAN", []() {}, [](const MoonrakerError&) {},
-                        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, /*silent=*/false,
+                        IMoonrakerAPI::kAmsOperationTimeoutMs, /*silent=*/false,
                         /*on_queued=*/nullptr, /*caller_surfaces_errors=*/false);
                 }
                 if (macro_variant_ != CfsMacroVariant::Fork) {
                     api_->execute_gcode(
                         "RESTORE_GCODE_STATE NAME=helix_cfs_load", []() {},
-                        [](const MoonrakerError&) {}, IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+                        [](const MoonrakerError&) {}, IMoonrakerAPI::kAmsOperationTimeoutMs,
                         /*silent=*/false, /*on_queued=*/nullptr,
                         /*caller_surfaces_errors=*/false);
                 }
@@ -3947,7 +3947,7 @@ AmsError AmsBackendCfs::dispatch_action_script(std::string gcode) {
     // GcodeErrorRouter's `!!` copy, which is the only surface left. See
     // include/rpc_error_policy.h.
     return ensure_homed_then(std::move(gcode), std::move(on_complete), std::move(on_error),
-                             IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+                             IMoonrakerAPI::kAmsOperationTimeoutMs,
                              /*skip_homing=*/macro_variant_ == CfsMacroVariant::Fork,
                              /*silent=*/false, /*caller_surfaces_errors=*/false,
                              std::move(on_predispatch_error));
@@ -5380,7 +5380,7 @@ void AmsBackendCfs::clear_slot_override(int slot_index) {
         firmware_slot = firmware_slot_locked(slot_index);
     }
 
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     if (macro_variant_ == CfsMacroVariant::Fork) {
         if (firmware_slot < 0) {
             spdlog::warn("{} clear_slot_override: bay {} has no firmware slot - not clearing the "

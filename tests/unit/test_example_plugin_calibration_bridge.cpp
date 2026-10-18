@@ -97,7 +97,7 @@ size_t http_count(HostRig& rig) {
 /// its base panel (an unregistered push aborts under HELIX_STRICT_OVERLAY_CHECK).
 class CalibrationFx : public XMLTestFixture {
   public:
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
 
     CalibrationFx() {
         for (auto& p : panels)

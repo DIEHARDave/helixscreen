@@ -752,7 +752,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "[printer_image][callouts]") {
     const auto regions = prepare_tagged_widget();
     LightChipRig rig(state());
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels) {
         p = lv_obj_create(test_screen());
     }
@@ -878,7 +878,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "[printer_image][callouts][lock]") {
     const auto regions = prepare_tagged_widget();
     LightChipRig rig(state());
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels) {
         p = lv_obj_create(test_screen());
     }

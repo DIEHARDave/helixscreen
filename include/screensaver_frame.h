@@ -16,7 +16,7 @@
 namespace helix::ui {
 
 /// Frame period, in ms, of every saver's most expensive level: one refresh of a 60 Hz panel.
-inline constexpr uint32_t SAVER_FAST_PERIOD = 16;
+inline constexpr uint32_t kSaverFastPeriod = 16;
 
 /**
  * @brief Most areas a saver invalidates in one frame
@@ -27,7 +27,7 @@ inline constexpr uint32_t SAVER_FAST_PERIOD = 16;
  * the cap sits above the starfield's full population (150 stars) and leaves the rest of
  * the buffer for UI invalidations.
  */
-inline constexpr size_t SAVER_MAX_DIRTY_AREAS = 160;
+inline constexpr size_t kSaverMaxDirtyAreas = 160;
 
 /**
  * @brief Dirty coverage at or above which invalidating the whole canvas is cheaper
@@ -36,7 +36,7 @@ inline constexpr size_t SAVER_MAX_DIRTY_AREAS = 160;
  * double-buffered display copies the untouched remainder out of the previous buffer in strips
  * every frame, while a full-canvas invalidation leaves it nothing to sync.
  */
-inline constexpr int64_t SAVER_WHOLE_CANVAS_PERCENT = 90;
+inline constexpr int64_t kSaverWholeCanvasPercent = 90;
 
 /// How a FrameTarget stores its pixels.
 enum class PixelFormat : uint8_t {
@@ -136,7 +136,7 @@ constexpr bool covers_whole_canvas(int64_t covered_px, int32_t w, int32_t h) {
     if (canvas <= 0) {
         return false;
     }
-    return covered_px * 100 >= canvas * SAVER_WHOLE_CANVAS_PERCENT;
+    return covered_px * 100 >= canvas * kSaverWholeCanvasPercent;
 }
 
 /// One-box form of the coverage rule: a single box covers its own pixels.

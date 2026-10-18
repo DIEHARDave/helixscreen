@@ -1367,7 +1367,7 @@ void PrintSelectDetailView::poll_load_progress() {
 
     const bool loading = lv_subject_get_int(&detail_gcode_loading_) != 0;
     const bool revealed = lv_subject_get_int(&detail_viewer_first_frame_) != 0;
-    const bool is_2d = lv_subject_get_int(&detail_gcode_viewer_mode_) == helix::ui::PREVIEW_MODE_2D;
+    const bool is_2d = lv_subject_get_int(&detail_gcode_viewer_mode_) == helix::ui::kPreviewMode2d;
 
     // A hidden 2D viewer is not drawn, so nothing would drive its build. Pump
     // it here and reveal on readiness. 3D is untouched: it stays visible under
@@ -1462,8 +1462,7 @@ void PrintSelectDetailView::show_gcode_viewer(bool show) {
     // A viewer that is not revealed yet is hidden, so no draw drives its build.
     // Keep the tick alive to pump it; poll_load_progress() stops itself on the
     // reveal.
-    if (mode == helix::ui::PREVIEW_MODE_2D &&
-        lv_subject_get_int(&detail_viewer_first_frame_) == 0) {
+    if (mode == helix::ui::kPreviewMode2d && lv_subject_get_int(&detail_viewer_first_frame_) == 0) {
         start_progress_timer();
     } else {
         cancel_progress_timer();
@@ -1988,7 +1987,7 @@ void PrintSelectDetailView::run_when_preflight_ready(std::function<void()> cb) {
             self->printer_stop_wait_timed_out_ = true;
             self->fire_on_preflight_ready();
         },
-        PREFLIGHT_READY_TIMEOUT_MS, this);
+        kPreflightReadyTimeoutMs, this);
     lv_timer_set_repeat_count(preflight_ready_timeout_timer_, 1);
 }
 

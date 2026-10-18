@@ -212,8 +212,8 @@ struct StatusFrame {
  *
  * params[1] is Klipper's eventtime. It is monotonic-clock derived, so it survives
  * a Klipper restart and only rewinds on a host reboot: a usable freshness key
- * within one connection. CACHED_SNAPSHOT_MARKER says the frame is a replay of an
- * earlier snapshot rather than current traffic; WHOLE_OBJECTS_MARKER says it is a
+ * within one connection. kCachedSnapshotMarker says the frame is a replay of an
+ * earlier snapshot rather than current traffic; kWholeObjectsMarker says it is a
  * subscription response rather than a delta.
  *
  * @return The frame, or nullopt for anything that is not a notify_status_update
@@ -757,7 +757,7 @@ class PrinterState {
      * @brief Like is_blocking_operation_active(), but attributes self-inflicted busy
      *
      * Treats busy-ness attributable to the app's own recent jog activity (in
-     * flight, or acked within AppMotionActivity::GRACE_WINDOW) as NOT blocking.
+     * flight, or acked within AppMotionActivity::kGraceWindow) as NOT blocking.
      * Manual probe remains an absolute block. Guards for discretionary gcode use
      * THIS predicate so back-to-back jogs don't self-block — idle_timeout reports
      * "Printing" during any move, including our own jog (spec 2026-07-15).

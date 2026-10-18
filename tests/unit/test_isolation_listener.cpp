@@ -175,7 +175,7 @@ class IsolationListener : public Catch::EventListenerBase {
 
         // Pre-warm process-wide worker pools ONCE before any per-test thread
         // baseline is captured. ThumbnailProcessor is a Meyer's singleton whose
-        // constructor eagerly starts an HThreadPool worker (MIN_WORKER_THREADS=1)
+        // constructor eagerly starts an HThreadPool worker (kMinWorkerThreads=1)
         // that lives for the whole process. The first test to reach a thumbnail
         // fetch (get_thumbnail_cache() -> ThumbnailProcessor::instance()) would
         // otherwise be flagged as "leaking" that thread — a false positive, since

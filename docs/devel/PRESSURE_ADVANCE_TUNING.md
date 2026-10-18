@@ -26,12 +26,12 @@ firmware-measured calibration is a separate screen (`include/ui_panel_calibratio
    (`toolhead.axis_minimum/maximum` in gcode space): two walls at 100 mm/s, 0.2 mm
    layers (line width from `[extruder] nozzle_diameter`), a 1 mm base, ten 3 mm bands, a
    brim and a prime line. It starts through the printer's own start macro, found by
-   `pa::pick_machine_macros()` among `PrintStartAnalyzer::MACRO_NAMES` in the discovered
+   `pa::pick_machine_macros()` among `PrintStartAnalyzer::kMacroNames` in the discovered
    macro set, passing bed and nozzle temperatures under the parameter names that macro
    takes (`BED_TEMP`/`BED`/..., `EXTRUDER_TEMP`/`EXTRUDER`/...). A macro that takes no
    recognisable temperatures is called bare with the heaters already started; with no
    start macro the file homes and heats itself. `M190`/`M109` follow either way. It ends
-   through the matching end macro (`END_MACRO_NAMES`) or a plain cooldown. It reports
+   through the matching end macro (`kEndMacroNames`) or a plain cooldown. It reports
    layers with `SET_PRINT_STATS_INFO` and never sets K. It is uploaded
    to the gcodes root as `helix_pa_tuning.gcode` (one fixed name, overwritten each run)
    and started.
@@ -96,7 +96,7 @@ keeps the ramp going, and the Tune overlay shows a Tuner button while a run is a
 
 ### Spoolman
 
-Filament extra field `pressure_advance` (`SPOOLMAN_PA_EXTRA_KEY`), one per filament: K
+Filament extra field `pressure_advance` (`kSpoolmanPaExtraKey`), one per filament: K
 belongs to the material and the extruder, not to a single spool. Spoolman refuses an
 extra key with no field definition, so the first save defines it as a `float` field
 named "Pressure advance" (`POST /v1/field/filament/pressure_advance`). A field the user

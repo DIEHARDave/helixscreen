@@ -24,21 +24,21 @@ namespace {
 constexpr char TAG[] = "esp_http_lane";
 // Lazily claimed on first submit_get(), from PSRAM (see
 // ensure_worker_started_locked).
-constexpr size_t WORKER_STACK_BYTES = 16 * 1024;
+constexpr size_t kWorkerStackBytes = 16 * 1024;
 // Connecting and reading the headers: a busy Moonraker on a weak link can take
 // seconds to answer, and one timeout here fails the request.
-constexpr int HTTP_TIMEOUT_MS = 15000;
+constexpr int kHttpTimeoutMs = 15000;
 // Each socket read of the body: short, so a stalled read comes back to
-// read_capped_body() to be timed against BODY_DEADLINES rather than blocking.
-constexpr int BODY_READ_TIMEOUT_MS = 5000;
+// read_capped_body() to be timed against kBodyDeadlines rather than blocking.
+constexpr int kBodyReadTimeoutMs = 5000;
 // A thumbnail is a few KB: a body still arriving after 30 s, or silent for
 // 10 s, is a link that has stopped, and the lane has other cards waiting.
-constexpr LaneDeadlines BODY_DEADLINES{30000, 10000};
+constexpr LaneDeadlines kBodyDeadlines{30000, 10000};
 // esp_http_client's own internal read-chunk buffer (config.buffer_size) —
 // small and fine in internal RAM. Only the accumulation buffer built up in
 // run_one() below needs to be PSRAM; that's the buffer the R3 "PSRAM buffer,
 // capped" requirement is about.
-constexpr size_t CLIENT_BUFFER_BYTES = 4096;
+constexpr size_t kClientBufferBytes = 4096;
 
 std::atomic<EspHttpLane::DateHeaderHook> s_date_hook{nullptr};
 std::atomic<EspHttpLane::WorkerStartHook> s_worker_start_hook{nullptr};
@@ -82,7 +82,7 @@ bool EspHttpLane::submit_get(std::string url, size_t range_max_bytes, FetchSucce
 
         // The worker is the only thing that drains the queue and releases
         // slots. Without it the job sits forever and its slot is never
-        // returned, so QUEUE_DEPTH failed submissions would wedge the lane for
+        // returned, so kQueueDepth failed submissions would wedge the lane for
         // the rest of the session. Undo the push and the acquire instead.
         if (!ensure_worker_started_locked()) {
             queue_.pop_back();
@@ -102,7 +102,7 @@ bool EspHttpLane::ensure_worker_started_locked() {
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setstacksize(&attr, WORKER_STACK_BYTES);
+    pthread_attr_setstacksize(&attr, kWorkerStackBytes);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     // The stack goes in PSRAM: after WiFi is up the internal heap's largest
@@ -111,7 +111,7 @@ bool EspHttpLane::ensure_worker_started_locked() {
     pthread_t thread;
     int rc;
     {
-        helix::PsramThreadStackScope psram_stack("http_lane", WORKER_STACK_BYTES);
+        helix::PsramThreadStackScope psram_stack("http_lane", kWorkerStackBytes);
         rc = pthread_create(&thread, &attr, &EspHttpLane::worker_main, this);
     }
     pthread_attr_destroy(&attr);
@@ -163,8 +163,8 @@ void EspHttpLane::worker_loop() {
 void EspHttpLane::run_one(const Job& job) {
     esp_http_client_config_t config = {};
     config.url = job.url.c_str();
-    config.timeout_ms = HTTP_TIMEOUT_MS;
-    config.buffer_size = CLIENT_BUFFER_BYTES;
+    config.timeout_ms = kHttpTimeoutMs;
+    config.buffer_size = kClientBufferBytes;
     config.method = HTTP_METHOD_GET;
     config.event_handler = &on_http_event;
 
@@ -211,13 +211,13 @@ void EspHttpLane::run_one(const Job& job) {
 
     // Accumulation buffer, in PSRAM: this is the buffer the RAM budget cares
     // about, not esp_http_client's own small read-chunk buffer
-    // (config.buffer_size above, CLIENT_BUFFER_BYTES).
-    esp_http_client_set_timeout_ms(client, BODY_READ_TIMEOUT_MS);
+    // (config.buffer_size above, kClientBufferBytes).
+    esp_http_client_set_timeout_ms(client, kBodyReadTimeoutMs);
     struct Transport {
         esp_http_client_handle_t client;
         int read(char* buf, int len) {
             const int n = esp_http_client_read(client, buf, len);
-            return n == -ESP_ERR_HTTP_EAGAIN ? TRANSPORT_AGAIN : n;
+            return n == -ESP_ERR_HTTP_EAGAIN ? kTransportAgain : n;
         }
         bool complete() const {
             return esp_http_client_is_complete_data_received(client);
@@ -226,7 +226,7 @@ void EspHttpLane::run_one(const Job& job) {
     std::string body;
     const BodyRead read = read_capped_body(
         transport, job.cap, content_length, body, [] { return esp_timer_get_time() / 1000; },
-        BODY_DEADLINES, job.cancelled.get());
+        kBodyDeadlines, job.cancelled.get());
 
     esp_http_client_close(client);
     esp_http_client_cleanup(client);
@@ -235,10 +235,10 @@ void EspHttpLane::run_one(const Job& job) {
         char why[64];
         if (read == BodyRead::Stalled) {
             snprintf(why, sizeof(why), "stalled: no data for %lld ms",
-                     static_cast<long long>(BODY_DEADLINES.stall_ms));
+                     static_cast<long long>(kBodyDeadlines.stall_ms));
         } else if (read == BodyRead::TimedOut) {
             snprintf(why, sizeof(why), "timed out after %lld ms",
-                     static_cast<long long>(BODY_DEADLINES.total_ms));
+                     static_cast<long long>(kBodyDeadlines.total_ms));
         } else {
             snprintf(why, sizeof(why), "%s",
                      read == BodyRead::AllocFailed  ? "PSRAM allocation failed"

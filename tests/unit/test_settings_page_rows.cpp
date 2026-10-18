@@ -134,7 +134,7 @@ TEST_CASE_METHOD(PageRowsFixture, "settings pages: speaker chip path opens Sound
                  "[settings][settings_pages]") {
     // Slot 0 of the navigation stack is the active main panel; an overlay pushed
     // over nothing would sit there and read as the base.
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels) {
         p = lv_obj_create(test_screen());
     }

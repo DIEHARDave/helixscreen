@@ -537,7 +537,7 @@ class FilamentSensorManager {
      * Used to suppress notifications and modals while sensor states
      * are being synchronized after Moonraker connection.
      *
-     * @return true within app_constants::startup::SENSOR_STABILIZATION_PERIOD of sensor discovery
+     * @return true within app_constants::startup::kSensorStabilizationPeriod of sensor discovery
      */
     [[nodiscard]] bool is_in_startup_grace_period() const;
 
@@ -653,7 +653,7 @@ class FilamentSensorManager {
                                      bool enabled);
 
     /// Runout-role sensors whose removal toast is serving
-    /// helix::RUNOUT_TOAST_DWELL, keyed by klipper_name and holding
+    /// helix::kRunoutToastDwell, keyed by klipper_name and holding
     /// the moment the sensor went clear. Filament returning before the dwell
     /// expires drops the entry, so a tool change announces nothing at all.
     std::map<std::string, std::chrono::steady_clock::time_point> pending_removal_toast_;

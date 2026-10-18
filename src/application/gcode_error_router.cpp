@@ -42,9 +42,9 @@ namespace helix {
 
 namespace {
 
-constexpr const char* NOTIFY_HANDLER_NAME = "gcode_error_notifier";
-constexpr const char* REPLAY_OBSERVER_NAME = "gcode_store_replay";
-constexpr const char* FAULT_NOTIFY_HANDLER_NAME = "fault_raise_notifier";
+constexpr const char* kNotifyHandlerName = "gcode_error_notifier";
+constexpr const char* kReplayObserverName = "gcode_store_replay";
+constexpr const char* kFaultNotifyHandlerName = "fault_raise_notifier";
 
 /// Moonraker notify frames carry their payload as the first element of a
 /// params array; a frame without a non-empty one has nothing to read.
@@ -58,22 +58,22 @@ const nlohmann::json* first_notify_param(const nlohmann::json& msg) {
 /// How long a coded raise displaces a pending prose copy of the same fault.
 /// The firmware pushes the pair within milliseconds, so this only has to
 /// outlive the 150ms hold of the prose presentation.
-constexpr double DISPLACED_PROSE_WINDOW_SECONDS = 2.0;
+constexpr double kDisplacedProseWindowSeconds = 2.0;
 
 /// The one recovery action that does NOT run through execute_gcode: key298's
 /// rpi-MCU-bridge bounce goes via PrinterRecoveryService and so carries an
 /// empty gcode. Matched on the tag error_classify.cpp:73 stamps, because an
 /// empty gcode alone is not a reliable signal — see present_recover_toast().
-constexpr const char* KEY298_RECOVER_TAG = "error_classify::key298_recover";
+constexpr const char* kKey298RecoverTag = "error_classify::key298_recover";
 
 /// How long a claimed RPC report waits for the router's own explanation of
 /// the same refusal before the caller's report runs after all. Matches the
 /// RPC correlation window: both channels leave Klipper together.
-constexpr uint32_t RPC_REPORT_CLAIM_MS = 1500;
+constexpr uint32_t kRpcReportClaimMs = 1500;
 
 /// How long a recover toast stays tappable. Longer than a plain toast: the
 /// user has to read the fault and decide, not just notice it.
-constexpr uint32_t RECOVER_TOAST_MS = 15000;
+constexpr uint32_t kRecoverToastMs = 15000;
 
 /// Owns one recover toast's action for as long as the toast can be tapped.
 /// See present_recover_toast() for why this is heap-allocated with a timer
@@ -95,11 +95,11 @@ struct RecoverToastCtx {
 /// Resume. 30s comfortably spans a reconnect blip but is far below the
 /// multi-minute gap a manual restart leaves. (Was 600s, which let the
 /// 287s error through.)
-constexpr double REPLAY_MAX_AGE_SECONDS = 30.0;
+constexpr double kReplayMaxAgeSeconds = 30.0;
 
 /// gcode_store fetch depth on reconnect. The K2's box driver is chatty
 /// (status polls every ~3s) so we need headroom to find a `!!` line.
-constexpr int REPLAY_FETCH_COUNT = 50;
+constexpr int kReplayFetchCount = 50;
 
 double now_unix_seconds() {
     return std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch())
@@ -149,7 +149,7 @@ GcodeErrorRouter::GcodeErrorRouter(IMoonrakerAPI* api, IMoonrakerClient* client,
     // the gen is re-checked, so a callback that fires after the dtor
     // invalidates `lifetime_` is silently dropped.
     client_->register_method_callback(
-        "notify_gcode_response", NOTIFY_HANDLER_NAME,
+        "notify_gcode_response", kNotifyHandlerName,
         lifetime_.bg_cb("GcodeErrorRouter::on_notify",
                         [this](const nlohmann::json& msg) { on_notify_gcode_response(msg); }));
 
@@ -157,7 +157,7 @@ GcodeErrorRouter::GcodeErrorRouter(IMoonrakerAPI* api, IMoonrakerClient* client,
     // bg_cb takes a 0-arg callback fine -- the lambda below doesn't need
     // arguments; the wrapper just defers and gen-checks.
     client_->add_connected_observer(
-        REPLAY_OBSERVER_NAME,
+        kReplayObserverName,
         lifetime_.bg_cb("GcodeErrorRouter::on_connected", [this]() { on_connected(); }));
 
     // Standing faults. notify_status_update delivers the status delta on the
@@ -187,7 +187,7 @@ GcodeErrorRouter::GcodeErrorRouter(IMoonrakerAPI* api, IMoonrakerClient* client,
     // construction) is not needed to spell them.
     for (const auto& method : faultcodes::notification_methods()) {
         client_->register_method_callback(
-            method, FAULT_NOTIFY_HANDLER_NAME,
+            method, kFaultNotifyHandlerName,
             lifetime_.bg_cb(
                 "GcodeErrorRouter::on_notify_fault",
                 [this, method](const nlohmann::json& msg) { on_notify_fault(method, msg); }));
@@ -219,12 +219,12 @@ GcodeErrorRouter::~GcodeErrorRouter() {
     // all outstanding tokens, so any deferred body that lands on main after
     // the unregister is silently dropped.
     if (client_) {
-        client_->unregister_method_callback("notify_gcode_response", NOTIFY_HANDLER_NAME);
-        client_->remove_connected_observer(REPLAY_OBSERVER_NAME);
+        client_->unregister_method_callback("notify_gcode_response", kNotifyHandlerName);
+        client_->remove_connected_observer(kReplayObserverName);
         for (const auto& method : faultcodes::notification_methods()) {
-            client_->unregister_method_callback(method, FAULT_NOTIFY_HANDLER_NAME);
+            client_->unregister_method_callback(method, kFaultNotifyHandlerName);
         }
-        if (standing_notify_id_ != INVALID_SUBSCRIPTION_ID) {
+        if (standing_notify_id_ != kInvalidSubscriptionId) {
             client_->unsubscribe_notify_update(standing_notify_id_);
         }
     }
@@ -241,7 +241,7 @@ bool GcodeErrorRouter::should_surface_replay(double entry_time, double now) {
     const double age = now - entry_time;
     // Clock skew or an entry stamped in the (apparent) future reads as a
     // negative age; treat as fresh rather than silently suppressing.
-    if (age <= REPLAY_MAX_AGE_SECONDS)
+    if (age <= kReplayMaxAgeSeconds)
         return true;
 
     spdlog::debug("[GcodeError replay] Skipping stale `!!` (age {:.0f}s)", age);
@@ -255,9 +255,9 @@ std::string GcodeErrorRouter::truncate_for_toast(std::string text) {
     // UTF-8 byte truncation is not strictly correct (could land mid-codepoint),
     // but matches prior behavior. The right long-term fix is wrapping text in
     // ToastManager; at that point this goes away.
-    constexpr size_t MAX_LEN = 80;
-    if (text.size() > MAX_LEN) {
-        text = text.substr(0, MAX_LEN - 3) + "...";
+    constexpr size_t kMaxLen = 80;
+    if (text.size() > kMaxLen) {
+        text = text.substr(0, kMaxLen - 3) + "...";
     }
     return text;
 }
@@ -331,7 +331,7 @@ bool GcodeErrorRouter::claim_rpc_report(const std::string& message, std::functio
             delete c;
             lv_timer_delete(timer);
         },
-        RPC_REPORT_CLAIM_MS, cctx);
+        kRpcReportClaimMs, cctx);
     lv_timer_set_repeat_count(t, 1);
     pending_claims_.push_back(t);
     return true;
@@ -390,7 +390,7 @@ RecoverDispatch decide_recover_dispatch(const ErrorEvent& e) {
     // recover; PrinterRecoveryService bounces klipper_mcu via the platform
     // recovery script. Recognised by its log_tag rather than by its empty
     // gcode, because an empty gcode now legitimately means "dismiss".
-    if (action.log_tag == KEY298_RECOVER_TAG)
+    if (action.log_tag == kKey298RecoverTag)
         return RecoverDispatch::RECOVERY_SERVICE;
 
     // No gcode and no service behind it: nothing to run, so no button.
@@ -451,7 +451,7 @@ bool GcodeErrorRouter::present_recover_toast(const ErrorEvent& e) {
                         });
                     });
             },
-            api, /*duration_ms=*/RECOVER_TOAST_MS);
+            api, /*duration_ms=*/kRecoverToastMs);
         return true;
     }
 
@@ -483,16 +483,16 @@ bool GcodeErrorRouter::present_recover_toast(const ErrorEvent& e) {
                             6000);
                     });
                 },
-                IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);
+                IMoonrakerAPI::kAmsOperationTimeoutMs);
         },
-        ctx, /*duration_ms=*/RECOVER_TOAST_MS);
+        ctx, /*duration_ms=*/kRecoverToastMs);
 
     auto* reaper = lv_timer_create(
         [](lv_timer_t* t) {
             delete static_cast<RecoverToastCtx*>(lv_timer_get_user_data(t));
             lv_timer_delete(t);
         },
-        RECOVER_TOAST_MS + 5000, ctx);
+        kRecoverToastMs + 5000, ctx);
     lv_timer_set_repeat_count(reaper, 1);
     return true;
 }
@@ -562,7 +562,7 @@ void GcodeErrorRouter::displace_prose_twin(const std::string& message) {
     displaced_prose_.erase(std::remove_if(displaced_prose_.begin(), displaced_prose_.end(),
                                           [now](const auto& entry) {
                                               return now - entry.first >
-                                                     DISPLACED_PROSE_WINDOW_SECONDS;
+                                                     kDisplacedProseWindowSeconds;
                                           }),
                            displaced_prose_.end());
     displaced_prose_.emplace_back(now, message);
@@ -571,7 +571,7 @@ void GcodeErrorRouter::displace_prose_twin(const std::string& message) {
 bool GcodeErrorRouter::prose_twin_displaced(const std::string& raw) const {
     const double now = now_unix_seconds();
     for (const auto& [raised_at, message] : displaced_prose_) {
-        if (now - raised_at <= DISPLACED_PROSE_WINDOW_SECONDS && message == raw) {
+        if (now - raised_at <= kDisplacedProseWindowSeconds && message == raw) {
             return true;
         }
     }
@@ -801,7 +801,7 @@ void GcodeErrorRouter::on_connected() {
     // otherwise re-enter `this` on freed memory. bg_cb defers to main with
     // a generation guard.
     client_->get_gcode_store(
-        REPLAY_FETCH_COUNT,
+        kReplayFetchCount,
         lifetime_.bg_cb(
             "GcodeErrorRouter::replay_response",
             [this](const std::vector<GcodeStoreEntry>& entries) {

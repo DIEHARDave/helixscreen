@@ -31,9 +31,9 @@
 
 // Grid templates are stored by pointer (not copied) by LVGL, so they must
 // outlive the container — keep them at static storage duration.
-static const int32_t EMPTY_DSC[] = {LV_GRID_TEMPLATE_LAST};
-static const int32_t ONE_FR_DSC[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
-static const int32_t TWO_FR_DSC[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+static const int32_t kEmptyDsc[] = {LV_GRID_TEMPLATE_LAST};
+static const int32_t kOneFrDsc[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+static const int32_t kTwoFrDsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
 
 namespace {
 
@@ -87,21 +87,21 @@ class GridZeroTrackFixture {
 
 TEST_CASE_METHOD(GridZeroTrackFixture, "Grid with empty column template does not crash",
                  "[grid][regression][zero_track]") {
-    make_grid(EMPTY_DSC, ONE_FR_DSC);
+    make_grid(kEmptyDsc, kOneFrDsc);
     lv_obj_update_layout(screen); // would SIGSEGV before the fix
     SUCCEED("Survived layout of a zero-column grid");
 }
 
 TEST_CASE_METHOD(GridZeroTrackFixture, "Grid with empty row template does not crash",
                  "[grid][regression][zero_track]") {
-    make_grid(ONE_FR_DSC, EMPTY_DSC);
+    make_grid(kOneFrDsc, kEmptyDsc);
     lv_obj_update_layout(screen);
     SUCCEED("Survived layout of a zero-row grid");
 }
 
 TEST_CASE_METHOD(GridZeroTrackFixture, "Grid with both templates empty does not crash",
                  "[grid][regression][zero_track]") {
-    make_grid(EMPTY_DSC, EMPTY_DSC);
+    make_grid(kEmptyDsc, kEmptyDsc);
     lv_obj_update_layout(screen);
     SUCCEED("Survived layout of a zero-track grid");
 }
@@ -113,7 +113,7 @@ TEST_CASE_METHOD(GridZeroTrackFixture, "Valid grid still lays out children",
     lv_obj_t* grid = lv_obj_create(screen);
     lv_obj_set_size(grid, 400, 300);
     lv_obj_set_style_pad_all(grid, 0, 0);
-    lv_obj_set_grid_dsc_array(grid, TWO_FR_DSC, ONE_FR_DSC);
+    lv_obj_set_grid_dsc_array(grid, kTwoFrDsc, kOneFrDsc);
     lv_obj_set_layout(grid, LV_LAYOUT_GRID);
 
     lv_obj_t* child = lv_obj_create(grid);

@@ -19,8 +19,8 @@ namespace helix::diag {
 
 namespace {
 
-constexpr int MAX_FAILED_UNITS = 20;
-constexpr size_t MAX_PROCESSES = 32;
+constexpr int kMaxFailedUnits = 20;
+constexpr size_t kMaxProcesses = 32;
 
 bool is_display_device(const std::string& target) {
     return target.rfind("/dev/fb", 0) == 0 || target.rfind("/dev/dri/", 0) == 0;
@@ -163,11 +163,11 @@ HostCensus collect_host_census(const std::string& root) {
         const std::string output = helix::logs::run_capture_tail(
             (timeout.empty() ? "" : timeout + " 5 ") +
                 "systemctl list-units --state=failed --plain --no-legend --no-pager 2>/dev/null",
-            MAX_FAILED_UNITS, "systemctl", &status);
+            kMaxFailedUnits, "systemctl", &status);
         census.failed_units = failed_units_from(status, output);
     }
 
-    census.processes = census_processes(root.empty() ? "/proc" : root + "/proc", MAX_PROCESSES);
+    census.processes = census_processes(root.empty() ? "/proc" : root + "/proc", kMaxProcesses);
     return census;
 }
 

@@ -335,7 +335,7 @@ is the whole model:
    those already describe what the start macro runs.
 3. **Nozzle placeholder.** While the nozzle target is unknown (a bed-first macro issues its
    M109 late) and the thermal model priced no nozzle climb, HEATING_NOZZLE holds
-   `UNKNOWN_NOZZLE_HEAT_SECONDS` (60s).
+   `kUnknownNozzleHeatSeconds` (60s).
 4. **Total.** With history, `predicted_total()` (the recorded wall clock) less each skipped
    phase's share of it - the phase's seconds averaged over every loaded entry (the bucket and
    window) with the same weights as `predicted_total()`, an entry without the phase counting
@@ -376,7 +376,7 @@ carry.
 the countdown reads, normalized into `predicted_phase_weights_` as fractions summing to 1.0,
 and its total as `predicted_total_seconds_`.
 Weights are recomputed when a heater target first appears or rises by 15°C or more
-(`TARGET_RISE_RECOMPUTE_DEGREES`) - not merely when time passes - because a
+(`kTargetRiseRecomputeDegrees`) - not merely when time passes - because a
 bed-first macro issues its `M109` long after preparation begins and the nozzle phase carries
 no weight until it does, and a provisional 0°C-targets estimate must not freeze the display
 when the real one arrives a second later.
@@ -482,7 +482,7 @@ Entries are stored in the main config file (`config/settings.json`) at the JSON 
 
 1. `PrintStartCollector::save_prediction_entry()` reads each phase's summed time (`phase_seconds_locked()`), returning early on a fallback-timeout completion or when no phase was timed
 2. Adds the entry to the in-memory predictor via `add_entry()` (which enforces the FIFO trim to `MAX_ENTRIES`)
-3. Schedules `PreprintPredictor::append_to_config()` plus `Config::save()` onto the main thread via `queue_update()`. It appends to the entries already on disk and trims only the new entry's own (temp bucket, window) population to `MAX_ENTRIES`, then the whole list to `MAX_STORED_ENTRIES` (15), so a save never drops another bucket's or window's history. The same save flushes the thermal model's learned heating rates (`ThermalRateManager::save_to_config()`), which is where the heating half of an ETA lives
+3. Schedules `PreprintPredictor::append_to_config()` plus `Config::save()` onto the main thread via `queue_update()`. It appends to the entries already on disk and trims only the new entry's own (temp bucket, window) population to `MAX_ENTRIES`, then the whole list to `kMaxStoredEntries` (15), so a save never drops another bucket's or window's history. The same save flushes the thermal model's learned heating rates (`ThermalRateManager::save_to_config()`), which is where the heating half of an ETA lives
 
 ### Load Flow
 

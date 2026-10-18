@@ -231,7 +231,7 @@ There are three runout queries, from coarse to fine:
 
 ### State defaults and the grace period
 
-`FilamentSensorState::filament_detected` defaults to `true`, so a read before the first status frame never looks like a runout. On top of that, `discover_sensors()` restarts a stabilization window (`helix::app_constants::startup::SENSOR_STABILIZATION_PERIOD`, 5 s) during which toasts are suppressed and `filament_any_runout` is held at 0. `has_any_runout()` itself ignores the window, so a print status panel opened right after a restart on an already-paused print still sees the runout.
+`FilamentSensorState::filament_detected` defaults to `true`, so a read before the first status frame never looks like a runout. On top of that, `discover_sensors()` restarts a stabilization window (`helix::app_constants::startup::kSensorStabilizationPeriod`, 5 s) during which toasts are suppressed and `filament_any_runout` is held at 0. `has_any_runout()` itself ignores the window, so a print status panel opened right after a restart on an already-paused print still sees the runout.
 
 ### Toasts
 
@@ -247,7 +247,7 @@ There are three runout queries, from coarse to fine:
 | `BackendTraits::raises_runout_fault_during_job` for the active backend, during a job | Happy Hare, AFC and CFS raise their own runout prompt (`include/ams_backend.h#BackendTraits`) |
 | master switch off, sensor disabled, no role, or the firmware was not running the sensor on both sides of the edge | not monitoring |
 
-When a job holds the machine and any AMS backend is present, a removal toast is not fired on the edge. It waits `RUNOUT_TOAST_DWELL` (45 s, `include/filament_sensor_types.h#"RUNOUT_TOAST_DWELL"`), because a tool change clears the toolhead sensor for 26 to 33 s and then refills it. A refill inside the dwell cancels the toast silently; the dwell is swept on every status frame rather than on a timer. Detection and the runout subjects still fire on the edge; only the toast waits.
+When a job holds the machine and any AMS backend is present, a removal toast is not fired on the edge. It waits `kRunoutToastDwell` (45 s, `include/filament_sensor_types.h#"kRunoutToastDwell"`), because a tool change clears the toolhead sensor for 26 to 33 s and then refills it. A refill inside the dwell cancels the toast silently; the dwell is swept on every status frame rather than on a timer. Detection and the runout subjects still fire on the edge; only the toast waits.
 
 ### Bypass arming
 

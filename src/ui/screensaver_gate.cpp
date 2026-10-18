@@ -27,7 +27,7 @@ GateDecision decide_saver_level(double share, double budget, size_t level, size_
 
 void IdleBaseline::add(CpuSample sample) {
     samples_.push_back(sample);
-    while (samples_.size() > 1 && sample.wall_ns - samples_.front().wall_ns > SPAN_NS) {
+    while (samples_.size() > 1 && sample.wall_ns - samples_.front().wall_ns > kSpanNs) {
         samples_.pop_front();
     }
 }
@@ -43,7 +43,7 @@ double IdleBaseline::rate() const {
     const CpuSample& first = samples_.front();
     const CpuSample& last = samples_.back();
     const uint64_t wall = last.wall_ns - first.wall_ns;
-    if (wall < MIN_SPAN_NS) {
+    if (wall < kMinSpanNs) {
         return 0.0;
     }
     return static_cast<double>(last.cpu_ns - first.cpu_ns) / static_cast<double>(wall);
@@ -63,7 +63,7 @@ void SaverGateSession::restart_window(CpuSample now) {
 
 std::optional<double> SaverGateSession::add(CpuSample sample) {
     if (warming_up_) {
-        if (sample.wall_ns - start_.wall_ns < WARMUP_NS) {
+        if (sample.wall_ns - start_.wall_ns < kWarmupNs) {
             return std::nullopt;
         }
         warming_up_ = false;
@@ -71,7 +71,7 @@ std::optional<double> SaverGateSession::add(CpuSample sample) {
         return std::nullopt;
     }
     const uint64_t wall = sample.wall_ns - window_start_.wall_ns;
-    if (wall < WINDOW_NS) {
+    if (wall < kWindowNs) {
         return std::nullopt;
     }
     const double cpu = static_cast<double>(sample.cpu_ns - window_start_.cpu_ns);

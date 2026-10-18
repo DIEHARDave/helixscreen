@@ -256,24 +256,24 @@ class PIDCalibrationPanel : public OverlayBase {
     std::string selected_material_; // Active material preset name
 
     // Temperature limits
-    static constexpr int EXTRUDER_MIN_TEMP = 150;
-    static constexpr int EXTRUDER_MAX_TEMP = 280;
-    static constexpr int EXTRUDER_DEFAULT_TEMP = 200;
-    static constexpr int BED_MIN_TEMP = 40;
-    static constexpr int BED_MAX_TEMP = 110;
-    static constexpr int BED_DEFAULT_TEMP = 60;
+    static constexpr int kExtruderMinTemp = 150;
+    static constexpr int kExtruderMaxTemp = 280;
+    static constexpr int kExtruderDefaultTemp = 200;
+    static constexpr int kBedMinTemp = 40;
+    static constexpr int kBedMaxTemp = 110;
+    static constexpr int kBedDefaultTemp = 60;
 
     // Wattage limits
-    static constexpr int WATTAGE_MIN = 20;
-    static constexpr int WATTAGE_MAX = 1000;
-    static constexpr int WATTAGE_STEP = 5;
-    static constexpr int WATTAGE_DEFAULT_EXTRUDER = 50;
-    static constexpr int WATTAGE_DEFAULT_BED = 400;
+    static constexpr int kWattageMin = 20;
+    static constexpr int kWattageMax = 1000;
+    static constexpr int kWattageStep = 5;
+    static constexpr int kWattageDefaultExtruder = 50;
+    static constexpr int kWattageDefaultBed = 400;
 
     // Fan breakpoint presets
-    static constexpr int FAN_BP_QUICK = 3;
-    static constexpr int FAN_BP_DETAILED = 5;
-    static constexpr int FAN_BP_THOROUGH = 7;
+    static constexpr int kFanBpQuick = 3;
+    static constexpr int kFanBpDetailed = 5;
+    static constexpr int kFanBpThorough = 7;
 
     // Demo mode: inject results after on_activate() resets state
     bool demo_inject_pending_ = false;
@@ -291,8 +291,8 @@ class PIDCalibrationPanel : public OverlayBase {
 
     // MPC/Kalico state
     CalibMethod selected_method_ = CalibMethod::PID;
-    int heater_wattage_ = WATTAGE_DEFAULT_EXTRUDER;
-    int fan_breakpoints_ = FAN_BP_QUICK;
+    int heater_wattage_ = kWattageDefaultExtruder;
+    int fan_breakpoints_ = kFanBpQuick;
     bool needs_migration_ = false;
     bool is_kalico_ = false;
     ControlType current_control_ = ControlType::UNKNOWN;

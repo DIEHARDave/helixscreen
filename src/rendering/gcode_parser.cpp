@@ -864,17 +864,17 @@ std::optional<FeatureType> GCodeParser::extract_type_marker(const char* line, si
         ++k;
     }
     static constexpr char KEY[] = "TYPE:";
-    static constexpr size_t KEY_LEN = 5;
-    if (k + KEY_LEN > len) {
+    static constexpr size_t kKeyLen = 5;
+    if (k + kKeyLen > len) {
         return std::nullopt;
     }
-    for (size_t i = 0; i < KEY_LEN; ++i) {
+    for (size_t i = 0; i < kKeyLen; ++i) {
         if (line[k + i] != KEY[i]) {
             return std::nullopt;
         }
     }
     // Extract trimmed value.
-    size_t v_start = k + KEY_LEN;
+    size_t v_start = k + kKeyLen;
     while (v_start < len && (line[v_start] == ' ' || line[v_start] == '\t')) {
         ++v_start;
     }

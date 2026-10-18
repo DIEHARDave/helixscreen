@@ -22,7 +22,7 @@ namespace helix {
 
 namespace {
 
-constexpr const char* NOTIFY_HANDLER_NAME = "gcode_narration_router";
+constexpr const char* kNotifyHandlerName = "gcode_narration_router";
 
 } // namespace
 
@@ -44,14 +44,14 @@ GcodeNarrationRouter::GcodeNarrationRouter(IMoonrakerAPI* api, IMoonrakerClient*
     // thread — the direct AmsState::set_narration_phase write is therefore
     // thread-safe with no second defer.
     client_->register_method_callback(
-        "notify_gcode_response", NOTIFY_HANDLER_NAME,
+        "notify_gcode_response", kNotifyHandlerName,
         lifetime_.bg_cb("GcodeNarrationRouter::on_notify",
                         [this](const nlohmann::json& msg) { on_notify_gcode_response(msg); }));
 }
 
 GcodeNarrationRouter::~GcodeNarrationRouter() {
     if (client_) {
-        client_->unregister_method_callback("notify_gcode_response", NOTIFY_HANDLER_NAME);
+        client_->unregister_method_callback("notify_gcode_response", kNotifyHandlerName);
     }
 }
 

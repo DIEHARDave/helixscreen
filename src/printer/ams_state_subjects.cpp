@@ -291,8 +291,8 @@ void AmsState::init_subjects(bool register_xml) {
 
     // Per-slot subjects (dynamic names require manual init)
     char name_buf[32];
-    for (int i = 0; i < MAX_SLOTS; ++i) {
-        lv_subject_init_int(&slot_colors_[i], static_cast<int>(AMS_DEFAULT_SLOT_COLOR));
+    for (int i = 0; i < kMaxSlots; ++i) {
+        lv_subject_init_int(&slot_colors_[i], static_cast<int>(kAmsDefaultSlotColor));
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_color", i);
         subjects_.register_subject(&slot_colors_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
@@ -387,7 +387,7 @@ void AmsState::init_subjects(bool register_xml) {
     }
 
     // Per-unit environment subjects (CFS temperature/humidity)
-    for (int i = 0; i < MAX_UNITS; ++i) {
+    for (int i = 0; i < kMaxUnits; ++i) {
         lv_subject_init_int(&unit_temp_[i], 0);
         snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_temp", i);
         subjects_.register_subject(&unit_temp_[i], register_xml ? name_buf : nullptr);
@@ -420,18 +420,18 @@ void AmsState::init_subjects(bool register_xml) {
     }
 
     // Per-unit environment indicator display subjects (formatted text for XML binding)
-    for (int i = 0; i < MAX_UNITS; ++i) {
+    for (int i = 0; i < kMaxUnits; ++i) {
         char name_buf[48];
 
         lv_subject_init_string(&env_ind_temp_text_[i], env_ind_temp_text_buf_[i], nullptr,
-                               ENV_IND_TEXT_BUF_SIZE, "---");
+                               kEnvIndTextBufSize, "---");
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_temp_text", i);
         subjects_.register_subject(&env_ind_temp_text_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &env_ind_temp_text_[i]);
 
         lv_subject_init_string(&env_ind_humidity_text_[i], env_ind_humidity_text_buf_[i], nullptr,
-                               ENV_IND_TEXT_BUF_SIZE, "---");
+                               kEnvIndTextBufSize, "---");
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_text", i);
         subjects_.register_subject(&env_ind_humidity_text_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
@@ -469,7 +469,7 @@ void AmsState::init_subjects(bool register_xml) {
             helix::xml::register_subject_in_current_scope(name_buf, &env_ind_drying_active_[i]);
 
         lv_subject_init_string(&env_ind_drying_text_[i], env_ind_drying_text_buf_[i], nullptr,
-                               ENV_IND_DRYING_BUF_SIZE, "");
+                               kEnvIndDryingBufSize, "");
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_drying_text", i);
         subjects_.register_subject(&env_ind_drying_text_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
@@ -508,26 +508,24 @@ void AmsState::init_subjects(bool register_xml) {
         helix::xml::register_subject_in_current_scope("ams_all_units_disconnected",
                                                       &all_units_disconnected_);
 
-    // Always-off placeholders for units past MAX_UNITS. A rig with more units
+    // Always-off placeholders for units past kMaxUnits. A rig with more units
     // than we allocate subjects for still gets a card per unit; its environment
     // indicator binds these, so the badge stays hidden instead of the parser
     // warning once per binding about names nothing registered.
     lv_subject_init_int(&env_ind_off_flag_, 0);
-    subjects_.register_subject(&env_ind_off_flag_,
-                               register_xml ? ENV_IND_OFF_FLAG_SUBJECT : nullptr);
+    subjects_.register_subject(&env_ind_off_flag_, register_xml ? kEnvIndOffFlagSubject : nullptr);
     if (register_xml)
-        helix::xml::register_subject_in_current_scope(ENV_IND_OFF_FLAG_SUBJECT, &env_ind_off_flag_);
+        helix::xml::register_subject_in_current_scope(kEnvIndOffFlagSubject, &env_ind_off_flag_);
 
-    lv_subject_init_string(&env_ind_off_text_, env_ind_off_text_buf_, nullptr,
-                           ENV_IND_TEXT_BUF_SIZE, "");
-    subjects_.register_subject(&env_ind_off_text_,
-                               register_xml ? ENV_IND_OFF_TEXT_SUBJECT : nullptr);
+    lv_subject_init_string(&env_ind_off_text_, env_ind_off_text_buf_, nullptr, kEnvIndTextBufSize,
+                           "");
+    subjects_.register_subject(&env_ind_off_text_, register_xml ? kEnvIndOffTextSubject : nullptr);
     if (register_xml)
-        helix::xml::register_subject_in_current_scope(ENV_IND_OFF_TEXT_SUBJECT, &env_ind_off_text_);
+        helix::xml::register_subject_in_current_scope(kEnvIndOffTextSubject, &env_ind_off_text_);
 
     // Detail-view env indicator mirror subjects.
     lv_subject_init_string(&env_ind_detail_temp_text_, env_ind_detail_temp_text_buf_, nullptr,
-                           ENV_IND_TEXT_BUF_SIZE, "---");
+                           kEnvIndTextBufSize, "---");
     subjects_.register_subject(&env_ind_detail_temp_text_,
                                register_xml ? "ams_env_ind_detail_temp_text" : nullptr);
     if (register_xml)
@@ -535,7 +533,7 @@ void AmsState::init_subjects(bool register_xml) {
                                                       &env_ind_detail_temp_text_);
 
     lv_subject_init_string(&env_ind_detail_humidity_text_, env_ind_detail_humidity_text_buf_,
-                           nullptr, ENV_IND_TEXT_BUF_SIZE, "---");
+                           nullptr, kEnvIndTextBufSize, "---");
     subjects_.register_subject(&env_ind_detail_humidity_text_,
                                register_xml ? "ams_env_ind_detail_humidity_text" : nullptr);
     if (register_xml)
@@ -578,7 +576,7 @@ void AmsState::init_subjects(bool register_xml) {
                                                       &env_ind_detail_drying_active_);
 
     lv_subject_init_string(&env_ind_detail_drying_text_, env_ind_detail_drying_text_buf_, nullptr,
-                           ENV_IND_DRYING_BUF_SIZE, "");
+                           kEnvIndDryingBufSize, "");
     subjects_.register_subject(&env_ind_detail_drying_text_,
                                register_xml ? "ams_env_ind_detail_drying_text" : nullptr);
     if (register_xml)
@@ -592,7 +590,7 @@ void AmsState::init_subjects(bool register_xml) {
         auto backend = AmsBackend::create(AmsType::NONE, nullptr, nullptr);
         if (backend) {
             // Register first, start second, as init_backends_from_hardware()
-            // does. A backend answers INVALID_LANE_ID for every slot until
+            // does. A backend answers kInvalidLaneId for every slot until
             // add_backend() stamps its index, so anything start() files before
             // then lands on no lane and is dropped.
             set_backend(std::move(backend));
@@ -789,7 +787,7 @@ void AmsState::register_xml_subject_names() {
 
     // Per-slot subjects (snprintf'd names)
     char name_buf[48];
-    for (int i = 0; i < MAX_SLOTS; ++i) {
+    for (int i = 0; i < kMaxSlots; ++i) {
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_color", i);
         helix::xml::register_subject_in_current_scope(name_buf, &slot_colors_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_status", i);
@@ -819,7 +817,7 @@ void AmsState::register_xml_subject_names() {
     }
 
     // Per-unit environment subjects (CFS temperature/humidity)
-    for (int i = 0; i < MAX_UNITS; ++i) {
+    for (int i = 0; i < kMaxUnits; ++i) {
         snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_temp", i);
         helix::xml::register_subject_in_current_scope(name_buf, &unit_temp_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_humidity", i);
@@ -849,7 +847,7 @@ void AmsState::register_xml_subject_names() {
                                                   &all_units_disconnected_);
 
     // Per-unit environment indicator display subjects
-    for (int i = 0; i < MAX_UNITS; ++i) {
+    for (int i = 0; i < kMaxUnits; ++i) {
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_temp_text", i);
         helix::xml::register_subject_in_current_scope(name_buf, &env_ind_temp_text_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_env_ind_%d_humidity_text", i);
@@ -869,8 +867,8 @@ void AmsState::register_xml_subject_names() {
     }
 
     // Off-flag placeholders and detail-view env indicator mirrors
-    helix::xml::register_subject_in_current_scope(ENV_IND_OFF_FLAG_SUBJECT, &env_ind_off_flag_);
-    helix::xml::register_subject_in_current_scope(ENV_IND_OFF_TEXT_SUBJECT, &env_ind_off_text_);
+    helix::xml::register_subject_in_current_scope(kEnvIndOffFlagSubject, &env_ind_off_flag_);
+    helix::xml::register_subject_in_current_scope(kEnvIndOffTextSubject, &env_ind_off_text_);
     helix::xml::register_subject_in_current_scope("ams_env_ind_detail_temp_text",
                                                   &env_ind_detail_temp_text_);
     helix::xml::register_subject_in_current_scope("ams_env_ind_detail_humidity_text",
@@ -925,70 +923,70 @@ void AmsState::deinit_subjects() {
 }
 
 lv_subject_t* AmsState::get_slot_color_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_colors_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_status_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_statuses_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_lane_state_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_lane_states_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_has_error_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_has_error_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_error_severity_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_error_severity_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_remaining_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_remaining_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_drying_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_drying_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_material_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_materials_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_name_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_names_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_fill_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_fills_[slot_index];
@@ -998,7 +996,7 @@ lv_subject_t* AmsState::get_slot_fill_subject(int slot_index) {
 // registered with subjects_, so deinit_subjects() frees their observers; the
 // (slot, SubjectLifetime&) overloads hand out get_subjects_lifetime() (#1700).
 lv_subject_t* AmsState::get_slot_segment_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_segments_[slot_index];
@@ -1009,7 +1007,7 @@ lv_subject_t* AmsState::get_slot_segment_subject(int slot_index, SubjectLifetime
 }
 
 lv_subject_t* AmsState::get_slot_toolhead_present_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_toolhead_present_[slot_index];
@@ -1022,7 +1020,7 @@ lv_subject_t* AmsState::get_slot_toolhead_present_subject(int slot_index,
 }
 
 lv_subject_t* AmsState::get_slot_active_loaded_subject(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return nullptr;
     }
     return &slot_active_loaded_[slot_index];
@@ -1034,70 +1032,70 @@ lv_subject_t* AmsState::get_slot_active_loaded_subject(int slot_index, SubjectLi
 }
 
 lv_subject_t* AmsState::get_unit_temp_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &unit_temp_[unit_index];
 }
 
 lv_subject_t* AmsState::get_unit_humidity_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &unit_humidity_[unit_index];
 }
 
 lv_subject_t* AmsState::get_env_ind_temp_text_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &env_ind_temp_text_[unit_index];
 }
 
 lv_subject_t* AmsState::get_env_ind_humidity_text_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &env_ind_humidity_text_[unit_index];
 }
 
 lv_subject_t* AmsState::get_env_ind_visible_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &env_ind_visible_[unit_index];
 }
 
 lv_subject_t* AmsState::get_env_ind_humidity_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &env_ind_humidity_[unit_index];
 }
 
 lv_subject_t* AmsState::get_env_ind_humidity_status_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &env_ind_humidity_status_[unit_index];
 }
 
 lv_subject_t* AmsState::get_env_ind_humidity_visible_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &env_ind_humidity_visible_[unit_index];
 }
 
 lv_subject_t* AmsState::get_env_ind_drying_active_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &env_ind_drying_active_[unit_index];
 }
 
 lv_subject_t* AmsState::get_env_ind_drying_text_subject(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
         return nullptr;
     }
     return &env_ind_drying_text_[unit_index];
@@ -1106,15 +1104,15 @@ lv_subject_t* AmsState::get_env_ind_drying_text_subject(int unit_index) {
 AmsState::EnvIndicatorSubjectNames AmsState::env_indicator_subject_names(int unit_index) {
     EnvIndicatorSubjectNames names;
 
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
-        names.temp_text = ENV_IND_OFF_TEXT_SUBJECT;
-        names.humidity_text = ENV_IND_OFF_TEXT_SUBJECT;
-        names.humidity = ENV_IND_OFF_FLAG_SUBJECT;
-        names.drying_text = ENV_IND_OFF_TEXT_SUBJECT;
-        names.humidity_status = ENV_IND_OFF_FLAG_SUBJECT;
-        names.humidity_visible = ENV_IND_OFF_FLAG_SUBJECT;
-        names.visible = ENV_IND_OFF_FLAG_SUBJECT;
-        names.drying_active = ENV_IND_OFF_FLAG_SUBJECT;
+    if (unit_index < 0 || unit_index >= kMaxUnits) {
+        names.temp_text = kEnvIndOffTextSubject;
+        names.humidity_text = kEnvIndOffTextSubject;
+        names.humidity = kEnvIndOffFlagSubject;
+        names.drying_text = kEnvIndOffTextSubject;
+        names.humidity_status = kEnvIndOffFlagSubject;
+        names.humidity_visible = kEnvIndOffFlagSubject;
+        names.visible = kEnvIndOffFlagSubject;
+        names.drying_active = kEnvIndOffFlagSubject;
         return names;
     }
 
@@ -1136,10 +1134,10 @@ AmsState::EnvIndicatorSubjectNames AmsState::env_indicator_subject_names(int uni
 
 namespace {
 
-/// "ams_unit_<N>_<flag>", or the always-0 placeholder for a unit past MAX_UNITS.
+/// "ams_unit_<N>_<flag>", or the always-0 placeholder for a unit past kMaxUnits.
 std::string unit_flag_subject_name(int unit_index, const char* flag) {
-    if (unit_index < 0 || unit_index >= AmsState::MAX_UNITS) {
-        return AmsState::ENV_IND_OFF_FLAG_SUBJECT;
+    if (unit_index < 0 || unit_index >= AmsState::kMaxUnits) {
+        return AmsState::kEnvIndOffFlagSubject;
     }
     char buf[48];
     snprintf(buf, sizeof(buf), "ams_unit_%d_%s", unit_index, flag);
@@ -1163,11 +1161,11 @@ std::string AmsState::unit_logo_color_subject_name(int unit_index) {
 lv_subject_t* AmsState::backend_slot_subject(int backend_index, int slot_index,
                                              SubjectLifetime& lifetime,
                                              std::vector<lv_subject_t> BackendSlotSubjects::*member,
-                                             lv_subject_t (&primary)[MAX_SLOTS]) {
+                                             lv_subject_t (&primary)[kMaxSlots]) {
     assert_main_thread();
     lifetime.reset();
     if (backend_index == 0) {
-        if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+        if (slot_index < 0 || slot_index >= kMaxSlots) {
             return nullptr;
         }
         lifetime = get_subjects_lifetime();
@@ -1273,7 +1271,7 @@ void AmsState::BackendSlotSubjects::init(int count) {
     name_bufs.resize(count);
     names.resize(count);
     for (int i = 0; i < count; ++i) {
-        lv_subject_init_int(&colors[i], static_cast<int>(AMS_DEFAULT_SLOT_COLOR));
+        lv_subject_init_int(&colors[i], static_cast<int>(kAmsDefaultSlotColor));
         lv_subject_init_int(&statuses[i], static_cast<int>(SlotStatus::UNKNOWN));
         lv_subject_init_int(&fills[i], -1);
         lv_subject_init_int(&lane_states[i], static_cast<int>(helix::ui::LaneState::Empty));
@@ -1281,8 +1279,8 @@ void AmsState::BackendSlotSubjects::init(int count) {
         lv_subject_init_int(&severities[i], static_cast<int>(SlotError::Severity::INFO));
         lv_subject_init_int(&paints[i], 0);
         lv_subject_init_string(&materials[i], material_bufs[i].data(), nullptr,
-                               BackendSlotSubjects::MATERIAL_BUF_SIZE, "");
-        lv_subject_init_string(&names[i], name_bufs[i].data(), nullptr, SLOT_NAME_BUF_SIZE, "");
+                               BackendSlotSubjects::kMaterialBufSize, "");
+        lv_subject_init_string(&names[i], name_bufs[i].data(), nullptr, kSlotNameBufSize, "");
     }
     // Fresh lifetime token: observers bound via the token'd accessors expire
     // when deinit() invalidates it on backend rediscovery.
@@ -1327,7 +1325,7 @@ void AmsState::BackendSlotSubjects::write(int i, const SlotInfo& slot) {
     // No prev buffer, so LVGL notifies on every copy; compare here instead.
     if (strcmp(lv_subject_get_string(&materials[i]), slot.material.c_str()) != 0)
         lv_subject_copy_string(&materials[i], slot.material.c_str());
-    write_slot_name(&names[i], SLOT_NAME_BUF_SIZE, slot);
+    write_slot_name(&names[i], kSlotNameBufSize, slot);
     bool has_error = false;
     int severity = 0;
     slot_error_state(slot, has_error, severity);

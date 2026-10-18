@@ -19,15 +19,15 @@ using helix::ui::Rgb;
 
 namespace {
 
-constexpr uint8_t UNTOUCHED = 0xAA;
+constexpr uint8_t kUntouched = 0xAA;
 
-/// A heap frame whose every byte starts as UNTOUCHED, so a write outside its pixel shows.
+/// A heap frame whose every byte starts as kUntouched, so a write outside its pixel shows.
 struct TestFrame {
     std::vector<uint8_t> bytes;
     FrameTarget target;
 
     TestFrame(uint32_t w, uint32_t h, uint32_t stride, PixelFormat format)
-        : bytes(static_cast<size_t>(stride) * h, UNTOUCHED) {
+        : bytes(static_cast<size_t>(stride) * h, kUntouched) {
         target = {bytes.data(), stride, w, h, format};
     }
     TestFrame(const TestFrame&) = delete;
@@ -49,8 +49,8 @@ TEST_CASE("PixelWriter writes XRGB8888 as B, G, R and an opaque X byte",
     CHECK(frame.bytes[at + 2] == 0x12);
     CHECK(frame.bytes[at + 3] == 0xFF);
     // Rows step by the stride, so the padding after the row's last pixel is left alone.
-    CHECK(frame.bytes[at + 4] == UNTOUCHED);
-    CHECK(frame.bytes[at - 1] == UNTOUCHED);
+    CHECK(frame.bytes[at + 4] == kUntouched);
+    CHECK(frame.bytes[at - 1] == kUntouched);
     CHECK(writer.get(3, 2) == Rgb{0x12, 0x34, 0x56});
 }
 
@@ -58,21 +58,21 @@ TEST_CASE("PixelWriter fill covers every XRGB8888 pixel and no row padding",
           "[screensaver][pixel_writer]") {
     constexpr uint32_t W = 5;
     constexpr uint32_t H = 4;
-    constexpr uint32_t STRIDE = W * 4 + 12;
-    TestFrame frame(W, H, STRIDE, PixelFormat::XRGB8888);
+    constexpr uint32_t kStride = W * 4 + 12;
+    TestFrame frame(W, H, kStride, PixelFormat::XRGB8888);
 
     PixelWriter(frame.target).fill(Rgb{1, 2, 3});
 
     size_t wrong_pixels = 0;
     size_t touched_padding = 0;
     for (uint32_t y = 0; y < H; y++) {
-        const uint8_t* row = frame.bytes.data() + static_cast<size_t>(y) * STRIDE;
+        const uint8_t* row = frame.bytes.data() + static_cast<size_t>(y) * kStride;
         for (uint32_t x = 0; x < W; x++) {
             const uint8_t* px = row + x * 4;
             wrong_pixels += (px[0] != 3 || px[1] != 2 || px[2] != 1 || px[3] != 0xFF) ? 1 : 0;
         }
-        for (uint32_t i = W * 4; i < STRIDE; i++) {
-            touched_padding += row[i] != UNTOUCHED ? 1 : 0;
+        for (uint32_t i = W * 4; i < kStride; i++) {
+            touched_padding += row[i] != kUntouched ? 1 : 0;
         }
     }
     CHECK(wrong_pixels == 0);
@@ -110,7 +110,7 @@ TEST_CASE("PixelWriter writes RGB565 as the top 5, 6 and 5 bits, little-endian",
     CHECK(frame.bytes[stride + 5] == 0x07);
     CHECK(frame.bytes[stride + 6] == 0x1F);
     CHECK(frame.bytes[stride + 7] == 0x00);
-    CHECK(frame.bytes[stride + 8] == UNTOUCHED); // row padding
+    CHECK(frame.bytes[stride + 8] == kUntouched); // row padding
 
     // Levels expand back to 8 bits by repeating their top bits.
     CHECK(writer.get(1, 1) == Rgb{255, 0, 0});
@@ -129,7 +129,7 @@ TEST_CASE("PixelWriter dithers RGB565 with a 4x4 ordered pattern and writes XRGB
     }
 
     // 70 is 8.51 red and blue levels of 31: half the cells round up, in a checkerboard.
-    constexpr uint8_t RED_BLUE[4][4] = {{8, 9, 8, 9}, {9, 8, 9, 8}, {8, 9, 8, 9}, {9, 8, 9, 8}};
+    constexpr uint8_t kRedBlue[4][4] = {{8, 9, 8, 9}, {9, 8, 9, 8}, {8, 9, 8, 9}, {9, 8, 9, 8}};
     // 70 is 17.29 green levels of 63: the five cells with the highest thresholds round up.
     int green_up = 0;
     for (int32_t y = 0; y < 4; y++) {
@@ -137,8 +137,8 @@ TEST_CASE("PixelWriter dithers RGB565 with a 4x4 ordered pattern and writes XRGB
             CAPTURE(x, y);
             const size_t at = static_cast<size_t>(y) * 8 + static_cast<size_t>(x) * 2;
             const uint16_t v = static_cast<uint16_t>(frame.bytes[at] | frame.bytes[at + 1] << 8);
-            CHECK((v >> 11) == RED_BLUE[y][x]);
-            CHECK((v & 0x1F) == RED_BLUE[y][x]);
+            CHECK((v >> 11) == kRedBlue[y][x]);
+            CHECK((v & 0x1F) == kRedBlue[y][x]);
             const int green = (v >> 5) & 0x3F;
             CHECK((green == 17 || green == 18));
             green_up += green == 18 ? 1 : 0;
@@ -235,11 +235,11 @@ TEST_CASE("add_light saturates each XRGB8888 channel and keeps the X byte",
 
 TEST_CASE("an RGB565 add finer than one level shows as an ordered pattern",
           "[screensaver][pixel_writer]") {
-    using helix::ui::BAYER_4X4;
+    using helix::ui::kBayer4x4;
     uint16_t tile[4][4] = {};
     for (int y = 0; y < 4; y++) {
         for (int x = 0; x < 4; x++) {
-            helix::ui::add_light(&tile[y][x], 4, 4, 4, BAYER_4X4[y][x]);
+            helix::ui::add_light(&tile[y][x], 4, 4, 4, kBayer4x4[y][x]);
         }
     }
     int r = 0;

@@ -161,7 +161,7 @@ namespace {
 
 using helix::HardwareSetupPrompter;
 using helix::HardwareSetupPrompterTestAccess;
-using helix::REVIEW_PRINTER_TYPE_ACTION;
+using helix::kReviewPrinterTypeAction;
 
 constexpr const char* SAVED = "Voron 2.4";
 constexpr const char* DETECTED = "Creality K1";
@@ -283,7 +283,7 @@ TEST_CASE_METHOD(TypeMismatchFixture,
 
     REQUIRE(history_.has_value());
     CHECK(history_->severity == ToastSeverity::WARNING);
-    CHECK(history_->action.rfind(std::string(REVIEW_PRINTER_TYPE_ACTION) + ":", 0) == 0);
+    CHECK(history_->action.rfind(std::string(kReviewPrinterTypeAction) + ":", 0) == 0);
     CHECK(history_->message == toast_->message);
 
     // Warning is not answering: nothing is settled yet.
@@ -400,7 +400,7 @@ TEST_CASE_METHOD(TypeMismatchFixture,
     warn();
     prompter_.reset();
 
-    CHECK_FALSE(helix::ui::notification_action_handler(REVIEW_PRINTER_TYPE_ACTION));
+    CHECK_FALSE(helix::ui::notification_action_handler(kReviewPrinterTypeAction));
     REQUIRE(helix::ui::fire_last_toast_action());
     drain();
     tap_history_entry();

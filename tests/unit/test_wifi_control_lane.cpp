@@ -46,7 +46,7 @@ std::atomic<int> g_forget_calls{0};
 /// merely slow, which is what the breaker measures.
 class StallingBackend : public WifiBackendMock {
   public:
-    static constexpr auto MAX_STALL = std::chrono::seconds(3);
+    static constexpr auto kMaxStall = std::chrono::seconds(3);
 
     WiFiError trigger_scan() override {
         enter(triggers_);
@@ -140,7 +140,7 @@ class StallingBackend : public WifiBackendMock {
         std::unique_lock<std::mutex> lock(mutex_);
         callers_.push_back(std::this_thread::get_id());
         counter++;
-        cv_.wait_for(lock, MAX_STALL, [this] { return !stalled_; });
+        cv_.wait_for(lock, kMaxStall, [this] { return !stalled_; });
     }
 
     std::mutex mutex_;
@@ -218,7 +218,7 @@ TEST_CASE_METHOD(ControlLaneFixture,
     wm->get_status_async(guard.token(), [](const WifiBackend::ConnectionStatus&) {});
     const auto elapsed = std::chrono::steady_clock::now() - started;
 
-    // One stalled call on this thread would cost StallingBackend::MAX_STALL.
+    // One stalled call on this thread would cost StallingBackend::kMaxStall.
     CHECK(elapsed < std::chrono::milliseconds(500));
 
     // The calls happen, one at a time and in order, on a worker.
@@ -554,7 +554,7 @@ TEST_CASE_METHOD(ControlLaneFixture, "calls after the lane has closed are not ru
         read_status(); // the pool has run this manager's calls
         const int asked = backend->statuses();
         HttpExecutor::fast().stop();
-        backend->stall(); // a call run on this thread now would take MAX_STALL
+        backend->stall(); // a call run on this thread now would take kMaxStall
         const auto started = std::chrono::steady_clock::now();
         std::optional<bool> forgot;
         wm->forget("Net", [&](bool ok, const std::string&) { forgot = ok; });

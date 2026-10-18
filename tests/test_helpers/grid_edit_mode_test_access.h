@@ -92,7 +92,7 @@ struct GridEditModeTestAccess {
     /// Pointer travel from the press origin that an armed press must exceed,
     /// in px, before it becomes a drag or a resize.
     static int drag_threshold_px() {
-        return GridEditMode::DRAG_THRESHOLD_PX;
+        return GridEditMode::kDragThresholdPx;
     }
 
     /// The container the session is scoped to, or nullptr outside a session.

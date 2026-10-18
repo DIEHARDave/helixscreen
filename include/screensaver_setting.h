@@ -19,10 +19,10 @@
 namespace helix::ui {
 
 /// Config path of the persisted screensaver choice, a name such as "maze" or "off".
-inline constexpr const char* SCREENSAVER_SETTING_PATH = "/display/screensaver_type";
+inline constexpr const char* kScreensaverSettingPath = "/display/screensaver_type";
 
 /// The screensaver a stored value selects: a registered name or "off" in any case, or a legacy
-/// integer type number read through LEGACY_SCREENSAVER_TYPE_NAMES. A missing node, an unknown
+/// integer type number read through kLegacyScreensaverTypeNames. A missing node, an unknown
 /// name, an out-of-range number or any other JSON type reads as `fallback`.
 inline ScreensaverType screensaver_from_setting(const nlohmann::json* node,
                                                 ScreensaverType fallback) {

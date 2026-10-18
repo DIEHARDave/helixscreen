@@ -769,7 +769,7 @@ class PrintPreparationManager {
 
     // Retry logic for macro analysis
     int macro_analysis_retry_count_ = 0;
-    static constexpr int MAX_MACRO_ANALYSIS_RETRIES = 2; // 3 total attempts
+    static constexpr int kMaxMacroAnalysisRetries = 2; // 3 total attempts
 
     // === Lifetime Guard for Async Callbacks ===
     helix::AsyncLifetimeGuard lifetime_;

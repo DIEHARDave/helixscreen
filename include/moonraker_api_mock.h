@@ -469,7 +469,7 @@ class MoonrakerFileTransferAPIMock : public MoonrakerFileTransferAPI {
 
     /// Fallback path prefixes to search (from various CWDs)
     /// Note: Base directory is RuntimeConfig::TEST_GCODE_DIR (defined in runtime_config.h)
-    static const std::vector<std::string> PATH_PREFIXES;
+    static const std::vector<std::string> kPathPrefixes;
 
     /// One config-root download lookup shared by the transfer entry points.
     /// HELIX_MOCK_PLUGINS_DIR serves helixscreen/plugins/<rel> from a local folder; the

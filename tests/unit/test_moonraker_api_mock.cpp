@@ -145,10 +145,10 @@ TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
     std::atomic<bool> success_called{false};
     std::atomic<bool> error_called{false};
     std::string downloaded_content;
-    constexpr size_t MAX_BYTES = 1000; // Only first 1KB
+    constexpr size_t kMaxBytes = 1000; // Only first 1KB
 
     api_->transfers().download_file_partial(
-        "gcodes", "3DBenchy.gcode", MAX_BYTES,
+        "gcodes", "3DBenchy.gcode", kMaxBytes,
         [&](const std::string& content) {
             downloaded_content = content;
             success_called.store(true);
@@ -158,7 +158,7 @@ TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
     REQUIRE(success_called.load());
     REQUIRE_FALSE(error_called.load());
     // Content should be limited to max_bytes
-    REQUIRE(downloaded_content.size() <= MAX_BYTES);
+    REQUIRE(downloaded_content.size() <= kMaxBytes);
     // And should have some content
     REQUIRE(downloaded_content.size() > 0);
 }
@@ -168,7 +168,7 @@ TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
                  "[mock][api][download][partial]") {
     std::atomic<bool> success_called{false};
     std::string downloaded_content;
-    constexpr size_t MAX_BYTES = 10 * 1024 * 1024; // 10MB limit (larger than file)
+    constexpr size_t kMaxBytes = 10 * 1024 * 1024; // 10MB limit (larger than file)
 
     // First get full file size
     std::string full_content;
@@ -180,7 +180,7 @@ TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
 
     // Now get with large limit - should return full content
     api_->transfers().download_file_partial(
-        "gcodes", "3DBenchy.gcode", MAX_BYTES,
+        "gcodes", "3DBenchy.gcode", kMaxBytes,
         [&](const std::string& content) {
             downloaded_content = content;
             success_called.store(true);
@@ -189,7 +189,7 @@ TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
 
     REQUIRE(success_called.load());
     // If file is smaller than limit, we get the whole thing
-    if (full_content.size() < MAX_BYTES) {
+    if (full_content.size() < kMaxBytes) {
         REQUIRE(downloaded_content == full_content);
     }
 }
@@ -220,24 +220,24 @@ TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
                  "[mock][api][download][partial]") {
     std::string full_content;
     std::string partial_content;
-    constexpr size_t PARTIAL_SIZE = 500;
+    constexpr size_t kPartialSize = 500;
 
     // Get full file
     api_->transfers().download_file(
         "gcodes", "3DBenchy.gcode", [&](const std::string& content) { full_content = content; },
         [](const MoonrakerError&) {});
 
-    REQUIRE(full_content.size() > PARTIAL_SIZE);
+    REQUIRE(full_content.size() > kPartialSize);
 
     // Get partial file
     api_->transfers().download_file_partial(
-        "gcodes", "3DBenchy.gcode", PARTIAL_SIZE,
+        "gcodes", "3DBenchy.gcode", kPartialSize,
         [&](const std::string& content) { partial_content = content; },
         [](const MoonrakerError&) {});
 
     // Partial should match the beginning of full content
-    REQUIRE(partial_content.size() == PARTIAL_SIZE);
-    REQUIRE(full_content.substr(0, PARTIAL_SIZE) == partial_content);
+    REQUIRE(partial_content.size() == kPartialSize);
+    REQUIRE(full_content.substr(0, kPartialSize) == partial_content);
 }
 
 // ============================================================================

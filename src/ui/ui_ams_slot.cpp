@@ -459,7 +459,7 @@ static void apply_lane_state(AmsSlotData* data, int state_int) {
         return;
     data->last_lane_state = static_cast<helix::ui::LaneState>(state_int);
     const lv_opa_t text_opa =
-        data->last_lane_state == helix::ui::LaneState::Ghosted ? ams_draw::GHOST_OPA : LV_OPA_COVER;
+        data->last_lane_state == helix::ui::LaneState::Ghosted ? ams_draw::kGhostOpa : LV_OPA_COVER;
     for (lv_obj_t* label : {data->name_label, data->material_label}) {
         if (label)
             lv_obj_set_style_text_opa(label, text_opa, LV_PART_MAIN);
@@ -640,7 +640,7 @@ static void setup_slot_observers(AmsSlotData* data) {
         spdlog::warn("[AmsSlot] Invalid slot index {}, skipping observers", data->slot_index);
         return;
     }
-    if (data->slot_index >= AmsState::MAX_SLOTS) {
+    if (data->slot_index >= AmsState::kMaxSlots) {
         // AmsState warns once for the whole overflow; this slot stays unbound.
         spdlog::debug("[AmsSlot] Slot {} is past the subject ceiling, left unbound",
                       data->slot_index);

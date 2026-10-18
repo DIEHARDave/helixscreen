@@ -90,10 +90,10 @@ class ScopedScriptedCpuClock {
 /// exits.
 class ScopedGateEnv {
   public:
-    static constexpr const char* LEVELS_PATH = "/display/screensaver_levels";
+    static constexpr const char* kLevelsPath = "/display/screensaver_levels";
 
     ScopedGateEnv() {
-        if (const nlohmann::json* levels = Config::get_instance()->try_get_json(LEVELS_PATH)) {
+        if (const nlohmann::json* levels = Config::get_instance()->try_get_json(kLevelsPath)) {
             saved_levels_ = *levels;
         }
         clear_levels();
@@ -101,7 +101,7 @@ class ScopedGateEnv {
     ~ScopedGateEnv() {
         clear_levels();
         if (saved_levels_) {
-            Config::get_instance()->set<nlohmann::json>(LEVELS_PATH, *saved_levels_);
+            Config::get_instance()->set<nlohmann::json>(kLevelsPath, *saved_levels_);
         }
     }
     ScopedGateEnv(const ScopedGateEnv&) = delete;
@@ -110,7 +110,7 @@ class ScopedGateEnv {
     /// Forgets every stored saver level.
     static void clear_levels() {
         Config* config = Config::get_instance();
-        if (config->try_get_json(LEVELS_PATH) != nullptr) {
+        if (config->try_get_json(kLevelsPath) != nullptr) {
             config->get_json("/display").erase("screensaver_levels");
         }
     }

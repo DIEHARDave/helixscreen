@@ -6,10 +6,10 @@ Every rule below is summarized, not invented: [`../THREADING.md`](../THREADING.m
 
 ```mermaid
 flowchart LR
-    subgraph BG["Background threads"]
+    subgraph kBg["Background threads"]
         WS["libhv event loop<br/>MoonrakerClient (hv::WebSocketClient)<br/>WebSocket frames, JSON-RPC"]
         FAST["HttpExecutor fast pool<br/>4 workers - REST, thumbnails"]
-        SLOW["HttpExecutor slow pool<br/>1 worker - large transfers"]
+        kSlow["HttpExecutor slow pool<br/>1 worker - large transfers"]
         BUS["BusThread<br/>BlueZ sd-bus calls"]
         WORK["Long-lived owned workers<br/>UpdateChecker, telemetry batches,<br/>camera stream, hot-reload poll"]
     end
@@ -23,7 +23,7 @@ flowchart LR
     UQ["UpdateQueue<br/>mutex-protected queue<br/>of tagged lambdas"]
     WS -->|"queue_update / tok.defer / bg_cb"| UQ
     FAST --> UQ
-    SLOW --> UQ
+    kSlow --> UQ
     BUS --> UQ
     WORK --> UQ
     UQ -->|"process_pending drains on main"| TH

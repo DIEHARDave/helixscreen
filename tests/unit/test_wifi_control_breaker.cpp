@@ -13,31 +13,31 @@ using Change = ControlBreaker::Change;
 
 namespace {
 constexpr uint32_t FAST = 20;
-constexpr uint32_t SLOW = 5000;
+constexpr uint32_t kSlow = 5000;
 } // namespace
 
 TEST_CASE("ControlBreaker trips on the third consecutive slow call, not before",
           "[wifi][wifi_breaker]") {
     ControlBreaker b;
     REQUIRE(b.config().trip_after == 3);
-    REQUIRE(b.config().slow_call_ms == SLOW);
+    REQUIRE(b.config().slow_call_ms == kSlow);
 
-    CHECK(b.record(SLOW, 0) == Change::None);
-    CHECK(b.record(SLOW, 0) == Change::None);
+    CHECK(b.record(kSlow, 0) == Change::None);
+    CHECK(b.record(kSlow, 0) == Change::None);
     CHECK_FALSE(b.open());
     CHECK(b.allow_call(0));
-    CHECK(b.record(SLOW, 0) == Change::Tripped);
+    CHECK(b.record(kSlow, 0) == Change::Tripped);
     CHECK(b.open());
 }
 
 TEST_CASE("ControlBreaker: a call under the threshold resets the strike count",
           "[wifi][wifi_breaker]") {
     ControlBreaker b;
-    b.record(SLOW, 0);
-    b.record(SLOW, 0);
-    CHECK(b.record(SLOW - 1, 0) == Change::None);
-    b.record(SLOW, 0);
-    b.record(SLOW, 0);
+    b.record(kSlow, 0);
+    b.record(kSlow, 0);
+    CHECK(b.record(kSlow - 1, 0) == Change::None);
+    b.record(kSlow, 0);
+    b.record(kSlow, 0);
     CHECK_FALSE(b.open());
 }
 
@@ -45,7 +45,7 @@ TEST_CASE("ControlBreaker admits one probe per backoff window and doubles it to 
           "[wifi][wifi_breaker]") {
     ControlBreaker b;
     for (int i = 0; i < 3; ++i) {
-        b.record(SLOW, 1000);
+        b.record(kSlow, 1000);
     }
     REQUIRE(b.open());
 
@@ -58,15 +58,15 @@ TEST_CASE("ControlBreaker admits one probe per backoff window and doubles it to 
     CHECK_FALSE(b.allow_call(1000 + 15000));
 
     // The probe is slow: the next window is twice as long.
-    uint64_t now = 16000 + SLOW;
-    b.record(SLOW, now);
+    uint64_t now = 16000 + kSlow;
+    b.record(kSlow, now);
     CHECK_FALSE(b.allow_call(now + 30000 - 1));
     CHECK(b.allow_call(now + 30000));
 
     // Keep failing until the cap holds.
     for (int i = 0; i < 6; ++i) {
         now += 200000;
-        b.record(SLOW, now);
+        b.record(kSlow, now);
     }
     CHECK_FALSE(b.allow_call(now + 120000 - 1));
     CHECK(b.allow_call(now + 120000));
@@ -76,7 +76,7 @@ TEST_CASE("ControlBreaker recovers on the first call that answers in time",
           "[wifi][wifi_breaker]") {
     ControlBreaker b;
     for (int i = 0; i < 3; ++i) {
-        b.record(SLOW, 0);
+        b.record(kSlow, 0);
     }
     REQUIRE(b.open());
     REQUIRE(b.allow_call(15000));
@@ -86,8 +86,8 @@ TEST_CASE("ControlBreaker recovers on the first call that answers in time",
     CHECK(b.allow_call(15000));
 
     // Recovery starts the count over: two more slow calls do not re-trip.
-    b.record(SLOW, 16000);
-    b.record(SLOW, 16000);
+    b.record(kSlow, 16000);
+    b.record(kSlow, 16000);
     CHECK_FALSE(b.open());
 }
 

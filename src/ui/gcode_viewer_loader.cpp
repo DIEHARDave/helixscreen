@@ -41,7 +41,7 @@ using namespace helix::gcode_viewer;
 // Lines parsed between cancellation polls in the background load. Small enough
 // that cancel_build()'s join returns promptly, large enough that the atomic load
 // is noise next to parsing that many lines.
-constexpr size_t CANCEL_POLL_LINES = 2048;
+constexpr size_t kCancelPollLines = 2048;
 
 #ifdef ENABLE_3D_RENDERER
 /// Hand freshly built geometry for st->gcode_file to the 3D renderer. The
@@ -499,7 +499,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                 // cancel_build() joins this thread FROM THE MAIN THREAD, so with
                 // the check only at the end, switching files blocked the LVGL
                 // loop for an entire parse — seconds for a multi-megabyte file
-                // on a 2-core board. Checked every CANCEL_POLL_LINES lines so the
+                // on a 2-core board. Checked every kCancelPollLines lines so the
                 // atomic load costs nothing next to the parse itself.
                 bool cancelled_mid_parse = false;
                 size_t lines_since_cancel_check = 0;
@@ -519,7 +519,7 @@ static void ui_gcode_viewer_load_file_async(lv_obj_t* obj, const char* file_path
                                          static_cast<int32_t>(parser.current_layer()));
                     line_offset += line.length() + 1;
 
-                    if (++lines_since_cancel_check >= CANCEL_POLL_LINES) {
+                    if (++lines_since_cancel_check >= kCancelPollLines) {
                         lines_since_cancel_check = 0;
                         if (st->is_cancelled()) {
                             cancelled_mid_parse = true;

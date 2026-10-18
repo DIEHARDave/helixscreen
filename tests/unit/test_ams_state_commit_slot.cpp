@@ -647,7 +647,7 @@ TEST_CASE("context-menu clear on a lane the machine is silent on shows blank, li
     CHECK(shown.color_name == rebooted.color_name);
     CHECK(shown.material == rebooted.material);
     CHECK(shown.remaining_weight_g == rebooted.remaining_weight_g);
-    CHECK(shown.color_rgb == AMS_DEFAULT_SLOT_COLOR);
+    CHECK(shown.color_rgb == kAmsDefaultSlotColor);
     CHECK(shown.material.empty());
 }
 
@@ -698,7 +698,7 @@ TEST_CASE("context-menu clear on the bypass sentinel names the external spool",
         [&notes](const std::string& msg) { notes.push_back(msg); });
 
     REQUIRE(ui::ams_dispatch_backend_action(ui::AmsContextMenu::MenuAction::CLEAR_SPOOL,
-                                            helix::ui::EXTERNAL_SPOOL_SLOT, nullptr));
+                                            helix::ui::kExternalSpoolSlot, nullptr));
 
     helix::ui::set_test_notification_info_hook(nullptr);
 
@@ -832,7 +832,7 @@ TEST_CASE("an unlink records the binding, not the fields it cleared", "[ams][com
     cleared.spoolman_id = 0;
     cleared.brand.clear();
     cleared.material.clear();
-    cleared.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_rgb = kAmsDefaultSlotColor;
 
     REQUIRE(AmsState::instance().commit_slot_edit(0, original, cleared).success());
 
@@ -1345,7 +1345,7 @@ TEST_CASE("registration stamps each backend with its own block", "[ams][commit][
     CHECK(primary->lane_id(0) == helix::ams::lane_id_for(0, 0));
     CHECK(secondary->lane_id(0) == helix::ams::lane_id_for(second, 0));
     CHECK(secondary->lane_id(0) != primary->lane_id(0));
-    CHECK(secondary->lane_id(0) != helix::ams::INVALID_LANE_ID);
+    CHECK(secondary->lane_id(0) != helix::ams::kInvalidLaneId);
 }
 
 TEST_CASE("an edit files under the backend it was written through", "[ams][commit][lane]") {
@@ -1437,7 +1437,7 @@ TEST_CASE("clearing an already-unlinked slot records no declaration", "[ams][com
     // The shape MenuAction::CLEAR_SPOOL commits (ui_ams_detail.cpp).
     SlotInfo cleared = original;
     cleared.material.clear();
-    cleared.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_rgb = kAmsDefaultSlotColor;
     cleared.color_name.clear();
     cleared.brand.clear();
     cleared.clear_spoolman_link();

@@ -102,7 +102,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AutoInject cuts the walk at a home widget t
     lv_obj_t* tile = lv_obj_create(root);
     lv_obj_set_size(tile, 240, 200);
     lv_obj_remove_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(tile, helix::PANEL_WIDGET_TILE_FLAG);
+    lv_obj_add_flag(tile, helix::kPanelWidgetTileFlag);
     lv_obj_t* inner = add_vscroll(tile, 20);
 
     // A page-level container beside the tile must still qualify, or the cut is
@@ -136,7 +136,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AutoInject skips a tile whose own root scro
     lv_obj_set_size(root, 480, 320);
 
     lv_obj_t* tile = add_vscroll(root, 20); // overflows; would qualify unmarked
-    lv_obj_add_flag(tile, helix::PANEL_WIDGET_TILE_FLAG);
+    lv_obj_add_flag(tile, helix::kPanelWidgetTileFlag);
 
     lv_obj_update_layout(root);
     inj.on_root_shown(root);

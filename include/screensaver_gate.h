@@ -32,13 +32,13 @@ enum class GateDecision {
 /// `level` of `level_count` levels. A run never steps up.
 GateDecision decide_saver_level(double share, double budget, size_t level, size_t level_count);
 
-/// The app's CPU rate while no saver runs, over the last idle stretch of up to SPAN_NS.
+/// The app's CPU rate while no saver runs, over the last idle stretch of up to kSpanNs.
 class IdleBaseline {
   public:
-    static constexpr uint64_t SPAN_NS = 10000000000ULL;
+    static constexpr uint64_t kSpanNs = 10000000000ULL;
     /// With fewer seconds of samples than this the rate reads as 0, which can only make the
     /// gate step down early, never late.
-    static constexpr uint64_t MIN_SPAN_NS = 3000000000ULL;
+    static constexpr uint64_t kMinSpanNs = 3000000000ULL;
 
     void add(CpuSample sample);
     void reset();
@@ -55,8 +55,8 @@ class IdleBaseline {
 /// Measures one run of a saver: a warm-up, then consecutive windows for as long as it runs.
 class SaverGateSession {
   public:
-    static constexpr uint64_t WARMUP_NS = 1000000000ULL;
-    static constexpr uint64_t WINDOW_NS = 5000000000ULL;
+    static constexpr uint64_t kWarmupNs = 1000000000ULL;
+    static constexpr uint64_t kWindowNs = 5000000000ULL;
 
     /// Starts a run at `start`, with `baseline_rate` cores of idle work to subtract.
     void begin(CpuSample start, double baseline_rate);

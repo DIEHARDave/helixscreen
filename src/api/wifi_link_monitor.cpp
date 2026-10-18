@@ -142,7 +142,7 @@ LinkEvent classify_link_change(const LinkSample* prev, const LinkSample& cur) {
         return LinkEvent::FrequencyChanged;
     }
     if (prev->radio.rssi_dbm && cur.radio.rssi_dbm &&
-        *prev->radio.rssi_dbm - *cur.radio.rssi_dbm >= RSSI_DROP_DB) {
+        *prev->radio.rssi_dbm - *cur.radio.rssi_dbm >= kRssiDropDb) {
         return LinkEvent::RssiDrop;
     }
     return LinkEvent::None;
@@ -150,7 +150,7 @@ LinkEvent classify_link_change(const LinkSample* prev, const LinkSample& cur) {
 
 bool link_info_allowed(LinkEvent ev, int64_t now_s, std::optional<int64_t> last_info_s) {
     return ev == LinkEvent::Reconnected || !last_info_s ||
-           now_s - *last_info_s >= LINK_INFO_MIN_INTERVAL_S;
+           now_s - *last_info_s >= kLinkInfoMinIntervalS;
 }
 
 void LinkHistory::push(const LinkSample& s) {
@@ -181,7 +181,7 @@ void WifiLinkMonitor::start() {
     if (timer_) {
         return;
     }
-    timer_.reset(lv_timer_create(&WifiLinkMonitor::timer_cb, POLL_INTERVAL_MS, this));
+    timer_.reset(lv_timer_create(&WifiLinkMonitor::timer_cb, kPollIntervalMs, this));
     poll();
 }
 

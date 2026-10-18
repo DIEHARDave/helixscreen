@@ -103,13 +103,13 @@ void TempGraphWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     // immediately after attach() returns, in the same synchronous loop
     // iteration and before any paint (panel_widget_manager.cpp:862-868), so
     // this seed only lives for the width of that one function call.
-    constexpr int SEED_WIDTH_PX = 233;
-    constexpr int SEED_HEIGHT_PX = 230;
+    constexpr int kSeedWidthPx = 233;
+    constexpr int kSeedHeightPx = 230;
 
     TempGraphControllerConfig ctrl_config;
     ctrl_config.point_count = 300; // 5-minute window at 1Hz (matches mini graph)
     ctrl_config.axis_size = "xs";
-    ctrl_config.initial_features = features_for_size(SEED_WIDTH_PX, SEED_HEIGHT_PX);
+    ctrl_config.initial_features = features_for_size(kSeedWidthPx, kSeedHeightPx);
     // Uses default TempGraphScaleParams (same as mini graph and overlay)
     ctrl_config.series = build_series_from_config();
     applied_visibility_signature_ = current_visibility_signature();
@@ -155,8 +155,8 @@ void TempGraphWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     lv_obj_add_style(widget_obj_, ThemeManager::instance().get_style(StyleRole::Card),
                      LV_PART_MAIN);
 
-    spdlog::debug("[TempGraphWidget] Attached '{}' (seed {}x{}px)", instance_id_, SEED_WIDTH_PX,
-                  SEED_HEIGHT_PX);
+    spdlog::debug("[TempGraphWidget] Attached '{}' (seed {}x{}px)", instance_id_, kSeedWidthPx,
+                  kSeedHeightPx);
 }
 
 void TempGraphWidget::detach() {
@@ -349,7 +349,7 @@ std::vector<TempGraphSeriesSpec> TempGraphWidget::build_series_from_config() con
         if (entry.contains("color") && entry["color"].is_number_integer()) {
             spec.color = lv_color_hex(entry["color"].get<uint32_t>());
         } else {
-            spec.color = TEMP_GRAPH_SERIES_COLORS[color_idx % TEMP_GRAPH_PALETTE_SIZE];
+            spec.color = kTempGraphSeriesColors[color_idx % kTempGraphPaletteSize];
         }
         color_idx++;
 
@@ -464,7 +464,7 @@ bool TempGraphWidget::merge_discovered_extruders(nlohmann::json& config, bool en
     for (const auto& [name, _] : exts) {
         if (existing.count(name))
             continue;
-        lv_color_t c = TEMP_GRAPH_SERIES_COLORS[color_idx % TEMP_GRAPH_PALETTE_SIZE];
+        lv_color_t c = kTempGraphSeriesColors[color_idx % kTempGraphPaletteSize];
         uint32_t color_hex = (static_cast<uint32_t>(c.red) << 16) |
                              (static_cast<uint32_t>(c.green) << 8) | static_cast<uint32_t>(c.blue);
         nlohmann::json row;
@@ -505,7 +505,7 @@ void TempGraphWidget::TempGraphConfigModal::on_ok() {
             row.enabled = lv_obj_has_state(row.sw, LV_STATE_CHECKED);
         }
 
-        lv_color_t c = TEMP_GRAPH_SERIES_COLORS[row.color_idx % TEMP_GRAPH_PALETTE_SIZE];
+        lv_color_t c = kTempGraphSeriesColors[row.color_idx % kTempGraphPaletteSize];
         uint32_t color_hex = (static_cast<uint32_t>(c.red) << 16) |
                              (static_cast<uint32_t>(c.green) << 8) | static_cast<uint32_t>(c.blue);
 
@@ -621,7 +621,7 @@ void TempGraphWidget::TempGraphConfigModal::populate_follow_toggle() {
 namespace {
 /// Paint a config row's swatch with palette entry @p color_idx.
 void paint_series_swatch(lv_obj_t* swatch, int color_idx) {
-    const lv_color_t c = TEMP_GRAPH_SERIES_COLORS[color_idx % TEMP_GRAPH_PALETTE_SIZE];
+    const lv_color_t c = kTempGraphSeriesColors[color_idx % kTempGraphPaletteSize];
     helix::ui::apply_swatch_color(swatch, lv_color_to_u32(c) & 0xFFFFFF, "");
 }
 } // namespace
@@ -676,17 +676,17 @@ void TempGraphWidget::TempGraphConfigModal::populate_sensor_list() {
         if (entry.contains("color") && entry["color"].is_number_integer()) {
             uint32_t cfg_hex = entry["color"].get<uint32_t>();
             lv_color_t cfg_color = lv_color_hex(cfg_hex);
-            row.color_idx = static_cast<int>(i) % TEMP_GRAPH_PALETTE_SIZE; // default
-            for (int ci = 0; ci < TEMP_GRAPH_PALETTE_SIZE; ++ci) {
-                if (TEMP_GRAPH_SERIES_COLORS[ci].red == cfg_color.red &&
-                    TEMP_GRAPH_SERIES_COLORS[ci].green == cfg_color.green &&
-                    TEMP_GRAPH_SERIES_COLORS[ci].blue == cfg_color.blue) {
+            row.color_idx = static_cast<int>(i) % kTempGraphPaletteSize; // default
+            for (int ci = 0; ci < kTempGraphPaletteSize; ++ci) {
+                if (kTempGraphSeriesColors[ci].red == cfg_color.red &&
+                    kTempGraphSeriesColors[ci].green == cfg_color.green &&
+                    kTempGraphSeriesColors[ci].blue == cfg_color.blue) {
                     row.color_idx = ci;
                     break;
                 }
             }
         } else {
-            row.color_idx = static_cast<int>(i) % TEMP_GRAPH_PALETTE_SIZE;
+            row.color_idx = static_cast<int>(i) % kTempGraphPaletteSize;
         }
 
         // Build the row container: [color swatch] [name label] [spacer] [switch]
@@ -741,7 +741,7 @@ void TempGraphWidget::TempGraphConfigModal::color_swatch_clicked(lv_event_t* e) 
         return;
 
     auto& row = modal->rows_[idx];
-    row.color_idx = (row.color_idx + 1) % TEMP_GRAPH_PALETTE_SIZE;
+    row.color_idx = (row.color_idx + 1) % kTempGraphPaletteSize;
     paint_series_swatch(swatch, row.color_idx);
 
     spdlog::debug("[TempGraphConfigModal] Cycled '{}' to color index {}", row.name, row.color_idx);

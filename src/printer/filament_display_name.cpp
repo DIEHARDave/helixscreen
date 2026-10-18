@@ -192,13 +192,13 @@ std::string slot_card_name(const SlotInfo& slot, const SpoolIdentity* identity) 
 SlotCardLines slot_card_lines(std::string_view name, std::string_view material,
                               std::string_view material_text, int total_count, bool lane_empty) {
     SlotCardLines lines;
-    const bool crowded = total_count > SLOT_CARD_MAX_TWO_LINE_COUNT;
+    const bool crowded = total_count > kSlotCardMaxTwoLineCount;
     const std::string name_part = normalize_ws(name);
     if (lane_empty || crowded || name_part.empty()) {
         lines.lower = std::string(material_text);
         if (crowded && !lane_empty) {
             lines.lower =
-                std::string(text_io::utf8_prefix(lines.lower, SLOT_CARD_CROWDED_MATERIAL_BYTES));
+                std::string(text_io::utf8_prefix(lines.lower, kSlotCardCrowdedMaterialBytes));
         }
         return lines;
     }

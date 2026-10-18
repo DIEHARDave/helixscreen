@@ -823,7 +823,7 @@ struct OverlayXmlFixture : public LVGLUITestFixture {
 
         helix::ui::destroy_static_panels();
         drain();
-        std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+        std::array<lv_obj_t*, kUiPanelCount> panels{};
         for (auto& p : panels) {
             p = lv_obj_create(test_screen());
         }

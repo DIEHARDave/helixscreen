@@ -55,7 +55,7 @@ void ClockState::step(uint32_t dt_ms, const ClockInput& in) {
         if (!anchored_ && print.remaining_s > 0) {
             anchor(print.remaining_s);
         } else if (anchored_ && print.remaining_s >= 0 &&
-                   std::abs(print.remaining_s - countdown_s()) > CLOCK_COUNTDOWN_RESYNC_S) {
+                   std::abs(print.remaining_s - countdown_s()) > kClockCountdownResyncS) {
             anchor(print.remaining_s);
         }
         mode_ = anchored_ ? ClockMode::COUNTDOWN : ClockMode::CLOCK;
@@ -75,7 +75,7 @@ void ClockState::step(uint32_t dt_ms, const ClockInput& in) {
         if (mode_ == ClockMode::COUNTDOWN || mode_ == ClockMode::PAUSED) {
             mode_ = ClockMode::DONE;
             done_ms_ = 0;
-        } else if (mode_ == ClockMode::DONE && done_ms_ >= CLOCK_DONE_HOLD_MS) {
+        } else if (mode_ == ClockMode::DONE && done_ms_ >= kClockDoneHoldMs) {
             mode_ = ClockMode::CLOCK;
         }
         anchored_ = false;
@@ -128,7 +128,7 @@ void clock_drift_range(const DirtyRect& bounds, int32_t w, int32_t h, int32_t& m
 }
 
 void clock_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t& dx, int32_t& dy) {
-    const auto step = static_cast<float>(elapsed_ms / CLOCK_DRIFT_STEP_MS);
+    const auto step = static_cast<float>(elapsed_ms / kClockDriftStepMs);
     // Two incommensurate rates, so the path does not retrace itself for hours.
     dx = static_cast<int32_t>(std::lround(static_cast<float>(max_dx) * std::sin(step * 0.61f)));
     dy = static_cast<int32_t>(std::lround(static_cast<float>(max_dy) * std::sin(step * 0.37f)));

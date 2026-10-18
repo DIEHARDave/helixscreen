@@ -32,7 +32,7 @@ struct CapabilityDef {
     int initial;
 };
 
-constexpr CapabilityDef CAPABILITY_DEFS[] = {
+constexpr CapabilityDef kCapabilityDefs[] = {
     {Capability::HasQgl, "printer_has_qgl", 0},
     {Capability::HasZTilt, "printer_has_z_tilt", 0},
     {Capability::HasBedMesh, "printer_has_bed_mesh", 0},
@@ -77,11 +77,11 @@ constexpr CapabilityDef CAPABILITY_DEFS[] = {
     {Capability::HasLedEffects, "printer_has_led_effects", 0},
     {Capability::HardwareGeneration, "printer_hardware_generation", 0},
 };
-static_assert(std::size(CAPABILITY_DEFS) == CAPABILITY_COUNT);
+static_assert(std::size(kCapabilityDefs) == kCapabilityCount);
 
 constexpr bool defs_in_enum_order() {
-    for (size_t i = 0; i < CAPABILITY_COUNT; ++i) {
-        if (static_cast<size_t>(CAPABILITY_DEFS[i].cap) != i) {
+    for (size_t i = 0; i < kCapabilityCount; ++i) {
+        if (static_cast<size_t>(kCapabilityDefs[i].cap) != i) {
             return false;
         }
     }
@@ -100,7 +100,7 @@ void PrinterCapabilitiesState::init_subjects(bool register_xml) {
     spdlog::trace("[PrinterCapabilitiesState] Initializing subjects (register_xml={})",
                   register_xml);
 
-    for (const auto& def : CAPABILITY_DEFS) {
+    for (const auto& def : kCapabilityDefs) {
         lv_subject_t* s = subject(def.cap);
         lv_subject_init_int(s, def.initial);
         subjects_.register_subject(s, register_xml ? def.name : nullptr);
@@ -125,7 +125,7 @@ void PrinterCapabilitiesState::set_capability(Capability cap, int value) {
 int PrinterCapabilitiesState::capability_value(Capability cap) const {
     const size_t i = static_cast<size_t>(cap);
     if (!subjects_initialized_) {
-        return pending_capability_values_[i].value_or(CAPABILITY_DEFS[i].initial);
+        return pending_capability_values_[i].value_or(kCapabilityDefs[i].initial);
     }
     return lv_subject_get_int(subject(cap));
 }
@@ -134,7 +134,7 @@ void PrinterCapabilitiesState::apply_pending_capability_values() {
     // Applied AFTER subjects_initialized_ flips, so these go straight through to
     // the subjects. Observers attach later than init_subjects(), so they see the
     // real answer on their first callback rather than the hardcoded default.
-    for (size_t i = 0; i < CAPABILITY_COUNT; ++i) {
+    for (size_t i = 0; i < kCapabilityCount; ++i) {
         if (pending_capability_values_[i]) {
             lv_subject_set_int(&capability_subjects_[i], *pending_capability_values_[i]);
             pending_capability_values_[i].reset();

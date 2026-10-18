@@ -18,7 +18,7 @@ class AsyncLifetimeGuard;
 class PrinterDiscovery;
 
 /// Notification-history action id that reopens the printer type mismatch review.
-inline constexpr const char* REVIEW_PRINTER_TYPE_ACTION = "review_printer_type";
+inline constexpr const char* kReviewPrinterTypeAction = "review_printer_type";
 
 /// Which hardware prompt a discovery pass launches. At most one per pass: the gates
 /// below make the three reasons mutually exclusive.

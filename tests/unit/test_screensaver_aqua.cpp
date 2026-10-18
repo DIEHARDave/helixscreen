@@ -50,14 +50,8 @@ using helix::ui::ClockInput;
 using helix::ui::ClockPrintPhase;
 using helix::ui::SaverTestAccess;
 
-using helix::ui::AQUA_DEPTH;
 using helix::ui::aqua_gerstner_height;
-using helix::ui::AQUA_LEVEL_COUNT;
-using helix::ui::AQUA_LEVELS;
-using helix::ui::AQUA_MAX_DROPLETS;
-using helix::ui::AQUA_RIM_FLOOR;
 using helix::ui::aqua_rings;
-using helix::ui::AQUA_Z_NEAR;
 using helix::ui::AquaClockLayout;
 using helix::ui::AquaDroplet;
 using helix::ui::AquaLanding;
@@ -71,6 +65,12 @@ using helix::ui::ClockMode;
 using helix::ui::ClockReading;
 using helix::ui::DirtyRect;
 using helix::ui::FrameTarget;
+using helix::ui::kAquaDepth;
+using helix::ui::kAquaLevelCount;
+using helix::ui::kAquaLevels;
+using helix::ui::kAquaMaxDroplets;
+using helix::ui::kAquaRimFloor;
+using helix::ui::kAquaZNear;
 using helix::ui::layout_aqua_clock;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
@@ -103,14 +103,14 @@ TEST_CASE("the tank modes keep the dispersion relation", "[screensaver][aqua]") 
     water.init(rng, 20, 8, 0.4f);
     for (size_t n = 0; n < water.modes().size(); n++) {
         const auto& m = water.modes()[n];
-        const float k = static_cast<float>(n + 1) * helix::ui::SAVER_PI / 7.0f;
+        const float k = static_cast<float>(n + 1) * helix::ui::kSaverPi / 7.0f;
         CHECK(m.k == Catch::Approx(k));
         CHECK(m.omega * m.omega == Catch::Approx(9.81f * k * std::tanh(1.2f * k)).margin(1e-4));
     }
 }
 
 TEST_CASE("Gerstner crests stay peaked", "[screensaver][aqua]") {
-    const float k = 2.0f * helix::ui::SAVER_PI / 2.6f;
+    const float k = 2.0f * helix::ui::kSaverPi / 2.6f;
     const float omega = std::sqrt(9.81f * k * std::tanh(1.2f * k));
     const auto widths = [&](float steep) {
         const AquaWave wave{0.13f, k, omega, 1.0f, 0.0f, steep, 0.0f};
@@ -141,7 +141,7 @@ TEST_CASE("the grid samples the analytic surface", "[screensaver][aqua]") {
     std::minstd_rand pick(9);
     for (int i = 0; i < 50; i++) {
         const float z =
-            AQUA_Z_NEAR + 0.05f + (AQUA_DEPTH - 0.1f) * helix::ui::screensaver::unit_random(pick);
+            kAquaZNear + 0.05f + (kAquaDepth - 0.1f) * helix::ui::screensaver::unit_random(pick);
         const float u = (helix::ui::screensaver::unit_random(pick) * 2.0f - 1.0f) * u_max * 0.95f;
         const float x = u * z;
         CAPTURE(x, z);
@@ -200,9 +200,9 @@ TEST_CASE("a droplet is removed only once it is below the surface at its own pos
     std::minstd_rand rng(3);
     water.init(rng, 40, 16, 0.416f);
     AquaSplashes splashes;
-    splashes.init(AQUA_MAX_DROPLETS);
+    splashes.init(kAquaMaxDroplets);
     std::vector<AquaLanding> landed;
-    landed.reserve(AQUA_MAX_DROPLETS);
+    landed.reserve(kAquaMaxDroplets);
     size_t landings = 0;
     for (int i = 0; i < 24000; i++) {
         const float t = static_cast<float>(i) * 0.0125f;
@@ -226,7 +226,7 @@ TEST_CASE("a droplet is removed only once it is below the surface at its own pos
 TEST_CASE("a droplet in flight never expires on a timer", "[screensaver][aqua][droplets]") {
     AquaWater water = calm_water();
     AquaSplashes splashes;
-    splashes.init(AQUA_MAX_DROPLETS);
+    splashes.init(kAquaMaxDroplets);
     AquaDroplet drop;
     drop.y = 0.5f;
     drop.z = 5.0f;
@@ -260,34 +260,34 @@ TEST_CASE("a droplet in flight never expires on a timer", "[screensaver][aqua][d
 TEST_CASE("the cap limits emission and never culls", "[screensaver][aqua][droplets]") {
     AquaWater water = calm_water();
     AquaSplashes splashes;
-    splashes.init(AQUA_MAX_DROPLETS);
+    splashes.init(kAquaMaxDroplets);
     std::minstd_rand rng(4);
     AquaDroplet high;
     high.y = 3.0f;
     high.z = 5.0f;
-    for (size_t i = 0; i < AQUA_MAX_DROPLETS; i++) {
+    for (size_t i = 0; i < kAquaMaxDroplets; i++) {
         CHECK(splashes.emit(high));
     }
     CHECK_FALSE(splashes.emit(high));
-    CHECK(splashes.droplets().size() == AQUA_MAX_DROPLETS);
+    CHECK(splashes.droplets().size() == kAquaMaxDroplets);
     splashes.step(0.01f, water, rng, nullptr);
-    CHECK(splashes.droplets().size() == AQUA_MAX_DROPLETS);
-    CHECK(splashes.emitted() == AQUA_MAX_DROPLETS);
+    CHECK(splashes.droplets().size() == kAquaMaxDroplets);
+    CHECK(splashes.emitted() == kAquaMaxDroplets);
 
     AquaWater real;
     std::minstd_rand wave_rng(3);
     real.init(wave_rng, 40, 16, 0.416f);
     AquaSplashes live;
-    live.init(AQUA_MAX_DROPLETS);
+    live.init(kAquaMaxDroplets);
     std::vector<AquaLanding> landed;
-    landed.reserve(AQUA_MAX_DROPLETS);
+    landed.reserve(kAquaMaxDroplets);
     size_t total_landed = 0;
     for (int i = 0; i < 16000; i++) {
         real.evaluate(static_cast<float>(i) * 0.0125f, wave_rng);
         landed.clear();
         live.step(0.0125f, real, wave_rng, &landed);
         total_landed += landed.size();
-        REQUIRE(live.droplets().size() <= AQUA_MAX_DROPLETS);
+        REQUIRE(live.droplets().size() <= kAquaMaxDroplets);
         REQUIRE(live.emitted() == live.droplets().size() + total_landed);
     }
 }
@@ -295,11 +295,11 @@ TEST_CASE("the cap limits emission and never culls", "[screensaver][aqua][drople
 TEST_CASE("droplets stay inside the tank depth", "[screensaver][aqua][droplets]") {
     AquaWater water = calm_water();
     AquaSplashes splashes;
-    splashes.init(AQUA_MAX_DROPLETS);
+    splashes.init(kAquaMaxDroplets);
     for (int i = 0; i < 20; i++) {
         AquaDroplet d;
         d.y = 1.0f;
-        d.z = AQUA_Z_NEAR + 0.2f * static_cast<float>(i);
+        d.z = kAquaZNear + 0.2f * static_cast<float>(i);
         d.vy = 4.0f;
         d.vz = (i % 2 == 0 ? 1.0f : -1.0f) * 3.0f;
         REQUIRE(splashes.emit(d));
@@ -307,8 +307,8 @@ TEST_CASE("droplets stay inside the tank depth", "[screensaver][aqua][droplets]"
     for (int i = 0; i < 600; i++) {
         splashes.move(0.01f, water, nullptr);
         for (const AquaDroplet& d : splashes.droplets()) {
-            CHECK(d.z >= AQUA_Z_NEAR);
-            CHECK(d.z <= AQUA_Z_NEAR + AQUA_DEPTH);
+            CHECK(d.z >= kAquaZNear);
+            CHECK(d.z <= kAquaZNear + kAquaDepth);
         }
     }
 }
@@ -437,12 +437,12 @@ TEST_CASE("the near-edge rim is always lit", "[screensaver][aqua]") {
     // is at least 0.7 of its brightness; the grey ramp and the cool tint bring red down to
     // this.
     const int floor_red =
-        static_cast<int>(std::pow(0.7f * AQUA_RIM_FLOOR, 1.05f) * 0.94f * 255.0f) - 2;
+        static_cast<int>(std::pow(0.7f * kAquaRimFloor, 1.05f) * 0.94f * 255.0f) - 2;
     size_t lit_checked = 0;
     for (int i = 0; i < 400; i++) {
         sim.step(50, frame.target, rng, r, dirty);
         for (int32_t x = 0; x < 400; x += 7) {
-            CHECK(sim.rim_brightness(x) >= AQUA_RIM_FLOOR);
+            CHECK(sim.rim_brightness(x) >= kAquaRimFloor);
             const float e = sim.rim_row(x);
             const auto y = static_cast<int32_t>(std::floor(e));
             if (y < 0 || y >= 240 ||
@@ -462,11 +462,11 @@ TEST_CASE("nothing draws above the water when the splashes are off", "[screensav
     AquaSim sim;
     const ClockReading r = reading_at(9 * 3600);
     sim.init(frame.target, rng, 3, r);
-    REQUIRE_FALSE(AQUA_LEVELS[3].splashes);
+    REQUIRE_FALSE(kAquaLevels[3].splashes);
     std::vector<DirtyRect> dirty;
     const PixelWriter writer(frame.target);
     const DirtyRect& clock = sim.clock_layout().bounds;
-    const int32_t scale = AQUA_LEVELS[3].scale;
+    const int32_t scale = kAquaLevels[3].scale;
     size_t lit_above = 0;
     for (int i = 0; i < 100; i++) {
         sim.step(100, frame.target, rng, r, dirty);
@@ -557,17 +557,17 @@ TEST_CASE("the water's frame-to-frame change stays at the approved look's level"
 }
 
 TEST_CASE("the ladder steps to coarser water and ends standing still", "[screensaver][aqua]") {
-    CHECK(AQUA_LEVELS[0].period_ms == helix::ui::SAVER_FAST_PERIOD);
-    for (size_t i = 1; i < AQUA_LEVEL_COUNT; i++) {
-        CHECK(AQUA_LEVELS[i].period_ms >= AQUA_LEVELS[i - 1].period_ms);
+    CHECK(kAquaLevels[0].period_ms == helix::ui::kSaverFastPeriod);
+    for (size_t i = 1; i < kAquaLevelCount; i++) {
+        CHECK(kAquaLevels[i].period_ms >= kAquaLevels[i - 1].period_ms);
     }
-    CHECK(AQUA_LEVELS[AQUA_LEVEL_COUNT - 1].still);
+    CHECK(kAquaLevels[kAquaLevelCount - 1].still);
 
     TestFrame frame(400, 240, PixelFormat::RGB565);
     std::minstd_rand rng(3);
     AquaSim sim;
     int32_t sod = 9 * 3600 + 15 * 60;
-    sim.init(frame.target, rng, AQUA_LEVEL_COUNT - 1, reading_at(sod));
+    sim.init(frame.target, rng, kAquaLevelCount - 1, reading_at(sod));
     std::vector<DirtyRect> dirty;
     sim.step(250, frame.target, rng, reading_at(sod), dirty);
     for (int i = 0; i < 10; i++) {
@@ -641,7 +641,7 @@ TEST_CASE("aqua still moves smoothly thirty days into a run", "[screensaver][aqu
     sim.init(frame.target, rng, 1, r);
     mean_change(sim, frame, rng, r, 40);
     const double early = mean_change(sim, frame, rng, r, 40);
-    AquaSimTestAccess::skip_to(sim, 30.0 * 86400.0 * helix::ui::AQUA_TIME_SCALE);
+    AquaSimTestAccess::skip_to(sim, 30.0 * 86400.0 * helix::ui::kAquaTimeScale);
     mean_change(sim, frame, rng, r, 40);
     const double late = mean_change(sim, frame, rng, r, 40);
     CAPTURE(early, late);
@@ -656,11 +656,11 @@ TEST_CASE("a drift step at the still rung repaints only the clock's old and new 
     std::minstd_rand rng(3);
     AquaSim sim;
     const ClockReading r = reading_at(9 * 3600);
-    sim.init(frame.target, rng, AQUA_LEVEL_COUNT - 1, r);
+    sim.init(frame.target, rng, kAquaLevelCount - 1, r);
     std::vector<DirtyRect> dirty;
     const DirtyRect first = sim.clock_layout().bounds;
     bool stepped = false;
-    for (uint32_t t = 0; t < 3 * helix::ui::CLOCK_DRIFT_STEP_MS && !stepped; t += 250) {
+    for (uint32_t t = 0; t < 3 * helix::ui::kClockDriftStepMs && !stepped; t += 250) {
         const std::vector<uint8_t> before = frame.bytes;
         sim.step(250, frame.target, rng, r, dirty);
         if (!(sim.clock_layout().bounds == first)) {
@@ -682,7 +682,7 @@ TEST_CASE("a drift step at the still rung repaints only the clock's old and new 
 
 TEST_CASE("aqua frames and step-downs never grow the heap, and the still rung keeps only the clock",
           "[screensaver][aqua]") {
-    const size_t start = GENERATE(range(size_t{0}, AQUA_LEVEL_COUNT));
+    const size_t start = GENERATE(range(size_t{0}, kAquaLevelCount));
     CAPTURE(start);
     TestFrame frame(800, 480, PixelFormat::XRGB8888);
     std::minstd_rand rng(3);
@@ -692,16 +692,16 @@ TEST_CASE("aqua frames and step-downs never grow the heap, and the still rung ke
     std::vector<DirtyRect> dirty;
     const size_t heap = sim.heap_bytes();
     CHECK(heap <= 1536u * 1024u);
-    for (size_t level = start; level < AQUA_LEVEL_COUNT; level++) {
+    for (size_t level = start; level < kAquaLevelCount; level++) {
         sim.request_level(level);
         for (int i = 0; i < 20; i++) {
-            sim.step(level + 1 == AQUA_LEVEL_COUNT ? 250 : 33, frame.target, rng, r, dirty);
+            sim.step(level + 1 == kAquaLevelCount ? 250 : 33, frame.target, rng, r, dirty);
             CHECK(sim.heap_bytes() <= heap);
         }
     }
     // The still rung has painted its scene and holds just what redraws the clock.
     const size_t still = sim.heap_bytes();
-    if (start + 1 < AQUA_LEVEL_COUNT) {
+    if (start + 1 < kAquaLevelCount) {
         CHECK(still * 2 < heap);
     }
 

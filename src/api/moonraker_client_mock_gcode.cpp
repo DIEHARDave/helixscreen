@@ -575,10 +575,10 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_move(const std::stri
     // Position limits: the persona's stepper travel. Z allows slight negative
     // for probe calibration.
     const auto axis_max = helix::mock::descriptor(printer_type_).axis_max;
-    constexpr double X_MIN = mock_internal::MOCK_BED_X_MIN;
-    constexpr double Y_MIN = mock_internal::MOCK_BED_Y_MIN;
-    constexpr double Z_MIN = -0.5;
-    const double X_MAX = axis_max.x, Y_MAX = axis_max.y, Z_MAX = axis_max.z;
+    constexpr double kXMin = mock_internal::kMockBedXMin;
+    constexpr double kYMin = mock_internal::kMockBedYMin;
+    constexpr double kZMin = -0.5;
+    const double kXMax = axis_max.x, kYMax = axis_max.y, Z_MAX = axis_max.z;
 
     // Helper lambda to parse axis value from gcode string
     auto parse_axis = [&gcode](char axis) -> std::pair<bool, double> {
@@ -618,13 +618,13 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_move(const std::stri
     // Check limits (like real Klipper)
     bool out_of_range = false;
     std::string error_detail;
-    if (target_x < X_MIN || target_x > X_MAX) {
+    if (target_x < kXMin || target_x > kXMax) {
         error_detail = "Move out of range: X=" + std::to_string(target_x);
         out_of_range = true;
-    } else if (target_y < Y_MIN || target_y > Y_MAX) {
+    } else if (target_y < kYMin || target_y > kYMax) {
         error_detail = "Move out of range: Y=" + std::to_string(target_y);
         out_of_range = true;
-    } else if (target_z < Z_MIN || target_z > Z_MAX) {
+    } else if (target_z < kZMin || target_z > Z_MAX) {
         error_detail = "Move out of range: Z=" + std::to_string(target_z);
         out_of_range = true;
     }

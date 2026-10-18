@@ -143,7 +143,7 @@ class PrinterCalibrationStateTestAccess {
         // Debounced view of idle_timeout.printing; not a subject, so
         // deinit_subjects() leaves it latched. A test that drove a blocking op
         // otherwise makes every later test's is_blocking_operation_active()
-        // read true once its SETTLE window has passed.
+        // read true once its kSettle window has passed.
         s.idle_timeout_busy_.set_printing(false);
     }
 };
@@ -356,7 +356,7 @@ class PrinterStateTestAccess {
      * @brief Make the blocking-op guard see a SUSTAINED idle_timeout "Printing"
      *
      * Setting the subject alone no longer reaches is_blocking_operation_active():
-     * it reads IdleTimeoutBusy, which requires the flag to hold for SETTLE before
+     * it reads IdleTimeoutBusy, which requires the flag to hold for kSettle before
      * it counts (see include/idle_timeout_busy.h). A test that means "an external
      * blocking op is under way" means one that has already outlasted that window,
      * so back-date the transition rather than sleeping. Use this instead of
@@ -366,7 +366,7 @@ class PrinterStateTestAccess {
     static void set_sustained_idle_timeout_printing(PrinterState& ps, bool on) {
         lv_subject_set_int(ps.calibration_state().get_idle_timeout_printing_subject(), on ? 1 : 0);
         ps.calibration_state().idle_timeout_busy().set_printing(on, IdleTimeoutBusy::clock::now() -
-                                                                        IdleTimeoutBusy::SETTLE);
+                                                                        IdleTimeoutBusy::kSettle);
     }
 };
 

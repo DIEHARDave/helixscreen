@@ -271,7 +271,7 @@ struct FilamentOpSurface {
 
     /// The material to heat for when neither the target lane nor the external
     /// spool names one (a material preset the surface offers). Asked once, when
-    /// the op is requested. Unset heats to DEFAULT_LOAD_PREHEAT_TEMP there.
+    /// the op is requested. Unset heats to kDefaultLoadPreheatTemp there.
     std::function<std::optional<PreheatTarget>()> preheat_fallback_material;
 
     /// The preheat this op waited on ended without running it: the user

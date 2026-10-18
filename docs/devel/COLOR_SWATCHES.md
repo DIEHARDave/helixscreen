@@ -11,10 +11,10 @@ draws its own.
 | Rule | What it means |
 |------|---------------|
 | Shape | A pure colour is a **circle**. A labelled chip (colour with text on it, the mapping row's `T0`) is a **rounded rect**. Colour preview **areas** (the colour pickers' previews) and the AMS sidebar's tall loaded bar stay rounded rects: they are areas, not swatches. Bands that are part of a larger chip (`filament_swatch`, `tool_switcher_band`) keep their own geometry. |
-| Edge | One rule: a swatch gets a `#border` edge when any of its colours has a WCAG contrast ratio under `SWATCH_EDGE_CONTRAST_RATIO` (1.75) against what it sits on: its nearest ancestor with an opaque background, judged at draw time, else the theme's `screen_bg` and `elevated_bg` (`swatch_edge_surfaces()`). Nothing republishes on a theme switch; the theme colours are cached per theme generation. No swatch carries a border of its own and no rule keys on dark mode. |
+| Edge | One rule: a swatch gets a `#border` edge when any of its colours has a WCAG contrast ratio under `kSwatchEdgeContrastRatio` (1.75) against what it sits on: its nearest ancestor with an opaque background, judged at draw time, else the theme's `screen_bg` and `elevated_bg` (`swatch_edge_surfaces()`). Nothing republishes on a theme switch; the theme colours are cached per theme generation. No swatch carries a border of its own and no rule keys on dark mode. |
 | Selection | One mark: `color_swatch`'s inside ring (`selected_subject` + `index`). |
 | Multi-colour | A filament with two or more colours (`SlotInfo::multi_color_hexes`, Spoolman's `multi_color_hexes`) shows them everywhere its colour shows, as equal-area bands across the top-left to bottom-right diagonal, clipped to the shape. A lane spool repaints on `AmsState::get_slot_paint_subject()` (`SlotInfo::paint_key()`) as well as its colour, so a new split or finish under the same colour shows. |
-| Finish | Silk, matte, marble and sparkle come from the filament's names, never from a widget. A swatch with less area than a `SWATCH_FINISH_MIN_PX` (16 px) square cannot show a finish and paints plain; a long thin band or a spool body of the same short side keeps it. |
+| Finish | Silk, matte, marble and sparkle come from the filament's names, never from a widget. A swatch with less area than a `kSwatchFinishMinPx` (16 px) square cannot show a finish and paints plain; a long thin band or a spool body of the same short side keeps it. |
 
 ## Finishes
 

@@ -574,7 +574,7 @@ Force the screensaver to start immediately instead of waiting for the idle timeo
 
 | Property | Value |
 |----------|-------|
-| **Values** | A saver name from `include/screensaver_registry.h#"SCREENSAVERS[]"` (`toasters`, `starfield`, `pipes`, `bounce`, `fireworks`, `logo`, `maze`, `hyperspace`, `flipclock`, `fireflies`, `aqua`, `highfly`), or `1` / any other value (uses the configured type, falling back to flying toasters). A saver stored as too heavy for the board runs its fallback, as the idle screen would (`docs/devel/SCREENSAVERS.md` § "The gate") |
+| **Values** | A saver name from `include/screensaver_registry.h#"kScreensavers[]"` (`toasters`, `starfield`, `pipes`, `bounce`, `fireworks`, `logo`, `maze`, `hyperspace`, `flipclock`, `fireflies`, `aqua`, `highfly`), or `1` / any other value (uses the configured type, falling back to flying toasters). A saver stored as too heavy for the board runs its fallback, as the idle screen would (`docs/devel/SCREENSAVERS.md` § "The gate") |
 | **Default** | Unset — normal idle-timeout behavior |
 | **File** | `src/application/display_manager.cpp`, names in `include/screensaver_registry.h` |
 
@@ -899,7 +899,7 @@ Press-debounce for the calibration wizard. **On by default.** The calibration st
 |----------|-------------|---------|
 | `HELIX_TOUCH_CAL_DEBOUNCE` | Capture-on-press / commit-on-release debounce. Set to `0` to opt out to the legacy sample-on-press path. | Enabled |
 
-**How it works:** `on_press()` captures the press point without sampling; `on_release()` commits it. A commit within **150 ms** (`REFRACTORY_MS`) of the previous committed sample is treated as bounce and dropped. A **600 ms** (`STALL_COMMIT_MS`) stall timer commits a pending press for controllers that never deliver a clean release, so calibration can never wedge. Setting `HELIX_TOUCH_CAL_DEBOUNCE=0` restores the exact legacy behavior — sample on every press, release is a no-op — for A/B testing on real hardware.
+**How it works:** `on_press()` captures the press point without sampling; `on_release()` commits it. A commit within **150 ms** (`kRefractoryMs`) of the previous committed sample is treated as bounce and dropped. A **600 ms** (`kStallCommitMs`) stall timer commits a pending press for controllers that never deliver a clean release, so calibration can never wedge. Setting `HELIX_TOUCH_CAL_DEBOUNCE=0` restores the exact legacy behavior — sample on every press, release is a no-op — for A/B testing on real hardware.
 
 **Composes with `HELIX_DEBUG_TOUCH`:** set both to capture the validation evidence in a debug bundle — `HELIX_DEBUG_TOUCH=1` logs one `[TouchDebug] sample N/3 …` line per recorded sample, and with debounce on you also get `[TouchDebug] dropped bounce sample, dt=…ms` for each collapsed burst press.
 
@@ -1930,7 +1930,7 @@ Detection only — nothing is killed. A deadlocked UI thread leaves the process 
 | Property | Value |
 |----------|-------|
 | **Values** | `0`–`3600` seconds. `0` disables detection. Out-of-range and unparseable values are ignored with a warning. |
-| **Default** | `60` (`MainLoopHangDetector::DEFAULT_THRESHOLD_MS`) |
+| **Default** | `60` (`MainLoopHangDetector::kDefaultThresholdMs`) |
 | **File** | `src/application/application.cpp` (wiring), `include/main_loop_heartbeat.h` (logic) |
 
 ```bash
@@ -2000,7 +2000,7 @@ The variable is read twice, because the ring is installed by `init_early()` and 
 
 ### `HELIX_LOG_ROTATE_BYTES` / `HELIX_LOG_ROTATE_FILES`
 
-Tune rotating-file-log sizing on constrained-flash platforms. Together they cap total log disk usage at roughly `BYTES × FILES`.
+Tune rotating-file-log sizing on constrained-flash platforms. Together they cap total log disk usage at roughly `kBytes × FILES`.
 
 | Property | Value |
 |----------|-------|

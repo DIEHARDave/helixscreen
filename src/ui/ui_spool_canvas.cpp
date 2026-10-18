@@ -34,8 +34,8 @@
 // Shows: back flange (left), filament cylinder (middle), front flange (right), hub hole (center)
 // Flange size, depth skew and flange spacing are the tray's camera
 // (ams_tray_projection.h), shared with the box and lid.
-static constexpr float HUB_RADIUS = 0.10f; // Center hub hole radius
-static constexpr int32_t DEFAULT_SIZE = 64;
+static constexpr float kHubRadius = 0.10f; // Center hub hole radius
+static constexpr int32_t kDefaultSize = 64;
 static constexpr uint32_t DEFAULT_COLOR = 0xE0E0E0; // Default white/light filament
 
 // Current-spool glow layer, grown from the spool's silhouette. Capable
@@ -43,16 +43,16 @@ static constexpr uint32_t DEFAULT_COLOR = 0xE0E0E0; // Default white/light filam
 namespace {
 enum class SpoolGlow : uint8_t { None, Outline, Halo };
 } // namespace
-static constexpr int GLOW_HALO_DILATE = 3;
-static constexpr int GLOW_HALO_BOX_R = 4; // three box passes ~ Gaussian sigma 4.5
-static constexpr int GLOW_HALO_PASSES = 3;
-static constexpr int GLOW_RIM_DILATE = 1;
-static constexpr int GLOW_RIM_BOX_R = 1; // one box pass ~ Gaussian sigma 0.8
-static constexpr uint8_t GLOW_RIM_LIGHTEN = 60;
-static constexpr lv_opa_t GLOW_HALO_SECOND_OPA = 153; // 60%
-static constexpr int32_t GLOW_MARGIN = GLOW_HALO_DILATE + GLOW_HALO_PASSES * GLOW_HALO_BOX_R;
+static constexpr int kGlowHaloDilate = 3;
+static constexpr int kGlowHaloBoxR = 4; // three box passes ~ Gaussian sigma 4.5
+static constexpr int kGlowHaloPasses = 3;
+static constexpr int kGlowRimDilate = 1;
+static constexpr int kGlowRimBoxR = 1; // one box pass ~ Gaussian sigma 0.8
+static constexpr uint8_t kGlowRimLighten = 60;
+static constexpr lv_opa_t kGlowHaloSecondOpa = 153; // 60%
+static constexpr int32_t kGlowMargin = kGlowHaloDilate + kGlowHaloPasses * kGlowHaloBoxR;
 static constexpr int32_t OUTLINE_PX = 2;
-static constexpr uint8_t GLOW_DISC_SHAPE = 0xFF; // fill_bucket of a flat-style (disc) glow
+static constexpr uint8_t kGlowDiscShape = 0xFF; // fill_bucket of a flat-style (disc) glow
 
 // Note: Spool body colors now come from theme tokens in globals.xml:
 // - spool_body: Front flange color
@@ -65,13 +65,13 @@ static constexpr uint8_t GLOW_DISC_SHAPE = 0xFF; // fill_bucket of a flat-style 
 // draw_gradient_ellipse / draw_gradient_rect / draw_ellipse_left_edge all call
 // sqrtf() on values in [0,1] in their per-scanline inner loops. A 1024-entry
 // table fits comfortably in L1 and collapses those to a single load + branch.
-static constexpr int SQRT_LUT_SIZE = 1024;
+static constexpr int kSqrtLutSize = 1024;
 
-static const std::array<float, SQRT_LUT_SIZE>& get_sqrt_lut() {
-    static const std::array<float, SQRT_LUT_SIZE> table = []() {
-        std::array<float, SQRT_LUT_SIZE> t{};
-        for (int i = 0; i < SQRT_LUT_SIZE; ++i) {
-            t[i] = sqrtf(static_cast<float>(i) / static_cast<float>(SQRT_LUT_SIZE - 1));
+static const std::array<float, kSqrtLutSize>& get_sqrt_lut() {
+    static const std::array<float, kSqrtLutSize> table = []() {
+        std::array<float, kSqrtLutSize> t{};
+        for (int i = 0; i < kSqrtLutSize; ++i) {
+            t[i] = sqrtf(static_cast<float>(i) / static_cast<float>(kSqrtLutSize - 1));
         }
         return t;
     }();
@@ -83,7 +83,7 @@ static inline float fast_sqrt_01(float x) {
         return 0.0f;
     if (x >= 1.0f)
         return 1.0f;
-    int idx = static_cast<int>(x * static_cast<float>(SQRT_LUT_SIZE - 1));
+    int idx = static_cast<int>(x * static_cast<float>(kSqrtLutSize - 1));
     return get_sqrt_lut()[idx];
 }
 
@@ -95,13 +95,13 @@ static inline float fast_sqrt_01(float x) {
 // cache hit collapses that to a single memcpy (~16KB). Fill level is bucketed
 // into 10% steps — visually indistinguishable at this scale, and it keeps the
 // working set small while scrolling a list of many spools.
-static constexpr size_t CACHE_MAX_ENTRIES = 128;
-static constexpr int FILL_BUCKETS = 10;
+static constexpr size_t kCacheMaxEntries = 128;
+static constexpr int kFillBuckets = 10;
 
 struct SpoolCacheKey {
     uint32_t color_rgb; // 0x00RRGGBB
     uint16_t size;
-    uint8_t fill_bucket; // 0..FILL_BUCKETS
+    uint8_t fill_bucket; // 0..kFillBuckets
     SpoolGlow glow;
     uint32_t filament_hash = 0; // multi-colour list and finish; 0 for a plain single colour
 
@@ -134,7 +134,7 @@ static SpoolCacheIndex s_cache_index;
 
 static uint8_t compute_fill_bucket(float fill) {
     float clamped = fill < 0.0f ? 0.0f : (fill > 1.0f ? 1.0f : fill);
-    return static_cast<uint8_t>(clamped * static_cast<float>(FILL_BUCKETS) + 0.5f);
+    return static_cast<uint8_t>(clamped * static_cast<float>(kFillBuckets) + 0.5f);
 }
 
 static uint32_t color_to_rgb24(lv_color_t c) {
@@ -158,7 +158,7 @@ static void cache_put(const SpoolCacheKey& key, std::vector<uint8_t>&& pixels) {
         s_cache_list.splice(s_cache_list.begin(), s_cache_list, idx_it->second);
         return;
     }
-    if (s_cache_list.size() >= CACHE_MAX_ENTRIES) {
+    if (s_cache_list.size() >= kCacheMaxEntries) {
         s_cache_index.erase(s_cache_list.back().key);
         s_cache_list.pop_back();
     }
@@ -169,7 +169,7 @@ static void cache_put(const SpoolCacheKey& key, std::vector<uint8_t>&& pixels) {
 struct SpoolCanvasData {
     lv_obj_t* canvas = nullptr;
     lv_draw_buf_t* draw_buf = nullptr;
-    int32_t size = DEFAULT_SIZE;
+    int32_t size = kDefaultSize;
     lv_color_t color = lv_color_hex(DEFAULT_COLOR);
     float fill_level = 1.0f;
     /// A multi-colour filament's colours (two or more), else empty: the body
@@ -550,19 +550,19 @@ static void paint_glow(lv_draw_buf_t* buf, const std::vector<uint8_t>& mask, Spo
     };
     std::vector<uint8_t> halo, rim;
     if (glow == SpoolGlow::Halo) {
-        halo = grow_and_soften(mask, w, h, GLOW_HALO_DILATE, GLOW_HALO_BOX_R, GLOW_HALO_PASSES);
-        rim = grow_and_soften(mask, w, h, GLOW_RIM_DILATE, GLOW_RIM_BOX_R, 1);
+        halo = grow_and_soften(mask, w, h, kGlowHaloDilate, kGlowHaloBoxR, kGlowHaloPasses);
+        rim = grow_and_soften(mask, w, h, kGlowRimDilate, kGlowRimBoxR, 1);
     } else {
         halo = grow_and_soften(mask, w, h, OUTLINE_PX, 0, 0);
     }
-    const lv_color_t rim_color = ams_draw::lighten_color(accent, GLOW_RIM_LIGHTEN);
+    const lv_color_t rim_color = ams_draw::lighten_color(accent, kGlowRimLighten);
     for (int32_t y = 0; y < h; y++) {
         auto* row = reinterpret_cast<lv_color32_t*>(buf->data + y * buf->header.stride);
         for (int32_t x = 0; x < w; x++) {
             const size_t i = static_cast<size_t>(y * w + x);
             lv_color32_t px = lv_color_to_32(accent, halo[i]);
             if (glow == SpoolGlow::Halo) {
-                px = over(lv_color_to_32(accent, LV_OPA_MIX2(halo[i], GLOW_HALO_SECOND_OPA)), px);
+                px = over(lv_color_to_32(accent, LV_OPA_MIX2(halo[i], kGlowHaloSecondOpa)), px);
                 px = over(lv_color_to_32(rim_color, rim[i]), px);
             }
             row[x] = px;
@@ -577,11 +577,11 @@ static void render_spool_pixels(SpoolCanvasData* data) {
     int32_t cy = size / 2; // Vertical center
 
     // Calculate dimensions - vertical radius and horizontal (compressed) radius
-    int32_t flange_ry = (int32_t)(size * helix::ui::tray::SPOOL_FLANGE_RADIUS); // Vertical radius
-    int32_t flange_rx = (int32_t)(flange_ry * helix::ui::tray::DEPTH_SKEW); // Horizontal (narrower)
-    int32_t hub_ry = (int32_t)(size * HUB_RADIUS);
-    int32_t hub_rx = (int32_t)(hub_ry * helix::ui::tray::DEPTH_SKEW);
-    int32_t spool_width = (int32_t)(size * helix::ui::tray::SPOOL_WIDTH);
+    int32_t flange_ry = (int32_t)(size * helix::ui::tray::kSpoolFlangeRadius); // Vertical radius
+    int32_t flange_rx = (int32_t)(flange_ry * helix::ui::tray::kDepthSkew); // Horizontal (narrower)
+    int32_t hub_ry = (int32_t)(size * kHubRadius);
+    int32_t hub_rx = (int32_t)(hub_ry * helix::ui::tray::kDepthSkew);
+    int32_t spool_width = (int32_t)(size * helix::ui::tray::kSpoolWidth);
 
     // X positions for left (back) and right (front) flanges
     int32_t center_x = size / 2;
@@ -593,7 +593,7 @@ static void render_spool_pixels(SpoolCanvasData* data) {
     float fill = LV_CLAMP(data->fill_level, 0.0f, 1.0f);
     int32_t max_filament_ry = (int32_t)(flange_ry * 0.85f); // Flanges 15% taller than full filament
     int32_t filament_ry = hub_ry + (int32_t)((max_filament_ry - hub_ry) * fill);
-    int32_t filament_rx = (int32_t)(filament_ry * helix::ui::tray::DEPTH_SKEW);
+    int32_t filament_rx = (int32_t)(filament_ry * helix::ui::tray::kDepthSkew);
 
     // Colors (from theme tokens)
     lv_color_t back_color = theme_manager_get_color("spool_body_shade");
@@ -808,7 +808,7 @@ static void* spool_canvas_xml_create(lv_xml_parser_state_t* state, const char** 
 
     auto data_ptr = std::make_unique<SpoolCanvasData>();
     data_ptr->canvas = canvas;
-    data_ptr->size = DEFAULT_SIZE;
+    data_ptr->size = kDefaultSize;
     data_ptr->color = lv_color_hex(DEFAULT_COLOR);
     data_ptr->fill_level = 1.0f;
 
@@ -880,7 +880,7 @@ lv_obj_t* ui_spool_canvas_create(lv_obj_t* parent, int32_t size) {
 
     // Use default size if not specified
     if (size <= 0) {
-        size = DEFAULT_SIZE;
+        size = kDefaultSize;
     }
 
     lv_obj_t* canvas = lv_canvas_create(parent);
@@ -1012,7 +1012,7 @@ void ui_spool_canvas_invalidate_cache(void) {
 // shows it: the cache and the layers hold references, so a buffer lives
 // exactly as long as something needs it. Glows keep their own small LRU so
 // they never evict spool renders.
-static constexpr size_t GLOW_CACHE_MAX_ENTRIES = 4;
+static constexpr size_t kGlowCacheMaxEntries = 4;
 
 namespace {
 using GlowImage = std::shared_ptr<lv_draw_buf_t>;
@@ -1060,7 +1060,7 @@ static GlowImage glow_cache_get(const SpoolCacheKey& key) {
 
 static void glow_cache_put(const SpoolCacheKey& key, GlowImage image) {
     s_glow_cache.push_front({key, std::move(image)});
-    if (s_glow_cache.size() > GLOW_CACHE_MAX_ENTRIES)
+    if (s_glow_cache.size() > kGlowCacheMaxEntries)
         s_glow_cache.pop_back();
 }
 
@@ -1113,12 +1113,12 @@ static void paint_glow_layer(lv_obj_t* glow, SpoolGlowData& g) {
         return;
     }
     const SpoolGlow mode = g.simple ? SpoolGlow::Outline : SpoolGlow::Halo;
-    const int32_t margin = g.simple ? OUTLINE_PX : GLOW_MARGIN;
+    const int32_t margin = g.simple ? OUTLINE_PX : kGlowMargin;
     const lv_color_t accent = helix::ui::tube_accent();
     // A glow depends only on the silhouette, never the filament color, so the
     // key carries the accent where a spool render carries its color.
     const SpoolCacheKey key{color_to_rgb24(accent), static_cast<uint16_t>(g.size),
-                            spool ? spool->last_key.fill_bucket : GLOW_DISC_SHAPE, mode};
+                            spool ? spool->last_key.fill_bucket : kGlowDiscShape, mode};
     GlowImage image = glow_cache_get(key);
     if (!image) {
         image = make_glow_image(g.size + 2 * margin);

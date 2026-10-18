@@ -11,7 +11,7 @@
 using helix::mock::PrinterType;
 
 namespace {
-constexpr PrinterType ALL_TYPES[] = {
+constexpr PrinterType kAllTypes[] = {
     PrinterType::VORON_24,
     PrinterType::VORON_TRIDENT,
     PrinterType::CREALITY_K1,
@@ -36,7 +36,7 @@ TEST_CASE("Persona ids are unique and every type has a persona", "[mock][persona
         CHECK(ids.insert(p.id).second);
         CHECK_FALSE(p.display_name.empty());
     }
-    for (PrinterType t : ALL_TYPES) {
+    for (PrinterType t : kAllTypes) {
         bool named = false;
         for (const auto& p : helix::mock::PERSONAS)
             named = named || p.type == t;
@@ -48,8 +48,8 @@ TEST_CASE("Persona ids are unique and every type has a persona", "[mock][persona
 
 TEST_CASE("personas_one_per_type lists every type exactly once", "[mock][persona]") {
     const auto personas = helix::test::personas_one_per_type();
-    CHECK(personas.size() == std::size(ALL_TYPES));
-    for (PrinterType t : ALL_TYPES) {
+    CHECK(personas.size() == std::size(kAllTypes));
+    for (PrinterType t : kAllTypes) {
         INFO("PrinterType " << static_cast<int>(t));
         CHECK(std::count_if(personas.begin(), personas.end(),
                             [t](const auto* p) { return p->type == t; }) == 1);

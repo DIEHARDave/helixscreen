@@ -62,7 +62,7 @@ struct HeadRequest {
 
 /// How long the operator prompt may wait before the run unwinds itself. A hot
 /// nozzle must not sit unattended.
-constexpr uint32_t PROMPT_TIMEOUT_MS = 180'000;
+constexpr uint32_t kPromptTimeoutMs = 180'000;
 
 /// What one Load or Unload needs to know, read off the backend at dispatch.
 struct Request {
@@ -76,7 +76,7 @@ struct Request {
     std::string macro;
     /// The prompt may not outlive this. A Load of several tools asks once, up
     /// front, for every strand.
-    uint32_t prompt_timeout_ms = PROMPT_TIMEOUT_MS;
+    uint32_t prompt_timeout_ms = kPromptTimeoutMs;
     /// The prompt fields are ENGLISH: they travel inside RESPOND lines, which
     /// every client attached to the printer shows verbatim, so no locale of
     /// ours may decide what Mainsail displays.

@@ -130,7 +130,7 @@ TEST_CASE("swatch_finish_of: a slot's finish comes from its first name that has 
 }
 
 TEST_CASE("swatch_effective_finish: below the minimum area a finish paints plain", "[swatch]") {
-    const int32_t m = helix::ui::SWATCH_FINISH_MIN_PX;
+    const int32_t m = helix::ui::kSwatchFinishMinPx;
     CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Silk, m, m) == SwatchFinish::Silk);
     CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Silk, m - 1, m) == SwatchFinish::Plain);
     CHECK(helix::ui::swatch_effective_finish(SwatchFinish::Marble, 8, 8) == SwatchFinish::Plain);
@@ -324,14 +324,14 @@ TEST_CASE_METHOD(LVGLTestFixture, "draw_swatch: marble and sparkle texture a lar
     lv_canvas_fill_bg(c.canvas, lv_color_hex(0x0000FF), LV_OPA_COVER);
     lv_layer_t layer;
     lv_canvas_init_layer(c.canvas, &layer);
-    const lv_area_t dot = {0, 0, helix::ui::SWATCH_FINISH_MIN_PX - 2,
-                           helix::ui::SWATCH_FINISH_MIN_PX - 2};
+    const lv_area_t dot = {0, 0, helix::ui::kSwatchFinishMinPx - 2,
+                           helix::ui::kSwatchFinishMinPx - 2};
     p.radius = 0;
     p.cache = &c.cache;
     helix::ui::draw_swatch(&layer, dot, p);
     lv_canvas_finish_layer(c.canvas, &layer);
-    for (int32_t y = 0; y < helix::ui::SWATCH_FINISH_MIN_PX - 1; ++y) {
-        for (int32_t x = 0; x < helix::ui::SWATCH_FINISH_MIN_PX - 1; ++x) {
+    for (int32_t y = 0; y < helix::ui::kSwatchFinishMinPx - 1; ++y) {
+        for (int32_t x = 0; x < helix::ui::kSwatchFinishMinPx - 1; ++x) {
             CHECK(brightness(c.px(x, y)) == 3 * 0x80);
         }
     }

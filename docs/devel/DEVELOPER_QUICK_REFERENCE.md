@@ -564,7 +564,7 @@ CLI: `--layout ultrawide` | Config: `display.layout` in settings.json
 Versioned migration system for upgrading existing user configs on update.
 
 **Adding a migration:**
-1. Bump `CURRENT_CONFIG_VERSION` in `include/config.h`
+1. Bump `kCurrentConfigVersion` in `include/config.h`
 2. Write `migrate_vN_to_vM(json& config, const std::string& config_path)` in `src/system/config_migrations.cpp` (anonymous namespace)
 3. Add `{M, migrate_vN_to_vM},` to the end of `kMigrations`
 4. Update `get_default_config()` if the new key needs a default for fresh installs

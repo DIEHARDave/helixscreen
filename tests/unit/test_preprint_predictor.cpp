@@ -39,13 +39,13 @@ TEST_CASE("PreprintPredictor: homing estimate never drops below the floor", "[pr
 
     SECTION("history that barely saw homing") {
         predictor.load_entries({{120, 1700000000, {{homing, 3}}}});
-        REQUIRE(predictor.predicted_homing_seconds() == PreprintPredictor::MIN_HOMING_SECONDS);
+        REQUIRE(predictor.predicted_homing_seconds() == PreprintPredictor::kMinHomingSeconds);
     }
 
     SECTION("history with no homing phase at all") {
         predictor.load_entries(
             {{120, 1700000000, {{static_cast<int>(PrintStartPhase::BED_MESH), 60}}}});
-        REQUIRE(predictor.predicted_homing_seconds() == PreprintPredictor::MIN_HOMING_SECONDS);
+        REQUIRE(predictor.predicted_homing_seconds() == PreprintPredictor::kMinHomingSeconds);
     }
 
     SECTION("history with a real homing time") {
@@ -536,7 +536,7 @@ TEST_CASE("PreprintPredictor: estimate without history sums heating and default 
 
     float phases = 0.0f;
     for (const auto& [phase, secs] : PreprintPredictor::default_phase_durations()) {
-        phases += phase == homing ? std::max(secs, PreprintPredictor::MIN_HOMING_SECONDS) : secs;
+        phases += phase == homing ? std::max(secs, PreprintPredictor::kMinHomingSeconds) : secs;
     }
 
     SECTION("heating sits on top of the phases") {
@@ -548,8 +548,8 @@ TEST_CASE("PreprintPredictor: estimate without history sums heating and default 
 
     SECTION("an unknown nozzle target holds the placeholder") {
         const auto e = predictor.estimate({0.0f, 70.0f, false});
-        CHECK(e.durations.at(nozzle) == PreprintPredictor::UNKNOWN_NOZZLE_HEAT_SECONDS);
-        CHECK(e.total_seconds == 70.0f + PreprintPredictor::UNKNOWN_NOZZLE_HEAT_SECONDS + phases);
+        CHECK(e.durations.at(nozzle) == PreprintPredictor::kUnknownNozzleHeatSeconds);
+        CHECK(e.total_seconds == 70.0f + PreprintPredictor::kUnknownNozzleHeatSeconds + phases);
     }
 
     SECTION("a skipped phase leaves") {

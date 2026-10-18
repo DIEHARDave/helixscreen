@@ -65,7 +65,7 @@ enum class Capability : uint8_t {
     Count
 };
 
-inline constexpr size_t CAPABILITY_COUNT = static_cast<size_t>(Capability::Count);
+inline constexpr size_t kCapabilityCount = static_cast<size_t>(Capability::Count);
 
 /**
  * @brief Manages printer capability subjects for UI feature visibility
@@ -365,7 +365,7 @@ class PrinterCapabilitiesState {
     /// on a K2 Plus (2026-08-24): SpoolmanManager's observer watches this flag's
     /// falling edge and drops the identity cache behind every slot's vendor and
     /// material. Latch instead, and seed init_subjects() from what we already know.
-    std::array<std::optional<int>, CAPABILITY_COUNT> pending_capability_values_{};
+    std::array<std::optional<int>, kCapabilityCount> pending_capability_values_{};
 
     /// Write a capability subject, or latch the value when subjects do not exist.
     void set_capability(Capability cap, int value);
@@ -387,7 +387,7 @@ class PrinterCapabilitiesState {
     /// stepper_z position_endstop from configfile.settings (microns)
     int stepper_z_endstop_microns_ = 0;
 
-    std::array<lv_subject_t, CAPABILITY_COUNT> capability_subjects_{};
+    std::array<lv_subject_t, kCapabilityCount> capability_subjects_{};
     std::vector<WebcamInfo> webcams_; // every enabled webcam, Moonraker order
     std::string webcam_stream_url_;   // auto-pick: MJPEG stream URL
     std::string webcam_snapshot_url_; // snapshot URL

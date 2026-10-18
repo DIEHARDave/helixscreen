@@ -21,7 +21,7 @@
 #include "connection_state.h" // For ConnectionState enum
 #include "device_display_name.h"
 #include "hardware_validator.h"
-#include "i_moonraker_client.h" // for helix::CACHED_SNAPSHOT_MARKER
+#include "i_moonraker_client.h" // for helix::kCachedSnapshotMarker
 #include "json_utils.h"
 #include "lvgl.h"
 #include "lvgl/src/display/lv_display_private.h" // For rendering_in_progress check
@@ -293,8 +293,8 @@ std::optional<StatusFrame> helix::parse_status_notification(const json& notifica
         frame.eventtime = (*params)[1].get<double>();
     }
     frame.from_cached_snapshot =
-        helix::json_util::safe_bool(notification, helix::CACHED_SNAPSHOT_MARKER);
-    frame.whole_objects = helix::json_util::safe_bool(notification, helix::WHOLE_OBJECTS_MARKER);
+        helix::json_util::safe_bool(notification, helix::kCachedSnapshotMarker);
+    frame.whole_objects = helix::json_util::safe_bool(notification, helix::kWholeObjectsMarker);
     return frame;
 }
 

@@ -91,7 +91,7 @@ TEST_CASE("ThermalRateModel rate priority", "[thermal_rate]") {
     model.reset(25.0f);
 
     // Default only
-    REQUIRE(model.best_rate() == Catch::Approx(ThermalRateModel::FALLBACK_DEFAULT_RATE));
+    REQUIRE(model.best_rate() == Catch::Approx(ThermalRateModel::kFallbackDefaultRate));
 
     // Custom default
     model.set_default_rate(1.5f);
@@ -375,11 +375,11 @@ TEST_CASE("ThermalRateManager apply_archetype_defaults", "[thermal_rate]") {
 
 TEST_CASE("ThermalRateManager takes measured rates from the printer database", "[thermal_rate]") {
     // A 256mm bed reads as a medium bed (1.5 s/C) to the size guess.
-    constexpr float BED_X_MAX = 256.0f;
+    constexpr float kBedXMax = 256.0f;
 
     SECTION("Centauri Carbon: 24.5 to 105C took ~484s on the printer") {
         ThermalRateManager manager;
-        manager.apply_archetype_defaults(BED_X_MAX, "Elegoo Centauri Carbon");
+        manager.apply_archetype_defaults(kBedXMax, "Elegoo Centauri Carbon");
         REQUIRE(manager.estimate_heating_seconds("heater_bed", 24.5f, 105.0f) >= 400.0f);
         REQUIRE(manager.get_model("heater_bed").best_rate() == Catch::Approx(6.0f));
         REQUIRE(manager.get_model("extruder").best_rate() == Catch::Approx(0.4f));
@@ -387,7 +387,7 @@ TEST_CASE("ThermalRateManager takes measured rates from the printer database", "
 
     SECTION("A printer without measured rates keeps the size guess") {
         ThermalRateManager manager;
-        manager.apply_archetype_defaults(BED_X_MAX, "Voron 2.4");
+        manager.apply_archetype_defaults(kBedXMax, "Voron 2.4");
         REQUIRE(manager.get_model("heater_bed").best_rate() == Catch::Approx(1.5f));
         REQUIRE(manager.get_model("extruder").best_rate() == Catch::Approx(0.25f));
     }
@@ -395,7 +395,7 @@ TEST_CASE("ThermalRateManager takes measured rates from the printer database", "
     SECTION("A rate learned on the printer still wins") {
         ThermalRateManager manager;
         manager.get_model("heater_bed").load_history(4.0f);
-        manager.apply_archetype_defaults(BED_X_MAX, "Elegoo Centauri Carbon");
+        manager.apply_archetype_defaults(kBedXMax, "Elegoo Centauri Carbon");
         REQUIRE(manager.get_model("heater_bed").best_rate() == Catch::Approx(4.0f));
     }
 }

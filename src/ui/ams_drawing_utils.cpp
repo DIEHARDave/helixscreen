@@ -134,8 +134,8 @@ lv_obj_t* create_transparent_container(lv_obj_t* parent) {
 static void pulse_scale_anim_cb(void* var, int32_t value) {
     auto* obj = static_cast<lv_obj_t*>(var);
     lv_obj_set_style_transform_scale(obj, value, LV_PART_MAIN);
-    int32_t range = PULSE_SCALE_MAX - PULSE_SCALE_MIN;
-    int32_t progress = value - PULSE_SCALE_MIN;
+    int32_t range = kPulseScaleMax - kPulseScaleMin;
+    int32_t progress = value - kPulseScaleMin;
     int32_t shadow = progress * 8 / range;
     lv_obj_set_style_shadow_width(obj, shadow, LV_PART_MAIN);
     lv_opa_t shadow_opa = static_cast<lv_opa_t>(progress * 180 / range);
@@ -163,9 +163,9 @@ void start_pulse(lv_obj_t* dot, lv_color_t base_color) {
     lv_anim_t sa;
     lv_anim_init(&sa);
     lv_anim_set_var(&sa, dot);
-    lv_anim_set_values(&sa, PULSE_SCALE_MAX, PULSE_SCALE_MIN);
-    lv_anim_set_time(&sa, PULSE_DURATION_MS);
-    lv_anim_set_playback_time(&sa, PULSE_DURATION_MS);
+    lv_anim_set_values(&sa, kPulseScaleMax, kPulseScaleMin);
+    lv_anim_set_time(&sa, kPulseDurationMs);
+    lv_anim_set_playback_time(&sa, kPulseDurationMs);
     lv_anim_set_repeat_count(&sa, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&sa, lv_anim_path_ease_in_out);
     lv_anim_set_exec_cb(&sa, pulse_scale_anim_cb);
@@ -174,9 +174,9 @@ void start_pulse(lv_obj_t* dot, lv_color_t base_color) {
     lv_anim_t ca;
     lv_anim_init(&ca);
     lv_anim_set_var(&ca, dot);
-    lv_anim_set_values(&ca, PULSE_SAT_MAX, PULSE_SAT_MIN);
-    lv_anim_set_time(&ca, PULSE_DURATION_MS);
-    lv_anim_set_playback_time(&ca, PULSE_DURATION_MS);
+    lv_anim_set_values(&ca, kPulseSatMax, kPulseSatMin);
+    lv_anim_set_time(&ca, kPulseDurationMs);
+    lv_anim_set_playback_time(&ca, kPulseDurationMs);
     lv_anim_set_repeat_count(&ca, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&ca, lv_anim_path_ease_in_out);
     lv_anim_set_exec_cb(&ca, pulse_color_anim_cb);
@@ -191,12 +191,12 @@ void set_active_ring(lv_obj_t* target, bool active) {
         const lv_color_t primary = theme_manager_get_color("primary");
         lv_obj_set_style_border_color(target, primary, LV_PART_MAIN);
         lv_obj_set_style_border_opa(target, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_style_border_width(target, ACTIVE_RING_BORDER_WIDTH, LV_PART_MAIN);
+        lv_obj_set_style_border_width(target, kActiveRingBorderWidth, LV_PART_MAIN);
         // Outer glow using shadow
-        lv_obj_set_style_shadow_width(target, ACTIVE_RING_GLOW_WIDTH, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(target, kActiveRingGlowWidth, LV_PART_MAIN);
         lv_obj_set_style_shadow_color(target, primary, LV_PART_MAIN);
         lv_obj_set_style_shadow_opa(target, LV_OPA_50, LV_PART_MAIN);
-        lv_obj_set_style_shadow_spread(target, ACTIVE_RING_GLOW_SPREAD, LV_PART_MAIN);
+        lv_obj_set_style_shadow_spread(target, kActiveRingGlowSpread, LV_PART_MAIN);
     } else {
         lv_obj_set_style_border_opa(target, LV_OPA_TRANSP, LV_PART_MAIN);
         lv_obj_set_style_border_width(target, 0, LV_PART_MAIN);
@@ -262,12 +262,11 @@ SlotColumn create_slot_column(lv_obj_t* parent, int32_t bar_width, int32_t bar_h
 
     // Column container (bar + status line)
     col.container = create_transparent_container(parent);
-    lv_obj_set_size(col.container, bar_width,
-                    bar_height + STATUS_LINE_HEIGHT_PX + STATUS_LINE_GAP_PX);
+    lv_obj_set_size(col.container, bar_width, bar_height + kStatusLineHeightPx + kStatusLineGapPx);
     lv_obj_set_flex_flow(col.container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(col.container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(col.container, STATUS_LINE_GAP_PX, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(col.container, kStatusLineGapPx, LV_PART_MAIN);
 
     // Bar background (outline container)
     col.bar_bg = create_transparent_container(col.container);
@@ -281,7 +280,7 @@ SlotColumn create_slot_column(lv_obj_t* parent, int32_t bar_width, int32_t bar_h
 
     // Status line below bar
     col.status_line = create_transparent_container(col.container);
-    lv_obj_set_size(col.status_line, bar_width, STATUS_LINE_HEIGHT_PX);
+    lv_obj_set_size(col.status_line, bar_width, kStatusLineHeightPx);
     lv_obj_set_style_radius(col.status_line, bar_radius / 2, LV_PART_MAIN);
 
     return col;

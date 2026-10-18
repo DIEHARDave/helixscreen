@@ -62,24 +62,24 @@ TEST_CASE_METHOD(LVGLUITestFixture, "color_swatch_grid: a tap reports the tapped
 
 TEST_CASE("swatch_needs_edge: a swatch too close to its surface gets an edge, in either theme",
           "[color_swatch]") {
-    constexpr uint32_t DARK_SCREEN = 0x2E3440;
-    constexpr uint32_t DARK_DIALOG = 0x4C566A;
-    constexpr uint32_t LIGHT_SCREEN = 0xECEFF4;
-    constexpr uint32_t LIGHT_DIALOG = 0xEDEFF6;
+    constexpr uint32_t kDarkScreen = 0x2E3440;
+    constexpr uint32_t kDarkDialog = 0x4C566A;
+    constexpr uint32_t kLightScreen = 0xECEFF4;
+    constexpr uint32_t kLightDialog = 0xEDEFF6;
     // Dark-on-dark.
-    CHECK(helix::ui::swatch_needs_edge(0x000000, DARK_SCREEN));
-    CHECK(helix::ui::swatch_needs_edge(0x1A1A1A, DARK_SCREEN));
-    CHECK(helix::ui::swatch_needs_edge(0x4A4A4A, DARK_SCREEN));
-    CHECK(helix::ui::swatch_needs_edge(0x4A4A4A, DARK_DIALOG));
+    CHECK(helix::ui::swatch_needs_edge(0x000000, kDarkScreen));
+    CHECK(helix::ui::swatch_needs_edge(0x1A1A1A, kDarkScreen));
+    CHECK(helix::ui::swatch_needs_edge(0x4A4A4A, kDarkScreen));
+    CHECK(helix::ui::swatch_needs_edge(0x4A4A4A, kDarkDialog));
     // Light-on-light.
-    CHECK(helix::ui::swatch_needs_edge(0xFFFFFF, LIGHT_SCREEN));
-    CHECK(helix::ui::swatch_needs_edge(0xE8E8E8, LIGHT_DIALOG));
-    CHECK(helix::ui::swatch_needs_edge(0xE0D5C7, LIGHT_SCREEN));
+    CHECK(helix::ui::swatch_needs_edge(0xFFFFFF, kLightScreen));
+    CHECK(helix::ui::swatch_needs_edge(0xE8E8E8, kLightDialog));
+    CHECK(helix::ui::swatch_needs_edge(0xE0D5C7, kLightScreen));
     // Plenty of contrast: no edge.
-    CHECK_FALSE(helix::ui::swatch_needs_edge(0xFFFFFF, DARK_SCREEN));
-    CHECK_FALSE(helix::ui::swatch_needs_edge(0x808080, DARK_SCREEN));
-    CHECK_FALSE(helix::ui::swatch_needs_edge(0x1A1A1A, LIGHT_SCREEN));
-    CHECK_FALSE(helix::ui::swatch_needs_edge(0xE53935, LIGHT_DIALOG));
+    CHECK_FALSE(helix::ui::swatch_needs_edge(0xFFFFFF, kDarkScreen));
+    CHECK_FALSE(helix::ui::swatch_needs_edge(0x808080, kDarkScreen));
+    CHECK_FALSE(helix::ui::swatch_needs_edge(0x1A1A1A, kLightScreen));
+    CHECK_FALSE(helix::ui::swatch_needs_edge(0xE53935, kLightDialog));
 }
 
 namespace {
@@ -151,9 +151,9 @@ TEST_CASE("swatch token ladders keep every touch target at the floor, per size c
     // target (disc + hit reach) clears 44px. Tappable controls have their own
     // taller floor (#touch_target_min, 48) - which must never drop below the
     // swatch floor, or the grids would outrank the buttons.
-    constexpr int SWATCH_FLOOR = 44;
+    constexpr int kSwatchFloor = 44;
     REQUIRE(globals.count("touch_target_min") == 1);
-    REQUIRE(globals.at("touch_target_min") >= SWATCH_FLOOR);
+    REQUIRE(globals.at("touch_target_min") >= kSwatchFloor);
 
     struct Ladder {
         const char* label;
@@ -176,7 +176,7 @@ TEST_CASE("swatch token ladders keep every touch target at the floor, per size c
             const int gap = tier_value(*ladder.tokens, ladder.gap, cls);
             const int half = tier_value(*ladder.tokens, ladder.half, cls);
             // The whole target - disc plus its hit reach - clears the floor...
-            CHECK(size + 2 * half >= SWATCH_FLOOR);
+            CHECK(size + 2 * half >= kSwatchFloor);
             // ...and the gap swallows both neighbours' reach, so adjacent
             // targets abut without overlapping.
             CHECK(gap >= 2 * half);

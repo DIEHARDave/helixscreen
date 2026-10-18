@@ -476,7 +476,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "render_layers_to_cache emits gcode breadcrumb
     lv_canvas_set_buffer(canvas, canvas_buf, 200, 200, LV_COLOR_FORMAT_ARGB8888);
     lv_area_t clip = {0, 0, 199, 199};
 
-    // The first WARMUP_FRAMES (2) render() calls skip heavy caching; loop past
+    // The first kWarmupFrames (2) render() calls skip heavy caching; loop past
     // them so the solid-cache path (render_layers_to_cache) runs at least once.
     for (int i = 0; i < 5; ++i) {
         lv_layer_t layer;
@@ -516,7 +516,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "render_layers_to_cache emits gcode breadcrumb
 
 namespace {
 
-constexpr int PICK_CANVAS = 200;
+constexpr int kPickCanvas = 200;
 
 // Mirror of the renderer's own projection so these tests can name a click point
 // in world millimetres instead of hard-coded pixels. auto_fit() feeds
@@ -526,15 +526,15 @@ constexpr int PICK_CANVAS = 200;
 // coordinate, so only FRONT can show the drawn-Z clamp moving a footprint.
 glm::ivec2 project_expected(const AABB& fit_box, float x, float y, float z = 0.0f,
                             ViewMode view = ViewMode::TOP_DOWN) {
-    auto fit = compute_auto_fit(fit_box, view, PICK_CANVAS, PICK_CANVAS);
+    auto fit = compute_auto_fit(fit_box, view, kPickCanvas, kPickCanvas);
     ProjectionParams params;
     params.view_mode = view;
     params.scale = fit.scale;
     params.offset_x = fit.offset_x;
     params.offset_y = fit.offset_y;
     params.offset_z = fit.offset_z;
-    params.canvas_width = PICK_CANVAS;
-    params.canvas_height = PICK_CANVAS;
+    params.canvas_width = kPickCanvas;
+    params.canvas_height = kPickCanvas;
     return project(params, x, y, z);
 }
 
@@ -544,7 +544,7 @@ bool xy_inside(const AABB& box, float x, float y) {
 
 // Topmost (smallest) screen y over a box's 8 projected corners - the same
 // reduction the picker's stage 1 does. Derived rather than hand-picked because
-// which corner wins is not obvious: FRONT's SIN_H is sin(-45°), so the vertical
+// which corner wins is not obvious: FRONT's kSinH is sin(-45°), so the vertical
 // term peaks at MAX x and MAX y, and guessing min y silently produces a point
 // that is still inside the box.
 int projected_top_y(const AABB& fit_box, const AABB& box, ViewMode view) {
@@ -670,7 +670,7 @@ class TempPickGCodeFile {
 void configure(GCodeLayerRenderer& renderer, const ParsedGCodeFile& gcode, int layer,
                GCodeLayerRenderer::ViewMode view = GCodeLayerRenderer::ViewMode::TOP_DOWN) {
     renderer.set_gcode(&gcode);
-    renderer.set_canvas_size(PICK_CANVAS, PICK_CANVAS);
+    renderer.set_canvas_size(kPickCanvas, kPickCanvas);
     GCodeLayerRendererTestAccess::set_view_mode(renderer, view);
     renderer.auto_fit();
     renderer.set_current_layer(layer);
@@ -845,11 +845,11 @@ TEST_CASE("pick_object_at in streaming mode walks past uncached layers",
 
     GCodeLayerRenderer renderer;
     renderer.set_streaming_controller(&controller);
-    renderer.set_canvas_size(PICK_CANVAS, PICK_CANVAS);
+    renderer.set_canvas_size(kPickCanvas, kPickCanvas);
     GCodeLayerRendererTestAccess::set_view_mode(renderer, GCodeLayerRenderer::ViewMode::TOP_DOWN);
     renderer.auto_fit();
 
-    // Cache only the bottom of the file. DEFAULT_PREFETCH_RADIUS is 3, so
+    // Cache only the bottom of the file. kDefaultPrefetchRadius is 3, so
     // everything above layer 3 stays uncached and try_get_layer_segments()
     // returns null there - the downward walk has to skip it, never seek.
     (void)controller.get_layer_segments(0);
@@ -1293,7 +1293,7 @@ TEST_CASE("swapping to a different file with the same object count re-maps",
 
 namespace {
 
-// Drive enough frames to get past WARMUP_FRAMES and run the solid cache path,
+// Drive enough frames to get past kWarmupFrames and run the solid cache path,
 // then report how many canvas pixels are near-white and how many are painted.
 // Drive frames until the progressive solid cache reports it is complete.
 //
@@ -1317,7 +1317,7 @@ void drive_until_cached(GCodeLayerRenderer& renderer, lv_obj_t* canvas) {
         lv_canvas_finish_layer(canvas, &layer);
         lv_timer_handler_safe();
     };
-    // WARMUP_FRAMES deliberately skips heavy caching; get past it first.
+    // kWarmupFrames deliberately skips heavy caching; get past it first.
     for (int i = 0; i < 3; ++i) {
         frame();
     }

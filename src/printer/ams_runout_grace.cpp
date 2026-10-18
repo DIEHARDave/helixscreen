@@ -52,7 +52,7 @@ bool RunoutGrace::armed() const {
 }
 
 void RunoutGrace::mark_slot_unloaded(int slot_index) {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return;
     }
     std::lock_guard<std::mutex> lock(mutex_);
@@ -62,7 +62,7 @@ void RunoutGrace::mark_slot_unloaded(int slot_index) {
 }
 
 bool RunoutGrace::was_slot_recently_unloaded(int slot_index) const {
-    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+    if (slot_index < 0 || slot_index >= kMaxSlots) {
         return false;
     }
     std::lock_guard<std::mutex> lock(mutex_);

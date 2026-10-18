@@ -182,7 +182,7 @@ struct bed_mesh_renderer {
     std::vector<std::vector<int>> projected_screen_y;
 
     // View state
-    bed_mesh_view_state_t view_state;  // Rotation, FOV, centering
+    bed_mesh_view_state_t view_state;  // Rotation, kFov, centering
 };
 ```
 
@@ -240,7 +240,7 @@ struct bed_mesh_quad_3d_t {
 4. Per-Frame Rendering (30-60 FPS)
    ↓
    ┌─────────────────────────────────────────┐
-   │ a) Update view state (rotation, FOV)    │
+   │ a) Update view state (rotation, kFov)    │
    │ b) Project vertices → screen coords     │ ← 0.01ms (<1%)
    │ c) Sort quads by depth (painter's alg)  │ ← 0.02ms (<1%)
    │ d) Rasterize quads (fill triangles)     │ ← 45-75ms (94-99%)
@@ -795,7 +795,7 @@ gprof build/bin/helix-screen gmon.out > profile.txt
 // Larger = less perspective distortion
 
 #define BED_MESH_CAMERA_ZOOM_LEVEL 1.176
-// FOV scale factor (1/0.85 from previous constant)
+// kFov scale factor (1/0.85 from previous constant)
 // Controls field of view (larger = wider angle)
 
 // Z-axis scaling
@@ -829,7 +829,7 @@ gprof build/bin/helix-screen gmon.out > profile.txt
 // Canvas Y position for Z=0 plane (0=top, 0.5=center, 1=bottom)
 
 // Color gradient LUT
-#define COLOR_GRADIENT_LUT_SIZE 1024
+#define kColorGradientLutSize 1024
 // Number of pre-computed color samples in gradient lookup table
 // Higher = more precision, but more memory (1024 = 4 KB)
 ```

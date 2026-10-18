@@ -26,7 +26,7 @@ namespace {
 
 constexpr int W = 200;
 constexpr int H = 160;
-constexpr uint8_t BG = 7; // distinct from every gradient color
+constexpr uint8_t kBg = 7; // distinct from every gradient color
 
 struct Renderer {
     bed_mesh_renderer_t* r = bed_mesh_renderer_create();
@@ -42,12 +42,12 @@ struct Renderer {
 
 bool is_bg(const PixelBuffer& buf, int x, int y) {
     const uint8_t* px = buf.pixel_at(x, y);
-    return px[0] == BG && px[1] == BG && px[2] == BG;
+    return px[0] == kBg && px[1] == kBg && px[2] == kBg;
 }
 
 PixelBuffer render(bed_mesh_renderer_t* r) {
     PixelBuffer buf(W, H);
-    bed_mesh_render_colors_t colors{BG, BG, BG, 90, 90, 90};
+    bed_mesh_render_colors_t colors{kBg, kBg, kBg, 90, 90, 90};
     REQUIRE(bed_mesh_renderer_render_to_buffer(r, buf, colors));
     return buf;
 }

@@ -37,8 +37,8 @@ enum class ExcludeMapMode { Interactive, Mini };
 class ExcludeObjectMapView {
   public:
     // Canonical value lives on helix::BedCoordMapper; aliased here so existing
-    // ExcludeObjectMapView::MIN_TOUCH_TARGET_PX references keep compiling.
-    static constexpr float MIN_TOUCH_TARGET_PX = helix::BedCoordMapper::MIN_TOUCH_TARGET_PX;
+    // ExcludeObjectMapView::kMinTouchTargetPx references keep compiling.
+    static constexpr float kMinTouchTargetPx = helix::BedCoordMapper::kMinTouchTargetPx;
 
     using PixelRect = helix::PixelRect;
     using CoordMapper = helix::BedCoordMapper;

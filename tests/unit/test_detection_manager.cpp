@@ -130,7 +130,7 @@ TEST_CASE_METHOD(HelixTestFixture, "DetectionManager source_can_tune asks the so
 
     auto u1 = std::make_unique<U1StockSource>(nullptr);
     m.register_source(std::move(u1));
-    REQUIRE(m.source_can_tune(U1StockSource::SOURCE_ID));
+    REQUIRE(m.source_can_tune(U1StockSource::kSourceId));
 }
 
 TEST_CASE_METHOD(HelixTestFixture, "DetectionManager tune_source dispatches, gated on can_tune",
@@ -159,7 +159,7 @@ TEST_CASE_METHOD(HelixTestFixture, "DetectionManager tune_source dispatches, gat
         MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
         set_moonraker_client(&client);
         m.register_source(std::make_unique<U1StockSource>(nullptr));
-        m.tune_source(U1StockSource::SOURCE_ID);
+        m.tune_source(U1StockSource::kSourceId);
         set_moonraker_client(nullptr);
         REQUIRE(client.last_send_method() == "printer.gcode.script");
         CHECK(client.last_send_script() == "DEFECT_DETECTION_CONFIG NOODLE_SENSITIVITY=low");

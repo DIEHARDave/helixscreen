@@ -20,9 +20,9 @@ namespace {
 // Domain separators, so the same bytes hashed as an SSID and as a MAC produce
 // different tokens. Without this a bundle reader could tell that some AP's
 // BSSID matched some other field, which is itself a disclosure.
-constexpr uint64_t SSID_DOMAIN = 0x5353'4944'0000'0001ULL;
-constexpr uint64_t MAC_DOMAIN = 0x4D41'4300'0000'0002ULL;
-constexpr uint64_t IP_DOMAIN = 0x4950'0000'0000'0003ULL;
+constexpr uint64_t kSsidDomain = 0x5353'4944'0000'0001ULL;
+constexpr uint64_t kMacDomain = 0x4D41'4300'0000'0002ULL;
+constexpr uint64_t kIpDomain = 0x4950'0000'0000'0003ULL;
 
 // Per-boot salt, resolved once on first use. Regenerated every launch so
 // tokens cannot be correlated across sessions, and so a precomputed table of
@@ -305,7 +305,7 @@ std::string redact_v6(std::string_view text, uint64_t salt, std::string_view fix
         if (left_ok && run.find(':') != std::string_view::npos && parse_ipv6(run, bytes) &&
             (!fixed.empty() || scope_v6(bytes) == IpScope::Global)) {
             if (fixed.empty())
-                out += token(run, "ip#", IP_DOMAIN, salt);
+                out += token(run, "ip#", kIpDomain, salt);
             else
                 out += fixed;
             out.append(text.substr(start + run.size(), i - start - run.size()));
@@ -343,7 +343,7 @@ std::string redact_v4(std::string_view text, uint64_t salt, std::string_view fix
         if (left_ok && right_ok && parse_ipv4(run, quad) &&
             (!fixed.empty() || scope_v4(quad) == IpScope::Global)) {
             if (fixed.empty())
-                out += token(run, "ip#", IP_DOMAIN, salt);
+                out += token(run, "ip#", kIpDomain, salt);
             else
                 out += fixed;
             out.append(text.substr(start + run.size(), i - start - run.size()));
@@ -642,19 +642,19 @@ std::string telemetry_text(std::string_view text, const std::vector<std::string>
 }
 
 std::string ssid(std::string_view ssid) {
-    return token(ssid, "net#", SSID_DOMAIN, boot_salt());
+    return token(ssid, "net#", kSsidDomain, boot_salt());
 }
 
 std::string mac(std::string_view mac) {
-    return token(mac, "mac#", MAC_DOMAIN, boot_salt());
+    return token(mac, "mac#", kMacDomain, boot_salt());
 }
 
 std::string ssid_with_salt(std::string_view ssid, uint64_t salt) {
-    return token(ssid, "net#", SSID_DOMAIN, salt);
+    return token(ssid, "net#", kSsidDomain, salt);
 }
 
 std::string mac_with_salt(std::string_view mac, uint64_t salt) {
-    return token(mac, "mac#", MAC_DOMAIN, salt);
+    return token(mac, "mac#", kMacDomain, salt);
 }
 
 IpScope ip_scope(std::string_view addr) {
@@ -679,7 +679,7 @@ std::string ip(std::string_view addr) {
 std::string ip_with_salt(std::string_view addr, uint64_t salt) {
     if (ip_scope(addr) != IpScope::Global)
         return std::string(addr);
-    return token(addr, "ip#", IP_DOMAIN, salt);
+    return token(addr, "ip#", kIpDomain, salt);
 }
 
 std::string ips_in_text(std::string_view text) {

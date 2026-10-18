@@ -187,7 +187,7 @@ TEST_CASE_METHOD(NotificationHistoryPanelFixture,
     lv_obj_t* overlay = content();
     REQUIRE(overlay != nullptr);
     lv_obj_t* base = lv_obj_create(lv_screen_active());
-    lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+    lv_obj_t* panels[kUiPanelCount] = {nullptr};
     panels[static_cast<int>(helix::PanelId::Home)] = base;
     NavigationManager::instance().set_panels(panels);
 

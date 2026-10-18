@@ -998,7 +998,7 @@ field that reads as editable and opens the numeric keypad on tap.
 It styles itself like a text input rather than being one -- a real
 `lv_textarea` would take focus and raise the alphanumeric on-screen keyboard.
 `user_data` arrives at the callback as a `const char*` index into the panel's
-own field table (`FIELD_SPECS` in `ui_settings_machine_limits.cpp` is the
+own field table (`kFieldSpecs` in `ui_settings_machine_limits.cpp` is the
 reference shape).
 
 Two things to get right when wiring one up:

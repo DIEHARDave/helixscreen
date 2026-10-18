@@ -100,7 +100,7 @@ TEST_CASE("ensure_homed_then skip_homing bypasses the home entirely", "[ams][hom
     HomingProbeBackend backend;
     backend.homed = false;
 
-    backend.ensure_homed_then("BOX_LOAD", nullptr, nullptr, MoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+    backend.ensure_homed_then("BOX_LOAD", nullptr, nullptr, MoonrakerAPI::kAmsOperationTimeoutMs,
                               /*skip_homing=*/true);
 
     REQUIRE(backend.captured.size() == 1);
@@ -218,8 +218,8 @@ TEST_CASE("ensure_homed_then custom timeout/silent bypass the hardcoded virtuals
 
     helix::AmsBackendAfc backend(&api, &client);
 
-    constexpr uint32_t CUSTOM_TIMEOUT_MS = 12345;
-    REQUIRE(CUSTOM_TIMEOUT_MS != MoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);
+    constexpr uint32_t kCustomTimeoutMs = 12345;
+    REQUIRE(kCustomTimeoutMs != MoonrakerAPI::kAmsOperationTimeoutMs);
     // The mock handler for printer.gcode.script runs synchronously inside
     // send_jsonrpc(), so this fires before ensure_homed_then() even returns --
     // exercising the on_error leg of dispatch_payload()'s custom branch, not
@@ -231,15 +231,15 @@ TEST_CASE("ensure_homed_then custom timeout/silent bypass the hardcoded virtuals
     // is already covered by the two tests above.
     auto err = backend.ensure_homed_then(
         "BOX_LOAD", nullptr, [&seen](const MoonrakerError& e) { seen = e.message; },
-        CUSTOM_TIMEOUT_MS, /*skip_homing=*/true, /*silent=*/false);
+        kCustomTimeoutMs, /*skip_homing=*/true, /*silent=*/false);
     REQUIRE(err.success());
 
     // Dispatch went straight to MoonrakerAPI::execute_gcode() carrying OUR
     // timeout_ms/silent -- the hardcoded 1-arg/2-arg execute_gcode virtuals fix
-    // AMS_OPERATION_TIMEOUT_MS/true and can never produce these values.
+    // kAmsOperationTimeoutMs/true and can never produce these values.
     CHECK(client.last_send_method() == "printer.gcode.script");
     CHECK(client.last_send_script() == "BOX_LOAD");
-    CHECK(client.last_send_timeout_ms() == CUSTOM_TIMEOUT_MS);
+    CHECK(client.last_send_timeout_ms() == kCustomTimeoutMs);
     CHECK_FALSE(client.last_send_silent());
 
     // The error callback is marshalled through token.defer() (L081 Mechanism
@@ -330,7 +330,7 @@ struct UnhomedMacroLoad {
         get_printer_state().update_from_status({{"toolhead", {{"homed_axes", ""}}}});
         h.state.update_from_status({{"toolhead", {{"homed_axes", ""}}},
                                     {"extruder", {{"temperature", 240.0}, {"target", 240.0}}}});
-        h.cache_macros({{"LOAD_FILAMENT", helix::test::LOAD_FILAMENT_EXPRESSION_DEFAULT}});
+        h.cache_macros({{"LOAD_FILAMENT", helix::test::kLoadFilamentExpressionDefault}});
     }
 
     void press_load() {

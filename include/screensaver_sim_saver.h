@@ -25,7 +25,7 @@ class SimSaverTestAccess;
  * @brief A saver whose scene is a simulation drawing into the canvas
  *
  * Implements every SaverBase hook from the sim (screensaver_sim_contract.h): the ladder is
- * Sim::LEVELS, start() clears the sim and initializes it on the canvas at the start level,
+ * Sim::kLevels, start() clears the sim and initializes it on the canvas at the start level,
  * each frame steps it, a level request applies at once and reaches the sim at the level
  * applied, and stop() clears it. A saver that needs more overrides the one hook it must and
  * calls start_sim() / step_sim() from it; a sim whose init() or step() takes more than the
@@ -40,10 +40,10 @@ template <typename Sim> class SimSaver : public SaverBase {
 
   protected:
     size_t ladder_size() const override {
-        return std::size(Sim::LEVELS);
+        return std::size(Sim::kLevels);
     }
     uint32_t ladder_period_ms(size_t level) const override {
-        return ladder_period(Sim::LEVELS, level);
+        return ladder_period(Sim::kLevels, level);
     }
 
     bool on_start() override {

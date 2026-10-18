@@ -60,7 +60,7 @@ enum class CapChip : uint8_t {
     Count
 };
 
-inline constexpr size_t CAP_CHIP_COUNT = static_cast<size_t>(CapChip::Count);
+inline constexpr size_t kCapChipCount = static_cast<size_t>(CapChip::Count);
 
 /// One filament system the printer runs, as its owning backend names it.
 struct FilamentSystemFact {

@@ -735,7 +735,7 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
                     if (*d->device_connected) {
                         chamber_offline_run_ = 0;
                         lv_subject_set_int(&chamber_heater_offline_, 0);
-                    } else if (++chamber_offline_run_ >= CHAMBER_OFFLINE_CONSECUTIVE_REPORTS) {
+                    } else if (++chamber_offline_run_ >= kChamberOfflineConsecutiveReports) {
                         lv_subject_set_int(&chamber_heater_offline_, 1);
                     }
                 }

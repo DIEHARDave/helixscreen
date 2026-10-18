@@ -47,7 +47,7 @@ namespace {
 constexpr const char* MACRO = "UNLOAD_FILAMENT";
 /// A benign discretionary command — never stamped, and the thing that used to
 /// trigger the spurious toast.
-constexpr const char* DISCRETIONARY = "M106 S128";
+constexpr const char* kDiscretionary = "M106 S128";
 /// A light tap: discretionary, and on its own enough to read idle_timeout
 /// "Printing" for most of a second.
 constexpr const char* LIGHT = "SET_PIN PIN=relay_light VALUE=1";
@@ -176,7 +176,7 @@ TEST_CASE_METHOD(MacroActivityFixture, "execute_gcode never stamps discretionary
     // note_done_fired().
     bool success_called = false;
     api->execute_gcode(
-        DISCRETIONARY, [&success_called]() { success_called = true; },
+        kDiscretionary, [&success_called]() { success_called = true; },
         [this](const MoonrakerError& err) { error_cb(err); });
 
     REQUIRE(success_called);
@@ -203,7 +203,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
     // keep refusing during a filament op (#1108). Only the toast changes.
     REQUIRE(state.is_external_blocking_operation_active());
 
-    api->execute_gcode(DISCRETIONARY, nullptr, nullptr);
+    api->execute_gcode(kDiscretionary, nullptr, nullptr);
 
     // The latch must still be claimable: suppression short-circuits BEFORE
     // claim_busy_queue_toast(), so a genuinely external op later in the same
@@ -231,7 +231,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
     begin_blocking_episode();
     REQUIRE(state.is_external_blocking_operation_active());
 
-    api->execute_gcode(DISCRETIONARY, nullptr, nullptr);
+    api->execute_gcode(kDiscretionary, nullptr, nullptr);
 
     CHECK(state.calibration_state().claim_busy_queue_toast());
 }
@@ -247,7 +247,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
     REQUIRE(state.is_external_blocking_operation_active());
     REQUIRE_FALSE(macro_note_done_fired());
 
-    api->execute_gcode(DISCRETIONARY, nullptr, nullptr);
+    api->execute_gcode(kDiscretionary, nullptr, nullptr);
 
     // The toast consumed the once-per-episode latch, so it is no longer
     // claimable.
@@ -267,7 +267,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
 // would suppress the busy toast for the whole session — the #1129 wedge, moved
 // to a new counter.
 //
-// MAX_INFLIGHT_AGE bounds that: once even the NEWEST send is older than the
+// kMaxInflightAge bounds that: once even the NEWEST send is older than the
 // ceiling, the counter is treated as stuck rather than busy.
 
 TEST_CASE_METHOD(MacroActivityFixture,
@@ -292,10 +292,10 @@ TEST_CASE_METHOD(MacroActivityFixture,
     const auto now = AppMacroActivity::clock::now();
     REQUIRE(state.app_macro_activity().recently_active(now));
 
-    // The ceiling releases it. Asserted symbolically against MAX_INFLIGHT_AGE so
+    // The ceiling releases it. Asserted symbolically against kMaxInflightAge so
     // the test tracks the constant rather than pinning today's value.
-    CHECK_FALSE(state.app_macro_activity().recently_active(
-        now + AppMacroActivity::MAX_INFLIGHT_AGE + std::chrono::minutes(1)));
+    CHECK_FALSE(state.app_macro_activity().recently_active(now + AppMacroActivity::kMaxInflightAge +
+                                                           std::chrono::minutes(1)));
 
     // ...and it was exactly one leaked stamp, not more. Destructive; last.
     CHECK(drain_inflight() == 1);
@@ -318,9 +318,9 @@ TEST_CASE_METHOD(MacroActivityFixture, "the in-flight ceiling does not expire ea
     CHECK(state.app_macro_activity().recently_active(now));
 
     // One minute short of the ceiling, an outstanding send is still active.
-    // A five-minute macro (MACRO_TIMEOUT_MS / AMS_OPERATION_TIMEOUT_MS) sits
+    // A five-minute macro (kMacroTimeoutMs / kAmsOperationTimeoutMs) sits
     // well inside this window.
-    CHECK(state.app_macro_activity().recently_active(now + AppMacroActivity::MAX_INFLIGHT_AGE -
+    CHECK(state.app_macro_activity().recently_active(now + AppMacroActivity::kMaxInflightAge -
                                                      std::chrono::minutes(1)));
 
     CHECK(drain_inflight() == 1);
@@ -335,18 +335,18 @@ TEST_CASE_METHOD(MacroActivityFixture,
     // The production toast decision calls recently_active() with the default
     // `now`, which a test cannot fast-forward — so instead of waiting out the
     // wall clock, plant the stamp with an aged timestamp. This is precisely the
-    // state the wedge in the two tests above reaches once MAX_INFLIGHT_AGE has
+    // state the wedge in the two tests above reaches once kMaxInflightAge has
     // elapsed: inflight_ == 1, no note_done() ever, newest send older than the
     // ceiling.
     state.app_macro_activity().note_sent(AppMacroActivity::clock::now() -
-                                         AppMacroActivity::MAX_INFLIGHT_AGE -
+                                         AppMacroActivity::kMaxInflightAge -
                                          std::chrono::minutes(1));
     REQUIRE_FALSE(state.app_macro_activity().recently_active());
 
     begin_blocking_episode();
     REQUIRE(state.is_external_blocking_operation_active());
 
-    api->execute_gcode(DISCRETIONARY, nullptr, nullptr);
+    api->execute_gcode(kDiscretionary, nullptr, nullptr);
 
     // Suppression is off, so the toast fired and consumed the once-per-episode
     // latch — normal #1108 behaviour is fully restored despite the leak.
@@ -358,7 +358,7 @@ TEST_CASE_METHOD(MacroActivityFixture,
 // ============================================================================
 //
 // Each SET_PIN reads idle_timeout "Printing" for ~0.8 s, so light taps 0.2 s
-// apart hold one episode up past IdleTimeoutBusy::SETTLE on an idle printer.
+// apart hold one episode up past IdleTimeoutBusy::kSettle on an idle printer.
 // The taps then reach the busy branch, and only the toast may treat that
 // episode as the user's: the predicates that gate motion stay as they are.
 
@@ -386,7 +386,7 @@ TEST_CASE_METHOD(MacroActivityFixture, "a light tap on an idle printer is stampe
 TEST_CASE_METHOD(MacroActivityFixture,
                  "busy toast is suppressed for an episode the user's own light taps began",
                  "[busy_guard][1206][mock]") {
-    // The taps' own SET_PINs have held idle_timeout "Printing" past SETTLE;
+    // The taps' own SET_PINs have held idle_timeout "Printing" past kSettle;
     // the first went out just before the flag was seen going high.
     begin_blocking_episode();
     REQUIRE(state.is_external_blocking_operation_active());
@@ -419,7 +419,7 @@ TEST_CASE_METHOD(MacroActivityFixture, "an episode the user's light taps began s
 TEST_CASE_METHOD(MacroActivityFixture,
                  "busy toast fires for an external episode the user tapped into before it settled",
                  "[busy_guard][1206][mock]") {
-    // Mainsail starts a bed mesh; half a second later, still inside SETTLE, the
+    // Mainsail starts a bed mesh; half a second later, still inside kSettle, the
     // user taps the light and that tap goes out on the normal path, stamped.
     begin_blocking_episode();
     state.app_command_episode().note_sent(episode_start(state) + std::chrono::milliseconds(500));
@@ -434,8 +434,9 @@ TEST_CASE_METHOD(MacroActivityFixture,
                  "busy toast fires when the user's last command long predates the episode",
                  "[busy_guard][1206][mock]") {
     // A tap well before an external op began does not make that op the user's.
-    state.app_command_episode().note_sent(BusyEpisodeOwner::clock::now() - IdleTimeoutBusy::SETTLE -
-                                          BusyEpisodeOwner::GRACE_WINDOW - std::chrono::seconds(1));
+    state.app_command_episode().note_sent(BusyEpisodeOwner::clock::now() -
+                                          IdleTimeoutBusy::kSettle -
+                                          BusyEpisodeOwner::kGraceWindow - std::chrono::seconds(1));
     begin_blocking_episode();
 
     api->execute_gcode(LIGHT, nullptr, nullptr);
@@ -471,7 +472,7 @@ TEST_CASE("BusyEpisodeOwner keeps a sustained tap burst the app's own", "[busy_g
     }
     // Once the burst stops, the episode stops passing as the app's.
     const auto last = t0 + 30 * std::chrono::milliseconds(200);
-    CHECK_FALSE(owner.owns(episode, last + BusyEpisodeOwner::MAX_SELF_BUSY));
+    CHECK_FALSE(owner.owns(episode, last + BusyEpisodeOwner::kMaxSelfBusy));
 }
 
 TEST_CASE("BusyEpisodeOwner never adopts an episode that began without it", "[busy_guard][1206]") {
@@ -480,7 +481,7 @@ TEST_CASE("BusyEpisodeOwner never adopts an episode that began without it", "[bu
     const auto t0 = BusyEpisodeOwner::clock::now();
     const auto episode = t0;
     for (int tap = 0; tap < 20; ++tap) {
-        const auto now = t0 + BusyEpisodeOwner::GRACE_WINDOW + std::chrono::seconds(1) +
+        const auto now = t0 + BusyEpisodeOwner::kGraceWindow + std::chrono::seconds(1) +
                          tap * std::chrono::milliseconds(200);
         INFO("tap " << tap);
         CHECK_FALSE(owner.owns(episode, now));

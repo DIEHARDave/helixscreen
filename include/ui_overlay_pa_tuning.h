@@ -65,12 +65,12 @@ namespace helix::ui {
 class PaTuningOverlay : public OverlayBase {
   public:
     /// Physical extruders offered as chips; a changer with more shows the first.
-    static constexpr int MAX_HEADS = 8;
-    static constexpr int PRESET_SLOTS = 4;
+    static constexpr int kMaxHeads = 8;
+    static constexpr int kPresetSlots = 4;
     /// Band rows in the picker. The default ramp yields 11 (base + 10 bands);
     /// a nudge-heavy run can yield more, and the closest neighbours are merged
     /// (helix::pa::fit_bands).
-    static constexpr int MAX_BANDS = 16;
+    static constexpr int kMaxBands = 16;
 
     /// Generated file name in the gcodes root. One fixed name: a re-run
     /// overwrites the last test instead of littering the file list.
@@ -194,7 +194,7 @@ class PaTuningOverlay : public OverlayBase {
     /// Put the tuner on top of the navigation stack, re-pushing it when
     /// something buried it. Retries while the stack is still releasing it.
     void raise(int attempts_left);
-    static constexpr int RAISE_ATTEMPTS = 60;
+    static constexpr int kRaiseAttempts = 60;
     void on_pa_reported(int subject_value);
     void nudge(int direction);
     void end_test();
@@ -235,7 +235,7 @@ class PaTuningOverlay : public OverlayBase {
     int step_idx_ = helix::pa::kDefaultStepIndex;
     /// Extruder the run tunes, fixed when it starts.
     std::string extruder_ = "extruder";
-    /// Picker selection: a band index, MAX_BANDS for "keep current", -1 none.
+    /// Picker selection: a band index, kMaxBands for "keep current", -1 none.
     int picked_ = -1;
     /// The print reached "printing" for our file at least once.
     bool saw_printing_ = false;
@@ -248,12 +248,12 @@ class PaTuningOverlay : public OverlayBase {
     lv_subject_t stage_subject_{};
     lv_subject_t multi_tool_{};
     lv_subject_t tool_count_{};
-    lv_subject_t tool_selected_[MAX_HEADS]{};
-    lv_subject_t tool_label_[MAX_HEADS]{};
-    char tool_label_buf_[MAX_HEADS][8] = {};
-    lv_subject_t preset_selected_[PRESET_SLOTS]{};
-    lv_subject_t preset_temp_[PRESET_SLOTS]{};
-    char preset_temp_buf_[PRESET_SLOTS][24] = {};
+    lv_subject_t tool_selected_[kMaxHeads]{};
+    lv_subject_t tool_label_[kMaxHeads]{};
+    char tool_label_buf_[kMaxHeads][8] = {};
+    lv_subject_t preset_selected_[kPresetSlots]{};
+    lv_subject_t preset_temp_[kPresetSlots]{};
+    char preset_temp_buf_[kPresetSlots][24] = {};
     lv_subject_t kind_subject_{};
     lv_subject_t start_k_{};
     char start_k_buf_[16] = {};
@@ -273,11 +273,11 @@ class PaTuningOverlay : public OverlayBase {
     lv_subject_t step_idx_subject_{};
 
     lv_subject_t band_count_{};
-    lv_subject_t band_range_[MAX_BANDS]{};
-    char band_range_buf_[MAX_BANDS][40] = {};
-    lv_subject_t band_k_[MAX_BANDS]{};
-    char band_k_buf_[MAX_BANDS][16] = {};
-    lv_subject_t band_selected_[MAX_BANDS]{};
+    lv_subject_t band_range_[kMaxBands]{};
+    char band_range_buf_[kMaxBands][40] = {};
+    lv_subject_t band_k_[kMaxBands]{};
+    char band_k_buf_[kMaxBands][16] = {};
+    lv_subject_t band_selected_[kMaxBands]{};
     lv_subject_t keep_selected_{};
     lv_subject_t keep_text_{};
     char keep_text_buf_[48] = {};

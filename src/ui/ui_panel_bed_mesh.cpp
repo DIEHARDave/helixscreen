@@ -180,7 +180,7 @@ void BedMeshPanel::init_subjects() {
         UI_MANAGED_SUBJECT_STRING(bed_mesh_error_message_, error_message_buf_, "",
                                   "bed_mesh_error_message", subjects_);
         UI_MANAGED_SUBJECT_STRING(bed_mesh_calibrate_name_, calibrate_name_buf_,
-                                  helix::bed_mesh::DEFAULT_PROFILE, "bed_mesh_calibrate_name",
+                                  helix::bed_mesh::kDefaultProfile, "bed_mesh_calibrate_name",
                                   subjects_);
 
         // Self-register cleanup — ensures deinit runs before lv_deinit(). The
@@ -467,7 +467,7 @@ void BedMeshPanel::apply_portrait_canvas_height() {
     // height, and the two are deliberately kept distinct:
     // bed_mesh_portrait_canvas_height's floor is a share of column_h, and
     // passing avail_h for both silently zeroes that floor out (see the
-    // BED_MESH_PORTRAIT_CANVAS_MIN_PCT comment in bed_mesh_portrait_layout.h).
+    // kBedMeshPortraitCanvasMinPct comment in bed_mesh_portrait_layout.h).
     //
     // Only current_mesh_card is subtracted, not a separate profiles_card
     // minimum: profiles_card shares this ROW's height (height="100%" at the
@@ -920,7 +920,7 @@ void BedMeshPanel::load_profile(int index) {
 
     IMoonrakerAPI* api = get_moonraker_api();
     if (api) {
-        operation_guard_.begin(SLOW_OPERATION_TIMEOUT_MS, [this] {
+        operation_guard_.begin(kSlowOperationTimeoutMs, [this] {
             hide_all_modals();
             pending_operation_ = PendingOperation::None;
             NOTIFY_WARNING(lv_tr("Bed mesh operation timed out"));
@@ -996,16 +996,16 @@ void BedMeshPanel::preheat_for_probing() {
     };
 
     if (preheat_turned_on_nozzle_) {
-        spdlog::info("[BedMeshPanel] Preheating nozzle to {}°C for probing", PROBE_NOZZLE_TEMP);
-        set_temp(state.temperature_state().active_extruder_name(), PROBE_NOZZLE_TEMP, "nozzle");
+        spdlog::info("[BedMeshPanel] Preheating nozzle to {}°C for probing", kProbeNozzleTemp);
+        set_temp(state.temperature_state().active_extruder_name(), kProbeNozzleTemp, "nozzle");
     } else {
         spdlog::info("[BedMeshPanel] Nozzle already heating (target={}°C), skipping",
                      helix::units::from_decidegrees(nozzle_target));
     }
 
     if (preheat_turned_on_bed_) {
-        spdlog::info("[BedMeshPanel] Preheating bed to {}°C for probing", PROBE_BED_TEMP);
-        set_temp("heater_bed", PROBE_BED_TEMP, "bed");
+        spdlog::info("[BedMeshPanel] Preheating bed to {}°C for probing", kProbeBedTemp);
+        set_temp("heater_bed", kProbeBedTemp, "bed");
     } else {
         spdlog::info("[BedMeshPanel] Bed already heating (target={}°C), skipping",
                      helix::units::from_decidegrees(bed_target));
@@ -1053,7 +1053,7 @@ void BedMeshPanel::start_calibration() {
 
     // The mesh is named before anything is probed, so the calibration itself
     // stores it there. The field starts on the profile Klipper loads at startup.
-    lv_subject_copy_string(&bed_mesh_calibrate_name_, helix::bed_mesh::DEFAULT_PROFILE);
+    lv_subject_copy_string(&bed_mesh_calibrate_name_, helix::bed_mesh::kDefaultProfile);
     lv_subject_set_int(&bed_mesh_calibrate_state_,
                        static_cast<int>(BedMeshCalibrationState::NAMING));
     calibrate_modal_widget_ = helix::ui::modal_show("bed_mesh_calibrate_modal");
@@ -1092,7 +1092,7 @@ void BedMeshPanel::submit_calibration_name(std::string_view typed) {
     // Only where the command stores is read here, so the probe temperature is moot.
     const auto plan = helix::bed_mesh::plan_calibration(
         StandardMacros::instance().get(StandardMacroSlot::BedMesh), check.name,
-        helix::bed_mesh::DEFAULT_PROBE_BED_TEMP_C);
+        helix::bed_mesh::kDefaultProbeBedTempC);
     const auto replaced = helix::bed_mesh::profiles_replaced_by(plan, stored);
     if (replaced.empty()) {
         begin_calibration(check.name);
@@ -1159,13 +1159,13 @@ void BedMeshPanel::prepare_and_probe() {
             char buf[128];
             std::snprintf(buf, sizeof(buf), "TEMPERATURE_WAIT SENSOR=%s MINIMUM=%.0f\n",
                           get_printer_state().temperature_state().active_extruder_name().c_str(),
-                          PROBE_NOZZLE_TEMP);
+                          kProbeNozzleTemp);
             wait_cmd += buf;
         }
         if (preheat_turned_on_bed_) {
             char buf[128];
             std::snprintf(buf, sizeof(buf), "TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM=%.0f",
-                          PROBE_BED_TEMP);
+                          kProbeBedTemp);
             wait_cmd += buf;
         }
 
@@ -1183,7 +1183,7 @@ void BedMeshPanel::prepare_and_probe() {
                             [this](const MoonrakerError& err) {
                                 on_calibration_error("Preheat failed: " + err.message);
                             }),
-            PREHEAT_TIMEOUT_MS);
+            kPreheatTimeoutMs);
     } else {
         // Heaters already on — go straight to home/probe
         start_home_and_probe();
@@ -1427,7 +1427,7 @@ void BedMeshPanel::execute_delete_profile(const std::string& name) {
 
     spdlog::info("[{}] Deleting profile: {}", get_name(), name);
 
-    operation_guard_.begin(OPERATION_TIMEOUT_MS, [this] {
+    operation_guard_.begin(kOperationTimeoutMs, [this] {
         hide_all_modals();
         pending_operation_ = PendingOperation::None;
         NOTIFY_WARNING(lv_tr("Bed mesh operation timed out"));
@@ -1459,7 +1459,7 @@ void BedMeshPanel::execute_rename_profile(const std::string& old_name,
 
     spdlog::info("[{}] Renaming profile: {} -> {}", get_name(), old_name, new_name);
 
-    operation_guard_.begin(OPERATION_TIMEOUT_MS, [this] {
+    operation_guard_.begin(kOperationTimeoutMs, [this] {
         hide_all_modals();
         pending_operation_ = PendingOperation::None;
         NOTIFY_WARNING(lv_tr("Bed mesh operation timed out"));
@@ -1522,7 +1522,7 @@ void BedMeshPanel::execute_save_config() {
 
     spdlog::info("[{}] Saving config (will restart Klipper)", get_name());
 
-    operation_guard_.begin(SLOW_OPERATION_TIMEOUT_MS, [this] {
+    operation_guard_.begin(kSlowOperationTimeoutMs, [this] {
         hide_all_modals();
         pending_operation_ = PendingOperation::None;
         NOTIFY_WARNING(lv_tr("Bed mesh operation timed out"));

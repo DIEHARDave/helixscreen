@@ -73,7 +73,7 @@ class ToolOffsetCalibrationPanel : public OverlayBase {
     /// to heat from cold per tool, so a cold four-tool run is ~10 min. Expiry
     /// does not fail the run while Klipper still reports busy - see
     /// on_run_rpc_error().
-    static constexpr uint32_t CALIBRATION_TIMEOUT_MS = 900000; // 15 min
+    static constexpr uint32_t kCalibrationTimeoutMs = 900000; // 15 min
 
     ~ToolOffsetCalibrationPanel() override;
 

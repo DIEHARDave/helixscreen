@@ -142,8 +142,8 @@ void GCodeOpsDetector::init_default_patterns() {
     // All patterns are now defined in a single place (operation_patterns.h)
     // and used by both GCodeOpsDetector and PrintStartAnalyzer.
 
-    for (size_t i = 0; i < OPERATION_KEYWORDS_COUNT; ++i) {
-        const auto& kw = OPERATION_KEYWORDS[i];
+    for (size_t i = 0; i < kOperationKeywordsCount; ++i) {
+        const auto& kw = kOperationKeywords[i];
 
         // Determine embedding type based on pattern characteristics
         // G-codes and direct Klipper commands = DIRECT_COMMAND

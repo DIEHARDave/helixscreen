@@ -52,7 +52,7 @@ BaseGeometry compute_base_geometry(lv_obj_t* obj, const FilamentPathData* data) 
     g.height = lv_area_get_height(&obj_coords);
     g.slot_count = data->slot_count;
 
-    int count = LV_MIN(g.slot_count, FilamentPathData::MAX_SLOTS);
+    int count = LV_MIN(g.slot_count, FilamentPathData::kMaxSlots);
     for (int i = 0; i < count; i++) {
         g.slot_x[i] = g.x_off + get_slot_x(data, i, g.x_off);
     }
@@ -80,7 +80,7 @@ BaseGeometry compute_base_geometry(lv_obj_t* obj, const FilamentPathData* data) 
 
 SlotRenderStates compute_slot_render_states(const FilamentPathData* data) {
     SlotRenderStates states{};
-    int count = LV_MIN(data->slot_count, FilamentPathData::MAX_SLOTS);
+    int count = LV_MIN(data->slot_count, FilamentPathData::kMaxSlots);
     for (int i = 0; i < count; i++) {
         SlotRenderState& s = states[i];
 
@@ -210,7 +210,7 @@ void draw_upstream_captions(const RenderCtx& ctx, const ParallelRows& rows) {
     if (!font)
         return;
     const int32_t font_h = lv_font_get_line_height(font);
-    for (int i = 0; i < LV_MIN(data->slot_count, FilamentPathData::MAX_SLOTS); i++) {
+    for (int i = 0; i < LV_MIN(data->slot_count, FilamentPathData::kMaxSlots); i++) {
         const char* caption = data->slot_upstream_caption[i];
         if (!caption[0])
             continue;
@@ -239,7 +239,7 @@ void render_parallel(lv_obj_t* obj, lv_layer_t* layer, FilamentPathData* data) {
     const ParallelRows rows = parallel_rows(*data, ctx.geo);
     const SlotRenderStates states = compute_slot_render_states(data);
     for (ToolPass pass : {ToolPass::Glyph, ToolPass::Badge}) {
-        for (int i = 0; i < LV_MIN(data->slot_count, FilamentPathData::MAX_SLOTS); i++)
+        for (int i = 0; i < LV_MIN(data->slot_count, FilamentPathData::kMaxSlots); i++)
             draw_parallel_tool(ctx, states, i, rows, pass);
     }
     draw_upstream_captions(ctx, rows);
@@ -340,7 +340,7 @@ void render_mixed(lv_obj_t* obj, lv_layer_t* layer, FilamentPathData* data) {
     for (ToolPass pass : {ToolPass::Glyph, ToolPass::Badge}) {
         if (f.hub_count > 0)
             draw_mixed_shared_toolhead(ctx, f, pass);
-        for (int i = 0; i < LV_MIN(data->slot_count, FilamentPathData::MAX_SLOTS); i++) {
+        for (int i = 0; i < LV_MIN(data->slot_count, FilamentPathData::kMaxSlots); i++) {
             if (!data->slot_is_hub_routed[i])
                 draw_mixed_direct_toolhead(ctx, f, i, pass);
         }
@@ -482,7 +482,7 @@ void draw_buffer_section(const RenderCtx& ctx, const LinearHubFrame& f, const Pa
 // margin 0 via hub_box_hit.
 void record_bypass_hit(const RenderCtx& ctx, const LinearHubFrame& f) {
     const BaseGeometry& g = ctx.geo;
-    int32_t bypass_x = g.x_off + (int32_t)(g.width * BYPASS_X_RATIO);
+    int32_t bypass_x = g.x_off + (int32_t)(g.width * kBypassXRatio);
     ctx.data->hits.bypass = {bypass_x - f.sensor_r * 3, f.bypass_merge_y - f.sensor_r * 4,
                              bypass_x + f.sensor_r * 3, f.bypass_merge_y + f.sensor_r * 4};
     ctx.data->hits.bypass_valid = true;
@@ -522,7 +522,7 @@ void render_linear_hub(lv_obj_t* obj, lv_layer_t* layer, FilamentPathData* data)
 
     const LinearHubFrame f = compute_linear_hub_frame(
         *data, ctx.geo,
-        toolhead_top_y(ctx.geo.y_off + (int32_t)(ctx.geo.height * NOZZLE_Y_RATIO),
+        toolhead_top_y(ctx.geo.y_off + (int32_t)(ctx.geo.height * kNozzleYRatio),
                        data->theme.extruder_scale));
     PathPlan& plan = plan_scratch();
     plan_linear_hub(f, *data, ctx.geo, plan);
@@ -583,11 +583,11 @@ void draw_animation_linear_hub(lv_layer_t* layer, FilamentPathData* data) {
         PathSegment prev_seg = static_cast<PathSegment>(data->anim.prev_segment);
         PathSegment fil_seg = static_cast<PathSegment>(data->filament_segment);
         float progress_factor = data->anim.progress / 100.0f;
-        const float NUM_INTERVALS = static_cast<float>(static_cast<int>(PathSegment::NOZZLE) -
+        const float kNumIntervals = static_cast<float>(static_cast<int>(PathSegment::NOZZLE) -
                                                        static_cast<int>(PathSegment::SPOOL));
         float base = static_cast<float>(static_cast<int>(prev_seg) - 1);
         float target = static_cast<float>(static_cast<int>(fil_seg) - 1);
-        float tip_fraction = (base + (target - base) * progress_factor) / NUM_INTERVALS;
+        float tip_fraction = (base + (target - base) * progress_factor) / kNumIntervals;
         tip_fraction = LV_CLAMP(tip_fraction, 0.0f, 1.0f);
         float tip_distance = tip_fraction * pg::path_length(path);
         pg::PathPoint tip = pg::path_point_at(path, tip_distance);
@@ -613,7 +613,7 @@ void draw_animation_parallel(lv_layer_t* layer, const BaseGeometry& g,
     int32_t sensor_y = rows.sensor_y;
     int32_t sensor_r = data->theme.sensor_radius;
     bool reverse = (data->anim.direction == AnimDirection::UNLOADING);
-    int count = LV_MIN(data->slot_count, FilamentPathData::MAX_SLOTS);
+    int count = LV_MIN(data->slot_count, FilamentPathData::kMaxSlots);
     for (int i = 0; i < count; i++) {
         const SlotRenderState& s = states[i];
         if (!s.is_mounted || !s.has_filament)

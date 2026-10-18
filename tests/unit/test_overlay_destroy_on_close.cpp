@@ -91,7 +91,7 @@ class DestroyOnCloseFixture : public LVGLUITestFixture {
         }
     }
 
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels_{};
+    std::array<lv_obj_t*, kUiPanelCount> panels_{};
 };
 
 } // namespace

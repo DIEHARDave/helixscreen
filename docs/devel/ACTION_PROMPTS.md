@@ -68,7 +68,7 @@ ActionPromptManager::process_line()
                           ActionPromptModal::handle_button_click(gcode)
                                          |  gcode callback, then hide(ButtonPress)
                                          v
-                          IMoonrakerAPI::execute_gcode(gcode, ..., MACRO_TIMEOUT_MS)
+                          IMoonrakerAPI::execute_gcode(gcode, ..., kMacroTimeoutMs)
                                          |  on error
                                          v
                           report_action_prompt_gcode_failure() -> "Macro failed: ..." toast
@@ -110,7 +110,7 @@ against the known commands, longest first:
 ```cpp
 // Every command the protocol defines, LONGEST FIRST so that a prefix match can
 // never pick "prompt_button" out of "prompt_button_group_start".
-constexpr std::string_view ACTION_COMMANDS[] = {
+constexpr std::string_view kActionCommands[] = {
     "prompt_button_group_start",
     "prompt_button_group_end",
     "prompt_footer_button",
@@ -249,7 +249,7 @@ void ActionPromptModal::handle_button_click(const std::string& gcode) {
 Wire prompts never reach the empty-gcode branch, because the parser already substituted the
 label. Only `PromptData` built in C++ uses it.
 
-The callback installed by `init_action_prompt` sends with `IMoonrakerAPI::MACRO_TIMEOUT_MS`
+The callback installed by `init_action_prompt` sends with `IMoonrakerAPI::kMacroTimeoutMs`
 instead of the default request timeout, since prompt buttons routinely start long macros (heat,
 cut, purge). Its error callback calls `report_action_prompt_gcode_failure()`, which raises
 `Macro failed: <Klipper's message>`. That error callback is also what makes the request
@@ -267,7 +267,7 @@ backdrop tap, ESC, a hot-reload rebuild, a `ctl reset`) calls the modal's dismis
 | Close | Manager | Sent to Klipper |
 |-------|---------|-----------------|
 | Button with a gcode (`ButtonWithGcode`) | ends | The button's gcode only |
-| Button without a gcode, backdrop tap, ESC (`ButtonWithoutGcode`, `UserDismiss`) | ends | `RESPOND TYPE=command MSG="action:prompt_end"` (`ActionPromptManager::PROMPT_END_GCODE`) |
+| Button without a gcode, backdrop tap, ESC (`ButtonWithoutGcode`, `UserDismiss`) | ends | `RESPOND TYPE=command MSG="action:prompt_end"` (`ActionPromptManager::kPromptEndGcode`) |
 | `ctl reset` or another sweep (`External`) | ends | nothing: the screen was cleared, the user did not answer the printer |
 | Hot reload (`HotReload`, dev builds) | keeps `SHOWING`, re-shows the prompt from the rebuilt XML on a later tick | nothing |
 | Firmware `prompt_end` or next `prompt_begin` | already `IDLE`/`BUILDING`; `on_close` hid the modal | nothing |
@@ -372,7 +372,7 @@ Logs to grep with `-vv`: `[ActionPrompt]` (wiring, sends, `Closed on screen, sen
 
 ### Adding a directive
 
-1. Add the command to `ACTION_COMMANDS` in `src/ui/action_prompt_manager.cpp`, keeping the list
+1. Add the command to `kActionCommands` in `src/ui/action_prompt_manager.cpp`, keeping the list
    longest first, or glued-command recovery can match the shorter prefix.
 2. Add a branch in `ActionPromptManager::process_line()` and a private `handle_*` method. Decide
    which states it is valid in and ignore it elsewhere, like the existing handlers.

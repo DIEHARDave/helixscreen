@@ -39,8 +39,8 @@
 #include "../catch_amalgamated.hpp"
 
 using helix::ui::DirtyRect;
+using helix::ui::kSaverMaxDirtyAreas;
 using helix::ui::PixelWriter;
-using helix::ui::SAVER_MAX_DIRTY_AREAS;
 using helix::ui::SaverCanvas;
 using helix::ui::SaverFrameTimer;
 using helix::ui::SaverOverlay;
@@ -65,7 +65,7 @@ lv_area_t coords_of(lv_obj_t* obj) {
     return area;
 }
 
-constexpr uint32_t PROBE_PERIODS_MS[] = {helix::ui::SAVER_FAST_PERIOD, 45, 50};
+constexpr uint32_t kProbePeriodsMs[] = {helix::ui::kSaverFastPeriod, 45, 50};
 
 /// A saver that records what the base asks of it.
 class ProbeSaver : public helix::ui::SaverBase {
@@ -106,10 +106,10 @@ class ProbeSaver : public helix::ui::SaverBase {
         calls.emplace_back("stop");
     }
     size_t ladder_size() const override {
-        return std::size(PROBE_PERIODS_MS);
+        return std::size(kProbePeriodsMs);
     }
     uint32_t ladder_period_ms(size_t level) const override {
-        return PROBE_PERIODS_MS[level];
+        return kProbePeriodsMs[level];
     }
     void on_level_request(size_t level) override {
         level_requests.push_back(level);
@@ -135,12 +135,12 @@ TEST_CASE("merged dirty areas number at most the limit and cover every input",
         input.push_back(
             {x, y, x + static_cast<int32_t>(rng() % 20), y + static_cast<int32_t>(rng() % 20)});
     }
-    REQUIRE(input.size() > SAVER_MAX_DIRTY_AREAS);
+    REQUIRE(input.size() > kSaverMaxDirtyAreas);
 
     std::vector<DirtyRect> merged = input;
-    helix::ui::merge_dirty_areas(merged, SAVER_MAX_DIRTY_AREAS);
+    helix::ui::merge_dirty_areas(merged, kSaverMaxDirtyAreas);
 
-    CHECK(merged.size() == SAVER_MAX_DIRTY_AREAS);
+    CHECK(merged.size() == kSaverMaxDirtyAreas);
     for (const DirtyRect& r : input) {
         CHECK(box_covers(merged, r));
     }
@@ -149,7 +149,7 @@ TEST_CASE("merged dirty areas number at most the limit and cover every input",
 TEST_CASE("merging within the limit keeps the areas in order and drops empty ones",
           "[screensaver][screensaver_parts]") {
     std::vector<DirtyRect> areas = {{0, 0, 9, 9}, {}, {100, 100, 120, 110}, {50, 5, 60, 6}};
-    helix::ui::merge_dirty_areas(areas, SAVER_MAX_DIRTY_AREAS);
+    helix::ui::merge_dirty_areas(areas, kSaverMaxDirtyAreas);
     REQUIRE(areas.size() == 3);
     CHECK(areas[0] == DirtyRect{0, 0, 9, 9});
     CHECK(areas[1] == DirtyRect{100, 100, 120, 110});
@@ -278,7 +278,7 @@ TEST_CASE_METHOD(
     canvas.invalidate(dirty);
 
     REQUIRE_FALSE(invalidated.areas.empty());
-    CHECK(invalidated.areas.size() <= SAVER_MAX_DIRTY_AREAS);
+    CHECK(invalidated.areas.size() <= kSaverMaxDirtyAreas);
     for (const DirtyRect& r : input) {
         CHECK(areas_cover_point(invalidated.areas, coords.x1 + r.x1, coords.y1 + r.y1));
         CHECK(areas_cover_point(invalidated.areas, coords.x1 + r.x2, coords.y1 + r.y2));
@@ -382,7 +382,7 @@ TEST_CASE_METHOD(
     LVGLTestFixture,
     "a saver starts with its overlay, canvas, seeded random sequence and a 16 ms timer",
     "[screensaver][screensaver_parts]") {
-    // With no period configured, level 0 runs at SAVER_FAST_PERIOD whatever the display refresh.
+    // With no period configured, level 0 runs at kSaverFastPeriod whatever the display refresh.
     ScopedRefreshPeriod refresh(20);
     ScopedGlobalRefreshHold clean_hold;
     ProbeSaver saver;
@@ -401,7 +401,7 @@ TEST_CASE_METHOD(
     REQUIRE(canvas != nullptr);
     CHECK(lv_obj_get_parent(canvas) == overlay);
     REQUIRE(SaverTestAccess::timer(saver) != nullptr);
-    CHECK(SaverTestAccess::timer(saver)->period == helix::ui::SAVER_FAST_PERIOD);
+    CHECK(SaverTestAccess::timer(saver)->period == helix::ui::kSaverFastPeriod);
     std::minstd_rand expected(7);
     CHECK(saver.first_random == expected());
     CHECK(saver.calls == std::vector<std::string>{"start"});
@@ -500,8 +500,8 @@ TEST_CASE_METHOD(
     hold.acquire();
     saver.start();
     REQUIRE(saver.is_active());
-    CHECK(SaverTestAccess::timer(saver)->period == helix::ui::SAVER_FAST_PERIOD);
-    CHECK(helix::default_refr_timer_period() == helix::ui::SAVER_FAST_PERIOD);
+    CHECK(SaverTestAccess::timer(saver)->period == helix::ui::kSaverFastPeriod);
+    CHECK(helix::default_refr_timer_period() == helix::ui::kSaverFastPeriod);
 
     saver.request_level(1);
     CHECK(saver.level_requests == std::vector<size_t>{1});
@@ -707,7 +707,7 @@ namespace {
 /// The dirty reduction aqua and high fly spell out after a step.
 void aqua_reduce(std::vector<DirtyRect>& dirty, int32_t w, int32_t h) {
     const DirtyRect whole{0, 0, w - 1, h - 1};
-    helix::ui::merge_dirty_areas(dirty, SAVER_MAX_DIRTY_AREAS);
+    helix::ui::merge_dirty_areas(dirty, kSaverMaxDirtyAreas);
     int64_t covered = 0;
     for (const DirtyRect& b : dirty) {
         covered += b.area();
@@ -794,14 +794,14 @@ TEST_CASE("reduce_dirty reaches aqua's and high fly's reduction on any dirty lis
         }
         std::vector<DirtyRect> expect = areas;
         aqua_reduce(expect, w, h);
-        helix::ui::reduce_dirty(areas, SAVER_MAX_DIRTY_AREAS, w, h);
+        helix::ui::reduce_dirty(areas, kSaverMaxDirtyAreas, w, h);
         REQUIRE(areas == expect);
     }
     std::vector<DirtyRect> nearly_all{{0, 0, 99, 94}};
-    helix::ui::reduce_dirty(nearly_all, SAVER_MAX_DIRTY_AREAS, 100, 100);
+    helix::ui::reduce_dirty(nearly_all, kSaverMaxDirtyAreas, 100, 100);
     CHECK(nearly_all == std::vector<DirtyRect>{DirtyRect::whole(100, 100)});
     std::vector<DirtyRect> little{{0, 0, 9, 9}};
-    helix::ui::reduce_dirty(little, SAVER_MAX_DIRTY_AREAS, 100, 100);
+    helix::ui::reduce_dirty(little, kSaverMaxDirtyAreas, 100, 100);
     CHECK(little == std::vector<DirtyRect>{{0, 0, 9, 9}});
 }
 
@@ -886,11 +886,11 @@ TEST_CASE("SaverVec3 computes what the pipes and fireflies vector code computes"
 
 TEST_CASE("SAVER_PI and SAVER_TWO_PI are every saver's float pi and 2 pi",
           "[screensaver][screensaver_parts]") {
-    CHECK(screensaver_same_bits(helix::ui::SAVER_PI, 3.14159265f));
-    CHECK(screensaver_same_bits(helix::ui::SAVER_PI, 3.14159265358979f));
-    CHECK(screensaver_same_bits(helix::ui::SAVER_PI, static_cast<float>(M_PI)));
-    CHECK(screensaver_same_bits(helix::ui::SAVER_TWO_PI, 6.28318530717958f));
-    CHECK(screensaver_same_bits(helix::ui::SAVER_TWO_PI, 2.0f * 3.14159265f));
+    CHECK(screensaver_same_bits(helix::ui::kSaverPi, 3.14159265f));
+    CHECK(screensaver_same_bits(helix::ui::kSaverPi, 3.14159265358979f));
+    CHECK(screensaver_same_bits(helix::ui::kSaverPi, static_cast<float>(M_PI)));
+    CHECK(screensaver_same_bits(helix::ui::kSaverTwoPi, 6.28318530717958f));
+    CHECK(screensaver_same_bits(helix::ui::kSaverTwoPi, 2.0f * 3.14159265f));
 }
 
 // ============================================================================
@@ -902,7 +902,7 @@ namespace {
 struct ProbeLevel {
     uint32_t period_ms;
 };
-constexpr ProbeLevel PROBE_SIM_LEVELS[] = {{helix::ui::SAVER_FAST_PERIOD}, {33}, {50}};
+constexpr ProbeLevel kProbeSimLevels[] = {{helix::ui::kSaverFastPeriod}, {33}, {50}};
 
 /// What the probe sims were asked to do, in order.
 std::vector<std::string>& sim_calls() {
@@ -912,7 +912,7 @@ std::vector<std::string>& sim_calls() {
 
 /// A sim on the plain contract that records each call and holds a buffer while it runs.
 struct ProbeSim {
-    static constexpr const auto& LEVELS = PROBE_SIM_LEVELS;
+    static constexpr const auto& kLevels = kProbeSimLevels;
 
     void init(helix::ui::FrameTarget& frame, std::minstd_rand& rng, size_t level) {
         sim_calls().push_back("init " + std::to_string(level));
@@ -950,13 +950,13 @@ class ProbeSimSaver : public helix::ui::SimSaver<ProbeSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return helix::ui::SAVER_BUILD_CANVAS_FORMAT;
+        return helix::ui::kSaverBuildCanvasFormat;
     }
 };
 
 /// A clock sim: draws from the frame, the rng, the level and a clock reading.
 struct ProbeClockSim {
-    static constexpr const auto& LEVELS = PROBE_SIM_LEVELS;
+    static constexpr const auto& kLevels = kProbeSimLevels;
 
     void init(helix::ui::FrameTarget& /*frame*/, std::minstd_rand& /*rng*/, size_t level,
               const helix::ui::ClockReading& reading) {
@@ -987,7 +987,7 @@ class ProbeClockSaver : public helix::ui::ClockSaver<ProbeClockSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return helix::ui::LV_DRAW_CANVAS_FORMAT;
+        return helix::ui::kLvDrawCanvasFormat;
     }
     void draw_clock_text(const std::vector<DirtyRect>& under,
                          std::vector<DirtyRect>& dirty) override {
@@ -1002,7 +1002,7 @@ class ProbeClockSaver : public helix::ui::ClockSaver<ProbeClockSim> {
 
 /// A clock sim with no rng that draws a flip-clock face.
 struct ProbeFaceSim {
-    static constexpr const auto& LEVELS = PROBE_SIM_LEVELS;
+    static constexpr const auto& kLevels = kProbeSimLevels;
 
     void init(helix::ui::FrameTarget& /*frame*/, size_t /*level*/,
               const helix::ui::FlipFace& face) {
@@ -1026,7 +1026,7 @@ class ProbeFaceSaver : public helix::ui::ClockSaver<ProbeFaceSim, helix::ui::Fli
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return helix::ui::LV_DRAW_CANVAS_FORMAT;
+        return helix::ui::kLvDrawCanvasFormat;
     }
     void draw_clock_text(const std::vector<DirtyRect>& /*under*/,
                          std::vector<DirtyRect>& /*dirty*/) override {}
@@ -1060,7 +1060,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
                  "[screensaver][screensaver_parts]") {
     ProbeSimSaver ss;
     ScreensaverStopOnExit<ProbeSimSaver> stop_on_exit{ss};
-    CHECK(ss.level_count() == std::size(PROBE_SIM_LEVELS));
+    CHECK(ss.level_count() == std::size(kProbeSimLevels));
     sim_calls().clear();
     SaverTestAccess::set_fixed_seed(ss, 9);
     ss.set_start_level(1);
@@ -1096,10 +1096,10 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
 TEST_CASE("ladder_period reads a table's rows and clamps to its last rung",
           "[screensaver][screensaver_parts]") {
-    CHECK(helix::ui::ladder_period(PROBE_SIM_LEVELS, 0) == helix::ui::SAVER_FAST_PERIOD);
-    CHECK(helix::ui::ladder_period(PROBE_SIM_LEVELS, 1) == 33);
-    CHECK(helix::ui::ladder_period(PROBE_SIM_LEVELS, 2) == 50);
-    CHECK(helix::ui::ladder_period(PROBE_SIM_LEVELS, 99) == 50);
+    CHECK(helix::ui::ladder_period(kProbeSimLevels, 0) == helix::ui::kSaverFastPeriod);
+    CHECK(helix::ui::ladder_period(kProbeSimLevels, 1) == 33);
+    CHECK(helix::ui::ladder_period(kProbeSimLevels, 2) == 50);
+    CHECK(helix::ui::ladder_period(kProbeSimLevels, 99) == 50);
 }
 
 TEST_CASE("a sim that draws no random numbers is driven without an rng",
@@ -1186,7 +1186,7 @@ TEST_CASE("clock drift moves as clock_drift_at says and reports when it moved",
     int32_t drift_y = 0;
     int moves = 0;
     for (int frame = 0; frame < 4000; frame++) {
-        const uint32_t dt = helix::test::UNEVEN_FRAME_MS[frame % 5] * 300;
+        const uint32_t dt = helix::test::kUnevenFrameMs[frame % 5] * 300;
         elapsed += dt;
         int32_t dx = 0;
         int32_t dy = 0;
@@ -1266,7 +1266,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
                  "a label needs drawing when its text or box changes or a repaint crosses it",
                  "[screensaver][screensaver_parts]") {
     SaverCanvas canvas;
-    REQUIRE(canvas.create(lv_screen_active(), 200, 80, helix::ui::LV_DRAW_CANVAS_FORMAT));
+    REQUIRE(canvas.create(lv_screen_active(), 200, 80, helix::ui::kLvDrawCanvasFormat));
     helix::ui::SaverLabel label;
     const DirtyRect box{20, 20, 119, 49};
     CHECK(label.needs_draw("12:34", box, {}));
@@ -1340,7 +1340,7 @@ TEST_CASE("a frame hash covers every pixel and no padding, and opacity counts th
     CHECK(helix::test::frame_fnv1a(frame.target) != hash);
     // FNV-1a's published offset and prime: "a" hashes to 0xaf63dc4c8601ec8c.
     const uint8_t a = 'a';
-    CHECK(helix::test::fnv1a(helix::test::FNV1A_OFFSET, &a, 1) == 0xaf63dc4c8601ec8cULL);
+    CHECK(helix::test::fnv1a(helix::test::kFnv1aOffset, &a, 1) == 0xaf63dc4c8601ec8cULL);
 }
 
 // ============================================================================

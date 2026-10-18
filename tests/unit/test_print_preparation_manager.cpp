@@ -771,7 +771,7 @@ int sum_of_default_phases() {
     int total = 0;
     for (const auto& [phase, secs] : helix::PreprintPredictor::default_phase_durations()) {
         total +=
-            phase == homing ? std::max(secs, helix::PreprintPredictor::MIN_HOMING_SECONDS) : secs;
+            phase == homing ? std::max(secs, helix::PreprintPredictor::kMinHomingSeconds) : secs;
     }
     return total;
 }
@@ -2801,8 +2801,8 @@ TEST_CASE("PrepManager: Extension safety - adding new operations", "[print_prepa
      *
      * 1. Add enum value to OperationCategory in operation_patterns.h
      * 2. Add entry to OperationRegistry::build_all() in operation_registry.h
-     * 3. Add keyword patterns to OPERATION_KEYWORDS in operation_patterns.h
-     * 4. Add skip/perform variations to SKIP_PARAM_VARIATIONS/PERFORM_PARAM_VARIATIONS
+     * 3. Add keyword patterns to kOperationKeywords in operation_patterns.h
+     * 4. Add skip/perform variations to kSkipParamVariations/kPerformParamVariations
      * 5. Update category_key() and category_name() in operation_patterns.h
      * 6. Add UI subject handling in PrintPreparationManager
      * 7. Add printer database entries if needed
@@ -4492,7 +4492,7 @@ TEST_CASE_METHOD(ObjectScanFixture,
 TEST_CASE_METHOD(ObjectScanFixture, "Definitions past the scan window are not in the scan",
                  "[print_preparation][pre_start_exclude]") {
     std::string content = "; HEADER\n";
-    content += std::string(helix::PRINTER_STOP_SCAN_BYTES, ';') + "\n";
+    content += std::string(helix::kPrinterStopScanBytes, ';') + "\n";
     content += "EXCLUDE_OBJECT_DEFINE NAME=Late_A CENTER=1,1\n";
     content += "EXCLUDE_OBJECT_DEFINE NAME=Late_B CENTER=9,9\n";
     helix::PlantedGcode file("late_defines.gcode", "", content);

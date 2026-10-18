@@ -119,11 +119,11 @@ class CapturingMultiAce : public AmsBackendMultiAce {
         pending_load_grace_ = std::chrono::milliseconds{0};
     }
 
-    /// Every EVENT_ERROR payload the backend raises.
+    /// Every kEventError payload the backend raises.
     std::vector<std::string> errors;
     void record_errors() {
         set_event_callback([this](const std::string& ev, const std::string& data) {
-            if (ev == EVENT_ERROR) {
+            if (ev == kEventError) {
                 errors.push_back(data);
             }
         });
@@ -1202,7 +1202,7 @@ TEST_CASE_METHOD(MultiAceFixture, "clearing a bay spool drops the edit and yield
     SlotInfo original = b.get_slot_info(bay);
     SlotInfo cleared = original;
     cleared.material.clear();
-    cleared.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_rgb = kAmsDefaultSlotColor;
     cleared.color_name.clear();
     cleared.brand.clear();
     cleared.spool_name.clear();

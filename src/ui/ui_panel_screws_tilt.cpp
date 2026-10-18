@@ -96,7 +96,7 @@ void ScrewsTiltPanel::init_subjects() {
     UI_MANAGED_SUBJECT_INT(s_screws_tilt_state, 0, "screws_tilt_state", subjects_);
 
     // Initialize subjects for reactive list rows (4 slots max)
-    for (size_t i = 0; i < MAX_SCREWS; i++) {
+    for (size_t i = 0; i < kMaxScrews; i++) {
         // Initialize char buffers to empty
         screw_name_bufs_[i][0] = '\0';
         screw_adj_bufs_[i][0] = '\0';
@@ -111,10 +111,10 @@ void ScrewsTiltPanel::init_subjects() {
 
         // Init subjects using managed macros - visible defaults to 0 (hidden)
         UI_MANAGED_SUBJECT_INT(screw_visible_subjects_[i], 0, visible_name, subjects_);
-        UI_MANAGED_SUBJECT_STRING_N(screw_name_subjects_[i], screw_name_bufs_[i],
-                                    SCREW_NAME_BUF_SIZE, "", name_name, subjects_);
+        UI_MANAGED_SUBJECT_STRING_N(screw_name_subjects_[i], screw_name_bufs_[i], kScrewNameBufSize,
+                                    "", name_name, subjects_);
         UI_MANAGED_SUBJECT_STRING_N(screw_adjustment_subjects_[i], screw_adj_bufs_[i],
-                                    SCREW_ADJ_BUF_SIZE, "", adj_name, subjects_);
+                                    kScrewAdjBufSize, "", adj_name, subjects_);
     }
 
     // Initialize status label subjects
@@ -404,7 +404,7 @@ void ScrewsTiltPanel::populate_results(const std::vector<ScrewTiltResult>& resul
     // instead of them, so the panel stays cross-checkable against Fluidd/console.
     const ScrewRecenterHint hint = suggest_screw_recentering(results, level_report_);
     if (hint.available && hint.screw_index < results.size()) {
-        snprintf(recenter_hint_buf_, RECENTER_HINT_BUF_SIZE, "%s: %s %s",
+        snprintf(recenter_hint_buf_, kRecenterHintBufSize, "%s: %s %s",
                  lv_tr("Or instead of turning the others"),
                  results[hint.screw_index].display_name().c_str(),
                  describe_screw_turn(hint.signed_minutes).c_str());
@@ -415,16 +415,16 @@ void ScrewsTiltPanel::populate_results(const std::vector<ScrewTiltResult>& resul
     lv_subject_set_int(&recenter_hint_available_, hint.available ? 1 : 0);
 
     // Update subjects for reactive list rows (XML handles the UI)
-    for (size_t i = 0; i < MAX_SCREWS; i++) {
+    for (size_t i = 0; i < kMaxScrews; i++) {
         if (i < results.size()) {
             const auto& screw = results[i];
             bool in_spec = i < level_report_.in_spec.size() && level_report_.in_spec[i];
             bool is_worst = (i == level_report_.worst_index && !screw.is_reference && !in_spec);
 
             // Copy strings into fixed buffers (LVGL string subjects require stable storage)
-            snprintf(screw_name_bufs_[i], SCREW_NAME_BUF_SIZE, "%s", screw.display_name().c_str());
+            snprintf(screw_name_bufs_[i], kScrewNameBufSize, "%s", screw.display_name().c_str());
             // Use friendly adjustment text (e.g., "Tighten 1/4 turn" instead of "CW 00:18")
-            snprintf(screw_adj_bufs_[i], SCREW_ADJ_BUF_SIZE, "%s",
+            snprintf(screw_adj_bufs_[i], kScrewAdjBufSize, "%s",
                      screw.friendly_adjustment(in_spec).c_str());
 
             // Update subjects - this triggers XML binding updates
@@ -457,7 +457,7 @@ void ScrewsTiltPanel::clear_results() {
     screw_indicators_.clear();
 
     // Hide all list rows via subjects (reactive pattern)
-    for (size_t i = 0; i < MAX_SCREWS; i++) {
+    for (size_t i = 0; i < kMaxScrews; i++) {
         lv_subject_set_int(&screw_visible_subjects_[i], 0);
     }
 }
@@ -481,12 +481,12 @@ void ScrewsTiltPanel::create_screw_indicator(size_t index, const ScrewTiltResult
     }
 
     // Circular screw indicators - size based on icon
-    constexpr int INDICATOR_SIZE = 52; // Square for circle
+    constexpr int kIndicatorSize = 52; // Square for circle
 
     // Create circular indicator
     lv_obj_t* indicator = lv_obj_create(bed_diagram_container_);
     lv_obj_remove_style_all(indicator);
-    lv_obj_set_size(indicator, INDICATOR_SIZE, INDICATOR_SIZE);
+    lv_obj_set_size(indicator, kIndicatorSize, kIndicatorSize);
     lv_obj_set_style_radius(indicator, LV_RADIUS_CIRCLE, 0); // Fully round
     lv_obj_set_style_border_width(indicator, is_worst ? 3 : 2, 0);
     lv_obj_set_style_border_color(indicator, theme_manager_get_color("text"), 0);

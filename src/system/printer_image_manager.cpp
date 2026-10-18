@@ -38,10 +38,10 @@ namespace hfs = helix::fs;
 namespace helix {
 
 // Maximum file size for import (5 MB)
-static constexpr size_t MAX_FILE_SIZE = 5 * 1024 * 1024;
+static constexpr size_t kMaxFileSize = 5 * 1024 * 1024;
 
 // Maximum image dimensions for import
-static constexpr int MAX_IMAGE_DIMENSION = 2048;
+static constexpr int kMaxImageDimension = 2048;
 
 PrinterImageManager& PrinterImageManager::instance() {
     static PrinterImageManager inst;
@@ -450,7 +450,7 @@ PrinterImageManager::validate_image(const std::string& path) const {
         result.error = "File not found: " + path;
         return result;
     }
-    if (*file_size > MAX_FILE_SIZE) {
+    if (*file_size > kMaxFileSize) {
         result.error =
             "File too large (" + std::to_string(*file_size / 1024 / 1024) + "MB, max 5MB)";
         return result;
@@ -463,10 +463,10 @@ PrinterImageManager::validate_image(const std::string& path) const {
         return result;
     }
 
-    if (w > MAX_IMAGE_DIMENSION || h > MAX_IMAGE_DIMENSION) {
+    if (w > kMaxImageDimension || h > kMaxImageDimension) {
         result.error = "Image too large (" + std::to_string(w) + "x" + std::to_string(h) +
-                       ", max " + std::to_string(MAX_IMAGE_DIMENSION) + "x" +
-                       std::to_string(MAX_IMAGE_DIMENSION) + ")";
+                       ", max " + std::to_string(kMaxImageDimension) + "x" +
+                       std::to_string(kMaxImageDimension) + ")";
         return result;
     }
 

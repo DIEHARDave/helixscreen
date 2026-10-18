@@ -82,7 +82,7 @@ json slot_context(const SlotInfo& slot, int global_index, const AmsUnit* unit,
         return j;
     put_nonempty(j, "material", slot.material);
     put_nonempty(j, "brand", slot.brand);
-    if (slot.color_rgb != AMS_DEFAULT_SLOT_COLOR)
+    if (slot.color_rgb != kAmsDefaultSlotColor)
         j["color"] = color_to_hex_string(slot.color_rgb);
     if (slot.spoolman_id > 0)
         j["spool_id"] = slot.spoolman_id;

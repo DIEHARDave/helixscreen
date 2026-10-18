@@ -41,8 +41,8 @@ std::string print_start_cfg(const char* body) {
     return std::string("[gcode_macro PRINT_START]\ngcode:\n") + body;
 }
 
-const char* MESH_MACRO = "  G28\n  BED_MESH_CALIBRATE\n";
-const char* QGL_MACRO = "  G28\n  QUAD_GANTRY_LEVEL\n";
+const char* kMeshMacro = "  G28\n  BED_MESH_CALIBRATE\n";
+const char* kQglMacro = "  G28\n  QUAD_GANTRY_LEVEL\n";
 
 class AnalysisRefreshFixture : public LVGLUITestFixture {
   public:
@@ -54,7 +54,7 @@ class AnalysisRefreshFixture : public LVGLUITestFixture {
         state().init_subjects(false);
         client_.connect("ws://mock/websocket", []() {}, []() {});
         set_connection(ConnectionState::DISCONNECTED);
-        serve_macro(MESH_MACRO);
+        serve_macro(kMeshMacro);
         manager_.set_dependencies(&api_, &state());
     }
 
@@ -91,7 +91,7 @@ TEST_CASE_METHOD(AnalysisRefreshFixture, "a reconnect re-reads an edited PRINT_S
     REQUIRE(analysis_has(PrintStartOpCategory::BED_MESH));
     REQUIRE_FALSE(analysis_has(PrintStartOpCategory::QGL));
 
-    serve_macro(QGL_MACRO);
+    serve_macro(kQglMacro);
     set_connection(ConnectionState::DISCONNECTED);
     set_connection(ConnectionState::CONNECTED);
     settle();
@@ -107,7 +107,7 @@ TEST_CASE_METHOD(AnalysisRefreshFixture, "a Klipper restart re-reads an edited P
     settle();
     REQUIRE(analysis_has(PrintStartOpCategory::BED_MESH));
 
-    serve_macro(QGL_MACRO);
+    serve_macro(kQglMacro);
     state().set_klippy_state_sync(KlippyState::SHUTDOWN);
     state().set_klippy_state_sync(KlippyState::READY);
     settle();
@@ -137,7 +137,7 @@ TEST_CASE_METHOD(AnalysisRefreshFixture,
     UpdateQueue::instance().drain();
     REQUIRE(manager_.is_macro_analysis_in_progress());
 
-    serve_macro(QGL_MACRO);
+    serve_macro(kQglMacro);
     set_connection(ConnectionState::DISCONNECTED);
     set_connection(ConnectionState::CONNECTED);
     settle();
@@ -155,7 +155,7 @@ TEST_CASE_METHOD(AnalysisRefreshFixture, "re-wiring dependencies reuses the anal
 
     // The detail view re-wires on every widget-tree rebuild; that is not a
     // reconnect and must not refetch.
-    serve_macro(QGL_MACRO);
+    serve_macro(kQglMacro);
     manager_.set_dependencies(&api_, &state());
     settle();
 

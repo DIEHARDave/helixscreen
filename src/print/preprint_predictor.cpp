@@ -20,7 +20,7 @@
 namespace helix {
 
 namespace {
-constexpr const char* HISTORY_PATH = "/print_start_history/entries";
+constexpr const char* kHistoryPath = "/print_start_history/entries";
 }
 
 void PreprintPredictor::load_entries(const std::vector<PreprintEntry>& entries,
@@ -115,7 +115,7 @@ std::vector<PreprintEntry> PreprintPredictor::get_entries() const {
 }
 
 int PreprintPredictor::temp_bucket_for(float bed_c) {
-    return bed_c >= WARM_BED_C ? 2 : 1;
+    return bed_c >= kWarmBedC ? 2 : 1;
 }
 
 bool PreprintPredictor::has_predictions() const {
@@ -254,7 +254,7 @@ int PreprintPredictor::predicted_homing_seconds() const {
     const auto phases = predicted_phases();
     const auto it = phases.find(static_cast<int>(PrintStartPhase::HOMING));
     const int predicted = it != phases.end() ? it->second : 0;
-    return std::max(predicted, MIN_HOMING_SECONDS);
+    return std::max(predicted, kMinHomingSeconds);
 }
 
 PreprintEstimate PreprintPredictor::estimate(const PreprintHeating& heating,
@@ -314,7 +314,7 @@ PreprintEstimate PreprintPredictor::estimate(const PreprintHeating& heating,
     // A bed-first macro issues its M109 after homing and leveling; without a
     // placeholder the known phases would carry all the weight.
     if (!heating.nozzle_target_known && durations.find(nozzle_phase) == durations.end()) {
-        durations[nozzle_phase] = UNKNOWN_NOZZLE_HEAT_SECONDS;
+        durations[nozzle_phase] = kUnknownNozzleHeatSeconds;
     }
 
     float durations_sum = 0.0f;
@@ -373,7 +373,7 @@ double PreprintPredictor::weighted_entry_mean(
 std::vector<PreprintEntry> PreprintPredictor::load_entries_from_config() {
     auto* cfg = Config::get_instance();
 
-    auto entries_json = cfg->get<nlohmann::json>(HISTORY_PATH, nlohmann::json::array());
+    auto entries_json = cfg->get<nlohmann::json>(kHistoryPath, nlohmann::json::array());
     if (!entries_json.is_array() || entries_json.empty()) {
         return {};
     }
@@ -510,10 +510,10 @@ void PreprintPredictor::append_to_config(const PreprintEntry& entry) {
             ++it;
         }
     }
-    while (entries.size() > MAX_STORED_ENTRIES) {
+    while (entries.size() > kMaxStoredEntries) {
         entries.erase(entries.begin());
     }
-    Config::get_instance()->set<json>(HISTORY_PATH, entries_to_json(entries));
+    Config::get_instance()->set<json>(kHistoryPath, entries_to_json(entries));
 }
 
 int PreprintPredictor::predicted_total_from_config() {

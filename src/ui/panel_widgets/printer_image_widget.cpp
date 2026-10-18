@@ -84,9 +84,9 @@ constexpr const char* kLineNames[] = {"callout_line_nozzle", "callout_line_bed",
                                       "callout_line_chamber", "callout_line_fan",
                                       "callout_line_light"};
 
-constexpr lv_opa_t GLOW_OPA_LOW = 30;
-constexpr lv_opa_t GLOW_OPA_HIGH = 70;
-constexpr uint32_t GLOW_PULSE_MS = 900;
+constexpr lv_opa_t kGlowOpaLow = 30;
+constexpr lv_opa_t kGlowOpaHigh = 70;
+constexpr uint32_t kGlowPulseMs = 900;
 
 void glow_opa_anim_cb(void* glow, int32_t opa) {
     lv_obj_set_style_bg_opa(static_cast<lv_obj_t*>(glow), static_cast<lv_opa_t>(opa), 0);
@@ -1234,9 +1234,9 @@ void PrinterImageWidget::set_glow_pulse(bool on) {
     lv_anim_t a;
     lv_anim_init(&a);
     lv_anim_set_var(&a, glow);
-    lv_anim_set_values(&a, GLOW_OPA_LOW, GLOW_OPA_HIGH);
-    lv_anim_set_duration(&a, GLOW_PULSE_MS);
-    lv_anim_set_playback_duration(&a, GLOW_PULSE_MS);
+    lv_anim_set_values(&a, kGlowOpaLow, kGlowOpaHigh);
+    lv_anim_set_duration(&a, kGlowPulseMs);
+    lv_anim_set_playback_duration(&a, kGlowPulseMs);
     lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
     lv_anim_set_exec_cb(&a, glow_opa_anim_cb);

@@ -123,7 +123,7 @@ What must be internal, and why:
 - **LVGL's 38.4KB draw buffer** (`firmware/helixscreen-esp32/main/lvgl_glue.c#"static uint8_t s_draw_buf1"`),
   static so it is reserved at link time.
 - **The WebSocket task's 8KB stack**
-  (`firmware/helixscreen-esp32/components/helixnet/esp_moonraker_client.h#WS_TASK_STACK_BYTES`), sized from a
+  (`firmware/helixscreen-esp32/components/helixnet/esp_moonraker_client.h#kWsTaskStackBytes`), sized from a
   measured ~6.5KB peak.
 - **The WiFi driver's buffers**: `CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP` moves most of WiFi and lwIP to PSRAM, and
   static TX/RX buffer counts make the rest deterministic.
@@ -187,7 +187,7 @@ task (the websocket task), and consumers hop to the UI through `ui_queue_update(
 client, the rule is that no websocket task ever stops itself and the UI thread never waits on one. A disconnect on
 the websocket task only records reconnect intent; the stop/start runs as a job on the `ws_transport` worker
 (`TransportLifecycle`), and sends from the UI thread are bounded at 3s
-(`firmware/helixscreen-esp32/components/helixnet/esp_moonraker_client.h#UI_STALL_BUDGET_MS`) so an unreachable
+(`firmware/helixscreen-esp32/components/helixnet/esp_moonraker_client.h#kUiStallBudgetMs`) so an unreachable
 printer reads as slow, never frozen.
 
 ### Boot sequence, and why its order is fixed
@@ -274,7 +274,7 @@ XML binds for square overlay corners, and overlays built under the "Loading..." 
   the panel, and G-code header thumbnail extraction is off
   (`include/thumbnail_cache.h#gcode_thumbnail_extraction_available`).
 - **A capped file list.** Print Files keeps the 50 newest files
-  (`src/ui/ui_panel_print_select.cpp#"constexpr size_t ESP32_MAX_FILE_COUNT"`).
+  (`src/ui/ui_panel_print_select.cpp#"constexpr size_t kEsp32MaxFileCount"`).
 
 ### Networking
 

@@ -581,7 +581,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     }
 
     /// Whether BED_MESH is showing and a probe line arrived within
-    /// MESH_PROBE_GAP_RESET. Caller must hold state_mutex_.
+    /// kMeshProbeGapReset. Caller must hold state_mutex_.
     bool mesh_probing_locked() const;
 
     /**
@@ -647,7 +647,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
 
     /// When the printer last said something about its pre-print: a profile
     /// pattern or phase-object state matched, or a probe line arrived. Every
-    /// timeout, the ceiling included, waits for PREPRINT_QUIET_TIMEOUT past it,
+    /// timeout, the ceiling included, waits for kPreprintQuietTimeout past it,
     /// so a printer narrating a long pre-print is not cut short. Only the
     /// backstop ignores it.
     helix::sim::SimulatedClock::time_point last_signal_time_;
@@ -655,7 +655,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// When pre-print work last showed without being said: a heater climbed a
     /// degree above its highest reading under its current target, or a
     /// status-signal rule fired. The deadline timeouts wait for
-    /// PREPRINT_QUIET_TIMEOUT past it, which carries them through a silent M190
+    /// kPreprintQuietTimeout past it, which carries them through a silent M190
     /// or M109. The ceiling ignores it: a heater that never settles must not
     /// hold Preparing open.
     helix::sim::SimulatedClock::time_point last_inferred_activity_time_;
@@ -687,28 +687,28 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     // Keeping one unit is what makes the stuck-detection behaviour identical at
     // every --sim-speed, and outside --test the factor is 1.0, so these are
     // real seconds there.
-    static constexpr auto FALLBACK_TIMEOUT =
+    static constexpr auto kFallbackTimeout =
         std::chrono::seconds(300); ///< Last resort when no predictions
-    /// The ceiling: past it, a pre-print ends once PREPRINT_QUIET_TIMEOUT passes
+    /// The ceiling: past it, a pre-print ends once kPreprintQuietTimeout passes
     /// without a matched line or probe line, whatever the temperatures, so a
     /// heater that never settles still leaves Preparing. With a prediction the
-    /// ceiling is the larger of this and predicted x ABSOLUTE_TIMEOUT_MARGIN.
+    /// ceiling is the larger of this and predicted x kAbsoluteTimeoutMargin.
     /// Sits above the longest legitimate pre-print: the K2 Plus runs ~1140s
     /// (heat, ~390s mesh, purge), and a cold-start ASA soak pushes that further.
-    static constexpr auto ABSOLUTE_MAX_TIMEOUT = std::chrono::seconds(1800);
+    static constexpr auto kAbsoluteMaxTimeout = std::chrono::seconds(1800);
     /// The backstop, as a multiple of the ceiling. The one fallback that waits
     /// for nothing, so a firmware that chatters forever still leaves Preparing.
-    static constexpr int BACKSTOP_CEILING_MULTIPLE = 2;
+    static constexpr int kBackstopCeilingMultiple = 2;
     /// How long the printer must say nothing before a timeout may complete the
     /// pre-print. Longer than the gap between mesh probe points on a slow bed
     /// (the K2 spends ~5s per point, ~3s on a manual sweep) with margin for a
     /// heat-soak step that emits nothing at all.
-    static constexpr auto PREPRINT_QUIET_TIMEOUT = std::chrono::seconds(90);
-    static constexpr float ADAPTIVE_TIMEOUT_MARGIN =
+    static constexpr auto kPreprintQuietTimeout = std::chrono::seconds(90);
+    static constexpr float kAdaptiveTimeoutMargin =
         1.5f; ///< Multiply predicted total for adaptive timeout
-    static constexpr float ABSOLUTE_TIMEOUT_MARGIN =
+    static constexpr float kAbsoluteTimeoutMargin =
         2.5f; ///< Multiply predicted total for absolute ceiling
-    static constexpr int TEMP_TOLERANCE_DECIDEGREES = 50; // 5°C (temps stored as value * 10)
+    static constexpr int kTempToleranceDecidegrees = 50; // 5°C (temps stored as value * 10)
 
     // Fallback detection state (for printers without G-code layer markers)
     // Baseline values snapshot stale subject data at collector start so fallbacks
@@ -799,11 +799,11 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     std::string current_message_;
 
     /// When the last heater-wait report arrived. A wait reports once a second,
-    /// so one older than HEATER_WAIT_REPORT_GAP means no wait is blocking.
+    /// so one older than kHeaterWaitReportGap means no wait is blocking.
     /// Guarded by state_mutex_.
     helix::sim::SimulatedClock::time_point heater_wait_report_time_ =
         helix::sim::SimulatedClock::time_point::min();
-    static constexpr auto HEATER_WAIT_REPORT_GAP = std::chrono::seconds(3);
+    static constexpr auto kHeaterWaitReportGap = std::chrono::seconds(3);
 
     /// Set while a heater wait is showing in place of a firmware phase, with
     /// the phase and message it displaced. Guarded by state_mutex_.
@@ -823,7 +823,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
         helix::sim::SimulatedClock::time_point::min();
     /// How long a wait must outlast the nozzle and bed arriving before an
     /// unheated chamber is read as what it waits on.
-    static constexpr auto CHAMBER_WAIT_SETTLE = std::chrono::seconds(5);
+    static constexpr auto kChamberWaitSettle = std::chrono::seconds(5);
 
     /// The command a heater wait is running: the line at
     /// virtual_sdcard.file_position, read again whenever the position moves,
@@ -853,13 +853,13 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// Set to stop the head read in flight: a new run or stop().
     std::shared_ptr<std::atomic<bool>> start_block_cancel_;
     /// When a console line last changed the phase shown. A step whose position
-    /// arrives within START_BLOCK_CONSOLE_GRACE after it is the line the
+    /// arrives within kStartBlockConsoleGrace after it is the line the
     /// console line came from: Moonraker batches status frames, so a command's
     /// own first words reach us before the position that names its line.
     /// Guarded by state_mutex_.
     helix::sim::SimulatedClock::time_point console_phase_time_ =
         helix::sim::SimulatedClock::time_point::min();
-    static constexpr auto START_BLOCK_CONSOLE_GRACE = std::chrono::seconds(1);
+    static constexpr auto kStartBlockConsoleGrace = std::chrono::seconds(1);
     bool wait_line_unreadable_ = false;
     std::optional<uint64_t> wait_line_position_;
     uint64_t wait_line_gen_ = 0;
@@ -923,7 +923,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// Max gap between consecutive probe lines before resetting counters.
     /// Handles printers that emit "probe at" for non-mesh operations (e.g.
     /// nozzle wipe) before the actual mesh calibration begins.
-    static constexpr auto MESH_PROBE_GAP_RESET = std::chrono::seconds(30);
+    static constexpr auto kMeshProbeGapReset = std::chrono::seconds(30);
 
     // Pre-mesh probe buffering: don't auto-enter BED_MESH from probe lines
     // until we've seen enough distinct probe POINTS to distinguish mesh
@@ -939,7 +939,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// BOX_NOZZLE_CLEAN touches 3 points on the wipe strip, Voron 2.4 QGL
     /// touches 4 corner pads, AD5M nozzle wipe touches 1-2. Every real mesh is
     /// far larger, so 5 costs nothing on the firmwares that need this path.
-    static constexpr int MESH_PROBE_ENTRY_THRESHOLD = 5;
+    static constexpr int kMeshProbeEntryThreshold = 5;
 
     // Targets used in last compute_predicted_weights() call — used to detect
     // when heater targets change (e.g. macro issues M109 after bed-first heating)
@@ -1015,7 +1015,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
 
     // LVGL timer for periodic ETA updates (main thread only)
     lv_timer_t* eta_timer_ = nullptr;
-    static constexpr uint32_t ETA_UPDATE_INTERVAL_MS = 5000;
+    static constexpr uint32_t kEtaUpdateIntervalMs = 5000;
 
     /**
      * @brief Update ETA display from timer callback (main thread)

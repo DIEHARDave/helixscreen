@@ -17,7 +17,7 @@ namespace helix {
  * app-wide minimum: it gates one consequence of one feature, and it is stated
  * where that feature is offered rather than at startup.
  */
-inline constexpr const char* MIN_MOONRAKER_VERSION = "0.9.0";
+inline constexpr const char* kMinMoonrakerVersion = "0.9.0";
 
 /**
  * @brief True only for a version we could both read AND place below the floor.
@@ -131,7 +131,7 @@ class PrinterVersionsState {
         klipper_version_raw_.clear();
     }
 
-    /// 1 when this Moonraker is below MIN_MOONRAKER_VERSION, 0 otherwise.
+    /// 1 when this Moonraker is below kMinMoonrakerVersion, 0 otherwise.
     /// Derived in set_moonraker_version_internal() from the RAW string, before
     /// the display form drops what a comparison needs.
     lv_subject_t* get_moonraker_history_degraded_subject() {

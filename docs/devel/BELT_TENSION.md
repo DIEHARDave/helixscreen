@@ -37,7 +37,7 @@ gate holds however the panel was reached (row click, `ctl navigate`, a demo entr
 accelerometer that drops out after entry).
 
 Start and Re-test also pass through `BeltTensionPanel::run_after_ram_check`: on a host with
-less than `RESONANCE_LOW_RAM_WARN_MB` (200 MB) it shows input shaper's shared
+less than `kResonanceLowRamWarnMb` (200 MB) it shows input shaper's shared
 `show_low_ram_resonance_warning` first. Klipper analyses each sweep on the printer's own
 host, which is this one (the co-location gate), and on a 128 MB board that analysis can be
 OOM-killed, leaving klippy wedged until it is restarted.
@@ -103,7 +103,7 @@ the collector holds progress lines until `set_config` lands so the first percent
 computed against the 5-135 Hz default when the printer sweeps something else. The config
 query always answers (defaults on error), so the hold is finite.
 
-The panel owns stall detection: `BeltTensionPanel::STALL_TIMEOUT_MS` (120 s, an
+The panel owns stall detection: `BeltTensionPanel::kStallTimeoutMs` (120 s, an
 `OperationTimeoutGuard`) fires when no progress line arrived, because Klipper prints one
 every second. `BeltResonanceCollector` carries no deadline of its own. The stall message
 names the likeliest cause on a small board, Klipper's analysis running out of memory, and
@@ -112,7 +112,7 @@ klippy wedged, the Moonraker firmware-restart RPC cannot reach it, and on the CC
 Moonraker's service manager does not list Klipper at all.
 
 Start refuses outright when `MemAvailable + SwapFree` is under
-`RESONANCE_MIN_HEADROOM_MB` (64 MB), and asks first on a board under 200 MB total
+`kResonanceMinHeadroomMb` (64 MB), and asks first on a board under 200 MB total
 (`include/memory_utils.h#resonance_memory_check`, shared with input shaper). On the CC1
 the OOM killer takes HelixScreen before the analysis, so the stall error never shows
 there: the check has to happen before Start.
@@ -199,7 +199,7 @@ correlates only the swept band.
 - Sides: the path labels with their `bt_note_a` / `bt_note_b` status ("just now", "sweeping",
   "N min ago"); after a single-path re-test the note carries the similarity the comparison
   showed before (" · was 48%").
-- Under the chart: `bt_facts`, up to `MAX_LISTED_PEAKS` pairs strongest first as A/B
+- Under the chart: `bt_facts`, up to `kMaxListedPeaks` pairs strongest first as A/B
   ("Peaks 36/35 · 132/133 Hz"), and `bt_unpaired` ("Only on B: 120, 129 Hz"), hidden by
   `bt_has_unpaired` when empty.
 - Chart: the listed pairs carry the same number on both curves; the listed unpaired peaks

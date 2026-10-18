@@ -271,14 +271,14 @@ class AmsOperationSidebar {
     // itself stalls it won't fire, but the loop keeps rendering (the number is
     // visibly frozen), so it does.
     lv_timer_t* stall_watchdog_timer_ = nullptr;
-    static constexpr uint32_t STALL_WATCHDOG_PERIOD_MS = 1500;
+    static constexpr uint32_t kStallWatchdogPeriodMs = 1500;
     static void stall_watchdog_cb(lv_timer_t* timer);
 
     // How long the optimistic action outlives backend silence (see
     // AmsState::hold_optimistic_action): the UI preheat, then the gap between
     // the backend accepting the command and its first frame, which can include
     // a G28. Each bounds an operation the backend never reports at all.
-    static constexpr std::chrono::minutes OPTIMISTIC_PREHEAT_HOLD{10};
+    static constexpr std::chrono::minutes kOptimisticPreheatHold{10};
 
     // Step progress state
     StepOperationType current_operation_type_ = StepOperationType::LOAD_FRESH;

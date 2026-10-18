@@ -408,7 +408,7 @@ void TempGraphOverlay::discover_series() {
         s.display_name = lv_tr("Nozzle");
         s.heater_name = "extruder";
         s.klipper_name = "extruder";
-        s.color = helix::TEMP_GRAPH_SERIES_COLORS[color_idx++ % helix::TEMP_GRAPH_PALETTE_SIZE];
+        s.color = helix::kTempGraphSeriesColors[color_idx++ % helix::kTempGraphPaletteSize];
         s.has_target = true;
         s.is_dynamic = false;
         series_.push_back(std::move(s));
@@ -426,7 +426,7 @@ void TempGraphOverlay::discover_series() {
             s.display_name = ext->display_name;
             s.heater_name = ext->name;
             s.klipper_name = ext->name;
-            s.color = helix::TEMP_GRAPH_SERIES_COLORS[color_idx++ % helix::TEMP_GRAPH_PALETTE_SIZE];
+            s.color = helix::kTempGraphSeriesColors[color_idx++ % helix::kTempGraphPaletteSize];
             s.has_target = true;
             s.is_dynamic = (extruders.size() > 1); // Dynamic if multi-extruder
             series_.push_back(std::move(s));
@@ -439,7 +439,7 @@ void TempGraphOverlay::discover_series() {
         s.display_name = lv_tr("Bed");
         s.heater_name = "heater_bed";
         s.klipper_name = "heater_bed";
-        s.color = helix::TEMP_GRAPH_SERIES_COLORS[color_idx++ % helix::TEMP_GRAPH_PALETTE_SIZE];
+        s.color = helix::kTempGraphSeriesColors[color_idx++ % helix::kTempGraphPaletteSize];
         s.has_target = true;
         s.is_dynamic = false;
         series_.push_back(std::move(s));
@@ -458,8 +458,7 @@ void TempGraphOverlay::discover_series() {
                 s.display_name = lv_tr("Chamber");
                 s.heater_name = "chamber";
                 s.klipper_name = klipper;
-                s.color =
-                    helix::TEMP_GRAPH_SERIES_COLORS[color_idx++ % helix::TEMP_GRAPH_PALETTE_SIZE];
+                s.color = helix::kTempGraphSeriesColors[color_idx++ % helix::kTempGraphPaletteSize];
                 s.has_target = !heater.empty();
                 s.is_dynamic = false;
                 series_.push_back(std::move(s));
@@ -487,7 +486,7 @@ void TempGraphOverlay::discover_series() {
         s.display_name = sensor.display_name;
         s.heater_name = sensor.klipper_name; // May not have history
         s.klipper_name = sensor.klipper_name;
-        s.color = helix::TEMP_GRAPH_SERIES_COLORS[color_idx++ % helix::TEMP_GRAPH_PALETTE_SIZE];
+        s.color = helix::kTempGraphSeriesColors[color_idx++ % helix::kTempGraphPaletteSize];
         s.has_target = helix::sensors::klipper_object_has_target(sensor.klipper_name);
         s.is_dynamic = true;
         series_.push_back(std::move(s));
@@ -705,20 +704,20 @@ void TempGraphOverlay::configure_control_strip() {
     // Configure preset values for the callback. Index 0 is "Off"; index i>=1 is
     // user preset slot i-1 (helix::presets).
     //
-    // Only the first TEMP_GRAPH_VISIBLE_PRESETS slots are surfaced here: this
+    // Only the first kTempGraphVisiblePresets slots are surfaced here: this
     // overlay's preset strip has no room for a fourth button. That is a layout
     // constraint, not an oversight — see the constant's definition. Loop over
-    // TEMP_GRAPH_VISIBLE_PRESETS, never PRESET_COUNT, or this overruns the
+    // kTempGraphVisiblePresets, never kPresetCount, or this overruns the
     // buttons that actually exist in temp_graph_overlay.xml.
-    int preset_values[MAX_PRESETS] = {};
+    int preset_values[kMaxPresets] = {};
     preset_values[0] = heater.config.presets.off;
-    for (int i = 0; i < TEMP_GRAPH_VISIBLE_PRESETS; ++i) {
+    for (int i = 0; i < kTempGraphVisiblePresets; ++i) {
         preset_values[i + 1] = heater.config.presets.material[static_cast<size_t>(i)];
     }
 
     // Store preset values indexed by name suffix for lookup in callback
     // (cannot use lv_obj_set_user_data — ui_button owns that slot, L069)
-    for (int i = 0; i < MAX_PRESETS; ++i) {
+    for (int i = 0; i < kMaxPresets; ++i) {
         preset_data_[i] = {this, preset_values[i]};
     }
 
@@ -731,10 +730,10 @@ void TempGraphOverlay::configure_control_strip() {
         helix::TemperatureController* c = temp_control_panel_->controller();
         if (c)
             c->ensure_limits(helix::HeaterType::Chamber);
-        static const char* CHAMBER_PRESET_NAMES[MAX_PRESETS] = {
+        static const char* kChamberPresetNames[kMaxPresets] = {
             "chamber_preset_off", "chamber_preset_1", "chamber_preset_2", "chamber_preset_3"};
-        for (int i = 0; i < MAX_PRESETS; ++i) {
-            lv_obj_t* btn = lv_obj_find_by_name(active_strip, CHAMBER_PRESET_NAMES[i]);
+        for (int i = 0; i < kMaxPresets; ++i) {
+            lv_obj_t* btn = lv_obj_find_by_name(active_strip, kChamberPresetNames[i]);
             if (!btn) {
                 continue;
             }
@@ -790,7 +789,7 @@ void TempGraphOverlay::on_temp_graph_preset_clicked(lv_event_t* e) {
     else if (name_str.find("preset_3") != std::string::npos)
         preset_idx = 3;
 
-    if (preset_idx < 0 || preset_idx >= MAX_PRESETS)
+    if (preset_idx < 0 || preset_idx >= kMaxPresets)
         return;
     auto& data = self->preset_data_[preset_idx];
 

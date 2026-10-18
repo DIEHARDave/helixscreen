@@ -61,7 +61,7 @@ void WiFiManager::mark_association_change() {
 bool WiFiManager::in_association_grace() const {
     if (last_association_change_.time_since_epoch().count() == 0)
         return false;
-    return (std::chrono::steady_clock::now() - last_association_change_) < ASSOCIATION_GRACE;
+    return (std::chrono::steady_clock::now() - last_association_change_) < kAssociationGrace;
 }
 
 // Overridable in tests via WiFiManagerTestAccess so has_non_wifi_network_path()
@@ -444,8 +444,8 @@ void WiFiManager::start_scan(
     spdlog::debug("[WiFiManager] Scan callback registered");
 
     spdlog::info("[WiFiManager] Starting periodic network scan (interval backs off {}ms-{}ms)",
-                 helix::wifi::ScanScheduler::BASE_INTERVAL_MS,
-                 helix::wifi::ScanScheduler::MAX_INTERVAL_MS);
+                 helix::wifi::ScanScheduler::kBaseIntervalMs,
+                 helix::wifi::ScanScheduler::kMaxIntervalMs);
 
     // A fresh scan session (e.g. the user opening network settings) is a
     // manual refresh: clear any suppression/backoff left over from a prior
@@ -457,7 +457,7 @@ void WiFiManager::start_scan(
 
     // Create timer for periodic scanning
     scan_timer_ =
-        lv_timer_create(scan_timer_callback, helix::wifi::ScanScheduler::BASE_INTERVAL_MS, this);
+        lv_timer_create(scan_timer_callback, helix::wifi::ScanScheduler::kBaseIntervalMs, this);
     spdlog::debug("[WiFiManager] Timer created: {}", (void*)scan_timer_);
 
     // Trigger immediate scan. A trigger still in flight from before stop_scan()
@@ -614,7 +614,7 @@ void WiFiManager::apply_scan_trigger_result(const WiFiError& result, bool user_r
     } else if (in_association_grace()) {
         spdlog::debug("[WiFiManager] Scan trigger failed within {}s of an association change "
                       "we initiated — suppressing user warning",
-                      ASSOCIATION_GRACE.count());
+                      kAssociationGrace.count());
     } else if (breaker_open()) {
         spdlog::debug("[WiFiManager] Scan trigger failed while WiFi control is unresponsive — "
                       "the WiFi status already says so");
@@ -1369,16 +1369,16 @@ bool WiFiManager::control_unresponsive() {
 }
 
 namespace {
-constexpr const char* UNRESPONSIVE_TECHNICAL_MSG = "WiFi control call did not return in time";
+constexpr const char* kUnresponsiveTechnicalMsg = "WiFi control call did not return in time";
 } // namespace
 
 WiFiError WiFiManager::unresponsive_error() {
-    return WiFiError(WiFiResult::TIMEOUT, UNRESPONSIVE_TECHNICAL_MSG,
+    return WiFiError(WiFiResult::TIMEOUT, kUnresponsiveTechnicalMsg,
                      lv_tr("WiFi isn't responding"));
 }
 
 bool WiFiManager::is_unresponsive_error(const WiFiError& error) {
-    return error.result == WiFiResult::TIMEOUT && error.technical_msg == UNRESPONSIVE_TECHNICAL_MSG;
+    return error.result == WiFiResult::TIMEOUT && error.technical_msg == kUnresponsiveTechnicalMsg;
 }
 
 void WiFiManager::notify_unresponsive() {
@@ -1823,7 +1823,7 @@ namespace {
 // Window to wait after a transient AUTH_FAILED for a CONNECTED to arrive. wpa_supplicant's
 // TEMP-DISABLED -> CONNECTED gap is typically 1-3s; allow margin for slow embedded adapters.
 // A genuine wrong password (no CONNECTED) surfaces the failure after this delay.
-constexpr uint32_t AUTH_FAIL_GRACE_MS = 4000;
+constexpr uint32_t kAuthFailGraceMs = 4000;
 } // namespace
 
 void WiFiManager::start_auth_fail_grace(const std::string& error) {
@@ -1835,10 +1835,10 @@ void WiFiManager::start_auth_fail_grace(const std::string& error) {
         lv_timer_delete(auth_fail_grace_timer_);
         auth_fail_grace_timer_ = nullptr;
     }
-    auth_fail_grace_timer_ = lv_timer_create(auth_fail_grace_timer_cb, AUTH_FAIL_GRACE_MS, this);
+    auth_fail_grace_timer_ = lv_timer_create(auth_fail_grace_timer_cb, kAuthFailGraceMs, this);
     lv_timer_set_repeat_count(auth_fail_grace_timer_, 1); // one-shot
     spdlog::debug("[WiFiManager] AUTH_FAILED deferred {}ms pending possible CONNECTED",
-                  AUTH_FAIL_GRACE_MS);
+                  kAuthFailGraceMs);
 }
 
 void WiFiManager::cancel_auth_fail_grace() {
@@ -1891,14 +1891,14 @@ namespace {
 // wpa_supplicant association plus DHCP on a slow embedded radio can legitimately take
 // ~30s, so anything tighter would abort connects that were about to succeed; 45s clears
 // that comfortably without leaving the user staring at a spinner that never resolves.
-constexpr uint32_t CONNECT_TIMEOUT_MS = 45000;
+constexpr uint32_t kConnectTimeoutMs = 45000;
 } // namespace
 
 void WiFiManager::start_connect_timeout() {
     cancel_connect_timeout();
-    connect_timeout_timer_ = lv_timer_create(connect_timeout_timer_cb, CONNECT_TIMEOUT_MS, this);
+    connect_timeout_timer_ = lv_timer_create(connect_timeout_timer_cb, kConnectTimeoutMs, this);
     lv_timer_set_repeat_count(connect_timeout_timer_, 1); // one-shot
-    spdlog::debug("[WiFiManager] Connect watchdog armed ({}ms)", CONNECT_TIMEOUT_MS);
+    spdlog::debug("[WiFiManager] Connect watchdog armed ({}ms)", kConnectTimeoutMs);
 }
 
 void WiFiManager::cancel_connect_timeout() {
@@ -1928,7 +1928,7 @@ void WiFiManager::deliver_connect_timeout() {
     }
 
     LOG_WARN_INTERNAL("Connect produced no terminal event within {}ms — reporting timeout",
-                      CONNECT_TIMEOUT_MS);
+                      kConnectTimeoutMs);
     notify_state_observers();
     // Invoke OUTSIDE callback_mutex_ — the callback re-enters WiFiManager.
     if (cb) {

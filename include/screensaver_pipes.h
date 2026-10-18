@@ -27,7 +27,7 @@ class PipesScreensaver : public helix::ui::SimSaver<helix::ui::PipesSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return helix::ui::SAVER_BUILD_CANVAS_FORMAT;
+        return helix::ui::kSaverBuildCanvasFormat;
     }
 
   private:

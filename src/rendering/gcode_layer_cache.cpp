@@ -32,7 +32,7 @@ size_t GCodeLayerCache::estimate_memory(const std::vector<ToolpathSegment>& segm
 
     size_t base_cost = sizeof(std::vector<ToolpathSegment>) + 64; // Vector overhead + some slack
 
-    size_t per_segment = BYTES_PER_SEGMENT;
+    size_t per_segment = kBytesPerSegment;
 
     // Charge capacity, not size: a vector grown by repeated push_back (multi-sub-layer
     // parses) can hold up to 2x the live element count.
@@ -414,7 +414,7 @@ bool GCodeLayerCache::check_memory_pressure() {
         // Rate limit checks to avoid overhead
         auto elapsed =
             std::chrono::duration_cast<std::chrono::milliseconds>(now - last_pressure_check_);
-        if (elapsed.count() < PRESSURE_CHECK_INTERVAL_MS) {
+        if (elapsed.count() < kPressureCheckIntervalMs) {
             return false;
         }
 

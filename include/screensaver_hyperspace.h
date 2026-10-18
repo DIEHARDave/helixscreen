@@ -27,7 +27,7 @@ class HyperspaceScreensaver : public SimSaver<HyperspaceSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return SAVER_BUILD_CANVAS_FORMAT;
+        return kSaverBuildCanvasFormat;
     }
 };
 

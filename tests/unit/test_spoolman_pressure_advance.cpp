@@ -76,7 +76,7 @@ TEST_CASE("saving a K defines the extra field once, then writes it", "[spoolman]
 
     bool ok = false;
     api.spoolman().set_spoolman_filament_extra_number(
-        filament_id, SPOOLMAN_PA_EXTRA_KEY, "Pressure advance", 0.042, [&]() { ok = true; },
+        filament_id, kSpoolmanPaExtraKey, "Pressure advance", 0.042, [&]() { ok = true; },
         [](const MoonrakerError&) {});
     REQUIRE(ok);
     REQUIRE(server.defined_filament_fields.size() == 1);
@@ -98,7 +98,7 @@ TEST_CASE("saving a K defines the extra field once, then writes it", "[spoolman]
     // A second save finds the field and does not redefine it.
     ok = false;
     api.spoolman().set_spoolman_filament_extra_number(
-        filament_id, SPOOLMAN_PA_EXTRA_KEY, "Pressure advance", 0.05, [&]() { ok = true; },
+        filament_id, kSpoolmanPaExtraKey, "Pressure advance", 0.05, [&]() { ok = true; },
         [](const MoonrakerError&) {});
     REQUIRE(ok);
     CHECK(server.defined_filament_fields.size() == 1);
@@ -122,7 +122,7 @@ TEST_CASE("a field the user defined as text is written as text", "[spoolman][pa_
 
     bool ok = false;
     api.spoolman().set_spoolman_filament_extra_number(
-        filament_id, SPOOLMAN_PA_EXTRA_KEY, "Pressure advance", 0.042, [&]() { ok = true; },
+        filament_id, kSpoolmanPaExtraKey, "Pressure advance", 0.042, [&]() { ok = true; },
         [](const MoonrakerError&) {});
     REQUIRE(ok);
     CHECK(server.defined_filament_fields.empty());
@@ -215,7 +215,7 @@ TEST_CASE("saving a K keeps the filament's other extra fields", "[spoolman][pa_t
 
     bool ok = false;
     api.spoolman().set_spoolman_filament_extra_number(
-        filament_id, SPOOLMAN_PA_EXTRA_KEY, "Pressure advance", 0.042, [&]() { ok = true; },
+        filament_id, kSpoolmanPaExtraKey, "Pressure advance", 0.042, [&]() { ok = true; },
         [](const MoonrakerError&) {});
     REQUIRE(ok);
     const json& extra = server.filament_updates.back().data["extra"];
@@ -249,7 +249,7 @@ TEST_CASE("a filament read back as no object is never written over", "[spoolman]
     const size_t patches = server.filament_updates.size();
     bool failed = false;
     api.spoolman().set_spoolman_filament_extra_number(
-        filament_id, SPOOLMAN_PA_EXTRA_KEY, "Pressure advance", 0.042, []() {},
+        filament_id, kSpoolmanPaExtraKey, "Pressure advance", 0.042, []() {},
         [&](const MoonrakerError&) { failed = true; });
     CHECK(failed);
     CHECK(server.filament_updates.size() == patches);

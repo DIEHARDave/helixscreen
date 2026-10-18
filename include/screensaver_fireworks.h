@@ -30,7 +30,7 @@ class FireworksScreensaver : public SimSaver<FireworksSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return SAVER_BUILD_CANVAS_FORMAT;
+        return kSaverBuildCanvasFormat;
     }
     void on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty) override;
     void on_level_request(size_t level) override {

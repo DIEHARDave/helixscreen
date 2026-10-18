@@ -40,9 +40,9 @@ struct IdleDecision {
 };
 
 /// Activity means input within this many milliseconds.
-constexpr uint32_t IDLE_ACTIVITY_WINDOW_MS = 500;
+constexpr uint32_t kIdleActivityWindowMs = 500;
 /// A preview ignores activity this long, so the click that launched it cannot close it.
-constexpr uint32_t PREVIEW_GRACE_MS = 750;
+constexpr uint32_t kPreviewGraceMs = 750;
 
 inline IdleDecision decide_idle(const IdleInputs& in) {
     const uint32_t dim_timeout_ms =
@@ -50,7 +50,7 @@ inline IdleDecision decide_idle(const IdleInputs& in) {
     const uint32_t sleep_timeout_ms = (in.sleep_timeout_sec > 0)
                                           ? static_cast<uint32_t>(in.sleep_timeout_sec) * 1000U
                                           : UINT32_MAX;
-    const bool activity = in.inactive_ms < IDLE_ACTIVITY_WINDOW_MS;
+    const bool activity = in.inactive_ms < kIdleActivityWindowMs;
 
     if (in.state == IdleState::Sleeping) {
         if (in.wake_requested || activity || in.host_resumed) {
@@ -61,7 +61,7 @@ inline IdleDecision decide_idle(const IdleInputs& in) {
 
     if (in.state == IdleState::Dimmed) {
         bool dismiss_on_activity = activity;
-        if (in.is_preview && in.preview_elapsed_ms < PREVIEW_GRACE_MS) {
+        if (in.is_preview && in.preview_elapsed_ms < kPreviewGraceMs) {
             dismiss_on_activity = false;
         }
         if (in.wake_requested || dismiss_on_activity) {

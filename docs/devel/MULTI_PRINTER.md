@@ -18,7 +18,7 @@ Key properties:
 
 | File | Purpose |
 |------|---------|
-| `include/config.h` | Config class: `df()`, CRUD methods, `slugify()`, `CURRENT_CONFIG_VERSION` |
+| `include/config.h` | Config class: `df()`, CRUD methods, `slugify()`, `kCurrentConfigVersion` |
 | `src/system/config.cpp` | Config v4 schema, multi-printer CRUD |
 | `src/system/config_migrations.cpp` | `normalize_versionless_document()` |
 | `include/application.h` | `switch_printer()`, `add_printer_via_wizard()`, `cancel_add_printer_wizard()`, soft restart state |
@@ -94,7 +94,7 @@ The badge appears when `show_printer_switcher` is non-zero.
 ### Structure
 
 <!-- config_version 4 below is illustrative of the v3->v4 migration that introduced
-     the /printers/{id}/ structure, not the current schema head (see CURRENT_CONFIG_VERSION
+     the /printers/{id}/ structure, not the current schema head (see kCurrentConfigVersion
      in config.h). -->
 
 ```json

@@ -20,70 +20,70 @@ using screensaver::random_int;
 using screensaver::unit_random;
 
 // Distances are for a 480 px tall frame and scale with the frame's height.
-constexpr float REFERENCE_HEIGHT = 480.0f;
+constexpr float kReferenceHeight = 480.0f;
 
 // Camera space: x right, y down, z forward, in units where the focal length is half the frame's
-// height. Stars live in a box around the flight path between Z_NEAR and Z_FAR.
-constexpr float Z_NEAR = 0.2f;
-constexpr float Z_FAR = 6.0f;
-constexpr float SPREAD = 1.6f;     // stars sit within this of the path on either axis
-constexpr float CLEARANCE = 0.12f; // ...and no nearer than this, so none flies into the lens
-constexpr float STAR_SIZE = 0.02f; // sprite radius at z = 1, as a share of the frame height
-constexpr float FLARE_SIZE = 0.05f;
-constexpr float MAX_SPRITE_PX = 28.0f;
+// height. Stars live in a box around the flight path between kZNear and kZFar.
+constexpr float kZNear = 0.2f;
+constexpr float kZFar = 6.0f;
+constexpr float kSpread = 1.6f;     // stars sit within this of the path on either axis
+constexpr float kClearance = 0.12f; // ...and no nearer than this, so none flies into the lens
+constexpr float kStarSize = 0.02f;  // sprite radius at z = 1, as a share of the frame height
+constexpr float kFlareSize = 0.05f;
+constexpr float kMaxSpritePx = 28.0f;
 
-constexpr float BASE_SPEED = 1.6f; // depth units per second
-// Two slow sways make up the roll, as shares of HYPERSPACE_MAX_ROLL that never sum past it.
-constexpr float ROLL_SLOW = 0.65f;
-constexpr float ROLL_FAST = 0.25f;
-static_assert(ROLL_SLOW + ROLL_FAST <= 1.0f, "the roll must stay within HYPERSPACE_MAX_ROLL");
-constexpr float DRIFT_SHARE = 0.1f; // vanishing point's largest offset, as a share of the height
+constexpr float kBaseSpeed = 1.6f; // depth units per second
+// Two slow sways make up the roll, as shares of kHyperspaceMaxRoll that never sum past it.
+constexpr float kRollSlow = 0.65f;
+constexpr float kRollFast = 0.25f;
+static_assert(kRollSlow + kRollFast <= 1.0f, "the roll must stay within HYPERSPACE_MAX_ROLL");
+constexpr float kDriftShare = 0.1f; // vanishing point's largest offset, as a share of the height
 // The tunnel lookup reaches this far past half the frame, so the drift never runs off it.
-constexpr float MARGIN_SHARE = DRIFT_SHARE + 0.01f;
+constexpr float kMarginShare = kDriftShare + 0.01f;
 
 // Starbursts: where they burst, how fast their flares fly and how long they burn.
-constexpr float BURST_DEPTH = 3.6f;
-constexpr float BURST_SPEED = 1.1f;
-constexpr int32_t BURST_LIFE_MIN_MS = 2200;
-constexpr int32_t BURST_LIFE_SPAN_MS = 1000;
-constexpr int32_t FIRST_BURST_MIN_MS = 2000;
-constexpr int32_t FIRST_BURST_SPAN_MS = 3000;
-constexpr int32_t BURST_GAP_MIN_MS = 5000;
-constexpr int32_t BURST_GAP_SPAN_MS = 6000;
+constexpr float kBurstDepth = 3.6f;
+constexpr float kBurstSpeed = 1.1f;
+constexpr int32_t kBurstLifeMinMs = 2200;
+constexpr int32_t kBurstLifeSpanMs = 1000;
+constexpr int32_t kFirstBurstMinMs = 2000;
+constexpr int32_t kFirstBurstSpanMs = 3000;
+constexpr int32_t kBurstGapMinMs = 5000;
+constexpr int32_t kBurstGapSpanMs = 6000;
 
 // Phases of the flight.
-constexpr int32_t FIRST_OPEN_MIN_MS = 3000;
-constexpr int32_t FIRST_OPEN_SPAN_MS = 2000;
-constexpr int32_t OPEN_MIN_MS = 7000;
-constexpr int32_t OPEN_SPAN_MS = 5000;
-constexpr int32_t SWEEP_MS = 2500;
-constexpr int32_t TUNNEL_MIN_MS = 10000;
-constexpr int32_t TUNNEL_SPAN_MS = 6000;
+constexpr int32_t kFirstOpenMinMs = 3000;
+constexpr int32_t kFirstOpenSpanMs = 2000;
+constexpr int32_t kOpenMinMs = 7000;
+constexpr int32_t kOpenSpanMs = 5000;
+constexpr int32_t kSweepMs = 2500;
+constexpr int32_t kTunnelMinMs = 10000;
+constexpr int32_t kTunnelSpanMs = 6000;
 
-constexpr uint32_t HUE_CYCLE_MS = 24000; // once round the colour wheel
+constexpr uint32_t kHueCycleMs = 24000; // once round the colour wheel
 
-// Tunnel geometry: a pixel r half-heights from the vanishing point sees the wall TUNNEL_DEPTH / r
+// Tunnel geometry: a pixel r half-heights from the vanishing point sees the wall kTunnelDepth / r
 // texture rows away. Depth is capped, and shade levels darken the far wall toward the centre.
-constexpr float TUNNEL_DEPTH = 64.0f;
-constexpr int DEPTH_LEVELS = 1024;
+constexpr float kTunnelDepth = 64.0f;
+constexpr int kDepthLevels = 1024;
 // The lookup keeps depth and angle in sixteenths of a texel, and an ordered dither picks between
 // neighbouring texels, so the magnified near wall shows grain instead of stair steps.
-constexpr int SUBTEXEL_BITS = 4;
-constexpr int32_t QUARTER_TURN = 256 << SUBTEXEL_BITS; // angle units in a quarter of the wall
-constexpr int SHADE_LEVELS = 16;
-constexpr float FOG_DEPTH = 220.0f;
-constexpr float SCROLL_PER_UNIT = 40.0f; // texture rows flown per depth unit
+constexpr int kSubtexelBits = 4;
+constexpr int32_t kQuarterTurn = 256 << kSubtexelBits; // angle units in a quarter of the wall
+constexpr int kShadeLevels = 16;
+constexpr float kFogDepth = 220.0f;
+constexpr float kScrollPerUnit = 40.0f; // texture rows flown per depth unit
 
 // Tunnel and goo share each channel: their brightest colours sum to at most 255, so adding two
 // packed entries never carries into the next channel, in either format.
-constexpr int TUNNEL_MAX = 207;
-constexpr int GOO_MAX = 48;
-static_assert(TUNNEL_MAX + GOO_MAX <= 255, "tunnel and goo must add without carrying");
-static_assert(TUNNEL_MAX / 8 + GOO_MAX / 8 <= 31 && TUNNEL_MAX / 4 + GOO_MAX / 4 <= 63,
+constexpr int kTunnelMax = 207;
+constexpr int kGooMax = 48;
+static_assert(kTunnelMax + kGooMax <= 255, "tunnel and goo must add without carrying");
+static_assert(kTunnelMax / 8 + kGooMax / 8 <= 31 && kTunnelMax / 4 + kGooMax / 4 <= 63,
               "tunnel and goo must add without carrying at RGB565");
 
 /// An XRGB8888 word's X byte, which goo colours leave 0 so they add onto an opaque colour.
-constexpr uint32_t X_BYTE = 0xFF000000u;
+constexpr uint32_t kXByte = 0xFF000000u;
 
 /// A sine wave folded into 0..85, so three of them sum within a byte.
 uint8_t wave85(float phase) {
@@ -96,8 +96,8 @@ void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t
     w_ = static_cast<int32_t>(frame.w);
     h_ = static_cast<int32_t>(frame.h);
     format_ = frame.format;
-    scale_ = static_cast<float>(h_) / REFERENCE_HEIGHT;
-    level_ = std::min(level, HYPERSPACE_LEVEL_COUNT - 1);
+    scale_ = static_cast<float>(h_) / kReferenceHeight;
+    level_ = std::min(level, kHyperspaceLevelCount - 1);
     pending_level_ = level_;
     elapsed_ms_ = 0;
     camera_ = {};
@@ -110,7 +110,7 @@ void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t
     row_.resize(static_cast<size_t>(w_));
 
     // A radial falloff per sprite radius: a hot core inside a soft halo.
-    const int max_radius = std::max(2, static_cast<int>(std::lround(MAX_SPRITE_PX * scale_)));
+    const int max_radius = std::max(2, static_cast<int>(std::lround(kMaxSpritePx * scale_)));
     sprite_at_.resize(static_cast<size_t>(max_radius) + 1);
     size_t total = 0;
     for (int r = 0; r <= max_radius; r++) {
@@ -131,17 +131,16 @@ void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t
         }
     }
 
-    stars_.resize(MAX_STARS);
+    stars_.resize(kMaxStars);
     for (Star& star : stars_) {
         place_star(star, rng, true);
     }
-    flares_.assign(BURST_FLARES, Flare{});
+    flares_.assign(kBurstFlares, Flare{});
 
     phase_ = Phase::OPEN;
-    phase_left_ms_ = random_int(rng, FIRST_OPEN_MIN_MS, FIRST_OPEN_MIN_MS + FIRST_OPEN_SPAN_MS - 1);
+    phase_left_ms_ = random_int(rng, kFirstOpenMinMs, kFirstOpenMinMs + kFirstOpenSpanMs - 1);
     tunnel_amount_ = 0;
-    burst_in_ms_ =
-        random_int(rng, FIRST_BURST_MIN_MS, FIRST_BURST_MIN_MS + FIRST_BURST_SPAN_MS - 1);
+    burst_in_ms_ = random_int(rng, kFirstBurstMinMs, kFirstBurstMinMs + kFirstBurstSpanMs - 1);
     bursts_started_ = 0;
     // The tunnel tables are sized here, for the start level, so a frame allocates nothing.
     build_tables();
@@ -164,7 +163,7 @@ size_t HyperspaceSim::heap_bytes() const {
 }
 
 void HyperspaceSim::request_level(size_t level) {
-    pending_level_ = std::min(level, HYPERSPACE_LEVEL_COUNT - 1);
+    pending_level_ = std::min(level, kHyperspaceLevelCount - 1);
 }
 
 size_t HyperspaceSim::burst_flares_alive() const {
@@ -173,16 +172,16 @@ size_t HyperspaceSim::burst_flares_alive() const {
 }
 
 uint8_t HyperspaceSim::hue() const {
-    return static_cast<uint8_t>((elapsed_ms_ % HUE_CYCLE_MS) * 256 / HUE_CYCLE_MS);
+    return static_cast<uint8_t>((elapsed_ms_ % kHueCycleMs) * 256 / kHueCycleMs);
 }
 
 void HyperspaceSim::place_star(Star& star, std::minstd_rand& rng, bool anywhere) {
     do {
-        star.x = (unit_random(rng) * 2.0f - 1.0f) * SPREAD;
-        star.y = (unit_random(rng) * 2.0f - 1.0f) * SPREAD;
-    } while (star.x * star.x + star.y * star.y < CLEARANCE * CLEARANCE);
+        star.x = (unit_random(rng) * 2.0f - 1.0f) * kSpread;
+        star.y = (unit_random(rng) * 2.0f - 1.0f) * kSpread;
+    } while (star.x * star.x + star.y * star.y < kClearance * kClearance);
     star.z =
-        anywhere ? Z_NEAR + unit_random(rng) * (Z_FAR - Z_NEAR) : Z_FAR - unit_random(rng) * 0.4f;
+        anywhere ? kZNear + unit_random(rng) * (kZFar - kZNear) : kZFar - unit_random(rng) * 0.4f;
     star.hue_offset = static_cast<uint8_t>(random_below(rng, 112) - 56);
 }
 
@@ -193,36 +192,36 @@ void HyperspaceSim::throw_starburst(std::minstd_rand& rng) {
     const bool ring = random_below(rng, 2) == 0;
     const auto hue_offset = static_cast<uint8_t>(random_below(rng, 256));
     const float tilt = (unit_random(rng) * 2.0f - 1.0f) * 0.5f;
-    for (size_t i = 0; i < BURST_FLARES; i++) {
+    for (size_t i = 0; i < kBurstFlares; i++) {
         Flare& f = flares_[i];
         float dx;
         float dy;
         float dz;
         if (ring) {
             const float a =
-                2.0f * SAVER_PI * static_cast<float>(i) / static_cast<float>(BURST_FLARES);
+                2.0f * kSaverPi * static_cast<float>(i) / static_cast<float>(kBurstFlares);
             dx = std::cos(a);
             dy = std::sin(a) * std::cos(tilt);
             dz = std::sin(a) * std::sin(tilt);
         } else {
             // Even points on a sphere: a golden-angle spiral from pole to pole.
-            const float k = (static_cast<float>(i) + 0.5f) / static_cast<float>(BURST_FLARES);
+            const float k = (static_cast<float>(i) + 0.5f) / static_cast<float>(kBurstFlares);
             dz = 1.0f - 2.0f * k;
             const float r = std::sqrt(std::max(0.0f, 1.0f - dz * dz));
             const float a = 2.39996323f * static_cast<float>(i);
             dx = r * std::cos(a);
             dy = r * std::sin(a);
         }
-        const float speed = BURST_SPEED * (0.85f + 0.3f * unit_random(rng));
+        const float speed = kBurstSpeed * (0.85f + 0.3f * unit_random(rng));
         f.x = cx;
         f.y = cy;
-        f.z = BURST_DEPTH;
+        f.z = kBurstDepth;
         f.vx = dx * speed;
         f.vy = dy * speed;
         f.vz = dz * speed * 0.6f;
         f.age_ms = 0;
         f.life_ms = static_cast<uint16_t>(
-            random_int(rng, BURST_LIFE_MIN_MS, BURST_LIFE_MIN_MS + BURST_LIFE_SPAN_MS - 1));
+            random_int(rng, kBurstLifeMinMs, kBurstLifeMinMs + kBurstLifeSpanMs - 1));
         f.hue_offset = static_cast<uint8_t>(hue_offset + random_below(rng, 24));
         f.alive = true;
     }
@@ -234,35 +233,35 @@ void HyperspaceSim::advance_phase(uint32_t dt_ms, std::minstd_rand& rng) {
         switch (phase_) {
         case Phase::OPEN:
             phase_ = Phase::SWEEP_IN;
-            phase_left_ms_ += SWEEP_MS;
+            phase_left_ms_ += kSweepMs;
             break;
         case Phase::SWEEP_IN:
             phase_ = Phase::TUNNEL;
-            phase_left_ms_ += random_int(rng, TUNNEL_MIN_MS, TUNNEL_MIN_MS + TUNNEL_SPAN_MS - 1);
+            phase_left_ms_ += random_int(rng, kTunnelMinMs, kTunnelMinMs + kTunnelSpanMs - 1);
             break;
         case Phase::TUNNEL:
             phase_ = Phase::SWEEP_OUT;
-            phase_left_ms_ += SWEEP_MS;
+            phase_left_ms_ += kSweepMs;
             break;
         case Phase::SWEEP_OUT:
             phase_ = Phase::OPEN;
-            phase_left_ms_ += random_int(rng, OPEN_MIN_MS, OPEN_MIN_MS + OPEN_SPAN_MS - 1);
+            phase_left_ms_ += random_int(rng, kOpenMinMs, kOpenMinMs + kOpenSpanMs - 1);
             break;
         }
     }
-    const int32_t swept = std::clamp(SWEEP_MS - phase_left_ms_, 0, SWEEP_MS);
+    const int32_t swept = std::clamp(kSweepMs - phase_left_ms_, 0, kSweepMs);
     switch (phase_) {
     case Phase::OPEN:
         tunnel_amount_ = 0;
         break;
     case Phase::SWEEP_IN:
-        tunnel_amount_ = static_cast<uint8_t>(swept * 255 / SWEEP_MS);
+        tunnel_amount_ = static_cast<uint8_t>(swept * 255 / kSweepMs);
         break;
     case Phase::TUNNEL:
         tunnel_amount_ = 255;
         break;
     case Phase::SWEEP_OUT:
-        tunnel_amount_ = static_cast<uint8_t>(255 - swept * 255 / SWEEP_MS);
+        tunnel_amount_ = static_cast<uint8_t>(255 - swept * 255 / kSweepMs);
         break;
     }
 }
@@ -273,20 +272,19 @@ void HyperspaceSim::advance(uint32_t dt_ms, std::minstd_rand& rng) {
     const auto wave = [t](double rate, double phase) {
         return static_cast<float>(std::sin(t * rate + phase));
     };
-    camera_.speed = BASE_SPEED * (1.0f + 0.3f * wave(0.21, 0.0) + 0.15f * wave(0.53, 1.0));
-    camera_.roll =
-        HYPERSPACE_MAX_ROLL * (ROLL_SLOW * wave(0.13, 0.5) + ROLL_FAST * wave(0.31, 1.0));
-    const float drift = DRIFT_SHARE * static_cast<float>(h_);
+    camera_.speed = kBaseSpeed * (1.0f + 0.3f * wave(0.21, 0.0) + 0.15f * wave(0.53, 1.0));
+    camera_.roll = kHyperspaceMaxRoll * (kRollSlow * wave(0.13, 0.5) + kRollFast * wave(0.31, 1.0));
+    const float drift = kDriftShare * static_cast<float>(h_);
     camera_.drift_x = drift * (0.7f * wave(0.17, 0.0) + 0.3f * wave(0.41, 2.0));
     camera_.drift_y = drift * 0.6f * (0.7f * wave(0.23, 1.0) + 0.3f * wave(0.37, 0.0));
 
     const float dt = static_cast<float>(dt_ms) / 1000.0f;
     const float forward = camera_.speed * dt;
-    scroll_ = std::fmod(scroll_ + forward * SCROLL_PER_UNIT, 256.0f);
+    scroll_ = std::fmod(scroll_ + forward * kScrollPerUnit, 256.0f);
 
     for (Star& star : stars_) {
         star.z -= forward;
-        if (star.z < Z_NEAR) {
+        if (star.z < kZNear) {
             place_star(star, rng, false);
         }
     }
@@ -298,7 +296,7 @@ void HyperspaceSim::advance(uint32_t dt_ms, std::minstd_rand& rng) {
         f.y += f.vy * dt;
         f.z += f.vz * dt - forward;
         f.age_ms = static_cast<uint16_t>(std::min<uint32_t>(f.life_ms, f.age_ms + dt_ms));
-        if (f.age_ms >= f.life_ms || f.z < Z_NEAR) {
+        if (f.age_ms >= f.life_ms || f.z < kZNear) {
             f.alive = false;
         }
     }
@@ -306,18 +304,18 @@ void HyperspaceSim::advance(uint32_t dt_ms, std::minstd_rand& rng) {
     burst_in_ms_ -= static_cast<int32_t>(dt_ms);
     if (burst_in_ms_ <= 0) {
         throw_starburst(rng);
-        burst_in_ms_ = random_int(rng, BURST_GAP_MIN_MS, BURST_GAP_MIN_MS + BURST_GAP_SPAN_MS - 1);
+        burst_in_ms_ = random_int(rng, kBurstGapMinMs, kBurstGapMinMs + kBurstGapSpanMs - 1);
     }
     advance_phase(dt_ms, rng);
 }
 
 void HyperspaceSim::build_texture() {
-    shade_of_depth_.resize(DEPTH_LEVELS);
-    const float nearest = TUNNEL_DEPTH / 2.0f;
-    for (int d = 0; d < DEPTH_LEVELS; d++) {
-        const float fog = std::exp(-(static_cast<float>(d) - nearest) / FOG_DEPTH);
+    shade_of_depth_.resize(kDepthLevels);
+    const float nearest = kTunnelDepth / 2.0f;
+    for (int d = 0; d < kDepthLevels; d++) {
+        const float fog = std::exp(-(static_cast<float>(d) - nearest) / kFogDepth);
         shade_of_depth_[static_cast<size_t>(d)] = static_cast<uint8_t>(
-            std::clamp(fog * (SHADE_LEVELS - 1) + 0.5f, 0.0f, SHADE_LEVELS - 1.0f));
+            std::clamp(fog * (kShadeLevels - 1) + 0.5f, 0.0f, kShadeLevels - 1.0f));
     }
 
     // Ribbons of light that wind along the tunnel, brightening in rings. A texel's high nibble is
@@ -328,9 +326,9 @@ void HyperspaceSim::build_texture() {
         for (int u = 0; u < 256; u++) {
             const float fu = static_cast<float>(u) / 256.0f;
             const float fv = static_cast<float>(v) / 256.0f;
-            const float wind = 1.6f * std::sin(2.0f * SAVER_PI * (4.0f * fv + fu));
-            const float ribbon = 0.5f + 0.5f * std::sin(2.0f * SAVER_PI * 3.0f * fu + wind);
-            const float rings = 0.7f + 0.3f * std::sin(2.0f * SAVER_PI * 8.0f * fv);
+            const float wind = 1.6f * std::sin(2.0f * kSaverPi * (4.0f * fv + fu));
+            const float ribbon = 0.5f + 0.5f * std::sin(2.0f * kSaverPi * 3.0f * fu + wind);
+            const float rings = 0.7f + 0.3f * std::sin(2.0f * kSaverPi * 8.0f * fv);
             const float glow = std::clamp((0.3f + 0.7f * ribbon * ribbon) * rings, 0.0f, 1.0f);
             const float band = 2.0f * fv + 0.15f * wind;
             const float tri = 1.0f - std::fabs(2.0f * (band - std::floor(band)) - 1.0f);
@@ -341,11 +339,11 @@ void HyperspaceSim::build_texture() {
         }
     }
 
-    tunnel_palette_.resize(static_cast<size_t>(SHADE_LEVELS) * 256);
+    tunnel_palette_.resize(static_cast<size_t>(kShadeLevels) * 256);
 }
 
 void HyperspaceSim::build_tables() {
-    const int32_t block = HYPERSPACE_LEVELS[level_].block;
+    const int32_t block = kHyperspaceLevels[level_].block;
     tables_stale_ = false;
     if (block == 0) {
         release_buffers(depth_, angle_, shade_of_depth_, texture_, tunnel_palette_);
@@ -358,7 +356,7 @@ void HyperspaceSim::build_tables() {
     }
     // One quadrant at this level's block size, reaching past half the frame by the drift.
     const int32_t margin =
-        (static_cast<int32_t>(std::ceil(MARGIN_SHARE * static_cast<float>(h_))) + block - 1) /
+        (static_cast<int32_t>(std::ceil(kMarginShare * static_cast<float>(h_))) + block - 1) /
         block;
     quad_w_ = ((w_ + block - 1) / block + 1) / 2 + margin + 2;
     quad_h_ = ((h_ + block - 1) / block + 1) / 2 + margin + 2;
@@ -375,15 +373,15 @@ void HyperspaceSim::build_tables() {
             const float fx = (static_cast<float>(ax) + 0.5f) * static_cast<float>(block);
             const float fy = (static_cast<float>(ay) + 0.5f) * static_cast<float>(block);
             const float r = std::sqrt(fx * fx + fy * fy) / half_h;
-            const float depth = std::min(TUNNEL_DEPTH / r, static_cast<float>(DEPTH_LEVELS - 1)) *
-                                static_cast<float>(1 << SUBTEXEL_BITS);
+            const float depth = std::min(kTunnelDepth / r, static_cast<float>(kDepthLevels - 1)) *
+                                static_cast<float>(1 << kSubtexelBits);
             const float quarter =
-                std::atan2(fy, fx) / (SAVER_PI / 2.0f) * static_cast<float>(QUARTER_TURN);
+                std::atan2(fy, fx) / (kSaverPi / 2.0f) * static_cast<float>(kQuarterTurn);
             const size_t i =
                 static_cast<size_t>(ay) * static_cast<size_t>(quad_w_) + static_cast<size_t>(ax);
             depth_[i] = static_cast<uint16_t>(depth);
             angle_[i] = static_cast<uint16_t>(
-                std::clamp(quarter, 0.0f, static_cast<float>(QUARTER_TURN - 1)));
+                std::clamp(quarter, 0.0f, static_cast<float>(kQuarterTurn - 1)));
         }
     }
 }
@@ -394,16 +392,16 @@ void HyperspaceSim::build_palettes() {
     // Each texel's colour band sits up to 3/4 of the way round the wheel, and the brightest
     // texels burn toward white.
     // A level without a tunnel holds no tunnel palette.
-    for (uint32_t texel = 0; texel < tunnel_palette_.size() / SHADE_LEVELS; texel++) {
+    for (uint32_t texel = 0; texel < tunnel_palette_.size() / kShadeLevels; texel++) {
         const uint32_t bright = (texel >> 4) * 255 / 15;
         const Rgb base = hue_color(hue + (texel & 15) * 12);
         const uint32_t white = bright * bright / 255 * bright / 255 / 3;
         const Rgb lit = {static_cast<uint8_t>(std::min<uint32_t>(255, base.r + white)),
                          static_cast<uint8_t>(std::min<uint32_t>(255, base.g + white)),
                          static_cast<uint8_t>(std::min<uint32_t>(255, base.b + white))};
-        for (uint32_t shade = 0; shade < SHADE_LEVELS; shade++) {
+        for (uint32_t shade = 0; shade < kShadeLevels; shade++) {
             const uint32_t amount =
-                bright * shade / (SHADE_LEVELS - 1) * fade / 255 * TUNNEL_MAX / 255;
+                bright * shade / (kShadeLevels - 1) * fade / 255 * kTunnelMax / 255;
             tunnel_palette_[shade << 8 | texel] =
                 PixelWriter::pack(scale_rgb(lit, amount), format_);
         }
@@ -411,16 +409,16 @@ void HyperspaceSim::build_palettes() {
     // Goo glows in three soft bands of its plasma value, in colours opposite the tunnel's. Its X
     // byte is 0, so it adds onto an opaque tunnel colour without carrying.
     for (uint32_t g = 0; g < 256; g++) {
-        const float band = std::sin(2.0f * SAVER_PI * 3.0f * static_cast<float>(g) / 256.0f);
+        const float band = std::sin(2.0f * kSaverPi * 3.0f * static_cast<float>(g) / 256.0f);
         const auto amount =
-            static_cast<uint32_t>(band > 0.0f ? band * band * band * GOO_MAX : 0.0f);
+            static_cast<uint32_t>(band > 0.0f ? band * band * band * kGooMax : 0.0f);
         const Rgb base = hue_color(hue + 128 + g / 2);
-        goo_palette_[g] = PixelWriter::pack(scale_rgb(base, amount), format_) & ~X_BYTE;
+        goo_palette_[g] = PixelWriter::pack(scale_rgb(base, amount), format_) & ~kXByte;
     }
 }
 
 template <typename Px> void HyperspaceSim::draw_background(FrameTarget& frame) {
-    const HyperspaceLevel& lv = HYPERSPACE_LEVELS[level_];
+    const HyperspaceLevel& lv = kHyperspaceLevels[level_];
     const bool tunnel = lv.block != 0 && tunnel_amount_ != 0;
     const bool goo = lv.goo && lv.block != 0;
     if (!tunnel && !goo) {
@@ -434,7 +432,7 @@ template <typename Px> void HyperspaceSim::draw_background(FrameTarget& frame) {
     const int32_t block = lv.block;
     const int32_t rw = (w_ + block - 1) / block;
     const int32_t rh = (h_ + block - 1) / block;
-    const float max_drift = DRIFT_SHARE * static_cast<float>(h_);
+    const float max_drift = kDriftShare * static_cast<float>(h_);
     const auto cx = static_cast<int32_t>(
         (static_cast<float>(w_) / 2.0f + std::clamp(camera_.drift_x, -max_drift, max_drift)) /
         static_cast<float>(block));
@@ -447,7 +445,7 @@ template <typename Px> void HyperspaceSim::draw_background(FrameTarget& frame) {
     if (goo) {
         const float t = static_cast<float>(elapsed_ms_ % 3600000u) / 1000.0f;
         const float k =
-            2.0f * SAVER_PI / (static_cast<float>(h_) * 0.9f) * static_cast<float>(block);
+            2.0f * kSaverPi / (static_cast<float>(h_) * 0.9f) * static_cast<float>(block);
         for (int32_t x = 0; x < rw; x++) {
             goo_col_[static_cast<size_t>(x)] =
                 wave85(static_cast<float>(x) * k * 0.8f + t * 0.45f +
@@ -464,10 +462,10 @@ template <typename Px> void HyperspaceSim::draw_background(FrameTarget& frame) {
         }
     }
 
-    // Angles run 4 * QUARTER_TURN round the wall, which the texture spans twice.
+    // Angles run 4 * kQuarterTurn round the wall, which the texture spans twice.
     const int32_t roll =
-        static_cast<int32_t>(camera_.roll / (2.0f * SAVER_PI) * 4.0f * QUARTER_TURN);
-    const auto spin = static_cast<int32_t>(elapsed_ms_ * 2 / 5 % (4 * QUARTER_TURN));
+        static_cast<int32_t>(camera_.roll / (2.0f * kSaverPi) * 4.0f * kQuarterTurn);
+    const auto spin = static_cast<int32_t>(elapsed_ms_ * 2 / 5 % (4 * kQuarterTurn));
     const auto scroll = static_cast<uint32_t>(scroll_);
     const uint32_t* tpal = tunnel_palette_.data();
     const uint32_t* gpal = goo_palette_.data();
@@ -487,7 +485,7 @@ template <typename Px> void HyperspaceSim::draw_background(FrameTarget& frame) {
         const auto span = [&](int32_t x0, int32_t x1, int32_t ax0, int32_t ax_step, int32_t base,
                               int32_t sign) {
             int32_t ax = ax0;
-            const uint8_t* dither = BAYER_4X4[ry & 3];
+            const uint8_t* dither = kBayer4x4[ry & 3];
             for (int32_t rx = x0; rx < x1; rx++, ax += ax_step) {
                 const int32_t axc = std::min(ax, quad_w_ - 1);
                 uint32_t px = opaque;
@@ -495,9 +493,9 @@ template <typename Px> void HyperspaceSim::draw_background(FrameTarget& frame) {
                     const uint32_t d = drow[axc];
                     const uint32_t jitter = dither[rx & 3];
                     const auto a = static_cast<uint32_t>(base + sign * arow[axc] + roll + spin);
-                    const uint32_t u = ((a + 2 * jitter) >> (SUBTEXEL_BITS + 1)) & 255;
-                    const uint32_t v = (((d + jitter) >> SUBTEXEL_BITS) + scroll) & 255;
-                    px = tpal[static_cast<uint32_t>(shade[d >> SUBTEXEL_BITS]) << 8 |
+                    const uint32_t u = ((a + 2 * jitter) >> (kSubtexelBits + 1)) & 255;
+                    const uint32_t v = (((d + jitter) >> kSubtexelBits) + scroll) & 255;
+                    px = tpal[static_cast<uint32_t>(shade[d >> kSubtexelBits]) << 8 |
                               tex[v << 8 | u]];
                 }
                 if (goo) {
@@ -508,8 +506,8 @@ template <typename Px> void HyperspaceSim::draw_background(FrameTarget& frame) {
             }
         };
         const int32_t split = std::clamp(cx, 0, rw);
-        span(0, split, cx - 1, -1, 2 * QUARTER_TURN, below ? -1 : 1);
-        span(split, rw, split - cx, 1, below ? 0 : 4 * QUARTER_TURN, below ? 1 : -1);
+        span(0, split, cx - 1, -1, 2 * kQuarterTurn, below ? -1 : 1);
+        span(split, rw, split - cx, 1, below ? 0 : 4 * kQuarterTurn, below ? 1 : -1);
 
         const int32_t y0 = ry * block;
         Px* out = frame_row<Px>(frame, y0);
@@ -578,7 +576,7 @@ void HyperspaceSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& r
                          std::vector<DirtyRect>& dirty) {
     if (pending_level_ != level_) {
         const bool new_block =
-            HYPERSPACE_LEVELS[pending_level_].block != HYPERSPACE_LEVELS[level_].block;
+            kHyperspaceLevels[pending_level_].block != kHyperspaceLevels[level_].block;
         level_ = pending_level_;
         tables_stale_ = tables_stale_ || new_block;
     }
@@ -588,19 +586,19 @@ void HyperspaceSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& r
         build_tables();
     }
     // A level without a tunnel draws neither tunnel nor goo, so nothing reads the palettes.
-    if (HYPERSPACE_LEVELS[level_].block != 0) {
+    if (kHyperspaceLevels[level_].block != 0) {
         build_palettes();
     }
 
     const auto draw = [&](auto pixel_type) {
         using Px = decltype(pixel_type);
         draw_background<Px>(frame);
-        const size_t count = std::min<size_t>(HYPERSPACE_LEVELS[level_].stars, stars_.size());
+        const size_t count = std::min<size_t>(kHyperspaceLevels[level_].stars, stars_.size());
         for (size_t i = 0; i < count; i++) {
             const Star& star = stars_[i];
             // Stars fade in out of the distance.
-            const float near = std::clamp((Z_FAR - star.z) / (0.3f * Z_FAR), 0.0f, 1.0f);
-            draw_flare<Px>(frame, star.x, star.y, star.z, STAR_SIZE, star.hue_offset,
+            const float near = std::clamp((kZFar - star.z) / (0.3f * kZFar), 0.0f, 1.0f);
+            draw_flare<Px>(frame, star.x, star.y, star.z, kStarSize, star.hue_offset,
                            static_cast<uint32_t>(near * 256.0f));
         }
         for (const Flare& f : flares_) {
@@ -609,7 +607,7 @@ void HyperspaceSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& r
             }
             const float age = static_cast<float>(f.age_ms) / static_cast<float>(f.life_ms);
             const float glow = std::min(1.0f, age * 8.0f) * std::min(1.0f, (1.0f - age) * 2.5f);
-            draw_flare<Px>(frame, f.x, f.y, f.z, FLARE_SIZE, f.hue_offset,
+            draw_flare<Px>(frame, f.x, f.y, f.z, kFlareSize, f.hue_offset,
                            static_cast<uint32_t>(glow * 256.0f));
         }
     };

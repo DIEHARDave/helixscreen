@@ -496,9 +496,9 @@ void MoonrakerManager::configure_timeouts(Config* config) {
 
     uint32_t connection_timeout = static_cast<uint32_t>(
         config->get<int>(config->df() + "moonraker_connection_timeout_ms", 10000));
-    uint32_t request_timeout = static_cast<uint32_t>(
-        config->get<int>(config->df() + "moonraker_request_timeout_ms",
-                         MoonrakerRequestTracker::DEFAULT_REQUEST_TIMEOUT_MS));
+    uint32_t request_timeout =
+        static_cast<uint32_t>(config->get<int>(config->df() + "moonraker_request_timeout_ms",
+                                               MoonrakerRequestTracker::kDefaultRequestTimeoutMs));
     uint32_t keepalive_interval = static_cast<uint32_t>(
         config->get<int>(config->df() + "moonraker_keepalive_interval_ms", 10000));
     uint32_t reconnect_min_delay = static_cast<uint32_t>(

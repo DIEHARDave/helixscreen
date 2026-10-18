@@ -45,7 +45,7 @@ struct VariantAffix {
 /// Deliberately NOT listed: "ABS" (so "PC-ABS" keeps its own identity and its
 /// ABS_ASA compat group), "Soft"/"95A"/"85A" (TPU shore grades), "Change"
 /// (Color-Change). Adding a polymer name here would merge two real materials.
-constexpr VariantAffix VARIANT_AFFIXES[] = {
+constexpr VariantAffix kVariantAffixes[] = {
     // Fiber fills
     {"CF", true},
     {"GF", true},
@@ -74,7 +74,7 @@ constexpr VariantAffix VARIANT_AFFIXES[] = {
 /// PPA-based PAHT-CF under the same type string, at PPA temperatures and
 /// needing a hardened nozzle and sealed enclosure: verify the base resin before
 /// adding a PAHT product from a new vendor rather than assuming this mapping.
-constexpr const char* PAHT_FAMILY = "PA";
+constexpr const char* kPahtFamily = "PA";
 
 /// Explicit family mapping for names that affix-stripping alone cannot reduce,
 /// because the modifier is fused to the polymer name with no separator.
@@ -90,12 +90,12 @@ struct FamilyOverride {
     const char* name;
     const char* family;
 };
-constexpr FamilyOverride FAMILY_OVERRIDES[] = {
+constexpr FamilyOverride kFamilyOverrides[] = {
     {"PA6", "PA"},
     {"PA12", "PA"},
     {"PA66", "PA"},
     {"PA612", "PA"},
-    {"PAHT", PAHT_FAMILY},
+    {"PAHT", kPahtFamily},
     // STOP: PPA (polyphthalamide) must NEVER be normalized or aliased to PA.
     // The names are one letter apart, but it is a semi-aromatic polyamide in a
     // different processing regime — 280-310C nozzle, 100-120C bed, sealed
@@ -122,7 +122,7 @@ bool is_separator(char c) {
 }
 
 const VariantAffix* find_variant_affix(std::string_view token) {
-    for (const auto& affix : VARIANT_AFFIXES) {
+    for (const auto& affix : kVariantAffixes) {
         if (iequals(token, affix.name)) {
             return &affix;
         }
@@ -189,7 +189,7 @@ std::set<std::string> filled_affixes_of(std::string_view name);
 
 /// Explicit family override lookup, or empty if the name has no entry.
 std::string_view family_override(std::string_view name) {
-    for (const auto& row : FAMILY_OVERRIDES) {
+    for (const auto& row : kFamilyOverrides) {
         if (iequals(name, row.name)) {
             return row.family;
         }
@@ -645,7 +645,7 @@ FilamentFinish filament_finish_of(std::string_view name) {
         const char* word;
         FilamentFinish finish;
     };
-    static constexpr FinishWord WORDS[] = {
+    static constexpr FinishWord kWords[] = {
         {"Silk", FilamentFinish::Silk},         {"Silky", FilamentFinish::Silk},
         {"Satin", FilamentFinish::Silk},        {"Matte", FilamentFinish::Matte},
         {"Matt", FilamentFinish::Matte},        {"Marble", FilamentFinish::Marble},
@@ -668,7 +668,7 @@ FilamentFinish filament_finish_of(std::string_view name) {
             ++end;
         }
         const std::string_view token = name.substr(i, end - i);
-        for (const auto& w : WORDS) {
+        for (const auto& w : kWords) {
             if (filament::iequals(token, w.word)) {
                 return w.finish;
             }

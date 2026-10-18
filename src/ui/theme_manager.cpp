@@ -133,7 +133,7 @@ static helix::ThemeData theme_manager_load_active_theme() {
     } else {
         // Read theme name from config
         Config* config = Config::get_instance();
-        theme_name = config->get<std::string>("/display/theme", helix::DEFAULT_THEME);
+        theme_name = config->get<std::string>("/display/theme", helix::kDefaultTheme);
     }
 
     // Load theme file (supports fallback from user themes to defaults)
@@ -141,7 +141,7 @@ static helix::ThemeData theme_manager_load_active_theme() {
 
     if (!theme.is_valid()) {
         spdlog::warn("[Theme] Theme '{}' not found or invalid, using built-in {}", theme_name,
-                     helix::DEFAULT_THEME);
+                     helix::kDefaultTheme);
         theme = helix::get_builtin_fallback_theme();
     }
 
@@ -660,9 +660,9 @@ bool theme_manager_has_color(const char* base_name) {
 }
 
 lv_color_t theme_manager_get_object_palette_color(int index) {
-    constexpr int OBJECT_PALETTE_SIZE = 8;
+    constexpr int kObjectPaletteSize = 8;
     char token[32];
-    snprintf(token, sizeof(token), "object_color_%d", (index % OBJECT_PALETTE_SIZE) + 1);
+    snprintf(token, sizeof(token), "object_color_%d", (index % kObjectPaletteSize) + 1);
     return theme_manager_get_color(token);
 }
 

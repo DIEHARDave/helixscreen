@@ -81,7 +81,7 @@ class ClockSaver : public SimSaver<Sim>, public ClockInputSink {
         clock_.step(0, read_input());
         this->start_sim(clock_face());
         under_.clear();
-        under_.reserve(SAVER_MAX_DIRTY_AREAS);
+        under_.reserve(kSaverMaxDirtyAreas);
         text_.reset();
         reset_clock_text();
         std::vector<DirtyRect> dirty;

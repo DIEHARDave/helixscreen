@@ -62,8 +62,8 @@
 #include <vector>
 
 namespace helix {
-// SubscriptionId and INVALID_SUBSCRIPTION_ID are defined in i_moonraker_client.h
-// RequestId and INVALID_REQUEST_ID are defined in moonraker_request_tracker.h
+// SubscriptionId and kInvalidSubscriptionId are defined in i_moonraker_client.h
+// RequestId and kInvalidRequestId are defined in moonraker_request_tracker.h
 
 using ::json; // Make global json alias visible in this namespace
 
@@ -245,7 +245,7 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
      * @param method RPC method name
      * @param params JSON parameters object
      * @param cb Callback function receiving response JSON
-     * @return Request ID for cancellation, or INVALID_REQUEST_ID on error
+     * @return Request ID for cancellation, or kInvalidRequestId on error
      */
     RequestId send_jsonrpc(const std::string& method, const json& params,
                            std::function<void(const json&)> cb) override;
@@ -265,7 +265,7 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
      *        captured from the CALLER's own callbacks before any internal
      *        wrapping. Omit it to have the tracker infer intent from @p silent
      *        and the presence of @p error_cb.
-     * @return Request ID for cancellation, or INVALID_REQUEST_ID on error
+     * @return Request ID for cancellation, or kInvalidRequestId on error
      */
     RequestId send_jsonrpc(
         const std::string& method, const json& params, std::function<void(const json&)> success_cb,
@@ -571,7 +571,7 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
      *
      * Applies only to a client that has NEVER opened a socket. Once a session
      * has been established, staleness is owned by the health timer's
-     * MAX_RECONNECT_STALL_MS check instead. Default 60000ms, matching it.
+     * kMaxReconnectStallMs check instead. Default 60000ms, matching it.
      *
      * @param timeout_ms Window measured from the connect() call
      */
@@ -815,7 +815,7 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
     // Periodic health-check timer (runs on libhv event loop thread)
     // Checks request timeouts and reconnection staleness independently of message flow
     hv::TimerID health_timer_id_{0};
-    static constexpr int HEALTH_CHECK_INTERVAL_MS = 5000;
+    static constexpr int kHealthCheckIntervalMs = 5000;
 
     void start_health_timer();
     void stop_health_timer();
@@ -850,7 +850,7 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
     // event loop thread, written by set_connection_state(), which any thread may
     // call — force_reconnect() drives it from the main thread.
     std::atomic<SteadyTicks> reconnect_started_at_{0};
-    static constexpr int MAX_RECONNECT_STALL_MS = 60000;
+    static constexpr int kMaxReconnectStallMs = 60000;
 
     // Initial-connection staleness detection — the never-connected counterpart
     // of the above. The health timer cannot own this: it is started from
@@ -869,7 +869,7 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
     /// because Moonraker announces a successful start (notify_klippy_ready) but never
     /// a failed one: without the poll a startup error reads as SHUTDOWN forever. The
     /// health timer drives it; it ends on a ready/shutdown/error answer, on
-    /// notify_klippy_ready, on a socket close, or after KLIPPY_STATE_POLL_MAX_MS.
+    /// notify_klippy_ready, on a socket close, or after kKlippyStatePollMaxMs.
     /// Shared with the poll's response callbacks so they never capture `this`.
     struct KlippyStatePoll {
         std::atomic<SteadyTicks> started_at{0}; ///< 0 = not polling
@@ -877,7 +877,7 @@ class MoonrakerClient : public hv::WebSocketClient, public IMoonrakerClient {
         std::atomic<bool> in_flight{false};
     };
     std::shared_ptr<KlippyStatePoll> klippy_state_poll_ = std::make_shared<KlippyStatePoll>();
-    static constexpr int KLIPPY_STATE_POLL_MAX_MS = 120000;
+    static constexpr int kKlippyStatePollMaxMs = 120000;
 
     void start_klippy_state_poll();
     void stop_klippy_state_poll(const char* why);

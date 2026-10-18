@@ -23,7 +23,7 @@
  * each trailing a tail bent by a slowly changing wind, all drawn with additive light.
  *
  * No LVGL, no clock and no shared random sequence: the saver passes the frame time, its own
- * random sequence and the frame. The world advances in fixed FIREFLIES_STEP_MS steps, and the
+ * random sequence and the frame. The world advances in fixed kFirefliesStepMs steps, and the
  * random sequence is read only inside a step, so the motion is identical whatever the frame
  * period or level. Buffers are sized in init(); a frame allocates nothing.
  */
@@ -40,47 +40,47 @@ struct FirefliesLevel {
 };
 
 /// The ladder, most expensive level first. A requested level applies at the next frame.
-inline constexpr FirefliesLevel FIREFLIES_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 175, 2250, 3, true},
+inline constexpr FirefliesLevel kFirefliesLevels[] = {
+    {kSaverFastPeriod, 175, 2250, 3, true},
     {33, 175, 2250, 3, true},
     {33, 175, 2250, 1, false},
     {50, 120, 1500, 1, false},
     {100, 48, 750, 1, false},
 };
 
-inline constexpr size_t FIREFLIES_LEVEL_COUNT = std::size(FIREFLIES_LEVELS);
+inline constexpr size_t kFirefliesLevelCount = std::size(kFirefliesLevels);
 
 /// Fixed simulation step, ms.
-inline constexpr uint32_t FIREFLIES_STEP_MS = 10;
+inline constexpr uint32_t kFirefliesStepMs = 10;
 /// Tail points are recorded every this many ms.
-inline constexpr uint32_t FIREFLIES_TAIL_SAMPLE_MS = 50;
+inline constexpr uint32_t kFirefliesTailSampleMs = 50;
 /// Age of the oldest tail point at level 0, ms.
-inline constexpr uint32_t FIREFLIES_TAIL_MS = 2250;
-/// Tail points kept per fly: enough for FIREFLIES_TAIL_MS.
-inline constexpr size_t FIREFLIES_TAIL_POINTS = FIREFLIES_TAIL_MS / FIREFLIES_TAIL_SAMPLE_MS + 1;
+inline constexpr uint32_t kFirefliesTailMs = 2250;
+/// Tail points kept per fly: enough for kFirefliesTailMs.
+inline constexpr size_t kFirefliesTailPoints = kFirefliesTailMs / kFirefliesTailSampleMs + 1;
 
 /// World box, in world units: height and depth; the width is height times the frame's aspect.
-inline constexpr float FIREFLIES_WORLD_H = 80.0f;
-inline constexpr float FIREFLIES_WORLD_D = 50.0f;
+inline constexpr float kFirefliesWorldH = 80.0f;
+inline constexpr float kFirefliesWorldD = 50.0f;
 
 /// Top speed (units/s) and acceleration (units/s^2) of baits and flies.
-inline constexpr float FIREFLIES_BAIT_SPEED = 50.0f;
-inline constexpr float FIREFLIES_BAIT_ACCEL = 600.0f;
-inline constexpr float FIREFLIES_FLY_SPEED = 100.0f;
-inline constexpr float FIREFLIES_FLY_ACCEL = 300.0f;
+inline constexpr float kFirefliesBaitSpeed = 50.0f;
+inline constexpr float kFirefliesBaitAccel = 600.0f;
+inline constexpr float kFirefliesFlySpeed = 100.0f;
+inline constexpr float kFirefliesFlyAccel = 300.0f;
 
 /// Swarm hue drift, degrees per second, and a fly's hue swing with its speed, degrees either way.
-inline constexpr float FIREFLIES_HUE_RATE_DPS = 15.0f;
-inline constexpr float FIREFLIES_HUE_SWING_DEG = 20.0f;
+inline constexpr float kFirefliesHueRateDps = 15.0f;
+inline constexpr float kFirefliesHueSwingDeg = 20.0f;
 
-inline constexpr size_t FIREFLIES_MIN_BAITS = 2;
-inline constexpr size_t FIREFLIES_MAX_BAITS = 5;
-inline constexpr size_t FIREFLIES_MIN_FLIES = 100;
-inline constexpr size_t FIREFLIES_MAX_FLIES = 175;
+inline constexpr size_t kFirefliesMinBaits = 2;
+inline constexpr size_t kFirefliesMaxBaits = 5;
+inline constexpr size_t kFirefliesMinFlies = 100;
+inline constexpr size_t kFirefliesMaxFlies = 175;
 
 /// The wind takes a new heading after 4 to 8 tail lengths.
-inline constexpr uint32_t FIREFLIES_WIND_MIN_MS = 4 * FIREFLIES_TAIL_MS;
-inline constexpr uint32_t FIREFLIES_WIND_MAX_MS = 8 * FIREFLIES_TAIL_MS;
+inline constexpr uint32_t kFirefliesWindMinMs = 4 * kFirefliesTailMs;
+inline constexpr uint32_t kFirefliesWindMaxMs = 8 * kFirefliesTailMs;
 
 /// What the swarms are doing. NORMAL runs between the others; SPLIT and MERGE are instant.
 enum class FirefliesMode : uint8_t {
@@ -93,13 +93,13 @@ enum class FirefliesMode : uint8_t {
     MERGE,      ///< a bait's swarm joins the nearest other bait and the bait goes
     WIND_GUST,  ///< the wind blows four times as hard
 };
-inline constexpr size_t FIREFLIES_MODE_COUNT = 8;
+inline constexpr size_t kFirefliesModeCount = 8;
 
 /// Side, in px, of the tiles the sim tracks what it drew in.
-inline constexpr int32_t FIREFLIES_TILE_PX = 16;
+inline constexpr int32_t kFirefliesTilePx = 16;
 /// Most areas one frame reports dirty. An area costs a board about what 3600 of its pixels do,
 /// so the tiles are joined into a few boxes rather than reported one by one.
-inline constexpr size_t FIREFLIES_MAX_DIRTY_AREAS = 24;
+inline constexpr size_t kFirefliesMaxDirtyAreas = 24;
 
 /**
  * @brief Brightness of a tail point `u` of the way along the drawn tail (0 head, 1 oldest)
@@ -117,7 +117,7 @@ int32_t fireflies_tail_width(float u, float max_px);
 /// camera.
 class FirefliesSim {
   public:
-    static constexpr const auto& LEVELS = FIREFLIES_LEVELS;
+    static constexpr const auto& kLevels = kFirefliesLevels;
 
     struct Bait {
         SaverVec3 pos;
@@ -143,9 +143,9 @@ class FirefliesSim {
     /**
      * @brief Advances the world by `dt_ms` and redraws the swarms
      *
-     * The world moves in whole FIREFLIES_STEP_MS steps; the remainder carries to the next call.
-     * Every FIREFLIES_TILE_PX tile the previous frame drew in is cleared to black, then every
-     * drawn fly adds its light. `dirty` is replaced with at most FIREFLIES_MAX_DIRTY_AREAS boxes
+     * The world moves in whole kFirefliesStepMs steps; the remainder carries to the next call.
+     * Every kFirefliesTilePx tile the previous frame drew in is cleared to black, then every
+     * drawn fly adds its light. `dirty` is replaced with at most kFirefliesMaxDirtyAreas boxes
      * covering every tile drawn in either frame: what the last frame drew (and this frame
      * cleared) and what this one drew. Tails are thin, so the tiles cover far less than the
      * boxes round whole swarms would.
@@ -160,8 +160,8 @@ class FirefliesSim {
     }
 
     /// Starts `mode` now for `duration_ms` (ignored for SPLIT and MERGE, which act at once and
-    /// return to NORMAL). A SPLIT with FIREFLIES_MAX_BAITS alive, or a MERGE with
-    /// FIREFLIES_MIN_BAITS alive, is refused and returns false.
+    /// return to NORMAL). A SPLIT with kFirefliesMaxBaits alive, or a MERGE with
+    /// kFirefliesMinBaits alive, is refused and returns false.
     bool begin_mode(FirefliesMode mode, uint32_t duration_ms, std::minstd_rand& rng);
     FirefliesMode mode() const {
         return mode_;
@@ -178,11 +178,11 @@ class FirefliesSim {
     }
 
     /// Hue, in degrees [0, 360), fly `i` is drawn in now: its swarm's hue, shifted from
-    /// -FIREFLIES_HUE_SWING_DEG at rest to +FIREFLIES_HUE_SWING_DEG at FIREFLIES_FLY_SPEED.
+    /// -kFirefliesHueSwingDeg at rest to +kFirefliesHueSwingDeg at kFirefliesFlySpeed.
     float fly_hue_deg(size_t i) const;
 
     /// Age, in ms, of the oldest recorded tail point, the same for every fly: they are sampled
-    /// together. Grows to FIREFLIES_TAIL_MS (within one FIREFLIES_TAIL_SAMPLE_MS) and stays there.
+    /// together. Grows to kFirefliesTailMs (within one kFirefliesTailSampleMs) and stays there.
     uint32_t tail_age_ms() const;
 
     /// Wind now, world units per second; a tail point of age a is drawn displaced by wind * a.
@@ -198,7 +198,7 @@ class FirefliesSim {
         return last_wind_change_ms_;
     }
 
-    /// Simulated ms since init(): a whole number of FIREFLIES_STEP_MS.
+    /// Simulated ms since init(): a whole number of kFirefliesStepMs.
     uint64_t elapsed_ms() const {
         return elapsed_ms_;
     }
@@ -211,14 +211,14 @@ class FirefliesSim {
 
   private:
     /// Most steps one frame advances: a stall moves the swarms half a second, never more.
-    static constexpr uint32_t MAX_STEPS_PER_FRAME = 50;
+    static constexpr uint32_t kMaxStepsPerFrame = 50;
 
     void advance_one(std::minstd_rand& rng);
     SaverVec3 random_waypoint(std::minstd_rand& rng) const;
     float speed_mult() const;
     bool split(std::minstd_rand& rng);
     bool merge();
-    std::array<size_t, FIREFLIES_MAX_BAITS> swarm_sizes() const;
+    std::array<size_t, kFirefliesMaxBaits> swarm_sizes() const;
     void new_wind_heading(std::minstd_rand& rng);
     void update_wind();
     void schedule_next_mode(std::minstd_rand& rng);
@@ -239,7 +239,7 @@ class FirefliesSim {
     int32_t mode_left_ms_ = 0;
     int32_t mode_total_ms_ = 0;
     int32_t next_mode_ms_ = 0;
-    uint32_t modes_begun_[FIREFLIES_MODE_COUNT]{};
+    uint32_t modes_begun_[kFirefliesModeCount]{};
 
     SaverVec3 wind_{};
     /// The wind before any gust: a new heading eases from this, never from the gusted wind_.
@@ -250,18 +250,18 @@ class FirefliesSim {
     uint32_t wind_changes_ = 0;
     uint64_t last_wind_change_ms_ = 0;
 
-    std::vector<Bait> baits_; ///< FIREFLIES_MAX_BAITS slots
+    std::vector<Bait> baits_; ///< kFirefliesMaxBaits slots
     /// Per bait slot, the hue at elapsed 0 that its hue_deg turns from.
-    float hue_origin_[FIREFLIES_MAX_BAITS]{};
+    float hue_origin_[kFirefliesMaxBaits]{};
     /// Per bait slot, where on LOOP's circle the bait started.
-    float loop_phase_[FIREFLIES_MAX_BAITS]{};
+    float loop_phase_[kFirefliesMaxBaits]{};
     std::vector<Fly> flies_;
-    /// FIREFLIES_TAIL_POINTS per fly, newest first from tail_head_, in fixed point (1/64 unit).
+    /// kFirefliesTailPoints per fly, newest first from tail_head_, in fixed point (1/64 unit).
     std::vector<int16_t> tail_;
     size_t tail_head_ = 0;
     size_t tail_count_ = 0;
 
-    /// Per FIREFLIES_TILE_PX tile, nonzero where the last frame drew; the tiles this frame draws.
+    /// Per kFirefliesTilePx tile, nonzero where the last frame drew; the tiles this frame draws.
     std::vector<uint8_t> drawn_tiles_;
     std::vector<uint8_t> now_tiles_;
     int32_t tiles_x_ = 0;

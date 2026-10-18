@@ -79,9 +79,9 @@ class AmsEditOverlay : public OverlayBase {
     using CompletionCallback = std::function<void(const EditResult& result)>;
 
     // View states for the ams_edit_view subject
-    static constexpr int VIEW_EDITOR = 0;
-    static constexpr int VIEW_SPOOL_PICKER = 1;
-    static constexpr int VIEW_COLOR = 2;
+    static constexpr int kViewEditor = 0;
+    static constexpr int kViewSpoolPicker = 1;
+    static constexpr int kViewColor = 2;
     /// ams_edit_color_selected value that rings the grid's custom swatch.
     static constexpr int kCustomColorIndex = -2;
 
@@ -265,7 +265,7 @@ class AmsEditOverlay : public OverlayBase {
     /// do_spoolman_save's success path.
     bool logistics_pending_ = false;
 
-    // === Colour view (VIEW_COLOR): presets + custom HSV ===
+    // === Colour view (kViewColor): presets + custom HSV ===
     uint32_t custom_color_ = 0x808080;
     void open_color_view();
     void populate_color_view();

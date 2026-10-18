@@ -30,9 +30,9 @@ using helix::test::check_replays;
 using helix::test::diff_against;
 using helix::test::FrameDiff;
 using helix::test::hms;
+using helix::test::kUnevenFrameMs;
 using helix::test::reading_at;
 using helix::test::SimRun;
-using helix::test::UNEVEN_FRAME_MS;
 using helix::ui::AquaSim;
 using helix::ui::FirefliesSim;
 using helix::ui::FireworksSim;
@@ -51,7 +51,7 @@ namespace {
 constexpr uint32_t W = 321;
 constexpr uint32_t H = 203;
 
-constexpr PixelFormat FORMATS[] = {PixelFormat::XRGB8888, PixelFormat::RGB565};
+constexpr PixelFormat kFormats[] = {PixelFormat::XRGB8888, PixelFormat::RGB565};
 
 /// A sim run with the inputs its sim reads besides time. The clock sims read the time of day,
 /// which starts two seconds before a minute set by the seed, so a sim without an rng still
@@ -114,14 +114,14 @@ template <> void ContractRun<HighFlySim>::step_with_inputs(uint32_t dt_ms) {
 }
 
 template <typename Sim> constexpr size_t level_count() {
-    return std::size(Sim::LEVELS);
+    return std::size(Sim::kLevels);
 }
 
 /// True when the sim's ladder rows have a `still` flag: its last rung paints once, then keeps
 /// only what redraws the clock.
 template <typename Sim, typename = void> struct has_still_rung : std::false_type {};
 template <typename Sim>
-struct has_still_rung<Sim, std::void_t<decltype(Sim::LEVELS[0].still)>> : std::true_type {};
+struct has_still_rung<Sim, std::void_t<decltype(Sim::kLevels[0].still)>> : std::true_type {};
 
 } // namespace
 
@@ -133,7 +133,7 @@ TEMPLATE_TEST_CASE("a sim's dirty boxes cover what it changes, inside its rows a
                    "every level in both formats",
                    "[screensaver][screensaver_sim_contract]", HELIX_EVERY_SIM) {
     size_t changed = 0;
-    for (const PixelFormat format : FORMATS) {
+    for (const PixelFormat format : kFormats) {
         for (size_t level = 0; level < level_count<TestType>(); level++) {
             INFO("format " << static_cast<int>(format) << " level " << level);
             ContractRun<TestType> r(7, W, H, format);
@@ -148,7 +148,7 @@ TEMPLATE_TEST_CASE("a sim's dirty boxes cover what it changes, inside its rows a
             size_t see_through = 0;
             for (int i = 0; i < 60; i++) {
                 const std::vector<uint8_t> before = r.run.frame.snapshot();
-                r.step(UNEVEN_FRAME_MS[i % std::size(UNEVEN_FRAME_MS)]);
+                r.step(kUnevenFrameMs[i % std::size(kUnevenFrameMs)]);
                 const FrameDiff d = diff_against(before, r.run.frame, r.run.dirty);
                 changed += d.changed;
                 uncovered += d.uncovered;
@@ -170,7 +170,7 @@ TEMPLATE_TEST_CASE("a sim run replays exactly from a seed, and another seed diff
         ContractRun<TestType> r(seed, W, H, PixelFormat::XRGB8888);
         r.init(0);
         for (int i = 0; i < 90; i++) {
-            r.step(UNEVEN_FRAME_MS[i % std::size(UNEVEN_FRAME_MS)]);
+            r.step(kUnevenFrameMs[i % std::size(kUnevenFrameMs)]);
         }
         return helix::test::frame_fnv1a(r.run.frame.target);
     };
@@ -180,7 +180,7 @@ TEMPLATE_TEST_CASE("a sim run replays exactly from a seed, and another seed diff
 TEMPLATE_TEST_CASE("a sim never holds more than init sized across frames and step-downs, from "
                    "every starting rung, the still rung frees its scene, and clear frees it all",
                    "[screensaver][screensaver_sim_contract]", HELIX_EVERY_SIM) {
-    for (const PixelFormat format : FORMATS) {
+    for (const PixelFormat format : kFormats) {
         for (size_t start = 0; start < level_count<TestType>(); start++) {
             INFO("format " << static_cast<int>(format) << " start " << start);
             ContractRun<TestType> r(5, W, H, format);
@@ -191,7 +191,7 @@ TEMPLATE_TEST_CASE("a sim never holds more than init sized across frames and ste
             for (size_t level = start; level < level_count<TestType>(); level++) {
                 r.run.sim.request_level(level);
                 for (int i = 0; i < 12; i++) {
-                    r.step(UNEVEN_FRAME_MS[i % std::size(UNEVEN_FRAME_MS)]);
+                    r.step(kUnevenFrameMs[i % std::size(kUnevenFrameMs)]);
                     most = std::max(most, r.run.sim.heap_bytes());
                 }
             }
@@ -214,7 +214,7 @@ TEMPLATE_TEST_CASE("sim frame cost per level", "[.][saver_bench]", HELIX_EVERY_S
     for (size_t level = 0; level < level_count<TestType>(); level++) {
         ContractRun<TestType> r(3, 800, 480, PixelFormat::XRGB8888);
         r.init(level);
-        const uint32_t period = helix::ui::ladder_period(TestType::LEVELS, level);
+        const uint32_t period = helix::ui::ladder_period(TestType::kLevels, level);
         for (uint32_t t = 0; t < 5000; t += period) {
             r.step(period);
         }

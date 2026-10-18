@@ -71,7 +71,7 @@ void print_test_mode_banner() {
     // Resolved, not the raw constant: with HELIX_CONFIG_DIR set the app reads
     // and writes the override path, and a banner naming config/ instead sends
     // you editing a file the run never touches.
-    printf("  Config: %s\n", Config::resolve_path(RuntimeConfig::TEST_CONFIG_PATH).c_str());
+    printf("  Config: %s\n", Config::resolve_path(RuntimeConfig::kTestConfigPath).c_str());
 
     printf("\n");
 }

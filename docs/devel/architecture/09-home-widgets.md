@@ -35,7 +35,7 @@ flowchart TB
 
 | File | Role |
 |------|------|
-| [`include/panel_widget.h`](../../../include/panel_widget.h) | `PanelWidget` base class (the widget contract), `PANEL_WIDGET_TILE_FLAG` and the LVGL user-flag ledger |
+| [`include/panel_widget.h`](../../../include/panel_widget.h) | `PanelWidget` base class (the widget contract), `kPanelWidgetTileFlag` and the LVGL user-flag ledger |
 | [`include/panel_widget_registry.h`](../../../include/panel_widget_registry.h) | `PanelWidgetDef` (id, icon, spans, gate subject, factory), `RuntimeWidgetDef` for plugin tiles, registry free functions |
 | [`src/ui/panel_widget_registry.cpp`](../../../src/ui/panel_widget_registry.cpp) | The built-in def table, catalog categories, runtime (plugin) def slots, `init_widget_registrations()`, `:N` suffix resolution |
 | [`include/panel_widget_manager.h`](../../../include/panel_widget_manager.h) | `PanelWidgetManager` singleton API: populate, gate-flip swap, in-place re-seat, gate observers, rebuild callbacks, shared resources |
@@ -50,7 +50,7 @@ flowchart TB
 | [`src/ui/panel_widgets/camera_widget.cpp`](../../../src/ui/panel_widgets/camera_widget.cpp) | The reuse rationale: MJPEG stream that must survive LVGL tree rebuilds |
 | [`src/plugin/lua_panel_widget.cpp`](../../../src/plugin/lua_panel_widget.cpp) | `LuaPanelWidget`: forwards the lifecycle to a plugin's `helix.widget` hooks ([`../PLUGIN_DEVELOPMENT.md`](../PLUGIN_DEVELOPMENT.md)) |
 | [`include/grid_edit_mode.h`](../../../include/grid_edit_mode.h) | Drag-to-rearrange edit mode; identifies tiles by `lv_obj_set_name` and commits through relayout or rebuild callbacks |
-| [`src/ui/page_scroll_auto_inject.cpp`](../../../src/ui/page_scroll_auto_inject.cpp) | Consumer of `PANEL_WIDGET_TILE_FLAG`: page-level tree walks stop at a tile |
+| [`src/ui/page_scroll_auto_inject.cpp`](../../../src/ui/page_scroll_auto_inject.cpp) | Consumer of `kPanelWidgetTileFlag`: page-level tree walks stop at a tile |
 
 ## How it works
 
@@ -136,7 +136,7 @@ That catalog, rendered: the stock grid a fresh mock instance resolves from the [
 1. **Resolve slots.** For each enabled entry in the page's `PanelWidgetConfig`, `resolve_slot()` looks up the def, checks its gate subject (0 means the tile renders at 40% opacity with a type icon and badge, but keeps its cell), and takes the C++ instance from the reuse map or `def->factory(entry.id)`; `set_panel_id` + `set_config` + `get_component_name` follow. A throwing factory or malformed config skips one tile, not the dashboard (`src/ui/panel_widget_manager.cpp#"configuration failed"`).
 2. **Short-circuit.** The ordered, gate-suffixed ID list (`"fan_stack"` vs `"fan_stack~gated"`) is compared with the one cached from the previous populate; identical with children present means return `{}` untouched (`src/ui/panel_widget_manager.cpp#"Widget list unchanged"`).
 3. **Place.** Every `TileSizing` is first handed the measured track geometry. Anchored widgets (explicit col/row) are placed first, their spans clamped to the grid and then grown until `fits_at()` accepts (`grow_span_to_fit`); the rest are auto-placed by `GridLayout`, authored spans first and, if not everyone fits, a minimum-first pass that grows survivors into leftover cells (`src/ui/panel_widget_manager.cpp#"run_auto_pass = [&]"`). A widget that cannot fit the grid at all is disabled with a notification; one that fits but finds no free cell is only evicted from its position (`disable_unplaceable` vs `evict_for_full_grid`, #1216). Positions are written back, but never a span shrunk or grown for this screen, and never a layout computed while a connected printer reports Klipper not READY (`src/ui/panel_widget_manager.cpp#"Never persist a layout computed"`).
-4. **Create and attach.** Card backgrounds are laid first (merged rectangles behind adjacent tiles), then per placed widget: `lv_xml_create(container, component_name, xml_attrs())`, `lv_obj_set_grid_cell`, `lv_obj_set_name(widget_id)` (how edit mode identifies tiles), `PANEL_WIDGET_TILE_FLAG`, the gated treatment or `attach_tile()`, and `announce_tile_size()`. The grid layout is activated *last*, after all children exist: an `attach()` that forces layout over a half-built grid walks a freed descriptor (#983, `src/ui/panel_widget_manager.cpp#"lv_obj_set_layout(container, LV_LAYOUT_GRID);"`). Grid descriptor arrays are owned per container (`install_grid_descriptors`), because LVGL stores the raw pointers.
+4. **Create and attach.** Card backgrounds are laid first (merged rectangles behind adjacent tiles), then per placed widget: `lv_xml_create(container, component_name, xml_attrs())`, `lv_obj_set_grid_cell`, `lv_obj_set_name(widget_id)` (how edit mode identifies tiles), `kPanelWidgetTileFlag`, the gated treatment or `attach_tile()`, and `announce_tile_size()`. The grid layout is activated *last*, after all children exist: an `attach()` that forces layout over a half-built grid walks a freed descriptor (#983, `src/ui/panel_widget_manager.cpp#"lv_obj_set_layout(container, LV_LAYOUT_GRID);"`). Grid descriptor arrays are owned per container (`install_grid_descriptors`), because LVGL stores the raw pointers.
 
 `HomePanel` owns the page dimension: a carousel of per-page containers (`src/ui/ui_panel_home.cpp#build_carousel`), each populated independently, with `on_activate()`/`on_deactivate()` fanned to the active page's widgets on page change (`src/ui/ui_panel_home.cpp#on_page_changed`). The carousel is built in `finalize_setup()`, after the first-run wizard, so a fresh install never persists a layout computed before its hardware was discovered.
 
@@ -174,8 +174,8 @@ Two subtleties both families hit. First, `observe<int>` defers its initial fire 
   | Flag | Owner | Meaning |
   |------|-------|---------|
   | `LV_OBJ_FLAG_USER_1` | *free* | reachable from XML like `USER_2` |
-  | `LV_OBJ_FLAG_USER_2` | `include/ui_utils.h#EDIT_CLICK_SUPPRESSED_FLAG` | objects whose `CLICKABLE` edit mode removed, so it restores exactly those |
-  | `LV_OBJ_FLAG_USER_3` | `include/panel_widget.h#PANEL_WIDGET_TILE_FLAG` | home widget tile root |
+  | `LV_OBJ_FLAG_USER_2` | `include/ui_utils.h#kEditClickSuppressedFlag` | objects whose `CLICKABLE` edit mode removed, so it restores exactly those |
+  | `LV_OBJ_FLAG_USER_3` | `include/panel_widget.h#kPanelWidgetTileFlag` | home widget tile root |
   | `LV_OBJ_FLAG_USER_4` | `src/ui/ui_sound_preview_overlay.cpp#populate_buttons` | suppress the button tap sound, read in `src/ui/ui_button.cpp#button_clicked_sound_cb` |
 
   helix-xml's `flag_to_enum()` maps only `user_1`/`user_2` for `<bind_flag_if_*>`, so `USER_3` is the one no binding can clear. The tile mark is set at the one creation site so page-level tree walks can stop at a tile; `PageScrollAutoInject` is the consumer ([`../PAGE_SCROLL_BUTTONS.md`](../PAGE_SCROLL_BUTTONS.md)). A flag is a global namespace, so never borrow one as a private guard; an idempotent remove-before-add callback needs no bit at all (`src/ui/ui_ams_detail.cpp#ams_detail_update_tray`).
@@ -198,7 +198,7 @@ Two subtleties both families hit. First, `observe<int>` defers its initial fire 
 - [`../PANEL_WIDGET_GUIDE.md`](../PANEL_WIDGET_GUIDE.md) - authoring a widget: registry def, class, XML, the measured-layout pattern, the shared size ladder and the checklist the sized widgets follow.
 - [`../LAYOUT_SYSTEM.md`](../LAYOUT_SYSTEM.md) - the grid itself: `GridLayout` track math, half-cell tracks, breakpoint column counts, the capability-resolved default layout and its slots, preset overlays, span authoring.
 - [`../HOME_EDIT_MODE.md`](../HOME_EDIT_MODE.md) - edit mode: the session over a page, grab and click rules, the events that end a gesture, cross-page drag and the page lifecycle.
-- [`../PAGE_SCROLL_BUTTONS.md`](../PAGE_SCROLL_BUTTONS.md) - the `PANEL_WIDGET_TILE_FLAG` consumer: why the chevron gutter must not descend into a tile.
+- [`../PAGE_SCROLL_BUTTONS.md`](../PAGE_SCROLL_BUTTONS.md) - the `kPanelWidgetTileFlag` consumer: why the chevron gutter must not descend into a tile.
 - [`../PLUGIN_DEVELOPMENT.md`](../PLUGIN_DEVELOPMENT.md) - plugin-declared widgets and their Lua hooks.
 - [`02-subjects-dataflow.md`](02-subjects-dataflow.md) - the subject/observer machinery every widget binds with.
 - [`03-threading-lifetime.md`](03-threading-lifetime.md) - why the rebuild path freezes and drains the UpdateQueue, why deletes are deferred, and the lifetime-token checks.
@@ -212,7 +212,7 @@ Two subtleties both families hit. First, `observe<int>` defers its initial fire 
 
 Read in this order; about 30 minutes total.
 
-1. `include/panel_widget.h#PANEL_WIDGET_TILE_FLAG`: the flag ledger, then `include/panel_widget.h#PanelWidget`: read the hooks in order and note which run before XML creation and which after.
+1. `include/panel_widget.h#kPanelWidgetTileFlag`: the flag ledger, then `include/panel_widget.h#PanelWidget`: read the hooks in order and note which run before XML creation and which after.
 2. `include/panel_widget_registry.h#PanelWidgetDef`: every field is a decision the manager or the catalog makes somewhere.
 3. `src/ui/panel_widget_registry.cpp#"s_widget_defs = {"`: the span triples, gate subjects, `multi_instance` column and the `HELIX_HAS_CAMERA` guard; then `init_widget_registrations()`, `get_all_widget_defs()` and `find_widget_def()` in the same file.
 4. `src/ui/panel_widgets/size_rung.h#choose_size_rung` and `src/ui/panel_widgets/speed_flow_layout.h#decide_speed_flow_layout`: the smallest sized widget's whole decision; then `src/ui/panel_widgets/tiled_panel_widget.h#"class TiledPanelWidget"` and `src/ui/panel_widgets/tile_sizing.h#"class TileSizing {"`: how most tiles size themselves, and why the sizing is built in the constructor.

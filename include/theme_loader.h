@@ -19,7 +19,7 @@
 namespace helix {
 
 /// Default theme filename (without .json extension)
-constexpr const char* DEFAULT_THEME = "helixscreen";
+constexpr const char* kDefaultTheme = "helixscreen";
 
 /**
  * @brief Mode support for themes

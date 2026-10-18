@@ -227,17 +227,17 @@ class AbortManager {
     // Timeout Constants (public for testing)
     // ========================================================================
 
-    static constexpr uint32_t HEATER_INTERRUPT_TIMEOUT_MS = 1000;                     ///< 1 second
-    static constexpr uint32_t PROBE_TIMEOUT_MS = 2000;                                ///< 2 seconds
-    static constexpr uint32_t CANCEL_TIMEOUT_MS = MoonrakerJobAPI::CANCEL_TIMEOUT_MS; ///< 5 minutes
-    static constexpr uint32_t CANCEL_NUDGE_MS = 15000; ///< 15 seconds
+    static constexpr uint32_t kHeaterInterruptTimeoutMs = 1000;                     ///< 1 second
+    static constexpr uint32_t kProbeTimeoutMs = 2000;                               ///< 2 seconds
+    static constexpr uint32_t kCancelTimeoutMs = MoonrakerJobAPI::kCancelTimeoutMs; ///< 5 minutes
+    static constexpr uint32_t kCancelNudgeMs = 15000;                               ///< 15 seconds
     /// Wait window for klippy_state to reach READY after the recovery service
     /// returns. The recovery service can take 30s+ on K2 (klipper_mcu bounce),
     /// but that's handled async — this timer only covers the gap between
     /// "script returned" and "klippy reports READY". 30s gives platforms with
     /// slow MCU re-enumeration (CFS rediscovery, RS-485 bus settle) enough
     /// headroom without leaving the user staring at "Restarting..." forever.
-    static constexpr uint32_t RECONNECT_TIMEOUT_MS = 30000; ///< 30 seconds
+    static constexpr uint32_t kReconnectTimeoutMs = 30000; ///< 30 seconds
     /// Backstop for the recovery service itself. The chain's worst case is its
     /// deadline (polling stops), plus a script started just before it running
     /// to its bound, plus one poll interval and one printer.info request

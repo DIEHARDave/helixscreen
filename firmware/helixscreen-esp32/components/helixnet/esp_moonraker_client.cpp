@@ -33,10 +33,10 @@ int64_t now_us() {
 
 // WS text/continuation opcodes we reassemble; everything else (binary, ping,
 // pong, close) is handled by the component or ignored.
-constexpr uint8_t OP_TEXT = 0x01;
-constexpr uint8_t OP_CONTINUATION = 0x00;
-constexpr uint8_t OP_PONG = 0x0A;
-constexpr uint8_t OP_CONTROL_BIT = 0x08; // close, ping, pong
+constexpr uint8_t kOpText = 0x01;
+constexpr uint8_t kOpContinuation = 0x00;
+constexpr uint8_t kOpPong = 0x0A;
+constexpr uint8_t kOpControlBit = 0x08; // close, ping, pong
 
 std::atomic<EspMoonrakerClient::LinkDropObserver> s_link_drop_observer{nullptr};
 
@@ -94,7 +94,7 @@ EspMoonrakerClient::EspMoonrakerClient()
         .skip_unhandled_events = true,
     };
     if (esp_timer_create(&targs, &housekeeping_timer_) == ESP_OK) {
-        esp_timer_start_periodic(housekeeping_timer_, HOUSEKEEPING_PERIOD_US);
+        esp_timer_start_periodic(housekeeping_timer_, kHousekeepingPeriodUs);
     } else {
         ESP_LOGE(TAG, "failed to create housekeeping timer");
         housekeeping_timer_ = nullptr;
@@ -192,21 +192,21 @@ esp_websocket_client_handle_t EspMoonrakerClient::create_transport(const std::st
     // 4096 default is too small once nlohmann is on the callback path.
     // 8192 is measurement-backed: discovery (the deepest json work on this
     // task) peaks at ~6.5KB, deterministic across 44 forced-reconnect
-    // cycles — see WS_TASK_STACK_BYTES and the watermark log in
+    // cycles — see kWsTaskStackBytes and the watermark log in
     // discovery_subscribe, which reports the live margin every cycle.
-    cfg.task_stack = WS_TASK_STACK_BYTES;
+    cfg.task_stack = kWsTaskStackBytes;
     // Bounds the per-DATA-event chunk, not the message; we reassemble.
     cfg.buffer_size = 32768;
     // Capped so no connect attempt waits out a full unreachable-host timeout — see
-    // MAX_NETWORK_TIMEOUT_MS (which also documents what the cap does not cover: DNS
+    // kMaxNetworkTimeoutMs (which also documents what the cap does not cover: DNS
     // resolution ahead of it).
     cfg.network_timeout_ms =
-        static_cast<int>(std::min(connection_timeout_ms_, MAX_NETWORK_TIMEOUT_MS));
+        static_cast<int>(std::min(connection_timeout_ms_, kMaxNetworkTimeoutMs));
     cfg.ping_interval_sec = 10;
     // Two ping intervals' worth of missed PONGs before giving up, safely under the 60s
     // request timeout, so a connection that goes silent becomes an ordinary disconnect
     // and auto-reconnect.
-    cfg.pingpong_timeout_sec = PING_PONG_TIMEOUT_SEC;
+    cfg.pingpong_timeout_sec = kPingPongTimeoutSec;
     // The component's own auto-reconnect restarts transport structures from inside its
     // own task, which trips a spinlock assert; reconnection is driven from the transport
     // worker instead.
@@ -240,10 +240,10 @@ void EspMoonrakerClient::post_transport_job(const char* what, std::function<void
         // RAM is what the websocket task itself needs.
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_attr_setstacksize(&attr, TRANSPORT_WORKER_STACK_BYTES);
+        pthread_attr_setstacksize(&attr, kTransportWorkerStackBytes);
         int rc;
         {
-            PsramThreadStackScope psram_stack("ws_transport", TRANSPORT_WORKER_STACK_BYTES);
+            PsramThreadStackScope psram_stack("ws_transport", kTransportWorkerStackBytes);
             rc = pthread_create(&transport_worker_, &attr,
                                 &EspMoonrakerClient::transport_worker_main, this);
         }
@@ -595,22 +595,22 @@ void EspMoonrakerClient::on_ws_data(const esp_websocket_event_data_t* d) {
     }
     // The component reports a read that timed out partway through a frame as a zero-length
     // event carrying that frame's opcode, so only bytes or a control frame are traffic.
-    if (d->data_len > 0 || (d->op_code & OP_CONTROL_BIT) != 0) {
+    if (d->data_len > 0 || (d->op_code & kOpControlBit) != 0) {
         last_rx_us_.store(esp_timer_get_time());
     }
-    if (d->op_code == OP_PONG) {
+    if (d->op_code == kOpPong) {
         ++pongs_this_connection_;
         last_pong_us_.store(esp_timer_get_time());
         return;
     }
     // Only text (0x01) and its continuation frames (0x00) carry JSON-RPC.
-    if (d->op_code != OP_TEXT && d->op_code != OP_CONTINUATION) {
+    if (d->op_code != kOpText && d->op_code != kOpContinuation) {
         return;
     }
 
     if (d->payload_offset == 0) {
         rx_buf_.clear();
-        rx_skip_ = (static_cast<size_t>(d->payload_len) > MAX_MESSAGE_BYTES);
+        rx_skip_ = (static_cast<size_t>(d->payload_len) > kMaxMessageBytes);
         if (rx_skip_) {
             ESP_LOGE(TAG, "dropping %d-byte message (cap 256KB)", d->payload_len);
         } else if (!helix::http::try_reserve(rx_buf_, static_cast<size_t>(d->payload_len))) {
@@ -634,7 +634,7 @@ void EspMoonrakerClient::on_ws_data(const esp_websocket_event_data_t* d) {
             const int64_t t0 = esp_timer_get_time();
             dispatch_message(rx_buf_.data(), rx_buf_.size());
             const int64_t ms = (esp_timer_get_time() - t0) / 1000;
-            if (ms >= SLOW_DISPATCH_LOG_MS) {
+            if (ms >= kSlowDispatchLogMs) {
                 ESP_LOGW(TAG, "slow dispatch: %lldms for a %u-byte message: %.60s", ms,
                          static_cast<unsigned>(rx_buf_.size()), rx_buf_.c_str());
             }
@@ -642,7 +642,7 @@ void EspMoonrakerClient::on_ws_data(const esp_websocket_event_data_t* d) {
         rx_buf_.clear();
         // A one-off large reply (configfile.settings is ~150KB) must not pin
         // its peak capacity in PSRAM for the rest of the session.
-        if (rx_buf_.capacity() > RX_BUF_KEEP_BYTES) {
+        if (rx_buf_.capacity() > kRxBufKeepBytes) {
             rx_buf_.shrink_to_fit();
         }
         rx_skip_ = false;
@@ -777,7 +777,7 @@ void EspMoonrakerClient::housekeeping_trampoline(void* arg) {
     {
         std::lock_guard<std::mutex> lock(self->state_mutex_);
         if (self->state_ == ConnectionState::RECONNECTING &&
-            (now_us() - self->reconnecting_since_us_) > RECONNECTING_TO_FAILED_US) {
+            (now_us() - self->reconnecting_since_us_) > kReconnectingToFailedUs) {
             to_failed = true;
         }
     }
@@ -833,11 +833,11 @@ void EspMoonrakerClient::process_timeouts() {
         }
     }
     // Rx-stall tripwire: a request is waiting and nothing at all (not even a
-    // PONG) has arrived for RX_STALL_LOG_US. Heap is logged beside it because a
+    // PONG) has arrived for kRxStallLogUs. Heap is logged beside it because a
     // WiFi/lwIP buffer shortage and a dead path look identical from here.
     const int64_t last_rx = last_rx_us_.load();
-    if (pending_n > 0 && last_rx > 0 && now - last_rx > RX_STALL_LOG_US &&
-        now - last_stall_log_us_ > RX_STALL_LOG_US) {
+    if (pending_n > 0 && last_rx > 0 && now - last_rx > kRxStallLogUs &&
+        now - last_stall_log_us_ > kRxStallLogUs) {
         last_stall_log_us_ = now;
         ESP_LOGW(TAG,
                  "rx stall: %llds since last frame, %u pending (oldest '%s' %llds), %u stale "
@@ -853,7 +853,7 @@ void EspMoonrakerClient::process_timeouts() {
     // both directions: late PONGs on a weak link with frames still arriving are not dead.
     const int64_t last_pong = last_pong_us_.load();
     if (get_connection_state() == ConnectionState::CONNECTED &&
-        net::link_dead(now, last_pong, last_rx_us_.load(), LINK_DEAD_US) &&
+        net::link_dead(now, last_pong, last_rx_us_.load(), kLinkDeadUs) &&
         !dead_link_reported_.exchange(true)) {
         ESP_LOGW(TAG,
                  "no PONG for %llds and no frame for %llds on a live connection (%u pending, %u "
@@ -898,7 +898,7 @@ void EspMoonrakerClient::process_timeouts() {
     // Stopping a transport that never connected can mean waiting out its connect attempt
     // (a host that does not answer), so it gets longer before it counts as stuck.
     const int64_t stall_us =
-        transport_.retiring_unconnected() ? TRANSPORT_STALL_UNCONNECTED_US : TRANSPORT_STALL_US;
+        transport_.retiring_unconnected() ? kTransportStallUnconnectedUs : kTransportStallUs;
     // Reported once per job: the handler may decline to restart (the restart cap), and the
     // job stays stuck until its websocket task gives up.
     if (job_started != 0 && now_us() - job_started > stall_us &&
@@ -936,7 +936,7 @@ int EspMoonrakerClient::send_envelope(const json& envelope) {
         return -1;
     }
     int sent = esp_websocket_client_send_text(ws, payload.data(), static_cast<int>(payload.size()),
-                                              pdMS_TO_TICKS(SEND_TIMEOUT_MS));
+                                              pdMS_TO_TICKS(kSendTimeoutMs));
     return sent;
 }
 
@@ -982,7 +982,7 @@ RequestId EspMoonrakerClient::send_jsonrpc(const std::string& method, const json
         if (error_cb) {
             error_cb(MoonrakerError::connection_lost(method));
         }
-        return INVALID_REQUEST_ID;
+        return kInvalidRequestId;
     }
     return track_and_send(method, params, std::move(success_cb), std::move(error_cb), timeout_ms,
                           silent);
@@ -997,7 +997,7 @@ RequestId EspMoonrakerClient::track_and_send(const std::string& method, const js
     bool queue_full = false;
     {
         std::lock_guard<std::mutex> lock(requests_mutex_);
-        if (pending_.size() >= MAX_PENDING_REQUESTS) {
+        if (pending_.size() >= kMaxPendingRequests) {
             queue_full = true;
         } else {
             Pending req;
@@ -1012,7 +1012,7 @@ RequestId EspMoonrakerClient::track_and_send(const std::string& method, const js
     }
 
     if (queue_full) {
-        ESP_LOGW(TAG, "request queue full (%zu), rejecting %s", MAX_PENDING_REQUESTS,
+        ESP_LOGW(TAG, "request queue full (%zu), rejecting %s", kMaxPendingRequests,
                  method.c_str());
         if (error_cb) {
             MoonrakerError err;
@@ -1021,7 +1021,7 @@ RequestId EspMoonrakerClient::track_and_send(const std::string& method, const js
             err.message = "Request queue full — too many pending requests";
             error_cb(err);
         }
-        return INVALID_REQUEST_ID;
+        return kInvalidRequestId;
     }
 
     json rpc;
@@ -1047,7 +1047,7 @@ RequestId EspMoonrakerClient::track_and_send(const std::string& method, const js
         if (cb_copy) {
             cb_copy(MoonrakerError::connection_lost(method));
         }
-        return INVALID_REQUEST_ID;
+        return kInvalidRequestId;
     }
     return id;
 }
@@ -1614,7 +1614,7 @@ void EspMoonrakerClient::discovery_subscribe(DiscoveryDone done, DiscoveryFail f
             // this line is the tripwire evidence for whatever the hunt
             // turns to next.
             spdlog::info("[helixnet] ws task stack watermark: {} bytes free of {}",
-                         uxTaskGetStackHighWaterMark(nullptr), WS_TASK_STACK_BYTES);
+                         uxTaskGetStackHighWaterMark(nullptr), kWsTaskStackBytes);
 
             discovery_in_flight_.store(false);
             if (*done) {
@@ -1716,7 +1716,7 @@ void EspMoonrakerClient::set_bed_mesh_callback(std::function<void(const json&)> 
 
 SubscriptionId EspMoonrakerClient::register_notify_update(std::function<void(const json&)> cb) {
     if (!cb) {
-        return INVALID_SUBSCRIPTION_ID;
+        return kInvalidSubscriptionId;
     }
     SubscriptionId id = next_subscription_id_.fetch_add(1) + 1;
     std::lock_guard<std::mutex> lock(callbacks_mutex_);
@@ -1843,7 +1843,7 @@ bool EspMoonrakerClient::is_disconnect_modal_suppressed() const {
 // ---------------------------------------------------------------------------
 
 bool EspMoonrakerClient::cancel_request(RequestId id) {
-    if (id == INVALID_REQUEST_ID) {
+    if (id == kInvalidRequestId) {
         return false;
     }
     std::lock_guard<std::mutex> lock(requests_mutex_);

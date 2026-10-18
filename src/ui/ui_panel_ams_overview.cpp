@@ -60,22 +60,22 @@ using namespace helix;
 // ============================================================================
 
 /// Minimum bar width for mini slot bars (prevents invisible bars)
-static constexpr int32_t MINI_BAR_MIN_WIDTH_PX = 6;
+static constexpr int32_t kMiniBarMinWidthPx = 6;
 
 /// Maximum bar width for mini slot bars
-static constexpr int32_t MINI_BAR_MAX_WIDTH_PX = 14;
+static constexpr int32_t kMiniBarMaxWidthPx = 14;
 
 /// Height of each mini slot bar (decorative, no need for responsive scaling)
-static constexpr int32_t MINI_BAR_HEIGHT_PX = 40;
+static constexpr int32_t kMiniBarHeightPx = 40;
 
 /// Zoom animation duration (ms) for detail view transitions
-static constexpr uint32_t DETAIL_ZOOM_DURATION_MS = 200;
+static constexpr uint32_t kDetailZoomDurationMs = 200;
 
 /// Zoom animation start scale (25% = 64/256)
-static constexpr int32_t DETAIL_ZOOM_SCALE_MIN = 64;
+static constexpr int32_t kDetailZoomScaleMin = 64;
 
 /// Zoom animation end scale (100% = 256/256)
-static constexpr int32_t DETAIL_ZOOM_SCALE_MAX = 256;
+static constexpr int32_t kDetailZoomScaleMax = 256;
 
 // Global instance pointer for XML callback access (used by back button and animation callbacks)
 static std::atomic<AmsOverviewPanel*> g_overview_panel_instance{nullptr};
@@ -98,8 +98,8 @@ static int32_t measured_bar_width(lv_obj_t* bars_container, int slot_count) {
         container_width = 80; // Fallback if layout not yet calculated
     }
     int32_t gap = theme_manager_get_spacing("space_xxs");
-    return ams_draw::calc_bar_width(container_width, slot_count, gap, MINI_BAR_MIN_WIDTH_PX,
-                                    MINI_BAR_MAX_WIDTH_PX);
+    return ams_draw::calc_bar_width(container_width, slot_count, gap, kMiniBarMinWidthPx,
+                                    kMiniBarMaxWidthPx);
 }
 
 /// One bit per lane of @p unit, set when that lane's spool lives upstream of
@@ -443,13 +443,13 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info, helix::ui::L
     unit_cards_.clear();
 
     const int unit_count = static_cast<int>(info.units.size());
-    if (unit_count > AmsState::MAX_UNITS) {
+    if (unit_count > AmsState::kMaxUnits) {
         // One line naming the cap, instead of seven XML parser warnings per
         // excess card. Those cards still render their slots; only the
         // temperature/humidity badge is unavailable.
         spdlog::warn("[{}] Backend reports {} units but only {} have environment subjects - "
                      "unit {} onward render without the temp/humidity badge",
-                     get_name(), unit_count, AmsState::MAX_UNITS, AmsState::MAX_UNITS + 1);
+                     get_name(), unit_count, AmsState::kMaxUnits, AmsState::kMaxUnits + 1);
     }
 
     // Cards run in nozzle order (SystemToolLayout::display_order).
@@ -466,7 +466,7 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info, helix::ui::L
         // Create card from XML component — all static styling is declarative.
         // Fully-expanded per-unit subject names (kept alive across lv_xml_create) so
         // each card binds to its own unit's environment-indicator subjects. Units
-        // past MAX_UNITS get the always-off placeholders — AmsState owns which is
+        // past kMaxUnits get the always-off placeholders — AmsState owns which is
         // which, since it owns the cap and the registrations.
         const AmsState::EnvIndicatorSubjectNames s = AmsState::env_indicator_subject_names(i);
         const std::string absent = AmsState::unit_absent_subject_name(i);
@@ -622,7 +622,7 @@ void AmsOverviewPanel::create_mini_bars(UnitCard& card, const AmsUnit& unit) {
     card.bars_built = {unit.first_slot_global_index, slot_count, bar_width, mask};
 
     helix::ui::ams_lane_bar_create_range(card.bars_container, unit.first_slot_global_index,
-                                         slot_count, bar_width, MINI_BAR_HEIGHT_PX, mask);
+                                         slot_count, bar_width, kMiniBarHeightPx, mask);
 }
 
 // ============================================================================
@@ -1046,7 +1046,7 @@ void AmsOverviewPanel::show_current_page(const AmsSystemInfo& info, bool relayou
     ams.set_unit_page_header(ams_draw::get_unit_display_name(unit, page.unit_index), logo.path,
                              logo.color);
 
-    if (relayout || new_unit || detail_slot_count_ != std::min(unit.slot_count, MAX_DETAIL_SLOTS)) {
+    if (relayout || new_unit || detail_slot_count_ != std::min(unit.slot_count, kMaxDetailSlots)) {
         create_detail_slots(info, page.unit_index);
     }
     helix::ui::ams_detail_sync_slot_states(detail_slot_widgets_, detail_slot_count_, info);
@@ -1153,15 +1153,15 @@ void AmsOverviewPanel::show_unit_view(int unit_index) {
         lv_obj_set_style_transform_pivot_y(detail_container_, pivot_y, LV_PART_MAIN);
 
         // Start small and transparent
-        lv_obj_set_style_transform_scale(detail_container_, DETAIL_ZOOM_SCALE_MIN, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(detail_container_, kDetailZoomScaleMin, LV_PART_MAIN);
         lv_obj_set_style_opa(detail_container_, LV_OPA_TRANSP, LV_PART_MAIN);
 
         // Scale animation
         lv_anim_t scale_anim;
         lv_anim_init(&scale_anim);
         lv_anim_set_var(&scale_anim, detail_container_);
-        lv_anim_set_values(&scale_anim, DETAIL_ZOOM_SCALE_MIN, DETAIL_ZOOM_SCALE_MAX);
-        lv_anim_set_duration(&scale_anim, DETAIL_ZOOM_DURATION_MS);
+        lv_anim_set_values(&scale_anim, kDetailZoomScaleMin, kDetailZoomScaleMax);
+        lv_anim_set_duration(&scale_anim, kDetailZoomDurationMs);
         lv_anim_set_path_cb(&scale_anim, lv_anim_path_ease_out);
         lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
             lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
@@ -1173,7 +1173,7 @@ void AmsOverviewPanel::show_unit_view(int unit_index) {
         lv_anim_init(&fade_anim);
         lv_anim_set_var(&fade_anim, detail_container_);
         lv_anim_set_values(&fade_anim, LV_OPA_TRANSP, LV_OPA_COVER);
-        lv_anim_set_duration(&fade_anim, DETAIL_ZOOM_DURATION_MS);
+        lv_anim_set_duration(&fade_anim, kDetailZoomDurationMs);
         lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_out);
         lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
             lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
@@ -1181,7 +1181,7 @@ void AmsOverviewPanel::show_unit_view(int unit_index) {
         lv_anim_start(&fade_anim);
     } else {
         // No animation — ensure final state
-        lv_obj_set_style_transform_scale(detail_container_, DETAIL_ZOOM_SCALE_MAX, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(detail_container_, kDetailZoomScaleMax, LV_PART_MAIN);
         lv_obj_set_style_opa(detail_container_, LV_OPA_COVER, LV_PART_MAIN);
     }
 }
@@ -1210,8 +1210,8 @@ void AmsOverviewPanel::show_overview() {
         lv_anim_t scale_anim;
         lv_anim_init(&scale_anim);
         lv_anim_set_var(&scale_anim, detail_container_);
-        lv_anim_set_values(&scale_anim, DETAIL_ZOOM_SCALE_MAX, DETAIL_ZOOM_SCALE_MIN);
-        lv_anim_set_duration(&scale_anim, DETAIL_ZOOM_DURATION_MS);
+        lv_anim_set_values(&scale_anim, kDetailZoomScaleMax, kDetailZoomScaleMin);
+        lv_anim_set_duration(&scale_anim, kDetailZoomDurationMs);
         lv_anim_set_path_cb(&scale_anim, lv_anim_path_ease_in);
         lv_anim_set_exec_cb(&scale_anim, [](void* obj, int32_t value) {
             lv_obj_set_style_transform_scale(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
@@ -1220,7 +1220,7 @@ void AmsOverviewPanel::show_overview() {
         lv_anim_set_completed_cb(&scale_anim, [](lv_anim_t* anim) {
             auto* container = static_cast<lv_obj_t*>(anim->var);
             // Reset transform properties for next use
-            lv_obj_set_style_transform_scale(container, DETAIL_ZOOM_SCALE_MAX, LV_PART_MAIN);
+            lv_obj_set_style_transform_scale(container, kDetailZoomScaleMax, LV_PART_MAIN);
             lv_obj_set_style_opa(container, LV_OPA_COVER, LV_PART_MAIN);
 
             // Show overview elements (use global instance since lambda has no 'this')
@@ -1236,7 +1236,7 @@ void AmsOverviewPanel::show_overview() {
         lv_anim_init(&fade_anim);
         lv_anim_set_var(&fade_anim, detail_container_);
         lv_anim_set_values(&fade_anim, LV_OPA_COVER, LV_OPA_TRANSP);
-        lv_anim_set_duration(&fade_anim, DETAIL_ZOOM_DURATION_MS);
+        lv_anim_set_duration(&fade_anim, kDetailZoomDurationMs);
         lv_anim_set_path_cb(&fade_anim, lv_anim_path_ease_in);
         lv_anim_set_exec_cb(&fade_anim, [](void* obj, int32_t value) {
             lv_obj_set_style_opa(static_cast<lv_obj_t*>(obj), value, LV_PART_MAIN);
@@ -1252,7 +1252,7 @@ void AmsOverviewPanel::reset_to_overview() {
     // Zoom-out has finished or is skipped; whatever else was in flight is moot.
     unit_view_active_ = false;
     if (detail_container_) {
-        lv_obj_set_style_transform_scale(detail_container_, DETAIL_ZOOM_SCALE_MAX, LV_PART_MAIN);
+        lv_obj_set_style_transform_scale(detail_container_, kDetailZoomScaleMax, LV_PART_MAIN);
         lv_obj_set_style_opa(detail_container_, LV_OPA_COVER, LV_PART_MAIN);
     }
     if (context_menu_ && context_menu_->is_visible()) {
@@ -1281,7 +1281,7 @@ void AmsOverviewPanel::create_detail_slots(const AmsSystemInfo& info, int unit_p
     // The environment readout is keyed on the unit's own number.
     ams_detail_pre_show_env_indicator(detail_widgets_, info.units[unit_pos].unit_index);
 
-    auto result = ams_detail_create_slots(detail_widgets_, detail_slot_widgets_, MAX_DETAIL_SLOTS,
+    auto result = ams_detail_create_slots(detail_widgets_, detail_slot_widgets_, kMaxDetailSlots,
                                           unit_pos, on_detail_slot_clicked, this);
 
     detail_slot_count_ = result.slot_count;

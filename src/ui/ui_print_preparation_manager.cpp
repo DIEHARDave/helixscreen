@@ -63,14 +63,14 @@ struct MacroOptionId {
     const char* id;
     PrePrintCategory group;
 };
-constexpr MacroOptionId MACRO_OPTION_IDS[] = {
+constexpr MacroOptionId kMacroOptionIds[] = {
     {helix::PrintStartOpCategory::BED_MESH, "bed_mesh", PrePrintCategory::Mechanical},
     {helix::PrintStartOpCategory::QGL, "qgl", PrePrintCategory::Mechanical},
     {helix::PrintStartOpCategory::Z_TILT, "z_tilt", PrePrintCategory::Mechanical},
     {helix::PrintStartOpCategory::NOZZLE_CLEAN, "nozzle_clean", PrePrintCategory::Quality},
 };
 
-/// The MacroParam option for one of MACRO_OPTION_IDS, or nullopt when the analysis
+/// The MacroParam option for one of kMacroOptionIds, or nullopt when the analysis
 /// did not find that operation controllable. Rows and the skip params sent at print
 /// start both come from here, so they cannot disagree.
 std::optional<PrePrintOption>
@@ -89,7 +89,7 @@ macro_option_for(const std::optional<helix::PrintStartAnalysis>& analysis,
     PrePrintOption opt;
     opt.id = entry.id;
     opt.category = entry.group;
-    opt.order = static_cast<int>(&entry - MACRO_OPTION_IDS);
+    opt.order = static_cast<int>(&entry - kMacroOptionIds);
     opt.default_enabled = true; // the macro runs the operation unless told to skip it
     opt.strategy_kind = PrePrintStrategyKind::MacroParam;
     PrePrintStrategyMacroParam param;
@@ -251,7 +251,7 @@ void PrintPreparationManager::reset_pending_skips() {
     skip_reset_sent_ = true;
     spdlog::info("[PrintPreparationManager] Leveling skip set with no job running; resetting");
     api_->execute_gcode(
-        helix::skip_wrappers::PREP_MACRO, []() {},
+        helix::skip_wrappers::kPrepMacro, []() {},
         [](const MoonrakerError& err) {
             spdlog::warn("[PrintPreparationManager] Resetting the leveling skips failed: {}",
                          err.message);
@@ -436,7 +436,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
     macro_analysis_in_progress_ = true;
     spdlog::debug(
         "[PrintPreparationManager] Starting PRINT_START macro analysis (attempt {} of {})",
-        macro_analysis_retry_count_ + 1, MAX_MACRO_ANALYSIS_RETRIES + 1);
+        macro_analysis_retry_count_ + 1, kMaxMacroAnalysisRetries + 1);
 
     auto token = lifetime_.token();
     helix::PrintStartAnalyzer analyzer;
@@ -471,7 +471,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                     "[PrintPreparationManager] PRINT_START analysis failed (attempt {}): {}",
                     macro_analysis_retry_count_ + 1, error.message);
                 // Check if we should retry
-                if (macro_analysis_retry_count_ < MAX_MACRO_ANALYSIS_RETRIES) {
+                if (macro_analysis_retry_count_ < kMaxMacroAnalysisRetries) {
                     macro_analysis_retry_count_++;
                     // Exponential backoff: 1s, 2s
                     int delay_ms = 1000 * (1 << (macro_analysis_retry_count_ - 1));
@@ -479,7 +479,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                     spdlog::info("[PrintPreparationManager] Retrying PRINT_START analysis in "
                                  "{}ms (attempt {} of {})",
                                  delay_ms, macro_analysis_retry_count_ + 1,
-                                 MAX_MACRO_ANALYSIS_RETRIES + 1);
+                                 kMaxMacroAnalysisRetries + 1);
 
                     // Schedule retry via LVGL timer
                     struct RetryTimerData {
@@ -506,7 +506,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                 // Final failure - notify user
                 spdlog::error(
                     "[PrintPreparationManager] PRINT_START analysis failed after {} attempts",
-                    MAX_MACRO_ANALYSIS_RETRIES + 1);
+                    kMaxMacroAnalysisRetries + 1);
                 NOTIFY_ERROR(lv_tr("Could not analyze PRINT_START macro. Some print options may be "
                                    "unavailable."));
 
@@ -533,7 +533,7 @@ PrePrintOptionSet PrintPreparationManager::displayed_options() const {
     if (database_declares_options) {
         return displayed;
     }
-    for (const auto& entry : MACRO_OPTION_IDS) {
+    for (const auto& entry : kMacroOptionIds) {
         if (displayed.find(entry.id)) {
             continue;
         }
@@ -722,7 +722,7 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         }
 
         helix::PrinterStopCheck stop_check =
-            helix::printer_stop_check_in(content, helix::PRINTER_STOP_SCAN_BYTES);
+            helix::printer_stop_check_in(content, helix::kPrinterStopScanBytes);
         if (stop_check.state == helix::PrinterStopCheck::State::Stops) {
             spdlog::warn("[PrintPreparationManager] {} line {} calls {}, which stops this printer",
                          filename, stop_check.line_number, stop_check.command);
@@ -754,7 +754,7 @@ void PrintPreparationManager::request_scan(const std::string& filename,
     // waits for it (print_waits_on_scan()).
     if (!local_path.empty()) {
         helix::http::HttpExecutor::fast().submit([local_path, on_content, on_failure]() {
-            auto head = helix::text_io::read_file(local_path, helix::PRINTER_STOP_SCAN_BYTES);
+            auto head = helix::text_io::read_file(local_path, helix::kPrinterStopScanBytes);
             if (!head) {
                 on_failure("cannot read " + local_path);
                 return;
@@ -770,18 +770,18 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         const ArchiveScanSource& source = archive->second;
         if (!source.converted_output.empty()) {
             api_->transfers().download_file_partial(
-                "gcodes", source.converted_output, helix::PRINTER_STOP_SCAN_BYTES, on_content,
+                "gcodes", source.converted_output, helix::kPrinterStopScanBytes, on_content,
                 [on_failure](const MoonrakerError& error) { on_failure(error.message); }, cancel);
         } else {
             three_mf::ThreeMfReader::read_entry_head(
-                api_->transfers(), file_path, source.plate_gcode, helix::PRINTER_STOP_SCAN_BYTES,
+                api_->transfers(), file_path, source.plate_gcode, helix::kPrinterStopScanBytes,
                 on_content, on_failure, cancel);
         }
         return;
     }
 
     api_->transfers().download_file_partial(
-        "gcodes", file_path, helix::PRINTER_STOP_SCAN_BYTES, on_content,
+        "gcodes", file_path, helix::kPrinterStopScanBytes, on_content,
         [on_failure](const MoonrakerError& error) { on_failure(error.message); }, cancel);
 }
 
@@ -1245,7 +1245,7 @@ void PrintPreparationManager::start_print(const std::string& filename,
                                                              wrapped_completion);
                             });
             },
-            IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS,
+            IMoonrakerAPI::kPreStartMacroTimeoutMs,
             /*silent=*/false, /*on_queued=*/nullptr, /*caller_surfaces_errors=*/true,
             /*bypass_busy_gate=*/true);
         return;
@@ -1462,7 +1462,7 @@ std::string PrintPreparationManager::describe_dropped_modifications(
 
     // LAYER 2 mirror: collect_macro_skip_params() also emits for ops the DB
     // never declared, picked up from PRINT_START analysis.
-    for (const auto& entry : MACRO_OPTION_IDS) {
+    for (const auto& entry : kMacroOptionIds) {
         if (covered.count(entry.id) ||
             get_option_state(entry.id) != PrePrintOptionState::DISABLED) {
             continue;
@@ -1608,7 +1608,7 @@ PrintPreparationManager::collect_macro_skip_params() const {
     // LAYER 2: Macro analysis. Picks up ops the DB didn't cover (e.g. QGL on a
     // Voron whose entry only declares bed_mesh). DB-handled ids are skipped to
     // avoid double-emission.
-    for (const auto& entry : MACRO_OPTION_IDS) {
+    for (const auto& entry : kMacroOptionIds) {
         if (handled_ids.count(entry.id) ||
             get_option_state(entry.id) != PrePrintOptionState::DISABLED) {
             continue;
@@ -1639,7 +1639,7 @@ PrintPreparationManager::PreStartBlock PrintPreparationManager::pre_start_block(
     // A skip an earlier print left unconsumed must not ride into this one,
     // including for a step whose toggle is hidden now.
     if (printer_state_ && !printer_state_->get_discovery().skip_active().empty()) {
-        block.lines.insert(block.lines.begin(), helix::skip_wrappers::PREP_MACRO);
+        block.lines.insert(block.lines.begin(), helix::skip_wrappers::kPrepMacro);
     }
     block.emit_setup = !macro_skip_params.empty() && !db_options.setup_gcode.empty();
     block.gcode =
@@ -1791,9 +1791,9 @@ void PrintPreparationManager::continue_print_start(
     // when an epoch was captured — there the check above is exact, and a clock
     // can only overrule it wrongly.
     if (pre_start_epoch_ == 0 && pre_start_sent_at_ != std::chrono::steady_clock::time_point{}) {
-        constexpr auto STALE_PRE_START_BOUND = std::chrono::minutes(3);
+        constexpr auto kStalePreStartBound = std::chrono::minutes(3);
         const auto age = std::chrono::steady_clock::now() - pre_start_sent_at_;
-        if (age > STALE_PRE_START_BOUND) {
+        if (age > kStalePreStartBound) {
             spdlog::warn("[PrintPreparationManager] Dropping stale pre-start completion "
                          "({}s old, bound 180s, no preparing job to check) - not starting '{}'",
                          std::chrono::duration_cast<std::chrono::seconds>(age).count(), filename);
@@ -1861,7 +1861,7 @@ void PrintPreparationManager::begin_pre_start_completion_wait(
     // update and this timer firing is handled by re-reading the subject: idle
     // means the macro finished and we can still start the print.
     pre_start_wait_guard_.begin(
-        IMoonrakerAPI::PRE_START_MACRO_TIMEOUT_MS,
+        IMoonrakerAPI::kPreStartMacroTimeoutMs,
         [this, filename, ops_to_disable, on_navigate_to_status, on_completion, timeout_error]() {
             const bool still_busy =
                 printer_state_ &&

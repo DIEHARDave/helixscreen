@@ -138,7 +138,7 @@ TEST_CASE("capability_chip_text: every chip has text when every fact is known",
     f.led_count = 1;
     f.led_effect_count = 2;
     f.webcam_count = 1;
-    for (size_t i = 0; i < CAP_CHIP_COUNT; ++i) {
+    for (size_t i = 0; i < kCapChipCount; ++i) {
         CAPTURE(i);
         CHECK_FALSE(capability_chip_text(static_cast<CapChip>(i), f).empty());
     }

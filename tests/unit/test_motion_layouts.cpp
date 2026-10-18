@@ -176,7 +176,7 @@ class RecordingAPI : public MoonrakerAPI {
 class LayoutFixture : public LVGLUITestFixture {
   public:
     LayoutFixture() {
-        std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+        std::array<lv_obj_t*, kUiPanelCount> panels{};
         for (auto& p : panels)
             p = lv_obj_create(lv_screen_active());
         NavigationManager::instance().set_panels(panels.data());
@@ -425,7 +425,7 @@ TEST_CASE_METHOD(LayoutFixture, "motion layout: a held arrow repeats through the
     REQUIRE(panel.jog_hold_timer().ticking());
     CHECK(panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS));
     CHECK(
-        panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS + helix::HoldRepeat::INTERVAL_MS));
+        panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS + helix::HoldRepeat::kIntervalMs));
     lv_obj_send_event(arrow, LV_EVENT_RELEASED, nullptr);
     lv_obj_send_event(arrow, LV_EVENT_CLICKED, nullptr);
     drain();
@@ -578,7 +578,7 @@ TEST_CASE_METHOD(LayoutFixture, "motion layout: a held key deleted mid-hold stop
     panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS);
     CHECK_FALSE(panel.jog_hold_timer().ticking());
     CHECK_FALSE(
-        panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS + helix::HoldRepeat::INTERVAL_MS));
+        panel.jog_hold_timer().poll(helix::HoldRepeat::DELAY_MS + helix::HoldRepeat::kIntervalMs));
     CHECK(motion().moves.empty());
 }
 

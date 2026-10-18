@@ -141,7 +141,7 @@ class PagingFixture : public LVGLUITestFixture {
         DisplaySettingsManager::instance().set_animations_enabled(false);
         helix::ui::destroy_static_panels();
 
-        lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+        lv_obj_t* panels[kUiPanelCount] = {nullptr};
         panels[static_cast<int>(PanelId::Home)] = lv_obj_create(test_screen());
         panels[static_cast<int>(PanelId::Controls)] = lv_obj_create(test_screen());
         NavigationManager::instance().set_panels(panels);
@@ -321,13 +321,13 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: the panel opens on the overview",
     const auto units = AmsPanelTestAccess::unit_card_units(panel());
     REQUIRE(cards.size() == units.size());
     for (size_t i = 0; i < cards.size(); ++i) {
-        if (units[i] >= AmsState::MAX_UNITS)
+        if (units[i] >= AmsState::kMaxUnits)
             continue; // past the cap a card binds the always-off placeholders
         lv_subject_set_int(AmsState::instance().get_env_ind_humidity_subject(units[i]),
                            (30 + units[i]) * 10);
     }
     for (size_t i = 0; i < cards.size(); ++i) {
-        if (units[i] >= AmsState::MAX_UNITS)
+        if (units[i] >= AmsState::kMaxUnits)
             continue;
         lv_obj_t* drop = lv_obj_find_by_name(cards[i], "env_humidity_drop");
         REQUIRE(drop != nullptr);

@@ -21,8 +21,8 @@ flowchart TB
     subgraph COLORS["Colors: theme engine (live-switchable)"]
         TJSON["theme JSON<br/>assets/config/themes/defaults/*.json (18 presets)<br/>16-color ModePalette, dark + light"]
         TM["ThemeManager singleton<br/>src/ui/theme_manager_new.cpp<br/>table of 41 shared lv_style_t (StyleRole)"]
-        WRAP["helix_theme wrapper<br/>src/ui/theme_lvgl_apply.cpp<br/>lv_theme_default first, then layers<br/>shared styles per widget class"]
-        TJSON --> TM --> WRAP
+        kWrap["helix_theme wrapper<br/>src/ui/theme_lvgl_apply.cpp<br/>lv_theme_default first, then layers<br/>shared styles per widget class"]
+        TJSON --> TM --> kWrap
     end
     subgraph SCALE["Scale: tokens + breakpoints"]
         GXML["ui_xml/globals.xml (top level only)<br/>tiered consts: space_md_tiny .. _xxlarge<br/>_light/_dark color pairs, fonts"]
@@ -37,7 +37,7 @@ flowchart TB
         LM --> VD
     end
     USE["widget attribute: style_bg_color=&quot;#card_bg&quot;<br/>style_pad_all=&quot;#space_md&quot;<br/>C++: theme_manager_get_color(&quot;card_bg&quot;)"]
-    WRAP --> USE
+    kWrap --> USE
     RES --> USE
     SEM --> USE
     VD --> USE

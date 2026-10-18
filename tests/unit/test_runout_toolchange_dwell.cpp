@@ -11,7 +11,7 @@
  * inspecting the edge can separate them. Only duration can: a swap leaves the
  * sensor clear for tens of seconds and then refills, a runout never refills.
  *
- * So the removal toast serves helix::RUNOUT_TOAST_DWELL before it
+ * So the removal toast serves helix::kRunoutToastDwell before it
  * fires, and a refill inside the dwell cancels it. The dwell is scoped to "a job
  * holds the machine AND an AMS backend is present", because that is the only
  * situation in which a tool change can be the cause.
@@ -61,15 +61,15 @@ using namespace helix::printer;
 
 namespace {
 
-constexpr const char* HEAD_SENSOR = "filament_switch_sensor head_switch_sensor";
+constexpr const char* kHeadSensor = "filament_switch_sensor head_switch_sensor";
 
 /// Substrings of the two toasts. The full text is prefixed with the role's
 /// display name, so match on the invariant half.
-constexpr const char* REMOVED_WARNING = "Filament removed";
-constexpr const char* INSERTED_INFO = "Filament inserted";
+constexpr const char* kRemovedWarning = "Filament removed";
+constexpr const char* kInsertedInfo = "Filament inserted";
 
 nlohmann::json head_status(bool detected) {
-    return nlohmann::json{{HEAD_SENSOR, {{"filament_detected", detected}, {"enabled", true}}}};
+    return nlohmann::json{{kHeadSensor, {{"filament_detected", detected}, {"enabled", true}}}};
 }
 
 /// A backend that reports whichever AmsType the test needs, with the traits of the real
@@ -156,8 +156,8 @@ class DwellFixture : public LVGLTestFixture {
         fsm.init_subjects();
         PostUnloadGraceTestAccess::reset(fsm);
         fsm.set_master_enabled(true);
-        fsm.discover_sensors({HEAD_SENSOR});
-        fsm.set_sensor_role(HEAD_SENSOR, FilamentSensorRole::RUNOUT);
+        fsm.discover_sensors({kHeadSensor});
+        fsm.set_sensor_role(kHeadSensor, FilamentSensorRole::RUNOUT);
 
         // Filament present, and the startup grace spent, before anything is
         // asserted. discover_sensors() re-anchors that grace, so it has to be
@@ -202,7 +202,7 @@ class DwellFixture : public LVGLTestFixture {
 
     static void age_past_dwell() {
         PostUnloadGraceTestAccess::age_removal_dwell(
-            FilamentSensorManager::instance(), helix::RUNOUT_TOAST_DWELL + std::chrono::seconds(1));
+            FilamentSensorManager::instance(), helix::kRunoutToastDwell + std::chrono::seconds(1));
     }
 };
 
@@ -216,7 +216,7 @@ TEST_CASE_METHOD(DwellFixture, "A tool change inside the dwell announces nothing
 
     // The swap pulls filament off the head sensor...
     sensor(false);
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 0);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 0);
     CHECK(PostUnloadGraceTestAccess::removal_dwell_pending(FilamentSensorManager::instance()));
 
     // ...and the next lane arrives before the dwell is up.
@@ -224,15 +224,15 @@ TEST_CASE_METHOD(DwellFixture, "A tool change inside the dwell announces nothing
 
     // Neither half is news. The insertion is suppressed too: an all-clear for a
     // removal nobody was told about is its own false alarm.
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 0);
-    CHECK(toasts.infos_containing(INSERTED_INFO) == 0);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 0);
+    CHECK(toasts.infos_containing(kInsertedInfo) == 0);
     CHECK_FALSE(
         PostUnloadGraceTestAccess::removal_dwell_pending(FilamentSensorManager::instance()));
 
     // And the dwell is spent, not merely quiet - a later tick cannot resurrect it.
     age_past_dwell();
     tick();
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 0);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 0);
 }
 
 TEST_CASE_METHOD(DwellFixture, "A removal that outlasts the dwell is announced once",
@@ -241,19 +241,19 @@ TEST_CASE_METHOD(DwellFixture, "A removal that outlasts the dwell is announced o
 
     ToastCapture toasts;
     sensor(false);
-    REQUIRE(toasts.warnings_containing(REMOVED_WARNING) == 0);
+    REQUIRE(toasts.warnings_containing(kRemovedWarning) == 0);
 
     // Filament never comes back. This is the event the toast exists to report,
     // and it has to survive the suppression that quiets the tool change.
     age_past_dwell();
     tick();
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 1);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 1);
 
     // Exactly once. The record is erased as it fires, so further payloads - of
     // which a print sends many - must not repeat it.
     tick();
     tick();
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 1);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 1);
 }
 
 TEST_CASE_METHOD(DwellFixture, "With no AMS backend the removal toast still fires on the edge",
@@ -268,7 +268,7 @@ TEST_CASE_METHOD(DwellFixture, "With no AMS backend the removal toast still fire
     ToastCapture toasts;
     sensor(false);
 
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 1);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 1);
     CHECK_FALSE(
         PostUnloadGraceTestAccess::removal_dwell_pending(FilamentSensorManager::instance()));
 }
@@ -287,7 +287,7 @@ TEST_CASE_METHOD(DwellFixture,
     ToastCapture toasts;
     sensor(false);
 
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 1);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 1);
 }
 
 TEST_CASE_METHOD(DwellFixture, "A dwell outstanding when the job ends is dropped, not deferred",
@@ -307,7 +307,7 @@ TEST_CASE_METHOD(DwellFixture, "A dwell outstanding when the job ends is dropped
     age_past_dwell();
     tick();
 
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 0);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 0);
     CHECK_FALSE(
         PostUnloadGraceTestAccess::removal_dwell_pending(FilamentSensorManager::instance()));
 }
@@ -318,7 +318,7 @@ TEST_CASE_METHOD(DwellFixture, "A runout that stops the print is still announced
 
     ToastCapture toasts;
     sensor(false);
-    REQUIRE(toasts.warnings_containing(REMOVED_WARNING) == 0);
+    REQUIRE(toasts.warnings_containing(kRemovedWarning) == 0);
 
     // Klipper's runout_gcode cancels rather than pauses on plenty of printers,
     // and a user faced with a runout-paused print often cancels it well inside
@@ -330,7 +330,7 @@ TEST_CASE_METHOD(DwellFixture, "A runout that stops the print is still announced
     age_past_dwell();
     tick();
 
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 1);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 1);
 }
 
 TEST_CASE_METHOD(DwellFixture, "A dwell coming due mid filament operation stays quiet",
@@ -350,7 +350,7 @@ TEST_CASE_METHOD(DwellFixture, "A dwell coming due mid filament operation stays 
     age_past_dwell();
     tick();
 
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 0);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 0);
     AmsState::instance().set_action(AmsAction::IDLE);
 }
 
@@ -385,7 +385,7 @@ TEST_CASE_METHOD(DwellFixture, "A Z-Mod runout auto-swap longer than the dwell a
     // temperature easily do.
     age_past_dwell();
     tick();
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 0);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 0);
 
     // The new spool reaches the head, then the change ends.
     sensor(true);
@@ -394,8 +394,8 @@ TEST_CASE_METHOD(DwellFixture, "A Z-Mod runout auto-swap longer than the dwell a
     CHECK_FALSE(AmsState::instance().is_filament_operation_active());
     tick();
 
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 0);
-    CHECK(toasts.infos_containing(INSERTED_INFO) == 0);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 0);
+    CHECK(toasts.infos_containing(kInsertedInfo) == 0);
 }
 
 TEST_CASE_METHOD(DwellFixture, "Z-Mod idle between changes: a runout past the dwell is announced",
@@ -414,5 +414,5 @@ TEST_CASE_METHOD(DwellFixture, "Z-Mod idle between changes: a runout past the dw
     sensor(false);
     age_past_dwell();
     tick();
-    CHECK(toasts.warnings_containing(REMOVED_WARNING) == 1);
+    CHECK(toasts.warnings_containing(kRemovedWarning) == 1);
 }

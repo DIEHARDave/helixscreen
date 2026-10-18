@@ -191,7 +191,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "AmsState publishes per-slot LIVE subjects on 
         CHECK(ams.get_slot_toolhead_present_subject(0) != nullptr);
         CHECK(ams.get_slot_active_loaded_subject(0) != nullptr);
         CHECK(ams.get_slot_segment_subject(-1) == nullptr);
-        CHECK(ams.get_slot_segment_subject(AmsState::MAX_SLOTS) == nullptr);
+        CHECK(ams.get_slot_segment_subject(AmsState::kMaxSlots) == nullptr);
     }
 
     SECTION("active-loaded subject reflects backend per-slot loaded state") {
@@ -423,7 +423,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "AmsState publishes per-slot fill subject on s
 
     // Out-of-range → nullptr.
     CHECK(ams.get_slot_fill_subject(-1) == nullptr);
-    CHECK(ams.get_slot_fill_subject(AmsState::MAX_SLOTS) == nullptr);
+    CHECK(ams.get_slot_fill_subject(AmsState::kMaxSlots) == nullptr);
 
     // Token'd overload: backend 0 → same pointer, the subjects lifetime.
     SubjectLifetime lt;
@@ -709,7 +709,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "AmsState publishes per-slot error state and s
         CHECK(ams.get_slot_has_error_subject(0) != nullptr);
         CHECK(ams.get_slot_error_severity_subject(0) != nullptr);
         CHECK(ams.get_slot_has_error_subject(-1) == nullptr);
-        CHECK(ams.get_slot_error_severity_subject(AmsState::MAX_SLOTS) == nullptr);
+        CHECK(ams.get_slot_error_severity_subject(AmsState::kMaxSlots) == nullptr);
     }
 
     SECTION("a carried error publishes has_error=1 and its severity") {
@@ -858,10 +858,10 @@ TEST_CASE_METHOD(LVGLTestFixture, "Per-slot token'd accessors hand out a token d
     // No subject, no token.
     ams.init_subjects(false);
     SubjectLifetime lt = std::make_shared<bool>(true);
-    CHECK(ams.get_slot_segment_subject(AmsState::MAX_SLOTS, lt) == nullptr);
+    CHECK(ams.get_slot_segment_subject(AmsState::kMaxSlots, lt) == nullptr);
     CHECK_FALSE(lt);
     lt = std::make_shared<bool>(true);
-    CHECK(ams.get_slot_color_subject(0, AmsState::MAX_SLOTS, lt) == nullptr);
+    CHECK(ams.get_slot_color_subject(0, AmsState::kMaxSlots, lt) == nullptr);
     CHECK_FALSE(lt);
     ams.deinit_subjects();
 }

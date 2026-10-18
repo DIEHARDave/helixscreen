@@ -69,7 +69,7 @@ class TempGCodeFile {
 /// that has to be printed with it — the shape that makes a per-layer parse lose
 /// the tool. Layer 0 prints with T0, layers 1 and 2 with T1 (layer 2's chunk
 /// contains no T command at all), layer 3 with T2.
-const std::string TOOLCHANGER_GCODE = R"(; toolchanger sample
+const std::string kToolchangerGcode = R"(; toolchanger sample
 M82
 G28
 T0
@@ -130,7 +130,7 @@ TEST_CASE("Streaming: a layer chunk is parsed with the tool active at its offset
     // The bug: every chunk was seeded with the FILE-GLOBAL first tool, so on a
     // tool changer every segment reported T0 and the preview coloured the whole
     // model with lane 0's filament.
-    TempGCodeFile file(TOOLCHANGER_GCODE);
+    TempGCodeFile file(kToolchangerGcode);
     GCodeStreamingController ctrl;
     REQUIRE(ctrl.open_file(file.path()));
     REQUIRE(ctrl.get_layer_count() == 4);
@@ -151,7 +151,7 @@ TEST_CASE("Streaming: a layer chunk is parsed with the tool active at its offset
 
 TEST_CASE("Layer index: the running tool is recorded per layer, not just the file's first",
           "[gcode][toolchanger][layer_index]") {
-    TempGCodeFile file(TOOLCHANGER_GCODE);
+    TempGCodeFile file(kToolchangerGcode);
     GCodeLayerIndex index;
     REQUIRE(index.build_from_file(file.path()));
     REQUIRE(index.get_layer_count() == 4);
@@ -210,7 +210,7 @@ TEST_CASE("Streaming: the index answers which tools the file prints with",
           "[gcode][toolchanger][streaming]") {
     // This is the only used-tool source a streamed file has — there is no
     // ParsedGCodeFile to read tools_used_indices from.
-    TempGCodeFile file(TOOLCHANGER_GCODE);
+    TempGCodeFile file(kToolchangerGcode);
     GCodeStreamingController ctrl;
     REQUIRE(ctrl.open_file(file.path()));
     REQUIRE(ctrl.get_index_stats().tools_used == std::set<int>{0, 1, 2});
@@ -220,7 +220,7 @@ TEST_CASE("Per-tool info for a streamed multi-tool file keeps real tool numbers"
           "[gcode][toolchanger][tool_info]") {
     // What PrintStatusPanel::build_print_tool_info() now does, minus the widget:
     // slicer palette from metadata + used-tool set from the streaming index.
-    TempGCodeFile file(TOOLCHANGER_GCODE);
+    TempGCodeFile file(kToolchangerGcode);
     GCodeStreamingController ctrl;
     REQUIRE(ctrl.open_file(file.path()));
 

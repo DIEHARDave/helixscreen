@@ -21,7 +21,7 @@ using namespace helix;
 
 namespace {
 
-const char* SUFFIXES[] = {"_micro", "_tiny", "_small", "_medium", "_large", "_xlarge", "_xxlarge"};
+const char* kSuffixes[] = {"_micro", "_tiny", "_small", "_medium", "_large", "_xlarge", "_xxlarge"};
 
 // Ordering of the icon size rungs. A higher index is a larger glyph.
 int rung_index(const std::string& rung) {
@@ -46,7 +46,7 @@ std::string lookup(const std::unordered_map<std::string, std::string>& m, const 
 } // namespace
 
 TEST_CASE("nav inactive icon size stays below the active icon size", "[theme][navbar]") {
-    for (const char* suffix : SUFFIXES) {
+    for (const char* suffix : kSuffixes) {
         auto strings = theme_manager_parse_all_xml_for_suffix("ui_xml", "string", suffix);
 
         const std::string active = lookup(strings, "icon_size");

@@ -56,14 +56,14 @@ namespace {
 /// How long a held optimistic action outlives backend silence once the backend
 /// has accepted the operation: the gap before its first frame, which can
 /// include a G28.
-constexpr std::chrono::seconds OPTIMISTIC_DISPATCH_HOLD{90};
+constexpr std::chrono::seconds kOptimisticDispatchHold{90};
 
 /// The backend accepted the operation: restart a held action's budget from
 /// here, and sync so a backend that set its own action at dispatch drives.
 void hand_operation_to_backend() {
     auto& ams = AmsState::instance();
     if (ams.optimistic_action_held()) {
-        ams.hold_optimistic_action(OPTIMISTIC_DISPATCH_HOLD);
+        ams.hold_optimistic_action(kOptimisticDispatchHold);
     }
     ams.sync_from_backend();
 }
@@ -462,7 +462,7 @@ bool AmsOperationSidebar::setup(lv_obj_t* panel) {
     // Independent stall watchdog for the indeterminate "Working…" state (#1065
     // row 14). Runs on the main loop; the callback no-ops unless an op is active.
     if (!stall_watchdog_timer_) {
-        stall_watchdog_timer_ = lv_timer_create(stall_watchdog_cb, STALL_WATCHDOG_PERIOD_MS, this);
+        stall_watchdog_timer_ = lv_timer_create(stall_watchdog_cb, kStallWatchdogPeriodMs, this);
     }
 
     sync_reset_button_label();
@@ -1256,7 +1256,7 @@ void AmsOperationSidebar::start_operation(StepOperationType op_type, int target_
     // (prestonbrown/helixscreen#1057).
     AmsBackend* backend = AmsState::instance().get_backend();
     if (backend && backend->holds_optimistic_action()) {
-        AmsState::instance().hold_optimistic_action(OPTIMISTIC_PREHEAT_HOLD);
+        AmsState::instance().hold_optimistic_action(kOptimisticPreheatHold);
     }
 }
 
@@ -1381,7 +1381,7 @@ bool AmsOperationSidebar::is_extruder_below_target() const {
     }
     int current_deci =
         lv_subject_get_int(printer_state_.temperature_state().get_active_extruder_temp_subject());
-    return current_deci < (target_deci - helix::ui::PREHEAT_MARGIN_C * 10);
+    return current_deci < (target_deci - helix::ui::kPreheatMarginC * 10);
 }
 
 void AmsOperationSidebar::refresh_heat_step_display() {
@@ -1885,7 +1885,7 @@ helix::ui::BackendCaps AmsOperationSidebar::read_backend_caps(AmsSystemInfo& inf
 namespace {
 /// UpdateQueue tag for the guarded param-modal callbacks. A string literal: the
 /// skip counter interns by pointer identity.
-constexpr const char* LOAD_MACRO_TAG = "AmsOperationSidebar::load_macro";
+constexpr const char* kLoadMacroTag = "AmsOperationSidebar::load_macro";
 } // namespace
 
 helix::ui::FilamentOpSurface AmsOperationSidebar::op_surface(const char* tag, int slot_index) {
@@ -1909,7 +1909,7 @@ helix::ui::FilamentOpSurface AmsOperationSidebar::op_surface(const char* tag, in
     // panel closed is dropped and counted rather than reaching freed memory.
     auto token = lifetime_.token();
     surface.guard = [token](std::function<void()> fn) mutable {
-        token.defer(LOAD_MACRO_TAG, std::move(fn));
+        token.defer(kLoadMacroTag, std::move(fn));
     };
     surface.owner = this;
     surface.alive = [token]() { return !token.expired(); };

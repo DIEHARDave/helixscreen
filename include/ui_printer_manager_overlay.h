@@ -156,9 +156,9 @@ class PrinterManagerOverlay : public OverlayBase {
     lv_subject_t helix_version_{};
 
     /// One string subject per capability chip, in CapChip order.
-    static constexpr size_t CHIP_TEXT_LEN = 96;
-    std::array<lv_subject_t, helix::CAP_CHIP_COUNT> chip_text_{};
-    std::array<std::array<char, CHIP_TEXT_LEN>, helix::CAP_CHIP_COUNT> chip_text_bufs_{};
+    static constexpr size_t kChipTextLen = 96;
+    std::array<lv_subject_t, helix::kCapChipCount> chip_text_{};
+    std::array<std::array<char, kChipTextLen>, helix::kCapChipCount> chip_text_bufs_{};
 
     /// Visibility for chips whose fact has no app-wide subject.
     lv_subject_t has_kinematics_{};

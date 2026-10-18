@@ -49,12 +49,12 @@ enum class SwatchFinish : uint8_t { Plain, Matte, Silk, Marble, Sparkle };
 
 /// A swatch smaller than this many pixels square (by area) is too small to read
 /// a finish and paints plain colour (tool dots, legend dots).
-inline constexpr int32_t SWATCH_FINISH_MIN_PX = 16;
+inline constexpr int32_t kSwatchFinishMinPx = 16;
 
 /// Below this WCAG contrast ratio a swatch blends into its surface and gets an
 /// edge: black on a dark navy panel sits near 1.6, a mid gray on a dark dialog
 /// near 1.9.
-inline constexpr double SWATCH_EDGE_CONTRAST_RATIO = 1.75;
+inline constexpr double kSwatchEdgeContrastRatio = 1.75;
 
 // ---------------------------------------------------------------------------
 // Pure decisions
@@ -90,7 +90,7 @@ SwatchFinish swatch_finish(helix::FilamentFinish finish);
 SwatchFinish swatch_finish_of(const helix::SlotInfo& slot);
 
 /// @p finish, or Plain when a @p w x @p h swatch has less area than a
-/// SWATCH_FINISH_MIN_PX square.
+/// kSwatchFinishMinPx square.
 SwatchFinish swatch_effective_finish(SwatchFinish finish, int32_t w, int32_t h);
 
 /// A matte filament's colour: slightly desaturated toward its own grey.
@@ -193,7 +193,7 @@ void draw_swatch(lv_layer_t* layer, const lv_area_t& area, const SwatchPaint& pa
 /// Blend @p finish's texture (silk highlight, marble flecks, sparkle glints)
 /// over the pixels of @p area, rounded by @p radius, in the ARGB8888 @p buf,
 /// with plain pixel writes. Nothing for matte or plain, or below the
-/// SWATCH_FINISH_MIN_PX area. The texture SwatchCache renders, and the one
+/// kSwatchFinishMinPx area. The texture SwatchCache renders, and the one
 /// spool_canvas lays over the filament it draws.
 void swatch_paint_finish_pixels(lv_draw_buf_t* buf, const lv_area_t& area, int32_t radius,
                                 SwatchFinish finish);

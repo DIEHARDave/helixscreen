@@ -566,7 +566,7 @@ void PanelWidgetConfig::save_soon() {
                 self->deferred_save_.path.clear();
                 self->write_to(path);
             },
-            SAVE_SETTLE_MS, this);
+            kSaveSettleMs, this);
         lv_timer_set_repeat_count(deferred_save_.timer, 1);
         return;
     }
@@ -856,7 +856,7 @@ void PanelWidgetConfig::set_widget_config(const std::string& id, const nlohmann:
 
 int PanelWidgetConfig::add_page(const std::string& name, int position) {
     if (!can_add_page()) {
-        spdlog::warn("[PanelWidgetConfig] Cannot add page: at maximum ({} pages)", MAX_PAGES);
+        spdlog::warn("[PanelWidgetConfig] Cannot add page: at maximum ({} pages)", kMaxPages);
         return -1;
     }
 

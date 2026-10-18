@@ -438,7 +438,7 @@ there, so their chips show the info popup instead.
 ### Adding a New Capability Chip
 
 1. **The capability subject.** Use the one the app already gates on. If none exists,
-   add a `Capability` and a `CAPABILITY_DEFS` row in
+   add a `Capability` and a `kCapabilityDefs` row in
    `src/printer/printer_capabilities_state.cpp` and set it in `set_hardware()`.
 2. **The text.** Add a `CapChip` enumerator (display order) and its case in
    `capability_chip_text()`, with a `[capability_chip_text]` test.

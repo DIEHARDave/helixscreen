@@ -121,7 +121,7 @@ void press(PreheatAction action, Harness& h) {
     }
 }
 
-const Scripts ABS_TARGETS{"SET_HEATER_TEMPERATURE HEATER=extruder TARGET=250",
+const Scripts kAbsTargets{"SET_HEATER_TEMPERATURE HEATER=extruder TARGET=250",
                           "SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=105"};
 
 } // namespace
@@ -162,7 +162,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     press(action, h);
 
-    Scripts expected = ABS_TARGETS;
+    Scripts expected = kAbsTargets;
     expected.push_back("HEAT_ABS");
     CHECK(h.client.gcode_script_history() == expected);
 }
@@ -184,7 +184,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     press(action, h);
 
-    CHECK(h.client.gcode_script_history() == ABS_TARGETS);
+    CHECK(h.client.gcode_script_history() == kAbsTargets);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,
@@ -205,7 +205,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     press(action, h);
 
-    CHECK(h.client.gcode_script_history() == ABS_TARGETS);
+    CHECK(h.client.gcode_script_history() == kAbsTargets);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,

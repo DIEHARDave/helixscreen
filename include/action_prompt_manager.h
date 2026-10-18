@@ -135,8 +135,7 @@ class ActionPromptManager {
 
     /// Echoed back by Klipper as `// action:prompt_end`, which closes the prompt
     /// on every connected client. Sent when the user closes it here.
-    static constexpr const char* PROMPT_END_GCODE =
-        "RESPOND TYPE=command MSG=\"action:prompt_end\"";
+    static constexpr const char* kPromptEndGcode = "RESPOND TYPE=command MSG=\"action:prompt_end\"";
 
     // ========================================================================
     // Static Instance Access
@@ -296,7 +295,7 @@ class ActionPromptManager {
      * unless a prompt is SHOWING. Telling the firmware is the caller's job.
      * Main thread only.
      *
-     * @return true when the caller should send PROMPT_END_GCODE to Klipper
+     * @return true when the caller should send kPromptEndGcode to Klipper
      */
     bool closed_on_screen(PromptCloseKind kind);
 

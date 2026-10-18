@@ -231,7 +231,7 @@ bool AmsEditOverlay::show_for_slot(lv_obj_t* parent, int slot_index, const SlotI
     // Reset per-session view state HERE (covered-safe — on_deactivate must not
     // touch it, since it also fires when the QR scanner merely covers us).
     if (open_on_picker) {
-        set_view(VIEW_SPOOL_PICKER);
+        set_view(kViewSpoolPicker);
         populate_picker();
     } else {
         enter_editor();
@@ -356,7 +356,7 @@ void AmsEditOverlay::return_to_editor() {
         enter_editor();
         return;
     }
-    set_view(VIEW_EDITOR);
+    set_view(kViewEditor);
 }
 
 void AmsEditOverlay::load_swapped_spool() {
@@ -371,7 +371,7 @@ void AmsEditOverlay::load_swapped_spool() {
         enter_editor();
         return;
     }
-    set_view(VIEW_EDITOR);
+    set_view(kViewEditor);
     update_ui();
     rebuild_option_lists();
     update_summary();
@@ -462,7 +462,7 @@ void AmsEditOverlay::init_subjects() {
         lv_subject_init_string(&title_subject_, title_buf_, nullptr, sizeof(title_buf_), "--");
         subjects_.register_subject(&title_subject_);
 
-        // View state (VIEW_EDITOR..VIEW_COLOR) - registered globally
+        // View state (kViewEditor..kViewColor) - registered globally
         UI_MANAGED_SUBJECT_INT(view_mode_subject_, 0, "ams_edit_view", subjects_);
 
         // Picker state (0=loading, 1=empty, 2=content) - registered globally
@@ -776,13 +776,13 @@ void AmsEditOverlay::handle_option_selected(int row, int index) {
 void AmsEditOverlay::set_view(int view) {
     // Leaving the picker with a search still settling: the debounced rebuild
     // would re-render the now-hidden spool list mid-transition.
-    if (lv_subject_get_int(&view_mode_subject_) == VIEW_SPOOL_PICKER && view != VIEW_SPOOL_PICKER) {
+    if (lv_subject_get_int(&view_mode_subject_) == kViewSpoolPicker && view != kViewSpoolPicker) {
         picker_search_debounce_.cancel();
     }
     lv_subject_set_int(&view_mode_subject_, view);
     // Header Save is visible on the editor view only; the picker and the color
     // view hide it.
-    lv_subject_set_int(&save_hidden_subject_, view == VIEW_EDITOR ? 0 : 1);
+    lv_subject_set_int(&save_hidden_subject_, view == kViewEditor ? 0 : 1);
     update_sync_button_state();
 }
 
@@ -794,7 +794,7 @@ void AmsEditOverlay::switch_to_picker() {
     // Reaching the picker via the header button is the two-step flow — a
     // selection returns to the editor for review.
     opened_on_picker_ = false;
-    set_view(VIEW_SPOOL_PICKER);
+    set_view(kViewSpoolPicker);
     populate_picker();
 }
 
@@ -984,7 +984,7 @@ void AmsEditOverlay::fetch_recents() {
 #endif
                 // cached_spools_ doubles as the picker's warm cache; a later
                 // populate_picker() refetches anyway.
-                if (lv_subject_get_int(&view_mode_subject_) == VIEW_EDITOR) {
+                if (lv_subject_get_int(&view_mode_subject_) == kViewEditor) {
                     rebuild_option_lists();
                 }
             });
@@ -1071,7 +1071,7 @@ void AmsEditOverlay::enter_editor() {
         api_ = get_moonraker_api();
     }
 
-    set_view(VIEW_EDITOR);
+    set_view(kViewEditor);
     populate_editor_view();
     refresh_tag_state();
     if (!recents_loaded_ && !recents_pending_) {
@@ -1086,7 +1086,7 @@ void AmsEditOverlay::enter_editor() {
 }
 
 bool AmsEditOverlay::slot_has_colour(const SlotInfo& info) {
-    if (info.color_rgb == AMS_DEFAULT_SLOT_COLOR) {
+    if (info.color_rgb == kAmsDefaultSlotColor) {
         return false;
     }
     // Black with nothing else known is the empty default some firmware
@@ -1182,14 +1182,14 @@ void AmsEditOverlay::repopulate() {
     // not survive is the content each view populates on entry.
     const int view = lv_subject_get_int(&view_mode_subject_);
     switch (view) {
-    case VIEW_SPOOL_PICKER:
+    case kViewSpoolPicker:
         populate_picker();
         break;
-    case VIEW_COLOR:
+    case kViewColor:
         populate_color_view();
         update_color_fit();
         break;
-    case VIEW_EDITOR:
+    case kViewEditor:
     default:
         populate_editor_view();
         refresh_tag_state();
@@ -1396,7 +1396,7 @@ bool AmsEditOverlay::save_is_disabled(int view, bool save_in_flight, bool dirty)
     if (save_in_flight) {
         return true;
     }
-    return (view == VIEW_EDITOR) ? !dirty : false;
+    return (view == kViewEditor) ? !dirty : false;
 }
 
 // ============================================================================
@@ -1409,7 +1409,7 @@ void AmsEditOverlay::open_color_view() {
     custom_color_ = details_color_;
     lv_subject_set_int(&color_pane_subject_, 0);
     populate_color_view();
-    set_view(VIEW_COLOR);
+    set_view(kViewColor);
     update_color_fit();
 }
 
@@ -1487,7 +1487,7 @@ void AmsEditOverlay::populate_color_view() {
 void AmsEditOverlay::apply_color(uint32_t rgb) {
     details_color_ = helix::ams::picked_color(rgb);
     details_color_set_ = true;
-    set_view(VIEW_EDITOR);
+    set_view(kViewEditor);
     update_summary();
     update_sync_button_state();
 }
@@ -1824,11 +1824,11 @@ void AmsEditOverlay::handle_back() {
         return; // the save's completion closes the editor
     }
     switch (view) {
-    case VIEW_SPOOL_PICKER:
-    case VIEW_COLOR:
+    case kViewSpoolPicker:
+    case kViewColor:
         return_to_editor();
         break;
-    case VIEW_EDITOR:
+    case kViewEditor:
     default:
         if (is_dirty()) {
             prompt_unsaved_changes();
@@ -1902,7 +1902,7 @@ void AmsEditOverlay::handle_save() {
     if (save_in_flight_) {
         return;
     }
-    if (lv_subject_get_int(&view_mode_subject_) == VIEW_COLOR) {
+    if (lv_subject_get_int(&view_mode_subject_) == kViewColor) {
         apply_color(custom_color_); // Select on the colour view stages + returns
         return;
     }

@@ -484,13 +484,13 @@ TEST_CASE("read_entry_head refuses bytes it cannot inflate as the entry",
     const size_t lh = static_cast<size_t>(entry.lh_offset);
     const size_t extra = static_cast<uint8_t>(zip[lh + 28]) |
                          static_cast<size_t>(static_cast<uint8_t>(zip[lh + 29])) << 8;
-    const size_t data = lh + helix::zip::ZIP_LOCAL_HEADER_BYTES + entry.name.size() + extra;
+    const size_t data = lh + helix::zip::kZipLocalHeaderBytes + entry.name.size() + extra;
     // Every byte asked for, so a whole entry is checked as it ends.
     size_t max_bytes = static_cast<size_t>(entry.usize) + 1;
 
     SECTION("a local extra field longer than the read allows for") {
         // The entry's own bytes, intact, behind a longer extra field.
-        const size_t grown = extra + helix::zip::ZIP_LOCAL_EXTRA_SLACK + 500;
+        const size_t grown = extra + helix::zip::kZipLocalExtraSlack + 500;
         zip[lh + 28] = static_cast<char>(grown & 0xff);
         zip[lh + 29] = static_cast<char>(grown >> 8);
         zip.insert(data, grown - extra, '\0');

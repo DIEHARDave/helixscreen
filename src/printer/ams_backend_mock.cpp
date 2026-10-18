@@ -46,7 +46,7 @@ struct MockFilament {
 // Predefined sample filaments matching Spoolman mock spools 1-8 (moonraker_api_mock.cpp)
 // IMPORTANT: Keep in sync with MockSpoolmanServer::init_mock_spools()
 // (guarded by tests/unit/test_mock_spool_consistency.cpp)
-constexpr MockFilament SAMPLE_FILAMENTS[] = {
+constexpr MockFilament kSampleFilaments[] = {
     {0x1A1A2E, "Jet Black", "PLA", "Polymaker", 850.0f, 1000.0f},        // Spool #1
     {0x26DCD9, "Silk Blue", "Silk PLA", "eSUN", 750.0f, 1000.0f},        // Spool #2
     {0x00AEFF, "Pop Blue", "ASA", "Elegoo", 500.0f, 1000.0f},            // Spool #3
@@ -56,29 +56,29 @@ constexpr MockFilament SAMPLE_FILAMENTS[] = {
     {0x8A949E, "Gray ASA", "ASA", "Bambu Lab", 1000.0f, 1000.0f},        // Spool #7
     {0xA2AAAD, "PolyMax PC Grey", "PC", "Polymaker", 500.0f, 750.0f},    // Spool #8
 };
-constexpr int NUM_SAMPLE_FILAMENTS = sizeof(SAMPLE_FILAMENTS) / sizeof(SAMPLE_FILAMENTS[0]);
+constexpr int kNumSampleFilaments = sizeof(kSampleFilaments) / sizeof(kSampleFilaments[0]);
 
 // Timing constants for realistic mode (milliseconds at 1x speed)
 // These values simulate real AMS/MMU timing behavior
-constexpr int HEATING_BASE_MS = 3000;            // 3 seconds to heat nozzle
-constexpr int CUTTING_BASE_MS = 2000;            // 2 seconds for filament cut
-constexpr int PURGING_BASE_MS = 3000;            // 3 seconds for purge after load
-constexpr int CHECKING_BASE_MS = 1500;           // 1.5 seconds for recovery check
-constexpr int SELECTING_BASE_MS = 1000;          // 1 second for slot/tool selection
-constexpr int SEGMENT_ANIMATION_BASE_MS = 15000; // 15 seconds for full segment animation
+constexpr int kHeatingBaseMs = 3000;           // 3 seconds to heat nozzle
+constexpr int kCuttingBaseMs = 2000;           // 2 seconds for filament cut
+constexpr int kPurgingBaseMs = 3000;           // 3 seconds for purge after load
+constexpr int kCheckingBaseMs = 1500;          // 1.5 seconds for recovery check
+constexpr int kSelectingBaseMs = 1000;         // 1 second for slot/tool selection
+constexpr int kSegmentAnimationBaseMs = 15000; // 15 seconds for full segment animation
 
 // Variance factors (±percentage) for natural timing variation
-constexpr float HEATING_VARIANCE = 0.3f;    // ±30%
-constexpr float TIP_VARIANCE = 0.2f;        // ±20%
-constexpr float LOADING_VARIANCE = 0.2f;    // ±20%
-constexpr float PURGING_VARIANCE = 0.2f;    // ±20%
-constexpr float CHECKING_VARIANCE = 0.2f;   // ±20% (for recovery)
-constexpr float SELECTING_VARIANCE = 0.15f; // ±15%
+constexpr float kHeatingVariance = 0.3f;    // ±30%
+constexpr float kTipVariance = 0.2f;        // ±20%
+constexpr float kLoadingVariance = 0.2f;    // ±20%
+constexpr float kPurgingVariance = 0.2f;    // ±20%
+constexpr float kCheckingVariance = 0.2f;   // ±20% (for recovery)
+constexpr float kSelectingVariance = 0.15f; // ±15%
 } // namespace
 
 AmsBackendMock::AmsBackendMock(int slot_count) {
-    // Up to one backend's block of lane ids, so a mock can exceed AMS_MAX_SLOTS.
-    slot_count = std::clamp(slot_count, 1, helix::ams::LANES_PER_BACKEND);
+    // Up to one backend's block of lane ids, so a mock can exceed kAmsMaxSlots.
+    slot_count = std::clamp(slot_count, 1, helix::ams::kLanesPerBackend);
 
     // Initialize system info (non-slot metadata)
     system_info_.type = AmsType::HAPPY_HARE; // Mock as Happy Hare
@@ -117,7 +117,7 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
         entry->info.mapped_tool = i; // Direct 1:1 mapping
 
         // Assign sample filament data (cycle through samples)
-        const auto& sample = SAMPLE_FILAMENTS[i % NUM_SAMPLE_FILAMENTS];
+        const auto& sample = kSampleFilaments[i % kNumSampleFilaments];
         entry->info.color_rgb = sample.color;
         entry->info.color_name = sample.color_name;
         entry->info.material = sample.material;
@@ -125,7 +125,7 @@ AmsBackendMock::AmsBackendMock(int slot_count) {
         // gate map "has no concept of brand / spool_name / total weight / colour
         // name" (ams_backend_happy_hare.cpp), so a real lane's brand comes only
         // from the user's override store or the Spoolman identity cache -- never
-        // from firmware. The vendor in SAMPLE_FILAMENTS is what Spoolman
+        // from firmware. The vendor in kSampleFilaments is what Spoolman
         // supplies for these lanes, which is why the ids below line up with
         // init_mock_spools().
 
@@ -375,7 +375,7 @@ AmsError AmsBackendMock::start() {
                     }
                 }
             }
-            emit_event(EVENT_SLOT_CHANGED);
+            emit_event(kEventSlotChanged);
             spdlog::info("[AMS Mock] Applied initial state scenario: grade (all lanes -> PLA-CF)");
         } else if (scenario == "finishes") {
             // One lane per swatch finish, and two multi-colour lanes, so every
@@ -415,17 +415,17 @@ AmsError AmsBackendMock::start() {
                     entry->info.spool_name.clear();
                 }
             }
-            emit_event(EVENT_SLOT_CHANGED);
+            emit_event(kEventSlotChanged);
             spdlog::info("[AMS Mock] Applied initial state scenario: finishes");
         } else if (scenario == "feeder") {
             // Lane 3's filament waits at its feeder, short of its toolhead.
             set_slot_at_feeder(2);
-            emit_event(EVENT_SLOT_CHANGED);
+            emit_event(kEventSlotChanged);
             spdlog::info("[AMS Mock] Applied initial state scenario: feeder (slot 2)");
         } else if (scenario == "blocked") {
             // A jammed lane with no error object, as the QIDI Box reports one.
             force_slot_status(1, SlotStatus::BLOCKED);
-            emit_event(EVENT_SLOT_CHANGED);
+            emit_event(kEventSlotChanged);
             spdlog::info("[AMS Mock] Applied initial state scenario: blocked (slot 1)");
         } else if (scenario == "disconnected") {
             // The last unit is on the bus map but reports itself offline.
@@ -782,7 +782,7 @@ AmsError AmsBackendMock::load_filament(int slot_index) {
     }
 
     emit_event(EVENT_STATE_CHANGED);
-    schedule_completion(AmsAction::LOADING, EVENT_LOAD_COMPLETE, slot_index);
+    schedule_completion(AmsAction::LOADING, kEventLoadComplete, slot_index);
 
     return AmsErrorHelper::success();
 }
@@ -818,7 +818,7 @@ AmsError AmsBackendMock::unload_filament(int slot_index) {
     }
 
     emit_event(EVENT_STATE_CHANGED);
-    schedule_completion(AmsAction::UNLOADING, EVENT_UNLOAD_COMPLETE);
+    schedule_completion(AmsAction::UNLOADING, kEventUnloadComplete);
 
     return AmsErrorHelper::success();
 }
@@ -853,7 +853,7 @@ AmsError AmsBackendMock::park_active_tool() {
     }
 
     emit_event(EVENT_STATE_CHANGED);
-    schedule_completion(AmsAction::UNLOADING, EVENT_UNLOAD_COMPLETE);
+    schedule_completion(AmsAction::UNLOADING, kEventUnloadComplete);
     return AmsErrorHelper::success();
 }
 
@@ -951,9 +951,9 @@ AmsError AmsBackendMock::run_filament_batch(const std::vector<int>& slots, bool 
 
     emit_event(EVENT_STATE_CHANGED);
     if (load) {
-        schedule_completion(AmsAction::LOADING, EVENT_LOAD_COMPLETE, slots.front());
+        schedule_completion(AmsAction::LOADING, kEventLoadComplete, slots.front());
     } else {
-        schedule_completion(AmsAction::UNLOADING, EVENT_UNLOAD_COMPLETE);
+        schedule_completion(AmsAction::UNLOADING, kEventUnloadComplete);
     }
 
     return AmsErrorHelper::success();
@@ -1013,7 +1013,7 @@ AmsError AmsBackendMock::change_tool(int tool_number) {
     }
 
     emit_event(EVENT_STATE_CHANGED);
-    schedule_completion(AmsAction::LOADING, EVENT_TOOL_CHANGED, target_slot);
+    schedule_completion(AmsAction::LOADING, kEventToolChanged, target_slot);
 
     return AmsErrorHelper::success();
 }
@@ -1283,7 +1283,7 @@ void AmsBackendMock::clear_slot_override(int slot_index) {
     // still outlive it is the lane's user rung, so the clear resets the lane
     // to machine readings and lets the resync announce the slot.
     helix::ams::reset_lane_to_machine_readings(lane_id(slot_index));
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
 }
 
 AmsError AmsBackendMock::sync_external_identity(int slot_index, const SlotInfo& info) {
@@ -1339,7 +1339,7 @@ AmsError AmsBackendMock::write_slot(int slot_index, const SlotInfo& info) {
     }
 
     // Emit event OUTSIDE the lock to avoid deadlock
-    emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
+    emit_event(kEventSlotChanged, std::to_string(slot_index));
     return AmsErrorHelper::success();
 }
 
@@ -1353,8 +1353,8 @@ AmsError AmsBackendMock::can_set_tool_mapping_locked(int tool_number, int slot_i
     // slicer files often reference T0..T7 even when only 4 lanes exist. The
     // sentinel for "too large" is arbitrary; 64 is generous and matches the
     // production slot_registry behavior of growing on demand.
-    constexpr int MAX_TOOL_INDEX = 64;
-    if (tool_number < 0 || tool_number >= MAX_TOOL_INDEX) {
+    constexpr int kMaxToolIndex = 64;
+    if (tool_number < 0 || tool_number >= kMaxToolIndex) {
         return AmsErrorHelper::tool_out_of_range(tool_number);
     }
     if (!slots_.is_valid_index(slot_index)) {
@@ -1485,7 +1485,7 @@ void AmsBackendMock::simulate_error(AmsResult error) {
         }
     }
 
-    emit_event(EVENT_ERROR, ams_result_to_string(error));
+    emit_event(kEventError, ams_result_to_string(error));
     emit_event(EVENT_STATE_CHANGED);
 }
 
@@ -3765,9 +3765,9 @@ void AmsBackendMock::set_action(AmsAction action, const std::string& detail) {
 void AmsBackendMock::run_load_segment_animation(int slot_index,
                                                 InterruptibleSleep interruptible_sleep) {
     // Calculate per-segment delay
-    int total_animation_ms =
-        realistic_mode_ ? get_effective_delay_ms(SEGMENT_ANIMATION_BASE_MS, LOADING_VARIANCE)
-                        : get_effective_delay_ms(operation_delay_ms_);
+    int total_animation_ms = realistic_mode_
+                                 ? get_effective_delay_ms(kSegmentAnimationBaseMs, kLoadingVariance)
+                                 : get_effective_delay_ms(operation_delay_ms_);
     int segment_delay = total_animation_ms / 6;
 
     const PathSegment load_sequence[] = {
@@ -3790,9 +3790,9 @@ void AmsBackendMock::run_load_segment_animation(int slot_index,
 }
 
 void AmsBackendMock::run_unload_segment_animation(InterruptibleSleep interruptible_sleep) {
-    int total_animation_ms =
-        realistic_mode_ ? get_effective_delay_ms(SEGMENT_ANIMATION_BASE_MS, LOADING_VARIANCE)
-                        : get_effective_delay_ms(operation_delay_ms_);
+    int total_animation_ms = realistic_mode_
+                                 ? get_effective_delay_ms(kSegmentAnimationBaseMs, kLoadingVariance)
+                                 : get_effective_delay_ms(operation_delay_ms_);
     int segment_delay = total_animation_ms / 6;
 
     const PathSegment unload_sequence[] = {
@@ -3863,7 +3863,7 @@ void AmsBackendMock::execute_load_operation(int slot_index,
         spdlog::debug("[AmsBackendMock] Load phase: HEATING");
         set_action(AmsAction::HEATING, "Heating nozzle for load");
         emit_event(EVENT_STATE_CHANGED);
-        if (!interruptible_sleep(get_effective_delay_ms(HEATING_BASE_MS, HEATING_VARIANCE)))
+        if (!interruptible_sleep(get_effective_delay_ms(kHeatingBaseMs, kHeatingVariance)))
             return;
         if (shutdown_requested_ || cancel_requested_)
             return;
@@ -3885,7 +3885,7 @@ void AmsBackendMock::execute_load_operation(int slot_index,
         spdlog::debug("[AmsBackendMock] Load phase: PURGING");
         set_action(AmsAction::PURGING, "Purging filament");
         emit_event(EVENT_STATE_CHANGED);
-        if (!interruptible_sleep(get_effective_delay_ms(PURGING_BASE_MS, PURGING_VARIANCE)))
+        if (!interruptible_sleep(get_effective_delay_ms(kPurgingBaseMs, kPurgingVariance)))
             return;
         if (shutdown_requested_ || cancel_requested_)
             return;
@@ -3902,7 +3902,7 @@ void AmsBackendMock::execute_unload_operation(InterruptibleSleep interruptible_s
         spdlog::debug("[AmsBackendMock] Unload phase: HEATING");
         set_action(AmsAction::HEATING, "Heating for cut");
         emit_event(EVENT_STATE_CHANGED);
-        if (!interruptible_sleep(get_effective_delay_ms(HEATING_BASE_MS / 2, HEATING_VARIANCE)))
+        if (!interruptible_sleep(get_effective_delay_ms(kHeatingBaseMs / 2, kHeatingVariance)))
             return;
         if (shutdown_requested_ || cancel_requested_)
             return;
@@ -3911,7 +3911,7 @@ void AmsBackendMock::execute_unload_operation(InterruptibleSleep interruptible_s
         spdlog::debug("[AmsBackendMock] Unload phase: CUTTING");
         set_action(AmsAction::CUTTING, "Cutting filament");
         emit_event(EVENT_STATE_CHANGED);
-        if (!interruptible_sleep(get_effective_delay_ms(CUTTING_BASE_MS, TIP_VARIANCE)))
+        if (!interruptible_sleep(get_effective_delay_ms(kCuttingBaseMs, kTipVariance)))
             return;
         if (shutdown_requested_ || cancel_requested_)
             return;
@@ -3950,7 +3950,7 @@ void AmsBackendMock::execute_tool_change_operation(int target_slot,
     // Phase 2: SELECTING (only in realistic mode)
     if (realistic_mode_) {
         spdlog::debug("[AmsBackendMock] Tool change phase: SELECTING slot {}", target_slot);
-        if (!interruptible_sleep(get_effective_delay_ms(SELECTING_BASE_MS, SELECTING_VARIANCE)))
+        if (!interruptible_sleep(get_effective_delay_ms(kSelectingBaseMs, kSelectingVariance)))
             return;
         if (shutdown_requested_ || cancel_requested_)
             return;
@@ -3985,7 +3985,7 @@ void AmsBackendMock::schedule_recovery_sequence() {
         spdlog::debug("[AmsBackendMock] Recovery phase: CHECKING");
         set_action(AmsAction::CHECKING, "Checking system state");
         emit_event(EVENT_STATE_CHANGED);
-        if (!interruptible_sleep(get_effective_delay_ms(CHECKING_BASE_MS, CHECKING_VARIANCE)))
+        if (!interruptible_sleep(get_effective_delay_ms(kCheckingBaseMs, kCheckingVariance)))
             return;
         if (shutdown_requested_ || cancel_requested_)
             return;
@@ -4027,7 +4027,7 @@ void AmsBackendMock::schedule_completion(AmsAction action, const std::string& co
     operation_thread_running_ = true;
 
     // Check if this is a tool change (complete_event signals intent)
-    bool is_tool_change = (complete_event == EVENT_TOOL_CHANGED);
+    bool is_tool_change = (complete_event == kEventToolChanged);
 
     // Simulate operation delay in background thread with path segment progression
     operation_thread_ =

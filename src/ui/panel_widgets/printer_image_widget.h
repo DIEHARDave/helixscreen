@@ -29,10 +29,10 @@ class PrinterImageWidget : public PanelWidget {
     /// Factory-registration key. Exposed so callers scanning a heterogeneous
     /// widget list can match on id() and static_cast, instead of dynamic_cast —
     /// the firmware builds -fno-rtti.
-    static constexpr const char* WIDGET_ID = "printer_image";
+    static constexpr const char* kWidgetId = "printer_image";
 
     const char* id() const override {
-        return WIDGET_ID;
+        return kWidgetId;
     }
 
     /// Called when panel activates — re-check if printer image changed in settings

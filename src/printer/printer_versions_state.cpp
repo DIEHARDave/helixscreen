@@ -29,7 +29,7 @@ bool moonraker_history_is_degraded(const std::string& version) {
     // Moonraker ships git-describe versions ("v0.9.0-16-g0f1e2d3"). SemVer ranks
     // a prerelease below its own release, so the constraint check is the right
     // comparison: it answers on the core triple alone.
-    return !helix::version::check_version_constraint(std::string(">=") + MIN_MOONRAKER_VERSION,
+    return !helix::version::check_version_constraint(std::string(">=") + kMinMoonrakerVersion,
                                                      version);
 }
 

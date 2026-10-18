@@ -204,7 +204,7 @@ setup() {
 #
 # Compile-time-only exceptions NOT covered by this lint (by design, not by
 # gap): a consumer references a concrete-class static constexpr timeout
-# (MoonrakerJobAPI::CANCEL_TIMEOUT_MS) and the MoonrakerAdvancedAPI::MPCResult
+# (MoonrakerJobAPI::kCancelTimeoutMs) and the MoonrakerAdvancedAPI::MPCResult
 # qualified-name alias. These aren't runtime polymorphism — MPCResult and the
 # calibration timeouts are defined on IAdvancedAPI and reach the concrete class
 # by inheritance or a `using` alias, so old qualified references keep resolving
@@ -813,7 +813,7 @@ check_subjects_value_initialized() {
     local f="${BATS_TEST_TMPDIR}/subject_shapes.h"
     cat > "$f" <<'SHAPES'
     lv_subject_t bare_;
-    lv_subject_t slots_[MAX_SLOTS];
+    lv_subject_t slots_[kMaxSlots];
     std::array<lv_subject_t, 4> rows_;
     lv_subject_t
         split_bare_; ///< clang-format moved the name
@@ -824,7 +824,7 @@ check_subjects_value_initialized() {
     lv_subject_t grid_[2][3];
     std::array<lv_subject_t, static_cast<size_t>(Kind::Count)> cast_rows_;
     lv_subject_t braced_{};
-    lv_subject_t braced_slots_[MAX_SLOTS]{};
+    lv_subject_t braced_slots_[kMaxSlots]{};
     std::array<lv_subject_t, 4> braced_rows_{};
     std::array<lv_subject_t, static_cast<size_t>(Kind::Count)> braced_cast_rows_{};
     lv_subject_t
@@ -3270,10 +3270,10 @@ own_endpoint_http_offenders() {
             echo "${f#"$root"/}: names one of our hosts but sends without tls::trusted_*"
         fi
     done
-    awk '/= worker_url\(\);|= WORKER_URL;/ { on = 1; seen = 1 }
+    awk '/= worker_url\(\);|= kWorkerUrl;/ { on = 1; seen = 1 }
          on && /^[^\/]*(requests::|HttpClient)/ { print "debug_bundle_collector.cpp:" FNR ": " $0 }
          on && /^}/ { on = 0 }
-         END { if (!seen) print "debug_bundle_collector.cpp: upload to WORKER_URL not found" }' \
+         END { if (!seen) print "debug_bundle_collector.cpp: upload to kWorkerUrl not found" }' \
         "$root/src/system/debug_bundle_collector.cpp"
     grep -rnF '["X-API-Key"]' "$root/src" | grep -v '^[^:]*/src/system/ingest_client\.cpp:' |
         sed 's|$| (ingest uploads go through helix::ingest::post)|'
@@ -3291,7 +3291,7 @@ own_endpoint_http_offenders() {
     printf '    // requests::request is fine in a comment\n' > "$d/update_checker.cpp"
     printf '    auto r = requests::request(req);\n' > "$d/telemetry_manager.cpp"
     printf '    hv::HttpClient cli;\n' > "$d/crash_reporter.cpp"
-    printf '    req->headers["X-API-Key"] = API_KEY;\n' > "$d/ingest_client.cpp"
+    printf '    req->headers["X-API-Key"] = kApiKey;\n' > "$d/ingest_client.cpp"
     mkdir -p "$d/../ui"
     printf 'auto u = "https://api.github.com/x";\nauto r = requests::get(u);\n' > "$d/../ui/rogue.cpp"
     printf 'auto u = "https://helixscreen.org/x";\nauto r = helix::tls::trusted_request(q);\n' \

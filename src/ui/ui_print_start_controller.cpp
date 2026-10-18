@@ -147,12 +147,12 @@ void PrintStartController::initiate() {
     // Safety: reject print starts during startup grace period.
     // Ghost touch events during app initialization can trigger the full print chain
     // (file select → detail view → print button → filament warning confirm) in seconds.
-    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::PROCESS_START_TIME;
-    if (elapsed < app_constants::startup::PRINT_START_GRACE_PERIOD) {
+    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::kProcessStartTime;
+    if (elapsed < app_constants::startup::kPrintStartGracePeriod) {
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
         spdlog::warn("[PrintStartController] Rejected print start during startup grace period "
                      "({}s < {}s)",
-                     secs, app_constants::startup::PRINT_START_GRACE_PERIOD.count());
+                     secs, app_constants::startup::kPrintStartGracePeriod.count());
         end_without_print();
         return;
     }
@@ -1265,10 +1265,10 @@ void PrintStartController::check_restore_confirmed() {
 // Crash Recovery Persistence
 // ============================================================================
 
-static constexpr const char* PENDING_REMAP_FILENAME = "pending_remap.json";
+static constexpr const char* kPendingRemapFilename = "pending_remap.json";
 
 static std::string pending_remap_path() {
-    return hfs::join_path(helix::get_user_config_dir(), PENDING_REMAP_FILENAME);
+    return hfs::join_path(helix::get_user_config_dir(), kPendingRemapFilename);
 }
 
 void PrintStartController::persist_remap_state() {

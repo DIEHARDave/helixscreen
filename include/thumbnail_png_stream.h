@@ -20,7 +20,7 @@
 namespace helix {
 
 /// Largest thumbnail side decoded; anything larger keeps the placeholder.
-inline constexpr int THUMBNAIL_MAX_SIDE = 640;
+inline constexpr int kThumbnailMaxSide = 640;
 
 struct PngHeader {
     int width = 0;
@@ -34,7 +34,7 @@ struct PngHeader {
 bool read_png_header(const uint8_t* data, size_t size, PngHeader& out);
 
 /// True for what PngRowDecoder handles: 8 bits per channel, not interlaced,
-/// grey, RGB, palette, grey+alpha or RGBA, and at most THUMBNAIL_MAX_SIDE a side.
+/// grey, RGB, palette, grey+alpha or RGBA, and at most kThumbnailMaxSide a side.
 bool png_thumbnail_supported(const PngHeader& header);
 
 /// Palette and transparency chunks, which colour conversion needs.
@@ -90,7 +90,7 @@ class PngRowDecoder {
 /// Least PSRAM a thumbnail decode leaves free. The rest of the app allocates
 /// without a fallback, so decodes stop well before it can run out; a decode
 /// refused here keeps the placeholder and is tried again later.
-inline constexpr size_t THUMBNAIL_PSRAM_FLOOR = 256 * 1024;
+inline constexpr size_t kThumbnailPsramFloor = 256 * 1024;
 
 /// Working memory a decode takes beside the image it keeps: the inflater state
 /// (about 11KB for tinfl), its 32KB window, two rows and the downscale's sums.
@@ -102,18 +102,18 @@ inline size_t thumbnail_decode_working_bytes(int src_w, ThumbnailDims dst) {
 /// True when a decode keeping @p kept bytes, and briefly using @p working more,
 /// still leaves @p floor of the @p free bytes.
 inline bool thumbnail_decode_fits(size_t free, size_t kept, size_t working,
-                                  size_t floor = THUMBNAIL_PSRAM_FLOOR) {
+                                  size_t floor = kThumbnailPsramFloor) {
     return free >= floor && free - floor >= kept + working;
 }
 
 /// Bytes card thumbnails may hold at once. Only cards on screen hold one, and
 /// this caps them even when the screen shows many.
-inline constexpr size_t CARD_THUMBNAIL_BUDGET = 960 * 1024;
+inline constexpr size_t kCardThumbnailBudget = 960 * 1024;
 
 /// True when one more card thumbnail of @p kept bytes fits the budget beside
 /// the @p held bytes card thumbnails hold or have in flight.
 inline bool card_thumbnail_fits_budget(size_t held, size_t kept,
-                                       size_t budget = CARD_THUMBNAIL_BUDGET) {
+                                       size_t budget = kCardThumbnailBudget) {
     return held <= budget && budget - held >= kept;
 }
 
@@ -140,7 +140,7 @@ struct DecodedThumbnail {
  *     returning tinfl's status: 0 done, 1 needs input, 2 more output, <0 failed;
  *   - `static void* alloc(size_t)` returning nullptr on failure, and `free(void*)`;
  *   - `static size_t free_bytes()`, what alloc() has free in total: a decode
- *     that would leave less than THUMBNAIL_PSRAM_FLOOR is not started. It is
+ *     that would leave less than kThumbnailPsramFloor is not started. It is
  *     not the largest block, because finding that walks the whole heap.
  */
 template <class Inflate>

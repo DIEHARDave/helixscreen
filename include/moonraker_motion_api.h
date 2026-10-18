@@ -48,7 +48,7 @@ class MoonrakerMotionAPI : public helix::IMotionAPI {
     using ErrorCallback = std::function<void(const MoonrakerError&)>;
 
     /// Homing timeout: 5 minutes for G28 on large printers
-    static constexpr uint32_t HOMING_TIMEOUT_MS = 300000;
+    static constexpr uint32_t kHomingTimeoutMs = 300000;
 
     /**
      * @brief Constructor

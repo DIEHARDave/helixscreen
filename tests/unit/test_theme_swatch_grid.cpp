@@ -32,10 +32,10 @@ extern "C" {
 
 namespace {
 
-constexpr int COLS = 6;
-constexpr int SURFACE_COUNT = 12;
-constexpr int ACCENT_COUNT = 18;
-constexpr int TOTAL = SURFACE_COUNT + ACCENT_COUNT;
+constexpr int kCols = 6;
+constexpr int kSurfaceCount = 12;
+constexpr int kAccentCount = 18;
+constexpr int kTotal = kSurfaceCount + kAccentCount;
 // The grid's first child is its custom-colour lead tile, hidden unless a host
 // asks for it; the palette swatches follow it.
 constexpr int LEAD = 1;
@@ -112,9 +112,9 @@ TEST_CASE_METHOD(GridFixture,
                  "color_swatch_grid theme palette: exposes exactly 30 swatches in 6 columns",
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
-    REQUIRE(lv_obj_get_child_count(grid) == TOTAL + LEAD);
+    REQUIRE(lv_obj_get_child_count(grid) == kTotal + LEAD);
     CHECK(lv_obj_has_flag(lv_obj_get_child(grid, 0), LV_OBJ_FLAG_HIDDEN));
-    REQUIRE(TOTAL % COLS == 0);
+    REQUIRE(kTotal % kCols == 0);
 }
 
 TEST_CASE_METHOD(GridFixture, "color_swatch_grid theme palette: every swatch is clickable",
@@ -132,11 +132,11 @@ TEST_CASE_METHOD(GridFixture,
                  "[xml][theme][swatch]") {
     lv_obj_t* grid = create();
     auto colors = swatch_colors(grid);
-    REQUIRE(colors.size() == TOTAL);
+    REQUIRE(colors.size() == kTotal);
 
     // The theme editor's surface tokens (screen_bg -> text) are picked by
     // lightness, so the first 12 swatches must read as an ordered ramp.
-    for (int i = 1; i < SURFACE_COUNT; i++) {
+    for (int i = 1; i < kSurfaceCount; i++) {
         const double prev = relative_luminance(colors[i - 1]);
         const double cur = relative_luminance(colors[i]);
         INFO("surface swatch " << i << " luminance " << cur << " must exceed " << prev);
@@ -146,7 +146,7 @@ TEST_CASE_METHOD(GridFixture,
     // The ramp must actually span the usable range: dark enough for an OLED-black
     // screen_bg, light enough for a light-mode background.
     REQUIRE(relative_luminance(colors.front()) < 30.0);
-    REQUIRE(relative_luminance(colors[SURFACE_COUNT - 1]) > 230.0);
+    REQUIRE(relative_luminance(colors[kSurfaceCount - 1]) > 230.0);
 }
 
 TEST_CASE_METHOD(GridFixture,
@@ -157,17 +157,17 @@ TEST_CASE_METHOD(GridFixture,
 
     // red, amber, green, teal, blue, violet — the six families the accent
     // block is organised by. Column position is the navigation affordance.
-    const double family_hue[COLS] = {0.0, 42.0, 110.0, 175.0, 215.0, 275.0};
-    constexpr double TOLERANCE = 32.0;
+    const double family_hue[kCols] = {0.0, 42.0, 110.0, 175.0, 215.0, 275.0};
+    constexpr double kTolerance = 32.0;
 
-    for (int row = 0; row < ACCENT_COUNT / COLS; row++) {
-        for (int col = 0; col < COLS; col++) {
-            const uint32_t rgb = colors[SURFACE_COUNT + row * COLS + col];
+    for (int row = 0; row < kAccentCount / kCols; row++) {
+        for (int col = 0; col < kCols; col++) {
+            const uint32_t rgb = colors[kSurfaceCount + row * kCols + col];
             const double h = hue_of(rgb);
             INFO("accent row " << row << " col " << col << " rgb=" << std::hex << rgb
                                << " hue=" << std::dec << h);
             REQUIRE(h >= 0.0); // accents must be chromatic, not neutral
-            REQUIRE(hue_delta(h, family_hue[col]) <= TOLERANCE);
+            REQUIRE(hue_delta(h, family_hue[col]) <= kTolerance);
         }
     }
 }
@@ -181,10 +181,10 @@ TEST_CASE_METHOD(GridFixture,
     // Row 0 = muted (dark-mode accents), row 2 = deep (light-mode accents).
     // Each column must get consistently darker down the block, otherwise the
     // "pick a row for your mode" affordance is a lie.
-    for (int col = 0; col < COLS; col++) {
-        const double muted = relative_luminance(colors[SURFACE_COUNT + 0 * COLS + col]);
-        const double mid = relative_luminance(colors[SURFACE_COUNT + 1 * COLS + col]);
-        const double deep = relative_luminance(colors[SURFACE_COUNT + 2 * COLS + col]);
+    for (int col = 0; col < kCols; col++) {
+        const double muted = relative_luminance(colors[kSurfaceCount + 0 * kCols + col]);
+        const double mid = relative_luminance(colors[kSurfaceCount + 1 * kCols + col]);
+        const double deep = relative_luminance(colors[kSurfaceCount + 2 * kCols + col]);
         INFO("accent column " << col << " luminance " << muted << " / " << mid << " / " << deep);
         REQUIRE(muted > mid);
         REQUIRE(mid > deep);
@@ -198,10 +198,10 @@ TEST_CASE_METHOD(GridFixture,
 
 namespace {
 
-constexpr uint32_t THEME_FIRST_SWATCH = 0x0B0D14;   // theme palette row 1 col 1
-constexpr uint32_t GENERAL_FIRST_SWATCH = 0x1A1A1A; // general palette row 1 col 1
+constexpr uint32_t kThemeFirstSwatch = 0x0B0D14;   // theme palette row 1 col 1
+constexpr uint32_t kGeneralFirstSwatch = 0x1A1A1A; // general palette row 1 col 1
 
-constexpr const char* PALETTE_SWITCH_COMPONENT =
+constexpr const char* kPaletteSwitchComponent =
     "<component><view><lv_obj name='host'>"
     "  <if cond='color_picker_palette eq 1'>"
     "    <color_swatch_grid palette='theme' swatch_callback='color_swatch_clicked_cb'/>"
@@ -224,7 +224,7 @@ struct PaletteSwitchFixture : public LVGLTestFixture {
         lv_subject_init_int(&palette_subject, 0);
         lv_xml_register_subject(nullptr, "color_picker_palette", &palette_subject);
         REQUIRE(lv_xml_register_component_from_data("palette_switch_probe",
-                                                    PALETTE_SWITCH_COMPONENT) == LV_RESULT_OK);
+                                                    kPaletteSwitchComponent) == LV_RESULT_OK);
     }
 
     ~PaletteSwitchFixture() {
@@ -241,7 +241,7 @@ struct PaletteSwitchFixture : public LVGLTestFixture {
         REQUIRE(host != nullptr);
         REQUIRE(lv_obj_get_child_count(host) == 1); // exactly one grid, never both
         lv_obj_t* grid = lv_obj_get_child(host, 0);
-        REQUIRE(lv_obj_get_child_count(grid) == TOTAL + LEAD);
+        REQUIRE(lv_obj_get_child_count(grid) == kTotal + LEAD);
         lv_color_t bg = helix::ui::swatch_color_of(lv_obj_get_child(grid, LEAD));
         return lv_color_to_u32(bg) & 0xFFFFFF;
     }
@@ -252,13 +252,13 @@ struct PaletteSwitchFixture : public LVGLTestFixture {
 TEST_CASE_METHOD(PaletteSwitchFixture, "color picker palette: Theme selects the theme grid",
                  "[xml][theme][swatch]") {
     lv_subject_set_int(&palette_subject, 1); // ColorPicker::Palette::Theme
-    REQUIRE(built_grid_first_swatch() == THEME_FIRST_SWATCH);
+    REQUIRE(built_grid_first_swatch() == kThemeFirstSwatch);
 }
 
 TEST_CASE_METHOD(PaletteSwitchFixture, "color picker palette: General selects the shared grid",
                  "[xml][theme][swatch]") {
     lv_subject_set_int(&palette_subject, 0); // ColorPicker::Palette::General
-    REQUIRE(built_grid_first_swatch() == GENERAL_FIRST_SWATCH);
+    REQUIRE(built_grid_first_swatch() == kGeneralFirstSwatch);
 }
 
 TEST_CASE_METHOD(GridFixture,

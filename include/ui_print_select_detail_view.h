@@ -369,7 +369,7 @@ class PrintSelectDetailView : public OverlayBase {
      * Unlike run_when_loaded() this fires when EITHER the viewer parse OR the
      * headless tools_used scan completes, and the file scan has answered — so it
      * never hangs on 2D-only platforms. If already ready, runs @p cb
-     * synchronously. A safety timeout (see PREFLIGHT_READY_TIMEOUT_MS) fires
+     * synchronously. A safety timeout (see kPreflightReadyTimeoutMs) fires
      * @p cb anyway if the answers do not arrive, so a stuck/failed scan can never
      * wedge the print: the print proceeds without those checks rather than never
      * starting.
@@ -919,7 +919,7 @@ class PrintSelectDetailView : public OverlayBase {
     // Safety fallback: if neither the viewer parse nor the headless scan reports
     // readiness within this window, fire the deferred print attempt anyway
     // (graceful degradation — print without Part A's optimization, never hang).
-    static constexpr uint32_t PREFLIGHT_READY_TIMEOUT_MS = 8000;
+    static constexpr uint32_t kPreflightReadyTimeoutMs = 8000;
 
     // Pre-print option toggle state lives in `option_rows_renderer_` (one
     // heap-allocated subject per option) — the legacy fixed six subjects

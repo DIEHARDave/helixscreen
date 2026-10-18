@@ -27,7 +27,7 @@ What goes:
 - **Each round sweeps BOTH paths over the zone**, so drift between runs cancels: the gap is
   always computed from two curves of the same round.
 - **Zones come from peak pairs, falling back to the tallest peaks.** When the main peaks are
-  unpaired (further apart than `PAIR_MAX_HZ`, or no pair at all), the loop steers by each
+  unpaired (further apart than `kPairMaxHz`, or no pair at all), the loop steers by each
   path's tallest in-band peak AND shows a shape warning that opens a modal listing the
   mechanical causes (gantry racking, loose pulley grub screw, belt rubbing a flange/idler/frame,
   unseated or twisted belt). Tuning continues.

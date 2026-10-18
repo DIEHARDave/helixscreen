@@ -109,7 +109,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Screensaver type survives a restart",
         return DisplaySettingsManager::instance().get_screensaver_type();
     };
     const int bounce = static_cast<int>(ScreensaverType::BOUNCING_PRINTER);
-    const int fallback = static_cast<int>(helix::ui::DEFAULT_SCREENSAVER_TYPE);
+    const int fallback = static_cast<int>(helix::ui::kDefaultScreensaverType);
 
     SECTION("Bouncing Printer is read back as itself") {
         DisplaySettingsManager::instance().set_screensaver_type(bounce);
@@ -160,7 +160,7 @@ TEST_CASE_METHOD(
     DisplaySettingsManager::instance().deinit_subjects();
     DisplaySettingsManager::instance().init_subjects();
     CHECK(DisplaySettingsManager::instance().get_screensaver_type() ==
-          static_cast<int>(helix::ui::DEFAULT_SCREENSAVER_TYPE));
+          static_cast<int>(helix::ui::kDefaultScreensaverType));
 
     // The manager clamps what the subject holds, whoever wrote it.
     lv_subject_set_int(DisplaySettingsManager::instance().subject_screensaver_type(), 99);
@@ -249,7 +249,7 @@ using helix::ui::screensaver::flap_frame_at;
 using helix::ui::screensaver::flight_pos_at;
 using helix::ui::screensaver::FlightPos;
 
-constexpr int32_t TOASTER_FLIGHT_PX = 1600;
+constexpr int32_t kToasterFlightPx = 1600;
 
 void run_toaster_tick(const FlyingToasterScreensaver& ss) {
     lv_timer_t* timer = SaverTestAccess::timer(ss);
@@ -314,8 +314,8 @@ SpriteTally check_sprites_at(const FlyingToasterScreensaver& ss, uint32_t elapse
     for (size_t i = 0; i < sprites.size(); i++) {
         const auto& s = sprites[i];
         CAPTURE(i, elapsed_ms);
-        const FlightPos pos = flight_pos_at(elapsed_ms, s.start_x, s.start_y, s.fly_ms, s.delay_ms,
-                                            TOASTER_FLIGHT_PX);
+        const FlightPos pos =
+            flight_pos_at(elapsed_ms, s.start_x, s.start_y, s.fly_ms, s.delay_ms, kToasterFlightPx);
         if (!pos.started) {
             continue;
         }
@@ -824,7 +824,7 @@ using StarAccess = StarfieldScreensaverTestAccess;
 using PipesAccess = PipesScreensaverTestAccess;
 
 // A pipe grows one grid step per 100 ms of frame time.
-constexpr uint32_t PIPES_STEP_MS = 100;
+constexpr uint32_t kPipesStepMs = 100;
 
 /// Counts the draw tasks `obj` itself adds to refreshes and snapshots, for as long as it lives.
 class DrawTaskCounter {
@@ -978,7 +978,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         const std::vector<uint8_t> before(buf->data, buf->data + buf->data_size);
         invalidated.areas.clear();
 
-        advance_saver(ss, PIPES_STEP_MS);
+        advance_saver(ss, kPipesStepMs);
 
         const PixelChanges changes = diff_canvas(before, buf, canvas_coords, invalidated.areas);
         REQUIRE(changes.changed > 0);
@@ -1006,7 +1006,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "the pipes dissolve invalidates every pixel it
 
     for (int i = 0; i < 20000 && PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::GROWING;
          i++) {
-        advance_saver(ss, 3 * PIPES_STEP_MS);
+        advance_saver(ss, 3 * kPipesStepMs);
     }
     REQUIRE(PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::DISSOLVING);
 
@@ -1014,7 +1014,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "the pipes dissolve invalidates every pixel it
     while (PipesAccess::sim(ss).phase() == helix::ui::PipesPhase::DISSOLVING) {
         const std::vector<uint8_t> before(buf->data, buf->data + buf->data_size);
         InvalidatedAreas invalidated(lv_obj_get_display(canvas));
-        advance_saver(ss, PIPES_STEP_MS);
+        advance_saver(ss, kPipesStepMs);
         const PixelChanges changes = diff_canvas(before, buf, canvas_coords, invalidated.areas);
         cleared += changes.changed;
         CHECK(changes.outside_areas == 0);
@@ -1064,9 +1064,9 @@ namespace {
 using helix::anim_timer_period;
 using helix::default_refr_timer_period;
 
-constexpr uint32_t GLOBAL_PERIOD_MS = 40;
+constexpr uint32_t kGlobalPeriodMs = 40;
 // Unlike the 16 ms default, so the checks see the configured period reach each saver.
-constexpr uint32_t SAVER_PERIOD_MS = 20;
+constexpr uint32_t kSaverPeriodMs = 20;
 
 /// Period of the timer the manager's running saver ticks on.
 uint32_t running_saver_timer_period(ScreensaverType type) {
@@ -1093,19 +1093,19 @@ TEST_CASE_METHOD(LVGLTestFixture,
     SaverRefreshEnv env;
     StopSaverOnExit stop_on_exit;
     REQUIRE_FALSE(helix::active_refresh_period_hold().is_held());
-    CHECK(default_refr_timer_period() == GLOBAL_PERIOD_MS);
+    CHECK(default_refr_timer_period() == kGlobalPeriodMs);
 
     mgr.start(type);
     REQUIRE(mgr.is_active());
     // A saver reads the configured period as it starts, as its level 0 frame period.
-    CHECK(running_saver_timer_period(type) == SAVER_PERIOD_MS);
-    CHECK(default_refr_timer_period() == SAVER_PERIOD_MS);
-    CHECK(anim_timer_period() == SAVER_PERIOD_MS);
+    CHECK(running_saver_timer_period(type) == kSaverPeriodMs);
+    CHECK(default_refr_timer_period() == kSaverPeriodMs);
+    CHECK(anim_timer_period() == kSaverPeriodMs);
 
     mgr.stop();
     CHECK_FALSE(helix::active_refresh_period_hold().is_held());
-    CHECK(default_refr_timer_period() == GLOBAL_PERIOD_MS);
-    CHECK(anim_timer_period() == GLOBAL_PERIOD_MS);
+    CHECK(default_refr_timer_period() == kGlobalPeriodMs);
+    CHECK(anim_timer_period() == kGlobalPeriodMs);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "switching screensaver type keeps the saver refresh period",
@@ -1120,15 +1120,15 @@ TEST_CASE_METHOD(LVGLTestFixture, "switching screensaver type keeps the saver re
         CAPTURE(static_cast<int>(type));
         mgr.start(type);
         REQUIRE(mgr.is_active());
-        CHECK(running_saver_timer_period(type) == SAVER_PERIOD_MS);
-        CHECK(default_refr_timer_period() == SAVER_PERIOD_MS);
+        CHECK(running_saver_timer_period(type) == kSaverPeriodMs);
+        CHECK(default_refr_timer_period() == kSaverPeriodMs);
     }
 
     // One stop gives back everything the three starts took.
     mgr.stop();
     CHECK_FALSE(helix::active_refresh_period_hold().is_held());
-    CHECK(default_refr_timer_period() == GLOBAL_PERIOD_MS);
-    CHECK(anim_timer_period() == GLOBAL_PERIOD_MS);
+    CHECK(default_refr_timer_period() == kGlobalPeriodMs);
+    CHECK(anim_timer_period() == kGlobalPeriodMs);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "a screensaver that fails to start gives the refresh period back",
@@ -1141,14 +1141,14 @@ TEST_CASE_METHOD(LVGLTestFixture, "a screensaver that fails to start gives the r
     SECTION("no saver is registered for the requested type") {
         mgr.start(ScreensaverType::FLYING_TOASTERS);
         REQUIRE(mgr.is_active());
-        REQUIRE(default_refr_timer_period() == SAVER_PERIOD_MS);
+        REQUIRE(default_refr_timer_period() == kSaverPeriodMs);
 
         mgr.start(static_cast<ScreensaverType>(helix::ui::screensaver_last_type() + 1));
 
         CHECK_FALSE(mgr.is_active());
         CHECK_FALSE(helix::active_refresh_period_hold().is_held());
-        CHECK(default_refr_timer_period() == GLOBAL_PERIOD_MS);
-        CHECK(anim_timer_period() == GLOBAL_PERIOD_MS);
+        CHECK(default_refr_timer_period() == kGlobalPeriodMs);
+        CHECK(anim_timer_period() == kGlobalPeriodMs);
     }
 
     SECTION("the saver refuses to start") {
@@ -1164,15 +1164,15 @@ TEST_CASE_METHOD(LVGLTestFixture, "a screensaver that fails to start gives the r
 
         CHECK_FALSE(mgr.is_active());
         CHECK_FALSE(helix::active_refresh_period_hold().is_held());
-        CHECK(default_refr_timer_period() == GLOBAL_PERIOD_MS);
+        CHECK(default_refr_timer_period() == kGlobalPeriodMs);
     }
 
     // Nothing was left behind: the next saver that does start still gets the fast period.
     mgr.start(ScreensaverType::FLYING_TOASTERS);
     REQUIRE(mgr.is_active());
-    CHECK(running_saver_timer_period(ScreensaverType::FLYING_TOASTERS) == SAVER_PERIOD_MS);
+    CHECK(running_saver_timer_period(ScreensaverType::FLYING_TOASTERS) == kSaverPeriodMs);
     mgr.stop();
-    CHECK(default_refr_timer_period() == GLOBAL_PERIOD_MS);
+    CHECK(default_refr_timer_period() == kGlobalPeriodMs);
 }
 
 // ============================================================================
@@ -1341,35 +1341,35 @@ TEST_CASE("Bouncing printer: a corner needs both walls and both edges",
           "[screensaver][bounce_math]") {
     using helix::ui::screensaver::is_corner_hit;
 
-    constexpr float RX = 400.0f;
-    constexpr float RY = 300.0f;
-    constexpr float TOL = 6.0f;
+    constexpr float kRx = 400.0f;
+    constexpr float kRy = 300.0f;
+    constexpr float kTol = 6.0f;
 
     SECTION("both walls, sprite in the corner") {
-        REQUIRE(is_corner_hit(true, true, 0.0f, 0.0f, RX, RY, TOL));
-        REQUIRE(is_corner_hit(true, true, RX, RY, RX, RY, TOL));
-        REQUIRE(is_corner_hit(true, true, RX, 0.0f, RX, RY, TOL));
-        REQUIRE(is_corner_hit(true, true, 3.0f, 2.0f, RX, RY, TOL));
+        REQUIRE(is_corner_hit(true, true, 0.0f, 0.0f, kRx, kRy, kTol));
+        REQUIRE(is_corner_hit(true, true, kRx, kRy, kRx, kRy, kTol));
+        REQUIRE(is_corner_hit(true, true, kRx, 0.0f, kRx, kRy, kTol));
+        REQUIRE(is_corner_hit(true, true, 3.0f, 2.0f, kRx, kRy, kTol));
     }
 
     SECTION("one wall is just a wall") {
-        REQUIRE_FALSE(is_corner_hit(true, false, 0.0f, 0.0f, RX, RY, TOL));
-        REQUIRE_FALSE(is_corner_hit(false, true, 0.0f, 0.0f, RX, RY, TOL));
-        REQUIRE_FALSE(is_corner_hit(false, false, 0.0f, 0.0f, RX, RY, TOL));
+        REQUIRE_FALSE(is_corner_hit(true, false, 0.0f, 0.0f, kRx, kRy, kTol));
+        REQUIRE_FALSE(is_corner_hit(false, true, 0.0f, 0.0f, kRx, kRy, kTol));
+        REQUIRE_FALSE(is_corner_hit(false, false, 0.0f, 0.0f, kRx, kRy, kTol));
     }
 
     SECTION("both axes turning far apart is not a corner") {
         // The near miss a coarse tick would otherwise report: both fold indices
         // moved, but the sprite is nowhere near a corner on one axis.
-        REQUIRE_FALSE(is_corner_hit(true, true, 0.0f, RY / 2.0f, RX, RY, TOL));
-        REQUIRE_FALSE(is_corner_hit(true, true, RX / 2.0f, 0.0f, RX, RY, TOL));
-        REQUIRE_FALSE(is_corner_hit(true, true, TOL + 1.0f, TOL + 1.0f, RX, RY, TOL));
+        REQUIRE_FALSE(is_corner_hit(true, true, 0.0f, kRy / 2.0f, kRx, kRy, kTol));
+        REQUIRE_FALSE(is_corner_hit(true, true, kRx / 2.0f, 0.0f, kRx, kRy, kTol));
+        REQUIRE_FALSE(is_corner_hit(true, true, kTol + 1.0f, kTol + 1.0f, kRx, kRy, kTol));
     }
 }
 
 TEST_CASE("Bouncing printer: sprite leaves room to bounce at every breakpoint",
           "[screensaver][bounce_math]") {
-    using helix::screensaver_bounce::MIN_RANGE_PX;
+    using helix::screensaver_bounce::kMinRangePx;
     using helix::screensaver_bounce::sprite_size_for;
 
     struct Panel {
@@ -1383,8 +1383,8 @@ TEST_CASE("Bouncing printer: sprite leaves room to bounce at every breakpoint",
         const int sprite = sprite_size_for(panel.w, panel.h);
         INFO("panel " << panel.w << "x" << panel.h << " sprite " << sprite);
         REQUIRE(sprite > 0);
-        REQUIRE(panel.w - sprite >= MIN_RANGE_PX);
-        REQUIRE(panel.h - sprite >= MIN_RANGE_PX);
+        REQUIRE(panel.w - sprite >= kMinRangePx);
+        REQUIRE(panel.h - sprite >= kMinRangePx);
     }
 
     // A panel with no room to bounce declines rather than pinning the sprite.
@@ -1470,8 +1470,8 @@ TEST_CASE_METHOD(
 
     mgr.start(ScreensaverType::PIPES_3D);
     REQUIRE(mgr.is_active());
-    CHECK(default_refr_timer_period() == helix::ui::SAVER_FAST_PERIOD);
-    CHECK(anim_timer_period() == helix::ui::SAVER_FAST_PERIOD);
+    CHECK(default_refr_timer_period() == helix::ui::kSaverFastPeriod);
+    CHECK(anim_timer_period() == helix::ui::kSaverFastPeriod);
 
     auto* pipes =
         static_cast<helix::ui::SaverBase*>(helix::ScreensaverManagerTestAccess::active(mgr));
@@ -1482,8 +1482,8 @@ TEST_CASE_METHOD(
 
     mgr.stop();
     CHECK_FALSE(helix::active_refresh_period_hold().is_held());
-    CHECK(default_refr_timer_period() == GLOBAL_PERIOD_MS);
-    CHECK(anim_timer_period() == GLOBAL_PERIOD_MS);
+    CHECK(default_refr_timer_period() == kGlobalPeriodMs);
+    CHECK(anim_timer_period() == kGlobalPeriodMs);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture,
@@ -1503,7 +1503,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         const auto all_sprites = ToasterAccess::sprites(ss);
         REQUIRE(all_sprites.size() > 10);
         CHECK(ss.level_count() == 4);
-        CHECK(SaverTestAccess::timer(ss)->period == helix::ui::SAVER_FAST_PERIOD);
+        CHECK(SaverTestAccess::timer(ss)->period == helix::ui::kSaverFastPeriod);
         for (int i = 0; i < 10; i++) {
             lv_tick_inc(400);
             run_toaster_tick(ss);
@@ -1554,7 +1554,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         REQUIRE(ss.is_active());
         CHECK(ss.level_count() == 4);
         CHECK(StarAccess::active_star_count(ss) == 150);
-        CHECK(SaverTestAccess::timer(ss)->period == helix::ui::SAVER_FAST_PERIOD);
+        CHECK(SaverTestAccess::timer(ss)->period == helix::ui::kSaverFastPeriod);
         ss.request_level(1);
         CHECK(ss.level() == 1);
         CHECK(SaverTestAccess::timer(ss)->period == 33);
@@ -1579,7 +1579,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         ss.start();
         REQUIRE(ss.is_active());
         CHECK(ss.level_count() == 3);
-        CHECK(SaverTestAccess::timer(ss)->period == helix::ui::SAVER_FAST_PERIOD);
+        CHECK(SaverTestAccess::timer(ss)->period == helix::ui::kSaverFastPeriod);
         ss.request_level(1);
         CHECK(SaverTestAccess::timer(ss)->period == 33);
         ss.request_level(2);
@@ -1592,7 +1592,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         ss.start();
         REQUIRE(ss.is_active());
         CHECK(ss.level_count() == 3);
-        CHECK(SaverTestAccess::timer(ss)->period == helix::ui::SAVER_FAST_PERIOD);
+        CHECK(SaverTestAccess::timer(ss)->period == helix::ui::kSaverFastPeriod);
         ss.request_level(1);
         CHECK(ss.level() == 1);
         CHECK(SaverTestAccess::timer(ss)->period == 33);

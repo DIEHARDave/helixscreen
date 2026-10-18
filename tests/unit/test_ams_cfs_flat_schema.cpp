@@ -323,7 +323,7 @@ TEST_CASE("CFS flat schema: 'None' is absent on every text field", "[ams][cfs][f
     }
 
     SECTION("color falls back rather than parsing the sentinel") {
-        REQUIRE(s.color_rgb == AMS_DEFAULT_SLOT_COLOR);
+        REQUIRE(s.color_rgb == kAmsDefaultSlotColor);
     }
 
     SECTION("an empty material resolves no temperature") {
@@ -494,7 +494,7 @@ TEST_CASE("CFS flat schema: malformed payloads degrade, never throw", "[ams][cfs
         json box = make_flat_box_json();
         box["slots"][0]["color"] = "not-a-color";
         auto info = AmsBackendCfs::parse_box_status(box);
-        REQUIRE(info.units[0].slots[0].color_rgb == AMS_DEFAULT_SLOT_COLOR);
+        REQUIRE(info.units[0].slots[0].color_rgb == kAmsDefaultSlotColor);
     }
 }
 

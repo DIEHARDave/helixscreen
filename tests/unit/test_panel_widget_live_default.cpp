@@ -210,7 +210,7 @@ class LiveDefaultFixture : public LVGLUITestFixture {
 
     /// Let a save held by save_soon() come due.
     void settle_saves() {
-        process_lvgl(static_cast<int>(PanelWidgetConfig::SAVE_SETTLE_MS) + 100);
+        process_lvgl(static_cast<int>(PanelWidgetConfig::kSaveSettleMs) + 100);
     }
 
     PanelWidgetConfig& config(const std::string& panel) {

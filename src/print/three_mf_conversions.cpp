@@ -14,7 +14,7 @@ namespace {
 
 /// Moonraker reports mtimes as float seconds, and a converter writing them
 /// back through JSON may round the fraction.
-constexpr double MTIME_TOLERANCE_S = 0.01;
+constexpr double kMtimeToleranceS = 0.01;
 
 } // namespace
 
@@ -63,7 +63,7 @@ bool current_and_listed(const Conversion& c,
         return false;
     }
     return source->second->size == c.source_size &&
-           std::fabs(source->second->modified - c.source_mtime) <= MTIME_TOLERANCE_S;
+           std::fabs(source->second->modified - c.source_mtime) <= kMtimeToleranceS;
 }
 
 std::map<std::string, const ListedFile*> index_listing(const std::vector<ListedFile>& listed) {

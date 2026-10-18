@@ -163,7 +163,7 @@ void PrinterImageTaggerOverlay::refresh() {
     const std::string text = session_.done()
                                  ? prompt_text(p)
                                  : fmt::format("{} ({}/{})", prompt_text(p), session_.step() + 1,
-                                               ImageTagSession::PROMPT_COUNT);
+                                               ImageTagSession::kPromptCount);
     lv_subject_copy_string(&prompt_subject_, text.c_str());
     lv_subject_set_int(&reviewing_subject_, session_.done() ? 1 : 0);
     lv_subject_set_int(&can_skip_subject_, session_.can_skip() ? 1 : 0);

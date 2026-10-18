@@ -32,59 +32,59 @@ struct MazeLevel {
 };
 
 /// The ladder, most expensive level first.
-inline constexpr MazeLevel MAZE_LEVELS[] = {
-    {SAVER_FAST_PERIOD, 1, true}, {33, 2, true}, {33, 2, false}, {50, 4, false}, {66, 4, false},
+inline constexpr MazeLevel kMazeLevels[] = {
+    {kSaverFastPeriod, 1, true}, {33, 2, true}, {33, 2, false}, {50, 4, false}, {66, 4, false},
 };
 
-inline constexpr size_t MAZE_LEVEL_COUNT = std::size(MAZE_LEVELS);
+inline constexpr size_t kMazeLevelCount = std::size(kMazeLevels);
 
 /// Half the vertical field of view as a tangent: 1 is 90 degrees, the original's.
-inline constexpr float MAZE_VFOV_HALF_TAN = 1.0f;
+inline constexpr float kMazeVfovHalfTan = 1.0f;
 /// Half the widest horizontal field of view as a tangent: tan 60 degrees, 120 across. A frame
 /// wider than that ratio narrows its vertical view instead of bending further at the edges.
-inline constexpr float MAZE_HFOV_MAX_HALF_TAN = 1.7320508f;
+inline constexpr float kMazeHfovMaxHalfTan = 1.7320508f;
 
 /// Focal length in pixels of a w x h view: square pixels, 90 degrees vertically unless that
 /// would see more than 120 degrees across.
 inline float maze_focal(uint32_t w, uint32_t h) {
-    const float vertical = static_cast<float>(h) * 0.5f / MAZE_VFOV_HALF_TAN;
-    const float horizontal = static_cast<float>(w) * 0.5f / MAZE_HFOV_MAX_HALF_TAN;
+    const float vertical = static_cast<float>(h) * 0.5f / kMazeVfovHalfTan;
+    const float horizontal = static_cast<float>(w) * 0.5f / kMazeHfovMaxHalfTan;
     return vertical > horizontal ? vertical : horizontal;
 }
 
-/// Distance fog: a surface d tiles away keeps k / MAZE_FOG_ONE of its colour and takes the
-/// rest from MAZE_FOG_TINT, with k = round(32 * (FLOOR + (1 - FLOOR) * exp(-(d - START) / SCALE))).
-inline constexpr uint32_t MAZE_FOG_ONE = 32;
-inline constexpr float MAZE_FOG_START = 0.5f;
-inline constexpr float MAZE_FOG_SCALE = 5.0f;
-inline constexpr float MAZE_FOG_FLOOR = 0.1f;
-inline constexpr Rgb MAZE_FOG_TINT{6, 6, 10};
-/// The renderer reads k from a table of MAZE_FOG_SLOTS depths, MAZE_FOG_STEPS_PER_TILE a tile;
-/// the textured floor and ceiling from MAZE_FOG_BANDS pre-fogged copies of their textures.
-inline constexpr int MAZE_FOG_STEPS_PER_TILE = 4;
-inline constexpr int MAZE_FOG_SLOTS = 128;
-inline constexpr int MAZE_FOG_BANDS = 16;
-/// Faces that run east-west keep this much of their light, out of MAZE_FOG_ONE, as
+/// Distance fog: a surface d tiles away keeps k / kMazeFogOne of its colour and takes the
+/// rest from kMazeFogTint, with k = round(32 * (FLOOR + (1 - FLOOR) * exp(-(d - START) / SCALE))).
+inline constexpr uint32_t kMazeFogOne = 32;
+inline constexpr float kMazeFogStart = 0.5f;
+inline constexpr float kMazeFogScale = 5.0f;
+inline constexpr float kMazeFogFloor = 0.1f;
+inline constexpr Rgb kMazeFogTint{6, 6, 10};
+/// The renderer reads k from a table of kMazeFogSlots depths, kMazeFogStepsPerTile a tile;
+/// the textured floor and ceiling from kMazeFogBands pre-fogged copies of their textures.
+inline constexpr int kMazeFogStepsPerTile = 4;
+inline constexpr int kMazeFogSlots = 128;
+inline constexpr int kMazeFogBands = 16;
+/// Faces that run east-west keep this much of their light, out of kMazeFogOne, as
 /// Wolfenstein drew them.
-inline constexpr uint32_t MAZE_SIDE_K = 21;
+inline constexpr uint32_t kMazeSideK = 21;
 /// The floor and ceiling of the flat levels, before fog.
-inline constexpr Rgb MAZE_FLAT_FLOOR{130, 86, 48};
-inline constexpr Rgb MAZE_FLAT_CEILING{175, 172, 165};
+inline constexpr Rgb kMazeFlatFloor{130, 86, 48};
+inline constexpr Rgb kMazeFlatCeiling{175, 172, 165};
 
-/// Fog brightness, out of MAZE_FOG_ONE, of a surface `depth` tiles away.
+/// Fog brightness, out of kMazeFogOne, of a surface `depth` tiles away.
 uint32_t maze_fog_k(float depth);
 /// The fog table slot holding `depth`, clamped to the table.
 inline int maze_fog_slot(float depth) {
-    const float s = depth * static_cast<float>(MAZE_FOG_STEPS_PER_TILE);
+    const float s = depth * static_cast<float>(kMazeFogStepsPerTile);
     if (!(s > 0.0f)) {
         return 0;
     }
-    return s >= static_cast<float>(MAZE_FOG_SLOTS - 1) ? MAZE_FOG_SLOTS - 1 : static_cast<int>(s);
+    return s >= static_cast<float>(kMazeFogSlots - 1) ? kMazeFogSlots - 1 : static_cast<int>(s);
 }
 /// The depth at the centre of `depth`'s table slot: the depth the renderer fogs it as.
 inline float maze_fog_slot_depth(float depth) {
     return (static_cast<float>(maze_fog_slot(depth)) + 0.5f) /
-           static_cast<float>(MAZE_FOG_STEPS_PER_TILE);
+           static_cast<float>(kMazeFogStepsPerTile);
 }
 /// `c` at fog brightness `k`: (c * k + tint * (32 - k) + 16) >> 5 per channel.
 Rgb maze_fog(Rgb c, uint32_t k);
@@ -102,16 +102,16 @@ enum class MazeTile : uint8_t {
 class MazeMap {
   public:
     /// Interior walls of a maze that get a picture, each with its own index.
-    static constexpr int PICTURE_WALLS = 16;
+    static constexpr int kPictureWalls = 16;
     /// open_up() opens a wall out of this share of the perfect maze's dead ends...
-    static constexpr float BRAID_SHARE = 0.5f;
+    static constexpr float kBraidShare = 0.5f;
     /// ...then this many more walls between two cells...
-    static constexpr int EXTRA_OPENINGS = 6;
+    static constexpr int kExtraOpenings = 6;
     /// ...and carves this many rooms, or one more on a coin flip.
-    static constexpr int ROOMS_MIN = 2;
+    static constexpr int kRoomsMin = 2;
 
     /// Carves a perfect maze (no loops, every cell reachable) of `cells` x `cells` with a
-    /// recursive backtracker, and hangs PICTURE_WALLS pictures on interior walls.
+    /// recursive backtracker, and hangs kPictureWalls pictures on interior walls.
     void generate(int cells, std::minstd_rand& rng);
 
     /**
@@ -160,7 +160,7 @@ class MazeMap {
     }
     /// Marks the walls joined to the outer ring.
     void label_walls();
-    /// Hangs every picture index 0..PICTURE_WALLS-1 the map lacks on a wall facing open floor.
+    /// Hangs every picture index 0..kPictureWalls-1 the map lacks on a wall facing open floor.
     void hang_pictures(std::minstd_rand& rng);
     /// True when every wall tile round cell `c` is a boundary wall.
     bool walled_by_boundary(int c) const;
@@ -184,8 +184,8 @@ class MazeMap {
 
 /// Cell step of each heading: 0 east (+x), 1 south (+y), 2 west, 3 north. Map y grows down,
 /// so a heading + 1 is a right turn.
-inline constexpr int HEADING_DX[4] = {1, 0, -1, 0};
-inline constexpr int HEADING_DY[4] = {0, 1, 0, -1};
+inline constexpr int kHeadingDx[4] = {1, 0, -1, 0};
+inline constexpr int kHeadingDy[4] = {0, 1, 0, -1};
 
 /// Where the camera is and which way it looks.
 struct MazePose {
@@ -220,13 +220,13 @@ enum class WalkEvent : uint8_t {
 class MazeWalker {
   public:
     /// One cell, doorway to doorway: two tiles.
-    static constexpr uint32_t DEFAULT_MOVE_MS = 650;
+    static constexpr uint32_t kDefaultMoveMs = 650;
     /// A quarter turn on the spot, at the start and in dead ends.
-    static constexpr uint32_t DEFAULT_TURN_MS = 420;
+    static constexpr uint32_t kDefaultTurnMs = 420;
 
     /// Stands in the middle of cell (cx, cy) facing `heading`.
-    void reset(int cx, int cy, int heading, bool left_handed, uint32_t move_ms = DEFAULT_MOVE_MS,
-               uint32_t turn_ms = DEFAULT_TURN_MS);
+    void reset(int cx, int cy, int heading, bool left_handed, uint32_t move_ms = kDefaultMoveMs,
+               uint32_t turn_ms = kDefaultTurnMs);
 
     /// Eases to a stop at the doorway into cell (cx, cy) and stays there; (-1, -1) for none.
     void set_stop_cell(int cx, int cy) {
@@ -298,8 +298,8 @@ class MazeWalker {
     bool ease_out_ = false; ///< the segment ends at the stop cell's doorway
     Segment kind_ = Segment::START;
     int spin_quarters_ = 0; ///< signed quarter turns on the spot (START and DEAD_END)
-    uint32_t move_ms_ = DEFAULT_MOVE_MS;
-    uint32_t turn_ms_ = DEFAULT_TURN_MS;
+    uint32_t move_ms_ = kDefaultMoveMs;
+    uint32_t turn_ms_ = kDefaultTurnMs;
     uint32_t progress_ms_ = 0;
     uint32_t duration_ms_ = 1;
     uint32_t arrive_ms_ = 0;
@@ -338,7 +338,7 @@ struct MazeImage {
 };
 
 /// Most pictures a maze hangs; picture walls beyond that repeat them.
-inline constexpr size_t MAZE_MAX_PICTURES = 12;
+inline constexpr size_t kMazeMaxPictures = 12;
 
 /// Artwork from outside the simulation. Any of it may be empty: the logo then falls back to a
 /// drawn mark, and with no pictures the picture walls show plain brick.
@@ -362,8 +362,8 @@ MazeImage reduce_maze_image(const MazeImage& src, int max_side);
  */
 class MazeRenderer {
   public:
-    static constexpr int TEX = 64;
-    static constexpr int ROCK_FRAMES = 16;
+    static constexpr int kTex = 64;
+    static constexpr int kRockFrames = 16;
 
     /// Sizes every buffer for a w x h frame of `format` drawn from `level` down, and builds
     /// the textures and sprites.
@@ -404,7 +404,7 @@ class MazeRenderer {
     }
     /// Packed pixel at internal (x, y) of the last render, before the flip.
     uint32_t internal_pixel(uint32_t x, uint32_t y) const;
-    /// Fog brightness, out of MAZE_FOG_ONE, of the wall in internal column `x` in the last
+    /// Fog brightness, out of kMazeFogOne, of the wall in internal column `x` in the last
     /// render, the darker east-west side included.
     uint32_t wall_fog_k(uint32_t x) const {
         return wall_k_[x];
@@ -419,12 +419,12 @@ class MazeRenderer {
     /// filled.
     template <typename Px> struct Store {
         std::vector<Px> frame;      ///< column-major internal frame
-        std::vector<Px> textures;   ///< each TEX x TEX, column-major: [u * TEX + v]
+        std::vector<Px> textures;   ///< each kTex x kTex, column-major: [u * kTex + v]
         std::vector<Px> sprites;    ///< laid out the same; sprite_key<Px>() draws nothing
         std::vector<Px> ceil_rows;  ///< flat ceiling colour per internal row, fogged
         std::vector<Px> floor_rows; ///< flat floor colour per internal row, fogged
         std::vector<Px> row;        ///< one output row, built once per internal row
-        /// MAZE_FOG_BANDS fogged floor textures, then as many ceilings; textured levels only.
+        /// kMazeFogBands fogged floor textures, then as many ceilings; textured levels only.
         std::vector<Px> fog_bands;
         /// Per k, the tint's share in the format's working form: two words, see shade().
         std::vector<uint32_t> fog_tint;
@@ -500,12 +500,12 @@ class MazeRenderer {
 class MazeSim {
   public:
     static constexpr int CELLS = 12;
-    static constexpr int LOGO_COUNT = 5;
-    static constexpr int ROCK_COUNT = 2;
-    static constexpr uint32_t FLIP_MS = 600;
-    static constexpr uint32_t EXIT_HOLD_MS = 1200;
+    static constexpr int kLogoCount = 5;
+    static constexpr int kRockCount = 2;
+    static constexpr uint32_t kFlipMs = 600;
+    static constexpr uint32_t kExitHoldMs = 1200;
 
-    static constexpr const auto& LEVELS = MAZE_LEVELS;
+    static constexpr const auto& kLevels = kMazeLevels;
 
     void init(const FrameTarget& frame, std::minstd_rand& rng, size_t level, const MazeArt& art);
     void request_level(size_t level) {

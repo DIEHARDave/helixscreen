@@ -47,7 +47,7 @@ class AddPrinterFixture : public LVGLUITestFixture {
         DisplaySettingsManager::instance().set_animations_enabled(false);
 
         auto& nav = NavigationManager::instance();
-        lv_obj_t* panels[UI_PANEL_COUNT] = {nullptr};
+        lv_obj_t* panels[kUiPanelCount] = {nullptr};
         panels[static_cast<int>(PanelId::Home)] = lv_obj_create(test_screen());
         panels[static_cast<int>(PanelId::Settings)] = lv_obj_create(test_screen());
         lv_obj_add_flag(panels[static_cast<int>(PanelId::Settings)], LV_OBJ_FLAG_HIDDEN);

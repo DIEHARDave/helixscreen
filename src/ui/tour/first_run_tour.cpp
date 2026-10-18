@@ -57,10 +57,10 @@ bool FirstRunTour::should_auto_start() {
         spdlog::debug("[FirstRunTour] gate: fresh_auto_start");
         return true;
     }
-    if (last_seen < TOUR_VERSION) {
+    if (last_seen < kTourVersion) {
         spdlog::debug("[FirstRunTour] gate: version_bumped_since_last_seen "
                       "(last_seen={}, current={})",
-                      last_seen, TOUR_VERSION);
+                      last_seen, kTourVersion);
         return true;
     }
     spdlog::debug("[FirstRunTour] gate: already_completed_current_version");
@@ -70,9 +70,9 @@ bool FirstRunTour::should_auto_start() {
 void FirstRunTour::mark_completed() {
     auto* cfg = ::helix::Config::get_instance();
     cfg->set<bool>("/tour/completed", true);
-    cfg->set<int>("/tour/last_seen_version", TOUR_VERSION);
+    cfg->set<int>("/tour/last_seen_version", kTourVersion);
     cfg->save();
-    spdlog::debug("[FirstRunTour] Marked completed (version={})", TOUR_VERSION);
+    spdlog::debug("[FirstRunTour] Marked completed (version={})", kTourVersion);
 }
 
 void FirstRunTour::maybe_start() {

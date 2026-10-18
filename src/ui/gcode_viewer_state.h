@@ -80,12 +80,12 @@ class GCodeViewerState {
         // HELIX_GCODE_MODE handling lives in decide_render_mode() (pure, unit
         // tested); this only applies the result and logs why.
 #ifdef ENABLE_3D_RENDERER
-        constexpr bool HAVE_3D_RENDERER = true;
+        constexpr bool kHave3dRenderer = true;
 #else
-        constexpr bool HAVE_3D_RENDERER = false;
+        constexpr bool kHave3dRenderer = false;
 #endif
         const char* mode_env = std::getenv("HELIX_GCODE_MODE");
-        const auto rm = helix::gcode_viewer::decide_render_mode(mode_env, HAVE_3D_RENDERER);
+        const auto rm = helix::gcode_viewer::decide_render_mode(mode_env, kHave3dRenderer);
         render_mode_ = rm.mode;
         switch (rm.reason) {
         case helix::gcode_viewer::RenderModeReason::EnvForced3D:
@@ -353,19 +353,19 @@ class GCodeViewerState {
     // event, and the user sees a visually-frozen 2D render despite numeric
     // progress text updating correctly.
     //
-    // Tick: WATCHDOG_INTERVAL_MS (default 2s). On each tick, if the 2D
+    // Tick: kWatchdogIntervalMs (default 2s). On each tick, if the 2D
     // renderer reports needs_more_frames() AND its cached_up_to_layer_ has
     // not advanced since the previous tick, force one lv_obj_invalidate(obj).
     // The kick is idempotent: when the renderer is healthy each tick simply
     // observes a moving cached_up_to_layer_ and does nothing.
     // ========================================================================
-    static constexpr uint32_t WATCHDOG_INTERVAL_MS = 2000;
+    static constexpr uint32_t kWatchdogIntervalMs = 2000;
     // Consecutive confirmed-stall ticks tolerated before the watchdog gives up
-    // and surfaces an error. At WATCHDOG_INTERVAL_MS this is ~60s — generous vs.
+    // and surfaces an error. At kWatchdogIntervalMs this is ~60s — generous vs.
     // the 1-2 ticks a real dropped-invalidate needs to recover, but it stops the
     // multi-hour thrash seen when an EXTERNAL failure (disk full) wedges the
     // render permanently (bundle YZQ47HQ6: 4000+ kicks over ~2h).
-    static constexpr int WATCHDOG_MAX_STALL_KICKS = 30;
+    static constexpr int kWatchdogMaxStallKicks = 30;
     lv_timer_t* watchdog_timer_{nullptr};
     int watchdog_last_cached_layer_{-2}; ///< -2 sentinel = never sampled
     int watchdog_last_target_layer_{-2}; ///< -2 sentinel = never sampled

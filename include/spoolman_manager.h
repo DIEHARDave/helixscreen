@@ -234,10 +234,10 @@ class SpoolmanManager {
     int poll_refcount_ = 0;
 
     // Circuit breaker / debounce
-    static constexpr int CB_FAILURE_THRESHOLD = 3;
-    static constexpr uint32_t CB_BACKOFF_MS = 30000;
-    static constexpr uint32_t DEBOUNCE_MS = 5000;
-    static constexpr uint32_t POLL_INTERVAL_MS = 30000;
+    static constexpr int kCbFailureThreshold = 3;
+    static constexpr uint32_t kCbBackoffMs = 30000;
+    static constexpr uint32_t kDebounceMs = 5000;
+    static constexpr uint32_t kPollIntervalMs = 30000;
 
     uint32_t last_refresh_ms_ = 0;
     int consecutive_failures_ = 0;

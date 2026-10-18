@@ -312,7 +312,7 @@ Two recovery paths keep a firmware batch from being stranded half-done:
   `ACTION=END` at connect when the `doing` interlock is set, no print is in flight, and no local
   batch is active (`filament_batch_in_flight() == false`).
 
-The batch's single RPC gets `slots.size() * BATCH_FEED_OP_TIMEOUT_MS` (150 s per head, the same
+The batch's single RPC gets `slots.size() * kBatchFeedOpTimeoutMs` (150 s per head, the same
 headroom one feed gets): a four-head cold batch heats every nozzle from ambient. The backend
 tracks the dispatched heads in its `BatchPlan`, whose cursor advances only as a head reaches the
 direction's terminal channel state; a head that hits a `*_fail` state clears the firmware batch
@@ -359,7 +359,7 @@ conservative prefix/suffix fallback for unknown future states
   an unload started anywhere else (Filament panel, batch picker, a macro) would otherwise
   read as the first half of a swap and draw the 6-step load list. A single-head
   `AUTO_FEEDING` blocks until the feed is over, so its answer ends the held action: OK
-  raises `EVENT_LOAD_COMPLETE` / `EVENT_UNLOAD_COMPLETE`, an error raises `EVENT_ERROR`,
+  raises `kEventLoadComplete` / `kEventUnloadComplete`, an error raises `kEventError`,
   and a timeout raises nothing (`src/printer/ams_backend_snapmaker.cpp#dispatch_feed`).
   That covers the loads `FEED_AUTO` declines with an OK and no frame; the ones visible in
   the channel snapshot (already loaded, feeder not in automatic mode, motion sensor

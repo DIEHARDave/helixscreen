@@ -58,7 +58,7 @@ PreheatDecision decide_preheat(const PreheatInputs& in) {
         return {};
     }
 
-    int send = in.material_c.value_or(app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP);
+    int send = in.material_c.value_or(app_constants::ams::kDefaultLoadPreheatTemp);
     send = std::max(send, floor);
     int wait = filament_op_nozzle_temp(send, in.held_c);
     if (in.ceiling_c > 0) {
@@ -69,7 +69,7 @@ PreheatDecision decide_preheat(const PreheatInputs& in) {
 }
 
 bool preheat_reached(int current_c, int wait_c, int floor_c) {
-    return current_c >= std::max(wait_c - PREHEAT_MARGIN_C, floor_c);
+    return current_c >= std::max(wait_c - kPreheatMarginC, floor_c);
 }
 
 FilamentOpHeater* get_filament_op_heater() {
@@ -106,7 +106,7 @@ bool works_the_melt_zone(FilamentHeatOp op) {
            op == FilamentHeatOp::Retract;
 }
 
-constexpr uint32_t DEADLINE_CHECK_MS = 1000;
+constexpr uint32_t kDeadlineCheckMs = 1000;
 
 } // namespace
 
@@ -335,7 +335,7 @@ void FilamentOpHeater::start_heating(Pending p, int send_c, const std::string& m
     const int wait_c = p.wait_c;
     // A ticket whose op never reported back (an error a surface swallowed) is
     // dropped once it is older than any op could run.
-    const TimePoint stale = now() - 2 * BACKEND_WATCH_TIMEOUT;
+    const TimePoint stale = now() - 2 * kBackendWatchTimeout;
     heated_.erase(std::remove_if(heated_.begin(), heated_.end(),
                                  [stale](const Heated& h) { return h.at < stale; }),
                   heated_.end());
@@ -386,7 +386,7 @@ void FilamentOpHeater::start_heating(Pending p, int send_c, const std::string& m
         [](lv_timer_t* t) {
             static_cast<FilamentOpHeater*>(lv_timer_get_user_data(t))->check_deadlines();
         },
-        DEADLINE_CHECK_MS, this);
+        kDeadlineCheckMs, this);
 
     report_heating();
 }
@@ -472,7 +472,7 @@ void FilamentOpHeater::on_target(int target_deci) {
     // target already seen means the preheat was undone (cleared by the user, a
     // heater fault, a Klipper shutdown). Such a preheat would never complete.
     const int target = temperature::deci_to_degrees(target_deci);
-    if (target >= pending_->wait_c - PREHEAT_MARGIN_C) {
+    if (target >= pending_->wait_c - kPreheatMarginC) {
         pending_->target_seen = true;
         return;
     }
@@ -527,12 +527,12 @@ void FilamentOpHeater::check_deadlines() {
         return;
     }
     const TimePoint t = now();
-    if (!pending_->target_seen && t - pending_->started > TARGET_LAND_TIMEOUT) {
+    if (!pending_->target_seen && t - pending_->started > kTargetLandTimeout) {
         abandon("The nozzle target never arrived", lv_tr("Filament operation timed out"),
                 /*restore=*/true);
         return;
     }
-    if (t - pending_->started > PREHEAT_TIMEOUT) {
+    if (t - pending_->started > kPreheatTimeout) {
         abandon("The nozzle never reached temperature", lv_tr("Filament operation timed out"),
                 /*restore=*/true);
     }
@@ -611,7 +611,7 @@ void FilamentOpHeater::watch_backend_completion(FilamentOpTicket ticket) {
     // earlier op is not this one starting.
     lv_subject_t* action = AmsState::instance().get_ams_action_subject();
     const int current = action ? lv_subject_get_int(action) : -1;
-    watches_.push_back(Watch{ticket, current, false, now() + BACKEND_WATCH_TIMEOUT});
+    watches_.push_back(Watch{ticket, current, false, now() + kBackendWatchTimeout});
     if (!action_observer_) {
         action_observer_ = observe<int>(
             action, this, [](FilamentOpHeater* self, int value) { self->on_ams_action(value); },

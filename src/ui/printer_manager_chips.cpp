@@ -166,7 +166,7 @@ void open_timelapse() {
 
 using C = CapChip;
 
-constexpr std::array<CapChipSpec, CAP_CHIP_COUNT> SPECS = {{
+constexpr std::array<CapChipSpec, kCapChipCount> kSpecs = {{
     {C::Kinematics, "pm_chip_kinematics", "pm_chip_text_kinematics", TR_NOOP("Kinematics"),
      TR_NOOP("How the printer's axes are driven, as its Klipper config declares it. HelixScreen "
              "uses it to decide how homing works and which belt and motion tools apply."),
@@ -342,8 +342,8 @@ constexpr std::array<CapChipSpec, CAP_CHIP_COUNT> SPECS = {{
 }};
 
 constexpr bool specs_in_enum_order() {
-    for (size_t i = 0; i < CAP_CHIP_COUNT; ++i) {
-        if (static_cast<size_t>(SPECS[i].chip) != i) {
+    for (size_t i = 0; i < kCapChipCount; ++i) {
+        if (static_cast<size_t>(kSpecs[i].chip) != i) {
             return false;
         }
     }
@@ -352,12 +352,12 @@ constexpr bool specs_in_enum_order() {
 
 } // namespace
 
-const std::array<CapChipSpec, CAP_CHIP_COUNT>& cap_chip_specs() {
-    return SPECS;
+const std::array<CapChipSpec, kCapChipCount>& cap_chip_specs() {
+    return kSpecs;
 }
 
 const CapChipSpec* find_cap_chip_spec(std::string_view name) {
-    for (const auto& spec : SPECS) {
+    for (const auto& spec : kSpecs) {
         if (name == spec.name) {
             return &spec;
         }

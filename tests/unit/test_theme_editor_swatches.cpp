@@ -50,7 +50,7 @@ class ThemeEditorSwatchFixture : public LVGLUITestFixture {
         }
     }
 
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels_{};
+    std::array<lv_obj_t*, kUiPanelCount> panels_{};
 };
 
 uint32_t rgb(lv_color_t c) {

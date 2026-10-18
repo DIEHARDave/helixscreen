@@ -339,7 +339,7 @@ it whenever that leaves room above the sensor.
 Each toolhead carries its tool label as a corner badge (`ui_toolhead_badge.h`):
 the spool tool badge's look from the shared `ams_slot_tool_badge_*` tokens and
 `tool_badge_colors()`, in the glyph's lower-right corner for every nozzle style
-(`TOOLHEAD_BADGE_CORNER`), clear of the tube entering at the top center.
+(`kToolheadBadgeCorner`), clear of the tube entering at the top center.
 `toolhead_bounds()` gives each style's drawn extent. The overview uses the
 same badge.
 

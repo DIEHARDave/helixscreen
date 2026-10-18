@@ -448,14 +448,14 @@ inline void destroy_static_panels() {
 /// Marks an object whose CLICKABLE disable_widget_clicks_recursive() removed,
 /// so enable_widget_clicks_recursive() restores exactly those and leaves an
 /// object that was never clickable alone.
-constexpr lv_obj_flag_t EDIT_CLICK_SUPPRESSED_FLAG = LV_OBJ_FLAG_USER_2;
+constexpr lv_obj_flag_t kEditClickSuppressedFlag = LV_OBJ_FLAG_USER_2;
 
 /**
  * @brief Recursively remove CLICKABLE flag from all descendants of obj
  *
  * Used by edit mode to prevent widget click handlers from firing
  * while grid rearrangement is in progress. Each object it disarms is marked
- * with EDIT_CLICK_SUPPRESSED_FLAG for enable_widget_clicks_recursive().
+ * with kEditClickSuppressedFlag for enable_widget_clicks_recursive().
  *
  * @param obj Parent object whose descendants will have CLICKABLE removed
  */
@@ -469,7 +469,7 @@ inline void disable_widget_clicks_recursive(lv_obj_t* obj) {
             continue;
         if (lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE)) {
             lv_obj_remove_flag(child, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_add_flag(child, EDIT_CLICK_SUPPRESSED_FLAG);
+            lv_obj_add_flag(child, kEditClickSuppressedFlag);
         }
         disable_widget_clicks_recursive(child);
     }
@@ -489,8 +489,8 @@ inline void enable_widget_clicks_recursive(lv_obj_t* obj) {
         lv_obj_t* child = lv_obj_get_child(obj, static_cast<int32_t>(i));
         if (!child)
             continue;
-        if (lv_obj_has_flag(child, EDIT_CLICK_SUPPRESSED_FLAG)) {
-            lv_obj_remove_flag(child, EDIT_CLICK_SUPPRESSED_FLAG);
+        if (lv_obj_has_flag(child, kEditClickSuppressedFlag)) {
+            lv_obj_remove_flag(child, kEditClickSuppressedFlag);
             lv_obj_add_flag(child, LV_OBJ_FLAG_CLICKABLE);
         }
         enable_widget_clicks_recursive(child);

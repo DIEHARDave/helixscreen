@@ -49,7 +49,7 @@ struct WaitResult {
 
 #if !defined(ESP_PLATFORM)
 // install.sh prints a handful of lines; anything past this is noise.
-constexpr size_t MAX_SCRIPT_OUTPUT_BYTES = 16 * 1024;
+constexpr size_t kMaxScriptOutputBytes = 16 * 1024;
 
 /**
  * @brief Append whatever the child has written so far; fd is non-blocking.
@@ -59,9 +59,9 @@ static void drain_output(int fd, std::string& out) {
     while (true) {
         ssize_t n = read(fd, buf, sizeof(buf));
         if (n > 0) {
-            if (out.size() < MAX_SCRIPT_OUTPUT_BYTES) {
+            if (out.size() < kMaxScriptOutputBytes) {
                 out.append(buf,
-                           std::min(static_cast<size_t>(n), MAX_SCRIPT_OUTPUT_BYTES - out.size()));
+                           std::min(static_cast<size_t>(n), kMaxScriptOutputBytes - out.size()));
             }
             continue;
         }
@@ -103,7 +103,7 @@ static void log_script_output(const std::string& output, bool succeeded) {
  */
 static WaitResult wait_for_child_with_timeout(pid_t pid, int timeout_seconds,
                                               const char* operation_name, int out_fd) {
-    constexpr int POLL_INTERVAL_MS = 100;
+    constexpr int kPollIntervalMs = 100;
     WaitResult result;
 
     int status = 0;
@@ -150,7 +150,7 @@ static WaitResult wait_for_child_with_timeout(pid_t pid, int timeout_seconds,
         }
 
         // Sleep before next poll
-        std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INTERVAL_MS));
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }
 }
 
@@ -335,7 +335,7 @@ namespace {
 // install.sh's --uninstall / --uninstall-auto exit code for "the plugin was
 // removed, but a config file was skipped or failed during the phase-tracking
 // strip" (moonraker-plugin/install.sh, moonraker-plugin/strip_phase_tracking.py).
-constexpr int UNINSTALL_EXIT_NEEDS_ATTENTION = 2;
+constexpr int kUninstallExitNeedsAttention = 2;
 } // namespace
 
 void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
@@ -397,7 +397,7 @@ void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
         if (callback) {
             callback(UninstallOutcome::SUCCESS, lv_tr("Plugin uninstalled successfully."));
         }
-    } else if (result.exit_code == UNINSTALL_EXIT_NEEDS_ATTENTION) {
+    } else if (result.exit_code == kUninstallExitNeedsAttention) {
         state_.store(PluginInstallState::NEEDS_ATTENTION);
         spdlog::warn("[PluginInstaller] Uninstallation removed the plugin but left a config "
                      "file needing attention (exit code {})",
@@ -418,7 +418,7 @@ void HelixPluginInstaller::uninstall_local(UninstallCallback callback) {
 }
 
 std::string HelixPluginInstaller::get_remote_install_command() const {
-    return std::string("curl -sSL ") + REMOTE_INSTALL_URL + " | bash";
+    return std::string("curl -sSL ") + kRemoteInstallUrl + " | bash";
 }
 
 std::string HelixPluginInstaller::get_install_script_path() const {
@@ -505,13 +505,13 @@ bool HelixPluginInstaller::should_prompt_install() const {
     }
 
     // If user previously declined, don't prompt
-    bool declined = config->get<bool>(PREF_INSTALL_DECLINED, false);
+    bool declined = config->get<bool>(kPrefInstallDeclined, false);
     return !declined;
 }
 
 void HelixPluginInstaller::set_install_declined() {
     Config* config = Config::get_instance();
-    config->set<bool>(PREF_INSTALL_DECLINED, true);
+    config->set<bool>(kPrefInstallDeclined, true);
     config->save();
     spdlog::debug("[PluginInstaller] User declined plugin install prompt");
 }

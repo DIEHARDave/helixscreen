@@ -20,7 +20,6 @@
 
 using helix::DisplaySettingsManager;
 using helix::TimeFormat;
-using helix::ui::CLOCK_DONE_HOLD_MS;
 using helix::ui::clock_time;
 using helix::ui::ClockDate;
 using helix::ui::ClockInput;
@@ -29,6 +28,7 @@ using helix::ui::ClockMode;
 using helix::ui::ClockPrintPhase;
 using helix::ui::ClockState;
 using helix::ui::ClockTime;
+using helix::ui::kClockDoneHoldMs;
 using helix::ui::StrokeDigitSet;
 
 using helix::test::hms;
@@ -145,7 +145,7 @@ TEST_CASE("paused freezes, done holds then returns to the clock, cancelled clear
     state.step(16, in);
     CHECK(state.mode() == ClockMode::DONE);
     CHECK(state.reading().progress_pct == 100);
-    state.step(CLOCK_DONE_HOLD_MS - 100, in);
+    state.step(kClockDoneHoldMs - 100, in);
     CHECK(state.mode() == ClockMode::DONE);
     state.step(200, in);
     CHECK(state.mode() == ClockMode::CLOCK);

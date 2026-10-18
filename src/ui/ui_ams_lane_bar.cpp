@@ -269,7 +269,7 @@ static void setup_lane_bar_observers(LaneBarData* data) {
         spdlog::warn("[AmsLaneBar] Invalid slot index {}, skipping observers", data->slot_index);
         return;
     }
-    if (data->slot_index >= AmsState::MAX_SLOTS) {
+    if (data->slot_index >= AmsState::kMaxSlots) {
         // AmsState warns once for the whole overflow; this slot stays unbound.
         spdlog::debug("[AmsLaneBar] Slot {} is past the subject ceiling, left unbound",
                       data->slot_index);
@@ -522,8 +522,7 @@ void ams_lane_bar_resize(lv_obj_t* bar, int32_t bar_width, int32_t bar_height) {
     if (!bar)
         return;
     lv_obj_set_width(bar, bar_width);
-    lv_obj_set_height(bar,
-                      bar_height + ams_draw::STATUS_LINE_HEIGHT_PX + ams_draw::STATUS_LINE_GAP_PX);
+    lv_obj_set_height(bar, bar_height + ams_draw::kStatusLineHeightPx + ams_draw::kStatusLineGapPx);
     if (lv_obj_t* bg = lv_obj_find_by_name(bar, "bar_bg")) {
         lv_obj_set_size(bg, bar_width, bar_height);
     }

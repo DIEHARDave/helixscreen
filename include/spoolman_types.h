@@ -30,7 +30,7 @@
 /// Spoolman filament extra field that carries a pressure advance K. One per
 /// filament: K belongs to the material and the extruder, not to one spool.
 namespace helix {
-inline constexpr const char* SPOOLMAN_PA_EXTRA_KEY = "pressure_advance";
+inline constexpr const char* kSpoolmanPaExtraKey = "pressure_advance";
 } // namespace helix
 
 /**
@@ -127,7 +127,7 @@ struct SpoolInfo {
     int bed_temp_recommended = 0;
 
     /// Pressure advance K saved on the filament (extra field
-    /// SPOOLMAN_PA_EXTRA_KEY), nullopt when none is saved.
+    /// kSpoolmanPaExtraKey), nullopt when none is saved.
     std::optional<float> pressure_advance;
 
     /**
@@ -231,7 +231,7 @@ std::vector<SpoolInfo> filter_spools(const std::vector<SpoolInfo>& spools, const
 
 /// Sentinel recency key for a spool carrying no parseable timestamp at all.
 /// Sorts below every dated spool.
-constexpr int64_t SPOOL_RECENCY_NONE = INT64_MIN;
+constexpr int64_t kSpoolRecencyNone = INT64_MIN;
 
 /**
  * @brief Parse a Spoolman ISO 8601 timestamp to epoch seconds
@@ -258,7 +258,7 @@ std::optional<int64_t> parse_spool_timestamp(const std::string& ts);
  * never-used spool competes on its registration date and can outrank a spool
  * that was used a while ago. Never-used spools are NOT banished below used ones.
  *
- * @return Epoch seconds of the later timestamp, or SPOOL_RECENCY_NONE if the
+ * @return Epoch seconds of the later timestamp, or kSpoolRecencyNone if the
  *         spool has neither a parseable last_used nor a parseable registered.
  */
 int64_t spool_recency_key(const SpoolInfo& spool);

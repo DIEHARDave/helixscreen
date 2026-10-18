@@ -305,7 +305,7 @@ std::vector<std::unique_ptr<AmsBackend>> backends_;       // All backends
 std::vector<BackendSlotSubjects> secondary_slot_subjects_; // Per-backend subjects (index 1+)
 ```
 
-- **Primary backend (index 0)** uses the existing flat `slot_colors_[MAX_SLOTS]` and `slot_statuses_[MAX_SLOTS]` subject arrays. This preserves backward compatibility with all existing XML bindings and single-backend printers.
+- **Primary backend (index 0)** uses the existing flat `slot_colors_[kMaxSlots]` and `slot_statuses_[kMaxSlots]` subject arrays. This preserves backward compatibility with all existing XML bindings and single-backend printers.
 - **Secondary backends (index 1+)** each get a `BackendSlotSubjects` struct with dynamically allocated `lv_subject_t` vectors:
 
 ```cpp
@@ -493,7 +493,7 @@ for a write that never happened is what made this invisible for so long.
 
 Each line is transformed from its ORIGINAL text and no line needs to see any other, so a swap (`1<->2`) cannot chain. That independence is what lets the rule run file to file: `apply_to_file(in_path, out_path, remap)` holds one line at a time, so a 400MB job costs what a 4KB one does. `apply_to_string()` runs the same per-line rule over content a caller already holds; a file being printed goes through `apply_to_file()`. Byte-for-byte contract either way: unmatched lines pass through untouched, CRLF survives, and a final line with no trailing newline keeps it that way.
 
-**The warning for what it leaves.** `GcodeToolRemapper::unremapped_tool_params(line)` returns the keys of the tool-naming `KEY=VALUE` parameters on a line that the rewrite leaves alone: any key containing `EXTRUDER` or `TOOL`, a bare `T` key (MedusaHC's own `MHC_SET T=<n>`), or a `T<digits>` key. `INITIAL_TOOL` and `TOOL` are reported only when their value is not a plain number (`TOOL=T0`), because that is exactly when the rewrite leaves them. It lives beside the rewrite so the two read one key list (`TOOL_PARAM_KEYS`): a key the rewrite learns to handle stops being reported in the same change. `helix::printer::start_params_remap_leaves()` (`include/ams_remap.h`) adds the strategy half: only `GcodeRewrite` edits the file, so only it can leave a stale tool number there, and every other strategy answers empty. `PrintSelectPanel::start_macro_remap_note()` feeds it the `PRINT_START`/`START_PRINT` line the ops scan already cached for the selected file (`PrintPreparationManager::print_start_for()`, which answers only for the file the scan was built for, and which the pre-print temperature pass reads too), and the Filament Mapping dialog shows the result as a warning banner above the tool rows (`FilamentMappingModal::set_start_macro_note()`, `ui_xml/filament_mapping_modal.xml`). No scan for this file, no start line, or no reported keys means no banner.
+**The warning for what it leaves.** `GcodeToolRemapper::unremapped_tool_params(line)` returns the keys of the tool-naming `KEY=VALUE` parameters on a line that the rewrite leaves alone: any key containing `EXTRUDER` or `TOOL`, a bare `T` key (MedusaHC's own `MHC_SET T=<n>`), or a `T<digits>` key. `INITIAL_TOOL` and `TOOL` are reported only when their value is not a plain number (`TOOL=T0`), because that is exactly when the rewrite leaves them. It lives beside the rewrite so the two read one key list (`kToolParamKeys`): a key the rewrite learns to handle stops being reported in the same change. `helix::printer::start_params_remap_leaves()` (`include/ams_remap.h`) adds the strategy half: only `GcodeRewrite` edits the file, so only it can leave a stale tool number there, and every other strategy answers empty. `PrintSelectPanel::start_macro_remap_note()` feeds it the `PRINT_START`/`START_PRINT` line the ops scan already cached for the selected file (`PrintPreparationManager::print_start_for()`, which answers only for the file the scan was built for, and which the pre-print temperature pass reads too), and the Filament Mapping dialog shows the result as a warning banner above the tool rows (`FilamentMappingModal::set_start_macro_note()`, `ui_xml/filament_mapping_modal.xml`). No scan for this file, no start line, or no reported keys means no banner.
 
 The banner also follows the picks. The key list is computed once per open, but whether it shows is decided by `helix::printer::start_macro_note_shown()`, true only while the dialog's current picks move at least one tool off its own number. Those picks are read through `helix::printer::gcode_rewrite_remap()`, the same function `PrintSelectPanel::apply_remap()` builds its rewrite map with, so an auto or unmapped pick (`mapped_slot` -1) is not a move here for the same reason the rewrite leaves it alone. Identity picks rewrite no tool number and leave the start line consistent with the body, so they show nothing. `FilamentMappingModal::rebuild_rows()` publishes the visibility, and every change to the picks (a row pick, the auto-color toggle, a recalculation, a show after Cancel restored the originals) ends there. The banner is advisory: it does not block the remap, because a macro that already heats every tool it is handed is correct as sliced.
 
@@ -1175,14 +1175,14 @@ drawing is `src/ui/ui_ams_detail.cpp`.
   In front (`slot_tray` `DRAW_POST`): the translucent front wall, the right side face,
   the edges. Its x extent comes from the slot row: the outer lane lids
   (`lane_lid_half_width`) meet its corners. Spools stand on the floor, flange bottom
-  `SPOOL_FLOOR_GAP` above the floor's front edge, drawn at mid-depth; up to four slots
+  `kSpoolFloorGap` above the floor's front edge, drawn at mid-depth; up to four slots
   stand at `spool_pitch()` (72 px at 800x480) from the left, and the slot layout
   (`ams_detail_slot_layout`) reserves the box's overhang.
 - **Lid.** `lid_mode()`: no physical tray, no lid; a unit reading or a supported dryer
   gets one lid over the row; per-lane readings get one lid per lane, and each lane
   shows its humidity behind a droplet above its material label instead of the unit
   readout. The lid is a half ellipse on the chord from the front-wall top to the
-  back-wall top whose crest clears the spool tops by `LID_GAP`. Behind the spools a
+  back-wall top whose crest clears the spool tops by `kLidGap`. Behind the spools a
   tinted shell (the back wall repainted over it); in front clear glass, a denser right
   cap, one diffuse sheen (`sheen_rows`: a blurred 7 px band at profile angle 112°,
   fading in from the left cap and out before the right), the silhouette edge and the
@@ -1191,7 +1191,7 @@ drawing is `src/ui/ui_ams_detail.cpp`.
   without a lid, above the back-wall top and the spool tops. What a label reads is
   `src/printer/filament_display_name.cpp#slot_card_lines`, applied by
   `src/ui/ui_ams_slot.cpp#apply_slot_label`. With up to four lanes
-  (`SLOT_CARD_MAX_TWO_LINE_COUNT`) a named spool shows its name over its material: the name
+  (`kSlotCardMaxTwoLineCount`) a named spool shows its name over its material: the name
   is `slot_card_name()` (`spool_name`, then the Spoolman identity's `filament_name`, then
   `color_name`, with no algorithmic colour fallback), and the lower line is
   `ui::lane_material_text()` ("Empty", "--" or the material). The label drops to one line
@@ -1199,7 +1199,7 @@ drawing is `src/ui/ui_ams_detail.cpp`.
   already states the material (`helix::name_states_material`: case-insensitive, every
   material token contained in the name, so "PLA+ Bone White" states "PLA+") or a lane with
   no material (the name). With five or more lanes the label is always the material line
-  alone, and a non-Empty material is cut to `SLOT_CARD_CROWDED_MATERIAL_BYTES` (4) bytes.
+  alone, and a non-Empty material is cut to `kSlotCardCrowdedMaterialBytes` (4) bytes.
   Up to four lanes share one row. Five or more stagger so neighbours never share a row
   (`include/ui_ams_slot_layout.h#ams_stagger_row`): below the medium breakpoint they
   alternate between two rows (odd lanes nearest the spools) in `font_xs`, one line
@@ -1334,14 +1334,14 @@ Key files:
 
 **Future: multi-backend aggregation**: When multiple backends are active simultaneously (e.g., an AFC system on one toolhead + a Happy Hare on another), the overview panel should iterate all backends via `AmsState::get_backend(i)` for `i` in `0..backend_count` and aggregate their units into the card grid. The per-backend slot subject storage (`secondary_slot_subjects_`) and event routing already support this — the UI aggregation is the remaining integration point.
 
-#### Per-unit environment subjects and the `MAX_UNITS` cap
+#### Per-unit environment subjects and the `kMaxUnits` cap
 
 Every unit card binds its temperature/humidity badge to a set of seven per-unit
 subjects named `ams_env_ind_<unit>_{temp_text, humidity_text, humidity_status,
 humidity_visible, visible, drying_active, drying_text}`. `AmsState` allocates
-those statically, one set per unit, up to `AmsState::MAX_UNITS` - **16**. That value is
-`helix::AMS_MAX_UNITS` (`include/ams_types.h`), which also sizes
-`SystemPathData::MAX_UNITS`, so the widest rig the path canvas draws always has a
+those statically, one set per unit, up to `AmsState::kMaxUnits` - **16**. That value is
+`helix::kAmsMaxUnits` (`include/ams_types.h`), which also sizes
+`SystemPathData::kMaxUnits`, so the widest rig the path canvas draws always has a
 badge to bind. Each unit adds 11 registered subjects and 64 bytes of text buffers.
 
 Cards are created for **every** unit the backend reports, cap or no cap.
@@ -1355,7 +1355,7 @@ all still render - and `create_unit_cards()` logs one line naming the cap.
 the cap would then bind seven names nothing has registered: seven `No subject was
 found` parser warnings each, plus a permanently dark badge with nothing in the log
 explaining it. `AmsState` owns the cap and the registrations, so it owns the naming
-as well; raising the cap stays a one-constant change (`AMS_MAX_UNITS`).
+as well; raising the cap stays a one-constant change (`kAmsMaxUnits`).
 
 The badge is per **unit** because a unit card is; what it opens is not. Tapping it
 calls `open_environment_for_unit(unit)`, which resolves that unit's environment
@@ -1458,7 +1458,7 @@ connecting tube. The overview keeps its own overlay on the system path canvas.
 the `ams_env_ind_detail_*` subjects, which `AmsState::set_detail_env_unit()` points at one
 unit and re-mirrors on every sync. The mirror is computed straight from that unit's data
 (`compute_unit_env_indicator`), so it is right for any unit number, including those past
-`AmsState::MAX_UNITS` that have no per-unit subjects. The environment overlay watches the
+`AmsState::kMaxUnits` that have no per-unit subjects. The environment overlay watches the
 unit's per-unit subjects and, for a unit without them, the same mirror.
 
 ### Filament Mapping Card (`ui_filament_mapping_card`)
@@ -2067,7 +2067,7 @@ carry a comment saying so. Read `include/filament_op_dispatch.h` before "fixing"
 | Which tier does this operation take? | `plan_load()` / `plan_unload()` |
 | Is this a fresh load or a swap? | `plan_load()` via `needs_unload_before_load()` -> `AmsCall::ChangeTool` |
 | Can this head's Load or Unload run on this printer at all? | `AmsBackend::head_filament_ops()`, asked through `filament_action_set.h` and `notify_if_filament_op_unavailable()` |
-| Is there anything at this slot to unload? | `unload_target_is_loaded()` — actively loaded, **or** filament at the toolhead, **or** it is the current slot (the runout-recovery case, #995 / #1199). The `ACTIVE_HEAD_SLOT` sentinel (-1) counts only while the backend reports the toolhead unaccounted (#1324) |
+| Is there anything at this slot to unload? | `unload_target_is_loaded()` — actively loaded, **or** filament at the toolhead, **or** it is the current slot (the runout-recovery case, #995 / #1199). The `kActiveHeadSlot` sentinel (-1) counts only while the backend reports the toolhead unaccounted (#1324) |
 | Which slot do this tool's buttons act on? | `resolve_op_button_slot()` |
 | Are Load / Unload enabled right now? | `compute_op_button_gating()` — load state *and* print state |
 | How does a plan actually run? | `filament_op_execute.h` - `execute_filament_load()` / `execute_filament_unload()` / `execute_filament_purge()`, shared by `PrintStatusWidget`, `FilamentRunoutHandler`, `FilamentSensorWidget`, the external-spool menu, bed drying, and the panel's and sidebar's macro tiers |
@@ -2109,9 +2109,9 @@ Two consequences worth naming, because they look like bugs and are not:
   calls `AmsState::hold_optimistic_action()`, so a backend `IDLE` leaves the action alone
   until the backend reports a busy action of its own, which takes over for the rest of the
   operation. Dispatch restarts the budget (`hand_operation_to_backend()`). The hold ends on
-  a refused dispatch, a backend `EVENT_ERROR` (Happy Hare emits one when its gcode or the
+  a refused dispatch, a backend `kEventError` (Happy Hare emits one when its gcode or the
   pre-op G28 fails, the U1 when its `AUTO_FEEDING` fails), a backend
-  `EVENT_LOAD_COMPLETE` / `EVENT_UNLOAD_COMPLETE` (the U1 raises one when its
+  `kEventLoadComplete` / `kEventUnloadComplete` (the U1 raises one when its
   `AUTO_FEEDING` answers OK), an abandoned preheat (sidebar torn down, or the nozzle target taken
   away), a backend swap, or the budget running out (prestonbrown/helixscreen#1057).
 
@@ -2905,7 +2905,7 @@ gate pipeline: `PrintStartController::run_gates_from()` iterates
    passes run against the **external spool** rather than the mapped lanes.
 
    The grade axis is whether the filament carries solid particles, not what the marketing
-   calls it. `VARIANT_AFFIXES[]` in `src/printer/filament_variants.cpp` carries a `filled`
+   calls it. `kVariantAffixes[]` in `src/printer/filament_variants.cpp` carries a `filled`
    column: CF, GF, AERO, LW, Wood, Marble, Metal and Glow are filled (abrasive and/or
    flow-altering); `+`, Silk, Matte, HS, HF and HT are not. So a file sliced ASA-GF against a
    loaded ASA spool warns, PLA against PLA+ does not. The dialog wording is directional -
@@ -2967,7 +2967,7 @@ itself:
 | Backend | Publishes | Namespace owner / source-verified caveat |
 |---------|-----------|------------------------------------------|
 | CFS | Fork: the payload's external slot (`T<that>` is what box.py registers), so `lane5` on one box. Stock: `lane17` (index 16, past every bay) | The Fork key can be a real bay of a box off the bus, so CFS writes or clears it only when it is empty or holds our `helix_external: true` mirror |
-| AD5X IFS | `lane{NUM_PORTS+1}` via its own mirror store | same — ours alone |
+| AD5X IFS | `lane{kNumPorts+1}` via its own mirror store | same — ours alone |
 | AFC | `T{N}` via a dedicated shared-namespace store (lazy, from `api_`) | AFC's plugin never publishes extern (`AFC_lane.send_lane_data` runs only for lanes with a tool mapping) and **deletes the whole namespace at boot** (its `delete_lane_data()`); our entry dies at AFC restart and is re-published on the next trigger |
 | Happy Hare | `lane{N+1}` via a dedicated shared-namespace store | HH's plugin publishes gates only (`push_lane_data` in its Moonraker component), and its **boot-time cleanup deletes records with `lane >= num_gates`**; same die-at-restart, re-publish-on-trigger cycle |
 | ACE / Snapmaker / QIDI / Tool Changer | no (default no-op) | `supports_bypass` is false — there is no external spool to publish |
@@ -3207,7 +3207,7 @@ Override only when the hardware genuinely disagrees:
 ```cpp
 // Snapmaker U1: four physical heads, up to 32 logical tools -> [0,1,2,3,0,0,...]
 [[nodiscard]] helix::FirmwareRouting firmware_default_routing() const override {
-    return helix::FirmwareRouting::fixed_heads(NUM_TOOLS, 0);
+    return helix::FirmwareRouting::fixed_heads(kNumTools, 0);
 }
 ```
 

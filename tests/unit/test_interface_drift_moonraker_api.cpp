@@ -58,18 +58,17 @@ TEST_CASE("Moonraker sub-API classes satisfy their interfaces", "[compile][drift
                   "MoonrakerAdvancedAPI must implement every pure virtual from IAdvancedAPI");
     // UI code reads the timeouts through IAdvancedAPI; a concrete-class
     // redeclaration would let the two spellings disagree.
-    static_assert(MoonrakerAdvancedAPI::CALIBRATION_TIMEOUT_MS ==
-                  helix::IAdvancedAPI::CALIBRATION_TIMEOUT_MS);
-    static_assert(MoonrakerAdvancedAPI::SELF_PREPARED_CALIBRATION_TIMEOUT_MS ==
-                  helix::IAdvancedAPI::SELF_PREPARED_CALIBRATION_TIMEOUT_MS);
-    static_assert(MoonrakerAdvancedAPI::LEVELING_TIMEOUT_MS ==
-                  helix::IAdvancedAPI::LEVELING_TIMEOUT_MS);
-    static_assert(MoonrakerAdvancedAPI::SHAPER_TIMEOUT_MS ==
-                  helix::IAdvancedAPI::SHAPER_TIMEOUT_MS);
-    static_assert(MoonrakerAdvancedAPI::PID_TIMEOUT_MS == helix::IAdvancedAPI::PID_TIMEOUT_MS);
-    static_assert(MoonrakerAdvancedAPI::MPC_TIMEOUT_MS == helix::IAdvancedAPI::MPC_TIMEOUT_MS);
-    static_assert(MoonrakerAdvancedAPI::PROBING_TIMEOUT_MS ==
-                  helix::IAdvancedAPI::PROBING_TIMEOUT_MS);
+    static_assert(MoonrakerAdvancedAPI::kCalibrationTimeoutMs ==
+                  helix::IAdvancedAPI::kCalibrationTimeoutMs);
+    static_assert(MoonrakerAdvancedAPI::kSelfPreparedCalibrationTimeoutMs ==
+                  helix::IAdvancedAPI::kSelfPreparedCalibrationTimeoutMs);
+    static_assert(MoonrakerAdvancedAPI::kLevelingTimeoutMs ==
+                  helix::IAdvancedAPI::kLevelingTimeoutMs);
+    static_assert(MoonrakerAdvancedAPI::kShaperTimeoutMs == helix::IAdvancedAPI::kShaperTimeoutMs);
+    static_assert(MoonrakerAdvancedAPI::kPidTimeoutMs == helix::IAdvancedAPI::kPidTimeoutMs);
+    static_assert(MoonrakerAdvancedAPI::kMpcTimeoutMs == helix::IAdvancedAPI::kMpcTimeoutMs);
+    static_assert(MoonrakerAdvancedAPI::kProbingTimeoutMs ==
+                  helix::IAdvancedAPI::kProbingTimeoutMs);
 
     static_assert(std::is_base_of_v<helix::IRestAPI, MoonrakerRestAPI>,
                   "MoonrakerRestAPI must derive from IRestAPI");

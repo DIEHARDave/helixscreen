@@ -40,9 +40,9 @@
 #include <cmath>
 
 // FPS tracking constants (for diagnostic logging, not mode selection)
-constexpr float MIN_ACTUAL_RENDER_MS = 2.0f; // Minimum render time to count as actual render
-constexpr float FPS_EMA_ALPHA = 0.1f;        // Exponential moving average smoothing factor
-constexpr int FPS_LOG_INTERVAL_FRAMES = 30;  // Log FPS every N frames
+constexpr float kMinActualRenderMs = 2.0f; // Minimum render time to count as actual render
+constexpr float kFpsEmaAlpha = 0.1f;       // Exponential moving average smoothing factor
+constexpr int kFpsLogIntervalFrames = 30;  // Log FPS every N frames
 
 #include <spdlog/spdlog.h>
 
@@ -608,17 +608,16 @@ static void gcode_viewer_draw_cb(lv_event_t* e) {
 
     // Periodic FPS logging (every 30 frames) - use per-widget state to avoid
     // corruption when multiple gcode_viewer widgets exist
-    if (render_time_ms > MIN_ACTUAL_RENDER_MS) {
+    if (render_time_ms > kMinActualRenderMs) {
         st->fps_render_time_avg_ms_ = (st->fps_render_time_avg_ms_ == 0.0f)
                                           ? render_time_ms
-                                          : (FPS_EMA_ALPHA * render_time_ms +
-                                             (1.0f - FPS_EMA_ALPHA) * st->fps_render_time_avg_ms_);
+                                          : (kFpsEmaAlpha * render_time_ms +
+                                             (1.0f - kFpsEmaAlpha) * st->fps_render_time_avg_ms_);
         st->fps_actual_render_count_++;
     }
 
-    if (++st->fps_log_frame_count_ >= FPS_LOG_INTERVAL_FRAMES) {
-        if (st->fps_actual_render_count_ > 0 &&
-            st->fps_render_time_avg_ms_ > MIN_ACTUAL_RENDER_MS) {
+    if (++st->fps_log_frame_count_ >= kFpsLogIntervalFrames) {
+        if (st->fps_actual_render_count_ > 0 && st->fps_render_time_avg_ms_ > kMinActualRenderMs) {
             float avg_fps = 1000.0f / st->fps_render_time_avg_ms_;
             const char* mode_str = st->is_using_2d_mode() ? "2D" : "3D";
             spdlog::debug("[GCode Viewer] {} mode: {:.1f}ms ({:.1f}fps) over {} frames", mode_str,
@@ -677,7 +676,7 @@ static void gcode_viewer_size_changed_cb(lv_event_t* e) {
  * because pause/resume only invalidates once and that single frame may not
  * complete the cache either.
  *
- * Self-heal logic: every WATCHDOG_INTERVAL_MS, observe the 2D renderer's
+ * Self-heal logic: every kWatchdogIntervalMs, observe the 2D renderer's
  * cached_up_to_layer_. If the renderer reports needs_more_frames() AND the
  * cached layer has not advanced since the previous tick, force one
  * lv_obj_invalidate(obj). Idempotent — when the renderer is healthy, each
@@ -729,7 +728,7 @@ static void gcode_viewer_watchdog_cb(lv_timer_t* timer) {
                                                        st->watchdog_stall_streak_,
                                                        lv_obj_is_visible(obj)};
     const auto decision =
-        helix::gcode_viewer::watchdog_evaluate(obs, gcode_viewer_state_t::WATCHDOG_MAX_STALL_KICKS);
+        helix::gcode_viewer::watchdog_evaluate(obs, gcode_viewer_state_t::kWatchdogMaxStallKicks);
     st->watchdog_stall_streak_ = decision.stall_streak;
 
     if (decision.kick) {
@@ -738,9 +737,9 @@ static void gcode_viewer_watchdog_cb(lv_timer_t* timer) {
         // Rate-limit the warn so we don't fill the bundle on a wedged renderer.
         // First kick logs immediately; subsequent kicks log at most every 30s.
         uint32_t now_ms = lv_tick_get();
-        constexpr uint32_t KICK_LOG_INTERVAL_MS = 30000;
+        constexpr uint32_t kKickLogIntervalMs = 30000;
         bool should_log = (st->watchdog_last_kick_log_ms_ == 0) ||
-                          (now_ms - st->watchdog_last_kick_log_ms_ >= KICK_LOG_INTERVAL_MS);
+                          (now_ms - st->watchdog_last_kick_log_ms_ >= kKickLogIntervalMs);
         if (should_log) {
             uint32_t age_ms = st->print_progress_last_change_ms_ == 0
                                   ? 0
@@ -885,7 +884,7 @@ lv_obj_t* ui_gcode_viewer_create(lv_obj_t* parent) {
     // Always-on timer; the callback gates on viewer_state / paused / progress
     // mode so it's a no-op when there's nothing to watch.
     st->watchdog_timer_ =
-        lv_timer_create(gcode_viewer_watchdog_cb, gcode_viewer_state_t::WATCHDOG_INTERVAL_MS, obj);
+        lv_timer_create(gcode_viewer_watchdog_cb, gcode_viewer_state_t::kWatchdogIntervalMs, obj);
 
     spdlog::debug("[GCode Viewer] Widget created");
     return obj;

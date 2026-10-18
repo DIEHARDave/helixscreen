@@ -66,7 +66,7 @@ class OverlayWidthFixture : public LVGLTestFixture {
         // push_overlay reads panel_stack_.back() to inherit from. Without
         // seeding it, the SECOND push still looks like the first and inherits
         // from the nav root instead of the overlay beneath it.
-        for (int i = 0; i < UI_PANEL_COUNT; i++) {
+        for (int i = 0; i < kUiPanelCount; i++) {
             root_panels_[i] = lv_obj_create(lv_screen_active());
         }
         NavigationManager::instance().set_panels(root_panels_.data());
@@ -102,7 +102,7 @@ class OverlayWidthFixture : public LVGLTestFixture {
         helix::ui::UpdateQueue::instance().drain();
     }
 
-    std::array<lv_obj_t*, UI_PANEL_COUNT> root_panels_{};
+    std::array<lv_obj_t*, kUiPanelCount> root_panels_{};
 
     static int32_t screen_width() {
         return lv_display_get_horizontal_resolution(lv_display_get_default());

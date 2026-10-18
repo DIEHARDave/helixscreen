@@ -100,8 +100,8 @@ class TimelapseSettingsOverlay : public OverlayBase {
     lv_obj_t* autorender_switch_ = nullptr;
 
     // Framerate values for dropdown index mapping
-    static constexpr int FRAMERATE_VALUES[] = {15, 24, 30, 60};
-    static constexpr int FRAMERATE_COUNT = 4;
+    static constexpr int kFramerateValues[] = {15, 24, 30, 60};
+    static constexpr int kFramerateCount = 4;
 
     /**
      * @brief Convert framerate value to dropdown index

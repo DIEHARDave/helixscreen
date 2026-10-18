@@ -221,7 +221,7 @@ Per the project's rule, this plan states interfaces, tests and constraints. Bodi
   - Confirm: the existing full `begin_run({A,B}, true)` with `was_similarity_percent_` set to the round-0 similarity, landing on RESULTS. The facts line adds "Tuned in N rounds" plus, for SCREW, "B tightened about ⅞ turn".
   - Good enough: RESULTS as last shown, no sweep.
   - Stop during a tuning sweep: the existing `handle_stop_clicked` (abort to START).
-- Chart in TUNING: x range = zone window; reference and adjusted solid with hollow markers at their refined peaks; up to two previous adjusted-path rounds as muted series (allocate two extra ghost ids per path in `ensure_chart`; `MAX_SERIES` is 13); sweep cursor while SWEEPING. RESULTS restores the full band. Leave out the spec's dashed reference line: the chart has no API for one, and the hollow marker carries that peak.
+- Chart in TUNING: x range = zone window; reference and adjusted solid with hollow markers at their refined peaks; up to two previous adjusted-path rounds as muted series (allocate two extra ghost ids per path in `ensure_chart`; `kMaxSeries` is 13); sweep cursor while SWEEPING. RESULTS restores the full band. Leave out the spec's dashed reference line: the chart has no API for one, and the hollow marker carries that peak.
 - Shape warning "Why? ›": `helix::ui::modal_alert` with the causes list (same pattern as `_help_cb`).
 - Tune button: added to the RESULTS row, `bind_text="bt_tune_cta"`, primary variant.
 

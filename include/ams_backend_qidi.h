@@ -65,7 +65,7 @@ class AmsBackendQidi : public AmsSubscriptionBackend {
 
     /// Single-box default. Chainable up to 16 slots (4 boxes × 4 slots) on
     /// supported hardware, but the stub only advertises a single box.
-    static constexpr int NUM_SLOTS = 4;
+    static constexpr int kNumSlots = 4;
 
     // --- AmsBackend interface ---
     [[nodiscard]] AmsType get_type() const override {

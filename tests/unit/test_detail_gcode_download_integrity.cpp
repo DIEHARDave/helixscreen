@@ -336,7 +336,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     view_.run_when_preflight_ready([]() {}); // the Print tap → arms 8s timer
 
     // 3. Fire the safety timeout on the virtual clock.
-    // (PREFLIGHT_READY_TIMEOUT_MS is private — 8000ms, mirrored here.)
+    // (kPreflightReadyTimeoutMs is private — 8000ms, mirrored here.)
     process_lvgl(8500);
     // The timeout flips readiness for the gate (member, not the subject —
     // the timeout deliberately doesn't republish detail_mapping_ready).
@@ -699,7 +699,7 @@ TEST_CASE_METHOD(DetailDownloadFixture, "A .3mf project reads none of its bytes"
     CHECK(view_.get_prep_manager()->printer_stop_check_for(name).state ==
           helix::PrinterStopCheck::State::NotRun);
 
-    CHECK(subject_int("detail_gcode_viewer_mode") == helix::ui::PREVIEW_MODE_THUMBNAIL);
+    CHECK(subject_int("detail_gcode_viewer_mode") == helix::ui::kPreviewModeThumbnail);
     CHECK(subject_int("detail_gcode_loading") == 0);
 
     pop_and_drain();
@@ -779,7 +779,7 @@ TEST_CASE_METHOD(DetailDownloadFixture, "A G-code file with no layers keeps the 
     REQUIRE(wait_until([this]() { return view_.is_gcode_loaded(); }, 15000));
     drain_queue_chain();
 
-    CHECK(subject_int("detail_gcode_viewer_mode") == helix::ui::PREVIEW_MODE_THUMBNAIL);
+    CHECK(subject_int("detail_gcode_viewer_mode") == helix::ui::kPreviewModeThumbnail);
     CHECK(subject_int("detail_viewer_first_frame") == 0);
 
     pop_and_drain();
@@ -931,7 +931,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     CHECK(transfers_.partial_read_count >= 1);
     // The palette question is settled as unknown instead of left waiting.
     CHECK(ready());
-    CHECK(subject_int("detail_gcode_viewer_mode") == helix::ui::PREVIEW_MODE_THUMBNAIL);
+    CHECK(subject_int("detail_gcode_viewer_mode") == helix::ui::kPreviewModeThumbnail);
 
     pop_and_drain();
 }

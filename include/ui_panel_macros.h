@@ -158,7 +158,7 @@ class MacrosPanel : public OverlayBase {
     lv_obj_t* trailing_spacer_ = nullptr;
 
     // === Virtual list state ===
-    static constexpr int BUFFER_ROWS = 2; ///< Rows kept beyond each edge of the viewport
+    static constexpr int kBufferRows = 2; ///< Rows kept beyond each edge of the viewport
     std::vector<lv_obj_t*> slots_;        ///< Row slot widgets, by slot index
     std::vector<ssize_t> slot_items_;     ///< Slot -> displayed_ index (-1 = parked)
     std::vector<int> row_tops_;           ///< displayed_ row tops; back() = list height

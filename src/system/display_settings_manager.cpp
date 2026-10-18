@@ -60,13 +60,13 @@ using namespace helix;
 
 // Display dim option values (seconds) - time before screen dims to lower brightness
 // Index: 0=Never, 1=30sec, 2=1min, 3=2min, 4=5min
-static const int DIM_OPTIONS[] = {0, 30, 60, 120, 300, 600};
-static const int DIM_OPTIONS_COUNT = sizeof(DIM_OPTIONS) / sizeof(DIM_OPTIONS[0]);
+static const int kDimOptions[] = {0, 30, 60, 120, 300, 600};
+static const int kDimOptionsCount = sizeof(kDimOptions) / sizeof(kDimOptions[0]);
 
 // Display sleep option values (seconds) - time before screen fully sleeps
 // Index: 0=Never, 1=1min, 2=5min, 3=10min, 4=30min
-static const int SLEEP_OPTIONS[] = {0, 60, 300, 600, 1200, 1800};
-static const int SLEEP_OPTIONS_COUNT = sizeof(SLEEP_OPTIONS) / sizeof(SLEEP_OPTIONS[0]);
+static const int kSleepOptions[] = {0, 60, 300, 600, 1200, 1800};
+static const int kSleepOptionsCount = sizeof(kSleepOptions) / sizeof(kSleepOptions[0]);
 
 // Timezone options: curated list of IANA timezones with friendly display names
 struct TimezoneEntry {
@@ -87,7 +87,7 @@ struct TimezoneEntry {
 // tests/shell/test_zoneinfo_bundle_gate.bats fails if the two drift. A zone
 // offered here but not bundled resolves to UTC on devices without system
 // tzdata — silently, with the wrong time and no error.
-static const TimezoneEntry TIMEZONE_ENTRIES[] = {
+static const TimezoneEntry kTimezoneEntries[] = {
     {"UTC (+0:00)", "UTC", "UTC0"},
     {"Samoa (-11:00)", "Pacific/Pago_Pago", "SST11"},
     {"Hawaii (-10:00)", "Pacific/Honolulu", "HST10"},
@@ -150,7 +150,7 @@ static const TimezoneEntry TIMEZONE_ENTRIES[] = {
     {"Fiji (+12:00)", "Pacific/Fiji", "<+12>-12"},
     {"Tonga (+13:00)", "Pacific/Tongatapu", "<+13>-13"},
 };
-static const int TIMEZONE_COUNT = sizeof(TIMEZONE_ENTRIES) / sizeof(TIMEZONE_ENTRIES[0]);
+static const int kTimezoneCount = sizeof(kTimezoneEntries) / sizeof(kTimezoneEntries[0]);
 
 // Helper: Validate a timeout value against allowed options, snapping to nearest valid value
 template <size_t N>
@@ -182,14 +182,14 @@ static int validate_timeout_option(int value, const int (&options)[N], int defau
 // Page-scroll buttons: opt-in on desktop/embedded Linux; on by default on ESP32,
 // where finger-drag scrolling is too slow on that panel.
 #if defined(ESP_PLATFORM)
-static constexpr int PAGE_SCROLL_DEFAULT = 1;
+static constexpr int kPageScrollDefault = 1;
 #else
-static constexpr int PAGE_SCROLL_DEFAULT = 0;
+static constexpr int kPageScrollDefault = 0;
 #endif
 
 using settings::Scope;
 // Row order is DisplaySettingsManager::Key.
-static constexpr settings::PersistedSetting DISPLAY_SETTINGS[] = {
+static constexpr settings::PersistedSetting kDisplaySettings[] = {
     {"settings_sleep_while_printing", "/display/sleep_while_printing", Scope::Global, true, 1, 0, 1,
      "sleep_while_printing"},
     // Minimum 10% prevents a black screen; DisplayManager drives the hardware.
@@ -200,7 +200,7 @@ static constexpr settings::PersistedSetting DISPLAY_SETTINGS[] = {
     {"settings_hide_keyboard_with_hardware", "/display/hide_keyboard_with_hardware", Scope::Global,
      true, 0, 0, 1, "hide_keyboard_with_hardware"},
     {"settings_page_scroll_buttons", "/display/page_scroll_buttons", Scope::Global, true,
-     PAGE_SCROLL_DEFAULT, 0, 1, "page_scroll_buttons"},
+     kPageScrollDefault, 0, 1, "page_scroll_buttons"},
     {"settings_speed_flow_physical_units", "/display/speed_flow_physical_units", Scope::Global,
      true, 0, 0, 1, "speed_flow_physical_units"},
     // Android only (#908)
@@ -222,10 +222,10 @@ DisplaySettingsManager& DisplaySettingsManager::instance() {
 }
 
 settings::TableView DisplaySettingsManager::persisted_table() {
-    return {DISPLAY_SETTINGS, std::size(DISPLAY_SETTINGS)};
+    return {kDisplaySettings, std::size(kDisplaySettings)};
 }
 
-DisplaySettingsManager::DisplaySettingsManager() : settings_(DISPLAY_SETTINGS) {
+DisplaySettingsManager::DisplaySettingsManager() : settings_(kDisplaySettings) {
     spdlog::trace("[DisplaySettingsManager] Constructor");
 }
 
@@ -255,7 +255,7 @@ void DisplaySettingsManager::init_subjects() {
     // Display dim (default: 600 seconds = 10 minutes)
     // Validate against allowed options to catch corrupt config values
     int dim_sec = config->get<int>("/display/dim_sec", 600);
-    dim_sec = validate_timeout_option(dim_sec, DIM_OPTIONS, 600, "dim_sec");
+    dim_sec = validate_timeout_option(dim_sec, kDimOptions, 600, "dim_sec");
     UI_MANAGED_SUBJECT_INT(display_dim_subject_, dim_sec, "settings_display_dim", subjects_);
 
     // Sync validated dim timeout to DisplayManager (it reads config directly at init,
@@ -267,7 +267,7 @@ void DisplaySettingsManager::init_subjects() {
     // Display sleep (default: 1200 seconds = 20 minutes)
     // Validate against allowed options to catch corrupt config values
     int sleep_sec = config->get<int>("/display/sleep_sec", 1200);
-    sleep_sec = validate_timeout_option(sleep_sec, SLEEP_OPTIONS, 1200, "sleep_sec");
+    sleep_sec = validate_timeout_option(sleep_sec, kSleepOptions, 1200, "sleep_sec");
 
     UI_MANAGED_SUBJECT_INT(display_sleep_subject_, sleep_sec, "settings_display_sleep", subjects_);
 
@@ -346,8 +346,8 @@ void DisplaySettingsManager::init_subjects() {
     std::string tz = config->get<std::string>("/display/timezone", "UTC");
     int tz_index = 0; // Default to UTC
     bool tz_found = false;
-    for (int i = 0; i < TIMEZONE_COUNT; ++i) {
-        if (tz == TIMEZONE_ENTRIES[i].iana_id) {
+    for (int i = 0; i < kTimezoneCount; ++i) {
+        if (tz == kTimezoneEntries[i].iana_id) {
             tz_index = i;
             tz_found = true;
             break;
@@ -363,7 +363,7 @@ void DisplaySettingsManager::init_subjects() {
     // Elegoo Centauri Carbon / OpenCentauri COSMOS), this points TZDIR at the
     // bundled assets/zoneinfo/ so the zone resolves instead of silently falling
     // back to UTC.
-    helix::timezone_env::apply(tz.c_str(), TIMEZONE_ENTRIES[tz_index].posix_tz);
+    helix::timezone_env::apply(tz.c_str(), kTimezoneEntries[tz_index].posix_tz);
     spdlog::info("[DisplaySettingsManager] Timezone set to '{}' (index {})", tz, tz_index);
 
 #if HELIX_ENABLE_SCREENSAVER
@@ -371,16 +371,16 @@ void DisplaySettingsManager::init_subjects() {
     // (helix::ui::screensaver_from_setting). A fresh install, and a value naming no saver, run
     // the registry default for this build's colour depth.
     const ScreensaverType screensaver_default =
-        helix::ui::default_screensaver_type(helix::ui::SAVER_BUILD_DEPTH);
+        helix::ui::default_screensaver_type(helix::ui::kSaverBuildDepth);
 
     ScreensaverType screensaver = screensaver_default;
-    if (const json* stored = config->try_get_json(helix::ui::SCREENSAVER_SETTING_PATH)) {
+    if (const json* stored = config->try_get_json(helix::ui::kScreensaverSettingPath)) {
         screensaver = helix::ui::screensaver_from_setting(stored, screensaver_default);
     } else if (config->exists("/display/screensaver_enabled")) {
         // Legacy screensaver_enabled: true reads as the default saver, false as Off.
         bool old_enabled = config->get<bool>("/display/screensaver_enabled", true);
         screensaver = old_enabled ? screensaver_default : ScreensaverType::OFF;
-        config->set<std::string>(helix::ui::SCREENSAVER_SETTING_PATH,
+        config->set<std::string>(helix::ui::kScreensaverSettingPath,
                                  helix::ui::screensaver_name(screensaver));
         config->save();
         spdlog::info(
@@ -520,7 +520,7 @@ std::string DisplaySettingsManager::get_theme_name() const {
     }
     // Fallback to config if theme_manager not initialized yet
     Config* config = Config::get_instance();
-    return config->get<std::string>("/display/theme", helix::DEFAULT_THEME);
+    return config->get<std::string>("/display/theme", helix::kDefaultTheme);
 }
 
 void DisplaySettingsManager::set_theme_name(const std::string& name) {
@@ -835,15 +835,15 @@ void DisplaySettingsManager::set_gcode_render_mode(int mode) {
 
 std::string DisplaySettingsManager::get_timezone() const {
     int index = lv_subject_get_int(const_cast<lv_subject_t*>(&timezone_subject_));
-    index = std::clamp(index, 0, TIMEZONE_COUNT - 1);
-    return TIMEZONE_ENTRIES[index].iana_id;
+    index = std::clamp(index, 0, kTimezoneCount - 1);
+    return kTimezoneEntries[index].iana_id;
 }
 
 void DisplaySettingsManager::set_timezone(const std::string& iana_id) {
     int index = 0;
     bool found = false;
-    for (int i = 0; i < TIMEZONE_COUNT; ++i) {
-        if (iana_id == TIMEZONE_ENTRIES[i].iana_id) {
+    for (int i = 0; i < kTimezoneCount; ++i) {
+        if (iana_id == kTimezoneEntries[i].iana_id) {
             index = i;
             found = true;
             break;
@@ -857,15 +857,15 @@ void DisplaySettingsManager::set_timezone(const std::string& iana_id) {
 }
 
 void DisplaySettingsManager::set_timezone_by_index(int index) {
-    index = std::clamp(index, 0, TIMEZONE_COUNT - 1);
-    const char* iana_id = TIMEZONE_ENTRIES[index].iana_id;
+    index = std::clamp(index, 0, kTimezoneCount - 1);
+    const char* iana_id = kTimezoneEntries[index].iana_id;
 
     spdlog::info("[DisplaySettingsManager] set_timezone({} = '{}')", index, iana_id);
 
     lv_subject_set_int(&timezone_subject_, index);
 
     // Apply timezone to process (see init_subjects for bundled-zoneinfo note).
-    helix::timezone_env::apply(iana_id, TIMEZONE_ENTRIES[index].posix_tz);
+    helix::timezone_env::apply(iana_id, kTimezoneEntries[index].posix_tz);
 
     // Persist
     Config* config = Config::get_instance();
@@ -879,10 +879,10 @@ int DisplaySettingsManager::get_timezone_index() const {
 
 std::string DisplaySettingsManager::get_timezone_options() {
     std::string options;
-    for (int i = 0; i < TIMEZONE_COUNT; ++i) {
+    for (int i = 0; i < kTimezoneCount; ++i) {
         if (i > 0)
             options += '\n';
-        options += TIMEZONE_ENTRIES[i].display_name;
+        options += kTimezoneEntries[i].display_name;
     }
     return options;
 }
@@ -905,7 +905,7 @@ void DisplaySettingsManager::set_screensaver_type(int type) {
                                                    has_dimming_control(), screensaver_enabled())));
 
     Config* config = Config::get_instance();
-    config->set<std::string>(helix::ui::SCREENSAVER_SETTING_PATH,
+    config->set<std::string>(helix::ui::kScreensaverSettingPath,
                              helix::ui::screensaver_name(static_cast<ScreensaverType>(type)));
     config->save();
 }
@@ -946,8 +946,8 @@ DisplaySettingsManager::DimRowKind DisplaySettingsManager::dim_row_kind(bool has
 }
 
 int DisplaySettingsManager::dim_seconds_to_index(int seconds) {
-    for (int i = 0; i < DIM_OPTIONS_COUNT; i++) {
-        if (DIM_OPTIONS[i] == seconds) {
+    for (int i = 0; i < kDimOptionsCount; i++) {
+        if (kDimOptions[i] == seconds) {
             return i;
         }
     }
@@ -956,8 +956,8 @@ int DisplaySettingsManager::dim_seconds_to_index(int seconds) {
 }
 
 int DisplaySettingsManager::index_to_dim_seconds(int index) {
-    if (index >= 0 && index < DIM_OPTIONS_COUNT) {
-        return DIM_OPTIONS[index];
+    if (index >= 0 && index < kDimOptionsCount) {
+        return kDimOptions[index];
     }
     return 600; // Default 10 minutes
 }
@@ -967,8 +967,8 @@ int DisplaySettingsManager::index_to_dim_seconds(int index) {
 // =============================================================================
 
 int DisplaySettingsManager::sleep_seconds_to_index(int seconds) {
-    for (int i = 0; i < SLEEP_OPTIONS_COUNT; i++) {
-        if (SLEEP_OPTIONS[i] == seconds) {
+    for (int i = 0; i < kSleepOptionsCount; i++) {
+        if (kSleepOptions[i] == seconds) {
             return i;
         }
     }
@@ -977,8 +977,8 @@ int DisplaySettingsManager::sleep_seconds_to_index(int seconds) {
 }
 
 int DisplaySettingsManager::index_to_sleep_seconds(int index) {
-    if (index >= 0 && index < SLEEP_OPTIONS_COUNT) {
-        return SLEEP_OPTIONS[index];
+    if (index >= 0 && index < kSleepOptionsCount) {
+        return kSleepOptions[index];
     }
     return 1200; // Default 20 minutes
 }

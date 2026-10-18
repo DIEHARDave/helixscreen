@@ -33,7 +33,7 @@ namespace filament {
 /**
  * @brief Reduce a decorated material name to its base polymer.
  *
- * Strips known variant affixes (see VARIANT_AFFIXES in the .cpp) from either
+ * Strips known variant affixes (see kVariantAffixes in the .cpp) from either
  * end at '-', '_' or ' ' boundaries, applies the explicit family override table
  * for polymer grades that string-stripping cannot reach ("PA6" -> "PA"), then
  * falls back to a shortest-known-prefix walk for unrecognised compound names

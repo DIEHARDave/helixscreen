@@ -138,7 +138,7 @@ TEST_CASE("antialiasing cost relative to aliased", "[.][raster_bench]") {
     // production path: a 48mm Benchy renders at 3.1 px/mm and width 1, a 10mm
     // calibration cube at 15.0 px/mm and width 6, and anything filling a 200mm
     // plate at 1.3-2.5 px/mm and width 1. Width 1 is the common case and the
-    // MAX_EXTRUSION_PIXEL_WIDTH clamp of 8 is not reached by these models.
+    // kMaxExtrusionPixelWidth clamp of 8 is not reached by these models.
     //
     // Re-measure after any change to framing: these numbers are a property of
     // auto_fit(), not of the rasterizer, and they moved once already when the

@@ -94,7 +94,7 @@ TEST_CASE("slot context with nothing known", "[plugin][menu][context]") {
 
     s.status = SlotStatus::AVAILABLE;
     s.material.clear();
-    s.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    s.color_rgb = kAmsDefaultSlotColor;
     s.spoolman_id = 0;
     CHECK(slot_context(s, 2, nullptr, "Lane 3") == json{{"slot", 2}, {"label", "Lane 3"}});
 }

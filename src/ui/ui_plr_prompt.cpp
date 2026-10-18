@@ -93,13 +93,13 @@ void run_plr_resume(IMoonrakerAPI* api) {
         return;
     }
     spdlog::info("[PLR] User chose Resume — running '{}'", g_active_plan.resume_gcode);
-    // MACRO_TIMEOUT_MS, not the 60s default: resume macros rebuild and replay
+    // kMacroTimeoutMs, not the 60s default: resume macros rebuild and replay
     // the interrupted job (Qidi's RESUME_INTERRUPTED rewrites the gcode via a
     // shell pipeline over the whole file before printing it), so a big file can
     // legitimately run past a minute. A timeout toast here would be a lie - the
     // firmware keeps executing the resume.
     run_recovery_gcode(api, g_active_plan.resume_gcode, lv_tr("Recovery failed: {}"), "Resume",
-                       IMoonrakerAPI::MACRO_TIMEOUT_MS);
+                       IMoonrakerAPI::kMacroTimeoutMs);
 }
 
 void run_plr_discard(IMoonrakerAPI* api) {

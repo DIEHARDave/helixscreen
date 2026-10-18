@@ -791,7 +791,7 @@ TEST_CASE("resolve_macro_script - substitution and self-preparation",
         info.shipped_macro = "BED_MESH_CALIBRATE BED_TEMP={bed_temp}";
         const auto r = resolve_macro_script(info, {});
         CHECK(r.script == "BED_MESH_CALIBRATE BED_TEMP=" +
-                              std::to_string(helix::bed_mesh::DEFAULT_PROBE_BED_TEMP_C));
+                              std::to_string(helix::bed_mesh::kDefaultProbeBedTempC));
     }
 
     SECTION("a user override is never treated as self-preparing") {

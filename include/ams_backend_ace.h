@@ -464,10 +464,10 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     std::mutex rest_stop_mutex_;
 
     // Configuration
-    static constexpr int POLL_INTERVAL_MS = 500;
+    static constexpr int kPollIntervalMs = 500;
     /// Consecutive data-endpoint (/status) failures before surfacing the
     /// "Moonraker bridge not found" error (genuinely-missing-bridge case).
-    static constexpr int MAX_DATA_FETCH_FAILURES = 3;
+    static constexpr int kMaxDataFetchFailures = 3;
 
     // Layer any configured FilamentSlotOverride for `slot_index` over `slot`,
     // mutating `slot` in place. Override wins for every non-default field;

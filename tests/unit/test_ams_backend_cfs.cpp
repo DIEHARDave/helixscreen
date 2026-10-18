@@ -3303,7 +3303,7 @@ template <typename BackendT = AmsBackendCfs> struct CfsOverrideRig {
     MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
     helix::PrinterState state;
     std::unique_ptr<MoonrakerAPIMock> api;
-    // Registered, because lane_id() answers INVALID_LANE_ID for a backend
+    // Registered, because lane_id() answers kInvalidLaneId for a backend
     // AmsState does not know, and every lane funnel drops a record addressed
     // to that. Declared after api_ so it is torn down first: clear_backends()
     // destroys the backend, which still holds the api pointer.
@@ -4534,7 +4534,7 @@ json make_unbranded_bay_box(const std::string& bay_a_remain_len) {
                                   {bay_a_remain_len, "-1", "-1", "-1"});
 }
 
-constexpr float EDITED_REMAINING_G = 750.0f;
+constexpr float kEditedRemainingG = 750.0f;
 
 } // namespace
 
@@ -4545,14 +4545,14 @@ TEST_CASE("CFS: a weights-only edit is cleared when its bay reads EMPTY",
     REQUIRE(rig.backend->get_slot_info(0).status == SlotStatus::AVAILABLE);
 
     SlotInfo edit = rig.backend->get_slot_info(0);
-    edit.remaining_weight_g = EDITED_REMAINING_G;
+    edit.remaining_weight_g = kEditedRemainingG;
     helix::test::edit_slot_as_user(*rig.backend, 0, edit);
 
     // The edit stored a record that declares the weight and nothing else, so
     // neither lock nor any identity field can speak for it.
     const auto staged = CfsTestAccess::get_override(*rig.backend, 0);
     REQUIRE(staged.has_value());
-    REQUIRE(staged->remaining_weight_g == EDITED_REMAINING_G);
+    REQUIRE(staged->remaining_weight_g == kEditedRemainingG);
     REQUIRE_FALSE(helix::ams::declares_color(*staged));
     REQUIRE_FALSE(helix::ams::declares_material(*staged));
     REQUIRE(staged->material.empty());
@@ -4565,7 +4565,7 @@ TEST_CASE("CFS: a weights-only edit is cleared when its bay reads EMPTY",
 
     const helix::ams::LaneSources before = helix::ams::lane_sources(rig.registration->lane(0));
     REQUIRE(before.local_user.has_value());
-    REQUIRE(before.local_user->remaining_weight_g == EDITED_REMAINING_G);
+    REQUIRE(before.local_user->remaining_weight_g == kEditedRemainingG);
     REQUIRE_FALSE(before.local_user->color_rgb.has_value());
     REQUIRE_FALSE(before.local_user->material.has_value());
     REQUIRE_FALSE(before.local_user->brand.has_value());
@@ -4585,7 +4585,7 @@ TEST_CASE("CFS: a weight edit that also names a brand survives its bay reading E
     REQUIRE(rig.backend->get_slot_info(0).status == SlotStatus::AVAILABLE);
 
     SlotInfo edit = rig.backend->get_slot_info(0);
-    edit.remaining_weight_g = EDITED_REMAINING_G;
+    edit.remaining_weight_g = kEditedRemainingG;
     edit.brand = "Sunlu";
     helix::test::edit_slot_as_user(*rig.backend, 0, edit);
 
@@ -4602,7 +4602,7 @@ TEST_CASE("CFS: a weight edit that also names a brand survives its bay reading E
     const auto kept = CfsTestAccess::get_override(*rig.backend, 0);
     REQUIRE(kept.has_value());
     CHECK(kept->brand == "Sunlu");
-    CHECK(kept->remaining_weight_g == EDITED_REMAINING_G);
+    CHECK(kept->remaining_weight_g == kEditedRemainingG);
     const helix::ams::LaneSources after = helix::ams::lane_sources(rig.registration->lane(0));
     REQUIRE(after.local_user.has_value());
     CHECK(after.local_user->brand == "Sunlu");
@@ -5068,7 +5068,7 @@ TEST_CASE("CFS load routes the bypass sentinel instead of refusing it", "[ams][c
         // The regression: slot_to_tnn(-2) has no answer, so this refused
         // outright and an external spool could never be loaded from the app —
         // which also left no way to reach the state the bypass UNLOAD needs.
-        REQUIRE(backend.load_filament(helix::ui::EXTERNAL_SPOOL_SLOT).result == AmsResult::SUCCESS);
+        REQUIRE(backend.load_filament(helix::ui::kExternalSpoolSlot).result == AmsResult::SUCCESS);
         REQUIRE(backend.dispatched.size() == 1);
         CHECK(backend.dispatched[0].find("G0 E80 F600") != std::string::npos);
     }
@@ -5193,7 +5193,7 @@ TEST_CASE("CFS unload routes the bypass sentinel away from the bay script", "[am
         backend.mark_running();
         CfsTestAccess::set_loaded_state(backend, /*filament_loaded=*/true, /*current_slot=*/-2);
 
-        REQUIRE(backend.unload_filament(helix::ui::EXTERNAL_SPOOL_SLOT).result ==
+        REQUIRE(backend.unload_filament(helix::ui::kExternalSpoolSlot).result ==
                 AmsResult::SUCCESS);
         REQUIRE(backend.dispatched.size() == 1);
         // The regression: CR_BOX_RETRUDE is keyed on a TNN and silently no-ops
@@ -5220,7 +5220,7 @@ TEST_CASE("CFS unload routes the bypass sentinel away from the bay script", "[am
         CfsTestAccess::set_macro_variant_fork(backend);
         CfsTestAccess::set_loaded_state(backend, true, -2);
 
-        REQUIRE(backend.unload_filament(helix::ui::EXTERNAL_SPOOL_SLOT).result ==
+        REQUIRE(backend.unload_filament(helix::ui::kExternalSpoolSlot).result ==
                 AmsResult::SUCCESS);
         REQUIRE(backend.dispatched.size() == 1);
         CHECK(backend.dispatched[0] == "BOX_UNLOAD");
@@ -5235,7 +5235,7 @@ TEST_CASE("CFS bypass unload completes instead of erroring with filament still d
     CfsRemapHelper backend;
     backend.mark_running();
     CfsTestAccess::set_loaded_state(backend, /*filament_loaded=*/true, /*current_slot=*/-2);
-    REQUIRE(backend.unload_filament(helix::ui::EXTERNAL_SPOOL_SLOT).result == AmsResult::SUCCESS);
+    REQUIRE(backend.unload_filament(helix::ui::kExternalSpoolSlot).result == AmsResult::SUCCESS);
 
     // The end state a bypass unload actually leaves: tip clear of the melt zone,
     // filament still across the toolhead switch, waiting on the user's hand.

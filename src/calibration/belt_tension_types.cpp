@@ -75,8 +75,8 @@ float percentile_linear(const std::vector<float>& values, float pct) {
 
 BeltVerdict verdict_for_similarity(float similarity_percent) {
     using namespace belt_verdict;
-    return similarity_percent >= MATCHED_SIMILARITY ? BeltVerdict::MATCHED
-           : similarity_percent >= CLOSE_SIMILARITY ? BeltVerdict::CLOSE
+    return similarity_percent >= kMatchedSimilarity ? BeltVerdict::MATCHED
+           : similarity_percent >= kCloseSimilarity ? BeltVerdict::CLOSE
                                                     : BeltVerdict::ADJUST;
 }
 
@@ -127,7 +127,7 @@ std::vector<BeltPeak> detect_belt_peaks(const BeltCurve& curve, float band_min_h
     for (const auto& bin : x) {
         max_v = std::max(max_v, bin.second);
     }
-    const float min_amplitude = belt_verdict::PEAK_THRESHOLD_FRACTION * max_v;
+    const float min_amplitude = belt_verdict::kPeakThresholdFraction * max_v;
     // A bin needs both neighbours in-band, so the band's edge bins cannot be
     // peaks. Ascending frequency comes free from the input order.
     for (size_t i = 1; i + 1 < x.size(); ++i) {
@@ -150,12 +150,12 @@ BeltPeakPairing pair_belt_peaks(const std::vector<BeltPeak>& a, const std::vecto
         }
     }
     if (dists.empty()) {
-        out.threshold_hz = belt_verdict::PAIR_MAX_HZ;
+        out.threshold_hz = belt_verdict::kPairMaxHz;
     } else {
         std::sort(dists.begin(), dists.end());
         const float median = percentile_linear(dists, 50.0f);
         const float iqr = percentile_linear(dists, 75.0f) - percentile_linear(dists, 25.0f);
-        out.threshold_hz = std::min(median + 1.5f * iqr, belt_verdict::PAIR_MAX_HZ);
+        out.threshold_hz = std::min(median + 1.5f * iqr, belt_verdict::kPairMaxHz);
     }
 
     // Greedy: repeatedly take the globally closest remaining (a, b) inside the

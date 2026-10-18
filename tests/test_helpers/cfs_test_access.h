@@ -181,7 +181,7 @@ class CfsTestAccess {
                                              std::function<void()> on_complete) {
         return b.ensure_homed_then(
             std::move(gcode), std::move(on_complete), [](const MoonrakerError&) {},
-            IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS,
+            IMoonrakerAPI::kAmsOperationTimeoutMs,
             /*skip_homing=*/true, /*silent=*/false);
     }
 

@@ -29,7 +29,7 @@ class FirefliesScreensaver : public SimSaver<FirefliesSim> {
 
   protected:
     std::optional<lv_color_format_t> canvas_format() const override {
-        return SAVER_BUILD_CANVAS_FORMAT;
+        return kSaverBuildCanvasFormat;
     }
     /// Steps the sim and logs each mode the swarm begins.
     void on_frame(uint32_t dt_ms, std::vector<DirtyRect>& dirty) override;

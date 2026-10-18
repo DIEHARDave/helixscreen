@@ -215,7 +215,7 @@ TEST_CASE_METHOD(RootFixture, "settings root: crash-loop safe mode loads no plug
 TEST_CASE_METHOD(RootFixture, "settings root: tapping Plugins opens the plugins overlay",
                  "[settings][settings_root]") {
     DisplaySettingsManager::instance().set_animations_enabled(false);
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels)
         p = lv_obj_create(lv_screen_active());
     NavigationManager::instance().set_panels(panels.data());
@@ -318,7 +318,7 @@ TEST_CASE_METHOD(RootFixture,
 TEST_CASE_METHOD(RootFixture, "settings root: tapping Printer opens the Printer Manager",
                  "[settings][settings_root]") {
     DisplaySettingsManager::instance().set_animations_enabled(false);
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels)
         p = lv_obj_create(lv_screen_active());
     NavigationManager::instance().set_panels(panels.data());

@@ -238,7 +238,7 @@ class EglContextGuard {
 // GLSL Shaders
 // ============================================================
 
-static const char* VERTEX_SHADER_DECLS = R"(
+static const char* kVertexShaderDecls = R"(
     // Per-pixel Phong shading with camera-following light.
     // Vertex format is packed (see PackedVertex):
     //   a_position : vec3 float
@@ -264,7 +264,7 @@ static const char* VERTEX_SHADER_DECLS = R"(
 /// every vertex shader that needs it (the lit pass and the selection shell). A
 /// second copy could drift, and a shell extruded along a differently-decoded
 /// normal would not wrap the surface it is meant to outline.
-static const char* OCT_DECODE_GLSL = R"(
+static const char* kOctDecodeGlsl = R"(
     // Decode an octahedral-encoded normal (Meyer et al., 2010).
     vec3 oct_decode(vec2 e) {
         vec3 n;
@@ -279,7 +279,7 @@ static const char* OCT_DECODE_GLSL = R"(
     }
 )";
 
-static const char* VERTEX_SHADER_MAIN = R"(
+static const char* kVertexShaderMain = R"(
     void main() {
         gl_Position = u_mvp * vec4(a_position, 1.0);
         vec3 normal = oct_decode(a_normal);
@@ -294,7 +294,7 @@ static const char* VERTEX_SHADER_MAIN = R"(
     }
 )";
 
-static const char* FRAGMENT_SHADER_SOURCE = R"(
+static const char* kFragmentShaderSource = R"(
     precision mediump float;
     varying vec3 v_normal;
     varying vec3 v_position;
@@ -348,7 +348,7 @@ static const char* FRAGMENT_SHADER_SOURCE = R"(
 // ============================================================
 
 // Fixed fill light direction (front-right)
-static constexpr glm::vec3 LIGHT_FRONT_DIR{0.6985074f, 0.1397015f, 0.6985074f};
+static constexpr glm::vec3 kLightFrontDir{0.6985074f, 0.1397015f, 0.6985074f};
 
 // ============================================================
 // Construction / Destruction
@@ -574,10 +574,10 @@ bool GCodeGLESRenderer::init_gl() {
 
     // Path 2: Try GBM/DRM render nodes first (don't need DRM master, works alongside compositor)
     // Then try card nodes (needed on Pi where render nodes may not exist)
-    static const char* DRM_DEVICES[] = {"/dev/dri/renderD128", "/dev/dri/renderD129",
+    static const char* kDrmDevices[] = {"/dev/dri/renderD128", "/dev/dri/renderD129",
                                         "/dev/dri/card1", "/dev/dri/card0", nullptr};
-    for (int i = 0; DRM_DEVICES[i] && !egl_ok; ++i) {
-        int fd = open(DRM_DEVICES[i], O_RDWR | O_CLOEXEC);
+    for (int i = 0; kDrmDevices[i] && !egl_ok; ++i) {
+        int fd = open(kDrmDevices[i], O_RDWR | O_CLOEXEC);
         if (fd < 0)
             continue;
 
@@ -587,7 +587,7 @@ bool GCodeGLESRenderer::init_gl() {
             continue;
         }
 
-        if (try_egl_display(gbm, DRM_DEVICES[i])) {
+        if (try_egl_display(gbm, kDrmDevices[i])) {
             drm_fd_ = fd;
             gbm_device_ = gbm;
             egl_ok = true;
@@ -650,9 +650,9 @@ bool GCodeGLESRenderer::compile_shaders() {
         return false;
 
     const std::string vertex_src =
-        std::string(VERTEX_SHADER_DECLS) + OCT_DECODE_GLSL + VERTEX_SHADER_MAIN;
+        std::string(kVertexShaderDecls) + kOctDecodeGlsl + kVertexShaderMain;
     GLuint vs = compile_shader(GL_VERTEX_SHADER, vertex_src.c_str());
-    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, kFragmentShaderSource);
     if (!vs || !fs) {
         if (vs)
             glDeleteShader(vs);
@@ -921,7 +921,7 @@ static GLBufferHandle make_vbo(const void* data, size_t bytes, const char* what)
 
 void GCodeGLESRenderer::upload_layer(const RibbonGeometry& geom, size_t layer,
                                      std::vector<uint8_t>& buf, LayerVBO& out) {
-    constexpr size_t VERTEX_STRIDE = PackedVertex::stride();
+    constexpr size_t kVertexStride = PackedVertex::stride();
 
     out.vbo = GLBufferHandle();
     out.vertex_count = 0;
@@ -943,7 +943,7 @@ void GCodeGLESRenderer::upload_layer(const RibbonGeometry& geom, size_t layer,
     if (!geom.prepared_buffers.empty() && layer < geom.prepared_buffers.size() &&
         geom.prepared_buffers[layer].vertex_count > 0) {
         const auto& prepared = geom.prepared_buffers[layer];
-        GLBufferHandle vbo = make_vbo(prepared.data.data(), prepared.vertex_count * VERTEX_STRIDE,
+        GLBufferHandle vbo = make_vbo(prepared.data.data(), prepared.vertex_count * kVertexStride,
                                       "glBufferData (prepared)");
         if (!vbo.id) {
             spdlog::error("[GCode GLES] VBO creation failed for layer {} (prepared)", layer);
@@ -957,7 +957,7 @@ void GCodeGLESRenderer::upload_layer(const RibbonGeometry& geom, size_t layer,
     // CPU fallback: expand strips inline. Each strip = 4 vertices -> 2 triangles -> 6 vertices
     // (for GL_TRIANGLES).
     size_t total_verts = strip_count * 6;
-    size_t buf_bytes = total_verts * VERTEX_STRIDE;
+    size_t buf_bytes = total_verts * kVertexStride;
     if (buf.size() < buf_bytes) {
         buf.resize(buf_bytes);
     }
@@ -1018,7 +1018,7 @@ bool GCodeGLESRenderer::upload_geometry_chunk(const RibbonGeometry& geom,
                                               std::vector<LayerVBO>& vbos, size_t& next_layer,
                                               size_t total_layers) {
     // Time budget: 8ms per frame for uploads
-    constexpr auto TIME_BUDGET = std::chrono::milliseconds(8);
+    constexpr auto kTimeBudget = std::chrono::milliseconds(8);
     auto start = std::chrono::steady_clock::now();
 
     // Lock palette during read to prevent data races with set_tool_color_overrides
@@ -1033,7 +1033,7 @@ bool GCodeGLESRenderer::upload_geometry_chunk(const RibbonGeometry& geom,
 
         // Check time budget (check every layer, glBufferData can be slow)
         auto elapsed = std::chrono::steady_clock::now() - start;
-        if (elapsed >= TIME_BUDGET) {
+        if (elapsed >= kTimeBudget) {
             break;
         }
     }
@@ -1358,21 +1358,21 @@ bool GCodeGLESRenderer::setup_frame(const GCodeCamera& camera, float scale, bool
     // Both transformed to view space (normals are in view space via u_normal_matrix)
     glm::mat3 view_model_rot = glm::mat3(view * model);
     glm::vec3 light_dirs[2] = {glm::normalize(view_model_rot * cam_light_world),
-                               glm::normalize(view_model_rot * LIGHT_FRONT_DIR)};
-    glm::vec3 light_colors[2] = {glm::vec3(CAMERA_LIGHT_INTENSITY), // Camera light: primary
-                                 glm::vec3(FILL_LIGHT_INTENSITY)};  // Fill light: subtle
+                               glm::normalize(view_model_rot * kLightFrontDir)};
+    glm::vec3 light_colors[2] = {glm::vec3(kCameraLightIntensity), // Camera light: primary
+                                 glm::vec3(kFillLightIntensity)};  // Fill light: subtle
     glUniform3fv(u_light_dir_, 2, glm::value_ptr(light_dirs[0]));
     glUniform3fv(u_light_color_, 2, glm::value_ptr(light_colors[0]));
 
-    glm::vec3 ambient{AMBIENT_INTENSITY};
+    glm::vec3 ambient{kAmbientIntensity};
     glUniform3fv(u_ambient_, 1, glm::value_ptr(ambient));
 
     // Material
     glUniform1f(u_specular_intensity_, specular_intensity_);
     glUniform1f(u_specular_shininess_, specular_shininess_);
-    // Matches depth_shading::LIFT_STRENGTH on the 2D path, so the same model in
+    // Matches depth_shading::kLiftStrength on the 2D path, so the same model in
     // the same filament reads the same way in either renderer.
-    glUniform1f(u_lift_strength_, helix::gcode::depth_shading::LIFT_STRENGTH);
+    glUniform1f(u_lift_strength_, helix::gcode::depth_shading::kLiftStrength);
 
     // Per-vertex color mode: use vertex colors when geometry has a color palette.
     // With per-tool AMS overrides, the palette is updated in-place so vertex colors
@@ -1385,7 +1385,7 @@ bool GCodeGLESRenderer::setup_frame(const GCodeCamera& camera, float scale, bool
 }
 
 /// How far the ghost pass lightens toward white.
-static constexpr float GHOST_LIGHTEN_SCALE = 4.0f;
+static constexpr float kGhostLightenScale = 4.0f;
 
 void GCodeGLESRenderer::render_moving(lv_layer_t* layer, const ParsedGCodeFile& gcode,
                                       const GCodeCamera& camera, const lv_area_t* widget_coords) {
@@ -1422,7 +1422,7 @@ void GCodeGLESRenderer::render_moving(lv_layer_t* layer, const ParsedGCodeFile& 
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glDepthMask(GL_FALSE);
-            draw_layers(*draw_vbos, ghost_start, draw_end, GHOST_LIGHTEN_SCALE,
+            draw_layers(*draw_vbos, ghost_start, draw_end, kGhostLightenScale,
                         ghost_opacity_ / 255.0f, plan.stride);
             glDepthMask(GL_TRUE);
             glDisable(GL_BLEND);
@@ -1454,7 +1454,7 @@ int GCodeGLESRenderer::draw_layers(const std::vector<LayerVBO>& vbos, int layer_
     glUniform1f(u_color_scale_, color_scale);
     glUniform1f(u_base_alpha_, alpha);
 
-    constexpr size_t STRIDE = PackedVertex::stride();
+    constexpr size_t kStride = PackedVertex::stride();
 
     // Enable vertex attributes once before the loop (a_position_ and a_normal_
     // are validated >= 0 during compile_shaders)
@@ -1478,18 +1478,18 @@ int GCodeGLESRenderer::draw_layers(const std::vector<LayerVBO>& vbos, int layer_
         // Position: quantized int16, NOT normalized — the raw integer reaches the
         // shader and u_mvp / u_model_view carry the dequantization.
         glVertexAttribPointer(static_cast<GLuint>(a_position_), 3, GL_SHORT, GL_FALSE,
-                              static_cast<GLsizei>(STRIDE),
+                              static_cast<GLsizei>(kStride),
                               reinterpret_cast<void*>(PackedVertex::position_offset()));
 
         // Normal: int8[2] octahedral, decoded in the vertex shader.
         glVertexAttribPointer(static_cast<GLuint>(a_normal_), 2, GL_BYTE, GL_TRUE,
-                              static_cast<GLsizei>(STRIDE),
+                              static_cast<GLsizei>(kStride),
                               reinterpret_cast<void*>(PackedVertex::normal_offset()));
 
         if (a_color_ >= 0) {
             // Color: RGBA8 unorm; alpha byte is present but ignored by the shader.
             glVertexAttribPointer(static_cast<GLuint>(a_color_), 4, GL_UNSIGNED_BYTE, GL_TRUE,
-                                  static_cast<GLsizei>(STRIDE),
+                                  static_cast<GLsizei>(kStride),
                                   reinterpret_cast<void*>(PackedVertex::color_offset()));
         }
 
@@ -1593,7 +1593,7 @@ bool GCodeGLESRenderer::run_slice(const ParsedGCodeFile& gcode, const GCodeCamer
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glDepthMask(GL_FALSE);
             job_.next_layer = draw_layers(layer_vbos_, job_.next_layer, job_.ghost_end,
-                                          GHOST_LIGHTEN_SCALE, ghost_opacity_ / 255.0f, 1, left);
+                                          kGhostLightenScale, ghost_opacity_ / 255.0f, 1, left);
             glDepthMask(GL_TRUE);
             glDisable(GL_BLEND);
         } else { // Overlays: the selection tag and brackets a moving frame skips
@@ -1851,8 +1851,8 @@ void GCodeGLESRenderer::blit_to_lvgl(lv_layer_t* layer, const lv_area_t* widget_
 
 bool GCodeGLESRenderer::CachedRenderState::same_scene(const CachedRenderState& o) const {
     // Epsilon comparisons: tighter for angles, looser for zoom/distance
-    auto near_angle = [](float a, float b) { return std::abs(a - b) < ANGLE_EPSILON; };
-    auto near_zoom = [](float a, float b) { return std::abs(a - b) < ZOOM_EPSILON; };
+    auto near_angle = [](float a, float b) { return std::abs(a - b) < kAngleEpsilon; };
+    auto near_zoom = [](float a, float b) { return std::abs(a - b) < kZoomEpsilon; };
     return near_angle(azimuth, o.azimuth) && near_angle(elevation, o.elevation) &&
            near_zoom(distance, o.distance) && near_zoom(zoom_level, o.zoom_level) &&
            near_angle(target.x, o.target.x) && near_angle(target.y, o.target.y) &&
@@ -2043,8 +2043,8 @@ void GCodeGLESRenderer::set_simplification_tolerance(float /*tolerance_mm*/) {
 }
 
 void GCodeGLESRenderer::set_specular(float intensity, float shininess) {
-    specular_intensity_ = std::clamp(intensity, MIN_SPECULAR_INTENSITY, MAX_SPECULAR_INTENSITY);
-    specular_shininess_ = std::clamp(shininess, MIN_SPECULAR_SHININESS, MAX_SPECULAR_SHININESS);
+    specular_intensity_ = std::clamp(intensity, kMinSpecularIntensity, kMaxSpecularIntensity);
+    specular_shininess_ = std::clamp(shininess, kMinSpecularShininess, kMaxSpecularShininess);
     frame_dirty_ = true;
 }
 
@@ -2099,7 +2099,7 @@ void GCodeGLESRenderer::reset_colors() {
     // Main thread; the GL passes below consume these as uniforms.
     sel_palette_ = selection::palette_from_theme();
     palette_.has_override = false;
-    filament_color_ = DEFAULT_FILAMENT_COLOR;
+    filament_color_ = kDefaultFilamentColor;
     frame_dirty_ = true;
 }
 
@@ -2336,7 +2336,7 @@ std::optional<glm::vec2> GCodeGLESRenderer::project_to_shown_image(const glm::ve
 // Selection Brackets (3D, GPU-side — drawn inside the FBO)
 // ============================================================
 
-static const char* LINE_VERTEX_SHADER = R"(
+static const char* kLineVertexShader = R"(
     uniform mat4 u_mvp;
     attribute vec3 a_position;
     void main() {
@@ -2344,7 +2344,7 @@ static const char* LINE_VERTEX_SHADER = R"(
     }
 )";
 
-static const char* LINE_FRAGMENT_SHADER = R"(
+static const char* kLineFragmentShader = R"(
     precision mediump float;
     uniform vec4 u_color;
     void main() {
@@ -2356,10 +2356,10 @@ bool GCodeGLESRenderer::init_line_program() {
     if (line_program_)
         return true;
 
-    GLuint vs = compile_shader(GL_VERTEX_SHADER, LINE_VERTEX_SHADER);
+    GLuint vs = compile_shader(GL_VERTEX_SHADER, kLineVertexShader);
     if (!vs)
         return false;
-    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, LINE_FRAGMENT_SHADER);
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, kLineFragmentShader);
     if (!fs) {
         glDeleteShader(vs);
         return false;
@@ -2468,7 +2468,7 @@ void GCodeGLESRenderer::render_brackets_3d(const ParsedGCodeFile& gcode, const g
 // Selection Silhouette (3D shell pass, drawn under the lit geometry)
 // ============================================================
 
-static const char* SHELL_VERTEX_DECLS = R"(
+static const char* kShellVertexDecls = R"(
     // Selection tag. Consumes the same packed vertex layout as the lit program,
     // so it draws straight from the layer VBOs with no extra buffer:
     //   a_position : vec3, raw quantized int16 (dequantization folded into u_mvp)
@@ -2478,7 +2478,7 @@ static const char* SHELL_VERTEX_DECLS = R"(
     attribute vec3 a_position;
 )";
 
-static const char* SHELL_VERTEX_MAIN = R"(
+static const char* kShellVertexMain = R"(
     void main() {
         gl_Position = u_mvp * vec4(a_position, 1.0);
     }
@@ -2489,13 +2489,13 @@ bool GCodeGLESRenderer::init_shell_program() {
         return true;
 
     const std::string vertex_src =
-        std::string(SHELL_VERTEX_DECLS) + OCT_DECODE_GLSL + SHELL_VERTEX_MAIN;
+        std::string(kShellVertexDecls) + kOctDecodeGlsl + kShellVertexMain;
     GLuint vs = compile_shader(GL_VERTEX_SHADER, vertex_src.c_str());
     if (!vs)
         return false;
     // Same flat-color fragment shader the bracket program uses — one uniform color,
     // no lighting. No reason for a second copy.
-    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, LINE_FRAGMENT_SHADER);
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, kLineFragmentShader);
     if (!fs) {
         glDeleteShader(vs);
         return false;
@@ -2554,7 +2554,7 @@ std::vector<bool> GCodeGLESRenderer::object_mask(const ParsedGCodeFile& gcode,
 
 size_t GCodeGLESRenderer::draw_object_runs(const std::vector<bool>& mask, int layer_start,
                                            int layer_end, int a_position, int a_normal) {
-    constexpr size_t STRIDE = PackedVertex::stride();
+    constexpr size_t kStride = PackedVertex::stride();
     size_t runs_drawn = 0;
 
     glEnableVertexAttribArray(static_cast<GLuint>(a_position));
@@ -2587,11 +2587,11 @@ size_t GCodeGLESRenderer::draw_object_runs(const std::vector<bool>& mask, int la
             if (!bound) {
                 glBindBuffer(GL_ARRAY_BUFFER, lv.vbo);
                 glVertexAttribPointer(static_cast<GLuint>(a_position), 3, GL_SHORT, GL_FALSE,
-                                      static_cast<GLsizei>(STRIDE),
+                                      static_cast<GLsizei>(kStride),
                                       reinterpret_cast<void*>(PackedVertex::position_offset()));
                 if (a_normal >= 0) {
                     glVertexAttribPointer(static_cast<GLuint>(a_normal), 2, GL_BYTE, GL_TRUE,
-                                          static_cast<GLsizei>(STRIDE),
+                                          static_cast<GLsizei>(kStride),
                                           reinterpret_cast<void*>(PackedVertex::normal_offset()));
                 }
                 bound = true;
@@ -2753,7 +2753,7 @@ std::optional<std::string> GCodeGLESRenderer::pick_object(const glm::vec2& scree
     float closest_distance = std::numeric_limits<float>::max();
     std::optional<std::string> picked_object;
 
-    constexpr float PICK_THRESHOLD = selection::kPickThresholdPx;
+    constexpr float kPickThreshold = selection::kPickThresholdPx;
 
     // Stage 1: which objects could the tap possibly be on?
     //
@@ -2793,7 +2793,7 @@ std::optional<std::string> GCodeGLESRenderer::pick_object(const glm::vec2& scree
             project_aabb_to_screen(transform, box, viewport_width_, viewport_height_);
         // A box that projects to nothing usable stays a candidate: better to pay
         // for stage 2 than to drop a pick outright.
-        if (!sb.valid || sb.contains(screen_pos.x, screen_pos.y, PICK_THRESHOLD)) {
+        if (!sb.valid || sb.contains(screen_pos.x, screen_pos.y, kPickThreshold)) {
             candidate[static_cast<size_t>(idx)] = true;
             any_candidate = true;
         }
@@ -2852,7 +2852,7 @@ std::optional<std::string> GCodeGLESRenderer::pick_object(const glm::vec2& scree
 
             const float dist = point_segment_distance(screen_pos, *start_screen, *end_screen);
 
-            if (dist < PICK_THRESHOLD && dist < closest_distance) {
+            if (dist < kPickThreshold && dist < closest_distance) {
                 closest_distance = dist;
                 picked_object = gcode.get_object_name(segment.object_name_index);
             }

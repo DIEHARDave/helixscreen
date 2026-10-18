@@ -180,8 +180,8 @@ IFS ([upstream-doc]; full write-up incl. attribution in
   the AD5X MCU on Klipper 12.
 
 That is the external rationale for the print-time poll backoff: the
-`Adventurer5M.json` freshness poll runs at `JSON_POLL_IDLE` = 5 s but slows to
-`JSON_POLL_PRINTING` = 30 s while PRINTING (`include/ams_backend_ad5x_ifs.h`; each
+`Adventurer5M.json` freshness poll runs at `kJsonPollIdle` = 5 s but slows to
+`kJsonPollPrinting` = 30 s while PRINTING (`include/ams_backend_ad5x_ifs.h`; each
 poll is a loopback HTTP GET on a 2-core board that is simultaneously feeding the MCU
 step queue). PAUSED deliberately keeps the 5 s cadence — a pause is when a user
 actually swaps a spool and relabels it.
@@ -209,7 +209,7 @@ On a raise: `runout_active_ = true`, `system_info_.filament_runout = true`, and 
 
 > **There is deliberately NO "Load slot N" recovery button**, even though a runout is exactly when the user wants one. Every AD5X load path runs `INSERT_PRUTOK_IFS`, whose macro homes itself and then moves the toolhead on its own authority (`_GOTO_TRASH`, `_SBROS_TRASH`, `_CLEAR_REZINA` nozzle wipe) — this is what `filament_ops_self_home()` is about. On the loadcell-Z AD5X that motion reaches **down into the part**; with a job owning the toolhead it trips ZMOD's `ZCONTROL_AUTO` and shuts Klipper down, recoverable only by a firmware restart (bundle `XWPBR2DX`, commit `329e731e9`). A runout state is PAUSED by construction, so the button would fire straight into that. Note the leading `_G28` is *conditional* on `homed_axes` (see `FLASHFORGE_AD5X_IFS_ANALYSIS.md` §12) and usually no-ops mid-print — that is not a reason to relax this: `homed_axes` is cleared by a Klipper error, an `M84`, or a cold resume, and the trash/wipe moves happen either way. `refuse_if_printing()` protects `load_filament()`; it does **not** protect a recovery button, which hands its gcode directly to `MoonrakerAPI::execute_gcode`, and the `_G28` is buried inside the macro where `reject_homing_during_active_print()` never sees it. The purge is a bare extruder move for the same reason — no homing, so it cannot reach the `_G28`. If a verified non-homing load-to-toolhead command ever turns up, that is the time to add the button.
 
-> **Unverified, flagged rather than assumed:** whether a firmware tool change can make the job read PAUSED with the head still empty. The reasoning above (Klipper queues `PAUSE` behind the running macro) is first-principles, not a device observation, and the fleet's AD5X rig (commissioned 2026-08-23) has not yet been exercised for this case, nor is there an `ad5x` mock profile. If a false runout ever shows up mid-swap, the fix is to lengthen `RUNOUT_CONFIRM_DELAY` past a full swap (~2 min measured in bundle `NJB2U558`), not to loosen the PAUSED gate.
+> **Unverified, flagged rather than assumed:** whether a firmware tool change can make the job read PAUSED with the head still empty. The reasoning above (Klipper queues `PAUSE` behind the running macro) is first-principles, not a device observation, and the fleet's AD5X rig (commissioned 2026-08-23) has not yet been exercised for this case, nor is there an `ad5x` mock profile. If a false runout ever shows up mid-swap, the fix is to lengthen `kRunoutConfirmDelay` past a full swap (~2 min measured in bundle `NJB2U558`), not to loosen the PAUSED gate.
 
 #### Auto-switchover plugin visibility
 
@@ -239,7 +239,7 @@ exists), not a code restriction.
 |--------|--------|
 | `AmsBackendAd5xIfs::get_plugin()` | `IfsPlugin::None` / `LessWaste` / `Bambufy`. `None` whenever `has_ifs_vars_` is false, so stale `less_waste_*` rows left behind by an uninstalled plugin never read as installed |
 | `AmsBackendAd5xIfs::plugin_backup_enabled()` | `std::optional<bool>` — `nullopt` means the macro dict never carried the key (or no plugin is installed), which is **not** the same as off |
-| `AmsBackendAd5xIfs::backup_state_locked()` | The live switchover state as a tri-state, `BACKUP_UNKNOWN` (-1) / `BACKUP_OFF` (0) / `BACKUP_ON` (1). Stock zMod reports `BACKUP_ON` (ANALOG_PRUTOK is always-on); the plugin path mirrors `variable_backup` with `BACKUP_UNKNOWN` when the key was never read. Feeds both the runout warning log and `get_endless_spool_capabilities()`' `enabled` axis, so the number in the log and the sentence on screen cannot disagree |
+| `AmsBackendAd5xIfs::backup_state_locked()` | The live switchover state as a tri-state, `kBackupUnknown` (-1) / `kBackupOff` (0) / `kBackupOn` (1). Stock zMod reports `kBackupOn` (ANALOG_PRUTOK is always-on); the plugin path mirrors `variable_backup` with `kBackupUnknown` when the key was never read. Feeds both the runout warning log and `get_endless_spool_capabilities()`' `enabled` axis, so the number in the log and the sentence on screen cannot disagree |
 
 **There are no AD5X-specific XML subjects.** `ams_ifs_plugin` and `ams_ifs_backup_enabled`
 existed for one release as this backend's own publication path and are gone: they never

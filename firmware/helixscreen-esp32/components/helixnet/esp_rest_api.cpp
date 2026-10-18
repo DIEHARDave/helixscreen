@@ -20,12 +20,12 @@
 //   in-memory thumbnail fetch" the Task 10 plan entry describes — Task 11
 //   ("new design" print-select) reuses this same primitive directly for real
 //   thumbnail bytes (root="gcodes", path=the resolved .thumbs/ path, capped
-//   at HARD_CAP_BYTES), it just isn't wired to a UI yet.
+//   at kHardCapBytes), it just isn't wired to a UI yet.
 //
 // ITransfersAPI::download_file_range — REAL: the same lane with the range
 // moved off the start, which a sliced .3mf's thumbnail and summary need.
 //
-// ITransfersAPI::download_file — REAL, capped at WHOLE_FILE_CAP_BYTES and
+// ITransfersAPI::download_file — REAL, capped at kWholeFileCapBytes and
 // erroring above it: small config files such as AFC.cfg, read into memory.
 //
 // ITransfersAPI::get_file_metadata / metascan_file are IFilesAPI (NOT this
@@ -87,11 +87,11 @@ constexpr char TAG[] = "esp_rest_api";
 // becomes %XX. libhv's HUrl isn't part of the ESP32 build, so this is a small
 // standalone equivalent (no ESP-IDF/libhv dependency, just <cctype>/<cstdio>).
 std::string esp_url_escape_path(const std::string& path) {
-    static constexpr char UNRESERVED[] = "/.-_";
+    static constexpr char kUnreserved[] = "/.-_";
     std::string out;
     out.reserve(path.size());
     for (unsigned char c : path) {
-        if (std::isalnum(c) || std::strchr(UNRESERVED, static_cast<char>(c)) != nullptr) {
+        if (std::isalnum(c) || std::strchr(kUnreserved, static_cast<char>(c)) != nullptr) {
             out += static_cast<char>(c);
         } else {
             char buf[4];
@@ -141,8 +141,8 @@ bool esp_is_safe_endpoint(const std::string& endpoint) {
 // (a handful of scalar fields + a small slots array) without being wasteful
 // of the lane's PSRAM accumulation buffer. EspHttpLane fails loud rather than
 // silently truncating an over-cap response (see esp_http_lane.cpp).
-constexpr size_t REST_GET_CAP_BYTES = 16 * 1024;
-constexpr size_t WHOLE_FILE_CAP_BYTES = 64 * 1024;
+constexpr size_t kRestGetCapBytes = 16 * 1024;
+constexpr size_t kWholeFileCapBytes = 64 * 1024;
 } // namespace
 
 // ============================================================================
@@ -256,12 +256,12 @@ void MoonrakerFileTransferAPI::download_file(const std::string& root, const std:
 
     std::string url = http_base_url_ + "/server/files/" + root + "/" + esp_url_escape_path(path);
     bool queued = helix::http::EspHttpLane::instance().submit_get(
-        url, WHOLE_FILE_CAP_BYTES + 1,
+        url, kWholeFileCapBytes + 1,
         [on_success, on_error](std::string& body) {
-            if (body.size() > WHOLE_FILE_CAP_BYTES) {
+            if (body.size() > kWholeFileCapBytes) {
                 moonraker_internal::report_error(
                     on_error, MoonrakerErrorType::UNKNOWN, "download_file",
-                    "file exceeds the " + std::to_string(WHOLE_FILE_CAP_BYTES) +
+                    "file exceeds the " + std::to_string(kWholeFileCapBytes) +
                         "-byte in-memory cap");
                 return;
             }
@@ -377,7 +377,7 @@ void MoonrakerRestAPI::call_rest_get(const std::string& endpoint, RestCallback o
     ESP_LOGD(TAG, "call_rest_get: %s", url.c_str());
 
     bool queued = helix::http::EspHttpLane::instance().submit_get(
-        url, REST_GET_CAP_BYTES,
+        url, kRestGetCapBytes,
         [on_complete](std::string& body) {
             RestResponse resp;
             resp.success = true;

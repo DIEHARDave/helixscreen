@@ -23,7 +23,7 @@ struct CapChipSpec {
 };
 
 /// One entry per CapChip, in enum order.
-const std::array<CapChipSpec, CAP_CHIP_COUNT>& cap_chip_specs();
+const std::array<CapChipSpec, kCapChipCount>& cap_chip_specs();
 
 /// The spec whose widget name is @p name, or nullptr.
 const CapChipSpec* find_cap_chip_spec(std::string_view name);

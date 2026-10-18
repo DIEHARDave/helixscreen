@@ -115,7 +115,7 @@ lv_obj_t* create_transparent_container(lv_obj_t* parent);
 /// Opacity of a spool visual and its labels on a lane that is assigned but not
 /// physically present. Shared by the AMS slot widget and the mini status strip
 /// so two views of the same lane cannot ghost to different strengths.
-inline constexpr lv_opa_t GHOST_OPA = LV_OPA_30;
+inline constexpr lv_opa_t kGhostOpa = LV_OPA_30;
 
 /** Create a circular lane-number badge (1-based) using AMS badge tokens.
  *  @param parent typically the spool container; caller may re-align.
@@ -135,16 +135,16 @@ void set_lane_badge_active(lv_obj_t* badge, bool active);
 // ============================================================================
 
 /// Pulse animation constants (shared by error badges and error dots)
-constexpr int32_t PULSE_SCALE_MIN = 180; ///< ~70% scale
-constexpr int32_t PULSE_SCALE_MAX = 256; ///< 100% scale
-constexpr int32_t PULSE_SAT_MIN = 80;    ///< Washed out
-constexpr int32_t PULSE_SAT_MAX = 255;   ///< Full vivid
-constexpr uint32_t PULSE_DURATION_MS = 800;
+constexpr int32_t kPulseScaleMin = 180; ///< ~70% scale
+constexpr int32_t kPulseScaleMax = 256; ///< 100% scale
+constexpr int32_t kPulseSatMin = 80;    ///< Washed out
+constexpr int32_t kPulseSatMax = 255;   ///< Full vivid
+constexpr uint32_t kPulseDurationMs = 800;
 
 /// Active-node ring geometry, shared by the lane slots and the bypass node.
-constexpr int32_t ACTIVE_RING_BORDER_WIDTH = 3;
-constexpr int32_t ACTIVE_RING_GLOW_WIDTH = 16;
-constexpr int32_t ACTIVE_RING_GLOW_SPREAD = 2;
+constexpr int32_t kActiveRingBorderWidth = 3;
+constexpr int32_t kActiveRingGlowWidth = 16;
+constexpr int32_t kActiveRingGlowSpread = 2;
 
 /** Start scale+saturation pulse animation on an object. Stores base_color in border_color. */
 void start_pulse(lv_obj_t* dot, lv_color_t base_color);
@@ -193,8 +193,8 @@ struct SlotColumn {
 };
 
 /// Status line dimensions
-constexpr int32_t STATUS_LINE_HEIGHT_PX = 3;
-constexpr int32_t STATUS_LINE_GAP_PX = 2;
+constexpr int32_t kStatusLineHeightPx = 3;
+constexpr int32_t kStatusLineGapPx = 2;
 
 /** Create slot column: bar_bg (with bar_fill child) + status_line in a column flex container */
 SlotColumn create_slot_column(lv_obj_t* parent, int32_t bar_width, int32_t bar_height,

@@ -631,7 +631,7 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     // This is also what restores retention across an eject now that
     // parse_afc_stepper honours AFC's clears: firmware truth clears, and the
     // override re-supplies the identity the user attached.
-    static constexpr const char* OVERRIDE_NAMESPACE = "helix-screen-afc-overrides";
+    static constexpr const char* kOverrideNamespace = "helix-screen-afc-overrides";
     /// Store on the SHARED lane_data namespace, used only by
     /// publish_external_spool_lane. AFC's plugin owns that namespace — our
     /// private override_store_ is deliberately NOT pointed at it.
@@ -698,21 +698,21 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
 
     /// Everything busy that has no dedicated budget: RESETTING, FORMING_TIP,
     /// CUTTING, CHECKING. These are short, bounded macro steps.
-    static constexpr int ACTION_TIMEOUT_SECONDS = 120;
+    static constexpr int kActionTimeoutSeconds = 120;
     /// AFC's toolchanger states (ToolSwap, ToolDock, ToolPickup, Moving,
     /// Restoring) all map to SELECTING, and a full toolchange is the longest
     /// thing AFC does — dock, pick up, load, cut, purge, brush, restore
     /// position. AD5X's busy list omits SELECTING entirely (its firmware never
     /// reports it); AFC needs it and needs it long.
-    static constexpr int SELECTING_TIMEOUT_SECONDS = 300;
+    static constexpr int kSelectingTimeoutSeconds = 300;
     /// Cold nozzle to 300°C for high-temp materials. Klipper's own
     /// verify_heater aborts a genuinely dead heater well inside this.
-    static constexpr int HEATING_TIMEOUT_SECONDS = 300;
+    static constexpr int kHeatingTimeoutSeconds = 300;
     /// A multi-colour purge legitimately runs minutes on a large purge volume.
-    static constexpr int PURGING_TIMEOUT_SECONDS = 240;
+    static constexpr int kPurgingTimeoutSeconds = 240;
     /// Lane-to-toolhead feed over a long bowden, plus AFC's per-lane speed
     /// ramps. Shared by LOADING and UNLOADING — the paths are symmetric.
-    static constexpr int LOAD_UNLOAD_TIMEOUT_SECONDS = 180;
+    static constexpr int kLoadUnloadTimeoutSeconds = 180;
 
     /// Start of the current action, stamped once per status frame in
     /// parse_afc_state() when the action changed across the whole frame.
@@ -1311,7 +1311,7 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     /// printer.AFC.message is a FIFO head and each clear pops one entry, so a
     /// single send leaves the next queued error on screen. Armed by clear_fault(),
     /// spent one per status delta that still carries a message. Hitting zero is
-    /// the abnormal exit — see MESSAGE_DRAIN_MAX_CLEARS.
+    /// the abnormal exit — see kMessageDrainMaxClears.
     int message_drain_budget_ = 0;
 
     /// Set by parse_afc_state() while holding mutex_; consumed by
@@ -1349,7 +1349,7 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     /// _get_message(clear=False) — so an error raised by the caller's own
     /// follow-up action (the sidebar sends AFC_RESET right after clear_fault())
     /// can be swallowed unseen anywhere inside the 5 s window.
-    static constexpr int MESSAGE_DRAIN_MAX_CLEARS = 10;
+    static constexpr int kMessageDrainMaxClears = 10;
 
     /// Sends one queued AFC_CLEAR_MESSAGE if the drain is armed and a message is
     /// still present. Must be called WITHOUT mutex_ held.
@@ -1361,7 +1361,7 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     bool afc_quiet_mode_{false};    ///< AFC quiet mode state
     bool afc_led_state_{false};     ///< AFC LED state
     std::string current_lane_name_; ///< Currently active lane name
-    // Two dedup trackers: last_error_msg_ prevents duplicate emit_event(EVENT_ERROR),
+    // Two dedup trackers: last_error_msg_ prevents duplicate emit_event(kEventError),
     // last_seen_message_ prevents duplicate toast/notification display. Both reset
     // when the AFC message field clears.
     std::string last_error_msg_;

@@ -38,7 +38,7 @@ using helix::ui::UpdateQueue;
 
 namespace {
 
-const char* PRINTER_CFG = "[stepper_x]\nstep_pin: PF0\n";
+const char* kPrinterCfg = "[stepper_x]\nstep_pin: PF0\n";
 
 /// Discovery snapshots that parse a real objects list (so the status is an
 /// observation, not UNKNOWN).
@@ -64,7 +64,7 @@ struct MacrosSettingsFixture : LVGLUITestFixture {
         // reads another test's leftovers.
         helix::PrinterStateTestAccess::reset(state());
         state().init_subjects(true);
-        api_.set_config_files({{"printer.cfg", PRINTER_CFG}});
+        api_.set_config_files({{"printer.cfg", kPrinterCfg}});
         AdvancedPanelTestAccess::wire_macro_observer(panel);
     }
 

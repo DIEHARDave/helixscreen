@@ -743,12 +743,12 @@ void PrintStatusWidget::update_active_layout_mode() {
 
 void PrintStatusWidget::handle_print_card_clicked() {
     // Startup grace period: reject phantom clicks during early boot
-    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::PROCESS_START_TIME;
-    if (elapsed < app_constants::startup::PRINT_START_GRACE_PERIOD) {
+    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::kProcessStartTime;
+    if (elapsed < app_constants::startup::kPrintStartGracePeriod) {
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
         spdlog::warn("[PrintStatusWidget] Rejected print card click during startup grace period "
                      "({}s < {}s)",
-                     secs, app_constants::startup::PRINT_START_GRACE_PERIOD.count());
+                     secs, app_constants::startup::kPrintStartGracePeriod.count());
         return;
     }
 
@@ -1871,12 +1871,12 @@ void PrintStatusWidget::print_card_clicked_cb(lv_event_t* e) {
     // originated inside the named nozzle click target; the chevron cb
     // handles it. Name must match the lv_obj name in
     // ui_xml/components/print_status_detailed_active.xml.
-    constexpr std::string_view NOZZLE_CLICK_TARGET_NAME = "detailed_nozzle_click_target";
+    constexpr std::string_view kNozzleClickTargetName = "detailed_nozzle_click_target";
     bool from_nozzle_group = false;
     if (auto* target = lv_event_get_target_obj(e)) {
         for (lv_obj_t* o = target; o; o = lv_obj_get_parent(o)) {
             const char* name = lv_obj_get_name(o);
-            if (name && std::string_view(name) == NOZZLE_CLICK_TARGET_NAME) {
+            if (name && std::string_view(name) == kNozzleClickTargetName) {
                 from_nozzle_group = true;
                 break;
             }

@@ -98,7 +98,7 @@ class ReconnectCountingClient : public helix::IMoonrakerClient {
         std::function<void(const helix::PrinterDiscovery&, const json&)>) override {}
     void set_bed_mesh_callback(std::function<void(const json&)>) override {}
     helix::SubscriptionId register_notify_update(std::function<void(const json&)>) override {
-        return helix::INVALID_SUBSCRIPTION_ID;
+        return helix::kInvalidSubscriptionId;
     }
     bool unsubscribe_notify_update(helix::SubscriptionId) override {
         return false;
@@ -510,7 +510,7 @@ struct SavedPrinter {
     Config* cfg = Config::get_instance();
     std::string host_key = cfg->df() + "moonraker_host";
     std::string port_key = cfg->df() + "moonraker_port";
-    std::string hostname_key = cfg->df() + helix::wizard::HOSTNAME;
+    std::string hostname_key = cfg->df() + helix::wizard::kHostname;
     std::string prev_host = cfg->get<std::string>(host_key, "");
     int prev_port = cfg->get<int>(port_key, 7125);
     std::string prev_hostname = cfg->get<std::string>(hostname_key, "");
@@ -543,7 +543,7 @@ TEST_CASE_METHOD(ConnFailedFixture, "Connection-failed prompt offers the printer
     UpdateQueue::instance().drain();
     // The prompt waits for the browse, so it can carry what it found.
     CHECK(Modal::get_top() == nullptr);
-    process_lvgl(helix::ui::REDISCOVERY_WINDOW_MS + 100);
+    process_lvgl(helix::ui::kRediscoveryWindowMs + 100);
     UpdateQueue::instance().drain();
 
     lv_obj_t* dialog = Modal::get_top();
@@ -580,7 +580,7 @@ TEST_CASE_METHOD(ConnFailedFixture,
     helix::ui::show_connection_failed_modal("Connection Failed",
                                             "Unable to reach printer at 192.0.2.1:7125.");
     UpdateQueue::instance().drain();
-    process_lvgl(helix::ui::REDISCOVERY_WINDOW_MS + 100);
+    process_lvgl(helix::ui::kRediscoveryWindowMs + 100);
     UpdateQueue::instance().drain();
 
     lv_obj_t* dialog = Modal::get_top();
@@ -599,10 +599,10 @@ TEST_CASE_METHOD(ConnFailedFixture, "A failure escalation browses once",
     helix::ui::show_connection_failed_modal("Connection Failed", "Unable to reach printer.");
     helix::ui::show_connection_failed_modal("Connection Failed", "Unable to reach printer.");
     UpdateQueue::instance().drain();
-    process_lvgl(helix::ui::REDISCOVERY_WINDOW_MS + 100);
+    process_lvgl(helix::ui::kRediscoveryWindowMs + 100);
     UpdateQueue::instance().drain();
     CHECK(mdns.browses == 1);
-    process_lvgl(3 * helix::ui::REDISCOVERY_WINDOW_MS);
+    process_lvgl(3 * helix::ui::kRediscoveryWindowMs);
     CHECK(mdns.browses == 1);
 
     // One prompt: dismissing it leaves nothing behind.
@@ -631,7 +631,7 @@ TEST_CASE_METHOD(ConnFailedFixture, "A browse outlived by the failure shows no p
     SECTION("the user switched printers meanwhile") {
         helix::ConfigTestAccess::active_printer_id(*cfg) = saved_active + "-other";
     }
-    process_lvgl(helix::ui::REDISCOVERY_WINDOW_MS + 100);
+    process_lvgl(helix::ui::kRediscoveryWindowMs + 100);
     UpdateQueue::instance().drain();
     helix::ConfigTestAccess::active_printer_id(*cfg) = saved_active;
 
@@ -650,7 +650,7 @@ TEST_CASE_METHOD(ConnFailedFixture, "Use New Address writes nothing after a prin
 
     helix::ui::show_connection_failed_modal("Connection Failed", "Unable to reach printer.");
     UpdateQueue::instance().drain();
-    process_lvgl(helix::ui::REDISCOVERY_WINDOW_MS + 100);
+    process_lvgl(helix::ui::kRediscoveryWindowMs + 100);
     UpdateQueue::instance().drain();
     lv_obj_t* dialog = Modal::get_top();
     REQUIRE(dialog != nullptr);

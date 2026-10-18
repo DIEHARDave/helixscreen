@@ -105,7 +105,7 @@ if the frame that finally shows it empty arrives later. So does the
 engine leaving multi/head mode, or a print holding the heads by the time the head empties
 (the shared print-active rule, so a start this screen is preparing counts before the printer
 reports it);
-each of those raises EVENT_ERROR naming the bay. A failed unload, or another filament op
+each of those raises kEventError naming the bay. A failed unload, or another filament op
 that actually dispatches (a tool change and a tool park included), drops it at once; an op
 that is refused before sending changes nothing, the pending load included. A head loaded
 with no recorded

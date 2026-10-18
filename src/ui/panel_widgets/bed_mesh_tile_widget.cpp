@@ -600,7 +600,7 @@ void BedMeshTileWidget::calibrate() {
     const int bed_temp_c = bed_mesh::probe_bed_temp_c(
         lv_subject_get_int(printer_state_.temperature_state().get_bed_target_subject()),
         lv_subject_get_int(printer_state_.temperature_state().get_bed_temp_subject()));
-    const auto plan = bed_mesh::plan_calibration(info, bed_mesh::DEFAULT_PROFILE, bed_temp_c);
+    const auto plan = bed_mesh::plan_calibration(info, bed_mesh::kDefaultProfile, bed_temp_c);
 
     set_calibrating(true);
     ensure_homed_then(

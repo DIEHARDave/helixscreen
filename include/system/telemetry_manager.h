@@ -135,7 +135,7 @@ struct UpdateFailureDetail {
  * active after explicit user opt-in via the settings UI.
  *
  * Events are persisted to disk so they survive restarts. The event
- * queue is capped at MAX_QUEUE_SIZE; at the cap, delta events merge into
+ * queue is capped at kMaxQueueSize; at the cap, delta events merge into
  * a queued one of the same kind and other events evict the oldest
  * non-delta event.
  */
@@ -485,7 +485,7 @@ class TelemetryManager {
      * @brief Record a periodic performance snapshot event
      *
      * Captures frame time statistics from the ring buffer and uptime.
-     * Called automatically by the snapshot timer every SNAPSHOT_INTERVAL_MS.
+     * Called automatically by the snapshot timer every kSnapshotIntervalMs.
      * No-op if telemetry is disabled.
      *
      * Must be called from the LVGL/main thread only (accesses frame ring buffer).
@@ -509,7 +509,7 @@ class TelemetryManager {
     /**
      * @brief Notify that a user setting was changed
      *
-     * Accumulates setting changes with debouncing. After SETTINGS_DEBOUNCE_MS of
+     * Accumulates setting changes with debouncing. After kSettingsDebounceMs of
      * inactivity, calls flush_settings_changes() to enqueue a single aggregated
      * settings_changes event. Always tracks regardless of enabled state (data is
      * only recorded if enabled when the debounce fires).
@@ -680,8 +680,8 @@ class TelemetryManager {
     /**
      * @brief Attempt to send queued events to the telemetry endpoint
      *
-     * Sends up to MAX_BATCH_SIZE events in a single HTTPS POST.
-     * Respects SEND_INTERVAL between transmissions and uses exponential
+     * Sends up to kMaxBatchSize events in a single HTTPS POST.
+     * Respects kSendInterval between transmissions and uses exponential
      * backoff on failure. Runs the HTTP request on a background thread.
      *
      * No-op if telemetry is disabled, queue is empty, or a send is
@@ -696,7 +696,7 @@ class TelemetryManager {
     /**
      * @brief Build a batch of events for transmission (public for testing)
      *
-     * Takes at most MAX_BATCH_SIZE events from the front of the queue
+     * Takes at most kMaxBatchSize events from the front of the queue
      * without removing them. Returns a JSON array ready for POST body.
      *
      * @return JSON array of events (may be empty if queue is empty)
@@ -785,86 +785,86 @@ class TelemetryManager {
     // =========================================================================
 
     /** @brief Maximum number of events in the queue before oldest are dropped */
-    static constexpr size_t MAX_QUEUE_SIZE = 100;
+    static constexpr size_t kMaxQueueSize = 100;
 
     /** @brief Delay before first auto-send attempt after startup */
-    static constexpr uint32_t INITIAL_SEND_DELAY_MS = 60 * 1000; // 60 seconds
+    static constexpr uint32_t kInitialSendDelayMs = 60 * 1000; // 60 seconds
 
     /** @brief Interval between auto-send attempts */
-    static constexpr uint32_t AUTO_SEND_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+    static constexpr uint32_t kAutoSendIntervalMs = 60 * 60 * 1000; // 1 hour
 
     /** @brief Schema version for event JSON structure */
-    static constexpr int SCHEMA_VERSION = 3;
+    static constexpr int kSchemaVersion = 3;
 
     /** @brief HTTPS endpoint for telemetry submission */
-    static constexpr const char* ENDPOINT_URL = "https://telemetry.helixscreen.org/v1/events";
+    static constexpr const char* kEndpointUrl = "https://telemetry.helixscreen.org/v1/events";
 
     /** @brief Minimum interval between transmission attempts */
-    static constexpr auto SEND_INTERVAL = std::chrono::hours{24};
+    static constexpr auto kSendInterval = std::chrono::hours{24};
 
     /** @brief Retry spacing after a failed send, multiplied by the backoff.
-     *  A failure is spaced off this rather than SEND_INTERVAL so one unreachable
+     *  A failure is spaced off this rather than kSendInterval so one unreachable
      *  moment costs hours instead of a day, while the backoff still applies. */
-    static constexpr auto RETRY_INTERVAL = std::chrono::hours{1};
+    static constexpr auto kRetryInterval = std::chrono::hours{1};
 
     /** @brief Ceiling on the backoff multiplier.
-     *  Large enough that RETRY_INTERVAL * backoff still reaches the seven-day
+     *  Large enough that kRetryInterval * backoff still reaches the seven-day
      *  ceiling: a printer that never reaches the endpoint must end up retrying
      *  weekly, not every few hours. */
-    static constexpr int MAX_BACKOFF_MULTIPLIER = 168;
+    static constexpr int kMaxBackoffMultiplier = 168;
 
     /** @brief Maximum events per HTTPS POST batch */
-    static constexpr size_t MAX_BATCH_SIZE = 20;
+    static constexpr size_t kMaxBatchSize = 20;
 
     /** @brief Batches one send window will POST before giving the thread back.
      *  Must cover a full queue, or the drain cannot outrun the producers and
      *  the oldest events are discarded unsent. */
-    static constexpr size_t MAX_BATCHES_PER_SEND = (MAX_QUEUE_SIZE / MAX_BATCH_SIZE) + 1;
+    static constexpr size_t kMaxBatchesPerSend = (kMaxQueueSize / kMaxBatchSize) + 1;
 
     /**
      * @brief Spacing required before the next transmission attempt.
      *
      * A backoff above 1 means the previous attempt failed. Those retries are
-     * spaced off RETRY_INTERVAL rather than the full SEND_INTERVAL, and the
+     * spaced off kRetryInterval rather than the full kSendInterval, and the
      * result is capped at seven days.
      *
      * @param backoff Current backoff multiplier (1 when the last send succeeded)
      * @return Minimum delay since the last attempt before another is allowed
      */
     static constexpr std::chrono::hours next_attempt_delay(int backoff) {
-        auto interval = (backoff > 1) ? RETRY_INTERVAL * backoff : SEND_INTERVAL;
+        auto interval = (backoff > 1) ? kRetryInterval * backoff : kSendInterval;
         constexpr auto max_interval = std::chrono::hours{24 * 7};
         return interval > max_interval ? max_interval : interval;
     }
 
     /** @brief Interval between periodic performance snapshots */
-    static constexpr uint32_t SNAPSHOT_INTERVAL_MS = 4 * 60 * 60 * 1000;
+    static constexpr uint32_t kSnapshotIntervalMs = 4 * 60 * 60 * 1000;
 
     /** @brief Number of frame time samples held in the ring buffer */
-    static constexpr size_t FRAME_RING_SIZE = 1024;
+    static constexpr size_t kFrameRingSize = 1024;
 
     /** @brief Frame time threshold above which a frame is considered dropped (33ms = ~30fps) */
-    static constexpr uint32_t DROPPED_FRAME_THRESHOLD_US = 33000;
+    static constexpr uint32_t kDroppedFrameThresholdUs = 33000;
 
     /** @brief Frame time floor below which a frame is considered idle (no rendering work) */
-    static constexpr uint32_t IDLE_FRAME_THRESHOLD_US = 500;
+    static constexpr uint32_t kIdleFrameThresholdUs = 500;
 
     /** @brief Interval between frame performance snapshots.
-     *  The queue drains once per SEND_INTERVAL, so every periodic producer
-     *  spends from one MAX_QUEUE_SIZE budget for the whole window; this is the
+     *  The queue drains once per kSendInterval, so every periodic producer
+     *  spends from one kMaxQueueSize budget for the whole window; this is the
      *  hottest of them and a shorter period pushes
-     *  UNATTENDED_EVENTS_PER_SEND_WINDOW over that budget. The event is an
-     *  aggregate over the last FRAME_RING_SIZE qualifying frames either way —
+     *  kUnattendedEventsPerSendWindow over that budget. The event is an
+     *  aggregate over the last kFrameRingSize qualifying frames either way —
      *  the ring wraps well inside a window at any interactive frame rate — so a
      *  wider period costs resolution, not samples. */
-    static constexpr uint32_t FRAME_PERF_INTERVAL_MS = 60 * 60 * 1000;
+    static constexpr uint32_t kFramePerfIntervalMs = 60 * 60 * 1000;
 
     /** @brief Debounce window for aggregating settings changes before recording */
-    static constexpr uint32_t SETTINGS_DEBOUNCE_MS = 30 * 1000;
+    static constexpr uint32_t kSettingsDebounceMs = 30 * 1000;
 
-    /** @brief SEND_INTERVAL in milliseconds, to compare against the timer periods */
-    static constexpr uint32_t SEND_INTERVAL_MS = static_cast<uint32_t>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(SEND_INTERVAL).count());
+    /** @brief kSendInterval in milliseconds, to compare against the timer periods */
+    static constexpr uint32_t kSendIntervalMs = static_cast<uint32_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(kSendInterval).count());
 
     /**
      * @brief Events the periodic producers enqueue in one send window with
@@ -872,13 +872,13 @@ class TelemetryManager {
      *
      * The auto-send timer's hourly memory snapshot, the frame performance
      * snapshot, and the three events fire_periodic_snapshot() emits. The queue
-     * is drained once per SEND_INTERVAL and holds MAX_QUEUE_SIZE, so a total
+     * is drained once per kSendInterval and holds kMaxQueueSize, so a total
      * above that is the count enqueue_event() discards unsent every day, on
      * every platform (prestonbrown/helixscreen#1476).
      */
-    static constexpr size_t UNATTENDED_EVENTS_PER_SEND_WINDOW =
-        SEND_INTERVAL_MS / AUTO_SEND_INTERVAL_MS + SEND_INTERVAL_MS / FRAME_PERF_INTERVAL_MS +
-        3 * (SEND_INTERVAL_MS / SNAPSHOT_INTERVAL_MS);
+    static constexpr size_t kUnattendedEventsPerSendWindow =
+        kSendIntervalMs / kAutoSendIntervalMs + kSendIntervalMs / kFramePerfIntervalMs +
+        3 * (kSendIntervalMs / kSnapshotIntervalMs);
 
   private:
     friend class TelemetryManagerTestAccess;
@@ -931,7 +931,7 @@ class TelemetryManager {
     /**
      * @brief Add an event to the queue (mutex-protected)
      *
-     * At MAX_QUEUE_SIZE a delta event (panel_usage, connection_stability)
+     * At kMaxQueueSize a delta event (panel_usage, connection_stability)
      * merges into the newest queued one of its kind and boot that no send has
      * attempted; any other event evicts the oldest non-delta event. Delta
      * events are never evicted, since a lost delta is gone for good. Events in
@@ -1284,7 +1284,7 @@ class TelemetryManager {
     // Error rate limiting (max 1 event per category per 5 minutes).
     // Protected by mutex_ — accessed from background threads via record_error().
     std::unordered_map<std::string, std::chrono::steady_clock::time_point> error_rate_limit_;
-    static constexpr auto ERROR_RATE_LIMIT_INTERVAL = std::chrono::minutes{5};
+    static constexpr auto kErrorRateLimitInterval = std::chrono::minutes{5};
 
     // Connection stability tracking
     int connect_count_{0};
@@ -1313,10 +1313,10 @@ class TelemetryManager {
     // PERIODIC SNAPSHOT STATE (LVGL/main thread only)
     // =========================================================================
 
-    /// LVGL timer that fires every SNAPSHOT_INTERVAL_MS
+    /// LVGL timer that fires every kSnapshotIntervalMs
     lv_timer_t* snapshot_timer_{nullptr};
 
-    /// LVGL timer that fires every FRAME_PERF_INTERVAL_MS for frame performance snapshots
+    /// LVGL timer that fires every kFramePerfIntervalMs for frame performance snapshots
     lv_timer_t* frame_perf_timer_{nullptr};
 
     /// Sequence number of the next delta snapshot. Starts at 0 every boot;
@@ -1336,14 +1336,14 @@ class TelemetryManager {
         uint16_t panel_id;
     };
 
-    /// Ring buffer of recent frame samples (wraps; FRAME_RING_SIZE entries)
-    std::array<FrameSample, FRAME_RING_SIZE> frame_ring_{};
+    /// Ring buffer of recent frame samples (wraps; kFrameRingSize entries)
+    std::array<FrameSample, kFrameRingSize> frame_ring_{};
 
-    /// Write index for the next sample (mod FRAME_RING_SIZE)
+    /// Write index for the next sample (mod kFrameRingSize)
     size_t frame_ring_idx_{0};
 
-    /// Qualifying frames recorded since the last snapshot; exceeds FRAME_RING_SIZE once the
-    /// ring wraps, so the retained sample count is min(this, FRAME_RING_SIZE)
+    /// Qualifying frames recorded since the last snapshot; exceeds kFrameRingSize once the
+    /// ring wraps, so the retained sample count is min(this, kFrameRingSize)
     size_t frame_ring_count_{0};
 
     /// Ordered list of panel names for panel_id → name lookup
@@ -1366,6 +1366,6 @@ class TelemetryManager {
     /// Accumulates changes while the debounce timer is running
     std::vector<SettingChange> pending_settings_changes_;
 
-    /// LVGL timer reset on each notify_setting_changed() call; fires after SETTINGS_DEBOUNCE_MS
+    /// LVGL timer reset on each notify_setting_changed() call; fires after kSettingsDebounceMs
     lv_timer_t* settings_debounce_timer_{nullptr};
 };

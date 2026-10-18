@@ -121,7 +121,7 @@ class AmsContextMenu : public ContextMenu {
      * @brief Show context menu for external spool (bypass/direct feed)
      *
      * Shows the bypass spool's own actions: the bypass toggle, Load, Unload and
-     * Purge against EXTERNAL_SPOOL_SLOT, plus the spool bookkeeping. The lane
+     * Purge against kExternalSpoolSlot, plus the spool bookkeeping. The lane
      * dropdowns and the cold lane ops do not apply and stay hidden.
      *
      * @param parent Parent screen for the menu

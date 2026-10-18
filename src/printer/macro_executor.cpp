@@ -28,20 +28,20 @@ namespace {
 
 // Split by what the host does afterwards, because that is what the user is told.
 // A restart comes back on its own; a halt sits there until someone intervenes.
-const std::unordered_set<std::string> RESTARTING_MACROS = {
+const std::unordered_set<std::string> kRestartingMacros = {
     "SAVE_CONFIG",
     "FIRMWARE_RESTART",
     "RESTART",
 };
 
-const std::unordered_set<std::string> HALTING_MACROS = {
+const std::unordered_set<std::string> kHaltingMacros = {
     "SHUTDOWN",
     "M112",
     "EMERGENCY_STOP",
 };
 
 // Klipper's own LED commands (SET_LED) and the klipper-led_effect plugin's.
-const std::unordered_set<std::string> LED_COMMANDS = {
+const std::unordered_set<std::string> kLedCommands = {
     "SET_LED",
     "SET_LED_EFFECT",
     "STOP_LED_EFFECTS",
@@ -50,9 +50,9 @@ const std::unordered_set<std::string> LED_COMMANDS = {
 // The union, and still the set that decides whether to confirm before running:
 // both families are equally worth a confirmation, they differ only in what is
 // said once the rpc comes back dropped.
-const std::unordered_set<std::string> DANGEROUS_MACROS = [] {
-    std::unordered_set<std::string> all = RESTARTING_MACROS;
-    all.insert(HALTING_MACROS.begin(), HALTING_MACROS.end());
+const std::unordered_set<std::string> kDangerousMacros = [] {
+    std::unordered_set<std::string> all = kRestartingMacros;
+    all.insert(kHaltingMacros.begin(), kHaltingMacros.end());
     return all;
 }();
 
@@ -198,7 +198,7 @@ void execute_macro_gcode(IMoonrakerAPI* api, const std::string& macro_name,
                 ToastManager::instance().show(ToastSeverity::ERROR, msg.c_str(), 4000);
             });
         },
-        IMoonrakerAPI::MACRO_TIMEOUT_MS);
+        IMoonrakerAPI::kMacroTimeoutMs);
 }
 
 MaterialPreheatPlan plan_material_preheat(const filament::MaterialOverride* override,
@@ -246,7 +246,7 @@ void execute_material_preheat(IMoonrakerAPI* api, const MaterialPreheatPlan& pla
 }
 
 const std::unordered_set<std::string>& dangerous_command_names() {
-    return DANGEROUS_MACROS;
+    return kDangerousMacros;
 }
 
 namespace {
@@ -315,27 +315,27 @@ analyze_macros_reaching(const nlohmann::json& config_settings,
 
 std::unordered_set<std::string>
 analyze_host_restarting_macros(const nlohmann::json& config_settings) {
-    return analyze_macros_reaching(config_settings, RESTARTING_MACROS);
+    return analyze_macros_reaching(config_settings, kRestartingMacros);
 }
 
 std::unordered_set<std::string> analyze_host_halting_macros(const nlohmann::json& config_settings) {
-    return analyze_macros_reaching(config_settings, HALTING_MACROS);
+    return analyze_macros_reaching(config_settings, kHaltingMacros);
 }
 
 std::unordered_set<std::string> analyze_led_driving_macros(const nlohmann::json& config_settings) {
-    return analyze_macros_reaching(config_settings, LED_COMMANDS);
+    return analyze_macros_reaching(config_settings, kLedCommands);
 }
 
 const std::unordered_set<std::string>& host_restarting_command_names() {
-    return RESTARTING_MACROS;
+    return kRestartingMacros;
 }
 
 const std::unordered_set<std::string>& host_halting_command_names() {
-    return HALTING_MACROS;
+    return kHaltingMacros;
 }
 
 bool is_dangerous_macro(const std::string& name) {
-    return DANGEROUS_MACROS.count(helix::text_io::to_upper(name)) > 0;
+    return kDangerousMacros.count(helix::text_io::to_upper(name)) > 0;
 }
 
 bool is_dangerous_macro(const std::string& name, const PrinterDiscovery& hw) {
@@ -434,10 +434,10 @@ MacroHostEffect macro_host_effect(const std::string& name, const PrinterDiscover
     const std::string upper = helix::text_io::to_upper(name);
     // Halts first: a macro reaching both leaves the host down, and that is the
     // answer the user has to be given.
-    if (HALTING_MACROS.count(upper) > 0 || hw.macro_halts_host(name)) {
+    if (kHaltingMacros.count(upper) > 0 || hw.macro_halts_host(name)) {
         return MacroHostEffect::Halts;
     }
-    if (RESTARTING_MACROS.count(upper) > 0 || hw.macro_restarts_host(name)) {
+    if (kRestartingMacros.count(upper) > 0 || hw.macro_restarts_host(name)) {
         return MacroHostEffect::Restarts;
     }
     return MacroHostEffect::None;

@@ -23,8 +23,8 @@
 namespace {
 
 constexpr size_t SLOT = 80688; // 164x164 RGB565A8
-constexpr size_t BUDGET = 960 * 1024;
-constexpr size_t LANE_DEPTH = 8;
+constexpr size_t kBudget = 960 * 1024;
+constexpr size_t kLaneDepth = 8;
 
 /// A decoded image holding one pool slot, as EspPsramThumbnail does.
 struct Thumb {
@@ -115,10 +115,10 @@ struct Panel {
             states[i].last_shown = files[i].shown;
         }
         const auto plan = helix::plan_card_thumbnails(
-            states, f, e, static_cast<size_t>(std::max(in_flight, 0)), SLOT, BUDGET, refused);
+            states, f, e, static_cast<size_t>(std::max(in_flight, 0)), SLOT, kBudget, refused);
         if (!plan.fetch.empty() && !pool) {
             pool = std::make_shared<helix::ThumbnailSlotPool>(
-                SLOT, BUDGET / SLOT, [](size_t n) { return std::malloc(n); },
+                SLOT, kBudget / SLOT, [](size_t n) { return std::malloc(n); },
                 [](void* p) { std::free(p); });
         }
         for (size_t i : plan.drop) {
@@ -131,7 +131,7 @@ struct Panel {
         }
         for (size_t i : plan.fetch) {
             files[i].tried = true;
-            if (lane.size() >= LANE_DEPTH) {
+            if (lane.size() >= kLaneDepth) {
                 files[i].tried = false;
                 refused = true;
                 break;
@@ -187,8 +187,8 @@ struct Panel {
     }
 };
 
-constexpr int COLS = 4, ROW = 215, VIEW = 425, FILES = 50;
-constexpr int ROWS = (FILES + COLS - 1) / COLS;
+constexpr int kCols = 4, ROW = 215, VIEW = 425, FILES = 50;
+constexpr int ROWS = (FILES + kCols - 1) / kCols;
 constexpr int BOTTOM = ROWS * ROW - VIEW;
 
 /// Down to the bottom and back, twice, in uneven steps, with decodes and
@@ -208,8 +208,8 @@ void scroll(Panel& panel, unsigned seed) {
     }
     for (int y : path) {
         const auto win = helix::ui::compute_window(y, VIEW, ROW, ROWS, 0);
-        panel.show(static_cast<size_t>(win.first * COLS),
-                   static_cast<size_t>(std::min(FILES, win.last * COLS)));
+        panel.show(static_cast<size_t>(win.first * kCols),
+                   static_cast<size_t>(std::min(FILES, win.last * kCols)));
         // The lane decodes far slower than the main thread scrolls and runs
         // completions: a decode is ~300ms, a scroll frame tens of ms.
         if (rng() % 3 == 0) {

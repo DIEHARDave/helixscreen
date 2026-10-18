@@ -94,7 +94,7 @@ TEST_CASE_METHOD(XMLTestFixture, "ams_lane_spool: a Ghosted lane keeps the spool
 
     lv_obj_t* graphic = part(spool, "spool_graphic");
     CHECK_FALSE(lv_obj_has_flag(graphic, LV_OBJ_FLAG_HIDDEN));
-    CHECK(lv_obj_get_style_opa(graphic, LV_PART_MAIN) == ams_draw::GHOST_OPA);
+    CHECK(lv_obj_get_style_opa(graphic, LV_PART_MAIN) == ams_draw::kGhostOpa);
     CHECK(lv_obj_has_flag(part(spool, "empty_placeholder"), LV_OBJ_FLAG_HIDDEN));
     lv_obj_delete(spool);
 }

@@ -112,10 +112,10 @@ class PreprintPredictor {
                       StartCondition condition = StartCondition::COLD);
 
     /// Bed temperature at or above which a start counts as warm
-    static constexpr float WARM_BED_C = 40.0f;
+    static constexpr float kWarmBedC = 40.0f;
 
     /// The temp_bucket a start with the bed at @p bed_c belongs to: 2 (warm)
-    /// at or above WARM_BED_C, else 1 (cold)
+    /// at or above kWarmBedC, else 1 (cold)
     [[nodiscard]] static int temp_bucket_for(float bed_c);
 
     /**
@@ -164,10 +164,10 @@ class PreprintPredictor {
 
     /// Homing estimate floor. A macro that goes straight from G28 into its
     /// next narrated step records a homing phase of a few seconds or none.
-    static constexpr int MIN_HOMING_SECONDS = 20;
+    static constexpr int kMinHomingSeconds = 20;
 
     /**
-     * @brief Predicted homing seconds, never below MIN_HOMING_SECONDS
+     * @brief Predicted homing seconds, never below kMinHomingSeconds
      *
      * The one homing estimate the pre-print collector and the print details
      * estimate share.
@@ -193,7 +193,7 @@ class PreprintPredictor {
     static std::map<int, int> generic_phase_durations();
 
     /// Nozzle-heating placeholder while the nozzle target is unknown.
-    static constexpr float UNKNOWN_NOZZLE_HEAT_SECONDS = 60.0f;
+    static constexpr float kUnknownNozzleHeatSeconds = 60.0f;
 
     /**
      * @brief The pre-print estimate the live countdown and the print details share
@@ -235,12 +235,12 @@ class PreprintPredictor {
      *
      * Every stored entry is kept except the oldest of the new entry's own
      * (temp bucket, window) population beyond MAX_ENTRIES, and the oldest
-     * overall beyond MAX_STORED_ENTRIES. Writes Config; does not save it.
+     * overall beyond kMaxStoredEntries. Writes Config; does not save it.
      */
     static void append_to_config(const PreprintEntry& entry);
 
     /// Cap on the whole stored history, across buckets and windows
-    static constexpr size_t MAX_STORED_ENTRIES = 15;
+    static constexpr size_t kMaxStoredEntries = 15;
 
     /**
      * @brief Load history from Config and return predicted total seconds

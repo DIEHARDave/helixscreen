@@ -47,9 +47,9 @@ using helix::SlotInfo;
 
 using helix::ui::AmsCall;
 using helix::ui::BackendCaps;
-using helix::ui::EXTERNAL_SPOOL_SLOT;
 using helix::ui::FilamentPanelOutcome;
 using helix::ui::FilamentTier;
+using helix::ui::kExternalSpoolSlot;
 using helix::ui::panel_load_outcome;
 using helix::ui::panel_unload_outcome;
 using helix::ui::plan_load;
@@ -185,8 +185,8 @@ TEST_CASE("Load under bypass reaches the configured macro, not the backend",
     AmsSystemInfo sys = make_sys(4, /*current_slot=*/1);
 
     // The bypass TARGET, not a lane: plan_load()'s bypass branch only claims
-    // target_slot >= 0, so EXTERNAL_SPOOL_SLOT still falls to the macro tier.
-    FilamentPanelOutcome out = load_outcome(sys, bypassed_ams(), EXTERNAL_SPOOL_SLOT,
+    // target_slot >= 0, so kExternalSpoolSlot still falls to the macro tier.
+    FilamentPanelOutcome out = load_outcome(sys, bypassed_ams(), kExternalSpoolSlot,
                                             /*macro_available=*/true);
     CHECK(out.tier == FilamentTier::Macro);
     // The backend guard belongs to the backend arm; the macro arm's guard is
@@ -278,9 +278,9 @@ TEST_CASE("Unload under bypass stays on the backend while load falls through",
     // not show the asymmetry: plan_load()'s bypass branch claims a named lane
     // for the backend, so load and unload would agree.
     FilamentPanelOutcome unload =
-        unload_outcome(bypassed, EXTERNAL_SPOOL_SLOT,
+        unload_outcome(bypassed, kExternalSpoolSlot,
                        /*target_is_loaded=*/true, /*macro_available=*/true);
-    FilamentPanelOutcome load = load_outcome(sys, bypassed, EXTERNAL_SPOOL_SLOT,
+    FilamentPanelOutcome load = load_outcome(sys, bypassed, kExternalSpoolSlot,
                                              /*macro_available=*/true);
     CHECK(unload.tier == FilamentTier::AmsBackend);
     CHECK(load.tier == FilamentTier::Macro);
@@ -312,10 +312,10 @@ TEST_CASE("Unloading the bypass spool arms the manual-pull prompt",
     // arms the prompt at dispatch; the toolhead sensor (or op completion) fires
     // it. Without this the operation just "succeeds" with filament still in the
     // machine and no instruction.
-    auto out = unload_outcome(fresh_ams(), EXTERNAL_SPOOL_SLOT, /*target_is_loaded=*/true,
+    auto out = unload_outcome(fresh_ams(), kExternalSpoolSlot, /*target_is_loaded=*/true,
                               /*macro_available=*/true);
     CHECK(out.tier == FilamentTier::AmsBackend);
-    CHECK(out.arg == EXTERNAL_SPOOL_SLOT);
+    CHECK(out.arg == kExternalSpoolSlot);
     CHECK(out.arm_manual_pull);
 }
 
@@ -349,7 +349,7 @@ TEST_CASE("A backend-less unload arms the prompt on every tier",
 TEST_CASE("A refused unload arms nothing", "[filament][dispatch][wiring][bypass]") {
     // Nothing was dispatched, so nothing will ever complete to disarm it. An arm
     // here would sit waiting for the next unrelated toolhead-sensor edge.
-    auto out = unload_outcome(fresh_ams(), EXTERNAL_SPOOL_SLOT, /*target_is_loaded=*/false,
+    auto out = unload_outcome(fresh_ams(), kExternalSpoolSlot, /*target_is_loaded=*/false,
                               /*macro_available=*/true);
     REQUIRE(out.tier == FilamentTier::Refused);
     CHECK_FALSE(out.arm_manual_pull);

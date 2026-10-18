@@ -77,7 +77,7 @@ struct PrinterStopCheck {
 /// How much of a file's head the printer-stopping command check reads. Every
 /// caller downloads exactly this much: the answer describes the scanned prefix,
 /// so two callers reading different amounts would disagree about one file.
-inline constexpr size_t PRINTER_STOP_SCAN_BYTES = 200 * 1024;
+inline constexpr size_t kPrinterStopScanBytes = 200 * 1024;
 
 /// Look through @p content for a command this printer's macros make an
 /// emergency stop. A download cut at @p limit ends mid-line, so that last
@@ -129,7 +129,7 @@ struct PrintStartContext {
     /// lanes; populated only when ams_manages_filament && has_active_backend.
     std::vector<std::pair<int, int>> empty_required_lanes;
     std::optional<SlotInfo> external_spool; ///< AmsState::get_external_spool_info()
-    float filament_diameter_mm = filament::DEFAULT_DIAMETER_MM; ///< [extruder] filament_diameter
+    float filament_diameter_mm = filament::kDefaultDiameterMm; ///< [extruder] filament_diameter
 
     // ---- non-AMS aggregate runout fallback ----
     bool runout_enabled = false;

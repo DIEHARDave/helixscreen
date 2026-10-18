@@ -91,7 +91,7 @@ TEST_CASE("AD5X IFS module: an unaccounted toolhead resolves to the active head,
     for (int tool = 0; tool < 4; ++tool) {
         CAPTURE(tool);
         CHECK(resolve_op_button_slot(sys, tool, /*tool_count=*/4,
-                                     /*toolhead_unaccounted=*/true) == helix::ui::ACTIVE_HEAD_SLOT);
+                                     /*toolhead_unaccounted=*/true) == helix::ui::kActiveHeadSlot);
         CHECK(resolve_op_button_slot(sys, tool, /*tool_count=*/4,
                                      /*toolhead_unaccounted=*/false) == tool);
     }
@@ -99,9 +99,9 @@ TEST_CASE("AD5X IFS module: an unaccounted toolhead resolves to the active head,
 
 TEST_CASE("An unaccounted toolhead never outranks the bypass spool", "[filament][op_slot][1324]") {
     AmsSystemInfo sys =
-        make_sys(/*tool_map=*/{0, 1, 2, 3}, /*current_slot=*/helix::ui::EXTERNAL_SPOOL_SLOT);
+        make_sys(/*tool_map=*/{0, 1, 2, 3}, /*current_slot=*/helix::ui::kExternalSpoolSlot);
     CHECK(resolve_op_button_slot(sys, /*selected_tool=*/0, /*tool_count=*/4,
-                                 /*toolhead_unaccounted=*/true) == helix::ui::EXTERNAL_SPOOL_SLOT);
+                                 /*toolhead_unaccounted=*/true) == helix::ui::kExternalSpoolSlot);
 }
 
 TEST_CASE("Toolchanger: multi-tool, no map → tool index == slot index", "[filament][op_slot]") {
@@ -146,13 +146,13 @@ TEST_CASE("Bypass: the external spool outranks any tool->slot map", "[filament][
     // a lane; no map entry can describe it, so it has to short-circuit.
     AmsSystemInfo bypassed = make_sys(/*tool_map=*/{0, 1, 2, 3}, /*current_slot=*/-2);
     CHECK(resolve_op_button_slot(bypassed, /*selected_tool=*/0, /*tool_count=*/1) ==
-          helix::ui::EXTERNAL_SPOOL_SLOT);
+          helix::ui::kExternalSpoolSlot);
 
     // AFC/Happy Hare reach the same sentinel by a different road (bypass_state /
     // the selector position), and a non-identity remap must not rescue a lane.
     AmsSystemInfo remapped = make_sys(/*tool_map=*/{3, 2, 1, 0}, /*current_slot=*/-2);
     CHECK(resolve_op_button_slot(remapped, /*selected_tool=*/0, /*tool_count=*/4) ==
-          helix::ui::EXTERNAL_SPOOL_SLOT);
+          helix::ui::kExternalSpoolSlot);
 
     // The guard rail: with bypass OFF the map still wins, exactly as before.
     // This is the BoxTurtle contract above and must not become collateral.

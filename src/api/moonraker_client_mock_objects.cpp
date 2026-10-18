@@ -53,7 +53,7 @@ static json chamber_heater_configfile_sections(const MoonrakerClientMock* self) 
     const auto& objects = hw.printer_objects();
     const std::string chamber_fan = "temperature_fan chamber_fan";
     if (std::find(objects.begin(), objects.end(), chamber_fan) != objects.end()) {
-        sections[chamber_fan] = {{"target_temp", mock_internal::MOCK_K2_CHAMBER_FAN_RESTING_C}};
+        sections[chamber_fan] = {{"target_temp", mock_internal::kMockK2ChamberFanRestingC}};
     }
     return sections;
 }
@@ -79,7 +79,7 @@ static json toolchanger_configfile_sections(const MoonrakerClientMock* self) {
 static json led_effect_configfile_sections(const MoonrakerClientMock* self) {
     json sections = json::object();
     if (helix::mock::descriptor(self->get_printer_type()).omit &
-        helix::mock::default_object::LED_EFFECTS) {
+        helix::mock::default_object::kLedEffects) {
         return sections;
     }
     sections["led_effect breathing"] = {
@@ -354,7 +354,7 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                 // in objects/list), while the screws-tilt panel reads the thread
                 // from `settings`. The mock needs both or --test can't reach the
                 // panel at all.
-                config_section["screws_tilt_adjust"] = {{"screw_thread", MOCK_SCREW_THREAD},
+                config_section["screws_tilt_adjust"] = {{"screw_thread", kMockScrewThread},
                                                         {"speed", "50"},
                                                         {"horizontal_move_z", "10"}};
 
@@ -401,10 +401,8 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                         // settings reader (belt hardware detect) and a config
                         // reader (bed moves detection) see the same machine.
                         {"kinematics", self->kinematics()}}},
-                      {"stepper_x",
-                       {{"position_min", MOCK_BED_X_MIN}, {"position_max", axis_max.x}}},
-                      {"stepper_y",
-                       {{"position_min", MOCK_BED_Y_MIN}, {"position_max", axis_max.y}}},
+                      {"stepper_x", {{"position_min", kMockBedXMin}, {"position_max", axis_max.x}}},
+                      {"stepper_y", {{"position_min", kMockBedYMin}, {"position_max", axis_max.y}}},
                       {"stepper_z", stepper_z_settings},
                       {"extruder", extruder_settings},
                       // Resonance sweep bounds — the input shaper collector
@@ -418,7 +416,7 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                       // Bed screw geometry — the screws-tilt panel reads
                       // screw_thread from here to size its level tolerance.
                       {"screws_tilt_adjust",
-                       {{"screw_thread", MOCK_SCREW_THREAD},
+                       {{"screw_thread", kMockScrewThread},
                         {"speed", 50.0},
                         {"horizontal_move_z", 10.0}}},
                       {"heater_bed",
@@ -1015,10 +1013,8 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                         // settings reader (belt hardware detect) and a config
                         // reader (bed moves detection) see the same machine.
                         {"kinematics", self->kinematics()}}},
-                      {"stepper_x",
-                       {{"position_min", MOCK_BED_X_MIN}, {"position_max", axis_max.x}}},
-                      {"stepper_y",
-                       {{"position_min", MOCK_BED_Y_MIN}, {"position_max", axis_max.y}}},
+                      {"stepper_x", {{"position_min", kMockBedXMin}, {"position_max", axis_max.x}}},
+                      {"stepper_y", {{"position_min", kMockBedYMin}, {"position_max", axis_max.y}}},
                       {"stepper_z",
                        {{"position_min", 0.0},
                         {"position_max", axis_max.z},

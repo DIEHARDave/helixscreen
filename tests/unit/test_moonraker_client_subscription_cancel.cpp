@@ -153,7 +153,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
     SECTION("First subscription returns ID >= 1") {
         SubscriptionId id = client.register_notify_update([](json) {});
         REQUIRE(id >= 1);
-        REQUIRE(id != INVALID_SUBSCRIPTION_ID);
+        REQUIRE(id != kInvalidSubscriptionId);
     }
 
     SECTION("Consecutive subscriptions return unique incrementing IDs") {
@@ -168,7 +168,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
 
     SECTION("Null callback returns INVALID_SUBSCRIPTION_ID") {
         SubscriptionId id = client.register_notify_update(nullptr);
-        REQUIRE(id == INVALID_SUBSCRIPTION_ID);
+        REQUIRE(id == kInvalidSubscriptionId);
     }
 }
 
@@ -179,7 +179,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
 
     SECTION("Unsubscribe with valid ID returns true") {
         SubscriptionId id = client.register_notify_update([](json) {});
-        REQUIRE(id != INVALID_SUBSCRIPTION_ID);
+        REQUIRE(id != kInvalidSubscriptionId);
 
         bool result = client.unsubscribe_notify_update(id);
         REQUIRE(result == true);
@@ -196,7 +196,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
     }
 
     SECTION("Unsubscribe with INVALID_SUBSCRIPTION_ID returns false") {
-        bool result = client.unsubscribe_notify_update(INVALID_SUBSCRIPTION_ID);
+        bool result = client.unsubscribe_notify_update(kInvalidSubscriptionId);
         REQUIRE(result == false);
     }
 
@@ -220,7 +220,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
             callback_count++;
             cv.notify_all();
         });
-        REQUIRE(id != INVALID_SUBSCRIPTION_ID);
+        REQUIRE(id != kInvalidSubscriptionId);
 
         mock.connect("ws://mock/websocket", []() {}, []() {});
 
@@ -393,11 +393,11 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
 
     SECTION("send_jsonrpc with callback returns ID >= 1 when connected (but fails send)") {
         // Note: Without connection, send will fail but registration happens first
-        // The implementation should return INVALID_REQUEST_ID if send fails
+        // The implementation should return kInvalidRequestId if send fails
         RequestId id = client.send_jsonrpc("printer.info", json(), [](json) {});
 
-        // Without connection, send fails and returns INVALID_REQUEST_ID
-        REQUIRE(id == INVALID_REQUEST_ID);
+        // Without connection, send fails and returns kInvalidRequestId
+        REQUIRE(id == kInvalidRequestId);
     }
 
     SECTION("Consecutive requests return unique IDs (when mock connected)") {
@@ -424,7 +424,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
     MoonrakerClient client;
 
     SECTION("Cancel with INVALID_REQUEST_ID returns false") {
-        bool result = client.cancel_request(INVALID_REQUEST_ID);
+        bool result = client.cancel_request(kInvalidRequestId);
         REQUIRE(result == false);
     }
 
@@ -483,14 +483,14 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
     SECTION("send_jsonrpc with single callback returns valid ID") {
         RequestId id = mock.send_jsonrpc("server.files.list", json(), [](json) {});
         REQUIRE(id >= 1);
-        REQUIRE(id != INVALID_REQUEST_ID);
+        REQUIRE(id != kInvalidRequestId);
     }
 
     SECTION("send_jsonrpc with success/error callbacks returns valid ID") {
         RequestId id = mock.send_jsonrpc(
             "server.files.list", json(), [](json) {}, [](const MoonrakerError&) {});
         REQUIRE(id >= 1);
-        REQUIRE(id != INVALID_REQUEST_ID);
+        REQUIRE(id != kInvalidRequestId);
     }
 
     SECTION("Multiple requests return incrementing IDs") {
@@ -662,8 +662,8 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
 
         // Verify all IDs are unique
         std::set<SubscriptionId> unique_ids(ids.begin(), ids.end());
-        // Remove any INVALID_SUBSCRIPTION_ID entries
-        unique_ids.erase(INVALID_SUBSCRIPTION_ID);
+        // Remove any kInvalidSubscriptionId entries
+        unique_ids.erase(kInvalidSubscriptionId);
         REQUIRE(unique_ids.size() == 100);
     }
 }
@@ -684,7 +684,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
         std::thread producer([&]() {
             while (running.load()) {
                 SubscriptionId id = client.register_notify_update([](json) {});
-                if (id != INVALID_SUBSCRIPTION_ID) {
+                if (id != kInvalidSubscriptionId) {
                     std::lock_guard<std::mutex> lock(ids_mutex);
                     ids.push_back(id);
                     subscribe_count++;
@@ -696,7 +696,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
         // Consumer thread: unregister callbacks
         std::thread consumer([&]() {
             while (running.load()) {
-                SubscriptionId id_to_remove = INVALID_SUBSCRIPTION_ID;
+                SubscriptionId id_to_remove = kInvalidSubscriptionId;
                 {
                     std::lock_guard<std::mutex> lock(ids_mutex);
                     if (!ids.empty()) {
@@ -704,7 +704,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
                         ids.pop_back();
                     }
                 }
-                if (id_to_remove != INVALID_SUBSCRIPTION_ID) {
+                if (id_to_remove != kInvalidSubscriptionId) {
                     client.unsubscribe_notify_update(id_to_remove);
                     unsubscribe_count++;
                 }
@@ -747,13 +747,13 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
         SubscriptionId real_id = real_client.register_notify_update(nullptr);
         SubscriptionId mock_id = mock_client.register_notify_update(nullptr);
 
-        REQUIRE(real_id == INVALID_SUBSCRIPTION_ID);
-        REQUIRE(mock_id == INVALID_SUBSCRIPTION_ID);
+        REQUIRE(real_id == kInvalidSubscriptionId);
+        REQUIRE(mock_id == kInvalidSubscriptionId);
     }
 
     SECTION("Both return false for unsubscribing invalid ID") {
-        bool real_result = real_client.unsubscribe_notify_update(INVALID_SUBSCRIPTION_ID);
-        bool mock_result = mock_client.unsubscribe_notify_update(INVALID_SUBSCRIPTION_ID);
+        bool real_result = real_client.unsubscribe_notify_update(kInvalidSubscriptionId);
+        bool mock_result = mock_client.unsubscribe_notify_update(kInvalidSubscriptionId);
 
         REQUIRE(real_result == false);
         REQUIRE(mock_result == false);
@@ -789,8 +789,8 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
     MoonrakerClientMock mock_client(MoonrakerClientMock::PrinterType::VORON_24);
 
     SECTION("Both return false for cancelling INVALID_REQUEST_ID") {
-        bool real_result = real_client.cancel_request(INVALID_REQUEST_ID);
-        bool mock_result = mock_client.cancel_request(INVALID_REQUEST_ID);
+        bool real_result = real_client.cancel_request(kInvalidRequestId);
+        bool mock_result = mock_client.cancel_request(kInvalidRequestId);
 
         REQUIRE(real_result == false);
         REQUIRE(mock_result == false);
@@ -845,7 +845,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture, "MoonrakerClient handles subsc
         for (int i = 0; i < 100; i++) {
             SubscriptionId id = client.register_notify_update([](json) {});
             REQUIRE(id != 0);
-            REQUIRE(id != INVALID_SUBSCRIPTION_ID);
+            REQUIRE(id != kInvalidSubscriptionId);
         }
     }
 }
@@ -972,7 +972,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture, "Full subscription workflow wi
     for (int i = 0; i < 5; i++) {
         SubscriptionId id =
             mock.register_notify_update([&total_notifications](json) { total_notifications++; });
-        REQUIRE(id != INVALID_SUBSCRIPTION_ID);
+        REQUIRE(id != kInvalidSubscriptionId);
         subscription_ids.push_back(id);
     }
 
@@ -990,7 +990,7 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture, "Full subscription workflow wi
     total_notifications.store(0);
 
     // Wait for more notifications from simulation. The mock dispatches every
-    // NOTIFICATION_INTERVAL_TICKS physics ticks (~1s), so the window has to
+    // kNotificationIntervalTicks physics ticks (~1s), so the window has to
     // span at least one full dispatch interval — a fixed sub-second sleep
     // always lands in the gap between two of them and observes nothing.
     REQUIRE(wait_for_count(total_notifications, 1, 3000));

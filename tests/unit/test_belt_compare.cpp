@@ -205,7 +205,7 @@ TEST_CASE("identical peak lists pair one to one", "[belt][compare][pair]") {
         CHECK(p.a.freq_hz == p.b.freq_hz);
     }
     // Distances [0,0,0,10,10,10,10,20,20]: median+1.5*IQR = 40, capped.
-    CHECK(r.threshold_hz == Catch::Approx(belt_verdict::PAIR_MAX_HZ).margin(1e-4f));
+    CHECK(r.threshold_hz == Catch::Approx(belt_verdict::kPairMaxHz).margin(1e-4f));
 }
 
 TEST_CASE("a peak 11 Hz from its nearest partner stays unpaired", "[belt][compare][pair]") {
@@ -215,7 +215,7 @@ TEST_CASE("a peak 11 Hz from its nearest partner stays unpaired", "[belt][compar
     REQUIRE(r.unpaired_b.size() == 1);
     CHECK(r.unpaired_a[0].freq_hz == Catch::Approx(50.0f));
     CHECK(r.unpaired_b[0].freq_hz == Catch::Approx(61.0f));
-    CHECK(r.threshold_hz == Catch::Approx(belt_verdict::PAIR_MAX_HZ).margin(1e-4f));
+    CHECK(r.threshold_hz == Catch::Approx(belt_verdict::kPairMaxHz).margin(1e-4f));
 }
 
 TEST_CASE("greedy pairing takes the globally closest pair first", "[belt][compare][pair]") {
@@ -234,14 +234,14 @@ TEST_CASE("empty peak lists pair nothing", "[belt][compare][pair]") {
     CHECK(both_empty.pairs.empty());
     CHECK(both_empty.unpaired_a.empty());
     CHECK(both_empty.unpaired_b.empty());
-    CHECK(both_empty.threshold_hz == Catch::Approx(belt_verdict::PAIR_MAX_HZ).margin(1e-4f));
+    CHECK(both_empty.threshold_hz == Catch::Approx(belt_verdict::kPairMaxHz).margin(1e-4f));
 
     const std::vector<BeltPeak> b{peak(10.0f, 1.0f)};
     const auto a_empty = pair_belt_peaks({}, b);
     CHECK(a_empty.pairs.empty());
     CHECK(a_empty.unpaired_a.empty());
     REQUIRE(a_empty.unpaired_b.size() == 1);
-    CHECK(a_empty.threshold_hz == Catch::Approx(belt_verdict::PAIR_MAX_HZ).margin(1e-4f));
+    CHECK(a_empty.threshold_hz == Catch::Approx(belt_verdict::kPairMaxHz).margin(1e-4f));
 }
 
 TEST_CASE("threshold is median + 1.5 * IQR when under the cap", "[belt][compare][pair]") {

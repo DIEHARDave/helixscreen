@@ -29,10 +29,10 @@
 #include <cstring>
 
 // Tip rotation interval (60 seconds)
-static constexpr uint32_t TIP_ROTATION_INTERVAL_MS = 60000;
+static constexpr uint32_t kTipRotationIntervalMs = 60000;
 
 // Fade animation duration
-static constexpr uint32_t TIP_FADE_DURATION_MS = 300;
+static constexpr uint32_t kTipFadeDurationMs = 300;
 
 // Subject owned by TipsWidget module — created before XML bindings resolve
 static lv_subject_t s_status_subject;
@@ -158,10 +158,9 @@ void TipsWidget::on_activate() {
     }
 
     if (!tip_rotation_timer_) {
-        tip_rotation_timer_ =
-            lv_timer_create(tip_rotation_timer_cb, TIP_ROTATION_INTERVAL_MS, this);
+        tip_rotation_timer_ = lv_timer_create(tip_rotation_timer_cb, kTipRotationIntervalMs, this);
         spdlog::debug("[TipsWidget] Started tip rotation timer ({}ms interval)",
-                      TIP_ROTATION_INTERVAL_MS);
+                      kTipRotationIntervalMs);
     }
 }
 
@@ -295,7 +294,7 @@ void TipsWidget::start_tip_fade_transition(const PrintingTip& new_tip) {
     lv_anim_init(&anim);
     lv_anim_set_var(&anim, this);
     lv_anim_set_values(&anim, 255, 0);
-    lv_anim_set_duration(&anim, TIP_FADE_DURATION_MS);
+    lv_anim_set_duration(&anim, kTipFadeDurationMs);
     lv_anim_set_path_cb(&anim, lv_anim_path_ease_in);
 
     // Execute callback: update opacity on each frame
@@ -337,7 +336,7 @@ void TipsWidget::apply_pending_tip() {
     lv_anim_init(&anim);
     lv_anim_set_var(&anim, this);
     lv_anim_set_values(&anim, 0, 255);
-    lv_anim_set_duration(&anim, TIP_FADE_DURATION_MS);
+    lv_anim_set_duration(&anim, kTipFadeDurationMs);
     lv_anim_set_path_cb(&anim, lv_anim_path_ease_out);
 
     // Execute callback: update opacity on each frame

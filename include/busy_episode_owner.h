@@ -17,7 +17,7 @@ namespace helix {
  * 0.2 s apart that each read "Printing" for ~0.8 s. A grace window after the
  * last ack cannot tell that apart from an external op for long, because a
  * sustained burst outlasts any window. The episode's start time can: the
- * episode is the app's when the app sent something in the GRACE_WINDOW before
+ * episode is the app's when the app sent something in the kGraceWindow before
  * it. Only a send made before the episode was observed can have caused it:
  * episode_start is when the main thread saw idle_timeout go high, and a send
  * is stamped before it goes out. A send after the start, even a fraction of a
@@ -26,8 +26,8 @@ namespace helix {
  * Asks come late (the first one ~SETTLE into the episode, after more sends
  * have landed), so the recent send times are kept rather than only the last.
  * Ownership is decided once per episode, on the first ask, and then lapses
- * MAX_SELF_BUSY after the latest send, bounding how long an operation that
- * starts mid-burst can pass as the app's. More than HISTORY sends between an
+ * kMaxSelfBusy after the latest send, bounding how long an operation that
+ * starts mid-burst can pass as the app's. More than kHistory sends between an
  * episode's start and its first ask reads as not owned.
  *
  * Thread-safe: stamped from the main thread, read at gcode send time.
@@ -35,16 +35,16 @@ namespace helix {
 class BusyEpisodeOwner {
   public:
     using clock = std::chrono::steady_clock;
-    static constexpr std::chrono::seconds GRACE_WINDOW{2};
+    static constexpr std::chrono::seconds kGraceWindow{2};
     /// Longest a busy episode can pass as the app's own after its last send.
-    static constexpr std::chrono::seconds MAX_SELF_BUSY{30};
+    static constexpr std::chrono::seconds kMaxSelfBusy{30};
 
     /// Send times kept to answer whether one landed just before an episode.
-    static constexpr unsigned HISTORY = 16;
+    static constexpr unsigned kHistory = 16;
 
     void note_sent(clock::time_point now = clock::now()) {
         const long long ns = now.time_since_epoch().count();
-        const unsigned slot = next_.fetch_add(1, std::memory_order_relaxed) % HISTORY;
+        const unsigned slot = next_.fetch_add(1, std::memory_order_relaxed) % kHistory;
         sent_ns_[slot].store(ns, std::memory_order_relaxed);
         last_sent_ns_.store(ns, std::memory_order_relaxed);
     }
@@ -60,12 +60,12 @@ class BusyEpisodeOwner {
             decided_episode_ns_.store(start_ns, std::memory_order_relaxed);
         }
         const clock::time_point last{clock::duration{last_ns}};
-        return episode_owned_.load(std::memory_order_relaxed) && (now - last) < MAX_SELF_BUSY;
+        return episode_owned_.load(std::memory_order_relaxed) && (now - last) < kMaxSelfBusy;
     }
 
   private:
     bool sent_just_before(clock::time_point episode_start) const {
-        const long long lo = (episode_start - GRACE_WINDOW).time_since_epoch().count();
+        const long long lo = (episode_start - kGraceWindow).time_since_epoch().count();
         const long long hi = episode_start.time_since_epoch().count();
         for (const auto& slot : sent_ns_) {
             const long long ns = slot.load(std::memory_order_relaxed);
@@ -76,7 +76,7 @@ class BusyEpisodeOwner {
         return false;
     }
 
-    std::array<std::atomic<long long>, HISTORY> sent_ns_{};
+    std::array<std::atomic<long long>, kHistory> sent_ns_{};
     std::atomic<unsigned> next_{0};
     std::atomic<long long> last_sent_ns_{0};
     std::atomic<long long> decided_episode_ns_{0};

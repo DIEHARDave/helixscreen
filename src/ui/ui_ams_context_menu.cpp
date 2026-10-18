@@ -244,7 +244,7 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
     lv_subject_set_int(&slot_preload_subject_, 0);
 
     // External spool mode: the lane dropdowns do not apply, but Load and Unload
-    // do — EXTERNAL_SPOOL_SLOT is a target plan_load()/plan_unload() both
+    // do — kExternalSpoolSlot is a target plan_load()/plan_unload() both
     // resolve, and this menu is where a user looking at the bypass spool goes
     // for them (prestonbrown/helixscreen#1486).
     if (external_spool_mode_) {
@@ -258,7 +258,7 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
             ext_sys = backend->get_system_info();
         }
         const bool bypass_loaded =
-            helix::ui::read_unload_target_loaded(backend, ext_sys, helix::ui::EXTERNAL_SPOOL_SLOT);
+            helix::ui::read_unload_target_loaded(backend, ext_sys, helix::ui::kExternalSpoolSlot);
 
         const helix::ui::OpButtonState ext_state = helix::ui::build_external_spool_gating_state(
             bypass_loaded, backend && ext_sys.is_busy(),

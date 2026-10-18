@@ -138,7 +138,7 @@ TEST_CASE("get_builtin_fallback_theme returns valid theme", "[theme]") {
     auto theme = helix::get_builtin_fallback_theme();
 
     REQUIRE(theme.name == "HelixScreen");
-    REQUIRE(theme.filename == helix::DEFAULT_THEME);
+    REQUIRE(theme.filename == helix::kDefaultTheme);
     REQUIRE(theme.is_valid());
     REQUIRE(theme.dark.screen_bg == "#19191C");
     REQUIRE(theme.light.screen_bg == "#F0F0F4");
@@ -378,7 +378,7 @@ TEST_CASE_METHOD(ThemeDirFixture, "reset_theme_to_default returns nullopt for us
 
 namespace {
 // The config/themes/nord.json the release tarball and APK last shipped, byte for byte.
-constexpr const char* SHIPPED_NORD_JSON = R"JSON({
+constexpr const char* kShippedNordJson = R"JSON({
   "border_opacity": 40,
   "border_radius_size": 3,
   "border_width": 1,
@@ -439,20 +439,20 @@ TEST_CASE_METHOD(ThemeDirFixture,
     struct stat st;
 
     SECTION("the shipped bytes are removed at theme load") {
-        write_file(user_path, SHIPPED_NORD_JSON);
+        write_file(user_path, kShippedNordJson);
         REQUIRE(helix::ensure_themes_directory(themes_dir));
         CHECK(stat(user_path.c_str(), &st) != 0);
     }
 
     SECTION("a user's edit of it survives") {
-        write_file(user_path, std::string(SHIPPED_NORD_JSON) + " ");
+        write_file(user_path, std::string(kShippedNordJson) + " ");
         REQUIRE(helix::ensure_themes_directory(themes_dir));
         CHECK(stat(user_path.c_str(), &st) == 0);
     }
 
     SECTION("another theme with the same bytes is not touched") {
         const std::string other = themes_dir + "/gruvbox.json";
-        write_file(other, SHIPPED_NORD_JSON);
+        write_file(other, kShippedNordJson);
         REQUIRE(helix::ensure_themes_directory(themes_dir));
         CHECK(stat(other.c_str(), &st) == 0);
     }

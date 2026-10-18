@@ -244,7 +244,7 @@ class PrintHistoryManager {
 
     /// Jobs a COMPLETE load asks for. A job with metadata runs ~1.6 KB on the
     /// wire, so the ESP32 asks for fewer: its WebSocket client drops any message
-    /// over 256 KB (MAX_MESSAGE_BYTES in esp_moonraker_client.h), and a dropped
+    /// over 256 KB (kMaxMessageBytes in esp_moonraker_client.h), and a dropped
     /// response is never answered. A load that comes back full holds the newest
     /// jobs only (see covers_since()).
 #if defined(HELIX_PLATFORM_ESP32)

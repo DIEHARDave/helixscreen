@@ -51,7 +51,7 @@ namespace {
 void sentinel_observer_cb(lv_observer_t*, lv_subject_t*) {}
 
 /// One of the four subjects PrinterManagerOverlay::init_subjects() publishes.
-constexpr const char* OWNED_SUBJECT_NAME = "pm_name_editing";
+constexpr const char* kOwnedSubjectName = "pm_name_editing";
 
 } // namespace
 
@@ -142,7 +142,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
         overlay.init_subjects();
         REQUIRE(overlay.are_subjects_initialized());
 
-        lv_subject_t* owned = SubjectDebugRegistry::instance().lookup_by_name(OWNED_SUBJECT_NAME);
+        lv_subject_t* owned = SubjectDebugRegistry::instance().lookup_by_name(kOwnedSubjectName);
         REQUIRE(owned != nullptr);
 
         observer = lv_subject_add_observer_obj(owned, sentinel_observer_cb, sentinel, nullptr);
@@ -174,7 +174,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "PrinterManagerOverlay: destructor safe withou
     // observer hook must still be attached.
     PrinterManagerOverlay owner;
     owner.init_subjects();
-    lv_subject_t* owned = SubjectDebugRegistry::instance().lookup_by_name(OWNED_SUBJECT_NAME);
+    lv_subject_t* owned = SubjectDebugRegistry::instance().lookup_by_name(kOwnedSubjectName);
     REQUIRE(owned != nullptr);
 
     lv_obj_t* sentinel = lv_obj_create(test_screen());
@@ -190,7 +190,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "PrinterManagerOverlay: destructor safe withou
         // Destructor runs here - it must be a no-op.
     }
 
-    REQUIRE(SubjectDebugRegistry::instance().lookup_by_name(OWNED_SUBJECT_NAME) == owned);
+    REQUIRE(SubjectDebugRegistry::instance().lookup_by_name(kOwnedSubjectName) == owned);
     REQUIRE(lv_obj_get_event_count(sentinel) == baseline_events + 1);
 
     // Owner is still alive; drop the observer before the sentinel so teardown
@@ -414,7 +414,7 @@ std::string shown_chips(lv_obj_t* obj) {
     return out;
 }
 
-constexpr const char* CAP_GROUPS[] = {"group_caps_motion",      "group_caps_thermal",
+constexpr const char* kCapGroups[] = {"group_caps_motion",      "group_caps_thermal",
                                       "group_caps_filament",    "group_caps_printing",
                                       "group_caps_electronics", "group_caps_addons"};
 
@@ -445,7 +445,7 @@ TEST_CASE_METHOD(CapabilityChipsFixture,
     }
     int chips = 0;
     count_chips(root, chips);
-    CHECK(chips == static_cast<int>(helix::CAP_CHIP_COUNT));
+    CHECK(chips == static_cast<int>(helix::kCapChipCount));
 }
 
 TEST_CASE_METHOD(
@@ -454,7 +454,7 @@ TEST_CASE_METHOD(
     "[printer_manager]") {
     lv_obj_t* root = show();
     REQUIRE(root != nullptr);
-    for (const char* group_name : CAP_GROUPS) {
+    for (const char* group_name : kCapGroups) {
         INFO(group_name);
         lv_obj_t* group = lv_obj_find_by_name(root, group_name);
         REQUIRE(group != nullptr);
@@ -614,7 +614,7 @@ TEST_CASE_METHOD(CapabilityChipsFixture, "PrinterManagerOverlay: a chip opens it
 TEST_CASE_METHOD(CapabilityChipsFixture,
                  "PrinterManagerOverlay: a chip whose screen is a main panel switches to it",
                  "[printer_manager]") {
-    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    std::array<lv_obj_t*, kUiPanelCount> panels{};
     for (auto& p : panels) {
         p = lv_obj_create(test_screen());
     }

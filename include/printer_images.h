@@ -27,20 +27,20 @@
 namespace helix::printer_images {
 
 /// Base path for printer images (LVGL filesystem prefix)
-inline constexpr const char* IMAGE_BASE_PATH = "A:assets/images/printers/";
+inline constexpr const char* kImageBasePath = "A:assets/images/printers/";
 
 /// Base path for pre-rendered printer images (faster on embedded)
-inline constexpr const char* PRERENDERED_BASE_PATH = "A:assets/images/printers/prerendered/";
+inline constexpr const char* kPrerenderedBasePath = "A:assets/images/printers/prerendered/";
 
 /// Default fallback image for unknown/unmapped printers (generic CoreXY)
-inline constexpr const char* DEFAULT_IMAGE = "A:assets/images/printers/generic-corexy.png";
+inline constexpr const char* kDefaultImage = "A:assets/images/printers/generic-corexy.png";
 
 /// Default image filename (without path)
-inline constexpr const char* DEFAULT_IMAGE_FILENAME = "generic-corexy.png";
+inline constexpr const char* kDefaultImageFilename = "generic-corexy.png";
 
 /// Resolve the generic fallback image through the asset root. Identity on
 /// desktop (asset_root "."); on ESP32 (asset_root "/assets") it prepends the
-/// mount that a raw "A:assets/..." literal misses. Used wherever DEFAULT_IMAGE
+/// mount that a raw "A:assets/..." literal misses. Used wherever kDefaultImage
 /// would otherwise be returned raw.
 inline std::string default_printer_image_path() {
     return helix::asset_component_uri("assets/images/printers/generic-corexy.png");
@@ -122,7 +122,7 @@ inline std::string get_prerendered_path(const std::string& image_filename,
     std::string basename = image_filename.substr(0, dot_pos);
     const int size = helix::get_printer_image_size(screen_width);
     std::string prerendered_name = basename + "-" + std::to_string(size) + ".bin";
-    std::string full_path = std::string(PRERENDERED_BASE_PATH) + prerendered_name;
+    std::string full_path = std::string(kPrerenderedBasePath) + prerendered_name;
 
     if (image_file_exists(full_path)) {
         return full_path;
@@ -172,7 +172,7 @@ inline std::string get_image_path_for_name(const std::string& printer_name,
  * @brief Get image path for a printer type index
  *
  * Converts index to printer name, then looks up image in database.
- * Falls back to DEFAULT_IMAGE if not found or file doesn't exist.
+ * Falls back to kDefaultImage if not found or file doesn't exist.
  *
  * @param printer_type_index Index from printer type list
  * @return Full LVGL path to printer image
