@@ -5,7 +5,10 @@
 #include "json_fwd.h"
 
 #include <cstdint>
+#include <functional>
 #include <map>
+#include <optional>
+#include <set>
 #include <vector>
 
 namespace helix {
@@ -47,6 +50,9 @@ struct PreprintEntry {
     int temp_bucket{
         0}; ///< Bed temp at start: 1 = cold (<40°C), 2 = warm (≥40°C); 0 = unknown/legacy
     PreprintWindow window{PreprintWindow::Unknown}; ///< Which window this entry measured
+    /// Phases this start was told to skip (option toggles turned off);
+    /// nullopt when nothing said, which reads as unknown, never as "none".
+    std::optional<std::set<int>> skipped_phases;
 };
 
 /**
@@ -104,6 +110,13 @@ class PreprintPredictor {
      */
     void load_entries(const std::vector<PreprintEntry>& entries,
                       StartCondition condition = StartCondition::COLD);
+
+    /// Bed temperature at or above which a start counts as warm
+    static constexpr float WARM_BED_C = 40.0f;
+
+    /// The temp_bucket a start with the bed at @p bed_c belongs to: 2 (warm)
+    /// at or above WARM_BED_C, else 1 (cold)
+    [[nodiscard]] static int temp_bucket_for(float bed_c);
 
     /**
      * @brief Load entries with legacy temp_bucket filtering (backward compat)
@@ -188,8 +201,11 @@ class PreprintPredictor {
      * Durations: the heating seconds, the predicted phases (history, else the
      * defaults) with homing at predicted_homing_seconds(), then @p overrides
      * applied. Total: with history, the recorded wall clock (which already
-     * holds heating) less every removed phase and plus every added one;
-     * without history, the sum of the durations.
+     * holds heating and every phase the start ran, matched or not) less each
+     * skipped phase's share of it, plus the generic duration of a run phase
+     * every entry recorded as skipped; any other run phase adds nothing.
+     * Without history, the sum of the durations, a run phase the defaults
+     * lack added at its generic duration.
      */
     [[nodiscard]] PreprintEstimate estimate(const PreprintHeating& heating,
                                             const PreprintPhaseOverrides& overrides = {}) const;
@@ -239,6 +255,13 @@ class PreprintPredictor {
   private:
     /// Exponential time-decay weights (oldest=low, newest=high), normalized to sum=1
     [[nodiscard]] std::vector<double> compute_weights() const;
+
+    /// Every entry records @p phase as skipped (false when any entry is silent)
+    [[nodiscard]] bool every_entry_skipped(int phase) const;
+
+    /// @p value per entry, averaged over every entry with compute_weights()
+    [[nodiscard]] double
+    weighted_entry_mean(const std::function<double(const PreprintEntry&)>& value) const;
 
     std::vector<PreprintEntry> entries_;
 };

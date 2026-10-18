@@ -107,6 +107,17 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     void note_host_side_pre_start(const std::string& dispatched_block);
 
     /**
+     * @brief The phases this run's start was told to skip
+     *
+     * Recorded on the run's history entry, so a later estimate can tell a
+     * phase no start ran from one the phase matcher missed. A run never told
+     * records nothing, which reads as unknown. Safe to call after start().
+     *
+     * @param phases PrintStartPhase values of the option toggles turned off
+     */
+    void note_skipped_phases(std::set<int> phases);
+
+    /**
      * @brief Stop monitoring
      *
      * Unregisters callback and resets state. Called when print
@@ -724,6 +735,10 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// text, so no pattern may read a phase out of it. Cleared in start() and
     /// reset(), with the rest of the per-run state.
     std::vector<std::string> host_pre_start_echo_lines_;
+
+    /// The phases this run's start skipped, from note_skipped_phases(); reset
+    /// with the rest of the per-run state.
+    std::optional<std::set<int>> skipped_phases_;
 
     // Duration-proportional progress weights (protected by state_mutex_)
     std::map<int, float> predicted_phase_weights_; ///< Phase -> fraction of total (0.0-1.0)

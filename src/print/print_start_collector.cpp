@@ -408,6 +408,11 @@ void PrintStartCollector::note_host_side_pre_start(const std::string& dispatched
     load_prediction_history();
 }
 
+void PrintStartCollector::note_skipped_phases(std::set<int> phases) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    skipped_phases_ = std::move(phases);
+}
+
 void PrintStartCollector::reset_run_locked() {
     printing_state_start_ = helix::sim::SimulatedClock::now();
     last_signal_time_ = printing_state_start_;
@@ -417,6 +422,7 @@ void PrintStartCollector::reset_run_locked() {
     // Assume the narrower window until something says otherwise.
     window_ = helix::PreprintWindow::PrinterEdge;
     host_pre_start_echo_lines_.clear();
+    skipped_phases_.reset();
     detected_phases_.clear();
     current_phase_ = PrintStartPhase::INITIALIZING;
     print_start_detected_ = false;
@@ -2977,7 +2983,7 @@ void PrintStartCollector::load_prediction_history() {
     // Cold (1) vs Warm (2) based on current bed temp
     int bed_temp = helix::ui::temperature::deci_to_degrees(
         lv_subject_get_int(state_.temperature_state().get_bed_temp_subject()));
-    int temp_bucket = (bed_temp >= 40) ? 2 : 1;
+    int temp_bucket = helix::PreprintPredictor::temp_bucket_for(static_cast<float>(bed_temp));
 
     std::lock_guard<std::mutex> lock(state_mutex_);
     predictor_.load_entries(entries, temp_bucket, window_);
@@ -3269,11 +3275,13 @@ void PrintStartCollector::save_prediction_entry() {
     entry.total_seconds = wall_clock_total;
     entry.timestamp = static_cast<int64_t>(std::time(nullptr));
     entry.phase_durations = std::move(phase_durations);
-    entry.temp_bucket = (start_bed_temp_ >= 40) ? 2 : 1;
+    entry.temp_bucket =
+        helix::PreprintPredictor::temp_bucket_for(static_cast<float>(start_bed_temp_));
     entry.window = window_;
 
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
+        entry.skipped_phases = skipped_phases_;
         predictor_.add_entry(entry);
     }
 

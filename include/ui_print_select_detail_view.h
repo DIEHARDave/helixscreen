@@ -639,6 +639,10 @@ class PrintSelectDetailView : public OverlayBase {
         return cached_file_metadata_;
     }
 
+    /// The shown file's identity, PrintPreparationManager::scan_key(): the key
+    /// of its operations scan and of its ToolsUsedCache entry.
+    [[nodiscard]] std::string current_file_key() const;
+
     // === Checkbox Access (for prep manager setup) ===
 
     [[nodiscard]] lv_obj_t* get_bed_mesh_checkbox() const {
@@ -699,8 +703,10 @@ class PrintSelectDetailView : public OverlayBase {
     friend class ::PrintSelectDetailViewTestAccess;
 
     /// Keep the file's fetched metadata and re-estimate the prep time, which
-    /// heats to the metadata's first-layer temperatures.
-    void apply_file_metadata(const FileMetadata& metadata);
+    /// heats to the metadata's first-layer temperatures. Metadata fetched for
+    /// @p file_key, a current_file_key(), is dropped once another file shows.
+    /// @return false when dropped
+    bool apply_file_metadata(const std::string& file_key, const FileMetadata& metadata);
 
     /**
      * @brief LV_EVENT_DELETE hook on the detail root: the only notice this view
@@ -1087,10 +1093,6 @@ class PrintSelectDetailView : public OverlayBase {
     void resolve_local_gcodes_root();
 
     void reclaim_download(const std::string& path);
-
-    /// The shown file's identity, PrintPreparationManager::scan_key(): the key
-    /// of its operations scan and of its ToolsUsedCache entry.
-    [[nodiscard]] std::string current_file_key() const;
 
     /**
      * @brief Invoke @p cb (main thread) once the current file's gcode is on disk

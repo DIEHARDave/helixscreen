@@ -584,11 +584,104 @@ TEST_CASE("PreprintPredictor: estimate with history takes the recorded wall cloc
         CHECK(predictor.estimate({}, {{mesh, false}}).total_seconds == 280.0f);
     }
 
-    SECTION("a phase the start runs and the history lacks is added") {
+    SECTION("a phase the start runs adds nothing: the wall clock already holds it") {
+        // AD5M-style: the matcher never named the mesh, the option is on.
         const auto est = predictor.estimate({}, {{qgl, true}, {mesh, true}});
-        const float qgl_s =
-            static_cast<float>(PreprintPredictor::generic_phase_durations().at(qgl));
-        CHECK(est.durations.at(qgl) == qgl_s);
-        CHECK(est.total_seconds == 400.0f + qgl_s);
+        CHECK(est.durations.count(qgl) == 0);
+        CHECK(est.total_seconds == 400.0f);
     }
+}
+
+TEST_CASE("PreprintPredictor: a skipped phase takes off its share of the whole window",
+          "[print][predictor][estimate]") {
+    PreprintConfigScope config;
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+
+    // The older start meshed for 120s, the newer one did not; each spent 280s
+    // on everything else, so skipping the mesh leaves 280s whatever the weights.
+    PreprintEntry meshed;
+    meshed.total_seconds = 400;
+    meshed.timestamp = 1000;
+    meshed.phase_durations = {{mesh, 120}};
+    PreprintEntry unmeshed;
+    unmeshed.total_seconds = 280;
+    unmeshed.timestamp = 2000;
+    PreprintPredictor predictor;
+    predictor.add_entry(meshed);
+    predictor.add_entry(unmeshed);
+
+    REQUIRE(predictor.predicted_total() > 280);
+    CHECK(predictor.estimate({}, {{mesh, false}}).total_seconds ==
+          Catch::Approx(280.0f).margin(0.5f));
+}
+
+TEST_CASE("PreprintPredictor: a bed at 40C starts warm, below it cold", "[print][predictor]") {
+    CHECK(PreprintPredictor::temp_bucket_for(25.0f) == 1);
+    CHECK(PreprintPredictor::temp_bucket_for(39.9f) == 1);
+    CHECK(PreprintPredictor::temp_bucket_for(40.0f) == 2);
+    CHECK(PreprintPredictor::temp_bucket_for(60.0f) == 2);
+}
+
+TEST_CASE("PreprintPredictor: a phase turned on that no start in the window ran adds its default",
+          "[print][predictor][estimate]") {
+    PreprintConfigScope config;
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+    const float mesh_s = static_cast<float>(PreprintPredictor::generic_phase_durations().at(mesh));
+    const auto entry = [](int64_t timestamp, std::optional<std::set<int>> skipped) {
+        PreprintEntry e;
+        e.total_seconds = 300;
+        e.timestamp = timestamp;
+        e.skipped_phases = std::move(skipped);
+        return e;
+    };
+    PreprintPredictor predictor;
+
+    SECTION("every start skipped it: the default joins the wall clock") {
+        predictor.add_entry(entry(1000, std::set<int>{mesh}));
+        predictor.add_entry(entry(2000, std::set<int>{mesh}));
+        const auto est = predictor.estimate({}, {{mesh, true}});
+        CHECK(est.durations.at(mesh) == mesh_s);
+        CHECK(est.total_seconds == 300.0f + mesh_s);
+    }
+
+    SECTION("the matcher missed it: a start that did not skip it adds nothing") {
+        predictor.add_entry(entry(1000, std::set<int>{}));
+        CHECK(predictor.estimate({}, {{mesh, true}}).total_seconds == 300.0f);
+    }
+
+    SECTION("one start in the window ran it: nothing is added") {
+        predictor.add_entry(entry(1000, std::set<int>{mesh}));
+        predictor.add_entry(entry(2000, std::set<int>{}));
+        CHECK(predictor.estimate({}, {{mesh, true}}).total_seconds == 300.0f);
+    }
+
+    SECTION("an entry that recorded nothing is unknown: nothing is added") {
+        predictor.add_entry(entry(1000, std::set<int>{mesh}));
+        predictor.add_entry(entry(2000, std::nullopt));
+        CHECK(predictor.estimate({}, {{mesh, true}}).total_seconds == 300.0f);
+    }
+}
+
+TEST_CASE("PreprintPredictor: skipped phases round-trip through the stored history",
+          "[print][predictor]") {
+    PreprintConfigScope config;
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+    const int qgl = static_cast<int>(PrintStartPhase::QGL);
+    for (auto skipped :
+         {std::optional<std::set<int>>{std::set<int>{mesh, qgl}},
+          std::optional<std::set<int>>{std::set<int>{}}, std::optional<std::set<int>>{}}) {
+        PreprintEntry e;
+        e.total_seconds = 300;
+        e.timestamp = 1000;
+        e.skipped_phases = skipped;
+        PreprintPredictor::append_to_config(e);
+    }
+
+    const auto loaded = PreprintPredictor::load_entries_from_config();
+    REQUIRE(loaded.size() == 3);
+    REQUIRE(loaded[0].skipped_phases.has_value());
+    CHECK(*loaded[0].skipped_phases == std::set<int>{mesh, qgl});
+    REQUIRE(loaded[1].skipped_phases.has_value());
+    CHECK(loaded[1].skipped_phases->empty());
+    CHECK_FALSE(loaded[2].skipped_phases.has_value());
 }

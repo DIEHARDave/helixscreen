@@ -297,7 +297,8 @@ lv_subject_t* PrintPreparationManager::get_preprint_estimate_subject() {
     return &preprint_estimate_subject_;
 }
 
-void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_metadata) {
+void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_metadata,
+                                                   const std::string& file_key) {
     // Callers reach this before any getter fetch (the detail view computes
     // the estimate on open), so the subject is initialised here.
     ensure_estimate_subject_initialized();
@@ -324,10 +325,14 @@ void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_meta
     heating.nozzle_target_known = nozzle_target > 0.0f;
 
     // The history this start will be measured against: its temp bucket and
-    // whether a host-side block runs ahead of the job (the collector's window).
-    const int temp_bucket = bed_temp >= 40.0f ? 2 : 1;
+    // whether a host-side block runs ahead of the job (the collector's window),
+    // built from what start_print() builds it from.
+    const int temp_bucket = helix::PreprintPredictor::temp_bucket_for(bed_temp);
+    const gcode::ScanResult* scan = scan_result_for(file_key);
     const helix::PreprintWindow window =
-        pre_start_block(collect_macro_skip_params(), {}, nullptr).gcode.empty()
+        pre_start_block(collect_macro_skip_params(), file_key,
+                        scan && scan->print_start.found ? &scan->print_start : nullptr)
+                .gcode.empty()
             ? helix::PreprintWindow::PrinterEdge
             : helix::PreprintWindow::HostPreStart;
     if (!predictor_cached_ || cached_temp_bucket_ != temp_bucket || cached_window_ != window) {
@@ -339,6 +344,18 @@ void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_meta
         predictor_cached_ = true;
     }
 
+    const helix::PreprintPhaseOverrides overrides = preprint_phase_overrides();
+    const int estimate_s =
+        static_cast<int>(cached_predictor_.estimate(heating, overrides).total_seconds);
+    lv_subject_set_int(&preprint_estimate_subject_, estimate_s);
+
+    spdlog::debug("[PrintPreparationManager] Pre-print estimate: {}s (nozzle {:.0f}->{:.0f}C, "
+                  "bed {:.0f}->{:.0f}C, {} history entries)",
+                  estimate_s, ext_temp, nozzle_target, bed_temp, bed_target,
+                  cached_predictor_.get_entries().size());
+}
+
+helix::PreprintPhaseOverrides PrintPreparationManager::preprint_phase_overrides() const {
     // A shown toggle the user turned off skips its phase; one left on runs it.
     // A phase with no toggle runs as the start macro does.
     static const std::pair<const char*, helix::PrintStartPhase> kTogglePhases[] = {
@@ -355,15 +372,17 @@ void PrintPreparationManager::recalculate_estimate(const FileMetadata* file_meta
             overrides[static_cast<int>(phase)] = state == PrePrintOptionState::ENABLED;
         }
     }
+    return overrides;
+}
 
-    const int estimate_s =
-        static_cast<int>(cached_predictor_.estimate(heating, overrides).total_seconds);
-    lv_subject_set_int(&preprint_estimate_subject_, estimate_s);
-
-    spdlog::debug("[PrintPreparationManager] Pre-print estimate: {}s (nozzle {:.0f}->{:.0f}C, "
-                  "bed {:.0f}->{:.0f}C, {} history entries)",
-                  estimate_s, ext_temp, nozzle_target, bed_temp, bed_target,
-                  cached_predictor_.get_entries().size());
+std::set<int> PrintPreparationManager::skipped_preprint_phases() const {
+    std::set<int> skipped;
+    for (const auto& [phase, runs] : preprint_phase_overrides()) {
+        if (!runs) {
+            skipped.insert(phase);
+        }
+    }
+    return skipped;
 }
 
 void PrintPreparationManager::invalidate_predictor_cache() {
@@ -1167,6 +1186,14 @@ void PrintPreparationManager::start_print(const std::string& filename,
         }
     }
 
+    // The run's history entry records what this start skips, so a later
+    // estimate can tell a phase no start ran from one the matcher missed.
+    if (auto* mgr = get_moonraker_manager()) {
+        if (auto collector = mgr->print_start_collector()) {
+            collector->note_skipped_phases(skipped_preprint_phases());
+        }
+    }
+
     if (!combined.empty()) {
         spdlog::info("[PrintPreparationManager] Executing pre-start gcode ({} line(s)): {}",
                      (pre_start.emit_setup ? 1 : 0) + pre_start.lines.size(), combined);
@@ -1596,8 +1623,8 @@ PrintPreparationManager::collect_macro_skip_params() const {
     }
 
     if (!skip_params.empty()) {
-        spdlog::info("[PrintPreparationManager] Collected {} skip params (DB+macro combined)",
-                     skip_params.size());
+        spdlog::debug("[PrintPreparationManager] Collected {} skip params (DB+macro combined)",
+                      skip_params.size());
     }
 
     return skip_params;
@@ -1700,8 +1727,8 @@ std::vector<std::string> PrintPreparationManager::collect_pre_start_gcode_lines(
     }
 
     if (!lines.empty()) {
-        spdlog::info("[PrintPreparationManager] Collected {} pre-start gcode line(s)",
-                     lines.size());
+        spdlog::debug("[PrintPreparationManager] Collected {} pre-start gcode line(s)",
+                      lines.size());
     }
     return lines;
 }

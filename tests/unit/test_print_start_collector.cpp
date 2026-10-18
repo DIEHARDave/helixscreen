@@ -2201,7 +2201,7 @@ TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
     FileMetadata file;
     file.first_layer_bed_temp = 60.0;
     file.first_layer_extr_temp = 220.0;
-    details.recalculate_estimate(&file);
+    details.recalculate_estimate(&file, "countdown.gcode");
     const int shown = lv_subject_get_int(details.get_preprint_estimate_subject());
 
     collector().start();
@@ -7984,6 +7984,37 @@ TEST_CASE_METHOD(SilentVoronReplayFixture,
     helix::Config* cfg = helix::Config::get_instance();
     CHECK(cfg->get<float>("/thermal/rates/heater_bed/heat_rate", 0.0f) ==
           Catch::Approx(5.0f).margin(0.5f));
+}
+
+TEST_CASE_METHOD(SilentVoronReplayFixture,
+                 "PrintStartCollector: the history entry records the phases its start skipped",
+                 "[print][collector][preprint][silent_voron]") {
+    const int mesh = static_cast<int>(PrintStartPhase::BED_MESH);
+    const auto run = [&](const std::optional<std::set<int>>& told) {
+        set_all_temps(300, 900, 320, 0);
+        collector().start();
+        collector().enable_fallbacks();
+        if (told) {
+            collector().note_skipped_phases(*told);
+        }
+        settle();
+        clock_.advance(std::chrono::seconds(60));
+        tick_fallbacks();
+        settle();
+        collector().complete_from_external_signal("first layer");
+        settle();
+        collector().stop();
+        settle();
+    };
+
+    run(std::set<int>{mesh});
+    run(std::nullopt); // a start nothing told: the last run's list does not carry over
+
+    const auto entries = helix::PreprintPredictor::load_entries_from_config();
+    REQUIRE(entries.size() == 2);
+    REQUIRE(entries[0].skipped_phases.has_value());
+    CHECK(*entries[0].skipped_phases == std::set<int>{mesh});
+    CHECK_FALSE(entries[1].skipped_phases.has_value());
 }
 
 TEST_CASE_METHOD(SilentVoronReplayFixture,
