@@ -357,6 +357,7 @@
   <translation tag="Bed mesh calibration failed: {}" fr="Échec du calibrage du maillage du plateau : {}"/>
   <translation tag="Bed mesh operation timed out" fr="Maillage du plateau — délai dépassé"/>
   <translation tag="Bed mesh..." fr="Maillage du plateau..."/>
+  <translation tag="Bed size unknown" fr="Taille du plateau inconnue"/>
   <translation tag="Bed tab moves lift to this height first" fr="Les déplacements de l&apos;onglet Plateau montent d&apos;abord à cette hauteur"/>
   <translation tag="Bed target set to {}°C" fr="Cible plateau réglée à {}°C"/>
   <translation tag="Bed temp must be 0-%d°C" fr="La température du plateau doit être entre 0 et %d°C"/>
@@ -1175,6 +1176,7 @@
   <translation tag="Failed to load profile" fr="Échec du chargement du profil"/>
   <translation tag="Failed to load spools" fr="Échec du chargement des bobines"/>
   <translation tag="Failed to modify G-code: {}" fr="Échec de la modification du G-Code : {}"/>
+  <translation tag="Failed to move to calibration position" fr="Impossible d&apos;aller à la position de calibration"/>
   <translation tag="Failed to open history" fr="Échec de l&apos;ouverture de l&apos;historique"/>
   <translation tag="Failed to open history list" fr="Échec de l&apos;ouverture de la liste d&apos;historique"/>
   <translation tag="Failed to open temperature graph" fr="Échec de l&apos;ouverture du graphique de température"/>
@@ -1209,6 +1211,7 @@
   <translation tag="Failed to send command: {}" fr="Échec de l&apos;envoi de la commande : {}"/>
   <translation tag="Failed to send print data" fr="Échec de l&apos;envoi des données d&apos;impression"/>
   <translation tag="Failed to send status request" fr="Échec de l&apos;envoi de la demande d&apos;état"/>
+  <translation tag="Failed to set Z-offset" fr="Impossible de définir l&apos;offset Z"/>
   <translation tag="Failed to set active spool" fr="Échec de la définition de la bobine active"/>
   <translation tag="Failed to set flow rate: {}" fr="Échec du réglage du débit : {}"/>
   <translation tag="Failed to set pressure advance: {}" fr="Échec du réglage du Pressure Advance : {}"/>
@@ -1216,6 +1219,8 @@
   <translation tag="Failed to set temperature: {}" fr="Échec du réglage de la température : {}"/>
   <translation tag="Failed to set {} temp: {}" fr="Échec du réglage de la temp. {} : {}"/>
   <translation tag="Failed to show confirmation dialog" fr="Échec de l&apos;affichage du dialogue de confirmation"/>
+  <translation tag="Failed to start Z offset calibration" fr="Impossible de démarrer la calibration de l&apos;offset Z"/>
+  <translation tag="Failed to start bed heating" fr="Impossible de démarrer la chauffe du plateau"/>
   <translation tag="Failed to start installer: " fr="Échec du démarrage de l&apos;installateur : "/>
   <translation tag="Failed to start print: {}" fr="Échec du démarrage de l&apos;impression : {}"/>
   <translation tag="Failed to start uninstaller: " fr="Échec du démarrage du désinstallateur : "/>

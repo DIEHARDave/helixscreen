@@ -167,6 +167,11 @@ TEST_CASE("PrinterDiscovery: the probe XY offset comes from the probe's config s
         REQUIRE(hw.probe_xy_offset().has_value());
         CHECK(hw.probe_xy_offset()->y == Catch::Approx(18.0));
     }
+    SECTION("Kalico's [dockable_probe]") {
+        hw.parse_probe_xy_offset(json{{"dockable_probe", {{"x_offset", 0.0}, {"y_offset", 25.0}}}});
+        REQUIRE(hw.probe_xy_offset().has_value());
+        CHECK(hw.probe_xy_offset()->y == Catch::Approx(25.0));
+    }
     SECTION("no probe section") {
         hw.parse_probe_xy_offset(json{{"stepper_x", {{"position_max", 235.0}}}});
         CHECK_FALSE(hw.probe_xy_offset().has_value());

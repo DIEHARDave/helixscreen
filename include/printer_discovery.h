@@ -645,8 +645,8 @@ class PrinterDiscovery {
      * @brief Read the Z probe's XY offset from the nozzle
      *
      * From x_offset/y_offset of the first Klipper Z probe section present:
-     * [probe], [bltouch], [smart_effector], [load_cell_probe], or a
-     * [probe_eddy_current <name>]. An axis the section omits is 0, Klipper's
+     * [probe], [bltouch], [smart_effector], [load_cell_probe], Kalico's
+     * [dockable_probe], or a [probe_eddy_current <name>]. An axis the section omits is 0, Klipper's
      * default. No such section leaves the offset unknown.
      *
      * @param settings JSON object from a configfile.settings response

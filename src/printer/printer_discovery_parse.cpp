@@ -962,7 +962,7 @@ void PrinterDiscovery::parse_probe_xy_offset(const nlohmann::json& settings) {
     // Klipper allows one Z probe, so the first section present is the one
     // PROBE_CALIBRATE uses. Section names arrive lowercased.
     static constexpr const char* kProbeSections[] = {"probe", "bltouch", "smart_effector",
-                                                     "load_cell_probe"};
+                                                     "load_cell_probe", "dockable_probe"};
     const nlohmann::json* section = nullptr;
     for (const char* name : kProbeSections) {
         const auto s = settings.find(name);

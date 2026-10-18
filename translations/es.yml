@@ -387,6 +387,7 @@ translations:
   'Bed mesh calibration failed: {}': 'Falló la calibración de la malla de cama: {}'
   Bed mesh operation timed out: Malla de cama — tiempo de espera agotado
   Bed mesh...: Malla de cama...
+  Bed size unknown: 'Tamaño de cama desconocido'
   Bed tab moves lift to this height first: Los movimientos de la pestaña Cama suben primero a esta altura
   Bed target set to {}°C: Cama configurada a {}°C
   Bed temp must be 0-%d°C: La temperatura de la cama debe ser 0-%d°C
@@ -1299,6 +1300,7 @@ translations:
   Failed to load profile: Error al cargar perfil
   Failed to load spools: Error al cargar bobinas
   'Failed to modify G-code: {}': 'Error al modificar G-code: {}'
+  Failed to move to calibration position: 'No se pudo mover a la posición de calibración'
   Failed to open history: Error al abrir historial
   Failed to open history list: Error al abrir lista de historial
   Failed to open temperature graph: Error al abrir gráfico de temperatura
@@ -1334,6 +1336,7 @@ translations:
   'Failed to send command: {}': 'Error al enviar comando: {}'
   Failed to send print data: Error al enviar los datos de impresión
   Failed to send status request: Error al enviar la solicitud de estado
+  Failed to set Z-offset: 'No se pudo establecer el offset Z'
   Failed to set active spool: Error al establecer bobina activa
   'Failed to set flow rate: {}': 'Error al configurar flujo: {}'
   'Failed to set pressure advance: {}': 'Error al ajustar Pressure Advance: {}'
@@ -1341,6 +1344,8 @@ translations:
   'Failed to set temperature: {}': 'Error al configurar temperatura: {}'
   'Failed to set {} temp: {}': 'Error al configurar temp. de {}: {}'
   Failed to show confirmation dialog: Error al mostrar diálogo de confirmación
+  Failed to start Z offset calibration: 'No se pudo iniciar la calibración del offset Z'
+  Failed to start bed heating: 'No se pudo iniciar el calentamiento de la cama'
   'Failed to start installer: ': 'Error al iniciar el instalador: '
   'Failed to start print: {}': 'Error al iniciar impresión: {}'
   'Failed to start uninstaller: ': 'Error al iniciar el desinstalador: '

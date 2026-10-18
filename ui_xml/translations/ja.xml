@@ -357,6 +357,7 @@
   <translation tag="Bed mesh calibration failed: {}" ja="ベッドメッシュのキャリブレーションに失敗しました: {}"/>
   <translation tag="Bed mesh operation timed out" ja="ベッドメッシュ操作がタイムアウトしました"/>
   <translation tag="Bed mesh..." ja="ベッドメッシュ..."/>
+  <translation tag="Bed size unknown" ja="ベッドサイズが不明です"/>
   <translation tag="Bed tab moves lift to this height first" ja="ベッドタブの移動はまずこの高さまで上昇します"/>
   <translation tag="Bed target set to {}°C" ja="ベッド目標温度を {}°C に設定しました"/>
   <translation tag="Bed temp must be 0-%d°C" ja="ベッド温度は 0〜%d°C にしてください"/>
@@ -1175,6 +1176,7 @@
   <translation tag="Failed to load profile" ja="プロファイルの読み込みに失敗しました"/>
   <translation tag="Failed to load spools" ja="スプールの読み込みに失敗しました"/>
   <translation tag="Failed to modify G-code: {}" ja="G-code の変更に失敗しました: {}"/>
+  <translation tag="Failed to move to calibration position" ja="キャリブレーション位置へ移動できませんでした"/>
   <translation tag="Failed to open history" ja="履歴を開けませんでした"/>
   <translation tag="Failed to open history list" ja="履歴リストを開けませんでした"/>
   <translation tag="Failed to open temperature graph" ja="温度グラフを開けませんでした"/>
@@ -1209,6 +1211,7 @@
   <translation tag="Failed to send command: {}" ja="コマンドの送信に失敗しました: {}"/>
   <translation tag="Failed to send print data" ja="印刷データの送信に失敗しました"/>
   <translation tag="Failed to send status request" ja="ステータス要求の送信に失敗しました"/>
+  <translation tag="Failed to set Z-offset" ja="Zオフセットを設定できませんでした"/>
   <translation tag="Failed to set active spool" ja="アクティブスプールの設定に失敗しました"/>
   <translation tag="Failed to set flow rate: {}" ja="フロー率の設定に失敗しました: {}"/>
   <translation tag="Failed to set pressure advance: {}" ja="Pressure Advanceの設定に失敗しました: {}"/>
@@ -1216,6 +1219,8 @@
   <translation tag="Failed to set temperature: {}" ja="温度の設定に失敗しました: {}"/>
   <translation tag="Failed to set {} temp: {}" ja="{} 温度の設定に失敗しました: {}"/>
   <translation tag="Failed to show confirmation dialog" ja="確認ダイアログの表示に失敗しました"/>
+  <translation tag="Failed to start Z offset calibration" ja="Zオフセットのキャリブレーションを開始できませんでした"/>
+  <translation tag="Failed to start bed heating" ja="ベッドの加熱を開始できませんでした"/>
   <translation tag="Failed to start installer: " ja="インストーラーの起動に失敗しました: "/>
   <translation tag="Failed to start print: {}" ja="印刷の開始に失敗しました: {}"/>
   <translation tag="Failed to start uninstaller: " ja="アンインストーラーの起動に失敗しました: "/>

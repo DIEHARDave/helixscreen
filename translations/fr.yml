@@ -392,6 +392,7 @@ translations:
   'Bed mesh calibration failed: {}': 'Échec du calibrage du maillage du plateau : {}'
   Bed mesh operation timed out: Maillage du plateau — délai dépassé
   Bed mesh...: Maillage du plateau...
+  Bed size unknown: 'Taille du plateau inconnue'
   Bed tab moves lift to this height first: 'Les déplacements de l''onglet Plateau montent d''abord à cette hauteur'
   Bed target set to {}°C: Cible plateau réglée à {}°C
   Bed temp must be 0-%d°C: La température du plateau doit être entre 0 et %d°C
@@ -1309,6 +1310,7 @@ translations:
   Failed to load profile: Échec du chargement du profil
   Failed to load spools: Échec du chargement des bobines
   'Failed to modify G-code: {}': 'Échec de la modification du G-Code : {}'
+  Failed to move to calibration position: 'Impossible d''aller à la position de calibration'
   Failed to open history: Échec de l'ouverture de l'historique
   Failed to open history list: Échec de l'ouverture de la liste d'historique
   Failed to open temperature graph: Échec de l'ouverture du graphique de température
@@ -1348,6 +1350,7 @@ translations:
   'Failed to send command: {}': 'Échec de l''envoi de la commande : {}'
   Failed to send print data: Échec de l'envoi des données d'impression
   Failed to send status request: Échec de l'envoi de la demande d'état
+  Failed to set Z-offset: 'Impossible de définir l''offset Z'
   Failed to set active spool: Échec de la définition de la bobine active
   'Failed to set flow rate: {}': 'Échec du réglage du débit : {}'
   'Failed to set pressure advance: {}': 'Échec du réglage du Pressure Advance : {}'
@@ -1355,6 +1358,8 @@ translations:
   'Failed to set temperature: {}': 'Échec du réglage de la température : {}'
   'Failed to set {} temp: {}': 'Échec du réglage de la temp. {} : {}'
   Failed to show confirmation dialog: Échec de l'affichage du dialogue de confirmation
+  Failed to start Z offset calibration: 'Impossible de démarrer la calibration de l''offset Z'
+  Failed to start bed heating: 'Impossible de démarrer la chauffe du plateau'
   'Failed to start installer: ': 'Échec du démarrage de l''installateur : '
   'Failed to start print: {}': 'Échec du démarrage de l''impression : {}'
   'Failed to start uninstaller: ': 'Échec du démarrage du désinstallateur : '
