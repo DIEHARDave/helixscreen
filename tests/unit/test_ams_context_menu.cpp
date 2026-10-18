@@ -22,7 +22,9 @@
 #include "filament_op_execute.h"
 #include "filament_op_slot_resolver.h"
 #include "filament_variants.h"
+#include "plugin_menu.h"
 #include "printer_discovery.h"
+#include "theme_manager.h"
 #include "toolchanger_addon.h"
 
 #include <filesystem>
@@ -1511,6 +1513,58 @@ TEST_CASE_METHOD(LVGLUITestFixture, "AmsContextMenu: plugin rows get their own c
     lv_obj_send_event(lv_obj_get_parent(lv_obj_get_parent(label)), LV_EVENT_CLICKED, nullptr);
     CHECK_FALSE(menu.is_visible());
     CHECK(plugin.seen() == "0|2|Gate 3|" + (material.empty() ? std::string("nil") : material));
+    process_lvgl(20);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AmsContextMenu: at the cap the plugin column adds no height at 480x272",
+                 "[ui][ams][context_menu][plugin]") {
+    lv_display_t* disp = lv_display_get_default();
+    ScopedResolution res(disp, 480, 272);
+    theme_manager_refresh_layout_constants(disp);
+
+    // Two plugins with more filament_slot items between them than the cap allows,
+    // so the column holds its most: the cap's rows under two headings.
+    helix::plugin::test::TempDir tmp;
+    std::string four;
+    for (int i = 0; i < 4; ++i)
+        four += std::string(i ? "," : "") + R"({"id":"i)" + std::to_string(i) +
+                R"(","menu":"filament_slot","label":"Slot action )" + std::to_string(i) +
+                R"(","handler":"go"})";
+    for (const char* id : {"cap-a", "cap-b"}) {
+        std::filesystem::create_directories(tmp.path / id);
+        std::ofstream(tmp.path / id / "manifest.json")
+            << R"({"id":")" << id << R"(","name":")" << id
+            << R"(","version":"1.0.0","menu_items":[)" << four << "]}";
+        std::ofstream(tmp.path / id / "main.lua") << R"(helix.ui.on("go", function() end))";
+    }
+    helix::plugin::test::HostRig rig(
+        helix::plugin::test::enabled_all({{"cap-a", {}}, {"cap-b", {}}}));
+    rig.host->load_from(tmp.path.string());
+
+    auto backend = std::make_unique<AmsBackendMock>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+    AmsContextMenu menu;
+    REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/2, test_screen(),
+                                  /*is_loaded=*/false, backend.get()));
+    lv_obj_t* col = lv_obj_find_by_name(test_screen(), "col_plugins");
+    lv_obj_t* filament = lv_obj_find_by_name(test_screen(), "col_filament");
+    REQUIRE(col);
+    REQUIRE(filament);
+    lv_obj_update_layout(lv_obj_get_screen(col));
+
+    uint32_t rows = 0;
+    for (uint32_t i = 0; i < lv_obj_get_child_count(col); ++i)
+        rows += lv_obj_find_by_name(lv_obj_get_child(col, static_cast<int32_t>(i)), "item_label") !=
+                nullptr;
+    CHECK(rows == static_cast<uint32_t>(
+                      helix::plugin_menu::row_cap(helix::plugin_menu::MenuKind::FilamentSlot)));
+    CAPTURE(lv_obj_get_height(col), lv_obj_get_height(filament));
+    CHECK_FALSE(lv_obj_has_flag(col, LV_OBJ_FLAG_HIDDEN));
+    // Side by side, the tallest column sets the card's height: the plugin column
+    // at the cap must not be it.
+    CHECK(lv_obj_get_height(col) <= lv_obj_get_height(filament));
+    menu.hide();
     process_lvgl(20);
 }
 
