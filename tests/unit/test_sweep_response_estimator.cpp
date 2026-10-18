@@ -1,5 +1,6 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
+#include "belt_test_signals.h"
 #include "sweep_response_estimator.h"
 
 #include <cmath>
@@ -129,4 +130,207 @@ TEST_CASE("goertzel_psd is 0 for empty or meaningless input", "[sweep_preview]")
     CHECK(goertzel_psd(x.data(), x.size(), 50.0f, 0.0f) == 0.0f);
     CHECK(goertzel_psd(x.data(), x.size(), 0.0f, 3200.0f) == 0.0f);
     CHECK(goertzel_psd(x.data(), x.size(), -5.0f, 3200.0f) == 0.0f);
+}
+
+namespace {
+
+/// A 0.5 s lock window at 3053 Hz: x carries gravity plus the tone, y the tone.
+std::vector<AccelSample> tone_window(float freq_hz, float amplitude) {
+    constexpr size_t n = 1527;
+    constexpr float rate = 3053.0f;
+    std::vector<AccelSample> out(n);
+    for (size_t i = 0; i < n; ++i) {
+        const float t = static_cast<float>(i) / rate;
+        const auto s = static_cast<float>(amplitude * std::sin(2.0 * kPi * freq_hz * i / rate));
+        out[i] = AccelSample{t, 9810.0f + s, s, 0.0f};
+    }
+    return out;
+}
+
+std::optional<float> drive_in(const std::vector<AccelSample>& w, float hint,
+                              float hz_per_sec = 1.0f) {
+    return find_drive_hz(w.data(), w.size(), 3053.0f, hint, hz_per_sec);
+}
+
+/// Feed one reading whose t0 estimate is `estimate`, at stream time `at`.
+void observe_estimate(DriveLock& lock, double at, double estimate, const SweepPlan& plan) {
+    lock.observe(at, static_cast<float>(plan.freq_start_hz + plan.hz_per_sec * (at - estimate)));
+}
+
+} // namespace
+
+TEST_CASE("find_drive_hz finds the drive in a lock window", "[sweep_preview][lock]") {
+    const auto w40 = tone_window(40.0f, 200.0f);
+    auto f = drive_in(w40, 41.5f);
+    REQUIRE(f.has_value());
+    CHECK(*f == Approx(40.0f).margin(0.1));
+
+    // Off the 0.25 Hz grid: the parabola refines it.
+    f = drive_in(tone_window(40.3f, 200.0f), 41.5f);
+    REQUIRE(f.has_value());
+    CHECK(*f == Approx(40.3f).margin(0.1));
+    f = drive_in(tone_window(40.12f, 200.0f), 41.5f);
+    REQUIRE(f.has_value());
+    CHECK(*f == Approx(40.12f).margin(0.05));
+
+    // Grid 37..44 at 2 Hz/s.
+    f = drive_in(tone_window(38.0f, 200.0f), 43.0f, 2.0f);
+    REQUIRE(f.has_value());
+    CHECK(*f == Approx(38.0f).margin(0.1));
+}
+
+TEST_CASE("find_drive_hz refuses what is not a drive inside the grid", "[sweep_preview][lock]") {
+    const auto w40 = tone_window(40.0f, 200.0f);
+    // Grid 42..45.5: the argmax sits on its low end.
+    CHECK_FALSE(drive_in(w40, 45.0f).has_value());
+    // Fewer than 3 meaningful grid points near DC.
+    CHECK_FALSE(drive_in(w40, 0.3f).has_value());
+    CHECK_FALSE(find_drive_hz(w40.data(), 0, 3053.0f, 41.5f, 1.0f).has_value());
+
+    helix::calibration::test::Hiss rng;
+    const auto hiss = helix::calibration::test::hiss_bed(1527, 30.0f, 3053.0f, rng);
+    CHECK_FALSE(drive_in(hiss, 41.5f).has_value());
+}
+
+TEST_CASE("DriveLock locks once five estimates of t0 agree", "[sweep_preview][lock]") {
+    const SweepPlan plan{5.0f, 135.0f, 1.0f};
+    DriveLock lock(plan);
+    CHECK(std::isnan(lock.drive_start_s()));
+    CHECK(std::isnan(lock.model_hz(5.0)));
+
+    lock.observe(2.00, 5.30f);
+    lock.observe(2.25, 5.55f);
+    lock.observe(2.50, 5.80f);
+    lock.observe(2.75, 6.05f);
+    CHECK_FALSE(lock.locked());
+    lock.observe(3.00, 6.30f);
+    REQUIRE(lock.locked());
+    CHECK(lock.drive_start_s() == Approx(1.70).margin(1e-6));
+    CHECK(lock.model_hz(10.0) == Approx(13.3f).margin(1e-4));
+}
+
+TEST_CASE("DriveLock ignores an outlier and spread estimates", "[sweep_preview][lock]") {
+    const SweepPlan plan{5.0f, 135.0f, 1.0f};
+    {
+        DriveLock lock(plan);
+        observe_estimate(lock, 2.00, 1.70, plan);
+        observe_estimate(lock, 2.25, 1.70, plan);
+        lock.observe(2.50, 4.30f); // estimate 3.20
+        observe_estimate(lock, 2.75, 1.70, plan);
+        observe_estimate(lock, 3.00, 1.70, plan);
+        CHECK_FALSE(lock.locked());
+        observe_estimate(lock, 3.25, 1.70, plan);
+        REQUIRE(lock.locked());
+        CHECK(lock.drive_start_s() == Approx(1.70).margin(1e-5));
+    }
+    {
+        DriveLock lock(plan);
+        for (int k = 0; k < 8; ++k) {
+            observe_estimate(lock, 3.0 + 0.25 * k, 1.0 + 0.2 * k, plan);
+        }
+        CHECK_FALSE(lock.locked());
+    }
+}
+
+TEST_CASE("DriveLock takes the median of the densest cluster", "[sweep_preview][lock]") {
+    const SweepPlan plan{5.0f, 135.0f, 1.0f};
+    DriveLock lock(plan);
+    const double estimates[] = {1.60, 1.65, 1.70, 1.75, 1.80};
+    for (int k = 0; k < 5; ++k) {
+        observe_estimate(lock, 3.0 + 0.25 * k, estimates[k], plan);
+    }
+    REQUIRE(lock.locked());
+    CHECK(lock.drive_start_s() == Approx(1.70).margin(1e-5));
+}
+
+TEST_CASE("DriveLock forgets estimates past its history", "[sweep_preview][lock]") {
+    const SweepPlan plan{5.0f, 135.0f, 1.0f};
+    DriveLock lock(plan);
+    double at = 2.0;
+    observe_estimate(lock, at, 1.70, plan);
+    for (int k = 0; k < 16; ++k) {
+        at += 0.25;
+        observe_estimate(lock, at, 5.0 + 0.2 * k, plan);
+    }
+    for (int k = 0; k < 4; ++k) {
+        at += 0.25;
+        observe_estimate(lock, at, 1.70, plan);
+    }
+    CHECK_FALSE(lock.locked());
+    at += 0.25;
+    observe_estimate(lock, at, 1.70, plan);
+    CHECK(lock.locked());
+}
+
+TEST_CASE("DriveLock drops a lock the readings disagree with", "[sweep_preview][lock]") {
+    const SweepPlan plan{5.0f, 135.0f, 1.0f};
+    auto locked_at_1_70 = [&plan]() {
+        DriveLock lock(plan);
+        for (int k = 0; k < 5; ++k) {
+            observe_estimate(lock, 2.0 + 0.25 * k, 1.70, plan);
+        }
+        REQUIRE(lock.locked());
+        return lock;
+    };
+
+    SECTION("three seconds of disagreement loses it") {
+        auto lock = locked_at_1_70();
+        double at = 10.0;
+        for (; at <= 12.75 + 1e-9; at += 0.25) {
+            lock.observe(at, lock.model_hz(at) + 2.0f);
+        }
+        CHECK(lock.locked());
+        lock.observe(13.0, lock.model_hz(13.0) + 2.0f);
+        CHECK_FALSE(lock.locked());
+        CHECK(lock.drive_start_s() == Approx(1.70).margin(1e-5));
+        CHECK(std::isnan(lock.model_hz(14.0)));
+
+        // A fresh cluster relocks.
+        for (int k = 0; k < 5; ++k) {
+            observe_estimate(lock, 14.0 + 0.25 * k, 6.70, plan);
+        }
+        REQUIRE(lock.locked());
+        CHECK(lock.drive_start_s() == Approx(6.70).margin(1e-5));
+    }
+
+    SECTION("one agreeing reading resets the timer") {
+        auto lock = locked_at_1_70();
+        for (double at = 10.0; at <= 12.75 + 1e-9; at += 0.25) {
+            lock.observe(at, lock.model_hz(at) + 2.0f);
+        }
+        lock.observe(13.0, lock.model_hz(13.0));
+        for (double at = 13.25; at <= 16.0 + 1e-9; at += 0.25) {
+            lock.observe(at, lock.model_hz(at) + 2.0f);
+        }
+        CHECK(lock.locked());
+    }
+}
+
+TEST_CASE("DriveLock counts a reading exactly LOCK_LOST_HZ off as agreeing",
+          "[sweep_preview][lock]") {
+    const SweepPlan plan{5.0f, 135.0f, 1.0f};
+    DriveLock lock(plan);
+    // Exact binary values: estimates of exactly 1.5.
+    for (int k = 0; k < 5; ++k) {
+        const double at = 2.0 + 0.25 * k;
+        lock.observe(at, static_cast<float>(5.5 + 0.25 * k));
+    }
+    REQUIRE(lock.locked());
+    REQUIRE(lock.drive_start_s() == 1.5);
+    for (double at = 10.0; at <= 20.0; at += 0.25) {
+        const float model = lock.model_hz(at);
+        REQUIRE(model == static_cast<float>(5.0 + (at - 1.5)));
+        lock.observe(at, model + sweep_preview::LOCK_LOST_HZ);
+    }
+    CHECK(lock.locked());
+}
+
+TEST_CASE("DriveLock scales estimates by the sweep rate", "[sweep_preview][lock]") {
+    const SweepPlan plan{5.0f, 135.0f, 2.0f};
+    DriveLock lock(plan);
+    for (int k = 0; k < 5; ++k) {
+        lock.observe(3.0 + 0.25 * k, 7.6f + 0.5f * static_cast<float>(k));
+    }
+    REQUIRE(lock.locked());
+    CHECK(lock.drive_start_s() == Approx(1.70).margin(1e-5));
 }
