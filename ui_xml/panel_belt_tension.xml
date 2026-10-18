@@ -179,7 +179,8 @@
           <text_small flex_grow="1"
                       text="Keep clear of the printer while the toolhead is moving" long_mode="wrap"
                       style_text_color="#text_muted"/>
-          <ui_button name="btn_stop" width="35%" height="#button_height" icon="close" text="Stop" variant="danger">
+          <ui_button name="btn_stop"
+                     width="35%" height="#button_height" icon="alert_octagon" text="Stop" variant="danger">
             <event_cb trigger="clicked" callback="belt_tension_stop_cb"/>
           </ui_button>
         </lv_obj>
