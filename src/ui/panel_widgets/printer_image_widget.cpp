@@ -259,7 +259,10 @@ void PrinterImageWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
 
     hardware_observers_.clear();
     AmsState& ams = AmsState::instance();
-    for (lv_subject_t* s : {ams.get_backend_count_subject(), ams.get_ams_type_subject()}) {
+    // Units report in after their backend registers, so the data revision is
+    // watched too: the image can only change once a unit is present.
+    for (lv_subject_t* s : {ams.get_backend_count_subject(), ams.get_ams_type_subject(),
+                            ams.get_ams_data_revision_subject()}) {
         hardware_observers_.push_back(helix::ui::observe<int>(
             s, this,
             [](PrinterImageWidget* w, int /*value*/) { w->refresh_if_detected_image_changed(); },
