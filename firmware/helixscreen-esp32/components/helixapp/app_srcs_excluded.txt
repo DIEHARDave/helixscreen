@@ -126,6 +126,7 @@ src/calibration/pluck_aggregator.cpp  # not in the v1 Core+AMS cut
 src/calibration/pluck_detector.cpp  # not in the v1 Core+AMS cut
 src/calibration/shaper_response.cpp  # not in the v1 Core+AMS cut
 src/calibration/shaper_selection.cpp  # not in the v1 Core+AMS cut
+src/calibration/sweep_response_estimator.cpp  # not in the v1 Core+AMS cut
 src/helix_splash.cpp  # not in the v1 Core+AMS cut
 src/helix_watchdog.cpp  # not in the v1 Core+AMS cut
 src/main.cpp  # not in the v1 Core+AMS cut
