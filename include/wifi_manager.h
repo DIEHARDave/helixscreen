@@ -16,6 +16,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -125,8 +126,9 @@ class WiFiManager {
      * Scans for available networks and invokes callback with results. The
      * trigger runs on the control lane; a trigger already queued or running
      * there is reused rather than sent again. While the control breaker is
-     * open and no probe is due, no scan is sent and the callback receives an
-     * empty list.
+     * open and no probe is due, or the lane's current call has already taken
+     * the breaker's slow-call time, no scan is sent and the callback receives
+     * an empty list.
      * Scanning continues automatically, on an interval that backs off from
      * ScanScheduler::BASE_INTERVAL_MS up to ScanScheduler::MAX_INTERVAL_MS as
      * results stay unchanged (and suppresses entirely once connected and
@@ -203,8 +205,9 @@ class WiFiManager {
      * during it is answered by the next read, so no answer predates its
      * request. Call from the main thread: the read is registered there, so a
      * backend swap or the destructor waits for it. While the control breaker
-     * is open and no probe is due, the answer is the last good status with
-     * `unresponsive` set, without asking the backend. With the pool not running
+     * is open and no probe is due, or the lane's current call has already
+     * taken the breaker's slow-call time, the answer is the last good status
+     * with `unresponsive` set, without asking the backend. With the pool not running
      * (ESP32 never starts it; its backend answers from memory) `on_done` runs
      * before this returns.
      */
@@ -609,6 +612,14 @@ class WiFiManager {
     // Claims a breaker admission for a health call about to be sent. LVGL thread.
     bool breaker_allows_call();
     bool breaker_open();
+
+    // When the call now running on the lane started; unset while idle.
+    // Guarded by control_mutex_. The breaker only hears about calls that
+    // finish, and a send blocked on a daemon that stopped reading never does.
+    std::optional<std::chrono::steady_clock::time_point> control_op_started_;
+    // The call now running has taken the breaker's slow-call time already,
+    // so anything queued behind it will wait at least that long. LVGL thread.
+    bool control_stalled();
 
     // A scan trigger is queued or running on the lane. LVGL thread only.
     bool scan_trigger_inflight_ = false;

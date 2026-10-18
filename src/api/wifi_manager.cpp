@@ -451,6 +451,11 @@ void WiFiManager::start_scan(
 }
 
 WiFiManager::ScanRequest WiFiManager::request_scan(bool user_refresh) {
+    if (control_stalled()) {
+        spdlog::debug("[WiFiManager] WiFi control call still waiting on the backend — scan not "
+                      "sent");
+        return ScanRequest::Refused;
+    }
     if (scan_trigger_inflight_) {
         spdlog::debug("[WiFiManager] Scan trigger already in flight — reusing it");
         std::lock_guard<std::mutex> lock(callback_mutex_);
@@ -1014,13 +1019,14 @@ void WiFiManager::get_status_async(
         on_done(backend_ ? backend_->get_status() : WifiBackend::ConnectionStatus{});
         return;
     }
+    const bool stalled = control_stalled();
     {
         std::lock_guard<std::mutex> lock(status_waiters_mutex_);
-        if (status_read_inflight_) {
+        if (status_read_inflight_ && !stalled) {
             status_waiters_.push_back({std::move(token), std::move(on_done)});
             return;
         }
-        if (!breaker_allows_call()) {
+        if (stalled || !breaker_allows_call()) {
             WifiBackend::ConnectionStatus cached = cached_status_;
             cached.unresponsive = true;
             token.defer("WiFiManager::get_status_async(unresponsive)",
@@ -1141,7 +1147,15 @@ void WiFiManager::run_control_ops() {
             control_queue_.pop_front();
         }
         spdlog::trace("[WiFiManager] Control lane: {}", op.tag);
+        {
+            std::lock_guard<std::mutex> lock(control_mutex_);
+            control_op_started_ = std::chrono::steady_clock::now();
+        }
         op.work();
+        {
+            std::lock_guard<std::mutex> lock(control_mutex_);
+            control_op_started_.reset();
+        }
     }
     drop_control_ops();
 }
@@ -1199,6 +1213,17 @@ bool WiFiManager::breaker_allows_call() {
 bool WiFiManager::breaker_open() {
     std::lock_guard<std::mutex> lock(breaker_mutex_);
     return breaker_.open();
+}
+
+bool WiFiManager::control_stalled() {
+    uint32_t slow_ms;
+    {
+        std::lock_guard<std::mutex> lock(breaker_mutex_);
+        slow_ms = breaker_.config().slow_call_ms;
+    }
+    std::lock_guard<std::mutex> lock(control_mutex_);
+    return control_op_started_ && std::chrono::steady_clock::now() - *control_op_started_ >=
+                                      std::chrono::milliseconds(slow_ms);
 }
 
 void WiFiManager::begin_radio_op() {

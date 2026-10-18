@@ -21,6 +21,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -157,15 +158,14 @@ struct ControlLaneFixture : LVGLTestFixture {
     }
 
     /// One status read, answered on this (the LVGL) thread.
+    /// The answer is held by the callback, not this frame, so a REQUIRE that
+    /// gives up leaves nothing for a late answer to write through.
     WifiBackend::ConnectionStatus read_status() {
-        bool done = false;
-        WifiBackend::ConnectionStatus got;
-        wm->get_status_async(guard.token(), [&](const WifiBackend::ConnectionStatus& s) {
-            got = s;
-            done = true;
-        });
-        REQUIRE(wait_until([&] { return done; }));
-        return got;
+        auto got = std::make_shared<std::optional<WifiBackend::ConnectionStatus>>();
+        wm->get_status_async(guard.token(),
+                             [got](const WifiBackend::ConnectionStatus& s) { *got = s; });
+        REQUIRE(wait_until([&] { return got->has_value(); }));
+        return **got;
     }
 };
 
@@ -319,4 +319,35 @@ TEST_CASE_METHOD(ControlLaneFixture,
     CHECK(g_forget_calls == 0);
     CHECK_FALSE(forgot);
     backend = nullptr;
+}
+
+TEST_CASE_METHOD(ControlLaneFixture,
+                 "polls and scans behind a call that never returns are answered without it",
+                 "[wifi][wifi_control_lane][wifi_breaker]") {
+    // A send blocked on a daemon that stopped reading never finishes, so the
+    // breaker never hears of it; the lane's own clock has to.
+    WiFiManagerTestAccess::set_breaker_config(*wm, {50, 3, 400, 2000});
+    backend->set_connected_state(true, "Home", "192.168.1.10", 80);
+    REQUIRE(read_status().ssid == "Home");
+
+    backend->stall();
+    bool first_answered = false;
+    wm->get_status_async(guard.token(),
+                         [&](const WifiBackend::ConnectionStatus&) { first_answered = true; });
+    REQUIRE(wait_until([&] { return backend->statuses() == 2; }));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Still parked, and a poll arriving now is answered from cache at once.
+    const auto cached = read_status();
+    CHECK(cached.unresponsive);
+    CHECK(cached.ssid == "Home");
+    CHECK_FALSE(first_answered);
+
+    bool scan_answered = false;
+    wm->start_scan([&](const std::vector<WiFiNetwork>& n) { scan_answered = n.empty(); });
+    REQUIRE(wait_until([&] { return scan_answered; }, 1000));
+    CHECK(backend->triggers() == 0);
+
+    backend->release();
+    REQUIRE(wait_until([&] { return first_answered; }));
 }
