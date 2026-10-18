@@ -166,16 +166,33 @@ inline std::string get_image_path_for_name(const std::string& printer_name,
 }
 
 /**
+ * @brief The best available render of one database image file
+ *
+ * Strips the .png extension and resolves the screen-sized prerendered .bin,
+ * falling back to the PNG, then to the generic CoreXY image.
+ *
+ * @param image_filename Filename from the printer database (e.g. "voron-v2.png"); "" for none
+ * @param screen_width Display width; selects the tier
+ * @return Full LVGL path to the best available image
+ */
+inline std::string get_best_image_for_file(const std::string& image_filename,
+                                           int screen_width = current_screen_width()) {
+    if (image_filename.empty()) {
+        return default_printer_image_path();
+    }
+    std::string base_name = image_filename;
+    if (base_name.size() > 4 && base_name.substr(base_name.size() - 4) == ".png") {
+        base_name = base_name.substr(0, base_name.size() - 4);
+    }
+    return helix::get_prerendered_printer_path(base_name, screen_width);
+}
+
+/**
  * @brief Get the best available printer image for a printer type name
  *
- * Performs the full smart image lookup:
- * 1. Looks up image filename from printer database
- * 2. Strips .png extension to get base name
- * 3. Selects responsive size based on current screen width (300px or 150px)
- * 4. Prefers pre-rendered .bin (faster on embedded), falls back to PNG
- * 5. Falls back to generic CoreXY image if nothing found
- *
- * This is the recommended function for displaying printer images.
+ * The type's plain database `image`, through get_best_image_for_file(). It
+ * ignores `image_variants`: what the connected printer shows, variants
+ * included, is PrinterImageManager::get_detected_image_path().
  *
  * @param printer_type Printer type name from config (e.g., "Voron 2.4", "FlashForge Adventurer 5M")
  * @return Full LVGL path to the best available image
@@ -184,25 +201,7 @@ inline std::string get_best_printer_image(const std::string& printer_type) {
     if (printer_type.empty()) {
         return default_printer_image_path();
     }
-
-    // Look up image filename from printer database
-    std::string image_filename = PrinterDetector::get_image_for_printer(printer_type);
-    if (image_filename.empty()) {
-        return default_printer_image_path();
-    }
-
-    // Strip .png extension to get base name for prerendered lookup
-    std::string base_name = image_filename;
-    if (base_name.size() > 4 && base_name.substr(base_name.size() - 4) == ".png") {
-        base_name = base_name.substr(0, base_name.size() - 4);
-    }
-
-    // Get screen width for responsive image sizing
-    lv_display_t* disp = lv_display_get_default();
-    int screen_width = disp ? lv_display_get_horizontal_resolution(disp) : 800;
-
-    // Use prerendered .bin if available (screen-responsive), else fallback to PNG
-    return helix::get_prerendered_printer_path(base_name, screen_width);
+    return get_best_image_for_file(PrinterDetector::get_image_for_printer(printer_type));
 }
 
 /**

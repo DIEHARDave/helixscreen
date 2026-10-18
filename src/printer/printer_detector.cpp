@@ -15,6 +15,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "print_start_analyzer.h"
 #include "printer_discovery.h"
+#include "printer_image_variants.h"
 #include "printer_state.h"
 #include "probe_preparation.h"
 #include "probe_sensor_manager.h"
@@ -1073,7 +1074,17 @@ std::string printer_field(const std::string& printer_name, const char* field) {
 // ============================================================================
 
 std::string PrinterDetector::get_image_for_printer(const std::string& printer_name) {
-    return printer_field(printer_name, "image");
+    return get_image_for_printer(printer_name, helix::printer_images::HardwareFacts{});
+}
+
+std::string
+PrinterDetector::get_image_for_printer(const std::string& printer_name,
+                                       const helix::printer_images::HardwareFacts& facts) {
+    const json* printer = find_printer_entry(printer_name);
+    std::string image = printer ? helix::printer_images::select_image(*printer, facts) : "";
+    spdlog::debug("[PrinterDetector] image for '{}' ({} filament system(s)): '{}'", printer_name,
+                  facts.filament_systems.size(), image);
+    return image;
 }
 
 namespace {

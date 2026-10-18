@@ -103,6 +103,12 @@ class PrinterImageWidget : public PanelWidget {
     /// silhouette unless a type change re-triggers it.
     ObserverGuard printer_type_observer_;
 
+    /// Re-resolve when the detected filament systems change: a database entry's
+    /// `image_variants` can pick another image once a backend registers, which
+    /// happens after connect.
+    std::vector<ObserverGuard> hardware_observers_;
+    void refresh_if_detected_image_changed();
+
     void schedule_image_refresh();
     void schedule_cache_check();
     void check_or_generate_cache();
